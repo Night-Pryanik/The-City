@@ -600,6 +600,7 @@ func _draw_hex(row: int, col: int):
     var tile = tile_data[row][col]
     var in_influence = tile.get("in_influence", false)
 
+    # Город
     if row == CITY_ROW and col == CITY_COL:
         var terrain_color = Color.BLACK
         var terrain = tile.terrain
@@ -611,6 +612,7 @@ func _draw_hex(row: int, col: int):
         draw_polyline(closed_vertices, Color.WHITE, 2, true)
         return
 
+    # Местность
     var terrain_color = Color.BLACK
     var terrain = tile.terrain
     var terrain_icon_name = tile.get("terrain_icon", "")
@@ -625,9 +627,11 @@ func _draw_hex(row: int, col: int):
             terrain_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
         draw_colored_polygon(vertices, terrain_color)
 
+    # Затемнение для гексов вне кольца влияния
     if not in_influence:
         draw_colored_polygon(vertices, Color(0, 0, 0, 0.5))
 
+    # Ресурс (если есть и нет улучшения)
     if tile.resource != null:
         var res_data = GameData.raw_resources.get(tile.resource, {})
         var res_icon = res_data.get("icon", "")
@@ -646,6 +650,7 @@ func _draw_hex(row: int, col: int):
             var lock_rect = Rect2(lock_pos.x, lock_pos.y, LOCK_ICON_SIZE, LOCK_ICON_SIZE)
             draw_texture_rect(lock_texture, lock_rect, false)
 
+        # Прогресс-бар исследования (только для блокированных ресурсов)
         if is_locked and CityData.current_research_tech_id != "":
             var res_tech = res_data.get("tech_required", "")
             if res_tech == CityData.current_research_tech_id:
@@ -657,17 +662,19 @@ func _draw_hex(row: int, col: int):
                 var fill_width = bar_width * CityData.research_progress
                 draw_rect(Rect2(bar_x, bar_y, fill_width, bar_height), Color.GREEN)
                 draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color.WHITE, false)
-        # Прогресс строительства
-        if tile.has("build_target_time"):
-            var bar_width = RESOURCE_ICON_SIZE
-            var bar_height = 6
-            var bar_x = center.x - bar_width / 2.0
-            var bar_y = center.y + RESOURCE_ICON_SIZE / 2.0 + 10  # чуть ниже замка/прогресса
-            draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color(0.2, 0.2, 0.2))
-            var fill_width = bar_width * (tile["build_progress"] / tile["build_target_time"])
-            draw_rect(Rect2(bar_x, bar_y, fill_width, bar_height), Color.YELLOW)
-            draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color.WHITE, false)
 
+    # Прогресс-бар строительства (рисуется всегда, если строится)
+    if tile.has("build_target_time"):
+        var bar_width = RESOURCE_ICON_SIZE
+        var bar_height = 6
+        var bar_x = center.x - bar_width / 2.0
+        var bar_y = center.y + RESOURCE_ICON_SIZE / 2.0 + 10  # чуть ниже прогресса исследования
+        draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color(0.2, 0.2, 0.2))
+        var fill_width = bar_width * (tile["build_progress"] / tile["build_target_time"])
+        draw_rect(Rect2(bar_x, bar_y, fill_width, bar_height), Color.YELLOW)
+        draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color.WHITE, false)
+
+    # Улучшение (только внутри кольца влияния)
     if in_influence and tile.improvement != null:
         var imp_data = GameData.improvements.get(tile.improvement, {})
         var imp_icon = imp_data.get("icon", "")
@@ -683,6 +690,7 @@ func _draw_hex(row: int, col: int):
                 var fallback_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
                 draw_circle(icon_pos + Vector2(small_size/2, small_size/2), small_size / 2.5, fallback_color)
 
+    # Граница гекса
     draw_polyline(closed_vertices, Color.WHITE, 2, true)
 
 func _open_city():
@@ -779,3 +787,4 @@ func _complete_build(row: int, col: int, imp_id: String, animal_id = null):
                 CityData.add_animal(animal_id)
             elif GameData.raw_resources.has(animal_id) and GameData.raw_resources[animal_id].get("category") == "plants":
                 CityData.add_plant(animal_id)
+    queue_redraw()
