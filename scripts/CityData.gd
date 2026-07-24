@@ -36,13 +36,17 @@ func setup():
     current_research_tech_id = ""
     current_research_time = 0.0
     research_progress = 0.0
-    
+
     for pid in GameData.products.keys():
         city_storage[pid] = 0
         production_rates[pid] = 0
         consumption_rates[pid] = 0
         if GameData.products[pid].get("category") == "food":
             city_food_pool[pid] = true
+
+    # Стартовый запас еды (мясо) для первой постройки
+    if city_storage.has("meat"):
+        city_storage["meat"] = 10
 
 func reset_counters():
     for pid in production_rates.keys():
