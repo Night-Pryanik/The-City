@@ -97,6 +97,7 @@ func _ready():
     city_ui.research_requested.connect(CityData.start_research)
     CityData.research_completed.connect(_on_research_completed)
     CityData.show_message.connect(show_map_message)
+    city_button.gui_input.connect(_on_city_button_gui_input)
 
     if pause_menu:
         if not pause_menu.save_pressed.is_connected(_on_pause_save):
@@ -331,6 +332,11 @@ func show_map_message(text: String):
     map_message_timer = 0.0
     call_deferred("_adjust_hud_size")
 
+func _on_city_button_gui_input(event: InputEvent):
+    if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
+        scroll_offset = - (HexUtils.hex_center(CITY_ROW, CITY_COL, HEX_RADIUS) + Vector2(offset_x, offset_y) - get_viewport_rect().size / 2.0)
+        queue_redraw()
+
 func _input(event):
     if Engine.is_editor_hint():
         return
@@ -419,6 +425,13 @@ func _show_context_menu(row: int, col: int, click_pos: Vector2):
     if tile.improvement != null:
         return
 
+    # Вычисляем доступную еду (для отображения в меню)
+    var available_food = 0
+    if CityData:
+        for pid in CityData.city_food_pool:
+            if CityData.city_food_pool[pid]:
+                available_food += CityData.city_storage.get(pid, 0)
+
     _context_hex = {"row": row, "col": col, "resource": tile.resource}
     popup_menu.clear()
 
@@ -428,25 +441,13 @@ func _show_context_menu(row: int, col: int, click_pos: Vector2):
             if _is_resource_locked(tile.resource):
                 var tech_id = raw["tech_required"]
                 var tech_name = tech_id
+                var tech_cost = 0
                 for tech in GameData.technologies:
                     if tech["id"] == tech_id:
                         tech_name = tech["name"]
+                        tech_cost = tech.get("cost_food", 0)
                         break
-                
-                # Получаем стоимость технологии
-                var cost = 0
-                for tech in GameData.technologies:
-                    if tech["id"] == tech_id:
-                        cost = tech.get("cost_food", 0)
-                        break
-                
-                # Считаем доступную еду
-                var available_food = 0
-                for pid in CityData.city_food_pool:
-                    if CityData.city_food_pool[pid]:
-                        available_food += CityData.city_storage.get(pid, 0)
-                
-                var label = "Изучить %s (еды: %d/%d)" % [tech_name, available_food, cost]
+                var label = "Изучить %s [еды: %d/%d]" % [tech_name, available_food, tech_cost]
                 popup_menu.add_item(label)
                 var last_idx = popup_menu.item_count - 1
                 popup_menu.set_item_metadata(last_idx, {"action": "research_tech", "tech_id": tech_id})
@@ -456,7 +457,7 @@ func _show_context_menu(row: int, col: int, click_pos: Vector2):
                 var imp_name = imp_data.get("name", imp_id)
                 var cost = imp_data.get("cost_food", 0)
                 var time = imp_data.get("build_time", 0)
-                var label = "Построить %s (%s) [еда: %d, %.0fс]" % [imp_name, raw.get("name", tile.resource), cost, time]
+                var label = "Построить %s (%s) [еды: %d/%d, %d сек.]" % [imp_name, raw.get("name", tile.resource), available_food, cost, int(time)]
                 popup_menu.add_item(label)
                 var last_idx = popup_menu.item_count - 1
                 popup_menu.set_item_metadata(last_idx, {"action": "build_improvement", "imp_id": imp_id, "animal_id": tile.resource})
@@ -470,7 +471,7 @@ func _show_context_menu(row: int, col: int, click_pos: Vector2):
                     var imp_data = GameData.improvements.get("pasture", {})
                     var cost = imp_data.get("cost_food", 0)
                     var time = imp_data.get("build_time", 0)
-                    var label = "Построить пастбище (%s) [еда: %d, %.0fс]" % [animal_name, cost, time]
+                    var label = "Построить пастбище (%s) [еды: %d/%d, %d сек.]" % [animal_name, available_food, cost, int(time)]
                     popup_menu.add_item(label)
                     var last_idx = popup_menu.item_count - 1
                     popup_menu.set_item_metadata(last_idx, {"action": "build_pasture", "animal_id": animal_id})
@@ -482,7 +483,7 @@ func _show_context_menu(row: int, col: int, click_pos: Vector2):
                     var imp_data = GameData.improvements.get("farm", {})
                     var cost = imp_data.get("cost_food", 0)
                     var time = imp_data.get("build_time", 0)
-                    var label = "Построить ферму (%s) [еда: %d, %.0fс]" % [plant_name, cost, time]
+                    var label = "Построить ферму (%s) [еды: %d/%d, %d сек.]" % [plant_name, available_food, cost, int(time)]
                     popup_menu.add_item(label)
                     var last_idx = popup_menu.item_count - 1
                     popup_menu.set_item_metadata(last_idx, {"action": "build_farm", "plant_id": plant_id})
