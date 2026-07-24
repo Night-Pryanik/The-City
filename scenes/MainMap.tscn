@@ -15,14 +15,15 @@ border_width_bottom = 1
 script = ExtResource("1_5hgy3")
 
 [node name="HUD" type="Panel" parent="." unique_id=1988910692]
-offset_right = 238.0
-offset_bottom = 122.0
+offset_right = 184.0
+offset_bottom = 110.0
 
 [node name="VBoxContainer" type="VBoxContainer" parent="HUD" unique_id=74397860]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_bottom = 2.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 4
@@ -38,6 +39,12 @@ text = "1250 (Средневековье)"
 [node name="CityButton" type="Button" parent="HUD/VBoxContainer" unique_id=964408477]
 layout_mode = 2
 text = "Город"
+
+[node name="MapMessageLabel" type="Label" parent="HUD/VBoxContainer" unique_id=1468814370]
+visible = false
+propagate_maximum_size = true
+layout_mode = 2
+autowrap_mode = 2
 
 [node name="PopupMenu" type="PopupMenu" parent="." unique_id=216217221]
 

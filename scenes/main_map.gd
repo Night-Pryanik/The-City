@@ -37,6 +37,9 @@ var _hovered_hex = null
 var _hover_start_time = 0.0
 var _tooltip_visible = false
 var production_timer = 0.0
+var map_message_timer: float = 0.0
+var map_message_duration: float = 3.0
+var hud_original_size: Vector2
 
 @onready var popup_menu = $PopupMenu
 @onready var city_ui = $CityUI
@@ -45,6 +48,7 @@ var production_timer = 0.0
 @onready var hud = $HUD
 @onready var city_button = $HUD/VBoxContainer/CityButton
 @onready var pause_menu = $PauseMenu
+@onready var map_message_label = $HUD/VBoxContainer/MapMessageLabel
 
 func _ready():
     _build_icon_index()
@@ -99,6 +103,9 @@ func _ready():
             pause_menu.load_pressed.connect(_on_pause_load)
         if not pause_menu.new_game_pressed.is_connected(_on_pause_new_game):
             pause_menu.new_game_pressed.connect(_on_pause_new_game)
+
+    hud_original_size = hud.size
+    map_message_label.visible = false
 
 func _initialize_map():
     GameData.load_all_data()
@@ -289,6 +296,20 @@ func _process(delta):
             hex_tooltip.position = tip_pos
     else:
         _hide_tooltip()
+    
+    # Таймер для скрытия сообщения на карте
+    if map_message_label.visible:
+        map_message_timer += delta
+        if map_message_timer >= map_message_duration:
+            map_message_label.visible = false
+            map_message_timer = 0.0
+            hud.size = hud_original_size
+
+func show_map_message(text: String):
+    map_message_label.text = text
+    map_message_label.visible = true
+    map_message_timer = 0.0
+    call_deferred("_adjust_hud_size")
 
 func _input(event):
     if Engine.is_editor_hint():
@@ -601,6 +622,8 @@ func _on_city_data_updated():
 func _on_research_error(message: String):
     if city_ui.visible:
         city_ui.set_message(message)
+    else:
+        show_map_message(message)
 
 func _on_research_completed(_tech_id: String):
     if city_ui.visible:
@@ -645,3 +668,13 @@ func _scan_folder(folder_path: String):
             icon_paths[file_name] = full_path
         file_name = dir.get_next()
     dir.list_dir_end()
+
+func _adjust_hud_size():
+    # Даём контейнеру пересчитать размеры
+    await get_tree().process_frame
+    var total_height = 0.0
+    for child in hud.get_node("VBoxContainer").get_children():
+        if child.visible:
+            total_height += child.get_combined_minimum_size().y + 4  # separation
+    # Добавляем отступы панели (если есть)
+    hud.size = Vector2(hud_original_size.x, max(total_height, hud_original_size.y))
