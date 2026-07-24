@@ -40,6 +40,7 @@ var production_timer = 0.0
 var map_message_timer: float = 0.0
 var map_message_duration: float = 3.0
 var hud_original_size: Vector2
+var build_timer_active = false
 
 @onready var popup_menu = $PopupMenu
 @onready var city_ui = $CityUI
@@ -95,6 +96,7 @@ func _ready():
     CityData.research_error.connect(_on_research_error)
     city_ui.research_requested.connect(CityData.start_research)
     CityData.research_completed.connect(_on_research_completed)
+    CityData.show_message.connect(show_map_message)
 
     if pause_menu:
         if not pause_menu.save_pressed.is_connected(_on_pause_save):
@@ -254,6 +256,24 @@ func _process(delta):
     CityData.tick_research(delta)
     if CityData.current_research_tech_id != "":
         queue_redraw()
+
+    # Обработка строительства улучшения
+    for row in range(REGION_ROWS):
+        for col in range(REGION_COLS):
+            var tile = tile_data[row][col]
+            if tile.has("build_target_time"):
+                tile["build_progress"] += delta
+                if tile["build_progress"] >= tile["build_target_time"]:
+                    # Строительство завершено
+                    var imp_id = tile["building_imp_id"]
+                    var animal_id = tile.get("building_animal_id")
+                    _complete_build(row, col, imp_id, animal_id)
+                    show_map_message("Построено: %s" % GameData.improvements[imp_id]["name"])
+                else:
+                    build_timer_active = true
+    if build_timer_active:
+        queue_redraw()
+        build_timer_active = false
 
     if city_ui.visible or popup_menu.visible or pause_menu.visible:
         _hide_tooltip()
@@ -432,8 +452,11 @@ func _show_context_menu(row: int, col: int, click_pos: Vector2):
                 popup_menu.set_item_metadata(last_idx, {"action": "research_tech", "tech_id": tech_id})
             else:
                 var imp_id = raw.improved_by
-                var imp_name = GameData.improvements.get(imp_id, {}).get("name", imp_id)
-                var label = "Построить %s (%s)" % [imp_name, raw.get("name", tile.resource)]
+                var imp_data = GameData.improvements.get(imp_id, {})
+                var imp_name = imp_data.get("name", imp_id)
+                var cost = imp_data.get("cost_food", 0)
+                var time = imp_data.get("build_time", 0)
+                var label = "Построить %s (%s) [еда: %d, %.0fс]" % [imp_name, raw.get("name", tile.resource), cost, time]
                 popup_menu.add_item(label)
                 var last_idx = popup_menu.item_count - 1
                 popup_menu.set_item_metadata(last_idx, {"action": "build_improvement", "imp_id": imp_id, "animal_id": tile.resource})
@@ -444,7 +467,10 @@ func _show_context_menu(row: int, col: int, click_pos: Vector2):
                 var animal_data = GameData.raw_resources.get(animal_id, {})
                 if tile.terrain in animal_data.get("allowed_terrains", []):
                     var animal_name = animal_data.get("name", animal_id)
-                    var label = "Построить пастбище (%s)" % animal_name
+                    var imp_data = GameData.improvements.get("pasture", {})
+                    var cost = imp_data.get("cost_food", 0)
+                    var time = imp_data.get("build_time", 0)
+                    var label = "Построить пастбище (%s) [еда: %d, %.0fс]" % [animal_name, cost, time]
                     popup_menu.add_item(label)
                     var last_idx = popup_menu.item_count - 1
                     popup_menu.set_item_metadata(last_idx, {"action": "build_pasture", "animal_id": animal_id})
@@ -453,7 +479,10 @@ func _show_context_menu(row: int, col: int, click_pos: Vector2):
                 var plant_data = GameData.raw_resources.get(plant_id, {})
                 if tile.terrain in plant_data.get("allowed_terrains", []):
                     var plant_name = plant_data.get("name", plant_id)
-                    var label = "Построить ферму (%s)" % plant_name
+                    var imp_data = GameData.improvements.get("farm", {})
+                    var cost = imp_data.get("cost_food", 0)
+                    var time = imp_data.get("build_time", 0)
+                    var label = "Построить ферму (%s) [еда: %d, %.0fс]" % [plant_name, cost, time]
                     popup_menu.add_item(label)
                     var last_idx = popup_menu.item_count - 1
                     popup_menu.set_item_metadata(last_idx, {"action": "build_farm", "plant_id": plant_id})
@@ -473,19 +502,52 @@ func _on_popup_menu_id_pressed(id: int):
     if action == "build_improvement":
         var imp_id = meta.imp_id
         var animal_id = meta.get("animal_id", null)
-        _build_improvement(row, col, imp_id, animal_id)
+        _start_build(row, col, imp_id, animal_id)
     elif action == "build_pasture":
         var animal_id = meta.animal_id
-        _build_improvement(row, col, "pasture", animal_id)
+        _start_build(row, col, "pasture", animal_id)
     elif action == "build_farm":
         var plant_id = meta.plant_id
-        _build_improvement(row, col, "farm", plant_id)
+        _start_build(row, col, "farm", plant_id)
     elif action == "research_tech":
         var tech_id = meta.tech_id
         CityData.start_research(tech_id)
 
     _context_hex = null
     queue_redraw()
+
+func _start_build(row: int, col: int, imp_id: String, animal_id = null):
+    var tile = tile_data[row][col]
+    if tile.has("build_target_time"):
+        show_map_message("Здесь уже идёт строительство")
+        return
+    var imp_data = GameData.improvements.get(imp_id, {})
+    var cost = imp_data.get("cost_food", 0)
+    var available_food = 0
+    for pid in CityData.city_food_pool:
+        if CityData.city_food_pool[pid]:
+            available_food += CityData.city_storage.get(pid, 0)
+    if available_food < cost:
+        show_map_message("Недостаточно еды! Нужно %d, есть %d" % [cost, available_food])
+        return
+    # Списываем еду
+    var remaining = cost
+    var active_food = []
+    for pid in CityData.city_food_pool:
+        if CityData.city_food_pool[pid] and CityData.city_storage.get(pid, 0) > 0:
+            active_food.append(pid)
+    while remaining > 0 and active_food.size() > 0:
+        var pid = active_food[randi() % active_food.size()]
+        CityData.city_storage[pid] -= 1
+        remaining -= 1
+        if CityData.city_storage[pid] <= 0:
+            active_food.erase(pid)
+    var build_time = imp_data.get("build_time", 3.0)
+    tile["build_progress"] = 0.0
+    tile["build_target_time"] = build_time
+    tile["building_imp_id"] = imp_id
+    tile["building_animal_id"] = animal_id
+    show_map_message("Строительство %s начато (%.0fс)" % [imp_data["name"], build_time])
 
 func _build_improvement(row: int, col: int, imp_id: String, animal_id = null):
     var tile = tile_data[row][col]
@@ -499,7 +561,7 @@ func _build_improvement(row: int, col: int, imp_id: String, animal_id = null):
                 CityData.add_animal(animal_id)
             elif GameData.raw_resources.has(animal_id) and GameData.raw_resources[animal_id].get("category") == "plants":
                 CityData.add_plant(animal_id)
-    print("Построено: %s на гексе (%d,%d)" % [imp_id, row, col])
+    show_map_message("Построено: %s на гексе (%d,%d)" % [imp_id, row, col])
 
 func pixel_to_hex(mx: float, my: float):
     for row in range(REGION_ROWS):
@@ -595,6 +657,16 @@ func _draw_hex(row: int, col: int):
                 var fill_width = bar_width * CityData.research_progress
                 draw_rect(Rect2(bar_x, bar_y, fill_width, bar_height), Color.GREEN)
                 draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color.WHITE, false)
+        # Прогресс строительства
+        if tile.has("build_target_time"):
+            var bar_width = RESOURCE_ICON_SIZE
+            var bar_height = 6
+            var bar_x = center.x - bar_width / 2.0
+            var bar_y = center.y + RESOURCE_ICON_SIZE / 2.0 + 10  # чуть ниже замка/прогресса
+            draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color(0.2, 0.2, 0.2))
+            var fill_width = bar_width * (tile["build_progress"] / tile["build_target_time"])
+            draw_rect(Rect2(bar_x, bar_y, fill_width, bar_height), Color.YELLOW)
+            draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color.WHITE, false)
 
     if in_influence and tile.improvement != null:
         var imp_data = GameData.improvements.get(tile.improvement, {})
@@ -692,3 +764,18 @@ func _adjust_hud_size():
             total_height += child.get_combined_minimum_size().y + 4  # separation
     # Добавляем отступы панели (если есть)
     hud.size = Vector2(hud_original_size.x, max(total_height, hud_original_size.y))
+
+func _complete_build(row: int, col: int, imp_id: String, animal_id = null):
+    var tile = tile_data[row][col]
+    tile["improvement"] = imp_id
+    tile.erase("build_progress")
+    tile.erase("build_target_time")
+    tile.erase("building_imp_id")
+    tile.erase("building_animal_id")
+    if animal_id != null:
+        tile["resource"] = animal_id
+        if CityData:
+            if GameData.raw_resources.has(animal_id) and GameData.raw_resources[animal_id].get("category") == "animals":
+                CityData.add_animal(animal_id)
+            elif GameData.raw_resources.has(animal_id) and GameData.raw_resources[animal_id].get("category") == "plants":
+                CityData.add_plant(animal_id)
