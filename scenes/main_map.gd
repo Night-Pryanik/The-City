@@ -412,7 +412,21 @@ func _show_context_menu(row: int, col: int, click_pos: Vector2):
                     if tech["id"] == tech_id:
                         tech_name = tech["name"]
                         break
-                var label = "Изучить " + tech_name
+                
+                # Получаем стоимость технологии
+                var cost = 0
+                for tech in GameData.technologies:
+                    if tech["id"] == tech_id:
+                        cost = tech.get("cost_food", 0)
+                        break
+                
+                # Считаем доступную еду
+                var available_food = 0
+                for pid in CityData.city_food_pool:
+                    if CityData.city_food_pool[pid]:
+                        available_food += CityData.city_storage.get(pid, 0)
+                
+                var label = "Изучить %s (еды: %d/%d)" % [tech_name, available_food, cost]
                 popup_menu.add_item(label)
                 var last_idx = popup_menu.item_count - 1
                 popup_menu.set_item_metadata(last_idx, {"action": "research_tech", "tech_id": tech_id})
