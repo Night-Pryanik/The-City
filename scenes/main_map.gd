@@ -41,6 +41,9 @@ var map_message_timer: float = 0.0
 var map_message_duration: float = 3.0
 var hud_original_size: Vector2
 var build_timer_active = false
+var is_dragging = false
+var drag_start_scroll_offset = Vector2.ZERO
+var drag_start_mouse = Vector2.ZERO
 
 @onready var popup_menu = $PopupMenu
 @onready var city_ui = $CityUI
@@ -258,14 +261,13 @@ func _process(delta):
     if CityData.current_research_tech_id != "":
         queue_redraw()
 
-    # Обработка строительства улучшения
+    # Обработка строительства
     for row in range(REGION_ROWS):
         for col in range(REGION_COLS):
             var tile = tile_data[row][col]
             if tile.has("build_target_time"):
                 tile["build_progress"] += delta
                 if tile["build_progress"] >= tile["build_target_time"]:
-                    # Строительство завершено
                     var imp_id = tile["building_imp_id"]
                     var animal_id = tile.get("building_animal_id")
                     _complete_build(row, col, imp_id, animal_id)
@@ -276,55 +278,58 @@ func _process(delta):
         queue_redraw()
         build_timer_active = false
 
-    if city_ui.visible or popup_menu.visible or pause_menu.visible:
-        _hide_tooltip()
-        return
-
-    var mouse_pos = get_viewport().get_mouse_position()
-    var viewport_size = get_viewport_rect().size
-    var inside = mouse_pos.x >= 0 and mouse_pos.x <= viewport_size.x and mouse_pos.y >= 0 and mouse_pos.y <= viewport_size.y
-    var scroll = Vector2.ZERO
-    if inside:
-        if mouse_pos.x < SCROLL_MARGIN:
-            scroll.x = SCROLL_SPEED * delta
-        elif mouse_pos.x > viewport_size.x - SCROLL_MARGIN:
-            scroll.x = -SCROLL_SPEED * delta
-        if mouse_pos.y < SCROLL_MARGIN:
-            scroll.y = SCROLL_SPEED * delta
-        elif mouse_pos.y > viewport_size.y - SCROLL_MARGIN:
-            scroll.y = -SCROLL_SPEED * delta
-
-    if scroll != Vector2.ZERO:
-        scroll_offset += scroll
-        queue_redraw()
-
-    if _hovered_hex != null:
-        _hover_start_time += delta
-        if _hover_start_time >= TOOLTIP_DELAY and not _tooltip_visible:
-            _tooltip_visible = true
-            hex_tooltip.visible = true
-        if _tooltip_visible:
-            var tip_pos = mouse_pos + Vector2(15, 15)
-            var text_size = tooltip_label.get_minimum_size()
-            hex_tooltip.size = text_size + Vector2(12, 8)
-            tooltip_label.position = Vector2(6, 4)
-            if tip_pos.x + hex_tooltip.size.x > viewport_size.x:
-                tip_pos.x = mouse_pos.x - hex_tooltip.size.x - 15
-            if tip_pos.y + hex_tooltip.size.y > viewport_size.y:
-                tip_pos.y = mouse_pos.y - hex_tooltip.size.y - 15
-            tip_pos.x = max(0, tip_pos.x)
-            tip_pos.y = max(0, tip_pos.y)
-            hex_tooltip.position = tip_pos
-    else:
-        _hide_tooltip()
-    
-    # Таймер для скрытия сообщения на карте
+    # Таймер сообщения
     if map_message_label.visible:
         map_message_timer += delta
         if map_message_timer >= map_message_duration:
             map_message_label.visible = false
             map_message_timer = 0.0
             hud.size = hud_original_size
+
+    if city_ui.visible or popup_menu.visible or pause_menu.visible:
+        _hide_tooltip()
+        return
+
+    # Скролл краями (только если не перетаскиваем)
+    if not is_dragging:
+        var mouse_pos = get_viewport().get_mouse_position()
+        var viewport_size = get_viewport_rect().size
+        var inside = mouse_pos.x >= 0 and mouse_pos.x <= viewport_size.x and mouse_pos.y >= 0 and mouse_pos.y <= viewport_size.y
+        var scroll = Vector2.ZERO
+        if inside:
+            if mouse_pos.x < SCROLL_MARGIN:
+                scroll.x = SCROLL_SPEED * delta
+            elif mouse_pos.x > viewport_size.x - SCROLL_MARGIN:
+                scroll.x = -SCROLL_SPEED * delta
+            if mouse_pos.y < SCROLL_MARGIN:
+                scroll.y = SCROLL_SPEED * delta
+            elif mouse_pos.y > viewport_size.y - SCROLL_MARGIN:
+                scroll.y = -SCROLL_SPEED * delta
+
+        if scroll != Vector2.ZERO:
+            scroll_offset += scroll
+            queue_redraw()
+
+    # Тултип
+    if _hovered_hex != null:
+        _hover_start_time += delta
+        if _hover_start_time >= TOOLTIP_DELAY and not _tooltip_visible:
+            _tooltip_visible = true
+            hex_tooltip.visible = true
+        if _tooltip_visible:
+            var tip_pos = get_viewport().get_mouse_position() + Vector2(15, 15)
+            var text_size = tooltip_label.get_minimum_size()
+            hex_tooltip.size = text_size + Vector2(12, 8)
+            tooltip_label.position = Vector2(6, 4)
+            if tip_pos.x + hex_tooltip.size.x > get_viewport_rect().size.x:
+                tip_pos.x = get_viewport().get_mouse_position().x - hex_tooltip.size.x - 15
+            if tip_pos.y + hex_tooltip.size.y > get_viewport_rect().size.y:
+                tip_pos.y = get_viewport().get_mouse_position().y - hex_tooltip.size.y - 15
+            tip_pos.x = max(0, tip_pos.x)
+            tip_pos.y = max(0, tip_pos.y)
+            hex_tooltip.position = tip_pos
+    else:
+        _hide_tooltip()
 
 func show_map_message(text: String):
     map_message_label.text = text
@@ -341,6 +346,7 @@ func _input(event):
     if Engine.is_editor_hint():
         return
 
+    # Обработка клавиши Esc (всегда должна работать)
     if event is InputEventKey and event.keycode == KEY_ESCAPE and event.pressed:
         if city_ui.visible:
             city_ui.close_city()
@@ -352,10 +358,26 @@ func _input(event):
             city_button.disabled = true
         return
 
+    # Блокировка ввода при открытом меню паузы
     if pause_menu.visible:
         return
 
+    # Обработка событий мыши
     if event is InputEventMouseButton:
+        # --- Левая кнопка мыши (перетаскивание и клики) ---
+        if event.button_index == MOUSE_BUTTON_LEFT:
+            if event.pressed:
+                # Запоминаем позицию мыши и текущий scroll_offset для начала перетаскивания
+                drag_start_scroll_offset = scroll_offset
+                drag_start_mouse = event.global_position
+                is_dragging = false
+            else:
+                # Левая кнопка отпущена
+                if is_dragging:
+                    is_dragging = false
+                    return  # Если было перетаскивание, игнорируем отпускание как клик
+
+        # --- Правая кнопка мыши (контекстное меню) ---
         if event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
             if popup_menu.visible:
                 popup_menu.hide()
@@ -366,6 +388,8 @@ func _input(event):
             if hex != null and tile_data[hex.row][hex.col]["in_influence"]:
                 _show_context_menu(hex.row, hex.col, mouse_pos)
                 _hide_tooltip()
+
+        # --- Обработка левого клика (только если это не было перетаскивание) ---
         if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
             if popup_menu.visible:
                 popup_menu.hide()
@@ -374,16 +398,34 @@ func _input(event):
             var mouse_pos = event.global_position
             var hex = pixel_to_hex(mouse_pos.x, mouse_pos.y)
             if hex != null and tile_data[hex.row][hex.col]["in_influence"]:
+                # Двойной клик по городу
                 if hex.row == CITY_ROW and hex.col == CITY_COL:
                     var cur_time = Time.get_ticks_msec() / 1000.0
                     if cur_time - last_city_click_time < 0.5:
                         _open_city()
                     last_city_click_time = cur_time
 
+    # --- Движение мыши (перетаскивание или тултип) ---
     if event is InputEventMouseMotion:
         if city_ui.visible or popup_menu.visible or pause_menu.visible:
             return
-        var hex = pixel_to_hex(get_viewport().get_mouse_position().x, get_viewport().get_mouse_position().y)
+
+        # Перетаскивание карты левой кнопкой
+        if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+            var mouse_pos = event.global_position
+            if not is_dragging:
+                # Проверяем, сдвинулись ли мы хотя бы на пиксель
+                if (mouse_pos - drag_start_mouse).length() > 1.0:
+                    is_dragging = true
+            if is_dragging:
+                # Вычисляем смещение от начальной точки захвата
+                var delta = mouse_pos - drag_start_mouse
+                scroll_offset = drag_start_scroll_offset + delta
+                queue_redraw()
+                return  # Прерываем обработку, чтобы не срабатывал тултип при перетаскивании
+
+        # Обычное движение мыши (тултип)
+        var hex = pixel_to_hex(event.global_position.x, event.global_position.y)
         if hex != _hovered_hex:
             _hovered_hex = hex
             _hover_start_time = 0.0
