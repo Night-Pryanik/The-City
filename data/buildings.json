@@ -1,0 +1,23 @@
+{
+  "buildings": [
+    {
+      "id": "hand_mill",
+      "name": "Ручная мельница",
+      "cost_food": 0,
+      "icon": "hand_mill.png"
+    },
+    {
+      "id": "windmill",
+      "name": "Мельница",
+      "cost_food": 5,
+      "icon": "windmill.png"
+    },
+    {
+      "id": "bakery",
+      "name": "Пекарня",
+      "cost_food": 0,
+      "additional_cost": {"flour": 3},
+      "icon": "bakery.png"
+    }
+  ]
+}

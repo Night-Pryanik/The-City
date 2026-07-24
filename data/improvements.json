@@ -1,0 +1,7 @@
+{
+  "improvements": [
+    {"id": "farm", "name": "Ферма", "icon": "farm.png", "color": [255, 255, 0]},
+    {"id": "pasture", "name": "Пастбище", "icon": "pasture.png", "color": [34, 139, 34]},
+    {"id": "mine", "name": "Шахта", "icon": "mine.png", "color": [105, 105, 105]}
+  ]
+}

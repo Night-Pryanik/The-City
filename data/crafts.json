@@ -1,0 +1,28 @@
+{
+  "crafts": [
+    {
+      "id": "grind_wheat_hand",
+      "name": "Ручной помол пшеницы",
+      "produced_in": "hand_mill",
+      "resources": {"wheat": 1},
+      "result": {"flour": 1},
+      "time": 0
+    },
+    {
+      "id": "grind_wheat",
+      "name": "Помол пшеницы",
+      "produced_in": "windmill",
+      "resources": {"wheat": 1},
+      "result": {"flour": 2},
+      "time": 0
+    },
+    {
+      "id": "bake_bread",
+      "name": "Выпечка хлеба",
+      "produced_in": "bakery",
+      "resources": {"flour": 1},
+      "result": {"bread": 1},
+      "time": 0
+    }
+  ]
+}

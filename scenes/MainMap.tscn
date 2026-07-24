@@ -1,0 +1,64 @@
+[gd_scene format=3 uid="uid://bo3pvrchbv6ey"]
+
+[ext_resource type="Script" uid="uid://diakox5tjb4x4" path="res://scenes/main_map.gd" id="1_5hgy3"]
+[ext_resource type="PackedScene" uid="uid://dwa0g8671hsh0" path="res://scenes/CityUI.tscn" id="2_a1mhp"]
+[ext_resource type="PackedScene" uid="uid://d00jxkppr273t" path="res://scenes/pause_menu.tscn" id="3_2t08r"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_o7tci"]
+bg_color = Color(0.19607843, 0.19607843, 0.19607843, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+
+[node name="MainMap" type="Node2D" unique_id=1469125025]
+script = ExtResource("1_5hgy3")
+
+[node name="HUD" type="Panel" parent="." unique_id=1988910692]
+offset_right = 238.0
+offset_bottom = 122.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="HUD" unique_id=74397860]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 4
+
+[node name="PopulationLabel" type="Label" parent="HUD/VBoxContainer" unique_id=448761200]
+layout_mode = 2
+text = "Население: 50"
+
+[node name="YearLabel" type="Label" parent="HUD/VBoxContainer" unique_id=1082760423]
+layout_mode = 2
+text = "1250 (Средневековье)"
+
+[node name="CityButton" type="Button" parent="HUD/VBoxContainer" unique_id=964408477]
+layout_mode = 2
+text = "Город"
+
+[node name="PopupMenu" type="PopupMenu" parent="." unique_id=216217221]
+
+[node name="HexTooltip" type="Panel" parent="." unique_id=1303469343]
+visible = false
+offset_right = 220.0
+offset_bottom = 80.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_o7tci")
+
+[node name="Label" type="Label" parent="HexTooltip" unique_id=1368253454]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_bottom = 10.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Тестовая подсказка"
+
+[node name="PauseMenu" parent="." unique_id=513166833 instance=ExtResource("3_2t08r")]
+visible = false
+
+[node name="CityUI" parent="." unique_id=1004795705 instance=ExtResource("2_a1mhp")]
+visible = false

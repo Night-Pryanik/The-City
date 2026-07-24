@@ -1,0 +1,8 @@
+{
+  "terrains": [
+    {"id": "plain", "name": "Равнина", "color": [144, 238, 144], "icons": ["plain_1.png", "plain_2.png", "plain_3.png"]},
+    {"id": "hill", "name": "Холмы", "color": [139, 90, 43], "icons": ["hill_1.png", "hill_2.png", "hill_3.png"]},
+    {"id": "forest", "name": "Лес", "color": [34, 139, 34], "icons": ["forest_1.png", "forest_2.png", "forest_3.png"]},
+    {"id": "mountain", "name": "Горы", "color": [105, 105, 105], "icons": ["mountain_1.png", "mountain_2.png", "mountain_3.png"]}
+  ]
+}

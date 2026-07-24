@@ -1,0 +1,343 @@
+[gd_scene format=3 uid="uid://dwa0g8671hsh0"]
+
+[ext_resource type="Script" uid="uid://db8sfnu5rqjpf" path="res://scenes/city_ui.gd" id="1_sxg55"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_o7tci"]
+bg_color = Color(0.15686275, 0.15686275, 0.15686275, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_yrkmr"]
+bg_color = Color(0.19607843, 0.19607843, 0.19607843, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dxjuo"]
+bg_color = Color(0.15686275, 0.15686275, 0.15686275, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_s5pkp"]
+bg_color = Color(0.11764706, 0.11764706, 0.11764706, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_jhs18"]
+bg_color = Color(0.19607843, 0.19607843, 0.19607843, 1)
+
+[node name="CityUi" type="Control" unique_id=1004795705]
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_sxg55")
+
+[node name="LeftPanel" type="Panel" parent="." unique_id=1080781882]
+layout_mode = 1
+offset_right = 181.0
+offset_bottom = 211.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_o7tci")
+
+[node name="ResourcesTabButton" type="Button" parent="LeftPanel" unique_id=1460200057]
+layout_mode = 0
+offset_left = 21.0
+offset_top = 50.0
+offset_right = 161.0
+offset_bottom = 81.0
+text = "Ресурсы"
+
+[node name="BuildingsTabButton" type="Button" parent="LeftPanel" unique_id=1377863712]
+layout_mode = 0
+offset_left = 21.0
+offset_top = 90.0
+offset_right = 161.0
+offset_bottom = 121.0
+text = "Здания"
+
+[node name="TradeTabButton" type="Button" parent="LeftPanel" unique_id=1250565610]
+layout_mode = 0
+offset_left = 21.0
+offset_top = 130.0
+offset_right = 161.0
+offset_bottom = 161.0
+text = "Торговля"
+
+[node name="TechnologiesTabButton" type="Button" parent="LeftPanel" unique_id=2049078210]
+layout_mode = 0
+offset_left = 21.0
+offset_top = 171.0
+offset_right = 161.0
+offset_bottom = 202.0
+text = "Технологии"
+
+[node name="TopPanel" type="Panel" parent="." unique_id=1504177585]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 180.0
+offset_right = 825.0
+offset_bottom = 50.0
+grow_horizontal = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_yrkmr")
+
+[node name="CloseButtonTop" type="Button" parent="TopPanel" unique_id=1190549711]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = 292.0
+offset_right = 329.0
+offset_bottom = 31.0
+grow_horizontal = 0
+theme_override_font_sizes/font_size = 16
+text = "X"
+
+[node name="TopFoodLabel" type="Label" parent="TopPanel" unique_id=1528058809]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = 23.0
+offset_right = 69.0
+offset_bottom = 23.0
+grow_horizontal = 2
+text = "Еда: 0"
+
+[node name="RightPanel" type="Panel" parent="." unique_id=470611506]
+layout_mode = 1
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 824.0
+offset_right = 1039.0
+offset_bottom = 768.0
+grow_horizontal = 0
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_dxjuo")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="RightPanel" unique_id=1613617050]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="BuiltBuildingsLabel" type="Label" parent="RightPanel/VBoxContainer" unique_id=970030327]
+layout_mode = 2
+text = "Построенные здания"
+
+[node name="BuiltBuildingsList" type="VBoxContainer" parent="RightPanel/VBoxContainer" unique_id=1857158825]
+layout_mode = 2
+
+[node name="ContentPanel" type="Panel" parent="." unique_id=606119453]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 180.0
+offset_top = 50.0
+offset_right = 824.0
+offset_bottom = 768.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_s5pkp")
+
+[node name="ResourcesPanel" type="Control" parent="ContentPanel" unique_id=939479849]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Label" type="Label" parent="ContentPanel/ResourcesPanel" unique_id=507307176]
+layout_mode = 0
+offset_top = -22.0
+offset_right = 183.0
+offset_bottom = 1.0
+text = "Список ресурсов"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="ContentPanel/ResourcesPanel" unique_id=1162039807]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ResourcesList" type="VBoxContainer" parent="ContentPanel/ResourcesPanel/ScrollContainer" unique_id=884097865]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="BuildingsPanel" type="Control" parent="ContentPanel" unique_id=1411062318]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="FoodLabel" type="Label" parent="ContentPanel/BuildingsPanel" unique_id=289532673]
+layout_mode = 1
+anchors_preset = -1
+offset_right = 184.0
+offset_bottom = 23.0
+text = "Еды доступно: 0"
+
+[node name="HSplitContainer" type="HSplitContainer" parent="ContentPanel/BuildingsPanel" unique_id=1962390109]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 27.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="AvailableBuildingsPanel" type="Control" parent="ContentPanel/BuildingsPanel/HSplitContainer" unique_id=1098170534]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="ContentPanel/BuildingsPanel/HSplitContainer/AvailableBuildingsPanel" unique_id=1309099413]
+layout_mode = 1
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_right = 318.0
+grow_vertical = 2
+
+[node name="AvailableBuildingsLabel" type="Label" parent="ContentPanel/BuildingsPanel/HSplitContainer/AvailableBuildingsPanel/VBoxContainer" unique_id=101904791]
+layout_mode = 2
+text = "Доступные постройки:"
+
+[node name="BuildingsItemList" type="ItemList" parent="ContentPanel/BuildingsPanel/HSplitContainer/AvailableBuildingsPanel/VBoxContainer" unique_id=1295887837]
+custom_minimum_size = Vector2(0, 200)
+layout_mode = 2
+
+[node name="BuildingDetailsPanel" type="Control" parent="ContentPanel/BuildingsPanel/HSplitContainer" unique_id=244568997]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="ContentPanel/BuildingsPanel/HSplitContainer/BuildingDetailsPanel" unique_id=1656241255]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="BuildingNameLabel" type="Label" parent="ContentPanel/BuildingsPanel/HSplitContainer/BuildingDetailsPanel/VBoxContainer" unique_id=486860130]
+layout_mode = 2
+
+[node name="BuildingCostLabel" type="Label" parent="ContentPanel/BuildingsPanel/HSplitContainer/BuildingDetailsPanel/VBoxContainer" unique_id=1452654743]
+layout_mode = 2
+
+[node name="BuildingRecipesLabel" type="Label" parent="ContentPanel/BuildingsPanel/HSplitContainer/BuildingDetailsPanel/VBoxContainer" unique_id=920025873]
+layout_mode = 2
+
+[node name="BuildButton" type="Button" parent="ContentPanel/BuildingsPanel" unique_id=235108591]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = -84.0
+offset_right = 99.0
+offset_bottom = -53.0
+grow_vertical = 0
+disabled = true
+text = "Построить"
+
+[node name="TradePanel" type="Control" parent="ContentPanel" unique_id=730713259]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TechnologiesPanel" type="Panel" parent="ContentPanel" unique_id=1065922502]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CurrentResearch" type="Panel" parent="ContentPanel/TechnologiesPanel" unique_id=6664287]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 60.0
+offset_bottom = 60.0
+grow_horizontal = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="ContentPanel/TechnologiesPanel/CurrentResearch" unique_id=2140575714]
+layout_mode = 0
+offset_top = -112.0
+offset_right = 229.0
+offset_bottom = -58.0
+
+[node name="TechCurrentLabel" type="Label" parent="ContentPanel/TechnologiesPanel/CurrentResearch/VBoxContainer" unique_id=882780081]
+layout_mode = 2
+text = "Нет текущего исследования"
+
+[node name="TechProgressBar" type="ProgressBar" parent="ContentPanel/TechnologiesPanel/CurrentResearch/VBoxContainer" unique_id=474677704]
+layout_mode = 2
+
+[node name="ScrollContainer" type="ScrollContainer" parent="ContentPanel/TechnologiesPanel" unique_id=1031433829]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="AvailableTechList" type="VBoxContainer" parent="ContentPanel/TechnologiesPanel/ScrollContainer" unique_id=2105080784]
+layout_mode = 2
+
+[node name="UnlockedContainer" type="Panel" parent="ContentPanel/TechnologiesPanel" unique_id=584365097]
+layout_mode = 1
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 0
+grow_vertical = 2
+
+[node name="UnlockedTechList" type="VBoxContainer" parent="ContentPanel/TechnologiesPanel/UnlockedContainer" unique_id=1752837184]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -40.0
+offset_bottom = 40.0
+grow_horizontal = 0
+
+[node name="BottomPanel" type="Panel" parent="." unique_id=47910934]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 180.0
+offset_top = 718.0
+offset_right = 180.0
+offset_bottom = 768.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_jhs18")
+
+[node name="CloseButton" type="Button" parent="BottomPanel" unique_id=1250258662]
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = 650.0
+offset_top = -14.0
+offset_right = 815.0
+offset_bottom = 17.0
+grow_horizontal = 0
+grow_vertical = 2
+text = "Вернуться на карту"
+
+[node name="MessageLabel" type="Label" parent="BottomPanel" unique_id=2138032127]
+layout_mode = 1
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_right = 1.0
+grow_vertical = 2
+
+[connection signal="pressed" from="BottomPanel/CloseButton" to="." method="_on_close_pressed"]

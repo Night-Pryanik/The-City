@@ -1,0 +1,69 @@
+{
+  "group_bonuses": [
+    {
+      "group_id": "meat_animals",
+      "bonus_type": "happiness",
+      "tiers": [
+        { "min_subgroups": 1, "value": 5 },
+        { "min_subgroups": 3, "value": 10 },
+        { "min_subgroups": 5, "value": 15 }
+      ]
+    },
+    {
+      "group_id": "food_plants",
+      "bonus_type": "happiness",
+      "tiers": [
+        { "min_subgroups": 1, "value": 3 },
+        { "min_subgroups": 3, "value": 7 },
+        { "min_subgroups": 5, "value": 12 }
+      ]
+    }
+  ],
+  "subgroup_bonuses": [
+    {
+      "subgroup_id": "cattle",
+      "bonus_type": "happiness",
+      "tiers": [
+        { "min_species": 1, "value": 2 },
+        { "min_species": 3, "value": 5 },
+        { "min_species": 5, "value": 10 }
+      ]
+    },
+    {
+      "subgroup_id": "poultry",
+      "bonus_type": "happiness",
+      "tiers": [
+        { "min_species": 1, "value": 1 },
+        { "min_species": 3, "value": 3 },
+        { "min_species": 5, "value": 6 }
+      ]
+    },
+    {
+      "subgroup_id": "cereals",
+      "bonus_type": "happiness",
+      "tiers": [
+        { "min_species": 1, "value": 1 },
+        { "min_species": 4, "value": 4 },
+        { "min_species": 7, "value": 8 }
+      ]
+    },
+    {
+      "subgroup_id": "legumes",
+      "bonus_type": "happiness",
+      "tiers": [
+        { "min_species": 1, "value": 1 },
+        { "min_species": 3, "value": 3 },
+        { "min_species": 5, "value": 5 }
+      ]
+    },
+    {
+      "subgroup_id": "tubers",
+      "bonus_type": "happiness",
+      "tiers": [
+        { "min_species": 1, "value": 1 },
+        { "min_species": 3, "value": 3 },
+        { "min_species": 5, "value": 5 }
+      ]
+    }
+  ]
+}

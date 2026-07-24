@@ -1,0 +1,19 @@
+{
+  "groups": [
+    {"id": "cattle", "name": "Крупный рогатый скот"},
+    {"id": "small_ruminants", "name": "Мелкий рогатый скот"},
+    {"id": "equines", "name": "Лошадиные"},
+    {"id": "camelids", "name": "Верблюдовые"},
+    {"id": "swine", "name": "Свиньи"},
+    {"id": "poultry", "name": "Домашняя птица"},
+    {"id": "large_birds", "name": "Крупные птицы"},
+    {"id": "fur", "name": "Пушные"},
+    {"id": "bees", "name": "Пчёлы"},
+    {"id": "cervids", "name": "Олени"},
+    {"id": "cereals", "name": "Зерновые"},
+    {"id": "pseudocereals", "name": "Псевдозерновые"},
+    {"id": "tubers", "name": "Клубневые"},
+    {"id": "legumes", "name": "Бобовые"},
+    {"id": "other", "name": "Прочие"}
+  ]
+}

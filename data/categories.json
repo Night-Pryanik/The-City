@@ -1,0 +1,7 @@
+{
+  "categories": [
+    {"id": "food", "name": "Еда"},
+    {"id": "material", "name": "Материалы"},
+    {"id": "other", "name": "Прочее"}
+  ]
+}
