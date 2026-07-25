@@ -101,16 +101,6 @@ func _ready():
     ]
     _highlight_active_tab_button()
 
-func _on_overlay_gui_input(event: InputEvent):
-    print("Overlay event: ", event)
-    if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-        print("Overlay left click, closing.")
-        _on_close_pressed()
-        accept_event()
-
-func _gui_input(event: InputEvent):
-    print("CityUI _gui_input received event: ", event)
-
 func update_data(storage, prod_rates, cons_rates, food_pool, blds_data, cfts_data, built_blds, products_dict, categories_list):
     data_cache = {
         "city_storage": storage,
