@@ -1,3 +1,4 @@
+@tool
 extends Panel
 
 var message_label: Label

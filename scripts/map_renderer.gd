@@ -1,4 +1,5 @@
 # map_renderer.gd
+@tool
 extends Node2D
 
 const HEX_RADIUS = 55

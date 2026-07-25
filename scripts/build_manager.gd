@@ -1,3 +1,4 @@
+@tool
 extends Node
 
 signal build_message(text: String)
