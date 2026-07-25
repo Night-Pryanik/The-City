@@ -259,6 +259,8 @@ func _process(delta):
             map_renderer.queue_redraw()
 
     # Тултип
+    if hud.get_global_rect().has_point(get_global_mouse_position()):
+        _hide_tooltip()
     if _hovered_hex != null:
         _hover_start_time += delta
         if _hover_start_time >= TOOLTIP_DELAY and not _tooltip_visible:
