@@ -59,10 +59,13 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
 func _place_resources(tile_data: Array, res_dict: Dictionary, rows: int, cols: int, city_row: int, city_col: int):
     if res_dict.size() == 0:
         return
-    # Определяем количество видов (1 или 2) с шансом 30% на 2
+    # Определяем количество видов: 50% шанс на 2, 30% шанс на 3
+    var roll = randf()
     var num_types = 1
-    if randf() < 0.3:
+    if roll < 0.5:
         num_types = 2
+    elif roll < 0.8:   # 0.5 + 0.3 = 0.8
+        num_types = 3
     # Перемешиваем ключи и берём нужное количество
     var ids = res_dict.keys()
     ids.shuffle()
