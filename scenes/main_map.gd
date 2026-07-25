@@ -252,8 +252,8 @@ func _process(delta):
         if scroll != Vector2.ZERO:
             scroll_offset += scroll
             # Ограничиваем скролл, чтобы не уехать далеко от карты
-            var max_scroll_x = (REGION_COLS * HEX_RADIUS * 1.5)
-            var max_scroll_y = (REGION_ROWS * HEX_RADIUS * 1.5)
+            var max_scroll_x = (REGION_COLS * HEX_RADIUS)
+            var max_scroll_y = (REGION_ROWS * HEX_RADIUS)
             scroll_offset.x = clamp(scroll_offset.x, -max_scroll_x, max_scroll_x)
             scroll_offset.y = clamp(scroll_offset.y, -max_scroll_y, max_scroll_y)
             map_renderer.queue_redraw()
