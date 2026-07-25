@@ -151,6 +151,45 @@
       "icon": "chickpea_field.png", "color": [200, 170, 100]
     },
     {
+      "id": "tulip_field",
+      "name": "Тюльпаны",
+      "type": "raw",
+      "category": "plants",
+      "group": "flowers",
+      "subgroup": "decorative",
+      "allowed_terrains": ["plain"],
+      "improved_by": "farm",
+      "produces": {"tulips": 1},
+      "icon": "tulip_field.png",
+      "color": [255, 100, 100]
+    },
+    {
+      "id": "rose_field",
+      "name": "Розы",
+      "type": "raw",
+      "category": "plants",
+      "group": "flowers",
+      "subgroup": "aromatic",
+      "allowed_terrains": ["plain"],
+      "improved_by": "farm",
+      "produces": {"roses": 1},
+      "icon": "rose_field.png",
+      "color": [255, 50, 50]
+    },
+    {
+      "id": "chamomile_field",
+      "name": "Ромашки",
+      "type": "raw",
+      "category": "plants",
+      "group": "flowers",
+      "subgroup": "medicinal",
+      "allowed_terrains": ["plain"],
+      "improved_by": "farm",
+      "produces": {"chamomile": 1},
+      "icon": "chamomile_field.png",
+      "color": [255, 255, 200]
+    },
+    {
       "id": "cows", "name": "Коровы", "type": "raw", "category": "animals",
       "group": "meat_animals", "subgroup": "cattle",
       "tech_required": "animal_husbandry",

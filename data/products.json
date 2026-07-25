@@ -42,6 +42,9 @@
     { "id": "limestone", "name": "Известняк", "type": "product", "category": "material" },
     { "id": "clay", "name": "Глина", "type": "product", "category": "material" },
     { "id": "flour", "name": "Мука", "type": "product", "category": "material" },
-    { "id": "bread", "name": "Хлеб", "type": "product", "category": "food" }
+    { "id": "bread", "name": "Хлеб", "type": "product", "category": "food" },
+    { "id": "tulips", "name": "Тюльпаны", "type": "product", "category": "other" },
+    { "id": "roses", "name": "Розы", "type": "product", "category": "other" },
+    { "id": "chamomile", "name": "Ромашки", "type": "product", "category": "other" }
   ]
 }

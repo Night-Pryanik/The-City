@@ -14,6 +14,9 @@
     {"id": "pseudocereals", "name": "Псевдозерновые"},
     {"id": "tubers", "name": "Клубневые"},
     {"id": "legumes", "name": "Бобовые"},
+    {"id": "decorative", "name": "Декоративные"},
+    {"id": "medicinal", "name": "Лекарственные"},
+    {"id": "aromatic", "name": "Парфюмерные"},
     {"id": "other", "name": "Прочие"}
   ]
 }
