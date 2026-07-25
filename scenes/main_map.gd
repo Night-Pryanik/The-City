@@ -37,9 +37,6 @@ var _hovered_hex = null
 var _hover_start_time = 0.0
 var _tooltip_visible = false
 var production_timer = 0.0
-var map_message_timer: float = 0.0
-var map_message_duration: float = 3.0
-var hud_original_size: Vector2
 var build_timer_active = false
 var is_dragging = false
 var drag_start_scroll_offset = Vector2.ZERO
@@ -52,7 +49,6 @@ var drag_start_mouse = Vector2.ZERO
 @onready var hud = $HUD
 @onready var city_button = $HUD/VBoxContainer/CityButton
 @onready var pause_menu = $PauseMenu
-@onready var map_message_label = $HUD/VBoxContainer/MapMessageLabel
 
 func _ready():
     _build_icon_index()
@@ -99,7 +95,7 @@ func _ready():
     CityData.research_error.connect(_on_research_error)
     city_ui.research_requested.connect(CityData.start_research)
     CityData.research_completed.connect(_on_research_completed)
-    CityData.show_message.connect(show_map_message)
+    CityData.show_message.connect(hud.show_message)
     city_button.gui_input.connect(_on_city_button_gui_input)
 
     if pause_menu:
@@ -109,9 +105,6 @@ func _ready():
             pause_menu.load_pressed.connect(_on_pause_load)
         if not pause_menu.new_game_pressed.is_connected(_on_pause_new_game):
             pause_menu.new_game_pressed.connect(_on_pause_new_game)
-
-    hud_original_size = hud.size
-    map_message_label.visible = false
 
 func _initialize_map():
     GameData.load_all_data()
@@ -271,20 +264,12 @@ func _process(delta):
                     var imp_id = tile["building_imp_id"]
                     var animal_id = tile.get("building_animal_id")
                     _complete_build(row, col, imp_id, animal_id)
-                    show_map_message("Построено: %s" % GameData.improvements[imp_id]["name"])
+                    hud.show_message("Построено: %s" % GameData.improvements[imp_id]["name"])
                 else:
                     build_timer_active = true
     if build_timer_active:
         queue_redraw()
         build_timer_active = false
-
-    # Таймер сообщения
-    if map_message_label.visible:
-        map_message_timer += delta
-        if map_message_timer >= map_message_duration:
-            map_message_label.visible = false
-            map_message_timer = 0.0
-            hud.size = hud_original_size
 
     if city_ui.visible or popup_menu.visible or pause_menu.visible:
         _hide_tooltip()
@@ -330,12 +315,6 @@ func _process(delta):
             hex_tooltip.position = tip_pos
     else:
         _hide_tooltip()
-
-func show_map_message(text: String):
-    map_message_label.text = text
-    map_message_label.visible = true
-    map_message_timer = 0.0
-    call_deferred("_adjust_hud_size")
 
 func _on_city_button_gui_input(event: InputEvent):
     if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
@@ -562,7 +541,7 @@ func _on_popup_menu_id_pressed(id: int):
 func _start_build(row: int, col: int, imp_id: String, animal_id = null):
     var tile = tile_data[row][col]
     if tile.has("build_target_time"):
-        show_map_message("Здесь уже идёт строительство")
+        hud.show_message("Здесь уже идёт строительство")
         return
     var imp_data = GameData.improvements.get(imp_id, {})
     var cost = imp_data.get("cost_food", 0)
@@ -571,7 +550,7 @@ func _start_build(row: int, col: int, imp_id: String, animal_id = null):
         if CityData.city_food_pool[pid]:
             available_food += CityData.city_storage.get(pid, 0)
     if available_food < cost:
-        show_map_message("Недостаточно еды! Нужно %d, есть %d" % [cost, available_food])
+        hud.show_message("Недостаточно еды! Нужно %d, есть %d" % [cost, available_food])
         return
     # Списываем еду
     var remaining = cost
@@ -590,7 +569,7 @@ func _start_build(row: int, col: int, imp_id: String, animal_id = null):
     tile["build_target_time"] = build_time
     tile["building_imp_id"] = imp_id
     tile["building_animal_id"] = animal_id
-    show_map_message("Строительство %s начато (%.0fс)" % [imp_data["name"], build_time])
+    hud.show_message("Строительство %s начато (%.0fс)" % [imp_data["name"], build_time])
 
 func _build_improvement(row: int, col: int, imp_id: String, animal_id = null):
     var tile = tile_data[row][col]
@@ -604,7 +583,7 @@ func _build_improvement(row: int, col: int, imp_id: String, animal_id = null):
                 CityData.add_animal(animal_id)
             elif GameData.raw_resources.has(animal_id) and GameData.raw_resources[animal_id].get("category") == "plants":
                 CityData.add_plant(animal_id)
-    show_map_message("Построено: %s на гексе (%d,%d)" % [imp_id, row, col])
+    hud.show_message("Построено: %s на гексе (%d,%d)" % [imp_id, row, col])
 
 func pixel_to_hex(mx: float, my: float):
     for row in range(REGION_ROWS):
@@ -760,7 +739,7 @@ func _on_research_error(message: String):
     if city_ui.visible:
         city_ui.set_message(message)
     else:
-        show_map_message(message)
+        hud.show_message(message)
 
 func _on_research_completed(_tech_id: String):
     if city_ui.visible:
@@ -805,16 +784,6 @@ func _scan_folder(folder_path: String):
             icon_paths[file_name] = full_path
         file_name = dir.get_next()
     dir.list_dir_end()
-
-func _adjust_hud_size():
-    # Даём контейнеру пересчитать размеры
-    await get_tree().process_frame
-    var total_height = 0.0
-    for child in hud.get_node("VBoxContainer").get_children():
-        if child.visible:
-            total_height += child.get_combined_minimum_size().y + 4  # separation
-    # Добавляем отступы панели (если есть)
-    hud.size = Vector2(hud_original_size.x, max(total_height, hud_original_size.y))
 
 func _complete_build(row: int, col: int, imp_id: String, animal_id = null):
     var tile = tile_data[row][col]

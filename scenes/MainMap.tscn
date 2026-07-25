@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://bo3pvrchbv6ey"]
 
 [ext_resource type="Script" uid="uid://diakox5tjb4x4" path="res://scenes/main_map.gd" id="1_5hgy3"]
+[ext_resource type="Script" uid="uid://d1onks36gomhd" path="res://scripts/hud_message.gd" id="2_1kkdm"]
 [ext_resource type="PackedScene" uid="uid://dwa0g8671hsh0" path="res://scenes/CityUI.tscn" id="2_a1mhp"]
 [ext_resource type="PackedScene" uid="uid://d00jxkppr273t" path="res://scenes/pause_menu.tscn" id="3_2t08r"]
 
@@ -17,6 +18,7 @@ script = ExtResource("1_5hgy3")
 [node name="HUD" type="Panel" parent="." unique_id=1988910692]
 offset_right = 184.0
 offset_bottom = 110.0
+script = ExtResource("2_1kkdm")
 
 [node name="VBoxContainer" type="VBoxContainer" parent="HUD" unique_id=74397860]
 layout_mode = 1
