@@ -4,6 +4,7 @@
 [ext_resource type="Script" uid="uid://d1onks36gomhd" path="res://scripts/hud_message.gd" id="2_1kkdm"]
 [ext_resource type="PackedScene" uid="uid://dwa0g8671hsh0" path="res://scenes/CityUI.tscn" id="2_a1mhp"]
 [ext_resource type="PackedScene" uid="uid://d00jxkppr273t" path="res://scenes/pause_menu.tscn" id="3_2t08r"]
+[ext_resource type="Script" uid="uid://ioi24pjoaapx" path="res://scripts/build_manager.gd" id="5_6ic70"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_o7tci"]
 bg_color = Color(0.19607843, 0.19607843, 0.19607843, 1)
@@ -14,6 +15,9 @@ border_width_bottom = 1
 
 [node name="MainMap" type="Node2D" unique_id=1469125025]
 script = ExtResource("1_5hgy3")
+
+[node name="BuildManager" type="Node" parent="." unique_id=1269596246]
+script = ExtResource("5_6ic70")
 
 [node name="HUD" type="Panel" parent="." unique_id=1988910692]
 offset_right = 184.0

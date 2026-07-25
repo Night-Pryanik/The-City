@@ -104,7 +104,7 @@ func start_research(tech_id: String) -> bool:
             if t["id"] == current_research_tech_id:
                 current_tech_name = t["name"]
                 break
-        emit_signal("show_message", "Уже идёт исследование: " + current_tech_name)
+        emit_signal("research_error", "Уже идёт исследование: " + current_tech_name)
         return false
     if tech_id in unlocked_technologies:
         var tech_name = tech_id
@@ -112,7 +112,7 @@ func start_research(tech_id: String) -> bool:
             if t["id"] == tech_id:
                 tech_name = t["name"]
                 break
-        emit_signal("show_message", "Технология уже изучена: " + tech_name)
+        emit_signal("research_error", "Технология уже изучена: " + tech_name)
         return false
     var tech_data = null
     for t in GameData.technologies:
@@ -120,7 +120,7 @@ func start_research(tech_id: String) -> bool:
             tech_data = t
             break
     if tech_data == null:
-        emit_signal("show_message", "Технология не найдена: " + tech_id)
+        emit_signal("research_error", "Технология не найдена: " + tech_id)
         return false
     var cost = tech_data.get("cost_food", 10)
     var available_food = 0
@@ -142,11 +142,11 @@ func start_research(tech_id: String) -> bool:
         current_research_tech_id = tech_id
         current_research_time = tech_data.get("time", 10.0)
         research_progress = 0.0
-        emit_signal("show_message", "Начато исследование: " + tech_data["name"])
+        emit_signal("research_error", "Начато исследование: " + tech_data["name"])
         emit_signal("city_updated")
         return true
     else:
-        emit_signal("show_message", "Недостаточно еды для исследования " + tech_data.get("name", tech_id) + ". Нужно " + str(cost))
+        emit_signal("research_error", "Недостаточно еды для исследования " + tech_data.get("name", tech_id) + ". Нужно " + str(cost))
         return false
 
 func tick_research(delta: float):
@@ -164,7 +164,7 @@ func tick_research(delta: float):
                 tech_name = t["name"]
                 break
         
-        emit_signal("show_message", "Исследование завершено: " + tech_name)
+        emit_signal("research_error", "Исследование завершено: " + tech_name)
         emit_signal("research_completed", current_research_tech_id)
         current_research_tech_id = ""
         current_research_time = 0.0

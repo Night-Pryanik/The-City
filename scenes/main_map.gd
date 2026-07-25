@@ -37,7 +37,7 @@ var _hovered_hex = null
 var _hover_start_time = 0.0
 var _tooltip_visible = false
 var production_timer = 0.0
-var build_timer_active = false
+
 var is_dragging = false
 var drag_start_scroll_offset = Vector2.ZERO
 var drag_start_mouse = Vector2.ZERO
@@ -49,6 +49,7 @@ var drag_start_mouse = Vector2.ZERO
 @onready var hud = $HUD
 @onready var city_button = $HUD/VBoxContainer/CityButton
 @onready var pause_menu = $PauseMenu
+@onready var build_manager = $BuildManager
 
 func _ready():
     _build_icon_index()
@@ -60,15 +61,18 @@ func _ready():
     if SaveManager.is_loaded:
         GameData.load_all_data()
         _load_icons()
-        SaveManager.apply_loaded_data()   # <-- применяем данные к CityData
+        # Применяем загруженные данные к CityData (склад, технологии и т.д.)
+        SaveManager.apply_loaded_data()
 
+        # Восстанавливаем tile_data из сохранения
         tile_data = []
+        var saved_tiles = SaveManager.saved_data.get("tile_data", [])
         for row in range(REGION_ROWS):
             var col_array = []
             for col in range(REGION_COLS):
                 var tile = {"terrain": "plain", "resource": null, "improvement": null, "terrain_icon": "", "in_influence": false}
-                if row < SaveManager.saved_data.get("tile_data", []).size() and col < SaveManager.saved_data["tile_data"][row].size():
-                    var saved = SaveManager.saved_data["tile_data"][row][col]
+                if row < saved_tiles.size() and col < saved_tiles[row].size():
+                    var saved = saved_tiles[row][col]
                     if not saved.is_empty():
                         tile["terrain"] = saved.get("terrain", "plain")
                         tile["resource"] = saved.get("resource")
@@ -93,9 +97,9 @@ func _ready():
     city_ui.build_requested.connect(CityData.request_build)
     CityData.city_updated.connect(_on_city_data_updated)
     CityData.research_error.connect(_on_research_error)
+    CityData.research_error.connect(hud.show_message)
     city_ui.research_requested.connect(CityData.start_research)
     CityData.research_completed.connect(_on_research_completed)
-    CityData.show_message.connect(hud.show_message)
     city_button.gui_input.connect(_on_city_button_gui_input)
 
     if pause_menu:
@@ -105,6 +109,9 @@ func _ready():
             pause_menu.load_pressed.connect(_on_pause_load)
         if not pause_menu.new_game_pressed.is_connected(_on_pause_new_game):
             pause_menu.new_game_pressed.connect(_on_pause_new_game)
+
+    build_manager.build_message.connect(hud.show_message)
+    build_manager.build_completed.connect(_on_build_completed)
 
 func _initialize_map():
     GameData.load_all_data()
@@ -253,23 +260,10 @@ func _process(delta):
     CityData.tick_research(delta)
     if CityData.current_research_tech_id != "":
         queue_redraw()
-
-    # Обработка строительства
-    for row in range(REGION_ROWS):
-        for col in range(REGION_COLS):
-            var tile = tile_data[row][col]
-            if tile.has("build_target_time"):
-                tile["build_progress"] += delta
-                if tile["build_progress"] >= tile["build_target_time"]:
-                    var imp_id = tile["building_imp_id"]
-                    var animal_id = tile.get("building_animal_id")
-                    _complete_build(row, col, imp_id, animal_id)
-                    hud.show_message("Построено: %s" % GameData.improvements[imp_id]["name"])
-                else:
-                    build_timer_active = true
-    if build_timer_active:
+        
+    # Перерисовка, если есть активные стройки (для анимации прогресс-бара)
+    if build_manager.active_builds.size() > 0:
         queue_redraw()
-        build_timer_active = false
 
     if city_ui.visible or popup_menu.visible or pause_menu.visible:
         _hide_tooltip()
@@ -325,7 +319,7 @@ func _input(event):
     if Engine.is_editor_hint():
         return
 
-    # Обработка клавиши Esc (всегда должна работать)
+    # Esc
     if event is InputEventKey and event.keycode == KEY_ESCAPE and event.pressed:
         if city_ui.visible:
             city_ui.close_city()
@@ -337,26 +331,19 @@ func _input(event):
             city_button.disabled = true
         return
 
-    # Блокировка ввода при открытом меню паузы
-    if pause_menu.visible:
-        return
+    if city_ui.visible or pause_menu.visible: return
 
-    # Обработка событий мыши
     if event is InputEventMouseButton:
-        # --- Левая кнопка мыши (перетаскивание и клики) ---
         if event.button_index == MOUSE_BUTTON_LEFT:
             if event.pressed:
-                # Запоминаем позицию мыши и текущий scroll_offset для начала перетаскивания
                 drag_start_scroll_offset = scroll_offset
                 drag_start_mouse = event.global_position
                 is_dragging = false
             else:
-                # Левая кнопка отпущена
                 if is_dragging:
                     is_dragging = false
-                    return  # Если было перетаскивание, игнорируем отпускание как клик
+                    return
 
-        # --- Правая кнопка мыши (контекстное меню) ---
         if event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
             if popup_menu.visible:
                 popup_menu.hide()
@@ -368,7 +355,6 @@ func _input(event):
                 _show_context_menu(hex.row, hex.col, mouse_pos)
                 _hide_tooltip()
 
-        # --- Обработка левого клика (только если это не было перетаскивание) ---
         if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
             if popup_menu.visible:
                 popup_menu.hide()
@@ -377,31 +363,27 @@ func _input(event):
             var mouse_pos = event.global_position
             var hex = pixel_to_hex(mouse_pos.x, mouse_pos.y)
             if hex != null and tile_data[hex.row][hex.col]["in_influence"]:
-                # Двойной клик по городу
                 if hex.row == CITY_ROW and hex.col == CITY_COL:
                     var cur_time = Time.get_ticks_msec() / 1000.0
                     if cur_time - last_city_click_time < 0.5:
                         _open_city()
                     last_city_click_time = cur_time
 
-    # --- Движение мыши (перетаскивание или тултип) ---
     if event is InputEventMouseMotion:
         if city_ui.visible or popup_menu.visible or pause_menu.visible:
             return
 
-        # Перетаскивание карты левой кнопкой
+        # Перетаскивание левой кнопкой
         if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
             var mouse_pos = event.global_position
             if not is_dragging:
-                # Проверяем, сдвинулись ли мы хотя бы на пиксель
                 if (mouse_pos - drag_start_mouse).length() > 1.0:
                     is_dragging = true
             if is_dragging:
-                # Вычисляем смещение от начальной точки захвата
                 var delta = mouse_pos - drag_start_mouse
                 scroll_offset = drag_start_scroll_offset + delta
                 queue_redraw()
-                return  # Прерываем обработку, чтобы не срабатывал тултип при перетаскивании
+                return
 
         # Обычное движение мыши (тултип)
         var hex = pixel_to_hex(event.global_position.x, event.global_position.y)
@@ -446,7 +428,6 @@ func _show_context_menu(row: int, col: int, click_pos: Vector2):
     if tile.improvement != null:
         return
 
-    # Вычисляем доступную еду (для отображения в меню)
     var available_food = 0
     if CityData:
         for pid in CityData.city_food_pool:
@@ -524,13 +505,13 @@ func _on_popup_menu_id_pressed(id: int):
     if action == "build_improvement":
         var imp_id = meta.imp_id
         var animal_id = meta.get("animal_id", null)
-        _start_build(row, col, imp_id, animal_id)
+        build_manager.start_build(row, col, imp_id, animal_id)
     elif action == "build_pasture":
         var animal_id = meta.animal_id
-        _start_build(row, col, "pasture", animal_id)
+        build_manager.start_build(row, col, "pasture", animal_id)
     elif action == "build_farm":
         var plant_id = meta.plant_id
-        _start_build(row, col, "farm", plant_id)
+        build_manager.start_build(row, col, "farm", plant_id)
     elif action == "research_tech":
         var tech_id = meta.tech_id
         CityData.start_research(tech_id)
@@ -538,43 +519,8 @@ func _on_popup_menu_id_pressed(id: int):
     _context_hex = null
     queue_redraw()
 
-func _start_build(row: int, col: int, imp_id: String, animal_id = null):
+func _on_build_completed(row: int, col: int, imp_id: String, animal_id = null):
     var tile = tile_data[row][col]
-    if tile.has("build_target_time"):
-        hud.show_message("Здесь уже идёт строительство")
-        return
-    var imp_data = GameData.improvements.get(imp_id, {})
-    var cost = imp_data.get("cost_food", 0)
-    var available_food = 0
-    for pid in CityData.city_food_pool:
-        if CityData.city_food_pool[pid]:
-            available_food += CityData.city_storage.get(pid, 0)
-    if available_food < cost:
-        hud.show_message("Недостаточно еды! Нужно %d, есть %d" % [cost, available_food])
-        return
-    # Списываем еду
-    var remaining = cost
-    var active_food = []
-    for pid in CityData.city_food_pool:
-        if CityData.city_food_pool[pid] and CityData.city_storage.get(pid, 0) > 0:
-            active_food.append(pid)
-    while remaining > 0 and active_food.size() > 0:
-        var pid = active_food[randi() % active_food.size()]
-        CityData.city_storage[pid] -= 1
-        remaining -= 1
-        if CityData.city_storage[pid] <= 0:
-            active_food.erase(pid)
-    var build_time = imp_data.get("build_time", 3.0)
-    tile["build_progress"] = 0.0
-    tile["build_target_time"] = build_time
-    tile["building_imp_id"] = imp_id
-    tile["building_animal_id"] = animal_id
-    hud.show_message("Строительство %s начато (%.0fс)" % [imp_data["name"], build_time])
-
-func _build_improvement(row: int, col: int, imp_id: String, animal_id = null):
-    var tile = tile_data[row][col]
-    if tile.improvement != null:
-        return
     tile.improvement = imp_id
     if animal_id != null:
         tile.resource = animal_id
@@ -583,7 +529,8 @@ func _build_improvement(row: int, col: int, imp_id: String, animal_id = null):
                 CityData.add_animal(animal_id)
             elif GameData.raw_resources.has(animal_id) and GameData.raw_resources[animal_id].get("category") == "plants":
                 CityData.add_plant(animal_id)
-    hud.show_message("Построено: %s на гексе (%d,%d)" % [imp_id, row, col])
+    build_manager.remove_build(row, col)
+    queue_redraw()
 
 func pixel_to_hex(mx: float, my: float):
     for row in range(REGION_ROWS):
@@ -622,7 +569,6 @@ func _draw_hex(row: int, col: int):
     var tile = tile_data[row][col]
     var in_influence = tile.get("in_influence", false)
 
-    # Город
     if row == CITY_ROW and col == CITY_COL:
         var terrain_color = Color.BLACK
         var terrain = tile.terrain
@@ -634,7 +580,6 @@ func _draw_hex(row: int, col: int):
         draw_polyline(closed_vertices, Color.WHITE, 2, true)
         return
 
-    # Местность
     var terrain_color = Color.BLACK
     var terrain = tile.terrain
     var terrain_icon_name = tile.get("terrain_icon", "")
@@ -649,11 +594,9 @@ func _draw_hex(row: int, col: int):
             terrain_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
         draw_colored_polygon(vertices, terrain_color)
 
-    # Затемнение для гексов вне кольца влияния
     if not in_influence:
         draw_colored_polygon(vertices, Color(0, 0, 0, 0.5))
 
-    # Ресурс (если есть и нет улучшения)
     if tile.resource != null:
         var res_data = GameData.raw_resources.get(tile.resource, {})
         var res_icon = res_data.get("icon", "")
@@ -672,7 +615,6 @@ func _draw_hex(row: int, col: int):
             var lock_rect = Rect2(lock_pos.x, lock_pos.y, LOCK_ICON_SIZE, LOCK_ICON_SIZE)
             draw_texture_rect(lock_texture, lock_rect, false)
 
-        # Прогресс-бар исследования (только для блокированных ресурсов)
         if is_locked and CityData.current_research_tech_id != "":
             var res_tech = res_data.get("tech_required", "")
             if res_tech == CityData.current_research_tech_id:
@@ -685,18 +627,18 @@ func _draw_hex(row: int, col: int):
                 draw_rect(Rect2(bar_x, bar_y, fill_width, bar_height), Color.GREEN)
                 draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color.WHITE, false)
 
-    # Прогресс-бар строительства (рисуется всегда, если строится)
-    if tile.has("build_target_time"):
-        var bar_width = RESOURCE_ICON_SIZE
-        var bar_height = 6
-        var bar_x = center.x - bar_width / 2.0
-        var bar_y = center.y + RESOURCE_ICON_SIZE / 2.0 + 10  # чуть ниже прогресса исследования
-        draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color(0.2, 0.2, 0.2))
-        var fill_width = bar_width * (tile["build_progress"] / tile["build_target_time"])
-        draw_rect(Rect2(bar_x, bar_y, fill_width, bar_height), Color.YELLOW)
-        draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color.WHITE, false)
+    if build_manager.is_building(row, col):
+        var progress_data = build_manager.get_progress(row, col)
+        if not progress_data.is_empty():
+            var bar_width = RESOURCE_ICON_SIZE
+            var bar_height = 6
+            var bar_x = center.x - bar_width / 2.0
+            var bar_y = center.y + RESOURCE_ICON_SIZE / 2.0 + 10
+            draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color(0.2, 0.2, 0.2))
+            var fill_width = bar_width * (progress_data["progress"] / progress_data["target_time"])
+            draw_rect(Rect2(bar_x, bar_y, fill_width, bar_height), Color.YELLOW)
+            draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color.WHITE, false)
 
-    # Улучшение (только внутри кольца влияния)
     if in_influence and tile.improvement != null:
         var imp_data = GameData.improvements.get(tile.improvement, {})
         var imp_icon = imp_data.get("icon", "")
@@ -712,7 +654,6 @@ func _draw_hex(row: int, col: int):
                 var fallback_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
                 draw_circle(icon_pos + Vector2(small_size/2, small_size/2), small_size / 2.5, fallback_color)
 
-    # Граница гекса
     draw_polyline(closed_vertices, Color.WHITE, 2, true)
 
 func _open_city():
@@ -784,19 +725,3 @@ func _scan_folder(folder_path: String):
             icon_paths[file_name] = full_path
         file_name = dir.get_next()
     dir.list_dir_end()
-
-func _complete_build(row: int, col: int, imp_id: String, animal_id = null):
-    var tile = tile_data[row][col]
-    tile["improvement"] = imp_id
-    tile.erase("build_progress")
-    tile.erase("build_target_time")
-    tile.erase("building_imp_id")
-    tile.erase("building_animal_id")
-    if animal_id != null:
-        tile["resource"] = animal_id
-        if CityData:
-            if GameData.raw_resources.has(animal_id) and GameData.raw_resources[animal_id].get("category") == "animals":
-                CityData.add_animal(animal_id)
-            elif GameData.raw_resources.has(animal_id) and GameData.raw_resources[animal_id].get("category") == "plants":
-                CityData.add_plant(animal_id)
-    queue_redraw()
