@@ -27,9 +27,6 @@ var tile_data = []
 var offset_x: float = 0.0
 var offset_y: float = 0.0
 var scroll_offset = Vector2.ZERO
-var icon_textures = {}
-var lock_texture = null
-var icon_paths = {}
 
 var _context_hex = null
 var last_city_click_time = 0.0
@@ -50,21 +47,21 @@ var drag_start_mouse = Vector2.ZERO
 @onready var city_button = $HUD/VBoxContainer/CityButton
 @onready var pause_menu = $PauseMenu
 @onready var build_manager = $BuildManager
+@onready var map_renderer = $MapRenderer
 
 func _ready():
-    _build_icon_index()
     if Engine.is_editor_hint():
         _initialize_map()
-        queue_redraw()
+        map_renderer.initialize(tile_data, self)
+        map_renderer.queue_redraw()
         return
 
     if SaveManager.is_loaded:
         GameData.load_all_data()
-        _load_icons()
-        # Применяем загруженные данные к CityData (склад, технологии и т.д.)
+        map_renderer.build_icon_index()
+        map_renderer.load_icons()
         SaveManager.apply_loaded_data()
 
-        # Восстанавливаем tile_data из сохранения
         tile_data = []
         var saved_tiles = SaveManager.saved_data.get("tile_data", [])
         for row in range(REGION_ROWS):
@@ -84,12 +81,14 @@ func _ready():
 
         SaveManager.is_loaded = false
         SaveManager.saved_data.clear()
+        map_renderer.initialize(tile_data, self)
     else:
         randomize()
         _initialize_map()
+        map_renderer.initialize(tile_data, self)
 
     _calc_offsets()
-    queue_redraw()
+    map_renderer.queue_redraw()
 
     popup_menu.id_pressed.connect(_on_popup_menu_id_pressed)
     city_ui.closed.connect(_on_city_ui_close)
@@ -100,7 +99,6 @@ func _ready():
     CityData.research_error.connect(hud.show_message)
     city_ui.research_requested.connect(CityData.start_research)
     CityData.research_completed.connect(_on_research_completed)
-    city_button.gui_input.connect(_on_city_button_gui_input)
 
     if pause_menu:
         if not pause_menu.save_pressed.is_connected(_on_pause_save):
@@ -112,11 +110,13 @@ func _ready():
 
     build_manager.build_message.connect(hud.show_message)
     build_manager.build_completed.connect(_on_build_completed)
+    city_button.gui_input.connect(_on_city_button_gui_input)
 
 func _initialize_map():
     GameData.load_all_data()
     CityData.setup()
-    _load_icons()
+    map_renderer.build_icon_index()
+    map_renderer.load_icons()
 
     var generator = load("res://scripts/map_generator.gd").new()
     var terrain_counts = {
@@ -190,38 +190,6 @@ func _ensure_minimum_resource(category: String):
         var chosen = possible[randi() % possible.size()]
         tile_data[chosen.row][chosen.col]["resource"] = chosen.id
 
-func _load_icons():
-    icon_textures.clear()
-    for res_id in GameData.raw_resources.keys():
-        var res = GameData.raw_resources[res_id]
-        if res.has("icon"):
-            var file_name = res.icon
-            if icon_paths.has(file_name):
-                icon_textures[file_name] = load(icon_paths[file_name])
-    for imp_id in GameData.improvements.keys():
-        var imp = GameData.improvements[imp_id]
-        if imp.has("icon"):
-            var file_name = imp.icon
-            if icon_paths.has(file_name):
-                icon_textures[file_name] = load(icon_paths[file_name])
-    for t_id in GameData.terrains.keys():
-        var t = GameData.terrains[t_id]
-        if t.has("icon"):
-            var file_name = t.icon
-            if icon_paths.has(file_name):
-                icon_textures[file_name] = load(icon_paths[file_name])
-        if t.has("icons"):
-            for icon_name in t.icons:
-                if icon_paths.has(icon_name):
-                    icon_textures[icon_name] = load(icon_paths[icon_name])
-    if icon_paths.has("city.png"):
-        icon_textures["city"] = load(icon_paths["city.png"])
-    if icon_paths.has("lock.png"):
-        lock_texture = load(icon_paths["lock.png"])
-    else:
-        printerr("ОШИБКА: Файл lock.png не найден в папке icons!")
-        assert(false, "lock.png missing")
-
 func _calc_offsets():
     var min_x = INF
     var max_x = -INF
@@ -258,12 +226,8 @@ func _process(delta):
         CityData.do_tick()
 
     CityData.tick_research(delta)
-    if CityData.current_research_tech_id != "":
-        queue_redraw()
-        
-    # Перерисовка, если есть активные стройки (для анимации прогресс-бара)
-    if build_manager.active_builds.size() > 0:
-        queue_redraw()
+    if CityData.current_research_tech_id != "" or build_manager.active_builds.size() > 0:
+        map_renderer.queue_redraw()
 
     if city_ui.visible or popup_menu.visible or pause_menu.visible:
         _hide_tooltip()
@@ -287,7 +251,12 @@ func _process(delta):
 
         if scroll != Vector2.ZERO:
             scroll_offset += scroll
-            queue_redraw()
+            # Ограничиваем скролл, чтобы не уехать далеко от карты
+            var max_scroll_x = (REGION_COLS * HEX_RADIUS * 1.5)
+            var max_scroll_y = (REGION_ROWS * HEX_RADIUS * 1.5)
+            scroll_offset.x = clamp(scroll_offset.x, -max_scroll_x, max_scroll_x)
+            scroll_offset.y = clamp(scroll_offset.y, -max_scroll_y, max_scroll_y)
+            map_renderer.queue_redraw()
 
     # Тултип
     if _hovered_hex != null:
@@ -310,11 +279,6 @@ func _process(delta):
     else:
         _hide_tooltip()
 
-func _on_city_button_gui_input(event: InputEvent):
-    if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
-        scroll_offset = - (HexUtils.hex_center(CITY_ROW, CITY_COL, HEX_RADIUS) + Vector2(offset_x, offset_y) - get_viewport_rect().size / 2.0)
-        queue_redraw()
-
 func _input(event):
     if Engine.is_editor_hint():
         return
@@ -331,7 +295,8 @@ func _input(event):
             city_button.disabled = true
         return
 
-    if city_ui.visible or pause_menu.visible: return
+    if city_ui.visible or pause_menu.visible:
+        return
 
     if event is InputEventMouseButton:
         if event.button_index == MOUSE_BUTTON_LEFT:
@@ -382,7 +347,12 @@ func _input(event):
             if is_dragging:
                 var delta = mouse_pos - drag_start_mouse
                 scroll_offset = drag_start_scroll_offset + delta
-                queue_redraw()
+                # Ограничиваем скролл, чтобы не уехать далеко от карты
+                var max_scroll_x = (REGION_COLS * HEX_RADIUS)
+                var max_scroll_y = (REGION_ROWS * HEX_RADIUS)
+                scroll_offset.x = clamp(scroll_offset.x, -max_scroll_x, max_scroll_x)
+                scroll_offset.y = clamp(scroll_offset.y, -max_scroll_y, max_scroll_y)
+                map_renderer.queue_redraw()
                 return
 
         # Обычное движение мыши (тултип)
@@ -415,14 +385,6 @@ func _hide_tooltip():
     _hovered_hex = null
     _hover_start_time = 0.0
 
-func _is_resource_locked(resource_id: String) -> bool:
-    if resource_id == null or resource_id == "":
-        return false
-    var res_data = GameData.raw_resources.get(resource_id, {})
-    if not res_data.has("tech_required"):
-        return false
-    return not CityData.is_tech_unlocked(res_data["tech_required"])
-
 func _show_context_menu(row: int, col: int, click_pos: Vector2):
     var tile = tile_data[row][col]
     if tile.improvement != null:
@@ -440,7 +402,7 @@ func _show_context_menu(row: int, col: int, click_pos: Vector2):
     if tile.resource != null:
         var raw = GameData.raw_resources.get(tile.resource, {})
         if "improved_by" in raw:
-            if _is_resource_locked(tile.resource):
+            if map_renderer._is_resource_locked(tile.resource):
                 var tech_id = raw["tech_required"]
                 var tech_name = tech_id
                 var tech_cost = 0
@@ -517,7 +479,7 @@ func _on_popup_menu_id_pressed(id: int):
         CityData.start_research(tech_id)
 
     _context_hex = null
-    queue_redraw()
+    map_renderer.queue_redraw()
 
 func _on_build_completed(row: int, col: int, imp_id: String, animal_id = null):
     var tile = tile_data[row][col]
@@ -530,7 +492,7 @@ func _on_build_completed(row: int, col: int, imp_id: String, animal_id = null):
             elif GameData.raw_resources.has(animal_id) and GameData.raw_resources[animal_id].get("category") == "plants":
                 CityData.add_plant(animal_id)
     build_manager.remove_build(row, col)
-    queue_redraw()
+    map_renderer.queue_redraw()
 
 func pixel_to_hex(mx: float, my: float):
     for row in range(REGION_ROWS):
@@ -542,119 +504,6 @@ func pixel_to_hex(mx: float, my: float):
             if HexUtils.point_in_polygon(mx, my, verts):
                 return {"row": row, "col": col}
     return null
-
-func _draw():
-    for row in range(REGION_ROWS):
-        for col in range(REGION_COLS):
-            _draw_hex(row, col)
-
-    var city_center = HexUtils.hex_center(CITY_ROW, CITY_COL, HEX_RADIUS) + Vector2(offset_x + scroll_offset.x, offset_y + scroll_offset.y)
-    if icon_textures.has("city"):
-        var tex = icon_textures["city"]
-        var icon_rect = Rect2(city_center.x - CITY_ICON_SIZE/2.0, city_center.y - CITY_ICON_SIZE/2.0, CITY_ICON_SIZE, CITY_ICON_SIZE)
-        draw_texture_rect(tex, icon_rect, false)
-    else:
-        draw_colored_polygon(HexUtils.hex_vertices(city_center.x, city_center.y, HEX_RADIUS), Color.YELLOW)
-
-func _draw_hex(row: int, col: int):
-    var center = HexUtils.hex_center(row, col, HEX_RADIUS)
-    center.x += offset_x + scroll_offset.x
-    center.y += offset_y + scroll_offset.y
-    var vertices = HexUtils.hex_vertices(center.x, center.y, HEX_RADIUS)
-
-    var closed_vertices = PackedVector2Array()
-    closed_vertices.append_array(vertices)
-    closed_vertices.append(vertices[0])
-
-    var tile = tile_data[row][col]
-    var in_influence = tile.get("in_influence", false)
-
-    if row == CITY_ROW and col == CITY_COL:
-        var terrain_color = Color.BLACK
-        var terrain = tile.terrain
-        if GameData.terrains.has(terrain):
-            var t = GameData.terrains[terrain]
-            var c = t.get("color", [0, 0, 0])
-            terrain_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
-        draw_colored_polygon(vertices, terrain_color)
-        draw_polyline(closed_vertices, Color.WHITE, 2, true)
-        return
-
-    var terrain_color = Color.BLACK
-    var terrain = tile.terrain
-    var terrain_icon_name = tile.get("terrain_icon", "")
-    if terrain_icon_name != "" and icon_textures.has(terrain_icon_name):
-        var tex = icon_textures[terrain_icon_name]
-        var icon_rect = Rect2(center.x - TERRAIN_ICON_SIZE/2.0, center.y - TERRAIN_ICON_SIZE/2.0, TERRAIN_ICON_SIZE, TERRAIN_ICON_SIZE)
-        draw_texture_rect(tex, icon_rect, false)
-    else:
-        if GameData.terrains.has(terrain):
-            var t = GameData.terrains[terrain]
-            var c = t.get("color", [0, 0, 0])
-            terrain_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
-        draw_colored_polygon(vertices, terrain_color)
-
-    if not in_influence:
-        draw_colored_polygon(vertices, Color(0, 0, 0, 0.5))
-
-    if tile.resource != null:
-        var res_data = GameData.raw_resources.get(tile.resource, {})
-        var res_icon = res_data.get("icon", "")
-        var is_locked = _is_resource_locked(tile.resource)
-        if res_icon != "" and icon_textures.has(res_icon):
-            var tex = icon_textures[res_icon]
-            var icon_rect = Rect2(center.x - RESOURCE_ICON_SIZE/2.0, center.y - RESOURCE_ICON_SIZE/2.0, RESOURCE_ICON_SIZE, RESOURCE_ICON_SIZE)
-            draw_texture_rect(tex, icon_rect, false)
-        else:
-            if res_data.has("color"):
-                var c = res_data["color"]
-                var fallback_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
-                draw_circle(center, RESOURCE_ICON_SIZE / 3.0, fallback_color)
-        if is_locked and lock_texture:
-            var lock_pos = Vector2(center.x + RESOURCE_ICON_SIZE/2.0 - LOCK_ICON_SIZE/2.0, center.y - RESOURCE_ICON_SIZE/2.0 + LOCK_ICON_SIZE/2.0)
-            var lock_rect = Rect2(lock_pos.x, lock_pos.y, LOCK_ICON_SIZE, LOCK_ICON_SIZE)
-            draw_texture_rect(lock_texture, lock_rect, false)
-
-        if is_locked and CityData.current_research_tech_id != "":
-            var res_tech = res_data.get("tech_required", "")
-            if res_tech == CityData.current_research_tech_id:
-                var bar_width = RESOURCE_ICON_SIZE
-                var bar_height = 6
-                var bar_x = center.x - bar_width / 2.0
-                var bar_y = center.y + RESOURCE_ICON_SIZE / 2.0 + 4
-                draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color(0.2, 0.2, 0.2))
-                var fill_width = bar_width * CityData.research_progress
-                draw_rect(Rect2(bar_x, bar_y, fill_width, bar_height), Color.GREEN)
-                draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color.WHITE, false)
-
-    if build_manager.is_building(row, col):
-        var progress_data = build_manager.get_progress(row, col)
-        if not progress_data.is_empty():
-            var bar_width = RESOURCE_ICON_SIZE
-            var bar_height = 6
-            var bar_x = center.x - bar_width / 2.0
-            var bar_y = center.y + RESOURCE_ICON_SIZE / 2.0 + 10
-            draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color(0.2, 0.2, 0.2))
-            var fill_width = bar_width * (progress_data["progress"] / progress_data["target_time"])
-            draw_rect(Rect2(bar_x, bar_y, fill_width, bar_height), Color.YELLOW)
-            draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color.WHITE, false)
-
-    if in_influence and tile.improvement != null:
-        var imp_data = GameData.improvements.get(tile.improvement, {})
-        var imp_icon = imp_data.get("icon", "")
-        var small_size = min(IMPROVEMENT_ICON_SIZE * 0.7, 24)
-        var icon_pos = Vector2(center.x + HEX_RADIUS / 3.0, center.y - HEX_RADIUS / 2.0)
-        if imp_icon != "" and icon_textures.has(imp_icon):
-            var tex = icon_textures[imp_icon]
-            var icon_rect = Rect2(icon_pos.x, icon_pos.y, small_size, small_size)
-            draw_texture_rect(tex, icon_rect, false)
-        else:
-            if imp_data.has("color"):
-                var c = imp_data["color"]
-                var fallback_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
-                draw_circle(icon_pos + Vector2(small_size/2, small_size/2), small_size / 2.5, fallback_color)
-
-    draw_polyline(closed_vertices, Color.WHITE, 2, true)
 
 func _open_city():
     city_ui.update_data(CityData.city_storage, CityData.production_rates, CityData.consumption_rates, CityData.city_food_pool, GameData.buildings, GameData.crafts, CityData.city_built_buildings, GameData.products, GameData.categories)
@@ -685,7 +534,7 @@ func _on_research_error(message: String):
 func _on_research_completed(_tech_id: String):
     if city_ui.visible:
         city_ui.update_data(CityData.city_storage, CityData.production_rates, CityData.consumption_rates, CityData.city_food_pool, GameData.buildings, GameData.crafts, CityData.city_built_buildings, GameData.products, GameData.categories)
-    queue_redraw()
+    map_renderer.queue_redraw()
 
 func _on_pause_save():
     SaveManager.save_game()
@@ -705,23 +554,7 @@ func get_tile_data(row: int, col: int):
         return tile_data[row][col]
     return null
 
-func _build_icon_index():
-    icon_paths.clear()
-    _scan_folder("res://icons")
-
-func _scan_folder(folder_path: String):
-    var dir = DirAccess.open(folder_path)
-    if dir == null:
-        return
-    dir.list_dir_begin()
-    var file_name = dir.get_next()
-    while file_name != "":
-        if dir.current_is_dir():
-            _scan_folder(folder_path.path_join(file_name))
-        else:
-            var full_path = folder_path.path_join(file_name)
-            if icon_paths.has(file_name):
-                print("Предупреждение: дубликат иконки ", file_name, " – ", full_path)
-            icon_paths[file_name] = full_path
-        file_name = dir.get_next()
-    dir.list_dir_end()
+func _on_city_button_gui_input(event: InputEvent):
+    if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
+        scroll_offset = - (HexUtils.hex_center(CITY_ROW, CITY_COL, HEX_RADIUS) + Vector2(offset_x, offset_y) - get_viewport_rect().size / 2.0)
+        map_renderer.queue_redraw()

@@ -5,6 +5,7 @@
 [ext_resource type="PackedScene" uid="uid://dwa0g8671hsh0" path="res://scenes/CityUI.tscn" id="2_a1mhp"]
 [ext_resource type="PackedScene" uid="uid://d00jxkppr273t" path="res://scenes/pause_menu.tscn" id="3_2t08r"]
 [ext_resource type="Script" uid="uid://ioi24pjoaapx" path="res://scripts/build_manager.gd" id="5_6ic70"]
+[ext_resource type="Script" uid="uid://b2anvgprhgych" path="res://scripts/map_renderer.gd" id="6_82ayj"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_o7tci"]
 bg_color = Color(0.19607843, 0.19607843, 0.19607843, 1)
@@ -16,8 +17,11 @@ border_width_bottom = 1
 [node name="MainMap" type="Node2D" unique_id=1469125025]
 script = ExtResource("1_5hgy3")
 
-[node name="BuildManager" type="Node" parent="." unique_id=1269596246]
-script = ExtResource("5_6ic70")
+[node name="MapRenderer" type="Node2D" parent="." unique_id=1095572482]
+script = ExtResource("6_82ayj")
+
+[node name="CityUI" parent="." unique_id=1004795705 instance=ExtResource("2_a1mhp")]
+visible = false
 
 [node name="HUD" type="Panel" parent="." unique_id=1988910692]
 offset_right = 184.0
@@ -44,6 +48,8 @@ text = "1250 (Средневековье)"
 
 [node name="CityButton" type="Button" parent="HUD/VBoxContainer" unique_id=964408477]
 layout_mode = 2
+tooltip_text = "ЛКМ: переход в интерфейс города
+ПКМ: центрирование карты на городе"
 text = "Город"
 
 [node name="MapMessageLabel" type="Label" parent="HUD/VBoxContainer" unique_id=1468814370]
@@ -51,6 +57,9 @@ visible = false
 propagate_maximum_size = true
 layout_mode = 2
 autowrap_mode = 2
+
+[node name="PauseMenu" parent="." unique_id=513166833 instance=ExtResource("3_2t08r")]
+visible = false
 
 [node name="PopupMenu" type="PopupMenu" parent="." unique_id=216217221]
 
@@ -70,8 +79,5 @@ grow_horizontal = 2
 grow_vertical = 2
 text = "Тестовая подсказка"
 
-[node name="PauseMenu" parent="." unique_id=513166833 instance=ExtResource("3_2t08r")]
-visible = false
-
-[node name="CityUI" parent="." unique_id=1004795705 instance=ExtResource("2_a1mhp")]
-visible = false
+[node name="BuildManager" type="Node" parent="." unique_id=1269596246]
+script = ExtResource("5_6ic70")
