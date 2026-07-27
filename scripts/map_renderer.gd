@@ -81,6 +81,14 @@ func _draw():
         for col in range(REGION_COLS):
             _draw_hex(row, col)
 
+    for row in range(REGION_ROWS):
+        for col in range(REGION_COLS):
+            _draw_roads(row, col)
+
+    for row in range(REGION_ROWS):
+        for col in range(REGION_COLS):
+            _draw_hex_overlays(row, col)
+
     var city_center = HexUtils.hex_center(CITY_ROW, CITY_COL, HEX_RADIUS) + Vector2(main_map.offset_x + main_map.scroll_offset.x, main_map.offset_y + main_map.scroll_offset.y)
     if icon_textures.has("city"):
         var tex = icon_textures["city"]
@@ -128,6 +136,19 @@ func _draw_hex(row: int, col: int):
 
     if not in_influence:
         draw_colored_polygon(vertices, Color(0, 0, 0, 0.5))
+
+    draw_polyline(closed_vertices, Color.WHITE, 2, true)
+
+func _draw_hex_overlays(row: int, col: int):
+    var center = HexUtils.hex_center(row, col, HEX_RADIUS)
+    center.x += main_map.offset_x + main_map.scroll_offset.x
+    center.y += main_map.offset_y + main_map.scroll_offset.y
+
+    var tile = tile_data[row][col]
+    var in_influence = tile.get("in_influence", false)
+
+    if row == CITY_ROW and col == CITY_COL:
+        return
 
     if tile.resource != null:
         var res_data = GameData.raw_resources.get(tile.resource, {})
@@ -186,8 +207,6 @@ func _draw_hex(row: int, col: int):
                 var fallback_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
                 draw_circle(icon_pos + Vector2(small_size/2, small_size/2), small_size / 2.5, fallback_color)
 
-    draw_polyline(closed_vertices, Color.WHITE, 2, true)
-
 func _is_resource_locked(resource_id: String) -> bool:
     if resource_id == null or resource_id == "":
         return false
@@ -198,3 +217,59 @@ func _is_resource_locked(resource_id: String) -> bool:
 
 func is_resource_locked(resource_id: String) -> bool:
     return _is_resource_locked(resource_id)
+    
+func _draw_roads(row: int, col: int):
+    if main_map == null or not main_map.has_method("get"):
+        return
+    if not main_map.has_node("RoadManager"):
+        return
+
+    var road_manager = main_map.get_node("RoadManager")
+    var directions = [
+        {"r": 0, "c": -1}, {"r": 0, "c": 1},
+        {"r": -1, "c": 0}, {"r": 1, "c": 0},
+        {"r": -1, "c": 1}, {"r": 1, "c": -1}
+    ]
+    if row % 2 == 1:
+        directions = [
+            {"r": 0, "c": -1}, {"r": 0, "c": 1},
+            {"r": -1, "c": 0}, {"r": 1, "c": 0},
+            {"r": -1, "c": 1}, {"r": 1, "c": 1}
+        ]
+
+    for d in directions:
+        var nr = row + d.r
+        var nc = col + d.c
+        if nr < 0 or nr >= REGION_ROWS or nc < 0 or nc >= REGION_COLS:
+            continue
+        if not (row < nr or (row == nr and col < nc)):
+            continue
+        if road_manager.has_road_between(row, col, nr, nc):
+            var points = _generate_natural_road(row, col, nr, nc, HEX_RADIUS)
+            draw_polyline(points, Color(0.55, 0.35, 0.15), 6, true)
+
+# Генерация слегка ломаной линии между центрами двух гексов (детерминированная по сеточным координатам)
+func _generate_natural_road(row1: int, col1: int, row2: int, col2: int, radius: float) -> Array:
+    var segments = 3
+    var points = []
+    var main = get_parent()
+    var center1 = HexUtils.hex_center(row1, col1, radius)
+    center1.x += main.offset_x + main.scroll_offset.x
+    center1.y += main.offset_y + main.scroll_offset.y
+    var center2 = HexUtils.hex_center(row2, col2, radius)
+    center2.x += main.offset_x + main.scroll_offset.x
+    center2.y += main.offset_y + main.scroll_offset.y
+    
+    points.append(center1)
+    for i in range(1, segments):
+        var t = float(i) / segments
+        var mid = center1.lerp(center2, t)
+        var dir = (center2 - center1).normalized()
+        var perp = Vector2(-dir.y, dir.x)
+        # Детерминированный изгиб на основе сеточных координат (не зависит от scroll_offset)
+        var hash_val = float(int(row1 * 73856093 + col1 * 19349663 + row2 * 83492791) & 0x7fffffff) / 0x7fffffff
+        var offset = (hash_val - 0.5) * radius * 0.5
+        mid += perp * offset
+        points.append(mid)
+    points.append(center2)
+    return points

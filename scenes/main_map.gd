@@ -48,6 +48,7 @@ var drag_start_mouse = Vector2.ZERO
 @onready var pause_menu = $PauseMenu
 @onready var build_manager = $BuildManager
 @onready var map_renderer = $MapRenderer
+@onready var road_manager = $RoadManager
 
 func _ready():
     if Engine.is_editor_hint():
@@ -63,6 +64,7 @@ func _ready():
         SaveManager.apply_loaded_data()
 
         tile_data = []
+        road_manager.initialize(CITY_ROW, CITY_COL)
         var saved_tiles = SaveManager.saved_data.get("tile_data", [])
         for row in range(REGION_ROWS):
             var col_array = []
@@ -82,6 +84,7 @@ func _ready():
         SaveManager.is_loaded = false
         SaveManager.saved_data.clear()
         map_renderer.initialize(tile_data, self)
+        road_manager.rebuild_roads_from_existing(tile_data, REGION_ROWS, REGION_COLS)
     else:
         randomize()
         _initialize_map()
@@ -495,6 +498,7 @@ func _on_build_completed(row: int, col: int, imp_id: String, animal_id = null):
                 CityData.add_plant(animal_id)
     build_manager.remove_build(row, col)
     map_renderer.queue_redraw()
+    road_manager.build_road_from(row, col, tile_data, REGION_ROWS, REGION_COLS)
 
 func pixel_to_hex(mx: float, my: float):
     for row in range(REGION_ROWS):

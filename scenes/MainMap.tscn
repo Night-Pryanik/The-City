@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://d00jxkppr273t" path="res://scenes/pause_menu.tscn" id="3_2t08r"]
 [ext_resource type="Script" uid="uid://ioi24pjoaapx" path="res://scripts/build_manager.gd" id="5_6ic70"]
 [ext_resource type="Script" uid="uid://b2anvgprhgych" path="res://scripts/map_renderer.gd" id="6_82ayj"]
+[ext_resource type="Script" uid="uid://b7pijc74chsbo" path="res://scripts/road_manager.gd" id="7_2m761"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_o7tci"]
 bg_color = Color(0.19607843, 0.19607843, 0.19607843, 1)
@@ -81,3 +82,6 @@ text = "Тестовая подсказка"
 
 [node name="BuildManager" type="Node" parent="." unique_id=1269596246]
 script = ExtResource("5_6ic70")
+
+[node name="RoadManager" type="Node" parent="." unique_id=2061907274]
+script = ExtResource("7_2m761")
