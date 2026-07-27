@@ -682,3 +682,7 @@ func _load_settings():
     else:
         show_hex_borders = true
         use_edge_scrolling = true
+        
+func apply_settings():
+    _load_settings()
+    map_renderer.queue_redraw()
