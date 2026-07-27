@@ -80,14 +80,17 @@ func _ready():
                         tile["in_influence"] = saved.get("in_influence", false)
                 col_array.append(tile)
             tile_data.append(col_array)
+        
+        # Восстанавливаем дороги для всех существующих улучшений
+        road_manager.rebuild_roads_from_existing(tile_data, REGION_ROWS, REGION_COLS)
 
         SaveManager.is_loaded = false
         SaveManager.saved_data.clear()
         map_renderer.initialize(tile_data, self)
-        road_manager.rebuild_roads_from_existing(tile_data, REGION_ROWS, REGION_COLS)
     else:
         randomize()
         _initialize_map()
+        road_manager.initialize(CITY_ROW, CITY_COL)
         map_renderer.initialize(tile_data, self)
 
     _calc_offsets()
@@ -497,8 +500,11 @@ func _on_build_completed(row: int, col: int, imp_id: String, animal_id = null):
             elif GameData.raw_resources.has(animal_id) and GameData.raw_resources[animal_id].get("category") == "plants":
                 CityData.add_plant(animal_id)
     build_manager.remove_build(row, col)
-    map_renderer.queue_redraw()
+    
+    # Прокладываем дорогу от нового улучшения до ближайшего подключённого гекса
     road_manager.build_road_from(row, col, tile_data, REGION_ROWS, REGION_COLS)
+    
+    map_renderer.queue_redraw()
 
 func pixel_to_hex(mx: float, my: float):
     for row in range(REGION_ROWS):

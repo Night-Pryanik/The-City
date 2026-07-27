@@ -5,8 +5,8 @@ extends Node2D
 const HEX_RADIUS = 55
 const REGION_ROWS = 13
 const REGION_COLS = 15
-const CITY_ROW = REGION_ROWS / 2
-const CITY_COL = REGION_COLS / 2
+const CITY_ROW = int(REGION_ROWS / 2.0)
+const CITY_COL = int(REGION_COLS / 2.0)
 const CITY_ICON_SIZE = 130
 const TERRAIN_ICON_SIZE = 130
 const RESOURCE_ICON_SIZE = 60
@@ -77,30 +77,46 @@ func load_icons():
         assert(false, "lock.png missing")
 
 func _draw():
+    # ФАЗА 1: Рисуем основные гексы с территориями
     for row in range(REGION_ROWS):
         for col in range(REGION_COLS):
             _draw_hex(row, col)
 
-    for row in range(REGION_ROWS):
-        for col in range(REGION_COLS):
-            _draw_roads(row, col)
+    # ФАЗА 2: Рисуем дороги (ПЕРЕД иконками ресурсов и улучшений)
+    _draw_all_roads()
 
+    # ФАЗА 3: Рисуем иконки ресурсов, улучшений и другие оверлеи
     for row in range(REGION_ROWS):
         for col in range(REGION_COLS):
             _draw_hex_overlays(row, col)
 
-    var city_center = HexUtils.hex_center(CITY_ROW, CITY_COL, HEX_RADIUS) + Vector2(main_map.offset_x + main_map.scroll_offset.x, main_map.offset_y + main_map.scroll_offset.y)
+    # ФАЗА 4: Рисуем город в конце
+    var offset_pos = Vector2(
+        main_map.offset_x + main_map.scroll_offset.x,
+        main_map.offset_y + main_map.scroll_offset.y
+    )
+    var city_center = HexUtils.hex_center(CITY_ROW, CITY_COL, HEX_RADIUS) + offset_pos
     if icon_textures.has("city"):
         var tex = icon_textures["city"]
-        var icon_rect = Rect2(city_center.x - CITY_ICON_SIZE/2.0, city_center.y - CITY_ICON_SIZE/2.0, CITY_ICON_SIZE, CITY_ICON_SIZE)
+        var icon_rect = Rect2(
+            city_center.x - CITY_ICON_SIZE / 2.0,
+            city_center.y - CITY_ICON_SIZE / 2.0,
+            CITY_ICON_SIZE,
+            CITY_ICON_SIZE
+        )
         draw_texture_rect(tex, icon_rect, false)
     else:
-        draw_colored_polygon(HexUtils.hex_vertices(city_center.x, city_center.y, HEX_RADIUS), Color.YELLOW)
+        var city_vertices = HexUtils.hex_vertices(
+            city_center.x, city_center.y, HEX_RADIUS
+        )
+        draw_colored_polygon(city_vertices, Color.YELLOW)
 
 func _draw_hex(row: int, col: int):
     var center = HexUtils.hex_center(row, col, HEX_RADIUS)
-    center.x += main_map.offset_x + main_map.scroll_offset.x
-    center.y += main_map.offset_y + main_map.scroll_offset.y
+    var offset_x = main_map.offset_x + main_map.scroll_offset.x
+    var offset_y = main_map.offset_y + main_map.scroll_offset.y
+    center.x += offset_x
+    center.y += offset_y
     var vertices = HexUtils.hex_vertices(center.x, center.y, HEX_RADIUS)
 
     var closed_vertices = PackedVector2Array()
@@ -125,7 +141,12 @@ func _draw_hex(row: int, col: int):
 
     if terrain_icon_name != "" and icon_textures.has(terrain_icon_name):
         var tex = icon_textures[terrain_icon_name]
-        var icon_rect = Rect2(center.x - TERRAIN_ICON_SIZE/2.0, center.y - TERRAIN_ICON_SIZE/2.0, TERRAIN_ICON_SIZE, TERRAIN_ICON_SIZE)
+        var icon_rect = Rect2(
+            center.x - TERRAIN_ICON_SIZE / 2.0,
+            center.y - TERRAIN_ICON_SIZE / 2.0,
+            TERRAIN_ICON_SIZE,
+            TERRAIN_ICON_SIZE
+        )
         draw_texture_rect(tex, icon_rect, false)
     else:
         if GameData.terrains.has(terrain):
@@ -141,8 +162,10 @@ func _draw_hex(row: int, col: int):
 
 func _draw_hex_overlays(row: int, col: int):
     var center = HexUtils.hex_center(row, col, HEX_RADIUS)
-    center.x += main_map.offset_x + main_map.scroll_offset.x
-    center.y += main_map.offset_y + main_map.scroll_offset.y
+    var offset_x = main_map.offset_x + main_map.scroll_offset.x
+    var offset_y = main_map.offset_y + main_map.scroll_offset.y
+    center.x += offset_x
+    center.y += offset_y
 
     var tile = tile_data[row][col]
     var in_influence = tile.get("in_influence", false)
@@ -156,15 +179,25 @@ func _draw_hex_overlays(row: int, col: int):
         var is_locked = _is_resource_locked(tile.resource)
         if res_icon != "" and icon_textures.has(res_icon):
             var tex = icon_textures[res_icon]
-            var icon_rect = Rect2(center.x - RESOURCE_ICON_SIZE/2.0, center.y - RESOURCE_ICON_SIZE/2.0, RESOURCE_ICON_SIZE, RESOURCE_ICON_SIZE)
+            var icon_rect = Rect2(
+                center.x - RESOURCE_ICON_SIZE / 2.0,
+                center.y - RESOURCE_ICON_SIZE / 2.0,
+                RESOURCE_ICON_SIZE,
+                RESOURCE_ICON_SIZE
+            )
             draw_texture_rect(tex, icon_rect, false)
         else:
             if res_data.has("color"):
                 var c = res_data["color"]
-                var fallback_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
+                var fallback_color = Color(
+                    c[0] / 255.0, c[1] / 255.0, c[2] / 255.0
+                )
                 draw_circle(center, RESOURCE_ICON_SIZE / 3.0, fallback_color)
         if is_locked and lock_texture:
-            var lock_pos = Vector2(center.x + RESOURCE_ICON_SIZE/2.0 - LOCK_ICON_SIZE/2.0, center.y - RESOURCE_ICON_SIZE/2.0 + LOCK_ICON_SIZE/2.0)
+            var lock_pos = Vector2(
+                center.x + RESOURCE_ICON_SIZE / 2.0 - LOCK_ICON_SIZE / 2.0,
+                center.y - RESOURCE_ICON_SIZE / 2.0 + LOCK_ICON_SIZE / 2.0
+            )
             var lock_rect = Rect2(lock_pos.x, lock_pos.y, LOCK_ICON_SIZE, LOCK_ICON_SIZE)
             draw_texture_rect(lock_texture, lock_rect, false)
 
@@ -204,8 +237,11 @@ func _draw_hex_overlays(row: int, col: int):
         else:
             if imp_data.has("color"):
                 var c = imp_data["color"]
-                var fallback_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
-                draw_circle(icon_pos + Vector2(small_size/2, small_size/2), small_size / 2.5, fallback_color)
+                var fallback_color = Color(
+                    c[0] / 255.0, c[1] / 255.0, c[2] / 255.0
+                )
+                var center_offset = icon_pos + Vector2(small_size / 2, small_size / 2)
+                draw_circle(center_offset, small_size / 2.5, fallback_color)
 
 func _is_resource_locked(resource_id: String) -> bool:
     if resource_id == null or resource_id == "":
@@ -217,39 +253,57 @@ func _is_resource_locked(resource_id: String) -> bool:
 
 func is_resource_locked(resource_id: String) -> bool:
     return _is_resource_locked(resource_id)
-    
-func _draw_roads(row: int, col: int):
+# Рисует все дороги один раз в каноническом направлении
+func _draw_all_roads():
     if main_map == null or not main_map.has_method("get"):
+        printerr("MapRenderer: main_map is null or doesn't have 'get' method")
         return
     if not main_map.has_node("RoadManager"):
+        printerr("MapRenderer: RoadManager node not found")
         return
 
     var road_manager = main_map.get_node("RoadManager")
-    var directions = [
-        {"r": 0, "c": -1}, {"r": 0, "c": 1},
-        {"r": -1, "c": 0}, {"r": 1, "c": 0},
-        {"r": -1, "c": 1}, {"r": 1, "c": -1}
-    ]
-    if row % 2 == 1:
-        directions = [
-            {"r": 0, "c": -1}, {"r": 0, "c": 1},
-            {"r": -1, "c": 0}, {"r": 1, "c": 0},
-            {"r": -1, "c": 1}, {"r": 1, "c": 1}
-        ]
-
-    for d in directions:
-        var nr = row + d.r
-        var nc = col + d.c
-        if nr < 0 or nr >= REGION_ROWS or nc < 0 or nc >= REGION_COLS:
+    var all_segments = road_manager.get_all_road_segments()
+    
+    # Отладка
+    if all_segments.is_empty():
+        print("MapRenderer: No road segments to draw")
+        return
+    
+    # Итерируем по всем сегментам и рисуем каждый один раз
+    for segment_key in all_segments.keys():
+        var parts = segment_key.split("|")
+        if parts.size() != 2:
             continue
-        if not (row < nr or (row == nr and col < nc)):
+        
+        var start_parts = parts[0].split(",")
+        var end_parts = parts[1].split(",")
+        
+        if start_parts.size() != 2 or end_parts.size() != 2:
             continue
-        if road_manager.has_road_between(row, col, nr, nc):
-            var points = _generate_natural_road(row, col, nr, nc, HEX_RADIUS)
-            draw_polyline(points, Color(0.55, 0.35, 0.15), 6, true)
+        
+        var row1 = int(start_parts[0])
+        var col1 = int(start_parts[1])
+        var row2 = int(end_parts[0])
+        var col2 = int(end_parts[1])
+        
+        var points = _generate_natural_road(row1, col1, row2, col2, HEX_RADIUS)
+        draw_polyline(points, Color(0.55, 0.35, 0.15), 6, true)
 
-# Генерация слегка ломаной линии между центрами двух гексов (детерминированная по сеточным координатам)
-func _generate_natural_road(row1: int, col1: int, row2: int, col2: int, radius: float) -> Array:
+# Старый метод _draw_roads больше не используется, но оставляем для совместимости
+func _draw_roads(_row: int, _col: int):
+    # Этот метод больше не используется, так как все дороги рисуются в _draw_all_roads()
+    pass
+
+# Генерирует слегка ломаную линию между центрами двух гексов
+# (детерминированная по сеточным координатам)
+func _generate_natural_road(
+    row1: int,
+    col1: int,
+    row2: int,
+    col2: int,
+    radius: float
+) -> Array:
     var segments = 3
     var points = []
     var main = get_parent()
@@ -266,8 +320,11 @@ func _generate_natural_road(row1: int, col1: int, row2: int, col2: int, radius: 
         var mid = center1.lerp(center2, t)
         var dir = (center2 - center1).normalized()
         var perp = Vector2(-dir.y, dir.x)
-        # Детерминированный изгиб на основе сеточных координат (не зависит от scroll_offset)
-        var hash_val = float(int(row1 * 73856093 + col1 * 19349663 + row2 * 83492791) & 0x7fffffff) / 0x7fffffff
+        # Детерминированный изгиб на основе сеточных координат
+        var hash_input = (
+            row1 * 73856093 + col1 * 19349663 + row2 * 83492791
+        ) & 0x7fffffff
+        var hash_val = float(hash_input) / 0x7fffffff
         var offset = (hash_val - 0.5) * radius * 0.5
         mid += perp * offset
         points.append(mid)
