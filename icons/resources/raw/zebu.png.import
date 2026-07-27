@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cxqgjmphi073r"
-path="res://.godot/imported/wheat_field.png-0858e6cb4ee30c7235d3b0a978338f87.ctex"
+uid="uid://0slq5avj70we"
+path="res://.godot/imported/zebu.png-493f486c82e3f7ebb195e43dbe7b2250.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://icons/resources/wheat_field.png"
-dest_files=["res://.godot/imported/wheat_field.png-0858e6cb4ee30c7235d3b0a978338f87.ctex"]
+source_file="res://icons/resources/raw/zebu.png"
+dest_files=["res://.godot/imported/zebu.png-493f486c82e3f7ebb195e43dbe7b2250.ctex"]
 
 [params]
 

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ddg8djo6g0dgm"
-path="res://.godot/imported/flint_deposit.png-eba54188a28402520d2882cd497e8b9f.ctex"
+uid="uid://dtoi0bfqw5xq"
+path="res://.godot/imported/llama.png-91aa4f838c26aeb235a30d91d3ffb48c.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://icons/resources/flint_deposit.png"
-dest_files=["res://.godot/imported/flint_deposit.png-eba54188a28402520d2882cd497e8b9f.ctex"]
+source_file="res://icons/resources/raw/llama.png"
+dest_files=["res://.godot/imported/llama.png-91aa4f838c26aeb235a30d91d3ffb48c.ctex"]
 
 [params]
 
