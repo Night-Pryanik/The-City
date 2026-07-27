@@ -2,6 +2,7 @@ extends Control
 
 @onready var new_game_button = $VBoxContainer/NewGameButton
 @onready var load_game_button = $VBoxContainer/LoadGameButton
+@onready var settings_button = $VBoxContainer/SettingsButton
 @onready var quit_button = $VBoxContainer/QuitButton
 
 func _ready():
@@ -12,6 +13,7 @@ func _ready():
 
     new_game_button.pressed.connect(_on_new_game)
     load_game_button.pressed.connect(_on_load_game)
+    settings_button.pressed.connect(_on_settings)
     quit_button.pressed.connect(_on_quit)
 
 func _on_new_game():
@@ -23,6 +25,11 @@ func _on_load_game():
         get_tree().change_scene_to_file("res://scenes/MainMap.tscn")
     else:
         print("Ошибка загрузки сохранения")
+
+func _on_settings():
+    var settings_menu = load("res://scenes/settings_menu.tscn").instantiate()
+    add_child(settings_menu)
+    settings_menu.show()
 
 func _on_quit():
     get_tree().quit()

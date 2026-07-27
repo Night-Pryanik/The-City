@@ -39,6 +39,11 @@ theme_override_font_sizes/font_size = 24
 disabled = true
 text = "Загрузить игру"
 
+[node name="SettingsButton" type="Button" parent="VBoxContainer" unique_id=1273105862]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Настройки"
+
 [node name="QuitButton" type="Button" parent="VBoxContainer" unique_id=1616336660]
 layout_mode = 2
 theme_override_font_sizes/font_size = 24

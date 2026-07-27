@@ -39,6 +39,10 @@ var is_dragging = false
 var drag_start_scroll_offset = Vector2.ZERO
 var drag_start_mouse = Vector2.ZERO
 
+var settings_config = ConfigFile.new()
+var show_hex_borders = true
+var use_edge_scrolling = true
+
 @onready var popup_menu = $PopupMenu
 @onready var city_ui = $CityUI
 @onready var hex_tooltip = $HexTooltip
@@ -51,6 +55,7 @@ var drag_start_mouse = Vector2.ZERO
 @onready var map_renderer = $MapRenderer
 @onready var road_manager = $RoadManager
 @onready var expansion_manager = $ExpansionManager
+@onready var settings_menu = preload("res://scenes/settings_menu.tscn").instantiate()
 
 func _ready():
     if Engine.is_editor_hint():
@@ -93,6 +98,10 @@ func _ready():
         _initialize_map()
         road_manager.initialize(CITY_ROW, CITY_COL)
         map_renderer.initialize(tile_data, self)
+
+    _load_settings()
+    add_child(settings_menu)
+    settings_menu.hide()
 
     _calc_offsets()
     map_renderer.queue_redraw()
@@ -242,11 +251,11 @@ func _process(delta):
     if CityData.current_research_tech_id != "" or build_manager.active_builds.size() > 0 or expansion_manager.is_active():
         map_renderer.queue_redraw()
 
-    if city_ui.visible or popup_menu.visible or pause_menu.visible:
+    if city_ui.visible or popup_menu.visible or pause_menu.visible or (settings_menu and settings_menu.visible):
         _hide_tooltip()
         return
 
-    if not is_dragging:
+    if not is_dragging and use_edge_scrolling:
         var mouse_pos = get_viewport().get_mouse_position()
         var viewport_size = get_viewport_rect().size
         var inside = mouse_pos.x >= 0 and mouse_pos.x <= viewport_size.x and mouse_pos.y >= 0 and mouse_pos.y <= viewport_size.y
@@ -305,13 +314,16 @@ func _input(event):
         elif expansion_manager.is_active():
             expansion_manager.toggle()
             return
+        elif settings_menu and settings_menu.visible:
+            settings_menu.hide()
+            return
         else:
             pause_menu.show()
             city_button.disabled = true
             expansion_button.disabled = true
         return
 
-    if city_ui.visible or pause_menu.visible:
+    if city_ui.visible or pause_menu.visible or (settings_menu and settings_menu.visible):
         return
 
     if expansion_manager.is_active():
@@ -661,3 +673,12 @@ func is_valid_hex(row: int, col: int) -> bool:
     
 func _on_chunk_hovered(_chunk: Array):
     map_renderer.queue_redraw()
+
+func _load_settings():
+    var err = settings_config.load("user://settings.cfg")
+    if err == OK:
+        show_hex_borders = settings_config.get_value("interface", "show_hex_borders", true)
+        use_edge_scrolling = settings_config.get_value("interface", "edge_scrolling", true)
+    else:
+        show_hex_borders = true
+        use_edge_scrolling = true

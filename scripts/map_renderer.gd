@@ -161,7 +161,8 @@ func _draw_hex(row: int, col: int):
     if not in_influence:
         draw_colored_polygon(vertices, Color(0, 0, 0, 0.5))
 
-    draw_polyline(closed_vertices, Color.WHITE, 2, true)
+    if main_map.show_hex_borders:
+        draw_polyline(closed_vertices, Color.WHITE, 2, true)
 
 func _draw_hex_overlays(row: int, col: int):
     var center = HexUtils.hex_center(row, col, HEX_RADIUS)

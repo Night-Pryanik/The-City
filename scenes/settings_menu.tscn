@@ -1,0 +1,86 @@
+[gd_scene format=3 uid="uid://2u8nnbat21lo"]
+
+[ext_resource type="Script" uid="uid://waateaq3ll8s" path="res://scripts/settings_menu.gd" id="1_05p07"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_myx47"]
+bg_color = Color(0.29803923, 0.29803923, 0.29803923, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+
+[node name="SettingsMenu" type="Control" unique_id=1171873180]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_bottom = -45.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_05p07")
+
+[node name="TabContainer" type="TabContainer" parent="." unique_id=2037806971]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_myx47")
+current_tab = 0
+
+[node name="Игра" type="Control" parent="TabContainer" unique_id=539487562]
+layout_mode = 2
+metadata/_tab_index = 0
+
+[node name="Видео" type="Control" parent="TabContainer" unique_id=563583163]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 1
+
+[node name="Аудио" type="Control" parent="TabContainer" unique_id=240359690]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 2
+
+[node name="Интерфейс" type="Control" parent="TabContainer" unique_id=25822004]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 3
+
+[node name="VBoxContainer" type="VBoxContainer" parent="TabContainer/Интерфейс" unique_id=1636219491]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+grow_horizontal = 2
+
+[node name="Label" type="Label" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1054639215]
+layout_mode = 2
+text = "Границы клеток"
+
+[node name="HexBordersCheckBox" type="CheckBox" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1647564177]
+layout_mode = 2
+text = "Показывать границы между клетками"
+
+[node name="Label2" type="Label" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1944413823]
+layout_mode = 2
+text = "Перемещение карты"
+
+[node name="EdgeScrollingCheckBox" type="CheckBox" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1099766743]
+layout_mode = 2
+text = "Перемещение карты у краёв окна"
+
+[node name="BackButton" type="Button" parent="." unique_id=1943295540]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -44.5
+offset_right = 36.5
+offset_bottom = 42.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_font_sizes/font_size = 24
+text = "Назад"
