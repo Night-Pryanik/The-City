@@ -107,6 +107,7 @@ func _ready():
     CityData.research_error.connect(hud.show_message)
     city_ui.research_requested.connect(CityData.start_research)
     CityData.research_completed.connect(_on_research_completed)
+    expansion_manager.chunk_hovered.connect(_on_chunk_hovered)
 
     if pause_menu:
         if not pause_menu.save_pressed.is_connected(_on_pause_save):
@@ -238,7 +239,7 @@ func _process(delta):
         CityData.do_tick()
 
     CityData.tick_research(delta)
-    if CityData.current_research_tech_id != "" or build_manager.active_builds.size() > 0:
+    if CityData.current_research_tech_id != "" or build_manager.active_builds.size() > 0 or expansion_manager.is_active():
         map_renderer.queue_redraw()
 
     if city_ui.visible or popup_menu.visible or pause_menu.visible:
@@ -314,6 +315,14 @@ func _input(event):
         return
 
     if expansion_manager.is_active():
+        # Если курсор над HUD, блокируем взаимодействие (кроме скролла)
+        if hud.get_global_rect().has_point(get_global_mouse_position()):
+            if event is InputEventMouseButton:
+                return  # не даём кликать по гексам под HUD
+            if event is InputEventMouseMotion:
+                expansion_manager.clear_hovered_chunk()
+                return  # не обновляем чанк под HUD
+
         if event is InputEventMouseButton:
             if event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
                 if popup_menu.visible:
@@ -322,14 +331,16 @@ func _input(event):
                 var mouse_pos = event.global_position
                 var hex = pixel_to_hex(mouse_pos.x, mouse_pos.y)
                 if hex != null and not tile_data[hex.row][hex.col]["in_influence"]:
-                    # Вычисляем доступную еду для отображения в меню
+                    var chunk = expansion_manager.current_chunk
+                    if chunk.is_empty():
+                        chunk = expansion_manager.get_chunk_hexes(hex.row, hex.col)
                     var available_food = 0
                     if CityData:
                         for pid in CityData.city_food_pool:
                             if CityData.city_food_pool[pid]:
                                 available_food += CityData.city_storage.get(pid, 0)
-                    expansion_manager.show_context_menu(hex.row, hex.col, mouse_pos, available_food)
-                    return
+                    expansion_manager.show_context_menu(chunk, mouse_pos, available_food)
+                return
 
             if event.button_index == MOUSE_BUTTON_LEFT:
                 if event.pressed:
@@ -342,8 +353,14 @@ func _input(event):
                 return
 
         if event is InputEventMouseMotion:
+            var hex = pixel_to_hex(event.global_position.x, event.global_position.y)
+            if hex != null and not tile_data[hex.row][hex.col]["in_influence"]:
+                expansion_manager.update_hovered_chunk(hex.row, hex.col)
+            else:
+                expansion_manager.clear_hovered_chunk()
             if _tooltip_visible:
                 _hide_tooltip()
+    # --- КОНЕЦ ОБРАБОТКИ РЕЖИМА "РАЗВИТИЕ" ---
 
     if event is InputEventMouseButton:
         if event.button_index == MOUSE_BUTTON_LEFT:
@@ -505,9 +522,14 @@ func _on_popup_menu_id_pressed(id: int):
     var action = meta.get("action", "")
 
     if action == "expand_territory":
-        var success = expansion_manager.handle_action(meta["row"], meta["col"], meta["cost"])
+        var chunk = meta.get("chunk", [])
+        if chunk.is_empty():
+            return
+        var success = expansion_manager.handle_action(chunk, meta["cost"])
         if success:
             map_renderer.queue_redraw()
+            if city_ui.visible:
+                city_ui.update_data(CityData.city_storage, CityData.production_rates, CityData.consumption_rates, CityData.city_food_pool, GameData.buildings, GameData.crafts, CityData.city_built_buildings, GameData.products, GameData.categories)
         return
 
     if _context_hex == null:
@@ -616,14 +638,14 @@ func _on_city_button_gui_input(event: InputEvent):
 func _on_expansion_button_pressed():
     var active = expansion_manager.toggle()
     if active:
-        hud.show_message("Режим освоения включён. ПКМ по гексу для покупки.")
+        hud.show_message("Режим освоения включён. ПКМ по выделенной области для освоения.")
     else:
         hud.show_message("Режим освоения выключен.")
 
-func _on_expansion_mode_changed(active: bool):
+func _on_expansion_mode_changed(_active: bool):
     map_renderer.queue_redraw()
 
-func _on_territory_expanded(row: int, col: int, cost: int):
+func _on_territory_expanded(_row: int, _col: int, cost: int):
     hud.show_message("Территория расширена! (%d еды)" % cost)
     map_renderer.queue_redraw()
     # Также обновим интерфейс города, если он открыт
@@ -632,3 +654,9 @@ func _on_territory_expanded(row: int, col: int, cost: int):
 
 func is_expansion_mode_active() -> bool:
     return expansion_manager.is_active()
+
+func is_valid_hex(row: int, col: int) -> bool:
+    return row >= 0 and row < REGION_ROWS and col >= 0 and col < REGION_COLS
+    
+func _on_chunk_hovered(_chunk: Array):
+    map_renderer.queue_redraw()

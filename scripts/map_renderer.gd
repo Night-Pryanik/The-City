@@ -334,24 +334,40 @@ func _generate_natural_road(
 # Подсветка гексов, доступных для покупки в режиме "Развитие"
 func _draw_expansion_highlights():
     var main = get_parent()
-    # Проверяем, что режим активен
     if not main.has_method("is_expansion_mode_active") or not main.is_expansion_mode_active():
         return
 
+    var expansion_manager = main.get_node("ExpansionManager")
+    if not expansion_manager:
+        return
+
+    # 1. Постоянная зелёная подсветка всего недоступного Региона
     for row in range(REGION_ROWS):
         for col in range(REGION_COLS):
             var tile = tile_data[row][col]
-            # Подсвечиваем гексы, которые НЕ в Кольце Влияния (т.е. затемнённые)
             if not tile.get("in_influence", false):
                 var center = HexUtils.hex_center(row, col, HEX_RADIUS)
                 center.x += main.offset_x + main.scroll_offset.x
                 center.y += main.offset_y + main.scroll_offset.y
                 var vertices = HexUtils.hex_vertices(center.x, center.y, HEX_RADIUS)
-
-                # Рисуем зелёную полупрозрачную заливку
                 draw_colored_polygon(vertices, Color(0.0, 1.0, 0.0, 0.2))
-                # Рисуем яркую зелёную рамку
                 var closed_verts = PackedVector2Array()
                 closed_verts.append_array(vertices)
                 closed_verts.append(vertices[0])
                 draw_polyline(closed_verts, Color.GREEN, 3.0)
+
+    # 2. Поверх зелёной — жёлтая подсветка чанка (только если мышь на регионе)
+    var chunk = expansion_manager.current_chunk
+    if chunk.is_empty():
+        return
+
+    for hex in chunk:
+        var center = HexUtils.hex_center(hex.row, hex.col, HEX_RADIUS)
+        center.x += main.offset_x + main.scroll_offset.x
+        center.y += main.offset_y + main.scroll_offset.y
+        var vertices = HexUtils.hex_vertices(center.x, center.y, HEX_RADIUS)
+        draw_colored_polygon(vertices, Color(1.0, 1.0, 0.0, 0.3))
+        var closed_verts = PackedVector2Array()
+        closed_verts.append_array(vertices)
+        closed_verts.append(vertices[0])
+        draw_polyline(closed_verts, Color.YELLOW, 2.0)
