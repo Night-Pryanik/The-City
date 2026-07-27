@@ -85,6 +85,9 @@ func _draw():
     # ФАЗА 2: Рисуем дороги (ПЕРЕД иконками ресурсов и улучшений)
     _draw_all_roads()
 
+    # ФАЗА 2.5: Рисуем подсветку для режима "Развитие"
+    _draw_expansion_highlights()
+
     # ФАЗА 3: Рисуем иконки ресурсов, улучшений и другие оверлеи
     for row in range(REGION_ROWS):
         for col in range(REGION_COLS):
@@ -256,10 +259,8 @@ func is_resource_locked(resource_id: String) -> bool:
 # Рисует все дороги один раз в каноническом направлении
 func _draw_all_roads():
     if main_map == null or not main_map.has_method("get"):
-        printerr("MapRenderer: main_map is null or doesn't have 'get' method")
         return
     if not main_map.has_node("RoadManager"):
-        printerr("MapRenderer: RoadManager node not found")
         return
 
     var road_manager = main_map.get_node("RoadManager")
@@ -267,7 +268,6 @@ func _draw_all_roads():
     
     # Отладка
     if all_segments.is_empty():
-        print("MapRenderer: No road segments to draw")
         return
     
     # Итерируем по всем сегментам и рисуем каждый один раз
@@ -330,3 +330,28 @@ func _generate_natural_road(
         points.append(mid)
     points.append(center2)
     return points
+
+# Подсветка гексов, доступных для покупки в режиме "Развитие"
+func _draw_expansion_highlights():
+    var main = get_parent()
+    # Проверяем, что режим активен
+    if not main.has_method("is_expansion_mode_active") or not main.is_expansion_mode_active():
+        return
+
+    for row in range(REGION_ROWS):
+        for col in range(REGION_COLS):
+            var tile = tile_data[row][col]
+            # Подсвечиваем гексы, которые НЕ в Кольце Влияния (т.е. затемнённые)
+            if not tile.get("in_influence", false):
+                var center = HexUtils.hex_center(row, col, HEX_RADIUS)
+                center.x += main.offset_x + main.scroll_offset.x
+                center.y += main.offset_y + main.scroll_offset.y
+                var vertices = HexUtils.hex_vertices(center.x, center.y, HEX_RADIUS)
+
+                # Рисуем зелёную полупрозрачную заливку
+                draw_colored_polygon(vertices, Color(0.0, 1.0, 0.0, 0.2))
+                # Рисуем яркую зелёную рамку
+                var closed_verts = PackedVector2Array()
+                closed_verts.append_array(vertices)
+                closed_verts.append(vertices[0])
+                draw_polyline(closed_verts, Color.GREEN, 3.0)

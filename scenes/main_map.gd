@@ -39,12 +39,16 @@ var is_dragging = false
 var drag_start_scroll_offset = Vector2.ZERO
 var drag_start_mouse = Vector2.ZERO
 
+# --- РЕЖИМ "РАЗВИТИЕ" ---
+var is_expansion_mode = false
+
 @onready var popup_menu = $PopupMenu
 @onready var city_ui = $CityUI
 @onready var hex_tooltip = $HexTooltip
 @onready var tooltip_label = $HexTooltip/Label
 @onready var hud = $HUD
 @onready var city_button = $HUD/VBoxContainer/CityButton
+@onready var expansion_button = $HUD/VBoxContainer/ExpansionButton
 @onready var pause_menu = $PauseMenu
 @onready var build_manager = $BuildManager
 @onready var map_renderer = $MapRenderer
@@ -81,7 +85,6 @@ func _ready():
                 col_array.append(tile)
             tile_data.append(col_array)
         
-        # Восстанавливаем дороги для всех существующих улучшений
         road_manager.rebuild_roads_from_existing(tile_data, REGION_ROWS, REGION_COLS)
 
         SaveManager.is_loaded = false
@@ -99,6 +102,7 @@ func _ready():
     popup_menu.id_pressed.connect(_on_popup_menu_id_pressed)
     city_ui.closed.connect(_on_city_ui_close)
     city_button.pressed.connect(_on_city_button_pressed)
+    expansion_button.pressed.connect(_on_expansion_button_pressed)
     city_ui.build_requested.connect(CityData.request_build)
     CityData.city_updated.connect(_on_city_data_updated)
     CityData.research_error.connect(_on_research_error)
@@ -117,6 +121,19 @@ func _ready():
     build_manager.build_message.connect(hud.show_message)
     build_manager.build_completed.connect(_on_build_completed)
     city_button.gui_input.connect(_on_city_button_gui_input)
+
+# --- НОВЫЙ МЕТОД ДЛЯ ПРОВЕРКИ РЕЖИМА (для map_renderer) ---
+func is_expansion_mode_active() -> bool:
+    return is_expansion_mode
+
+# --- ОБРАБОТЧИК КНОПКИ "РАЗВИТИЕ" ---
+func _on_expansion_button_pressed():
+    is_expansion_mode = !is_expansion_mode
+    map_renderer.queue_redraw()
+    if is_expansion_mode:
+        hud.show_message("Режим освоения включён. ПКМ по гексу для покупки.")
+    else:
+        hud.show_message("Режим освоения выключен.")
 
 func _initialize_map():
     GameData.load_all_data()
@@ -257,7 +274,6 @@ func _process(delta):
 
         if scroll != Vector2.ZERO:
             scroll_offset += scroll
-            # Ограничиваем скролл, чтобы не уехать далеко от карты
             var max_scroll_x = (REGION_COLS * HEX_RADIUS)
             var max_scroll_y = (REGION_ROWS * HEX_RADIUS)
             scroll_offset.x = clamp(scroll_offset.x, -max_scroll_x, max_scroll_x)
@@ -298,13 +314,57 @@ func _input(event):
         elif pause_menu.visible:
             pause_menu.hide()
             city_button.disabled = false
+            expansion_button.disabled = false
+        elif is_expansion_mode:
+            # Выход из режима освоения
+            is_expansion_mode = false
+            map_renderer.queue_redraw()
+            hud.show_message("Режим освоения выключен.")
+            return
         else:
             pause_menu.show()
             city_button.disabled = true
+            expansion_button.disabled = true
         return
 
     if city_ui.visible or pause_menu.visible:
         return
+
+    # --- ОБРАБОТКА В РЕЖИМЕ "РАЗВИТИЕ" ---
+    if is_expansion_mode:
+        if event is InputEventMouseButton:
+            if event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
+                if popup_menu.visible:
+                    popup_menu.hide()
+                    return
+                var mouse_pos = event.global_position
+                var hex = pixel_to_hex(mouse_pos.x, mouse_pos.y)
+                if hex != null and not tile_data[hex.row][hex.col]["in_influence"]:
+                    _show_expansion_context_menu(hex.row, hex.col, mouse_pos)
+                return  # Правый клик обработан, остальные клики игнорируем
+
+            if event.button_index == MOUSE_BUTTON_LEFT:
+                if event.pressed:
+                    # Начинаем перетаскивание, если нужно
+                    drag_start_scroll_offset = scroll_offset
+                    drag_start_mouse = event.global_position
+                    is_dragging = false
+                else:
+                    if is_dragging:
+                        is_dragging = false
+                return  # Левый клик не должен ничего строить
+
+            # Любой другой клик (колёсико и т.д.) игнорируем
+            return
+
+        if event is InputEventMouseMotion:
+            # Разрешаем перетаскивание и скролл (будет обработано ниже, вне этого блока)
+            # Но тултип в режиме освоения не показываем
+            if _tooltip_visible:
+                _hide_tooltip()
+            # Пропускаем событие дальше, чтобы работал скролл и перетаскивание
+            # (не делаем return)
+    # --- КОНЕЦ ОБРАБОТКИ РЕЖИМА "РАЗВИТИЕ" ---
 
     if event is InputEventMouseButton:
         if event.button_index == MOUSE_BUTTON_LEFT:
@@ -346,7 +406,6 @@ func _input(event):
         if city_ui.visible or popup_menu.visible or pause_menu.visible:
             return
 
-        # Перетаскивание левой кнопкой
         if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
             var mouse_pos = event.global_position
             if not is_dragging:
@@ -355,7 +414,6 @@ func _input(event):
             if is_dragging:
                 var delta = mouse_pos - drag_start_mouse
                 scroll_offset = drag_start_scroll_offset + delta
-                # Ограничиваем скролл, чтобы не уехать далеко от карты
                 var max_scroll_x = (REGION_COLS * HEX_RADIUS)
                 var max_scroll_y = (REGION_ROWS * HEX_RADIUS)
                 scroll_offset.x = clamp(scroll_offset.x, -max_scroll_x, max_scroll_x)
@@ -363,7 +421,6 @@ func _input(event):
                 map_renderer.queue_redraw()
                 return
 
-        # Обычное движение мыши (тултип)
         var hex = pixel_to_hex(event.global_position.x, event.global_position.y)
         if hex != _hovered_hex:
             _hovered_hex = hex
@@ -392,6 +449,19 @@ func _hide_tooltip():
     _tooltip_visible = false
     _hovered_hex = null
     _hover_start_time = 0.0
+
+# --- КОНТЕКСТНОЕ МЕНЮ ДЛЯ РЕЖИМА "РАЗВИТИЕ" ---
+func _show_expansion_context_menu(row: int, col: int, click_pos: Vector2):
+    # Показываем цену в 100 еды (позже можно будет менять)
+    var cost = 100
+    popup_menu.clear()
+    var label = "Освоить (%d еды)" % cost
+    popup_menu.add_item(label)
+    var last_idx = popup_menu.item_count - 1
+    # Передаём координаты гекса для покупки
+    popup_menu.set_item_metadata(last_idx, {"action": "expand_territory", "row": row, "col": col, "cost": cost})
+    popup_menu.position = click_pos
+    popup_menu.popup()
 
 func _show_context_menu(row: int, col: int, click_pos: Vector2):
     var tile = tile_data[row][col]
@@ -465,10 +535,24 @@ func _show_context_menu(row: int, col: int, click_pos: Vector2):
         popup_menu.popup()
 
 func _on_popup_menu_id_pressed(id: int):
-    if _context_hex == null:
-        return
     var meta = popup_menu.get_item_metadata(id)
     var action = meta.get("action", "")
+
+    # --- ОБРАБОТКА ПОКУПКИ ГЕКСА ---
+    if action == "expand_territory":
+        var row = meta["row"]
+        var col = meta["col"]
+        var cost = meta["cost"]
+        # Пока просто делаем гекс частью Кольца Влияния (без проверки еды)
+        if row >= 0 and row < REGION_ROWS and col >= 0 and col < REGION_COLS:
+            tile_data[row][col]["in_influence"] = true
+            hud.show_message("Территория расширена! (%d еды)" % cost)
+            map_renderer.queue_redraw()
+        return
+    # --- КОНЕЦ ОБРАБОТКИ ПОКУПКИ ---
+
+    if _context_hex == null:
+        return
     var row = _context_hex.row
     var col = _context_hex.col
 
@@ -501,7 +585,6 @@ func _on_build_completed(row: int, col: int, imp_id: String, animal_id = null):
                 CityData.add_plant(animal_id)
     build_manager.remove_build(row, col)
     
-    # Прокладываем дорогу от нового улучшения до ближайшего подключённого гекса
     road_manager.build_road_from(row, col, tile_data, REGION_ROWS, REGION_COLS)
     
     map_renderer.queue_redraw()
