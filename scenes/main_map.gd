@@ -322,8 +322,14 @@ func _input(event):
                 var mouse_pos = event.global_position
                 var hex = pixel_to_hex(mouse_pos.x, mouse_pos.y)
                 if hex != null and not tile_data[hex.row][hex.col]["in_influence"]:
-                    expansion_manager.show_context_menu(hex.row, hex.col, mouse_pos)
-                return
+                    # Вычисляем доступную еду для отображения в меню
+                    var available_food = 0
+                    if CityData:
+                        for pid in CityData.city_food_pool:
+                            if CityData.city_food_pool[pid]:
+                                available_food += CityData.city_storage.get(pid, 0)
+                    expansion_manager.show_context_menu(hex.row, hex.col, mouse_pos, available_food)
+                    return
 
             if event.button_index == MOUSE_BUTTON_LEFT:
                 if event.pressed:
@@ -499,7 +505,9 @@ func _on_popup_menu_id_pressed(id: int):
     var action = meta.get("action", "")
 
     if action == "expand_territory":
-        expansion_manager.handle_action(meta["row"], meta["col"], meta["cost"])
+        var success = expansion_manager.handle_action(meta["row"], meta["col"], meta["cost"])
+        if success:
+            map_renderer.queue_redraw()
         return
 
     if _context_hex == null:
@@ -618,6 +626,9 @@ func _on_expansion_mode_changed(active: bool):
 func _on_territory_expanded(row: int, col: int, cost: int):
     hud.show_message("Территория расширена! (%d еды)" % cost)
     map_renderer.queue_redraw()
+    # Также обновим интерфейс города, если он открыт
+    if city_ui.visible:
+        city_ui.update_data(CityData.city_storage, CityData.production_rates, CityData.consumption_rates, CityData.city_food_pool, GameData.buildings, GameData.crafts, CityData.city_built_buildings, GameData.products, GameData.categories)
 
 func is_expansion_mode_active() -> bool:
     return expansion_manager.is_active()
