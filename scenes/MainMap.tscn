@@ -7,6 +7,7 @@
 [ext_resource type="Script" uid="uid://ioi24pjoaapx" path="res://scripts/build_manager.gd" id="5_6ic70"]
 [ext_resource type="Script" uid="uid://b2anvgprhgych" path="res://scripts/map_renderer.gd" id="6_82ayj"]
 [ext_resource type="Script" uid="uid://b7pijc74chsbo" path="res://scripts/road_manager.gd" id="7_2m761"]
+[ext_resource type="Script" uid="uid://d5hdforsqjlr" path="res://scripts/expansion_manager.gd" id="8_8fkir"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_o7tci"]
 bg_color = Color(0.19607843, 0.19607843, 0.19607843, 1)
@@ -89,3 +90,6 @@ script = ExtResource("5_6ic70")
 
 [node name="RoadManager" type="Node" parent="." unique_id=2061907274]
 script = ExtResource("7_2m761")
+
+[node name="ExpansionManager" type="Node" parent="." unique_id=1230720441]
+script = ExtResource("8_8fkir")
