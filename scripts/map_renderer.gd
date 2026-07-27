@@ -102,9 +102,11 @@ func _draw_hex(row: int, col: int):
     var tile = tile_data[row][col]
     var in_influence = tile.get("in_influence", false)
 
+    var terrain_color = Color.BLACK
+    var terrain = tile.terrain
+    var terrain_icon_name = tile.get("terrain_icon", "")
+
     if row == CITY_ROW and col == CITY_COL:
-        var terrain_color = Color.BLACK
-        var terrain = tile.terrain
         if GameData.terrains.has(terrain):
             var t = GameData.terrains[terrain]
             var c = t.get("color", [0, 0, 0])
@@ -113,9 +115,6 @@ func _draw_hex(row: int, col: int):
         draw_polyline(closed_vertices, Color.WHITE, 2, true)
         return
 
-    var terrain_color = Color.BLACK
-    var terrain = tile.terrain
-    var terrain_icon_name = tile.get("terrain_icon", "")
     if terrain_icon_name != "" and icon_textures.has(terrain_icon_name):
         var tex = icon_textures[terrain_icon_name]
         var icon_rect = Rect2(center.x - TERRAIN_ICON_SIZE/2.0, center.y - TERRAIN_ICON_SIZE/2.0, TERRAIN_ICON_SIZE, TERRAIN_ICON_SIZE)
@@ -196,3 +195,6 @@ func _is_resource_locked(resource_id: String) -> bool:
     if not res_data.has("tech_required"):
         return false
     return not CityData.is_tech_unlocked(res_data["tech_required"])
+
+func is_resource_locked(resource_id: String) -> bool:
+    return _is_resource_locked(resource_id)

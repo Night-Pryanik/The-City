@@ -196,6 +196,9 @@ func _update_food_label():
     else:
         buildings_tab.food_label.text = ""
 
+func update_food_label():
+    _update_food_label()
+
 func _on_build_requested(building_id: String):
     emit_signal("build_requested", building_id)
 

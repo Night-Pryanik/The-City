@@ -134,7 +134,7 @@ func _on_building_selected(idx: int):
             recipes_text = "Нет рецептов"
         building_recipes_label.text = recipes_text
         build_button.disabled = false
-        get_parent()._update_food_label()
+        get_parent().update_food_label()
     else:
         selected_building_id = ""
         build_button.disabled = true

@@ -3,7 +3,6 @@ extends CanvasLayer
 signal save_pressed
 signal load_pressed
 signal new_game_pressed
-signal exit_pressed
 
 func _ready():
     # Ищем кнопки по имени во всех вложенных узлах (рекурсивно)

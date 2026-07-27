@@ -404,7 +404,7 @@ func _show_context_menu(row: int, col: int, click_pos: Vector2):
     if tile.resource != null:
         var raw = GameData.raw_resources.get(tile.resource, {})
         if "improved_by" in raw:
-            if map_renderer._is_resource_locked(tile.resource):
+            if map_renderer.is_resource_locked(tile.resource):
                 var tech_id = raw["tech_required"]
                 var tech_name = tech_id
                 var tech_cost = 0

@@ -22,7 +22,6 @@ const PRODUCTION_INTERVAL: float = 2.0
 signal city_updated()
 signal research_completed(tech_id: String)
 signal research_error(message: String)
-signal show_message(text: String)
 
 func setup():
     city_storage.clear()

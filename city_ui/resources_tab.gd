@@ -9,12 +9,15 @@ var production_rates: Dictionary = {}
 var consumption_rates: Dictionary = {}
 var city_food_pool: Dictionary = {}
 var food_toggles: Dictionary = {}
+var icon_textures: Dictionary = {}
+var icon_paths: Dictionary = {}
 
 var resources_list: Node
 
 func setup(res_list: Node, helpers: Node):
     resources_list = res_list
     ui_helpers = helpers
+    _build_icon_index()
 
 func update_data(data: Dictionary):
     products = data.get("products", {})
@@ -30,7 +33,40 @@ func _get_subgroup_name(subgroup_id: String) -> String:
             return g["name"]
     return subgroup_id
 
+func _build_icon_index():
+    icon_paths.clear()
+    _scan_folder("res://icons")
+
+func _scan_folder(folder_path: String):
+    var dir = DirAccess.open(folder_path)
+    if dir == null: return
+    dir.list_dir_begin()
+    var file_name = dir.get_next()
+    while file_name != "":
+        if dir.current_is_dir():
+            _scan_folder(folder_path.path_join(file_name))
+        else:
+            var full_path = folder_path.path_join(file_name)
+            if icon_paths.has(file_name):
+                print("Предупреждение: дубликат иконки ", file_name)
+            icon_paths[file_name] = full_path
+        file_name = dir.get_next()
+    dir.list_dir_end()
+
+func _get_icon_texture(icon_file: String) -> Texture2D:
+    if icon_file.is_empty():
+        return null
+    if icon_textures.has(icon_file):
+        return icon_textures[icon_file]
+    if icon_paths.has(icon_file):
+        var tex = load(icon_paths[icon_file])
+        icon_textures[icon_file] = tex
+        return tex
+    return null
+
 func refresh():
+    _build_icon_index()
+    
     for child in resources_list.get_children():
         child.queue_free()
     food_toggles.clear()
@@ -48,7 +84,7 @@ func refresh():
             var subgroup = data.get("subgroup", "other")
             if not animal_subgroups.has(subgroup):
                 animal_subgroups[subgroup] = []
-            animal_subgroups[subgroup].append({"id": animal_id, "name": data.get("name", animal_id)})
+            animal_subgroups[subgroup].append({"id": animal_id, "name": data.get("name", animal_id), "icon": data.get("icon", "")})
 
         for subgroup in animal_subgroups.keys():
             var subgroup_label = Label.new()
@@ -57,10 +93,22 @@ func refresh():
             resources_list.add_child(subgroup_label)
 
             for animal in animal_subgroups[subgroup]:
+                var row = HBoxContainer.new()
+                row.add_theme_constant_override("separation", 6)  # расстояние между иконкой и текстом
+                if not animal["icon"].is_empty():
+                    var tex = _get_icon_texture(animal["icon"])
+                    if tex:
+                        var icon_rect = TextureRect.new()
+                        icon_rect.texture = tex
+                        icon_rect.custom_minimum_size = Vector2(24, 24)
+                        icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+                        icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
+                        row.add_child(icon_rect)
                 var animal_label = Label.new()
-                animal_label.text = "    - " + animal["name"]
+                animal_label.text = animal["name"]
                 animal_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
-                resources_list.add_child(animal_label)
+                row.add_child(animal_label)
+                resources_list.add_child(row)
 
         var spacer = Label.new()
         spacer.text = ""
@@ -79,7 +127,7 @@ func refresh():
             var subgroup = data.get("subgroup", "other")
             if not plant_subgroups.has(subgroup):
                 plant_subgroups[subgroup] = []
-            plant_subgroups[subgroup].append({"id": plant_id, "name": data.get("name", plant_id)})
+            plant_subgroups[subgroup].append({"id": plant_id, "name": data.get("name", plant_id), "icon": data.get("icon", "")})
 
         for subgroup in plant_subgroups.keys():
             var subgroup_label = Label.new()
@@ -88,16 +136,28 @@ func refresh():
             resources_list.add_child(subgroup_label)
 
             for plant in plant_subgroups[subgroup]:
+                var row = HBoxContainer.new()
+                row.add_theme_constant_override("separation", 6)
+                if not plant["icon"].is_empty():
+                    var tex = _get_icon_texture(plant["icon"])
+                    if tex:
+                        var icon_rect = TextureRect.new()
+                        icon_rect.texture = tex
+                        icon_rect.custom_minimum_size = Vector2(24, 24)
+                        icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+                        icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
+                        row.add_child(icon_rect)
                 var plant_label = Label.new()
-                plant_label.text = "    - " + plant["name"]
+                plant_label.text = plant["name"]
                 plant_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
-                resources_list.add_child(plant_label)
+                row.add_child(plant_label)
+                resources_list.add_child(row)
 
         var spacer = Label.new()
         spacer.text = ""
         resources_list.add_child(spacer)
 
-    # --- Товары по категориям (как раньше) ---
+    # --- Товары по категориям ---
     var grouped = {}
     for prod_id in city_storage:
         var amount = city_storage[prod_id]
@@ -140,8 +200,10 @@ func refresh():
             var product_name = pdata.get("name", prod_id)
             var is_food = pdata.get("category") == "food"
             var row = HBoxContainer.new()
+            row.add_theme_constant_override("separation", 6)
             resources_list.add_child(row)
 
+            # Чекбокс (только для еды)
             if is_food:
                 var toggle = ColorRect.new()
                 toggle.custom_minimum_size = Vector2(14, 14)
@@ -152,11 +214,28 @@ func refresh():
                 row.add_child(toggle)
                 food_toggles[prod_id] = toggle
 
+            # Иконка
+            var icon_name = ""
+            if GameData.raw_resources.has(prod_id):
+                icon_name = GameData.raw_resources[prod_id].get("icon", "")
+            elif GameData.products.has(prod_id):
+                icon_name = GameData.products[prod_id].get("icon", "")
+            if not icon_name.is_empty():
+                var tex = _get_icon_texture(icon_name)
+                if tex:
+                    var icon_rect = TextureRect.new()
+                    icon_rect.texture = tex
+                    icon_rect.custom_minimum_size = Vector2(24, 24)
+                    icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+                    icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
+                    row.add_child(icon_rect)
+
             var name_label = Label.new()
             name_label.text = "%s: %d  " % [product_name, amount]
             name_label.add_theme_color_override("font_color", Color.WHITE)
             row.add_child(name_label)
 
+            # Динамика
             var prod_val = production_rates.get(prod_id, 0)
             var cons_val = consumption_rates.get(prod_id, 0)
 
@@ -211,7 +290,8 @@ func _on_food_toggle_input(event, prod_id, toggle):
     if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
         city_food_pool[prod_id] = not city_food_pool.get(prod_id, true)
         toggle.color = Color.GREEN if city_food_pool[prod_id] else Color.RED
-        get_parent()._update_food_label()
+        if get_parent().has_method("update_food_label"):
+            get_parent().update_food_label()
 
 func get_food_pool() -> Dictionary:
     return city_food_pool
