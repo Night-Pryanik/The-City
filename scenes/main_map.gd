@@ -614,6 +614,7 @@ func _on_research_completed(_tech_id: String):
 
 func _on_pause_save():
     SaveManager.save_game()
+    hud.show_message("Игра сохранена.")
 
 func _on_pause_load():
     if SaveManager.load_game():
