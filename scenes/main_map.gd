@@ -114,6 +114,7 @@ func _ready():
     CityData.city_updated.connect(_on_city_data_updated)
     CityData.research_error.connect(_on_research_error)
     CityData.research_error.connect(hud.show_message)
+    CityData.population_changed.connect(_on_population_changed)
     city_ui.research_requested.connect(CityData.start_research)
     CityData.research_completed.connect(_on_research_completed)
     expansion_manager.chunk_hovered.connect(_on_chunk_hovered)
@@ -250,6 +251,8 @@ func _process(delta):
     CityData.tick_research(delta)
     if CityData.current_research_tech_id != "" or build_manager.active_builds.size() > 0 or expansion_manager.is_active():
         map_renderer.queue_redraw()
+        
+    CityData.tick_population(delta)
 
     if city_ui.visible or popup_menu.visible or pause_menu.visible or (settings_menu and settings_menu.visible):
         _hide_tooltip()
@@ -686,3 +689,9 @@ func _load_settings():
 func apply_settings():
     _load_settings()
     map_renderer.queue_redraw()
+
+func _on_population_changed(new_pop: int):
+    if city_ui.visible:
+        city_ui.update_data(CityData.city_storage, CityData.production_rates, CityData.consumption_rates, CityData.city_food_pool, GameData.buildings, GameData.crafts, CityData.city_built_buildings, GameData.products, GameData.categories)
+    # Можно также обновить текст в HUD
+    hud.show_message("Население: %d" % new_pop)

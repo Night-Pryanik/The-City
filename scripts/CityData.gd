@@ -14,14 +14,24 @@ var domesticated_plants: Array = []
 # Технологии
 var unlocked_technologies: Array = []
 var current_research_tech_id: String = ""
-var current_research_time: float = 0.0   # время в секундах на изучение
-var research_progress: float = 0.0       # 0.0 .. 1.0
+var current_research_time: float = 0.0
+var research_progress: float = 0.0
+
+# --- НАСЕЛЕНИЕ ---
+var total_population: int = 1
+var peasants: int = 1
+var townsfolk: int = 0
+var scholars: int = 0
+var food_for_new_settler: int = 100    # сколько еды нужно накопить для роста
+var population_timer: float = 0.0
+var POPULATION_CHECK_INTERVAL: float = 5.0  # раз в 5 секунд проверяем рост/убыль
 
 const PRODUCTION_INTERVAL: float = 2.0
 
 signal city_updated()
 signal research_completed(tech_id: String)
 signal research_error(message: String)
+signal population_changed(new_population: int)
 
 func setup():
     city_storage.clear()
@@ -36,6 +46,12 @@ func setup():
     current_research_time = 0.0
     research_progress = 0.0
 
+    total_population = 1
+    peasants = 1
+    townsfolk = 0
+    scholars = 0
+    population_timer = 0.0
+
     for pid in GameData.products.keys():
         city_storage[pid] = 0
         production_rates[pid] = 0
@@ -43,7 +59,7 @@ func setup():
         if GameData.products[pid].get("category") == "food":
             city_food_pool[pid] = true
 
-    # Стартовый запас еды (мясо) для первой постройки
+    # Стартовый запас еды для первой постройки
     if city_storage.has("meat"):
         city_storage["meat"] = 10
 
@@ -91,8 +107,55 @@ func do_tick():
                 production_rates[res] += recipe["result"][res]
     emit_signal("city_updated")
 
-# --- Исследования ---
+# --- РОСТ И УБЫЛЬ НАСЕЛЕНИЯ ---
+func tick_population(delta: float):
+    if Engine.is_editor_hint():
+        return
+    population_timer += delta
+    if population_timer >= POPULATION_CHECK_INTERVAL:
+        population_timer -= POPULATION_CHECK_INTERVAL
+        _check_population_change()
 
+func _check_population_change():
+    # Считаем доступную еду
+    var available_food = 0
+    for pid in city_food_pool:
+        if city_food_pool[pid]:
+            available_food += city_storage.get(pid, 0)
+
+    if available_food >= food_for_new_settler and total_population > 0:
+        # Рост населения
+        total_population += 1
+        peasants += 1
+        # Списываем еду
+        var remaining = food_for_new_settler
+        var active_food = []
+        for pid in city_food_pool:
+            if city_food_pool[pid] and city_storage.get(pid, 0) > 0:
+                active_food.append(pid)
+        while remaining > 0 and active_food.size() > 0:
+            var pid = active_food[randi() % active_food.size()]
+            city_storage[pid] -= 1
+            remaining -= 1
+            if city_storage[pid] <= 0:
+                active_food.erase(pid)
+        emit_signal("population_changed", total_population)
+        print("Население выросло до ", total_population)
+
+    elif available_food <= 0 and total_population > 1:
+        # Убыль населения от голода
+        total_population -= 1
+        # Сначала умирают учёные, потом горожане, потом крестьяне
+        if scholars > 0:
+            scholars -= 1
+        elif townsfolk > 0:
+            townsfolk -= 1
+        else:
+            peasants -= 1
+        emit_signal("population_changed", total_population)
+        print("Население уменьшилось до ", total_population)
+
+# --- ИССЛЕДОВАНИЯ (без изменений) ---
 func start_research(tech_id: String) -> bool:
     if Engine.is_editor_hint():
         return false
@@ -173,6 +236,7 @@ func tick_research(delta: float):
 func is_tech_unlocked(tech_id: String) -> bool:
     return tech_id in unlocked_technologies
 
+# --- СТРОИТЕЛЬСТВО (без изменений) ---
 func request_build(building_id: String) -> bool:
     if Engine.is_editor_hint():
         return false

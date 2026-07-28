@@ -125,6 +125,7 @@ func _refresh_all():
     buildings_tab.refresh_built()
     technologies_tab.refresh()
     _update_food_label()
+    # _update_population_display()
 
 func _switch_tab(tab_id: String):
     active_tab = tab_id
@@ -168,13 +169,13 @@ func _highlight_active_tab_button():
 
 func _update_food_label():
     var food_sum = 0
-    var food_pool = resources_tab.get_food_pool()
-    var storage = data_cache.get("city_storage", {})
-    for pid in food_pool:
-        if food_pool[pid]:
+    var pool = resources_tab.get_food_pool()
+    var storage = resources_tab.city_storage
+    for pid in pool:
+        if pool[pid]:
             food_sum += storage.get(pid, 0)
     if top_food_label:
-        top_food_label.text = "Еда: " + str(food_sum)
+        top_food_label.text = "Еда: %d | Население: %d (К:%d Г:%d У:%d)" % [food_sum, CityData.total_population, CityData.peasants, CityData.townsfolk, CityData.scholars]
 
     # Обновляем food_label для дополнительных ресурсов
     if buildings_tab.selected_building_id != "":
