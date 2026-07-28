@@ -23,8 +23,6 @@ var peasants: int = 1
 var townsfolk: int = 0
 var scholars: int = 0
 var food_for_new_settler: int = 100    # сколько еды нужно накопить для роста
-var population_timer: float = 0.0
-var POPULATION_CHECK_INTERVAL: float = 5.0  # раз в 5 секунд проверяем рост/убыль
 
 const PRODUCTION_INTERVAL: float = 2.0
 
@@ -50,7 +48,6 @@ func setup():
     peasants = 1
     townsfolk = 0
     scholars = 0
-    population_timer = 0.0
 
     for pid in GameData.products.keys():
         city_storage[pid] = 0
@@ -105,17 +102,10 @@ func do_tick():
             for res in recipe["result"]:
                 city_storage[res] += recipe["result"][res]
                 production_rates[res] += recipe["result"][res]
+    _check_population_change()
     emit_signal("city_updated")
 
 # --- РОСТ И УБЫЛЬ НАСЕЛЕНИЯ ---
-func tick_population(delta: float):
-    if Engine.is_editor_hint():
-        return
-    population_timer += delta
-    if population_timer >= POPULATION_CHECK_INTERVAL:
-        population_timer -= POPULATION_CHECK_INTERVAL
-        _check_population_change()
-
 func _check_population_change():
     # Считаем доступную еду
     var available_food = 0

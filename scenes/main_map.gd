@@ -87,6 +87,8 @@ func _ready():
                         tile["in_influence"] = saved.get("in_influence", false)
                 col_array.append(tile)
             tile_data.append(col_array)
+            
+        _update_population_hud()
         
         road_manager.rebuild_roads_from_existing(tile_data, REGION_ROWS, REGION_COLS)
 
@@ -252,8 +254,6 @@ func _process(delta):
     if CityData.current_research_tech_id != "" or build_manager.active_builds.size() > 0 or expansion_manager.is_active():
         map_renderer.queue_redraw()
         
-    CityData.tick_population(delta)
-
     if city_ui.visible or popup_menu.visible or pause_menu.visible or (settings_menu and settings_menu.visible):
         _hide_tooltip()
         return
@@ -691,7 +691,11 @@ func apply_settings():
     map_renderer.queue_redraw()
 
 func _on_population_changed(new_pop: int):
+    _update_population_hud()
     if city_ui.visible:
         city_ui.update_data(CityData.city_storage, CityData.production_rates, CityData.consumption_rates, CityData.city_food_pool, GameData.buildings, GameData.crafts, CityData.city_built_buildings, GameData.products, GameData.categories)
-    # Можно также обновить текст в HUD
-    hud.show_message("Население: %d" % new_pop)
+
+func _update_population_hud():
+    var pop_label = hud.get_node_or_null("VBoxContainer/PopulationLabel")
+    if pop_label:
+        pop_label.text = "Население: %d" % CityData.total_population
