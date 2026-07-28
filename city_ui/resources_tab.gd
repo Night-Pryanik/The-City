@@ -298,3 +298,9 @@ func get_food_pool() -> Dictionary:
 
 func get_food_toggles() -> Dictionary:
     return food_toggles
+
+func get_production_rates() -> Dictionary:
+    return production_rates
+
+func get_consumption_rates() -> Dictionary:
+    return consumption_rates

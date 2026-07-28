@@ -23,6 +23,7 @@ var peasants: int = 1
 var townsfolk: int = 0
 var scholars: int = 0
 var food_for_new_settler: int = 100    # сколько еды нужно накопить для роста
+var food_per_citizen: int = 1          # сколько еды съедает один житель за тик
 
 const PRODUCTION_INTERVAL: float = 2.0
 
@@ -79,6 +80,7 @@ func add_raw_production(raw_id: String):
 func do_tick():
     if Engine.is_editor_hint():
         return
+    # Работа зданий
     for bld in city_built_buildings:
         var recipe_id = bld.get("recipe", "")
         if recipe_id == "":
@@ -102,6 +104,20 @@ func do_tick():
             for res in recipe["result"]:
                 city_storage[res] += recipe["result"][res]
                 production_rates[res] += recipe["result"][res]
+
+    # Потребление еды населением
+    var food_needed = total_population * food_per_citizen
+    var food_eaten = 0
+    for pid in city_food_pool:
+        if city_food_pool[pid] and city_storage.get(pid, 0) > 0:
+            var available = city_storage[pid]
+            var to_take = min(available, food_needed - food_eaten)
+            city_storage[pid] -= to_take
+            consumption_rates[pid] += to_take
+            food_eaten += to_take
+            if food_eaten >= food_needed:
+                break
+
     _check_population_change()
     emit_signal("city_updated")
 

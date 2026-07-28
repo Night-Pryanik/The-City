@@ -168,14 +168,29 @@ func _highlight_active_tab_button():
             btn.add_theme_color_override("font_color", Color.WHITE)
 
 func _update_food_label():
-    var food_sum = 0
     var pool = resources_tab.get_food_pool()
     var storage = resources_tab.city_storage
+    var prod_rates = resources_tab.get_production_rates()
+    var cons_rates = resources_tab.get_consumption_rates()
+
+    var food_sum = 0
+    var total_prod = 0
+    var total_cons = 0
     for pid in pool:
         if pool[pid]:
             food_sum += storage.get(pid, 0)
+            total_prod += prod_rates.get(pid, 0)
+            total_cons += cons_rates.get(pid, 0)
+
+    var food_str = "Еда: %d [+%d / -%d]" % [food_sum, total_prod, total_cons]
+    var pop_str = "Население: %d (К:%d Г:%d У:%d)" % [CityData.total_population, CityData.peasants, CityData.townsfolk, CityData.scholars]
+
     if top_food_label:
-        top_food_label.text = "Еда: %d | Население: %d (К:%d Г:%d У:%d)" % [food_sum, CityData.total_population, CityData.peasants, CityData.townsfolk, CityData.scholars]
+        top_food_label.text = food_str + " | " + pop_str
+
+    # Обновляем метку еды на вкладке «Здания» (без населения)
+    if buildings_tab.has_method("update_food_label"):
+        buildings_tab.update_food_label()
 
     # Обновляем food_label для дополнительных ресурсов
     if buildings_tab.selected_building_id != "":
