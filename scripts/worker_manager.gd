@@ -26,3 +26,20 @@ func has_worker(row: int, col: int) -> bool:
 
 func get_assigned_count() -> int:
     return assigned_hexes.size()
+
+func serialize_assignments() -> Array:
+    var result = []
+    for key in assigned_hexes.keys():
+        var parts = key.split(",", false)
+        if parts.size() == 2:
+            result.append({"row": int(parts[0]), "col": int(parts[1])})
+    return result
+
+func load_assignments(assignments: Array):
+    assigned_hexes.clear()
+    for item in assignments:
+        if item is Dictionary and item.has("row") and item.has("col"):
+            var row = int(item.get("row", -1))
+            var col = int(item.get("col", -1))
+            if row >= 0 and col >= 0:
+                assigned_hexes[str(row) + "," + str(col)] = true

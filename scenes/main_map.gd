@@ -91,6 +91,8 @@ func _ready():
             tile_data.append(col_array)
             
         _update_population_hud()
+
+        worker_manager.load_assignments(SaveManager.saved_data.get("worker_assignments", []))
         
         road_manager.rebuild_roads_from_existing(tile_data, REGION_ROWS, REGION_COLS)
 
@@ -478,9 +480,28 @@ func _hide_tooltip():
 
 func _show_context_menu(row: int, col: int, click_pos: Vector2):
     var tile = tile_data[row][col]
+    
+    # --- Гекс УЖЕ имеет улучшение (управление работой) ---
     if tile.improvement != null:
-        return
+        _context_hex = {"row": row, "col": col, "resource": tile.resource}
+        popup_menu.clear()
 
+        var has_worker = worker_manager.has_worker(row, col)
+        var imp_name = GameData.improvements.get(tile.improvement, {}).get("name", "Улучшение")
+
+        if has_worker:
+            popup_menu.add_item("Приостановить работу (%s)" % imp_name)
+            popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": "pause_improvement", "row": row, "col": col})
+        else:
+            popup_menu.add_item("Запустить работу (%s)" % imp_name)
+            popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": "resume_improvement", "row": row, "col": col})
+
+        popup_menu.position = click_pos
+        popup_menu.popup()
+        return
+    # --- Конец блока для улучшенного гекса ---
+
+    # --- Гекс БЕЗ улучшения (старый код) ---
     var available_food = 0
     if CityData:
         for pid in CityData.city_food_pool:
@@ -560,6 +581,21 @@ func _on_popup_menu_id_pressed(id: int):
             map_renderer.queue_redraw()
             if city_ui.visible:
                 city_ui.update_data(CityData.city_storage, CityData.production_rates, CityData.consumption_rates, CityData.city_food_pool, GameData.buildings, GameData.crafts, CityData.city_built_buildings, GameData.products, GameData.categories)
+        return
+
+    if action == "pause_improvement":
+        var r = meta["row"]
+        var c = meta["col"]
+        worker_manager.remove_worker(r, c)
+        map_renderer.queue_redraw()
+        return
+
+    if action == "resume_improvement":
+        var r = meta["row"]
+        var c = meta["col"]
+        if not worker_manager.assign_worker(r, c):
+            hud.show_message("Нет свободных рабочих!")
+        map_renderer.queue_redraw()
         return
 
     if _context_hex == null:
