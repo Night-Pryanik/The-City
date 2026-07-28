@@ -363,3 +363,8 @@ func _draw_expansion_highlights():
         closed_verts.append_array(vertices)
         closed_verts.append(vertices[0])
         draw_polyline(closed_verts, Color.YELLOW, 2.0)
+
+func get_icon_path(icon_name: String) -> String:
+    if icon_paths.has(icon_name):
+        return icon_paths[icon_name]
+    return ""

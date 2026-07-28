@@ -46,7 +46,9 @@ var use_edge_scrolling = true
 @onready var popup_menu = $PopupMenu
 @onready var city_ui = $CityUI
 @onready var hex_tooltip = $HexTooltip
-@onready var tooltip_label = $HexTooltip/Label
+@onready var tooltip_panel = $HexTooltip
+@onready var tooltip_text_label = $HexTooltip/TooltipVBox/TooltipTextLabel
+@onready var tooltip_products_container = $HexTooltip/TooltipVBox/TooltipProductsContainer
 @onready var hud = $HUD
 @onready var city_button = $HUD/VBoxContainer/CityButton
 @onready var expansion_button = $HUD/VBoxContainer/ExpansionButton
@@ -303,9 +305,16 @@ func _process(delta):
             hex_tooltip.visible = true
         if _tooltip_visible:
             var tip_pos = get_viewport().get_mouse_position() + Vector2(15, 15)
-            var text_size = tooltip_label.get_minimum_size()
-            hex_tooltip.size = text_size + Vector2(12, 8)
-            tooltip_label.position = Vector2(6, 4)
+            var vbox = $HexTooltip/TooltipVBox
+            var total_height = 0.0
+            for child in vbox.get_children():
+                total_height += child.get_combined_minimum_size().y + 4
+            var total_width = 0.0
+            for child in vbox.get_children():
+                if child.get_combined_minimum_size().x > total_width:
+                    total_width = child.get_combined_minimum_size().x
+            hex_tooltip.size = Vector2(total_width + 12, total_height + 12)
+            tooltip_text_label.position = Vector2(6, 4)
             if tip_pos.x + hex_tooltip.size.x > get_viewport_rect().size.x:
                 tip_pos.x = get_viewport().get_mouse_position().x - hex_tooltip.size.x - 15
             if tip_pos.y + hex_tooltip.size.y > get_viewport_rect().size.y:
@@ -456,6 +465,10 @@ func _input(event):
                 _update_tooltip_text(hex.row, hex.col)
 
 func _update_tooltip_text(row: int, col: int):
+    # Очищаем контейнер с иконками
+    for child in tooltip_products_container.get_children():
+        child.queue_free()
+
     var tile = tile_data[row][col]
     var terrain_name = GameData.terrains.get(tile.terrain, {}).get("name", tile.terrain)
     var res_id = tile.resource
@@ -467,23 +480,83 @@ func _update_tooltip_text(row: int, col: int):
         if res_data.has("tech_required") and not CityData.is_tech_unlocked(res_data["tech_required"]):
             locked = " (заблокировано)"
 
-    # Формируем строку улучшения с состоянием
+    var text = "Местность: %s\nРесурс: %s%s" % [terrain_name, res_name, locked]
+    
+    # --- ЛОГИКА ДЛЯ ПРОИЗВОДСТВА ---
     var imp_status = ""
     if tile.improvement != null:
         var has_worker = worker_manager.has_worker(row, col)
-        # Здесь можно добавить другие проверки: paused, damaged...
         if not has_worker:
             imp_status = " (неактивно: нет рабочего)"
         else:
             imp_status = " (работает)"
+            # Построенное улучшение с рабочим — показываем фактическое производство
+            if res_id != null:
+                var res_data = GameData.raw_resources.get(res_id, {})
+                if res_data.has("produces"):
+                    _add_production_info(res_id, "Производит:")
+    else:
+        # Улучшение не построено — показываем потенциальное производство
+        if res_id != null:
+            var res_data = GameData.raw_resources.get(res_id, {})
+            if res_data.has("improved_by") and res_data.has("produces"):
+                var improvement_id = res_data["improved_by"]
+                var imp_data = GameData.improvements.get(improvement_id, {})
+                var imp_name_display = imp_data.get("name", improvement_id)
+                _add_production_info(res_id, " При постройке %s будет давать:" % imp_name_display)
+        imp_status = " (не построено)"
 
-    tooltip_label.text = "Местность: %s\nРесурс: %s%s\nУлучшение: %s%s" % [terrain_name, res_name, locked, imp_name, imp_status]
+    text += "\nУлучшение: %s%s" % [imp_name, imp_status]
+    tooltip_text_label.text = text
+
+
+# Вспомогательная функция для добавления информации о производстве
+func _add_production_info(res_id: String, prefix: String):
+    if res_id == null or res_id == "":
+        return
+    var res_data = GameData.raw_resources.get(res_id, {})
+    if not res_data.has("produces"):
+        return
+
+    # Добавляем текстовую метку с префиксом
+    var label = Label.new()
+    label.text = prefix
+    label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+    tooltip_products_container.add_child(label)
+
+    # Добавляем каждый продукт с иконкой (если есть)
+    for prod_id in res_data["produces"]:
+        var amount = res_data["produces"][prod_id]
+        var prod_name = GameData.products.get(prod_id, {}).get("name", prod_id)
+        var icon_path = ""
+        var prod_data = GameData.products.get(prod_id, {})
+        if prod_data.has("icon"):
+            var icon_name = prod_data["icon"]
+            icon_path = map_renderer.get_icon_path(icon_name)
+
+        var hbox = HBoxContainer.new()
+        # Иконка (если есть)
+        if icon_path != "":
+            var tex_rect = TextureRect.new()
+            tex_rect.texture = load(icon_path)
+            tex_rect.custom_minimum_size = Vector2(20, 20)
+            tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+            tex_rect.stretch_mode = TextureRect.STRETCH_SCALE
+            hbox.add_child(tex_rect)
+        # Название и количество
+        var label_item = Label.new()
+        label_item.text = "%s: %d" % [prod_name, amount]
+        label_item.add_theme_color_override("font_color", Color.WHITE)
+        hbox.add_child(label_item)
+        tooltip_products_container.add_child(hbox)
 
 func _hide_tooltip():
     hex_tooltip.visible = false
     _tooltip_visible = false
     _hovered_hex = null
     _hover_start_time = 0.0
+    for child in tooltip_products_container.get_children():
+        child.queue_free()
 
 func _show_context_menu(row: int, col: int, click_pos: Vector2):
     var tile = tile_data[row][col]

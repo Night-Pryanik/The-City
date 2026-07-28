@@ -77,15 +77,16 @@ offset_right = 220.0
 offset_bottom = 80.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_o7tci")
 
-[node name="Label" type="Label" parent="HexTooltip" unique_id=1368253454]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_bottom = 10.0
-grow_horizontal = 2
-grow_vertical = 2
-text = "Тестовая подсказка"
+[node name="TooltipVBox" type="VBoxContainer" parent="HexTooltip" unique_id=433727967]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="TooltipTextLabel" type="Label" parent="HexTooltip/TooltipVBox" unique_id=1266942755]
+layout_mode = 2
+
+[node name="TooltipProductsContainer" type="HBoxContainer" parent="HexTooltip/TooltipVBox" unique_id=239241664]
+layout_mode = 2
 
 [node name="BuildManager" type="Node" parent="." unique_id=1269596246]
 script = ExtResource("5_6ic70")
