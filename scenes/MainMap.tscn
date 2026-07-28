@@ -9,6 +9,7 @@
 [ext_resource type="Script" uid="uid://b7pijc74chsbo" path="res://scripts/road_manager.gd" id="7_2m761"]
 [ext_resource type="Script" uid="uid://d5hdforsqjlr" path="res://scripts/expansion_manager.gd" id="8_8fkir"]
 [ext_resource type="Script" uid="uid://clfermtbeqck1" path="res://scripts/worker_manager.gd" id="9_nmjbi"]
+[ext_resource type="Script" uid="uid://f5r75bb5rgdq" path="res://scripts/townsfolk_manager.gd" id="10_yd4n3"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_o7tci"]
 bg_color = Color(0.19607843, 0.19607843, 0.19607843, 1)
@@ -97,3 +98,6 @@ script = ExtResource("8_8fkir")
 
 [node name="WorkerManager" type="Node" parent="." unique_id=1914351628]
 script = ExtResource("9_nmjbi")
+
+[node name="TownsfolkManager" type="Node" parent="." unique_id=1981434839]
+script = ExtResource("10_yd4n3")

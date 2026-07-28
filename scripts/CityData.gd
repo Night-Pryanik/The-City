@@ -79,11 +79,24 @@ func add_raw_production(raw_id: String):
 func do_tick():
     if Engine.is_editor_hint():
         return
-    # Работа зданий
-    for bld in city_built_buildings:
+
+    # --- Работа зданий (только если есть горожанин) ---
+    var main_map = get_tree().root.find_child("MainMap", true, false)
+    var tm = main_map.get_node("TownsfolkManager") if main_map else null
+
+    for i in range(city_built_buildings.size()):
+        var bld = city_built_buildings[i]
         var recipe_id = bld.get("recipe", "")
         if recipe_id == "":
             continue
+
+        var has_worker = false
+        if tm:
+            has_worker = tm.has_townsfolk(i)
+
+        if not has_worker:
+            continue
+
         var recipe = null
         for c in GameData.crafts:
             if c["id"] == recipe_id:
@@ -91,11 +104,13 @@ func do_tick():
                 break
         if not recipe:
             continue
+
         var can_craft = true
         for res in recipe["resources"]:
             if city_storage.get(res, 0) < recipe["resources"][res]:
                 can_craft = false
                 break
+
         if can_craft:
             for res in recipe["resources"]:
                 city_storage[res] -= recipe["resources"][res]
@@ -104,7 +119,7 @@ func do_tick():
                 city_storage[res] += recipe["result"][res]
                 production_rates[res] += recipe["result"][res]
 
-    # Потребление еды населением
+    # --- Потребление еды населением ---
     var food_needed = max(0, total_population - 1) * food_per_citizen
     var food_eaten = 0
     for pid in city_food_pool:
@@ -126,9 +141,31 @@ func _check_population_change():
         if city_food_pool[pid]:
             available_food += city_storage.get(pid, 0)
 
+    var main_map = get_tree().root.find_child("MainMap", true, false)
+
     if available_food >= food_for_new_settler and total_population > 0:
         total_population += 1
-        workers += 1
+
+        # --- СНАЧАЛА ПРОВЕРЯЕМ, ЕСТЬ ЛИ СВОБОДНОЕ УЛУЧШЕНИЕ НА КАРТЕ ---
+        var has_field_vacancy = false
+        if main_map and main_map.has_node("WorkerManager"):
+            var wm = main_map.get_node("WorkerManager")
+            var vacancy = wm.find_vacancy()
+            if not vacancy.is_empty():
+                has_field_vacancy = true
+
+        if has_field_vacancy:
+            workers += 1
+            if main_map and main_map.has_node("WorkerManager"):
+                var wm = main_map.get_node("WorkerManager")
+                wm.assign_worker()
+        else:
+            townsfolk += 1
+            if main_map and main_map.has_node("TownsfolkManager"):
+                var tm = main_map.get_node("TownsfolkManager")
+                tm.assign_townsfolk()
+
+        # Списываем еду за нового жителя
         var remaining = food_for_new_settler
         var active_food = []
         for pid in city_food_pool:
@@ -140,14 +177,23 @@ func _check_population_change():
             remaining -= 1
             if city_storage[pid] <= 0:
                 active_food.erase(pid)
+
         emit_signal("population_changed", total_population)
         print("Население выросло до ", total_population)
+
     elif available_food <= 0 and total_population > 1:
         total_population -= 1
         if scholars > 0:
             scholars -= 1
         elif townsfolk > 0:
             townsfolk -= 1
+            # Убираем горожанина из назначений
+            if main_map and main_map.has_node("TownsfolkManager"):
+                var tm = main_map.get_node("TownsfolkManager")
+                for i in range(city_built_buildings.size()):
+                    if tm.has_townsfolk(i):
+                        tm.remove_townsfolk(i)
+                        break
         else:
             workers -= 1
         emit_signal("population_changed", total_population)
@@ -264,6 +310,13 @@ func request_build(building_id: String) -> bool:
                 recipe_id = craft["id"]
                 break
         city_built_buildings.append({"id": building_id, "recipe": recipe_id})
+
+        # Автоматически назначаем горожанина на новое здание, если есть свободные
+        var main_map = get_tree().root.find_child("MainMap", true, false)
+        if main_map and main_map.has_node("TownsfolkManager"):
+            var tm = main_map.get_node("TownsfolkManager")
+            tm.assign_townsfolk()
+
         emit_signal("city_updated")
         return true
     else:

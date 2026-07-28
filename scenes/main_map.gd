@@ -56,6 +56,7 @@ var use_edge_scrolling = true
 @onready var road_manager = $RoadManager
 @onready var expansion_manager = $ExpansionManager
 @onready var worker_manager = $WorkerManager
+@onready var townsfolk_manager = $TownsfolkManager
 @onready var settings_menu = preload("res://scenes/settings_menu.tscn").instantiate()
 
 func _ready():
@@ -126,6 +127,8 @@ func _ready():
     city_ui.research_requested.connect(CityData.start_research)
     CityData.research_completed.connect(_on_research_completed)
     expansion_manager.chunk_hovered.connect(_on_chunk_hovered)
+    worker_manager.assignment_changed.connect(_on_assignment_changed)
+    townsfolk_manager.assignment_changed.connect(_on_townsfolk_assignment_changed)
 
     if pause_menu:
         if not pause_menu.save_pressed.is_connected(_on_pause_save):
@@ -593,7 +596,11 @@ func _on_popup_menu_id_pressed(id: int):
     if action == "resume_improvement":
         var r = meta["row"]
         var c = meta["col"]
+        # Пытаемся назначить рабочего на это конкретное улучшение
         if not worker_manager.assign_worker(r, c):
+            # Если нет свободных рабочих, ищем вакансию автоматически
+            # (assign_worker без параметров найдёт другую вакансию, но мы хотим именно это)
+            # Но если рабочий не нашёлся, показываем сообщение
             hud.show_message("Нет свободных рабочих!")
         map_renderer.queue_redraw()
         return
@@ -634,7 +641,12 @@ func _on_build_completed(row: int, col: int, imp_id: String, animal_id = null):
     
     road_manager.build_road_from(row, col, tile_data, REGION_ROWS, REGION_COLS)
     
-    worker_manager.assign_worker(row, col)
+    # --- АВТОМАТИЧЕСКОЕ НАЗНАЧЕНИЕ РАБОЧЕГО ---
+    # Сначала пытаемся назначить на только что построенное улучшение
+    if not worker_manager.assign_worker(row, col):
+        # Если нет свободных рабочих, просто оставляем улучшение без рабочего
+        # (оно будет серым, игрок увидит, что некому работать)
+        pass
     
     map_renderer.queue_redraw()
 
@@ -752,3 +764,14 @@ func _update_population_hud():
     var pop_label = hud.get_node_or_null("VBoxContainer/PopulationLabel")
     if pop_label:
         pop_label.text = "Население: %d" % CityData.total_population
+
+func _on_assignment_changed():
+    map_renderer.queue_redraw()
+
+func _on_townsfolk_assignment_changed():
+    if city_ui.visible:
+        city_ui.update_data(CityData.city_storage, CityData.production_rates, CityData.consumption_rates, CityData.city_food_pool, GameData.buildings, GameData.crafts, CityData.city_built_buildings, GameData.products, GameData.categories)
+        # Обновляем список построенных зданий
+        var buildings_tab = city_ui.get_node("BuildingsTabButton")  # нужно получить доступ к модулю
+        if buildings_tab:
+            buildings_tab.refresh_built()

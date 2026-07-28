@@ -1,17 +1,62 @@
 # worker_manager.gd
 extends Node
 
-# Словарь занятых гексов: "row,col" -> true
+signal assignment_changed()
+
 var assigned_hexes = {}
 
-func assign_worker(row: int, col: int) -> bool:
+func find_vacancy() -> Dictionary:
+    var main_map = get_parent()
+    var tile_data = main_map.tile_data
+    var region_rows = main_map.REGION_ROWS
+    var region_cols = main_map.REGION_COLS
+
+    var candidates = []
+    for row in range(region_rows):
+        for col in range(region_cols):
+            var tile = tile_data[row][col]
+            if tile == null:
+                continue
+            var improvement = tile.get("improvement")
+            if improvement == null:
+                continue
+            if assigned_hexes.has(str(row) + "," + str(col)):
+                continue
+
+            var priority = 0
+            if improvement == "farm" or improvement == "pasture" or improvement == "mine":
+                priority = 1
+            else:
+                priority = 2
+
+            candidates.append({
+                "row": row,
+                "col": col,
+                "priority": priority,
+                "improvement": improvement
+            })
+
+    candidates.sort_custom(func(a, b): return a.priority < b.priority)
+    if candidates.size() > 0:
+        return {"row": candidates[0].row, "col": candidates[0].col}
+    return {}
+
+func assign_worker(row: int = -1, col: int = -1) -> bool:
+    if row == -1 or col == -1:
+        var vacancy = find_vacancy()
+        if vacancy.is_empty():
+            return false
+        row = vacancy.row
+        col = vacancy.col
+
     var key = str(row) + "," + str(col)
     if assigned_hexes.has(key):
-        return false  # уже есть рабочий
+        return false
     if CityData.workers <= 0:
-        return false  # нет свободных рабочих
+        return false
     assigned_hexes[key] = true
     CityData.workers -= 1
+    emit_signal("assignment_changed")
     return true
 
 func remove_worker(row: int, col: int):
@@ -19,6 +64,7 @@ func remove_worker(row: int, col: int):
     if assigned_hexes.has(key):
         assigned_hexes.erase(key)
         CityData.workers += 1
+        emit_signal("assignment_changed")
 
 func has_worker(row: int, col: int) -> bool:
     var key = str(row) + "," + str(col)
@@ -43,3 +89,4 @@ func load_assignments(assignments: Array):
             var col = int(item.get("col", -1))
             if row >= 0 and col >= 0:
                 assigned_hexes[str(row) + "," + str(col)] = true
+    emit_signal("assignment_changed")
