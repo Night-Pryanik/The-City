@@ -494,7 +494,7 @@ func _update_tooltip_text(row: int, col: int):
             if res_id != null:
                 var res_data = GameData.raw_resources.get(res_id, {})
                 if res_data.has("produces"):
-                    _add_production_info(res_id, "Производит:")
+                    _add_production_info(res_id, " Производит:")
     else:
         # Улучшение не построено — показываем потенциальное производство
         if res_id != null:
