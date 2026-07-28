@@ -457,7 +457,18 @@ func _update_tooltip_text(row: int, col: int):
         var res_data = GameData.raw_resources.get(res_id, {})
         if res_data.has("tech_required") and not CityData.is_tech_unlocked(res_data["tech_required"]):
             locked = " (заблокировано)"
-    tooltip_label.text = "Местность: %s\nРесурс: %s%s\nУлучшение: %s" % [terrain_name, res_name, locked, imp_name]
+
+    # Формируем строку улучшения с состоянием
+    var imp_status = ""
+    if tile.improvement != null:
+        var has_worker = worker_manager.has_worker(row, col)
+        # Здесь можно добавить другие проверки: paused, damaged...
+        if not has_worker:
+            imp_status = " (неактивно: нет рабочего)"
+        else:
+            imp_status = " (работает)"
+
+    tooltip_label.text = "Местность: %s\nРесурс: %s%s\nУлучшение: %s%s" % [terrain_name, res_name, locked, imp_name, imp_status]
 
 func _hide_tooltip():
     hex_tooltip.visible = false
