@@ -13,7 +13,7 @@ extends Control
 @onready var trade_tab_button = $LeftPanel/TradeTabButton
 @onready var technologies_tab_button = $LeftPanel/TechnologiesTabButton
 @onready var close_button = $BottomPanel/CloseButton
-@onready var close_button_top = $TopPanel/CloseButtonTop
+@onready var close_button_top = $RightPanel/CloseButtonTop
 
 # Верхняя панель
 @onready var top_food_label = $TopPanel/TopFoodLabel

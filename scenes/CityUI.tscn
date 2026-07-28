@@ -65,32 +65,16 @@ layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
 offset_left = 180.0
-offset_right = 825.0
+offset_right = 824.0
 offset_bottom = 50.0
 grow_horizontal = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_yrkmr")
 
-[node name="CloseButtonTop" type="Button" parent="TopPanel" unique_id=1190549711]
-layout_mode = 1
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = 292.0
-offset_right = 329.0
-offset_bottom = 31.0
-grow_horizontal = 0
-theme_override_font_sizes/font_size = 16
-text = "X"
-
 [node name="TopFoodLabel" type="Label" parent="TopPanel" unique_id=1528058809]
-layout_mode = 1
-anchors_preset = 5
-anchor_left = 0.5
-anchor_right = 0.5
-offset_left = 23.0
-offset_right = 69.0
+layout_mode = 0
+offset_left = 261.0
+offset_right = 307.0
 offset_bottom = 23.0
-grow_horizontal = 2
 text = "Еда: 0"
 
 [node name="RightPanel" type="Panel" parent="." unique_id=470611506]
@@ -100,7 +84,7 @@ anchor_left = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 824.0
-offset_right = 1039.0
+offset_right = 1264.0
 offset_bottom = 768.0
 grow_horizontal = 0
 grow_vertical = 2
@@ -120,6 +104,17 @@ text = "Построенные здания"
 
 [node name="BuiltBuildingsList" type="VBoxContainer" parent="RightPanel/VBoxContainer" unique_id=1857158825]
 layout_mode = 2
+
+[node name="CloseButtonTop" type="Button" parent="RightPanel" unique_id=1190549711]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -37.0
+offset_bottom = 31.0
+grow_horizontal = 0
+theme_override_font_sizes/font_size = 16
+text = "X"
 
 [node name="ContentPanel" type="Panel" parent="." unique_id=606119453]
 layout_mode = 1
@@ -325,10 +320,10 @@ anchor_left = 1.0
 anchor_top = 0.5
 anchor_right = 1.0
 anchor_bottom = 0.5
-offset_left = 650.0
-offset_top = -14.0
-offset_right = 815.0
-offset_bottom = 17.0
+offset_left = 807.0
+offset_top = -8.0
+offset_right = 972.0
+offset_bottom = 23.0
 grow_horizontal = 0
 grow_vertical = 2
 text = "Вернуться на карту"
