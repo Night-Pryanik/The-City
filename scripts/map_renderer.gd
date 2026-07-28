@@ -230,6 +230,7 @@ func _draw_hex_overlays(row: int, col: int):
             draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color.WHITE, false)
 
     if in_influence and tile.improvement != null:
+        var has_worker = main_map.worker_manager.has_worker(row, col)
         var imp_data = GameData.improvements.get(tile.improvement, {})
         var imp_icon = imp_data.get("icon", "")
         var small_size = min(IMPROVEMENT_ICON_SIZE * 0.7, 24)
@@ -237,15 +238,18 @@ func _draw_hex_overlays(row: int, col: int):
         if imp_icon != "" and icon_textures.has(imp_icon):
             var tex = icon_textures[imp_icon]
             var icon_rect = Rect2(icon_pos.x, icon_pos.y, small_size, small_size)
-            draw_texture_rect(tex, icon_rect, false)
+            if not has_worker:
+                draw_texture_rect(tex, icon_rect, false, Color(0.5, 0.5, 0.5))
+            else:
+                draw_texture_rect(tex, icon_rect, false)
         else:
+            # Рисуем цветной круг, если нет иконки
             if imp_data.has("color"):
                 var c = imp_data["color"]
-                var fallback_color = Color(
-                    c[0] / 255.0, c[1] / 255.0, c[2] / 255.0
-                )
-                var center_offset = icon_pos + Vector2(small_size / 2, small_size / 2)
-                draw_circle(center_offset, small_size / 2.5, fallback_color)
+                var fallback_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
+                if not has_worker:
+                    fallback_color = Color(0.5, 0.5, 0.5)
+                draw_circle(icon_pos + Vector2(small_size/2, small_size/2), small_size / 2.5, fallback_color)
 
 func _is_resource_locked(resource_id: String) -> bool:
     if resource_id == null or resource_id == "":

@@ -19,11 +19,11 @@ var research_progress: float = 0.0
 
 # --- НАСЕЛЕНИЕ ---
 var total_population: int = 1
-var peasants: int = 1
+var workers: int = 1
 var townsfolk: int = 0
 var scholars: int = 0
-var food_for_new_settler: int = 100    # сколько еды нужно накопить для роста
-var food_per_citizen: int = 1          # сколько еды съедает один житель за тик
+var food_for_new_settler: int = 100
+var food_per_citizen: int = 1
 
 const PRODUCTION_INTERVAL: float = 2.0
 
@@ -46,7 +46,7 @@ func setup():
     research_progress = 0.0
 
     total_population = 1
-    peasants = 1
+    workers = 1
     townsfolk = 0
     scholars = 0
 
@@ -57,7 +57,6 @@ func setup():
         if GameData.products[pid].get("category") == "food":
             city_food_pool[pid] = true
 
-    # Стартовый запас еды для первой постройки
     if city_storage.has("meat"):
         city_storage["meat"] = 10
 
@@ -106,7 +105,7 @@ func do_tick():
                 production_rates[res] += recipe["result"][res]
 
     # Потребление еды населением
-    var food_needed = total_population * food_per_citizen
+    var food_needed = max(0, total_population - 1) * food_per_citizen
     var food_eaten = 0
     for pid in city_food_pool:
         if city_food_pool[pid] and city_storage.get(pid, 0) > 0:
@@ -121,19 +120,15 @@ func do_tick():
     _check_population_change()
     emit_signal("city_updated")
 
-# --- РОСТ И УБЫЛЬ НАСЕЛЕНИЯ ---
 func _check_population_change():
-    # Считаем доступную еду
     var available_food = 0
     for pid in city_food_pool:
         if city_food_pool[pid]:
             available_food += city_storage.get(pid, 0)
 
     if available_food >= food_for_new_settler and total_population > 0:
-        # Рост населения
         total_population += 1
-        peasants += 1
-        # Списываем еду
+        workers += 1
         var remaining = food_for_new_settler
         var active_food = []
         for pid in city_food_pool:
@@ -147,26 +142,22 @@ func _check_population_change():
                 active_food.erase(pid)
         emit_signal("population_changed", total_population)
         print("Население выросло до ", total_population)
-
     elif available_food <= 0 and total_population > 1:
-        # Убыль населения от голода
         total_population -= 1
-        # Сначала умирают учёные, потом горожане, потом крестьяне
         if scholars > 0:
             scholars -= 1
         elif townsfolk > 0:
             townsfolk -= 1
         else:
-            peasants -= 1
+            workers -= 1
         emit_signal("population_changed", total_population)
         print("Население уменьшилось до ", total_population)
 
-# --- ИССЛЕДОВАНИЯ (без изменений) ---
+# --- ИССЛЕДОВАНИЯ ---
 func start_research(tech_id: String) -> bool:
     if Engine.is_editor_hint():
         return false
     if current_research_tech_id != "":
-        # Находим название текущей технологии для сообщения об ошибке
         var current_tech_name = current_research_tech_id
         for t in GameData.technologies:
             if t["id"] == current_research_tech_id:
@@ -210,7 +201,7 @@ func start_research(tech_id: String) -> bool:
         current_research_tech_id = tech_id
         current_research_time = tech_data.get("time", 10.0)
         research_progress = 0.0
-        emit_signal("research_error", "Начато исследование: " + tech_data["name"])
+        print("Начато исследование: ", tech_data["name"])
         emit_signal("city_updated")
         return true
     else:
@@ -225,13 +216,11 @@ func tick_research(delta: float):
     research_progress += delta / current_research_time
     if research_progress >= 1.0:
         unlocked_technologies.append(current_research_tech_id)
-        
         var tech_name = current_research_tech_id
         for t in GameData.technologies:
             if t["id"] == current_research_tech_id:
                 tech_name = t["name"]
                 break
-        
         emit_signal("research_error", "Исследование завершено: " + tech_name)
         emit_signal("research_completed", current_research_tech_id)
         current_research_tech_id = ""
@@ -242,7 +231,6 @@ func tick_research(delta: float):
 func is_tech_unlocked(tech_id: String) -> bool:
     return tech_id in unlocked_technologies
 
-# --- СТРОИТЕЛЬСТВО (без изменений) ---
 func request_build(building_id: String) -> bool:
     if Engine.is_editor_hint():
         return false

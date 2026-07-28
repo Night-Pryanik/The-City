@@ -55,12 +55,14 @@ var use_edge_scrolling = true
 @onready var map_renderer = $MapRenderer
 @onready var road_manager = $RoadManager
 @onready var expansion_manager = $ExpansionManager
+@onready var worker_manager = $WorkerManager
 @onready var settings_menu = preload("res://scenes/settings_menu.tscn").instantiate()
 
 func _ready():
     if Engine.is_editor_hint():
         _initialize_map()
         map_renderer.initialize(tile_data, self)
+        worker_manager.initialize()
         map_renderer.queue_redraw()
         return
 
@@ -107,6 +109,8 @@ func _ready():
 
     _calc_offsets()
     map_renderer.queue_redraw()
+
+    _update_population_hud()
 
     popup_menu.id_pressed.connect(_on_popup_menu_id_pressed)
     city_ui.closed.connect(_on_city_ui_close)
@@ -246,7 +250,7 @@ func _process(delta):
         for row in range(REGION_ROWS):
             for col in range(REGION_COLS):
                 var tile = tile_data[row][col]
-                if tile.improvement != null and tile.resource != null:
+                if tile.improvement != null and tile.resource != null and worker_manager.has_worker(row, col):
                     CityData.add_raw_production(tile.resource)
         CityData.do_tick()
 
@@ -582,6 +586,8 @@ func _on_build_completed(row: int, col: int, imp_id: String, animal_id = null):
     build_manager.remove_build(row, col)
     
     road_manager.build_road_from(row, col, tile_data, REGION_ROWS, REGION_COLS)
+    
+    worker_manager.assign_worker(row, col)
     
     map_renderer.queue_redraw()
 

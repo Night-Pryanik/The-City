@@ -183,7 +183,7 @@ func _update_food_label():
             total_cons += cons_rates.get(pid, 0)
 
     var food_str = "Еда: %d [+%d / -%d]" % [food_sum, total_prod, total_cons]
-    var pop_str = "Население: %d (К:%d Г:%d У:%d)" % [CityData.total_population, CityData.peasants, CityData.townsfolk, CityData.scholars]
+    var pop_str = "Население: %d (Р:%d Г:%d У:%d)" % [CityData.total_population, CityData.workers, CityData.townsfolk, CityData.scholars]
 
     if top_food_label:
         top_food_label.text = food_str + " | " + pop_str
