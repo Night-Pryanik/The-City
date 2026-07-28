@@ -9,9 +9,9 @@ const CITY_ROW = int(REGION_ROWS / 2.0)
 const CITY_COL = int(REGION_COLS / 2.0)
 const CITY_ICON_SIZE = 130
 const TERRAIN_ICON_SIZE = 130
-const RESOURCE_ICON_SIZE = 60
+const RESOURCE_ICON_SIZE = 80
 const IMPROVEMENT_ICON_SIZE = 32
-const LOCK_ICON_SIZE = 24
+const LOCK_ICON_SIZE = 32
 
 var tile_data = []
 var icon_textures = {}
@@ -166,10 +166,8 @@ func _draw_hex(row: int, col: int):
 
 func _draw_hex_overlays(row: int, col: int):
     var center = HexUtils.hex_center(row, col, HEX_RADIUS)
-    var offset_x = main_map.offset_x + main_map.scroll_offset.x
-    var offset_y = main_map.offset_y + main_map.scroll_offset.y
-    center.x += offset_x
-    center.y += offset_y
+    center.x += main_map.offset_x + main_map.scroll_offset.x
+    center.y += main_map.offset_y + main_map.scroll_offset.y
 
     var tile = tile_data[row][col]
     var in_influence = tile.get("in_influence", false)
@@ -183,26 +181,16 @@ func _draw_hex_overlays(row: int, col: int):
         var is_locked = _is_resource_locked(tile.resource)
         if res_icon != "" and icon_textures.has(res_icon):
             var tex = icon_textures[res_icon]
-            var icon_rect = Rect2(
-                center.x - RESOURCE_ICON_SIZE / 2.0,
-                center.y - RESOURCE_ICON_SIZE / 2.0,
-                RESOURCE_ICON_SIZE,
-                RESOURCE_ICON_SIZE
-            )
+            var icon_rect = Rect2(center.x - RESOURCE_ICON_SIZE / 2.0, center.y - RESOURCE_ICON_SIZE / 2.0, RESOURCE_ICON_SIZE, RESOURCE_ICON_SIZE)
             draw_texture_rect(tex, icon_rect, false)
         else:
             if res_data.has("color"):
                 var c = res_data["color"]
-                var fallback_color = Color(
-                    c[0] / 255.0, c[1] / 255.0, c[2] / 255.0
-                )
+                var fallback_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
                 draw_circle(center, RESOURCE_ICON_SIZE / 3.0, fallback_color)
         if is_locked and lock_texture:
-            var lock_pos = Vector2(
-                center.x + RESOURCE_ICON_SIZE / 2.0 - LOCK_ICON_SIZE / 2.0,
-                center.y - RESOURCE_ICON_SIZE / 2.0 + LOCK_ICON_SIZE / 2.0
-            )
-            var lock_rect = Rect2(lock_pos.x, lock_pos.y, LOCK_ICON_SIZE, LOCK_ICON_SIZE)
+            var lock_icon_pos = Vector2(center.x, center.y + HEX_RADIUS * 0.75)
+            var lock_rect = Rect2(lock_icon_pos.x - LOCK_ICON_SIZE / 2.0, lock_icon_pos.y - LOCK_ICON_SIZE / 2.0, LOCK_ICON_SIZE, LOCK_ICON_SIZE)
             draw_texture_rect(lock_texture, lock_rect, false)
 
         if is_locked and CityData.current_research_tech_id != "":
@@ -233,11 +221,10 @@ func _draw_hex_overlays(row: int, col: int):
         var has_worker = main_map.worker_manager.has_worker(row, col)
         var imp_data = GameData.improvements.get(tile.improvement, {})
         var imp_icon = imp_data.get("icon", "")
-        var small_size = min(IMPROVEMENT_ICON_SIZE * 0.7, 24)
-        var icon_pos = Vector2(center.x + HEX_RADIUS / 3.0, center.y - HEX_RADIUS / 2.0)
+        var icon_pos = Vector2(center.x, center.y - HEX_RADIUS * 0.75)
         if imp_icon != "" and icon_textures.has(imp_icon):
             var tex = icon_textures[imp_icon]
-            var icon_rect = Rect2(icon_pos.x, icon_pos.y, small_size, small_size)
+            var icon_rect = Rect2(icon_pos.x - IMPROVEMENT_ICON_SIZE / 2.0, icon_pos.y - IMPROVEMENT_ICON_SIZE / 2.0, IMPROVEMENT_ICON_SIZE, IMPROVEMENT_ICON_SIZE)
             if not has_worker:
                 draw_texture_rect(tex, icon_rect, false, Color(0.5, 0.5, 0.5))
             else:
@@ -249,7 +236,7 @@ func _draw_hex_overlays(row: int, col: int):
                 var fallback_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
                 if not has_worker:
                     fallback_color = Color(0.5, 0.5, 0.5)
-                draw_circle(icon_pos + Vector2(small_size/2, small_size/2), small_size / 2.5, fallback_color)
+                draw_circle(icon_pos, IMPROVEMENT_ICON_SIZE / 2.5, fallback_color)
 
 func _is_resource_locked(resource_id: String) -> bool:
     if resource_id == null or resource_id == "":
