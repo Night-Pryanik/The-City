@@ -125,7 +125,6 @@ func _refresh_all():
     buildings_tab.refresh_built()
     technologies_tab.refresh()
     _update_food_label()
-    # _update_population_display()
 
 func _switch_tab(tab_id: String):
     active_tab = tab_id
@@ -154,9 +153,9 @@ func _on_close_pressed():
 
 func _highlight_active_tab_button():
     var active_style = StyleBoxFlat.new()
-    active_style.bg_color = Color(0.784, 0.784, 0.784, 1.0)      # непрозрачный светло-серый
+    active_style.bg_color = Color(0.784, 0.784, 0.784, 1.0)
     var inactive_style = StyleBoxFlat.new()
-    inactive_style.bg_color = Color(0.471, 0.471, 0.471, 0.3)     # полупрозрачный тёмно-серый (было 0.5, увеличили для надёжности)
+    inactive_style.bg_color = Color(0.471, 0.471, 0.471, 0.3)
 
     for tab in tab_buttons:
         var btn: Button = tab["button"]
@@ -183,7 +182,7 @@ func _update_food_label():
             total_cons += cons_rates.get(pid, 0)
 
     var food_str = "Еда: %d [+%d / -%d]" % [food_sum, total_prod, total_cons]
-    var pop_str = "Население: %d (Р:%d Г:%d У:%d)" % [CityData.total_population, CityData.workers, CityData.townsfolk, CityData.scholars]
+    var pop_str = "Население: %d (свободных: %d)" % [CityData.total_population, CityData.idle_population]
 
     if top_food_label:
         top_food_label.text = food_str + " | " + pop_str
@@ -214,6 +213,10 @@ func _update_food_label():
 
 func update_food_label():
     _update_food_label()
+
+func refresh_buildings_tab():
+    if buildings_tab and buildings_tab.has_method("refresh_built"):
+        buildings_tab.refresh_built()
 
 func _on_build_requested(building_id: String):
     emit_signal("build_requested", building_id)
@@ -250,7 +253,6 @@ func _process(delta):
     if hovered_build:
         build_hover_timer += delta
         if build_hover_timer >= TOOLTIP_DELAY:
-            # Определяем текст подсказки
             var hint = ""
             if buildings_tab.selected_building_id == "":
                 hint = "Не выбрано здание"

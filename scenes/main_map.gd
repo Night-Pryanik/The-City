@@ -94,6 +94,10 @@ func _ready():
         _update_population_hud()
 
         worker_manager.load_assignments(SaveManager.saved_data.get("worker_assignments", []))
+        townsfolk_manager.load_assignments(SaveManager.saved_data.get("townsfolk_assignments", []))
+        # Пересчитываем свободных жителей на основе общего числа и занятых
+        var total_assigned = worker_manager.get_assigned_count() + townsfolk_manager.get_assigned_count()
+        CityData.idle_population = CityData.total_population - total_assigned
         
         road_manager.rebuild_roads_from_existing(tile_data, REGION_ROWS, REGION_COLS)
 
@@ -767,11 +771,20 @@ func _update_population_hud():
 
 func _on_assignment_changed():
     map_renderer.queue_redraw()
+    city_ui.update_food_label()
 
 func _on_townsfolk_assignment_changed():
     if city_ui.visible:
-        city_ui.update_data(CityData.city_storage, CityData.production_rates, CityData.consumption_rates, CityData.city_food_pool, GameData.buildings, GameData.crafts, CityData.city_built_buildings, GameData.products, GameData.categories)
-        # Обновляем список построенных зданий
-        var buildings_tab = city_ui.get_node("BuildingsTabButton")  # нужно получить доступ к модулю
-        if buildings_tab:
-            buildings_tab.refresh_built()
+        city_ui.update_data(
+            CityData.city_storage,
+            CityData.production_rates,
+            CityData.consumption_rates,
+            CityData.city_food_pool,
+            GameData.buildings,
+            GameData.crafts,
+            CityData.city_built_buildings,
+            GameData.products,
+            GameData.categories
+        )
+        city_ui.refresh_buildings_tab()
+        city_ui.update_food_label()

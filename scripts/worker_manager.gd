@@ -52,10 +52,11 @@ func assign_worker(row: int = -1, col: int = -1) -> bool:
     var key = str(row) + "," + str(col)
     if assigned_hexes.has(key):
         return false
-    if CityData.workers <= 0:
+    if CityData.idle_population <= 0:
         return false
+
     assigned_hexes[key] = true
-    CityData.workers -= 1
+    CityData.idle_population -= 1
     emit_signal("assignment_changed")
     return true
 
@@ -63,7 +64,7 @@ func remove_worker(row: int, col: int):
     var key = str(row) + "," + str(col)
     if assigned_hexes.has(key):
         assigned_hexes.erase(key)
-        CityData.workers += 1
+        CityData.idle_population += 1
         emit_signal("assignment_changed")
 
 func has_worker(row: int, col: int) -> bool:

@@ -19,9 +19,7 @@ var research_progress: float = 0.0
 
 # --- НАСЕЛЕНИЕ ---
 var total_population: int = 1
-var workers: int = 1
-var townsfolk: int = 0
-var scholars: int = 0
+var idle_population: int = 1  # свободные жители (не занятые нигде)
 var food_for_new_settler: int = 100
 var food_per_citizen: int = 1
 
@@ -46,9 +44,7 @@ func setup():
     research_progress = 0.0
 
     total_population = 1
-    workers = 1
-    townsfolk = 0
-    scholars = 0
+    idle_population = 1  # один житель, пока нигде не занят
 
     for pid in GameData.products.keys():
         city_storage[pid] = 0
@@ -145,25 +141,21 @@ func _check_population_change():
 
     if available_food >= food_for_new_settler and total_population > 0:
         total_population += 1
+        idle_population += 1  # новый житель пока свободен
 
-        # --- СНАЧАЛА ПРОВЕРЯЕМ, ЕСТЬ ЛИ СВОБОДНОЕ УЛУЧШЕНИЕ НА КАРТЕ ---
-        var has_field_vacancy = false
+        # --- ПЫТАЕМСЯ НАЗНАЧИТЬ НА ВАКАНСИЮ ПО ПРИОРИТЕТУ ---
+        # Сначала пытаемся найти свободное улучшение на карте
+        var assigned = false
         if main_map and main_map.has_node("WorkerManager"):
             var wm = main_map.get_node("WorkerManager")
-            var vacancy = wm.find_vacancy()
-            if not vacancy.is_empty():
-                has_field_vacancy = true
+            assigned = wm.assign_worker()  # пытается взять жителя из idle_population
 
-        if has_field_vacancy:
-            workers += 1
-            if main_map and main_map.has_node("WorkerManager"):
-                var wm = main_map.get_node("WorkerManager")
-                wm.assign_worker()
-        else:
-            townsfolk += 1
-            if main_map and main_map.has_node("TownsfolkManager"):
-                var tm = main_map.get_node("TownsfolkManager")
-                tm.assign_townsfolk()
+        # Если не удалось — пытаемся найти свободное здание в городе
+        if not assigned and main_map and main_map.has_node("TownsfolkManager"):
+            var tm = main_map.get_node("TownsfolkManager")
+            assigned = tm.assign_townsfolk()
+
+        # Если никуда не назначился — остаётся в idle_population
 
         # Списываем еду за нового жителя
         var remaining = food_for_new_settler
@@ -183,19 +175,29 @@ func _check_population_change():
 
     elif available_food <= 0 and total_population > 1:
         total_population -= 1
-        if scholars > 0:
-            scholars -= 1
-        elif townsfolk > 0:
-            townsfolk -= 1
-            # Убираем горожанина из назначений
-            if main_map and main_map.has_node("TownsfolkManager"):
-                var tm = main_map.get_node("TownsfolkManager")
-                for i in range(city_built_buildings.size()):
-                    if tm.has_townsfolk(i):
-                        tm.remove_townsfolk(i)
-                        break
-        else:
-            workers -= 1
+        # Умирает кто-то из занятых (сначала учёные, потом горожане, потом рабочие)
+        # Пока учёных нет, снимаем горожанина или рабочего
+        var removed = false
+        if main_map and main_map.has_node("TownsfolkManager"):
+            var tm = main_map.get_node("TownsfolkManager")
+            for i in range(city_built_buildings.size()):
+                if tm.has_townsfolk(i):
+                    tm.remove_townsfolk(i)  # возвращает жителя в idle_population
+                    removed = true
+                    break
+        if not removed and main_map and main_map.has_node("WorkerManager"):
+            var wm = main_map.get_node("WorkerManager")
+            # Убираем первого попавшегося рабочего
+            for key in wm.assigned_hexes.keys():
+                var parts = key.split(",")
+                if parts.size() == 2:
+                    wm.remove_worker(int(parts[0]), int(parts[1]))
+                    removed = true
+                    break
+        if not removed:
+            # Если никто не занят — просто уменьшаем idle_population
+            idle_population -= 1
+
         emit_signal("population_changed", total_population)
         print("Население уменьшилось до ", total_population)
 

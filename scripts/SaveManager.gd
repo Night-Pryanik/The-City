@@ -3,7 +3,7 @@ extends Node
 
 const SAVE_PATH = "user://savegame.json"
 var is_loaded = false
-var saved_data = {}   # сюда будем складывать все данные при загрузке
+var saved_data = {}
 
 func save_game():
     var main_map = Engine.get_main_loop().root.get_node_or_null("MainMap")
@@ -24,13 +24,12 @@ func save_game():
         "current_research_time": CityData.current_research_time,
         "research_progress": CityData.research_progress,
         "total_population": CityData.total_population,
-        "workers": CityData.workers,
-        "townsfolk": CityData.townsfolk,
-        "scholars": CityData.scholars,
+        "idle_population": CityData.idle_population,
         "food_for_new_settler": CityData.food_for_new_settler,
         "food_per_citizen": CityData.food_per_citizen,
         "tile_data": _serialize_tile_data(main_map),
-        "worker_assignments": main_map.worker_manager.serialize_assignments()
+        "worker_assignments": main_map.worker_manager.serialize_assignments(),
+        "townsfolk_assignments": main_map.townsfolk_manager.serialize_assignments()
     }
     var file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
     if file:
@@ -68,9 +67,7 @@ func apply_loaded_data():
     CityData.current_research_time = saved_data.get("current_research_time", 0.0)
     CityData.research_progress = saved_data.get("research_progress", 0.0)
     CityData.total_population = saved_data.get("total_population", CityData.total_population)
-    CityData.workers = saved_data.get("workers", CityData.workers)
-    CityData.townsfolk = saved_data.get("townsfolk", CityData.townsfolk)
-    CityData.scholars = saved_data.get("scholars", CityData.scholars)
+    CityData.idle_population = saved_data.get("idle_population", CityData.idle_population)
     CityData.food_for_new_settler = saved_data.get("food_for_new_settler", CityData.food_for_new_settler)
     CityData.food_per_citizen = saved_data.get("food_per_citizen", CityData.food_per_citizen)
     # tile_data будет восстановлен отдельно

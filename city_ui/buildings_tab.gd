@@ -70,7 +70,7 @@ func refresh_built():
     for child in built_buildings_list.get_children():
         child.queue_free()
 
-    var main_map = get_parent().get_parent()  # CityUI -> MainMap
+    var main_map = get_tree().root.find_child("MainMap", true, false)
     var tm = main_map.get_node("TownsfolkManager") if main_map else null
 
     for i in range(built_buildings.size()):
@@ -83,10 +83,15 @@ func refresh_built():
         var building_name = bdata["name"] if bdata else bld["id"]
 
         var row = HBoxContainer.new()
+        row.add_theme_constant_override("separation", 10)
+
         var has_worker = tm.has_townsfolk(i) if tm else false
         var status = " (работает)" if has_worker else " (не работает)"
+        var status_color = Color.GREEN if has_worker else Color.RED
+
         var label = Label.new()
         label.text = building_name + status
+        label.add_theme_color_override("font_color", status_color)
         row.add_child(label)
 
         var btn = Button.new()
@@ -99,6 +104,22 @@ func refresh_built():
         row.add_child(btn)
 
         built_buildings_list.add_child(row)
+
+func _on_building_toggle(index: int, enable: bool):
+    var main_map = get_tree().root.find_child("MainMap", true, false)
+    var tm = main_map.get_node("TownsfolkManager") if main_map else null
+    if not tm:
+        return
+
+    if enable:
+        if CityData.idle_population <= 0:   # ИСПРАВЛЕНО: townsfolk → idle_population
+            ui_helpers.set_message("Нет свободных жителей!")
+            return
+        tm.assign_townsfolk(index)
+    else:
+        tm.remove_townsfolk(index)
+
+    refresh_built()
 
 func center_split_offset():
     if hsplit:
@@ -193,19 +214,3 @@ func _on_build_pressed():
         return
 
     emit_signal("build_requested", selected_building_id)
-    
-func _on_building_toggle(index: int, enable: bool):
-    var main_map = get_parent().get_parent()
-    var tm = main_map.get_node("TownsfolkManager") if main_map else null
-    if not tm:
-        return
-
-    if enable:
-        if CityData.townsfolk <= 0:
-            ui_helpers.set_message("Нет свободных горожан!")
-            return
-        tm.assign_townsfolk(index)
-    else:
-        tm.remove_townsfolk(index)
-
-    refresh_built()
