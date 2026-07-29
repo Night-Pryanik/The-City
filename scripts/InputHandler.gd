@@ -43,6 +43,29 @@ func initialize(main_node: Node):
     expansion_manager = main_node.expansion_manager
 
 func handle_input(event: InputEvent):
+    # --- ОТЛАДОЧНАЯ КОМАНДА: Ctrl+Shift+F = +100 пшеницы ---
+    if Engine.is_editor_hint() or OS.is_debug_build():
+        if event is InputEventKey and event.pressed:
+            if event.keycode == KEY_F and event.ctrl_pressed and event.shift_pressed:
+                CityData.city_storage["wheat"] = CityData.city_storage.get("wheat", 0) + 100
+                if hud and hud.has_method("show_message"):
+                    hud.show_message("Добавлено 100 пшеницы")
+                if city_ui.visible:
+                    city_ui.update_data(
+                        CityData.city_storage,
+                        CityData.production_rates,
+                        CityData.consumption_rates,
+                        CityData.city_food_pool,
+                        GameData.buildings,
+                        GameData.crafts,
+                        CityData.city_built_buildings,
+                        GameData.products,
+                        GameData.categories
+                    )
+                    city_ui.update_food_label()
+                map_renderer.queue_redraw()
+                return  # не обрабатываем другие события после этого
+    
     if Engine.is_editor_hint():
         return
 
