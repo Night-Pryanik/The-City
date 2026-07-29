@@ -49,5 +49,7 @@ func serialize_assignments() -> Array:
 func load_assignments(assignments: Array):
     assigned_buildings.clear()
     for idx in assignments:
-        assigned_buildings[str(idx)] = true
+        var index = int(idx)
+        if index >= 0 and index < CityData.city_built_buildings.size():
+            assigned_buildings[str(index)] = true
     emit_signal("assignment_changed")

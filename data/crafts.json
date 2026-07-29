@@ -23,6 +23,22 @@
       "resources": {"flour": 1},
       "result": {"bread": 1},
       "time": 0
+    },
+    {
+      "id": "process_meat",
+      "name": "Разделка мяса",
+      "produced_in": "slaughterhouse",
+      "resources": {"raw_meat": 1},
+      "result": {"meat": 1},
+      "time": 0
+    },
+    {
+      "id": "make_cheese",
+      "name": "Сыроделие",
+      "produced_in": "dairy",
+      "resources": {"raw_milk": 1},
+      "result": {"cheese": 1},
+      "time": 0
     }
   ]
 }

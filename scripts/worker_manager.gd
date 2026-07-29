@@ -84,10 +84,12 @@ func serialize_assignments() -> Array:
 
 func load_assignments(assignments: Array):
     assigned_hexes.clear()
+    var main_map = get_parent()
     for item in assignments:
         if item is Dictionary and item.has("row") and item.has("col"):
             var row = int(item.get("row", -1))
             var col = int(item.get("col", -1))
             if row >= 0 and col >= 0:
-                assigned_hexes[str(row) + "," + str(col)] = true
+                if main_map and row < main_map.REGION_ROWS and col < main_map.REGION_COLS:
+                    assigned_hexes[str(row) + "," + str(col)] = true
     emit_signal("assignment_changed")

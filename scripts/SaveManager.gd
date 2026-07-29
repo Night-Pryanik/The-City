@@ -44,7 +44,16 @@ func load_game() -> bool:
     var file = FileAccess.open(SAVE_PATH, FileAccess.READ)
     if file:
         var text = file.get_as_text()
-        var data = JSON.parse_string(text)
+        var parsed = JSON.parse_string(text)
+        var data = null
+        if parsed is Dictionary:
+            data = parsed
+        else:
+            if parsed.error != OK:
+                printerr("Ошибка загрузки сохранения: ", parsed.error_string)
+                return false
+            data = parsed.result
+
         if data == null:
             return false
         saved_data = data

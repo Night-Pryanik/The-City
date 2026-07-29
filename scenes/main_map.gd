@@ -65,7 +65,6 @@ func _ready():
     if Engine.is_editor_hint():
         _initialize_map()
         map_renderer.initialize(tile_data, self)
-        worker_manager.initialize()
         map_renderer.queue_redraw()
         return
 
@@ -92,15 +91,31 @@ func _ready():
                         tile["in_influence"] = saved.get("in_influence", false)
                 col_array.append(tile)
             tile_data.append(col_array)
-            
-        _update_population_hud()
 
+        # Восстанавливаем назначения рабочих и горожан
         worker_manager.load_assignments(SaveManager.saved_data.get("worker_assignments", []))
         townsfolk_manager.load_assignments(SaveManager.saved_data.get("townsfolk_assignments", []))
-        # Пересчитываем свободных жителей на основе общего числа и занятых
+
+        # Пересчитываем свободных жителей по фактически восстановленным назначениям
         var total_assigned = worker_manager.get_assigned_count() + townsfolk_manager.get_assigned_count()
-        CityData.idle_population = CityData.total_population - total_assigned
-        
+        CityData.idle_population = max(0, CityData.total_population - total_assigned)
+
+        # --- ПРОВЕРКА: если назначения горожан есть, но они не совпадают с количеством зданий, исправляем ---
+        var current_buildings_count = CityData.city_built_buildings.size()
+        var invalid_keys = []
+        for key in townsfolk_manager.assigned_buildings.keys():
+            var idx = int(key)
+            if idx >= current_buildings_count:
+                invalid_keys.append(key)
+        for key in invalid_keys:
+            townsfolk_manager.assigned_buildings.erase(key)
+
+        if invalid_keys.size() > 0:
+            total_assigned = worker_manager.get_assigned_count() + townsfolk_manager.get_assigned_count()
+            CityData.idle_population = max(0, CityData.total_population - total_assigned)
+
+        _update_population_hud()
+
         road_manager.rebuild_roads_from_existing(tile_data, REGION_ROWS, REGION_COLS)
 
         SaveManager.is_loaded = false

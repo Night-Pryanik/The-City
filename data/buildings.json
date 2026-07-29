@@ -18,6 +18,18 @@
       "cost_food": 0,
       "additional_cost": {"flour": 3},
       "icon": "bakery.png"
+    },
+    {
+      "id": "slaughterhouse",
+      "name": "Бойня",
+      "cost_food": 3,
+      "icon": "slaughterhouse.png"
+    },
+    {
+      "id": "dairy",
+      "name": "Сыроварня",
+      "cost_food": 3,
+      "icon": "dairy.png"
     }
   ]
 }
