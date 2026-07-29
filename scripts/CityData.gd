@@ -284,10 +284,39 @@ func is_tech_unlocked(tech_id: String) -> bool:
 
 func _is_product_available(product_id: String) -> bool:
     var product_data = GameData.products.get(product_id, {})
+    # Проверка технологии
     var required_tech = product_data.get("unlock_tech", "")
-    if required_tech == "":
-        return true
-    return is_tech_unlocked(required_tech)
+    if required_tech != "" and not is_tech_unlocked(required_tech):
+        return false
+
+    # Проверка улучшения (на карте)
+    var required_improvement = product_data.get("unlock_improvement", "")
+    if required_improvement != "" and not _has_improvement(required_improvement):
+        return false
+
+    # Проверка здания (в городе)
+    var required_building = product_data.get("unlock_building", "")
+    if required_building != "" and not _has_building(required_building):
+        return false
+
+    return true
+
+func _has_improvement(improvement_id: String) -> bool:
+    var main_map = get_tree().root.find_child("MainMap", true, false)
+    if not main_map:
+        return false
+    for row in range(main_map.REGION_ROWS):
+        for col in range(main_map.REGION_COLS):
+            var tile = main_map.get_tile_data(row, col)
+            if tile and tile.get("improvement") == improvement_id:
+                return true
+    return false
+
+func _has_building(building_id: String) -> bool:
+    for bld in city_built_buildings:
+        if bld.get("id") == building_id:
+            return true
+    return false
 
 func request_build(building_id: String) -> bool:
     if Engine.is_editor_hint():
