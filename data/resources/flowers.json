@@ -10,7 +10,7 @@
       "allowed_terrains": ["plain"],
       "improved_by": "farm",
       "produces": {"tulips": 1},
-      "icon": "tulip_field.png",
+      "icon": "tulip.png",
       "color": [255, 100, 100]
     },
     {
@@ -23,7 +23,7 @@
       "allowed_terrains": ["plain"],
       "improved_by": "farm",
       "produces": {"roses": 1},
-      "icon": "rose_field.png",
+      "icon": "rose.png",
       "color": [255, 50, 50]
     },
     {
@@ -36,7 +36,7 @@
       "allowed_terrains": ["plain"],
       "improved_by": "farm",
       "produces": {"chamomile": 1},
-      "icon": "chamomile_field.png",
+      "icon": "chamomile.png",
       "color": [255, 255, 200]
     }
   ]
