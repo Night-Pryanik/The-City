@@ -79,8 +79,8 @@ func handle_input(event: InputEvent):
     # Обработка режима "Развитие" для кликов и подсветки
     if expansion_manager.is_active():
         if event is InputEventMouseButton:
-            _handle_expansion_mode_input(event)
-            # Не возвращаемся, чтобы движение мыши обрабатывалось дальше
+            if _handle_expansion_mode_input(event):
+                return
         elif event is InputEventMouseMotion:
             _handle_expansion_mode_motion(event)
             # Не возвращаемся, чтобы _handle_mouse_motion также мог обработать движение
@@ -169,27 +169,27 @@ func _handle_esc():
         main_map.city_button.disabled = true
         main_map.expansion_button.disabled = true
 
-func _handle_expansion_mode_input(event: InputEventMouseButton):
-    if hud.get_global_rect().has_point(main_map.get_global_mouse_position()):
-        return
+func _handle_expansion_mode_input(event: InputEventMouseButton) -> bool:
+    if hud.get_global_rect().has_point(event.global_position):
+        return true
 
     if event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
         if popup_menu.visible:
             popup_menu.hide()
-            return
+            return true
         var mouse_pos = event.global_position
         var hex = _pixel_to_hex(mouse_pos.x, mouse_pos.y)
         if hex != null and not main_map.tile_data[hex.row][hex.col]["in_influence"]:
-            var chunk = expansion_manager.current_chunk
+            var chunk = expansion_manager.get_chunk_hexes(hex.row, hex.col)
             if chunk.is_empty():
-                chunk = expansion_manager.get_chunk_hexes(hex.row, hex.col)
+                return true
             var available_food = 0
             if CityData:
                 for pid in CityData.city_food_pool:
                     if CityData.city_food_pool[pid]:
                         available_food += CityData.city_storage.get(pid, 0)
             expansion_manager.show_context_menu(chunk, mouse_pos, available_food)
-        return
+        return true
 
     if event.button_index == MOUSE_BUTTON_LEFT:
         if event.pressed:
@@ -199,7 +199,9 @@ func _handle_expansion_mode_input(event: InputEventMouseButton):
         else:
             if is_dragging:
                 is_dragging = false
-        # Не делаем return, чтобы событие дошло до _handle_mouse_button
+        return true
+
+    return false
 
 func _handle_expansion_mode_motion(event: InputEventMouseMotion):
     var hex = _pixel_to_hex(event.global_position.x, event.global_position.y)

@@ -83,7 +83,6 @@ func get_chunk_cost(chunk: Array) -> int:
 func show_context_menu(chunk: Array, click_pos: Vector2, available_food: int):
     var cost = get_chunk_cost(chunk)
     var hex_count = chunk.size()
-    # Находим самый дорогой тип местности для названия
     var max_cost = 0
     for hex in chunk:
         var c = get_hex_cost(hex.row, hex.col)
@@ -92,13 +91,16 @@ func show_context_menu(chunk: Array, click_pos: Vector2, available_food: int):
     main_map.popup_menu.clear()
     var label = "Освоить выделенную область (%d клеток, %d/%d еды)" % [hex_count, cost, available_food]
     main_map.popup_menu.add_item(label)
-    # Метаданные: передаём весь чанк и стоимость
     main_map.popup_menu.set_item_metadata(
         main_map.popup_menu.item_count - 1,
         {"action": "expand_territory", "chunk": chunk, "cost": cost}
     )
     main_map.popup_menu.position = click_pos
     main_map.popup_menu.popup()
+    # Принудительно делаем видимым, если не сработало
+    if not main_map.popup_menu.visible:
+        main_map.popup_menu.visible = true
+        main_map.popup_menu.raise()
 
 func handle_action(chunk: Array, cost: int) -> bool:
     if not is_expansion_mode:
