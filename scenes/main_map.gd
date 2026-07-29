@@ -197,16 +197,10 @@ func _process(delta):
         CityData.do_tick()
 
     CityData.tick_research(delta)
-    if CityData.current_research_tech_id != "" or build_manager.active_builds.size() > 0 or expansion_manager.is_active():
+    if CityData.current_research_tech_id != "" or build_manager.active_builds.size() > 0:
         map_renderer.queue_redraw()
 
     input_handler.handle_process(delta)
-
-
-# =============================================================================
-#  ВСЕ ОСТАЛЬНЫЕ ФУНКЦИИ (контекстное меню, строительство, город, сохранение и т.д.)
-#  Остаются без изменений. См. ниже.
-# =============================================================================
 
 func _initialize_map():
     GameData.load_all_data()
