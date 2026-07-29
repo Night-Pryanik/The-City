@@ -561,15 +561,24 @@ func _add_production_info(res_id: String, prefix: String):
     if not res_data.has("produces"):
         return
 
+    # Фильтруем продукты: оставляем только те, которые доступны (по технологии)
+    var available_products = {}
+    for prod_id in res_data["produces"]:
+        if CityData.is_product_available(prod_id):
+            available_products[prod_id] = res_data["produces"][prod_id]
+
+    if available_products.is_empty():
+        return  # если после фильтрации ничего не осталось — не показываем ничего
+
     # Добавляем текстовую метку с префиксом
     var label = Label.new()
     label.text = prefix
     label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
     tooltip_products_container.add_child(label)
 
-    # Добавляем каждый продукт с иконкой (если есть)
-    for prod_id in res_data["produces"]:
-        var amount = res_data["produces"][prod_id]
+    # Добавляем каждый доступный продукт с иконкой
+    for prod_id in available_products:
+        var amount = available_products[prod_id]
         var prod_name = GameData.products.get(prod_id, {}).get("name", prod_id)
         var icon_path = ""
         var prod_data = GameData.products.get(prod_id, {})
@@ -578,7 +587,6 @@ func _add_production_info(res_id: String, prefix: String):
             icon_path = map_renderer.get_icon_path(icon_name)
 
         var hbox = HBoxContainer.new()
-        # Иконка (если есть)
         if icon_path != "":
             var tex_rect = TextureRect.new()
             tex_rect.texture = load(icon_path)
@@ -586,7 +594,6 @@ func _add_production_info(res_id: String, prefix: String):
             tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
             tex_rect.stretch_mode = TextureRect.STRETCH_SCALE
             hbox.add_child(tex_rect)
-        # Название и количество
         var label_item = Label.new()
         label_item.text = "%s: %d" % [prod_name, amount]
         label_item.add_theme_color_override("font_color", Color.WHITE)

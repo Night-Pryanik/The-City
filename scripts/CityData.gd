@@ -68,6 +68,9 @@ func add_raw_production(raw_id: String, multiplier: float = 1.0):
     if raw.has("produces"):
         for pid in raw["produces"]:
             var amount = raw["produces"][pid] * multiplier
+            # Проверяем, доступен ли этот продукт (по технологии)
+            if not _is_product_available(pid):
+                continue
             if city_storage.has(pid):
                 city_storage[pid] += amount
                 production_rates[pid] += amount
@@ -279,6 +282,13 @@ func tick_research(delta: float):
 func is_tech_unlocked(tech_id: String) -> bool:
     return tech_id in unlocked_technologies
 
+func _is_product_available(product_id: String) -> bool:
+    var product_data = GameData.products.get(product_id, {})
+    var required_tech = product_data.get("unlock_tech", "")
+    if required_tech == "":
+        return true
+    return is_tech_unlocked(required_tech)
+
 func request_build(building_id: String) -> bool:
     if Engine.is_editor_hint():
         return false
@@ -338,3 +348,6 @@ func add_plant(plant_id: String):
     if GameData.raw_resources.has(plant_id) and GameData.raw_resources[plant_id].get("category") == "plants":
         if not (plant_id in domesticated_plants):
             domesticated_plants.append(plant_id)
+
+func is_product_available(product_id: String) -> bool:
+    return _is_product_available(product_id)
