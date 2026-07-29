@@ -23,7 +23,7 @@
       "allowed_terrains": ["plain"],
       "improved_by": "farm",
       "produces": {"roses": 1},
-      "icon": "rose.png",
+      "icon": "roses.png",
       "color": [255, 50, 50]
     },
     {

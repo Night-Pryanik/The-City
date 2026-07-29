@@ -12,7 +12,7 @@
       "group": "food_plants", "subgroup": "cereals",
       "allowed_terrains": ["plain", "hill"], "improved_by": "farm",
       "produces": {"oats": 1, "feed": 12},
-      "icon": "oat.png", "color": [214, 210, 82]
+      "icon": "oats.png", "color": [214, 210, 82]
     },
     {
       "id": "barley_field", "name": "Ячмень", "type": "raw", "category": "plants",
@@ -145,7 +145,7 @@
       "group": "food_plants", "subgroup": "legumes",
       "allowed_terrains": ["plain"], "improved_by": "farm",
       "produces": {"beans": 1, "feed": 6},
-      "icon": "bean.png", "color": [180, 100, 60]
+      "icon": "beans.png", "color": [180, 100, 60]
     },
     {
       "id": "cowpea_field", "name": "Вигна", "type": "raw", "category": "plants",
@@ -159,21 +159,21 @@
       "group": "food_plants", "subgroup": "legumes",
       "allowed_terrains": ["plain"], "improved_by": "farm",
       "produces": {"peas": 1, "feed": 6},
-      "icon": "pea.png", "color": [120, 180, 80]
+      "icon": "peas.png", "color": [120, 180, 80]
     },
     {
       "id": "lentil_field", "name": "Чечевица", "type": "raw", "category": "plants",
       "group": "food_plants", "subgroup": "legumes",
       "allowed_terrains": ["plain", "hill"], "improved_by": "farm",
       "produces": {"lentils": 1, "feed": 6},
-      "icon": "lentil.png", "color": [160, 140, 80]
+      "icon": "lentils.png", "color": [160, 140, 80]
     },
     {
       "id": "chickpea_field", "name": "Нут", "type": "raw", "category": "plants",
       "group": "food_plants", "subgroup": "legumes",
       "allowed_terrains": ["plain", "hill"], "improved_by": "farm",
       "produces": {"chickpeas": 1, "feed": 6},
-      "icon": "chickpea.png", "color": [200, 170, 100]
+      "icon": "chickpeas.png", "color": [200, 170, 100]
     }
   ]
 }
