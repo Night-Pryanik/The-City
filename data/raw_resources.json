@@ -3,151 +3,176 @@
     {
       "id": "wheat_field", "name": "Пшеница", "type": "raw", "category": "plants",
       "group": "food_plants", "subgroup": "cereals",
-      "allowed_terrains": ["plain"], "improved_by": "farm", "produces": {"wheat": 1},
+      "allowed_terrains": ["plain"], "improved_by": "farm",
+      "produces": {"wheat": 1, "feed": 12},
       "icon": "wheat_field.png", "color": [218, 165, 32]
     },
     {
       "id": "oat_field", "name": "Овёс", "type": "raw", "category": "plants",
       "group": "food_plants", "subgroup": "cereals",
-      "allowed_terrains": ["plain", "hill"], "improved_by": "farm", "produces": {"oats": 1},
+      "allowed_terrains": ["plain", "hill"], "improved_by": "farm",
+      "produces": {"oats": 1, "feed": 12},
       "icon": "oat_field.png", "color": [214, 210, 82]
     },
     {
       "id": "barley_field", "name": "Ячмень", "type": "raw", "category": "plants",
       "group": "food_plants", "subgroup": "cereals",
-      "allowed_terrains": ["plain", "hill"], "improved_by": "farm", "produces": {"barley": 1},
+      "allowed_terrains": ["plain", "hill"], "improved_by": "farm",
+      "produces": {"barley": 1, "feed": 12},
       "icon": "barley_field.png", "color": [218, 184, 96]
     },
     {
       "id": "millet_field", "name": "Просо", "type": "raw", "category": "plants",
       "group": "food_plants", "subgroup": "cereals",
-      "allowed_terrains": ["plain"], "improved_by": "farm", "produces": {"millet": 1},
+      "allowed_terrains": ["plain"], "improved_by": "farm",
+      "produces": {"millet": 1, "feed": 12},
       "icon": "millet_field.png", "color": [240, 230, 140]
     },
     {
       "id": "rye_field", "name": "Рожь", "type": "raw", "category": "plants",
       "group": "food_plants", "subgroup": "cereals",
-      "allowed_terrains": ["plain", "hill"], "improved_by": "farm", "produces": {"rye": 1},
+      "allowed_terrains": ["plain", "hill"], "improved_by": "farm",
+      "produces": {"rye": 1, "feed": 12},
       "icon": "rye_field.png", "color": [160, 150, 100]
     },
     {
       "id": "rice_field", "name": "Рис", "type": "raw", "category": "plants",
       "group": "food_plants", "subgroup": "cereals",
-      "allowed_terrains": ["plain"], "improved_by": "farm", "produces": {"rice": 1},
+      "allowed_terrains": ["plain"], "improved_by": "farm",
+      "produces": {"rice": 1, "feed": 12},
       "icon": "rice_field.png", "color": [180, 220, 120]
     },
     {
       "id": "soybean_field", "name": "Соя", "type": "raw", "category": "plants",
       "group": "food_plants", "subgroup": "legumes",
-      "allowed_terrains": ["plain"], "improved_by": "farm", "produces": {"soybean": 1},
+      "allowed_terrains": ["plain"], "improved_by": "farm",
+      "produces": {"soybean": 1, "feed": 6},
       "icon": "soybean_field.png", "color": [170, 190, 100]
     },
     {
       "id": "quinoa_field", "name": "Киноа", "type": "raw", "category": "plants",
       "group": "food_plants", "subgroup": "pseudocereals",
-      "allowed_terrains": ["hill", "mountain"], "improved_by": "farm", "produces": {"quinoa": 1},
+      "allowed_terrains": ["hill", "mountain"], "improved_by": "farm",
+      "produces": {"quinoa": 1, "feed": 8},
       "icon": "quinoa_field.png", "color": [210, 150, 110]
     },
     {
       "id": "canihua_field", "name": "Каньива", "type": "raw", "category": "plants",
       "group": "food_plants", "subgroup": "pseudocereals",
-      "allowed_terrains": ["hill", "mountain"], "improved_by": "farm", "produces": {"canihua": 1},
+      "allowed_terrains": ["hill", "mountain"], "improved_by": "farm",
+      "produces": {"canihua": 1, "feed": 8},
       "icon": "canihua_field.png", "color": [200, 140, 100]
     },
     {
       "id": "potato_field", "name": "Картофель", "type": "raw", "category": "plants",
       "group": "food_plants", "subgroup": "tubers",
-      "allowed_terrains": ["plain", "hill"], "improved_by": "farm", "produces": {"potato": 1},
+      "allowed_terrains": ["plain", "hill"], "improved_by": "farm",
+      "produces": {"potato": 1, "feed": 4},
       "icon": "potato_field.png", "color": [180, 160, 110]
     },
     {
       "id": "oca_field", "name": "Ока", "type": "raw", "category": "plants",
       "group": "food_plants", "subgroup": "tubers",
-      "allowed_terrains": ["hill"], "improved_by": "farm", "produces": {"oca": 1},
+      "allowed_terrains": ["hill"], "improved_by": "farm",
+      "produces": {"oca": 1, "feed": 4},
       "icon": "oca_field.png", "color": [230, 160, 120]
     },
     {
       "id": "corn_field", "name": "Кукуруза", "type": "raw", "category": "plants",
       "group": "food_plants", "subgroup": "cereals",
-      "allowed_terrains": ["plain"], "improved_by": "farm", "produces": {"corn": 1},
+      "allowed_terrains": ["plain"], "improved_by": "farm",
+      "produces": {"corn": 1, "feed": 12},
       "icon": "corn_field.png", "color": [240, 200, 50]
     },
     {
       "id": "yam_field", "name": "Ямс", "type": "raw", "category": "plants",
       "group": "food_plants", "subgroup": "tubers",
-      "allowed_terrains": ["plain", "forest"], "improved_by": "farm", "produces": {"yam": 1},
+      "allowed_terrains": ["plain", "forest"], "improved_by": "farm",
+      "produces": {"yam": 1, "feed": 4},
       "icon": "yam_field.png", "color": [160, 120, 80]
     },
     {
       "id": "cassava_field", "name": "Кассава", "type": "raw", "category": "plants",
       "group": "food_plants", "subgroup": "tubers",
-      "allowed_terrains": ["plain"], "improved_by": "farm", "produces": {"cassava": 1},
+      "allowed_terrains": ["plain"], "improved_by": "farm",
+      "produces": {"cassava": 1, "feed": 4},
       "icon": "cassava_field.png", "color": [180, 140, 100]
     },
     {
       "id": "sorghum_field", "name": "Сорго", "type": "raw", "category": "plants",
       "group": "food_plants", "subgroup": "cereals",
-      "allowed_terrains": ["plain", "hill"], "improved_by": "farm", "produces": {"sorghum": 1},
+      "allowed_terrains": ["plain", "hill"], "improved_by": "farm",
+      "produces": {"sorghum": 1, "feed": 12},
       "icon": "sorghum_field.png", "color": [200, 130, 70]
     },
     {
       "id": "amaranth_field", "name": "Амарант", "type": "raw", "category": "plants",
       "group": "food_plants", "subgroup": "pseudocereals",
-      "allowed_terrains": ["plain", "hill"], "improved_by": "farm", "produces": {"amaranth": 1},
+      "allowed_terrains": ["plain", "hill"], "improved_by": "farm",
+      "produces": {"amaranth": 1, "feed": 8},
       "icon": "amaranth_field.png", "color": [180, 50, 50]
     },
     {
       "id": "teff_field", "name": "Теф", "type": "raw", "category": "plants",
       "group": "food_plants", "subgroup": "cereals",
-      "allowed_terrains": ["hill", "mountain"], "improved_by": "farm", "produces": {"teff": 1},
+      "allowed_terrains": ["hill", "mountain"], "improved_by": "farm",
+      "produces": {"teff": 1, "feed": 12},
       "icon": "teff_field.png", "color": [150, 100, 50]
     },
     {
       "id": "taro_field", "name": "Таро", "type": "raw", "category": "plants",
       "group": "food_plants", "subgroup": "tubers",
-      "allowed_terrains": ["plain", "forest"], "improved_by": "farm", "produces": {"taro": 1},
+      "allowed_terrains": ["plain", "forest"], "improved_by": "farm",
+      "produces": {"taro": 1, "feed": 4},
       "icon": "taro_field.png", "color": [140, 180, 140]
     },
     {
       "id": "maca_field", "name": "Мака", "type": "raw", "category": "plants",
       "group": "food_plants", "subgroup": "tubers",
-      "allowed_terrains": ["mountain"], "improved_by": "farm", "produces": {"maca": 1},
+      "allowed_terrains": ["mountain"], "improved_by": "farm",
+      "produces": {"maca": 1, "feed": 4},
       "icon": "maca_field.png", "color": [200, 180, 100]
     },
     {
       "id": "buckwheat_field", "name": "Гречиха", "type": "raw", "category": "plants",
       "group": "food_plants", "subgroup": "cereals",
-      "allowed_terrains": ["plain", "hill"], "improved_by": "farm", "produces": {"buckwheat": 1},
+      "allowed_terrains": ["plain", "hill"], "improved_by": "farm",
+      "produces": {"buckwheat": 1, "feed": 12},
       "icon": "buckwheat_field.png", "color": [160, 110, 70]
     },
     {
       "id": "bean_field", "name": "Фасоль", "type": "raw", "category": "plants",
       "group": "food_plants", "subgroup": "legumes",
-      "allowed_terrains": ["plain"], "improved_by": "farm", "produces": {"beans": 1},
+      "allowed_terrains": ["plain"], "improved_by": "farm",
+      "produces": {"beans": 1, "feed": 6},
       "icon": "bean_field.png", "color": [180, 100, 60]
     },
     {
       "id": "cowpea_field", "name": "Вигна", "type": "raw", "category": "plants",
       "group": "food_plants", "subgroup": "legumes",
-      "allowed_terrains": ["plain", "hill"], "improved_by": "farm", "produces": {"cowpea": 1},
+      "allowed_terrains": ["plain", "hill"], "improved_by": "farm",
+      "produces": {"cowpea": 1, "feed": 6},
       "icon": "cowpea_field.png", "color": [170, 120, 80]
     },
     {
       "id": "pea_field", "name": "Горох", "type": "raw", "category": "plants",
       "group": "food_plants", "subgroup": "legumes",
-      "allowed_terrains": ["plain"], "improved_by": "farm", "produces": {"peas": 1},
+      "allowed_terrains": ["plain"], "improved_by": "farm",
+      "produces": {"peas": 1, "feed": 6},
       "icon": "pea_field.png", "color": [120, 180, 80]
     },
     {
       "id": "lentil_field", "name": "Чечевица", "type": "raw", "category": "plants",
       "group": "food_plants", "subgroup": "legumes",
-      "allowed_terrains": ["plain", "hill"], "improved_by": "farm", "produces": {"lentils": 1},
+      "allowed_terrains": ["plain", "hill"], "improved_by": "farm",
+      "produces": {"lentils": 1, "feed": 6},
       "icon": "lentil_field.png", "color": [160, 140, 80]
     },
     {
       "id": "chickpea_field", "name": "Нут", "type": "raw", "category": "plants",
       "group": "food_plants", "subgroup": "legumes",
-      "allowed_terrains": ["plain", "hill"], "improved_by": "farm", "produces": {"chickpeas": 1},
+      "allowed_terrains": ["plain", "hill"], "improved_by": "farm",
+      "produces": {"chickpeas": 1, "feed": 6},
       "icon": "chickpea_field.png", "color": [200, 170, 100]
     },
     {
@@ -195,6 +220,8 @@
       "tech_required": "animal_husbandry",
       "allowed_terrains": ["plain", "hill"], "improved_by": "pasture",
       "produces": {"meat": 3, "milk": 2, "hide": 1},
+      "feed_consumption": 10,
+      "time_to_mature": 60.0,
       "icon": "cows.png", "color": [139, 90, 43]
     },
     {
@@ -203,6 +230,8 @@
       "tech_required": "animal_husbandry",
       "allowed_terrains": ["plain", "hill"], "improved_by": "pasture",
       "produces": {"meat": 2, "milk": 1, "wool": 2},
+      "feed_consumption": 5,
+      "time_to_mature": 40.0,
       "icon": "sheep.png", "color": [200, 200, 200]
     },
     {
@@ -211,6 +240,8 @@
       "tech_required": "animal_husbandry",
       "allowed_terrains": ["plain", "hill"], "improved_by": "pasture",
       "produces": {"meat": 2, "milk": 2, "hide": 1},
+      "feed_consumption": 5,
+      "time_to_mature": 40.0,
       "icon": "goats.png", "color": [160, 140, 120]
     },
     {
@@ -219,6 +250,8 @@
       "tech_required": "animal_husbandry",
       "allowed_terrains": ["plain", "hill"], "improved_by": "pasture",
       "produces": {"meat": 3, "milk": 2, "hide": 1},
+      "feed_consumption": 8,
+      "time_to_mature": 50.0,
       "icon": "horses.png", "color": [100, 80, 60]
     },
     {
@@ -227,6 +260,8 @@
       "tech_required": "animal_husbandry",
       "allowed_terrains": ["plain", "hill", "forest"], "improved_by": "pasture",
       "produces": {"meat": 4, "hide": 1},
+      "feed_consumption": 5,
+      "time_to_mature": 40.0,
       "icon": "pigs.png", "color": [255, 180, 180]
     },
     {
@@ -235,6 +270,8 @@
       "tech_required": "animal_husbandry",
       "allowed_terrains": ["plain", "hill"], "improved_by": "pasture",
       "produces": {"meat": 3, "milk": 2, "hide": 1},
+      "feed_consumption": 10,
+      "time_to_mature": 60.0,
       "icon": "zebu.png", "color": [210, 180, 140]
     },
     {
@@ -243,6 +280,8 @@
       "tech_required": "animal_husbandry",
       "allowed_terrains": ["plain", "forest"], "improved_by": "pasture",
       "produces": {"meat": 3, "milk": 1, "hide": 2},
+      "feed_consumption": 10,
+      "time_to_mature": 60.0,
       "icon": "banteng.png", "color": [160, 120, 80]
     },
     {
@@ -251,6 +290,8 @@
       "tech_required": "animal_husbandry",
       "allowed_terrains": ["plain", "hill"], "improved_by": "pasture",
       "produces": {"meat": 4, "milk": 2, "hide": 2},
+      "feed_consumption": 10,
+      "time_to_mature": 60.0,
       "icon": "buffalo.png", "color": [80, 60, 40]
     },
     {
@@ -259,6 +300,8 @@
       "tech_required": "animal_husbandry",
       "allowed_terrains": ["plain", "hill"], "improved_by": "pasture",
       "produces": {"meat": 5, "milk": 1, "hide": 2},
+      "feed_consumption": 10,
+      "time_to_mature": 60.0,
       "icon": "bison.png", "color": [100, 70, 50]
     },
     {
@@ -267,6 +310,8 @@
       "tech_required": "animal_husbandry",
       "allowed_terrains": ["hill", "mountain"], "improved_by": "pasture",
       "produces": {"meat": 3, "milk": 2, "hide": 1},
+      "feed_consumption": 10,
+      "time_to_mature": 60.0,
       "icon": "yak.png", "color": [50, 50, 50]
     },
     {
@@ -275,6 +320,8 @@
       "tech_required": "animal_husbandry",
       "allowed_terrains": ["hill", "mountain"], "improved_by": "pasture",
       "produces": {"meat": 2, "wool": 2},
+      "feed_consumption": 6,
+      "time_to_mature": 45.0,
       "icon": "llama.png", "color": [220, 200, 180]
     },
     {
@@ -283,6 +330,8 @@
       "tech_required": "animal_husbandry",
       "allowed_terrains": ["hill", "mountain"], "improved_by": "pasture",
       "produces": {"meat": 1, "wool": 3},
+      "feed_consumption": 5,
+      "time_to_mature": 40.0,
       "icon": "alpaca.png", "color": [240, 230, 210]
     },
     {
@@ -291,6 +340,8 @@
       "tech_required": "animal_husbandry",
       "allowed_terrains": ["plain", "hill"], "improved_by": "pasture",
       "produces": {"meat": 4, "milk": 2, "hide": 1},
+      "feed_consumption": 7,
+      "time_to_mature": 45.0,
       "icon": "camel.png", "color": [200, 180, 140]
     },
     {
@@ -299,6 +350,8 @@
       "tech_required": "animal_husbandry",
       "allowed_terrains": ["forest", "hill"], "improved_by": "pasture",
       "produces": {"meat": 3, "hide": 2},
+      "feed_consumption": 4,
+      "time_to_mature": 35.0,
       "icon": "deer.png", "color": [180, 140, 100]
     },
     {
@@ -307,6 +360,8 @@
       "tech_required": "animal_husbandry",
       "allowed_terrains": ["plain", "forest"], "improved_by": "pasture",
       "produces": {"meat": 1, "eggs": 3, "feathers": 1},
+      "feed_consumption": 2,
+      "time_to_mature": 20.0,
       "icon": "chicken.png", "color": [255, 230, 150]
     },
     {
@@ -315,6 +370,8 @@
       "tech_required": "animal_husbandry",
       "allowed_terrains": ["plain", "forest"], "improved_by": "pasture",
       "produces": {"meat": 2, "eggs": 2, "feathers": 1},
+      "feed_consumption": 2,
+      "time_to_mature": 20.0,
       "icon": "turkey.png", "color": [180, 130, 80]
     },
     {
@@ -323,6 +380,8 @@
       "tech_required": "animal_husbandry",
       "allowed_terrains": ["plain", "forest"], "improved_by": "pasture",
       "produces": {"meat": 2, "eggs": 2, "feathers": 1},
+      "feed_consumption": 2,
+      "time_to_mature": 20.0,
       "icon": "duck.png", "color": [70, 130, 50]
     },
     {
@@ -331,6 +390,8 @@
       "tech_required": "animal_husbandry",
       "allowed_terrains": ["plain"], "improved_by": "pasture",
       "produces": {"meat": 3, "eggs": 1, "feathers": 2},
+      "feed_consumption": 2,
+      "time_to_mature": 20.0,
       "icon": "goose.png", "color": [200, 200, 200]
     },
     {
@@ -339,6 +400,8 @@
       "tech_required": "animal_husbandry",
       "allowed_terrains": ["plain", "forest"], "improved_by": "pasture",
       "produces": {"meat": 1, "eggs": 2, "feathers": 1},
+      "feed_consumption": 2,
+      "time_to_mature": 20.0,
       "icon": "guineafowl.png", "color": [100, 100, 100]
     },
     {
@@ -347,6 +410,8 @@
       "tech_required": "animal_husbandry",
       "allowed_terrains": ["plain", "hill"], "improved_by": "pasture",
       "produces": {"meat": 4, "eggs": 1, "hide": 1, "feathers": 2},
+      "feed_consumption": 4,
+      "time_to_mature": 30.0,
       "icon": "ostrich.png", "color": [50, 50, 50]
     },
     {
@@ -355,6 +420,8 @@
       "tech_required": "beekeeping",
       "allowed_terrains": ["plain", "forest", "hill"], "improved_by": "pasture",
       "produces": {"honey": 2, "wax": 1},
+      "feed_consumption": 0,
+      "time_to_mature": 0,
       "icon": "bee.png", "color": [255, 215, 0]
     },
     {
@@ -363,6 +430,8 @@
       "tech_required": "animal_husbandry",
       "allowed_terrains": ["plain", "forest"], "improved_by": "pasture",
       "produces": {"meat": 1, "hide": 1},
+      "feed_consumption": 1,
+      "time_to_mature": 15.0,
       "icon": "rabbit.png", "color": [200, 200, 200]
     },
     {
@@ -371,6 +440,8 @@
       "tech_required": "animal_husbandry",
       "allowed_terrains": ["plain", "hill"], "improved_by": "pasture",
       "produces": {"meat": 1, "eggs": 2, "feathers": 1},
+      "feed_consumption": 2,
+      "time_to_mature": 20.0,
       "icon": "pigeon.png", "color": [150, 150, 150]
     },
     {

@@ -61,13 +61,13 @@ func reset_counters():
         production_rates[pid] = 0
         consumption_rates[pid] = 0
 
-func add_raw_production(raw_id: String):
+func add_raw_production(raw_id: String, multiplier: float = 1.0):
     if Engine.is_editor_hint():
         return
     var raw = GameData.raw_resources.get(raw_id, {})
     if raw.has("produces"):
         for pid in raw["produces"]:
-            var amount = raw["produces"][pid]
+            var amount = raw["produces"][pid] * multiplier
             if city_storage.has(pid):
                 city_storage[pid] += amount
                 production_rates[pid] += amount

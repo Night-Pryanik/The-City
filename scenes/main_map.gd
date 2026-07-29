@@ -261,8 +261,27 @@ func _process(delta):
         for row in range(REGION_ROWS):
             for col in range(REGION_COLS):
                 var tile = tile_data[row][col]
-                if tile.improvement != null and tile.resource != null and worker_manager.has_worker(row, col):
+                if tile.improvement == null or tile.resource == null or not worker_manager.has_worker(row, col):
+                    continue
+
+                # Фермы и пастбища теперь работают через единую логику
+                var res_data = GameData.raw_resources.get(tile.resource, {})
+                var feed_needed = res_data.get("feed_consumption", 0)
+
+                if feed_needed > 0:
+                    # Пастбище (или другое животноводческое улучшение)
+                    var available_feed = CityData.city_storage.get("feed", 0)
+                    if available_feed >= feed_needed:
+                        CityData.city_storage["feed"] -= feed_needed
+                        CityData.add_raw_production(tile.resource)
+                    else:
+                        # Нехватка корма — 25% продукции
+                        CityData.add_raw_production(tile.resource, 0.25)
+                        # Можно добавить сообщение в лог (опционально)
+                else:
+                    # Ферма (или улучшение без потребления корма)
                     CityData.add_raw_production(tile.resource)
+
         CityData.do_tick()
 
     CityData.tick_research(delta)
@@ -481,7 +500,7 @@ func _update_tooltip_text(row: int, col: int):
             locked = " (заблокировано)"
 
     var text = "Местность: %s\nРесурс: %s%s" % [terrain_name, res_name, locked]
-    
+
     # --- ЛОГИКА ДЛЯ ПРОИЗВОДСТВА ---
     var imp_status = ""
     if tile.improvement != null:
@@ -494,7 +513,7 @@ func _update_tooltip_text(row: int, col: int):
             if res_id != null:
                 var res_data = GameData.raw_resources.get(res_id, {})
                 if res_data.has("produces"):
-                    _add_production_info(res_id, " Производит:")
+                    _add_production_info(res_id, "  Производит:")
     else:
         # Улучшение не построено — показываем потенциальное производство
         if res_id != null:
@@ -503,12 +522,21 @@ func _update_tooltip_text(row: int, col: int):
                 var improvement_id = res_data["improved_by"]
                 var imp_data = GameData.improvements.get(improvement_id, {})
                 var imp_name_display = imp_data.get("name", improvement_id)
-                _add_production_info(res_id, " При постройке %s будет давать:" % imp_name_display)
+                _add_production_info(res_id, "  При постройке %s будет давать:" % imp_name_display)
         imp_status = " (не построено)"
+
+    # --- ДОБАВЛЯЕМ ИНФОРМАЦИЮ О ПОТРЕБЛЕНИИ КОРМА И ВРЕМЕНИ СОЗРЕВАНИЯ ---
+    if res_id != null:
+        var res_data = GameData.raw_resources.get(res_id, {})
+        var feed_consumption = res_data.get("feed_consumption", 0)
+        if feed_consumption > 0:
+            text += "\nПотребляет корма: %d за цикл" % feed_consumption
+        var time_to_mature = res_data.get("time_to_mature", 0)
+        if time_to_mature > 0:
+            text += "\nВремя заполнения: %.0f сек" % time_to_mature
 
     text += "\nУлучшение: %s%s" % [imp_name, imp_status]
     tooltip_text_label.text = text
-
 
 # Вспомогательная функция для добавления информации о производстве
 func _add_production_info(res_id: String, prefix: String):

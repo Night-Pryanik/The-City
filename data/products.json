@@ -1,5 +1,6 @@
 {
   "resources": [
+    { "id": "feed", "name": "Корм", "type": "product", "category": "material", "icon": "feed.png" },
     { "id": "wheat", "name": "Пшеница", "type": "product", "category": "food", "icon": "wheat.png" },
     { "id": "oats", "name": "Овёс", "type": "product", "category": "food", "icon": "oats.png" },
     { "id": "barley", "name": "Ячмень", "type": "product", "category": "food", "icon": "barley.png" },
