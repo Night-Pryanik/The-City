@@ -1,0 +1,60 @@
+{
+  "resources": [
+    {
+      "id": "flint_deposit", "name": "Кремень", "type": "raw", "category": "minerals",
+      "group": "", "subgroup": "",
+      "tech_required": "mining",
+      "allowed_terrains": ["hill", "mountain"], "improved_by": "mine", "produces": {"flint": 1},
+      "icon": "flint_deposit.png", "color": [169, 169, 169]
+    },
+    {
+      "id": "basalt_deposit", "name": "Базальт", "type": "raw", "category": "minerals",
+      "group": "", "subgroup": "",
+      "tech_required": "mining",
+      "allowed_terrains": ["mountain"], "improved_by": "mine", "produces": {"basalt": 1},
+      "icon": "basalt_deposit.png", "color": [80, 80, 80]
+    },
+    {
+      "id": "tuff_deposit", "name": "Туф", "type": "raw", "category": "minerals",
+      "group": "", "subgroup": "",
+      "tech_required": "mining",
+      "allowed_terrains": ["hill", "mountain"], "improved_by": "mine", "produces": {"tuff": 1},
+      "icon": "tuff_deposit.png", "color": [180, 150, 100]
+    },
+    {
+      "id": "sandstone_deposit", "name": "Песчаник", "type": "raw", "category": "minerals",
+      "group": "", "subgroup": "",
+      "tech_required": "mining",
+      "allowed_terrains": ["plain", "hill"], "improved_by": "mine", "produces": {"sandstone": 1},
+      "icon": "sandstone_deposit.png", "color": [210, 180, 130]
+    },
+    {
+      "id": "marble_deposit", "name": "Мрамор", "type": "raw", "category": "minerals",
+      "group": "", "subgroup": "",
+      "tech_required": "mining",
+      "allowed_terrains": ["hill", "mountain"], "improved_by": "mine", "produces": {"marble": 1},
+      "icon": "marble_deposit.png", "color": [220, 220, 220]
+    },
+    {
+      "id": "granite_deposit", "name": "Гранит", "type": "raw", "category": "minerals",
+      "group": "", "subgroup": "",
+      "tech_required": "mining",
+      "allowed_terrains": ["mountain"], "improved_by": "mine", "produces": {"granite": 1},
+      "icon": "granite_deposit.png", "color": [120, 110, 100]
+    },
+    {
+      "id": "limestone_deposit", "name": "Известняк", "type": "raw", "category": "minerals",
+      "group": "", "subgroup": "",
+      "tech_required": "mining",
+      "allowed_terrains": ["plain", "hill"], "improved_by": "mine", "produces": {"limestone": 1},
+      "icon": "limestone_deposit.png", "color": [200, 200, 180]
+    },
+    {
+      "id": "clay_deposit", "name": "Глина", "type": "raw", "category": "minerals",
+      "group": "", "subgroup": "",
+      "tech_required": "mining",
+      "allowed_terrains": ["plain"], "improved_by": "mine", "produces": {"clay": 1},
+      "icon": "clay_deposit.png", "color": [180, 130, 100]
+    }
+  ]
+}
