@@ -89,12 +89,13 @@ func do_tick():
         if recipe_id == "":
             continue
 
+        # Проверяем, есть ли горожанин на этом здании
         var has_worker = false
         if tm:
             has_worker = tm.has_townsfolk(i)
 
         if not has_worker:
-            continue
+            continue  # здание не работает
 
         var recipe = null
         for c in GameData.crafts:
@@ -104,19 +105,59 @@ func do_tick():
         if not recipe:
             continue
 
-        var can_craft = true
-        for res in recipe["resources"]:
-            if city_storage.get(res, 0) < recipe["resources"][res]:
-                can_craft = false
-                break
+        # --- ПРОВЕРКА РЕСУРСОВ (С ПОДДЕРЖКОЙ ГРУПП) ---
+        var missing_resources = []
+        var resources_to_consume = {}  # { "product_id": amount, ... }
 
-        if can_craft:
-            for res in recipe["resources"]:
-                city_storage[res] -= recipe["resources"][res]
-                consumption_rates[res] += recipe["resources"][res]
-            for res in recipe["result"]:
-                city_storage[res] += recipe["result"][res]
-                production_rates[res] += recipe["result"][res]
+        for res in recipe["resources"]:
+            var amount_needed = recipe["resources"][res]
+            if res.begins_with("@"):
+                # Групповой ресурс
+                var group_id = res.trim_prefix("@")
+                var group_products = GameData.product_groups.get(group_id, [])
+                if group_products.is_empty():
+                    # Группа не найдена — считаем рецепт недоступным
+                    missing_resources.append(res)
+                    break
+
+                var total_available = 0
+                for prod in group_products:
+                    total_available += city_storage.get(prod, 0)
+                if total_available < amount_needed:
+                    missing_resources.append(res)
+                    break
+
+                # Собираем нужное количество из разных продуктов
+                var remaining = amount_needed
+                for prod in group_products:
+                    var available = city_storage.get(prod, 0)
+                    if available > 0:
+                        var take = min(available, remaining)
+                        if take > 0:
+                            resources_to_consume[prod] = resources_to_consume.get(prod, 0) + take
+                            remaining -= take
+                            if remaining <= 0:
+                                break
+            else:
+                # Обычный ресурс
+                if city_storage.get(res, 0) < amount_needed:
+                    missing_resources.append(res)
+                    break
+                resources_to_consume[res] = amount_needed
+
+        # Если не хватает ресурсов — пропускаем рецепт
+        if not missing_resources.is_empty():
+            continue
+
+        # --- СПИСЫВАЕМ РЕСУРСЫ ---
+        for prod in resources_to_consume:
+            city_storage[prod] -= resources_to_consume[prod]
+            consumption_rates[prod] += resources_to_consume[prod]
+
+        # --- ДОБАВЛЯЕМ РЕЗУЛЬТАТ ---
+        for res in recipe["result"]:
+            city_storage[res] += recipe["result"][res]
+            production_rates[res] += recipe["result"][res]
 
     # --- Потребление еды населением ---
     var food_needed = max(0, total_population - 1) * food_per_citizen
@@ -140,27 +181,34 @@ func _check_population_change():
         if city_food_pool[pid]:
             available_food += city_storage.get(pid, 0)
 
+    # --- ДИНАМИКА ЕДЫ (для определения голода) ---
+    var total_prod = 0
+    var total_cons = 0
+    for pid in city_food_pool:
+        if city_food_pool[pid]:
+            total_prod += production_rates.get(pid, 0)
+            total_cons += consumption_rates.get(pid, 0)
+
     var main_map = get_tree().root.find_child("MainMap", true, false)
 
+    # --- РОСТ НАСЕЛЕНИЯ ---
     if available_food >= food_for_new_settler and total_population > 0:
         total_population += 1
         idle_population += 1  # новый житель пока свободен
 
-        # --- ПЫТАЕМСЯ НАЗНАЧИТЬ НА ВАКАНСИЮ ПО ПРИОРИТЕТУ ---
-        # Сначала пытаемся найти свободное улучшение на карте
+        # Пытаемся назначить его на работу (сначала на улучшение, потом в город)
         var assigned = false
         if main_map and main_map.has_node("WorkerManager"):
             var wm = main_map.get_node("WorkerManager")
-            assigned = wm.assign_worker()  # пытается взять жителя из idle_population
+            assigned = wm.assign_worker()  # уменьшит idle_population при успехе
 
-        # Если не удалось — пытаемся найти свободное здание в городе
         if not assigned and main_map and main_map.has_node("TownsfolkManager"):
             var tm = main_map.get_node("TownsfolkManager")
             assigned = tm.assign_townsfolk()
 
         # Если никуда не назначился — остаётся в idle_population
 
-        # Списываем еду за нового жителя
+        # Списываем еду за рождение
         var remaining = food_for_new_settler
         var active_food = []
         for pid in city_food_pool:
@@ -176,30 +224,36 @@ func _check_population_change():
         emit_signal("population_changed", total_population)
         print("Население выросло до ", total_population)
 
-    elif available_food <= 0 and total_population > 1:
+    # --- ГОЛОД (смерть от недостатка еды) ---
+    elif available_food == 0 and total_cons > total_prod and total_population > 1:
         total_population -= 1
-        # Умирает кто-то из занятых (сначала учёные, потом горожане, потом рабочие)
-        # Пока учёных нет, снимаем горожанина или рабочего
+
+        # Убираем одного жителя с работы (сначала горожанина, потом рабочего)
         var removed = false
         if main_map and main_map.has_node("TownsfolkManager"):
             var tm = main_map.get_node("TownsfolkManager")
             for i in range(city_built_buildings.size()):
                 if tm.has_townsfolk(i):
-                    tm.remove_townsfolk(i)  # возвращает жителя в idle_population
+                    tm.remove_townsfolk(i)  # увеличит idle_population
                     removed = true
                     break
+
         if not removed and main_map and main_map.has_node("WorkerManager"):
             var wm = main_map.get_node("WorkerManager")
-            # Убираем первого попавшегося рабочего
             for key in wm.assigned_hexes.keys():
                 var parts = key.split(",")
                 if parts.size() == 2:
-                    wm.remove_worker(int(parts[0]), int(parts[1]))
+                    wm.remove_worker(int(parts[0]), int(parts[1]))  # увеличит idle_population
                     removed = true
                     break
-        if not removed:
-            # Если никто не занят — просто уменьшаем idle_population
+
+        # Если житель был свободен (не работал), просто уменьшаем idle_population
+        if not removed and idle_population > 0:
             idle_population -= 1
+
+        # Корректируем idle_population, чтобы он не превышал total_population
+        if idle_population > total_population:
+            idle_population = total_population
 
         emit_signal("population_changed", total_population)
         print("Население уменьшилось до ", total_population)

@@ -10,6 +10,7 @@ var buildings: Array = []
 var categories: Array = []
 var technologies: Array = []
 var groups: Array = []
+var product_groups: Dictionary = {}
 
 func load_all_data():
     var loader = load("res://scripts/data_loader.gd").new()
@@ -23,3 +24,4 @@ func load_all_data():
     categories = loader.categories
     technologies = loader.technologies
     groups = loader.groups
+    product_groups = loader.product_groups

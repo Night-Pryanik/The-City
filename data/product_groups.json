@@ -1,0 +1,8 @@
+{
+  "product_groups": [
+    {
+      "id": "millable_grains",
+      "products": ["wheat", "rye", "barley", "oats", "corn", "rice", "millet", "sorghum", "buckwheat"]
+    }
+  ]
+}

@@ -2,17 +2,17 @@
   "crafts": [
     {
       "id": "grind_wheat_hand",
-      "name": "Ручной помол пшеницы",
+      "name": "Ручной помол зерна",
       "produced_in": "hand_mill",
-      "resources": {"wheat": 1},
+      "resources": {"@millable_grains": 1},
       "result": {"flour": 1},
       "time": 0
     },
     {
       "id": "grind_wheat",
-      "name": "Помол пшеницы",
+      "name": "Помол зерна",
       "produced_in": "windmill",
-      "resources": {"wheat": 1},
+      "resources": {"@millable_grains": 1},
       "result": {"flour": 2},
       "time": 0
     },
