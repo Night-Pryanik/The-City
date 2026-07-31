@@ -24,9 +24,6 @@ var drag_start_mouse: Vector2 = Vector2.ZERO
 const TOOLTIP_DELAY: float = 0.5
 const SCROLL_SPEED: float = 300.0
 const SCROLL_MARGIN: float = 30
-const REGION_ROWS: int = 13
-const REGION_COLS: int = 15
-const HEX_RADIUS: float = 55
 
 func initialize(main_node: Node):
     main_map = main_node
@@ -117,8 +114,8 @@ func handle_process(delta: float):
 
         if scroll != Vector2.ZERO:
             main_map.scroll_offset += scroll
-            var max_scroll_x = (REGION_COLS * HEX_RADIUS)
-            var max_scroll_y = (REGION_ROWS * HEX_RADIUS)
+            var max_scroll_x = (main_map.REGION_COLS * main_map.HEX_RADIUS)
+            var max_scroll_y = (main_map.REGION_ROWS * main_map.HEX_RADIUS)
             main_map.scroll_offset.x = clamp(main_map.scroll_offset.x, -max_scroll_x, max_scroll_x)
             main_map.scroll_offset.y = clamp(main_map.scroll_offset.y, -max_scroll_y, max_scroll_y)
             map_renderer.queue_redraw()
@@ -249,7 +246,7 @@ func _handle_mouse_button(event: InputEventMouseButton):
             if hex.row == main_map.CITY_ROW and hex.col == main_map.CITY_COL:
                 var cur_time = Time.get_ticks_msec() / 1000.0
                 if cur_time - main_map.last_city_click_time < 0.5:
-                    main_map._open_city()
+                    main_map.open_city()
                 main_map.last_city_click_time = cur_time
 
 func _handle_mouse_motion(event: InputEventMouseMotion):
@@ -264,8 +261,8 @@ func _handle_mouse_motion(event: InputEventMouseMotion):
         if is_dragging:
             var delta = mouse_pos - drag_start_mouse
             main_map.scroll_offset = drag_start_scroll_offset + delta
-            var max_scroll_x = (REGION_COLS * HEX_RADIUS)
-            var max_scroll_y = (REGION_ROWS * HEX_RADIUS)
+            var max_scroll_x = (main_map.REGION_COLS * main_map.HEX_RADIUS)
+            var max_scroll_y = (main_map.REGION_ROWS * main_map.HEX_RADIUS)
             main_map.scroll_offset.x = clamp(main_map.scroll_offset.x, -max_scroll_x, max_scroll_x)
             main_map.scroll_offset.y = clamp(main_map.scroll_offset.y, -max_scroll_y, max_scroll_y)
             map_renderer.queue_redraw()
@@ -279,7 +276,7 @@ func _handle_mouse_motion(event: InputEventMouseMotion):
             hex_tooltip.visible = false
             _tooltip_visible = false
         if hex != null:
-            main_map._update_tooltip_text(hex.row, hex.col)
+            main_map.update_tooltip_text(hex.row, hex.col)
 
 func _hide_tooltip():
     hex_tooltip.visible = false
@@ -290,12 +287,12 @@ func _hide_tooltip():
         child.queue_free()
 
 func _pixel_to_hex(mx: float, my: float):
-    for row in range(REGION_ROWS):
-        for col in range(REGION_COLS):
-            var center = HexUtils.hex_center(row, col, HEX_RADIUS)
+    for row in range(main_map.REGION_ROWS):
+        for col in range(main_map.REGION_COLS):
+            var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
             center.x += main_map.offset_x + main_map.scroll_offset.x
             center.y += main_map.offset_y + main_map.scroll_offset.y
-            var verts = HexUtils.hex_vertices(center.x, center.y, HEX_RADIUS)
+            var verts = HexUtils.hex_vertices(center.x, center.y, main_map.HEX_RADIUS)
             if HexUtils.point_in_polygon(mx, my, verts):
                 return {"row": row, "col": col}
     return null

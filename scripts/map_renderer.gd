@@ -2,11 +2,6 @@
 @tool
 extends Node2D
 
-const HEX_RADIUS = 55
-const REGION_ROWS = 13
-const REGION_COLS = 15
-const CITY_ROW = int(REGION_ROWS / 2.0)
-const CITY_COL = int(REGION_COLS / 2.0)
 const CITY_ICON_SIZE = 130
 const TERRAIN_ICON_SIZE = 130
 const RESOURCE_ICON_SIZE = 80
@@ -78,8 +73,8 @@ func load_icons():
 
 func _draw():
     # ФАЗА 1: Рисуем основные гексы с территориями
-    for row in range(REGION_ROWS):
-        for col in range(REGION_COLS):
+    for row in range(main_map.REGION_ROWS):
+        for col in range(main_map.REGION_COLS):
             _draw_hex(row, col)
 
     # ФАЗА 2: Рисуем дороги (ПЕРЕД иконками ресурсов и улучшений)
@@ -89,8 +84,8 @@ func _draw():
     _draw_expansion_highlights()
 
     # ФАЗА 3: Рисуем иконки ресурсов, улучшений и другие оверлеи
-    for row in range(REGION_ROWS):
-        for col in range(REGION_COLS):
+    for row in range(main_map.REGION_ROWS):
+        for col in range(main_map.REGION_COLS):
             _draw_hex_overlays(row, col)
 
     # ФАЗА 4: Рисуем город в конце
@@ -98,7 +93,7 @@ func _draw():
         main_map.offset_x + main_map.scroll_offset.x,
         main_map.offset_y + main_map.scroll_offset.y
     )
-    var city_center = HexUtils.hex_center(CITY_ROW, CITY_COL, HEX_RADIUS) + offset_pos
+    var city_center = HexUtils.hex_center(main_map.CITY_ROW, main_map.CITY_COL, main_map.HEX_RADIUS) + offset_pos
     if icon_textures.has("city"):
         var tex = icon_textures["city"]
         var icon_rect = Rect2(
@@ -110,17 +105,17 @@ func _draw():
         draw_texture_rect(tex, icon_rect, false)
     else:
         var city_vertices = HexUtils.hex_vertices(
-            city_center.x, city_center.y, HEX_RADIUS
+            city_center.x, city_center.y, main_map.HEX_RADIUS
         )
         draw_colored_polygon(city_vertices, Color.YELLOW)
 
 func _draw_hex(row: int, col: int):
-    var center = HexUtils.hex_center(row, col, HEX_RADIUS)
+    var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
     var offset_x = main_map.offset_x + main_map.scroll_offset.x
     var offset_y = main_map.offset_y + main_map.scroll_offset.y
     center.x += offset_x
     center.y += offset_y
-    var vertices = HexUtils.hex_vertices(center.x, center.y, HEX_RADIUS)
+    var vertices = HexUtils.hex_vertices(center.x, center.y, main_map.HEX_RADIUS)
 
     var closed_vertices = PackedVector2Array()
     closed_vertices.append_array(vertices)
@@ -133,7 +128,7 @@ func _draw_hex(row: int, col: int):
     var terrain = tile.terrain
     var terrain_icon_name = tile.get("terrain_icon", "")
 
-    if row == CITY_ROW and col == CITY_COL:
+    if row == main_map.CITY_ROW and col == main_map.CITY_COL:
         if GameData.terrains.has(terrain):
             var t = GameData.terrains[terrain]
             var c = t.get("color", [0, 0, 0])
@@ -165,14 +160,14 @@ func _draw_hex(row: int, col: int):
         draw_polyline(closed_vertices, Color.WHITE, 2, true)
 
 func _draw_hex_overlays(row: int, col: int):
-    var center = HexUtils.hex_center(row, col, HEX_RADIUS)
+    var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
     center.x += main_map.offset_x + main_map.scroll_offset.x
     center.y += main_map.offset_y + main_map.scroll_offset.y
 
     var tile = tile_data[row][col]
     var in_influence = tile.get("in_influence", false)
 
-    if row == CITY_ROW and col == CITY_COL:
+    if row == main_map.CITY_ROW and col == main_map.CITY_COL:
         return
 
     if tile.resource != null:
@@ -189,7 +184,7 @@ func _draw_hex_overlays(row: int, col: int):
                 var fallback_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
                 draw_circle(center, RESOURCE_ICON_SIZE / 3.0, fallback_color)
         if is_locked and lock_texture:
-            var lock_icon_pos = Vector2(center.x, center.y + HEX_RADIUS * 0.75)
+            var lock_icon_pos = Vector2(center.x, center.y + main_map.HEX_RADIUS * 0.75)
             var lock_rect = Rect2(lock_icon_pos.x - LOCK_ICON_SIZE / 2.0, lock_icon_pos.y - LOCK_ICON_SIZE / 2.0, LOCK_ICON_SIZE, LOCK_ICON_SIZE)
             draw_texture_rect(lock_texture, lock_rect, false)
 
@@ -221,7 +216,7 @@ func _draw_hex_overlays(row: int, col: int):
         var has_worker = main_map.worker_manager.has_worker(row, col)
         var imp_data = GameData.improvements.get(tile.improvement, {})
         var imp_icon = imp_data.get("icon", "")
-        var icon_pos = Vector2(center.x, center.y - HEX_RADIUS * 0.75)
+        var icon_pos = Vector2(center.x, center.y - main_map.HEX_RADIUS * 0.75)
         if imp_icon != "" and icon_textures.has(imp_icon):
             var tex = icon_textures[imp_icon]
             var icon_rect = Rect2(icon_pos.x - IMPROVEMENT_ICON_SIZE / 2.0, icon_pos.y - IMPROVEMENT_ICON_SIZE / 2.0, IMPROVEMENT_ICON_SIZE, IMPROVEMENT_ICON_SIZE)
@@ -279,7 +274,7 @@ func _draw_all_roads():
         var row2 = int(end_parts[0])
         var col2 = int(end_parts[1])
         
-        var points = _generate_natural_road(row1, col1, row2, col2, HEX_RADIUS)
+        var points = _generate_natural_road(row1, col1, row2, col2, main_map.HEX_RADIUS)
         draw_polyline(points, Color(0.55, 0.35, 0.15), 6, true)
 
 # Старый метод _draw_roads больше не используется, но оставляем для совместимости
@@ -334,14 +329,14 @@ func _draw_expansion_highlights():
         return
 
     # 1. Постоянная зелёная подсветка всего недоступного Региона
-    for row in range(REGION_ROWS):
-        for col in range(REGION_COLS):
+    for row in range(main_map.REGION_ROWS):
+        for col in range(main_map.REGION_COLS):
             var tile = tile_data[row][col]
             if not tile.get("in_influence", false):
-                var center = HexUtils.hex_center(row, col, HEX_RADIUS)
+                var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
                 center.x += main.offset_x + main.scroll_offset.x
                 center.y += main.offset_y + main.scroll_offset.y
-                var vertices = HexUtils.hex_vertices(center.x, center.y, HEX_RADIUS)
+                var vertices = HexUtils.hex_vertices(center.x, center.y, main_map.HEX_RADIUS)
                 draw_colored_polygon(vertices, Color(0.0, 1.0, 0.0, 0.2))
                 var closed_verts = PackedVector2Array()
                 closed_verts.append_array(vertices)
@@ -354,10 +349,10 @@ func _draw_expansion_highlights():
         return
 
     for hex in chunk:
-        var center = HexUtils.hex_center(hex.row, hex.col, HEX_RADIUS)
+        var center = HexUtils.hex_center(hex.row, hex.col, main_map.HEX_RADIUS)
         center.x += main.offset_x + main.scroll_offset.x
         center.y += main.offset_y + main.scroll_offset.y
-        var vertices = HexUtils.hex_vertices(center.x, center.y, HEX_RADIUS)
+        var vertices = HexUtils.hex_vertices(center.x, center.y, main_map.HEX_RADIUS)
         draw_colored_polygon(vertices, Color(1.0, 1.0, 0.0, 0.3))
         var closed_verts = PackedVector2Array()
         closed_verts.append_array(vertices)

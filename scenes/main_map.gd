@@ -2,26 +2,20 @@
 extends Node2D
 
 const HEX_RADIUS = 55
-const GRID_ROWS = 9
-const GRID_COLS = 11
-const REGION_ROWS = 13
-const REGION_COLS = 15
+
+# --- Размер карты: меняешь только эти два числа ---
+const GRID_ROWS = 5
+const GRID_COLS = 7
+const REGION_PADDING = 2
+
+const REGION_ROWS = GRID_ROWS + REGION_PADDING * 2
+const REGION_COLS = GRID_COLS + REGION_PADDING * 2
 const CITY_ROW = REGION_ROWS / 2
 const CITY_COL = REGION_COLS / 2
-const INFLUENCE_START_ROW = 2
-const INFLUENCE_END_ROW = 10
-const INFLUENCE_START_COL = 2
-const INFLUENCE_END_COL = 12
-
-const CITY_ICON_SIZE = 130
-const TERRAIN_ICON_SIZE = 130
-const RESOURCE_ICON_SIZE = 60
-const IMPROVEMENT_ICON_SIZE = 32
-const TOOLTIP_DELAY = 0.5
-const LOCK_ICON_SIZE = 24
-const SCROLL_SPEED = 300.0
-const SCROLL_MARGIN = 30
-const PRODUCTION_INTERVAL = 2.0
+const INFLUENCE_START_ROW = REGION_PADDING
+const INFLUENCE_END_ROW = INFLUENCE_START_ROW + GRID_ROWS - 1
+const INFLUENCE_START_COL = REGION_PADDING
+const INFLUENCE_END_COL = INFLUENCE_START_COL + GRID_COLS - 1
 
 var tile_data = []
 var offset_x: float = 0.0
@@ -300,7 +294,7 @@ func _calc_offsets():
     offset_x = (viewport_size.x - grid_width) / 2.0 - min_x
     offset_y = (viewport_size.y - grid_height) / 2.0 - min_y
 
-func _update_tooltip_text(row: int, col: int):
+func update_tooltip_text(row: int, col: int):
     # Эта функция остаётся здесь, потому что она используется из InputHandler
     for child in tooltip_products_container.get_children():
         child.queue_free()
@@ -561,7 +555,7 @@ func pixel_to_hex(mx: float, my: float):
                 return {"row": row, "col": col}
     return null
 
-func _open_city():
+func open_city():
     city_ui.update_data(CityData.city_storage, CityData.production_rates, CityData.consumption_rates, CityData.city_food_pool, GameData.buildings, GameData.crafts, CityData.city_built_buildings, GameData.products, GameData.categories)
     city_ui.show()
     city_ui.show_resources_tab()
@@ -571,7 +565,7 @@ func _on_city_button_pressed():
     if pause_menu.visible:
         return
     city_button.disabled = false
-    _open_city()
+    open_city()
 
 func _on_city_ui_close():
     city_ui.hide()
