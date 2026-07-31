@@ -232,6 +232,18 @@ func _draw_hex_overlays(row: int, col: int):
                 if not has_worker:
                     fallback_color = Color(0.5, 0.5, 0.5)
                 draw_circle(icon_pos, IMPROVEMENT_ICON_SIZE / 2.5, fallback_color)
+                
+                
+    # --- Прогресс-бар для сбора дикоросов ---
+    if main_map.is_foraging and main_map.foraging_hex.row == row and main_map.foraging_hex.col == col:
+        var progress = main_map.foraging_timer / main_map.FORAGING_TIME
+        var bar_width = RESOURCE_ICON_SIZE
+        var bar_height = 6
+        var bar_x = center.x - bar_width / 2.0
+        var bar_y = center.y + RESOURCE_ICON_SIZE / 2.0 + 10  # под иконкой ресурса
+        draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color(0.2, 0.2, 0.2))
+        draw_rect(Rect2(bar_x, bar_y, bar_width * progress, bar_height), Color(0.5, 0.8, 0.2))
+        draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color.WHITE, false)
 
 func _is_resource_locked(resource_id: String) -> bool:
     if resource_id == null or resource_id == "":

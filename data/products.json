@@ -48,6 +48,7 @@
     { "id": "marble", "name": "Мрамор", "type": "product", "category": "material", "icon": "marble.png" },
     { "id": "granite", "name": "Гранит", "type": "product", "category": "material", "icon": "granite.png" },
     { "id": "limestone", "name": "Известняк", "type": "product", "category": "material", "icon": "limestone.png" },
-    { "id": "clay", "name": "Глина", "type": "product", "category": "material", "icon": "clay.png" }
+    { "id": "clay", "name": "Глина", "type": "product", "category": "material", "icon": "clay.png" },
+    { "id": "foraged_food", "name": "Дикоросы", "type": "product", "category": "food", "icon": "foraged_food.png" }
   ]
 }

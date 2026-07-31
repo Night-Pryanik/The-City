@@ -86,3 +86,32 @@ func _place_resources(tile_data: Array, res_dict: Dictionary, rows: int, cols: i
         if possible.size() > 0:
             var hex = possible[randi() % possible.size()]
             tile_data[hex.row][hex.col]["resource"] = res_id
+
+func _place_wild_food(tile_data: Array, rows: int, cols: int, city_row: int, city_col: int):
+    var count = randi_range(2, 4)
+    var wild_id = "wild_food"
+    if not GameData.raw_resources.has(wild_id):
+        print("ОШИБКА: wild_food не найден в GameData.raw_resources!")
+        return
+    var wild_data = GameData.raw_resources[wild_id]
+    var possible = []
+    for r in range(rows):
+        for c in range(cols):
+            # Только в Кольце Влияния
+            if not tile_data[r][c]["in_influence"]:
+                continue
+            # Не слишком близко к городу (чтобы не мешать стартовому строительству)
+            if abs(r - city_row) <= 2 and abs(c - city_col) <= 2:
+                continue
+            if tile_data[r][c]["resource"] != null:
+                continue
+            var terrain = tile_data[r][c]["terrain"]
+            if terrain in wild_data.get("allowed_terrains", []):
+                possible.append({"row": r, "col": c})
+    possible.shuffle()
+    var placed = 0
+    for i in range(min(count, possible.size())):
+        var hex = possible[i]
+        tile_data[hex.row][hex.col]["resource"] = wild_id
+        placed += 1
+    print("Размещено дикоросов: ", placed)

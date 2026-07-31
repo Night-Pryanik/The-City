@@ -16,6 +16,7 @@ const INFLUENCE_START_ROW = REGION_PADDING
 const INFLUENCE_END_ROW = INFLUENCE_START_ROW + GRID_ROWS - 1
 const INFLUENCE_START_COL = REGION_PADDING
 const INFLUENCE_END_COL = INFLUENCE_START_COL + GRID_COLS - 1
+const FORAGING_TIME: float = 3.0
 
 var tile_data = []
 var offset_x: float = 0.0
@@ -25,6 +26,9 @@ var scroll_offset = Vector2.ZERO
 var _context_hex = null
 var last_city_click_time = 0.0
 var production_timer = 0.0
+var foraging_timer: float = 0.0
+var foraging_hex: Dictionary = {}
+var is_foraging: bool = false
 
 var settings_config = ConfigFile.new()
 var show_hex_borders = true
@@ -195,6 +199,12 @@ func _process(delta):
         map_renderer.queue_redraw()
 
     input_handler.handle_process(delta)
+    
+    if is_foraging:
+        foraging_timer += delta
+        if foraging_timer >= FORAGING_TIME:
+            _complete_foraging()
+        map_renderer.queue_redraw()
 
 func _initialize_map():
     GameData.load_all_data()
@@ -218,8 +228,9 @@ func _initialize_map():
             tile["in_influence"] = (row >= INFLUENCE_START_ROW and row <= INFLUENCE_END_ROW and col >= INFLUENCE_START_COL and col <= INFLUENCE_END_COL)
 
     _ensure_minimum_resource("animals")
-    _ensure_minimum_resource("plants")
+    _ensure_food_plant()
     _ensure_minimum_resource("minerals")
+    generator._place_wild_food(tile_data, REGION_ROWS, REGION_COLS, CITY_ROW, CITY_COL)
 
     var influence_resource_types = {}
     for row in range(INFLUENCE_START_ROW, INFLUENCE_END_ROW + 1):
@@ -270,6 +281,30 @@ func _ensure_minimum_resource(category: String):
                 if terrain_id in GameData.raw_resources[res_id].get("allowed_terrains", []):
                     possible.append({"row": row, "col": col, "id": res_id})
                     break
+    if possible.size() > 0:
+        var chosen = possible[randi() % possible.size()]
+        tile_data[chosen.row][chosen.col]["resource"] = chosen.id
+
+func _ensure_food_plant():
+    # Проверяем, есть ли в Кольце Влияния хоть один ресурс из food_plants
+    for row in range(INFLUENCE_START_ROW, INFLUENCE_END_ROW + 1):
+        for col in range(INFLUENCE_START_COL, INFLUENCE_END_COL + 1):
+            var res = tile_data[row][col]["resource"]
+            if res != null:
+                var res_data = GameData.raw_resources.get(res, {})
+                if res_data.get("group") == "food_plants":
+                    return  # уже есть
+    # Если нет — добавляем принудительно
+    var possible = []
+    for row in range(INFLUENCE_START_ROW, INFLUENCE_END_ROW + 1):
+        for col in range(INFLUENCE_START_COL, INFLUENCE_END_COL + 1):
+            if tile_data[row][col]["resource"] != null:
+                continue
+            var terrain = tile_data[row][col]["terrain"]
+            for res_id in GameData.raw_resources:
+                var res = GameData.raw_resources[res_id]
+                if res.get("group") == "food_plants" and terrain in res.get("allowed_terrains", []):
+                    possible.append({"row": row, "col": col, "id": res_id})
     if possible.size() > 0:
         var chosen = possible[randi() % possible.size()]
         tile_data[chosen.row][chosen.col]["resource"] = chosen.id
@@ -391,6 +426,16 @@ func _add_production_info(res_id: String, prefix: String):
 
 func _show_context_menu(row: int, col: int, click_pos: Vector2):
     var tile = tile_data[row][col]
+    
+    # --- Сбор дикоросов ---
+    if tile.resource == "wild_food":
+        popup_menu.clear()
+        popup_menu.add_item("Собрать дикоросы (%.0f сек)" % FORAGING_TIME)
+        popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": "forage_food", "row": row, "col": col})
+        popup_menu.position = click_pos
+        popup_menu.popup()
+        return
+    
     if tile.improvement != null:
         _context_hex = {"row": row, "col": col, "resource": tile.resource}
         popup_menu.clear()
@@ -503,6 +548,12 @@ func _on_popup_menu_id_pressed(id: int):
         if not worker_manager.assign_worker(r, c):
             hud.show_message("Нет свободных рабочих!")
         map_renderer.queue_redraw()
+        return
+        
+    if action == "forage_food":
+        var r = meta["row"]
+        var c = meta["col"]
+        _start_foraging(r, c)
         return
 
     if _context_hex == null:
@@ -677,3 +728,23 @@ func _on_townsfolk_assignment_changed():
         )
         city_ui.refresh_buildings_tab()
         city_ui.update_food_label()
+
+func _start_foraging(row: int, col: int):
+    if is_foraging:
+        hud.show_message("Уже идёт сбор!")
+        return
+    foraging_hex = {"row": row, "col": col}
+    foraging_timer = 0.0
+    is_foraging = true
+    hud.show_message("Сбор дикоросов начался...")
+
+func _complete_foraging():
+    var row = foraging_hex.row
+    var col = foraging_hex.col
+    var yield_amount = randi_range(5, 10)
+    CityData.city_storage["foraged_food"] = CityData.city_storage.get("foraged_food", 0) + yield_amount
+    tile_data[row][col]["resource"] = null
+    is_foraging = false
+    foraging_hex = {}
+    hud.show_message("Собрано %d еды!" % yield_amount)
+    map_renderer.queue_redraw()
