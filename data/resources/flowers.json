@@ -10,7 +10,7 @@
       "allowed_terrains": ["plain"],
       "improved_by": "farm",
       "produces": {"tulips": 1},
-      "icon": "tulip.png",
+      "icon": "tulips.png",
       "color": [255, 100, 100]
     },
     {
