@@ -61,7 +61,7 @@ func handle_input(event: InputEvent):
                     )
                     city_ui.update_food_label()
                 map_renderer.queue_redraw()
-                return  # не обрабатываем другие события после этого
+                return # не обрабатываем другие события после этого
     
     if Engine.is_editor_hint():
         return
@@ -106,11 +106,11 @@ func handle_process(delta: float):
             if mouse_pos.x < SCROLL_MARGIN:
                 scroll.x = SCROLL_SPEED * delta
             elif mouse_pos.x > viewport_size.x - SCROLL_MARGIN:
-                scroll.x = -SCROLL_SPEED * delta
+                scroll.x = - SCROLL_SPEED * delta
             if mouse_pos.y < SCROLL_MARGIN:
                 scroll.y = SCROLL_SPEED * delta
             elif mouse_pos.y > viewport_size.y - SCROLL_MARGIN:
-                scroll.y = -SCROLL_SPEED * delta
+                scroll.y = - SCROLL_SPEED * delta
 
         if scroll != Vector2.ZERO:
             main_map.scroll_offset += scroll
@@ -179,6 +179,15 @@ func _handle_expansion_mode_input(event: InputEventMouseButton) -> bool:
         if hex != null and not main_map.tile_data[hex.row][hex.col]["in_influence"]:
             var chunk = expansion_manager.get_chunk_hexes(hex.row, hex.col)
             if chunk.is_empty():
+                return true
+            # Если чанк ещё не исследован — показываем меню разведки вместо покупки
+            var all_explored = true
+            for h in chunk:
+                if not main_map.tile_data[h.row][h.col].get("is_explored", false):
+                    all_explored = false
+                    break
+            if not all_explored:
+                main_map._show_context_menu(hex.row, hex.col, mouse_pos)
                 return true
             var available_food = 0
             if CityData:

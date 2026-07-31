@@ -38,3 +38,25 @@ static func hex_distance(r1: int, c1: int, r2: int, c2: int) -> int:
     var q1 = c1 - (r1 - (r1 & 1)) / 2
     var q2 = c2 - (r2 - (r2 & 1)) / 2
     return (abs(q1 - q2) + abs(r1 - r2) + abs((q1 + r1) - (q2 + r2))) / 2
+    
+static func get_neighbors_odd_r(row: int, col: int, max_rows: int, max_cols: int) -> Array:
+    var neighbors = []
+    var directions = []
+    if row % 2 == 0:
+        directions = [
+            {"r": 0, "c": -1}, {"r": 0, "c": 1},
+            {"r": -1, "c": -1}, {"r": -1, "c": 0},
+            {"r": 1, "c": -1}, {"r": 1, "c": 0}
+        ]
+    else:
+        directions = [
+            {"r": 0, "c": -1}, {"r": 0, "c": 1},
+            {"r": -1, "c": 0}, {"r": -1, "c": 1},
+            {"r": 1, "c": 0}, {"r": 1, "c": 1}
+        ]
+    for d in directions:
+        var nr = row + d.r
+        var nc = col + d.c
+        if nr >= 0 and nr < max_rows and nc >= 0 and nc < max_cols:
+            neighbors.append({"row": nr, "col": nc})
+    return neighbors

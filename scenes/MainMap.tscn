@@ -59,6 +59,7 @@ text = "Город"
 
 [node name="ExpansionButton" type="Button" parent="HUD/VBoxContainer" unique_id=1722725868]
 layout_mode = 2
+tooltip_text = "Разведка и освоение соседних земель"
 text = "Развитие"
 
 [node name="MapMessageLabel" type="Label" parent="HUD/VBoxContainer" unique_id=1468814370]

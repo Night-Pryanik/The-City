@@ -17,6 +17,7 @@ const INFLUENCE_END_ROW = INFLUENCE_START_ROW + GRID_ROWS - 1
 const INFLUENCE_START_COL = REGION_PADDING
 const INFLUENCE_END_COL = INFLUENCE_START_COL + GRID_COLS - 1
 const FORAGING_TIME: float = 3.0
+const SCOUTING_TIME: float = 12.0
 
 var tile_data = []
 var offset_x: float = 0.0
@@ -29,6 +30,9 @@ var production_timer = 0.0
 var foraging_timer: float = 0.0
 var foraging_hex: Dictionary = {}
 var is_foraging: bool = false
+var scouting_timer: float = 0.0
+var scouting_chunk: Array = []
+var is_scouting: bool = false
 
 var settings_config = ConfigFile.new()
 var show_hex_borders = true
@@ -81,6 +85,7 @@ func _ready():
                         tile["improvement"] = saved.get("improvement")
                         tile["terrain_icon"] = saved.get("terrain_icon", "")
                         tile["in_influence"] = saved.get("in_influence", false)
+                        tile["is_explored"] = saved.get("is_explored", false)
                 col_array.append(tile)
             tile_data.append(col_array)
 
@@ -205,6 +210,12 @@ func _process(delta):
         if foraging_timer >= FORAGING_TIME:
             _complete_foraging()
         map_renderer.queue_redraw()
+        
+    if is_scouting:
+        scouting_timer += delta
+        if scouting_timer >= SCOUTING_TIME:
+            _complete_scouting()
+        map_renderer.queue_redraw()
 
 func _initialize_map():
     GameData.load_all_data()
@@ -226,6 +237,7 @@ func _initialize_map():
         for col in range(REGION_COLS):
             var tile = tile_data[row][col]
             tile["in_influence"] = (row >= INFLUENCE_START_ROW and row <= INFLUENCE_END_ROW and col >= INFLUENCE_START_COL and col <= INFLUENCE_END_COL)
+            tile["is_explored"] = false
 
     _ensure_minimum_resource("animals")
     _ensure_food_plant()
@@ -293,7 +305,7 @@ func _ensure_food_plant():
             if res != null:
                 var res_data = GameData.raw_resources.get(res, {})
                 if res_data.get("group") == "food_plants":
-                    return  # уже есть
+                    return # уже есть
     # Если нет — добавляем принудительно
     var possible = []
     for row in range(INFLUENCE_START_ROW, INFLUENCE_END_ROW + 1):
@@ -311,9 +323,9 @@ func _ensure_food_plant():
 
 func _calc_offsets():
     var min_x = INF
-    var max_x = -INF
+    var max_x = - INF
     var min_y = INF
-    var max_y = -INF
+    var max_y = - INF
     for row in range(INFLUENCE_START_ROW, INFLUENCE_END_ROW + 1):
         for col in range(INFLUENCE_START_COL, INFLUENCE_END_COL + 1):
             var center = HexUtils.hex_center(row, col, HEX_RADIUS)
@@ -436,6 +448,26 @@ func _show_context_menu(row: int, col: int, click_pos: Vector2):
         popup_menu.popup()
         return
     
+    # --- Разведка Региона ---
+    if not tile.get("in_influence", false):
+        var chunk = expansion_manager.get_chunk_hexes(row, col)
+        var all_explored = true
+        for hex in chunk:
+            if not tile_data[hex.row][hex.col].get("is_explored", false):
+                all_explored = false
+                break
+        if not all_explored:
+            if is_scouting:
+                hud.show_message("Разведка уже идёт!")
+                return
+            popup_menu.clear()
+            var cost = chunk.size() * 3
+            popup_menu.add_item("Отправить разведку (%d еды, %.0f сек)" % [cost, SCOUTING_TIME])
+            popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": "scout_chunk", "chunk": chunk, "cost": cost})
+            popup_menu.position = click_pos
+            popup_menu.popup()
+            return
+    
     if tile.improvement != null:
         _context_hex = {"row": row, "col": col, "resource": tile.resource}
         popup_menu.clear()
@@ -556,6 +588,12 @@ func _on_popup_menu_id_pressed(id: int):
         _start_foraging(r, c)
         return
 
+    if action == "scout_chunk":
+        var chunk = meta["chunk"]
+        var cost = meta["cost"]
+        _start_scouting(chunk, cost)
+        return
+    
     if _context_hex == null:
         return
     var row = _context_hex.row
@@ -748,3 +786,54 @@ func _complete_foraging():
     foraging_hex = {}
     hud.show_message("Собрано %d еды!" % yield_amount)
     map_renderer.queue_redraw()
+
+func _start_scouting(chunk: Array, cost: int):
+    if is_scouting:
+        hud.show_message("Разведка уже идёт!")
+        return
+    var available_food = 0
+    for pid in CityData.city_food_pool:
+        if CityData.city_food_pool[pid]:
+            available_food += CityData.city_storage.get(pid, 0)
+    if available_food < cost:
+        hud.show_message("Недостаточно еды! Нужно %d" % cost)
+        return
+    # Списываем еду
+    var remaining = cost
+    var active_food = []
+    for pid in CityData.city_food_pool:
+        if CityData.city_food_pool[pid] and CityData.city_storage.get(pid, 0) > 0:
+            active_food.append(pid)
+    while remaining > 0 and active_food.size() > 0:
+        var pid = active_food[randi() % active_food.size()]
+        CityData.city_storage[pid] -= 1
+        remaining -= 1
+        if CityData.city_storage[pid] <= 0:
+            active_food.erase(pid)
+    scouting_chunk = chunk
+    scouting_timer = 0.0
+    is_scouting = true
+    hud.show_message("Разведка отправлена...")
+
+func _complete_scouting():
+    for hex in scouting_chunk:
+        tile_data[hex.row][hex.col]["is_explored"] = true
+    var info = _get_chunk_info(scouting_chunk)
+    hud.show_message("Разведка завершена! %s" % info)
+    is_scouting = false
+    scouting_chunk = []
+    map_renderer.queue_redraw()
+
+func _get_chunk_info(chunk: Array) -> String:
+    var terrain_types = {}
+    var resources = []
+    for hex in chunk:
+        var tile = tile_data[hex.row][hex.col]
+        var terrain = tile.get("terrain", "plain")
+        terrain_types[terrain] = terrain_types.get(terrain, 0) + 1
+        if tile.resource != null:
+            var res_name = GameData.raw_resources.get(tile.resource, {}).get("name", tile.resource)
+            resources.append(res_name)
+    var terrain_str = ", ".join(terrain_types.keys())
+    var resource_str = ", ".join(resources) if resources.size() > 0 else "нет"
+    return "Ландшафт: %s. Ресурсы: %s" % [terrain_str, resource_str]

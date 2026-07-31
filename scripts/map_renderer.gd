@@ -80,7 +80,7 @@ func _draw():
     # ФАЗА 2: Рисуем дороги (ПЕРЕД иконками ресурсов и улучшений)
     _draw_all_roads()
 
-    # ФАЗА 2.5: Рисуем подсветку для режима "Развитие"
+    # ФАЗА 2.5: Рисуем подсветку для режима "Развитие" (слои исследования и покупки)
     _draw_expansion_highlights()
 
     # ФАЗА 3: Рисуем иконки ресурсов, улучшений и другие оверлеи
@@ -225,25 +225,39 @@ func _draw_hex_overlays(row: int, col: int):
             else:
                 draw_texture_rect(tex, icon_rect, false)
         else:
-            # Рисуем цветной круг, если нет иконки
             if imp_data.has("color"):
                 var c = imp_data["color"]
                 var fallback_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
                 if not has_worker:
                     fallback_color = Color(0.5, 0.5, 0.5)
                 draw_circle(icon_pos, IMPROVEMENT_ICON_SIZE / 2.5, fallback_color)
-                
-                
+
     # --- Прогресс-бар для сбора дикоросов ---
     if main_map.is_foraging and main_map.foraging_hex.row == row and main_map.foraging_hex.col == col:
         var progress = main_map.foraging_timer / main_map.FORAGING_TIME
         var bar_width = RESOURCE_ICON_SIZE
         var bar_height = 6
         var bar_x = center.x - bar_width / 2.0
-        var bar_y = center.y + RESOURCE_ICON_SIZE / 2.0 + 10  # под иконкой ресурса
+        var bar_y = center.y + RESOURCE_ICON_SIZE / 2.0 + 10 # под иконкой ресурса
         draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color(0.2, 0.2, 0.2))
         draw_rect(Rect2(bar_x, bar_y, bar_width * progress, bar_height), Color(0.5, 0.8, 0.2))
         draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color.WHITE, false)
+
+    # --- Прогресс-бар разведки чанка ---
+    # Рисуем только ОДИН бар на центральном гексе чанка (с которого началась разведка),
+    # чтобы не перегружать карту избыточными барами на каждом гексе чанка.
+    if main_map.is_scouting and not main_map.scouting_chunk.is_empty():
+        var scout_center_hex = main_map.scouting_chunk[0]
+        if scout_center_hex.row == row and scout_center_hex.col == col:
+            var scout_progress = clamp(main_map.scouting_timer / main_map.SCOUTING_TIME, 0.0, 1.0)
+            var scout_bar_width = RESOURCE_ICON_SIZE
+            var scout_bar_height = 6
+            var scout_bar_x = center.x - scout_bar_width / 2.0
+            var scout_bar_y = center.y + RESOURCE_ICON_SIZE / 2.0 + 16 # ниже бара сбора дикоросов
+            draw_rect(Rect2(scout_bar_x, scout_bar_y, scout_bar_width, scout_bar_height), Color(0.2, 0.2, 0.2))
+            draw_rect(Rect2(scout_bar_x, scout_bar_y, scout_bar_width * scout_progress, scout_bar_height), Color(0.2, 0.7, 0.9))
+            draw_rect(Rect2(scout_bar_x, scout_bar_y, scout_bar_width, scout_bar_height), Color.WHITE, false)
+
 
 func _is_resource_locked(resource_id: String) -> bool:
     if resource_id == null or resource_id == "":
@@ -255,7 +269,7 @@ func _is_resource_locked(resource_id: String) -> bool:
 
 func is_resource_locked(resource_id: String) -> bool:
     return _is_resource_locked(resource_id)
-# Рисует все дороги один раз в каноническом направлении
+
 func _draw_all_roads():
     if main_map == null or not main_map.has_method("get"):
         return
@@ -265,11 +279,9 @@ func _draw_all_roads():
     var road_manager = main_map.get_node("RoadManager")
     var all_segments = road_manager.get_all_road_segments()
     
-    # Отладка
     if all_segments.is_empty():
         return
     
-    # Итерируем по всем сегментам и рисуем каждый один раз
     for segment_key in all_segments.keys():
         var parts = segment_key.split("|")
         if parts.size() != 2:
@@ -289,13 +301,9 @@ func _draw_all_roads():
         var points = _generate_natural_road(row1, col1, row2, col2, main_map.HEX_RADIUS)
         draw_polyline(points, Color(0.55, 0.35, 0.15), 6, true)
 
-# Старый метод _draw_roads больше не используется, но оставляем для совместимости
 func _draw_roads(_row: int, _col: int):
-    # Этот метод больше не используется, так как все дороги рисуются в _draw_all_roads()
     pass
 
-# Генерирует слегка ломаную линию между центрами двух гексов
-# (детерминированная по сеточным координатам)
 func _generate_natural_road(
     row1: int,
     col1: int,
@@ -319,7 +327,6 @@ func _generate_natural_road(
         var mid = center1.lerp(center2, t)
         var dir = (center2 - center1).normalized()
         var perp = Vector2(-dir.y, dir.x)
-        # Детерминированный изгиб на основе сеточных координат
         var hash_input = (
             row1 * 73856093 + col1 * 19349663 + row2 * 83492791
         ) & 0x7fffffff
@@ -330,7 +337,6 @@ func _generate_natural_road(
     points.append(center2)
     return points
 
-# Подсветка гексов, доступных для покупки в режиме "Развитие"
 func _draw_expansion_highlights():
     var main = get_parent()
     if not main.has_method("is_expansion_mode_active") or not main.is_expansion_mode_active():
@@ -340,22 +346,32 @@ func _draw_expansion_highlights():
     if not expansion_manager:
         return
 
-    # 1. Постоянная зелёная подсветка всего недоступного Региона
+    # --- 1. Рисуем слои: не исследован / исследован ---
     for row in range(main_map.REGION_ROWS):
         for col in range(main_map.REGION_COLS):
             var tile = tile_data[row][col]
-            if not tile.get("in_influence", false):
-                var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
-                center.x += main.offset_x + main.scroll_offset.x
-                center.y += main.offset_y + main.scroll_offset.y
-                var vertices = HexUtils.hex_vertices(center.x, center.y, main_map.HEX_RADIUS)
-                draw_colored_polygon(vertices, Color(0.0, 1.0, 0.0, 0.2))
+            if tile.get("in_influence", false):
+                continue
+
+            var is_explored = tile.get("is_explored", false)
+
+            var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
+            center.x += main.offset_x + main.scroll_offset.x
+            center.y += main.offset_y + main.scroll_offset.y
+            var vertices = HexUtils.hex_vertices(center.x, center.y, main_map.HEX_RADIUS)
+
+            if is_explored:
+                # Исследован: светло-зелёный + белая рамка
+                draw_colored_polygon(vertices, Color(0.0, 0.7, 0.0, 0.25))
                 var closed_verts = PackedVector2Array()
                 closed_verts.append_array(vertices)
                 closed_verts.append(vertices[0])
-                draw_polyline(closed_verts, Color.GREEN, 3.0)
+                draw_polyline(closed_verts, Color.WHITE, 1.5)
+            else:
+                # Не исследован: тёмно-зелёный без рамки
+                draw_colored_polygon(vertices, Color(0.0, 0.3, 0.0, 0.4))
 
-    # 2. Поверх зелёной — жёлтая подсветка чанка (только если мышь на регионе)
+    # --- 2. Жёлтая подсветка чанка под мышью (поверх всего) ---
     var chunk = expansion_manager.current_chunk
     if chunk.is_empty():
         return

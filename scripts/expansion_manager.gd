@@ -81,6 +81,33 @@ func get_chunk_cost(chunk: Array) -> int:
     return max_cost * chunk.size()
 
 func show_context_menu(chunk: Array, click_pos: Vector2, available_food: int):
+    # --- Проверка: все гексы в чанке исследованы ---
+    var all_explored = true
+    for hex in chunk:
+        var tile = main_map.tile_data[hex.row][hex.col]
+        if not tile.get("is_explored", false):
+            all_explored = false
+            break
+    if not all_explored:
+        main_map.hud.show_message("Этот чанк ещё не исследован!")
+        return
+
+    # --- Проверка: чанк граничит с Кольцом Влияния ---
+    var has_neighbor = false
+    for hex in chunk:
+        var neighbors = HexUtils.get_neighbors_odd_r(hex.row, hex.col, main_map.REGION_ROWS, main_map.REGION_COLS)
+        for n in neighbors:
+            var n_tile = main_map.tile_data[n.row][n.col]
+            if n_tile.get("in_influence", false):
+                has_neighbor = true
+                break
+        if has_neighbor:
+            break
+    if not has_neighbor:
+        main_map.hud.show_message("Этот чанк не граничит с вашими владениями!")
+        return
+
+    # --- Остальной код (формирование меню) ---
     var cost = get_chunk_cost(chunk)
     var hex_count = chunk.size()
     var max_cost = 0
@@ -97,10 +124,6 @@ func show_context_menu(chunk: Array, click_pos: Vector2, available_food: int):
     )
     main_map.popup_menu.position = click_pos
     main_map.popup_menu.popup()
-    # Принудительно делаем видимым, если не сработало
-    if not main_map.popup_menu.visible:
-        main_map.popup_menu.visible = true
-        main_map.popup_menu.raise()
 
 func handle_action(chunk: Array, cost: int) -> bool:
     if not is_expansion_mode:
