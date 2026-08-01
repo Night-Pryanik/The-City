@@ -20,7 +20,7 @@ var is_dragging: bool = false
 var drag_start_scroll_offset: Vector2 = Vector2.ZERO
 var drag_start_mouse: Vector2 = Vector2.ZERO
 
-const TOOLTIP_DELAY: float = 0.5
+var tooltip_delay: float = 0.5
 const SCROLL_SPEED: float = 300.0
 const SCROLL_MARGIN: float = 30
 
@@ -36,6 +36,9 @@ func initialize(main_node: Node):
     city_ui = main_node.city_ui
     pause_menu = main_node.pause_menu
     expansion_manager = main_node.expansion_manager
+
+func set_tooltip_delay(value: float):
+    tooltip_delay = value
 
 func handle_input(event: InputEvent):
     # --- ОТЛАДОЧНАЯ КОМАНДА: Ctrl+Shift+F = +100 пшеницы ---
@@ -123,7 +126,7 @@ func handle_process(delta: float):
         _hide_tooltip()
     if _hovered_hex != null:
         _hover_start_time += delta
-        if _hover_start_time >= TOOLTIP_DELAY and not _tooltip_visible:
+        if _hover_start_time >= tooltip_delay and not _tooltip_visible:
             _tooltip_visible = true
             hex_tooltip.visible = true
         if _tooltip_visible:

@@ -37,6 +37,7 @@ var is_scouting: bool = false
 var settings_config = ConfigFile.new()
 var show_hex_borders = true
 var use_edge_scrolling = true
+var tooltip_delay: float = 0.5
 
 @onready var popup_menu = $PopupMenu
 @onready var city_ui = $CityUI
@@ -130,6 +131,7 @@ func _ready():
 
     # Инициализация InputHandler
     input_handler.initialize(self)
+    input_handler.set_tooltip_delay(tooltip_delay)
 
     _calc_offsets()
     map_renderer.queue_redraw()
@@ -752,12 +754,15 @@ func _load_settings():
     if err == OK:
         show_hex_borders = settings_config.get_value("interface", "show_hex_borders", true)
         use_edge_scrolling = settings_config.get_value("interface", "edge_scrolling", true)
+        tooltip_delay = settings_config.get_value("interface", "tooltip_delay", 0.5)
     else:
         show_hex_borders = true
         use_edge_scrolling = true
+        tooltip_delay = 0.5
 
 func apply_settings():
     _load_settings()
+    input_handler.set_tooltip_delay(tooltip_delay)
     map_renderer.queue_redraw()
 
 func _on_population_changed(new_pop: int):

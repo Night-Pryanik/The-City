@@ -70,6 +70,25 @@ text = "Перемещение карты"
 layout_mode = 2
 text = "Перемещение карты у краёв окна"
 
+[node name="Label3" type="Label" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1054639220]
+layout_mode = 2
+text = "Тултип"
+
+[node name="HBoxContainer" type="HBoxContainer" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1054639221]
+layout_mode = 2
+
+[node name="TooltipDelaySlider" type="HSlider" parent="TabContainer/Интерфейс/VBoxContainer/HBoxContainer" unique_id=1054639222]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 2.0
+step = 0.25
+value = 0.5
+
+[node name="TooltipDelayValueLabel" type="Label" parent="TabContainer/Интерфейс/VBoxContainer/HBoxContainer" unique_id=1054639223]
+layout_mode = 2
+text = "0,50 сек"
+
 [node name="BackButton" type="Button" parent="." unique_id=1943295540]
 layout_mode = 1
 anchors_preset = 7
