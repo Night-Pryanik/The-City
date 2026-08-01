@@ -479,10 +479,15 @@ func _show_context_menu(row: int, col: int, click_pos: Vector2):
             if is_scouting:
                 hud.show_message("Разведка уже идёт!")
                 return
+            var available_food = 0
+            if CityData:
+                for pid in CityData.city_food_pool:
+                    if CityData.city_food_pool[pid]:
+                        available_food += CityData.city_storage.get(pid, 0)
             popup_menu.clear()
             # Стоимость зависит от количества фактически исследуемых гексов: 3 еды за гекс
             var cost = unexplored_count * 3
-            popup_menu.add_item("Отправить разведку (%d еды, %.0f сек)" % [cost, SCOUTING_TIME])
+            popup_menu.add_item("Отправить разведку [еды: %d/%d, %.0f сек.]" % [available_food, cost, SCOUTING_TIME])
             popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": "scout_chunk", "chunk": chunk, "cost": cost})
             popup_menu.position = click_pos
             popup_menu.popup()

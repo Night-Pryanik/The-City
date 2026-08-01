@@ -41,15 +41,15 @@ signal closed()
 
 func _ready():
     # Загружаем модули
-    ui_helpers = load("res://city_ui/ui_helpers.gd").new()
+    ui_helpers = load("res://scripts/ui_helpers.gd").new()
     ui_helpers.setup(self, message_label)
     add_child(ui_helpers)
 
-    resources_tab = load("res://city_ui/resources_tab.gd").new()
+    resources_tab = load("res://scripts/resources_tab.gd").new()
     resources_tab.setup($ContentPanel/ResourcesPanel/ScrollContainer/ResourcesList, ui_helpers)
     add_child(resources_tab)
 
-    buildings_tab = load("res://city_ui/buildings_tab.gd").new()
+    buildings_tab = load("res://scripts/buildings_tab.gd").new()
     buildings_tab.setup(
         $ContentPanel/BuildingsPanel/HSplitContainer/AvailableBuildingsPanel/VBoxContainer/BuildingsItemList,
         $ContentPanel/BuildingsPanel/HSplitContainer/BuildingDetailsPanel/VBoxContainer/BuildingNameLabel,
@@ -64,7 +64,7 @@ func _ready():
     buildings_tab.build_requested.connect(_on_build_requested)
     add_child(buildings_tab)
 
-    technologies_tab = load("res://city_ui/technologies_tab.gd").new()
+    technologies_tab = load("res://scripts/technologies_tab.gd").new()
     technologies_tab.setup(
         $ContentPanel/TechnologiesPanel/CurrentResearch/VBoxContainer/TechCurrentLabel,
         $ContentPanel/TechnologiesPanel/CurrentResearch/VBoxContainer/TechProgressBar,
@@ -74,7 +74,7 @@ func _ready():
     technologies_tab.research_requested.connect(_on_research_requested)
     add_child(technologies_tab)
 
-    trade_tab = load("res://city_ui/trade_tab.gd").new()
+    trade_tab = load("res://scripts/trade_tab.gd").new()
     add_child(trade_tab)
 
     # Сигналы кнопок
