@@ -48,6 +48,7 @@ var tooltip_delay: float = 0.5
 @onready var hud = $HUD
 @onready var city_button = $HUD/VBoxContainer/CityButton
 @onready var expansion_button = $HUD/VBoxContainer/ExpansionButton
+@onready var menu_button = $TopRightLayer/TopRightPanel/MenuButton
 @onready var pause_menu = $PauseMenu
 @onready var build_manager = $BuildManager
 @onready var map_renderer = $MapRenderer
@@ -170,6 +171,8 @@ func _ready():
     # Сигналы от ExpansionManager
     expansion_manager.expansion_mode_changed.connect(_on_expansion_mode_changed)
     expansion_manager.territory_expanded.connect(_on_territory_expanded)
+
+    menu_button.pressed.connect(_on_menu_button_pressed)
 
 func _input(event):
     input_handler.handle_input(event)
@@ -708,6 +711,17 @@ func _on_pause_menu_visibility_changed():
     var menu_visible = pause_menu.visible
     city_button.disabled = menu_visible
     expansion_button.disabled = menu_visible
+    menu_button.visible = not menu_visible
+
+func open_pause_menu():
+    pause_menu.show()
+    city_button.disabled = true
+    expansion_button.disabled = true
+
+func _on_menu_button_pressed():
+    if pause_menu.visible:
+        return
+    open_pause_menu()
 
 func _on_pause_load():
     if SaveManager.load_game():

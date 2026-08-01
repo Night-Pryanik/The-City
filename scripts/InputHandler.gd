@@ -168,9 +168,7 @@ func _handle_esc():
         else:
             hud.show_message("Режим освоения выключен.")
     else:
-        pause_menu.show()
-        main_map.city_button.disabled = true
-        main_map.expansion_button.disabled = true
+        main_map.open_pause_menu()
 
 func _handle_expansion_mode_input(event: InputEventMouseButton) -> bool:
     if hud.get_global_rect().has_point(event.global_position):

@@ -291,6 +291,12 @@ func _input(event: InputEvent):
         return
     if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
         var click_pos = event.global_position
+
+        var hovered_control = get_viewport().gui_get_hovered_control()
+        if is_instance_valid(hovered_control) and hovered_control != self:
+            if hovered_control.get_global_rect().has_point(click_pos):
+                return
+
         var hit_panel = false
         for panel in [$LeftPanel, $TopPanel, $RightPanel, $ContentPanel, $BottomPanel]:
             if panel.get_global_rect().has_point(click_pos):
@@ -298,7 +304,6 @@ func _input(event: InputEvent):
                 break
         if not hit_panel:
             _close_ui()
-            accept_event()
 
 func _close_ui():
     ui_helpers.set_message("")
