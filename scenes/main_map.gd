@@ -158,6 +158,8 @@ func _ready():
             pause_menu.load_pressed.connect(_on_pause_load)
         if not pause_menu.new_game_pressed.is_connected(_on_pause_new_game):
             pause_menu.new_game_pressed.connect(_on_pause_new_game)
+        if not pause_menu.visibility_changed.is_connected(_on_pause_menu_visibility_changed):
+            pause_menu.visibility_changed.connect(_on_pause_menu_visibility_changed)
 
     build_manager.build_message.connect(hud.show_message)
     build_manager.build_completed.connect(_on_build_completed)
@@ -694,6 +696,11 @@ func _on_research_completed(_tech_id: String):
 func _on_pause_save():
     SaveManager.save_game()
     hud.show_message("Игра сохранена.")
+
+func _on_pause_menu_visibility_changed():
+    var menu_visible = pause_menu.visible
+    city_button.disabled = menu_visible
+    expansion_button.disabled = menu_visible
 
 func _on_pause_load():
     if SaveManager.load_game():

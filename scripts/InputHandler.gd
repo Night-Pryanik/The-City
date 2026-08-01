@@ -11,7 +11,6 @@ var worker_manager: Node
 var popup_menu: Node
 var city_ui: Node
 var pause_menu: Node
-var settings_menu: Node
 var expansion_manager: Node
 
 var _hovered_hex = null
@@ -36,7 +35,6 @@ func initialize(main_node: Node):
     popup_menu = main_node.popup_menu
     city_ui = main_node.city_ui
     pause_menu = main_node.pause_menu
-    settings_menu = main_node.settings_menu
     expansion_manager = main_node.expansion_manager
 
 func handle_input(event: InputEvent):
@@ -70,7 +68,7 @@ func handle_input(event: InputEvent):
         _handle_esc()
         return
 
-    if city_ui.visible or pause_menu.visible or (settings_menu and settings_menu.visible):
+    if city_ui.visible or pause_menu.visible or (main_map.settings_menu and main_map.settings_menu.visible):
         return
 
     # Обработка режима "Развитие" для кликов и подсветки
@@ -92,7 +90,7 @@ func handle_process(delta: float):
     if Engine.is_editor_hint():
         return
 
-    if city_ui.visible or popup_menu.visible or pause_menu.visible or (settings_menu and settings_menu.visible):
+    if city_ui.visible or popup_menu.visible or pause_menu.visible or (main_map.settings_menu and main_map.settings_menu.visible):
         _hide_tooltip()
         return
 
@@ -157,10 +155,15 @@ func _handle_esc():
         pause_menu.hide()
         main_map.city_button.disabled = false
         main_map.expansion_button.disabled = false
+    elif main_map.settings_menu and main_map.settings_menu.visible:
+        # Закрываем настройки — pause_menu.gd снова покажет меню паузы
+        main_map.settings_menu.hide()
     elif expansion_manager.is_active():
-        expansion_manager.toggle()
-    elif settings_menu and settings_menu.visible:
-        settings_menu.hide()
+        var active = expansion_manager.toggle()
+        if active:
+            hud.show_message("Режим освоения включён. ПКМ по выделенной области для освоения.")
+        else:
+            hud.show_message("Режим освоения выключен.")
     else:
         pause_menu.show()
         main_map.city_button.disabled = true
