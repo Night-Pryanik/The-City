@@ -159,6 +159,13 @@ func _draw_hex(row: int, col: int):
     if main_map.show_hex_borders:
         draw_polyline(closed_vertices, Color.WHITE, 2, true)
 
+# Ресурс виден игроку, если гекс входит в Кольцо Влияния
+# (территория освоена) или область была исследована разведкой.
+func _is_resource_revealed(tile: Dictionary) -> bool:
+    if tile.get("in_influence", false):
+        return true
+    return tile.get("is_explored", false)
+
 func _draw_hex_overlays(row: int, col: int):
     var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
     center.x += main_map.offset_x + main_map.scroll_offset.x
@@ -170,7 +177,11 @@ func _draw_hex_overlays(row: int, col: int):
     if row == main_map.CITY_ROW and col == main_map.CITY_COL:
         return
 
-    if tile.resource != null:
+    # Ресурсы Региона вне Кольца Влияния скрыты, пока область не разведана.
+    # (Прогресс-бары ниже отрисовываются независимо от видимости ресурса.)
+    var is_resource_visible = _is_resource_revealed(tile)
+
+    if tile.resource != null and is_resource_visible:
         var res_data = GameData.raw_resources.get(tile.resource, {})
         var res_icon = res_data.get("icon", "")
         var is_locked = _is_resource_locked(tile.resource)

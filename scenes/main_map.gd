@@ -348,8 +348,22 @@ func update_tooltip_text(row: int, col: int):
 
     var tile = tile_data[row][col]
     var terrain_name = GameData.terrains.get(tile.terrain, {}).get("name", tile.terrain)
+
+    # Ресурсы вне Кольца Влияния скрыты, пока область не разведана.
+    var is_revealed = tile.get("in_influence", false) or tile.get("is_explored", false)
+
     var res_id = tile.resource
-    var res_name = GameData.raw_resources.get(res_id, {}).get("name", "нет") if res_id != null else "нет"
+    var res_name = "нет"
+    if res_id != null:
+        res_name = GameData.raw_resources.get(res_id, {}).get("name", res_id)
+
+    # Регион ещё не разведан — не раскрываем информацию о ресурсе.
+    # Показываем «неизвестно» на ВСЕХ неразведанных гексах, чтобы игрок
+    # не мог заранее определить, где находятся скрытые ресурсы.
+    if not is_revealed:
+        tooltip_text_label.text = "Местность: %s\nРесурс: неизвестно (проведите разведку)" % terrain_name
+        return
+
     var imp_name = GameData.improvements.get(tile.improvement, {}).get("name", "нет") if tile.improvement != null else "нет"
     var locked = ""
     if res_id != null:
