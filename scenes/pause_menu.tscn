@@ -34,6 +34,10 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 10
 
+[node name="ResumeButton" type="Button" parent="ColorRect/VBoxContainer" unique_id=2000000001]
+layout_mode = 2
+text = "Вернуться в игру"
+
 [node name="NewGameButton" type="Button" parent="ColorRect/VBoxContainer" unique_id=273708776]
 layout_mode = 2
 text = "Новая игра"

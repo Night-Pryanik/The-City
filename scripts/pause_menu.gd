@@ -9,11 +9,15 @@ var settings_menu_instance: Control = null
 var settings_canvas: CanvasLayer = null
 
 func _ready():
+    var resume_btn = find_child("ResumeButton", true, false)
     var save_btn = find_child("SaveButton", true, false)
     var load_btn = find_child("LoadButton", true, false)
     var new_game_btn = find_child("NewGameButton", true, false)
     var exit_btn = find_child("ExitButton", true, false)
     var settings_btn = find_child("SettingsButton", true, false)
+
+    if resume_btn: resume_btn.pressed.connect(_on_resume)
+    else: printerr("ResumeButton not found in PauseMenu")
 
     if save_btn: save_btn.pressed.connect(_on_save)
     else: printerr("SaveButton not found in PauseMenu")
@@ -29,6 +33,9 @@ func _ready():
 
     if settings_btn: settings_btn.pressed.connect(_on_settings)
     else: printerr("SettingsButton not found in PauseMenu")
+
+func _on_resume():
+    hide()
 
 func _on_save():
     emit_signal("save_pressed")
