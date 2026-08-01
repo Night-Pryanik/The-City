@@ -3,12 +3,12 @@ extends Node
 
 var is_expansion_mode = false
 var hexes_bought = 0
-var current_chunk = []  # массив {"row": int, "col": int}
-var current_hover_hex = null  # {"row": int, "col": int}
+var current_chunk = [] # массив {"row": int, "col": int}
+var current_hover_hex = null # {"row": int, "col": int}
 
 signal expansion_mode_changed(active: bool)
 signal territory_expanded(row: int, col: int, cost: int)
-signal chunk_hovered(chunk: Array)  # для оповещения рендерера
+signal chunk_hovered(chunk: Array) # для оповещения рендерера
 
 @onready var main_map = get_parent()
 
@@ -30,13 +30,17 @@ func get_hex_cost(row: int, col: int) -> int:
     var multiplier = 1.0 + hexes_bought * 0.05
     return int(base_cost * multiplier)
 
-# Возвращает чанк (список гексов), который включает стартовый гекс
+# Возвращает чанк (список гексов), который включает стартовый гекс.
+# Чанк однороден по статусу исследования: если стартовый гекс не исследован,
+# в чанк включаются только неисследованные гексы (для разведки).
+# Если стартовый гекс исследован — только исследованные (для освоения).
 func get_chunk_hexes(start_row: int, start_col: int) -> Array:
     var chunk = []
     var visited = {}
-    var queue = [{"row": start_row, "col": start_col}]
+    var queue = [ {"row": start_row, "col": start_col}]
     var key = str(start_row) + "," + str(start_col)
     visited[key] = true
+    var start_explored = main_map.tile_data[start_row][start_col].get("is_explored", false)
 
     while queue.size() > 0 and chunk.size() < 5:
         var current = queue.pop_front()
@@ -50,6 +54,10 @@ func get_chunk_hexes(start_row: int, start_col: int) -> Array:
                 continue
             var tile = main_map.tile_data[n.row][n.col]
             if tile.get("in_influence", false):
+                continue
+            # Исключаем гексы с отличающимся статусом исследования,
+            # чтобы не включать в чанк разведки уже исследованные гексы
+            if tile.get("is_explored", false) != start_explored:
                 continue
             visited[n_key] = true
             queue.append(n)
@@ -170,14 +178,14 @@ func _get_neighbors(row: int, col: int) -> Array:
     var directions = []
     if row % 2 == 0:
         directions = [
-            {"r": 0, "c": -1}, {"r": 0, "c": 1},
-            {"r": -1, "c": -1}, {"r": -1, "c": 0},
-            {"r": 1, "c": -1}, {"r": 1, "c": 0}
+            {"r": 0, "c": - 1}, {"r": 0, "c": 1},
+            {"r": - 1, "c": - 1}, {"r": - 1, "c": 0},
+            {"r": 1, "c": - 1}, {"r": 1, "c": 0}
         ]
     else:
         directions = [
-            {"r": 0, "c": -1}, {"r": 0, "c": 1},
-            {"r": -1, "c": 0}, {"r": -1, "c": 1},
+            {"r": 0, "c": - 1}, {"r": 0, "c": 1},
+            {"r": - 1, "c": 0}, {"r": - 1, "c": 1},
             {"r": 1, "c": 0}, {"r": 1, "c": 1}
         ]
     for d in directions:

@@ -451,17 +451,19 @@ func _show_context_menu(row: int, col: int, click_pos: Vector2):
     # --- Разведка Региона ---
     if not tile.get("in_influence", false):
         var chunk = expansion_manager.get_chunk_hexes(row, col)
+        var unexplored_count = 0
         var all_explored = true
         for hex in chunk:
             if not tile_data[hex.row][hex.col].get("is_explored", false):
                 all_explored = false
-                break
+                unexplored_count += 1
         if not all_explored:
             if is_scouting:
                 hud.show_message("Разведка уже идёт!")
                 return
             popup_menu.clear()
-            var cost = chunk.size() * 3
+            # Стоимость зависит от количества фактически исследуемых гексов: 3 еды за гекс
+            var cost = unexplored_count * 3
             popup_menu.add_item("Отправить разведку (%d еды, %.0f сек)" % [cost, SCOUTING_TIME])
             popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": "scout_chunk", "chunk": chunk, "cost": cost})
             popup_menu.position = click_pos
