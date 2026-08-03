@@ -101,17 +101,24 @@ func _ready():
     ]
     _highlight_active_tab_button()
 
-func update_data(storage, prod_rates, cons_rates, food_pool, blds_data, cfts_data, built_blds, products_dict, categories_list):
+    if not CityData.city_updated.is_connected(_on_city_data_updated):
+        CityData.city_updated.connect(_on_city_data_updated)
+
+func _on_city_data_updated():
+    if visible:
+        refresh()
+
+func refresh():
     data_cache = {
-        "city_storage": storage,
-        "production_rates": prod_rates,
-        "consumption_rates": cons_rates,
-        "city_food_pool": food_pool,
-        "buildings_data": blds_data,
-        "crafts_data": cfts_data,
-        "built_buildings": built_blds,
-        "products": products_dict,
-        "categories": categories_list
+        "city_storage": CityData.city_storage,
+        "production_rates": CityData.production_rates,
+        "consumption_rates": CityData.consumption_rates,
+        "city_food_pool": CityData.city_food_pool,
+        "buildings_data": GameData.buildings,
+        "crafts_data": GameData.crafts,
+        "built_buildings": CityData.city_built_buildings,
+        "products": GameData.products,
+        "categories": GameData.categories,
     }
     resources_tab.update_data(data_cache)
     buildings_tab.update_data(data_cache)

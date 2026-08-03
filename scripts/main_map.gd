@@ -144,7 +144,6 @@ func _ready():
     city_button.pressed.connect(_on_city_button_pressed)
     expansion_button.pressed.connect(_on_expansion_button_pressed)
     city_ui.build_requested.connect(CityData.request_build)
-    CityData.city_updated.connect(_on_city_data_updated)
     CityData.research_error.connect(_on_research_error)
     CityData.research_error.connect(hud.show_message)
     CityData.population_changed.connect(_on_population_changed)
@@ -594,7 +593,7 @@ func _on_popup_menu_id_pressed(id: int):
         if success:
             map_renderer.queue_redraw()
             if city_ui.visible:
-                city_ui.update_data(CityData.city_storage, CityData.production_rates, CityData.consumption_rates, CityData.city_food_pool, GameData.buildings, GameData.crafts, CityData.city_built_buildings, GameData.products, GameData.categories)
+                city_ui.refresh()
         return
 
     if action == "pause_improvement":
@@ -675,7 +674,7 @@ func pixel_to_hex(mx: float, my: float):
     return null
 
 func open_city():
-    city_ui.update_data(CityData.city_storage, CityData.production_rates, CityData.consumption_rates, CityData.city_food_pool, GameData.buildings, GameData.crafts, CityData.city_built_buildings, GameData.products, GameData.categories)
+    city_ui.refresh()
     city_ui.show()
     city_ui.show_resources_tab()
     hud.hide()
@@ -690,10 +689,6 @@ func _on_city_ui_close():
     city_ui.hide()
     hud.show()
 
-func _on_city_data_updated():
-    if city_ui.visible:
-        city_ui.update_data(CityData.city_storage, CityData.production_rates, CityData.consumption_rates, CityData.city_food_pool, GameData.buildings, GameData.crafts, CityData.city_built_buildings, GameData.products, GameData.categories)
-
 func _on_research_error(message: String):
     if city_ui.visible:
         city_ui.set_message(message)
@@ -701,8 +696,6 @@ func _on_research_error(message: String):
         hud.show_message(message)
 
 func _on_research_completed(_tech_id: String):
-    if city_ui.visible:
-        city_ui.update_data(CityData.city_storage, CityData.production_rates, CityData.consumption_rates, CityData.city_food_pool, GameData.buildings, GameData.crafts, CityData.city_built_buildings, GameData.products, GameData.categories)
     map_renderer.queue_redraw()
 
 func _on_pause_save():
@@ -759,7 +752,7 @@ func _on_territory_expanded(_row: int, _col: int, cost: int):
     hud.show_message("Территория расширена! (%d еды)" % cost)
     map_renderer.queue_redraw()
     if city_ui.visible:
-        city_ui.update_data(CityData.city_storage, CityData.production_rates, CityData.consumption_rates, CityData.city_food_pool, GameData.buildings, GameData.crafts, CityData.city_built_buildings, GameData.products, GameData.categories)
+        city_ui.refresh()
 
 func is_expansion_mode_active() -> bool:
     return expansion_manager.is_active()
@@ -788,8 +781,6 @@ func apply_settings():
 
 func _on_population_changed(_new_pop: int):
     _update_population_hud()
-    if city_ui.visible:
-        city_ui.update_data(CityData.city_storage, CityData.production_rates, CityData.consumption_rates, CityData.city_food_pool, GameData.buildings, GameData.crafts, CityData.city_built_buildings, GameData.products, GameData.categories)
 
 func _update_population_hud():
     var pop_label = hud.get_node_or_null("VBoxContainer/PopulationLabel")
@@ -802,19 +793,7 @@ func _on_assignment_changed():
 
 func _on_townsfolk_assignment_changed():
     if city_ui.visible:
-        city_ui.update_data(
-            CityData.city_storage,
-            CityData.production_rates,
-            CityData.consumption_rates,
-            CityData.city_food_pool,
-            GameData.buildings,
-            GameData.crafts,
-            CityData.city_built_buildings,
-            GameData.products,
-            GameData.categories
-        )
-        city_ui.refresh_buildings_tab()
-        city_ui.update_food_label()
+        city_ui.refresh()
 
 func _start_foraging(row: int, col: int):
     if is_foraging:
