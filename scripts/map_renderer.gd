@@ -260,7 +260,7 @@ func _draw_hex_overlays(row: int, col: int):
     if main_map.is_scouting and not main_map.scouting_chunk.is_empty():
         var scout_center_hex = main_map.scouting_chunk[0]
         if scout_center_hex.row == row and scout_center_hex.col == col:
-            var scout_progress = clamp(main_map.scouting_timer / main_map.SCOUTING_TIME, 0.0, 1.0)
+            var scout_progress = clamp(main_map.scouting_timer / (main_map.scouting_chunk.size() * main_map.SCOUTING_TIME_PER_HEX), 0.0, 1.0)
             var scout_bar_width = RESOURCE_ICON_SIZE
             var scout_bar_height = 6
             var scout_bar_x = center.x - scout_bar_width / 2.0

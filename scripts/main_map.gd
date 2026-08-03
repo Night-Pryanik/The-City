@@ -17,7 +17,7 @@ const INFLUENCE_END_ROW = INFLUENCE_START_ROW + GRID_ROWS - 1
 const INFLUENCE_START_COL = REGION_PADDING
 const INFLUENCE_END_COL = INFLUENCE_START_COL + GRID_COLS - 1
 const FORAGING_TIME: float = 3.0
-const SCOUTING_TIME: float = 12.0
+const SCOUTING_TIME_PER_HEX: float = 3.0
 
 var tile_data = []
 var offset_x: float = 0.0
@@ -213,16 +213,16 @@ func _process(delta):
         map_renderer.queue_redraw()
 
     input_handler.handle_process(delta)
-    
+
     if is_foraging:
         foraging_timer += delta
         if foraging_timer >= FORAGING_TIME:
             _complete_foraging()
         map_renderer.queue_redraw()
-        
+
     if is_scouting:
         scouting_timer += delta
-        if scouting_timer >= SCOUTING_TIME:
+        if scouting_timer >= _get_scouting_time(scouting_chunk.size()):
             _complete_scouting()
         map_renderer.queue_redraw()
 
@@ -497,7 +497,7 @@ func _show_context_menu(row: int, col: int, click_pos: Vector2):
             popup_menu.clear()
             # Стоимость зависит от количества фактически исследуемых гексов: 3 еды за гекс
             var cost = unexplored_count * 3
-            popup_menu.add_item("Отправить разведку [еды: %d/%d, %.0f сек.]" % [available_food, cost, SCOUTING_TIME])
+            popup_menu.add_item("Отправить разведку [еды: %d/%d, %.0f сек.]" % [available_food, cost, _get_scouting_time(unexplored_count)])
             popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": "scout_chunk", "chunk": chunk, "cost": cost})
             popup_menu.position = click_pos
             popup_menu.popup()
@@ -832,6 +832,9 @@ func _complete_foraging():
     foraging_hex = {}
     hud.show_message("Собрано %d еды!" % yield_amount)
     map_renderer.queue_redraw()
+
+func _get_scouting_time(hex_count: int) -> float:
+    return hex_count * SCOUTING_TIME_PER_HEX
 
 func _start_scouting(chunk: Array, cost: int):
     if is_scouting:
