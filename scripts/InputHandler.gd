@@ -58,6 +58,9 @@ func handle_input(event: InputEvent):
 
     if event is InputEventKey and event.keycode == KEY_ESCAPE and event.pressed:
         _handle_esc()
+        # Помечаем событие обработанным, чтобы оно не распространилось
+        # на _unhandled_input (иначе меню паузы, став видимым, сразу закроется)
+        get_viewport().set_input_as_handled()
         return
 
     if city_ui.visible or pause_menu.visible or (main_map.settings_menu and main_map.settings_menu.visible):

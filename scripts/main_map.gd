@@ -712,6 +712,8 @@ func open_pause_menu():
     pause_menu.show()
     city_button.disabled = true
     expansion_button.disabled = true
+    # Приостанавливаем игру, пока открыто меню паузы
+    get_tree().paused = true
 
 func _on_menu_button_pressed():
     if pause_menu.visible:

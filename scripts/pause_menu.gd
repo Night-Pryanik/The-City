@@ -8,6 +8,9 @@ var settings_menu_instance: Control = null
 var settings_canvas: CanvasLayer = null
 
 func _ready():
+    # Меню паузы должно работать, даже когда игра приостановлена
+    process_mode = Node.PROCESS_MODE_WHEN_PAUSED
+
     var resume_btn = find_child("ResumeButton", true, false)
     var save_btn = find_child("SaveButton", true, false)
     var load_btn = find_child("LoadButton", true, false)
@@ -33,17 +36,39 @@ func _ready():
     if settings_btn: settings_btn.pressed.connect(_on_settings)
     else: printerr("SettingsButton not found in PauseMenu")
 
-func _on_resume():
+func _unhandled_input(event):
+    # Обрабатываем ESC только когда меню паузы открыто (иначе событие
+    # должен получить InputHandler, чтобы открыть меню)
+    if not visible:
+        return
+    if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+        if settings_menu_instance and settings_menu_instance.visible:
+            # Закрываем настройки — _on_settings_menu_visibility_changed покажет меню паузы снова
+            settings_menu_instance.hide()
+        else:
+            _close_pause_menu()
+
+func _set_game_paused(paused: bool):
+    get_tree().paused = paused
+
+func _close_pause_menu():
     hide()
+    _set_game_paused(false)
+
+func _on_resume():
+    _close_pause_menu()
 
 func _on_save():
     emit_signal("save_pressed")
-    hide()
+    _close_pause_menu()
 
 func _on_load():
+    # При загрузке выходим из паузы, чтобы сцена могла перезагрузиться
+    _set_game_paused(false)
     emit_signal("load_pressed")
 
 func _on_new_game():
+    _set_game_paused(false)
     emit_signal("new_game_pressed")
 
 func _on_exit():
@@ -61,7 +86,7 @@ func _on_settings():
     var main = get_parent()
     main.settings_menu = settings_menu_instance
 
-    hide()  # прячем паузу
+    hide() # прячем паузу
     settings_menu_instance.show()
 
 func _on_settings_menu_visibility_changed():
