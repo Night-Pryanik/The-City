@@ -469,6 +469,8 @@ func _show_context_menu(row: int, col: int, click_pos: Vector2):
         popup_menu.popup()
         return
     
+    var available_food = 0
+    
     # --- Разведка Региона ---
     if not tile.get("in_influence", false):
         var chunk = expansion_manager.get_chunk_hexes(row, col)
@@ -482,7 +484,7 @@ func _show_context_menu(row: int, col: int, click_pos: Vector2):
             if is_scouting:
                 hud.show_message("Разведка уже идёт!")
                 return
-            var available_food = 0
+            available_food = 0
             if CityData:
                 for pid in CityData.city_food_pool:
                     if CityData.city_food_pool[pid]:
@@ -514,7 +516,7 @@ func _show_context_menu(row: int, col: int, click_pos: Vector2):
         popup_menu.popup()
         return
 
-    var available_food = 0
+    available_food = 0
     if CityData:
         for pid in CityData.city_food_pool:
             if CityData.city_food_pool[pid]:
@@ -784,7 +786,7 @@ func apply_settings():
     input_handler.set_tooltip_delay(tooltip_delay)
     map_renderer.queue_redraw()
 
-func _on_population_changed(new_pop: int):
+func _on_population_changed(_new_pop: int):
     _update_population_hud()
     if city_ui.visible:
         city_ui.update_data(CityData.city_storage, CityData.production_rates, CityData.consumption_rates, CityData.city_food_pool, GameData.buildings, GameData.crafts, CityData.city_built_buildings, GameData.products, GameData.categories)

@@ -3,7 +3,6 @@ extends CanvasLayer
 signal save_pressed
 signal load_pressed
 signal new_game_pressed
-signal exit_pressed
 
 var settings_menu_instance: Control = null
 var settings_canvas: CanvasLayer = null
