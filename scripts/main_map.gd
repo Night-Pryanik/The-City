@@ -883,6 +883,9 @@ func _get_chunk_info(chunk: Array) -> String:
         if tile.resource != null:
             var res_name = GameData.raw_resources.get(tile.resource, {}).get("name", tile.resource)
             resources.append(res_name)
-    var terrain_str = ", ".join(terrain_types.keys())
+    var terrain_names = []
+    for terrain_id in terrain_types.keys():
+        terrain_names.append(GameData.terrains.get(terrain_id, {}).get("name", terrain_id))
+    var terrain_str = ", ".join(terrain_names)
     var resource_str = ", ".join(resources) if resources.size() > 0 else "нет"
     return "Ландшафт: %s. Ресурсы: %s" % [terrain_str, resource_str]
