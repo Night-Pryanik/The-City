@@ -95,6 +95,9 @@ func _ready():
         worker_manager.load_assignments(SaveManager.saved_data.get("worker_assignments", []))
         townsfolk_manager.load_assignments(SaveManager.saved_data.get("townsfolk_assignments", []))
 
+        # Для уже изученных технологий гарантируем спавн открытых ими ресурсов
+        CityData.ensure_tech_resources_spawned()
+
         # Пересчитываем свободных жителей по фактически восстановленным назначениям
         var total_assigned = worker_manager.get_assigned_count() + townsfolk_manager.get_assigned_count()
         CityData.idle_population = max(0, CityData.total_population - total_assigned)
@@ -295,6 +298,9 @@ func _ensure_minimum_resource(category: String):
             var terrain_id = tile_data[row][col]["terrain"]
             for res_id in GameData.raw_resources:
                 if GameData.raw_resources[res_id].get("category", "") != category:
+                    continue
+                # Ресурсы, открываемые технологией, не размещаются при генерации
+                if GameData.raw_resources[res_id].has("spawn_on_tech"):
                     continue
                 if terrain_id in GameData.raw_resources[res_id].get("allowed_terrains", []):
                     possible.append({"row": row, "col": col, "id": res_id})
@@ -697,6 +703,16 @@ func _on_research_error(message: String):
 
 func _on_research_completed(_tech_id: String):
     map_renderer.queue_redraw()
+    # Показываем сообщения о найденных/ненайденных ресурсах после завершения исследования.
+    # Используем call_deferred, чтобы last_research_messages уже был заполнен.
+    call_deferred("_show_research_resource_messages")
+
+func _show_research_resource_messages():
+    if CityData.last_research_messages.is_empty():
+        return
+    var combined = "\n".join(CityData.last_research_messages)
+    hud.show_message(combined)
+    CityData.last_research_messages = []
 
 func _on_pause_save():
     SaveManager.save_game()

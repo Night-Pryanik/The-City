@@ -17,9 +17,12 @@ var current_research_tech_id: String = ""
 var current_research_time: float = 0.0
 var research_progress: float = 0.0
 
+# Сообщения для HUD после завершения исследования (о найденных ресурсах)
+var last_research_messages: Array = []
+
 # --- НАСЕЛЕНИЕ ---
 var total_population: int = 1
-var idle_population: int = 1  # свободные жители (не занятые нигде)
+var idle_population: int = 1 # свободные жители (не занятые нигде)
 var food_for_new_settler: int = 100
 var food_per_citizen: int = 1
 
@@ -42,9 +45,10 @@ func setup():
     current_research_tech_id = ""
     current_research_time = 0.0
     research_progress = 0.0
+    last_research_messages = []
 
     total_population = 1
-    idle_population = 1  # один житель, пока нигде не занят
+    idle_population = 1 # один житель, пока нигде не занят
 
     for pid in GameData.products.keys():
         city_storage[pid] = 0
@@ -95,7 +99,7 @@ func do_tick():
             has_worker = tm.has_townsfolk(i)
 
         if not has_worker:
-            continue  # здание не работает
+            continue # здание не работает
 
         var recipe = null
         for c in GameData.crafts:
@@ -107,7 +111,7 @@ func do_tick():
 
         # --- ПРОВЕРКА РЕСУРСОВ (С ПОДДЕРЖКОЙ ГРУПП) ---
         var missing_resources = []
-        var resources_to_consume = {}  # { "product_id": amount, ... }
+        var resources_to_consume = {} # { "product_id": amount, ... }
 
         for res in recipe["resources"]:
             var amount_needed = recipe["resources"][res]
@@ -194,13 +198,13 @@ func _check_population_change():
     # --- РОСТ НАСЕЛЕНИЯ ---
     if available_food >= food_for_new_settler and total_population > 0:
         total_population += 1
-        idle_population += 1  # новый житель пока свободен
+        idle_population += 1 # новый житель пока свободен
 
         # Пытаемся назначить его на работу (сначала на улучшение, потом в город)
         var assigned = false
         if main_map and main_map.has_node("WorkerManager"):
             var wm = main_map.get_node("WorkerManager")
-            assigned = wm.assign_worker()  # уменьшит idle_population при успехе
+            assigned = wm.assign_worker() # уменьшит idle_population при успехе
 
         if not assigned and main_map and main_map.has_node("TownsfolkManager"):
             var tm = main_map.get_node("TownsfolkManager")
@@ -234,7 +238,7 @@ func _check_population_change():
             var tm = main_map.get_node("TownsfolkManager")
             for i in range(city_built_buildings.size()):
                 if tm.has_townsfolk(i):
-                    tm.remove_townsfolk(i)  # увеличит idle_population
+                    tm.remove_townsfolk(i) # увеличит idle_population
                     removed = true
                     break
 
@@ -243,7 +247,7 @@ func _check_population_change():
             for key in wm.assigned_hexes.keys():
                 var parts = key.split(",")
                 if parts.size() == 2:
-                    wm.remove_worker(int(parts[0]), int(parts[1]))  # увеличит idle_population
+                    wm.remove_worker(int(parts[0]), int(parts[1])) # увеличит idle_population
                     removed = true
                     break
 
@@ -320,6 +324,7 @@ func tick_research(delta: float):
         return
     research_progress += delta / current_research_time
     if research_progress >= 1.0:
+        var completed_tech_id = current_research_tech_id
         unlocked_technologies.append(current_research_tech_id)
         var tech_name = current_research_tech_id
         for t in GameData.technologies:
@@ -331,11 +336,88 @@ func tick_research(delta: float):
         current_research_tech_id = ""
         current_research_time = 0.0
         research_progress = 0.0
+        # Технология может открывать новые виды ресурсов — спавним их на карте.
+        last_research_messages = spawn_resource_on_tech_research(completed_tech_id)
         emit_signal("city_updated")
 
 func is_tech_unlocked(tech_id: String) -> bool:
     return tech_id in unlocked_technologies
 
+# Спавнит ресурсы, открываемые изученной технологией (spawn_on_tech).
+# Вызывается после завершения исследования технологии.
+# Возвращает массив сообщений для HUD (найдено/не найдено).
+func spawn_resource_on_tech_research(tech_id: String) -> Array:
+    var messages = []
+    if Engine.is_editor_hint():
+        return messages
+    var main_map = get_tree().root.find_child("MainMap", true, false)
+    if main_map == null:
+        return messages
+    var tile_data = main_map.tile_data
+    var rows = main_map.REGION_ROWS
+    var cols = main_map.REGION_COLS
+
+    for res_id in GameData.raw_resources:
+        var data = GameData.raw_resources[res_id]
+        if data.get("spawn_on_tech", "") != tech_id:
+            continue
+        var res_name = data.get("name", res_id)
+        # Если ресурс уже есть на карте (например, при загрузке сохранения) — не дублируем.
+        if _is_resource_on_map(tile_data, res_id):
+            continue
+        # Ресурс может не заспавниться вообще — нужны альтернативы.
+        if randf() < 0.3: # 30% шанс пропустить спавн
+            messages.append("Похоже, в вашем регионе %s отсутствует." % res_name)
+            continue
+        # Сколько копий ресурса разместить (1-3).
+        var count = randi_range(1, 3)
+        var available = []
+        for r in range(rows):
+            for c in range(cols):
+                var tile = tile_data[r][c]
+                # Не спавним на гексе города
+                if r == main_map.CITY_ROW and c == main_map.CITY_COL:
+                    continue
+                # Только на пустых гексах (чтобы не ломать существующие цепочки)
+                if tile.get("resource", null) != null:
+                    continue
+                if tile.get("improvement", null) != null:
+                    continue
+                var terrain_id = tile.get("terrain", "plain")
+                # Проверяем, что тип ландшафта разрешает этот ресурс
+                if terrain_id in data.get("allowed_terrains", []):
+                    available.append({"row": r, "col": c})
+        available.shuffle()
+        var placed = 0
+        for i in range(min(count, available.size())):
+            var hex = available[i]
+            tile_data[hex.row][hex.col]["resource"] = res_id
+            placed += 1
+        print("Спавн ресурса %s по технологии %s: %d копий" % [res_id, tech_id, placed])
+        if placed > 0:
+            messages.append("Учёные оценили: в вашем регионе можно найти %s." % res_name)
+        else:
+            messages.append("Похоже, в вашем регионе %s отсутствует." % res_name)
+    return messages
+
+# Проверяет, есть ли на карте хотя бы один гекс с указанным ресурсом.
+func _is_resource_on_map(tile_data: Array, res_id: String) -> bool:
+    for row in tile_data:
+        for tile in row:
+            if tile.get("resource", null) == res_id:
+                return true
+    return false
+
+# Вызывается при загрузке сохранения: для уже изученных технологий
+# гарантирует, что открытые ими ресурсы появились на карте.
+func ensure_tech_resources_spawned():
+    if Engine.is_editor_hint():
+        return
+    for tech_id in unlocked_technologies:
+        # При загрузке сохранения сообщения для HUD не показываем.
+        spawn_resource_on_tech_research(tech_id)
+
+# Проверяет доступность продукта (включая технологии, улучшения и здания).
 func _is_product_available(product_id: String) -> bool:
     var product_data = GameData.products.get(product_id, {})
     # Проверка технологии

@@ -54,6 +54,10 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
             mineral_resources[rid] = r
     _place_resources(tile_data, mineral_resources, rows, cols, city_row, city_col)
 
+    # --- Ресурсы, открываемые технологиями (НЕ генерируются здесь) ---
+    # Они спавнятся динамически после изучения соответствующей технологии
+    # (см. CityData.spawn_resource_on_tech_research).
+
     return tile_data
 
 func _place_resources(tile_data: Array, res_dict: Dictionary, rows: int, cols: int, city_row: int, city_col: int):
@@ -64,7 +68,7 @@ func _place_resources(tile_data: Array, res_dict: Dictionary, rows: int, cols: i
     var num_types = 1
     if roll < 0.5:
         num_types = 2
-    elif roll < 0.8:   # 0.5 + 0.3 = 0.8
+    elif roll < 0.8: # 0.5 + 0.3 = 0.8
         num_types = 3
     # Перемешиваем ключи и берём нужное количество
     var ids = res_dict.keys()
@@ -73,6 +77,10 @@ func _place_resources(tile_data: Array, res_dict: Dictionary, rows: int, cols: i
 
     for res_id in chosen:
         var data = res_dict[res_id]
+        # Ресурсы, открываемые технологией, не размещаются при генерации карты.
+        # Они спавнятся динамически после изучения технологии.
+        if data.has("spawn_on_tech"):
+            continue
         var possible = []
         for r in range(rows):
             for c in range(cols):
