@@ -72,9 +72,9 @@
       "name": "Гончарное дело (посуда)",
       "produced_in": [ "pottery_workshop" ],
       "resources": { "clay": 2 },
-      "result": { "pots": 1 },
+      "result": { "pottery": 1 },
       "time": 4.0,
-      "description": "Создаёт глиняные горшки для хранения"
+      "description": "Создаёт глиняную посуду для хранения"
     },
     {
       "id": "craft_bricks",
