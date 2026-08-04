@@ -236,13 +236,16 @@ func _check_population_change():
     elif available_food == 0 and total_cons > total_prod and total_population > 1:
         total_population -= 1
 
-        # Убираем одного жителя с работы (сначала горожанина, потом рабочего)
+        # Убираем одного жителя с работы (сначала горожанина, потом рабочего).
+        # Умерший НЕ переходит в категорию свободных, поэтому после снятия
+        # с работы компенсируем увеличение idle_population.
         var removed = false
         if main_map and main_map.has_node("TownsfolkManager"):
             var tm = main_map.get_node("TownsfolkManager")
             for i in range(city_built_buildings.size()):
                 if tm.has_townsfolk(i):
                     tm.remove_townsfolk(i) # увеличит idle_population
+                    idle_population -= 1 # умерший не становится свободным
                     removed = true
                     break
 
@@ -252,6 +255,7 @@ func _check_population_change():
                 var parts = key.split(",")
                 if parts.size() == 2:
                     wm.remove_worker(int(parts[0]), int(parts[1])) # увеличит idle_population
+                    idle_population -= 1 # умерший не становится свободным
                     removed = true
                     break
 
