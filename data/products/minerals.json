@@ -1,0 +1,60 @@
+{
+	"resources": [
+		{
+			"id": "flint",
+			"name": "Кремень",
+			"type": "product",
+			"category": "material",
+			"icon": "flint.png"
+		},
+		{
+			"id": "basalt",
+			"name": "Базальт",
+			"type": "product",
+			"category": "material",
+			"icon": "basalt.png"
+		},
+		{
+			"id": "tuff",
+			"name": "Туф",
+			"type": "product",
+			"category": "material",
+			"icon": "tuff.png"
+		},
+		{
+			"id": "sandstone",
+			"name": "Песчаник",
+			"type": "product",
+			"category": "material",
+			"icon": "sandstone.png"
+		},
+		{
+			"id": "marble",
+			"name": "Мрамор",
+			"type": "product",
+			"category": "material",
+			"icon": "marble.png"
+		},
+		{
+			"id": "granite",
+			"name": "Гранит",
+			"type": "product",
+			"category": "material",
+			"icon": "granite.png"
+		},
+		{
+			"id": "limestone",
+			"name": "Известняк",
+			"type": "product",
+			"category": "material",
+			"icon": "limestone.png"
+		},
+		{
+			"id": "coal",
+			"name": "Уголь",
+			"type": "product",
+			"category": "material",
+			"icon": "coal.png"
+		}
+	]
+}

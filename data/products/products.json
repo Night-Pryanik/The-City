@@ -1,0 +1,32 @@
+{
+	"resources": [
+		{
+			"id": "tools",
+			"name": "Инструменты",
+			"type": "product",
+			"category": "material",
+			"icon": "tools.png"
+		},
+		{
+			"id": "weapons",
+			"name": "Оружие",
+			"type": "product",
+			"category": "material",
+			"icon": "weapons.png"
+		},
+		{
+			"id": "pottery",
+			"name": "Глиняная посуда",
+			"type": "product",
+			"category": "material",
+			"icon": "pottery.png"
+		},
+		{
+			"id": "bricks",
+			"name": "Кирпичи",
+			"type": "product",
+			"category": "material",
+			"icon": "bricks.png"
+		}
+	]
+}

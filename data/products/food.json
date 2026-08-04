@@ -176,13 +176,6 @@
 			"icon": "chickpeas.png"
 		},
 		{
-			"id": "raw_meat",
-			"name": "Сырое мясо",
-			"type": "product",
-			"category": "material",
-			"icon": "raw_meat.png"
-		},
-		{
 			"id": "meat",
 			"name": "Мясо",
 			"type": "product",
@@ -190,32 +183,11 @@
 			"icon": "meat.png"
 		},
 		{
-			"id": "raw_milk",
-			"name": "Сырое молоко",
-			"type": "product",
-			"category": "material",
-			"icon": "raw_milk.png"
-		},
-		{
 			"id": "cheese",
 			"name": "Сыр",
 			"type": "product",
 			"category": "food",
 			"icon": "cheese.png"
-		},
-		{
-			"id": "hide",
-			"name": "Шкура",
-			"type": "product",
-			"category": "material",
-			"icon": "hide.png"
-		},
-		{
-			"id": "wool",
-			"name": "Шерсть",
-			"type": "product",
-			"category": "material",
-			"icon": "wool.png"
 		},
 		{
 			"id": "eggs",
@@ -232,174 +204,18 @@
 			"icon": "honey.png"
 		},
 		{
-			"id": "wax",
-			"name": "Воск",
-			"type": "product",
-			"category": "material",
-			"icon": "wax.png"
-		},
-		{
-			"id": "feathers",
-			"name": "Перья",
-			"type": "product",
-			"category": "material",
-			"icon": "feathers.png"
-		},
-		{
-			"id": "flint",
-			"name": "Кремень",
-			"type": "product",
-			"category": "material",
-			"icon": "flint.png"
-		},
-		{
-			"id": "flour",
-			"name": "Мука",
-			"type": "product",
-			"category": "material",
-			"icon": "flour.png"
-		},
-		{
 			"id": "bread",
 			"name": "Хлеб",
 			"type": "product",
 			"category": "food",
 			"icon": "bread.png"
 		},
-		{
-			"id": "feed",
-			"name": "Корм",
-			"type": "product",
-			"category": "material",
-			"unlock_tech": "animal_husbandry",
-			"unlock_improvement": "pasture",
-			"icon": "feed.png"
-		},
-		{
-			"id": "tulips",
-			"name": "Тюльпаны",
-			"type": "product",
-			"category": "other",
-			"icon": "tulips.png"
-		},
-		{
-			"id": "roses",
-			"name": "Розы",
-			"type": "product",
-			"category": "other",
-			"icon": "roses.png"
-		},
-		{
-			"id": "chamomile",
-			"name": "Ромашки",
-			"type": "product",
-			"category": "other",
-			"icon": "chamomile.png"
-		},
-		{
-			"id": "basalt",
-			"name": "Базальт",
-			"type": "product",
-			"category": "material",
-			"icon": "basalt.png"
-		},
-		{
-			"id": "tuff",
-			"name": "Туф",
-			"type": "product",
-			"category": "material",
-			"icon": "tuff.png"
-		},
-		{
-			"id": "sandstone",
-			"name": "Песчаник",
-			"type": "product",
-			"category": "material",
-			"icon": "sandstone.png"
-		},
-		{
-			"id": "marble",
-			"name": "Мрамор",
-			"type": "product",
-			"category": "material",
-			"icon": "marble.png"
-		},
-		{
-			"id": "granite",
-			"name": "Гранит",
-			"type": "product",
-			"category": "material",
-			"icon": "granite.png"
-		},
-		{
-			"id": "limestone",
-			"name": "Известняк",
-			"type": "product",
-			"category": "material",
-			"icon": "limestone.png"
-		},
-		{
-			"id": "clay",
-			"name": "Глина",
-			"type": "product",
-			"category": "material",
-			"icon": "clay.png"
-		},
-		{
+        {
 			"id": "foraged_food",
 			"name": "Дикоросы",
 			"type": "product",
 			"category": "food",
 			"icon": "foraged_food.png"
-		},
-		{
-			"id": "iron",
-			"name": "Железо",
-			"type": "product",
-			"category": "material",
-			"icon": ""
-		},
-		{
-			"id": "tools",
-			"name": "Инструменты",
-			"type": "product",
-			"category": "material",
-			"icon": "tools.png"
-		},
-		{
-			"id": "weapons",
-			"name": "Оружие",
-			"type": "product",
-			"category": "material",
-			"icon": "weapons.png"
-		},
-		{
-			"id": "pottery",
-			"name": "Глиняная посуда",
-			"type": "product",
-			"category": "material",
-			"icon": "pottery.png"
-		},
-		{
-			"id": "bricks",
-			"name": "Кирпичи",
-			"type": "product",
-			"category": "material",
-			"icon": "bricks.png"
-		},
-		{
-			"id": "iron",
-			"name": "Железо",
-			"type": "product",
-			"category": "material",
-			"icon": "iron.png"
-		},
-		{
-			"id": "coal",
-			"name": "Уголь",
-			"type": "product",
-			"category": "material",
-			"icon": "coal.png"
 		}
 	]
 }

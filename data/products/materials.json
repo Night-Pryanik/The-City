@@ -1,0 +1,53 @@
+{
+	"resources": [
+		{
+			"id": "hide",
+			"name": "Шкура",
+			"type": "product",
+			"category": "material",
+			"icon": "hide.png"
+		},
+		{
+			"id": "wool",
+			"name": "Шерсть",
+			"type": "product",
+			"category": "material",
+			"icon": "wool.png"
+		},
+		{
+			"id": "wax",
+			"name": "Воск",
+			"type": "product",
+			"category": "material",
+			"icon": "wax.png"
+		},
+		{
+			"id": "feathers",
+			"name": "Перья",
+			"type": "product",
+			"category": "material",
+			"icon": "feathers.png"
+		},
+		{
+			"id": "flour",
+			"name": "Мука",
+			"type": "product",
+			"category": "material",
+			"icon": "flour.png"
+		},
+		{
+			"id": "clay",
+			"name": "Глина",
+			"type": "product",
+			"category": "material",
+			"icon": "clay.png"
+		},
+        {
+			"id": "iron",
+			"name": "Железо",
+			"type": "product",
+			"category": "material",
+			"icon": "iron.png"
+		}
+	]
+}
