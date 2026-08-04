@@ -267,6 +267,15 @@ func _initialize_map():
                 if res != null and influence_resource_types.has(res):
                     tile_data[row][col]["resource"] = null
 
+    # --- Пост-обработка: гарантируем достаточное количество СВОБОДНЫХ гексов ---
+    # После размещения всех ресурсов у каждого типа местности в Кольце Влияния
+    # должно остаться минимум FREE_TERRAIN_HEXES свободных (resource == null)
+    # гексов. Это исключает софт-лок: если ресурс (например, киноа — только горы)
+    # попал в кольцо, у игрока всегда будет место для дополнительных ферм/пастбищ.
+    # Метод конвертирует ТОЛЬКО свободные гексы и НИКОГДА не уничтожает ресурсы.
+    generator.ensure_free_terrain_hexes(tile_data, terrain_counts,
+            INFLUENCE_START_ROW, INFLUENCE_END_ROW, INFLUENCE_START_COL, INFLUENCE_END_COL)
+
     for row in range(REGION_ROWS):
         for col in range(REGION_COLS):
             var tile = tile_data[row][col]
