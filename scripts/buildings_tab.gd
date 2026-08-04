@@ -19,6 +19,10 @@ var built_buildings_list: Node
 var food_label: Label
 var hsplit: HSplitContainer
 
+var resume_icon: Texture2D
+var pause_icon: Texture2D
+var info_icon: Texture2D
+
 signal build_requested(building_id: String)
 signal building_detail_requested(index: int)
 
@@ -96,21 +100,48 @@ func refresh_built():
         row.add_child(label)
 
         var btn = Button.new()
+        btn.custom_minimum_size = Vector2(28, 28)
+        btn.expand_icon = true
         if has_worker:
-            btn.text = "Приостановить"
+            btn.icon = _get_icon("pause")
+            btn.tooltip_text = "Приостановить"
             btn.pressed.connect(_on_building_toggle.bind(i, false))
         else:
-            btn.text = "Запустить"
+            btn.icon = _get_icon("resume")
+            btn.tooltip_text = "Запустить"
             btn.pressed.connect(_on_building_toggle.bind(i, true))
         row.add_child(btn)
 
         # Кнопка открытия панели деталей здания
         var slots_btn = Button.new()
-        slots_btn.text = "Подробности"
+        slots_btn.custom_minimum_size = Vector2(28, 28)
+        slots_btn.expand_icon = true
+        slots_btn.icon = _get_icon("info")
+        slots_btn.tooltip_text = "Подробности"
         slots_btn.pressed.connect(_on_building_slots_pressed.bind(i))
         row.add_child(slots_btn)
 
         built_buildings_list.add_child(row)
+
+func _get_icon(icon_name: String) -> Texture2D:
+    if icon_name == "resume" and resume_icon:
+        return resume_icon
+    if icon_name == "pause" and pause_icon:
+        return pause_icon
+    if icon_name == "info" and info_icon:
+        return info_icon
+
+    match icon_name:
+        "resume":
+            resume_icon = load("res://icons/building_resume.png")
+            return resume_icon
+        "pause":
+            pause_icon = load("res://icons/building_pause.png")
+            return pause_icon
+        "info":
+            info_icon = load("res://icons/additional_info.png")
+            return info_icon
+    return null
 
 func _on_building_slots_pressed(index: int):
     emit_signal("building_detail_requested", index)
