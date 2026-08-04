@@ -1,79 +1,61 @@
 {
-    "buildings": [
-        {
-            "id": "hand_mill",
-            "name": "Ручная мельница",
-            "cost_food": 0.0,
-            "icon": "hand_mill.png",
-            "production_slots": 1.0,
-            "default_recipes": [
-				"grind_wheat_hand"
-            ]
-        },
-        {
-            "id": "windmill",
-            "name": "Мельница",
-            "cost_food": 5.0,
-            "icon": "windmill.png",
-            "production_slots": 1.0,
-            "default_recipes": [
-				"grind_wheat"
-            ]
-        },
-        {
-            "id": "bakery",
-            "name": "Пекарня",
-            "cost_food": 0.0,
-            "additional_cost": {
-                "flour": 3.0
-            },
-            "icon": "bakery.png",
-            "production_slots": 1.0,
-            "default_recipes": [
-				"bake_bread"
-            ]
-        },
-        {
-            "id": "slaughterhouse",
-            "name": "Бойня",
-            "cost_food": 3.0,
-            "icon": "slaughterhouse.png",
-            "production_slots": 1.0,
-            "default_recipes": [
-				"process_meat"
-            ]
-        },
-        {
-            "id": "dairy",
-            "name": "Сыроварня",
-            "cost_food": 3.0,
-            "icon": "dairy.png",
-            "production_slots": 1.0,
-            "default_recipes": [
-				"make_cheese"
-            ]
-        },
-        {
-            "id": "forge",
-            "name": "Кузница",
-            "cost_food": 10.0,
-            "icon": "forge.png",
-            "production_slots": 2.0,
-            "default_recipes": [
-                "craft_tools",
-				"craft_weapons"
-            ]
-        },
-        {
-            "id": "pottery_workshop",
-            "name": "Гончарная мастерская",
-            "cost_food": 8.0,
-            "icon": "pottery.png",
-            "production_slots": 2.0,
-            "default_recipes": [
-                "craft_pots",
-				"craft_bricks"
-            ]
-        }
-    ]
+  "buildings": [
+    {
+      "id": "hand_mill",
+      "name": "Ручная мельница",
+      "cost_food": 0.0,
+      "icon": "hand_mill.png",
+      "production_slots": 1.0,
+      "default_recipes": [ "grind_wheat_hand" ]
+    },
+    {
+      "id": "windmill",
+      "name": "Мельница",
+      "cost_food": 5.0,
+      "icon": "windmill.png",
+      "production_slots": 1.0,
+      "default_recipes": [ "grind_wheat" ]
+    },
+    {
+      "id": "bakery",
+      "name": "Пекарня",
+      "cost_food": 0.0,
+      "additional_cost": { "flour": 3.0 },
+      "icon": "bakery.png",
+      "production_slots": 1.0,
+      "default_recipes": [ "bake_bread" ]
+    },
+    {
+      "id": "slaughterhouse",
+      "name": "Бойня",
+      "cost_food": 3.0,
+      "icon": "slaughterhouse.png",
+      "production_slots": 1.0,
+      "default_recipes": [ "process_meat" ]
+    },
+    {
+      "id": "dairy",
+      "name": "Сыроварня",
+      "cost_food": 3.0,
+      "icon": "dairy.png",
+      "production_slots": 1.0,
+      "default_recipes": [ "make_cheese" ]
+    },
+    {
+      "id": "forge",
+      "name": "Кузница",
+      "cost_food": 10.0,
+      "icon": "forge.png",
+      "production_slots": 2.0,
+      "default_recipes": [ "craft_tools", "craft_weapons" ]
+    },
+    {
+      "id": "pottery_workshop",
+      "name": "Гончарная мастерская",
+      "cost_food": 8.0,
+      "icon": "pottery.png",
+      "production_slots": 2.0,
+      "default_recipes": [ "craft_pots", "craft_bricks" ]
+    }
+  ]
 }
