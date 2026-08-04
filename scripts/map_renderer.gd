@@ -373,7 +373,7 @@ func _draw_expansion_highlights():
 
             if is_explored:
                 # Исследован: светло-зелёный + белая рамка
-                draw_colored_polygon(vertices, Color(0.0, 0.7, 0.0, 0.25))
+                draw_colored_polygon(vertices, Color(0.652, 0.855, 0.652, 0.25))
                 var closed_verts = PackedVector2Array()
                 closed_verts.append_array(vertices)
                 closed_verts.append(vertices[0])
