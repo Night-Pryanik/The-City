@@ -497,7 +497,7 @@ func _show_context_menu(row: int, col: int, click_pos: Vector2):
             popup_menu.clear()
             # Стоимость зависит от количества фактически исследуемых гексов: 3 еды за гекс
             var cost = unexplored_count * 3
-            popup_menu.add_item("Отправить разведку [еды: %d/%d, %.0f сек.]" % [available_food, cost, _get_scouting_time(unexplored_count)])
+            popup_menu.add_item("Отправить разведчиков [еды: %d/%d, %.0f сек.]" % [available_food, cost, _get_scouting_time(unexplored_count)])
             popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": "scout_chunk", "chunk": chunk, "cost": cost})
             popup_menu.position = click_pos
             popup_menu.popup()
@@ -863,7 +863,7 @@ func _start_scouting(chunk: Array, cost: int):
     scouting_chunk = chunk
     scouting_timer = 0.0
     is_scouting = true
-    hud.show_message("Разведка отправлена...")
+    hud.show_message("Разведчики отправлены...")
 
 func _complete_scouting():
     for hex in scouting_chunk:
