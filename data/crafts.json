@@ -69,7 +69,7 @@
     },
     {
       "id": "craft_pots",
-      "name": "Гончарное дело (горшки)",
+      "name": "Гончарное дело (посуда)",
       "produced_in": [ "pottery_workshop" ],
       "resources": { "clay": 2 },
       "result": { "pots": 1 },
