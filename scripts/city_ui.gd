@@ -30,6 +30,10 @@ var trade_tab: Node
 
 var data_cache: Dictionary = {}
 
+# Отслеживание структурных изменений для лёгкого обновления (тик)
+var _cached_built_count: int = -1
+var _cached_research_id: String = ""
+
 # Тултипы (таймеры)
 var food_hover_timer: float = 0.0
 var build_hover_timer: float = 0.0
@@ -113,9 +117,9 @@ func _ready():
 
 func _on_city_data_updated():
     if visible:
-        refresh()
+        _refresh_light()
 
-func refresh():
+func _update_data_cache():
     data_cache = {
         "city_storage": CityData.city_storage,
         "production_rates": CityData.production_rates,
@@ -129,10 +133,47 @@ func refresh():
     }
     resources_tab.update_data(data_cache)
     buildings_tab.update_data(data_cache)
+
+func refresh():
+    # Полное обновление: пересоздаём списки (открытие города, структурные изменения)
+    _update_data_cache()
+    _cached_built_count = CityData.city_built_buildings.size()
+    _cached_research_id = CityData.current_research_tech_id
     _refresh_all()
+
+func _refresh_light():
+    # Лёгкое обновление: обновляем значения без пересоздания узлов.
+    # Это не сбрасывает тултипы (узлы, на которых висит курсор, сохраняются).
+    if not visible:
+        return
+    _update_data_cache()
+
+    if _needs_full_refresh():
+        _cached_built_count = CityData.city_built_buildings.size()
+        _cached_research_id = CityData.current_research_tech_id
+        _refresh_all()
+        return
+
+    resources_tab.update_values()
+    buildings_tab.update_built_status()
+    technologies_tab.update_progress()
+    _update_food_label()
+
+func _needs_full_refresh() -> bool:
+    # Полное обновление требуется только при структурных изменениях:
+    # постройка здания или начало/завершение исследования.
+    if CityData.city_built_buildings.size() != _cached_built_count:
+        return true
+    if CityData.current_research_tech_id != _cached_research_id:
+        return true
+    return false
 
 func show_resources_tab():
     _switch_tab("resources")
+
+func refresh_light():
+    # Публичный метод для лёгкого обновления при изменении назначений.
+    _refresh_light()
 
 func _refresh_all():
     resources_tab.refresh()

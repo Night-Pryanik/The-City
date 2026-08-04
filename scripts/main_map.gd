@@ -807,11 +807,12 @@ func _update_population_hud():
 
 func _on_assignment_changed():
     map_renderer.queue_redraw()
-    city_ui.update_food_label()
+    if city_ui.visible:
+        city_ui.refresh_light()
 
 func _on_townsfolk_assignment_changed():
     if city_ui.visible:
-        city_ui.refresh()
+        city_ui.refresh_light()
 
 func _start_foraging(row: int, col: int):
     if is_foraging:

@@ -15,6 +15,14 @@ func setup(current_lbl: Label, progress: ProgressBar, available: Node, unlocked:
     tech_unlocked_container = unlocked
 
 func refresh():
+    _refresh_status_labels()
+    _rebuild_lists()
+
+func update_progress():
+    # Лёгкое обновление: только прогресс исследования и текущая метка.
+    _refresh_status_labels()
+
+func _refresh_status_labels():
     if CityData.current_research_tech_id != "":
         var tech_data = null
         for t in GameData.technologies:
@@ -32,6 +40,7 @@ func refresh():
         tech_current_label.text = "Нет текущего исследования"
         tech_progress_bar.value = 0
 
+func _rebuild_lists():
     for child in tech_available_container.get_children():
         child.queue_free()
     for tech in GameData.technologies:

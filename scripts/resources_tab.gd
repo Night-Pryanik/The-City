@@ -9,6 +9,11 @@ var production_rates: Dictionary = {}
 var consumption_rates: Dictionary = {}
 var city_food_pool: Dictionary = {}
 var food_toggles: Dictionary = {}
+var amount_labels: Dictionary = {}
+var prod_labels: Dictionary = {}
+var cons_labels: Dictionary = {}
+var displayed_products: Dictionary = {}
+var diversity_label: Label = null
 var icon_textures: Dictionary = {}
 var icon_paths: Dictionary = {}
 
@@ -70,6 +75,11 @@ func refresh():
     for child in resources_list.get_children():
         child.queue_free()
     food_toggles.clear()
+    amount_labels.clear()
+    prod_labels.clear()
+    cons_labels.clear()
+    displayed_products.clear()
+    diversity_label = null
 
     # --- Одомашненные животные по подгруппам ---
     if CityData.domesticated_animals.size() > 0:
@@ -94,7 +104,7 @@ func refresh():
 
             for animal in animal_subgroups[subgroup]:
                 var row = HBoxContainer.new()
-                row.add_theme_constant_override("separation", 6)  # расстояние между иконкой и текстом
+                row.add_theme_constant_override("separation", 6) # расстояние между иконкой и текстом
                 if not animal["icon"].is_empty():
                     var tex = _get_icon_texture(animal["icon"])
                     if tex:
@@ -234,6 +244,7 @@ func refresh():
             name_label.text = "%s: %d  " % [product_name, amount]
             name_label.add_theme_color_override("font_color", Color.WHITE)
             row.add_child(name_label)
+            amount_labels[prod_id] = name_label
 
             # Динамика
             var prod_val = production_rates.get(prod_id, 0)
@@ -243,6 +254,7 @@ func refresh():
             green_label.text = "[+%d" % prod_val
             green_label.add_theme_color_override("font_color", Color.GREEN)
             row.add_child(green_label)
+            prod_labels[prod_id] = green_label
 
             var slash_label = Label.new()
             slash_label.text = " / "
@@ -253,6 +265,8 @@ func refresh():
             red_label.text = "-%d]" % cons_val
             red_label.add_theme_color_override("font_color", Color.RED)
             row.add_child(red_label)
+            cons_labels[prod_id] = red_label
+            displayed_products[prod_id] = true
 
     # --- Бонусы за разнообразие (заглушка) ---
     var animal_subgroups_count = 0
@@ -280,11 +294,45 @@ func refresh():
         div_label.text = "Разнообразие: %d подгрупп" % total_subgroups
         div_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.3))
         resources_list.add_child(div_label)
+        diversity_label = div_label
 
         var bonus_label = Label.new()
         bonus_label.text = "Активные бонусы: (будут позже)"
         bonus_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.3))
         resources_list.add_child(bonus_label)
+
+func update_values():
+    # Лёгкое обновление: не пересоздаём узлы, а обновляем тексты существующих.
+    # Если появились новые продукты (структурное изменение) — вызываем полный refresh.
+    for prod_id in city_storage:
+        if not displayed_products.has(prod_id):
+            refresh()
+            return
+        if amount_labels.has(prod_id):
+            var pdata = products.get(prod_id, {})
+            var prod_name = pdata.get("name", prod_id)
+            amount_labels[prod_id].text = "%s: %d  " % [prod_name, city_storage.get(prod_id, 0)]
+        if prod_labels.has(prod_id):
+            prod_labels[prod_id].text = "[+%d" % production_rates.get(prod_id, 0)
+        if cons_labels.has(prod_id):
+            cons_labels[prod_id].text = "-%d]" % consumption_rates.get(prod_id, 0)
+        if food_toggles.has(prod_id):
+            var enabled = city_food_pool.get(prod_id, true)
+            food_toggles[prod_id].color = Color.GREEN if enabled else Color.RED
+
+    if diversity_label != null and is_instance_valid(diversity_label):
+        var animal_subgroup_map = {}
+        for animal_id in CityData.domesticated_animals:
+            var data = GameData.raw_resources.get(animal_id, {})
+            var subgroup = data.get("subgroup", "other")
+            animal_subgroup_map[subgroup] = true
+        var plant_subgroup_map = {}
+        for plant_id in CityData.domesticated_plants:
+            var data = GameData.raw_resources.get(plant_id, {})
+            var subgroup = data.get("subgroup", "other")
+            plant_subgroup_map[subgroup] = true
+        var total_subgroups = animal_subgroup_map.size() + plant_subgroup_map.size()
+        diversity_label.text = "Разнообразие: %d подгрупп" % total_subgroups
 
 func _on_food_toggle_input(event, prod_id, toggle):
     if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:

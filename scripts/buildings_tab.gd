@@ -18,6 +18,7 @@ var build_button: Button
 var built_buildings_list: Node
 var food_label: Label
 var hsplit: HSplitContainer
+var last_built_count: int = -1
 
 var resume_icon: Texture2D
 var pause_icon: Texture2D
@@ -71,9 +72,48 @@ func refresh_list():
         buildings_item_list.add_item(item_text)
     center_split_offset()
 
+func update_built_status():
+    # Лёгкое обновление: обновляем текст статуса и иконки кнопок без пересоздания строк.
+    if built_buildings.size() != last_built_count:
+        refresh_built()
+        return
+
+    var main_map = get_tree().root.find_child("MainMap", true, false)
+    var tm = main_map.get_node("TownsfolkManager") if main_map else null
+
+    for i in range(built_buildings.size()):
+        var row = built_buildings_list.get_child(i)
+        if row == null or row.get_child_count() < 3:
+            continue
+        var bld = built_buildings[i]
+        var bdata = null
+        for b in buildings_data:
+            if b["id"] == bld["id"]:
+                bdata = b
+                break
+        var building_name = bdata["name"] if bdata else bld["id"]
+        var has_worker = tm.has_townsfolk(i) if tm else false
+        var status = " (работает)" if has_worker else " (не работает)"
+        var status_color = Color.GREEN if has_worker else Color.RED
+
+        var label = row.get_child(0)
+        if label is Label:
+            label.text = building_name + status
+            label.add_theme_color_override("font_color", status_color)
+
+        var btn = row.get_child(1)
+        if btn is Button:
+            if has_worker:
+                btn.icon = _get_icon("pause")
+                btn.tooltip_text = "Приостановить"
+            else:
+                btn.icon = _get_icon("resume")
+                btn.tooltip_text = "Запустить"
+
 func refresh_built():
     for child in built_buildings_list.get_children():
         child.queue_free()
+    last_built_count = built_buildings.size()
 
     var main_map = get_tree().root.find_child("MainMap", true, false)
     var tm = main_map.get_node("TownsfolkManager") if main_map else null
@@ -122,6 +162,7 @@ func refresh_built():
         row.add_child(slots_btn)
 
         built_buildings_list.add_child(row)
+    last_built_count = built_buildings.size()
 
 func _get_icon(icon_name: String) -> Texture2D:
     if icon_name == "resume" and resume_icon:
