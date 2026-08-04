@@ -3,6 +3,6 @@
     { "id": "animal_husbandry", "name": "Животноводство", "cost_food": 40, "time": 30.0 },
     { "id": "mining", "name": "Горное дело", "cost_food": 50, "time": 35.0 },
     { "id": "beekeeping", "name": "Пчеловодство", "cost_food": 30, "time": 20.0 },
-    { "id": "iron_processing", "name": "Обработка железа", "cost_food": 80, "time": 40.0 }
+    { "id": "metal_processing", "name": "Обработка металлов", "cost_food": 80, "time": 40.0 }
   ]
 }

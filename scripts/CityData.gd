@@ -89,8 +89,8 @@ func do_tick():
 
     for i in range(city_built_buildings.size()):
         var bld = city_built_buildings[i]
-        var recipe_id = bld.get("recipe", "")
-        if recipe_id == "":
+        var slots = bld.get("slots", [])
+        if slots.is_empty():
             continue
 
         # Проверяем, есть ли горожанин на этом здании
@@ -101,67 +101,71 @@ func do_tick():
         if not has_worker:
             continue # здание не работает
 
-        var recipe = null
-        for c in GameData.crafts:
-            if c["id"] == recipe_id:
-                recipe = c
-                break
-        if not recipe:
-            continue
+        for recipe_id in slots:
+            if recipe_id == "" or recipe_id == "empty":
+                continue
 
-        # --- ПРОВЕРКА РЕСУРСОВ (С ПОДДЕРЖКОЙ ГРУПП) ---
-        var missing_resources = []
-        var resources_to_consume = {} # { "product_id": amount, ... }
-
-        for res in recipe["resources"]:
-            var amount_needed = recipe["resources"][res]
-            if res.begins_with("@"):
-                # Групповой ресурс
-                var group_id = res.trim_prefix("@")
-                var group_products = GameData.product_groups.get(group_id, [])
-                if group_products.is_empty():
-                    # Группа не найдена — считаем рецепт недоступным
-                    missing_resources.append(res)
+            var recipe = null
+            for c in GameData.crafts:
+                if c["id"] == recipe_id:
+                    recipe = c
                     break
+            if not recipe:
+                continue
 
-                var total_available = 0
-                for prod in group_products:
-                    total_available += city_storage.get(prod, 0)
-                if total_available < amount_needed:
-                    missing_resources.append(res)
-                    break
+            # --- ПРОВЕРКА РЕСУРСОВ (С ПОДДЕРЖКОЙ ГРУПП) ---
+            var missing_resources = []
+            var resources_to_consume = {} # { "product_id": amount, ... }
 
-                # Собираем нужное количество из разных продуктов
-                var remaining = amount_needed
-                for prod in group_products:
-                    var available = city_storage.get(prod, 0)
-                    if available > 0:
-                        var take = min(available, remaining)
-                        if take > 0:
-                            resources_to_consume[prod] = resources_to_consume.get(prod, 0) + take
-                            remaining -= take
-                            if remaining <= 0:
-                                break
-            else:
-                # Обычный ресурс
-                if city_storage.get(res, 0) < amount_needed:
-                    missing_resources.append(res)
-                    break
-                resources_to_consume[res] = amount_needed
+            for res in recipe["resources"]:
+                var amount_needed = recipe["resources"][res]
+                if res.begins_with("@"):
+                    # Групповой ресурс
+                    var group_id = res.trim_prefix("@")
+                    var group_products = GameData.product_groups.get(group_id, [])
+                    if group_products.is_empty():
+                        # Группа не найдена — считаем рецепт недоступным
+                        missing_resources.append(res)
+                        break
 
-        # Если не хватает ресурсов — пропускаем рецепт
-        if not missing_resources.is_empty():
-            continue
+                    var total_available = 0
+                    for prod in group_products:
+                        total_available += city_storage.get(prod, 0)
+                    if total_available < amount_needed:
+                        missing_resources.append(res)
+                        break
 
-        # --- СПИСЫВАЕМ РЕСУРСЫ ---
-        for prod in resources_to_consume:
-            city_storage[prod] -= resources_to_consume[prod]
-            consumption_rates[prod] += resources_to_consume[prod]
+                    # Собираем нужное количество из разных продуктов
+                    var remaining = amount_needed
+                    for prod in group_products:
+                        var available = city_storage.get(prod, 0)
+                        if available > 0:
+                            var take = min(available, remaining)
+                            if take > 0:
+                                resources_to_consume[prod] = resources_to_consume.get(prod, 0) + take
+                                remaining -= take
+                                if remaining <= 0:
+                                    break
+                else:
+                    # Обычный ресурс
+                    if city_storage.get(res, 0) < amount_needed:
+                        missing_resources.append(res)
+                        break
+                    resources_to_consume[res] = amount_needed
 
-        # --- ДОБАВЛЯЕМ РЕЗУЛЬТАТ ---
-        for res in recipe["result"]:
-            city_storage[res] += recipe["result"][res]
-            production_rates[res] += recipe["result"][res]
+            # Если не хватает ресурсов — пропускаем рецепт
+            if not missing_resources.is_empty():
+                continue
+
+            # --- СПИСЫВАЕМ РЕСУРСЫ ---
+            for prod in resources_to_consume:
+                city_storage[prod] = city_storage.get(prod, 0) - resources_to_consume[prod]
+                consumption_rates[prod] = consumption_rates.get(prod, 0) + resources_to_consume[prod]
+
+            # --- ДОБАВЛЯЕМ РЕЗУЛЬТАТ ---
+            for res in recipe["result"]:
+                city_storage[res] = city_storage.get(res, 0) + recipe["result"][res]
+                production_rates[res] = production_rates.get(res, 0) + recipe["result"][res]
 
     # --- Потребление еды населением ---
     var food_needed = max(0, total_population - 1) * food_per_citizen
@@ -454,6 +458,28 @@ func _has_building(building_id: String) -> bool:
             return true
     return false
 
+# TODO: временная миграция старых сейвов (формат "recipe"). Удалить после того,
+#       как все старые сохранения перестанут использоваться.
+# Конвертирует старые записи зданий {"id": ..., "recipe": ...} в новый формат {"id": ..., "slots": [...]}.
+func migrate_old_save_format():
+    for bld in city_built_buildings:
+        if not bld.has("slots"):
+            bld["slots"] = _slots_from_legacy(bld)
+            bld.erase("recipe")
+
+# TODO: временная миграция. Удалить вместе с migrate_old_save_format().
+func _slots_from_legacy(bld: Dictionary) -> Array:
+    var building_id = bld.get("id", "")
+    var slots = _auto_assign_slots(building_id)
+    var legacy_recipe = bld.get("recipe", "")
+    # Если в старом сейве был конкретный рецепт — ставим его в первый слот
+    if legacy_recipe != "" and legacy_recipe != "empty":
+        if slots.size() > 0:
+            slots[0] = legacy_recipe
+        else:
+            slots.append(legacy_recipe)
+    return slots
+
 func request_build(building_id: String) -> bool:
     if Engine.is_editor_hint():
         return false
@@ -481,12 +507,7 @@ func request_build(building_id: String) -> bool:
             remaining -= 1
             if city_storage[pid] <= 0:
                 active_food.erase(pid)
-        var recipe_id = ""
-        for craft in GameData.crafts:
-            if craft["produced_in"] == building_id:
-                recipe_id = craft["id"]
-                break
-        city_built_buildings.append({"id": building_id, "recipe": recipe_id})
+        city_built_buildings.append({"id": building_id, "slots": _auto_assign_slots(building_id)})
 
         # Автоматически назначаем горожанина на новое здание, если есть свободные
         var main_map = get_tree().root.find_child("MainMap", true, false)
@@ -499,6 +520,53 @@ func request_build(building_id: String) -> bool:
     else:
         print("Недостаточно еды для постройки ", bdata.get("name", building_id))
         return false
+
+# Автоназначение рецептов на слоты при постройке здания:
+# 1. Берём default_recipes здания
+# 2. Назначаем на слоты по порядку, без повторения
+# 3. Если слотов больше, чем рецептов — остальные получают "empty"
+# 4. Если рецептов больше, чем слотов — лишние просто не помещаются
+func _auto_assign_slots(building_id: String) -> Array:
+    var result = []
+    var bdata = null
+    for b in GameData.buildings:
+        if b["id"] == building_id:
+            bdata = b
+            break
+    if not bdata:
+        return result
+
+    var slot_count = int(bdata.get("production_slots", 1))
+    var default_recipes = bdata.get("default_recipes", [])
+
+    for i in range(slot_count):
+        if i < default_recipes.size():
+            result.append(default_recipes[i])
+        else:
+            result.append("empty")
+    return result
+
+# Проверяет, может ли рецепт исполняться в указанном здании.
+# produced_in поддерживает массив значений; "*" означает "в любом здании" (пустой рецепт).
+func can_craft_in(craft_id: String, building_id: String) -> bool:
+    var recipe = null
+    for c in GameData.crafts:
+        if c["id"] == craft_id:
+            recipe = c
+            break
+    if not recipe:
+        return false
+
+    var produced_in = recipe.get("produced_in", [])
+    # Обратная совместимость: если produced_in — строка, приводим к массиву
+    if produced_in is String:
+        produced_in = [produced_in]
+
+    if building_id in produced_in:
+        return true
+    if "*" in produced_in:
+        return true
+    return false
 
 func add_animal(animal_id: String):
     if Engine.is_editor_hint():

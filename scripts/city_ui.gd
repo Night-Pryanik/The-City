@@ -39,6 +39,8 @@ signal build_requested(building_id: String)
 signal research_requested(tech_id: String)
 signal closed()
 
+var building_panel
+
 func _ready():
     # Загружаем модули
     ui_helpers = load("res://scripts/ui_helpers.gd").new()
@@ -62,7 +64,12 @@ func _ready():
         ui_helpers
     )
     buildings_tab.build_requested.connect(_on_build_requested)
+    buildings_tab.building_detail_requested.connect(_on_building_detail_requested)
     add_child(buildings_tab)
+
+    building_panel = load("res://scripts/building_panel.gd").new()
+    add_child(building_panel)
+    building_panel.hide()
 
     technologies_tab = load("res://scripts/technologies_tab.gd").new()
     technologies_tab.setup(
@@ -228,6 +235,9 @@ func refresh_buildings_tab():
 func _on_build_requested(building_id: String):
     emit_signal("build_requested", building_id)
 
+func _on_building_detail_requested(index: int):
+    building_panel.open(index, data_cache)
+
 func _on_research_requested(tech_id: String):
     emit_signal("research_requested", tech_id)
 
@@ -299,6 +309,10 @@ func _input(event: InputEvent):
     if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
         var click_pos = event.global_position
 
+        # Если панель здания открыта — её обработчик уже закрыл её, выходим
+        if building_panel and building_panel.visible:
+            return
+
         var hovered_control = get_viewport().gui_get_hovered_control()
         if is_instance_valid(hovered_control) and hovered_control != self:
             if hovered_control.get_global_rect().has_point(click_pos):
@@ -309,11 +323,16 @@ func _input(event: InputEvent):
             if panel.get_global_rect().has_point(click_pos):
                 hit_panel = true
                 break
+        if not hit_panel and building_panel and building_panel.visible:
+            if building_panel.get_global_rect().has_point(click_pos):
+                hit_panel = true
         if not hit_panel:
             _close_ui()
 
 func _close_ui():
     ui_helpers.set_message("")
+    if building_panel:
+        building_panel.hide()
     hide()
     emit_signal("closed")
 

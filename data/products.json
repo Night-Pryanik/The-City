@@ -88,6 +88,18 @@
       "category": "food",
       "icon": "foraged_food.png"
     },
-    { "id": "iron", "name": "Железо", "type": "product", "category": "material", "icon": "" }
+    { "id": "iron", "name": "Железо", "type": "product", "category": "material", "icon": "" },
+    {
+      "id": "tools",
+      "name": "Инструменты",
+      "type": "product",
+      "category": "material",
+      "icon": "tools.png"
+    },
+    { "id": "weapons", "name": "Оружие", "type": "product", "category": "material", "icon": "weapons.png" },
+    { "id": "pots", "name": "Горшки", "type": "product", "category": "material", "icon": "pots.png" },
+    { "id": "bricks", "name": "Кирпичи", "type": "product", "category": "material", "icon": "bricks.png" },
+    { "id": "iron", "name": "Железо", "type": "product", "category": "material", "icon": "iron.png" },
+    { "id": "coal", "name": "Уголь", "type": "product", "category": "material", "icon": "coal.png" }
   ]
 }

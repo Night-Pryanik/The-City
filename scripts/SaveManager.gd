@@ -69,6 +69,22 @@ func apply_loaded_data():
     CityData.consumption_rates = saved_data.get("consumption_rates", {})
     CityData.city_food_pool = saved_data.get("city_food_pool", {})
     CityData.city_built_buildings = saved_data.get("city_built_buildings", [])
+
+    # Дополняем склад недостающими продуктами (на случай, если в сейве нет
+    # продуктов, добавленных в игру позже — например, pots/bricks/clay).
+    for pid in GameData.products.keys():
+        if not CityData.city_storage.has(pid):
+            CityData.city_storage[pid] = 0
+        if not CityData.production_rates.has(pid):
+            CityData.production_rates[pid] = 0
+        if not CityData.consumption_rates.has(pid):
+            CityData.consumption_rates[pid] = 0
+        if GameData.products[pid].get("category") == "food":
+            CityData.city_food_pool[pid] = true
+
+    # TODO: временная миграция старых сейвов (формат зданий с "recipe"). Удалить после того,
+    #       как все старые сохранения перестанут использоваться.
+    CityData.migrate_old_save_format()
     CityData.domesticated_animals = saved_data.get("domesticated_animals", [])
     CityData.domesticated_plants = saved_data.get("domesticated_plants", [])
     CityData.unlocked_technologies = saved_data.get("unlocked_technologies", [])

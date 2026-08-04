@@ -20,6 +20,7 @@ var food_label: Label
 var hsplit: HSplitContainer
 
 signal build_requested(building_id: String)
+signal building_detail_requested(index: int)
 
 func setup(item_list: ItemList, name_lbl: Label, cost_lbl: Label, recipes_lbl: Label, btn: Button, built_list: Node, food_lbl: Label, splitter: HSplitContainer, helpers: Node):
     buildings_item_list = item_list
@@ -103,7 +104,16 @@ func refresh_built():
             btn.pressed.connect(_on_building_toggle.bind(i, true))
         row.add_child(btn)
 
+        # Кнопка открытия панели деталей здания
+        var slots_btn = Button.new()
+        slots_btn.text = "Подробности"
+        slots_btn.pressed.connect(_on_building_slots_pressed.bind(i))
+        row.add_child(slots_btn)
+
         built_buildings_list.add_child(row)
+
+func _on_building_slots_pressed(index: int):
+    emit_signal("building_detail_requested", index)
 
 func _on_building_toggle(index: int, enable: bool):
     var main_map = get_tree().root.find_child("MainMap", true, false)
@@ -112,7 +122,7 @@ func _on_building_toggle(index: int, enable: bool):
         return
 
     if enable:
-        if CityData.idle_population <= 0:   # ИСПРАВЛЕНО: townsfolk → idle_population
+        if CityData.idle_population <= 0: # ИСПРАВЛЕНО: townsfolk → idle_population
             ui_helpers.set_message("Нет свободных жителей!")
             return
         tm.assign_townsfolk(index)
@@ -155,17 +165,20 @@ func _on_building_selected(idx: int):
         var recipes_text = "Рецепты:\n"
         var found = false
         for craft in crafts_data:
-            if craft["produced_in"] == selected_building_id:
-                var inputs = []
-                for res in craft["resources"]:
-                    inputs.append(products.get(res, {}).get("name", res) + " - " + str(craft["resources"][res]))
-                var outputs = []
-                for res in craft["result"]:
-                    outputs.append(products.get(res, {}).get("name", res) + " - " + str(craft["result"][res]))
-                recipes_text += "Производит: " + ", ".join(outputs) + "\n"
-                recipes_text += "Затраты: " + ", ".join(inputs) + "\n"
-                recipes_text += "Время: " + str(craft.get("time", 0)) + "\n"
-                found = true
+            if craft["id"] == "empty":
+                continue
+            if not CityData.can_craft_in(craft["id"], selected_building_id):
+                continue
+            var inputs = []
+            for res in craft["resources"]:
+                inputs.append(products.get(res, {}).get("name", res) + " - " + str(craft["resources"][res]))
+            var outputs = []
+            for res in craft["result"]:
+                outputs.append(products.get(res, {}).get("name", res) + " - " + str(craft["result"][res]))
+            recipes_text += "Производит: " + ", ".join(outputs) + "\n"
+            recipes_text += "Затраты: " + ", ".join(inputs) + "\n"
+            recipes_text += "Время: " + str(craft.get("time", 0)) + "\n"
+            found = true
         if not found:
             recipes_text = "Нет рецептов"
         building_recipes_label.text = recipes_text

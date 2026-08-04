@@ -1,44 +1,89 @@
 {
   "crafts": [
     {
+      "id": "empty",
+      "name": "Пусто",
+      "produced_in": [ "*" ],
+      "resources": {  },
+      "result": {  },
+      "time": 0,
+      "description": "Слот не производит ничего"
+    },
+    {
       "id": "grind_wheat_hand",
       "name": "Ручной помол зерна",
-      "produced_in": "hand_mill",
-      "resources": {"@millable_grains": 1},
-      "result": {"flour": 1},
+      "produced_in": [ "hand_mill" ],
+      "resources": { "@millable_grains": 1 },
+      "result": { "flour": 1 },
       "time": 0
     },
     {
       "id": "grind_wheat",
       "name": "Помол зерна",
-      "produced_in": "windmill",
-      "resources": {"@millable_grains": 1},
-      "result": {"flour": 2},
+      "produced_in": [ "windmill" ],
+      "resources": { "@millable_grains": 1 },
+      "result": { "flour": 2 },
       "time": 0
     },
     {
       "id": "bake_bread",
       "name": "Выпечка хлеба",
-      "produced_in": "bakery",
-      "resources": {"flour": 1},
-      "result": {"bread": 1},
+      "produced_in": [ "bakery" ],
+      "resources": { "flour": 1 },
+      "result": { "bread": 1 },
       "time": 0
     },
     {
       "id": "process_meat",
       "name": "Разделка мяса",
-      "produced_in": "slaughterhouse",
-      "resources": {"raw_meat": 1},
-      "result": {"meat": 1},
+      "produced_in": [ "slaughterhouse" ],
+      "resources": { "raw_meat": 1 },
+      "result": { "meat": 1 },
       "time": 0
     },
     {
       "id": "make_cheese",
       "name": "Сыроделие",
-      "produced_in": "dairy",
-      "resources": {"raw_milk": 1},
-      "result": {"cheese": 1},
+      "produced_in": [ "dairy" ],
+      "resources": { "raw_milk": 1 },
+      "result": { "cheese": 1 },
       "time": 0
+    },
+    {
+      "id": "craft_tools",
+      "name": "Ковка инструментов",
+      "produced_in": [ "forge" ],
+      "resources": { "iron": 2, "coal": 1 },
+      "result": { "tools": 1 },
+      "time": 5.0,
+      "description": "Создаёт набор инструментов для ремесленников"
+    },
+    {
+      "id": "craft_weapons",
+      "name": "Ковка оружия",
+      "produced_in": [ "forge" ],
+      "resources": { "iron": 3, "coal": 1 },
+      "result": { "weapons": 1 },
+      "time": 6.0,
+      "description": "Создаёт партию оружия для защиты города"
+    },
+    {
+      "id": "craft_pots",
+      "name": "Гончарное дело (горшки)",
+      "produced_in": [ "pottery_workshop" ],
+      "resources": { "clay": 2 },
+      "result": { "pots": 1 },
+      "time": 4.0,
+      "description": "Создаёт глиняные горшки для хранения"
+    },
+    {
+      "id": "craft_bricks",
+      "name": "Гончарное дело (кирпичи)",
+      "produced_in": [ "pottery_workshop" ],
+      "resources": { "clay": 3 },
+      "result": { "bricks": 1 },
+      "time": 5.0,
+      "description": "Обжигает глину в строительные кирпичи"
     }
   ]
 }
