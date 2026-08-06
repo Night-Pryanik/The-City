@@ -107,7 +107,7 @@
       "subgroup": "",
       "tech_required": "pottery",
       "allowed_terrains": [ "plain" ],
-      "improved_by": "mine",
+      "improved_by": "clay_pit",
       "produces": { "clay": 1 },
       "icon": "clay.png",
       "color": [ 180, 130, 100 ]

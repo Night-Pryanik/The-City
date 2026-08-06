@@ -53,6 +53,15 @@
       "cost_food": 5,
       "build_time": 5.0,
       "unlock_tech": "winegrowing"
+    },
+    {
+      "id": "clay_pit",
+      "name": "Глиняная яма",
+      "icon": "clay_pit.png",
+      "color": [ 210, 180, 140 ],
+      "cost_food": 4,
+      "build_time": 4.0,
+      "unlock_tech": "pottery"
     }
   ]
 }
