@@ -1,0 +1,5 @@
+{
+  "resources": [
+    { "id": "grapes", "name": "Виноград", "type": "product", "category": "fruits", "icon": "grapes.png" }
+  ]
+}

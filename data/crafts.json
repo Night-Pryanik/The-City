@@ -144,11 +144,21 @@
       "id": "construction_materials",
       "name": "Изготовление стройматериалов",
       "produced_in": [ "mason_workshop" ],
-      "resources": { "@stones": 1 },
+      "resources": { "@construction_materials": 1 },
       "result": { "construction_materials": 1 },
       "time": 4.0,
       "unlock_tech": "masonry",
       "description": "Обрабатывает камень в строительные материалы"
+    },
+    {
+      "id": "wine",
+      "name": "Виноделие",
+      "produced_in": [ "winemaker_house" ],
+      "resources": { "grapes": 2 },
+      "result": { "wine": 1 },
+      "time": 5.0,
+      "unlock_tech": "winegrowing",
+      "description": "Варит вино из винограда"
     }
   ]
 }

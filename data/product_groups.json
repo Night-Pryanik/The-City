@@ -2,8 +2,13 @@
   "product_groups": [
     {
       "id": "millable_grains",
+      "name": "Зерновые культуры",
       "products": [ "wheat", "rye", "barley", "oats", "corn", "rice", "millet", "sorghum", "buckwheat" ]
     },
-    { "id": "construction_materials", "products": [ "basalt", "tuff", "sandstone", "marble", "granite", "limestone", "bricks" ] }
+    {
+      "id": "construction_materials",
+      "name": "Строительные материалы",
+      "products": [ "basalt", "tuff", "sandstone", "marble", "granite", "limestone", "bricks" ]
+    }
   ]
 }

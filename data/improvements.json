@@ -25,7 +25,7 @@
       "color": [ 105, 105, 105 ],
       "cost_food": 5,
       "build_time": 5.0,
-      "unlock_tech": "metal_processing"
+      "unlock_tech": "mining"
     },
     {
       "id": "quarry",
@@ -44,6 +44,15 @@
       "cost_food": 3,
       "build_time": 3.0,
       "unlock_tech": "beekeeping"
+    },
+    {
+      "id": "vineyard",
+      "name": "Виноградник",
+      "icon": "vineyard.png",
+      "color": [ 128, 0, 0 ],
+      "cost_food": 5,
+      "build_time": 5.0,
+      "unlock_tech": "winegrowing"
     }
   ]
 }

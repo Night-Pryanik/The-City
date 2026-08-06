@@ -125,8 +125,11 @@ func do_tick():
                 var amount_needed = recipe["resources"][res]
                 if res.begins_with("@"):
                     # Групповой ресурс
-                    var group_id = res.trim_prefix("@")
-                    var group_products = GameData.product_groups.get(group_id, [])
+                    var group_key = res.trim_prefix("@")
+                    # Сначала ищем группу по id, затем по человекочитаемому имени
+                    var group_products = GameData.product_groups.get(group_key, [])
+                    if group_products.is_empty():
+                        group_products = GameData.product_groups.get(_get_group_id_by_name(group_key), [])
                     if group_products.is_empty():
                         # Группа не найдена — считаем рецепт недоступным
                         missing_resources.append(res)
@@ -186,6 +189,13 @@ func do_tick():
 
     _check_population_change()
     emit_signal("city_updated")
+
+# Возвращает id группы по её человекочитаемому имени (или сам ключ, если это id).
+func _get_group_id_by_name(gname: String) -> String:
+    for gid in GameData.product_group_names:
+        if GameData.product_group_names[gid] == gname:
+            return gid
+    return gname
 
 func _check_population_change():
     var available_food = 0

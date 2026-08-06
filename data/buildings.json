@@ -77,7 +77,7 @@
       "icon": "tanner_house.png",
       "production_slots": 1.0,
       "unlock_tech": "leatherworking",
-      "default_recipes": [ "tan_hide" ]
+      "default_recipes": [ "leather" ]
     },
     {
       "id": "weaver_house",
@@ -95,7 +95,16 @@
       "icon": "brewer_house.png",
       "production_slots": 2.0,
       "unlock_tech": "brewing",
-      "default_recipes": [ "brew_beer" ]
+      "default_recipes": [ "beer" ]
+    },
+    {
+      "id": "winemaker_house",
+      "name": "Дом винодела",
+      "cost_food": 5.0,
+      "icon": "winemaker_house.png",
+      "production_slots": 2.0,
+      "unlock_tech": "winegrowing",
+      "default_recipes": [ "wine" ]
     }
   ]
 }

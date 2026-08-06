@@ -1,14 +1,15 @@
 {
   "categories": [
-    {"id": "food", "name": "Еда"},
-    {"id": "drinks", "name": "Напитки"},
-    {"id": "luxury", "name": "Роскошь"},
-    {"id": "material", "name": "Материалы"},
-    {"id": "construction_material", "name": "Стройматериалы"},
-    {"id": "mineral", "name": "Минералы"},
-    {"id": "metal", "name": "Металлы"},
-    {"id": "clothes", "name": "Одежда"},
-    {"id": "household_items", "name": "Предметы быта"},
-    {"id": "other", "name": "Прочее"}
+    { "id": "food", "name": "Еда" },
+    { "id": "fruits", "name": "Фрукты" },
+    { "id": "drinks", "name": "Напитки" },
+    { "id": "luxury", "name": "Роскошь" },
+    { "id": "material", "name": "Материалы" },
+    { "id": "construction_material", "name": "Стройматериалы" },
+    { "id": "mineral", "name": "Минералы" },
+    { "id": "metal", "name": "Металлы" },
+    { "id": "clothes", "name": "Одежда" },
+    { "id": "household_items", "name": "Предметы быта" },
+    { "id": "other", "name": "Прочее" }
   ]
 }

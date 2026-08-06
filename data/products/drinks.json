@@ -15,6 +15,14 @@
       "category": "drinks",
       "unlock_tech": "mead_making",
       "icon": "mead.png"
+    },
+    {
+      "id": "wine",
+      "name": "Вино",
+      "type": "product",
+      "category": "drinks",
+      "unlock_tech": "winemaking",
+      "icon": "wine.png"
     }
   ]
 }

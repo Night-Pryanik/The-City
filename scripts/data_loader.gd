@@ -11,7 +11,8 @@ var buildings: Array = []
 var categories: Array = []
 var technologies: Array = []
 var groups: Array = []
-var product_groups: Dictionary = {}  # НОВОЕ
+var product_groups: Dictionary = {} # id -> products
+var product_group_names: Dictionary = {} # id -> human-readable name
 
 func load_all_data():
     var merged_data = _load_all_json_files("res://data")
@@ -41,11 +42,13 @@ func load_all_data():
     categories = merged_data.get("categories", [])
     technologies = merged_data.get("technologies", [])
     groups = merged_data.get("groups", [])
-    
+
     # НОВОЕ: загружаем группы товаров
     product_groups = {}
+    product_group_names = {}
     for pg in merged_data.get("product_groups", []):
         product_groups[pg["id"]] = pg["products"]
+        product_group_names[pg["id"]] = pg.get("name", pg["id"])
 
 func _load_all_json_files(folder_path: String) -> Dictionary:
     var result = {}

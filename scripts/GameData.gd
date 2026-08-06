@@ -11,6 +11,7 @@ var categories: Array = []
 var technologies: Array = []
 var groups: Array = []
 var product_groups: Dictionary = {}
+var product_group_names: Dictionary = {}
 
 func load_all_data():
     var loader = load("res://scripts/data_loader.gd").new()
@@ -25,3 +26,4 @@ func load_all_data():
     technologies = loader.technologies
     groups = loader.groups
     product_groups = loader.product_groups
+    product_group_names = loader.product_group_names

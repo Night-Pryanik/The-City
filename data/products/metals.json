@@ -1,5 +1,5 @@
 {
   "resources": [
-    { "id": "iron", "name": "Железо", "type": "product", "category": "material", "icon": "iron.png" }
+    { "id": "iron", "name": "Железо", "type": "product", "category": "metals", "icon": "iron.png" }
   ]
 }

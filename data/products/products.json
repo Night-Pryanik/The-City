@@ -1,26 +1,26 @@
 {
-	"resources": [
-		{
-			"id": "tools",
-			"name": "Инструменты",
-			"type": "product",
-			"category": "other",
-			"icon": "tools.png"
-		},
-		{
-			"id": "weapons",
-			"name": "Оружие",
-			"type": "product",
-			"category": "other",
-			"icon": "weapons.png"
-		},
-		{
-			"id": "pottery",
-			"name": "Глиняная посуда",
-			"type": "product",
-			"category": "household_items",
-			"icon": "pottery.png"
-		},
+    "resources": [
+        {
+            "id": "tools",
+            "name": "Инструменты",
+            "type": "product",
+            "category": "other",
+            "icon": "tools.png"
+        },
+        {
+            "id": "weapons",
+            "name": "Оружие",
+            "type": "product",
+            "category": "other",
+            "icon": "weapons.png"
+        },
+        {
+            "id": "pottery",
+            "name": "Глиняная посуда",
+            "type": "product",
+            "category": "household_items",
+            "icon": "pottery.png"
+        },
         {
             "id": "fabric_clothes",
             "name": "Тканевая одежда",
@@ -45,5 +45,5 @@
             "unlock_tech": "leatherworking",
             "icon": "leather_clothes.png"
         }
-	]
+    ]
 }
