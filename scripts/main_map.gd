@@ -325,9 +325,8 @@ func _ensure_minimum_resource(category: String):
             for res_id in GameData.raw_resources:
                 if GameData.raw_resources[res_id].get("category", "") != category:
                     continue
-                # Ресурсы, открываемые технологией, не размещаются при генерации
-                if GameData.raw_resources[res_id].has("spawn_on_tech"):
-                    continue
+                # Ресурсы, требующие технологию, не размещаются при генерации
+                # (они спавнятся после изучения технологии).
                 if terrain_id in GameData.raw_resources[res_id].get("allowed_terrains", []):
                     possible.append({"row": row, "col": col, "id": res_id})
                     break
@@ -748,26 +747,21 @@ func _on_research_error(message: String):
 
 func _on_research_completed(tech_id: String):
     map_renderer.queue_redraw()
-    # Показываем окно изученной технологии
+    # Показываем окно изученной технологии и ставим игру на паузу,
+    # чтобы игрок не мог взаимодействовать с картой и HUD, пока окно открыто.
     if tech_popup and tech_popup.has_method("show_tech"):
-        tech_popup.show_tech(tech_id)
-    # Показываем сообщения о найденных/ненайденных ресурсах после завершения исследования.
-    # Используем call_deferred, чтобы last_research_messages уже был заполнен.
-    call_deferred("_show_research_resource_messages")
+        get_tree().paused = true
+        tech_popup.show_tech(tech_id, CityData.last_research_messages)
+    # Сообщения переданы в попап — очищаем их.
+    CityData.last_research_messages = []
 
 func _on_tech_popup_go_to_techs():
-    # Закрываем карту и открываем интерфейс города на вкладке "Технологии"
+    # Снимаем паузу и открываем интерфейс города на вкладке "Технологии"
+    get_tree().paused = false
     city_ui.refresh()
     city_ui.show_technologies_tab()
     city_ui.show()
     hud.hide()
-
-func _show_research_resource_messages():
-    if CityData.last_research_messages.is_empty():
-        return
-    var combined = "\n".join(CityData.last_research_messages)
-    hud.show_message(combined)
-    CityData.last_research_messages = []
 
 func _on_pause_save():
     SaveManager.save_game()

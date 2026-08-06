@@ -89,11 +89,9 @@ func _place_resources(tile_data: Array, res_dict: Dictionary, rows: int, cols: i
 
     for res_id in chosen:
         var data = res_dict[res_id]
-        # Ресурсы, открываемые технологией, не размещаются при генерации карты.
-        # Они спавнятся динамически после изучения технологии.
-        if data.has("spawn_on_tech"):
-            continue
         # Ресурсы, требующие НЕизученную технологию, не спавнятся на старте.
+        # Они спавнятся динамически после изучения технологии
+        # (см. CityData.spawn_resource_on_tech_research).
         var tech_required = data.get("tech_required", "")
         if tech_required != "" and not CityData.is_tech_unlocked(tech_required):
             continue

@@ -1,17 +1,24 @@
 # tech_popup.gd
 # Окно, появляющееся после завершения исследования технологии.
-# Показывает название технологии, список добавленных фич (description)
-# и историческую справку (flavor). Кнопки: "Ок" и "Перейти к списку технологий".
+# Показывает название технологии, список добавленных фич (description),
+# историческую справку (flavor) и найденные ресурсы. Кнопки: "Ок" и
+# "Перейти к списку технологий".
+#
+# Окно работает и при get_tree().paused == true (PROCESS_MODE_ALWAYS),
+# чтобы игрок не мог взаимодействовать с картой, пока попап открыт.
 extends Control
 
 var panel: Panel
 var title_label: Label
 var description_label: Label
 var flavor_label: Label
+var resources_label: Label
 
 signal go_to_technologies()
 
 func _ready():
+    process_mode = Node.PROCESS_MODE_ALWAYS
+
     # Затемнение фона
     var dim = ColorRect.new()
     dim.color = Color(0, 0, 0, 0.5)
@@ -24,7 +31,7 @@ func _ready():
     add_child(center)
 
     panel = Panel.new()
-    panel.custom_minimum_size = Vector2(520, 360)
+    panel.custom_minimum_size = Vector2(560, 420)
     var style = StyleBoxFlat.new()
     style.bg_color = Color(0.13, 0.13, 0.13, 1.0)
     style.set_border_width_all(2)
@@ -39,7 +46,7 @@ func _ready():
     vbox.offset_top = 24
     vbox.offset_right = -24
     vbox.offset_bottom = -24
-    vbox.add_theme_constant_override("separation", 12)
+    vbox.add_theme_constant_override("separation", 10)
     panel.add_child(vbox)
 
     title_label = Label.new()
@@ -67,6 +74,17 @@ func _ready():
     flavor_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
     vbox.add_child(flavor_label)
 
+    # Секция «Найденные ресурсы» (заполняется после изучения технологии).
+    var res_title = Label.new()
+    res_title.text = "Разведка региона:"
+    res_title.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+    vbox.add_child(res_title)
+
+    resources_label = Label.new()
+    resources_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    resources_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.5))
+    vbox.add_child(resources_label)
+
     var buttons = HBoxContainer.new()
     buttons.alignment = BoxContainer.ALIGNMENT_CENTER
     buttons.add_theme_constant_override("separation", 16)
@@ -84,7 +102,7 @@ func _ready():
     techs_btn.pressed.connect(_on_techs_pressed)
     buttons.add_child(techs_btn)
 
-func show_tech(tech_id: String):
+func show_tech(tech_id: String, found_resources: Array = []):
     var tech_data = null
     for t in GameData.technologies:
         if t["id"] == tech_id:
@@ -97,6 +115,11 @@ func show_tech(tech_id: String):
     description_label.text = tech_data.get("description", "Нет описания.")
     flavor_label.text = tech_data.get("flavor", "")
 
+    if found_resources.is_empty():
+        resources_label.text = "Новые ресурсы не обнаружены."
+    else:
+        resources_label.text = "\n".join(found_resources)
+
     # Задаём размер корневого Control = размер viewport, чтобы оверлей покрывал всё
     var vp_size = get_viewport_rect().size
     size = vp_size
@@ -105,6 +128,8 @@ func show_tech(tech_id: String):
 
 func _on_ok_pressed():
     hide()
+    # Возобновляем игру после закрытия попапа технологии.
+    get_tree().paused = false
 
 func _on_techs_pressed():
     hide()

@@ -346,12 +346,14 @@ func tick_research(delta: float):
                 tech_name = t["name"]
                 break
         emit_signal("research_error", "Исследование завершено: " + tech_name)
+        # Технология может открывать новые виды ресурсов — спавним их на карте.
+        # Сообщения готовим ДО сигнала research_completed, чтобы попап
+        # мог отобразить найденные ресурсы сразу.
+        last_research_messages = spawn_resource_on_tech_research(completed_tech_id)
         emit_signal("research_completed", current_research_tech_id)
         current_research_tech_id = ""
         current_research_time = 0.0
         research_progress = 0.0
-        # Технология может открывать новые виды ресурсов — спавним их на карте.
-        last_research_messages = spawn_resource_on_tech_research(completed_tech_id)
         emit_signal("city_updated")
 
 func is_tech_unlocked(tech_id: String) -> bool:
@@ -442,7 +444,7 @@ func get_improvement_unlock_tech(imp_id: String) -> String:
     var imp_data = GameData.improvements.get(imp_id, {})
     return imp_data.get("unlock_tech", "")
 
-# Спавнит ресурсы, открываемые изученной технологией (spawn_on_tech / tech_required).
+# Спавнит ресурсы, открываемые изученной технологией (tech_required).
 # Вызывается после завершения исследования технологии.
 # Правила:
 #   - Для `animal_husbandry` и `mining`: 50% шанс на 2 вида, 30% на 3 вида, 20% на 1 вид,
@@ -464,15 +466,13 @@ func spawn_resource_on_tech_research(tech_id: String) -> Array:
     var guaranteed_circle = (tech_id == "animal_husbandry" or tech_id == "mining")
 
     # Собираем виды ресурсов, открываемые этой технологией.
-    # Ресурс «открывается» технологией, если он напрямую спавнится по ней
-    # (spawn_on_tech) ИЛИ требует её для появления и добычи (tech_required).
-    # Дикоросы (wild_food) не имеют tech_required — пропускаются автоматически.
+    # Ресурс «открывается» технологией, если он требует её для появления и добычи
+    # (tech_required). Дикоросы (wild_food) не имеют tech_required — пропускаются.
     var candidates = []
     for res_id in GameData.raw_resources:
         var data = GameData.raw_resources[res_id]
-        var spawn_tech = data.get("spawn_on_tech", "")
         var required_tech = data.get("tech_required", "")
-        if spawn_tech != tech_id and required_tech != tech_id:
+        if required_tech != tech_id:
             continue
         # Уже есть на карте (например, при загрузке сохранения) — не дублируем.
         if _is_resource_on_map(tile_data, res_id):
