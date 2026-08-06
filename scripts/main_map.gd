@@ -585,11 +585,13 @@ func _show_context_menu(row: int, col: int, click_pos: Vector2):
             if map_renderer.is_resource_locked(tile.resource):
                 var tech_id = raw["tech_required"]
                 var tech_name = tech_id
+                var tech_cost = 3
                 for tech in GameData.technologies:
                     if tech["id"] == tech_id:
                         tech_name = tech["name"]
+                        tech_cost = int(tech.get("science_cost", 3))
                         break
-                var label = "Изучить %s" % tech_name
+                var label = "Изучить %s (наука: %d)" % [tech_name, tech_cost]
                 popup_menu.add_item(label)
                 var last_idx = popup_menu.item_count - 1
                 popup_menu.set_item_metadata(last_idx, {"action": "research_tech", "tech_id": tech_id})
@@ -597,11 +599,13 @@ func _show_context_menu(row: int, col: int, click_pos: Vector2):
                 # Ресурс открыт, но улучшение для него требует отдельной технологии
                 var unlock_tech_id = CityData.get_improvement_unlock_tech(imp_id)
                 var unlock_tech_name = unlock_tech_id
+                var unlock_tech_cost = 3
                 for tech in GameData.technologies:
                     if tech["id"] == unlock_tech_id:
                         unlock_tech_name = tech["name"]
+                        unlock_tech_cost = int(tech.get("science_cost", 3))
                         break
-                var label = "Изучить %s" % unlock_tech_name
+                var label = "Изучить %s (наука: %d)" % [unlock_tech_name, unlock_tech_cost]
                 popup_menu.add_item(label)
                 var last_idx = popup_menu.item_count - 1
                 popup_menu.set_item_metadata(last_idx, {"action": "research_tech", "tech_id": unlock_tech_id})
