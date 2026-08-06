@@ -1,0 +1,11 @@
+{
+  "eras": [
+    {"id": "ancient", "name": "Древняя"},
+    {"id": "antiquity", "name": "Античность"},
+    {"id": "classical", "name": "Классическая"},
+    {"id": "medieval", "name": "Средневековье"},
+    {"id": "renaissance", "name": "Возрождение"},
+    {"id": "modern", "name": "Новое время"},
+    {"id": "contemporary", "name": "Новейшее время"}
+  ]
+}
