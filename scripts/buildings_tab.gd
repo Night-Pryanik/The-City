@@ -25,7 +25,7 @@ var pause_icon: Texture2D
 var info_icon: Texture2D
 
 signal build_requested(building_id: String)
-signal building_detail_requested(index: int)
+signal building_detail_requested(building_id: String)
 
 func setup(item_list: ItemList, name_lbl: Label, cost_lbl: Label, recipes_lbl: Label, btn: Button, built_list: Node, food_lbl: Label, splitter: HSplitContainer, helpers: Node):
     buildings_item_list = item_list
@@ -76,7 +76,7 @@ func refresh_list():
     center_split_offset()
 
 func update_built_status():
-    # Лёгкое обновление: обновляем текст статуса и иконки кнопок без пересоздания строк.
+    # Лёгкое обновление: обновляем текст статуса без пересоздания строк.
     if built_buildings.size() != last_built_count:
         refresh_built()
         return
@@ -84,88 +84,106 @@ func update_built_status():
     var main_map = get_tree().root.find_child("MainMap", true, false)
     var tm = main_map.get_node("TownsfolkManager") if main_map else null
 
-    for i in range(built_buildings.size()):
-        var row = built_buildings_list.get_child(i)
-        if row == null or row.get_child_count() < 3:
+    # Группируем здания по id
+    var groups = _group_buildings()
+    for g in range(groups.size()):
+        var row = built_buildings_list.get_child(g)
+        if row == null or row.get_child_count() < 2:
             continue
-        var bld = built_buildings[i]
+        var group = groups[g]
         var bdata = null
         for b in buildings_data:
-            if b["id"] == bld["id"]:
+            if b["id"] == group["id"]:
                 bdata = b
                 break
-        var building_name = bdata["name"] if bdata else bld["id"]
-        var has_worker = tm.has_townsfolk(i) if tm else false
-        var status = " (работает)" if has_worker else " (не работает)"
-        var status_color = Color.GREEN if has_worker else Color.RED
+        var base_name = bdata["name"] if bdata else group["id"]
+        var working = group["working"]
+
+        var display_name = "%s x%d" % [base_name, group["total"]] if group["total"] > 1 else base_name
+        var status = ""
+        var status_color = Color.WHITE
+        if group["total"] > 1:
+            status = " (работает: %d из %d)" % [working, group["total"]]
+            status_color = Color.GREEN if working == group["total"] else (Color.YELLOW if working > 0 else Color.RED)
+        else:
+            status = " (работает)" if working > 0 else " (не работает)"
+            status_color = Color.GREEN if working > 0 else Color.RED
 
         var label = row.get_child(0)
         if label is Label:
-            label.text = building_name + status
+            label.text = display_name + status
             label.add_theme_color_override("font_color", status_color)
-
-        var btn = row.get_child(1)
-        if btn is Button:
-            if has_worker:
-                btn.icon = _get_icon("pause")
-                btn.tooltip_text = "Приостановить"
-            else:
-                btn.icon = _get_icon("resume")
-                btn.tooltip_text = "Запустить"
 
 func refresh_built():
     for child in built_buildings_list.get_children():
         child.queue_free()
     last_built_count = built_buildings.size()
 
-    var main_map = get_tree().root.find_child("MainMap", true, false)
-    var tm = main_map.get_node("TownsfolkManager") if main_map else null
+    # Группируем однотипные здания
+    var groups = _group_buildings()
 
-    for i in range(built_buildings.size()):
-        var bld = built_buildings[i]
+    for g in groups:
         var bdata = null
         for b in buildings_data:
-            if b["id"] == bld["id"]:
+            if b["id"] == g["id"]:
                 bdata = b
                 break
-        var building_name = bdata["name"] if bdata else bld["id"]
+        var base_name = bdata["name"] if bdata else g["id"]
+        var display_name = "%s x%d" % [base_name, g["total"]] if g["total"] > 1 else base_name
 
         var row = HBoxContainer.new()
         row.add_theme_constant_override("separation", 10)
 
-        var has_worker = tm.has_townsfolk(i) if tm else false
-        var status = " (работает)" if has_worker else " (не работает)"
-        var status_color = Color.GREEN if has_worker else Color.RED
+        var working = g["working"]
+        var status = ""
+        var status_color = Color.WHITE
+        if g["total"] > 1:
+            status = " (работает: %d из %d)" % [working, g["total"]]
+            status_color = Color.GREEN if working == g["total"] else (Color.YELLOW if working > 0 else Color.RED)
+        else:
+            status = " (работает)" if working > 0 else " (не работает)"
+            status_color = Color.GREEN if working > 0 else Color.RED
 
         var label = Label.new()
-        label.text = building_name + status
+        label.text = display_name + status
         label.add_theme_color_override("font_color", status_color)
         row.add_child(label)
 
-        var btn = Button.new()
-        btn.custom_minimum_size = Vector2(28, 28)
-        btn.expand_icon = true
-        if has_worker:
-            btn.icon = _get_icon("pause")
-            btn.tooltip_text = "Приостановить"
-            btn.pressed.connect(_on_building_toggle.bind(i, false))
-        else:
-            btn.icon = _get_icon("resume")
-            btn.tooltip_text = "Запустить"
-            btn.pressed.connect(_on_building_toggle.bind(i, true))
-        row.add_child(btn)
-
-        # Кнопка открытия панели деталей здания
+        # Кнопка открытия панели деталей здания (сгруппированные здания этого типа)
         var slots_btn = Button.new()
         slots_btn.custom_minimum_size = Vector2(28, 28)
         slots_btn.expand_icon = true
         slots_btn.icon = _get_icon("info")
-        slots_btn.tooltip_text = "Подробности"
-        slots_btn.pressed.connect(_on_building_slots_pressed.bind(i))
+        slots_btn.tooltip_text = "Дополнительно"
+        slots_btn.pressed.connect(_on_building_slots_pressed.bind(g["id"]))
         row.add_child(slots_btn)
 
         built_buildings_list.add_child(row)
     last_built_count = built_buildings.size()
+
+# Группирует построенные здания по id и считает работающие.
+func _group_buildings() -> Array:
+    var main_map = get_tree().root.find_child("MainMap", true, false)
+    var tm = main_map.get_node("TownsfolkManager") if main_map else null
+
+    var groups = []
+    var order = []
+    for i in range(built_buildings.size()):
+        var bld = built_buildings[i]
+        var bld_id = bld.get("id", "")
+        var has_worker = tm.has_townsfolk(i) if tm else false
+        if not order.has(bld_id):
+            order.append(bld_id)
+            groups.append({"id": bld_id, "total": 0, "working": 0})
+        var g = null
+        for grp in groups:
+            if grp["id"] == bld_id:
+                g = grp
+                break
+        g["total"] += 1
+        if has_worker:
+            g["working"] += 1
+    return groups
 
 func _get_icon(icon_name: String) -> Texture2D:
     if icon_name == "resume" and resume_icon:
@@ -187,24 +205,8 @@ func _get_icon(icon_name: String) -> Texture2D:
             return info_icon
     return null
 
-func _on_building_slots_pressed(index: int):
-    emit_signal("building_detail_requested", index)
-
-func _on_building_toggle(index: int, enable: bool):
-    var main_map = get_tree().root.find_child("MainMap", true, false)
-    var tm = main_map.get_node("TownsfolkManager") if main_map else null
-    if not tm:
-        return
-
-    if enable:
-        if CityData.idle_population <= 0: # ИСПРАВЛЕНО: townsfolk → idle_population
-            ui_helpers.set_message("Нет свободных жителей!")
-            return
-        tm.assign_townsfolk(index)
-    else:
-        tm.remove_townsfolk(index)
-
-    refresh_built()
+func _on_building_slots_pressed(building_id: String):
+    emit_signal("building_detail_requested", building_id)
 
 func center_split_offset():
     if hsplit:

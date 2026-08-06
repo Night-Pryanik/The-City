@@ -279,8 +279,8 @@ func refresh_buildings_tab():
 func _on_build_requested(building_id: String):
     emit_signal("build_requested", building_id)
 
-func _on_building_detail_requested(index: int):
-    building_panel.open(index, data_cache)
+func _on_building_detail_requested(building_id: String):
+    building_panel.open(building_id, data_cache)
 
 func _on_research_requested(tech_id: String):
     emit_signal("research_requested", tech_id)
