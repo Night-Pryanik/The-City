@@ -26,7 +26,7 @@
       "time": 0
     },
     {
-      "id": "bake_bread",
+      "id": "bread",
       "name": "Выпечка хлеба",
       "produced_in": [ "bakery" ],
       "resources": { "flour": 1 },
@@ -34,7 +34,7 @@
       "time": 0
     },
     {
-      "id": "process_meat",
+      "id": "meat",
       "name": "Разделка мяса",
       "produced_in": [ "slaughterhouse" ],
       "resources": { "raw_meat": 1 },
@@ -42,48 +42,113 @@
       "time": 0
     },
     {
-      "id": "make_cheese",
+      "id": "cheese",
       "name": "Сыроделие",
       "produced_in": [ "dairy" ],
       "resources": { "raw_milk": 1 },
       "result": { "cheese": 1 },
-      "time": 0
+      "time": 0,
+      "unlock_tech": "cheese_making"
     },
     {
-      "id": "craft_tools",
+      "id": "tools",
       "name": "Ковка инструментов",
       "produced_in": [ "forge" ],
       "resources": { "iron": 2, "coal": 1 },
       "result": { "tools": 1 },
       "time": 5.0,
+      "unlock_tech": "metal_processing",
       "description": "Создаёт набор инструментов для ремесленников"
     },
     {
-      "id": "craft_weapons",
+      "id": "weapons",
       "name": "Ковка оружия",
       "produced_in": [ "forge" ],
       "resources": { "iron": 3, "coal": 1 },
       "result": { "weapons": 1 },
       "time": 6.0,
+      "unlock_tech": "metal_processing",
       "description": "Создаёт партию оружия для защиты города"
     },
     {
-      "id": "craft_pots",
+      "id": "pottery",
       "name": "Гончарное дело (посуда)",
       "produced_in": [ "pottery_workshop" ],
       "resources": { "clay": 2 },
       "result": { "pottery": 1 },
       "time": 4.0,
+      "unlock_tech": "pottery",
       "description": "Создаёт глиняную посуду для хранения"
     },
     {
-      "id": "craft_bricks",
+      "id": "bricks",
       "name": "Гончарное дело (кирпичи)",
       "produced_in": [ "pottery_workshop" ],
       "resources": { "clay": 3 },
       "result": { "bricks": 1 },
       "time": 5.0,
+      "unlock_tech": "pottery",
       "description": "Обжигает глину в строительные кирпичи"
+    },
+    {
+      "id": "leather",
+      "name": "Выделка кожи",
+      "produced_in": [ "tanner_house" ],
+      "resources": { "hide": 1 },
+      "result": { "leather": 1 },
+      "time": 4.0,
+      "unlock_tech": "leatherworking",
+      "description": "Превращает шкуры в прочную кожу"
+    },
+    {
+      "id": "fabric_clothes",
+      "name": "Ткачество (ткань)",
+      "produced_in": [ "weaver_house" ],
+      "resources": { "cheese": 2 },
+      "result": { "clothes": 1 },
+      "time": 4.0,
+      "unlock_tech": "weaving",
+      "description": "Ткёт одежду из ткани"
+    },
+    {
+      "id": "wool_clothes",
+      "name": "Ткачество (шерсть)",
+      "produced_in": [ "weaver_house" ],
+      "resources": { "wool": 2 },
+      "result": { "clothes": 1 },
+      "time": 4.0,
+      "unlock_tech": "weaving",
+      "description": "Ткёт одежду из шерсти"
+    },
+    {
+      "id": "beer",
+      "name": "Варка пива",
+      "produced_in": [ "brewer_house" ],
+      "resources": { "@millable_grains": 2 },
+      "result": { "beer": 1 },
+      "time": 5.0,
+      "unlock_tech": "brewing",
+      "description": "Варит пиво из зерновых культур"
+    },
+    {
+      "id": "mead",
+      "name": "Варка медового напитка",
+      "produced_in": [ "brewer_house" ],
+      "resources": { "honey": 2 },
+      "result": { "mead": 1 },
+      "time": 5.0,
+      "unlock_tech": "mead_making",
+      "description": "Варит медовый напиток из мёда"
+    },
+    {
+      "id": "construction_materials",
+      "name": "Изготовление стройматериалов",
+      "produced_in": [ "mason_workshop" ],
+      "resources": { "@stones": 1 },
+      "result": { "construction_materials": 1 },
+      "time": 4.0,
+      "unlock_tech": "masonry",
+      "description": "Обрабатывает камень в строительные материалы"
     }
   ]
 }

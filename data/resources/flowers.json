@@ -7,11 +7,12 @@
       "category": "plants",
       "group": "flowers",
       "subgroup": "decorative",
-      "allowed_terrains": ["plain"],
+      "tech_required": "irrigation",
+      "allowed_terrains": [ "plain" ],
       "improved_by": "farm",
-      "produces": {"tulips": 1},
+      "produces": { "tulips": 1 },
       "icon": "tulips.png",
-      "color": [255, 100, 100]
+      "color": [ 255, 100, 100 ]
     },
     {
       "id": "rose_field",
@@ -20,11 +21,12 @@
       "category": "plants",
       "group": "flowers",
       "subgroup": "aromatic",
-      "allowed_terrains": ["plain"],
+      "tech_required": "irrigation",
+      "allowed_terrains": [ "plain" ],
       "improved_by": "farm",
-      "produces": {"roses": 1},
+      "produces": { "roses": 1 },
       "icon": "roses.png",
-      "color": [255, 50, 50]
+      "color": [ 255, 50, 50 ]
     },
     {
       "id": "chamomile_field",
@@ -33,11 +35,12 @@
       "category": "plants",
       "group": "flowers",
       "subgroup": "medicinal",
-      "allowed_terrains": ["plain"],
+      "tech_required": "irrigation",
+      "allowed_terrains": [ "plain" ],
       "improved_by": "farm",
-      "produces": {"chamomile": 1},
+      "produces": { "chamomile": 1 },
       "icon": "chamomile.png",
-      "color": [255, 255, 200]
+      "color": [ 255, 255, 200 ]
     }
   ]
 }

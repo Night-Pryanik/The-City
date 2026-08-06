@@ -88,6 +88,9 @@ func apply_loaded_data():
     CityData.domesticated_animals = saved_data.get("domesticated_animals", [])
     CityData.domesticated_plants = saved_data.get("domesticated_plants", [])
     CityData.unlocked_technologies = saved_data.get("unlocked_technologies", [])
+    # Растениеводство всегда открыта при старте игры — добавляем, если отсутствует
+    if not ("farming" in CityData.unlocked_technologies):
+        CityData.unlocked_technologies.append("farming")
     CityData.current_research_tech_id = saved_data.get("current_research_tech_id", "")
     CityData.current_research_time = saved_data.get("current_research_time", 0.0)
     CityData.research_progress = saved_data.get("research_progress", 0.0)

@@ -93,6 +93,10 @@ func _place_resources(tile_data: Array, res_dict: Dictionary, rows: int, cols: i
         # Они спавнятся динамически после изучения технологии.
         if data.has("spawn_on_tech"):
             continue
+        # Ресурсы, требующие НЕизученную технологию, не спавнятся на старте.
+        var tech_required = data.get("tech_required", "")
+        if tech_required != "" and not CityData.is_tech_unlocked(tech_required):
+            continue
         var possible = []
         for r in range(rows):
             for c in range(cols):
@@ -107,7 +111,7 @@ func _place_resources(tile_data: Array, res_dict: Dictionary, rows: int, cols: i
             var hex = possible[randi() % possible.size()]
             tile_data[hex.row][hex.col]["resource"] = res_id
 
-func _place_wild_food(tile_data: Array, rows: int, cols: int, city_row: int, city_col: int):
+func place_wild_food(tile_data: Array, rows: int, cols: int, city_row: int, city_col: int):
     var count = randi_range(2, 4)
     var wild_id = "wild_food"
     if not GameData.raw_resources.has(wild_id):

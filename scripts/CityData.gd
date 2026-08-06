@@ -42,6 +42,8 @@ func setup():
     domesticated_animals.clear()
     domesticated_plants.clear()
     unlocked_technologies.clear()
+    # Растениеводство — всегда открыта при старте игры
+    unlocked_technologies.append("farming")
     current_research_tech_id = ""
     current_research_time = 0.0
     research_progress = 0.0
@@ -298,6 +300,10 @@ func start_research(tech_id: String) -> bool:
     if tech_data == null:
         emit_signal("research_error", "Технология не найдена: " + tech_id)
         return false
+    if not are_prerequisites_met(tech_id):
+        var prereq_text = get_tech_prerequisites_text(tech_id)
+        emit_signal("research_error", "Не выполнены требования: " + prereq_text)
+        return false
     var cost = tech_data.get("cost_food", 10)
     var available_food = 0
     for pid in city_food_pool:
@@ -351,8 +357,99 @@ func tick_research(delta: float):
 func is_tech_unlocked(tech_id: String) -> bool:
     return tech_id in unlocked_technologies
 
-# Спавнит ресурсы, открываемые изученной технологией (spawn_on_tech).
+func _get_tech_data(tech_id: String):
+    for t in GameData.technologies:
+        if t["id"] == tech_id:
+            return t
+    return null
+
+# Проверяет, выполнены ли prerequisites технологии.
+# Формат: [ [A, B], [C] ] => (A И B) ИЛИ C
+func are_prerequisites_met(tech_id: String) -> bool:
+    var tech_data = _get_tech_data(tech_id)
+    if tech_data == null:
+        return false
+    if not tech_data.has("prerequisites"):
+        return true
+    var prereqs: Array = tech_data.get("prerequisites", [])
+    for group in prereqs:
+        var all_met = true
+        for req_id in group:
+            if not (req_id in unlocked_technologies):
+                all_met = false
+                break
+        if all_met:
+            return true
+    return false
+
+# Возвращает человекочитаемый текст требований технологии.
+func get_tech_prerequisites_text(tech_id: String) -> String:
+    var tech_data = _get_tech_data(tech_id)
+    if tech_data == null or not tech_data.has("prerequisites"):
+        return ""
+    var or_parts = []
+    var prereqs: Array = tech_data.get("prerequisites", [])
+    for group in prereqs:
+        var and_names = []
+        for req_id in group:
+            var req_data = _get_tech_data(req_id)
+            and_names.append(req_data.get("name", req_id) if req_data else req_id)
+        or_parts.append(" и ".join(and_names))
+    return " или ".join(or_parts)
+
+# Доступна ли технология для изучения (prerequisites выполнены, не изучена, не в процессе).
+func is_tech_available(tech_id: String) -> bool:
+    if tech_id in unlocked_technologies:
+        return false
+    if tech_id == current_research_tech_id:
+        return false
+    return are_prerequisites_met(tech_id)
+
+# Открыто ли здание игроку (хотя бы одна открывающая технология изучена).
+func is_building_unlocked(building_id: String) -> bool:
+    for t in GameData.technologies:
+        if t.get("unlocks_buildings", []).has(building_id):
+            if t["id"] in unlocked_technologies:
+                return true
+    # fallback: поле unlock_tech у самого здания
+    for b in GameData.buildings:
+        if b["id"] == building_id:
+            var required_tech = b.get("unlock_tech", "")
+            if required_tech != "":
+                return is_tech_unlocked(required_tech)
+    return true
+
+# Открыто ли улучшение игроку (хотя бы одна открывающая технология изучена).
+func is_improvement_unlocked(imp_id: String) -> bool:
+    if imp_id == null or imp_id == "":
+        return true
+    for t in GameData.technologies:
+        if t.get("unlocks_improvements", []).has(imp_id):
+            if t["id"] in unlocked_technologies:
+                return true
+    # fallback: поле unlock_tech у самого улучшения
+    var imp_data = GameData.improvements.get(imp_id, {})
+    var required_tech = imp_data.get("unlock_tech", "")
+    if required_tech != "":
+        return is_tech_unlocked(required_tech)
+    return true
+
+# Возвращает id технологии, открывающей указанное улучшение (для контекстного меню).
+func get_improvement_unlock_tech(imp_id: String) -> String:
+    for t in GameData.technologies:
+        if t.get("unlocks_improvements", []).has(imp_id):
+            return t["id"]
+    var imp_data = GameData.improvements.get(imp_id, {})
+    return imp_data.get("unlock_tech", "")
+
+# Спавнит ресурсы, открываемые изученной технологией (spawn_on_tech / tech_required).
 # Вызывается после завершения исследования технологии.
+# Правила:
+#   - Для `animal_husbandry` и `mining`: 50% шанс на 2 вида, 30% на 3 вида, 20% на 1 вид,
+#     при этом 1 вид гарантированно размещается в Кольце Влияния.
+#   - Для всех остальных технологий: обычное правило 50/30/20, ресурсы могут размещаться
+#     как в Кольце, так и в Регионе.
+#   - Каждый выбранный вид размещается ровно 1 копией.
 # Возвращает массив сообщений для HUD (найдено/не найдено).
 func spawn_resource_on_tech_research(tech_id: String) -> Array:
     var messages = []
@@ -362,51 +459,113 @@ func spawn_resource_on_tech_research(tech_id: String) -> Array:
     if main_map == null:
         return messages
     var tile_data = main_map.tile_data
-    var rows = main_map.REGION_ROWS
-    var cols = main_map.REGION_COLS
 
+    # Технологии, которые гарантируют появление 1 вида в Кольце Влияния.
+    var guaranteed_circle = (tech_id == "animal_husbandry" or tech_id == "mining")
+
+    # Собираем виды ресурсов, открываемые этой технологией.
+    # Ресурс «открывается» технологией, если он напрямую спавнится по ней
+    # (spawn_on_tech) ИЛИ требует её для появления и добычи (tech_required).
+    # Дикоросы (wild_food) не имеют tech_required — пропускаются автоматически.
+    var candidates = []
     for res_id in GameData.raw_resources:
         var data = GameData.raw_resources[res_id]
-        if data.get("spawn_on_tech", "") != tech_id:
+        var spawn_tech = data.get("spawn_on_tech", "")
+        var required_tech = data.get("tech_required", "")
+        if spawn_tech != tech_id and required_tech != tech_id:
             continue
-        var res_name = data.get("name", res_id)
-        # Если ресурс уже есть на карте (например, при загрузке сохранения) — не дублируем.
+        # Уже есть на карте (например, при загрузке сохранения) — не дублируем.
         if _is_resource_on_map(tile_data, res_id):
             continue
-        # Ресурс может не заспавниться вообще — нужны альтернативы.
-        if randf() < 0.3: # 30% шанс пропустить спавн
-            messages.append("Похоже, в вашем регионе %s отсутствует." % res_name)
-            continue
-        # Сколько копий ресурса разместить (1-3).
-        var count = randi_range(1, 3)
-        var available = []
-        for r in range(rows):
-            for c in range(cols):
-                var tile = tile_data[r][c]
-                # Не спавним на гексе города
-                if r == main_map.CITY_ROW and c == main_map.CITY_COL:
+        candidates.append(res_id)
+
+    if candidates.is_empty():
+        return messages
+
+    # Определяем количество видов: 50% шанс на 2, 30% шанс на 3, иначе 1.
+    var roll = randf()
+    var num_types = 1
+    if roll < 0.5:
+        num_types = 2
+    elif roll < 0.8:
+        num_types = 3
+
+    candidates.shuffle()
+
+    # Выбираем виды для размещения.
+    var chosen = []
+    var guaranteed_circle_res = ""
+    if guaranteed_circle:
+        # Ищем хотя бы один вид, который может разместиться в Кольце Влияния.
+        var circle_candidates = []
+        for res_id in candidates:
+            if _get_available_hexes(tile_data, main_map, res_id, true).size() > 0:
+                circle_candidates.append(res_id)
+        if circle_candidates.size() > 0:
+            # Гарантированный вид в Кольце.
+            guaranteed_circle_res = circle_candidates[0]
+            chosen.append(guaranteed_circle_res)
+            # Остальные виды берём из оставшихся кандидатов.
+            for res_id in candidates:
+                if res_id == guaranteed_circle_res:
                     continue
-                # Только на пустых гексах (чтобы не ломать существующие цепочки)
-                if tile.get("resource", null) != null:
-                    continue
-                if tile.get("improvement", null) != null:
-                    continue
-                var terrain_id = tile.get("terrain", "plain")
-                # Проверяем, что тип ландшафта разрешает этот ресурс
-                if terrain_id in data.get("allowed_terrains", []):
-                    available.append({"row": r, "col": c})
-        available.shuffle()
+                chosen.append(res_id)
+                if chosen.size() >= num_types:
+                    break
+        else:
+            # Нет подходящего места в Кольце — просто берём num_types из кандидатов.
+            chosen = candidates.slice(0, min(num_types, candidates.size()))
+    else:
+        chosen = candidates.slice(0, min(num_types, candidates.size()))
+
+    for res_id in chosen:
+        var data = GameData.raw_resources[res_id]
+        var res_name = data.get("name", res_id)
         var placed = 0
-        for i in range(min(count, available.size())):
-            var hex = available[i]
-            tile_data[hex.row][hex.col]["resource"] = res_id
-            placed += 1
+        # Гарантированный вид размещаем строго в Кольце Влияния.
+        if guaranteed_circle and res_id == guaranteed_circle_res:
+            var circle_hexes = _get_available_hexes(tile_data, main_map, res_id, true)
+            if circle_hexes.size() > 0:
+                var ch = circle_hexes[randi() % circle_hexes.size()]
+                tile_data[ch.row][ch.col]["resource"] = res_id
+                placed = 1
+        # Обычный спавн: в Кольце или в Регионе.
+        if placed == 0:
+            var available = _get_available_hexes(tile_data, main_map, res_id, false)
+            if available.size() > 0:
+                var hex = available[randi() % available.size()]
+                tile_data[hex.row][hex.col]["resource"] = res_id
+                placed = 1
         print("Спавн ресурса %s по технологии %s: %d копий" % [res_id, tech_id, placed])
         if placed > 0:
             messages.append("Учёные оценили: в вашем регионе можно найти %s." % res_name)
         else:
             messages.append("Похоже, в вашем регионе %s отсутствует." % res_name)
     return messages
+
+# Возвращает список пустых гексов, подходящих для ресурса res_id.
+# Если only_circle == true — только гексы внутри Кольца Влияния.
+func _get_available_hexes(tile_data: Array, main_map: Node, res_id: String, only_circle: bool) -> Array:
+    var data = GameData.raw_resources[res_id]
+    var allowed = data.get("allowed_terrains", [])
+    var result = []
+    for r in range(main_map.REGION_ROWS):
+        for c in range(main_map.REGION_COLS):
+            if r == main_map.CITY_ROW and c == main_map.CITY_COL:
+                continue
+            if tile_data[r][c].get("resource", null) != null:
+                continue
+            if tile_data[r][c].get("improvement", null) != null:
+                continue
+            if only_circle:
+                var in_circle = (r >= main_map.INFLUENCE_START_ROW and r <= main_map.INFLUENCE_END_ROW \
+                        and c >= main_map.INFLUENCE_START_COL and c <= main_map.INFLUENCE_END_COL)
+                if not in_circle:
+                    continue
+            var terrain_id = tile_data[r][c].get("terrain", "plain")
+            if terrain_id in allowed:
+                result.append({"row": r, "col": c})
+    return result
 
 # Проверяет, есть ли на карте хотя бы один гекс с указанным ресурсом.
 func _is_resource_on_map(tile_data: Array, res_id: String) -> bool:
@@ -493,6 +652,10 @@ func request_build(building_id: String) -> bool:
             bdata = b
             break
     if not bdata:
+        return false
+    # Здание должно быть открыто изученной технологией
+    if not is_building_unlocked(building_id):
+        print("Здание недоступно: ", bdata.get("name", building_id))
         return false
     var cost = bdata.get("cost_food", 0)
     var available_food = 0

@@ -138,13 +138,18 @@ func _refresh():
         row.add_child(slot_label)
 
         # Собираем доступные рецепты: "empty" + все, что можно исполнять в этом здании
+        # (с фильтрацией по изученным технологиям)
         var available = []
         available.append("empty")
         for craft in crafts_data:
             if craft["id"] == "empty":
                 continue
-            if CityData.can_craft_in(craft["id"], bld["id"]):
-                available.append(craft["id"])
+            if not CityData.can_craft_in(craft["id"], bld["id"]):
+                continue
+            var craft_unlock_tech = craft.get("unlock_tech", "")
+            if craft_unlock_tech != "" and not CityData.is_tech_unlocked(craft_unlock_tech):
+                continue
+            available.append(craft["id"])
 
         var current = slots[i]
 

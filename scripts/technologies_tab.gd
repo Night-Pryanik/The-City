@@ -40,23 +40,51 @@ func _refresh_status_labels():
         tech_current_label.text = "Нет текущего исследования"
         tech_progress_bar.value = 0
 
+func _get_era_name(era_id: String) -> String:
+    var eras = {
+        "antiquity": "Античность"
+    }
+    return eras.get(era_id, era_id)
+
 func _rebuild_lists():
+    # --- Список доступных/недоступных технологий ---
     for child in tech_available_container.get_children():
         child.queue_free()
+
     for tech in GameData.technologies:
-        if tech["id"] in CityData.unlocked_technologies or tech["id"] == CityData.current_research_tech_id:
+        var tech_id = tech["id"]
+        var is_unlocked = tech_id in CityData.unlocked_technologies
+        var is_current = tech_id == CityData.current_research_tech_id
+        if is_unlocked or is_current:
             continue
+
+        var is_available = CityData.is_tech_available(tech_id)
         var row = HBoxContainer.new()
+        row.add_theme_constant_override("separation", 8)
+
+        var era_str = _get_era_name(tech.get("era", ""))
         var name_label = Label.new()
-        name_label.text = "%s (еда: %d)  " % [tech["name"], tech.get("cost_food", 0)]
-        name_label.add_theme_color_override("font_color", Color.WHITE)
+        if is_available:
+            name_label.text = "%s [%s] (еда: %d)" % [tech["name"], era_str, tech.get("cost_food", 0)]
+            name_label.add_theme_color_override("font_color", Color.WHITE)
+        else:
+            var prereq_text = CityData.get_tech_prerequisites_text(tech_id)
+            var req_str = ""
+            if prereq_text != "":
+                req_str = " | Требуется: " + prereq_text
+            name_label.text = "%s [%s] (еда: %d)%s" % [tech["name"], era_str, tech.get("cost_food", 0), req_str]
+            name_label.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
         row.add_child(name_label)
-        var btn = Button.new()
-        btn.text = "Изучить"
-        btn.pressed.connect(_on_research_button_pressed.bind(tech["id"]))
-        row.add_child(btn)
+
+        if is_available:
+            var btn = Button.new()
+            btn.text = "Изучить"
+            btn.pressed.connect(_on_research_button_pressed.bind(tech_id))
+            row.add_child(btn)
+
         tech_available_container.add_child(row)
 
+    # --- Список изученных технологий ---
     for child in tech_unlocked_container.get_children():
         child.queue_free()
     for tech_id in CityData.unlocked_technologies:
@@ -66,8 +94,9 @@ func _rebuild_lists():
                 tech_data = t
                 break
         if tech_data:
+            var era_str = _get_era_name(tech_data.get("era", ""))
             var lbl = Label.new()
-            lbl.text = tech_data["name"]
+            lbl.text = "%s [%s]" % [tech_data["name"], era_str]
             lbl.add_theme_color_override("font_color", Color(0.6, 1.0, 0.6))
             tech_unlocked_container.add_child(lbl)
 

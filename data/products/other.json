@@ -1,48 +1,48 @@
 {
-	"resources": [
-		{
-			"id": "raw_meat",
-			"name": "Сырое мясо",
-			"type": "product",
-			"category": "material",
-			"icon": "raw_meat.png"
-		},
-		{
-			"id": "raw_milk",
-			"name": "Сырое молоко",
-			"type": "product",
-			"category": "material",
-			"icon": "raw_milk.png"
-		},
-		{
-			"id": "feed",
-			"name": "Корм",
-			"type": "product",
-			"category": "material",
-			"unlock_tech": "animal_husbandry",
-			"unlock_improvement": "pasture",
-			"icon": "feed.png"
-		},
-		{
-			"id": "tulips",
-			"name": "Тюльпаны",
-			"type": "product",
-			"category": "other",
-			"icon": "tulips.png"
-		},
-		{
-			"id": "roses",
-			"name": "Розы",
-			"type": "product",
-			"category": "other",
-			"icon": "roses.png"
-		},
-		{
-			"id": "chamomile",
-			"name": "Ромашки",
-			"type": "product",
-			"category": "other",
-			"icon": "chamomile.png"
-		}
-	]
+    "resources": [
+        {
+            "id": "raw_meat",
+            "name": "Сырое мясо",
+            "type": "product",
+            "category": "material",
+            "icon": "raw_meat.png"
+        },
+        {
+            "id": "raw_milk",
+            "name": "Сырое молоко",
+            "type": "product",
+            "category": "material",
+            "icon": "raw_milk.png"
+        },
+        {
+            "id": "feed",
+            "name": "Корм",
+            "type": "product",
+            "category": "material",
+            "unlock_tech": "animal_husbandry",
+            "unlock_improvement": "pasture",
+            "icon": "feed.png"
+        },
+        {
+            "id": "tulips",
+            "name": "Тюльпаны",
+            "type": "product",
+            "category": "other",
+            "icon": "tulips.png"
+        },
+        {
+            "id": "roses",
+            "name": "Розы",
+            "type": "product",
+            "category": "other",
+            "icon": "roses.png"
+        },
+        {
+            "id": "chamomile",
+            "name": "Ромашки",
+            "type": "product",
+            "category": "other",
+            "icon": "chamomile.png"
+        }
+    ]
 }

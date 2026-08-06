@@ -59,6 +59,14 @@ var tooltip_delay: float = 0.5
 @onready var settings_menu = preload("res://scenes/settings_menu.tscn").instantiate()
 @onready var input_handler = $InputHandler
 
+var tech_popup: Control
+
+func _make_tech_popup() -> Control:
+    var popup_script = load("res://scripts/tech_popup.gd")
+    var popup = Control.new()
+    popup.set_script(popup_script)
+    return popup
+
 func _ready():
     if Engine.is_editor_hint():
         _initialize_map()
@@ -156,6 +164,12 @@ func _ready():
     worker_manager.assignment_changed.connect(_on_assignment_changed)
     townsfolk_manager.assignment_changed.connect(_on_townsfolk_assignment_changed)
 
+    tech_popup = _make_tech_popup()
+    add_child(tech_popup)
+    tech_popup.hide()
+    if tech_popup.has_signal("go_to_technologies"):
+        tech_popup.go_to_technologies.connect(_on_tech_popup_go_to_techs)
+
     if pause_menu:
         if not pause_menu.save_pressed.is_connected(_on_pause_save):
             pause_menu.save_pressed.connect(_on_pause_save)
@@ -248,10 +262,8 @@ func _initialize_map():
             tile["in_influence"] = (row >= INFLUENCE_START_ROW and row <= INFLUENCE_END_ROW and col >= INFLUENCE_START_COL and col <= INFLUENCE_END_COL)
             tile["is_explored"] = false
 
-    _ensure_minimum_resource("animals")
     _ensure_food_plant()
-    _ensure_minimum_resource("minerals")
-    generator._place_wild_food(tile_data, REGION_ROWS, REGION_COLS, CITY_ROW, CITY_COL)
+    generator.place_wild_food(tile_data, REGION_ROWS, REGION_COLS, CITY_ROW, CITY_COL)
 
     var influence_resource_types = {}
     for row in range(INFLUENCE_START_ROW, INFLUENCE_END_ROW + 1):
@@ -276,6 +288,11 @@ func _initialize_map():
     generator.ensure_free_terrain_hexes(tile_data, terrain_counts,
             INFLUENCE_START_ROW, INFLUENCE_END_ROW, INFLUENCE_START_COL, INFLUENCE_END_COL)
 
+    # Используем ЛОКАЛЬНЫЙ генератор случайных чисел для выбора иконки ландшафта.
+    # Ни в коем случае нельзя вызывать seed()/randomize() на глобальном RNG внутри
+    # этого цикла — это разрушило бы случайность всех последующих randf()/randi()
+    # (например, при спавне ресурсов после изучения технологий).
+    var icon_rng = RandomNumberGenerator.new()
     for row in range(REGION_ROWS):
         for col in range(REGION_COLS):
             var tile = tile_data[row][col]
@@ -285,8 +302,8 @@ func _initialize_map():
                 if t.has("icons"):
                     var icons_array = t.icons
                     if icons_array.size() > 0:
-                        seed(row * 1000 + col)
-                        var idx = randi() % icons_array.size()
+                        icon_rng.seed = row * 1000 + col
+                        var idx = icon_rng.randi() % icons_array.size()
                         tile["terrain_icon"] = icons_array[idx]
                 elif t.has("icon"):
                     tile["terrain_icon"] = t.icon
@@ -473,7 +490,7 @@ func _add_production_info(res_id: String, prefix: String):
 
 func _show_context_menu(row: int, col: int, click_pos: Vector2):
     var tile = tile_data[row][col]
-    
+
     # --- Сбор дикоросов ---
     if tile.resource == "wild_food":
         popup_menu.clear()
@@ -482,9 +499,9 @@ func _show_context_menu(row: int, col: int, click_pos: Vector2):
         popup_menu.position = click_pos
         popup_menu.popup()
         return
-    
+
     var available_food = 0
-    
+
     # --- Разведка Региона ---
     if not tile.get("in_influence", false):
         var chunk = expansion_manager.get_chunk_hexes(row, col)
@@ -511,7 +528,7 @@ func _show_context_menu(row: int, col: int, click_pos: Vector2):
             popup_menu.position = click_pos
             popup_menu.popup()
             return
-    
+
     if tile.improvement != null:
         _context_hex = {"row": row, "col": col, "resource": tile.resource}
         popup_menu.clear()
@@ -541,7 +558,15 @@ func _show_context_menu(row: int, col: int, click_pos: Vector2):
 
     if tile.resource != null:
         var raw = GameData.raw_resources.get(tile.resource, {})
-        if "improved_by" in raw:
+        # У ресурсов без улучшения (например, дикоросы) improved_by отсутствует
+        # или равен null — пропускаем блок, чтобы не было ошибок при проверке
+        # is_improvement_unlocked.
+        if "improved_by" in raw and raw.improved_by != null and raw.improved_by != "":
+            var imp_id = raw.improved_by
+            var imp_data = GameData.improvements.get(imp_id, {})
+            var imp_name = imp_data.get("name", imp_id)
+            var cost = imp_data.get("cost_food", 0)
+            var time = imp_data.get("build_time", 0)
             if map_renderer.is_resource_locked(tile.resource):
                 var tech_id = raw["tech_required"]
                 var tech_name = tech_id
@@ -555,19 +580,30 @@ func _show_context_menu(row: int, col: int, click_pos: Vector2):
                 popup_menu.add_item(label)
                 var last_idx = popup_menu.item_count - 1
                 popup_menu.set_item_metadata(last_idx, {"action": "research_tech", "tech_id": tech_id})
-            else:
-                var imp_id = raw.improved_by
-                var imp_data = GameData.improvements.get(imp_id, {})
-                var imp_name = imp_data.get("name", imp_id)
-                var cost = imp_data.get("cost_food", 0)
-                var time = imp_data.get("build_time", 0)
-                var label = "Построить %s (%s) [еды: %d/%d, %d сек.]" % [imp_name, raw.get("name", tile.resource), available_food, cost, int(time)]
+            elif not CityData.is_improvement_unlocked(imp_id):
+                # Ресурс открыт, но улучшение для него требует отдельной технологии
+                var unlock_tech_id = CityData.get_improvement_unlock_tech(imp_id)
+                var unlock_tech_name = unlock_tech_id
+                var unlock_tech_cost = 0
+                for tech in GameData.technologies:
+                    if tech["id"] == unlock_tech_id:
+                        unlock_tech_name = tech["name"]
+                        unlock_tech_cost = tech.get("cost_food", 0)
+                        break
+                var label = "Изучить %s [еды: %d/%d]" % [unlock_tech_name, available_food, unlock_tech_cost]
                 popup_menu.add_item(label)
                 var last_idx = popup_menu.item_count - 1
-                popup_menu.set_item_metadata(last_idx, {"action": "build_improvement", "imp_id": imp_id, "animal_id": tile.resource})
+                popup_menu.set_item_metadata(last_idx, {"action": "research_tech", "tech_id": unlock_tech_id})
+            else:
+                # Показываем только улучшения, открытые изученными технологиями
+                if CityData.is_improvement_unlocked(imp_id):
+                    var label = "Построить %s (%s) [еды: %d/%d, %d сек.]" % [imp_name, raw.get("name", tile.resource), available_food, cost, int(time)]
+                    popup_menu.add_item(label)
+                    var last_idx = popup_menu.item_count - 1
+                    popup_menu.set_item_metadata(last_idx, {"action": "build_improvement", "imp_id": imp_id, "animal_id": tile.resource})
 
     if tile.resource == null and CityData:
-        if CityData.domesticated_animals.size() > 0:
+        if CityData.domesticated_animals.size() > 0 and CityData.is_improvement_unlocked("pasture"):
             for animal_id in CityData.domesticated_animals:
                 var animal_data = GameData.raw_resources.get(animal_id, {})
                 if tile.terrain in animal_data.get("allowed_terrains", []):
@@ -579,7 +615,7 @@ func _show_context_menu(row: int, col: int, click_pos: Vector2):
                     popup_menu.add_item(label)
                     var last_idx = popup_menu.item_count - 1
                     popup_menu.set_item_metadata(last_idx, {"action": "build_pasture", "animal_id": animal_id})
-        if CityData.domesticated_plants.size() > 0:
+        if CityData.domesticated_plants.size() > 0 and CityData.is_improvement_unlocked("farm"):
             for plant_id in CityData.domesticated_plants:
                 var plant_data = GameData.raw_resources.get(plant_id, {})
                 if tile.terrain in plant_data.get("allowed_terrains", []):
@@ -625,7 +661,7 @@ func _on_popup_menu_id_pressed(id: int):
             hud.show_message("Нет свободных рабочих!")
         map_renderer.queue_redraw()
         return
-        
+
     if action == "forage_food":
         var r = meta["row"]
         var c = meta["col"]
@@ -637,7 +673,7 @@ func _on_popup_menu_id_pressed(id: int):
         var cost = meta["cost"]
         _start_scouting(chunk, cost)
         return
-    
+
     if _context_hex == null:
         return
     var row = _context_hex.row
@@ -710,11 +746,21 @@ func _on_research_error(message: String):
     else:
         hud.show_message(message)
 
-func _on_research_completed(_tech_id: String):
+func _on_research_completed(tech_id: String):
     map_renderer.queue_redraw()
+    # Показываем окно изученной технологии
+    if tech_popup and tech_popup.has_method("show_tech"):
+        tech_popup.show_tech(tech_id)
     # Показываем сообщения о найденных/ненайденных ресурсах после завершения исследования.
     # Используем call_deferred, чтобы last_research_messages уже был заполнен.
     call_deferred("_show_research_resource_messages")
+
+func _on_tech_popup_go_to_techs():
+    # Закрываем карту и открываем интерфейс города на вкладке "Технологии"
+    city_ui.refresh()
+    city_ui.show_technologies_tab()
+    city_ui.show()
+    hud.hide()
 
 func _show_research_resource_messages():
     if CityData.last_research_messages.is_empty():

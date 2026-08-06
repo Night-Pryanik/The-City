@@ -1,0 +1,20 @@
+{
+  "resources": [
+    {
+      "id": "beer",
+      "name": "Пиво",
+      "type": "product",
+      "category": "drinks",
+      "unlock_tech": "brewing",
+      "icon": "beer.png"
+    },
+    {
+      "id": "mead",
+      "name": "Медовый напиток",
+      "type": "product",
+      "category": "drinks",
+      "unlock_tech": "mead_making",
+      "icon": "mead.png"
+    }
+  ]
+}

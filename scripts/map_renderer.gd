@@ -199,9 +199,24 @@ func _draw_hex_overlays(row: int, col: int):
             var lock_rect = Rect2(lock_icon_pos.x - LOCK_ICON_SIZE / 2.0, lock_icon_pos.y - LOCK_ICON_SIZE / 2.0, LOCK_ICON_SIZE, LOCK_ICON_SIZE)
             draw_texture_rect(lock_texture, lock_rect, false)
 
-        if is_locked and CityData.current_research_tech_id != "":
-            var res_tech = res_data.get("tech_required", "")
-            if res_tech == CityData.current_research_tech_id:
+        # Прогресс-бар исследования технологии, которая открывает:
+        # 1) сам ресурс (tech_required), либо
+        # 2) улучшение, которым добывается этот ресурс (improved_by → unlock_tech)
+        var research_tech = CityData.current_research_tech_id
+        if research_tech != "" and tile.resource != null and _is_resource_revealed(tile):
+            var show_progress = false
+            if is_locked:
+                var res_tech = res_data.get("tech_required", "")
+                if res_tech == research_tech:
+                    show_progress = true
+            else:
+                # Ресурс открыт, но улучшение для него ещё не изучено
+                var imp_id = res_data.get("improved_by", "")
+                if imp_id != null and imp_id != "" and not CityData.is_improvement_unlocked(imp_id):
+                    var imp_unlock_tech = CityData.get_improvement_unlock_tech(imp_id)
+                    if imp_unlock_tech == research_tech:
+                        show_progress = true
+            if show_progress:
                 var bar_width = RESOURCE_ICON_SIZE
                 var bar_height = 6
                 var bar_x = center.x - bar_width / 2.0

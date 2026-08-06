@@ -1,0 +1,111 @@
+# tech_popup.gd
+# Окно, появляющееся после завершения исследования технологии.
+# Показывает название технологии, список добавленных фич (description)
+# и историческую справку (flavor). Кнопки: "Ок" и "Перейти к списку технологий".
+extends Control
+
+var panel: Panel
+var title_label: Label
+var description_label: Label
+var flavor_label: Label
+
+signal go_to_technologies()
+
+func _ready():
+    # Затемнение фона
+    var dim = ColorRect.new()
+    dim.color = Color(0, 0, 0, 0.5)
+    dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+    dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    add_child(dim)
+
+    var center = CenterContainer.new()
+    center.set_anchors_preset(Control.PRESET_FULL_RECT)
+    add_child(center)
+
+    panel = Panel.new()
+    panel.custom_minimum_size = Vector2(520, 360)
+    var style = StyleBoxFlat.new()
+    style.bg_color = Color(0.13, 0.13, 0.13, 1.0)
+    style.set_border_width_all(2)
+    style.border_color = Color(0.4, 0.4, 0.4, 1.0)
+    style.set_corner_radius_all(4)
+    panel.add_theme_stylebox_override("panel", style)
+    center.add_child(panel)
+
+    var vbox = VBoxContainer.new()
+    vbox.set_anchors_preset(Control.PRESET_FULL_RECT)
+    vbox.offset_left = 24
+    vbox.offset_top = 24
+    vbox.offset_right = -24
+    vbox.offset_bottom = -24
+    vbox.add_theme_constant_override("separation", 12)
+    panel.add_child(vbox)
+
+    title_label = Label.new()
+    title_label.add_theme_font_size_override("font_size", 22)
+    title_label.add_theme_color_override("font_color", Color(0.6, 1.0, 0.6))
+    vbox.add_child(title_label)
+
+    var desc_title = Label.new()
+    desc_title.text = "Что даёт технология:"
+    desc_title.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+    vbox.add_child(desc_title)
+
+    description_label = Label.new()
+    description_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    description_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    vbox.add_child(description_label)
+
+    var flavor_title = Label.new()
+    flavor_title.text = "Историческая справка:"
+    flavor_title.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+    vbox.add_child(flavor_title)
+
+    flavor_label = Label.new()
+    flavor_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    flavor_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+    vbox.add_child(flavor_label)
+
+    var buttons = HBoxContainer.new()
+    buttons.alignment = BoxContainer.ALIGNMENT_CENTER
+    buttons.add_theme_constant_override("separation", 16)
+    vbox.add_child(buttons)
+
+    var ok_btn = Button.new()
+    ok_btn.text = "Ок"
+    ok_btn.custom_minimum_size = Vector2(140, 36)
+    ok_btn.pressed.connect(_on_ok_pressed)
+    buttons.add_child(ok_btn)
+
+    var techs_btn = Button.new()
+    techs_btn.text = "Перейти к списку технологий"
+    techs_btn.custom_minimum_size = Vector2(260, 36)
+    techs_btn.pressed.connect(_on_techs_pressed)
+    buttons.add_child(techs_btn)
+
+func show_tech(tech_id: String):
+    var tech_data = null
+    for t in GameData.technologies:
+        if t["id"] == tech_id:
+            tech_data = t
+            break
+    if tech_data == null:
+        return
+
+    title_label.text = "Технология изучена: %s" % tech_data.get("name", tech_id)
+    description_label.text = tech_data.get("description", "Нет описания.")
+    flavor_label.text = tech_data.get("flavor", "")
+
+    # Задаём размер корневого Control = размер viewport, чтобы оверлей покрывал всё
+    var vp_size = get_viewport_rect().size
+    size = vp_size
+    position = Vector2.ZERO
+    show()
+
+func _on_ok_pressed():
+    hide()
+
+func _on_techs_pressed():
+    hide()
+    emit_signal("go_to_technologies")

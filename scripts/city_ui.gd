@@ -171,6 +171,9 @@ func _needs_full_refresh() -> bool:
 func show_resources_tab():
     _switch_tab("resources")
 
+func show_technologies_tab():
+    _switch_tab("technologies")
+
 func refresh_light():
     # Публичный метод для лёгкого обновления при изменении назначений.
     _refresh_light()

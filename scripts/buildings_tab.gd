@@ -60,6 +60,9 @@ func refresh_list():
         ui_helpers.set_message("")
     food_label.text = ""
     for bld in buildings_data:
+        # Фильтруем здания: показываем только те, что открыты изученными технологиями
+        if not CityData.is_building_unlocked(bld["id"]):
+            continue
         var item_text = bld["name"]
         var cost_food = bld.get("cost_food", 0)
         item_text += " (еда: %d" % cost_food
@@ -210,9 +213,15 @@ func center_split_offset():
 func _on_building_selected(idx: int):
     if ui_helpers:
         ui_helpers.set_message("")
-    if idx >= 0 and idx < buildings_data.size():
-        selected_building_id = buildings_data[idx]["id"]
-        var bdata = buildings_data[idx]
+    # idx — индекс в отфильтрованном списке ItemList, поэтому нужно найти
+    # соответствующее здание, пропуская скрытые (недоступные по технологиям).
+    var filtered_buildings = []
+    for b in buildings_data:
+        if CityData.is_building_unlocked(b["id"]):
+            filtered_buildings.append(b)
+    if idx >= 0 and idx < filtered_buildings.size():
+        selected_building_id = filtered_buildings[idx]["id"]
+        var bdata = filtered_buildings[idx]
         building_name_label.text = bdata["name"]
         var cost_text = "Стоимость в еде: " + str(bdata.get("cost_food", 0))
         if bdata.has("additional_cost"):
@@ -240,6 +249,10 @@ func _on_building_selected(idx: int):
             if craft["id"] == "empty":
                 continue
             if not CityData.can_craft_in(craft["id"], selected_building_id):
+                continue
+            # Фильтруем рецепты: показываем только те, что открыты изученными технологиями
+            var craft_unlock_tech = craft.get("unlock_tech", "")
+            if craft_unlock_tech != "" and not CityData.is_tech_unlocked(craft_unlock_tech):
                 continue
             var inputs = []
             for res in craft["resources"]:

@@ -1,221 +1,41 @@
 {
-	"resources": [
-		{
-			"id": "wheat",
-			"name": "Пшеница",
-			"type": "product",
-			"category": "food",
-			"icon": "wheat.png"
-		},
-		{
-			"id": "oats",
-			"name": "Овёс",
-			"type": "product",
-			"category": "food",
-			"icon": "oats.png"
-		},
-		{
-			"id": "barley",
-			"name": "Ячмень",
-			"type": "product",
-			"category": "food",
-			"icon": "barley.png"
-		},
-		{
-			"id": "millet",
-			"name": "Просо",
-			"type": "product",
-			"category": "food",
-			"icon": "millet.png"
-		},
-		{
-			"id": "rye",
-			"name": "Рожь",
-			"type": "product",
-			"category": "food",
-			"icon": "rye.png"
-		},
-		{
-			"id": "rice",
-			"name": "Рис",
-			"type": "product",
-			"category": "food",
-			"icon": "rice.png"
-		},
-		{
-			"id": "soybean",
-			"name": "Соя",
-			"type": "product",
-			"category": "food",
-			"icon": "soybean.png"
-		},
-		{
-			"id": "quinoa",
-			"name": "Киноа",
-			"type": "product",
-			"category": "food",
-			"icon": "quinoa.png"
-		},
-		{
-			"id": "canihua",
-			"name": "Каньива",
-			"type": "product",
-			"category": "food",
-			"icon": "canihua.png"
-		},
-		{
-			"id": "potato",
-			"name": "Картофель",
-			"type": "product",
-			"category": "food",
-			"icon": "potato.png"
-		},
-		{
-			"id": "oca",
-			"name": "Ока",
-			"type": "product",
-			"category": "food",
-			"icon": "oca.png"
-		},
-		{
-			"id": "corn",
-			"name": "Кукуруза",
-			"type": "product",
-			"category": "food",
-			"icon": "corn.png"
-		},
-		{
-			"id": "yam",
-			"name": "Ямс",
-			"type": "product",
-			"category": "food",
-			"icon": "yam.png"
-		},
-		{
-			"id": "cassava",
-			"name": "Кассава",
-			"type": "product",
-			"category": "food",
-			"icon": "cassava.png"
-		},
-		{
-			"id": "sorghum",
-			"name": "Сорго",
-			"type": "product",
-			"category": "food",
-			"icon": "sorghum.png"
-		},
-		{
-			"id": "amaranth",
-			"name": "Амарант",
-			"type": "product",
-			"category": "food",
-			"icon": "amaranth.png"
-		},
-		{
-			"id": "teff",
-			"name": "Теф",
-			"type": "product",
-			"category": "food",
-			"icon": "teff.png"
-		},
-		{
-			"id": "taro",
-			"name": "Таро",
-			"type": "product",
-			"category": "food",
-			"icon": "taro.png"
-		},
-		{
-			"id": "maca",
-			"name": "Мака",
-			"type": "product",
-			"category": "food",
-			"icon": "maca.png"
-		},
-		{
-			"id": "buckwheat",
-			"name": "Гречиха",
-			"type": "product",
-			"category": "food",
-			"icon": "buckwheat.png"
-		},
-		{
-			"id": "beans",
-			"name": "Фасоль",
-			"type": "product",
-			"category": "food",
-			"icon": "beans.png"
-		},
-		{
-			"id": "cowpea",
-			"name": "Вигна",
-			"type": "product",
-			"category": "food",
-			"icon": "cowpea.png"
-		},
-		{
-			"id": "peas",
-			"name": "Горох",
-			"type": "product",
-			"category": "food",
-			"icon": "peas.png"
-		},
-		{
-			"id": "lentils",
-			"name": "Чечевица",
-			"type": "product",
-			"category": "food",
-			"icon": "lentils.png"
-		},
-		{
-			"id": "chickpeas",
-			"name": "Нут",
-			"type": "product",
-			"category": "food",
-			"icon": "chickpeas.png"
-		},
-		{
-			"id": "meat",
-			"name": "Мясо",
-			"type": "product",
-			"category": "food",
-			"icon": "meat.png"
-		},
-		{
-			"id": "cheese",
-			"name": "Сыр",
-			"type": "product",
-			"category": "food",
-			"icon": "cheese.png"
-		},
-		{
-			"id": "eggs",
-			"name": "Яйца",
-			"type": "product",
-			"category": "food",
-			"icon": "eggs.png"
-		},
-		{
-			"id": "honey",
-			"name": "Мёд",
-			"type": "product",
-			"category": "food",
-			"icon": "honey.png"
-		},
-		{
-			"id": "bread",
-			"name": "Хлеб",
-			"type": "product",
-			"category": "food",
-			"icon": "bread.png"
-		},
-        {
-			"id": "foraged_food",
-			"name": "Дикоросы",
-			"type": "product",
-			"category": "food",
-			"icon": "foraged_food.png"
-		}
-	]
+  "resources": [
+    { "id": "wheat", "name": "Пшеница", "type": "product", "category": "food", "icon": "wheat.png" },
+    { "id": "oats", "name": "Овёс", "type": "product", "category": "food", "icon": "oats.png" },
+    { "id": "barley", "name": "Ячмень", "type": "product", "category": "food", "icon": "barley.png" },
+    { "id": "millet", "name": "Просо", "type": "product", "category": "food", "icon": "millet.png" },
+    { "id": "rye", "name": "Рожь", "type": "product", "category": "food", "icon": "rye.png" },
+    { "id": "rice", "name": "Рис", "type": "product", "category": "food", "icon": "rice.png" },
+    { "id": "soybean", "name": "Соя", "type": "product", "category": "food", "icon": "soybean.png" },
+    { "id": "quinoa", "name": "Киноа", "type": "product", "category": "food", "icon": "quinoa.png" },
+    { "id": "canihua", "name": "Каньива", "type": "product", "category": "food", "icon": "canihua.png" },
+    { "id": "potato", "name": "Картофель", "type": "product", "category": "food", "icon": "potato.png" },
+    { "id": "oca", "name": "Ока", "type": "product", "category": "food", "icon": "oca.png" },
+    { "id": "corn", "name": "Кукуруза", "type": "product", "category": "food", "icon": "corn.png" },
+    { "id": "yam", "name": "Ямс", "type": "product", "category": "food", "icon": "yam.png" },
+    { "id": "cassava", "name": "Кассава", "type": "product", "category": "food", "icon": "cassava.png" },
+    { "id": "sorghum", "name": "Сорго", "type": "product", "category": "food", "icon": "sorghum.png" },
+    { "id": "amaranth", "name": "Амарант", "type": "product", "category": "food", "icon": "amaranth.png" },
+    { "id": "teff", "name": "Теф", "type": "product", "category": "food", "icon": "teff.png" },
+    { "id": "taro", "name": "Таро", "type": "product", "category": "food", "icon": "taro.png" },
+    { "id": "maca", "name": "Мака", "type": "product", "category": "food", "icon": "maca.png" },
+    { "id": "buckwheat", "name": "Гречиха", "type": "product", "category": "food", "icon": "buckwheat.png" },
+    { "id": "beans", "name": "Фасоль", "type": "product", "category": "food", "icon": "beans.png" },
+    { "id": "cowpea", "name": "Вигна", "type": "product", "category": "food", "icon": "cowpea.png" },
+    { "id": "peas", "name": "Горох", "type": "product", "category": "food", "icon": "peas.png" },
+    { "id": "lentils", "name": "Чечевица", "type": "product", "category": "food", "icon": "lentils.png" },
+    { "id": "chickpeas", "name": "Нут", "type": "product", "category": "food", "icon": "chickpeas.png" },
+    { "id": "meat", "name": "Мясо", "type": "product", "category": "food", "icon": "meat.png" },
+    { "id": "cheese", "name": "Сыр", "type": "product", "category": "food", "icon": "cheese.png" },
+    { "id": "eggs", "name": "Яйца", "type": "product", "category": "food", "icon": "eggs.png" },
+    { "id": "honey", "name": "Мёд", "type": "product", "category": "food", "icon": "honey.png" },
+    { "id": "bread", "name": "Хлеб", "type": "product", "category": "food", "icon": "bread.png" },
+    {
+      "id": "foraged_food",
+      "name": "Дикоросы",
+      "type": "product",
+      "category": "food",
+      "icon": "foraged_food.png"
+    }
+  ]
 }
