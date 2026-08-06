@@ -407,13 +407,8 @@ func is_tech_available(tech_id: String) -> bool:
         return false
     return are_prerequisites_met(tech_id)
 
-# Открыто ли здание игроку (хотя бы одна открывающая технология изучена).
+# Открыто ли здание игроку (по полю unlock_tech самого здания).
 func is_building_unlocked(building_id: String) -> bool:
-    for t in GameData.technologies:
-        if t.get("unlocks_buildings", []).has(building_id):
-            if t["id"] in unlocked_technologies:
-                return true
-    # fallback: поле unlock_tech у самого здания
     for b in GameData.buildings:
         if b["id"] == building_id:
             var required_tech = b.get("unlock_tech", "")
@@ -421,15 +416,10 @@ func is_building_unlocked(building_id: String) -> bool:
                 return is_tech_unlocked(required_tech)
     return true
 
-# Открыто ли улучшение игроку (хотя бы одна открывающая технология изучена).
+# Открыто ли улучшение игроку (по полю unlock_tech самого улучшения).
 func is_improvement_unlocked(imp_id: String) -> bool:
     if imp_id == null or imp_id == "":
         return true
-    for t in GameData.technologies:
-        if t.get("unlocks_improvements", []).has(imp_id):
-            if t["id"] in unlocked_technologies:
-                return true
-    # fallback: поле unlock_tech у самого улучшения
     var imp_data = GameData.improvements.get(imp_id, {})
     var required_tech = imp_data.get("unlock_tech", "")
     if required_tech != "":
@@ -438,9 +428,6 @@ func is_improvement_unlocked(imp_id: String) -> bool:
 
 # Возвращает id технологии, открывающей указанное улучшение (для контекстного меню).
 func get_improvement_unlock_tech(imp_id: String) -> String:
-    for t in GameData.technologies:
-        if t.get("unlocks_improvements", []).has(imp_id):
-            return t["id"]
     var imp_data = GameData.improvements.get(imp_id, {})
     return imp_data.get("unlock_tech", "")
 
