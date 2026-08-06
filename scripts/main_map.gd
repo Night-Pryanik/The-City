@@ -60,6 +60,10 @@ var tooltip_delay: float = 0.5
 @onready var input_handler = $InputHandler
 
 var tech_popup: Control
+var research_hbox: HBoxContainer
+var research_button: Button
+var research_progress_bar: ProgressBar
+var _last_research_hud_tech: String = ""
 
 func _make_tech_popup() -> Control:
     var popup_script = load("res://scripts/tech_popup.gd")
@@ -190,12 +194,23 @@ func _ready():
 
     menu_button.pressed.connect(_on_menu_button_pressed)
 
+    _setup_research_hud()
+
 func _input(event):
     input_handler.handle_input(event)
 
 func _process(delta):
     if Engine.is_editor_hint():
         return
+
+    # Блокируем кнопки HUD, если игра на паузе.
+    var is_paused = get_tree().paused
+    if research_button:
+        research_button.disabled = is_paused
+    if city_button:
+        city_button.disabled = is_paused
+    if expansion_button:
+        expansion_button.disabled = is_paused
 
     production_timer += delta
     if production_timer >= CityData.PRODUCTION_INTERVAL:
@@ -221,8 +236,9 @@ func _process(delta):
                     CityData.add_raw_production(tile.resource)
 
         CityData.do_tick()
+        CityData.tick_research_science()
 
-    CityData.tick_research(delta)
+    _update_research_progress()
     if CityData.current_research_tech_id != "" or build_manager.active_builds.size() > 0:
         map_renderer.queue_redraw()
 
@@ -569,13 +585,11 @@ func _show_context_menu(row: int, col: int, click_pos: Vector2):
             if map_renderer.is_resource_locked(tile.resource):
                 var tech_id = raw["tech_required"]
                 var tech_name = tech_id
-                var tech_cost = 0
                 for tech in GameData.technologies:
                     if tech["id"] == tech_id:
                         tech_name = tech["name"]
-                        tech_cost = tech.get("cost_food", 0)
                         break
-                var label = "Изучить %s [еды: %d/%d]" % [tech_name, available_food, tech_cost]
+                var label = "Изучить %s" % tech_name
                 popup_menu.add_item(label)
                 var last_idx = popup_menu.item_count - 1
                 popup_menu.set_item_metadata(last_idx, {"action": "research_tech", "tech_id": tech_id})
@@ -583,13 +597,11 @@ func _show_context_menu(row: int, col: int, click_pos: Vector2):
                 # Ресурс открыт, но улучшение для него требует отдельной технологии
                 var unlock_tech_id = CityData.get_improvement_unlock_tech(imp_id)
                 var unlock_tech_name = unlock_tech_id
-                var unlock_tech_cost = 0
                 for tech in GameData.technologies:
                     if tech["id"] == unlock_tech_id:
                         unlock_tech_name = tech["name"]
-                        unlock_tech_cost = tech.get("cost_food", 0)
                         break
-                var label = "Изучить %s [еды: %d/%d]" % [unlock_tech_name, available_food, unlock_tech_cost]
+                var label = "Изучить %s" % unlock_tech_name
                 popup_menu.add_item(label)
                 var last_idx = popup_menu.item_count - 1
                 popup_menu.set_item_metadata(last_idx, {"action": "research_tech", "tech_id": unlock_tech_id})
@@ -723,6 +735,114 @@ func pixel_to_hex(mx: float, my: float):
                 return {"row": row, "col": col}
     return null
 
+func _setup_research_hud():
+    # Создаём панель исследования: кнопка с иконкой технологии + прогресс-бар.
+    # Размещаем между меткой даты и кнопкой "Город".
+    var vbox = hud.get_node("VBoxContainer")
+    research_hbox = HBoxContainer.new()
+    research_hbox.add_theme_constant_override("separation", 4)
+
+    research_button = Button.new()
+    research_button.custom_minimum_size = Vector2(36, 24)
+    research_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    research_button.text = "?"
+    research_button.tooltip_text = "Выберите технологию для изучения"
+    research_button.pressed.connect(_on_research_hud_button_pressed)
+    research_hbox.add_child(research_button)
+
+    research_progress_bar = ProgressBar.new()
+    research_progress_bar.custom_minimum_size = Vector2(120, 12)
+    research_progress_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    research_progress_bar.max_value = 100.0
+    research_progress_bar.value = 0.0
+    research_progress_bar.show_percentage = false
+    research_hbox.add_child(research_progress_bar)
+
+    # Вставляем после YearLabel (даты), перед CityButton.
+    var year_label = vbox.get_node("YearLabel")
+    vbox.add_child(research_hbox)
+    vbox.move_child(research_hbox, year_label.get_index() + 1)
+
+    _update_research_progress()
+
+func _update_research_progress():
+    if research_button == null or research_progress_bar == null:
+        return
+    var tech_id = CityData.current_research_tech_id
+    if tech_id == "":
+        # Ничего не изучается — привлекаем внимание красным.
+        research_button.text = "!"
+        research_button.tooltip_text = "Никакая технология не изучается. Нажмите, чтобы выбрать технологию"
+        research_progress_bar.value = 0.0
+        research_progress_bar.modulate = Color(1, 1, 1, 1)
+        _apply_research_button_warning(true)
+        _last_research_hud_tech = ""
+        return
+
+    # Изучается технология — показываем иконку (если есть) и прогресс.
+    var tech_data = null
+    for t in GameData.technologies:
+        if t["id"] == tech_id:
+            tech_data = t
+            break
+    if tech_data:
+        research_button.tooltip_text = "Изучается: %s" % tech_data.get("name", tech_id)
+        var icon_name = tech_data.get("icon", "")
+        if icon_name != "":
+            research_button.text = ""
+            research_button.icon = null
+            var path = map_renderer.get_icon_path(icon_name)
+            if path != "":
+                var tex = load(path)
+                if tex:
+                    research_button.icon = tex
+                    research_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+            else:
+                research_button.text = "?"
+        else:
+            research_button.text = "?"
+            research_button.icon = null
+    else:
+        research_button.text = "?"
+        research_button.tooltip_text = "Изучается технология"
+    _apply_research_button_warning(false)
+
+    if CityData.current_research_science_cost > 0:
+        research_progress_bar.value = CityData.research_progress * 100.0
+    else:
+        research_progress_bar.value = 0.0
+    research_progress_bar.modulate = Color(1, 1, 1, 1)
+    _last_research_hud_tech = tech_id
+
+func _apply_research_button_warning(warning: bool):
+    # Красная рамка/подсветка при отсутствии исследования.
+    var normal = StyleBoxFlat.new()
+    normal.bg_color = Color(0.3, 0.3, 0.3, 1.0)
+    normal.set_border_width_all(2)
+    if warning:
+        normal.border_color = Color(1.0, 0.2, 0.2, 1.0)
+    else:
+        normal.border_color = Color(0.4, 0.4, 0.4, 1.0)
+    research_button.add_theme_stylebox_override("normal", normal)
+    # Переопределяем hover/pressed/focus тем же стилем, чтобы при наведении
+    # не менялись content margins и размер кнопки оставался прежним.
+    research_button.add_theme_stylebox_override("hover", normal)
+    research_button.add_theme_stylebox_override("pressed", normal)
+    research_button.add_theme_stylebox_override("focus", normal)
+    if warning:
+        research_button.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
+    else:
+        research_button.add_theme_color_override("font_color", Color.WHITE)
+
+func _on_research_hud_button_pressed():
+    # Переход в интерфейс города на вкладку "Технологии".
+    if pause_menu.visible:
+        return
+    city_ui.refresh()
+    city_ui.show_technologies_tab()
+    city_ui.show()
+    hud.hide()
+
 func open_city():
     city_ui.refresh()
     city_ui.show()
@@ -738,6 +858,7 @@ func _on_city_button_pressed():
 func _on_city_ui_close():
     city_ui.hide()
     hud.show()
+    _update_research_progress()
 
 func _on_research_error(message: String):
     if city_ui.visible:

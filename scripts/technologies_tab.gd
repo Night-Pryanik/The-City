@@ -30,8 +30,9 @@ func _refresh_status_labels():
                 tech_data = t
                 break
         if tech_data:
-            var remaining = CityData.current_research_time * (1.0 - CityData.research_progress)
-            tech_current_label.text = "Изучается: %s (%.0f сек.)" % [tech_data["name"], remaining]
+            var collected = CityData.get_research_science_collected()
+            var cost = CityData.current_research_science_cost
+            tech_current_label.text = "Изучается: %s (наука: %.0f/%d)" % [tech_data["name"], collected, cost]
             tech_progress_bar.value = CityData.research_progress * 100.0
         else:
             tech_current_label.text = "Изучается: ???"
@@ -65,14 +66,14 @@ func _rebuild_lists():
         var era_str = _get_era_name(tech.get("era", ""))
         var name_label = Label.new()
         if is_available:
-            name_label.text = "%s [%s] (еда: %d)" % [tech["name"], era_str, tech.get("cost_food", 0)]
+            name_label.text = "%s [%s] (наука: %d)" % [tech["name"], era_str, tech.get("science_cost", 3)]
             name_label.add_theme_color_override("font_color", Color.WHITE)
         else:
             var prereq_text = CityData.get_tech_prerequisites_text(tech_id)
             var req_str = ""
             if prereq_text != "":
                 req_str = " | Требуется: " + prereq_text
-            name_label.text = "%s [%s] (еда: %d)%s" % [tech["name"], era_str, tech.get("cost_food", 0), req_str]
+            name_label.text = "%s [%s] (наука: %d)%s" % [tech["name"], era_str, tech.get("science_cost", 3), req_str]
             name_label.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
         row.add_child(name_label)
 

@@ -14,8 +14,9 @@ var domesticated_plants: Array = []
 # Технологии
 var unlocked_technologies: Array = []
 var current_research_tech_id: String = ""
-var current_research_time: float = 0.0
+var current_research_science_cost: int = 0
 var research_progress: float = 0.0
+var research_science_accumulated: float = 0.0
 
 # Сообщения для HUD после завершения исследования (о найденных ресурсах)
 var last_research_messages: Array = []
@@ -42,11 +43,12 @@ func setup():
     domesticated_animals.clear()
     domesticated_plants.clear()
     unlocked_technologies.clear()
-    # Растениеводство — всегда открыта при старте игры
+# Растениеводство — всегда открыта при старте игры
     unlocked_technologies.append("farming")
     current_research_tech_id = ""
-    current_research_time = 0.0
+    current_research_science_cost = 0
     research_progress = 0.0
+    research_science_accumulated = 0.0
     last_research_messages = []
 
     total_population = 1
@@ -304,57 +306,63 @@ func start_research(tech_id: String) -> bool:
         var prereq_text = get_tech_prerequisites_text(tech_id)
         emit_signal("research_error", "Не выполнены требования: " + prereq_text)
         return false
-    var cost = tech_data.get("cost_food", 10)
-    var available_food = 0
-    for pid in city_food_pool:
-        if city_food_pool[pid]:
-            available_food += city_storage[pid]
-    if available_food >= cost:
-        var remaining = cost
-        var active_food = []
-        for pid in city_food_pool:
-            if city_food_pool[pid] and city_storage[pid] > 0:
-                active_food.append(pid)
-        while remaining > 0 and active_food.size() > 0:
-            var pid = active_food[randi() % active_food.size()]
-            city_storage[pid] -= 1
-            remaining -= 1
-            if city_storage[pid] <= 0:
-                active_food.erase(pid)
-        current_research_tech_id = tech_id
-        current_research_time = tech_data.get("time", 10.0)
-        research_progress = 0.0
-        print("Начато исследование: ", tech_data["name"])
-        emit_signal("city_updated")
-        return true
-    else:
-        emit_signal("research_error", "Недостаточно еды для исследования " + tech_data.get("name", tech_id) + ". Нужно " + str(cost))
-        return false
+    # Исследование не требует еды — только очки науки.
+    current_research_tech_id = tech_id
+    current_research_science_cost = int(tech_data.get("science_cost", 3))
+    research_progress = 0.0
+    research_science_accumulated = 0.0
+    print("Начато исследование: ", tech_data["name"])
+    emit_signal("city_updated")
+    return true
 
-func tick_research(delta: float):
+# Возвращает количество очков науки за тик.
+# Учёных пока нет, поэтому город сам генерирует минимум — 1 очко за тик.
+# Город не может генерировать меньше 1 очка науки за тик.
+func get_science_per_tick() -> float:
+    var science = 0.0
+    # TODO: при добавлении учёных сюда нужно будет суммировать их вклад.
+    # Пока учёных нет — город генерирует минимум 1 очко науки за тик.
+    return max(1.0, science)
+
+# Возвращает количество накопленных очков науки по текущему исследованию.
+func get_research_science_collected() -> float:
+    return research_science_accumulated
+
+# Обновляет прогресс исследования очками науки (вызывается каждый тик из do_tick).
+func tick_research_science():
     if Engine.is_editor_hint():
         return
     if current_research_tech_id == "":
         return
-    research_progress += delta / current_research_time
-    if research_progress >= 1.0:
-        var completed_tech_id = current_research_tech_id
-        unlocked_technologies.append(current_research_tech_id)
-        var tech_name = current_research_tech_id
-        for t in GameData.technologies:
-            if t["id"] == current_research_tech_id:
-                tech_name = t["name"]
-                break
-        emit_signal("research_error", "Исследование завершено: " + tech_name)
-        # Технология может открывать новые виды ресурсов — спавним их на карте.
-        # Сообщения готовим ДО сигнала research_completed, чтобы попап
-        # мог отобразить найденные ресурсы сразу.
-        last_research_messages = spawn_resource_on_tech_research(completed_tech_id)
-        emit_signal("research_completed", current_research_tech_id)
-        current_research_tech_id = ""
-        current_research_time = 0.0
-        research_progress = 0.0
-        emit_signal("city_updated")
+    if current_research_science_cost <= 0:
+        current_research_science_cost = 1
+    research_science_accumulated += get_science_per_tick()
+    research_progress = clamp(research_science_accumulated / float(current_research_science_cost), 0.0, 1.0)
+    if research_science_accumulated >= current_research_science_cost:
+        _complete_research()
+
+func _complete_research():
+    if current_research_tech_id == "":
+        return
+    var completed_tech_id = current_research_tech_id
+    unlocked_technologies.append(current_research_tech_id)
+    var tech_name = current_research_tech_id
+    for t in GameData.technologies:
+        if t["id"] == current_research_tech_id:
+            tech_name = t["name"]
+            break
+    emit_signal("research_error", "Исследование завершено: " + tech_name)
+    # Технология может открывать новые виды ресурсов — спавним их на карте.
+    # Сообщения готовим ДО сигнала research_completed, чтобы попап
+    # мог отобразить найденные ресурсы сразу.
+    last_research_messages = spawn_resource_on_tech_research(completed_tech_id)
+    emit_signal("research_completed", current_research_tech_id)
+    # После завершения исследования очки науки сбрасываются на ноль.
+    current_research_tech_id = ""
+    current_research_science_cost = 0
+    research_progress = 0.0
+    research_science_accumulated = 0.0
+    emit_signal("city_updated")
 
 func is_tech_unlocked(tech_id: String) -> bool:
     return tech_id in unlocked_technologies

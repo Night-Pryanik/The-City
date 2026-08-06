@@ -21,7 +21,8 @@ func save_game():
         "domesticated_plants": CityData.domesticated_plants,
         "unlocked_technologies": CityData.unlocked_technologies,
         "current_research_tech_id": CityData.current_research_tech_id,
-        "current_research_time": CityData.current_research_time,
+        "current_research_science_cost": CityData.current_research_science_cost,
+        "research_science_accumulated": CityData.research_science_accumulated,
         "research_progress": CityData.research_progress,
         "total_population": CityData.total_population,
         "idle_population": CityData.idle_population,
@@ -92,7 +93,8 @@ func apply_loaded_data():
     if not ("farming" in CityData.unlocked_technologies):
         CityData.unlocked_technologies.append("farming")
     CityData.current_research_tech_id = saved_data.get("current_research_tech_id", "")
-    CityData.current_research_time = saved_data.get("current_research_time", 0.0)
+    CityData.current_research_science_cost = saved_data.get("current_research_science_cost", 0)
+    CityData.research_science_accumulated = saved_data.get("research_science_accumulated", 0.0)
     CityData.research_progress = saved_data.get("research_progress", 0.0)
     CityData.total_population = saved_data.get("total_population", CityData.total_population)
     CityData.idle_population = saved_data.get("idle_population", CityData.idle_population)
