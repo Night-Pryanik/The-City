@@ -134,3 +134,12 @@ func _on_ok_pressed():
 func _on_techs_pressed():
     hide()
     emit_signal("go_to_technologies")
+
+func _input(event):
+    # Обрабатываем ESC только когда попап открыт.
+    # Иначе скрытый попап перехватывает ESC и ломает меню паузы/настройки.
+    if not is_visible_in_tree():
+        return
+    if event.is_action_pressed("ui_cancel"):
+        _on_ok_pressed()
+        get_viewport().set_input_as_handled()
