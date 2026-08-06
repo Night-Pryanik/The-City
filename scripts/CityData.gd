@@ -570,12 +570,35 @@ func _is_resource_on_map(tile_data: Array, res_id: String) -> bool:
                 return true
     return false
 
+# Проверяет, присутствует ли на карте хотя бы один ресурс, открываемый
+# указанной технологией (tech_required == tech_id).
+func _tech_has_resource_on_map(tile_data: Array, tech_id: String) -> bool:
+    for row in tile_data:
+        for tile in row:
+            var res_id = tile.get("resource", null)
+            if res_id == null:
+                continue
+            var data = GameData.raw_resources.get(res_id, {})
+            if data.get("tech_required", "") == tech_id:
+                return true
+    return false
+
 # Вызывается при загрузке сохранения: для уже изученных технологий
 # гарантирует, что открытые ими ресурсы появились на карте.
 func ensure_tech_resources_spawned():
     if Engine.is_editor_hint():
         return
+    var main_map = get_tree().root.find_child("MainMap", true, false)
+    if main_map == null:
+        return
+    var tile_data = main_map.tile_data
     for tech_id in unlocked_technologies:
+        # Если хотя бы один ресурс из этой технологии уже присутствует на карте
+        # (он был размещён при изучении технологии и сохранён в tile_data),
+        # значит, технология уже обработана — пропускаем её, чтобы НЕ генерировать
+        # новые случайные ресурсы заново при каждой загрузке.
+        if _tech_has_resource_on_map(tile_data, tech_id):
+            continue
         # При загрузке сохранения сообщения для HUD не показываем.
         spawn_resource_on_tech_research(tech_id)
 
