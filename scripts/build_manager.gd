@@ -3,8 +3,14 @@ extends Node
 
 signal build_message(text: String)
 signal build_completed(row: int, col: int, imp_id: String, animal_id)
+signal build_paused(row: int, col: int)
+signal build_cancelled(row: int, col: int)
+signal build_building_completed(building_id: String, build_key: String)
+signal build_building_paused(build_key: String)
+signal build_building_cancelled(build_key: String)
 
-var active_builds: Dictionary = {}
+var active_builds: Dictionary = {} # улучшения на карте: ключ "row,col"
+var active_building_builds: Dictionary = {} # стройка зданий: ключ "building_<индекс>"
 
 func _ready():
     set_process(not Engine.is_editor_hint())
@@ -13,18 +19,47 @@ func _process(delta):
     if Engine.is_editor_hint():
         return
 
-    var to_complete = []
+    # Собираем активные (не приостановленные) стройки улучшений и зданий
+    var active_builds_list = []
     for key in active_builds.keys():
         var data = active_builds[key]
-        data["progress"] += delta
-        if data["progress"] >= data["target_time"]:
-            to_complete.append(key)
+        if data.get("status", "active") == "active":
+            active_builds_list.append(data)
+    for key in active_building_builds.keys():
+        var data = active_building_builds[key]
+        if data.get("status", "active") == "active":
+            active_builds_list.append(data)
 
-    for key in to_complete:
-        var data = active_builds[key]
+    # Если нет активных строек — ничего не делаем
+    if active_builds_list.is_empty():
+        return
+
+    # Распределяем общий труд между активными стройками поровну
+    var total_labor = CityData.get_total_labor()
+    var labor_per_build = total_labor / active_builds_list.size()
+
+    var to_complete = []
+    var to_complete_buildings = []
+    for data in active_builds_list:
+        data["progress"] += labor_per_build * delta
+        data["allocated_labor"] = labor_per_build
+        if data["progress"] >= data["work_cost"]:
+            if data.has("row"):
+                to_complete.append(data)
+            else:
+                to_complete_buildings.append(data)
+
+    for data in to_complete:
+        var key = str(data["row"]) + "," + str(data["col"])
         emit_signal("build_message", "Построено: %s" % data["imp_name"])
         emit_signal("build_completed", data["row"], data["col"], data["imp_id"], data.get("animal_id"))
         active_builds.erase(key)
+
+    for data in to_complete_buildings:
+        var bkey = data.get("build_key", "")
+        emit_signal("build_message", "Построено: %s" % data["building_name"])
+        emit_signal("build_building_completed", data["building_id"], bkey)
+        active_building_builds.erase(bkey)
 
 func start_build(row: int, col: int, imp_id: String, animal_id = null) -> bool:
     var key = str(row) + "," + str(col)
@@ -33,46 +68,150 @@ func start_build(row: int, col: int, imp_id: String, animal_id = null) -> bool:
         return false
 
     var imp_data = GameData.improvements.get(imp_id, {})
-    var cost = imp_data.get("cost_food", 0)
-    var build_time = imp_data.get("build_time", 3.0)
+    var work_cost = imp_data.get("work_cost", 0)
     var imp_name = imp_data.get("name", imp_id)
 
-    var available_food = 0
-    for pid in CityData.city_food_pool:
-        if CityData.city_food_pool[pid]:
-            available_food += CityData.city_storage.get(pid, 0)
-
-    if available_food < cost:
-        emit_signal("build_message", "Недостаточно еды! Нужно %d, есть %d" % [cost, available_food])
-        return false
-
-    var remaining = cost
-    var active_food = []
-    for pid in CityData.city_food_pool:
-        if CityData.city_food_pool[pid] and CityData.city_storage.get(pid, 0) > 0:
-            active_food.append(pid)
-    while remaining > 0 and active_food.size() > 0:
-        var pid = active_food[randi() % active_food.size()]
-        CityData.city_storage[pid] -= 1
-        remaining -= 1
-        if CityData.city_storage[pid] <= 0:
-            active_food.erase(pid)
+    # Строительство теперь требует труд, а не еду
+    if work_cost <= 0:
+        emit_signal("build_message", "Построено мгновенно: %s" % imp_name)
+        emit_signal("build_completed", row, col, imp_id, animal_id)
+        return true
 
     active_builds[key] = {
         "progress": 0.0,
-        "target_time": build_time,
+        "work_cost": work_cost,
         "imp_id": imp_id,
         "animal_id": animal_id,
         "imp_name": imp_name,
         "row": row,
-        "col": col
+        "col": col,
+        "status": "active",
+        "allocated_labor": 0.0
     }
 
-    emit_signal("build_message", "Строительство %s начато (%.0f сек)" % [imp_name, build_time])
+    emit_signal("build_message", "Строительство %s начато (%.0f труда)" % [imp_name, work_cost])
     return true
+
+func start_building_build(building_id: String) -> String:
+    var work_cost = 0
+    var building_name = building_id
+    for b in GameData.buildings:
+        if b["id"] == building_id:
+            work_cost = b.get("work_cost", 0)
+            building_name = b.get("name", building_id)
+            break
+
+    if work_cost <= 0:
+        emit_signal("build_building_completed", building_id, "")
+        return ""
+
+    if active_building_builds.size() > 0:
+        emit_signal("build_message", "Можно строить только одно здание одновременно")
+        return ""
+
+    var build_key = "building_" + str(Time.get_ticks_usec())
+    active_building_builds[build_key] = {
+        "progress": 0.0,
+        "work_cost": work_cost,
+        "building_id": building_id,
+        "building_name": building_name,
+        "build_key": build_key,
+        "status": "active",
+        "allocated_labor": 0.0
+    }
+
+    emit_signal("build_message", "Строительство %s начато (%.0f труда)" % [building_name, work_cost])
+    return build_key
+
+func pause_build(row: int, col: int) -> bool:
+    var key = str(row) + "," + str(col)
+    if not active_builds.has(key):
+        return false
+
+    var data = active_builds[key]
+    if data.get("status", "active") == "paused":
+        return false
+
+    data["status"] = "paused"
+    data["allocated_labor"] = 0.0
+    emit_signal("build_paused", row, col)
+    emit_signal("build_message", "Строительство %s приостановлено" % data["imp_name"])
+    return true
+
+func resume_build(row: int, col: int) -> bool:
+    var key = str(row) + "," + str(col)
+    if not active_builds.has(key):
+        return false
+
+    var data = active_builds[key]
+    if data.get("status", "active") == "active":
+        return false
+
+    data["status"] = "active"
+    emit_signal("build_message", "Строительство %s возобновлено" % data["imp_name"])
+    return true
+
+func cancel_build(row: int, col: int):
+    var key = str(row) + "," + str(col)
+    if not active_builds.has(key):
+        return
+
+    var data = active_builds[key]
+    var imp_name = data["imp_name"]
+    var work_done = data["progress"]
+    var work_total = data["work_cost"]
+
+    active_builds.erase(key)
+    emit_signal("build_cancelled", row, col)
+    emit_signal("build_message", "Строительство %s отменено. Потрачено %.0f/%d труда" % [imp_name, work_done, work_total])
+
+func pause_building_build(build_key: String) -> bool:
+    if not active_building_builds.has(build_key):
+        return false
+
+    var data = active_building_builds[build_key]
+    if data.get("status", "active") == "paused":
+        return false
+
+    data["status"] = "paused"
+    data["allocated_labor"] = 0.0
+    emit_signal("build_building_paused", build_key)
+    emit_signal("build_message", "Строительство %s приостановлено" % data["building_name"])
+    return true
+
+func resume_building_build(build_key: String) -> bool:
+    if not active_building_builds.has(build_key):
+        return false
+
+    var data = active_building_builds[build_key]
+    if data.get("status", "active") == "active":
+        return false
+
+    data["status"] = "active"
+    emit_signal("build_message", "Строительство %s возобновлено" % data["building_name"])
+    return true
+
+func cancel_building_build(build_key: String):
+    if not active_building_builds.has(build_key):
+        return
+
+    var data = active_building_builds[build_key]
+    var building_name = data["building_name"]
+    var work_done = data["progress"]
+    var work_total = data["work_cost"]
+
+    active_building_builds.erase(build_key)
+    emit_signal("build_building_cancelled", build_key)
+    emit_signal("build_message", "Строительство %s отменено. Потрачено %.0f/%d труда" % [building_name, work_done, work_total])
 
 func is_building(row: int, col: int) -> bool:
     return active_builds.has(str(row) + "," + str(col))
+
+func is_building_paused(row: int, col: int) -> bool:
+    var key = str(row) + "," + str(col)
+    if not active_builds.has(key):
+        return false
+    return active_builds[key].get("status", "active") == "paused"
 
 func get_progress(row: int, col: int) -> Dictionary:
     var key = str(row) + "," + str(col)
@@ -83,3 +222,16 @@ func get_progress(row: int, col: int) -> Dictionary:
 func remove_build(row: int, col: int):
     var key = str(row) + "," + str(col)
     active_builds.erase(key)
+
+func is_building_build_active(build_key: String) -> bool:
+    return active_building_builds.has(build_key)
+
+func is_building_build_paused(build_key: String) -> bool:
+    if not active_building_builds.has(build_key):
+        return false
+    return active_building_builds[build_key].get("status", "active") == "paused"
+
+func get_building_build_progress(build_key: String) -> Dictionary:
+    if active_building_builds.has(build_key):
+        return active_building_builds[build_key]
+    return {}

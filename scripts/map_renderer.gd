@@ -234,7 +234,9 @@ func _draw_hex_overlays(row: int, col: int):
             var bar_x = center.x - bar_width / 2.0
             var bar_y = center.y + RESOURCE_ICON_SIZE / 2.0 + 10
             draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color(0.2, 0.2, 0.2))
-            var fill_width = bar_width * (progress_data["progress"] / progress_data["target_time"])
+            var work_cost = progress_data.get("work_cost", 1.0)
+            var progress = progress_data.get("progress", 0.0)
+            var fill_width = bar_width * clamp(progress / work_cost, 0.0, 1.0)
             draw_rect(Rect2(bar_x, bar_y, fill_width, bar_height), Color.YELLOW)
             draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color.WHITE, false)
 

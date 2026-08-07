@@ -3,7 +3,7 @@
     {
       "id": "hand_mill",
       "name": "Ручная мельница",
-      "cost_food": 0.0,
+      "work_cost": 0,
       "icon": "hand_mill.png",
       "production_slots": 1.0,
       "default_recipes": [ "grind_wheat_hand" ]
@@ -11,7 +11,7 @@
     {
       "id": "windmill",
       "name": "Мельница",
-      "cost_food": 5.0,
+      "work_cost": 15,
       "icon": "windmill.png",
       "production_slots": 1.0,
       "default_recipes": [ "grind_wheat" ]
@@ -19,7 +19,7 @@
     {
       "id": "bakery",
       "name": "Пекарня",
-      "cost_food": 0.0,
+      "work_cost": 25,
       "additional_cost": { "flour": 3.0 },
       "icon": "bakery.png",
       "production_slots": 1.0,
@@ -28,7 +28,7 @@
     {
       "id": "slaughterhouse",
       "name": "Бойня",
-      "cost_food": 3.0,
+      "work_cost": 20,
       "icon": "slaughterhouse.png",
       "production_slots": 1.0,
       "unlock_tech": "animal_husbandry",
@@ -37,7 +37,7 @@
     {
       "id": "dairy",
       "name": "Сыроварня",
-      "cost_food": 3.0,
+      "work_cost": 20,
       "icon": "dairy.png",
       "production_slots": 1.0,
       "unlock_tech": "cheese_making",
@@ -46,7 +46,7 @@
     {
       "id": "forge",
       "name": "Кузница",
-      "cost_food": 10.0,
+      "work_cost": 60,
       "icon": "forge.png",
       "production_slots": 2.0,
       "unlock_tech": "metal_processing",
@@ -55,7 +55,7 @@
     {
       "id": "pottery_workshop",
       "name": "Гончарная мастерская",
-      "cost_food": 8.0,
+      "work_cost": 45,
       "icon": "pottery.png",
       "production_slots": 2.0,
       "unlock_tech": "pottery",
@@ -64,7 +64,7 @@
     {
       "id": "mason_workshop",
       "name": "Мастерская каменотёса",
-      "cost_food": 8.0,
+      "work_cost": 40,
       "icon": "mason_workshop.png",
       "production_slots": 2.0,
       "unlock_tech": "masonry",
@@ -73,7 +73,7 @@
     {
       "id": "tanner_house",
       "name": "Дом кожевника",
-      "cost_food": 4.0,
+      "work_cost": 30,
       "icon": "tanner_house.png",
       "production_slots": 1.0,
       "unlock_tech": "leatherworking",
@@ -82,7 +82,7 @@
     {
       "id": "weaver_house",
       "name": "Дом ткача",
-      "cost_food": 4.0,
+      "work_cost": 30,
       "icon": "weaver_house.png",
       "production_slots": 1.0,
       "unlock_tech": "weaving",
@@ -91,7 +91,7 @@
     {
       "id": "brewer_house",
       "name": "Дом варщика",
-      "cost_food": 5.0,
+      "work_cost": 35,
       "icon": "brewer_house.png",
       "production_slots": 2.0,
       "unlock_tech": "brewing",
@@ -100,7 +100,7 @@
     {
       "id": "winemaker_house",
       "name": "Дом винодела",
-      "cost_food": 5.0,
+      "work_cost": 35,
       "icon": "winemaker_house.png",
       "production_slots": 2.0,
       "unlock_tech": "winegrowing",
@@ -109,7 +109,7 @@
     {
       "id": "hand_oil_press",
       "name": "Ручная маслодавка",
-      "cost_food": 5.0,
+      "work_cost": 25,
       "icon": "hand_oil_press.png",
       "production_slots": 1.0,
       "unlock_tech": "oil_making",

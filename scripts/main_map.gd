@@ -191,6 +191,7 @@ func _ready():
 
     build_manager.build_message.connect(hud.show_message)
     build_manager.build_completed.connect(_on_build_completed)
+    build_manager.build_building_completed.connect(_on_building_build_completed)
     city_button.gui_input.connect(_on_city_button_gui_input)
 
     # Сигналы от ExpansionManager
@@ -572,6 +573,11 @@ func show_context_menu(row: int, col: int, click_pos: Vector2):
         popup_menu.add_item("Снести %s [%d еды, %.0f сек.]" % [imp_name, DEMOLITION_COST, DEMOLITION_TIME])
         popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": "demolish_improvement", "row": row, "col": col})
 
+        # Если идёт строительство — добавляем опцию отмены
+        if build_manager.is_building(row, col):
+            popup_menu.add_item("Отменить стройку")
+            popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": "cancel_build", "row": row, "col": col})
+
         popup_menu.position = click_pos
         popup_menu.popup()
         return
@@ -594,8 +600,7 @@ func show_context_menu(row: int, col: int, click_pos: Vector2):
             var imp_id = raw.improved_by
             var imp_data = GameData.improvements.get(imp_id, {})
             var imp_name = imp_data.get("name", imp_id)
-            var cost = imp_data.get("cost_food", 0)
-            var time = imp_data.get("build_time", 0)
+            var work_cost = imp_data.get("work_cost", 0)
             if map_renderer.is_resource_locked(tile.resource):
                 var tech_id = raw["tech_required"]
                 var tech_name = tech_id
@@ -626,10 +631,24 @@ func show_context_menu(row: int, col: int, click_pos: Vector2):
             else:
                 # Показываем только улучшения, открытые изученными технологиями
                 if CityData.is_improvement_unlocked(imp_id):
-                    var label = "Построить %s (%s) [еды: %d/%d, %d сек.]" % [imp_name, raw.get("name", tile.resource), available_food, cost, int(time)]
-                    popup_menu.add_item(label)
-                    var last_idx = popup_menu.item_count - 1
-                    popup_menu.set_item_metadata(last_idx, {"action": "build_improvement", "imp_id": imp_id, "animal_id": tile.resource})
+                    if build_manager.is_building(row, col):
+                        var prog = build_manager.get_progress(row, col)
+                        var prog_text = ""
+                        if not prog.is_empty():
+                            var wc = prog.get("work_cost", 0)
+                            var p = prog.get("progress", 0.0)
+                            if wc > 0:
+                                prog_text = " [%.0f/%.0f труда]" % [p, wc]
+                        var status_text = "Возобновить строительство" if build_manager.is_building_paused(row, col) else "Приостановить стройку"
+                        popup_menu.add_item("%s %s%s" % [status_text, imp_name, prog_text])
+                        popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": "build_improvement", "imp_id": imp_id, "animal_id": tile.resource})
+                    else:
+                        var labor = CityData.get_total_labor()
+                        var build_time = work_cost / max(1.0, labor)
+                        var label = "Построить %s (%s) [%d труда, %.0f сек.]" % [imp_name, raw.get("name", tile.resource), work_cost, build_time]
+                        popup_menu.add_item(label)
+                        var last_idx = popup_menu.item_count - 1
+                        popup_menu.set_item_metadata(last_idx, {"action": "build_improvement", "imp_id": imp_id, "animal_id": tile.resource})
 
     if tile.resource == null and CityData:
         if CityData.domesticated_animals.size() > 0 and CityData.is_improvement_unlocked("pasture"):
@@ -638,24 +657,54 @@ func show_context_menu(row: int, col: int, click_pos: Vector2):
                 if tile.terrain in animal_data.get("allowed_terrains", []):
                     var animal_name = animal_data.get("name", animal_id)
                     var imp_data = GameData.improvements.get("pasture", {})
-                    var cost = imp_data.get("cost_food", 0)
-                    var time = imp_data.get("build_time", 0)
-                    var label = "Построить пастбище (%s) [еды: %d/%d, %d сек.]" % [animal_name, available_food, cost, int(time)]
-                    popup_menu.add_item(label)
-                    var last_idx = popup_menu.item_count - 1
-                    popup_menu.set_item_metadata(last_idx, {"action": "build_pasture", "animal_id": animal_id})
+                    var work_cost = imp_data.get("work_cost", 0)
+                    if build_manager.is_building(row, col):
+                        var prog = build_manager.get_progress(row, col)
+                        var prog_text = ""
+                        if not prog.is_empty():
+                            var wc = prog.get("work_cost", 0)
+                            var p = prog.get("progress", 0.0)
+                            if wc > 0:
+                                prog_text = " [%.0f/%.0f труда]" % [p, wc]
+                        var status_text = "Возобновить строительство" if build_manager.is_building_paused(row, col) else "Приостановить стройку"
+                        popup_menu.add_item("%s пастбище (%s)%s" % [status_text, animal_name, prog_text])
+                        popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": "build_pasture", "animal_id": animal_id})
+                    else:
+                        var labor = CityData.get_total_labor()
+                        var build_time = work_cost / max(1.0, labor)
+                        var label = "Построить пастбище (%s) [%d труда, %.0f сек.]" % [animal_name, work_cost, build_time]
+                        popup_menu.add_item(label)
+                        var last_idx = popup_menu.item_count - 1
+                        popup_menu.set_item_metadata(last_idx, {"action": "build_pasture", "animal_id": animal_id})
         if CityData.domesticated_plants.size() > 0 and CityData.is_improvement_unlocked("farm"):
             for plant_id in CityData.domesticated_plants:
                 var plant_data = GameData.raw_resources.get(plant_id, {})
                 if tile.terrain in plant_data.get("allowed_terrains", []):
                     var plant_name = plant_data.get("name", plant_id)
                     var imp_data = GameData.improvements.get("farm", {})
-                    var cost = imp_data.get("cost_food", 0)
-                    var time = imp_data.get("build_time", 0)
-                    var label = "Построить ферму (%s) [еды: %d/%d, %d сек.]" % [plant_name, available_food, cost, int(time)]
-                    popup_menu.add_item(label)
-                    var last_idx = popup_menu.item_count - 1
-                    popup_menu.set_item_metadata(last_idx, {"action": "build_farm", "plant_id": plant_id})
+                    var work_cost = imp_data.get("work_cost", 0)
+                    if build_manager.is_building(row, col):
+                        var prog = build_manager.get_progress(row, col)
+                        var prog_text = ""
+                        if not prog.is_empty():
+                            var wc = prog.get("work_cost", 0)
+                            var p = prog.get("progress", 0.0)
+                            if wc > 0:
+                                prog_text = " [%.0f/%.0f труда]" % [p, wc]
+                        var status_text = "Возобновить строительство" if build_manager.is_building_paused(row, col) else "Приостановить стройку"
+                        popup_menu.add_item("%s ферму (%s)%s" % [status_text, plant_name, prog_text])
+                        popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": "build_farm", "plant_id": plant_id})
+                    else:
+                        var labor = CityData.get_total_labor()
+                        var build_time = work_cost / max(1.0, labor)
+                        var label = "Построить ферму (%s) [%d труда, %.0f сек.]" % [plant_name, work_cost, build_time]
+                        popup_menu.add_item(label)
+                        var last_idx = popup_menu.item_count - 1
+                        popup_menu.set_item_metadata(last_idx, {"action": "build_farm", "plant_id": plant_id})
+
+    if build_manager.is_building(row, col):
+        popup_menu.add_item("Отменить стройку")
+        popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": "cancel_build", "row": row, "col": col})
 
     if popup_menu.item_count > 0:
         popup_menu.position = click_pos
@@ -697,6 +746,12 @@ func _on_popup_menu_id_pressed(id: int):
         _start_demolition(r, c)
         return
 
+    if action == "cancel_build":
+        var r = meta["row"]
+        var c = meta["col"]
+        _confirm_cancel_build(r, c)
+        return
+
     if action == "forage_food":
         var r = meta["row"]
         var c = meta["col"]
@@ -717,7 +772,14 @@ func _on_popup_menu_id_pressed(id: int):
     if action == "build_improvement":
         var imp_id = meta.imp_id
         var animal_id = meta.get("animal_id", null)
-        build_manager.start_build(row, col, imp_id, animal_id)
+        # Если строительство уже идёт — переключаем паузу/возобновление
+        if build_manager.is_building(row, col):
+            if build_manager.is_building_paused(row, col):
+                build_manager.resume_build(row, col)
+            else:
+                build_manager.pause_build(row, col)
+        else:
+            build_manager.start_build(row, col, imp_id, animal_id)
     elif action == "build_pasture":
         var animal_id = meta.animal_id
         build_manager.start_build(row, col, "pasture", animal_id)
@@ -745,6 +807,24 @@ func _on_build_completed(row: int, col: int, imp_id: String, animal_id = null):
     road_manager.build_road_from(row, col, tile_data, REGION_ROWS, REGION_COLS)
     if not worker_manager.assign_worker(row, col):
         pass
+    map_renderer.queue_redraw()
+
+func _on_building_build_completed(building_id: String, build_key: String):
+    # Стройка здания завершена - добавляем его в город
+    var slots = []
+    if CityData.building_construction.has(build_key):
+        var construction_data = CityData.building_construction[build_key]
+        slots = construction_data.get("slots", [])
+        CityData.building_construction.erase(build_key)
+    
+    CityData.city_built_buildings.append({"id": building_id, "slots": slots})
+    
+    # Назначаем горожанина
+    if has_node("TownsfolkManager"):
+        var tm = get_node("TownsfolkManager")
+        tm.assign_townsfolk()
+    
+    CityData.emit_signal("city_updated")
     map_renderer.queue_redraw()
 
 func pixel_to_hex(mx: float, my: float):
@@ -1141,3 +1221,19 @@ func _get_chunk_info(chunk: Array) -> String:
     var terrain_str = ", ".join(terrain_names)
     var resource_str = ", ".join(resources) if resources.size() > 0 else "нет"
     return "Ландшафт: %s. Ресурсы: %s" % [terrain_str, resource_str]
+
+func _confirm_cancel_build(row: int, col: int):
+    var prog = build_manager.get_progress(row, col)
+    if prog.is_empty():
+        return
+    var imp_name = prog.get("imp_name", "Улучшение")
+    var work_done = prog.get("progress", 0.0)
+    var work_total = prog.get("work_cost", 0)
+
+    # Создаём диалог подтверждения
+    var dialog = AcceptDialog.new()
+    dialog.title = "Отмена строительства"
+    dialog.dialog_text = "Отменить строительство «%s»?\n\nПотраченный труд (%.0f/%d) будет потерян." % [imp_name, work_done, work_total]
+    dialog.confirmed.connect(func(): build_manager.cancel_build(row, col))
+    add_child(dialog)
+    dialog.popup_centered()

@@ -65,7 +65,11 @@ func _ready():
         $RightPanel/VBoxContainer/BuiltBuildingsList,
         $ContentPanel/BuildingsPanel/FoodLabel,
         $ContentPanel/BuildingsPanel/HSplitContainer,
-        ui_helpers
+        ui_helpers,
+        $ContentPanel/BuildingsPanel/PauseConstructionButton,
+        $ContentPanel/BuildingsPanel/CancelConstructionButton,
+        $ContentPanel/BuildingsPanel/HSplitContainer/BuildingDetailsPanel/VBoxContainer/ConstructionProgressLabel,
+        $ContentPanel/BuildingsPanel/HSplitContainer/BuildingDetailsPanel/VBoxContainer/ConstructionProgressBar
     )
     buildings_tab.build_requested.connect(_on_build_requested)
     buildings_tab.building_detail_requested.connect(_on_building_detail_requested)
@@ -157,8 +161,10 @@ func _refresh_light():
 
     resources_tab.update_values()
     buildings_tab.update_built_status()
-    technologies_tab.update_progress()
-    _update_food_label()
+    if buildings_panel.visible and buildings_tab.has_method("update_construction_progress"):
+        buildings_tab.update_construction_progress()
+        if buildings_tab.has_method("update_construction_controls"):
+            buildings_tab.update_construction_controls()
 
 func _needs_full_refresh() -> bool:
     # Полное обновление требуется только при структурных изменениях:
@@ -311,15 +317,14 @@ func _process(delta):
                         bdata = b
                         break
                 if bdata:
-                    var cost = bdata.get("cost_food", 0)
-                    var food_sum = 0
-                    var food_pool = resources_tab.get_food_pool()
-                    var storage = data_cache.get("city_storage", {})
-                    for pid in food_pool:
-                        if food_pool[pid]:
-                            food_sum += storage.get(pid, 0)
-                    if food_sum < cost:
-                        hint = "Недостаточно еды (нужно %d)" % cost
+                    var work_cost = bdata.get("work_cost", 0)
+                    var labor = CityData.get_total_labor()
+                    if work_cost > 0:
+                        var build_time = work_cost / max(1.0, labor)
+                        hint = "Строительство: %d труда, %.0f сек.\n" % [work_cost, build_time]
+                        hint += "Доступный труд: %.0f/сек (%d жителей)" % [labor, CityData.total_population]
+                    else:
+                        hint = "Построить мгновенно (бесплатно)"
             if hint != "":
                 ui_helpers.build_tooltip_label.text = hint
                 ui_helpers.show_build_tooltip(mouse_pos)

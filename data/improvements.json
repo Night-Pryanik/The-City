@@ -5,8 +5,7 @@
       "name": "Ферма",
       "icon": "farm.png",
       "color": [ 255, 255, 0 ],
-      "cost_food": 3,
-      "build_time": 3.0,
+      "work_cost": 8,
       "unlock_tech": "farming"
     },
     {
@@ -14,8 +13,7 @@
       "name": "Пастбище",
       "icon": "pasture.png",
       "color": [ 34, 139, 34 ],
-      "cost_food": 4,
-      "build_time": 4.0,
+      "work_cost": 25,
       "unlock_tech": "animal_husbandry"
     },
     {
@@ -23,8 +21,7 @@
       "name": "Шахта",
       "icon": "mine.png",
       "color": [ 105, 105, 105 ],
-      "cost_food": 5,
-      "build_time": 5.0,
+      "work_cost": 30,
       "unlock_tech": "mining"
     },
     {
@@ -32,8 +29,7 @@
       "name": "Каменоломня",
       "icon": "quarry.png",
       "color": [ 139, 137, 137 ],
-      "cost_food": 4,
-      "build_time": 4.0,
+      "work_cost": 20,
       "unlock_tech": "masonry"
     },
     {
@@ -41,8 +37,7 @@
       "name": "Пасека",
       "icon": "beehive.png",
       "color": [ 255, 215, 0 ],
-      "cost_food": 3,
-      "build_time": 3.0,
+      "work_cost": 12,
       "unlock_tech": "beekeeping"
     },
     {
@@ -50,8 +45,7 @@
       "name": "Виноградник",
       "icon": "vineyard.png",
       "color": [ 128, 0, 0 ],
-      "cost_food": 5,
-      "build_time": 5.0,
+      "work_cost": 35,
       "unlock_tech": "winegrowing"
     },
     {
@@ -59,8 +53,7 @@
       "name": "Глиняная яма",
       "icon": "clay_pit.png",
       "color": [ 210, 180, 140 ],
-      "cost_food": 4,
-      "build_time": 4.0,
+      "work_cost": 22,
       "unlock_tech": "pottery"
     },
     {
@@ -68,8 +61,7 @@
       "name": "Плантация",
       "icon": "plantation.png",
       "color": [ 34, 139, 34 ],
-      "cost_food": 5,
-      "build_time": 5.0,
+      "work_cost": 28,
       "unlock_tech": "plantations"
     }
   ]

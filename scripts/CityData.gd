@@ -11,6 +11,9 @@ var city_built_buildings: Array = []
 var domesticated_animals: Array = []
 var domesticated_plants: Array = []
 
+# Стройка зданий: ключ -> данные
+var building_construction: Dictionary = {}
+
 # Технологии
 var unlocked_technologies: Array = []
 var current_research_tech_id: String = ""
@@ -29,10 +32,18 @@ var food_per_citizen: int = 1
 
 const PRODUCTION_INTERVAL: float = 2.0
 
+# --- ТРУД ---
+# Труд = скорость работы города. 1 житель = 1 труд/сек.
+# НЕ накапливается, это скорость, не запас.
+func get_total_labor() -> float:
+    return float(total_population) * 1.0
+
 signal city_updated()
 signal research_completed(tech_id: String)
 signal research_error(message: String)
 signal population_changed(new_population: int)
+signal building_construction_started(building_id: String, build_key: String)
+signal building_construction_completed(building_id: String, build_key: String)
 
 func setup():
     city_storage.clear()
@@ -40,6 +51,7 @@ func setup():
     consumption_rates.clear()
     city_food_pool.clear()
     city_built_buildings.clear()
+    building_construction.clear()
     domesticated_animals.clear()
     domesticated_plants.clear()
     unlocked_technologies.clear()
@@ -453,9 +465,9 @@ func get_improvement_unlock_tech(imp_id: String) -> String:
 # Вызывается после завершения исследования технологии.
 # Правила:
 #   - Для `animal_husbandry` и `mining`: 50% шанс на 2 вида, 30% на 3 вида, 20% на 1 вид,
-#     при этом 1 вид гарантированно размещается в Кольце Влияния.
+#	 при этом 1 вид гарантированно размещается в Кольце Влияния.
 #   - Для всех остальных технологий: обычное правило 50/30/20, ресурсы могут размещаться
-#     как в Кольце, так и в Регионе.
+#	 как в Кольце, так и в Регионе.
 #   - Каждый выбранный вид размещается ровно 1 копией.
 # Возвращает массив сообщений для HUD (найдено/не найдено).
 func spawn_resource_on_tech_research(tech_id: String) -> Array:
@@ -650,7 +662,7 @@ func _has_building(building_id: String) -> bool:
     return false
 
 # TODO: временная миграция старых сейвов (формат "recipe"). Удалить после того,
-#       как все старые сохранения перестанут использоваться.
+#	   как все старые сохранения перестанут использоваться.
 # Конвертирует старые записи зданий {"id": ..., "recipe": ...} в новый формат {"id": ..., "slots": [...]}.
 func migrate_old_save_format():
     for bld in city_built_buildings:
@@ -685,36 +697,49 @@ func request_build(building_id: String) -> bool:
     if not is_building_unlocked(building_id):
         print("Здание недоступно: ", bdata.get("name", building_id))
         return false
-    var cost = bdata.get("cost_food", 0)
-    var available_food = 0
-    var active_food = []
-    for pid in city_food_pool:
-        if city_food_pool[pid]:
-            var stock = city_storage.get(pid, 0)
-            available_food += stock
-            if stock > 0:
-                active_food.append(pid)
-    if available_food >= cost:
-        var remaining = cost
-        while remaining > 0 and active_food.size() > 0:
-            var pid = active_food[randi() % active_food.size()]
-            city_storage[pid] -= 1
-            remaining -= 1
-            if city_storage[pid] <= 0:
-                active_food.erase(pid)
+    var work_cost = bdata.get("work_cost", 0)
+    # Запрещаем ставить более одной стройки здания одновременно
+    if work_cost > 0 and building_construction.size() > 0:
+        print("Можно строить только одно здание одновременно")
+        return false
+    # Строительство зданий теперь требует труд, а не еду
+    if work_cost <= 0:
+        # Если стоимость 0 (например, ручная мельница), строим мгновенно
         city_built_buildings.append({"id": building_id, "slots": _auto_assign_slots(building_id)})
 
         # Автоматически назначаем горожанина на новое здание, если есть свободные
-        var main_map = get_tree().root.find_child("MainMap", true, false)
-        if main_map and main_map.has_node("TownsfolkManager"):
-            var tm = main_map.get_node("TownsfolkManager")
+        var townsfolk_map = get_tree().root.find_child("MainMap", true, false)
+        if townsfolk_map and townsfolk_map.has_node("TownsfolkManager"):
+            var tm = townsfolk_map.get_node("TownsfolkManager")
             tm.assign_townsfolk()
 
         emit_signal("city_updated")
         return true
-    else:
-        print("Недостаточно еды для постройки ", bdata.get("name", building_id))
+
+    # Для зданий с work_cost > 0 запускаем стройку через build_manager
+    var main_map = get_tree().root.find_child("MainMap", true, false)
+    if main_map and main_map.has_node("BuildManager"):
+        var bm = main_map.get_node("BuildManager")
+        var build_key = bm.start_building_build(building_id)
+        if build_key != "":
+            # Сохраняем стройку в отдельный словарь, здание появится в городе только после завершения
+            building_construction[build_key] = {
+                "building_id": building_id,
+                "build_key": build_key,
+                "slots": _auto_assign_slots(building_id)
+            }
+            emit_signal("building_construction_started", building_id, build_key)
+            emit_signal("city_updated")
+            return true
         return false
+
+    # Если build_manager недоступен, строим мгновенно (fallback)
+    city_built_buildings.append({"id": building_id, "slots": _auto_assign_slots(building_id)})
+    if main_map and main_map.has_node("TownsfolkManager"):
+        var tm2 = main_map.get_node("TownsfolkManager")
+        tm2.assign_townsfolk()
+    emit_signal("city_updated")
+    return true
 
 # Автоназначение рецептов на слоты при постройке здания:
 # 1. Берём default_recipes здания
