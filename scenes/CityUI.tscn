@@ -166,6 +166,7 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="FoodLabel" type="Label" parent="ContentPanel/BuildingsPanel" unique_id=289532673]
+visible = false
 layout_mode = 1
 anchors_preset = -1
 offset_right = 184.0
@@ -180,6 +181,8 @@ anchor_bottom = 1.0
 offset_top = 27.0
 grow_horizontal = 2
 grow_vertical = 2
+split_offsets = PackedInt32Array(300)
+split_offset = 300
 
 [node name="AvailableBuildingsPanel" type="Control" parent="ContentPanel/BuildingsPanel/HSplitContainer" unique_id=1098170534]
 layout_mode = 2
@@ -188,7 +191,7 @@ layout_mode = 2
 layout_mode = 1
 anchors_preset = 9
 anchor_bottom = 1.0
-offset_right = 318.0
+offset_right = 193.0
 grow_vertical = 2
 
 [node name="AvailableBuildingsLabel" type="Label" parent="ContentPanel/BuildingsPanel/HSplitContainer/AvailableBuildingsPanel/VBoxContainer" unique_id=101904791]

@@ -270,6 +270,15 @@ func _on_building_slots_pressed(building_id: String):
 
 func center_split_offset():
     if hsplit:
+        # Находим VBoxContainer внутри AvailableBuildingsPanel
+        var available_panel = hsplit.get_node("AvailableBuildingsPanel")
+        if available_panel:
+            var vbox = available_panel.get_node("VBoxContainer")
+            if vbox:
+                # Устанавливаем разделитель по ширине VBoxContainer
+                hsplit.split_offset = vbox.size.x
+                return
+        # Fallback: если не нашли VBoxContainer, используем половину ширины
         hsplit.split_offset = hsplit.size.x / 2
 
 func _on_building_selected(idx: int):
