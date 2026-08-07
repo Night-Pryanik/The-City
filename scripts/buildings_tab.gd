@@ -114,11 +114,22 @@ func update_built_status():
                 break
         var base_name = bdata["name"] if bdata else group["id"]
         var working = group["working"]
+        var idle = group["idle"]
 
         var display_name = "%s x%d" % [base_name, group["total"]] if group["total"] > 1 else base_name
         var status = ""
         var status_color = Color.WHITE
-        if group["total"] > 1:
+        if idle > 0:
+            # Есть простаивающие здания (работник есть, но все слоты пустые)
+            if group["total"] > 1:
+                if idle == group["total"]:
+                    status = " (простаивает)"
+                else:
+                    status = " (работает: %d из %d, простаивает: %d)" % [working, group["total"], idle]
+            else:
+                status = " (простаивает)"
+            status_color = Color.ORANGE
+        elif group["total"] > 1:
             status = " (работает: %d из %d)" % [working, group["total"]]
             status_color = Color.GREEN if working == group["total"] else (Color.YELLOW if working > 0 else Color.RED)
         else:
@@ -151,9 +162,20 @@ func refresh_built():
         row.add_theme_constant_override("separation", 10)
 
         var working = g["working"]
+        var idle = g["idle"]
         var status = ""
         var status_color = Color.WHITE
-        if g["total"] > 1:
+        if idle > 0:
+            # Есть простаивающие здания (работник есть, но все слоты пустые)
+            if g["total"] > 1:
+                if idle == g["total"]:
+                    status = " (простаивает)"
+                else:
+                    status = " (работает: %d из %d, простаивает: %d)" % [working, g["total"], idle]
+            else:
+                status = " (простаивает)"
+            status_color = Color.ORANGE
+        elif g["total"] > 1:
             status = " (работает: %d из %d)" % [working, g["total"]]
             status_color = Color.GREEN if working == g["total"] else (Color.YELLOW if working > 0 else Color.RED)
         else:
@@ -178,6 +200,7 @@ func refresh_built():
     last_built_count = built_buildings.size()
 
 # Группирует построенные здания по id и считает работающие.
+# idle — здания, у которых есть работник, но все слоты пустые (простаивают).
 func _group_buildings() -> Array:
     var main_map = get_tree().root.find_child("MainMap", true, false)
     var tm = main_map.get_node("TownsfolkManager") if main_map else null
@@ -190,7 +213,7 @@ func _group_buildings() -> Array:
         var has_worker = tm.has_townsfolk(i) if tm else false
         if not order.has(bld_id):
             order.append(bld_id)
-            groups.append({"id": bld_id, "total": 0, "working": 0})
+            groups.append({"id": bld_id, "total": 0, "working": 0, "idle": 0})
         var g = null
         for grp in groups:
             if grp["id"] == bld_id:
@@ -199,6 +222,8 @@ func _group_buildings() -> Array:
         g["total"] += 1
         if has_worker:
             g["working"] += 1
+            if CityData.are_all_slots_empty(i):
+                g["idle"] += 1
     return groups
 
 func _get_icon(icon_name: String) -> Texture2D:

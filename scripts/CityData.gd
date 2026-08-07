@@ -741,6 +741,20 @@ func _auto_assign_slots(building_id: String) -> Array:
             result.append("empty")
     return result
 
+# Возвращает true, если все слоты здания пусты (рецепт "Пусто" или "").
+# Используется для отображения статуса "простаивает".
+func are_all_slots_empty(b_index: int) -> bool:
+    if b_index < 0 or b_index >= city_built_buildings.size():
+        return false
+    var bld = city_built_buildings[b_index]
+    var slots = bld.get("slots", [])
+    if slots.is_empty():
+        return false
+    for recipe_id in slots:
+        if recipe_id != "" and recipe_id != "empty":
+            return false
+    return true
+
 # Проверяет, может ли рецепт исполняться в указанном здании.
 # produced_in поддерживает массив значений; "*" означает "в любом здании" (пустой рецепт).
 func can_craft_in(craft_id: String, building_id: String) -> bool:

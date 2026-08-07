@@ -168,11 +168,15 @@ func _refresh():
         header.add_theme_constant_override("separation", 8)
 
         var has_worker = tm.has_townsfolk(b_index) if tm else false
-        var status = " (работает)" if has_worker else " (не работает)"
+        var is_idle = has_worker and CityData.are_all_slots_empty(b_index)
+        var status = " (простаивает)" if is_idle else (" (работает)" if has_worker else " (не работает)")
 
         var header_label = Label.new()
         header_label.text = "Здание %d%s" % [building_number, status]
-        header_label.add_theme_color_override("font_color", Color.GREEN if has_worker else Color.RED)
+        if is_idle:
+            header_label.add_theme_color_override("font_color", Color.ORANGE)
+        else:
+            header_label.add_theme_color_override("font_color", Color.GREEN if has_worker else Color.RED)
         header_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         header.add_child(header_label)
 
@@ -403,6 +407,10 @@ func _setup_assignments_listener():
     var tm = main_map.get_node("TownsfolkManager") if main_map else null
     if tm and not tm.assignment_changed.is_connected(_on_assignments_changed):
         tm.assignment_changed.connect(_on_assignments_changed)
+    # Подписываемся на обновление города, чтобы панель обновлялась при
+    # смене рецептов (статус "простаивает" появляется/исчезает сразу).
+    if not CityData.city_updated.is_connected(_on_assignments_changed):
+        CityData.city_updated.connect(_on_assignments_changed)
 
 func _on_assignments_changed():
     if visible:
