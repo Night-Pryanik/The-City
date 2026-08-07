@@ -238,6 +238,17 @@ func _draw_hex_overlays(row: int, col: int):
             draw_rect(Rect2(bar_x, bar_y, fill_width, bar_height), Color.YELLOW)
             draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color.WHITE, false)
 
+    # Прогресс-бар сноса улучшения
+    if main_map.is_demolishing and main_map.demolition_hex.get("row", -1) == row and main_map.demolition_hex.get("col", -1) == col:
+        var demolition_progress = clamp(main_map.demolition_timer / main_map.DEMOLITION_TIME, 0.0, 1.0)
+        var demo_bar_width = RESOURCE_ICON_SIZE
+        var demo_bar_height = 6
+        var demo_bar_x = center.x - demo_bar_width / 2.0
+        var demo_bar_y = center.y + RESOURCE_ICON_SIZE / 2.0 + 16
+        draw_rect(Rect2(demo_bar_x, demo_bar_y, demo_bar_width, demo_bar_height), Color(0.2, 0.2, 0.2))
+        draw_rect(Rect2(demo_bar_x, demo_bar_y, demo_bar_width * demolition_progress, demo_bar_height), Color(0.9, 0.3, 0.3))
+        draw_rect(Rect2(demo_bar_x, demo_bar_y, demo_bar_width, demo_bar_height), Color.WHITE, false)
+
     if in_influence and tile.improvement != null:
         var has_worker = main_map.worker_manager.has_worker(row, col)
         var imp_data = GameData.improvements.get(tile.improvement, {})

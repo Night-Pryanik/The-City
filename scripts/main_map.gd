@@ -18,6 +18,8 @@ const INFLUENCE_START_COL = REGION_PADDING
 const INFLUENCE_END_COL = INFLUENCE_START_COL + GRID_COLS - 1
 const FORAGING_TIME: float = 3.0
 const SCOUTING_TIME_PER_HEX: float = 3.0
+const DEMOLITION_TIME: float = 3.0
+const DEMOLITION_COST: int = 5
 
 var tile_data = []
 var offset_x: float = 0.0
@@ -33,6 +35,9 @@ var is_foraging: bool = false
 var scouting_timer: float = 0.0
 var scouting_chunk: Array = []
 var is_scouting: bool = false
+var demolition_timer: float = 0.0
+var demolition_hex: Dictionary = {}
+var is_demolishing: bool = false
 
 var settings_config = ConfigFile.new()
 var show_hex_borders = true
@@ -254,6 +259,12 @@ func _process(delta):
         scouting_timer += delta
         if scouting_timer >= _get_scouting_time(scouting_chunk.size()):
             _complete_scouting()
+        map_renderer.queue_redraw()
+
+    if is_demolishing:
+        demolition_timer += delta
+        if demolition_timer >= DEMOLITION_TIME:
+            _complete_demolition()
         map_renderer.queue_redraw()
 
 func _initialize_map():
@@ -558,6 +569,9 @@ func show_context_menu(row: int, col: int, click_pos: Vector2):
             popup_menu.add_item("Запустить работу (%s)" % imp_name)
             popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": "resume_improvement", "row": row, "col": col})
 
+        popup_menu.add_item("Снести %s [%d еды, %.0f сек.]" % [imp_name, DEMOLITION_COST, DEMOLITION_TIME])
+        popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": "demolish_improvement", "row": row, "col": col})
+
         popup_menu.position = click_pos
         popup_menu.popup()
         return
@@ -677,6 +691,12 @@ func _on_popup_menu_id_pressed(id: int):
         map_renderer.queue_redraw()
         return
 
+    if action == "demolish_improvement":
+        var r = meta["row"]
+        var c = meta["col"]
+        _start_demolition(r, c)
+        return
+
     if action == "forage_food":
         var r = meta["row"]
         var c = meta["col"]
@@ -684,8 +704,8 @@ func _on_popup_menu_id_pressed(id: int):
         return
 
     if action == "scout_chunk":
-        var chunk = meta["chunk"]
-        var cost = meta["cost"]
+        var chunk = meta.get("chunk", [])
+        var cost = meta.get("cost", 0)
         _start_scouting(chunk, cost)
         return
 
@@ -1035,6 +1055,66 @@ func _start_scouting(chunk: Array, cost: int):
     scouting_timer = 0.0
     is_scouting = true
     hud.show_message("Разведчики отправлены...")
+
+func _start_demolition(row: int, col: int):
+    if is_demolishing:
+        hud.show_message("Уже идёт снос!")
+        return
+    if is_foraging:
+        hud.show_message("Сначала дождитесь завершения сбора!")
+        return
+    if is_scouting:
+        hud.show_message("Сначала дождитесь завершения разведки!")
+        return
+
+    var tile = tile_data[row][col]
+    if tile.improvement == null:
+        hud.show_message("Здесь нет улучшения для сноса")
+        return
+
+    var available_food = 0
+    if CityData:
+        for pid in CityData.city_food_pool:
+            if CityData.city_food_pool[pid]:
+                available_food += CityData.city_storage.get(pid, 0)
+    if available_food < DEMOLITION_COST:
+        hud.show_message("Недостаточно еды для сноса! Нужно %d" % DEMOLITION_COST)
+        return
+
+    # Списываем еду
+    var remaining = DEMOLITION_COST
+    var active_food = []
+    for pid in CityData.city_food_pool:
+        if CityData.city_food_pool[pid] and CityData.city_storage.get(pid, 0) > 0:
+            active_food.append(pid)
+    while remaining > 0 and active_food.size() > 0:
+        var pid = active_food[randi() % active_food.size()]
+        CityData.city_storage[pid] -= 1
+        remaining -= 1
+        if CityData.city_storage[pid] <= 0:
+            active_food.erase(pid)
+
+    demolition_hex = {"row": row, "col": col}
+    demolition_timer = 0.0
+    is_demolishing = true
+    hud.show_message("Снос улучшения начался (%.0f сек)..." % DEMOLITION_TIME)
+
+func _complete_demolition():
+    var row = demolition_hex.row
+    var col = demolition_hex.col
+    var tile = tile_data[row][col]
+
+    # Освобождаем рабочего, если он был назначен
+    if worker_manager.has_worker(row, col):
+        worker_manager.remove_worker(row, col)
+
+    # Удаляем улучшение, ресурс остаётся
+    tile.improvement = null
+
+    demolition_hex = {}
+    is_demolishing = false
+    hud.show_message("Улучшение снесено!")
+    map_renderer.queue_redraw()
 
 func _complete_scouting():
     for hex in scouting_chunk:
