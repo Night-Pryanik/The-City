@@ -503,7 +503,7 @@ func _add_production_info(res_id: String, prefix: String):
         hbox.add_child(label_item)
         tooltip_products_container.add_child(hbox)
 
-func _show_context_menu(row: int, col: int, click_pos: Vector2):
+func show_context_menu(row: int, col: int, click_pos: Vector2):
     var tile = tile_data[row][col]
 
     # --- Сбор дикоросов ---
@@ -931,11 +931,8 @@ func _on_city_button_gui_input(event: InputEvent):
         map_renderer.queue_redraw()
 
 func _on_expansion_button_pressed():
-    var active = expansion_manager.toggle()
-    if active:
-        hud.show_message("Режим освоения включён. ПКМ по выделенной области для освоения.")
-    else:
-        hud.show_message("Режим освоения выключен.")
+    # Кнопка "Развитие" больше не имеет функционала
+    pass
 
 func _on_expansion_mode_changed(_active: bool):
     map_renderer.queue_redraw()

@@ -80,8 +80,8 @@ func _draw():
     # ФАЗА 2: Рисуем дороги (ПЕРЕД иконками ресурсов и улучшений)
     _draw_all_roads()
 
-    # ФАЗА 2.5: Рисуем подсветку для режима "Развитие" (слои исследования и покупки)
-    _draw_expansion_highlights()
+    # ФАЗА 2.5: Рисуем подсветку для разведки и покупки (всегда активна)
+    _draw_exploration_highlights()
 
     # ФАЗА 3: Рисуем иконки ресурсов, улучшений и другие оверлеи
     for row in range(main_map.REGION_ROWS):
@@ -363,16 +363,13 @@ func _generate_natural_road(
     points.append(center2)
     return points
 
-func _draw_expansion_highlights():
+func _draw_exploration_highlights():
     var main = get_parent()
-    if not main.has_method("is_expansion_mode_active") or not main.is_expansion_mode_active():
-        return
-
     var expansion_manager = main.get_node("ExpansionManager")
     if not expansion_manager:
         return
 
-    # --- 1. Рисуем слои: не исследован / исследован ---
+    # --- 1. Рисуем слои: не исследован / исследован (всегда) ---
     for row in range(main_map.REGION_ROWS):
         for col in range(main_map.REGION_COLS):
             var tile = tile_data[row][col]
@@ -393,9 +390,6 @@ func _draw_expansion_highlights():
                 closed_verts.append_array(vertices)
                 closed_verts.append(vertices[0])
                 draw_polyline(closed_verts, Color.WHITE, 1.5)
-            else:
-                # Не исследован: тёмно-зелёный без рамки
-                draw_colored_polygon(vertices, Color(0.0, 0.3, 0.0, 0.4))
 
     # --- 2. Жёлтая подсветка чанка под мышью (поверх всего) ---
     var chunk = expansion_manager.current_chunk

@@ -134,8 +134,7 @@ func show_context_menu(chunk: Array, click_pos: Vector2, available_food: int):
     main_map.popup_menu.popup()
 
 func handle_action(chunk: Array, cost: int) -> bool:
-    if not is_expansion_mode:
-        return false
+    # Режим "Развитие" убран - действие доступно всегда
     var available_food = 0
     for pid in CityData.city_food_pool:
         if CityData.city_food_pool[pid]:

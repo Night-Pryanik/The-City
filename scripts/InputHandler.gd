@@ -66,20 +66,17 @@ func handle_input(event: InputEvent):
     if city_ui.visible or pause_menu.visible or (main_map.settings_menu and main_map.settings_menu.visible):
         return
 
-    # Обработка режима "Развитие" для кликов и подсветки
-    if expansion_manager.is_active():
-        if event is InputEventMouseButton:
-            if _handle_expansion_mode_input(event):
-                return
-        elif event is InputEventMouseMotion:
-            _handle_expansion_mode_motion(event)
-            # Не возвращаемся, чтобы _handle_mouse_motion также мог обработать движение
-
     # Обработка общих событий мыши
     if event is InputEventMouseButton:
         _handle_mouse_button(event)
     elif event is InputEventMouseMotion:
         _handle_mouse_motion(event)
+        # Обновляем подсветку чанка при наведении на гексы вне Кольца Влияния
+        var h = _pixel_to_hex(event.global_position.x, event.global_position.y)
+        if h != null and not main_map.tile_data[h.row][h.col].get("in_influence", false):
+            expansion_manager.update_hovered_chunk(h.row, h.col)
+        else:
+            expansion_manager.clear_hovered_chunk()
 
 func handle_process(delta: float):
     if Engine.is_editor_hint():
@@ -183,7 +180,7 @@ func _handle_expansion_mode_input(event: InputEventMouseButton) -> bool:
                     all_explored = false
                     break
             if not all_explored:
-                main_map._show_context_menu(hex.row, hex.col, mouse_pos)
+                main_map.show_context_menu(hex.row, hex.col, mouse_pos)
                 return true
             var available_food = 0
             if CityData:
@@ -236,9 +233,15 @@ func _handle_mouse_button(event: InputEventMouseButton):
             return
         var mouse_pos = event.global_position
         var hex = _pixel_to_hex(mouse_pos.x, mouse_pos.y)
-        if hex != null and main_map.tile_data[hex.row][hex.col]["in_influence"]:
-            main_map._show_context_menu(hex.row, hex.col, mouse_pos)
-            _hide_tooltip()
+        if hex != null:
+            if main_map.tile_data[hex.row][hex.col]["in_influence"]:
+                # Гекс в Кольце Влияния - меню строительства улучшений
+                main_map.show_context_menu(hex.row, hex.col, mouse_pos)
+                _hide_tooltip()
+            else:
+                # Гекс в Регионе - меню разведки/покупки
+                main_map.show_context_menu(hex.row, hex.col, mouse_pos)
+                _hide_tooltip()
 
     if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
         if popup_menu.visible:
@@ -282,6 +285,15 @@ func _handle_mouse_motion(event: InputEventMouseMotion):
             _tooltip_visible = false
         if hex != null:
             main_map.update_tooltip_text(hex.row, hex.col)
+
+    # Обновляем подсветку чанка при наведении на гексы вне Кольца Влияния
+    var h = _pixel_to_hex(event.global_position.x, event.global_position.y)
+    if h != null and not main_map.tile_data[h.row][h.col].get("in_influence", false):
+        expansion_manager.update_hovered_chunk(h.row, h.col)
+        map_renderer.queue_redraw()
+    else:
+        expansion_manager.clear_hovered_chunk()
+        map_renderer.queue_redraw()
 
 func _hide_tooltip():
     hex_tooltip.visible = false
