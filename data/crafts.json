@@ -105,6 +105,7 @@
       "name": "Ткачество (ткань)",
       "produced_in": [ "weaver_house" ],
       "resources": { "cheese": 2 },
+      // заменить cheese на группу текстильных растений
       "result": { "clothes": 1 },
       "time": 4.0,
       "unlock_tech": "weaving",
