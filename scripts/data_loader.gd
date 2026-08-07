@@ -47,8 +47,11 @@ func load_all_data():
     product_groups = {}
     product_group_names = {}
     for pg in merged_data.get("product_groups", []):
-        product_groups[pg["id"]] = pg["products"]
-        product_group_names[pg["id"]] = pg.get("name", pg["id"])
+        if pg is Dictionary:
+            var group_id = pg.get("id", "")
+            if not group_id.is_empty():
+                product_groups[group_id] = pg.get("products", [])
+                product_group_names[group_id] = pg.get("name", group_id)
 
 func _load_all_json_files(folder_path: String) -> Dictionary:
     var result = {}

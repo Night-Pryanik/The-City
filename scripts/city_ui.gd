@@ -129,6 +129,7 @@ func _update_data_cache():
         "crafts_data": GameData.crafts,
         "built_buildings": CityData.city_built_buildings,
         "products": GameData.products,
+        "raw_resources": GameData.raw_resources,
         "categories": GameData.categories,
     }
     resources_tab.update_data(data_cache)
@@ -190,6 +191,8 @@ func _switch_tab(tab_id: String):
     buildings_panel.visible = (tab_id == "buildings")
     trade_panel.visible = (tab_id == "trade")
     technologies_panel.visible = (tab_id == "technologies")
+    if ui_helpers:
+        ui_helpers.hide_group_tooltip()
 
     if tab_id == "buildings":
         buildings_tab.refresh_list()
@@ -261,7 +264,7 @@ func _update_food_label():
             for res_id in bdata["additional_cost"]:
                 var required = bdata["additional_cost"][res_id]
                 var available = storage.get(res_id, 0)
-                var res_name = data_cache.get("products", {}).get(res_id, {}).get("name", res_id)
+                var res_name = GameData.format_resource_name(res_id)
                 res_texts.append("%s: %d/%d" % [res_name, available, required])
             buildings_tab.food_label.text = "Доп. ресурсы: " + ", ".join(res_texts)
         else:
@@ -280,13 +283,15 @@ func _on_build_requested(building_id: String):
     emit_signal("build_requested", building_id)
 
 func _on_building_detail_requested(building_id: String):
-    building_panel.open(building_id, data_cache)
+    var panel_data = data_cache.duplicate()
+    panel_data["ui_helpers"] = ui_helpers
+    building_panel.open(building_id, panel_data)
 
 func _on_research_requested(tech_id: String):
     emit_signal("research_requested", tech_id)
 
 func _process(delta):
-    var mouse_pos = get_global_mouse_position()
+    var mouse_pos = get_viewport().get_mouse_position()
 
     # Тултип для переключателей еды
     var hovered_food = false
@@ -375,6 +380,8 @@ func _input(event: InputEvent):
 
 func _close_ui():
     ui_helpers.set_message("")
+    if ui_helpers:
+        ui_helpers.hide_group_tooltip()
     if building_panel:
         building_panel.hide()
     hide()

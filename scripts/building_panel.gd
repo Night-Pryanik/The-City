@@ -6,12 +6,16 @@ extends Control
 
 var building_id: String = ""
 var products: Dictionary = {}
+var raw_resources: Dictionary = {}
 var buildings_data: Array = []
 var crafts_data: Array = []
+var ui_helpers: Node
 
 var panel: Panel
 var title_label: Label
 var info_label: Label
+var costs_label: Label
+var costs_container: VBoxContainer
 var slots_container: VBoxContainer
 
 var icon_textures: Dictionary = {}
@@ -64,6 +68,17 @@ func _ready():
     info_label = Label.new()
     vbox.add_child(info_label)
 
+    # Блок "Затраты" — отдельный узел, чтобы тултип для групповых ресурсов
+    # срабатывал только при наведении на конкретную кнопку.
+    costs_label = Label.new()
+    costs_label.text = "Затраты:"
+    costs_label.add_theme_font_size_override("font_size", 16)
+    vbox.add_child(costs_label)
+
+    costs_container = VBoxContainer.new()
+    costs_container.add_theme_constant_override("separation", 4)
+    vbox.add_child(costs_container)
+
     var slots_title = Label.new()
     slots_title.text = "Слоты производства:"
     vbox.add_child(slots_title)
@@ -84,7 +99,9 @@ func _ready():
 func open(building_id_arg: String, data: Dictionary):
     building_id = building_id_arg
     products = data.get("products", {})
+    raw_resources = data.get("raw_resources", {})
     crafts_data = data.get("crafts_data", [])
+    ui_helpers = data.get("ui_helpers", null)
     # Сбрасываем ширину панели к базовой, чтобы она не оставалась широкой от предыдущего здания
     panel.custom_minimum_size.x = 460
     # Задаём размер корневого Control = размер viewport, чтобы оверлей покрывал всё
@@ -119,15 +136,10 @@ func _refresh():
     else:
         title_label.text = building_name
 
-    var info_text = "Зданий: %d" % indices.size()
-    if bdata:
-        info_text += "\nСтоимость в еде: %d" % bdata.get("cost_food", 0)
-        if bdata.has("additional_cost"):
-            info_text += "\nСтоимость доп. ресурсов:"
-            for res_id in bdata["additional_cost"]:
-                var res_name = products.get(res_id, {}).get("name", res_id)
-                info_text += "\n  %s: %d" % [res_name, bdata["additional_cost"][res_id]]
-    info_label.text = info_text
+    info_label.text = "Зданий: %d" % indices.size()
+
+    # Заполняем блок "Затраты"
+    _refresh_costs(bdata)
 
     # Очищаем старые слоты
     for child in slots_container.get_children():
@@ -306,6 +318,73 @@ func _refresh():
     for popup in popups:
         popup.min_size.x = popup_width
 
+# Заполняет блок "Затраты" — отдельные строки для еды и каждого ресурса.
+# Групповые ресурсы (@...) становятся кнопками с тултипом.
+func _refresh_costs(bdata):
+    # Очищаем старые строки
+    for child in costs_container.get_children():
+        child.queue_free()
+
+    if not bdata:
+        costs_label.visible = false
+        return
+
+    var has_costs = false
+
+    # Стоимость в еде
+    var cost_food = bdata.get("cost_food", 0)
+    if cost_food > 0:
+        var food_row = HBoxContainer.new()
+        food_row.add_theme_constant_override("separation", 6)
+        var food_label = Label.new()
+        food_label.text = "В еде: %d" % cost_food
+        food_row.add_child(food_label)
+        costs_container.add_child(food_row)
+        has_costs = true
+
+    # Дополнительные ресурсы
+    if bdata.has("additional_cost"):
+        for res_id in bdata["additional_cost"]:
+            var amount = bdata["additional_cost"][res_id]
+            var row = HBoxContainer.new()
+            row.add_theme_constant_override("separation", 6)
+
+            if GameData.is_group_key(res_id):
+                # Групповой ресурс — кнопка с тултипом
+                var group_btn = Button.new()
+                group_btn.text = "%s: %d" % [GameData.format_resource_name(res_id), amount]
+                group_btn.flat = true
+                group_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+                group_btn.mouse_filter = Control.MOUSE_FILTER_STOP
+                group_btn.mouse_entered.connect(_on_group_hover.bind(group_btn, res_id))
+                group_btn.mouse_exited.connect(_on_group_exit)
+                row.add_child(group_btn)
+            else:
+                # Обычный ресурс — просто текст
+                var res_label = Label.new()
+                res_label.text = "%s: %d" % [GameData.format_resource_name(res_id), amount]
+                row.add_child(res_label)
+
+            costs_container.add_child(row)
+            has_costs = true
+
+    costs_label.visible = has_costs
+
+# Показывает тултип для группового ресурса при наведении на кнопку
+func _on_group_hover(button: Button, res_id: String):
+    if ui_helpers:
+        ui_helpers.show_group_tooltip(
+            get_global_mouse_position(),
+            res_id,
+            _get_all_resources(),
+            icon_paths
+        )
+
+# Скрывает тултип при отводе курсора
+func _on_group_exit():
+    if ui_helpers:
+        ui_helpers.hide_group_tooltip()
+
 func _setup_assignments_listener():
     # Подключаемся к сигналу изменения назначений горожан, чтобы обновлять
     # панель в реальном времени (например, когда новый житель автоматически
@@ -451,6 +530,8 @@ func _input(event: InputEvent):
             return
         # Клик вне панели (по затемнению) закрывает её
         if not panel.get_global_rect().has_point(event.global_position):
+            if ui_helpers:
+                ui_helpers.hide_group_tooltip()
             hide()
             get_viewport().set_input_as_handled()
 
@@ -486,4 +567,15 @@ func _get_icon_texture(icon_file: String) -> Texture2D:
     return null
 
 func _on_close_pressed():
+    if ui_helpers:
+        ui_helpers.hide_group_tooltip()
     hide()
+
+# Возвращает объединённый словарь всех ресурсов (сырьё + товары)
+func _get_all_resources() -> Dictionary:
+    var all = {}
+    for key in raw_resources:
+        all[key] = raw_resources[key]
+    for key in products:
+        all[key] = products[key]
+    return all
