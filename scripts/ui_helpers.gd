@@ -64,6 +64,7 @@ func setup(main_ui: Control, message_lbl: Label):
 
     group_tooltip_content = VBoxContainer.new()
     group_tooltip_content.add_theme_constant_override("separation", 4)
+    group_tooltip_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
     group_tooltip_panel.add_child(group_tooltip_content)
 
     var group_style = StyleBoxFlat.new()
@@ -103,6 +104,7 @@ func show_group_tooltip(mouse_pos: Vector2, group_key: String, products_data: Di
     title.text = group_name
     title.add_theme_font_size_override("font_size", 16)
     title.add_theme_color_override("font_color", Color.WHITE)
+    title.mouse_filter = Control.MOUSE_FILTER_IGNORE
     group_tooltip_content.add_child(title)
     
     # Список продуктов (по ID, чтобы можно было найти данные продукта)
@@ -110,6 +112,9 @@ func show_group_tooltip(mouse_pos: Vector2, group_key: String, products_data: Di
         var pdata = products_data.get(prod_id, {})
         var row = HBoxContainer.new()
         row.add_theme_constant_override("separation", 6)
+        # Тултип не должен перехватывать клики, чтобы можно было
+        # выбирать рецепты в слотах производства под ним.
+        row.mouse_filter = Control.MOUSE_FILTER_IGNORE
         
         # Иконка
         var icon_name = pdata.get("icon", "")
@@ -121,11 +126,13 @@ func show_group_tooltip(mouse_pos: Vector2, group_key: String, products_data: Di
                 icon_rect.custom_minimum_size = Vector2(24, 24)
                 icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
                 icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
+                icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
                 row.add_child(icon_rect)
         
         var label = Label.new()
         label.text = pdata.get("name", prod_id)
         label.add_theme_color_override("font_color", Color.WHITE)
+        label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         row.add_child(label)
         
         group_tooltip_content.add_child(row)

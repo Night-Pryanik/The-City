@@ -247,23 +247,33 @@ func _refresh():
 
             for craft_id in available:
                 var craft_name = craft_id
+                var craft_resources = {}
                 var craft_result = {}
                 for c in crafts_data:
                     if c["id"] == craft_id:
                         craft_name = c.get("name", craft_id)
+                        craft_resources = c.get("resources", {})
                         craft_result = c.get("result", {})
                         break
                 # Формируем текст пункта для расчёта ширины
-                var item_text = craft_name
+                var item_text = ""
+                if not craft_resources.is_empty():
+                    var res_names = []
+                    for res_id in craft_resources:
+                        res_names.append(GameData.format_resource_name(res_id))
+                    item_text = ", ".join(res_names)
                 if not craft_result.is_empty():
                     var result_names = []
                     for prod_id in craft_result:
                         var pdata = products.get(prod_id, {})
                         result_names.append(pdata.get("name", prod_id))
-                    item_text = "%s -> %s" % [craft_name, ", ".join(result_names)]
+                    if item_text != "":
+                        item_text += " -> "
+                    item_text += ", ".join(result_names)
                 all_item_texts.append(item_text)
-                if craft_result.size() > max_item_icons:
-                    max_item_icons = craft_result.size()
+                var icon_count = craft_resources.size() + craft_result.size()
+                if icon_count > max_item_icons:
+                    max_item_icons = icon_count
 
                 # Пункт списка — Button с содержимым и встроенной подсветкой при наведении
                 var item_btn = Button.new()
@@ -281,7 +291,7 @@ func _refresh():
                 item_btn.add_theme_stylebox_override("pressed", hover_style)
                 item_btn.add_theme_stylebox_override("focus", hover_style)
 
-                var content = _make_craft_content(craft_name, craft_result)
+                var content = _make_craft_content(craft_name, craft_resources, craft_result)
                 content.set_anchors_preset(Control.PRESET_FULL_RECT)
                 content.offset_left = 8
                 content.offset_right = -8
@@ -304,8 +314,8 @@ func _refresh():
         var w = font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
         if w > max_text_width:
             max_text_width = w
-    # Ширина панели = текст + иконка (24) + отступы (40) + метка слота (70) + запас (40)
-    var needed_width = max_text_width + 24 + 40 + 70 + 40
+    # Ширина панели = текст + иконки (24 каждая) + отступы (40) + метка слота (70) + запас (40)
+    var needed_width = max_text_width + max_item_icons * 24 + 40 + 70 + 40
     # Не даём панели выйти за пределы viewport
     var max_panel_width = get_viewport_rect().size.x - 40
     if needed_width > max_panel_width:
@@ -371,7 +381,7 @@ func _refresh_costs(bdata):
     costs_label.visible = has_costs
 
 # Показывает тултип для группового ресурса при наведении на кнопку
-func _on_group_hover(button: Button, res_id: String):
+func _on_group_hover(control: Control, res_id: String):
     if ui_helpers:
         ui_helpers.show_group_tooltip(
             get_global_mouse_position(),
@@ -443,25 +453,83 @@ func _on_craft_item_selected(b_index: int, slot_idx: int, craft_id: String, popu
         bld["slots"] = slots
         _update_slot_button(button, craft_id)
     popup.hide()
+    if ui_helpers:
+        ui_helpers.hide_group_tooltip()
     CityData.emit_signal("city_updated")
 
-# Строит содержимое строки: "Название рецепта -> [иконка] Продукт, [иконка] Продукт"
-func _make_craft_content(craft_name: String, craft_result: Dictionary) -> HBoxContainer:
+# Строит содержимое строки: "[иконка] Требуемый ресурс [xN] -> [иконка] Продукт [xN]"
+# Для групповых ресурсов (@...) — подпись с тултипом.
+# Если ресурсы и результат пусты (рецепт "Пусто"), показываем название рецепта.
+func _make_craft_content(craft_name: String, craft_resources: Dictionary, craft_result: Dictionary) -> HBoxContainer:
     var content = HBoxContainer.new()
     content.add_theme_constant_override("separation", 6)
     content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     content.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-    var craft_label = Label.new()
-    craft_label.text = craft_name
-    craft_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    if not craft_result.is_empty():
-        craft_label.text += " ->"
-    content.add_child(craft_label)
+    # Рецепт без ресурсов и результата (например, "Пусто") — показываем только название
+    if craft_resources.is_empty() and craft_result.is_empty():
+        var empty_label = Label.new()
+        empty_label.text = craft_name
+        empty_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        content.add_child(empty_label)
+        return content
 
+    # Требуемые ресурсы
+    var first_res = true
+    for res_id in craft_resources:
+        if not first_res:
+            var sep_label = Label.new()
+            sep_label.text = "+"
+            sep_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+            sep_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+            content.add_child(sep_label)
+        first_res = false
+
+        if GameData.is_group_key(res_id):
+            # Групповой ресурс — подпись с тултипом.
+            # Используем Label с MOUSE_FILTER_PASS, чтобы наведение показывало
+            # тултип, а клик проходил к родительской кнопке (выбор рецепта).
+            var group_label = Label.new()
+            group_label.text = GameData.format_resource_name(res_id)
+            group_label.mouse_filter = Control.MOUSE_FILTER_PASS
+            group_label.mouse_entered.connect(_on_group_hover.bind(group_label, res_id))
+            group_label.mouse_exited.connect(_on_group_exit)
+            content.add_child(group_label)
+        else:
+            # Обычный ресурс — иконка + название
+            var icon_name = _get_resource_icon(res_id)
+            var tex = _get_icon_texture(icon_name)
+            if tex:
+                var icon_rect = TextureRect.new()
+                icon_rect.texture = tex
+                icon_rect.custom_minimum_size = Vector2(24, 24)
+                icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+                icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
+                icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+                content.add_child(icon_rect)
+            var res_label = Label.new()
+            res_label.text = _get_resource_name(res_id)
+            res_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+            content.add_child(res_label)
+        var amount = craft_resources[res_id]
+        if amount > 1:
+            var amount_label = Label.new()
+            amount_label.text = "x%d" % amount
+            amount_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+            amount_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+            content.add_child(amount_label)
+
+    # Стрелка
+    if not craft_resources.is_empty() and not craft_result.is_empty():
+        var arrow_label = Label.new()
+        arrow_label.text = "->"
+        arrow_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+        arrow_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        content.add_child(arrow_label)
+
+    # Производимые продукты
     var first_prod = true
     for prod_id in craft_result:
-        var pdata = products.get(prod_id, {})
         if not first_prod:
             var sep_label = Label.new()
             sep_label.text = ","
@@ -470,6 +538,7 @@ func _make_craft_content(craft_name: String, craft_result: Dictionary) -> HBoxCo
             content.add_child(sep_label)
         first_prod = false
 
+        var pdata = products.get(prod_id, {})
         var icon_name = pdata.get("icon", "")
         var tex = _get_icon_texture(icon_name)
         if tex:
@@ -497,16 +566,18 @@ func _make_craft_content(craft_name: String, craft_result: Dictionary) -> HBoxCo
 # Обновляет содержимое кнопки выбора рецепта: иконки рисуются рядом с продуктами, а не у левого края
 func _update_slot_button(button, craft_id: String):
     var craft_name = craft_id
+    var craft_resources = {}
     var craft_result = {}
     for c in crafts_data:
         if c["id"] == craft_id:
             craft_name = c.get("name", craft_id)
+            craft_resources = c.get("resources", {})
             craft_result = c.get("result", {})
             break
     # Удаляем старое содержимое кнопки
     for child in button.get_children():
         child.queue_free()
-    var content = _make_craft_content(craft_name, craft_result)
+    var content = _make_craft_content(craft_name, craft_resources, craft_result)
     content.set_anchors_preset(Control.PRESET_FULL_RECT)
     content.offset_left = 8
     content.offset_right = -8
@@ -579,3 +650,19 @@ func _get_all_resources() -> Dictionary:
     for key in products:
         all[key] = products[key]
     return all
+
+# Возвращает имя иконки ресурса (из товаров или сырья)
+func _get_resource_icon(res_id: String) -> String:
+    if products.has(res_id):
+        return products[res_id].get("icon", "")
+    if raw_resources.has(res_id):
+        return raw_resources[res_id].get("icon", "")
+    return ""
+
+# Возвращает человекочитаемое имя ресурса (из товаров или сырья)
+func _get_resource_name(res_id: String) -> String:
+    if products.has(res_id):
+        return products[res_id].get("name", res_id)
+    if raw_resources.has(res_id):
+        return raw_resources[res_id].get("name", res_id)
+    return res_id
