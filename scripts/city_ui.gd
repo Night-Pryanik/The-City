@@ -252,25 +252,7 @@ func _update_food_label():
     if buildings_tab.has_method("update_food_label"):
         buildings_tab.update_food_label()
 
-    # Обновляем food_label для дополнительных ресурсов
-    if buildings_tab.selected_building_id != "":
-        var bdata = null
-        for b in data_cache.get("buildings_data", []):
-            if b["id"] == buildings_tab.selected_building_id:
-                bdata = b
-                break
-        if bdata and bdata.has("additional_cost"):
-            var res_texts = []
-            for res_id in bdata["additional_cost"]:
-                var required = bdata["additional_cost"][res_id]
-                var available = storage.get(res_id, 0)
-                var res_name = GameData.format_resource_name(res_id)
-                res_texts.append("%s: %d/%d" % [res_name, available, required])
-            buildings_tab.food_label.text = "Доп. ресурсы: " + ", ".join(res_texts)
-        else:
-            buildings_tab.food_label.text = ""
-    else:
-        buildings_tab.food_label.text = ""
+    # Дополнительные ресурсы теперь отображаются в панели деталей здания
 
 func update_food_label():
     _update_food_label()

@@ -21,6 +21,10 @@ var food_label: Label
 var hsplit: HSplitContainer
 var last_built_count: int = -1
 
+var recipes_scroll: ScrollContainer
+var recipes_container: VBoxContainer
+var recipes_title: Label
+
 var resume_icon: Texture2D
 var pause_icon: Texture2D
 var info_icon: Texture2D
@@ -54,6 +58,26 @@ func setup(item_list: ItemList, name_lbl: Label, cost_lbl: Label, recipes_lbl: L
     building_recipes_label.text = "Слотов производства:"
     building_recipes_label.add_theme_font_size_override("font_size", 16)
 
+    # Создаём контейнер для списка рецептов (вертикальный скролл под заголовком слотов)
+    var parent = building_recipes_label.get_parent()
+
+    # Заголовок списка рецептов (добавляем ПЕРЕД скроллом, чтобы он был сверху)
+    recipes_title = Label.new()
+    recipes_title.text = "Доступные рецепты:"
+    recipes_title.add_theme_font_size_override("font_size", 16)
+    recipes_title.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+    recipes_title.visible = false
+    parent.add_child(recipes_title)
+
+    recipes_scroll = ScrollContainer.new()
+    recipes_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    parent.add_child(recipes_scroll)
+
+    recipes_container = VBoxContainer.new()
+    recipes_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    recipes_container.add_theme_constant_override("separation", 6)
+    recipes_scroll.add_child(recipes_container)
+
 func update_data(data: Dictionary):
     products = data.get("products", {})
     raw_resources = data.get("raw_resources", {})
@@ -71,23 +95,18 @@ func refresh_list():
     if ui_helpers:
         ui_helpers.set_message("")
         ui_helpers.hide_group_tooltip()
-    food_label.text = ""
+    food_label.visible = false
     building_name_label.text = ""
     building_cost_label.text = ""
     building_recipes_label.visible = false
+    recipes_title.visible = false
+    recipes_scroll.visible = false
+    _clear_recipes_list()
     for bld in buildings_data:
         # Фильтруем здания: показываем только те, что открыты изученными технологиями
         if not CityData.is_building_unlocked(bld["id"]):
             continue
         var item_text = bld["name"]
-        var cost_food = bld.get("cost_food", 0)
-        item_text += " (еда: %d" % cost_food
-        if bld.has("additional_cost"):
-            for res_id in bld["additional_cost"]:
-                var res_name = GameData.format_resource_name(res_id)
-                var amount = bld["additional_cost"][res_id]
-                item_text += ", %s: %d" % [res_name, amount]
-        item_text += ")"
         buildings_item_list.add_item(item_text)
     center_split_offset()
 
@@ -267,31 +286,31 @@ func _on_building_selected(idx: int):
         selected_building_id = filtered_buildings[idx]["id"]
         var bdata = filtered_buildings[idx]
         building_name_label.text = bdata["name"]
-        building_cost_label.text = "Стоимость в еде: " + str(bdata.get("cost_food", 0))
+
+        # Собираем полную стоимость: еда + дополнительные ресурсы
+        var cost_parts = []
+        var cost_food = bdata.get("cost_food", 0)
+        if cost_food > 0:
+            cost_parts.append("еда: %d" % cost_food)
+        if bdata.has("additional_cost"):
+            for res_id in bdata["additional_cost"]:
+                var amount = bdata["additional_cost"][res_id]
+                var res_name = GameData.format_resource_name(res_id)
+                cost_parts.append("%s: %d" % [res_name, amount])
+        building_cost_label.text = "Стоимость: " + ", ".join(cost_parts)
 
         # Показываем количество слотов производства
         var slots = bdata.get("production_slots", 0)
         building_recipes_label.text = "Слотов производства: %d" % int(slots)
         building_recipes_label.visible = true
 
-        if bdata.has("additional_cost"):
-            var res_texts = []
-            for res_id in bdata["additional_cost"]:
-                var required = bdata["additional_cost"][res_id]
-                var available = city_storage.get(res_id, 0)
-                var res_name = GameData.format_resource_name(res_id)
-                res_texts.append("%s: %d/%d" % [res_name, available, required])
-            food_label.text = "Доп. ресурсы: " + ", ".join(res_texts)
-        else:
-            food_label.text = ""
-
         build_button.disabled = false
-        get_parent().update_food_label()
+        _refresh_recipes_list(bdata)
     else:
         selected_building_id = ""
         build_button.disabled = true
-        food_label.text = ""
         building_recipes_label.visible = false
+        _clear_recipes_list()
 
 func _on_build_pressed():
     if selected_building_id == "":
@@ -331,6 +350,196 @@ func _on_build_pressed():
         return
 
     emit_signal("build_requested", selected_building_id)
+
+# Очищает список рецептов
+func _clear_recipes_list():
+    for child in recipes_container.get_children():
+        child.queue_free()
+
+# Заполняет список доступных рецептов для выбранного здания
+func _refresh_recipes_list(bdata: Dictionary):
+    _clear_recipes_list()
+
+    if not bdata:
+        recipes_title.visible = false
+        recipes_scroll.visible = false
+        return
+
+    recipes_title.visible = true
+    recipes_scroll.visible = true
+    var building_id = bdata.get("id", "")
+    var available_recipes = []
+
+    # Собираем рецепты, доступные для этого здания (с учётом технологий)
+    for craft in crafts_data:
+        if craft["id"] == "empty":
+            continue
+        if not CityData.can_craft_in(craft["id"], building_id):
+            continue
+        var craft_unlock_tech = craft.get("unlock_tech", "")
+        if craft_unlock_tech != "" and not CityData.is_tech_unlocked(craft_unlock_tech):
+            continue
+        available_recipes.append(craft)
+
+    # Сортируем по имени
+    available_recipes.sort_custom(func(a, b):
+        return a.get("name", "") < b.get("name", "")
+    )
+
+    # Для отображения иконок ресурсов/продуктов нужен словарь products + raw_resources
+    var products_data = {}
+    for pid in products:
+        products_data[pid] = products[pid]
+    for rid in raw_resources:
+        products_data[rid] = raw_resources[rid]
+
+    var icon_textures = {}
+    var icon_paths = {}
+    _build_icon_index_local(icon_paths)
+
+    for craft in available_recipes:
+        var craft_name = craft.get("name", craft["id"])
+        var craft_resources = craft.get("resources", {})
+        var craft_result = craft.get("result", {})
+
+        var row = HBoxContainer.new()
+        row.add_theme_constant_override("separation", 4)
+        row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+        # Название рецепта
+        var name_label = Label.new()
+        name_label.text = craft_name + ":"
+        name_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+        name_label.custom_minimum_size = Vector2(130, 0)
+        name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        row.add_child(name_label)
+
+        # Ресурсы -> результат в одну строку
+        var content = _make_craft_content_local("", craft_resources, craft_result, products_data, icon_paths, icon_textures)
+        content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        row.add_child(content)
+
+        recipes_container.add_child(row)
+
+# Строит содержимое строки рецепта: "[иконка] ресурс [xN] + ... -> [иконка] продукт [xN]"
+func _make_craft_content_local(craft_name: String, craft_resources: Dictionary, craft_result: Dictionary, products_data: Dictionary, icon_paths: Dictionary, icon_textures: Dictionary) -> HBoxContainer:
+    var content = HBoxContainer.new()
+    content.add_theme_constant_override("separation", 4)
+    content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+    if not craft_resources.is_empty():
+        var first = true
+        for res_id in craft_resources:
+            if not first:
+                var sep = Label.new()
+                sep.text = "+"
+                sep.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+                sep.mouse_filter = Control.MOUSE_FILTER_IGNORE
+                content.add_child(sep)
+            first = false
+
+            var pdata = products_data.get(res_id, {})
+            var icon_name = pdata.get("icon", "")
+            var tex = _get_icon_texture_local(icon_name, icon_paths, icon_textures)
+            if tex:
+                var icon_rect = TextureRect.new()
+                icon_rect.texture = tex
+                icon_rect.custom_minimum_size = Vector2(20, 20)
+                icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+                icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
+                icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+                content.add_child(icon_rect)
+
+            var res_label = Label.new()
+            res_label.text = GameData.format_resource_name(res_id)
+            res_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+            content.add_child(res_label)
+
+            var amount = craft_resources[res_id]
+            if amount > 1:
+                var amount_label = Label.new()
+                amount_label.text = "x%d" % amount
+                amount_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+                amount_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+                content.add_child(amount_label)
+
+    if not craft_resources.is_empty() and not craft_result.is_empty():
+        var arrow = Label.new()
+        arrow.text = "->"
+        arrow.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+        arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        content.add_child(arrow)
+
+    if not craft_result.is_empty():
+        var first = true
+        for prod_id in craft_result:
+            if not first:
+                var sep = Label.new()
+                sep.text = ","
+                sep.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+                sep.mouse_filter = Control.MOUSE_FILTER_IGNORE
+                content.add_child(sep)
+            first = false
+
+            var pdata = products_data.get(prod_id, {})
+            var icon_name = pdata.get("icon", "")
+            var tex = _get_icon_texture_local(icon_name, icon_paths, icon_textures)
+            if tex:
+                var icon_rect = TextureRect.new()
+                icon_rect.texture = tex
+                icon_rect.custom_minimum_size = Vector2(20, 20)
+                icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+                icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
+                icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+                content.add_child(icon_rect)
+
+            var prod_label = Label.new()
+            prod_label.text = GameData.format_resource_name(prod_id)
+            prod_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+            content.add_child(prod_label)
+
+            var amount = craft_result[prod_id]
+            if amount > 1:
+                var amount_label = Label.new()
+                amount_label.text = "x%d" % amount
+                amount_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+                amount_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+                content.add_child(amount_label)
+
+    return content
+
+func _get_icon_texture_local(icon_file: String, icon_paths: Dictionary, icon_textures: Dictionary) -> Texture2D:
+    if icon_file.is_empty():
+        return null
+    if icon_textures.has(icon_file):
+        return icon_textures[icon_file]
+    if icon_paths.has(icon_file):
+        var tex = load(icon_paths[icon_file])
+        icon_textures[icon_file] = tex
+        return tex
+    return null
+
+func _build_icon_index_local(out_paths: Dictionary):
+    out_paths.clear()
+    _scan_folder_local("res://icons", out_paths)
+
+func _scan_folder_local(folder_path: String, out_paths: Dictionary):
+    var dir = DirAccess.open(folder_path)
+    if dir == null:
+        return
+    dir.list_dir_begin()
+    var file_name = dir.get_next()
+    while file_name != "":
+        if dir.current_is_dir():
+            _scan_folder_local(folder_path.path_join(file_name), out_paths)
+        else:
+            var full_path = folder_path.path_join(file_name)
+            if not out_paths.has(file_name):
+                out_paths[file_name] = full_path
+        file_name = dir.get_next()
+    dir.list_dir_end()
 
 func _build_icon_index():
     icon_paths.clear()
