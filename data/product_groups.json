@@ -1,5 +1,6 @@
 {
-// "Здесь перечисляются группы продуктов, которые можно использовать в рецептах крафта вместо одиночных продуктов"
+// Здесь перечисляются группы продуктов, которые можно использовать в рецептах крафта вместо одиночных продуктов
+// Не путать с groups.json: там группы для бонусов, здесь — только подстановка в рецепты
   "product_groups": [
     {
       "id": "millable_grains",
@@ -10,6 +11,16 @@
       "id": "construction_materials",
       "name": "Строительные материалы",
       "products": [ "basalt", "tuff", "sandstone", "marble", "granite", "limestone", "bricks" ]
+    },
+    {
+      "id": "oil_crops",
+      "name": "Масличные культуры",
+      "products": [ "sunflower", "sesame", "rapeseed", "flax", "soybean", "peanut" ]
+    },
+    {
+      "id": "textile_crops",
+      "name": "Текстильные культуры",
+      "products": [ "cotton", "flax", "hemp", "jute", "ramie" ]
     }
   ]
 }

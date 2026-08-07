@@ -13,6 +13,46 @@
       "category": "material",
       "unlock_tech": "leatherworking",
       "icon": "leather.png"
+    },
+    {
+      "id": "flax",
+      "name": "Лён",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "weaving",
+      "icon": "flax.png"
+    },
+    {
+      "id": "cotton",
+      "name": "Хлопок",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "weaving",
+      "icon": "cotton.png"
+    },
+    {
+      "id": "hemp",
+      "name": "Конопля",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "weaving",
+      "icon": "hemp.png"
+    },
+    {
+      "id": "jute",
+      "name": "Джут",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "weaving",
+      "icon": "jute.png"
+    },
+    {
+      "id": "ramie",
+      "name": "Рами",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "weaving",
+      "icon": "ramie.png"
     }
   ]
 }

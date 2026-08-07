@@ -104,8 +104,7 @@
       "id": "fabric_clothes",
       "name": "Ткачество (ткань)",
       "produced_in": [ "weaver_house" ],
-      "resources": { "cheese": 2 },
-      // заменить cheese на группу текстильных растений
+      "resources": { "@textile_crops": 2 },
       "result": { "clothes": 1 },
       "time": 4.0,
       "unlock_tech": "weaving",
@@ -160,6 +159,16 @@
       "time": 5.0,
       "unlock_tech": "winegrowing",
       "description": "Варит вино из винограда"
+    },
+    {
+      "id": "vegetable_oil",
+      "name": "Изготовление растительного масла",
+      "produced_in": [ "hand_oil_press" ],
+      "resources": { "@oil_crops": 2 },
+      "result": { "vegetable_oil": 1 },
+      "time": 5.0,
+      "unlock_tech": "oil_making",
+      "description": "Выжимает масло из семян и плодов масличных культур"
     }
   ]
 }

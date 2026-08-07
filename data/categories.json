@@ -4,6 +4,7 @@
     { "id": "food", "name": "Еда" },
     { "id": "fruits", "name": "Фрукты" },
     { "id": "drinks", "name": "Напитки" },
+    { "id": "technical_plants", "name": "Технические культуры" },
     { "id": "luxury", "name": "Роскошь" },
     { "id": "material", "name": "Материалы" },
     { "id": "construction_material", "name": "Стройматериалы" },

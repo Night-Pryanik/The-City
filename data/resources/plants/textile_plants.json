@@ -1,0 +1,82 @@
+{
+  "resources": [
+    {
+      "id": "flax_field",
+      "name": "Лён",
+      "type": "raw",
+      "category": "technical_plants",
+      "group": "textile_plants",
+      "subgroup": "fibers",
+      "allowed_terrains": [ "plain" ],
+      "improved_by": "plantation",
+      "produces": { "flax": 1, "feed": 4 },
+      "icon": "flax.png",
+      "color": [ 200, 200, 255 ]
+    },
+    {
+      "id": "cotton_field",
+      "name": "Хлопок",
+      "type": "raw",
+      "category": "technical_plants",
+      "group": "textile_plants",
+      "subgroup": "fibers",
+      "allowed_terrains": [ "plain" ],
+      "improved_by": "plantation",
+      "produces": { "cotton": 1, "feed": 4 },
+      "icon": "cotton.png",
+      "color": [ 255, 255, 255 ]
+    },
+    {
+      "id": "hemp_field",
+      "name": "Конопля",
+      "type": "raw",
+      "category": "technical_plants",
+      "group": "textile_plants",
+      "subgroup": "fibers",
+      "allowed_terrains": [ "plain" ],
+      "improved_by": "plantation",
+      "produces": { "hemp": 1, "feed": 4 },
+      "icon": "hemp.png",
+      "color": [ 100, 255, 100 ]
+    },
+    {
+      "id": "jute_field",
+      "name": "Джут",
+      "type": "raw",
+      "category": "technical_plants",
+      "group": "textile_plants",
+      "subgroup": "fibers",
+      "allowed_terrains": [ "plain" ],
+      "improved_by": "plantation",
+      "produces": { "jute": 1, "feed": 4 },
+      "icon": "jute.png",
+      "color": [ 200, 150, 100 ]
+    },
+    {
+      "id": "ramie_field",
+      "name": "Рами",
+      "type": "raw",
+      "category": "technical_plants",
+      "group": "textile_plants",
+      "subgroup": "fibers",
+      "allowed_terrains": [ "plain" ],
+      "improved_by": "plantation",
+      "produces": { "ramie": 1, "feed": 4 },
+      "icon": "ramie.png",
+      "color": [ 150, 200, 150 ]
+    },
+    {
+      "id": "sisal_field",
+      "name": "Сизаль",
+      "type": "raw",
+      "category": "technical_plants",
+      "group": "textile_plants",
+      "subgroup": "fibers",
+      "allowed_terrains": [ "plain" ],
+      "improved_by": "plantation",
+      "produces": { "sisal": 1, "feed": 4 },
+      "icon": "sisal.png",
+      "color": [ 200, 255, 200 ]
+    }
+  ]
+}

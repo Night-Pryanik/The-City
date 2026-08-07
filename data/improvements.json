@@ -62,6 +62,15 @@
       "cost_food": 4,
       "build_time": 4.0,
       "unlock_tech": "pottery"
+    },
+    {
+      "id": "plantation",
+      "name": "Плантация",
+      "icon": "plantation.png",
+      "color": [ 34, 139, 34 ],
+      "cost_food": 5,
+      "build_time": 5.0,
+      "unlock_tech": "plantations"
     }
   ]
 }

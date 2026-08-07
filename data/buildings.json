@@ -105,6 +105,15 @@
       "production_slots": 2.0,
       "unlock_tech": "winegrowing",
       "default_recipes": [ "wine" ]
+    },
+    {
+      "id": "hand_oil_press",
+      "name": "Ручная маслодавка",
+      "cost_food": 5.0,
+      "icon": "hand_oil_press.png",
+      "production_slots": 1.0,
+      "unlock_tech": "oil_making",
+      "default_recipes": [ "vegetable_oil" ]
     }
   ]
 }

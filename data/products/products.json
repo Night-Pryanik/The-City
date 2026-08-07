@@ -1,49 +1,53 @@
 {
-    "resources": [
-        {
-            "id": "tools",
-            "name": "Инструменты",
-            "type": "product",
-            "category": "other",
-            "icon": "tools.png"
-        },
-        {
-            "id": "weapons",
-            "name": "Оружие",
-            "type": "product",
-            "category": "other",
-            "icon": "weapons.png"
-        },
-        {
-            "id": "pottery",
-            "name": "Глиняная посуда",
-            "type": "product",
-            "category": "household_items",
-            "icon": "pottery.png"
-        },
-        {
-            "id": "fabric_clothes",
-            "name": "Тканевая одежда",
-            "type": "product",
-            "category": "clothes",
-            "unlock_tech": "weaving",
-            "icon": "fabric_clothes.png"
-        },
-        {
-            "id": "wool_clothes",
-            "name": "Шерстяная одежда",
-            "type": "product",
-            "category": "clothes",
-            "unlock_tech": "weaving",
-            "icon": "wool_clothes.png"
-        },
-        {
-            "id": "leather_clothes",
-            "name": "Кожаная одежда",
-            "type": "product",
-            "category": "clothes",
-            "unlock_tech": "leatherworking",
-            "icon": "leather_clothes.png"
-        }
-    ]
+  "resources": [
+    { "id": "tools", "name": "Инструменты", "type": "product", "category": "other", "icon": "tools.png" },
+    { "id": "weapons", "name": "Оружие", "type": "product", "category": "other", "icon": "weapons.png" },
+    {
+      "id": "pottery",
+      "name": "Глиняная посуда",
+      "type": "product",
+      "category": "household_items",
+      "icon": "pottery.png"
+    },
+    {
+      "id": "fabric_clothes",
+      "name": "Тканевая одежда",
+      "type": "product",
+      "category": "clothes",
+      "unlock_tech": "weaving",
+      "icon": "fabric_clothes.png"
+    },
+    {
+      "id": "wool_clothes",
+      "name": "Шерстяная одежда",
+      "type": "product",
+      "category": "clothes",
+      "unlock_tech": "weaving",
+      "icon": "wool_clothes.png"
+    },
+    {
+      "id": "leather_clothes",
+      "name": "Кожаная одежда",
+      "type": "product",
+      "category": "clothes",
+      "unlock_tech": "leatherworking",
+      "icon": "leather_clothes.png"
+    },
+    {
+      "id": "vegetable_oil",
+      "name": "Растительное масло",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "oil_making",
+      "icon": "vegetable_oil.png"
+    },
+    {
+      "id": "wine",
+      "name": "Вино",
+      "type": "product",
+      "category": "drinks",
+      "unlock_tech": "winegrowing",
+      "icon": "wine.png"
+    }
+  ]
 }

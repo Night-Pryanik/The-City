@@ -1,5 +1,6 @@
 {
   "resources": [
-    { "id": "grapes", "name": "Виноград", "type": "product", "category": "fruits", "icon": "grapes.png" }
+    { "id": "grapes", "name": "Виноград", "type": "product", "category": "fruits", "icon": "grapes.png" },
+    { "id": "olives", "name": "Оливки", "type": "product", "category": "fruits", "icon": "olives.png" }
   ]
 }
