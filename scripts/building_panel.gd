@@ -21,6 +21,8 @@ var slots_container: VBoxContainer
 var icon_textures: Dictionary = {}
 var icon_paths: Dictionary = {}
 var popups_list: Array = []
+var popup_map: Dictionary = {}
+var open_popup = null
 
 func _ready():
     _build_icon_index()
@@ -97,6 +99,16 @@ func _ready():
     vbox.add_child(close_btn)
 
 func open(building_id_arg: String, data: Dictionary):
+    # Очищаем старые попапы при открытии (контент мог устареть, например,
+    # после изучения новых технологий). При периодическом _refresh() попапы
+    # будут переиспользованы и не закроются.
+    for key in popup_map.keys():
+        var old_popup = popup_map[key]
+        if is_instance_valid(old_popup):
+            old_popup.queue_free()
+    popup_map.clear()
+    popups_list.clear()
+    open_popup = null
     building_id = building_id_arg
     products = data.get("products", {})
     raw_resources = data.get("raw_resources", {})
@@ -145,18 +157,13 @@ func _refresh():
     for child in slots_container.get_children():
         child.queue_free()
 
-    # Удаляем старые попапы
-    for p in popups_list:
-        if is_instance_valid(p):
-            p.queue_free()
-    popups_list.clear()
-
     var main_map = get_tree().root.find_child("MainMap", true, false)
     var tm = main_map.get_node("TownsfolkManager") if main_map else null
 
     var all_item_texts = []
     var max_item_icons = 0
     var popups = []
+    var new_popup_map = {}
     var building_number = 0
     for b_index in indices:
         building_number += 1
@@ -227,88 +234,46 @@ func _refresh():
             select_btn.clip_text = true
             _update_slot_button(select_btn, current)
 
-            # Кастомный попап со списком рецептов (поддерживает несколько иконок результата)
-            # ВАЖНО: попап (Window) нужно добавить в дерево ДО добавления содержимого,
-            # иначе layout не пересчитывается.
-            var popup = PopupPanel.new()
-            var popup_style = StyleBoxFlat.new()
-            popup_style.bg_color = Color(0.15, 0.15, 0.15, 1.0)
-            popup_style.set_border_width_all(1)
-            popup_style.border_color = Color(0.4, 0.4, 0.4, 1.0)
-            popup_style.set_corner_radius_all(4)
-            popup.add_theme_stylebox_override("panel", popup_style)
-            add_child(popup)
-            popup.hide()
-
-            var popup_vbox = VBoxContainer.new()
-            popup_vbox.set_anchors_preset(Control.PRESET_FULL_RECT)
-            popup_vbox.offset_left = 6
-            popup_vbox.offset_top = 6
-            popup_vbox.offset_right = -6
-            popup_vbox.offset_bottom = -6
-            popup_vbox.add_theme_constant_override("separation", 2)
-            popup.add_child(popup_vbox)
-
-            for craft_id in available:
-                var craft_name = craft_id
-                var craft_resources = {}
-                var craft_result = {}
-                for c in crafts_data:
-                    if c["id"] == craft_id:
-                        craft_name = c.get("name", craft_id)
-                        craft_resources = c.get("resources", {})
-                        craft_result = c.get("result", {})
-                        break
-                # Формируем текст пункта для расчёта ширины
-                var item_text = ""
-                if not craft_resources.is_empty():
-                    var res_names = []
-                    for res_id in craft_resources:
-                        res_names.append(GameData.format_resource_name(res_id))
-                    item_text = ", ".join(res_names)
-                if not craft_result.is_empty():
-                    var result_names = []
-                    for prod_id in craft_result:
-                        var pdata = products.get(prod_id, {})
-                        result_names.append(pdata.get("name", prod_id))
-                    if item_text != "":
-                        item_text += " -> "
-                    item_text += ", ".join(result_names)
-                all_item_texts.append(item_text)
-                var icon_count = craft_resources.size() + craft_result.size()
-                if icon_count > max_item_icons:
-                    max_item_icons = icon_count
-
-                # Пункт списка — Button с содержимым и встроенной подсветкой при наведении
-                var item_btn = Button.new()
-                item_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-                item_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-                item_btn.custom_minimum_size.y = 30
-                item_btn.focus_mode = Control.FOCUS_NONE
-
-                var normal_style = StyleBoxFlat.new()
-                normal_style.bg_color = Color(0, 0, 0, 0)
-                var hover_style = StyleBoxFlat.new()
-                hover_style.bg_color = Color(0.35, 0.35, 0.35, 1.0)
-                item_btn.add_theme_stylebox_override("normal", normal_style)
-                item_btn.add_theme_stylebox_override("hover", hover_style)
-                item_btn.add_theme_stylebox_override("pressed", hover_style)
-                item_btn.add_theme_stylebox_override("focus", hover_style)
-
-                var content = _make_craft_content(craft_name, craft_resources, craft_result)
-                content.set_anchors_preset(Control.PRESET_FULL_RECT)
-                content.offset_left = 8
-                content.offset_right = -8
-                item_btn.add_child(content)
-                item_btn.pressed.connect(_on_craft_item_selected.bind(b_index, i, craft_id, popup, select_btn))
-                popup_vbox.add_child(item_btn)
-
-            select_btn.pressed.connect(_on_slot_button_pressed.bind(popup, select_btn))
-            row.add_child(select_btn)
-
-            slots_container.add_child(row)
+            var popup_key = "%d:%d" % [b_index, i]
+            var popup = null
+            # Переиспользуем существующий попап, если он есть
+            if popup_map.has(popup_key) and is_instance_valid(popup_map[popup_key]):
+                popup = popup_map[popup_key]
+                # Попап существует — заменяем его содержимое с актуальной кнопкой
+                for child in popup.get_children():
+                    popup.remove_child(child)
+                    child.free()
+                var fill_data = _fill_popup_content(popup, b_index, i, available, select_btn)
+                for t in fill_data["item_texts"]:
+                    all_item_texts.append(t)
+                if int(fill_data["max_icons"]) > max_item_icons:
+                    max_item_icons = int(fill_data["max_icons"])
+            else:
+                # Кастомный попап со списком рецептов (поддерживает несколько иконок результата)
+                # ВАЖНО: попап (Window) нужно добавить в дерево ДО добавления содержимого,
+                # иначе layout не пересчитывается.
+                popup = PopupPanel.new()
+                var popup_style = StyleBoxFlat.new()
+                popup_style.bg_color = Color(0.15, 0.15, 0.15, 1.0)
+                popup_style.set_border_width_all(1)
+                popup_style.border_color = Color(0.4, 0.4, 0.4, 1.0)
+                popup_style.set_corner_radius_all(4)
+                popup.add_theme_stylebox_override("panel", popup_style)
+                popup.set_meta("popup_key", popup_key)
+                add_child(popup)
+                popup.hide()
+                # Заполняем содержимое попапа и получаем данные для расчёта ширины
+                var fill_data = _fill_popup_content(popup, b_index, i, available, select_btn)
+                for t in fill_data["item_texts"]:
+                    all_item_texts.append(t)
+                if int(fill_data["max_icons"]) > max_item_icons:
+                    max_item_icons = int(fill_data["max_icons"])
             popups.append(popup)
             popups_list.append(popup)
+            new_popup_map[popup_key] = popup
+            select_btn.pressed.connect(_on_slot_button_pressed.bind(b_index, i, popup, select_btn))
+            row.add_child(select_btn)
+            slots_container.add_child(row)
 
     # Динамически расширяем панель, если текст пунктов не помещается
     var max_text_width = 0
@@ -331,6 +296,89 @@ func _refresh():
     var popup_width = panel.custom_minimum_size.x - 70 - 40
     for popup in popups:
         popup.min_size.x = popup_width
+
+    # Обновляем popup_map и удаляем попапы, которые больше не нужны
+    for key in popup_map.keys():
+        if not new_popup_map.has(key):
+            var old_popup = popup_map[key]
+            if is_instance_valid(old_popup):
+                old_popup.queue_free()
+    popup_map = new_popup_map
+    popups_list.clear()
+    for key in popup_map.keys():
+        if is_instance_valid(popup_map[key]):
+            popups_list.append(popup_map[key])
+
+# Заполняет содержимое попапа списком доступных рецептов.
+# Возвращает словарь с текстами пунктов и максимальным количеством иконок
+# (нужно для расчёта ширины панели в _refresh()).
+func _fill_popup_content(popup, b_index: int, slot_idx: int, available: Array, button) -> Dictionary:
+    var result = {"item_texts": [], "max_icons": 0}
+
+    var popup_vbox = VBoxContainer.new()
+    popup_vbox.set_anchors_preset(Control.PRESET_FULL_RECT)
+    popup_vbox.offset_left = 6
+    popup_vbox.offset_top = 6
+    popup_vbox.offset_right = -6
+    popup_vbox.offset_bottom = -6
+    popup_vbox.add_theme_constant_override("separation", 2)
+    popup.add_child(popup_vbox)
+
+    for craft_id in available:
+        var craft_name = craft_id
+        var craft_resources = {}
+        var craft_result = {}
+        for c in crafts_data:
+            if c["id"] == craft_id:
+                craft_name = c.get("name", craft_id)
+                craft_resources = c.get("resources", {})
+                craft_result = c.get("result", {})
+                break
+        # Формируем текст пункта для расчёта ширины
+        var item_text = ""
+        if not craft_resources.is_empty():
+            var res_names = []
+            for res_id in craft_resources:
+                res_names.append(GameData.format_resource_name(res_id))
+            item_text = ", ".join(res_names)
+        if not craft_result.is_empty():
+            var result_names = []
+            for prod_id in craft_result:
+                var pdata = products.get(prod_id, {})
+                result_names.append(pdata.get("name", prod_id))
+            if item_text != "":
+                item_text += " -> "
+            item_text += ", ".join(result_names)
+        result["item_texts"].append(item_text)
+        var icon_count = craft_resources.size() + craft_result.size()
+        if icon_count > int(result["max_icons"]):
+            result["max_icons"] = icon_count
+
+        # Пункт списка — Button с содержимым и встроенной подсветкой при наведении
+        var item_btn = Button.new()
+        item_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+        item_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        item_btn.custom_minimum_size.y = 30
+        item_btn.focus_mode = Control.FOCUS_NONE
+
+        var normal_style = StyleBoxFlat.new()
+        normal_style.bg_color = Color(0, 0, 0, 0)
+        var hover_style = StyleBoxFlat.new()
+        hover_style.bg_color = Color(0.35, 0.35, 0.35, 1.0)
+        item_btn.add_theme_stylebox_override("normal", normal_style)
+        item_btn.add_theme_stylebox_override("hover", hover_style)
+        item_btn.add_theme_stylebox_override("pressed", hover_style)
+        item_btn.add_theme_stylebox_override("focus", hover_style)
+
+        var content = _make_craft_content(craft_name, craft_resources, craft_result)
+        content.set_anchors_preset(Control.PRESET_FULL_RECT)
+        content.offset_left = 8
+        content.offset_right = -8
+        item_btn.add_child(content)
+        item_btn.pressed.connect(_on_craft_item_selected.bind(b_index, slot_idx, craft_id, popup, button))
+        popup_vbox.add_child(item_btn)
+
+    return result
 
 # Заполняет блок "Затраты" — отдельные строки для еды и каждого ресурса.
 # Групповые ресурсы (@...) становятся кнопками с тултипом.
@@ -413,8 +461,20 @@ func _setup_assignments_listener():
         CityData.city_updated.connect(_on_assignments_changed)
 
 func _on_assignments_changed():
-    if visible:
-        _refresh()
+    if not visible:
+        return
+    # Если открыт попап со списком рецептов — НЕ вызываем _refresh(), чтобы
+    # попап не перестраивался и не закрывался при каждом игровом тике.
+    # (city_updated эмитится каждые PRODUCTION_INTERVAL секунд из do_tick.)
+    if open_popup != null:
+        return
+    # Если открыт tooltip списка продуктов (группового ресурса) - тоже не вызываем
+    # _refresh(), чтобы он не исчезал при пересоздании строк затрат.
+    if ui_helpers != null and is_instance_valid(ui_helpers):
+        var gtp = ui_helpers.group_tooltip_panel
+        if is_instance_valid(gtp) and gtp.visible:
+            return
+    _refresh()
 
 func _on_toggle_pressed(b_index: int, enable: bool):
     var main_map = get_tree().root.find_child("MainMap", true, false)
@@ -433,6 +493,11 @@ func _on_toggle_pressed(b_index: int, enable: bool):
     else:
         tm.remove_townsfolk(b_index)
 
+    # Скрываем открытые попапы перед пересозданием слотов, чтобы они
+    # не ссылались на удаляемые элементы и не оставались висячими.
+    for p in popups_list:
+        if is_instance_valid(p) and p.visible:
+            p.hide()
     _refresh()
 
 func _get_toggle_icon(icon_name: String) -> Texture2D:
@@ -440,7 +505,7 @@ func _get_toggle_icon(icon_name: String) -> Texture2D:
         return load("res://icons/building_resume.png")
     return load("res://icons/building_pause.png")
 
-func _on_slot_button_pressed(popup, button):
+func _on_slot_button_pressed(b_index: int, slot_idx: int, popup, button):
     # Закрываем другие открытые попапы
     for p in popups_list:
         if is_instance_valid(p) and p != popup and p.visible:
@@ -450,6 +515,7 @@ func _on_slot_button_pressed(popup, button):
     # Позиционируем попап сразу под кнопкой
     popup.position = button.global_position + Vector2(0, button.size.y)
     popup.popup()
+    open_popup = popup
 
 func _on_craft_item_selected(b_index: int, slot_idx: int, craft_id: String, popup, button):
     if b_index < 0 or b_index >= CityData.city_built_buildings.size():
@@ -461,6 +527,7 @@ func _on_craft_item_selected(b_index: int, slot_idx: int, craft_id: String, popu
         bld["slots"] = slots
         _update_slot_button(button, craft_id)
     popup.hide()
+    open_popup = null
     if ui_helpers:
         ui_helpers.hide_group_tooltip()
     CityData.emit_signal("city_updated")
@@ -596,7 +663,7 @@ func _input(event: InputEvent):
         return
     if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
         # Если открыт какой-либо попап, клик вне панели закрывает только попап
-        var open_popup = null
+        open_popup = null
         for p in popups_list:
             if is_instance_valid(p) and p.visible:
                 open_popup = p
