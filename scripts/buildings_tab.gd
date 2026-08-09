@@ -24,6 +24,7 @@ var hsplit: HSplitContainer
 var last_built_count: int = -1
 var building_progress_label: Label
 var building_progress_bar: ProgressBar
+var _cached_build_manager = null
 
 var recipes_scroll: ScrollContainer
 var recipes_container: VBoxContainer
@@ -66,6 +67,8 @@ func setup(item_list: ItemList, name_lbl: Label, cost_lbl: Label, recipes_lbl: L
         if not cancel_button.pressed.is_connected(_on_cancel_build_pressed):
             cancel_button.pressed.connect(_on_cancel_build_pressed)
 
+    set_process(true)
+
     _build_icon_index()
 
     if not buildings_item_list.item_selected.is_connected(_on_building_selected):
@@ -97,6 +100,19 @@ func setup(item_list: ItemList, name_lbl: Label, cost_lbl: Label, recipes_lbl: L
     recipes_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     recipes_container.add_theme_constant_override("separation", 6)
     recipes_scroll.add_child(recipes_container)
+
+func _process(delta):
+    # Обновляем прогресс-бар строительства зданий каждый кадр,
+    # чтобы он был плавным (как прогресс-бары улучшений на карте).
+    # Работаем только когда прогресс-бар реально виден на экране.
+    if building_progress_bar and building_progress_bar.is_visible_in_tree():
+        update_construction_progress()
+
+func _get_build_manager():
+    if _cached_build_manager == null or not is_instance_valid(_cached_build_manager):
+        var main_map = get_tree().root.find_child("MainMap", true, false)
+        _cached_build_manager = main_map.get_node("BuildManager") if main_map and main_map.has_node("BuildManager") else null
+    return _cached_build_manager
 
 func update_data(data: Dictionary):
     products = data.get("products", {})
@@ -431,14 +447,13 @@ func update_construction_controls():
             build_button.disabled = _has_active_building_construction()
         return
 
-    var main_map = get_tree().root.find_child("MainMap", true, false)
-    if not main_map or not main_map.has_node("BuildManager"):
+    var bm = _get_build_manager()
+    if not bm:
         _hide_construction_controls()
         if build_button:
             build_button.disabled = _has_active_building_construction()
         return
 
-    var bm = main_map.get_node("BuildManager")
     var paused = bm.is_building_build_paused(build_key)
     if pause_button:
         pause_button.visible = true
@@ -456,11 +471,10 @@ func _on_toggle_build_pause_pressed():
     if build_key == "":
         return
 
-    var main_map = get_tree().root.find_child("MainMap", true, false)
-    if not main_map or not main_map.has_node("BuildManager"):
+    var bm = _get_build_manager()
+    if not bm:
         return
 
-    var bm = main_map.get_node("BuildManager")
     if bm.is_building_build_paused(build_key):
         if bm.resume_building_build(build_key):
             if ui_helpers:
@@ -488,9 +502,8 @@ func _confirm_cancel_construction(build_key: String):
     dialog.confirmed.connect(func(): _cancel_construction(build_key))
 
 func _cancel_construction(build_key: String):
-    var main_map = get_tree().root.find_child("MainMap", true, false)
-    if main_map and main_map.has_node("BuildManager"):
-        var bm = main_map.get_node("BuildManager")
+    var bm = _get_build_manager()
+    if bm:
         bm.cancel_building_build(build_key)
     CityData.building_construction.erase(build_key)
     if ui_helpers:
@@ -504,12 +517,11 @@ func update_construction_progress():
         _hide_construction_progress()
         return
 
-    var main_map = get_tree().root.find_child("MainMap", true, false)
-    if not main_map or not main_map.has_node("BuildManager"):
+    var bm = _get_build_manager()
+    if not bm:
         _hide_construction_progress()
         return
 
-    var bm = main_map.get_node("BuildManager")
     var build_key = ""
     for key in CityData.building_construction.keys():
         var construction_data = CityData.building_construction[key]
