@@ -39,7 +39,8 @@ func save_game():
             "is_demolishing": main_map.is_demolishing,
             "demolition_hex": main_map.demolition_hex,
             "demolition_timer": main_map.demolition_timer
-        }
+        },
+        "rivers": main_map.river_manager.serialize_rivers()
     }
     var file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
     if file:

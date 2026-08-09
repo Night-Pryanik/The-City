@@ -73,6 +73,9 @@ func _draw():
     # ФАЗА 2: Рисуем дороги (ПЕРЕД иконками ресурсов и улучшений)
     _draw_all_roads()
 
+    # ФАЗА 2.75: Рисуем реки
+    _draw_rivers()
+
     # ФАЗА 2.5: Рисуем подсветку для разведки и покупки (всегда активна)
     _draw_exploration_highlights()
 
@@ -339,6 +342,27 @@ func _draw_all_roads():
         
         var points = _generate_natural_road(row1, col1, row2, col2, main_map.HEX_RADIUS)
         draw_polyline(points, Color(0.55, 0.35, 0.15), 6, true)
+
+func _draw_rivers():
+    if main_map == null:
+        return
+    if not main_map.has_node("RiverManager"):
+        return
+    var river_manager = main_map.get_node("RiverManager")
+    var river_data = river_manager.get_rivers()
+    if river_data.is_empty():
+        return
+    var color = river_manager.RIVER_COLOR
+    var width = river_manager.RIVER_WIDTH
+    var offset_x = main_map.offset_x + main_map.scroll_offset.x
+    var offset_y = main_map.offset_y + main_map.scroll_offset.y
+    for river in river_data:
+        if river.size() < 2:
+            continue
+        var points = PackedVector2Array()
+        for pt in river:
+            points.append(Vector2(pt.x + offset_x, pt.y + offset_y))
+        draw_polyline(points, color, width, true)
 
 func _draw_roads(_row: int, _col: int):
     pass

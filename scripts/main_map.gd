@@ -59,6 +59,7 @@ var tooltip_delay: float = 0.5
 @onready var map_renderer = $MapRenderer
 @onready var road_manager = $RoadManager
 @onready var expansion_manager = $ExpansionManager
+@onready var river_manager = $RiverManager
 @onready var worker_manager = $WorkerManager
 @onready var townsfolk_manager = $TownsfolkManager
 @onready var settings_menu = preload("res://scenes/settings_menu.tscn").instantiate()
@@ -147,6 +148,9 @@ func _ready():
         _update_population_hud()
 
         road_manager.rebuild_roads_from_existing(tile_data, REGION_ROWS, REGION_COLS)
+
+        # Восстанавливаем реки из сохранения
+        river_manager.load_rivers(SaveManager.saved_data.get("rivers", []))
 
         SaveManager.is_loaded = false
         SaveManager.saved_data.clear()
@@ -348,6 +352,9 @@ func _initialize_map():
                     tile["terrain_icon"] = t.icon
                 else:
                     tile["terrain_icon"] = ""
+
+    # Генерируем реки (визуальные)
+    river_manager.generate_rivers(REGION_ROWS, REGION_COLS, HEX_RADIUS)
 
 func _ensure_minimum_resource(category: String):
     for row in range(INFLUENCE_START_ROW, INFLUENCE_END_ROW + 1):

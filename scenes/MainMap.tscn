@@ -11,6 +11,7 @@
 [ext_resource type="Script" uid="uid://clfermtbeqck1" path="res://scripts/worker_manager.gd" id="9_nmjbi"]
 [ext_resource type="Script" uid="uid://f5r75bb5rgdq" path="res://scripts/townsfolk_manager.gd" id="10_yd4n3"]
 [ext_resource type="Script" uid="uid://diqugyctdt728" path="res://scripts/InputHandler.gd" id="11_wehgl"]
+[ext_resource type="Script" path="res://scripts/river_manager.gd" id="12_rvmgr"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_o7tci"]
 bg_color = Color(0.19607843, 0.19607843, 0.19607843, 1)
@@ -130,3 +131,6 @@ script = ExtResource("10_yd4n3")
 
 [node name="InputHandler" type="Node" parent="." unique_id=1067302669]
 script = ExtResource("11_wehgl")
+
+[node name="RiverManager" type="Node" parent="." unique_id=2061907300]
+script = ExtResource("12_rvmgr")

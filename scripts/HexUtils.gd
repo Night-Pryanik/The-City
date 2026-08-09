@@ -44,14 +44,14 @@ static func get_neighbors_odd_r(row: int, col: int, max_rows: int, max_cols: int
     var directions = []
     if row % 2 == 0:
         directions = [
-            {"r": 0, "c": -1}, {"r": 0, "c": 1},
-            {"r": -1, "c": -1}, {"r": -1, "c": 0},
-            {"r": 1, "c": -1}, {"r": 1, "c": 0}
+            {"r": 0, "c": - 1}, {"r": 0, "c": 1},
+            {"r": - 1, "c": - 1}, {"r": - 1, "c": 0},
+            {"r": 1, "c": - 1}, {"r": 1, "c": 0}
         ]
     else:
         directions = [
-            {"r": 0, "c": -1}, {"r": 0, "c": 1},
-            {"r": -1, "c": 0}, {"r": -1, "c": 1},
+            {"r": 0, "c": - 1}, {"r": 0, "c": 1},
+            {"r": - 1, "c": 0}, {"r": - 1, "c": 1},
             {"r": 1, "c": 0}, {"r": 1, "c": 1}
         ]
     for d in directions:
@@ -60,3 +60,8 @@ static func get_neighbors_odd_r(row: int, col: int, max_rows: int, max_cols: int
         if nr >= 0 and nr < max_rows and nc >= 0 and nc < max_cols:
             neighbors.append({"row": nr, "col": nc})
     return neighbors
+
+static func hex_vertex(row: int, col: int, vidx: int, radius: float) -> Vector2:
+    var center = hex_center(row, col, radius)
+    var verts = hex_vertices(center.x, center.y, radius)
+    return verts[vidx]
