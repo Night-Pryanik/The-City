@@ -223,6 +223,52 @@ func remove_build(row: int, col: int):
     var key = str(row) + "," + str(col)
     active_builds.erase(key)
 
+# Восстанавливает стройки улучшений из сохранения.
+func restore_builds(data: Dictionary):
+    active_builds.clear()
+    if data.is_empty():
+        return
+    for key in data.keys():
+        var build_data = data[key]
+        if not (build_data is Dictionary):
+            continue
+        # Валидируем: стройка должна иметь координаты и imp_id
+        if not build_data.has("row") or not build_data.has("col") or not build_data.has("imp_id"):
+            continue
+        active_builds[String(key)] = {
+            "progress": float(build_data.get("progress", 0.0)),
+            "work_cost": float(build_data.get("work_cost", 1.0)),
+            "imp_id": String(build_data.get("imp_id", "")),
+            "animal_id": build_data.get("animal_id"),
+            "imp_name": String(build_data.get("imp_name", build_data.get("imp_id", ""))),
+            "row": int(build_data.get("row", 0)),
+            "col": int(build_data.get("col", 0)),
+            "status": String(build_data.get("status", "active")),
+            "allocated_labor": float(build_data.get("allocated_labor", 0.0))
+        }
+
+# Восстанавливает стройки зданий из сохранения.
+func restore_building_builds(data: Dictionary):
+    active_building_builds.clear()
+    if data.is_empty():
+        return
+    for key in data.keys():
+        var build_data = data[key]
+        if not (build_data is Dictionary):
+            continue
+        # Валидируем: стройка должна иметь building_id
+        if not build_data.has("building_id"):
+            continue
+        active_building_builds[String(key)] = {
+            "progress": float(build_data.get("progress", 0.0)),
+            "work_cost": float(build_data.get("work_cost", 1.0)),
+            "building_id": String(build_data.get("building_id", "")),
+            "building_name": String(build_data.get("building_name", build_data.get("building_id", ""))),
+            "build_key": String(build_data.get("build_key", key)),
+            "status": String(build_data.get("status", "active")),
+            "allocated_labor": float(build_data.get("allocated_labor", 0.0))
+        }
+
 func is_building_build_active(build_key: String) -> bool:
     return active_building_builds.has(build_key)
 

@@ -108,6 +108,17 @@ func _ready():
                 col_array.append(tile)
             tile_data.append(col_array)
 
+        # Восстанавливаем стройки улучшений и зданий
+        build_manager.restore_builds(SaveManager.saved_data.get("active_builds", {}))
+        build_manager.restore_building_builds(SaveManager.saved_data.get("active_building_builds", {}))
+
+        # Восстанавливаем процесс сноса улучшения
+        var demolition_state = SaveManager.saved_data.get("demolition_state", {})
+        if not demolition_state.is_empty():
+            is_demolishing = demolition_state.get("is_demolishing", false)
+            demolition_hex = demolition_state.get("demolition_hex", {})
+            demolition_timer = float(demolition_state.get("demolition_timer", 0.0))
+
         # Восстанавливаем назначения рабочих и горожан
         worker_manager.load_assignments(SaveManager.saved_data.get("worker_assignments", []))
         townsfolk_manager.load_assignments(SaveManager.saved_data.get("townsfolk_assignments", []))

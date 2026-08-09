@@ -11,6 +11,7 @@ func save_game():
         printerr("Ошибка сохранения: MainMap не найден")
         return
 
+    var build_manager = main_map.get_node_or_null("BuildManager")
     var data = {
         "city_storage": CityData.city_storage,
         "production_rates": CityData.production_rates,
@@ -30,7 +31,15 @@ func save_game():
         "food_per_citizen": CityData.food_per_citizen,
         "tile_data": _serialize_tile_data(main_map),
         "worker_assignments": main_map.worker_manager.serialize_assignments(),
-        "townsfolk_assignments": main_map.townsfolk_manager.serialize_assignments()
+        "townsfolk_assignments": main_map.townsfolk_manager.serialize_assignments(),
+        "active_builds": build_manager.active_builds if build_manager else {},
+        "active_building_builds": build_manager.active_building_builds if build_manager else {},
+        "building_construction": CityData.building_construction,
+        "demolition_state": {
+            "is_demolishing": main_map.is_demolishing,
+            "demolition_hex": main_map.demolition_hex,
+            "demolition_timer": main_map.demolition_timer
+        }
     }
     var file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
     if file:
@@ -100,6 +109,8 @@ func apply_loaded_data():
     CityData.idle_population = saved_data.get("idle_population", CityData.idle_population)
     CityData.food_for_new_settler = saved_data.get("food_for_new_settler", CityData.food_for_new_settler)
     CityData.food_per_citizen = saved_data.get("food_per_citizen", CityData.food_per_citizen)
+    # Восстанавливаем стройки зданий (прогресс их строительства хранится в build_manager)
+    CityData.building_construction = saved_data.get("building_construction", {})
     # tile_data будет восстановлен отдельно
 
 func new_game():
