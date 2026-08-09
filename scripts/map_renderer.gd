@@ -109,6 +109,11 @@ func _draw():
         )
         draw_colored_polygon(city_vertices, Color.YELLOW)
 
+    # ФАЗА 5: Рисуем прогресс-бары ПОВЕРХ всего (включая иконку города)
+    for row in range(main_map.REGION_ROWS):
+        for col in range(main_map.REGION_COLS):
+            _draw_progress_bars(row, col)
+
 func _draw_hex(row: int, col: int):
     var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
     var offset_x = main_map.offset_x + main_map.scroll_offset.x
@@ -199,32 +204,60 @@ func _draw_hex_overlays(row: int, col: int):
             var lock_rect = Rect2(lock_icon_pos.x - LOCK_ICON_SIZE / 2.0, lock_icon_pos.y - LOCK_ICON_SIZE / 2.0, LOCK_ICON_SIZE, LOCK_ICON_SIZE)
             draw_texture_rect(lock_texture, lock_rect, false)
 
-        # Прогресс-бар исследования технологии, которая открывает:
-        # 1) сам ресурс (tech_required), либо
-        # 2) улучшение, которым добывается этот ресурс (improved_by → unlock_tech)
-        var research_tech = CityData.current_research_tech_id
-        if research_tech != "" and tile.resource != null and _is_resource_revealed(tile):
-            var show_progress = false
-            if is_locked:
-                var res_tech = res_data.get("tech_required", "")
-                if res_tech == research_tech:
-                    show_progress = true
+
+    if in_influence and tile.improvement != null:
+        var has_worker = main_map.worker_manager.has_worker(row, col)
+        var imp_data = GameData.improvements.get(tile.improvement, {})
+        var imp_icon = imp_data.get("icon", "")
+        var icon_pos = Vector2(center.x, center.y - main_map.HEX_RADIUS * 0.75)
+        if imp_icon != "" and icon_textures.has(imp_icon):
+            var tex = icon_textures[imp_icon]
+            var icon_rect = Rect2(icon_pos.x - IMPROVEMENT_ICON_SIZE / 2.0, icon_pos.y - IMPROVEMENT_ICON_SIZE / 2.0, IMPROVEMENT_ICON_SIZE, IMPROVEMENT_ICON_SIZE)
+            if not has_worker:
+                draw_texture_rect(tex, icon_rect, false, Color(0.5, 0.5, 0.5))
             else:
-                # Ресурс открыт, но улучшение для него ещё не изучено
-                var imp_id = res_data.get("improved_by", "")
-                if imp_id != null and imp_id != "" and not CityData.is_improvement_unlocked(imp_id):
-                    var imp_unlock_tech = CityData.get_improvement_unlock_tech(imp_id)
-                    if imp_unlock_tech == research_tech:
-                        show_progress = true
-            if show_progress:
-                var bar_width = RESOURCE_ICON_SIZE
-                var bar_height = 6
-                var bar_x = center.x - bar_width / 2.0
-                var bar_y = center.y + RESOURCE_ICON_SIZE / 2.0 + 4
-                draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color(0.2, 0.2, 0.2))
-                var fill_width = bar_width * CityData.research_progress
-                draw_rect(Rect2(bar_x, bar_y, fill_width, bar_height), Color.GREEN)
-                draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color.WHITE, false)
+                draw_texture_rect(tex, icon_rect, false)
+        else:
+            if imp_data.has("color"):
+                var c = imp_data["color"]
+                var fallback_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
+                if not has_worker:
+                    fallback_color = Color(0.5, 0.5, 0.5)
+                draw_circle(icon_pos, IMPROVEMENT_ICON_SIZE / 2.5, fallback_color)
+
+func _draw_progress_bars(row: int, col: int):
+    var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
+    center.x += main_map.offset_x + main_map.scroll_offset.x
+    center.y += main_map.offset_y + main_map.scroll_offset.y
+
+    var tile = tile_data[row][col]
+
+    # Прогресс-бар исследования технологии, которая открывает:
+    # 1) сам ресурс (tech_required), либо
+    # 2) улучшение, которым добывается этот ресурс (improved_by → unlock_tech)
+    var research_tech = CityData.current_research_tech_id
+    if research_tech != "" and tile.resource != null and _is_resource_revealed(tile):
+        var show_progress = false
+        if _is_resource_locked(tile.resource):
+            var res_tech = GameData.raw_resources.get(tile.resource, {}).get("tech_required", "")
+            if res_tech == research_tech:
+                show_progress = true
+        else:
+            # Ресурс открыт, но улучшение для него ещё не изучено
+            var imp_id = GameData.raw_resources.get(tile.resource, {}).get("improved_by", "")
+            if imp_id != null and imp_id != "" and not CityData.is_improvement_unlocked(imp_id):
+                var imp_unlock_tech = CityData.get_improvement_unlock_tech(imp_id)
+                if imp_unlock_tech == research_tech:
+                    show_progress = true
+        if show_progress:
+            var bar_width = RESOURCE_ICON_SIZE
+            var bar_height = 6
+            var bar_x = center.x - bar_width / 2.0
+            var bar_y = center.y + RESOURCE_ICON_SIZE / 2.0 + 4
+            draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color(0.2, 0.2, 0.2))
+            var fill_width = bar_width * CityData.research_progress
+            draw_rect(Rect2(bar_x, bar_y, fill_width, bar_height), Color.GREEN)
+            draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color.WHITE, false)
 
     if main_map.build_manager.is_building(row, col):
         var progress_data = main_map.build_manager.get_progress(row, col)
@@ -250,26 +283,6 @@ func _draw_hex_overlays(row: int, col: int):
         draw_rect(Rect2(demo_bar_x, demo_bar_y, demo_bar_width, demo_bar_height), Color(0.2, 0.2, 0.2))
         draw_rect(Rect2(demo_bar_x, demo_bar_y, demo_bar_width * demolition_progress, demo_bar_height), Color(0.9, 0.3, 0.3))
         draw_rect(Rect2(demo_bar_x, demo_bar_y, demo_bar_width, demo_bar_height), Color.WHITE, false)
-
-    if in_influence and tile.improvement != null:
-        var has_worker = main_map.worker_manager.has_worker(row, col)
-        var imp_data = GameData.improvements.get(tile.improvement, {})
-        var imp_icon = imp_data.get("icon", "")
-        var icon_pos = Vector2(center.x, center.y - main_map.HEX_RADIUS * 0.75)
-        if imp_icon != "" and icon_textures.has(imp_icon):
-            var tex = icon_textures[imp_icon]
-            var icon_rect = Rect2(icon_pos.x - IMPROVEMENT_ICON_SIZE / 2.0, icon_pos.y - IMPROVEMENT_ICON_SIZE / 2.0, IMPROVEMENT_ICON_SIZE, IMPROVEMENT_ICON_SIZE)
-            if not has_worker:
-                draw_texture_rect(tex, icon_rect, false, Color(0.5, 0.5, 0.5))
-            else:
-                draw_texture_rect(tex, icon_rect, false)
-        else:
-            if imp_data.has("color"):
-                var c = imp_data["color"]
-                var fallback_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
-                if not has_worker:
-                    fallback_color = Color(0.5, 0.5, 0.5)
-                draw_circle(icon_pos, IMPROVEMENT_ICON_SIZE / 2.5, fallback_color)
 
     # --- Прогресс-бар для сбора дикоросов ---
     if main_map.is_foraging and main_map.foraging_hex.row == row and main_map.foraging_hex.col == col:
