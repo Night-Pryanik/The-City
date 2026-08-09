@@ -65,11 +65,7 @@ func _ready():
         $RightPanel/VBoxContainer/BuiltBuildingsList,
         $ContentPanel/BuildingsPanel/FoodLabel,
         $ContentPanel/BuildingsPanel/HSplitContainer,
-        ui_helpers,
-        $ContentPanel/BuildingsPanel/PauseConstructionButton,
-        $ContentPanel/BuildingsPanel/CancelConstructionButton,
-        $ContentPanel/BuildingsPanel/HSplitContainer/BuildingDetailsPanel/VBoxContainer/ConstructionProgressLabel,
-        $ContentPanel/BuildingsPanel/HSplitContainer/BuildingDetailsPanel/VBoxContainer/ConstructionProgressBar
+        ui_helpers
     )
     buildings_tab.build_requested.connect(_on_build_requested)
     buildings_tab.building_detail_requested.connect(_on_building_detail_requested)
@@ -161,10 +157,6 @@ func _refresh_light():
 
     resources_tab.update_values()
     buildings_tab.update_built_status()
-    if buildings_panel.visible and buildings_tab.has_method("update_construction_progress"):
-        buildings_tab.update_construction_progress()
-        if buildings_tab.has_method("update_construction_controls"):
-            buildings_tab.update_construction_controls()
 
 func _needs_full_refresh() -> bool:
     # Полное обновление требуется только при структурных изменениях:

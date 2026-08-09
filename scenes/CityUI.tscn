@@ -219,19 +219,6 @@ layout_mode = 2
 [node name="BuildingCostLabel" type="Label" parent="ContentPanel/BuildingsPanel/HSplitContainer/BuildingDetailsPanel/VBoxContainer" unique_id=1452654743]
 layout_mode = 2
 
-[node name="ConstructionProgressLabel" type="Label" parent="ContentPanel/BuildingsPanel/HSplitContainer/BuildingDetailsPanel/VBoxContainer" unique_id=2000000001]
-layout_mode = 2
-text = ""
-visible = false
-
-[node name="ConstructionProgressBar" type="ProgressBar" parent="ContentPanel/BuildingsPanel/HSplitContainer/BuildingDetailsPanel/VBoxContainer" unique_id=2000000002]
-layout_mode = 2
-max_value = 100.0
-value = 0.0
-show_percentage = false
-visible = false
-custom_minimum_size = Vector2(0, 14)
-
 [node name="BuildingRecipesLabel" type="Label" parent="ContentPanel/BuildingsPanel/HSplitContainer/BuildingDetailsPanel/VBoxContainer" unique_id=920025873]
 layout_mode = 2
 
@@ -247,32 +234,6 @@ offset_bottom = -53.0
 grow_vertical = 0
 text = "Построить"
 disabled = true
-
-[node name="PauseConstructionButton" type="Button" parent="ContentPanel/BuildingsPanel" unique_id=2000000010]
-layout_mode = 1
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_left = 114.0
-offset_top = -84.0
-offset_right = 246.0
-offset_bottom = -53.0
-grow_vertical = 0
-text = "Пауза"
-visible = false
-
-[node name="CancelConstructionButton" type="Button" parent="ContentPanel/BuildingsPanel" unique_id=2000000011]
-layout_mode = 1
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_left = 256.0
-offset_top = -84.0
-offset_right = 346.0
-offset_bottom = -53.0
-grow_vertical = 0
-text = "Отмена"
-visible = false
 
 [node name="TradePanel" type="Control" parent="ContentPanel" unique_id=730713259]
 visible = false

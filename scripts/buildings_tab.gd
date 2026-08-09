@@ -16,14 +16,11 @@ var building_name_label: Label
 var building_cost_label: Label
 var building_recipes_label: Label
 var build_button: Button
-var pause_button: Button
-var cancel_button: Button
 var built_buildings_list: Node
 var food_label: Label
 var hsplit: HSplitContainer
 var last_built_count: int = -1
-var building_progress_label: Label
-var building_progress_bar: ProgressBar
+var last_construction_count: int = -1
 var _cached_build_manager = null
 
 var recipes_scroll: ScrollContainer
@@ -37,35 +34,22 @@ var info_icon: Texture2D
 var icon_textures: Dictionary = {}
 var icon_paths: Dictionary = {}
 
+# Строки строящихся зданий: build_key -> { "row": HBoxContainer, "bar": ProgressBar, "pause_btn": Button }
+var construction_rows: Dictionary = {}
+
 signal build_requested(building_id: String)
 signal building_detail_requested(building_id: String)
 
-func setup(item_list: ItemList, name_lbl: Label, cost_lbl: Label, recipes_lbl: Label, btn: Button, built_list: Node, food_lbl: Label, splitter: HSplitContainer, helpers: Node, pause_btn: Button, cancel_btn: Button, progress_lbl: Label, progress_bar: ProgressBar):
+func setup(item_list: ItemList, name_lbl: Label, cost_lbl: Label, recipes_lbl: Label, btn: Button, built_list: Node, food_lbl: Label, splitter: HSplitContainer, helpers: Node):
     buildings_item_list = item_list
     building_name_label = name_lbl
     building_cost_label = cost_lbl
     building_recipes_label = recipes_lbl
     build_button = btn
-    pause_button = pause_btn
-    cancel_button = cancel_btn
     built_buildings_list = built_list
     food_label = food_lbl
     hsplit = splitter
     ui_helpers = helpers
-    building_progress_label = progress_lbl
-    building_progress_bar = progress_bar
-    if building_progress_label:
-        building_progress_label.visible = false
-    if building_progress_bar:
-        building_progress_bar.visible = false
-    if pause_button:
-        pause_button.visible = false
-        if not pause_button.pressed.is_connected(_on_toggle_build_pause_pressed):
-            pause_button.pressed.connect(_on_toggle_build_pause_pressed)
-    if cancel_button:
-        cancel_button.visible = false
-        if not cancel_button.pressed.is_connected(_on_cancel_build_pressed):
-            cancel_button.pressed.connect(_on_cancel_build_pressed)
 
     set_process(true)
 
@@ -102,11 +86,10 @@ func setup(item_list: ItemList, name_lbl: Label, cost_lbl: Label, recipes_lbl: L
     recipes_scroll.add_child(recipes_container)
 
 func _process(delta):
-    # Обновляем прогресс-бар строительства зданий каждый кадр,
-    # чтобы он был плавным (как прогресс-бары улучшений на карте).
-    # Работаем только когда прогресс-бар реально виден на экране.
-    if building_progress_bar and building_progress_bar.is_visible_in_tree():
-        update_construction_progress()
+    # Обновляем прогресс-бары строящихся зданий каждый кадр,
+    # чтобы они были плавными (как прогресс-бары улучшений на карте).
+    if construction_rows.size() > 0:
+        _update_construction_rows()
 
 func _get_build_manager():
     if _cached_build_manager == null or not is_instance_valid(_cached_build_manager):
@@ -137,7 +120,6 @@ func refresh_list():
     building_recipes_label.visible = false
     recipes_title.visible = false
     recipes_scroll.visible = false
-    _hide_construction_progress()
     _clear_recipes_list()
     for bld in buildings_data:
         # Фильтруем здания: показываем только те, что открыты изученными технологиями
@@ -149,9 +131,12 @@ func refresh_list():
 
 func update_built_status():
     # Лёгкое обновление: обновляем текст статуса без пересоздания строк.
-    if built_buildings.size() != last_built_count:
+    if built_buildings.size() != last_built_count or CityData.building_construction.size() != last_construction_count:
         refresh_built()
         return
+
+    # Обновляем прогресс-бары строящихся зданий
+    _update_construction_rows()
 
     var main_map = get_tree().root.find_child("MainMap", true, false)
     var tm = main_map.get_node("TownsfolkManager") if main_map else null
@@ -159,7 +144,7 @@ func update_built_status():
     # Группируем здания по id
     var groups = _group_buildings()
     for g in range(groups.size()):
-        var row = built_buildings_list.get_child(g)
+        var row = built_buildings_list.get_child(g + construction_rows.size())
         if row == null or row.get_child_count() < 2:
             continue
         var group = groups[g]
@@ -200,7 +185,12 @@ func update_built_status():
 func refresh_built():
     for child in built_buildings_list.get_children():
         child.queue_free()
+    construction_rows.clear()
     last_built_count = built_buildings.size()
+    last_construction_count = CityData.building_construction.size()
+
+    # Сначала строки строящихся зданий
+    _refresh_construction_rows()
 
     # Группируем однотипные здания
     var groups = _group_buildings()
@@ -254,6 +244,99 @@ func refresh_built():
 
         built_buildings_list.add_child(row)
     last_built_count = built_buildings.size()
+
+# Создаёт строки строящихся зданий в панели построенных зданий.
+func _refresh_construction_rows():
+    for build_key in CityData.building_construction.keys():
+        var construction_data = CityData.building_construction[build_key]
+        var building_id = construction_data.get("building_id", "")
+        var bdata = null
+        for b in buildings_data:
+            if b["id"] == building_id:
+                bdata = b
+                break
+        var base_name = bdata["name"] if bdata else building_id
+
+        var row = HBoxContainer.new()
+        row.add_theme_constant_override("separation", 6)
+        row.alignment = BoxContainer.ALIGNMENT_CENTER
+
+        var label = Label.new()
+        label.text = base_name
+        label.add_theme_color_override("font_color", Color(0.6, 0.8, 1.0))
+        label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+        label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+        row.add_child(label)
+
+        var bar = ProgressBar.new()
+        bar.custom_minimum_size = Vector2(80, 14)
+        bar.max_value = 100.0
+        bar.show_percentage = false
+        bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+        row.add_child(bar)
+
+        # Кнопка приостановки/возобновления строительства
+        var pause_btn = Button.new()
+        pause_btn.custom_minimum_size = Vector2(28, 28)
+        pause_btn.expand_icon = true
+        pause_btn.icon = _get_icon("pause")
+        pause_btn.tooltip_text = "Приостановить строительство"
+        pause_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+        pause_btn.pressed.connect(_on_construction_pause_pressed.bind(build_key))
+        row.add_child(pause_btn)
+
+        # Кнопка отмены строительства
+        var cancel_btn = Button.new()
+        cancel_btn.custom_minimum_size = Vector2(28, 28)
+        cancel_btn.text = "✕"
+        cancel_btn.tooltip_text = "Отменить строительство"
+        cancel_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+        cancel_btn.pressed.connect(_on_construction_cancel_pressed.bind(build_key))
+        row.add_child(cancel_btn)
+
+        built_buildings_list.add_child(row)
+        construction_rows[build_key] = {
+            "row": row,
+            "bar": bar,
+            "pause_btn": pause_btn,
+            "cancel_btn": cancel_btn
+        }
+
+# Обновляет прогресс-бары и кнопки строящихся зданий.
+func _update_construction_rows():
+    var bm = _get_build_manager()
+    if not bm:
+        return
+    for build_key in construction_rows.keys():
+        var row_data = construction_rows[build_key]
+        if not is_instance_valid(row_data["row"]):
+            continue
+        var progress_data = bm.get_building_build_progress(build_key)
+        if progress_data.is_empty():
+            continue
+
+        var work_cost = progress_data.get("work_cost", 1)
+        var progress_value = min(progress_data.get("progress", 0.0), work_cost)
+        var percent = 0.0
+        if work_cost > 0:
+            percent = progress_value / work_cost * 100.0
+        var status = progress_data.get("status", "active")
+        var status_text = "Строится"
+        if status == "paused":
+            status_text = "Приостановлено"
+
+        var bar = row_data["bar"]
+        bar.value = percent
+        bar.tooltip_text = "%s: %.0f%%" % [status_text, percent]
+
+        var pause_btn = row_data["pause_btn"]
+        if status == "paused":
+            pause_btn.icon = _get_icon("resume")
+            pause_btn.tooltip_text = "Возобновить строительство"
+        else:
+            pause_btn.icon = _get_icon("pause")
+            pause_btn.tooltip_text = "Приостановить строительство"
 
 # Группирует построенные здания по id и считает работающие.
 # idle — здания, у которых есть работник, но все слоты пустые (простаивают).
@@ -354,15 +437,11 @@ func _on_building_selected(idx: int):
 
         build_button.disabled = _has_active_building_construction()
         _refresh_recipes_list(bdata)
-        update_construction_progress()
-        update_construction_controls()
     else:
         selected_building_id = ""
         build_button.disabled = true
         building_recipes_label.visible = false
         _clear_recipes_list()
-        _hide_construction_progress()
-        _hide_construction_controls()
 
 func _on_build_pressed():
     if selected_building_id == "":
@@ -420,57 +499,7 @@ func _clear_recipes_list():
 func _has_active_building_construction() -> bool:
     return CityData.building_construction.size() > 0
 
-func _hide_construction_progress():
-    if building_progress_label:
-        building_progress_label.visible = false
-    if building_progress_bar:
-        building_progress_bar.visible = false
-
-func _hide_construction_controls():
-    if pause_button:
-        pause_button.visible = false
-    if cancel_button:
-        cancel_button.visible = false
-
-func _get_selected_build_key() -> String:
-    for key in CityData.building_construction.keys():
-        var construction_data = CityData.building_construction[key]
-        if construction_data.get("building_id", "") == selected_building_id:
-            return key
-    return ""
-
-func update_construction_controls():
-    var build_key = _get_selected_build_key()
-    if build_key == "":
-        _hide_construction_controls()
-        if build_button:
-            build_button.disabled = _has_active_building_construction()
-        return
-
-    var bm = _get_build_manager()
-    if not bm:
-        _hide_construction_controls()
-        if build_button:
-            build_button.disabled = _has_active_building_construction()
-        return
-
-    var paused = bm.is_building_build_paused(build_key)
-    if pause_button:
-        pause_button.visible = true
-        if paused:
-            pause_button.text = "Возобновить"
-        else:
-            pause_button.text = "Приостановить"
-    if cancel_button:
-        cancel_button.visible = true
-    if build_button:
-        build_button.disabled = _has_active_building_construction()
-
-func _on_toggle_build_pause_pressed():
-    var build_key = _get_selected_build_key()
-    if build_key == "":
-        return
-
+func _on_construction_pause_pressed(build_key: String):
     var bm = _get_build_manager()
     if not bm:
         return
@@ -484,13 +513,9 @@ func _on_toggle_build_pause_pressed():
             if ui_helpers:
                 ui_helpers.set_message("Строительство приостановлено")
 
-    update_construction_progress()
-    update_construction_controls()
+    _update_construction_rows()
 
-func _on_cancel_build_pressed():
-    var build_key = _get_selected_build_key()
-    if build_key == "":
-        return
+func _on_construction_cancel_pressed(build_key: String):
     _confirm_cancel_construction(build_key)
 
 func _confirm_cancel_construction(build_key: String):
@@ -509,51 +534,7 @@ func _cancel_construction(build_key: String):
     if ui_helpers:
         ui_helpers.set_message("Стройка отменена")
     CityData.emit_signal("city_updated")
-    update_construction_progress()
-    update_construction_controls()
-
-func update_construction_progress():
-    if selected_building_id == "":
-        _hide_construction_progress()
-        return
-
-    var bm = _get_build_manager()
-    if not bm:
-        _hide_construction_progress()
-        return
-
-    var build_key = ""
-    for key in CityData.building_construction.keys():
-        var construction_data = CityData.building_construction[key]
-        if construction_data.get("building_id", "") == selected_building_id:
-            build_key = key
-            break
-
-    if build_key == "":
-        _hide_construction_progress()
-        return
-
-    var progress_data = bm.get_building_build_progress(build_key)
-    if progress_data.is_empty():
-        _hide_construction_progress()
-        return
-
-    var work_cost = progress_data.get("work_cost", 1)
-    var progress_value = min(progress_data.get("progress", 0.0), work_cost)
-    var percent = 0.0
-    if work_cost > 0:
-        percent = progress_value / work_cost * 100.0
-    var status = progress_data.get("status", "active")
-    var status_text = "Строится"
-    if status == "paused":
-        status_text = "Приостановлено"
-
-    if building_progress_label:
-        building_progress_label.text = "%s: %.0f%%" % [status_text, percent]
-        building_progress_label.visible = true
-    if building_progress_bar:
-        building_progress_bar.visible = true
-        building_progress_bar.value = percent
+    refresh_built()
 
 # Заполняет список доступных рецептов для выбранного здания
 func _refresh_recipes_list(bdata: Dictionary):
