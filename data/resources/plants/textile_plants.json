@@ -9,6 +9,7 @@
       "subgroup": "fibers",
       "allowed_terrains": [ "plain" ],
       "improved_by": "plantation",
+      "tech_required": "plantations",
       "produces": { "flax": 1, "feed": 4 },
       "icon": "flax.png",
       "color": [ 200, 200, 255 ]
@@ -22,6 +23,7 @@
       "subgroup": "fibers",
       "allowed_terrains": [ "plain" ],
       "improved_by": "plantation",
+      "tech_required": "plantations",
       "produces": { "cotton": 1, "feed": 4 },
       "icon": "cotton.png",
       "color": [ 255, 255, 255 ]
@@ -35,6 +37,7 @@
       "subgroup": "fibers",
       "allowed_terrains": [ "plain" ],
       "improved_by": "plantation",
+      "tech_required": "plantations",
       "produces": { "hemp": 1, "feed": 4 },
       "icon": "hemp.png",
       "color": [ 100, 255, 100 ]
@@ -48,6 +51,7 @@
       "subgroup": "fibers",
       "allowed_terrains": [ "plain" ],
       "improved_by": "plantation",
+      "tech_required": "plantations",
       "produces": { "jute": 1, "feed": 4 },
       "icon": "jute.png",
       "color": [ 200, 150, 100 ]
@@ -61,6 +65,7 @@
       "subgroup": "fibers",
       "allowed_terrains": [ "plain" ],
       "improved_by": "plantation",
+      "tech_required": "plantations",
       "produces": { "ramie": 1, "feed": 4 },
       "icon": "ramie.png",
       "color": [ 150, 200, 150 ]
@@ -74,6 +79,7 @@
       "subgroup": "fibers",
       "allowed_terrains": [ "plain" ],
       "improved_by": "plantation",
+      "tech_required": "plantations",
       "produces": { "sisal": 1, "feed": 4 },
       "icon": "sisal.png",
       "color": [ 200, 255, 200 ]

@@ -38,6 +38,13 @@ func _get_subgroup_name(subgroup_id: String) -> String:
             return g["name"]
     return subgroup_id
 
+# Возвращает массив подгрупп ресурса. Поддерживает как строку, так и массив.
+func _get_subgroups(data: Dictionary) -> Array:
+    var subgroup = data.get("subgroup", "other")
+    if subgroup is Array:
+        return subgroup
+    return [subgroup]
+
 func _build_icon_index():
     icon_paths.clear()
     _scan_folder("res://icons")
@@ -91,10 +98,10 @@ func refresh():
         var animal_subgroups = {}
         for animal_id in CityData.domesticated_animals:
             var data = GameData.raw_resources.get(animal_id, {})
-            var subgroup = data.get("subgroup", "other")
-            if not animal_subgroups.has(subgroup):
-                animal_subgroups[subgroup] = []
-            animal_subgroups[subgroup].append({"id": animal_id, "name": data.get("name", animal_id), "icon": data.get("icon", "")})
+            for subgroup in _get_subgroups(data):
+                if not animal_subgroups.has(subgroup):
+                    animal_subgroups[subgroup] = []
+                animal_subgroups[subgroup].append({"id": animal_id, "name": data.get("name", animal_id), "icon": data.get("icon", "")})
 
         for subgroup in animal_subgroups.keys():
             var subgroup_label = Label.new()
@@ -134,10 +141,10 @@ func refresh():
         var plant_subgroups = {}
         for plant_id in CityData.domesticated_plants:
             var data = GameData.raw_resources.get(plant_id, {})
-            var subgroup = data.get("subgroup", "other")
-            if not plant_subgroups.has(subgroup):
-                plant_subgroups[subgroup] = []
-            plant_subgroups[subgroup].append({"id": plant_id, "name": data.get("name", plant_id), "icon": data.get("icon", "")})
+            for subgroup in _get_subgroups(data):
+                if not plant_subgroups.has(subgroup):
+                    plant_subgroups[subgroup] = []
+                plant_subgroups[subgroup].append({"id": plant_id, "name": data.get("name", plant_id), "icon": data.get("icon", "")})
 
         for subgroup in plant_subgroups.keys():
             var subgroup_label = Label.new()
@@ -274,15 +281,15 @@ func refresh():
     var animal_subgroup_map = {}
     for animal_id in CityData.domesticated_animals:
         var data = GameData.raw_resources.get(animal_id, {})
-        var subgroup = data.get("subgroup", "other")
-        animal_subgroup_map[subgroup] = true
+        for subgroup in _get_subgroups(data):
+            animal_subgroup_map[subgroup] = true
     animal_subgroups_count = animal_subgroup_map.size()
 
     var plant_subgroup_map = {}
     for plant_id in CityData.domesticated_plants:
         var data = GameData.raw_resources.get(plant_id, {})
-        var subgroup = data.get("subgroup", "other")
-        plant_subgroup_map[subgroup] = true
+        for subgroup in _get_subgroups(data):
+            plant_subgroup_map[subgroup] = true
     plant_subgroups_count = plant_subgroup_map.size()
 
     var total_subgroups = animal_subgroups_count + plant_subgroups_count
@@ -324,13 +331,13 @@ func update_values():
         var animal_subgroup_map = {}
         for animal_id in CityData.domesticated_animals:
             var data = GameData.raw_resources.get(animal_id, {})
-            var subgroup = data.get("subgroup", "other")
-            animal_subgroup_map[subgroup] = true
+            for subgroup in _get_subgroups(data):
+                animal_subgroup_map[subgroup] = true
         var plant_subgroup_map = {}
         for plant_id in CityData.domesticated_plants:
             var data = GameData.raw_resources.get(plant_id, {})
-            var subgroup = data.get("subgroup", "other")
-            plant_subgroup_map[subgroup] = true
+            for subgroup in _get_subgroups(data):
+                plant_subgroup_map[subgroup] = true
         var total_subgroups = animal_subgroup_map.size() + plant_subgroup_map.size()
         diversity_label.text = "Разнообразие: %d подгрупп" % total_subgroups
 

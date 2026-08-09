@@ -20,7 +20,7 @@
       "type": "raw",
       "category": "plants",
       "group": "food_plants",
-      "subgroup": "fruits",
+      "subgroup": [ "fruits", "oil_plants" ],
       "allowed_terrains": [ "plain", "forest", "hill" ],
       "improved_by": "plantation",
       "tech_required": "plantations",
