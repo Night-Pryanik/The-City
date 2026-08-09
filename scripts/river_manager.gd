@@ -10,13 +10,17 @@ const MIN_RIVER_LENGTH := 8 # Минимальное количество точ
 const MAX_WALK_STEPS := 100 # Максимальное число шагов при построении пути
 const MAX_TURN_ANGLE_DEG := 60.0 # Максимальный угол поворота за один шаг
 const MAX_TURN_ANGLE_SOFT_DEG := 90.0 # Запасной угол при застревании
-const MIN_LENGTH_FOR_EXIT := 4 # Минимальная длина пути для попытки выхода на границу
+const MIN_LENGTH_FOR_EXIT := 8 # Минимальная длина пути для попытки выхода на границу
 const NUM_RIVER_ATTEMPTS := 4 # Попыток построить одну реку
 const NUM_RIVERS_MIN := 1 # Минимальное количество рек
 const NUM_RIVERS_MAX := 2 # Максимальное количество рек
 
-const RIVER_COLOR := Color(0.2, 0.55, 1.0, 0.8) # Синий цвет реки
-const RIVER_WIDTH := 5.0 # Толщина линии реки
+const RIVER_COLOR := Color(26.0 / 255.0, 95.0 / 255.0, 180.0 / 255.0, 0.9) # Тёмно-синее тело реки (#1a5fb4)
+const RIVER_WIDTH := 6.0 # Толщина тела реки
+const RIVER_SHORE_COLOR := Color(98.0 / 255.0, 160.0 / 255.0, 234.0 / 255.0, 0.25) # Лёгкая подкраска берегов
+const RIVER_SHORE_WIDTH := 10.0 # Толщина береговой подложки
+const RIVER_HIGHLIGHT_COLOR := Color(98.0 / 255.0, 160.0 / 255.0, 234.0 / 255.0, 0.95) # Светло-голубой блик (#62a0ea)
+const RIVER_HIGHLIGHT_WIDTH := 3.0 # Толщина блика по воде
 
 var rivers: Array = [] # Array of Array of Vector2 (world-координаты точек каждой реки)
 
@@ -102,18 +106,36 @@ func _vertex_key(pos: Vector2) -> String:
 
 
 # -------------------------------------------------------
-# Находит все вершины, граничащие с краем карты
-# (вершина принадлежит хотя бы одному гексу на границе массива)
+# Находит вершины, которые находятся ПРЯМО на границе карты,
+# т.е. их x или y совпадает с минимальной/максимальной
+# границей по координатам всех вершин графа.
 # -------------------------------------------------------
-func _find_border_vertices(graph: Dictionary, rows: int, cols: int) -> Array:
+func _find_border_vertices(graph: Dictionary, _rows: int, _cols: int) -> Array:
+    var vertex_positions: Dictionary = graph["positions"]
     var border_keys: Array = []
-    for vkey in graph["hexes"].keys():
-        var hex_list = graph["hexes"][vkey]
-        for hex_info in hex_list:
-            if hex_info.row == 0 or hex_info.row == rows - 1 or \
-               hex_info.col == 0 or hex_info.col == cols - 1:
-                border_keys.append(vkey)
-                break
+
+    if vertex_positions.is_empty():
+        return border_keys
+
+    # --- Границы карты по координатам вершин ---
+    var min_x = INF
+    var max_x = - INF
+    var min_y = INF
+    var max_y = - INF
+    for pos in vertex_positions.values():
+        min_x = min(min_x, pos.x)
+        max_x = max(max_x, pos.x)
+        min_y = min(min_y, pos.y)
+        max_y = max(max_y, pos.y)
+
+    # Вершина — "на краю", если она совпадает с одной из границ
+    var eps: float = 0.1
+    for vkey in vertex_positions.keys():
+        var pos = vertex_positions[vkey]
+        if abs(pos.x - min_x) <= eps or abs(pos.x - max_x) <= eps or \
+           abs(pos.y - min_y) <= eps or abs(pos.y - max_y) <= eps:
+            border_keys.append(vkey)
+
     return border_keys
 
 
@@ -208,6 +230,55 @@ func _generate_river(graph: Dictionary, border_vertices: Array, rows: int, cols:
         current_key = chosen
         path.append(vertex_positions[chosen])
 
+    # --- Принудительный выход на границу ---
+    # Если путь не достиг border vertex, а достаточно длинный,
+    # "жёстко" движемся к ближайшей border vertex по ребрам
+    var best_key = ""
+    if path.size() >= MIN_RIVER_LENGTH and not border_vertices.has(current_key):
+        var last_pos = path[path.size() - 1]
+        var best_dist_sq = INF
+        for bv in border_vertices:
+            if visited.has(bv):
+                continue
+            var dist_sq = last_pos.distance_squared_to(vertex_positions[bv])
+            if dist_sq < best_dist_sq:
+                best_dist_sq = dist_sq
+                best_key = bv
+        if best_key != "" and best_key != current_key:
+            var target_pos = vertex_positions[best_key]
+            var hard_prev = prev_key
+            var hard_current = current_key
+            var hard_step = 0
+            while hard_current != best_key and hard_step < 30:
+                hard_step += 1
+                var hard_candidates = []
+                for n in neighbors_map[hard_current]:
+                    if n == hard_prev or visited.has(n):
+                        continue
+                    hard_candidates.append(n)
+                if hard_candidates.is_empty():
+                    break
+                # Выбираем соседа, ближайшего к цели
+                var chosen_n = ""
+                var chosen_dist = INF
+                for n in hard_candidates:
+                    var n_dist = vertex_positions[n].distance_squared_to(target_pos)
+                    if n_dist < chosen_dist:
+                        chosen_dist = n_dist
+                        chosen_n = n
+                if chosen_n == "":
+                    break
+                path.append(vertex_positions[chosen_n])
+                visited[chosen_n] = true
+                hard_prev = hard_current
+                hard_current = chosen_n
+
+    # Гарантируем выход на границу: добавляем border vertex,
+    # если "жёсткий" путь не достиг цели (например, застрял
+    # внутри из‑за того, что все соседи уже посещены)
+    if best_key != "" and not visited.has(best_key):
+        path.append(vertex_positions[best_key])
+
     return path
 
 
@@ -257,9 +328,11 @@ func serialize_rivers() -> Array:
 # Загружает реки из сохранённых данных
 # -------------------------------------------------------
 func load_rivers(river_data: Array) -> void:
-    rivers = []
-    if river_data == null:
+    # Если нет данных для загрузки — НЕ очищаем, чтобы не стирать
+    # реки, сгенерированные в _initialize_map() для новой игры
+    if river_data == null or river_data.is_empty():
         return
+    rivers = []
     for river_pts in river_data:
         var river: Array = []
         for pt in river_pts:

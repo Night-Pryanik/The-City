@@ -352,8 +352,12 @@ func _draw_rivers():
     var river_data = river_manager.get_rivers()
     if river_data.is_empty():
         return
-    var color = river_manager.RIVER_COLOR
-    var width = river_manager.RIVER_WIDTH
+    var body_color = river_manager.RIVER_COLOR
+    var body_width = river_manager.RIVER_WIDTH
+    var shore_color = river_manager.RIVER_SHORE_COLOR
+    var shore_width = river_manager.RIVER_SHORE_WIDTH
+    var highlight_color = river_manager.RIVER_HIGHLIGHT_COLOR
+    var highlight_width = river_manager.RIVER_HIGHLIGHT_WIDTH
     var offset_x = main_map.offset_x + main_map.scroll_offset.x
     var offset_y = main_map.offset_y + main_map.scroll_offset.y
     for river in river_data:
@@ -362,7 +366,9 @@ func _draw_rivers():
         var points = PackedVector2Array()
         for pt in river:
             points.append(Vector2(pt.x + offset_x, pt.y + offset_y))
-        draw_polyline(points, color, width, true)
+        draw_polyline(points, shore_color, shore_width, true)
+        draw_polyline(points, body_color, body_width, true)
+        draw_polyline(points, highlight_color, highlight_width, true)
 
 func _draw_roads(_row: int, _col: int):
     pass
