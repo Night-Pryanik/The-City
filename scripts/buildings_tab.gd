@@ -135,6 +135,12 @@ func update_built_status():
         refresh_built()
         return
 
+    # Кнопка «Построить» остаётся активной даже при достижении лимита строек,
+    # чтобы при нажатии можно было показать сообщение о причине отказа.
+    # Блокируется только когда не выбрано здание.
+    if build_button:
+        build_button.disabled = (selected_building_id == "")
+
     # Обновляем прогресс-бары строящихся зданий
     _update_construction_rows()
 
@@ -244,6 +250,12 @@ func refresh_built():
 
         built_buildings_list.add_child(row)
     last_built_count = built_buildings.size()
+
+    # Кнопка «Построить» остаётся активной даже при достижении лимита строек,
+    # чтобы при нажатии можно было показать сообщение о причине отказа.
+    # Блокируется только когда не выбрано здание.
+    if build_button:
+        build_button.disabled = (selected_building_id == "")
 
 # Создаёт строки строящихся зданий в панели построенных зданий.
 func _refresh_construction_rows():
@@ -435,7 +447,7 @@ func _on_building_selected(idx: int):
         building_recipes_label.text = "Слотов производства: %d" % int(slots)
         building_recipes_label.visible = true
 
-        build_button.disabled = _has_active_building_construction()
+        build_button.disabled = (selected_building_id == "")
         _refresh_recipes_list(bdata)
     else:
         selected_building_id = ""
@@ -451,7 +463,7 @@ func _on_build_pressed():
 
     if _has_active_building_construction():
         if ui_helpers:
-            ui_helpers.set_message("Можно строить только одно здание одновременно")
+            ui_helpers.set_message("Можно строить не более %d зданий или улучшений одновременно (лимит = число жителей)" % CityData.total_population)
         return
 
     var bdata = null
@@ -497,7 +509,11 @@ func _clear_recipes_list():
         child.queue_free()
 
 func _has_active_building_construction() -> bool:
-    return CityData.building_construction.size() > 0
+    # Общий лимит одновременных строек (здания + улучшения) равен числу жителей
+    var bm = _get_build_manager()
+    if bm:
+        return bm.get_total_active_builds() >= CityData.total_population
+    return CityData.building_construction.size() >= CityData.total_population
 
 func _on_construction_pause_pressed(build_key: String):
     var bm = _get_build_manager()

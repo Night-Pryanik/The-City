@@ -698,10 +698,16 @@ func request_build(building_id: String) -> bool:
         print("Здание недоступно: ", bdata.get("name", building_id))
         return false
     var work_cost = bdata.get("work_cost", 0)
-    # Запрещаем ставить более одной стройки здания одновременно
-    if work_cost > 0 and building_construction.size() > 0:
-        print("Можно строить только одно здание одновременно")
-        return false
+    # Общий лимит одновременных строек (здания + улучшения) равен общему числу жителей
+    if work_cost > 0:
+        var main_map = get_tree().root.find_child("MainMap", true, false)
+        var bm = main_map.get_node("BuildManager") if main_map and main_map.has_node("BuildManager") else null
+        var total_active = building_construction.size()
+        if bm:
+            total_active = bm.get_total_active_builds()
+        if total_active >= total_population:
+            print("Можно строить не более %d зданий или улучшений одновременно (лимит = число жителей)" % total_population)
+            return false
     # Строительство зданий теперь требует труд, а не еду
     if work_cost <= 0:
         # Если стоимость 0 (например, ручная мельница), строим мгновенно

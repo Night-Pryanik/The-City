@@ -317,6 +317,18 @@ func _process(delta):
                         hint += "Доступный труд: %.0f/сек (%d жителей)" % [labor, CityData.total_population]
                     else:
                         hint = "Построить мгновенно (бесплатно)"
+                    # Информация о лимите одновременных строек (здания + улучшения).
+                    # Лимит равен общему числу жителей.
+                    var construction_count = CityData.building_construction.size()
+                    var main_map = get_tree().root.find_child("MainMap", true, false)
+                    var bm = main_map.get_node("BuildManager") if main_map and main_map.has_node("BuildManager") else null
+                    if bm:
+                        construction_count = bm.get_total_active_builds()
+                    var construction_limit = CityData.total_population
+                    if construction_count >= construction_limit:
+                        hint += "\nЛимит одновременных строек достигнут (%d/%d, лимит = число жителей)" % [construction_count, construction_limit]
+                    elif construction_count > 0:
+                        hint += "\nСтроек: %d/%d (лимит = число жителей)" % [construction_count, construction_limit]
             if hint != "":
                 ui_helpers.build_tooltip_label.text = hint
                 ui_helpers.show_build_tooltip(mouse_pos)

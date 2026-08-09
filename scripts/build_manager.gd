@@ -77,6 +77,11 @@ func start_build(row: int, col: int, imp_id: String, animal_id = null) -> bool:
         emit_signal("build_completed", row, col, imp_id, animal_id)
         return true
 
+    # Общий лимит одновременных строек (здания + улучшения) равен числу жителей
+    if get_total_active_builds() >= CityData.total_population:
+        emit_signal("build_message", "Можно строить не более %d зданий или улучшений одновременно (лимит = число жителей)" % CityData.total_population)
+        return false
+
     active_builds[key] = {
         "progress": 0.0,
         "work_cost": work_cost,
@@ -105,8 +110,9 @@ func start_building_build(building_id: String) -> String:
         emit_signal("build_building_completed", building_id, "")
         return ""
 
-    if active_building_builds.size() > 0:
-        emit_signal("build_message", "Можно строить только одно здание одновременно")
+    # Общий лимит одновременных строек (здания + улучшения) равен числу жителей
+    if get_total_active_builds() >= CityData.total_population:
+        emit_signal("build_message", "Можно строить не более %d зданий или улучшений одновременно (лимит = число жителей)" % CityData.total_population)
         return ""
 
     var build_key = "building_" + str(Time.get_ticks_usec())
@@ -203,6 +209,10 @@ func cancel_building_build(build_key: String):
     active_building_builds.erase(build_key)
     emit_signal("build_building_cancelled", build_key)
     emit_signal("build_message", "Строительство %s отменено. Потрачено %.0f/%d труда" % [building_name, work_done, work_total])
+
+# Возвращает общее количество активных строек (улучшения на карте + здания).
+func get_total_active_builds() -> int:
+    return active_builds.size() + active_building_builds.size()
 
 func is_building(row: int, col: int) -> bool:
     return active_builds.has(str(row) + "," + str(col))

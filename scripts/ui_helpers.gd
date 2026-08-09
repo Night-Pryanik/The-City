@@ -88,6 +88,16 @@ func show_build_tooltip(mouse_pos: Vector2):
     build_tooltip_panel.size = text_size + Vector2(12, 8)
     build_tooltip_label.position = Vector2(6, 4)
 
+    # Если тултип выходит за границы экрана — рисуем его с другой стороны курсора
+    # (аналогично тултипам на карте в InputHandler.gd)
+    var viewport_size = get_viewport().get_visible_rect().size
+    if build_tooltip_panel.position.y + build_tooltip_panel.size.y > viewport_size.y:
+        build_tooltip_panel.position.y = mouse_pos.y - build_tooltip_panel.size.y - 15
+    if build_tooltip_panel.position.x + build_tooltip_panel.size.x > viewport_size.x:
+        build_tooltip_panel.position.x = mouse_pos.x - build_tooltip_panel.size.x - 15
+    build_tooltip_panel.position.x = max(0, build_tooltip_panel.position.x)
+    build_tooltip_panel.position.y = max(0, build_tooltip_panel.position.y)
+
 func show_group_tooltip(mouse_pos: Vector2, group_key: String, products_data: Dictionary, icon_index: Dictionary):
     # Очищаем предыдущее содержимое (remove_child + queue_free, чтобы узлы
     # удалялись из дерева немедленно и не влияли на расчёт размера)
