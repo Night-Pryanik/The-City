@@ -143,10 +143,7 @@ func _refresh():
             break
 
     var building_name = bdata["name"] if bdata else building_id
-    if indices.size() > 1:
-        title_label.text = "%s x%d" % [building_name, indices.size()]
-    else:
-        title_label.text = building_name
+    title_label.text = building_name
 
     info_label.text = "Зданий: %d" % indices.size()
 
