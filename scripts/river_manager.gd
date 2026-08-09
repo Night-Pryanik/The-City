@@ -338,3 +338,56 @@ func load_rivers(river_data: Array) -> void:
         for pt in river_pts:
             river.append(Vector2(float(pt[0]), float(pt[1])))
         rivers.append(river)
+
+func mark_river_edges(tile_data: Array, rows: int, cols: int, radius: float) -> void:
+    if tile_data == null or tile_data.size() == 0:
+        return
+
+    var graph = _build_vertex_graph(rows, cols, radius)
+    var vertex_hexes = graph["hexes"]
+
+    # Очистим существующие river_edges, если они есть
+    for row in range(rows):
+        for col in range(cols):
+            var tile = tile_data[row][col]
+            if tile != null:
+                tile["river_edges"] = []
+
+    for river in rivers:
+        if river.size() < 2:
+            continue
+        var prev_pos = river[0]
+        var prev_key = _vertex_key(prev_pos)
+        for i in range(1, river.size()):
+            var cur_pos = river[i]
+            var cur_key = _vertex_key(cur_pos)
+            if not vertex_hexes.has(prev_key) or not vertex_hexes.has(cur_key):
+                prev_pos = cur_pos
+                prev_key = cur_key
+                continue
+            var prev_hexes = vertex_hexes[prev_key]
+            var cur_hexes = vertex_hexes[cur_key]
+            var common_hexes = []
+            for prev_hex in prev_hexes:
+                for cur_hex in cur_hexes:
+                    if prev_hex.row == cur_hex.row and prev_hex.col == cur_hex.col:
+                        common_hexes.append({"row": prev_hex.row, "col": prev_hex.col, "v1": prev_hex.vidx, "v2": cur_hex.vidx})
+            for info in common_hexes:
+                var row = info.row
+                var col = info.col
+                var v1 = info.v1
+                var v2 = info.v2
+                var edge_index = -1
+                if (v1 + 1) % 6 == v2:
+                    edge_index = v1
+                elif (v2 + 1) % 6 == v1:
+                    edge_index = v2
+                if edge_index >= 0:
+                    var tile = tile_data[row][col]
+                    if tile != null:
+                        var edges = tile.get("river_edges", [])
+                        if edge_index not in edges:
+                            edges.append(edge_index)
+                            tile["river_edges"] = edges
+            prev_pos = cur_pos
+            prev_key = cur_key

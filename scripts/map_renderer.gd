@@ -215,6 +215,21 @@ func _draw_hex_overlays(row: int, col: int):
                     fallback_color = Color(0.5, 0.5, 0.5)
                 draw_circle(icon_pos, IMPROVEMENT_ICON_SIZE / 2.5, fallback_color)
 
+        if tile.improvement == "farm" and main_map._is_hex_irrigated(row, col):
+            var drop_center = icon_pos + Vector2(IMPROVEMENT_ICON_SIZE * 0.5 + 6, 0)
+            var drop_radius = 6.0
+            var drop_points = [
+                Vector2(0, -drop_radius),
+                Vector2(-drop_radius * 0.7, -drop_radius * 0.2),
+                Vector2(-drop_radius * 0.35, drop_radius * 0.8),
+                Vector2(0, drop_radius),
+                Vector2(drop_radius * 0.35, drop_radius * 0.8),
+                Vector2(drop_radius * 0.7, -drop_radius * 0.2)
+            ]
+            for i in range(drop_points.size()):
+                drop_points[i] += drop_center
+            draw_polygon(drop_points, [Color(0.45, 0.8, 1.0, 1.0)])
+
 func _draw_progress_bars(row: int, col: int):
     var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
     center.x += main_map.offset_x + main_map.scroll_offset.x

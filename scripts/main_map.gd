@@ -96,7 +96,7 @@ func _ready():
         for row in range(REGION_ROWS):
             var col_array = []
             for col in range(REGION_COLS):
-                var tile = {"terrain": "plain", "resource": null, "improvement": null, "terrain_icon": "", "in_influence": false}
+                var tile = {"terrain": "plain", "resource": null, "improvement": null, "terrain_icon": "", "in_influence": false, "river_edges": []}
                 if row < saved_tiles.size() and col < saved_tiles[row].size():
                     var saved = saved_tiles[row][col]
                     if not saved.is_empty():
@@ -106,6 +106,7 @@ func _ready():
                         tile["terrain_icon"] = saved.get("terrain_icon", "")
                         tile["in_influence"] = saved.get("in_influence", false)
                         tile["is_explored"] = saved.get("is_explored", false)
+                        tile["river_edges"] = saved.get("river_edges", [])
                 col_array.append(tile)
             tile_data.append(col_array)
 
@@ -149,8 +150,9 @@ func _ready():
 
         road_manager.rebuild_roads_from_existing(tile_data, REGION_ROWS, REGION_COLS)
 
-        # Восстанавливаем реки из сохранения
+        # Восстанавливаем реки из сохранения и помечаем river_edges в гексах
         river_manager.load_rivers(SaveManager.saved_data.get("rivers", []))
+        river_manager.mark_river_edges(tile_data, REGION_ROWS, REGION_COLS, HEX_RADIUS)
 
         SaveManager.is_loaded = false
         SaveManager.saved_data.clear()
@@ -245,16 +247,19 @@ func _process(delta):
 
                 var res_data = GameData.raw_resources.get(tile.resource, {})
                 var feed_needed = res_data.get("feed_consumption", 0)
+                var production_multiplier = 1.0
+                if tile.improvement == "farm" and _is_hex_irrigated(row, col):
+                    production_multiplier = 1.5
 
                 if feed_needed > 0:
                     var available_feed = CityData.city_storage.get("feed", 0)
                     if available_feed >= feed_needed:
                         CityData.city_storage["feed"] -= feed_needed
-                        CityData.add_raw_production(tile.resource)
+                        CityData.add_raw_production(tile.resource, production_multiplier)
                     else:
                         CityData.add_raw_production(tile.resource, 0.25)
                 else:
-                    CityData.add_raw_production(tile.resource)
+                    CityData.add_raw_production(tile.resource, production_multiplier)
 
         CityData.do_tick()
         CityData.tick_research_science()
@@ -353,8 +358,72 @@ func _initialize_map():
                 else:
                     tile["terrain_icon"] = ""
 
-    # Генерируем реки (визуальные)
+    # Генерируем реки (визуальные) и помечаем рёбра реки в данных гексов
     river_manager.generate_rivers(REGION_ROWS, REGION_COLS, HEX_RADIUS)
+    river_manager.mark_river_edges(tile_data, REGION_ROWS, REGION_COLS, HEX_RADIUS)
+
+func _is_hex_adjacent_to_canal(row: int, col: int) -> bool:
+    if row < 0 or row >= REGION_ROWS or col < 0 or col >= REGION_COLS:
+        return false
+    var neighbors = HexUtils.get_neighbors_odd_r(row, col, REGION_ROWS, REGION_COLS)
+    for n in neighbors:
+        var tile = tile_data[n.row][n.col]
+        if tile == null:
+            continue
+        var imp_id = tile.improvement
+        if imp_id == "canal":
+            return true
+        var imp_data = GameData.improvements.get(imp_id, {})
+        if imp_data.get("is_canal", false):
+            return true
+    return false
+
+func _is_hex_irrigated(row: int, col: int) -> bool:
+    if row < 0 or row >= REGION_ROWS or col < 0 or col >= REGION_COLS:
+        return false
+    var tile = tile_data[row][col]
+    if tile == null:
+        return false
+
+    if tile.get("river_edges", []).size() > 0:
+        return true
+    if _is_hex_adjacent_to_canal(row, col):
+        return true
+    if tile.improvement != "farm":
+        return false
+
+    var visited := {}
+    var queue = [ {"row": row, "col": col, "dist": 0}]
+    visited["%d_%d" % [row, col]] = true
+
+    while queue.size() > 0:
+        var item = queue.pop_front()
+        var crow = item.row
+        var ccol = item.col
+        var dist = item.dist
+        var current_tile = tile_data[crow][ccol]
+        if current_tile == null:
+            continue
+
+        if current_tile.get("river_edges", []).size() > 0:
+            return true
+        if _is_hex_adjacent_to_canal(crow, ccol):
+            return true
+        if dist >= 3:
+            continue
+
+        var neighbors = HexUtils.get_neighbors_odd_r(crow, ccol, REGION_ROWS, REGION_COLS)
+        for n in neighbors:
+            var key = "%d_%d" % [n.row, n.col]
+            if visited.has(key):
+                continue
+            var neighbor_tile = tile_data[n.row][n.col]
+            if neighbor_tile == null:
+                continue
+            if neighbor_tile.improvement == "farm":
+                visited[key] = true
+                queue.append({"row": n.row, "col": n.col, "dist": dist + 1})
+    return false
 
 func _ensure_minimum_resource(category: String):
     for row in range(INFLUENCE_START_ROW, INFLUENCE_END_ROW + 1):
@@ -490,6 +559,8 @@ func update_tooltip_text(row: int, col: int):
             text += "\nВремя заполнения: %.0f сек" % time_to_mature
 
     text += "\nУлучшение: %s%s" % [imp_name, imp_status]
+    if tile.improvement == "farm" and _is_hex_irrigated(row, col):
+        text += "\nДоступ к пресной воде"
     tooltip_text_label.text = text
 
 func _add_production_info(res_id: String, prefix: String):
