@@ -6,11 +6,9 @@ const CITY_ICON_SIZE = 130
 const TERRAIN_ICON_SIZE = 130
 const RESOURCE_ICON_SIZE = 80
 const IMPROVEMENT_ICON_SIZE = 32
-const LOCK_ICON_SIZE = 32
 
 var tile_data = []
 var icon_textures = {}
-var lock_texture = null
 var icon_paths = {}
 
 # Ссылка на главный узел для доступа к offset_x, offset_y, scroll_offset, build_manager и CityData
@@ -65,11 +63,6 @@ func load_icons():
                     icon_textures[icon_name] = load(icon_paths[icon_name])
     if icon_paths.has("city.png"):
         icon_textures["city"] = load(icon_paths["city.png"])
-    if icon_paths.has("lock.png"):
-        lock_texture = load(icon_paths["lock.png"])
-    else:
-        printerr("ОШИБКА: Файл lock.png не найден в папке icons!")
-        assert(false, "lock.png missing")
 
 func _draw():
     # ФАЗА 1: Рисуем основные гексы с территориями
@@ -189,7 +182,6 @@ func _draw_hex_overlays(row: int, col: int):
     if tile.resource != null and is_resource_visible:
         var res_data = GameData.raw_resources.get(tile.resource, {})
         var res_icon = res_data.get("icon", "")
-        var is_locked = _is_resource_locked(tile.resource)
         if res_icon != "" and icon_textures.has(res_icon):
             var tex = icon_textures[res_icon]
             var icon_rect = Rect2(center.x - RESOURCE_ICON_SIZE / 2.0, center.y - RESOURCE_ICON_SIZE / 2.0, RESOURCE_ICON_SIZE, RESOURCE_ICON_SIZE)
@@ -199,11 +191,6 @@ func _draw_hex_overlays(row: int, col: int):
                 var c = res_data["color"]
                 var fallback_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
                 draw_circle(center, RESOURCE_ICON_SIZE / 3.0, fallback_color)
-        if is_locked and lock_texture:
-            var lock_icon_pos = Vector2(center.x, center.y + main_map.HEX_RADIUS * 0.75)
-            var lock_rect = Rect2(lock_icon_pos.x - LOCK_ICON_SIZE / 2.0, lock_icon_pos.y - LOCK_ICON_SIZE / 2.0, LOCK_ICON_SIZE, LOCK_ICON_SIZE)
-            draw_texture_rect(lock_texture, lock_rect, false)
-
 
     if in_influence and tile.improvement != null:
         var has_worker = main_map.worker_manager.has_worker(row, col)

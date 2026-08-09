@@ -391,8 +391,16 @@ func _ensure_food_plant():
             var terrain = tile_data[row][col]["terrain"]
             for res_id in GameData.raw_resources:
                 var res = GameData.raw_resources[res_id]
-                if res.get("group") == "food_plants" and terrain in res.get("allowed_terrains", []):
-                    possible.append({"row": row, "col": col, "id": res_id})
+                if res.get("group") != "food_plants":
+                    continue
+                if not (terrain in res.get("allowed_terrains", [])):
+                    continue
+                # Не берём ресурсы, требующие НЕизученную технологию:
+                # они спавнятся только после её изучения.
+                var tech_required = res.get("tech_required", "")
+                if tech_required != "" and not CityData.is_tech_unlocked(tech_required):
+                    continue
+                possible.append({"row": row, "col": col, "id": res_id})
     if possible.size() > 0:
         var chosen = possible[randi() % possible.size()]
         tile_data[chosen.row][chosen.col]["resource"] = chosen.id
@@ -441,13 +449,8 @@ func update_tooltip_text(row: int, col: int):
         return
 
     var imp_name = GameData.improvements.get(tile.improvement, {}).get("name", "нет") if tile.improvement != null else "нет"
-    var locked = ""
-    if res_id != null:
-        var res_data = GameData.raw_resources.get(res_id, {})
-        if res_data.has("tech_required") and not CityData.is_tech_unlocked(res_data["tech_required"]):
-            locked = " (заблокировано)"
 
-    var text = "Местность: %s\nРесурс: %s%s" % [terrain_name, res_name, locked]
+    var text = "Местность: %s\nРесурс: %s" % [terrain_name, res_name]
 
     var imp_status = ""
     if tile.improvement != null:
