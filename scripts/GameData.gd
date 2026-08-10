@@ -10,6 +10,7 @@ var buildings: Array = []
 var categories: Array = []
 var technologies: Array = []
 var groups: Array = []
+var eras: Array = []
 var product_groups: Dictionary = {}
 var product_group_names: Dictionary = {}
 var modifiers: Dictionary = {}
@@ -26,6 +27,7 @@ func load_all_data():
     categories = loader.categories
     technologies = loader.technologies
     groups = loader.groups
+    eras = loader.eras
     product_groups = loader.product_groups
     product_group_names = loader.product_group_names
     modifiers = loader.modifiers

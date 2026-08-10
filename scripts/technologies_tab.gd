@@ -42,10 +42,10 @@ func _refresh_status_labels():
         tech_progress_bar.value = 0
 
 func _get_era_name(era_id: String) -> String:
-    var eras = {
-        "antiquity": "Античность"
-    }
-    return eras.get(era_id, era_id)
+    for era in GameData.eras:
+        if era.get("id", "") == era_id:
+            return era.get("name", era_id)
+    return era_id
 
 func _rebuild_lists():
     # --- Список доступных/недоступных технологий ---

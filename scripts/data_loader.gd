@@ -11,6 +11,7 @@ var buildings: Array = []
 var categories: Array = []
 var technologies: Array = []
 var groups: Array = []
+var eras: Array = []
 var product_groups: Dictionary = {} # id -> products
 var product_group_names: Dictionary = {} # id -> human-readable name
 var modifiers: Dictionary = {}
@@ -43,6 +44,7 @@ func load_all_data():
     categories = merged_data.get("categories", [])
     technologies = merged_data.get("technologies", [])
     groups = merged_data.get("groups", [])
+    eras = merged_data.get("eras", [])
 
     # НОВОЕ: загружаем группы товаров
     product_groups = {}
