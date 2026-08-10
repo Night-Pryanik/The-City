@@ -16,11 +16,11 @@ const NUM_RIVERS_MIN := 1 # Минимальное количество рек
 const NUM_RIVERS_MAX := 2 # Максимальное количество рек
 
 const RIVER_COLOR := Color(26.0 / 255.0, 95.0 / 255.0, 180.0 / 255.0, 0.9) # Тёмно-синее тело реки (#1a5fb4)
-const RIVER_WIDTH := 6.0 # Толщина тела реки
+const RIVER_WIDTH := 10.0 # Толщина тела реки
 const RIVER_SHORE_COLOR := Color(98.0 / 255.0, 160.0 / 255.0, 234.0 / 255.0, 0.25) # Лёгкая подкраска берегов
 const RIVER_SHORE_WIDTH := 10.0 # Толщина береговой подложки
 const RIVER_HIGHLIGHT_COLOR := Color(98.0 / 255.0, 160.0 / 255.0, 234.0 / 255.0, 0.95) # Светло-голубой блик (#62a0ea)
-const RIVER_HIGHLIGHT_WIDTH := 3.0 # Толщина блика по воде
+const RIVER_HIGHLIGHT_WIDTH := 6.0 # Толщина блика по воде
 
 var rivers: Array = [] # Array of Array of Vector2 (world-координаты точек каждой реки)
 
