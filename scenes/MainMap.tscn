@@ -111,7 +111,7 @@ offset_bottom = 40.0
 [node name="TooltipTextLabel" type="Label" parent="HexTooltip/TooltipVBox" unique_id=1266942755]
 layout_mode = 2
 
-[node name="TooltipProductsContainer" type="HBoxContainer" parent="HexTooltip/TooltipVBox" unique_id=239241664]
+[node name="TooltipProductsContainer" type="VBoxContainer" parent="HexTooltip/TooltipVBox" unique_id=239241664]
 layout_mode = 2
 
 [node name="BuildManager" type="Node" parent="." unique_id=1269596246]

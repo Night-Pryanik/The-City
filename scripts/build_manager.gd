@@ -68,8 +68,15 @@ func start_build(row: int, col: int, imp_id: String, animal_id = null) -> bool:
         return false
 
     var imp_data = GameData.improvements.get(imp_id, {})
-    var work_cost = imp_data.get("work_cost", 0)
     var imp_name = imp_data.get("name", imp_id)
+
+    # Стоимость труда зависит от типа местности и расстояния до города.
+    var main_map = get_tree().root.find_child("MainMap", true, false)
+    var work_cost = 0
+    if main_map and main_map.has_method("get_improvement_work_cost"):
+        work_cost = main_map.get_improvement_work_cost(imp_id, row, col)["cost"]
+    else:
+        work_cost = imp_data.get("work_cost", 0)
 
     # Строительство теперь требует труд, а не еду
     if work_cost <= 0:
