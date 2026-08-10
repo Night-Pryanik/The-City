@@ -123,8 +123,36 @@
       "allowed_terrains": [ "hill", "mountain" ],
       "improved_by": "mine",
       "produces": { "iron": 1 },
-      "icon": "",
+      "icon": "iron.png",
       "color": [ 120, 130, 140 ]
+    },
+    {
+      "id": "quartz_sand_deposit",
+      "name": "Кварцевый песок",
+      "type": "raw",
+      "category": "minerals",
+      "group": "",
+      "subgroup": "",
+      "tech_required": "glassmaking",
+      "allowed_terrains": [ "plain" ],
+      "improved_by": "quarry",
+      "produces": { "quartz_sand": 1 },
+      "icon": "quartz_sand.png",
+      "color": [ 245, 245, 220 ]
+    },
+    {
+      "id": "soda_deposit",
+      "name": "Сода",
+      "type": "raw",
+      "category": "minerals",
+      "group": "",
+      "subgroup": "",
+      "tech_required": "glassmaking",
+      "allowed_terrains": [ "plain" ],
+      "improved_by": "quarry",
+      "produces": { "soda": 1 },
+      "icon": "soda.png",
+      "color": [ 255, 255, 255 ]
     }
   ]
 }

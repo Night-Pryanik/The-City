@@ -1,18 +1,14 @@
 {
-    "resources": [
-        {
-            "id": "flint",
-            "name": "Кремень",
-            "type": "product",
-            "category": "mineral",
-            "icon": "flint.png"
-        },
-        {
-            "id": "coal",
-            "name": "Уголь",
-            "type": "product",
-            "category": "mineral",
-            "icon": "coal.png"
-        }
-    ]
+  "resources": [
+    { "id": "flint", "name": "Кремень", "type": "product", "category": "mineral", "icon": "flint.png" },
+    { "id": "coal", "name": "Уголь", "type": "product", "category": "mineral", "icon": "coal.png" },
+    {
+      "id": "quartz_sand",
+      "name": "Кварцевый песок",
+      "type": "product",
+      "category": "mineral",
+      "icon": "quartz_sand.png"
+    },
+    { "id": "soda", "name": "Сода", "type": "product", "category": "mineral", "icon": "soda.png" }
+  ]
 }

@@ -48,6 +48,14 @@
       "category": "drinks",
       "unlock_tech": "winegrowing",
       "icon": "wine.png"
+    },
+    {
+      "id": "glass_decorations",
+      "name": "Стеклянные украшения",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "glassmaking",
+      "icon": "glass_decorations.png"
     }
   ]
 }

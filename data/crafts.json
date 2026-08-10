@@ -169,6 +169,16 @@
       "time": 5.0,
       "unlock_tech": "oil_making",
       "description": "Выжимает масло из семян и плодов масличных культур"
+    },
+    {
+      "id": "glass",
+      "name": "Стеклоделие",
+      "produced_in": [ "glassmaker_house" ],
+      "resources": { "quartz_sand": 2, "soda": 1 },
+      "result": { "glass": 1 },
+      "time": 5.0,
+      "unlock_tech": "glassmaking",
+      "description": "Превращает песок и соду в стекло"
     }
   ]
 }
