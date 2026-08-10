@@ -427,61 +427,70 @@ func _generate_natural_river(river_points: PackedVector2Array, radius: float) ->
     if river_points.size() < 2:
         return river_points
 
-    # Едва заметная подстановка внутренних вершин в сторону среднего направления,
-    # чтобы смягчить поворот, без сильного искажения.
-    var adjusted_points: PackedVector2Array = []
-    adjusted_points.append(river_points[0])
-    for idx in range(1, river_points.size() - 1):
-        var prev_pt = river_points[idx - 1]
-        var curr_pt = river_points[idx]
-        var next_pt = river_points[idx + 1]
-        var dir_in = (curr_pt - prev_pt)
-        var dir_out = (next_pt - curr_pt)
-        var avg_dir = (dir_in + dir_out)
-        if avg_dir.length() > 0.0001:
-            avg_dir = avg_dir.normalized()
-            var hash_input = (idx * 73856093) & 0x7fffffff
-            var hash_val = float(hash_input) / 0x7fffffff
-            var offset = (hash_val - 0.5) * radius * 0.05
-            adjusted_points.append(curr_pt + avg_dir * offset)
-        else:
-            adjusted_points.append(curr_pt)
-    adjusted_points.append(river_points[river_points.size() - 1])
+    var sample_step = max(radius * 0.22, 8.0)
+    var amplitude = max(radius * 0.16, 7.0)
+    var frequency = 0.9 / max(sample_step, 1.0)
+    var phase = 0.45 + float(river_points.size()) * 0.12
 
-    # Очень мягкое сглаживание, чтобы убрать только явные острые углы,
-    # но сохранить легкий характер "петляния".
-    var smooth_points = adjusted_points.duplicate()
-    var new_points = smooth_points.duplicate()
-    for i in range(1, smooth_points.size() - 1):
-        var prev = smooth_points[i - 1]
-        var curr = smooth_points[i]
-        var next_p = smooth_points[i + 1]
-        var avg = (prev + next_p) / 2.0
-        new_points[i] = curr.lerp(avg, 0.12)
-    smooth_points = new_points
+    var curved_points = PackedVector2Array()
+    var total_length = 0.0
+    var segment_lengths: Array = []
 
-    var segments = 8
-    var result = PackedVector2Array()
-    result.append(smooth_points[0])
-    for i in range(smooth_points.size() - 1):
-        var start = smooth_points[i]
-        var end = smooth_points[i + 1]
-        for j in range(1, segments):
-            var t = float(j) / segments
-            var mid = start.lerp(end, t)
-            var dir = (end - start).normalized()
-            if dir.length() > 0.0001:
-                var perp = Vector2(-dir.y, dir.x)
-                var hash_input = (
-                    i * 73856093 + j * 19349663 + int(start.x * 1000.0) + int(start.y * 1000.0) + int(end.x * 1000.0) + int(end.y * 1000.0)
-                ) & 0x7fffffff
-                var hash_val = float(hash_input) / 0x7fffffff
-                var offset = (hash_val - 0.5) * radius * 0.14
-                mid += perp * offset
-            result.append(mid)
-        if i < smooth_points.size() - 1:
-            result.append(end)
-    return result
+    for i in range(river_points.size() - 1):
+        var seg_len = river_points[i].distance_to(river_points[i + 1])
+        segment_lengths.append(seg_len)
+        total_length += seg_len
+
+    if total_length <= 0.0:
+        return river_points
+
+    var distance_along = 0.0
+    for i in range(river_points.size() - 1):
+        var start = river_points[i]
+        var end = river_points[i + 1]
+        var segment_dir = end - start
+        var segment_len = segment_dir.length()
+        if segment_len <= 0.0001:
+            continue
+
+        segment_dir = segment_dir.normalized()
+        var normal = Vector2(-segment_dir.y, segment_dir.x)
+
+        var step_count = max(1, int(ceil(segment_len / sample_step)))
+        for step in range(step_count + 1):
+            var t = float(step) / float(step_count)
+            var base_point = start.lerp(end, t)
+            var local_distance = distance_along + segment_len * t
+
+            var offset = Vector2.ZERO
+            if step != 0 and step != step_count:
+                var meander = sin(local_distance * frequency + phase) * amplitude
+                var secondary = sin(local_distance * frequency * 0.55 + phase * 1.7) * amplitude * 0.35
+                var bend = 0.0
+                if i > 0 and i + 1 < river_points.size() - 1:
+                    var prev_dir = (start - river_points[i - 1]).normalized()
+                    var next_dir = (river_points[i + 2] - end).normalized()
+                    var turn_strength = clamp(1.0 - prev_dir.dot(next_dir), 0.0, 1.0)
+                    var turn_sign = sign(prev_dir.cross(next_dir))
+                    if turn_sign == 0:
+                        turn_sign = 1.0
+                    bend = turn_strength * amplitude * 0.18 * turn_sign
+
+                offset = normal * (meander + secondary + bend)
+
+            var point = base_point + offset
+            if curved_points.is_empty() or curved_points[-1].distance_to(point) > 0.5:
+                curved_points.append(point)
+
+        distance_along += segment_len
+
+    if curved_points.size() < 2:
+        return river_points
+
+    # Применяем 1-2 итерации сглаживания — достаточно, чтобы убрать острые
+    # углы, но сохранить общую форму и меандрирование. Реализация
+    # вынесена в отдельную функцию ниже.
+    return _chaikin_smooth(curved_points, 2)
 
 func _draw_exploration_highlights():
     var main = get_parent()
@@ -531,3 +540,22 @@ func get_icon_path(icon_name: String) -> String:
     if icon_paths.has(icon_name):
         return icon_paths[icon_name]
     return ""
+
+
+func _chaikin_smooth(points: PackedVector2Array, iterations: int) -> PackedVector2Array:
+    if points.size() < 2:
+        return points
+    var current = points
+    for _it in range(iterations):
+        var next_pts = PackedVector2Array()
+        next_pts.append(current[0])
+        for j in range(current.size() - 1):
+            var p0 = current[j]
+            var p1 = current[j + 1]
+            var q = p0 * 0.75 + p1 * 0.25
+            var r = p0 * 0.25 + p1 * 0.75
+            next_pts.append(q)
+            next_pts.append(r)
+        next_pts.append(current[-1])
+        current = next_pts
+    return current
