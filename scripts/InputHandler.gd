@@ -16,11 +16,14 @@ var expansion_manager: Node
 var _hovered_hex = null
 var _hover_start_time: float = 0.0
 var _tooltip_visible: bool = false
+var _tooltip_visible_time: float = 0.0
+var _extended_tooltip_shown: bool = false
 var is_dragging: bool = false
 var drag_start_scroll_offset: Vector2 = Vector2.ZERO
 var drag_start_mouse: Vector2 = Vector2.ZERO
 
 var tooltip_delay: float = 0.5
+var extended_tooltip_delay: float = 1.0
 const SCROLL_SPEED: float = 300.0
 const SCROLL_MARGIN: float = 30
 
@@ -39,6 +42,9 @@ func initialize(main_node: Node):
 
 func set_tooltip_delay(value: float):
     tooltip_delay = value
+
+func set_extended_tooltip_delay(value: float):
+    extended_tooltip_delay = value
 
 func handle_input(event: InputEvent):
     # --- ОТЛАДОЧНАЯ КОМАНДА: Ctrl+Shift+F = +100 пшеницы ---
@@ -117,8 +123,10 @@ func handle_process(delta: float):
         _hover_start_time += delta
         if _hover_start_time >= tooltip_delay and not _tooltip_visible:
             _tooltip_visible = true
+            _tooltip_visible_time = 0.0
             hex_tooltip.visible = true
         if _tooltip_visible:
+            _tooltip_visible_time += delta
             var tip_pos = main_map.get_viewport().get_mouse_position() + Vector2(15, 15)
             var vbox = hex_tooltip.get_node("TooltipVBox")
             var total_height = 0.0
@@ -137,6 +145,11 @@ func handle_process(delta: float):
             tip_pos.x = max(0, tip_pos.x)
             tip_pos.y = max(0, tip_pos.y)
             hex_tooltip.position = tip_pos
+            # Расширенный тултип: показываем только если есть бонусы производства
+            if _tooltip_visible_time >= extended_tooltip_delay and not _extended_tooltip_shown and main_map.has_method("has_production_bonuses") and main_map.has_method("update_extended_tooltip"):
+                if main_map.has_production_bonuses(_hovered_hex.row, _hovered_hex.col):
+                    _extended_tooltip_shown = true
+                    main_map.update_extended_tooltip(_hovered_hex.row, _hovered_hex.col)
     else:
         _hide_tooltip()
 
@@ -280,6 +293,7 @@ func _handle_mouse_motion(event: InputEventMouseMotion):
     if hex != _hovered_hex:
         _hovered_hex = hex
         _hover_start_time = 0.0
+        _extended_tooltip_shown = false
         if _tooltip_visible:
             hex_tooltip.visible = false
             _tooltip_visible = false
@@ -298,6 +312,7 @@ func _handle_mouse_motion(event: InputEventMouseMotion):
 func _hide_tooltip():
     hex_tooltip.visible = false
     _tooltip_visible = false
+    _tooltip_visible_time = 0.0
     _hovered_hex = null
     _hover_start_time = 0.0
     for child in tooltip_products_container.get_children():

@@ -89,6 +89,25 @@ value = 0.5
 layout_mode = 2
 text = "0,50 сек"
 
+[node name="Label4" type="Label" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1054639224]
+layout_mode = 2
+text = "Расширенный тултип (детальный расчёт)"
+
+[node name="HBoxContainer2" type="HBoxContainer" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1054639225]
+layout_mode = 2
+
+[node name="ExtendedTooltipDelaySlider" type="HSlider" parent="TabContainer/Интерфейс/VBoxContainer/HBoxContainer2" unique_id=1054639226]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 5.0
+step = 0.25
+value = 1.0
+
+[node name="ExtendedTooltipDelayValueLabel" type="Label" parent="TabContainer/Интерфейс/VBoxContainer/HBoxContainer2" unique_id=1054639227]
+layout_mode = 2
+text = "1,00 сек"
+
 [node name="BackButton" type="Button" parent="." unique_id=1943295540]
 layout_mode = 1
 anchors_preset = 7

@@ -43,6 +43,7 @@ var settings_config = ConfigFile.new()
 var show_hex_borders = true
 var use_edge_scrolling = true
 var tooltip_delay: float = 0.5
+var extended_tooltip_delay: float = 1.0
 
 @onready var popup_menu = $PopupMenu
 @onready var city_ui = $CityUI
@@ -170,6 +171,7 @@ func _ready():
     # Инициализация InputHandler
     input_handler.initialize(self)
     input_handler.set_tooltip_delay(tooltip_delay)
+    input_handler.set_extended_tooltip_delay(extended_tooltip_delay)
 
     _calc_offsets()
     map_renderer.queue_redraw()
@@ -538,7 +540,7 @@ func update_tooltip_text(row: int, col: int):
             if res_id != null:
                 var res_data = GameData.raw_resources.get(res_id, {})
                 if res_data.has("produces"):
-                    _add_production_info(res_id, "  Производит:")
+                    _add_production_info(row, col, res_id, "  Производит:")
     else:
         if res_id != null:
             var res_data = GameData.raw_resources.get(res_id, {})
@@ -546,7 +548,7 @@ func update_tooltip_text(row: int, col: int):
                 var improvement_id = res_data["improved_by"]
                 var imp_data = GameData.improvements.get(improvement_id, {})
                 var imp_name_display = imp_data.get("name", improvement_id)
-                _add_production_info(res_id, "  При постройке %s будет давать:" % imp_name_display)
+                _add_production_info(row, col, res_id, "  При постройке %s будет давать:" % imp_name_display)
         imp_status = " (не построено)"
 
     if res_id != null:
@@ -563,20 +565,31 @@ func update_tooltip_text(row: int, col: int):
         text += "\nДоступ к пресной воде"
     tooltip_text_label.text = text
 
-func _add_production_info(res_id: String, prefix: String):
+func _add_production_info(row: int, col: int, res_id: String, prefix: String):
     if res_id == null or res_id == "":
         return
     var res_data = GameData.raw_resources.get(res_id, {})
     if not res_data.has("produces"):
         return
 
-    # Фильтруем продукты: оставляем только те, которые доступны (по технологии)
-    var available_products = {}
-    for prod_id in res_data["produces"]:
-        if CityData.is_product_available(prod_id):
-            available_products[prod_id] = res_data["produces"][prod_id]
+    var tile = tile_data[row][col]
+    var has_worker = worker_manager.has_worker(row, col)
 
-    if available_products.is_empty():
+    # Определяем бонусы (универсальная система)
+    var bonus_multiplier = 1.0
+    if tile.improvement == "farm" and has_worker and _is_hex_irrigated(row, col):
+        bonus_multiplier = 1.5
+
+    # Фильтруем и вычисляем продукты с бонусами
+    var final_amounts = {}
+    for prod_id in res_data["produces"]:
+        if not CityData.is_product_available(prod_id):
+            continue
+        var base_amount = float(res_data["produces"][prod_id])
+        var final_amount = ceili(base_amount * bonus_multiplier)
+        final_amounts[prod_id] = {"base": base_amount, "final": final_amount}
+
+    if final_amounts.is_empty():
         return
 
     var label = Label.new()
@@ -584,8 +597,8 @@ func _add_production_info(res_id: String, prefix: String):
     label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
     tooltip_products_container.add_child(label)
 
-    for prod_id in available_products:
-        var amount = available_products[prod_id]
+    for prod_id in final_amounts:
+        var amount = final_amounts[prod_id].final
         var prod_name = GameData.products.get(prod_id, {}).get("name", prod_id)
         var icon_path = ""
         var prod_data = GameData.products.get(prod_id, {})
@@ -602,10 +615,109 @@ func _add_production_info(res_id: String, prefix: String):
             tex_rect.stretch_mode = TextureRect.STRETCH_SCALE
             hbox.add_child(tex_rect)
         var label_item = Label.new()
+        # Обычный тултип: показываем только итоговое округлённое значение
         label_item.text = "%s: %d" % [prod_name, amount]
         label_item.add_theme_color_override("font_color", Color.WHITE)
         hbox.add_child(label_item)
         tooltip_products_container.add_child(hbox)
+
+func _add_extended_production_info(row: int, col: int):
+    var tile = tile_data[row][col]
+    if tile.resource == null:
+        return
+    var res_data = GameData.raw_resources.get(tile.resource, {})
+    if not res_data.has("produces"):
+        return
+
+    # Определяем бонусы (универсальная система)
+    var bonus_multiplier = 1.0
+    var bonus_description = ""
+    # Бонусы применяются только если улучшение построено и есть рабочий
+    if tile.improvement != null and worker_manager.has_worker(row, col):
+        if tile.improvement == "farm" and _is_hex_irrigated(row, col):
+            bonus_multiplier = 1.5
+            bonus_description = "+50% (орошение)"
+
+    # Фильтруем продукты: оставляем только доступные
+    var available_products = {}
+    for prod_id in res_data["produces"]:
+        if CityData.is_product_available(prod_id):
+            available_products[prod_id] = res_data["produces"][prod_id]
+
+    if available_products.is_empty():
+        return
+
+    for prod_id in available_products:
+        var base_amount = float(available_products[prod_id])
+        var final_amount = ceili(base_amount * bonus_multiplier)
+        var prod_name = GameData.products.get(prod_id, {}).get("name", prod_id)
+        var icon_path = ""
+        var prod_data = GameData.products.get(prod_id, {})
+        if prod_data.has("icon"):
+            var icon_name = prod_data["icon"]
+            icon_path = map_renderer.get_icon_path(icon_name)
+
+        var hbox = HBoxContainer.new()
+        if icon_path != "":
+            var tex_rect = TextureRect.new()
+            tex_rect.texture = load(icon_path)
+            tex_rect.custom_minimum_size = Vector2(20, 20)
+            tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+            tex_rect.stretch_mode = TextureRect.STRETCH_SCALE
+            hbox.add_child(tex_rect)
+        var label_item = Label.new()
+        # Расширенный тултип: показываем расчёт вместо простого результата
+        if bonus_description != "":
+            label_item.text = "Производит: %d %s (%.0f %s = %.1f, округлено до %d)" % [final_amount, prod_name, base_amount, bonus_description, base_amount * bonus_multiplier, final_amount]
+        else:
+            label_item.text = "Производит: %d %s" % [final_amount, prod_name]
+        label_item.add_theme_color_override("font_color", Color(0.9, 0.9, 0.5))
+        hbox.add_child(label_item)
+        tooltip_products_container.add_child(hbox)
+
+func has_production_bonuses(row: int, col: int) -> bool:
+    var tile = tile_data[row][col]
+    if tile.improvement == null or tile.resource == null:
+        return false
+    if not worker_manager.has_worker(row, col):
+        return false
+    
+    var res_data = GameData.raw_resources.get(tile.resource, {})
+    if not res_data.has("produces"):
+        return false
+    
+    # Проверяем, есть ли активные бонусы
+    var bonus_multiplier = 1.0
+    if tile.improvement == "farm" and _is_hex_irrigated(row, col):
+        bonus_multiplier = 1.5
+    
+    return bonus_multiplier > 1.0
+
+func update_extended_tooltip(row: int, col: int):
+    # Очищаем контейнер и показываем расширенную информацию с расчётом
+    for child in tooltip_products_container.get_children():
+        child.queue_free()
+    var tile = tile_data[row][col]
+    var is_revealed = tile.get("in_influence", false) or tile.get("is_explored", false)
+    if not is_revealed:
+        return
+    
+    var res_id = tile.resource
+    if res_id == null:
+        return
+    var res_data = GameData.raw_resources.get(res_id, {})
+    if not res_data.has("produces"):
+        return
+    
+    # Добавляем префикс
+    var prefix = "  Производит:"
+    if prefix != "":
+        var label = Label.new()
+        label.text = prefix
+        label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+        tooltip_products_container.add_child(label)
+    
+    _add_extended_production_info(row, col)
 
 func show_context_menu(row: int, col: int, click_pos: Vector2):
     var tile = tile_data[row][col]
@@ -1150,14 +1262,17 @@ func _load_settings():
         show_hex_borders = settings_config.get_value("interface", "show_hex_borders", true)
         use_edge_scrolling = settings_config.get_value("interface", "edge_scrolling", true)
         tooltip_delay = settings_config.get_value("interface", "tooltip_delay", 0.5)
+        extended_tooltip_delay = settings_config.get_value("interface", "extended_tooltip_delay", 1.0)
     else:
         show_hex_borders = true
         use_edge_scrolling = true
         tooltip_delay = 0.5
+        extended_tooltip_delay = 1.0
 
 func apply_settings():
     _load_settings()
     input_handler.set_tooltip_delay(tooltip_delay)
+    input_handler.set_extended_tooltip_delay(extended_tooltip_delay)
     map_renderer.queue_redraw()
 
 func _on_population_changed(_new_pop: int):
