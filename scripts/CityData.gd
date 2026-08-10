@@ -824,3 +824,57 @@ func add_plant(plant_id: String):
 
 func is_product_available(product_id: String) -> bool:
     return _is_product_available(product_id)
+
+# Возвращает итоговый множитель производства для улучшения imp_id.
+# has_fresh_water — есть ли доступ к пресной проточной воде на гексе.
+func get_improvement_production_multiplier(imp_id: String, has_fresh_water: bool) -> float:
+    var multiplier = 1.0
+    for mod in get_improvement_production_modifiers(imp_id, has_fresh_water):
+        multiplier *= mod.get("multiplier", 1.0)
+    return multiplier
+
+# Возвращает список активных модификаторов производства для улучшения imp_id.
+# Каждый элемент: { "label": String, "multiplier": float }
+func get_improvement_production_modifiers(imp_id: String, has_fresh_water: bool) -> Array:
+    var result = []
+    if imp_id == null or imp_id == "":
+        return result
+
+    # Модификатор доступа к пресной проточной воде
+    if has_fresh_water:
+        var fw = GameData.modifiers.get("fresh_water", {})
+        var multipliers = fw.get("production_multiplier", {})
+        if multipliers.has(imp_id):
+            var m = float(multipliers[imp_id])
+            if m != 1.0:
+                result.append({
+                    "label": "+%d%% (Доступ к пресной воде)" % int(round((m - 1.0) * 100.0)),
+                    "multiplier": m
+                })
+
+    # Модификаторы от изученных технологий
+    for tm in GameData.modifiers.get("tech_modifiers", []):
+        var tech_id = tm.get("tech_id", "")
+        if tech_id == "" or not is_tech_unlocked(tech_id):
+            continue
+        for mod in tm.get("modifiers", []):
+            var target = mod.get("target", "")
+            if target != imp_id + "_production":
+                continue
+            var mod_type = mod.get("type", "percent")
+            var value = float(mod.get("value", 0))
+            var multiplier = 1.0
+            if mod_type == "percent":
+                multiplier = 1.0 + value / 100.0
+            else:
+                multiplier = value
+            var tech_name = tech_id
+            for t in GameData.technologies:
+                if t["id"] == tech_id:
+                    tech_name = t["name"]
+                    break
+            result.append({
+                "label": "+%d%% (%s)" % [int(value), tech_name],
+                "multiplier": multiplier
+            })
+    return result

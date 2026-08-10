@@ -13,6 +13,7 @@ var technologies: Array = []
 var groups: Array = []
 var product_groups: Dictionary = {} # id -> products
 var product_group_names: Dictionary = {} # id -> human-readable name
+var modifiers: Dictionary = {}
 
 func load_all_data():
     var merged_data = _load_all_json_files("res://data")
@@ -52,6 +53,9 @@ func load_all_data():
             if not group_id.is_empty():
                 product_groups[group_id] = pg.get("products", [])
                 product_group_names[group_id] = pg.get("name", group_id)
+
+    # НОВОЕ: загружаем глобальные модификаторы
+    modifiers = merged_data.get("modifiers", {})
 
 func _load_all_json_files(folder_path: String) -> Dictionary:
     var result = {}

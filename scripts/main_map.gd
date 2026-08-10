@@ -250,8 +250,8 @@ func _process(delta):
                 var res_data = GameData.raw_resources.get(tile.resource, {})
                 var feed_needed = res_data.get("feed_consumption", 0)
                 var production_multiplier = 1.0
-                if tile.improvement == "farm" and _is_hex_irrigated(row, col):
-                    production_multiplier = 1.5
+                if tile.improvement != null:
+                    production_multiplier = CityData.get_improvement_production_multiplier(tile.improvement, _is_hex_irrigated(row, col))
 
                 if feed_needed > 0:
                     var available_feed = CityData.city_storage.get("feed", 0)
@@ -577,8 +577,8 @@ func _add_production_info(row: int, col: int, res_id: String, prefix: String):
 
     # Определяем бонусы (универсальная система)
     var bonus_multiplier = 1.0
-    if tile.improvement == "farm" and has_worker and _is_hex_irrigated(row, col):
-        bonus_multiplier = 1.5
+    if tile.improvement != null and has_worker:
+        bonus_multiplier = CityData.get_improvement_production_multiplier(tile.improvement, _is_hex_irrigated(row, col))
 
     # Фильтруем и вычисляем продукты с бонусами
     var final_amounts = {}
@@ -629,14 +629,13 @@ func _add_extended_production_info(row: int, col: int):
     if not res_data.has("produces"):
         return
 
-    # Определяем бонусы (универсальная система)
+    # Определяем активные модификаторы (универсальная система).
+    # Бонусы применяются только если улучшение построено и есть рабочий.
+    var modifiers = []
     var bonus_multiplier = 1.0
-    var bonus_description = ""
-    # Бонусы применяются только если улучшение построено и есть рабочий
     if tile.improvement != null and worker_manager.has_worker(row, col):
-        if tile.improvement == "farm" and _is_hex_irrigated(row, col):
-            bonus_multiplier = 1.5
-            bonus_description = "+50% (орошение)"
+        modifiers = CityData.get_improvement_production_modifiers(tile.improvement, _is_hex_irrigated(row, col))
+        bonus_multiplier = CityData.get_improvement_production_multiplier(tile.improvement, _is_hex_irrigated(row, col))
 
     # Фильтруем продукты: оставляем только доступные
     var available_products = {}
@@ -666,14 +665,27 @@ func _add_extended_production_info(row: int, col: int):
             tex_rect.stretch_mode = TextureRect.STRETCH_SCALE
             hbox.add_child(tex_rect)
         var label_item = Label.new()
-        # Расширенный тултип: показываем расчёт вместо простого результата
-        if bonus_description != "":
-            label_item.text = "Производит: %d %s (%.0f %s = %.1f, округлено до %d)" % [final_amount, prod_name, base_amount, bonus_description, base_amount * bonus_multiplier, final_amount]
-        else:
-            label_item.text = "Производит: %d %s" % [final_amount, prod_name]
+        # Расширенный тултип: первая строка — итоговый результат
+        label_item.text = "Производит: %d %s" % [final_amount, prod_name]
         label_item.add_theme_color_override("font_color", Color(0.9, 0.9, 0.5))
         hbox.add_child(label_item)
         tooltip_products_container.add_child(hbox)
+
+        # Ниже — список всех активных модификаторов и расчёт
+        if modifiers.size() > 0:
+            var base_label = Label.new()
+            base_label.text = "  База: %d" % int(base_amount)
+            base_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+            tooltip_products_container.add_child(base_label)
+            for mod in modifiers:
+                var mod_label = Label.new()
+                mod_label.text = "  %s" % mod.get("label", "")
+                mod_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
+                tooltip_products_container.add_child(mod_label)
+            var total_label = Label.new()
+            total_label.text = "  Итого: %.1f → %d" % [base_amount * bonus_multiplier, final_amount]
+            total_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+            tooltip_products_container.add_child(total_label)
 
 func has_production_bonuses(row: int, col: int) -> bool:
     var tile = tile_data[row][col]
@@ -687,9 +699,7 @@ func has_production_bonuses(row: int, col: int) -> bool:
         return false
     
     # Проверяем, есть ли активные бонусы
-    var bonus_multiplier = 1.0
-    if tile.improvement == "farm" and _is_hex_irrigated(row, col):
-        bonus_multiplier = 1.5
+    var bonus_multiplier = CityData.get_improvement_production_multiplier(tile.improvement, _is_hex_irrigated(row, col))
     
     return bonus_multiplier > 1.0
 
@@ -708,14 +718,6 @@ func update_extended_tooltip(row: int, col: int):
     var res_data = GameData.raw_resources.get(res_id, {})
     if not res_data.has("produces"):
         return
-    
-    # Добавляем префикс
-    var prefix = "  Производит:"
-    if prefix != "":
-        var label = Label.new()
-        label.text = prefix
-        label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
-        tooltip_products_container.add_child(label)
     
     _add_extended_production_info(row, col)
 

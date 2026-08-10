@@ -12,6 +12,7 @@ var technologies: Array = []
 var groups: Array = []
 var product_groups: Dictionary = {}
 var product_group_names: Dictionary = {}
+var modifiers: Dictionary = {}
 
 func load_all_data():
     var loader = load("res://scripts/data_loader.gd").new()
@@ -27,6 +28,7 @@ func load_all_data():
     groups = loader.groups
     product_groups = loader.product_groups
     product_group_names = loader.product_group_names
+    modifiers = loader.modifiers
 
 # Возвращает имя группы по её ключу (с символом "@" или без).
 # Если ключ не является группой, возвращает пустую строку.
