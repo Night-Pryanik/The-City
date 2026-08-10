@@ -69,6 +69,9 @@ func start_build(row: int, col: int, imp_id: String, animal_id = null) -> bool:
 
     var imp_data = GameData.improvements.get(imp_id, {})
     var imp_name = imp_data.get("name", imp_id)
+    # Спец-действие "Вырубка леса" не является улучшением.
+    if imp_id == "__clear_forest__":
+        imp_name = "Вырубка леса"
 
     # Стоимость труда зависит от типа местности и расстояния до города.
     var main_map = get_tree().root.find_child("MainMap", true, false)
