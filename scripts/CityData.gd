@@ -87,7 +87,7 @@ func add_raw_production(raw_id: String, multiplier: float = 1.0):
     var raw = GameData.raw_resources.get(raw_id, {})
     if raw.has("produces"):
         for pid in raw["produces"]:
-            var amount = raw["produces"][pid] * multiplier
+            var amount = ceili(raw["produces"][pid] * multiplier)
             # Проверяем, доступен ли этот продукт (по технологии)
             if not _is_product_available(pid):
                 continue

@@ -157,6 +157,7 @@ func _refresh_light():
 
     resources_tab.update_values()
     buildings_tab.update_built_status()
+    _update_food_label()
 
 func _needs_full_refresh() -> bool:
     # Полное обновление требуется только при структурных изменениях:
