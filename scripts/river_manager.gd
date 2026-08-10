@@ -39,10 +39,15 @@ func generate_rivers(rows: int, cols: int, radius: float) -> void:
     if border_vertices.is_empty():
         return
 
+    var used_vertices: Dictionary = {} # Вершины, уже занятые реками
     var num_rivers = randi_range(NUM_RIVERS_MIN, NUM_RIVERS_MAX)
     for _i in range(num_rivers):
-        var river = _try_generate_river(graph, border_vertices, rows, cols, radius)
+        var river = _try_generate_river(graph, border_vertices, rows, cols, radius, used_vertices)
         if river.size() >= MIN_RIVER_LENGTH:
+            # Добавляем все вершины новой реки в used_vertices
+            for pt in river:
+                var key = _vertex_key(pt)
+                used_vertices[key] = true
             rivers.append(river)
 
 
@@ -50,9 +55,9 @@ func generate_rivers(rows: int, cols: int, radius: float) -> void:
 # Пытается сгенерировать одну реку, делая несколько попыток
 # с разными случайными точками входа
 # -------------------------------------------------------
-func _try_generate_river(graph: Dictionary, border_vertices: Array, rows: int, cols: int, radius: float) -> Array:
+func _try_generate_river(graph: Dictionary, border_vertices: Array, rows: int, cols: int, radius: float, used_vertices: Dictionary) -> Array:
     for _attempt in range(NUM_RIVER_ATTEMPTS):
-        var river = _generate_river(graph, border_vertices, rows, cols, radius)
+        var river = _generate_river(graph, border_vertices, rows, cols, radius, used_vertices)
         if river.size() >= MIN_RIVER_LENGTH:
             return river
     return []
@@ -143,24 +148,32 @@ func _find_border_vertices(graph: Dictionary, _rows: int, _cols: int) -> Array:
 # Генерирует одну реку: A* поиск пути между двумя случайными
 # граничными вершинами с фильтрацией по углу поворота.
 # -------------------------------------------------------
-func _generate_river(graph: Dictionary, border_vertices: Array, rows: int, cols: int, radius: float) -> Array:
+func _generate_river(graph: Dictionary, border_vertices: Array, rows: int, cols: int, radius: float, used_vertices: Dictionary) -> Array:
     var vertex_positions: Dictionary = graph["positions"]
     var neighbors_map: Dictionary = graph["neighbors"]
 
     if border_vertices.size() < 2:
         return []
 
-    # Выбираем стартовую и целевую граничные вершины случайным образом
-    var start_idx = randi() % border_vertices.size()
-    var goal_idx = randi() % border_vertices.size()
+    # Фильтруем граничные вершины, исключая уже занятые
+    var available_border: Array = []
+    for bk in border_vertices:
+        if not used_vertices.has(bk):
+            available_border.append(bk)
+    if available_border.size() < 2:
+        return []
+
+    # Выбираем стартовую и целевую граничную вершину случайным образом
+    var start_idx = randi() % available_border.size()
+    var goal_idx = randi() % available_border.size()
     while goal_idx == start_idx:
-        goal_idx = randi() % border_vertices.size()
+        goal_idx = randi() % available_border.size()
 
-    var start_key = border_vertices[start_idx]
-    var goal_key = border_vertices[goal_idx]
+    var start_key = available_border[start_idx]
+    var goal_key = available_border[goal_idx]
 
-    # Ищем путь через A* без запрещённых вершин
-    var path_keys = _find_path_astar(start_key, goal_key, graph, {}, MAX_TURN_ANGLE_DEG)
+    # Ищем путь через A*; used_vertices — множество вершин, в которые река может вливаться (merge)
+    var path_keys = _find_path_astar(start_key, goal_key, graph, {}, MAX_TURN_ANGLE_DEG, used_vertices)
 
     if path_keys.is_empty():
         return []
@@ -181,7 +194,7 @@ func _generate_river(graph: Dictionary, border_vertices: Array, rows: int, cols:
 # A* поиск пути между двумя вершинами графа с фильтрацией
 # по углу поворота. Возвращает массив ключей вершин или пустой массив.
 # -------------------------------------------------------
-func _find_path_astar(start_key: String, goal_key: String, graph: Dictionary, forbidden_keys: Dictionary, max_turn_angle_deg: float) -> Array:
+func _find_path_astar(start_key: String, goal_key: String, graph: Dictionary, forbidden_keys: Dictionary, max_turn_angle_deg: float, merge_keys: Dictionary = {}) -> Array:
     var vertex_positions: Dictionary = graph["positions"]
     var neighbors_map: Dictionary = graph["neighbors"]
 
@@ -198,7 +211,7 @@ func _find_path_astar(start_key: String, goal_key: String, graph: Dictionary, fo
             return fa < fb)
         var current = open_set.pop_front()
 
-        if current == goal_key:
+        if current == goal_key or merge_keys.has(current):
             return _reconstruct_path(came_from, current)
 
         var current_pos = vertex_positions[current]
@@ -210,7 +223,7 @@ func _find_path_astar(start_key: String, goal_key: String, graph: Dictionary, fo
             # Для стартовой вершины направление к цели
             dir = (vertex_positions[goal_key] - current_pos).normalized()
 
-        # Соседи
+        # Соседи: исключаем только forbidden, а merge-вершины оставляем
         var candidates: Array = []
         for n in neighbors_map[current]:
             if forbidden_keys.has(n):
