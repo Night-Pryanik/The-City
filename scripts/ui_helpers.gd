@@ -10,6 +10,9 @@ var build_tooltip_label: Label
 var group_tooltip_panel: Panel
 var group_tooltip_content: VBoxContainer
 
+var progress_tooltip_panel: Panel
+var progress_tooltip_label: Label
+
 var message_label: Label
 
 func setup(main_ui: Control, message_lbl: Label):
@@ -75,6 +78,27 @@ func setup(main_ui: Control, message_lbl: Label):
     group_style.border_width_bottom = 1
     group_style.border_color = Color(0.6, 0.6, 0.6)
     group_tooltip_panel.add_theme_stylebox_override("panel", group_style)
+
+    # Тултип для прогресс-баров строящихся зданий
+    progress_tooltip_panel = Panel.new()
+    progress_tooltip_panel.visible = false
+    progress_tooltip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    progress_tooltip_panel.z_index = 1000 # Поверх всех остальных элементов
+    main_ui.add_child(progress_tooltip_panel)
+
+    progress_tooltip_label = Label.new()
+    progress_tooltip_label.add_theme_color_override("font_color", Color.WHITE)
+    progress_tooltip_label.add_theme_font_size_override("font_size", 14)
+    progress_tooltip_panel.add_child(progress_tooltip_label)
+
+    var progress_style = StyleBoxFlat.new()
+    progress_style.bg_color = Color(0.2, 0.2, 0.2, 0.9)
+    progress_style.border_width_left = 1
+    progress_style.border_width_top = 1
+    progress_style.border_width_right = 1
+    progress_style.border_width_bottom = 1
+    progress_style.border_color = Color(0.6, 0.6, 0.6)
+    progress_tooltip_panel.add_theme_stylebox_override("panel", progress_style)
 
 func show_food_tooltip(mouse_pos: Vector2):
     tooltip_panel.position = mouse_pos + Vector2(15, 15)
@@ -157,6 +181,24 @@ func show_group_tooltip(mouse_pos: Vector2, group_key: String, products_data: Di
 
 func hide_group_tooltip():
     group_tooltip_panel.hide()
+
+func show_progress_tooltip(mouse_pos: Vector2):
+    progress_tooltip_panel.position = mouse_pos + Vector2(15, 15)
+    var text_size = progress_tooltip_label.get_minimum_size()
+    progress_tooltip_panel.size = text_size + Vector2(12, 8)
+    progress_tooltip_label.position = Vector2(6, 4)
+
+    # Если тултип выходит за границы экрана — рисуем его с другой стороны курсора
+    var viewport_size = get_viewport().get_visible_rect().size
+    if progress_tooltip_panel.position.y + progress_tooltip_panel.size.y > viewport_size.y:
+        progress_tooltip_panel.position.y = mouse_pos.y - progress_tooltip_panel.size.y - 15
+    if progress_tooltip_panel.position.x + progress_tooltip_panel.size.x > viewport_size.x:
+        progress_tooltip_panel.position.x = mouse_pos.x - progress_tooltip_panel.size.x - 15
+    progress_tooltip_panel.position.x = max(0, progress_tooltip_panel.position.x)
+    progress_tooltip_panel.position.y = max(0, progress_tooltip_panel.position.y)
+
+func hide_progress_tooltip():
+    progress_tooltip_panel.hide()
 
 func set_message(text: String):
     if message_label:

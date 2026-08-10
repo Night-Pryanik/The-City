@@ -340,7 +340,6 @@ func _update_construction_rows():
 
         var bar = row_data["bar"]
         bar.value = percent
-        bar.tooltip_text = "%s: %.0f%%" % [status_text, percent]
 
         var pause_btn = row_data["pause_btn"]
         if status == "paused":
@@ -349,6 +348,37 @@ func _update_construction_rows():
         else:
             pause_btn.icon = _get_icon("pause")
             pause_btn.tooltip_text = "Приостановить строительство"
+
+# Возвращает данные о прогресс-баре строящегося здания под курсором.
+# Возвращает пустой словарь, если курсор не над ни одним баром.
+func get_hovered_construction_bar(mouse_pos: Vector2) -> Dictionary:
+    var bm = _get_build_manager()
+    if not bm:
+        return {}
+    for build_key in construction_rows.keys():
+        var row_data = construction_rows[build_key]
+        if not is_instance_valid(row_data["bar"]):
+            continue
+        var bar = row_data["bar"]
+        if bar.get_global_rect().has_point(mouse_pos):
+            var progress_data = bm.get_building_build_progress(build_key)
+            if progress_data.is_empty():
+                continue
+            var work_cost = progress_data.get("work_cost", 1)
+            var progress_value = min(progress_data.get("progress", 0.0), work_cost)
+            var percent = 0.0
+            if work_cost > 0:
+                percent = progress_value / work_cost * 100.0
+            var status = progress_data.get("status", "active")
+            var status_text = "Строится"
+            if status == "paused":
+                status_text = "Приостановлено"
+            return {
+                "bar": bar,
+                "status_text": status_text,
+                "percent": percent
+            }
+    return {}
 
 # Группирует построенные здания по id и считает работающие.
 # idle — здания, у которых есть работник, но все слоты пустые (простаивают).

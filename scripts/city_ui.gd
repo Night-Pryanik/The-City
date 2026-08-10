@@ -192,6 +192,7 @@ func _switch_tab(tab_id: String):
     technologies_panel.visible = (tab_id == "technologies")
     if ui_helpers:
         ui_helpers.hide_group_tooltip()
+        ui_helpers.hide_progress_tooltip()
 
     if tab_id == "buildings":
         buildings_tab.refresh_list()
@@ -340,6 +341,19 @@ func _process(delta):
         build_hover_timer = 0.0
         ui_helpers.build_tooltip_panel.visible = false
 
+    # Тултип для прогресс-баров строящихся зданий (обновляется в реальном времени)
+    var hovered_bar = {}
+    if buildings_panel.visible:
+        hovered_bar = buildings_tab.get_hovered_construction_bar(mouse_pos)
+    if not hovered_bar.is_empty():
+        var status_text = hovered_bar.get("status_text", "Строится")
+        var percent = hovered_bar.get("percent", 0.0)
+        ui_helpers.progress_tooltip_label.text = "%s: %.0f%%" % [status_text, percent]
+        ui_helpers.show_progress_tooltip(mouse_pos)
+        ui_helpers.progress_tooltip_panel.visible = true
+    else:
+        ui_helpers.hide_progress_tooltip()
+
 func set_message(text: String):
     if ui_helpers:
         ui_helpers.set_message(text)
@@ -374,6 +388,7 @@ func _close_ui():
     ui_helpers.set_message("")
     if ui_helpers:
         ui_helpers.hide_group_tooltip()
+        ui_helpers.hide_progress_tooltip()
     if building_panel:
         building_panel.hide()
     hide()
