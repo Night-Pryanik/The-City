@@ -81,7 +81,7 @@
       "improved_by": "plantation",
       "tech_required": "plantations",
       "produces": { "sisal": 1, "feed": 4 },
-      "icon": "agave.png",
+      "icon": "sisal.png",
       "color": [ 200, 255, 200 ]
     }
   ]

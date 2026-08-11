@@ -58,12 +58,12 @@
       "icon": "glass_decorations.png"
     },
     {
-      "id": "rigging",
-      "name": "Такелаж",
+      "id": "ropes",
+      "name": "Веревки и канаты",
       "type": "product",
       "category": "material",
       "unlock_tech": "rope_making",
-      "icon": "rigging.png"
+      "icon": "ropes.png"
     }
   ]
 }
