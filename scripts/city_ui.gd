@@ -25,7 +25,7 @@ var tab_buttons = []
 var ui_helpers: Node
 var resources_tab: Node
 var buildings_tab: Node
-var technologies_tab: Node
+var tech_tree: Control
 var trade_tab: Node
 
 var data_cache: Dictionary = {}
@@ -75,15 +75,17 @@ func _ready():
     add_child(building_panel)
     building_panel.hide()
 
-    technologies_tab = load("res://scripts/technologies_tab.gd").new()
-    technologies_tab.setup(
+    # Дерево технологий в стиле Civ: горизонтальная прокрутка, вертикальные
+    # колонки по «слоям зависимостей», стрелки от предка к наследнику.
+    # Создаём отдельный Control внутри TreeRoot, чтобы он заполнил панель.
+    tech_tree = load("res://scripts/tech_tree.gd").new()
+    tech_tree.setup(
+        $ContentPanel/TechnologiesPanel/TreeRoot,
         $ContentPanel/TechnologiesPanel/CurrentResearch/VBoxContainer/TechCurrentLabel,
-        $ContentPanel/TechnologiesPanel/CurrentResearch/VBoxContainer/TechProgressBar,
-        $ContentPanel/TechnologiesPanel/ScrollContainer/AvailableTechList,
-        $ContentPanel/TechnologiesPanel/UnlockedContainer/UnlockedTechList
+        $ContentPanel/TechnologiesPanel/CurrentResearch/VBoxContainer/TechProgressBar
     )
-    technologies_tab.research_requested.connect(_on_research_requested)
-    add_child(technologies_tab)
+    tech_tree.research_requested.connect(_on_research_requested)
+    $ContentPanel/TechnologiesPanel/TreeRoot.add_child(tech_tree)
 
     trade_tab = load("res://scripts/trade_tab.gd").new()
     add_child(trade_tab)
@@ -181,7 +183,7 @@ func refresh_light():
 func _refresh_all():
     resources_tab.refresh()
     buildings_tab.refresh_built()
-    technologies_tab.refresh()
+    tech_tree.refresh()
     _update_food_label()
 
 func _switch_tab(tab_id: String):
@@ -197,7 +199,7 @@ func _switch_tab(tab_id: String):
     if tab_id == "buildings":
         buildings_tab.refresh_list()
     elif tab_id == "technologies":
-        technologies_tab.refresh()
+        tech_tree.refresh()
 
     ui_helpers.set_message("")
     _highlight_active_tab_button()

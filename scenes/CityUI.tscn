@@ -273,34 +273,15 @@ text = "Нет текущего исследования"
 [node name="TechProgressBar" type="ProgressBar" parent="ContentPanel/TechnologiesPanel/CurrentResearch/VBoxContainer" unique_id=474677704]
 layout_mode = 2
 
-[node name="ScrollContainer" type="ScrollContainer" parent="ContentPanel/TechnologiesPanel" unique_id=1031433829]
+[node name="TreeRoot" type="Control" parent="ContentPanel/TechnologiesPanel" unique_id=1900000001]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_top = 4.0
 grow_horizontal = 2
 grow_vertical = 2
-
-[node name="AvailableTechList" type="VBoxContainer" parent="ContentPanel/TechnologiesPanel/ScrollContainer" unique_id=2105080784]
-layout_mode = 2
-
-[node name="UnlockedContainer" type="Panel" parent="ContentPanel/TechnologiesPanel" unique_id=584365097]
-layout_mode = 1
-anchors_preset = 11
-anchor_left = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 0
-grow_vertical = 2
-
-[node name="UnlockedTechList" type="VBoxContainer" parent="ContentPanel/TechnologiesPanel/UnlockedContainer" unique_id=1752837184]
-layout_mode = 1
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -40.0
-offset_bottom = 40.0
-grow_horizontal = 0
+mouse_filter = 2
 
 [node name="BottomPanel" type="Panel" parent="." unique_id=47910934]
 layout_mode = 1

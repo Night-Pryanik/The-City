@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <rect width="64" height="64" fill="#3a3a5a" rx="8"/>
+  <path d="M20 16 L32 10 L40 16 L36 30 L28 30 Z" fill="#d4d4ff" stroke="#8a8acc" stroke-width="2"/>
+  <path d="M24 30 L32 40 L40 30" fill="none" stroke="#d4a574" stroke-width="3"/>
+  <circle cx="32" cy="44" r="3" fill="#7ec8e3"/>
+</svg>
+</｜DSML｜tool>
+<task_progress>
+- [x] Изучение структуры проекта и согласование плана
+- [x] Добавить поле icon в data/technologies.json
+- [ ] Создать SVG-иконки для недостающих технологий (icons/tech/)
+- [ ] Создать scripts/tech_tree.gd (Control со стрелками)
+- [ ] Переработать scripts/technologies_tab.gd (дерево технологий)
+- [ ] Обновить scripts/ui_helpers.gd (тултип технологий)
+- [ ] Обновить scenes/CityUI.tscn (структура панели технологий)
+- [ ] Обновить scripts/city_ui.gd (setup и тултип)
+- [ ] Проверить результат
+</task>
