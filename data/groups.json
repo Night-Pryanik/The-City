@@ -22,6 +22,7 @@
     {"id": "textile_plants", "name": "Текстильные растения"},
     {"id": "oil_plants", "name": "Масличные растения"},
     {"id": "fruits", "name": "Фрукты"},
+    {"id": "construction_materials", "name": "Строительные материалы"},
     {"id": "other", "name": "Прочие"}
   ]
 }
