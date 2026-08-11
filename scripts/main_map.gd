@@ -1322,6 +1322,7 @@ func _update_research_progress():
             research_icon.visible = false
             research_icon.texture = null
         if research_label:
+            research_label.visible = true
             research_label.text = "!"
         research_button.tooltip_text = "Никакая технология не изучается. Нажмите, чтобы выбрать технологию"
         research_progress_bar.value = 0.0
@@ -1365,11 +1366,13 @@ func _update_research_progress():
             if research_icon:
                 research_icon.visible = false
             if research_label:
+                research_label.visible = true
                 research_label.text = "?"
     else:
         if research_icon:
             research_icon.visible = false
         if research_label:
+            research_label.visible = true
             research_label.text = "?"
         research_button.tooltip_text = "Изучается технология"
     _apply_research_button_warning(false)
