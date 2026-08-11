@@ -159,6 +159,11 @@ func _refresh_light():
 
     resources_tab.update_values()
     buildings_tab.update_built_status()
+    # Прогресс исследования обновляем только когда вкладка Технологии
+    # активна — иначе лишняя работа на каждом тике. Стоимость минимальна,
+    # но привычка «не делать лишнего, если не нужно» важна.
+    if active_tab == "technologies":
+        tech_tree.update_progress()
     _update_food_label()
 
 func _needs_full_refresh() -> bool:
@@ -192,6 +197,24 @@ func _switch_tab(tab_id: String):
     buildings_panel.visible = (tab_id == "buildings")
     trade_panel.visible = (tab_id == "trade")
     technologies_panel.visible = (tab_id == "technologies")
+
+    # На вкладке «Технологии» правая панель «Построенные здания» не нужна —
+    # отдаём её место дереву: скрываем RightPanel и расширяем TopPanel
+    # и ContentPanel до правого края viewport.
+    #
+    # Базовые значения offset_right хранятся здесь как константы —
+    # соответствуют тому, что задано в CityUI.tscn.
+    const RIGHT_PANEL_DEFAULT_LEFT: float = 824.0
+    var is_tech_tab: bool = (tab_id == "technologies")
+    $RightPanel.visible = not is_tech_tab
+    if is_tech_tab:
+        var w: float = get_viewport_rect().size.x
+        $TopPanel.offset_right = w
+        $ContentPanel.offset_right = w
+    else:
+        $TopPanel.offset_right = RIGHT_PANEL_DEFAULT_LEFT
+        $ContentPanel.offset_right = RIGHT_PANEL_DEFAULT_LEFT
+
     if ui_helpers:
         ui_helpers.hide_group_tooltip()
         ui_helpers.hide_progress_tooltip()

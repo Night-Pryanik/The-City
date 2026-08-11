@@ -4,7 +4,7 @@
       "id": "farming",
       "name": "Растениеводство",
       "era": "ancient",
-      "science_cost": 3.0,
+      "science_cost": 0.0,
       "icon": "wheat.png",
       "description": "Открывает все пищевые растения и позволяет строить фермы.",
       "flavor": "Первые земледельцы заметили, что брошенные в землю семена дают новые всходы. Так началась эпоха оседлой жизни."
@@ -146,7 +146,7 @@
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "wool.png",
-      "prerequisites": [ [ "animal_husbandry" ], [ "farming" ] ],
+      "prerequisites": [ [ "animal_husbandry" ] ],
       "description": "Открывает дом ткача: шерсть → одежда.",
       "flavor": "Ткацкий станок превратил шерсть и лён в ткань, из которой шили одежду."
     },

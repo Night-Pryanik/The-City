@@ -350,15 +350,21 @@ func get_science_per_tick() -> float:
 func get_research_science_collected() -> float:
     return research_science_accumulated
 
-# Обновляет прогресс исследования очками науки (вызывается каждый тик из do_tick).
-func tick_research_science():
+# Обновляет прогресс исследования непрерывно — вызывается каждый кадр
+# из _process в main_map.gd. Раньше это делалось раз в PRODUCTION_INTERVAL
+# (2 секунды), из-за чего прогресс-бар дёргался рывками: тик → 33%, пауза,
+# тик → 66%, пауза. Теперь accumulated растёт с правильной скоростью
+# (science_per_sec = science_per_tick / PRODUCTION_INTERVAL), и UI
+# получает гладкий сигнал.
+func tick_research_science_continuous(delta: float) -> void:
     if Engine.is_editor_hint():
         return
     if current_research_tech_id == "":
         return
     if current_research_science_cost <= 0:
         current_research_science_cost = 1
-    research_science_accumulated += get_science_per_tick()
+    var rate: float = get_science_per_tick() / PRODUCTION_INTERVAL
+    research_science_accumulated += rate * delta
     research_progress = clamp(research_science_accumulated / float(current_research_science_cost), 0.0, 1.0)
     if research_science_accumulated >= current_research_science_cost:
         _complete_research()

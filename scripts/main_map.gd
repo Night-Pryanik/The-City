@@ -241,6 +241,11 @@ func _process(delta):
     if expansion_button:
         expansion_button.disabled = is_paused
 
+    # Наука копится каждый кадр, а не привязана к production-тику.
+    # Без этого прогресс-бар исследования прыгал скачками раз в 2 секунды.
+    if not is_paused:
+        CityData.tick_research_science_continuous(delta)
+
     production_timer += delta
     if production_timer >= CityData.PRODUCTION_INTERVAL:
         production_timer -= CityData.PRODUCTION_INTERVAL
@@ -268,7 +273,8 @@ func _process(delta):
                     CityData.add_raw_production(tile.resource, production_multiplier)
 
         CityData.do_tick()
-        CityData.tick_research_science()
+        # tick_research_science вызывается каждый кадр ниже (см. _process),
+        # а не привязан к production-тику. Это даёт плавный progress-bar.
 
     _update_research_progress()
     if CityData.current_research_tech_id != "" or build_manager.active_builds.size() > 0:
