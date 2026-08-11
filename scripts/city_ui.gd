@@ -13,7 +13,7 @@ extends Control
 @onready var trade_tab_button = $LeftPanel/TradeTabButton
 @onready var technologies_tab_button = $LeftPanel/TechnologiesTabButton
 @onready var close_button = $BottomPanel/CloseButton
-@onready var close_button_top = $RightPanel/CloseButtonTop
+@onready var close_button_top = $CloseButtonTop
 
 # Верхняя панель
 @onready var top_food_label = $TopPanel/TopFoodLabel
@@ -50,6 +50,14 @@ func _ready():
     ui_helpers = load("res://scripts/ui_helpers.gd").new()
     ui_helpers.setup(self, message_label)
     add_child(ui_helpers)
+
+    # Кнопка закрытия в правом верхнем углу. CityUi имеет anchors_preset=0
+    # и размер 0×0 (как в оригинальной сцене), так что anchor_right=1.0 у
+    # кнопки не даёт привязку к правому краю viewport — позиционируем
+    # вручную. Также подписываемся на resize окна, чтобы при изменении
+    # размера окна кнопка оставалась в правом верхнем углу.
+    _position_close_button_top()
+    get_viewport().size_changed.connect(_position_close_button_top)
 
     resources_tab = load("res://scripts/resources_tab.gd").new()
     resources_tab.setup($ContentPanel/ResourcesPanel/ScrollContainer/ResourcesList, ui_helpers)
@@ -399,7 +407,7 @@ func _input(event: InputEvent):
                 return
 
         var hit_panel = false
-        for panel in [$LeftPanel, $TopPanel, $RightPanel, $ContentPanel, $BottomPanel]:
+        for panel in [$LeftPanel, $TopPanel, $RightPanel, $ContentPanel, $BottomPanel, $CloseButtonTop]:
             if panel.get_global_rect().has_point(click_pos):
                 hit_panel = true
                 break
@@ -421,3 +429,17 @@ func _close_ui():
 
 func close_city():
     _close_ui()
+
+func _position_close_button_top() -> void:
+    # Закрепляет CloseButtonTop в правом верхнем углу viewport. Сделано
+    # вручную, потому что CityUi имеет anchors_preset=0 (размер 0×0) и
+    # anchor_right=1.0 у кнопки не дал бы привязки к краю экрана.
+    if close_button_top == null:
+        return
+    var w: float = get_viewport_rect().size.x
+    close_button_top.anchor_left = 0
+    close_button_top.anchor_top = 0
+    close_button_top.anchor_right = 0
+    close_button_top.anchor_bottom = 0
+    close_button_top.size = Vector2(37, 31)
+    close_button_top.position = Vector2(w - 37, 0)

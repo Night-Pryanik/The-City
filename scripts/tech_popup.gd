@@ -13,6 +13,7 @@ var title_label: Label
 var description_label: Label
 var flavor_label: Label
 var resources_label: Label
+var techs_btn: Button   # «Перейти к списку технологий» — скрываем, если игрок уже там
 
 signal go_to_technologies()
 
@@ -31,7 +32,11 @@ func _ready():
     add_child(center)
 
     panel = Panel.new()
-    panel.custom_minimum_size = Vector2(560, 420)
+    # Размеры — min. Panel вырастет по высоте, если контента много,
+    # но никогда не сожмётся меньше этих значений. Ставим 560×520 вместо
+    # 560×420, чтобы окно по умолчанию было чуть выше и вмещало типичный
+    # длинный flavor-text без скролла.
+    panel.custom_minimum_size = Vector2(560, 520)
     var style = StyleBoxFlat.new()
     style.bg_color = Color(0.13, 0.13, 0.13, 1.0)
     style.set_border_width_all(2)
@@ -54,36 +59,54 @@ func _ready():
     title_label.add_theme_color_override("font_color", Color(0.6, 1.0, 0.6))
     vbox.add_child(title_label)
 
+    # Длинный текст (description + flavor + resources) заворачиваем в
+    # ScrollContainer с size_flags_vertical = EXPAND_FILL: он займёт всё
+    # свободное место между заголовком и кнопками, а если контента больше,
+    # чем помещается — появится вертикальный скролл внутри. Кнопки при
+    # этом всегда прижаты к низу и не вылазят.
+    var scroll = ScrollContainer.new()
+    scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+    scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+    vbox.add_child(scroll)
+
+    var scroll_body = VBoxContainer.new()
+    scroll_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    scroll_body.add_theme_constant_override("separation", 10)
+    scroll.add_child(scroll_body)
+
     var desc_title = Label.new()
     desc_title.text = "Что даёт технология:"
     desc_title.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
-    vbox.add_child(desc_title)
+    scroll_body.add_child(desc_title)
 
     description_label = Label.new()
     description_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    description_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
-    vbox.add_child(description_label)
+    description_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    scroll_body.add_child(description_label)
 
     var flavor_title = Label.new()
     flavor_title.text = "Историческая справка:"
     flavor_title.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
-    vbox.add_child(flavor_title)
+    scroll_body.add_child(flavor_title)
 
     flavor_label = Label.new()
     flavor_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     flavor_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
-    vbox.add_child(flavor_label)
+    flavor_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    scroll_body.add_child(flavor_label)
 
     # Секция «Найденные ресурсы» (заполняется после изучения технологии).
     var res_title = Label.new()
     res_title.text = "Разведка региона:"
     res_title.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
-    vbox.add_child(res_title)
+    scroll_body.add_child(res_title)
 
     resources_label = Label.new()
     resources_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     resources_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.5))
-    vbox.add_child(resources_label)
+    resources_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    scroll_body.add_child(resources_label)
 
     var buttons = HBoxContainer.new()
     buttons.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -96,7 +119,8 @@ func _ready():
     ok_btn.pressed.connect(_on_ok_pressed)
     buttons.add_child(ok_btn)
 
-    var techs_btn = Button.new()
+    var techs_btn_local = Button.new()
+    techs_btn = techs_btn_local  # сохраняем ссылку для условного скрытия
     techs_btn.text = "Перейти к списку технологий"
     techs_btn.custom_minimum_size = Vector2(260, 36)
     techs_btn.pressed.connect(_on_techs_pressed)
@@ -119,6 +143,16 @@ func show_tech(tech_id: String, found_resources: Array = []):
         resources_label.text = "Новые ресурсы не обнаружены."
     else:
         resources_label.text = "\n".join(found_resources)
+
+    # Если игрок уже на вкладке Технологии — кнопка «Перейти к списку
+    # технологий» бессмысленна, прячем её.
+    if techs_btn:
+        var main_map = get_tree().root.find_child("MainMap", true, false)
+        var already_on_tab: bool = false
+        if main_map and main_map.city_ui and main_map.city_ui.visible \
+                and main_map.city_ui.active_tab == "technologies":
+            already_on_tab = true
+        techs_btn.visible = not already_on_tab
 
     # Задаём размер корневого Control = размер viewport, чтобы оверлей покрывал всё
     var vp_size = get_viewport_rect().size

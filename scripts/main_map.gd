@@ -73,6 +73,8 @@ var extended_tooltip_delay: float = 1.0
 var tech_popup: Control
 var research_hbox: HBoxContainer
 var research_button: Button
+var research_icon: TextureRect   # дочерний TextureRect внутри research_button
+var research_label: Label        # дочерний Label внутри research_button
 var research_progress_bar: ProgressBar
 var _last_research_hud_tech: String = ""
 
@@ -1237,7 +1239,40 @@ func _setup_research_hud():
     research_button = Button.new()
     research_button.custom_minimum_size = Vector2(36, 24)
     research_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-    research_button.text = "?"
+    research_button.text = ""
+    # Иконку кладём как дочерний TextureRect, а не через Button.icon.
+    # Причина: PNG 64×64 в кнопке 36×24 растягивается/вылезает, а в Godot
+    # 4.7 нет ни icon_scale, ни icon_max_width, ни нормального способа
+    # ограничить размер Button.icon. Свой TextureRect с custom_minimum_size
+    # = 24×24 решает проблему раз и навсегда.
+    var inner = HBoxContainer.new()
+    inner.name = "InnerBox"
+    inner.set_anchors_preset(Control.PRESET_FULL_RECT)
+    inner.alignment = BoxContainer.ALIGNMENT_CENTER
+    inner.add_theme_constant_override("separation", 2)
+    inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    research_button.add_child(inner)
+
+    research_icon = TextureRect.new()
+    research_icon.name = "TechIcon"
+    research_icon.custom_minimum_size = Vector2(24, 24)
+    research_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+    research_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+    research_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    research_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    research_icon.visible = false
+    inner.add_child(research_icon)
+
+    research_label = Label.new()
+    research_label.name = "TechLabel"
+    research_label.text = "?"
+    research_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    research_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    research_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    research_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    research_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    inner.add_child(research_label)
+
     research_button.tooltip_text = "Выберите технологию для изучения"
     research_button.pressed.connect(_on_research_hud_button_pressed)
     research_hbox.add_child(research_button)
@@ -1263,7 +1298,12 @@ func _update_research_progress():
     var tech_id = CityData.current_research_tech_id
     if tech_id == "":
         # Ничего не изучается — привлекаем внимание красным.
-        research_button.text = "!"
+        # Иконку обязательно прячем, иначе старая технология торчит на кнопке.
+        if research_icon:
+            research_icon.visible = false
+            research_icon.texture = null
+        if research_label:
+            research_label.text = "!"
         research_button.tooltip_text = "Никакая технология не изучается. Нажмите, чтобы выбрать технологию"
         research_progress_bar.value = 0.0
         research_progress_bar.modulate = Color(1, 1, 1, 1)
@@ -1279,23 +1319,39 @@ func _update_research_progress():
             break
     if tech_data:
         research_button.tooltip_text = "Изучается: %s" % tech_data.get("name", tech_id)
-        var icon_name = tech_data.get("icon", "")
-        if icon_name != "":
-            research_button.text = ""
-            research_button.icon = null
+        var icon_name: String = tech_data.get("icon", "")
+        if icon_name != "" and research_icon:
             var path = map_renderer.get_icon_path(icon_name)
             if path != "":
                 var tex = load(path)
                 if tex:
-                    research_button.icon = tex
-                    research_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+                    research_icon.texture = tex
+                    research_icon.visible = true
+                    # Скрываем Label, чтобы HBox не резервировал под него
+                    # место. Иначе иконка «прилипает» к левому краю кнопки,
+                    # а справа — пустая область под скрытый label.
+                    if research_label:
+                        research_label.visible = false
+                else:
+                    research_icon.visible = false
+                    if research_label:
+                        research_label.visible = true
+                        research_label.text = "?"
             else:
-                research_button.text = "?"
+                research_icon.visible = false
+                if research_label:
+                    research_label.visible = true
+                    research_label.text = "?"
         else:
-            research_button.text = "?"
-            research_button.icon = null
+            if research_icon:
+                research_icon.visible = false
+            if research_label:
+                research_label.text = "?"
     else:
-        research_button.text = "?"
+        if research_icon:
+            research_icon.visible = false
+        if research_label:
+            research_label.text = "?"
         research_button.tooltip_text = "Изучается технология"
     _apply_research_button_warning(false)
 
