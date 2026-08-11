@@ -73,13 +73,18 @@ func _build_ui():
     # Перетаскивание окна за заголовок
     _title_bar.gui_input.connect(_on_title_bar_gui_input)
 
-    # Контейнер содержимого
+    # Прокручиваемый контейнер содержимого
+    var scroll = ScrollContainer.new()
+    scroll.position = Vector2(10, TITLE_HEIGHT + 10)
+    scroll.size = Vector2(WINDOW_SIZE.x - 20, WINDOW_SIZE.y - TITLE_HEIGHT - 20)
+    scroll.mouse_filter = Control.MOUSE_FILTER_STOP
+    _panel.add_child(scroll)
+
     _content_vbox = VBoxContainer.new()
-    _content_vbox.position = Vector2(10, TITLE_HEIGHT + 10)
-    _content_vbox.size = Vector2(WINDOW_SIZE.x - 20, WINDOW_SIZE.y - TITLE_HEIGHT - 20)
+    _content_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     _content_vbox.add_theme_constant_override("separation", 6)
     _content_vbox.mouse_filter = Control.MOUSE_FILTER_STOP
-    _panel.add_child(_content_vbox)
+    scroll.add_child(_content_vbox)
 
     # Статусная строка (подсказки)
     _status_label = Label.new()
