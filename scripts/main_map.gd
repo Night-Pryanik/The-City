@@ -69,12 +69,13 @@ var extended_tooltip_delay: float = 1.0
 @onready var townsfolk_manager = $TownsfolkManager
 @onready var settings_menu = preload("res://scenes/settings_menu.tscn").instantiate()
 @onready var input_handler = $InputHandler
+@onready var debug_manager = $DebugManager
 
 var tech_popup: Control
 var research_hbox: HBoxContainer
 var research_button: Button
-var research_icon: TextureRect   # дочерний TextureRect внутри research_button
-var research_label: Label        # дочерний Label внутри research_button
+var research_icon: TextureRect # дочерний TextureRect внутри research_button
+var research_label: Label # дочерний Label внутри research_button
 var research_progress_bar: ProgressBar
 var _last_research_hud_tech: String = ""
 
@@ -179,6 +180,9 @@ func _ready():
     input_handler.set_tooltip_delay(tooltip_delay)
     input_handler.set_extended_tooltip_delay(extended_tooltip_delay)
 
+    # Инициализация DebugManager
+    debug_manager.initialize(self)
+
     _calc_offsets()
     map_renderer.queue_redraw()
 
@@ -228,6 +232,21 @@ func _ready():
     _setup_research_hud()
 
 func _input(event):
+    # Дебаг-меню: открытие/закрытие по F9
+    if event is InputEventKey and event.pressed and event.keycode == KEY_F9:
+        debug_manager.toggle()
+        get_viewport().set_input_as_handled()
+        return
+
+    # ESC закрывает дебаг-меню, если оно открыто
+    if debug_manager.is_open:
+        if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+            debug_manager.close()
+            get_viewport().set_input_as_handled()
+            return
+        input_handler.handle_input(event)
+        return
+
     input_handler.handle_input(event)
 
 func _process(delta):

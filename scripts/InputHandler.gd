@@ -12,6 +12,7 @@ var popup_menu: Node
 var city_ui: Node
 var pause_menu: Node
 var expansion_manager: Node
+var debug_manager: Node
 
 var _hovered_hex = null
 var _hover_start_time: float = 0.0
@@ -39,6 +40,7 @@ func initialize(main_node: Node):
     city_ui = main_node.city_ui
     pause_menu = main_node.pause_menu
     expansion_manager = main_node.expansion_manager
+    debug_manager = main_node.debug_manager
 
 func set_tooltip_delay(value: float):
     tooltip_delay = value
@@ -72,6 +74,14 @@ func handle_input(event: InputEvent):
     if city_ui.visible or pause_menu.visible or (main_map.settings_menu and main_map.settings_menu.visible):
         return
 
+    # Дебаг-меню открыто — блокируем взаимодействие с картой
+    if debug_manager and debug_manager.is_open:
+        # В режиме ожидания клика по гексу разрешаем только клики мыши
+        if debug_manager.waiting_for_hex:
+            if event is InputEventMouseButton:
+                _handle_mouse_button(event)
+        return
+
     # Обработка общих событий мыши
     if event is InputEventMouseButton:
         _handle_mouse_button(event)
@@ -89,6 +99,11 @@ func handle_process(delta: float):
         return
 
     if city_ui.visible or popup_menu.visible or pause_menu.visible or (main_map.settings_menu and main_map.settings_menu.visible):
+        _hide_tooltip()
+        return
+
+    # Дебаг-меню открыто — блокируем обработку процесса (скролл, тултипы)
+    if debug_manager and debug_manager.is_open:
         _hide_tooltip()
         return
 
@@ -226,6 +241,14 @@ func _handle_expansion_mode_motion(event: InputEventMouseMotion):
         _hide_tooltip()
 
 func _handle_mouse_button(event: InputEventMouseButton):
+    # Дебаг-меню: ожидание клика по гексу для размещения ресурса
+    if debug_manager and debug_manager.waiting_for_hex:
+        if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+            var hex = _pixel_to_hex(event.global_position.x, event.global_position.y)
+            if hex != null:
+                debug_manager.handle_hex_click(hex.row, hex.col)
+        return
+
     # В режиме "Развитие" левый клик не должен ничего делать (кроме перетаскивания)
     if expansion_manager.is_active() and event.button_index == MOUSE_BUTTON_LEFT:
         return
