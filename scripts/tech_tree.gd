@@ -13,31 +13,33 @@
 extends Control
 
 # --- Размеры ---
-const COL_GAP: int = 80                # горизонтальный зазор между колонками
-const COL_PADDING: int = 24            # отступ от края _inner
-const BUTTON_WIDTH: int = 200          # фиксированная ширина кнопки
-const BUTTON_HEIGHT: int = 60          # фиксированная высота кнопки
-const BUTTON_VERTICAL_GAP: int = 16    # вертикальный зазор между кнопками в колонке
-const ICON_SIZE: int = 32              # размер иконки слева от названия
+const COL_GAP: int = 80 # горизонтальный зазор между колонками
+const COL_PADDING: int = 24 # отступ от края _inner
+const BUTTON_WIDTH: int = 200 # фиксированная ширина кнопки
+const BUTTON_HEIGHT: int = 60 # фиксированная высота кнопки
+const BUTTON_VERTICAL_GAP: int = 16 # вертикальный зазор между кнопками в колонке
+const ICON_SIZE: int = 32 # размер иконки слева от названия
 
 # --- Внешние ссылки (заполняются в setup) ---
-var current_label: Label               # "Изучается: ..." (Label вверху панели)
-var progress_bar: ProgressBar          # прогресс-бар текущего исследования
+var current_label: Label # "Изучается: ..." (Label вверху панели)
+var progress_bar: ProgressBar # прогресс-бар текущего исследования
 
 # --- Внутренние узлы ---
 var _scroll: ScrollContainer
-var _inner: Control                    # большой Control, размер = вся площадь дерева
-var _columns: Array = []               # [Control, Control, ...] по колонкам
-var _tech_nodes: Dictionary = {}       # tech_id -> {button, column, row}
-var _arrows_layer: Control             # Control, в котором _draw рисует стрелки
-var _fonts_adjusted: bool = false      # отложенный автоподбор шрифта уже отработал
+var _inner: Control # большой Control, размер = вся площадь дерева
+var _columns: Array = [] # [Control, Control, ...] по колонкам
+var _tech_nodes: Dictionary = {} # tech_id -> {button, column, row}
+var _arrows_layer: Control # Control, в котором _draw рисует стрелки
+var _fonts_adjusted: bool = false # отложенный автоподбор шрифта уже отработал
+var _hovered_tech_id: String = "" # ID технологии, на которую наведён курсор
+var _related_techs: Dictionary = {} # tech_id -> bool, связанные технологии для подсветки
 
 # --- Плавная анимация прогресс-бара ---
 # При обновлении на тике ставим _progress_target, а в _process догоняем
 # progress_bar.value с фиксированной скоростью. Без этого прогресс-бар
 # дёргается скачками раз в 2 секунды (PRODUCTION_INTERVAL).
 var _progress_target: float = 0.0
-const PROGRESS_INTERP_SPEED: float = 60.0  # единиц/сек (0..100)
+const PROGRESS_INTERP_SPEED: float = 60.0 # единиц/сек (0..100)
 
 signal research_requested(tech_id: String)
 
@@ -430,6 +432,10 @@ func _create_tech_button(tech_data: Dictionary) -> Button:
     # Клик — наверх, через сигнал.
     var tech_id: String = tech_data["id"]
     btn.pressed.connect(_on_tech_pressed.bind(tech_id))
+    
+    # Наведение — подсветка связанных технологий и стрелок.
+    btn.mouse_entered.connect(_on_tech_button_mouse_entered.bind(tech_id))
+    btn.mouse_exited.connect(_on_tech_button_mouse_exited.bind(tech_id))
 
     return btn
 
@@ -528,7 +534,7 @@ func _update_states():
         var is_current: bool = tech_id == current_id
         var is_available: bool = CityData.is_tech_available(tech_id)
 
-        _style_button(btn, is_unlocked, is_current, is_available)
+        _style_button(btn, is_unlocked, is_current, is_available, tech_id)
 
         # Прогресс-бар на кнопке (виден только у текущего исследования)
         var progress: ProgressBar = _find_progress_in_button(btn)
@@ -563,7 +569,7 @@ func _find_progress_in_button(btn: Button) -> ProgressBar:
             return child
     return null
 
-func _style_button(btn: Button, is_unlocked: bool, is_current: bool, is_available: bool):
+func _style_button(btn: Button, is_unlocked: bool, is_current: bool, is_available: bool, tech_id: String = ""):
     # Стили зависят от состояния. Все стили наследуют общие свойства
     # (бордюр, скругление), но отличаются фоном.
     var bg := Color(0.20, 0.20, 0.22)
@@ -602,15 +608,30 @@ func _style_button(btn: Button, is_unlocked: bool, is_current: bool, is_availabl
     btn.add_theme_stylebox_override("disabled", style_disabled)
     btn.add_theme_color_override("font_color", font_col)
     btn.modulate = modulate
+    
+    # Подсветка рамки для связанных технологий при наведении.
+    if not tech_id.is_empty() and _related_techs.has(tech_id):
+        var border_color := Color(0.3, 0.7, 1.0, 1.0)
+        style_normal.border_color = border_color
+        style_hover.border_color = border_color
+        style_pressed.border_color = border_color
+        style_normal.set_border_width_all(3)
+        style_hover.set_border_width_all(3)
+        style_pressed.set_border_width_all(3)
+        btn.add_theme_stylebox_override("normal", style_normal)
+        btn.add_theme_stylebox_override("hover", style_hover)
+        btn.add_theme_stylebox_override("pressed", style_pressed)
+        btn.add_theme_stylebox_override("disabled", style_disabled)
+    
     # Все кнопки остаются кликабельными — корректность старта исследования
     # проверяет CityData.start_research() и эмитит research_error в случае
     # конфликта (уже идёт другое, не выполнены требования и т.п.).
     btn.disabled = false
 
-func _make_button_stylebox(bg_color: Color) -> StyleBoxFlat:
+func _make_button_stylebox(bg_color: Color, border_width: int = 1) -> StyleBoxFlat:
     var s := StyleBoxFlat.new()
     s.bg_color = bg_color
-    s.set_border_width_all(1)
+    s.set_border_width_all(border_width)
     s.border_color = Color(0.10, 0.10, 0.10)
     s.set_corner_radius_all(4)
     return s
@@ -654,6 +675,55 @@ func _update_status_label():
 func _on_tech_pressed(tech_id: String):
     emit_signal("research_requested", tech_id)
 
+func _on_tech_button_mouse_entered(tech_id: String):
+    if _hovered_tech_id == tech_id:
+        return
+    _hovered_tech_id = tech_id
+    _update_related_techs(tech_id)
+    _update_hover_states()
+
+func _on_tech_button_mouse_exited(tech_id: String):
+    if _hovered_tech_id != tech_id:
+        return
+    _hovered_tech_id = ""
+    _related_techs.clear()
+    _update_hover_states()
+
+func _update_related_techs(tech_id: String):
+    # Собираем все связанные технологии: прямые предки и потомки.
+    _related_techs.clear()
+    _related_techs[tech_id] = true # сама технология тоже подсвечивается
+
+    # Прямые предки (родители)
+    var parents_map: Dictionary = {}
+    for tech in GameData.technologies:
+        var tid: String = tech["id"]
+        var prereqs = tech.get("prerequisites", [])
+        for group in prereqs:
+            for req in group:
+                if not parents_map.has(tid):
+                    parents_map[tid] = []
+                parents_map[tid].append(req)
+
+    if parents_map.has(tech_id):
+        for parent_id in parents_map[tech_id]:
+            _related_techs[parent_id] = true
+
+    # Потомки (дети)
+    for tech in GameData.technologies:
+        var tid: String = tech["id"]
+        var prereqs = tech.get("prerequisites", [])
+        for group in prereqs:
+            if tech_id in group:
+                _related_techs[tid] = true
+                break
+
+func _update_hover_states():
+    # Обновляем стили кнопок и перерисовываем стрелки.
+    _update_states()
+    if is_instance_valid(_arrows_layer):
+        _arrows_layer.queue_redraw()
+
 func _on_arrows_draw():
     # Рисуем стрелки от каждой технологии к её наследникам.
     # Координаты считаем в системе _arrows_layer (== _inner).
@@ -663,8 +733,9 @@ func _on_arrows_draw():
     var unlocked = CityData.unlocked_technologies
     var current_id: String = CityData.current_research_tech_id
     var color_unlocked := Color(0.6, 0.9, 0.6, 0.9)
-    var color_active := Color(0.9, 0.85, 0.4, 0.9)  # родитель изучен, ребёнок ещё нет
+    var color_active := Color(0.9, 0.85, 0.4, 0.9) # родитель изучен, ребёнок ещё нет
     var color_locked := Color(0.4, 0.4, 0.4, 0.5)
+    var color_hover := Color(0.3, 0.7, 1.0, 1.0) # ярко-голубой для подсвечиваемых связей
 
     # Строим карту «родитель → список детей» из prerequisites.
     var children_map: Dictionary = {}
@@ -702,7 +773,7 @@ func _on_arrows_draw():
                 child_btn.position.y + child_btn.size.y * 0.5
             )
 
-            # Цвет в зависимости от состояний
+            # Определяем цвет стрелки
             var color: Color = color_active
             var parent_unlocked: bool = parent_id in unlocked
             var child_unlocked: bool = child_id in unlocked
@@ -710,6 +781,15 @@ func _on_arrows_draw():
                 color = color_unlocked
             elif not parent_unlocked:
                 color = color_locked
+            
+            # Если есть наведённая технология — подсвечиваем связанные стрелки.
+            if not _hovered_tech_id.is_empty():
+                var is_related: bool = (parent_id == _hovered_tech_id or child_id == _hovered_tech_id)
+                if is_related:
+                    color = color_hover
+                else:
+                    # Несвязанные стрелки затемняем.
+                    color.a = 0.2
 
             # Зигзаг: горизонталь от родителя, вертикаль в середине, горизонталь к ребёнку.
             var mid_x: float = (parent_right.x + child_left.x) * 0.5
