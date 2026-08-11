@@ -690,12 +690,13 @@ func _on_tech_button_mouse_exited(tech_id: String):
     _update_hover_states()
 
 func _update_related_techs(tech_id: String):
-    # Собираем все связанные технологии: прямые предки и потомки.
+    # Собираем ВСЮ цепочку связей: все предки до корней и все потомки до листьев.
     _related_techs.clear()
     _related_techs[tech_id] = true # сама технология тоже подсвечивается
 
-    # Прямые предки (родители)
+    # Карта «ребёнок -> [предки]» и «предок -> [потомки]».
     var parents_map: Dictionary = {}
+    var children_map: Dictionary = {}
     for tech in GameData.technologies:
         var tid: String = tech["id"]
         var prereqs = tech.get("prerequisites", [])
@@ -704,19 +705,34 @@ func _update_related_techs(tech_id: String):
                 if not parents_map.has(tid):
                     parents_map[tid] = []
                 parents_map[tid].append(req)
+                if not children_map.has(req):
+                    children_map[req] = []
+                children_map[req].append(tid)
 
-    if parents_map.has(tech_id):
-        for parent_id in parents_map[tech_id]:
-            _related_techs[parent_id] = true
+    # Все предки (рекурсивно, до корней).
+    _collect_ancestors(tech_id, parents_map, _related_techs)
+    # Все потомки (рекурсивно, до листьев).
+    _collect_descendants(tech_id, children_map, _related_techs)
 
-    # Потомки (дети)
-    for tech in GameData.technologies:
-        var tid: String = tech["id"]
-        var prereqs = tech.get("prerequisites", [])
-        for group in prereqs:
-            if tech_id in group:
-                _related_techs[tid] = true
-                break
+func _collect_ancestors(tech_id: String, parents_map: Dictionary, result: Dictionary) -> void:
+    # Добавляет в result всех предков tech_id по цепочке (до корней).
+    if not parents_map.has(tech_id):
+        return
+    for parent_id in parents_map[tech_id]:
+        if result.has(parent_id):
+            continue
+        result[parent_id] = true
+        _collect_ancestors(parent_id, parents_map, result)
+
+func _collect_descendants(tech_id: String, children_map: Dictionary, result: Dictionary) -> void:
+    # Добавляет в result всех потомков tech_id по цепочке (до листьев).
+    if not children_map.has(tech_id):
+        return
+    for child_id in children_map[tech_id]:
+        if result.has(child_id):
+            continue
+        result[child_id] = true
+        _collect_descendants(child_id, children_map, result)
 
 func _update_hover_states():
     # Обновляем стили кнопок и перерисовываем стрелки.
@@ -729,12 +745,10 @@ func _on_arrows_draw():
     # Координаты считаем в системе _arrows_layer (== _inner).
     if _arrows_layer == null:
         return
+    # Стрелки показываем только при наведении на технологию.
+    if _hovered_tech_id.is_empty():
+        return
 
-    var unlocked = CityData.unlocked_technologies
-    var current_id: String = CityData.current_research_tech_id
-    var color_unlocked := Color(0.6, 0.9, 0.6, 0.9)
-    var color_active := Color(0.9, 0.85, 0.4, 0.9) # родитель изучен, ребёнок ещё нет
-    var color_locked := Color(0.4, 0.4, 0.4, 0.5)
     var color_hover := Color(0.3, 0.7, 1.0, 1.0) # ярко-голубой для подсвечиваемых связей
 
     # Строим карту «родитель → список детей» из prerequisites.
@@ -773,23 +787,14 @@ func _on_arrows_draw():
                 child_btn.position.y + child_btn.size.y * 0.5
             )
 
-            # Определяем цвет стрелки
-            var color: Color = color_active
-            var parent_unlocked: bool = parent_id in unlocked
-            var child_unlocked: bool = child_id in unlocked
-            if parent_unlocked and child_unlocked:
-                color = color_unlocked
-            elif not parent_unlocked:
-                color = color_locked
-            
-            # Если есть наведённая технология — подсвечиваем связанные стрелки.
-            if not _hovered_tech_id.is_empty():
-                var is_related: bool = (parent_id == _hovered_tech_id or child_id == _hovered_tech_id)
-                if is_related:
-                    color = color_hover
-                else:
-                    # Несвязанные стрелки затемняем.
-                    color.a = 0.2
+            # При наведении показываем стрелки, оба конца которых входят
+            # в подсвеченную цепочку (родитель и ребёнок — часть пути).
+            var is_related: bool = _related_techs.has(parent_id) and _related_techs.has(child_id)
+            if not is_related:
+                continue
+
+            # Связанные стрелки подсвечиваем голубым.
+            var color: Color = color_hover
 
             # Зигзаг: горизонталь от родителя, вертикаль в середине, горизонталь к ребёнку.
             var mid_x: float = (parent_right.x + child_left.x) * 0.5
