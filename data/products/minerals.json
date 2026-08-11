@@ -9,6 +9,7 @@
       "category": "mineral",
       "icon": "quartz_sand.png"
     },
-    { "id": "soda", "name": "Сода", "type": "product", "category": "mineral", "icon": "soda.png" }
+    { "id": "soda", "name": "Сода", "type": "product", "category": "mineral", "icon": "soda.png" },
+    { "id": "bitumen", "name": "Битум", "type": "product", "category": "mineral", "icon": "bitumen.png" }
   ]
 }

@@ -64,6 +64,22 @@
       "category": "material",
       "unlock_tech": "rope_making",
       "icon": "ropes.png"
+    },
+    {
+      "id": "tar",
+      "name": "Смола",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "bitumen_extraction",
+      "icon": "tar.png"
+    },
+    {
+      "id": "tarred_ropes",
+      "name": "Просмоленные веревки",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "bitumen_extraction",
+      "icon": "tarred_ropes.png"
     }
   ]
 }

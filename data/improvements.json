@@ -63,6 +63,14 @@
       "color": [ 34, 139, 34 ],
       "work_cost": 28,
       "unlock_tech": "plantations"
+    },
+    {
+      "id": "tar_pit",
+      "name": "Смоляная яма",
+      "icon": "tar_pit.png",
+      "color": [ 139, 69, 19 ],
+      "work_cost": 30,
+      "unlock_tech": "bitumen_extraction"
     }
   ]
 }

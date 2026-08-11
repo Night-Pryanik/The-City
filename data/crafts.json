@@ -189,6 +189,26 @@
       "time": 5.0,
       "unlock_tech": "rope_making",
       "description": "Свивает верёвки и канаты из волокон"
+    },
+    {
+      "id": "tar",
+      "name": "Производство смолы",
+      "produced_in": [ "tar_distillery" ],
+      "resources": { "bitumen": 2 },
+      "result": { "tar": 1 },
+      "time": 5.0,
+      "unlock_tech": "bitumen_extraction",
+      "description": "Превращает битум в смолу"
+    },
+    {
+      "id": "tarred_ropes",
+      "name": "Производство просмоленных веревок",
+      "produced_in": [ "tar_distillery" ],
+      "resources": { "ropes": 1, "tar": 1 },
+      "result": { "tarred_ropes": 1 },
+      "time": 5.0,
+      "unlock_tech": "bitumen_extraction",
+      "description": "Пропитывает верёвки смолой для водонепроницаемости"
     }
   ]
 }

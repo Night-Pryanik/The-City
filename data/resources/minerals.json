@@ -153,6 +153,20 @@
       "produces": { "soda": 1 },
       "icon": "soda.png",
       "color": [ 255, 255, 255 ]
+    },
+    {
+      "id": "bitumen_deposit",
+      "name": "Битум",
+      "type": "raw",
+      "category": "minerals",
+      "group": "",
+      "subgroup": "",
+      "tech_required": "bitumen_extraction",
+      "allowed_terrains": [ "plain", "hill" ],
+      "improved_by": "tar_pit",
+      "produces": { "bitumen": 1 },
+      "icon": "bitumen.png",
+      "color": [ 50, 50, 50 ]
     }
   ]
 }
