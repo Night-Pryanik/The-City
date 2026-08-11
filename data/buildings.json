@@ -123,6 +123,16 @@
       "production_slots": 1.0,
       "unlock_tech": "glassmaking",
       "default_recipes": [ "glass" ]
+    },
+    {
+      "id": "ropemaker_house",
+      "name": "Дом канатчика",
+      "description": "Длинное помещение для свивания канатов и тросов.",
+      "work_cost": 40,
+      "icon": "ropemaker_house.png",
+      "production_slots": 1.0,
+      "unlock_tech": "rope_making",
+      "default_recipes": [ "rigging" ]
     }
   ]
 }

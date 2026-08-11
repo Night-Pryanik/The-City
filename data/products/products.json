@@ -56,6 +56,14 @@
       "category": "material",
       "unlock_tech": "glassmaking",
       "icon": "glass_decorations.png"
+    },
+    {
+      "id": "rigging",
+      "name": "Такелаж",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "rope_making",
+      "icon": "rigging.png"
     }
   ]
 }

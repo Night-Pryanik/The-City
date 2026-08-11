@@ -53,6 +53,14 @@
       "category": "material",
       "unlock_tech": "weaving",
       "icon": "ramie.png"
+    },
+    {
+      "id": "sisal",
+      "name": "Сизаль",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "weaving",
+      "icon": "sisal.png"
     }
   ]
 }

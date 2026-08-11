@@ -21,6 +21,11 @@
       "id": "textile_crops",
       "name": "Текстильные культуры",
       "products": [ "cotton", "flax", "hemp", "jute", "ramie" ]
+    },
+    {
+      "id": "rope_fibers",
+      "name": "Волокна для канатов",
+      "products": [ "hemp", "jute", "ramie", "sisal" ]
     }
   ]
 }

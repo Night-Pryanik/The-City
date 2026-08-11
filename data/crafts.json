@@ -179,6 +179,16 @@
       "time": 5.0,
       "unlock_tech": "glassmaking",
       "description": "Превращает песок и соду в стекло"
+    },
+    {
+      "id": "rigging",
+      "name": "Изготовление такелажа",
+      "produced_in": [ "ropemaker_house" ],
+      "resources": { "@rope_fibers": 2 },
+      "result": { "rigging": 1 },
+      "time": 5.0,
+      "unlock_tech": "rope_making",
+      "description": "Свивает верёвки и канаты из волокон"
     }
   ]
 }
