@@ -110,7 +110,8 @@
       "improved_by": "clay_pit",
       "produces": { "clay": 1 },
       "icon": "clay.png",
-      "color": [ 180, 130, 100 ]
+      "color": [ 180, 130, 100 ],
+      "spawn_conditions": [ [ { "type": "near_river", "chance": 100 } ] ]
     },
     {
       "id": "iron_deposit",

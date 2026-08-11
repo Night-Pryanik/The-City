@@ -65,3 +65,48 @@ static func hex_vertex(row: int, col: int, vidx: int, radius: float) -> Vector2:
     var center = hex_center(row, col, radius)
     var verts = hex_vertices(center.x, center.y, radius)
     return verts[vidx]
+
+# Проверяет, выполнены ли дополнительные условия спавна ресурса (spawn_conditions).
+# Формат: [ [ {type, chance}, ... ], ... ] — массив групп, объединённых ИЛИ;
+# внутри каждой группы условия объединены И. Это аналогично prerequisites технологий.
+# Для каждой группы сначала проверяется шанс активации (chance, 0-100):
+# если шанс не выпал — группа не считается выполненной.
+static func spawn_conditions_met(data: Dictionary) -> bool:
+    var conditions: Array = data.get("spawn_conditions", [])
+    if conditions.is_empty():
+        return true
+    for group in conditions:
+        var group_met = true
+        for cond in group:
+            var chance = float(cond.get("chance", 100))
+            if (randf() * 100.0) > chance:
+                group_met = false
+                break
+        if group_met:
+            return true
+    return false
+
+# Проверяет, подходит ли конкретный гекс (row, col) по геометрическим
+# условиям spawn_conditions ресурса. Логика: массив групп — ИЛИ, внутри — И.
+# Для каждого условия проверяется совместимость гекса (например, near_river).
+static func is_hex_conditions_met(tile_data: Array, row: int, col: int, data: Dictionary) -> bool:
+    var conditions: Array = data.get("spawn_conditions", [])
+    if conditions.is_empty():
+        return true
+    for group in conditions:
+        var group_met = true
+        for cond in group:
+            var cond_type = cond.get("type", "")
+            var ok = true
+            if cond_type == "near_river":
+                # Гекс имеет общее ребро с рекой ⇔ у него есть river_edges.
+                ok = tile_data[row][col].get("river_edges", []).size() > 0
+            else:
+                # Неизвестный тип условия — считаем выполненным, чтобы не ломать спавн.
+                ok = true
+            if not ok:
+                group_met = false
+                break
+        if group_met:
+            return true
+    return false

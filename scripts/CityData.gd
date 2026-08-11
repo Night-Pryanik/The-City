@@ -500,6 +500,10 @@ func spawn_resource_on_tech_research(tech_id: String) -> Array:
         # Уже есть на карте (например, при загрузке сохранения) — не дублируем.
         if _is_resource_on_map(tile_data, res_id):
             continue
+        # Ресурсы с дополнительными условиями спавна (spawn_conditions):
+        # если шанс активации не выпал — ресурс исключается из кандидатов.
+        if not HexUtils.spawn_conditions_met(data):
+            continue
         candidates.append(res_id)
 
     if candidates.is_empty():
@@ -587,6 +591,9 @@ func _get_available_hexes(tile_data: Array, main_map: Node, res_id: String, only
                     continue
             var terrain_id = tile_data[r][c].get("terrain", "plain")
             if terrain_id in allowed:
+                # Фильтруем гексы по геометрическим условиям spawn_conditions.
+                if not HexUtils.is_hex_conditions_met(tile_data, r, c, data):
+                    continue
                 result.append({"row": r, "col": c})
     return result
 

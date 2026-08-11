@@ -95,6 +95,10 @@ func _place_resources(tile_data: Array, res_dict: Dictionary, rows: int, cols: i
         var tech_required = data.get("tech_required", "")
         if tech_required != "" and not CityData.is_tech_unlocked(tech_required):
             continue
+        # Ресурсы с дополнительными условиями спавна (spawn_conditions):
+        # если шанс активации не выпал — ресурс исключается из спавна.
+        if not HexUtils.spawn_conditions_met(data):
+            continue
         var possible = []
         for r in range(rows):
             for c in range(cols):
@@ -104,7 +108,9 @@ func _place_resources(tile_data: Array, res_dict: Dictionary, rows: int, cols: i
                     continue
                 var terrain_id = tile_data[r][c]["terrain"]
                 if terrain_id in data.get("allowed_terrains", []):
-                    possible.append({"row": r, "col": c})
+                    # Фильтруем гексы по геометрическим условиям spawn_conditions.
+                    if HexUtils.is_hex_conditions_met(tile_data, r, c, data):
+                        possible.append({"row": r, "col": c})
         if possible.size() > 0:
             var hex = possible[randi() % possible.size()]
             tile_data[hex.row][hex.col]["resource"] = res_id
