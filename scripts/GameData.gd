@@ -14,6 +14,7 @@ var eras: Array = []
 var product_groups: Dictionary = {}
 var product_group_names: Dictionary = {}
 var modifiers: Dictionary = {}
+var special_actions: Dictionary = {} # id -> данные спецдействия
 
 func load_all_data():
     var loader = load("res://scripts/data_loader.gd").new()
@@ -31,6 +32,7 @@ func load_all_data():
     product_groups = loader.product_groups
     product_group_names = loader.product_group_names
     modifiers = loader.modifiers
+    special_actions = loader.special_actions
 
 # Возвращает имя группы по её ключу (с символом "@" или без).
 # Если ключ не является группой, возвращает пустую строку.

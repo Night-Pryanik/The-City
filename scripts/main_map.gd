@@ -20,10 +20,9 @@ const FORAGING_TIME: float = 3.0
 const SCOUTING_TIME_PER_HEX: float = 3.0
 const DEMOLITION_TIME: float = 3.0
 const DEMOLITION_COST: int = 5
-# Спец-действие "Вырубка леса": превращает террейн "forest" в "plain".
-# Реализуется через систему труда build_manager, но не является улучшением.
-const FOREST_CLEARING_ACTION: String = "__clear_forest__"
-const FOREST_CLEARING_WORK_COST: int = 22
+# Спец-действия (вырубка леса, осушение болот и т.п.) загружаются из
+# data/special_actions.json и реализуются через систему труда build_manager,
+# но не являются улучшениями.
 
 var tile_data = []
 var offset_x: float = 0.0
@@ -1034,21 +1033,29 @@ func show_context_menu(row: int, col: int, click_pos: Vector2):
                         var last_idx = popup_menu.item_count - 1
                         popup_menu.set_item_metadata(last_idx, {"action": "build_farm", "plant_id": plant_id})
 
-    # --- Вырубка леса (требует технологию "Обработка металлов") ---
-    if tile.terrain == "forest" and tile.improvement == null:
-        if not CityData.is_tech_unlocked("metal_processing"):
-            var tech_name = "Обработка металлов"
+    # --- Спец-действия (вырубка леса, осушение болот и т.п.) ---
+    # Перебираем все спецдействия из данных и показываем те, что применимы к текущему террейну.
+    for sa_id in GameData.special_actions:
+        var sa = GameData.special_actions[sa_id]
+        if tile.terrain != sa.get("source_terrain", ""):
+            continue
+        if tile.improvement != null:
+            continue
+        var sa_name = sa.get("name", sa_id)
+        var unlock_tech = sa.get("unlock_tech", "")
+        if unlock_tech != "" and not CityData.is_tech_unlocked(unlock_tech):
+            var tech_name = unlock_tech
             var tech_cost = 3
             for tech in GameData.technologies:
-                if tech["id"] == "metal_processing":
+                if tech["id"] == unlock_tech:
                     tech_name = tech["name"]
                     tech_cost = int(tech.get("science_cost", 3))
                     break
             popup_menu.add_item("Изучить %s (наука: %d)" % [tech_name, tech_cost])
-            popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": "research_tech", "tech_id": "metal_processing"})
+            popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": "research_tech", "tech_id": unlock_tech})
         else:
-            var clear_cost_calc = get_improvement_work_cost(FOREST_CLEARING_ACTION, row, col)
-            var clear_cost = clear_cost_calc["cost"]
+            var sa_cost_calc = get_improvement_work_cost(sa_id, row, col)
+            var sa_cost = sa_cost_calc["cost"]
             if build_manager.is_building(row, col):
                 var prog = build_manager.get_progress(row, col)
                 var prog_text = ""
@@ -1057,15 +1064,15 @@ func show_context_menu(row: int, col: int, click_pos: Vector2):
                     var p = prog.get("progress", 0.0)
                     if wc > 0:
                         prog_text = " [%.0f/%.0f труда]" % [p, wc]
-                var status_text = "Возобновить вырубку" if build_manager.is_building_paused(row, col) else "Приостановить вырубку"
+                var status_text = "Возобновить %s" % sa_name.to_lower() if build_manager.is_building_paused(row, col) else "Приостановить %s" % sa_name.to_lower()
                 popup_menu.add_item("%s%s" % [status_text, prog_text])
-                popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": "clear_forest", "row": row, "col": col})
+                popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": sa_id, "row": row, "col": col})
             else:
                 var labor = CityData.get_total_labor()
-                var build_time = clear_cost / max(1.0, labor)
-                var label = "Вырубить лес [%d труда, %.0f сек.]" % [clear_cost, build_time]
+                var build_time = sa_cost / max(1.0, labor)
+                var label = "%s [%d труда, %.0f сек.]" % [sa_name, sa_cost, build_time]
                 popup_menu.add_item(label)
-                popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": "clear_forest", "row": row, "col": col})
+                popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": sa_id, "row": row, "col": col})
 
     if build_manager.is_building(row, col):
         popup_menu.add_item("Отменить стройку")
@@ -1151,8 +1158,8 @@ func _on_popup_menu_id_pressed(id: int):
     elif action == "build_farm":
         var plant_id = meta.plant_id
         build_manager.start_build(row, col, "farm", plant_id)
-    elif action == "clear_forest":
-        # Вырубка леса: если стройка уже идёт — переключаем паузу/возобновление,
+    elif GameData.special_actions.has(action):
+        # Спец-действие: если стройка уже идёт — переключаем паузу/возобновление,
         # иначе запускаем новую через систему труда.
         if build_manager.is_building(row, col):
             if build_manager.is_building_paused(row, col):
@@ -1160,7 +1167,7 @@ func _on_popup_menu_id_pressed(id: int):
             else:
                 build_manager.pause_build(row, col)
         else:
-            build_manager.start_build(row, col, FOREST_CLEARING_ACTION)
+            build_manager.start_build(row, col, action)
     elif action == "research_tech":
         var tech_id = meta.tech_id
         CityData.start_research(tech_id)
@@ -1190,15 +1197,17 @@ func _assign_terrain_icon(row: int, col: int):
 func _on_build_completed(row: int, col: int, imp_id: String, animal_id = null):
     var tile = tile_data[row][col]
 
-    # Спец-действие "Вырубка леса": превращаем лес в равнину.
-    if imp_id == FOREST_CLEARING_ACTION:
+    # Спец-действие (вырубка леса, осушение болот и т.п.): превращаем исходный
+    # террейн в result_terrain из данных.
+    if GameData.special_actions.has(imp_id):
+        var sa = GameData.special_actions[imp_id]
         # Освобождаем рабочего, если он был назначен
         if worker_manager.has_worker(row, col):
             worker_manager.remove_worker(row, col)
-        # Сбрасываем ресурс и улучшение (лес вырублен)
+        # Сбрасываем ресурс и улучшение
         tile.resource = null
         tile.improvement = null
-        tile.terrain = "plain"
+        tile.terrain = sa.get("result_terrain", "plain")
         _assign_terrain_icon(row, col)
         build_manager.remove_build(row, col)
         map_renderer.queue_redraw()
@@ -1496,10 +1505,10 @@ func get_tile_data(row: int, col: int):
 # расстояния от города. Возвращает словарь с итоговой стоимостью и деталями расчёта
 # (для расширенного тултипа).
 func get_improvement_work_cost(imp_id: String, row: int, col: int) -> Dictionary:
-    # Спец-действие "Вырубка леса" не является улучшением — используем свою базовую стоимость.
+    # Спец-действия не являются улучшениями — используем их базовую стоимость из данных.
     var base_cost = 0.0
-    if imp_id == FOREST_CLEARING_ACTION:
-        base_cost = float(FOREST_CLEARING_WORK_COST)
+    if GameData.special_actions.has(imp_id):
+        base_cost = float(GameData.special_actions[imp_id].get("work_cost", 0))
     else:
         var imp_data = GameData.improvements.get(imp_id, {})
         base_cost = float(imp_data.get("work_cost", 0))

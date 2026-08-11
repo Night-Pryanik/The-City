@@ -1,0 +1,12 @@
+{
+  "special_actions": [
+    {
+      "id": "clear_forest",
+      "name": "Вырубка леса",
+      "source_terrain": "forest",
+      "result_terrain": "plain",
+      "work_cost": 22,
+      "unlock_tech": "metal_processing"
+    }
+  ]
+}

@@ -15,6 +15,7 @@ var eras: Array = []
 var product_groups: Dictionary = {} # id -> products
 var product_group_names: Dictionary = {} # id -> human-readable name
 var modifiers: Dictionary = {}
+var special_actions: Dictionary = {} # id -> данные спецдействия
 
 func load_all_data():
     var merged_data = _load_all_json_files("res://data")
@@ -58,6 +59,14 @@ func load_all_data():
 
     # НОВОЕ: загружаем глобальные модификаторы
     modifiers = merged_data.get("modifiers", {})
+
+    # НОВОЕ: загружаем спецдействия (вырубка леса, осушение болот и т.п.)
+    special_actions = {}
+    for sa in merged_data.get("special_actions", []):
+        if sa is Dictionary:
+            var sa_id = sa.get("id", "")
+            if not sa_id.is_empty():
+                special_actions[sa_id] = sa
 
 func _load_all_json_files(folder_path: String) -> Dictionary:
     var result = {}
