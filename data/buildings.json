@@ -48,7 +48,7 @@
       "name": "Кузница",
       "work_cost": 60,
       "icon": "forge.png",
-      "production_slots": 2.0,
+      "production_slots": 1.0,
       "unlock_tech": "metal_processing",
       "default_recipes": [ "tools", "weapons" ]
     },
@@ -57,7 +57,7 @@
       "name": "Гончарная мастерская",
       "work_cost": 45,
       "icon": "pottery.png",
-      "production_slots": 2.0,
+      "production_slots": 1.0,
       "unlock_tech": "pottery",
       "default_recipes": [ "pottery", "bricks" ]
     },
@@ -66,7 +66,7 @@
       "name": "Мастерская каменотёса",
       "work_cost": 40,
       "icon": "mason_workshop.png",
-      "production_slots": 2.0,
+      "production_slots": 1.0,
       "unlock_tech": "masonry",
       "default_recipes": [ "construction_materials" ]
     },
@@ -93,7 +93,7 @@
       "name": "Дом варщика",
       "work_cost": 35,
       "icon": "brewer_house.png",
-      "production_slots": 2.0,
+      "production_slots": 1.0,
       "unlock_tech": "brewing",
       "default_recipes": [ "beer" ]
     },
@@ -102,7 +102,7 @@
       "name": "Дом винодела",
       "work_cost": 35,
       "icon": "winemaker_house.png",
-      "production_slots": 2.0,
+      "production_slots": 1.0,
       "unlock_tech": "winegrowing",
       "default_recipes": [ "wine" ]
     },
