@@ -329,11 +329,14 @@ func rebuild():
                 "row": i,
             }
 
-    # Слой со стрелками — поверх колонок.
+    # Слой со стрелками — поверх колонок. Без z_index: _arrows_layer
+    # добавляется последним в _inner, поэтому по умолчанию рисуется
+    # поверх колонок. z_index здесь ставить НЕЛЬЗЯ — иначе стрелки
+    # поднимутся над всеми Control'ами в canvas layer, включая
+    # tech_popup (окно сообщения об изученной технологии).
     _arrows_layer = Control.new()
     _arrows_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
     _arrows_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    _arrows_layer.z_index = 1
     _inner.add_child(_arrows_layer)
     _arrows_layer.draw.connect(_on_arrows_draw)
 
