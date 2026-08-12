@@ -883,6 +883,15 @@ func show_context_menu(row: int, col: int, click_pos: Vector2):
             popup_menu.position = click_pos
             popup_menu.popup()
             return
+        else:
+            # Чанк полностью исследован — показываем меню покупки территории
+            available_food = 0
+            if CityData:
+                for pid in CityData.city_food_pool:
+                    if CityData.city_food_pool[pid]:
+                        available_food += CityData.city_storage.get(pid, 0)
+            expansion_manager.show_context_menu(chunk, click_pos, available_food)
+            return
 
     if tile.improvement != null:
         _context_hex = {"row": row, "col": col, "resource": tile.resource}
