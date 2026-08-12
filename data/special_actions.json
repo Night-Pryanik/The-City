@@ -3,10 +3,27 @@
     {
       "id": "clear_forest",
       "name": "Вырубка леса",
+      "action_type": "terrain",
       "source_terrain": "forest",
       "result_terrain": "plain",
       "work_cost": 22,
       "unlock_tech": "metal_processing"
+    },
+    {
+      "id": "forage_wild_food",
+      "name": "Собрать дикоросы",
+      "action_type": "forage",
+      "target_resource": "wild_food",
+      "result_terrain": "dont_change",
+      "work_cost": 5,
+      "yield": { "foraged_food": [ 5, 10 ] }
+    },
+    {
+      "id": "demolish_improvement",
+      "name": "Снести улучшение",
+      "action_type": "demolish",
+      "result_terrain": "dont_change",
+      "work_cost": 5
     }
   ]
 }

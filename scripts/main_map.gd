@@ -16,13 +16,10 @@ const INFLUENCE_START_ROW = REGION_PADDING
 const INFLUENCE_END_ROW = INFLUENCE_START_ROW + GRID_ROWS - 1
 const INFLUENCE_START_COL = REGION_PADDING
 const INFLUENCE_END_COL = INFLUENCE_START_COL + GRID_COLS - 1
-const FORAGING_TIME: float = 3.0
 const SCOUTING_TIME_PER_HEX: float = 3.0
-const DEMOLITION_TIME: float = 3.0
-const DEMOLITION_COST: int = 5
-# Спец-действия (вырубка леса, осушение болот и т.п.) загружаются из
-# data/special_actions.json и реализуются через систему труда build_manager,
-# но не являются улучшениями.
+# Спец-действия (вырубка леса, сбор дикоросов, снос улучшений и т.п.)
+# загружаются из data/special_actions.json и реализуются через систему
+# труда build_manager, но не являются улучшениями.
 
 var tile_data = []
 var offset_x: float = 0.0
@@ -32,15 +29,9 @@ var scroll_offset = Vector2.ZERO
 var _context_hex = null
 var last_city_click_time = 0.0
 var production_timer = 0.0
-var foraging_timer: float = 0.0
-var foraging_hex: Dictionary = {}
-var is_foraging: bool = false
 var scouting_timer: float = 0.0
 var scouting_chunk: Array = []
 var is_scouting: bool = false
-var demolition_timer: float = 0.0
-var demolition_hex: Dictionary = {}
-var is_demolishing: bool = false
 
 var settings_config = ConfigFile.new()
 var show_hex_borders = true
@@ -120,13 +111,6 @@ func _ready():
         # Восстанавливаем стройки улучшений и зданий
         build_manager.restore_builds(SaveManager.saved_data.get("active_builds", {}))
         build_manager.restore_building_builds(SaveManager.saved_data.get("active_building_builds", {}))
-
-        # Восстанавливаем процесс сноса улучшения
-        var demolition_state = SaveManager.saved_data.get("demolition_state", {})
-        if not demolition_state.is_empty():
-            is_demolishing = demolition_state.get("is_demolishing", false)
-            demolition_hex = demolition_state.get("demolition_hex", {})
-            demolition_timer = float(demolition_state.get("demolition_timer", 0.0))
 
         # Восстанавливаем назначения рабочих и горожан
         worker_manager.load_assignments(SaveManager.saved_data.get("worker_assignments", []))
@@ -302,22 +286,10 @@ func _process(delta):
 
     input_handler.handle_process(delta)
 
-    if is_foraging:
-        foraging_timer += delta
-        if foraging_timer >= FORAGING_TIME:
-            _complete_foraging()
-        map_renderer.queue_redraw()
-
     if is_scouting:
         scouting_timer += delta
         if scouting_timer >= _get_scouting_time(scouting_chunk.size()):
             _complete_scouting()
-        map_renderer.queue_redraw()
-
-    if is_demolishing:
-        demolition_timer += delta
-        if demolition_timer >= DEMOLITION_TIME:
-            _complete_demolition()
         map_renderer.queue_redraw()
 
 func _initialize_map():
@@ -846,15 +818,6 @@ func update_extended_tooltip(row: int, col: int):
 func show_context_menu(row: int, col: int, click_pos: Vector2):
     var tile = tile_data[row][col]
 
-    # --- Сбор дикоросов ---
-    if tile.resource == "wild_food":
-        popup_menu.clear()
-        popup_menu.add_item("Собрать дикоросы (%.0f сек)" % FORAGING_TIME)
-        popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": "forage_food", "row": row, "col": col})
-        popup_menu.position = click_pos
-        popup_menu.popup()
-        return
-
     var available_food = 0
 
     # --- Разведка Региона ---
@@ -907,8 +870,8 @@ func show_context_menu(row: int, col: int, click_pos: Vector2):
             popup_menu.add_item("Запустить работу (%s)" % imp_name)
             popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": "resume_improvement", "row": row, "col": col})
 
-        popup_menu.add_item("Снести %s [%d еды, %.0f сек.]" % [imp_name, DEMOLITION_COST, DEMOLITION_TIME])
-        popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": "demolish_improvement", "row": row, "col": col})
+        # Спец-действия, применимые к гексу с улучшением (например, снос)
+        _add_special_actions_to_menu(tile, row, col)
 
         # Если идёт строительство — добавляем опцию отмены
         if build_manager.is_building(row, col):
@@ -1042,14 +1005,36 @@ func show_context_menu(row: int, col: int, click_pos: Vector2):
                         var last_idx = popup_menu.item_count - 1
                         popup_menu.set_item_metadata(last_idx, {"action": "build_farm", "plant_id": plant_id})
 
-    # --- Спец-действия (вырубка леса, осушение болот и т.п.) ---
-    # Перебираем все спецдействия из данных и показываем те, что применимы к текущему террейну.
+    # --- Спец-действия (вырубка леса, сбор дикоросов и т.п.) ---
+    _add_special_actions_to_menu(tile, row, col)
+
+    if build_manager.is_building(row, col):
+        popup_menu.add_item("Отменить стройку")
+        popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": "cancel_build", "row": row, "col": col})
+
+    if popup_menu.item_count > 0:
+        popup_menu.position = click_pos
+        popup_menu.popup()
+
+# Добавляет в контекстное меню спец-действия, применимые к гексу (row, col).
+# Применимость определяется по action_type:
+#   "terrain"  — гекс имеет source_terrain и на нём нет улучшения;
+#   "forage"   — на гексе есть ресурс target_resource;
+#   "demolish" — на гексе есть улучшение.
+func _add_special_actions_to_menu(tile: Dictionary, row: int, col: int):
     for sa_id in GameData.special_actions:
         var sa = GameData.special_actions[sa_id]
-        if tile.terrain != sa.get("source_terrain", ""):
+        var action_type = sa.get("action_type", "terrain")
+        var applicable = false
+        if action_type == "terrain":
+            applicable = tile.terrain == sa.get("source_terrain", "") and tile.improvement == null
+        elif action_type == "forage":
+            applicable = tile.resource == sa.get("target_resource", "")
+        elif action_type == "demolish":
+            applicable = tile.improvement != null
+        if not applicable:
             continue
-        if tile.improvement != null:
-            continue
+
         var sa_name = sa.get("name", sa_id)
         var unlock_tech = sa.get("unlock_tech", "")
         if unlock_tech != "" and not CityData.is_tech_unlocked(unlock_tech):
@@ -1060,7 +1045,7 @@ func show_context_menu(row: int, col: int, click_pos: Vector2):
                     tech_name = tech["name"]
                     tech_cost = int(tech.get("science_cost", 3))
                     break
-            popup_menu.add_item("Изучить %s (наука: %d)" % [tech_name, tech_cost])
+            popup_menu.add_item("%s (требуется изучить %s, наука: %d)" % [sa_name, tech_name, tech_cost])
             popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": "research_tech", "tech_id": unlock_tech})
         else:
             var sa_cost_calc = get_improvement_work_cost(sa_id, row, col)
@@ -1082,14 +1067,6 @@ func show_context_menu(row: int, col: int, click_pos: Vector2):
                 var label = "%s [%d труда, %.0f сек.]" % [sa_name, sa_cost, build_time]
                 popup_menu.add_item(label)
                 popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": sa_id, "row": row, "col": col})
-
-    if build_manager.is_building(row, col):
-        popup_menu.add_item("Отменить стройку")
-        popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": "cancel_build", "row": row, "col": col})
-
-    if popup_menu.item_count > 0:
-        popup_menu.position = click_pos
-        popup_menu.popup()
 
 func _on_popup_menu_id_pressed(id: int):
     var meta = popup_menu.get_item_metadata(id)
@@ -1121,22 +1098,10 @@ func _on_popup_menu_id_pressed(id: int):
         map_renderer.queue_redraw()
         return
 
-    if action == "demolish_improvement":
-        var r = meta["row"]
-        var c = meta["col"]
-        _start_demolition(r, c)
-        return
-
     if action == "cancel_build":
         var r = meta["row"]
         var c = meta["col"]
         _confirm_cancel_build(r, c)
-        return
-
-    if action == "forage_food":
-        var r = meta["row"]
-        var c = meta["col"]
-        _start_foraging(r, c)
         return
 
     if action == "scout_chunk":
@@ -1206,18 +1171,37 @@ func _assign_terrain_icon(row: int, col: int):
 func _on_build_completed(row: int, col: int, imp_id: String, animal_id = null):
     var tile = tile_data[row][col]
 
-    # Спец-действие (вырубка леса, осушение болот и т.п.): превращаем исходный
-    # террейн в result_terrain из данных.
+    # Спец-действие (вырубка леса, сбор дикоросов, снос улучшений и т.п.)
     if GameData.special_actions.has(imp_id):
         var sa = GameData.special_actions[imp_id]
+        var action_type = sa.get("action_type", "terrain")
         # Освобождаем рабочего, если он был назначен
         if worker_manager.has_worker(row, col):
             worker_manager.remove_worker(row, col)
-        # Сбрасываем ресурс и улучшение
-        tile.resource = null
-        tile.improvement = null
-        tile.terrain = sa.get("result_terrain", "plain")
-        _assign_terrain_icon(row, col)
+
+        if action_type == "forage":
+            # Сбор дикоросов: убираем ресурс и добавляем урожай на склад.
+            var yield_data = sa.get("yield", {})
+            for prod_id in yield_data:
+                var range_arr = yield_data[prod_id]
+                var amount = range_arr[0] if range_arr.size() == 1 else randi_range(int(range_arr[0]), int(range_arr[1]))
+                CityData.city_storage[prod_id] = CityData.city_storage.get(prod_id, 0) + amount
+                hud.show_message("Собрано %d %s!" % [amount, GameData.products.get(prod_id, {}).get("name", prod_id)])
+            tile.resource = null
+        elif action_type == "demolish":
+            # Снос улучшения: убираем улучшение, ресурс остаётся.
+            tile.improvement = null
+        else:
+            # Террейн-действие (вырубка леса и т.п.): сбрасываем ресурс и улучшение.
+            tile.resource = null
+            tile.improvement = null
+
+        # Меняем тип местности только если result_terrain задан и не равен "dont_change".
+        var result_terrain = sa.get("result_terrain", "")
+        if result_terrain != "" and result_terrain != "dont_change":
+            tile.terrain = result_terrain
+            _assign_terrain_icon(row, col)
+
         build_manager.remove_build(row, col)
         map_renderer.queue_redraw()
         return
@@ -1609,26 +1593,6 @@ func _on_townsfolk_assignment_changed():
     if city_ui.visible:
         city_ui.refresh_light()
 
-func _start_foraging(row: int, col: int):
-    if is_foraging:
-        hud.show_message("Уже идёт сбор!")
-        return
-    foraging_hex = {"row": row, "col": col}
-    foraging_timer = 0.0
-    is_foraging = true
-    hud.show_message("Сбор дикоросов начался...")
-
-func _complete_foraging():
-    var row = foraging_hex.row
-    var col = foraging_hex.col
-    var yield_amount = randi_range(5, 10)
-    CityData.city_storage["foraged_food"] = CityData.city_storage.get("foraged_food", 0) + yield_amount
-    tile_data[row][col]["resource"] = null
-    is_foraging = false
-    foraging_hex = {}
-    hud.show_message("Собрано %d еды!" % yield_amount)
-    map_renderer.queue_redraw()
-
 func _get_scouting_time(hex_count: int) -> float:
     return hex_count * SCOUTING_TIME_PER_HEX
 
@@ -1659,66 +1623,6 @@ func _start_scouting(chunk: Array, cost: int):
     scouting_timer = 0.0
     is_scouting = true
     hud.show_message("Разведчики отправлены...")
-
-func _start_demolition(row: int, col: int):
-    if is_demolishing:
-        hud.show_message("Уже идёт снос!")
-        return
-    if is_foraging:
-        hud.show_message("Сначала дождитесь завершения сбора!")
-        return
-    if is_scouting:
-        hud.show_message("Сначала дождитесь завершения разведки!")
-        return
-
-    var tile = tile_data[row][col]
-    if tile.improvement == null:
-        hud.show_message("Здесь нет улучшения для сноса")
-        return
-
-    var available_food = 0
-    if CityData:
-        for pid in CityData.city_food_pool:
-            if CityData.city_food_pool[pid]:
-                available_food += CityData.city_storage.get(pid, 0)
-    if available_food < DEMOLITION_COST:
-        hud.show_message("Недостаточно еды для сноса! Нужно %d" % DEMOLITION_COST)
-        return
-
-    # Списываем еду
-    var remaining = DEMOLITION_COST
-    var active_food = []
-    for pid in CityData.city_food_pool:
-        if CityData.city_food_pool[pid] and CityData.city_storage.get(pid, 0) > 0:
-            active_food.append(pid)
-    while remaining > 0 and active_food.size() > 0:
-        var pid = active_food[randi() % active_food.size()]
-        CityData.city_storage[pid] -= 1
-        remaining -= 1
-        if CityData.city_storage[pid] <= 0:
-            active_food.erase(pid)
-
-    demolition_hex = {"row": row, "col": col}
-    demolition_timer = 0.0
-    is_demolishing = true
-    hud.show_message("Снос улучшения начался (%.0f сек)..." % DEMOLITION_TIME)
-
-func _complete_demolition():
-    var row = demolition_hex.row
-    var col = demolition_hex.col
-    var tile = tile_data[row][col]
-
-    # Освобождаем рабочего, если он был назначен
-    if worker_manager.has_worker(row, col):
-        worker_manager.remove_worker(row, col)
-
-    # Удаляем улучшение, ресурс остаётся
-    tile.improvement = null
-
-    demolition_hex = {}
-    is_demolishing = false
-    hud.show_message("Улучшение снесено!")
-    map_renderer.queue_redraw()
 
 func _complete_scouting():
     for hex in scouting_chunk:

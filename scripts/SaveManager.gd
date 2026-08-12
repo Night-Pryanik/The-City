@@ -35,11 +35,6 @@ func save_game():
         "active_builds": build_manager.active_builds if build_manager else {},
         "active_building_builds": build_manager.active_building_builds if build_manager else {},
         "building_construction": CityData.building_construction,
-        "demolition_state": {
-            "is_demolishing": main_map.is_demolishing,
-            "demolition_hex": main_map.demolition_hex,
-            "demolition_timer": main_map.demolition_timer
-        },
         "rivers": main_map.river_manager.serialize_rivers()
     }
     var file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)

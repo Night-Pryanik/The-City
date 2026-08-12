@@ -278,28 +278,6 @@ func _draw_progress_bars(row: int, col: int):
             draw_rect(Rect2(bar_x, bar_y, fill_width, bar_height), Color.YELLOW)
             draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color.WHITE, false)
 
-    # Прогресс-бар сноса улучшения
-    if main_map.is_demolishing and main_map.demolition_hex.get("row", -1) == row and main_map.demolition_hex.get("col", -1) == col:
-        var demolition_progress = clamp(main_map.demolition_timer / main_map.DEMOLITION_TIME, 0.0, 1.0)
-        var demo_bar_width = RESOURCE_ICON_SIZE
-        var demo_bar_height = 6
-        var demo_bar_x = center.x - demo_bar_width / 2.0
-        var demo_bar_y = center.y + RESOURCE_ICON_SIZE / 2.0 + 16
-        draw_rect(Rect2(demo_bar_x, demo_bar_y, demo_bar_width, demo_bar_height), Color(0.2, 0.2, 0.2))
-        draw_rect(Rect2(demo_bar_x, demo_bar_y, demo_bar_width * demolition_progress, demo_bar_height), Color(0.9, 0.3, 0.3))
-        draw_rect(Rect2(demo_bar_x, demo_bar_y, demo_bar_width, demo_bar_height), Color.WHITE, false)
-
-    # --- Прогресс-бар для сбора дикоросов ---
-    if main_map.is_foraging and main_map.foraging_hex.row == row and main_map.foraging_hex.col == col:
-        var progress = main_map.foraging_timer / main_map.FORAGING_TIME
-        var bar_width = RESOURCE_ICON_SIZE
-        var bar_height = 6
-        var bar_x = center.x - bar_width / 2.0
-        var bar_y = center.y + RESOURCE_ICON_SIZE / 2.0 + 10 # под иконкой ресурса
-        draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color(0.2, 0.2, 0.2))
-        draw_rect(Rect2(bar_x, bar_y, bar_width * progress, bar_height), Color(0.5, 0.8, 0.2))
-        draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color.WHITE, false)
-
     # --- Прогресс-бар разведки чанка ---
     # Рисуем только ОДИН бар на центральном гексе чанка (с которого началась разведка),
     # чтобы не перегружать карту избыточными барами на каждом гексе чанка.
