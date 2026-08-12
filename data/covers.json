@@ -1,0 +1,21 @@
+{
+  "covers": [
+    { "id": "none", "name": "Нет", "color": [ 0, 0, 0 ], "alpha": 0.0, "move_cost_bonus": 0, "icons": [  ] },
+    {
+      "id": "sparse_forest",
+      "name": "Редколесье",
+      "color": [ 34, 139, 34 ],
+      "alpha": 0.25,
+      "move_cost_bonus": 0,
+      "icons": [ "forest_1.png", "forest_2.png", "forest_3.png" ]
+    },
+    {
+      "id": "forest",
+      "name": "Лес",
+      "color": [ 34, 139, 34 ],
+      "alpha": 0.45,
+      "move_cost_bonus": 0,
+      "icons": [ "forest_1.png", "forest_2.png", "forest_3.png" ]
+    }
+  ]
+}

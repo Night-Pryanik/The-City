@@ -2,6 +2,7 @@
 extends Node
 
 var terrains: Dictionary = {}
+var covers: Dictionary = {}
 var raw_resources: Dictionary = {}
 var products: Dictionary = {}
 var improvements: Dictionary = {}
@@ -20,6 +21,7 @@ func load_all_data():
     var loader = load("res://scripts/data_loader.gd").new()
     loader.load_all_data()
     terrains = loader.terrains
+    covers = loader.covers
     raw_resources = loader.raw_resources
     products = loader.products
     improvements = loader.improvements

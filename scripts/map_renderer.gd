@@ -61,6 +61,13 @@ func load_icons():
             for icon_name in t.icons:
                 if icon_paths.has(icon_name):
                     icon_textures[icon_name] = load(icon_paths[icon_name])
+    # Покров (cover): загружаем его иконки (оверлеи леса и т.п.)
+    for c_id in GameData.covers.keys():
+        var c = GameData.covers[c_id]
+        if c.has("icons"):
+            for icon_name in c.icons:
+                if icon_paths.has(icon_name):
+                    icon_textures[icon_name] = load(icon_paths[icon_name])
     if icon_paths.has("city.png"):
         icon_textures["city"] = load(icon_paths["city.png"])
 
@@ -154,11 +161,55 @@ func _draw_hex(row: int, col: int):
             terrain_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
         draw_colored_polygon(vertices, terrain_color)
 
+    # --- Покров (cover): полупрозрачный оверлей поверх terrain ---
+    _draw_cover_overlay(row, col, center, vertices)
+
     if not in_influence:
         draw_colored_polygon(vertices, Color(0, 0, 0, 0.5))
 
     if main_map.show_hex_borders:
         draw_polyline(closed_vertices, Color.WHITE, 2, true)
+
+# Рисует оверлей покрова (cover) поверх relief.
+# Если у покрова есть иконка — рисуем её (детерминированный выбор по seed),
+# иначе — полупрозрачный цветной полигон (color + alpha).
+func _draw_cover_overlay(row: int, col: int, center: Vector2, vertices: PackedVector2Array):
+    var tile = tile_data[row][col]
+    var cover_id = tile.get("cover", "none")
+    if cover_id == "" or cover_id == "none":
+        return
+    var cover: Dictionary = GameData.covers.get(cover_id, {})
+    if cover.is_empty():
+        return
+
+    # Иконка покрова (если есть) — детерминированный выбор, чтобы не мерцало.
+    var icon_name = _pick_cover_icon(cover, row, col)
+    if icon_name != "" and icon_textures.has(icon_name):
+        var tex = icon_textures[icon_name]
+        var icon_rect = Rect2(
+            center.x - TERRAIN_ICON_SIZE / 2.0,
+            center.y - TERRAIN_ICON_SIZE / 2.0,
+            TERRAIN_ICON_SIZE,
+            TERRAIN_ICON_SIZE
+        )
+        # Иконка леса обычно непрозрачная — применяем alpha для полупрозрачности.
+        var alpha = float(cover.get("alpha", 0.45))
+        draw_texture_rect(tex, icon_rect, false, Color(1, 1, 1, alpha))
+    else:
+        # Фолбек: полупрозрачный цветной полигон.
+        var c = cover.get("color", [0, 0, 0])
+        var alpha = float(cover.get("alpha", 0.45))
+        draw_colored_polygon(vertices, Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0, alpha))
+
+# Возвращает имя иконки покрова для гекса (row, col) — детерминированный выбор.
+func _pick_cover_icon(cover: Dictionary, row: int, col: int) -> String:
+    var icons: Array = cover.get("icons", [])
+    if icons.is_empty():
+        return ""
+    var icon_rng = RandomNumberGenerator.new()
+    icon_rng.seed = row * 1000 + col
+    var idx = icon_rng.randi() % icons.size()
+    return icons[idx]
 
 # Ресурс виден игроку, если гекс входит в Кольцо Влияния
 # (территория освоена) или область была исследована разведкой.

@@ -3,6 +3,7 @@
 extends Node
 
 var terrains: Dictionary = {}
+var covers: Dictionary = {}
 var raw_resources: Dictionary = {}
 var products: Dictionary = {}
 var improvements: Dictionary = {}
@@ -26,6 +27,10 @@ func load_all_data():
     terrains = {}
     for t in merged_data.get("terrains", []):
         terrains[t["id"]] = t
+
+    covers = {}
+    for c in merged_data.get("covers", []):
+        covers[c["id"]] = c
 
     raw_resources = {}
     products = {}

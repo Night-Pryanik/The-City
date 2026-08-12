@@ -19,7 +19,7 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
     for row in range(rows):
         var col_array = []
         for col in range(cols):
-            col_array.append({"terrain": "plain", "resource": null, "improvement": null})
+            col_array.append({"terrain": "plain", "cover": "none", "resource": null, "improvement": null})
         tile_data.append(col_array)
 
     # Генерируем центры для Вороного
@@ -41,6 +41,14 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
                     min_dist = d
                     nearest = center.terrain
             tile_data[row][col]["terrain"] = nearest
+
+    # --- Покров (cover): генерируем ПОСЛЕ рельефа, с учётом terrain ---
+    # Вероятности покрова для каждого типа местности заданы в terrains.json
+    # (поле cover_chance: { "cover_id": вес, ... }).
+    for row in range(rows):
+        for col in range(cols):
+            var terrain_id = tile_data[row][col]["terrain"]
+            tile_data[row][col]["cover"] = _roll_cover(terrain_id)
 
     # --- Животные ---
     var animal_resources = {}
@@ -71,6 +79,27 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
     # (см. CityData.spawn_resource_on_tech_research).
 
     return tile_data
+
+# Выбирает покров (cover) для гекса с указанным типом местности по весам
+# из terrains.json (cover_chance). Если поле отсутствует или пустое —
+# возвращает "none".
+func _roll_cover(terrain_id: String) -> String:
+    var t: Dictionary = GameData.terrains.get(terrain_id, {})
+    var chances: Dictionary = t.get("cover_chance", {})
+    if chances.is_empty():
+        return "none"
+    var total := 0.0
+    for cid in chances.keys():
+        total += float(chances[cid])
+    if total <= 0.0:
+        return "none"
+    var roll = randf() * total
+    var accum := 0.0
+    for cid in chances.keys():
+        accum += float(chances[cid])
+        if roll < accum:
+            return cid
+    return "none"
 
 func _place_resources(tile_data: Array, res_dict: Dictionary, rows: int, cols: int, city_row: int, city_col: int):
     if res_dict.size() == 0:
@@ -107,7 +136,8 @@ func _place_resources(tile_data: Array, res_dict: Dictionary, rows: int, cols: i
                 if tile_data[r][c]["resource"] != null:
                     continue
                 var terrain_id = tile_data[r][c]["terrain"]
-                if terrain_id in data.get("allowed_terrains", []):
+                var cover_id = tile_data[r][c].get("cover", "none")
+                if terrain_id in data.get("allowed_terrain", []) and cover_id in data.get("allowed_cover", []):
                     # Фильтруем гексы по геометрическим условиям spawn_conditions.
                     if HexUtils.is_hex_conditions_met(tile_data, r, c, data):
                         possible.append({"row": r, "col": c})
@@ -134,7 +164,8 @@ func place_wild_food(tile_data: Array, rows: int, cols: int, city_row: int, city
             if tile_data[r][c]["resource"] != null:
                 continue
             var terrain = tile_data[r][c]["terrain"]
-            if terrain in wild_data.get("allowed_terrains", []):
+            var cover = tile_data[r][c].get("cover", "none")
+            if terrain in wild_data.get("allowed_terrain", []) and cover in wild_data.get("allowed_cover", []):
                 possible.append({"row": r, "col": c})
     possible.shuffle()
     var placed = 0

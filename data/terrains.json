@@ -6,7 +6,8 @@
       "color": [ 144, 238, 144 ],
       "move_cost": 1,
       "expansion_cost": 50,
-      "icons": [ "plain_1.png", "plain_2.png", "plain_3.png" ]
+      "icons": [ "plain_1.png", "plain_2.png", "plain_3.png" ],
+      "cover_chance": { "none": 60, "sparse_forest": 15, "forest": 25 }
     },
     {
       "id": "hill",
@@ -14,15 +15,8 @@
       "color": [ 139, 90, 43 ],
       "move_cost": 2,
       "expansion_cost": 75,
-      "icons": [ "hill_1.png", "hill_2.png", "hill_3.png" ]
-    },
-    {
-      "id": "forest",
-      "name": "Лес",
-      "color": [ 34, 139, 34 ],
-      "move_cost": 1,
-      "expansion_cost": 60,
-      "icons": [ "forest_1.png", "forest_2.png", "forest_3.png" ]
+      "icons": [ "hill_1.png", "hill_2.png", "hill_3.png" ],
+      "cover_chance": { "none": 60, "sparse_forest": 15, "forest": 25 }
     },
     {
       "id": "mountain",
@@ -30,7 +24,8 @@
       "color": [ 105, 105, 105 ],
       "move_cost": 3,
       "expansion_cost": 150,
-      "icons": [ "mountain_1.png", "mountain_2.png", "mountain_3.png" ]
+      "icons": [ "mountain_1.png", "mountain_2.png", "mountain_3.png" ],
+      "cover_chance": { "none": 90, "sparse_forest": 5, "forest": 5 }
     }
   ]
 }

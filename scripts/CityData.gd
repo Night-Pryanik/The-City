@@ -574,7 +574,8 @@ func spawn_resource_on_tech_research(tech_id: String) -> Array:
 # Если only_circle == true — только гексы внутри Кольца Влияния.
 func _get_available_hexes(tile_data: Array, main_map: Node, res_id: String, only_circle: bool) -> Array:
     var data = GameData.raw_resources[res_id]
-    var allowed = data.get("allowed_terrains", [])
+    var allowed_terrain = data.get("allowed_terrain", [])
+    var allowed_cover = data.get("allowed_cover", [])
     var result = []
     for r in range(main_map.REGION_ROWS):
         for c in range(main_map.REGION_COLS):
@@ -590,7 +591,8 @@ func _get_available_hexes(tile_data: Array, main_map: Node, res_id: String, only
                 if not in_circle:
                     continue
             var terrain_id = tile_data[r][c].get("terrain", "plain")
-            if terrain_id in allowed:
+            var cover_id = tile_data[r][c].get("cover", "none")
+            if terrain_id in allowed_terrain and cover_id in allowed_cover:
                 # Фильтруем гексы по геометрическим условиям spawn_conditions.
                 if not HexUtils.is_hex_conditions_met(tile_data, r, c, data):
                     continue

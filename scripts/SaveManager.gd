@@ -130,6 +130,7 @@ func _serialize_tile_data(main_map: Node) -> Array:
             if tile:
                 row_arr.append({
                     "terrain": tile.get("terrain", "plain"),
+                    "cover": tile.get("cover", "none"),
                     "resource": tile.get("resource"),
                     "improvement": tile.get("improvement"),
                     "terrain_icon": tile.get("terrain_icon", ""),

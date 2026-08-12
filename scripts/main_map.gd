@@ -94,11 +94,19 @@ func _ready():
         for row in range(REGION_ROWS):
             var col_array = []
             for col in range(REGION_COLS):
-                var tile = {"terrain": "plain", "resource": null, "improvement": null, "terrain_icon": "", "in_influence": false, "river_edges": []}
+                var tile = {"terrain": "plain", "cover": "none", "resource": null, "improvement": null, "terrain_icon": "", "in_influence": false, "river_edges": []}
                 if row < saved_tiles.size() and col < saved_tiles[row].size():
                     var saved = saved_tiles[row][col]
                     if not saved.is_empty():
-                        tile["terrain"] = saved.get("terrain", "plain")
+                        # Миграция старых сейвов: раньше лес был отдельным типом
+                        # местности, теперь это покров (cover) поверх terrain.
+                        var saved_terrain = saved.get("terrain", "plain")
+                        var saved_cover = saved.get("cover", "none")
+                        if saved_terrain == "forest":
+                            saved_terrain = "plain"
+                            saved_cover = "forest"
+                        tile["terrain"] = saved_terrain
+                        tile["cover"] = saved_cover
                         tile["resource"] = saved.get("resource")
                         tile["improvement"] = saved.get("improvement")
                         tile["terrain_icon"] = saved.get("terrain_icon", "")
@@ -302,7 +310,6 @@ func _initialize_map():
     var terrain_counts = {
         "plain": 4,
         "hill": 3,
-        "forest": 3,
         "mountain": 2
     }
     tile_data = generator.generate_map(REGION_ROWS, REGION_COLS, CITY_ROW, CITY_COL, GameData.raw_resources, terrain_counts)
@@ -441,12 +448,14 @@ func _ensure_minimum_resource(category: String):
             if tile_data[row][col]["resource"] != null:
                 continue
             var terrain_id = tile_data[row][col]["terrain"]
+            var cover_id = tile_data[row][col].get("cover", "none")
             for res_id in GameData.raw_resources:
                 if GameData.raw_resources[res_id].get("category", "") != category:
                     continue
                 # Ресурсы, требующие технологию, не размещаются при генерации
                 # (они спавнятся после изучения технологии).
-                if terrain_id in GameData.raw_resources[res_id].get("allowed_terrains", []):
+                var rdata = GameData.raw_resources[res_id]
+                if terrain_id in rdata.get("allowed_terrain", []) and cover_id in rdata.get("allowed_cover", []):
                     possible.append({"row": row, "col": col, "id": res_id})
                     break
     if possible.size() > 0:
@@ -469,11 +478,12 @@ func _ensure_food_plant():
             if tile_data[row][col]["resource"] != null:
                 continue
             var terrain = tile_data[row][col]["terrain"]
+            var cover = tile_data[row][col].get("cover", "none")
             for res_id in GameData.raw_resources:
                 var res = GameData.raw_resources[res_id]
                 if res.get("group") != "food_plants":
                     continue
-                if not (terrain in res.get("allowed_terrains", [])):
+                if not (terrain in res.get("allowed_terrain", []) and cover in res.get("allowed_cover", [])):
                     continue
                 # Не берём ресурсы, требующие НЕизученную технологию:
                 # они спавнятся только после её изучения.
@@ -512,6 +522,7 @@ func update_tooltip_text(row: int, col: int):
 
     var tile = tile_data[row][col]
     var terrain_name = GameData.terrains.get(tile.terrain, {}).get("name", tile.terrain)
+    var cover_id = tile.get("cover", "none")
 
     # Ресурсы вне Кольца Влияния скрыты, пока область не разведана.
     var is_revealed = tile.get("in_influence", false) or tile.get("is_explored", false)
@@ -521,16 +532,26 @@ func update_tooltip_text(row: int, col: int):
     if res_id != null:
         res_name = GameData.raw_resources.get(res_id, {}).get("name", res_id)
 
+    # Формируем строку «Местность»: если на гексе есть лес, добавляем его
+    # через запятую (например, «равнина, лес»).
+    var cover_name_lower = ""
+    if cover_id != "none":
+        cover_name_lower = "Лес".to_lower()
+    var terrain_with_cover = terrain_name
+    if cover_name_lower != "":
+        terrain_with_cover = "%s, %s" % [terrain_name, cover_name_lower]
+
     # Регион ещё не разведан — не раскрываем информацию о ресурсе.
     # Показываем «неизвестно» на ВСЕХ неразведанных гексах, чтобы игрок
     # не мог заранее определить, где находятся скрытые ресурсы.
     if not is_revealed:
-        tooltip_text_label.text = "Местность: %s\nРесурс: неизвестно (проведите разведку)" % terrain_name
+        var unknown_text = "Местность: %s\nРесурс: неизвестно (проведите разведку)" % terrain_with_cover
+        tooltip_text_label.text = unknown_text
         return
 
     var imp_name = GameData.improvements.get(tile.improvement, {}).get("name", "нет") if tile.improvement != null else "нет"
 
-    var text = "Местность: %s\nРесурс: %s" % [terrain_name, res_name]
+    var text = "Местность: %s\nРесурс: %s" % [terrain_with_cover, res_name]
 
     var imp_status = ""
     if tile.improvement != null:
@@ -592,15 +613,16 @@ func _get_buildable_improvement(row: int, col: int) -> String:
         return ""
 
     # Пустой гекс: можно построить пастбище или ферму, если есть одомашненные виды.
+    var tile_cover = tile.get("cover", "none")
     if CityData.domesticated_animals.size() > 0 and CityData.is_improvement_unlocked("pasture"):
         for animal_id in CityData.domesticated_animals:
             var animal_data = GameData.raw_resources.get(animal_id, {})
-            if tile.terrain in animal_data.get("allowed_terrains", []):
+            if tile.terrain in animal_data.get("allowed_terrain", []) and tile_cover in animal_data.get("allowed_cover", []):
                 return "pasture"
     if CityData.domesticated_plants.size() > 0 and CityData.is_improvement_unlocked("farm"):
         for plant_id in CityData.domesticated_plants:
             var plant_data = GameData.raw_resources.get(plant_id, {})
-            if tile.terrain in plant_data.get("allowed_terrains", []):
+            if tile.terrain in plant_data.get("allowed_terrain", []) and tile_cover in plant_data.get("allowed_cover", []):
                 return "farm"
     return ""
 
@@ -951,11 +973,12 @@ func show_context_menu(row: int, col: int, click_pos: Vector2):
                         var last_idx = popup_menu.item_count - 1
                         popup_menu.set_item_metadata(last_idx, {"action": "build_improvement", "imp_id": imp_id, "animal_id": tile.resource})
 
+    var tile_cover = tile.get("cover", "none")
     if tile.resource == null and CityData:
         if CityData.domesticated_animals.size() > 0 and CityData.is_improvement_unlocked("pasture"):
             for animal_id in CityData.domesticated_animals:
                 var animal_data = GameData.raw_resources.get(animal_id, {})
-                if tile.terrain in animal_data.get("allowed_terrains", []):
+                if tile.terrain in animal_data.get("allowed_terrain", []) and tile_cover in animal_data.get("allowed_cover", []):
                     var animal_name = animal_data.get("name", animal_id)
                     var imp_data = GameData.improvements.get("pasture", {})
                     var work_cost_calc = get_improvement_work_cost("pasture", row, col)
@@ -981,7 +1004,7 @@ func show_context_menu(row: int, col: int, click_pos: Vector2):
         if CityData.domesticated_plants.size() > 0 and CityData.is_improvement_unlocked("farm"):
             for plant_id in CityData.domesticated_plants:
                 var plant_data = GameData.raw_resources.get(plant_id, {})
-                if tile.terrain in plant_data.get("allowed_terrains", []):
+                if tile.terrain in plant_data.get("allowed_terrain", []) and tile_cover in plant_data.get("allowed_cover", []):
                     var plant_name = plant_data.get("name", plant_id)
                     var imp_data = GameData.improvements.get("farm", {})
                     var work_cost_calc = get_improvement_work_cost("farm", row, col)
@@ -1019,6 +1042,7 @@ func show_context_menu(row: int, col: int, click_pos: Vector2):
 # Добавляет в контекстное меню спец-действия, применимые к гексу (row, col).
 # Применимость определяется по action_type:
 #   "terrain"  — гекс имеет source_terrain и на нём нет улучшения;
+#   "cover"    — гекс имеет source_cover и на нём нет ресурса и улучшения;
 #   "forage"   — на гексе есть ресурс target_resource;
 #   "demolish" — на гексе есть улучшение.
 func _add_special_actions_to_menu(tile: Dictionary, row: int, col: int):
@@ -1028,6 +1052,11 @@ func _add_special_actions_to_menu(tile: Dictionary, row: int, col: int):
         var applicable = false
         if action_type == "terrain":
             applicable = tile.terrain == sa.get("source_terrain", "") and tile.improvement == null
+        elif action_type == "cover":
+            # Вырубка леса применима только если есть подходящий покров (cover)
+            # и на гексе нет ресурса и улучшения.
+            var cover_id = tile.get("cover", "none")
+            applicable = cover_id in sa.get("source_cover", []) and tile.improvement == null and tile.resource == null
         elif action_type == "forage":
             applicable = tile.resource == sa.get("target_resource", "")
         elif action_type == "demolish":
@@ -1179,7 +1208,11 @@ func _on_build_completed(row: int, col: int, imp_id: String, animal_id = null):
         if worker_manager.has_worker(row, col):
             worker_manager.remove_worker(row, col)
 
-        if action_type == "forage":
+        if action_type == "cover":
+            # Вырубка леса: меняем только покров (cover), terrain/resource не трогаем.
+            var result_cover = sa.get("result_cover", "none")
+            tile.cover = result_cover
+        elif action_type == "forage":
             # Сбор дикоросов: убираем ресурс и добавляем урожай на склад.
             var yield_data = sa.get("yield", {})
             for prod_id in yield_data:
@@ -1192,7 +1225,7 @@ func _on_build_completed(row: int, col: int, imp_id: String, animal_id = null):
             # Снос улучшения: убираем улучшение, ресурс остаётся.
             tile.improvement = null
         else:
-            # Террейн-действие (вырубка леса и т.п.): сбрасываем ресурс и улучшение.
+            # Террейн-действие: сбрасываем ресурс и улучшение.
             tile.resource = null
             tile.improvement = null
 
@@ -1635,11 +1668,15 @@ func _complete_scouting():
 
 func _get_chunk_info(chunk: Array) -> String:
     var terrain_types = {}
+    var cover_forests = false
     var resources = []
     for hex in chunk:
         var tile = tile_data[hex.row][hex.col]
         var terrain = tile.get("terrain", "plain")
         terrain_types[terrain] = terrain_types.get(terrain, 0) + 1
+        var cover_id = tile.get("cover", "none")
+        if cover_id != "none":
+            cover_forests = true
         if tile.resource != null:
             var res_name = GameData.raw_resources.get(tile.resource, {}).get("name", tile.resource)
             resources.append(res_name)
@@ -1647,6 +1684,8 @@ func _get_chunk_info(chunk: Array) -> String:
     for terrain_id in terrain_types.keys():
         terrain_names.append(GameData.terrains.get(terrain_id, {}).get("name", terrain_id))
     var terrain_str = ", ".join(terrain_names)
+    if cover_forests:
+        terrain_str += ", лес"
     var resource_str = ", ".join(resources) if resources.size() > 0 else "нет"
     return "Ландшафт: %s. Ресурсы: %s" % [terrain_str, resource_str]
 

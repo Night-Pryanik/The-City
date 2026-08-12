@@ -3,9 +3,9 @@
     {
       "id": "clear_forest",
       "name": "Вырубка леса",
-      "action_type": "terrain",
-      "source_terrain": "forest",
-      "result_terrain": "plain",
+      "action_type": "cover",
+      "source_cover": [ "forest", "sparse_forest" ],
+      "result_cover": "none",
       "work_cost": 22,
       "unlock_tech": "metal_processing"
     },
