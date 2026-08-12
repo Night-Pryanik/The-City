@@ -16,6 +16,7 @@ var product_groups: Dictionary = {}
 var product_group_names: Dictionary = {}
 var modifiers: Dictionary = {}
 var special_actions: Dictionary = {} # id -> данные спецдействия
+var qualities: Dictionary = {} # данные о степенях качества ресурсов
 
 func load_all_data():
     var loader = load("res://scripts/data_loader.gd").new()
@@ -35,6 +36,7 @@ func load_all_data():
     product_group_names = loader.product_group_names
     modifiers = loader.modifiers
     special_actions = loader.special_actions
+    qualities = loader.qualities
 
 # Возвращает имя группы по её ключу (с символом "@" или без).
 # Если ключ не является группой, возвращает пустую строку.
@@ -79,3 +81,64 @@ func format_resource_name(key: String) -> String:
             return group_name
         return key.trim_prefix("@")
     return products.get(key, {}).get("name", key)
+
+# --- ХЕЛПЕРЫ ДЛЯ РАБОТЫ С КАЧЕСТВОМ РЕСУРСОВ ---
+# Данные загружаются из data/qualities.json в поле qualities.
+
+# Возвращает список id уровней качества в порядке от худшего к лучшему.
+func get_quality_levels() -> Array:
+    var levels = []
+    for q in qualities.get("quality_levels", []):
+        if q is Dictionary and q.has("id"):
+            levels.append(q["id"])
+    return levels
+
+# Возвращает данные уровня качества по id (или пустой словарь).
+func get_quality_data(quality_id: String) -> Dictionary:
+    for q in qualities.get("quality_levels", []):
+        if q is Dictionary and q.get("id", "") == quality_id:
+            return q
+    return {}
+
+# Возвращает человекочитаемое название уровня качества.
+func get_quality_name(quality_id: String) -> String:
+    return get_quality_data(quality_id).get("name", quality_id)
+
+# Возвращает числовой вес уровня качества (для взвешенного среднего).
+func get_quality_value(quality_id: String) -> int:
+    return int(get_quality_data(quality_id).get("value", 1))
+
+# Возвращает строку из звёзд для уровня качества (например, "★★★").
+func get_quality_stars(quality_id: String) -> String:
+    return get_quality_data(quality_id).get("stars", "")
+
+# Случайно выбирает уровень качества по весам spawn_weight.
+func roll_quality() -> String:
+    var levels = get_quality_levels()
+    if levels.is_empty():
+        return "common"
+    var total := 0.0
+    for qid in levels:
+        total += float(get_quality_data(qid).get("spawn_weight", 1))
+    if total <= 0.0:
+        return levels[0]
+    var roll = randf() * total
+    var accum := 0.0
+    for qid in levels:
+        accum += float(get_quality_data(qid).get("spawn_weight", 1))
+        if roll < accum:
+            return qid
+    return levels[levels.size() - 1]
+
+# Возвращает приоритет выбора сырья по умолчанию (из qualities.json).
+func get_quality_priority_default() -> String:
+    return qualities.get("priority_default", "best")
+
+# Возвращает список доступных приоритетов выбора сырья.
+func get_quality_priority_options() -> Array:
+    return qualities.get("priority_options", ["best", "worst", "random"])
+
+# Возвращает человекочитаемое название приоритета выбора сырья.
+func get_quality_priority_name(priority: String) -> String:
+    var names: Dictionary = qualities.get("priority_names", {})
+    return names.get(priority, priority)

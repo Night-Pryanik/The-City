@@ -17,6 +17,7 @@ var product_groups: Dictionary = {} # id -> products
 var product_group_names: Dictionary = {} # id -> human-readable name
 var modifiers: Dictionary = {}
 var special_actions: Dictionary = {} # id -> данные спецдействия
+var qualities: Dictionary = {} # данные о степенях качества ресурсов
 
 func load_all_data():
     var merged_data = _load_all_json_files("res://data")
@@ -72,6 +73,20 @@ func load_all_data():
             var sa_id = sa.get("id", "")
             if not sa_id.is_empty():
                 special_actions[sa_id] = sa
+
+    # НОВОЕ: загружаем данные о степенях качества ресурсов.
+    # В data/qualities.json ключи лежат на верхнем уровне (quality_levels,
+    # priority_default и т.д.), поэтому собираем их вручную. Дополнительно
+    # поддерживаем вариант с вложенным словарём "qualities".
+    qualities = {}
+    var nested_qualities = merged_data.get("qualities", {})
+    if nested_qualities is Dictionary:
+        for key in nested_qualities.keys():
+            qualities[key] = nested_qualities[key]
+    for key in ["quality_levels", "priority_default", "priority_options", "priority_names"]:
+        if merged_data.has(key):
+            qualities[key] = merged_data[key]
+
 
 func _load_all_json_files(folder_path: String) -> Dictionary:
     var result = {}

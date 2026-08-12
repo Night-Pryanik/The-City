@@ -13,6 +13,10 @@ var group_tooltip_content: VBoxContainer
 var progress_tooltip_panel: Panel
 var progress_tooltip_label: Label
 
+# Тултип для разбивки склада по качеству
+var quality_tooltip_panel: Panel
+var quality_tooltip_vbox: VBoxContainer
+
 var message_label: Label
 
 func setup(main_ui: Control, message_lbl: Label):
@@ -99,6 +103,27 @@ func setup(main_ui: Control, message_lbl: Label):
     progress_style.border_width_bottom = 1
     progress_style.border_color = Color(0.6, 0.6, 0.6)
     progress_tooltip_panel.add_theme_stylebox_override("panel", progress_style)
+
+    # Тултип для разбивки склада по качеству
+    quality_tooltip_panel = Panel.new()
+    quality_tooltip_panel.visible = false
+    quality_tooltip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    quality_tooltip_panel.z_index = 1000
+    main_ui.add_child(quality_tooltip_panel)
+
+    quality_tooltip_vbox = VBoxContainer.new()
+    quality_tooltip_vbox.add_theme_constant_override("separation", 4)
+    quality_tooltip_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    quality_tooltip_panel.add_child(quality_tooltip_vbox)
+
+    var quality_style = StyleBoxFlat.new()
+    quality_style.bg_color = Color(0.2, 0.2, 0.2, 0.9)
+    quality_style.border_width_left = 1
+    quality_style.border_width_top = 1
+    quality_style.border_width_right = 1
+    quality_style.border_width_bottom = 1
+    quality_style.border_color = Color(0.6, 0.6, 0.6)
+    quality_tooltip_panel.add_theme_stylebox_override("panel", quality_style)
 
 func show_food_tooltip(mouse_pos: Vector2):
     tooltip_panel.position = mouse_pos + Vector2(15, 15)
@@ -199,6 +224,54 @@ func show_progress_tooltip(mouse_pos: Vector2):
 
 func hide_progress_tooltip():
     progress_tooltip_panel.hide()
+
+# Показывает тулитп с разбивкой продукта по качеству.
+# quality_breakdown — словарь {quality_id: count}, например {"common": 50, "fine": 30}.
+func show_quality_tooltip(mouse_pos: Vector2, prod_name: String, quality_breakdown: Dictionary):
+    # Очищаем содержимое
+    for child in quality_tooltip_vbox.get_children():
+        quality_tooltip_vbox.remove_child(child)
+        child.queue_free()
+
+    var header = Label.new()
+    header.text = "Разборка: %s" % prod_name
+    header.add_theme_font_size_override("font_size", 15)
+    header.add_theme_color_override("font_color", Color.WHITE)
+    header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    quality_tooltip_vbox.add_child(header)
+
+    var levels = GameData.get_quality_levels()
+    # Выводим уровни от худшего к лучшему (как в data/qualities.json).
+    for qid in levels:
+        var count = quality_breakdown.get(qid, 0)
+        if count <= 0:
+            continue
+        var row = HBoxContainer.new()
+        row.add_theme_constant_override("separation", 6)
+        row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+        var stars_label = Label.new()
+        stars_label.text = GameData.get_quality_stars(qid)
+        stars_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2, 1.0))
+        stars_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        row.add_child(stars_label)
+
+        var name_label = Label.new()
+        name_label.text = "%s: %d" % [GameData.get_quality_name(qid), count]
+        name_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+        name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        row.add_child(name_label)
+
+        quality_tooltip_vbox.add_child(row)
+
+    quality_tooltip_vbox.reset_size()
+    var content_size = quality_tooltip_vbox.get_minimum_size()
+    quality_tooltip_panel.size = content_size + Vector2(12, 12)
+    quality_tooltip_panel.position = mouse_pos + Vector2(15, 15)
+    quality_tooltip_panel.show()
+
+func hide_quality_tooltip():
+    quality_tooltip_panel.hide()
 
 func set_message(text: String):
     if message_label:

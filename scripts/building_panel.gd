@@ -197,6 +197,15 @@ func _refresh():
             toggle_btn.pressed.connect(_on_toggle_pressed.bind(b_index, true))
         header.add_child(toggle_btn)
 
+        # Кнопка приоритета качества: best (лучшее) / worst (худшее)
+        var quality_btn = Button.new()
+        quality_btn.custom_minimum_size = Vector2(28, 28)
+        quality_btn.expand_icon = true
+        quality_btn.tooltip_text = "Приоритет качества: используйте лучшее/худшее"
+        quality_btn.pressed.connect(_on_quality_priority_pressed.bind(b_index))
+        _update_quality_button(quality_btn, b_index)
+        header.add_child(quality_btn)
+
         slots_container.add_child(header)
 
         for i in range(slots.size()):
@@ -496,6 +505,58 @@ func _on_toggle_pressed(b_index: int, enable: bool):
         if is_instance_valid(p) and p.visible:
             p.hide()
     _refresh()
+
+# Переключает приоритет качества здания и обновляет кнопку.
+func _on_quality_priority_pressed(b_index: int):
+    if b_index < 0 or b_index >= CityData.city_built_buildings.size():
+        return
+    var bld = CityData.city_built_buildings[b_index]
+    var current = bld.get("quality_priority", GameData.get_quality_priority_default())
+    var options = GameData.get_quality_priority_options()
+    var new_priority = options[0] if not options.is_empty() else "best"
+    # Циклически переключаем: best → worst → random → best
+    if not options.is_empty():
+        var idx = options.find(current)
+        if idx < 0:
+            idx = 0
+        idx = (idx + 1) % options.size()
+        new_priority = options[idx]
+    bld["quality_priority"] = new_priority
+    # Показываем сообщение
+    var main_map = get_tree().root.find_child("MainMap", true, false)
+    if main_map and main_map.has_node("HUD"):
+        var hud = main_map.get_node("HUD")
+        if hud and hud.has_method("show_message"):
+            var label = bld.get("id", "")
+            var bdata = null
+            for b in GameData.buildings:
+                if b["id"] == label:
+                    bdata = b
+                    break
+            var bname = bdata.get("name", label) if bdata else label
+            var priority_text = GameData.get_quality_priority_name(new_priority)
+            hud.show_message("%s: приоритет качества — %s" % [bname, priority_text])
+    # Обновляем кнопку в интерфейсе
+    _refresh()
+    CityData.emit_signal("city_updated")
+
+# Обновляет текст/подсказку кнопки приоритета качества.
+func _update_quality_button(button: Button, b_index: int):
+    if b_index < 0 or b_index >= CityData.city_built_buildings.size():
+        return
+    var bld = CityData.city_built_buildings[b_index]
+    var priority = bld.get("quality_priority", GameData.get_quality_priority_default())
+    var levels = GameData.get_quality_levels()
+    # Индикация приоритета: звёздочки лучшего/худшего качества или 🎲 для random.
+    if priority == "best" and levels.size() > 0:
+        button.text = GameData.get_quality_stars(levels.back())
+    elif priority == "worst" and levels.size() > 0:
+        button.text = GameData.get_quality_stars(levels.front())
+    elif priority == "random":
+        button.text = "🎲"
+    else:
+        button.text = "★"
+    button.tooltip_text = "Приоритет качества: %s (нажмите чтобы переключить)" % GameData.get_quality_priority_name(priority)
 
 func _get_toggle_icon(icon_name: String) -> Texture2D:
     if icon_name == "resume":

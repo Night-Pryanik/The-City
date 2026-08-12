@@ -246,6 +246,10 @@ func _draw_hex_overlays(row: int, col: int):
                 var fallback_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
                 draw_circle(center, RESOURCE_ICON_SIZE / 3.0, fallback_color)
 
+    # Звёздочки качества ресурса — под иконкой, только если ресурс раскрыт.
+    if tile.resource != null and is_resource_visible:
+        _draw_quality_stars(tile, center)
+
     if in_influence and tile.improvement != null:
         var has_worker = main_map.worker_manager.has_worker(row, col)
         var imp_data = GameData.improvements.get(tile.improvement, {})
@@ -280,6 +284,64 @@ func _draw_hex_overlays(row: int, col: int):
             for i in range(drop_points.size()):
                 drop_points[i] += drop_center
             draw_polygon(drop_points, [Color(0.45, 0.8, 1.0, 1.0)])
+
+# Рисует звёздочки качества ресурса под его иконкой.
+# Только для раскрытых ресурсов. Если качество не задано или равно "common" — ничего не рисуем.
+func _draw_quality_stars(tile: Dictionary, center: Vector2):
+    var quality = tile.get("quality", "")
+    if quality == "" or quality == null or quality == "common":
+        return
+    var levels = GameData.get_quality_levels()
+    if levels.is_empty():
+        return
+    # Определяем индекс качества в списке уровней (от худшего к лучшему).
+    var quality_index = levels.find(quality)
+    if quality_index < 0:
+        return
+    # Количество «полных» звёзд = индекс + 1 (первый уровень = 1 звезда).
+    var stars_count = quality_index + 1
+    # Максимум звёзд = количество уровней качества.
+    var max_stars = levels.size()
+
+    var star_outer = 5.5
+    var star_inner = 2.5
+    var spacing = 11.0
+    var start_x = center.x - (stars_count * spacing - spacing) / 2.0
+    var star_y = center.y + RESOURCE_ICON_SIZE / 2.0 + 4
+
+    for i in range(max_stars):
+        var star_cx = start_x + i * spacing
+        if i < stars_count:
+            # Заполненная звезда — золотисто-жёлтая
+            _draw_star(star_cx, star_y, star_outer, star_inner, Color(1.0, 0.85, 0.2, 0.9))
+        else:
+            # Пустая звезда — серо-белая
+            _draw_star_outline(star_cx, star_y, star_outer, star_inner, Color(0.5, 0.5, 0.5, 0.6))
+
+# Рисует заполненную (сложную) звезду.
+func _draw_star(cx: float, cy: float, r_outer: float, r_inner: float, color: Color):
+    var points = PackedVector2Array()
+    for i in range(5):
+        var angle = deg_to_rad(i * 72.0 - 90.0)
+        var outer = Vector2(cx + cos(angle) * r_outer, cy + sin(angle) * r_outer)
+        points.append(outer)
+        var inner_angle = deg_to_rad(i * 72.0 + 36.0 - 90.0)
+        var inner = Vector2(cx + cos(inner_angle) * r_inner, cy + sin(inner_angle) * r_inner)
+        points.append(inner)
+    draw_colored_polygon(points, color)
+
+# Рисует контур звезды (пустая/незаполненная).
+func _draw_star_outline(cx: float, cy: float, r_outer: float, r_inner: float, color: Color):
+    var points = PackedVector2Array()
+    for i in range(5):
+        var angle = deg_to_rad(i * 72.0 - 90.0)
+        points.append(Vector2(cx + cos(angle) * r_outer, cy + sin(angle) * r_outer))
+        var inner_angle = deg_to_rad(i * 72.0 + 36.0 - 90.0)
+        points.append(Vector2(cx + cos(inner_angle) * r_inner, cy + sin(inner_angle) * r_inner))
+    var closed = PackedVector2Array()
+    closed.append_array(points)
+    closed.append(points[0])
+    draw_polyline(closed, color, 1.5)
 
 func _draw_progress_bars(row: int, col: int):
     var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)

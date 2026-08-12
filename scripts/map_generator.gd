@@ -144,6 +144,8 @@ func _place_resources(tile_data: Array, res_dict: Dictionary, rows: int, cols: i
         if possible.size() > 0:
             var hex = possible[randi() % possible.size()]
             tile_data[hex.row][hex.col]["resource"] = res_id
+            # Задаём случайное качество ресурсу при спавне.
+            tile_data[hex.row][hex.col]["quality"] = GameData.roll_quality()
 
 func place_wild_food(tile_data: Array, rows: int, cols: int, city_row: int, city_col: int):
     var count = randi_range(2, 4)
@@ -172,6 +174,8 @@ func place_wild_food(tile_data: Array, rows: int, cols: int, city_row: int, city
     for i in range(min(count, possible.size())):
         var hex = possible[i]
         tile_data[hex.row][hex.col]["resource"] = wild_id
+        # Дикоросы тоже имеют качество.
+        tile_data[hex.row][hex.col]["quality"] = GameData.roll_quality()
         placed += 1
     print("Размещено дикоросов: ", placed)
 

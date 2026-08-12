@@ -4,6 +4,9 @@ extends Node
 
 # Склад и производство
 var city_storage: Dictionary = {}
+# Детализация склада по качеству: product_id -> { "common": N, "fine": N, ... }
+# Сумма по всем уровням качества всегда равна city_storage[product_id].
+var city_quality_detail: Dictionary = {}
 var production_rates: Dictionary = {}
 var consumption_rates: Dictionary = {}
 var city_food_pool: Dictionary = {}
@@ -47,6 +50,7 @@ signal building_construction_completed(building_id: String, build_key: String)
 
 func setup():
     city_storage.clear()
+    city_quality_detail.clear()
     production_rates.clear()
     consumption_rates.clear()
     city_food_pool.clear()
@@ -68,6 +72,7 @@ func setup():
 
     for pid in GameData.products.keys():
         city_storage[pid] = 0
+        city_quality_detail[pid] = {}
         production_rates[pid] = 0
         consumption_rates[pid] = 0
         if GameData.products[pid].get("category") == "food":
@@ -75,13 +80,127 @@ func setup():
 
     if city_storage.has("meat"):
         city_storage["meat"] = 10
+        # Стартовое мясо — обычного качества.
+        if not city_quality_detail.has("meat"):
+            city_quality_detail["meat"] = {}
+        city_quality_detail["meat"]["common"] = city_quality_detail["meat"].get("common", 0) + 10
 
 func reset_counters():
     for pid in production_rates.keys():
         production_rates[pid] = 0
         consumption_rates[pid] = 0
 
-func add_raw_production(raw_id: String, multiplier: float = 1.0):
+# --- ХЕЛПЕРЫ ДЛЯ РАБОТЫ С КАЧЕСТВОМ РЕСУРСОВ ---
+# city_storage хранит общее количество, city_quality_detail — разбивку по качеству.
+# Все операции добавления/списания должны идти через эти хелперы, чтобы
+# сумма по деталям всегда совпадала с city_storage.
+
+# Возвращает разбивку по качеству для продукта (словарь {quality: count}).
+# Если разбивки нет (старый сейв), возвращает пустой словарь.
+func get_quality_breakdown(pid: String) -> Dictionary:
+    return city_quality_detail.get(pid, {})
+
+# Возвращает общее количество продукта на складе.
+func get_storage_amount(pid: String) -> int:
+    return city_storage.get(pid, 0)
+
+# Добавляет amount единиц продукта pid указанного качества.
+# Синхронно обновляет city_storage и city_quality_detail.
+func add_to_storage(pid: String, amount: int, quality: String = "common"):
+    if amount <= 0:
+        return
+    city_storage[pid] = city_storage.get(pid, 0) + amount
+    if not city_quality_detail.has(pid):
+        city_quality_detail[pid] = {}
+    var detail: Dictionary = city_quality_detail[pid]
+    detail[quality] = detail.get(quality, 0) + amount
+
+# Уменьшает общее количество продукта pid на amount единиц.
+# Списывает по приоритету качества (best/worst/random) и возвращает
+# разбивку фактически списанного: {quality: count}.
+# Если приоритет не указан, используется "best".
+func remove_from_storage(pid: String, amount: int, priority: String = "best") -> Dictionary:
+    if amount <= 0:
+        return {}
+    var available = city_storage.get(pid, 0)
+    var to_remove = min(amount, available)
+    var consumed = _consume_quality_detail(pid, to_remove, priority)
+    city_storage[pid] = available - to_remove
+    return consumed
+
+# Списывает amount единиц из разбивки по качеству согласно приоритету.
+# Возвращает словарь {quality: count} фактически списанного.
+func _consume_quality_detail(pid: String, amount: int, priority: String) -> Dictionary:
+    var detail: Dictionary = city_quality_detail.get(pid, {})
+    if detail.is_empty():
+        # Нет разбивки (старый сейв) — считаем всё "common".
+        return {"common": amount}
+
+    var levels = GameData.get_quality_levels()
+    if levels.is_empty():
+        return {"common": amount}
+
+    var consumed = {}
+    var remaining = amount
+
+    # Определяем порядок списания уровней качества.
+    var order = []
+    if priority == "worst":
+        order = levels.duplicate() # от худшего к лучшему
+    elif priority == "random":
+        order = levels.duplicate()
+        order.shuffle()
+    else: # "best" и по умолчанию — от лучшего к худшему
+        order = levels.duplicate()
+        order.reverse()
+
+    for qid in order:
+        if remaining <= 0:
+            break
+        var available = detail.get(qid, 0)
+        if available <= 0:
+            continue
+        var take = min(available, remaining)
+        detail[qid] = available - take
+        consumed[qid] = consumed.get(qid, 0) + take
+        remaining -= take
+
+    # Если осталось (например, разбивка неполная) — списываем как common.
+    if remaining > 0:
+        consumed["common"] = consumed.get("common", 0) + remaining
+
+    return consumed
+
+# Возвращает уровень качества, соответствующий взвешенному среднему
+# по разбивке consumed (словарь {quality: count}).
+# Используется при производстве: качество результата = взвешенное среднее
+# качества потреблённого сырья, округлённое до ближайшего уровня.
+func quality_from_breakdown(consumed: Dictionary) -> String:
+    var levels = GameData.get_quality_levels()
+    if levels.is_empty():
+        return "common"
+    var total := 0
+    var weighted := 0.0
+    for qid in consumed:
+        var count = int(consumed[qid])
+        if count <= 0:
+            continue
+        total += count
+        weighted += float(count) * float(GameData.get_quality_value(qid))
+    if total <= 0:
+        return "common"
+    var avg = weighted / float(total)
+    # Округляем до ближайшего уровня качества.
+    var best_qid = levels[0]
+    var best_diff = 1e9
+    for qid in levels:
+        var diff = abs(float(GameData.get_quality_value(qid)) - avg)
+        if diff < best_diff:
+            best_diff = diff
+            best_qid = qid
+    return best_qid
+
+func add_raw_production(raw_id: String, multiplier: float = 1.0, quality: String = "common"):
     if Engine.is_editor_hint():
         return
     var raw = GameData.raw_resources.get(raw_id, {})
@@ -92,7 +211,7 @@ func add_raw_production(raw_id: String, multiplier: float = 1.0):
             if not _is_product_available(pid):
                 continue
             if city_storage.has(pid):
-                city_storage[pid] += amount
+                add_to_storage(pid, amount, quality)
                 production_rates[pid] += amount
 
 func do_tick():
@@ -177,23 +296,36 @@ func do_tick():
                 continue
 
             # --- СПИСЫВАЕМ РЕСУРСЫ ---
+            # Приоритет выбора качества сырья: по умолчанию — лучшее.
+            var priority = bld.get("quality_priority", GameData.get_quality_priority_default())
+            var consumed_all = {} # объединённая разбивка потреблённого сырья по качеству
             for prod in resources_to_consume:
-                city_storage[prod] = city_storage.get(prod, 0) - resources_to_consume[prod]
+                var consumed = remove_from_storage(prod, resources_to_consume[prod], priority)
                 consumption_rates[prod] = consumption_rates.get(prod, 0) + resources_to_consume[prod]
+                # Суммируем разбивки потреблённого по всем ресурсам рецепта,
+                # чтобы вычислить итоговое качество результата как взвешенное среднее.
+                for qid in consumed:
+                    consumed_all[qid] = consumed_all.get(qid, 0) + consumed[qid]
 
             # --- ДОБАВЛЯЕМ РЕЗУЛЬТАТ ---
+            # Качество результата = взвешенное среднее качества потреблённого сырья.
+            var result_quality = quality_from_breakdown(consumed_all)
             for res in recipe["result"]:
-                city_storage[res] = city_storage.get(res, 0) + recipe["result"][res]
-                production_rates[res] = production_rates.get(res, 0) + recipe["result"][res]
+                var amount = recipe["result"][res]
+                add_to_storage(res, amount, result_quality)
+                production_rates[res] = production_rates.get(res, 0) + amount
 
     # --- Потребление еды населением ---
+    # Еда потребляется без учёта качества (качество — визуальная механика),
+    # поэтому списываем по умолчанию "best" через хелпер, чтобы детализация
+    # качества всегда оставалась консистентной.
     var food_needed = max(0, total_population - 1) * food_per_citizen
     var food_eaten = 0
     for pid in city_food_pool:
         if city_food_pool[pid] and city_storage.get(pid, 0) > 0:
             var available = city_storage[pid]
             var to_take = min(available, food_needed - food_eaten)
-            city_storage[pid] -= to_take
+            remove_from_storage(pid, to_take, "best")
             consumption_rates[pid] += to_take
             food_eaten += to_take
             if food_eaten >= food_needed:
@@ -250,9 +382,9 @@ func _check_population_change():
                 active_food.append(pid)
         while remaining > 0 and active_food.size() > 0:
             var pid = active_food[randi() % active_food.size()]
-            city_storage[pid] -= 1
+            remove_from_storage(pid, 1, "best")
             remaining -= 1
-            if city_storage[pid] <= 0:
+            if city_storage.get(pid, 0) <= 0:
                 active_food.erase(pid)
 
         emit_signal("population_changed", total_population)
@@ -549,12 +681,15 @@ func spawn_resource_on_tech_research(tech_id: String) -> Array:
         var data = GameData.raw_resources[res_id]
         var res_name = data.get("name", res_id)
         var placed = 0
+        # При спавне ресурса задаём ему случайное качество.
+        var quality = GameData.roll_quality()
         # Гарантированный вид размещаем строго в Кольце Влияния.
         if guaranteed_circle and res_id == guaranteed_circle_res:
             var circle_hexes = _get_available_hexes(tile_data, main_map, res_id, true)
             if circle_hexes.size() > 0:
                 var ch = circle_hexes[randi() % circle_hexes.size()]
                 tile_data[ch.row][ch.col]["resource"] = res_id
+                tile_data[ch.row][ch.col]["quality"] = quality
                 placed = 1
         # Обычный спавн: в Кольце или в Регионе.
         if placed == 0:
@@ -562,6 +697,7 @@ func spawn_resource_on_tech_research(tech_id: String) -> Array:
             if available.size() > 0:
                 var hex = available[randi() % available.size()]
                 tile_data[hex.row][hex.col]["resource"] = res_id
+                tile_data[hex.row][hex.col]["quality"] = quality
                 placed = 1
         print("Спавн ресурса %s по технологии %s: %d копий" % [res_id, tech_id, placed])
         if placed > 0:

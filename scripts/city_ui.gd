@@ -132,6 +132,7 @@ func _on_city_data_updated():
 func _update_data_cache():
     data_cache = {
         "city_storage": CityData.city_storage,
+        "city_quality_detail": CityData.city_quality_detail,
         "production_rates": CityData.production_rates,
         "consumption_rates": CityData.consumption_rates,
         "city_food_pool": CityData.city_food_pool,
@@ -226,6 +227,7 @@ func _switch_tab(tab_id: String):
     if ui_helpers:
         ui_helpers.hide_group_tooltip()
         ui_helpers.hide_progress_tooltip()
+        ui_helpers.hide_quality_tooltip()
 
     if tab_id == "buildings":
         buildings_tab.refresh_list()
@@ -422,6 +424,7 @@ func _close_ui():
     if ui_helpers:
         ui_helpers.hide_group_tooltip()
         ui_helpers.hide_progress_tooltip()
+        ui_helpers.hide_quality_tooltip()
     if building_panel:
         building_panel.hide()
     hide()

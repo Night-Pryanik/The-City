@@ -5,6 +5,7 @@ var ui_helpers: Node
 var products: Dictionary = {}
 var categories: Array = []
 var city_storage: Dictionary = {}
+var city_quality_detail: Dictionary = {}
 var production_rates: Dictionary = {}
 var consumption_rates: Dictionary = {}
 var city_food_pool: Dictionary = {}
@@ -12,6 +13,7 @@ var food_toggles: Dictionary = {}
 var amount_labels: Dictionary = {}
 var prod_labels: Dictionary = {}
 var cons_labels: Dictionary = {}
+var quality_labels: Dictionary = {}
 var displayed_products: Dictionary = {}
 var diversity_label: Label = null
 var icon_textures: Dictionary = {}
@@ -28,6 +30,7 @@ func update_data(data: Dictionary):
     products = data.get("products", {})
     categories = data.get("categories", [])
     city_storage = data.get("city_storage", {})
+    city_quality_detail = data.get("city_quality_detail", {})
     production_rates = data.get("production_rates", {})
     consumption_rates = data.get("consumption_rates", {})
     city_food_pool = data.get("city_food_pool", {})
@@ -273,6 +276,10 @@ func refresh():
             red_label.add_theme_color_override("font_color", Color.RED)
             row.add_child(red_label)
             cons_labels[prod_id] = red_label
+
+            # Разбивка по качеству для этого продукта
+            _add_quality_label(row, prod_id, product_name)
+
             displayed_products[prod_id] = true
 
     # --- Бонусы за разнообразие (заглушка) ---
@@ -326,6 +333,8 @@ func update_values():
         if food_toggles.has(prod_id):
             var enabled = city_food_pool.get(prod_id, true)
             food_toggles[prod_id].color = Color.GREEN if enabled else Color.RED
+        if quality_labels.has(prod_id):
+            _update_quality_label(quality_labels[prod_id], prod_id)
 
     if diversity_label != null and is_instance_valid(diversity_label):
         var animal_subgroup_map = {}
@@ -340,6 +349,57 @@ func update_values():
                 plant_subgroup_map[subgroup] = true
         var total_subgroups = animal_subgroup_map.size() + plant_subgroup_map.size()
         diversity_label.text = "Разнообразие: %d подгрупп" % total_subgroups
+
+# Добавляет метку с разбивкой по качеству в строку ресурса.
+# Только если для продукта есть данные о качестве (city_quality_detail).
+func _add_quality_label(row: HBoxContainer, prod_id: String, product_name: String):
+    var detail = city_quality_detail.get(prod_id, {})
+    var total = 0
+    for qid in detail:
+        total += int(detail[qid])
+    if total <= 0:
+        return
+
+    var quality_label = Label.new()
+    quality_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2, 0.9))
+    quality_label.mouse_filter = Control.MOUSE_FILTER_PASS # пропускаем клики к родительской кнопке
+    # Показ звёздочек с наведением — тулитп с разбором по качеству
+    quality_label.mouse_entered.connect(_on_quality_hover.bind(prod_id, product_name))
+    quality_label.mouse_exited.connect(_on_quality_exit)
+    _update_quality_label(quality_label, prod_id)
+    row.add_child(quality_label)
+    quality_labels[prod_id] = quality_label
+
+# Обновляет текст метки качества.
+func _update_quality_label(label: Label, prod_id: String):
+    var detail = city_quality_detail.get(prod_id, {})
+    var total = 0
+    for qid in detail:
+        total += int(detail[qid])
+    if total <= 0:
+        label.hide()
+        return
+    label.show()
+    # Вычисляем процент лучшего доступного качества
+    var levels = GameData.get_quality_levels()
+    var best_count = 0
+    if levels.size() > 0:
+        best_count = int(detail.get(levels.back(), 0))
+    var best_pct = int(round(float(best_count) / float(total) * 100.0))
+    label.text = " %s (%d%%)" % [GameData.get_quality_stars(levels.back()) if levels.size() > 0 else "★", best_pct]
+
+# Показывает тулитп с разбивкой по качеству при наведении.
+func _on_quality_hover(prod_id: String, product_name: String):
+    var detail = city_quality_detail.get(prod_id, {})
+    if detail.is_empty():
+        return
+    if ui_helpers and is_instance_valid(ui_helpers):
+        ui_helpers.show_quality_tooltip(get_viewport().get_mouse_position(), product_name, detail)
+
+# Скрывает тулитп качества.
+func _on_quality_exit():
+    if ui_helpers and is_instance_valid(ui_helpers):
+        ui_helpers.hide_quality_tooltip()
 
 func _on_food_toggle_input(event, prod_id, toggle):
     if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:

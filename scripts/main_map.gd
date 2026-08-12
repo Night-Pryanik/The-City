@@ -109,6 +109,7 @@ func _ready():
                         tile["cover"] = saved_cover
                         tile["resource"] = saved.get("resource")
                         tile["improvement"] = saved.get("improvement")
+                        tile["quality"] = saved.get("quality", "")
                         tile["terrain_icon"] = saved.get("terrain_icon", "")
                         tile["in_influence"] = saved.get("in_influence", false)
                         tile["is_explored"] = saved.get("is_explored", false)
@@ -274,15 +275,17 @@ func _process(delta):
                 if tile.improvement != null:
                     production_multiplier = CityData.get_improvement_production_multiplier(tile.improvement, _is_hex_irrigated(row, col))
 
+                # Качество ресурса на гексе передаётся в производство.
+                var tile_quality = tile.get("quality", "common")
                 if feed_needed > 0:
                     var available_feed = CityData.city_storage.get("feed", 0)
                     if available_feed >= feed_needed:
-                        CityData.city_storage["feed"] -= feed_needed
-                        CityData.add_raw_production(tile.resource, production_multiplier)
+                        CityData.remove_from_storage("feed", feed_needed, "best")
+                        CityData.add_raw_production(tile.resource, production_multiplier, tile_quality)
                     else:
-                        CityData.add_raw_production(tile.resource, 0.25)
+                        CityData.add_raw_production(tile.resource, 0.25, tile_quality)
                 else:
-                    CityData.add_raw_production(tile.resource, production_multiplier)
+                    CityData.add_raw_production(tile.resource, production_multiplier, tile_quality)
 
         CityData.do_tick()
         # tick_research_science вызывается каждый кадр ниже (см. _process),
@@ -552,6 +555,13 @@ func update_tooltip_text(row: int, col: int):
     var imp_name = GameData.improvements.get(tile.improvement, {}).get("name", "нет") if tile.improvement != null else "нет"
 
     var text = "Местность: %s\nРесурс: %s" % [terrain_with_cover, res_name]
+
+    # Качество ресурса становится видно после постройки улучшения.
+    var tile_quality = tile.get("quality", "")
+    if tile_quality != "" and tile.improvement != null:
+        var q_stars = GameData.get_quality_stars(tile_quality)
+        var q_name = GameData.get_quality_name(tile_quality)
+        text += "\nКачество: %s (%s)" % [q_stars, q_name]
 
     var imp_status = ""
     if tile.improvement != null:
@@ -1214,11 +1224,13 @@ func _on_build_completed(row: int, col: int, imp_id: String, animal_id = null):
             tile.cover = result_cover
         elif action_type == "forage":
             # Сбор дикоросов: убираем ресурс и добавляем урожай на склад.
+            # Качество собранного урожая = качество ресурса на гексе.
+            var forage_quality = tile.get("quality", "common")
             var yield_data = sa.get("yield", {})
             for prod_id in yield_data:
                 var range_arr = yield_data[prod_id]
                 var amount = range_arr[0] if range_arr.size() == 1 else randi_range(int(range_arr[0]), int(range_arr[1]))
-                CityData.city_storage[prod_id] = CityData.city_storage.get(prod_id, 0) + amount
+                CityData.add_to_storage(prod_id, amount, forage_quality)
                 hud.show_message("Собрано %d %s!" % [amount, GameData.products.get(prod_id, {}).get("name", prod_id)])
             tile.resource = null
         elif action_type == "demolish":
@@ -1242,6 +1254,14 @@ func _on_build_completed(row: int, col: int, imp_id: String, animal_id = null):
     tile.improvement = imp_id
     if animal_id != null:
         tile.resource = animal_id
+        # Качество ресурса берётся из данных самого ресурса (animal_id/plant_id),
+        # а не генерируется случайно — разведение исключительных животных
+        # порождает исключительных животных.
+        var res_data = GameData.raw_resources.get(animal_id, {})
+        var res_quality = res_data.get("quality", "common")
+        if res_quality == "" or res_quality == null:
+            res_quality = "common"
+        tile["quality"] = res_quality
         if CityData:
             if GameData.raw_resources.has(animal_id) and GameData.raw_resources[animal_id].get("category") == "animals":
                 CityData.add_animal(animal_id)
@@ -1648,9 +1668,9 @@ func _start_scouting(chunk: Array, cost: int):
             active_food.append(pid)
     while remaining > 0 and active_food.size() > 0:
         var pid = active_food[randi() % active_food.size()]
-        CityData.city_storage[pid] -= 1
+        CityData.remove_from_storage(pid, 1, "best")
         remaining -= 1
-        if CityData.city_storage[pid] <= 0:
+        if CityData.city_storage.get(pid, 0) <= 0:
             active_food.erase(pid)
     scouting_chunk = chunk
     scouting_timer = 0.0

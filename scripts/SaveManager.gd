@@ -14,6 +14,7 @@ func save_game():
     var build_manager = main_map.get_node_or_null("BuildManager")
     var data = {
         "city_storage": CityData.city_storage,
+        "city_quality_detail": CityData.city_quality_detail,
         "production_rates": CityData.production_rates,
         "consumption_rates": CityData.consumption_rates,
         "city_food_pool": CityData.city_food_pool,
@@ -71,6 +72,7 @@ func load_game() -> bool:
 func apply_loaded_data():
     # Вызывается из main_map.gd после готовности сцены
     CityData.city_storage = saved_data.get("city_storage", {})
+    CityData.city_quality_detail = saved_data.get("city_quality_detail", {})
     CityData.production_rates = saved_data.get("production_rates", {})
     CityData.consumption_rates = saved_data.get("consumption_rates", {})
     CityData.city_food_pool = saved_data.get("city_food_pool", {})
@@ -133,6 +135,7 @@ func _serialize_tile_data(main_map: Node) -> Array:
                     "cover": tile.get("cover", "none"),
                     "resource": tile.get("resource"),
                     "improvement": tile.get("improvement"),
+                    "quality": tile.get("quality", ""),
                     "terrain_icon": tile.get("terrain_icon", ""),
                     "in_influence": tile.get("in_influence", false),
                     "is_explored": tile.get("is_explored", false),
