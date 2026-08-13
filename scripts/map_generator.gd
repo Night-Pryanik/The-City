@@ -170,14 +170,11 @@ func place_wild_food(tile_data: Array, rows: int, cols: int, city_row: int, city
             if terrain in wild_data.get("allowed_terrain", []) and cover in wild_data.get("allowed_cover", []):
                 possible.append({"row": r, "col": c})
     possible.shuffle()
-    var placed = 0
     for i in range(min(count, possible.size())):
         var hex = possible[i]
         tile_data[hex.row][hex.col]["resource"] = wild_id
         # Дикоросы тоже имеют качество.
         tile_data[hex.row][hex.col]["quality"] = GameData.roll_quality()
-        placed += 1
-    print("Размещено дикоросов: ", placed)
 
 # Пост-обработка генерации карты: гарантирует, что внутри Кольца Влияния
 # после размещения всех ресурсов остаётся минимум FREE_TERRAIN_HEXES СВОБОДНЫХ
