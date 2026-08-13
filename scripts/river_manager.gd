@@ -12,8 +12,8 @@ const MAX_TURN_ANGLE_DEG := 60.0 # Максимальный угол повор�
 const MAX_TURN_ANGLE_SOFT_DEG := 90.0 # Запасной угол при застревании
 const MIN_LENGTH_FOR_EXIT := 8 # Минимальная длина пути для попытки выхода на границу
 const NUM_RIVER_ATTEMPTS := 4 # Попыток построить одну реку
-const NUM_RIVERS_MIN := 1 # Минимальное количество рек
-const NUM_RIVERS_MAX := 2 # Максимальное количество рек
+const NUM_RIVERS_MIN := 4 # Минимальное количество рек
+const NUM_RIVERS_MAX := 8 # Максимальное количество рек
 
 const RIVER_COLOR := Color(26.0 / 255.0, 95.0 / 255.0, 180.0 / 255.0, 0.9) # Тёмно-синее тело реки (#1a5fb4)
 const RIVER_WIDTH := 10.0 # Толщина тела реки

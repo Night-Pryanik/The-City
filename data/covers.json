@@ -5,7 +5,7 @@
       "id": "sparse_forest",
       "name": "Редколесье",
       "color": [ 34, 139, 34 ],
-      "alpha": 0.25,
+      "alpha": 0.9,
       "move_cost_bonus": 0,
       "icons": [ "forest_1.png", "forest_2.png", "forest_3.png" ]
     },
@@ -13,7 +13,7 @@
       "id": "forest",
       "name": "Лес",
       "color": [ 34, 139, 34 ],
-      "alpha": 0.45,
+      "alpha": 0.9,
       "move_cost_bonus": 0,
       "icons": [ "forest_1.png", "forest_2.png", "forest_3.png" ]
     }
