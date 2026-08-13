@@ -448,10 +448,23 @@ func _is_hex_irrigated(row: int, col: int) -> bool:
     if tile == null:
         return false
 
+    if tile.get("terrain", "plain") == "lake":
+        return true
     if tile.get("river_edges", []).size() > 0:
         return true
     if _is_hex_adjacent_to_canal(row, col):
         return true
+
+    var neighbors = HexUtils.get_neighbors_odd_r(row, col, map_rows, map_cols)
+    for n in neighbors:
+        var neighbor_tile = tile_data[n.row][n.col]
+        if neighbor_tile == null:
+            continue
+        if neighbor_tile.get("terrain", "plain") == "lake":
+            return true
+        if neighbor_tile.get("river_edges", []).size() > 0:
+            return true
+
     if tile.improvement != "farm":
         return false
 
@@ -468,6 +481,8 @@ func _is_hex_irrigated(row: int, col: int) -> bool:
         if current_tile == null:
             continue
 
+        if current_tile.get("terrain", "plain") == "lake":
+            return true
         if current_tile.get("river_edges", []).size() > 0:
             return true
         if _is_hex_adjacent_to_canal(crow, ccol):
@@ -475,14 +490,16 @@ func _is_hex_irrigated(row: int, col: int) -> bool:
         if dist >= 3:
             continue
 
-        var neighbors = HexUtils.get_neighbors_odd_r(crow, ccol, map_rows, map_cols)
-        for n in neighbors:
+        var neighbors_local = HexUtils.get_neighbors_odd_r(crow, ccol, map_rows, map_cols)
+        for n in neighbors_local:
             var key = "%d_%d" % [n.row, n.col]
             if visited.has(key):
                 continue
             var neighbor_tile = tile_data[n.row][n.col]
             if neighbor_tile == null:
                 continue
+            if neighbor_tile.get("terrain", "plain") == "lake":
+                return true
             if neighbor_tile.improvement == "farm":
                 visited[key] = true
                 queue.append({"row": n.row, "col": n.col, "dist": dist + 1})

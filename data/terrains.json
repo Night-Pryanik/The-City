@@ -26,6 +26,14 @@
       "expansion_cost": 150,
       "icons": [ "mountain_1.png", "mountain_2.png", "mountain_3.png" ],
       "cover_chance": { "none": 90, "sparse_forest": 5, "forest": 5 }
+    },
+    {
+      "id": "lake",
+      "name": "Пресноводное озеро",
+      "color": [ 66, 129, 180 ],
+      "move_cost": 999,
+      "expansion_cost": 200,
+      "cover_chance": { "none": 100 }
     }
   ]
 }

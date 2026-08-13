@@ -19,8 +19,9 @@
     // terrain_density — доля центров каждого типа (сумма ≈ 1.0).
     "target_cluster": 22,
     "terrain_density": {
-      "plain": 0.50,
-      "hill": 0.30,
+      "plain": 0.45,
+      "hill": 0.25,
+      "lake": 0.10,
       "mountain": 0.20
     }
   }

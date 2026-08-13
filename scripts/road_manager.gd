@@ -113,8 +113,10 @@ func _find_path_dijkstra(
             
             if visited.has(n_key):
                 continue
-            
+
             var tile = tile_data[n.row][n.col]
+            if tile == null or tile.get("terrain", "plain") == "lake":
+                continue
             var terrain_id = tile.get("terrain", "plain")
             var move_cost = 1
             if GameData.terrains.has(terrain_id):
@@ -170,22 +172,22 @@ func _get_neighbors(row: int, col: int, max_rows: int, max_cols: int) -> Array:
     # Для even rows (row % 2 == 0)
     if row % 2 == 0:
         directions = [
-            {"r": 0, "c": -1},   # W
-            {"r": 0, "c": 1},    # E
-            {"r": -1, "c": -1},  # NW
-            {"r": -1, "c": 0},   # NE
-            {"r": 1, "c": -1},   # SW
-            {"r": 1, "c": 0}     # SE
+            {"r": 0, "c": - 1}, # W
+            {"r": 0, "c": 1}, # E
+            {"r": - 1, "c": - 1}, # NW
+            {"r": - 1, "c": 0}, # NE
+            {"r": 1, "c": - 1}, # SW
+            {"r": 1, "c": 0} # SE
         ]
     else:
         # Для odd rows (row % 2 == 1)
         directions = [
-            {"r": 0, "c": -1},   # W
-            {"r": 0, "c": 1},    # E
-            {"r": -1, "c": 0},   # NW
-            {"r": -1, "c": 1},   # NE
-            {"r": 1, "c": 0},    # SW
-            {"r": 1, "c": 1}     # SE
+            {"r": 0, "c": - 1}, # W
+            {"r": 0, "c": 1}, # E
+            {"r": - 1, "c": 0}, # NW
+            {"r": - 1, "c": 1}, # NE
+            {"r": 1, "c": 0}, # SW
+            {"r": 1, "c": 1} # SE
         ]
 
     for d in directions:

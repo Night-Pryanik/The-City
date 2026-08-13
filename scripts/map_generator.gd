@@ -26,13 +26,15 @@ func make_terrain_counts(rows: int, cols: int) -> Dictionary:
     var area := rows * cols
     var total := maxi(12, int(round(float(area) / target_cluster)))
 
-    var plain_w := float(density.get("plain", 0.50))
-    var hill_w := float(density.get("hill", 0.30))
+    var plain_w := float(density.get("plain", 0.45))
+    var hill_w := float(density.get("hill", 0.25))
+    var lake_w := float(density.get("lake", 0.10))
     var mountain_w := float(density.get("mountain", 0.20))
 
     return {
         "plain": maxi(3, int(round(total * plain_w))),
         "hill": maxi(2, int(round(total * hill_w))),
+        "lake": maxi(1, int(round(total * lake_w))),
         "mountain": maxi(2, int(round(total * mountain_w))),
     }
 
@@ -60,6 +62,27 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
     for row in range(rows):
         for col in range(cols):
             tile_data[row][col]["terrain"] = voronoi[row][col]
+
+    # Гарантируем минимальный объём озёр на карте: озеро не должно исчезать
+    # в слишком маленьких картах или при редких случайностях генерации центров.
+    var lake_tiles := 0
+    for row in range(rows):
+        for col in range(cols):
+            if tile_data[row][col]["terrain"] == "lake":
+                lake_tiles += 1
+    if lake_tiles < 3:
+        for row in range(rows):
+            for col in range(cols):
+                if lake_tiles >= 3:
+                    break
+                if tile_data[row][col]["resource"] != null:
+                    continue
+                if tile_data[row][col]["terrain"] == "lake":
+                    continue
+                tile_data[row][col]["terrain"] = "lake"
+                lake_tiles += 1
+            if lake_tiles >= 3:
+                break
 
     # --- Покров (cover): генерируем ПОСЛЕ рельефа, с учётом terrain ---
     # Вероятности покрова для каждого типа местности заданы в terrains.json
