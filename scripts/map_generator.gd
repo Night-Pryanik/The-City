@@ -14,6 +14,28 @@ const FREE_TERRAIN_HEXES := 2
 # в недостающие типы.
 const OVER_REP_THRESHOLD := 3
 
+# Вычисляет количество центров Вороного для каждого типа местности на основе
+# плотностей (terrain_density) и среднего размера кластера (target_cluster),
+# заданных в data/map_config.json. Пропорции по умолчанию: равнины ≈ 50%,
+# холмы ≈ 30%, горы ≈ 20%.
+func make_terrain_counts(rows: int, cols: int) -> Dictionary:
+    var cfg: Dictionary = GameData.map_config
+    var density: Dictionary = cfg.get("terrain_density", {})
+    var target_cluster: int = int(cfg.get("target_cluster", 22))
+
+    var area := rows * cols
+    var total := maxi(12, int(round(float(area) / target_cluster)))
+
+    var plain_w := float(density.get("plain", 0.50))
+    var hill_w := float(density.get("hill", 0.30))
+    var mountain_w := float(density.get("mountain", 0.20))
+
+    return {
+        "plain": maxi(3, int(round(total * plain_w))),
+        "hill": maxi(2, int(round(total * hill_w))),
+        "mountain": maxi(2, int(round(total * mountain_w))),
+    }
+
 func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: Dictionary, terrain_counts: Dictionary) -> Array:
     var tile_data = []
     for row in range(rows):
