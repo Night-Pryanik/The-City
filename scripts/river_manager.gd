@@ -198,6 +198,24 @@ func _find_path_astar(start_key: String, goal_key: String, graph: Dictionary, fo
     var vertex_positions: Dictionary = graph["positions"]
     var neighbors_map: Dictionary = graph["neighbors"]
 
+    # Ограничиваем область поиска bbox-ом вокруг start и goal.
+    # Это ускоряет A* в разы на больших картах, не меняя формат данных рек:
+    # путь по-прежнему строится по вершинам гексов, поэтому mark_river_edges
+    # и весь функционал (бонусы у рек, near_river) работают как раньше.
+    var start_pos = vertex_positions[start_key]
+    var goal_pos = vertex_positions[goal_key]
+    var min_x = minf(start_pos.x, goal_pos.x)
+    var max_x = maxf(start_pos.x, goal_pos.x)
+    var min_y = minf(start_pos.y, goal_pos.y)
+    var max_y = maxf(start_pos.y, goal_pos.y)
+    # Запас: 25% от суммы сторон bbox, но не меньше фиксированного минимума,
+    # чтобы река могла естественно изгибаться и вливаться в merge-вершины.
+    var margin = maxf((max_x - min_x + max_y - min_y) * 0.25, 200.0)
+    min_x -= margin
+    max_x += margin
+    min_y -= margin
+    max_y += margin
+
     var open_set: Array = [start_key]
     var came_from: Dictionary = {}
     var g_score: Dictionary = {start_key: 0.0}
@@ -223,10 +241,14 @@ func _find_path_astar(start_key: String, goal_key: String, graph: Dictionary, fo
             # Для стартовой вершины направление к цели
             dir = (vertex_positions[goal_key] - current_pos).normalized()
 
-        # Соседи: исключаем только forbidden, а merge-вершины оставляем
+        # Соседи: исключаем только forbidden, а merge-вершины оставляем.
+        # Отбрасываем соседей за пределами bbox — это и есть основное ускорение.
         var candidates: Array = []
         for n in neighbors_map[current]:
             if forbidden_keys.has(n):
+                continue
+            var npos = vertex_positions[n]
+            if npos.x < min_x or npos.x > max_x or npos.y < min_y or npos.y > max_y:
                 continue
             candidates.append(n)
 
