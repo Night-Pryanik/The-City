@@ -343,13 +343,31 @@ func _hide_tooltip():
         child.queue_free()
 
 func _pixel_to_hex(mx: float, my: float):
-    # Итерируем по видимому окну (Кольцо + Регион); координаты уже АБСОЛЮТНЫЕ.
-    for row in range(main_map.region_start_row, main_map.region_end_row + 1):
-        for col in range(main_map.region_start_col, main_map.region_end_col + 1):
-            var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
+    # Быстрое обратное преобразование координат: вычисляем приблизительный гекс,
+    # затем проверяем его и соседей в небольшом радиусе. Это заменяет итерацию
+    # по всему региону (Кольцо + Регион) и ускоряет обработку движения мыши.
+    var radius = main_map.HEX_RADIUS
+    var x_spacing = radius * sqrt(3.0)
+    var y_spacing = radius * 1.5
+
+    var world_x = mx - (main_map.offset_x + main_map.scroll_offset.x)
+    var world_y = my - (main_map.offset_y + main_map.scroll_offset.y)
+
+    var approx_row = int(round(world_y / y_spacing))
+    var approx_col = int(round(world_x / x_spacing))
+
+    # Проверяем приблизительный гекс и соседей в радиусе 2
+    # (покрывает смещение нечётных рядов и неточность обратного преобразования).
+    for row in range(approx_row - 2, approx_row + 3):
+        if row < main_map.region_start_row or row > main_map.region_end_row:
+            continue
+        for col in range(approx_col - 2, approx_col + 3):
+            if col < main_map.region_start_col or col > main_map.region_end_col:
+                continue
+            var center = HexUtils.hex_center(row, col, radius)
             center.x += main_map.offset_x + main_map.scroll_offset.x
             center.y += main_map.offset_y + main_map.scroll_offset.y
-            var verts = HexUtils.hex_vertices(center.x, center.y, main_map.HEX_RADIUS)
+            var verts = HexUtils.hex_vertices(center.x, center.y, radius)
             if HexUtils.point_in_polygon(mx, my, verts):
                 return {"row": row, "col": col}
     return null

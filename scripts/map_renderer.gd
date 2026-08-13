@@ -18,6 +18,58 @@ func initialize(td, main_node):
     tile_data = td
     main_map = main_node
 
+# Возвращает словарь с границами видимых гексов (инклюзивно),
+# ограниченными границами региона. Используется для viewport culling:
+# вместо итерации по всему региону рисуем только те гексы, которые
+# пересекают прямоугольник экрана.
+func _get_visible_hex_range() -> Dictionary:
+    var viewport_size = Vector2(1152, 768)
+    if not Engine.is_editor_hint():
+        viewport_size = get_viewport_rect().size
+
+    var offset_x = main_map.offset_x + main_map.scroll_offset.x
+    var offset_y = main_map.offset_y + main_map.scroll_offset.y
+
+    var radius = main_map.HEX_RADIUS
+    var x_spacing = radius * sqrt(3.0)
+    var y_spacing = radius * 1.5
+
+    # Прямоугольник viewport в координатах карты (до offset).
+    var world_left = - offset_x
+    var world_top = - offset_y
+    var world_right = world_left + viewport_size.x
+    var world_bottom = world_top + viewport_size.y
+
+    # Запас в 2 гекса, чтобы учесть смещение нечётных рядов
+    # и частично видимые гексы на границах экрана.
+    var margin = 2
+
+    var col_start = int(floor(world_left / x_spacing)) - margin
+    var col_end = int(ceil(world_right / x_spacing)) + margin
+    var row_start = int(floor(world_top / y_spacing)) - margin
+    var row_end = int(ceil(world_bottom / y_spacing)) + margin
+
+    # Ограничиваем границами региона (Кольцо + Регион).
+    col_start = max(col_start, main_map.region_start_col)
+    col_end = min(col_end, main_map.region_end_col)
+    row_start = max(row_start, main_map.region_start_row)
+    row_end = min(row_end, main_map.region_end_row)
+
+    return {
+        "row_start": row_start,
+        "row_end": row_end,
+        "col_start": col_start,
+        "col_end": col_end
+    }
+
+# Проверяет, пересекается ли прямоугольник (в экранных координатах) с viewport.
+func _is_rect_visible(rect: Rect2) -> bool:
+    var viewport_size = Vector2(1152, 768)
+    if not Engine.is_editor_hint():
+        viewport_size = get_viewport_rect().size
+    var viewport_rect = Rect2(Vector2.ZERO, viewport_size)
+    return rect.intersects(viewport_rect)
+
 func build_icon_index():
     icon_paths.clear()
     _scan_folder("res://icons")
@@ -72,10 +124,14 @@ func load_icons():
         icon_textures["city"] = load(icon_paths["city.png"])
 
 func _draw():
+    # Вычисляем видимый диапазон гексов (viewport culling): рисуем только те
+    # гексы, которые пересекают прямоугольник экрана.
+    var visible = _get_visible_hex_range()
+
     # ФАЗА 1: Рисуем ВИДИМОЕ окно (Кольцо + Регион). Гексы за его пределами
     # скрыты туманом войны (не отрисовываются вовсе).
-    for row in range(main_map.region_start_row, main_map.region_end_row + 1):
-        for col in range(main_map.region_start_col, main_map.region_end_col + 1):
+    for row in range(visible.row_start, visible.row_end + 1):
+        for col in range(visible.col_start, visible.col_end + 1):
             _draw_hex(row, col)
 
     # ФАЗА 2: Рисуем дороги (ПЕРЕД иконками ресурсов и улучшений)
@@ -88,8 +144,8 @@ func _draw():
     _draw_exploration_highlights()
 
     # ФАЗА 3: Рисуем иконки ресурсов, улучшений и другие оверлеи
-    for row in range(main_map.region_start_row, main_map.region_end_row + 1):
-        for col in range(main_map.region_start_col, main_map.region_end_col + 1):
+    for row in range(visible.row_start, visible.row_end + 1):
+        for col in range(visible.col_start, visible.col_end + 1):
             _draw_hex_overlays(row, col)
 
     # ФАЗА 4: Рисуем город в конце
@@ -114,8 +170,8 @@ func _draw():
         draw_colored_polygon(city_vertices, Color.YELLOW)
 
     # ФАЗА 5: Рисуем прогресс-бары ПОВЕРХ всего (включая иконку города)
-    for row in range(main_map.region_start_row, main_map.region_end_row + 1):
-        for col in range(main_map.region_start_col, main_map.region_end_col + 1):
+    for row in range(visible.row_start, visible.row_end + 1):
+        for col in range(visible.col_start, visible.col_end + 1):
             _draw_progress_bars(row, col)
 
 func _draw_hex(row: int, col: int):
@@ -448,7 +504,23 @@ func _draw_all_roads():
         var col1 = int(start_parts[1])
         var row2 = int(end_parts[0])
         var col2 = int(end_parts[1])
-        
+
+        # Viewport culling: пропускаем сегменты дорог, которые не пересекают экран.
+        var c1 = HexUtils.hex_center(row1, col1, main_map.HEX_RADIUS)
+        c1.x += main_map.offset_x + main_map.scroll_offset.x
+        c1.y += main_map.offset_y + main_map.scroll_offset.y
+        var c2 = HexUtils.hex_center(row2, col2, main_map.HEX_RADIUS)
+        c2.x += main_map.offset_x + main_map.scroll_offset.x
+        c2.y += main_map.offset_y + main_map.scroll_offset.y
+        var road_rect = Rect2(
+            min(c1.x, c2.x) - main_map.HEX_RADIUS,
+            min(c1.y, c2.y) - main_map.HEX_RADIUS,
+            abs(c2.x - c1.x) + main_map.HEX_RADIUS * 2,
+            abs(c2.y - c1.y) + main_map.HEX_RADIUS * 2
+        )
+        if not _is_rect_visible(road_rect):
+            continue
+
         var points = _generate_natural_road(row1, col1, row2, col2, main_map.HEX_RADIUS)
         draw_polyline(points, Color(0.55, 0.35, 0.15), 6, true)
 
@@ -473,6 +545,28 @@ func _draw_rivers():
     for river in river_data:
         if river.size() < 2:
             continue
+
+        # Viewport culling: пропускаем реки, которые не пересекают экран.
+        var min_x = INF
+        var max_x = - INF
+        var min_y = INF
+        var max_y = - INF
+        for pt in river:
+            var px = pt.x + offset_x
+            var py = pt.y + offset_y
+            min_x = min(min_x, px)
+            max_x = max(max_x, px)
+            min_y = min(min_y, py)
+            max_y = max(max_y, py)
+        var river_rect = Rect2(
+            min_x - radius,
+            min_y - radius,
+            (max_x - min_x) + radius * 2,
+            (max_y - min_y) + radius * 2
+        )
+        if not _is_rect_visible(river_rect):
+            continue
+
         var points = PackedVector2Array()
         for pt in river:
             points.append(Vector2(pt.x + offset_x, pt.y + offset_y))
@@ -593,8 +687,9 @@ func _draw_exploration_highlights():
         return
 
     # --- 1. Рисуем слои: не исследован / исследован (всегда) ---
-    for row in range(main_map.region_start_row, main_map.region_end_row + 1):
-        for col in range(main_map.region_start_col, main_map.region_end_col + 1):
+    var visible = _get_visible_hex_range()
+    for row in range(visible.row_start, visible.row_end + 1):
+        for col in range(visible.col_start, visible.col_end + 1):
             var tile = tile_data[row][col]
             if tile.get("in_influence", false):
                 continue
