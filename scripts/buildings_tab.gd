@@ -466,10 +466,17 @@ func _on_building_selected(idx: int):
             var build_time = work_cost / max(1.0, labor)
             cost_parts.append("труд: %d (%.0f сек)" % [work_cost, build_time])
         if bdata.has("additional_cost"):
-            for res_id in bdata["additional_cost"]:
-                var amount = bdata["additional_cost"][res_id]
-                var res_name = GameData.format_resource_name(res_id)
-                cost_parts.append("%s: %d" % [res_name, amount])
+            # additional_cost поддерживает AND-логику: массив пачек,
+            # каждая пачка требует все свои ресурсы, и нужны все пачки.
+            var bundles = GameData.parse_additional_cost(bdata["additional_cost"])
+            var bundle_strs: Array = []
+            for bundle in bundles:
+                var parts: Array = []
+                for res_id in bundle:
+                    parts.append("%s: %d" % [GameData.format_resource_name(res_id), int(bundle[res_id])])
+                bundle_strs.append(", ".join(parts))
+            if not bundle_strs.is_empty():
+                cost_parts.append(" И ".join(bundle_strs))
         building_cost_label.text = "Стоимость: " + ", ".join(cost_parts)
 
         # Показываем количество слотов производства
@@ -512,13 +519,16 @@ func _on_build_pressed():
         missing_parts.append("нужен хотя бы 1 житель для строительства")
 
     if bdata.has("additional_cost"):
-        var additional = bdata["additional_cost"]
-        for res_id in additional:
-            var required = additional[res_id]
-            var available = city_storage.get(res_id, 0)
-            if available < required:
-                var res_name = GameData.format_resource_name(res_id)
-                missing_parts.append("%s %d" % [res_name, required])
+        # Каждая пачка (или единственный словарь) проверяется отдельно —
+        # для постройки нужны ресурсы из КАЖДОЙ пачки. Групповые ключи
+        # (@xxx) учитываются как «любой продукт из группы» — сумма по членам.
+        var bundles = GameData.parse_additional_cost(bdata["additional_cost"])
+        for bundle in bundles:
+            for res_id in bundle:
+                var required = bundle[res_id]
+                var available = GameData.get_storage_amount(res_id, city_storage)
+                if available < required:
+                    missing_parts.append("%s %d" % [GameData.format_resource_name(res_id), int(required)])
 
     if missing_parts.size() > 0:
         if ui_helpers:

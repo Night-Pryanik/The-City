@@ -82,6 +82,44 @@ func format_resource_name(key: String) -> String:
         return key.trim_prefix("@")
     return products.get(key, {}).get("name", key)
 
+# Нормализует поле additional_cost в массив словарей {ресурс: количество}.
+# Поддерживает две формы:
+#   1) объект:        { "flour": 3.0, "wood": 10.0 }        → [ { "flour": 3.0, "wood": 10.0 } ]
+#   2) массив пачек:  [ { "flour": 3.0 }, { "gold": 50.0 } ]  → как есть
+# Логика AND-объединения пачек: нужны ресурсы из КАЖДОЙ пачки одновременно.
+# Возвращает пустой массив для null/невалидных значений.
+func parse_additional_cost(raw) -> Array:
+    var result: Array = []
+    if raw == null:
+        return result
+    if raw is Dictionary:
+        if raw.is_empty():
+            return result
+        return [raw]
+    if raw is Array:
+        for item in raw:
+            if item is Dictionary and not item.is_empty():
+                result.append(item)
+        return result
+    return result
+
+# Сколько единиц ресурса/группы есть в storage?
+# Для обычного ключа (например, "flour") возвращает storage.get(key, 0).
+# Для группового ключа (например, "@millable_grains") — сумму по всем членам
+# группы из product_groups. Это «любой продукт из группы», как в recipes.
+# Если группа не найдена — возвращает 0.
+func get_storage_amount(key: String, storage: Dictionary) -> float:
+    if is_group_key(key):
+        var group_key = key.trim_prefix("@")
+        var group_products = product_groups.get(group_key, [])
+        if group_products.is_empty():
+            return 0.0
+        var total := 0.0
+        for prod_id in group_products:
+            total += float(storage.get(prod_id, 0))
+        return total
+    return float(storage.get(key, 0))
+
 # --- ХЕЛПЕРЫ ДЛЯ РАБОТЫ С КАЧЕСТВОМ РЕСУРСОВ ---
 # Данные загружаются из data/qualities.json в поле qualities.
 

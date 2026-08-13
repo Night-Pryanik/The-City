@@ -410,31 +410,50 @@ func _refresh_costs(bdata):
         costs_container.add_child(food_row)
         has_costs = true
 
-    # Дополнительные ресурсы
+    # Дополнительные ресурсы. Поддерживают AND-логику: каждая пачка требует
+    # все свои ресурсы, и нужны ВСЕ пачки одновременно. Между пачками
+    # вставляется разделитель «И».
     if bdata.has("additional_cost"):
-        for res_id in bdata["additional_cost"]:
-            var amount = bdata["additional_cost"][res_id]
+        var bundles = GameData.parse_additional_cost(bdata["additional_cost"])
+        for bi in bundles.size():
+            var bundle: Dictionary = bundles[bi]
             var row = HBoxContainer.new()
             row.add_theme_constant_override("separation", 6)
 
-            if GameData.is_group_key(res_id):
-                # Групповой ресурс — кнопка с тултипом
-                var group_btn = Button.new()
-                group_btn.text = "%s: %d" % [GameData.format_resource_name(res_id), amount]
-                group_btn.flat = true
-                group_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-                group_btn.mouse_filter = Control.MOUSE_FILTER_STOP
-                group_btn.mouse_entered.connect(_on_group_hover.bind(group_btn, res_id))
-                group_btn.mouse_exited.connect(_on_group_exit)
-                row.add_child(group_btn)
-            else:
-                # Обычный ресурс — просто текст
-                var res_label = Label.new()
-                res_label.text = "%s: %d" % [GameData.format_resource_name(res_id), amount]
-                row.add_child(res_label)
+            var first_in_row := true
+            for res_id in bundle:
+                var amount = bundle[res_id]
+                if not first_in_row:
+                    var sep = Label.new()
+                    sep.text = ", "
+                    row.add_child(sep)
+                first_in_row = false
+
+                if GameData.is_group_key(res_id):
+                    # Групповой ресурс — кнопка с тултипом
+                    var group_btn = Button.new()
+                    group_btn.text = "%s: %d" % [GameData.format_resource_name(res_id), int(amount)]
+                    group_btn.flat = true
+                    group_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+                    group_btn.mouse_filter = Control.MOUSE_FILTER_STOP
+                    group_btn.mouse_entered.connect(_on_group_hover.bind(group_btn, res_id))
+                    group_btn.mouse_exited.connect(_on_group_exit)
+                    row.add_child(group_btn)
+                else:
+                    # Обычный ресурс — просто текст
+                    var res_label = Label.new()
+                    res_label.text = "%s: %d" % [GameData.format_resource_name(res_id), int(amount)]
+                    row.add_child(res_label)
 
             costs_container.add_child(row)
             has_costs = true
+
+            # Между пачками вставляем разделитель «И»
+            if bi < bundles.size() - 1:
+                var and_label = Label.new()
+                and_label.text = "И"
+                and_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+                costs_container.add_child(and_label)
 
     costs_label.visible = has_costs
 

@@ -834,6 +834,74 @@ func _slots_from_legacy(bld: Dictionary) -> Array:
             slots.append(legacy_recipe)
     return slots
 
+# Списывает additional_cost здания со склада. Поддерживает обе формы поля
+# (объект и массив пачек с AND-логикой) и групповые ключи (@xxx) — для них
+# списание распределяется по членам группы, как в рецептах.
+# Атомарно: если хотя бы одной пачки не хватает — НИЧЕГО не списывается.
+# Возвращает { "ok": true } при успехе или { "ok": false, "missing": [имена...] }.
+func consume_additional_cost(bdata: Dictionary) -> Dictionary:
+    if not bdata.has("additional_cost"):
+        return {"ok": true}
+    var bundles = GameData.parse_additional_cost(bdata["additional_cost"])
+    if bundles.is_empty():
+        return {"ok": true}
+
+    # Первый проход: проверяем, что всего хватает, и собираем план списания
+    # [{ "prod_id": amount, ... }, ...] — по плану на каждую пачку.
+    var plan: Array = []
+    var missing: Array = []
+    for bundle in bundles:
+        var bundle_plan: Dictionary = {}
+        for res_id in bundle:
+            var required: int = int(bundle[res_id])
+            if required <= 0:
+                continue
+            if GameData.is_group_key(res_id):
+                var group_key = res_id.trim_prefix("@")
+                var group_products = GameData.product_groups.get(group_key, [])
+                if group_products.is_empty():
+                    group_products = GameData.product_groups.get(_get_group_id_by_name(group_key), [])
+                if group_products.is_empty():
+                    missing.append(res_id)
+                    continue
+                var total_available := 0
+                for prod in group_products:
+                    total_available += city_storage.get(prod, 0)
+                if total_available < required:
+                    missing.append(res_id)
+                    continue
+                # Собираем сколько откуда брать (жадно по списку группы)
+                var remaining = required
+                for prod in group_products:
+                    var available = city_storage.get(prod, 0)
+                    if available <= 0:
+                        continue
+                    var take = min(available, remaining)
+                    if take > 0:
+                        bundle_plan[prod] = bundle_plan.get(prod, 0) + take
+                        remaining -= take
+                        if remaining <= 0:
+                            break
+            else:
+                if city_storage.get(res_id, 0) < required:
+                    missing.append(res_id)
+                    continue
+                bundle_plan[res_id] = bundle_plan.get(res_id, 0) + required
+        plan.append(bundle_plan)
+
+    if not missing.is_empty():
+        return {"ok": false, "missing": missing}
+
+    # Второй проход: всё проверено — списываем. Приоритет качества — как
+    # в рецептах (по умолчанию «лучшее»).
+    var priority = GameData.get_quality_priority_default()
+    for bundle_plan in plan:
+        for prod in bundle_plan:
+            var amount: int = int(bundle_plan[prod])
+            remove_from_storage(prod, amount, priority)
+            consumption_rates[prod] = consumption_rates.get(prod, 0) + amount
+    return {"ok": true}
+
 func request_build(building_id: String) -> bool:
     if Engine.is_editor_hint():
         return false
@@ -847,6 +915,12 @@ func request_build(building_id: String) -> bool:
     # Здание должно быть открыто изученной технологией
     if not is_building_unlocked(building_id):
         print("Здание недоступно: ", bdata.get("name", building_id))
+        return false
+    # Списываем additional_cost (если есть) — атомарно, до старта стройки.
+    # Поддерживает массив пачек (AND-логика) и групповые ключи (@xxx).
+    var cost_check = consume_additional_cost(bdata)
+    if not cost_check["ok"]:
+        print("Не хватает ресурсов для постройки ", bdata.get("name", building_id), ": ", cost_check.get("missing", []))
         return false
     var work_cost = bdata.get("work_cost", 0)
     # Общий лимит одновременных строек (здания + улучшения) равен общему числу жителей
