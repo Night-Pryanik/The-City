@@ -366,8 +366,14 @@ func _initialize_map():
             tile["in_influence"] = is_in_influence(row, col)
             tile["is_explored"] = false
 
-    _ensure_food_plant()
-    generator.place_wild_food(tile_data, map_rows, map_cols, city_row, city_col)
+    # Дикоросы и гарантированный food_plant спавнятся ТОЛЬКО один раз при
+    # старте новой игры и ТОЛЬКО внутри стартового Кольца Влияния.
+    # Передаём явные границы стартового Кольца, чтобы эти функции никогда
+    # не выходили за его пределы (даже если Кольцо позже расширится).
+    _ensure_food_plant(influence_start_row, influence_end_row, influence_start_col, influence_end_col)
+    generator.place_wild_food(tile_data,
+            influence_start_row, influence_end_row, influence_start_col, influence_end_col,
+            city_row, city_col)
 
     # Ресурсы, которые встречаются в Кольце Влияния, не дублируются в Регионе.
     var influence_resource_types = {}
@@ -509,10 +515,15 @@ func _ensure_minimum_resource(category: String):
         tile_data[chosen.row][chosen.col]["resource"] = chosen.id
         tile_data[chosen.row][chosen.col]["quality"] = GameData.roll_quality()
 
-func _ensure_food_plant():
+# Гарантирует наличие хотя бы одного ресурса из food_plants в стартовом Кольце.
+# Вызывается ТОЛЬКО один раз при старте новой игры (из _initialize_map).
+# Границы (min_row..max_row, min_col..max_col) — это стартовое Кольцо,
+# поэтому food_plant гарантированно не появляется за его пределами
+# и не пересоздаётся после старта.
+func _ensure_food_plant(min_row: int, max_row: int, min_col: int, max_col: int):
     # Проверяем, есть ли в Кольце Влияния хоть один ресурс из food_plants
-    for row in range(influence_start_row, influence_end_row + 1):
-        for col in range(influence_start_col, influence_end_col + 1):
+    for row in range(min_row, max_row + 1):
+        for col in range(min_col, max_col + 1):
             var res = tile_data[row][col]["resource"]
             if res != null:
                 var res_data = GameData.raw_resources.get(res, {})
@@ -520,8 +531,8 @@ func _ensure_food_plant():
                     return # уже есть
     # Если нет — добавляем принудительно
     var possible = []
-    for row in range(influence_start_row, influence_end_row + 1):
-        for col in range(influence_start_col, influence_end_col + 1):
+    for row in range(min_row, max_row + 1):
+        for col in range(min_col, max_col + 1):
             if tile_data[row][col]["resource"] != null:
                 continue
             var terrain = tile_data[row][col]["terrain"]
