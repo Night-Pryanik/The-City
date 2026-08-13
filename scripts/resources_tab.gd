@@ -19,6 +19,10 @@ var diversity_label: Label = null
 var icon_textures: Dictionary = {}
 var icon_paths: Dictionary = {}
 
+# Активный тултип качества (продукт, имя) — для обновления в реальном времени.
+var active_quality_product: String = ""
+var active_quality_name: String = ""
+
 var resources_list: Node
 
 func setup(res_list: Node, helpers: Node):
@@ -319,6 +323,10 @@ func update_values():
     # Лёгкое обновление: не пересоздаём узлы, а обновляем тексты существующих.
     # Если появились новые продукты (структурное изменение) — вызываем полный refresh.
     for prod_id in city_storage:
+        var amount = city_storage[prod_id]
+        var prod_val = production_rates.get(prod_id, 0)
+        if amount <= 0 and prod_val <= 0:
+            continue
         if not displayed_products.has(prod_id):
             refresh()
             return
@@ -349,6 +357,19 @@ func update_values():
                 plant_subgroup_map[subgroup] = true
         var total_subgroups = animal_subgroup_map.size() + plant_subgroup_map.size()
         diversity_label.text = "Разнообразие: %d подгрупп" % total_subgroups
+
+    # Обновляем открытый тултип качества свежими данными (в реальном времени).
+    if active_quality_product != "" and ui_helpers and is_instance_valid(ui_helpers):
+        if ui_helpers.quality_tooltip_panel.visible:
+            var fresh_detail = city_quality_detail.get(active_quality_product, {})
+            if fresh_detail.is_empty():
+                ui_helpers.hide_quality_tooltip()
+            else:
+                ui_helpers.show_quality_tooltip(
+                    get_viewport().get_mouse_position(),
+                    active_quality_name,
+                    fresh_detail
+                )
 
 # Добавляет метку с разбивкой по качеству в строку ресурса.
 # Только если для продукта есть данные о качестве (city_quality_detail).
@@ -393,11 +414,15 @@ func _on_quality_hover(prod_id: String, product_name: String):
     var detail = city_quality_detail.get(prod_id, {})
     if detail.is_empty():
         return
+    active_quality_product = prod_id
+    active_quality_name = product_name
     if ui_helpers and is_instance_valid(ui_helpers):
         ui_helpers.show_quality_tooltip(get_viewport().get_mouse_position(), product_name, detail)
 
 # Скрывает тулитп качества.
 func _on_quality_exit():
+    active_quality_product = ""
+    active_quality_name = ""
     if ui_helpers and is_instance_valid(ui_helpers):
         ui_helpers.hide_quality_tooltip()
 
