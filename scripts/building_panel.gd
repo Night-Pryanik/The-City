@@ -24,6 +24,16 @@ var popups_list: Array = []
 var popup_map: Dictionary = {}
 var open_popup = null
 
+# Снимок состояния, при котором в последний раз был сделан _refresh().
+# Хранит количество зданий, рецепты в слотах, наличие работника и приоритет
+# качества по каждому индексу. Используется, чтобы НЕ пересоздавать панель
+# слотов на каждом игровом тике: city_updated эмитится раз в PRODUCTION_INTERVAL
+# из do_tick(), и без этого _refresh() каждый тик уничтожает кнопки заголовков
+# (toggle_btn, quality_btn) вместе с их ОС-тултипами "Запустить/Приостановить"
+# и "Приоритет качества: ...".
+# Формат: {"count": int, "items": {b_index: {"slots": [..], "priority": String, "has_worker": bool}}}
+var _last_panel_state: Dictionary = {}
+
 func _ready():
     _build_icon_index()
     # Подписываемся на изменение назначений работников, чтобы панель
@@ -120,6 +130,9 @@ func open(building_id_arg: String, data: Dictionary):
     var vp_size = get_viewport_rect().size
     size = vp_size
     position = Vector2.ZERO
+    # Сбрасываем кэш состояния, чтобы _refresh() гарантированно отработал
+    # при открытии панели (иначе он бы сразу же вышел по «состояние не изменилось»).
+    _last_panel_state = {}
     _refresh()
     show()
 
@@ -315,6 +328,11 @@ func _refresh():
         if is_instance_valid(popup_map[key]):
             popups_list.append(popup_map[key])
 
+    # Фиксируем снимок состояния, чтобы последующие _on_assignments_changed()
+    # на пустых тиках не делали повторный _refresh() и не убивали ОС-тултипы
+    # на кнопках заголовков (toggle_btn, quality_btn).
+    _last_panel_state = _collect_panel_state(tm)
+
 # Заполняет содержимое попапа списком доступных рецептов.
 # Возвращает словарь с текстами пунктов и максимальным количеством иконок
 # (нужно для расчёта ширины панели в _refresh()).
@@ -499,7 +517,61 @@ func _on_assignments_changed():
         var gtp = ui_helpers.group_tooltip_panel
         if is_instance_valid(gtp) and gtp.visible:
             return
+
+    # Сравниваем текущее состояние с тем, при котором был последний _refresh().
+    # Если ничего не изменилось (а на обычном тике do_tick() меняется только
+    # содержимое складов, не состав зданий/слотов/работников) — выходим без
+    # пересоздания UI. Иначе каждый тик умирают кнопки заголовков и их ОС-тултипы.
+    var main_map = get_tree().root.find_child("MainMap", true, false)
+    var tm = main_map.get_node("TownsfolkManager") if main_map else null
+    var current_state = _collect_panel_state(tm)
+    if _panel_state_equal(_last_panel_state, current_state):
+        return
+    _last_panel_state = current_state
     _refresh()
+
+# Собирает снимок данных, от которых зависит внешний вид панели слотов.
+func _collect_panel_state(tm) -> Dictionary:
+    var state = {"count": 0, "items": {}}
+    for idx in range(CityData.city_built_buildings.size()):
+        if CityData.city_built_buildings[idx].get("id", "") != building_id:
+            continue
+        var bld = CityData.city_built_buildings[idx]
+        state["count"] += 1
+        var has_worker = tm.has_townsfolk(idx) if tm else false
+        state["items"][idx] = {
+            "slots": (bld.get("slots", []) as Array).duplicate(),
+            "priority": bld.get("quality_priority", GameData.get_quality_priority_default()),
+            "has_worker": has_worker,
+        }
+    return state
+
+# Сравнивает два снимка состояния панели. Игнорирует количественные изменения
+# складов/производства — они не должны вызывать пересоздание UI слотов.
+func _panel_state_equal(a: Dictionary, b: Dictionary) -> bool:
+    if a.get("count", 0) != b.get("count", 0):
+        return false
+    var a_items: Dictionary = a.get("items", {})
+    var b_items: Dictionary = b.get("items", {})
+    if a_items.size() != b_items.size():
+        return false
+    for idx in a_items:
+        if not b_items.has(idx):
+            return false
+        var ai: Dictionary = a_items[idx]
+        var bi: Dictionary = b_items[idx]
+        if ai.get("priority", "") != bi.get("priority", ""):
+            return false
+        if ai.get("has_worker", false) != bi.get("has_worker", false):
+            return false
+        var a_slots: Array = ai.get("slots", [])
+        var b_slots: Array = bi.get("slots", [])
+        if a_slots.size() != b_slots.size():
+            return false
+        for i in a_slots.size():
+            if a_slots[i] != b_slots[i]:
+                return false
+    return true
 
 func _on_toggle_pressed(b_index: int, enable: bool):
     var main_map = get_tree().root.find_child("MainMap", true, false)
