@@ -53,16 +53,13 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
             var c = randi() % cols
             centers.append({"r": r, "c": c, "terrain": terrain_id})
 
+    # Jump Flood Algorithm (JFA): строим диаграмму Вороного за O(n log n)
+    # вместо наивного O(n * centers). Для карты 200x200 это ~2.5 млн операций
+    # вместо ~73 млн, что ускоряет генерацию рельефа в десятки раз.
+    var voronoi = _jump_flood_voronoi(rows, cols, centers)
     for row in range(rows):
         for col in range(cols):
-            var min_dist = 999999
-            var nearest = "plain"
-            for center in centers:
-                var d = HexUtils.hex_distance(row, col, center.r, center.c)
-                if d < min_dist:
-                    min_dist = d
-                    nearest = center.terrain
-            tile_data[row][col]["terrain"] = nearest
+            tile_data[row][col]["terrain"] = voronoi[row][col]
 
     # --- Покров (cover): генерируем ПОСЛЕ рельефа, с учётом terrain ---
     # Вероятности покрова для каждого типа местности заданы в terrains.json
@@ -72,13 +69,18 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
             var terrain_id = tile_data[row][col]["terrain"]
             tile_data[row][col]["cover"] = _roll_cover(terrain_id)
 
+    # Мультииндекс свободных гексов по (terrain, cover) — для быстрого
+    # размещения ресурсов без полного сканирования карты на каждый ресурс.
+    # Строится ОДИН раз и обновляется по мере занятия гексов ресурсами.
+    var hex_index = _build_hex_index(tile_data, rows, cols, city_row, city_col)
+
     # --- Животные ---
     var animal_resources = {}
     for rid in raw_res.keys():
         var r = raw_res[rid]
         if r.get("category", "") == "animals":
             animal_resources[rid] = r
-    _place_resources(tile_data, animal_resources, rows, cols, city_row, city_col)
+    _place_resources(tile_data, animal_resources, rows, cols, city_row, city_col, hex_index)
 
     # --- Растения ---
     var plant_resources = {}
@@ -86,7 +88,7 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
         var r = raw_res[rid]
         if r.get("category", "") == "plants":
             plant_resources[rid] = r
-    _place_resources(tile_data, plant_resources, rows, cols, city_row, city_col)
+    _place_resources(tile_data, plant_resources, rows, cols, city_row, city_col, hex_index)
 
     # --- Минералы ---
     var mineral_resources = {}
@@ -94,13 +96,142 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
         var r = raw_res[rid]
         if r.get("category", "") == "minerals":
             mineral_resources[rid] = r
-    _place_resources(tile_data, mineral_resources, rows, cols, city_row, city_col)
+    _place_resources(tile_data, mineral_resources, rows, cols, city_row, city_col, hex_index)
 
     # --- Ресурсы, открываемые технологиями (НЕ генерируются здесь) ---
     # Они спавнятся динамически после изучения соответствующей технологии
     # (см. CityData.spawn_resource_on_tech_research).
 
     return tile_data
+
+# Jump Flood Algorithm (JFA) для построения диаграммы Вороного на
+# гексагональной сетке (odd-r). Сложность O(rows * cols * log2(max(rows, cols)))
+# вместо наивного O(rows * cols * centers.size()).
+# Возвращает 2D-массив terrain_id для каждой клетки.
+func _jump_flood_voronoi(rows: int, cols: int, centers: Array) -> Array:
+    # Сетка индексов ближайших центров (-1 = пусто).
+    var grid = []
+    for r in range(rows):
+        var row_arr = []
+        row_arr.resize(cols)
+        row_arr.fill(-1)
+        grid.append(row_arr)
+
+    # Предвычисляем q-координаты центров (для быстрого hex_distance).
+    var center_q = []
+    for ci in range(centers.size()):
+        var center = centers[ci]
+        center_q.append(center.c - ((center.r - (center.r & 1)) >> 1))
+
+    # Размещаем центры в сетке.
+    for ci in range(centers.size()):
+        var center = centers[ci]
+        grid[center.r][center.c] = ci
+
+    # Начальный шаг: наибольшая степень двойки, не превосходящая max(rows, cols).
+    var max_dim = maxi(rows, cols)
+    var step = 1
+    while step * 2 <= max_dim:
+        step *= 2
+
+    # 8 направлений JFA (прямоугольный шаблон).
+    var dirs = [
+        Vector2i(-1, -1), Vector2i(-1, 0), Vector2i(-1, 1),
+        Vector2i(0, -1), Vector2i(0, 1),
+        Vector2i(1, -1), Vector2i(1, 0), Vector2i(1, 1)
+    ]
+
+    # Двойная буферизация (ping-pong), чтобы информация распространялась
+    # ровно на один "прыжок" за итерацию.
+    var read_grid = grid
+    var write_grid = []
+    for r in range(rows):
+        var row_arr = []
+        row_arr.resize(cols)
+        row_arr.fill(-1)
+        write_grid.append(row_arr)
+
+    while step >= 1:
+        for r in range(rows):
+            var q_base = (r - (r & 1)) >> 1
+            for c in range(cols):
+                var q = c - q_base
+                var best_ci = read_grid[r][c]
+                var best_dist = INF
+                if best_ci >= 0:
+                    var cr = centers[best_ci].r
+                    var cq = center_q[best_ci]
+                    best_dist = (abs(q - cq) + abs(r - cr) + abs((q + r) - (cq + cr))) >> 1
+                for d in dirs:
+                    var nr = r + d.x * step
+                    var nc = c + d.y * step
+                    if nr < 0 or nr >= rows or nc < 0 or nc >= cols:
+                        continue
+                    var neighbor_ci = read_grid[nr][nc]
+                    if neighbor_ci < 0:
+                        continue
+                    var ncr = centers[neighbor_ci].r
+                    var ncq = center_q[neighbor_ci]
+                    var dist = (abs(q - ncq) + abs(r - ncr) + abs((q + r) - (ncq + ncr))) >> 1
+                    if dist < best_dist:
+                        best_dist = dist
+                        best_ci = neighbor_ci
+                write_grid[r][c] = best_ci
+        # Меняем буферы местами.
+        var tmp = read_grid
+        read_grid = write_grid
+        write_grid = tmp
+        step >>= 1
+
+    # Финальный проход по 6 гексагональным соседям: убирает артефакты
+    # прямоугольного шаблона JFA и доводит границы до гексагональной метрики.
+    var even_dirs = [
+        Vector2i(0, -1), Vector2i(0, 1),
+        Vector2i(-1, -1), Vector2i(-1, 0),
+        Vector2i(1, -1), Vector2i(1, 0)
+    ]
+    var odd_dirs = [
+        Vector2i(0, -1), Vector2i(0, 1),
+        Vector2i(-1, 0), Vector2i(-1, 1),
+        Vector2i(1, 0), Vector2i(1, 1)
+    ]
+    for r in range(rows):
+        var row_dirs = even_dirs if r % 2 == 0 else odd_dirs
+        var q_base = (r - (r & 1)) >> 1
+        for c in range(cols):
+            var q = c - q_base
+            var best_ci = read_grid[r][c]
+            var best_dist = INF
+            if best_ci >= 0:
+                var cr = centers[best_ci].r
+                var cq = center_q[best_ci]
+                best_dist = (abs(q - cq) + abs(r - cr) + abs((q + r) - (cq + cr))) >> 1
+            for d in row_dirs:
+                var nr = r + d.x
+                var nc = c + d.y
+                if nr < 0 or nr >= rows or nc < 0 or nc >= cols:
+                    continue
+                var neighbor_ci = read_grid[nr][nc]
+                if neighbor_ci < 0:
+                    continue
+                var ncr = centers[neighbor_ci].r
+                var ncq = center_q[neighbor_ci]
+                var dist = (abs(q - ncq) + abs(r - ncr) + abs((q + r) - (ncq + ncr))) >> 1
+                if dist < best_dist:
+                    best_dist = dist
+                    best_ci = neighbor_ci
+            read_grid[r][c] = best_ci
+
+    # Преобразуем индексы центров в terrain_id.
+    var result = []
+    for r in range(rows):
+        var row_arr = []
+        row_arr.resize(cols)
+        for c in range(cols):
+            var ci = read_grid[r][c]
+            row_arr[c] = centers[ci].terrain if ci >= 0 else "plain"
+        result.append(row_arr)
+    return result
 
 # Выбирает покров (cover) для гекса с указанным типом местности по весам
 # из terrains.json (cover_chance). Если поле отсутствует или пустое —
@@ -123,7 +254,41 @@ func _roll_cover(terrain_id: String) -> String:
             return cid
     return "none"
 
-func _place_resources(tile_data: Array, res_dict: Dictionary, rows: int, cols: int, city_row: int, city_col: int):
+# Строит мультииндекс свободных гексов по (terrain, cover).
+# Ключ: "terrain|cover" -> Array словарей {"row", "col"}.
+# Гексы рядом с городом (abs <= 1) исключаются, чтобы не мешать
+# стартовому строительству (как в исходном _place_resources).
+func _build_hex_index(tile_data: Array, rows: int, cols: int, city_row: int, city_col: int) -> Dictionary:
+    var index: Dictionary = {}
+    for r in range(rows):
+        for c in range(cols):
+            if abs(r - city_row) <= 1 and abs(c - city_col) <= 1:
+                continue
+            var tile = tile_data[r][c]
+            if tile.get("resource", null) != null:
+                continue
+            var terrain_id = tile.get("terrain", "plain")
+            var cover_id = tile.get("cover", "none")
+            var key = "%s|%s" % [terrain_id, cover_id]
+            if not index.has(key):
+                index[key] = []
+            index[key].append({"row": r, "col": c})
+    return index
+
+# Удаляет гекс из мультииндекса после занятия его ресурсом.
+func _remove_hex_from_index(hex_index: Dictionary, row: int, col: int, terrain_id: String, cover_id: String) -> void:
+    var key = "%s|%s" % [terrain_id, cover_id]
+    if not hex_index.has(key):
+        return
+    var arr: Array = hex_index[key]
+    for i in range(arr.size()):
+        if arr[i].row == row and arr[i].col == col:
+            arr.remove_at(i)
+            break
+    if arr.is_empty():
+        hex_index.erase(key)
+
+func _place_resources(tile_data: Array, res_dict: Dictionary, rows: int, cols: int, city_row: int, city_col: int, hex_index: Dictionary):
     if res_dict.size() == 0:
         return
     # Определяем количество видов: 50% шанс на 2, 30% шанс на 3
@@ -150,26 +315,34 @@ func _place_resources(tile_data: Array, res_dict: Dictionary, rows: int, cols: i
         # если шанс активации не выпал — ресурс исключается из спавна.
         if not HexUtils.spawn_conditions_met(data):
             continue
+        # Собираем кандидатов из мультииндекса: перебираем только комбинации
+        # (terrain, cover), разрешённые ресурсом, вместо полного сканирования карты.
         var possible = []
-        for r in range(rows):
-            for c in range(cols):
-                if abs(r - city_row) <= 1 and abs(c - city_col) <= 1:
+        for terrain_id in data.get("allowed_terrain", []):
+            for cover_id in data.get("allowed_cover", []):
+                var key = "%s|%s" % [terrain_id, cover_id]
+                if not hex_index.has(key):
                     continue
-                if tile_data[r][c]["resource"] != null:
-                    continue
-                var terrain_id = tile_data[r][c]["terrain"]
-                var cover_id = tile_data[r][c].get("cover", "none")
-                if terrain_id in data.get("allowed_terrain", []) and cover_id in data.get("allowed_cover", []):
+                var arr: Array = hex_index[key]
+                for hex in arr:
                     # Фильтруем гексы по геометрическим условиям spawn_conditions.
-                    if HexUtils.is_hex_conditions_met(tile_data, r, c, data):
-                        possible.append({"row": r, "col": c})
+                    if HexUtils.is_hex_conditions_met(tile_data, hex.row, hex.col, data):
+                        possible.append(hex)
         if possible.size() > 0:
             var hex = possible[randi() % possible.size()]
             tile_data[hex.row][hex.col]["resource"] = res_id
             # Задаём случайное качество ресурсу при спавне.
             tile_data[hex.row][hex.col]["quality"] = GameData.roll_quality()
+            # Убираем занятый гекс из индекса, чтобы его не выбрал другой ресурс.
+            _remove_hex_from_index(hex_index, hex.row, hex.col,
+                    tile_data[hex.row][hex.col]["terrain"], tile_data[hex.row][hex.col].get("cover", "none"))
 
-func place_wild_food(tile_data: Array, rows: int, cols: int, city_row: int, city_col: int):
+# Размещает дикоросы ТОЛЬКО внутри стартового Кольца Влияния.
+# Вызывается один раз при старте новой игры (из main_map._initialize_map).
+# Границы (min_row..max_row, min_col..max_col) — это стартовое Кольцо,
+# поэтому дикоросы гарантированно не появляются за его пределами
+# и не пересоздаются после старта.
+func place_wild_food(tile_data: Array, min_row: int, max_row: int, min_col: int, max_col: int, city_row: int, city_col: int):
     var count = randi_range(2, 4)
     var wild_id = "wild_food"
     if not GameData.raw_resources.has(wild_id):
@@ -177,11 +350,8 @@ func place_wild_food(tile_data: Array, rows: int, cols: int, city_row: int, city
         return
     var wild_data = GameData.raw_resources[wild_id]
     var possible = []
-    for r in range(rows):
-        for c in range(cols):
-            # Только в Кольце Влияния
-            if not tile_data[r][c]["in_influence"]:
-                continue
+    for r in range(min_row, max_row + 1):
+        for c in range(min_col, max_col + 1):
             # Не слишком близко к городу (чтобы не мешать стартовому строительству)
             if abs(r - city_row) <= 2 and abs(c - city_col) <= 2:
                 continue
