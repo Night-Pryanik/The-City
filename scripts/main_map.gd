@@ -464,6 +464,7 @@ func _ensure_minimum_resource(category: String):
     if possible.size() > 0:
         var chosen = possible[randi() % possible.size()]
         tile_data[chosen.row][chosen.col]["resource"] = chosen.id
+        tile_data[chosen.row][chosen.col]["quality"] = GameData.roll_quality()
 
 func _ensure_food_plant():
     # Проверяем, есть ли в Кольце Влияния хоть один ресурс из food_plants
@@ -497,6 +498,23 @@ func _ensure_food_plant():
     if possible.size() > 0:
         var chosen = possible[randi() % possible.size()]
         tile_data[chosen.row][chosen.col]["resource"] = chosen.id
+        tile_data[chosen.row][chosen.col]["quality"] = GameData.roll_quality()
+
+# Ищет на карте уже одомашненный экземпляр ресурса res_id (гекс с этим ресурсом
+# и построенным улучшением — ферма/пастбище) и возвращает его качество.
+# Используется при разведении нового животного/растения на пустом гексе:
+# качество наследуется от уже одомашненного образца
+# ("исключительное порождает исключительное"). Если такого образца нет —
+# возвращает пустую строку, и вызывающий код генерирует качество через roll.
+func _find_domesticated_quality(res_id: String) -> String:
+    for r in range(REGION_ROWS):
+        for c in range(REGION_COLS):
+            var t = tile_data[r][c]
+            if t.get("resource") == res_id and t.get("improvement") != null:
+                var q = t.get("quality", "")
+                if q != "" and q != null:
+                    return q
+    return ""
 
 func _calc_offsets():
     var min_x = INF
@@ -974,14 +992,14 @@ func show_context_menu(row: int, col: int, click_pos: Vector2):
                                 prog_text = " [%.0f/%.0f труда]" % [p, wc]
                         var status_text = "Возобновить строительство" if build_manager.is_building_paused(row, col) else "Приостановить стройку"
                         popup_menu.add_item("%s %s%s" % [status_text, imp_name, prog_text])
-                        popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": "build_improvement", "imp_id": imp_id, "animal_id": tile.resource})
+                        popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": "build_improvement", "imp_id": imp_id, "target_res_id": tile.resource})
                     else:
                         var labor = CityData.get_total_labor()
                         var build_time = work_cost / max(1.0, labor)
                         var label = "Построить %s (%s) [%d труда, %.0f сек.]" % [imp_name, raw.get("name", tile.resource), work_cost, build_time]
                         popup_menu.add_item(label)
                         var last_idx = popup_menu.item_count - 1
-                        popup_menu.set_item_metadata(last_idx, {"action": "build_improvement", "imp_id": imp_id, "animal_id": tile.resource})
+                        popup_menu.set_item_metadata(last_idx, {"action": "build_improvement", "imp_id": imp_id, "target_res_id": tile.resource})
 
     var tile_cover = tile.get("cover", "none")
     if tile.resource == null and CityData:
@@ -1156,7 +1174,7 @@ func _on_popup_menu_id_pressed(id: int):
 
     if action == "build_improvement":
         var imp_id = meta.imp_id
-        var animal_id = meta.get("animal_id", null)
+        var target_res_id = meta.get("target_res_id", null)
         # Если строительство уже идёт — переключаем паузу/возобновление
         if build_manager.is_building(row, col):
             if build_manager.is_building_paused(row, col):
@@ -1164,7 +1182,7 @@ func _on_popup_menu_id_pressed(id: int):
             else:
                 build_manager.pause_build(row, col)
         else:
-            build_manager.start_build(row, col, imp_id, animal_id)
+            build_manager.start_build(row, col, imp_id, target_res_id)
     elif action == "build_pasture":
         var animal_id = meta.animal_id
         build_manager.start_build(row, col, "pasture", animal_id)
@@ -1207,7 +1225,7 @@ func _assign_terrain_icon(row: int, col: int):
             return
     tile["terrain_icon"] = ""
 
-func _on_build_completed(row: int, col: int, imp_id: String, animal_id = null):
+func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = null):
     var tile = tile_data[row][col]
 
     # Спец-действие (вырубка леса, сбор дикоросов, снос улучшений и т.п.)
@@ -1252,21 +1270,32 @@ func _on_build_completed(row: int, col: int, imp_id: String, animal_id = null):
         return
 
     tile.improvement = imp_id
-    if animal_id != null:
-        tile.resource = animal_id
-        # Качество ресурса берётся из данных самого ресурса (animal_id/plant_id),
-        # а не генерируется случайно — разведение исключительных животных
-        # порождает исключительных животных.
-        var res_data = GameData.raw_resources.get(animal_id, {})
-        var res_quality = res_data.get("quality", "common")
-        if res_quality == "" or res_quality == null:
-            res_quality = "common"
-        tile["quality"] = res_quality
+    if target_res_id != null:
+        var was_existing_resource = tile.resource != null
+        tile.resource = target_res_id
+        # Качество ресурса определяется так:
+        # - Если на гексе УЖЕ был ресурс (улучшение существующего) — сохраняем
+        #   его качество. Иначе любая постройка фермы/шахты сбрасывала бы
+        #   quality на "common", потому что в JSON ресурсов нет поля quality.
+        # - Если это разведение НОВОГО животного/растения (гекс был пустой) —
+        #   ищем на карте уже одомашненный экземпляр этого ресурса и
+        #   наследуем его качество ("исключительное порождает исключительное").
+        #   Если такого ещё нет — генерируем случайно.
+        if was_existing_resource:
+            var existing_q = tile.get("quality", "")
+            if existing_q == "" or existing_q == null:
+                tile["quality"] = GameData.roll_quality()
+        else:
+            var inherited_quality = _find_domesticated_quality(target_res_id)
+            if inherited_quality != "" and inherited_quality != null:
+                tile["quality"] = inherited_quality
+            else:
+                tile["quality"] = GameData.roll_quality()
         if CityData:
-            if GameData.raw_resources.has(animal_id) and GameData.raw_resources[animal_id].get("category") == "animals":
-                CityData.add_animal(animal_id)
-            elif GameData.raw_resources.has(animal_id) and GameData.raw_resources[animal_id].get("category") == "plants":
-                CityData.add_plant(animal_id)
+            if GameData.raw_resources.has(target_res_id) and GameData.raw_resources[target_res_id].get("category") == "animals":
+                CityData.add_animal(target_res_id)
+            elif GameData.raw_resources.has(target_res_id) and GameData.raw_resources[target_res_id].get("category") == "plants":
+                CityData.add_plant(target_res_id)
     build_manager.remove_build(row, col)
     road_manager.build_road_from(row, col, tile_data, REGION_ROWS, REGION_COLS)
     if not worker_manager.assign_worker(row, col):

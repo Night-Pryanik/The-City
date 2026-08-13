@@ -124,11 +124,13 @@ func roll_quality() -> String:
         return levels[0]
     var roll = randf() * total
     var accum := 0.0
+    var chosen: String = levels[levels.size() - 1]
     for qid in levels:
         accum += float(get_quality_data(qid).get("spawn_weight", 1))
         if roll < accum:
-            return qid
-    return levels[levels.size() - 1]
+            chosen = qid
+            break
+    return chosen
 
 # Возвращает приоритет выбора сырья по умолчанию (из qualities.json).
 func get_quality_priority_default() -> String:

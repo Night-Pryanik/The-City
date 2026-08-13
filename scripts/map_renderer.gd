@@ -246,8 +246,9 @@ func _draw_hex_overlays(row: int, col: int):
                 var fallback_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
                 draw_circle(center, RESOURCE_ICON_SIZE / 3.0, fallback_color)
 
-    # Звёздочки качества ресурса — под иконкой, только если ресурс раскрыт.
-    if tile.resource != null and is_resource_visible:
+    # Звёздочки качества ресурса — под иконкой, только если ресурс раскрыт
+    # и на этом гексе уже построено улучшение, которое раскрывает качество.
+    if tile.resource != null and is_resource_visible and tile.improvement != null:
         _draw_quality_stars(tile, center)
 
     if in_influence and tile.improvement != null:
@@ -286,7 +287,8 @@ func _draw_hex_overlays(row: int, col: int):
             draw_polygon(drop_points, [Color(0.45, 0.8, 1.0, 1.0)])
 
 # Рисует звёздочки качества ресурса под его иконкой.
-# Только для раскрытых ресурсов. Если качество не задано или равно "common" — ничего не рисуем.
+# Только для раскрытых ресурсов после постройки улучшения. Если качество не задано
+# или равно "common" — ничего не рисуем.
 func _draw_quality_stars(tile: Dictionary, center: Vector2):
     var quality = tile.get("quality", "")
     if quality == "" or quality == null or quality == "common":

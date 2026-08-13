@@ -2,7 +2,7 @@
 extends Node
 
 signal build_message(text: String)
-signal build_completed(row: int, col: int, imp_id: String, animal_id)
+signal build_completed(row: int, col: int, imp_id: String, target_res_id)
 signal build_paused(row: int, col: int)
 signal build_cancelled(row: int, col: int)
 signal build_building_completed(building_id: String, build_key: String)
@@ -52,7 +52,7 @@ func _process(delta):
     for data in to_complete:
         var key = str(data["row"]) + "," + str(data["col"])
         emit_signal("build_message", "Построено: %s" % data["imp_name"])
-        emit_signal("build_completed", data["row"], data["col"], data["imp_id"], data.get("animal_id"))
+        emit_signal("build_completed", data["row"], data["col"], data["imp_id"], data.get("target_res_id"))
         active_builds.erase(key)
 
     for data in to_complete_buildings:
@@ -61,7 +61,7 @@ func _process(delta):
         emit_signal("build_building_completed", data["building_id"], bkey)
         active_building_builds.erase(bkey)
 
-func start_build(row: int, col: int, imp_id: String, animal_id = null) -> bool:
+func start_build(row: int, col: int, imp_id: String, target_res_id = null) -> bool:
     var key = str(row) + "," + str(col)
     if active_builds.has(key):
         emit_signal("build_message", "Здесь уже идёт строительство")
@@ -85,7 +85,7 @@ func start_build(row: int, col: int, imp_id: String, animal_id = null) -> bool:
     # Строительство теперь требует труд, а не еду
     if work_cost <= 0:
         emit_signal("build_message", "Построено мгновенно: %s" % imp_name)
-        emit_signal("build_completed", row, col, imp_id, animal_id)
+        emit_signal("build_completed", row, col, imp_id, target_res_id)
         return true
 
     # Общий лимит одновременных строек (здания + улучшения) равен числу жителей
@@ -97,7 +97,7 @@ func start_build(row: int, col: int, imp_id: String, animal_id = null) -> bool:
         "progress": 0.0,
         "work_cost": work_cost,
         "imp_id": imp_id,
-        "animal_id": animal_id,
+        "target_res_id": target_res_id,
         "imp_name": imp_name,
         "row": row,
         "col": col,
@@ -260,7 +260,7 @@ func restore_builds(data: Dictionary):
             "progress": float(build_data.get("progress", 0.0)),
             "work_cost": float(build_data.get("work_cost", 1.0)),
             "imp_id": String(build_data.get("imp_id", "")),
-            "animal_id": build_data.get("animal_id"),
+            "target_res_id": build_data.get("target_res_id"),
             "imp_name": String(build_data.get("imp_name", build_data.get("imp_id", ""))),
             "row": int(build_data.get("row", 0)),
             "col": int(build_data.get("col", 0)),
