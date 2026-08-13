@@ -20,7 +20,7 @@
       "id": "bakery",
       "name": "Пекарня",
       "work_cost": 25,
-      "additional_cost": { "flour": 3.0 },
+      "additional_cost": [ { "@construction_materials": 5.0 } ],
       "icon": "bakery.png",
       "production_slots": 1.0,
       "default_recipes": [ "bread" ]

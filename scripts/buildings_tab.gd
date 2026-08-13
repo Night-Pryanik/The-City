@@ -458,26 +458,27 @@ func _on_building_selected(idx: int):
         var bdata = filtered_buildings[idx]
         building_name_label.text = bdata["name"]
 
-        # Собираем стоимость: труд + дополнительные ресурсы
-        var cost_parts = []
+        # Стоимость: каждый ресурс на отдельной строке.
+        # Труд идёт первым, потом все элементы additional_cost. Групповые ресурсы
+        # (@...) выводятся через format_resource_name (только название группы).
+        # AND-логика additional_cost (нужны ресурсы из КАЖДОЙ пачки одновременно)
+        # сохранена на уровне данных — на UI все ресурсы просто перечисляются
+        # списком, потому что «нужны все» и так подразумевается в блоке стоимости.
+        var cost_lines: Array = []
         var work_cost = bdata.get("work_cost", 0)
         if work_cost > 0:
             var labor = CityData.get_total_labor()
             var build_time = work_cost / max(1.0, labor)
-            cost_parts.append("труд: %d (%.0f сек)" % [work_cost, build_time])
+            cost_lines.append("труд: %d (%.0f сек)" % [int(work_cost), build_time])
         if bdata.has("additional_cost"):
-            # additional_cost поддерживает AND-логику: массив пачек,
-            # каждая пачка требует все свои ресурсы, и нужны все пачки.
             var bundles = GameData.parse_additional_cost(bdata["additional_cost"])
-            var bundle_strs: Array = []
             for bundle in bundles:
-                var parts: Array = []
                 for res_id in bundle:
-                    parts.append("%s: %d" % [GameData.format_resource_name(res_id), int(bundle[res_id])])
-                bundle_strs.append(", ".join(parts))
-            if not bundle_strs.is_empty():
-                cost_parts.append(" И ".join(bundle_strs))
-        building_cost_label.text = "Стоимость: " + ", ".join(cost_parts)
+                    cost_lines.append("%s: %d" % [GameData.format_resource_name(res_id), int(bundle[res_id])])
+        if cost_lines.is_empty():
+            building_cost_label.text = "Стоимость: 0"
+        else:
+            building_cost_label.text = "Стоимость:\n" + "\n".join(cost_lines)
 
         # Показываем количество слотов производства
         var slots = bdata.get("production_slots", 0)
