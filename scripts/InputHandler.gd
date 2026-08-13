@@ -125,8 +125,8 @@ func handle_process(delta: float):
 
         if scroll != Vector2.ZERO:
             main_map.scroll_offset += scroll
-            var max_scroll_x = (main_map.REGION_COLS * main_map.HEX_RADIUS)
-            var max_scroll_y = (main_map.REGION_ROWS * main_map.HEX_RADIUS)
+            var max_scroll_x = ((main_map.region_end_col - main_map.region_start_col + 1) * main_map.HEX_RADIUS)
+            var max_scroll_y = ((main_map.region_end_row - main_map.region_start_row + 1) * main_map.HEX_RADIUS)
             main_map.scroll_offset.x = clamp(main_map.scroll_offset.x, -max_scroll_x, max_scroll_x)
             main_map.scroll_offset.y = clamp(main_map.scroll_offset.y, -max_scroll_y, max_scroll_y)
             map_renderer.queue_redraw()
@@ -288,7 +288,7 @@ func _handle_mouse_button(event: InputEventMouseButton):
         var mouse_pos = event.global_position
         var hex = _pixel_to_hex(mouse_pos.x, mouse_pos.y)
         if hex != null and main_map.tile_data[hex.row][hex.col]["in_influence"]:
-            if hex.row == main_map.CITY_ROW and hex.col == main_map.CITY_COL:
+            if hex.row == main_map.city_row and hex.col == main_map.city_col:
                 var cur_time = Time.get_ticks_msec() / 1000.0
                 if cur_time - main_map.last_city_click_time < 0.5:
                     main_map.open_city()
@@ -306,8 +306,8 @@ func _handle_mouse_motion(event: InputEventMouseMotion):
         if is_dragging:
             var delta = mouse_pos - drag_start_mouse
             main_map.scroll_offset = drag_start_scroll_offset + delta
-            var max_scroll_x = (main_map.REGION_COLS * main_map.HEX_RADIUS)
-            var max_scroll_y = (main_map.REGION_ROWS * main_map.HEX_RADIUS)
+            var max_scroll_x = ((main_map.region_end_col - main_map.region_start_col + 1) * main_map.HEX_RADIUS)
+            var max_scroll_y = ((main_map.region_end_row - main_map.region_start_row + 1) * main_map.HEX_RADIUS)
             main_map.scroll_offset.x = clamp(main_map.scroll_offset.x, -max_scroll_x, max_scroll_x)
             main_map.scroll_offset.y = clamp(main_map.scroll_offset.y, -max_scroll_y, max_scroll_y)
             map_renderer.queue_redraw()
@@ -343,8 +343,9 @@ func _hide_tooltip():
         child.queue_free()
 
 func _pixel_to_hex(mx: float, my: float):
-    for row in range(main_map.REGION_ROWS):
-        for col in range(main_map.REGION_COLS):
+    # Итерируем по видимому окну (Кольцо + Регион); координаты уже АБСОЛЮТНЫЕ.
+    for row in range(main_map.region_start_row, main_map.region_end_row + 1):
+        for col in range(main_map.region_start_col, main_map.region_end_col + 1):
             var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
             center.x += main_map.offset_x + main_map.scroll_offset.x
             center.y += main_map.offset_y + main_map.scroll_offset.y

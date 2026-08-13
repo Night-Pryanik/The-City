@@ -36,7 +36,8 @@ func save_game():
         "active_builds": build_manager.active_builds if build_manager else {},
         "active_building_builds": build_manager.active_building_builds if build_manager else {},
         "building_construction": CityData.building_construction,
-        "rivers": main_map.river_manager.serialize_rivers()
+        "rivers": main_map.river_manager.serialize_rivers(),
+        "map_state": main_map.get_map_state()
     }
     var file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
     if file:

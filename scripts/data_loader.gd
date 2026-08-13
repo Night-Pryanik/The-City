@@ -18,6 +18,7 @@ var product_group_names: Dictionary = {} # id -> human-readable name
 var modifiers: Dictionary = {}
 var special_actions: Dictionary = {} # id -> данные спецдействия
 var qualities: Dictionary = {} # данные о степенях качества ресурсов
+var map_config: Dictionary = {} # конфигурация карты мира (data/map_config.json)
 
 func load_all_data():
     var merged_data = _load_all_json_files("res://data")
@@ -86,6 +87,11 @@ func load_all_data():
     for key in ["quality_levels", "priority_default", "priority_options", "priority_names"]:
         if merged_data.has(key):
             qualities[key] = merged_data[key]
+
+    # НОВОЕ: загружаем конфигурацию карты мира (размеры, стартовое кольцо, регион).
+    # Файл data/map_config.json содержит ключ "map_config" с параметрами:
+    # map_rows / map_cols / start_ring_rows / start_ring_cols / region_width.
+    map_config = merged_data.get("map_config", {})
 
 
 func _load_all_json_files(folder_path: String) -> Dictionary:

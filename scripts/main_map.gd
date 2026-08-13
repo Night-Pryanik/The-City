@@ -3,19 +3,46 @@ extends Node2D
 
 const HEX_RADIUS = 55
 
-# --- Размер карты: меняешь только эти два числа ---
-const GRID_ROWS = 5
-const GRID_COLS = 7
-const REGION_PADDING = 2
+# --- Размеры и границы мира/окна ---
+# Основные параметры (map_rows, map_cols, start_ring_rows, start_ring_cols,
+# region_width) загружаются из data/map_config.json в _load_map_config().
+# Они НЕ являются константами, потому что:
+#   1) значения приходят из JSON;
+#   2) при переходе в следующую эпоху Кольцо и Регион расширяются.
+var map_rows: int = 60 # Вся карта: ряды (гексы)
+var map_cols: int = 60 # Вся карта: колонки (гексы)
+var start_ring_rows: int = 5 # Стартовое Кольцо Влияния: ряды
+var start_ring_cols: int = 7 # Стартовое Кольцо Влияния: колонки
+var region_width: int = 2 # Ширина Региона вокруг Кольца (в гексах)
 
-const REGION_ROWS = GRID_ROWS + REGION_PADDING * 2
-const REGION_COLS = GRID_COLS + REGION_PADDING * 2
-const CITY_ROW = REGION_ROWS / 2
-const CITY_COL = REGION_COLS / 2
-const INFLUENCE_START_ROW = REGION_PADDING
-const INFLUENCE_END_ROW = INFLUENCE_START_ROW + GRID_ROWS - 1
-const INFLUENCE_START_COL = REGION_PADDING
-const INFLUENCE_END_COL = INFLUENCE_START_COL + GRID_COLS - 1
+# Текущее (динамически растущее) Кольцо Влияния.
+var ring_rows: int = 5
+var ring_cols: int = 7
+
+# Текущее видимое окно: Кольцо + Регион.
+var region_rows: int = 9
+var region_cols: int = 11
+
+# Положение города (центр всей карты).
+var city_row: int = 30
+var city_col: int = 30
+
+# Абсолютные границы Кольца Влияния (инклюзивные) на всей карте.
+var influence_start_row: int = 0
+var influence_end_row: int = 0
+var influence_start_col: int = 0
+var influence_end_col: int = 0
+
+# Абсолютные границы видимого окна «Кольцо + Регион» (инклюзивные).
+# Всё за пределами этого окна скрыто туманом войны (не отрисовывается).
+var region_start_row: int = 0
+var region_end_row: int = 0
+var region_start_col: int = 0
+var region_end_col: int = 0
+
+# Текущая эпоха (0 = стартовая). Используется инфраструктурой расширения.
+var current_era: int = 0
+
 const SCOUTING_TIME_PER_HEX: float = 3.0
 # Спец-действия (вырубка леса, сбор дикоросов, снос улучшений и т.п.)
 # загружаются из data/special_actions.json и реализуются через систему
@@ -82,19 +109,24 @@ func _ready():
         map_renderer.queue_redraw()
         return
 
+    _load_map_config()
+
     if SaveManager.is_loaded:
         GameData.load_all_data()
         map_renderer.build_icon_index()
         map_renderer.load_icons()
         SaveManager.apply_loaded_data()
 
+        # Восстанавливаем состояние мира/окна из сохранения ДО построения tile_data.
+        _apply_saved_map_state()
+
         tile_data = []
-        road_manager.initialize(CITY_ROW, CITY_COL)
+        road_manager.initialize(city_row, city_col)
         var saved_tiles = SaveManager.saved_data.get("tile_data", [])
-        for row in range(REGION_ROWS):
+        for row in range(map_rows):
             var col_array = []
-            for col in range(REGION_COLS):
-                var tile = {"terrain": "plain", "cover": "none", "resource": null, "improvement": null, "terrain_icon": "", "in_influence": false, "river_edges": []}
+            for col in range(map_cols):
+                var tile = {"terrain": "plain", "cover": "none", "resource": null, "improvement": null, "terrain_icon": "", "in_influence": false, "is_explored": false, "river_edges": []}
                 if row < saved_tiles.size() and col < saved_tiles[row].size():
                     var saved = saved_tiles[row][col]
                     if not saved.is_empty():
@@ -148,11 +180,11 @@ func _ready():
 
         _update_population_hud()
 
-        road_manager.rebuild_roads_from_existing(tile_data, REGION_ROWS, REGION_COLS)
+        road_manager.rebuild_roads_from_existing(tile_data, map_rows, map_cols)
 
         # Восстанавливаем реки из сохранения и помечаем river_edges в гексах
         river_manager.load_rivers(SaveManager.saved_data.get("rivers", []))
-        river_manager.mark_river_edges(tile_data, REGION_ROWS, REGION_COLS, HEX_RADIUS)
+        river_manager.mark_river_edges(tile_data, map_rows, map_cols, HEX_RADIUS)
 
         SaveManager.is_loaded = false
         SaveManager.saved_data.clear()
@@ -160,7 +192,7 @@ func _ready():
     else:
         randomize()
         _initialize_map()
-        road_manager.initialize(CITY_ROW, CITY_COL)
+        road_manager.initialize(city_row, city_col)
         map_renderer.initialize(tile_data, self)
 
     _load_settings()
@@ -263,8 +295,8 @@ func _process(delta):
     if production_timer >= CityData.PRODUCTION_INTERVAL:
         production_timer -= CityData.PRODUCTION_INTERVAL
         CityData.reset_counters()
-        for row in range(REGION_ROWS):
-            for col in range(REGION_COLS):
+        for row in range(region_start_row, region_end_row + 1):
+            for col in range(region_start_col, region_end_col + 1):
                 var tile = tile_data[row][col]
                 if tile.improvement == null or tile.resource == null or not worker_manager.has_worker(row, col):
                     continue
@@ -309,33 +341,45 @@ func _initialize_map():
     map_renderer.build_icon_index()
     map_renderer.load_icons()
 
+    # Устанавливаем стартовые размеры Кольца и Региона из конфигурации.
+    ring_rows = start_ring_rows
+    ring_cols = start_ring_cols
+    region_rows = ring_rows + region_width * 2
+    region_cols = ring_cols + region_width * 2
+    _recalculate_bounds()
+
+    # Генерируем ВСЮ карту мира сразу (рельеф, покров, реки).
     var generator = load("res://scripts/map_generator.gd").new()
     var terrain_counts = {
         "plain": 4,
         "hill": 3,
         "mountain": 2
     }
-    tile_data = generator.generate_map(REGION_ROWS, REGION_COLS, CITY_ROW, CITY_COL, GameData.raw_resources, terrain_counts)
-    print("Регион сгенерирован. Гексов: ", REGION_ROWS * REGION_COLS)
+    tile_data = generator.generate_map(map_rows, map_cols, city_row, city_col, GameData.raw_resources, terrain_counts)
+    print("Карта мира сгенерирована. Гексов: ", map_rows * map_cols)
 
-    for row in range(REGION_ROWS):
-        for col in range(REGION_COLS):
+    # Помечаем стартовое Кольцо Влияния и сбрасываем исследование.
+    # Флаги ставим для ВСЕЙ карты, т.к. генераторы (place_wild_food и др.)
+    # итерируют по всем гексам и обращаются к "in_influence".
+    for row in range(map_rows):
+        for col in range(map_cols):
             var tile = tile_data[row][col]
-            tile["in_influence"] = (row >= INFLUENCE_START_ROW and row <= INFLUENCE_END_ROW and col >= INFLUENCE_START_COL and col <= INFLUENCE_END_COL)
+            tile["in_influence"] = is_in_influence(row, col)
             tile["is_explored"] = false
 
     _ensure_food_plant()
-    generator.place_wild_food(tile_data, REGION_ROWS, REGION_COLS, CITY_ROW, CITY_COL)
+    generator.place_wild_food(tile_data, map_rows, map_cols, city_row, city_col)
 
+    # Ресурсы, которые встречаются в Кольце Влияния, не дублируются в Регионе.
     var influence_resource_types = {}
-    for row in range(INFLUENCE_START_ROW, INFLUENCE_END_ROW + 1):
-        for col in range(INFLUENCE_START_COL, INFLUENCE_END_COL + 1):
+    for row in range(influence_start_row, influence_end_row + 1):
+        for col in range(influence_start_col, influence_end_col + 1):
             var res = tile_data[row][col]["resource"]
             if res != null:
                 influence_resource_types[res] = true
 
-    for row in range(REGION_ROWS):
-        for col in range(REGION_COLS):
+    for row in range(region_start_row, region_end_row + 1):
+        for col in range(region_start_col, region_end_col + 1):
             if not tile_data[row][col]["in_influence"]:
                 var res = tile_data[row][col]["resource"]
                 if res != null and influence_resource_types.has(res):
@@ -348,15 +392,15 @@ func _initialize_map():
     # попал в кольцо, у игрока всегда будет место для дополнительных ферм/пастбищ.
     # Метод конвертирует ТОЛЬКО свободные гексы и НИКОГДА не уничтожает ресурсы.
     generator.ensure_free_terrain_hexes(tile_data, terrain_counts,
-            INFLUENCE_START_ROW, INFLUENCE_END_ROW, INFLUENCE_START_COL, INFLUENCE_END_COL)
+            influence_start_row, influence_end_row, influence_start_col, influence_end_col)
 
     # Используем ЛОКАЛЬНЫЙ генератор случайных чисел для выбора иконки ландшафта.
     # Ни в коем случае нельзя вызывать seed()/randomize() на глобальном RNG внутри
     # этого цикла — это разрушило бы случайность всех последующих randf()/randi()
     # (например, при спавне ресурсов после изучения технологий).
     var icon_rng = RandomNumberGenerator.new()
-    for row in range(REGION_ROWS):
-        for col in range(REGION_COLS):
+    for row in range(map_rows):
+        for col in range(map_cols):
             var tile = tile_data[row][col]
             var terrain_id = tile.terrain
             if GameData.terrains.has(terrain_id):
@@ -372,18 +416,18 @@ func _initialize_map():
                 else:
                     tile["terrain_icon"] = ""
 
-    # Генерируем реки (визуальные) и помечаем рёбра реки в данных гексов
-    river_manager.generate_rivers(REGION_ROWS, REGION_COLS, HEX_RADIUS)
-    river_manager.mark_river_edges(tile_data, REGION_ROWS, REGION_COLS, HEX_RADIUS)
+    # Генерируем реки (визуальные) по всей карте и помечаем рёбра реки в данных гексов
+    river_manager.generate_rivers(map_rows, map_cols, HEX_RADIUS)
+    river_manager.mark_river_edges(tile_data, map_rows, map_cols, HEX_RADIUS)
 
 func _is_hex_adjacent_to_canal(row: int, col: int) -> bool:
-    if row < 0 or row >= REGION_ROWS or col < 0 or col >= REGION_COLS:
+    if row < 0 or row >= map_rows or col < 0 or col >= map_cols:
         return false
-    var neighbors = HexUtils.get_neighbors_odd_r(row, col, REGION_ROWS, REGION_COLS)
+    var neighbors = HexUtils.get_neighbors_odd_r(row, col, map_rows, map_cols)
     for n in neighbors:
-        var tile = tile_data[n.row][n.col]
-        if tile == null:
+        if tile_data[n.row][n.col] == null:
             continue
+        var tile = tile_data[n.row][n.col]
         var imp_id = tile.improvement
         if imp_id == "canal":
             return true
@@ -393,7 +437,7 @@ func _is_hex_adjacent_to_canal(row: int, col: int) -> bool:
     return false
 
 func _is_hex_irrigated(row: int, col: int) -> bool:
-    if row < 0 or row >= REGION_ROWS or col < 0 or col >= REGION_COLS:
+    if row < 0 or row >= map_rows or col < 0 or col >= map_cols:
         return false
     var tile = tile_data[row][col]
     if tile == null:
@@ -426,7 +470,7 @@ func _is_hex_irrigated(row: int, col: int) -> bool:
         if dist >= 3:
             continue
 
-        var neighbors = HexUtils.get_neighbors_odd_r(crow, ccol, REGION_ROWS, REGION_COLS)
+        var neighbors = HexUtils.get_neighbors_odd_r(crow, ccol, map_rows, map_cols)
         for n in neighbors:
             var key = "%d_%d" % [n.row, n.col]
             if visited.has(key):
@@ -440,14 +484,14 @@ func _is_hex_irrigated(row: int, col: int) -> bool:
     return false
 
 func _ensure_minimum_resource(category: String):
-    for row in range(INFLUENCE_START_ROW, INFLUENCE_END_ROW + 1):
-        for col in range(INFLUENCE_START_COL, INFLUENCE_END_COL + 1):
+    for row in range(influence_start_row, influence_end_row + 1):
+        for col in range(influence_start_col, influence_end_col + 1):
             var res = tile_data[row][col]["resource"]
             if res != null and GameData.raw_resources[res].get("category", "") == category:
                 return
     var possible = []
-    for row in range(INFLUENCE_START_ROW, INFLUENCE_END_ROW + 1):
-        for col in range(INFLUENCE_START_COL, INFLUENCE_END_COL + 1):
+    for row in range(influence_start_row, influence_end_row + 1):
+        for col in range(influence_start_col, influence_end_col + 1):
             if tile_data[row][col]["resource"] != null:
                 continue
             var terrain_id = tile_data[row][col]["terrain"]
@@ -468,8 +512,8 @@ func _ensure_minimum_resource(category: String):
 
 func _ensure_food_plant():
     # Проверяем, есть ли в Кольце Влияния хоть один ресурс из food_plants
-    for row in range(INFLUENCE_START_ROW, INFLUENCE_END_ROW + 1):
-        for col in range(INFLUENCE_START_COL, INFLUENCE_END_COL + 1):
+    for row in range(influence_start_row, influence_end_row + 1):
+        for col in range(influence_start_col, influence_end_col + 1):
             var res = tile_data[row][col]["resource"]
             if res != null:
                 var res_data = GameData.raw_resources.get(res, {})
@@ -477,8 +521,8 @@ func _ensure_food_plant():
                     return # уже есть
     # Если нет — добавляем принудительно
     var possible = []
-    for row in range(INFLUENCE_START_ROW, INFLUENCE_END_ROW + 1):
-        for col in range(INFLUENCE_START_COL, INFLUENCE_END_COL + 1):
+    for row in range(influence_start_row, influence_end_row + 1):
+        for col in range(influence_start_col, influence_end_col + 1):
             if tile_data[row][col]["resource"] != null:
                 continue
             var terrain = tile_data[row][col]["terrain"]
@@ -507,8 +551,8 @@ func _ensure_food_plant():
 # ("исключительное порождает исключительное"). Если такого образца нет —
 # возвращает пустую строку, и вызывающий код генерирует качество через roll.
 func _find_domesticated_quality(res_id: String) -> String:
-    for r in range(REGION_ROWS):
-        for c in range(REGION_COLS):
+    for r in range(region_start_row, region_end_row + 1):
+        for c in range(region_start_col, region_end_col + 1):
             var t = tile_data[r][c]
             if t.get("resource") == res_id and t.get("improvement") != null:
                 var q = t.get("quality", "")
@@ -521,8 +565,8 @@ func _calc_offsets():
     var max_x = - INF
     var min_y = INF
     var max_y = - INF
-    for row in range(INFLUENCE_START_ROW, INFLUENCE_END_ROW + 1):
-        for col in range(INFLUENCE_START_COL, INFLUENCE_END_COL + 1):
+    for row in range(region_start_row, region_end_row + 1):
+        for col in range(region_start_col, region_end_col + 1):
             var center = HexUtils.hex_center(row, col, HEX_RADIUS)
             min_x = min(min_x, center.x - HEX_RADIUS)
             max_x = max(max_x, center.x + HEX_RADIUS)
@@ -1297,7 +1341,7 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
             elif GameData.raw_resources.has(target_res_id) and GameData.raw_resources[target_res_id].get("category") == "plants":
                 CityData.add_plant(target_res_id)
     build_manager.remove_build(row, col)
-    road_manager.build_road_from(row, col, tile_data, REGION_ROWS, REGION_COLS)
+    road_manager.build_road_from(row, col, tile_data, map_rows, map_cols)
     if not worker_manager.assign_worker(row, col):
         pass
     map_renderer.queue_redraw()
@@ -1322,8 +1366,9 @@ func _on_building_build_completed(building_id: String, build_key: String):
 
 func pixel_to_hex(mx: float, my: float):
     # Эта функция используется InputHandler, поэтому оставляем её публичной
-    for row in range(REGION_ROWS):
-        for col in range(REGION_COLS):
+    # Итерируем по ВИДИМОМУ окну (Кольцо + Регион), возвращаем АБСОЛЮТНЫЕ координаты.
+    for row in range(region_start_row, region_end_row + 1):
+        for col in range(region_start_col, region_end_col + 1):
             var center = HexUtils.hex_center(row, col, HEX_RADIUS)
             center.x += offset_x + scroll_offset.x
             center.y += offset_y + scroll_offset.y
@@ -1597,7 +1642,7 @@ func get_improvement_work_cost(imp_id: String, row: int, col: int) -> Dictionary
     var terrain_mult = 1.0 + (move_cost - 1.0) * 0.35
 
     # Множитель от расстояния до города (в гексах).
-    var distance = HexUtils.hex_distance(row, col, CITY_ROW, CITY_COL)
+    var distance = HexUtils.hex_distance(row, col, city_row, city_col)
     var distance_mult = 1.0 + float(distance) * 0.25
 
     var final_cost = int(ceil(base_cost * terrain_mult * distance_mult))
@@ -1614,7 +1659,7 @@ func get_improvement_work_cost(imp_id: String, row: int, col: int) -> Dictionary
 
 func _on_city_button_gui_input(event: InputEvent):
     if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
-        scroll_offset = - (HexUtils.hex_center(CITY_ROW, CITY_COL, HEX_RADIUS) + Vector2(offset_x, offset_y) - get_viewport_rect().size / 2.0)
+        scroll_offset = - (HexUtils.hex_center(city_row, city_col, HEX_RADIUS) + Vector2(offset_x, offset_y) - get_viewport_rect().size / 2.0)
         map_renderer.queue_redraw()
 
 func _on_expansion_button_pressed():
@@ -1634,10 +1679,138 @@ func is_expansion_mode_active() -> bool:
     return expansion_manager.is_active()
 
 func is_valid_hex(row: int, col: int) -> bool:
-    return row >= 0 and row < REGION_ROWS and col >= 0 and col < REGION_COLS
+    # Валиден гекс в пределах ВИДИМОГО окна (Кольцо + Регион).
+    return row >= region_start_row and row <= region_end_row and col >= region_start_col and col <= region_end_col
 
 func _on_chunk_hovered(_chunk: Array):
     map_renderer.queue_redraw()
+
+# Загружает параметры карты/окна из data/map_config.json (через GameData).
+# Значения используются как стартовые для новой игры.
+func _load_map_config():
+    var cfg: Dictionary = GameData.map_config
+    if cfg.is_empty():
+        # Конфиг не найден — используем значения по умолчанию.
+        map_rows = 200
+        map_cols = 200
+        start_ring_rows = 7
+        start_ring_cols = 5
+        region_width = 2
+    else:
+        map_rows = int(cfg.get("map_rows", 200))
+        map_cols = int(cfg.get("map_cols", 200))
+        start_ring_rows = int(cfg.get("start_ring_rows", 7))
+        start_ring_cols = int(cfg.get("start_ring_cols", 5))
+        region_width = int(cfg.get("region_width", 2))
+
+    # Город — всегда в центре всей карты.
+    city_row = map_rows / 2
+    city_col = map_cols / 2
+
+# Пересчитывает АБСОЛЮТНЫЕ границы Кольца Влияния и видимого окна
+# (Кольцо + Регион) вокруг города. Вызывается после изменения
+# ring_rows/ring_cols/region_rows/region_cols (новая игра, загрузка, эпоха).
+func _recalculate_bounds():
+    influence_start_row = city_row - ring_rows / 2
+    influence_end_row = influence_start_row + ring_rows - 1
+    influence_start_col = city_col - ring_cols / 2
+    influence_end_col = influence_start_col + ring_cols - 1
+
+    region_start_row = city_row - region_rows / 2
+    region_end_row = region_start_row + region_rows - 1
+    region_start_col = city_col - region_cols / 2
+    region_end_col = region_start_col + region_cols - 1
+
+    # Защита от выхода окна за границы карты (не должно случаться при
+    # симметричном расширении вокруг центра, но страхуемся).
+    region_start_row = max(0, region_start_row)
+    region_end_row = min(map_rows - 1, region_end_row)
+    region_start_col = max(0, region_start_col)
+    region_end_col = min(map_cols - 1, region_end_col)
+
+# Возвращает true, если гекс (row, col) входит в текущее Кольцо Влияния.
+func is_in_influence(row: int, col: int) -> bool:
+    return row >= influence_start_row and row <= influence_end_row \
+        and col >= influence_start_col and col <= influence_end_col
+
+# Возвращает словарь с текущим состоянием мира/окна для сохранения.
+func get_map_state() -> Dictionary:
+    return {
+        "map_rows": map_rows,
+        "map_cols": map_cols,
+        "start_ring_rows": start_ring_rows,
+        "start_ring_cols": start_ring_cols,
+        "region_width": region_width,
+        "ring_rows": ring_rows,
+        "ring_cols": ring_cols,
+        "region_rows": region_rows,
+        "region_cols": region_cols,
+        "current_era": current_era
+    }
+
+# Восстанавливает состояние мира/окна из сохранения.
+# Вызывается ДО построения tile_data при загрузке.
+func _apply_saved_map_state():
+    var st: Dictionary = SaveManager.saved_data.get("map_state", {})
+    if not st.is_empty():
+        map_rows = int(st.get("map_rows", map_rows))
+        map_cols = int(st.get("map_cols", map_cols))
+        start_ring_rows = int(st.get("start_ring_rows", start_ring_rows))
+        start_ring_cols = int(st.get("start_ring_cols", start_ring_cols))
+        region_width = int(st.get("region_width", region_width))
+        ring_rows = int(st.get("ring_rows", ring_rows))
+        ring_cols = int(st.get("ring_cols", ring_cols))
+        region_rows = int(st.get("region_rows", region_rows))
+        region_cols = int(st.get("region_cols", region_cols))
+        current_era = int(st.get("current_era", 0))
+    city_row = map_rows / 2
+    city_col = map_cols / 2
+    _recalculate_bounds()
+
+# --- ПЕРЕХОД В СЛЕДУЮЩУЮ ЭПОХУ ---
+# Инфраструктура расширения мира:
+#   1. Весь текущий (некупленный) Регион моментально и бесплатно исследуется.
+#   2. Весь текущий Регион моментально и бесплатно покупается/присоединяется.
+#   3. Бывшие Кольцо + Регион становятся новым Кольцом Влияния.
+#   4. Вокруг нового Кольца формируется новый Регион той же ширины.
+#   5. Гексы за пределами нового Кольца + Региона по-прежнему скрыты (туман войны).
+func advance_to_next_era():
+    if tile_data.is_empty():
+        return
+
+    # 1-2. Исследуем и присоединяем весь текущий Регион бесплатно.
+    for row in range(region_start_row, region_end_row + 1):
+        for col in range(region_start_col, region_end_col + 1):
+            var tile = tile_data[row][col]
+            if tile == null:
+                continue
+            tile["is_explored"] = true
+            tile["in_influence"] = true
+
+    # 3. Бывшие Кольцо + Регион становятся новым Кольцом.
+    ring_rows = region_rows
+    ring_cols = region_cols
+
+    # 4. Новый Регион той же ширины вокруг нового Кольца.
+    region_rows = ring_rows + region_width * 2
+    region_cols = ring_cols + region_width * 2
+
+    # 5. Пересчитываем границы; гексы нового Региона не исследованы и не в влиянии.
+    _recalculate_bounds()
+    for row in range(region_start_row, region_end_row + 1):
+        for col in range(region_start_col, region_end_col + 1):
+            var tile = tile_data[row][col]
+            if tile == null:
+                continue
+            if not is_in_influence(row, col):
+                tile["in_influence"] = false
+                tile["is_explored"] = false
+
+    current_era += 1
+    _calc_offsets()
+    map_renderer.queue_redraw()
+    if hud:
+        hud.show_message("Новая эпоха! Границы города расширены. Кольцо влияния: %d×%d" % [ring_rows, ring_cols])
 
 func _load_settings():
     var err = settings_config.load("user://settings.cfg")

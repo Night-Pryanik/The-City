@@ -8,12 +8,10 @@ var assigned_hexes = {}
 func find_vacancy() -> Dictionary:
     var main_map = get_parent()
     var tile_data = main_map.tile_data
-    var region_rows = main_map.REGION_ROWS
-    var region_cols = main_map.REGION_COLS
 
     var candidates = []
-    for row in range(region_rows):
-        for col in range(region_cols):
+    for row in range(main_map.region_start_row, main_map.region_end_row + 1):
+        for col in range(main_map.region_start_col, main_map.region_end_col + 1):
             var tile = tile_data[row][col]
             if tile == null:
                 continue
@@ -90,6 +88,6 @@ func load_assignments(assignments: Array):
             var row = int(item.get("row", -1))
             var col = int(item.get("col", -1))
             if row >= 0 and col >= 0:
-                if main_map and row < main_map.REGION_ROWS and col < main_map.REGION_COLS:
+                if main_map and row < main_map.map_rows and col < main_map.map_cols:
                     assigned_hexes[str(row) + "," + str(col)] = true
     emit_signal("assignment_changed")

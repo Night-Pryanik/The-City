@@ -103,7 +103,7 @@ func show_context_menu(chunk: Array, click_pos: Vector2, available_food: int):
     # --- Проверка: чанк граничит с Кольцом Влияния ---
     var has_neighbor = false
     for hex in chunk:
-        var neighbors = HexUtils.get_neighbors_odd_r(hex.row, hex.col, main_map.REGION_ROWS, main_map.REGION_COLS)
+        var neighbors = HexUtils.get_neighbors_odd_r(hex.row, hex.col, main_map.map_rows, main_map.map_cols)
         for n in neighbors:
             var n_tile = main_map.tile_data[n.row][n.col]
             if n_tile.get("in_influence", false):
@@ -156,7 +156,7 @@ func handle_action(chunk: Array, cost: int) -> bool:
             active_food.erase(pid)
 
     for hex in chunk:
-        if hex.row >= 0 and hex.row < main_map.REGION_ROWS and hex.col >= 0 and hex.col < main_map.REGION_COLS:
+        if hex.row >= 0 and hex.row < main_map.map_rows and hex.col >= 0 and hex.col < main_map.map_cols:
             main_map.tile_data[hex.row][hex.col]["in_influence"] = true
             hexes_bought += 1
 

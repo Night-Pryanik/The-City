@@ -713,17 +713,16 @@ func _get_available_hexes(tile_data: Array, main_map: Node, res_id: String, only
     var allowed_terrain = data.get("allowed_terrain", [])
     var allowed_cover = data.get("allowed_cover", [])
     var result = []
-    for r in range(main_map.REGION_ROWS):
-        for c in range(main_map.REGION_COLS):
-            if r == main_map.CITY_ROW and c == main_map.CITY_COL:
+    for r in range(main_map.region_start_row, main_map.region_end_row + 1):
+        for c in range(main_map.region_start_col, main_map.region_end_col + 1):
+            if r == main_map.city_row and c == main_map.city_col:
                 continue
             if tile_data[r][c].get("resource", null) != null:
                 continue
             if tile_data[r][c].get("improvement", null) != null:
                 continue
             if only_circle:
-                var in_circle = (r >= main_map.INFLUENCE_START_ROW and r <= main_map.INFLUENCE_END_ROW \
-                        and c >= main_map.INFLUENCE_START_COL and c <= main_map.INFLUENCE_END_COL)
+                var in_circle = main_map.is_in_influence(r, c)
                 if not in_circle:
                     continue
             var terrain_id = tile_data[r][c].get("terrain", "plain")
@@ -799,8 +798,8 @@ func _has_improvement(improvement_id: String) -> bool:
     var main_map = get_tree().root.find_child("MainMap", true, false)
     if not main_map:
         return false
-    for row in range(main_map.REGION_ROWS):
-        for col in range(main_map.REGION_COLS):
+    for row in range(main_map.region_start_row, main_map.region_end_row + 1):
+        for col in range(main_map.region_start_col, main_map.region_end_col + 1):
             var tile = main_map.get_tile_data(row, col)
             if tile and tile.get("improvement") == improvement_id:
                 return true

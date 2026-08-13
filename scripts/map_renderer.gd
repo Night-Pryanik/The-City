@@ -72,9 +72,10 @@ func load_icons():
         icon_textures["city"] = load(icon_paths["city.png"])
 
 func _draw():
-    # ФАЗА 1: Рисуем основные гексы с территориями
-    for row in range(main_map.REGION_ROWS):
-        for col in range(main_map.REGION_COLS):
+    # ФАЗА 1: Рисуем ВИДИМОЕ окно (Кольцо + Регион). Гексы за его пределами
+    # скрыты туманом войны (не отрисовываются вовсе).
+    for row in range(main_map.region_start_row, main_map.region_end_row + 1):
+        for col in range(main_map.region_start_col, main_map.region_end_col + 1):
             _draw_hex(row, col)
 
     # ФАЗА 2: Рисуем дороги (ПЕРЕД иконками ресурсов и улучшений)
@@ -87,8 +88,8 @@ func _draw():
     _draw_exploration_highlights()
 
     # ФАЗА 3: Рисуем иконки ресурсов, улучшений и другие оверлеи
-    for row in range(main_map.REGION_ROWS):
-        for col in range(main_map.REGION_COLS):
+    for row in range(main_map.region_start_row, main_map.region_end_row + 1):
+        for col in range(main_map.region_start_col, main_map.region_end_col + 1):
             _draw_hex_overlays(row, col)
 
     # ФАЗА 4: Рисуем город в конце
@@ -96,7 +97,7 @@ func _draw():
         main_map.offset_x + main_map.scroll_offset.x,
         main_map.offset_y + main_map.scroll_offset.y
     )
-    var city_center = HexUtils.hex_center(main_map.CITY_ROW, main_map.CITY_COL, main_map.HEX_RADIUS) + offset_pos
+    var city_center = HexUtils.hex_center(main_map.city_row, main_map.city_col, main_map.HEX_RADIUS) + offset_pos
     if icon_textures.has("city"):
         var tex = icon_textures["city"]
         var icon_rect = Rect2(
@@ -113,8 +114,8 @@ func _draw():
         draw_colored_polygon(city_vertices, Color.YELLOW)
 
     # ФАЗА 5: Рисуем прогресс-бары ПОВЕРХ всего (включая иконку города)
-    for row in range(main_map.REGION_ROWS):
-        for col in range(main_map.REGION_COLS):
+    for row in range(main_map.region_start_row, main_map.region_end_row + 1):
+        for col in range(main_map.region_start_col, main_map.region_end_col + 1):
             _draw_progress_bars(row, col)
 
 func _draw_hex(row: int, col: int):
@@ -136,7 +137,7 @@ func _draw_hex(row: int, col: int):
     var terrain = tile.terrain
     var terrain_icon_name = tile.get("terrain_icon", "")
 
-    if row == main_map.CITY_ROW and col == main_map.CITY_COL:
+    if row == main_map.city_row and col == main_map.city_col:
         if GameData.terrains.has(terrain):
             var t = GameData.terrains[terrain]
             var c = t.get("color", [0, 0, 0])
@@ -226,7 +227,7 @@ func _draw_hex_overlays(row: int, col: int):
     var tile = tile_data[row][col]
     var in_influence = tile.get("in_influence", false)
 
-    if row == main_map.CITY_ROW and col == main_map.CITY_COL:
+    if row == main_map.city_row and col == main_map.city_col:
         return
 
     # Ресурсы Региона вне Кольца Влияния скрыты, пока область не разведана.
@@ -592,8 +593,8 @@ func _draw_exploration_highlights():
         return
 
     # --- 1. Рисуем слои: не исследован / исследован (всегда) ---
-    for row in range(main_map.REGION_ROWS):
-        for col in range(main_map.REGION_COLS):
+    for row in range(main_map.region_start_row, main_map.region_end_row + 1):
+        for col in range(main_map.region_start_col, main_map.region_end_col + 1):
             var tile = tile_data[row][col]
             if tile.get("in_influence", false):
                 continue

@@ -103,6 +103,10 @@ func _show_main_menu():
     add_resource_btn.pressed.connect(_on_add_resource_pressed)
     _content_vbox.add_child(add_resource_btn)
 
+    var next_era_btn = _make_button("Перейти в следующую эпоху")
+    next_era_btn.pressed.connect(_on_next_era_pressed)
+    _content_vbox.add_child(next_era_btn)
+
     # Заглушка для будущих действий (можно расширять)
     var close_btn = _make_button("Закрыть (F9)")
     close_btn.pressed.connect(toggle)
@@ -126,6 +130,13 @@ func _show_resource_list():
         var btn = _make_button(res_name)
         btn.pressed.connect(_on_resource_selected.bind(res_id))
         _content_vbox.add_child(btn)
+
+func _on_next_era_pressed():
+    # Инфраструктура расширения: весь текущий Регион бесплатно исследуется
+    # и присоединяется, бывшее Кольцо+Регион становится новым Кольцом,
+    # вокруг него формируется новый Регион той же ширины.
+    if main_map and main_map.has_method("advance_to_next_era"):
+        main_map.advance_to_next_era()
 
 func _on_add_resource_pressed():
     _show_resource_list()

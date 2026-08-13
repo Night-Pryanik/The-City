@@ -17,6 +17,7 @@ var product_group_names: Dictionary = {}
 var modifiers: Dictionary = {}
 var special_actions: Dictionary = {} # id -> данные спецдействия
 var qualities: Dictionary = {} # данные о степенях качества ресурсов
+var map_config: Dictionary = {} # конфигурация карты мира (data/map_config.json)
 
 func load_all_data():
     var loader = load("res://scripts/data_loader.gd").new()
@@ -37,6 +38,7 @@ func load_all_data():
     modifiers = loader.modifiers
     special_actions = loader.special_actions
     qualities = loader.qualities
+    map_config = loader.map_config
 
 # Возвращает имя группы по её ключу (с символом "@" или без).
 # Если ключ не является группой, возвращает пустую строку.
