@@ -149,6 +149,9 @@ func _ready():
                 col_array.append(tile)
             tile_data.append(col_array)
 
+        # Гарантируем, что город находится на разрешённой местности при загрузке сохранения
+        _ensure_city_valid_terrain()
+
         # Восстанавливаем стройки улучшений и зданий
         build_manager.restore_builds(SaveManager.saved_data.get("active_builds", {}))
         build_manager.restore_building_builds(SaveManager.saved_data.get("active_building_builds", {}))
@@ -357,6 +360,9 @@ func _initialize_map():
     tile_data = generator.generate_map(map_rows, map_cols, city_row, city_col, GameData.raw_resources, terrain_counts)
     print("Карта мира сгенерирована. Гексов: ", map_rows * map_cols)
 
+    # Гарантируем, что город находится на разрешённой местности (равнина или холмы)
+    _ensure_city_valid_terrain()
+
     # Помечаем стартовое Кольцо Влияния и сбрасываем исследование.
     # Флаги ставим для ВСЕЙ карты, т.к. генераторы (place_wild_food и др.)
     # итерируют по всем гексам и обращаются к "in_influence".
@@ -424,6 +430,24 @@ func _initialize_map():
     # Генерируем реки (визуальные) по всей карте и помечаем рёбра реки в данных гексов
     river_manager.generate_rivers(map_rows, map_cols, HEX_RADIUS)
     river_manager.mark_river_edges(tile_data, map_rows, map_cols, HEX_RADIUS)
+
+func _ensure_city_valid_terrain() -> void:
+    # Гарантирует, что город находится на разрешённой местности (равнина или холмы).
+    # Если город был сгенерирован на горе или озере, изменяет местность на равнину.
+    if city_row < 0 or city_row >= map_rows or city_col < 0 or city_col >= map_cols:
+        return
+    
+    var city_tile = tile_data[city_row][city_col]
+    var current_terrain = city_tile["terrain"]
+    
+    # Разрешённые типы местности для города
+    var allowed_terrains = ["plain", "hill"]
+    
+    if not current_terrain in allowed_terrains:
+        # Город находится на недопустимой местности, меняем на равнину
+        var old_terrain = current_terrain
+        city_tile["terrain"] = "plain"
+        print("Город был на %s, изменён на равнину." % old_terrain)
 
 func _is_hex_adjacent_to_canal(row: int, col: int) -> bool:
     if row < 0 or row >= map_rows or col < 0 or col >= map_cols:
