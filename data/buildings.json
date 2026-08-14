@@ -143,6 +143,16 @@
       "production_slots": 1.0,
       "unlock_tech": "bitumen_extraction",
       "default_recipes": [ "tar" ]
+    },
+    {
+      "id": "soap_maker_house",
+      "name": "Дом мыловара",
+      "description": "Производство мыла из растительного масла и соды.",
+      "work_cost": 40,
+      "icon": "soap_maker_house.png",
+      "production_slots": 1.0,
+      "unlock_tech": "soap_making",
+      "default_recipes": [ "soap" ]
     }
   ]
 }

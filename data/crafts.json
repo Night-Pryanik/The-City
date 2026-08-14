@@ -209,6 +209,16 @@
       "time": 5.0,
       "unlock_tech": "bitumen_extraction",
       "description": "Пропитывает верёвки смолой для водонепроницаемости"
+    },
+    {
+      "id": "soap",
+      "name": "Производство мыла",
+      "produced_in": [ "soap_maker_house" ],
+      "resources": { "vegetable_oil": 1, "soda": 1 },
+      "result": { "soap": 1 },
+      "time": 5.0,
+      "unlock_tech": "soap_making",
+      "description": "Превращает масло и соду в мыло"
     }
   ]
 }

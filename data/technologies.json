@@ -167,7 +167,7 @@
       "science_cost": 3.0,
       "icon": "soap.svg",
       "prerequisites": [ [ "oil_making", "animal_husbandry" ] ],
-      "description": "Пока не даёт ничего.",
+      "description": "Открывает дом мыловара: растительное масло и сода → мыло.",
       "flavor": "Смешивая жир со щёлоком, люди получали мыло — первый шаг к гигиене и медицине."
     },
     {
