@@ -33,6 +33,7 @@
       "color": [ 66, 129, 180 ],
       "move_cost": 999,
       "expansion_cost": 200,
+      "icons": [ "lake_1.png", "lake_2.png" ],
       "cover_chance": { "none": 100 }
     }
   ]
