@@ -421,16 +421,8 @@ func _initialize_map():
                 else:
                     tile["terrain_icon"] = ""
 
-    # Генерируем реки (визуальные) по всей карте и помечаем рёбра реки в данных гексов.
-    # Исток реки должен быть в горах (или в холмах, если гор не нашлось), устье — в озере,
-    # а как минимум одна река обязана пересекать текущее видимое окно «Кольцо + Регион».
-    var visible_bounds = {
-        "min_row": region_start_row,
-        "max_row": region_end_row,
-        "min_col": region_start_col,
-        "max_col": region_end_col,
-    }
-    river_manager.generate_rivers(map_rows, map_cols, HEX_RADIUS, tile_data, visible_bounds)
+    # Генерируем реки (визуальные) по всей карте и помечаем рёбра реки в данных гексов
+    river_manager.generate_rivers(map_rows, map_cols, HEX_RADIUS)
     river_manager.mark_river_edges(tile_data, map_rows, map_cols, HEX_RADIUS)
 
 func _is_hex_adjacent_to_canal(row: int, col: int) -> bool:

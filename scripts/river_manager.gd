@@ -28,209 +28,28 @@ var rivers: Array = [] # Array of Array of Vector2 (world-координаты �
 # -------------------------------------------------------
 # Главный метод: генерирует реки на карте
 # -------------------------------------------------------
-func generate_rivers(rows: int, cols: int, radius: float, tile_data: Array = [], visible_bounds: Dictionary = {}) -> void:
+func generate_rivers(rows: int, cols: int, radius: float) -> void:
     rivers = []
     if rows < 3 or cols < 3:
         return
 
     var graph = _build_vertex_graph(rows, cols, radius)
-    var used_vertices: Dictionary = {}
+    var border_vertices = _find_border_vertices(graph, rows, cols)
+
+    if border_vertices.is_empty():
+        return
+
+    var used_vertices: Dictionary = {} # Вершины, уже занятые реками
     var num_rivers = randi_range(NUM_RIVERS_MIN, NUM_RIVERS_MAX)
-
-    var mountain_or_hill_vertices = _collect_terrain_vertices(graph, tile_data, ["mountain", "hill"], radius)
-    var lake_vertices = _collect_terrain_vertices(graph, tile_data, ["lake"], radius)
-    var visible_start_vertices = _collect_terrain_vertices(graph, tile_data, ["mountain", "hill"], radius, visible_bounds)
-
     for _i in range(num_rivers):
-        var river: Array = []
-        if not mountain_or_hill_vertices.is_empty() and not lake_vertices.is_empty():
-            river = _generate_terrain_river(graph, tile_data, mountain_or_hill_vertices, lake_vertices, used_vertices)
-        if river.size() < MIN_RIVER_LENGTH:
-            var border_vertices = _find_border_vertices(graph, rows, cols)
-            if not border_vertices.is_empty():
-                river = _try_generate_river(graph, border_vertices, rows, cols, radius, used_vertices)
+        var river = _try_generate_river(graph, border_vertices, rows, cols, radius, used_vertices)
         if river.size() >= MIN_RIVER_LENGTH:
+            # Добавляем все вершины новой реки в used_vertices
             for pt in river:
                 var key = _vertex_key(pt)
                 used_vertices[key] = true
             rivers.append(river)
 
-    if visible_bounds.has("min_row") and visible_bounds.has("max_row") and visible_bounds.has("min_col") and visible_bounds.has("max_col"):
-        if not _has_river_in_visible_window(rivers, visible_bounds, radius):
-            var forced_river = _generate_terrain_river(graph, tile_data, visible_start_vertices, lake_vertices, used_vertices, visible_bounds)
-            if forced_river.size() >= MIN_RIVER_LENGTH:
-                for pt in forced_river:
-                    var key = _vertex_key(pt)
-                    used_vertices[key] = true
-                rivers.append(forced_river)
-
-
-func _collect_terrain_vertices(graph: Dictionary, tile_data: Array, terrain_names: Array, radius: float, bounds: Dictionary = {}) -> Array:
-    var result: Array = []
-    if tile_data.is_empty():
-        return result
-
-    var rows: int = tile_data.size()
-    var cols: int = 0
-    if rows > 0:
-        cols = tile_data[0].size()
-    for row in range(rows):
-        for col in range(cols):
-            if not _in_bounds(row, col, bounds):
-                continue
-            var tile = tile_data[row][col]
-            if tile == null:
-                continue
-            if not terrain_names.has(tile.get("terrain", "plain")):
-                continue
-            for vidx in range(6):
-                var pos = HexUtils.hex_vertex(row, col, vidx, radius)
-                var vkey = _vertex_key(pos)
-                if graph["positions"].has(vkey):
-                    result.append(vkey)
-    return result
-
-func _in_bounds(row: int, col: int, bounds: Dictionary) -> bool:
-    if bounds.is_empty():
-        return true
-    if not bounds.has("min_row") or not bounds.has("max_row") or not bounds.has("min_col") or not bounds.has("max_col"):
-        return true
-    return row >= int(bounds["min_row"]) and row <= int(bounds["max_row"]) and col >= int(bounds["min_col"]) and col <= int(bounds["max_col"])
-
-func _generate_terrain_river(graph: Dictionary, tile_data: Array, start_keys: Array, lake_keys: Array, used_vertices: Dictionary, visible_bounds: Dictionary = {}) -> Array:
-    if start_keys.is_empty() or lake_keys.is_empty():
-        return []
-
-    var start_pool: Array = start_keys
-    if not visible_bounds.is_empty():
-        var visible_candidates: Array = []
-        for key in start_keys:
-            if _vertex_in_visible_bounds(key, graph, visible_bounds):
-                visible_candidates.append(key)
-        if not visible_candidates.is_empty():
-            start_pool = visible_candidates
-
-    for _attempt in range(NUM_RIVER_ATTEMPTS):
-        var start_key = start_pool[randi() % start_pool.size()]
-        var goal_key = lake_keys[randi() % lake_keys.size()]
-        if start_key == goal_key:
-            continue
-
-        var path_keys = _find_river_path(graph, start_key, goal_key, used_vertices, tile_data)
-        if path_keys.is_empty() or path_keys.size() < MIN_RIVER_LENGTH:
-            continue
-
-        var path: Array = []
-        for key in path_keys:
-            path.append(graph["positions"][key])
-        return path
-    return []
-
-func _vertex_in_visible_bounds(vertex_key: String, graph: Dictionary, visible_bounds: Dictionary) -> bool:
-    if not graph["positions"].has(vertex_key):
-        return false
-    var pos = graph["positions"][vertex_key]
-    var best_row := 0
-    var best_col := 0
-    var best_dist := INF
-    for row in range(int(visible_bounds["min_row"]), int(visible_bounds["max_row"]) + 1):
-        for col in range(int(visible_bounds["min_col"]), int(visible_bounds["max_col"]) + 1):
-            var center = HexUtils.hex_center(row, col, 1.0)
-            var dist = pos.distance_to(center)
-            if dist < best_dist:
-                best_dist = dist
-                best_row = row
-                best_col = col
-    return best_row >= int(visible_bounds["min_row"]) and best_row <= int(visible_bounds["max_row"]) and best_col >= int(visible_bounds["min_col"]) and best_col <= int(visible_bounds["max_col"])
-
-func _has_river_in_visible_window(river_list: Array, visible_bounds: Dictionary, radius: float) -> bool:
-    if river_list.is_empty() or visible_bounds.is_empty():
-        return false
-    for river in river_list:
-        for point in river:
-            for row in range(int(visible_bounds["min_row"]), int(visible_bounds["max_row"]) + 1):
-                for col in range(int(visible_bounds["min_col"]), int(visible_bounds["max_col"]) + 1):
-                    var center = HexUtils.hex_center(row, col, radius)
-                    if point.distance_to(center) <= radius * 1.5:
-                        return true
-    return false
-
-func _find_river_path(graph: Dictionary, start_key: String, goal_key: String, merge_keys: Dictionary, tile_data: Array) -> Array:
-    var vertex_positions: Dictionary = graph["positions"]
-    var neighbors_map: Dictionary = graph["neighbors"]
-    var goal_vertex_keys: Dictionary = {}
-    for key in lake_vertex_keys_for_goal(goal_key, graph):
-        goal_vertex_keys[key] = true
-
-    var open_set: Array = [start_key]
-    var came_from: Dictionary = {}
-    var g_score: Dictionary = {start_key: 0.0}
-    var f_score: Dictionary = {start_key: _heuristic(start_key, goal_key, vertex_positions)}
-
-    while not open_set.is_empty():
-        open_set.sort_custom(func(a, b):
-            var fa = f_score.get(a, INF)
-            var fb = f_score.get(b, INF)
-            return fa < fb)
-        var current = open_set.pop_front()
-
-        if goal_vertex_keys.has(current) or merge_keys.has(current):
-            return _reconstruct_path(came_from, current)
-
-        var current_pos = vertex_positions[current]
-        var dir = Vector2.ZERO
-        if came_from.has(current):
-            var prev_key = came_from[current]
-            dir = (current_pos - vertex_positions[prev_key]).normalized()
-        else:
-            dir = (vertex_positions[goal_key] - current_pos).normalized()
-
-        var valid: Array = []
-        for n in neighbors_map[current]:
-            if not _vertex_is_path_allowed(n, graph, tile_data, goal_vertex_keys):
-                continue
-            var npos = vertex_positions[n]
-            var ndir = (npos - current_pos).normalized()
-            var angle = abs(_signed_angle(dir, ndir))
-            if angle <= deg_to_rad(MAX_TURN_ANGLE_DEG) + 0.02:
-                valid.append(n)
-
-        for neighbor in valid:
-            var tentative_g = g_score[current] + current_pos.distance_to(vertex_positions[neighbor])
-            if tentative_g < g_score.get(neighbor, INF):
-                came_from[neighbor] = current
-                g_score[neighbor] = tentative_g
-                f_score[neighbor] = tentative_g + _heuristic(neighbor, goal_key, vertex_positions)
-                if neighbor not in open_set:
-                    open_set.append(neighbor)
-
-    return []
-
-func lake_vertex_keys_for_goal(goal_key: String, graph: Dictionary) -> Array:
-    var result: Array = []
-    var goal_hexes = graph["hexes"].get(goal_key, [])
-    for info in goal_hexes:
-        for vidx in range(6):
-            var pos = HexUtils.hex_vertex(info.row, info.col, vidx, 1.0)
-            var key = _vertex_key(pos)
-            if graph["positions"].has(key):
-                result.append(key)
-    if result.is_empty():
-        result.append(goal_key)
-    return result
-
-func _vertex_is_path_allowed(vertex_key: String, graph: Dictionary, tile_data: Array, goal_vertex_keys: Dictionary) -> bool:
-    if goal_vertex_keys.has(vertex_key):
-        return true
-    var hexes = graph["hexes"].get(vertex_key, [])
-    for info in hexes:
-        if info.row < 0 or info.row >= tile_data.size():
-            continue
-        if info.col < 0 or info.col >= tile_data[info.row].size():
-            continue
-        if tile_data[info.row][info.col].get("terrain", "plain") == "lake":
-            return false
-    return true
 
 # -------------------------------------------------------
 # Пытается сгенерировать одну реку, делая несколько попыток
