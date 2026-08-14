@@ -680,19 +680,7 @@ func _make_craft_content_local(craft_name: String, craft_resources: Dictionary, 
             var pdata = products_data.get(res_id, {})
             var icon_name = pdata.get("icon", "")
             var tex = _get_icon_texture_local(icon_name, icon_paths, icon_textures)
-            if tex:
-                var icon_rect = TextureRect.new()
-                icon_rect.texture = tex
-                icon_rect.custom_minimum_size = Vector2(20, 20)
-                icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-                icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
-                icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-                content.add_child(icon_rect)
-
-            var res_label = Label.new()
-            res_label.text = GameData.format_resource_name(res_id)
-            res_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-            content.add_child(res_label)
+            content.add_child(_make_resource_entry_local(res_id, icon_name, tex, products_data, icon_paths))
 
             var amount = craft_resources[res_id]
             if amount > 1:
@@ -723,19 +711,7 @@ func _make_craft_content_local(craft_name: String, craft_resources: Dictionary, 
             var pdata = products_data.get(prod_id, {})
             var icon_name = pdata.get("icon", "")
             var tex = _get_icon_texture_local(icon_name, icon_paths, icon_textures)
-            if tex:
-                var icon_rect = TextureRect.new()
-                icon_rect.texture = tex
-                icon_rect.custom_minimum_size = Vector2(20, 20)
-                icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-                icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
-                icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-                content.add_child(icon_rect)
-
-            var prod_label = Label.new()
-            prod_label.text = GameData.format_resource_name(prod_id)
-            prod_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-            content.add_child(prod_label)
+            content.add_child(_make_resource_entry_local(prod_id, icon_name, tex, products_data, icon_paths))
 
             var amount = craft_result[prod_id]
             if amount > 1:
@@ -746,6 +722,41 @@ func _make_craft_content_local(craft_name: String, craft_resources: Dictionary, 
                 content.add_child(amount_label)
 
     return content
+
+# Строит "иконка + название" для ресурса/продукта рецепта; для групп продуктов
+# включает тултип с раскрытием состава группы (как в окне слотов производства)
+func _make_resource_entry_local(res_id: String, icon_name: String, tex: Texture2D, products_data: Dictionary, icon_paths: Dictionary) -> HBoxContainer:
+    var entry = HBoxContainer.new()
+    entry.add_theme_constant_override("separation", 4)
+    entry.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+    if tex:
+        var icon_rect = TextureRect.new()
+        icon_rect.texture = tex
+        icon_rect.custom_minimum_size = Vector2(20, 20)
+        icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+        icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
+        icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        entry.add_child(icon_rect)
+
+    var label = Label.new()
+    label.text = GameData.format_resource_name(res_id)
+    label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    if GameData.is_group_key(res_id):
+        # Наведение показывает тултип, но не перехватывает клики
+        label.mouse_filter = Control.MOUSE_FILTER_PASS
+        label.mouse_entered.connect(_on_group_hover_local.bind(label, res_id, products_data, icon_paths))
+        label.mouse_exited.connect(_on_group_exit_local)
+    entry.add_child(label)
+    return entry
+
+func _on_group_hover_local(control: Control, res_id: String, products_data: Dictionary, icon_paths: Dictionary):
+    if ui_helpers:
+        ui_helpers.show_group_tooltip(get_viewport().get_mouse_position(), res_id, products_data, icon_paths)
+
+func _on_group_exit_local():
+    if ui_helpers:
+        ui_helpers.hide_group_tooltip()
 
 func _get_icon_texture_local(icon_file: String, icon_paths: Dictionary, icon_textures: Dictionary) -> Texture2D:
     if icon_file.is_empty():
