@@ -439,7 +439,7 @@ func _initialize_map():
             region_start_row, region_end_row, region_start_col, region_end_col)
     print("этап generate_rivers: ", Time.get_ticks_msec() - t_rivers, " ms")
     var t_river_edges = Time.get_ticks_msec()
-    river_manager.mark_river_edges(tile_data, map_rows, map_cols, HEX_RADIUS)
+    river_manager.mark_river_edges(tile_data, map_rows, map_cols, HEX_RADIUS, river_manager.get_cached_graph())
     print("этап mark_river_edges: ", Time.get_ticks_msec() - t_river_edges, " ms")
 
 func _ensure_city_valid_terrain() -> void:

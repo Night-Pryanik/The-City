@@ -42,6 +42,74 @@ var rivers: Array = [] # Array of Array of Vector2 (world-координаты �
 var main_rivers: Array = [] # Только главные реки (исток в горах, устье в озере)
 var tributaries: Array = [] # Только притоки (впадают в главные реки или другие притоки)
 
+# Последний построенный граф вершин. Используется повторно в mark_river_edges(),
+# чтобы не строить граф (тысячи вершин) дважды за одну генерацию карты.
+var _cached_graph: Dictionary = {}
+
+
+# -------------------------------------------------------
+# Минимальная бинарная куча (priority queue) для A*.
+# push/pop за O(log n) вместо sort_custom + pop_front за O(n log n) на шаг.
+# -------------------------------------------------------
+class PriorityQueue:
+    var _keys: Array = []
+    var _priorities: Array = []
+
+    func push(key: String, priority: float) -> void:
+        _keys.append(key)
+        _priorities.append(priority)
+        _sift_up(_keys.size() - 1)
+
+    func pop_min() -> String:
+        if _keys.is_empty():
+            return ""
+        var top: String = _keys[0]
+        var last_idx: int = _keys.size() - 1
+        _keys[0] = _keys[last_idx]
+        _priorities[0] = _priorities[last_idx]
+        _keys.resize(last_idx)
+        _priorities.resize(last_idx)
+        if _keys.size() > 1:
+            _sift_down(0)
+        return top
+
+    func is_empty() -> bool:
+        return _keys.is_empty()
+
+    func _sift_up(idx: int) -> void:
+        while idx > 0:
+            var parent: int = (idx - 1) >> 1
+            if _priorities[idx] < _priorities[parent]:
+                var tk: String = _keys[idx]
+                _keys[idx] = _keys[parent]
+                _keys[parent] = tk
+                var tp: float = _priorities[idx]
+                _priorities[idx] = _priorities[parent]
+                _priorities[parent] = tp
+                idx = parent
+            else:
+                break
+
+    func _sift_down(idx: int) -> void:
+        var size: int = _keys.size()
+        while true:
+            var left: int = idx * 2 + 1
+            var right: int = left + 1
+            var smallest: int = idx
+            if left < size and _priorities[left] < _priorities[smallest]:
+                smallest = left
+            if right < size and _priorities[right] < _priorities[smallest]:
+                smallest = right
+            if smallest == idx:
+                break
+            var tk: String = _keys[idx]
+            _keys[idx] = _keys[smallest]
+            _keys[smallest] = tk
+            var tp: float = _priorities[idx]
+            _priorities[idx] = _priorities[smallest]
+            _priorities[smallest] = tp
+            idx = smallest
+
 
 # -------------------------------------------------------
 # Главный метод: генерирует речную систему на карте.
@@ -56,7 +124,13 @@ func generate_rivers(rows: int, cols: int, radius: float, tile_data: Array,
     if rows < 3 or cols < 3:
         return
 
-    var graph = _build_vertex_graph(rows, cols, radius)
+    # Гексы, которые касаются озёр (озёрные гексы и их соседи).
+    # Строятся ДО графа, чтобы флаги запрещённых рёбер были предвычислены
+    # в самом графе (проверка O(1) во время A* вместо O(гексы^2) на соседа).
+    var lake_adjacent_hexes = _build_lake_adjacent_hexes(tile_data, rows, cols)
+
+    var graph = _build_vertex_graph(rows, cols, radius, lake_adjacent_hexes)
+    _cached_graph = graph
 
     # Кандидаты на истоки (горы) и устья главных рек (озёра).
     var mountain_vertices = _find_terrain_vertices(graph, tile_data, "mountain")
@@ -68,11 +142,6 @@ func generate_rivers(rows: int, cols: int, radius: float, tile_data: Array,
     if mountain_vertices.is_empty() or lake_vertices.is_empty():
         print("RIVER DEBUG: нет гор или озёр, выход")
         return
-
-    # Гексы, которые касаются озёр (озёрные гексы и их соседи).
-    # Реки не должны проходить по их РЁБРАМ (кроме последнего шага к устью),
-    # чтобы река не текла по берегу озера и была не ближе 1 гекса от него.
-    var lake_adjacent_hexes = _build_lake_adjacent_hexes(tile_data, rows, cols)
 
     # Параметры из конфигурации.
     var cfg: Dictionary = GameData.map_config
@@ -311,8 +380,9 @@ func _vertex_in_hexes(vk: String, graph: Dictionary, hexes_dict: Dictionary) -> 
 # Возвращает true, если ребро (a_key -> b_key) принадлежит хотя бы одному
 # запрещённому гексу (озеро или его сосед).
 # -------------------------------------------------------
-func _edge_in_forbidden_hexes(a_key: String, b_key: String, graph: Dictionary, forbidden_hexes: Dictionary) -> bool:
-    var vertex_hexes: Dictionary = graph["hexes"]
+func _edge_in_forbidden_hexes(a_key: String, b_key: String, vertex_hexes: Dictionary, forbidden_hexes: Dictionary) -> bool:
+    if forbidden_hexes.is_empty():
+        return false
     if not vertex_hexes.has(a_key) or not vertex_hexes.has(b_key):
         return false
     var a_hexes = vertex_hexes[a_key]
@@ -408,8 +478,12 @@ func _keys_to_positions(path_keys: Array, graph: Dictionary) -> Array:
 # -------------------------------------------------------
 # Строит "граф вершин": узлы = уникальные точки world-координат,
 # ребра = соединения через соседние вершины внутри гексов.
+#
+# Оптимизация: флаг "forb" (ребро принадлежит запрещённому гексу у озера)
+# предвычисляется здесь ОДИН раз для всех рёбер, поэтому A* проверяет
+# запрет за O(1) на соседа вместо перебора гексов обеих вершин.
 # -------------------------------------------------------
-func _build_vertex_graph(rows: int, cols: int, radius: float) -> Dictionary:
+func _build_vertex_graph(rows: int, cols: int, radius: float, forbidden_hexes: Dictionary = {}) -> Dictionary:
     var vertex_positions: Dictionary = {} # key -> Vector2
     var vertex_hexes: Dictionary = {} # key -> Array of {row, col, vidx}
 
@@ -424,24 +498,36 @@ func _build_vertex_graph(rows: int, cols: int, radius: float) -> Dictionary:
                 vertex_hexes[key].append({"row": row, "col": col, "vidx": vidx})
 
     # Граф соседства: для каждой вершины соседями являются
-    # вершины (vidx-1)%6 и (vidx+1)%6 в каждом гексе, содержащем вершину
+    # вершины (vidx-1)%6 и (vidx+1)%6 в каждом гексе, содержащем вершину.
+    # Представление — ПАРАЛЛЕЛЬНЫЕ МАССИВЫ (важно для скорости A*):
+    #   neighbors[vkey] = Array of String (ключи соседей)
+    #   forb_mask[vkey] = Array of bool  (true = ребро лежит в гексе у озера)
+    # Это даёт O(1) проверку запрещённого ребра без аллокации словаря на ребро.
     var neighbors: Dictionary = {}
+    var forb_mask: Dictionary = {}
+    var forbidden_empty := forbidden_hexes.is_empty()
     for vkey in vertex_positions.keys():
-        var nbrs: Dictionary = {}
+        var nbrs: Array = []
+        var forbs: Array = []
+        var nbr_set: Dictionary = {} # дедупликация соседей
         var hex_list = vertex_hexes[vkey]
         for hex_info in hex_list:
             for delta in [-1, 1]:
                 var nvi = (hex_info.vidx + delta) % 6
                 var npos = HexUtils.hex_vertex(hex_info.row, hex_info.col, nvi, radius)
                 var nkey = _vertex_key(npos)
-                if nkey != vkey:
-                    nbrs[nkey] = true
-        neighbors[vkey] = nbrs.keys()
+                if nkey != vkey and not nbr_set.has(nkey):
+                    nbr_set[nkey] = true
+                    nbrs.append(nkey)
+                    forbs.append(false if forbidden_empty else _edge_in_forbidden_hexes(vkey, nkey, vertex_hexes, forbidden_hexes))
+        neighbors[vkey] = nbrs
+        forb_mask[vkey] = forbs
 
     return {
         "positions": vertex_positions,
         "neighbors": neighbors,
-        "hexes": vertex_hexes
+        "hexes": vertex_hexes,
+        "forb": forb_mask
     }
 
 
@@ -458,15 +544,25 @@ func _vertex_key(pos: Vector2) -> String:
 #
 # forbidden_keys — вершины, занятые другими реками (нельзя проходить,
 # кроме goal_key и merge_keys).
-# forbidden_hexes — гексы у озёр (озеро + соседи). Река не может проходить
-# по их РЁБРАМ, кроме последнего шага в устье/точку слияния. Чтобы река могла
-# войти в озеро, разрешается один шаг снаружи в вершину, соседнюю с устьем
-# (approach), после чего путь обязан завершиться в устье.
+# forbidden_hexes — гексы у озёр (озеро + соседи). Флаги запрещённых рёбер
+# предвычислены в графе (поле "forb" — параллельный массив bool).
+# Река не может проходить по РЁБРАМ у озёр, кроме последнего шага в устье/
+# точку слияния. Чтобы река могла войти в озеро, разрешается один шаг
+# снаружи в вершину, соседнюю с устьем (approach), после чего путь обязан
+# завершиться в устье.
 # merge_keys — вершины, на которых путь может закончиться (точки слияния).
+#
+# Ключевые оптимизации (замена sort_custom + pop_front исходного кода):
+#   - открытый список — бинарная куча (PriorityQueue): push/pop за O(log n);
+#   - in_heap + closed_set: устаревшие записи кучи пропускаются, куча не
+#     разрастается, каждая вершина обрабатывается ровно один раз;
+#   - проверка запрещённых рёбер — O(1) по предвычисленному флагу forb;
+#   - angle_to не требует нормализованных векторов — убраны normalized().
 # -------------------------------------------------------
 func _find_path_astar(start_key: String, goal_key: String, graph: Dictionary, forbidden_keys: Dictionary, max_turn_angle_deg: float, merge_keys: Dictionary = {}, forbidden_hexes: Dictionary = {}) -> Array:
     var vertex_positions: Dictionary = graph["positions"]
     var neighbors_map: Dictionary = graph["neighbors"]
+    var forb_mask: Dictionary = graph.get("forb", {})
 
     # Ограничиваем область поиска bbox-ом вокруг start и goal.
     # Это ускоряет A* в разы на больших картах, не меняя формат данных рек:
@@ -491,41 +587,53 @@ func _find_path_astar(start_key: String, goal_key: String, graph: Dictionary, fo
     # разрешён (один шаг), после чего путь обязан завершиться в устье.
     var approach_keys: Dictionary = {}
     approach_keys[goal_key] = true
-    for n in neighbors_map.get(goal_key, []):
+    var goal_nbrs: Array = neighbors_map.get(goal_key, [])
+    for n in goal_nbrs:
         approach_keys[n] = true
     for mk in merge_keys.keys():
         approach_keys[mk] = true
-        for n in neighbors_map.get(mk, []):
+        var mk_nbrs: Array = neighbors_map.get(mk, [])
+        for n in mk_nbrs:
             approach_keys[n] = true
 
-    var open_set: Array = [start_key]
+    var open_set = PriorityQueue.new()
+    open_set.push(start_key, _heuristic(start_key, goal_key, vertex_positions))
     var came_from: Dictionary = {}
     var g_score: Dictionary = {start_key: 0.0}
-    var f_score: Dictionary = {start_key: _heuristic(start_key, goal_key, vertex_positions)}
+    var closed_set: Dictionary = {}
+    var in_heap: Dictionary = {start_key: true}
+
+    var has_merge := not merge_keys.is_empty()
+    var has_forbidden := not forbidden_keys.is_empty()
+    var has_forb := not forb_mask.is_empty()
+    var max_angle_rad = deg_to_rad(max_turn_angle_deg)
+    var soft_angle_rad = deg_to_rad(max_turn_angle_deg + 30.0)
 
     while not open_set.is_empty():
-        # Извлекаем узел с минимальным f_score
-        open_set.sort_custom(func(a, b):
-            var fa = f_score.get(a, INF)
-            var fb = f_score.get(b, INF)
-            return fa < fb)
-        var current = open_set.pop_front()
+        var current = open_set.pop_min()
+        # Ленивое удаление: пропускаем устаревшие записи кучи.
+        if not in_heap.has(current):
+            continue
+        in_heap.erase(current)
+        # closed_set — каждая вершина обрабатывается ровно один раз.
+        if closed_set.has(current):
+            continue
+        closed_set[current] = true
 
-        if current == goal_key or merge_keys.has(current):
+        if current == goal_key or (has_merge and merge_keys.has(current)):
             return _reconstruct_path(came_from, current)
 
         var current_pos = vertex_positions[current]
         var dir = Vector2.ZERO
         if came_from.has(current):
-            var prev_key = came_from[current]
-            dir = (current_pos - vertex_positions[prev_key]).normalized()
+            dir = current_pos - vertex_positions[came_from[current]]
         else:
             # Для стартовой вершины направление к цели
-            dir = (vertex_positions[goal_key] - current_pos).normalized()
+            dir = vertex_positions[goal_key] - current_pos
 
         # Соседи:
         # 1) Запрещены вершины, занятые другими реками (кроме устья/слияния).
-        # 2) Запрещены рёбра, принадлежащие гексам у озёр, КРОМЕ:
+        # 2) Запрещены рёбра с флагом forb, КРОМЕ:
         #    - последнего шага в устье/точку слияния;
         #    - одного шага снаружи в approach-вершину (чтобы войти в озеро).
         #    Переход между двумя approach-вершинами запрещён — это предотвращает
@@ -533,10 +641,13 @@ func _find_path_astar(start_key: String, goal_key: String, graph: Dictionary, fo
         # Отбрасываем соседей за пределами bbox — это и есть основное ускорение.
         var current_is_approach = approach_keys.has(current)
         var candidates: Array = []
-        for n in neighbors_map[current]:
-            if forbidden_keys.has(n) and n != goal_key and not merge_keys.has(n):
+        var current_nbrs: Array = neighbors_map[current]
+        var current_forbs: Array = forb_mask.get(current, [])
+        for i in range(current_nbrs.size()):
+            var n: String = current_nbrs[i]
+            if has_forbidden and forbidden_keys.has(n) and n != goal_key and not merge_keys.has(n):
                 continue
-            if _edge_in_forbidden_hexes(current, n, graph, forbidden_hexes):
+            if has_forb and i < current_forbs.size() and current_forbs[i]:
                 if n == goal_key or merge_keys.has(n):
                     pass # последний шаг в устье/слияние разрешён
                 elif approach_keys.has(n) and not current_is_approach:
@@ -549,20 +660,20 @@ func _find_path_astar(start_key: String, goal_key: String, graph: Dictionary, fo
             candidates.append(n)
 
         # Фильтруем по углу
-        var valid: Array = _filter_by_angle(candidates, current_pos, dir, vertex_positions, max_turn_angle_deg)
+        var valid: Array = _filter_by_angle(candidates, current_pos, dir, vertex_positions, max_angle_rad)
         if valid.is_empty():
-            valid = _filter_by_angle(candidates, current_pos, dir, vertex_positions, max_turn_angle_deg + 30.0)
+            valid = _filter_by_angle(candidates, current_pos, dir, vertex_positions, soft_angle_rad)
             if valid.is_empty():
                 continue
 
+        var g_current = g_score[current]
         for neighbor in valid:
-            var tentative_g = g_score[current] + current_pos.distance_to(vertex_positions[neighbor])
+            var tentative_g = g_current + current_pos.distance_to(vertex_positions[neighbor])
             if tentative_g < g_score.get(neighbor, INF):
                 came_from[neighbor] = current
                 g_score[neighbor] = tentative_g
-                f_score[neighbor] = tentative_g + _heuristic(neighbor, goal_key, vertex_positions)
-                if neighbor not in open_set:
-                    open_set.append(neighbor)
+                open_set.push(neighbor, tentative_g + _heuristic(neighbor, goal_key, vertex_positions))
+                in_heap[neighbor] = true
 
     return []
 
@@ -575,30 +686,25 @@ func _reconstruct_path(came_from: Dictionary, current: String) -> Array:
     var total_path: Array = [current]
     while came_from.has(current):
         current = came_from[current]
-        total_path.push_front(current)
+        total_path.append(current)
+    total_path.reverse()
     return total_path
 
 
 # -------------------------------------------------------
-# Фильтрует кандидатов по углу поворота относительно dir
+# Фильтрует кандидатов по углу поворота относительно dir.
+# max_angle_rad передаётся в радианах (вычисляется один раз в A*).
+# angle_to не требует нормализованных векторов — normalized() не нужен.
 # -------------------------------------------------------
 func _filter_by_angle(candidates: Array, current_pos: Vector2, dir: Vector2,
-        vertex_positions: Dictionary, max_angle_deg: float) -> Array:
+        vertex_positions: Dictionary, max_angle_rad: float) -> Array:
     var valid: Array = []
-    var max_angle_rad = deg_to_rad(max_angle_deg)
     for n in candidates:
-        var ndir = (vertex_positions[n] - current_pos).normalized()
-        var angle = abs(_signed_angle(dir, ndir))
+        var ndir = vertex_positions[n] - current_pos
+        var angle = abs(ndir.angle_to(dir))
         if angle <= max_angle_rad + 0.02:
             valid.append(n)
     return valid
-
-
-# -------------------------------------------------------
-# Знаковый угол между двумя векторами (в радианах, [-PI, PI])
-# -------------------------------------------------------
-func _signed_angle(a: Vector2, b: Vector2) -> float:
-    return a.angle_to(b)
 
 
 # -------------------------------------------------------
@@ -620,6 +726,14 @@ func get_main_rivers() -> Array:
 # -------------------------------------------------------
 func get_tributaries() -> Array:
     return tributaries
+
+
+# -------------------------------------------------------
+# Возвращает последний построенный граф вершин (для повторного
+# использования в mark_river_edges без повторного построения).
+# -------------------------------------------------------
+func get_cached_graph() -> Dictionary:
+    return _cached_graph
 
 
 # -------------------------------------------------------
@@ -685,12 +799,16 @@ func _deserialize_list(river_list: Array) -> Array:
         result.append(river)
     return result
 
-func mark_river_edges(tile_data: Array, rows: int, cols: int, radius: float) -> void:
+# Помечает рёбра рек в данных гексов.
+# graph — опциональный готовый граф (из get_cached_graph()); если не передан
+# или пуст — граф строится заново. Это убирает двойное построение графа
+# (тысячи вершин) при генерации новой карты.
+func mark_river_edges(tile_data: Array, rows: int, cols: int, radius: float, graph: Dictionary = {}) -> void:
     if tile_data == null or tile_data.size() == 0:
         return
 
-    var graph = _build_vertex_graph(rows, cols, radius)
-    var vertex_hexes = graph["hexes"]
+    var use_graph = graph if not graph.is_empty() else _build_vertex_graph(rows, cols, radius)
+    var vertex_hexes = use_graph["hexes"]
 
     # Очистим существующие river_edges, если они есть
     for row in range(rows):
