@@ -530,19 +530,29 @@ func _draw_rivers():
     if not main_map.has_node("RiverManager"):
         return
     var river_manager = main_map.get_node("RiverManager")
-    var river_data = river_manager.get_rivers()
-    if river_data.is_empty():
-        return
-    var body_color = river_manager.RIVER_COLOR
-    var body_width = river_manager.RIVER_WIDTH
-    var shore_color = river_manager.RIVER_SHORE_COLOR
-    var shore_width = river_manager.RIVER_SHORE_WIDTH
-    var highlight_color = river_manager.RIVER_HIGHLIGHT_COLOR
-    var highlight_width = river_manager.RIVER_HIGHLIGHT_WIDTH
     var offset_x = main_map.offset_x + main_map.scroll_offset.x
     var offset_y = main_map.offset_y + main_map.scroll_offset.y
     var radius = main_map.HEX_RADIUS
-    for river in river_data:
+
+    # Главные реки — толще и темнее.
+    _draw_river_list(river_manager.get_main_rivers(), offset_x, offset_y, radius,
+            river_manager.RIVER_SHORE_COLOR, river_manager.RIVER_SHORE_WIDTH,
+            river_manager.RIVER_COLOR, river_manager.RIVER_WIDTH,
+            river_manager.RIVER_HIGHLIGHT_COLOR, river_manager.RIVER_HIGHLIGHT_WIDTH)
+
+    # Притоки — тоньше и светлее, чтобы визуально отличать от главных рек.
+    _draw_river_list(river_manager.get_tributaries(), offset_x, offset_y, radius,
+            river_manager.TRIBUTARY_SHORE_COLOR, river_manager.TRIBUTARY_SHORE_WIDTH,
+            river_manager.TRIBUTARY_COLOR, river_manager.TRIBUTARY_WIDTH,
+            river_manager.TRIBUTARY_HIGHLIGHT_COLOR, river_manager.TRIBUTARY_HIGHLIGHT_WIDTH)
+
+
+# Рисует список рек с заданным стилем (берег, тело, блик).
+func _draw_river_list(river_list: Array, offset_x: float, offset_y: float, radius: float,
+        shore_color: Color, shore_width: float,
+        body_color: Color, body_width: float,
+        highlight_color: Color, highlight_width: float):
+    for river in river_list:
         if river.size() < 2:
             continue
 

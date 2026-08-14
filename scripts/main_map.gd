@@ -366,11 +366,13 @@ func _initialize_map():
     # Помечаем стартовое Кольцо Влияния и сбрасываем исследование.
     # Флаги ставим для ВСЕЙ карты, т.к. генераторы (place_wild_food и др.)
     # итерируют по всем гексам и обращаются к "in_influence".
+    var t_influence = Time.get_ticks_msec()
     for row in range(map_rows):
         for col in range(map_cols):
             var tile = tile_data[row][col]
             tile["in_influence"] = is_in_influence(row, col)
             tile["is_explored"] = false
+    print("этап in_influence: ", Time.get_ticks_msec() - t_influence, " ms")
 
     # Дикоросы и гарантированный food_plant спавнятся ТОЛЬКО один раз при
     # старте новой игры и ТОЛЬКО внутри стартового Кольца Влияния.
@@ -409,6 +411,7 @@ func _initialize_map():
     # Ни в коем случае нельзя вызывать seed()/randomize() на глобальном RNG внутри
     # этого цикла — это разрушило бы случайность всех последующих randf()/randi()
     # (например, при спавне ресурсов после изучения технологий).
+    var t_terrain_icon = Time.get_ticks_msec()
     var icon_rng = RandomNumberGenerator.new()
     for row in range(map_rows):
         for col in range(map_cols):
@@ -426,10 +429,18 @@ func _initialize_map():
                     tile["terrain_icon"] = t.icon
                 else:
                     tile["terrain_icon"] = ""
+    print("этап terrain_icon: ", Time.get_ticks_msec() - t_terrain_icon, " ms")
 
-    # Генерируем реки (визуальные) по всей карте и помечаем рёбра реки в данных гексов
-    river_manager.generate_rivers(map_rows, map_cols, HEX_RADIUS)
+    # Генерируем речную систему (главные реки + притоки) по всей карте
+    # и помечаем рёбра реки в данных гексов. Передаём tile_data (для гор/озёр)
+    # и границы стартовой области «Кольцо + Регион» (гарантия пересечения).
+    var t_rivers = Time.get_ticks_msec()
+    river_manager.generate_rivers(map_rows, map_cols, HEX_RADIUS, tile_data,
+            region_start_row, region_end_row, region_start_col, region_end_col)
+    print("этап generate_rivers: ", Time.get_ticks_msec() - t_rivers, " ms")
+    var t_river_edges = Time.get_ticks_msec()
     river_manager.mark_river_edges(tile_data, map_rows, map_cols, HEX_RADIUS)
+    print("этап mark_river_edges: ", Time.get_ticks_msec() - t_river_edges, " ms")
 
 func _ensure_city_valid_terrain() -> void:
     # Гарантирует, что город находится на разрешённой местности (равнина или холмы).

@@ -39,6 +39,7 @@ func make_terrain_counts(rows: int, cols: int) -> Dictionary:
     }
 
 func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: Dictionary, terrain_counts: Dictionary) -> Array:
+    var t0 = Time.get_ticks_msec()
     var tile_data = []
     for row in range(rows):
         var col_array = []
@@ -58,7 +59,9 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
     # Jump Flood Algorithm (JFA): строим диаграмму Вороного за O(n log n)
     # вместо наивного O(n * centers). Для карты 200x200 это ~2.5 млн операций
     # вместо ~73 млн, что ускоряет генерацию рельефа в десятки раз.
+    var t_jfa = Time.get_ticks_msec()
     var voronoi = _jump_flood_voronoi(rows, cols, centers)
+    print("этап JFA: ", Time.get_ticks_msec() - t_jfa, " ms")
     for row in range(rows):
         for col in range(cols):
             tile_data[row][col]["terrain"] = voronoi[row][col]
@@ -87,6 +90,7 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
     # --- Покров (cover): генерируем ПОСЛЕ рельефа, с учётом terrain ---
     # Вероятности покрова для каждого типа местности заданы в terrains.json
     # (поле cover_chance: { "cover_id": вес, ... }).
+    var t_cover = Time.get_ticks_msec()
     for row in range(rows):
         for col in range(cols):
             var terrain_id = tile_data[row][col]["terrain"]
@@ -96,6 +100,7 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
     # размещения ресурсов без полного сканирования карты на каждый ресурс.
     # Строится ОДИН раз и обновляется по мере занятия гексов ресурсами.
     var hex_index = _build_hex_index(tile_data, rows, cols, city_row, city_col)
+    print("этап cover + hex_index: ", Time.get_ticks_msec() - t_cover, " ms")
 
     # --- Животные ---
     var animal_resources = {}
@@ -125,6 +130,7 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
     # Они спавнятся динамически после изучения соответствующей технологии
     # (см. CityData.spawn_resource_on_tech_research).
 
+    print("этап generate_map: ", Time.get_ticks_msec() - t0, " ms")
     return tile_data
 
 # Jump Flood Algorithm (JFA) для построения диаграммы Вороного на
