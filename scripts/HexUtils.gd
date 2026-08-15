@@ -88,7 +88,7 @@ static func spawn_conditions_met(data: Dictionary) -> bool:
 
 # Проверяет, подходит ли конкретный гекс (row, col) по геометрическим
 # условиям spawn_conditions ресурса. Логика: массив групп — ИЛИ, внутри — И.
-# Для каждого условия проверяется совместимость гекса (например, near_river).
+# Для каждого условия проверяется совместимость гекса.
 static func is_hex_conditions_met(tile_data: Array, row: int, col: int, data: Dictionary) -> bool:
     var conditions: Array = data.get("spawn_conditions", [])
     if conditions.is_empty():
@@ -101,8 +101,15 @@ static func is_hex_conditions_met(tile_data: Array, row: int, col: int, data: Di
             if cond_type == "near_river":
                 # Гекс имеет общее ребро с рекой ⇔ у него есть river_edges.
                 ok = tile_data[row][col].get("river_edges", []).size() > 0
+            elif cond_type == "terrain":
+                # Универсальное условие по типу местности: гекс должен иметь
+                # terrain, совпадающий с terrain_id из условия. Используется,
+                # например, ресурсом soda_deposit (см. data/resources/minerals.json),
+                # который спавнится только на гексах содового озера (soda_lake).
+                var required_terrain: String = cond.get("terrain_id", "")
+                ok = required_terrain != "" and tile_data[row][col].get("terrain", "") == required_terrain
             else:
-                # Неизвестный тип условия — считаем выполненным, чтобы не ломать спавн.
+                # Неизвестное условие — считаем выполненным, чтобы не ломать спавн.
                 ok = true
             if not ok:
                 group_met = false

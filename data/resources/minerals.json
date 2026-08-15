@@ -152,19 +152,26 @@
       "color": [ 245, 245, 220 ]
     },
     {
+      // Сода добывается на гексах содового озера (soda_lake).
+      // Требует технологию "Добыча соды" (soda_extraction).
+      // Спавнится только на гексах с типом местности soda_lake. Условие
+      // spawn_conditions использует универсальный тип "terrain": ресурс
+      // ищет гексы с указанным terrain_id по ВСЕЙ карте, не только в Регионе.
+      // Добывается улучшением "Содовый карьер" (soda_quarry).
       "id": "soda_deposit",
       "name": "Сода",
       "type": "raw",
       "category": "minerals",
       "group": "minerals",
       "subgroup": "",
-      "tech_required": "glassmaking",
-      "allowed_terrain": [ "plain" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
-      "improved_by": "quarry",
+      "tech_required": "soda_extraction",
+      "allowed_terrain": [ "soda_lake" ],
+      "allowed_cover": [ "none" ],
+      "improved_by": "soda_quarry",
       "produces": { "soda": 1 },
       "icon": "soda.png",
-      "color": [ 255, 255, 255 ]
+      "color": [ 255, 255, 255 ],
+      "spawn_conditions": [ [ { "type": "terrain", "terrain_id": "soda_lake", "chance": 100 } ] ]
     },
     {
       "id": "bitumen_deposit",

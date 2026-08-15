@@ -53,6 +53,10 @@ var offset_x: float = 0.0
 var offset_y: float = 0.0
 var scroll_offset = Vector2.ZERO
 
+# Гексы уникальной местности (например, содовое озеро soda_lake),
+# которые всегда отображаются на карте даже за пределами видимого Региона.
+var unique_terrain_hexes: Array = []
+
 var _context_hex = null
 var last_city_click_time = 0.0
 var production_timer = 0.0
@@ -188,6 +192,15 @@ func _ready():
         # Восстанавливаем реки из сохранения и помечаем river_edges в гексах
         river_manager.load_rivers(SaveManager.saved_data.get("rivers", []))
         river_manager.mark_river_edges(tile_data, map_rows, map_cols, HEX_RADIUS)
+
+        # Собираем гексы уникальной местности (например, содовое озеро) после загрузки.
+        unique_terrain_hexes = []
+        for row in range(map_rows):
+            for col in range(map_cols):
+                var terrain_id = tile_data[row][col].get("terrain", "plain")
+                var t_data: Dictionary = GameData.terrains.get(terrain_id, {})
+                if t_data.get("unique", false):
+                    unique_terrain_hexes.append({"row": row, "col": col})
 
         SaveManager.is_loaded = false
         SaveManager.saved_data.clear()
@@ -373,6 +386,17 @@ func _initialize_map():
             tile["in_influence"] = is_in_influence(row, col)
             tile["is_explored"] = false
     print("этап in_influence: ", Time.get_ticks_msec() - t_influence, " ms")
+
+    # Собираем гексы уникальной местности (например, содовое озеро).
+    # Они отображаются на карте даже за пределами видимого Региона
+    # (см. map_renderer._draw), поэтому храним их отдельным списком.
+    unique_terrain_hexes = []
+    for row in range(map_rows):
+        for col in range(map_cols):
+            var terrain_id = tile_data[row][col].get("terrain", "plain")
+            var t_data: Dictionary = GameData.terrains.get(terrain_id, {})
+            if t_data.get("unique", false):
+                unique_terrain_hexes.append({"row": row, "col": col})
 
     # Дикоросы и гарантированный food_plant спавнятся ТОЛЬКО один раз при
     # старте новой игры и ТОЛЬКО внутри стартового Кольца Влияния.

@@ -71,6 +71,17 @@
       "color": [ 139, 69, 19 ],
       "work_cost": 30,
       "unlock_tech": "bitumen_extraction"
+    },
+    {
+      // Содовый карьер — улучшение для добычи соды на гексах содового озера.
+      // Открывается технологией "Добыча соды" (soda_extraction).
+      // Иконки нет — рендерер использует цвет-заглушку.
+      "id": "soda_quarry",
+      "name": "Содовый карьер",
+      "icon": "soda_quarry.png",
+      "color": [ 200, 220, 255 ],
+      "work_cost": 30,
+      "unlock_tech": "soda_extraction"
     }
   ]
 }

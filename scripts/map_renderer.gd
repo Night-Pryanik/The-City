@@ -134,6 +134,13 @@ func _draw():
         for col in range(visible.col_start, visible.col_end + 1):
             _draw_hex(row, col)
 
+    # ФАЗА 1.5: Рисуем уникальную местность (например, содовое озеро soda_lake)
+    # ЗА пределами видимого Региона, если она попадает в viewport. Такие гексы
+    # отображаются затемнёнными (как неисследованный Регион), чтобы их было видно
+    # на фоне тумана войны, но они не раскрывают ресурсы/улучшения.
+    for hex_data in main_map.unique_terrain_hexes:
+        _draw_unique_terrain_hex(hex_data.row, hex_data.col)
+
     # ФАЗА 2: Рисуем дороги (ПЕРЕД иконками ресурсов и улучшений)
     _draw_all_roads()
 
@@ -226,6 +233,48 @@ func _draw_hex(row: int, col: int):
 
     if main_map.show_hex_borders:
         draw_polyline(closed_vertices, Color.WHITE, 2, true)
+
+# Рисует уникальную местность (например, содовое озеро) ЗА пределами
+# видимого Региона (туман войны). Рисуется только рельеф (цвет-заглушка),
+# без ресурсов/улучшений/покрова, затемнённый как неисследованный Регион.
+func _draw_unique_terrain_hex(row: int, col: int):
+    # Если гекс уже входит в видимый Регион, его рисует основной проход
+    # (_draw_hex) — здесь пропускаем, чтобы не рисовать дважды.
+    if row >= main_map.region_start_row and row <= main_map.region_end_row \
+            and col >= main_map.region_start_col and col <= main_map.region_end_col:
+        return
+
+    var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
+    center.x += main_map.offset_x + main_map.scroll_offset.x
+    center.y += main_map.offset_y + main_map.scroll_offset.y
+    var vertices = HexUtils.hex_vertices(center.x, center.y, main_map.HEX_RADIUS)
+
+    # Viewport culling: пропускаем, если гекс не пересекает экран.
+    if not _is_rect_visible(Rect2(
+            center.x - main_map.HEX_RADIUS,
+            center.y - main_map.HEX_RADIUS,
+            main_map.HEX_RADIUS * 2,
+            main_map.HEX_RADIUS * 2)):
+        return
+
+    var tile = tile_data[row][col]
+    var terrain_id = tile.get("terrain", "plain")
+    var terrain_color = Color.BLACK
+    if GameData.terrains.has(terrain_id):
+        var t = GameData.terrains[terrain_id]
+        var c = t.get("color", [0, 0, 0])
+        terrain_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
+
+    draw_colored_polygon(vertices, terrain_color)
+
+    # Затемняем как неисследованный регион (туман войны).
+    draw_colored_polygon(vertices, Color(0, 0, 0, 0.5))
+
+    var closed_verts = PackedVector2Array()
+    closed_verts.append_array(vertices)
+    closed_verts.append(vertices[0])
+    if main_map.show_hex_borders:
+        draw_polyline(closed_verts, Color.WHITE, 2, true)
 
 # Рисует оверлей покрова (cover) поверх relief.
 # Если у покрова есть иконка — рисуем её (детерминированный выбор по seed),

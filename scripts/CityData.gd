@@ -708,20 +708,46 @@ func spawn_resource_on_tech_research(tech_id: String) -> Array:
 
 # Возвращает список пустых гексов, подходящих для ресурса res_id.
 # Если only_circle == true — только гексы внутри Кольца Влияния.
+# Ресурсы со спавн-условием "terrain" (например, сода на содовом озере)
+# ищутся по ВСЕЙ карте, а не только в Регионе — уникальная местность
+# (soda_lake) может находиться за пределами стартового Кольца/Региона.
 func _get_available_hexes(tile_data: Array, main_map: Node, res_id: String, only_circle: bool) -> Array:
     var data = GameData.raw_resources[res_id]
     var allowed_terrain = data.get("allowed_terrain", [])
     var allowed_cover = data.get("allowed_cover", [])
+
+    # Проверяем, требуется ли искать по всей карте: если в spawn_conditions
+    # есть условие типа "terrain" — местность уникальна (например, содовое озеро).
+    var search_whole_map := false
+    for group in data.get("spawn_conditions", []):
+        for cond in group:
+            if cond.get("type", "") == "terrain":
+                search_whole_map = true
+                break
+        if search_whole_map:
+            break
+
     var result = []
-    for r in range(main_map.region_start_row, main_map.region_end_row + 1):
-        for c in range(main_map.region_start_col, main_map.region_end_col + 1):
+    var row_start: int = main_map.region_start_row
+    var row_end: int = main_map.region_end_row
+    var col_start: int = main_map.region_start_col
+    var col_end: int = main_map.region_end_col
+    if search_whole_map:
+        # Ищем по всей карте (уникальная местность может быть где угодно).
+        row_start = 0
+        row_end = main_map.map_rows - 1
+        col_start = 0
+        col_end = main_map.map_cols - 1
+
+    for r in range(row_start, row_end + 1):
+        for c in range(col_start, col_end + 1):
             if r == main_map.city_row and c == main_map.city_col:
                 continue
             if tile_data[r][c].get("resource", null) != null:
                 continue
             if tile_data[r][c].get("improvement", null) != null:
                 continue
-            if only_circle:
+            if only_circle and not search_whole_map:
                 var in_circle = main_map.is_in_influence(r, c)
                 if not in_circle:
                     continue

@@ -6,7 +6,7 @@ extends Node
 # которое должно оставаться внутри Кольца Влияния после размещения всех ресурсов.
 # Гарантирует, что у игрока всегда будет достаточно места для постройки
 # нескольких ферм/пастбищ одного ресурса (например, киноа растёт только
-# в горах — нужно ≥2 свободных горных гекса, чтобы построить ≥2 ферм).
+# в горах — нужно ≥2 свободных горных гекса, чтобы построить ≥2 фермы).
 const FREE_TERRAIN_HEXES := 2
 
 # Порог «избыточности» типа местности: если какого-то типа в Кольце Влияния
@@ -14,10 +14,21 @@ const FREE_TERRAIN_HEXES := 2
 # в недостающие типы.
 const OVER_REP_THRESHOLD := 3
 
+# Возвращает список типов местности, которые участвуют в алгоритме Вороного
+# (базовый рельеф). Уникальные типы (unique: true) сюда НЕ входят — они
+# размещаются отдельной функцией place_unique_terrain. Это позволяет добавлять
+# новые уникальные типы местности в data/terrains.json без изменения этого кода.
+static func _get_base_terrain_ids() -> Array:
+    var base_ids = []
+    for terrain_id in GameData.terrains.keys():
+        var t: Dictionary = GameData.terrains[terrain_id]
+        if not t.get("unique", false):
+            base_ids.append(terrain_id)
+    return base_ids
+
 # Вычисляет количество центров Вороного для каждого типа местности на основе
 # плотностей (terrain_density) и среднего размера кластера (target_cluster),
-# заданных в data/map_config.json. Пропорции по умолчанию: равнины ≈ 50%,
-# холмы ≈ 30%, горы ≈ 20%.
+# заданных в data/map_config.json.
 func make_terrain_counts(rows: int, cols: int) -> Dictionary:
     var cfg: Dictionary = GameData.map_config
     var density: Dictionary = cfg.get("terrain_density", {})
@@ -26,17 +37,45 @@ func make_terrain_counts(rows: int, cols: int) -> Dictionary:
     var area := rows * cols
     var total := maxi(12, int(round(float(area) / target_cluster)))
 
-    var plain_w := float(density.get("plain", 0.45))
-    var hill_w := float(density.get("hill", 0.25))
-    var lake_w := float(density.get("lake", 0.10))
-    var mountain_w := float(density.get("mountain", 0.20))
+    # Только базовые (не уникальные) типы участвуют в Вороном.
+    var base_ids := _get_base_terrain_ids()
+    var counts: Dictionary = {}
+    var total_weight := 0.0
+    for terrain_id in base_ids:
+        var w := float(density.get(terrain_id, 0.0))
+        if w <= 0.0:
+            w = _default_density(terrain_id)
+        counts[terrain_id] = maxi(1, int(round(total * w)))
+        total_weight += w
 
-    return {
-        "plain": maxi(3, int(round(total * plain_w))),
-        "hill": maxi(2, int(round(total * hill_w))),
-        "lake": maxi(1, int(round(total * lake_w))),
-        "mountain": maxi(2, int(round(total * mountain_w))),
-    }
+    # Нормировка: чтобы сумма не превышала total, а минимум всегда был 1.
+    var sum_counts := 0
+    for tid in counts.keys():
+        sum_counts += counts[tid]
+    if sum_counts > total:
+        var excess = sum_counts - total
+        for tid in counts.keys():
+            var reduce = mini(counts[tid] - 1, excess)
+            counts[tid] -= reduce
+            excess -= reduce
+            if excess <= 0:
+                break
+
+    return counts
+
+# Дефолтная плотность для типов, не указанных в map_config.json.
+func _default_density(terrain_id: String) -> float:
+    match terrain_id:
+        "plain":
+            return 0.45
+        "hill":
+            return 0.25
+        "lake":
+            return 0.10
+        "mountain":
+            return 0.20
+        _:
+            return 0.05
 
 func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: Dictionary, terrain_counts: Dictionary) -> Array:
     var t0 = Time.get_ticks_msec()
@@ -87,18 +126,21 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
             if lake_tiles >= 3:
                 break
 
+    # --- УНИКАЛЬНЫЕ ТИПЫ МЕСТНОСТИ ---
+    # Размещаются ПОСЛЕ Вороного, но ДО генерации покрова и ресурсов.
+    # Содовое озеро (soda_lake) — один раз, кластером 1-3 гекса,
+    # за пределами стартового Кольца Влияния.
+    place_unique_terrain(tile_data, rows, cols, city_row, city_col, "soda_lake", 3)
+
     # --- Покров (cover): генерируем ПОСЛЕ рельефа, с учётом terrain ---
-    # Вероятности покрова для каждого типа местности заданы в terrains.json
-    # (поле cover_chance: { "cover_id": вес, ... }).
     var t_cover = Time.get_ticks_msec()
     for row in range(rows):
         for col in range(cols):
             var terrain_id = tile_data[row][col]["terrain"]
             tile_data[row][col]["cover"] = _roll_cover(terrain_id)
 
-    # Мультииндекс свободных гексов по (terrain, cover) — для быстрого
+    # Мультиииндекс свободных гексов по (terrain, cover) — для быстрого
     # размещения ресурсов без полного сканирования карты на каждый ресурс.
-    # Строится ОДИН раз и обновляется по мере занятия гексов ресурсами.
     var hex_index = _build_hex_index(tile_data, rows, cols, city_row, city_col)
     print("этап cover + hex_index: ", Time.get_ticks_msec() - t_cover, " ms")
 
@@ -133,6 +175,75 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
     print("этап generate_map: ", Time.get_ticks_msec() - t0, " ms")
     return tile_data
 
+# Универсальная функция размещения уникального типа местности на карте.
+# Размещает ОДИН сомкнутный кластер типа terrain_id размером 1..max_cluster_size
+# гексов за пределами стартового Кольца Влияния. Требует, чтобы тип местности
+# был помечен "unique": true в data/terrains.json.
+func place_unique_terrain(tile_data: Array, rows: int, cols: int, city_row: int, city_col: int,
+        terrain_type: String, max_cluster_size: int) -> void:
+    # Границы стартового Кольца Влияния из конфигурации.
+    var cfg: Dictionary = GameData.map_config
+    var ring_rows: int = int(cfg.get("start_ring_rows", 5))
+    var ring_cols: int = int(cfg.get("start_ring_cols", 7))
+    var inf_start_row: int = int(floor(city_row - ring_rows / 2.0))
+    var inf_end_row: int = inf_start_row + ring_rows - 1
+    var inf_start_col: int = int(floor(city_col - ring_cols / 2.0))
+    var inf_end_col: int = inf_start_col + ring_cols - 1
+
+    # Собираем все гексы вне Кольца, не занятые городом.
+    var candidates: Array = []
+    for r in range(rows):
+        for c in range(cols):
+            if r >= inf_start_row and r <= inf_end_row and c >= inf_start_col and c <= inf_end_col:
+                continue
+            if r == city_row and c == city_col:
+                continue
+            candidates.append({"row": r, "col": c})
+    if candidates.is_empty():
+        print("ОШИБКА place_unique_terrain: нет гексов за пределами Кольца Влияния!")
+        return
+
+    # Случайный размер кластера от 1 до max_cluster_size.
+    var cluster_size: int = randi_range(1, maxi(1, max_cluster_size))
+
+    # Случайная точка старта в пределах допустимой области.
+    var start = candidates[randi() % candidates.size()]
+
+    # BFS: строим связный кластер из cluster_size гексов, прилегающих к старту.
+    var cluster: Array = [start]
+    var visited := {}
+    visited["%d,%d" % [start.row, start.col]] = true
+    var frontier: Array = [start]
+    while cluster.size() < cluster_size and frontier.size() > 0:
+        var next_frontier: Array = []
+        for hex in frontier:
+            var neighbors = HexUtils.get_neighbors_odd_r(hex.row, hex.col, rows, cols)
+            neighbors.shuffle()
+            for n in neighbors:
+                var key = "%d,%d" % [n.row, n.col]
+                if visited.has(key):
+                    continue
+                if n.row >= inf_start_row and n.row <= inf_end_row and n.col >= inf_start_col and n.col <= inf_end_col:
+                    continue
+                if n.row == city_row and n.col == city_col:
+                    continue
+                visited[key] = true
+                cluster.append(n)
+                next_frontier.append(n)
+                if cluster.size() >= cluster_size:
+                    break
+            if cluster.size() >= cluster_size:
+                break
+        frontier = next_frontier
+
+    # Меняем террайн на уникальный для выбранных гексов (только если там нет улучшения).
+    for hex in cluster:
+        var tile = tile_data[hex.row][hex.col]
+        if tile.get("improvement", null) == null:
+            tile["terrain"] = terrain_type
+
+    print("Уникальный тип местности %s размещён: %d гексов" % [terrain_type, cluster.size()])
+
 # Jump Flood Algorithm (JFA) для построения диаграммы Вороного на
 # гексагональной сетке (odd-r). Сложность O(rows * cols * log2(max(rows, cols)))
 # вместо наивного O(rows * cols * centers.size()).
@@ -146,7 +257,7 @@ func _jump_flood_voronoi(rows: int, cols: int, centers: Array) -> Array:
         row_arr.fill(-1)
         grid.append(row_arr)
 
-    # Предвычисляем q-координаты центров (для быстрого hex_distance).
+    # Предвычисляем q-координаты центров (для быстрой hex_distance).
     var center_q = []
     for ci in range(centers.size()):
         var center = centers[ci]
@@ -201,9 +312,9 @@ func _jump_flood_voronoi(rows: int, cols: int, centers: Array) -> Array:
                         continue
                     var ncr = centers[neighbor_ci].r
                     var ncq = center_q[neighbor_ci]
-                    var dist = (abs(q - ncq) + abs(r - ncr) + abs((q + r) - (ncq + ncr))) >> 1
-                    if dist < best_dist:
-                        best_dist = dist
+                    var dist3 = (abs(q - ncq) + abs(r - ncr) + abs((q + r) - (ncq + ncr))) >> 1
+                    if dist3 < best_dist:
+                        best_dist = dist3
                         best_ci = neighbor_ci
                 write_grid[r][c] = best_ci
         # Меняем буферы местами.
@@ -225,7 +336,7 @@ func _jump_flood_voronoi(rows: int, cols: int, centers: Array) -> Array:
         Vector2i(1, 0), Vector2i(1, 1)
     ]
     for r in range(rows):
-        var row_dirs = even_dirs if r % 2 == 0 else odd_dirs
+        var rdirs = even_dirs if r % 2 == 0 else odd_dirs
         var q_base = (r - (r & 1)) >> 1
         for c in range(cols):
             var q = c - q_base
@@ -235,23 +346,23 @@ func _jump_flood_voronoi(rows: int, cols: int, centers: Array) -> Array:
                 var cr = centers[best_ci].r
                 var cq = center_q[best_ci]
                 best_dist = (abs(q - cq) + abs(r - cr) + abs((q + r) - (cq + cr))) >> 1
-            for d in row_dirs:
+            for d in rdirs:
                 var nr = r + d.x
                 var nc = c + d.y
                 if nr < 0 or nr >= rows or nc < 0 or nc >= cols:
                     continue
-                var neighbor_ci = read_grid[nr][nc]
-                if neighbor_ci < 0:
+                var nb_ci = read_grid[nr][nc]
+                if nb_ci < 0:
                     continue
-                var ncr = centers[neighbor_ci].r
-                var ncq = center_q[neighbor_ci]
-                var dist = (abs(q - ncq) + abs(r - ncr) + abs((q + r) - (ncq + ncr))) >> 1
-                if dist < best_dist:
-                    best_dist = dist
-                    best_ci = neighbor_ci
+                var nc_r = centers[nb_ci].r
+                var nc_q = center_q[nb_ci]
+                var dist4 = (abs(q - nc_q) + abs(r - nc_r) + abs((q + r) - (nc_q + nc_r))) >> 1
+                if dist4 < best_dist:
+                    best_dist = dist4
+                    best_ci = nb_ci
             read_grid[r][c] = best_ci
 
-    # Преобразуем индексы центров в terrain_id.
+    # Превращаем индексы центров в terrain_id.
     var result = []
     for r in range(rows):
         var row_arr = []
@@ -262,15 +373,16 @@ func _jump_flood_voronoi(rows: int, cols: int, centers: Array) -> Array:
         result.append(row_arr)
     return result
 
-# Выбирает покров (cover) для гекса с указанным типом местности по весам
+# Выбирает покоры (cover) для гекса с указанным типом местности по весам
 # из terrains.json (cover_chance). Если поле отсутствует или пустое —
 # возвращает "none".
-func _roll_cover(terrain_id: String) -> String:
-    var t: Dictionary = GameData.terrains.get(terrain_id, {})
+func _roll_cover(terrain_type: String) -> String:
+    var t: Dictionary = GameData.terrains.get(terrain_type, {})
     var chances: Dictionary = t.get("cover_chance", {})
     if chances.is_empty():
         return "none"
     var total := 0.0
+    total = 0.0
     for cid in chances.keys():
         total += float(chances[cid])
     if total <= 0.0:
@@ -283,7 +395,7 @@ func _roll_cover(terrain_id: String) -> String:
             return cid
     return "none"
 
-# Строит мультииндекс свободных гексов по (terrain, cover).
+# Строит мультиииндекс свободных гексов по (terrain, cover).
 # Ключ: "terrain|cover" -> Array словарей {"row", "col"}.
 # Гексы рядом с городом (abs <= 1) исключаются, чтобы не мешать
 # стартовому строительству (как в исходном _place_resources).
@@ -304,7 +416,7 @@ func _build_hex_index(tile_data: Array, rows: int, cols: int, city_row: int, cit
             index[key].append({"row": r, "col": c})
     return index
 
-# Удаляет гекс из мультииндекса после занятия его ресурсом.
+# Удалявляет гекс из мультиииндекса после занятия его ресурсом.
 func _remove_hex_from_index(hex_index: Dictionary, row: int, col: int, terrain_id: String, cover_id: String) -> void:
     var key = "%s|%s" % [terrain_id, cover_id]
     if not hex_index.has(key):
@@ -334,18 +446,13 @@ func _place_resources(tile_data: Array, res_dict: Dictionary, rows: int, cols: i
 
     for res_id in chosen:
         var data = res_dict[res_id]
-        # Ресурсы, требующие НЕизученную технологию, не спавнятся на старте.
-        # Они спавнятся динамически после изучения технологии
-        # (см. CityData.spawn_resource_on_tech_research).
+        # Ресурсы, требующие НЕизученную технологию, не спавятся на старте.
         var tech_required = data.get("tech_required", "")
         if tech_required != "" and not CityData.is_tech_unlocked(tech_required):
             continue
-        # Ресурсы с дополнительными условиями спавна (spawn_conditions):
-        # если шанс активации не выпал — ресурс исключается из спавна.
+        # Ресурсы с дополнительными условиями спавна.
         if not HexUtils.spawn_conditions_met(data):
             continue
-        # Собираем кандидатов из мультииндекса: перебираем только комбинации
-        # (terrain, cover), разрешённые ресурсом, вместо полного сканирования карты.
         var possible = []
         for terrain_id in data.get("allowed_terrain", []):
             for cover_id in data.get("allowed_cover", []):
@@ -354,64 +461,41 @@ func _place_resources(tile_data: Array, res_dict: Dictionary, rows: int, cols: i
                     continue
                 var arr: Array = hex_index[key]
                 for hex in arr:
-                    # Фильтруем гексы по геометрическим условиям spawn_conditions.
                     if HexUtils.is_hex_conditions_met(tile_data, hex.row, hex.col, data):
                         possible.append(hex)
         if possible.size() > 0:
             var hex = possible[randi() % possible.size()]
             tile_data[hex.row][hex.col]["resource"] = res_id
-            # Задаём случайное качество ресурсу при спавне.
             tile_data[hex.row][hex.col]["quality"] = GameData.roll_quality()
-            # Убираем занятый гекс из индекса, чтобы его не выбрал другой ресурс.
             _remove_hex_from_index(hex_index, hex.row, hex.col,
                     tile_data[hex.row][hex.col]["terrain"], tile_data[hex.row][hex.col].get("cover", "none"))
 
 # Размещает дикоросы ТОЛЬКО внутри стартового Кольца Влияния.
-# Вызывается один раз при старте новой игры (из main_map._initialize_map).
-# Границы (min_row..max_row, min_col..max_col) — это стартовое Кольцо,
-# поэтому дикоросы гарантированно не появляются за его пределами
-# и не пересоздаются после старта.
 func place_wild_food(tile_data: Array, min_row: int, max_row: int, min_col: int, max_col: int, city_row: int, city_col: int):
     var count = randi_range(2, 4)
     var wild_id = "wild_food"
     if not GameData.raw_resources.has(wild_id):
-        print("ОШИБКА: wild_food не найден в GameData.raw_resources!")
         return
     var wild_data = GameData.raw_resources[wild_id]
     var possible = []
     for r in range(min_row, max_row + 1):
         for c in range(min_col, max_col + 1):
-            # Не слишком близко к городу (чтобы не мешать стартовому строительству)
             if abs(r - city_row) <= 2 and abs(c - city_col) <= 2:
                 continue
             if tile_data[r][c]["resource"] != null:
                 continue
-            var terrain = tile_data[r][c]["terrain"]
-            var cover = tile_data[r][c].get("cover", "none")
-            if terrain in wild_data.get("allowed_terrain", []) and cover in wild_data.get("allowed_cover", []):
+            var terrain_id = tile_data[r][c]["terrain"]
+            var cover_id = tile_data[r][c].get("cover", "none")
+            if terrain_id in wild_data.get("allowed_terrain", []) and cover_id in wild_data.get("allowed_cover", []):
                 possible.append({"row": r, "col": c})
     possible.shuffle()
     for i in range(min(count, possible.size())):
         var hex = possible[i]
         tile_data[hex.row][hex.col]["resource"] = wild_id
-        # Дикоросы тоже имеют качество.
         tile_data[hex.row][hex.col]["quality"] = GameData.roll_quality()
 
-# Пост-обработка генерации карты: гарантирует, что внутри Кольца Влияния
-# после размещения всех ресурсов остаётся минимум FREE_TERRAIN_HEXES СВОБОДНЫХ
-# (без ресурса) гексов каждого типа местности, участвующего в алгоритме Вороного.
-#
-# Это напрямую устраняет софт-лок: если ресурс (например, киноа — только горы)
-# попал в Кольцо Влияния, у игрока всегда будет достаточно свободных горных
-# гексов, чтобы построить несколько ферм/пастбищ этого ресурса.
-#
-# Метод вызывается ПОСЛЕ размещения ресурсов в main_map._initialize_map().
-# Он НИКОГДА не уничтожает ресурсы: конвертируются только СВОБОДНЫЕ гексы,
-# и только рядом с уже существующим кластером целевого типа (BFS-расширение),
-# чтобы новые гексы примыкали к старым, а не появлялись в случайных местах.
 func ensure_free_terrain_hexes(tile_data: Array, terrain_counts: Dictionary,
         min_row: int, max_row: int, min_col: int, max_col: int) -> void:
-    # Считаем СВОБОДНЫЕ (resource == null) гексы каждого типа внутри границ.
     var free_count: Dictionary = {}
     for terrain_id in terrain_counts.keys():
         free_count[terrain_id] = 0
@@ -424,8 +508,6 @@ func ensure_free_terrain_hexes(tile_data: Array, terrain_counts: Dictionary,
             if free_count.has(terrain_id):
                 free_count[terrain_id] += 1
 
-    # Для каждого типа, у которого меньше FREE_TERRAIN_HEXES свободных гексов,
-    # добавляем недостающие рядом с кластером этого типа.
     for terrain_id in terrain_counts.keys():
         var deficit = FREE_TERRAIN_HEXES - free_count.get(terrain_id, 0)
         if deficit <= 0:
@@ -434,14 +516,10 @@ func ensure_free_terrain_hexes(tile_data: Array, terrain_counts: Dictionary,
                 min_row, max_row, min_col, max_col, free_count, terrain_counts)
         free_count[terrain_id] += converted
 
-# Конвертирует СВОБОДНЫЕ гексы других типов в terrain_id рядом с уже
-# существующим кластером этого типа. Возвращает количество конвертированных.
 func _convert_free_terrain_near_cluster(tile_data: Array, terrain_id: String, deficit: int,
         min_row: int, max_row: int, min_col: int, max_col: int,
         free_count: Dictionary, terrain_counts: Dictionary) -> int:
     var converted = 0
-
-    # Кластер = существующие свободные гексы целевого типа внутри границ.
     var cluster: Array = []
     var visited := {}
     for r in range(min_row, max_row + 1):
@@ -453,8 +531,6 @@ func _convert_free_terrain_near_cluster(tile_data: Array, terrain_id: String, de
                 cluster.append({"row": r, "col": c})
                 visited["%d_%d" % [r, c]] = true
 
-    # Собираем кандидатов-доноров: СВОБОДНЫЕ гексы других типов с расстоянием
-    # от кластера (волновой обход BFS наружу).
     var candidates: Array = []
     var frontier = cluster.duplicate()
     var distance = 0
@@ -471,7 +547,6 @@ func _convert_free_terrain_near_cluster(tile_data: Array, terrain_id: String, de
                 if visited.has(key):
                     continue
                 visited[key] = true
-                # Пропускаем гексы с ресурсом — их конвертировать НЕЛЬЗЯ.
                 if tile_data[n.row][n.col].get("resource", null) != null:
                     continue
                 var n_terrain = tile_data[n.row][n.col].get("terrain", "plain")
@@ -481,13 +556,6 @@ func _convert_free_terrain_near_cluster(tile_data: Array, terrain_id: String, de
                     candidates.append({"row": n.row, "col": n.col, "terrain": n_terrain, "dist": distance})
         frontier = next_frontier
 
-    # Если свободных гексов целевого типа нет вовсе — берём любой свободный гекс
-    # как «зародыш» кластера (первый гекс ставится в любом свободном месте,
-    # остальные уже будут рядом с ним). Для зародыша разрешаем взять гекс
-    # у донора, у которого осталось ровно FREE_TERRAIN_HEXES (последний
-    # свободный гекс у донора забирать нельзя, но "ровно 2" можно — это
-    # не лишает донорский тип всех ресурсов, а лишь переносит свободное
-    # место к дефицитному типу).
     if cluster.size() == 0 and candidates.size() == 0:
         for r in range(min_row, max_row + 1):
             for c in range(min_col, max_col + 1):
@@ -497,7 +565,6 @@ func _convert_free_terrain_near_cluster(tile_data: Array, terrain_id: String, de
                     candidates.append({"row": r, "col": c,
                             "terrain": tile_data[r][c].get("terrain", "plain"), "dist": 0})
 
-    # Сортировка: (1) ближе к существующему кластеру, (2) избыточные типы первыми.
     candidates.sort_custom(func(a, b):
         var a_over = free_count.get(a.terrain, 0) > OVER_REP_THRESHOLD
         var b_over = free_count.get(b.terrain, 0) > OVER_REP_THRESHOLD
@@ -507,25 +574,17 @@ func _convert_free_terrain_near_cluster(tile_data: Array, terrain_id: String, de
             return a_over and not b_over
         return a.terrain < b.terrain)
 
-    for hex in candidates:
+    for cand in candidates:
         if converted >= deficit:
             break
-        var old_terrain = hex.terrain
-        var row = hex.row
-        var col = hex.col
+        var old_terrain = cand.terrain
+        var row = cand.row
+        var col = cand.col
         var tile = tile_data[row][col]
-        # Гекс мог быть изменён ранее другим дефицитным типом.
         if tile.get("terrain", "plain") != old_terrain:
             continue
-        # Конвертируем ТОЛЬКО свободные гексы (ресурс не трогаем).
         if tile.get("resource", null) != null:
             continue
-        # Нельзя забирать свободный гекс у типа, у которого и так меньше
-        # FREE_TERRAIN_HEXES — иначе просто перенесём софт-лок на другой тип.
-        # Исключение: если у целевого типа вообще нет свободных гексов
-        # (cluster.size()==0), разрешаем взять «зародыш» даже у донора
-        # с ровно FREE_TERRAIN_HEXES, т.к. иначе дефицитный тип останется
-        # заблокированным навсегда.
         var donor_min = FREE_TERRAIN_HEXES
         if cluster.size() == 0:
             donor_min = FREE_TERRAIN_HEXES - 1
