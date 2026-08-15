@@ -717,6 +717,11 @@ func update_tooltip_text(row: int, col: int):
 
     var text = "Местность: %s\nРесурс: %s" % [terrain_with_cover, res_name]
 
+    # Описание типа местности (если задано) — показываем и в обычном тултипе.
+    var terrain_desc = terrain_data.get("description", "")
+    if terrain_desc != "":
+        text += "\n%s" % terrain_desc
+
     # Качество ресурса становится видно после постройки улучшения.
     var tile_quality = tile.get("quality", "")
     if tile_quality != "" and tile.improvement != null:
