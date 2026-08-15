@@ -796,14 +796,13 @@ func _on_arrows_draw():
             # Связанные стрелки подсвечиваем голубым.
             var color: Color = color_hover
 
-            # Зигзаг: горизонталь от родителя, вертикаль в середине, горизонталь к ребёнку.
-            var mid_x: float = (parent_right.x + child_left.x) * 0.5
-            var points := PackedVector2Array([
-                parent_right,
-                Vector2(mid_x, parent_right.y),
-                Vector2(mid_x, child_left.y),
-                child_left,
-            ])
+            # Путь стрелки: для соседних колонок — простой зигзаг,
+            # для дальних — через свободный Y-коридор, чтобы не рисовать
+            # поверх кнопок промежуточных колонок.
+            var points := _build_arrow_path(
+                parent_right, child_left,
+                parent_entry["column"], child_entry["column"]
+            )
             _arrows_layer.draw_polyline(points, color, line_width, true)
             _draw_arrow_head(child_left, Vector2(-1, 0), color, line_width)
 
@@ -816,6 +815,107 @@ func _draw_arrow_head(pos: Vector2, dir: Vector2, color: Color, line_width: floa
     var p2: Vector2 = base - perp
     var points := PackedVector2Array([pos, p1, p2])
     _arrows_layer.draw_colored_polygon(points, color)
+
+func _column_gap_x(c: int) -> float:
+    # X-координата середины зазора между колонкой c и c+1 (в координатах _inner).
+    # Зазор пуст — вертикальные сегменты стрелок проводятся именно здесь,
+    # чтобы не пересекать кнопки соседних колонок.
+    return COL_PADDING + c * (BUTTON_WIDTH + COL_GAP) + BUTTON_WIDTH + COL_GAP * 0.5
+
+func _find_free_y_between(parent_col: int, child_col: int, target_y: float) -> float:
+    # Ищет свободный Y-уровень, на котором во ВСЕХ промежуточных колонках
+    # (parent_col+1 .. child_col-1) нет кнопок. Возвращает Y, ближайший к
+    # target_y, или -1, если свободного уровня не существует.
+    #
+    # Горизонтальный сегмент стрелки, идущий от колонки parent_col к child_col,
+    # физически пересекает промежуточные колонки. Чтобы не рисовать поверх
+    # кнопок, он должен пройти на Y, свободном от кнопок во всех этих колонках.
+    var occupied: Array = [] # [y_start, y_end] занятых интервалов
+    for c in range(parent_col + 1, child_col):
+        var col: Control = _columns[c]
+        for tech_id in _tech_nodes:
+            var entry = _tech_nodes[tech_id]
+            if entry["column"] != c:
+                continue
+            var btn: Button = entry["button"]
+            var y: float = col.position.y + btn.position.y
+            occupied.append([y, y + BUTTON_HEIGHT])
+    if occupied.is_empty():
+        # Нет промежуточных колонок — любой Y свободен.
+        return target_y
+
+    # Сортируем по y_start.
+    occupied.sort()
+
+    # Запас на толщину линии (2px) + небольшой отступ, чтобы линия не
+    # касалась кнопок вплотную.
+    var margin: float = 4.0
+    var best_y: float = -1.0
+    var best_dist: float = INF
+    var cursor: float = 0.0 # начало текущего свободного промежутка
+
+    for interval in occupied:
+        var y_start: float = interval[0]
+        var y_end: float = interval[1]
+        if y_start - cursor > margin * 2.0:
+            # Свободный промежуток [cursor, y_start] достаточно широк.
+            var free_y: float = (cursor + y_start) * 0.5
+            var dist: float = absf(free_y - target_y)
+            if dist < best_dist:
+                best_dist = dist
+                best_y = free_y
+        cursor = max(cursor, y_end)
+
+    # Промежуток после последнего занятого интервала — до конца дерева.
+    if _inner.size.y - cursor > margin * 2.0:
+        var free_y: float = (cursor + _inner.size.y) * 0.5
+        var dist: float = absf(free_y - target_y)
+        if dist < best_dist:
+            best_y = free_y
+
+    return best_y
+
+func _build_arrow_path(parent_right: Vector2, child_left: Vector2, parent_col: int, child_col: int) -> PackedVector2Array:
+    # Строит ломаную линию стрелки от правого края родителя до левого края ребёнка.
+    #
+    # Для соседних колонок (child_col - parent_col == 1) — простой зигзаг:
+    # вертикальный сегмент лежит в пустом зазоре между колонками и не
+    # пересекает кнопки.
+    #
+    # Для дальних колонок (child_col - parent_col > 1) — путь через свободный
+    # Y-коридор: вертикальные сегменты в зазорах между колонками, горизонтальный
+    # сегмент на Y, свободном от кнопок во всех промежуточных колонках.
+    if child_col - parent_col <= 1:
+        var mid_x: float = (parent_right.x + child_left.x) * 0.5
+        return PackedVector2Array([
+            parent_right,
+            Vector2(mid_x, parent_right.y),
+            Vector2(mid_x, child_left.y),
+            child_left,
+        ])
+
+    var target_y: float = (parent_right.y + child_left.y) * 0.5
+    var free_y: float = _find_free_y_between(parent_col, child_col, target_y)
+    if free_y < 0.0:
+        # Свободного коридора нет — fallback на простой зигзаг.
+        var mid_x: float = (parent_right.x + child_left.x) * 0.5
+        return PackedVector2Array([
+            parent_right,
+            Vector2(mid_x, parent_right.y),
+            Vector2(mid_x, child_left.y),
+            child_left,
+        ])
+
+    var gap1_x: float = _column_gap_x(parent_col)
+    var gap2_x: float = _column_gap_x(child_col - 1)
+    return PackedVector2Array([
+        parent_right,
+        Vector2(gap1_x, parent_right.y),
+        Vector2(gap1_x, free_y),
+        Vector2(gap2_x, free_y),
+        Vector2(gap2_x, child_left.y),
+        child_left,
+    ])
 
 func _process(delta: float) -> void:
     # Плавная интерполяция прогресс-бара исследования. Без неё бар
