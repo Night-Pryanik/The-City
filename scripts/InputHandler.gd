@@ -370,4 +370,21 @@ func _pixel_to_hex(mx: float, my: float):
             var verts = HexUtils.hex_vertices(center.x, center.y, radius)
             if HexUtils.point_in_polygon(mx, my, verts):
                 return {"row": row, "col": col}
+
+    # Уникальная местность (например, содовое озеро) за пределами Региона:
+    # такие гексы отрисовываются отдельно (см. map_renderer._draw_unique_terrain_hex),
+    # поэтому проверяем их из списка unique_terrain_hexes. Гексы внутри Региона
+    # уже обработаны циклом выше — пропускаем их, чтобы не проверять дважды.
+    for hex_data in main_map.unique_terrain_hexes:
+        var row = hex_data.row
+        var col = hex_data.col
+        if row >= main_map.region_start_row and row <= main_map.region_end_row \
+                and col >= main_map.region_start_col and col <= main_map.region_end_col:
+            continue
+        var center = HexUtils.hex_center(row, col, radius)
+        center.x += main_map.offset_x + main_map.scroll_offset.x
+        center.y += main_map.offset_y + main_map.scroll_offset.y
+        var verts = HexUtils.hex_vertices(center.x, center.y, radius)
+        if HexUtils.point_in_polygon(mx, my, verts):
+            return {"row": row, "col": col}
     return null

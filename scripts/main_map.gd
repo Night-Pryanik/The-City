@@ -212,6 +212,10 @@ func _ready():
         map_renderer.initialize(tile_data, self)
 
     _load_settings()
+
+    tooltip_text_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    tooltip_text_label.custom_minimum_size = Vector2(300, 0)
+
     add_child(settings_menu)
     settings_menu.hide()
 
@@ -692,6 +696,15 @@ func update_tooltip_text(row: int, col: int):
     if cover_name_lower != "":
         terrain_with_cover = "%s, %s" % [terrain_name, cover_name_lower]
 
+    # Уникальная местность (например, содовое озеро) в неисследованной области:
+    # показываем сокращённый тултип только с описанием. Это работает и для
+    # гексов за пределами Региона (см. InputHandler._pixel_to_hex).
+    var terrain_data = GameData.terrains.get(tile.terrain, {})
+    if terrain_data.get("unique", false) and not is_revealed:
+        var desc = terrain_data.get("description", "")
+        tooltip_text_label.text = desc if desc != "" else terrain_name
+        return
+
     # Регион ещё не разведан — не раскрываем информацию о ресурсе.
     # Показываем «неизвестно» на ВСЕХ неразведанных гексах, чтобы игрок
     # не мог заранее определить, где находятся скрытые ресурсы.
@@ -921,6 +934,12 @@ func _add_extended_production_info(row: int, col: int):
 # есть бонусы производства ИЛИ можно построить улучшение (тогда показываем расчёт труда).
 func has_extended_tooltip_info(row: int, col: int) -> bool:
     var tile = tile_data[row][col]
+
+    # Неисследованные гексы (включая уникальную местность за пределами Региона)
+    # не показывают расширенный тултип — только обычный/сокращённый.
+    var is_revealed = tile.get("in_influence", false) or tile.get("is_explored", false)
+    if not is_revealed:
+        return false
 
     # Бонусы производства (улучшение построено и работает)
     if tile.improvement != null and tile.resource != null and worker_manager.has_worker(row, col):
