@@ -91,6 +91,7 @@ var extended_tooltip_delay: float = 1.0
 @onready var settings_menu = preload("res://scenes/settings_menu.tscn").instantiate()
 @onready var input_handler = $InputHandler
 @onready var debug_manager = $DebugManager
+var map_tooltip: MapTooltip
 
 var tech_popup: Control
 var research_hbox: HBoxContainer
@@ -221,6 +222,9 @@ func _ready():
 
     # Инициализация InputHandler
     input_handler.initialize(self)
+
+    map_tooltip = MapTooltip.new(tooltip_text_label, tooltip_products_container, map_renderer, worker_manager)
+
     input_handler.set_tooltip_delay(tooltip_delay)
     input_handler.set_extended_tooltip_delay(extended_tooltip_delay)
 
@@ -520,332 +524,20 @@ func _calc_offsets():
     offset_y = offsets.y
 
 func update_tooltip_text(row: int, col: int):
-    # Эта функция остаётся здесь, потому что она используется из InputHandler
-    for child in tooltip_products_container.get_children():
-        child.queue_free()
-
-    var tile = tile_data[row][col]
-    var terrain_name = GameData.terrains.get(tile.terrain, {}).get("name", tile.terrain)
-    var cover_id = tile.get("cover", "none")
-
-    # Ресурсы вне Кольца Влияния скрыты, пока область не разведана.
-    var is_revealed = tile.get("in_influence", false) or tile.get("is_explored", false)
-
-    var res_id = tile.resource
-    var res_name = "нет"
-    if res_id != null:
-        res_name = GameData.raw_resources.get(res_id, {}).get("name", res_id)
-
-    # Формируем строку «Местность»: если на гексе есть лес, добавляем его
-    # через запятую (например, «равнина, лес»).
-    var cover_name_lower = ""
-    if cover_id != "none":
-        cover_name_lower = "Лес".to_lower()
-    var terrain_with_cover = terrain_name
-    if cover_name_lower != "":
-        terrain_with_cover = "%s, %s" % [terrain_name, cover_name_lower]
-
-    # Уникальная местность (например, содовое озеро) в неисследованной области:
-    # показываем сокращённый тултип только с описанием. Это работает и для
-    # гексов за пределами Региона (см. InputHandler._pixel_to_hex).
-    var terrain_data = GameData.terrains.get(tile.terrain, {})
-    if terrain_data.get("unique", false) and not is_revealed:
-        var desc = terrain_data.get("description", "")
-        tooltip_text_label.text = desc if desc != "" else terrain_name
-        return
-
-    # Регион ещё не разведан — не раскрываем информацию о ресурсе.
-    # Показываем «неизвестно» на ВСЕХ неразведанных гексах, чтобы игрок
-    # не мог заранее определить, где находятся скрытые ресурсы.
-    if not is_revealed:
-        var unknown_text = "Местность: %s\nРесурс: неизвестно (проведите разведку)" % terrain_with_cover
-        tooltip_text_label.text = unknown_text
-        return
-
-    var imp_name = GameData.improvements.get(tile.improvement, {}).get("name", "нет") if tile.improvement != null else "нет"
-
-    var text = "Местность: %s\nРесурс: %s" % [terrain_with_cover, res_name]
-
-    # Описание типа местности (если задано) — показываем и в обычном тултипе.
-    var terrain_desc = terrain_data.get("description", "")
-    if terrain_desc != "":
-        text += "\n%s" % terrain_desc
-
-    # Качество ресурса становится видно после постройки улучшения.
-    var tile_quality = tile.get("quality", "")
-    if tile_quality != "" and tile.improvement != null:
-        var q_stars = GameData.get_quality_stars(tile_quality)
-        var q_name = GameData.get_quality_name(tile_quality)
-        text += "\nКачество: %s (%s)" % [q_stars, q_name]
-
-    var imp_status = ""
-    if tile.improvement != null:
-        var has_worker = worker_manager.has_worker(row, col)
-        if not has_worker:
-            imp_status = " (неактивно: нет рабочего)"
-        else:
-            imp_status = " (работает)"
-            if res_id != null:
-                var res_data = GameData.raw_resources.get(res_id, {})
-                if res_data.has("produces"):
-                    _add_production_info(row, col, res_id, "  Производит:")
-    else:
-        if res_id != null:
-            var res_data = GameData.raw_resources.get(res_id, {})
-            if res_data.has("improved_by") and res_data.has("produces"):
-                var improvement_id = res_data["improved_by"]
-                var imp_data = GameData.improvements.get(improvement_id, {})
-                var imp_name_display = imp_data.get("name", improvement_id)
-                _add_production_info(row, col, res_id, "  При постройке %s будет давать:" % imp_name_display)
-        imp_status = " (не построено)"
-
-    if res_id != null:
-        var res_data = GameData.raw_resources.get(res_id, {})
-        var feed_consumption = res_data.get("feed_consumption", 0)
-        if feed_consumption > 0:
-            text += "\nПотребляет корма: %d за цикл" % feed_consumption
-        var time_to_mature = res_data.get("time_to_mature", 0)
-        if time_to_mature > 0:
-            text += "\nВремя заполнения: %.0f сек" % time_to_mature
-
-    text += "\nУлучшение: %s%s" % [imp_name, imp_status]
-    if tile.improvement == "farm" and _is_hex_irrigated(row, col):
-        text += "\nДоступ к пресной воде"
-
-    # Если улучшение ещё не построено и его можно возвести на этом гексе —
-    # показываем итоговую стоимость труда (финальную цифру).
-    if tile.improvement == null:
-        var buildable_imp = _get_buildable_improvement(row, col)
-        if buildable_imp != "":
-            var cost_data = get_improvement_work_cost(buildable_imp, row, col)
-            text += "\nТруд на постройку: %d" % cost_data["cost"]
-
-    tooltip_text_label.text = text
+    map_tooltip.update_tooltip_text(row, col, tile_data)
 
 # Возвращает id улучшения, которое можно построить на гексе (row, col),
 # или пустую строку, если постройка невозможна.
 func _get_buildable_improvement(row: int, col: int) -> String:
     return MapHelpers.get_buildable_improvement(tile_data[row][col])
 
-func _add_production_info(row: int, col: int, res_id: String, prefix: String):
-    if res_id == null or res_id == "":
-        return
-    var res_data = GameData.raw_resources.get(res_id, {})
-    if not res_data.has("produces"):
-        return
-
-    var tile = tile_data[row][col]
-    var has_worker = worker_manager.has_worker(row, col)
-
-    # Определяем бонусы (универсальная система)
-    var bonus_multiplier = 1.0
-    if tile.improvement != null and has_worker:
-        bonus_multiplier = CityData.get_improvement_production_multiplier(tile.improvement, _is_hex_irrigated(row, col))
-
-    # Фильтруем и вычисляем продукты с бонусами
-    var final_amounts = {}
-    for prod_id in res_data["produces"]:
-        if not CityData.is_product_available(prod_id):
-            continue
-        var base_amount = float(res_data["produces"][prod_id])
-        var final_amount = ceili(base_amount * bonus_multiplier)
-        final_amounts[prod_id] = {"base": base_amount, "final": final_amount}
-
-    if final_amounts.is_empty():
-        return
-
-    var label = Label.new()
-    label.text = prefix
-    label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
-    tooltip_products_container.add_child(label)
-
-    for prod_id in final_amounts:
-        var amount = final_amounts[prod_id].final
-        var prod_name = GameData.products.get(prod_id, {}).get("name", prod_id)
-        var icon_path = ""
-        var prod_data = GameData.products.get(prod_id, {})
-        if prod_data.has("icon"):
-            var icon_name = prod_data["icon"]
-            icon_path = map_renderer.get_icon_path(icon_name)
-
-        var hbox = HBoxContainer.new()
-        if icon_path != "":
-            var tex_rect = TextureRect.new()
-            tex_rect.texture = load(icon_path)
-            tex_rect.custom_minimum_size = Vector2(20, 20)
-            tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-            tex_rect.stretch_mode = TextureRect.STRETCH_SCALE
-            hbox.add_child(tex_rect)
-        var label_item = Label.new()
-        # Обычный тултип: показываем только итоговое округлённое значение
-        label_item.text = "%s: %d" % [prod_name, amount]
-        label_item.add_theme_color_override("font_color", Color.WHITE)
-        hbox.add_child(label_item)
-        tooltip_products_container.add_child(hbox)
-
-func _add_extended_production_info(row: int, col: int):
-    var tile = tile_data[row][col]
-    if tile.resource == null:
-        return
-    var res_data = GameData.raw_resources.get(tile.resource, {})
-    if not res_data.has("produces"):
-        return
-
-    # Определяем активные модификаторы (универсальная система).
-    # Бонусы применяются только если улучшение построено и есть рабочий.
-    var modifiers = []
-    var bonus_multiplier = 1.0
-    if tile.improvement != null and worker_manager.has_worker(row, col):
-        modifiers = CityData.get_improvement_production_modifiers(tile.improvement, _is_hex_irrigated(row, col))
-        bonus_multiplier = CityData.get_improvement_production_multiplier(tile.improvement, _is_hex_irrigated(row, col))
-
-    # Фильтруем продукты: оставляем только доступные
-    var available_products = {}
-    for prod_id in res_data["produces"]:
-        if CityData.is_product_available(prod_id):
-            available_products[prod_id] = res_data["produces"][prod_id]
-
-    if available_products.is_empty():
-        return
-
-    var header_label = Label.new()
-    if tile.improvement != null:
-        header_label.text = "Производит:"
-    else:
-        var improvement_id = res_data.get("improved_by", "")
-        var imp_name_display = GameData.improvements.get(improvement_id, {}).get("name", improvement_id)
-        header_label.text = "При постройке %s будет давать:" % imp_name_display
-    header_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
-    tooltip_products_container.add_child(header_label)
-
-    var base_amount = 0.0
-    var final_amount = 0
-    for prod_id in available_products:
-        base_amount = float(available_products[prod_id])
-        final_amount = ceili(base_amount * bonus_multiplier)
-        var prod_name = GameData.products.get(prod_id, {}).get("name", prod_id)
-        var icon_path = ""
-        var prod_data = GameData.products.get(prod_id, {})
-        if prod_data.has("icon"):
-            var icon_name = prod_data["icon"]
-            icon_path = map_renderer.get_icon_path(icon_name)
-
-        var hbox = HBoxContainer.new()
-        if icon_path != "":
-            var tex_rect = TextureRect.new()
-            tex_rect.texture = load(icon_path)
-            tex_rect.custom_minimum_size = Vector2(20, 20)
-            tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-            tex_rect.stretch_mode = TextureRect.STRETCH_SCALE
-            hbox.add_child(tex_rect)
-        var label_item = Label.new()
-        label_item.text = "%s: %d" % [prod_name, final_amount]
-        label_item.add_theme_color_override("font_color", Color.WHITE)
-        hbox.add_child(label_item)
-        tooltip_products_container.add_child(hbox)
-
-    # Ниже — список всех активных модификаторов и расчёт
-    if modifiers.size() > 0:
-        var base_label = Label.new()
-        base_label.text = "  База: %d" % int(base_amount)
-        base_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
-        tooltip_products_container.add_child(base_label)
-        for mod in modifiers:
-            var mod_label = Label.new()
-            mod_label.text = "  %s" % mod.get("label", "")
-            mod_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
-            tooltip_products_container.add_child(mod_label)
-        var total_label = Label.new()
-        total_label.text = "  Итого: %.1f → %d" % [base_amount * bonus_multiplier, final_amount]
-        total_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
-        tooltip_products_container.add_child(total_label)
-
 # Возвращает true, если для гекса нужно показывать расширенный тултип:
 # есть бонусы производства ИЛИ можно построить улучшение (тогда показываем расчёт труда).
 func has_extended_tooltip_info(row: int, col: int) -> bool:
-    var tile = tile_data[row][col]
-
-    # Неисследованные гексы (включая уникальную местность за пределами Региона)
-    # не показывают расширенный тултип — только обычный/сокращённый.
-    var is_revealed = tile.get("in_influence", false) or tile.get("is_explored", false)
-    if not is_revealed:
-        return false
-
-    # Бонусы производства (улучшение построено и работает)
-    if tile.improvement != null and tile.resource != null and worker_manager.has_worker(row, col):
-        var res_data = GameData.raw_resources.get(tile.resource, {})
-        if res_data.has("produces"):
-            var bonus_multiplier = CityData.get_improvement_production_multiplier(tile.improvement, _is_hex_irrigated(row, col))
-            if bonus_multiplier > 1.0:
-                return true
-
-    # Можно построить улучшение — показываем расчёт труда
-    if tile.improvement == null:
-        if _get_buildable_improvement(row, col) != "":
-            return true
-
-    return false
+    return map_tooltip.has_extended_tooltip_info(row, col, tile_data)
 
 func update_extended_tooltip(row: int, col: int):
-    # Очищаем контейнер и показываем расширенную информацию с расчётом
-    for child in tooltip_products_container.get_children():
-        child.queue_free()
-
-    var tooltip_lines = tooltip_text_label.text.split("\n")
-    var filtered_lines = []
-    for line in tooltip_lines:
-        if not line.begins_with("Труд на постройку:"):
-            filtered_lines.append(line)
-    tooltip_text_label.text = "\n".join(filtered_lines)
-
-    var tile = tile_data[row][col]
-    var is_revealed = tile.get("in_influence", false) or tile.get("is_explored", false)
-    if not is_revealed:
-        return
-
-    # Расчёт стоимости труда для постройки улучшения (если его можно построить)
-    if tile.improvement == null:
-        var buildable_imp = _get_buildable_improvement(row, col)
-        if buildable_imp != "":
-            var cost_data = get_improvement_work_cost(buildable_imp, row, col)
-            var imp_name = GameData.improvements.get(buildable_imp, {}).get("name", buildable_imp)
-
-            var header = Label.new()
-            header.text = "Строительство: %d труда (%s)" % [cost_data["cost"], imp_name]
-            header.add_theme_color_override("font_color", Color(0.9, 0.9, 0.5))
-            tooltip_products_container.add_child(header)
-
-            var base_label = Label.new()
-            base_label.text = "  База: %d труда" % cost_data["base_cost"]
-            base_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
-            tooltip_products_container.add_child(base_label)
-
-            var terrain_label = Label.new()
-            # move_cost >= 999 означает «непроходимо» (озеро, содовое озеро) —
-            # показываем это словами вместо числа.
-            var move_cost_text = "непроходимо" if cost_data["move_cost"] >= 999.0 else str(int(cost_data["move_cost"]))
-            terrain_label.text = "  Местность: %s (стоимость передвижения: %s) ×%.2f" % [cost_data["terrain_name"], move_cost_text, cost_data["terrain_mult"]]
-            terrain_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
-            tooltip_products_container.add_child(terrain_label)
-
-            var dist_label = Label.new()
-            dist_label.text = "  Расстояние до города: %d → ×%.2f" % [cost_data["distance"], cost_data["distance_mult"]]
-            dist_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
-            tooltip_products_container.add_child(dist_label)
-
-            var total_label = Label.new()
-            total_label.text = "  Итого: %d труда" % cost_data["cost"]
-            total_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
-            tooltip_products_container.add_child(total_label)
-
-    var res_id = tile.resource
-    if res_id == null:
-        return
-    var res_data = GameData.raw_resources.get(res_id, {})
-    if not res_data.has("produces"):
-        return
-
-    _add_extended_production_info(row, col)
+    map_tooltip.update_extended_tooltip(row, col, tile_data, city_row, city_col)
 
 func show_context_menu(row: int, col: int, click_pos: Vector2):
     var tile = tile_data[row][col]
