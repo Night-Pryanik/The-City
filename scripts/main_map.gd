@@ -996,7 +996,10 @@ func update_extended_tooltip(row: int, col: int):
             tooltip_products_container.add_child(base_label)
 
             var terrain_label = Label.new()
-            terrain_label.text = "  Местность: %s (стоимость передвижения: %d) ×%.2f" % [cost_data["terrain_name"], int(cost_data["move_cost"]), cost_data["terrain_mult"]]
+            # move_cost >= 999 означает «непроходимо» (озеро, содовое озеро) —
+            # показываем это словами вместо числа.
+            var move_cost_text = "непроходимо" if cost_data["move_cost"] >= 999.0 else str(int(cost_data["move_cost"]))
+            terrain_label.text = "  Местность: %s (стоимость передвижения: %s) ×%.2f" % [cost_data["terrain_name"], move_cost_text, cost_data["terrain_mult"]]
             terrain_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
             tooltip_products_container.add_child(terrain_label)
 
@@ -1749,7 +1752,15 @@ func get_improvement_work_cost(imp_id: String, row: int, col: int) -> Dictionary
     var move_cost = 1.0
     if GameData.terrains.has(terrain_id):
         move_cost = float(GameData.terrains[terrain_id].get("move_cost", 1))
+    # Множитель сложности строительства. Если у террейна явно задан
+    # work_cost_mult (например, у озёр с move_cost=999, где move_cost означает
+    # «непроходимо» для юнитов, а не сложность стройки), используем его.
+    # Иначе считаем по формуле на основе move_cost.
     var terrain_mult = 1.0 + (move_cost - 1.0) * 0.35
+    if GameData.terrains.has(terrain_id):
+        var work_cost_mult_override = GameData.terrains[terrain_id].get("work_cost_mult", -1.0)
+        if work_cost_mult_override >= 0.0:
+            terrain_mult = float(work_cost_mult_override)
 
     # Множитель от расстояния до города (в гексах).
     var distance = HexUtils.hex_distance(row, col, city_row, city_col)
