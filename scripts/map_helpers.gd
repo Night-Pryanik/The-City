@@ -55,3 +55,86 @@ static func get_improvement_work_cost(
 		"distance": distance,
 		"distance_mult": distance_mult
 	}
+
+## Проверяет, есть ли рядом с гексом (row, col) канал (improvement == "canal" или is_canal == true у соседей).
+static func is_hex_adjacent_to_canal(row: int, col: int, tile_data: Array, map_rows: int, map_cols: int) -> bool:
+	if row < 0 or row >= map_rows or col < 0 or col >= map_cols:
+		return false
+	var neighbors = HexUtils.get_neighbors_odd_r(row, col, map_rows, map_cols)
+	for n in neighbors:
+		if tile_data[n.row][n.col] == null:
+			continue
+		var tile = tile_data[n.row][n.col]
+		var imp_id = tile.improvement
+		if imp_id == "canal":
+			return true
+		var imp_data: Dictionary = GameData.improvements.get(imp_id, {})
+		if imp_data.get("is_canal", false):
+			return true
+	return false
+
+
+## Проверяет, орошен ли гекс (row, col): озеро, река, канал-сосед или цепочка ферм ведёт к воде (BFS, max 3 шага).
+static func is_hex_irrigated(row: int, col: int, tile_data: Array, map_rows: int, map_cols: int) -> bool:
+	if row < 0 or row >= map_rows or col < 0 or col >= map_cols:
+		return false
+	var tile = tile_data[row][col]
+	if tile == null:
+		return false
+
+	if tile.get("terrain", "plain") == "lake":
+		return true
+	if tile.get("river_edges", []).size() > 0:
+		return true
+	if is_hex_adjacent_to_canal(row, col, tile_data, map_rows, map_cols):
+		return true
+
+	var neighbors = HexUtils.get_neighbors_odd_r(row, col, map_rows, map_cols)
+	for n in neighbors:
+		var neighbor_tile = tile_data[n.row][n.col]
+		if neighbor_tile == null:
+			continue
+		if neighbor_tile.get("terrain", "plain") == "lake":
+			return true
+		if neighbor_tile.get("river_edges", []).size() > 0:
+			return true
+
+	if tile.improvement != "farm":
+		return false
+
+	var visited := {}
+	var queue = [ {"row": row, "col": col, "dist": 0}]
+	visited["%d_%d" % [row, col]] = true
+
+	while queue.size() > 0:
+		var item = queue.pop_front()
+		var crow = item.row
+		var ccol = item.col
+		var dist = item.dist
+		var current_tile = tile_data[crow][ccol]
+		if current_tile == null:
+			continue
+
+		if current_tile.get("terrain", "plain") == "lake":
+			return true
+		if current_tile.get("river_edges", []).size() > 0:
+			return true
+		if is_hex_adjacent_to_canal(crow, ccol, tile_data, map_rows, map_cols):
+			return true
+		if dist >= 3:
+			continue
+
+		var neighbors_local = HexUtils.get_neighbors_odd_r(crow, ccol, map_rows, map_cols)
+		for n in neighbors_local:
+			var key = "%d_%d" % [n.row, n.col]
+			if visited.has(key):
+				continue
+			var neighbor_tile = tile_data[n.row][n.col]
+			if neighbor_tile == null:
+				continue
+			if neighbor_tile.get("terrain", "plain") == "lake":
+				return true
+			if neighbor_tile.improvement == "farm":
+				visited[key] = true
+				queue.append({"row": n.row, "col": n.col, "dist": dist + 1})
+	return false
