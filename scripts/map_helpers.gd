@@ -330,3 +330,72 @@ static func calc_offsets(
 	var offset_x = (viewport_size.x - grid_width) / 2.0 - min_x
 	var offset_y = (viewport_size.y - grid_height) / 2.0 - min_y
 	return Vector2(offset_x, offset_y)
+
+## Гарантирует наличие хотя бы одного ресурса из food_plants в заданной области.
+## Если нет — добавляет принудительно на подходящий пустой гекс.
+static func ensure_food_plant(
+	tile_data: Array,
+	min_row: int, max_row: int,
+	min_col: int, max_col: int
+) -> void:
+	for row in range(min_row, max_row + 1):
+		for col in range(min_col, max_col + 1):
+			var res = tile_data[row][col]["resource"]
+			if res != null:
+				var res_data: Dictionary = GameData.raw_resources.get(res, {})
+				if res_data.get("group") == "food_plants":
+					return
+	var possible := []
+	for row in range(min_row, max_row + 1):
+		for col in range(min_col, max_col + 1):
+			if tile_data[row][col]["resource"] != null:
+				continue
+			var terrain: String = tile_data[row][col]["terrain"]
+			var cover: String = tile_data[row][col].get("cover", "none")
+			for res_id in GameData.raw_resources:
+				var res: Dictionary = GameData.raw_resources[res_id]
+				if res.get("group") != "food_plants":
+					continue
+				if not (terrain in res.get("allowed_terrain", []) and cover in res.get("allowed_cover", [])):
+					continue
+				var tech_required: String = res.get("tech_required", "")
+				if tech_required != "" and not CityData.is_tech_unlocked(tech_required):
+					continue
+				possible.append({"row": row, "col": col, "id": res_id})
+	if possible.size() > 0:
+		var chosen = possible[randi() % possible.size()]
+		tile_data[chosen.row][chosen.col]["resource"] = chosen.id
+		tile_data[chosen.row][chosen.col]["quality"] = GameData.roll_quality()
+
+
+## Гарантирует наличие хотя бы одного ресурса заданной категории в Кольце Влияния.
+## Если нет — добавляет принудительно на подходящий пустой гекс.
+static func ensure_minimum_resource(
+	tile_data: Array,
+	category: String,
+	influence_start_row: int, influence_end_row: int,
+	influence_start_col: int, influence_end_col: int
+) -> void:
+	for row in range(influence_start_row, influence_end_row + 1):
+		for col in range(influence_start_col, influence_end_col + 1):
+			var res = tile_data[row][col]["resource"]
+			if res != null and GameData.raw_resources[res].get("category", "") == category:
+				return
+	var possible := []
+	for row in range(influence_start_row, influence_end_row + 1):
+		for col in range(influence_start_col, influence_end_col + 1):
+			if tile_data[row][col]["resource"] != null:
+				continue
+			var terrain_id: String = tile_data[row][col]["terrain"]
+			var cover_id: String = tile_data[row][col].get("cover", "none")
+			for res_id in GameData.raw_resources:
+				if GameData.raw_resources[res_id].get("category", "") != category:
+					continue
+				var rdata: Dictionary = GameData.raw_resources[res_id]
+				if terrain_id in rdata.get("allowed_terrain", []) and cover_id in rdata.get("allowed_cover", []):
+					possible.append({"row": row, "col": col, "id": res_id})
+					break
+	if possible.size() > 0:
+		var chosen = possible[randi() % possible.size()]
+		tile_data[chosen.row][chosen.col]["resource"] = chosen.id
+		tile_data[chosen.row][chosen.col]["quality"] = GameData.roll_quality()

@@ -480,31 +480,11 @@ func _is_hex_irrigated(row: int, col: int) -> bool:
     return MapHelpers.is_hex_irrigated(row, col, tile_data, map_rows, map_cols)
 
 func _ensure_minimum_resource(category: String):
-    for row in range(influence_start_row, influence_end_row + 1):
-        for col in range(influence_start_col, influence_end_col + 1):
-            var res = tile_data[row][col]["resource"]
-            if res != null and GameData.raw_resources[res].get("category", "") == category:
-                return
-    var possible = []
-    for row in range(influence_start_row, influence_end_row + 1):
-        for col in range(influence_start_col, influence_end_col + 1):
-            if tile_data[row][col]["resource"] != null:
-                continue
-            var terrain_id = tile_data[row][col]["terrain"]
-            var cover_id = tile_data[row][col].get("cover", "none")
-            for res_id in GameData.raw_resources:
-                if GameData.raw_resources[res_id].get("category", "") != category:
-                    continue
-                # Ресурсы, требующие технологию, не размещаются при генерации
-                # (они спавнятся после изучения технологии).
-                var rdata = GameData.raw_resources[res_id]
-                if terrain_id in rdata.get("allowed_terrain", []) and cover_id in rdata.get("allowed_cover", []):
-                    possible.append({"row": row, "col": col, "id": res_id})
-                    break
-    if possible.size() > 0:
-        var chosen = possible[randi() % possible.size()]
-        tile_data[chosen.row][chosen.col]["resource"] = chosen.id
-        tile_data[chosen.row][chosen.col]["quality"] = GameData.roll_quality()
+    MapHelpers.ensure_minimum_resource(
+        tile_data, category,
+        influence_start_row, influence_end_row,
+        influence_start_col, influence_end_col
+    )
 
 # Гарантирует наличие хотя бы одного ресурса из food_plants в стартовом Кольце.
 # Вызывается ТОЛЬКО один раз при старте новой игры (из _initialize_map).
@@ -512,38 +492,7 @@ func _ensure_minimum_resource(category: String):
 # поэтому food_plant гарантированно не появляется за его пределами
 # и не пересоздаётся после старта.
 func _ensure_food_plant(min_row: int, max_row: int, min_col: int, max_col: int):
-    # Проверяем, есть ли в Кольце Влияния хоть один ресурс из food_plants
-    for row in range(min_row, max_row + 1):
-        for col in range(min_col, max_col + 1):
-            var res = tile_data[row][col]["resource"]
-            if res != null:
-                var res_data = GameData.raw_resources.get(res, {})
-                if res_data.get("group") == "food_plants":
-                    return # уже есть
-    # Если нет — добавляем принудительно
-    var possible = []
-    for row in range(min_row, max_row + 1):
-        for col in range(min_col, max_col + 1):
-            if tile_data[row][col]["resource"] != null:
-                continue
-            var terrain = tile_data[row][col]["terrain"]
-            var cover = tile_data[row][col].get("cover", "none")
-            for res_id in GameData.raw_resources:
-                var res = GameData.raw_resources[res_id]
-                if res.get("group") != "food_plants":
-                    continue
-                if not (terrain in res.get("allowed_terrain", []) and cover in res.get("allowed_cover", [])):
-                    continue
-                # Не берём ресурсы, требующие НЕизученную технологию:
-                # они спавнятся только после её изучения.
-                var tech_required = res.get("tech_required", "")
-                if tech_required != "" and not CityData.is_tech_unlocked(tech_required):
-                    continue
-                possible.append({"row": row, "col": col, "id": res_id})
-    if possible.size() > 0:
-        var chosen = possible[randi() % possible.size()]
-        tile_data[chosen.row][chosen.col]["resource"] = chosen.id
-        tile_data[chosen.row][chosen.col]["quality"] = GameData.roll_quality()
+    MapHelpers.ensure_food_plant(tile_data, min_row, max_row, min_col, max_col)
 
 # Ищет на карте уже одомашненный экземпляр ресурса res_id (гекс с этим ресурсом
 # и построенным улучшением — ферма/пастбище) и возвращает его качество.
