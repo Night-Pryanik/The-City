@@ -1371,17 +1371,11 @@ func _on_building_build_completed(building_id: String, build_key: String):
     map_renderer.queue_redraw()
 
 func pixel_to_hex(mx: float, my: float):
-    # Эта функция используется InputHandler, поэтому оставляем её публичной
-    # Итерируем по ВИДИМОМУ окну (Кольцо + Регион), возвращаем АБСОЛЮТНЫЕ координаты.
-    for row in range(region_start_row, region_end_row + 1):
-        for col in range(region_start_col, region_end_col + 1):
-            var center = HexUtils.hex_center(row, col, HEX_RADIUS)
-            center.x += offset_x + scroll_offset.x
-            center.y += offset_y + scroll_offset.y
-            var verts = HexUtils.hex_vertices(center.x, center.y, HEX_RADIUS)
-            if HexUtils.point_in_polygon(mx, my, verts):
-                return {"row": row, "col": col}
-    return null
+    return MapHelpers.pixel_to_hex(mx, my,
+        region_start_row, region_end_row,
+        region_start_col, region_end_col,
+        offset_x, offset_y,
+        scroll_offset, HEX_RADIUS)
 
 func _setup_research_hud():
     # Создаём панель исследования: кнопка с иконкой технологии + прогресс-бар.

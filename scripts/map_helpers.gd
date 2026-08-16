@@ -197,3 +197,23 @@ static func ensure_city_valid_terrain(
 	var allowed_terrains: Array[String] = ["plain", "hill"]
 	if current_terrain not in allowed_terrains:
 		city_tile["terrain"] = "plain"
+
+## Хит-тест: какой гекс (row, col) находится под пиксельными координатами (mx, my).
+## Итерирует только видимое окно (Кольцо + Регион) для производительности.
+static func pixel_to_hex(
+	mx: float, my: float,
+	region_start_row: int, region_end_row: int,
+	region_start_col: int, region_end_col: int,
+	offset_x: float, offset_y: float,
+	scroll_offset: Vector2,
+	hex_radius: float
+):
+	for row in range(region_start_row, region_end_row + 1):
+		for col in range(region_start_col, region_end_col + 1):
+			var center = HexUtils.hex_center(row, col, hex_radius)
+			center.x += offset_x + scroll_offset.x
+			center.y += offset_y + scroll_offset.y
+			var verts = HexUtils.hex_vertices(center.x, center.y, hex_radius)
+			if HexUtils.point_in_polygon(mx, my, verts):
+				return {"row": row, "col": col}
+	return null
