@@ -43,7 +43,7 @@ var region_end_col: int = 0
 # Стартовые границы «Кольцо» и «Кольцо + Регион» на момент генерации карты.
 # Сохраняются ОДИН раз в _initialize_map и далее НЕ меняются — нужны для
 # гарантий спавна ресурсов, чтобы они работали по исходным, а не будущим
-# расширенным границам. Например, _ensure_minimum_resource("metals")
+# расширенным границам. Например, _ensure_minimum_resource({"category": "metals"})
 # опирается именно на эти поля, а не на текущие influence_* / region_*.
 var start_influence_start_row: int = 0
 var start_influence_end_row: int = 0
@@ -468,12 +468,18 @@ func _initialize_map():
                 if res != null and influence_resource_types.has(res):
                     tile_data[row][col]["resource"] = null
 
-    # --- Гарантия: в стартовой области «Кольцо + Регион» есть ≥1 металл ---
+    # --- Гарантии для стартовой области «Кольцо + Регион» ---
     # Используем стартовые границы (не текущие), чтобы при будущем
     # расширении в новую эпоху не срабатывало повторно. Сейчас в игре
     # единственный металл — железо; при добавлении новых функция выберет
-    # один из них случайно (см. ensure_minimum_resource).
-    _ensure_minimum_resource("metals")
+    # один из них случайно. Аналогично для остальных категорий ниже.
+    #
+    # Пищевое растение гарантируется отдельно (см. _ensure_food_plant выше)
+    # и остаётся ТОЛЬКО в стартовом Кольце — игрок должен иметь возможность
+    # сразу поставить ферму без разведки/покупки региона.
+    _ensure_minimum_resource({"category": "metals"})
+    _ensure_minimum_resource({"category": "animals", "group": "meat_animals"})
+    _ensure_minimum_resource({"category": "minerals", "subgroup": "construction_materials"})
 
     # --- Пост-обработка: гарантируем достаточное количество СВОБОДНЫХ гексов ---
     # После размещения всех ресурсов у каждого типа местности в Кольце Влияния
@@ -528,13 +534,17 @@ func _is_hex_adjacent_to_canal(row: int, col: int) -> bool:
 func _is_hex_irrigated(row: int, col: int) -> bool:
     return MapHelpers.is_hex_irrigated(row, col, tile_data, map_rows, map_cols)
 
-func _ensure_minimum_resource(category: String):
+func _ensure_minimum_resource(filter: Dictionary):
     # Гарантия работает по СТАРТОВЫМ границам «Кольцо + Регион», а не по
     # текущим (которые могут быть расширены переходом в новую эпоху).
     # Используется при инициализации карты, чтобы в стартовой области
-    # всегда был хотя бы один ресурс указанной категории (например, металл).
+    # всегда был хотя бы один ресурс, удовлетворяющий фильтру.
+    # Примеры фильтров:
+    #   { "category": "metals" }                                          — любой металл
+    #   { "category": "animals", "group": "meat_animals" }                — мясное животное
+    #   { "category": "minerals", "subgroup": "construction_materials" }  — стройматериал
     MapHelpers.ensure_minimum_resource(
-        tile_data, category,
+        tile_data, filter,
         start_influence_start_row, start_influence_end_row,
         start_influence_start_col, start_influence_end_col,
         city_row, city_col

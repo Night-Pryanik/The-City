@@ -464,27 +464,55 @@ static func ensure_food_plant(
 		tile_data[chosen.row][chosen.col]["quality"] = GameData.roll_quality()
 
 
-## Гарантирует наличие хотя бы одного ресурса заданной категории в указанной
-## прямоугольной области (например, стартовое «Кольцо + Регион»).
+## Гарантирует наличие хотя бы одного ресурса, удовлетворяющего фильтру,
+## в указанной прямоугольной области (например, стартовое «Кольцо + Регион»).
+##
+## `filter` — словарь с полями для матча по данным ресурса (все совпадения
+## проверяются по равенству). Обязательно поле `category`. Поля `group`
+## и `subgroup` — необязательные дополнительные фильтры для подробных
+## категорий (бонусы за разнообразие). Примеры:
+##
+##   { "category": "metals" }                                          — любой металл
+##   { "category": "animals", "group": "meat_animals" }                — мясные животные
+##   { "category": "minerals", "subgroup": "construction_materials" }  — стройматериалы
+##   { "category": "plants", "group": "food_plants" }                 — пищевые растения
 ##
 ## Поведение:
-##   1. Если в области уже есть хотя бы один ресурс этой категории — выходим.
-##   2. Иначе выбираем **один** случайный id из доступных в категории
-##      (не каждый тип, а один из них — чтобы добавление новых металлов/ископаемых
-##      не превращалось в обязательный спавн всех сразу).
+##   1. Если в области уже есть ресурс, удовлетворяющий фильтру — выходим.
+##   2. Иначе выбираем **один** случайный id из доступных, удовлетворяющих
+##      фильтру и spawn_conditions (шанс и геометрия). Не каждый тип сразу —
+##      иначе добавление новых металлов/ископаемых в будущем превратилось бы
+##      в обязательный спавн всех подходящих сразу.
 ##   3. Спавним его на подходящий пустой гекс с учётом allowed_terrain,
-##      allowed_cover и spawn_conditions (как chance, так и геометрических).
+##      allowed_cover и геометрических spawn_conditions.
 ##
 ## Параметры `min_row..max_row` / `min_col..max_col` — инклюзивные границы.
 ## `city_row` / `city_col` — координаты города (на нём ресурс не ставим).
 static func ensure_minimum_resource(
 	tile_data: Array,
-	category: String,
+	filter: Dictionary,
 	min_row: int, max_row: int,
 	min_col: int, max_col: int,
 	city_row: int = -1, city_col: int = -1
 ) -> void:
-	# 1. Уже есть ресурс этой категории в области — ничего не делаем.
+	var required_category: String = filter.get("category", "")
+	if required_category == "":
+		# Без категории фильтр бессмысленен — выходим без действий.
+		return
+	var required_group: String = filter.get("group", "")
+	var required_subgroup: String = filter.get("subgroup", "")
+
+	# Helper: данные ресурса подходят под фильтр?
+	var matches_filter = func(rdata: Dictionary) -> bool:
+		if rdata.get("category", "") != required_category:
+			return false
+		if required_group != "" and rdata.get("group", "") != required_group:
+			return false
+		if required_subgroup != "" and rdata.get("subgroup", "") != required_subgroup:
+			return false
+		return true
+
+	# 1. Уже есть подходящий ресурс в области — ничего не делаем.
 	for row in range(min_row, max_row + 1):
 		for col in range(min_col, max_col + 1):
 			if row < 0 or row >= tile_data.size():
@@ -492,15 +520,16 @@ static func ensure_minimum_resource(
 			if col < 0 or col >= tile_data[row].size():
 				continue
 			var res = tile_data[row][col].get("resource", null)
-			if res != null and GameData.raw_resources.get(res, {}).get("category", "") == category:
-				return
+			if res != null and GameData.raw_resources.has(res):
+				if matches_filter.call(GameData.raw_resources[res]):
+					return
 
-	# 2. Собираем id ресурсов этой категории, доступных для спавна.
+	# 2. Собираем id ресурсов, удовлетворяющих фильтру и spawn_conditions.
 	#    Доступность = шанс в spawn_conditions выполнился.
 	var candidates := []
 	for res_id in GameData.raw_resources:
 		var rdata: Dictionary = GameData.raw_resources[res_id]
-		if rdata.get("category", "") != category:
+		if not matches_filter.call(rdata):
 			continue
 		if not HexUtils.spawn_conditions_met(rdata):
 			continue
