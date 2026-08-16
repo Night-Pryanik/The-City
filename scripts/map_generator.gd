@@ -122,6 +122,7 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
                 if tile_data[row][col]["terrain"] == "lake":
                     continue
                 tile_data[row][col]["terrain"] = "lake"
+                tile_data[row][col]["cover"] = "none"
                 lake_tiles += 1
             if lake_tiles >= 3:
                 break
@@ -241,6 +242,7 @@ func place_unique_terrain(tile_data: Array, rows: int, cols: int, city_row: int,
         var tile = tile_data[hex.row][hex.col]
         if tile.get("improvement", null) == null:
             tile["terrain"] = terrain_type
+            tile["cover"] = _roll_cover(terrain_type)
 
     print("Уникальный тип местности %s размещён: %d гексов" % [terrain_type, cluster.size()])
 
@@ -591,6 +593,7 @@ func _convert_free_terrain_near_cluster(tile_data: Array, terrain_id: String, de
         if free_count.get(old_terrain, 0) <= donor_min:
             continue
         tile["terrain"] = terrain_id
+        tile["cover"] = _roll_cover(terrain_id)
         if free_count.has(old_terrain):
             free_count[old_terrain] = max(0, free_count[old_terrain] - 1)
         free_count[terrain_id] = free_count.get(terrain_id, 0) + 1
