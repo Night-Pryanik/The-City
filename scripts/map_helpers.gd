@@ -138,3 +138,62 @@ static func is_hex_irrigated(row: int, col: int, tile_data: Array, map_rows: int
 				visited[key] = true
 				queue.append({"row": n.row, "col": n.col, "dist": dist + 1})
 	return false
+
+## Возвращает имя иконки ландшафта для гекса (row, col) на основе его terrain.
+## Использует детерминированный RNG (seed = row * 1000 + col) для стабильности
+## между сохранениями/загрузками.
+static func get_terrain_icon(row: int, col: int, tile_data: Array) -> String:
+	var tile = tile_data[row][col]
+	var terrain_id: String = tile.get("terrain", "plain")
+	if not GameData.terrains.has(terrain_id):
+		return ""
+	var t: Dictionary = GameData.terrains[terrain_id]
+	if t.has("icons"):
+		var icons_array: Array = t.icons
+		if icons_array.size() > 0:
+			var icon_rng = RandomNumberGenerator.new()
+			icon_rng.seed = row * 1000 + col
+			var idx = icon_rng.randi() % icons_array.size()
+			return icons_array[idx]
+	elif t.has("icon"):
+		return t.icon
+	return ""
+
+
+## Ищет на карте уже одомашненный экземпляр ресурса res_id (гекс с этим ресурсом
+## и построенным улучшением) и возвращает его качество.
+## Если такого нет — возвращает пустую строку.
+static func find_domesticated_quality(
+	res_id: String,
+	tile_data: Array,
+	region_start_row: int,
+	region_end_row: int,
+	region_start_col: int,
+	region_end_col: int
+) -> String:
+	for r in range(region_start_row, region_end_row + 1):
+		for c in range(region_start_col, region_end_col + 1):
+			var t = tile_data[r][c]
+			if t.get("resource") == res_id and t.get("improvement") != null:
+				var q = t.get("quality", "")
+				if q != "" and q != null:
+					return q
+	return ""
+
+
+## Гарантирует, что город находится на разрешённой местности (равнина или холмы).
+## Если город был сгенерирован/загружен на горе или озере — меняет на равнину.
+static func ensure_city_valid_terrain(
+	tile_data: Array,
+	city_row: int,
+	city_col: int,
+	map_rows: int,
+	map_cols: int
+) -> void:
+	if city_row < 0 or city_row >= map_rows or city_col < 0 or city_col >= map_cols:
+		return
+	var city_tile = tile_data[city_row][city_col]
+	var current_terrain: String = city_tile.get("terrain", "plain")
+	var allowed_terrains: Array[String] = ["plain", "hill"]
+	if current_terrain not in allowed_terrains:
+		city_tile["terrain"] = "plain"

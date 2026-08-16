@@ -471,22 +471,7 @@ func _initialize_map():
     print("этап mark_river_edges: ", Time.get_ticks_msec() - t_river_edges, " ms")
 
 func _ensure_city_valid_terrain() -> void:
-    # Гарантирует, что город находится на разрешённой местности (равнина или холмы).
-    # Если город был сгенерирован на горе или озере, изменяет местность на равнину.
-    if city_row < 0 or city_row >= map_rows or city_col < 0 or city_col >= map_cols:
-        return
-    
-    var city_tile = tile_data[city_row][city_col]
-    var current_terrain = city_tile["terrain"]
-    
-    # Разрешённые типы местности для города
-    var allowed_terrains = ["plain", "hill"]
-    
-    if not current_terrain in allowed_terrains:
-        # Город находится на недопустимой местности, меняем на равнину
-        var old_terrain = current_terrain
-        city_tile["terrain"] = "plain"
-        print("Город был на %s, изменён на равнину." % old_terrain)
+    MapHelpers.ensure_city_valid_terrain(tile_data, city_row, city_col, map_rows, map_cols)
 
 func _is_hex_adjacent_to_canal(row: int, col: int) -> bool:
     return MapHelpers.is_hex_adjacent_to_canal(row, col, tile_data, map_rows, map_cols)
@@ -567,14 +552,11 @@ func _ensure_food_plant(min_row: int, max_row: int, min_col: int, max_col: int):
 # ("исключительное порождает исключительное"). Если такого образца нет —
 # возвращает пустую строку, и вызывающий код генерирует качество через roll.
 func _find_domesticated_quality(res_id: String) -> String:
-    for r in range(region_start_row, region_end_row + 1):
-        for c in range(region_start_col, region_end_col + 1):
-            var t = tile_data[r][c]
-            if t.get("resource") == res_id and t.get("improvement") != null:
-                var q = t.get("quality", "")
-                if q != "" and q != null:
-                    return q
-    return ""
+    return MapHelpers.find_domesticated_quality(
+        res_id, tile_data,
+        region_start_row, region_end_row,
+        region_start_col, region_end_col
+    )
 
 func _calc_offsets():
     var min_x = INF
@@ -1290,23 +1272,8 @@ func _on_popup_menu_id_pressed(id: int):
     map_renderer.queue_redraw()
 
 # Выбирает иконку ландшафта для гекса (row, col) на основе его террейна.
-func _assign_terrain_icon(row: int, col: int):
-    var tile = tile_data[row][col]
-    var terrain_id = tile.get("terrain", "plain")
-    if GameData.terrains.has(terrain_id):
-        var t = GameData.terrains[terrain_id]
-        if t.has("icons"):
-            var icons_array = t.icons
-            if icons_array.size() > 0:
-                var icon_rng = RandomNumberGenerator.new()
-                icon_rng.seed = row * 1000 + col
-                var idx = icon_rng.randi() % icons_array.size()
-                tile["terrain_icon"] = icons_array[idx]
-                return
-        elif t.has("icon"):
-            tile["terrain_icon"] = t.icon
-            return
-    tile["terrain_icon"] = ""
+func _assign_terrain_icon(row: int, col: int) -> void:
+    tile_data[row][col]["terrain_icon"] = MapHelpers.get_terrain_icon(row, col, tile_data)
 
 func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = null):
     var tile = tile_data[row][col]
