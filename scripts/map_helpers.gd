@@ -271,3 +271,62 @@ static func get_chunk_info(chunk: Array, tile_data: Array) -> String:
 		terrain_str += ", лес"
 	var resource_str := ", ".join(resources) if resources.size() > 0 else "нет"
 	return "Ландшафт: %s. Ресурсы: %s" % [terrain_str, resource_str]
+
+## Пересчитывает абсолютные границы Кольца Влияния и видимого окна
+## (Кольцо + Регион) вокруг города.
+static func recalculate_bounds(
+	city_row: int, city_col: int,
+	ring_rows: int, ring_cols: int,
+	region_rows: int, region_cols: int,
+	map_rows: int, map_cols: int
+) -> Dictionary:
+	var influence_start_row = city_row - ring_rows / 2
+	var influence_end_row = influence_start_row + ring_rows - 1
+	var influence_start_col = city_col - ring_cols / 2
+	var influence_end_col = influence_start_col + ring_cols - 1
+
+	var region_start_row = city_row - region_rows / 2
+	var region_end_row = region_start_row + region_rows - 1
+	var region_start_col = city_col - region_cols / 2
+	var region_end_col = region_start_col + region_cols - 1
+
+	region_start_row = max(0, region_start_row)
+	region_end_row = min(map_rows - 1, region_end_row)
+	region_start_col = max(0, region_start_col)
+	region_end_col = min(map_cols - 1, region_end_col)
+
+	return {
+		"influence_start_row": influence_start_row,
+		"influence_end_row": influence_end_row,
+		"influence_start_col": influence_start_col,
+		"influence_end_col": influence_end_col,
+		"region_start_row": region_start_row,
+		"region_end_row": region_end_row,
+		"region_start_col": region_start_col,
+		"region_end_col": region_end_col,
+	}
+
+
+## Вычисляет offset_x/offset_y для центрирования видимого окна карты в viewport.
+static func calc_offsets(
+	region_start_row: int, region_end_row: int,
+	region_start_col: int, region_end_col: int,
+	hex_radius: float,
+	viewport_size: Vector2
+) -> Vector2:
+	var min_x = INF
+	var max_x = - INF
+	var min_y = INF
+	var max_y = - INF
+	for row in range(region_start_row, region_end_row + 1):
+		for col in range(region_start_col, region_end_col + 1):
+			var center = HexUtils.hex_center(row, col, hex_radius)
+			min_x = min(min_x, center.x - hex_radius)
+			max_x = max(max_x, center.x + hex_radius)
+			min_y = min(min_y, center.y - hex_radius)
+			max_y = max(max_y, center.y + hex_radius)
+	var grid_width = max_x - min_x
+	var grid_height = max_y - min_y
+	var offset_x = (viewport_size.x - grid_width) / 2.0 - min_x
+	var offset_y = (viewport_size.y - grid_height) / 2.0 - min_y
+	return Vector2(offset_x, offset_y)

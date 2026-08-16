@@ -559,24 +559,16 @@ func _find_domesticated_quality(res_id: String) -> String:
     )
 
 func _calc_offsets():
-    var min_x = INF
-    var max_x = - INF
-    var min_y = INF
-    var max_y = - INF
-    for row in range(region_start_row, region_end_row + 1):
-        for col in range(region_start_col, region_end_col + 1):
-            var center = HexUtils.hex_center(row, col, HEX_RADIUS)
-            min_x = min(min_x, center.x - HEX_RADIUS)
-            max_x = max(max_x, center.x + HEX_RADIUS)
-            min_y = min(min_y, center.y - HEX_RADIUS)
-            max_y = max(max_y, center.y + HEX_RADIUS)
-    var grid_width = max_x - min_x
-    var grid_height = max_y - min_y
     var viewport_size = Vector2(1152, 768)
     if not Engine.is_editor_hint():
         viewport_size = get_viewport_rect().size
-    offset_x = (viewport_size.x - grid_width) / 2.0 - min_x
-    offset_y = (viewport_size.y - grid_height) / 2.0 - min_y
+    var offsets = MapHelpers.calc_offsets(
+        region_start_row, region_end_row,
+        region_start_col, region_end_col,
+        HEX_RADIUS, viewport_size
+    )
+    offset_x = offsets.x
+    offset_y = offsets.y
 
 func update_tooltip_text(row: int, col: int):
     # Эта функция остаётся здесь, потому что она используется из InputHandler
@@ -1657,22 +1649,20 @@ func _load_map_config():
 # (Кольцо + Регион) вокруг города. Вызывается после изменения
 # ring_rows/ring_cols/region_rows/region_cols (новая игра, загрузка, эпоха).
 func _recalculate_bounds():
-    influence_start_row = city_row - ring_rows / 2
-    influence_end_row = influence_start_row + ring_rows - 1
-    influence_start_col = city_col - ring_cols / 2
-    influence_end_col = influence_start_col + ring_cols - 1
-
-    region_start_row = city_row - region_rows / 2
-    region_end_row = region_start_row + region_rows - 1
-    region_start_col = city_col - region_cols / 2
-    region_end_col = region_start_col + region_cols - 1
-
-    # Защита от выхода окна за границы карты (не должно случаться при
-    # симметричном расширении вокруг центра, но страхуемся).
-    region_start_row = max(0, region_start_row)
-    region_end_row = min(map_rows - 1, region_end_row)
-    region_start_col = max(0, region_start_col)
-    region_end_col = min(map_cols - 1, region_end_col)
+    var bounds = MapHelpers.recalculate_bounds(
+        city_row, city_col,
+        ring_rows, ring_cols,
+        region_rows, region_cols,
+        map_rows, map_cols
+    )
+    influence_start_row = bounds.influence_start_row
+    influence_end_row = bounds.influence_end_row
+    influence_start_col = bounds.influence_start_col
+    influence_end_col = bounds.influence_end_col
+    region_start_row = bounds.region_start_row
+    region_end_row = bounds.region_end_row
+    region_start_col = bounds.region_start_col
+    region_end_col = bounds.region_end_col
 
 # Возвращает true, если гекс (row, col) входит в текущее Кольцо Влияния.
 func is_in_influence(row: int, col: int) -> bool:
