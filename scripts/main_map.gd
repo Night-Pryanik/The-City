@@ -684,31 +684,7 @@ func update_tooltip_text(row: int, col: int):
 # Возвращает id улучшения, которое можно построить на гексе (row, col),
 # или пустую строку, если постройка невозможна.
 func _get_buildable_improvement(row: int, col: int) -> String:
-    var tile = tile_data[row][col]
-    if tile.improvement != null:
-        return ""
-
-    if tile.resource != null:
-        var raw = GameData.raw_resources.get(tile.resource, {})
-        if "improved_by" in raw and raw.improved_by != null and raw.improved_by != "":
-            var imp_id = raw.improved_by
-            if CityData.is_improvement_unlocked(imp_id):
-                return imp_id
-        return ""
-
-    # Пустой гекс: можно построить пастбище или ферму, если есть одомашненные виды.
-    var tile_cover = tile.get("cover", "none")
-    if CityData.domesticated_animals.size() > 0 and CityData.is_improvement_unlocked("pasture"):
-        for animal_id in CityData.domesticated_animals:
-            var animal_data = GameData.raw_resources.get(animal_id, {})
-            if tile.terrain in animal_data.get("allowed_terrain", []) and tile_cover in animal_data.get("allowed_cover", []):
-                return "pasture"
-    if CityData.domesticated_plants.size() > 0 and CityData.is_improvement_unlocked("farm"):
-        for plant_id in CityData.domesticated_plants:
-            var plant_data = GameData.raw_resources.get(plant_id, {})
-            if tile.terrain in plant_data.get("allowed_terrain", []) and tile_cover in plant_data.get("allowed_cover", []):
-                return "farm"
-    return ""
+    return MapHelpers.get_buildable_improvement(tile_data[row][col])
 
 func _add_production_info(row: int, col: int, res_id: String, prefix: String):
     if res_id == null or res_id == "":
@@ -1859,27 +1835,7 @@ func _complete_scouting():
     map_renderer.queue_redraw()
 
 func _get_chunk_info(chunk: Array) -> String:
-    var terrain_types = {}
-    var cover_forests = false
-    var resources = []
-    for hex in chunk:
-        var tile = tile_data[hex.row][hex.col]
-        var terrain = tile.get("terrain", "plain")
-        terrain_types[terrain] = terrain_types.get(terrain, 0) + 1
-        var cover_id = tile.get("cover", "none")
-        if cover_id != "none":
-            cover_forests = true
-        if tile.resource != null:
-            var res_name = GameData.raw_resources.get(tile.resource, {}).get("name", tile.resource)
-            resources.append(res_name)
-    var terrain_names = []
-    for terrain_id in terrain_types.keys():
-        terrain_names.append(GameData.terrains.get(terrain_id, {}).get("name", terrain_id))
-    var terrain_str = ", ".join(terrain_names)
-    if cover_forests:
-        terrain_str += ", лес"
-    var resource_str = ", ".join(resources) if resources.size() > 0 else "нет"
-    return "Ландшафт: %s. Ресурсы: %s" % [terrain_str, resource_str]
+    return MapHelpers.get_chunk_info(chunk, tile_data)
 
 func _confirm_cancel_build(row: int, col: int):
     var prog = build_manager.get_progress(row, col)

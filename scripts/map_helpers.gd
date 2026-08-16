@@ -217,3 +217,57 @@ static func pixel_to_hex(
 			if HexUtils.point_in_polygon(mx, my, verts):
 				return {"row": row, "col": col}
 	return null
+
+## Возвращает id улучшения, которое можно построить на гексе,
+## или пустую строку, если постройка невозможна.
+static func get_buildable_improvement(tile: Dictionary) -> String:
+	if tile.improvement != null:
+		return ""
+
+	if tile.resource != null:
+		var raw: Dictionary = GameData.raw_resources.get(tile.resource, {})
+		if "improved_by" in raw and raw.improved_by != null and raw.improved_by != "":
+			var imp_id: String = raw.improved_by
+			if CityData.is_improvement_unlocked(imp_id):
+				return imp_id
+		return ""
+
+	# Пустой гекс: пастбище или ферма из одомашненных видов.
+	var tile_cover: String = tile.get("cover", "none")
+	if CityData.domesticated_animals.size() > 0 and CityData.is_improvement_unlocked("pasture"):
+		for animal_id in CityData.domesticated_animals:
+			var animal_data: Dictionary = GameData.raw_resources.get(animal_id, {})
+			if tile.terrain in animal_data.get("allowed_terrain", []) and tile_cover in animal_data.get("allowed_cover", []):
+				return "pasture"
+	if CityData.domesticated_plants.size() > 0 and CityData.is_improvement_unlocked("farm"):
+		for plant_id in CityData.domesticated_plants:
+			var plant_data: Dictionary = GameData.raw_resources.get(plant_id, {})
+			if tile.terrain in plant_data.get("allowed_terrain", []) and tile_cover in plant_data.get("allowed_cover", []):
+				return "farm"
+	return ""
+
+
+## Формирует строку описания чанка после разведки.
+static func get_chunk_info(chunk: Array, tile_data: Array) -> String:
+	var terrain_types := {}
+	var cover_forests := false
+	var resources := []
+	for hex in chunk:
+		var tile = tile_data[hex.row][hex.col]
+		var terrain: String = tile.get("terrain", "plain")
+		terrain_types[terrain] = terrain_types.get(terrain, 0) + 1
+		var cover_id: String = tile.get("cover", "none")
+		if cover_id != "none":
+			cover_forests = true
+		if tile.resource != null:
+			var res_name: String = GameData.raw_resources.get(tile.resource, {}).get("name", tile.resource)
+			resources.append(res_name)
+
+	var terrain_names: Array[String] = []
+	for terrain_id in terrain_types.keys():
+		terrain_names.append(GameData.terrains.get(terrain_id, {}).get("name", terrain_id))
+	var terrain_str := ", ".join(terrain_names)
+	if cover_forests:
+		terrain_str += ", лес"
+	var resource_str := ", ".join(resources) if resources.size() > 0 else "нет"
+	return "Ландшафт: %s. Ресурсы: %s" % [terrain_str, resource_str]
