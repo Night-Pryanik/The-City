@@ -131,7 +131,10 @@ func _ready():
         for row in range(map_rows):
             var col_array = []
             for col in range(map_cols):
-                var tile = {"terrain": "plain", "cover": "none", "resource": null, "improvement": null, "terrain_icon": "", "in_influence": false, "is_explored": false, "river_edges": []}
+                # crop_bred — id одомашненного животного/растения, разводимого
+                # на пустом гексе (см. docs.md, раздел «Разведение животных/растений»).
+                # Для природных ресурсов остаётся tile.resource.
+                var tile = {"terrain": "plain", "cover": "none", "resource": null, "crop_bred": null, "improvement": null, "terrain_icon": "", "in_influence": false, "is_explored": false, "river_edges": []}
                 if row < saved_tiles.size() and col < saved_tiles[row].size():
                     var saved = saved_tiles[row][col]
                     if not saved.is_empty():
@@ -145,6 +148,9 @@ func _ready():
                         tile["terrain"] = saved_terrain
                         tile["cover"] = saved_cover
                         tile["resource"] = saved.get("resource")
+                        # crop_bred добавился в схеме разведения; в старых сейвах
+                        # его нет, но тогда и нечего мигрировать — поле просто null.
+                        tile["crop_bred"] = saved.get("crop_bred")
                         tile["improvement"] = saved.get("improvement")
                         tile["quality"] = saved.get("quality", "")
                         tile["terrain_icon"] = saved.get("terrain_icon", "")
@@ -322,10 +328,16 @@ func _process(delta):
         for row in range(region_start_row, region_end_row + 1):
             for col in range(region_start_col, region_end_col + 1):
                 var tile = tile_data[row][col]
-                if tile.improvement == null or tile.resource == null or not worker_manager.has_worker(row, col):
+                if tile.improvement == null or not worker_manager.has_worker(row, col):
+                    continue
+                # Производство идёт и с природного ресурса (tile.resource), и с
+                # разводимого (tile.crop_bred, см. схему разведения). Если оба
+                # null — гекс нечего производить.
+                var eff_res = MapHelpers.get_effective_resource(tile)
+                if eff_res == "":
                     continue
 
-                var res_data = GameData.raw_resources.get(tile.resource, {})
+                var res_data = GameData.raw_resources.get(eff_res, {})
                 var feed_needed = res_data.get("feed_consumption", 0)
                 var production_multiplier = 1.0
                 if tile.improvement != null:
@@ -337,11 +349,11 @@ func _process(delta):
                     var available_feed = CityData.city_storage.get("feed", 0)
                     if available_feed >= feed_needed:
                         CityData.remove_from_storage("feed", feed_needed, "best")
-                        CityData.add_raw_production(tile.resource, production_multiplier, tile_quality)
+                        CityData.add_raw_production(eff_res, production_multiplier, tile_quality)
                     else:
-                        CityData.add_raw_production(tile.resource, 0.25, tile_quality)
+                        CityData.add_raw_production(eff_res, 0.25, tile_quality)
                 else:
-                    CityData.add_raw_production(tile.resource, production_multiplier, tile_quality)
+                    CityData.add_raw_production(eff_res, production_multiplier, tile_quality)
 
         CityData.do_tick()
         # tick_research_science вызывается каждый кадр ниже (см. _process),
@@ -911,8 +923,13 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
                 hud.show_message("Собрано %d %s!" % [amount, GameData.products.get(prod_id, {}).get("name", prod_id)])
             tile.resource = null
         elif action_type == "demolish":
-            # Снос улучшения: убираем улучшение, ресурс остаётся.
+            # Снос улучшения: убираем улучшение. Природный tile.resource
+            # остаётся (если он был), а tile.crop_bred сбрасывается —
+            # разведение живёт ровно столько, сколько стоит улучшение.
+            # Иначе после сноса прод-цикл начал бы «производить» ресурс,
+            # для которого больше нет улучшения.
             tile.improvement = null
+            tile.crop_bred = null
         else:
             # Террейн-действие: сбрасываем ресурс и улучшение.
             tile.resource = null
@@ -930,21 +947,31 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
 
     tile.improvement = imp_id
     if target_res_id != null:
+        # Два сценария:
+        # 1) На гексе УЖЕ был природный ресурс (tile.resource != null) — мы
+        #    ставим улучшение, чтобы его добывать. tile.resource сохраняется,
+        #    crop_bred остаётся null. Качество — текущее качество ресурса.
+        # 2) Гекс был пустой (tile.resource == null) — это разведение. Пишем
+        #    id разводимого животного/растения в tile.crop_bred, а tile.resource
+        #    НЕ трогаем (остаётся null). Качество наследуется от уже
+        #    одомашненного экземпляра этого же ресурса, иначе бросаем roll.
         var was_existing_resource = tile.resource != null
-        tile.resource = target_res_id
-        # Качество ресурса определяется так:
-        # - Если на гексе УЖЕ был ресурс (улучшение существующего) — сохраняем
-        #   его качество. Иначе любая постройка фермы/шахты сбрасывала бы
-        #   quality на "common", потому что в JSON ресурсов нет поля quality.
-        # - Если это разведение НОВОГО животного/растения (гекс был пустой) —
-        #   ищем на карте уже одомашненный экземпляр этого ресурса и
-        #   наследуем его качество ("исключительное порождает исключительное").
-        #   Если такого ещё нет — генерируем случайно.
         if was_existing_resource:
+            tile.resource = target_res_id
+            # Качество ресурса определяется так:
+            # - Если на гексе УЖЕ был ресурс (улучшение существующего) — сохраняем
+            #   его качество. Иначе любая постройка фермы/шахты сбрасывала бы
+            #   quality на "common", потому что в JSON ресурсов нет поля quality.
             var existing_q = tile.get("quality", "")
             if existing_q == "" or existing_q == null:
                 tile["quality"] = GameData.roll_quality()
         else:
+            # Разведение на пустом гексе: id ресурса живёт в crop_bred.
+            tile.crop_bred = target_res_id
+            # - Если это разведение НОВОГО животного/растения (гекс был пустой) —
+            #   ищем на карте уже одомашненный экземпляр этого ресурса и
+            #   наследуем его качество ("исключительное порождает исключительное").
+            #   Если такого ещё нет — генерируем случайно.
             var inherited_quality = _find_domesticated_quality(target_res_id)
             if inherited_quality != "" and inherited_quality != null:
                 tile["quality"] = inherited_quality

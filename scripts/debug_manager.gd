@@ -166,12 +166,21 @@ func handle_hex_click(row: int, col: int):
     var tile = main_map.tile_data[row][col]
     var old_res = tile.get("resource", null)
     tile["resource"] = pending_resource_id
+    # Если на гексе было разводимое животное/растение (crop_bred), оно
+    # конфликтует с новым природным ресурсом — сбрасываем. Иначе под старым
+    # улучшением production-цикл мог бы смешать два разных ресурса.
+    var old_crop = tile.get("crop_bred", null)
+    if old_crop != null:
+        tile["crop_bred"] = null
 
     var res_name = GameData.raw_resources.get(pending_resource_id, {}).get("name", pending_resource_id)
     var msg = "Ресурс %s размещён на гексе (%d, %d)" % [res_name, row, col]
     if old_res != null:
         var old_name = GameData.raw_resources.get(old_res, {}).get("name", old_res)
         msg += " (заменён: %s)" % old_name
+    if old_crop != null:
+        var crop_name = GameData.raw_resources.get(old_crop, {}).get("name", old_crop)
+        msg += " (сброшено разведение: %s)" % crop_name
 
     if main_map.hud and main_map.hud.has_method("show_message"):
         main_map.hud.show_message(msg)

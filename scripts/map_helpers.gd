@@ -160,8 +160,29 @@ static func get_terrain_icon(row: int, col: int, tile_data: Array) -> String:
 	return ""
 
 
+## Возвращает «эффективный» ресурс гекса: либо природный ресурс (tile.resource,
+## заданный генератором карты или спавном по технологии), либо разводимый
+## (tile.crop_bred, выставленный при постройке пастбища/фермы/пасеки на пустом
+## гексе). Если оба поля пустые — возвращает пустую строку.
+##
+## Используется во всей игре: производство, тултипы, отрисовка, прогресс-бары
+## исследования, наследование качества. Эти подсистемы должны «не знать»,
+## природный ресурс на гексе или разводимый — им нужен только id.
+static func get_effective_resource(tile: Dictionary) -> String:
+	var r = tile.get("resource", null)
+	if r != null and r != "":
+		return r
+	var b = tile.get("crop_bred", null)
+	if b != null and b != "":
+		return b
+	return ""
+
+
 ## Ищет на карте уже одомашненный экземпляр ресурса res_id (гекс с этим ресурсом
 ## и построенным улучшением) и возвращает его качество.
+## Поиск идёт по обоим полям — tile.resource (природный) и tile.crop_bred
+## (разводимый): одомашненным считается любой гекс, где нужный ресурс уже
+## обрабатывается улучшением.
 ## Если такого нет — возвращает пустую строку.
 static func find_domesticated_quality(
 	res_id: String,
@@ -174,10 +195,18 @@ static func find_domesticated_quality(
 	for r in range(region_start_row, region_end_row + 1):
 		for c in range(region_start_col, region_end_col + 1):
 			var t = tile_data[r][c]
-			if t.get("resource") == res_id and t.get("improvement") != null:
-				var q = t.get("quality", "")
-				if q != "" and q != null:
-					return q
+			if t.get("improvement") == null:
+				continue
+			var matches := false
+			if t.get("resource", null) == res_id:
+				matches = true
+			elif t.get("crop_bred", null) == res_id:
+				matches = true
+			if not matches:
+				continue
+			var q = t.get("quality", "")
+			if q != "" and q != null:
+				return q
 	return ""
 
 
@@ -259,8 +288,9 @@ static func get_chunk_info(chunk: Array, tile_data: Array) -> String:
 		var cover_id: String = tile.get("cover", "none")
 		if cover_id != "none":
 			cover_forests = true
-		if tile.resource != null:
-			var res_name: String = GameData.raw_resources.get(tile.resource, {}).get("name", tile.resource)
+		var eff_res = get_effective_resource(tile)
+		if eff_res != "":
+			var res_name: String = GameData.raw_resources.get(eff_res, {}).get("name", eff_res)
 			resources.append(res_name)
 
 	var terrain_names: Array[String] = []

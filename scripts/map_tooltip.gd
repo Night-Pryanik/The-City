@@ -21,9 +21,12 @@ func update_tooltip_text(row: int, col: int, tile_data: Array):
 	var cover_id = tile.get("cover", "none")
 
 	var is_revealed = tile.get("in_influence", false) or tile.get("is_explored", false)
-	var res_id = tile.resource
+	# Эффективный ресурс: природный (tile.resource) или разводимый (tile.crop_bred).
+	# Это позволяет тултипу одинаково работать и для улучшения существующего
+	# природного ресурса, и для разведения на пустом гексе.
+	var res_id = MapHelpers.get_effective_resource(tile)
 	var res_name = "нет"
-	if res_id != null:
+	if res_id != "":
 		res_name = GameData.raw_resources.get(res_id, {}).get("name", res_id)
 
 	var cover_name_lower = ""
@@ -64,12 +67,12 @@ func update_tooltip_text(row: int, col: int, tile_data: Array):
 			imp_status = " (неактивно: нет рабочего)"
 		else:
 			imp_status = " (работает)"
-		if res_id != null:
+		if res_id != "":
 			var res_data = GameData.raw_resources.get(res_id, {})
 			if res_data.has("produces"):
 				_add_production_info(row, col, res_id, " Производит:", tile_data)
 	else:
-		if res_id != null:
+		if res_id != "":
 			var res_data = GameData.raw_resources.get(res_id, {})
 			if res_data.has("improved_by") and res_data.has("produces"):
 				var improvement_id = res_data["improved_by"]
@@ -78,7 +81,7 @@ func update_tooltip_text(row: int, col: int, tile_data: Array):
 				_add_production_info(row, col, res_id, " При постройке %s будет давать:" % imp_name_display, tile_data)
 				imp_status = " (не построено)"
 
-	if res_id != null:
+	if res_id != "":
 		var res_data = GameData.raw_resources.get(res_id, {})
 		var feed_consumption = res_data.get("feed_consumption", 0)
 		if feed_consumption > 0:
@@ -106,8 +109,12 @@ func has_extended_tooltip_info(row: int, col: int, tile_data: Array) -> bool:
 	if not is_revealed:
 		return false
 
-	if tile.improvement != null and tile.resource != null and _worker_manager.has_worker(row, col):
-		var res_data = GameData.raw_resources.get(tile.resource, {})
+	# Расширенный тултип показываем, если на гексе идёт активное производство:
+	# улучшение построено, рабочий назначен, и на гексе есть «эффективный»
+	# ресурс (природный или разводимый) с produces.
+	var eff_res = MapHelpers.get_effective_resource(tile)
+	if tile.improvement != null and eff_res != "" and _worker_manager.has_worker(row, col):
+		var res_data = GameData.raw_resources.get(eff_res, {})
 		if res_data.has("produces"):
 			var bonus_multiplier = CityData.get_improvement_production_multiplier(tile.improvement, MapHelpers.is_hex_irrigated(row, col, tile_data, tile_data.size(), tile_data[0].size()))
 			if bonus_multiplier > 1.0:
@@ -168,8 +175,8 @@ func update_extended_tooltip(row: int, col: int, tile_data: Array, city_row: int
 			total_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
 			_tooltip_products_container.add_child(total_label)
 
-	var res_id = tile.resource
-	if res_id == null:
+	var res_id = MapHelpers.get_effective_resource(tile)
+	if res_id == "":
 		return
 	var res_data = GameData.raw_resources.get(res_id, {})
 	if not res_data.has("produces"):
@@ -179,7 +186,7 @@ func update_extended_tooltip(row: int, col: int, tile_data: Array, city_row: int
 
 
 func _add_production_info(row: int, col: int, res_id: String, prefix: String, tile_data: Array):
-	if res_id == null or res_id == "":
+	if res_id == "":
 		return
 	var res_data = GameData.raw_resources.get(res_id, {})
 	if not res_data.has("produces"):
@@ -234,9 +241,11 @@ func _add_production_info(row: int, col: int, res_id: String, prefix: String, ti
 
 func _add_extended_production_info(row: int, col: int, tile_data: Array):
 	var tile = tile_data[row][col]
-	if tile.resource == null:
+	# И снова: интересует эффективный ресурс (природный или разводимый).
+	var eff_res = MapHelpers.get_effective_resource(tile)
+	if eff_res == "":
 		return
-	var res_data = GameData.raw_resources.get(tile.resource, {})
+	var res_data = GameData.raw_resources.get(eff_res, {})
 	if not res_data.has("produces"):
 		return
 

@@ -339,8 +339,11 @@ func _draw_hex_overlays(row: int, col: int):
     # (Прогресс-бары ниже отрисовываются независимо от видимости ресурса.)
     var is_resource_visible = _is_resource_revealed(tile)
 
-    if tile.resource != null and is_resource_visible:
-        var res_data = GameData.raw_resources.get(tile.resource, {})
+    # Рисуем иконку как для природного (tile.resource), так и для разводимого
+    # (tile.crop_bred) ресурса — эффективный ресурс берётся из MapHelpers.
+    var eff_res = MapHelpers.get_effective_resource(tile)
+    if eff_res != "" and is_resource_visible:
+        var res_data = GameData.raw_resources.get(eff_res, {})
         var res_icon = res_data.get("icon", "")
         if res_icon != "" and icon_textures.has(res_icon):
             var tex = icon_textures[res_icon]
@@ -354,7 +357,7 @@ func _draw_hex_overlays(row: int, col: int):
 
     # Звёздочки качества ресурса — под иконкой, только если ресурс раскрыт
     # и на этом гексе уже построено улучшение, которое раскрывает качество.
-    if tile.resource != null and is_resource_visible and tile.improvement != null:
+    if eff_res != "" and is_resource_visible and tile.improvement != null:
         _draw_quality_stars(tile, center)
 
     if in_influence and tile.improvement != null:
@@ -461,16 +464,20 @@ func _draw_progress_bars(row: int, col: int):
     # Прогресс-бар исследования технологии, которая открывает:
     # 1) сам ресурс (tech_required), либо
     # 2) улучшение, которым добывается этот ресурс (improved_by → unlock_tech)
+    # Бар показываем и для природного ресурса, и для разводимого: если игрок
+    # ещё не изучил нужную технологию, прогресс-бар на гексе подскажет,
+    # какую из технологий имеет смысл качать.
     var research_tech = CityData.current_research_tech_id
-    if research_tech != "" and tile.resource != null and _is_resource_revealed(tile):
+    var eff_res_for_bar = MapHelpers.get_effective_resource(tile)
+    if research_tech != "" and eff_res_for_bar != "" and _is_resource_revealed(tile):
         var show_progress = false
-        if _is_resource_locked(tile.resource):
-            var res_tech = GameData.raw_resources.get(tile.resource, {}).get("tech_required", "")
+        if _is_resource_locked(eff_res_for_bar):
+            var res_tech = GameData.raw_resources.get(eff_res_for_bar, {}).get("tech_required", "")
             if res_tech == research_tech:
                 show_progress = true
         else:
             # Ресурс открыт, но улучшение для него ещё не изучено
-            var imp_id = GameData.raw_resources.get(tile.resource, {}).get("improved_by", "")
+            var imp_id = GameData.raw_resources.get(eff_res_for_bar, {}).get("improved_by", "")
             if imp_id != null and imp_id != "" and not CityData.is_improvement_unlocked(imp_id):
                 var imp_unlock_tech = CityData.get_improvement_unlock_tech(imp_id)
                 if imp_unlock_tech == research_tech:
