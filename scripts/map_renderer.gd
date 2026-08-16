@@ -597,6 +597,8 @@ func _draw_rivers():
 
 
 # Рисует список рек с заданным стилем (берег, тело, блик).
+# Реки обрезаются по границе видимой области (Кольцо + Регион), чтобы не
+# отрисовываться сквозь туман войны за её пределами.
 func _draw_river_list(river_list: Array, offset_x: float, offset_y: float, radius: float,
         shore_color: Color, shore_width: float,
         body_color: Color, body_width: float,
@@ -626,13 +628,107 @@ func _draw_river_list(river_list: Array, offset_x: float, offset_y: float, radiu
         if not _is_rect_visible(river_rect):
             continue
 
+        # Собираем точки реки в экранных координатах.
         var points = PackedVector2Array()
         for pt in river:
             points.append(Vector2(pt.x + offset_x, pt.y + offset_y))
+
+        # Сначала строим естественные меандры по полной реке, затем обрезаем
+        # сглаженную линию по видимой области. Так волны остаются непрерывными
+        # на границе, а за ней река не рисуется (скрыта туманом войны).
         var smooth_points = _generate_natural_river(points, radius)
-        draw_polyline(smooth_points, shore_color, shore_width, true)
-        draw_polyline(smooth_points, body_color, body_width, true)
-        draw_polyline(smooth_points, highlight_color, highlight_width, true)
+        var region_rect = _get_region_world_rect()
+        region_rect.position += Vector2(offset_x, offset_y)
+        var clipped_lines = _clip_river_to_rect(smooth_points, region_rect)
+        if clipped_lines.is_empty():
+            continue
+
+        for line in clipped_lines:
+            if line.size() < 2:
+                continue
+            draw_polyline(line, shore_color, shore_width, true)
+            draw_polyline(line, body_color, body_width, true)
+            draw_polyline(line, highlight_color, highlight_width, true)
+
+
+# Возвращает прямоугольник видимой области (Кольцо + Регион) в world-координатах
+# (без учёта offset). Строится по центрам крайних гексов региона с запасом на
+# пол-гекса, чтобы клиппинг рек совпадал с видимой границей.
+func _get_region_world_rect() -> Rect2:
+    var radius = main_map.HEX_RADIUS
+    var c_tl = HexUtils.hex_center(main_map.region_start_row, main_map.region_start_col, radius)
+    var c_tr = HexUtils.hex_center(main_map.region_start_row, main_map.region_end_col, radius)
+    var c_bl = HexUtils.hex_center(main_map.region_end_row, main_map.region_start_col, radius)
+    var c_br = HexUtils.hex_center(main_map.region_end_row, main_map.region_end_col, radius)
+    var left = min(c_tl.x, c_bl.x) - radius
+    var right = max(c_tr.x, c_br.x) + radius
+    var top = min(c_tl.y, c_tr.y) - radius
+    var bottom = max(c_bl.y, c_br.y) + radius
+    return Rect2(left, top, right - left, bottom - top)
+
+
+# Обрезает отрезок (start -> end) по прямоугольнику rect (алгоритм Лиан–Барски).
+# Возвращает [Vector2, Vector2] для видимой части или [] если отрезок вне rect.
+func _clip_segment_to_rect(start: Vector2, end: Vector2, rect: Rect2) -> Array:
+    var t0 = 0.0
+    var t1 = 1.0
+    var dx = end.x - start.x
+    var dy = end.y - start.y
+    var p = [-dx, dx, -dy, dy]
+    var q = [
+        start.x - rect.position.x,
+        rect.position.x + rect.size.x - start.x,
+        start.y - rect.position.y,
+        rect.position.y + rect.size.y - start.y
+    ]
+    for i in range(4):
+        if abs(p[i]) < 1e-9:
+            if q[i] < 0.0:
+                return []
+        else:
+            var r = q[i] / p[i]
+            if p[i] < 0.0:
+                if r > t1:
+                    return []
+                if r > t0:
+                    t0 = r
+            else:
+                if r < t0:
+                    return []
+                if r < t1:
+                    t1 = r
+    return [start + (end - start) * t0, start + (end - start) * t1]
+
+
+# Обрезает полилинию по прямоугольнику rect. Возвращает массив обрезанных
+# полилиний (каждая — PackedVector2Array), объединяя смежные сегменты в
+# непрерывные линии.
+func _clip_river_to_rect(points: PackedVector2Array, rect: Rect2) -> Array:
+    if points.size() < 2:
+        return []
+    var segments: Array = []
+    for i in range(points.size() - 1):
+        var clipped = _clip_segment_to_rect(points[i], points[i + 1], rect)
+        if clipped.size() == 2:
+            segments.append(clipped)
+    if segments.is_empty():
+        return []
+
+    var polylines: Array = []
+    var current = PackedVector2Array()
+    current.append(segments[0][0])
+    current.append(segments[0][1])
+    for i in range(1, segments.size()):
+        var seg = segments[i]
+        if current[-1].distance_to(seg[0]) < 0.01:
+            current.append(seg[1])
+        else:
+            polylines.append(current)
+            current = PackedVector2Array()
+            current.append(seg[0])
+            current.append(seg[1])
+    polylines.append(current)
+    return polylines
 
 func _draw_roads(_row: int, _col: int):
     pass
