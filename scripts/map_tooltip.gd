@@ -94,6 +94,20 @@ func update_tooltip_text(row: int, col: int, tile_data: Array):
 	if tile.improvement == "farm" and MapHelpers.is_hex_irrigated(row, col, tile_data, tile_data.size(), tile_data[0].size()):
 		text += "\nДоступ к пресной воде"
 
+	# --- Конфликт «tech_reveal-ресурс под чужим улучшением» ---
+	# Если на гексе уже стоит улучшение, а под ним нашли скрытый ресурс
+	# (например, на горном холме с железом игрок поставил пастбище) —
+	# добавляем поясняющие строки. Текст идёт в основную часть тултипа
+	# (всегда виден), а не в расширенную — это важная информация, а не
+	# детали производства. Имя нового улучшения берётся из данных ресурса
+	# (поле improved_by), не хардкодится.
+	# Подробности: docs.md, раздел «tech_reveal: скрытые ресурсы».
+	var conflict = MapHelpers.get_tech_reveal_conflict(tile)
+	if not conflict.is_empty():
+		var current_imp_name: String = GameData.improvements.get(tile.improvement, {}).get("name", tile.improvement)
+		text += "\n\nЗдесь обнаружено: %s" % conflict.get("res_name", "")
+		text += "\nСнесите %s, чтобы построить %s" % [current_imp_name, conflict.get("imp_name", "")]
+
 	if tile.improvement == null:
 		var buildable_imp = MapHelpers.get_buildable_improvement(tile)
 		if buildable_imp != "":

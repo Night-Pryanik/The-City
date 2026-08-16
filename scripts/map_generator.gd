@@ -169,9 +169,12 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
             mineral_resources[rid] = r
     _place_resources(tile_data, mineral_resources, rows, cols, city_row, city_col, hex_index)
 
-    # --- Ресурсы, открываемые технологиями (НЕ генерируются здесь) ---
-    # Они спавнятся динамически после изучения соответствующей технологии
-    # (см. CityData.spawn_resource_on_tech_research).
+    # --- Все ресурсы спавнятся на старте, включая tech_required и tech_reveal ---
+    # Раньше ресурсы с tech_required фильтровались здесь и спавнились
+    # лениво через CityData.spawn_resource_on_tech_research. Теперь они
+    # появляются сразу на карте, а видимость/добыча регулируется полями
+    # tech_reveal (видимость) и tech_required (постройка улучшения).
+    # См. docs.md, раздел «tech_reveal: скрытые ресурсы».
 
     print("этап generate_map: ", Time.get_ticks_msec() - t0, " ms")
     return tile_data
@@ -434,25 +437,27 @@ func _remove_hex_from_index(hex_index: Dictionary, row: int, col: int, terrain_i
 func _place_resources(tile_data: Array, res_dict: Dictionary, rows: int, cols: int, city_row: int, city_col: int, hex_index: Dictionary):
     if res_dict.size() == 0:
         return
-    # Определяем количество видов: 50% шанс на 2, 30% шанс на 3
-    var roll = randf()
-    var num_types = 1
-    if roll < 0.5:
-        num_types = 2
-    elif roll < 0.8: # 0.5 + 0.3 = 0.8
-        num_types = 3
-    # Перемешиваем ключи и берём нужное количество
+    # Спавним ВСЕ ресурсы категории на карте, а не 1-3 случайных (как было
+    # раньше). Ресурс размещается на случайном подходящем гексе, если
+    # выполняются:
+    #   * tech_required (если есть) — на старте все уже считаются доступными,
+    #     т.к. это поле гейтит только постройку улучшения, а не появление;
+    #   * spawn_conditions — шанс активации и геометрические условия
+    #     (например, «у реки», «на содовом озере»); если не выпал/не подходит —
+    #     ресурс пропускается;
+    #   * allowed_terrain / allowed_cover — обычные биомные ограничения.
+    #
+    # Если у ресурса есть tech_reveal (подземные ископаемые) — он появляется
+    # на карте СРАЗУ, но скрыт от игрока до изучения соответствующей технологии.
+    # См. docs.md, раздел «tech_reveal: скрытые ресурсы».
+    #
+    # Перемешиваем ключи, чтобы порядок размещения был случайным — иначе
+    # первые в словаре всегда занимают лучшие гексы, а последние рискуют
+    # не найти подходящего места.
     var ids = res_dict.keys()
     ids.shuffle()
-    var chosen = ids.slice(0, min(num_types, ids.size()))
-
-    for res_id in chosen:
+    for res_id in ids:
         var data = res_dict[res_id]
-        # Ресурсы, требующие НЕизученную технологию, не спавятся на старте.
-        var tech_required = data.get("tech_required", "")
-        if tech_required != "" and not CityData.is_tech_unlocked(tech_required):
-            continue
-        # Ресурсы с дополнительными условиями спавна.
         if not HexUtils.spawn_conditions_met(data):
             continue
         var possible = []

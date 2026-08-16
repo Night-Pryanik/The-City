@@ -210,6 +210,67 @@ static func find_domesticated_quality(
 	return ""
 
 
+## Проверяет, виден ли ресурс на гексе tile с точки зрения игрока.
+## Учитывает:
+##   1) in_influence / is_explored — гекс освоен или исследован;
+##   2) tech_reveal ресурса — если он задан и технология не изучена, ресурс
+##      скрыт даже в купленной зоне (см. docs.md, раздел «tech_reveal»).
+## Возвращает true, если ресурс должен отображаться на карте и в тултипе.
+## Если на гексе ничего нет (eff_res == "") — возвращает true по зоне:
+## сам гекс может быть виден, а его «нет ресурса» — корректное отображение.
+static func is_resource_revealed(tile: Dictionary) -> bool:
+	var eff_res = get_effective_resource(tile)
+	if eff_res != "":
+		var res_data: Dictionary = GameData.raw_resources.get(eff_res, {})
+		var reveal_tech: String = res_data.get("tech_reveal", "")
+		if reveal_tech != "" and not CityData.is_tech_unlocked(reveal_tech):
+			return false
+	if tile.get("in_influence", false):
+		return true
+	return tile.get("is_explored", false)
+
+
+## Возвращает информацию о конфликте «tech_reveal-ресурс под чужим улучшением»
+## на гексе tile или {}, если конфликта нет.
+##
+## Конфликт есть, если выполнены ВСЕ условия:
+##   - на гексе есть УЛУЧШЕНИЕ;
+##   - на гексе есть природный ресурс с tech_reveal, чья технология уже изучена;
+##   - стоящее улучшение НЕ соответствует improved_by этого ресурса.
+## Дикоросы (improved_by == null) и уже-правильные улучшения (шахта на руде)
+## конфликтом не считаются.
+##
+## Используется в map_renderer для отрисовки красного треугольника с «!» и
+## в map_tooltip для соответствующего сообщения. Один источник истины.
+##
+## Формат результата:
+##   { "res_id": ..., "res_name": ..., "improved_by": ..., "imp_name": ... }
+static func get_tech_reveal_conflict(tile: Dictionary) -> Dictionary:
+	if tile.get("improvement", null) == null:
+		return {}
+	var natural_res = tile.get("resource", null)
+	if natural_res == null or natural_res == "":
+		return {}
+	var res_data: Dictionary = GameData.raw_resources.get(natural_res, {})
+	if res_data.is_empty():
+		return {}
+	var reveal_tech: String = res_data.get("tech_reveal", "")
+	if reveal_tech == "" or not CityData.is_tech_unlocked(reveal_tech):
+		return {}
+	var expected_imp: String = res_data.get("improved_by", "")
+	if expected_imp == null or expected_imp == "":
+		return {}
+	if tile.get("improvement") == expected_imp:
+		return {}
+	var imp_name: String = GameData.improvements.get(expected_imp, {}).get("name", expected_imp)
+	return {
+		"res_id": natural_res,
+		"res_name": res_data.get("name", natural_res),
+		"improved_by": expected_imp,
+		"imp_name": imp_name
+	}
+
+
 ## Гарантирует, что город находится на разрешённой местности (равнина или холмы).
 ## Если город был сгенерирован/загружен на горе или озере — меняет на равнину.
 static func ensure_city_valid_terrain(
@@ -288,10 +349,15 @@ static func get_chunk_info(chunk: Array, tile_data: Array) -> String:
 		var cover_id: String = tile.get("cover", "none")
 		if cover_id != "none":
 			cover_forests = true
-		var eff_res = get_effective_resource(tile)
-		if eff_res != "":
-			var res_name: String = GameData.raw_resources.get(eff_res, {}).get("name", eff_res)
-			resources.append(res_name)
+		# Разведчики не опознают tech_reveal-ресурсы, пока соответствующая
+		# технология не изучена. Это фича, не баг: скрытая руда под копытами
+		# лошади — нормально, если игрок ещё не умеет отличать руду от камня.
+		# is_resource_revealed учитывает оба условия (зона + tech_reveal).
+		if is_resource_revealed(tile):
+			var eff_res = get_effective_resource(tile)
+			if eff_res != "":
+				var res_name: String = GameData.raw_resources.get(eff_res, {}).get("name", eff_res)
+				resources.append(res_name)
 
 	var terrain_names: Array[String] = []
 	for terrain_id in terrain_types.keys():
@@ -398,34 +464,79 @@ static func ensure_food_plant(
 		tile_data[chosen.row][chosen.col]["quality"] = GameData.roll_quality()
 
 
-## Гарантирует наличие хотя бы одного ресурса заданной категории в Кольце Влияния.
-## Если нет — добавляет принудительно на подходящий пустой гекс.
+## Гарантирует наличие хотя бы одного ресурса заданной категории в указанной
+## прямоугольной области (например, стартовое «Кольцо + Регион»).
+##
+## Поведение:
+##   1. Если в области уже есть хотя бы один ресурс этой категории — выходим.
+##   2. Иначе выбираем **один** случайный id из доступных в категории
+##      (не каждый тип, а один из них — чтобы добавление новых металлов/ископаемых
+##      не превращалось в обязательный спавн всех сразу).
+##   3. Спавним его на подходящий пустой гекс с учётом allowed_terrain,
+##      allowed_cover и spawn_conditions (как chance, так и геометрических).
+##
+## Параметры `min_row..max_row` / `min_col..max_col` — инклюзивные границы.
+## `city_row` / `city_col` — координаты города (на нём ресурс не ставим).
 static func ensure_minimum_resource(
 	tile_data: Array,
 	category: String,
-	influence_start_row: int, influence_end_row: int,
-	influence_start_col: int, influence_end_col: int
+	min_row: int, max_row: int,
+	min_col: int, max_col: int,
+	city_row: int = -1, city_col: int = -1
 ) -> void:
-	for row in range(influence_start_row, influence_end_row + 1):
-		for col in range(influence_start_col, influence_end_col + 1):
-			var res = tile_data[row][col]["resource"]
-			if res != null and GameData.raw_resources[res].get("category", "") == category:
-				return
-	var possible := []
-	for row in range(influence_start_row, influence_end_row + 1):
-		for col in range(influence_start_col, influence_end_col + 1):
-			if tile_data[row][col]["resource"] != null:
+	# 1. Уже есть ресурс этой категории в области — ничего не делаем.
+	for row in range(min_row, max_row + 1):
+		for col in range(min_col, max_col + 1):
+			if row < 0 or row >= tile_data.size():
 				continue
-			var terrain_id: String = tile_data[row][col]["terrain"]
-			var cover_id: String = tile_data[row][col].get("cover", "none")
-			for res_id in GameData.raw_resources:
-				if GameData.raw_resources[res_id].get("category", "") != category:
-					continue
-				var rdata: Dictionary = GameData.raw_resources[res_id]
-				if terrain_id in rdata.get("allowed_terrain", []) and cover_id in rdata.get("allowed_cover", []):
-					possible.append({"row": row, "col": col, "id": res_id})
-					break
-	if possible.size() > 0:
-		var chosen = possible[randi() % possible.size()]
-		tile_data[chosen.row][chosen.col]["resource"] = chosen.id
-		tile_data[chosen.row][chosen.col]["quality"] = GameData.roll_quality()
+			if col < 0 or col >= tile_data[row].size():
+				continue
+			var res = tile_data[row][col].get("resource", null)
+			if res != null and GameData.raw_resources.get(res, {}).get("category", "") == category:
+				return
+
+	# 2. Собираем id ресурсов этой категории, доступных для спавна.
+	#    Доступность = шанс в spawn_conditions выполнился.
+	var candidates := []
+	for res_id in GameData.raw_resources:
+		var rdata: Dictionary = GameData.raw_resources[res_id]
+		if rdata.get("category", "") != category:
+			continue
+		if not HexUtils.spawn_conditions_met(rdata):
+			continue
+		candidates.append(res_id)
+	if candidates.is_empty():
+		return
+	var chosen_id: String = candidates[randi() % candidates.size()]
+	var chosen_data: Dictionary = GameData.raw_resources[chosen_id]
+
+	# 3. Ищем подходящий пустой гекс в границах.
+	var allowed_terrain: Array = chosen_data.get("allowed_terrain", [])
+	var allowed_cover: Array = chosen_data.get("allowed_cover", [])
+	var possible := []
+	for row in range(min_row, max_row + 1):
+		for col in range(min_col, max_col + 1):
+			if row < 0 or row >= tile_data.size():
+				continue
+			if col < 0 or col >= tile_data[row].size():
+				continue
+			if row == city_row and col == city_col:
+				continue
+			var t = tile_data[row][col]
+			if t.get("resource", null) != null:
+				continue
+			if t.get("improvement", null) != null:
+				continue
+			var terrain_id: String = t.get("terrain", "plain")
+			var cover_id: String = t.get("cover", "none")
+			if not (terrain_id in allowed_terrain and cover_id in allowed_cover):
+				continue
+			# Геометрические условия spawn_conditions (например, «у реки»).
+			if not HexUtils.is_hex_conditions_met(tile_data, row, col, chosen_data):
+				continue
+			possible.append({"row": row, "col": col})
+	if possible.is_empty():
+		return
+	var hex = possible[randi() % possible.size()]
+	tile_data[hex.row][hex.col]["resource"] = chosen_id
+	tile_data[hex.row][hex.col]["quality"] = GameData.roll_quality()

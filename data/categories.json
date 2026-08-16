@@ -9,7 +9,7 @@
     { "id": "material", "name": "Материалы" },
     { "id": "construction_material", "name": "Стройматериалы" },
     { "id": "mineral", "name": "Минералы" },
-    { "id": "metal", "name": "Металлы" },
+    { "id": "metals", "name": "Металлы" },
     { "id": "clothes", "name": "Одежда" },
     { "id": "household_items", "name": "Предметы быта" },
     { "id": "other", "name": "Прочее" }

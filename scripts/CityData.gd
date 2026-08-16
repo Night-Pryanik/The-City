@@ -599,15 +599,23 @@ func get_improvement_unlock_tech(imp_id: String) -> String:
     var imp_data = GameData.improvements.get(imp_id, {})
     return imp_data.get("unlock_tech", "")
 
-# Спавнит ресурсы, открываемые изученной технологией (tech_required).
+# Формирует сообщения о ресурсах, раскрываемых изученной технологией.
 # Вызывается после завершения исследования технологии.
-# Правила:
-#   - Для `animal_husbandry` и `mining`: 50% шанс на 2 вида, 30% на 3 вида, 20% на 1 вид,
-#	 при этом 1 вид гарантированно размещается в Кольце Влияния.
-#   - Для всех остальных технологий: обычное правило 50/30/20, ресурсы могут размещаться
-#	 как в Кольце, так и в Регионе.
-#   - Каждый выбранный вид размещается ровно 1 копией.
-# Возвращает массив сообщений для HUD (найдено/не найдено).
+#
+# Новая модель (см. docs.md, «tech_reveal: скрытые ресурсы»):
+#   - Все ресурсы спавнятся на карте с самого старта (map_generator.gd).
+#   - tech_required гейтит постройку улучшения (как и раньше).
+#   - tech_reveal гейтит видимость самого ресурса на карте.
+#   - Эта функция перечисляет ресурсы, у которых tech_reveal == tech_id,
+#     и для каждого формирует сообщение:
+#       * ресурс есть на карте          → "Учёные оценили: найдено <X>."
+#       * ресурса на карте нет          → "Похоже, в вашем регионе <X> отсутствует."
+#   - Размещением на карте функция НЕ занимается: все ресурсы уже там
+#     с момента генерации карты.
+#
+# Гарантия «1 металл в стартовом Кольце + Регионе» обеспечивается отдельно
+# в main_map._initialize_map через MapHelpers.ensure_minimum_resource.
+# Возвращает массив сообщений для попапа технологии.
 func spawn_resource_on_tech_research(tech_id: String) -> Array:
     var messages = []
     if Engine.is_editor_hint():
@@ -617,148 +625,21 @@ func spawn_resource_on_tech_research(tech_id: String) -> Array:
         return messages
     var tile_data = main_map.tile_data
 
-    # Технологии, которые гарантируют появление 1 вида в Кольце Влияния.
-    var guaranteed_circle = (tech_id == "animal_husbandry" or tech_id == "mining")
-
-    # Собираем виды ресурсов, открываемые этой технологией.
-    # Ресурс «открывается» технологией, если он требует её для появления и добычи
-    # (tech_required). Дикоросы (wild_food) не имеют tech_required — пропускаются.
-    var candidates = []
+    # Собираем виды ресурсов, РАСКРЫВАЕМЫХ этой технологией (tech_reveal).
+    # Если у ресурса нет tech_reveal — он виден сразу и эта функция его
+    # не упоминает; если tech_reveal есть, но не совпадает с tech_id,
+    # ресурс ещё скрыт и о нём мы тоже не сообщаем.
     for res_id in GameData.raw_resources:
         var data = GameData.raw_resources[res_id]
-        var required_tech = data.get("tech_required", "")
-        if required_tech != tech_id:
+        var reveal_tech: String = data.get("tech_reveal", "")
+        if reveal_tech != tech_id:
             continue
-        # Уже есть на карте (например, при загрузке сохранения) — не дублируем.
+        var res_name: String = data.get("name", res_id)
         if _is_resource_on_map(tile_data, res_id):
-            continue
-        # Ресурсы с дополнительными условиями спавна (spawn_conditions):
-        # если шанс активации не выпал — ресурс исключается из кандидатов.
-        if not HexUtils.spawn_conditions_met(data):
-            continue
-        candidates.append(res_id)
-
-    if candidates.is_empty():
-        return messages
-
-    # Определяем количество видов: 50% шанс на 2, 30% шанс на 3, иначе 1.
-    var roll = randf()
-    var num_types = 1
-    if roll < 0.5:
-        num_types = 2
-    elif roll < 0.8:
-        num_types = 3
-
-    candidates.shuffle()
-
-    # Выбираем виды для размещения.
-    var chosen = []
-    var guaranteed_circle_res = ""
-    if guaranteed_circle:
-        # Ищем хотя бы один вид, который может разместиться в Кольце Влияния.
-        var circle_candidates = []
-        for res_id in candidates:
-            if _get_available_hexes(tile_data, main_map, res_id, true).size() > 0:
-                circle_candidates.append(res_id)
-        if circle_candidates.size() > 0:
-            # Гарантированный вид в Кольце.
-            guaranteed_circle_res = circle_candidates[0]
-            chosen.append(guaranteed_circle_res)
-            # Остальные виды берём из оставшихся кандидатов.
-            for res_id in candidates:
-                if res_id == guaranteed_circle_res:
-                    continue
-                chosen.append(res_id)
-                if chosen.size() >= num_types:
-                    break
-        else:
-            # Нет подходящего места в Кольце — просто берём num_types из кандидатов.
-            chosen = candidates.slice(0, min(num_types, candidates.size()))
-    else:
-        chosen = candidates.slice(0, min(num_types, candidates.size()))
-
-    for res_id in chosen:
-        var data = GameData.raw_resources[res_id]
-        var res_name = data.get("name", res_id)
-        var placed = 0
-        # При спавне ресурса задаём ему случайное качество.
-        var quality = GameData.roll_quality()
-        # Гарантированный вид размещаем строго в Кольце Влияния.
-        if guaranteed_circle and res_id == guaranteed_circle_res:
-            var circle_hexes = _get_available_hexes(tile_data, main_map, res_id, true)
-            if circle_hexes.size() > 0:
-                var ch = circle_hexes[randi() % circle_hexes.size()]
-                tile_data[ch.row][ch.col]["resource"] = res_id
-                tile_data[ch.row][ch.col]["quality"] = quality
-                placed = 1
-        # Обычный спавн: в Кольце или в Регионе.
-        if placed == 0:
-            var available = _get_available_hexes(tile_data, main_map, res_id, false)
-            if available.size() > 0:
-                var hex = available[randi() % available.size()]
-                tile_data[hex.row][hex.col]["resource"] = res_id
-                tile_data[hex.row][hex.col]["quality"] = quality
-                placed = 1
-        print("Спавн ресурса %s по технологии %s: %d копий" % [res_id, tech_id, placed])
-        if placed > 0:
             messages.append("Учёные оценили: в вашем регионе можно найти %s." % res_name)
         else:
             messages.append("Похоже, в вашем регионе %s отсутствует." % res_name)
     return messages
-
-# Возвращает список пустых гексов, подходящих для ресурса res_id.
-# Если only_circle == true — только гексы внутри Кольца Влияния.
-# Ресурсы со спавн-условием "terrain" (например, сода на содовом озере)
-# ищутся по ВСЕЙ карте, а не только в Регионе — уникальная местность
-# (soda_lake) может находиться за пределами стартового Кольца/Региона.
-func _get_available_hexes(tile_data: Array, main_map: Node, res_id: String, only_circle: bool) -> Array:
-    var data = GameData.raw_resources[res_id]
-    var allowed_terrain = data.get("allowed_terrain", [])
-    var allowed_cover = data.get("allowed_cover", [])
-
-    # Проверяем, требуется ли искать по всей карте: если в spawn_conditions
-    # есть условие типа "terrain" — местность уникальна (например, содовое озеро).
-    var search_whole_map := false
-    for group in data.get("spawn_conditions", []):
-        for cond in group:
-            if cond.get("type", "") == "terrain":
-                search_whole_map = true
-                break
-        if search_whole_map:
-            break
-
-    var result = []
-    var row_start: int = main_map.region_start_row
-    var row_end: int = main_map.region_end_row
-    var col_start: int = main_map.region_start_col
-    var col_end: int = main_map.region_end_col
-    if search_whole_map:
-        # Ищем по всей карте (уникальная местность может быть где угодно).
-        row_start = 0
-        row_end = main_map.map_rows - 1
-        col_start = 0
-        col_end = main_map.map_cols - 1
-
-    for r in range(row_start, row_end + 1):
-        for c in range(col_start, col_end + 1):
-            if r == main_map.city_row and c == main_map.city_col:
-                continue
-            if tile_data[r][c].get("resource", null) != null:
-                continue
-            if tile_data[r][c].get("improvement", null) != null:
-                continue
-            if only_circle and not search_whole_map:
-                var in_circle = main_map.is_in_influence(r, c)
-                if not in_circle:
-                    continue
-            var terrain_id = tile_data[r][c].get("terrain", "plain")
-            var cover_id = tile_data[r][c].get("cover", "none")
-            if terrain_id in allowed_terrain and cover_id in allowed_cover:
-                # Фильтруем гексы по геометрическим условиям spawn_conditions.
-                if not HexUtils.is_hex_conditions_met(tile_data, r, c, data):
-                    continue
-                result.append({"row": r, "col": c})
-    return result
 
 # Проверяет, есть ли на карте хотя бы один гекс с указанным ресурсом.
 func _is_resource_on_map(tile_data: Array, res_id: String) -> bool:
@@ -768,8 +649,8 @@ func _is_resource_on_map(tile_data: Array, res_id: String) -> bool:
                 return true
     return false
 
-# Проверяет, присутствует ли на карте хотя бы один ресурс, открываемый
-# указанной технологией (tech_required == tech_id).
+# Проверяет, присутствует ли на карте хотя бы один ресурс, РАСКРЫВАЕМЫЙ
+# указанной технологией (tech_reveal == tech_id).
 func _tech_has_resource_on_map(tile_data: Array, tech_id: String) -> bool:
     for row in tile_data:
         for tile in row:
@@ -777,12 +658,17 @@ func _tech_has_resource_on_map(tile_data: Array, tech_id: String) -> bool:
             if res_id == null:
                 continue
             var data = GameData.raw_resources.get(res_id, {})
-            if data.get("tech_required", "") == tech_id:
+            if data.get("tech_reveal", "") == tech_id:
                 return true
     return false
 
 # Вызывается при загрузке сохранения: для уже изученных технологий
-# гарантирует, что открытые ими ресурсы появились на карте.
+# гарантирует, что открытые ими ресурсы корректно отображаются.
+# В новой модели (все ресурсы уже на карте) это, по сути, no-op: если
+# ресурс с tech_reveal == tech_id на карте есть (а он там есть в норме),
+# функция ничего не делает. Если сейв старый и ресурс на карте отсутствует,
+# нового спавна тоже не делаем — старые сохранения с повреждённой картой
+# пользователь чинит сам (или стартует новую партию).
 func ensure_tech_resources_spawned():
     if Engine.is_editor_hint():
         return
@@ -791,13 +677,11 @@ func ensure_tech_resources_spawned():
         return
     var tile_data = main_map.tile_data
     for tech_id in unlocked_technologies:
-        # Если хотя бы один ресурс из этой технологии уже присутствует на карте
-        # (он был размещён при изучении технологии и сохранён в tile_data),
-        # значит, технология уже обработана — пропускаем её, чтобы НЕ генерировать
-        # новые случайные ресурсы заново при каждой загрузке.
+        # На карте уже есть ресурс, раскрываемый этой технологией — ок.
         if _tech_has_resource_on_map(tile_data, tech_id):
             continue
-        # При загрузке сохранения сообщения для HUD не показываем.
+        # На всякий случай прогоняем функцию (сформирует «отсутствует»
+        # сообщения, но в HUD они не пойдут — мы их тут же отбрасываем).
         spawn_resource_on_tech_research(tech_id)
 
 # Проверяет доступность продукта (включая технологии, улучшения и здания).

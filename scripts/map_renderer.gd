@@ -317,12 +317,17 @@ func _pick_cover_icon(cover: Dictionary, row: int, col: int) -> String:
     var idx = icon_rng.randi() % icons.size()
     return icons[idx]
 
-# Ресурс виден игроку, если гекс входит в Кольцо Влияния
-# (территория освоена) или область была исследована разведкой.
+# Ресурс виден игроку, если выполнены ОБА условия:
+#   1) гекс входит в Кольцо Влияния (территория освоена) или область
+#      была исследована разведкой;
+#   2) у ресурса НЕТ tech_reveal, либо соответствующая технология уже изучена.
+# Иначе ресурс скрыт: иконки нет, в тултипе не упоминается, разведчики
+# его «не видят». Это касается подземных ископаемых вроде железа
+# (tech_reveal = "mining") — пока mining не изучен, руда на карте есть,
+# но игрок о ней не знает.
+# Логика вынесена в MapHelpers, чтобы тултип и рендерер не расходились.
 func _is_resource_revealed(tile: Dictionary) -> bool:
-    if tile.get("in_influence", false):
-        return true
-    return tile.get("is_explored", false)
+    return MapHelpers.is_resource_revealed(tile)
 
 func _draw_hex_overlays(row: int, col: int):
     var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
@@ -395,6 +400,17 @@ func _draw_hex_overlays(row: int, col: int):
                 drop_points[i] += drop_center
             draw_polygon(drop_points, [Color(0.45, 0.8, 1.0, 1.0)])
 
+    # --- Конфликт «tech_reveal-ресурс vs чужое улучшение» ---
+    # Если на гексе стоит улучшение, а под ним нашли скрытый ресурс (tech_reveal
+    # уже изучен, но ресурс не добывается из-за старого улучшения) — рисуем
+    # красный треугольник с «!». Само улучшение не сносится: его производство
+    # продолжается. Подробности см. в docs.md, «tech_reveal: скрытые ресурсы».
+    # Показываем треугольник ТОЛЬКО когда ресурс уже видим (после tech_reveal),
+    # иначе игрок не понимает, на что ругается значок.
+    var conflict = MapHelpers.get_tech_reveal_conflict(tile)
+    if not conflict.is_empty() and is_resource_visible:
+        _draw_tech_reveal_warning(center)
+
 # Рисует звёздочки качества ресурса под его иконкой.
 # Только для раскрытых ресурсов после постройки улучшения. Если качество не задано
 # или равно "common" — ничего не рисуем.
@@ -428,6 +444,41 @@ func _draw_quality_stars(tile: Dictionary, center: Vector2):
         else:
             # Пустая звезда — серо-белая
             _draw_star_outline(star_cx, star_y, star_outer, star_inner, Color(0.5, 0.5, 0.5, 0.6))
+
+# Рисует красный треугольник с «!» в правом верхнем углу гекса — индикатор
+# конфликта «tech_reveal-ресурс найден под чужим улучшением». Позиция
+# специально выбрана так, чтобы не перекрывать иконку ресурса по центру
+# и иконку улучшения сверху, но попадать в поле зрения.
+# Сама фигура — залитый красный треугольник + белая обводка + «!»
+# посередине (через draw_string). Без внешних ресурсов и шрифтов.
+func _draw_tech_reveal_warning(center: Vector2):
+    # Размеры треугольника в пикселях.
+    var tri_size := 18.0
+    # Центр треугольника — в правом верхнем углу гекса, чуть ближе к центру,
+    # чтобы значок не вылезал за гекс и не терялся на фоне соседних.
+    var cx = center.x + main_map.HEX_RADIUS * 0.55
+    var cy = center.y - main_map.HEX_RADIUS * 0.55
+    # Вершины равностороннего треугольника, направленного вверх.
+    var pts = PackedVector2Array()
+    pts.append(Vector2(cx, cy - tri_size * 0.6))
+    pts.append(Vector2(cx - tri_size * 0.55, cy + tri_size * 0.45))
+    pts.append(Vector2(cx + tri_size * 0.55, cy + tri_size * 0.45))
+    draw_colored_polygon(pts, Color(0.85, 0.15, 0.15, 0.95))
+    # Белая обводка по тому же контуру.
+    var border = PackedVector2Array()
+    border.append_array(pts)
+    border.append(pts[0])
+    draw_polyline(border, Color.WHITE, 1.5, true)
+    # «!» — рисуем как короткий столбик и точку под ним. Используем
+    # стандартный шрифт через draw_string, чтобы не зависеть от ассетов.
+    var font = ThemeDB.fallback_font
+    if font == null:
+        return
+    var font_size := 13
+    var text := "!"
+    var text_size = font.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size)
+    var text_pos = Vector2(cx - text_size.x / 2.0, cy + text_size.y / 2.0 - 1)
+    draw_string(font, text_pos, text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color.WHITE)
 
 # Рисует заполненную (сложную) звезду.
 func _draw_star(cx: float, cy: float, r_outer: float, r_inner: float, color: Color):

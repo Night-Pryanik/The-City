@@ -40,6 +40,20 @@ var region_end_row: int = 0
 var region_start_col: int = 0
 var region_end_col: int = 0
 
+# Стартовые границы «Кольцо» и «Кольцо + Регион» на момент генерации карты.
+# Сохраняются ОДИН раз в _initialize_map и далее НЕ меняются — нужны для
+# гарантий спавна ресурсов, чтобы они работали по исходным, а не будущим
+# расширенным границам. Например, _ensure_minimum_resource("metals")
+# опирается именно на эти поля, а не на текущие influence_* / region_*.
+var start_influence_start_row: int = 0
+var start_influence_end_row: int = 0
+var start_influence_start_col: int = 0
+var start_influence_end_col: int = 0
+var start_region_start_row: int = 0
+var start_region_end_row: int = 0
+var start_region_start_col: int = 0
+var start_region_end_col: int = 0
+
 # Текущая эпоха (0 = стартовая). Используется инфраструктурой расширения.
 var current_era: int = 0
 
@@ -384,6 +398,18 @@ func _initialize_map():
     region_cols = ring_cols + region_width * 2
     _recalculate_bounds()
 
+    # Запоминаем стартовые границы (Кольцо + видимое окно). Они нужны для
+    # гарантий спавна ресурсов, чтобы металл и food_plant НЕ появлялись за
+    # пределами изначально видимой области даже после расширения в новой эпохе.
+    start_influence_start_row = influence_start_row
+    start_influence_end_row = influence_end_row
+    start_influence_start_col = influence_start_col
+    start_influence_end_col = influence_end_col
+    start_region_start_row = region_start_row
+    start_region_end_row = region_end_row
+    start_region_start_col = region_start_col
+    start_region_end_col = region_end_col
+
     # Генерируем ВСЮ карту мира сразу (рельеф, покров, реки).
     var generator = load("res://scripts/map_generator.gd").new()
     # Количество центров Вороного для каждого типа местности вычисляется
@@ -442,6 +468,13 @@ func _initialize_map():
                 if res != null and influence_resource_types.has(res):
                     tile_data[row][col]["resource"] = null
 
+    # --- Гарантия: в стартовой области «Кольцо + Регион» есть ≥1 металл ---
+    # Используем стартовые границы (не текущие), чтобы при будущем
+    # расширении в новую эпоху не срабатывало повторно. Сейчас в игре
+    # единственный металл — железо; при добавлении новых функция выберет
+    # один из них случайно (см. ensure_minimum_resource).
+    _ensure_minimum_resource("metals")
+
     # --- Пост-обработка: гарантируем достаточное количество СВОБОДНЫХ гексов ---
     # После размещения всех ресурсов у каждого типа местности в Кольце Влияния
     # должно остаться минимум FREE_TERRAIN_HEXES свободных (resource == null)
@@ -496,10 +529,15 @@ func _is_hex_irrigated(row: int, col: int) -> bool:
     return MapHelpers.is_hex_irrigated(row, col, tile_data, map_rows, map_cols)
 
 func _ensure_minimum_resource(category: String):
+    # Гарантия работает по СТАРТОВЫМ границам «Кольцо + Регион», а не по
+    # текущим (которые могут быть расширены переходом в новую эпоху).
+    # Используется при инициализации карты, чтобы в стартовой области
+    # всегда был хотя бы один ресурс указанной категории (например, металл).
     MapHelpers.ensure_minimum_resource(
         tile_data, category,
-        influence_start_row, influence_end_row,
-        influence_start_col, influence_end_col
+        start_influence_start_row, start_influence_end_row,
+        start_influence_start_col, start_influence_end_col,
+        city_row, city_col
     )
 
 # Гарантирует наличие хотя бы одного ресурса из food_plants в стартовом Кольце.
@@ -638,7 +676,15 @@ func show_context_menu(row: int, col: int, click_pos: Vector2):
             var imp_name = imp_data.get("name", imp_id)
             var work_cost_calc = get_improvement_work_cost(imp_id, row, col)
             var work_cost = work_cost_calc["cost"]
-            if map_renderer.is_resource_locked(tile.resource):
+            # Если ресурс скрыт tech_reveal-гейтом — игрок о нём не знает, и
+            # контекстное меню не должно предлагать ни «Изучить X», ни
+            # «Построить Y» (иначе пункт «Изучить Обработка металлов» появится
+            # на невидимом железе и собьёт с толку). Меню остаётся пустым
+            # для блока «ресурс» — игрок увидит только общие пункты ниже
+            # (спец-действия, отмена стройки и т.п.).
+            if not MapHelpers.is_resource_revealed(tile):
+                pass # ресурс скрыт, никаких опций
+            elif map_renderer.is_resource_locked(tile.resource):
                 var tech_id = raw["tech_required"]
                 var tech_name = tech_id
                 var tech_cost = 3
