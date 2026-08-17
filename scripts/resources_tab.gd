@@ -400,16 +400,22 @@ func _update_quality_label(label: Label, prod_id: String):
     if total <= 0:
         label.hide()
         return
-    label.show()
-    # Вычисляем процент лучшего доступного качества
     var levels = GameData.get_quality_levels()
-    var best_count = 0
-    if levels.size() > 0:
-        best_count = int(detail.get(levels.back(), 0))
-    var best_pct = int(round(float(best_count) / float(total) * 100.0))
-    label.text = " %s (%d%%)" % [GameData.get_quality_stars(levels.back()) if levels.size() > 0 else "★", best_pct]
+    # Лучший уровень, который РЕАЛЬНО есть на складе, а не вершина шкалы.
+    var shown_qid = ""
+    for i in range(levels.size() - 1, -1, -1):
+        if int(detail.get(levels[i], 0)) > 0:
+            shown_qid = levels[i]
+            break
+    if shown_qid == "":
+        label.hide()
+        return
+    label.show()
+    var shown_count = int(detail.get(shown_qid, 0))
+    var shown_pct = int(round(float(shown_count) / float(total) * 100.0))
+    label.text = " %s (%d%%)" % [GameData.get_quality_stars(shown_qid), shown_pct]
 
-# Показывает тулитп с разбивкой по качеству при наведении.
+# Показывает тултип с разбивкой по качеству при наведении.
 func _on_quality_hover(prod_id: String, product_name: String):
     var detail = city_quality_detail.get(prod_id, {})
     if detail.is_empty():
