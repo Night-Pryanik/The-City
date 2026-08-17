@@ -96,8 +96,6 @@ static func is_hex_irrigated(row: int, col: int, tile_data: Array, map_rows: int
             continue
         if neighbor_tile.get("terrain", "plain") == "lake":
             return true
-        if neighbor_tile.get("river_edges", []).size() > 0:
-            return true
 
     if tile.improvement != "farm":
         return false
