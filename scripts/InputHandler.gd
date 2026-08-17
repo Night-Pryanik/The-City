@@ -3,6 +3,7 @@ extends Node
 
 var main_map: Node
 var map_renderer: Node
+var progress_bar_layer: Node
 var hud: Node
 var hex_tooltip: Node
 var tooltip_text_label: Label
@@ -31,6 +32,7 @@ const SCROLL_MARGIN: float = 30
 func initialize(main_node: Node):
     main_map = main_node
     map_renderer = main_node.map_renderer
+    progress_bar_layer = main_node.progress_bar_layer
     hud = main_node.hud
     hex_tooltip = main_node.hex_tooltip
     tooltip_text_label = main_node.tooltip_text_label
@@ -130,6 +132,8 @@ func handle_process(delta: float):
             main_map.scroll_offset.x = clamp(main_map.scroll_offset.x, -max_scroll_x, max_scroll_x)
             main_map.scroll_offset.y = clamp(main_map.scroll_offset.y, -max_scroll_y, max_scroll_y)
             map_renderer.queue_redraw()
+            if progress_bar_layer:
+                progress_bar_layer.queue_redraw()
 
     # Тултип
     if hud.get_global_rect().has_point(main_map.get_global_mouse_position()):
@@ -311,6 +315,8 @@ func _handle_mouse_motion(event: InputEventMouseMotion):
             main_map.scroll_offset.x = clamp(main_map.scroll_offset.x, -max_scroll_x, max_scroll_x)
             main_map.scroll_offset.y = clamp(main_map.scroll_offset.y, -max_scroll_y, max_scroll_y)
             map_renderer.queue_redraw()
+            if progress_bar_layer:
+                progress_bar_layer.queue_redraw()
             return
 
     var hex = _pixel_to_hex(event.global_position.x, event.global_position.y)

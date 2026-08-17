@@ -97,6 +97,7 @@ var extended_tooltip_delay: float = 1.0
 @onready var pause_menu = $PauseMenu
 @onready var build_manager = $BuildManager
 @onready var map_renderer = $MapRenderer
+@onready var progress_bar_layer = $MapRenderer/ProgressBarLayer
 @onready var road_manager = $RoadManager
 @onready var expansion_manager = $ExpansionManager
 @onready var river_manager = $RiverManager
@@ -125,6 +126,7 @@ func _ready():
     if Engine.is_editor_hint():
         _initialize_map()
         map_renderer.initialize(tile_data, self)
+        progress_bar_layer.initialize(tile_data, self)
         map_renderer.queue_redraw()
         return
 
@@ -226,11 +228,13 @@ func _ready():
         SaveManager.is_loaded = false
         SaveManager.saved_data.clear()
         map_renderer.initialize(tile_data, self)
+        progress_bar_layer.initialize(tile_data, self)
     else:
         randomize()
         _initialize_map()
         road_manager.initialize(city_row, city_col)
         map_renderer.initialize(tile_data, self)
+        progress_bar_layer.initialize(tile_data, self)
 
     _load_settings()
 
@@ -379,7 +383,7 @@ func _process(delta):
 
     _update_research_progress()
     if CityData.current_research_tech_id != "" or build_manager.active_builds.size() > 0:
-        map_renderer.queue_redraw()
+        progress_bar_layer.queue_redraw()
 
     input_handler.handle_process(delta)
 
@@ -387,7 +391,7 @@ func _process(delta):
         scouting_timer += delta
         if scouting_timer >= _get_scouting_time(scouting_chunk.size()):
             _complete_scouting()
-        map_renderer.queue_redraw()
+        progress_bar_layer.queue_redraw()
 
 func _initialize_map():
     GameData.load_all_data()

@@ -13,6 +13,7 @@
 [ext_resource type="Script" uid="uid://diqugyctdt728" path="res://scripts/InputHandler.gd" id="11_wehgl"]
 [ext_resource type="Script" uid="uid://dqr41kq6yhepx" path="res://scripts/river_manager.gd" id="12_rvmgr"]
 [ext_resource type="Script" path="res://scripts/debug_manager.gd" id="13_dbgmgr"]
+[ext_resource type="Script" path="res://scripts/progress_bar_layer.gd" id="14_pblayer"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_o7tci"]
 bg_color = Color(0.19607843, 0.19607843, 0.19607843, 1)
@@ -26,6 +27,9 @@ script = ExtResource("1_5hgy3")
 
 [node name="MapRenderer" type="Node2D" parent="." unique_id=1095572482]
 script = ExtResource("6_82ayj")
+
+[node name="ProgressBarLayer" type="Node2D" parent="MapRenderer" unique_id=1095572483]
+script = ExtResource("14_pblayer")
 
 [node name="CityUI" parent="." unique_id=1004795705 instance=ExtResource("2_a1mhp")]
 visible = false
