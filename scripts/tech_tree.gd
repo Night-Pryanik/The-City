@@ -34,6 +34,10 @@ var _fonts_adjusted: bool = false # отложенный автоподбор ш
 var _hovered_tech_id: String = "" # ID технологии, на которую наведён курсор
 var _related_techs: Dictionary = {} # tech_id -> bool, связанные технологии для подсветки
 
+# --- Кэш иконок технологий (рекурсивный обход res://icons, как в map_renderer) ---
+var icon_paths: Dictionary = {} # имя файла -> полный путь
+var icon_textures: Dictionary = {} # имя файла -> загруженная Texture2D
+
 # --- Плавная анимация прогресс-бара ---
 # При обновлении на тике ставим _progress_target, а в _process догоняем
 # progress_bar.value с фиксированной скоростью. Без этого прогресс-бар
@@ -46,6 +50,7 @@ signal research_requested(tech_id: String)
 func setup(parent: Control, current_lbl: Label, progress: ProgressBar):
     current_label = current_lbl
     progress_bar = progress
+    _build_tech_icon_index()
     _build_ui(parent)
 
 func _build_ui(parent: Control):
@@ -493,23 +498,39 @@ func _find_label_in_button(btn: Button) -> Label:
                             return c3
     return null
 
+# Строит индекс иконок рекурсивным обходом res://icons (как в map_renderer.gd:
+# build_icon_index/_scan_folder), чтобы пути не хардкодились, а иконки
+# находились по имени файла в любой подпапке.
+func _build_tech_icon_index():
+    icon_paths.clear()
+    _scan_icon_folder("res://icons")
+
+func _scan_icon_folder(folder_path: String):
+    var dir = DirAccess.open(folder_path)
+    if dir == null: return
+    dir.list_dir_begin()
+    var file_name = dir.get_next()
+    while file_name != "":
+        if dir.current_is_dir():
+            _scan_icon_folder(folder_path.path_join(file_name))
+        else:
+            var full_path = folder_path.path_join(file_name)
+            if icon_paths.has(file_name):
+                print("Предупреждение: дубликат иконки ", file_name)
+            icon_paths[file_name] = full_path
+        file_name = dir.get_next()
+    dir.list_dir_end()
+
 func _load_tech_icon(icon_name: String) -> Texture2D:
     if icon_name.is_empty():
         return null
-    # Иконки раскиданы по нескольким папкам. Ищем в порядке убывания
-    # вероятности нахождения. .import для PNG идёт в комплекте — главное,
-    # чтобы исходник был на диске.
-    var candidates := [
-        "res://icons/tech/" + icon_name,
-        "res://icons/resources/raw/" + icon_name,
-        "res://icons/resources/products/" + icon_name,
-        "res://icons/" + icon_name,
-    ]
-    for path in candidates:
-        if ResourceLoader.exists(path):
-            var tex = load(path)
-            if tex is Texture2D:
-                return tex
+    if icon_textures.has(icon_name):
+        return icon_textures[icon_name]
+    if icon_paths.has(icon_name):
+        var tex = load(icon_paths[icon_name])
+        if tex is Texture2D:
+            icon_textures[icon_name] = tex
+            return tex
     return null
 
 func _get_tech_data(tech_id: String) -> Dictionary:

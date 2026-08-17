@@ -113,6 +113,11 @@ func load_icons():
             for icon_name in t.icons:
                 if icon_paths.has(icon_name):
                     icon_textures[icon_name] = load(icon_paths[icon_name])
+    for tech in GameData.technologies:
+        if tech.has("icon"):
+            var file_name = tech.icon
+            if icon_paths.has(file_name):
+                icon_textures[file_name] = load(icon_paths[file_name])
     # Покров (cover): загружаем его иконки (оверлеи леса и т.п.)
     for c_id in GameData.covers.keys():
         var c = GameData.covers[c_id]
