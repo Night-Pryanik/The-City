@@ -31,7 +31,8 @@ func update_tooltip_text(row: int, col: int, tile_data: Array):
 
 	var cover_name_lower = ""
 	if cover_id != "none":
-		cover_name_lower = "Лес".to_lower()
+		# Имя покрова берём из данных (covers.json)
+		cover_name_lower = GameData.covers.get(cover_id, {}).get("name", cover_id).to_lower()
 	var terrain_with_cover = terrain_name
 	if cover_name_lower != "":
 		terrain_with_cover = "%s, %s" % [terrain_name, cover_name_lower]

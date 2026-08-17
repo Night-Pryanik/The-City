@@ -36,6 +36,16 @@
       "work_cost_mult": 1.0,
       "icons": [ "lake_1.png", "lake_2.png" ],
       "cover_chance": { "none": 100 }
+    },
+    {
+      "id": "swamp",
+      "name": "Болото",
+      "color": [ 90, 120, 80 ],
+      "move_cost": 2,
+      "expansion_cost": 100,
+      "work_cost_mult": 2.0,
+      "icons": [ "swamp_1.png", "swamp_2.png", "swamp_3.png" ],
+      "cover_chance": { "none": 40, "sparse_forest": 15, "forest": 15, "reeds": 30 }
     }
   ]
 }

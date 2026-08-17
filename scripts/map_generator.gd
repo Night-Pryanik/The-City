@@ -86,8 +86,35 @@ func _default_density(terrain_id: String) -> float:
             return 0.10
         "mountain":
             return 0.20
+        "swamp":
+            return 0.05
         _:
             return 0.05
+
+# Пост-обработка после Вороного: превращает часть равнинных гексов вокруг
+# озёр в болота (марши). Кольцо шириной в 1 гекс — перебираем только
+# непосредственных соседей каждого озера. Каждый такой сосед-равнина
+# становится болотом с шансом ~40-50% (MARSH_CHANCE). Гексы помечаются
+# временным флагом _is_marsh, чтобы генерация покрова принудительно
+# поставила им cover = "reeds" (тростник).
+const MARSH_CHANCE := 0.45
+
+func _apply_marshes(tile_data: Array, rows: int, cols: int) -> void:
+    var lake_hexes: Array = []
+    for r in range(rows):
+        for c in range(cols):
+            if tile_data[r][c].get("terrain", "plain") == "lake":
+                lake_hexes.append({"row": r, "col": c})
+
+    for lake in lake_hexes:
+        var neighbors = HexUtils.get_neighbors_odd_r(lake.row, lake.col, rows, cols)
+        for n in neighbors:
+            var tile = tile_data[n.row][n.col]
+            if tile.get("terrain", "plain") != "plain":
+                continue
+            if randf() < MARSH_CHANCE:
+                tile["terrain"] = "swamp"
+                tile["_is_marsh"] = true
 
 func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: Dictionary, terrain_counts: Dictionary) -> Array:
     var t0 = Time.get_ticks_msec()
@@ -139,6 +166,13 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
             if lake_tiles >= 3:
                 break
 
+    # --- МАРШИ (пост-обработка после Вороного) ---
+    # Вокруг каждого озера с шансом ~40-50% соседние равнинные гексы
+    # превращаются в болота (марши) — кольцо шириной в 1 гекс. Такие гексы
+    # помечаются временным флагом _is_marsh, чтобы при генерации покрова
+    # принудительно получить cover = "reeds" (тростник).
+    _apply_marshes(tile_data, rows, cols)
+
     # --- УНИКАЛЬНЫЕ ТИПЫ МЕСТНОСТИ ---
     # Размещаются ПОСЛЕ Вороного, но ДО генерации покрова и ресурсов.
     # Универсальная функция place_unique_terrains сама итерирует по всем
@@ -150,11 +184,15 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
     place_unique_terrains(tile_data, rows, cols, city_row, city_col)
 
     # --- Покров (cover): генерируем ПОСЛЕ рельефа, с учётом terrain ---
+    # Гексы маршей (помеченные _is_marsh) принудительно получают тростник.
     var t_cover = Time.get_ticks_msec()
     for row in range(rows):
         for col in range(cols):
             var terrain_id = tile_data[row][col]["terrain"]
-            tile_data[row][col]["cover"] = _roll_cover(terrain_id)
+            if tile_data[row][col].get("_is_marsh", false):
+                tile_data[row][col]["cover"] = "reeds"
+            else:
+                tile_data[row][col]["cover"] = _roll_cover(terrain_id)
 
     # Мультиииндекс свободных гексов по (terrain, cover) — для быстрого
     # размещения ресурсов без полного сканирования карты на каждый ресурс.
