@@ -2,19 +2,10 @@
   "modifiers": {
     "fresh_water": { "production_multiplier": { "farm": 1.5 } },
     "tech_modifiers": [ { "tech_id": "plow", "modifiers": [ { "target": "farm_production", "type": "percent", "value": 5 } ] } ],
-    // Модификаторы производства по типу местности (terrain_modifiers).
-    // Применяются, когда на гексе с указанным terrain_id добывается
-    // указанный resource_id (через улучшение). Множитель перемножается
-    // с остальными модификаторами (пресная вода, технологии).
-    // Пример: битум на асфальтовом озере (asphalt_lake) даёт x2 к
-    // производству. Обычный битум на равнине/холмах (bitumen_deposit)
-    // остаётся x1, т.к. его resource_id не совпадает.
     "terrain_modifiers": [
-      {
-        "terrain_id": "asphalt_lake",
-        "resource_id": "bitumen_deposit_asphalt",
-        "production_multiplier": 2.0
-      }
+      { "terrain_id": "asphalt_lake", "resource_id": "bitumen_deposit_asphalt", "production_multiplier": 2.0 },
+      // todo: соль через испарение должна спавниться на/возле морского побережья, а не на озере. Когда будут добавлены моря - поменять.
+      { "terrain_id": "salt_lake", "resource_id": "salt_evaporation", "production_multiplier": 2.0 }
     ]
   }
 }

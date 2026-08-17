@@ -88,6 +88,14 @@
       "category": "household_items",
       "unlock_tech": "soap_making",
       "icon": "soap.png"
+    },
+    {
+      "id": "salt",
+      "name": "Соль",
+      "type": "product",
+      "category": "household_items",
+      "unlock_tech": "salt_mining",
+      "icon": "salt.png"
     }
   ]
 }

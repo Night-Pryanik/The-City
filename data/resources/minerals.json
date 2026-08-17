@@ -137,12 +137,6 @@
       "color": [ 245, 245, 220 ]
     },
     {
-      // Сода добывается на гексах содового озера (soda_lake).
-      // Требует технологию "Добыча соды" (soda_extraction).
-      // Спавнится только на гексах с типом местности soda_lake. Условие
-      // spawn_conditions использует универсальный тип "terrain": ресурс
-      // ищет гексы с указанным terrain_id по ВСЕЙ карте, не только в Регионе.
-      // Добывается улучшением "Содовый карьер" (soda_quarry).
       "id": "soda_deposit",
       "name": "Сода",
       "type": "raw",
@@ -174,17 +168,8 @@
       "color": [ 50, 50, 50 ]
     },
     {
-      // Битум на асфальтовом озере (asphalt_lake).
-      // Отдельный ресурс от обычного bitumen_deposit (равнина/холмы), чтобы
-      // можно было применить бонус x2 к производству только на уникальной
-      // местности (см. data/modifiers.json, terrain_modifiers).
-      // Добывается тем же улучшением "Смоляная яма" (tar_pit), что и обычный
-      // битум. Спавнится только на гексах с типом местности asphalt_lake.
-      // Условие spawn_conditions использует универсальный тип "terrain":
-      // ресурс ищет гексы с указанным terrain_id по ВСЕЙ карте, не только
-      // в Регионе (аналогично soda_deposit).
       "id": "bitumen_deposit_asphalt",
-      "name": "Битум (асфальтовое озеро)",
+      "name": "Битум",
       "type": "raw",
       "category": "minerals",
       "group": "minerals",
@@ -197,6 +182,40 @@
       "icon": "bitumen.png",
       "color": [ 50, 50, 50 ],
       "spawn_conditions": [ [ { "type": "terrain", "terrain_id": "asphalt_lake", "chance": 100 } ] ]
+    },
+    {
+      "id": "salt_deposit",
+      "name": "Соль",
+      "type": "raw",
+      "category": "minerals",
+      "group": "minerals",
+      "subgroup": "",
+      "tech_required": "salt_mining",
+      // todo: добавить возможность добычи соли шахтным/карьерным способом на соленых озерах, когда будут добавлены моря. 
+      // Пока что таким способом соль добывается только под землей.
+      "allowed_terrain": [ "plain", "hill" ],
+      "allowed_cover": [ "none", "sparse_forest" ],
+      "improved_by": [ "salt_mine" ],
+      "produces": { "salt": 1 },
+      "icon": "salt.png",
+      "color": [ 255, 255, 255 ]
+    },
+    {
+      "id": "salt_evaporation",
+      "name": "Соль",
+      "type": "raw",
+      "category": "minerals",
+      "group": "minerals",
+      "subgroup": "",
+      "tech_required": "salt_mining",
+      // todo: соль через испарение должна спавниться на/возле морского побережья, а не на озере. Когда будут добавлены моря - поменять.
+      "allowed_terrain": [ "salt_lake" ],
+      "allowed_cover": [ "none" ],
+      "improved_by": [ "salt_pond" ],
+      "produces": { "salt": 2 },
+      "icon": "salt.png",
+      "color": [ 255, 255, 255 ],
+      "spawn_conditions": [ [ { "type": "terrain", "terrain_id": "salt_lake", "chance": 100 } ] ]
     }
   ]
 }

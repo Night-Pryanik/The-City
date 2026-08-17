@@ -48,8 +48,6 @@
       "unlock_tech": "masonry"
     },
     {
-      // Пасека: работает с природным ресурсом "bee" (improved_by == "beehive").
-      // Разведение пчёл на пустом гексе тоже идёт через crop_bred.
       "id": "beehive",
       "name": "Пасека",
       "icon": "beehive.png",
@@ -58,8 +56,6 @@
       "unlock_tech": "beekeeping"
     },
     {
-      // Виноградник: добывает виноград (improved_by == "vineyard" у растения)
-      // и используется для разведения сортов на пустом гексе.
       "id": "vineyard",
       "name": "Виноградник",
       "icon": "vineyard.png",
@@ -76,9 +72,6 @@
       "unlock_tech": "pottery"
     },
     {
-      // Плантация: улучшение для разведения технических/пряных культур на
-      // пустых гексах (tile.crop_bred), а также для сбора дикорастущих
-      // плантационных культур (improved_by == "plantation").
       "id": "plantation",
       "name": "Плантация",
       "icon": "plantation.png",
@@ -95,15 +88,28 @@
       "unlock_tech": "bitumen_extraction"
     },
     {
-      // Содовый карьер — улучшение для добычи соды на гексах содового озера.
-      // Открывается технологией "Добыча соды" (soda_extraction).
-      // Иконки нет — рендерер использует цвет-заглушку.
       "id": "soda_quarry",
       "name": "Содовый карьер",
       "icon": "soda_quarry.png",
       "color": [ 200, 220, 255 ],
       "work_cost": 30,
       "unlock_tech": "soda_extraction"
+    },
+    {
+      "id": "salt_mine",
+      "name": "Соляная шахта",
+      "icon": "salt_mine.png",
+      "color": [ 255, 255, 200 ],
+      "work_cost": 30,
+      "unlock_tech": "salt_mining"
+    },
+    {
+      "id": "salt_pond",
+      "name": "Соляный пруд",
+      "icon": "salt_pond.png",
+      "color": [ 255, 255, 200 ],
+      "work_cost": 30,
+      "unlock_tech": "salt_mining"
     }
   ]
 }
