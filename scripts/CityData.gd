@@ -961,15 +961,22 @@ func is_product_available(product_id: String) -> bool:
 
 # Возвращает итоговый множитель производства для улучшения imp_id.
 # has_fresh_water — есть ли доступ к пресной проточной воде на гексе.
-func get_improvement_production_multiplier(imp_id: String, has_fresh_water: bool) -> float:
+# terrain_id — тип местности гекса (для модификаторов по местности,
+#   например, асфальтовое озеро даёт x2 к битуму).
+# resource_id — id ресурса на гексе (для модификаторов по местности).
+func get_improvement_production_multiplier(imp_id: String, has_fresh_water: bool,
+        terrain_id: String = "", resource_id: String = "") -> float:
     var multiplier = 1.0
-    for mod in get_improvement_production_modifiers(imp_id, has_fresh_water):
+    for mod in get_improvement_production_modifiers(imp_id, has_fresh_water, terrain_id, resource_id):
         multiplier *= mod.get("multiplier", 1.0)
     return multiplier
 
 # Возвращает список активных модификаторов производства для улучшения imp_id.
 # Каждый элемент: { "label": String, "multiplier": float }
-func get_improvement_production_modifiers(imp_id: String, has_fresh_water: bool) -> Array:
+# terrain_id — тип местности гекса (для модификаторов по местности).
+# resource_id — id ресурса на гексе (для модификаторов по местности).
+func get_improvement_production_modifiers(imp_id: String, has_fresh_water: bool,
+        terrain_id: String = "", resource_id: String = "") -> Array:
     var result = []
     if imp_id == null or imp_id == "":
         return result
@@ -983,6 +990,25 @@ func get_improvement_production_modifiers(imp_id: String, has_fresh_water: bool)
             if m != 1.0:
                 result.append({
                     "label": "+%d%% (Доступ к пресной воде)" % int(round((m - 1.0) * 100.0)),
+                    "multiplier": m
+                })
+
+    # Модификаторы по типу местности (terrain_modifiers).
+    # Применяются, когда на гексе с указанным terrain_id добывается
+    # указанный resource_id (через улучшение). Например, битум на
+    # асфальтовом озере (asphalt_lake) даёт x2 к производству.
+    # См. data/modifiers.json, блок "terrain_modifiers".
+    if terrain_id != "" and resource_id != "":
+        for tm in GameData.modifiers.get("terrain_modifiers", []):
+            if tm.get("terrain_id", "") != terrain_id:
+                continue
+            if tm.get("resource_id", "") != resource_id:
+                continue
+            var m = float(tm.get("production_multiplier", 1.0))
+            if m != 1.0:
+                var terrain_name: String = GameData.terrains.get(terrain_id, {}).get("name", terrain_id)
+                result.append({
+                    "label": "x%.1f (%s)" % [m, terrain_name],
                     "multiplier": m
                 })
 

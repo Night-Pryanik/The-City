@@ -132,6 +132,11 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
     # Содовое озеро (soda_lake) — один раз, кластером 1-3 гекса,
     # за пределами стартового Кольца Влияния.
     place_unique_terrain(tile_data, rows, cols, city_row, city_col, "soda_lake", 3)
+    # Асфальтовое озеро (asphalt_lake) — один раз, кластером 1-3 гекса,
+    # за пределами стартового Кольца Влияния. На его гексах спавнится
+    # ресурс bitumen_deposit_asphalt с бонусом x2 к производству
+    # (см. data/modifiers.json, terrain_modifiers).
+    place_unique_terrain(tile_data, rows, cols, city_row, city_col, "asphalt_lake", 3)
 
     # --- Покров (cover): генерируем ПОСЛЕ рельефа, с учётом terrain ---
     var t_cover = Time.get_ticks_msec()

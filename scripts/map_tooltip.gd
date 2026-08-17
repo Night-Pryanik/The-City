@@ -130,7 +130,7 @@ func has_extended_tooltip_info(row: int, col: int, tile_data: Array) -> bool:
 	if tile.improvement != null and eff_res != "" and _worker_manager.has_worker(row, col):
 		var res_data = GameData.raw_resources.get(eff_res, {})
 		if res_data.has("produces"):
-			var bonus_multiplier = CityData.get_improvement_production_multiplier(tile.improvement, MapHelpers.is_hex_irrigated(row, col, tile_data, tile_data.size(), tile_data[0].size()))
+			var bonus_multiplier = CityData.get_improvement_production_multiplier(tile.improvement, MapHelpers.is_hex_irrigated(row, col, tile_data, tile_data.size(), tile_data[0].size()), tile.get("terrain", ""), eff_res)
 			if bonus_multiplier > 1.0:
 				return true
 
@@ -211,7 +211,7 @@ func _add_production_info(row: int, col: int, res_id: String, prefix: String, ti
 
 	var bonus_multiplier = 1.0
 	if tile.improvement != null and has_worker:
-		bonus_multiplier = CityData.get_improvement_production_multiplier(tile.improvement, MapHelpers.is_hex_irrigated(row, col, tile_data, tile_data.size(), tile_data[0].size()))
+		bonus_multiplier = CityData.get_improvement_production_multiplier(tile.improvement, MapHelpers.is_hex_irrigated(row, col, tile_data, tile_data.size(), tile_data[0].size()), tile.get("terrain", ""), res_id)
 
 	var final_amounts := {}
 	for prod_id in res_data["produces"]:
@@ -266,8 +266,8 @@ func _add_extended_production_info(row: int, col: int, tile_data: Array):
 	var modifiers := []
 	var bonus_multiplier = 1.0
 	if tile.improvement != null and _worker_manager.has_worker(row, col):
-		modifiers = CityData.get_improvement_production_modifiers(tile.improvement, MapHelpers.is_hex_irrigated(row, col, tile_data, tile_data.size(), tile_data[0].size()))
-		bonus_multiplier = CityData.get_improvement_production_multiplier(tile.improvement, MapHelpers.is_hex_irrigated(row, col, tile_data, tile_data.size(), tile_data[0].size()))
+		modifiers = CityData.get_improvement_production_modifiers(tile.improvement, MapHelpers.is_hex_irrigated(row, col, tile_data, tile_data.size(), tile_data[0].size()), tile.get("terrain", ""), eff_res)
+		bonus_multiplier = CityData.get_improvement_production_multiplier(tile.improvement, MapHelpers.is_hex_irrigated(row, col, tile_data, tile_data.size(), tile_data[0].size()), tile.get("terrain", ""), eff_res)
 
 	var available_products := {}
 	for prod_id in res_data["produces"]:

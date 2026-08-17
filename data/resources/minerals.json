@@ -172,6 +172,31 @@
       "produces": { "bitumen": 1 },
       "icon": "bitumen.png",
       "color": [ 50, 50, 50 ]
+    },
+    {
+      // Битум на асфальтовом озере (asphalt_lake).
+      // Отдельный ресурс от обычного bitumen_deposit (равнина/холмы), чтобы
+      // можно было применить бонус x2 к производству только на уникальной
+      // местности (см. data/modifiers.json, terrain_modifiers).
+      // Добывается тем же улучшением "Смоляная яма" (tar_pit), что и обычный
+      // битум. Спавнится только на гексах с типом местности asphalt_lake.
+      // Условие spawn_conditions использует универсальный тип "terrain":
+      // ресурс ищет гексы с указанным terrain_id по ВСЕЙ карте, не только
+      // в Регионе (аналогично soda_deposit).
+      "id": "bitumen_deposit_asphalt",
+      "name": "Битум (асфальтовое озеро)",
+      "type": "raw",
+      "category": "minerals",
+      "group": "minerals",
+      "subgroup": "",
+      "tech_required": "bitumen_extraction",
+      "allowed_terrain": [ "asphalt_lake" ],
+      "allowed_cover": [ "none" ],
+      "improved_by": "tar_pit",
+      "produces": { "bitumen": 1 },
+      "icon": "bitumen.png",
+      "color": [ 50, 50, 50 ],
+      "spawn_conditions": [ [ { "type": "terrain", "terrain_id": "asphalt_lake", "chance": 100 } ] ]
     }
   ]
 }

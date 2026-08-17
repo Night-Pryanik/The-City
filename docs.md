@@ -293,6 +293,53 @@ MapHelpers.get_effective_resource(tile)
 
 ---
 
+### Уникальная местность с бонусом к производству (`terrain_modifiers`)
+
+Некоторые уникальные типы местности дают **бонус к производству** ресурса, который на них добывается. Например, асфальтовое озеро (`asphalt_lake`) даёт **x2 к битуму**. Бонус реализуется через систему модификаторов в `data/modifiers.json` — блок `terrain_modifiers`.
+
+**Формат `terrain_modifiers`** (массив объектов):
+
+| Поле | Тип | Описание | Пример |
+|---|---|---|---|
+| `terrain_id` | string | Тип местности, на котором действует бонус | `"asphalt_lake"` |
+| `resource_id` | string | ID ресурса, к которому применяется бонус | `"bitumen_deposit_asphalt"` |
+| `production_multiplier` | number | Множитель производства (перемножается с остальными модификаторами) | `2.0` |
+
+```json
+"terrain_modifiers": [
+  {
+    "terrain_id": "asphalt_lake",
+    "resource_id": "bitumen_deposit_asphalt",
+    "production_multiplier": 2.0
+  }
+]
+```
+
+**Как это работает:**
+1. Модификатор применяется, когда на гексе с `terrain_id` добывается именно `resource_id` (через улучшение).
+2. Множитель перемножается с остальными модификаторами (пресная вода, технологии) в `CityData.get_improvement_production_multiplier`.
+3. В расширенном тултипе бонус отображается строкой вида `x2.0 (Асфальтовое озеро)`.
+
+**Важно:** бонус привязан к **конкретному ресурсу**, а не к типу местности в целом. Это позволяет иметь на карте одновременно:
+- обычный битум (`bitumen_deposit`) на равнине/холмах — x1;
+- битум на асфальтовом озере (`bitumen_deposit_asphalt`) — x2.
+
+### Пример: Битум (асфальтовое озеро `asphalt_lake`)
+
+Цепочка:
+1. **`terrains.json`** — тип местности `asphalt_lake` с `"unique": true`.
+2. **`map_generator.gd`** — при генерации карты размещает кластер `asphalt_lake` (1–3 гекса) за пределами Кольца.
+3. **`resources/minerals.json`** — ресурс `bitumen_deposit_asphalt`:
+   - `tech_required: "bitumen_extraction"` — появляется на карте после изучения технологии.
+   - `allowed_terrain: ["asphalt_lake"]` — только на асфальтовом озере.
+   - `spawn_conditions: [ [ { "type": "terrain", "terrain_id": "asphalt_lake", "chance": 100 } ] ]` — поиск по всей карте.
+   - `improved_by: "tar_pit"` — добывается тем же улучшением «Смоляная яма», что и обычный битум.
+4. **`modifiers.json`** — `terrain_modifiers` с `terrain_id: "asphalt_lake"`, `resource_id: "bitumen_deposit_asphalt"`, `production_multiplier: 2.0`.
+5. **`technologies.json`** — `bitumen_extraction` («Добыча битума») открывает и ресурс, и улучшение.
+6. **`improvements.json`** — `tar_pit` («Смоляная яма», `unlock_tech: "bitumen_extraction"`).
+
+---
+
 ### `data/buildings.json` — здания
 
 Корневой ключ: `buildings` (массив объектов).

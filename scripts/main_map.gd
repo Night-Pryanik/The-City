@@ -355,7 +355,11 @@ func _process(delta):
                 var feed_needed = res_data.get("feed_consumption", 0)
                 var production_multiplier = 1.0
                 if tile.improvement != null:
-                    production_multiplier = CityData.get_improvement_production_multiplier(tile.improvement, _is_hex_irrigated(row, col))
+                    # Передаём terrain_id и resource_id для модификаторов по
+                    # местности (например, битум на асфальтовом озере x2).
+                    production_multiplier = CityData.get_improvement_production_multiplier(
+                        tile.improvement, _is_hex_irrigated(row, col),
+                        tile.get("terrain", ""), eff_res)
 
                 # Качество ресурса на гексе передаётся в производство.
                 var tile_quality = tile.get("quality", "common")
