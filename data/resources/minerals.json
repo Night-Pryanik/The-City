@@ -122,27 +122,6 @@
       "spawn_conditions": [ [ { "type": "near_river", "chance": 100 } ] ]
     },
     {
-      "id": "iron_deposit",
-      "name": "Железо",
-      "type": "raw",
-      "category": "metals",
-      "group": "",
-      "subgroup": "",
-      // tech_reveal — ресурс «подземный»: спавнится на карте с самого старта,
-      // но невидим игроку, пока не изучена указанная технология.
-      // Подробности см. в docs.md, раздел «tech_reveal: скрытые ресурсы».
-      "tech_reveal": "mining",
-      // tech_required — технология, ОТКРЫВАЮЩАЯ ДОБЫЧУ (постройку шахты на руде).
-      // Без неё ресурс виден, но построить улучшение нельзя.
-      "tech_required": "metal_processing",
-      "allowed_terrain": [ "hill", "mountain" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
-      "improved_by": "mine",
-      "produces": { "iron": 1 },
-      "icon": "iron.png",
-      "color": [ 120, 130, 140 ]
-    },
-    {
       "id": "quartz_sand_deposit",
       "name": "Кварцевый песок",
       "type": "raw",
