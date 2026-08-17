@@ -429,13 +429,19 @@ static func calc_offsets(
 
 ## Гарантирует наличие хотя бы одного ресурса из food_plants в заданной области.
 ## Если нет — добавляет принудительно на подходящий пустой гекс.
+## city_row / city_col (опционально) — координаты города: гекс города и его
+## соседи (3×3) исключаются из поиска, чтобы ресурс не заспавнился на городе.
+## Это согласуется с исключением в _build_hex_index / _place_resources.
 static func ensure_food_plant(
     tile_data: Array,
     min_row: int, max_row: int,
-    min_col: int, max_col: int
+    min_col: int, max_col: int,
+    city_row: int = -1, city_col: int = -1
 ) -> void:
     for row in range(min_row, max_row + 1):
         for col in range(min_col, max_col + 1):
+            if city_row >= 0 and abs(row - city_row) <= 1 and abs(col - city_col) <= 1:
+                continue
             var res = tile_data[row][col]["resource"]
             if res != null:
                 var res_data: Dictionary = GameData.raw_resources.get(res, {})
@@ -444,6 +450,8 @@ static func ensure_food_plant(
     var possible := []
     for row in range(min_row, max_row + 1):
         for col in range(min_col, max_col + 1):
+            if city_row >= 0 and abs(row - city_row) <= 1 and abs(col - city_col) <= 1:
+                continue
             if tile_data[row][col]["resource"] != null:
                 continue
             var terrain: String = tile_data[row][col]["terrain"]

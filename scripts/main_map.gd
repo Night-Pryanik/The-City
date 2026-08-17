@@ -452,7 +452,7 @@ func _initialize_map():
     # старте новой игры и ТОЛЬКО внутри стартового Кольца Влияния.
     # Передаём явные границы стартового Кольца, чтобы эти функции никогда
     # не выходили за его пределы (даже если Кольцо позже расширится).
-    _ensure_food_plant(influence_start_row, influence_end_row, influence_start_col, influence_end_col)
+    _ensure_food_plant(influence_start_row, influence_end_row, influence_start_col, influence_end_col, city_row, city_col)
     generator.place_wild_food(tile_data,
             influence_start_row, influence_end_row, influence_start_col, influence_end_col,
             city_row, city_col)
@@ -492,7 +492,8 @@ func _initialize_map():
     # попал в кольцо, у игрока всегда будет место для дополнительных ферм/пастбищ.
     # Метод конвертирует ТОЛЬКО свободные гексы и НИКОГДА не уничтожает ресурсы.
     generator.ensure_free_terrain_hexes(tile_data, terrain_counts,
-            influence_start_row, influence_end_row, influence_start_col, influence_end_col)
+            influence_start_row, influence_end_row, influence_start_col, influence_end_col,
+            city_row, city_col)
 
     # Используем ЛОКАЛЬНЫЙ генератор случайных чисел для выбора иконки ландшафта.
     # Ни в коем случае нельзя вызывать seed()/randomize() на глобальном RNG внутри
@@ -529,6 +530,12 @@ func _initialize_map():
     river_manager.mark_river_edges(tile_data, map_rows, map_cols, HEX_RADIUS, river_manager.get_cached_graph())
     print("этап mark_river_edges: ", Time.get_ticks_msec() - t_river_edges, " ms")
 
+    # Финальная гарантия: на гексе города не должно быть ресурса, и террейн
+    # должен быть допустимым (plain или hill). Это safety-net на случай,
+    # если какая-либо функция спавна ресурсов или конвертации террейна
+    # пропустила проверку координат города.
+    _ensure_city_hex_clean()
+
 func _ensure_city_valid_terrain() -> void:
     MapHelpers.ensure_city_valid_terrain(tile_data, city_row, city_col, map_rows, map_cols)
 
@@ -559,8 +566,17 @@ func _ensure_minimum_resource(filter: Dictionary):
 # Границы (min_row..max_row, min_col..max_col) — это стартовое Кольцо,
 # поэтому food_plant гарантированно не появляется за его пределами
 # и не пересоздаётся после старта.
-func _ensure_food_plant(min_row: int, max_row: int, min_col: int, max_col: int):
-    MapHelpers.ensure_food_plant(tile_data, min_row, max_row, min_col, max_col)
+func _ensure_food_plant(min_row: int, max_row: int, min_col: int, max_col: int, city_row: int = -1, city_col: int = -1):
+    MapHelpers.ensure_food_plant(tile_data, min_row, max_row, min_col, max_col, city_row, city_col)
+
+# Финальная safety-проверка: гарантирует, что на гексе города нет ресурса
+# и террейн валиден. Вызывается после всех этапов генерации карты.
+func _ensure_city_hex_clean() -> void:
+    var city_tile = tile_data[city_row][city_col]
+    if city_tile.get("resource", null) != null:
+        print("ВНИМАНИЕ: на гексе города стоял ресурс «", city_tile["resource"], "» — удален.")
+        city_tile["resource"] = null
+    _ensure_city_valid_terrain()
 
 # Ищет на карте уже одомашненный экземпляр ресурса res_id (гекс с этим ресурсом
 # и построенным улучшением — ферма/пастбище) и возвращает его качество.

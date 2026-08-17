@@ -523,12 +523,18 @@ func place_wild_food(tile_data: Array, min_row: int, max_row: int, min_col: int,
         tile_data[hex.row][hex.col]["quality"] = GameData.roll_quality()
 
 func ensure_free_terrain_hexes(tile_data: Array, terrain_counts: Dictionary,
-        min_row: int, max_row: int, min_col: int, max_col: int) -> void:
+        min_row: int, max_row: int, min_col: int, max_col: int,
+        city_row: int = -1, city_col: int = -1) -> void:
     var free_count: Dictionary = {}
     for terrain_id in terrain_counts.keys():
         free_count[terrain_id] = 0
     for r in range(min_row, max_row + 1):
         for c in range(min_col, max_col + 1):
+            # Гекс города и его соседи (3×3) исключаются из подсчёта и
+            # конвертации — террейн города не должен меняться после
+            # _ensure_city_valid_terrain, а соседи нужны для стартового строительства.
+            if city_row >= 0 and abs(r - city_row) <= 1 and abs(c - city_col) <= 1:
+                continue
             var tile = tile_data[r][c]
             if tile.get("resource", null) != null:
                 continue
@@ -541,17 +547,23 @@ func ensure_free_terrain_hexes(tile_data: Array, terrain_counts: Dictionary,
         if deficit <= 0:
             continue
         var converted = _convert_free_terrain_near_cluster(tile_data, terrain_id, deficit,
-                min_row, max_row, min_col, max_col, free_count, terrain_counts)
+                min_row, max_row, min_col, max_col, free_count, terrain_counts,
+                city_row, city_col)
         free_count[terrain_id] += converted
 
 func _convert_free_terrain_near_cluster(tile_data: Array, terrain_id: String, deficit: int,
         min_row: int, max_row: int, min_col: int, max_col: int,
-        free_count: Dictionary, terrain_counts: Dictionary) -> int:
+        free_count: Dictionary, terrain_counts: Dictionary,
+        city_row: int = -1, city_col: int = -1) -> int:
     var converted = 0
     var cluster: Array = []
     var visited := {}
     for r in range(min_row, max_row + 1):
         for c in range(min_col, max_col + 1):
+            # Гекс города и его соседи (3×3) не входят в кластер и не
+            # конвертируются — террейн города фиксирован.
+            if city_row >= 0 and abs(r - city_row) <= 1 and abs(c - city_col) <= 1:
+                continue
             var tile = tile_data[r][c]
             if tile.get("resource", null) != null:
                 continue
@@ -571,6 +583,9 @@ func _convert_free_terrain_near_cluster(tile_data: Array, terrain_id: String, de
             for n in neighbors:
                 if n.row < min_row or n.row > max_row or n.col < min_col or n.col > max_col:
                     continue
+                # Гекс города и его соседи не посещаются и не становятся кандидатами.
+                if city_row >= 0 and abs(n.row - city_row) <= 1 and abs(n.col - city_col) <= 1:
+                    continue
                 var key = "%d_%d" % [n.row, n.col]
                 if visited.has(key):
                     continue
@@ -587,6 +602,8 @@ func _convert_free_terrain_near_cluster(tile_data: Array, terrain_id: String, de
     if cluster.size() == 0 and candidates.size() == 0:
         for r in range(min_row, max_row + 1):
             for c in range(min_col, max_col + 1):
+                if city_row >= 0 and abs(r - city_row) <= 1 and abs(c - city_col) <= 1:
+                    continue
                 if tile_data[r][c].get("resource", null) != null:
                     continue
                 if tile_data[r][c].get("terrain", "plain") != terrain_id:
@@ -605,6 +622,9 @@ func _convert_free_terrain_near_cluster(tile_data: Array, terrain_id: String, de
     for cand in candidates:
         if converted >= deficit:
             break
+        # Гекс города и его соседи не конвертируются террейном.
+        if city_row >= 0 and abs(cand.row - city_row) <= 1 and abs(cand.col - city_col) <= 1:
+            continue
         var old_terrain = cand.terrain
         var row = cand.row
         var col = cand.col
