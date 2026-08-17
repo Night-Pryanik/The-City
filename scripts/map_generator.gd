@@ -16,7 +16,7 @@ const OVER_REP_THRESHOLD := 3
 
 # Возвращает список типов местности, которые участвуют в алгоритме Вороного
 # (базовый рельеф). Уникальные типы (unique: true) сюда НЕ входят — они
-# размещаются отдельной функцией place_unique_terrain. Это позволяет добавлять
+# размещаются отдельной функцией place_unique_terrains. Это позволяет добавлять
 # новые уникальные типы местности в data/terrains.json без изменения этого кода.
 static func _get_base_terrain_ids() -> Array:
     var base_ids = []
@@ -25,6 +25,18 @@ static func _get_base_terrain_ids() -> Array:
         if not t.get("unique", false):
             base_ids.append(terrain_id)
     return base_ids
+
+# Возвращает список уникальных типов местности (unique: true), которые
+# размещаются универсальной функцией place_unique_terrains. Это позволяет
+# добавлять новые уникальные типы местности в data/terrains.json без изменения
+# этого кода — функция сама итерирует по всем таким типам.
+static func _get_unique_terrain_ids() -> Array:
+    var unique_ids = []
+    for terrain_id in GameData.terrains.keys():
+        var t: Dictionary = GameData.terrains[terrain_id]
+        if t.get("unique", false):
+            unique_ids.append(terrain_id)
+    return unique_ids
 
 # Вычисляет количество центров Вороного для каждого типа местности на основе
 # плотностей (terrain_density) и среднего размера кластера (target_cluster),
@@ -129,14 +141,13 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
 
     # --- УНИКАЛЬНЫЕ ТИПЫ МЕСТНОСТИ ---
     # Размещаются ПОСЛЕ Вороного, но ДО генерации покрова и ресурсов.
-    # Содовое озеро (soda_lake) — один раз, кластером 1-3 гекса,
-    # за пределами стартового Кольца Влияния.
-    place_unique_terrain(tile_data, rows, cols, city_row, city_col, "soda_lake", 3)
-    # Асфальтовое озеро (asphalt_lake) — один раз, кластером 1-3 гекса,
-    # за пределами стартового Кольца Влияния. На его гексах спавнится
-    # ресурс bitumen_deposit_asphalt с бонусом x2 к производству
-    # (см. data/modifiers.json, terrain_modifiers).
-    place_unique_terrain(tile_data, rows, cols, city_row, city_col, "asphalt_lake", 3)
+    # Универсальная функция place_unique_terrains сама итерирует по всем
+    # уникальным типам местности (unique: true) из data/terrains.json и читает
+    # для каждого максимальный размер кластера (cluster_size). Каждый тип
+    # размещается один раз, кластером 1..cluster_size гексов, за пределами
+    # стартового Кольца Влияния. Добавление нового уникального типа в
+    # terrains.json не требует изменения этого кода.
+    place_unique_terrains(tile_data, rows, cols, city_row, city_col)
 
     # --- Покров (cover): генерируем ПОСЛЕ рельефа, с учётом terrain ---
     var t_cover = Time.get_ticks_msec()
@@ -184,12 +195,13 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
     print("этап generate_map: ", Time.get_ticks_msec() - t0, " ms")
     return tile_data
 
-# Универсальная функция размещения уникального типа местности на карте.
-# Размещает ОДИН сомкнутный кластер типа terrain_id размером 1..max_cluster_size
-# гексов за пределами стартового Кольца Влияния. Требует, чтобы тип местности
-# был помечен "unique": true в data/terrains.json.
-func place_unique_terrain(tile_data: Array, rows: int, cols: int, city_row: int, city_col: int,
-        terrain_type: String, max_cluster_size: int) -> void:
+# Универсальная функция размещения всех уникальных типов местности на карте.
+# Итерирует по всем типам с "unique": true в data/terrains.json и для каждого
+# размещает ОДИН сомкнутный кластер размером 1..cluster_size гексов за
+# пределами стартового Кольца Влияния. Максимальный размер кластера читается
+# из поля "cluster_size" данных террейна (дефолт 3, если поле не задано).
+# Добавление нового уникального типа в terrains.json не требует изменения кода.
+func place_unique_terrains(tile_data: Array, rows: int, cols: int, city_row: int, city_col: int) -> void:
     # Границы стартового Кольца Влияния из конфигурации.
     var cfg: Dictionary = GameData.map_config
     var ring_rows: int = int(cfg.get("start_ring_rows", 5))
@@ -209,50 +221,54 @@ func place_unique_terrain(tile_data: Array, rows: int, cols: int, city_row: int,
                 continue
             candidates.append({"row": r, "col": c})
     if candidates.is_empty():
-        print("ОШИБКА place_unique_terrain: нет гексов за пределами Кольца Влияния!")
+        print("ОШИБКА place_unique_terrains: нет гексов за пределами Кольца Влияния!")
         return
 
-    # Случайный размер кластера от 1 до max_cluster_size.
-    var cluster_size: int = randi_range(1, maxi(1, max_cluster_size))
+    for terrain_type in _get_unique_terrain_ids():
+        var t: Dictionary = GameData.terrains[terrain_type]
+        var max_cluster_size: int = int(t.get("cluster_size", 3))
 
-    # Случайная точка старта в пределах допустимой области.
-    var start = candidates[randi() % candidates.size()]
+        # Случайный размер кластера от 1 до max_cluster_size.
+        var cluster_size: int = randi_range(1, maxi(1, max_cluster_size))
 
-    # BFS: строим связный кластер из cluster_size гексов, прилегающих к старту.
-    var cluster: Array = [start]
-    var visited := {}
-    visited["%d,%d" % [start.row, start.col]] = true
-    var frontier: Array = [start]
-    while cluster.size() < cluster_size and frontier.size() > 0:
-        var next_frontier: Array = []
-        for hex in frontier:
-            var neighbors = HexUtils.get_neighbors_odd_r(hex.row, hex.col, rows, cols)
-            neighbors.shuffle()
-            for n in neighbors:
-                var key = "%d,%d" % [n.row, n.col]
-                if visited.has(key):
-                    continue
-                if n.row >= inf_start_row and n.row <= inf_end_row and n.col >= inf_start_col and n.col <= inf_end_col:
-                    continue
-                if n.row == city_row and n.col == city_col:
-                    continue
-                visited[key] = true
-                cluster.append(n)
-                next_frontier.append(n)
+        # Случайная точка старта в пределах допустимой области.
+        var start = candidates[randi() % candidates.size()]
+
+        # BFS: строим связный кластер из cluster_size гексов, прилегающих к старту.
+        var cluster: Array = [start]
+        var visited := {}
+        visited["%d,%d" % [start.row, start.col]] = true
+        var frontier: Array = [start]
+        while cluster.size() < cluster_size and frontier.size() > 0:
+            var next_frontier: Array = []
+            for hex in frontier:
+                var neighbors = HexUtils.get_neighbors_odd_r(hex.row, hex.col, rows, cols)
+                neighbors.shuffle()
+                for n in neighbors:
+                    var key = "%d,%d" % [n.row, n.col]
+                    if visited.has(key):
+                        continue
+                    if n.row >= inf_start_row and n.row <= inf_end_row and n.col >= inf_start_col and n.col <= inf_end_col:
+                        continue
+                    if n.row == city_row and n.col == city_col:
+                        continue
+                    visited[key] = true
+                    cluster.append(n)
+                    next_frontier.append(n)
+                    if cluster.size() >= cluster_size:
+                        break
                 if cluster.size() >= cluster_size:
                     break
-            if cluster.size() >= cluster_size:
-                break
-        frontier = next_frontier
+            frontier = next_frontier
 
-    # Меняем террайн на уникальный для выбранных гексов (только если там нет улучшения).
-    for hex in cluster:
-        var tile = tile_data[hex.row][hex.col]
-        if tile.get("improvement", null) == null:
-            tile["terrain"] = terrain_type
-            tile["cover"] = _roll_cover(terrain_type)
+        # Меняем террайн на уникальный для выбранных гексов (только если там нет улучшения).
+        for hex in cluster:
+            var tile = tile_data[hex.row][hex.col]
+            if tile.get("improvement", null) == null:
+                tile["terrain"] = terrain_type
+                tile["cover"] = _roll_cover(terrain_type)
 
-    print("Уникальный тип местности %s размещён: %d гексов" % [terrain_type, cluster.size()])
+        print("Уникальный тип местности %s размещён: %d гексов" % [terrain_type, cluster.size()])
 
 # Jump Flood Algorithm (JFA) для построения диаграммы Вороного на
 # гексагональной сетке (odd-r). Сложность O(rows * cols * log2(max(rows, cols)))

@@ -1,0 +1,30 @@
+{
+  "terrains": [
+    {
+      "id": "soda_lake",
+      "name": "Содовое озеро",
+      "color": [ 200, 220, 255 ],
+      "move_cost": 999,
+      "expansion_cost": 200,
+      "work_cost_mult": 1.0,
+      "icons": [ "soda_lake_1.png", "soda_lake_2.png", "soda_lake_3.png" ],
+      "unique": true,
+      "cluster_size": 3,
+      "description": "Местные жители хвастаются, что белый налёт по берегам этого озера обладает необычными свойствами — он пенится и помогает отстирывать одежду.",
+      "cover_chance": { "none": 100 }
+    },
+    {
+      "id": "asphalt_lake",
+      "name": "Асфальтовое озеро",
+      "color": [ 30, 30, 30 ],
+      "move_cost": 999,
+      "expansion_cost": 200,
+      "work_cost_mult": 1.0,
+      "icons": [ "asphalt_lake_1.png", "asphalt_lake_2.png", "asphalt_lake_3.png" ],
+      "unique": true,
+      "cluster_size": 3,
+      "description": "Поверхность этого озера застыла в чёрную блестящую корку. Местные жители говорят, что она липнет к ногам и пахнет смолой.",
+      "cover_chance": { "none": 100 }
+    }
+  ]
+}

@@ -265,14 +265,15 @@ MapHelpers.get_effective_resource(tile)
   "move_cost": 999,
   "expansion_cost": 200,
   "unique": true,
+  "cluster_size": 3,
   "cover_chance": { "none": 100 }
 }
 ```
 
 **Поведение:**
 1. `map_generator.gd.make_terrain_counts()` игнорирует типы с `unique: true` — они **не участвуют** в диаграмме Вороного.
-2. Универсальная функция `place_unique_terrain(tile_data, rows, cols, city_row, city_col, terrain_id, max_cluster_size)` размещает **один связный кластер** размером `1..max_cluster_size` гексов **за пределами стартового Кольца Влияния**.
-3. В `generate_map()` вызывается: `place_unique_terrain(..., "soda_lake", 3)` — содовое озеро появляется гарантированно 1 раз на карту, кластером 1–3 гекса.
+2. Универсальная функция `place_unique_terrains(tile_data, rows, cols, city_row, city_col)` сама итерирует по **всем** уникальным типам местности (`unique: true`) из `data/terrains.json`. Для каждого типа она читает максимальный размер кластера из поля `cluster_size` (дефолт `3`, если поле не задано) и размещает **один связный кластер** размером `1..cluster_size` гексов **за пределами стартового Кольца Влияния**.
+3. В `generate_map()` вызывается один раз: `place_unique_terrains(tile_data, rows, cols, city_row, city_col)`. Добавление нового уникального типа в `terrains.json` (с `"unique": true` и `"cluster_size"`) **не требует изменения кода** — функция подхватит его автоматически.
 
 **Отображение:** гексы уникальной местности, находящиеся **за пределами видимого Региона**, отображаются на карте затемнёнными (как неисследованный Регион), без ресурсов/улучшений. Это реализовано в `map_renderer._draw_unique_terrain_hex()` (список гексов хранится в `main_map.unique_terrain_hexes`).
 
@@ -281,8 +282,8 @@ MapHelpers.get_effective_resource(tile)
 ### Пример: Сода (содовое озеро `soda_lake`)
 
 Цепочка:
-1. **`terrains.json`** — тип местности `soda_lake` с `"unique": true`.
-2. **`map_generator.gd`** — при генерации карты размещает кластер `soda_lake` (1–3 гекса) за пределами Кольца.
+1. **`terrains.json`** — тип местности `soda_lake` с `"unique": true` и `"cluster_size": 3`.
+2. **`map_generator.gd`** — при генерации карты `place_unique_terrains` размещает кластер `soda_lake` (1..`cluster_size` гексов) за пределами Кольца.
 3. **`resources/minerals.json`** — ресурс `soda_deposit`:
    - `tech_required: "soda_extraction"` — появляется на карте после изучения технологии.
    - `allowed_terrain: ["soda_lake"]` — только на содовом озере.
@@ -327,8 +328,8 @@ MapHelpers.get_effective_resource(tile)
 ### Пример: Битум (асфальтовое озеро `asphalt_lake`)
 
 Цепочка:
-1. **`terrains.json`** — тип местности `asphalt_lake` с `"unique": true`.
-2. **`map_generator.gd`** — при генерации карты размещает кластер `asphalt_lake` (1–3 гекса) за пределами Кольца.
+1. **`terrains.json`** — тип местности `asphalt_lake` с `"unique": true` и `"cluster_size": 3`.
+2. **`map_generator.gd`** — при генерации карты `place_unique_terrains` размещает кластер `asphalt_lake` (1..`cluster_size` гексов) за пределами Кольца.
 3. **`resources/minerals.json`** — ресурс `bitumen_deposit_asphalt`:
    - `tech_required: "bitumen_extraction"` — появляется на карте после изучения технологии.
    - `allowed_terrain: ["asphalt_lake"]` — только на асфальтовом озере.
@@ -490,6 +491,8 @@ MapHelpers.get_effective_resource(tile)
 | `move_cost` | number | Стоимость перемещения | `1` |
 | `expansion_cost` | number | Стоимость расширения влияния | `50` |
 | `icons` | array\<string\> | Варианты иконок местности в `icons/terrain/` | `["plain_1.png", "plain_2.png", "plain_3.png"]` |
+| `unique` | bool | ⬜ **Только для уникальных типов.** `true` — тип не участвует в алгоритме Вороного и размещается отдельной функцией `place_unique_terrains` | `true` |
+| `cluster_size` | number | ⬜ **Только для `unique: true`.** Максимальный размер кластера в гексах (фактический размер — случайный `1..cluster_size`). Читается функцией `place_unique_terrains`; дефолт `3`, если поле не задано | `3` |
 | `cover_chance` | object | **Веса генерации покрова** для этого рельефа: `{ "cover_id": вес, ... }`. Чем больше вес, тем выше вероятность появления покрова | `{ "none": 60, "sparse_forest": 15, "forest": 25 }` |
 
 `cover_chance` читается в `map_generator.gd` при генерации карты: для каждого гекса «бросается» случайное значение, пропорциональное весам. Если поле отсутствует или пустое — гекс получает `cover: "none"`.
