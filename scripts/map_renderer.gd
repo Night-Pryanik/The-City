@@ -122,6 +122,8 @@ func load_icons():
                     icon_textures[icon_name] = load(icon_paths[icon_name])
     if icon_paths.has("city.png"):
         icon_textures["city"] = load(icon_paths["city.png"])
+    if icon_paths.has("lock.png"):
+        icon_textures["lock.png"] = load(icon_paths["lock.png"])
 
 func _draw():
     # Вычисляем видимый диапазон гексов (viewport culling): рисуем только те
@@ -347,6 +349,17 @@ func _draw_hex_overlays(row: int, col: int):
     # Рисуем иконку как для природного (tile.resource), так и для разводимого
     # (tile.crop_bred) ресурса — эффективный ресурс берётся из MapHelpers.
     var eff_res = MapHelpers.get_effective_resource(tile)
+    # Проверяем, заблокирован ли ресурс технологией для улучшения.
+    # Ресурсы с tech_reveal скрыты полностью (is_resource_visible = false).
+    # Здесь проверяем ресурсы, которые видны, но требуют технологию для
+    # постройки улучшения (tech_required в данных ресурса).
+    var is_resource_locked_by_tech = false
+    if eff_res != "" and is_resource_visible:
+        var res_data = GameData.raw_resources.get(eff_res, {})
+        var tech_required: String = res_data.get("tech_required", "")
+        if tech_required != "" and not CityData.is_tech_unlocked(tech_required):
+            is_resource_locked_by_tech = true
+
     if eff_res != "" and is_resource_visible:
         var res_data = GameData.raw_resources.get(eff_res, {})
         var res_icon = res_data.get("icon", "")
@@ -359,6 +372,20 @@ func _draw_hex_overlays(row: int, col: int):
                 var c = res_data["color"]
                 var fallback_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
                 draw_circle(center, RESOURCE_ICON_SIZE / 3.0, fallback_color)
+
+    # Если ресурс виден, но технология для постройки улучшения не изучена —
+    # рисуем иконку замка поверх ресурса. Как только технология изучена,
+    # замок исчезает (is_resource_locked_by_tech становится false).
+    if is_resource_locked_by_tech and icon_textures.has("lock.png"):
+        var lock_tex = icon_textures["lock.png"]
+        var lock_size = RESOURCE_ICON_SIZE * 0.6
+        var lock_rect = Rect2(
+            center.x - lock_size / 2.0,
+            center.y - lock_size / 2.0,
+            lock_size,
+            lock_size
+        )
+        draw_texture_rect(lock_tex, lock_rect, false)
 
     # Звёздочки качества ресурса — под иконкой, только если ресурс раскрыт
     # и на этом гексе уже построено улучшение, которое раскрывает качество.
