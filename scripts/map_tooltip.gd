@@ -113,7 +113,8 @@ func update_tooltip_text(row: int, col: int, tile_data: Array):
 		var buildable_imp = MapHelpers.get_buildable_improvement(tile)
 		if buildable_imp != "":
 			var cost_data = MapHelpers.get_improvement_work_cost(buildable_imp, row, col, tile_data, 0, 0)
-			text += "\nТруд на постройку: %d" % cost_data["cost"]
+			var buildable_imp_name: String = GameData.improvements.get(buildable_imp, {}).get("name", buildable_imp)
+			text += "\nСтроительство: %d труда (%s)" % [cost_data["cost"], buildable_imp_name]
 
 	_tooltip_text_label.text = text
 
@@ -149,7 +150,7 @@ func update_extended_tooltip(row: int, col: int, tile_data: Array, city_row: int
 	var tooltip_lines = _tooltip_text_label.text.split("\n")
 	var filtered_lines := []
 	for line in tooltip_lines:
-		if not line.begins_with("Труд на постройку:"):
+		if not line.begins_with("Строительство:"):
 			filtered_lines.append(line)
 	_tooltip_text_label.text = "\n".join(filtered_lines)
 
