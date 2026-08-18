@@ -14,6 +14,20 @@ const FREE_TERRAIN_HEXES := 2
 # в недостающие типы.
 const OVER_REP_THRESHOLD := 3
 
+# Радиус «безопасного двора» вокруг города: все гексы в этом радиусе
+# принудительно становятся равниной (plain). Покров генерируется как у
+# обычной равнины (могут появиться леса), чтобы двор не выглядел голым.
+# Гарантирует, что у города всегда есть свободное проходимое пространство
+# для стартовой застройки и что город не «утонет» в озере. Применяется
+# ПОСЛЕ размещения уникальных террейнов и ДО генерации покрова/ресурсов.
+const PLAIN_ZONE_RADIUS := 2
+
+# Радиус, в котором ЗАПРЕЩАЕТСЯ размещать центры Вороного непроходимых
+# типов местности (move_cost >= 999, например озёра). Благодаря свойству
+# диаграммы Вороного это математически гарантирует, что в этой области
+# не может появиться непроходимый террейн («утопленный двор» вокруг города).
+const CENTER_EXCLUSION_RADIUS := 6
+
 # Возвращает список типов местности, которые участвуют в алгоритме Вороного
 # (базовый рельеф). Уникальные типы (unique: true) сюда НЕ входят — они
 # размещаются отдельной функцией place_unique_terrains. Это позволяет добавлять
@@ -124,13 +138,26 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
             col_array.append({"terrain": "plain", "cover": "none", "resource": null, "improvement": null})
         tile_data.append(col_array)
 
-    # Генерируем центры для Вороного
+    # Генерируем центры для Вороного. Для непроходимых типов местности
+    # (озёра и т.п., move_cost >= 999) центры НЕ должны попадать в радиус
+    # CENTER_EXCLUSION_RADIUS вокруг города: благодаря свойству диаграммы
+    # Вороного это математически гарантирует, что в этой области не
+    # появится непроходимый террейн (город не окажется на острове).
     var centers = []
     for terrain_id in terrain_counts.keys():
         var count = terrain_counts[terrain_id]
+        var exclude_center = _is_impassable_terrain_id(terrain_id)
         for _i in range(count):
             var r = randi() % rows
             var c = randi() % cols
+            if exclude_center and HexUtils.hex_distance(r, c, city_row, city_col) <= CENTER_EXCLUSION_RADIUS:
+                # Перебираем позиции, пока не найдём место за пределами зоны
+                # исключения (или не исчерпаем попытки — тогда оставляем как есть).
+                for _try in range(50):
+                    r = randi() % rows
+                    c = randi() % cols
+                    if HexUtils.hex_distance(r, c, city_row, city_col) > CENTER_EXCLUSION_RADIUS:
+                        break
             centers.append({"r": r, "c": c, "terrain": terrain_id})
 
     # Jump Flood Algorithm (JFA): строим диаграмму Вороного за O(n log n)
@@ -182,6 +209,15 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
     # terrains.json не требует изменения этого кода.
     place_unique_terrains(tile_data, rows, cols, city_row, city_col)
 
+    # --- БЕЗОПАСНЫЙ ДВОР ВОКРУГ ГОРОДА ---
+    # Принудительно превращаем гексы в радиусе PLAIN_ZONE_RADIUS вокруг города
+    # в равнину; покров генерируется как у обычной равнины. Это гарантирует
+    # свободное проходимое пространство для стартовой застройки и перекрывает
+    # возможные марши/уникальные озёра, которые могли попасть в эту зону.
+    # Выполняется ПОСЛЕ размещения уникальных террейнов и ДО генерации покрова
+    # и ресурсов.
+    _ensure_plain_zone(tile_data, rows, cols, city_row, city_col, PLAIN_ZONE_RADIUS)
+
     var t_cover = Time.get_ticks_msec()
     for row in range(rows):
         for col in range(cols):
@@ -224,6 +260,13 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
     # появляются сразу на карте, а видимость/добыча регулируется полями
     # tech_reveal (видимость) и tech_required (постройка улучшения).
     # См. docs.md, раздел «tech_reveal: скрытые ресурсы».
+
+    # --- ГАРАНТИЯ ВЫХОДА НАРУЖУ ---
+    # Страховочная проверка: если несмотря на запрет центров озер город всё же
+    # оказался изолирован непроходимым террейном, прокладываем коридор в равнину
+    # к внешнему миру. Выполняется в самом конце, чтобы учесть все уже
+    # размещённые марши и уникальные озёра.
+    _ensure_outward_corridor(tile_data, rows, cols, city_row, city_col)
 
     print("этап generate_map: ", Time.get_ticks_msec() - t0, " ms")
     return tile_data
@@ -431,6 +474,189 @@ func _jump_flood_voronoi(rows: int, cols: int, centers: Array) -> Array:
             row_arr[c] = centers[ci].terrain if ci >= 0 else "plain"
         result.append(row_arr)
     return result
+
+# Возвращает true, если тип местности непроходим (move_cost >= 999).
+# Такие типы (озёра: lake, soda_lake, asphalt_lake, salt_lake) блокируют
+# перемещение города наружу.
+func _is_impassable_terrain_id(terrain_id: String) -> bool:
+    var t: Dictionary = GameData.terrains.get(terrain_id, {})
+    return int(t.get("move_cost", 1)) >= 999
+
+# Возвращает true, если гекс (row, col) непроходим.
+func _is_impassable_hex(tile_data: Array, row: int, col: int) -> bool:
+    var terrain_id = tile_data[row][col].get("terrain", "plain")
+    return _is_impassable_terrain_id(terrain_id)
+
+# Принудительно превращает все гексы в радиусе `radius` вокруг города
+# в равнину (plain) без покрова. Сбрасывает временный флаг _is_marsh.
+# Вызывается ПОСЛЕ размещения уникальных террейнов и ДО генерации покрова
+# и ресурсов, чтобы зона была полностью «чистой».
+func _ensure_plain_zone(tile_data: Array, rows: int, cols: int,
+        city_row: int, city_col: int, radius: int) -> void:
+    for r in range(rows):
+        for c in range(cols):
+            if HexUtils.hex_distance(r, c, city_row, city_col) <= radius:
+                var tile = tile_data[r][c]
+                tile["terrain"] = "plain"
+                # Покров генерируется как у обычной равнины (могут появиться
+                # леса), чтобы безопасный двор не выглядел голым.
+                tile["cover"] = _roll_cover("plain")
+                tile["_is_marsh"] = false
+
+# Гарантирует, что у города есть путь к краю карты (к «внешнему миру»).
+# Если город оказался изолирован непроходимым террейном (озером), функция
+# BFS по непроходимым гексам прокладывает кратчайший коридор от достижимой
+# области города к ближайшему внешнему проходимому гексу и превращает
+# этот коридор в равнину. Повторяется до тех пор, пока город не получит
+# выход к краю карты (или не упрётся в лимит итераций).
+func _ensure_outward_corridor(tile_data: Array, rows: int, cols: int,
+        city_row: int, city_col: int) -> void:
+    for _iter in range(10):
+        # 1) Достижимая из города область по проходимым гексам.
+        var reachable := {}
+        var key_city = "%d,%d" % [city_row, city_col]
+        reachable[key_city] = true
+        var queue: Array = [ {"row": city_row, "col": city_col}]
+        while queue.size() > 0:
+            var cur = queue.pop_front()
+            for n in HexUtils.get_neighbors_odd_r(cur.row, cur.col, rows, cols):
+                var nk = "%d,%d" % [n.row, n.col]
+                if reachable.has(nk):
+                    continue
+                if _is_impassable_hex(tile_data, n.row, n.col):
+                    continue
+                reachable[nk] = true
+                queue.append(n)
+
+        # 2) Если город достиг проходимого края карты — выход есть.
+        if _has_exit_to_edge(reachable, rows, cols):
+            return
+
+        # 3) Ищем водный путь от достижимой области к ближайшему внешнему
+        #    проходимому гексу. BFS стартует со всех непроходимых соседей A.
+        var from := {}
+        var water_queue: Array = []
+        for key in reachable:
+            var parts = key.split(",")
+            var r = int(parts[0])
+            var c = int(parts[1])
+            for n in HexUtils.get_neighbors_odd_r(r, c, rows, cols):
+                var nk = "%d,%d" % [n.row, n.col]
+                if reachable.has(nk):
+                    continue
+                if not _is_impassable_hex(tile_data, n.row, n.col):
+                    continue
+                if not from.has(nk):
+                    from[nk] = key
+                    water_queue.append({"row": n.row, "col": n.col})
+
+        var target_key := ""
+        var qi := 0
+        while qi < water_queue.size() and target_key == "":
+            var cur = water_queue[qi]
+            qi += 1
+            var ck = "%d,%d" % [cur.row, cur.col]
+            for n in HexUtils.get_neighbors_odd_r(cur.row, cur.col, rows, cols):
+                var nk = "%d,%d" % [n.row, n.col]
+                if from.has(nk):
+                    continue
+                if _is_impassable_hex(tile_data, n.row, n.col):
+                    from[nk] = ck
+                    water_queue.append({"row": n.row, "col": n.col})
+                else:
+                    if not reachable.has(nk):
+                        target_key = nk
+                        from[nk] = ck
+                        break
+
+        if target_key == "":
+            # Не нашли внешний проходимый гекс (весь мир — вода/острова).
+            # Пробиваем коридор напрямую к краю карты сквозь воду.
+            if not _punch_corridor_to_edge(tile_data, rows, cols, city_row, city_col, reachable):
+                return
+
+        # 4) Восстанавливаем путь: непроходимые гексы превращаем в равнину.
+        if target_key != "":
+            var step = target_key
+            while true:
+                var prev = from.get(step, "")
+                if prev == "":
+                    break
+                if reachable.has(prev):
+                    break
+                _punch_hex(tile_data, prev)
+                step = prev
+
+# Возвращает true, если хоть один гекс достижимой области лежит на краю карты.
+func _has_exit_to_edge(reachable: Dictionary, rows: int, cols: int) -> bool:
+    for r in [0, rows - 1]:
+        for c in range(cols):
+            if reachable.has("%d,%d" % [r, c]):
+                return true
+    for c in [0, cols - 1]:
+        for r in range(rows):
+            if reachable.has("%d,%d" % [r, c]):
+                return true
+    return false
+
+# Превращает гекс (key "r,c") в равнину без покрова.
+func _punch_hex(tile_data: Array, key: String) -> void:
+    var parts = key.split(",")
+    var r = int(parts[0])
+    var c = int(parts[1])
+    var tile = tile_data[r][c]
+    tile["terrain"] = "plain"
+    # Покров генерируется как у обычной равнины для естественного вида.
+    tile["cover"] = _roll_cover("plain")
+    tile["_is_marsh"] = false
+
+# Пробивает коридор от достижимой области напрямую к краю карты через
+# непроходимые гексы. Возвращает true, если коридор удалось проложить.
+func _punch_corridor_to_edge(tile_data: Array, rows: int, cols: int,
+        city_row: int, city_col: int, reachable: Dictionary) -> bool:
+    var from := {}
+    var queue: Array = []
+    for key in reachable:
+        var parts = key.split(",")
+        var r = int(parts[0])
+        var c = int(parts[1])
+        for n in HexUtils.get_neighbors_odd_r(r, c, rows, cols):
+            var nk = "%d,%d" % [n.row, n.col]
+            if reachable.has(nk):
+                continue
+            if not _is_impassable_hex(tile_data, n.row, n.col):
+                continue
+            if not from.has(nk):
+                from[nk] = key
+                queue.append({"row": n.row, "col": n.col})
+    var qi := 0
+    var target_key := ""
+    while qi < queue.size() and target_key == "":
+        var cur = queue[qi]
+        qi += 1
+        var ck = "%d,%d" % [cur.row, cur.col]
+        if cur.row == 0 or cur.row == rows - 1 or cur.col == 0 or cur.col == cols - 1:
+            target_key = ck
+            break
+        for n in HexUtils.get_neighbors_odd_r(cur.row, cur.col, rows, cols):
+            var nk = "%d,%d" % [n.row, n.col]
+            if from.has(nk):
+                continue
+            if not _is_impassable_hex(tile_data, n.row, n.col):
+                continue
+            from[nk] = ck
+            queue.append({"row": n.row, "col": n.col})
+    if target_key == "":
+        return false
+    # Пробиваем путь от целевой краевой непроходимой клетки обратно к A.
+    var step = target_key
+    while true:
+        _punch_hex(tile_data, step)
+        var prev = from.get(step, "")
+        if prev == "" or reachable.has(prev):
+            break
+        step = prev
+    return true
 
 # Выбирает покоры (cover) для гекса с указанным типом местности по весам
 # из terrains.json (cover_chance). Если поле отсутствует или пустое —
