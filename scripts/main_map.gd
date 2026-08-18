@@ -11,17 +11,17 @@ const HEX_RADIUS = 55
 #   2) при переходе в следующую эпоху Кольцо и Регион расширяются.
 var map_rows: int = 60 # Вся карта: ряды (гексы)
 var map_cols: int = 60 # Вся карта: колонки (гексы)
-var start_ring_rows: int = 5 # Стартовое Кольцо Влияния: ряды
-var start_ring_cols: int = 7 # Стартовое Кольцо Влияния: колонки
+var start_ring_rows: int = 7 # Стартовое Кольцо Влияния: ряды
+var start_ring_cols: int = 9 # Стартовое Кольцо Влияния: колонки
 var region_width: int = 2 # Ширина Региона вокруг Кольца (в гексах)
 
 # Текущее (динамически растущее) Кольцо Влияния.
-var ring_rows: int = 5
-var ring_cols: int = 7
+var ring_rows: int = 7
+var ring_cols: int = 9
 
 # Текущее видимое окно: Кольцо + Регион.
-var region_rows: int = 9
-var region_cols: int = 11
+var region_rows: int = 11
+var region_cols: int = 13
 
 # Положение города (центр всей карты).
 var city_row: int = 30
