@@ -330,14 +330,17 @@ func _handle_mouse_motion(event: InputEventMouseMotion):
         if hex != null:
             main_map.update_tooltip_text(hex.row, hex.col)
 
-    # Обновляем подсветку чанка при наведении на гексы вне Кольца Влияния
+    # Обновляем подсветку чанка при наведении на гексы вне Кольца Влияния.
+    # Прямой queue_redraw() здесь НЕ вызываем: expansion_manager.update_hovered_chunk()
+    # / clear_hovered_chunk() эмитят сигнал chunk_hovered ТОЛЬКО при реальном
+    # изменении чанка, а этот сигнал подключён к main_map._on_chunk_hovered(),
+    # который вызывает map_renderer.queue_redraw(). Так мы убираем лишние
+    # перерисовки всей карты при каждом движении мыши.
     var h = _pixel_to_hex(event.global_position.x, event.global_position.y)
     if h != null and not main_map.tile_data[h.row][h.col].get("in_influence", false):
         expansion_manager.update_hovered_chunk(h.row, h.col)
-        map_renderer.queue_redraw()
     else:
         expansion_manager.clear_hovered_chunk()
-        map_renderer.queue_redraw()
 
 func _hide_tooltip():
     hex_tooltip.visible = false

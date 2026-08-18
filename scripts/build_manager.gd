@@ -12,8 +12,15 @@ signal build_building_cancelled(build_key: String)
 var active_builds: Dictionary = {} # улучшения на карте: ключ "row,col"
 var active_building_builds: Dictionary = {} # стройка зданий: ключ "building_<индекс>"
 
+# Кэш числа активных строек (улучшения + здания). Обновляется при каждом
+# добавлении/удалении стройки, чтобы has_active_builds() мог бы работать за
+# O(1), не сканируя словари каждый кадр (используется в main_map._process
+# для решения о перерисовке слоя прогресс-баров).
+var _active_build_count: int = 0
+
 func _ready():
     set_process(not Engine.is_editor_hint())
+    _recount_active_builds()
 
 func _process(delta):
     if Engine.is_editor_hint():
@@ -61,6 +68,10 @@ func _process(delta):
         emit_signal("build_building_completed", data["building_id"], bkey)
         active_building_builds.erase(bkey)
 
+    # После завершения строек в _process обновляем кэш счётчика.
+    if not to_complete.is_empty() or not to_complete_buildings.is_empty():
+        _recount_active_builds()
+
 func start_build(row: int, col: int, imp_id: String, target_res_id = null) -> bool:
     var key = str(row) + "," + str(col)
     if active_builds.has(key):
@@ -104,6 +115,7 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null) -> bo
         "status": "active",
         "allocated_labor": 0.0
     }
+    _active_build_count += 1
 
     emit_signal("build_message", "Строительство %s начато (%.0f труда)" % [imp_name, work_cost])
     return true
@@ -136,6 +148,7 @@ func start_building_build(building_id: String) -> String:
         "status": "active",
         "allocated_labor": 0.0
     }
+    _active_build_count += 1
 
     emit_signal("build_message", "Строительство %s начато (%.0f труда)" % [building_name, work_cost])
     return build_key
@@ -179,6 +192,7 @@ func cancel_build(row: int, col: int):
     var work_total = data["work_cost"]
 
     active_builds.erase(key)
+    _active_build_count -= 1
     emit_signal("build_cancelled", row, col)
     emit_signal("build_message", "Строительство %s отменено. Потрачено %.0f/%d труда" % [imp_name, work_done, work_total])
 
@@ -218,12 +232,24 @@ func cancel_building_build(build_key: String):
     var work_total = data["work_cost"]
 
     active_building_builds.erase(build_key)
+    _active_build_count -= 1
     emit_signal("build_building_cancelled", build_key)
     emit_signal("build_message", "Строительство %s отменено. Потрачено %.0f/%d труда" % [building_name, work_done, work_total])
 
 # Возвращает общее количество активных строек (улучшения на карте + здания).
 func get_total_active_builds() -> int:
     return active_builds.size() + active_building_builds.size()
+
+# Возвращает true, если есть хотя бы одна активная стройка (улучшение ИЛИ здание).
+# Работает за O(1) через кэшированный счётчик — используется в main_map._process
+# для решения, нужно ли перерисовывать слой прогресс-баров каждый кадр.
+func has_active_builds() -> bool:
+    return _active_build_count > 0
+
+# Пересчитывает кэш числа активных строек по фактическому размеру словарей.
+# Вызывается при восстановлении строек из сохранения и в _ready.
+func _recount_active_builds():
+    _active_build_count = active_builds.size() + active_building_builds.size()
 
 func is_building(row: int, col: int) -> bool:
     return active_builds.has(str(row) + "," + str(col))
@@ -242,12 +268,14 @@ func get_progress(row: int, col: int) -> Dictionary:
 
 func remove_build(row: int, col: int):
     var key = str(row) + "," + str(col)
-    active_builds.erase(key)
+    if active_builds.erase(key):
+        _active_build_count -= 1
 
 # Восстанавливает стройки улучшений из сохранения.
 func restore_builds(data: Dictionary):
     active_builds.clear()
     if data.is_empty():
+        _recount_active_builds()
         return
     for key in data.keys():
         var build_data = data[key]
@@ -267,11 +295,13 @@ func restore_builds(data: Dictionary):
             "status": String(build_data.get("status", "active")),
             "allocated_labor": float(build_data.get("allocated_labor", 0.0))
         }
+    _recount_active_builds()
 
 # Восстанавливает стройки зданий из сохранения.
 func restore_building_builds(data: Dictionary):
     active_building_builds.clear()
     if data.is_empty():
+        _recount_active_builds()
         return
     for key in data.keys():
         var build_data = data[key]
@@ -289,6 +319,7 @@ func restore_building_builds(data: Dictionary):
             "status": String(build_data.get("status", "active")),
             "allocated_labor": float(build_data.get("allocated_labor", 0.0))
         }
+    _recount_active_builds()
 
 func is_building_build_active(build_key: String) -> bool:
     return active_building_builds.has(build_key)

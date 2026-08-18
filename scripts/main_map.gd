@@ -382,13 +382,17 @@ func _process(delta):
         # а не привязан к production-тику. Это даёт плавный progress-bar.
 
     _update_research_progress()
-    # Перерисовываем слой прогресс-баров всегда, а не только при наличии
-    # активных баров. Иначе после завершения/отмены исследования, стройки
-    # или разведки последний кадр с заполненным на 100% баром навсегда
-    # остаётся на экране — пока какое-либо другое действие (например,
-    # сдвиг карты) не вызовет перерисовку. Слой лёгкий: при отсутствии
-    # активных действий его _draw() просто ничего не рисует.
-    progress_bar_layer.queue_redraw()
+    # Перерисовываем слой прогресс-баров ТОЛЬКО когда есть что показывать:
+    # идёт исследование, есть активные стройки или идёт разведка. В противном
+    # случае слой лёгкий и его _draw() ничего не рисует — нет смысла вызывать
+    # queue_redraw() каждый кадр. Когда строительство/исследование/разведка
+    # завершились/начались, соответствующие обработчики вызывают
+    # _redraw_progress_layer() (см. ниже), чтобы слой гарантированно
+    # обновился и не оставался висеть на 100% или показывать устаревшие бары.
+    if CityData.current_research_tech_id != "" \
+            or build_manager.has_active_builds() \
+            or is_scouting:
+        progress_bar_layer.queue_redraw()
 
     input_handler.handle_process(delta)
 
@@ -975,10 +979,23 @@ func _on_popup_menu_id_pressed(id: int):
 
     _context_hex = null
     map_renderer.queue_redraw()
+    # При старте стройки/исследования появляется/пропадает прогресс-бар —
+    # вызываем перерисовку слоя баров явно, чтобы не ждать следующего кадра
+    # (когда has_active_builds() может снова стать true).
+    _redraw_progress_layer()
 
 # Выбирает иконку ландшафта для гекса (row, col) на основе его террейна.
 func _assign_terrain_icon(row: int, col: int) -> void:
     tile_data[row][col]["terrain_icon"] = MapHelpers.get_terrain_icon(row, col, tile_data)
+
+# Запрашивает перерисовку слоя прогресс-баров. Вызывается при старте/завершении
+# строительства, исследования и разведки, когда слой может измениться, но
+# _process (_active) больше не будет триггерить перерисовку (например, из-за
+# завершения последней стройки). Иначе последний кадр с заполненным на 100%
+# баром навсегда остался бы на экране.
+func _redraw_progress_layer():
+    if progress_bar_layer:
+        progress_bar_layer.queue_redraw()
 
 func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = null):
     var tile = tile_data[row][col]
@@ -1027,6 +1044,7 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
 
         build_manager.remove_build(row, col)
         map_renderer.queue_redraw()
+        _redraw_progress_layer()
         return
 
     tile.improvement = imp_id
@@ -1071,6 +1089,7 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
     if not worker_manager.assign_worker(row, col):
         pass
     map_renderer.queue_redraw()
+    _redraw_progress_layer()
 
 func _on_building_build_completed(building_id: String, build_key: String):
     # Стройка здания завершена - добавляем его в город
@@ -1089,6 +1108,7 @@ func _on_building_build_completed(building_id: String, build_key: String):
     
     CityData.emit_signal("city_updated")
     map_renderer.queue_redraw()
+    _redraw_progress_layer()
 
 func pixel_to_hex(mx: float, my: float):
     return MapHelpers.pixel_to_hex(mx, my,
@@ -1287,6 +1307,7 @@ func _on_research_error(message: String):
 
 func _on_research_completed(tech_id: String):
     map_renderer.queue_redraw()
+    _redraw_progress_layer()
     # Показываем окно изученной технологии и ставим игру на паузу,
     # чтобы игрок не мог взаимодействовать с картой и HUD, пока окно открыто.
     if tech_popup and tech_popup.has_method("show_tech"):
@@ -1565,6 +1586,7 @@ func _start_scouting(chunk: Array, cost: int):
     scouting_chunk = chunk
     scouting_timer = 0.0
     is_scouting = true
+    _redraw_progress_layer()
     hud.show_message("Разведчики отправлены...")
 
 func _complete_scouting():
@@ -1575,6 +1597,7 @@ func _complete_scouting():
     is_scouting = false
     scouting_chunk = []
     map_renderer.queue_redraw()
+    _redraw_progress_layer()
 
 func _get_chunk_info(chunk: Array) -> String:
     return MapHelpers.get_chunk_info(chunk, tile_data)
@@ -1591,6 +1614,12 @@ func _confirm_cancel_build(row: int, col: int):
     var dialog = AcceptDialog.new()
     dialog.title = "Отмена строительства"
     dialog.dialog_text = "Отменить строительство «%s»?\n\nПотраченный труд (%.0f/%d) будет потерян." % [imp_name, work_done, work_total]
-    dialog.confirmed.connect(func(): build_manager.cancel_build(row, col))
+    dialog.confirmed.connect(func():
+        build_manager.cancel_build(row, col)
+        # После отмены стройки прогресс-бар на гексе исчезает — перерисовываем
+        # слой явно, т.к. если это была последняя активная стройка, _process
+        # больше не будет вызывать queue_redraw() для слоя баров.
+        _redraw_progress_layer()
+    )
     add_child(dialog)
     dialog.popup_centered()
