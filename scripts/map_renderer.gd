@@ -14,9 +14,20 @@ var icon_paths = {}
 # Ссылка на главный узел для доступа к offset_x, offset_y, scroll_offset, build_manager и CityData
 var main_map: Node
 
+# Кэш сглаженных (меандровых) точек рек в МИРОВЫХ координатах (без offset).
+# Сглаживание рек (_generate_natural_river + _chaikin_smooth) — дорогая операция,
+# которая раньше выполнялась каждый кадр при прокрутке карты. Точки рек в мировых
+# координатах не меняются при панорамировании, поэтому пересчёт нужен лишь один раз
+# на реку. При прокрутке к сглаженным мировым точкам достаточно прибавить offset
+# и выполнить клиппинг. Ключ кэша — компактная сериализация координат реки.
+var _river_smooth_cache: Dictionary = {}
+
 func initialize(td, main_node):
     tile_data = td
     main_map = main_node
+    # Очищаем кэш рек при инициализации (новая игра / загрузка сохранения),
+    # чтобы не держать устаревшие сглаженные точки от предыдущей карты.
+    _river_smooth_cache.clear()
 
 # Возвращает словарь с границами видимых гексов (инклюзивно),
 # ограниченными границами региона. Используется для viewport culling:
@@ -645,18 +656,38 @@ func _draw_river_list(river_list: Array, offset_x: float, offset_y: float, radiu
         if not _is_rect_visible(river_rect):
             continue
 
-        # Собираем точки реки в экранных координатах.
-        var points = PackedVector2Array()
-        for pt in river:
-            points.append(Vector2(pt.x + offset_x, pt.y + offset_y))
+        # Сглаженные меандровые точки реки в МИРОВЫХ координатах (без offset).
+        # Вычисляем их один раз на реку и кэшируем: сглаживание (_generate_natural_river
+        # + _chaikin_smooth) — дорогая операция, а точки рек не меняются при прокрутке,
+        # поэтому пересчёт каждый кадр избыточен. Ключ кэша — компактная сериализация
+        # исходных точек реки (с уникальным хэшем количества точек).
+        var cache_key = "%d|" % river.size() + _points_to_cache_key(river)
+        var smooth_points: PackedVector2Array
+        if _river_smooth_cache.has(cache_key):
+            smooth_points = _river_smooth_cache[cache_key]
+        else:
+            # Строим естественные меандры по полной реке в МИРОВЫХ координатах,
+            # затем при отрисовке к ним добавится offset. Так волны остаются
+            # непрерывными на границе, а за ней река не рисуется (туман войны).
+            var world_points = PackedVector2Array()
+            for pt in river:
+                world_points.append(Vector2(pt.x, pt.y))
+            smooth_points = _generate_natural_river(world_points, radius)
+            _river_smooth_cache[cache_key] = smooth_points
 
-        # Сначала строим естественные меандры по полной реке, затем обрезаем
-        # сглаженную линию по видимой области. Так волны остаются непрерывными
-        # на границе, а за ней река не рисуется (скрыта туманом войны).
-        var smooth_points = _generate_natural_river(points, radius)
+        # Смещаем сглаженные мировые точки на текущий offset (прокрутка/центр).
+        var shifted_points = PackedVector2Array()
+        shifted_points.resize(smooth_points.size())
+        for i in range(smooth_points.size()):
+            shifted_points[i] = Vector2(
+                smooth_points[i].x + offset_x,
+                smooth_points[i].y + offset_y
+            )
+
+        # Обрезаем сглаженную линию по видимой области.
         var region_rect = _get_region_world_rect()
         region_rect.position += Vector2(offset_x, offset_y)
-        var clipped_lines = _clip_river_to_rect(smooth_points, region_rect)
+        var clipped_lines = _clip_river_to_rect(shifted_points, region_rect)
         if clipped_lines.is_empty():
             continue
 
@@ -902,6 +933,19 @@ func get_icon_path(icon_name: String) -> String:
         return icon_paths[icon_name]
     return ""
 
+
+# Возвращает компактную строку-ключ для кэша сглаженной реки.
+# Сериализует координаты точек реки (мировые, без offset). Используется
+# _draw_river_list для идентификации, какая река уже посчитана и закэширована.
+func _points_to_cache_key(points: Array) -> String:
+    var sb := PackedStringArray()
+    sb.resize(points.size())
+    for i in range(points.size()):
+        var p = points[i]
+        # Округляем до 0.1, чтобы ключ был стабилен и компактен — исходные
+        # вершины рек детерминированы, поэтому повторного сглаживания не будет.
+        sb[i] = "%d_%d" % [roundi(p.x * 10.0), roundi(p.y * 10.0)]
+    return "^".join(sb)
 
 func _chaikin_smooth(points: PackedVector2Array, iterations: int) -> PackedVector2Array:
     if points.size() < 2:
