@@ -271,6 +271,8 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
         for col in range(cols):
             var terrain_id = tile_data[row][col]["terrain"]
             if tile_data[row][col].get("_is_marsh", false):
+                tile_data[row][col]["cover"] = _roll_cover("marsh")
+            else:
                 tile_data[row][col]["cover"] = _roll_cover(terrain_id)
 
     # Мультиииндекс свободных гексов по (terrain, cover) — для быстрого
