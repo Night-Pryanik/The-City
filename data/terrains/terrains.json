@@ -46,6 +46,16 @@
       "work_cost_mult": 2.0,
       "icons": [ "swamp_1.png", "swamp_2.png", "swamp_3.png" ],
       "cover_chance": { "none": 40, "sparse_forest": 15, "forest": 15, "reeds": 30 }
+    },
+    {
+      "id": "marsh",
+      "name": "Марши",
+      "color": [ 80, 100, 70 ],
+      "move_cost": 2,
+      "expansion_cost": 100,
+      "work_cost_mult": 1.5,
+      "icons": [ "marsh_1.png", "marsh_2.png", "marsh_3.png" ],
+      "cover_chance": { "none": 50, "reeds": 50 }
     }
   ]
 }
