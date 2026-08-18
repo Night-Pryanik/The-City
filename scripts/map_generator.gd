@@ -29,16 +29,24 @@ const PLAIN_ZONE_RADIUS := 2
 const CENTER_EXCLUSION_RADIUS := 6
 
 # Возвращает список типов местности, которые участвуют в алгоритме Вороного
-# (базовый рельеф). Уникальные типы (unique: true) сюда НЕ входят — они
-# размещаются отдельной функцией place_unique_terrains. Это позволяет добавлять
-# новые уникальные типы местности в data/terrains.json без изменения этого кода.
+# (базовый рельеф). НЕ входят:
+#   - уникальные типы (unique: true) — их размещает place_unique_terrains;
+#   - типы, не перечисленные в terrain_config (марши) — они создаются
+#     только пост-обработкой (_apply_marshes).
+# Участие в Вороном теперь задаётся явно через конфиг: добавление нового
+# типа в terrains.json больше не заставляет его автоматически расползаться
+# по всей карте.
 static func _get_base_terrain_ids() -> Array:
-    var base_ids = []
-    for terrain_id in GameData.terrains.keys():
-        var t: Dictionary = GameData.terrains[terrain_id]
-        if not t.get("unique", false):
-            base_ids.append(terrain_id)
-    return base_ids
+    var cfg: Dictionary = GameData.map_config.get("terrain_config", {})
+    var ids: Array = []
+    for tid in GameData.terrains.keys():
+        var t: Dictionary = GameData.terrains[tid]
+        if t.get("unique", false):
+            continue
+        if not cfg.has(tid):
+            continue
+        ids.append(tid)
+    return ids
 
 # Возвращает список уникальных типов местности (unique: true), которые
 # размещаются универсальной функцией place_unique_terrains. Это позволяет
@@ -57,6 +65,8 @@ static func _get_unique_terrain_ids() -> Array:
 # density приоритетна; target_cluster — ограничение сверху (число центров не
 # может быть больше area / target_cluster). Избыток total перераспределяется
 # на типы без ограничения target_cluster пропорционально их density.
+# Участвуют ТОЛЬКО типы, явно перечисленные в terrain_config (см.
+# _get_base_terrain_ids): остальные (марши) создаются пост-обработкой.
 func make_terrain_counts(rows: int, cols: int) -> Dictionary:
     var cfg: Dictionary = GameData.map_config
     var area := rows * cols
@@ -84,7 +94,12 @@ func make_terrain_counts(rows: int, cols: int) -> Dictionary:
 
         weights[terrain_id] = w
 
-        var count := maxi(1, int(round(total * w)))
+        # Нижняя граница «минимум 1 центр» — только для типов с положительной
+        # плотностью: явный ноль не должен порождать центры-сироты.
+        var count := int(round(total * w))
+        if w > 0.0:
+            count = maxi(1, count)
+
         if cluster_limit > 0:
             var limit := maxi(1, int(round(float(area) / cluster_limit)))
             count = mini(count, limit)
