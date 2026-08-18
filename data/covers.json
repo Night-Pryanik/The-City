@@ -23,7 +23,7 @@
       "color": [ 154, 205, 50 ],
       "alpha": 0.9,
       "move_cost_bonus": 0,
-      "icons": [ "reeds_1.png", "reeds_2.png", "reeds_3.png" ]
+      "icons": [ "reeds_1.png" ]
     }
   ]
 }
