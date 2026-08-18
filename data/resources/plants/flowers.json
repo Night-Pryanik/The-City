@@ -9,8 +9,8 @@
       "subgroup": "decorative_plants",
       "tech_required": "irrigation",
       "allowed_terrain": [ "plain" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
-      "improved_by": "farm",
+      "allowed_cover": [ "none" ],
+      "improved_by": "plantation",
       "produces": { "tulips": 1 },
       "icon": "tulips.png",
       "color": [ 255, 100, 100 ]
@@ -24,8 +24,8 @@
       "subgroup": "aromatic_plants",
       "tech_required": "irrigation",
       "allowed_terrain": [ "plain" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
-      "improved_by": "farm",
+      "allowed_cover": [ "none" ],
+      "improved_by": "plantation",
       "produces": { "roses": 1 },
       "icon": "roses.png",
       "color": [ 255, 50, 50 ]
@@ -39,8 +39,8 @@
       "subgroup": "medicinal_plants",
       "tech_required": "irrigation",
       "allowed_terrain": [ "plain" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
-      "improved_by": "farm",
+      "allowed_cover": [ "none" ],
+      "improved_by": "plantation",
       "produces": { "chamomile": 1 },
       "icon": "chamomile.png",
       "color": [ 255, 255, 200 ]
