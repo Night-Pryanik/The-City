@@ -61,6 +61,22 @@
       "category": "material",
       "unlock_tech": "weaving",
       "icon": "sisal.png"
+    },
+    {
+      "id": "silk_cocoon",
+      "name": "Кокон тутового шелкопряда",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "sericulture",
+      "icon": "silk_cocoon.png"
+    },
+    {
+      "id": "silk",
+      "name": "Шёлк",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "sericulture",
+      "icon": "silk.png"
     }
   ]
 }

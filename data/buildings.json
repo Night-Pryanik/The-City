@@ -71,10 +71,10 @@
       "default_recipes": [ "construction_materials" ]
     },
     {
-      "id": "tanner_house",
+      "id": "leatherworker_house",
       "name": "Дом кожевника",
       "work_cost": 30,
-      "icon": "tanner_house.png",
+      "icon": "leatherworker_house.png",
       "production_slots": 1.0,
       "unlock_tech": "leatherworking",
       "default_recipes": [ "leather" ]
@@ -153,6 +153,16 @@
       "production_slots": 1.0,
       "unlock_tech": "soap_making",
       "default_recipes": [ "soap" ]
+    },
+    {
+      "id": "silk_maker_house",
+      "name": "Дом шелкопряда",
+      "description": "Производство шёлковой ткани.",
+      "work_cost": 40,
+      "icon": "silk_maker_house.png",
+      "production_slots": 1.0,
+      "unlock_tech": "sericulture",
+      "default_recipes": [ "silk" ]
     }
   ]
 }

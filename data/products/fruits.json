@@ -1,6 +1,13 @@
 {
   "resources": [
     { "id": "grapes", "name": "Виноград", "type": "product", "category": "fruits", "icon": "grapes.png" },
-    { "id": "olives", "name": "Оливки", "type": "product", "category": "fruits", "icon": "olives.png" }
+    { "id": "olives", "name": "Оливки", "type": "product", "category": "fruits", "icon": "olives.png" },
+    {
+      "id": "mulberries",
+      "name": "Шелковица",
+      "type": "product",
+      "category": "fruits",
+      "icon": "mulberries.png"
+    }
   ]
 }

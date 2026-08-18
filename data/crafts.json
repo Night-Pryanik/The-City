@@ -105,7 +105,7 @@
       "name": "Ткачество (ткань)",
       "produced_in": [ "weaver_house" ],
       "resources": { "@textile_crops": 2 },
-      "result": { "clothes": 1 },
+      "result": { "fabric_clothes": 1 },
       "time": 4.0,
       "unlock_tech": "weaving",
       "description": "Ткёт одежду из ткани"
@@ -115,10 +115,30 @@
       "name": "Ткачество (шерсть)",
       "produced_in": [ "weaver_house" ],
       "resources": { "wool": 2 },
-      "result": { "clothes": 1 },
+      "result": { "wool_clothes": 1 },
       "time": 4.0,
       "unlock_tech": "weaving",
       "description": "Ткёт одежду из шерсти"
+    },
+    {
+      "id": "silk_clothes",
+      "name": "Ткачество (шёлк)",
+      "produced_in": [ "weaver_house" ],
+      "resources": { "silk": 2 },
+      "result": { "silk_clothes": 1 },
+      "time": 4.0,
+      "unlock_tech": "sericulture",
+      "description": "Ткёт одежду из шёлка"
+    },
+    {
+      "id": "leather_clothes",
+      "name": "Пошив кожаной одежды",
+      "produced_in": [ "leatherworker_house" ],
+      "resources": { "leather": 2 },
+      "result": { "leather_clothes": 1 },
+      "time": 4.0,
+      "unlock_tech": "leatherworking",
+      "description": "Шьёт одежду из кожи"
     },
     {
       "id": "beer",
@@ -219,6 +239,16 @@
       "time": 5.0,
       "unlock_tech": "soap_making",
       "description": "Превращает масло и соду в мыло"
+    },
+    {
+      "id": "silk",
+      "name": "Производство шёлка",
+      "produced_in": [ "silk_maker_house" ],
+      "resources": { "silk_cocoon": 2 },
+      "result": { "silk": 1 },
+      "time": 5.0,
+      "unlock_tech": "sericulture",
+      "description": "Превращает коконы тутового шелкопряда в шёлк"
     }
   ]
 }

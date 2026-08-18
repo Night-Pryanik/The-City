@@ -89,6 +89,21 @@
       "produces": { "sisal": 1, "feed": 4 },
       "icon": "sisal.png",
       "color": [ 200, 255, 200 ]
+    },
+    {
+      "id": "mulberry_tree",
+      "name": "Тутовое дерево",
+      "type": "raw",
+      "category": "technical_plants",
+      "group": "technical_plants",
+      "subgroup": [ "textile_plants", "fruit_plants" ],
+      "allowed_terrain": [ "plain" ],
+      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "improved_by": "plantation",
+      "tech_required": "sericulture",
+      "produces": { "mulberry": 1, "silk_cocoon": 1 },
+      "icon": "mulberry.png",
+      "color": [ 255, 100, 100 ]
     }
   ]
 }

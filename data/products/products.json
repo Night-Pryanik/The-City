@@ -34,6 +34,14 @@
       "icon": "leather_clothes.png"
     },
     {
+      "id": "silk_clothes",
+      "name": "Шёлковая одежда",
+      "type": "product",
+      "category": "clothes",
+      "unlock_tech": "sericulture",
+      "icon": "silk_clothes.png"
+    },
+    {
       "id": "vegetable_oil",
       "name": "Растительное масло",
       "type": "product",
