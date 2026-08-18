@@ -24,6 +24,22 @@
       "alpha": 0.9,
       "move_cost_bonus": 0,
       "icons": [ "reeds_1.png" ]
+    },
+    {
+      "id": "swamp_forest",
+      "name": "Лес",
+      "color": [ 34, 139, 34 ],
+      "alpha": 0.9,
+      "move_cost_bonus": 0,
+      "icons": [ "swamp_forest_1.png" ]
+    },
+    {
+      "id": "swamp_forest_sparse",
+      "name": "Редколесье",
+      "color": [ 34, 139, 34 ],
+      "alpha": 0.9,
+      "move_cost_bonus": 0,
+      "icons": [ "swamp_forest_sparse_1.png" ]
     }
   ]
 }

@@ -45,7 +45,7 @@
       "expansion_cost": 100,
       "work_cost_mult": 2.0,
       "icons": [ "swamp_1.png", "swamp_2.png", "swamp_3.png" ],
-      "cover_chance": { "none": 40, "sparse_forest": 15, "forest": 15, "reeds": 30 }
+      "cover_chance": { "none": 40, "swamp_forest_sparse": 15, "swamp_forest": 15, "reeds": 30 }
     },
     {
       "id": "marsh",
