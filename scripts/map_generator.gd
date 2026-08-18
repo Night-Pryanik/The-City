@@ -53,39 +53,72 @@ static func _get_unique_terrain_ids() -> Array:
     return unique_ids
 
 # Вычисляет количество центров Вороного для каждого типа местности на основе
-# плотностей (terrain_density) и среднего размера кластера (target_cluster),
-# заданных в data/map_config.json.
+# конфигурации terrain_config (density + target_cluster) из data/map_config.json.
+# density приоритетна; target_cluster — ограничение сверху (число центров не
+# может быть больше area / target_cluster). Избыток total перераспределяется
+# на типы без ограничения target_cluster пропорционально их density.
 func make_terrain_counts(rows: int, cols: int) -> Dictionary:
     var cfg: Dictionary = GameData.map_config
-    var density: Dictionary = cfg.get("terrain_density", {})
-    var target_cluster: int = int(cfg.get("target_cluster", 22))
-
     var area := rows * cols
-    var total := maxi(12, int(round(float(area) / target_cluster)))
 
-    # Только базовые (не уникальные) типы участвуют в Вороном.
+    # Глобальный target_cluster — запасное значение для total.
+    var global_cluster: int = int(cfg.get("target_cluster", 22))
+    var total := maxi(12, int(round(float(area) / global_cluster)))
+
+    var terrain_config: Dictionary = cfg.get("terrain_config", {})
     var base_ids := _get_base_terrain_ids()
+
     var counts: Dictionary = {}
-    var total_weight := 0.0
+    var weights: Dictionary = {}
+    var has_cluster: Dictionary = {}
+
     for terrain_id in base_ids:
-        var w := float(density.get(terrain_id, 0.0))
+        var tc: Dictionary = terrain_config.get(terrain_id, {})
+        var w := float(tc.get("density", 0.0))
         if w <= 0.0:
             w = _default_density(terrain_id)
-        counts[terrain_id] = maxi(1, int(round(total * w)))
-        total_weight += w
 
-    # Нормировка: чтобы сумма не превышала total, а минимум всегда был 1.
+        var cluster_limit := -1 # -1 = ограничение не задано
+        if tc.has("target_cluster"):
+            cluster_limit = int(tc.get("target_cluster", 0))
+
+        weights[terrain_id] = w
+
+        var count := maxi(1, int(round(total * w)))
+        if cluster_limit > 0:
+            var limit := maxi(1, int(round(float(area) / cluster_limit)))
+            count = mini(count, limit)
+            has_cluster[terrain_id] = true
+        else:
+            has_cluster[terrain_id] = false
+        counts[terrain_id] = count
+
+    # Перераспределение избытка: если сумма < total, избыток распределяется
+    # на типы БЕЗ ограничения target_cluster пропорционально их density.
     var sum_counts := 0
     for tid in counts.keys():
         sum_counts += counts[tid]
-    if sum_counts > total:
-        var excess = sum_counts - total
-        for tid in counts.keys():
-            var reduce = mini(counts[tid] - 1, excess)
-            counts[tid] -= reduce
-            excess -= reduce
-            if excess <= 0:
-                break
+    if sum_counts < total:
+        var deficit = total - sum_counts
+        var free_types: Array = []
+        var free_weight := 0.0
+        for tid in base_ids:
+            if not has_cluster[tid]:
+                free_types.append(tid)
+                free_weight += weights[tid]
+        if free_weight > 0.0 and not free_types.is_empty():
+            for tid in free_types:
+                var add := int(round(deficit * (weights[tid] / free_weight)))
+                counts[tid] += add
+                deficit -= add
+                if deficit <= 0:
+                    break
+            # Остаток распределяем по одному, пока не исчерпаем.
+            var i := 0
+            while deficit > 0:
+                counts[free_types[i % free_types.size()]] += 1
+                deficit -= 1
+                i += 1
 
     return counts
 

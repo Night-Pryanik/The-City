@@ -421,8 +421,8 @@ func _initialize_map():
     # Генерируем ВСЮ карту мира сразу (рельеф, покров, реки).
     var generator = load("res://scripts/map_generator.gd").new()
     # Количество центров Вороного для каждого типа местности вычисляется
-    # из плотностей (terrain_density) и среднего размера кластера
-    # (target_cluster), заданных в data/map_config.json.
+    # из конфигурации terrain_config (density + target_cluster),
+    # заданной в data/map_config.json.
     var terrain_counts = generator.make_terrain_counts(map_rows, map_cols)
     tile_data = generator.generate_map(map_rows, map_cols, city_row, city_col, GameData.raw_resources, terrain_counts)
     print("Карта мира сгенерирована. Гексов: ", map_rows * map_cols)
