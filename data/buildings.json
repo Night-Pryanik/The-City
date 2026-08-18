@@ -50,7 +50,7 @@
       "icon": "forge.png",
       "production_slots": 1.0,
       "unlock_tech": "metal_processing",
-      "default_recipes": [ "tools", "weapons" ]
+      "default_recipes": [ "tools" ]
     },
     {
       "id": "pottery_workshop",
@@ -59,7 +59,7 @@
       "icon": "pottery.png",
       "production_slots": 1.0,
       "unlock_tech": "pottery",
-      "default_recipes": [ "pottery", "bricks" ]
+      "default_recipes": [ "pottery" ]
     },
     {
       "id": "mason_workshop",
