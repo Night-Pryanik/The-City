@@ -382,8 +382,13 @@ func _process(delta):
         # а не привязан к production-тику. Это даёт плавный progress-bar.
 
     _update_research_progress()
-    if CityData.current_research_tech_id != "" or build_manager.active_builds.size() > 0:
-        progress_bar_layer.queue_redraw()
+    # Перерисовываем слой прогресс-баров всегда, а не только при наличии
+    # активных баров. Иначе после завершения/отмены исследования, стройки
+    # или разведки последний кадр с заполненным на 100% баром навсегда
+    # остаётся на экране — пока какое-либо другое действие (например,
+    # сдвиг карты) не вызовет перерисовку. Слой лёгкий: при отсутствии
+    # активных действий его _draw() просто ничего не рисует.
+    progress_bar_layer.queue_redraw()
 
     input_handler.handle_process(delta)
 
@@ -391,7 +396,6 @@ func _process(delta):
         scouting_timer += delta
         if scouting_timer >= _get_scouting_time(scouting_chunk.size()):
             _complete_scouting()
-        progress_bar_layer.queue_redraw()
 
 func _initialize_map():
     GameData.load_all_data()
