@@ -612,7 +612,7 @@ func _calc_offsets():
     offset_y = offsets.y
 
 func update_tooltip_text(row: int, col: int):
-    map_tooltip.update_tooltip_text(row, col, tile_data)
+    map_tooltip.update_tooltip_text(row, col, tile_data, city_row, city_col)
 
 # Возвращает id улучшения, которое можно построить на гексе (row, col),
 # или пустую строку, если постройка невозможна.

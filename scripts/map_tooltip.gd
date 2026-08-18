@@ -12,7 +12,7 @@ func _init(tooltip_text_label: Label, tooltip_products_container: VBoxContainer,
 	_worker_manager = worker_manager
 
 
-func update_tooltip_text(row: int, col: int, tile_data: Array):
+func update_tooltip_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_col: int = 0):
 	for child in _tooltip_products_container.get_children():
 		child.queue_free()
 
@@ -112,7 +112,7 @@ func update_tooltip_text(row: int, col: int, tile_data: Array):
 	if tile.improvement == null:
 		var buildable_imp = MapHelpers.get_buildable_improvement(tile)
 		if buildable_imp != "":
-			var cost_data = MapHelpers.get_improvement_work_cost(buildable_imp, row, col, tile_data, 0, 0)
+			var cost_data = MapHelpers.get_improvement_work_cost(buildable_imp, row, col, tile_data, city_row, city_col)
 			var buildable_imp_name: String = GameData.improvements.get(buildable_imp, {}).get("name", buildable_imp)
 			text += "\nСтроительство: %d труда (%s)" % [cost_data["cost"], buildable_imp_name]
 
