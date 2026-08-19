@@ -182,7 +182,13 @@ func update_extended_tooltip(row: int, col: int, tile_data: Array, city_row: int
 			_tooltip_products_container.add_child(terrain_label)
 
 			var dist_label = Label.new()
-			dist_label.text = " Расстояние до города: %d → ×%.2f" % [cost_data["distance"], cost_data["distance_mult"]]
+			# Расчёт множителя расстояния: исходный (1 + гексов × 0.25) плюс
+			# влияние изученных технологий (например, «Колесо» -30%).
+			var dist_text: String = " Расстояние до города: %d гекс(а) → база ×%.2f" % [cost_data["distance"], cost_data["distance_mult_base"]]
+			if cost_data.has("distance_tech_mult") and cost_data["distance_tech_mult"] != 1.0:
+				dist_text += ", технологии ×%.2f" % cost_data["distance_tech_mult"]
+			dist_text += " = ×%.2f" % cost_data["distance_mult"]
+			dist_label.text = dist_text
 			dist_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
 			_tooltip_products_container.add_child(dist_label)
 

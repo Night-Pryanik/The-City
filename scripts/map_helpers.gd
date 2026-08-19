@@ -41,7 +41,24 @@ static func get_improvement_work_cost(
 
     # Множитель от расстояния до города (в гексах).
     var distance := HexUtils.hex_distance(row, col, city_row, city_col)
-    var distance_mult := 1.0 + float(distance) * 0.25
+
+    # Тех-модификаторы, влияющие на вклад расстояния в стоимость труда
+    # (например, «Колесо» снижает его на 30%). См. data/modifiers.json,
+    # блок "tech_modifiers", target = "improvement_distance_cost".
+    var distance_tech_mult := 1.0
+    for tm in GameData.modifiers.get("tech_modifiers", []):
+        var tech_id = tm.get("tech_id", "")
+        if tech_id == "" or not CityData.is_tech_unlocked(tech_id):
+            continue
+        for mod in tm.get("modifiers", []):
+            if mod.get("target", "") != "improvement_distance_cost":
+                continue
+            var value = float(mod.get("value", 0))
+            distance_tech_mult *= 1.0 + value / 100.0
+
+    # Исходный множитель расстояния (без влияния технологий) и итоговый с учётом тех-модификаторов.
+    var distance_mult_base := 1.0 + float(distance) * 0.25
+    var distance_mult := 1.0 + float(distance) * 0.25 * distance_tech_mult
 
     var final_cost := int(ceil(base_cost * terrain_mult * distance_mult))
 
@@ -53,6 +70,8 @@ static func get_improvement_work_cost(
         "move_cost": move_cost,
         "terrain_mult": terrain_mult,
         "distance": distance,
+        "distance_mult_base": distance_mult_base,
+        "distance_tech_mult": distance_tech_mult,
         "distance_mult": distance_mult
     }
 

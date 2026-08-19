@@ -1,7 +1,10 @@
 {
   "modifiers": {
     "fresh_water": { "production_multiplier": { "farm": 1.5 } },
-    "tech_modifiers": [ { "tech_id": "plow", "modifiers": [ { "target": "farm_production", "type": "percent", "value": 5 } ] } ],
+    "tech_modifiers": [
+      { "tech_id": "plow", "modifiers": [ { "target": "farm_production", "type": "percent", "value": 5 } ] },
+      { "tech_id": "wheel", "modifiers": [ { "target": "improvement_distance_cost", "type": "percent", "value": -30 } ] }
+    ],
     "terrain_modifiers": [
       { "terrain_id": "asphalt_lake", "resource_id": "bitumen_deposit_asphalt", "production_multiplier": 2.0 },
       // todo: соль через испарение должна спавниться на/возле морского побережья, а не на озере. Когда будут добавлены моря - поменять.
