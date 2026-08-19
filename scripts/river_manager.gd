@@ -124,12 +124,13 @@ func generate_rivers(rows: int, cols: int, radius: float, tile_data: Array,
     if rows < 3 or cols < 3:
         return
 
-    # Гексы, которые касаются озёр (озёрные гексы и их соседи).
-    # Строятся ДО графа, чтобы флаги запрещённых рёбер были предвычислены
-    # в самом графе (проверка O(1) во время A* вместо O(гексы^2) на соседа).
-    var lake_adjacent_hexes = _build_lake_adjacent_hexes(tile_data, rows, cols)
+    # Гексы, по которым реки НЕ могут течь (озёра и их соседи, сами болота
+    # и маршевые гексы). Строятся ДО графа, чтобы флаги запрещённых рёбер
+    # были предвычислены в самом графе (проверка O(1) во время A*
+    # вместо O(гексы^2) на соседа).
+    var restricted_hexes = _build_restricted_hexes(tile_data, rows, cols)
 
-    var graph = _build_vertex_graph(rows, cols, radius, lake_adjacent_hexes)
+    var graph = _build_vertex_graph(rows, cols, radius, restricted_hexes)
     _cached_graph = graph
 
     # Кандидаты на истоки (горы) и устья главных рек (озёра).
@@ -156,7 +157,7 @@ func generate_rivers(rows: int, cols: int, radius: float, tile_data: Array,
     # --- Генерация главных рек (гора -> озеро, не пересекаются) ---
     for _i in range(num_main):
         var river = _try_generate_main_river(graph, mountain_vertices, lake_vertices,
-                lake_adjacent_hexes, used_vertices, min_main_len)
+                restricted_hexes, used_vertices, min_main_len)
         if river.size() >= min_main_len:
             _mark_used(river, used_vertices)
             main_rivers.append(river)
@@ -166,7 +167,7 @@ func generate_rivers(rows: int, cols: int, radius: float, tile_data: Array,
     if not _any_river_in_region(main_rivers, graph,
             region_start_row, region_end_row, region_start_col, region_end_col):
         var forced = _try_generate_forced_river(graph, mountain_vertices, lake_vertices,
-                lake_adjacent_hexes, used_vertices, min_main_len,
+                restricted_hexes, used_vertices, min_main_len,
                 region_start_row, region_end_row, region_start_col, region_end_col)
         if forced.size() >= min_main_len:
             _mark_used(forced, used_vertices)
@@ -176,7 +177,7 @@ func generate_rivers(rows: int, cols: int, radius: float, tile_data: Array,
     tributaries = []
     for _i in range(num_trib):
         var river = _try_generate_tributary(graph, mountain_vertices, hill_vertices,
-                lake_vertices, lake_adjacent_hexes, used_vertices, min_trib_len)
+                lake_vertices, restricted_hexes, used_vertices, min_trib_len)
         if river.size() >= min_trib_len:
             _mark_used(river, used_vertices)
             tributaries.append(river)
@@ -190,11 +191,11 @@ func generate_rivers(rows: int, cols: int, radius: float, tile_data: Array,
 # Главные реки не пересекаются: A* идёт с forbidden = used_vertices.
 # -------------------------------------------------------
 func _try_generate_main_river(graph: Dictionary, mountain_vertices: Array,
-        lake_vertices: Array, lake_adjacent_hexes: Dictionary,
+        lake_vertices: Array, restricted_hexes: Dictionary,
         used_vertices: Dictionary, min_len: int) -> Array:
     var free_mountains: Array = []
     for vk in mountain_vertices:
-        if not used_vertices.has(vk) and not lake_vertices.has(vk) and not _vertex_in_hexes(vk, graph, lake_adjacent_hexes):
+        if not used_vertices.has(vk) and not lake_vertices.has(vk) and not _vertex_in_hexes(vk, graph, restricted_hexes):
             free_mountains.append(vk)
     var free_lakes: Array = []
     for vk in lake_vertices:
@@ -206,9 +207,9 @@ func _try_generate_main_river(graph: Dictionary, mountain_vertices: Array,
     for _attempt in range(NUM_RIVER_ATTEMPTS):
         var start = free_mountains[randi() % free_mountains.size()]
         var goal = free_lakes[randi() % free_lakes.size()]
-        var path = _find_path_astar(start, goal, graph, used_vertices, MAX_TURN_ANGLE_DEG, {}, lake_adjacent_hexes)
+        var path = _find_path_astar(start, goal, graph, used_vertices, MAX_TURN_ANGLE_DEG, {}, restricted_hexes)
         if path.is_empty():
-            path = _find_path_astar(start, goal, graph, used_vertices, MAX_TURN_ANGLE_SOFT_DEG, {}, lake_adjacent_hexes)
+            path = _find_path_astar(start, goal, graph, used_vertices, MAX_TURN_ANGLE_SOFT_DEG, {}, restricted_hexes)
         if path.size() >= min_len:
             return _keys_to_positions(path, graph)
     return []
@@ -220,7 +221,7 @@ func _try_generate_main_river(graph: Dictionary, mountain_vertices: Array,
 # в озёра: озёрные вершины исключаются из merge_keys.
 # -------------------------------------------------------
 func _try_generate_tributary(graph: Dictionary, mountain_vertices: Array,
-        hill_vertices: Array, lake_vertices: Array, lake_adjacent_hexes: Dictionary,
+        hill_vertices: Array, lake_vertices: Array, restricted_hexes: Dictionary,
         used_vertices: Dictionary, min_len: int) -> Array:
     if used_vertices.is_empty():
         return []
@@ -228,11 +229,11 @@ func _try_generate_tributary(graph: Dictionary, mountain_vertices: Array,
     # Исток: свободные горные вершины; если их мало — добавляем холмистые.
     var free_sources: Array = []
     for vk in mountain_vertices:
-        if not used_vertices.has(vk) and not lake_vertices.has(vk) and not _vertex_in_hexes(vk, graph, lake_adjacent_hexes):
+        if not used_vertices.has(vk) and not lake_vertices.has(vk) and not _vertex_in_hexes(vk, graph, restricted_hexes):
             free_sources.append(vk)
     if free_sources.size() < 3:
         for vk in hill_vertices:
-            if not used_vertices.has(vk) and not lake_vertices.has(vk) and not _vertex_in_hexes(vk, graph, lake_adjacent_hexes):
+            if not used_vertices.has(vk) and not lake_vertices.has(vk) and not _vertex_in_hexes(vk, graph, restricted_hexes):
                 free_sources.append(vk)
     if free_sources.is_empty():
         return []
@@ -248,9 +249,9 @@ func _try_generate_tributary(graph: Dictionary, mountain_vertices: Array,
     for _attempt in range(NUM_RIVER_ATTEMPTS):
         var start = free_sources[randi() % free_sources.size()]
         var goal = merge_list[randi() % merge_list.size()]
-        var path = _find_path_astar(start, goal, graph, used_vertices, MAX_TURN_ANGLE_DEG, merge_keys, lake_adjacent_hexes)
+        var path = _find_path_astar(start, goal, graph, used_vertices, MAX_TURN_ANGLE_DEG, merge_keys, restricted_hexes)
         if path.is_empty():
-            path = _find_path_astar(start, goal, graph, used_vertices, MAX_TURN_ANGLE_SOFT_DEG, merge_keys, lake_adjacent_hexes)
+            path = _find_path_astar(start, goal, graph, used_vertices, MAX_TURN_ANGLE_SOFT_DEG, merge_keys, restricted_hexes)
         if path.size() >= min_len:
             return _keys_to_positions(path, graph)
     return []
@@ -263,7 +264,7 @@ func _try_generate_tributary(graph: Dictionary, mountain_vertices: Array,
 # и строит путь «гора -> waypoint -> озеро».
 # -------------------------------------------------------
 func _try_generate_forced_river(graph: Dictionary, mountain_vertices: Array,
-        lake_vertices: Array, lake_adjacent_hexes: Dictionary,
+        lake_vertices: Array, restricted_hexes: Dictionary,
         used_vertices: Dictionary, min_len: int,
         region_start_row: int, region_end_row: int,
         region_start_col: int, region_end_col: int) -> Array:
@@ -281,7 +282,7 @@ func _try_generate_forced_river(graph: Dictionary, mountain_vertices: Array,
 
         var free_src: Array = []
         for vk in src_side:
-            if not used_vertices.has(vk) and not lake_vertices.has(vk) and not _vertex_in_hexes(vk, graph, lake_adjacent_hexes):
+            if not used_vertices.has(vk) and not lake_vertices.has(vk) and not _vertex_in_hexes(vk, graph, restricted_hexes):
                 free_src.append(vk)
         var free_dst: Array = []
         for vk in dst_side:
@@ -295,7 +296,7 @@ func _try_generate_forced_river(graph: Dictionary, mountain_vertices: Array,
                 region_start_row, region_end_row, region_start_col, region_end_col)
         var free_waypoints: Array = []
         for vk in region_vertices:
-            if not used_vertices.has(vk) and not _vertex_in_hexes(vk, graph, lake_adjacent_hexes):
+            if not used_vertices.has(vk) and not _vertex_in_hexes(vk, graph, restricted_hexes):
                 free_waypoints.append(vk)
         if free_waypoints.is_empty():
             continue
@@ -305,15 +306,15 @@ func _try_generate_forced_river(graph: Dictionary, mountain_vertices: Array,
             var goal = free_dst[randi() % free_dst.size()]
             var wp = free_waypoints[randi() % free_waypoints.size()]
 
-            var path1 = _find_path_astar(start, wp, graph, used_vertices, MAX_TURN_ANGLE_DEG, {}, lake_adjacent_hexes)
+            var path1 = _find_path_astar(start, wp, graph, used_vertices, MAX_TURN_ANGLE_DEG, {}, restricted_hexes)
             if path1.is_empty():
-                path1 = _find_path_astar(start, wp, graph, used_vertices, MAX_TURN_ANGLE_SOFT_DEG, {}, lake_adjacent_hexes)
+                path1 = _find_path_astar(start, wp, graph, used_vertices, MAX_TURN_ANGLE_SOFT_DEG, {}, restricted_hexes)
             if path1.is_empty():
                 continue
 
-            var path2 = _find_path_astar(wp, goal, graph, used_vertices, MAX_TURN_ANGLE_DEG, {}, lake_adjacent_hexes)
+            var path2 = _find_path_astar(wp, goal, graph, used_vertices, MAX_TURN_ANGLE_DEG, {}, restricted_hexes)
             if path2.is_empty():
-                path2 = _find_path_astar(wp, goal, graph, used_vertices, MAX_TURN_ANGLE_SOFT_DEG, {}, lake_adjacent_hexes)
+                path2 = _find_path_astar(wp, goal, graph, used_vertices, MAX_TURN_ANGLE_SOFT_DEG, {}, restricted_hexes)
             if path2.is_empty():
                 continue
 
@@ -341,10 +342,12 @@ func _find_terrain_vertices(graph: Dictionary, tile_data: Array, terrain_id: Str
 
 
 # -------------------------------------------------------
-# Находит гексы, которые касаются озёр: озёрные гексы и их соседи.
+# Находит гексы, по которым реки НЕ могут течь:
+#   - озёрные гексы и их соседи (чтобы река не текла по берегу озера);
+#   - сами гексы болот (swamp) и марш (marsh) — реки не проходят сквозь них.
 # Возвращает словарь с ключами "row_col" -> true.
 # -------------------------------------------------------
-func _build_lake_adjacent_hexes(tile_data: Array, rows: int, cols: int) -> Dictionary:
+func _build_restricted_hexes(tile_data: Array, rows: int, cols: int) -> Dictionary:
     var result: Dictionary = {}
 
     # Собираем озёрные гексы.
@@ -359,6 +362,14 @@ func _build_lake_adjacent_hexes(tile_data: Array, rows: int, cols: int) -> Dicti
         result["%d_%d" % [lh.row, lh.col]] = true
         for n in HexUtils.get_neighbors_odd_r(lh.row, lh.col, rows, cols):
             result["%d_%d" % [n.row, n.col]] = true
+
+    # Сами гексы болот и маршей — реки не проходят сквозь них (их соседей
+    # не помечаем: это было бы слишком ограничивающе).
+    for row in range(rows):
+        for col in range(cols):
+            var terrain_id = tile_data[row][col]["terrain"]
+            if terrain_id == "swamp" or terrain_id == "marsh":
+                result["%d_%d" % [row, col]] = true
 
     return result
 
