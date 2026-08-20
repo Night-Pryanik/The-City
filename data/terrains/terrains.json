@@ -64,7 +64,7 @@
       "move_cost": 999,
       "expansion_cost": 0,
       "work_cost_mult": 1.0,
-      "icons": [ "sea_1.png" ],
+      "icons": [ "sea_1.png", "sea_2.png", "sea_3.png" ],
       "cover_chance": { "none": 100 }
     },
     {
