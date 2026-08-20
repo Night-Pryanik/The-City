@@ -190,7 +190,7 @@ func _apply_sea(tile_data: Array, rows: int, cols: int, city_row: int, city_col:
     if mode == "none":
         return sea_mask
 
-    var max_width: int = int(cfg.get("max_width", 8))
+    var max_sea_depth: int = int(cfg.get("max_sea_depth", 8))
     var beach_enabled: bool = cfg.get("beach", true)
 
     # sides — диапазон [min, max] количества случайно выбранных сторон света,
@@ -224,9 +224,9 @@ func _apply_sea(tile_data: Array, rows: int, cols: int, city_row: int, city_col:
         return sea_mask
 
     if mode == "noise":
-        _apply_sea_noise(tile_data, sea_mask, rows, cols, city_row, city_col, cfg, max_width, sides)
+        _apply_sea_noise(sea_mask, rows, cols, city_row, city_col, cfg, max_sea_depth, sides)
     elif mode == "edge":
-        _apply_sea_edge(tile_data, sea_mask, rows, cols, cfg, max_width, sides)
+        _apply_sea_edge(sea_mask, rows, cols, cfg, max_sea_depth, sides)
 
     # Помечаем гексы моря временным флагом _is_sea.
     for r in range(rows):
@@ -243,13 +243,13 @@ func _apply_sea(tile_data: Array, rows: int, cols: int, city_row: int, city_col:
 # Вариант А: elevation = градиент от края + шум + city_bump; суша = elevation > sea_level.
 # sides — список сторон, у которых может быть море ("east", "west", "north", "south").
 # Если sides пуст — море генерируется со всех сторон (поведение по умолчанию).
-func _apply_sea_noise(tile_data: Array, sea_mask: Array, rows: int, cols: int,
-        city_row: int, city_col: int, cfg: Dictionary, max_width: int, sides: Array) -> void:
-    var sea_level: float = float(cfg.get("sea_level", 0.0))
+func _apply_sea_noise(sea_mask: Array, rows: int, cols: int,
+        city_row: int, city_col: int, cfg: Dictionary, max_sea_depth: int, sides: Array) -> void:
+    var sea_level: float = float(cfg.get("noise_sea_level", 0.0))
     var noise_strength: float = float(cfg.get("noise_strength", 0.35))
-    var edge_gradient: float = float(cfg.get("edge_gradient", 0.4))
-    var city_bump: float = float(cfg.get("city_bump", 0.5))
-    var city_bump_radius: float = float(cfg.get("city_bump_radius", 8))
+    var edge_gradient: float = float(cfg.get("noise_edge_gradient", 0.4))
+    var city_bump: float = float(cfg.get("noise_city_bump", 0.5))
+    var city_bump_radius: float = float(cfg.get("noise_city_bump_radius", 8))
 
     # Нормализованные координаты: 0 в центре карты, 1 на краю.
     var half_rows = float(rows - 1) / 2.0
@@ -262,8 +262,8 @@ func _apply_sea_noise(tile_data: Array, sea_mask: Array, rows: int, cols: int,
                 min(r, rows - 1 - r),
                 min(c, cols - 1 - c)
             )
-            # Ограничение ширины моря: гексы дальше max_width от края — суша.
-            if edge_dist_hex > max_width:
+            # Ограничение ширины моря: гексы дальше max_sea_depth от края — суша.
+            if edge_dist_hex > max_sea_depth:
                 continue
 
             # Если заданы стороны — проверяем, что гекс находится у одной из них.
@@ -280,8 +280,8 @@ func _apply_sea_noise(tile_data: Array, sea_mask: Array, rows: int, cols: int,
                         dist_to_side = r
                     elif side == "south":
                         dist_to_side = rows - 1 - r
-                    # Гекс у выбранной стороны, если он в пределах max_width от неё.
-                    if dist_to_side >= 0 and dist_to_side <= max_width:
+                    # Гекс у выбранной стороны, если он в пределах max_sea_depth от неё.
+                    if dist_to_side >= 0 and dist_to_side <= max_sea_depth:
                         near_allowed_side = true
                         break
                 if not near_allowed_side:
@@ -312,31 +312,70 @@ func _apply_sea_noise(tile_data: Array, sea_mask: Array, rows: int, cols: int,
                 sea_mask[r][c] = true
 
 # Вариант Б: полоса моря у выбранных сторон, ширина — гладкий 1D-шум.
-func _apply_sea_edge(tile_data: Array, sea_mask: Array, rows: int, cols: int,
-        cfg: Dictionary, max_width: int, sides: Array) -> void:
+func _apply_sea_edge(sea_mask: Array, rows: int, cols: int,
+        cfg: Dictionary, max_sea_depth: int, sides: Array) -> void:
     if sides.is_empty():
         return
-    var width_min: int = int(cfg.get("width_min", 4))
-    var width_max: int = int(cfg.get("width_max", 7))
-    width_max = mini(width_max, max_width)
 
-    for r in range(rows):
-        for c in range(cols):
-            for side in sides:
-                var dist_to_edge := -1
-                if side == "east":
-                    dist_to_edge = cols - 1 - c
-                elif side == "west":
-                    dist_to_edge = c
-                elif side == "north":
-                    dist_to_edge = r
-                elif side == "south":
-                    dist_to_edge = rows - 1 - r
-                if dist_to_edge < 0:
-                    continue
-                # Гладкий 1D-шум ширины полосы вдоль стороны.
-                var width = _smooth_width(r, c, side, width_min, width_max)
-                if dist_to_edge < width:
+    var width_min: float = float(cfg.get("edge_width_min", 1))
+    var width_max: float = float(cfg.get("edge_width_max", 7))
+    var envelope_strength: float = float(cfg.get("edge_envelope_strength", 0.0))
+
+    # Крупномасштабный 1D-шум для естественности берега
+    var envelope_noise: FastNoiseLite = FastNoiseLite.new()
+    envelope_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
+    envelope_noise.seed = randi()
+    envelope_noise.frequency = 0.08
+
+    for side in sides:
+        var len: int = rows if (side == "east" or side == "west") else cols
+        var arr: Array = []
+        var seg: int = 8
+        var i0: int = -1
+        var v0: float = 0.0
+        var v1: float = randf()
+        
+        # Центр стороны для параболической огибающей
+        var center_pos: float = float(len) / 2.0
+        var half_len: float = float(len) / 2.0
+
+        for coord in range(len):
+            if coord / seg != i0:
+                i0 = coord / seg
+                v0 = v1
+                v1 = randf()
+            var t: float = 0.5 - 0.5 * cos(float(coord % seg) / float(seg) * PI)
+            var base_width: float = lerpf(width_min, width_max, lerpf(v0, v1, t))
+
+            # Параболическая огибающая: 1 в центре, 0 на краях
+            var dist_from_center: float = abs(float(coord) - center_pos)
+            var parabola: float = 1.0 - pow(dist_from_center / half_len, 2.0)
+            parabola = max(0.0, parabola)
+
+            # Комбинируем параболу с шумом
+            if envelope_strength > 0.0:
+                var noise_val: float = 0.5 + 0.5 * envelope_noise.get_noise_1d(float(coord))
+                var env: float = lerp(parabola, parabola * noise_val, envelope_strength)
+                base_width *= env
+
+            arr.append(int(round(base_width)))
+
+        # Применяем ширину к гексам
+        for coord in range(len):
+            var width: int = arr[coord]
+            if width <= 0:
+                continue
+            for depth in range(width):
+                if depth >= max_sea_depth:
+                    break
+                var r: int = 0
+                var c: int = 0
+                match side:
+                    "east": r = coord; c = cols - 1 - depth
+                    "west": r = coord; c = depth
+                    "south": r = rows - 1 - depth; c = coord
+                    "north": r = depth; c = coord
+                if r >= 0 and r < rows and c >= 0 and c < cols:
                     sea_mask[r][c] = true
 
 # Гладкая ширина полосы моря вдоль стороны (1D-шум).
