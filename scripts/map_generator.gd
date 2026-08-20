@@ -404,6 +404,42 @@ func _apply_beach(tile_data: Array, sea_mask: Array, rows: int, cols: int) -> vo
                 tile_data[r][c]["terrain"] = "beach"
                 tile_data[r][c]["_is_beach"] = true
 
+func _replace_island_lakes(tile_data: Array, sea_mask: Array, rows: int, cols: int) -> void:
+    var edge_connected_land := []
+    for r in range(rows):
+        var row_arr = []
+        row_arr.resize(cols)
+        row_arr.fill(false)
+        edge_connected_land.append(row_arr)
+
+    var queue: Array = []
+    for r in range(rows):
+        for c in range(cols):
+            if r != 0 and r != rows - 1 and c != 0 and c != cols - 1:
+                continue
+            if sea_mask[r][c] or edge_connected_land[r][c]:
+                continue
+            edge_connected_land[r][c] = true
+            queue.append({"row": r, "col": c})
+
+    var queue_index := 0
+    while queue_index < queue.size():
+        var current = queue[queue_index]
+        queue_index += 1
+        for n in HexUtils.get_neighbors_odd_r(current.row, current.col, rows, cols):
+            if sea_mask[n.row][n.col] or edge_connected_land[n.row][n.col]:
+                continue
+            edge_connected_land[n.row][n.col] = true
+            queue.append(n)
+
+    for r in range(rows):
+        for c in range(cols):
+            if sea_mask[r][c] or edge_connected_land[r][c]:
+                continue
+            if tile_data[r][c].get("terrain", "plain") == "lake":
+                tile_data[r][c]["terrain"] = "plain"
+                tile_data[r][c]["cover"] = _roll_cover("plain")
+
 func _apply_marshes(tile_data: Array, rows: int, cols: int) -> void:
     var lake_hexes: Array = []
     var sea_hexes: Array = []
@@ -501,6 +537,10 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
             elif tile.get("_is_beach", false):
                 tile["terrain"] = "beach"
                 tile["cover"] = "none"
+
+    # Морские острова не должны состоять из озёр: заменяем озёра в замкнутых
+    # морем land-компонентах на равнину до проверки минимального числа озёр.
+    _replace_island_lakes(tile_data, sea_mask, rows, cols)
 
     # Гарантируем минимальный объём озёр на карте: озеро не должно исчезать
     # в слишком маленьких картах или при редких случайностях генерации центров.
