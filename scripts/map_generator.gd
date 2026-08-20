@@ -154,21 +154,207 @@ func _default_density(terrain_id: String) -> float:
             return 0.05
 
 # Пост-обработка после Вороного: превращает часть равнинных гексов вокруг
-# озёр в марши. Кольцо шириной в 1 гекс — перебираем только
-# непосредственных соседей каждого озера. Каждый такой сосед-равнина
+# озёр и морей в марши. Кольцо шириной в 1 гекс — перебираем только
+# непосредственных соседей каждого озера/моря. Каждый такой сосед-равнина
 # становится маршем с шансом ~40-50% (MARSH_CHANCE). Гексы помечаются
 # временным флагом _is_marsh, чтобы генерация покрова потом могла выставить им cover.
 const MARSH_CHANCE := 0.45
 
-func _apply_marshes(tile_data: Array, rows: int, cols: int) -> void:
-    var lake_hexes: Array = []
+# Возвращает конфигурацию моря из data/map_config.json (блок "sea").
+func _sea_config() -> Dictionary:
+    return GameData.map_config.get("sea", {})
+
+# Возвращает true, если гекс (row, col) помечен как море (временный флаг _is_sea).
+func _is_sea_hex(tile_data: Array, row: int, col: int) -> bool:
+    return tile_data[row][col].get("_is_sea", false)
+
+# Генерирует маску моря на карте ДО алгоритма Вороного.
+# Возвращает 2D-массив bool: true = гекс является морем.
+# Поддерживает два режима (см. data/map_config.json, блок "sea"):
+#   - "noise" (вариант А): elevation = градиент от края + шум + city_bump;
+#     суша = elevation > sea_level.
+#   - "edge" (вариант Б): полоса моря у выбранных сторон, ширина — гладкий 1D-шум.
+#   - "none": море не генерируется.
+# Гексы моря помечаются временным флагом _is_sea, чтобы после Вороного
+# маску можно было повторно применить поверх результата.
+func _apply_sea(tile_data: Array, rows: int, cols: int, city_row: int, city_col: int) -> Array:
+    var cfg := _sea_config()
+    var mode: String = cfg.get("mode", "none")
+    var sea_mask: Array = []
+    for r in range(rows):
+        var row_arr = []
+        row_arr.resize(cols)
+        row_arr.fill(false)
+        sea_mask.append(row_arr)
+
+    if mode == "none":
+        return sea_mask
+
+    var max_width: int = int(cfg.get("max_width", 8))
+    var beach_enabled: bool = cfg.get("beach", true)
+    var sides: Array = cfg.get("sides", [])
+
+    if mode == "noise":
+        _apply_sea_noise(tile_data, sea_mask, rows, cols, city_row, city_col, cfg, max_width, sides)
+    elif mode == "edge":
+        _apply_sea_edge(tile_data, sea_mask, rows, cols, cfg, max_width)
+
+    # Помечаем гексы моря временным флагом _is_sea.
     for r in range(rows):
         for c in range(cols):
-            if tile_data[r][c].get("terrain", "plain") == "lake":
-                lake_hexes.append({"row": r, "col": c})
+            if sea_mask[r][c]:
+                tile_data[r][c]["_is_sea"] = true
 
-    for lake in lake_hexes:
-        var neighbors = HexUtils.get_neighbors_odd_r(lake.row, lake.col, rows, cols)
+    # Пляж: суша, соседняя с морем, становится пляжем (beach).
+    if beach_enabled:
+        _apply_beach(tile_data, sea_mask, rows, cols)
+
+    return sea_mask
+
+# Вариант А: elevation = градиент от края + шум + city_bump; суша = elevation > sea_level.
+# sides — список сторон, у которых может быть море ("east", "west", "north", "south").
+# Если sides пуст — море генерируется со всех сторон (поведение по умолчанию).
+func _apply_sea_noise(tile_data: Array, sea_mask: Array, rows: int, cols: int,
+        city_row: int, city_col: int, cfg: Dictionary, max_width: int, sides: Array) -> void:
+    var sea_level: float = float(cfg.get("sea_level", 0.0))
+    var noise_strength: float = float(cfg.get("noise_strength", 0.35))
+    var edge_gradient: float = float(cfg.get("edge_gradient", 0.4))
+    var city_bump: float = float(cfg.get("city_bump", 0.5))
+    var city_bump_radius: float = float(cfg.get("city_bump_radius", 8))
+
+    # Нормализованные координаты: 0 в центре карты, 1 на краю.
+    var half_rows = float(rows - 1) / 2.0
+    var half_cols = float(cols - 1) / 2.0
+
+    for r in range(rows):
+        for c in range(cols):
+            # Расстояние до ближайшего края карты (в гексах).
+            var edge_dist_hex = min(
+                min(r, rows - 1 - r),
+                min(c, cols - 1 - c)
+            )
+            # Ограничение ширины моря: гексы дальше max_width от края — суша.
+            if edge_dist_hex > max_width:
+                continue
+
+            # Если заданы стороны — проверяем, что гекс находится у одной из них.
+            # Иначе (sides пуст) — море со всех сторон.
+            if not sides.is_empty():
+                var near_allowed_side := false
+                for side in sides:
+                    var dist_to_side := -1
+                    if side == "east":
+                        dist_to_side = cols - 1 - c
+                    elif side == "west":
+                        dist_to_side = c
+                    elif side == "north":
+                        dist_to_side = r
+                    elif side == "south":
+                        dist_to_side = rows - 1 - r
+                    # Гекс у выбранной стороны, если он в пределах max_width от неё.
+                    if dist_to_side >= 0 and dist_to_side <= max_width:
+                        near_allowed_side = true
+                        break
+                if not near_allowed_side:
+                    continue
+
+            # Нормализованное расстояние до края (0 на краю, 1 в центре).
+            var edge_dist = min(
+                min(float(r) / half_rows, float(rows - 1 - r) / half_rows),
+                min(float(c) / half_cols, float(cols - 1 - c) / half_cols)
+            )
+            # Градиент: центрирован около 0. На краю (edge_dist=0) — отрицательный
+            # (море), в центре (edge_dist=1) — положительный (суша).
+            var gradient = (edge_dist - 0.5) * 2.0 * edge_gradient
+
+            # Шум высот (детерминированный по координатам), центрирован около 0:
+            # от -noise_strength до +noise_strength.
+            var noise = (_hash_noise(r, c) * 2.0 - 1.0) * noise_strength
+
+            # City bump: «холм» вокруг города, гарантирующий стартовый континент.
+            var dist_to_city = HexUtils.hex_distance(r, c, city_row, city_col)
+            var bump = 0.0
+            if dist_to_city <= city_bump_radius:
+                var t = 1.0 - float(dist_to_city) / city_bump_radius
+                bump = city_bump * t * t
+
+            var elevation = gradient + noise + bump
+            if elevation <= sea_level:
+                sea_mask[r][c] = true
+
+# Вариант Б: полоса моря у выбранных сторон, ширина — гладкий 1D-шум.
+func _apply_sea_edge(tile_data: Array, sea_mask: Array, rows: int, cols: int,
+        cfg: Dictionary, max_width: int) -> void:
+    var sides: Array = cfg.get("sides", ["east"])
+    var width_min: int = int(cfg.get("width_min", 4))
+    var width_max: int = int(cfg.get("width_max", 7))
+    width_max = mini(width_max, max_width)
+
+    for r in range(rows):
+        for c in range(cols):
+            for side in sides:
+                var dist_to_edge := -1
+                if side == "east":
+                    dist_to_edge = cols - 1 - c
+                elif side == "west":
+                    dist_to_edge = c
+                elif side == "north":
+                    dist_to_edge = r
+                elif side == "south":
+                    dist_to_edge = rows - 1 - r
+                if dist_to_edge < 0:
+                    continue
+                # Гладкий 1D-шум ширины полосы вдоль стороны.
+                var width = _smooth_width(r, c, side, width_min, width_max)
+                if dist_to_edge < width:
+                    sea_mask[r][c] = true
+
+# Гладкая ширина полосы моря вдоль стороны (1D-шум).
+func _smooth_width(row: int, col: int, side: String, width_min: int, width_max: int) -> float:
+    var t := 0.0
+    if side == "east" or side == "west":
+        t = float(row) / 10.0
+    else:
+        t = float(col) / 10.0
+    # Сумма синусоид даёт плавное изменение ширины вдоль берега.
+    var v = 0.5 + 0.5 * sin(t * 6.283 + _hash_noise(row, col) * 6.283)
+    return lerpf(float(width_min), float(width_max), v)
+
+# Детерминированный псевдослучайный шум по координатам (0..1).
+# Константа-смещение 1013904223 гарантирует, что для (0,0) шум не равен 0.0
+# (иначе при sea_level = 0.0 гекс (0,0) всегда становился бы морем).
+func _hash_noise(row: int, col: int) -> float:
+    var h = row * 374761393 + col * 668265263 + 1013904223
+    h = (h ^ (h >> 13)) * 1274126177
+    h = h ^ (h >> 16)
+    return float((h & 0x7fffffff) % 10000) / 10000.0
+
+# Превращает сушу, соседнюю с морем, в пляж (beach).
+func _apply_beach(tile_data: Array, sea_mask: Array, rows: int, cols: int) -> void:
+    for r in range(rows):
+        for c in range(cols):
+            if sea_mask[r][c]:
+                continue
+            # Гекс суши: проверяем, есть ли сосед-море.
+            var has_sea_neighbor := false
+            for n in HexUtils.get_neighbors_odd_r(r, c, rows, cols):
+                if sea_mask[n.row][n.col]:
+                    has_sea_neighbor = true
+                    break
+            if has_sea_neighbor:
+                tile_data[r][c]["terrain"] = "beach"
+                tile_data[r][c]["_is_beach"] = true
+
+func _apply_marshes(tile_data: Array, rows: int, cols: int) -> void:
+    var water_hexes: Array = []
+    for r in range(rows):
+        for c in range(cols):
+            var terrain_id = tile_data[r][c].get("terrain", "plain")
+            if terrain_id == "lake" or terrain_id == "sea":
+                water_hexes.append({"row": r, "col": c})
+
+    for water in water_hexes:
+        var neighbors = HexUtils.get_neighbors_odd_r(water.row, water.col, rows, cols)
         for n in neighbors:
             var tile = tile_data[n.row][n.col]
             if tile.get("terrain", "plain") != "plain":
@@ -185,6 +371,13 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
         for col in range(cols):
             col_array.append({"terrain": "plain", "cover": "none", "resource": null, "improvement": null})
         tile_data.append(col_array)
+
+    # --- МОРЯ (маска ДО Вороного) ---
+    # Море не участвует в алгоритме Вороного (не входит в terrain_config).
+    # Маска моря генерируется здесь и запоминается во временном флаге _is_sea,
+    # а после Вороного повторно применяется поверх результата (см. ниже),
+    # чтобы Вороной не перезаписал море/пляж.
+    var sea_mask = _apply_sea(tile_data, rows, cols, city_row, city_col)
 
     # Генерируем центры для Вороного. Для непроходимых типов местности
     # (озёра и т.п., move_cost >= 999) центры НЕ должны попадать в радиус
@@ -217,6 +410,20 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
     for row in range(rows):
         for col in range(cols):
             tile_data[row][col]["terrain"] = voronoi[row][col]
+
+    # --- ПОВТОРНОЕ ПРИМЕНЕНИЕ МАСКИ МОРЯ/ПЛЯЖА ---
+    # Вороной заполнил всю карту своим рельефом, поэтому поверх него
+    # заново накладываем море (по флагу _is_sea) и пляж (по флагу _is_beach),
+    # чтобы они не были перезаписаны.
+    for row in range(rows):
+        for col in range(cols):
+            var tile = tile_data[row][col]
+            if tile.get("_is_sea", false):
+                tile["terrain"] = "sea"
+                tile["cover"] = "none"
+            elif tile.get("_is_beach", false):
+                tile["terrain"] = "beach"
+                tile["cover"] = "none"
 
     # Гарантируем минимальный объём озёр на карте: озеро не должно исчезать
     # в слишком маленьких картах или при редких случайностях генерации центров.
@@ -549,13 +756,17 @@ func _ensure_plain_zone(tile_data: Array, rows: int, cols: int,
                 # леса), чтобы безопасный двор не выглядел голым.
                 tile["cover"] = _roll_cover("plain")
                 tile["_is_marsh"] = false
+                tile["_is_sea"] = false
+                tile["_is_beach"] = false
 
 # Гарантирует, что у города есть путь к краю карты (к «внешнему миру»).
-# Если город оказался изолирован непроходимым террейном (озером), функция
-# BFS по непроходимым гексам прокладывает кратчайший коридор от достижимой
-# области города к ближайшему внешнему проходимому гексу и превращает
-# этот коридор в равнину. Повторяется до тех пор, пока город не получит
-# выход к краю карты (или не упрётся в лимит итераций).
+# Если город оказался изолирован непроходимым террейном (озером или морем),
+# функция BFS по непроходимым гексам прокладывает кратчайший коридор от
+# достижимой области города к ближайшему внешнему проходимому гексу и
+# превращает этот коридор в равнину. Море — не препятствие для пробивки
+# (как и озеро), а побережье (beach, move_cost: 1) — валидный выход.
+# Повторяется до тех пор, пока город не получит выход к краю карты
+# (или не упрётся в лимит итераций).
 func _ensure_outward_corridor(tile_data: Array, rows: int, cols: int,
         city_row: int, city_col: int) -> void:
     for _iter in range(10):
@@ -647,6 +858,8 @@ func _has_exit_to_edge(reachable: Dictionary, rows: int, cols: int) -> bool:
     return false
 
 # Превращает гекс (key "r,c") в равнину без покрова.
+# Используется для пробивки коридора выхода сквозь непроходимые гексы
+# (озёра и моря). Сбрасывает временные флаги _is_marsh и _is_sea.
 func _punch_hex(tile_data: Array, key: String) -> void:
     var parts = key.split(",")
     var r = int(parts[0])
@@ -656,6 +869,7 @@ func _punch_hex(tile_data: Array, key: String) -> void:
     # Покров генерируется как у обычной равнины для естественного вида.
     tile["cover"] = _roll_cover("plain")
     tile["_is_marsh"] = false
+    tile["_is_sea"] = false
 
 # Пробивает коридор от достижимой области напрямую к краю карты через
 # непроходимые гексы. Возвращает true, если коридор удалось проложить.

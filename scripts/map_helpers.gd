@@ -289,7 +289,8 @@ static func get_tech_reveal_conflict(tile: Dictionary) -> Dictionary:
 
 
 ## Гарантирует, что город находится на разрешённой местности (равнина или холмы).
-## Если город был сгенерирован/загружен на горе или озере — меняет на равнину.
+## Если город был сгенерирован/загружен на горе, озере, море или пляже —
+## меняет на равнину.
 static func ensure_city_valid_terrain(
     tile_data: Array,
     city_row: int,
@@ -304,6 +305,10 @@ static func ensure_city_valid_terrain(
     var allowed_terrains: Array[String] = ["plain", "hill"]
     if current_terrain not in allowed_terrains:
         city_tile["terrain"] = "plain"
+        city_tile["cover"] = "none"
+        city_tile["_is_sea"] = false
+        city_tile["_is_beach"] = false
+        city_tile["_is_marsh"] = false
 
 ## Хит-тест: какой гекс (row, col) находится под пиксельными координатами (mx, my).
 ## Итерирует только видимое окно (Кольцо + Регион) для производительности.

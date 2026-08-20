@@ -56,6 +56,26 @@
       "work_cost_mult": 1.5,
       "icons": [ "marsh_1.png", "marsh_2.png", "marsh_3.png" ],
       "cover_chance": { "none": 50, "reeds": 50 }
+    },
+    {
+      "id": "sea",
+      "name": "Море",
+      "color": [ 40, 90, 140 ],
+      "move_cost": 999,
+      "expansion_cost": 0,
+      "work_cost_mult": 1.0,
+      "icons": [ "sea_1.png" ],
+      "cover_chance": { "none": 100 }
+    },
+    {
+      "id": "beach",
+      "name": "Пляж",
+      "color": [ 220, 200, 140 ],
+      "move_cost": 1,
+      "expansion_cost": 50,
+      "work_cost_mult": 1.0,
+      "icons": [ "beach_1.png" ],
+      "cover_chance": { "none": 100 }
     }
   ]
 }
