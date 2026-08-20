@@ -361,9 +361,38 @@ func _hash_noise(row: int, col: int) -> float:
 
 # Превращает сушу, соседнюю с морем, в пляж (beach).
 func _apply_beach(tile_data: Array, sea_mask: Array, rows: int, cols: int) -> void:
+    # Пляж формируется только на суше, связанной с краем карты. Замкнутые
+    # морем участки сохраняют рельеф Вороного и не превращаются в марши.
+    var edge_connected_land := []
+    for r in range(rows):
+        var row_arr = []
+        row_arr.resize(cols)
+        row_arr.fill(false)
+        edge_connected_land.append(row_arr)
+
+    var queue: Array = []
     for r in range(rows):
         for c in range(cols):
-            if sea_mask[r][c]:
+            if r != 0 and r != rows - 1 and c != 0 and c != cols - 1:
+                continue
+            if sea_mask[r][c] or edge_connected_land[r][c]:
+                continue
+            edge_connected_land[r][c] = true
+            queue.append({"row": r, "col": c})
+
+    var queue_index := 0
+    while queue_index < queue.size():
+        var current = queue[queue_index]
+        queue_index += 1
+        for n in HexUtils.get_neighbors_odd_r(current.row, current.col, rows, cols):
+            if sea_mask[n.row][n.col] or edge_connected_land[n.row][n.col]:
+                continue
+            edge_connected_land[n.row][n.col] = true
+            queue.append(n)
+
+    for r in range(rows):
+        for c in range(cols):
+            if sea_mask[r][c] or not edge_connected_land[r][c]:
                 continue
             # Гекс суши: проверяем, есть ли сосед-море.
             var has_sea_neighbor := false
@@ -376,22 +405,40 @@ func _apply_beach(tile_data: Array, sea_mask: Array, rows: int, cols: int) -> vo
                 tile_data[r][c]["_is_beach"] = true
 
 func _apply_marshes(tile_data: Array, rows: int, cols: int) -> void:
-    var water_hexes: Array = []
+    var lake_hexes: Array = []
+    var sea_hexes: Array = []
     for r in range(rows):
         for c in range(cols):
             var terrain_id = tile_data[r][c].get("terrain", "plain")
-            if terrain_id == "lake" or terrain_id == "sea":
-                water_hexes.append({"row": r, "col": c})
+            if terrain_id == "lake":
+                lake_hexes.append({"row": r, "col": c})
+            elif terrain_id == "sea":
+                sea_hexes.append({"row": r, "col": c})
 
-    for water in water_hexes:
+    # У озёр: марши образуются на окружающей равнине (кольцо вокруг озера).
+    for water in lake_hexes:
         var neighbors = HexUtils.get_neighbors_odd_r(water.row, water.col, rows, cols)
         for n in neighbors:
-            var tile = tile_data[n.row][n.col]
-            if tile.get("terrain", "plain") != "plain":
+            var t = tile_data[n.row][n.col]
+            if t.get("terrain", "plain") != "plain":
                 continue
             if randf() < MARSH_CHANCE:
-                tile["terrain"] = "marsh"
-                tile["_is_marsh"] = true
+                t["terrain"] = "marsh"
+                t["_is_marsh"] = true
+
+    # У морей: марши образуются ТОЛЬКО на побережье (пляже beach), а не на
+    # внутренней суше островков. Пляж — прибрежная заболоченная зона.
+    # Вызывается ПОСЛЕ применения маски моря/пляжа.
+    for water in sea_hexes:
+        var neighbors = HexUtils.get_neighbors_odd_r(water.row, water.col, rows, cols)
+        for n in neighbors:
+            var t = tile_data[n.row][n.col]
+            if t.get("terrain", "plain") != "beach":
+                continue
+            if randf() < MARSH_CHANCE:
+                t["terrain"] = "marsh"
+                t["_is_marsh"] = true
+                t["_is_beach"] = false
 
 func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: Dictionary, terrain_counts: Dictionary) -> Array:
     var t0 = Time.get_ticks_msec()
