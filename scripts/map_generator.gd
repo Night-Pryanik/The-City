@@ -192,12 +192,29 @@ func _apply_sea(tile_data: Array, rows: int, cols: int, city_row: int, city_col:
 
     var max_width: int = int(cfg.get("max_width", 8))
     var beach_enabled: bool = cfg.get("beach", true)
-    var sides: Array = cfg.get("sides", [])
+
+    # sides — диапазон [min, max] количества случайно выбранных сторон света,
+    # у которых будет море. [0,0] — море не генерируется.
+    var sides_range: Array = cfg.get("sides", [])
+    var sides: Array = []
+    if sides_range is Array and sides_range.size() >= 2:
+        var min_sides: int = clampi(int(sides_range[0]), 0, 4)
+        var max_sides: int = clampi(int(sides_range[1]), 0, 4)
+        if max_sides < min_sides:
+            max_sides = min_sides
+        # Если минимум = 0 — море может не сгенерироваться вообще.
+        if max_sides <= 0:
+            return sea_mask
+        var all_sides: Array = ["east", "west", "north", "south"]
+        var count: int = randi_range(min_sides, max_sides)
+        all_sides.shuffle()
+        for i in range(count):
+            sides.append(all_sides[i])
 
     if mode == "noise":
         _apply_sea_noise(tile_data, sea_mask, rows, cols, city_row, city_col, cfg, max_width, sides)
     elif mode == "edge":
-        _apply_sea_edge(tile_data, sea_mask, rows, cols, cfg, max_width)
+        _apply_sea_edge(tile_data, sea_mask, rows, cols, cfg, max_width, sides)
 
     # Помечаем гексы моря временным флагом _is_sea.
     for r in range(rows):
@@ -284,8 +301,9 @@ func _apply_sea_noise(tile_data: Array, sea_mask: Array, rows: int, cols: int,
 
 # Вариант Б: полоса моря у выбранных сторон, ширина — гладкий 1D-шум.
 func _apply_sea_edge(tile_data: Array, sea_mask: Array, rows: int, cols: int,
-        cfg: Dictionary, max_width: int) -> void:
-    var sides: Array = cfg.get("sides", ["east"])
+        cfg: Dictionary, max_width: int, sides: Array) -> void:
+    if sides.is_empty():
+        return
     var width_min: int = int(cfg.get("width_min", 4))
     var width_max: int = int(cfg.get("width_max", 7))
     width_max = mini(width_max, max_width)
