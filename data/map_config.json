@@ -53,15 +53,15 @@
     //                     Ограничивает и вариант А, и вариант Б, чтобы не
     //                     генерировать/отрисовывать бесконечное море.
     "sea": {
-      "mode": "noise",
+      "mode": "edge",
       "sea_level": 0.0,
       "noise_strength": 0.35,
-      "edge_gradient": 0.4,
+      "edge_gradient": 1,
       "city_bump": 0.5,
       "city_bump_radius": 8,
       "beach": true,
       "sides": [1, 2],
-      "width_min": 4,
+      "width_min": 1,
       "width_max": 7,
       "max_width": 8
     },
