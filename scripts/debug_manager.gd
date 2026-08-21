@@ -107,6 +107,10 @@ func _show_main_menu():
     next_era_btn.pressed.connect(_on_next_era_pressed)
     _content_vbox.add_child(next_era_btn)
 
+    var open_map_btn = _make_button("Открыть всю карту")
+    open_map_btn.pressed.connect(_on_open_whole_map_pressed)
+    _content_vbox.add_child(open_map_btn)
+
     # Заглушка для будущих действий (можно расширять)
     var close_btn = _make_button("Закрыть (F9)")
     close_btn.pressed.connect(toggle)
@@ -140,6 +144,10 @@ func _on_next_era_pressed():
 
 func _on_add_resource_pressed():
     _show_resource_list()
+
+func _on_open_whole_map_pressed():
+    if main_map and main_map.has_method("debug_open_whole_map"):
+        main_map.debug_open_whole_map()
 
 func _on_resource_selected(res_id: String):
     pending_resource_id = res_id

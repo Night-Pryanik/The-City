@@ -1476,6 +1476,38 @@ func _apply_saved_map_state():
     city_col = map_cols / 2
     _recalculate_bounds()
 
+# --- ДЕБАГ: ОТКРЫТЬ ВСЮ КАРТУ ---
+# Вся карта целиком становится Кольцом Влияния: все гексы помечаются
+# как принадлежащие Кольцу и исследованные, границы Кольца/Региона
+# расширяются до размеров всей карты. После этого можно строить/улучшать
+# на любом гексе без разведки и покупки территории.
+func debug_open_whole_map():
+    if tile_data.is_empty():
+        return
+
+    # Помечаем каждый гекс как часть Кольца Влияния и исследованный.
+    for row in range(map_rows):
+        for col in range(map_cols):
+            var tile = tile_data[row][col]
+            if tile == null:
+                continue
+            tile["in_influence"] = true
+            tile["is_explored"] = true
+
+    # Расширяем Кольцо и Регион до размеров всей карты — is_in_influence()
+    # и is_valid_hex() будут возвращать true для любых координат.
+    ring_rows = map_rows
+    ring_cols = map_cols
+    region_rows = map_rows
+    region_cols = map_cols
+
+    _recalculate_bounds()
+    _calc_offsets()
+    map_renderer.queue_redraw()
+
+    if hud:
+        hud.show_message("Дебаг: вся карта открыта и в Кольце Влияния (%d×%d)" % [map_rows, map_cols])
+
 # --- ПЕРЕХОД В СЛЕДУЮЩУЮ ЭПОХУ ---
 # Инфраструктура расширения мира:
 #   1. Весь текущий (некупленный) Регион моментально и бесплатно исследуется.
