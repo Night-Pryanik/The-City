@@ -222,6 +222,7 @@
       "group": "meat_animals",
       "subgroup": "camelids",
       "tech_required": "animal_husbandry",
+      // todo: изменить allowed_terrain на desert, когда будет добавлена пустыня
       "allowed_terrain": [ "plain", "hill" ],
       "allowed_cover": [ "none", "sparse_forest", "forest" ],
       "improved_by": "pasture",

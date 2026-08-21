@@ -8,6 +8,8 @@
       "type": "product",
       "category": "fruits",
       "icon": "mulberries.png"
-    }
+    },
+    { "id": "figs", "name": "Инжир", "type": "product", "category": "fruits", "icon": "figs.png" },
+    { "id": "dates", "name": "Финики", "type": "product", "category": "fruits", "icon": "dates.png" }
   ]
 }

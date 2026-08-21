@@ -11,7 +11,7 @@
       "allowed_cover": [ "none" ],
       "improved_by": "vineyard",
       "tech_required": "winegrowing",
-      "produces": { "grapes": 1, "feed": 4 },
+      "produces": { "grapes": 1 },
       "icon": "grapes.png",
       "color": [ 255, 200, 100 ]
     },
@@ -26,9 +26,40 @@
       "allowed_cover": [ "none" ],
       "improved_by": "plantation",
       "tech_required": "plantations",
-      "produces": { "olives": 1, "feed": 4 },
+      "produces": { "olives": 1 },
       "icon": "olives.png",
       "color": [ 100, 200, 100 ]
+    },
+    {
+      "id": "fig_plant",
+      "name": "Инжир",
+      "type": "raw",
+      "category": "plants",
+      "group": "food_plants",
+      "subgroup": "fruits",
+      "allowed_terrain": [ "plain", "hill" ],
+      "allowed_cover": [ "none" ],
+      "improved_by": "plantation",
+      "tech_required": "plantations",
+      "produces": { "figs": 1 },
+      "icon": "figs.png",
+      "color": [ 200, 100, 200 ]
+    },
+    {
+      "id": "date_palm",
+      "name": "Финики",
+      "type": "raw",
+      "category": "plants",
+      "group": "food_plants",
+      "subgroup": "fruits",
+      // todo: изменить allowed_terrain на desert, когда будет добавлена пустыня
+      "allowed_terrain": [ "plain" ],
+      "allowed_cover": [ "none" ],
+      "improved_by": "plantation",
+      "tech_required": "plantations",
+      "produces": { "dates": 1 },
+      "icon": "dates.png",
+      "color": [ 200, 150, 100 ]
     }
   ]
 }
