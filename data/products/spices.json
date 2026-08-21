@@ -1,0 +1,5 @@
+{
+  "resources": [
+    { "id": "sesame", "name": "Кунжут", "type": "product", "category": "spices", "icon": "sesame.png" }
+  ]
+}

@@ -104,6 +104,21 @@
       "produces": { "mulberry": 1, "silk_cocoon": 1 },
       "icon": "mulberry.png",
       "color": [ 255, 100, 100 ]
+    },
+    {
+      "id": "sesame_field",
+      "name": "Кунжут",
+      "type": "raw",
+      "category": "technical_plants",
+      "group": "technical_plants",
+      "subgroup": [ "oil_plants", "spice_plants" ],
+      "allowed_terrain": [ "plain" ],
+      "allowed_cover": [ "none" ],
+      "improved_by": "plantation",
+      "tech_required": "plantations",
+      "produces": { "sesame": 1, "feed": 4 },
+      "icon": "sesame.png",
+      "color": [ 255, 200, 150 ]
     }
   ]
 }
