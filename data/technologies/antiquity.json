@@ -1,0 +1,14 @@
+{
+  "technologies": [
+    {
+      "id": "parchment",
+      "name": "Пергамент",
+      "era": "antiquity",
+      "science_cost": 3.0,
+      "prerequisites": [ [ "leatherworking" ] ],
+      "icon": "parchment.png",
+      "description": "Открывает пергамент и позволяет создавать письменные материалы.",
+      "flavor": "Пергамент стал важным носителем информации в древнем мире."
+    }
+  ]
+}

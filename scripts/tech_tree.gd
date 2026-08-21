@@ -20,6 +20,17 @@ const BUTTON_HEIGHT: int = 60 # фиксированная высота кноп
 const BUTTON_VERTICAL_GAP: int = 16 # вертикальный зазор между кнопками в колонке
 const ICON_SIZE: int = 32 # размер иконки слева от названия
 
+# --- Разделение по эпохам ---
+# Каждая технология в JSON содержит поле "era" (id эпохи), а человекочитаемые
+# названия эпох лежат в data/eras.json (загружается в GameData.eras).
+# Последовательные колонки одной эпохи визуально объединяются: сверху над
+# ними рисуется заголовок с названием эпохи, а между группами эпох — толстая
+# вертикальная линия-разделитель (см. ERA_LABEL_HEIGHT, ERA_LINE_*).
+const ERA_LABEL_HEIGHT: int = 34 # высота полосы над колонками под заголовки эпох
+const ERA_LABEL_WIDTH: int = 200 # фиксированная ширина заголовка эпохи
+const ERA_LINE_COLOR := Color(0.72, 0.72, 0.75, 1.0) # цвет вертикального разделителя эпох
+const ERA_LINE_WIDTH: float = 2.0 # толщина вертикального разделителя эпох
+
 # --- Внешние ссылки (заполняются в setup) ---
 var current_label: Label # "Изучается: ..." (Label вверху панели)
 var progress_bar: ProgressBar # прогресс-бар текущего исследования
@@ -33,6 +44,10 @@ var _arrows_layer: Control # Control, в котором _draw рисует ст�
 var _fonts_adjusted: bool = false # отложенный автоподбор шрифта уже отработал
 var _hovered_tech_id: String = "" # ID технологии, на которую наведён курсор
 var _related_techs: Dictionary = {} # tech_id -> bool, связанные технологии для подсветки
+
+# --- Разделение по эпохам ---
+var _era_labels: Array = [] # Label-заголовки эпох (очищаются в rebuild)
+var _era_groups: Array = [] # [{era_id, era_name, col_start, col_end, x_center, x_boundary}]
 
 # --- Кэш иконок технологий (рекурсивный обход res://icons, как в map_renderer) ---
 var icon_paths: Dictionary = {} # имя файла -> полный путь
@@ -114,6 +129,14 @@ func _compute_layout() -> Dictionary:
     for tech in techs:
         if not col_for.has(tech["id"]):
             col_for[tech["id"]] = 1
+
+    # Нормализация по эпохам: сдвигаем технологии каждой эпохи вправо, чтобы
+    # эпохи следовали по порядку (см. _normalize_era_columns). Это гарантирует,
+    # что между группами эпох появится вертикальная линия-разделитель, даже
+    # если поздняя технология раскладкой (по зависимостям) попала в колонку,
+    # где большинство технологий — более ранней эпохи.
+    if not GameData.eras.is_empty():
+        col_for = _normalize_era_columns(col_for)
 
     # Раскладываем по колонкам.
     var columns: Dictionary = {}
@@ -269,6 +292,195 @@ func _tech_exists(tech_id: String) -> bool:
             return true
     return false
 
+# Нормализация раскладки колонок по эпохам.
+#
+# Раскладка по зависимостям (см. _compute_layout) ставит технологию в колонку
+# max(col[prereq]) + 1. При этом технология поздней эпохи может попасть в ту же
+# колонку, что и технологии ранней эпохи — тогда по большинству колонка считается
+# ранней, и группа поздней эпохи не образуется (нет разделителя).
+#
+# Здесь мы ПЕРЕРАСКЛДЫВАЕМ колонки так, чтобы все технологии каждой эпохи шли
+# непрерывным блоком слева направо по порядку эпох (из GameData.eras). Внутри
+# блока эпохи сохраняется относительный порядок колонок из исходной раскладки.
+# Это гарантирует появление вертикальной линии-разделителя между эпохами.
+#
+# Возвращает новый словарь tech_id -> column.
+func _normalize_era_columns(col_for: Dictionary) -> Dictionary:
+    # Упорядоченный список id эпох (порядок из data/eras.json).
+    var era_order: Array = []
+    for era in GameData.eras:
+        era_order.append(era.get("id", ""))
+
+    # era_index для каждой технологии (0 — неизвестная/первая эпоха).
+    var tech_era: Dictionary = {} # tech_id -> int
+    for tid in col_for:
+        var era_id: String = _get_tech_data(tid).get("era", "")
+        var idx: int = era_order.find(era_id)
+        tech_era[tid] = idx if idx >= 0 else 0
+
+    # Собираем уникальные колонки каждой эпохи.
+    var era_columns: Dictionary = {} # era_index -> [col, ...]
+    for tid in col_for:
+        var c: int = col_for[tid]
+        var ei: int = tech_era[tid]
+        if not era_columns.has(ei):
+            era_columns[ei] = []
+        if not era_columns[ei].has(c):
+            era_columns[ei].append(c)
+
+    # Перераскладка: каждая эпоха занимает непрерывный блок колонок.
+    var sorted_era: Array = era_columns.keys()
+    sorted_era.sort()
+    var result: Dictionary = {}
+    var global_col: int = 0
+    for ei in sorted_era:
+        var cols: Array = era_columns[ei]
+        cols.sort()
+        # old_col -> new_col внутри блока этой эпохи.
+        var mapping: Dictionary = {}
+        var target: int = global_col
+        for old in cols:
+            mapping[old] = target
+            target += 1
+        # Применяем ко всем технологиям этой эпохи.
+        for tid in col_for:
+            if tech_era[tid] == ei:
+                result[tid] = mapping[col_for[tid]]
+        global_col = target
+
+    return result
+
+# --- Разделение по эпохам: хелперы ---
+
+# Возвращает человекочитаемое имя эпохи по её id (как в technologies_tab.gd).
+# Источник — data/eras.json, загружается в GameData.eras.
+# Если эпоха не найдена — возвращаем сам id (fallback).
+func _get_era_name(era_id: String) -> String:
+    if era_id.is_empty():
+        return ""
+    for era in GameData.eras:
+        if era.get("id", "") == era_id:
+            return era.get("name", era_id)
+    return era_id
+
+# Возвращает id эпохи, к которой относится колонка column_id.
+# Колонка может содержать технологии разных эпох (редко, но бывает —
+# например, древняя технология, открывающая античную). Тогда берём
+# эпоху, которая встречается в колонке чаще всего. Если колонка пуста
+# или эпохи не указаны — возвращаем "" (нет группы).
+func _column_era(columns: Dictionary, column_id: int) -> String:
+    var techs_in_col: Array = columns.get(column_id, [])
+    if techs_in_col.is_empty():
+        return ""
+    var counts: Dictionary = {} # era_id -> количество
+    for tid in techs_in_col:
+        var era_id: String = _get_tech_data(tid).get("era", "")
+        if era_id.is_empty():
+            continue
+        counts[era_id] = counts.get(era_id, 0) + 1
+    if counts.is_empty():
+        return ""
+    var best: String = ""
+    var best_count: int = 0
+    for era_id in counts:
+        if counts[era_id] > best_count:
+            best = era_id
+            best_count = counts[era_id]
+    return best
+
+# Вычисляет список групп эпох: последовательные колонки одной эпохи.
+# Возвращает массив словарей:
+#   {era_id, era_name, col_start, col_end, x_center, x_boundary}
+# x_center  — X-центр группы (для заголовка-надписи).
+# x_boundary — X границы группы: правая граница последней колонки группы
+#              (по ней рисуется вертикальная линия-разделитель).
+# x_boundary == -1 означает «крайняя правая группа» — линия не рисуется
+# (справа за деревом нет следующей эпохи).
+#
+# ВАЖНО: эпоха колонки определяется ПОФАКТУ, по большинству технологий
+# в колонке (см. _column_era). Благодаря нормализации в _normalize_era_columns
+# все технологии каждой эпохи стоят непрерывным блоком слева направо, поэтому
+# группы эпох получаются чистыми, а между ними рисуется вертикальный разделитель.
+# Раскладка по зависимостям (barycenter) внутри каждой эпохи сохраняется.
+func _compute_era_groups(columns: Dictionary, num_cols: int) -> Array:
+    var groups: Array = []
+    var current_era: String = ""
+    var group_start: int = -1
+
+    for c in range(num_cols):
+        var era_id: String = _column_era(columns, c)
+        if era_id == current_era:
+            continue
+        # Эпоха сменилась — закрываем предыдущую группу (если была).
+        if current_era != "" and group_start >= 0:
+            groups.append(_make_era_group(current_era, group_start, c - 1))
+        current_era = era_id
+        group_start = c
+
+    # Последняя группа.
+    if current_era != "" and group_start >= 0:
+        groups.append(_make_era_group(current_era, group_start, num_cols - 1))
+
+    return groups
+
+# Создаёт словарь группы эпохи по диапазону колонок [col_start..col_end].
+func _make_era_group(era_id: String, col_start: int, col_end: int) -> Dictionary:
+    var first_x: float = _col_x(col_start) # левый край первой колонки группы
+    var last_right: float = _col_x(col_end) + BUTTON_WIDTH # правый край последней колонки
+    return {
+        "era_id": era_id,
+        "era_name": _get_era_name(era_id),
+        "col_start": col_start,
+        "col_end": col_end,
+        "x_center": (first_x + last_right) * 0.5,
+        "x_boundary": last_right, # правая граница группы — там линия
+    }
+
+# X-координата левого края колонки c (в координатах _inner).
+# Учитывает только горизонтальный отступ COL_PADDING, без сдвига вниз
+# под заголовки эпох (вертикальное смещение колонок на высоту заголовков
+# выполняется отдельно в rebuild() через _col_y()).
+func _col_x(c: int) -> float:
+    return float(COL_PADDING + c * (BUTTON_WIDTH + COL_GAP))
+
+# Y-координата верха колонок с учётом полосы заголовков эпох.
+# Колонки сдвигаются вниз на ERA_LABEL_HEIGHT, чтобы сверху осталось
+# место под заголовки эпох.
+func _col_y() -> float:
+    return float(ERA_LABEL_HEIGHT + COL_PADDING)
+
+# Создаёт Label-заголовки эпох над свежими колонками. Вызывается из rebuild().
+# Заголовки добавляются в _inner, поэтому прокручиваются вместе с деревом.
+func _create_era_labels(layout_columns: Dictionary, num_cols: int) -> void:
+    # Сначала удаляем старые заголовки (если был пересбор).
+    for l in _era_labels:
+        if is_instance_valid(l):
+            l.queue_free()
+    _era_labels.clear()
+
+    _era_groups = _compute_era_groups(layout_columns, num_cols)
+    if _era_groups.is_empty():
+        return
+
+    # Высота полосы сверху — сверху (y=0) занимает полоса,
+    # Label размещаем в середине полосы.
+    for group in _era_groups:
+        var lab := Label.new()
+        lab.name = "EraLabel"
+        lab.text = group["era_name"]
+        lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        lab.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+        lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        lab.size = Vector2(ERA_LABEL_WIDTH, ERA_LABEL_HEIGHT)
+        lab.custom_minimum_size = Vector2(ERA_LABEL_WIDTH, ERA_LABEL_HEIGHT)
+        lab.add_theme_font_size_override("font_size", 14)
+        lab.add_theme_color_override("font_color", Color(0.9, 0.9, 0.95, 1.0))
+        lab.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        # Позиция: центр группы по X, сверху.
+        lab.position = Vector2(group["x_center"] - ERA_LABEL_WIDTH * 0.5, 0.0)
+        _inner.add_child(lab)
+        _era_labels.append(lab)
+
 func rebuild():
     # Полная перестройка: очищаем и создаём заново.
     # Вызывается при структурных изменениях (новое исследование, завершение и т.д.).
@@ -296,17 +508,24 @@ func rebuild():
         num_cols = int(columns.keys().max()) + 1
     var col_height: int = max_col_count * (BUTTON_HEIGHT + BUTTON_VERTICAL_GAP) - BUTTON_VERTICAL_GAP
     var total_width: int = COL_PADDING * 2 + num_cols * BUTTON_WIDTH + max(0, num_cols - 1) * COL_GAP
-    var total_height: int = COL_PADDING * 2 + max(col_height, BUTTON_HEIGHT)
+    # Высота включает полосу заголовков эпох (ERA_LABEL_HEIGHT) — колонки
+    # сдвигаются вниз на эту величину, а сверху остаётся место под заголовки.
+    var total_height: int = ERA_LABEL_HEIGHT + COL_PADDING * 2 + max(col_height, BUTTON_HEIGHT)
     _inner.size = Vector2(total_width, total_height)
     _inner.custom_minimum_size = Vector2(total_width, total_height)
+
+    # Создаём заголовки эпох (полоска сверху). Делаем это ДО колонок,
+    # чтобы заголовки оказались под ними в z-порядке (стрелки рисуются
+    # последним слоем поверх всего).
+    _create_era_labels(columns, num_cols)
 
     # Колонки располагаем вручную внутри _inner (НЕ через HBoxContainer),
     # чтобы позиции были предсказуемы для рисования стрелок.
     for c in range(num_cols):
         var col_container := Control.new()
         col_container.position = Vector2(
-            COL_PADDING + c * (BUTTON_WIDTH + COL_GAP),
-            COL_PADDING
+            _col_x(c),
+            _col_y() # сдвиг вниз на высоту полосы заголовков эпох
         )
         col_container.size = Vector2(BUTTON_WIDTH, max(col_height, BUTTON_HEIGHT))
         col_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -762,10 +981,26 @@ func _update_hover_states():
         _arrows_layer.queue_redraw()
 
 func _on_arrows_draw():
-    # Рисуем стрелки от каждой технологии к её наследникам.
-    # Координаты считаем в системе _arrows_layer (== _inner).
+    # Рисуем вертикальные линии-разделители между эпохами и стрелки
+    # зависимостей. Координаты считаем в системе _arrows_layer (== _inner).
     if _arrows_layer == null:
         return
+
+    # --- Вертикальные линии между эпохами (рисуются ВСЕГДА, не только при hover) ---
+    # Линия проводится по правой границе каждой группы эпох, кроме последней
+    # (справа от неё нет следующей эпохи). Тянется от верха до низа дерева.
+    for i in range(_era_groups.size() - 1):
+        var group = _era_groups[i]
+        var x: float = group["x_boundary"]
+        var y_top: float = 0.0
+        var y_bottom: float = _inner.size.y
+        _arrows_layer.draw_line(
+            Vector2(x, y_top),
+            Vector2(x, y_bottom),
+            ERA_LINE_COLOR,
+            ERA_LINE_WIDTH
+        )
+
     # Стрелки показываем только при наведении на технологию.
     if _hovered_tech_id.is_empty():
         return
