@@ -77,6 +77,14 @@
       "category": "material",
       "unlock_tech": "sericulture",
       "icon": "silk.png"
+    },
+    {
+      "id": "lime",
+      "name": "Известь",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "pottery",
+      "icon": "lime.png"
     }
   ]
 }

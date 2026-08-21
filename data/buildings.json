@@ -163,6 +163,16 @@
       "production_slots": 1.0,
       "unlock_tech": "sericulture",
       "default_recipes": [ "silk" ]
+    },
+    {
+      "id": "lime_kilns",
+      "name": "Печи для обжига извести",
+      "description": "Производство извести из известняка.",
+      "work_cost": 40,
+      "icon": "lime_kilns.png",
+      "production_slots": 1.0,
+      "unlock_tech": "pottery",
+      "default_recipes": [ "lime" ]
     }
   ]
 }

@@ -249,6 +249,16 @@
       "time": 5.0,
       "unlock_tech": "sericulture",
       "description": "Превращает коконы тутового шелкопряда в шёлк"
+    },
+    {
+      "id": "lime",
+      "name": "Обжиг извести",
+      "produced_in": [ "lime_kilns" ],
+      "resources": { "limestone": 2 },
+      "result": { "lime": 1 },
+      "time": 5.0,
+      "unlock_tech": "limestone_burning",
+      "description": "Обжигает известняк в известь"
     }
   ]
 }
