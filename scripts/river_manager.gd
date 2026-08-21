@@ -139,12 +139,9 @@ func generate_rivers(rows: int, cols: int, radius: float, tile_data: Array,
     var sea_vertices = _find_terrain_vertices(graph, tile_data, "sea")
     var hill_vertices = _find_terrain_vertices(graph, tile_data, "hill")
 
-    print("RIVER DEBUG: горных вершин=", mountain_vertices.size(), ", озёрных вершин=", lake_vertices.size(), ", морских вершин=", sea_vertices.size(), ", холмистых=", hill_vertices.size())
-
     # Устья главных рек: озёра + моря. Если нет ни озёр, ни морей — реки не строим.
     var mouth_vertices: Array = lake_vertices + sea_vertices
     if mountain_vertices.is_empty() or mouth_vertices.is_empty():
-        print("RIVER DEBUG: нет гор или устьев (озёр/морей), выход")
         return
 
     # Параметры из конфигурации.
@@ -164,7 +161,6 @@ func generate_rivers(rows: int, cols: int, radius: float, tile_data: Array,
         if river.size() >= min_main_len:
             _mark_used(river, used_vertices)
             main_rivers.append(river)
-    print("RIVER DEBUG: главных рек сгенерировано=", main_rivers.size())
 
     # --- Гарантия: хотя бы одна река проходит через стартовую область ---
     if not _any_river_in_region(main_rivers, graph,
@@ -186,7 +182,6 @@ func generate_rivers(rows: int, cols: int, radius: float, tile_data: Array,
             tributaries.append(river)
 
     rivers = main_rivers + tributaries
-    print("RIVER DEBUG: всего рек=", rivers.size())
 
 
 # -------------------------------------------------------
