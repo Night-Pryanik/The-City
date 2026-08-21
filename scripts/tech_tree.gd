@@ -426,7 +426,7 @@ func _compute_era_groups(columns: Dictionary, num_cols: int) -> Array:
 # Создаёт словарь группы эпохи по диапазону колонок [col_start..col_end].
 func _make_era_group(era_id: String, col_start: int, col_end: int) -> Dictionary:
     var first_x: float = _col_x(col_start) # левый край первой колонки группы
-    var last_right: float = _col_x(col_end) + BUTTON_WIDTH # правый край последней колонки
+    var last_right: float = _col_x(col_end) + BUTTON_WIDTH + COL_GAP / 2 # середина между колонками
     return {
         "era_id": era_id,
         "era_name": _get_era_name(era_id),
