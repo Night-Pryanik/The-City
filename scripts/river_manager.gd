@@ -20,7 +20,7 @@ extends Node
 
 # --- Константы ---
 const MAX_TURN_ANGLE_DEG := 60.0 # Максимальный угол поворота за один шаг
-const MAX_TURN_ANGLE_SOFT_DEG := 90.0 # Запасной угол при застревании
+const MAX_TURN_ANGLE_SOFT_DEG := 120.0 # Запасной угол при застревании. Был 90, увеличен, чтобы A* мог выбираться из узких коридоров между водой/болотами (river_manager issue: при 90 часто dead-end).
 const NUM_RIVER_ATTEMPTS := 6 # Попыток построить одну реку
 
 const RIVER_COLOR := Color(26.0 / 255.0, 95.0 / 255.0, 180.0 / 255.0, 0.9) # Тёмно-синее тело реки (#1a5fb4)
@@ -142,6 +142,7 @@ func generate_rivers(rows: int, cols: int, radius: float, tile_data: Array,
     # Устья главных рек: озёра + моря. Если нет ни озёр, ни морей — реки не строим.
     var mouth_vertices: Array = lake_vertices + sea_vertices
     if mountain_vertices.is_empty() or mouth_vertices.is_empty():
+        print("RIVER DEBUG: нет гор или устьев (озёр/морей), выход")
         return
 
     # Параметры из конфигурации.
@@ -161,6 +162,7 @@ func generate_rivers(rows: int, cols: int, radius: float, tile_data: Array,
         if river.size() >= min_main_len:
             _mark_used(river, used_vertices)
             main_rivers.append(river)
+    print("RIVER DEBUG: главных рек сгенерировано=", main_rivers.size())
 
     # --- Гарантия: хотя бы одна река проходит через стартовую область ---
     if not _any_river_in_region(main_rivers, graph,
@@ -182,6 +184,7 @@ func generate_rivers(rows: int, cols: int, radius: float, tile_data: Array,
             tributaries.append(river)
 
     rivers = main_rivers + tributaries
+    print("RIVER DEBUG: всего рек=", rivers.size())
 
 
 # -------------------------------------------------------
@@ -202,14 +205,21 @@ func _try_generate_main_river(graph: Dictionary, mountain_vertices: Array,
     if free_mountains.is_empty() or free_mouths.is_empty():
         return []
 
+    var best_path_len := 0
+    var best_attempt := -1
     for _attempt in range(NUM_RIVER_ATTEMPTS):
         var start = free_mountains[randi() % free_mountains.size()]
         var goal = free_mouths[randi() % free_mouths.size()]
         var path = _find_path_astar(start, goal, graph, used_vertices, MAX_TURN_ANGLE_DEG, {}, restricted_hexes)
         if path.is_empty():
             path = _find_path_astar(start, goal, graph, used_vertices, MAX_TURN_ANGLE_SOFT_DEG, {}, restricted_hexes)
+        if path.size() > best_path_len:
+            best_path_len = path.size()
+            best_attempt = _attempt
         if path.size() >= min_len:
             return _keys_to_positions(path, graph)
+    if best_path_len > 0:
+        print("    [RIVER] main: best_path=%d (need %d) at attempt %d, used_vertices=%d" % [best_path_len, min_len, best_attempt, used_vertices.size()])
     return []
 
 
@@ -676,6 +686,8 @@ func _find_path_astar(start_key: String, goal_key: String, graph: Dictionary, fo
         if valid.is_empty():
             valid = _filter_by_angle(candidates, current_pos, dir, vertex_positions, soft_angle_rad)
             if valid.is_empty():
+                if candidates.size() > 0 and candidates.size() <= 3:
+                    print("        [A*] dead-end at %s, candidates=%d, max_angle=%.1f soft=%.1f" % [current, candidates.size(), rad_to_deg(max_angle_rad), rad_to_deg(soft_angle_rad)])
                 continue
 
         var g_current = g_score[current]
@@ -687,6 +699,7 @@ func _find_path_astar(start_key: String, goal_key: String, graph: Dictionary, fo
                 open_set.push(neighbor, tentative_g + _heuristic(neighbor, goal_key, vertex_positions))
                 in_heap[neighbor] = true
 
+    print("        [A*] FULL FAILED, closed_set=%d, start=%s goal=%s" % [closed_set.size(), start_key, goal_key])
     return []
 
 
