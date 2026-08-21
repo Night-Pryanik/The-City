@@ -227,6 +227,11 @@ func _apply_sea(tile_data: Array, rows: int, cols: int, city_row: int, city_col:
         _apply_sea_noise(sea_mask, rows, cols, city_row, city_col, cfg, max_sea_depth, sides)
     elif mode == "edge":
         _apply_sea_edge(sea_mask, rows, cols, cfg, max_sea_depth, sides)
+        # Острова в морях — только для режима "edge". Размещаются ДО пометки
+        # _is_sea и ДО _apply_beach, чтобы пляж потом корректно обвёл новые
+        # острова (как и любую другую сушу рядом с морем).
+        if bool(cfg.get("edge_islands_enabled", true)):
+            _apply_sea_islands(sea_mask, rows, cols, cfg, city_row, city_col)
 
     # Помечаем гексы моря временным флагом _is_sea.
     for r in range(rows):
@@ -377,6 +382,138 @@ func _apply_sea_edge(sea_mask: Array, rows: int, cols: int,
                     "north": r = depth; c = coord
                 if r >= 0 and r < rows and c >= 0 and c < cols:
                     sea_mask[r][c] = true
+
+# Генерирует острова внутри маски моря (режим "edge"): часть морских гексов
+# превращается в сушу группами (BFS-рост из случайных seed-точек).
+# Количество "умно" подстраивается под площадь моря: target = sea_area *
+# edge_island_density, фактическое число — randi_range(0, target + 1). В
+# маленьком море это часто даёт 0 островов, в большом — может дать много.
+# Вызывается ДО _apply_beach, чтобы пляж корректно обвёл новые острова.
+func _apply_sea_islands(sea_mask: Array, rows: int, cols: int,
+        cfg: Dictionary, city_row: int, city_col: int) -> void:
+    # --- Чтение параметров с дефолтами ---
+    var size_range: Array = cfg.get("edge_island_size", [1, 5])
+    var size_min: int = 1
+    var size_max: int = 5
+    if size_range is Array and size_range.size() >= 2:
+        size_min = maxi(1, int(size_range[0]))
+        size_max = maxi(size_min, int(size_range[1]))
+    var density: float = float(cfg.get("edge_island_density", 0.003))
+    var min_distance: int = maxi(0, int(cfg.get("edge_island_min_distance", 3)))
+    var max_attempts: int = maxi(1, int(cfg.get("edge_island_max_attempts", 60)))
+
+    # --- Считаем площадь моря и целевое количество островов ---
+    var sea_area := 0
+    for r in range(rows):
+        for c in range(cols):
+            if sea_mask[r][c]:
+                sea_area += 1
+    # Без моря (или совсем крошечное) — выходим, делать нечего.
+    if sea_area < size_min:
+        return
+
+    var target: int = int(round(float(sea_area) * density))
+    # Разброс: 0..target+1. Если target=0, даёт 0..1 (редкий одиночный остров);
+    # если target=10, даёт 0..11. Это и есть «может быть, но не обязано».
+    var actual_count: int = randi_range(0, target + 1)
+    if actual_count <= 0:
+        return
+
+    # --- Список всех морских гексов (для быстрого случайного выбора seed) ---
+    var sea_cells: Array = []
+    for r in range(rows):
+        for c in range(cols):
+            if sea_mask[r][c]:
+                sea_cells.append({"row": r, "col": c})
+    if sea_cells.is_empty():
+        return
+    sea_cells.shuffle()
+
+    # --- Занятые точки (центры уже размещённых островов) — для min_distance ---
+    var occupied: Array = []
+
+    var islands_placed := 0
+    var island_index := 0
+    while island_index < actual_count and not sea_cells.is_empty():
+        # Размер конкретного острова в этом размещении.
+        var island_size: int = randi_range(size_min, size_max)
+        # Ищем seed-точку: перебираем sea_cells в случайном порядке, пока не
+        # найдём подходящую (в море + не слишком близко к городу/другим островам).
+        var seed_index := -1
+        var attempts := 0
+        while attempts < max_attempts and sea_cells.size() > 0:
+            var idx: int = randi() % sea_cells.size()
+            var candidate = sea_cells[idx]
+            # Слишком близко к городу (стартовая зона) — пропускаем. 2 гекса —
+            # потому что _ensure_plain_zone очищает радиус 2 вокруг города;
+            # даже если остров на границе этого радиуса, его гексы уйдут в
+            # равнину и он «исчезнет», что нарушит инвариант «остров в море».
+            if HexUtils.hex_distance(candidate.row, candidate.col, city_row, city_col) <= 2:
+                attempts += 1
+                # Удаляем из пула, чтобы не перебирать вечно.
+                sea_cells.remove_at(idx)
+                continue
+            # Слишком близко к другому острову — пропускаем.
+            var too_close := false
+            for occ in occupied:
+                if HexUtils.hex_distance(candidate.row, candidate.col, occ.row, occ.col) < min_distance:
+                    too_close = true
+                    break
+            if too_close:
+                attempts += 1
+                sea_cells.remove_at(idx)
+                continue
+            # Нашли подходящую seed-точку.
+            seed_index = idx
+            break
+        if seed_index < 0:
+            # Не нашли место за max_attempts попыток — выходим, оставшиеся
+            # острова не размещаем (лучше меньше, чем бесконечный цикл).
+            break
+        var seed = sea_cells[seed_index]
+        sea_cells.remove_at(seed_index)
+
+        # --- BFS-рост кластера: добавляем соседей по одному, пока не наберём island_size ---
+        var cluster: Array = [seed]
+        var cluster_set := {}
+        cluster_set["%d,%d" % [seed.row, seed.col]] = true
+        var frontier: Array = [seed]
+        while cluster.size() < island_size and not frontier.is_empty():
+            var next_frontier: Array = []
+            for cell in frontier:
+                if cluster.size() >= island_size:
+                    break
+                var neighbors = HexUtils.get_neighbors_odd_r(cell.row, cell.col, rows, cols)
+                neighbors.shuffle()
+                for n in neighbors:
+                    if cluster.size() >= island_size:
+                        break
+                    var nk := "%d,%d" % [n.row, n.col]
+                    if cluster_set.has(nk):
+                        continue
+                    # Растём только по морю — не «прыгаем» на сушу/острова.
+                    if not sea_mask[n.row][n.col]:
+                        continue
+                    cluster_set[nk] = true
+                    cluster.append(n)
+                    next_frontier.append(n)
+                    if cluster.size() >= island_size:
+                        break
+            frontier = next_frontier
+        if cluster.is_empty():
+            continue
+
+        # --- Превращаем гексы кластера из моря в сушу (сброс sea_mask) ---
+        for cell in cluster:
+            sea_mask[cell.row][cell.col] = false
+        # Запоминаем seed как занятую точку для будущих min_distance проверок.
+        occupied.append(seed)
+        islands_placed += 1
+        island_index += 1
+
+    if islands_placed > 0:
+        print("map_generator: размещено островов в море: %d (целевое количество было %d, площадь моря %d)" %
+                [islands_placed, target, sea_area])
 
 # Гладкая ширина полосы моря вдоль стороны (1D-шум).
 func _smooth_width(row: int, col: int, side: String, width_min: int, width_max: int) -> float:
