@@ -1017,6 +1017,24 @@ func get_improvement_production_modifiers(imp_id: String, has_fresh_water: bool,
         var tech_id = tm.get("tech_id", "")
         if tech_id == "" or not is_tech_unlocked(tech_id):
             continue
+        var tech_name = tech_id
+        for t in GameData.technologies:
+            if t["id"] == tech_id:
+                tech_name = t["name"]
+                break
+
+        # Универсальный формат: "production_multiplier": { "<imp_id>": 1.05 }
+        # (по аналогии с бонусом от пресной воды).
+        var multipliers = tm.get("production_multiplier", {})
+        if multipliers.has(imp_id):
+            var m = float(multipliers[imp_id])
+            if m != 1.0:
+                result.append({
+                    "label": "+%d%% (%s)" % [int(round((m - 1.0) * 100.0)), tech_name],
+                    "multiplier": m
+                })
+
+        # Старый формат с полем "modifiers" (target == "<imp_id>_production").
         for mod in tm.get("modifiers", []):
             var target = mod.get("target", "")
             if target != imp_id + "_production":
@@ -1028,11 +1046,6 @@ func get_improvement_production_modifiers(imp_id: String, has_fresh_water: bool,
                 multiplier = 1.0 + value / 100.0
             else:
                 multiplier = value
-            var tech_name = tech_id
-            for t in GameData.technologies:
-                if t["id"] == tech_id:
-                    tech_name = t["name"]
-                    break
             result.append({
                 "label": "+%d%% (%s)" % [int(value), tech_name],
                 "multiplier": multiplier

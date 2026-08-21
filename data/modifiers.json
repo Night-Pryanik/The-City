@@ -2,7 +2,7 @@
   "modifiers": {
     "fresh_water": { "production_multiplier": { "farm": 1.5 } },
     "tech_modifiers": [
-      { "tech_id": "plow", "modifiers": [ { "target": "farm_production", "type": "percent", "value": 5 } ] },
+      { "tech_id": "plow", "production_multiplier": { "farm": 1.5 } },
       {
         "tech_id": "wheel",
         "modifiers": [ { "target": "improvement_distance_cost", "type": "percent", "value": -30 } ]
