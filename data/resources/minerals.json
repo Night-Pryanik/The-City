@@ -191,14 +191,13 @@
       "group": "minerals",
       "subgroup": "",
       "tech_required": "salt_mining",
-      // todo: добавить возможность добычи соли шахтным/карьерным способом на соленых озерах, когда будут добавлены моря. 
-      // Пока что таким способом соль добывается только под землей.
-      "allowed_terrain": [ "plain", "hill" ],
-      "allowed_cover": [ "none", "sparse_forest" ],
-      "improved_by": [ "salt_mine" ],
+      "allowed_terrain": [ "salt_lake", "plain", "hill" ],
+      "allowed_cover": [ "none" ],
+      "improved_by": "salt_mine",
       "produces": { "salt": 1 },
       "icon": "salt.png",
-      "color": [ 255, 255, 255 ]
+      "color": [ 255, 255, 255 ],
+      "spawn_conditions": [ [ { "type": "terrain", "terrain_id": "salt_lake", "chance": 100 } ] ]
     },
     {
       "id": "salt_evaporation",
@@ -208,14 +207,13 @@
       "group": "minerals",
       "subgroup": "",
       "tech_required": "salt_mining",
-      // todo: соль через испарение должна спавниться на/возле морского побережья, а не на озере. Когда будут добавлены моря - поменять.
-      "allowed_terrain": [ "salt_lake" ],
+      "allowed_terrain": [ "beach" ],
       "allowed_cover": [ "none" ],
-      "improved_by": [ "salt_pond" ],
-      "produces": { "salt": 2 },
+      "improved_by": "salt_pond",
+      "produces": { "salt": 1 },
       "icon": "salt.png",
       "color": [ 255, 255, 255 ],
-      "spawn_conditions": [ [ { "type": "terrain", "terrain_id": "salt_lake", "chance": 100 } ] ]
+      "spawn_conditions": [ [ { "type": "terrain", "terrain_id": "beach", "chance": 100 } ] ]
     }
   ]
 }

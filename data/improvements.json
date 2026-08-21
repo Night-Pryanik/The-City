@@ -101,7 +101,7 @@
       "icon": "salt_mine.png",
       "color": [ 255, 255, 200 ],
       "work_cost": 30,
-      "unlock_tech": "salt_mining"
+      "unlock_tech": "salt_extraction"
     },
     {
       "id": "salt_pond",
@@ -109,7 +109,7 @@
       "icon": "salt_pond.png",
       "color": [ 255, 255, 200 ],
       "work_cost": 30,
-      "unlock_tech": "salt_mining"
+      "unlock_tech": "salt_extraction"
     }
   ]
 }
