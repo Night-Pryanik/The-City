@@ -20,8 +20,8 @@ extends Node
 
 # --- Константы ---
 const MAX_TURN_ANGLE_DEG := 60.0 # Максимальный угол поворота за один шаг
-const MAX_TURN_ANGLE_SOFT_DEG := 120.0 # Запасной угол при застревании. Был 90, увеличен, чтобы A* мог выбираться из узких коридоров между водой/болотами (river_manager issue: при 90 часто dead-end).
-const NUM_RIVER_ATTEMPTS := 6 # Попыток построить одну реку
+const MAX_TURN_ANGLE_SOFT_DEG := 90.0 # Запасной угол при застревании.
+const NUM_RIVER_ATTEMPTS := 40 # Попыток построить одну реку
 
 const RIVER_COLOR := Color(26.0 / 255.0, 95.0 / 255.0, 180.0 / 255.0, 0.9) # Тёмно-синее тело реки (#1a5fb4)
 const RIVER_WIDTH := 10.0 # Толщина тела реки
@@ -156,10 +156,15 @@ func generate_rivers(rows: int, cols: int, radius: float, tile_data: Array,
     main_rivers = []
 
     # --- Генерация главных рек (гора -> озеро/море, не пересекаются) ---
+    # _try_generate_main_river возвращает лучший найденный путь (компромисс),
+    # даже если он короче min_river_length. Поэтому принимаем любую непустую
+    # реку: при 40 попытках подавляющее большинство путей всё равно длиннее
+    # min_len, а fallback гарантирует, что мы не получим 0 рек из-за
+    # случайного недобора длины (что и было причиной бага).
     for _i in range(num_main):
         var river = _try_generate_main_river(graph, mountain_vertices, mouth_vertices,
                 restricted_hexes, used_vertices, min_main_len)
-        if river.size() >= min_main_len:
+        if not river.is_empty():
             _mark_used(river, used_vertices)
             main_rivers.append(river)
     print("RIVER DEBUG: главных рек сгенерировано=", main_rivers.size())
@@ -206,6 +211,7 @@ func _try_generate_main_river(graph: Dictionary, mountain_vertices: Array,
         return []
 
     var best_path_len := 0
+    var best_path: Array = [] # Лучший найденный путь (компромисс, если ни один не достиг min_len)
     var best_attempt := -1
     for _attempt in range(NUM_RIVER_ATTEMPTS):
         var start = free_mountains[randi() % free_mountains.size()]
@@ -215,11 +221,13 @@ func _try_generate_main_river(graph: Dictionary, mountain_vertices: Array,
             path = _find_path_astar(start, goal, graph, used_vertices, MAX_TURN_ANGLE_SOFT_DEG, {}, restricted_hexes)
         if path.size() > best_path_len:
             best_path_len = path.size()
+            best_path = path
             best_attempt = _attempt
         if path.size() >= min_len:
             return _keys_to_positions(path, graph)
     if best_path_len > 0:
-        print("    [RIVER] main: best_path=%d (need %d) at attempt %d, used_vertices=%d" % [best_path_len, min_len, best_attempt, used_vertices.size()])
+        print("    [RIVER] main: best=%d (need %d) at attempt %d, used_vertices=%d" % [best_path_len, min_len, best_attempt, used_vertices.size()])
+        return _keys_to_positions(best_path, graph)
     return []
 
 
