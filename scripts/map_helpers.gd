@@ -93,21 +93,21 @@ static func is_hex_adjacent_to_canal(row: int, col: int, tile_data: Array, map_r
     return false
 
 
-## Проверяет, орошен ли гекс (row, col): озеро, река, канал-сосед или цепочка ферм ведёт к воде (BFS, max 3 шага).
-static func is_hex_irrigated(row: int, col: int, tile_data: Array, map_rows: int, map_cols: int) -> bool:
+## Является ли гекс (row, col) ПРЯМЫМ источником пресной воды:
+## озеро, река (river_edges), сосед канала или сосед озера.
+## Это база для схемы water_access: source-гекс даёт "direct".
+static func _is_direct_water_source(row: int, col: int, tile_data: Array, map_rows: int, map_cols: int) -> bool:
     if row < 0 or row >= map_rows or col < 0 or col >= map_cols:
         return false
     var tile = tile_data[row][col]
     if tile == null:
         return false
-
     if tile.get("terrain", "plain") == "lake":
         return true
     if tile.get("river_edges", []).size() > 0:
         return true
     if is_hex_adjacent_to_canal(row, col, tile_data, map_rows, map_cols):
         return true
-
     var neighbors = HexUtils.get_neighbors_odd_r(row, col, map_rows, map_cols)
     for n in neighbors:
         var neighbor_tile = tile_data[n.row][n.col]
@@ -115,9 +115,48 @@ static func is_hex_irrigated(row: int, col: int, tile_data: Array, map_rows: int
             continue
         if neighbor_tile.get("terrain", "plain") == "lake":
             return true
+    return false
 
-    if tile.improvement != "farm":
+
+## Является ли гекс «проводником» пресной воды: у его улучшения стоит
+## conducts_water = true (ферма, плантация). Такие гексы способны
+## распространять воду по цепочке (схема water_access: chain).
+static func _is_water_conductor(tile: Dictionary) -> bool:
+    if tile == null:
         return false
+    var imp_id = tile.get("improvement", null)
+    if imp_id == null or imp_id == "":
+        return false
+    var imp_data: Dictionary = GameData.improvements.get(imp_id, {})
+    return bool(imp_data.get("conducts_water", false))
+
+
+## Возвращает тип доступа гекса (row, col) к пресной воде:
+##   - "direct" — прямой доступ (озеро, река, канал-сосед, сосед-озеро);
+##   - "chain"  — доступ через цепочку проводников (ферм/плантаций), который
+##                срабатывает ТОЛЬКО после изучения технологии «Орошение»
+##                (tech_id: "irrigation");
+##   - ""       — доступа к пресной воде нет.
+## Функция — единый источник истины для бонусов пресной воды, тултипов и
+## отрисовки капелек. Цепочка ищется BFS по проводникам (max 3 шага), пока
+## не встретится прямой источник ("direct").
+static func get_hex_water_access(row: int, col: int, tile_data: Array, map_rows: int, map_cols: int) -> String:
+    if row < 0 or row >= map_rows or col < 0 or col >= map_cols:
+        return ""
+    var tile = tile_data[row][col]
+    if tile == null:
+        return ""
+
+    # Прямой доступ — всегда даёт бонус пресной воды.
+    if _is_direct_water_source(row, col, tile_data, map_rows, map_cols):
+        return "direct"
+
+    # Цепочка проводников — только после изучения «Орошения» и только если
+    # сам стартовый гекс является проводником.
+    if not CityData.is_tech_unlocked("irrigation"):
+        return ""
+    if not _is_water_conductor(tile):
+        return ""
 
     var visited := {}
     var queue = [ {"row": row, "col": col, "dist": 0}]
@@ -128,16 +167,6 @@ static func is_hex_irrigated(row: int, col: int, tile_data: Array, map_rows: int
         var crow = item.row
         var ccol = item.col
         var dist = item.dist
-        var current_tile = tile_data[crow][ccol]
-        if current_tile == null:
-            continue
-
-        if current_tile.get("terrain", "plain") == "lake":
-            return true
-        if current_tile.get("river_edges", []).size() > 0:
-            return true
-        if is_hex_adjacent_to_canal(crow, ccol, tile_data, map_rows, map_cols):
-            return true
         if dist >= 3:
             continue
 
@@ -149,12 +178,22 @@ static func is_hex_irrigated(row: int, col: int, tile_data: Array, map_rows: int
             var neighbor_tile = tile_data[n.row][n.col]
             if neighbor_tile == null:
                 continue
-            if neighbor_tile.get("terrain", "plain") == "lake":
-                return true
-            if neighbor_tile.improvement == "farm":
+            # Если сосед — прямой источник, вода по цепочке достигнута.
+            if _is_direct_water_source(n.row, n.col, tile_data, map_rows, map_cols):
+                return "chain"
+            # Продолжаем цепочку только по проводникам.
+            if _is_water_conductor(neighbor_tile):
                 visited[key] = true
                 queue.append({"row": n.row, "col": n.col, "dist": dist + 1})
-    return false
+    return ""
+
+
+## Проверяет, орошен ли гекс (row, col): имеет какой-либо доступ к пресной
+## воде — прямой ("direct") или по цепочке ("chain"). Это обёртка над
+## get_hex_water_access для совместимости: все прежние вызовы
+## (бонусы производства, тултипы, отрисовка) продолжают работать.
+static func is_hex_irrigated(row: int, col: int, tile_data: Array, map_rows: int, map_cols: int) -> bool:
+    return get_hex_water_access(row, col, tile_data, map_rows, map_cols) != ""
 
 ## Возвращает имя иконки ландшафта для гекса (row, col) на основе его terrain.
 ## Использует детерминированный RNG (seed = row * 1000 + col) для стабильности

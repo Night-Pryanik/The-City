@@ -15,7 +15,10 @@
       "icon": "farm.png",
       "color": [ 255, 255, 0 ],
       "work_cost": 8,
-      "unlock_tech": "farming"
+      "unlock_tech": "farming",
+      // Проводник пресной воды: после изучения технологии «Орошение» ферма
+      // распространяет пресную воду на соседние гексы (схема water_access: chain).
+      "conducts_water": true
     },
     {
       "id": "pasture",
@@ -71,7 +74,10 @@
       "icon": "plantation.png",
       "color": [ 34, 139, 34 ],
       "work_cost": 28,
-      "unlock_tech": "plantations"
+      "unlock_tech": "plantations",
+      // Проводник пресной воды: после изучения технологии «Орошение» плантация
+      // распространяет пресную воду на соседние гексы (схема water_access: chain).
+      "conducts_water": true
     },
     {
       "id": "tar_pit",

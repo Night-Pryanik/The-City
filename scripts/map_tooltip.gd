@@ -92,8 +92,15 @@ func update_tooltip_text(row: int, col: int, tile_data: Array, city_row: int = 0
 			text += "\nВремя заполнения: %.0f сек" % time_to_mature
 
 	text += "\nУлучшение: %s%s" % [imp_name, imp_status]
-	if tile.improvement == "farm" and MapHelpers.is_hex_irrigated(row, col, tile_data, tile_data.size(), tile_data[0].size()):
-		text += "\nДоступ к пресной воде"
+
+	# Доступ к пресной воде показываем для ВСЕХ гексов (не только с улучшением):
+	#   direct — прямой доступ (озеро, река, канал-сосед, сосед-озеро);
+	#   chain  — вода по цепочке проводников (ферм/плантаций), требует «Орошение».
+	var water_access = MapHelpers.get_hex_water_access(row, col, tile_data, tile_data.size(), tile_data[0].size())
+	if water_access == "direct":
+		text += "\nДоступ к пресной воде: прямой"
+	elif water_access == "chain":
+		text += "\nДоступ к пресной воде: по цепочке"
 
 	# --- Конфликт «tech_reveal-ресурс под чужим улучшением» ---
 	# Если на гексе уже стоит улучшение, а под ним нашли скрытый ресурс

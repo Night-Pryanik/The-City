@@ -423,20 +423,34 @@ func _draw_hex_overlays(row: int, col: int):
                     fallback_color = Color(0.5, 0.5, 0.5)
                 draw_circle(icon_pos, IMPROVEMENT_ICON_SIZE / 2.5, fallback_color)
 
-        if tile.improvement == "farm" and main_map._is_hex_irrigated(row, col):
-            var drop_center = icon_pos + Vector2(IMPROVEMENT_ICON_SIZE * 0.5 + 6, 0)
-            var drop_radius = 6.0
-            var drop_points = [
-                Vector2(0, -drop_radius),
-                Vector2(-drop_radius * 0.7, -drop_radius * 0.2),
-                Vector2(-drop_radius * 0.35, drop_radius * 0.8),
-                Vector2(0, drop_radius),
-                Vector2(drop_radius * 0.35, drop_radius * 0.8),
-                Vector2(drop_radius * 0.7, -drop_radius * 0.2)
-            ]
-            for i in range(drop_points.size()):
-                drop_points[i] += drop_center
-            draw_polygon(drop_points, [Color(0.45, 0.8, 1.0, 1.0)])
+        # Капелька пресной воды рядом с иконкой улучшения. Показываем для
+        # любого улучшения, у которого есть доступ к воде (direct или chain).
+        # Типы различаются визуально:
+        #   direct — залитая голубая капля (как раньше у ферм);
+        #   chain  — контурная (обводка) приглушённого цвета, вода по цепочке.
+        if tile.improvement != null:
+            var water_access = MapHelpers.get_hex_water_access(row, col, tile_data, main_map.map_rows, main_map.map_cols)
+            if water_access != "":
+                var drop_center = icon_pos + Vector2(IMPROVEMENT_ICON_SIZE * 0.5 + 6, 0)
+                var drop_radius = 6.0
+                var drop_points = [
+                    Vector2(0, -drop_radius),
+                    Vector2(-drop_radius * 0.7, -drop_radius * 0.2),
+                    Vector2(-drop_radius * 0.35, drop_radius * 0.8),
+                    Vector2(0, drop_radius),
+                    Vector2(drop_radius * 0.35, drop_radius * 0.8),
+                    Vector2(drop_radius * 0.7, -drop_radius * 0.2)
+                ]
+                for i in range(drop_points.size()):
+                    drop_points[i] += drop_center
+                if water_access == "direct":
+                    draw_polygon(drop_points, [Color(0.45, 0.8, 1.0, 1.0)])
+                else:
+                    # chain: контурная капля приглушённого цвета.
+                    var closed_points = PackedVector2Array()
+                    closed_points.append_array(drop_points)
+                    closed_points.append(drop_points[0])
+                    draw_polyline(closed_points, Color(0.5, 0.7, 0.95, 0.9), 1.5)
 
     # --- Конфликт «tech_reveal-ресурс vs чужое улучшение» ---
     # Если на гексе стоит улучшение, а под ним нашли скрытый ресурс (tech_reveal
