@@ -18,8 +18,8 @@
       "category": "plants",
       "group": "wild",
       "subgroup": "forage",
-      "allowed_terrain": [ "plain", "hill" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_terrain": [ "plain", "hill", "swamp" ],
+      "allowed_cover": [ "none", "sparse_forest", "forest", "swamp_forest", "swamp_forest_sparse" ],
       "improved_by": null,
       "produces": {  },
       "icon": "foraged_food.png",
@@ -113,7 +113,8 @@
       "improved_by": "farm",
       "produces": { "rice": 1, "feed": 12 },
       "icon": "rice.png",
-      "color": [ 180, 220, 120 ]
+      "color": [ 180, 220, 120 ],
+      "spawn_conditions": [ [ { "type": "near_river", "chance": 100 } ] ]
     },
     {
       "id": "soybean_field",
@@ -293,7 +294,8 @@
       "improved_by": "farm",
       "produces": { "taro": 1, "feed": 4 },
       "icon": "taro.png",
-      "color": [ 140, 180, 140 ]
+      "color": [ 140, 180, 140 ],
+      "spawn_conditions": [ [ { "type": "near_river", "chance": 100 } ] ]
     },
     {
       "id": "maca_field",
