@@ -119,7 +119,10 @@
       "produces": { "clay": 1 },
       "icon": "clay.png",
       "color": [ 180, 130, 100 ],
-      "spawn_conditions": [ [ { "type": "near_river", "chance": 100 } ] ]
+      "spawn_conditions": [
+        [ { "type": "terrain", "terrain_id": "plain", "chance": 100 }, { "type": "near_river", "chance": 100 } ],
+        [ { "type": "terrain", "terrain_id": "swamp", "chance": 100 } ]
+      ]
     },
     {
       "id": "quartz_sand_deposit",
