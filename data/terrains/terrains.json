@@ -5,7 +5,9 @@
       "name": "Равнина",
       "color": [ 144, 238, 144 ],
       "move_cost": 1,
-      "expansion_cost": 50,
+      // expansion_cost теперь = стоимость ТРУДА для освоения гекса (не еда).
+      // Еда за освоение — фиксированная константа FOOD_COST_PER_HEX в expansion_manager.gd.
+      "expansion_cost": 2,
       "icons": [ "plain_1.png", "plain_2.png", "plain_3.png" ],
       "cover_chance": { "none": 60, "sparse_forest": 15, "forest": 25 }
     },
@@ -14,7 +16,7 @@
       "name": "Холмы",
       "color": [ 139, 90, 43 ],
       "move_cost": 2,
-      "expansion_cost": 75,
+      "expansion_cost": 3,
       "icons": [ "hill_1.png", "hill_2.png", "hill_3.png" ],
       "cover_chance": { "none": 60, "sparse_forest": 15, "forest": 25 }
     },
@@ -23,7 +25,7 @@
       "name": "Горы",
       "color": [ 105, 105, 105 ],
       "move_cost": 3,
-      "expansion_cost": 150,
+      "expansion_cost": 5,
       "icons": [ "mountain_1.png", "mountain_2.png", "mountain_3.png" ],
       "cover_chance": { "none": 90, "sparse_forest": 5, "forest": 5 }
     },
@@ -32,7 +34,7 @@
       "name": "Пресноводное озеро",
       "color": [ 66, 129, 180 ],
       "move_cost": 999,
-      "expansion_cost": 200,
+      "expansion_cost": 6,
       "work_cost_mult": 1.0,
       "icons": [ "lake_1.png", "lake_2.png" ],
       "cover_chance": { "none": 100 }
@@ -42,7 +44,7 @@
       "name": "Болото",
       "color": [ 90, 120, 80 ],
       "move_cost": 2,
-      "expansion_cost": 100,
+      "expansion_cost": 4,
       "work_cost_mult": 2.0,
       "icons": [ "swamp_1.png", "swamp_2.png", "swamp_3.png" ],
       "cover_chance": { "none": 40, "swamp_forest_sparse": 15, "swamp_forest": 15, "reeds": 30 }
@@ -52,7 +54,7 @@
       "name": "Марши",
       "color": [ 80, 100, 70 ],
       "move_cost": 2,
-      "expansion_cost": 100,
+      "expansion_cost": 3,
       "work_cost_mult": 1.5,
       "icons": [ "marsh_1.png", "marsh_2.png", "marsh_3.png" ],
       "cover_chance": { "none": 50, "reeds": 50 }
@@ -72,7 +74,7 @@
       "name": "Пляж",
       "color": [ 220, 200, 140 ],
       "move_cost": 1,
-      "expansion_cost": 50,
+      "expansion_cost": 2,
       "work_cost_mult": 1.0,
       "icons": [ "beach_1.png" ],
       "cover_chance": { "none": 100 }
