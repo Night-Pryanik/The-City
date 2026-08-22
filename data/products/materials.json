@@ -85,6 +85,14 @@
       "category": "material",
       "unlock_tech": "pottery",
       "icon": "lime.png"
+    },
+    {
+      "id": "papyrus_plant",
+      "name": "Папирус",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "writing",
+      "icon": "papyrus_plant.png"
     }
   ]
 }

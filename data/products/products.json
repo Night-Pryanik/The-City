@@ -104,6 +104,22 @@
       "category": "household_items",
       "unlock_tech": "salt_mining",
       "icon": "salt.png"
+    },
+    {
+      "id": "papyrus",
+      "name": "Папирус",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "writing",
+      "icon": "papyrus.png"
+    },
+    {
+      "id": "reed_boat",
+      "name": "Тростниковая лодка",
+      "type": "product",
+      "category": "other",
+      "unlock_tech": "fishing",
+      "icon": "reed_boat.png"
     }
   ]
 }

@@ -58,7 +58,8 @@
       "tech_required": "plantations",
       "produces": { "jute": 1, "feed": 4 },
       "icon": "jute.png",
-      "color": [ 200, 150, 100 ]
+      "color": [ 200, 150, 100 ],
+      "spawn_conditions": [ [ { "type": "near_river", "chance": 100 } ] ]
     },
     {
       "id": "ramie_field",
@@ -111,7 +112,7 @@
       "type": "raw",
       "category": "technical_plants",
       "group": "technical_plants",
-      "subgroup": [ "oil_plants", "spice_plants" ],
+      "subgroup": [ "oil_plants", "spices" ],
       "allowed_terrain": [ "plain" ],
       "allowed_cover": [ "none" ],
       "improved_by": "plantation",
@@ -119,6 +120,21 @@
       "produces": { "sesame": 1, "feed": 4 },
       "icon": "sesame.png",
       "color": [ 255, 200, 150 ]
+    },
+    {
+      "id": "papyrus_field",
+      "name": "Папирус",
+      "type": "raw",
+      "category": "technical_plants",
+      "group": "technical_plants",
+      "subgroup": "technical_plants",
+      "allowed_terrain": [ "marsh" ],
+      "allowed_cover": [ "none", "reeds" ],
+      "improved_by": "plantation",
+      "tech_required": "plantations",
+      "produces": { "papyrus_plant": 1, "feed": 4 },
+      "icon": "papyrus_plant.png",
+      "color": [ 200, 255, 200 ]
     }
   ]
 }

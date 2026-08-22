@@ -259,6 +259,26 @@
       "time": 5.0,
       "unlock_tech": "limestone_burning",
       "description": "Обжигает известняк в известь"
+    },
+    {
+      "id": "papyrus",
+      "name": "Производство папируса",
+      "produced_in": [ "papyrus_workshop" ],
+      "resources": { "papyrus_plant": 2 },
+      "result": { "papyrus": 1 },
+      "time": 5.0,
+      "unlock_tech": "writing",
+      "description": "Превращает стебли папируса в папирус"
+    },
+    {
+      "id": "reed_boat",
+      "name": "Изготовление тростниковой лодки",
+      "produced_in": [ "papyrus_workshop" ],
+      "resources": { "papyrus_plant": 20 },
+      "result": { "reed_boat": 1 },
+      "time": 5.0,
+      "unlock_tech": "fishing",
+      "description": "Создает лодку из тростника"
     }
   ]
 }
