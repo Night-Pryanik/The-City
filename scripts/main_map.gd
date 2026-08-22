@@ -179,9 +179,10 @@ func _ready():
         # Гарантируем, что город находится на разрешённой местности при загрузке сохранения
         _ensure_city_valid_terrain()
 
-        # Восстанавливаем стройки улучшений и зданий
+        # Восстанавливаем стройки улучшений, зданий и освоения территории
         build_manager.restore_builds(SaveManager.saved_data.get("active_builds", {}))
         build_manager.restore_building_builds(SaveManager.saved_data.get("active_building_builds", {}))
+        build_manager.restore_expansion_builds(SaveManager.saved_data.get("active_expansion_builds", {}))
 
         # Восстанавливаем назначения рабочих и горожан
         worker_manager.load_assignments(SaveManager.saved_data.get("worker_assignments", []))
@@ -293,6 +294,7 @@ func _ready():
     build_manager.build_message.connect(hud.show_message)
     build_manager.build_completed.connect(_on_build_completed)
     build_manager.build_building_completed.connect(_on_building_build_completed)
+    build_manager.expansion_build_completed.connect(expansion_manager.on_expansion_build_completed)
     city_button.gui_input.connect(_on_city_button_gui_input)
 
     # Сигналы от ExpansionManager
@@ -900,7 +902,12 @@ func _on_popup_menu_id_pressed(id: int):
         var chunk = meta.get("chunk", [])
         if chunk.is_empty():
             return
-        var success = expansion_manager.handle_action(chunk, meta["cost"])
+        # Освоение теперь стоит ТРУД (основная стоимость) + фиксированную ЕДУ
+        # (запас поселенцев перед походом). Оба значения приходят из метаданных
+        # контекстного меню (см. expansion_manager.show_context_menu).
+        var food_cost = meta.get("food_cost", 0)
+        var work_cost = meta.get("work_cost", 0)
+        var success = expansion_manager.handle_action(chunk, food_cost, work_cost)
         if success:
             map_renderer.queue_redraw()
             if city_ui.visible:
@@ -1374,7 +1381,8 @@ func _on_expansion_mode_changed(_active: bool):
     map_renderer.queue_redraw()
 
 func _on_territory_expanded(_row: int, _col: int, cost: int):
-    hud.show_message("Территория расширена! (%d еды)" % cost)
+    # cost — это труд, затраченный на освоение (см. expansion_manager).
+    hud.show_message("Территория расширена! (затрачено %d труда)" % cost)
     map_renderer.queue_redraw()
     if city_ui.visible:
         city_ui.refresh()

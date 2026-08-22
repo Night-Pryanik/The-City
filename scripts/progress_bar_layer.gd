@@ -112,6 +112,21 @@ func _draw_progress_bars(row: int, col: int):
             draw_rect(Rect2(bar_x, bar_y, fill_width, bar_height), Color.YELLOW)
             draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color.WHITE, false)
 
+    # --- Прогресс-бар освоения территории (покупка чанка за труд) ---
+    # Показывается на первом гексе чанка, который осваивается.
+    var expansion_progress = main_map.build_manager.get_expansion_progress_for_hex(row, col)
+    if not expansion_progress.is_empty():
+        var bar_width = RESOURCE_ICON_SIZE
+        var bar_height = 6
+        var bar_x = center.x - bar_width / 2.0
+        var bar_y = center.y + RESOURCE_ICON_SIZE / 2.0 + 10
+        draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color(0.2, 0.2, 0.2))
+        var work_cost = expansion_progress.get("work_cost", 1.0)
+        var progress = expansion_progress.get("progress", 0.0)
+        var fill_width = bar_width * clamp(progress / work_cost, 0.0, 1.0)
+        draw_rect(Rect2(bar_x, bar_y, fill_width, bar_height), Color(0.9, 0.6, 0.2))
+        draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color.WHITE, false)
+
     # --- Прогресс-бар разведки чанка ---
     if main_map.is_scouting and not main_map.scouting_chunk.is_empty():
         var scout_center_hex = main_map.scouting_chunk[0]
