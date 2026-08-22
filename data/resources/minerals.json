@@ -190,14 +190,13 @@
       "category": "minerals",
       "group": "minerals",
       "subgroup": "",
-      "tech_required": "salt_mining",
+      "tech_required": "salt_extraction",
       "allowed_terrain": [ "salt_lake", "plain", "hill" ],
       "allowed_cover": [ "none" ],
-      "improved_by": "salt_mine",
+      "improved_by": "mine",
       "produces": { "salt": 1 },
       "icon": "salt.png",
-      "color": [ 255, 255, 255 ],
-      "spawn_conditions": [ [ { "type": "terrain", "terrain_id": "salt_lake", "chance": 100 } ] ]
+      "color": [ 255, 255, 255 ]
     },
     {
       "id": "salt_evaporation",
@@ -206,7 +205,7 @@
       "category": "minerals",
       "group": "minerals",
       "subgroup": "",
-      "tech_required": "salt_mining",
+      "tech_required": "salt_extraction",
       "allowed_terrain": [ "beach" ],
       "allowed_cover": [ "none" ],
       "improved_by": "salt_pond",

@@ -96,14 +96,6 @@
       "unlock_tech": "soda_extraction"
     },
     {
-      "id": "salt_mine",
-      "name": "Соляная шахта",
-      "icon": "salt_mine.png",
-      "color": [ 255, 255, 200 ],
-      "work_cost": 30,
-      "unlock_tech": "salt_extraction"
-    },
-    {
       "id": "salt_pond",
       "name": "Соляный пруд",
       "icon": "salt_pond.png",
