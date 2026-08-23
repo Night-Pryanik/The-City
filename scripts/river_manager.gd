@@ -694,8 +694,6 @@ func _find_path_astar(start_key: String, goal_key: String, graph: Dictionary, fo
         if valid.is_empty():
             valid = _filter_by_angle(candidates, current_pos, dir, vertex_positions, soft_angle_rad)
             if valid.is_empty():
-                if candidates.size() > 0 and candidates.size() <= 3:
-                    print("        [A*] dead-end at %s, candidates=%d, max_angle=%.1f soft=%.1f" % [current, candidates.size(), rad_to_deg(max_angle_rad), rad_to_deg(soft_angle_rad)])
                 continue
 
         var g_current = g_score[current]
