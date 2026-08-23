@@ -90,6 +90,12 @@ func _process(delta):
         _recount_active_builds()
 
 func start_build(row: int, col: int, imp_id: String, target_res_id = null) -> bool:
+    # На гексе города строительство улучшений запрещено.
+    var main_map_check = get_tree().root.find_child("MainMap", true, false)
+    if main_map_check and row == main_map_check.city_row and col == main_map_check.city_col:
+        emit_signal("build_message", "Нельзя строить на гексе города")
+        return false
+
     var key = str(row) + "," + str(col)
     if active_builds.has(key):
         emit_signal("build_message", "Здесь уже идёт строительство")

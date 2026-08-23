@@ -228,6 +228,10 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
     var actions := []
     var in_influence = tile.get("in_influence", false)
 
+    # На гексе города строить улучшения нельзя — никаких действий.
+    if row == main_map.city_row and col == main_map.city_col:
+        return actions
+
     # Действия доступны только в Кольце Влияния (территория освоена).
     if not in_influence:
         actions.append({
