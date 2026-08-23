@@ -437,7 +437,8 @@ func _on_action_pressed(action: Dictionary):
 		"target_res_id": action.get("target_res_id", null),
 		"action_id": action.get("action_id", ""),
 		"label": action.get("label", ""),
-		"eff_res": eff_res_for_preview
+		"eff_res": eff_res_for_preview,
+		"selected_culture_id": null
 	}
 	_refresh()
 
@@ -456,7 +457,8 @@ func _build_preview(row: int, col: int, tile: Dictionary):
 		"imp_id": preview.get("imp_id", ""),
 		"action_id": preview.get("action_id", ""),
 		"target_res_id": preview.get("target_res_id", null),
-		"eff_res": preview.get("eff_res", "")
+		"eff_res": preview.get("eff_res", ""),
+		"selected_culture_id": preview.get("selected_culture_id", null)
 	}
 	if _preview_equal(_last_preview_snapshot, snapshot):
 		return
@@ -523,6 +525,38 @@ func _build_preview(row: int, col: int, tile: Dictionary):
 	cost_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
 	_preview_container.add_child(cost_label)
 
+	# --- Для ферм/пастбищ: выбор конкретной культуры ---
+	# Если на гексе можно выращивать/разводить несколько одомашненных видов,
+	# даём выбрать, под какую именно культуру строить. Иначе строится
+	# единственная подходящая культура (текущее поведение).
+	if type == "build_farm" or type == "build_pasture":
+		var imp_kind = "farm" if type == "build_farm" else "pasture"
+		var crops := _get_suitable_crops(row, col, imp_kind)
+		if crops.size() > 1:
+			# По умолчанию предвыбираем первую культуру из списка.
+			var selected = preview.get("selected_culture_id", null)
+			if selected == null:
+				selected = crops[0].id
+				preview["selected_culture_id"] = selected
+
+			var cult_label = Label.new()
+			cult_label.text = "Культура:"
+			cult_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+			_preview_container.add_child(cult_label)
+
+			for cult in crops:
+				var cult_btn = Button.new()
+				cult_btn.text = cult.get("name", cult.id)
+				cult_btn.custom_minimum_size = Vector2(0, 24)
+				cult_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				cult_btn.toggle_mode = true
+				cult_btn.set_pressed_no_signal(cult.id == selected)
+				var cid = cult.id
+				cult_btn.pressed.connect(func():
+					_select_preview_culture(cid)
+				)
+				_preview_container.add_child(cult_btn)
+
 	# Кнопки «Построить» и «Отменить».
 	var hbox = HBoxContainer.new()
 	var build_btn = Button.new()
@@ -554,7 +588,8 @@ func _preview_equal(a: Dictionary, b: Dictionary) -> bool:
 		and a.get("imp_id", "") == b.get("imp_id", "") \
 		and a.get("action_id", "") == b.get("action_id", "") \
 		and a.get("target_res_id", null) == b.get("target_res_id", null) \
-		and a.get("eff_res", "") == b.get("eff_res", "")
+		and a.get("eff_res", "") == b.get("eff_res", "") \
+		and a.get("selected_culture_id", null) == b.get("selected_culture_id", null)
 
 # Подтверждение постройки из превью.
 func _confirm_build():
@@ -571,20 +606,19 @@ func _confirm_build():
 	if type == "build_improvement":
 		build_manager.start_build(row, col, imp_id, target_res_id)
 	elif type == "build_pasture":
-		# Выбираем первое подходящее животное.
-		var tile = main_map.get_tile_data(row, col)
-		for animal_id in CityData.domesticated_animals:
-			var animal_data = GameData.raw_resources.get(animal_id, {})
-			if tile.terrain in animal_data.get("allowed_terrain", []) and tile.get("cover", "none") in animal_data.get("allowed_cover", []):
-				build_manager.start_build(row, col, "pasture", animal_id)
-				break
+		# Строим пастбище под выбранное животное; если оно не задано/не подходит —
+		# берём первое подходящее.
+		var chosen_animal = preview.get("selected_culture_id", null)
+		if not _is_suitable_culture(row, col, chosen_animal, "pasture"):
+			chosen_animal = _first_suitable_culture(row, col, "pasture")
+		if chosen_animal != null:
+			build_manager.start_build(row, col, "pasture", chosen_animal)
 	elif type == "build_farm":
-		var tile2 = main_map.get_tile_data(row, col)
-		for plant_id in CityData.domesticated_plants:
-			var plant_data = GameData.raw_resources.get(plant_id, {})
-			if tile2.terrain in plant_data.get("allowed_terrain", []) and tile2.get("cover", "none") in plant_data.get("allowed_cover", []):
-				build_manager.start_build(row, col, "farm", plant_id)
-				break
+		var chosen_plant = preview.get("selected_culture_id", null)
+		if not _is_suitable_culture(row, col, chosen_plant, "farm"):
+			chosen_plant = _first_suitable_culture(row, col, "farm")
+		if chosen_plant != null:
+			build_manager.start_build(row, col, "farm", chosen_plant)
 	elif type == "special":
 		build_manager.start_build(row, col, action_id)
 
@@ -600,3 +634,54 @@ func _get_tech_name(tech_id: String) -> String:
 		if tech["id"] == tech_id:
 			return tech.get("name", tech_id)
 	return tech_id
+
+# Возвращает список одомашненных культур (растений для ферм или животных для
+# пастбищ), которые можно выращивать/разводить на гексе (row, col).
+# Каждый элемент: { "id": String, "name": String }.
+func _get_suitable_crops(row: int, col: int, imp_kind: String) -> Array:
+	var tile = main_map.get_tile_data(row, col)
+	var tile_cover = tile.get("cover", "none")
+	var ids: Array
+	if imp_kind == "farm":
+		ids = CityData.domesticated_plants
+	else:
+		ids = CityData.domesticated_animals
+	var out := []
+	for id in ids:
+		var data = GameData.raw_resources.get(id, {})
+		if tile.terrain in data.get("allowed_terrain", []) and tile_cover in data.get("allowed_cover", []):
+			out.append({"id": id, "name": data.get("name", id)})
+	return out
+
+# Возвращает true, если культура (растение/животное) подходит для гекса (row, col)
+# и входит в одомашненные виды указанного типа (farm/pasture).
+func _is_suitable_culture(row: int, col: int, id, imp_kind: String) -> bool:
+	if id == null or id == "":
+		return false
+	var tile = main_map.get_tile_data(row, col)
+	var tile_cover = tile.get("cover", "none")
+	var data = GameData.raw_resources.get(id, {})
+	if data.is_empty():
+		return false
+	var ids: Array
+	if imp_kind == "farm":
+		ids = CityData.domesticated_plants
+	else:
+		ids = CityData.domesticated_animals
+	if not (id in ids):
+		return false
+	return tile.terrain in data.get("allowed_terrain", []) and tile_cover in data.get("allowed_cover", [])
+
+# Возвращает id первого одомашненного вида, подходящего для гекса, или null.
+func _first_suitable_culture(row: int, col: int, imp_kind: String):
+	var crops := _get_suitable_crops(row, col, imp_kind)
+	if crops.is_empty():
+		return null
+	return crops[0].id
+
+# Выбирает культуру в активном превью (ферма/пастбище) и пересобирает блок,
+# чтобы подсветка выбранной кнопки обновилась.
+func _select_preview_culture(id: String):
+	if _preview_action != null:
+		_preview_action["selected_culture_id"] = id
+	_refresh()
