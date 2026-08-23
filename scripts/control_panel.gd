@@ -63,7 +63,7 @@ func initialize(main_node: Node):
     _info_label = $InfoVBox/InfoLabel
     _products_container = $InfoVBox/ProductsContainer
     _actions_container = $ActionsVBox/ActionsContainer
-    _preview_container = $ActionsVBox/PreviewContainer
+    _preview_container = $PreviewContainer
 
     # Панель видна всегда, но содержимое пустое, пока не выбран гекс.
     clear_selection()

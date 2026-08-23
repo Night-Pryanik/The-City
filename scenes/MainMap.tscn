@@ -159,6 +159,14 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("15_ctrlpanel")
 
+[node name="PreviewContainer" type="VBoxContainer" parent="ControlPanel" unique_id=2061907310]
+layout_mode = 1
+offset_left = 670.0
+offset_top = 6.0
+offset_right = 907.0
+offset_bottom = 176.0
+theme_override_constants/separation = 4
+
 [node name="InfoVBox" type="VBoxContainer" parent="ControlPanel" unique_id=2061907305]
 layout_mode = 0
 offset_left = 8.0
@@ -178,7 +186,7 @@ layout_mode = 2
 [node name="ActionsVBox" type="VBoxContainer" parent="ControlPanel" unique_id=2061907308]
 custom_minimum_size = Vector2(260, 0)
 layout_mode = 0
-offset_left = 902.0
+offset_left = 966.0
 offset_top = 6.0
 offset_right = 1372.0
 offset_bottom = 170.0
@@ -188,7 +196,3 @@ size_flags_horizontal = 0
 layout_mode = 2
 theme_override_constants/h_separation = 4
 theme_override_constants/v_separation = 4
-
-[node name="PreviewContainer" type="VBoxContainer" parent="ControlPanel/ActionsVBox" unique_id=2061907310]
-layout_mode = 2
-theme_override_constants/separation = 4
