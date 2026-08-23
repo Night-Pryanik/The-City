@@ -77,6 +77,9 @@ func update_tooltip_text(row: int, col: int, tile_data: Array, city_row: int = 0
 		return
 
 	var res_id = MapHelpers.get_effective_resource(tile)
+	# Скрытый ресурс не показываем — как будто его на гексе нет.
+	if res_id != "" and not MapHelpers.is_resource_revealed(tile):
+		res_id = ""
 	var products = []
 	if tile.improvement != null:
 		if res_id != "":
@@ -105,6 +108,9 @@ func has_extended_tooltip_info(row: int, col: int, tile_data: Array) -> bool:
 	# улучшение построено, рабочий назначен, и на гексе есть «эффективный»
 	# ресурс (природный или разводимый) с produces.
 	var eff_res = MapHelpers.get_effective_resource(tile)
+	# Скрытый ресурс не учитываем — информации о нём быть не должно.
+	if eff_res != "" and not MapHelpers.is_resource_revealed(tile):
+		eff_res = ""
 	if tile.improvement != null and eff_res != "" and _worker_manager.has_worker(row, col):
 		var res_data = GameData.raw_resources.get(eff_res, {})
 		if res_data.has("produces"):
@@ -174,6 +180,9 @@ func update_extended_tooltip(row: int, col: int, tile_data: Array, city_row: int
 			_tooltip_products_container.add_child(total_label)
 
 	var res_id = MapHelpers.get_effective_resource(tile)
+	# Скрытый ресурс не показываем — как будто его на гексе нет.
+	if res_id != "" and not MapHelpers.is_resource_revealed(tile):
+		res_id = ""
 	if res_id == "":
 		return
 	var res_data = GameData.raw_resources.get(res_id, {})
@@ -194,6 +203,10 @@ func _build_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_c
 	var is_revealed = tile.get("in_influence", false) or tile.get("is_explored", false)
 	# Эффективный ресурс: природный (tile.resource) или разводимый (tile.crop_bred).
 	var res_id = MapHelpers.get_effective_resource(tile)
+	# Скрытый ресурс (tech_reveal не изучен): игроку о нём знать нельзя —
+	# показываем гекс как пустой (без названия ресурса, улучшения и выхода).
+	if res_id != "" and not MapHelpers.is_resource_revealed(tile):
+		res_id = ""
 	var res_name = "нет"
 	if res_id != "":
 		res_name = GameData.raw_resources.get(res_id, {}).get("name", res_id)
@@ -321,6 +334,10 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
 	var result = []
 	var tile = tile_data[row][col]
 	var eff_res = MapHelpers.get_effective_resource(tile)
+	# Скрытый ресурс (tech_reveal не изучен): производства не показываем —
+	# иначе подсказка «При постройке X будет давать…» выдала бы его наличие.
+	if eff_res != "" and not MapHelpers.is_resource_revealed(tile):
+		eff_res = ""
 	if eff_res == "":
 		return result
 	var res_data = GameData.raw_resources.get(eff_res, {})

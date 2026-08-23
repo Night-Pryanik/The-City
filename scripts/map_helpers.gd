@@ -375,6 +375,11 @@ static func get_buildable_improvement(tile: Dictionary) -> String:
     if tile.improvement != null:
         return ""
 
+    # Скрытый ресурс (tech_reveal не изучен): никакой подсказки о постройке —
+    # иначе игрок узнал бы, что на гексе что-то есть.
+    if tile.resource != null and not is_resource_revealed(tile):
+        return ""
+
     if tile.resource != null:
         var raw: Dictionary = GameData.raw_resources.get(tile.resource, {})
         if "improved_by" in raw and raw.improved_by != null and raw.improved_by != "":
