@@ -310,7 +310,10 @@ func _handle_mouse_button(event: InputEventMouseButton):
                 main_map.show_context_menu(hex.row, hex.col, mouse_pos)
                 _hide_tooltip()
 
-    if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+    # Выделение гекса выполняется при ОТПУСКАНИИ ЛКМ, а не при нажатии —
+    # чтобы зажатие и перетаскивание карты не выделяло и не сбрасывало гекс.
+    # При перетаскивании обработка уже прервана выше (return при is_dragging).
+    if event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
         if popup_menu.visible:
             popup_menu.hide()
             _hide_tooltip()
