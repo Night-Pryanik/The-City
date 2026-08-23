@@ -33,7 +33,7 @@ var _preview_action = null # { "type": String, "imp_id": String, "target_res_id"
 # Ссылки на дочерние узлы UI.
 var _info_label: Label
 var _products_container: VBoxContainer
-var _actions_container: VBoxContainer
+var _actions_container: FlowContainer
 var _preview_container: VBoxContainer
 
 # Снимок состояния кнопок действий, при котором их строили в последний раз.
@@ -174,20 +174,37 @@ func _build_actions(row: int, col: int, tile: Dictionary):
 
     for action in actions:
         var btn = Button.new()
-        btn.text = action.get("label", "")
-        btn.custom_minimum_size = Vector2(0, 28)
-        btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-        btn.disabled = not action.get("enabled", true)
+        btn.custom_minimum_size = Vector2(32, 32) # маленькая квадратная кнопка
+        # Тултип сохраняется — это единственный способ узнать, что делает кнопка.
         btn.tooltip_text = action.get("tooltip", "")
-        if not action.get("enabled", true):
-            # Серый цвет для недоступных действий.
-            btn.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
-            btn.add_theme_color_override("font_disabled_color", Color(0.5, 0.5, 0.5))
+        btn.disabled = not action.get("enabled", true)
+        # Иконка действия; если её нет или файл не найден — знак вопроса.
+        var tex = _load_action_icon(action.get("icon", ""))
+        if tex != null:
+            btn.icon = tex
+            btn.expand_icon = true
+            btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        else:
+            btn.text = "?"
+            if not action.get("enabled", true):
+                btn.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+                btn.add_theme_color_override("font_disabled_color", Color(0.5, 0.5, 0.5))
         var action_data = action
         btn.pressed.connect(func():
             _on_action_pressed(action_data)
         )
         _actions_container.add_child(btn)
+
+# Загружает Texture2D для имени файла иконки действия через индекс иконок
+# map_renderer (тот же индекс, что используют тултип и отрисовка карты).
+# Возвращает null, если имя пустое или файл не найден (тогда кнопка покажет «?»).
+func _load_action_icon(icon_name: String) -> Texture2D:
+    if icon_name.is_empty() or main_map == null or main_map.map_renderer == null:
+        return null
+    var path: String = main_map.map_renderer.get_icon_path(icon_name)
+    if path.is_empty() or not FileAccess.file_exists(path):
+        return null
+    return load(path)
 
 # Сравнивает два списка действий (по значимым полям, чтобы у неработающего
 # поля type/imp_id не пересоздавались кнопки вхолостую).
@@ -197,7 +214,7 @@ func _actions_equal(a: Array, b: Array) -> bool:
     for i in range(a.size()):
         var x: Dictionary = a[i]
         var y: Dictionary = b[i]
-        for key in ["type", "label", "enabled", "tooltip", "imp_id", "action_id", "target_res_id"]:
+        for key in ["type", "label", "enabled", "tooltip", "imp_id", "action_id", "target_res_id", "icon"]:
             if x.get(key, null) != y.get(key, null):
                 return false
     return true
@@ -230,14 +247,16 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
                 "type": "pause_improvement",
                 "label": "Приостановить работу (%s)" % imp_name,
                 "enabled": true,
-                "tooltip": "Снять рабочего с улучшения"
+                "tooltip": "Снять рабочего с улучшения",
+                "icon": "building_pause.png"
             })
         else:
             actions.append({
                 "type": "resume_improvement",
                 "label": "Запустить работу (%s)" % imp_name,
                 "enabled": CityData.idle_population > 0,
-                "tooltip": "Назначить рабочего на улучшение" if CityData.idle_population > 0 else "Нет свободных рабочих"
+                "tooltip": "Назначить рабочего на улучшение" if CityData.idle_population > 0 else "Нет свободных рабочих",
+                "icon": "building_resume.png"
             })
 
         # Спец-действия, применимые к гексу с улучшением (например, снос).
@@ -289,7 +308,8 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
                 "enabled": enabled,
                 "tooltip": tooltip,
                 "imp_id": imp_id,
-                "target_res_id": tile.resource
+                "target_res_id": tile.resource,
+                "icon": GameData.improvements.get(imp_id, {}).get("icon", "")
             })
 
     # 2. Пустой гекс: разведение одомашненных животных/растений.
@@ -318,7 +338,8 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
                     "label": "Построить пастбище",
                     "enabled": pasture_enabled,
                     "tooltip": pasture_tooltip,
-                    "imp_id": "pasture"
+                    "imp_id": "pasture",
+                    "icon": GameData.improvements.get("pasture", {}).get("icon", "")
                 })
         # Ферма.
         if CityData.domesticated_plants.size() > 0:
@@ -343,7 +364,8 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
                     "label": "Построить ферму",
                     "enabled": farm_enabled,
                     "tooltip": farm_tooltip,
-                    "imp_id": "farm"
+                    "imp_id": "farm",
+                    "icon": GameData.improvements.get("farm", {}).get("icon", "")
                 })
 
     # 3. Спец-действия (вырубка леса, сбор дикоросов и т.п.).
@@ -536,9 +558,18 @@ func _build_preview(row: int, col: int, tile: Dictionary):
 
             for cult in crops:
                 var cult_btn = Button.new()
-                cult_btn.text = cult.get("name", cult.id)
-                cult_btn.custom_minimum_size = Vector2(0, 24)
-                cult_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+                cult_btn.custom_minimum_size = Vector2(32, 32) # квадратная кнопка с иконкой
+                # Тултип — название ресурса (иконка без подписи).
+                cult_btn.tooltip_text = cult.get("name", cult.id)
+                # Иконка одомашненного вида; если её нет — знак вопроса.
+                var cult_icon = GameData.raw_resources.get(cult.id, {}).get("icon", "")
+                var cult_tex = _load_action_icon(cult_icon)
+                if cult_tex != null:
+                    cult_btn.icon = cult_tex
+                    cult_btn.expand_icon = true
+                    cult_btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+                else:
+                    cult_btn.text = "?"
                 cult_btn.toggle_mode = true
                 cult_btn.set_pressed_no_signal(cult.id == selected)
                 var cid = cult.id
