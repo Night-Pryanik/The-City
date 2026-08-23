@@ -187,19 +187,39 @@
       "spawn_conditions": [ [ { "type": "terrain", "terrain_id": "asphalt_lake", "chance": 100 } ] ]
     },
     {
-      "id": "salt_deposit",
+      "id": "salt_deposit_lake",
       "name": "Соль",
       "type": "raw",
       "category": "minerals",
       "group": "minerals",
       "subgroup": "",
       "tech_required": "salt_extraction",
-      "allowed_terrain": [ "salt_lake", "plain", "hill" ],
+      "allowed_terrain": [ "salt_lake" ],
       "allowed_cover": [ "none" ],
       "improved_by": "mine",
       "produces": { "salt": 1 },
       "icon": "salt.png",
-      "color": [ 255, 255, 255 ]
+      "color": [ 255, 255, 255 ],
+      "spawn_conditions": [ [ { "type": "terrain", "terrain_id": "salt_lake", "chance": 100 } ] ]
+    },
+    {
+      "id": "salt_deposit_underground",
+      "name": "Соль",
+      "type": "raw",
+      "category": "minerals",
+      "group": "minerals",
+      "subgroup": "",
+      "tech_required": "salt_extraction",
+      "allowed_terrain": [ "plain", "hill" ],
+      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "improved_by": "mine",
+      "produces": { "salt": 1 },
+      "icon": "salt.png",
+      "color": [ 255, 255, 255 ],
+      "spawn_conditions": [
+        [ { "type": "terrain", "terrain_id": "plain", "chance": 100 } ],
+        [ { "type": "terrain", "terrain_id": "hill", "chance": 100 } ]
+      ]
     },
     {
       "id": "salt_evaporation",
