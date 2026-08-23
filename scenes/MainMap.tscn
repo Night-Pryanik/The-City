@@ -167,6 +167,16 @@ offset_right = 907.0
 offset_bottom = 176.0
 theme_override_constants/separation = 4
 
+[node name="PreviewScroll" type="ScrollContainer" parent="ControlPanel/PreviewContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="PreviewContent" type="VBoxContainer" parent="ControlPanel/PreviewContainer/PreviewScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
 [node name="InfoVBox" type="VBoxContainer" parent="ControlPanel" unique_id=2061907305]
 layout_mode = 0
 offset_left = 8.0
@@ -175,12 +185,21 @@ offset_right = 885.0
 offset_bottom = 170.0
 size_flags_horizontal = 3
 
-[node name="InfoLabel" type="Label" parent="ControlPanel/InfoVBox" unique_id=2061907306]
+[node name="InfoScroll" type="ScrollContainer" parent="ControlPanel/InfoVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="InfoContent" type="VBoxContainer" parent="ControlPanel/InfoVBox/InfoScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="InfoLabel" type="Label" parent="ControlPanel/InfoVBox/InfoScroll/InfoContent" unique_id=2061907306]
 layout_mode = 2
 text = "Выберите гекс на карте (ЛКМ), чтобы увидеть информацию и доступные действия."
 autowrap_mode = 2
 
-[node name="ProductsContainer" type="VBoxContainer" parent="ControlPanel/InfoVBox" unique_id=2061907307]
+[node name="ProductsContainer" type="VBoxContainer" parent="ControlPanel/InfoVBox/InfoScroll/InfoContent" unique_id=2061907307]
 layout_mode = 2
 
 [node name="ActionsVBox" type="VBoxContainer" parent="ControlPanel" unique_id=2061907308]
@@ -192,7 +211,16 @@ offset_right = 1372.0
 offset_bottom = 170.0
 size_flags_horizontal = 0
 
-[node name="ActionsContainer" type="FlowContainer" parent="ControlPanel/ActionsVBox" unique_id=2061907309]
+[node name="ActionsScroll" type="ScrollContainer" parent="ControlPanel/ActionsVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="ActionsContent" type="VBoxContainer" parent="ControlPanel/ActionsVBox/ActionsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ActionsContainer" type="FlowContainer" parent="ControlPanel/ActionsVBox/ActionsScroll/ActionsContent" unique_id=2061907309]
 layout_mode = 2
 theme_override_constants/h_separation = 4
 theme_override_constants/v_separation = 4

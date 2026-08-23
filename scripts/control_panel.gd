@@ -60,10 +60,10 @@ func initialize(main_node: Node):
     worker_manager = main_node.worker_manager
     build_manager = main_node.build_manager
 
-    _info_label = $InfoVBox/InfoLabel
-    _products_container = $InfoVBox/ProductsContainer
-    _actions_container = $ActionsVBox/ActionsContainer
-    _preview_container = $PreviewContainer
+    _info_label = $InfoVBox/InfoScroll/InfoContent/InfoLabel
+    _products_container = $InfoVBox/InfoScroll/InfoContent/ProductsContainer
+    _actions_container = $ActionsVBox/ActionsScroll/ActionsContent/ActionsContainer
+    _preview_container = $PreviewContainer/PreviewScroll/PreviewContent
 
     # Панель видна всегда, но содержимое пустое, пока не выбран гекс.
     clear_selection()
@@ -544,12 +544,40 @@ func _build_preview(row: int, col: int, tile: Dictionary):
                     products.append({"type": "label", "text": " %s" % mod.get("label", ""), "color": Color(0.7, 0.9, 0.7)})
             map_tooltip.render_products(products, _preview_container)
 
-    # Стоимость труда.
+    # Стоимость труда: детальный расчёт (база, местность, расстояние).
     var cost_data = MapHelpers.get_improvement_work_cost(cost_imp_id, row, col, main_map.tile_data, main_map.city_row, main_map.city_col)
     var cost_label = Label.new()
     cost_label.text = "Стоимость: %d труда" % cost_data["cost"]
     cost_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
     _preview_container.add_child(cost_label)
+
+    # Детализация стоимости (переехала сюда из расширенного тултипа).
+    var base_label = Label.new()
+    base_label.text = " База: %d труда" % cost_data["base_cost"]
+    base_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+    _preview_container.add_child(base_label)
+
+    var move_cost_text = "непроходимо" if cost_data["move_cost"] >= 999.0 else str(int(cost_data["move_cost"]))
+    var terrain_label = Label.new()
+    terrain_label.text = " Местность: %s (стоимость передвижения: %s) ×%.2f" % [cost_data["terrain_name"], move_cost_text, cost_data["terrain_mult"]]
+    terrain_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
+    _preview_container.add_child(terrain_label)
+
+    var dist_label = Label.new()
+    # Расчёт множителя расстояния: исходный (1 + гексов × 0.25) плюс
+    # влияние изученных технологий (например, «Колесо» -30%).
+    var dist_text: String = " Расстояние до города: %d гекс(а) → база ×%.2f" % [cost_data["distance"], cost_data["distance_mult_base"]]
+    if cost_data.has("distance_tech_mult") and cost_data["distance_tech_mult"] != 1.0:
+        dist_text += ", технологии ×%.2f" % cost_data["distance_tech_mult"]
+    dist_text += " = ×%.2f" % cost_data["distance_mult"]
+    dist_label.text = dist_text
+    dist_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
+    _preview_container.add_child(dist_label)
+
+    var total_label = Label.new()
+    total_label.text = " Итого: %d труда" % cost_data["cost"]
+    total_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+    _preview_container.add_child(total_label)
 
     # --- Для ферм/пастбищ: выбор конкретной культуры ---
     # Если на гексе можно выращивать/разводить несколько одомашненных видов,

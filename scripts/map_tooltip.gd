@@ -118,9 +118,8 @@ func has_extended_tooltip_info(row: int, col: int, tile_data: Array) -> bool:
 			if bonus_multiplier > 1.0:
 				return true
 
-	if tile.improvement == null:
-		if MapHelpers.get_buildable_improvement(tile) != "":
-			return true
+	# Стоимость постройки в расширенном тултипе больше не показывается —
+	# расчёты перенесены в Превью панели управления.
 
 	return false
 
@@ -141,43 +140,8 @@ func update_extended_tooltip(row: int, col: int, tile_data: Array, city_row: int
 	if not is_revealed:
 		return
 
-	if tile.improvement == null:
-		var buildable_imp = MapHelpers.get_buildable_improvement(tile)
-		if buildable_imp != "":
-			var cost_data = MapHelpers.get_improvement_work_cost(buildable_imp, row, col, tile_data, city_row, city_col)
-			var imp_name = GameData.improvements.get(buildable_imp, {}).get("name", buildable_imp)
-
-			var header = Label.new()
-			header.text = "Строительство: %d труда (%s)" % [cost_data["cost"], imp_name]
-			header.add_theme_color_override("font_color", Color(0.9, 0.9, 0.5))
-			_tooltip_products_container.add_child(header)
-
-			var base_label = Label.new()
-			base_label.text = " База: %d труда" % cost_data["base_cost"]
-			base_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
-			_tooltip_products_container.add_child(base_label)
-
-			var terrain_label = Label.new()
-			var move_cost_text = "непроходимо" if cost_data["move_cost"] >= 999.0 else str(int(cost_data["move_cost"]))
-			terrain_label.text = " Местность: %s (стоимость передвижения: %s) ×%.2f" % [cost_data["terrain_name"], move_cost_text, cost_data["terrain_mult"]]
-			terrain_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
-			_tooltip_products_container.add_child(terrain_label)
-
-			var dist_label = Label.new()
-			# Расчёт множителя расстояния: исходный (1 + гексов × 0.25) плюс
-			# влияние изученных технологий (например, «Колесо» -30%).
-			var dist_text: String = " Расстояние до города: %d гекс(а) → база ×%.2f" % [cost_data["distance"], cost_data["distance_mult_base"]]
-			if cost_data.has("distance_tech_mult") and cost_data["distance_tech_mult"] != 1.0:
-				dist_text += ", технологии ×%.2f" % cost_data["distance_tech_mult"]
-			dist_text += " = ×%.2f" % cost_data["distance_mult"]
-			dist_label.text = dist_text
-			dist_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
-			_tooltip_products_container.add_child(dist_label)
-
-			var total_label = Label.new()
-			total_label.text = " Итого: %d труда" % cost_data["cost"]
-			total_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
-			_tooltip_products_container.add_child(total_label)
+	# Расчёты стоимости постройки (база/местность/расстояние) перенесены
+	# в Превью панели управления — здесь они больше не показываются.
 
 	var res_id = MapHelpers.get_effective_resource(tile)
 	# Скрытый ресурс не показываем — как будто его на гексе нет.
@@ -277,12 +241,8 @@ func _build_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_c
 		text += "\n\nЗдесь обнаружено: %s" % conflict.get("res_name", "")
 		text += "\nСнесите %s, чтобы построить %s" % [current_imp_name, conflict.get("imp_name", "")]
 
-	if tile.improvement == null:
-		var buildable_imp = MapHelpers.get_buildable_improvement(tile)
-		if buildable_imp != "":
-			var cost_data = MapHelpers.get_improvement_work_cost(buildable_imp, row, col, tile_data, city_row, city_col)
-			var buildable_imp_name: String = GameData.improvements.get(buildable_imp, {}).get("name", buildable_imp)
-			text += "\nСтроительство: %d труда (%s)" % [cost_data["cost"], buildable_imp_name]
+	# Стоимость постройки в тултипе/левой панели больше не показывается —
+	# расчёты перенесены в Превью панели управления.
 
 	return text
 
