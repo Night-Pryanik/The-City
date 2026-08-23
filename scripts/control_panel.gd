@@ -125,6 +125,11 @@ func _refresh():
 	# --- Превью действия (если есть) ---
 	if _preview_action != null:
 		_build_preview(row, col, tile)
+	else:
+		# Превью нет (смена выделенного гекса, ESC и т.п.) — обязательно
+		# очищаем контейнер, чтобы старое превью не оставалось в панели.
+		for child in _preview_container.get_children():
+			child.queue_free()
 
 func _clear_ui():
 	_info_label.text = "Выберите гекс на карте (ЛКМ), чтобы увидеть информацию и доступные действия."
