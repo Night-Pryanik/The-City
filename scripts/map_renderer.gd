@@ -173,6 +173,14 @@ func _draw():
         for col in range(visible.col_start, visible.col_end + 1):
             _draw_hex_overlays(row, col)
 
+    # ФАЗА 3.5: Рисуем подсветку выбранного гекса (клик ЛКМ, панель управления).
+    # Рамка + лёгкая заливка, чтобы выделенный гекс был хорошо виден поверх
+    # оверлеев, но не перекрывал иконку ресурса/улучшения.
+    if main_map.control_panel and main_map.control_panel.has_selection():
+        var sel = main_map.control_panel.get_selected_hex()
+        if sel != null:
+            _draw_selected_hex_highlight(sel.row, sel.col)
+
     # ФАЗА 4: Рисуем город в конце
     var offset_pos = Vector2(
         main_map.offset_x + main_map.scroll_offset.x,
@@ -532,7 +540,29 @@ func _draw_tech_reveal_warning(center: Vector2):
     var text_pos = Vector2(cx - text_size.x / 2.0, cy + text_size.y / 2.0 - 1)
     draw_string(font, text_pos, text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color.WHITE)
 
-# Рисует заполненную (сложную) звезду.
+# Рисует подсветку выбранного гекса: полупрозрачная заливка + яркая рамка.
+func _draw_selected_hex_highlight(row: int, col: int):
+    # Если гекс вне видимой области, пропускаем (его всё равно не видно).
+    if row < _get_visible_hex_range().row_start or row > _get_visible_hex_range().row_end \
+            or col < _get_visible_hex_range().col_start or col > _get_visible_hex_range().col_end:
+        return
+
+    var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
+    center.x += main_map.offset_x + main_map.scroll_offset.x
+    center.y += main_map.offset_y + main_map.scroll_offset.y
+    var vertices = PackedVector2Array()
+    vertices.append_array(HexUtils.hex_vertices(center.x, center.y, main_map.HEX_RADIUS))
+
+    # Лёгкая жёлтая заливка (полупрозрачная, поверх terrain, но под иконками ресурсов/улучшений).
+    draw_colored_polygon(vertices, Color(1.0, 0.9, 0.3, 0.25))
+
+    # Яркая жёлто-белая рамка.
+    var closed_vertices = PackedVector2Array()
+    closed_vertices.append_array(vertices)
+    closed_vertices.append(vertices[0])
+    draw_polyline(closed_vertices, Color(1.0, 0.85, 0.2, 0.95), 3.0)
+
+# Рисует заполненный (сложную) звезду.
 func _draw_star(cx: float, cy: float, r_outer: float, r_inner: float, color: Color):
     var points = PackedVector2Array()
     for i in range(5):

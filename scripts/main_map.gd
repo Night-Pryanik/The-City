@@ -106,6 +106,7 @@ var extended_tooltip_delay: float = 1.0
 @onready var settings_menu = preload("res://scenes/settings_menu.tscn").instantiate()
 @onready var input_handler = $InputHandler
 @onready var debug_manager = $DebugManager
+@onready var control_panel = $ControlPanel
 var map_tooltip: MapTooltip
 
 var tech_popup: Control
@@ -250,6 +251,9 @@ func _ready():
 
     map_tooltip = MapTooltip.new(tooltip_text_label, tooltip_products_container, map_renderer, worker_manager)
 
+    # Инициализация панели управления гексом (нижняя панель).
+    control_panel.initialize(self)
+
     input_handler.set_tooltip_delay(tooltip_delay)
     input_handler.set_extended_tooltip_delay(extended_tooltip_delay)
 
@@ -274,6 +278,16 @@ func _ready():
     expansion_manager.chunk_hovered.connect(_on_chunk_hovered)
     worker_manager.assignment_changed.connect(_on_assignment_changed)
     townsfolk_manager.assignment_changed.connect(_on_townsfolk_assignment_changed)
+    # Панель управления должна реагировать на внешние изменения: назначение
+    # рабочих, завершение/отмена строек, обновление города, изучение технологий,
+    # расширение территории. Иначе она показывала бы устаревшую информацию.
+    worker_manager.assignment_changed.connect(control_panel.refresh)
+    build_manager.build_completed.connect(_on_control_panel_build_changed)
+    build_manager.build_cancelled.connect(_on_control_panel_build_changed)
+    build_manager.build_paused.connect(_on_control_panel_build_changed)
+    CityData.city_updated.connect(control_panel.refresh)
+    CityData.research_completed.connect(control_panel.refresh)
+    expansion_manager.territory_expanded.connect(control_panel.refresh)
 
     tech_popup = _make_tech_popup()
     add_child(tech_popup)
@@ -996,6 +1010,32 @@ func _assign_terrain_icon(row: int, col: int) -> void:
 func _redraw_progress_layer():
     if progress_bar_layer:
         progress_bar_layer.queue_redraw()
+
+# Публичная обёртка для перерисовки слоя прогресс-баров (используется
+# панелью управления control_panel.gd после подтверждения постройки).
+func redraw_progress_layer():
+    _redraw_progress_layer()
+
+# Выделяет гекс (row, col) по клику ЛКМ: подсвечивает его на карте и
+# показывает информацию/действия в панели управления.
+func select_hex(row: int, col: int):
+    control_panel.select_hex(row, col)
+    map_renderer.queue_redraw()
+
+# Снимает выделение с гекса и очищает панель управления.
+func clear_selection():
+    control_panel.clear_selection()
+    map_renderer.queue_redraw()
+
+# Обработчик завершения/отмены/паузы стройки: обновляет панель управления,
+# чтобы она не показывала устаревшее состояние (например, кнопку «Построить»
+# на гексе, где стройка уже завершилась).
+func _on_control_panel_build_changed(_a = null, _b = null, _c = null, _d = null):
+    control_panel.refresh()
+
+# Публичная обёртка над _confirm_cancel_build для панели управления.
+func confirm_cancel_build(row: int, col: int):
+    _confirm_cancel_build(row, col)
 
 func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = null):
     var tile = tile_data[row][col]

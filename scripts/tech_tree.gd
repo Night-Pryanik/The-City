@@ -802,7 +802,7 @@ func _update_states():
                 if not prereq.is_empty():
                     extra = "\n\n[Требуется: %s]" % prereq
             btn.tooltip_text = "%s\nНаука: %d%s" % [desc, cost, extra]
-
+    
 func _find_progress_in_button(btn: Button) -> ProgressBar:
     for child in btn.get_children():
         if child is ProgressBar and child.name == "TechProgress":

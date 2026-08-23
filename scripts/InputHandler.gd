@@ -67,6 +67,16 @@ func handle_input(event: InputEvent):
         return
 
     if event is InputEventKey and event.keycode == KEY_ESCAPE and event.pressed:
+        # ESC: сначала сбрасываем превью действия в панели управления, затем
+        # снимаем выделение гекса, и только потом — обычное поведение ESC.
+        if main_map.control_panel.has_preview():
+            main_map.control_panel.clear_preview()
+            get_viewport().set_input_as_handled()
+            return
+        if main_map.control_panel.has_selection():
+            main_map.clear_selection()
+            get_viewport().set_input_as_handled()
+            return
         _handle_esc()
         # Помечаем событие обработанным, чтобы оно не распространилось
         # на _unhandled_input (иначе меню паузы, став видимым, сразу закроется)
@@ -74,6 +84,15 @@ func handle_input(event: InputEvent):
         return
 
     if city_ui.visible or pause_menu.visible or (main_map.settings_menu and main_map.settings_menu.visible):
+        return
+
+    # Взаимодействие с картой недоступно, когда курсор находится над панелью
+    # управления: клики, перетаскивание, тултипы и скролл не должны проходить
+    # сквозь панель к карте. Клавиатурные события (ESC и т.п.) при этом
+    # продолжают обрабатываться ниже.
+    if event is InputEventMouse and main_map.control_panel \
+            and main_map.control_panel.get_global_rect().has_point(event.global_position):
+        _hide_tooltip()
         return
 
     # Дебаг-меню открыто — блокируем взаимодействие с картой
@@ -106,6 +125,13 @@ func handle_process(delta: float):
 
     # Дебаг-меню открыто — блокируем обработку процесса (скролл, тултипы)
     if debug_manager and debug_manager.is_open:
+        _hide_tooltip()
+        return
+
+    # Скрываем тултип и отключаем скролл краями окна, когда курсор находится
+    # над панелью управления (взаимодействие с картой сквозь неё запрещено).
+    if main_map.control_panel \
+            and main_map.control_panel.get_global_rect().has_point(main_map.get_global_mouse_position()):
         _hide_tooltip()
         return
 
@@ -292,6 +318,10 @@ func _handle_mouse_button(event: InputEventMouseButton):
         var mouse_pos = event.global_position
         var hex = _pixel_to_hex(mouse_pos.x, mouse_pos.y)
         if hex != null and main_map.tile_data[hex.row][hex.col]["in_influence"]:
+            # Клик по гексу в Кольце Влияния: выделяем его и показываем
+            # информацию/действия в панели управления. Клик по другому гексу
+            # сбрасывает превью действия (см. control_panel.select_hex).
+            main_map.select_hex(hex.row, hex.col)
             if hex.row == main_map.city_row and hex.col == main_map.city_col:
                 var cur_time = Time.get_ticks_msec() / 1000.0
                 if cur_time - main_map.last_city_click_time < 0.5:
