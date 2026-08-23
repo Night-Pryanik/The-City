@@ -1321,12 +1321,16 @@ func _on_research_hud_button_pressed():
     city_ui.show_technologies_tab()
     city_ui.show()
     hud.hide()
+    # Панель управления гексом не нужна, пока открыт интерфейс города.
+    control_panel.hide()
 
 func open_city():
     city_ui.refresh()
     city_ui.show()
     city_ui.show_resources_tab()
     hud.hide()
+    # Панель управления гексом не нужна, пока открыт интерфейс города.
+    control_panel.hide()
 
 func _on_city_button_pressed():
     if pause_menu.visible:
@@ -1337,6 +1341,8 @@ func _on_city_button_pressed():
 func _on_city_ui_close():
     city_ui.hide()
     hud.show()
+    # Возвращаем панель управления гексом при выходе из интерфейса города.
+    control_panel.show()
     _update_research_progress()
 
 func _on_research_error(message: String):
@@ -1363,6 +1369,8 @@ func _on_tech_popup_go_to_techs():
     city_ui.show_technologies_tab()
     city_ui.show()
     hud.hide()
+    # Панель управления гексом не нужна, пока открыт интерфейс города.
+    control_panel.hide()
 
 func _on_pause_save():
     SaveManager.save_game()
