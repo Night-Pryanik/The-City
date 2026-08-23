@@ -527,21 +527,18 @@ func _build_preview(row: int, col: int, tile: Dictionary):
                 var base_amount = float(res_data["produces"][prod_id])
                 var final_amount = ceili(base_amount * bonus_multiplier)
                 var prod_name = GameData.products.get(prod_id, {}).get("name", prod_id)
+                # При активных модификаторах база указывается у каждого продукта.
+                if bonus_multiplier != 1.0:
+                    var base_str = str(int(base_amount)) if base_amount == floor(base_amount) else "%.1f" % base_amount
+                    prod_name = "%s (база %s)" % [prod_name, base_str]
                 var icon_path = ""
                 var prod_data = GameData.products.get(prod_id, {})
                 if prod_data.has("icon"):
                     var icon_name = prod_data["icon"]
                     icon_path = main_map.map_renderer.get_icon_path(icon_name)
                 products.append({"type": "product", "name": prod_name, "amount": final_amount, "icon_path": icon_path})
-            if modifiers.size() > 0:
-                # База — первый продукт в списке produces (как в тултипе).
-                var first_base = 0.0
-                for pid in res_data["produces"]:
-                    first_base = float(res_data["produces"][pid])
-                    break
-                products.append({"type": "label", "text": " База: %d" % int(first_base), "color": Color(0.8, 0.8, 0.8)})
-                for mod in modifiers:
-                    products.append({"type": "label", "text": " %s" % mod.get("label", ""), "color": Color(0.7, 0.9, 0.7)})
+            for mod in modifiers:
+                products.append({"type": "label", "text": " %s" % mod.get("label", ""), "color": Color(0.7, 0.9, 0.7)})
             map_tooltip.render_products(products, _preview_container)
 
     # Стоимость труда: детальный расчёт (база, местность, расстояние).

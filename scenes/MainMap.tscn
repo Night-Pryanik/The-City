@@ -177,9 +177,9 @@ color = Color(0.35, 0.35, 0.35, 1)
 
 [node name="PreviewContainer" type="VBoxContainer" parent="ControlPanel" unique_id=2061907310]
 layout_mode = 1
-offset_left = 670.0
+offset_left = 405.0
 offset_top = 6.0
-offset_right = 907.0
+offset_right = 948.0
 offset_bottom = 176.0
 theme_override_constants/separation = 4
 
