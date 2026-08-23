@@ -439,6 +439,16 @@ func _on_action_pressed(action: Dictionary):
         main_map.confirm_cancel_build(_selected_hex.row, _selected_hex.col)
         return
 
+    # Повторное нажатие на кнопку действия, чьё превью уже открыто,
+    # работает как «отмена» (закрывает превью).
+    if _preview_action != null \
+            and _preview_action.get("type", "") == type \
+            and _preview_action.get("imp_id", "") == action.get("imp_id", "") \
+            and _preview_action.get("action_id", "") == action.get("action_id", "") \
+            and _preview_action.get("target_res_id", null) == action.get("target_res_id", null):
+        clear_preview()
+        return
+
     # Действия с превью (постройка улучшения, пастбища, фермы, спец-действие).
     var eff_res_for_preview = action.get("target_res_id", null)
     if eff_res_for_preview == null or eff_res_for_preview == "":
@@ -556,6 +566,12 @@ func _build_preview(row: int, col: int, tile: Dictionary):
             cult_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
             _preview_container.add_child(cult_label)
 
+            # Кнопки культур идут горизонтальным рядом с переносом строк.
+            var cult_flow = FlowContainer.new()
+            cult_flow.add_theme_constant_override("h_separation", 4)
+            cult_flow.add_theme_constant_override("v_separation", 4)
+            _preview_container.add_child(cult_flow)
+
             for cult in crops:
                 var cult_btn = Button.new()
                 cult_btn.custom_minimum_size = Vector2(32, 32) # квадратная кнопка с иконкой
@@ -572,11 +588,18 @@ func _build_preview(row: int, col: int, tile: Dictionary):
                     cult_btn.text = "?"
                 cult_btn.toggle_mode = true
                 cult_btn.set_pressed_no_signal(cult.id == selected)
+                # Явная рамка у выбранной культуры.
+                var pressed_style = StyleBoxFlat.new()
+                pressed_style.set_border_width_all(2)
+                pressed_style.border_color = Color(1.0, 0.85, 0.2) # жёлтая рамка
+                cult_btn.add_theme_stylebox_override("pressed", pressed_style)
+                cult_btn.add_theme_stylebox_override("hover_pressed", pressed_style)
+                cult_btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
                 var cid = cult.id
                 cult_btn.pressed.connect(func():
                     _select_preview_culture(cid)
                 )
-                _preview_container.add_child(cult_btn)
+                cult_flow.add_child(cult_btn)
 
     # Кнопки «Построить» и «Отменить».
     var hbox = HBoxContainer.new()
