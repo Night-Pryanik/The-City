@@ -283,34 +283,38 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
             var imp_name = imp_data.get("name", imp_id)
             var enabled = true
             var tooltip = "Построить %s" % imp_name
-            # Проверка: ресурс скрыт tech_reveal-гейтом.
+            # Проверка: ресурс скрыт tech_reveal-гейтом. Действие НЕ показываем
+            # вовсе (ни кнопки, ни тултипа): игрок не должен знать, где
+            # находится скрытый ресурс, пока не откроет соответствующую технологию.
             if not MapHelpers.is_resource_revealed(tile):
-                enabled = false
-                tooltip = "Ресурс ещё не обнаружен (нужна разведка/технология)"
-            # Проверка: технология для улучшения.
-            elif not CityData.is_improvement_unlocked(imp_id):
-                var unlock_tech = CityData.get_improvement_unlock_tech(imp_id)
-                var tech_name = _get_tech_name(unlock_tech)
-                enabled = false
-                tooltip = "Нужна технология: %s" % tech_name
-            # Проверка: ресурс требует технологию (tech_required).
-            elif raw.get("tech_required", "") != "" and not CityData.is_tech_unlocked(raw["tech_required"]):
-                var tech_name2 = _get_tech_name(raw["tech_required"])
-                enabled = false
-                tooltip = "Нужна технология: %s" % tech_name2
-            # Проверка: лимит строек.
-            elif build_manager.get_total_active_builds() >= CityData.total_population:
-                enabled = false
-                tooltip = "Нет труда: лимит строек (число жителей) исчерпан"
-            actions.append({
-                "type": "build_improvement",
-                "label": "Построить %s" % imp_name,
-                "enabled": enabled,
-                "tooltip": tooltip,
-                "imp_id": imp_id,
-                "target_res_id": tile.resource,
-                "icon": GameData.improvements.get(imp_id, {}).get("icon", "")
-            })
+                # Скрытый ресурс: никаких действий и подсказок на этом гексе.
+                pass
+            else:
+                # Проверка: технология для улучшения.
+                if not CityData.is_improvement_unlocked(imp_id):
+                    var unlock_tech = CityData.get_improvement_unlock_tech(imp_id)
+                    var tech_name = _get_tech_name(unlock_tech)
+                    enabled = false
+                    tooltip = "%s — нужна технология: %s" % [imp_name, tech_name]
+                # Проверка: ресурс требует технологию (tech_required).
+                elif raw.get("tech_required", "") != "" and not CityData.is_tech_unlocked(raw["tech_required"]):
+                    var raw_name = raw.get("name", tile.resource)
+                    var tech_name2 = _get_tech_name(raw["tech_required"])
+                    enabled = false
+                    tooltip = "%s (%s) — нужна технология: %s" % [imp_name, raw_name, tech_name2]
+                # Проверка: лимит строек.
+                elif build_manager.get_total_active_builds() >= CityData.total_population:
+                    enabled = false
+                    tooltip = "Нет труда: лимит строек (число жителей) исчерпан"
+                actions.append({
+                    "type": "build_improvement",
+                    "label": "Построить %s" % imp_name,
+                    "enabled": enabled,
+                    "tooltip": tooltip,
+                    "imp_id": imp_id,
+                    "target_res_id": tile.resource,
+                    "icon": GameData.improvements.get(imp_id, {}).get("icon", "")
+                })
 
     # 2. Пустой гекс: разведение одомашненных животных/растений.
     if tile.resource == null:
@@ -321,7 +325,7 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
             var pasture_tooltip = "Построить пастбище для одомашненного животного"
             if not pasture_unlocked:
                 var unlock_tech = CityData.get_improvement_unlock_tech("pasture")
-                pasture_tooltip = "Нужна технология: %s" % _get_tech_name(unlock_tech)
+                pasture_tooltip = "Пастбище — нужна технология: %s" % _get_tech_name(unlock_tech)
             elif build_manager.get_total_active_builds() >= CityData.total_population:
                 pasture_enabled = false
                 pasture_tooltip = "Нет труда: лимит строек (число жителей) исчерпан"
@@ -348,7 +352,7 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
             var farm_tooltip = "Построить ферму для одомашненного растения"
             if not farm_unlocked:
                 var unlock_tech = CityData.get_improvement_unlock_tech("farm")
-                farm_tooltip = "Нужна технология: %s" % _get_tech_name(unlock_tech)
+                farm_tooltip = "Ферма — нужна технология: %s" % _get_tech_name(unlock_tech)
             elif build_manager.get_total_active_builds() >= CityData.total_population:
                 farm_enabled = false
                 farm_tooltip = "Нет труда: лимит строек (число жителей) исчерпан"
@@ -406,7 +410,7 @@ func _add_special_actions(actions: Array, row: int, col: int, tile: Dictionary):
         var unlock_tech = sa.get("unlock_tech", "")
         if unlock_tech != "" and not CityData.is_tech_unlocked(unlock_tech):
             enabled = false
-            tooltip = "Нужна технология: %s" % _get_tech_name(unlock_tech)
+            tooltip = "%s — нужна технология: %s" % [sa_name, _get_tech_name(unlock_tech)]
         elif build_manager.get_total_active_builds() >= CityData.total_population:
             enabled = false
             tooltip = "Нет труда: лимит строек (число жителей) исчерпан"
