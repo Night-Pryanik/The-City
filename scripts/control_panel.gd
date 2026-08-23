@@ -46,6 +46,24 @@ var _products_container: VBoxContainer
 var _actions_container: VBoxContainer
 var _preview_container: VBoxContainer
 
+# Снимок состояния кнопок действий, при котором их строили в последний раз.
+# Используется, чтобы НЕ пересоздавать кнопки (и их ОС-тултипы) на каждом
+# игровом тике: CityData.city_updated эмитится раз в PRODUCTION_INTERVAL из
+# do_tick(), и без этого _build_actions() каждый тик уничтожал бы кнопки
+# вместе с их тултипами «Нужна технология: ...», «Нет труда: ...» и т.п.
+# (тот же паттерн, что и _last_panel_state в building_panel.gd /
+# _needs_full_refresh в city_ui.gd).
+# Формат: {"row": int, "col": int, "actions": Array}
+var _last_actions_snapshot: Dictionary = {}
+
+# Снимок состояния блока превью, при котором его построили в последний раз.
+# Аналогично _last_actions_snapshot: не пересоздаём элементы превью (в т.ч.
+# кнопки «Построить»/«Отменить» вместе с их ОС-тултипами) на каждом игровом
+# тике, если выбор действия не менялся.
+# Формат: {"row": int, "col": int, "type": String, "label": String, "imp_id": String,
+#          "action_id": String, "target_res_id": Variant, "eff_res": String}
+var _last_preview_snapshot: Dictionary = {}
+
 func initialize(main_node: Node):
 	main_map = main_node
 	map_tooltip = main_node.map_tooltip
@@ -130,6 +148,9 @@ func _refresh():
 		# очищаем контейнер, чтобы старое превью не оставалось в панели.
 		for child in _preview_container.get_children():
 			child.queue_free()
+		# Сбрасываем снапшот: следующая открытая превью должна пересоздать
+		# свой блок (даже если opens то же самое действие на том же гексе).
+		_last_preview_snapshot = {}
 
 func _clear_ui():
 	_info_label.text = "Выберите гекс на карте (ЛКМ), чтобы увидеть информацию и доступные действия."
@@ -139,13 +160,28 @@ func _clear_ui():
 		child.queue_free()
 	for child in _preview_container.get_children():
 		child.queue_free()
+	# Сброс снимка: если контейнер кнопок очищен, но снимок совпадает с
+	# прежним гексом, следующий _build_actions() иначе решил бы, что пересоздавать
+	# ничего не нужно (и кнопки бы не появились).
+	_last_actions_snapshot = {}
+	_last_preview_snapshot = {}
 
 # --- Построение кнопок действий ---
 func _build_actions(row: int, col: int, tile: Dictionary):
+	# Если состояние действий для этого гекса не изменилось с прошлого раза —
+	# не пересоздаём кнопки. Это сохраняет открытые ОС-тултипы (иначе каждый
+	# игровой тик пересоздание кнопок сбрасывало бы наведённый тултип).
+	var actions := _collect_actions(row, col, tile)
+	var prev = _last_actions_snapshot
+	if prev.get("row", -1) == row and prev.get("col", -1) == col \
+			and _actions_equal(prev.get("actions", []), actions):
+		return
+
+	_last_actions_snapshot = {"row": row, "col": col, "actions": actions}
+
 	for child in _actions_container.get_children():
 		child.queue_free()
 
-	var actions := _collect_actions(row, col, tile)
 	for action in actions:
 		var btn = Button.new()
 		btn.text = action.get("label", "")
@@ -162,6 +198,19 @@ func _build_actions(row: int, col: int, tile: Dictionary):
 			_on_action_pressed(action_data)
 		)
 		_actions_container.add_child(btn)
+
+# Сравнивает два списка действий (по значимым полям, чтобы у неработающего
+# поля type/imp_id не пересоздавались кнопки вхолостую).
+func _actions_equal(a: Array, b: Array) -> bool:
+	if a.size() != b.size():
+		return false
+	for i in range(a.size()):
+		var x: Dictionary = a[i]
+		var y: Dictionary = b[i]
+		for key in ["type", "label", "enabled", "tooltip", "imp_id", "action_id", "target_res_id"]:
+			if x.get(key, null) != y.get(key, null):
+				return false
+	return true
 
 # Собирает список действий для гекса. Каждый элемент:
 #   { "type": String, "label": String, "enabled": bool, "tooltip": String,
@@ -394,10 +443,28 @@ func _on_action_pressed(action: Dictionary):
 
 # --- Построение превью действия ---
 func _build_preview(row: int, col: int, tile: Dictionary):
+	var preview = _preview_action
+
+	# Если превью для этого гекса и этого действия уже построено — не
+	# пересоздаём элементы (в т.ч. кнопки «Построить»/«Отменить» с их
+	# ОС-тултипами). Иначе они сбрасывались бы каждый игровой тик.
+	var snapshot = {
+		"row": row,
+		"col": col,
+		"type": preview.get("type", ""),
+		"label": preview.get("label", ""),
+		"imp_id": preview.get("imp_id", ""),
+		"action_id": preview.get("action_id", ""),
+		"target_res_id": preview.get("target_res_id", null),
+		"eff_res": preview.get("eff_res", "")
+	}
+	if _preview_equal(_last_preview_snapshot, snapshot):
+		return
+	_last_preview_snapshot = snapshot
+
 	for child in _preview_container.get_children():
 		child.queue_free()
 
-	var preview = _preview_action
 	var type = preview.get("type", "")
 	var imp_id = preview.get("imp_id", "")
 	var action_id = preview.get("action_id", "")
@@ -462,6 +529,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
 	build_btn.text = "Построить"
 	build_btn.custom_minimum_size = Vector2(0, 28)
 	build_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	build_btn.tooltip_text = preview.get("label", "Подтвердить постройку")
 	build_btn.pressed.connect(func():
 		_confirm_build()
 	)
@@ -470,11 +538,23 @@ func _build_preview(row: int, col: int, tile: Dictionary):
 	cancel_btn.text = "Отменить"
 	cancel_btn.custom_minimum_size = Vector2(0, 28)
 	cancel_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cancel_btn.tooltip_text = "Закрыть превью без постройки"
 	cancel_btn.pressed.connect(func():
 		clear_preview()
 	)
 	hbox.add_child(cancel_btn)
 	_preview_container.add_child(hbox)
+
+# Сравнивает два снапшота блока превью по значимым полям.
+func _preview_equal(a: Dictionary, b: Dictionary) -> bool:
+	return a.get("row", -1) == b.get("row", -1) \
+		and a.get("col", -1) == b.get("col", -1) \
+		and a.get("type", "") == b.get("type", "") \
+		and a.get("label", "") == b.get("label", "") \
+		and a.get("imp_id", "") == b.get("imp_id", "") \
+		and a.get("action_id", "") == b.get("action_id", "") \
+		and a.get("target_res_id", null) == b.get("target_res_id", null) \
+		and a.get("eff_res", "") == b.get("eff_res", "")
 
 # Подтверждение постройки из превью.
 func _confirm_build():
