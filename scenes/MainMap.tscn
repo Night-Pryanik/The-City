@@ -159,6 +159,22 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("15_ctrlpanel")
 
+[node name="SepInfoPreview" type="ColorRect" parent="ControlPanel" unique_id=736594410]
+layout_mode = 0
+offset_left = 397.0
+offset_top = 6.0
+offset_right = 399.0
+offset_bottom = 170.0
+color = Color(0.35, 0.35, 0.35, 1)
+
+[node name="SepPreviewActions" type="ColorRect" parent="ControlPanel" unique_id=1909537324]
+layout_mode = 0
+offset_left = 956.0
+offset_top = 6.0
+offset_right = 958.0
+offset_bottom = 170.0
+color = Color(0.35, 0.35, 0.35, 1)
+
 [node name="PreviewContainer" type="VBoxContainer" parent="ControlPanel" unique_id=2061907310]
 layout_mode = 1
 offset_left = 670.0
@@ -167,12 +183,12 @@ offset_right = 907.0
 offset_bottom = 176.0
 theme_override_constants/separation = 4
 
-[node name="PreviewScroll" type="ScrollContainer" parent="ControlPanel/PreviewContainer"]
+[node name="PreviewScroll" type="ScrollContainer" parent="ControlPanel/PreviewContainer" unique_id=390631621]
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="PreviewContent" type="VBoxContainer" parent="ControlPanel/PreviewContainer/PreviewScroll"]
+[node name="PreviewContent" type="VBoxContainer" parent="ControlPanel/PreviewContainer/PreviewScroll" unique_id=1071817127]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 4
@@ -181,16 +197,16 @@ theme_override_constants/separation = 4
 layout_mode = 0
 offset_left = 8.0
 offset_top = 6.0
-offset_right = 885.0
+offset_right = 393.0
 offset_bottom = 170.0
 size_flags_horizontal = 3
 
-[node name="InfoScroll" type="ScrollContainer" parent="ControlPanel/InfoVBox"]
+[node name="InfoScroll" type="ScrollContainer" parent="ControlPanel/InfoVBox" unique_id=463549985]
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="InfoContent" type="VBoxContainer" parent="ControlPanel/InfoVBox/InfoScroll"]
+[node name="InfoContent" type="VBoxContainer" parent="ControlPanel/InfoVBox/InfoScroll" unique_id=47367785]
 layout_mode = 2
 size_flags_horizontal = 3
 
@@ -211,12 +227,12 @@ offset_right = 1372.0
 offset_bottom = 170.0
 size_flags_horizontal = 0
 
-[node name="ActionsScroll" type="ScrollContainer" parent="ControlPanel/ActionsVBox"]
+[node name="ActionsScroll" type="ScrollContainer" parent="ControlPanel/ActionsVBox" unique_id=1488545637]
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="ActionsContent" type="VBoxContainer" parent="ControlPanel/ActionsVBox/ActionsScroll"]
+[node name="ActionsContent" type="VBoxContainer" parent="ControlPanel/ActionsVBox/ActionsScroll" unique_id=453821295]
 layout_mode = 2
 size_flags_horizontal = 3
 
