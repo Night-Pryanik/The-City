@@ -704,8 +704,6 @@ func _find_path_astar(start_key: String, goal_key: String, graph: Dictionary, fo
                 g_score[neighbor] = tentative_g
                 open_set.push(neighbor, tentative_g + _heuristic(neighbor, goal_key, vertex_positions))
                 in_heap[neighbor] = true
-
-    print("        [A*] FULL FAILED, closed_set=%d, start=%s goal=%s" % [closed_set.size(), start_key, goal_key])
     return []
 
 
