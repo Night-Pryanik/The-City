@@ -351,7 +351,7 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
     if tile.improvement == null:
         var improvement_id = res_data.get("improved_by", "")
         var imp_name_display = GameData.improvements.get(improvement_id, {}).get("name", improvement_id)
-        header_text = "При постройке %s будет давать:" % imp_name_display
+        header_text = "При постройке %s будет производить:" % imp_name_display
     result.append({"type": "header", "text": header_text})
 
     # Растущие ресурсы: пока пастбище заполняется, фактический выход
