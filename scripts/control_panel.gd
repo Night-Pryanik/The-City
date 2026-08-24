@@ -502,12 +502,12 @@ func _on_action_pressed(action: Dictionary):
     }
     _refresh()
 
-# --- Построение превью действия ---
+# --- Построение предпросмотра действия ---
 func _build_preview(row: int, col: int, tile: Dictionary):
     var preview = _preview_action
 
-    # Если превью для этого гекса и этого действия уже построено — не
-    # пересоздаём элементы (в т.ч. кнопки «Построить»/«Отменить» с их
+    # Если предпросмор для этого гекса и этого действия уже построен — не
+    # пересоздаём элементы (в т.ч. кнопки «Начать»/«Отменить» с их
     # ОС-тултипами). Иначе они сбрасывались бы каждый игровой тик.
     var snapshot = {
         "row": row,
@@ -532,9 +532,9 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     var action_id = preview.get("action_id", "")
     var eff_res = preview.get("eff_res", "")
 
-    # Заголовок превью.
+    # Заголовок предпросмотра.
     var header = Label.new()
-    header.text = "Превью: %s" % preview.get("label", "")
+    header.text = "%s" % preview.get("label", "")
     header.add_theme_color_override("font_color", Color(0.9, 0.9, 0.5))
     _preview_container.add_child(header)
 
@@ -664,13 +664,12 @@ func _build_preview(row: int, col: int, tile: Dictionary):
                 )
                 cult_flow.add_child(cult_btn)
 
-    # Кнопки «Построить» и «Отменить».
+    # Кнопки «Начать» и «Отменить».
     var hbox = HBoxContainer.new()
     var build_btn = Button.new()
-    build_btn.text = "Построить"
+    build_btn.text = "Начать"
     build_btn.custom_minimum_size = Vector2(0, 28)
     build_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    build_btn.tooltip_text = preview.get("label", "Подтвердить постройку")
     build_btn.pressed.connect(func():
         _confirm_build()
     )
@@ -679,7 +678,6 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     cancel_btn.text = "Отменить"
     cancel_btn.custom_minimum_size = Vector2(0, 28)
     cancel_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    cancel_btn.tooltip_text = "Закрыть превью без постройки"
     cancel_btn.pressed.connect(func():
         clear_preview()
     )
