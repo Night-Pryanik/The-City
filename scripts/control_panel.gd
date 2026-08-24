@@ -447,7 +447,6 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
 func _collect_region_actions(row: int, col: int) -> Array:
     var actions := []
     var chunk = main_map.expansion_manager.get_chunk_hexes(row, col)
-    var available_food = 0
     if chunk.is_empty():
         return actions
 
@@ -460,18 +459,15 @@ func _collect_region_actions(row: int, col: int) -> Array:
         # Неисследованный чанк: отправить разведчиков.
         var cost = unexplored_count * 3
         var scout_time = main_map._get_scouting_time(unexplored_count)
+        # Доступно еды (только «активные» источники из пула питания города).
+        var available_food := 0
+        for pid in CityData.city_food_pool:
+            if CityData.city_food_pool[pid]:
+                available_food += CityData.city_storage.get(pid, 0)
         var tooltip: String
         if main_map.is_scouting:
             tooltip = "Разведка уже идёт"
-
-        available_food = 0
-        if CityData:
-            for pid in CityData.city_food_pool:
-                if CityData.city_food_pool[pid]:
-                    available_food += CityData.city_storage.get(pid, 0)
-
         else:
-            #tooltip = "Отправить разведчиков [%d еды, %.0f сек.] — откроет информацию о чанке" % [cost, scout_time]
             tooltip = "Подготовить экспедицию [еды: %d/%d] и отправить разведчиков [%.0f сек.]" % [cost, available_food, scout_time]
         actions.append({
             "type": "scout_chunk",
