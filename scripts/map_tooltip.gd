@@ -360,8 +360,4 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
     for mod in modifiers:
         result.append({"type": "label", "text": " %s" % mod.get("label", ""), "color": Color(0.7, 0.9, 0.7)})
 
-    # Строка о неполной заполенности — только пока стадо растёт.
-    if fill_frac < 1.0 and tile.improvement != null:
-        result.append({"type": "label", "text": "Заполненность пастбища: %d%%" % roundi(fill_frac * 100), "color": Color(0.9, 0.75, 0.5)})
-
     return result
