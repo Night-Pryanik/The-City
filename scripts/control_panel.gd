@@ -471,7 +471,7 @@ func _make_research_action(tech_id: String) -> Dictionary:
         "type": "research_tech",
         "label": "Изучить %s" % tech_name,
         "enabled": true,
-        "tooltip": "Изучить %s (наука: %d)" % [tech_name, tech_cost],
+        "tooltip": "Изучить %s (наука: %d) для разблокировки ресурса" % [tech_name, tech_cost],
         "tech_id": tech_id,
         "icon": "lock.png"
     }

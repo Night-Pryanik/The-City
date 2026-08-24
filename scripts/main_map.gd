@@ -666,7 +666,7 @@ func show_context_menu(row: int, col: int, click_pos: Vector2):
             popup_menu.clear()
             # Стоимость зависит от количества фактически исследуемых гексов: 3 еды за гекс
             var cost = unexplored_count * 3
-            popup_menu.add_item("Отправить разведчиков [еды: %d/%d, %.0f сек.]" % [available_food, cost, _get_scouting_time(unexplored_count)])
+            popup_menu.add_item("Подготовить экспедицию [еды: %d/%d] и отправить разведчиков [%.0f сек.]" % [cost, available_food, _get_scouting_time(unexplored_count)])
             popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": "scout_chunk", "chunk": chunk, "cost": cost})
             popup_menu.position = click_pos
             popup_menu.popup()
