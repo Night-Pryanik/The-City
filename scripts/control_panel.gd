@@ -35,6 +35,10 @@ var _info_label: Label
 var _products_container: VBoxContainer
 var _actions_container: FlowContainer
 var _preview_container: VBoxContainer
+# Фиксированная строка заголовка превью (вне области прокрутки): подпись
+# действия + кнопки «Начать»/«Отменить». Находится над PreviewScroll, поэтому
+# всегда видна, даже когда содержимое колонки прокручено.
+var _preview_header_container: VBoxContainer
 
 # Снимок состояния кнопок действий, при котором их строили в последний раз.
 # Используется, чтобы НЕ пересоздавать кнопки (и их ОС-тултипы) на каждом
@@ -64,6 +68,7 @@ func initialize(main_node: Node):
     _products_container = $InfoVBox/InfoScroll/InfoContent/ProductsContainer
     _actions_container = $ActionsVBox/ActionsScroll/ActionsContent/ActionsContainer
     _preview_container = $PreviewContainer/PreviewScroll/PreviewContent
+    _preview_header_container = $PreviewContainer/PreviewHeader
 
     # Панель видна всегда, но содержимое пустое, пока не выбран гекс.
     clear_selection()
@@ -138,6 +143,8 @@ func _refresh():
         # очищаем контейнер, чтобы старое превью не оставалось в панели.
         for child in _preview_container.get_children():
             child.queue_free()
+        for child in _preview_header_container.get_children():
+            child.queue_free()
         # Сбрасываем снапшот: следующая открытая превью должна пересоздать
         # свой блок (даже если opens то же самое действие на том же гексе).
         _last_preview_snapshot = {}
@@ -149,6 +156,8 @@ func _clear_ui():
     for child in _actions_container.get_children():
         child.queue_free()
     for child in _preview_container.get_children():
+        child.queue_free()
+    for child in _preview_header_container.get_children():
         child.queue_free()
     # Сброс снимка: если контейнер кнопок очищен, но снимок совпадает с
     # прежним гексом, следующий _build_actions() иначе решил бы, что пересоздавать
@@ -273,7 +282,8 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
                 "type": "cancel_build",
                 "label": "Отменить стройку",
                 "enabled": true,
-                "tooltip": "Отменить текущее строительство на этом гексе"
+                "tooltip": "Отменить текущее строительство на этом гексе",
+                "icon": "cross.svg"
             })
         return actions
 
@@ -295,8 +305,20 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
                 # Скрытый ресурс: никаких действий и подсказок на этом гексе.
                 pass
             else:
-                # Проверка: технология для улучшения.
-                if not CityData.is_improvement_unlocked(imp_id):
+                # Порядок проверок соответствует контекстному меню по ПКМ
+                # (см. main_map.gd): сначала технология самого РЕСУРСА
+                # (tech_required, например «Горное дело» для мрамора),
+                # и только потом технология, открывающая УЛУЧШЕНИЕ
+                # (например «Каменная кладка» для каменоломни). Иначе панель
+                # предложила бы изучить финальную технологию цепочки, минуя
+                # её предков.
+                if raw.get("tech_required", "") != "" and not CityData.is_tech_unlocked(raw["tech_required"]):
+                    var raw_name = raw.get("name", tile.resource)
+                    var tech_name2 = _get_tech_name(raw["tech_required"])
+                    enabled = false
+                    tooltip = "%s (%s) — нужна технология: %s" % [imp_name, raw_name, tech_name2]
+                    actions.append(_make_research_action(raw["tech_required"]))
+                elif not CityData.is_improvement_unlocked(imp_id):
                     var unlock_tech = CityData.get_improvement_unlock_tech(imp_id)
                     var tech_name = _get_tech_name(unlock_tech)
                     enabled = false
@@ -304,13 +326,6 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
                     # Кнопка изучения технологии (аналог пункта «Изучить X»
                     # в контекстном меню по ПКМ).
                     actions.append(_make_research_action(unlock_tech))
-                # Проверка: ресурс требует технологию (tech_required).
-                elif raw.get("tech_required", "") != "" and not CityData.is_tech_unlocked(raw["tech_required"]):
-                    var raw_name = raw.get("name", tile.resource)
-                    var tech_name2 = _get_tech_name(raw["tech_required"])
-                    enabled = false
-                    tooltip = "%s (%s) — нужна технология: %s" % [imp_name, raw_name, tech_name2]
-                    actions.append(_make_research_action(raw["tech_required"]))
                 # Проверка: лимит строек.
                 elif build_manager.get_total_active_builds() >= CityData.total_population:
                     enabled = false
@@ -390,7 +405,8 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
             "type": "cancel_build",
             "label": "Отменить стройку",
             "enabled": true,
-            "tooltip": "Отменить текущее строительство на этом гексе"
+            "tooltip": "Отменить текущее строительство на этом гексе",
+            "icon": "cross.svg"
         })
 
     return actions
@@ -528,14 +544,18 @@ func _build_preview(row: int, col: int, tile: Dictionary):
 
     for child in _preview_container.get_children():
         child.queue_free()
+    for child in _preview_header_container.get_children():
+        child.queue_free()
 
     var type = preview.get("type", "")
     var imp_id = preview.get("imp_id", "")
     var action_id = preview.get("action_id", "")
     var eff_res = preview.get("eff_res", "")
 
-    # Заголовок предпросмотра: подпись + кнопки «Начать» и «Отменить» (32×32,
-    # с иконками зелёной галочки / красного косого креста) в одной строке.
+    # Строка заголовка превью: подпись + кнопки «Начать» и «Отменить» (32×32,
+    # с иконками зелёной галочки / красного косого креста). Строится в
+    # ОТДЕЛЬНОМ контейнере над PreviewScroll — вне прокручиваемой области,
+    # поэтому видна всегда при любом положении скролла.
     var header = HBoxContainer.new()
     header.add_theme_constant_override("separation", 4)
     var header_label = Label.new()
@@ -573,7 +593,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
         clear_preview()
     )
     header.add_child(cancel_btn)
-    _preview_container.add_child(header)
+    _preview_header_container.add_child(header)
 
     # --- Для ферм/пастбищ: выбор конкретной культуры ---
     # Блок размещён сразу под заголовком, до расчётов производства и стоимости:

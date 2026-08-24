@@ -183,6 +183,11 @@ offset_right = 948.0
 offset_bottom = 176.0
 theme_override_constants/separation = 4
 
+[node name="PreviewHeader" type="VBoxContainer" parent="ControlPanel/PreviewContainer" unique_id=2061907311]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+
 [node name="PreviewScroll" type="ScrollContainer" parent="ControlPanel/PreviewContainer" unique_id=390631621]
 layout_mode = 2
 size_flags_vertical = 3
