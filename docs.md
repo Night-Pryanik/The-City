@@ -645,6 +645,7 @@ MapHelpers.get_hex_water_access(row, col, tile_data, map_rows, map_cols) -> Stri
 | `id` | string | ✅ | Уникальный идентификатор спецдействия | `"clear_forest"` |
 | `name` | string | ✅ | Отображаемое название | `"Вырубка леса"` |
 | `action_type` | string | ⬜ | Тип действия. `"terrain"` (по умолчанию) — превращает местность; `"cover"` — меняет покров; `"forage"` — сбор ресурса; `"demolish"` — снос улучшения | `"cover"` |
+| `icon` | string | ⬜ | Имя файла иконки действия в папке `icons/` (индексируется по имени файла, подпапки сканируются автоматически). Если не задано или файл не найден — кнопка показывает «?» | `"forest_1.png"` |
 | `source_terrain` | string | ⬜ | Для `action_type: "terrain"`. Тип местности, к которому применимо действие (см. `terrains.json`) | `"swamp"` |
 | `source_cover` | array\<string\> | ⬜ | Для `action_type: "cover"`. Покровы, к которым применимо действие (см. `covers.json`). Действие недоступно, если на гексе есть ресурс или улучшение | `["forest", "sparse_forest"]` |
 | `target_resource` | string | ⬜ | Для `action_type: "forage"`. ID ресурса, который собирается действием | `"wild_food"` |

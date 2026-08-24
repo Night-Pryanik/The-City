@@ -428,7 +428,9 @@ func _add_special_actions(actions: Array, row: int, col: int, tile: Dictionary):
             "label": sa_name,
             "enabled": enabled,
             "tooltip": tooltip,
-            "action_id": sa_id
+            "action_id": sa_id,
+            # Иконка берётся из special_actions.json (имя файла в icons/).
+            "icon": sa.get("icon", "")
         })
 
 # Формирует действие «Изучить технологию» для колонки действий панели.
@@ -532,10 +534,45 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     var action_id = preview.get("action_id", "")
     var eff_res = preview.get("eff_res", "")
 
-    # Заголовок предпросмотра.
-    var header = Label.new()
-    header.text = "%s" % preview.get("label", "")
-    header.add_theme_color_override("font_color", Color(0.9, 0.9, 0.5))
+    # Заголовок предпросмотра: подпись + кнопки «Начать» и «Отменить» (32×32,
+    # с иконками зелёной галочки / красного косого креста) в одной строке.
+    var header = HBoxContainer.new()
+    header.add_theme_constant_override("separation", 4)
+    var header_label = Label.new()
+    header_label.text = "%s" % preview.get("label", "")
+    header_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.5))
+    header_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    header.add_child(header_label)
+    var build_btn = Button.new()
+    build_btn.custom_minimum_size = Vector2(32, 32) # маленькая квадратная кнопка
+    build_btn.tooltip_text = "Начать"
+    build_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    var check_tex = _load_action_icon("check.svg")
+    if check_tex != null:
+        build_btn.icon = check_tex
+        build_btn.expand_icon = true
+        build_btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    else:
+        build_btn.text = "✓"
+    build_btn.pressed.connect(func():
+        _confirm_build()
+    )
+    header.add_child(build_btn)
+    var cancel_btn = Button.new()
+    cancel_btn.custom_minimum_size = Vector2(32, 32)
+    cancel_btn.tooltip_text = "Отменить"
+    cancel_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    var cross_tex = _load_action_icon("cross.svg")
+    if cross_tex != null:
+        cancel_btn.icon = cross_tex
+        cancel_btn.expand_icon = true
+        cancel_btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    else:
+        cancel_btn.text = "✕"
+    cancel_btn.pressed.connect(func():
+        clear_preview()
+    )
+    header.add_child(cancel_btn)
     _preview_container.add_child(header)
 
     # Для спец-действий стоимость считается по action_id, а не по imp_id.
@@ -663,26 +700,6 @@ func _build_preview(row: int, col: int, tile: Dictionary):
                     _select_preview_culture(cid)
                 )
                 cult_flow.add_child(cult_btn)
-
-    # Кнопки «Начать» и «Отменить».
-    var hbox = HBoxContainer.new()
-    var build_btn = Button.new()
-    build_btn.text = "Начать"
-    build_btn.custom_minimum_size = Vector2(0, 28)
-    build_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    build_btn.pressed.connect(func():
-        _confirm_build()
-    )
-    hbox.add_child(build_btn)
-    var cancel_btn = Button.new()
-    cancel_btn.text = "Отменить"
-    cancel_btn.custom_minimum_size = Vector2(0, 28)
-    cancel_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    cancel_btn.pressed.connect(func():
-        clear_preview()
-    )
-    hbox.add_child(cancel_btn)
-    _preview_container.add_child(hbox)
 
 # Сравнивает два снапшота блока превью по значимым полям.
 func _preview_equal(a: Dictionary, b: Dictionary) -> bool:

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Снос улучшения: кирка/лом по диагонали -->
+  <g stroke="#8B4513" stroke-width="6" stroke-linecap="round">
+    <line x1="14" y1="50" x2="44" y2="20"/>
+  </g>
+  <path d="M40 12 L52 24 L58 18 L46 6 Z" fill="#708090" stroke="#4a4a4a" stroke-width="2"/>
+</svg>

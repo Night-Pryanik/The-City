@@ -4,6 +4,7 @@
       "id": "clear_forest",
       "name": "Вырубка леса",
       "action_type": "cover",
+      "icon": "forest_1.png",
       "source_cover": [ "forest", "sparse_forest" ],
       "result_cover": "none",
       "work_cost": 22,
@@ -13,6 +14,7 @@
       "id": "forage_wild_food",
       "name": "Собрать дикоросы",
       "action_type": "forage",
+      "icon": "foraged_food.png",
       "target_resource": "wild_food",
       "result_terrain": "dont_change",
       "work_cost": 5,
@@ -26,6 +28,7 @@
       "id": "demolish_improvement",
       "name": "Снести улучшение",
       "action_type": "demolish",
+      "icon": "demolish.svg",
       "result_terrain": "dont_change",
       "work_cost": 5
     }
