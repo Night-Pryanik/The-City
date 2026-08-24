@@ -305,27 +305,31 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
                 # Скрытый ресурс: никаких действий и подсказок на этом гексе.
                 pass
             else:
-                # Порядок проверок соответствует контекстному меню по ПКМ
-                # (см. main_map.gd): сначала технология самого РЕСУРСА
-                # (tech_required, например «Горное дело» для мрамора),
-                # и только потом технология, открывающая УЛУЧШЕНИЕ
-                # (например «Каменная кладка» для каменоломни). Иначе панель
-                # предложила бы изучить финальную технологию цепочки, минуя
-                # её предков.
+                # Кнопка «Изучить ...» предлагает СЛЕДУЮЩИЙ не изученный шаг
+                # технологической цепочки (как контекстное меню по ПКМ, см.
+                # main_map.gd): сначала технология самого РЕСУРСА (tech_required,
+                # например «Горное дело» для мрамора), и только потом технология,
+                # открывающая УЛУЧШЕНИЕ («Каменная кладка» для каменоломни).
                 if raw.get("tech_required", "") != "" and not CityData.is_tech_unlocked(raw["tech_required"]):
-                    var raw_name = raw.get("name", tile.resource)
-                    var tech_name2 = _get_tech_name(raw["tech_required"])
-                    enabled = false
-                    tooltip = "%s (%s) — нужна технология: %s" % [imp_name, raw_name, tech_name2]
                     actions.append(_make_research_action(raw["tech_required"]))
                 elif not CityData.is_improvement_unlocked(imp_id):
+                    # Кнопка изучения технологии (аналог пункта «Изучить X»
+                    # в контекстном меню по ПКМ).
+                    actions.append(_make_research_action(CityData.get_improvement_unlock_tech(imp_id)))
+                # Тултип кнопки ПОСТРОЙКИ всегда указывает на НЕПОСРЕДСТВЕННОЕ
+                # требование для этой постройки (а не на текущий шаг цепочки
+                # изучения): сначала — технология улучшения, затем — технология
+                # ресурса.
+                if not CityData.is_improvement_unlocked(imp_id):
                     var unlock_tech = CityData.get_improvement_unlock_tech(imp_id)
                     var tech_name = _get_tech_name(unlock_tech)
                     enabled = false
                     tooltip = "%s — нужна технология: %s" % [imp_name, tech_name]
-                    # Кнопка изучения технологии (аналог пункта «Изучить X»
-                    # в контекстном меню по ПКМ).
-                    actions.append(_make_research_action(unlock_tech))
+                elif raw.get("tech_required", "") != "" and not CityData.is_tech_unlocked(raw["tech_required"]):
+                    var raw_name = raw.get("name", tile.resource)
+                    var tech_name2 = _get_tech_name(raw["tech_required"])
+                    enabled = false
+                    tooltip = "%s (%s) — нужна технология: %s" % [imp_name, raw_name, tech_name2]
                 # Проверка: лимит строек.
                 elif build_manager.get_total_active_builds() >= CityData.total_population:
                     enabled = false
