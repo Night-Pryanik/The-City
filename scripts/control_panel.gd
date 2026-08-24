@@ -336,6 +336,13 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
                     var tech_name2 = _get_tech_name(raw["tech_required"])
                     enabled = false
                     tooltip = "%s (%s) — нужна технология: %s" % [imp_name, raw_name, tech_name2]
+                # Схема harbor_access: улучшения с requires_harbor (рыбацкие лодки)
+                # строятся только на водоёме, где есть пристань. BFS по воде от
+                # этого гекса ищет сушу с water_body_harbor-улучшением.
+                elif bool(imp_data.get("requires_harbor", false)) \
+                        and not MapHelpers.has_harbor_access(main_map.tile_data, row, col, main_map.map_rows, main_map.map_cols):
+                    enabled = false
+                    tooltip = "%s — нужна Пристань на берегу этого водоёма" % imp_name
                 # Проверка: лимит строек.
                 elif build_manager.get_total_active_builds() >= CityData.total_population:
                     enabled = false
@@ -406,10 +413,33 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
                     "icon": GameData.improvements.get("farm", {}).get("icon", "")
                 })
 
-    # 3. Спец-действия (вырубка леса, сбор дикоросов и т.п.).
+    # 3. Пристань (схема harbor_access): открывает водные ресурсы конкретного
+    #    водоёма. Предлагается на пустом прибрежном гексе (суша с соседом lake/sea,
+    #    не гора). После постройки рыба этого водоёма становится доступной для
+    #    рыбацких лодок (см. has_harbor_access в map_helpers.gd).
+    if tile.resource == null and tile.get("crop_bred", null) == null \
+            and tile.terrain != "mountain" and not MapHelpers.is_water_terrain(tile.terrain) \
+            and CityData.is_improvement_unlocked("harbor") \
+            and MapHelpers.is_coastal_hex(main_map.tile_data, row, col, main_map.map_rows, main_map.map_cols):
+        var harbor_name = GameData.improvements.get("harbor", {}).get("name", "harbor")
+        var harbor_enabled = true
+        var harbor_tooltip = "Построить %s — откроет водные ресурсы этого водоёма" % harbor_name
+        if build_manager.get_total_active_builds() >= CityData.total_population:
+            harbor_enabled = false
+            harbor_tooltip = "Нет труда: лимит строек (число жителей) исчерпан"
+        actions.append({
+            "type": "build_improvement",
+            "label": "Построить %s" % harbor_name,
+            "enabled": harbor_enabled,
+            "tooltip": harbor_tooltip,
+            "imp_id": "harbor",
+            "icon": GameData.improvements.get("harbor", {}).get("icon", "")
+        })
+
+    # 4. Спец-действия (вырубка леса, сбор дикоросов и т.п.).
     _add_special_actions(actions, row, col, tile)
 
-    # 4. Если идёт стройка — отмена.
+    # 5. Если идёт стройка — отмена.
     if build_manager.is_building(row, col):
         actions.append({
             "type": "cancel_build",

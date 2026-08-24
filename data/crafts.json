@@ -279,6 +279,16 @@
       "time": 5.0,
       "unlock_tech": "fishing",
       "description": "Создает лодку из тростника"
+    },
+    {
+      "id": "fish",
+      "name": "Копчение рыбы",
+      "produced_in": [ "smokehouse" ],
+      "resources": { "raw_fish": 1 },
+      "result": { "fish": 1 },
+      "time": 5.0,
+      "unlock_tech": "fishing",
+      "description": "Коптит рыбу для длительного хранения"
     }
   ]
 }

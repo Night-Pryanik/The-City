@@ -401,6 +401,40 @@
       "time_to_mature": 20.0,
       "icon": "pigeon.png",
       "color": [ 150, 150, 150 ]
+    },
+    {
+      "id": "freshwater_fish",
+      "name": "Рыба",
+      "type": "raw",
+      "category": "animals",
+      "group": "fish",
+      "subgroup": "fish",
+      "tech_required": "fishing",
+      "allowed_terrain": [ "lake" ],
+      "allowed_cover": [ "none" ],
+      "improved_by": "fishing_boats",
+      "produces": { "raw_fish": 1 },
+      "feed_consumption": 0,
+      "time_to_mature": 0,
+      "icon": "freshwater_fish.png",
+      "color": [ 0, 100, 200 ]
+    },
+    {
+      "id": "sea_fish",
+      "name": "Рыба",
+      "type": "raw",
+      "category": "animals",
+      "group": "fish",
+      "subgroup": "fish",
+      "tech_required": "fishing",
+      "allowed_terrain": [ "sea" ],
+      "allowed_cover": [ "none" ],
+      "improved_by": "fishing_boats",
+      "produces": { "raw_fish": 1 },
+      "feed_consumption": 0,
+      "time_to_mature": 0,
+      "icon": "sea_fish.png",
+      "color": [ 0, 50, 150 ]
     }
   ]
 }

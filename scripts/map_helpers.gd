@@ -671,3 +671,77 @@ static func ensure_minimum_resource(
     var hex = possible[randi() % possible.size()]
     tile_data[hex.row][hex.col]["resource"] = chosen_id
     tile_data[hex.row][hex.col]["quality"] = GameData.roll_quality()
+
+
+## --- Водные ресурсы и пристани (схема harbor_access) ---
+##
+## Водные ресурсы (пресноводная и морская рыба) доступны для эксплуатации
+## ТОЛЬКО после постройки улучшения «Пристань» (harbor, см. improvements.json,
+## флаг water_body_harbor) на прибрежном гексе конкретного водоёма. Каждый
+## водоём (связная область воды одного типа — lake или sea) требует СВОЮ
+## пристань: доступ вычисляется flood-fill'ом (BFS) по воде от гекса ресурса.
+
+# Типы местности, считающиеся водой для схемы harbor_access.
+const WATER_TERRAINS := ["lake", "sea"]
+
+## Является ли тип местности водным (озеро/море).
+static func is_water_terrain(terrain_id: String) -> bool:
+    return terrain_id in WATER_TERRAINS
+
+## Есть ли у гекса (row, col) сосед-вода (lake/sea). Гекс сам может быть любым:
+## проверка типа гекса — забота вызывающего кода.
+static func is_coastal_hex(tile_data: Array, row: int, col: int, map_rows: int, map_cols: int) -> bool:
+    if row < 0 or row >= map_rows or col < 0 or col >= map_cols:
+        return false
+    for n in HexUtils.get_neighbors_odd_r(row, col, map_rows, map_cols):
+        var nt = tile_data[n.row][n.col]
+        if nt == null:
+            continue
+        if is_water_terrain(nt.get("terrain", "")):
+            return true
+    return false
+
+## Есть ли у водного ресурса на гексе (row, col) доступ до пристани ЕГО водоёма.
+## Логика: BFS/flood-fill от гекса ресурса по связным водным гексам ТОГО ЖЕ
+## типа (озеро не соединяется с морем — это разные водоёмы). Если среди соседей
+## любого посещённого водного гекса найдется суша с улучшением-пристанью
+## (water_body_harbor == true в improvements.json) — путь есть, ресурс доступен.
+## Вычисляется динамически, без кэша: снос пристани мгновенно закрывает доступ,
+## инвалидация состояния не требуется.
+static func has_harbor_access(tile_data: Array, row: int, col: int, map_rows: int, map_cols: int) -> bool:
+    if row < 0 or row >= map_rows or col < 0 or col >= map_cols:
+        return false
+    var start = tile_data[row][col]
+    if start == null:
+        return false
+    var terrain_id: String = start.get("terrain", "")
+    # Работаем только от водных гексов (рыба лежит на lake/sea).
+    if not is_water_terrain(terrain_id):
+        return false
+
+    var visited := {}
+    var queue := [{"row": row, "col": col}]
+    visited[row * map_cols + col] = true
+    while not queue.is_empty():
+        var cur = queue.pop_front()
+        for n in HexUtils.get_neighbors_odd_r(cur.row, cur.col, map_rows, map_cols):
+            var key: int = n.row * map_cols + n.col
+            if visited.has(key):
+                continue
+            var nt = tile_data[n.row][n.col]
+            if nt == null:
+                continue
+            if is_water_terrain(nt.get("terrain", "")):
+                # Тот же водоём продолжается — идём дальше только если тип совпадает
+                # (не перетекаем из озера в море).
+                if nt.get("terrain", "") == terrain_id:
+                    visited[key] = true
+                    queue.push_back(n)
+                continue
+            # Суша: проверяем, стоит ли на ней пристань этого водоёма.
+            var imp_id = nt.get("improvement", null)
+            if imp_id != null and imp_id != "":
+                var imp_data: Dictionary = GameData.improvements.get(imp_id, {})
+                if bool(imp_data.get("water_body_harbor", false)):
+                    return true
+    return false

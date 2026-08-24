@@ -36,6 +36,7 @@
       "type": "product",
       "category": "food",
       "icon": "foraged_food.png"
-    }
+    },
+    { "id": "fish", "name": "Рыба", "type": "product", "category": "food", "icon": "fish.png" }
   ]
 }
