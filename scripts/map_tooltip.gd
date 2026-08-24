@@ -22,7 +22,10 @@ func _init(tooltip_text_label: Label, tooltip_products_container: VBoxContainer,
 #   { "type": "label",   "text": String, "color": Color }
 # Используется и тултипом, и панелью управления (control_panel.gd), чтобы
 # отображение производства не расходилось.
-func render_products(products: Array, container: Node):
+# wrap — включает перенос слов на следующую строку, если текст не помещается
+# в одну строку (панель управления передаёт true, тултип — нет).
+func render_products(products: Array, container: Node, wrap: bool = false):
+    var wrap_mode = TextServer.AUTOWRAP_WORD_SMART if wrap else TextServer.AUTOWRAP_OFF
     for child in container.get_children():
         # free(), а не queue_free(): немедленное удаление исключает кадр, когда
         # в контейнере одновременно висят старые и новые элементы — иначе
@@ -33,6 +36,7 @@ func render_products(products: Array, container: Node):
         if type == "header":
             var label = Label.new()
             label.text = item.get("text", "")
+            label.autowrap_mode = wrap_mode
             label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
             container.add_child(label)
         elif type == "product":
@@ -53,6 +57,7 @@ func render_products(products: Array, container: Node):
         else:
             var label = Label.new()
             label.text = item.get("text", "")
+            label.autowrap_mode = wrap_mode
             label.add_theme_color_override("font_color", item.get("color", Color(0.8, 0.8, 0.8)))
             container.add_child(label)
 

@@ -130,7 +130,7 @@ func _refresh():
     # --- Левая часть: полная информация о гексе ---
     var info = map_tooltip.build_hex_info(row, col, main_map.tile_data, main_map.city_row, main_map.city_col)
     _info_label.text = info["text"]
-    map_tooltip.render_products(info["products"], _products_container)
+    map_tooltip.render_products(info["products"], _products_container, true)
 
     # --- Правая часть: кнопки действий ---
     _build_actions(row, col, tile)
@@ -600,6 +600,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     header.add_theme_constant_override("separation", 4)
     var header_label = Label.new()
     header_label.text = "%s" % preview.get("label", "")
+    header_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     header_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.5))
     header_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     header.add_child(header_label)
@@ -653,6 +654,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
 
             var cult_label = Label.new()
             cult_label.text = "Культура:"
+            cult_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
             cult_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
             _preview_container.add_child(cult_label)
 
@@ -726,24 +728,27 @@ func _build_preview(row: int, col: int, tile: Dictionary):
                 products.append({"type": "product", "name": prod_name, "amount": final_amount, "icon_path": icon_path})
             for mod in modifiers:
                 products.append({"type": "label", "text": " %s" % mod.get("label", ""), "color": Color(0.7, 0.9, 0.7)})
-            map_tooltip.render_products(products, _preview_container)
+            map_tooltip.render_products(products, _preview_container, true)
 
     # Стоимость труда: детальный расчёт (база, местность, расстояние).
     var cost_data = MapHelpers.get_improvement_work_cost(cost_imp_id, row, col, main_map.tile_data, main_map.city_row, main_map.city_col)
     var cost_label = Label.new()
     cost_label.text = "Стоимость: %d труда" % cost_data["cost"]
+    cost_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     cost_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
     _preview_container.add_child(cost_label)
 
     # Детализация стоимости (переехала сюда из расширенного тултипа).
     var base_label = Label.new()
     base_label.text = " База: %d труда" % cost_data["base_cost"]
+    base_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     base_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
     _preview_container.add_child(base_label)
 
     var move_cost_text = "непроходимо" if cost_data["move_cost"] >= 999.0 else str(int(cost_data["move_cost"]))
     var terrain_label = Label.new()
     terrain_label.text = " Местность: %s (стоимость передвижения: %s) ×%.2f" % [cost_data["terrain_name"], move_cost_text, cost_data["terrain_mult"]]
+    terrain_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     terrain_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
     _preview_container.add_child(terrain_label)
 
@@ -755,11 +760,13 @@ func _build_preview(row: int, col: int, tile: Dictionary):
         dist_text += ", технологии ×%.2f" % cost_data["distance_tech_mult"]
     dist_text += " = ×%.2f" % cost_data["distance_mult"]
     dist_label.text = dist_text
+    dist_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     dist_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
     _preview_container.add_child(dist_label)
 
     var total_label = Label.new()
     total_label.text = " Итого: %d труда" % cost_data["cost"]
+    total_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     total_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
     _preview_container.add_child(total_label)
 
