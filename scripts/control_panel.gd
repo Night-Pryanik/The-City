@@ -214,7 +214,7 @@ func _actions_equal(a: Array, b: Array) -> bool:
     for i in range(a.size()):
         var x: Dictionary = a[i]
         var y: Dictionary = b[i]
-        for key in ["type", "label", "enabled", "tooltip", "imp_id", "action_id", "target_res_id", "icon"]:
+        for key in ["type", "label", "enabled", "tooltip", "imp_id", "action_id", "target_res_id", "icon", "tech_id"]:
             if x.get(key, null) != y.get(key, null):
                 return false
     return true
@@ -223,7 +223,8 @@ func _actions_equal(a: Array, b: Array) -> bool:
 #   { "type": String, "label": String, "enabled": bool, "tooltip": String,
 #     "imp_id": String, "target_res_id": String, "action_id": String }
 # type: "build_improvement" | "build_pasture" | "build_farm" | "special" |
-#       "pause_improvement" | "resume_improvement" | "cancel_build"
+#       "pause_improvement" | "resume_improvement" | "cancel_build" |
+#       "research_tech"
 func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
     var actions := []
     var in_influence = tile.get("in_influence", false)
@@ -300,12 +301,16 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
                     var tech_name = _get_tech_name(unlock_tech)
                     enabled = false
                     tooltip = "%s — нужна технология: %s" % [imp_name, tech_name]
+                    # Кнопка изучения технологии (аналог пункта «Изучить X»
+                    # в контекстном меню по ПКМ).
+                    actions.append(_make_research_action(unlock_tech))
                 # Проверка: ресурс требует технологию (tech_required).
                 elif raw.get("tech_required", "") != "" and not CityData.is_tech_unlocked(raw["tech_required"]):
                     var raw_name = raw.get("name", tile.resource)
                     var tech_name2 = _get_tech_name(raw["tech_required"])
                     enabled = false
                     tooltip = "%s (%s) — нужна технология: %s" % [imp_name, raw_name, tech_name2]
+                    actions.append(_make_research_action(raw["tech_required"]))
                 # Проверка: лимит строек.
                 elif build_manager.get_total_active_builds() >= CityData.total_population:
                     enabled = false
@@ -426,6 +431,23 @@ func _add_special_actions(actions: Array, row: int, col: int, tile: Dictionary):
             "action_id": sa_id
         })
 
+# Формирует действие «Изучить технологию» для колонки действий панели.
+func _make_research_action(tech_id: String) -> Dictionary:
+    var tech_name = _get_tech_name(tech_id)
+    var tech_cost = 3
+    for t in GameData.technologies:
+        if t["id"] == tech_id:
+            tech_cost = int(t.get("science_cost", 3))
+            break
+    return {
+        "type": "research_tech",
+        "label": "Изучить %s" % tech_name,
+        "enabled": true,
+        "tooltip": "Изучить %s (наука: %d)" % [tech_name, tech_cost],
+        "tech_id": tech_id,
+        "icon": "lock.png"
+    }
+
 # --- Обработка нажатия на кнопку действия ---
 func _on_action_pressed(action: Dictionary):
     var type = action.get("type", "")
@@ -445,6 +467,14 @@ func _on_action_pressed(action: Dictionary):
         return
     if type == "cancel_build":
         main_map.confirm_cancel_build(_selected_hex.row, _selected_hex.col)
+        return
+    if type == "research_tech":
+        # Аналог пункта «Изучить X» в контекстном меню (ПКМ): мгновенный старт
+        # исследования. Ошибки (уже идёт исследование и т.п.) start_research
+        # сообщает сама через сигнал research_error → hud.show_message.
+        CityData.start_research(action.get("tech_id", ""))
+        main_map.map_renderer.queue_redraw()
+        _refresh()
         return
 
     # Повторное нажатие на кнопку действия, чьё превью уже открыто,
