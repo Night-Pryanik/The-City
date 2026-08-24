@@ -223,7 +223,17 @@ func _build_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_c
             text += "\nПотребляет корма: %d за цикл" % feed_consumption
         var time_to_mature = res_data.get("time_to_mature", 0)
         if time_to_mature > 0:
-            text += "\nВремя заполнения: %.0f сек" % time_to_mature
+            # Растущий ресурс (животные на пастбище): показываем текущую
+            # заполенность и остаток времени, если улучшение уже работает.
+            if tile.improvement != null and _worker_manager.has_worker(row, col):
+                var fill_frac = MapHelpers.get_fill_fraction(tile, res_data)
+                if fill_frac >= 1.0:
+                    text += "\nПоголовье: полное (100%)"
+                else:
+                    var t_left = MapHelpers.get_time_to_full(tile, res_data)
+                    text += "\nЗаполненность: %d%% (полное через %.0f сек)" % [roundi(fill_frac * 100), ceilf(t_left)]
+            else:
+                text += "\nВремя заполнения: %.0f сек" % time_to_mature
 
     text += "\nУлучшение: %s%s" % [imp_name, imp_status]
 
@@ -325,15 +335,19 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
         header_text = "При постройке %s будет давать:" % imp_name_display
     result.append({"type": "header", "text": header_text})
 
+    # Растущие ресурсы: пока пастбище заполняется, фактический выход
+    # пропорционален степени заполненности стада.
+    var fill_frac = MapHelpers.get_fill_fraction(tile, res_data)
+
     var base_amount = 0.0
     var final_amount = 0
     for prod_id in available_products:
         base_amount = float(available_products[prod_id])
-        final_amount = ceili(base_amount * bonus_multiplier)
+        final_amount = ceili(base_amount * bonus_multiplier * fill_frac)
         var prod_name = GameData.products.get(prod_id, {}).get("name", prod_id)
         # При активных модификаторах показываем базу у каждого продукта
         # (у разных продуктов она своя, одна общая строка «База» вводила в заблуждение).
-        if bonus_multiplier != 1.0:
+        if bonus_multiplier != 1.0 or fill_frac != 1.0:
             var base_str = str(int(base_amount)) if base_amount == floor(base_amount) else "%.1f" % base_amount
             prod_name = "%s (база %s)" % [prod_name, base_str]
         var icon_path = ""
@@ -345,5 +359,9 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
 
     for mod in modifiers:
         result.append({"type": "label", "text": " %s" % mod.get("label", ""), "color": Color(0.7, 0.9, 0.7)})
+
+    # Строка о неполной заполенности — только пока стадо растёт.
+    if fill_frac < 1.0 and tile.improvement != null:
+        result.append({"type": "label", "text": "Заполненность пастбища: %d%%" % roundi(fill_frac * 100), "color": Color(0.9, 0.75, 0.5)})
 
     return result

@@ -75,6 +75,11 @@ var _context_hex = null
 var last_city_click_time = 0.0
 var production_timer = 0.0
 var scouting_timer: float = 0.0
+# Есть ли пастбища, которые прямо сейчас заполняются (0% < fill < 100%).
+# Используется как условие перерисовки слоя прогресс-баров: пока стадо растёт,
+# слой обновляется; когда всё полное — слой снова «спит».
+var _has_growing_pastures := false
+
 var scouting_chunk: Array = []
 var is_scouting: bool = false
 
@@ -168,6 +173,8 @@ func _ready():
                         # crop_bred добавился в схеме разведения; в старых сейвах
                         # его нет, но тогда и нечего мигрировать — поле просто null.
                         tile["crop_bred"] = saved.get("crop_bred")
+                        # Заполенность поголовья (старые сейвы: поле отсутствует — 0.0)
+                        tile["fill_time"] = float(saved.get("fill_time", 0.0))
                         tile["improvement"] = saved.get("improvement")
                         tile["quality"] = saved.get("quality", "")
                         tile["terrain_icon"] = saved.get("terrain_icon", "")
@@ -358,6 +365,9 @@ func _process(delta):
     production_timer += delta
     if production_timer >= CityData.PRODUCTION_INTERVAL:
         production_timer -= CityData.PRODUCTION_INTERVAL
+        # Пересчитываем заново: станет true, если какое-то пастбище ещё
+        # заполняется (см. производственный цикл ниже).
+        _has_growing_pastures = false
         CityData.reset_counters()
         for row in range(region_start_row, region_end_row + 1):
             for col in range(region_start_col, region_end_col + 1):
@@ -380,6 +390,16 @@ func _process(delta):
                     production_multiplier = CityData.get_improvement_production_multiplier(
                         tile.improvement, _is_hex_irrigated(row, col),
                         tile.get("terrain", ""), eff_res)
+
+                # Растущие ресурсы (time_to_mature > 0): пока пастбище заполняется,
+                # выход пропорционален степени заполненности. Само заполнение
+                # копится только пока на улучшении есть рабочий.
+                if MapHelpers.is_growing_resource(res_data):
+                    var fill_time = float(tile.get("fill_time", 0.0))
+                    if fill_time < float(res_data["time_to_mature"]):
+                        tile["fill_time"] = minf(fill_time + CityData.PRODUCTION_INTERVAL, float(res_data["time_to_mature"]))
+                        _has_growing_pastures = true
+                    production_multiplier *= MapHelpers.get_fill_fraction(tile, res_data)
 
                 # Качество ресурса на гексе передаётся в производство.
                 var tile_quality = tile.get("quality", "common")
@@ -407,7 +427,8 @@ func _process(delta):
     # обновился и не оставался висеть на 100% или показывать устаревшие бары.
     if CityData.current_research_tech_id != "" \
             or build_manager.has_active_builds() \
-            or is_scouting:
+            or is_scouting \
+            or _has_growing_pastures:
         progress_bar_layer.queue_redraw()
 
     input_handler.handle_process(delta)
@@ -1071,10 +1092,13 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
             # для которого больше нет улучшения.
             tile.improvement = null
             tile.crop_bred = null
+            # Стадо при сносе исчезает — накопленная заполенность сбрасывается.
+            tile["fill_time"] = 0.0
         else:
             # Террейн-действие: сбрасываем ресурс и улучшение.
             tile.resource = null
             tile.improvement = null
+            tile["fill_time"] = 0.0
 
         # Меняем тип местности только если result_terrain задан и не равен "dont_change".
         var result_terrain = sa.get("result_terrain", "")
@@ -1088,6 +1112,8 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
         return
 
     tile.improvement = imp_id
+    # Новое улучшение — стадо/посев начинает набирать силу с нуля.
+    tile["fill_time"] = 0.0
     if target_res_id != null:
         # Два сценария:
         # 1) На гексе УЖЕ был природный ресурс (tile.resource != null) — мы

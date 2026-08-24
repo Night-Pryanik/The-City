@@ -70,6 +70,24 @@ func _draw_progress_bars(row: int, col: int):
 
     var tile = tile_data[row][col]
 
+    # --- Прогресс-бар заполенности пастбища (time_to_mature) ---
+    # Показывается ТОЛЬКО пока стадо растёт (0% < заполненность < 100%)
+    # и на улучшении есть рабочий. При полном поголовье бар исчезает.
+    var eff_res_fill = MapHelpers.get_effective_resource(tile)
+    if eff_res_fill != "" and tile.get("improvement", null) != null \
+            and main_map.worker_manager.has_worker(row, col):
+        var res_data_fill = GameData.raw_resources.get(eff_res_fill, {})
+        if MapHelpers.is_growing_resource(res_data_fill):
+            var fill_frac = MapHelpers.get_fill_fraction(tile, res_data_fill)
+            if fill_frac > 0.0 and fill_frac < 1.0:
+                var pasture_bar_width = RESOURCE_ICON_SIZE
+                var pasture_bar_height = 6
+                var pasture_bar_x = center.x - pasture_bar_width / 2.0
+                var pasture_bar_y = center.y + RESOURCE_ICON_SIZE / 2.0 + 4
+                draw_rect(Rect2(pasture_bar_x, pasture_bar_y, pasture_bar_width, pasture_bar_height), Color(0.2, 0.2, 0.2))
+                draw_rect(Rect2(pasture_bar_x, pasture_bar_y, pasture_bar_width * fill_frac, pasture_bar_height), Color(0.85, 0.55, 0.35))
+                draw_rect(Rect2(pasture_bar_x, pasture_bar_y, pasture_bar_width, pasture_bar_height), Color.WHITE, false)
+
     # Прогресс-бар исследования технологии, которая открывает:
     # 1) сам ресурс (tech_required), либо
     # 2) улучшение, которым добывается этот ресурс (improved_by → unlock_tech)

@@ -142,6 +142,10 @@ func _serialize_tile_data(main_map: Node) -> Array:
                     # не используется для разведения. Сохраняется в сейв,
                     # чтобы после перезагрузки продолжить разведение того же вида.
                     "crop_bred": tile.get("crop_bred"),
+                    # fill_time — накопленное время заполнения поголовья
+                    # (time_to_mature). Сохраняется, чтобы после загрузки
+                    # пастбище не начинало заполняться заново с нуля.
+                    "fill_time": tile.get("fill_time", 0.0),
                     "quality": tile.get("quality", ""),
                     "terrain_icon": tile.get("terrain_icon", ""),
                     "in_influence": tile.get("in_influence", false),

@@ -233,6 +233,34 @@ static func get_effective_resource(tile: Dictionary) -> String:
         return b
     return ""
 
+## --- Заполненность поголовья (time_to_mature) ---
+## Ресурсы с time_to_mature > 0 (животные на пастбищах) набирают полную
+## численность постепенно. Пока стадо не полное, выход ресурса пропорционален
+## степени заполненности. Накопленное время хранится в tile.fill_time (сек).
+
+## Возвращает true, если ресурс res_data «растущий» (есть time_to_mature > 0).
+static func is_growing_resource(res_data: Dictionary) -> bool:
+    return float(res_data.get("time_to_mature", 0)) > 0.0
+
+
+## Степень заполненности стада: tile.fill_time / time_to_mature, зажатая в [0, 1].
+## Для обычных (не растущих) ресурсов всегда 1.0 — выход не режется.
+static func get_fill_fraction(tile: Dictionary, res_data: Dictionary) -> float:
+    var ttm = float(res_data.get("time_to_mature", 0))
+    if ttm <= 0.0:
+        return 1.0
+    return clampf(float(tile.get("fill_time", 0.0)) / ttm, 0.0, 1.0)
+
+
+## Сколько секунд осталось до полного поголовья (0 — если уже полное).
+static func get_time_to_full(tile: Dictionary, res_data: Dictionary) -> float:
+    var ttm = float(res_data.get("time_to_mature", 0))
+    if ttm <= 0.0:
+        return 0.0
+    return maxf(0.0, ttm - float(tile.get("fill_time", 0.0)))
+
+
+## Ищет на карте уже одомашненный экземпляр ресурса res_id (гекс с этим ресурсом
 
 ## Ищет на карте уже одомашненный экземпляр ресурса res_id (гекс с этим ресурсом
 ## и построенным улучшением) и возвращает его качество.
