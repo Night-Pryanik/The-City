@@ -79,6 +79,9 @@ var scouting_timer: float = 0.0
 # Используется как условие перерисовки слоя прогресс-баров: пока стадо растёт,
 # слой обновляется; когда всё полное — слой снова «спит».
 var _has_growing_pastures := false
+# Растущие прямо сейчас пастбища (ключ "row,col" → {"row", "col"}).
+# Собирается на прод-тике, покадрово продвигается в _tick_pasture_fill().
+var _growing_pastures := {}
 
 var scouting_chunk: Array = []
 var is_scouting: bool = false
@@ -361,12 +364,16 @@ func _process(delta):
     # Без этого прогресс-бар исследования прыгал скачками раз в 2 секунды.
     if not is_paused:
         CityData.tick_research_science_continuous(delta)
+        # Заполенность пастбищ — то же самое: копится каждый кадр, чтобы
+        # прогресс-бар заполенности двигался плавно, а не скачком раз в тик.
+        _tick_pasture_fill(delta)
 
     production_timer += delta
     if production_timer >= CityData.PRODUCTION_INTERVAL:
         production_timer -= CityData.PRODUCTION_INTERVAL
-        # Пересчитываем заново: станет true, если какое-то пастбище ещё
-        # заполняется (см. производственный цикл ниже).
+        # Пересобираем заново: тик ниже наполнит список актуальными растущими
+        # пастбищами, а покадровое продвижение идёт в _tick_pasture_fill().
+        _growing_pastures = {}
         _has_growing_pastures = false
         CityData.reset_counters()
         for row in range(region_start_row, region_end_row + 1):
@@ -393,12 +400,12 @@ func _process(delta):
 
                 # Растущие ресурсы (time_to_mature > 0): пока пастбище заполняется,
                 # выход пропорционален степени заполненности. Само заполнение
-                # копится только пока на улучшении есть рабочий.
+                # продвигается ПОКАДРОВО в _tick_pasture_fill() (плавный бар),
+                # здесь лишь собираем список растущих пастбищ и режем выход.
                 if MapHelpers.is_growing_resource(res_data):
-                    var fill_time = float(tile.get("fill_time", 0.0))
-                    if fill_time < float(res_data["time_to_mature"]):
-                        tile["fill_time"] = minf(fill_time + CityData.PRODUCTION_INTERVAL, float(res_data["time_to_mature"]))
-                        _has_growing_pastures = true
+                    if float(tile.get("fill_time", 0.0)) < float(res_data["time_to_mature"]):
+                        # Ключ "row,col" — чтобы дубли не накапливались между тиками.
+                        _growing_pastures[str(row) + "," + str(col)] = {"row": row, "col": col}
                     production_multiplier *= MapHelpers.get_fill_fraction(tile, res_data)
 
                 # Качество ресурса на гексе передаётся в производство.
@@ -437,6 +444,35 @@ func _process(delta):
         scouting_timer += delta
         if scouting_timer >= _get_scouting_time(scouting_chunk.size()):
             _complete_scouting()
+
+func _tick_pasture_fill(delta: float):
+    if _growing_pastures.is_empty():
+        return
+    var had_growing := true
+    var still_growing := {}
+    for key in _growing_pastures:
+        var entry: Dictionary = _growing_pastures[key]
+        var row: int = entry["row"]
+        var col: int = entry["col"]
+        # Проверяем актуальность: улучшение могли снести, рабочего — снять.
+        var tile = tile_data[row][col]
+        if tile.improvement == null or not worker_manager.has_worker(row, col):
+            continue
+        var res_data = GameData.raw_resources.get(MapHelpers.get_effective_resource(tile), {})
+        if not MapHelpers.is_growing_resource(res_data):
+            continue
+        var ttm = float(res_data["time_to_mature"])
+        var fill_time = float(tile.get("fill_time", 0.0))
+        if fill_time >= ttm:
+            continue
+        tile["fill_time"] = minf(fill_time + delta, ttm)
+        still_growing[key] = entry
+    _growing_pastures = still_growing
+    _has_growing_pastures = not still_growing.is_empty()
+    # Перерисовываем пока растёт; финальный кадр — чтобы стереть бар,
+    # когда последнее пастбище заполнилось (иначе бар зависает на экране).
+    if _has_growing_pastures or had_growing:
+        progress_bar_layer.queue_redraw()
 
 func _initialize_map():
     GameData.load_all_data()
