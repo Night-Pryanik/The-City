@@ -71,7 +71,6 @@ var scroll_offset = Vector2.ZERO
 # которые всегда отображаются на карте даже за пределами видимого Региона.
 var unique_terrain_hexes: Array = []
 
-var _context_hex = null
 var last_city_click_time = 0.0
 var production_timer = 0.0
 var scouting_timer: float = 0.0
@@ -92,7 +91,6 @@ var use_edge_scrolling = true
 var tooltip_delay: float = 0.5
 var extended_tooltip_delay: float = 1.0
 
-@onready var popup_menu = $PopupMenu
 @onready var city_ui = $CityUI
 @onready var hex_tooltip = $HexTooltip
 @onready var tooltip_panel = $HexTooltip
@@ -275,7 +273,6 @@ func _ready():
 
     _update_population_hud()
 
-    popup_menu.id_pressed.connect(_on_popup_menu_id_pressed)
     city_ui.closed.connect(_on_city_ui_close)
     city_button.pressed.connect(_on_city_button_pressed)
     expansion_button.pressed.connect(_on_expansion_button_pressed)
@@ -696,201 +693,6 @@ func has_extended_tooltip_info(row: int, col: int) -> bool:
 
 func update_extended_tooltip(row: int, col: int):
     map_tooltip.update_extended_tooltip(row, col, tile_data, city_row, city_col)
-
-func show_context_menu(row: int, col: int, click_pos: Vector2):
-    var tile = tile_data[row][col]
-
-    var available_food = 0
-
-    # --- Разведка Региона ---
-    if not tile.get("in_influence", false):
-        var chunk = expansion_manager.get_chunk_hexes(row, col)
-        var unexplored_count = 0
-        var all_explored = true
-        for hex in chunk:
-            if not tile_data[hex.row][hex.col].get("is_explored", false):
-                all_explored = false
-                unexplored_count += 1
-        if not all_explored:
-            if is_scouting:
-                hud.show_message("Разведка уже идёт!")
-                return
-            available_food = 0
-            if CityData:
-                for pid in CityData.city_food_pool:
-                    if CityData.city_food_pool[pid]:
-                        available_food += CityData.city_storage.get(pid, 0)
-            popup_menu.clear()
-            # Стоимость зависит от количества фактически исследуемых гексов: 3 еды за гекс
-            var cost = unexplored_count * 3
-            popup_menu.add_item("Подготовить экспедицию [еды: %d/%d] и отправить разведчиков [%.0f сек.]" % [cost, available_food, _get_scouting_time(unexplored_count)])
-            popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": "scout_chunk", "chunk": chunk, "cost": cost})
-            popup_menu.position = click_pos
-            popup_menu.popup()
-            return
-        else:
-            # Чанк полностью исследован — показываем меню покупки территории
-            available_food = 0
-            if CityData:
-                for pid in CityData.city_food_pool:
-                    if CityData.city_food_pool[pid]:
-                        available_food += CityData.city_storage.get(pid, 0)
-            expansion_manager.show_context_menu(chunk, click_pos, available_food)
-            return
-
-    # Гексы внутри влияния города: контекстное меню отключено.
-    # Убраны постройка/пауза/возобновление/отмена улучшений и спец-действий,
-    # а также изучение технологий. Осталась только разведка Региона
-    # и покупка чанков (обрабатываются выше).
-    return
-
-# Добавляет в контекстное меню спец-действия, применимые к гексу (row, col).
-# Применимость определяется по action_type:
-#   "terrain"  — гекс имеет source_terrain и на нём нет улучшения;
-#   "cover"    — гекс имеет source_cover и на нём нет ресурса и улучшения;
-#   "forage"   — на гексе есть ресурс target_resource;
-#   "demolish" — на гексе есть улучшение.
-func _add_special_actions_to_menu(tile: Dictionary, row: int, col: int):
-    for sa_id in GameData.special_actions:
-        var sa = GameData.special_actions[sa_id]
-        var action_type = sa.get("action_type", "terrain")
-        var applicable = false
-        if action_type == "terrain":
-            applicable = tile.terrain == sa.get("source_terrain", "") and tile.improvement == null
-        elif action_type == "cover":
-            # Вырубка леса применима только если есть подходящий покров (cover)
-            # и на гексе нет ресурса и улучшения.
-            var cover_id = tile.get("cover", "none")
-            applicable = cover_id in sa.get("source_cover", []) and tile.improvement == null and tile.resource == null
-        elif action_type == "forage":
-            applicable = tile.resource == sa.get("target_resource", "")
-        elif action_type == "demolish":
-            applicable = tile.improvement != null
-        if not applicable:
-            continue
-
-        var sa_name = sa.get("name", sa_id)
-        var unlock_tech = sa.get("unlock_tech", "")
-        if unlock_tech != "" and not CityData.is_tech_unlocked(unlock_tech):
-            var tech_name = unlock_tech
-            var tech_cost = 3
-            for tech in GameData.technologies:
-                if tech["id"] == unlock_tech:
-                    tech_name = tech["name"]
-                    tech_cost = int(tech.get("science_cost", 3))
-                    break
-            popup_menu.add_item("%s (требуется изучить %s, наука: %d)" % [sa_name, tech_name, tech_cost])
-            popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": "research_tech", "tech_id": unlock_tech})
-        else:
-            var sa_cost_calc = get_improvement_work_cost(sa_id, row, col)
-            var sa_cost = sa_cost_calc["cost"]
-            if build_manager.is_building(row, col):
-                var prog = build_manager.get_progress(row, col)
-                var prog_text = ""
-                if not prog.is_empty():
-                    var wc = prog.get("work_cost", 0)
-                    var p = prog.get("progress", 0.0)
-                    if wc > 0:
-                        prog_text = " [%.0f/%.0f труда]" % [p, wc]
-                var status_text = "Возобновить %s" % sa_name.to_lower() if build_manager.is_building_paused(row, col) else "Приостановить %s" % sa_name.to_lower()
-                popup_menu.add_item("%s%s" % [status_text, prog_text])
-                popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": sa_id, "row": row, "col": col})
-            else:
-                var labor = CityData.get_total_labor()
-                var build_time = sa_cost / max(1.0, labor)
-                var label = "%s [%d труда, %.0f сек.]" % [sa_name, sa_cost, build_time]
-                popup_menu.add_item(label)
-                popup_menu.set_item_metadata(popup_menu.item_count - 1, {"action": sa_id, "row": row, "col": col})
-
-func _on_popup_menu_id_pressed(id: int):
-    var meta = popup_menu.get_item_metadata(id)
-    var action = meta.get("action", "")
-
-    if action == "expand_territory":
-        var chunk = meta.get("chunk", [])
-        if chunk.is_empty():
-            return
-        # Освоение теперь стоит ТРУД (основная стоимость) + фиксированную ЕДУ
-        # (запас поселенцев перед походом). Оба значения приходят из метаданных
-        # контекстного меню (см. expansion_manager.show_context_menu).
-        var food_cost = meta.get("food_cost", 0)
-        var work_cost = meta.get("work_cost", 0)
-        var success = expansion_manager.handle_action(chunk, food_cost, work_cost)
-        if success:
-            map_renderer.queue_redraw()
-            if city_ui.visible:
-                city_ui.refresh()
-        return
-
-    if action == "pause_improvement":
-        var r = meta["row"]
-        var c = meta["col"]
-        worker_manager.remove_worker(r, c)
-        map_renderer.queue_redraw()
-        return
-
-    if action == "resume_improvement":
-        var r = meta["row"]
-        var c = meta["col"]
-        if not worker_manager.assign_worker(r, c):
-            hud.show_message("Нет свободных рабочих!")
-        map_renderer.queue_redraw()
-        return
-
-    if action == "cancel_build":
-        var r = meta["row"]
-        var c = meta["col"]
-        _confirm_cancel_build(r, c)
-        return
-
-    if action == "scout_chunk":
-        var chunk = meta.get("chunk", [])
-        var cost = meta.get("cost", 0)
-        _start_scouting(chunk, cost)
-        return
-
-    if _context_hex == null:
-        return
-    var row = _context_hex.row
-    var col = _context_hex.col
-
-    if action == "build_improvement":
-        var imp_id = meta.imp_id
-        var target_res_id = meta.get("target_res_id", null)
-        # Если строительство уже идёт — переключаем паузу/возобновление
-        if build_manager.is_building(row, col):
-            if build_manager.is_building_paused(row, col):
-                build_manager.resume_build(row, col)
-            else:
-                build_manager.pause_build(row, col)
-        else:
-            build_manager.start_build(row, col, imp_id, target_res_id)
-    elif action == "build_pasture":
-        var animal_id = meta.animal_id
-        build_manager.start_build(row, col, "pasture", animal_id)
-    elif action == "build_farm":
-        var plant_id = meta.plant_id
-        build_manager.start_build(row, col, "farm", plant_id)
-    elif GameData.special_actions.has(action):
-        # Спец-действие: если стройка уже идёт — переключаем паузу/возобновление,
-        # иначе запускаем новую через систему труда.
-        if build_manager.is_building(row, col):
-            if build_manager.is_building_paused(row, col):
-                build_manager.resume_build(row, col)
-            else:
-                build_manager.pause_build(row, col)
-        else:
-            build_manager.start_build(row, col, action)
-    elif action == "research_tech":
-        var tech_id = meta.tech_id
-        CityData.start_research(tech_id)
-
-    _context_hex = null
-    map_renderer.queue_redraw()
-    # При старте стройки/исследования появляется/пропадает прогресс-бар —
-    # вызываем перерисовку слоя баров явно, чтобы не ждать следующего кадра
-    # (когда has_active_builds() может снова стать true).
-    _redraw_progress_layer()
 
 # Выбирает иконку ландшафта для гекса (row, col) на основе его террейна.
 func _assign_terrain_icon(row: int, col: int) -> void:
@@ -1540,7 +1342,7 @@ func _on_townsfolk_assignment_changed():
 func _get_scouting_time(hex_count: int) -> float:
     return hex_count * SCOUTING_TIME_PER_HEX
 
-func _start_scouting(chunk: Array, cost: int):
+func start_scouting(chunk: Array, cost: int):
     if is_scouting:
         hud.show_message("Разведка уже идёт!")
         return

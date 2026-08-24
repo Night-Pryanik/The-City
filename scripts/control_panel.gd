@@ -242,21 +242,11 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
     if row == main_map.city_row and col == main_map.city_col:
         return actions
 
-    # Действия доступны только в Кольце Влияния (территория освоена).
-    # ВАЖНО: сейчас этот блок фактически НЕДОСТИЖИМ — единственный путь
-    # выделения гекса (ЛКМ в InputHandler._unhandled_input, строка ~323)
-    # фильтрует гексы по in_influence ДО вызова select_hex(), а территория
-    # только расширяется (гекс не может выпасть из Кольца после выделения).
-    # Оставлено как защита на случай будущих путей выбора гекса (ИИ,
-    # автотесты и т.п.), чтобы панель не показывала действия вне территории.
+    # Гекс вне Кольца Влияния — действия через панель управления:
+    #   неисследованная область → «Разведать регион»;
+    #   исследованная → «Освоить область» (покупка чанка за еду + труд).
     if not in_influence:
-        actions.append({
-            "type": "info",
-            "label": "Гекс вне Кольца Влияния",
-            "enabled": false,
-            "tooltip": "Освойте территорию (ПКМ по гексу → «Освоить»), чтобы строить здесь."
-        })
-        return actions
+        return _collect_region_actions(row, col)
 
     # --- Улучшение уже построено ---
     if tile.improvement != null:
@@ -452,6 +442,77 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
     return actions
 
 # Добавляет спец-действия (special_actions.json), применимые к гексу.
+# Собирает действия для гекса вне Кольца Влияния (Регион):
+# неисследованная область — разведка чанка; исследованная — покупка (освоение).
+func _collect_region_actions(row: int, col: int) -> Array:
+    var actions := []
+    var chunk = main_map.expansion_manager.get_chunk_hexes(row, col)
+    var available_food = 0
+    if chunk.is_empty():
+        return actions
+
+    var unexplored_count := 0
+    for hex in chunk:
+        if not main_map.tile_data[hex.row][hex.col].get("is_explored", false):
+            unexplored_count += 1
+
+    if unexplored_count > 0:
+        # Неисследованный чанк: отправить разведчиков.
+        var cost = unexplored_count * 3
+        var scout_time = main_map._get_scouting_time(unexplored_count)
+        var tooltip: String
+        if main_map.is_scouting:
+            tooltip = "Разведка уже идёт"
+
+        available_food = 0
+        if CityData:
+            for pid in CityData.city_food_pool:
+                if CityData.city_food_pool[pid]:
+                    available_food += CityData.city_storage.get(pid, 0)
+
+        else:
+            #tooltip = "Отправить разведчиков [%d еды, %.0f сек.] — откроет информацию о чанке" % [cost, scout_time]
+            tooltip = "Подготовить экспедицию [еды: %d/%d] и отправить разведчиков [%.0f сек.]" % [cost, available_food, scout_time]
+        actions.append({
+            "type": "scout_chunk",
+            "label": "Разведать регион",
+            "enabled": not main_map.is_scouting,
+            "tooltip": tooltip,
+            "chunk": chunk,
+            "cost": cost,
+            "icon": "additional_info.png"
+        })
+        return actions
+
+    # Исследованный чанк: покупка (освоение) за еду + труд.
+    var has_neighbor = false
+    for hex in chunk:
+        for n in HexUtils.get_neighbors_odd_r(hex.row, hex.col, main_map.map_rows, main_map.map_cols):
+            if main_map.tile_data[n.row][n.col].get("in_influence", false):
+                has_neighbor = true
+                break
+        if has_neighbor:
+            break
+    var food_cost = main_map.expansion_manager.get_chunk_food_cost(chunk)
+    var work_cost = main_map.expansion_manager.get_chunk_cost(chunk)
+    var labor = CityData.get_total_labor()
+    var buy_tooltip: String
+    if not has_neighbor:
+        buy_tooltip = "Чанк не граничит с вашими владениями"
+    else:
+        buy_tooltip = "Освоить чанк (%d клеток): %d еды сразу и %d труда (%.0f сек.)" % [chunk.size(), food_cost, work_cost, work_cost / max(1.0, labor)]
+    actions.append({
+        "type": "buy_chunk",
+        "label": "Освоить область",
+        "enabled": has_neighbor,
+        "tooltip": buy_tooltip,
+        "chunk": chunk,
+        "food_cost": food_cost,
+        "work_cost": work_cost,
+        "icon": "check.svg"
+    })
+    return actions
+
 func _add_special_actions(actions: Array, row: int, col: int, tile: Dictionary):
     for sa_id in GameData.special_actions:
         var sa = GameData.special_actions[sa_id]
@@ -510,6 +571,22 @@ func _make_research_action(tech_id: String) -> Dictionary:
 func _on_action_pressed(action: Dictionary):
     var type = action.get("type", "")
     if type == "info":
+        return
+    if type == "scout_chunk":
+        # Разведка чанка: списываем еду и отправляем разведчиков (время).
+        main_map.start_scouting(action.get("chunk", []), action.get("cost", 0))
+        main_map.redraw_progress_layer()
+        _refresh()
+        return
+    if type == "buy_chunk":
+        # Покупка (освоение) чанка: еда сразу, труд накапливается через стройку.
+        var ok = main_map.expansion_manager.handle_action(
+            action.get("chunk", []), action.get("food_cost", 0), action.get("work_cost", 0))
+        if ok:
+            main_map.map_renderer.queue_redraw()
+            if main_map.city_ui.visible:
+                main_map.city_ui.refresh()
+        _refresh()
         return
     # Действия, которые выполняются сразу (без превью).
     if type == "pause_improvement":

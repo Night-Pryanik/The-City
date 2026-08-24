@@ -99,50 +99,6 @@ func get_chunk_cost(chunk: Array) -> int:
 func get_chunk_food_cost(chunk: Array) -> int:
     return chunk.size() * FOOD_COST_PER_HEX
 
-func show_context_menu(chunk: Array, click_pos: Vector2, available_food: int):
-    # --- Проверка: все гексы в чанке исследованы ---
-    var all_explored = true
-    for hex in chunk:
-        var tile = main_map.tile_data[hex.row][hex.col]
-        if not tile.get("is_explored", false):
-            all_explored = false
-            break
-    if not all_explored:
-        main_map.hud.show_message("Этот чанк ещё не исследован!")
-        return
-
-    # --- Проверка: чанк граничит с Кольцом Влияния ---
-    var has_neighbor = false
-    for hex in chunk:
-        var neighbors = HexUtils.get_neighbors_odd_r(hex.row, hex.col, main_map.map_rows, main_map.map_cols)
-        for n in neighbors:
-            var n_tile = main_map.tile_data[n.row][n.col]
-            if n_tile.get("in_influence", false):
-                has_neighbor = true
-                break
-        if has_neighbor:
-            break
-    if not has_neighbor:
-        main_map.hud.show_message("Этот чанк не граничит с вашими владениями!")
-        return
-
-    # --- Остальной код (формирование меню) ---
-    var work_cost = get_chunk_cost(chunk)
-    var food_cost = get_chunk_food_cost(chunk)
-    var hex_count = chunk.size()
-    # Расчётное время освоения: труд / труд города (1 житель = 1 труд/сек).
-    var labor = CityData.get_total_labor()
-    var build_time = work_cost / max(1.0, labor)
-    main_map.popup_menu.clear()
-    var label = "Освоить выделенную область (%d клеток, %d/%d еды, %d труда, %.0f сек.)" % [hex_count, food_cost, available_food, work_cost, build_time]
-    main_map.popup_menu.add_item(label)
-    main_map.popup_menu.set_item_metadata(
-        main_map.popup_menu.item_count - 1,
-        {"action": "expand_territory", "chunk": chunk, "food_cost": food_cost, "work_cost": work_cost}
-    )
-    main_map.popup_menu.position = click_pos
-    main_map.popup_menu.popup()
-
 # Запускает освоение чанка. Еда списывается сразу (фиксированная, небольшая),
 # а труд накапливается через стройку в build_manager (прогресс во времени).
 func handle_action(chunk: Array, food_cost: int, work_cost: int) -> bool:

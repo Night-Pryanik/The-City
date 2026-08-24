@@ -9,7 +9,6 @@ var hex_tooltip: Node
 var tooltip_text_label: Label
 var tooltip_products_container: Node
 var worker_manager: Node
-var popup_menu: Node
 var city_ui: Node
 var pause_menu: Node
 var expansion_manager: Node
@@ -42,7 +41,6 @@ func initialize(main_node: Node):
     tooltip_text_label = main_node.tooltip_text_label
     tooltip_products_container = main_node.tooltip_products_container
     worker_manager = main_node.worker_manager
-    popup_menu = main_node.popup_menu
     city_ui = main_node.city_ui
     pause_menu = main_node.pause_menu
     expansion_manager = main_node.expansion_manager
@@ -123,7 +121,7 @@ func handle_process(delta: float):
     if Engine.is_editor_hint():
         return
 
-    if city_ui.visible or popup_menu.visible or pause_menu.visible or (main_map.settings_menu and main_map.settings_menu.visible):
+    if city_ui.visible or pause_menu.visible or (main_map.settings_menu and main_map.settings_menu.visible):
         _hide_tooltip()
         return
 
@@ -232,66 +230,8 @@ func _handle_esc():
     elif main_map.settings_menu and main_map.settings_menu.visible:
         # Закрываем настройки — pause_menu.gd снова покажет меню паузы
         main_map.settings_menu.hide()
-    elif expansion_manager.is_active():
-        var active = expansion_manager.toggle()
-        if active:
-            hud.show_message("Режим освоения включён. ПКМ по выделенной области для освоения.")
-        else:
-            hud.show_message("Режим освоения выключен.")
     else:
         main_map.open_pause_menu()
-
-func _handle_expansion_mode_input(event: InputEventMouseButton) -> bool:
-    if hud.get_global_rect().has_point(event.global_position):
-        return true
-
-    if event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
-        if popup_menu.visible:
-            popup_menu.hide()
-            return true
-        var mouse_pos = event.global_position
-        var hex = _pixel_to_hex(mouse_pos.x, mouse_pos.y)
-        if hex != null and not main_map.tile_data[hex.row][hex.col]["in_influence"]:
-            var chunk = expansion_manager.get_chunk_hexes(hex.row, hex.col)
-            if chunk.is_empty():
-                return true
-            # Если чанк ещё не исследован — показываем меню разведки вместо покупки
-            var all_explored = true
-            for h in chunk:
-                if not main_map.tile_data[h.row][h.col].get("is_explored", false):
-                    all_explored = false
-                    break
-            if not all_explored:
-                main_map.show_context_menu(hex.row, hex.col, mouse_pos)
-                return true
-            var available_food = 0
-            if CityData:
-                for pid in CityData.city_food_pool:
-                    if CityData.city_food_pool[pid]:
-                        available_food += CityData.city_storage.get(pid, 0)
-            expansion_manager.show_context_menu(chunk, mouse_pos, available_food)
-        return true
-
-    if event.button_index == MOUSE_BUTTON_LEFT:
-        if event.pressed:
-            drag_start_scroll_offset = main_map.scroll_offset
-            drag_start_mouse = event.global_position
-            is_dragging = false
-        else:
-            if is_dragging:
-                is_dragging = false
-        return true
-
-    return false
-
-func _handle_expansion_mode_motion(event: InputEventMouseMotion):
-    var hex = _pixel_to_hex(event.global_position.x, event.global_position.y)
-    if hex != null and not main_map.tile_data[hex.row][hex.col]["in_influence"]:
-        expansion_manager.update_hovered_chunk(hex.row, hex.col)
-    else:
-        expansion_manager.clear_hovered_chunk()
-    if _tooltip_visible:
-        _hide_tooltip()
 
 func _handle_mouse_button(event: InputEventMouseButton):
     # Дебаг-меню: ожидание клика по гексу для размещения ресурса
@@ -300,10 +240,6 @@ func _handle_mouse_button(event: InputEventMouseButton):
             var hex = _pixel_to_hex(event.global_position.x, event.global_position.y)
             if hex != null:
                 debug_manager.handle_hex_click(hex.row, hex.col)
-        return
-
-    # В режиме "Развитие" левый клик не должен ничего делать (кроме перетаскивания)
-    if expansion_manager.is_active() and event.button_index == MOUSE_BUTTON_LEFT:
         return
 
     if event.button_index == MOUSE_BUTTON_LEFT:
@@ -316,46 +252,26 @@ func _handle_mouse_button(event: InputEventMouseButton):
                 is_dragging = false
                 return
 
-    if event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
-        if popup_menu.visible:
-            popup_menu.hide()
-            _hide_tooltip()
-            return
-        var mouse_pos = event.global_position
-        var hex = _pixel_to_hex(mouse_pos.x, mouse_pos.y)
-        if hex != null:
-            if main_map.tile_data[hex.row][hex.col]["in_influence"]:
-                # Гекс в Кольце Влияния - меню строительства улучшений
-                main_map.show_context_menu(hex.row, hex.col, mouse_pos)
-                _hide_tooltip()
-            else:
-                # Гекс в Регионе - меню разведки/покупки
-                main_map.show_context_menu(hex.row, hex.col, mouse_pos)
-                _hide_tooltip()
-
     # Выделение гекса выполняется при ОТПУСКАНИИ ЛКМ, а не при нажатии —
     # чтобы зажатие и перетаскивание карты не выделяло и не сбрасывало гекс.
     # При перетаскивании обработка уже прервана выше (return при is_dragging).
     if event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
-        if popup_menu.visible:
-            popup_menu.hide()
-            _hide_tooltip()
-            return
         var mouse_pos = event.global_position
         var hex = _pixel_to_hex(mouse_pos.x, mouse_pos.y)
-        if hex != null and main_map.tile_data[hex.row][hex.col]["in_influence"]:
-            # Клик по гексу в Кольце Влияния: выделяем его и показываем
-            # информацию/действия в панели управления. Клик по другому гексу
-            # сбрасывает превью действия (см. control_panel.select_hex).
+        if hex != null:
+            # ЛКМ выделяет любой гекс видимого окна: внутри Кольца Влияния —
+            # информация/действия, вне Кольца — разведка/покупка чанка
+            # (см. control_panel._collect_region_actions).
             main_map.select_hex(hex.row, hex.col)
-            if hex.row == main_map.city_row and hex.col == main_map.city_col:
+            if main_map.tile_data[hex.row][hex.col].get("in_influence", false) \
+                    and hex.row == main_map.city_row and hex.col == main_map.city_col:
                 var cur_time = Time.get_ticks_msec() / 1000.0
                 if cur_time - main_map.last_city_click_time < 0.5:
                     main_map.open_city()
                 main_map.last_city_click_time = cur_time
 
 func _handle_mouse_motion(event: InputEventMouseMotion):
-    if city_ui.visible or popup_menu.visible or pause_menu.visible:
+    if city_ui.visible or pause_menu.visible:
         return
 
     if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):

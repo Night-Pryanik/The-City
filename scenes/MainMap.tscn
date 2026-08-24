@@ -102,8 +102,6 @@ text = "Меню"
 [node name="PauseMenu" parent="." unique_id=513166833 instance=ExtResource("3_2t08r")]
 visible = false
 
-[node name="PopupMenu" type="PopupMenu" parent="." unique_id=216217221]
-
 [node name="HexTooltip" type="Panel" parent="." unique_id=1303469343]
 visible = false
 offset_right = 220.0
