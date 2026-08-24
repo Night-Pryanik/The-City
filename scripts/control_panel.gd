@@ -575,6 +575,62 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     header.add_child(cancel_btn)
     _preview_container.add_child(header)
 
+    # --- Для ферм/пастбищ: выбор конкретной культуры ---
+    # Блок размещён сразу под заголовком, до расчётов производства и стоимости:
+    # выбранный вид виден первым и не теряется в конце длинного списка.
+    # Если на гексе можно выращивать/разводить несколько одомашненных видов,
+    # даём выбрать, под какую именно культуру строить. Иначе строится
+    # единственная подходящая культура (текущее поведение).
+    if type == "build_farm" or type == "build_pasture":
+        var imp_kind = "farm" if type == "build_farm" else "pasture"
+        var crops := _get_suitable_crops(row, col, imp_kind)
+        if crops.size() > 1:
+            # По умолчанию предвыбираем первую культуру из списка.
+            var selected = preview.get("selected_culture_id", null)
+            if selected == null:
+                selected = crops[0].id
+                preview["selected_culture_id"] = selected
+
+            var cult_label = Label.new()
+            cult_label.text = "Культура:"
+            cult_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+            _preview_container.add_child(cult_label)
+
+            # Кнопки культур идут горизонтальным рядом с переносом строк.
+            var cult_flow = FlowContainer.new()
+            cult_flow.add_theme_constant_override("h_separation", 4)
+            cult_flow.add_theme_constant_override("v_separation", 4)
+            _preview_container.add_child(cult_flow)
+
+            for cult in crops:
+                var cult_btn = Button.new()
+                cult_btn.custom_minimum_size = Vector2(32, 32) # квадратная кнопка с иконкой
+                # Тултип — название ресурса (иконка без подписи).
+                cult_btn.tooltip_text = cult.get("name", cult.id)
+                # Иконка одомашненного вида; если её нет — знак вопроса.
+                var cult_icon = GameData.raw_resources.get(cult.id, {}).get("icon", "")
+                var cult_tex = _load_action_icon(cult_icon)
+                if cult_tex != null:
+                    cult_btn.icon = cult_tex
+                    cult_btn.expand_icon = true
+                    cult_btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+                else:
+                    cult_btn.text = "?"
+                cult_btn.toggle_mode = true
+                cult_btn.set_pressed_no_signal(cult.id == selected)
+                # Явная рамка у выбранной культуры.
+                var pressed_style = StyleBoxFlat.new()
+                pressed_style.set_border_width_all(2)
+                pressed_style.border_color = Color(1.0, 0.85, 0.2) # жёлтая рамка
+                cult_btn.add_theme_stylebox_override("pressed", pressed_style)
+                cult_btn.add_theme_stylebox_override("hover_pressed", pressed_style)
+                cult_btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+                var cid = cult.id
+                cult_btn.pressed.connect(func():
+                    _select_preview_culture(cid)
+                )
+                cult_flow.add_child(cult_btn)
+
     # Для спец-действий стоимость считается по action_id, а не по imp_id.
     var cost_imp_id = imp_id
     if type == "special":
@@ -646,60 +702,6 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     total_label.text = " Итого: %d труда" % cost_data["cost"]
     total_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
     _preview_container.add_child(total_label)
-
-    # --- Для ферм/пастбищ: выбор конкретной культуры ---
-    # Если на гексе можно выращивать/разводить несколько одомашненных видов,
-    # даём выбрать, под какую именно культуру строить. Иначе строится
-    # единственная подходящая культура (текущее поведение).
-    if type == "build_farm" or type == "build_pasture":
-        var imp_kind = "farm" if type == "build_farm" else "pasture"
-        var crops := _get_suitable_crops(row, col, imp_kind)
-        if crops.size() > 1:
-            # По умолчанию предвыбираем первую культуру из списка.
-            var selected = preview.get("selected_culture_id", null)
-            if selected == null:
-                selected = crops[0].id
-                preview["selected_culture_id"] = selected
-
-            var cult_label = Label.new()
-            cult_label.text = "Культура:"
-            cult_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
-            _preview_container.add_child(cult_label)
-
-            # Кнопки культур идут горизонтальным рядом с переносом строк.
-            var cult_flow = FlowContainer.new()
-            cult_flow.add_theme_constant_override("h_separation", 4)
-            cult_flow.add_theme_constant_override("v_separation", 4)
-            _preview_container.add_child(cult_flow)
-
-            for cult in crops:
-                var cult_btn = Button.new()
-                cult_btn.custom_minimum_size = Vector2(32, 32) # квадратная кнопка с иконкой
-                # Тултип — название ресурса (иконка без подписи).
-                cult_btn.tooltip_text = cult.get("name", cult.id)
-                # Иконка одомашненного вида; если её нет — знак вопроса.
-                var cult_icon = GameData.raw_resources.get(cult.id, {}).get("icon", "")
-                var cult_tex = _load_action_icon(cult_icon)
-                if cult_tex != null:
-                    cult_btn.icon = cult_tex
-                    cult_btn.expand_icon = true
-                    cult_btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-                else:
-                    cult_btn.text = "?"
-                cult_btn.toggle_mode = true
-                cult_btn.set_pressed_no_signal(cult.id == selected)
-                # Явная рамка у выбранной культуры.
-                var pressed_style = StyleBoxFlat.new()
-                pressed_style.set_border_width_all(2)
-                pressed_style.border_color = Color(1.0, 0.85, 0.2) # жёлтая рамка
-                cult_btn.add_theme_stylebox_override("pressed", pressed_style)
-                cult_btn.add_theme_stylebox_override("hover_pressed", pressed_style)
-                cult_btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-                var cid = cult.id
-                cult_btn.pressed.connect(func():
-                    _select_preview_culture(cid)
-                )
-                cult_flow.add_child(cult_btn)
 
 # Сравнивает два снапшота блока превью по значимым полям.
 func _preview_equal(a: Dictionary, b: Dictionary) -> bool:
