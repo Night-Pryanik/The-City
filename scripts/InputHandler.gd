@@ -20,6 +20,10 @@ var _hover_start_time: float = 0.0
 var _tooltip_visible: bool = false
 var _tooltip_visible_time: float = 0.0
 var _extended_tooltip_shown: bool = false
+# Период обновления СОДЕРЖИМОГО тултипа без движения мыши. Нужен для
+# динамических данных (заполенность пастбища), которые меняются со временем.
+const TOOLTIP_CONTENT_REFRESH_INTERVAL: float = 0.5
+var _tooltip_content_refresh_timer: float = 0.0
 var is_dragging: bool = false
 var drag_start_scroll_offset: Vector2 = Vector2.ZERO
 var drag_start_mouse: Vector2 = Vector2.ZERO
@@ -196,8 +200,27 @@ func handle_process(delta: float):
                 if main_map.has_extended_tooltip_info(_hovered_hex.row, _hovered_hex.col):
                     _extended_tooltip_shown = true
                     main_map.update_extended_tooltip(_hovered_hex.row, _hovered_hex.col)
+
+            # Обновляем содержимое тултипа без движения мыши — только для
+            # «растущих» ресурсов (пастбища с time_to_mature > 0): их заполенность
+            # и эффективный выход меняются со временем. Для остальных гексов
+            # контент статичен, дёргать перерисовку смысла нет.
+            if _is_hovered_tile_growing():
+                _tooltip_content_refresh_timer += delta
+                if _tooltip_content_refresh_timer >= TOOLTIP_CONTENT_REFRESH_INTERVAL:
+                    _tooltip_content_refresh_timer = 0.0
+                    main_map.update_tooltip_text(_hovered_hex.row, _hovered_hex.col)
     else:
         _hide_tooltip()
+
+func _is_hovered_tile_growing() -> bool:
+    if _hovered_hex == null:
+        return false
+    var tile = main_map.tile_data[_hovered_hex.row][_hovered_hex.col]
+    var eff_res = MapHelpers.get_effective_resource(tile)
+    if eff_res == "" or tile.get("improvement", null) == null:
+        return false
+    return MapHelpers.is_growing_resource(GameData.raw_resources.get(eff_res, {}))
 
 func _handle_esc():
     if city_ui.visible:
@@ -379,6 +402,7 @@ func _hide_tooltip():
     hex_tooltip.visible = false
     _tooltip_visible = false
     _tooltip_visible_time = 0.0
+    _tooltip_content_refresh_timer = 0.0
     _hovered_hex = null
     _hover_start_time = 0.0
     for child in tooltip_products_container.get_children():

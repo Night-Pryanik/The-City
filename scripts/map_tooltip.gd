@@ -4,6 +4,9 @@ var _tooltip_text_label: Label
 var _tooltip_products_container: VBoxContainer
 var _map_renderer
 var _worker_manager
+# Ключ последнего отрисованного списка продукции тултипа (для сравнения
+# при периодическом обновлении — чтобы не пересобирать UI без изменений).
+var _last_products_key := ""
 
 func _init(tooltip_text_label: Label, tooltip_products_container: VBoxContainer, map_renderer, worker_manager):
     _tooltip_text_label = tooltip_text_label
@@ -21,7 +24,10 @@ func _init(tooltip_text_label: Label, tooltip_products_container: VBoxContainer,
 # отображение производства не расходилось.
 func render_products(products: Array, container: Node):
     for child in container.get_children():
-        child.queue_free()
+        # free(), а не queue_free(): немедленное удаление исключает кадр, когда
+        # в контейнере одновременно висят старые и новые элементы — иначе
+        # высота списка прыгала на один кадр при каждом обновлении.
+        child.free()
     for item in products:
         var type = item.get("type", "label")
         if type == "header":
@@ -62,40 +68,53 @@ func build_hex_info(row: int, col: int, tile_data: Array, city_row: int = 0, cit
 
 
 func update_tooltip_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_col: int = 0):
-    for child in _tooltip_products_container.get_children():
-        child.queue_free()
-
     var text = _build_text(row, col, tile_data, city_row, city_col)
-    _tooltip_text_label.text = text
 
     var tile = tile_data[row][col]
     var is_revealed = tile.get("in_influence", false) or tile.get("is_explored", false)
     var terrain_data = GameData.terrains.get(tile.terrain, {})
-    if terrain_data.get("unique", false) and not is_revealed:
-        return
-    if not is_revealed:
-        return
-
-    var res_id = MapHelpers.get_effective_resource(tile)
-    # Скрытый ресурс не показываем — как будто его на гексе нет.
-    if res_id != "" and not MapHelpers.is_resource_revealed(tile):
-        res_id = ""
     var products = []
-    if tile.improvement != null:
-        if res_id != "":
-            var res_data = GameData.raw_resources.get(res_id, {})
-            if res_data.has("produces"):
-                products = _collect_production(row, col, res_id, " Производит:", tile_data)
+    if terrain_data.get("unique", false) and not is_revealed:
+        pass # products остаются пустыми — см. проверку ниже
+    elif not is_revealed:
+        pass
     else:
-        if res_id != "":
-            var res_data = GameData.raw_resources.get(res_id, {})
-            if res_data.has("improved_by") and res_data.has("produces"):
-                var improvement_id = res_data["improved_by"]
-                var imp_data = GameData.improvements.get(improvement_id, {})
-                var imp_name_display = imp_data.get("name", improvement_id)
-                products = _collect_production(row, col, res_id, " При постройке %s будет давать:" % imp_name_display, tile_data)
+        var res_id = MapHelpers.get_effective_resource(tile)
+        # Скрытый ресурс не показываем — как будто его на гексе нет.
+        if res_id != "" and not MapHelpers.is_resource_revealed(tile):
+            res_id = ""
+        if tile.improvement != null:
+            if res_id != "":
+                var res_data = GameData.raw_resources.get(res_id, {})
+                if res_data.has("produces"):
+                    products = _collect_production(row, col, res_id, " Производит:", tile_data)
+        else:
+            if res_id != "":
+                var res_data = GameData.raw_resources.get(res_id, {})
+                if res_data.has("improved_by") and res_data.has("produces"):
+                    var improvement_id = res_data["improved_by"]
+                    var imp_data = GameData.improvements.get(improvement_id, {})
+                    var imp_name_display = imp_data.get("name", improvement_id)
+                    products = _collect_production(row, col, res_id, " При постройке %s будет давать:" % imp_name_display, tile_data)
 
+    # Обновляем UI только при РЕАЛЬНОМ изменении содержимого. Периодический
+    # рефреш (заполенность пастбища) вызывает эту функцию несколько раз в
+    # секунду: полная пересборка контейнера каждый раз выглядела как рывки.
+    var products_key = var_to_str(products)
+    if text == _tooltip_text_label.text \
+            and products_key == _last_products_key \
+            and _tooltip_products_container.get_child_count() == products.size():
+        return
+
+    for child in _tooltip_products_container.get_children():
+        # free(), а не queue_free(): немедленное удаление исключает кадр,
+        # когда в контейнере одновременно висят старые и новые элементы
+        # (иначе размер тултипа прыгал на один кадр).
+        child.free()
+
+    _tooltip_text_label.text = text
     render_products(products, _tooltip_products_container)
+    _last_products_key = products_key
 
 
 func has_extended_tooltip_info(row: int, col: int, tile_data: Array) -> bool:
