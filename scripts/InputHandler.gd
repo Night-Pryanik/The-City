@@ -69,8 +69,14 @@ func handle_input(event: InputEvent):
         return
 
     if event is InputEventKey and event.keycode == KEY_ESCAPE and event.pressed:
-        # ESC: сначала сбрасываем превью действия в панели управления, затем
-        # снимаем выделение гекса, и только потом — обычное поведение ESC.
+        # ESC: если открыт интерфейс города — закрываем именно его, даже если
+        # на карте выделен гекс или активно превью действия (интерфейс города
+        # поверх карты). Иначе сбрасываем превью действия в панели управления,
+        # затем снимаем выделение гекса, и только потом — обычное поведение ESC.
+        if city_ui.visible:
+            city_ui.close_city()
+            get_viewport().set_input_as_handled()
+            return
         if main_map.control_panel.has_preview():
             main_map.control_panel.clear_preview()
             get_viewport().set_input_as_handled()
