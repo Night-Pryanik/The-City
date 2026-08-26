@@ -30,15 +30,16 @@ static func parse_range(value: Variant) -> Dictionary:
 		result["ok"] = true
 		result["min"] = int(value)
 		result["max"] = int(value)
-	elif value is Array and value.size() == 2 \\
-			and (typeof(value[0]) == TYPE_INT or typeof(value[0]) == TYPE_FLOAT) \\
-			and (typeof(value[1]) == TYPE_INT or typeof(value[1]) == TYPE_FLOAT):
-		result["ok"] = true
-		result["min"] = int(value[0])
-		result["max"] = int(value[1])
-		if result["max"] < result["min"]:
-			# Диапазон задан в обратном порядке — меняем местами.
-			var tmp: int = result["min"]
-			result["min"] = result["max"]
-			result["max"] = tmp
+	elif value is Array and value.size() == 2:
+		var first_is_number: bool = typeof(value[0]) == TYPE_INT or typeof(value[0]) == TYPE_FLOAT
+		var second_is_number: bool = typeof(value[1]) == TYPE_INT or typeof(value[1]) == TYPE_FLOAT
+		if first_is_number and second_is_number:
+			result["ok"] = true
+			result["min"] = int(value[0])
+			result["max"] = int(value[1])
+			if result["max"] < result["min"]:
+				# Диапазон задан в обратном порядке — меняем местами.
+				var tmp: int = result["min"]
+				result["min"] = result["max"]
+				result["max"] = tmp
 	return result
