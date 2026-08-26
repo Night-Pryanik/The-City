@@ -36,6 +36,15 @@ func build_road_from(
     if connected_hexes.has(start_key):
         return
 
+    # Водные улучшения (например, рыбацкие лодки) не прокладывают дорогу по воде:
+    # доступ к водному ресурсу обеспечивает пристань (harbor), стоящая на берегу,
+    # к которой дорога строится штатно как к обычному наземному улучшению.
+    if start_row >= 0 and start_row < tile_data.size() \
+            and start_col >= 0 and start_col < tile_data[start_row].size():
+        var start_tile = tile_data[start_row][start_col]
+        if start_tile != null and MapHelpers.is_water_terrain(start_tile.get("terrain", "")):
+            return
+
     var best_path = _find_path_dijkstra(
         start_row, start_col, tile_data, region_rows, region_cols
     )
@@ -115,7 +124,7 @@ func _find_path_dijkstra(
                 continue
 
             var tile = tile_data[n.row][n.col]
-            if tile == null or tile.get("terrain", "plain") == "lake":
+            if tile == null or MapHelpers.is_water_terrain(tile.get("terrain", "plain")):
                 continue
             var terrain_id = tile.get("terrain", "plain")
             var move_cost = 1
