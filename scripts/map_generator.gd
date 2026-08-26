@@ -792,6 +792,39 @@ func _remove_hex_from_index(hex_index: Dictionary, row: int, col: int, terrain_i
     if arr.is_empty():
         hex_index.erase(key)
 
+# Разбирает поле spawn_count ресурса и возвращает количество экземпляров для
+# спавна. Допустимые форматы: число >= 0 или массив [min, max] из чисел >= 0.
+#   * число N          -> всегда N экземпляров (N=0 — не спавнить, N=1 — старое поведение);
+#   * массив [min,max] -> случайное число из диапазона;
+#   * min/max перепутаны -> форсированно меняем местами;
+#   * некорректные данные (не число/не массив из 2 чисел, отрицательные числа)
+#     -> предупреждение и дефолт 1 (старое поведение).
+func _resolve_spawn_count(data: Dictionary) -> int:
+    var res_id: String = str(data.get("id", "?"))
+    var value = data.get("spawn_count", 1)
+    var min_count: int = 1
+    var max_count: int = 1
+    if typeof(value) == TYPE_INT or typeof(value) == TYPE_FLOAT:
+        min_count = int(value)
+        max_count = int(value)
+    elif value is Array and value.size() == 2 \
+            and (typeof(value[0]) == TYPE_INT or typeof(value[0]) == TYPE_FLOAT) \
+            and (typeof(value[1]) == TYPE_INT or typeof(value[1]) == TYPE_FLOAT):
+        min_count = int(value[0])
+        max_count = int(value[1])
+        if max_count < min_count:
+            # Диапазон задан в обратном порядке — меняем местами.
+            var tmp: int = min_count
+            min_count = max_count
+            max_count = tmp
+    else:
+        print("map_generator: предупреждение — spawn_count у ресурса '%s' задан некорректно (ожидается число или [min, max]), используется 1." % res_id)
+        return 1
+    if min_count < 0 or max_count < 0:
+        print("map_generator: предупреждение — spawn_count у ресурса '%s' содержит отрицательные значения, используется 1." % res_id)
+        return 1
+    return randi_range(min_count, max_count)
+
 func _place_resources(tile_data: Array, res_dict: Dictionary, rows: int, cols: int, city_row: int, city_col: int, hex_index: Dictionary):
     if res_dict.size() == 0:
         return
@@ -818,22 +851,26 @@ func _place_resources(tile_data: Array, res_dict: Dictionary, rows: int, cols: i
         var data = res_dict[res_id]
         if not HexUtils.spawn_conditions_met(data):
             continue
-        var possible = []
-        for terrain_id in data.get("allowed_terrain", []):
-            for cover_id in data.get("allowed_cover", []):
-                var key = "%s|%s" % [terrain_id, cover_id]
-                if not hex_index.has(key):
-                    continue
-                var arr: Array = hex_index[key]
-                for hex in arr:
-                    if HexUtils.is_hex_conditions_met(tile_data, hex.row, hex.col, data):
-                        possible.append(hex)
-        if possible.size() > 0:
-            var hex = possible[randi() % possible.size()]
-            tile_data[hex.row][hex.col]["resource"] = res_id
-            tile_data[hex.row][hex.col]["quality"] = GameData.roll_quality()
-            _remove_hex_from_index(hex_index, hex.row, hex.col,
-                    tile_data[hex.row][hex.col]["terrain"], tile_data[hex.row][hex.col].get("cover", "none"))
+        # spawn_count: сколько экземпляров ресурса спавнить (число или [min, max]).
+        # 0 — ресурс не спавнится вовсе.
+        var spawn_total = _resolve_spawn_count(data)
+        for i in range(spawn_total):
+            var possible = []
+            for terrain_id in data.get("allowed_terrain", []):
+                for cover_id in data.get("allowed_cover", []):
+                    var key = "%s|%s" % [terrain_id, cover_id]
+                    if not hex_index.has(key):
+                        continue
+                    var arr: Array = hex_index[key]
+                    for hex in arr:
+                        if HexUtils.is_hex_conditions_met(tile_data, hex.row, hex.col, data):
+                            possible.append(hex)
+            if possible.size() > 0:
+                var hex = possible[randi() % possible.size()]
+                tile_data[hex.row][hex.col]["resource"] = res_id
+                tile_data[hex.row][hex.col]["quality"] = GameData.roll_quality()
+                _remove_hex_from_index(hex_index, hex.row, hex.col,
+                        tile_data[hex.row][hex.col]["terrain"], tile_data[hex.row][hex.col].get("cover", "none"))
 
 # Размещает дикоросы ТОЛЬКО внутри стартового Кольца Влияния.
 func place_wild_food(tile_data: Array, min_row: int, max_row: int, min_col: int, max_col: int, city_row: int, city_col: int):
