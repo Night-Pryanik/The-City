@@ -416,7 +416,7 @@
       "produces": { "raw_fish": 1 },
       "feed_consumption": 0,
       "time_to_mature": 0,
-      "icon": "freshwater_fish.png",
+      "icon": "raw_fish.png",
       "color": [ 0, 100, 200 ]
     },
     {
@@ -433,7 +433,7 @@
       "produces": { "raw_fish": 1 },
       "feed_consumption": 0,
       "time_to_mature": 0,
-      "icon": "sea_fish.png",
+      "icon": "raw_fish.png",
       "color": [ 0, 50, 150 ]
     }
   ]
