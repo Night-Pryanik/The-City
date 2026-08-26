@@ -801,29 +801,14 @@ func _remove_hex_from_index(hex_index: Dictionary, row: int, col: int, terrain_i
 #     -> предупреждение и дефолт 1 (старое поведение).
 func _resolve_spawn_count(data: Dictionary) -> int:
     var res_id: String = str(data.get("id", "?"))
-    var value = data.get("spawn_count", 1)
-    var min_count: int = 1
-    var max_count: int = 1
-    if typeof(value) == TYPE_INT or typeof(value) == TYPE_FLOAT:
-        min_count = int(value)
-        max_count = int(value)
-    elif value is Array and value.size() == 2 \
-            and (typeof(value[0]) == TYPE_INT or typeof(value[0]) == TYPE_FLOAT) \
-            and (typeof(value[1]) == TYPE_INT or typeof(value[1]) == TYPE_FLOAT):
-        min_count = int(value[0])
-        max_count = int(value[1])
-        if max_count < min_count:
-            # Диапазон задан в обратном порядке — меняем местами.
-            var tmp: int = min_count
-            min_count = max_count
-            max_count = tmp
-    else:
+    var parsed: Dictionary = RangeUtils.parse_range(data.get("spawn_count", 1))
+    if not parsed.ok:
         print("map_generator: предупреждение — spawn_count у ресурса '%s' задан некорректно (ожидается число или [min, max]), используется 1." % res_id)
         return 1
-    if min_count < 0 or max_count < 0:
+    if parsed.min < 0 or parsed.max < 0:
         print("map_generator: предупреждение — spawn_count у ресурса '%s' содержит отрицательные значения, используется 1." % res_id)
         return 1
-    return randi_range(min_count, max_count)
+    return randi_range(parsed.min, parsed.max)
 
 func _place_resources(tile_data: Array, res_dict: Dictionary, rows: int, cols: int, city_row: int, city_col: int, hex_index: Dictionary):
     if res_dict.size() == 0:

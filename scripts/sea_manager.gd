@@ -67,33 +67,24 @@ static func apply_sea(tile_data: Array, rows: int, cols: int, city_row: int, cit
 
 	# sides — диапазон [min, max] количества случайно выбранных сторон света,
 	# у которых будет море. [0,0] — море не генерируется.
-	# Валидация: оба элемента должны быть числами, диапазон 0..4.
+	# Разбор и валидация формата («число» или «[min, max] из чисел», swap при
+	# перепутанных границах) делегированы RangeUtils.parse_range.
 	# При некорректных данных море не генерируется (безопасное поведение).
-	var sides_range: Array = cfg.get("sides", [])
-	var sides: Array = []
-	if sides_range is Array and sides_range.size() >= 2 \
-			and (typeof(sides_range[0]) == TYPE_FLOAT or typeof(sides_range[0]) == TYPE_INT) \
-			and (typeof(sides_range[1]) == TYPE_FLOAT or typeof(sides_range[1]) == TYPE_INT):
-		var min_sides: int = clampi(int(sides_range[0]), 0, 4)
-		var max_sides: int = clampi(int(sides_range[1]), 0, 4)
-		if max_sides < min_sides:
-			# Диапазон задан в обратном порядке — меняем местами.
-			var tmp: int = min_sides
-			min_sides = max_sides
-			max_sides = tmp
-		# Если минимум = 0 — море может не сгенерироваться вообще.
-		if max_sides <= 0:
-			return sea_mask
-		var all_sides: Array = ["east", "west", "north", "south"]
-		var count: int = randi_range(min_sides, max_sides)
-		all_sides.shuffle()
-		for i in range(count):
-			sides.append(all_sides[i])
-	else:
-		# Некорректный sides (не массив, меньше 2 элементов или не числа) —
-		# безопасно отключаем генерацию моря.
-		print("map_generator: предупреждение — поле sea.sides задано некорректно, море не генерируется. Ожидается [min, max] (0..4).")
+	var parsed_sides: Dictionary = RangeUtils.parse_range(cfg.get("sides", []))
+	if not parsed_sides.ok:
+		print("map_generator: предупреждение — поле sea.sides задано некорректно, море не генерируется. Ожидается число или [min, max] (0..4).")
 		return sea_mask
+	var sides: Array = []
+	var min_sides: int = clampi(parsed_sides["min"], 0, 4)
+	var max_sides: int = clampi(parsed_sides["max"], 0, 4)
+	# Если минимум = 0 — море может не сгенерироваться вообще.
+	if max_sides <= 0:
+		return sea_mask
+	var all_sides: Array = ["east", "west", "north", "south"]
+	var count: int = randi_range(min_sides, max_sides)
+	all_sides.shuffle()
+	for i in range(count):
+		sides.append(all_sides[i])
 
 	if mode == "noise":
 		_apply_sea_noise(sea_mask, rows, cols, city_row, city_col, cfg, max_sea_depth, sides)
