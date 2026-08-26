@@ -448,20 +448,11 @@ func _refresh_costs(bdata):
                 first_in_row = false
 
                 if GameData.is_group_key(res_id):
-                    # Групповой ресурс — кнопка с тултипом
-                    var group_btn = Button.new()
-                    group_btn.text = "%s: %d" % [GameData.format_resource_name(res_id), int(amount)]
-                    group_btn.flat = true
-                    group_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-                    group_btn.mouse_filter = Control.MOUSE_FILTER_STOP
-                    group_btn.mouse_entered.connect(_on_group_hover.bind(group_btn, res_id))
-                    group_btn.mouse_exited.connect(_on_group_exit)
-                    row.add_child(group_btn)
+                    # Групповой ресурс — строка с тултипом, раскрывающим состав группы
+                    row.add_child(ui_helpers.make_resource_entry(res_id, _get_all_resources(), icon_paths, int(amount), "colon"))
                 else:
-                    # Обычный ресурс — просто текст
-                    var res_label = Label.new()
-                    res_label.text = "%s: %d" % [GameData.format_resource_name(res_id), int(amount)]
-                    row.add_child(res_label)
+                    # Обычный ресурс — "иконка + название: количество"
+                    row.add_child(ui_helpers.make_resource_entry(res_id, _get_all_resources(), icon_paths, int(amount), "colon"))
 
             costs_container.add_child(row)
             has_costs = true
@@ -474,21 +465,6 @@ func _refresh_costs(bdata):
                 costs_container.add_child(and_label)
 
     costs_label.visible = has_costs
-
-# Показывает тултип для группового ресурса при наведении на кнопку
-func _on_group_hover(control: Control, res_id: String):
-    if ui_helpers:
-        ui_helpers.show_group_tooltip(
-            get_global_mouse_position(),
-            res_id,
-            _get_all_resources(),
-            icon_paths
-        )
-
-# Скрывает тултип при отводе курсора
-func _on_group_exit():
-    if ui_helpers:
-        ui_helpers.hide_group_tooltip()
 
 func _setup_assignments_listener():
     # Подключаемся к сигналу изменения назначений горожан, чтобы обновлять
@@ -709,32 +685,10 @@ func _make_craft_content(craft_name: String, craft_resources: Dictionary, craft_
             content.add_child(sep_label)
         first_res = false
 
-        if GameData.is_group_key(res_id):
-            # Групповой ресурс — подпись с тултипом.
-            # Используем Label с MOUSE_FILTER_PASS, чтобы наведение показывало
-            # тултип, а клик проходил к родительской кнопке (выбор рецепта).
-            var group_label = Label.new()
-            group_label.text = GameData.format_resource_name(res_id)
-            group_label.mouse_filter = Control.MOUSE_FILTER_PASS
-            group_label.mouse_entered.connect(_on_group_hover.bind(group_label, res_id))
-            group_label.mouse_exited.connect(_on_group_exit)
-            content.add_child(group_label)
-        else:
-            # Обычный ресурс — иконка + название
-            var icon_name = _get_resource_icon(res_id)
-            var tex = _get_icon_texture(icon_name)
-            if tex:
-                var icon_rect = TextureRect.new()
-                icon_rect.texture = tex
-                icon_rect.custom_minimum_size = Vector2(24, 24)
-                icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-                icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
-                icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-                content.add_child(icon_rect)
-            var res_label = Label.new()
-            res_label.text = _get_resource_name(res_id)
-            res_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-            content.add_child(res_label)
+        # Групповой ресурс — подпись с тултипом (через единый хелпер).
+        # Используем MOUSE_FILTER_PASS, чтобы наведение показывало тултип,
+        # а клик проходил к родительской кнопке (выбор рецепта).
+        content.add_child(ui_helpers.make_resource_entry(res_id, _get_all_resources(), icon_paths))
         var amount = craft_resources[res_id]
         if amount > 1:
             var amount_label = Label.new()

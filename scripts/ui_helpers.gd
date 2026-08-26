@@ -207,6 +207,60 @@ func show_group_tooltip(mouse_pos: Vector2, group_key: String, products_data: Di
 func hide_group_tooltip():
     group_tooltip_panel.hide()
 
+# Строит строку "иконка + название" для ресурса/продукта рецепта или стоимости
+# строительства. Для групповых ключей (@...) автоматически вешает тултип с
+# составом группы (раскрывает, какие продукты входят в группу) — по аналогии с
+# рецептами и окном слотов производства.
+#   products_data — словарь {id: {name, icon}} (продукты + сырьё).
+#   icon_paths    — словарь {имя_иконки: путь} для загрузки текстур.
+#   amount        — если > 0, добавляется количество после названия.
+#   amount_style  — "x" → "Имя xN", "colon" → "Имя: N", иначе без количества.
+#   icon_size     — размер иконки в пикселях.
+# Возвращает HBoxContainer, который можно добавлять в контейнеры списков.
+func make_resource_entry(res_id: String, products_data: Dictionary, icon_paths: Dictionary, amount: int = -1, amount_style: String = "x", icon_size: int = 20) -> HBoxContainer:
+    var entry = HBoxContainer.new()
+    entry.add_theme_constant_override("separation", 4)
+    entry.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+    # Иконка (только для одиночных ресурсов, у групп своего изображения нет)
+    var pdata = products_data.get(res_id, {})
+    var icon_name = pdata.get("icon", "")
+    if not icon_name.is_empty() and icon_paths.has(icon_name):
+        var tex = load(icon_paths[icon_name])
+        if tex:
+            var icon_rect = TextureRect.new()
+            icon_rect.texture = tex
+            icon_rect.custom_minimum_size = Vector2(icon_size, icon_size)
+            icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+            icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
+            icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+            entry.add_child(icon_rect)
+
+    var text = GameData.format_resource_name(res_id)
+    if amount > 0:
+        if amount_style == "colon":
+            text = "%s: %d" % [text, amount]
+        else:
+            text = "%s x%d" % [text, amount]
+
+    var label = Label.new()
+    label.text = text
+    if GameData.is_group_key(res_id):
+        # Групповой ресурс — наведение показывает тултип, но не перехватывает клики
+        label.mouse_filter = Control.MOUSE_FILTER_PASS
+        label.mouse_entered.connect(_on_resource_group_hover.bind(label, res_id, products_data, icon_paths))
+        label.mouse_exited.connect(_on_resource_group_exit)
+    entry.add_child(label)
+    return entry
+
+# Показывает тултип с составом группы при наведении на строку ресурса
+func _on_resource_group_hover(control: Control, res_id: String, products_data: Dictionary, icon_paths: Dictionary):
+    show_group_tooltip(get_viewport().get_mouse_position(), res_id, products_data, icon_paths)
+
+# Скрывает тултип состава группы при отводе курсора
+func _on_resource_group_exit():
+    hide_group_tooltip()
+
 func show_progress_tooltip(mouse_pos: Vector2):
     progress_tooltip_panel.position = mouse_pos + Vector2(15, 15)
     var text_size = progress_tooltip_label.get_minimum_size()

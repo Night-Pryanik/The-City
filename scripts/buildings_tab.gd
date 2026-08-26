@@ -15,6 +15,7 @@ var buildings_item_list: ItemList
 var building_name_label: Label
 var building_cost_label: Label
 var building_recipes_label: Label
+var building_cost_list: VBoxContainer
 var build_button: Button
 var built_buildings_list: Node
 var food_label: Label
@@ -64,6 +65,19 @@ func setup(item_list: ItemList, name_lbl: Label, cost_lbl: Label, recipes_lbl: L
     # BuildingRecipesLabel становится заголовком "Слотов производства:"
     building_recipes_label.text = "Слотов производства:"
     building_recipes_label.add_theme_font_size_override("font_size", 16)
+
+    # Заголовок стоимости (сам текст суммы теперь в building_cost_list ниже).
+    building_cost_label.text = "Стоимость:"
+    building_cost_label.add_theme_font_size_override("font_size", 14)
+
+    # Создаём контейнер (VBox) со списком ресурсов стоимости выбранного здания.
+    # Каждая строка — "иконка + название (+ количество)"; для групповых ресурсов
+    # (@...) строка дополнительно показывает тултип с составом группы (через
+    # единый хелпер ui_helpers.make_resource_entry).
+    var cost_parent = building_cost_label.get_parent()
+    building_cost_list = VBoxContainer.new()
+    building_cost_list.add_theme_constant_override("separation", 2)
+    cost_parent.add_child(building_cost_list)
 
     # Создаём контейнер для списка рецептов (вертикальный скролл под заголовком слотов)
     var parent = building_recipes_label.get_parent()
@@ -116,7 +130,9 @@ func refresh_list():
         ui_helpers.hide_group_tooltip()
     food_label.visible = false
     building_name_label.text = ""
-    building_cost_label.text = ""
+    building_cost_label.text = "Стоимость:"
+    for child in building_cost_list.get_children():
+        child.queue_free()
     building_recipes_label.visible = false
     recipes_title.visible = false
     recipes_scroll.visible = false
@@ -458,27 +474,52 @@ func _on_building_selected(idx: int):
         var bdata = filtered_buildings[idx]
         building_name_label.text = bdata["name"]
 
-        # Стоимость: каждый ресурс на отдельной строке.
-        # Труд идёт первым, потом все элементы additional_cost. Групповые ресурсы
-        # (@...) выводятся через format_resource_name (только название группы).
-        # AND-логика additional_cost (нужны ресурсы из КАЖДОЙ пачки одновременно)
-        # сохранена на уровне данных — на UI все ресурсы просто перечисляются
-        # списком, потому что «нужны все» и так подразумевается в блоке стоимости.
-        var cost_lines: Array = []
+        # Стоимость: заголовок "Стоимость:" и под ним список строк (труд + ресурсы).
+        # Обычные ресурсы — "иконка + название: количество". Групповые ресурсы
+        # (@...) — "название группы: количество" с тултипом, раскрывающим состав
+        # группы (через единый хелпер ui_helpers.make_resource_entry).
+        building_cost_label.text = "Стоимость:"
+        for child in building_cost_list.get_children():
+            child.queue_free()
+
+        var products_data = {}
+        for pid in products:
+            products_data[pid] = products[pid]
+        for rid in raw_resources:
+            products_data[rid] = raw_resources[rid]
+        var icon_paths = {}
+        _build_icon_index_local(icon_paths)
+
+        var has_costs := false
         var work_cost = bdata.get("work_cost", 0)
         if work_cost > 0:
             var labor = CityData.get_total_labor()
             var build_time = work_cost / max(1.0, labor)
-            cost_lines.append("труд: %d (%.0f сек)" % [int(work_cost), build_time])
+            var labor_row = HBoxContainer.new()
+            labor_row.add_theme_constant_override("separation", 6)
+            var labor_label = Label.new()
+            labor_label.text = "труд: %d (%.0f сек)" % [int(work_cost), build_time]
+            labor_row.add_child(labor_label)
+            building_cost_list.add_child(labor_row)
+            has_costs = true
+
         if bdata.has("additional_cost"):
+            # Нужны ресурсы из каждой пачки (AND-логика сохранена на уровне данных)
             var bundles = GameData.parse_additional_cost(bdata["additional_cost"])
             for bundle in bundles:
                 for res_id in bundle:
-                    cost_lines.append("%s: %d" % [GameData.format_resource_name(res_id), int(bundle[res_id])])
-        if cost_lines.is_empty():
-            building_cost_label.text = "Стоимость: 0"
-        else:
-            building_cost_label.text = "Стоимость:\n" + "\n".join(cost_lines)
+                    var row = HBoxContainer.new()
+                    row.add_theme_constant_override("separation", 6)
+                    row.add_child(ui_helpers.make_resource_entry(res_id, products_data, icon_paths, int(bundle[res_id]), "colon"))
+                    building_cost_list.add_child(row)
+                    has_costs = true
+
+        if not has_costs:
+            var zero_row = HBoxContainer.new()
+            var zero_label = Label.new()
+            zero_label.text = "0"
+            zero_row.add_child(zero_label)
+            building_cost_list.add_child(zero_row)
 
         # Показываем количество слотов производства
         var slots = bdata.get("production_slots", 0)
@@ -677,10 +718,7 @@ func _make_craft_content_local(craft_name: String, craft_resources: Dictionary, 
                 content.add_child(sep)
             first = false
 
-            var pdata = products_data.get(res_id, {})
-            var icon_name = pdata.get("icon", "")
-            var tex = _get_icon_texture_local(icon_name, icon_paths, icon_textures)
-            content.add_child(_make_resource_entry_local(res_id, icon_name, tex, products_data, icon_paths))
+            content.add_child(ui_helpers.make_resource_entry(res_id, products_data, icon_paths))
 
             var amount = craft_resources[res_id]
             if amount > 1:
@@ -708,10 +746,7 @@ func _make_craft_content_local(craft_name: String, craft_resources: Dictionary, 
                 content.add_child(sep)
             first = false
 
-            var pdata = products_data.get(prod_id, {})
-            var icon_name = pdata.get("icon", "")
-            var tex = _get_icon_texture_local(icon_name, icon_paths, icon_textures)
-            content.add_child(_make_resource_entry_local(prod_id, icon_name, tex, products_data, icon_paths))
+            content.add_child(ui_helpers.make_resource_entry(prod_id, products_data, icon_paths))
 
             var amount = craft_result[prod_id]
             if amount > 1:
@@ -722,52 +757,6 @@ func _make_craft_content_local(craft_name: String, craft_resources: Dictionary, 
                 content.add_child(amount_label)
 
     return content
-
-# Строит "иконка + название" для ресурса/продукта рецепта; для групп продуктов
-# включает тултип с раскрытием состава группы (как в окне слотов производства)
-func _make_resource_entry_local(res_id: String, icon_name: String, tex: Texture2D, products_data: Dictionary, icon_paths: Dictionary) -> HBoxContainer:
-    var entry = HBoxContainer.new()
-    entry.add_theme_constant_override("separation", 4)
-    entry.mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-    if tex:
-        var icon_rect = TextureRect.new()
-        icon_rect.texture = tex
-        icon_rect.custom_minimum_size = Vector2(20, 20)
-        icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-        icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
-        icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-        entry.add_child(icon_rect)
-
-    var label = Label.new()
-    label.text = GameData.format_resource_name(res_id)
-    label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    if GameData.is_group_key(res_id):
-        # Наведение показывает тултип, но не перехватывает клики
-        label.mouse_filter = Control.MOUSE_FILTER_PASS
-        label.mouse_entered.connect(_on_group_hover_local.bind(label, res_id, products_data, icon_paths))
-        label.mouse_exited.connect(_on_group_exit_local)
-    entry.add_child(label)
-    return entry
-
-func _on_group_hover_local(control: Control, res_id: String, products_data: Dictionary, icon_paths: Dictionary):
-    if ui_helpers:
-        ui_helpers.show_group_tooltip(get_viewport().get_mouse_position(), res_id, products_data, icon_paths)
-
-func _on_group_exit_local():
-    if ui_helpers:
-        ui_helpers.hide_group_tooltip()
-
-func _get_icon_texture_local(icon_file: String, icon_paths: Dictionary, icon_textures: Dictionary) -> Texture2D:
-    if icon_file.is_empty():
-        return null
-    if icon_textures.has(icon_file):
-        return icon_textures[icon_file]
-    if icon_paths.has(icon_file):
-        var tex = load(icon_paths[icon_file])
-        icon_textures[icon_file] = tex
-        return tex
-    return null
 
 func _build_icon_index_local(out_paths: Dictionary):
     out_paths.clear()
