@@ -24,7 +24,72 @@ var worker_manager: Node
 var build_manager: Node
 
 func _ready():
-    pass
+    _setup_collapse_button()
+
+# --- Сворачивание/разворачивание панели ---
+
+# Высота свёрнутой панели = высота кнопки-переключателя.
+const _COLLAPSED_HEIGHT := 28.0
+
+var _toggle_btn: Button
+var _collapsed := false
+var _saved_offset_top := -1.0
+
+# Создаёт кнопку-переключатель в правом верхнем углу панели.
+# Кнопка привязана анкорами к правому верхнему углу, поэтому остаётся на месте
+# при изменении размера окна/панели.
+func _setup_collapse_button():
+    _toggle_btn = Button.new()
+    _toggle_btn.text = "▼"
+    _toggle_btn.tooltip_text = "Свернуть панель"
+    _toggle_btn.focus_mode = Control.FOCUS_NONE
+    _toggle_btn.flat = true
+    _toggle_btn.custom_minimum_size = Vector2(28, 24)
+    _toggle_btn.pressed.connect(_toggle_collapsed)
+    # Анкоры: правый верхний угол панели с небольшим отступом.
+    _toggle_btn.anchor_left = 1.0
+    _toggle_btn.anchor_right = 1.0
+    _toggle_btn.anchor_top = 0.0
+    _toggle_btn.anchor_bottom = 0.0
+    _toggle_btn.offset_left = -32.0
+    _toggle_btn.offset_right = -4.0
+    _toggle_btn.offset_top = 2.0
+    _toggle_btn.offset_bottom = 26.0
+    add_child(_toggle_btn)
+
+# Переключает панель между свернутым и развернутым состоянием.
+func _toggle_collapsed():
+    _set_collapsed(not _collapsed)
+
+func _set_collapsed(collapsed: bool):
+    if _collapsed == collapsed:
+        return
+    _collapsed = collapsed
+
+    if _collapsed:
+        # Запоминаем текущую высоту и поднимаем верхний край панели так,
+        # чтобы осталась полоска высотой с кнопку.
+        # ВАЖНО: панель растянута по вертикали (anchor_top=0, anchor_bottom=1),
+        # поэтому высота задаётся разницей offset_bottom - offset_top,
+        # а не абсолютными координатами size.y.
+        _saved_offset_top = offset_top
+        offset_top = offset_bottom - _COLLAPSED_HEIGHT
+        _set_content_visible(false)
+        _toggle_btn.text = "▲"
+        _toggle_btn.tooltip_text = "Развернуть панель"
+    else:
+        if _saved_offset_top >= 0.0:
+            offset_top = _saved_offset_top
+        _set_content_visible(true)
+        _toggle_btn.text = "▼"
+        _toggle_btn.tooltip_text = "Свернуть панель"
+
+# Скрывает/показывает содержимое панели (при сворачивании остаётся только кнопка).
+func _set_content_visible(visible_now: bool):
+    for node_path in ["SepInfoPreview", "SepPreviewActions", "PreviewContainer", "InfoVBox", "ActionsVBox"]:
+        var child = get_node_or_null(NodePath(node_path))
+        if child != null:
+            child.visible = visible_now
 
 # Текущее выделение и превью.
 var _selected_hex = null # { "row": int, "col": int }
