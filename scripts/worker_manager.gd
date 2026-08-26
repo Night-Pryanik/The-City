@@ -5,6 +5,16 @@ signal assignment_changed()
 
 var assigned_hexes = {}
 
+# Таймеры потребления профессиональных ресурсов, ключ — "row,col".
+# Значение: { "elapsed": float, "interval": float } — сколько секунд прошло
+# с момента последнего списания и с каким интервалом нужно списывать.
+# Эти таймеры нужны, чтобы потребление шло НЕ каждый production-тик
+# (раз в 2 сек), а с интервалом, заданным у продукта (например, 10 сек для
+# тростниковых лодок). Сам по себе таймер НЕ блокирует производство: если
+# ресурса нет, улучшение просто откатывается к базовому множителю (без
+# бонуса потребления). См. tick_consumption().
+var consumption_timers: Dictionary = {}
+
 func find_vacancy() -> Dictionary:
     var main_map = get_parent()
     var tile_data = main_map.tile_data
@@ -54,6 +64,12 @@ func assign_worker(row: int = -1, col: int = -1) -> bool:
         return false
 
     assigned_hexes[key] = true
+    # Метка профессии ставится АВТОМАТИЧЕСКИ здесь. Игрок не управляет
+    # метками напрямую: профессия определяется улучшением, на которое
+    # назначен рабочий (см. docs.md, «Профессии и потребление»).
+    # Никаких отдельных данных о метке не храним — она производна от
+    # улучшения и автоматически снимается при remove_worker().
+    consumption_timers.erase(key) # свежий старт таймера потребления
     CityData.idle_population -= 1
     emit_signal("assignment_changed")
     return true
@@ -62,6 +78,11 @@ func remove_worker(row: int, col: int):
     var key = str(row) + "," + str(col)
     if assigned_hexes.has(key):
         assigned_hexes.erase(key)
+        # Метка профессии снимается АВТОМАТИЧЕСКИ вместе со снятием рабочего
+        # (она была производной от улучшения, см. assign_worker).
+        # Сбрасываем таймер потребления, чтобы при повторном назначении
+        # отсчёт начался заново, а не с «остатка» прошлой смены.
+        consumption_timers.erase(key)
         CityData.idle_population += 1
         emit_signal("assignment_changed")
 
@@ -71,6 +92,155 @@ func has_worker(row: int, col: int) -> bool:
 
 func get_assigned_count() -> int:
     return assigned_hexes.size()
+
+# Профессия рабочего на гексе (row, col). Возвращает id профессии по улучшению,
+# на которое он назначен, или "", если рабочего нет / улучшение без профессии.
+# Используется тултипом и панелью для отображения «Профессия: …».
+func get_profession(row: int, col: int) -> String:
+    if not has_worker(row, col):
+        return ""
+    var main_map = get_parent()
+    if main_map == null:
+        return ""
+    var tile = main_map.tile_data[row][col]
+    if tile == null:
+        return ""
+    var imp = tile.get("improvement")
+    if imp == null:
+        return ""
+    return GameData.get_profession_for_improvement(imp)
+
+# Возвращает таймер потребления для гекса, при необходимости инициализируя
+# его по профессии рабочего. elapsed — сколько секунд прошло с последнего
+# списания (или с момента назначения), interval — с каким интервалом
+# производится списание (берётся из потребления профессии).
+# Если на гексе нет рабочего или у его профессии нет потребления —
+# возвращает { "active": false }.
+func get_consumption_timer(row: int, col: int) -> Dictionary:
+    var key = str(row) + "," + str(col)
+    if not has_worker(row, col):
+        return {"active": false}
+    var prof = get_profession(row, col)
+    if prof.is_empty():
+        return {"active": false}
+    var cons_list = GameData.get_profession_consumption(prof)
+    if cons_list.is_empty():
+        return {"active": false}
+    # Если у профессии несколько потребителей с разными интервалами,
+    # берём минимальный — он определяет ритм списания.
+    var min_interval := 1e9
+    for entry in cons_list:
+        var iv = float(entry.get("interval", 0))
+        if iv > 0 and iv < min_interval:
+            min_interval = iv
+    if min_interval >= 1e9:
+        return {"active": false}
+    if not consumption_timers.has(key):
+        consumption_timers[key] = {"elapsed": 0.0, "interval": min_interval}
+    return {"active": true, "elapsed": consumption_timers[key].elapsed, "interval": min_interval}
+
+# Двигает таймер потребления на delta секунд и возвращает итоговый множитель
+# производства для этого гекса. Логика:
+#   * Если у профессии нет потребления — возвращает 1.0 (без бонуса, без
+#     изменений для остальной системы).
+#   * На каждом вызове проверяет, хватает ли на складе ВСЕХ требуемых
+#     продуктов. Пока хватает — множитель = 1.0 + production_bonus
+#     (например, 1.5 при бонусе 0.5). Как только хоть одного не стало —
+#     множитель откатывается к 1.0, улучшение продолжает работать на базе.
+#   * Каждые interval секунд (для тростниковых лодок — раз в 10 сек) при
+#     наличии ресурса списывает amount единиц со склада и сбрасывает таймер.
+#     Если ресурса нет — таймер НЕ сбрасывается; при появлении ресурса
+#     списание произойдёт сразу, без ожидания полного интервала.
+# Улучшение НИКОГДА не «встаёт»: оно всегда даёт хотя бы базовое
+# производство. Бонус — надбавка за снабжение профессии расходниками.
+func tick_consumption(row: int, col: int, delta: float) -> float:
+    var key = str(row) + "," + str(col)
+    if not has_worker(row, col):
+        return 1.0
+    var prof = get_profession(row, col)
+    if prof.is_empty():
+        return 1.0
+    var cons_list = GameData.get_profession_consumption(prof)
+    if cons_list.is_empty():
+        return 1.0
+
+    # Считаем минимальный interval (для нескольких потребителей с разной
+    # частотой берём самый частый — он определяет ритм таймера).
+    # И суммарный production_bonus: у одной профессии может быть несколько
+    # потребителей с разными бонусами, в этом случае применяем максимальный
+    # (бонусы не складываются — это сознательное упрощение баланса).
+    var min_interval := 1e9
+    var max_bonus := 0.0
+    for entry in cons_list:
+        var iv = float(entry.get("interval", 0))
+        if iv > 0 and iv < min_interval:
+            min_interval = iv
+        var b = float(entry.get("production_bonus", 0.0))
+        if b > max_bonus:
+            max_bonus = b
+    if min_interval >= 1e9:
+        return 1.0
+
+    if not consumption_timers.has(key):
+        consumption_timers[key] = {"elapsed": 0.0, "interval": min_interval}
+
+    var timer: Dictionary = consumption_timers[key]
+    timer.elapsed += delta
+
+    # Проверяем наличие всех требуемых ресурсов КАЖДЫЙ тик, чтобы бонус
+    # корректно включался/отключался при колебаниях запасов на складе.
+    var can_consume := true
+    for entry in cons_list:
+        var pid = entry.get("product_id", "")
+        var amt = int(entry.get("amount", 0))
+        if amt <= 0 or pid == "":
+            continue
+        if CityData.get_storage_amount(pid) < amt:
+            can_consume = false
+            break
+
+    # Момент списания. Если ресурса хватает — списываем и сбрасываем таймер.
+    # Если не хватает — НЕ списываем, таймер сохраняем (при появлении
+    # ресурса спишем сразу, не дожидаясь полного интервала).
+    if timer.elapsed >= min_interval:
+        if can_consume:
+            for entry in cons_list:
+                var pid = entry.get("product_id", "")
+                var amt = int(entry.get("amount", 0))
+                if amt <= 0 or pid == "":
+                    continue
+                CityData.remove_from_storage(pid, amt, "best")
+            timer.elapsed = 0.0
+        # else: таймер остаётся как есть, на следующем тике проверим снова
+
+    consumption_timers[key] = timer
+    return 1.0 + (max_bonus if can_consume else 0.0)
+
+# Сериализация таймеров потребления для сохранения.
+# Формат: [{ "row": int, "col": int, "elapsed": float }, ...]
+# interval не сохраняем — он вычисляется из профессии при загрузке.
+func serialize_consumption_timers() -> Array:
+    var result = []
+    for key in consumption_timers.keys():
+        var parts = key.split(",", false)
+        if parts.size() == 2:
+            result.append({
+                "row": int(parts[0]),
+                "col": int(parts[1]),
+                "elapsed": float(consumption_timers[key].get("elapsed", 0.0))
+            })
+    return result
+
+func load_consumption_timers(timers: Array):
+    consumption_timers.clear()
+    for item in timers:
+        if item is Dictionary and item.has("row") and item.has("col"):
+            var row = int(item.get("row", -1))
+            var col = int(item.get("col", -1))
+            if row >= 0 and col >= 0:
+                consumption_timers[str(row) + "," + str(col)] = {
+                    "elapsed": float(item.get("elapsed", 0.0))
+                }
 
 func serialize_assignments() -> Array:
     var result = []

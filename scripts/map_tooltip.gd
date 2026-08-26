@@ -50,8 +50,17 @@ func render_products(products: Array, container: Node, wrap: bool = false):
                 tex_rect.stretch_mode = TextureRect.STRETCH_SCALE
                 hbox.add_child(tex_rect)
             var label_item = Label.new()
-            label_item.text = "%s: %d" % [item.get("name", ""), item.get("amount", 0)]
-            label_item.add_theme_color_override("font_color", Color.WHITE)
+            # Если у элемента задан color — используем его (для подсветки
+            # потребления, когда на складе не хватает ресурса). Иначе —
+            # обычный белый. Если amount == 0, выводим только подпись
+            # (используется для строк потребления, где важна не цифра, а текст).
+            var amount_val = int(item.get("amount", 0))
+            if amount_val > 0:
+                label_item.text = "%s: %d" % [item.get("name", ""), amount_val]
+            else:
+                label_item.text = item.get("name", "")
+            var item_color: Color = item.get("color", Color.WHITE)
+            label_item.add_theme_color_override("font_color", item_color)
             hbox.add_child(label_item)
             container.add_child(hbox)
         else:
@@ -142,6 +151,16 @@ func has_extended_tooltip_info(row: int, col: int, tile_data: Array) -> bool:
             if bonus_multiplier > 1.0:
                 return true
 
+    # Показываем расширенный тултип и при наличии профессионального потребления
+    # у работающего улучшения: рыбак тратит тростниковые лодки, шахтёр — патроны
+    # и т.п. Эту инфу важно показать ДО того, как игрок начнёт замечать
+    # «улучшение встало без видимых причин» в логах.
+    if tile.improvement != null and _worker_manager.has_worker(row, col):
+        var prof_id = GameData.get_profession_for_improvement(tile.improvement)
+        if not prof_id.is_empty():
+            if not GameData.get_profession_consumption(prof_id).is_empty():
+                return true
+
     # Стоимость постройки в расширенном тултипе больше не показывается —
     # расчёты перенесены в Превью панели управления.
 
@@ -228,12 +247,18 @@ func _build_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_c
         text += "\nКачество: %s (%s)" % [q_stars, q_name]
 
     var imp_status = ""
+    var prof_id := ""
     if tile.improvement != null:
         var has_worker = _worker_manager.has_worker(row, col)
         if not has_worker:
             imp_status = " (неактивно: нет рабочего)"
         else:
             imp_status = " (работает)"
+            # Профессия рабочего: определяется улучшением, на которое он назначен.
+            # Метка ставится автоматически при назначении и снимается при
+            # увольнении (см. worker_manager.gd, assign_worker / remove_worker).
+            # Игрок метками не управляет.
+            prof_id = GameData.get_profession_for_improvement(tile.improvement)
     else:
         if res_id != "":
             var res_data = GameData.raw_resources.get(res_id, {})
@@ -260,6 +285,12 @@ func _build_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_c
                 text += "\nВремя заполнения: %.0f сек" % time_to_mature
 
     text += "\nУлучшение: %s%s" % [imp_name, imp_status]
+
+    # Профессия: показываем ТОЛЬКО если есть рабочий и у улучшения есть профессия.
+    # Это и есть «метка», которую житель получает при назначении на работу.
+    if not prof_id.is_empty():
+        var prof_name = GameData.get_profession_name(prof_id)
+        text += "\nПрофессия рабочего: %s" % prof_name
 
     # Доступ к пресной воде показываем для ВСЕХ гексов.
     var water_access = MapHelpers.get_hex_water_access(row, col, tile_data, tile_data.size(), tile_data[0].size())
@@ -383,5 +414,51 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
 
     for mod in modifiers:
         result.append({"type": "label", "text": " %s" % mod.get("label", ""), "color": Color(0.7, 0.9, 0.7)})
+
+    # --- Потребление профессии ---
+    # Показываем список ресурсов, которые профессия рабочего на этом гексе
+    # расходует со склада. Источник: поле consumption у продуктов (см. docs.md).
+    # Секция появляется только если:
+    #   1) улучшение построено,
+    #   2) на нём есть рабочий,
+    #   3) улучшение имеет профессию,
+    #   4) у этой профессии есть хотя бы один потребитель.
+    # Само производство улучшения при нехватке ресурса НЕ останавливается —
+    # оно откатывается к базовому множителю (без бонуса).
+    if tile.improvement != null and _worker_manager.has_worker(row, col):
+        var prof_id = GameData.get_profession_for_improvement(tile.improvement)
+        if not prof_id.is_empty():
+            var cons_list = GameData.get_profession_consumption(prof_id)
+            if not cons_list.is_empty():
+                result.append({"type": "header", "text": "Потребляет:"})
+                for entry in cons_list:
+                    var cons_pid = entry.get("product_id", "")
+                    var cons_name = entry.get("product_name", cons_pid)
+                    var cons_amount = int(entry.get("amount", 0))
+                    var cons_interval = float(entry.get("interval", 0))
+                    # Подпись строки потребления: «<имя>: <N> шт./<S> сек».
+                    # Если задан production_bonus — добавляем «+N% к производству»,
+                    # чтобы игрок видел, зачем профессии этот расходник.
+                    var cons_bonus: float = float(entry.get("production_bonus", 0.0))
+                    var cons_label := "%s: %d шт./%d сек" % [
+                        cons_name, cons_amount, int(round(cons_interval))
+                    ]
+                    if cons_bonus > 0.0:
+                        var bonus_pct := int(round(cons_bonus * 100.0))
+                        cons_label += " (+%d%% к производству)" % bonus_pct
+                    # Иконка потребляемого продукта (если есть).
+                    var cons_icon_path := ""
+                    var cons_prod_data = GameData.products.get(cons_pid, {})
+                    if cons_prod_data.has("icon"):
+                        cons_icon_path = _map_renderer.get_icon_path(cons_prod_data["icon"])
+                    if cons_icon_path != "":
+                        result.append({
+                            "type": "product",
+                            "name": cons_label,
+                            "amount": 0, # число не выводим: важна текстовая подпись
+                            "icon_path": cons_icon_path
+                        })
+                    else:
+                        result.append({"type": "label", "text": cons_label, "color": Color(0.85, 0.85, 0.85)})
 
     return result

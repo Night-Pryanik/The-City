@@ -18,6 +18,7 @@ var modifiers: Dictionary = {}
 var special_actions: Dictionary = {} # id -> данные спецдействия
 var qualities: Dictionary = {} # данные о степенях качества ресурсов
 var map_config: Dictionary = {} # конфигурация карты мира (data/map_config.json)
+var professions: Dictionary = {} # id -> данные профессии (data/professions.json)
 
 func load_all_data():
     var loader = load("res://scripts/data_loader.gd").new()
@@ -39,6 +40,7 @@ func load_all_data():
     special_actions = loader.special_actions
     qualities = loader.qualities
     map_config = loader.map_config
+    professions = loader.professions
 
 # Возвращает имя группы по её ключу (с символом "@" или без).
 # Если ключ не является группой, возвращает пустую строку.
@@ -184,3 +186,84 @@ func get_quality_priority_options() -> Array:
 func get_quality_priority_name(priority: String) -> String:
     var names: Dictionary = qualities.get("priority_names", {})
     return names.get(priority, priority)
+
+# --- ПРОФЕССИИ И ПОТРЕБЛЕНИЕ ---
+
+# Возвращает данные профессии по id (или пустой словарь).
+func get_profession(prof_id: String) -> Dictionary:
+    return professions.get(prof_id, {})
+
+# Возвращает имя профессии в именительном падеже («Фермер»).
+# Если id не найден — возвращает сам id как fallback.
+func get_profession_name(prof_id: String) -> String:
+    if prof_id.is_empty():
+        return ""
+    return professions.get(prof_id, {}).get("name", prof_id)
+
+# Возвращает профессию, связанную с улучшением (id из data/improvements.json).
+# Если улучшение не задано или у него нет профессии — возвращает "".
+# Используется для отображения «Профессия: ...» в тултипе и панели.
+func get_profession_for_improvement(imp_id: String) -> String:
+    if imp_id.is_empty() or imp_id == null:
+        return ""
+    return improvements.get(imp_id, {}).get("profession", "")
+
+# Возвращает массив записей о потреблении для профессии. Источник — поле
+# "consumption" у продуктов в data/products/*.json:
+#   { "profession": ["<id>"], "amount": N, "interval": S, "production_bonus": B }
+# Если несколько продуктов потребляются одной профессией, в массиве будет
+# несколько записей. Каждая запись:
+#   { "product_id": String, "product_name": String,
+#     "amount": int, "interval": float,
+#     "production_bonus": float, "icon_path": String }
+# product_name и icon_path могут быть не заполнены (если данные ещё не загружены).
+# production_bonus — прибавка к множителю производства, пока ресурс есть
+# на складе (0.5 = +50%, то есть множитель x1.5). 0 = без бонуса.
+# Если профессия неизвестна или не имеет потребителей — пустой массив.
+func get_profession_consumption(prof_id: String) -> Array:
+    var result: Array = []
+    if prof_id.is_empty():
+        return result
+    for pid in products:
+        var prod = products[pid]
+        if not prod.has("consumption"):
+            continue
+        var cons: Dictionary = prod["consumption"]
+        var target_list: Array = cons.get("profession", [])
+        if not (prof_id in target_list):
+            continue
+        result.append({
+            "product_id": pid,
+            "product_name": prod.get("name", pid),
+            "amount": int(cons.get("amount", 0)),
+            "interval": float(cons.get("interval", 0)),
+            "production_bonus": float(cons.get("production_bonus", 0.0))
+        })
+    return result
+
+# Возвращает все продукты, которые потребляются профессией (без деталей по
+# amount/interval) — используется для подсчёта «сколько какой профессии
+# нужно таких-то ресурсов» в сводных тултипах.
+# Возвращает словарь: product_id -> { "amount": int, "interval": float,
+#                                       "production_bonus": float }.
+# Если разные продукты требуются с разной частотой, берётся первая встреченная.
+func get_profession_consumption_summary(prof_id: String) -> Dictionary:
+    var result: Dictionary = {}
+    if prof_id.is_empty():
+        return result
+    for pid in products:
+        var prod = products[pid]
+        if not prod.has("consumption"):
+            continue
+        var cons: Dictionary = prod["consumption"]
+        var target_list: Array = cons.get("profession", [])
+        if not (prof_id in target_list):
+            continue
+        if result.has(pid):
+            continue
+        result[pid] = {
+            "amount": int(cons.get("amount", 0)),
+            "interval": float(cons.get("interval", 0)),
+            "production_bonus": float(cons.get("production_bonus", 0.0))
+        }
+    return result

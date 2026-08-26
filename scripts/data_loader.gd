@@ -19,6 +19,7 @@ var modifiers: Dictionary = {}
 var special_actions: Dictionary = {} # id -> данные спецдействия
 var qualities: Dictionary = {} # данные о степенях качества ресурсов
 var map_config: Dictionary = {} # конфигурация карты мира (data/map_config.json)
+var professions: Dictionary = {} # id -> данные профессии (data/professions.json)
 
 func load_all_data():
     var merged_data = _load_all_json_files("res://data")
@@ -92,6 +93,21 @@ func load_all_data():
     # Файл data/map_config.json содержит ключ "map_config" с параметрами:
     # map_rows / map_cols / start_ring_rows / start_ring_cols / region_width.
     map_config = merged_data.get("map_config", {})
+
+    # НОВОЕ: загружаем профессии рабочих на улучшениях (data/professions.json).
+    # Поля профессии:
+    #   id          — строковый идентификатор (snake_case);
+    #   name        — именительный падеж, ед.ч. («Фермер»);
+    #   icon        — имя файла иконки;
+    #   description — короткое описание.
+    # Подробности схемы потребления ресурсов профессией — в docs.md, раздел
+    # «Профессии и потребление».
+    professions = {}
+    for p in merged_data.get("professions", []):
+        if p is Dictionary:
+            var pid = p.get("id", "")
+            if not pid.is_empty():
+                professions[pid] = p
 
 
 func _load_all_json_files(folder_path: String) -> Dictionary:

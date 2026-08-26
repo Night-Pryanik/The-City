@@ -195,6 +195,9 @@ func _ready():
 
         # Восстанавливаем назначения рабочих и горожан
         worker_manager.load_assignments(SaveManager.saved_data.get("worker_assignments", []))
+        # Таймеры профессионального потребления — после назначений, чтобы
+        # interval для каждого гекса пересчитался по текущей профессии.
+        worker_manager.load_consumption_timers(SaveManager.saved_data.get("profession_consumption_timers", []))
         townsfolk_manager.load_assignments(SaveManager.saved_data.get("townsfolk_assignments", []))
 
         # Для уже изученных технологий гарантируем спавн открытых ими ресурсов
@@ -385,6 +388,16 @@ func _process(delta):
                 if eff_res == "":
                     continue
 
+                # Профессиональное потребление: улучшения, у которых через
+                # профессию есть потребление (consumption у продукта), списывают
+                # ресурс по своему интервалу. tick_consumption возвращает
+                # итоговый множитель производства: 1.0 без бонуса, 1.0+bonus
+                # пока ресурс есть. Улучшение НЕ встаёт при нехватке — оно
+                # просто работает на базе. Таймер двигается шагом
+                # PRODUCTION_INTERVAL (точность ±2 сек на интервалах 10+ сек).
+                var consumption_multiplier: float = worker_manager.tick_consumption(
+                    row, col, CityData.PRODUCTION_INTERVAL)
+
                 var res_data = GameData.raw_resources.get(eff_res, {})
                 var feed_needed = res_data.get("feed_consumption", 0)
                 var production_multiplier = 1.0
@@ -394,6 +407,12 @@ func _process(delta):
                     production_multiplier = CityData.get_improvement_production_multiplier(
                         tile.improvement, _is_hex_irrigated(row, col),
                         tile.get("terrain", ""), eff_res)
+
+                # Применяем бонус профессионального потребления (например,
+                # +50% к производству рыбы, пока есть тростниковые лодки).
+                # Множитель приходит из worker_manager.tick_consumption();
+                # он равен 1.0 без бонуса или при нехватке расходников.
+                production_multiplier *= consumption_multiplier
 
                 # Растущие ресурсы (time_to_mature > 0): пока пастбище заполняется,
                 # выход пропорционален степени заполненности. Само заполнение

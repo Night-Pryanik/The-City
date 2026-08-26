@@ -16,6 +16,9 @@
       "color": [ 255, 255, 0 ],
       "work_cost": 8,
       "unlock_tech": "farming",
+      // Профессия рабочего на этом улучшении. Метка ставится/снимается
+      // автоматически в worker_manager.gd при назначении/увольнении.
+      "profession": "farmer",
       // Проводник пресной воды: после изучения технологии «Орошение» ферма
       // распространяет пресную воду на соседние гексы (схема water_access: chain).
       "conducts_water": true
@@ -26,7 +29,8 @@
       "icon": "pasture.png",
       "color": [ 34, 139, 34 ],
       "work_cost": 25,
-      "unlock_tech": "animal_husbandry"
+      "unlock_tech": "animal_husbandry",
+      "profession": "herder"
     },
     {
       "id": "mine",
@@ -34,7 +38,8 @@
       "icon": "mine.png",
       "color": [ 105, 105, 105 ],
       "work_cost": 30,
-      "unlock_tech": "mining"
+      "unlock_tech": "mining",
+      "profession": "miner"
     },
     {
       "id": "quarry",
@@ -42,7 +47,8 @@
       "icon": "quarry.png",
       "color": [ 139, 137, 137 ],
       "work_cost": 20,
-      "unlock_tech": "masonry"
+      "unlock_tech": "masonry",
+      "profession": "quarryman"
     },
     {
       "id": "beehive",
@@ -50,7 +56,8 @@
       "icon": "beehive.png",
       "color": [ 255, 215, 0 ],
       "work_cost": 12,
-      "unlock_tech": "beekeeping"
+      "unlock_tech": "beekeeping",
+      "profession": "beekeeper"
     },
     {
       "id": "vineyard",
@@ -58,7 +65,8 @@
       "icon": "vineyard.png",
       "color": [ 128, 0, 0 ],
       "work_cost": 35,
-      "unlock_tech": "winegrowing"
+      "unlock_tech": "winegrowing",
+      "profession": "vinedresser"
     },
     {
       "id": "clay_pit",
@@ -66,7 +74,8 @@
       "icon": "clay_pit.png",
       "color": [ 210, 180, 140 ],
       "work_cost": 22,
-      "unlock_tech": "pottery"
+      "unlock_tech": "pottery",
+      "profession": "potter"
     },
     {
       "id": "plantation",
@@ -75,6 +84,7 @@
       "color": [ 34, 139, 34 ],
       "work_cost": 28,
       "unlock_tech": "plantations",
+      "profession": "planter",
       // Проводник пресной воды: после изучения технологии «Орошение» плантация
       // распространяет пресную воду на соседние гексы (схема water_access: chain).
       "conducts_water": true
@@ -85,7 +95,8 @@
       "icon": "tar_pit.png",
       "color": [ 139, 69, 19 ],
       "work_cost": 30,
-      "unlock_tech": "bitumen_extraction"
+      "unlock_tech": "bitumen_extraction",
+      "profession": "tar_collector"
     },
     {
       "id": "soda_quarry",
@@ -93,7 +104,8 @@
       "icon": "soda_quarry.png",
       "color": [ 200, 220, 255 ],
       "work_cost": 30,
-      "unlock_tech": "soda_extraction"
+      "unlock_tech": "soda_extraction",
+      "profession": "soda_extractor"
     },
     {
       // Пристань — «ключ» к водным ресурсам конкретного водоёма. Строится на
@@ -104,6 +116,8 @@
       // fishing_boats). Для каждого водоёма нужна СВОЯ пристань. Доступ
       // вычисляется динамически (BFS по воде), поэтому при сносе пристани
       // ресурсы водоёма снова становятся недоступными для НОВЫХ построек.
+      // Профессии нет: пристань — инфраструктурный объект, не требует
+      // отдельного рабочего в текущей модели.
       "id": "harbor",
       "name": "Пристань",
       "icon": "harbor.png",
@@ -123,6 +137,7 @@
       "color": [ 70, 130, 180 ],
       "work_cost": 15,
       "unlock_tech": "fishing",
+      "profession": "fisherman",
       // Маркер: для постройки требуется пристань на этом же водоёме.
       "requires_harbor": true
     }
