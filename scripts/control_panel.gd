@@ -730,6 +730,18 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     var action_id = preview.get("action_id", "")
     var eff_res = preview.get("eff_res", "")
 
+    # Для ферм/пастбищ эффективный ресурс — выбранная культура (растение/животное),
+    # а не то, что лежит на гексе сейчас: на пустом гексе природного ресурса нет,
+    # и без этого «Будет производить» в превью не показывалось.
+    if type == "build_farm" or type == "build_pasture":
+        var imp_kind_cult = "farm" if type == "build_farm" else "pasture"
+        var cult_id = preview.get("selected_culture_id", null)
+        if not _is_suitable_culture(row, col, cult_id, imp_kind_cult):
+            cult_id = _first_suitable_culture(row, col, imp_kind_cult)
+            preview["selected_culture_id"] = cult_id
+        if cult_id != null:
+            eff_res = cult_id
+
     # Строка заголовка превью: подпись + кнопки «Начать» и «Отменить» (32×32,
     # с иконками зелёной галочки / красного косого креста). Строится в
     # ОТДЕЛЬНОМ контейнере над PreviewScroll — вне прокручиваемой области,
@@ -866,7 +878,12 @@ func _build_preview(row: int, col: int, tile: Dictionary):
                 products.append({"type": "product", "name": prod_name, "amount": final_amount, "icon_path": icon_path})
             for mod in modifiers:
                 products.append({"type": "label", "text": " %s" % mod.get("label", ""), "color": Color(0.7, 0.9, 0.7)})
-            map_tooltip.render_products(products, _preview_container, true)
+            # Рендерим в ОТДЕЛЬНЫЙ бокс: render_products очищает переданный
+            # контейнер, поэтому нельзя давать ему _preview_container напрямую —
+            # иначе он стирает блок выбора культуры, добавленный выше.
+            var products_box = VBoxContainer.new()
+            map_tooltip.render_products(products, products_box, true)
+            _preview_container.add_child(products_box)
 
     # Стоимость труда: детальный расчёт (база, местность, расстояние).
     var cost_data = MapHelpers.get_improvement_work_cost(cost_imp_id, row, col, main_map.tile_data, main_map.city_row, main_map.city_col)
@@ -1013,4 +1030,9 @@ func _first_suitable_culture(row: int, col: int, imp_kind: String):
 func _select_preview_culture(id: String):
     if _preview_action != null:
         _preview_action["selected_culture_id"] = id
+        # Синхронизируем эффективный ресурс, чтобы блок «Будет производить»
+        # в превью пересчитался под новую культуру.
+        var t = _preview_action.get("type", "")
+        if t == "build_farm" or t == "build_pasture":
+            _preview_action["eff_res"] = id
     _refresh()
