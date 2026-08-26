@@ -286,12 +286,6 @@ func _build_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_c
 
     text += "\nУлучшение: %s%s" % [imp_name, imp_status]
 
-    # Профессия: показываем ТОЛЬКО если есть рабочий и у улучшения есть профессия.
-    # Это и есть «метка», которую житель получает при назначении на работу.
-    if not prof_id.is_empty():
-        var prof_name = GameData.get_profession_name(prof_id)
-        text += "\nПрофессия рабочего: %s" % prof_name
-
     # Доступ к пресной воде показываем для ВСЕХ гексов.
     var water_access = MapHelpers.get_hex_water_access(row, col, tile_data, tile_data.size(), tile_data[0].size())
     if water_access == "direct":
