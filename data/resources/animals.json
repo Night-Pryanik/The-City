@@ -417,7 +417,8 @@
       "feed_consumption": 0,
       "time_to_mature": 0,
       "icon": "raw_fish.png",
-      "color": [ 0, 100, 200 ]
+      "color": [ 0, 100, 200 ],
+      "spawn_count": [10, 30]
     },
     {
       "id": "sea_fish",
@@ -434,7 +435,8 @@
       "feed_consumption": 0,
       "time_to_mature": 0,
       "icon": "raw_fish.png",
-      "color": [ 0, 50, 150 ]
+      "color": [ 0, 50, 150 ],
+      "spawn_count": [10, 30]
     }
   ]
 }
