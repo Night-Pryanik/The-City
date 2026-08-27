@@ -63,6 +63,20 @@ MapHelpers.get_effective_resource(tile)
 
 Поиск по обоим полям (`resource` и `crop_bred`) реализован в `MapHelpers.find_domesticated_quality`.
 
+### Кого можно разводить (поле `breedable`)
+
+Механика разведения распространяется не на все одомашненные виды. В JSON ресурса
+(`data/resources/*.json`) есть поле `breedable` — по умолчанию `true`, если поле
+не задано. Для водных ресурсов (рыба озёр и моря) оно равно `false`: их нельзя
+«развести» на пустых гексах — рыба добывается только там, где есть природный
+ресурс, через улучшение «Рыбацкие лодки» (`fishing_boats`) с проверкой harbor_access.
+Одомашнивание рыбы постройкой лодок сохраняется: она попадает в
+`CityData.domesticated_animals` и отображается как одомашненный вид, но ни панель
+управления (`control_panel.gd`), ни хелпер постройки на пустом гексе
+(`MapHelpers.get_buildable_improvement`) не предложат её разводить.
+Проверка выполняется через `MapHelpers.can_breed_resource(res_id)` во всех местах,
+где формируются варианты разведения.
+
 ### Удаление разведения
 
 Снос улучшения (`action_type: "demolish"` в `special_actions.json`) на гексе с `crop_bred`:

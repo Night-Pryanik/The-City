@@ -243,6 +243,16 @@ static func get_effective_resource(tile: Dictionary) -> String:
         return b
     return ""
 
+## --- Разведение одомашненных видов (схема crop_bred) ---
+## Разводить можно НЕ всех одомашненных видов: водные ресурсы (рыба и т.п.)
+## живут только в своих водоёмах — поле tile.crop_bred для них не используется.
+## Возможность разведения задаёт в JSON ресурса (data/resources/*.json) поле
+## breedable; при отсутствии поля считается true. Проверка нужна во всех местах,
+## где формируются варианты разведения на пустом гексе (пастбище/ферма).
+static func can_breed_resource(res_id: String) -> bool:
+    var raw = GameData.raw_resources.get(res_id, {})
+    return bool(raw.get("breedable", true))
+
 ## --- Заполненность поголовья (time_to_mature) ---
 ## Ресурсы с time_to_mature > 0 (животные на пастбищах) набирают полную
 ## численность постепенно. Пока стадо не полное, выход ресурса пропорционален
@@ -431,11 +441,17 @@ static func get_buildable_improvement(tile: Dictionary) -> String:
     if CityData.domesticated_animals.size() > 0 and CityData.is_improvement_unlocked("pasture"):
         for animal_id in CityData.domesticated_animals:
             var animal_data: Dictionary = GameData.raw_resources.get(animal_id, {})
+            # breedable: false (напр. водные ресурсы) — разведение недоступно.
+            if not can_breed_resource(animal_id):
+                continue
             if tile.terrain in animal_data.get("allowed_terrain", []) and tile_cover in animal_data.get("allowed_cover", []):
                 return "pasture"
     if CityData.domesticated_plants.size() > 0 and CityData.is_improvement_unlocked("farm"):
         for plant_id in CityData.domesticated_plants:
             var plant_data: Dictionary = GameData.raw_resources.get(plant_id, {})
+            # breedable: false (напр. водные ресурсы) — разведение недоступно.
+            if not can_breed_resource(plant_id):
+                continue
             if tile.terrain in plant_data.get("allowed_terrain", []) and tile_cover in plant_data.get("allowed_cover", []):
                 return "farm"
     return ""

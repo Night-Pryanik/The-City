@@ -429,6 +429,9 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
             var has_suitable_animal = false
             for animal_id in CityData.domesticated_animals:
                 var animal_data = GameData.raw_resources.get(animal_id, {})
+                # breedable: false (напр. рыба и другие водные ресурсы) — не предлагаем разведение.
+                if not MapHelpers.can_breed_resource(animal_id):
+                    continue
                 if tile.terrain in animal_data.get("allowed_terrain", []) and tile.get("cover", "none") in animal_data.get("allowed_cover", []):
                     has_suitable_animal = true
                     break
@@ -455,6 +458,9 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
             var has_suitable_plant = false
             for plant_id in CityData.domesticated_plants:
                 var plant_data = GameData.raw_resources.get(plant_id, {})
+                # breedable: false (напр. водные ресурсы) — не предлагаем разведение.
+                if not MapHelpers.can_breed_resource(plant_id):
+                    continue
                 if tile.terrain in plant_data.get("allowed_terrain", []) and tile.get("cover", "none") in plant_data.get("allowed_cover", []):
                     has_suitable_plant = true
                     break
@@ -1008,6 +1014,9 @@ func _get_suitable_crops(row: int, col: int, imp_kind: String) -> Array:
     var out := []
     for id in ids:
         var data = GameData.raw_resources.get(id, {})
+        # breedable: false (напр. рыба) — разводить нельзя, в выбор культур не попадает.
+        if not MapHelpers.can_breed_resource(id):
+            continue
         if tile.terrain in data.get("allowed_terrain", []) and tile_cover in data.get("allowed_cover", []):
             out.append({"id": id, "name": data.get("name", id)})
     return out
@@ -1027,6 +1036,9 @@ func _is_suitable_culture(row: int, col: int, id, imp_kind: String) -> bool:
         ids = CityData.domesticated_plants
     else:
         ids = CityData.domesticated_animals
+    # breedable: false (напр. рыба) — прямое подтверждение разведения невозможно.
+    if not MapHelpers.can_breed_resource(id):
+        return false
     if not (id in ids):
         return false
     return tile.terrain in data.get("allowed_terrain", []) and tile_cover in data.get("allowed_cover", [])
