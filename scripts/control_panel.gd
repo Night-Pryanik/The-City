@@ -580,7 +580,13 @@ func _add_special_actions(actions: Array, row: int, col: int, tile: Dictionary):
         var action_type = sa.get("action_type", "terrain")
         var applicable = false
         if action_type == "terrain":
-            applicable = tile.terrain == sa.get("source_terrain", "") and tile.improvement == null
+            # Террейн-действие. source_terrains — список типов местности 
+            # (напр. осушение болота), либо один source_terrain (обратная 
+            # совместимость).
+            var terrain_list: Array = sa.get("source_terrains", [])
+            if terrain_list.is_empty():
+                terrain_list = [ sa.get("source_terrain", "") ]
+            applicable = tile.terrain in terrain_list and tile.improvement == null
         elif action_type == "cover":
             var cover_id = tile.get("cover", "none")
             applicable = cover_id in sa.get("source_cover", []) and tile.improvement == null and tile.resource == null

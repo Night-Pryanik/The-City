@@ -31,6 +31,19 @@
       "icon": "demolish.svg",
       "result_terrain": "dont_change",
       "work_cost": 5
+    },
+    {
+      // Осушение болот и маршей: превращает их в равнину (action_type "terrain").
+      // source_terrains — список типов местности, к которым применимо действие.
+      // Стоимость значительная — 3x строительства фермы
+      "id": "drain_water",
+      "name": "Осушение болот",
+      "action_type": "terrain",
+      "icon": "irrigation.svg",
+      "source_terrains": [ "swamp", "marsh" ],
+      "result_terrain": "plain",
+      "work_cost": 24,
+      "unlock_tech": "irrigation"
     }
   ]
 }

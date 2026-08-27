@@ -69,7 +69,7 @@ func _process(delta):
 
     for data in to_complete:
         var key = str(data["row"]) + "," + str(data["col"])
-        emit_signal("build_message", "Построено: %s" % data["imp_name"])
+        emit_signal("build_message", "Завершено: %s" % data["imp_name"])
         emit_signal("build_completed", data["row"], data["col"], data["imp_id"], data.get("target_res_id"))
         active_builds.erase(key)
 

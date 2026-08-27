@@ -789,9 +789,13 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
             # Стадо при сносе исчезает — накопленная заполенность сбрасывается.
             tile["fill_time"] = 0.0
         else:
-            # Террейн-действие: сбрасываем ресурс и улучшение.
+            # Террейн-действие (напр. осушение): сбрасываем ресурсы и 
+            # улучшение, очищаем покров и crop_bred, чтобы гекс стал 
+            # чистой равниной (без болотного покрова).
             tile.resource = null
             tile.improvement = null
+            tile.crop_bred = null
+            tile.cover = "none"
             tile["fill_time"] = 0.0
 
         # Меняем тип местности только если result_terrain задан и не равен "dont_change".
