@@ -1419,7 +1419,18 @@ func _confirm_cancel_build(row: int, col: int):
     var dialog = AcceptDialog.new()
     dialog.title = "Отмена строительства"
     dialog.dialog_text = "Отменить строительство «%s»?\n\nПотраченный труд (%.0f/%d) будет потерян." % [imp_name, work_done, work_total]
+    # Локализуем кнопку подтверждения (по умолчанию Godot показывает «OK» —
+    # проект без файлов переводов).
+    dialog.get_ok_button().text = "Да"
+    # Ставим игру на паузу, пока открыт диалог подтверждения отмены.
+    var was_paused = get_tree().paused
+    get_tree().paused = true
+    # Диалог должен принимать ввод, когда дерево приостановлено.
+    dialog.process_mode = Node.PROCESS_MODE_ALWAYS
+
     dialog.confirmed.connect(func():
+        if not was_paused:
+            get_tree().paused = false
         build_manager.cancel_build(row, col)
         # После отмены стройки прогресс-бар на гексе исчезает — перерисовываем
         # слой явно, т.к. если это была последняя активная стройка, _process
@@ -1428,3 +1439,9 @@ func _confirm_cancel_build(row: int, col: int):
     )
     add_child(dialog)
     dialog.popup_centered()
+    # У AcceptDialog нет сигнала canceled: закрытие окна крестиком просто
+    # прячет диалог. Снимаем паузу и в этом случае.
+    dialog.visibility_changed.connect(func():
+        if not dialog.visible and not was_paused:
+            get_tree().paused = false
+    )

@@ -620,9 +620,29 @@ func _confirm_cancel_construction(build_key: String):
     var dialog = ConfirmationDialog.new()
     dialog.title = "Подтверждение"
     dialog.dialog_text = "Отменить стройку? Потраченный труд сгорит."
+    # Локализуем стандартные кнопки диалога (по умолчанию Godot показывает
+    # английские «OK» / «Cancel» — проект без файлов переводов).
+    dialog.get_ok_button().text = "Да"
+    dialog.get_cancel_button().text = "Отмена"
     add_child(dialog)
+
+    # Ставим игру на паузу, пока открыт диалог подтверждения отмены.
+    var was_paused = get_tree().paused
+    get_tree().paused = true
+    # Диалог должен принимать ввод, когда дерево приостановлено.
+    dialog.process_mode = Node.PROCESS_MODE_ALWAYS
+
     dialog.popup_centered()
-    dialog.confirmed.connect(func(): _cancel_construction(build_key))
+    dialog.confirmed.connect(func():
+        if not was_paused:
+            get_tree().paused = false
+        _cancel_construction(build_key)
+    )
+    # Крестик окна и кнопка «Отмена» тоже снимают паузу.
+    dialog.canceled.connect(func():
+        if not was_paused:
+            get_tree().paused = false
+    )
 
 func _cancel_construction(build_key: String):
     var bm = _get_build_manager()
