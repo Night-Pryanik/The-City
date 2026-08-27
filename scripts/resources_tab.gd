@@ -92,6 +92,7 @@ func refresh():
     amount_labels.clear()
     prod_labels.clear()
     cons_labels.clear()
+    quality_labels.clear()
     displayed_products.clear()
     diversity_label = null
 
@@ -330,19 +331,24 @@ func update_values():
         if not displayed_products.has(prod_id):
             refresh()
             return
-        if amount_labels.has(prod_id):
+        var amount_label = amount_labels.get(prod_id)
+        if amount_label != null and is_instance_valid(amount_label):
             var pdata = products.get(prod_id, {})
             var prod_name = pdata.get("name", prod_id)
-            amount_labels[prod_id].text = "%s: %d  " % [prod_name, city_storage.get(prod_id, 0)]
-        if prod_labels.has(prod_id):
-            prod_labels[prod_id].text = "[+%d" % production_rates.get(prod_id, 0)
-        if cons_labels.has(prod_id):
-            cons_labels[prod_id].text = "-%d]" % consumption_rates.get(prod_id, 0)
-        if food_toggles.has(prod_id):
+            amount_label.text = "%s: %d  " % [prod_name, city_storage.get(prod_id, 0)]
+        var prod_label = prod_labels.get(prod_id)
+        if prod_label != null and is_instance_valid(prod_label):
+            prod_label.text = "[+%d" % production_rates.get(prod_id, 0)
+        var cons_label = cons_labels.get(prod_id)
+        if cons_label != null and is_instance_valid(cons_label):
+            cons_label.text = "-%d]" % consumption_rates.get(prod_id, 0)
+        var toggle = food_toggles.get(prod_id)
+        if toggle != null and is_instance_valid(toggle):
             var enabled = city_food_pool.get(prod_id, true)
-            food_toggles[prod_id].color = Color.GREEN if enabled else Color.RED
-        if quality_labels.has(prod_id):
-            _update_quality_label(quality_labels[prod_id], prod_id)
+            toggle.color = Color.GREEN if enabled else Color.RED
+        var q_label = quality_labels.get(prod_id)
+        if q_label != null and is_instance_valid(q_label):
+            _update_quality_label(q_label, prod_id)
 
     if diversity_label != null and is_instance_valid(diversity_label):
         var animal_subgroup_map = {}
