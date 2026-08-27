@@ -19,6 +19,7 @@ var special_actions: Dictionary = {} # id -> данные спецдействи
 var qualities: Dictionary = {} # данные о степенях качества ресурсов
 var map_config: Dictionary = {} # конфигурация карты мира (data/map_config.json)
 var professions: Dictionary = {} # id -> данные профессии (data/professions.json)
+var consumption_rules: Array = [] # записи потребления (data/consumption.json)
 
 func load_all_data():
     var loader = load("res://scripts/data_loader.gd").new()
@@ -41,6 +42,7 @@ func load_all_data():
     qualities = loader.qualities
     map_config = loader.map_config
     professions = loader.professions
+    consumption_rules = loader.consumption_rules
 
 # Возвращает имя группы по её ключу (с символом "@" или без).
 # Если ключ не является группой, возвращает пустую строку.
@@ -218,15 +220,80 @@ func is_no_worker_improvement(imp_id: String) -> bool:
         return false
     return improvements.get(imp_id, {}).get("no_worker", false)
 
-# Возвращает массив записей о потреблении для профессии. Источник — поле
-# "consumption" у продуктов в data/products/*.json:
-#   { "profession": ["<id>"], "amount": N, "interval": S, "production_bonus": B }
-# Если несколько продуктов потребляются одной профессией, в массиве будет
-# несколько записей. Каждая запись:
+# Ищет id группы продуктов по человекочитаемому имени.
+# Используется как fallback при разборе "@"-ключей реестра потребления
+# (по аналогии с разбором групповых рецептов в CityData). Если группа не
+# найдена — пустая строка.
+func _find_group_id_by_name(group_name: String) -> String:
+    for gid in product_group_names:
+        if product_group_names[gid] == group_name:
+            return gid
+    return ""
+
+# Собирает запись о потреблении из правила data/consumption.json.
+# res_key — поле "resource" правила ("ид_продукта" или "@ид_группы").
+# Для группы члены резолвятся через product_groups; если группа не найдена
+# или amount <= 0 — возвращается пустой словарь (запись пропускается).
+func _build_consumption_entry(res_key: String, rule: Dictionary) -> Dictionary:
+    var amount := int(rule.get("amount", 0))
+    if amount <= 0:
+        print("GameData: правило потребления без корректного amount пропущено: ", rule)
+        return {}
+    var entry := {
+        "amount": amount,
+        "interval": float(rule.get("interval", 0)),
+        "production_bonus": float(rule.get("production_bonus", 0.0))
+    }
+    if is_group_key(res_key):
+        var gkey = res_key.trim_prefix("@")
+        var members: Array = product_groups.get(gkey, [])
+        if members.is_empty():
+            # Fallback: поиск группы по человекочитаемому имени (как в рецептах).
+            var gid_by_name = _find_group_id_by_name(gkey)
+            if not gid_by_name.is_empty():
+                members = product_groups.get(gid_by_name, [])
+        if members.is_empty():
+            print("GameData: группа '", res_key, "' из data/consumption.json не найдена — запись пропущена.")
+            return {}
+        entry["product_id"] = "" # групповая запись не привязана к продукту
+        entry["product_name"] = get_product_group_name(res_key)
+        entry["is_group"] = true
+        entry["group_members"] = members.duplicate()
+        entry["display_key"] = res_key
+        # Иконка группы: первый член, у которого иконка задана.
+        var icon_name := ""
+        for mid in members:
+            var mdata: Dictionary = products.get(mid, {})
+            if mdata.has("icon"):
+                icon_name = mdata["icon"]
+                break
+        entry["icon"] = icon_name
+    else:
+        entry["product_id"] = res_key
+        entry["product_name"] = products.get(res_key, {}).get("name", res_key)
+        entry["is_group"] = false
+        entry["group_members"] = []
+        entry["display_key"] = res_key
+        entry["icon"] = products.get(res_key, {}).get("icon", "")
+    return entry
+
+# Возвращает массив записей о потреблении для профессии. Источники (в порядке
+# приоритета):
+#   1) реестр data/consumption.json — записи вида
+#      { "resource": "<id>|@<группа>", "profession": ["<id>"],
+#        "amount": N, "interval": S, "production_bonus": B }.
+#      Поддерживает группы продуктов: потребляется любой подходящий продукт
+#      из группы (см. worker_manager.tick_consumption()).
+#   2) устаревшая схема «от ресурса»: поле consumption у продукта в
+#      data/products/*.json (оставлено для одиночных случаев — когда у ресурса
+#      нет аналогов для группы). Инфраструктура не изменена.
+# Дубликаты отсекаются по display_key: один и тот же ресурс не попадёт в
+# результат дважды (приоритет у записи из реестра). Каждая запись:
 #   { "product_id": String, "product_name": String,
-#     "amount": int, "interval": float,
-#     "production_bonus": float, "icon_path": String }
-# product_name и icon_path могут быть не заполнены (если данные ещё не загружены).
+#     "amount": int, "interval": float, "production_bonus": float,
+#     "is_group": bool, "group_members": Array[String],
+#     "display_key": String, "icon": String }
+# product_id пуст для групповых записей; product_name — имя группы.
 # production_bonus — прибавка к множителю производства, пока ресурс есть
 # на складе (0.5 = +50%, то есть множитель x1.5). 0 = без бонуса.
 # Если профессия неизвестна или не имеет потребителей — пустой массив.
@@ -234,9 +301,32 @@ func get_profession_consumption(prof_id: String) -> Array:
     var result: Array = []
     if prof_id.is_empty():
         return result
+    # Источник 1: реестр data/consumption.json.
+    var covered := {} # display_key -> true (защита от двойного списания)
+    for rule in consumption_rules:
+        if not (rule is Dictionary):
+            continue
+        var target_list: Array = rule.get("profession", [])
+        if not (prof_id in target_list):
+            continue
+        var res_key = str(rule.get("resource", ""))
+        if res_key.is_empty():
+            continue
+        var entry = _build_consumption_entry(res_key, rule)
+        if entry.is_empty():
+            continue
+        if covered.has(entry["display_key"]):
+            continue
+        covered[entry["display_key"]] = true
+        result.append(entry)
+    # Источник 2: потребление «от ресурса» (products[*].consumption).
+    # Записи, уже покрытые реестром, пропускаются, чтобы ресурс
+    # не списывался дважды одной профессией.
     for pid in products:
         var prod = products[pid]
         if not prod.has("consumption"):
+            continue
+        if covered.has(pid):
             continue
         var cons: Dictionary = prod["consumption"]
         var target_list: Array = cons.get("profession", [])
@@ -247,33 +337,34 @@ func get_profession_consumption(prof_id: String) -> Array:
             "product_name": prod.get("name", pid),
             "amount": int(cons.get("amount", 0)),
             "interval": float(cons.get("interval", 0)),
-            "production_bonus": float(cons.get("production_bonus", 0.0))
+            "production_bonus": float(cons.get("production_bonus", 0.0)),
+            "is_group": false,
+            "group_members": [],
+            "display_key": pid,
+            "icon": prod.get("icon", "")
         })
     return result
 
-# Возвращает все продукты, которые потребляются профессией (без деталей по
+# Возвращает все ресурсы, которые потребляются профессией (без деталей по
 # amount/interval) — используется для подсчёта «сколько какой профессии
 # нужно таких-то ресурсов» в сводных тултипах.
-# Возвращает словарь: product_id -> { "amount": int, "interval": float,
-#                                       "production_bonus": float }.
-# Если разные продукты требуются с разной частотой, берётся первая встреченная.
+# Возвращает словарь: display_key -> { "name": String, "is_group": bool,
+#   "group_members": Array, "amount": int, "interval": float,
+#   "production_bonus": float }.
+# Ключ одиночного продукта — его id; группового ресурса — "@<id_группы>".
+# Если разные ресурсы требуются с разной частотой, берётся первая встреченная.
 func get_profession_consumption_summary(prof_id: String) -> Dictionary:
     var result: Dictionary = {}
-    if prof_id.is_empty():
-        return result
-    for pid in products:
-        var prod = products[pid]
-        if not prod.has("consumption"):
+    for entry in get_profession_consumption(prof_id):
+        var dkey = entry.get("display_key", entry.get("product_id", ""))
+        if result.has(dkey):
             continue
-        var cons: Dictionary = prod["consumption"]
-        var target_list: Array = cons.get("profession", [])
-        if not (prof_id in target_list):
-            continue
-        if result.has(pid):
-            continue
-        result[pid] = {
-            "amount": int(cons.get("amount", 0)),
-            "interval": float(cons.get("interval", 0)),
-            "production_bonus": float(cons.get("production_bonus", 0.0))
+        result[dkey] = {
+            "name": entry.get("product_name", ""),
+            "is_group": bool(entry.get("is_group", false)),
+            "group_members": entry.get("group_members", []),
+            "amount": int(entry.get("amount", 0)),
+            "interval": float(entry.get("interval", 0)),
+            "production_bonus": float(entry.get("production_bonus", 0.0))
         }
     return result

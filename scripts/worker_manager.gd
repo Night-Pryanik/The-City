@@ -9,10 +9,11 @@ var assigned_hexes = {}
 # Значение: { "elapsed": float, "interval": float } — сколько секунд прошло
 # с момента последнего списания и с каким интервалом нужно списывать.
 # Эти таймеры нужны, чтобы потребление шло НЕ каждый production-тик
-# (раз в 2 сек), а с интервалом, заданным у продукта (например, 10 сек для
-# тростниковых лодок). Сам по себе таймер НЕ блокирует производство: если
-# ресурса нет, улучшение просто откатывается к базовому множителю (без
-# бонуса потребления). См. tick_consumption().
+# (раз в 2 сек), а с интервалом, заданным в декларации потребления
+# (data/consumption.json или устаревшее поле consumption у продукта;
+# например, 10 сек для группы «Лодки»). Сам по себе таймер НЕ блокирует
+# производство: если ресурса нет, улучшение просто откатывается к базовому
+# множителю (без бонуса потребления). См. tick_consumption().
 var consumption_timers: Dictionary = {}
 
 func find_vacancy() -> Dictionary:
@@ -163,6 +164,9 @@ func get_consumption_timer(row: int, col: int) -> Dictionary:
 #     множитель откатывается к 1.0, улучшение продолжает работать на базе.
 #   * Каждые interval секунд (для тростниковых лодок — раз в 10 сек) при
 #     наличии ресурса списывает amount единиц со склада и сбрасывает таймер.
+#     Для групповых записей списывается любой подходящий продукт группы:
+#     сначала запас суммируется по всем членам, затем расходуется жадно
+#     (приоритет качества «best»).
 #     Если ресурса нет — таймер НЕ сбрасывается; при появлении ресурса
 #     списание произойдёт сразу, без ожидания полного интервала.
 # Улучшение НИКОГДА не «встаёт»: оно всегда даёт хотя бы базовое
@@ -203,15 +207,33 @@ func tick_consumption(row: int, col: int, delta: float) -> float:
 
     # Проверяем наличие всех требуемых ресурсов КАЖДЫЙ тик, чтобы бонус
     # корректно включался/отключался при колебаниях запасов на складе.
+    # Групповые записи (is_group) проверяются по суммарному запасу всех
+    # членов группы — потребляется любой подходящий продукт из набора.
     var can_consume := true
     for entry in cons_list:
-        var pid = entry.get("product_id", "")
         var amt = int(entry.get("amount", 0))
-        if amt <= 0 or pid == "":
+        if amt <= 0:
             continue
-        if CityData.get_storage_amount(pid) < amt:
-            can_consume = false
-            break
+        if entry.get("is_group", false):
+            var members: Array = entry.get("group_members", [])
+            if members.is_empty():
+                can_consume = false
+                break
+            var total := 0
+            for pid in members:
+                total += CityData.get_storage_amount(pid)
+                if total >= amt:
+                    break
+            if total < amt:
+                can_consume = false
+                break
+        else:
+            var pid = str(entry.get("product_id", ""))
+            if pid == "":
+                continue
+            if CityData.get_storage_amount(pid) < amt:
+                can_consume = false
+                break
 
     # Момент списания. Если ресурса хватает — списываем и сбрасываем таймер.
     # Если не хватает — НЕ списываем, таймер сохраняем (при появлении
@@ -219,11 +241,28 @@ func tick_consumption(row: int, col: int, delta: float) -> float:
     if timer.elapsed >= min_interval:
         if can_consume:
             for entry in cons_list:
-                var pid = entry.get("product_id", "")
                 var amt = int(entry.get("amount", 0))
-                if amt <= 0 or pid == "":
+                if amt <= 0:
                     continue
-                CityData.remove_from_storage(pid, amt, "best")
+                if entry.get("is_group", false):
+                    # Списание из группы: жадное заполнение остатка по членам
+                    # группы (как при расходовании групповых рецептов в крафте).
+                    # Приоритет качества — «best» (как у одиночных продуктов).
+                    var remaining = amt
+                    for pid in entry.get("group_members", []):
+                        if remaining <= 0:
+                            break
+                        var avail = CityData.get_storage_amount(pid)
+                        if avail <= 0:
+                            continue
+                        var take = min(avail, remaining)
+                        CityData.remove_from_storage(pid, take, "best")
+                        remaining -= take
+                else:
+                    var pid = str(entry.get("product_id", ""))
+                    if pid == "":
+                        continue
+                    CityData.remove_from_storage(pid, amt, "best")
             timer.elapsed = 0.0
         # else: таймер остаётся как есть, на следующем тике проверим снова
 

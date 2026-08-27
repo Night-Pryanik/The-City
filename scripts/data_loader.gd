@@ -20,6 +20,7 @@ var special_actions: Dictionary = {} # id -> данные спецдействи
 var qualities: Dictionary = {} # данные о степенях качества ресурсов
 var map_config: Dictionary = {} # конфигурация карты мира (data/map_config.json)
 var professions: Dictionary = {} # id -> данные профессии (data/professions.json)
+var consumption_rules: Array = [] # записи потребления из data/consumption.json
 
 func load_all_data():
     var merged_data = _load_all_json_files("res://data")
@@ -108,6 +109,19 @@ func load_all_data():
             var pid = p.get("id", "")
             if not pid.is_empty():
                 professions[pid] = p
+
+    # НОВОЕ: загружаем реестр профессионального потребления
+    # (data/consumption.json). Каждая запись:
+    #   resource          — id продукта ИЛИ "@<id>" группы из product_groups.json;
+    #   profession        — массив id профессий-потребителей;
+    #   amount/interval/production_bonus — параметры тика потребления.
+    # Группы позволяют профессии потреблять любой подходящий продукт из
+    # набора (например, "@boats" — «Лодки»). Подробности — в docs.md,
+    # раздел «Профессии и потребление ресурсов».
+    consumption_rules = []
+    for cr in merged_data.get("consumption", []):
+        if cr is Dictionary and not str(cr.get("resource", "")).is_empty():
+            consumption_rules.append(cr)
 
 
 func _load_all_json_files(folder_path: String) -> Dictionary:

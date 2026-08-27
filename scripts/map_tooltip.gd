@@ -445,11 +445,18 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
                     if cons_bonus > 0.0:
                         var bonus_pct := int(round(cons_bonus * 100.0))
                         cons_label += " (+%d%% к производству)" % bonus_pct
-                    # Иконка потребляемого продукта (если есть).
+                    # Иконка потребляемого ресурса (если есть).
+                    # Для групповой записи берём иконку первого члена группы,
+                    # у которого она задана (GameData кладёт её в поле "icon").
                     var cons_icon_path := ""
-                    var cons_prod_data = GameData.products.get(cons_pid, {})
-                    if cons_prod_data.has("icon"):
-                        cons_icon_path = _map_renderer.get_icon_path(cons_prod_data["icon"])
+                    if entry.get("is_group", false):
+                        var cons_icon_name = str(entry.get("icon", ""))
+                        if cons_icon_name != "":
+                            cons_icon_path = _map_renderer.get_icon_path(cons_icon_name)
+                    else:
+                        var cons_prod_data = GameData.products.get(cons_pid, {})
+                        if cons_prod_data.has("icon"):
+                            cons_icon_path = _map_renderer.get_icon_path(cons_prod_data["icon"])
                     if cons_icon_path != "":
                         result.append({
                             "type": "product",

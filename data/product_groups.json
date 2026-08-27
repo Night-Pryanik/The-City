@@ -26,6 +26,7 @@
       "id": "rope_fibers",
       "name": "Волокна для канатов",
       "products": [ "hemp", "jute", "ramie", "sisal", "papyrus" ]
-    }
+    },
+    {"id": "boats", "name": "Лодки", "products": [ "reed_boat" ]}
   ]
 }
