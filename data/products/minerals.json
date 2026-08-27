@@ -1,6 +1,5 @@
 {
   "resources": [
-    { "id": "flint", "name": "Кремень", "type": "product", "category": "mineral", "icon": "flint.png" },
     { "id": "coal", "name": "Уголь", "type": "product", "category": "mineral", "icon": "coal.png" },
     {
       "id": "quartz_sand",

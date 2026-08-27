@@ -1,21 +1,6 @@
 {
   "resources": [
     {
-      "id": "flint_deposit",
-      "name": "Кремень",
-      "type": "raw",
-      "category": "minerals",
-      "group": "minerals",
-      "subgroup": "",
-      "tech_required": "mining",
-      "allowed_terrain": [ "hill", "mountain" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
-      "improved_by": "quarry",
-      "produces": { "flint": 1 },
-      "icon": "flint.png",
-      "color": [ 169, 169, 169 ]
-    },
-    {
       "id": "basalt_deposit",
       "name": "Базальт",
       "type": "raw",
