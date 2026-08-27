@@ -12,6 +12,7 @@
     {"id": "fur", "name": "Пушные животные"},
     {"id": "bees", "name": "Пчёлы"},
     {"id": "cervids", "name": "Олени"},
+    {"id": "fish", "name": "Рыбы"},
     {"id": "cereals", "name": "Зерновые растения"},
     {"id": "pseudocereals", "name": "Псевдозерновые растения"},
     {"id": "tubers", "name": "Клубневые растения"},
