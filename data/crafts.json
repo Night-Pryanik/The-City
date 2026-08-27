@@ -91,6 +91,16 @@
       "description": "Обжигает глину в строительные кирпичи"
     },
     {
+      "id": "clay_tablets",
+      "name": "Глиняные таблички",
+      "produced_in": [ "pottery_workshop" ],
+      "resources": { "clay": 2 },
+      "result": { "bricks": 1 },
+      "time": 5.0,
+      "unlock_tech": "pottery",
+      "description": "Создаёт глиняные таблички для записей"
+    },
+    {
       "id": "leather",
       "name": "Выделка кожи",
       "produced_in": [ "tanner_house" ],
@@ -289,6 +299,16 @@
       "time": 5.0,
       "unlock_tech": "fishing",
       "description": "Коптит рыбу для длительного хранения"
+    },
+    {
+      "id": "parchment",
+      "name": "Изготовление пергамента",
+      "produced_in": [ "parchment_workshop" ],
+      "resources": { "hide": 2, "lime": 1 },
+      "result": { "parchment": 1 },
+      "time": 5.0,
+      "unlock_tech": "parchment",
+      "description": "Производит пергамент из шкур животных с помощью золения их в извести"
     }
   ]
 }

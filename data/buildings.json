@@ -193,6 +193,16 @@
       "production_slots": 1.0,
       "unlock_tech": "fishing",
       "default_recipes": [ "fish" ]
+    },
+    {
+      "id": "parchment_workshop",
+      "name": "Пергаментная мастерская",
+      "description": "Производство пергамента.",
+      "work_cost": 40,
+      "icon": "parchment_workshop.png",
+      "production_slots": 1.0,
+      "unlock_tech": "parchment",
+      "default_recipes": [ "parchment" ]
     }
   ]
 }

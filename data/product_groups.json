@@ -35,6 +35,11 @@
       // чисто визуальные и с группами товаров НЕ связаны). При добавлении
       // нового продукта с категорией "fruits" его нужно внести и сюда.
       "products": [ "grapes", "olives", "mulberries", "figs", "dates" ]
+    },
+    {
+      "id": "writing_mediums",
+      "name": "Основа для письма",
+      "products": ["clay_tablets", "papyrus", "parchment", "paper"]
     }
   ]
 }

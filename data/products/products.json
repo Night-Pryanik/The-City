@@ -7,7 +7,16 @@
       "name": "Глиняная посуда",
       "type": "product",
       "category": "household_items",
+      "unlock_tech": "pottery",
       "icon": "pottery.png"
+    },
+    {
+      "id": "clay_tablets",
+      "name": "Глиняные таблички",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "writing",
+      "icon": "clay_tablets.png"
     },
     {
       "id": "fabric_clothes",
@@ -130,6 +139,14 @@
       // "consumption" здесь сохранена для одиночных случаев (когда у ресурса
       // нет аналогов для группы). Подробности — в docs.md,
       // «Профессии и потребление ресурсов».
+    },
+    {
+      "id": "parchment",
+      "name": "Пергамент",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "parchment",
+      "icon": "parchment.png"
     }
   ]
 }
