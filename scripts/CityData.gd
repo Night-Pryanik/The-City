@@ -575,6 +575,43 @@ func is_tech_available(tech_id: String) -> bool:
         return false
     return are_prerequisites_met(tech_id)
 
+# Возвращает список id технологий (в порядке их изучения — от корня до target),
+# которые игроку ещё нужно изучить, чтобы стала доступной tech_id.
+# Уже изученные технологии пропускаются; требования берутся из поля
+# `prerequisites` (группы ИЛИ · элементов И — выбирается группа с наименьшим
+# числом недостающих технологий). Исключаются циклы и дубликаты.
+# Используется для кнопки «Изучить ...» в панели управления спецдействий.
+func get_tech_study_chain(tech_id: String) -> Array:
+    var chain: Array = []
+    _collect_tech_chain(tech_id, chain, {})
+    return chain
+
+func _collect_tech_chain(tech_id: String, chain: Array, visiting: Dictionary) -> void:
+    if tech_id in visiting or tech_id in chain:
+        return
+    var data = _get_tech_data(tech_id)
+    if data == null or is_tech_unlocked(tech_id):
+        return
+    var prereqs: Array = data.get("prerequisites", [])
+    if not prereqs.is_empty():
+        # Выбираем группу предусловий с наименьшим числом недостающих технологий.
+        var best_reqs: Array = []
+        var best_missing := 1 << 30
+        for group in prereqs:
+            var missing: Array = []
+            for req_id in group:
+                if not is_tech_unlocked(req_id):
+                    missing.append(req_id)
+            if missing.size() < best_missing:
+                best_missing = missing.size()
+                best_reqs = missing
+        visiting[tech_id] = true
+        for req_id in best_reqs:
+            _collect_tech_chain(req_id, chain, visiting)
+        visiting.erase(tech_id)
+    if tech_id not in chain:
+        chain.append(tech_id)
+
 # Открыто ли здание игроку (по полю unlock_tech самого здания).
 func is_building_unlocked(building_id: String) -> bool:
     for b in GameData.buildings:
