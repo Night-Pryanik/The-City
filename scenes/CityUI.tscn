@@ -199,7 +199,7 @@ layout_mode = 2
 text = "Доступные постройки:"
 
 [node name="BuildingsItemList" type="ItemList" parent="ContentPanel/BuildingsPanel/HSplitContainer/AvailableBuildingsPanel/VBoxContainer" unique_id=1295887837]
-custom_minimum_size = Vector2(0, 200)
+custom_minimum_size = Vector2(0, 550)
 layout_mode = 2
 
 [node name="BuildingDetailsPanel" type="Control" parent="ContentPanel/BuildingsPanel/HSplitContainer" unique_id=244568997]
@@ -232,8 +232,8 @@ offset_top = -84.0
 offset_right = 104.0
 offset_bottom = -53.0
 grow_vertical = 0
-text = "Построить"
 disabled = true
+text = "Построить"
 
 [node name="TradePanel" type="Control" parent="ContentPanel" unique_id=730713259]
 visible = false

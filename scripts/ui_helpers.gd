@@ -18,6 +18,17 @@ var quality_tooltip_panel: Panel
 var quality_tooltip_vbox: VBoxContainer
 
 var message_label: Label
+# Общий стиль фона для всех тултипов: полностью непрозрачный тёмный фон
+# со светлой рамкой в 1px.
+func _make_tooltip_style() -> StyleBoxFlat:
+    var style = StyleBoxFlat.new()
+    style.bg_color = Color(0.2, 0.2, 0.2, 1.0)
+    style.border_width_left = 1
+    style.border_width_top = 1
+    style.border_width_right = 1
+    style.border_width_bottom = 1
+    style.border_color = Color(0.6, 0.6, 0.6)
+    return style
 
 func setup(main_ui: Control, message_lbl: Label):
     message_label = message_lbl
@@ -33,14 +44,7 @@ func setup(main_ui: Control, message_lbl: Label):
     tooltip_label.add_theme_font_size_override("font_size", 14)
     tooltip_panel.add_child(tooltip_label)
 
-    var style = StyleBoxFlat.new()
-    style.bg_color = Color(0.2, 0.2, 0.2, 0.9)
-    style.border_width_left = 1
-    style.border_width_top = 1
-    style.border_width_right = 1
-    style.border_width_bottom = 1
-    style.border_color = Color(0.6, 0.6, 0.6)
-    tooltip_panel.add_theme_stylebox_override("panel", style)
+    tooltip_panel.add_theme_stylebox_override("panel", _make_tooltip_style())
 
     # Тултип для кнопки "Построить"
     build_tooltip_panel = Panel.new()
@@ -53,14 +57,7 @@ func setup(main_ui: Control, message_lbl: Label):
     build_tooltip_label.add_theme_font_size_override("font_size", 14)
     build_tooltip_panel.add_child(build_tooltip_label)
 
-    var build_style = StyleBoxFlat.new()
-    build_style.bg_color = Color(0.2, 0.2, 0.2, 0.9)
-    build_style.border_width_left = 1
-    build_style.border_width_top = 1
-    build_style.border_width_right = 1
-    build_style.border_width_bottom = 1
-    build_style.border_color = Color(0.6, 0.6, 0.6)
-    build_tooltip_panel.add_theme_stylebox_override("panel", build_style)
+    build_tooltip_panel.add_theme_stylebox_override("panel", _make_tooltip_style())
 
     # Тултип для групповых ресурсов
     group_tooltip_panel = Panel.new()
@@ -74,14 +71,7 @@ func setup(main_ui: Control, message_lbl: Label):
     group_tooltip_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
     group_tooltip_panel.add_child(group_tooltip_content)
 
-    var group_style = StyleBoxFlat.new()
-    group_style.bg_color = Color(0.2, 0.2, 0.2, 0.9)
-    group_style.border_width_left = 1
-    group_style.border_width_top = 1
-    group_style.border_width_right = 1
-    group_style.border_width_bottom = 1
-    group_style.border_color = Color(0.6, 0.6, 0.6)
-    group_tooltip_panel.add_theme_stylebox_override("panel", group_style)
+    group_tooltip_panel.add_theme_stylebox_override("panel", _make_tooltip_style())
 
     # Тултип для прогресс-баров строящихся зданий
     progress_tooltip_panel = Panel.new()
@@ -95,14 +85,7 @@ func setup(main_ui: Control, message_lbl: Label):
     progress_tooltip_label.add_theme_font_size_override("font_size", 14)
     progress_tooltip_panel.add_child(progress_tooltip_label)
 
-    var progress_style = StyleBoxFlat.new()
-    progress_style.bg_color = Color(0.2, 0.2, 0.2, 0.9)
-    progress_style.border_width_left = 1
-    progress_style.border_width_top = 1
-    progress_style.border_width_right = 1
-    progress_style.border_width_bottom = 1
-    progress_style.border_color = Color(0.6, 0.6, 0.6)
-    progress_tooltip_panel.add_theme_stylebox_override("panel", progress_style)
+    progress_tooltip_panel.add_theme_stylebox_override("panel", _make_tooltip_style())
 
     # Тултип для разбивки склада по качеству
     quality_tooltip_panel = Panel.new()
@@ -116,14 +99,7 @@ func setup(main_ui: Control, message_lbl: Label):
     quality_tooltip_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
     quality_tooltip_panel.add_child(quality_tooltip_vbox)
 
-    var quality_style = StyleBoxFlat.new()
-    quality_style.bg_color = Color(0.2, 0.2, 0.2, 0.9)
-    quality_style.border_width_left = 1
-    quality_style.border_width_top = 1
-    quality_style.border_width_right = 1
-    quality_style.border_width_bottom = 1
-    quality_style.border_color = Color(0.6, 0.6, 0.6)
-    quality_tooltip_panel.add_theme_stylebox_override("panel", quality_style)
+    quality_tooltip_panel.add_theme_stylebox_override("panel", _make_tooltip_style())
 
 func show_food_tooltip(mouse_pos: Vector2):
     tooltip_panel.position = mouse_pos + Vector2(15, 15)
