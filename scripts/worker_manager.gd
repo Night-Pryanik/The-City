@@ -16,6 +16,13 @@ var assigned_hexes = {}
 # множителю (без бонуса потребления). См. tick_consumption().
 var consumption_timers: Dictionary = {}
 
+# Таймеры ГОРОДСКОГО потребления псевдо-профессии "all" (все жители города).
+# Ключ — display_key записи потребления ("@fruits" для группы, id продукта
+# для одиночного), значение { "elapsed": float }. Эти таймеры живут отдельно
+# от consumption_timers (те привязаны к гексам "row,col"): потребление "all"
+# не привязано к улучшениям и списывается поголовно по CityData.total_population.
+var city_consumption_timers: Dictionary = {}
+
 func find_vacancy() -> Dictionary:
     var main_map = get_parent()
     var tile_data = main_map.tile_data
@@ -292,6 +299,95 @@ func load_consumption_timers(timers: Array):
             var col = int(item.get("col", -1))
             if row >= 0 and col >= 0:
                 consumption_timers[str(row) + "," + str(col)] = {
+                    "elapsed": float(item.get("elapsed", 0.0))
+                }
+
+# --- ГОРОДСКОЕ ПОТРЕБЛЕНИЕ (псевдо-профессия "all", все жители города) ---
+# Профессия "all" (data/professions.json) — вершина иерархии: покрывает ВСЕХ
+# жителей, включая занятых на улучшениях и в зданиях. Её потребление не
+# привязано к гексам, поэтому тикает общим городским таймером, а записи
+# берутся из того же реестра: GameData.get_profession_consumption("all").
+#
+# Семантика amount для "all": НА ОДНОГО жителя. Суммарное списание за тик =
+# amount * CityData.total_population. Проверка запаса и жадное списание из
+# группы — те же, что в tick_consumption(). production_bonus игнорируется:
+# городское потребление — пока тест инфраструктуры, бонусов не даёт.
+# Если ресурса не хватает — таймер сохраняется; при появлении ресурса
+# списание произойдёт сразу, без ожидания полного интервала.
+# Вызывается из main_map._process в production-тике с шагом
+# CityData.PRODUCTION_INTERVAL (та же точность, что у по-гексового потребления).
+func tick_city_consumption(delta: float) -> void:
+    var cons_list = GameData.get_profession_consumption("all")
+    if cons_list.is_empty():
+        return
+    for entry in cons_list:
+        var iv = float(entry.get("interval", 0))
+        if iv <= 0:
+            continue
+        var dkey = str(entry.get("display_key", ""))
+        if dkey.is_empty():
+            continue
+        if not city_consumption_timers.has(dkey):
+            city_consumption_timers[dkey] = {"elapsed": 0.0}
+        var timer: Dictionary = city_consumption_timers[dkey]
+        timer.elapsed += delta
+        if timer.elapsed < iv:
+            continue
+
+        # Сколько нужно списать за тик: amount — на одного жителя.
+        var amt = int(entry.get("amount", 0)) * CityData.total_population
+        if amt <= 0:
+            timer.elapsed = 0.0
+            continue
+
+        if entry.get("is_group", false):
+            var members: Array = entry.get("group_members", [])
+            if members.is_empty():
+                continue
+            var total := 0
+            for pid in members:
+                total += CityData.get_storage_amount(pid)
+            if total < amt:
+                continue # не хватает — таймер не сбрасываем
+            # Жадное списание остатка по членам группы (приоритет "best").
+            var remaining = amt
+            for pid in members:
+                if remaining <= 0:
+                    break
+                var avail = CityData.get_storage_amount(pid)
+                if avail <= 0:
+                    continue
+                var take = min(avail, remaining)
+                CityData.remove_from_storage(pid, take, "best")
+                remaining -= take
+        else:
+            var pid = str(entry.get("product_id", ""))
+            if pid.is_empty():
+                continue
+            if CityData.get_storage_amount(pid) < amt:
+                continue
+            CityData.remove_from_storage(pid, amt, "best")
+        timer.elapsed = 0.0
+
+# Сериализация таймеров городского потребления для сохранения.
+# Формат: [{ "resource": String, "elapsed": float }, ...]
+# interval не сохраняем — он вычисляется из данных при загрузке.
+func serialize_city_consumption_timers() -> Array:
+    var result = []
+    for dkey in city_consumption_timers.keys():
+        result.append({
+            "resource": dkey,
+            "elapsed": float(city_consumption_timers[dkey].get("elapsed", 0.0))
+        })
+    return result
+
+func load_city_consumption_timers(timers: Array):
+    city_consumption_timers.clear()
+    for item in timers:
+        if item is Dictionary and item.has("resource"):
+            var dkey = str(item.get("resource", ""))
+            if not dkey.is_empty():
+                city_consumption_timers[dkey] = {
                     "elapsed": float(item.get("elapsed", 0.0))
                 }
 

@@ -198,6 +198,9 @@ func _ready():
         # Таймеры профессионального потребления — после назначений, чтобы
         # interval для каждого гекса пересчитался по текущей профессии.
         worker_manager.load_consumption_timers(SaveManager.saved_data.get("profession_consumption_timers", []))
+        # Таймеры городского потребления ("all", все жители города) — interval
+        # пересчитывается из данных при загрузке, храним только elapsed.
+        worker_manager.load_city_consumption_timers(SaveManager.saved_data.get("city_consumption_timers", []))
         townsfolk_manager.load_assignments(SaveManager.saved_data.get("townsfolk_assignments", []))
 
         # Для уже изученных технологий гарантируем спавн открытых ими ресурсов
@@ -437,6 +440,11 @@ func _process(delta):
                     CityData.add_raw_production(eff_res, production_multiplier, tile_quality)
 
         CityData.do_tick()
+        # Городское потребление псевдо-профессии "all" (все жители города,
+        # включая занятых): списывает ресурсы поголовно по total_population
+        # по общему городскому таймеру (см. worker_manager.tick_city_consumption).
+        # Никакого бонуса к производству не даёт — тест инфраструктуры.
+        worker_manager.tick_city_consumption(CityData.PRODUCTION_INTERVAL)
         # tick_research_science вызывается каждый кадр ниже (см. _process),
         # а не привязан к production-тику. Это даёт плавный progress-bar.
 

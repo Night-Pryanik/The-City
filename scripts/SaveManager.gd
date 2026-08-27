@@ -37,6 +37,10 @@ func save_game():
         # interval пересчитывается из профессии при загрузке, поэтому
         # храним только elapsed.
         "profession_consumption_timers": main_map.worker_manager.serialize_consumption_timers(),
+        # Таймеры городского потребления псевдо-профессии "all" (все жители):
+        # храним только elapsed по display_key; interval пересчитывается
+        # из данных при загрузке.
+        "city_consumption_timers": main_map.worker_manager.serialize_city_consumption_timers(),
         "townsfolk_assignments": main_map.townsfolk_manager.serialize_assignments(),
         "active_builds": build_manager.active_builds if build_manager else {},
         "active_building_builds": build_manager.active_building_builds if build_manager else {},
