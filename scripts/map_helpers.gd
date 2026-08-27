@@ -137,9 +137,17 @@ static func _is_water_conductor(tile: Dictionary) -> bool:
 ##                срабатывает ТОЛЬКО после изучения технологии «Орошение»
 ##                (tech_id: "irrigation");
 ##   - ""       — доступа к пресной воде нет.
+##
+## ПРАВИЛА ЦЕПОЧКИ: вода передаётся ТОЛЬКО между проводниками (фермами/
+## плантациями). Каждое промежуточное звено цепочки обязано быть проводником,
+## а завершается цепочка проводником, у которого есть прямой доступ к воде.
+## Пустые береговые гексы рек и озёр воду НЕ передают: раньше BFS «замыкался»
+## на любом соседе, числящемся прямым источником (в т.ч. пустом берегу реки,
+## где река течёт по ДРУГОМУ ребру), из-за чего ферма рядом с рекой, не касаясь
+## речного ребра и без соседей-проводников, ошибочно получала бонус
+## "по цепочке" (см. tests/water_access_test.gd, блоки 2.x и 4.x).
 ## Функция — единый источник истины для бонусов пресной воды, тултипов и
-## отрисовки капелек. Цепочка ищется BFS по проводникам (max 3 шага), пока
-## не встретится прямой источник ("direct").
+## отрисовки капелек. Длина цепочки — до 3 гексов между проводниками.
 static func get_hex_water_access(row: int, col: int, tile_data: Array, map_rows: int, map_cols: int) -> String:
     if row < 0 or row >= map_rows or col < 0 or col >= map_cols:
         return ""
@@ -159,14 +167,14 @@ static func get_hex_water_access(row: int, col: int, tile_data: Array, map_rows:
         return ""
 
     var visited := {}
-    var queue = [ {"row": row, "col": col, "dist": 0}]
+    var queue = [ {"row": row, "col": col, "dist": 0} ]
     visited["%d_%d" % [row, col]] = true
 
     while queue.size() > 0:
         var item = queue.pop_front()
-        var crow = item.row
-        var ccol = item.col
-        var dist = item.dist
+        var crow: int = item.row
+        var ccol: int = item.col
+        var dist: int = item.dist
         if dist >= 3:
             continue
 
@@ -178,13 +186,15 @@ static func get_hex_water_access(row: int, col: int, tile_data: Array, map_rows:
             var neighbor_tile = tile_data[n.row][n.col]
             if neighbor_tile == null:
                 continue
-            # Если сосед — прямой источник, вода по цепочке достигнута.
+            # Воду проводят только проводники (фермы/плантации).
+            if not _is_water_conductor(neighbor_tile):
+                continue
+            # Замыкает цепочку только проводник СО СВОИМ прямым доступом:
+            # он сам касается реки/озера/канала или стоит на их берегу.
             if _is_direct_water_source(n.row, n.col, tile_data, map_rows, map_cols):
                 return "chain"
-            # Продолжаем цепочку только по проводникам.
-            if _is_water_conductor(neighbor_tile):
-                visited[key] = true
-                queue.append({"row": n.row, "col": n.col, "dist": dist + 1})
+            visited[key] = true
+            queue.append({"row": n.row, "col": n.col, "dist": dist + 1})
     return ""
 
 
