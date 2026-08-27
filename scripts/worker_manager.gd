@@ -28,6 +28,11 @@ func find_vacancy() -> Dictionary:
             var improvement = tile.get("improvement")
             if improvement == null:
                 continue
+            # Инфраструктурные улучшения (поле "no_worker" в improvements.json,
+            # например пристань) рабочих не требуют и не должны получать их
+            # при автоназначении свободных жителей.
+            if GameData.is_no_worker_improvement(improvement):
+                continue
             if assigned_hexes.has(str(row) + "," + str(col)):
                 continue
 
@@ -62,6 +67,15 @@ func assign_worker(row: int = -1, col: int = -1) -> bool:
         return false
     if CityData.idle_population <= 0:
         return false
+
+    # Защита от прямых вызовов: инфраструктурные улучшения (no_worker,
+    # например пристань) рабочего не получают ни при каких условиях.
+    var mm = get_parent()
+    if mm != null and row >= 0 and row < mm.map_rows and col >= 0 and col < mm.map_cols:
+        var target_tile = mm.tile_data[row][col]
+        if target_tile != null and target_tile.get("improvement", null) != null \
+                and GameData.is_no_worker_improvement(target_tile.improvement):
+            return false
 
     assigned_hexes[key] = true
     # Метка профессии ставится АВТОМАТИЧЕСКИ здесь. Игрок не управляет
@@ -259,5 +273,13 @@ func load_assignments(assignments: Array):
             var col = int(item.get("col", -1))
             if row >= 0 and col >= 0:
                 if main_map and row < main_map.map_rows and col < main_map.map_cols:
+                    # Миграция старых сохранений: в сейвах, сделанных до поля
+                    # "no_worker", на пристань мог быть назначен рабочий.
+                    # Такие назначения недопустимы — отбрасываем их (житель
+                    # вернётся в свободные при пересчёте idle_population).
+                    var load_tile = main_map.tile_data[row][col]
+                    if load_tile != null and load_tile.get("improvement", null) != null \
+                            and GameData.is_no_worker_improvement(load_tile.improvement):
+                        continue
                     assigned_hexes[str(row) + "," + str(col)] = true
     emit_signal("assignment_changed")

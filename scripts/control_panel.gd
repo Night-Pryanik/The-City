@@ -316,23 +316,26 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
     # --- Улучшение уже построено ---
     if tile.improvement != null:
         var imp_name = GameData.improvements.get(tile.improvement, {}).get("name", tile.improvement)
-        var has_worker = worker_manager.has_worker(row, col)
-        if has_worker:
-            actions.append({
-                "type": "pause_improvement",
-                "label": "Приостановить работу (%s)" % imp_name,
-                "enabled": true,
-                "tooltip": "Снять рабочего с улучшения",
-                "icon": "building_pause.png"
-            })
-        else:
-            actions.append({
-                "type": "resume_improvement",
-                "label": "Запустить работу (%s)" % imp_name,
-                "enabled": CityData.idle_population > 0,
-                "tooltip": "Назначить рабочего на улучшение" if CityData.idle_population > 0 else "Нет свободных рабочих",
-                "icon": "building_resume.png"
-            })
+        # Инфраструктурные улучшения (no_worker, например пристань) работают
+        # без рабочего — кнопки запуска/паузы для них не показываем вообще.
+        if not GameData.is_no_worker_improvement(tile.improvement):
+            var has_worker = worker_manager.has_worker(row, col)
+            if has_worker:
+                actions.append({
+                    "type": "pause_improvement",
+                    "label": "Приостановить работу (%s)" % imp_name,
+                    "enabled": true,
+                    "tooltip": "Снять рабочего с улучшения",
+                    "icon": "building_pause.png"
+                })
+            else:
+                actions.append({
+                    "type": "resume_improvement",
+                    "label": "Запустить работу (%s)" % imp_name,
+                    "enabled": CityData.idle_population > 0,
+                    "tooltip": "Назначить рабочего на улучшение" if CityData.idle_population > 0 else "Нет свободных рабочих",
+                    "icon": "building_resume.png"
+                })
 
         # Спец-действия, применимые к гексу с улучшением (например, снос).
         _add_special_actions(actions, row, col, tile)

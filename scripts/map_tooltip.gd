@@ -249,16 +249,21 @@ func _build_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_c
     var imp_status = ""
     var prof_id := ""
     if tile.improvement != null:
-        var has_worker = _worker_manager.has_worker(row, col)
-        if not has_worker:
-            imp_status = " (неактивно: нет рабочего)"
+        if GameData.is_no_worker_improvement(tile.improvement):
+            # Инфраструктурное улучшение (no_worker, например пристань):
+            # функционирует само по себе — статус «нет рабочего» неприменим.
+            imp_status = " (инфраструктура: рабочий не требуется)"
         else:
-            imp_status = " (работает)"
-            # Профессия рабочего: определяется улучшением, на которое он назначен.
-            # Метка ставится автоматически при назначении и снимается при
-            # увольнении (см. worker_manager.gd, assign_worker / remove_worker).
-            # Игрок метками не управляет.
-            prof_id = GameData.get_profession_for_improvement(tile.improvement)
+            var has_worker = _worker_manager.has_worker(row, col)
+            if not has_worker:
+                imp_status = " (неактивно: нет рабочего)"
+            else:
+                imp_status = " (работает)"
+                # Профессия рабочего: определяется улучшением, на которое он назначен.
+                # Метка ставится автоматически при назначении и снимается при
+                # увольнении (см. worker_manager.gd, assign_worker / remove_worker).
+                # Игрок метками не управляет.
+                prof_id = GameData.get_profession_for_improvement(tile.improvement)
     else:
         if res_id != "":
             var res_data = GameData.raw_resources.get(res_id, {})

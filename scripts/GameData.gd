@@ -208,6 +208,16 @@ func get_profession_for_improvement(imp_id: String) -> String:
         return ""
     return improvements.get(imp_id, {}).get("profession", "")
 
+# Возвращает true, если улучшение инфраструктурное — не требует рабочего
+# для выполнения своих функций. Флаг задаётся полем "no_worker": true в
+# data/improvements.json (например, пристань, схема harbor_access).
+# Используется worker_manager (исключение из автоназначения), панелью
+# управления (без кнопок запуска/паузы) и тултипом (особый статус).
+func is_no_worker_improvement(imp_id: String) -> bool:
+    if imp_id.is_empty() or imp_id == null:
+        return false
+    return improvements.get(imp_id, {}).get("no_worker", false)
+
 # Возвращает массив записей о потреблении для профессии. Источник — поле
 # "consumption" у продуктов в data/products/*.json:
 #   { "profession": ["<id>"], "amount": N, "interval": S, "production_bonus": B }
