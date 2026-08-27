@@ -185,6 +185,9 @@ func refresh():
     # --- Товары по категориям ---
     var grouped = {}
     for prod_id in city_storage:
+        # Наука не показывается на вкладке «Ресурсы» (общий пул, см. docs.md).
+        if prod_id == "science":
+            continue
         var amount = city_storage[prod_id]
         var prod_val = production_rates.get(prod_id, 0)
         if amount <= 0 and prod_val <= 0:
@@ -324,6 +327,10 @@ func update_values():
     # Лёгкое обновление: не пересоздаём узлы, а обновляем тексты существующих.
     # Если появились новые продукты (структурное изменение) — вызываем полный refresh.
     for prod_id in city_storage:
+        # Наука хранится в city_storage, но на складе скрыта — отображается
+        # отдельным пулом на вкладке «Технологии» (см. docs.md).
+        if prod_id == "science":
+            continue
         var amount = city_storage[prod_id]
         var prod_val = production_rates.get(prod_id, 0)
         if amount <= 0 and prod_val <= 0:

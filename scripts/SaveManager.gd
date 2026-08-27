@@ -26,6 +26,7 @@ func save_game():
         "current_research_science_cost": CityData.current_research_science_cost,
         "research_science_accumulated": CityData.research_science_accumulated,
         "research_progress": CityData.research_progress,
+        "science_drain_accum": CityData.science_drain_accum,
         "total_population": CityData.total_population,
         "idle_population": CityData.idle_population,
         "food_for_new_settler": CityData.food_for_new_settler,
@@ -114,6 +115,7 @@ func apply_loaded_data():
     CityData.current_research_science_cost = saved_data.get("current_research_science_cost", 0)
     CityData.research_science_accumulated = saved_data.get("research_science_accumulated", 0.0)
     CityData.research_progress = saved_data.get("research_progress", 0.0)
+    CityData.science_drain_accum = saved_data.get("science_drain_accum", 0.0)
     CityData.total_population = saved_data.get("total_population", CityData.total_population)
     CityData.idle_population = saved_data.get("idle_population", CityData.idle_population)
     CityData.food_for_new_settler = saved_data.get("food_for_new_settler", CityData.food_for_new_settler)

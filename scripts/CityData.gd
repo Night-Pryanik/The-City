@@ -23,6 +23,10 @@ var current_research_tech_id: String = ""
 var current_research_science_cost: int = 0
 var research_progress: float = 0.0
 var research_science_accumulated: float = 0.0
+# Дробный остаток «дренажа» пула науки: списываем целыми единицами из пула,
+# а нецелый остаток копим здесь, чтобы скорость была плавной (см. docs.md,
+# «Наука: производство и исследования»).
+var science_drain_accum: float = 0.0
 
 # Сообщения для HUD после завершения исследования (о найденных ресурсах)
 var last_research_messages: Array = []
@@ -34,6 +38,16 @@ var food_for_new_settler: int = 100
 var food_per_citizen: int = 1
 
 const PRODUCTION_INTERVAL: float = 2.0
+
+# --- НАУКА ---
+# Базовый доход науки города за один production-тик (даже без библиотек).
+# Город НЕ может генерировать меньше 1 очка науки за тик — иначе ранняя игра
+# без построек науки была бы заблокирована.
+const BASE_SCIENCE_PER_TICK: float = 1.0
+# Скорость расхода пула науки на текущее исследование (очков в секунду).
+# Пул списывается по столько очков в секунду на исследование; это прямое
+# ускорение его изучения за счёт «произведённой» науки.
+const SCIENCE_DRAIN_PER_SEC: float = 0.5
 
 # --- ТРУД ---
 # Труд = скорость работы города. 1 житель = 1 труд/сек.
@@ -65,6 +79,7 @@ func setup():
     current_research_science_cost = 0
     research_progress = 0.0
     research_science_accumulated = 0.0
+    science_drain_accum = 0.0
     last_research_messages = []
 
     total_population = 1
@@ -469,25 +484,30 @@ func start_research(tech_id: String) -> bool:
     emit_signal("city_updated")
     return true
 
-# Возвращает количество очков науки за тик.
-# Учёных пока нет, поэтому город сам генерирует минимум — 1 очко за тик.
+# Возвращает количество очков науки за тик — базовый доход города.
+# Учёных (специализированных зданий) пока не учитывает: вклад библиотек
+# идёт через пул науки (см. get_science_pool и tick_research_science_continuous).
 # Город не может генерировать меньше 1 очка науки за тик.
 func get_science_per_tick() -> float:
-    var science = 0.0
-    # TODO: при добавлении учёных сюда нужно будет суммировать их вклад.
-    # Пока учёных нет — город генерирует минимум 1 очко науки за тик.
-    return max(1.0, science)
+    return BASE_SCIENCE_PER_TICK
+
+# Возвращает размер общего пула науки города (очков науки «про запас»).
+# Пул копится зданиями (например, Библиотекой через рецепт «Наука») в обычном
+# city_storage["science"], но на вкладке «Ресурсы» наука скрыта. Расходуется
+# на ускорение текущего исследования (см. tick_research_science_continuous).
+func get_science_pool() -> float:
+    return float(city_storage.get("science", 0))
 
 # Возвращает количество накопленных очков науки по текущему исследованию.
 func get_research_science_collected() -> float:
     return research_science_accumulated
 
 # Обновляет прогресс исследования непрерывно — вызывается каждый кадр
-# из _process в main_map.gd. Раньше это делалось раз в PRODUCTION_INTERVAL
-# (2 секунды), из-за чего прогресс-бар дёргался рывками: тик → 33%, пауза,
-# тик → 66%, пауза. Теперь accumulated растёт с правильной скоростью
-# (science_per_sec = science_per_tick / PRODUCTION_INTERVAL), и UI
-# получает гладкий сигнал.
+# из _process в main_map.gd. База (rate = get_science_per_tick / интервал)
+# даёт плавный минимальный прогресс; дополнительно накопленная наука из пула
+# библиотек списывается отсюда же и ускоряет текущее исследование.
+# Списание идёт целыми единицами (дробный остаток копится в science_drain_accum),
+# чтобы не «измельчать» пул и не замедлять его расход плавающей арифметикой.
 func tick_research_science_continuous(delta: float) -> void:
     if Engine.is_editor_hint():
         return
@@ -497,6 +517,17 @@ func tick_research_science_continuous(delta: float) -> void:
         current_research_science_cost = 1
     var rate: float = get_science_per_tick() / PRODUCTION_INTERVAL
     research_science_accumulated += rate * delta
+    # Расход пула науки на исследование: до N очков в секунду из общего пула.
+    if get_science_pool() > 0.0:
+        science_drain_accum += SCIENCE_DRAIN_PER_SEC * delta
+        var drain: int = int(science_drain_accum)
+        if drain > 0:
+            science_drain_accum -= drain
+            var available: int = int(get_science_pool())
+            var actual: int = min(drain, available)
+            if actual > 0:
+                research_science_accumulated += float(actual)
+                remove_from_storage("science", actual, "best")
     research_progress = clamp(research_science_accumulated / float(current_research_science_cost), 0.0, 1.0)
     if research_science_accumulated >= current_research_science_cost:
         _complete_research()

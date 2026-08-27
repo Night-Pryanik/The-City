@@ -90,7 +90,8 @@ func _ready():
     tech_tree.setup(
         $ContentPanel/TechnologiesPanel/TreeRoot,
         $ContentPanel/TechnologiesPanel/CurrentResearch/VBoxContainer/TechCurrentLabel,
-        $ContentPanel/TechnologiesPanel/CurrentResearch/VBoxContainer/TechProgressBar
+        $ContentPanel/TechnologiesPanel/CurrentResearch/VBoxContainer/TechProgressBar,
+        $ContentPanel/TechnologiesPanel/CurrentResearch/VBoxContainer/SciencePoolLabel
     )
     tech_tree.research_requested.connect(_on_research_requested)
     $ContentPanel/TechnologiesPanel/TreeRoot.add_child(tech_tree)

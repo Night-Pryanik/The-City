@@ -18,7 +18,7 @@ const COL_PADDING: int = 24 # отступ от края _inner
 const BUTTON_WIDTH: int = 200 # фиксированная ширина кнопки
 const BUTTON_HEIGHT: int = 60 # фиксированная высота кнопки
 const BUTTON_VERTICAL_GAP: int = 16 # вертикальный зазор между кнопками в колонке
-const ICON_SIZE: int = 32 # размер иконки слева от названия
+const ICON_SIZE: int = 50 # размер иконки слева от названия
 
 # --- Разделение по эпохам ---
 # Каждая технология в JSON содержит поле "era" (id эпохи), а человекочитаемые
@@ -34,6 +34,7 @@ const ERA_LINE_WIDTH: float = 2.0 # толщина вертикального р
 # --- Внешние ссылки (заполняются в setup) ---
 var current_label: Label # "Изучается: ..." (Label вверху панели)
 var progress_bar: ProgressBar # прогресс-бар текущего исследования
+var science_pool_label: Label # "Пул науки: ..." (общий пул наук)
 
 # --- Внутренние узлы ---
 var _scroll: ScrollContainer
@@ -62,9 +63,10 @@ const PROGRESS_INTERP_SPEED: float = 60.0 # единиц/сек (0..100)
 
 signal research_requested(tech_id: String)
 
-func setup(parent: Control, current_lbl: Label, progress: ProgressBar):
+func setup(parent: Control, current_lbl: Label, progress: ProgressBar, science_lbl: Label = null):
     current_label = current_lbl
     progress_bar = progress
+    science_pool_label = science_lbl
     _build_tech_icon_index()
     _build_ui(parent)
 
@@ -895,6 +897,9 @@ func update_progress():
 func _update_status_label():
     if current_label == null or progress_bar == null:
         return
+    # Общий пул науки города (виден только здесь, на вкладке «Технологии»).
+    if science_pool_label != null and is_instance_valid(science_pool_label):
+        science_pool_label.text = "Пул науки: %d" % int(CityData.get_science_pool())
     if CityData.current_research_tech_id != "":
         var tech_data = _get_tech_data(CityData.current_research_tech_id)
         if not tech_data.is_empty():
