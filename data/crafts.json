@@ -30,7 +30,7 @@
       "name": "Выпечка хлеба",
       "produced_in": [ "bakery" ],
       "resources": { "flour": 1 },
-      "result": { "bread": 1 },
+      "result": { "bread": 2 },
       "time": 0
     },
     {
