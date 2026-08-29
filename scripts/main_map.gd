@@ -123,6 +123,10 @@ var research_label: Label # дочерний Label внутри research_button
 var research_progress_bar: ProgressBar
 var _last_research_hud_tech: String = ""
 
+# --- Естественный переход в следующую эпоху ---
+var era_dialog: ConfirmationDialog
+var era_advance_button: Button
+
 func _make_tech_popup() -> Control:
     var popup_script = load("res://scripts/tech_popup.gd")
     var popup = Control.new()
@@ -331,6 +335,7 @@ func _ready():
     menu_button.pressed.connect(_on_menu_button_pressed)
 
     _setup_research_hud()
+    _setup_era_advance_ui()
 
 func _input(event):
     # Дебаг-меню: открытие/закрытие по F9
@@ -882,6 +887,10 @@ func _on_building_build_completed(building_id: String, build_key: String):
     map_renderer.queue_redraw()
     _redraw_progress_layer()
 
+    # Естественный триггер перехода в следующую эпоху: построен Рынок.
+    if building_id == "market":
+        _on_market_built()
+
 func pixel_to_hex(mx: float, my: float):
     return MapHelpers.pixel_to_hex(mx, my,
         region_start_row, region_end_row,
@@ -1334,6 +1343,60 @@ func advance_to_next_era():
     if hud:
         hud.show_message("Новая эпоха! Границы города расширены. Кольцо влияния: %d×%d" % [ring_rows, ring_cols])
 
+# --- ЕСТЕСТВЕННЫЙ ПЕРЕХОД В СЛЕДУЮЩУЮ ЭПОХУ ---
+# Рынок - условие перехода из первой эпохи. После его постройки игра
+# ставится на паузу и показывается диалог с выбором Да/Нет.
+# При отказе в HUD появляется небольшая кнопка, открывающая тот же диалог.
+# Никаких таймеров, запретов и напоминаний: игрок может играть в текущей
+# эпохе столько, сколько захочет.
+func _setup_era_advance_ui():
+    era_advance_button = Button.new()
+    era_advance_button.text = "Новая эпоха"
+    era_advance_button.tooltip_text = "Условие перехода выполнено. Нажмите, чтобы перейти в следующую эпоху."
+    era_advance_button.visible = false
+    era_advance_button.pressed.connect(_show_era_advance_offer)
+    hud.get_node("VBoxContainer").add_child(era_advance_button)
+
+    era_dialog = ConfirmationDialog.new()
+    era_dialog.title = "Новая эпоха"
+    era_dialog.dialog_text = "Поздравляем, ваш город достиг следующего уровня развития!
+Перейти в следующую эпоху?"
+    era_dialog.ok_button_text = "Да"
+    era_dialog.cancel_button_text = "Нет"
+    era_dialog.process_mode = Node.PROCESS_MODE_WHEN_PAUSED
+    era_dialog.confirmed.connect(_on_era_dialog_confirmed)
+    era_dialog.canceled.connect(_on_era_dialog_declined)
+    add_child(era_dialog)
+    era_dialog.hide()
+
+    # Если Рынок уже построен, а эпоха не сменена (игрок отказался и вышел)
+    # - снова показываем кнопку в HUD.
+    if current_era == 0 and _is_market_built():
+        era_advance_button.visible = true
+
+func _is_market_built() -> bool:
+    for b in CityData.city_built_buildings:
+        if b.get("id", "") == "market":
+            return true
+    return false
+
+func _on_market_built():
+    if current_era == 0:
+        _show_era_advance_offer()
+
+func _show_era_advance_offer():
+    get_tree().paused = true
+    era_dialog.popup_centered()
+
+func _on_era_dialog_confirmed():
+    get_tree().paused = false
+    era_advance_button.visible = false
+    advance_to_next_era()
+
+func _on_era_dialog_declined():
+    # Игрок остаётся в текущей эпохе: снимаем паузу, оставляем кнопку в HUD.
+    get_tree().paused = false
+    era_advance_button.visible = (current_era == 0)
 func _load_settings():
     var err = settings_config.load("user://settings.cfg")
     if err == OK:

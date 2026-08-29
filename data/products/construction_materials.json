@@ -1,61 +1,55 @@
 {
-    "resources": [
-        {
-            "id": "basalt",
-            "name": "Базальт",
-            "type": "product",
-            "category": "construction_material",
-            "icon": "basalt.png"
-        },
-        {
-            "id": "tuff",
-            "name": "Туф",
-            "type": "product",
-            "category": "construction_material",
-            "icon": "tuff.png"
-        },
-        {
-            "id": "sandstone",
-            "name": "Песчаник",
-            "type": "product",
-            "category": "construction_material",
-            "icon": "sandstone.png"
-        },
-        {
-            "id": "marble",
-            "name": "Мрамор",
-            "type": "product",
-            "category": "construction_material",
-            "icon": "marble.png"
-        },
-        {
-            "id": "granite",
-            "name": "Гранит",
-            "type": "product",
-            "category": "construction_material",
-            "icon": "granite.png"
-        },
-        {
-            "id": "limestone",
-            "name": "Известняк",
-            "type": "product",
-            "category": "construction_material",
-            "icon": "limestone.png"
-        },
-        {
-            "id": "bricks",
-            "name": "Кирпичи",
-            "type": "product",
-            "category": "construction_material",
-            "icon": "bricks.png"
-        },
-        {
-            "id": "construction_materials",
-            "name": "Стройматериалы",
-            "type": "product",
-            "category": "construction_material",
-            "unlock_tech": "masonry",
-            "icon": "construction_materials.png"
-        }
-    ]
+  "resources": [
+    {
+      "id": "basalt",
+      "name": "Базальт",
+      "type": "product",
+      "category": "construction_material",
+      "icon": "basalt.png"
+    },
+    { "id": "tuff", "name": "Туф", "type": "product", "category": "construction_material", "icon": "tuff.png" },
+    {
+      "id": "sandstone",
+      "name": "Песчаник",
+      "type": "product",
+      "category": "construction_material",
+      "icon": "sandstone.png"
+    },
+    {
+      "id": "marble",
+      "name": "Мрамор",
+      "type": "product",
+      "category": "construction_material",
+      "icon": "marble.png"
+    },
+    {
+      "id": "granite",
+      "name": "Гранит",
+      "type": "product",
+      "category": "construction_material",
+      "icon": "granite.png"
+    },
+    {
+      "id": "limestone",
+      "name": "Известняк",
+      "type": "product",
+      "category": "construction_material",
+      "icon": "limestone.png"
+    },
+    {
+      "id": "bricks",
+      "name": "Кирпичи",
+      "type": "product",
+      "category": "construction_material",
+      "icon": "bricks.png"
+    },
+    {
+      "id": "processed_building_stone",
+      "name": "Обработанный строительный камень",
+      "type": "product",
+      "category": "construction_material",
+      "unlock_tech": "masonry",
+      "icon": "processed_building_stone.png"
+    }
+  ]
 }

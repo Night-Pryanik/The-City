@@ -171,14 +171,14 @@
       "description": "Варит медовый напиток из мёда"
     },
     {
-      "id": "construction_materials",
-      "name": "Изготовление стройматериалов",
+      "id": "processed_building_stone",
+      "name": "Обработка строительного камня",
       "produced_in": [ "mason_workshop" ],
-      "resources": { "@construction_materials": 1 },
-      "result": { "construction_materials": 1 },
+      "resources": { "@building_stone": 2 },
+      "result": { "processed_building_stone": 1 },
       "time": 4.0,
       "unlock_tech": "masonry",
-      "description": "Обрабатывает камень в строительные материалы"
+      "description": "Обрабатывает дикий камень в форму, пригодную для строительства"
     },
     {
       "id": "wine",

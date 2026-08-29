@@ -8,9 +8,14 @@
       "products": [ "wheat", "rye", "barley", "oats", "corn", "rice", "millet", "sorghum", "buckwheat" ]
     },
     {
-      "id": "construction_materials",
-      "name": "Строительные материалы",
-      "products": [ "basalt", "tuff", "sandstone", "marble", "granite", "limestone", "bricks" ]
+      "id": "building_stone",
+      "name": "Строительный камень",
+      "products": [ "basalt", "tuff", "sandstone", "marble", "granite", "limestone" ]
+    },
+    {
+      "id": "processed_construction_materials",
+      "name": "Обработанные стройматериалы",
+      "products": [ "processed_building_stone", "bricks" ]
     },
     {
       "id": "oil_crops",

@@ -20,7 +20,7 @@
       "id": "bakery",
       "name": "Пекарня",
       "work_cost": 25,
-      "additional_cost": [ { "@construction_materials": 5.0 } ],
+      "additional_cost": [ { "@processed_construction_materials": 5.0 } ],
       "icon": "bakery.png",
       "production_slots": 1.0,
       "default_recipes": [ "bread" ]
@@ -68,7 +68,7 @@
       "icon": "mason_workshop.png",
       "production_slots": 1.0,
       "unlock_tech": "masonry",
-      "default_recipes": [ "construction_materials" ]
+      "default_recipes": [ "processed_building_stone" ]
     },
     {
       "id": "leatherworker_house",
@@ -213,6 +213,16 @@
       "production_slots": 1.0,
       "unlock_tech": "writing",
       "default_recipes": [ "science" ]
+    },
+    {
+      "id": "market",
+      "name": "Рынок",
+      "description": "Городское здание торговли. Его постройка открывает возможность перехода в эпоху Античности.",
+      "work_cost": 60,
+      "additional_cost": [ { "@processed_construction_materials": 10.0 } ],
+      "icon": "market.png",
+      "production_slots": 1.0,
+      "unlock_tech": "currency"
     }
   ]
 }

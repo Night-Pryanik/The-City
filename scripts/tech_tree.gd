@@ -26,7 +26,7 @@ const ICON_SIZE: int = 50 # размер иконки слева от назва
 # Последовательные колонки одной эпохи визуально объединяются: сверху над
 # ними рисуется заголовок с названием эпохи, а между группами эпох — толстая
 # вертикальная линия-разделитель (см. ERA_LABEL_HEIGHT, ERA_LINE_*).
-const ERA_LABEL_HEIGHT: int = 34 # высота полосы над колонками под заголовки эпох
+const ERA_LABEL_HEIGHT: int = 64 # высота полосы над колонками под заголовки эпох
 const ERA_LABEL_WIDTH: int = 200 # фиксированная ширина заголовка эпохи
 const ERA_LINE_COLOR := Color(0.72, 0.72, 0.75, 1.0) # цвет вертикального разделителя эпох
 const ERA_LINE_WIDTH: float = 2.0 # толщина вертикального разделителя эпох
@@ -467,21 +467,51 @@ func _create_era_labels(layout_columns: Dictionary, num_cols: int) -> void:
     # Высота полосы сверху — сверху (y=0) занимает полоса,
     # Label размещаем в середине полосы.
     for group in _era_groups:
-        var lab := Label.new()
-        lab.name = "EraLabel"
-        lab.text = group["era_name"]
-        lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-        lab.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-        lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-        lab.size = Vector2(ERA_LABEL_WIDTH, ERA_LABEL_HEIGHT)
-        lab.custom_minimum_size = Vector2(ERA_LABEL_WIDTH, ERA_LABEL_HEIGHT)
-        lab.add_theme_font_size_override("font_size", 14)
-        lab.add_theme_color_override("font_color", Color(0.9, 0.9, 0.95, 1.0))
-        lab.mouse_filter = Control.MOUSE_FILTER_IGNORE
-        # Позиция: центр группы по X, сверху.
-        lab.position = Vector2(group["x_center"] - ERA_LABEL_WIDTH * 0.5, 0.0)
-        _inner.add_child(lab)
-        _era_labels.append(lab)
+        if group["era_id"] == "antiquity":
+            _create_antiquity_era_label(group)
+        else:
+            var lab := Label.new()
+            lab.name = "EraLabel"
+            lab.text = group["era_name"]
+            lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+            lab.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+            lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+            lab.size = Vector2(ERA_LABEL_WIDTH, ERA_LABEL_HEIGHT)
+            lab.custom_minimum_size = Vector2(ERA_LABEL_WIDTH, ERA_LABEL_HEIGHT)
+            lab.add_theme_font_size_override("font_size", 14)
+            lab.add_theme_color_override("font_color", Color(0.9, 0.9, 0.95, 1.0))
+            lab.mouse_filter = Control.MOUSE_FILTER_IGNORE
+            lab.position = Vector2(group["x_center"] - ERA_LABEL_WIDTH * 0.5, 0.0)
+            _inner.add_child(lab)
+            _era_labels.append(lab)
+
+# Заголовок эпохи Античность с условием перехода: построен Рынок (0/1).
+# Когда Рынок построен - (1/1) и зелёная галочка.
+func _create_antiquity_era_label(group: Dictionary) -> void:
+    var market_built := false
+    for b in CityData.city_built_buildings:
+        if b.get("id", "") == "market":
+            market_built = true
+            break
+    var count_text: String = "1/1" if market_built else "0/1"
+    var check: String = " [color=#4caf50]✔[/color]" if market_built else ""
+    var icon_tag: String = ""
+    if icon_paths.has("market.png"):
+        icon_tag = "[img=18]" + icon_paths["market.png"] + "[/img] "
+    var rtl := RichTextLabel.new()
+    rtl.name = "EraLabel"
+    rtl.bbcode_enabled = true
+    rtl.fit_content = true
+    rtl.scroll_active = false
+    rtl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    rtl.size = Vector2(ERA_LABEL_WIDTH, ERA_LABEL_HEIGHT)
+    rtl.custom_minimum_size = Vector2(ERA_LABEL_WIDTH, ERA_LABEL_HEIGHT)
+    rtl.add_theme_font_size_override("normal_font_size", 12)
+    rtl.add_theme_color_override("default_color", Color(0.9, 0.9, 0.95, 1.0))
+    rtl.position = Vector2(group["x_center"] - ERA_LABEL_WIDTH * 0.5, 0.0)
+    rtl.text = "[center]" + group["era_name"] + "[/center]\n" + "[center][color=#c9c9c9]Условие для перехода:[/color] построен " + icon_tag + "Рынок (" + count_text + ")" + check + "[/center]"
+    _inner.add_child(rtl)
+    _era_labels.append(rtl)
 
 func rebuild():
     # Полная перестройка: очищаем и создаём заново.
