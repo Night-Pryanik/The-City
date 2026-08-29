@@ -79,6 +79,12 @@ func setup(item_list: ItemList, name_lbl: Label, cost_lbl: Label, recipes_lbl: L
     building_cost_list.add_theme_constant_override("separation", 2)
     cost_parent.add_child(building_cost_list)
 
+    # Список стоимости должен идти сразу под заголовком "Стоимость:", а метка
+    # "Слотов производства" — ниже всего блока стоимости.
+    cost_parent.move_child(building_cost_list, building_cost_label.get_index() + 1)
+    building_cost_label.visible = false
+    building_cost_list.visible = false
+
     # Создаём контейнер для списка рецептов (вертикальный скролл под заголовком слотов)
     var parent = building_recipes_label.get_parent()
 
@@ -131,6 +137,8 @@ func refresh_list():
     food_label.visible = false
     building_name_label.text = ""
     building_cost_label.text = "Стоимость:"
+    building_cost_label.visible = false
+    building_cost_list.visible = false
     for child in building_cost_list.get_children():
         child.queue_free()
     building_recipes_label.visible = false
@@ -479,6 +487,8 @@ func _on_building_selected(idx: int):
         # (@...) — "название группы: количество" с тултипом, раскрывающим состав
         # группы (через единый хелпер ui_helpers.make_resource_entry).
         building_cost_label.text = "Стоимость:"
+        building_cost_label.visible = true
+        building_cost_list.visible = true
         for child in building_cost_list.get_children():
             child.queue_free()
 
@@ -497,8 +507,11 @@ func _on_building_selected(idx: int):
             var build_time = work_cost / max(1.0, labor)
             var labor_row = HBoxContainer.new()
             labor_row.add_theme_constant_override("separation", 6)
+            var labor_bullet = Label.new()
+            labor_bullet.text = "•"
+            labor_row.add_child(labor_bullet)
             var labor_label = Label.new()
-            labor_label.text = "труд: %d (%.0f сек)" % [int(work_cost), build_time]
+            labor_label.text = "Труд: %d (%.0f сек)" % [int(work_cost), build_time]
             labor_row.add_child(labor_label)
             building_cost_list.add_child(labor_row)
             has_costs = true
@@ -506,13 +519,35 @@ func _on_building_selected(idx: int):
         if bdata.has("additional_cost"):
             # Нужны ресурсы из каждой пачки (AND-логика сохранена на уровне данных)
             var bundles = GameData.parse_additional_cost(bdata["additional_cost"])
+            var mat_rows = []
             for bundle in bundles:
                 for res_id in bundle:
+                    mat_rows.append([res_id, int(bundle[res_id])])
+            if not mat_rows.is_empty():
+                has_costs = true
+                # Заголовок блока доп. материалов (маркированный список)
+                var mat_header = HBoxContainer.new()
+                mat_header.add_theme_constant_override("separation", 6)
+                var mat_bullet = Label.new()
+                mat_bullet.text = "•"
+                mat_header.add_child(mat_bullet)
+                var mat_label = Label.new()
+                mat_label.text = "Дополнительные материалы:"
+                mat_header.add_child(mat_label)
+                building_cost_list.add_child(mat_header)
+                # Подпункты — вложенный уровень списка ("--")
+                for entry in mat_rows:
                     var row = HBoxContainer.new()
                     row.add_theme_constant_override("separation", 6)
-                    row.add_child(ui_helpers.make_resource_entry(res_id, products_data, icon_paths, int(bundle[res_id]), "colon"))
+                    var sub_bullet = Label.new()
+                    sub_bullet.text = "◦"
+                    # Отступ второго уровня списка — сдвиг подпунктов относительно маркера верхнего уровня
+                    var indent = Control.new()
+                    indent.custom_minimum_size = Vector2(18, 0)
+                    row.add_child(indent)
+                    row.add_child(sub_bullet)
+                    row.add_child(ui_helpers.make_resource_entry(entry[0], products_data, icon_paths, entry[1], "colon"))
                     building_cost_list.add_child(row)
-                    has_costs = true
 
         if not has_costs:
             var zero_row = HBoxContainer.new()
@@ -532,6 +567,8 @@ func _on_building_selected(idx: int):
         selected_building_id = ""
         build_button.disabled = true
         building_recipes_label.visible = false
+        building_cost_label.visible = false
+        building_cost_list.visible = false
         _clear_recipes_list()
 
 func _on_build_pressed():
@@ -704,7 +741,14 @@ func _refresh_recipes_list(bdata: Dictionary):
         row.add_theme_constant_override("separation", 4)
         row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-        # Название рецепта
+        # Маркер маркированного списка
+        var bullet = Label.new()
+        bullet.text = "•"
+        bullet.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+        bullet.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        row.add_child(bullet)
+
+        # Название рецепта (прежний формат: "название: ресурсы -> результат")
         var name_label = Label.new()
         name_label.text = craft_name + ":"
         name_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
