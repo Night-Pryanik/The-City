@@ -15,6 +15,7 @@ var buildings_item_list: ItemList
 var building_name_label: Label
 var building_cost_label: Label
 var building_recipes_label: Label
+var building_description_label: Label
 var building_cost_list: VBoxContainer
 var build_button: Button
 var built_buildings_list: Node
@@ -84,6 +85,14 @@ func setup(item_list: ItemList, name_lbl: Label, cost_lbl: Label, recipes_lbl: L
     cost_parent.move_child(building_cost_list, building_cost_label.get_index() + 1)
     building_cost_label.visible = false
     building_cost_list.visible = false
+    # Описание здания из JSON под заголовком (перенос строк, приглушённый цвет).
+    building_description_label = Label.new()
+    building_description_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    building_description_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+    var details_vbox = building_name_label.get_parent()
+    details_vbox.add_child(building_description_label)
+    details_vbox.move_child(building_description_label, building_name_label.get_index() + 1)
+    building_description_label.visible = false
 
     # Создаём контейнер для списка рецептов (вертикальный скролл под заголовком слотов)
     var parent = building_recipes_label.get_parent()
@@ -136,6 +145,7 @@ func refresh_list():
         ui_helpers.hide_group_tooltip()
     food_label.visible = false
     building_name_label.text = ""
+    building_description_label.visible = false
     building_cost_label.text = "Стоимость:"
     building_cost_label.visible = false
     building_cost_list.visible = false
@@ -481,6 +491,9 @@ func _on_building_selected(idx: int):
         selected_building_id = filtered_buildings[idx]["id"]
         var bdata = filtered_buildings[idx]
         building_name_label.text = bdata["name"]
+        var desc = bdata.get("description", "")
+        building_description_label.text = desc
+        building_description_label.visible = (desc != "")
 
         # Стоимость: заголовок "Стоимость:" и под ним список строк (труд + ресурсы).
         # Обычные ресурсы — "иконка + название: количество". Групповые ресурсы
@@ -567,6 +580,7 @@ func _on_building_selected(idx: int):
         selected_building_id = ""
         build_button.disabled = true
         building_recipes_label.visible = false
+        building_description_label.visible = false
         building_cost_label.visible = false
         building_cost_list.visible = false
         _clear_recipes_list()

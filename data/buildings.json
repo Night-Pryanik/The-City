@@ -3,6 +3,7 @@
     {
       "id": "hand_mill",
       "name": "Ручная мельница",
+      "description": "Простейший жёрнов для ручного помола зерна в муку.",
       "work_cost": 0,
       "icon": "hand_mill.png",
       "production_slots": 1.0,
@@ -11,6 +12,7 @@
     {
       "id": "windmill",
       "name": "Мельница",
+      "description": "Ветряная мельница, перемалывающая зерно в муку с силой ветра.",
       "work_cost": 15,
       "icon": "windmill.png",
       "production_slots": 1.0,
@@ -19,6 +21,7 @@
     {
       "id": "bakery",
       "name": "Пекарня",
+      "description": "Печёт хлеб из муки — основа рациона города.",
       "work_cost": 25,
       "additional_cost": [ { "@processed_construction_materials": 5.0 } ],
       "icon": "bakery.png",
@@ -28,6 +31,7 @@
     {
       "id": "slaughterhouse",
       "name": "Бойня",
+      "description": "Разделка скота: мясо, шкуры и кости для городских ремёсел.",
       "work_cost": 20,
       "icon": "slaughterhouse.png",
       "production_slots": 1.0,
@@ -37,6 +41,7 @@
     {
       "id": "dairy",
       "name": "Сыроварня",
+      "description": "Перерабатывает молоко в сыр — продукт, который долго хранится.",
       "work_cost": 20,
       "icon": "dairy.png",
       "production_slots": 1.0,
@@ -46,6 +51,7 @@
     {
       "id": "forge",
       "name": "Кузница",
+      "description": "Кузнецы куют здесь металлические инструменты и изделия.",
       "work_cost": 60,
       "icon": "forge.png",
       "production_slots": 1.0,
@@ -55,6 +61,7 @@
     {
       "id": "pottery_workshop",
       "name": "Гончарная мастерская",
+      "description": "Изготовление глиняной посуды, кирпичей и табличек на гончарном круге.",
       "work_cost": 45,
       "icon": "pottery.png",
       "production_slots": 1.0,
@@ -64,6 +71,7 @@
     {
       "id": "mason_workshop",
       "name": "Мастерская каменотёса",
+      "description": "Обработка камня: тесаные блоки и каменные изделия для строительства.",
       "work_cost": 40,
       "icon": "mason_workshop.png",
       "production_slots": 1.0,
@@ -73,6 +81,7 @@
     {
       "id": "leatherworker_house",
       "name": "Дом кожевника",
+      "description": "Выделка шкур и пошив кожаных изделий.",
       "work_cost": 30,
       "icon": "leatherworker_house.png",
       "production_slots": 1.0,
@@ -82,6 +91,7 @@
     {
       "id": "weaver_house",
       "name": "Дом ткача",
+      "description": "Ткацкий станок для производства тканей из нитей.",
       "work_cost": 30,
       "icon": "weaver_house.png",
       "production_slots": 1.0,
@@ -91,6 +101,7 @@
     {
       "id": "brewer_house",
       "name": "Дом варщика",
+      "description": "Варка пива из зерна — повседневный напиток горожан.",
       "work_cost": 35,
       "icon": "brewer_house.png",
       "production_slots": 1.0,
@@ -100,6 +111,7 @@
     {
       "id": "winemaker_house",
       "name": "Дом винодела",
+      "description": "Производство вина из собранного винограда.",
       "work_cost": 35,
       "icon": "winemaker_house.png",
       "production_slots": 1.0,
@@ -109,6 +121,7 @@
     {
       "id": "hand_oil_press",
       "name": "Ручная маслодавка",
+      "description": "Отжим растительного масла из масличных культур.",
       "work_cost": 25,
       "icon": "hand_oil_press.png",
       "production_slots": 1.0,
@@ -118,6 +131,7 @@
     {
       "id": "glassmaker_house",
       "name": "Дом стеклодела",
+      "description": "Варка стекла и выдувание стеклянных изделий.",
       "work_cost": 40,
       "icon": "glassmaker_house.png",
       "production_slots": 1.0,
