@@ -639,13 +639,14 @@ godot --headless --path . res://tests/water_access_test.tscn
 
 1. **Здания** — записи `data/buildings.json` с `unlock_tech == <id технологии>`; иконка берётся из поля `icon`, тултип — из `name`.
 2. **Улучшения** — записи `data/improvements.json` с `unlock_tech == <id>`; аналогично (`icon` / `name`).
-3. **Эффекты-модификаторы** — записи блока `tech_modifiers` в `data/modifiers.json` с `tech_id == <id>`: если у записи заданы поля `icon` (файл в `res://icons`) и `name` (подпись тултипа) — рисуется иконка эффекта. Пример:
+3. **Спецдействия** — записи `data/special_actions.json` с `unlock_tech == <id>` (например, «Вырубка леса», «Осушение болот»); аналогично (`icon` / `name`).
+4. **Эффекты-модификаторы** — записи блока `tech_modifiers` в `data/modifiers.json` с `tech_id == <id>`: если у записи заданы поля `icon` (файл в `res://icons`) и `name` (подпись тултипа) — рисуется иконка эффекта. Пример:
 
 ```json
 { "tech_id": "plow", "icon": "farm.png", "name": "Фермы: +50% к производству", "production_multiplier": { "farm": 1.5 } }
 ```
 
-4. **Произвольные эффекты** — необязательное поле `unlock_effects` в самой технологии (`data/technologies/*.json`), для эффектов любого рода, у которых нет своего реестра:
+5. **Произвольные эффекты** — необязательное поле `unlock_effects` в самой технологии (`data/technologies/*.json`), для эффектов любого рода, у которых нет своего реестра:
 
 ```json
 "unlock_effects": [ { "icon": "farm.png", "name": "Фермы: +50% к производству" } ]

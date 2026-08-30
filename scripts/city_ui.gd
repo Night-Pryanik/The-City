@@ -464,8 +464,8 @@ func _setup_tab_bar_icons() -> void:
             btn.icon = tex
             btn.expand_icon = true
             btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-            btn.add_theme_constant_override("icon_max_width", 20)
-            btn.add_theme_constant_override("icon_max_height", 20)
+            btn.add_theme_constant_override("icon_max_width", 32)
+            btn.add_theme_constant_override("icon_max_height", 32)
 
 func _layout_ui() -> void:
     # Раскладка панелей интерфейса города на всю ширину окна.

@@ -19,7 +19,7 @@ const BUTTON_WIDTH: int = 200 # фиксированная ширина кноп
 const BUTTON_HEIGHT: int = 60 # фиксированная высота кнопки
 const BUTTON_VERTICAL_GAP: int = 16 # вертикальный зазор между кнопками в колонке
 const ICON_SIZE: int = 50
-const UNLOCK_ICON_SIZE: int = 16
+const UNLOCK_ICON_SIZE: int = 32
 const UNLOCK_ICONS_MARGIN: int = 3 # размер иконки слева от названия
 
 # --- Разделение по эпохам ---
@@ -708,8 +708,8 @@ func _add_unlock_icons(btn: Button, tech_id: String):
     row.anchor_right = 1.0
     row.anchor_top = 1.0
     row.anchor_bottom = 1.0
-    row.offset_top = -(UNLOCK_ICON_SIZE + UNLOCK_ICONS_MARGIN)
-    row.offset_bottom = -UNLOCK_ICONS_MARGIN
+    row.offset_top = - (UNLOCK_ICON_SIZE + UNLOCK_ICONS_MARGIN)
+    row.offset_bottom = - UNLOCK_ICONS_MARGIN
     row.offset_left = 8
     row.offset_right = -8
     row.add_theme_constant_override("separation", 4)
@@ -733,9 +733,9 @@ func _add_unlock_icons(btn: Button, tech_id: String):
 func _get_unlock_items(tech_id: String) -> Array:
     # Собирает список {"icon", "tip"} — всё, что открывается технологией.
     # Источники: здания (buildings.json), улучшения (improvements.json),
-    # эффекты-модификаторы (modifiers.json, tech_modifiers с полями
-    # icon/name) и произвольный список
-    # "unlock_effects": [ {"icon", "name"} ] в самой технологии.
+    # спецдействия (special_actions.json), эффекты-модификаторы
+    # (modifiers.json, tech_modifiers с полями icon/name) и произвольный
+    # список "unlock_effects": [ {"icon", "name"} ] в самой технологии.
     var result: Array = []
     var seen := {} # защита от дубликатов (одна и та же иконка+тултип)
 
@@ -749,6 +749,12 @@ func _get_unlock_items(tech_id: String) -> Array:
         var imp: Dictionary = GameData.improvements[imp_id]
         if imp.get("unlock_tech", "") == tech_id:
             _add_unlock_item(result, seen, imp.get("icon", ""), imp.get("name", imp_id))
+
+    # Спецдействия (special_actions.json, поле unlock_tech).
+    for sa_id in GameData.special_actions:
+        var sa: Dictionary = GameData.special_actions[sa_id]
+        if sa.get("unlock_tech", "") == tech_id:
+            _add_unlock_item(result, seen, sa.get("icon", ""), sa.get("name", sa_id))
 
     # Эффекты-модификаторы технологии (modifiers.json -> tech_modifiers).
     var mods: Dictionary = GameData.modifiers
@@ -777,7 +783,7 @@ func _add_unlock_item(result: Array, seen: Dictionary, icon_name: String, tip: S
     if seen.has(key):
         return
     seen[key] = true
-    result.append({ "icon": icon_name, "tip": tip })
+    result.append({"icon": icon_name, "tip": tip})
 
 func _adjust_fonts() -> void:
     # Подбираем максимально крупный font_size, при котором название влезает
