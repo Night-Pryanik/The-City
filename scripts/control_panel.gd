@@ -613,11 +613,12 @@ func _add_special_actions(actions: Array, row: int, col: int, tile: Dictionary):
         if unlock_tech != "" and not CityData.is_tech_unlocked(unlock_tech):
             enabled = false
             tooltip = "%s — нужна технология: %s" % [sa_name, _get_tech_name(unlock_tech)]
-            # Кнопка(и) изучения всей технологической цепочки, необходимой для
-            # разблокировки спецдействия — перед самой кнопкой действия (аналог
-            # уже существующей механики для ресурсов, см. _collect_actions).
-            for t_id in CityData.get_tech_study_chain(unlock_tech):
-                actions.append(_make_research_action(t_id, "действия"))
+            # Кнопка изучения СЛЕДУЮЩЕГО не изученного шага технологической
+            # цепочки, необходимой для разблокировки спецдействия (аналог
+            # механики для ресурсов/улучшений, см. _collect_actions).
+            var chain = CityData.get_tech_study_chain(unlock_tech)
+            if not chain.is_empty():
+                actions.append(_make_research_action(chain[0], sa_name))
         elif build_manager.get_total_active_builds() >= CityData.total_population:
             enabled = false
             tooltip = "Нет труда: лимит строек (число жителей) исчерпан"
@@ -632,8 +633,8 @@ func _add_special_actions(actions: Array, row: int, col: int, tile: Dictionary):
         })
 
 # Формирует действие «Изучить технологию» для колонки действий панели.
-# for_what — причина изучения, подставляется в тултип («ресурса» для ресурсов/
-# улучшений, «действия» для спецдействий).
+# for_what — причина изучения, подставляется в тултип (название ресурса/
+# улучшения для ресурсов или название спецдействия для действий).
 func _make_research_action(tech_id: String, for_what: String = "ресурса") -> Dictionary:
     var tech_name = _get_tech_name(tech_id)
     var tech_cost = 3
