@@ -8,15 +8,14 @@ extends Control
 @onready var technologies_panel = $ContentPanel/TechnologiesPanel
 
 # Кнопки вкладок
-@onready var resources_tab_button = $LeftPanel/ResourcesTabButton
-@onready var buildings_tab_button = $LeftPanel/BuildingsTabButton
-@onready var trade_tab_button = $LeftPanel/TradeTabButton
-@onready var technologies_tab_button = $LeftPanel/TechnologiesTabButton
-@onready var close_button = $BottomPanel/CloseButton
+@onready var resources_tab_button = $TabBarPanel/TabBar/ResourcesTabButton
+@onready var buildings_tab_button = $TabBarPanel/TabBar/BuildingsTabButton
+@onready var trade_tab_button = $TabBarPanel/TabBar/TradeTabButton
+@onready var technologies_tab_button = $TabBarPanel/TabBar/TechnologiesTabButton
 @onready var close_button_top = $CloseButtonTop
 
-# Верхняя панель
-@onready var top_food_label = $TopPanel/TopFoodLabel
+# Верхняя полоса
+@onready var top_food_label = $TabBarPanel/TopFoodLabel
 @onready var message_label = $BottomPanel/MessageLabel
 
 var active_tab = "resources"
@@ -37,6 +36,7 @@ var _cached_research_id: String = ""
 # Тултипы (таймеры)
 var food_hover_timer: float = 0.0
 var build_hover_timer: float = 0.0
+var building_detail_hover_timer: float = 0.0
 const TOOLTIP_DELAY: float = 0.5
 
 signal build_requested(building_id: String)
@@ -51,13 +51,13 @@ func _ready():
     ui_helpers.setup(self, message_label)
     add_child(ui_helpers)
 
-    # Кнопка закрытия в правом верхнем углу. CityUi имеет anchors_preset=0
-    # и размер 0×0 (как в оригинальной сцене), так что anchor_right=1.0 у
-    # кнопки не даёт привязку к правому краю viewport — позиционируем
-    # вручную. Также подписываемся на resize окна, чтобы при изменении
-    # размера окна кнопка оставалась в правом верхнем углу.
-    _position_close_button_top()
-    get_viewport().size_changed.connect(_position_close_button_top)
+    # Иконки кнопок вкладок (левый верхний угол) и раскладка панелей на всю
+    # ширину окна. CityUi имеет anchors_preset=0 и размер 0×0 (как в
+    # оригинальной сцене), поэтому панели позиционируются вручную, а при
+    # изменении размера окна раскладка пересчитывается заново.
+    _setup_tab_bar_icons()
+    _layout_ui()
+    get_viewport().size_changed.connect(_layout_ui)
 
     resources_tab = load("res://scripts/resources_tab.gd").new()
     resources_tab.setup($ContentPanel/ResourcesPanel/ScrollContainer/ResourcesList, ui_helpers)
@@ -66,9 +66,6 @@ func _ready():
     buildings_tab = load("res://scripts/buildings_tab.gd").new()
     buildings_tab.setup(
         $ContentPanel/BuildingsPanel/PanelsLayout/AvailableBuildingsPanel/VBoxContainer/AvailableBuildingsScroll/BuildingsList,
-        $ContentPanel/BuildingsPanel/PanelsLayout/BuildingDetailsPanel/VBoxContainer/BuildingNameLabel,
-        $ContentPanel/BuildingsPanel/PanelsLayout/BuildingDetailsPanel/VBoxContainer/BuildingCostLabel,
-        $ContentPanel/BuildingsPanel/PanelsLayout/BuildingDetailsPanel/VBoxContainer/BuildingRecipesLabel,
         $ContentPanel/BuildingsPanel/BuildButton,
         $RightPanel/VBoxContainer/BuiltBuildingsList,
         $ContentPanel/BuildingsPanel/FoodLabel,
@@ -89,7 +86,6 @@ func _ready():
     tech_tree.setup(
         $ContentPanel/TechnologiesPanel/TreeRoot,
         $ContentPanel/TechnologiesPanel/CurrentResearch/VBoxContainer/TechCurrentLabel,
-        $ContentPanel/TechnologiesPanel/CurrentResearch/VBoxContainer/TechProgressBar,
         $ContentPanel/TechnologiesPanel/CurrentResearch/VBoxContainer/SciencePoolLabel
     )
     tech_tree.research_requested.connect(_on_research_requested)
@@ -102,14 +98,11 @@ func _ready():
     for btn in [resources_tab_button, buildings_tab_button, trade_tab_button, technologies_tab_button]:
         if not btn.pressed.is_connected(_on_tab_button_pressed):
             btn.pressed.connect(_on_tab_button_pressed.bind(btn))
-    if not close_button.pressed.is_connected(_on_close_pressed):
-        close_button.pressed.connect(_on_close_pressed)
     if not close_button_top.pressed.is_connected(_on_close_pressed):
         close_button_top.pressed.connect(_on_close_pressed)
 
     # Прозрачность панелей
-    $LeftPanel.self_modulate = Color(1, 1, 1, 0.5)
-    $TopPanel.self_modulate = Color(1, 1, 1, 0.8)
+    $TabBarPanel.self_modulate = Color(1, 1, 1, 0.8)
     $RightPanel.self_modulate = Color(1, 1, 1, 0.8)
     $ContentPanel.self_modulate = Color(1, 1, 1, 0.8)
     $BottomPanel.self_modulate = Color(1, 1, 1, 0.8)
@@ -207,22 +200,11 @@ func _switch_tab(tab_id: String):
     trade_panel.visible = (tab_id == "trade")
     technologies_panel.visible = (tab_id == "technologies")
 
-    # На вкладке «Технологии» правая панель «Построенные здания» не нужна —
-    # отдаём её место дереву: скрываем RightPanel и расширяем TopPanel
-    # и ContentPanel до правого края viewport.
-    #
-    # Базовые значения offset_right хранятся здесь как константы —
-    # соответствуют тому, что задано в CityUI.tscn.
-    const RIGHT_PANEL_DEFAULT_LEFT: float = 824.0
-    var is_tech_tab: bool = (tab_id == "technologies")
-    $RightPanel.visible = not is_tech_tab
-    if is_tech_tab:
-        var w: float = get_viewport_rect().size.x
-        $TopPanel.offset_right = w
-        $ContentPanel.offset_right = w
-    else:
-        $TopPanel.offset_right = RIGHT_PANEL_DEFAULT_LEFT
-        $ContentPanel.offset_right = RIGHT_PANEL_DEFAULT_LEFT
+    # Правая панель «Построенные здания» показывается только на вкладках
+    # «Ресурсы» и «Здания» (когда окно делится поровну); на «Торговле» и
+    # «Технологиях» контент занимает всю ширину окна. Расчёт смещений — в
+    # общем _layout_ui().
+    _layout_ui()
 
     if ui_helpers:
         ui_helpers.hide_group_tooltip()
@@ -389,6 +371,21 @@ func _process(delta):
     else:
         ui_helpers.hide_progress_tooltip()
 
+    # Тултип деталей здания (вкладка «Здания»): показываем при наведении
+    # на любую кнопку здания; содержимое собирается в buildings_tab.
+    var hovered_detail = false
+    if buildings_panel.visible and buildings_tab.has_method("get_hovered_button"):
+        var hov_btn = buildings_tab.get_hovered_button()
+        if hov_btn and hov_btn.get_global_rect().has_point(mouse_pos):
+            hovered_detail = true
+    if hovered_detail:
+        building_detail_hover_timer += delta
+        if building_detail_hover_timer >= TOOLTIP_DELAY:
+            ui_helpers.show_building_detail_tooltip(mouse_pos)
+    else:
+        building_detail_hover_timer = 0.0
+        ui_helpers.hide_building_detail_tooltip()
+
 func set_message(text: String):
     if ui_helpers:
         ui_helpers.set_message(text)
@@ -409,7 +406,7 @@ func _input(event: InputEvent):
                 return
 
         var hit_panel = false
-        for panel in [$LeftPanel, $TopPanel, $RightPanel, $ContentPanel, $BottomPanel, $CloseButtonTop]:
+        for panel in [$TabBarPanel, $TabBar, $RightPanel, $ContentPanel, $BottomPanel, $CloseButtonTop]:
             if panel.get_global_rect().has_point(click_pos):
                 hit_panel = true
                 break
@@ -425,6 +422,7 @@ func _close_ui():
         ui_helpers.hide_group_tooltip()
         ui_helpers.hide_progress_tooltip()
         ui_helpers.hide_quality_tooltip()
+        ui_helpers.hide_building_detail_tooltip()
     if building_panel:
         building_panel.hide()
     hide()
@@ -446,3 +444,67 @@ func _position_close_button_top() -> void:
     close_button_top.anchor_bottom = 0
     close_button_top.size = Vector2(37, 31)
     close_button_top.position = Vector2(w - 37, 0)
+
+func _setup_tab_bar_icons() -> void:
+    # Иконки для маленьких кнопок вкладок в левом верхнем углу.
+    var icons = {
+        resources_tab_button: "res://icons/resources/products/bread.png",
+        buildings_tab_button: "res://icons/buildings/market.png",
+        trade_tab_button: "res://icons/resources/products/pottery.png",
+        technologies_tab_button: "res://icons/tech/wheel.png"
+    }
+    for btn in icons:
+        if btn == null:
+            continue
+        var tex = load(icons[btn])
+        if tex:
+            btn.icon = tex
+            btn.expand_icon = true
+            btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+            btn.add_theme_constant_override("icon_max_width", 20)
+            btn.add_theme_constant_override("icon_max_height", 20)
+
+func _layout_ui() -> void:
+    # Раскладка панелей интерфейса города на всю ширину окна.
+    var w: float = get_viewport_rect().size.x
+    var h: float = get_viewport_rect().size.y
+
+    # Вкладки — слева сверху в верхней полосе на всю ширину окна.
+    var tab_bar_panel = $TabBarPanel
+    if tab_bar_panel:
+        tab_bar_panel.offset_left = 0
+        tab_bar_panel.offset_right = w
+        tab_bar_panel.offset_top = 0.0
+        tab_bar_panel.offset_bottom = 50.0
+    var tab_bar = $TabBarPanel/TabBar
+    if tab_bar:
+        tab_bar.position = Vector2(8, 8)
+
+    # Нижняя панель сообщений — на всю ширину окна.
+    $BottomPanel.offset_left = 0
+    $BottomPanel.offset_right = w
+    $BottomPanel.offset_top = h - 50.0
+    $BottomPanel.offset_bottom = h
+
+    # Правая панель «Построенные здания» — на вкладках «Ресурсы» и «Здания»
+    # (окно делится на две равные части), на остальных вкладках скрыта.
+    var show_right: bool = (active_tab == "resources" or active_tab == "buildings")
+    if $RightPanel.visible != show_right:
+        $RightPanel.visible = show_right
+    $ContentPanel.offset_left = 0
+    if show_right:
+        var half: float = w / 2.0
+        $ContentPanel.offset_right = half
+        $ContentPanel.offset_top = 50.0
+        $ContentPanel.offset_bottom = h - 50.0
+        $RightPanel.offset_left = half
+        $RightPanel.offset_right = w
+        $RightPanel.offset_top = 50.0
+        $RightPanel.offset_bottom = h
+    else:
+        $ContentPanel.offset_right = w
+        $ContentPanel.offset_top = 50.0
+        $ContentPanel.offset_bottom = h - 50.0
+
+    # Кнопка закрытия — в правом верхнем углу поверх всего.
+    _position_close_button_top()

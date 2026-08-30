@@ -13,11 +13,6 @@ var selected_building_id: String = ""
 
 var buildings_list: VBoxContainer
 var buildings_group: ButtonGroup
-var building_name_label: Label
-var building_cost_label: Label
-var building_recipes_label: Label
-var building_description_label: Label
-var building_cost_list: VBoxContainer
 var build_button: Button
 var built_buildings_list: Node
 var food_label: Label
@@ -25,9 +20,10 @@ var last_built_count: int = -1
 var last_construction_count: int = -1
 var _cached_build_manager = null
 
-var recipes_scroll: ScrollContainer
-var recipes_container: VBoxContainer
-var recipes_title: Label
+# Кнопка выбранного здания и словарь id -> кнопка (для тултипа деталей).
+var selected_button: Button = null
+var _hovered_building_id: String = "" # здание под курсором (для тултипа деталей)
+var building_buttons: Dictionary = {}
 
 var resume_icon: Texture2D
 var pause_icon: Texture2D
@@ -42,11 +38,8 @@ var construction_rows: Dictionary = {}
 signal build_requested(building_id: String)
 signal building_detail_requested(building_id: String)
 
-func setup(list: Node, name_lbl: Label, cost_lbl: Label, recipes_lbl: Label, btn: Button, built_list: Node, food_lbl: Label, helpers: Node):
+func setup(list: Node, btn: Button, built_list: Node, food_lbl: Label, helpers: Node):
     buildings_list = list as VBoxContainer
-    building_name_label = name_lbl
-    building_cost_label = cost_lbl
-    building_recipes_label = recipes_lbl
     build_button = btn
     built_buildings_list = built_list
     food_label = food_lbl
@@ -65,57 +58,6 @@ func setup(list: Node, name_lbl: Label, cost_lbl: Label, recipes_lbl: Label, btn
     if not build_button.pressed.is_connected(_on_build_pressed):
         build_button.pressed.connect(_on_build_pressed)
     build_button.disabled = true
-
-    # BuildingRecipesLabel становится заголовком "Слотов производства:"
-    building_recipes_label.text = "Слотов производства:"
-    building_recipes_label.add_theme_font_size_override("font_size", 16)
-
-    # Заголовок стоимости (сам текст суммы теперь в building_cost_list ниже).
-    building_cost_label.text = "Стоимость:"
-    building_cost_label.add_theme_font_size_override("font_size", 14)
-
-    # Создаём контейнер (VBox) со списком ресурсов стоимости выбранного здания.
-    # Каждая строка — "иконка + название (+ количество)"; для групповых ресурсов
-    # (@...) строка дополнительно показывает тултип с составом группы (через
-    # единый хелпер ui_helpers.make_resource_entry).
-    var cost_parent = building_cost_label.get_parent()
-    building_cost_list = VBoxContainer.new()
-    building_cost_list.add_theme_constant_override("separation", 2)
-    cost_parent.add_child(building_cost_list)
-
-    # Список стоимости должен идти сразу под заголовком "Стоимость:", а метка
-    # "Слотов производства" — ниже всего блока стоимости.
-    cost_parent.move_child(building_cost_list, building_cost_label.get_index() + 1)
-    building_cost_label.visible = false
-    building_cost_list.visible = false
-    # Описание здания из JSON под заголовком (перенос строк, приглушённый цвет).
-    building_description_label = Label.new()
-    building_description_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    building_description_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
-    var details_vbox = building_name_label.get_parent()
-    details_vbox.add_child(building_description_label)
-    details_vbox.move_child(building_description_label, building_name_label.get_index() + 1)
-    building_description_label.visible = false
-
-    # Создаём контейнер для списка рецептов (вертикальный скролл под заголовком слотов)
-    var parent = building_recipes_label.get_parent()
-
-    # Заголовок списка рецептов (добавляем ПЕРЕД скроллом, чтобы он был сверху)
-    recipes_title = Label.new()
-    recipes_title.text = "Доступные рецепты:"
-    recipes_title.add_theme_font_size_override("font_size", 16)
-    recipes_title.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
-    recipes_title.visible = false
-    parent.add_child(recipes_title)
-
-    recipes_scroll = ScrollContainer.new()
-    recipes_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-    parent.add_child(recipes_scroll)
-
-    recipes_container = VBoxContainer.new()
-    recipes_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    recipes_container.add_theme_constant_override("separation", 6)
-    recipes_scroll.add_child(recipes_container)
 
 func _process(delta):
     # Обновляем прогресс-бары строящихся зданий каждый кадр,
@@ -143,23 +85,15 @@ func refresh_list():
         buildings_list.remove_child(child)
         child.queue_free()
     selected_building_id = ""
+    selected_button = null
+    building_buttons.clear()
     build_button.disabled = true
-    # Скрываем тултип и очищаем заголовок/детали здания при обновлении списка
+    # Скрываем сообщения и тултипы при обновлении списка
     if ui_helpers:
         ui_helpers.set_message("")
         ui_helpers.hide_group_tooltip()
+        ui_helpers.hide_building_detail_tooltip()
     food_label.visible = false
-    building_name_label.text = ""
-    building_description_label.visible = false
-    building_cost_label.text = "Стоимость:"
-    building_cost_label.visible = false
-    building_cost_list.visible = false
-    for child in building_cost_list.get_children():
-        child.queue_free()
-    building_recipes_label.visible = false
-    recipes_title.visible = false
-    recipes_scroll.visible = false
-    _clear_recipes_list()
     for bld in buildings_data:
         # Фильтруем здания: показываем только те, что открыты изученными технологиями
         if not CityData.is_building_unlocked(bld["id"]):
@@ -173,7 +107,7 @@ func refresh_list():
         item_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
         item_btn.toggle_mode = true
         item_btn.button_group = buildings_group
-        item_btn.tooltip_text = bld["name"]
+        item_btn.tooltip_text = ""
         # Иконка здания перед названием (файл из buildings.json). Если файла
         # иконки пока не существует — просто выводим название без иконки;
         # при появлении файла иконка подхватится автоматически.
@@ -183,7 +117,10 @@ func refresh_list():
             item_btn.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
             item_btn.add_theme_constant_override("icon_max_width", 24)
         item_btn.pressed.connect(_on_building_list_pressed.bind(bld["id"]))
+        item_btn.mouse_entered.connect(_on_building_hovered.bind(bld["id"]))
+        item_btn.mouse_exited.connect(_on_building_unhovered.bind(bld["id"]))
         buildings_list.add_child(item_btn)
+        building_buttons[bld["id"]] = item_btn
 
 func update_built_status():
     # Лёгкое обновление: обновляем текст статуса без пересоздания строк.
@@ -292,6 +229,8 @@ func refresh_built():
 
         var label = Label.new()
         label.text = display_name + status
+        label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         label.add_theme_color_override("font_color", status_color)
         row.add_child(label)
 
@@ -500,6 +439,8 @@ func _on_building_slots_pressed(building_id: String):
     emit_signal("building_detail_requested", building_id)
 
 func _on_building_list_pressed(building_id: String):
+    selected_button = building_buttons.get(building_id, null)
+    selected_building_id = building_id
     if ui_helpers:
         ui_helpers.set_message("")
         ui_helpers.hide_group_tooltip()
@@ -512,33 +453,93 @@ func _on_building_list_pressed(building_id: String):
     if bdata:
         _show_building_details(bdata)
 
+func get_selected_button() -> Button:
+    return selected_button
+
+# --- Тултип деталей по наведению (любая кнопка здания, не только выбранная) ---
+func _on_building_hovered(building_id: String):
+    if _hovered_building_id == building_id:
+        return
+    _hovered_building_id = building_id
+    for b in buildings_data:
+        if b["id"] == building_id:
+            _show_building_details(b)
+            break
+
+func _on_building_unhovered(building_id: String):
+    if _hovered_building_id == building_id:
+        _hovered_building_id = ""
+
+func get_hovered_button() -> Button:
+    # Возвращает кнопку здания под курсором, если она ещё существует.
+    if _hovered_building_id == "":
+        return null
+    var btn = building_buttons.get(_hovered_building_id, null)
+    if btn and is_instance_valid(btn):
+        return btn
+    return null
+
+func _make_bullet(symbol: String) -> Label:
+    var bullet = Label.new()
+    bullet.text = symbol
+    bullet.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+    bullet.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    return bullet
+
+func _make_bullet_row(symbol: String, text: String) -> HBoxContainer:
+    var row = HBoxContainer.new()
+    row.add_theme_constant_override("separation", 6)
+    row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    row.add_child(_make_bullet(symbol))
+    var label = Label.new()
+    label.text = text
+    label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+    label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    row.add_child(label)
+    return row
+
 func _show_building_details(bdata: Dictionary):
+    if not ui_helpers:
+        return
+    var content: VBoxContainer = ui_helpers.detail_tooltip_content
+    # Очищаем предыдущее содержимое тултипа.
+    for child in content.get_children():
+        content.remove_child(child)
+        child.queue_free()
+
     if bdata.is_empty():
-        selected_building_id = ""
-        build_button.disabled = true
-        building_name_label.text = ""
-        building_recipes_label.visible = false
-        building_description_label.visible = false
-        building_cost_label.visible = false
-        building_cost_list.visible = false
-        _clear_recipes_list()
+        ui_helpers.hide_building_detail_tooltip()
         return
 
-    selected_building_id = bdata["id"]
-    building_name_label.text = bdata["name"]
-    var desc = bdata.get("description", "")
-    building_description_label.text = desc
-    building_description_label.visible = (desc != "")
+    # Заголовок — название здания
+    var title = Label.new()
+    title.text = bdata["name"]
+    title.add_theme_font_size_override("font_size", 18)
+    title.add_theme_color_override("font_color", Color.WHITE)
+    title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    content.add_child(title)
 
-    # Стоимость: заголовок "Стоимость:" и под ним список строк (труд + ресурсы).
-    # Обычные ресурсы — "иконка + название: количество". Групповые ресурсы
-    # (@...) — "название группы: количество" с тултипом, раскрывающим состав
-    # группы (через единый хелпер ui_helpers.make_resource_entry).
-    building_cost_label.text = "Стоимость:"
-    building_cost_label.visible = true
-    building_cost_list.visible = true
-    for child in building_cost_list.get_children():
-        child.queue_free()
+    # Описание здания
+    var desc = bdata.get("description", "")
+    if desc != "":
+        var desc_label = Label.new()
+        desc_label.text = desc
+        desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        # Фиксированная ширина: без неё min-высота текста с автопереносом
+        # считается при ширине ~0 (огромная), тултип прыгает к верхнему краю
+        # и «падает» к курсору на следующих кадрах раскладки.
+        desc_label.custom_minimum_size = Vector2(420, 0)
+        desc_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+        desc_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        content.add_child(desc_label)
+
+    # Заголовок стоимости
+    var cost_header = Label.new()
+    cost_header.text = "Стоимость:"
+    cost_header.add_theme_font_size_override("font_size", 14)
+    cost_header.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+    cost_header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    content.add_child(cost_header)
 
     var products_data = {}
     for pid in products:
@@ -553,15 +554,7 @@ func _show_building_details(bdata: Dictionary):
     if work_cost > 0:
         var labor = CityData.get_total_labor()
         var build_time = work_cost / max(1.0, labor)
-        var labor_row = HBoxContainer.new()
-        labor_row.add_theme_constant_override("separation", 6)
-        var labor_bullet = Label.new()
-        labor_bullet.text = "•"
-        labor_row.add_child(labor_bullet)
-        var labor_label = Label.new()
-        labor_label.text = "Труд: %d (%.0f сек)" % [int(work_cost), build_time]
-        labor_row.add_child(labor_label)
-        building_cost_list.add_child(labor_row)
+        content.add_child(_make_bullet_row("•", "Труд: %d (%.0f сек)" % [int(work_cost), build_time]))
         has_costs = true
 
     if bdata.has("additional_cost"):
@@ -573,43 +566,32 @@ func _show_building_details(bdata: Dictionary):
                 mat_rows.append([res_id, int(bundle[res_id])])
         if not mat_rows.is_empty():
             has_costs = true
-            # Заголовок блока доп. материалов (маркированный список)
-            var mat_header = HBoxContainer.new()
-            mat_header.add_theme_constant_override("separation", 6)
-            var mat_bullet = Label.new()
-            mat_bullet.text = "•"
-            mat_header.add_child(mat_bullet)
-            var mat_label = Label.new()
-            mat_label.text = "Дополнительные материалы:"
-            mat_header.add_child(mat_label)
-            building_cost_list.add_child(mat_header)
-            # Подпункты — вложенный уровень списка ("--")
+            content.add_child(_make_bullet_row("•", "Дополнительные материалы:"))
             for entry in mat_rows:
                 var row = HBoxContainer.new()
                 row.add_theme_constant_override("separation", 6)
-                var sub_bullet = Label.new()
-                sub_bullet.text = "◦"
-                # Отступ второго уровня списка — сдвиг подпунктов относительно маркера верхнего уровня
+                row.mouse_filter = Control.MOUSE_FILTER_IGNORE
                 var indent = Control.new()
                 indent.custom_minimum_size = Vector2(18, 0)
+                var sub_bullet = _make_bullet("◦")
                 row.add_child(indent)
                 row.add_child(sub_bullet)
                 row.add_child(ui_helpers.make_resource_entry(entry[0], products_data, icon_paths, entry[1], "colon"))
-                building_cost_list.add_child(row)
+                content.add_child(row)
 
     if not has_costs:
-        var zero_row = HBoxContainer.new()
-        var zero_label = Label.new()
-        zero_label.text = "0"
-        zero_row.add_child(zero_label)
-        building_cost_list.add_child(zero_row)
+        content.add_child(_make_bullet_row("•", "0"))
 
-    # Показываем количество слотов производства
+    # Количество слотов производства
     var slots = bdata.get("production_slots", 0)
-    building_recipes_label.text = "Слотов производства: %d" % int(slots)
-    building_recipes_label.visible = true
+    var slots_label = Label.new()
+    slots_label.text = "Слотов производства: %d" % int(slots)
+    slots_label.add_theme_font_size_override("font_size", 14)
+    slots_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+    slots_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    content.add_child(slots_label)
 
-    build_button.disabled = (selected_building_id == "")
+    build_button.disabled = false
     _refresh_recipes_list(bdata)
 
 func _on_build_pressed():
@@ -664,10 +646,6 @@ func _on_build_pressed():
         ui_helpers.set_message("Начато строительство %s (%.0f труда, %.0f сек)" % [bdata.get("name", selected_building_id), work_cost, build_time])
 
 # Очищает список рецептов
-func _clear_recipes_list():
-    for child in recipes_container.get_children():
-        child.queue_free()
-
 func _has_active_building_construction() -> bool:
     # Общий лимит одновременных строек (здания + улучшения) равен числу жителей
     var bm = _get_build_manager()
@@ -734,15 +712,10 @@ func _cancel_construction(build_key: String):
 
 # Заполняет список доступных рецептов для выбранного здания
 func _refresh_recipes_list(bdata: Dictionary):
-    _clear_recipes_list()
-
-    if not bdata:
-        recipes_title.visible = false
-        recipes_scroll.visible = false
+    if not ui_helpers or bdata.is_empty():
         return
+    var content: VBoxContainer = ui_helpers.detail_tooltip_content
 
-    recipes_title.visible = true
-    recipes_scroll.visible = true
     var building_id = bdata.get("id", "")
     var available_recipes = []
 
@@ -757,6 +730,9 @@ func _refresh_recipes_list(bdata: Dictionary):
             continue
         available_recipes.append(craft)
 
+    if available_recipes.is_empty():
+        return
+
     # Сортируем по имени
     available_recipes.sort_custom(func(a, b):
         return a.get("name", "") < b.get("name", "")
@@ -768,10 +744,15 @@ func _refresh_recipes_list(bdata: Dictionary):
         products_data[pid] = products[pid]
     for rid in raw_resources:
         products_data[rid] = raw_resources[rid]
-
-    var icon_textures = {}
     var icon_paths = {}
     _build_icon_index_local(icon_paths)
+
+    var header = Label.new()
+    header.text = "Доступные рецепты:"
+    header.add_theme_font_size_override("font_size", 14)
+    header.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+    header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    content.add_child(header)
 
     for craft in available_recipes:
         var craft_name = craft.get("name", craft["id"])
@@ -798,12 +779,12 @@ func _refresh_recipes_list(bdata: Dictionary):
         row.add_child(name_label)
 
         # Ресурсы -> результат в одну строку
-        var content = _make_craft_content_local("", craft_resources, craft_result, products_data, icon_paths, icon_textures)
-        content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-        content.mouse_filter = Control.MOUSE_FILTER_IGNORE
-        row.add_child(content)
+        var content_entry = _make_craft_content_local("", craft_resources, craft_result, products_data, icon_paths, {})
+        content_entry.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        content_entry.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        row.add_child(content_entry)
 
-        recipes_container.add_child(row)
+        content.add_child(row)
 
 # Строит содержимое строки рецепта: "[иконка] ресурс [xN] + ... -> [иконка] продукт [xN]"
 func _make_craft_content_local(craft_name: String, craft_resources: Dictionary, craft_result: Dictionary, products_data: Dictionary, icon_paths: Dictionary, icon_textures: Dictionary) -> HBoxContainer:

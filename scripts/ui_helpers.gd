@@ -17,6 +17,11 @@ var progress_tooltip_label: Label
 var quality_tooltip_panel: Panel
 var quality_tooltip_vbox: VBoxContainer
 
+# Тултип деталей выбранного здания (вкладка «Здания»): богатый контент
+# (стоимость, слоты, рецепты), собирается в buildings_tab.
+var detail_tooltip_panel: Panel
+var detail_tooltip_content: VBoxContainer
+
 var message_label: Label
 # Общий стиль фона для всех тултипов: полностью непрозрачный тёмный фон
 # со светлой рамкой в 1px.
@@ -100,6 +105,20 @@ func setup(main_ui: Control, message_lbl: Label):
     quality_tooltip_panel.add_child(quality_tooltip_vbox)
 
     quality_tooltip_panel.add_theme_stylebox_override("panel", _make_tooltip_style())
+
+    # Тултип деталей выбранного здания (вкладка «Здания»).
+    detail_tooltip_panel = Panel.new()
+    detail_tooltip_panel.visible = false
+    detail_tooltip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    detail_tooltip_panel.z_index = 1000
+    main_ui.add_child(detail_tooltip_panel)
+
+    detail_tooltip_content = VBoxContainer.new()
+    detail_tooltip_content.add_theme_constant_override("separation", 4)
+    detail_tooltip_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    detail_tooltip_panel.add_child(detail_tooltip_content)
+
+    detail_tooltip_panel.add_theme_stylebox_override("panel", _make_tooltip_style())
 
 func show_food_tooltip(mouse_pos: Vector2):
     tooltip_panel.position = mouse_pos + Vector2(15, 15)
@@ -302,6 +321,30 @@ func show_quality_tooltip(mouse_pos: Vector2, prod_name: String, quality_breakdo
 
 func hide_quality_tooltip():
     quality_tooltip_panel.hide()
+
+func show_building_detail_tooltip(mouse_pos: Vector2):
+    if detail_tooltip_panel == null:
+        return
+    # Сбрасываем размер панели, чтобы reset_size() ниже взял актуальную
+    # минимальную ширину контента (иначе панель могла остаться прежней).
+    detail_tooltip_panel.size = Vector2.ZERO
+    # Пересчитываем размер панели под собранное содержимое.
+    detail_tooltip_content.reset_size()
+    var content_min_size = detail_tooltip_content.get_minimum_size()
+    detail_tooltip_panel.size = content_min_size + Vector2(14, 12)
+    # Если тултип выходит за границы экрана — рисуем его с другой стороны курсора.
+    var viewport_size = get_viewport().get_visible_rect().size
+    var pos = mouse_pos + Vector2(15, 15)
+    if pos.x + detail_tooltip_panel.size.x > viewport_size.x:
+        pos.x = mouse_pos.x - detail_tooltip_panel.size.x - 15
+    if pos.y + detail_tooltip_panel.size.y > viewport_size.y:
+        pos.y = mouse_pos.y - detail_tooltip_panel.size.y - 15
+    detail_tooltip_panel.position = pos
+    detail_tooltip_panel.show()
+
+func hide_building_detail_tooltip():
+    if detail_tooltip_panel:
+        detail_tooltip_panel.hide()
 
 func set_message(text: String):
     if message_label:

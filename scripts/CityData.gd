@@ -491,6 +491,14 @@ func start_research(tech_id: String) -> bool:
 func get_science_per_tick() -> float:
     return BASE_SCIENCE_PER_TICK
 
+# Фактическая скорость науки за тик: базовый доход + вклад работающих зданий
+# науки (библиотек). Здания копят науку в пул, а пул во время исследования
+# списывается со скоростью SCIENCE_DRAIN_PER_SEC (≈1 очко за тик), поэтому
+# вклад зданий = фактический расход пула за тик (пока в пуле есть наука).
+func get_science_rate_per_tick() -> float:
+    var drain_per_tick: float = SCIENCE_DRAIN_PER_SEC * PRODUCTION_INTERVAL
+    return BASE_SCIENCE_PER_TICK + minf(drain_per_tick, get_science_pool())
+
 # Возвращает размер общего пула науки города (очков науки «про запас»).
 # Пул копится зданиями (например, Библиотекой через рецепт «Наука») в обычном
 # city_storage["science"], но на вкладке «Ресурсы» наука скрыта. Расходуется

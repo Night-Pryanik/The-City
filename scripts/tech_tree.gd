@@ -33,7 +33,6 @@ const ERA_LINE_WIDTH: float = 2.0 # толщина вертикального р
 
 # --- Внешние ссылки (заполняются в setup) ---
 var current_label: Label # "Изучается: ..." (Label вверху панели)
-var progress_bar: ProgressBar # прогресс-бар текущего исследования
 var science_pool_label: Label # "Пул науки: ..." (общий пул наук)
 
 # --- Внутренние узлы ---
@@ -54,18 +53,10 @@ var _era_groups: Array = [] # [{era_id, era_name, col_start, col_end, x_center, 
 var icon_paths: Dictionary = {} # имя файла -> полный путь
 var icon_textures: Dictionary = {} # имя файла -> загруженная Texture2D
 
-# --- Плавная анимация прогресс-бара ---
-# При обновлении на тике ставим _progress_target, а в _process догоняем
-# progress_bar.value с фиксированной скоростью. Без этого прогресс-бар
-# дёргается скачками раз в 2 секунды (PRODUCTION_INTERVAL).
-var _progress_target: float = 0.0
-const PROGRESS_INTERP_SPEED: float = 60.0 # единиц/сек (0..100)
-
 signal research_requested(tech_id: String)
 
-func setup(parent: Control, current_lbl: Label, progress: ProgressBar, science_lbl: Label = null):
+func setup(parent: Control, current_lbl: Label, science_lbl: Label = null):
     current_label = current_lbl
-    progress_bar = progress
     science_pool_label = science_lbl
     _build_tech_icon_index()
     _build_ui(parent)
@@ -925,28 +916,23 @@ func update_progress():
     _update_status_label()
 
 func _update_status_label():
-    if current_label == null or progress_bar == null:
+    if current_label == null:
         return
-    # Общий пул науки города (виден только здесь, на вкладке «Технологии»).
+    # Скорость науки города (база + вклад работающих зданий науки; видна
+    # только здесь, на вкладке «Технологии»). Здания копят науку в пул,
+    # а пул расходуется на исследование — это и даёт фактический вклад.
     if science_pool_label != null and is_instance_valid(science_pool_label):
-        science_pool_label.text = "Пул науки: %d" % int(CityData.get_science_pool())
+        science_pool_label.text = "Наука за тик: %.1f" % CityData.get_science_rate_per_tick()
     if CityData.current_research_tech_id != "":
         var tech_data = _get_tech_data(CityData.current_research_tech_id)
         if not tech_data.is_empty():
             var collected: float = CityData.get_research_science_collected()
             var cost: int = CityData.current_research_science_cost
             current_label.text = "Изучается: %s (наука: %.0f/%d)" % [tech_data["name"], collected, cost]
-            # Не присваиваем progress_bar.value напрямую — иначе он дёргается
-            # скачками раз в PRODUCTION_INTERVAL. Вместо этого задаём target,
-            # а в _process догоняем с фиксированной скоростью.
-            _progress_target = CityData.research_progress * 100.0
             return
         current_label.text = "Изучается: ???"
-        _progress_target = 0.0
     else:
         current_label.text = "Нет текущего исследования"
-        _progress_target = 0.0
-
 func _on_tech_pressed(tech_id: String):
     emit_signal("research_requested", tech_id)
 
@@ -1208,32 +1194,18 @@ func _build_arrow_path(parent_right: Vector2, child_left: Vector2, parent_col: i
         child_left,
     ])
 
-func _process(delta: float) -> void:
-    # Плавная интерполяция прогресс-бара исследования. Без неё бар
-    # дёргался скачками раз в PRODUCTION_INTERVAL (2 секунды).
-    #
-    # research_progress теперь растёт непрерывно (см. tick_research_science_continuous
-    # в CityData), поэтому обновляем target каждый кадр, а не по тику —
-    # иначе между тиками бар стоял бы на месте, а в момент тика прыгал.
-    #
-    # is_visible_in_tree() отсекает работу, когда city_ui скрыт — нечего
-    # обновлять. Внутри активной вкладки _process работает каждый кадр,
-    # но тело тривиальное (пара арифметических операций).
-    if progress_bar == null:
-        return
+func _process(_delta: float) -> void:
+    # Покадровое обновление прогресс-бара на кнопке текущей технологии:
+    # research_progress растёт непрерывно (tick_research_science_continuous),
+    # а _update_states вызывается только по тикам/событиям — без этого бар
+    # дёргался и отставал от реального прогресса.
     if not is_visible_in_tree():
         return
-    if CityData.current_research_tech_id != "":
-        _progress_target = CityData.research_progress * 100.0
-    else:
-        _progress_target = 0.0
-    var diff: float = _progress_target - progress_bar.value
-    if absf(diff) < 0.1:
-        if progress_bar.value != _progress_target:
-            progress_bar.value = _progress_target
+    if CityData.current_research_tech_id == "":
         return
-    var step: float = signf(diff) * PROGRESS_INTERP_SPEED * delta
-    if absf(step) >= absf(diff):
-        progress_bar.value = _progress_target
-    else:
-        progress_bar.value += step
+    var entry = _tech_nodes.get(CityData.current_research_tech_id)
+    if entry == null:
+        return
+    var progress: ProgressBar = _find_progress_in_button(entry["button"])
+    if progress != null and progress.visible:
+        progress.value = CityData.research_progress * 100.0
