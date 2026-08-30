@@ -65,14 +65,13 @@ func _ready():
 
     buildings_tab = load("res://scripts/buildings_tab.gd").new()
     buildings_tab.setup(
-        $ContentPanel/BuildingsPanel/HSplitContainer/AvailableBuildingsPanel/VBoxContainer/BuildingsItemList,
-        $ContentPanel/BuildingsPanel/HSplitContainer/BuildingDetailsPanel/VBoxContainer/BuildingNameLabel,
-        $ContentPanel/BuildingsPanel/HSplitContainer/BuildingDetailsPanel/VBoxContainer/BuildingCostLabel,
-        $ContentPanel/BuildingsPanel/HSplitContainer/BuildingDetailsPanel/VBoxContainer/BuildingRecipesLabel,
+        $ContentPanel/BuildingsPanel/PanelsLayout/AvailableBuildingsPanel/VBoxContainer/AvailableBuildingsScroll/BuildingsList,
+        $ContentPanel/BuildingsPanel/PanelsLayout/BuildingDetailsPanel/VBoxContainer/BuildingNameLabel,
+        $ContentPanel/BuildingsPanel/PanelsLayout/BuildingDetailsPanel/VBoxContainer/BuildingCostLabel,
+        $ContentPanel/BuildingsPanel/PanelsLayout/BuildingDetailsPanel/VBoxContainer/BuildingRecipesLabel,
         $ContentPanel/BuildingsPanel/BuildButton,
         $RightPanel/VBoxContainer/BuiltBuildingsList,
         $ContentPanel/BuildingsPanel/FoodLabel,
-        $ContentPanel/BuildingsPanel/HSplitContainer,
         ui_helpers
     )
     buildings_tab.build_requested.connect(_on_build_requested)

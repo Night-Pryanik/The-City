@@ -173,7 +173,7 @@ offset_right = 184.0
 offset_bottom = 23.0
 text = "Еды доступно: 0"
 
-[node name="HSplitContainer" type="HSplitContainer" parent="ContentPanel/BuildingsPanel" unique_id=1962390109]
+[node name="PanelsLayout" type="HBoxContainer" parent="ContentPanel/BuildingsPanel" unique_id=1962390109]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -181,31 +181,14 @@ anchor_bottom = 1.0
 offset_top = 27.0
 grow_horizontal = 2
 grow_vertical = 2
-split_offsets = PackedInt32Array(300)
-split_offset = 300
 
-[node name="AvailableBuildingsPanel" type="Control" parent="ContentPanel/BuildingsPanel/HSplitContainer" unique_id=1098170534]
+[node name="AvailableBuildingsPanel" type="Control" parent="ContentPanel/BuildingsPanel/PanelsLayout" unique_id=1098170534]
+custom_minimum_size = Vector2(300, 0)
 layout_mode = 2
+size_flags_horizontal = 1
+size_flags_vertical = 3
 
-[node name="VBoxContainer" type="VBoxContainer" parent="ContentPanel/BuildingsPanel/HSplitContainer/AvailableBuildingsPanel" unique_id=1309099413]
-layout_mode = 1
-anchors_preset = 9
-anchor_bottom = 1.0
-offset_right = 193.0
-grow_vertical = 2
-
-[node name="AvailableBuildingsLabel" type="Label" parent="ContentPanel/BuildingsPanel/HSplitContainer/AvailableBuildingsPanel/VBoxContainer" unique_id=101904791]
-layout_mode = 2
-text = "Доступные постройки:"
-
-[node name="BuildingsItemList" type="ItemList" parent="ContentPanel/BuildingsPanel/HSplitContainer/AvailableBuildingsPanel/VBoxContainer" unique_id=1295887837]
-custom_minimum_size = Vector2(0, 550)
-layout_mode = 2
-
-[node name="BuildingDetailsPanel" type="Control" parent="ContentPanel/BuildingsPanel/HSplitContainer" unique_id=244568997]
-layout_mode = 2
-
-[node name="VBoxContainer" type="VBoxContainer" parent="ContentPanel/BuildingsPanel/HSplitContainer/BuildingDetailsPanel" unique_id=1656241255]
+[node name="VBoxContainer" type="VBoxContainer" parent="ContentPanel/BuildingsPanel/PanelsLayout/AvailableBuildingsPanel" unique_id=1309099413]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -213,13 +196,40 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="BuildingNameLabel" type="Label" parent="ContentPanel/BuildingsPanel/HSplitContainer/BuildingDetailsPanel/VBoxContainer" unique_id=486860130]
+[node name="AvailableBuildingsLabel" type="Label" parent="ContentPanel/BuildingsPanel/PanelsLayout/AvailableBuildingsPanel/VBoxContainer" unique_id=101904791]
+layout_mode = 2
+text = "Доступные постройки:"
+
+[node name="AvailableBuildingsScroll" type="ScrollContainer" parent="ContentPanel/BuildingsPanel/PanelsLayout/AvailableBuildingsPanel/VBoxContainer" unique_id=1295887837]
+custom_minimum_size = Vector2(300, 550)
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="BuildingsList" type="VBoxContainer" parent="ContentPanel/BuildingsPanel/PanelsLayout/AvailableBuildingsPanel/VBoxContainer/AvailableBuildingsScroll" unique_id=1073741824]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="BuildingDetailsPanel" type="Control" parent="ContentPanel/BuildingsPanel/PanelsLayout" unique_id=244568997]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="VBoxContainer" type="VBoxContainer" parent="ContentPanel/BuildingsPanel/PanelsLayout/BuildingDetailsPanel" unique_id=1656241255]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="BuildingNameLabel" type="Label" parent="ContentPanel/BuildingsPanel/PanelsLayout/BuildingDetailsPanel/VBoxContainer" unique_id=486860130]
 layout_mode = 2
 
-[node name="BuildingCostLabel" type="Label" parent="ContentPanel/BuildingsPanel/HSplitContainer/BuildingDetailsPanel/VBoxContainer" unique_id=1452654743]
+[node name="BuildingCostLabel" type="Label" parent="ContentPanel/BuildingsPanel/PanelsLayout/BuildingDetailsPanel/VBoxContainer" unique_id=1452654743]
 layout_mode = 2
 
-[node name="BuildingRecipesLabel" type="Label" parent="ContentPanel/BuildingsPanel/HSplitContainer/BuildingDetailsPanel/VBoxContainer" unique_id=920025873]
+[node name="BuildingRecipesLabel" type="Label" parent="ContentPanel/BuildingsPanel/PanelsLayout/BuildingDetailsPanel/VBoxContainer" unique_id=920025873]
 layout_mode = 2
 
 [node name="BuildButton" type="Button" parent="ContentPanel/BuildingsPanel" unique_id=235108591]
