@@ -1326,7 +1326,15 @@ func advance_to_next_era():
     ring_rows = region_rows
     ring_cols = region_cols
 
-    # 4. Новый Регион той же ширины вокруг нового Кольца.
+    # 4. Новый Регион: ширина берётся из настраиваемого поля region_width
+    # той эпохи, в которую переходим (data/eras.json). Если поле не задано —
+    # остаётся текущее значение (обратная совместимость со старыми eras.json).
+    var next_era_index: int = current_era + 1
+    if next_era_index >= 0 and next_era_index < GameData.eras.size():
+        var era_data: Dictionary = GameData.eras[next_era_index]
+        if era_data.has("region_width"):
+            region_width = int(era_data.get("region_width", region_width))
+
     region_rows = ring_rows + region_width * 2
     region_cols = ring_cols + region_width * 2
 
