@@ -179,7 +179,15 @@ func _draw():
     if main_map.control_panel and main_map.control_panel.has_selection():
         var sel = main_map.control_panel.get_selected_hex()
         if sel != null:
-            _draw_selected_hex_highlight(sel.row, sel.col)
+            if main_map.tile_data[sel.row][sel.col].get('in_influence', false):
+                # Гекс в Кольце Влияния: выделяется только он сам.
+                _draw_selected_hex_highlight(sel.row, sel.col)
+            else:
+                # Гекс в Регионе: выделяется весь чанк разведки/покупки —
+                # тот же чанк, с которым работают действия панели
+                # (control_panel._collect_region_actions).
+                for chunk_hex in main_map.expansion_manager.get_chunk_hexes(sel.row, sel.col):
+                    _draw_selected_hex_highlight(chunk_hex.row, chunk_hex.col)
 
     # ФАЗА 4: Рисуем город в конце
     var offset_pos = Vector2(
