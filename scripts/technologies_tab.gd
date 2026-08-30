@@ -69,10 +69,14 @@ func _rebuild_lists():
             name_label.text = "%s [%s] (наука: %d)" % [tech["name"], era_str, tech.get("science_cost", 3)]
             name_label.add_theme_color_override("font_color", Color.WHITE)
         else:
-            var prereq_text = CityData.get_tech_prerequisites_text(tech_id)
             var req_str = ""
-            if prereq_text != "":
-                req_str = " | Требуется: " + prereq_text
+            if not CityData.is_tech_era_allowed(tech_id):
+                # Эпоха технологии выше текущей — переход в неё ещё не совершён.
+                req_str = " | Требуется переход в следующую эпоху"
+            else:
+                var prereq_text = CityData.get_tech_prerequisites_text(tech_id)
+                if prereq_text != "":
+                    req_str = " | Требуется: " + prereq_text
             name_label.text = "%s [%s] (наука: %d)%s" % [tech["name"], era_str, tech.get("science_cost", 3), req_str]
             name_label.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
         row.add_child(name_label)

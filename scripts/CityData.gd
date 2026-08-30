@@ -28,6 +28,13 @@ var research_science_accumulated: float = 0.0
 # «Наука: производство и исследования»).
 var science_drain_accum: float = 0.0
 
+# --- ТЕКУЩАЯ ЭПОХА ---
+# Индекс текущей эпохи в GameData.eras (см. data/eras.json).
+# Источник истины для ограничения «изучать можно только технологии
+# текущей и предыдущих эпох». Синхронизируется с main_map.current_era
+# при переходе эпохи и загрузке сохранения.
+var current_era_index: int = 0
+
 # Сообщения для HUD после завершения исследования (о найденных ресурсах)
 var last_research_messages: Array = []
 
@@ -38,6 +45,41 @@ var food_for_new_settler: int = 100
 var food_per_citizen: int = 1
 
 const PRODUCTION_INTERVAL: float = 2.0
+
+# --- ЭПОХИ ---
+# Возвращает индекс эпохи технологии в GameData.eras.
+# Если технология не найдена или её era отсутствует в списке эпох — -1.
+func get_tech_era_index(tech_id: String) -> int:
+    var tech_data = _get_tech_data(tech_id)
+    if tech_data == null:
+        return -1
+    var era_id: String = tech_data.get("era", "")
+    for i in range(GameData.eras.size()):
+        if GameData.eras[i].get("id", "") == era_id:
+            return i
+    return -1
+
+# Разрешено ли изучать технологию по эпохам: можно только технологии
+# текущей и предыдущих эпох. Технологии следующей эпохи недоступны,
+# даже если все их prerequisites выполнены.
+func is_tech_era_allowed(tech_id: String) -> bool:
+    var era_idx := get_tech_era_index(tech_id)
+    # Технология без известной эпохи не блокируется (защита от некорректных данных).
+    if era_idx < 0:
+        return true
+    return era_idx <= current_era_index
+
+# Человекочитаемое имя эпохи по индексу; для некорректного индекса — пустая строка.
+func _get_era_name_by_index(index: int) -> String:
+    if index < 0 or index >= GameData.eras.size():
+        return ""
+    return GameData.eras[index].get("name", "")
+
+# Переход в следующую эпоху. Вызывается из main_map.advance_to_next_era().
+func advance_era() -> void:
+    if current_era_index < GameData.eras.size() - 1:
+        current_era_index += 1
+    emit_signal("city_updated")
 
 # --- НАУКА ---
 # Базовый доход науки города за один production-тик (даже без библиотек).
@@ -80,6 +122,7 @@ func setup():
     research_progress = 0.0
     research_science_accumulated = 0.0
     science_drain_accum = 0.0
+    current_era_index = 0
     last_research_messages = []
 
     total_population = 1
@@ -475,6 +518,11 @@ func start_research(tech_id: String) -> bool:
         var prereq_text = get_tech_prerequisites_text(tech_id)
         emit_signal("research_error", "Не выполнены требования: " + prereq_text)
         return false
+    if not is_tech_era_allowed(tech_id):
+        var tech_name = tech_data.get("name", tech_id)
+        var next_era_name = _get_era_name_by_index(current_era_index + 1)
+        emit_signal("research_error", "«%s» относится к следующей эпохе. Сначала перейдите в эпоху %s." % [tech_name, next_era_name])
+        return false
     # Исследование не требует еды — только очки науки.
     current_research_tech_id = tech_id
     current_research_science_cost = int(tech_data.get("science_cost", 3))
@@ -606,11 +654,14 @@ func get_tech_prerequisites_text(tech_id: String) -> String:
         or_parts.append(" и ".join(and_names))
     return " или ".join(or_parts)
 
-# Доступна ли технология для изучения (prerequisites выполнены, не изучена, не в процессе).
+# Доступна ли технология для изучения (prerequisites выполнены, не изучена,
+# не в процессе, эпоха не выше текущей).
 func is_tech_available(tech_id: String) -> bool:
     if tech_id in unlocked_technologies:
         return false
     if tech_id == current_research_tech_id:
+        return false
+    if not is_tech_era_allowed(tech_id):
         return false
     return are_prerequisites_met(tech_id)
 
@@ -630,6 +681,10 @@ func _collect_tech_chain(tech_id: String, chain: Array, visiting: Dictionary) ->
         return
     var data = _get_tech_data(tech_id)
     if data == null or is_tech_unlocked(tech_id):
+        return
+    # Технологии будущих эпох в цепочку не попадают: их нельзя изучать,
+    # пока не совершён переход в соответствующую эпоху.
+    if not is_tech_era_allowed(tech_id):
         return
     var prereqs: Array = data.get("prerequisites", [])
     if not prereqs.is_empty():

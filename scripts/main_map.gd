@@ -1262,6 +1262,10 @@ func _apply_saved_map_state():
         region_rows = int(st.get("region_rows", region_rows))
         region_cols = int(st.get("region_cols", region_cols))
         current_era = int(st.get("current_era", 0))
+    # Синхронизируем эпоху с CityData (ограничение изучения технологий по эпохам).
+    # Для старых сейвов приоритет у значения в состоянии карты.
+    if st.has("current_era"):
+        CityData.current_era_index = current_era
     city_row = map_rows / 2
     city_col = map_cols / 2
     _recalculate_bounds()
@@ -1338,6 +1342,10 @@ func advance_to_next_era():
                 tile["is_explored"] = false
 
     current_era += 1
+    # Синхронизируем текущую эпоху в CityData — от неё зависит ограничение
+    # на изучение технологий (только текущая и предыдущие эпохи).
+    CityData.current_era_index = current_era
+    CityData.emit_signal("city_updated")
     _calc_offsets()
     map_renderer.queue_redraw()
     if hud:

@@ -821,9 +821,20 @@ func _update_states():
             elif is_current:
                 extra = "\n\n[Изучается]"
             elif not is_available:
-                var prereq: String = CityData.get_tech_prerequisites_text(tech_id)
-                if not prereq.is_empty():
-                    extra = "\n\n[Требуется: %s]" % prereq
+                if CityData.is_tech_era_allowed(tech_id):
+                    var prereq: String = CityData.get_tech_prerequisites_text(tech_id)
+                    if not prereq.is_empty():
+                        extra = "\n\n[Требуется: %s]" % prereq
+                else:
+                    # Prereq могут быть выполнены, но эпоха технологии выше текущей.
+                    var era_idx: int = CityData.get_tech_era_index(tech_id)
+                    var era_name: String = ""
+                    if era_idx >= 0 and era_idx < GameData.eras.size():
+                        era_name = GameData.eras[era_idx].get("name", "")
+                    if era_name.is_empty():
+                        extra = "\n\n[Недоступно: требуется переход в следующую эпоху]"
+                    else:
+                        extra = "\n\n[Эпоха: %s — сначала перейдите в неё]" % era_name
             btn.tooltip_text = "%s\nНаука: %d%s" % [desc, cost, extra]
     
 func _find_progress_in_button(btn: Button) -> ProgressBar:
