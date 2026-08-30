@@ -98,9 +98,19 @@ func handle_input(event: InputEvent):
     # управления: клики, перетаскивание, тултипы и скролл не должны проходить
     # сквозь панель к карте. Клавиатурные события (ESC и т.п.) при этом
     # продолжают обрабатываться ниже.
-    if event is InputEventMouse and main_map.control_panel \
-            and main_map.control_panel.get_global_rect().has_point(event.global_position):
+    # Взаимодействие с картой также недоступно, когда курсор находится над
+    # HUD (левый верхний угол): иначе движение мыши через HUD подсвечивает
+    # чанки Региона и всплывают тултипы, а клик по HUD выделяет гекс под ним.
+    # Кнопки HUD при этом продолжают работать: они обрабатываются через GUI-
+    # фазу (pressed / gui_input), независимо от этого обработчика.
+    var over_hud = hud != null and hud.get_global_rect().has_point(event.global_position)
+    if event is InputEventMouse and ((main_map.control_panel \
+            and main_map.control_panel.get_global_rect().has_point(event.global_position)) or over_hud):
         _hide_tooltip()
+        # Убираем подсветку чанка Региона, оставшуюся от наведения до захода
+        # курсора на панель/HUD.
+        if over_hud:
+            expansion_manager.clear_hovered_chunk()
         return
 
     # Дебаг-меню открыто — блокируем взаимодействие с картой
