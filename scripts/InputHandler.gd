@@ -103,15 +103,17 @@ func handle_input(event: InputEvent):
     # чанки Региона и всплывают тултипы, а клик по HUD выделяет гекс под ним.
     # Кнопки HUD при этом продолжают работать: они обрабатываются через GUI-
     # фазу (pressed / gui_input), независимо от этого обработчика.
-    var over_hud = hud != null and hud.get_global_rect().has_point(event.global_position)
-    if event is InputEventMouse and ((main_map.control_panel \
-            and main_map.control_panel.get_global_rect().has_point(event.global_position)) or over_hud):
-        _hide_tooltip()
-        # Убираем подсветку чанка Региона, оставшуюся от наведения до захода
-        # курсора на панель/HUD.
-        if over_hud:
-            expansion_manager.clear_hovered_chunk()
-        return
+    if event is InputEventMouse:
+        var over_hud = hud != null and hud.get_global_rect().has_point(event.global_position)
+        var over_panel = main_map.control_panel != null \
+                and main_map.control_panel.get_global_rect().has_point(event.global_position)
+        if over_panel or over_hud:
+            _hide_tooltip()
+            # Убираем подсветку чанка Региона, оставшуюся от наведения
+            # до захода курсора на панель/HUD.
+            if over_hud:
+                expansion_manager.clear_hovered_chunk()
+            return
 
     # Дебаг-меню открыто — блокируем взаимодействие с картой
     if debug_manager and debug_manager.is_open:
