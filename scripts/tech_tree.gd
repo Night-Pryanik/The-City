@@ -18,9 +18,9 @@ const COL_PADDING: int = 24 # отступ от края _inner
 const BUTTON_WIDTH: int = 200 # фиксированная ширина кнопки
 const BUTTON_HEIGHT: int = 60 # фиксированная высота кнопки
 const BUTTON_VERTICAL_GAP: int = 16 # вертикальный зазор между кнопками в колонке
-const ICON_SIZE: int = 50
-const UNLOCK_ICON_SIZE: int = 32
-const UNLOCK_ICONS_MARGIN: int = 3 # размер иконки слева от названия
+const ICON_SIZE: int = 50 # размер иконки технологии
+const UNLOCK_ICON_SIZE: int = 32 # размер иконки открываемого контента на кнопке технологии
+const UNLOCK_ICONS_MARGIN: int = 3 # расстояние от иконок до границ кнопки
 
 # --- Разделение по эпохам ---
 # Каждая технология в JSON содержит поле "era" (id эпохи), а человекочитаемые
@@ -704,7 +704,7 @@ func _add_unlock_icons(btn: Button, tech_id: String):
 
     var row := HBoxContainer.new()
     row.name = "UnlockIconsRow"
-    row.anchor_left = 0.0
+    row.anchor_left = 0.25
     row.anchor_right = 1.0
     row.anchor_top = 1.0
     row.anchor_bottom = 1.0
@@ -713,7 +713,7 @@ func _add_unlock_icons(btn: Button, tech_id: String):
     row.offset_left = 8
     row.offset_right = -8
     row.add_theme_constant_override("separation", 4)
-    row.alignment = BoxContainer.ALIGNMENT_CENTER
+    row.alignment = BoxContainer.ALIGNMENT_BEGIN
     row.mouse_filter = Control.MOUSE_FILTER_PASS
     btn.add_child(row)
 
