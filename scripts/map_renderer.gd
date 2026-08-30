@@ -138,6 +138,9 @@ func load_icons():
                     icon_textures[icon_name] = load(icon_paths[icon_name])
     if icon_paths.has("city.png"):
         icon_textures["city"] = load(icon_paths["city.png"])
+        # Ключ "city.png" нужен рендереру городков (town_manager.TOWN_ICON_NAME),
+        # чтобы достать ту же текстуру по «полному» имени файла.
+        icon_textures["city.png"] = icon_textures["city"]
     if icon_paths.has("lock.png"):
         icon_textures["lock.png"] = load(icon_paths["lock.png"])
 
@@ -158,6 +161,12 @@ func _draw():
     # на фоне тумана войны, но они не раскрывают ресурсы/улучшения.
     for hex_data in main_map.unique_terrain_hexes:
         _draw_unique_terrain_hex(hex_data.row, hex_data.col)
+
+    # ФАЗА 1.6: Аналогично для городков ЗА пределами Региона — рисуем
+    # иконку city.png с пониженной прозрачностью, чтобы игрок видел «что-то
+    # есть», но без лишних деталей (без ресурсов/улучшений).
+    for hex_data in main_map.town_hexes:
+        _draw_town_hex_outside_region(hex_data.row, hex_data.col)
 
     # ФАЗА 2: Рисуем дороги (ПЕРЕД иконками ресурсов и улучшений)
     _draw_all_roads()
@@ -298,6 +307,58 @@ func _draw_unique_terrain_hex(row: int, col: int):
 
     # Затемняем как неисследованный регион (туман войны).
     draw_colored_polygon(vertices, Color(0, 0, 0, 0.5))
+
+    var closed_verts = PackedVector2Array()
+    closed_verts.append_array(vertices)
+    closed_verts.append(vertices[0])
+    if main_map.show_hex_borders:
+        draw_polyline(closed_verts, Color.WHITE, 2, true)
+
+# Рисует гекс с городком ЗА пределами видимого Региона (туман войны).
+# Аналог _draw_unique_terrain_hex: рельеф + затемнение + иконка городка
+# с пониженной alpha, чтобы игрок знал «там что-то есть», но без деталей
+# (ресурсы/улучшения не показываются).
+func _draw_town_hex_outside_region(row: int, col: int):
+    # Если гекс уже входит в видимый Регион, его рисует основной проход
+    # (_draw_hex + _draw_hex_overlays) — здесь пропускаем, чтобы не дублировать.
+    if row >= main_map.region_start_row and row <= main_map.region_end_row \
+            and col >= main_map.region_start_col and col <= main_map.region_end_col:
+        return
+
+    var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
+    center.x += main_map.offset_x + main_map.scroll_offset.x
+    center.y += main_map.offset_y + main_map.scroll_offset.y
+    var vertices = HexUtils.hex_vertices(center.x, center.y, main_map.HEX_RADIUS)
+
+    # Viewport culling: пропускаем, если гекс не пересекает экран.
+    if not _is_rect_visible(Rect2(
+            center.x - main_map.HEX_RADIUS,
+            center.y - main_map.HEX_RADIUS,
+            main_map.HEX_RADIUS * 2,
+            main_map.HEX_RADIUS * 2)):
+        return
+
+    # Рельеф (как у _draw_unique_terrain_hex): фон местности + затемнение.
+    var tile = tile_data[row][col]
+    var terrain_id = tile.get("terrain", "plain")
+    var terrain_color = Color.BLACK
+    if GameData.terrains.has(terrain_id):
+        var t = GameData.terrains[terrain_id]
+        var c = t.get("color", [0, 0, 0])
+        terrain_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
+    draw_colored_polygon(vertices, terrain_color)
+    draw_colored_polygon(vertices, Color(0, 0, 0, 0.5))
+
+    # Иконка городка поверх, с пониженной alpha — «что-то видно, но далеко».
+    if icon_textures.has(TownManager.TOWN_ICON_NAME):
+        var tex = icon_textures[TownManager.TOWN_ICON_NAME]
+        var icon_rect = Rect2(
+            center.x - TownManager.TOWN_ICON_SIZE / 2.0,
+            center.y - TownManager.TOWN_ICON_SIZE / 2.0,
+            TownManager.TOWN_ICON_SIZE,
+            TownManager.TOWN_ICON_SIZE
+        )
+        draw_texture_rect(tex, icon_rect, false, Color(1, 1, 1, TownManager.FOG_TOWN_ICON_ALPHA))
 
     var closed_verts = PackedVector2Array()
     closed_verts.append_array(vertices)
@@ -467,6 +528,24 @@ func _draw_hex_overlays(row: int, col: int):
                     closed_points.append_array(drop_points)
                     closed_points.append(drop_points[0])
                     draw_polyline(closed_points, Color(0.5, 0.7, 0.95, 0.9), 1.5)
+
+    # --- Иконка городка ---
+    # Рисуется ПОСЛЕ всех остальных оверлеев (ресурс/улучшение/капля воды),
+    # чтобы быть поверх них — это «главный» объект на гексе, как и сам город
+    # игрока. Размер берётся из town_manager, чтобы при желании легко было
+    # подкрутить. Рисуем только если гекс НЕ гекс города (город — отдельный
+    # случай в ФАЗЕ 4).
+    if tile.get("has_town", false) \
+            and not (row == main_map.city_row and col == main_map.city_col) \
+            and icon_textures.has(TownManager.TOWN_ICON_NAME):
+        var town_tex = icon_textures[TownManager.TOWN_ICON_NAME]
+        var town_rect = Rect2(
+            center.x - TownManager.TOWN_ICON_SIZE / 2.0,
+            center.y - TownManager.TOWN_ICON_SIZE / 2.0,
+            TownManager.TOWN_ICON_SIZE,
+            TownManager.TOWN_ICON_SIZE
+        )
+        draw_texture_rect(town_tex, town_rect, false)
 
     # --- Конфликт «tech_reveal-ресурс vs чужое улучшение» ---
     # Если на гексе стоит улучшение, а под ним нашли скрытый ресурс (tech_reveal

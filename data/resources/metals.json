@@ -7,6 +7,9 @@
       "category": "metals",
       "group": "",
       "subgroup": "",
+      // strategic — редкий/важный ресурс: к нему тяготеют городки
+      // (см. data/map_config.json, "num_towns"; приоритет 1 в town_manager).
+      "strategic": true,
       // tech_reveal — ресурс «подземный»: спавнится на карте с самого старта,
       // но невидим игроку, пока не изучена указанная технология.
       // Подробности см. в docs.md, раздел «tech_reveal: скрытые ресурсы».

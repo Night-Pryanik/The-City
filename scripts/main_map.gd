@@ -71,6 +71,12 @@ var scroll_offset = Vector2.ZERO
 # которые всегда отображаются на карте даже за пределами видимого Региона.
 var unique_terrain_hexes: Array = []
 
+# Гексы с городками. Параллельный список к unique_terrain_hexes: рендерер
+# рисует иконки городков и в видимом Регионе, и ЗА ним (затемнёнными, как
+# неисследованная уникальная местность). Сами гексы помечены флагом
+# tile.has_town, а этот список — для рендерера.
+var town_hexes: Array = []
+
 var last_city_click_time = 0.0
 var production_timer = 0.0
 var scouting_timer: float = 0.0
@@ -107,6 +113,7 @@ var extended_tooltip_delay: float = 1.0
 @onready var road_manager = $RoadManager
 @onready var expansion_manager = $ExpansionManager
 @onready var river_manager = $RiverManager
+@onready var town_manager = $TownManager
 @onready var worker_manager = $WorkerManager
 @onready var townsfolk_manager = $TownsfolkManager
 @onready var settings_menu = preload("res://scenes/settings_menu.tscn").instantiate()
@@ -244,6 +251,16 @@ func _ready():
                 var t_data: Dictionary = GameData.terrains.get(terrain_id, {})
                 if t_data.get("unique", false):
                     unique_terrain_hexes.append({"row": row, "col": col})
+
+        # Восстанавливаем городки из сейва и зеркалим в town_hexes для рендерера.
+        # town_manager.load_towns только заполняет town_hexes внутри менеджера;
+        # плюс вручную выставляем tile.has_town (на случай, если сейв старый,
+        # где флага ещё не было — миграция).
+        town_manager.load_towns(SaveManager.saved_data.get("towns", []))
+        town_hexes = []
+        for h in town_manager.town_hexes:
+            tile_data[h.row][h.col]["has_town"] = true
+            town_hexes.append({"row": h.row, "col": h.col})
 
         SaveManager.is_loaded = false
         SaveManager.saved_data.clear()
@@ -560,6 +577,14 @@ func _initialize_map():
             if t_data.get("unique", false):
                 unique_terrain_hexes.append({"row": row, "col": col})
 
+    # Гексы городков — зеркало town_manager.town_hexes, нужно рендереру,
+    # чтобы рисовать иконки за пределами видимого Региона (как уникальная
+    # местность). Сами данные живут в town_manager, чтобы save/load были
+    # симметричны с другими менеджерами (river_manager и т.п.).
+    town_hexes = []
+    for h in town_manager.town_hexes:
+        town_hexes.append({"row": h.row, "col": h.col})
+
     # Дикоросы и гарантированный food_plant спавнятся ТОЛЬКО один раз при
     # старте новой игры и ТОЛЬКО внутри стартового Кольца Влияния.
     # Передаём явные границы стартового Кольца, чтобы эти функции никогда
@@ -636,6 +661,27 @@ func _initialize_map():
     river_manager.generate_rivers(map_rows, map_cols, HEX_RADIUS, tile_data,
             region_start_row, region_end_row, region_start_col, region_end_col)
     river_manager.mark_river_edges(tile_data, map_rows, map_cols, HEX_RADIUS, river_manager.get_cached_graph())
+
+    # --- Городки (мелкие поселения) ---
+    # Размещаются ПОСЛЕ рек, чтобы river_edges уже были проставлены и
+    # использовались как точки тяготения (приоритет 2). Число и приоритеты
+    # точек тяготения см. в data/map_config.json, раздел "num_towns".
+    # Подробности — в scripts/town_manager.gd.
+    #
+    # Передаём две области:
+    #   exclusion_* — стартовая видимая область (Кольцо + стартовый Регион).
+    #     Внутри неё городки НЕ спавнятся, иначе они были бы видны с самого
+    #     начала игры и потеряется смысл «маленьких неизвестных поселений».
+    #   era2_region_* — видимая область 2-й эпохи (Кольцо_2 + Регион_2).
+    #     Это «обязательная зона» для гарантии: хотя бы 1 городок должен
+    #     попасть туда, чтобы при переходе во 2-ю эпоху игрок сразу мог
+    #     кого-то увидеть и начать торговать.
+    var era2_region_bounds: Dictionary = _compute_era2_region_bounds()
+    town_manager.generate_towns(tile_data, map_rows, map_cols, city_row, city_col,
+            start_region_start_row, start_region_end_row,
+            start_region_start_col, start_region_end_col,
+            era2_region_bounds.start_row, era2_region_bounds.end_row,
+            era2_region_bounds.start_col, era2_region_bounds.end_col)
 
     # Финальная гарантия: на гексе города не должно быть ресурса, и террейн
     # должен быть допустимым (plain или hill). Это safety-net на случай,
@@ -1245,6 +1291,48 @@ func get_map_state() -> Dictionary:
         "region_rows": region_rows,
         "region_cols": region_cols,
         "current_era": current_era
+    }
+
+# Вычисляет абсолютные границы ВИДИМОЙ области 2-й эпохи
+# (Кольцо_2 + Регион_2). Используется town_manager'ом как «обязательная
+# зона» для гарантии «≥1 городок в эре-2».
+#
+# Схема (см. advance_to_next_era):
+#   1) всё текущее (Кольцо + Регион) бесплатно исследуется и присоединяется;
+#   2) старое (Кольцо + Регион) становится новым Кольцом;
+#   3) вокруг нового Кольца формируется новый Регион ширины era2_region_width.
+#
+# Размеры:
+#   ring_2  = region_1   = (start_ring + start_region_width*2)
+#   region_2 = ring_2 + era2_region_width*2
+# Абсолютные границы считаются от центра города и обрезаются по карте.
+func _compute_era2_region_bounds() -> Dictionary:
+    # Ширина Региона второй эпохи. По умолчанию — текущая region_width
+    # (для старых eras.json без поля region_width). Если в data/eras.json
+    # у эры с индексом 1 (вторая по счёту, считая древнюю как 0) есть
+    # своё значение — берём его.
+    var era2_region_width: int = region_width
+    if GameData.eras.size() >= 2:
+        var era2_data: Dictionary = GameData.eras[1]
+        if era2_data.has("region_width"):
+            era2_region_width = int(era2_data.get("region_width", region_width))
+
+    # Кольцо 2-й эпохи = Регион 1-й эпохи (стартовая видимая область).
+    var era2_ring_rows: int = region_rows
+    var era2_ring_cols: int = region_cols
+    # Регион 2-й эпохи = Кольцо_2 + era2_region_width*2 в каждую сторону.
+    var era2_region_rows: int = era2_ring_rows + era2_region_width * 2
+    var era2_region_cols: int = era2_ring_cols + era2_region_width * 2
+
+    var start_row: int = maxi(0, city_row - era2_region_rows / 2)
+    var end_row: int = mini(map_rows - 1, start_row + era2_region_rows - 1)
+    var start_col: int = maxi(0, city_col - era2_region_cols / 2)
+    var end_col: int = mini(map_cols - 1, start_col + era2_region_cols - 1)
+    return {
+        "start_row": start_row,
+        "end_row": end_row,
+        "start_col": start_col,
+        "end_col": end_col,
     }
 
 # Восстанавливает состояние мира/окна из сохранения.

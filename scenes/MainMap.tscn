@@ -15,6 +15,7 @@
 [ext_resource type="Script" uid="uid://jmvb53g5bw57" path="res://scripts/debug_manager.gd" id="13_dbgmgr"]
 [ext_resource type="Script" uid="uid://bqthdmil0kgn6" path="res://scripts/progress_bar_layer.gd" id="14_pblayer"]
 [ext_resource type="Script" uid="uid://bvivpa15khla" path="res://scripts/control_panel.gd" id="15_ctrlpanel"]
+[ext_resource type="Script" uid="uid://bcysm6it5igvq" path="res://scripts/town_manager.gd" id="16_twnmgr"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_o7tci"]
 bg_color = Color(0.19607843, 0.19607843, 0.19607843, 1)
@@ -139,6 +140,9 @@ script = ExtResource("11_wehgl")
 
 [node name="RiverManager" type="Node" parent="." unique_id=2061907300]
 script = ExtResource("12_rvmgr")
+
+[node name="TownManager" type="Node" parent="." unique_id=2061907303]
+script = ExtResource("16_twnmgr")
 
 [node name="DebugManager" type="Control" parent="." unique_id=2061907301]
 visible = false
