@@ -174,6 +174,14 @@ func refresh_list():
         item_btn.toggle_mode = true
         item_btn.button_group = buildings_group
         item_btn.tooltip_text = bld["name"]
+        # Иконка здания перед названием (файл из buildings.json). Если файла
+        # иконки пока не существует — просто выводим название без иконки;
+        # при появлении файла иконка подхватится автоматически.
+        var building_icon = _get_icon_texture_from_paths(bld.get("icon", ""))
+        if building_icon:
+            item_btn.icon = building_icon
+            item_btn.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
+            item_btn.add_theme_constant_override("icon_max_width", 24)
         item_btn.pressed.connect(_on_building_list_pressed.bind(bld["id"]))
         buildings_list.add_child(item_btn)
 
@@ -454,6 +462,19 @@ func _group_buildings() -> Array:
             if CityData.are_all_slots_empty(i):
                 g["idle"] += 1
     return groups
+
+# Возвращает текстуру иконки по имени файла (из icon_paths), кэшируя её.
+# Если файла нет или имя пустое — возвращает null (тогда иконка не ставится).
+func _get_icon_texture_from_paths(icon_file: String) -> Texture2D:
+    if icon_file.is_empty():
+        return null
+    if icon_textures.has(icon_file):
+        return icon_textures[icon_file]
+    if icon_paths.has(icon_file):
+        var tex = load(icon_paths[icon_file])
+        icon_textures[icon_file] = tex
+        return tex
+    return null
 
 func _get_icon(icon_name: String) -> Texture2D:
     if icon_name == "resume" and resume_icon:
