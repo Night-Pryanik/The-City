@@ -292,13 +292,16 @@ func _on_research_requested(tech_id: String):
 func _process(delta):
     var mouse_pos = get_viewport().get_mouse_position()
 
-    # Тултип для переключателей еды
+    # Тултип для переключателей еды (только на вкладке «Ресурсы» — иначе
+    # скрытые тумблеры «просачиваются» в другие вкладки через get_global_rect,
+    # который возвращает координаты даже у скрытых панелей).
     var hovered_food = false
-    for pid in resources_tab.get_food_toggles():
-        var toggle = resources_tab.get_food_toggles()[pid]
-        if toggle.get_global_rect().has_point(mouse_pos):
-            hovered_food = true
-            break
+    if resources_panel.visible:
+        for pid in resources_tab.get_food_toggles():
+            var toggle = resources_tab.get_food_toggles()[pid]
+            if toggle.is_visible_in_tree() and toggle.get_global_rect().has_point(mouse_pos):
+                hovered_food = true
+                break
 
     if hovered_food:
         food_hover_timer += delta
