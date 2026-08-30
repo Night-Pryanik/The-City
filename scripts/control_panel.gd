@@ -26,6 +26,15 @@ var build_manager: Node
 func _ready():
     _setup_collapse_button()
 
+# Клик ЛКМ по пустому месту панели (мимо кнопок и скроллов) снимает
+# выделение гекса. Кнопки и прокручиваемые области поглощают клики сами,
+# поэтому сюда событие доходит только для пустого фона панели.
+func _gui_input(event: InputEvent):
+    if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT \
+            and not event.pressed:
+        if has_selection():
+            main_map.clear_selection()
+
 # --- Сворачивание/разворачивание панели ---
 
 # Высота свёрнутой панели = высота кнопки-переключателя.

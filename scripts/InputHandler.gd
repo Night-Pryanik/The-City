@@ -275,6 +275,11 @@ func _handle_mouse_button(event: InputEventMouseButton):
                 if cur_time - main_map.last_city_click_time < 0.5:
                     main_map.open_city()
                 main_map.last_city_click_time = cur_time
+        else:
+            # Клик ЛКМ по пустому месту (туман войны, за пределами карты) —
+            # снимаем выделение гекса, если оно было.
+            if main_map.control_panel.has_selection():
+                main_map.clear_selection()
 
 func _handle_mouse_motion(event: InputEventMouseMotion):
     if city_ui.visible or pause_menu.visible:
