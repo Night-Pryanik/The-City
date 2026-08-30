@@ -18,7 +18,9 @@ const COL_PADDING: int = 24 # отступ от края _inner
 const BUTTON_WIDTH: int = 200 # фиксированная ширина кнопки
 const BUTTON_HEIGHT: int = 60 # фиксированная высота кнопки
 const BUTTON_VERTICAL_GAP: int = 16 # вертикальный зазор между кнопками в колонке
-const ICON_SIZE: int = 50 # размер иконки слева от названия
+const ICON_SIZE: int = 50
+const UNLOCK_ICON_SIZE: int = 16
+const UNLOCK_ICONS_MARGIN: int = 3 # размер иконки слева от названия
 
 # --- Разделение по эпохам ---
 # Каждая технология в JSON содержит поле "era" (id эпохи), а человекочитаемые
@@ -642,10 +644,12 @@ func _create_tech_button(tech_data: Dictionary) -> Button:
     label.name = "TechNameLabel"
     label.text = tech_data.get("name", tech_data["id"])
     label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    # Текст прижат к верхнему краю: внизу кнопки остаётся место под
+    # маленькие иконки того, что открывает технология (_add_unlock_icons).
+    label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
     label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    label.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
     # Базовый размер шрифта. Финальный подбирается в _adjust_fonts() на
     # следующем кадре, когда Godot уже рассчитал лейаут и знает
     # фактический get_line_count() / get_minimum_size().
@@ -668,6 +672,9 @@ func _create_tech_button(tech_data: Dictionary) -> Button:
     progress.visible = false
     btn.add_child(progress)
 
+    # Маленькие иконки внизу кнопки: всё, что открывает технология.
+    _add_unlock_icons(btn, tech_data["id"])
+
     # Tooltip — встроенный механизм Godot. Покажется по наведению
     # после системной задержки (Project Settings → gui/timets/tooltip_delay_sec).
     var description: String = tech_data.get("description", "")
@@ -685,6 +692,92 @@ func _create_tech_button(tech_data: Dictionary) -> Button:
     btn.mouse_exited.connect(_on_tech_button_mouse_exited.bind(tech_id))
 
     return btn
+
+func _add_unlock_icons(btn: Button, tech_id: String):
+    # Ряд маленьких иконок у нижнего края кнопки: всё, что открывает
+    # технология (здания, улучшения, эффекты-модификаторы).
+    # У каждой иконки свой tooltip_text — при наведении на иконку
+    # показывается он, а не общий тултип технологии.
+    var items: Array = _get_unlock_items(tech_id)
+    if items.is_empty():
+        return
+
+    var row := HBoxContainer.new()
+    row.name = "UnlockIconsRow"
+    row.anchor_left = 0.0
+    row.anchor_right = 1.0
+    row.anchor_top = 1.0
+    row.anchor_bottom = 1.0
+    row.offset_top = -(UNLOCK_ICON_SIZE + UNLOCK_ICONS_MARGIN)
+    row.offset_bottom = -UNLOCK_ICONS_MARGIN
+    row.offset_left = 8
+    row.offset_right = -8
+    row.add_theme_constant_override("separation", 4)
+    row.alignment = BoxContainer.ALIGNMENT_CENTER
+    row.mouse_filter = Control.MOUSE_FILTER_PASS
+    btn.add_child(row)
+
+    for item in items:
+        var tex: Texture2D = _load_tech_icon(item.get("icon", ""))
+        if tex == null:
+            continue
+        var icon := TextureRect.new()
+        icon.custom_minimum_size = Vector2(UNLOCK_ICON_SIZE, UNLOCK_ICON_SIZE)
+        icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+        icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+        icon.texture = tex
+        icon.tooltip_text = item.get("tip", "")
+        icon.mouse_filter = Control.MOUSE_FILTER_PASS
+        row.add_child(icon)
+
+func _get_unlock_items(tech_id: String) -> Array:
+    # Собирает список {"icon", "tip"} — всё, что открывается технологией.
+    # Источники: здания (buildings.json), улучшения (improvements.json),
+    # эффекты-модификаторы (modifiers.json, tech_modifiers с полями
+    # icon/name) и произвольный список
+    # "unlock_effects": [ {"icon", "name"} ] в самой технологии.
+    var result: Array = []
+    var seen := {} # защита от дубликатов (одна и та же иконка+тултип)
+
+    # Здания.
+    for b in GameData.buildings:
+        if b.get("unlock_tech", "") == tech_id:
+            _add_unlock_item(result, seen, b.get("icon", ""), b.get("name", b.get("id", "")))
+
+    # Улучшения (GameData.improvements — словарь id -> данные).
+    for imp_id in GameData.improvements:
+        var imp: Dictionary = GameData.improvements[imp_id]
+        if imp.get("unlock_tech", "") == tech_id:
+            _add_unlock_item(result, seen, imp.get("icon", ""), imp.get("name", imp_id))
+
+    # Эффекты-модификаторы технологии (modifiers.json -> tech_modifiers).
+    var mods: Dictionary = GameData.modifiers
+    for m in mods.get("tech_modifiers", []):
+        if not (m is Dictionary):
+            continue
+        if m.get("tech_id", "") != tech_id:
+            continue
+        if m.has("icon"):
+            var tip: String = m.get("name", "Эффект технологии")
+            _add_unlock_item(result, seen, m["icon"], tip)
+
+    # Произвольные эффекты, заданные прямо в технологии (technologies.json):
+    # "unlock_effects": [ { "icon": "farm.png", "name": "Фермы: +50%" } ].
+    var tech_data: Dictionary = _get_tech_data(tech_id)
+    for eff in tech_data.get("unlock_effects", []):
+        if eff is Dictionary:
+            _add_unlock_item(result, seen, eff.get("icon", ""), eff.get("name", "Эффект технологии"))
+
+    return result
+
+func _add_unlock_item(result: Array, seen: Dictionary, icon_name: String, tip: String):
+    if icon_name.is_empty():
+        return
+    var key := icon_name + "|" + tip
+    if seen.has(key):
+        return
+    seen[key] = true
+    result.append({ "icon": icon_name, "tip": tip })
 
 func _adjust_fonts() -> void:
     # Подбираем максимально крупный font_size, при котором название влезает
