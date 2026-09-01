@@ -201,6 +201,26 @@ static func _is_direct_water_source(row: int, col: int, tile_data: Array, map_ro
         return true
     return false
 
+## Проверяет, является ли гекс (row, col) соседом озера: у него есть
+## сосед с terrain == "lake". Гекс на берегу озера считается имеющим
+## ПРЯМОЙ доступ к пресной воде, независимо от изученных технологий.
+static func _is_adjacent_to_lake(
+    row: int,
+    col: int,
+    tile_data: Array,
+    map_rows: int,
+    map_cols: int
+) -> bool:
+    if row < 0 or row >= map_rows or col < 0 or col >= map_cols:
+        return false
+    var neighbors_local = HexUtils.get_neighbors_odd_r(row, col, map_rows, map_cols)
+    for n in neighbors_local:
+        var neighbor_tile = tile_data[n.row][n.col]
+        if neighbor_tile == null:
+            continue
+        if neighbor_tile.get("terrain", "") == "lake":
+            return true
+    return false
 
 ## Является ли гекс «проводником» пресной воды: у его улучшения стоит
 ## conducts_water = true (ферма, плантация), или это канал (is_canal),
@@ -263,6 +283,9 @@ static func get_hex_water_access(
 
     # Прямой доступ — только гекс с водой (озеро/река).
     if _is_direct_water_source(row, col, tile_data, map_rows, map_cols):
+        return "direct"
+    # Гекс на берегу озера имеет ПРЯМОЙ доступ к воде (без технологий).
+    if _is_adjacent_to_lake(row, col, tile_data, map_rows, map_cols):
         return "direct"
 
     # Цепочка проводников: длина берётся из модификаторов технологий
