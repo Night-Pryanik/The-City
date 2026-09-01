@@ -4,13 +4,13 @@
     "tech_modifiers": [
       {
         "tech_id": "plow",
-        "icon": "farm.png",
+        "icon": "production_bonus.png",
         "name": "Фермы: +50% к производству",
         "production_multiplier": { "farm": 1.5 }
       },
       {
         "tech_id": "wheel",
-        "icon": "wheel.png",
+        "icon": "time_bonus.png",
         "name": "Снижает вклад расстояния от города в стоимость труда при строительстве улучшений на 30%",
         "modifiers": [ { "target": "improvement_distance_cost", "type": "percent", "value": -30 } ]
       }

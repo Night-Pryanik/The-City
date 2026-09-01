@@ -257,7 +257,7 @@ func _build_actions(row: int, col: int, tile: Dictionary):
 
     for action in actions:
         var btn = Button.new()
-        btn.custom_minimum_size = Vector2(32, 32) # маленькая квадратная кнопка
+        btn.custom_minimum_size = Vector2(40, 40) # маленькая квадратная кнопка
         # Тултип сохраняется — это единственный способ узнать, что делает кнопка.
         btn.tooltip_text = action.get("tooltip", "")
         btn.disabled = not action.get("enabled", true)
@@ -609,7 +609,7 @@ func _add_special_actions(actions: Array, row: int, col: int, tile: Dictionary):
             # совместимость).
             var terrain_list: Array = sa.get("source_terrains", [])
             if terrain_list.is_empty():
-                terrain_list = [ sa.get("source_terrain", "") ]
+                terrain_list = [sa.get("source_terrain", "")]
             applicable = tile.terrain in terrain_list and tile.improvement == null
         elif action_type == "cover":
             var cover_id = tile.get("cover", "none")
@@ -780,7 +780,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
         if cult_id != null:
             eff_res = cult_id
 
-    # Строка заголовка превью: подпись + кнопки «Начать» и «Отменить» (32×32,
+    # Строка заголовка превью: подпись + кнопки «Начать» и «Отменить» (40×40,
     # с иконками зелёной галочки / красного косого креста). Строится в
     # ОТДЕЛЬНОМ контейнере над PreviewScroll — вне прокручиваемой области,
     # поэтому видна всегда при любом положении скролла.
@@ -793,7 +793,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     header_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     header.add_child(header_label)
     var build_btn = Button.new()
-    build_btn.custom_minimum_size = Vector2(32, 32) # маленькая квадратная кнопка
+    build_btn.custom_minimum_size = Vector2(40, 40) # маленькая квадратная кнопка
     build_btn.tooltip_text = "Начать"
     build_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
     var check_tex = _load_action_icon("check.svg")
@@ -808,7 +808,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     )
     header.add_child(build_btn)
     var cancel_btn = Button.new()
-    cancel_btn.custom_minimum_size = Vector2(32, 32)
+    cancel_btn.custom_minimum_size = Vector2(40, 40)
     cancel_btn.tooltip_text = "Отменить"
     cancel_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
     var cross_tex = _load_action_icon("cross.svg")
@@ -854,7 +854,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
 
             for cult in crops:
                 var cult_btn = Button.new()
-                cult_btn.custom_minimum_size = Vector2(32, 32) # квадратная кнопка с иконкой
+                cult_btn.custom_minimum_size = Vector2(40, 40) # квадратная кнопка с иконкой
                 # Тултип — название ресурса (иконка без подписи).
                 cult_btn.tooltip_text = cult.get("name", cult.id)
                 # Иконка одомашненного вида; если её нет — знак вопроса.

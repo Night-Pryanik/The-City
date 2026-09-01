@@ -95,7 +95,7 @@
       "name": "Глиняные таблички",
       "produced_in": [ "pottery_workshop" ],
       "resources": { "clay": 2 },
-      "result": { "bricks": 1 },
+      "result": { "clay_tablets": 1 },
       "time": 5.0,
       "unlock_tech": "pottery",
       "description": "Создаёт глиняные таблички для записей"
