@@ -198,6 +198,8 @@ func _ready():
 
         # Гарантируем, что город находится на разрешённой местности при загрузке сохранения
         _ensure_city_valid_terrain()
+        # Помечаем гекс города (проводник воды); ставится явно и для старых сейвов.
+        _mark_city_hex()
 
         # Восстанавливаем стройки улучшений, зданий и освоения территории
         build_manager.restore_builds(SaveManager.saved_data.get("active_builds", {}))
@@ -688,6 +690,13 @@ func _initialize_map():
     # если какая-либо функция спавна ресурсов или конвертации террейна
     # пропустила проверку координат города.
     _ensure_city_hex_clean()
+    # Помечаем гекс города флагом is_city — логика воды (MapHelpers) считает
+    # его проводником/источником, когда к городу реально подведена вода.
+    _mark_city_hex()
+
+func _mark_city_hex() -> void:
+    if city_row >= 0 and city_row < map_rows and city_col >= 0 and city_col < map_cols:
+        tile_data[city_row][city_col]["is_city"] = true
 
 func _ensure_city_valid_terrain() -> void:
     MapHelpers.ensure_city_valid_terrain(tile_data, city_row, city_col, map_rows, map_cols)
