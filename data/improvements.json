@@ -145,7 +145,8 @@
       "unlock_tech": "fishing",
       "profession": "fisherman",
       // Маркер: для постройки требуется пристань на этом же водоёме.
-      "requires_harbor": true
+      "requires_harbor": true,
+      "no_road": true
     },
     {
       // Ирригационный канал: инфраструктурное улучшение-проводник, открытое
@@ -160,7 +161,10 @@
       "unlock_tech": "canals",
       "conducts_water": true,
       "is_canal": true,
-      "no_worker": true
+      "no_worker": true,
+      // Дорога к каналу НЕ прокладывается: это инфраструктурный элемент,
+      // и тянуть к нему сеть дорог не имеет смысла.
+      "no_road": true
     }
   ]
 }

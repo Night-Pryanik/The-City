@@ -44,6 +44,13 @@ func build_road_from(
         var start_tile = tile_data[start_row][start_col]
         if start_tile != null and MapHelpers.is_water_terrain(start_tile.get("terrain", "")):
             return
+        # Улучшения, помеченные флагом no_road, не получают дорогу
+        # (например, ирригационные каналы — инфраструктура, к которой
+        # дорогу прокладывать не нужно).
+        var start_imp_id = start_tile.get("improvement", null)
+        if start_imp_id != null and GameData.improvements.has(start_imp_id) \
+                and GameData.improvements[start_imp_id].get("no_road", false):
+            return
 
     var best_path = _find_path_dijkstra(
         start_row, start_col, tile_data, region_rows, region_cols
