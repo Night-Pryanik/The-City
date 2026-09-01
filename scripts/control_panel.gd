@@ -515,10 +515,51 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
             "icon": GameData.improvements.get("harbor", {}).get("icon", "")
         })
 
-    # 4. Спец-действия (вырубка леса, сбор дикоросов и т.п.).
+    # 4. Ирригационный канал (схема water_access, расширение «Каналы»):
+    #    инфраструктурное улучшение-проводник, раздающее пресную воду соседям.
+    #    Можно строить только на пустом ровном сухом участке (plain/hill/beach
+    #    и любые проходимые не-водные террейны) непосредственно рядом с
+    #    источником пресной воды: река по общему ребру, озеро, ферма/плантация/
+    #    канал с прямым доступом к воде. Полная валидация — в MapHelpers.can_build_canal.
+    #
+    #    Кнопка показывается только там, где канал МОЖНО построить при условии
+    #    изучения технологии: подходящая местность + рядом источник воды.
+    #    В пустыне кнопка не появляется — игроку не показывается заведомо
+    #    невозможное действие (по аналогии с каменоломней, которая видна
+    #    только на гексе с её ресурсом). Если не хватает технологии —
+    #    рядом добавляется кнопка «Изучить …».
+    var canal_potential_tile = tile.resource == null and tile.get("crop_bred", null) == null \
+            and tile.improvement == null and not tile.get("has_town", false) \
+            and tile.terrain != "mountain" \
+            and not MapHelpers.is_water_terrain(tile.terrain) \
+            and tile.terrain != "swamp" and tile.terrain != "marsh" \
+            and MapHelpers.has_canal_water_source_nearby(row, col, main_map.tile_data, main_map.map_rows, main_map.map_cols)
+    if canal_potential_tile:
+        var canal_name = GameData.improvements.get("irrigation_canal", {}).get("name", "Ирригационный канал")
+        var canal_icon = GameData.improvements.get("irrigation_canal", {}).get("icon", "")
+        var canal_tech_unlocked = CityData.is_improvement_unlocked("irrigation_canal")
+        var canal_tooltip = "Построить %s — распространит пресную воду дальше" % canal_name
+        if not canal_tech_unlocked:
+            var tech_name = _get_tech_name(CityData.get_improvement_unlock_tech("irrigation_canal"))
+            var chain = CityData.get_tech_study_chain(CityData.get_improvement_unlock_tech("irrigation_canal"))
+            if not chain.is_empty():
+                actions.append(_make_research_action(chain[0], canal_name))
+            canal_tooltip = "%s — нужна технология: %s" % [canal_name, tech_name]
+        elif build_manager.get_total_active_builds() >= CityData.total_population:
+            canal_tooltip = "%s — нет труда: лимит строек (число жителей) исчерпан" % canal_name
+        actions.append({
+            "type": "build_improvement",
+            "label": "Построить %s" % canal_name,
+            "enabled": canal_tech_unlocked,
+            "tooltip": canal_tooltip,
+            "imp_id": "irrigation_canal",
+            "icon": canal_icon
+        })
+            
+    # 5. Спец-действия (вырубка леса, сбор дикоросов и т.п.).
     _add_special_actions(actions, row, col, tile)
 
-    # 5. Если идёт стройка — отмена.
+    # 6. Если идёт стройка — отмена.
     if build_manager.is_building(row, col):
         actions.append({
             "type": "cancel_build",

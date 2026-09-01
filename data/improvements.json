@@ -146,6 +146,21 @@
       "profession": "fisherman",
       // Маркер: для постройки требуется пристань на этом же водоёме.
       "requires_harbor": true
+    },
+    {
+      // Ирригационный канал: инфраструктурное улучшение-проводник, открытое
+      // технологией «Каналы». Раздаёт пресную воду соседям (conducts_water)
+      // и сам является каналом (is_canal), чтобы is_hex_adjacent_to_canal
+      // (MapHelpers) считал соседние гексы прямыми источниками пресной воды.
+      "id": "irrigation_canal",
+      "name": "Ирригационный канал",
+      "icon": "irrigation_canal.png",
+      "color": [ 0, 191, 255 ],
+      "work_cost": 20,
+      "unlock_tech": "canals",
+      "conducts_water": true,
+      "is_canal": true,
+      "no_worker": true
     }
   ]
 }

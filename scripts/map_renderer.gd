@@ -484,11 +484,16 @@ func _draw_hex_overlays(row: int, col: int):
         var has_worker = main_map.worker_manager.has_worker(row, col)
         var imp_data = GameData.improvements.get(tile.improvement, {})
         var imp_icon = imp_data.get("icon", "")
+        # Инфраструктурные улучшения (no_worker, например пристань или канал)
+        # не привязаны к рабочему: рисуем их всегда в полный цвет, без серого
+        # затемнения, даже когда has_worker == false.
+        var is_infra = GameData.is_no_worker_improvement(tile.improvement)
+        var draw_active = has_worker or is_infra
         var icon_pos = Vector2(center.x, center.y - main_map.HEX_RADIUS * 0.75)
         if imp_icon != "" and icon_textures.has(imp_icon):
             var tex = icon_textures[imp_icon]
             var icon_rect = Rect2(icon_pos.x - IMPROVEMENT_ICON_SIZE / 2.0, icon_pos.y - IMPROVEMENT_ICON_SIZE / 2.0, IMPROVEMENT_ICON_SIZE, IMPROVEMENT_ICON_SIZE)
-            if not has_worker:
+            if not draw_active:
                 draw_texture_rect(tex, icon_rect, false, Color(0.5, 0.5, 0.5))
             else:
                 draw_texture_rect(tex, icon_rect, false)
@@ -496,7 +501,7 @@ func _draw_hex_overlays(row: int, col: int):
             if imp_data.has("color"):
                 var c = imp_data["color"]
                 var fallback_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
-                if not has_worker:
+                if not draw_active:
                     fallback_color = Color(0.5, 0.5, 0.5)
                 draw_circle(icon_pos, IMPROVEMENT_ICON_SIZE / 2.5, fallback_color)
 

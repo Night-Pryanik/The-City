@@ -13,6 +13,26 @@
         "icon": "time_bonus.png",
         "name": "Снижает вклад расстояния от города в стоимость труда при строительстве улучшений на 30%",
         "modifiers": [ { "target": "improvement_distance_cost", "type": "percent", "value": -30 } ]
+      },
+      {
+        // Технология «Ирригация»: открывает передачу пресной воды по цепочке
+        // между проводниками (фермы/плантации/каналы) длиной до 3 гексов.
+        // Без неё chain-доступ не работает (длина = 0).
+        // Целевой target читается в scripts/map_helpers.gd (get_water_chain_length).
+        "tech_id": "irrigation",
+        "icon": "water_chain.png",
+        "name": "Передача пресной воды по цепочке (до 3 гексов)",
+        "modifiers": [ { "target": "water_chain_length", "value": 3 } ]
+      },
+      {
+        // Технология «Каналы»: позволяет строить ирригационные каналы и
+        // увеличивает длину цепочки до 4 гексов. Требует «Ирригацию»
+        // (см. data/technologies/ancient.json), так что при её изучении
+        // активны ОБА модификатора — берётся максимальное значение длины.
+        "tech_id": "canals",
+        "icon": "water_chain.png",
+        "name": "Передача пресной воды по цепочке (до 4 гексов)",
+        "modifiers": [ { "target": "water_chain_length", "value": 4 } ]
       }
     ],
     "terrain_modifiers": [
