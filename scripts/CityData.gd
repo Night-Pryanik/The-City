@@ -676,6 +676,19 @@ func get_tech_study_chain(tech_id: String) -> Array:
     _collect_tech_chain(tech_id, chain, {})
     return chain
 
+# Максимальное количество «хопов» — технологий, оставшихся до открытия целевой
+# технологии (НЕ считая саму цель), — при котором панель управления показывает
+# кнопки постройки улучшения, заблокированного технологией, и изучения этой
+# технологии. Требование: кнопки видны только если хопов ≤ TECH_HOPS_MAX.
+const TECH_HOPS_MAX := 2
+
+# Сколько технологий осталось изучить, чтобы открыть tech_id (сама tech_id
+# НЕ считается). Пример для «Каналов» (canals): на старте цепочка = 3
+# («Ирригация», «Горное дело», «Каменная кладка») → 3 хопа; после изучения
+# «Ирригации» → 2 хопа («Горное дело», «Каменная кладка»).
+func get_tech_hops(tech_id: String) -> int:
+    return maxi(0, get_tech_study_chain(tech_id).size() - 1)
+
 func _collect_tech_chain(tech_id: String, chain: Array, visiting: Dictionary) -> void:
     if tech_id in visiting or tech_id in chain:
         return

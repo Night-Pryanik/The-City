@@ -384,51 +384,58 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
                 # Скрытый ресурс: никаких действий и подсказок на этом гексе.
                 pass
             else:
-                # Кнопка «Изучить ...» предлагает СЛЕДУЮЩИЙ не изученный шаг
-                # технологической цепочки (как контекстное меню по ПКМ, см.
-                # main_map.gd): сначала технология самого РЕСУРСА (tech_required,
-                # например «Горное дело» для мрамора), и только потом технология,
-                # открывающая УЛУЧШЕНИЕ («Каменная кладка» для каменоломни).
-                if raw.get("tech_required", "") != "" and not CityData.is_tech_unlocked(raw["tech_required"]):
-                    actions.append(_make_research_action(raw["tech_required"]))
-                elif not CityData.is_improvement_unlocked(imp_id):
-                    # Кнопка изучения технологии (аналог пункта «Изучить X»
-                    # в контекстном меню по ПКМ).
-                    actions.append(_make_research_action(CityData.get_improvement_unlock_tech(imp_id)))
-                # Тултип кнопки ПОСТРОЙКИ всегда указывает на НЕПОСРЕДСТВЕННОЕ
-                # требование для этой постройки (а не на текущий шаг цепочки
-                # изучения): сначала — технология улучшения, затем — технология
-                # ресурса.
-                if not CityData.is_improvement_unlocked(imp_id):
-                    var unlock_tech = CityData.get_improvement_unlock_tech(imp_id)
-                    var tech_name = _get_tech_name(unlock_tech)
-                    enabled = false
-                    tooltip = "%s — нужна технология: %s" % [imp_name, tech_name]
-                elif raw.get("tech_required", "") != "" and not CityData.is_tech_unlocked(raw["tech_required"]):
-                    var raw_name = raw.get("name", tile.resource)
-                    var tech_name2 = _get_tech_name(raw["tech_required"])
-                    enabled = false
-                    tooltip = "%s (%s) — нужна технология: %s" % [imp_name, raw_name, tech_name2]
-                # Схема harbor_access: улучшения с requires_harbor (рыбацкие лодки)
-                # строятся только на водоёме, где есть пристань. BFS по воде от
-                # этого гекса ищет сушу с water_body_harbor-улучшением.
-                elif bool(imp_data.get("requires_harbor", false)) \
-                        and not MapHelpers.has_harbor_access(main_map.tile_data, row, col, main_map.map_rows, main_map.map_cols):
-                    enabled = false
-                    tooltip = "%s — нужна Пристань на берегу этого водоёма" % imp_name
-                # Проверка: лимит строек.
-                elif build_manager.get_total_active_builds() >= CityData.total_population:
-                    enabled = false
-                    tooltip = "Нет труда: лимит строек (число жителей) исчерпан"
-                actions.append({
-                    "type": "build_improvement",
-                    "label": "Построить %s" % imp_name,
-                    "enabled": enabled,
-                    "tooltip": tooltip,
-                    "imp_id": imp_id,
-                    "target_res_id": tile.resource,
-                    "icon": GameData.improvements.get(imp_id, {}).get("icon", "")
-                })
+                # Кнопки изучения и постройки улучшения, заблокированного
+                # технологией, показываем только если до открывающей технологии
+                # улучшения осталось не более TECH_HOPS_MAX «хопов».
+                var imp_unlock_tech = CityData.get_improvement_unlock_tech(imp_id)
+                var imp_tech_blocked = not CityData.is_improvement_unlocked(imp_id)
+                if imp_tech_blocked and CityData.get_tech_hops(imp_unlock_tech) > CityData.TECH_HOPS_MAX:
+                    pass
+                else:
+                    # Кнопка «Изучить ...» предлагает СЛЕДУЮЩИЙ не изученный шаг
+                    # технологической цепочки (как контекстное меню по ПКМ, см.
+                    # main_map.gd): сначала технология самого РЕСУРСА (tech_required,
+                    # например «Горное дело» для мрамора), и только потом технология,
+                    # открывающая УЛУЧШЕНИЕ («Каменная кладка» для каменоломни).
+                    if raw.get("tech_required", "") != "" and not CityData.is_tech_unlocked(raw["tech_required"]):
+                        actions.append(_make_research_action(raw["tech_required"]))
+                    elif not CityData.is_improvement_unlocked(imp_id):
+                        # Кнопка изучения технологии (аналог пункта «Изучить X»
+                        # в контекстном меню по ПКМ).
+                        actions.append(_make_research_action(imp_unlock_tech))
+                    # Тултип кнопки ПОСТРОЙКИ всегда указывает на НЕПОСРЕДСТВЕННОЕ
+                    # требование для этой постройки (а не на текущий шаг цепочки
+                    # изучения): сначала — технология улучшения, затем — технология
+                    # ресурса.
+                    if not CityData.is_improvement_unlocked(imp_id):
+                        var tech_name = _get_tech_name(imp_unlock_tech)
+                        enabled = false
+                        tooltip = "%s — нужна технология: %s" % [imp_name, tech_name]
+                    elif raw.get("tech_required", "") != "" and not CityData.is_tech_unlocked(raw["tech_required"]):
+                        var raw_name = raw.get("name", tile.resource)
+                        var tech_name2 = _get_tech_name(raw["tech_required"])
+                        enabled = false
+                        tooltip = "%s (%s) — нужна технология: %s" % [imp_name, raw_name, tech_name2]
+                    # Схема harbor_access: улучшения с requires_harbor (рыбацкие лодки)
+                    # строятся только на водоёме, где есть пристань. BFS по воде от
+                    # этого гекса ищет сушу с water_body_harbor-улучшением.
+                    elif bool(imp_data.get("requires_harbor", false)) \
+                            and not MapHelpers.has_harbor_access(main_map.tile_data, row, col, main_map.map_rows, main_map.map_cols):
+                        enabled = false
+                        tooltip = "%s — нужна Пристань на берегу этого водоёма" % imp_name
+                    # Проверка: лимит строек.
+                    elif build_manager.get_total_active_builds() >= CityData.total_population:
+                        enabled = false
+                        tooltip = "Нет труда: лимит строек (число жителей) исчерпан"
+                    actions.append({
+                        "type": "build_improvement",
+                        "label": "Построить %s" % imp_name,
+                        "enabled": enabled,
+                        "tooltip": tooltip,
+                        "imp_id": imp_id,
+                        "target_res_id": tile.resource,
+                        "icon": GameData.improvements.get(imp_id, {}).get("icon", "")
+                    })
 
     # 2. Пустой гекс: разведение одомашненных животных/растений.
     if tile.resource == null:
@@ -538,23 +545,33 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
         var canal_name = GameData.improvements.get("irrigation_canal", {}).get("name", "Ирригационный канал")
         var canal_icon = GameData.improvements.get("irrigation_canal", {}).get("icon", "")
         var canal_tech_unlocked = CityData.is_improvement_unlocked("irrigation_canal")
+        var canal_unlock_tech = CityData.get_improvement_unlock_tech("irrigation_canal")
         var canal_tooltip = "Построить %s — распространит пресную воду дальше" % canal_name
-        if not canal_tech_unlocked:
-            var tech_name = _get_tech_name(CityData.get_improvement_unlock_tech("irrigation_canal"))
-            var chain = CityData.get_tech_study_chain(CityData.get_improvement_unlock_tech("irrigation_canal"))
-            if not chain.is_empty():
-                actions.append(_make_research_action(chain[0], canal_name))
+        # Кнопки изучения и постройки канала (заблокированного технологией «Каналы»)
+        # показываем только если до открывающей технологии улучшения осталось
+        # не более TECH_HOPS_MAX «хопов».
+        var show_canal := false
+        if canal_tech_unlocked:
+            show_canal = true
+            if build_manager.get_total_active_builds() >= CityData.total_population:
+                canal_tooltip = "%s — нет труда: лимит строек (число жителей) исчерпан" % canal_name
+        else:
+            var tech_name = _get_tech_name(canal_unlock_tech)
             canal_tooltip = "%s — нужна технология: %s" % [canal_name, tech_name]
-        elif build_manager.get_total_active_builds() >= CityData.total_population:
-            canal_tooltip = "%s — нет труда: лимит строек (число жителей) исчерпан" % canal_name
-        actions.append({
-            "type": "build_improvement",
-            "label": "Построить %s" % canal_name,
-            "enabled": canal_tech_unlocked,
-            "tooltip": canal_tooltip,
-            "imp_id": "irrigation_canal",
-            "icon": canal_icon
-        })
+            if CityData.get_tech_hops(canal_unlock_tech) <= CityData.TECH_HOPS_MAX:
+                show_canal = true
+                var chain = CityData.get_tech_study_chain(canal_unlock_tech)
+                if not chain.is_empty():
+                    actions.append(_make_research_action(chain[0], canal_name))
+        if show_canal:
+            actions.append({
+                "type": "build_improvement",
+                "label": "Построить %s" % canal_name,
+                "enabled": canal_tech_unlocked,
+                "tooltip": canal_tooltip,
+                "imp_id": "irrigation_canal",
+                "icon": canal_icon
+            })
             
     # 5. Спец-действия (вырубка леса, сбор дикоросов и т.п.).
     _add_special_actions(actions, row, col, tile)
