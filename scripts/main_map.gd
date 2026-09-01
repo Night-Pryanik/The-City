@@ -701,9 +701,6 @@ func _mark_city_hex() -> void:
 func _ensure_city_valid_terrain() -> void:
     MapHelpers.ensure_city_valid_terrain(tile_data, city_row, city_col, map_rows, map_cols)
 
-func _is_hex_adjacent_to_canal(row: int, col: int) -> bool:
-    return MapHelpers.is_hex_adjacent_to_canal(row, col, tile_data, map_rows, map_cols)
-
 func _is_hex_irrigated(row: int, col: int) -> bool:
     return MapHelpers.is_hex_irrigated(row, col, tile_data, map_rows, map_cols)
 

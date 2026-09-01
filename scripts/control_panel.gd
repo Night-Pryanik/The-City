@@ -533,7 +533,7 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
             and tile.terrain != "mountain" \
             and not MapHelpers.is_water_terrain(tile.terrain) \
             and tile.terrain != "swamp" and tile.terrain != "marsh" \
-            and MapHelpers.has_canal_water_source_nearby(row, col, main_map.tile_data, main_map.map_rows, main_map.map_cols)
+            and MapHelpers.would_canal_have_water(row, col, main_map.tile_data, main_map.map_rows, main_map.map_cols)
     if canal_potential_tile:
         var canal_name = GameData.improvements.get("irrigation_canal", {}).get("name", "Ирригационный канал")
         var canal_icon = GameData.improvements.get("irrigation_canal", {}).get("icon", "")

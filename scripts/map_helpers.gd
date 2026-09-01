@@ -75,38 +75,20 @@ static func get_improvement_work_cost(
         "distance_mult": distance_mult
     }
 
-## Проверяет, есть ли рядом с гексом (row, col) канал (improvement == "canal" или is_canal == true у соседей).
-static func is_hex_adjacent_to_canal(row: int, col: int, tile_data: Array, map_rows: int, map_cols: int) -> bool:
-    if row < 0 or row >= map_rows or col < 0 or col >= map_cols:
-        return false
-    var neighbors = HexUtils.get_neighbors_odd_r(row, col, map_rows, map_cols)
-    for n in neighbors:
-        if tile_data[n.row][n.col] == null:
-            continue
-        var tile = tile_data[n.row][n.col]
-        var imp_id = tile.improvement
-        if imp_id == "canal":
-            return true
-        var imp_data: Dictionary = GameData.improvements.get(imp_id, {})
-        if imp_data.get("is_canal", false):
-            return true
-    return false
-
-
-## Возвращает индекс ребра гекса (row, col), которое является общим с соседом
-## (neighbor_row, neighbor_col). Используется для проверки, касается ли река
-## именно того ребра, по которому canal-сосед граничит с гексом постройки.
+## Возвращает индекс ребра гекса (row, col), которое является общим с
+## соседом (neighbor_row, neighbor_col). Используется для проверки, касается ли река
+## именно общего ребра между двумя гексами (например, при постройке канала).
 ##
 ## Гексы ориентированы точкой вверх (pointy-top), индексы рёбер (0..5) идут
-## по часовой стрелке начиная с нижне-правого ребра:
+## по часовой стрелке начиная с нижне-правого:
 ##   0 — нижне-правое, 1 — нижне-левое, 2 — левое,
 ##   3 — верхне-левое,  4 — верхне-правое, 5 — правое.
-## Для pointy-top с offset odd-r соседи W/E дают ребра 2/5, а верхняя/
-## нижняя диагонали (NW,NE,SW,SE) — рёбра 3,4,1,0 соответственно; направление
+## Для pointy-top с offset odd-r соседи W/E дают рёбра 2/5, верхняя/нижняя
+## диагонали (NW,NE,SW,SE) — рёбра 3,4,1,0 соответственно; направление
 ## определяется ГЕОМЕТРИЧЕСКИ (куда смещён сосед), а не именем в directions[].
 ##
 ## Возвращает -1, если (neighbor_row, neighbor_col) НЕ является соседом по
-## сетке (или координаты невалидны).
+## сетке (например, в odd-r для чётной строки невалиден оффсет (-1, +1)).
 static func get_shared_edge_index(row: int, col: int, neighbor_row: int, neighbor_col: int) -> int:
     var dr = neighbor_row - row
     var dc = neighbor_col - col
@@ -137,14 +119,6 @@ static func get_shared_edge_index(row: int, col: int, neighbor_row: int, neighbo
         return -1
     return -1
 
-
-## Возвращает максимальную длину цепочки проводников воды (гексов между
-## стартовым и замыкающим проводником), разрешённую изученными технологиями.
-## Длина определяется модификаторами из data/modifiers.json -> tech_modifiers
-## с target == "water_chain_length" (например, irrigation=3, canals=4).
-## Если ни одна из таких технологий не изучена, возвращает 0 — цепочка
-## пресной воды полностью отключена (ферма/плантация/канал без прямого
-## доступа не дают бонус).
 static func get_water_chain_length() -> int:
     var best := 0
     for tm in GameData.modifiers.get("tech_modifiers", []):
@@ -164,110 +138,16 @@ static func get_water_chain_length() -> int:
     return best
 
 
-## Проверяет, подведена ли вода к гексу (row, col), рассматривая каждого его
-## соседа как потенциальный источник (озеро, река по общему ребру, канал,
-## проводник с прямым доступом). Это «ядро» для has_canal_water_source_nearby
-## и для города-проводника. НЕ учитывает сам гекс (row, col) — только соседей.
-static func _neighbor_is_water_source(
-    row: int,
-    col: int,
-    tile_data: Array,
-    map_rows: int,
-    map_cols: int
-) -> bool:
-    if row < 0 or row >= map_rows or col < 0 or col >= map_cols:
-        return false
-    var neighbors = HexUtils.get_neighbors_odd_r(row, col, map_rows, map_cols)
-    for n in neighbors:
-        var nt = tile_data[n.row][n.col]
-        if nt == null:
-            continue
-        # Озеро рядом — источник воды.
-        if nt.get("terrain", "") == "lake":
-            return true
-        # Река по общему ребру.
-        var shared_in_neighbor = get_shared_edge_index(n.row, n.col, row, col)
-        if shared_in_neighbor >= 0:
-            var n_edges: Array = nt.get("river_edges", [])
-            if shared_in_neighbor in n_edges:
-                return true
-        # Другой канал рядом.
-        var n_imp = nt.get("improvement", null)
-        if n_imp != null and n_imp != "":
-            var n_imp_data: Dictionary = GameData.improvements.get(n_imp, {})
-            if bool(n_imp_data.get("is_canal", false)):
-                return true
-            # Проводник воды (ферма/плантация/канал) с прямым доступом —
-            # допустимый источник (вода дойдёт по уже существующей сети).
-            if bool(n_imp_data.get("conducts_water", false)) \
-                    and _is_direct_water_source(n.row, n.col, tile_data, map_rows, map_cols):
-                return true
-    return false
+## Будет ли у канала, построенного на гексе (row, col), доступ к
+## пресной воде. Использует get_hex_water_access с phantom_conductor=true
+## (BFS рассматривает гекс как проводник канала и ищет
+## путь к прямому источнику — озеру или реке — через
+## цепочку существующих проводников в пределах
+## chain_length (irrigation=3, canals=4). Не зависит от технологии «Каналы».
+## Используется в can_build_canal и в control_panel.gd.
+static func would_canal_have_water(row: int, col: int, tile_data: Array, map_rows: int, map_cols: int) -> bool:
+    return get_hex_water_access(row, col, tile_data, map_rows, map_cols, true) != ""
 
-
-## Подведена ли вода к гексу города (row, col). Город проводит воду «как
-## канал», но только когда к нему реально подведена вода — сам по себе он
-## источником не является. Перебор соседей через _neighbor_is_water_source
-## (озеро/река/канал/проводник с водой). Город НЕ является источником для
-## себя, поэтому обращение к _is_direct_water_source через цепочку
-## рекурсивно не вызывает город — дубликатов/зацикливания нет.
-static func _is_city_receiving_water(
-    row: int,
-    col: int,
-    tile_data: Array,
-    map_rows: int,
-    map_cols: int
-) -> bool:
-    return _neighbor_is_water_source(row, col, tile_data, map_rows, map_cols)
-
-
-## Есть ли рядом с гексом (row, col) источник пресной воды, пригодный для
-## ирригационного канала. Не зависит от того, изучена ли технология
-## «Каналы» — нужна для определения, есть ли вообще смысл показывать кнопку
-## постройки канала в этом месте (см. can_build_canal и control_panel.gd).
-##
-## Источник воды для канала:
-##   - река по ОБЩЕМУ ребру (river_edges у соседа содержит индекс общего
-##     ребра; см. get_shared_edge_index);
-##   - сосед-озеро (terrain == "lake");
-##   - другой канал (improvement с is_canal == true);
-##   - гекс города, к которому реально подведена вода (см. _is_city_receiving_water);
-##   - проводник воды (ферма/плантация/канал) с прямым доступом к воде —
-##     позволяет «дотягивать» канал от уже орошённой сети.
-static func has_canal_water_source_nearby(row: int, col: int, tile_data: Array, map_rows: int, map_cols: int) -> bool:
-    if row < 0 or row >= map_rows or col < 0 or col >= map_cols:
-        return false
-    var neighbors = HexUtils.get_neighbors_odd_r(row, col, map_rows, map_cols)
-    for n in neighbors:
-        var nt = tile_data[n.row][n.col]
-        if nt == null:
-            continue
-        # Гекс города: источник только если к городу реально подведена вода.
-        if bool(nt.get("is_city", false)):
-            if _is_city_receiving_water(n.row, n.col, tile_data, map_rows, map_cols):
-                return true
-            continue
-        # Прочие соседи — через общее «ядро» проверки источника.
-        if _neighbor_is_water_source(n.row, n.col, tile_data, map_rows, map_cols):
-            return true
-    return false
-
-
-## Можно ли построить ирригационный канал на гексе (row, col)?
-##
-## Условия:
-##   1) гекс в пределах карты и существует;
-##   2) гекс пуст: нет ресурса, улучшения, разводимой культуры, чужого городка;
-##   3) гекс в Кольце Влияния (можно строить);
-##   4) местность «ровная и сухая»: НЕ вода (sea/lake), НЕ горы, НЕ болото/марши;
-##      то есть любая проходимая суша (plain/hill/beach и любые кастомные
-##      террейны с move_cost < 999, кроме явных болот/маршей);
-##   5) рядом есть источник пресной воды (has_canal_water_source_nearby);
-##   6) технология «Каналы» изучена (unlock_tech: "canals").
-##
-## Возвращает: { "ok": bool, "reason": String }
-##   reason — короткое пояснение для тултипа кнопки «Построить канал»,
-##   когда ok == false (например, «нет источника воды»).
 static func can_build_canal(row: int, col: int, tile_data: Array, map_rows: int, map_cols: int) -> Dictionary:
     if row < 0 or row >= map_rows or col < 0 or col >= map_cols:
         return {"ok": false, "reason": "Гекс вне карты"}
@@ -297,18 +177,18 @@ static func can_build_canal(row: int, col: int, tile_data: Array, map_rows: int,
         return {"ok": false, "reason": "Нельзя строить на непроходимой местности"}
     if not CityData.is_improvement_unlocked("irrigation_canal"):
         return {"ok": false, "reason": "Нужна технология «Каналы»"}
-    if not has_canal_water_source_nearby(row, col, tile_data, map_rows, map_cols):
-        return {"ok": false, "reason": "Рядом нет источника пресной воды (река/озеро/ферма/канал)"}
+    if not would_canal_have_water(row, col, tile_data, map_rows, map_cols):
+        return {"ok": false, "reason": "Нет доступа к воде в зоне досягаемости цепочки (irrigation/canals: 3/4 хопа от реки/озера)"}
     return {"ok": true, "reason": ""}
 
 
 ## Является ли гекс (row, col) ПРЯМЫМ источником пресной воды:
-## озеро, река (river_edges), сам канал, сосед канала или сосед озера.
-## Это база для схемы water_access: source-гекс даёт "direct".
-##
-## Канал (improvement с is_canal: true) сам по себе — прямой источник:
-## он «проводит воду» как инфраструктура, а не как зависимое улучшение, и
-## должен мочь замкнуть цепочку chain-BFS для удалённых проводников.
+## ТОЛЬКО сам гекс с водой — озеро (terrain == "lake") или река
+## (river_edges на общих рёбрах). Никаких "сосед канала", "сосед озера",
+## "сам канал" — передача воды в любую сторону идёт
+## через chain-BFS и подчиняется лимиту дальности (irrigation/canals).
+## Это база для схемы water_access: source-гекс (озеро/река) даёт
+## "direct", всё остальное — "chain" или "".
 static func _is_direct_water_source(row: int, col: int, tile_data: Array, map_rows: int, map_cols: int) -> bool:
     if row < 0 or row >= map_rows or col < 0 or col >= map_cols:
         return false
@@ -319,21 +199,6 @@ static func _is_direct_water_source(row: int, col: int, tile_data: Array, map_ro
         return true
     if tile.get("river_edges", []).size() > 0:
         return true
-    # Сам канал — прямой источник (см. комментарий выше).
-    var imp_id = tile.get("improvement", null)
-    if imp_id != null and imp_id != "":
-        var imp_data: Dictionary = GameData.improvements.get(imp_id, {})
-        if bool(imp_data.get("is_canal", false)):
-            return true
-    if is_hex_adjacent_to_canal(row, col, tile_data, map_rows, map_cols):
-        return true
-    var neighbors = HexUtils.get_neighbors_odd_r(row, col, map_rows, map_cols)
-    for n in neighbors:
-        var neighbor_tile = tile_data[n.row][n.col]
-        if neighbor_tile == null:
-            continue
-        if neighbor_tile.get("terrain", "plain") == "lake":
-            return true
     return false
 
 
@@ -353,10 +218,9 @@ static func _is_water_conductor(
     var tile = tile_data[row][col]
     if tile == null:
         return false
-    # Город — проводник воды, только если к нему реально подведена вода
-    # (озеро, река, канал, проводник с водой). Без воды город не проводит.
+    # City hex conducts water like a canal when it has water.
     if bool(tile.get("is_city", false)):
-        return _is_city_receiving_water(row, col, tile_data, map_rows, map_cols)
+        return true
     var imp_id = tile.get("improvement", null)
     if imp_id == null or imp_id == "":
         return false
@@ -383,24 +247,43 @@ static func _is_water_conductor(
 ## отрисовки капелек. Длина цепочки берётся динамически из tech_modifiers
 ## (см. get_water_chain_length): «Ирригация» = 3, «Каналы» = 4. Без
 ## изученных технологий длина = 0 и цепочка не работает.
-static func get_hex_water_access(row: int, col: int, tile_data: Array, map_rows: int, map_cols: int) -> String:
+static func get_hex_water_access(
+    row: int,
+    col: int,
+    tile_data: Array,
+    map_rows: int,
+    map_cols: int,
+    phantom_conductor: bool = false
+) -> String:
     if row < 0 or row >= map_rows or col < 0 or col >= map_cols:
         return ""
     var tile = tile_data[row][col]
     if tile == null:
         return ""
 
-    # Прямой доступ — всегда даёт бонус пресной воды.
+    # Прямой доступ — только гекс с водой (озеро/река).
     if _is_direct_water_source(row, col, tile_data, map_rows, map_cols):
         return "direct"
 
     # Цепочка проводников: длина берётся из модификаторов технологий
-    # (irrigation/canals). Без изученных «Орошения» длина = 0 и цепочка
-    # не работает; условие стартового гекса — он сам проводник.
+    # (irrigation/canals). Без изученного «Орошения» длина = 0 и цепочка
+    # не работает; phantom_conductor=true используется только валидацией
+    # постройки канала (гекс ещё не имеет улучшения, но если бы канал
+    # был построен, считалось бы, что он проводник).
     var chain_length = get_water_chain_length()
     if chain_length <= 0:
         return ""
-    if not _is_water_conductor(row, col, tile_data, map_rows, map_cols):
+    # Стартовый гекс кандидат, если он:
+    #   - улучшение-проводник (farm/plantation/canal) — обычно;
+    #   - phantom_conductor=true — валидация постройки канала (гекс ещё не имеет
+    #     улучшения, но если бы канал был построен, считалось бы что он проводник);
+    #   - city hex is a conductor like a canal: passes water onward
+    #     when water is actually supplied (a source reachable through it).
+    var start_tile = tile_data[row][col]
+    var start_is_candidate = phantom_conductor \
+            or _is_water_conductor(row, col, tile_data, map_rows, map_cols) \
+            or bool(start_tile.get("is_city", false))
+    if not start_is_candidate:
         return ""
 
     var visited := {}
@@ -423,14 +306,21 @@ static func get_hex_water_access(row: int, col: int, tile_data: Array, map_rows:
             var neighbor_tile = tile_data[n.row][n.col]
             if neighbor_tile == null:
                 continue
-            # Воду проводят только проводники (фермы/плантации/каналы) и
-            # город с подведённой водой.
+            # Прямой источник — озеро (всегда) или река по ОБЩЕМУ ребру
+            # (река должна течь именно по грани между текущим гексом и соседом;
+            # река на «чужом» ребре соседа не даёт воду текущему гексу).
+            if neighbor_tile.get("terrain", "") == "lake":
+                return "chain"
+            var n_edges: Array = neighbor_tile.get("river_edges", [])
+            if n_edges.size() > 0:
+                var shared_in_neighbor = get_shared_edge_index(n.row, n.col, crow, ccol)
+                if shared_in_neighbor >= 0 and shared_in_neighbor in n_edges:
+                    return "chain"
+                # Река на другом ребре — не источник для текущего гекса,
+                # но сосед всё ещё может быть проводником (ферма/канал/...).
+            # City hex conducts water like a canal when it has water.
             if not _is_water_conductor(n.row, n.col, tile_data, map_rows, map_cols):
                 continue
-            # Замыкает цепочку только проводник СО СВОИМ прямым доступом:
-            # он сам касается реки/озера/канала или стоит на их берегу.
-            if _is_direct_water_source(n.row, n.col, tile_data, map_rows, map_cols):
-                return "chain"
             visited[key] = true
             queue.append({"row": n.row, "col": n.col, "dist": dist + 1})
     return ""
