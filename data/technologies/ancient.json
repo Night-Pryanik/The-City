@@ -70,7 +70,7 @@
       "name": "Обработка дерева",
       "era": "ancient",
       "science_cost": 3.0,
-      "icon": "wood.svg",
+      "icon": "wood_processing.png",
       "description": "Пока не даёт ничего.",
       "flavor": "Дерево — древнейший строительный материал, но его обработка ещё не стала ремеслом."
     },
