@@ -165,8 +165,14 @@ func _draw():
     # ФАЗА 1.6: Аналогично для городков ЗА пределами Региона — рисуем
     # иконку city.png с пониженной прозрачностью, чтобы игрок видел «что-то
     # есть», но без лишних деталей (без ресурсов/улучшений).
-    for hex_data in main_map.town_hexes:
-        _draw_town_hex_outside_region(hex_data.row, hex_data.col)
+    # Городки за пределами стартовой области скрыты до перехода в эпоху
+    # Античности (current_era >= 1): в Древней эпохе игрок не должен видеть
+    # даже полупрозрачные иконки городков в тумане войны. После перехода
+    # эпохи (advance_to_next_era) и при загрузке сейва map_renderer
+    # перерисовывается через queue_redraw().
+    if main_map.current_era >= 1:
+        for hex_data in main_map.town_hexes:
+            _draw_town_hex_outside_region(hex_data.row, hex_data.col)
 
     # ФАЗА 2: Рисуем дороги (ПЕРЕД иконками ресурсов и улучшений)
     _draw_all_roads()
