@@ -124,14 +124,17 @@ func _show_resource_list():
     back_btn.pressed.connect(_show_main_menu)
     _content_vbox.add_child(back_btn)
 
-    # Список всех ресурсов из GameData.raw_resources
-    var res_ids = GameData.raw_resources.keys()
-    res_ids.sort()
+    # Список всех ресурсов из GameData.raw_resources,
+    # отсортированный по алфавиту по отображаемому названию
+    var entries = []
+    for res_id in GameData.raw_resources.keys():
+        var res_name = GameData.raw_resources[res_id].get("name", res_id)
+        entries.append([res_name.to_lower(), res_id])
+    entries.sort()
 
-    for res_id in res_ids:
-        var res_data = GameData.raw_resources[res_id]
-        var res_name = res_data.get("name", res_id)
-        var btn = _make_button(res_name)
+    for entry in entries:
+        var res_id = entry[1]
+        var btn = _make_button(GameData.raw_resources[res_id].get("name", res_id))
         btn.pressed.connect(_on_resource_selected.bind(res_id))
         _content_vbox.add_child(btn)
 
