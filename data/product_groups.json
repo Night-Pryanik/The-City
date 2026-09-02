@@ -18,6 +18,11 @@
       "products": [ "processed_building_stone", "bricks" ]
     },
     {
+      "id": "millstones",
+      "name": "Камни для мельничных жерновов",
+      "products": [ "basalt", "sandstone", "granite" ]
+    },
+    {
       "id": "oil_crops",
       "name": "Масличные культуры",
       "products": [ "sunflower", "sesame", "rapeseed", "flax", "soybean", "peanut", "olives" ]

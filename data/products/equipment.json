@@ -1,0 +1,12 @@
+{
+  "resources": [
+    {
+      "id": "millstone",
+      "name": "Мельничный жернов",
+      "type": "product",
+      "category": "equipment",
+      "unlock_tech": "masonry",
+      "icon": "millstone.png"
+    }
+  ]
+}

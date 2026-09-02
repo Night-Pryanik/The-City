@@ -10,20 +10,28 @@
       "description": "Слот не производит ничего"
     },
     {
-      "id": "grind_wheat_hand",
+      "id": "grind_grain_hand",
       "name": "Ручной помол зерна",
       "produced_in": [ "hand_mill" ],
       "resources": { "@millable_grains": 1 },
       "result": { "flour": 1 },
-      "time": 0
+      "time": 5
     },
     {
-      "id": "grind_wheat",
+      "id": "grind_grain",
       "name": "Помол зерна",
       "produced_in": [ "windmill" ],
       "resources": { "@millable_grains": 1 },
       "result": { "flour": 2 },
-      "time": 0
+      "time": 5
+    },
+    {
+      "id": "grind_grain_animal",
+      "name": "Помол зерна с помощью тягловых животных",
+      "produced_in": [ "animal_mill" ],
+      "resources": { "@millable_grains": 1 },
+      "result": { "flour": 2 },
+      "time": 5
     },
     {
       "id": "bread",
@@ -31,7 +39,7 @@
       "produced_in": [ "bakery" ],
       "resources": { "flour": 1 },
       "result": { "bread": 2 },
-      "time": 0
+      "time": 5
     },
     {
       "id": "meat",
@@ -39,7 +47,7 @@
       "produced_in": [ "slaughterhouse" ],
       "resources": { "raw_meat": 1 },
       "result": { "meat": 1 },
-      "time": 0
+      "time": 5
     },
     {
       "id": "cheese",
@@ -47,7 +55,7 @@
       "produced_in": [ "dairy" ],
       "resources": { "raw_milk": 1 },
       "result": { "cheese": 1 },
-      "time": 0,
+      "time": 5,
       "unlock_tech": "cheese_making"
     },
     {
@@ -179,6 +187,16 @@
       "time": 4.0,
       "unlock_tech": "masonry",
       "description": "Обрабатывает дикий камень в форму, пригодную для строительства"
+    },
+    {
+      "id": "millstone",
+      "name": "Изготовление мельничных жерновов",
+      "produced_in": [ "mason_workshop" ],
+      "resources": { "@millstones": 1 },
+      "result": { "millstone": 1 },
+      "time": 4.0,
+      "unlock_tech": "masonry",
+      "description": "Обрабатывает камни в форму, пригодную для мельничных жерновов"
     },
     {
       "id": "wine",
@@ -321,8 +339,6 @@
       "description": "Переписчики и учёные превращают письменные материалы в знания, пополняющие пул науки города"
     },
     {
-      // Распиловка досок — рецепт «Лесопилки» (sawmill): древесина → доски.
-      // Открывается технологией «Обработка дерева» (wood_processing).
       "id": "sawing",
       "name": "Распиловка досок",
       "produced_in": [ "carpenter_workshop" ],

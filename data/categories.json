@@ -15,6 +15,7 @@
     { "id": "metals", "name": "Металлы" },
     { "id": "clothes", "name": "Одежда" },
     { "id": "household_items", "name": "Предметы быта" },
+    { "id": "equipment", "name": "Оборудование" },
     { "id": "other", "name": "Прочее" }
   ]
 }
