@@ -363,6 +363,39 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
     if eff_res != "" and not MapHelpers.is_resource_revealed(tile):
         eff_res = ""
     if eff_res == "":
+        # Лесная делянка: производство древесины из покрова (wood_yield в
+        # covers.json). Показываем и для построенной делянки с рабочим, и
+        # как подсказку «при постройке» на пустом лесном гексе. Любой будущий
+        # покров с wood_yield > 0 учитывается автоматически.
+        var lj_yield: float = MapHelpers.get_cover_wood_yield(tile)
+        if lj_yield > 0.0 and tile.improvement == null \
+                and CityData.is_product_available("wood"):
+            var lj_name = GameData.improvements.get("lumberjack_hut", {}).get("name", "lumberjack_hut")
+            var lj_prod: int = int(ceil(lj_yield))
+            var wood_data0 = GameData.products.get("wood", {})
+            var lj_icon_path0 = ""
+            if wood_data0.has("icon"):
+                lj_icon_path0 = _map_renderer.get_icon_path(wood_data0["icon"])
+            result.append({"type": "header", "text": "При постройке %s будет производить:" % lj_name})
+            result.append({"type": "product", "name": wood_data0.get("name", "Древесина"), "amount": lj_prod, "icon_path": lj_icon_path0})
+        elif tile.improvement == "lumberjack_hut" and lj_yield > 0.0 \
+                and _worker_manager.has_worker(row, col) \
+                and CityData.is_product_available("wood"):
+            var lj_mult2 = CityData.get_improvement_production_multiplier(
+                "lumberjack_hut",
+                MapHelpers.is_hex_irrigated(row, col, tile_data, tile_data.size(), tile_data[0].size()),
+                tile.get("terrain", ""), "lumberjack_hut")
+            var lj_amount2 = ceili(lj_yield * lj_mult2)
+            var wood_data2 = GameData.products.get("wood", {})
+            var lj_icon_path2 = ""
+            if wood_data2.has("icon"):
+                lj_icon_path2 = _map_renderer.get_icon_path(wood_data2["icon"])
+            var lj_label = wood_data2.get("name", "Древесина")
+            if lj_mult2 != 1.0:
+                var lj_base_str = str(int(lj_yield)) if lj_yield == floor(lj_yield) else "%.1f" % lj_yield
+                lj_label = "%s (база %s)" % [lj_label, lj_base_str]
+            result.append({"type": "header", "text": "Производит:"})
+            result.append({"type": "product", "name": lj_label, "amount": lj_amount2, "icon_path": lj_icon_path2})
         return result
     var res_data = GameData.raw_resources.get(eff_res, {})
     if not res_data.has("produces"):

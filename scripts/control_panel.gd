@@ -574,6 +574,39 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
                 "icon": canal_icon
             })
             
+    # 4b. Лесная делянка (lumberjack_hut). Строится на пустом СУХОМ гексе
+    #     с лесным покровом (wood_yield > 0 в covers.json), аналогично каналу:
+    #     кнопка видна только там, где делянку МОЖНО построить. Если не хватает
+    #     технологии — рядом добавляется кнопка «Изучить …».
+    if MapHelpers.can_build_lumberjack_hut(tile):
+        var lj_name = GameData.improvements.get("lumberjack_hut", {}).get("name", "Лесная делянка")
+        var lj_icon = GameData.improvements.get("lumberjack_hut", {}).get("icon", "")
+        var lj_tech_unlocked = CityData.is_improvement_unlocked("lumberjack_hut")
+        var lj_unlock_tech = CityData.get_improvement_unlock_tech("lumberjack_hut")
+        var lj_tooltip = "Построить %s — заготавливает древесину из лесного покрова" % lj_name
+        var show_lj := false
+        if lj_tech_unlocked:
+            show_lj = true
+            if build_manager.get_total_active_builds() >= CityData.total_population:
+                lj_tooltip = "%s — нет труда: лимит строек (число жителей) исчерпан" % lj_name
+        else:
+            var lj_tech_name = _get_tech_name(lj_unlock_tech)
+            lj_tooltip = "%s — нужна технология: %s" % [lj_name, lj_tech_name]
+            if CityData.get_tech_hops(lj_unlock_tech) <= CityData.TECH_HOPS_MAX:
+                show_lj = true
+                var lj_chain = CityData.get_tech_study_chain(lj_unlock_tech)
+                if not lj_chain.is_empty():
+                    actions.append(_make_research_action(lj_chain[0], lj_name))
+        if show_lj:
+            actions.append({
+                "type": "build_improvement",
+                "label": "Построить %s" % lj_name,
+                "enabled": lj_tech_unlocked,
+                "tooltip": lj_tooltip,
+                "imp_id": "lumberjack_hut",
+                "icon": lj_icon
+            })
+
     # 5. Спец-действия (вырубка леса, сбор дикоросов и т.п.).
     _add_special_actions(actions, row, col, tile)
 
@@ -944,6 +977,31 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     var cost_imp_id = imp_id
     if type == "special":
         cost_imp_id = action_id
+
+    # Лесная делянка на пустом лесном гексе (eff_res == ""): показываем
+    # выход древесины из покрова (wood_yield в covers.json). Будущие покровы
+    # с wood_yield > 0 подхватятся автоматически.
+    if type == "build_improvement" and imp_id == "lumberjack_hut" and eff_res == "":
+        var lj_yield: float = MapHelpers.get_cover_wood_yield(tile)
+        if lj_yield > 0.0:
+            var lj_has_water = MapHelpers.is_hex_irrigated(row, col, main_map.tile_data, main_map.map_rows, main_map.map_cols)
+            var lj_mult = CityData.get_improvement_production_multiplier(
+                "lumberjack_hut", lj_has_water, tile.get("terrain", ""), "lumberjack_hut")
+            var lj_amount = ceili(lj_yield * lj_mult)
+            var wood_data = GameData.products.get("wood", {})
+            var wood_icon_path = ""
+            if wood_data.has("icon"):
+                wood_icon_path = main_map.map_renderer.get_icon_path(wood_data["icon"])
+            var lj_products := []
+            lj_products.append({"type": "header", "text": "Будет производить:"})
+            var lj_base_str = str(int(lj_yield)) if lj_yield == floor(lj_yield) else "%.1f" % lj_yield
+            var wood_label = wood_data.get("name", "Древесина")
+            if lj_mult != 1.0:
+                wood_label = "%s (база %s)" % [wood_label, lj_base_str]
+            lj_products.append({"type": "product", "name": wood_label, "amount": lj_amount, "icon_path": wood_icon_path})
+            var lj_box = VBoxContainer.new()
+            map_tooltip.render_products(lj_products, lj_box, true)
+            _preview_container.add_child(lj_box)
 
     # Расчёт производства (для улучшений и разведения, кроме спец-действий).
     if type != "special" and eff_res != "":

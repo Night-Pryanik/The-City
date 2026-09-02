@@ -120,6 +120,12 @@
       "name": "Рыбак",
       "icon": "profession_fisherman.png",
       "description": "Ловит рыбу с лодок на водоёмах с пристанью."
+    },
+    {
+      "id": "lumberjack",
+      "name": "Лесоруб",
+      "icon": "profession_lumberjack.png",
+      "description": "Рубит деревья на лесной делянке и заготавливает древесину."
     }
   ]
 }

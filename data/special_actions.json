@@ -8,7 +8,7 @@
       "source_cover": [ "forest", "sparse_forest" ],
       "result_cover": "none",
       "work_cost": 22,
-      "unlock_tech": "metal_processing"
+      "unlock_tech": "wood_processing"
     },
     {
       "id": "forage_wild_food",

@@ -93,6 +93,19 @@
       "category": "material",
       "unlock_tech": "writing",
       "icon": "papyrus_plant.png"
+    },
+    {
+      // Сырьевой ресурс «Древесина». Производится лесной делянкой
+      // (improvement_id "lumberjack_hut") на лесном гексе, где нет отдельного
+      // древесного ресурса: выход зависит от густоты покрова (wood_yield в
+      // data/covers.json). Направляется в «Лесопилку» (рецепт «Распиловка
+      // досок» → Доски).
+      "id": "wood",
+      "name": "Древесина",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "wood_processing",
+      "icon": "wood.png"
     }
   ]
 }

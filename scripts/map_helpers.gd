@@ -75,6 +75,43 @@ static func get_improvement_work_cost(
         "distance_mult": distance_mult
     }
 
+## --- Лесная делянка (lumberjack_hut) ---
+
+## Выход древесины с покрова гекса (поле wood_yield в data/covers.json).
+## Учитывается ЛЮБОЙ покров с wood_yield > 0: будущие типы покрова
+## (джунгли, тайга и т.п.) достаточно описать в covers.json — код править
+## не нужно. Отсутствие поля, покров "none" или неизвестный id = выход 0.
+static func get_cover_wood_yield(tile: Dictionary) -> float:
+    var cover_id: String = tile.get("cover", "none")
+    if not GameData.covers.has(cover_id):
+        return 0.0
+    return float(GameData.covers[cover_id].get("wood_yield", 0.0))
+
+## Можно ли построить лесную делянку на гексе: гекс пуст (нет улучшения,
+## ресурса и разводимой культуры), это сухая суша — не гора, не вода,
+## не болото/марши, не непроходимая местность (соляные/содовые/битумные
+## озёра и любые будущие типы с move_cost >= 999) — и покров даёт
+## древесину (wood_yield > 0).
+static func can_build_lumberjack_hut(tile: Dictionary) -> bool:
+    if tile.improvement != null:
+        return false
+    if tile.resource != null or tile.get("crop_bred", null) != null:
+        return false
+    if tile.get("has_town", false):
+        return false
+    var terrain_id: String = tile.get("terrain", "")
+    if terrain_id == "mountain" or terrain_id == "swamp" or terrain_id == "marsh":
+        return false
+    if is_water_terrain(terrain_id):
+        return false
+    # Непроходимая местность: move_cost >= 999 в data/terrains/terrains.json
+    # означает «непроходимо» (так помечены содовые/битумные озёра и т.п.).
+    # Условие универсально — новые непроходимые типы учитываются автоматически.
+    if GameData.terrains.has(terrain_id) \
+            and float(GameData.terrains[terrain_id].get("move_cost", 1)) >= 999.0:
+        return false
+    return get_cover_wood_yield(tile) > 0.0
+
 ## Возвращает индекс ребра гекса (row, col), которое является общим с
 ## соседом (neighbor_row, neighbor_col). Используется для проверки, касается ли река
 ## именно общего ребра между двумя гексами (например, при постройке канала).

@@ -413,6 +413,20 @@ func _process(delta):
                 # null — гекс нечего производить.
                 var eff_res = MapHelpers.get_effective_resource(tile)
                 if eff_res == "":
+                    # Лесная делянка на пустом лесном гексе: ресурса нет, но
+                    # покров даёт древесину (wood_yield > 0 в covers.json).
+                    # Выход = wood_yield × множители улучшения и профессии.
+                    # Будущие покровы с wood_yield > 0 подхватятся автоматически.
+                    if tile.improvement == "lumberjack_hut":
+                        var wood_yield: float = MapHelpers.get_cover_wood_yield(tile)
+                        if wood_yield > 0.0:
+                            var lj_consumption_mult: float = worker_manager.tick_consumption(
+                                row, col, CityData.PRODUCTION_INTERVAL)
+                            var lj_imp_mult: float = CityData.get_improvement_production_multiplier(
+                                "lumberjack_hut", _is_hex_irrigated(row, col),
+                                tile.get("terrain", ""), "lumberjack_hut")
+                            CityData.add_to_storage(
+                                "wood", int(ceil(wood_yield * lj_imp_mult * lj_consumption_mult)))
                     continue
 
                 # Профессиональное потребление: улучшения, у которых через

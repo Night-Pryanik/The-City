@@ -50,6 +50,16 @@
       "category": "construction_material",
       "unlock_tech": "masonry",
       "icon": "processed_building_stone.png"
+    },
+    {
+      // Продукт «Доски». Производится в «Лесопилке» (sawmill) из древесины
+      // по рецепту «Распиловка досок» (crafts.json).
+      "id": "planks",
+      "name": "Доски",
+      "type": "product",
+      "category": "construction_material",
+      "unlock_tech": "wood_processing",
+      "icon": "planks.png"
     }
   ]
 }
