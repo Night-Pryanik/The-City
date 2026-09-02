@@ -504,24 +504,41 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
     #    водоёма. Предлагается на пустом прибрежном гексе (суша с соседом lake/sea,
     #    не гора). После постройки рыба этого водоёма становится доступной для
     #    рыбацких лодок (см. has_harbor_access в map_helpers.gd).
-    if tile.resource == null and tile.get("crop_bred", null) == null \
+    #    Не хватает технологии — кнопка построения неактивна, а рядом добавляется
+    #    кнопка «Изучить …» (как у канала и лесной делянки).
+    var harbor_potential_tile = tile.resource == null and tile.get("crop_bred", null) == null \
             and tile.terrain != "mountain" and not MapHelpers.is_water_terrain(tile.terrain) \
-            and CityData.is_improvement_unlocked("harbor") \
-            and MapHelpers.is_coastal_hex(main_map.tile_data, row, col, main_map.map_rows, main_map.map_cols):
-        var harbor_name = GameData.improvements.get("harbor", {}).get("name", "harbor")
-        var harbor_enabled = true
+            and MapHelpers.is_coastal_hex(main_map.tile_data, row, col, main_map.map_rows, main_map.map_cols)
+    if harbor_potential_tile:
+        var harbor_name = GameData.improvements.get("harbor", {}).get("name", "Пристань")
+        var harbor_tech_unlocked = CityData.is_improvement_unlocked("harbor")
+        var harbor_unlock_tech = CityData.get_improvement_unlock_tech("harbor")
         var harbor_tooltip = "Построить %s — откроет водные ресурсы этого водоёма" % harbor_name
-        if build_manager.get_total_active_builds() >= CityData.total_population:
-            harbor_enabled = false
-            harbor_tooltip = "Нет труда: лимит строек (число жителей) исчерпан"
-        actions.append({
-            "type": "build_improvement",
-            "label": "Построить %s" % harbor_name,
-            "enabled": harbor_enabled,
-            "tooltip": harbor_tooltip,
-            "imp_id": "harbor",
-            "icon": GameData.improvements.get("harbor", {}).get("icon", "")
-        })
+        # Кнопки изучения и постройки пристани (заблокированной технологией)
+        # показываем только если до открывающей технологии осталось не более
+        # TECH_HOPS_MAX «хопов» (по аналогии с каналом и лесной делянкой).
+        var show_harbor := false
+        if harbor_tech_unlocked:
+            show_harbor = true
+            if build_manager.get_total_active_builds() >= CityData.total_population:
+                harbor_tooltip = "%s — нет труда: лимит строек (число жителей) исчерпан" % harbor_name
+        else:
+            var harbor_tech_name = _get_tech_name(harbor_unlock_tech)
+            harbor_tooltip = "%s — нужна технология: %s" % [harbor_name, harbor_tech_name]
+            if CityData.get_tech_hops(harbor_unlock_tech) <= CityData.TECH_HOPS_MAX:
+                show_harbor = true
+                var harbor_chain = CityData.get_tech_study_chain(harbor_unlock_tech)
+                if not harbor_chain.is_empty():
+                    actions.append(_make_research_action(harbor_chain[0], harbor_name))
+        if show_harbor:
+            actions.append({
+                "type": "build_improvement",
+                "label": "Построить %s" % harbor_name,
+                "enabled": harbor_tech_unlocked,
+                "tooltip": harbor_tooltip,
+                "imp_id": "harbor",
+                "icon": GameData.improvements.get("harbor", {}).get("icon", "")
+            })
 
     # 4. Ирригационный канал (схема water_access, расширение «Каналы»):
     #    инфраструктурное улучшение-проводник, раздающее пресную воду соседям.
