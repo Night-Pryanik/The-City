@@ -393,29 +393,30 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
                     pass
                 else:
                     # Кнопка «Изучить ...» предлагает СЛЕДУЮЩИЙ не изученный шаг
-                    # технологической цепочки (как контекстное меню по ПКМ, см.
-                    # main_map.gd): сначала технология самого РЕСУРСА (tech_required,
-                    # например «Горное дело» для мрамора), и только потом технология,
-                    # открывающая УЛУЧШЕНИЕ («Каменная кладка» для каменоломни).
-                    if raw.get("tech_required", "") != "" and not CityData.is_tech_unlocked(raw["tech_required"]):
-                        actions.append(_make_research_action(raw["tech_required"]))
-                    elif not CityData.is_improvement_unlocked(imp_id):
-                        # Кнопка изучения технологии (аналог пункта «Изучить X»
-                        # в контекстном меню по ПКМ).
-                        actions.append(_make_research_action(imp_unlock_tech))
+                    # технологической цепочки, которая открывает УЛУЧШЕНИЕ, позволяющее
+                    # эксплуатировать этот ресурс. Цепочка строится по технологии
+                    # улучшения (imp_unlock_tech), а НЕ по технологии появления
+                    # самого ресурса (tech_required): видимые ресурсы открыты на
+                    # старте, но добывать их можно только соответствующим
+                    # улучшением. Например, кварцевый песок добывается каменоломней
+                    # (открывается «Каменной кладкой»), хотя сам ресурс становится
+                    # возможным перерабатывать в стекло лишь после изучения «Стеклоделия».
+                    var chain = CityData.get_tech_study_chain(imp_unlock_tech)
+                    if not chain.is_empty():
+                        actions.append(_make_research_action(chain[0]))
                     # Тултип кнопки ПОСТРОЙКИ всегда указывает на НЕПОСРЕДСТВЕННОЕ
                     # требование для этой постройки (а не на текущий шаг цепочки
-                    # изучения): сначала — технология улучшения, затем — технология
-                    # ресурса.
+                    # изучения). Постройка улучшения гейтится ТОЛЬКО технологией
+                    # самого улучшения (imp_unlock_tech) и прочими условиями
+                    # (пристань, лимит труда). Технология появления ресурса
+                    # (raw.tech_required) на постройку не влияет: раз ресурс уже
+                    # на гексе, его tech_required выполнен. Например, кварцевый
+                    # песок добывается каменоломней (нужна «Каменная кладка»),
+                    # а не «Стеклоделием», позволяющим получать стекло из песка.
                     if not CityData.is_improvement_unlocked(imp_id):
                         var tech_name = _get_tech_name(imp_unlock_tech)
                         enabled = false
                         tooltip = "%s — нужна технология: %s" % [imp_name, tech_name]
-                    elif raw.get("tech_required", "") != "" and not CityData.is_tech_unlocked(raw["tech_required"]):
-                        var raw_name = raw.get("name", tile.resource)
-                        var tech_name2 = _get_tech_name(raw["tech_required"])
-                        enabled = false
-                        tooltip = "%s (%s) — нужна технология: %s" % [imp_name, raw_name, tech_name2]
                     # Схема harbor_access: улучшения с requires_harbor (рыбацкие лодки)
                     # строятся только на водоёме, где есть пристань. BFS по воде от
                     # этого гекса ищет сушу с water_body_harbor-улучшением.

@@ -439,13 +439,21 @@ func _draw_hex_overlays(row: int, col: int):
     var eff_res = MapHelpers.get_effective_resource(tile)
     # Проверяем, заблокирован ли ресурс технологией для улучшения.
     # Ресурсы с tech_reveal скрыты полностью (is_resource_visible = false).
-    # Здесь проверяем ресурсы, которые видны, но требуют технологию для
-    # постройки улучшения (tech_required в данных ресурса).
+    # Замок гейтится технологией УЛУЧШЕНИЯ, которым добывается ресурс
+    # (imp_unlock_tech из improved_by), а НЕ технологией появления ресурса
+    # (tech_required). Например, кварцевый песок добывается каменоломней:
+    # замок держится до «Каменной кладки», хотя ресурс виден раньше. Для
+    # каменных ресурсов (базальт/мрамор/…) этот же замок держится до
+    # «Каменной кладки», а не пропадает после «Горного дела».
     var is_resource_locked_by_tech = false
     if eff_res != "" and is_resource_visible:
         var res_data = GameData.raw_resources.get(eff_res, {})
-        var tech_required: String = res_data.get("tech_required", "")
-        if tech_required != "" and not CityData.is_tech_unlocked(tech_required):
+        var improved_by = res_data.get("improved_by", "")
+        # У части ресурсов (например, дикоросы foraged_food) improved_by задан
+        # как null — тогда .get() возвращает Nil, а не значение по умолчанию.
+        if improved_by == null:
+            improved_by = ""
+        if improved_by != "" and not CityData.is_improvement_unlocked(improved_by):
             is_resource_locked_by_tech = true
 
     if eff_res != "" and is_resource_visible:
@@ -683,9 +691,14 @@ func _is_resource_locked(resource_id: String) -> bool:
     if resource_id == null or resource_id == "":
         return false
     var res_data = GameData.raw_resources.get(resource_id, {})
-    if not res_data.has("tech_required"):
+    var imp_id = res_data.get("improved_by", "")
+    # У части ресурсов (например, дикоросы foraged_food) improved_by задан
+    # как null — тогда .get() возвращает Nil, а не значение по умолчанию.
+    if imp_id == null:
         return false
-    return not CityData.is_tech_unlocked(res_data["tech_required"])
+    # Ресурс считается заблокированным, если ещё не открыто улучшение, которое
+    # его добывает (improved_by), по его unlock_tech.
+    return not CityData.is_improvement_unlocked(imp_id)
 
 func is_resource_locked(resource_id: String) -> bool:
     return _is_resource_locked(resource_id)

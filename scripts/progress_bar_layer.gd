@@ -96,15 +96,17 @@ func _draw_progress_bars(row: int, col: int):
     if research_tech != "" and eff_res_for_bar != "" and _is_resource_revealed(tile):
         var show_progress = false
         if _is_resource_locked(eff_res_for_bar):
-            var res_tech = GameData.raw_resources.get(eff_res_for_bar, {}).get("tech_required", "")
-            if res_tech == research_tech:
-                show_progress = true
-        else:
-            # Ресурс открыт, но улучшение для него ещё не изучено
             var imp_id = GameData.raw_resources.get(eff_res_for_bar, {}).get("improved_by", "")
-            if imp_id != null and imp_id != "" and not CityData.is_improvement_unlocked(imp_id):
+            if imp_id != null and imp_id != "":
                 var imp_unlock_tech = CityData.get_improvement_unlock_tech(imp_id)
-                if imp_unlock_tech == research_tech:
+                # Показываем прогресс-бар, пока изучается ЛЮБОЙ ещё не изученный
+                # шаг цепочки, ведущей к технологии, открывающей улучшение,
+                # которым добывается ресурс. Цепочку считаем по технологии
+                # улучшения (imp_unlock_tech), а не по tech_required ресурса:
+                # например, для кварцевого песка бар появляется и при изучении
+                # «Горного дела», и при изучении «Каменной кладки».
+                var chain = CityData.get_tech_study_chain(imp_unlock_tech)
+                if research_tech in chain:
                     show_progress = true
         if show_progress:
             var bar_width = RESOURCE_ICON_SIZE
@@ -165,6 +167,11 @@ func _is_resource_locked(resource_id: String) -> bool:
     if resource_id == null or resource_id == "":
         return false
     var res_data = GameData.raw_resources.get(resource_id, {})
-    if not res_data.has("tech_required"):
+    var imp_id = res_data.get("improved_by", "")
+    # У части ресурсов (например, дикоросы foraged_food) improved_by задан
+    # как null — тогда .get() возвращает Nil, а не значение по умолчанию.
+    if imp_id == null:
         return false
-    return not CityData.is_tech_unlocked(res_data["tech_required"])
+    # Ресурс считается заблокированным, если ещё не открыто улучшение, которое
+    # его добывает (improved_by), по его unlock_tech.
+    return not CityData.is_improvement_unlocked(imp_id)
