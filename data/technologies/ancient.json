@@ -205,7 +205,7 @@
       "name": "Ювелирное дело",
       "era": "ancient",
       "science_cost": 3.0,
-      "icon": "jewelry.svg",
+      "icon": "jewelry.png",
       "prerequisites": [ [ "mining" ] ],
       "description": "Пока не даёт ничего.",
       "flavor": "Обработка драгоценных камней и металлов превратила ремесло в искусство."
