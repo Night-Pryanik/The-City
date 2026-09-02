@@ -13,6 +13,13 @@
 #   3) побережье озёр (гексы, соседние с terrain == "lake");
 #   4) морское побережье (terrain == "beach").
 #
+# --- Вторичный приоритет: тип местности ---
+# После первичного каскада позиция уточняется по предпочтительности
+# terrain: равнина/песок(пляж) → холмы → болота/марши → горы. Первичные
+# тяготения при этом сохраняются (гекс обязан удовлетворять им всем),
+# поэтому водные правила остаются жёсткими. Если подходящий terrain
+# не нашёлся рядом — городок остаётся на текущем валидном гексе.
+#
 # Водные приоритеты (река / озеро / море) — ЖЁСТКИЕ: если городок «решил»
 # спавниться у воды, он ставится НЕПОСРЕДСТВЕННО на гекс точки тяготения
 # (расстояние 0): на речной гекс, на берег озера или на пляж у моря —
@@ -86,6 +93,18 @@ const MAX_ATTRACTION_DISTANCE := 3
 # ставится строго НА гексе точки тяготения (речной гекс / берег озера / пляж),
 # а не в округе.
 const WATER_ATTRACTION_RADIUS := 0
+# Вторичный приоритет: уточнение по типам местности (в порядке предпочтения).
+# Первичные приоритеты (ресурсы / река / озеро / море) остаются ОБЯЗАТЕЛЬНЫМИ;
+# тип местности — мягкое уточнение поверх них: после основного каскада
+# пробуем переехать на гекс с более предпочтительным terrain, не теряя
+# заработанных первичных тяготений. Список: равнина + «песок» (пляж у моря),
+# холмы, болота/марши, горы (последнее средство).
+const TERRAIN_PREFERENCE: Array = [
+    ["plain", "beach"],
+    ["hill"],
+    ["swamp", "marsh"],
+    ["mountain"],
+]
 # Радиус поиска при «уточнении» позиции на следующем приоритете (в гексах).
 # Уточнение ищет гекс в REFINEMENT_RADIUS от текущей позиции, который
 # удовлетворяет ВСЕМ уже набранным приоритетам + новому.
@@ -264,6 +283,30 @@ func _try_place_one_town(tile_data: Array, rows: int, cols: int,
             satisfied_tiers.append(tiers[tier_idx])
             satisfied_names.append(tiers[tier_idx]["name"])
 
+    # --- Вторичный приоритет: уточнение по типам местности ---
+    # Первичные тяготения уже «заработаны» и должны сохраниться: ищем гекс
+    # с более предпочтительным terrain, который по-прежнему удовлетворяет
+    # ВСЕМ первичным приоритетам. Группы перебираем по порядку предпочтения;
+    # если ни одна не подошла — остаёмся на текущем (валидном) гексе.
+    var cur_terrain: String = tile_data[best.row][best.col].get("terrain", "")
+    for group in TERRAIN_PREFERENCE:
+        if group.has(cur_terrain):
+            satisfied_names.append("terrain:" + str(group[0]))
+            break
+        var moved: Dictionary = _find_hex_in_radius_satisfying(tile_data, rows, cols,
+                best, REFINEMENT_RADIUS, satisfied_tiers,
+                city_row, city_col,
+                exclusion_start_row, exclusion_end_row,
+                exclusion_start_col, exclusion_end_col,
+                require_in_region_start_row, require_in_region_end_row,
+                require_in_region_start_col, require_in_region_end_col,
+                ignore_exclusion,
+                group)
+        if not moved.is_empty():
+            best = moved
+            satisfied_names.append("terrain:" + str(group[0]))
+            break
+
     if satisfied_names.size() > 1:
         print("town_manager: городок (", best.row, ",", best.col, ") — каскад ",
                 "приоритетов: ", ", ".join(satisfied_names))
@@ -330,7 +373,8 @@ func _find_hex_in_radius_satisfying(tile_data: Array, rows: int, cols: int,
         exclusion_start_col: int, exclusion_end_col: int,
         require_in_region_start_row: int, require_in_region_end_row: int,
         require_in_region_start_col: int, require_in_region_end_col: int,
-        ignore_exclusion: bool) -> Dictionary:
+        ignore_exclusion: bool,
+        allowed_terrains: Array = []) -> Dictionary:
     var candidates: Array = []
     var r_min: int = maxi(0, near_hex.row - max_dist_from_near)
     var r_max: int = mini(rows - 1, near_hex.row + max_dist_from_near)
@@ -362,6 +406,11 @@ func _find_hex_in_radius_satisfying(tile_data: Array, rows: int, cols: int,
                     require_in_region_start_col, require_in_region_end_col,
                     ignore_exclusion):
                 continue
+            # Вторичный фильтр по типу местности (пустой список = любой).
+            if not allowed_terrains.is_empty():
+                var terr: String = tile_data[r][c].get("terrain", "")
+                if not allowed_terrains.has(terr):
+                    continue
             candidates.append({"row": r, "col": c})
     if candidates.is_empty():
         return {}
