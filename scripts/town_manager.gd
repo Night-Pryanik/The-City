@@ -6,6 +6,9 @@
 # --- Алгоритм размещения (каскадный, по ТЗ) ---
 # Точки тяготения — четыре приоритета (именно в этом порядке):
 #   1) гексы со стратегическими ресурсами (resource.strategic == true);
+#      при этом один и тот же ресурс не притягивает несколько городков:
+#      ресурс, в радиусе 3 от которого уже стоит городок, исключается
+#      из списка точек притяжения для последующих городков;
 #   2) гексы, по которым текут реки (river_edges непустой);
 #   3) побережье озёр (гексы, соседние с terrain == "lake");
 #   4) морское побережье (terrain == "beach").
@@ -447,6 +450,11 @@ func _is_impassable_terrain(terrain_id: String) -> bool:
 # --- Сбор точек тяготения по приоритетам ---
 
 # Приоритет 1: гексы со стратегическими ресурсами (resource.strategic == true).
+# Ресурс, в радиусе MAX_ATTRACTION_DISTANCE от которого УЖЕ стоит городок,
+# исключается: один и тот же заспавнившийся ресурс не должен притягивать
+# несколько городков одновременно. town_hexes пополняется по мере размещения,
+# поэтому фильтр работает автоматически для каждого следующего городка
+# (включая гарантийный городок эры-2).
 func _collect_strategic_attraction_points(tile_data: Array, rows: int, cols: int) -> Array:
     var result: Array = []
     for r in range(rows):
@@ -455,7 +463,14 @@ func _collect_strategic_attraction_points(tile_data: Array, rows: int, cols: int
             if res == null or res == "":
                 continue
             var res_data: Dictionary = GameData.raw_resources.get(res, {})
-            if bool(res_data.get("strategic", false)):
+            if not bool(res_data.get("strategic", false)):
+                continue
+            var claimed := false
+            for h in town_hexes:
+                if HexUtils.hex_distance(r, c, h.row, h.col) <= MAX_ATTRACTION_DISTANCE:
+                    claimed = true
+                    break
+            if not claimed:
                 result.append({"row": r, "col": c})
     return result
 
