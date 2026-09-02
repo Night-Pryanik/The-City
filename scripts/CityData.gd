@@ -43,6 +43,10 @@ var total_population: int = 1
 var idle_population: int = 1 # свободные жители (не занятые нигде)
 var food_for_new_settler: int = 100
 var food_per_citizen: int = 1
+# Дебаг-переключатель: потребляет ли население еду. Управляется из
+# дебаг-меню (пункт «Переключение потребления еды»), НЕ сохраняется в сейв —
+# это рантайм-обходной тумблер для отладки, а не игровое состояние.
+var food_consumption_enabled: bool = true
 
 const PRODUCTION_INTERVAL: float = 2.0
 
@@ -377,17 +381,21 @@ func do_tick():
     # Еда потребляется без учёта качества (качество — визуальная механика),
     # поэтому списываем по умолчанию "best" через хелпер, чтобы детализация
     # качества всегда оставалась консистентной.
-    var food_needed = max(0, total_population - 1) * food_per_citizen
-    var food_eaten = 0
-    for pid in city_food_pool:
-        if city_food_pool[pid] and city_storage.get(pid, 0) > 0:
-            var available = city_storage[pid]
-            var to_take = min(available, food_needed - food_eaten)
-            remove_from_storage(pid, to_take, "best")
-            consumption_rates[pid] += to_take
-            food_eaten += to_take
-            if food_eaten >= food_needed:
-                break
+    # Дебаг-переключатель: пока food_consumption_enabled == false жители
+    # НЕ едят еду (тумблер в дебаг-меню). Рост/убыль населения при этом
+    # считается как обычно — отключено только само списание еды со склада.
+    if food_consumption_enabled:
+        var food_needed = max(0, total_population - 1) * food_per_citizen
+        var food_eaten = 0
+        for pid in city_food_pool:
+            if city_food_pool[pid] and city_storage.get(pid, 0) > 0:
+                var available = city_storage[pid]
+                var to_take = min(available, food_needed - food_eaten)
+                remove_from_storage(pid, to_take, "best")
+                consumption_rates[pid] += to_take
+                food_eaten += to_take
+                if food_eaten >= food_needed:
+                    break
 
     _check_population_change()
     emit_signal("city_updated")

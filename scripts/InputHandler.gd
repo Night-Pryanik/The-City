@@ -53,18 +53,6 @@ func set_extended_tooltip_delay(value: float):
     extended_tooltip_delay = value
 
 func handle_input(event: InputEvent):
-    # --- ОТЛАДОЧНАЯ КОМАНДА: Ctrl+Shift+F = +100 пшеницы ---
-    if Engine.is_editor_hint() or OS.is_debug_build():
-        if event is InputEventKey and event.pressed:
-            if event.keycode == KEY_F and event.ctrl_pressed and event.shift_pressed:
-                CityData.city_storage["wheat"] = CityData.city_storage.get("wheat", 0) + 100
-                if hud and hud.has_method("show_message"):
-                    hud.show_message("Добавлено 100 пшеницы")
-                if city_ui.visible:
-                    city_ui.refresh()
-                map_renderer.queue_redraw()
-                return # не обрабатываем другие события после этого
-    
     if Engine.is_editor_hint():
         return
 

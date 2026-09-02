@@ -7,6 +7,15 @@ extends Control
 var main_map: Node
 var is_open: bool = false
 
+# Дебаг-меню открыто и показывает главное меню (не подменю выбора ресурса).
+# Используется, чтобы цифровые хоткеи срабатывали только на пунктах главного
+# меню, не конфликтуя с подэкранами.
+var _in_main_menu: bool = true
+# Кнопка «Переключение потребления еды» — хранится, чтобы обновлять её
+# текст при смене состояния (иначе список перерисовывается на горячей
+# клавише и кнопка теряется).
+var _food_toggle_btn: Button
+
 # Режим ожидания клика по гексу для размещения ресурса.
 var waiting_for_hex: bool = false
 var pending_resource_id: String = ""
@@ -98,27 +107,39 @@ func _build_ui():
 func _show_main_menu():
     _clear_content()
     _status_label.text = ""
+    _in_main_menu = true
 
-    var add_resource_btn = _make_button("Добавить ресурс на карту")
+    var add_resource_btn = _make_button("[1] Добавить ресурс на карту")
     add_resource_btn.pressed.connect(_on_add_resource_pressed)
     _content_vbox.add_child(add_resource_btn)
 
-    var next_era_btn = _make_button("Перейти в следующую эпоху")
+    var next_era_btn = _make_button("[2] Перейти в следующую эпоху")
     next_era_btn.pressed.connect(_on_next_era_pressed)
     _content_vbox.add_child(next_era_btn)
 
-    var open_map_btn = _make_button("Открыть всю карту")
+    var open_map_btn = _make_button("[3] Открыть всю карту")
     open_map_btn.pressed.connect(_on_open_whole_map_pressed)
     _content_vbox.add_child(open_map_btn)
 
+    # Переключение потребления еды: 1-й клик — жители перестают есть,
+    # повторный — снова начинают. Текст кнопки отражает текущее состояние.
+    _food_toggle_btn = _make_button(_food_toggle_label())
+    _food_toggle_btn.pressed.connect(_on_toggle_food_consumption_pressed)
+    _content_vbox.add_child(_food_toggle_btn)
+
+    var add_food_btn = _make_button("[5] Добавить 100 еды")
+    add_food_btn.pressed.connect(_on_add_food_pressed)
+    _content_vbox.add_child(add_food_btn)
+
     # Заглушка для будущих действий (можно расширять)
-    var close_btn = _make_button("Закрыть (F9)")
+    var close_btn = _make_button("[0] Закрыть (F9)")
     close_btn.pressed.connect(toggle)
     _content_vbox.add_child(close_btn)
 
 func _show_resource_list():
     _clear_content()
     _status_label.text = "Выберите ресурс:"
+    _in_main_menu = false
 
     var back_btn = _make_button("← Назад")
     back_btn.pressed.connect(_show_main_menu)
@@ -151,6 +172,60 @@ func _on_add_resource_pressed():
 func _on_open_whole_map_pressed():
     if main_map and main_map.has_method("debug_open_whole_map"):
         main_map.debug_open_whole_map()
+
+# Вызывается из main_map._input по цифровой горячей клавише 1..9, 0.
+# Срабатывает только на главном меню дебага (не на подэкранах выбора ресурса
+# и не во время ожидания клика по гексу).
+func trigger_hotkey(num: int):
+    if not is_open or waiting_for_hex or not _in_main_menu:
+        return
+    match num:
+        1:
+            _on_add_resource_pressed()
+        2:
+            _on_next_era_pressed()
+        3:
+            _on_open_whole_map_pressed()
+        4:
+            _on_toggle_food_consumption_pressed()
+        5:
+            _on_add_food_pressed()
+        0:
+            close()
+
+func _on_add_food_pressed():
+    # Добавляем 100 единиц еды на склад (пшеница — продукт категории food,
+    # входит в city_food_pool и учитывается как Еда). Используем публичный
+    # хелпер, чтобы детализация качества склада оставалась консистентной.
+    CityData.add_to_storage("wheat", 100)
+    if main_map.hud and main_map.hud.has_method("show_message"):
+        main_map.hud.show_message("Добавлено 100 еды")
+    if main_map.city_ui and main_map.city_ui.visible:
+        main_map.city_ui.refresh()
+    if main_map.map_renderer:
+        main_map.map_renderer.queue_redraw()
+
+func _on_toggle_food_consumption_pressed():
+    # Инвертируем флаг потребления еды у населения (CityData.do_tick читает
+    # его перед списанием еды со склада). Сам флаг не сохраняется в сейв.
+    var now_enabled = not CityData.food_consumption_enabled
+    CityData.food_consumption_enabled = now_enabled
+
+    var msg := "Потребление еды выключено: жители перестали есть."
+    if now_enabled:
+        msg = "Потребление еды включено: жители снова едят."
+    if main_map.hud and main_map.hud.has_method("show_message"):
+        main_map.hud.show_message(msg)
+
+    # Обновляем текст кнопки в живую (без полной перерисовки меню)
+    if _food_toggle_btn:
+        _food_toggle_btn.text = _food_toggle_label()
+
+func _food_toggle_label() -> String:
+    var state := "ВЫКЛЮЧЕНО"
+    if CityData.food_consumption_enabled:
+        state = "ВКЛЮЧЕНО"
+    return "[4] Переключение потребления еды (сейчас: %s)" % state
 
 func _on_resource_selected(res_id: String):
     pending_resource_id = res_id

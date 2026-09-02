@@ -369,10 +369,34 @@ func _input(event):
             debug_manager.close()
             get_viewport().set_input_as_handled()
             return
+        # Горячие клавиши пунктов дебаг-меню: цифра 1..9, 0 вызывает
+        # соответствующий пункт главного меню (см. debug_manager.trigger_hotkey).
+        if event is InputEventKey and event.pressed:
+            var num = _debug_hotkey_number(event.keycode)
+            if num >= 0:
+                debug_manager.trigger_hotkey(num)
+                get_viewport().set_input_as_handled()
+                return
         input_handler.handle_input(event)
         return
 
     input_handler.handle_input(event)
+
+# Возвращает цифру для дебаг-хоткея по коду клавиши, или -1, если клавиша
+# не является цифровой (основной ряд + клавиатурная цифра 0).
+func _debug_hotkey_number(keycode: Key) -> int:
+    match keycode:
+        KEY_1: return 1
+        KEY_2: return 2
+        KEY_3: return 3
+        KEY_4: return 4
+        KEY_5: return 5
+        KEY_6: return 6
+        KEY_7: return 7
+        KEY_8: return 8
+        KEY_9: return 9
+        KEY_0: return 0
+    return -1
 
 func _process(delta):
     if Engine.is_editor_hint():
