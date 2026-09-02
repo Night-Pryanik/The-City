@@ -305,7 +305,7 @@
       "name": "Деньги",
       "era": "ancient",
       "science_cost": 4.0,
-      "icon": "jewelry.svg",
+      "icon": "currency.png",
       "prerequisites": [ [ "writing" ] ],
       "description": "Даёт возможность строить городское здание Рынок.",
       "flavor": "Понятие стоимости и обмена привело к появлению денег — основы торговли и роста городов."
