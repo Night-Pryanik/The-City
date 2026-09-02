@@ -325,7 +325,7 @@
       // Открывается технологией «Обработка дерева» (wood_processing).
       "id": "sawing",
       "name": "Распиловка досок",
-      "produced_in": [ "sawmill" ],
+      "produced_in": [ "carpenter_workshop" ],
       "resources": { "wood": 2 },
       "result": { "planks": 1 },
       "time": 4.0,
