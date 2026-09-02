@@ -7,18 +7,25 @@
 # Точки тяготения — четыре приоритета (именно в этом порядке):
 #   1) гексы со стратегическими ресурсами (resource.strategic == true);
 #   2) гексы, по которым текут реки (river_edges непустой);
-#   3) морское побережье (terrain == "beach");
-#   4) побережье озёр (гексы, соседние с terrain == "lake").
+#   3) побережье озёр (гексы, соседние с terrain == "lake");
+#   4) морское побережье (terrain == "beach").
+#
+# Водные приоритеты (река / озеро / море) — ЖЁСТКИЕ: если городок «решил»
+# спавниться у воды, он ставится НЕПОСРЕДСТВЕННО на гекс точки тяготения
+# (расстояние 0): на речной гекс, на берег озера или на пляж у моря —
+# а не в пределах 3 гексов от воды.
 #
 # Для каждого городка:
 #   - Берётся ПЕРВЫЙ непустой приоритет как «основной». Если в нём есть
-#     валидное место (в радиусе 3 гексов от любой точки приоритета и
-#     удовлетворяющее всем ограничениям гекса) — городок ставится туда.
+#     валидное место (в радиусе приоритета: 0 для воды, 3 для стратегических
+#     ресурсов; при 0 — строго на самой точке тяготения) — городок ставится
+#     туда.
 #   - Затем идут ШАГИ УТОЧНЕНИЯ: для каждого следующего непустого приоритета
 #     ищем в небольшом радиусе (REFINEMENT_RADIUS) от текущей позиции
 #     такой гекс, который одновременно:
-#       (а) в радиусе 3 от какой-то точки уже «удовлетворённых» приоритетов;
-#       (б) в радиусе 3 от какой-то точки НОВОГО приоритета.
+#       (а) в радиусе приоритета от какой-то точки уже «удовлетворённых»
+#           приоритетов (для воды — строго на её точке);
+#       (б) в радиусе приоритета от какой-то точки НОВОГО приоритета.
 #     Если нашли — городок переезжает в этот гекс и приоритет добавляется
 #     в список удовлетворённых. Если не нашли — позиция остаётся прежней,
 #     приоритет пропускается, идём к следующему.
@@ -30,7 +37,9 @@
 #
 # --- Ограничения на гекс городка ---
 #   - не вода и не горы/непроходимая местность;
-#   - не пляж (на самом краю воды);
+#   - не гекс с ресурсом (в т.ч. стратегическим): к ресурсу тяготеем,
+#     но встаём рядом, а не на нём; попадание на ресурс = реролл поиска;
+#   - на прибрежном пляже у моря — можно (приоритет «морское побережье»);
 #   - не гекс города игрока;
 #   - не гекс другого городка и не ближе MIN_DISTANCE_BETWEEN_TOWNS;
 #   - не внутри стартовой видимой области (Кольцо + стартовый Регион —
@@ -70,6 +79,10 @@ const TOWN_ICON_SIZE := 60
 const FOG_TOWN_ICON_ALPHA := 0.55
 # Максимальное расстояние от точки тяготения до гекса городка (в гексах).
 const MAX_ATTRACTION_DISTANCE := 3
+# Радиус тяготения для водных приоритетов (река / озеро / море): 0 = городок
+# ставится строго НА гексе точки тяготения (речной гекс / берег озера / пляж),
+# а не в округе.
+const WATER_ATTRACTION_RADIUS := 0
 # Радиус поиска при «уточнении» позиции на следующем приоритете (в гексах).
 # Уточнение ищет гекс в REFINEMENT_RADIUS от текущей позиции, который
 # удовлетворяет ВСЕМ уже набранным приоритетам + новому.
@@ -189,26 +202,31 @@ func _try_place_one_town(tile_data: Array, rows: int, cols: int,
         require_in_region_start_col: int, require_in_region_end_col: int,
         ignore_exclusion: bool) -> Dictionary:
 
-    # Собираем все 4 приоритета один раз (дешевле, чем на каждый шаг).
-    var strategic_points := _collect_strategic_attraction_points(tile_data, rows, cols)
-    var river_points := _collect_river_attraction_points(tile_data, rows, cols)
-    var sea_points := _collect_sea_coast_attraction_points(tile_data, rows, cols)
-    var lake_points := _collect_lake_coast_attraction_points(tile_data, rows, cols)
-    var tiers: Array = [strategic_points, river_points, sea_points, lake_points]
-    var tier_names: Array = ["strategic", "river", "sea_coast", "lake_coast"]
+    # Собираем все приоритеты один раз (дешевле, чем на каждый шаг).
+    # Каждый приоритет — словарь {name, points, radius}:
+    #   radius — максимальное гекс-расстояние от точки тяготения до гекса
+    #   городка. Для воды (река/озеро/море) радиус 0: спавн строго на самой
+    #   точке (речной гекс, берег озера, пляж у моря).
+    var tiers: Array = [
+        {"name": "strategic", "points": _collect_strategic_attraction_points(tile_data, rows, cols), "radius": MAX_ATTRACTION_DISTANCE},
+        {"name": "river", "points": _collect_river_attraction_points(tile_data, rows, cols), "radius": WATER_ATTRACTION_RADIUS},
+        {"name": "lake_coast", "points": _collect_lake_coast_attraction_points(tile_data, rows, cols), "radius": WATER_ATTRACTION_RADIUS},
+        {"name": "sea_coast", "points": _collect_sea_coast_attraction_points(tile_data, rows, cols), "radius": WATER_ATTRACTION_RADIUS},
+    ]
 
     # Первый непустой приоритет — «основной». С него стартуем каскад.
     var primary_idx := -1
     for i in range(tiers.size()):
-        if not tiers[i].is_empty():
+        if not tiers[i]["points"].is_empty():
             primary_idx = i
             break
     if primary_idx == -1:
         return {}
 
-    # Шаг 1: ищем валидный гекс рядом с любой точкой основного приоритета.
+    # Шаг 1: ищем валидный гекс в радиусе приоритета от его точки.
     var best: Dictionary = _find_hex_near_tier(tile_data, rows, cols,
-            tiers[primary_idx], city_row, city_col,
+            tiers[primary_idx]["points"], tiers[primary_idx]["radius"],
+            city_row, city_col,
             exclusion_start_row, exclusion_end_row,
             exclusion_start_col, exclusion_end_col,
             require_in_region_start_row, require_in_region_end_row,
@@ -221,13 +239,13 @@ func _try_place_one_town(tile_data: Array, rows: int, cols: int,
     # радиусе 3 хотя бы от одной точки каждого из них). На каждом шаге
     # уточнения новый приоритет добавляется в этот список.
     var satisfied_tiers: Array = [tiers[primary_idx]]
-    var satisfied_names: Array = [tier_names[primary_idx]]
+    var satisfied_names: Array = [tiers[primary_idx]["name"]]
 
     # Шаги 2..N: для каждого следующего непустого приоритета пытаемся
     # уточнить позицию так, чтобы гекс одновременно лежал в радиусе 3 от
     # всех ранее заработанных приоритетов И от нового.
     for tier_idx in range(primary_idx + 1, tiers.size()):
-        if tiers[tier_idx].is_empty():
+        if tiers[tier_idx]["points"].is_empty():
             continue
         var new_points: Array = satisfied_tiers + [tiers[tier_idx]]
         var refined: Dictionary = _find_hex_in_radius_satisfying(tile_data, rows, cols,
@@ -241,7 +259,7 @@ func _try_place_one_town(tile_data: Array, rows: int, cols: int,
         if not refined.is_empty():
             best = refined
             satisfied_tiers.append(tiers[tier_idx])
-            satisfied_names.append(tier_names[tier_idx])
+            satisfied_names.append(tiers[tier_idx]["name"])
 
     if satisfied_names.size() > 1:
         print("town_manager: городок (", best.row, ",", best.col, ") — каскад ",
@@ -249,11 +267,12 @@ func _try_place_one_town(tile_data: Array, rows: int, cols: int,
     return best
 
 
-# Ищет валидный гекс городка в радиусе MAX_ATTRACTION_DISTANCE от ЛЮБОЙ
-# точки attraction_points. Никаких ограничений «near_hex» — это первичный
-# поиск, не уточнение. Возвращает {row, col} или {} если ничего не нашлось.
+# Ищет валидный гекс городка в радиусе max_dist от ЛЮБОЙ точки
+# attraction_points (max_dist == 0 — строго на самой точке). Никаких
+# ограничений «near_hex» — это первичный поиск, не уточнение.
+# Возвращает {row, col} или {} если ничего не нашлось.
 func _find_hex_near_tier(tile_data: Array, rows: int, cols: int,
-        attraction_points: Array,
+        attraction_points: Array, max_dist: int,
         city_row: int, city_col: int,
         exclusion_start_row: int, exclusion_end_row: int,
         exclusion_start_col: int, exclusion_end_col: int,
@@ -267,16 +286,16 @@ func _find_hex_near_tier(tile_data: Array, rows: int, cols: int,
             return {}
         var pick_idx: int = randi() % points.size()
         var anchor: Dictionary = points[pick_idx]
-        # Случайный валидный гекс в квадрате 7x7 вокруг anchor, отфильтрованный
-        # по гекс-расстоянию <= MAX_ATTRACTION_DISTANCE.
+        # Случайный валидный гекс вокруг anchor, отфильтрованный
+        # по гекс-расстоянию <= max_dist (0 — только сам anchor).
         var candidates: Array = []
-        var r_min: int = maxi(0, anchor.row - MAX_ATTRACTION_DISTANCE)
-        var r_max: int = mini(rows - 1, anchor.row + MAX_ATTRACTION_DISTANCE)
-        var c_min: int = maxi(0, anchor.col - MAX_ATTRACTION_DISTANCE)
-        var c_max: int = mini(cols - 1, anchor.col + MAX_ATTRACTION_DISTANCE)
+        var r_min: int = maxi(0, anchor.row - max_dist)
+        var r_max: int = mini(rows - 1, anchor.row + max_dist)
+        var c_min: int = maxi(0, anchor.col - max_dist)
+        var c_max: int = mini(cols - 1, anchor.col + max_dist)
         for r in range(r_min, r_max + 1):
             for c in range(c_min, c_max + 1):
-                if HexUtils.hex_distance(r, c, anchor.row, anchor.col) > MAX_ATTRACTION_DISTANCE:
+                if HexUtils.hex_distance(r, c, anchor.row, anchor.col) > max_dist:
                     continue
                 if not _is_valid_town_hex(tile_data, r, c, city_row, city_col,
                         exclusion_start_row, exclusion_end_row,
@@ -296,9 +315,10 @@ func _find_hex_near_tier(tile_data: Array, rows: int, cols: int,
 
 # Ищет валидный гекс городка в радиусе max_dist_from_near от near_hex
 # (для уточнения на следующем приоритете), который одновременно лежит
-# в радиусе MAX_ATTRACTION_DISTANCE хотя бы от одной точки КАЖДОГО из
-# attraction_point_sets (накопленные приоритеты + новый).
-# Возвращает {row, col} или {} если ничего не нашлось.
+# в радиусе (radius) хотя бы от одной точки КАЖДОГО из
+# attraction_point_sets (накопленные приоритеты + новый; каждый набор —
+# словарь {points, radius}). Возвращает {row, col} или {} если ничего
+# не нашлось.
 func _find_hex_in_radius_satisfying(tile_data: Array, rows: int, cols: int,
         near_hex: Dictionary, max_dist_from_near: int,
         attraction_point_sets: Array,
@@ -317,13 +337,14 @@ func _find_hex_in_radius_satisfying(tile_data: Array, rows: int, cols: int,
         for c in range(c_min, c_max + 1):
             if HexUtils.hex_distance(r, c, near_hex.row, near_hex.col) > max_dist_from_near:
                 continue
-            # Гекс должен быть в радиусе 3 хотя бы от одной точки КАЖДОГО
-            # набора приоритетов. Это «AND» по наборам, «OR» внутри набора.
+            # Гекс должен быть в радиусе приоритета хотя бы от одной точки
+            # КАЖДОГО набора приоритетов. Это «AND» по наборам, «OR» внутри
+            # набора. Для водных приоритетов radius == 0 — строго на точке.
             var all_satisfied: bool = true
-            for points in attraction_point_sets:
+            for tier in attraction_point_sets:
                 var any_close: bool = false
-                for p in points:
-                    if HexUtils.hex_distance(r, c, p.row, p.col) <= MAX_ATTRACTION_DISTANCE:
+                for p in tier["points"]:
+                    if HexUtils.hex_distance(r, c, p.row, p.col) <= int(tier.get("radius", MAX_ATTRACTION_DISTANCE)):
                         any_close = true
                         break
                 if not any_close:
@@ -375,12 +396,20 @@ func _is_valid_town_hex(tile_data: Array, row: int, col: int,
     # озеро) — городок там не поставишь.
     if _is_impassable_terrain(terrain):
         return false
-    # Пляж — «на самом краю воды», там логично не селиться.
-    if terrain == "beach":
-        return false
+    # Пляж разрешён: приоритет «морское побережье» требует ставить городок
+    # НЕПОСРЕДСТВЕННО на прибрежном гексе (terrain == "beach"), а не вглубь.
 
     # Уже есть постройка (от другой системы) — нельзя.
     if tile.get("improvement", null) != null:
+        return false
+    # Гекс с ресурсом — нельзя: городок не должен занимать ресурс напрямую
+    # (в т.ч. стратегический — к нему тяготеем, но встаём РЯДОМ, в радиусе
+    # MAX_ATTRACTION_DISTANCE, а не на самом гексе). Если поиск привёл на
+    # такой гекс — он отбраковывается здесь, и поиск «рероллится»:
+    # _find_hex_near_tier пробует другую точку того же приоритета, а если
+    # валидных мест нет вовсе — приоритет пропускается.
+    var res = tile.get("resource", null)
+    if res != null and res != "":
         return false
     # Уже стоит городок (на всякий случай — флаг мог остаться).
     if tile.get("has_town", false):
