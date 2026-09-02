@@ -47,6 +47,12 @@ var food_per_citizen: int = 1
 # дебаг-меню (пункт «Переключение потребления еды»), НЕ сохраняется в сейв —
 # это рантайм-обходной тумблер для отладки, а не игровое состояние.
 var food_consumption_enabled: bool = true
+# Дебаг-переключатель: игнорировать требования технологий. Когда включён —
+# изучение не проверяет prerequisites и ограничение по эпохам (можно изучать
+# технологии следующих эпох). Тумблер из дебаг-меню, НЕ сохраняется в сейв.
+# Изучается при этом только выбранная технология — предшественники не
+# добавляются автоматически.
+var ignore_tech_requirements: bool = false
 
 const PRODUCTION_INTERVAL: float = 2.0
 
@@ -67,6 +73,10 @@ func get_tech_era_index(tech_id: String) -> int:
 # текущей и предыдущих эпох. Технологии следующей эпохи недоступны,
 # даже если все их prerequisites выполнены.
 func is_tech_era_allowed(tech_id: String) -> bool:
+    # Дебаг: при включённом «не учитывать требования» ограничение по эпохам
+    # снимается — можно изучать технологии любой эпохи.
+    if ignore_tech_requirements:
+        return true
     var era_idx := get_tech_era_index(tech_id)
     # Технология без известной эпохи не блокируется (защита от некорректных данных).
     if era_idx < 0:
@@ -498,6 +508,11 @@ func _check_population_change():
 func start_research(tech_id: String) -> bool:
     if Engine.is_editor_hint():
         return false
+    # Дебаг: при включённом «не учитывать требования» технология изучается
+    # мгновенно — без постановки в очередь, проверки prereq/эпох и накопления
+    # науки. Текущее исследование при этом не прерывается.
+    if ignore_tech_requirements:
+        return _complete_tech_instantly(tech_id)
     if current_research_tech_id != "":
         var current_tech_name = current_research_tech_id
         for t in GameData.technologies:
@@ -538,6 +553,33 @@ func start_research(tech_id: String) -> bool:
     research_science_accumulated = 0.0
     print("Начато исследование: ", tech_data["name"])
     emit_signal("city_updated")
+    return true
+
+# Мгновенно разблокирует технологию — используется в дебаг-режиме
+# «не учитывать требования технологий» (ignore_tech_requirements), когда
+# изучение должно происходить сразу, без очереди и накопления науки.
+# Изучается только выбранная технология: предшественники НЕ добавляются.
+# Текущее исследование (current_research_tech_id) не трогается.
+func _complete_tech_instantly(tech_id: String) -> bool:
+    if tech_id in unlocked_technologies:
+        var tech_name = tech_id
+        for t in GameData.technologies:
+            if t["id"] == tech_id:
+                tech_name = t["name"]
+                break
+        emit_signal("research_error", "Технология уже изучена: " + tech_name)
+        return false
+    var tech_data = _get_tech_data(tech_id)
+    if tech_data == null:
+        emit_signal("research_error", "Технология не найдена: " + tech_id)
+        return false
+    unlocked_technologies.append(tech_id)
+    # Технология может открывать новые виды ресурсов — спавним их на карте и
+    # готовим сообщения для попапа (аналогично _complete_research).
+    last_research_messages = spawn_resource_on_tech_research(tech_id)
+    emit_signal("research_completed", tech_id)
+    emit_signal("city_updated")
+    print("Мгновенно изучена (дебаг): ", tech_data.get("name", tech_id))
     return true
 
 # Возвращает количество очков науки за тик — базовый доход города.
@@ -631,6 +673,11 @@ func _get_tech_data(tech_id: String):
 # Проверяет, выполнены ли prerequisites технологии.
 # Формат: [ [A, B], [C] ] => (A И B) ИЛИ C
 func are_prerequisites_met(tech_id: String) -> bool:
+    # Дебаг: при включённом «не учитывать требования» prerequisites не
+    # проверяются вовсе. Изучается только выбранная технология, предшественники
+    # в unlocked_technologies не добавляются (см. _complete_research).
+    if ignore_tech_requirements:
+        return true
     var tech_data = _get_tech_data(tech_id)
     if tech_data == null:
         return false

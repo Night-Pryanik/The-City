@@ -15,6 +15,9 @@ var _in_main_menu: bool = true
 # текст при смене состояния (иначе список перерисовывается на горячей
 # клавише и кнопка теряется).
 var _food_toggle_btn: Button
+# Кнопка «Не учитывать требования технологий» — аналогично, хранится для
+# обновления текста (состояние ВКЛ/ВЫКЛ) без полной перерисовки меню.
+var _ignore_tech_btn: Button
 
 # Режим ожидания клика по гексу для размещения ресурса.
 var waiting_for_hex: bool = false
@@ -131,6 +134,12 @@ func _show_main_menu():
     add_food_btn.pressed.connect(_on_add_food_pressed)
     _content_vbox.add_child(add_food_btn)
 
+    # Переключение учёта требований технологий: включаем — изучение не
+    # проверяет ни prerequisites, ни ограничение по эпохам.
+    _ignore_tech_btn = _make_button(_ignore_tech_label())
+    _ignore_tech_btn.pressed.connect(_on_toggle_ignore_tech_requirements_pressed)
+    _content_vbox.add_child(_ignore_tech_btn)
+
     # Заглушка для будущих действий (можно расширять)
     var close_btn = _make_button("[0] Закрыть (F9)")
     close_btn.pressed.connect(toggle)
@@ -190,8 +199,33 @@ func trigger_hotkey(num: int):
             _on_toggle_food_consumption_pressed()
         5:
             _on_add_food_pressed()
+        6:
+            _on_toggle_ignore_tech_requirements_pressed()
         0:
             close()
+
+func _on_toggle_ignore_tech_requirements_pressed():
+    # Инвертируем дебаг-флаг CityData.ignore_tech_requirements: он снимает
+    # проверку prerequisites И ограничение по эпохам. Флаг не сохраняется в
+    # сейв (см. CityData). Включённый режим требует доступности пересчитанных
+    # кнопок дерева, поэтому эмитим city_updated для обновления UI.
+    CityData.ignore_tech_requirements = not CityData.ignore_tech_requirements
+
+    var msg := "Требования технологий учтены: снова учитываются prerequisites и эпохи."
+    if CityData.ignore_tech_requirements:
+        msg = "Требования технологий игнорируются: все prerequisites и ограничения по эпохам сняты."
+    if main_map.hud and main_map.hud.has_method("show_message"):
+        main_map.hud.show_message(msg)
+
+    if _ignore_tech_btn:
+        _ignore_tech_btn.text = _ignore_tech_label()
+    CityData.emit_signal("city_updated")
+
+func _ignore_tech_label() -> String:
+    var state := "ВЫКЛЮЧЕНО"
+    if CityData.ignore_tech_requirements:
+        state = "ВКЛЮЧЕНО"
+    return "[6] Не учитывать требования технологий (сейчас: %s)" % state
 
 func _on_add_food_pressed():
     # Добавляем 100 единиц еды на склад (пшеница — продукт категории food,
