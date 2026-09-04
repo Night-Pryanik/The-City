@@ -363,6 +363,28 @@ func hide_building_detail_tooltip():
     if detail_tooltip_panel:
         detail_tooltip_panel.hide()
 
+# Создаёт строку тултипа «буллет + текст». Используется в show_flow_tooltip
+# и по тому же паттерну, что _make_bullet_row в buildings_tab.gd (блоки
+# «Стоимость» и «Доступные рецепты» в тултипе здания).
+# text_color — цвет текста строки; буллет рисуется светло-серым, чтобы
+# выделялся на фоне цветного текста (как в тултипе здания).
+func _make_bullet_row(symbol: String, text: String, text_color: Color) -> HBoxContainer:
+    var row = HBoxContainer.new()
+    row.add_theme_constant_override("separation", 3)
+    row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    var bullet = Label.new()
+    bullet.text = symbol
+    bullet.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+    bullet.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    row.add_child(bullet)
+    var label = Label.new()
+    label.text = text
+    label.add_theme_font_size_override("font_size", 14)
+    label.add_theme_color_override("font_color", text_color)
+    label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    row.add_child(label)
+    return row
+
 # Показывает тултип «источники прихода/расхода» ресурса (вкладка «Ресурсы»).
 # prod_sources / cons_sources: { источник -> { count, amount } }.
 # Строки сортируются по убыванию вклада; «хN» показывается при count > 1.
@@ -401,12 +423,8 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dict
             var mult = ""
             if int(row.count) > 1:
                 mult = " х%d" % int(row.count)
-            var line_label = Label.new()
-            line_label.text = "  %s%s: +%d" % [row.name, mult, int(row.amount)]
-            line_label.add_theme_font_size_override("font_size", 14)
-            line_label.add_theme_color_override("font_color", Color(0.3, 0.85, 0.3))
-            line_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-            flow_tooltip_vbox.add_child(line_label)
+            var line_text = "%s%s: +%d" % [row.name, mult, int(row.amount)]
+            flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, Color(0.3, 0.85, 0.3)))
     if not cons_lines.is_empty():
         var cons_title = Label.new()
         cons_title.text = "Потребление:"
@@ -418,12 +436,8 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dict
             var mult = ""
             if int(row.count) > 1:
                 mult = " х%d" % int(row.count)
-            var line_label = Label.new()
-            line_label.text = "  %s%s: -%d" % [row.name, mult, int(row.amount)]
-            line_label.add_theme_font_size_override("font_size", 14)
-            line_label.add_theme_color_override("font_color", Color(0.9, 0.3, 0.3))
-            line_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-            flow_tooltip_vbox.add_child(line_label)
+            var line_text = "%s%s: -%d" % [row.name, mult, int(row.amount)]
+            flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, Color(0.9, 0.3, 0.3)))
     flow_tooltip_vbox.reset_size()
     var content_size = flow_tooltip_vbox.get_minimum_size()
     flow_tooltip_panel.size = content_size + Vector2(12, 12)
