@@ -15,11 +15,11 @@ extends Control
 # --- Размеры ---
 const COL_GAP: int = 80 # горизонтальный зазор между колонками
 const COL_PADDING: int = 24 # отступ от края _inner
-const BUTTON_WIDTH: int = 200 # фиксированная ширина кнопки
-const BUTTON_HEIGHT: int = 60 # фиксированная высота кнопки
+const BUTTON_WIDTH: int = 220 # фиксированная ширина кнопки
+const BUTTON_HEIGHT: int = 75 # фиксированная высота кнопки
 const BUTTON_VERTICAL_GAP: int = 16 # вертикальный зазор между кнопками в колонке
-const ICON_SIZE: int = 50 # размер иконки технологии
-const UNLOCK_ICON_SIZE: int = 32 # размер иконки открываемого контента на кнопке технологии
+const ICON_SIZE: int = 65 # размер иконки технологии
+const UNLOCK_ICON_SIZE: int = 40 # размер иконки открываемого контента на кнопке технологии
 const UNLOCK_ICONS_MARGIN: int = 3 # расстояние от иконок до границ кнопки
 
 # --- Разделение по эпохам ---
@@ -710,7 +710,7 @@ func _add_unlock_icons(btn: Button, tech_id: String):
     row.anchor_bottom = 1.0
     row.offset_top = - (UNLOCK_ICON_SIZE + UNLOCK_ICONS_MARGIN)
     row.offset_bottom = - UNLOCK_ICONS_MARGIN
-    row.offset_left = 8
+    row.offset_left = 22
     row.offset_right = -8
     row.add_theme_constant_override("separation", 4)
     row.alignment = BoxContainer.ALIGNMENT_BEGIN
