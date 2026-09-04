@@ -1,5 +1,25 @@
 class_name MapHelpers
 
+## Возвращает общий множитель стоимости строительства от изученных технологий.
+## Читает data/modifiers.json, блок "tech_modifiers", target = "construction_cost"
+## (например, «Математика» снижает стоимость строительства на 10%).
+## Значение value интерпретируется как процент: -10 → множитель 0.9.
+## Множители от разных технологий перемножаются.
+static func get_construction_cost_mult() -> float:
+    var construction_tech_mult := 1.0
+    for tm in GameData.modifiers.get("tech_modifiers", []):
+        var tech_id = tm.get("tech_id", "")
+        if tech_id == "" or not CityData.is_tech_unlocked(tech_id):
+            continue
+        for mod in tm.get("modifiers", []):
+            if mod.get("target", "") != "construction_cost":
+                continue
+            if mod.get("type", "percent") != "percent":
+                continue
+            var value = float(mod.get("value", 0))
+            construction_tech_mult *= 1.0 + value / 100.0
+    return construction_tech_mult
+
 ## Возвращает фактическую стоимость труда для постройки улучшения imp_id на гексе (row, col).
 ## Стоимость зависит от базового work_cost улучшения, типа местности (move_cost) и
 ## расстояния от города. Возвращает словарь с итоговой стоимостью и деталями расчёта
@@ -60,7 +80,7 @@ static func get_improvement_work_cost(
     var distance_mult_base := 1.0 + float(distance) * 0.25
     var distance_mult := 1.0 + float(distance) * 0.25 * distance_tech_mult
 
-    var final_cost := int(ceil(base_cost * terrain_mult * distance_mult))
+    var final_cost := int(ceil(base_cost * terrain_mult * distance_mult * get_construction_cost_mult()))
 
     return {
         "cost": final_cost,
@@ -72,7 +92,8 @@ static func get_improvement_work_cost(
         "distance": distance,
         "distance_mult_base": distance_mult_base,
         "distance_tech_mult": distance_tech_mult,
-        "distance_mult": distance_mult
+        "distance_mult": distance_mult,
+        "construction_tech_mult": get_construction_cost_mult()
     }
 
 ## --- Лесная делянка (lumberjack_hut) ---

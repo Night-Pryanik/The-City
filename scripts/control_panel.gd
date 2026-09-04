@@ -1091,6 +1091,15 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     dist_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
     _preview_container.add_child(dist_label)
 
+    var const_label = Label.new()
+    if cost_data.has("construction_tech_mult") and cost_data["construction_tech_mult"] != 1.0:
+        const_label.text = " Технологии строительства: ×%.2f" % cost_data["construction_tech_mult"]
+    else:
+        const_label.text = " Технологии строительства: ×1.00"
+    const_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    const_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
+    _preview_container.add_child(const_label)
+
     var total_label = Label.new()
     total_label.text = " Итого: %d труда" % cost_data["cost"]
     total_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

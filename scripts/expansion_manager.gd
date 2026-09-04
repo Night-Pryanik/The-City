@@ -37,7 +37,9 @@ func get_hex_cost(row: int, col: int) -> int:
     var base_cost = 2
     if GameData.terrains.has(terrain_id):
         base_cost = GameData.terrains[terrain_id].get("expansion_cost", 2)
-    return int(base_cost)
+    # Модификаторы технологий (target = "construction_cost", см. data/modifiers.json)
+    # также снижают стоимость освоения территории (труд накапливается через стройку).
+    return int(ceil(float(base_cost) * MapHelpers.get_construction_cost_mult()))
 
 # Возвращает чанк (список гексов), который включает стартовый гекс.
 # Чанк однороден по статусу исследования: если стартовый гекс не исследован,

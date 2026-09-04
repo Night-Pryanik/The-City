@@ -15,6 +15,12 @@
         "modifiers": [ { "target": "improvement_distance_cost", "type": "percent", "value": -30 } ]
       },
       {
+        "tech_id": "mathematics",
+        "icon": "time_bonus.png",
+        "name": "Строительство: -10% к затратам труда",
+        "modifiers": [ { "target": "construction_cost", "type": "percent", "value": -10 } ]
+      },
+      {
         "tech_id": "irrigation",
         "icon": "water_chain.png",
         "name": "Передача пресной воды по цепочке (до 3 гексов)",

@@ -552,9 +552,11 @@ func _show_building_details(bdata: Dictionary):
     var has_costs := false
     var work_cost = bdata.get("work_cost", 0)
     if work_cost > 0:
+        # Стоимость с учётом модификаторов технологий (target = "construction_cost").
+        var actual_work_cost = int(ceil(float(work_cost) * MapHelpers.get_construction_cost_mult()))
         var labor = CityData.get_total_labor()
-        var build_time = work_cost / max(1.0, labor)
-        content.add_child(_make_bullet_row("•", "Труд: %d (%.0f сек)" % [int(work_cost), build_time]))
+        var build_time = actual_work_cost / max(1.0, labor)
+        content.add_child(_make_bullet_row("•", "Труд: %d (%.0f сек)" % [actual_work_cost, build_time]))
         has_costs = true
 
     if bdata.has("additional_cost"):
@@ -641,9 +643,10 @@ func _on_build_pressed():
     
     # Если это здание с стоимостью в труде - показываем сообщение о начале стройки
     if work_cost > 0 and ui_helpers:
+        var actual_work_cost = int(ceil(float(work_cost) * MapHelpers.get_construction_cost_mult()))
         var labor = CityData.get_total_labor()
-        var build_time = work_cost / max(1.0, labor)
-        ui_helpers.set_message("Начато строительство %s (%.0f труда, %.0f сек)" % [bdata.get("name", selected_building_id), work_cost, build_time])
+        var build_time = actual_work_cost / max(1.0, labor)
+        ui_helpers.set_message("Начато строительство %s (%.0f труда, %.0f сек)" % [bdata.get("name", selected_building_id), actual_work_cost, build_time])
 
 # Очищает список рецептов
 func _has_active_building_construction() -> bool:

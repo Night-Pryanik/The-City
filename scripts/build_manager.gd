@@ -191,6 +191,11 @@ func start_building_build(building_id: String) -> String:
             building_name = b.get("name", building_id)
             break
 
+    # Модификаторы технологий (target = "construction_cost", см. data/modifiers.json)
+    # снижают стоимость стройки зданий так же, как и улучшений.
+    if work_cost > 0:
+        work_cost = int(ceil(float(work_cost) * MapHelpers.get_construction_cost_mult()))
+
     if work_cost <= 0:
         emit_signal("build_building_completed", building_id, "")
         return ""
