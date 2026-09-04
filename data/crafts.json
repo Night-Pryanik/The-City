@@ -15,7 +15,7 @@
       "produced_in": [ "hand_mill" ],
       "resources": { "@millable_grains": 1 },
       "result": { "flour": 1 },
-      "time": 5
+      "time": 10
     },
     {
       "id": "grind_grain",
@@ -29,8 +29,8 @@
       "id": "grind_grain_animal",
       "name": "Помол зерна с помощью тягловых животных",
       "produced_in": [ "animal_mill" ],
-      "resources": { "@millable_grains": 1 },
-      "result": { "flour": 2 },
+      "resources": { "@millable_grains": 1, "feed": 1 },
+      "result": { "flour": 1 },
       "time": 5
     },
     {
