@@ -72,7 +72,7 @@ func setup(main_ui: Control, message_lbl: Label):
     group_tooltip_panel = Panel.new()
     group_tooltip_panel.visible = false
     group_tooltip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    group_tooltip_panel.z_index = 1000 # Поверх всех остальных элементов
+    group_tooltip_panel.z_index = 1100 # Поверх тултипа деталей здания
     main_ui.add_child(group_tooltip_panel)
 
     group_tooltip_content = VBoxContainer.new()
@@ -126,7 +126,7 @@ func setup(main_ui: Control, message_lbl: Label):
     # Тултип деталей выбранного здания (вкладка «Здания»).
     detail_tooltip_panel = Panel.new()
     detail_tooltip_panel.visible = false
-    detail_tooltip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    detail_tooltip_panel.mouse_filter = Control.MOUSE_FILTER_STOP
     detail_tooltip_panel.z_index = 1000
     main_ui.add_child(detail_tooltip_panel)
 
@@ -208,13 +208,23 @@ func show_group_tooltip(mouse_pos: Vector2, group_key: String, products_data: Di
         
         group_tooltip_content.add_child(row)
     
-    # Позиционируем и показываем
-    group_tooltip_panel.position = mouse_pos + Vector2(15, 15)
-    group_tooltip_panel.show()
     # Явно пересчитываем размер панели под содержимое
     group_tooltip_content.reset_size()
     var content_min_size = group_tooltip_content.get_minimum_size()
     group_tooltip_panel.size = content_min_size + Vector2(12, 12)
+
+    # Позиционируем тултип рядом с курсором и переносим его внутрь экрана,
+    # если курсор находится близко к правому или нижнему краю.
+    var viewport_size = get_viewport().get_visible_rect().size
+    var pos = mouse_pos + Vector2(15, 15)
+    if pos.x + group_tooltip_panel.size.x > viewport_size.x:
+        pos.x = mouse_pos.x - group_tooltip_panel.size.x - 15
+    if pos.y + group_tooltip_panel.size.y > viewport_size.y:
+        pos.y = mouse_pos.y - group_tooltip_panel.size.y - 15
+    pos.x = max(0, min(pos.x, viewport_size.x - group_tooltip_panel.size.x))
+    pos.y = max(0, min(pos.y, viewport_size.y - group_tooltip_panel.size.y))
+    group_tooltip_panel.position = pos
+    group_tooltip_panel.show()
 
 func hide_group_tooltip():
     group_tooltip_panel.hide()

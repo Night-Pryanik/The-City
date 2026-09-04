@@ -37,7 +37,10 @@ var _cached_research_id: String = ""
 var food_hover_timer: float = 0.0
 var build_hover_timer: float = 0.0
 var building_detail_hover_timer: float = 0.0
+var building_detail_leave_timer: float = 0.0
+var building_detail_locked: bool = false
 const TOOLTIP_DELAY: float = 0.5
+const BUILDING_DETAIL_LEAVE_GRACE: float = 0.35
 
 signal build_requested(building_id: String)
 signal research_requested(tech_id: String)
@@ -381,16 +384,31 @@ func _process(delta):
     # Тултип деталей здания (вкладка «Здания»): показываем при наведении
     # на любую кнопку здания; содержимое собирается в buildings_tab.
     var hovered_detail = false
+    var hovered_detail_button = false
     if buildings_panel.visible and buildings_tab.has_method("get_hovered_button"):
         var hov_btn = buildings_tab.get_hovered_button()
         if hov_btn and hov_btn.get_global_rect().has_point(mouse_pos):
             hovered_detail = true
+            hovered_detail_button = true
+    if ui_helpers.detail_tooltip_panel.visible \
+            and ui_helpers.detail_tooltip_panel.get_global_rect().has_point(mouse_pos):
+        hovered_detail = true
     if hovered_detail:
-        building_detail_hover_timer += delta
-        if building_detail_hover_timer >= TOOLTIP_DELAY:
+        building_detail_leave_timer = 0.0
+        if hovered_detail_button and not building_detail_locked:
+            building_detail_hover_timer += delta
+        if hovered_detail_button and not building_detail_locked \
+                and building_detail_hover_timer >= TOOLTIP_DELAY:
             ui_helpers.show_building_detail_tooltip(mouse_pos)
+            building_detail_locked = true
     else:
+        if building_detail_locked:
+            building_detail_leave_timer += delta
+            if building_detail_leave_timer < BUILDING_DETAIL_LEAVE_GRACE:
+                return
         building_detail_hover_timer = 0.0
+        building_detail_leave_timer = 0.0
+        building_detail_locked = false
         ui_helpers.hide_building_detail_tooltip()
 
 func set_message(text: String):
