@@ -247,6 +247,8 @@ func tick_consumption(row: int, col: int, delta: float) -> float:
     # ресурса спишем сразу, не дожидаясь полного интервала).
     if timer.elapsed >= min_interval:
         if can_consume:
+            # Имя профессии — источник расхода в тултипе ресурсов («Рыбак» и т.п.).
+            var prof_source = GameData.professions.get(prof, {}).get("name", prof)
             for entry in cons_list:
                 var amt = int(entry.get("amount", 0))
                 if amt <= 0:
@@ -264,12 +266,14 @@ func tick_consumption(row: int, col: int, delta: float) -> float:
                             continue
                         var take = min(avail, remaining)
                         CityData.remove_from_storage(pid, take, "best")
+                        CityData.record_consumption_source(pid, prof_source, take)
                         remaining -= take
                 else:
                     var pid = str(entry.get("product_id", ""))
                     if pid == "":
                         continue
                     CityData.remove_from_storage(pid, amt, "best")
+                    CityData.record_consumption_source(pid, prof_source, amt)
             timer.elapsed = 0.0
         # else: таймер остаётся как есть, на следующем тике проверим снова
 
@@ -318,6 +322,7 @@ func load_consumption_timers(timers: Array):
 # CityData.PRODUCTION_INTERVAL (та же точность, что у по-гексового потребления).
 func tick_city_consumption(delta: float) -> void:
     var cons_list = GameData.get_profession_consumption("all")
+    var all_source = GameData.professions.get("all", {}).get("name", "all")
     if cons_list.is_empty():
         return
     for entry in cons_list:
@@ -359,6 +364,7 @@ func tick_city_consumption(delta: float) -> void:
                     continue
                 var take = min(avail, remaining)
                 CityData.remove_from_storage(pid, take, "best")
+                CityData.record_consumption_source(pid, all_source, take)
                 remaining -= take
         else:
             var pid = str(entry.get("product_id", ""))
@@ -367,6 +373,7 @@ func tick_city_consumption(delta: float) -> void:
             if CityData.get_storage_amount(pid) < amt:
                 continue
             CityData.remove_from_storage(pid, amt, "best")
+            CityData.record_consumption_source(pid, all_source, amt)
         timer.elapsed = 0.0
 
 # Сериализация таймеров городского потребления для сохранения.

@@ -9,6 +9,13 @@ var city_storage: Dictionary = {}
 var city_quality_detail: Dictionary = {}
 var production_rates: Dictionary = {}
 var consumption_rates: Dictionary = {}
+# Детализация прихода/расхода по источникам ЗА ТИК (для тултипа на вкладке
+# «Ресурсы»): product_id -> { "Имя источника": { "count": N, "amount": M } }.
+#   count  — сколько однотипных источников дали вклад за тик (даёт «Ферма х10»);
+#   amount — суммарный вклад этих источников (число после знака +/-).
+# Очищаются вместе со счётчиками в reset_counters().
+var production_sources: Dictionary = {}
+var consumption_sources: Dictionary = {}
 var city_food_pool: Dictionary = {}
 var city_built_buildings: Array = []
 var domesticated_animals: Array = []
@@ -123,6 +130,8 @@ func setup():
     city_quality_detail.clear()
     production_rates.clear()
     consumption_rates.clear()
+    production_sources.clear()
+    consumption_sources.clear()
     city_food_pool.clear()
     city_built_buildings.clear()
     building_construction.clear()
@@ -158,9 +167,48 @@ func setup():
         city_quality_detail["meat"]["common"] = city_quality_detail["meat"].get("common", 0) + 10
 
 func reset_counters():
-    for pid in production_rates.keys():
-        production_rates[pid] = 0
-        consumption_rates[pid] = 0
+    production_rates.clear()
+    consumption_rates.clear()
+    production_sources.clear()
+    consumption_sources.clear()
+
+# --- ЗАПИСЬ ИСТОЧНИКОВ ПРИХОДА/РАСХОДА (для тултипа вкладки «Ресурсы») ---
+# Обобщённый накопитель: добавляет amount от источника source_name к словарю
+# sources (product_id -> { source_name -> { count, amount } }). Если такой же
+# источник уже записан — увеличивает и count (число однотипных источников),
+# и amount (суммарный вклад). Так несколько ферм за один тик показываются как
+# «Ферма х10: +10».
+func _record_source(sources: Dictionary, pid: String, source_name: String, amount: int):
+    if amount <= 0:
+        return
+    if not sources.has(pid):
+        sources[pid] = {}
+    var by_source: Dictionary = sources[pid]
+    if not by_source.has(source_name):
+        by_source[source_name] = { "count": 0, "amount": 0 }
+    var entry: Dictionary = by_source[source_name]
+    entry["count"] = int(entry.get("count", 0)) + 1
+    entry["amount"] = int(entry.get("amount", 0)) + amount
+
+# Публичный хелпер записи источника ПРОИЗВОДСТВА (используется и из
+# worker_manager.gd при профессиональном потреблении).
+func record_production_source(pid: String, source_name: String, amount: int):
+    production_rates[pid] = production_rates.get(pid, 0) + amount
+    _record_source(production_sources, pid, source_name, amount)
+
+# Публичный хелпер записи источника ПОТРЕБЛЕНИЯ (используется и из
+# worker_manager.gd при профессиональном потреблении).
+func record_consumption_source(pid: String, source_name: String, amount: int):
+    consumption_rates[pid] = consumption_rates.get(pid, 0) + amount
+    _record_source(consumption_sources, pid, source_name, amount)
+
+# Возвращает человекочитаемое имя здания по его id (или сам id, если здание
+# не найдено в реестре).
+func _get_building_name(building_id: String) -> String:
+    for b in GameData.buildings:
+        if b.get("id", "") == building_id:
+            return b.get("name", building_id)
+    return building_id
 
 # --- ХЕЛПЕРЫ ДЛЯ РАБОТЫ С КАЧЕСТВОМ РЕСУРСОВ ---
 # city_storage хранит общее количество, city_quality_detail — разбивку по качеству.
@@ -272,7 +320,7 @@ func quality_from_breakdown(consumed: Dictionary) -> String:
             best_qid = qid
     return best_qid
 
-func add_raw_production(raw_id: String, multiplier: float = 1.0, quality: String = "common"):
+func add_raw_production(raw_id: String, multiplier: float = 1.0, quality: String = "common", source_name: String = ""):
     if Engine.is_editor_hint():
         return
     var raw = GameData.raw_resources.get(raw_id, {})
@@ -282,8 +330,16 @@ func add_raw_production(raw_id: String, multiplier: float = 1.0, quality: String
             # Проверяем, доступен ли этот продукт (по технологии)
             if not _is_product_available(pid):
                 continue
-            if city_storage.has(pid):
-                add_to_storage(pid, amount, quality)
+            if amount <= 0:
+                continue
+            # Всегда добавляем в storage и записываем источник (раньше в первом
+            # тике, когда продукта ещё не было в city_storage, источник
+            # вообще не записывался — это и был баг «тултип пустой на новом
+            # производстве»).
+            add_to_storage(pid, amount, quality)
+            if source_name != "":
+                record_production_source(pid, source_name, amount)
+            else:
                 production_rates[pid] += amount
 
 func do_tick():
@@ -299,6 +355,9 @@ func do_tick():
         var slots = bld.get("slots", [])
         if slots.is_empty():
             continue
+        # Имя здания — общий источник для прихода и расхода его рецептов
+        # (показывает «Ручная мельница», «Дом варщика» в тултипе ресурсов).
+        var building_source = _get_building_name(bld.get("id", ""))
 
         # Проверяем, есть ли горожанин на этом здании
         var has_worker = false
@@ -373,7 +432,7 @@ func do_tick():
             var consumed_all = {} # объединённая разбивка потреблённого сырья по качеству
             for prod in resources_to_consume:
                 var consumed = remove_from_storage(prod, resources_to_consume[prod], priority)
-                consumption_rates[prod] = consumption_rates.get(prod, 0) + resources_to_consume[prod]
+                record_consumption_source(prod, building_source, resources_to_consume[prod])
                 # Суммируем разбивки потреблённого по всем ресурсам рецепта,
                 # чтобы вычислить итоговое качество результата как взвешенное среднее.
                 for qid in consumed:
@@ -385,7 +444,7 @@ func do_tick():
             for res in recipe["result"]:
                 var amount = recipe["result"][res]
                 add_to_storage(res, amount, result_quality)
-                production_rates[res] = production_rates.get(res, 0) + amount
+                record_production_source(res, building_source, amount)
 
     # --- Потребление еды населением ---
     # Еда потребляется без учёта качества (качество — визуальная механика),
@@ -402,7 +461,7 @@ func do_tick():
                 var available = city_storage[pid]
                 var to_take = min(available, food_needed - food_eaten)
                 remove_from_storage(pid, to_take, "best")
-                consumption_rates[pid] += to_take
+                record_consumption_source(pid, "Питание населения", to_take)
                 food_eaten += to_take
                 if food_eaten >= food_needed:
                     break

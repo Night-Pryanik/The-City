@@ -8,6 +8,8 @@ var city_storage: Dictionary = {}
 var city_quality_detail: Dictionary = {}
 var production_rates: Dictionary = {}
 var consumption_rates: Dictionary = {}
+var production_sources: Dictionary = {}
+var consumption_sources: Dictionary = {}
 var city_food_pool: Dictionary = {}
 var food_toggles: Dictionary = {}
 var amount_labels: Dictionary = {}
@@ -15,6 +17,7 @@ var prod_labels: Dictionary = {}
 var cons_labels: Dictionary = {}
 var quality_labels: Dictionary = {}
 var displayed_products: Dictionary = {}
+var row_flow_labels: Dictionary = {}
 var diversity_label: Label = null
 var icon_textures: Dictionary = {}
 var icon_paths: Dictionary = {}
@@ -22,6 +25,9 @@ var icon_paths: Dictionary = {}
 # Активный тултип качества (продукт, имя) — для обновления в реальном времени.
 var active_quality_product: String = ""
 var active_quality_name: String = ""
+# Активный тултип источников прихода/расхода (продукт, имя) — для обновления в реальном времени.
+var active_flow_product: String = ""
+var active_flow_name: String = ""
 
 var resources_list: Node
 
@@ -37,6 +43,8 @@ func update_data(data: Dictionary):
     city_quality_detail = data.get("city_quality_detail", {})
     production_rates = data.get("production_rates", {})
     consumption_rates = data.get("consumption_rates", {})
+    production_sources = data.get("production_sources", {})
+    consumption_sources = data.get("consumption_sources", {})
     city_food_pool = data.get("city_food_pool", {})
 
 func _get_subgroup_name(subgroup_id: String) -> String:
@@ -95,6 +103,11 @@ func refresh():
     quality_labels.clear()
     displayed_products.clear()
     diversity_label = null
+    row_flow_labels.clear()
+    active_flow_product = ""
+    active_flow_name = ""
+    if ui_helpers and is_instance_valid(ui_helpers):
+        ui_helpers.hide_flow_tooltip()
 
     # --- Одомашненные животные по подгруппам ---
     if CityData.domesticated_animals.size() > 0:
@@ -261,6 +274,10 @@ func refresh():
             var name_label = Label.new()
             name_label.text = "%s: %d  " % [product_name, amount]
             name_label.add_theme_color_override("font_color", Color.WHITE)
+            # Явный MOUSE_FILTER_PASS — иначе Label по умолчанию STOP, и при
+            # перетаскивании/прокрутке родительского контейнера события мыши
+            # могут «проглатываться» строкой, и mouse_entered не сработает.
+            name_label.mouse_filter = Control.MOUSE_FILTER_PASS
             row.add_child(name_label)
             amount_labels[prod_id] = name_label
 
@@ -271,19 +288,29 @@ func refresh():
             var green_label = Label.new()
             green_label.text = "[+%d" % prod_val
             green_label.add_theme_color_override("font_color", Color.GREEN)
+            green_label.mouse_filter = Control.MOUSE_FILTER_PASS
             row.add_child(green_label)
             prod_labels[prod_id] = green_label
 
             var slash_label = Label.new()
             slash_label.text = " / "
             slash_label.add_theme_color_override("font_color", Color.WHITE)
+            slash_label.mouse_filter = Control.MOUSE_FILTER_PASS
             row.add_child(slash_label)
 
             var red_label = Label.new()
             red_label.text = "-%d]" % cons_val
             red_label.add_theme_color_override("font_color", Color.RED)
+            red_label.mouse_filter = Control.MOUSE_FILTER_PASS
             row.add_child(red_label)
             cons_labels[prod_id] = red_label
+            # Ховер на названии или динамике показывает тултип источников
+            var flow_row_labels_arr: Array = []
+            for flow_lbl in [name_label, green_label, slash_label, red_label]:
+                flow_lbl.mouse_entered.connect(_on_flow_hover.bind(prod_id, product_name))
+                flow_lbl.mouse_exited.connect(_on_flow_exit.bind(prod_id))
+                flow_row_labels_arr.append(flow_lbl)
+            row_flow_labels[prod_id] = flow_row_labels_arr
 
             # Разбивка по качеству для этого продукта
             _add_quality_label(row, prod_id, product_name)
@@ -384,6 +411,23 @@ func update_values():
                     fresh_detail
                 )
 
+    # Обновляем открытый тултип источников прихода/расхода свежими данными.
+    # Данные берутся за последний завершённый тик (словари сбрасываются в
+    # reset_counters() и наполняются заново при следующем тике).
+    if active_flow_product != "" and ui_helpers and is_instance_valid(ui_helpers):
+        if ui_helpers.flow_tooltip_panel.visible:
+            var fresh_prod_src = production_sources.get(active_flow_product, {})
+            var fresh_cons_src = consumption_sources.get(active_flow_product, {})
+            if fresh_prod_src.is_empty() and fresh_cons_src.is_empty():
+                ui_helpers.hide_flow_tooltip()
+            else:
+                ui_helpers.show_flow_tooltip(
+                    get_viewport().get_mouse_position(),
+                    active_flow_name,
+                    fresh_prod_src,
+                    fresh_cons_src
+                )
+
 # Добавляет метку с разбивкой по качеству в строку ресурса.
 # Только если для продукта есть данные о качестве (city_quality_detail).
 func _add_quality_label(row: HBoxContainer, prod_id: String, product_name: String):
@@ -444,6 +488,29 @@ func _on_quality_exit():
     active_quality_name = ""
     if ui_helpers and is_instance_valid(ui_helpers):
         ui_helpers.hide_quality_tooltip()
+
+# Показывает тултип источников прихода/расхода (название или динамика ресурса).
+func _on_flow_hover(prod_id: String, product_name: String):
+    var prod_src = production_sources.get(prod_id, {})
+    var cons_src = consumption_sources.get(prod_id, {})
+    if prod_src.is_empty() and cons_src.is_empty():
+        return
+    active_flow_product = prod_id
+    active_flow_name = product_name
+    if ui_helpers and is_instance_valid(ui_helpers):
+        ui_helpers.show_flow_tooltip(get_viewport().get_mouse_position(), product_name, prod_src, cons_src)
+
+# Скрывает тултип источников; при переходе на другую метку той же строки не мерцает.
+func _on_flow_exit(prod_id: String):
+    var mouse_pos = get_viewport().get_mouse_position()
+    var labels: Array = row_flow_labels.get(prod_id, [])
+    for lbl in labels:
+        if is_instance_valid(lbl) and lbl.get_global_rect().has_point(mouse_pos):
+            return
+    active_flow_product = ""
+    active_flow_name = ""
+    if ui_helpers and is_instance_valid(ui_helpers):
+        ui_helpers.hide_flow_tooltip()
 
 func _on_food_toggle_input(event, prod_id, toggle):
     if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:

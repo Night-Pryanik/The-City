@@ -22,6 +22,10 @@ var quality_tooltip_vbox: VBoxContainer
 var detail_tooltip_panel: Panel
 var detail_tooltip_content: VBoxContainer
 
+# Тултип «Источники прихода/расхода» на вкладке «Ресурсы»
+var flow_tooltip_panel: Panel
+var flow_tooltip_vbox: VBoxContainer
+
 var message_label: Label
 # Общий стиль фона для всех тултипов: полностью непрозрачный тёмный фон
 # со светлой рамкой в 1px.
@@ -106,6 +110,19 @@ func setup(main_ui: Control, message_lbl: Label):
 
     quality_tooltip_panel.add_theme_stylebox_override("panel", _make_tooltip_style())
 
+    # Тултип «Источники прихода/расхода ресурса» (вкладка «Ресурсы»)
+    flow_tooltip_panel = Panel.new()
+    flow_tooltip_panel.visible = false
+    flow_tooltip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    flow_tooltip_panel.z_index = 1000
+    main_ui.add_child(flow_tooltip_panel)
+
+    flow_tooltip_vbox = VBoxContainer.new()
+    flow_tooltip_vbox.add_theme_constant_override("separation", 4)
+    flow_tooltip_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    flow_tooltip_panel.add_child(flow_tooltip_vbox)
+
+    flow_tooltip_panel.add_theme_stylebox_override("panel", _make_tooltip_style())
     # Тултип деталей выбранного здания (вкладка «Здания»).
     detail_tooltip_panel = Panel.new()
     detail_tooltip_panel.visible = false
@@ -345,6 +362,83 @@ func show_building_detail_tooltip(mouse_pos: Vector2):
 func hide_building_detail_tooltip():
     if detail_tooltip_panel:
         detail_tooltip_panel.hide()
+
+# Показывает тултип «источники прихода/расхода» ресурса (вкладка «Ресурсы»).
+# prod_sources / cons_sources: { источник -> { count, amount } }.
+# Строки сортируются по убыванию вклада; «хN» показывается при count > 1.
+func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dictionary, cons_sources: Dictionary):
+    if flow_tooltip_panel == null:
+        return
+    # Очищаем предыдущее содержимое.
+    for child in flow_tooltip_vbox.get_children():
+        flow_tooltip_vbox.remove_child(child)
+        child.queue_free()
+    var prod_lines: Array = []
+    for src in prod_sources:
+        prod_lines.append({"name": src, "amount": int(prod_sources[src].get("amount", 0)), "count": int(prod_sources[src].get("count", 1))})
+    prod_lines.sort_custom(func(a, b): return a.amount > b.amount)
+    var cons_lines: Array = []
+    for src in cons_sources:
+        cons_lines.append({"name": src, "amount": int(cons_sources[src].get("amount", 0)), "count": int(cons_sources[src].get("count", 1))})
+    cons_lines.sort_custom(func(a, b): return a.amount > b.amount)
+    if prod_lines.is_empty() and cons_lines.is_empty():
+        flow_tooltip_panel.hide()
+        return
+    var header = Label.new()
+    header.text = prod_name
+    header.add_theme_font_size_override("font_size", 15)
+    header.add_theme_color_override("font_color", Color.WHITE)
+    header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    flow_tooltip_vbox.add_child(header)
+    if not prod_lines.is_empty():
+        var prod_title = Label.new()
+        prod_title.text = "Производство:"
+        prod_title.add_theme_font_size_override("font_size", 14)
+        prod_title.add_theme_color_override("font_color", Color(0.6, 1.0, 0.6))
+        prod_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        flow_tooltip_vbox.add_child(prod_title)
+        for row in prod_lines:
+            var mult = ""
+            if int(row.count) > 1:
+                mult = " х%d" % int(row.count)
+            var line_label = Label.new()
+            line_label.text = "  %s%s: +%d" % [row.name, mult, int(row.amount)]
+            line_label.add_theme_font_size_override("font_size", 14)
+            line_label.add_theme_color_override("font_color", Color(0.3, 0.85, 0.3))
+            line_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+            flow_tooltip_vbox.add_child(line_label)
+    if not cons_lines.is_empty():
+        var cons_title = Label.new()
+        cons_title.text = "Потребление:"
+        cons_title.add_theme_font_size_override("font_size", 14)
+        cons_title.add_theme_color_override("font_color", Color(1.0, 0.6, 0.6))
+        cons_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        flow_tooltip_vbox.add_child(cons_title)
+        for row in cons_lines:
+            var mult = ""
+            if int(row.count) > 1:
+                mult = " х%d" % int(row.count)
+            var line_label = Label.new()
+            line_label.text = "  %s%s: -%d" % [row.name, mult, int(row.amount)]
+            line_label.add_theme_font_size_override("font_size", 14)
+            line_label.add_theme_color_override("font_color", Color(0.9, 0.3, 0.3))
+            line_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+            flow_tooltip_vbox.add_child(line_label)
+    flow_tooltip_vbox.reset_size()
+    var content_size = flow_tooltip_vbox.get_minimum_size()
+    flow_tooltip_panel.size = content_size + Vector2(12, 12)
+    var viewport_size = get_viewport().get_visible_rect().size
+    var pos = mouse_pos + Vector2(15, 15)
+    if pos.x + flow_tooltip_panel.size.x > viewport_size.x:
+        pos.x = mouse_pos.x - flow_tooltip_panel.size.x - 15
+    if pos.y + flow_tooltip_panel.size.y > viewport_size.y:
+        pos.y = mouse_pos.y - flow_tooltip_panel.size.y - 15
+    flow_tooltip_panel.position = pos
+    flow_tooltip_panel.show()
+
+func hide_flow_tooltip():
+    if flow_tooltip_panel:
+        flow_tooltip_panel.hide()
 
 func set_message(text: String):
     if message_label:

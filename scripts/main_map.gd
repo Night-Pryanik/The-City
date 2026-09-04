@@ -449,8 +449,11 @@ func _process(delta):
                             var lj_imp_mult: float = CityData.get_improvement_production_multiplier(
                                 "lumberjack_hut", _is_hex_irrigated(row, col),
                                 tile.get("terrain", ""), "lumberjack_hut")
-                            CityData.add_to_storage(
-                                "wood", int(ceil(wood_yield * lj_imp_mult * lj_consumption_mult)))
+                            var wood_amount = int(ceil(wood_yield * lj_imp_mult * lj_consumption_mult))
+                            CityData.add_to_storage("wood", wood_amount)
+                            CityData.record_production_source("wood",
+                                GameData.improvements.get("lumberjack_hut", {}).get("name", "Лесная делянка"),
+                                wood_amount)
                     continue
 
                 # Профессиональное потребление: улучшения, у которых через
@@ -491,15 +494,17 @@ func _process(delta):
 
                 # Качество ресурса на гексе передаётся в производство.
                 var tile_quality = tile.get("quality", "common")
+                # Имя улучшения — источник прихода в тултипе ресурсов («Ферма» и т.п.).
+                var improvement_source = GameData.improvements.get(tile.improvement, {}).get("name", tile.improvement)
                 if feed_needed > 0:
                     var available_feed = CityData.city_storage.get("feed", 0)
                     if available_feed >= feed_needed:
                         CityData.remove_from_storage("feed", feed_needed, "best")
-                        CityData.add_raw_production(eff_res, production_multiplier, tile_quality)
+                        CityData.add_raw_production(eff_res, production_multiplier, tile_quality, improvement_source)
                     else:
-                        CityData.add_raw_production(eff_res, 0.25, tile_quality)
+                        CityData.add_raw_production(eff_res, 0.25, tile_quality, improvement_source)
                 else:
-                    CityData.add_raw_production(eff_res, production_multiplier, tile_quality)
+                    CityData.add_raw_production(eff_res, production_multiplier, tile_quality, improvement_source)
 
         CityData.do_tick()
         # Городское потребление псевдо-профессии "all" (все жители города,

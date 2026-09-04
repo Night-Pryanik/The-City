@@ -127,7 +127,9 @@ func _update_data_cache():
         "city_storage": CityData.city_storage,
         "city_quality_detail": CityData.city_quality_detail,
         "production_rates": CityData.production_rates,
+        "production_sources": CityData.production_sources,
         "consumption_rates": CityData.consumption_rates,
+        "consumption_sources": CityData.consumption_sources,
         "city_food_pool": CityData.city_food_pool,
         "buildings_data": GameData.buildings,
         "crafts_data": GameData.crafts,
@@ -428,6 +430,7 @@ func _close_ui():
         ui_helpers.hide_progress_tooltip()
         ui_helpers.hide_quality_tooltip()
         ui_helpers.hide_building_detail_tooltip()
+        ui_helpers.hide_flow_tooltip()
     if building_panel:
         building_panel.hide()
     hide()
