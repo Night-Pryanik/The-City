@@ -179,6 +179,16 @@
       "description": "Варит медовый напиток из мёда"
     },
     {
+      "id": "sake",
+      "name": "Варка саке",
+      "produced_in": [ "brewer_house" ],
+      "resources": { "rice": 2 },
+      "result": { "sake": 1 },
+      "time": 5.0,
+      "unlock_tech": "brewing",
+      "description": "Варит саке из риса"
+    },
+    {
       "id": "processed_building_stone",
       "name": "Обработка строительного камня",
       "produced_in": [ "mason_workshop" ],

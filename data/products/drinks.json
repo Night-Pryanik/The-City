@@ -23,6 +23,14 @@
       "category": "drinks",
       "unlock_tech": "winemaking",
       "icon": "wine.png"
+    },
+    {
+      "id": "sake",
+      "name": "Саке",
+      "type": "product",
+      "category": "drinks",
+      "unlock_tech": "brewing",
+      "icon": "sake.png"
     }
   ]
 }
