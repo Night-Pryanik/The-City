@@ -191,6 +191,11 @@ func start_building_build(building_id: String) -> String:
             building_name = b.get("name", building_id)
             break
 
+    var additional_req_check = CityData.check_building_additional_req(building_id)
+    if not additional_req_check["ok"]:
+        emit_signal("build_message", additional_req_check["reason"])
+        return ""
+
     # Модификаторы технологий (target = "construction_cost", см. data/modifiers.json)
     # снижают стоимость стройки зданий так же, как и улучшений.
     if work_cost > 0:

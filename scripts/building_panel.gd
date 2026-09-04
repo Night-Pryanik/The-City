@@ -464,6 +464,13 @@ func _refresh_costs(bdata):
                 and_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
                 costs_container.add_child(and_label)
 
+    var additional_req = String(bdata.get("additional_req", ""))
+    if additional_req != "":
+        var requirement_label = Label.new()
+        requirement_label.text = "Условие: доступ города к пресной воде" if additional_req == "running_water" else "Условие: " + additional_req
+        costs_container.add_child(requirement_label)
+        has_costs = true
+
     costs_label.visible = has_costs
 
 func _setup_assignments_listener():

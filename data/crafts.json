@@ -34,6 +34,14 @@
       "time": 5
     },
     {
+      "id": "grind_grain_water",
+      "name": "Помол зерна с помощью водяного колеса",
+      "produced_in": [ "water_mill" ],
+      "resources": { "@millable_grains": 1 },
+      "result": { "flour": 1 },
+      "time": 2
+    },
+    {
       "id": "bread",
       "name": "Выпечка хлеба",
       "produced_in": [ "bakery" ],

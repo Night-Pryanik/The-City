@@ -24,6 +24,8 @@ var _cached_build_manager = null
 var selected_button: Button = null
 var _hovered_building_id: String = "" # здание под курсором (для тултипа деталей)
 var building_buttons: Dictionary = {}
+var _detail_material_rows: Array = []
+var _detail_requirement_label: Label = null
 
 var resume_icon: Texture2D
 var pause_icon: Texture2D
@@ -79,6 +81,7 @@ func update_data(data: Dictionary):
     city_storage = data.get("city_storage", {})
     city_food_pool = data.get("city_food_pool", {})
     built_buildings = data.get("built_buildings", [])
+    refresh_building_detail_tooltip()
 
 func refresh_list():
     for child in buildings_list.get_children():
@@ -479,6 +482,29 @@ func get_hovered_button() -> Button:
         return btn
     return null
 
+func refresh_building_detail_tooltip():
+    if _hovered_building_id == "" or ui_helpers == null:
+        return
+    if not ui_helpers.detail_tooltip_panel.visible:
+        return
+    for material in _detail_material_rows:
+        var available_amount = int(GameData.get_storage_amount(
+            material["resource_id"], city_storage))
+        material["amount_label"].text = "%d/%d" % [
+            material["required_amount"], available_amount]
+        if available_amount >= material["required_amount"]:
+            material["amount_label"].modulate = Color(0.35, 1.0, 0.35)
+        else:
+            material["amount_label"].modulate = Color(1.0, 0.35, 0.35)
+
+    if is_instance_valid(_detail_requirement_label):
+        var requirement_check = CityData.check_building_additional_req(
+            _hovered_building_id)
+        if requirement_check["ok"]:
+            _detail_requirement_label.modulate = Color(0.35, 1.0, 0.35)
+        else:
+            _detail_requirement_label.modulate = Color(1.0, 0.35, 0.35)
+
 func _make_bullet(symbol: String) -> Label:
     var bullet = Label.new()
     bullet.text = symbol
@@ -502,6 +528,8 @@ func _show_building_details(bdata: Dictionary):
     if not ui_helpers:
         return
     var content: VBoxContainer = ui_helpers.detail_tooltip_content
+    _detail_material_rows.clear()
+    _detail_requirement_label = null
     # Очищаем предыдущее содержимое тултипа.
     for child in content.get_children():
         content.remove_child(child)
@@ -570,6 +598,8 @@ func _show_building_details(bdata: Dictionary):
             has_costs = true
             content.add_child(_make_bullet_row("•", "Дополнительные материалы:"))
             for entry in mat_rows:
+                var required_amount: int = int(entry[1])
+                var available_amount: int = int(GameData.get_storage_amount(entry[0], city_storage))
                 var row = HBoxContainer.new()
                 row.add_theme_constant_override("separation", 6)
                 row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -578,8 +608,48 @@ func _show_building_details(bdata: Dictionary):
                 var sub_bullet = _make_bullet("◦")
                 row.add_child(indent)
                 row.add_child(sub_bullet)
-                row.add_child(ui_helpers.make_resource_entry(entry[0], products_data, icon_paths, entry[1], "colon"))
+                var resource_entry = ui_helpers.make_resource_entry(
+                    entry[0], products_data, icon_paths)
+                row.add_child(resource_entry)
+                var amount_label = Label.new()
+                amount_label.text = "%d/%d" % [required_amount, available_amount]
+                amount_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+                if available_amount >= required_amount:
+                    amount_label.modulate = Color(0.35, 1.0, 0.35)
+                else:
+                    amount_label.modulate = Color(1.0, 0.35, 0.35)
+                row.add_child(amount_label)
+                _detail_material_rows.append({
+                    "resource_id": entry[0],
+                    "required_amount": required_amount,
+                    "amount_label": amount_label
+                })
                 content.add_child(row)
+
+    var additional_req = String(bdata.get("additional_req", ""))
+    if additional_req != "":
+        has_costs = true
+        var requirement_text = "доступ города к пресной воде" \
+                if additional_req == "running_water" else additional_req
+        var requirement_row = HBoxContainer.new()
+        requirement_row.add_theme_constant_override("separation", 6)
+        requirement_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        requirement_row.add_child(_make_bullet("•"))
+        var requirement_prefix = Label.new()
+        requirement_prefix.text = "Условие:"
+        requirement_prefix.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        requirement_row.add_child(requirement_prefix)
+        var requirement_label = Label.new()
+        requirement_label.text = requirement_text
+        requirement_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        requirement_row.add_child(requirement_label)
+        var requirement_check = CityData.check_building_additional_req(bdata.get("id", ""))
+        if requirement_check["ok"]:
+            requirement_label.modulate = Color(0.35, 1.0, 0.35)
+        else:
+            requirement_label.modulate = Color(1.0, 0.35, 0.35)
+        _detail_requirement_label = requirement_label
+        content.add_child(requirement_row)
 
     if not has_costs:
         content.add_child(_make_bullet_row("•", "0"))
@@ -617,6 +687,12 @@ func _on_build_pressed():
 
     var missing_parts = []
     var work_cost = bdata.get("work_cost", 0)
+
+    var additional_req_check = CityData.check_building_additional_req(selected_building_id)
+    if not additional_req_check["ok"]:
+        if ui_helpers:
+            ui_helpers.set_message(additional_req_check["reason"])
+        return
     
     # Проверяем, достаточно ли населения для строительства
     if work_cost > 0 and CityData.get_total_labor() <= 0:

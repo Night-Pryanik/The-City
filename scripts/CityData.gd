@@ -185,7 +185,7 @@ func _record_source(sources: Dictionary, pid: String, source_name: String, amoun
         sources[pid] = {}
     var by_source: Dictionary = sources[pid]
     if not by_source.has(source_name):
-        by_source[source_name] = { "count": 0, "amount": 0 }
+        by_source[source_name] = {"count": 0, "amount": 0}
     var entry: Dictionary = by_source[source_name]
     entry["count"] = int(entry.get("count", 0)) + 1
     entry["amount"] = int(entry.get("amount", 0)) + amount
@@ -842,6 +842,39 @@ func is_building_unlocked(building_id: String) -> bool:
                 return is_tech_unlocked(required_tech)
     return true
 
+# Проверяет дополнительные условия строительства здания из buildings.json.
+# Возвращает словарь {"ok": bool, "reason": String}, чтобы UI и фактический
+# запуск строительства показывали одинаковую причину отказа.
+func check_building_additional_req(building_id: String) -> Dictionary:
+    var building_data = null
+    for b in GameData.buildings:
+        if b.get("id", "") == building_id:
+            building_data = b
+            break
+    if building_data == null:
+        return {"ok": false, "reason": "Здание не найдено"}
+
+    var requirement = String(building_data.get("additional_req", ""))
+    if requirement == "":
+        return {"ok": true, "reason": ""}
+
+    if requirement == "running_water":
+        var main_map = get_tree().root.find_child("MainMap", true, false)
+        if main_map == null or main_map.tile_data.is_empty():
+            return {"ok": false, "reason": "Нет доступа к пресной воде"}
+        var water_access = MapHelpers.get_hex_water_access(
+            main_map.city_row,
+            main_map.city_col,
+            main_map.tile_data,
+            main_map.map_rows,
+            main_map.map_cols
+        )
+        if water_access != "":
+            return {"ok": true, "reason": ""}
+        return {"ok": false, "reason": "Нужен доступ города к пресной воде"}
+
+    return {"ok": false, "reason": "Неизвестное условие строительства: %s" % requirement}
+
 # Открыто ли улучшение игроку (по полю unlock_tech самого улучшения).
 func is_improvement_unlocked(imp_id: String) -> bool:
     if imp_id == null or imp_id == "":
@@ -1082,6 +1115,11 @@ func request_build(building_id: String) -> bool:
     # Здание должно быть открыто изученной технологией
     if not is_building_unlocked(building_id):
         print("Здание недоступно: ", bdata.get("name", building_id))
+        return false
+    var additional_req_check = check_building_additional_req(building_id)
+    if not additional_req_check["ok"]:
+        print("Не выполнено условие для постройки ",
+            bdata.get("name", building_id), ": ", additional_req_check["reason"])
         return false
     # Списываем additional_cost (если есть) — атомарно, до старта стройки.
     # Поддерживает массив пачек (AND-логика) и групповые ключи (@xxx).

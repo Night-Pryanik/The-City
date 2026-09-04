@@ -22,6 +22,18 @@
       "default_recipes": [ "grind_grain_animal" ]
     },
     {
+      "id": "water_mill",
+      "name": "Водяная мельница",
+      "description": "Мельница, использующая воду для приведения в движение жерновов.",
+      "work_cost": 30,
+      "additional_cost": [ { "planks": 12 }, { "@processed_construction_materials": 10 }, { "millstone": 1 } ],
+      "icon": "water_mill.png",
+      "production_slots": 1.0,
+      "unlock_tech": "water_wheel",
+      "additional_req": "running_water",
+      "default_recipes": [ "grind_grain_water" ]
+    },
+    {
       "id": "windmill",
       "name": "Мельница",
       "description": "Ветряная мельница, перемалывающая зерно в муку с силой ветра.",
@@ -261,9 +273,6 @@
       "default_recipes": [ "science" ]
     },
     {
-      // Плотницкая мастерская — городское здание переработки древесины. Распиливает
-      // бревна на доски (рецепт «Распиловка досок», crafts.json):
-      // древесина → доски. Открывается технологией «Обработка дерева».
       "id": "carpenter_workshop",
       "name": "Плотницкая мастерская",
       "description": "Распиливает древесину на доски для строительства и ремёсел.",
