@@ -165,7 +165,7 @@
       "resources": { "@millable_grains": 2 },
       "result": { "beer": 1 },
       "time": 5.0,
-      "unlock_tech": "brewing",
+      "unlock_tech": "fermentation",
       "description": "Варит пиво из зерновых культур"
     },
     {
@@ -185,7 +185,7 @@
       "resources": { "rice": 2 },
       "result": { "sake": 1 },
       "time": 5.0,
-      "unlock_tech": "brewing",
+      "unlock_tech": "fermentation",
       "description": "Варит саке из риса"
     },
     {
@@ -195,7 +195,7 @@
       "resources": { "agave": 2 },
       "result": { "pulque": 1 },
       "time": 5.0,
-      "unlock_tech": "brewing",
+      "unlock_tech": "fermentation",
       "description": "Варит пульке из агавы"
     },
     {

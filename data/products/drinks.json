@@ -5,7 +5,7 @@
       "name": "Пиво",
       "type": "product",
       "category": "drinks",
-      "unlock_tech": "brewing",
+      "unlock_tech": "fermentation",
       "icon": "beer.png"
     },
     {
@@ -29,7 +29,7 @@
       "name": "Саке",
       "type": "product",
       "category": "drinks",
-      "unlock_tech": "brewing",
+      "unlock_tech": "fermentation",
       "icon": "sake.png"
     },
     {
@@ -37,7 +37,7 @@
       "name": "Пульке",
       "type": "product",
       "category": "drinks",
-      "unlock_tech": "brewing",
+      "unlock_tech": "fermentation",
       "icon": "pulque.png"
     }
   ]
