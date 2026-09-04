@@ -10,6 +10,7 @@
       "icon": "mulberries.png"
     },
     { "id": "figs", "name": "Инжир", "type": "product", "category": "fruits", "icon": "figs.png" },
-    { "id": "dates", "name": "Финики", "type": "product", "category": "fruits", "icon": "dates.png" }
+    { "id": "dates", "name": "Финики", "type": "product", "category": "fruits", "icon": "dates.png" },
+    { "id": "agave", "name": "Агава", "type": "product", "category": "fruits", "icon": "agave.png" }
   ]
 }

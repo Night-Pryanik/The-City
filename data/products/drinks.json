@@ -31,6 +31,14 @@
       "category": "drinks",
       "unlock_tech": "brewing",
       "icon": "sake.png"
+    },
+    {
+      "id": "pulque",
+      "name": "Пульке",
+      "type": "product",
+      "category": "drinks",
+      "unlock_tech": "brewing",
+      "icon": "pulque.png"
     }
   ]
 }

@@ -77,18 +77,20 @@
       "color": [ 150, 200, 150 ]
     },
     {
-      "id": "sisal_field",
-      "name": "Сизаль",
+      // Дабы не плодить лишних сущностей, под единой "Агавой" здесь подразумеваются разные виды агавы
+      // (агава американская, агава сизалевая, агава текильная и т.д.), которые в игре объединены в один ресурс.
+      "id": "agave_field",
+      "name": "Агава",
       "type": "raw",
       "category": "technical_plants",
       "group": "technical_plants",
-      "subgroup": "textile_plants",
+      "subgroup": [ "textile_plants", "fruit_plants" ],
       "allowed_terrain": [ "plain" ],
       "allowed_cover": [ "none" ],
       "improved_by": "plantation",
       "tech_required": "plantations",
-      "produces": { "sisal": 1, "feed": 4 },
-      "icon": "sisal.png",
+      "produces": { "agave": 1, "feed": 4 },
+      "icon": "agave.png",
       "color": [ 200, 255, 200 ]
     },
     {

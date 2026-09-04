@@ -189,6 +189,16 @@
       "description": "Варит саке из риса"
     },
     {
+      "id": "pulque",
+      "name": "Варка пульке",
+      "produced_in": [ "brewer_house" ],
+      "resources": { "agave": 2 },
+      "result": { "pulque": 1 },
+      "time": 5.0,
+      "unlock_tech": "brewing",
+      "description": "Варит пульке из агавы"
+    },
+    {
       "id": "processed_building_stone",
       "name": "Обработка строительного камня",
       "produced_in": [ "mason_workshop" ],

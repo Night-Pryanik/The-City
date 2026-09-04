@@ -60,7 +60,7 @@
       "type": "product",
       "category": "material",
       "unlock_tech": "weaving",
-      "icon": "sisal.png"
+      "icon": "agave.png"
     },
     {
       "id": "silk_cocoon",
