@@ -39,6 +39,8 @@ var build_hover_timer: float = 0.0
 var building_detail_hover_timer: float = 0.0
 var building_detail_leave_timer: float = 0.0
 var building_detail_locked: bool = false
+var building_detail_locked_id: String = ""
+var building_detail_delay: float = 0.5
 const TOOLTIP_DELAY: float = 0.5
 const BUILDING_DETAIL_LEAVE_GRACE: float = 0.35
 
@@ -47,6 +49,9 @@ signal research_requested(tech_id: String)
 signal closed()
 
 var building_panel
+
+func set_building_detail_delay(value: float):
+    building_detail_delay = maxf(0.0, value)
 
 func _ready():
     # Загружаем модули
@@ -390,6 +395,12 @@ func _process(delta):
         if hov_btn and hov_btn.get_global_rect().has_point(mouse_pos):
             hovered_detail = true
             hovered_detail_button = true
+            if building_detail_locked \
+                    and buildings_tab.get_hovered_building_id() != building_detail_locked_id:
+                building_detail_locked = false
+                building_detail_locked_id = ""
+                building_detail_hover_timer = 0.0
+                ui_helpers.hide_building_detail_tooltip()
     if ui_helpers.detail_tooltip_panel.visible \
             and ui_helpers.detail_tooltip_panel.get_global_rect().has_point(mouse_pos):
         hovered_detail = true
@@ -398,9 +409,10 @@ func _process(delta):
         if hovered_detail_button and not building_detail_locked:
             building_detail_hover_timer += delta
         if hovered_detail_button and not building_detail_locked \
-                and building_detail_hover_timer >= TOOLTIP_DELAY:
+            and building_detail_hover_timer >= building_detail_delay:
             ui_helpers.show_building_detail_tooltip(mouse_pos)
             building_detail_locked = true
+            building_detail_locked_id = buildings_tab.get_hovered_building_id()
     else:
         if building_detail_locked:
             building_detail_leave_timer += delta
@@ -409,6 +421,7 @@ func _process(delta):
         building_detail_hover_timer = 0.0
         building_detail_leave_timer = 0.0
         building_detail_locked = false
+        building_detail_locked_id = ""
         ui_helpers.hide_building_detail_tooltip()
 
 func set_message(text: String):

@@ -482,6 +482,9 @@ func get_hovered_button() -> Button:
         return btn
     return null
 
+func get_hovered_building_id() -> String:
+    return _hovered_building_id
+
 func refresh_building_detail_tooltip():
     if _hovered_building_id == "" or ui_helpers == null:
         return

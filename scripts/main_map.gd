@@ -96,6 +96,7 @@ var show_hex_borders = true
 var use_edge_scrolling = true
 var tooltip_delay: float = 0.5
 var extended_tooltip_delay: float = 1.0
+var building_detail_delay: float = 0.5
 
 @onready var city_ui = $CityUI
 @onready var hex_tooltip = $HexTooltip
@@ -293,6 +294,7 @@ func _ready():
 
     input_handler.set_tooltip_delay(tooltip_delay)
     input_handler.set_extended_tooltip_delay(extended_tooltip_delay)
+    city_ui.set_building_detail_delay(building_detail_delay)
 
     # Инициализация DebugManager
     debug_manager.initialize(self)
@@ -1560,16 +1562,19 @@ func _load_settings():
         use_edge_scrolling = settings_config.get_value("interface", "edge_scrolling", true)
         tooltip_delay = settings_config.get_value("interface", "tooltip_delay", 0.5)
         extended_tooltip_delay = settings_config.get_value("interface", "extended_tooltip_delay", 1.0)
+        building_detail_delay = settings_config.get_value("interface", "building_detail_delay", 0.5)
     else:
         show_hex_borders = true
         use_edge_scrolling = true
         tooltip_delay = 0.5
         extended_tooltip_delay = 1.0
+        building_detail_delay = 0.5
 
 func apply_settings():
     _load_settings()
     input_handler.set_tooltip_delay(tooltip_delay)
     input_handler.set_extended_tooltip_delay(extended_tooltip_delay)
+    city_ui.set_building_detail_delay(building_detail_delay)
     map_renderer.queue_redraw()
 
 func _on_population_changed(_new_pop: int):
