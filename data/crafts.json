@@ -225,7 +225,7 @@
       "resources": { "grapes": 2 },
       "result": { "wine": 1 },
       "time": 5.0,
-      "unlock_tech": "winegrowing",
+      "unlock_tech": "winemaking",
       "description": "Варит вино из винограда"
     },
     {
