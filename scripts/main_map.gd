@@ -500,6 +500,9 @@ func _process(delta):
                     var available_feed = CityData.city_storage.get("feed", 0)
                     if available_feed >= feed_needed:
                         CityData.remove_from_storage("feed", feed_needed, "best")
+                        # Имя улучшения (Ферма/Пастбище) — источник расхода корма,
+                        # чтобы в тултипе ресурса «Корм» было видно, кто его ест.
+                        CityData.record_consumption_source("feed", improvement_source, feed_needed)
                         CityData.add_raw_production(eff_res, production_multiplier, tile_quality, improvement_source)
                     else:
                         CityData.add_raw_production(eff_res, 0.25, tile_quality, improvement_source)
