@@ -348,7 +348,14 @@ func show_building_detail_tooltip(mouse_pos: Vector2):
     # Пересчитываем размер панели под собранное содержимое.
     detail_tooltip_content.reset_size()
     var content_min_size = detail_tooltip_content.get_minimum_size()
-    detail_tooltip_panel.size = content_min_size + Vector2(14, 12)
+    # Отступы от края панели до текста: 6 слева/справа, 4 сверху/снизу.
+    # vbox прижат к (0, 0), поэтому добавляем padding через position и size панели.
+    var pad_left = 6
+    var pad_top = 4
+    var pad_right = 6
+    var pad_bottom = 4
+    detail_tooltip_content.position = Vector2(pad_left, pad_top)
+    detail_tooltip_panel.size = content_min_size + Vector2(pad_left + pad_right, pad_top + pad_bottom)
     # Если тултип выходит за границы экрана — рисуем его с другой стороны курсора.
     var viewport_size = get_viewport().get_visible_rect().size
     var pos = mouse_pos + Vector2(15, 15)
@@ -440,7 +447,14 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dict
             flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, Color(0.9, 0.3, 0.3)))
     flow_tooltip_vbox.reset_size()
     var content_size = flow_tooltip_vbox.get_minimum_size()
-    flow_tooltip_panel.size = content_size + Vector2(12, 12)
+    # Отступы от края панели до текста: 6 слева/справа, 4 сверху/снизу.
+    # vbox прижат к (0, 0), поэтому добавляем padding через position и size панели.
+    var pad_left = 6
+    var pad_top = 4
+    var pad_right = 6
+    var pad_bottom = 4
+    flow_tooltip_vbox.position = Vector2(pad_left, pad_top)
+    flow_tooltip_panel.size = content_size + Vector2(pad_left + pad_right, pad_top + pad_bottom)
     var viewport_size = get_viewport().get_visible_rect().size
     var pos = mouse_pos + Vector2(15, 15)
     if pos.x + flow_tooltip_panel.size.x > viewport_size.x:
