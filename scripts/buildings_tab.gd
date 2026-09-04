@@ -807,7 +807,7 @@ func _make_craft_content_local(craft_name: String, craft_resources: Dictionary, 
             content.add_child(ui_helpers.make_resource_entry(res_id, products_data, icon_paths))
 
             var amount = craft_resources[res_id]
-            if amount > 1:
+            if amount >= 1:
                 var amount_label = Label.new()
                 amount_label.text = "x%d" % amount
                 amount_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
@@ -835,7 +835,7 @@ func _make_craft_content_local(craft_name: String, craft_resources: Dictionary, 
             content.add_child(ui_helpers.make_resource_entry(prod_id, products_data, icon_paths))
 
             var amount = craft_result[prod_id]
-            if amount > 1:
+            if amount >= 1:
                 var amount_label = Label.new()
                 amount_label.text = "x%d" % amount
                 amount_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))

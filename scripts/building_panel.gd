@@ -690,7 +690,7 @@ func _make_craft_content(craft_name: String, craft_resources: Dictionary, craft_
         # а клик проходил к родительской кнопке (выбор рецепта).
         content.add_child(ui_helpers.make_resource_entry(res_id, _get_all_resources(), icon_paths))
         var amount = craft_resources[res_id]
-        if amount > 1:
+        if amount >= 1:
             var amount_label = Label.new()
             amount_label.text = "x%d" % amount
             amount_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
@@ -732,7 +732,7 @@ func _make_craft_content(craft_name: String, craft_resources: Dictionary, craft_
         prod_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         content.add_child(prod_label)
         var amount = craft_result[prod_id]
-        if amount > 1:
+        if amount >= 1:
             var amount_label = Label.new()
             amount_label.text = "x%d" % amount
             amount_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
