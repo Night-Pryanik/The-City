@@ -135,7 +135,7 @@
       "name": "Кожевенное дело",
       "era": "ancient",
       "science_cost": 3.0,
-      "icon": "hide.png",
+      "icon": "leatherworking.png",
       "prerequisites": [ [ "animal_husbandry" ] ],
       "description": "Даёт возможность строить дом кожевника: шкуры → кожа.",
       "flavor": "Выделка кожи дала людям прочный и гибкий материал для одежды, обуви и снаряжения."
