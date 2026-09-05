@@ -86,6 +86,10 @@ func _process(delta):
 
     for data in to_complete_buildings:
         var bkey = data.get("build_key", "")
+        # Сначала удаляем запись из активных строек: обработчики сигналов
+        # могут сразу обновить панель города и должны увидеть завершённое состояние.
+        active_building_builds.erase(bkey)
+        _active_build_count -= 1
         if data.get("is_upgrade", false):
             # Завершился апгрейд здания — сигнал для CityData, который заменит
             # здание на улучшенную версию (а не добавит новое в конец списка).
@@ -94,7 +98,6 @@ func _process(delta):
         else:
             emit_signal("build_message", "Построено: %s" % data["building_name"])
             emit_signal("build_building_completed", data["building_id"], bkey)
-        active_building_builds.erase(bkey)
 
     for data in to_complete_expansions:
         var ekey = data.get("build_key", "")

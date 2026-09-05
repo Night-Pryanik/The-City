@@ -137,7 +137,8 @@ func refresh_list():
 
 func update_built_status():
     # Лёгкое обновление: обновляем текст статуса без пересоздания строк.
-    if built_buildings.size() != last_built_count or CityData.building_construction.size() != last_construction_count:
+    if built_buildings.size() != last_built_count \
+            or _get_active_building_construction_count() != last_construction_count:
         refresh_built()
         return
 
@@ -194,7 +195,7 @@ func refresh_built():
     # кнопкой (mouse_exited у неё уже не сработает), прячем явно.
     _hide_built_tooltip()
     last_built_count = built_buildings.size()
-    last_construction_count = CityData.building_construction.size()
+    last_construction_count = _get_active_building_construction_count()
 
     # Сначала строки строящихся зданий
     _refresh_construction_rows()
@@ -251,15 +252,32 @@ func refresh_built():
 
 # Создаёт строки строящихся зданий в панели построенных зданий.
 func _refresh_construction_rows():
+    var constructions: Dictionary = {}
     for build_key in CityData.building_construction.keys():
-        var construction_data = CityData.building_construction[build_key]
+        constructions[build_key] = CityData.building_construction[build_key]
+
+    # Апгрейды не добавляют запись в CityData.building_construction: они
+    # живут в том же пуле BuildManager, что и обычные стройки зданий.
+    var bm = _get_build_manager()
+    if bm:
+        for build_key in bm.active_building_builds.keys():
+            if not constructions.has(build_key):
+                constructions[build_key] = bm.active_building_builds[build_key]
+
+    for build_key in constructions.keys():
+        var construction_data = constructions[build_key]
         var building_id = construction_data.get("building_id", "")
+        var is_upgrade = construction_data.get("is_upgrade", false)
+        var display_id = construction_data.get("upgrade_to", building_id) \
+            if is_upgrade else building_id
         var bdata = null
         for b in buildings_data:
-            if b["id"] == building_id:
+            if b["id"] == display_id:
                 bdata = b
                 break
-        var base_name = bdata["name"] if bdata else building_id
+        var base_name = bdata["name"] if bdata else display_id
+        if is_upgrade:
+            base_name = "Улучшение: " + base_name
 
         var row = HBoxContainer.new()
         row.add_theme_constant_override("separation", 6)
@@ -280,21 +298,22 @@ func _refresh_construction_rows():
         bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
         row.add_child(bar)
 
-        # Кнопка приостановки/возобновления строительства
+        # Кнопка приостановки/возобновления строительства или апгрейда.
         var pause_btn = Button.new()
         pause_btn.custom_minimum_size = Vector2(28, 28)
         pause_btn.expand_icon = true
         pause_btn.icon = _get_icon("pause")
-        pause_btn.tooltip_text = "Приостановить строительство"
+        pause_btn.tooltip_text = "Приостановить апгрейд" \
+            if is_upgrade else "Приостановить строительство"
         pause_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
         pause_btn.pressed.connect(_on_construction_pause_pressed.bind(build_key))
         row.add_child(pause_btn)
 
-        # Кнопка отмены строительства
+        # Кнопка отмены строительства или апгрейда.
         var cancel_btn = Button.new()
         cancel_btn.custom_minimum_size = Vector2(28, 28)
         cancel_btn.text = "✕"
-        cancel_btn.tooltip_text = "Отменить строительство"
+        cancel_btn.tooltip_text = "Отменить апгрейд" if is_upgrade else "Отменить строительство"
         cancel_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
         cancel_btn.pressed.connect(_on_construction_cancel_pressed.bind(build_key))
         row.add_child(cancel_btn)
@@ -304,10 +323,11 @@ func _refresh_construction_rows():
             "row": row,
             "bar": bar,
             "pause_btn": pause_btn,
-            "cancel_btn": cancel_btn
+            "cancel_btn": cancel_btn,
+            "is_upgrade": is_upgrade
         }
 
-# Обновляет прогресс-бары и кнопки строящихся зданий.
+# Обновляет прогресс-бары и кнопки строящихся зданий и апгрейдов.
 func _update_construction_rows():
     var bm = _get_build_manager()
     if not bm:
@@ -326,20 +346,23 @@ func _update_construction_rows():
         if work_cost > 0:
             percent = progress_value / work_cost * 100.0
         var status = progress_data.get("status", "active")
-        var status_text = "Строится"
-        if status == "paused":
-            status_text = "Приостановлено"
-
         var bar = row_data["bar"]
         bar.value = percent
 
         var pause_btn = row_data["pause_btn"]
+        var action_name = "апгрейд" if row_data.get("is_upgrade", false) else "строительство"
         if status == "paused":
             pause_btn.icon = _get_icon("resume")
-            pause_btn.tooltip_text = "Возобновить строительство"
+            pause_btn.tooltip_text = "Возобновить " + action_name
         else:
             pause_btn.icon = _get_icon("pause")
-            pause_btn.tooltip_text = "Приостановить строительство"
+            pause_btn.tooltip_text = "Приостановить " + action_name
+
+func _get_active_building_construction_count() -> int:
+    var bm = _get_build_manager()
+    if bm:
+        return bm.active_building_builds.size()
+    return CityData.building_construction.size()
 
 # Возвращает данные о прогресс-баре строящегося здания под курсором.
 # Возвращает пустой словарь, если курсор не над ни одним баром.
