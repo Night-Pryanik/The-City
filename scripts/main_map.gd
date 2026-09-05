@@ -346,6 +346,7 @@ func _ready():
     build_manager.build_message.connect(hud.show_message)
     build_manager.build_completed.connect(_on_build_completed)
     build_manager.build_building_completed.connect(_on_building_build_completed)
+    build_manager.building_upgrade_completed.connect(_on_building_upgrade_completed)
     build_manager.expansion_build_completed.connect(expansion_manager.on_expansion_build_completed)
     city_button.gui_input.connect(_on_city_button_gui_input)
 
@@ -990,6 +991,14 @@ func _on_building_build_completed(building_id: String, build_key: String):
     # Естественный триггер перехода в следующую эпоху: построен Рынок.
     if building_id == "market":
         _on_market_built()
+
+func _on_building_upgrade_completed(build_key: String, idx: int, upgrade_to: String, building_name: String):
+    # Апгрейд здания завершён — заменяем здание под этим индексом на улучшенную
+    # версию с переносом настроек (рецепты слотов, приоритет качества; работник
+    # остаётся привязан к индексу здания, поэтому состояние «работает/
+    # приостановлено» переносится само). Сигнал city_updated эмитится внутри
+    # CityData.complete_building_upgrade, панель города обновится сама.
+    CityData.complete_building_upgrade(idx, upgrade_to)
 
 func pixel_to_hex(mx: float, my: float):
     return MapHelpers.pixel_to_hex(mx, my,

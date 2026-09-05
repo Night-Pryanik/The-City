@@ -130,6 +130,9 @@ signal research_error(message: String)
 signal population_changed(new_population: int)
 signal building_construction_started(building_id: String, build_key: String)
 signal building_construction_completed(building_id: String, build_key: String)
+# Апгрейд построенного здания запущен: idx — индекс здания в
+# city_built_buildings, upgrade_to — id улучшенной версии.
+signal building_upgrade_started(idx: int, upgrade_to: String, build_key: String)
 
 func setup():
     city_storage.clear()
@@ -1021,6 +1024,175 @@ func _has_building(building_id: String) -> bool:
         if bld.get("id") == building_id:
             return true
     return false
+
+# --- АПГРЕЙД ЗДАНИЙ ---
+# Здание может иметь улучшенную версию: поле "upgrades_into" в buildings.json
+# (например, hand_mill -> animal_mill). Апгрейд — обычная стройка в общем пуле
+# труда (build_manager), но во время неё здание продолжает работать как обычно,
+# а по завершении заменяется на улучшенную версию с переносом настроек
+# (рецепты слотов, приоритет качества; работник остаётся привязан к индексу
+# здания, поэтому состояние «работает/приостановлено» переносится само).
+
+# Возвращает id улучшенной версии здания (поле "upgrades_into") или пустую
+# строку, если у здания нет улучшения.
+func get_building_upgrade_target(building_id: String) -> String:
+    for b in GameData.buildings:
+        if b.get("id", "") == building_id:
+            return String(b.get("upgrades_into", ""))
+    return ""
+
+# Возвращает данные идущего апгрейда здания по его индексу в городе
+# (пустой словарь, если апгрейд не идёт). Проксирует запрос в build_manager,
+# где хранятся все активные стройки.
+func get_building_upgrade_data(idx: int) -> Dictionary:
+    if Engine.is_editor_hint():
+        return {}
+    var main_map = get_tree().root.find_child("MainMap", true, false)
+    if main_map == null or not main_map.has_node("BuildManager"):
+        return {}
+    var bm = main_map.get_node("BuildManager")
+    return bm.get_building_upgrade_by_index(idx)
+
+# Можно ли начать апгрейд здания под индексом idx:
+# - у здания есть поле upgrades_into;
+# - улучшенная версия открыта технологией (её unlock_tech изучен);
+# - апгрейд этого здания ещё не идёт.
+func can_upgrade_building(idx: int) -> bool:
+    if idx < 0 or idx >= city_built_buildings.size():
+        return false
+    var from_id: String = city_built_buildings[idx].get("id", "")
+    if from_id == "":
+        return false
+    var upgrade_to: String = get_building_upgrade_target(from_id)
+    if upgrade_to == "":
+        return false
+    if not is_building_unlocked(upgrade_to):
+        return false
+    if not get_building_upgrade_data(idx).is_empty():
+        return false
+    return true
+
+# Запускает апгрейд здания под индексом idx в его улучшенную версию.
+# Атомарно списывает additional_cost улучшенной версии и регистрирует стройку
+# апгрейда в build_manager (либо завершает апгрейд мгновенно, если у улучшенной
+# версии work_cost == 0 или включён дебаг-флаг «Игнорировать требования
+# строительства»). Возвращает { "ok": bool, "reason": String } для UI.
+func start_building_upgrade(idx: int) -> Dictionary:
+    if idx < 0 or idx >= city_built_buildings.size():
+        return {"ok": false, "reason": "Здание не найдено"}
+    var from_id: String = city_built_buildings[idx].get("id", "")
+    var upgrade_to: String = get_building_upgrade_target(from_id)
+    if upgrade_to == "":
+        return {"ok": false, "reason": "У этого здания нет улучшенной версии"}
+
+    var upgrade_data = null
+    for b in GameData.buildings:
+        if b.get("id", "") == upgrade_to:
+            upgrade_data = b
+            break
+    if upgrade_data == null:
+        return {"ok": false, "reason": "Улучшенная версия здания не найдена"}
+
+    # Улучшенная версия должна быть открыта технологией.
+    if not is_building_unlocked(upgrade_to):
+        return {"ok": false, "reason": "Сначала изучите технологию, открывающую «%s»" % upgrade_data.get("name", upgrade_to)}
+
+    # Дополнительные условия улучшенной версии (additional_req).
+    var additional_req_check = check_building_additional_req(upgrade_to)
+    if not additional_req_check["ok"]:
+        return {"ok": false, "reason": additional_req_check["reason"]}
+
+    var main_map = get_tree().root.find_child("MainMap", true, false)
+    var bm = main_map.get_node("BuildManager") if main_map and main_map.has_node("BuildManager") else null
+    if bm == null:
+        return {"ok": false, "reason": "Менеджер строительства недоступен"}
+
+    # Апгрейд этого здания уже идёт — повторный запуск невозможен.
+    if not bm.get_building_upgrade_by_index(idx).is_empty():
+        return {"ok": false, "reason": "Улучшение этого здания уже идёт"}
+
+    # Общий лимит одновременных строек (здания + улучшения + апгрейды) равен
+    # числу жителей. Проверяем ДО списания материалов.
+    var work_cost = upgrade_data.get("work_cost", 0)
+    if work_cost > 0 and not ignore_build_requirements:
+        if bm.get_total_active_builds() >= total_population:
+            return {"ok": false, "reason": "Можно строить не более %d зданий или улучшений одновременно (лимит = число жителей)" % total_population}
+
+    # Атомарно списываем additional_cost улучшенной версии (при включённом
+    # дебаг-флаге материалы не проверяются и не списываются).
+    var cost_check = consume_additional_cost(upgrade_data)
+    if not cost_check["ok"]:
+        var missing_names = []
+        for m in cost_check.get("missing", []):
+            missing_names.append(str(m))
+        return {"ok": false, "reason": "Не хватает: " + ", ".join(missing_names)}
+
+    var build_key = bm.start_building_upgrade(idx, from_id, upgrade_to)
+    if build_key == "":
+        # Мгновенное завершение (work_cost == 0 / дебаг-флаг): сигнал
+        # building_upgrade_completed уже эмитнут, main_map обработает его
+        # и вызовет complete_building_upgrade.
+        emit_signal("city_updated")
+        return {"ok": true, "reason": ""}
+
+    emit_signal("building_upgrade_started", idx, upgrade_to, build_key)
+    emit_signal("city_updated")
+    return {"ok": true, "reason": ""}
+
+# Завершает апгрейд: заменяет здание под индексом idx на улучшенную версию
+# с переносом настроек. Вызывается из main_map._on_building_upgrade_completed
+# (сигнал build_manager.building_upgrade_completed) или напрямую при
+# мгновенном апгрейде. Возвращает true при успехе.
+func complete_building_upgrade(idx: int, upgrade_to: String) -> bool:
+    if idx < 0 or idx >= city_built_buildings.size():
+        return false
+    var old_bld = city_built_buildings[idx]
+    var from_id: String = old_bld.get("id", "")
+    if from_id == "" or get_building_upgrade_target(from_id) != upgrade_to:
+        return false
+
+    # Настройки старой версии: выбранные рецепты слотов и приоритет качества.
+    var old_slots: Array = old_bld.get("slots", [])
+    var priority: String = old_bld.get("quality_priority", GameData.get_quality_priority_default())
+
+    # Данные улучшенной версии: число слотов и дефолтные рецепты.
+    var new_bdata = null
+    for b in GameData.buildings:
+        if b.get("id", "") == upgrade_to:
+            new_bdata = b
+            break
+    var slot_count := 1
+    var default_recipes: Array = []
+    if new_bdata:
+        slot_count = int(new_bdata.get("production_slots", 1))
+        default_recipes = new_bdata.get("default_recipes", [])
+
+    # Перенос рецептов: рецепт, исполняемый и в новой версии, сохраняется;
+    # непригодные (например, ручной помол зерна при апгрейде в мельницу с
+    # животной тягой) заменяются дефолтным рецептом новой версии или «Пусто».
+    var new_slots: Array = []
+    for i in range(slot_count):
+        var selected_id: String = old_slots[i] if i < old_slots.size() else ""
+        if selected_id == "" or selected_id == "empty":
+            # Пустой слот остаётся пустым — выбор игрока сохраняется.
+            new_slots.append("empty")
+        elif can_craft_in(selected_id, upgrade_to):
+            new_slots.append(selected_id)
+        else:
+            if i < default_recipes.size():
+                new_slots.append(default_recipes[i])
+            else:
+                new_slots.append("empty")
+
+    # Состояние «работает/приостановлено» переносится само: работник привязан
+    # к индексу здания (townsfolk_manager), а индекс не меняется.
+    city_built_buildings[idx] = {
+        "id": upgrade_to,
+        "slots": new_slots,
+        "quality_priority": priority
+    }
+    emit_signal("city_updated")
+    return true
 
 # TODO: временная миграция старых сейвов (формат "recipe"). Удалить после того,
 #	   как все старые сохранения перестанут использоваться.

@@ -8,6 +8,11 @@ signal build_cancelled(row: int, col: int)
 signal build_building_completed(building_id: String, build_key: String)
 signal build_building_paused(build_key: String)
 signal build_building_cancelled(build_key: String)
+# Апгрейд построенного здания города в улучшенную версию. Эмитится, когда
+# труд накоплен и здание готово к замене на улучшенную версию.
+# build_key — ключ стройки; idx — индекс здания в CityData.city_built_buildings;
+# upgrade_to — id улучшенной версии; building_name — её человекочитаемое имя.
+signal building_upgrade_completed(build_key: String, idx: int, upgrade_to: String, building_name: String)
 # Освоение территории (покупка чанка за труд). Эмитится, когда труд
 # накоплен и чанк готов к присоединению к Кольцу Влияния.
 signal expansion_build_completed(chunk: Array)
@@ -81,8 +86,14 @@ func _process(delta):
 
     for data in to_complete_buildings:
         var bkey = data.get("build_key", "")
-        emit_signal("build_message", "Построено: %s" % data["building_name"])
-        emit_signal("build_building_completed", data["building_id"], bkey)
+        if data.get("is_upgrade", false):
+            # Завершился апгрейд здания — сигнал для CityData, который заменит
+            # здание на улучшенную версию (а не добавит новое в конец списка).
+            emit_signal("build_message", "Улучшено: %s" % data.get("upgrade_name", data.get("upgrade_to", "")))
+            emit_signal("building_upgrade_completed", bkey, data.get("upgrade_idx", -1), data.get("upgrade_to", ""), data.get("upgrade_name", ""))
+        else:
+            emit_signal("build_message", "Построено: %s" % data["building_name"])
+            emit_signal("build_building_completed", data["building_id"], bkey)
         active_building_builds.erase(bkey)
 
     for data in to_complete_expansions:
@@ -233,6 +244,84 @@ func start_building_build(building_id: String) -> String:
 
     emit_signal("build_message", "Строительство %s начато (%.0f труда)" % [building_name, work_cost])
     return build_key
+
+# Запускает апгрейд уже построенного здания города (idx — индекс в
+# CityData.city_built_buildings, from_id — текущий id здания) в его улучшенную
+# версию upgrade_to. Возвращает build_key стройки или "" при неудаче.
+# Апгрейд — обычная стройка в общем пуле труда: участвует в общем лимите
+# одновременных строек и в равном распределении труда между стройками.
+func start_building_upgrade(idx: int, from_id: String, upgrade_to: String) -> String:
+    # Апгрейд можно запустить только для существующего здания этого id.
+    if idx < 0 or idx >= CityData.city_built_buildings.size():
+        return ""
+    if CityData.city_built_buildings[idx].get("id", "") != from_id:
+        return ""
+
+    # Апгрейд этого же здания уже идёт.
+    for key in active_building_builds.keys():
+        var data = active_building_builds[key]
+        if data.get("is_upgrade", false) and data.get("upgrade_idx", -1) == idx:
+            emit_signal("build_message", "Улучшение этого здания уже идёт")
+            return ""
+
+    var work_cost = 0
+    var upgrade_name = upgrade_to
+    for b in GameData.buildings:
+        if b["id"] == upgrade_to:
+            work_cost = b.get("work_cost", 0)
+            upgrade_name = b.get("name", upgrade_to)
+            break
+
+    var additional_req_check = CityData.check_building_additional_req(upgrade_to)
+    if not additional_req_check["ok"]:
+        emit_signal("build_message", additional_req_check["reason"])
+        return ""
+
+    # Модификаторы технологий (target = "construction_cost", см. data/modifiers.json)
+    # снижают стоимость апгрейда так же, как и стоимость новой стройки.
+    if work_cost > 0:
+        work_cost = int(ceil(float(work_cost) * MapHelpers.get_construction_cost_mult()))
+
+    # При нулевой стоимости апгрейда или включённом дебаг-флаге завершаем
+    # мгновенно — сигналом building_upgrade_completed.
+    if work_cost <= 0 or CityData.ignore_build_requirements:
+        emit_signal("building_upgrade_completed", "", idx, upgrade_to, upgrade_name)
+        return ""
+
+    # Общий лимит одновременных строек (здания + улучшения + апгрейды) равен
+    # числу жителей.
+    if get_total_active_builds() >= CityData.total_population:
+        emit_signal("build_message", "Можно строить не более %d зданий или улучшений одновременно (лимит = число жителей)" % CityData.total_population)
+        return ""
+
+    var build_key = "building_upgrade_" + str(idx) + "_" + str(Time.get_ticks_usec())
+    active_building_builds[build_key] = {
+        "progress": 0.0,
+        "work_cost": work_cost,
+        "building_id": from_id,
+        "building_name": from_id,
+        "build_key": build_key,
+        "status": "active",
+        "allocated_labor": 0.0,
+        "is_upgrade": true,
+        "upgrade_idx": idx,
+        "upgrade_to": upgrade_to,
+        "upgrade_name": upgrade_name
+    }
+    _active_build_count += 1
+
+    emit_signal("build_message", "Улучшение %s начато (%.0f труда)" % [upgrade_name, work_cost])
+    return build_key
+
+# Возвращает данные идущего апгрейда здания по его индексу в городе
+# (пустой словарь, если апгрейд не идёт). Используется панелью здания для
+# показа прогресса улучшения и кнопкой «Улучшить» для блокировки повтора.
+func get_building_upgrade_by_index(idx: int) -> Dictionary:
+    for key in active_building_builds.keys():
+        var data = active_building_builds[key]
+        if data.get("is_upgrade", false) and data.get("upgrade_idx", -1) == idx:
+            return data
+    return {}
 
 func pause_build(row: int, col: int) -> bool:
     var key = str(row) + "," + str(col)
@@ -436,7 +525,12 @@ func restore_building_builds(data: Dictionary):
             "building_name": String(build_data.get("building_name", build_data.get("building_id", ""))),
             "build_key": String(build_data.get("build_key", key)),
             "status": String(build_data.get("status", "active")),
-            "allocated_labor": float(build_data.get("allocated_labor", 0.0))
+            "allocated_labor": float(build_data.get("allocated_labor", 0.0)),
+            # Поля апгрейда здания (для обычных строек is_upgrade == false).
+            "is_upgrade": bool(build_data.get("is_upgrade", false)),
+            "upgrade_idx": int(build_data.get("upgrade_idx", -1)),
+            "upgrade_to": String(build_data.get("upgrade_to", "")),
+            "upgrade_name": String(build_data.get("upgrade_name", build_data.get("building_name", "")))
         }
     _recount_active_builds()
 

@@ -37,6 +37,11 @@ var icon_paths: Dictionary = {}
 # Строки строящихся зданий: build_key -> { "row": HBoxContainer, "bar": ProgressBar, "pause_btn": Button }
 var construction_rows: Dictionary = {}
 
+# Последняя сигнатура группировки построенных зданий ("id:total|id:total").
+# Апгрейд здания заменяет его id, не меняя общего числа зданий, — по сигнатуре
+# update_built_status понимает, что список надо пересобрать.
+var _last_groups_signature: String = ""
+
 signal build_requested(building_id: String)
 signal building_detail_requested(building_id: String)
 
@@ -142,6 +147,14 @@ func update_built_status():
 
     # Группируем здания по id и обновляем текст, цвет и тултип кнопок.
     var groups = _group_buildings()
+    # Апгрейд меняет id здания без изменения их общего числа (ручная мельница
+    # заменяется мельницей с животной тягой) — ловим это по сигнатуре
+    # группировки и пересобираем список, иначе останутся устаревшие кнопки.
+    var groups_signature = _groups_signature(groups)
+    if groups_signature != _last_groups_signature:
+        _last_groups_signature = groups_signature
+        refresh_built()
+        return
     for g in range(groups.size()):
         var item_btn = built_buildings_list.get_child(g + construction_rows.size())
         if item_btn == null or not (item_btn is Button):
@@ -210,6 +223,7 @@ func refresh_built():
 
         built_buildings_list.add_child(item_btn)
     last_built_count = built_buildings.size()
+    _last_groups_signature = _groups_signature(groups)
 
     # Кнопка «Построить» остаётся активной даже при достижении лимита строек,
     # чтобы при нажатии можно было показать сообщение о причине отказа.
@@ -412,6 +426,15 @@ func _group_buildings() -> Array:
             if CityData.are_all_slots_empty(i):
                 g["idle"] += 1
     return groups
+
+# Собирает сигнатуру группировки построенных зданий: "id:total|id:total".
+# Используется для отслеживания изменений группировки без изменения общего
+# числа зданий (апгрейд заменяет id здания: hand_mill -> animal_mill).
+func _groups_signature(groups: Array) -> String:
+    var parts = []
+    for grp in groups:
+        parts.append("%s:%d" % [grp.get("id", ""), int(grp.get("total", 0))])
+    return "|".join(parts)
 
 # Возвращает текстуру иконки по имени файла (из icon_paths), кэшируя её.
 # Если файла нет или имя пустое — возвращает null (тогда иконка не ставится).

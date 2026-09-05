@@ -8,6 +8,7 @@
       "additional_cost": [ { "planks": 3 } ],
       "icon": "hand_mill.png",
       "production_slots": 1.0,
+      "upgrades_into": "animal_mill",
       "default_recipes": [ "grind_grain_hand" ]
     },
     {

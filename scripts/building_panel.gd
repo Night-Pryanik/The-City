@@ -31,8 +31,12 @@ var open_popup = null
 # из do_tick(), и без этого _refresh() каждый тик уничтожает кнопки заголовков
 # (toggle_btn, quality_btn) вместе с их ОС-тултипами "Запустить/Приостановить"
 # и "Приоритет качества: ...".
-# Формат: {"count": int, "items": {b_index: {"slots": [..], "priority": String, "has_worker": bool}}}
+# Формат: {"count": int, "items": {b_index: {"slots": [..], "priority": String, "has_worker": bool, "can_upgrade": bool}}}
 var _last_panel_state: Dictionary = {}
+
+# Прогресс-бары идущих апгрейдов зданий: b_index -> ProgressBar. Обновляются
+# каждый кадр в _process() БЕЗ пересоздания UI (иначе умирали бы тултипы).
+var _upgrade_progress_bars: Dictionary = {}
 
 func _ready():
     _build_icon_index()
@@ -147,6 +151,15 @@ func _refresh():
             indices.append(idx)
 
     if indices.is_empty():
+        # Все здания этого типа улучшены (апгрейд меняет id) или снесены —
+        # очищаем панель, чтобы не показывать устаревшие слоты.
+        for child in slots_container.get_children():
+            child.queue_free()
+        for child in costs_container.get_children():
+            child.queue_free()
+        costs_label.visible = false
+        info_label.text = "Зданий: 0"
+        _upgrade_progress_bars.clear()
         return
 
     var bdata = null
@@ -166,6 +179,7 @@ func _refresh():
     # Очищаем старые слоты
     for child in slots_container.get_children():
         child.queue_free()
+    _upgrade_progress_bars.clear()
 
     var main_map = get_tree().root.find_child("MainMap", true, false)
     var tm = main_map.get_node("TownsfolkManager") if main_map else null
@@ -196,6 +210,33 @@ func _refresh():
             header_label.add_theme_color_override("font_color", Color.GREEN if has_worker else Color.RED)
         header_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         header.add_child(header_label)
+
+        # Кнопка «Улучшить» — напротив здания, у которого есть улучшенная
+        # версия (поле upgrades_into в buildings.json). Появляется после
+        # изучения технологии, открывающей улучшенную версию. Тултип показывает
+        # стоимость постройки улучшенной версии. На время апгрейда здание
+        # работает как обычно, вместо кнопки отображается прогресс-бар.
+        var upgrade_data = CityData.get_building_upgrade_data(b_index)
+        if not upgrade_data.is_empty():
+            # Апгрейд этого здания уже идёт — показываем прогресс (обновляется
+            # в _process() без пересоздания UI).
+            var upgrade_bar = ProgressBar.new()
+            upgrade_bar.custom_minimum_size = Vector2(90, 18)
+            upgrade_bar.show_percentage = false
+            upgrade_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+            upgrade_bar.max_value = maxf(1.0, float(upgrade_data.get("work_cost", 1)))
+            upgrade_bar.value = float(upgrade_data.get("progress", 0.0))
+            upgrade_bar.tooltip_text = "Идёт улучшение до «%s»" % upgrade_data.get("upgrade_name", upgrade_data.get("upgrade_to", ""))
+            header.add_child(upgrade_bar)
+            _upgrade_progress_bars[b_index] = upgrade_bar
+        elif CityData.can_upgrade_building(b_index):
+            var upgrade_btn = Button.new()
+            upgrade_btn.custom_minimum_size = Vector2(28, 28)
+            upgrade_btn.expand_icon = true
+            upgrade_btn.icon = _get_toggle_icon("upgrade")
+            upgrade_btn.tooltip_text = _make_upgrade_tooltip(b_index)
+            upgrade_btn.pressed.connect(_on_upgrade_pressed.bind(b_index))
+            header.add_child(upgrade_btn)
 
         var toggle_btn = Button.new()
         toggle_btn.custom_minimum_size = Vector2(28, 28)
@@ -526,6 +567,10 @@ func _collect_panel_state(tm) -> Dictionary:
             "slots": (bld.get("slots", []) as Array).duplicate(),
             "priority": bld.get("quality_priority", GameData.get_quality_priority_default()),
             "has_worker": has_worker,
+            # Доступность апгрейда: старт апгрейда и изучение открывающей его
+            # технологии должны пересобирать панель (кнопка «Улучшить» <->
+            # прогресс-бар). Во время апгрейда can_upgrade == false.
+            "can_upgrade": CityData.can_upgrade_building(idx),
         }
     return state
 
@@ -546,6 +591,8 @@ func _panel_state_equal(a: Dictionary, b: Dictionary) -> bool:
         if ai.get("priority", "") != bi.get("priority", ""):
             return false
         if ai.get("has_worker", false) != bi.get("has_worker", false):
+            return false
+        if ai.get("can_upgrade", false) != bi.get("can_upgrade", false):
             return false
         var a_slots: Array = ai.get("slots", [])
         var b_slots: Array = bi.get("slots", [])
@@ -635,7 +682,92 @@ func _update_quality_button(button: Button, b_index: int):
 func _get_toggle_icon(icon_name: String) -> Texture2D:
     if icon_name == "resume":
         return load("res://icons/building_resume.png")
+    if icon_name == "upgrade":
+        return load("res://icons/building_upgrade.png")
     return load("res://icons/building_pause.png")
+
+# Обновляет прогресс-бары идущих апгрейдов зданий каждый кадр, БЕЗ пересоздания
+# UI слотов (полная пересборка панели убивала бы тултипы; прогресс меняется
+# непрерывно, а не только на тиках city_updated).
+func _process(delta):
+    if _upgrade_progress_bars.is_empty():
+        return
+    var finished: Array = []
+    for b_index in _upgrade_progress_bars:
+        var bar = _upgrade_progress_bars[b_index]
+        if not is_instance_valid(bar):
+            finished.append(b_index)
+            continue
+        var upgrade_data = CityData.get_building_upgrade_data(b_index)
+        if upgrade_data.is_empty():
+            # Апгрейд завершён — бар уберёт ближайшая пересборка панели.
+            finished.append(b_index)
+            continue
+        bar.max_value = maxf(1.0, float(upgrade_data.get("work_cost", 1)))
+        bar.value = float(upgrade_data.get("progress", 0.0))
+    for b_index in finished:
+        _upgrade_progress_bars.erase(b_index)
+
+# Собирает тултип кнопки «Улучшить»: название улучшенной версии и стоимость её
+# постройки (труд с учётом модификаторов строительства, материалы
+# additional_cost, условие additional_req).
+func _make_upgrade_tooltip(b_index: int) -> String:
+    if b_index < 0 or b_index >= CityData.city_built_buildings.size():
+        return ""
+    var from_id: String = CityData.city_built_buildings[b_index].get("id", "")
+    var upgrade_to: String = CityData.get_building_upgrade_target(from_id)
+    if upgrade_to == "":
+        return ""
+    var up_data = null
+    for b in GameData.buildings:
+        if b["id"] == upgrade_to:
+            up_data = b
+            break
+    if up_data == null:
+        return ""
+
+    var lines = PackedStringArray()
+    lines.append("Улучшить до «%s»" % up_data.get("name", upgrade_to))
+
+    # Труд — как при фактическом апгрейде (с модификатором строительства).
+    var work_cost = int(ceil(float(up_data.get("work_cost", 0)) * MapHelpers.get_construction_cost_mult()))
+    if work_cost > 0:
+        lines.append("Труд: %d" % work_cost)
+
+    # Материалы: пачки additional_cost перечисляем через «и» (как в блоке затрат).
+    if up_data.has("additional_cost"):
+        var bundles = GameData.parse_additional_cost(up_data["additional_cost"])
+        for bundle in bundles:
+            var parts = []
+            for res_id in bundle:
+                parts.append("%s x%d" % [GameData.format_resource_name(res_id), int(bundle[res_id])])
+            if not parts.is_empty():
+                lines.append(" и ".join(parts))
+
+    var additional_req = String(up_data.get("additional_req", ""))
+    if additional_req == "running_water":
+        lines.append("Условие: доступ города к пресной воде")
+    elif additional_req != "":
+        lines.append("Условие: " + additional_req)
+
+    return "\n".join(lines)
+
+# Обработчик кнопки «Улучшить»: запускает апгрейд здания; при неудаче
+# показывает причину в строке сообщений городского интерфейса.
+func _on_upgrade_pressed(b_index: int):
+    var result = CityData.start_building_upgrade(b_index)
+    if not result.get("ok", false):
+        var city_ui = get_tree().root.find_child("CityUi", true, false)
+        if city_ui and city_ui.has_method("set_message"):
+            city_ui.set_message(String(result.get("reason", "")))
+        return
+    # Пересобираем панель: вместо кнопки появится прогресс-бар апгрейда.
+    # Скрываем открытые попапы перед пересозданием слотов, чтобы они не
+    # ссылались на удаляемые элементы.
+    for p in popups_list:
+        if is_instance_valid(p) and p.visible:
+            p.hide()
+    _refresh()
 
 func _on_slot_button_pressed(b_index: int, slot_idx: int, popup, button):
     # Закрываем другие открытые попапы
