@@ -213,7 +213,7 @@ func record_consumption_source(pid: String, source_name: String, amount: int):
 
 # Возвращает человекочитаемое имя здания по его id (или сам id, если здание
 # не найдено в реестре).
-func _get_building_name(building_id: String) -> String:
+func get_building_name(building_id: String) -> String:
     for b in GameData.buildings:
         if b.get("id", "") == building_id:
             return b.get("name", building_id)
@@ -366,7 +366,7 @@ func do_tick():
             continue
         # Имя здания — общий источник для прихода и расхода его рецептов
         # (показывает «Ручная мельница», «Дом варщика» в тултипе ресурсов).
-        var building_source = _get_building_name(bld.get("id", ""))
+        var building_source = get_building_name(bld.get("id", ""))
 
         # Проверяем, есть ли горожанин на этом здании
         var has_worker = false

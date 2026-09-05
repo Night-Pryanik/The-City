@@ -50,6 +50,9 @@ signal closed()
 
 var building_panel
 
+# Кэш ссылки на BuildManager для подключения сигналов завершения строительства
+var _cached_build_manager = null
+
 func set_building_detail_delay(value: float):
     building_detail_delay = maxf(0.0, value)
 
@@ -125,6 +128,26 @@ func _ready():
 
     if not CityData.city_updated.is_connected(_on_city_data_updated):
         CityData.city_updated.connect(_on_city_data_updated)
+
+    # Подключаем сигнал завершения строительства здания для показа сообщения
+    # в нижней панели CityUI (build_message сигнал выводит в HUD карты,
+    # который скрыт, когда открыт интерфейс города).
+    var bm = _get_build_manager()
+    if bm and not bm.build_building_completed.is_connected(_on_building_build_completed):
+        bm.build_building_completed.connect(_on_building_build_completed)
+
+func _get_build_manager():
+    if _cached_build_manager == null or not is_instance_valid(_cached_build_manager):
+        var main_map = get_tree().root.find_child("MainMap", true, false)
+        _cached_build_manager = main_map.get_node("BuildManager") if main_map and main_map.has_node("BuildManager") else null
+    return _cached_build_manager
+
+# Обработчик завершения строительства здания: показывает сообщение
+# "Строительство <здание> завершено" в нижней панели CityUI.
+func _on_building_build_completed(building_id: String, build_key: String):
+    if ui_helpers and visible:
+        var building_name = CityData.get_building_name(building_id)
+        ui_helpers.set_message("Строительство %s завершено" % building_name)
 
 func _on_city_data_updated():
     if visible:
