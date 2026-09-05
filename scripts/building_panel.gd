@@ -500,17 +500,6 @@ func _refresh_costs(bdata):
 
     var has_costs = false
 
-    # Стоимость в еде
-    var cost_food = bdata.get("cost_food", 0)
-    if cost_food > 0:
-        var food_row = HBoxContainer.new()
-        food_row.add_theme_constant_override("separation", 6)
-        var food_label = Label.new()
-        food_label.text = "В еде: %d" % cost_food
-        food_row.add_child(food_label)
-        costs_container.add_child(food_row)
-        has_costs = true
-
     # Дополнительные ресурсы. Поддерживают AND-логику: каждая пачка требует
     # все свои ресурсы, и нужны ВСЕ пачки одновременно. Между пачками
     # вставляется разделитель «И».
