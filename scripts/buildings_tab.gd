@@ -683,7 +683,7 @@ func _on_build_pressed():
             ui_helpers.set_message("Не выбрано здание")
         return
 
-    if _has_active_building_construction():
+    if _has_active_building_construction() and not CityData.ignore_build_requirements:
         if ui_helpers:
             ui_helpers.set_message("Можно строить не более %d зданий или улучшений одновременно (лимит = число жителей)" % CityData.total_population)
         return
@@ -706,10 +706,12 @@ func _on_build_pressed():
         return
     
     # Проверяем, достаточно ли населения для строительства
-    if work_cost > 0 and CityData.get_total_labor() <= 0:
+    if work_cost > 0 and not CityData.ignore_build_requirements and CityData.get_total_labor() <= 0:
         missing_parts.append("нужен хотя бы 1 житель для строительства")
 
-    if bdata.has("additional_cost"):
+    # Проверка дополнительных материалов (additional_cost) не проводится при
+    # включённом «Игнорировать требования строительства».
+    if bdata.has("additional_cost") and not CityData.ignore_build_requirements:
         # Каждая пачка (или единственный словарь) проверяется отдельно —
         # для постройки нужны ресурсы из КАЖДОЙ пачки. Групповые ключи
         # (@xxx) учитываются как «любой продукт из группы» — сумма по членам.
@@ -728,12 +730,17 @@ func _on_build_pressed():
 
     emit_signal("build_requested", selected_building_id)
     
-    # Если это здание с стоимостью в труде - показываем сообщение о начале стройки
-    if work_cost > 0 and ui_helpers:
-        var actual_work_cost = int(ceil(float(work_cost) * MapHelpers.get_construction_cost_mult()))
-        var labor = CityData.get_total_labor()
-        var build_time = actual_work_cost / max(1.0, labor)
-        ui_helpers.set_message("Начато строительство %s (%.0f труда, %.0f сек)" % [bdata.get("name", selected_building_id), actual_work_cost, build_time])
+    # Если это здание с стоимостью в труде - показываем сообщение о начале
+    # стройки. При включённом «Игнорировать требования строительства» здание
+    # уже построено мгновенно — сообщаем об этом.
+    if ui_helpers:
+        if CityData.ignore_build_requirements:
+            ui_helpers.set_message("Построено мгновенно: %s" % bdata.get("name", selected_building_id))
+        elif work_cost > 0:
+            var actual_work_cost = int(ceil(float(work_cost) * MapHelpers.get_construction_cost_mult()))
+            var labor = CityData.get_total_labor()
+            var build_time = actual_work_cost / max(1.0, labor)
+            ui_helpers.set_message("Начато строительство %s (%.0f труда, %.0f сек)" % [bdata.get("name", selected_building_id), actual_work_cost, build_time])
 
 # Очищает список рецептов
 func _has_active_building_construction() -> bool:

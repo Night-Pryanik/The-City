@@ -57,7 +57,13 @@ func _process(delta):
     var to_complete_buildings = []
     var to_complete_expansions = []
     for data in active_builds_list:
-        data["progress"] += labor_per_build * delta
+        if CityData.ignore_build_requirements and not data.has("chunk"):
+            # Дебаг: «Игнорировать требования строительства» — стройки зданий
+            # и улучшений мгновенно доводятся до 100% за один кадр. Освоение
+            # территории (expansion) этот режим не затрагивает.
+            data["progress"] = data["work_cost"]
+        else:
+            data["progress"] += labor_per_build * delta
         data["allocated_labor"] = labor_per_build
         if data["progress"] >= data["work_cost"]:
             if data.has("row"):
@@ -127,8 +133,9 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null) -> bo
     else:
         work_cost = imp_data.get("work_cost", 0)
 
-    # Строительство теперь требует труд, а не еду
-    if work_cost <= 0:
+    # Строительство теперь требует труд, а не еду. При включённом
+    # «Игнорировать требования строительства» улучшения строятся мгновенно.
+    if work_cost <= 0 or CityData.ignore_build_requirements:
         emit_signal("build_message", "Построено мгновенно: %s" % imp_name)
         emit_signal("build_completed", row, col, imp_id, target_res_id)
         return true
@@ -201,7 +208,9 @@ func start_building_build(building_id: String) -> String:
     if work_cost > 0:
         work_cost = int(ceil(float(work_cost) * MapHelpers.get_construction_cost_mult()))
 
-    if work_cost <= 0:
+    # При включённом «Игнорировать требования строительства» здание строится
+    # мгновенно — сразу завершаем стройку (флаг CityData.ignore_build_requirements).
+    if work_cost <= 0 or CityData.ignore_build_requirements:
         emit_signal("build_building_completed", building_id, "")
         return ""
 

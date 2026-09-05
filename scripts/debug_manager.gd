@@ -18,6 +18,9 @@ var _food_toggle_btn: Button
 # Кнопка «Не учитывать требования технологий» — аналогично, хранится для
 # обновления текста (состояние ВКЛ/ВЫКЛ) без полной перерисовки меню.
 var _ignore_tech_btn: Button
+# Кнопка «Игнорировать требования строительства» — хранится, чтобы обновлять
+# её текст при смене состояния (ВКЛ/ВЫКЛ) без полной перерисовки меню.
+var _ignore_build_btn: Button
 
 # Режим ожидания клика по гексу для размещения ресурса.
 var waiting_for_hex: bool = false
@@ -140,6 +143,13 @@ func _show_main_menu():
     _ignore_tech_btn.pressed.connect(_on_toggle_ignore_tech_requirements_pressed)
     _content_vbox.add_child(_ignore_tech_btn)
 
+    # Переключение игнорирования требований строительства: включаем — все
+    # здания в городе и все улучшения на карте строятся мгновенно, а для
+    # зданий пропускаются проверки дополнительных материалов и условий.
+    _ignore_build_btn = _make_button(_ignore_build_label())
+    _ignore_build_btn.pressed.connect(_on_toggle_ignore_build_requirements_pressed)
+    _content_vbox.add_child(_ignore_build_btn)
+
     # Заглушка для будущих действий (можно расширять)
     var close_btn = _make_button("[0] Закрыть (F9)")
     close_btn.pressed.connect(toggle)
@@ -201,6 +211,8 @@ func trigger_hotkey(num: int):
             _on_add_food_pressed()
         6:
             _on_toggle_ignore_tech_requirements_pressed()
+        7:
+            _on_toggle_ignore_build_requirements_pressed()
         0:
             close()
 
@@ -226,6 +238,29 @@ func _ignore_tech_label() -> String:
     if CityData.ignore_tech_requirements:
         state = "ВКЛЮЧЕНО"
     return "[6] Не учитывать требования технологий (сейчас: %s)" % state
+
+func _on_toggle_ignore_build_requirements_pressed():
+    # Инвертируем дебаг-флаг CityData.ignore_build_requirements: он включает
+    # мгновенное строительство всех зданий и улучшений и снимает проверки
+    # дополнительных материалов (additional_cost) и дополнительных условий
+    # (additional_req) для зданий. Флаг не сохраняется в сейв (см. CityData).
+    CityData.ignore_build_requirements = not CityData.ignore_build_requirements
+
+    var msg := "Требования строительства учитываются: здания и улучшения строятся по времени."
+    if CityData.ignore_build_requirements:
+        msg = "Требования строительства игнорируются: всё строится мгновенно, дополнительные материалы не нужны."
+    if main_map.hud and main_map.hud.has_method("show_message"):
+        main_map.hud.show_message(msg)
+
+    if _ignore_build_btn:
+        _ignore_build_btn.text = _ignore_build_label()
+    CityData.emit_signal("city_updated")
+
+func _ignore_build_label() -> String:
+    var state := "ВЫКЛЮЧЕНО"
+    if CityData.ignore_build_requirements:
+        state = "ВКЛЮЧЕНО"
+    return "[7] Игнорировать требования строительства (сейчас: %s)" % state
 
 func _on_add_food_pressed():
     # Добавляем 100 единиц еды на склад (пшеница — продукт категории food,

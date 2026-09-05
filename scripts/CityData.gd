@@ -60,6 +60,12 @@ var food_consumption_enabled: bool = true
 # Изучается при этом только выбранная технология — предшественники не
 # добавляются автоматически.
 var ignore_tech_requirements: bool = false
+# Дебаг-переключатель: игнорировать требования строительства. Когда включён —
+# все здания в городе и все улучшения на карте строятся мгновенно (без очереди
+# строек и без лимита одновременно строящихся объектов), а для зданий не
+# проверяются дополнительные материалы (additional_cost) и дополнительные
+# условия (additional_req). Тумблер из дебаг-меню, НЕ сохраняется в сейв.
+var ignore_build_requirements: bool = false
 
 const PRODUCTION_INTERVAL: float = 2.0
 
@@ -846,6 +852,10 @@ func is_building_unlocked(building_id: String) -> bool:
 # Возвращает словарь {"ok": bool, "reason": String}, чтобы UI и фактический
 # запуск строительства показывали одинаковую причину отказа.
 func check_building_additional_req(building_id: String) -> Dictionary:
+    # Дебаг: при включённом «Игнорировать требования строительства» любые
+    # дополнительные условия (additional_req) считаются выполненными.
+    if ignore_build_requirements:
+        return {"ok": true, "reason": ""}
     var building_data = null
     for b in GameData.buildings:
         if b.get("id", "") == building_id:
@@ -1040,6 +1050,10 @@ func _slots_from_legacy(bld: Dictionary) -> Array:
 # Атомарно: если хотя бы одной пачки не хватает — НИЧЕГО не списывается.
 # Возвращает { "ok": true } при успехе или { "ok": false, "missing": [имена...] }.
 func consume_additional_cost(bdata: Dictionary) -> Dictionary:
+    # Дебаг: при включённом «Игнорировать требования строительства»
+    # дополнительные материалы не проверяются и не списываются.
+    if ignore_build_requirements:
+        return {"ok": true}
     if not bdata.has("additional_cost"):
         return {"ok": true}
     var bundles = GameData.parse_additional_cost(bdata["additional_cost"])
@@ -1128,8 +1142,10 @@ func request_build(building_id: String) -> bool:
         print("Не хватает ресурсов для постройки ", bdata.get("name", building_id), ": ", cost_check.get("missing", []))
         return false
     var work_cost = bdata.get("work_cost", 0)
-    # Общий лимит одновременных строек (здания + улучшения) равен общему числу жителей
-    if work_cost > 0:
+    # Общий лимит одновременных строек (здания + улучшения) равен общему числу жителей.
+    # При включённом «Игнорировать требования строительства» лимит не применяется —
+    # здания строятся мгновенно и не попадают в очередь строек.
+    if work_cost > 0 and not ignore_build_requirements:
         var main_map = get_tree().root.find_child("MainMap", true, false)
         var bm = main_map.get_node("BuildManager") if main_map and main_map.has_node("BuildManager") else null
         var total_active = building_construction.size()
@@ -1138,8 +1154,10 @@ func request_build(building_id: String) -> bool:
         if total_active >= total_population:
             print("Можно строить не более %d зданий или улучшений одновременно (лимит = число жителей)" % total_population)
             return false
-    # Строительство зданий теперь требует труд, а не еду
-    if work_cost <= 0:
+    # Строительство зданий теперь требует труд, а не еду. При включённом
+    # «Игнорировать требования строительства» даже здания с work_cost > 0
+    # строятся мгновенно (флаг CityData.ignore_build_requirements).
+    if work_cost <= 0 or ignore_build_requirements:
         # Если стоимость 0 (например, ручная мельница), строим мгновенно
         city_built_buildings.append({"id": building_id, "slots": _auto_assign_slots(building_id)})
 
