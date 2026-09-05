@@ -258,7 +258,34 @@ func make_resource_entry(res_id: String, products_data: Dictionary, icon_paths: 
             icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
             entry.add_child(icon_rect)
 
-    var text = GameData.format_resource_name(res_id)
+    if GameData.is_group_key(res_id):
+        # Групповой ресурс — оформляем как «ссылку»: подчёркнутое название
+        # (и светло-голубой цвет), чтобы привлечь внимание игрока к строке.
+        # Подчёркнуто только имя группы, количество — обычным начертанием.
+        # По наведению показывается тултип с составом группы, но клики НЕ
+        # перехватываются (MOUSE_FILTER_PASS) — кнопка рецепта/слота работает.
+        var group_name := GameData.format_resource_name(res_id)
+        var amount_text := ""
+        if amount > 0:
+            if amount_style == "colon":
+                amount_text = ": %d" % amount
+            else:
+                amount_text = " x%d" % amount
+
+        # UnderlinedLabel подключаем через load(): class_name может быть ещё
+        # не зарегистрирован в кеше глобальных классов (например, при
+        # headless-тестах через --script), а load надёжен в любом режиме.
+        var link_label = load("res://scripts/underlined_label.gd").new()
+        link_label.text = "%s%s" % [group_name, amount_text]
+        link_label.underline_text = group_name
+        link_label.mouse_filter = Control.MOUSE_FILTER_PASS
+        link_label.mouse_entered.connect(_on_resource_group_hover.bind(
+            link_label, res_id, products_data, icon_paths))
+        link_label.mouse_exited.connect(_on_resource_group_exit)
+        entry.add_child(link_label)
+        return entry
+
+    var text := GameData.format_resource_name(res_id)
     if amount > 0:
         if amount_style == "colon":
             text = "%s: %d" % [text, amount]
@@ -267,11 +294,6 @@ func make_resource_entry(res_id: String, products_data: Dictionary, icon_paths: 
 
     var label = Label.new()
     label.text = text
-    if GameData.is_group_key(res_id):
-        # Групповой ресурс — наведение показывает тултип, но не перехватывает клики
-        label.mouse_filter = Control.MOUSE_FILTER_PASS
-        label.mouse_entered.connect(_on_resource_group_hover.bind(label, res_id, products_data, icon_paths))
-        label.mouse_exited.connect(_on_resource_group_exit)
     entry.add_child(label)
     return entry
 
