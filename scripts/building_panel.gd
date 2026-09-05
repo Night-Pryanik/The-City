@@ -38,6 +38,13 @@ var _last_panel_state: Dictionary = {}
 # каждый кадр в _process() БЕЗ пересоздания UI (иначе умирали бы тултипы).
 var _upgrade_progress_bars: Dictionary = {}
 
+# Тултип кнопки «Улучшить»: собственная панель с богатым содержимым
+# (иконки здания и материалов — обычный tooltip_text картинки не показывает).
+# Отдельная панель, а не ui_helpers.detail_tooltip_panel: та общая с вкладкой
+# «Здания», а панель здания рисуется поверх CityUi.
+var upgrade_tooltip_panel: Panel = null
+var upgrade_tooltip_content: VBoxContainer = null
+
 func _ready():
     _build_icon_index()
     # Подписываемся на изменение назначений работников, чтобы панель
@@ -112,6 +119,34 @@ func _ready():
     close_btn.pressed.connect(_on_close_pressed)
     vbox.add_child(close_btn)
 
+    # Тултип кнопки «Улучшить»: панель с иконками (здание, материалы).
+    # mouse_filter IGNORE — тултип не перехватывает ввод; z_index ниже, чем у
+    # group_tooltip (1100), чтобы при наведении на групповой ресурс состав
+    # группы рисовался поверх этого тултипа.
+    upgrade_tooltip_panel = Panel.new()
+    upgrade_tooltip_panel.visible = false
+    upgrade_tooltip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    upgrade_tooltip_panel.z_index = 1050
+    upgrade_tooltip_panel.add_theme_stylebox_override("panel", _make_tooltip_style())
+    add_child(upgrade_tooltip_panel)
+
+    upgrade_tooltip_content = VBoxContainer.new()
+    upgrade_tooltip_content.add_theme_constant_override("separation", 4)
+    upgrade_tooltip_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    upgrade_tooltip_panel.add_child(upgrade_tooltip_content)
+
+# Стиль фона тултипа — как у тултипов ui_helpers: непрозрачный тёмный фон
+# со светлой рамкой в 1px.
+func _make_tooltip_style() -> StyleBoxFlat:
+    var style = StyleBoxFlat.new()
+    style.bg_color = Color(0.2, 0.2, 0.2, 1.0)
+    style.border_width_left = 1
+    style.border_width_top = 1
+    style.border_width_right = 1
+    style.border_width_bottom = 1
+    style.border_color = Color(0.6, 0.6, 0.6)
+    return style
+
 func open(building_id_arg: String, data: Dictionary):
     # Очищаем старые попапы при открытии (контент мог устареть, например,
     # после изучения новых технологий). При периодическом _refresh() попапы
@@ -180,6 +215,9 @@ func _refresh():
     for child in slots_container.get_children():
         child.queue_free()
     _upgrade_progress_bars.clear()
+    # Кнопки заголовков пересоздаются — тултип апгрейда мог остаться висеть
+    # (mouse_exited у удаляемой кнопки не сработает), скрываем явно.
+    _hide_upgrade_tooltip()
 
     var main_map = get_tree().root.find_child("MainMap", true, false)
     var tm = main_map.get_node("TownsfolkManager") if main_map else null
@@ -234,8 +272,12 @@ func _refresh():
             upgrade_btn.custom_minimum_size = Vector2(28, 28)
             upgrade_btn.expand_icon = true
             upgrade_btn.icon = _get_toggle_icon("upgrade")
-            upgrade_btn.tooltip_text = _make_upgrade_tooltip(b_index)
+            # Тултип с иконками рисуется собственной панелью по наведению
+            # (см. _on_upgrade_btn_hovered) — обычный tooltip_text не умеет
+            # показывать картинки.
             upgrade_btn.pressed.connect(_on_upgrade_pressed.bind(b_index))
+            upgrade_btn.mouse_entered.connect(_on_upgrade_btn_hovered.bind(upgrade_btn, b_index))
+            upgrade_btn.mouse_exited.connect(_hide_upgrade_tooltip)
             header.add_child(upgrade_btn)
 
         var toggle_btn = Button.new()
@@ -708,49 +750,121 @@ func _process(delta):
     for b_index in finished:
         _upgrade_progress_bars.erase(b_index)
 
-# Собирает тултип кнопки «Улучшить»: название улучшенной версии и стоимость её
-# постройки (труд с учётом модификаторов строительства, материалы
-# additional_cost, условие additional_req).
-func _make_upgrade_tooltip(b_index: int) -> String:
+# Наведение на кнопку «Улучшить»: заполняем тултип с иконками и показываем
+# его рядом с кнопкой. Обычный tooltip_text не умеет показывать картинки,
+# поэтому используется собственная панель upgrade_tooltip_panel.
+func _on_upgrade_btn_hovered(btn: Button, b_index: int):
+    if upgrade_tooltip_panel == null or ui_helpers == null:
+        return
+    if not _fill_upgrade_tooltip_content(b_index):
+        _hide_upgrade_tooltip()
+        return
+    _show_upgrade_tooltip_panel(btn)
+
+# Заполняет содержимое тултипа апгрейда: заголовок «Улучшить до <иконка> "Имя"»,
+# труд, материалы построчно («<иконка> Доски x8»), условие additional_req.
+# Возвращает false, если показывать нечего.
+func _fill_upgrade_tooltip_content(b_index: int) -> bool:
+    # Очищаем предыдущее содержимое (remove_child + queue_free — как в
+    # ui_helpers.show_group_tooltip, чтобы размер пересчитывался корректно).
+    for child in upgrade_tooltip_content.get_children():
+        upgrade_tooltip_content.remove_child(child)
+        child.queue_free()
+
     if b_index < 0 or b_index >= CityData.city_built_buildings.size():
-        return ""
+        return false
     var from_id: String = CityData.city_built_buildings[b_index].get("id", "")
     var upgrade_to: String = CityData.get_building_upgrade_target(from_id)
     if upgrade_to == "":
-        return ""
+        return false
     var up_data = null
     for b in GameData.buildings:
         if b["id"] == upgrade_to:
             up_data = b
             break
     if up_data == null:
-        return ""
+        return false
 
-    var lines = PackedStringArray()
-    lines.append("Улучшить до «%s»" % up_data.get("name", upgrade_to))
+    # Заголовок: «Улучшить до» + иконка улучшенного здания + имя в кавычках.
+    var header = HBoxContainer.new()
+    header.add_theme_constant_override("separation", 6)
+    header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    var header_label = Label.new()
+    header_label.text = "Улучшить до"
+    header_label.add_theme_font_size_override("font_size", 16)
+    header_label.add_theme_color_override("font_color", Color.WHITE)
+    header_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    header.add_child(header_label)
+    var icon_name = String(up_data.get("icon", ""))
+    if not icon_name.is_empty() and icon_paths.has(icon_name):
+        var tex = load(icon_paths[icon_name])
+        if tex:
+            var icon_rect = TextureRect.new()
+            icon_rect.texture = tex
+            icon_rect.custom_minimum_size = Vector2(24, 24)
+            icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+            icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
+            icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+            header.add_child(icon_rect)
+    var name_label = Label.new()
+    name_label.text = "«%s»" % up_data.get("name", upgrade_to)
+    name_label.add_theme_font_size_override("font_size", 16)
+    name_label.add_theme_color_override("font_color", Color.WHITE)
+    name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    header.add_child(name_label)
+    upgrade_tooltip_content.add_child(header)
 
     # Труд — как при фактическом апгрейде (с модификатором строительства).
     var work_cost = int(ceil(float(up_data.get("work_cost", 0)) * MapHelpers.get_construction_cost_mult()))
     if work_cost > 0:
-        lines.append("Труд: %d" % work_cost)
+        var labor_label = Label.new()
+        labor_label.text = "Труд: %d" % work_cost
+        labor_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+        labor_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        upgrade_tooltip_content.add_child(labor_label)
 
-    # Материалы: пачки additional_cost перечисляем через «и» (как в блоке затрат).
+    # Материалы: строка «<иконка> Имя xN» на каждый ресурс каждой пачки
+    # additional_cost. Иконки и групповые ссылки даёт ui_helpers.make_resource_entry.
     if up_data.has("additional_cost"):
         var bundles = GameData.parse_additional_cost(up_data["additional_cost"])
+        var products_data = _get_all_resources()
         for bundle in bundles:
-            var parts = []
             for res_id in bundle:
-                parts.append("%s x%d" % [GameData.format_resource_name(res_id), int(bundle[res_id])])
-            if not parts.is_empty():
-                lines.append(" и ".join(parts))
+                upgrade_tooltip_content.add_child(ui_helpers.make_resource_entry(
+                    res_id, products_data, icon_paths, int(bundle[res_id])))
 
     var additional_req = String(up_data.get("additional_req", ""))
-    if additional_req == "running_water":
-        lines.append("Условие: доступ города к пресной воде")
-    elif additional_req != "":
-        lines.append("Условие: " + additional_req)
+    if additional_req != "":
+        var req_label = Label.new()
+        req_label.text = "Условие: доступ города к пресной воде" if additional_req == "running_water" else "Условие: " + additional_req
+        req_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+        req_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        upgrade_tooltip_content.add_child(req_label)
 
-    return "\n".join(lines)
+    return true
+
+# Размер, позиция и показ тултипа: под кнопкой (как попапы выбора рецепта),
+# с переносом внутрь экрана у краёв.
+func _show_upgrade_tooltip_panel(btn: Button):
+    upgrade_tooltip_content.reset_size()
+    var content_min_size = upgrade_tooltip_content.get_minimum_size()
+    var pad_left = 6
+    var pad_top = 6
+    var pad_right = 6
+    var pad_bottom = 6
+    upgrade_tooltip_content.position = Vector2(pad_left, pad_top)
+    upgrade_tooltip_panel.size = content_min_size + Vector2(pad_left + pad_right, pad_top + pad_bottom)
+    var btn_rect = btn.get_global_rect()
+    var viewport_size = get_viewport().get_visible_rect().size
+    var pos = btn_rect.position + Vector2(0, btn_rect.size.y + 4)
+    pos.x = clampf(pos.x, 0.0, maxf(0.0, viewport_size.x - upgrade_tooltip_panel.size.x))
+    pos.y = clampf(pos.y, 0.0, maxf(0.0, viewport_size.y - upgrade_tooltip_panel.size.y))
+    upgrade_tooltip_panel.position = pos
+    upgrade_tooltip_panel.show()
+
+func _hide_upgrade_tooltip():
+    if upgrade_tooltip_panel != null:
+        upgrade_tooltip_panel.hide()
 
 # Обработчик кнопки «Улучшить»: запускает апгрейд здания; при неудаче
 # показывает причину в строке сообщений городского интерфейса.
@@ -957,6 +1071,7 @@ func _get_icon_texture(icon_file: String) -> Texture2D:
 func _on_close_pressed():
     if ui_helpers:
         ui_helpers.hide_group_tooltip()
+    _hide_upgrade_tooltip()
     hide()
 
 # Возвращает объединённый словарь всех ресурсов (сырьё + товары)
