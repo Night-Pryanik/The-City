@@ -140,14 +140,11 @@ func update_built_status():
     # Обновляем прогресс-бары строящихся зданий
     _update_construction_rows()
 
-    var main_map = get_tree().root.find_child("MainMap", true, false)
-    var tm = main_map.get_node("TownsfolkManager") if main_map else null
-
-    # Группируем здания по id
+    # Группируем здания по id и обновляем текст, цвет и тултип кнопок.
     var groups = _group_buildings()
     for g in range(groups.size()):
-        var row = built_buildings_list.get_child(g + construction_rows.size())
-        if row == null or row.get_child_count() < 2:
+        var item_btn = built_buildings_list.get_child(g + construction_rows.size())
+        if item_btn == null or not (item_btn is Button):
             continue
         var group = groups[g]
         var bdata = null
@@ -156,33 +153,14 @@ func update_built_status():
                 bdata = b
                 break
         var base_name = bdata["name"] if bdata else group["id"]
-        var working = group["working"]
-        var idle = group["idle"]
 
         var display_name = "%s x%d" % [base_name, group["total"]] if group["total"] > 1 else base_name
-        var status = ""
-        var status_color = Color.WHITE
-        if idle > 0:
-            # Есть простаивающие здания (работник есть, но все слоты пустые)
-            if group["total"] > 1:
-                if idle == group["total"]:
-                    status = " (простаивает)"
-                else:
-                    status = " (работает: %d из %d, простаивает: %d)" % [working, group["total"], idle]
-            else:
-                status = " (простаивает)"
-            status_color = Color.ORANGE
-        elif group["total"] > 1:
-            status = " (работает: %d из %d)" % [working, group["total"]]
-            status_color = Color.GREEN if working == group["total"] else (Color.YELLOW if working > 0 else Color.RED)
-        else:
-            status = " (работает)" if working > 0 else " (не работает)"
-            status_color = Color.GREEN if working > 0 else Color.RED
+        var status_info = _get_built_status_info(group["working"], group["idle"], group["total"])
 
-        var label = row.get_child(0)
-        if label is Label:
-            label.text = display_name + status
-            label.add_theme_color_override("font_color", status_color)
+        item_btn.text = display_name
+        item_btn.tooltip_text = _make_built_tooltip_text(
+            display_name, group["working"], group["idle"], group["total"])
+        _apply_built_status_color(item_btn, status_info["color"])
 
 func refresh_built():
     for child in built_buildings_list.get_children():
@@ -205,48 +183,32 @@ func refresh_built():
                 break
         var base_name = bdata["name"] if bdata else g["id"]
         var display_name = "%s x%d" % [base_name, g["total"]] if g["total"] > 1 else base_name
+        var status_info = _get_built_status_info(g["working"], g["idle"], g["total"])
 
-        var row = HBoxContainer.new()
-        row.add_theme_constant_override("separation", 10)
+        # Группа однотипных построенных зданий — кнопка-строка в стиле списка
+        # доступных построек. Клик открывает панель деталей здания
+        # (функционал бывшей отдельной кнопки «Дополнительно»).
+        var item_btn = Button.new()
+        item_btn.text = display_name
+        item_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+        item_btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        item_btn.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
+        item_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        item_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+        item_btn.tooltip_text = _make_built_tooltip_text(
+            display_name, g["working"], g["idle"], g["total"])
+        _apply_built_status_color(item_btn, status_info["color"])
 
-        var working = g["working"]
-        var idle = g["idle"]
-        var status = ""
-        var status_color = Color.WHITE
-        if idle > 0:
-            # Есть простаивающие здания (работник есть, но все слоты пустые)
-            if g["total"] > 1:
-                if idle == g["total"]:
-                    status = " (простаивает)"
-                else:
-                    status = " (работает: %d из %d, простаивает: %d)" % [working, g["total"], idle]
-            else:
-                status = " (простаивает)"
-            status_color = Color.ORANGE
-        elif g["total"] > 1:
-            status = " (работает: %d из %d)" % [working, g["total"]]
-            status_color = Color.GREEN if working == g["total"] else (Color.YELLOW if working > 0 else Color.RED)
-        else:
-            status = " (работает)" if working > 0 else " (не работает)"
-            status_color = Color.GREEN if working > 0 else Color.RED
+        # Иконка здания перед названием (как в списке доступных построек).
+        var building_icon = _get_icon_texture_from_paths(bdata.get("icon", "")) if bdata else null
+        if building_icon:
+            item_btn.icon = building_icon
+            item_btn.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
+            item_btn.add_theme_constant_override("icon_max_width", 24)
 
-        var label = Label.new()
-        label.text = display_name + status
-        label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-        label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-        label.add_theme_color_override("font_color", status_color)
-        row.add_child(label)
+        item_btn.pressed.connect(_on_building_slots_pressed.bind(g["id"]))
 
-        # Кнопка открытия панели деталей здания (сгруппированные здания этого типа)
-        var slots_btn = Button.new()
-        slots_btn.custom_minimum_size = Vector2(28, 28)
-        slots_btn.expand_icon = true
-        slots_btn.icon = _get_icon("info")
-        slots_btn.tooltip_text = "Дополнительно"
-        slots_btn.pressed.connect(_on_building_slots_pressed.bind(g["id"]))
-        row.add_child(slots_btn)
-
-        built_buildings_list.add_child(row)
+        built_buildings_list.add_child(item_btn)
     last_built_count = built_buildings.size()
 
     # Кнопка «Построить» остаётся активной даже при достижении лимита строек,
@@ -377,6 +339,52 @@ func get_hovered_construction_bar(mouse_pos: Vector2) -> Dictionary:
                 "percent": percent
             }
     return {}
+
+# Возвращает статус группы построенных зданий: текст и цвет для кнопки.
+# idle — здания, у которых есть работник, но все слоты пустые (простаивают).
+# Цветовая кодировка сохраняется: зелёный = работает, красный = не работает,
+# жёлтый = часть группы работает, оранжевый = простаивает.
+func _get_built_status_info(working: int, idle: int, total: int) -> Dictionary:
+    var text = ""
+    var color = Color.WHITE
+    if idle > 0:
+        # Есть простаивающие здания (работник есть, но все слоты пустые)
+        if total > 1:
+            if idle == total:
+                text = "простаивает"
+            else:
+                text = "работает %d из %d, простаивает %d" % [working, total, idle]
+        else:
+            text = "простаивает"
+        color = Color.ORANGE
+    elif total > 1:
+        text = "работает %d из %d" % [working, total]
+        color = Color.GREEN if working == total else (Color.YELLOW if working > 0 else Color.RED)
+    else:
+        text = "работает" if working > 0 else "не работает"
+        color = Color.GREEN if working > 0 else Color.RED
+    return {"text": text, "color": color}
+
+# Собирает текст тултипа кнопки построенного здания: название, состояние
+# (работает / не работает / простаивает) и подсказку, что клик открывает
+# панель управления зданием.
+func _make_built_tooltip_text(title: String, working: int, idle: int, total: int) -> String:
+    var info = _get_built_status_info(working, idle, total)
+    var lines = PackedStringArray([
+        title,
+        "Состояние: " + info["text"],
+        "",
+        "Клик — панель управления зданием"
+    ])
+    return "\n".join(lines)
+
+# Задаёт цвет текста кнопки во всех состояниях (обычное, наведение, нажатие,
+# фокус), чтобы цветовая кодировка состояния не пропадала при наведении.
+func _apply_built_status_color(btn: Button, color: Color):
+    btn.add_theme_color_override("font_color", color)
+    btn.add_theme_color_override("font_hover_color", color)
+    btn.add_theme_color_override("font_pressed_color", color)
+    btn.add_theme_color_override("font_focus_color", color)
 
 # Группирует построенные здания по id и считает работающие.
 # idle — здания, у которых есть работник, но все слоты пустые (простаивают).
