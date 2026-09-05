@@ -171,8 +171,7 @@ func update_built_status():
         var status_info = _get_built_status_info(group["working"], group["idle"], group["total"])
 
         item_btn.text = display_name
-        item_btn.tooltip_text = _make_built_tooltip_text(
-            display_name, group["working"], group["idle"], group["total"])
+        item_btn.tooltip_text = _make_built_tooltip_text(display_name, group)
         _apply_built_status_color(item_btn, status_info["color"])
 
 func refresh_built():
@@ -208,8 +207,7 @@ func refresh_built():
         item_btn.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
         item_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         item_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-        item_btn.tooltip_text = _make_built_tooltip_text(
-            display_name, g["working"], g["idle"], g["total"])
+        item_btn.tooltip_text = _make_built_tooltip_text(display_name, g)
         _apply_built_status_color(item_btn, status_info["color"])
 
         # Иконка здания перед названием (как в списке доступных построек).
@@ -380,16 +378,32 @@ func _get_built_status_info(working: int, idle: int, total: int) -> Dictionary:
     return {"text": text, "color": color}
 
 # Собирает текст тултипа кнопки построенного здания: название, состояние
-# (работает / не работает / простаивает) и подсказку, что клик открывает
-# панель управления зданием.
-func _make_built_tooltip_text(title: String, working: int, idle: int, total: int) -> String:
+# (работает / не работает / простаивает), возможность улучшения (если у типа
+# здания есть открытая технологией улучшенная версия) и подсказка, что клик
+# открывает панель управления зданием.
+func _make_built_tooltip_text(title: String, group: Dictionary) -> String:
+    var working = int(group.get("working", 0))
+    var idle = int(group.get("idle", 0))
+    var total = int(group.get("total", 0))
     var info = _get_built_status_info(working, idle, total)
     var lines = PackedStringArray([
         title,
         "Состояние: " + info["text"],
-        "",
-        "Клик — панель управления зданием"
     ])
+    # Возможность улучшения: цель открыта технологией и хотя бы один экземпляр
+    # группы ещё не улучшается. Счётчик показываем, когда зданий несколько и
+    # не все могут быть улучшены сейчас (остальные уже улучшаются).
+    var target_name = String(group.get("upgrade_target_name", ""))
+    var upgradeable = int(group.get("upgradeable", 0))
+    if target_name != "" and upgradeable > 0:
+        var upgrade_line = "Можно улучшить до «%s»" % target_name
+        if total > 1 and upgradeable < total:
+            upgrade_line += " (%d из %d)" % [upgradeable, total]
+        lines.append("")
+        lines.append(upgrade_line)
+        lines.append("Улучшение — кнопка «Улучшить» в панели здания")
+    lines.append("")
+    lines.append("Клик — панель управления зданием")
     return "\n".join(lines)
 
 # Задаёт цвет текста кнопки во всех состояниях (обычное, наведение, нажатие,
@@ -402,6 +416,10 @@ func _apply_built_status_color(btn: Button, color: Color):
 
 # Группирует построенные здания по id и считает работающие.
 # idle — здания, у которых есть работник, но все слоты пустые (простаивают).
+# upgradeable — сколько экземпляров группы можно улучшить прямо сейчас
+# (у экземпляра с уже идущим апгрейдом can_upgrade_building вернёт false).
+# upgrade_target_name — имя улучшенной версии типа (пусто, если улучшения нет
+# или оно ещё не открыто технологией).
 func _group_buildings() -> Array:
     var main_map = get_tree().root.find_child("MainMap", true, false)
     var tm = main_map.get_node("TownsfolkManager") if main_map else null
@@ -414,7 +432,7 @@ func _group_buildings() -> Array:
         var has_worker = tm.has_townsfolk(i) if tm else false
         if not order.has(bld_id):
             order.append(bld_id)
-            groups.append({"id": bld_id, "total": 0, "working": 0, "idle": 0})
+            groups.append({"id": bld_id, "total": 0, "working": 0, "idle": 0, "upgradeable": 0})
         var g = null
         for grp in groups:
             if grp["id"] == bld_id:
@@ -425,6 +443,19 @@ func _group_buildings() -> Array:
             g["working"] += 1
             if CityData.are_all_slots_empty(i):
                 g["idle"] += 1
+        if CityData.can_upgrade_building(i):
+            g["upgradeable"] += 1
+
+    # Имя улучшенной версии общее для всех экземпляров типа — вычисляем один
+    # раз на группу. Пустая строка = улучшения нет или оно не открыто.
+    for grp in groups:
+        grp["upgrade_target_name"] = ""
+        var target_id = CityData.get_building_upgrade_target(grp["id"])
+        if target_id != "" and CityData.is_building_unlocked(target_id):
+            for b in GameData.buildings:
+                if b["id"] == target_id:
+                    grp["upgrade_target_name"] = b.get("name", target_id)
+                    break
     return groups
 
 # Собирает сигнатуру группировки построенных зданий: "id:total|id:total".
