@@ -22,6 +22,11 @@ var quality_tooltip_vbox: VBoxContainer
 var detail_tooltip_panel: Panel
 var detail_tooltip_content: VBoxContainer
 
+# Тултип кнопок списка построенных зданий: состояния с цветовой кодировкой
+# (обычный tooltip_text цветов не поддерживает). Контент собирает buildings_tab.
+var built_tooltip_panel: Panel
+var built_tooltip_content: VBoxContainer
+
 # Тултип «Источники прихода/расхода» на вкладке «Ресурсы»
 var flow_tooltip_panel: Panel
 var flow_tooltip_vbox: VBoxContainer
@@ -136,6 +141,23 @@ func setup(main_ui: Control, message_lbl: Label):
     detail_tooltip_panel.add_child(detail_tooltip_content)
 
     detail_tooltip_panel.add_theme_stylebox_override("panel", _make_tooltip_style())
+
+    # Тултип кнопок списка построенных зданий. mouse_filter IGNORE — тултип
+    # «прозрачен» для наведения/кликов (как upgrade_tooltip_panel в
+    # building_panel.gd): список кнопок под ним остаётся кликабельным, а
+    # перемещение курсора на соседнюю кнопку плавно переключает тултип.
+    built_tooltip_panel = Panel.new()
+    built_tooltip_panel.visible = false
+    built_tooltip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    built_tooltip_panel.z_index = 1000
+    main_ui.add_child(built_tooltip_panel)
+
+    built_tooltip_content = VBoxContainer.new()
+    built_tooltip_content.add_theme_constant_override("separation", 4)
+    built_tooltip_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    built_tooltip_panel.add_child(built_tooltip_content)
+
+    built_tooltip_panel.add_theme_stylebox_override("panel", _make_tooltip_style())
 
 func show_food_tooltip(mouse_pos: Vector2):
     tooltip_panel.position = mouse_pos + Vector2(15, 15)
@@ -401,6 +423,30 @@ func show_building_detail_tooltip(mouse_pos: Vector2):
 func hide_building_detail_tooltip():
     if detail_tooltip_panel:
         detail_tooltip_panel.hide()
+
+# Показывает тултип построенного здания в точке pos (обычно под кнопкой
+# списка), с переносом внутрь экрана у краёв. Контент заполняет buildings_tab
+# в _fill_built_tooltip() перед вызовом.
+func show_built_tooltip(pos: Vector2):
+    if built_tooltip_panel == null:
+        return
+    built_tooltip_content.reset_size()
+    var content_min_size = built_tooltip_content.get_minimum_size()
+    var pad_left = 6
+    var pad_top = 4
+    var pad_right = 6
+    var pad_bottom = 4
+    built_tooltip_content.position = Vector2(pad_left, pad_top)
+    built_tooltip_panel.size = content_min_size + Vector2(pad_left + pad_right, pad_top + pad_bottom)
+    var viewport_size = get_viewport().get_visible_rect().size
+    pos.x = max(0.0, min(pos.x, viewport_size.x - built_tooltip_panel.size.x))
+    pos.y = max(0.0, min(pos.y, viewport_size.y - built_tooltip_panel.size.y))
+    built_tooltip_panel.position = pos
+    built_tooltip_panel.show()
+
+func hide_built_tooltip():
+    if built_tooltip_panel:
+        built_tooltip_panel.hide()
 
 # Создаёт строку тултипа «буллет + текст». Используется в show_flow_tooltip
 # и по тому же паттерну, что _make_bullet_row в buildings_tab.gd (блоки

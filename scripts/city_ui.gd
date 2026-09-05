@@ -220,6 +220,7 @@ func _switch_tab(tab_id: String):
         ui_helpers.hide_group_tooltip()
         ui_helpers.hide_progress_tooltip()
         ui_helpers.hide_quality_tooltip()
+        ui_helpers.hide_built_tooltip()
 
     if tab_id == "buildings":
         buildings_tab.refresh_list()
@@ -462,6 +463,7 @@ func _close_ui():
         ui_helpers.hide_quality_tooltip()
         ui_helpers.hide_building_detail_tooltip()
         ui_helpers.hide_flow_tooltip()
+        ui_helpers.hide_built_tooltip()
     if building_panel:
         building_panel.hide()
     hide()

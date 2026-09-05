@@ -42,6 +42,11 @@ var construction_rows: Dictionary = {}
 # update_built_status понимает, что список надо пересобрать.
 var _last_groups_signature: String = ""
 
+# Тултип построенного здания под курсором: кнопка и индекс её группы в списке.
+# Сама панель тултипа живёт в ui_helpers (built_tooltip_panel).
+var _hovered_built_btn: Button = null
+var _hovered_built_group_index: int = -1
+
 signal build_requested(building_id: String)
 signal building_detail_requested(building_id: String)
 
@@ -171,13 +176,23 @@ func update_built_status():
         var status_info = _get_built_status_info(group["working"], group["idle"], group["total"])
 
         item_btn.text = display_name
-        item_btn.tooltip_text = _make_built_tooltip_text(display_name, group)
         _apply_built_status_color(item_btn, status_info["color"])
+
+    # Тултип построенного здания под курсором обновляется живьём: состояния
+    # меняются на тиках (назначение работников, старт/завершение апгрейда),
+    # пока пользователь держит курсор на кнопке и читает список.
+    if _hovered_built_btn != null and is_instance_valid(_hovered_built_btn) \
+            and ui_helpers != null and ui_helpers.built_tooltip_panel != null \
+            and ui_helpers.built_tooltip_panel.visible:
+        _show_built_tooltip(_hovered_built_btn, _hovered_built_group_index)
 
 func refresh_built():
     for child in built_buildings_list.get_children():
         child.queue_free()
     construction_rows.clear()
+    # Кнопки списка пересоздаются — тултип мог остаться висеть над удалённой
+    # кнопкой (mouse_exited у неё уже не сработает), прячем явно.
+    _hide_built_tooltip()
     last_built_count = built_buildings.size()
     last_construction_count = CityData.building_construction.size()
 
@@ -187,7 +202,8 @@ func refresh_built():
     # Группируем однотипные здания
     var groups = _group_buildings()
 
-    for g in groups:
+    for group_index in range(groups.size()):
+        var g = groups[group_index]
         var bdata = null
         for b in buildings_data:
             if b["id"] == g["id"]:
@@ -207,8 +223,12 @@ func refresh_built():
         item_btn.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
         item_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         item_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-        item_btn.tooltip_text = _make_built_tooltip_text(display_name, g)
         _apply_built_status_color(item_btn, status_info["color"])
+
+        # Тултип с цветными состояниями — собственная панель (обычный
+        # tooltip_text цветов не поддерживает), показывается по наведению.
+        item_btn.mouse_entered.connect(_on_built_btn_hovered.bind(item_btn, group_index))
+        item_btn.mouse_exited.connect(_on_built_btn_unhovered)
 
         # Иконка здания перед названием (как в списке доступных построек).
         var building_icon = _get_icon_texture_from_paths(bdata.get("icon", "")) if bdata else null
@@ -377,34 +397,136 @@ func _get_built_status_info(working: int, idle: int, total: int) -> Dictionary:
         color = Color.GREEN if working > 0 else Color.RED
     return {"text": text, "color": color}
 
-# Собирает текст тултипа кнопки построенного здания: название, состояние
-# (работает / не работает / простаивает), возможность улучшения (если у типа
-# здания есть открытая технологией улучшенная версия) и подсказка, что клик
-# открывает панель управления зданием.
-func _make_built_tooltip_text(title: String, group: Dictionary) -> String:
+# Заполняет панель тултипа построенного здания: заголовок, маркированный
+# список состояний с цветовой кодировкой, подвал. Контент складывается в
+# ui_helpers.built_tooltip_content; позиционирование — в show_built_tooltip().
+func _fill_built_tooltip(group: Dictionary):
+    var content: VBoxContainer = ui_helpers.built_tooltip_content
+    # Очищаем предыдущее содержимое (remove_child + queue_free — как в
+    # ui_helpers.show_group_tooltip, чтобы размер пересчитывался корректно).
+    for child in content.get_children():
+        content.remove_child(child)
+        child.queue_free()
+
+    var title = Label.new()
+    title.text = _built_group_title(group)
+    title.add_theme_font_size_override("font_size", 16)
+    title.add_theme_color_override("font_color", Color.WHITE)
+    title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    content.add_child(title)
+
+    var states = _get_built_states(group)
+    for state in states:
+        var name: String = state[0]
+        var detail: String = state[1]
+        var state_color: Color = state[2]
+        var row = HBoxContainer.new()
+        row.add_theme_constant_override("separation", 6)
+        row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        var indent = Control.new()
+        indent.custom_minimum_size = Vector2(14, 0)
+        indent.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        row.add_child(indent)
+        var bullet = Label.new()
+        bullet.text = "•"
+        bullet.add_theme_color_override("font_color", state_color)
+        bullet.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        row.add_child(bullet)
+        var value_label = Label.new()
+        value_label.text = name if detail == "" else "%s: %s" % [name, detail]
+        value_label.add_theme_color_override("font_color", state_color)
+        value_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        row.add_child(value_label)
+        content.add_child(row)
+
+    var footer = Label.new()
+    footer.text = "Клик — панель управления зданием"
+    footer.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+    footer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    content.add_child(footer)
+
+# Заголовок группы для тултипа: «Ручная мельница x2» / «Ручная мельница».
+func _built_group_title(group: Dictionary) -> String:
+    var bdata = null
+    for b in buildings_data:
+        if b["id"] == group["id"]:
+            bdata = b
+            break
+    var base_name = bdata.get("name", group["id"]) if bdata else group["id"]
+    return "%s x%d" % [base_name, group["total"]] if group["total"] > 1 else base_name
+
+# Показывает тултип построенного здания под кнопкой списка (с живым
+# обновлением контента на каждом вызове, пока курсор на кнопке).
+func _show_built_tooltip(btn: Button, group_index: int):
+    if ui_helpers == null:
+        return
+    var groups = _group_buildings()
+    if group_index < 0 or group_index >= groups.size():
+        _hide_built_tooltip()
+        return
+    _fill_built_tooltip(groups[group_index])
+    var btn_rect = btn.get_global_rect()
+    ui_helpers.show_built_tooltip(btn_rect.position + Vector2(0, btn_rect.size.y + 4))
+
+# Наведение на кнопку построенного здания: запоминаем её и показываем тултип.
+func _on_built_btn_hovered(btn: Button, group_index: int):
+    _hovered_built_btn = btn
+    _hovered_built_group_index = group_index
+    _show_built_tooltip(btn, group_index)
+
+# Уход курсора с кнопки построенного здания: прячем тултип.
+func _on_built_btn_unhovered():
+    _hide_built_tooltip()
+
+# Прячет тултип построенного здания и сбрасывает наведённую кнопку.
+func _hide_built_tooltip():
+    _hovered_built_btn = null
+    _hovered_built_group_index = -1
+    if ui_helpers != null:
+        ui_helpers.hide_built_tooltip()
+
+# Собирает список состояний группы построенных зданий для тултипа: каждое
+# состояние — тройка [имя, детализация, цвет]. Выводятся только ненулевые.
+#   работает — здания с работником и непустыми слотами (working − idle);
+#     детализация — просто число таких зданий («работает: 1»);
+#   простаивает — с работником, но все слоты пустые (idle);
+#   не работает — без работника (total − working);
+#   можно улучшить — экземпляры, доступные для апгрейда (upgradeable; сам
+#     факт доступности уже включает проверку «цель открыта технологией»).
+# Для одиночного здания (total == 1) детализация-счётчик опускается —
+# «1 из 1» избыточна. Цвета — в палитре кнопок/меток проекта.
+func _get_built_states(group: Dictionary) -> Array:
     var working = int(group.get("working", 0))
     var idle = int(group.get("idle", 0))
     var total = int(group.get("total", 0))
-    var info = _get_built_status_info(working, idle, total)
-    var lines = PackedStringArray([
-        title,
-        "Состояние: " + info["text"],
-    ])
-    # Возможность улучшения: цель открыта технологией и хотя бы один экземпляр
-    # группы ещё не улучшается. Счётчик показываем, когда зданий несколько и
-    # не все могут быть улучшены сейчас (остальные уже улучшаются).
-    var target_name = String(group.get("upgrade_target_name", ""))
     var upgradeable = int(group.get("upgradeable", 0))
-    if target_name != "" and upgradeable > 0:
-        var upgrade_line = "Можно улучшить до «%s»" % target_name
-        if total > 1 and upgradeable < total:
-            upgrade_line += " (%d из %d)" % [upgradeable, total]
-        lines.append("")
-        lines.append(upgrade_line)
-        lines.append("Улучшение — кнопка «Улучшить» в панели здания")
-    lines.append("")
-    lines.append("Клик — панель управления зданием")
-    return "\n".join(lines)
+
+    const COLOR_WORKS := Color(0.35, 1.0, 0.35)
+    const COLOR_IDLE := Color.YELLOW
+    const COLOR_OFF := Color(1.0, 0.35, 0.35)
+    const COLOR_UPGRADE := Color(0.6, 0.8, 1.0)
+
+    var states = []
+    if total > 1:
+        var properly_working = working - idle
+        if properly_working > 0:
+            states.append(["работает", "%d" % properly_working, COLOR_WORKS])
+        if idle > 0:
+            states.append(["простаивает", "%d" % idle, COLOR_IDLE])
+        var not_working = total - working
+        if not_working > 0:
+            states.append(["не работает", "%d" % not_working, COLOR_OFF])
+    else:
+        if idle > 0:
+            states.append(["простаивает", "", COLOR_IDLE])
+        elif working > 0:
+            states.append(["работает", "", COLOR_WORKS])
+        else:
+            states.append(["не работает", "", COLOR_OFF])
+
+    if upgradeable > 0:
+        states.append(["можно улучшить", "%d" % upgradeable, COLOR_UPGRADE])
+    return states
 
 # Задаёт цвет текста кнопки во всех состояниях (обычное, наведение, нажатие,
 # фокус), чтобы цветовая кодировка состояния не пропадала при наведении.
@@ -417,9 +539,8 @@ func _apply_built_status_color(btn: Button, color: Color):
 # Группирует построенные здания по id и считает работающие.
 # idle — здания, у которых есть работник, но все слоты пустые (простаивают).
 # upgradeable — сколько экземпляров группы можно улучшить прямо сейчас
-# (у экземпляра с уже идущим апгрейдом can_upgrade_building вернёт false).
-# upgrade_target_name — имя улучшенной версии типа (пусто, если улучшения нет
-# или оно ещё не открыто технологией).
+# (can_upgrade_building проверяет и открытость цели технологией, и что
+# апгрейд этого экземпляра ещё не идёт).
 func _group_buildings() -> Array:
     var main_map = get_tree().root.find_child("MainMap", true, false)
     var tm = main_map.get_node("TownsfolkManager") if main_map else null
@@ -445,17 +566,6 @@ func _group_buildings() -> Array:
                 g["idle"] += 1
         if CityData.can_upgrade_building(i):
             g["upgradeable"] += 1
-
-    # Имя улучшенной версии общее для всех экземпляров типа — вычисляем один
-    # раз на группу. Пустая строка = улучшения нет или оно не открыто.
-    for grp in groups:
-        grp["upgrade_target_name"] = ""
-        var target_id = CityData.get_building_upgrade_target(grp["id"])
-        if target_id != "" and CityData.is_building_unlocked(target_id):
-            for b in GameData.buildings:
-                if b["id"] == target_id:
-                    grp["upgrade_target_name"] = b.get("name", target_id)
-                    break
     return groups
 
 # Собирает сигнатуру группировки построенных зданий: "id:total|id:total".
