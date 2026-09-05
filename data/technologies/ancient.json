@@ -155,7 +155,7 @@
       "name": "Ткачество",
       "era": "ancient",
       "science_cost": 3.0,
-      "icon": "wool.png",
+      "icon": "weaving.png",
       "prerequisites": [ [ "animal_husbandry" ] ],
       "description": "Даёт возможность строить дом ткача: различные материалы → одежда.",
       "flavor": "Ткацкий станок превратил шерсть и лён в ткань, из которой шили одежду."
