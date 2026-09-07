@@ -43,3 +43,31 @@ static func parse_range(value: Variant) -> Dictionary:
 				result["min"] = result["max"]
 				result["max"] = tmp
 	return result
+
+# Возвращает случайное целое для значения формата «число или [min, max]»:
+#   * число N            -> N;
+#   * массив [min, max]  -> randi_range(min, max);
+#   * некорректные данные (не число / не массив из 2 чисел, отрицательные
+#     значения) -> предупреждение в консоль и default_value.
+#
+# Используется для полей ресурсов `spawn_count` (сколько экземпляров спавнить
+# на карте) и `produces` (сколько продукции даёт одноразовый ресурс при сборе) —
+# см. scripts/map_generator.gd и scripts/main_map.gd (ветка action_type "forage").
+static func roll_value(value: Variant, context_name: String = "значение", default_value: int = 1) -> int:
+	var parsed: Dictionary = parse_range(value)
+	if not parsed.ok or parsed.min < 0 or parsed.max < 0:
+		print("RangeUtils.roll_value: некорректное значение для %s "
+				+ "(ожидается число >= 0 или массив [min, max] из чисел >= 0), "
+				+ "используется %d." % [context_name, default_value])
+		return default_value
+	return randi_range(parsed.min, parsed.max)
+
+# Возвращает минимальную границу значения формата «число или [min, max]».
+# Нужна для детерминированных расчётов и отображения (тултипы, превью),
+# где нельзя каждый кадр бросать случайное число. При некорректных данных
+# возвращает default_value.
+static func get_min_value(value: Variant, default_value: int = 1) -> int:
+	var parsed: Dictionary = parse_range(value)
+	if not parsed.ok or parsed.min < 0:
+		return default_value
+	return parsed.min

@@ -335,7 +335,10 @@ func add_raw_production(raw_id: String, multiplier: float = 1.0, quality: String
     var raw = GameData.raw_resources.get(raw_id, {})
     if raw.has("produces"):
         for pid in raw["produces"]:
-            var amount = ceili(raw["produces"][pid] * multiplier)
+            # produces может быть числом или диапазоном [min, max] — для
+            # детерминированного непрерывного производства берём минимум
+            # диапазона (см. RangeUtils).
+            var amount = ceili(float(RangeUtils.get_min_value(raw["produces"][pid], 1)) * multiplier)
             # Проверяем, доступен ли этот продукт (по технологии)
             if not _is_product_available(pid):
                 continue

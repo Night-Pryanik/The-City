@@ -11,14 +11,21 @@
       "unlock_tech": "wood_processing"
     },
     {
-      "id": "forage_wild_food",
-      "name": "Собрать дикоросы",
+      // Универсальное действие «Собрать ресурс» для ЛЮБЫХ одноразовых ресурсов
+      // (дикоросы, самородки металлов и т.п.). Применимость определяется НЕ
+      // полем target_resource, а флагом «одноразовости» ресурса на гексе:
+      //   - у ресурса improved_by == null (не разрабатывается улучшением);
+      //   - у ресурса есть непустое produces (есть что собрать);
+      //   - ресурс виден игроку (MapHelpers.is_resource_revealed).
+      // Выход продукции при сборе берётся из поля produces ресурса
+      // (число или [min, max]) — см. main_map.gd, ветка action_type == "forage".
+      // После сбора ресурс исчезает с карты (tile.resource = null).
+      "id": "forage_resource",
+      "name": "Собрать ресурс",
       "action_type": "forage",
-      "icon": "foraged_food.png",
-      "target_resource": "wild_food",
+      "icon": "new_resource.png",
       "result_terrain": "dont_change",
-      "work_cost": 5,
-      "yield": { "foraged_food": [ 5, 10 ] }
+      "work_cost": 5
     },
     {
       // Снос улучшения. На гексе с разведением (crop_bred) также сбрасывает

@@ -1,5 +1,15 @@
 {
   "resources": [
+    {
+      "id": "meteorite_iron",
+      "name": "Метеоритное железо",
+      "type": "product",
+      "category": "metals",
+      "icon": "meteorite_iron.png"
+    },
+    { "id": "copper", "name": "Медь", "type": "product", "category": "metals", "icon": "copper.png" },
+    { "id": "gold", "name": "Золото", "type": "product", "category": "metals", "icon": "gold.png" },
+    { "id": "silver", "name": "Серебро", "type": "product", "category": "metals", "icon": "silver.png" },
     { "id": "iron", "name": "Железо", "type": "product", "category": "metals", "icon": "iron.png" }
   ]
 }

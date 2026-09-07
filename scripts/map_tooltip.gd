@@ -105,7 +105,10 @@ func update_tooltip_text(row: int, col: int, tile_data: Array, city_row: int = 0
         else:
             if res_id != "":
                 var res_data = GameData.raw_resources.get(res_id, {})
-                if res_data.has("improved_by") and res_data.has("produces"):
+                # improved_by == null — одноразовый ресурс (дикоросы, самородки):
+                # он не требует улучшения и собирается спец-действием, поэтому
+                # подсказку «При постройке … будет давать» не показываем.
+                if res_data.get("improved_by", null) != null and res_data.has("produces"):
                     var improvement_id = res_data["improved_by"]
                     var imp_data = GameData.improvements.get(improvement_id, {})
                     var imp_name_display = imp_data.get("name", improvement_id)
@@ -267,7 +270,9 @@ func _build_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_c
     else:
         if res_id != "":
             var res_data = GameData.raw_resources.get(res_id, {})
-            if res_data.has("improved_by") and res_data.has("produces"):
+            # У одноразового ресурса (improved_by == null) нечего строить —
+            # статус «(не построено)» не показываем.
+            if res_data.get("improved_by", null) != null and res_data.has("produces"):
                 imp_status = " (не построено)"
 
     if res_id != "":
@@ -331,7 +336,9 @@ func _collect_production(row: int, col: int, res_id: String, prefix: String, til
     for prod_id in res_data["produces"]:
         if not CityData.is_product_available(prod_id):
             continue
-        var base_amount = float(res_data["produces"][prod_id])
+        # produces может быть числом или диапазоном [min, max] — для показа
+        # берём детерминированный минимум диапазона (см. RangeUtils).
+        var base_amount = float(RangeUtils.get_min_value(res_data["produces"][prod_id], 1))
         var final_amount = ceili(base_amount * bonus_multiplier)
         final_amounts[prod_id] = {"base": base_amount, "final": final_amount}
 
@@ -401,6 +408,14 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
     if not res_data.has("produces"):
         return result
 
+    # Одноразовые ресурсы (improved_by == null — дикоросы, самородки) не имеют
+    # непрерывного производства: их собирают спец-действием action_type "forage",
+    # после чего ресурс исчезает с карты. В расширенной сводке («Производит:…»)
+    # показывать для них нечего, а значение produces там — «число или [min, max]»
+    # (выход за один сбор), не базовый выход за тик улучшения.
+    if res_data.get("improved_by", null) == null:
+        return result
+
     var modifiers := []
     var bonus_multiplier = 1.0
     if tile.improvement != null and _worker_manager.has_worker(row, col):
@@ -429,7 +444,9 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
     var base_amount = 0.0
     var final_amount = 0
     for prod_id in available_products:
-        base_amount = float(available_products[prod_id])
+        # produces может быть числом или диапазоном [min, max] — в сводке
+        # показываем детерминированный минимум (см. RangeUtils).
+        base_amount = float(RangeUtils.get_min_value(available_products[prod_id], 1))
         final_amount = ceili(base_amount * bonus_multiplier * fill_frac)
         var prod_name = GameData.products.get(prod_id, {}).get("name", prod_id)
         # При активных модификаторах показываем базу у каждого продукта

@@ -313,8 +313,14 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
     var plant_resources = {}
     for rid in raw_res.keys():
         var r = raw_res[rid]
-        if r.get("category", "") == "plants":
-            plant_resources[rid] = r
+        if r.get("category", "") != "plants":
+            continue
+        # Дикоросы (wild_food) размещаются отдельной функцией place_wild_food
+        # ТОЛЬКО внутри стартового Кольца Влияния, поэтому из общего спавна
+        # по всей карте их исключаем.
+        if rid == "wild_food":
+            continue
+        plant_resources[rid] = r
     _place_resources(tile_data, plant_resources, rows, cols, city_row, city_col, hex_index)
 
     # --- Минералы ---
@@ -324,6 +330,13 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
         if r.get("category", "") == "minerals":
             mineral_resources[rid] = r
     _place_resources(tile_data, mineral_resources, rows, cols, city_row, city_col, hex_index)
+
+    # --- Одноразовые (собираемые) ресурсы ---
+    # Самородки металлов и аналогичные ресурсы с improved_by == null:
+    # спавнятся по ВСЕЙ карте при старте игры, как дикоросы. Количество
+    # экземпляров берётся из spawn_count, выход при сборе — из produces.
+    # Дикоросы (wild_food) размещаются отдельно (см. place_wild_food).
+    place_one_time_resources(tile_data, raw_res, rows, cols, city_row, city_col, hex_index)
 
     # --- Все ресурсы спавнятся на старте, включая tech_required и tech_reveal ---
     # Раньше ресурсы с tech_required фильтровались здесь и спавнились
@@ -799,16 +812,12 @@ func _remove_hex_from_index(hex_index: Dictionary, row: int, col: int, terrain_i
 #   * min/max перепутаны -> форсированно меняем местами;
 #   * некорректные данные (не число/не массив из 2 чисел, отрицательные числа)
 #     -> предупреждение и дефолт 1 (старое поведение).
+# Парсинг и валидация вынесены в RangeUtils.roll_value — единая проверка
+# «число или [min, max]» для spawn_count и produces (см. scripts/range_utils.gd).
 func _resolve_spawn_count(data: Dictionary) -> int:
     var res_id: String = str(data.get("id", "?"))
-    var parsed: Dictionary = RangeUtils.parse_range(data.get("spawn_count", 1))
-    if not parsed.ok:
-        print("map_generator: предупреждение — spawn_count у ресурса '%s' задан некорректно (ожидается число или [min, max]), используется 1." % res_id)
-        return 1
-    if parsed.min < 0 or parsed.max < 0:
-        print("map_generator: предупреждение — spawn_count у ресурса '%s' содержит отрицательные значения, используется 1." % res_id)
-        return 1
-    return randi_range(parsed.min, parsed.max)
+    return RangeUtils.roll_value(data.get("spawn_count", 1),
+            "spawn_count ресурса '%s'" % res_id, 1)
 
 func _place_resources(tile_data: Array, res_dict: Dictionary, rows: int, cols: int, city_row: int, city_col: int, hex_index: Dictionary):
     if res_dict.size() == 0:
@@ -858,12 +867,16 @@ func _place_resources(tile_data: Array, res_dict: Dictionary, rows: int, cols: i
                         tile_data[hex.row][hex.col]["terrain"], tile_data[hex.row][hex.col].get("cover", "none"))
 
 # Размещает дикоросы ТОЛЬКО внутри стартового Кольца Влияния.
+# Количество экземпляров берётся из поля spawn_count ресурса (число или
+# [min, max]) — как у всех остальных ресурсов на карте (см.
+# _resolve_spawn_count). Дикоросы собираются спец-действием «Собрать дикоросы»
+# (action_type "forage") и после сбора исчезают с карты.
 func place_wild_food(tile_data: Array, min_row: int, max_row: int, min_col: int, max_col: int, city_row: int, city_col: int):
-    var count = randi_range(2, 4)
     var wild_id = "wild_food"
     if not GameData.raw_resources.has(wild_id):
         return
     var wild_data = GameData.raw_resources[wild_id]
+    var count = _resolve_spawn_count(wild_data)
     var possible = []
     for r in range(min_row, max_row + 1):
         for c in range(min_col, max_col + 1):
@@ -880,6 +893,31 @@ func place_wild_food(tile_data: Array, min_row: int, max_row: int, min_col: int,
         var hex = possible[i]
         tile_data[hex.row][hex.col]["resource"] = wild_id
         tile_data[hex.row][hex.col]["quality"] = GameData.roll_quality()
+
+# Размещает «одноразовые» (собираемые) ресурсы по всей карте.
+# Одноразовым считается ресурс, у которого improved_by == null (нельзя
+# разрабатывать улучшением) и задан produces (есть что собрать). Такие ресурсы
+# (самородки металлов, дикоросы) спавнятся при старте игры по всей карте и
+# исчезают после сбора спец-действием (см. main_map.gd, ветка
+# action_type == "forage"). Количество экземпляров — из spawn_count, выход
+# продукции — из produces ресурса.
+# Дикоросы (wild_food) в этой функции НЕ участвуют: их размещает отдельная
+# функция place_wild_food строго внутри стартового Кольца Влияния.
+# Параметры размещения стандартные (см. _place_resources): allowed_terrain /
+# allowed_cover и spawn_conditions.
+func place_one_time_resources(tile_data: Array, raw_res: Dictionary, rows: int, cols: int,
+        city_row: int, city_col: int, hex_index: Dictionary):
+    var one_time: Dictionary = {}
+    for rid in raw_res.keys():
+        var r = raw_res[rid]
+        if rid == "wild_food":
+            continue
+        if r.get("improved_by", null) != null:
+            continue
+        if not r.has("produces"):
+            continue
+        one_time[rid] = r
+    _place_resources(tile_data, one_time, rows, cols, city_row, city_col, hex_index)
 
 func ensure_free_terrain_hexes(tile_data: Array, terrain_counts: Dictionary,
         min_row: int, max_row: int, min_col: int, max_col: int,

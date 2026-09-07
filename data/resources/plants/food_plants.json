@@ -21,7 +21,8 @@
       "allowed_terrain": [ "plain", "hill", "swamp" ],
       "allowed_cover": [ "none", "sparse_forest", "forest", "swamp_forest", "swamp_forest_sparse" ],
       "improved_by": null,
-      "produces": {  },
+      "produces": { "foraged_food": [ 5, 10 ] },
+      "spawn_count": [ 2, 4 ],
       "icon": "foraged_food.png",
       "color": [ 255, 200, 100 ]
     },

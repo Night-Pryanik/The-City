@@ -882,16 +882,30 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
             var result_cover = sa.get("result_cover", "none")
             tile.cover = result_cover
         elif action_type == "forage":
-            # Сбор дикоросов: убираем ресурс и добавляем урожай на склад.
+            # Сбор одноразового ресурса (дикоросы, самородки и т.п.):
+            # убираем ресурс с гекса и добавляем урожай на склад.
             # Качество собранного урожая = качество ресурса на гексе.
-            var forage_quality = tile.get("quality", "common")
-            var yield_data = sa.get("yield", {})
-            for prod_id in yield_data:
-                var range_arr = yield_data[prod_id]
-                var amount = range_arr[0] if range_arr.size() == 1 else randi_range(int(range_arr[0]), int(range_arr[1]))
-                CityData.add_to_storage(prod_id, amount, forage_quality)
-                hud.show_message("Собрано %d %s!" % [amount, GameData.products.get(prod_id, {}).get("name", prod_id)])
-            tile.resource = null
+            # Выход продукции берётся из поля produces РЕСУРСА (число или
+            # [min, max]) — разбор/валидацию выполняет RangeUtils.roll_value.
+            # Safety-guard: собирать можно только одноразовые ресурсы
+            # (improved_by == null). Если действие каким-то образом попало
+            # на обычный ресурс — ничего не выдаём (ресурс остаётся на месте).
+            var harvest_res_id: String = str(tile.get("resource", ""))
+            var harvest_data: Dictionary = {}
+            if harvest_res_id != "" and GameData.raw_resources.has(harvest_res_id):
+                harvest_data = GameData.raw_resources[harvest_res_id]
+            if harvest_res_id != "" and harvest_data.get("improved_by", null) == null:
+                var forage_quality = tile.get("quality", "common")
+                var res_produces: Dictionary = harvest_data.get("produces", {})
+                for prod_id in res_produces:
+                    var amount = RangeUtils.roll_value(res_produces[prod_id],
+                            "produces продукта '%s' ресурса '%s'" % [prod_id, harvest_res_id], 0)
+                    if amount <= 0:
+                        continue
+                    CityData.add_to_storage(prod_id, amount, forage_quality)
+                    hud.show_message("Собрано %d %s!" % [amount, GameData.products.get(prod_id, {}).get("name", prod_id)])
+                # Ресурс исчезает с карты после сбора.
+                tile.resource = null
         elif action_type == "demolish":
             # Снос улучшения: убираем улучшение. Природный tile.resource
             # остаётся (если он был), а tile.crop_bred сбрасывается —

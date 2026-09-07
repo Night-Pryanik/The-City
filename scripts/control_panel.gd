@@ -724,7 +724,18 @@ func _add_special_actions(actions: Array, row: int, col: int, tile: Dictionary):
             var cover_id = tile.get("cover", "none")
             applicable = cover_id in sa.get("source_cover", []) and tile.improvement == null and tile.resource == null
         elif action_type == "forage":
-            applicable = tile.resource == sa.get("target_resource", "")
+            # Универсальное действие «Собрать ресурс» для одноразовых ресурсов
+            # (дикоросы, самородки металлов и т.п.). Одноразовость определяется
+            # флагом самого ресурса: improved_by == null (не разрабатывается
+            # улучшением) и непустой produces (есть что собрать).
+            var harvest_res_id: String = str(tile.get("resource", ""))
+            if harvest_res_id != "" and MapHelpers.is_resource_revealed(tile):
+                var harvest_data: Dictionary = GameData.raw_resources.get(harvest_res_id, {})
+                var is_one_time: bool = harvest_data.get("improved_by", null) == null
+                if is_one_time:
+                    var harvest_produces: Dictionary = harvest_data.get("produces", {})
+                    if not harvest_produces.is_empty():
+                        applicable = true
         elif action_type == "demolish":
             applicable = tile.improvement != null
         if not applicable:
@@ -1035,7 +1046,9 @@ func _build_preview(row: int, col: int, tile: Dictionary):
             for prod_id in res_data["produces"]:
                 if not CityData.is_product_available(prod_id):
                     continue
-                var base_amount = float(res_data["produces"][prod_id])
+                # produces может быть числом или диапазоном [min, max] — в
+                # превью показываем детерминированный минимум (см. RangeUtils).
+                var base_amount = float(RangeUtils.get_min_value(res_data["produces"][prod_id], 1))
                 var final_amount = ceili(base_amount * bonus_multiplier)
                 var prod_name = GameData.products.get(prod_id, {}).get("name", prod_id)
                 # При активных модификаторах база указывается у каждого продукта.
