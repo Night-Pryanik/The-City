@@ -105,7 +105,7 @@
       "name": "Плуг",
       "era": "ancient",
       "science_cost": 3.0,
-      "icon": "farm.png",
+      "icon": "plow.png",
       "prerequisites": [ [ "animal_husbandry" ] ],
       "description": "+50% к производству ресурсов на фермах.",
       "flavor": "Плуг, запряжённый волами, позволил обрабатывать тяжёлые почвы и поднял урожайность."
