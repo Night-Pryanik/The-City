@@ -1,0 +1,46 @@
+{
+  "resources": [
+    {
+      "id": "copper_tools",
+      "name": "Медные инструменты",
+      "type": "product",
+      "category": "tools",
+      "icon": "copper_tools.png"
+    },
+    {
+      "id": "bronze_tools",
+      "name": "Бронзовые инструменты",
+      "type": "product",
+      "category": "tools",
+      "icon": "bronze_tools.png"
+    },
+    {
+      "id": "iron_tools",
+      "name": "Железные инструменты",
+      "type": "product",
+      "category": "tools",
+      "icon": "iron_tools.png"
+    },
+    {
+      "id": "copper_weapons",
+      "name": "Медное оружие",
+      "type": "product",
+      "category": "weapons",
+      "icon": "copper_weapons.png"
+    },
+    {
+      "id": "bronze_weapons",
+      "name": "Бронзовое оружие",
+      "type": "product",
+      "category": "weapons",
+      "icon": "bronze_weapons.png"
+    },
+    {
+      "id": "iron_weapons",
+      "name": "Железное оружие",
+      "type": "product",
+      "category": "weapons",
+      "icon": "iron_weapons.png"
+    }
+  ]
+}

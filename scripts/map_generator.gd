@@ -323,11 +323,13 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
         plant_resources[rid] = r
     _place_resources(tile_data, plant_resources, rows, cols, city_row, city_col, hex_index)
 
-    # --- Минералы ---
+    # --- Минералы и металлы ---
+    # Металлы — отдельная пользовательская категория, но по механике спавна
+    # это такие же добываемые месторождения, как и minerals.
     var mineral_resources = {}
     for rid in raw_res.keys():
         var r = raw_res[rid]
-        if r.get("category", "") == "minerals":
+        if r.get("category", "") in ["minerals", "metals"]:
             mineral_resources[rid] = r
     _place_resources(tile_data, mineral_resources, rows, cols, city_row, city_col, hex_index)
 

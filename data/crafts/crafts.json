@@ -1,15 +1,6 @@
 {
   "crafts": [
     {
-      "id": "empty",
-      "name": "Пусто",
-      "produced_in": [ "*" ],
-      "resources": {  },
-      "result": {  },
-      "time": 0,
-      "description": "Слот не производит ничего"
-    },
-    {
       "id": "grind_grain_hand",
       "name": "Ручной помол зерна",
       "produced_in": [ "hand_mill" ],
@@ -65,26 +56,6 @@
       "result": { "cheese": 1 },
       "time": 5,
       "unlock_tech": "cheese_making"
-    },
-    {
-      "id": "tools",
-      "name": "Ковка инструментов",
-      "produced_in": [ "forge" ],
-      "resources": { "iron": 2, "coal": 1 },
-      "result": { "tools": 1 },
-      "time": 5.0,
-      "unlock_tech": "metal_processing",
-      "description": "Создаёт набор инструментов для ремесленников"
-    },
-    {
-      "id": "weapons",
-      "name": "Ковка оружия",
-      "produced_in": [ "forge" ],
-      "resources": { "iron": 3, "coal": 1 },
-      "result": { "weapons": 1 },
-      "time": 6.0,
-      "unlock_tech": "metal_processing",
-      "description": "Создаёт партию оружия для защиты города"
     },
     {
       "id": "pottery",
@@ -251,7 +222,7 @@
       "name": "Стеклоделие",
       "produced_in": [ "glassmaker_house" ],
       "resources": { "quartz_sand": 2, "soda": 1 },
-      "result": { "glass_decorations": 1 },
+      "result": { "glass_jewelry": 1 },
       "time": 5.0,
       "unlock_tech": "glassmaking",
       "description": "Превращает песок и соду в стекло"
@@ -375,6 +346,16 @@
       "time": 4.0,
       "unlock_tech": "wood_processing",
       "description": "Распиливает древесину на доски для строительства"
+    },
+    {
+      "id": "charcoal",
+      "name": "Производство древесного угля",
+      "produced_in": [ "charcoal_kiln" ],
+      "resources": { "wood": 2 },
+      "result": { "charcoal": 1 },
+      "time": 5.0,
+      "unlock_tech": "native_metals",
+      "description": "Обжигает древесину в древесный уголь"
     }
   ]
 }

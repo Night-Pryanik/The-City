@@ -1,7 +1,5 @@
 {
   "resources": [
-    { "id": "tools", "name": "Инструменты", "type": "product", "category": "other", "icon": "tools.png" },
-    { "id": "weapons", "name": "Оружие", "type": "product", "category": "other", "icon": "weapons.png" },
     {
       "id": "pottery",
       "name": "Глиняная посуда",
@@ -65,14 +63,6 @@
       "category": "drinks",
       "unlock_tech": "winegrowing",
       "icon": "wine.png"
-    },
-    {
-      "id": "glass_decorations",
-      "name": "Стеклянные украшения",
-      "type": "product",
-      "category": "material",
-      "unlock_tech": "glassmaking",
-      "icon": "glass_decorations.png"
     },
     {
       "id": "ropes",

@@ -1,0 +1,52 @@
+{
+  "resources": [
+    {
+      "id": "glass_jewelry",
+      "name": "Стеклянные украшения",
+      "type": "product",
+      "category": "luxury",
+      "unlock_tech": "glassmaking",
+      "icon": "glass_jewelry.png"
+    },
+    {
+      "id": "gold_jewelry",
+      "name": "Золотые украшения",
+      "type": "product",
+      "category": "luxury",
+      "unlock_tech": "metallurgy",
+      "icon": "gold_jewelry.png"
+    },
+    {
+      "id": "copper_jewelry",
+      "name": "Медные украшения",
+      "type": "product",
+      "category": "luxury",
+      "unlock_tech": "metallurgy",
+      "icon": "copper_jewelry.png"
+    },
+    {
+      "id": "silver_jewelry",
+      "name": "Серебряные украшения",
+      "type": "product",
+      "category": "luxury",
+      "unlock_tech": "metallurgy",
+      "icon": "silver_jewelry.png"
+    },
+    {
+      "id": "bronze_jewelry",
+      "name": "Бронзовые украшения",
+      "type": "product",
+      "category": "luxury",
+      "unlock_tech": "bronze",
+      "icon": "bronze_jewelry.png"
+    },
+    {
+      "id": "iron_jewelry",
+      "name": "Железные украшения",
+      "type": "product",
+      "category": "luxury",
+      "unlock_tech": "iron_processing",
+      "icon": "iron_jewelry.png"
+    }
+  ]
+}

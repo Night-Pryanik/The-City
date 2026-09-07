@@ -106,6 +106,70 @@
       "category": "material",
       "unlock_tech": "wood_processing",
       "icon": "wood.png"
+    },
+    {
+      "id": "charcoal",
+      "name": "Древесный уголь",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "native_metals",
+      "icon": "charcoal.png"
+    },
+    {
+      "id": "copper_ore",
+      "name": "Медная руда",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "native_metals",
+      "icon": "copper_ore.png"
+    },
+    {
+      "id": "gold_ore",
+      "name": "Золотая руда",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "native_metals",
+      "icon": "gold_ore.png"
+    },
+    {
+      "id": "silver_ore",
+      "name": "Серебряная руда",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "native_metals",
+      "icon": "silver_ore.png"
+    },
+    {
+      "id": "tin_ore",
+      "name": "Оловянная руда",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "native_metals",
+      "icon": "tin_ore.png"
+    },
+    {
+      "id": "antimony_ore",
+      "name": "Сурьмяная руда",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "native_metals",
+      "icon": "antimony_ore.png"
+    },
+    {
+      "id": "arsenic_ore",
+      "name": "Мышьяковая руда",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "native_metals",
+      "icon": "arsenic_ore.png"
+    },
+    {
+      "id": "iron_ore",
+      "name": "Железная руда",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "native_metals",
+      "icon": "iron_ore.png"
     }
   ]
 }

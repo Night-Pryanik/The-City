@@ -1,0 +1,164 @@
+{
+  "crafts": [
+    {
+      "id": "copper",
+      "name": "Выплавка меди",
+      "produced_in": [ "smelter" ],
+      "resources": { "copper_ore": 2, "charcoal": 1 },
+      "result": { "copper": 1 },
+      "time": 5.0,
+      "unlock_tech": "native_metals",
+      "description": "Плавит медную руду в чистую медь"
+    },
+    {
+      "id": "copper_tools",
+      "name": "Изготовление медных инструментов",
+      "produced_in": [ "forge" ],
+      "resources": { "copper": 2, "charcoal": 1 },
+      "result": { "copper_tools": 1 },
+      "time": 5.0,
+      "unlock_tech": "metallurgy",
+      "description": "Создаёт набор инструментов для ремесленников"
+    },
+    {
+      "id": "copper_weapons",
+      "name": "Изготовление медного оружия",
+      "produced_in": [ "forge" ],
+      "resources": { "copper": 3, "charcoal": 1 },
+      "result": { "copper_weapons": 1 },
+      "time": 6.0,
+      "unlock_tech": "metallurgy",
+      "description": "Создаёт партию оружия для защиты города"
+    },
+    {
+      "id": "copper_jewelry",
+      "name": "Изготовление медных украшений",
+      "produced_in": [ "forge" ],
+      "resources": { "copper": 2, "charcoal": 1 },
+      "result": { "copper_jewelry": 1 },
+      "time": 5.0,
+      "unlock_tech": "jewelry",
+      "description": "Создаёт украшения из меди"
+    },
+    {
+      "id": "gold",
+      "name": "Выплавка золота",
+      "produced_in": [ "smelter" ],
+      "resources": { "gold_ore": 2, "charcoal": 1 },
+      "result": { "gold": 1 },
+      "time": 5.0,
+      "unlock_tech": "native_metals",
+      "description": "Плавит золотую руду в чистое золото"
+    },
+    {
+      "id": "gold_jewelry",
+      "name": "Изготовление золотых украшений",
+      "produced_in": [ "forge" ],
+      "resources": { "gold": 2, "charcoal": 1 },
+      "result": { "gold_jewelry": 1 },
+      "time": 5.0,
+      "unlock_tech": "jewelry",
+      "description": "Создаёт украшения из золота"
+    },
+    {
+      "id": "silver",
+      "name": "Выплавка серебра",
+      "produced_in": [ "smelter" ],
+      "resources": { "silver_ore": 2, "charcoal": 1 },
+      "result": { "silver": 1 },
+      "time": 5.0,
+      "unlock_tech": "native_metals",
+      "description": "Плавит серебряную руду в чистое серебро"
+    },
+    {
+      "id": "silver_jewelry",
+      "name": "Изготовление серебряных украшений",
+      "produced_in": [ "forge" ],
+      "resources": { "silver": 2, "charcoal": 1 },
+      "result": { "silver_jewelry": 1 },
+      "time": 5.0,
+      "unlock_tech": "jewelry",
+      "description": "Создаёт украшения из серебра"
+    },
+    {
+      "id": "bronze",
+      "name": "Выплавка бронзы",
+      "produced_in": [ "smelter" ],
+      "resources": { "copper": 2, "@bronze_alloys": 1, "charcoal": 1 },
+      "result": { "bronze": 1 },
+      "time": 5.0,
+      "unlock_tech": "bronze",
+      "description": "Создаёт бронзовый сплав из меди/сурьмы/мышьяка и олова"
+    },
+    {
+      "id": "bronze_tools",
+      "name": "Изготовление бронзовых инструментов",
+      "produced_in": [ "forge" ],
+      "resources": { "bronze": 2, "charcoal": 1 },
+      "result": { "bronze_tools": 1 },
+      "time": 5.0,
+      "unlock_tech": "metallurgy",
+      "description": "Создаёт набор инструментов для ремесленников"
+    },
+    {
+      "id": "bronze_weapons",
+      "name": "Изготовление бронзовoго оружия",
+      "produced_in": [ "forge" ],
+      "resources": { "bronze": 3, "charcoal": 1 },
+      "result": { "bronze_weapons": 1 },
+      "time": 6.0,
+      "unlock_tech": "metallurgy",
+      "description": "Создаёт партию оружия для защиты города"
+    },
+    {
+      "id": "bronze_jewelry",
+      "name": "Изготовление бронзовых украшений",
+      "produced_in": [ "forge" ],
+      "resources": { "bronze": 2, "charcoal": 1 },
+      "result": { "bronze_jewelry": 1 },
+      "time": 5.0,
+      "unlock_tech": "bronze",
+      "description": "Создаёт украшения из бронзы"
+    },
+    {
+      "id": "iron",
+      "name": "Выплавка железа",
+      "produced_in": [ "bloomery" ],
+      "resources": { "iron_ore": 2, "charcoal": 2 },
+      "result": { "iron": 1 },
+      "time": 5.0,
+      "unlock_tech": "iron_processing",
+      "description": "Изготавливает железо из руды"
+    },
+    {
+      "id": "iron_tools",
+      "name": "Изготовление железных инструментов",
+      "produced_in": [ "forge" ],
+      "resources": { "iron": 2, "charcoal": 2 },
+      "result": { "iron_tools": 1 },
+      "time": 5.0,
+      "unlock_tech": "iron_processing",
+      "description": "Создаёт набор инструментов для ремесленников"
+    },
+    {
+      "id": "iron_weapons",
+      "name": "Изготовление железного оружия",
+      "produced_in": [ "forge" ],
+      "resources": { "iron": 3, "charcoal": 2 },
+      "result": { "iron_weapons": 1 },
+      "time": 6.0,
+      "unlock_tech": "iron_processing",
+      "description": "Создаёт партию оружия для защиты города"
+    },
+    {
+      "id": "iron_jewelry",
+      "name": "Изготовление железных украшений",
+      "produced_in": [ "forge" ],
+      "resources": { "iron": 2, "charcoal": 2 },
+      "result": { "iron_jewelry": 1 },
+      "time": 5.0,
+      "unlock_tech": "iron_processing",
+      "description": "Создаёт украшения из железа"
+    }
+  ]
+}

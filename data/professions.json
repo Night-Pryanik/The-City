@@ -126,6 +126,30 @@
       "name": "Лесоруб",
       "icon": "profession_lumberjack.png",
       "description": "Рубит деревья на лесной делянке и заготавливает древесину."
+    },
+    {
+      "id": "charcoal_burner",
+      "name": "Углежог",
+      "icon": "profession_charcoal_burner.png",
+      "description": "Обжигает древесину в древесный уголь."
+    },
+    {
+      "id": "glassmaker",
+      "name": "Стеклодел",
+      "icon": "profession_glassmaker.png",
+      "description": "Превращает песок и соду в стекло."
+    },
+    {
+      "id": "smelter",
+      "name": "Плавильщик",
+      "icon": "profession_smelter.png",
+      "description": "Плавит руду в чистые металлы."
+    },
+    {
+      "id": "blacksmith",
+      "name": "Кузнец",
+      "icon": "profession_blacksmith.png",
+      "description": "Кует инструменты, оружие и украшения из металла."
     }
   ]
 }

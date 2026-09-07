@@ -1,0 +1,23 @@
+{
+  "crafts": [
+    {
+      "id": "empty",
+      "name": "Пусто",
+      "produced_in": [ "*" ],
+      "resources": {  },
+      "result": {  },
+      "time": 0,
+      "description": "Слот не производит ничего"
+    },
+    {
+      "id": "science",
+      "name": "Наука",
+      "produced_in": [ "library" ],
+      "resources": { "@writing_mediums": 2 },
+      "result": { "science": 1 },
+      "time": 5.0,
+      "unlock_tech": "writing",
+      "description": "Переписчики и учёные превращают письменные материалы в знания, пополняющие пул науки города"
+    }
+  ]
+}

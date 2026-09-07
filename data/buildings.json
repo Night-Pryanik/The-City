@@ -76,6 +76,17 @@
       "default_recipes": [ "cheese" ]
     },
     {
+      "id": "charcoal_kiln",
+      "name": "Печь для обжига древесного угля",
+      "description": "Обжиг древесины в закрытой печи для получения древесного угля.",
+      "work_cost": 30,
+      "additional_cost": [ { "planks": 10 }, { "@processed_construction_materials": 5 } ],
+      "icon": "charcoal_kiln.png",
+      "production_slots": 1.0,
+      "unlock_tech": "native_metals",
+      "default_recipes": [ "charcoal" ]
+    },
+    {
       "id": "forge",
       "name": "Кузница",
       "description": "Кузнецы куют здесь металлические инструменты и изделия.",
@@ -83,8 +94,30 @@
       "additional_cost": [ { "planks": 15 }, { "@processed_construction_materials": 15 } ],
       "icon": "forge.png",
       "production_slots": 1.0,
-      "unlock_tech": "metal_processing",
-      "default_recipes": [ "tools" ]
+      "unlock_tech": "native_metals",
+      "default_recipes": [ "empty" ]
+    },
+    {
+      "id": "smelter",
+      "name": "Плавильня",
+      "description": "Плавит различные металлические руды в металл, который затем используется кузнецами.",
+      "work_cost": 60,
+      "additional_cost": [ { "planks": 15 }, { "@processed_construction_materials": 15 } ],
+      "icon": "smelter.png",
+      "production_slots": 1.0,
+      "unlock_tech": "metallurgy",
+      "default_recipes": [ "empty" ]
+    },
+    {
+      "id": "bloomery",
+      "name": "Сыродутная печь",
+      "description": "Плавит железную руду в металл, который затем используется кузнецами.",
+      "work_cost": 60,
+      "additional_cost": [ { "planks": 15 }, { "@processed_construction_materials": 15 } ],
+      "icon": "bloomery.png",
+      "production_slots": 1.0,
+      "unlock_tech": "iron_processing",
+      "default_recipes": [ "empty" ]
     },
     {
       "id": "pottery_workshop",

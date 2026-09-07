@@ -50,6 +50,11 @@
       "id": "writing_mediums",
       "name": "Основа для письма",
       "products": ["clay_tablets", "papyrus", "parchment", "paper"]
+    },
+    {
+      "id": "bronze_alloys",
+      "name": "Бронзовые сплавы",
+      "products": [ "tin", "antimony", "arsenic" ]
     }
   ]
 }

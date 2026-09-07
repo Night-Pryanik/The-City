@@ -10,6 +10,10 @@
     { "id": "copper", "name": "Медь", "type": "product", "category": "metals", "icon": "copper.png" },
     { "id": "gold", "name": "Золото", "type": "product", "category": "metals", "icon": "gold.png" },
     { "id": "silver", "name": "Серебро", "type": "product", "category": "metals", "icon": "silver.png" },
-    { "id": "iron", "name": "Железо", "type": "product", "category": "metals", "icon": "iron.png" }
+    { "id": "iron", "name": "Железо", "type": "product", "category": "metals", "icon": "iron.png" },
+    { "id": "tin", "name": "Олово", "type": "product", "category": "metals", "icon": "tin.png" },
+    { "id": "antimony", "name": "Сурьма", "type": "product", "category": "metals", "icon": "antimony.png" },
+    { "id": "arsenic", "name": "Мышьяк", "type": "product", "category": "metals", "icon": "arsenic.png" },
+    { "id": "bronze", "name": "Бронза", "type": "product", "category": "metals", "icon": "bronze.png" }
   ]
 }
