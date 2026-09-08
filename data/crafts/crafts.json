@@ -188,16 +188,6 @@
       "description": "Обрабатывает дикий камень в форму, пригодную для строительства"
     },
     {
-      "id": "millstone",
-      "name": "Изготовление мельничных жерновов",
-      "produced_in": [ "mason_workshop" ],
-      "resources": { "@millstones": 1 },
-      "result": { "millstone": 1 },
-      "time": 4.0,
-      "unlock_tech": "masonry",
-      "description": "Обрабатывает камни в форму, пригодную для мельничных жерновов"
-    },
-    {
       "id": "wine",
       "name": "Виноделие",
       "produced_in": [ "winemaker_house" ],
