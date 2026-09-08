@@ -6,7 +6,7 @@
       "era": "antiquity",
       "science_cost": 3.0,
       "prerequisites": [ [ "leatherworking", "limestone_burning" ] ],
-      "icon": "parchment.png",
+      "icon": "parchment_tech.png",
       "description": "Открывает пергамент и позволяет создавать письменные материалы.",
       "flavor": "Пергамент стал важным носителем информации в древнем мире."
     },
