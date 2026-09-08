@@ -15,6 +15,25 @@ func _init(tooltip_text_label: Label, tooltip_products_container: VBoxContainer,
     _worker_manager = worker_manager
 
 
+# Собирает строки маркеров чужой территории для тултипа.
+# Возвращает Array<String> в порядке:
+#   1) «Территория города» — если гекс входит в кольцо влияния (in_town_influence);
+#   2) «Город»            — если на гексе стоит городок (has_town).
+# Оба маркера независимы: на гексе-центре кольца окажутся ОБА, на остальных
+# гексах кольца — только первый. Каждая строка уже готова к выводу, без
+# ведущего разделителя — вызывающий код добавляет \n по контексту.
+# Используется во всех ветках _build_text (уникальная местность / неисследованная
+# / исследованная), чтобы тултип был консистентным: голубое пятно вокруг
+# городка всегда сопровождается пояснением «это чья-то территория».
+func _territory_lines_for(tile: Dictionary) -> Array:
+    var lines: Array = []
+    if bool(tile.get("in_town_influence", false)):
+        lines.append("Территория города")
+    if bool(tile.get("has_town", false)):
+        lines.append("Город")
+    return lines
+
+
 # --- Общий рендер списка продуктов ---
 # products — массив словарей:
 #   { "type": "header",  "text": String }
@@ -230,14 +249,42 @@ func _build_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_c
 
     var terrain_data = GameData.terrains.get(tile.terrain, {})
     if terrain_data.get("unique", false) and not is_revealed:
+        # Уникальная местность (например, содовое озеро) за пределами видимой
+        # области: показываем имя/описание, плюс маркер «Территория города» /
+        # «Город», если гекс попал в кольцо или содержит городок.
         var desc = terrain_data.get("description", "")
-        return desc if desc != "" else terrain_name
+        var uniq_text: String = desc if desc != "" else terrain_name
+        var uniq_terr: Array = _territory_lines_for(tile)
+        if not uniq_terr.is_empty():
+            uniq_text += "\n" + "\n".join(uniq_terr)
+        return uniq_text
 
     if not is_revealed:
-        return "Местность: %s\nРесурс: неизвестно (проведите разведку)" % terrain_with_cover
+        # Неисследованный гекс в Регионе: стандартный текст с подсказкой
+        # про разведку. Для кольца городка подсказку убираем — там разведка
+        # не поможет (build_manager всё равно запретит стройку), и приписка
+        # только путает.
+        var text: String = "Местность: %s" % terrain_with_cover
+        var terr: Array = _territory_lines_for(tile)
+        if not terr.is_empty():
+            text += "\n" + "\n".join(terr)
+        if bool(tile.get("in_town_influence", false)):
+            text += "\nРесурс: неизвестно"
+        else:
+            text += "\nРесурс: неизвестно (проведите разведку)"
+        return text
 
     var imp_name = GameData.improvements.get(tile.improvement, {}).get("name", "нет") if tile.improvement != null else "нет"
-    var text = "Местность: %s\nРесурс: %s" % [terrain_with_cover, res_name]
+    var text: String = "Местность: %s" % terrain_with_cover
+    # Маркеры чужой территории в кольце/на месте городка: сразу после
+    # «Местность», чтобы игрок видел «кто здесь» прежде, чем читать
+    # остальной тултип. Строка «Город» добавляется ТОЛЬКО когда на гексе
+    # действительно стоит городок (т.е. в центре кольца), а «Территория
+    # города» — на любом гексе кольца, включая сам городок.
+    var terr: Array = _territory_lines_for(tile)
+    if not terr.is_empty():
+        text += "\n" + "\n".join(terr)
+    text += "\nРесурс: %s" % res_name
 
     var terrain_desc = terrain_data.get("description", "")
     if terrain_desc != "":

@@ -45,8 +45,22 @@ func get_hex_cost(row: int, col: int) -> int:
 # Чанк однороден по статусу исследования: если стартовый гекс не исследован,
 # в чанк включаются только неисследованные гексы (для разведки).
 # Если стартовый гекс исследован — только исследованные (для освоения).
+#
+# Чанк НЕ заходит в кольцо влияния чужого городка: гексы с in_town_influence
+# пропускаются при BFS так же, как гексы уже в Кольце Влияния игрока.
+# Если сам стартовый гекс лежит в кольце — возвращается пустой массив:
+# покупать там нечего, осваивать чужую территорию запрещено (см. design_doc.md,
+# раздел «Кольцо влияния»). Это согласуется с тем, что build_manager
+# отклоняет строительство на гексах в кольце.
 func get_chunk_hexes(start_row: int, start_col: int) -> Array:
     var chunk = []
+    # Стартовый гекс лежит в кольце влияния чужого городка — никаких действий.
+    # Этот короткий circuit важно оставить ДО любых других проверок: иначе
+    # BFS всё равно добавит стартовый гекс в чанк, и панель покажет
+    # «Освоить область (1 клетка)» на гексе, который освоить нельзя.
+    var start_tile = main_map.tile_data[start_row][start_col]
+    if start_tile != null and bool(start_tile.get("in_town_influence", false)):
+        return chunk
     var visited = {}
     var queue = [ {"row": start_row, "col": start_col}]
     var key = str(start_row) + "," + str(start_col)
@@ -65,6 +79,14 @@ func get_chunk_hexes(start_row: int, start_col: int) -> Array:
                 continue
             var tile = main_map.tile_data[n.row][n.col]
             if tile.get("in_influence", false):
+                continue
+            # Гексы в кольце влияния чужого городка — не часть покупаемого
+            # чанка. Пропускаем так же, как in_influence выше; ring-гексы
+            # становятся «непроходимым барьером» для BFS, и чанк естественно
+            # ограничивается границей кольца (но не «обходит» его с другой
+            # стороны, потому что у BFS лимит 5 и нет обходных путей вокруг
+            # целого кольца — что и нужно по дизайну).
+            if tile.get("in_town_influence", false):
                 continue
             # Исключаем гексы с отличающимся статусом исследования,
             # чтобы не включать в чанк разведки уже исследованные гексы
@@ -104,6 +126,21 @@ func get_chunk_food_cost(chunk: Array) -> int:
 # Запускает освоение чанка. Еда списывается сразу (фиксированная, небольшая),
 # а труд накапливается через стройку в build_manager (прогресс во времени).
 func handle_action(chunk: Array, food_cost: int, work_cost: int) -> bool:
+    # --- Защитный повтор: чанк не должен содержать гексов из кольца влияния
+    # чужого городка. get_chunk_hexes этого не допускает, но handle_action —
+    # публичная точка входа: сюда могут приходить чанки из других путей
+    # (например, из теста или из будущего UI). Отказываем молча: логика
+    # «купить нельзя» уже объяснена в control_panel (нет actions).
+    for hex in chunk:
+        if hex.row < 0 or hex.row >= main_map.map_rows or hex.col < 0 or hex.col >= main_map.map_cols:
+            return false
+        var h_tile = main_map.tile_data[hex.row][hex.col]
+        if h_tile == null:
+            return false
+        if bool(h_tile.get("in_town_influence", false)):
+            main_map.hud.show_message("Чанк пересекается с кольцом влияния чужого городка — покупка невозможна")
+            return false
+
     # --- Проверка и списание еды (запас поселенцев перед походом) ---
     var available_food = 0
     for pid in CityData.city_food_pool:

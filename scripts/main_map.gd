@@ -77,6 +77,13 @@ var unique_terrain_hexes: Array = []
 # tile.has_town, а этот список — для рендерера.
 var town_hexes: Array = []
 
+# Гексы колец влияния всех городков. Параллелен town_hexes: живёт в
+# town_manager (master), здесь — зеркало для рендерера. На тайлы также
+# проставлен флаг tile.in_town_influence — build_manager и валидаторы
+# читают его напрямую, без поиска по списку. В сейв не сохраняется,
+# пересчитывается при загрузке из town_hexes.
+var town_influence_hexes: Array = []
+
 var last_city_click_time = 0.0
 var production_timer = 0.0
 var scouting_timer: float = 0.0
@@ -169,7 +176,7 @@ func _ready():
                 # crop_bred — id одомашненного животного/растения, разводимого
                 # на пустом гексе (см. docs.md, раздел «Разведение животных/растений»).
                 # Для природных ресурсов остаётся tile.resource.
-                var tile = {"terrain": "plain", "cover": "none", "resource": null, "crop_bred": null, "improvement": null, "terrain_icon": "", "in_influence": false, "is_explored": false, "river_edges": []}
+                var tile = {"terrain": "plain", "cover": "none", "resource": null, "crop_bred": null, "improvement": null, "terrain_icon": "", "in_influence": false, "is_explored": false, "river_edges": [], "in_town_influence": false, "has_town": false}
                 if row < saved_tiles.size() and col < saved_tiles[row].size():
                     var saved = saved_tiles[row][col]
                     if not saved.is_empty():
@@ -264,6 +271,19 @@ func _ready():
         for h in town_manager.town_hexes:
             tile_data[h.row][h.col]["has_town"] = true
             town_hexes.append({"row": h.row, "col": h.col})
+
+        # Кольца влияния НЕ сохраняются в сейв — пересчитываем по
+        # восстановленным town_hexes и актуальным ресурсам на карте.
+        # Зеркалим town_manager.town_influence_hexes в main_map для рендерера.
+        # Границы стартового Региона передаём для клипа колец всех городков:
+        # ни одно кольцо не должно «выдавать» чужой городок в неисследованной
+        # зоне Региона в 1-й эпохе.
+        town_manager.compute_all_town_influences(tile_data, map_rows, map_cols,
+                start_region_start_row, start_region_end_row,
+                start_region_start_col, start_region_end_col)
+        town_influence_hexes = []
+        for h in town_manager.town_influence_hexes:
+            town_influence_hexes.append({"row": h.row, "col": h.col})
 
         SaveManager.is_loaded = false
         SaveManager.saved_data.clear()
@@ -628,13 +648,9 @@ func _initialize_map():
             if t_data.get("unique", false):
                 unique_terrain_hexes.append({"row": row, "col": col})
 
-    # Гексы городков — зеркало town_manager.town_hexes, нужно рендереру,
-    # чтобы рисовать иконки за пределами видимого Региона (как уникальная
-    # местность). Сами данные живут в town_manager, чтобы save/load были
-    # симметричны с другими менеджерами (river_manager и т.п.).
-    town_hexes = []
-    for h in town_manager.town_hexes:
-        town_hexes.append({"row": h.row, "col": h.col})
+    # Гексы городков и кольца влияния зеркалятся ПОСЛЕ town_manager.generate_towns
+    # ниже (он сам в конце вызывает compute_all_town_influences, см. скрипт town_manager).
+    # Здесь пока ничего не зеркалим: master-копии ещё пустые.
 
     # Дикоросы и гарантированный food_plant спавнятся ТОЛЬКО один раз при
     # старте новой игры и ТОЛЬКО внутри стартового Кольца Влияния.
@@ -733,6 +749,19 @@ func _initialize_map():
             start_region_start_col, start_region_end_col,
             era2_region_bounds.start_row, era2_region_bounds.end_row,
             era2_region_bounds.start_col, era2_region_bounds.end_col)
+
+    # Зеркала town_hexes / town_influence_hexes строим ТОЛЬКО ПОСЛЕ generate_towns:
+    # town_manager в конце generate_towns вызывает compute_all_town_influences,
+    # и только после этого обе master-копии содержат данные. Раньше зеркало
+    # стояло выше (в районе строки 650), но в том месте town_manager.town_hexes
+    # ещё был пуст — и зеркало молча копировало пустоту. Из-за этого кольца
+    # влияния вообще не отображались на новой игре.
+    town_hexes = []
+    for h in town_manager.town_hexes:
+        town_hexes.append({"row": h.row, "col": h.col})
+    town_influence_hexes = []
+    for h in town_manager.town_influence_hexes:
+        town_influence_hexes.append({"row": h.row, "col": h.col})
 
     # Финальная гарантия: на гексе города не должно быть ресурса, и террейн
     # должен быть допустимым (plain или hill). Это safety-net на случай,
@@ -1479,10 +1508,20 @@ func advance_to_next_era():
         return
 
     # 1-2. Исследуем и присоединяем весь текущий Регион бесплатно.
+    # Гексы в кольце влияния чужого городка пропускаем: они не должны
+    # автоматически становиться частью Кольца Влияния игрока. Иначе после
+    # перехода эпохи кольцо «расширяется» поверх чужого городка и
+    # нарушает принцип «чужое — не наше». Эти гексы остаются in_influence=false
+    # и is_explored=false: игрок не сможет там ни строить (build_manager уже
+    # блокирует по in_town_influence), ни покупать чанк (expansion_manager
+    # блокирует по тому же флагу). Фактически это «мёртвая зона» в Регионе
+    # рядом с чужим городком.
     for row in range(region_start_row, region_end_row + 1):
         for col in range(region_start_col, region_end_col + 1):
             var tile = tile_data[row][col]
             if tile == null:
+                continue
+            if bool(tile.get("in_town_influence", false)):
                 continue
             tile["is_explored"] = true
             tile["in_influence"] = true

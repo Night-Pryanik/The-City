@@ -126,6 +126,14 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null) -> bo
         if t_tile != null and bool(t_tile.get("has_town", false)):
             emit_signal("build_message", "Здесь стоит чужой городок — нельзя строить")
             return false
+        # В кольце влияния чужого городка строить нельзя: вокруг чужого
+        # поселения фактически заняты поля/выпасы/инфраструктура, и
+        # игрок не может «воткнуть» туда своё улучшение. Сами кольца
+        # рисует рендерер (полупрозрачная голубая заливка) — это даёт
+        # игроку визуальный сигнал ещё до попытки построить.
+        if t_tile != null and bool(t_tile.get("in_town_influence", false)):
+            emit_signal("build_message", "Здесь — кольцо влияния чужого городка, строить нельзя")
+            return false
 
     var key = str(row) + "," + str(col)
     if active_builds.has(key):

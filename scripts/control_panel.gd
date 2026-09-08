@@ -328,6 +328,12 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
     if not in_influence:
         return _collect_region_actions(row, col)
 
+    # Гекс внутри Кольца Влияния, но в кольце чужого городка — строить
+    # нельзя. Парный check к build_manager.start_build: панель не должна
+    # показывать заведомо невозможные экшены.
+    if tile.get("in_town_influence", false):
+        return actions
+
     # --- Улучшение уже построено ---
     if tile.improvement != null:
         var imp_name = GameData.improvements.get(tile.improvement, {}).get("name", tile.improvement)
@@ -555,6 +561,7 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
     #    рядом добавляется кнопка «Изучить …».
     var canal_potential_tile = tile.resource == null and tile.get("crop_bred", null) == null \
             and tile.improvement == null and not tile.get("has_town", false) \
+            and not tile.get("in_town_influence", false) \
             and tile.terrain != "mountain" \
             and not MapHelpers.is_water_terrain(tile.terrain) \
             and tile.terrain != "swamp" and tile.terrain != "marsh" \

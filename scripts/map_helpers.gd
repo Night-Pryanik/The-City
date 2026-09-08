@@ -120,6 +120,11 @@ static func can_build_lumberjack_hut(tile: Dictionary) -> bool:
         return false
     if tile.get("has_town", false):
         return false
+    # В кольце влияния чужого городка строить нельзя (см. build_manager.start_build);
+    # здесь — UI-фильтр, чтобы кнопка не показывалась на гексах, где
+    # постройка всё равно будет отклонена.
+    if tile.get("in_town_influence", false):
+        return false
     var terrain_id: String = tile.get("terrain", "")
     if terrain_id == "mountain" or terrain_id == "swamp" or terrain_id == "marsh":
         return false
@@ -216,6 +221,10 @@ static func can_build_canal(row: int, col: int, tile_data: Array, map_rows: int,
         return {"ok": false, "reason": "Гекс вне Кольца Влияния"}
     if tile.get("has_town", false):
         return {"ok": false, "reason": "Здесь стоит чужой городок"}
+    # В кольце влияния чужого городка канал тоже нельзя — парный check
+    # к build_manager.start_build для консистентности UI.
+    if tile.get("in_town_influence", false):
+        return {"ok": false, "reason": "В кольце влияния чужого городка"}
     if tile.get("improvement", null) != null:
         return {"ok": false, "reason": "Гекс уже занят улучшением"}
     if tile.get("resource", null) != null or tile.get("crop_bred", null) != null:

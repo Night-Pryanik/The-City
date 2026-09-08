@@ -174,6 +174,15 @@ func _draw():
         for hex_data in main_map.town_hexes:
             _draw_town_hex_outside_region(hex_data.row, hex_data.col)
 
+    # ФАЗА 1.7: Кольца влияния городков — полупрозрачная голубая заливка.
+    # Рисуется ПОСЛЕ terrain (фаза 1) и городков «в тумане» (1.6), но ДО дорог,
+    # рек и иконок (2/2.5/2.75/3) — чтобы заливка подсвечивала местность
+    # и не перекрывала важные детали. По договорённости с пользователем
+    # кольца видны ТОЛЬКО в пределах видимой области (Кольцо + Регион):
+    # за туманом войны они не рисуются, чтобы не «выдавать» содержимое
+    # неисследованной территории.
+    _draw_town_influence(visible)
+
     # ФАЗА 2: Рисуем дороги (ПЕРЕД иконками ресурсов и улучшений)
     _draw_all_roads()
 
@@ -371,6 +380,44 @@ func _draw_town_hex_outside_region(row: int, col: int):
     closed_verts.append(vertices[0])
     if main_map.show_hex_borders:
         draw_polyline(closed_verts, Color.WHITE, 2, true)
+
+# Рисует кольца влияния всех городков (PHASE 1.7). По договорённости — только
+# для гексов внутри видимой области (visible = Кольцо + Регион). Кольцо
+# отображается и на исследованных, и на неисследованных гексах в Регионе:
+# игрок должен видеть «чужую территорию» в любой части видимого окна, иначе
+# при покупке чанков пришлось бы угадывать, не «зацепил» ли он кольцо.
+# За туманом войны (за пределами Региона) кольца НЕ рисуются: туман закрывает
+# всё, чтобы не «выдавать» содержимое неисследованной территории.
+#
+# Гексы колец хранятся в main_map.town_influence_hexes (зеркало из
+# town_manager). Функция работает «как рендерер»: считает вершины гекса в
+# экранных координатах и рисует полупрозрачный полигон поверх terrain.
+#
+# Viewport culling: гексы вне экрана пропускаются, чтобы не тратить
+# draw_colored_polygon на полностью невидимые тайлы.
+func _draw_town_influence(visible: Dictionary) -> void:
+    var radius = main_map.HEX_RADIUS
+    var fill_color = TownManager.INFLUENCE_FILL_COLOR
+    var offset_x = main_map.offset_x + main_map.scroll_offset.x
+    var offset_y = main_map.offset_y + main_map.scroll_offset.y
+    for h in main_map.town_influence_hexes:
+        var row: int = h.row
+        var col: int = h.col
+        # Видимость: гекс должен лежать в видимой области (Кольцо + Регион).
+        # Это ЕДИНСТВЕННЫЙ гейт: ни in_influence, ни is_explored не проверяем —
+        # кольцо должно быть видно и в неисследованной части Региона. За
+        # туманом войны (за region_* границами) гекс просто не входит в visible.
+        if row < visible.row_start or row > visible.row_end \
+                or col < visible.col_start or col > visible.col_end:
+            continue
+        var center = HexUtils.hex_center(row, col, radius)
+        center.x += offset_x
+        center.y += offset_y
+        if not _is_rect_visible(Rect2(
+                center.x - radius, center.y - radius, radius * 2, radius * 2)):
+            continue
+        var vertices = HexUtils.hex_vertices(center.x, center.y, radius)
+        draw_colored_polygon(vertices, fill_color)
 
 # Рисует оверлей покрова (cover) поверх relief.
 # Если у покрова есть иконка — рисуем её (детерминированный выбор по seed),
