@@ -21,6 +21,7 @@ var quality_tooltip_vbox: VBoxContainer
 # (стоимость, слоты, рецепты), собирается в buildings_tab.
 var detail_tooltip_panel: Panel
 var detail_tooltip_content: VBoxContainer
+var detail_tooltip_scroll: ScrollContainer
 
 # Тултип кнопок списка построенных зданий: состояния с цветовой кодировкой
 # (обычный tooltip_text цветов не поддерживает). Контент собирает buildings_tab.
@@ -30,6 +31,14 @@ var built_tooltip_content: VBoxContainer
 # Тултип «Источники прихода/расхода» на вкладке «Ресурсы»
 var flow_tooltip_panel: Panel
 var flow_tooltip_vbox: VBoxContainer
+var flow_tooltip_scroll: ScrollContainer
+
+# Ограничение высоты «богатых» тултипов (детали здания, потоки ресурсов на
+# вкладке «Ресурсы»): контент выше DETAIL_TOOLTIP_MAX_ROWS строк (по ROW_HEIGHT
+# px каждая) обрезается, а внутри появляется вертикальный скроллбар.
+const DETAIL_TOOLTIP_MAX_ROWS: int = 15
+const DETAIL_TOOLTIP_ROW_HEIGHT: float = 24.0
+const DETAIL_TOOLTIP_SCROLLBAR_WIDTH: float = 14.0
 
 var message_label: Label
 # Общий стиль фона для всех тултипов: полностью непрозрачный тёмный фон
@@ -122,10 +131,23 @@ func setup(main_ui: Control, message_lbl: Label):
     flow_tooltip_panel.z_index = 1000
     main_ui.add_child(flow_tooltip_panel)
 
+    # Скролл-контейнер: ограничивает высоту тултипа и показывает вертикальный
+    # скроллбар, когда источников прихода/расхода слишком много.
     flow_tooltip_vbox = VBoxContainer.new()
     flow_tooltip_vbox.add_theme_constant_override("separation", 4)
     flow_tooltip_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    flow_tooltip_panel.add_child(flow_tooltip_vbox)
+    flow_tooltip_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    flow_tooltip_scroll = ScrollContainer.new()
+    flow_tooltip_scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+    flow_tooltip_scroll.offset_left = 6
+    flow_tooltip_scroll.offset_top = 4
+    flow_tooltip_scroll.offset_right = -6
+    flow_tooltip_scroll.offset_bottom = -4
+    flow_tooltip_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+    flow_tooltip_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+    flow_tooltip_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
+    flow_tooltip_panel.add_child(flow_tooltip_scroll)
+    flow_tooltip_scroll.add_child(flow_tooltip_vbox)
 
     flow_tooltip_panel.add_theme_stylebox_override("panel", _make_tooltip_style())
     # Тултип деталей выбранного здания (вкладка «Здания»).
@@ -135,10 +157,23 @@ func setup(main_ui: Control, message_lbl: Label):
     detail_tooltip_panel.z_index = 1000
     main_ui.add_child(detail_tooltip_panel)
 
+    # Скролл-контейнер: ограничивает высоту тултипа 15 строками; при длинном
+    # списке рецептов внутри появляется вертикальный скроллбар.
     detail_tooltip_content = VBoxContainer.new()
     detail_tooltip_content.add_theme_constant_override("separation", 4)
     detail_tooltip_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    detail_tooltip_panel.add_child(detail_tooltip_content)
+    detail_tooltip_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    detail_tooltip_scroll = ScrollContainer.new()
+    detail_tooltip_scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+    detail_tooltip_scroll.offset_left = 6
+    detail_tooltip_scroll.offset_top = 4
+    detail_tooltip_scroll.offset_right = -6
+    detail_tooltip_scroll.offset_bottom = -4
+    detail_tooltip_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+    detail_tooltip_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+    detail_tooltip_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
+    detail_tooltip_panel.add_child(detail_tooltip_scroll)
+    detail_tooltip_scroll.add_child(detail_tooltip_content)
 
     detail_tooltip_panel.add_theme_stylebox_override("panel", _make_tooltip_style())
 
@@ -402,14 +437,29 @@ func show_building_detail_tooltip(mouse_pos: Vector2):
     # Пересчитываем размер панели под собранное содержимое.
     detail_tooltip_content.reset_size()
     var content_min_size = detail_tooltip_content.get_minimum_size()
-    # Отступы от края панели до текста: 6 слева/справа, 4 сверху/снизу.
-    # vbox прижат к (0, 0), поэтому добавляем padding через position и size панели.
+    # Отступы от края панели до текста: 6 слева/справа, 4 сверху/снизу —
+    # задаются якорями ScrollContainer (PRESET_FULL_RECT + offset_*), поэтому
+    # позиционировать vbox вручную не нужно.
     var pad_left = 6
     var pad_top = 4
     var pad_right = 6
     var pad_bottom = 4
-    detail_tooltip_content.position = Vector2(pad_left, pad_top)
-    detail_tooltip_panel.size = content_min_size + Vector2(pad_left + pad_right, pad_top + pad_bottom)
+    # Ограничиваем высоту: не больше DETAIL_TOOLTIP_MAX_ROWS строк. При
+    # переполнении ScrollContainer показывает вертикальный скроллбар, на
+    # который закладываем ширину, чтобы контент не сжимался.
+    var max_content_height = DETAIL_TOOLTIP_MAX_ROWS * DETAIL_TOOLTIP_ROW_HEIGHT
+    var content_height = min(content_min_size.y, max_content_height)
+    var scrollbar_width = 0.0
+    if content_min_size.y > max_content_height:
+        scrollbar_width = DETAIL_TOOLTIP_SCROLLBAR_WIDTH
+    detail_tooltip_panel.size = Vector2(
+        content_min_size.x + scrollbar_width + pad_left + pad_right,
+        content_height + pad_top + pad_bottom
+    )
+    # Тултип только что показан — скролл наверх (между разными зданиями
+    # контент целиком пересобирается в buildings_tab).
+    if not detail_tooltip_panel.visible:
+        detail_tooltip_scroll.scroll_vertical = 0.0
     # Если тултип выходит за границы экрана — рисуем его с другой стороны курсора.
     var viewport_size = get_viewport().get_visible_rect().size
     var pos = mouse_pos + Vector2(15, 15)
@@ -417,6 +467,10 @@ func show_building_detail_tooltip(mouse_pos: Vector2):
         pos.x = mouse_pos.x - detail_tooltip_panel.size.x - 15
     if pos.y + detail_tooltip_panel.size.y > viewport_size.y:
         pos.y = mouse_pos.y - detail_tooltip_panel.size.y - 15
+    # Зажимаем тултип внутри экрана полностью: после переноса вверх высокий
+    # тултип не должен уходить за верхний край (как у built_tooltip).
+    pos.x = max(0.0, min(pos.x, maxf(0.0, viewport_size.x - detail_tooltip_panel.size.x)))
+    pos.y = max(0.0, min(pos.y, maxf(0.0, viewport_size.y - detail_tooltip_panel.size.y)))
     detail_tooltip_panel.position = pos
     detail_tooltip_panel.show()
 
@@ -525,20 +579,39 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dict
             flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, Color(0.9, 0.3, 0.3)))
     flow_tooltip_vbox.reset_size()
     var content_size = flow_tooltip_vbox.get_minimum_size()
-    # Отступы от края панели до текста: 6 слева/справа, 4 сверху/снизу.
-    # vbox прижат к (0, 0), поэтому добавляем padding через position и size панели.
+    # Отступы от края панели до текста: 6 слева/справа, 4 сверху/снизу —
+    # задаются якорями ScrollContainer (PRESET_FULL_RECT + offset_*), поэтому
+    # позиционировать vbox вручную не нужно.
     var pad_left = 6
     var pad_top = 4
     var pad_right = 6
     var pad_bottom = 4
-    flow_tooltip_vbox.position = Vector2(pad_left, pad_top)
-    flow_tooltip_panel.size = content_size + Vector2(pad_left + pad_right, pad_top + pad_bottom)
+    # Ограничиваем высоту: не больше DETAIL_TOOLTIP_MAX_ROWS строк. При
+    # переполнении ScrollContainer показывает вертикальный скроллбар, на
+    # который закладываем ширину, чтобы контент не сжимался.
+    var max_content_height = DETAIL_TOOLTIP_MAX_ROWS * DETAIL_TOOLTIP_ROW_HEIGHT
+    var content_height = min(content_size.y, max_content_height)
+    var scrollbar_width = 0.0
+    if content_size.y > max_content_height:
+        scrollbar_width = DETAIL_TOOLTIP_SCROLLBAR_WIDTH
+    flow_tooltip_panel.size = Vector2(
+        content_size.x + scrollbar_width + pad_left + pad_right,
+        content_height + pad_top + pad_bottom
+    )
+    # Тултип только что показан — скролл наверх (контент при каждом показе
+    # пересобирается заново).
+    if not flow_tooltip_panel.visible:
+        flow_tooltip_scroll.scroll_vertical = 0.0
     var viewport_size = get_viewport().get_visible_rect().size
     var pos = mouse_pos + Vector2(15, 15)
     if pos.x + flow_tooltip_panel.size.x > viewport_size.x:
         pos.x = mouse_pos.x - flow_tooltip_panel.size.x - 15
     if pos.y + flow_tooltip_panel.size.y > viewport_size.y:
         pos.y = mouse_pos.y - flow_tooltip_panel.size.y - 15
+    # Зажимаем тултип внутри экрана полностью (в т.ч. сверху), как у тултипа
+    # деталей здания и списка построенных зданий.
+    pos.x = max(0.0, min(pos.x, maxf(0.0, viewport_size.x - flow_tooltip_panel.size.x)))
+    pos.y = max(0.0, min(pos.y, maxf(0.0, viewport_size.y - flow_tooltip_panel.size.y)))
     flow_tooltip_panel.position = pos
     flow_tooltip_panel.show()
 
