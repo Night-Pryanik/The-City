@@ -230,7 +230,7 @@
       "name": "Медоварение",
       "era": "ancient",
       "science_cost": 3.0,
-      "icon": "honey.png",
+      "icon": "mead_making.png",
       "prerequisites": [ [ "beekeeping", "fermentation" ] ],
       "description": "Даёт возможность строить дом варщика: мёд → медовый напиток.",
       "flavor": "Медовый напиток — древнейший алкогольный напиток, который варили из мёда и воды."
