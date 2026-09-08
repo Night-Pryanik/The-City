@@ -148,16 +148,84 @@ const INFLUENCE_NOTCH_PROBABILITY := 0.6
 # 3 — «съедаем» почти целый сектор из 6 гексов на краю.
 const INFLUENCE_NOTCH_MAX_DROPS := 3
 
-# Гексы с городками: Array of {row: int, col: int}.
-# Генерируется один раз при старте новой игры; на загруженном сейве
-# восстанавливается из сохранения (load_towns).
-var town_hexes: Array = []
+# ===== Структура данных: список городков =====
+# ЕДИНЫЙ источник истины по городкам — массив записей `towns`. Каждая запись
+# — Dictionary с полными данными:
+#   id                  — уникальный стабильный id ("town_N");
+#   row, col            — координаты гекса-центра;
+#   name                — имя (пока пустое, генератор имён появится позже);
+#   is_era2_guaranteed  — справочная метка «добавлен для гарантии видимости
+#                         в эру-2»;
+#   border_color        — [r, g, b, a] цвет границ кольца (генерируется
+#                         детерминированно на спавне и СОХРАНЯЕТСЯ в сейв);
+#   influence_radius    — радиус кольца влияния (число, а не константа:
+#                         кольцо может расти/сжиматься у разных городков);
+#   influence_hexes     — ЛИЧНОЕ кольцо городка: Array of {row, col};
+#   sell_pool, buy_pool — (будущее) пулы торговли: что городок продаёт и
+#                         что хочет купить.
+#
+# Запись целиком сохраняется в сейв (serialize_towns) и восстанавливается
+# из него (load_towns), поэтому любые будущие поля городка просто добавляются
+# в словарь без изменения форматов других сущностей.
+var towns: Array = []
 
-# Гексы колец влияния ВСЕХ городков: Array of {row, col}.
-# Параллелен town_hexes по смыслу: master-copy живёт в town_manager,
-# main_map зеркалит в town_influence_hexes для рендерера. На сейв не
-# сохраняется — пересчитывается из town_hexes + tile_data.
+# Производные списки — плоские зеркала `towns` для обратной совместимости
+# (рендерер и main_map). Напрямую не редактируются, пересобираются из `towns`.
+#   town_hexes            — Array of {row, col};
+#   town_influence_hexes  — плоский список гексов колец ВСЕХ городков.
+var town_hexes: Array = []
 var town_influence_hexes: Array = []
+
+
+# Создаёт новую запись городка. Имя пока пустое (будущий генератор имён).
+# Личное кольцо influence_hexes заполняется compute_all_town_influences().
+func _make_town_record(town_index: int, row: int, col: int,
+        is_era2_guaranteed: bool) -> Dictionary:
+    return {
+        "id": "town_%d" % town_index,
+        "row": row,
+        "col": col,
+        "name": "",
+        "is_era2_guaranteed": is_era2_guaranteed,
+        "border_color": _make_border_color(town_index),
+        "influence_radius": INFLUENCE_MAX_RADIUS,
+        "influence_hexes": [],
+        "sell_pool": [],
+        "buy_pool": [],
+    }
+
+
+# Детерминированный цвет границ кольца городка по его индексу. Золотой угол
+# (φ-1 ≈ 0.618) даёт равномерный разброс оттенков по кругу — даже соседние
+# по индексу городки выглядят по-разному. Цвет записывается в запись города
+# и сохраняется в сейв, поэтому не «поедет», если городок удалят/переставят.
+# Округляем компоненты: 32-битный Color теряет точность при JSON round-trip,
+# а округлённые до 3 знаков значения сериализуются и восстанавливаются
+# бит-в-бит.
+func _make_border_color(town_index: int) -> Array:
+    var hue := fposmod(float(town_index) * 0.618033988749895, 1.0)
+    var c := Color.from_hsv(hue, 0.85, 0.95, 1.0)
+    return [snappedf(c.r, 0.001), snappedf(c.g, 0.001), snappedf(c.b, 0.001), 1.0]
+
+
+# Пересобирает производный town_hexes из master-списка towns.
+func _rebuild_derived_town_hexes() -> void:
+    town_hexes = []
+    for t in towns:
+        town_hexes.append({
+            "row": int(t.row),
+            "col": int(t.col),
+            "is_era2_guaranteed": bool(t.get("is_era2_guaranteed", false)),
+        })
+
+
+# Восстанавливает список гексов кольца из формата [[row, col], ...].
+func _restore_hex_list(entries: Array) -> Array:
+    var result: Array = []
+    for e in entries:
+        if e is Array and e.size() >= 2:
+            result.append({"row": int(e[0]), "col": int(e[1])})
+    return result
 
 
 # Генерирует городки. Вызывается из main_map._initialize_map ПОСЛЕ
@@ -185,8 +253,12 @@ func generate_towns(tile_data: Array, rows: int, cols: int,
         era2_region_start_col: int, era2_region_end_col: int) -> void:
     # Очищаем предыдущее состояние (на случай повторного вызова) и
     # снимаем флаг has_town со всех гексов — повторная генерация не должна
-    # «накапливать» старые пометки.
+    # «накапливать» старые пометки. Сбрасываем и master-список towns, и
+    # производные зеркала. ПРИМЕЧАНИЕ: используем clear(), а не `=` — так
+    # ссылка main_map.towns на этот массив не рвётся при повторной генерации.
+    towns.clear()
     town_hexes = []
+    town_influence_hexes = []
     for r in range(rows):
         for c in range(cols):
             if tile_data[r][c] != null:
@@ -209,10 +281,12 @@ func generate_towns(tile_data: Array, rows: int, cols: int,
                 -1, -1, -1, -1,  # без «обязательной зоны» на основном проходе
                 false)
         if placed.is_empty():
-            print("town_manager: не удалось разместить городок #", town_hexes.size() + 1,
+            print("town_manager: не удалось разместить городок #", towns.size() + 1,
                     " (нет валидных мест ни в одном приоритете)")
             continue
-        town_hexes.append(placed)
+        var new_town := _make_town_record(towns.size(), placed.row, placed.col, false)
+        towns.append(new_town)
+        town_hexes.append({"row": placed.row, "col": placed.col})
         tile_data[placed.row][placed.col]["has_town"] = true
 
     # --- Гарантия «≥1 городок в области 2-й эпохи» ---
@@ -239,9 +313,11 @@ func generate_towns(tile_data: Array, rows: int, cols: int,
             # был добавлен специально для гарантии видимости в эре 2»).
             # В compute_town_influence сейчас не используется: клип на
             # стартовом Регионе применяется ко ВСЕМ городкам одинаково.
-            # Флаг сохранён в сейве и в town_hexes на случай будущих
+            # Флаг сохранён в сейве и в записи городка на случай будущих
             # механик, которым понадобится различать «обычные» и
             # «гарантийные» городки.
+            var forced_town := _make_town_record(towns.size(), forced.row, forced.col, true)
+            towns.append(forced_town)
             town_hexes.append({"row": forced.row, "col": forced.col, "is_era2_guaranteed": true})
             tile_data[forced.row][forced.col]["has_town"] = true
             print("town_manager: гарантия эры-2 — добавлен городок на (",
@@ -628,25 +704,41 @@ func _collect_lake_coast_attraction_points(tile_data: Array, rows: int, cols: in
 
 
 # --- Сейв/лоад ---
-# Формат сериализации: [[row, col], [row, col], ...] — компактнее, чем
-# словари, и совместимо с JSON без лишних телодвижений.
+# Городки сериализуются как массив словарей — по одной записи towns на
+# городок. Так в сейв попадают ВСЕ данные городка: id, имя, цвет границ,
+# радиус и личное кольцо влияния, пулы торговли. Словарь сохраняется в JSON
+# напрямую (борщи Color не хранится — для цвета используем массив [r,g,b,a]).
+# Благодаря полной записи будущие поля городка добавляются в serialize/load
+# симметрично, без изменения форматов других сущностей.
 
 func serialize_towns() -> Array:
     var result: Array = []
-    for h in town_hexes:
-        # Формат записи: [row, col, is_era2_guaranteed]. Третий элемент —
-        # справочная метадата (городок был добавлен принудительно для
-        # гарантии видимости в эре 2). Сам по себе на клип не влияет:
-        # клип кольца на стартовом Регионе применяется ко всем городкам
-        # одинаково. Старые сейвы с двумя элементами загружаются без
-        # флага — обратная совместимость через load_towns.
-        result.append([int(h.row), int(h.col), bool(h.get("is_era2_guaranteed", false))])
+    for t in towns:
+        var hexes: Array = []
+        for h in t.get("influence_hexes", []):
+            hexes.append([int(h.row), int(h.col)])
+        result.append({
+            "id": str(t.get("id", "")),
+            "row": int(t.row),
+            "col": int(t.col),
+            "name": str(t.get("name", "")),
+            "is_era2_guaranteed": bool(t.get("is_era2_guaranteed", false)),
+            "border_color": t.get("border_color", [1.0, 1.0, 1.0, 1.0]),
+            "influence_radius": int(t.get("influence_radius", INFLUENCE_MAX_RADIUS)),
+            "influence_hexes": hexes,
+            "sell_pool": t.get("sell_pool", []),
+            "buy_pool": t.get("buy_pool", []),
+        })
     return result
 
 
-# Восстанавливает town_hexes из сейва. Если данных нет (новая игра) —
-# оставляет текущее значение town_hexes (обычно уже заполненное
-# generate_towns, вызванным из _initialize_map).
+# Восстанавливает towns из сейва. Понимает два формата:
+#   - НОВЫЙ: словарь записи города (id, имя, радиус, личное кольцо, цвет…);
+#   - СТАРЫЙ: [row, col] / [row, col, is_era2_guaranteed] — эпоха кольца
+#     неизвестна, поэтому при миграции радиус берётся по умолчанию,
+#     личное кольцо пересчитается в compute_all_town_influences().
+# Если данных нет / массив пуст (новая игра) — towns не трогаем (обычно уже
+# заполнен generate_towns, вызванным из _initialize_map).
 func load_towns(data) -> void:
     if data == null:
         return
@@ -654,39 +746,62 @@ func load_towns(data) -> void:
         return
     if data.is_empty():
         return
+
+    towns.clear()
     town_hexes = []
+    town_influence_hexes = []
     for entry in data:
-        if entry is Array and entry.size() >= 2:
-            # Обратная совместимость: третий элемент (is_era2_guaranteed)
-            # мог отсутствовать в старых сейвах. Отсутствие флага трактуется
-            # как false; на клип кольца это не влияет (он применяется ко всем
-            # городкам одинаково).
+        if entry is Dictionary:
+            # Новый формат: полная запись городка.
+            var t := {
+                "id": str(entry.get("id", "")),
+                "row": int(entry.get("row", 0)),
+                "col": int(entry.get("col", 0)),
+                "name": str(entry.get("name", "")),
+                "is_era2_guaranteed": bool(entry.get("is_era2_guaranteed", false)),
+                "border_color": entry.get("border_color", [1.0, 1.0, 1.0, 1.0]),
+                "influence_radius": int(entry.get("influence_radius", INFLUENCE_MAX_RADIUS)),
+                # Личное кольцо из сейва — источник истины для загружаемой
+                # партии (кольцо могло быть изменено механиками).
+                "influence_hexes": _restore_hex_list(entry.get("influence_hexes", [])),
+                "sell_pool": entry.get("sell_pool", []),
+                "buy_pool": entry.get("buy_pool", []),
+            }
+            towns.append(t)
+        elif entry is Array and entry.size() >= 2:
+            # Миграция старого формата: [row, col] / [row, col, flag].
+            # Кольца нет — вычислится в compute_all_town_influences.
             var is_era2_guaranteed: bool = entry.size() >= 3 and bool(entry[2])
-            town_hexes.append({
-                "row": int(entry[0]),
-                "col": int(entry[1]),
-                "is_era2_guaranteed": is_era2_guaranteed
-            })
+            var t := _make_town_record(towns.size(), int(entry[0]), int(entry[1]),
+                    is_era2_guaranteed)
+            towns.append(t)
+        else:
+            printerr("town_manager: пропущена битая запись городка в сейве: ", entry)
+    _rebuild_derived_town_hexes()
+    print("town_manager: из сейва восстановлено городков=", towns.size())
 
 
 # === Кольцо влияния городка ===
 
 # Вычисляет кольцо влияния для ВСЕХ размещённых городков. Заполняет
-# town_influence_hexes (master-copy). Вызывается:
+# town_influence_hexes (плоское зеркало) и ЛИЧНОЕ кольцо каждого городка
+# (town["influence_hexes"]). Вызывается:
 #   - из generate_towns после размещения всех городков (включая гарантийный
 #     для эры-2) — старт новой игры;
-#   - из main_map._initialize_map при загрузке сейва — кольцо
-#     пересчитывается по восстановленным town_hexes + tile_data.
+#   - из main_map при загрузке сейва — кольца восстанавливаются.
 #
-# Кольцо НЕ сохраняется в сейв: входные данные (городки + ресурсы) уже там,
-# пересчёт детерминирован через seed = координаты городка. Это упрощает формат
-# сохранений и автоматически «мигрирует» старые сейвы под новые правила.
+# Личное кольцо городка, ВОССТАНОВЛЕННОЕ из сейва, является источником истины:
+# оно может отличаться от «расчёта по радиусу» (кольцо меняется механиками),
+# поэтому для загруженной партии используем сохранённый список as-is. Если
+# кольца нет (новая игра либо мигрированный старый сейв) — считаем заново
+# по текущему радиусу городка через compute_town_influence(). На тайлы при
+# любом варианте проставляется флаг in_town_influence.
 #
 # Параметры start_region_* задают границы стартового Региона игрока
 # (видимая область в 1-й эпохе: Кольцо + Регион). Используются для клипа
-# колец ВСЕХ городков: иначе любое кольцо, залезающее в Регион, «выдаёт»
-# чужой городок в неисследованной зоне в 1-й эпохе. Если передано -1
-# (или start > end), клип отключён.
+# колец при расчёте (и для новых игр, и для мигрированных сейвов): иначе
+# любое кольцо, залезающее в Регион, «выдаёт» чужой городок в неисследованной
+# зоне в 1-й эпохе. Если передано -1 (или start > end), клип отключён.
 func compute_all_town_influences(tile_data: Array, map_rows: int, map_cols: int,
         start_region_start_row: int = -1, start_region_end_row: int = -1,
         start_region_start_col: int = -1, start_region_end_col: int = -1) -> void:
@@ -701,11 +816,17 @@ func compute_all_town_influences(tile_data: Array, map_rows: int, map_cols: int,
                 tile_data[r][c]["in_town_influence"] = false
 
     town_influence_hexes = []
-    for h in town_hexes:
-        var ring: Array = compute_town_influence(tile_data, map_rows, map_cols,
-                h.row, h.col, h,
-                start_region_start_row, start_region_end_row,
-                start_region_start_col, start_region_end_col)
+    for t in towns:
+        var ring: Array = t.get("influence_hexes", [])
+        if ring.is_empty():
+            # Личного кольца ещё нет (новая игра / старый сейв) — считаем
+            # по радиусу этого городка и сохраняем в его запись.
+            ring = compute_town_influence(tile_data, map_rows, map_cols,
+                    int(t.row), int(t.col), t,
+                    start_region_start_row, start_region_end_row,
+                    start_region_start_col, start_region_end_col,
+                    int(t.get("influence_radius", INFLUENCE_MAX_RADIUS)))
+            t["influence_hexes"] = ring
         for rh in ring:
             # Проставляем флаг на тайле — build_manager и валидаторы читают
             # его напрямую, без поиска по списку.
@@ -716,7 +837,7 @@ func compute_all_town_influences(tile_data: Array, map_rows: int, map_cols: int,
                 tile_data[rh.row][rh.col]["in_town_influence"] = true
             town_influence_hexes.append(rh)
     print("town_manager: всего гексов в кольцах влияния=", town_influence_hexes.size(),
-            " (городков=", town_hexes.size(), ")")
+            " (городков=", towns.size(), ")")
 
 # Вычисляет кольцо влияния для ОДНОГО городка. Возвращает Array of
 # {row, col} — список гексов в кольце. Подробности алгоритма (база,
@@ -726,17 +847,20 @@ func compute_all_town_influences(tile_data: Array, map_rows: int, map_cols: int,
 #   tile_data — 2D-массив гексов. Нужен для проверки tile.resource (шаг 3).
 #   map_rows, map_cols — размеры карты (для обхода соседей в path-функции).
 #   town_row, town_col — координаты городка, вокруг которого строится кольцо.
-#   town_dict — словарь {row, col, is_era2_guaranteed, ...} из town_hexes.
-#     Сейчас на клип НЕ влияет: клип применяется ко всем городкам
-#     одинаково. Параметр оставлен для будущих механик, которым может
-#     понадобиться различать «обычные» и «гарантийные» городки.
+#   town_dict — запись города (словарь) из towns. Сейчас на клип НЕ влияет:
+#     клип применяется ко всем городкам одинаково. Параметр оставлен для
+#     будущих механик, которым понадобится различать городки.
 #   start_region_* — границы стартового Региона. Передаются из main_map,
 #     чтобы не лазить в GameData из town_manager (town_manager не знает,
 #     где Регион лежит на карте). Используются для клипа колец.
+#   radius — радиус кольца для ЭТОГО городка (per-town). По умолчанию
+#     INFLUENCE_MAX_RADIUS; будущие механики роста/сжатия кольца передают
+#     сюда радиус из записи города.
 func compute_town_influence(tile_data: Array, map_rows: int, map_cols: int,
         town_row: int, town_col: int, town_dict: Dictionary = {},
         start_region_start_row: int = -1, start_region_end_row: int = -1,
-        start_region_start_col: int = -1, start_region_end_col: int = -1) -> Array:
+        start_region_start_col: int = -1, start_region_end_col: int = -1,
+        radius: int = INFLUENCE_MAX_RADIUS) -> Array:
     var ring: Dictionary = {}  # ключ "r,c" -> true для быстрой проверки членства
     var rng := RandomNumberGenerator.new()
     # Стабильный seed: каждая комбинация (row, col) даёт уникальный,
@@ -744,14 +868,14 @@ func compute_town_influence(tile_data: Array, map_rows: int, map_cols: int,
     # соседние по карте городки получали максимально разные выемки.
     rng.seed = town_row * 1009 + town_col * 7919
 
-    # --- Шаг 1: базовый диск (расстояние 0..INFLUENCE_MAX_RADIUS) ---
-    var r_min: int = maxi(0, town_row - INFLUENCE_MAX_RADIUS)
-    var r_max: int = mini(map_rows - 1, town_row + INFLUENCE_MAX_RADIUS)
-    var c_min: int = maxi(0, town_col - INFLUENCE_MAX_RADIUS)
-    var c_max: int = mini(map_cols - 1, town_col + INFLUENCE_MAX_RADIUS)
+    # --- Шаг 1: базовый диск (расстояние 0..radius) ---
+    var r_min: int = maxi(0, town_row - radius)
+    var r_max: int = mini(map_rows - 1, town_row + radius)
+    var c_min: int = maxi(0, town_col - radius)
+    var c_max: int = mini(map_cols - 1, town_col + radius)
     for r in range(r_min, r_max + 1):
         for c in range(c_min, c_max + 1):
-            if HexUtils.hex_distance(r, c, town_row, town_col) <= INFLUENCE_MAX_RADIUS:
+            if HexUtils.hex_distance(r, c, town_row, town_col) <= radius:
                 ring["%d,%d" % [r, c]] = true
 
     # --- Шаг 2: асимметрия — отбрасываем 1-3 гекса на расстоянии 3
@@ -766,7 +890,7 @@ func compute_town_influence(tile_data: Array, map_rows: int, map_cols: int,
             if not ring.has("%d,%d" % [r, c]):
                 continue
             var d: int = HexUtils.hex_distance(r, c, town_row, town_col)
-            if d != INFLUENCE_MAX_RADIUS:
+            if d != radius:
                 continue
             if _hex_side(town_row, town_col, r, c) != notch_side:
                 continue
@@ -776,14 +900,14 @@ func compute_town_influence(tile_data: Array, map_rows: int, map_cols: int,
         if outer_dropped >= INFLUENCE_NOTCH_MAX_DROPS:
             break
 
-    # --- Шаг 3: для каждого ресурса в радиусе INFLUENCE_MAX_RADIUS
+    # --- Шаг 3: для каждого ресурса в радиусе radius
     # добавляем гекс с ресурсом и кратчайший путь от городка.
     # Защита от «анклавов»: если выемка из шага 2 окружила ресурс, игрок
     # мог бы получить маленький «островок» доступной земли посреди
     # запретной зоны. Путь «пришивает» ресурс обратно к кольцу.
     for r in range(r_min, r_max + 1):
         for c in range(c_min, c_max + 1):
-            if HexUtils.hex_distance(r, c, town_row, town_col) > INFLUENCE_MAX_RADIUS:
+            if HexUtils.hex_distance(r, c, town_row, town_col) > radius:
                 continue
             var tile = tile_data[r][c]
             if tile == null:

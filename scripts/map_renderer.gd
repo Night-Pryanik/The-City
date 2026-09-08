@@ -6,6 +6,8 @@ const CITY_ICON_SIZE = 130
 const TERRAIN_ICON_SIZE = 130
 const RESOURCE_ICON_SIZE = 80
 const IMPROVEMENT_ICON_SIZE = 32
+# Толщина контура границ кольца влияния городков (в пикселях).
+const TOWN_INFLUENCE_BORDER_WIDTH = 3.0
 
 var tile_data = []
 var icon_textures = {}
@@ -182,6 +184,10 @@ func _draw():
     # за туманом войны они не рисуются, чтобы не «выдавать» содержимое
     # неисследованной территории.
     _draw_town_influence(visible)
+    # ФАЗА 1.7.1: границы колец городков — каждая своим цветом. Рисуются
+    # сразу после заливки (поверх неё, поверх terrain), но до дорог/рек/
+    # иконок: контур должен быть виден, не перекрывая содержимое гексов.
+    _draw_town_influence_borders(visible)
 
     # ФАЗА 2: Рисуем дороги (ПЕРЕД иконками ресурсов и улучшений)
     _draw_all_roads()
@@ -418,6 +424,75 @@ func _draw_town_influence(visible: Dictionary) -> void:
             continue
         var vertices = HexUtils.hex_vertices(center.x, center.y, radius)
         draw_colored_polygon(vertices, fill_color)
+
+# Рисует границы колец влияния КАЖДОГО городка своим цветом (PHASE 1.7.1).
+# Рисуется сразу после заливки колец (PHASE 1.7) и до дорог/рек/иконок.
+#
+# Данные берутся из main_map.towns (массив записей городков): у каждого
+# городка своё личное кольцо (town["influence_hexes"]) и свой цвет границ
+# (town["border_color"], сгенерирован на спавне и сохранён в сейв). Кольца
+# полностью независимы — цвета соседних городков не влияют друг на друга,
+# поэтому «чужая» территория визуально чётко разграничена.
+#
+# Контур рисуется по общим рёбрам между гексами кольца и «окружением»
+# (гекс, НЕ входящий в кольцо этого городка). Внутренние рёбра (между двумя
+# гексами одного кольца) не рисуются. За краем карты рёбра не рисуются —
+# там нет гекса-соседа, и кольцо просто заканчивается.
+#
+# Видимость — та же, что у заливки: только Кольцо + Регион. Клип колец на
+# стартовом Регионе уже применён к данным (в town_manager), так что чужие
+# городки в 1-й эпохе контуры не раскрывают.
+func _draw_town_influence_borders(visible: Dictionary) -> void:
+    var radius: float = main_map.HEX_RADIUS
+    var offset_x: float = main_map.offset_x + main_map.scroll_offset.x
+    var offset_y: float = main_map.offset_y + main_map.scroll_offset.y
+    var offset := Vector2(offset_x, offset_y)
+
+    # Направления соседей для нечёт-r offset-сетки (как HexUtils.get_neighbors_odd_r).
+    var even_dirs := [[0, -1], [0, 1], [-1, -1], [-1, 0], [1, -1], [1, 0]]
+    var odd_dirs := [[0, -1], [0, 1], [-1, 0], [-1, 1], [1, 0], [1, 1]]
+
+    for town_entry in main_map.towns:
+        var ring: Array = town_entry.get("influence_hexes", [])
+        if ring.is_empty():
+            continue
+        var bc: Array = town_entry.get("border_color", [1.0, 1.0, 1.0, 1.0])
+        var color: Color = Color(bc[0], bc[1], bc[2], bc[3])
+        # Карта членства "row,col" -> true для быстрой проверки «не в кольце».
+        var members: Dictionary = {}
+        for h in ring:
+            members["%d,%d" % [int(h.row), int(h.col)]] = true
+        for h in ring:
+            var row: int = int(h.row)
+            var col: int = int(h.col)
+            # Видимость (как в заливке): только Кольцо + Регион.
+            if row < visible.row_start or row > visible.row_end \
+                    or col < visible.col_start or col > visible.col_end:
+                continue
+            var center: Vector2 = HexUtils.hex_center(row, col, radius) + offset
+            if not _is_rect_visible(Rect2(
+                    center.x - radius, center.y - radius, radius * 2, radius * 2)):
+                continue
+            var dirs: Array = even_dirs if row % 2 == 0 else odd_dirs
+            for d in dirs:
+                var nr := row + int(d[0])
+                var nc := col + int(d[1])
+                if members.has("%d,%d" % [nr, nc]):
+                    continue
+                # Соседа за краем карты нет — «правильный» край не рисуем.
+                if nr < 0 or nr >= main_map.map_rows or nc < 0 or nc >= main_map.map_cols:
+                    continue
+                # Общая кромка: две вершины текущего гекса, ближайшие к центру
+                # соседнего. Для pointy-top гексов это и есть общее ребро.
+                var nb_center: Vector2 = HexUtils.hex_center(nr, nc, radius) + offset
+                var dists: Array = []
+                for vi in range(6):
+                    var v: Vector2 = HexUtils.hex_vertex(row, col, vi, radius) + offset
+                    dists.append({"idx": vi, "d": v.distance_squared_to(nb_center)})
+                dists.sort_custom(func(a, b): return a.d < b.d)
+                var p1: Vector2 = HexUtils.hex_vertex(row, col, int(dists[0].idx), radius) + offset
+                var p2: Vector2 = HexUtils.hex_vertex(row, col, int(dists[1].idx), radius) + offset
+                draw_line(p1, p2, color, TOWN_INFLUENCE_BORDER_WIDTH, true)
 
 # Рисует оверлей покрова (cover) поверх relief.
 # Если у покрова есть иконка — рисуем её (детерминированный выбор по seed),

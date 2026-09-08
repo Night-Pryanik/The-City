@@ -81,8 +81,15 @@ var town_hexes: Array = []
 # town_manager (master), здесь — зеркало для рендерера. На тайлы также
 # проставлен флаг tile.in_town_influence — build_manager и валидаторы
 # читают его напрямую, без поиска по списку. В сейв не сохраняется,
-# пересчитывается при загрузке из town_hexes.
+# пересчитывается/зеркалится из town_manager.towns.
 var town_influence_hexes: Array = []
+
+# Полные записи городков (master-список живёт в town_manager.towns; здесь —
+# ССЫЛКА на него, не снимок). Рендерер читает из этой переменной per-town
+# данные: личное кольцо (town["influence_hexes"]) и цвет границ
+# (town["border_color"]). Ссылочная природа гарантирует, что любые правки
+# колец/полей в town_manager сразу видны на карте без повторного зеркалирования.
+var towns: Array = []
 
 var last_city_click_time = 0.0
 var production_timer = 0.0
@@ -263,21 +270,23 @@ func _ready():
                     unique_terrain_hexes.append({"row": row, "col": col})
 
         # Восстанавливаем городки из сейва и зеркалим в town_hexes для рендерера.
-        # town_manager.load_towns только заполняет town_hexes внутри менеджера;
-        # плюс вручную выставляем tile.has_town (на случай, если сейв старый,
-        # где флага ещё не было — миграция).
+        # town_manager.load_towns заполняет master-список towns, а производный
+        # town_hexes — внутри менеджера; плюс вручную выставляем tile.has_town
+        # (на случай, если сейв старый, где флага ещё не было — миграция).
         town_manager.load_towns(SaveManager.saved_data.get("towns", []))
+        towns = town_manager.towns
         town_hexes = []
         for h in town_manager.town_hexes:
             tile_data[h.row][h.col]["has_town"] = true
             town_hexes.append({"row": h.row, "col": h.col})
 
-        # Кольца влияния НЕ сохраняются в сейв — пересчитываем по
-        # восстановленным town_hexes и актуальным ресурсам на карте.
-        # Зеркалим town_manager.town_influence_hexes в main_map для рендерера.
-        # Границы стартового Региона передаём для клипа колец всех городков:
-        # ни одно кольцо не должно «выдавать» чужой городок в неисследованной
-        # зоне Региона в 1-й эпохе.
+        # Личные кольца городков приходят из сейва с записями
+        # (town["influence_hexes"]); для мигрированных старых сейвов их
+        # пересчитывает compute_all_town_influences. Она же проставляет
+        # флаги in_town_influence на тайлы и собирает плоское зеркало
+        # town_influence_hexes для рендерера. Границы стартового Региона
+        # передаём для клипа колец всех городков: ни одно кольцо не должно
+        # «выдавать» чужой городок в неисследованной зоне Региона в 1-й эпохе.
         town_manager.compute_all_town_influences(tile_data, map_rows, map_cols,
                 start_region_start_row, start_region_end_row,
                 start_region_start_col, start_region_end_col)
@@ -762,6 +771,10 @@ func _initialize_map():
     town_influence_hexes = []
     for h in town_manager.town_influence_hexes:
         town_influence_hexes.append({"row": h.row, "col": h.col})
+    # Полные записи городков — ссылка на master-список менеджера (не снимок):
+    # рендерер читает per-town кольца и цвета, а любые будущие правки в
+    # town_manager сразу отражаются на карте без повторного зеркалирования.
+    towns = town_manager.towns
 
     # Финальная гарантия: на гексе города не должно быть ресурса, и террейн
     # должен быть допустимым (plain или hill). Это safety-net на случай,
