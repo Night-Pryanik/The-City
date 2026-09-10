@@ -797,6 +797,13 @@ func load_towns(data) -> void:
 # по текущему радиусу городка через compute_town_influence(). На тайлы при
 # любом варианте проставляется флаг in_town_influence.
 #
+# Кольца разных городков НЕ пересекаются. Городки обрабатываются в порядке
+# массива towns (порядок размещения; для сейва — порядок записей): гекс, уже
+# вошедший в кольцо более раннего городка, исключается из кольца текущего —
+# принцип «кто первый встал, того и тапки». У «опоздавшего» городка остаётся
+# кольцо, срезанное со стороны соседа. Обрезанный состав кольца сохраняется
+# в запись городка (и в сейв), поэтому повторный пересчёт идемпотентен.
+#
 # Параметры start_region_* задают границы стартового Региона игрока
 # (видимая область в 1-й эпохе: Кольцо + Регион). Используются для клипа
 # колец при расчёте (и для новых игр, и для мигрированных сейвов): иначе
@@ -816,6 +823,13 @@ func compute_all_town_influences(tile_data: Array, map_rows: int, map_cols: int,
                 tile_data[r][c]["in_town_influence"] = false
 
     town_influence_hexes = []
+    # Таблица «заявленных» гексов: ключ "r,c" -> true. Городки обходятся в
+    # порядке массива towns (порядок размещения; для сейва — порядок записей),
+    # поэтому гекс, впервые заявленный одним городком, не может попасть в
+    # кольцо другого. Это принцип «кто первый встал, того и тапки»: кольца
+    # НИКОГДА не пересекаются, а у более позднего городка кольцо просто
+    # срезается со стороны соседа.
+    var claimed: Dictionary = {}
     for t in towns:
         var ring: Array = t.get("influence_hexes", [])
         if ring.is_empty():
@@ -826,8 +840,18 @@ func compute_all_town_influences(tile_data: Array, map_rows: int, map_cols: int,
                     start_region_start_row, start_region_end_row,
                     start_region_start_col, start_region_end_col,
                     int(t.get("influence_radius", INFLUENCE_MAX_RADIUS)))
-            t["influence_hexes"] = ring
+        # Клип личного кольца: гексы, уже заявленные более ранним городком,
+        # отбрасываем и НЕ записываем в кольцо этого городка. Заливка и
+        # границы (рендерер строит их по influence_hexes) у разных городков
+        # поэтому гарантированно не пересекаются. Обрезанное кольцо попадает
+        # в запись городка и затем в сейв (serialize_towns).
+        var clipped: Array = []
         for rh in ring:
+            var key := "%d,%d" % [int(rh.row), int(rh.col)]
+            if claimed.has(key):
+                continue
+            claimed[key] = true
+            clipped.append(rh)
             # Проставляем флаг на тайле — build_manager и валидаторы читают
             # его напрямую, без поиска по списку.
             if rh.row >= 0 and rh.row < map_rows \
@@ -836,6 +860,7 @@ func compute_all_town_influences(tile_data: Array, map_rows: int, map_cols: int,
                     and tile_data[rh.row][rh.col] != null:
                 tile_data[rh.row][rh.col]["in_town_influence"] = true
             town_influence_hexes.append(rh)
+        t["influence_hexes"] = clipped
     print("town_manager: всего гексов в кольцах влияния=", town_influence_hexes.size(),
             " (городков=", towns.size(), ")")
 
