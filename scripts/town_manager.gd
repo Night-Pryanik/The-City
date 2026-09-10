@@ -51,7 +51,9 @@
 #     но встаём рядом, а не на нём; попадание на ресурс = реролл поиска;
 #   - на прибрежном пляже у моря — можно (приоритет «морское побережье»);
 #   - не гекс города игрока;
-#   - не гекс другого городка и не ближе MIN_DISTANCE_BETWEEN_TOWNS;
+#   - не гекс другого городка и не ближе MIN_DISTANCE_BETWEEN_TOWNS, а
+#     также не внутри чужого кольца влияния (эффективный минимум =
+#     max(MIN_DISTANCE_BETWEEN_TOWNS, influence_radius соседа + 1));
 #   - не внутри стартовой видимой области (Кольцо + стартовый Регион —
 #     иначе городок был бы виден с самого начала игры);
 #   - опционально: гекс должен лежать в заданной «обязательной» области
@@ -109,7 +111,10 @@ const TERRAIN_PREFERENCE: Array = [
 # Уточнение ищет гекс в REFINEMENT_RADIUS от текущей позиции, который
 # удовлетворяет ВСЕМ уже набранным приоритетам + новому.
 const REFINEMENT_RADIUS := 2
-# Минимальная дистанция между двумя городками (для рассредоточения).
+# Базовая минимальная дистанция между двумя городками (рассредоточение).
+# Фактический минимум в _is_valid_town_hex = МАКСИМУМ из этой константы и
+# (influence_radius соседа + 1): центр нового городка не должен попадать
+# в чужое кольцо влияния.
 const MIN_DISTANCE_BETWEEN_TOWNS := 3
 # Максимум попыток найти валидный гекс для одного городка в пределах
 # одного шага (ищем другую опорную точку того же приоритета, если возле
@@ -615,9 +620,16 @@ func _is_valid_town_hex(tile_data: Array, row: int, col: int,
                 and col >= require_in_region_start_col and col <= require_in_region_end_col):
             return false
 
-    # Слишком близко к другому городку — не рассредоточено.
-    for h in town_hexes:
-        if HexUtils.hex_distance(row, col, h.row, h.col) < MIN_DISTANCE_BETWEEN_TOWNS:
+    # Центр нового городка не должен попадать в чужое кольцо влияния:
+    # минимальная дистанция = радиус влияния соседа + 1. Базовое
+    # рассредоточение MIN_DISTANCE_BETWEEN_TOWNS тоже остаётся в силе —
+    # берём МАКСИМУМ из двух ограничений. Обходим towns (master-список
+    # с influence_radius), а не производное town_hexes: при будущих
+    # механиках роста/сжатия колец правило подстроится автоматически.
+    for t in towns:
+        var eff_min: int = maxi(MIN_DISTANCE_BETWEEN_TOWNS,
+                int(t.get("influence_radius", INFLUENCE_MAX_RADIUS)) + 1)
+        if HexUtils.hex_distance(row, col, int(t.row), int(t.col)) < eff_min:
             return false
     return true
 
