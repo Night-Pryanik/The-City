@@ -346,6 +346,46 @@
       "time": 5.0,
       "unlock_tech": "native_metals",
       "description": "Обжигает древесину в древесный уголь"
+    },
+    {
+      "id": "wax_tablets",
+      "name": "Производство восковых табличек",
+      "produced_in": [ "carpenter_workshop" ],
+      "resources": { "wood": 1, "wax": 1 },
+      "result": { "wax_tablet": 1 },
+      "time": 5.0,
+      "unlock_tech": "beekeeping",
+      "description": "Создает деревянные таблички с углублением, в которое залит воск"
+    },
+    {
+      "id": "paper_rm",
+      "name": "Производство бумаги",
+      "produced_in": [ "paper_workshop" ],
+      "resources": { "ramie": 1, "mulberry_bark": 1, "lime": 1 },
+      "result": { "paper": 1 },
+      "time": 5.0,
+      "unlock_tech": "paper",
+      "description": "Создает бумагу из рами и коры тутовника"
+    },
+    {
+      "id": "paper_hm",
+      "name": "Производство бумаги",
+      "produced_in": [ "paper_workshop" ],
+      "resources": { "hemp": 1, "mulberry_bark": 1, "lime": 1 },
+      "result": { "paper": 1 },
+      "time": 5.0,
+      "unlock_tech": "paper",
+      "description": "Создает бумагу из конопли и коры тутовника"
+    },
+    {
+      "id": "paper_rh",
+      "name": "Производство бумаги",
+      "produced_in": [ "paper_workshop" ],
+      "resources": { "ramie": 1, "hemp": 1, "lime": 1 },
+      "result": { "paper": 1 },
+      "time": 5.0,
+      "unlock_tech": "paper",
+      "description": "Создает бумагу из рами и конопли"
     }
   ]
 }

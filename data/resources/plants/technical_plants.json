@@ -104,7 +104,7 @@
       "allowed_cover": [ "none" ],
       "improved_by": "plantation",
       "tech_required": "sericulture",
-      "produces": { "mulberry": 1, "silk_cocoon": 1 },
+      "produces": { "mulberries": 1, "mulberry_bark": 1, "silk_cocoon": 1 },
       "icon": "mulberry.png",
       "color": [ 255, 100, 100 ]
     },

@@ -137,6 +137,14 @@
       "category": "material",
       "unlock_tech": "parchment",
       "icon": "parchment.png"
+    },
+    {
+      "id": "wax_tablets",
+      "name": "Восковые таблички",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "beekeeping",
+      "icon": "wax_tablets.png"
     }
   ]
 }

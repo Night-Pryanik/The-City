@@ -44,7 +44,7 @@
     {
       "id": "writing_mediums",
       "name": "Основа для письма",
-      "products": ["clay_tablets", "papyrus", "parchment", "paper"]
+      "products": ["clay_tablets", "wax_tablets", "papyrus", "parchment", "silk", "paper"]
     },
     {
       "id": "bronze_alloys",

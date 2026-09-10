@@ -63,6 +63,14 @@
       "icon": "agave.png"
     },
     {
+      "id": "mulberry_bark",
+      "name": "Кора тутовника",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "paper",
+      "icon": "mulberry_bark.png"
+    },
+    {
       "id": "silk_cocoon",
       "name": "Кокон тутового шелкопряда",
       "type": "product",
