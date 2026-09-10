@@ -24,12 +24,48 @@ var main_map: Node
 # и выполнить клиппинг. Ключ кэша — компактная сериализация координат реки.
 var _river_smooth_cache: Dictionary = {}
 
+# --- Кэш рендера колец влияния городков (PHASE 1.7 / 1.7.1) ---
+# Кольца городков статичны между спавном/загрузкой/сменой эпохи, но раньше
+# пересчитывались И рисовались каждый кадр: сотни полупрозрачных
+# draw_colored_polygon (по одному на гекс, с тригонометрией на каждый гекс
+# и каждое ребро) + аллокация словарей membership на каждый городок. При
+# пересечении колец общие гексы рисовались по N раз (N = число городков),
+# что дополнительно усиливало прозрачность и повышало нагрузку.
+#
+# Теперь весь рендер-кэш строится один раз и пересобирается только при
+# invalidate_town_influence_cache() либо при изменении видимого Региона
+# (смена эпохи). За кадр остаётся: один draw_texture_rect для заливки и
+# лёгкие кэшированные draw_line для границ.
+var _town_cache_version: int = 0
+var _town_cache_built_version: int = -1
+# Регионные границы, для которых построен текущий кэш. Если кэш построен
+# до смены эпохи (Регион расширился) — он невалиден и пересобирается.
+var _cache_region_start_row: int = -1
+var _cache_region_end_row: int = -1
+var _cache_region_start_col: int = -1
+var _cache_region_end_col: int = -1
+# Уникальные гексы колец ВСЕХ городков (без дублей) в мировых координатах.
+# Каждая запись — { "cx": float, "cy": float } — центр гекса без offset.
+var _influence_fill_centers: Array = []
+# Отрезки границ колец в мировых координатах (без offset). Каждая запись —
+# { "p1": Vector2, "p2": Vector2, "color": Color, "row": int, "col": int }.
+var _influence_border_segments: Array = []
+# Шаг 2: пре-рендер заливки колец в ОДНУ RGBA-текстуру, покрывающую текущий
+# Регион (Кольцо + Регион). Кадровый рендер заливки = один draw_texture_rect
+# вместо сотен полупрозрачных полигонов. Пересоздаётся при инвалидации кэша.
+var _influence_fill_texture: ImageTexture = null
+var _influence_texture_origin: Vector2 = Vector2.ZERO
+var _influence_texture_size: Vector2 = Vector2.ZERO
+
 func initialize(td, main_node):
     tile_data = td
     main_map = main_node
     # Очищаем кэш рек при инициализации (новая игра / загрузка сохранения),
     # чтобы не держать устаревшие сглаженные точки от предыдущей карты.
     _river_smooth_cache.clear()
+    # Кольца городков могли измениться (новая карта / загрузка сейва):
+    # сбрасываем кэш их рендера — пересоберётся лениво со следующим кадром.
+    invalidate_town_influence_cache()
 
 # Возвращает словарь с границами видимых гексов (инклюзивно),
 # ограниченными границами региона. Используется для viewport culling:
@@ -387,42 +423,212 @@ func _draw_town_hex_outside_region(row: int, col: int):
     if main_map.show_hex_borders:
         draw_polyline(closed_verts, Color.WHITE, 2, true)
 
+# --- Кэш рендера колец влияния городков (PHASE 1.7 / 1.7.1) ---
+# Раньше кольца пересчитывались и рисовались КАЖДЫЙ кадр: на каждый гекс
+# заливки — отдельный draw_colored_polygon с alpha-блендингом и тригонометрией
+# (hex_center + hex_vertices), а на каждое ребро границ — заново аллокация
+# словаря membership, ещё 6×cos/sin и sort_custom(). При 2+ городках рядом
+# кольца дополнительно ДУБЛИРОВАЛИСЬ: общие гексы в плоском списке
+# town_influence_hexes были по одному на каждый городок — заливка наносилась
+# 2-3 раза, что усиливало затемнение пересечений и повышало нагрузку.
+#
+# Кольца статичны между спавном/загрузкой/сменой эпохи, поэтому теперь:
+#   Шаг 1 — кэш уникальных центров заливки (без дублей) и мировых отрезков
+#           границ строится один раз в _ensure_town_influence_cache();
+#   Шаг 2 — заливка пре-рендерится в ОДНУ RGBA-текстуру на весь Регион
+#           (см. _build_town_fill_texture), и за кадр рисуется один
+#           draw_texture_rect вместо сотен полупрозрачных полигонов.
+# За кадр остаются: 1 blit заливки + лёгкие draw_line границ без тригонометрии
+# и аллокаций. Пересборка — только по invalidate_town_influence_cache()
+# (инициализация карты / загрузка сейва) либо при смене Региона (эпоха).
+
+func invalidate_town_influence_cache() -> void:
+    # Сбрасываем кэш рендера: пересоберётся лениво на следующем кадре.
+    # Старая ImageTexture освобождается автоматически (ref-count) при
+    # перезаписи ссылки в _build_town_fill_texture().
+    _town_cache_version += 1
+
+func _ensure_town_influence_cache(visible: Dictionary) -> void:
+    if main_map == null:
+        return
+    # Регион расширяется при смене эпохи — кэш под старые границы невалиден.
+    var region_changed: bool = _cache_region_start_row != main_map.region_start_row \
+            or _cache_region_end_row != main_map.region_end_row \
+            or _cache_region_start_col != main_map.region_start_col \
+            or _cache_region_end_col != main_map.region_end_col
+    if _town_cache_built_version == _town_cache_version and not region_changed:
+        return
+    _town_cache_built_version = _town_cache_version
+    _cache_region_start_row = main_map.region_start_row
+    _cache_region_end_row = main_map.region_end_row
+    _cache_region_start_col = main_map.region_start_col
+    _cache_region_end_col = main_map.region_end_col
+
+    # --- Шаг 1: уникальные гексы заливки + мировые отрезки границ ---
+    _influence_fill_centers = []
+    _influence_border_segments = []
+    var seen: Dictionary = {}
+    var radius: float = main_map.HEX_RADIUS
+    var towns: Array = main_map.towns
+    if towns == null:
+        towns = []
+    # Направления соседей для нечёт-r offset-сетки (как HexUtils.get_neighbors_odd_r).
+    var even_dirs := [[0, -1], [0, 1], [-1, -1], [-1, 0], [1, -1], [1, 0]]
+    var odd_dirs := [[0, -1], [0, 1], [-1, 0], [-1, 1], [1, 0], [1, 1]]
+    for town_entry in towns:
+        var ring: Array = town_entry.get("influence_hexes", [])
+        if ring.is_empty():
+            continue
+        var bc: Array = town_entry.get("border_color", [1.0, 1.0, 1.0, 1.0])
+        # Карта членства "row,col" -> true для быстрой проверки «не в кольце».
+        var members: Dictionary = {}
+        for h in ring:
+            members["%d,%d" % [int(h.row), int(h.col)]] = true
+        for h in ring:
+            var row: int = int(h.row)
+            var col: int = int(h.col)
+            # Заливка: гекс рисуем один раз, даже если он в кольцах нескольких
+            # городков (раньше — по N раз с «двойным» затемнением пересечений).
+            var key := "%d,%d" % [row, col]
+            if not seen.has(key):
+                seen[key] = true
+                var c: Vector2 = HexUtils.hex_center(row, col, radius)
+                _influence_fill_centers.append({"cx": c.x, "cy": c.y,
+                        "row": row, "col": col})
+            # Граница: рёбра между кольцом городка и его окружением.
+            var dirs: Array = even_dirs if row % 2 == 0 else odd_dirs
+            for d in dirs:
+                var nr := row + int(d[0])
+                var nc := col + int(d[1])
+                if members.has("%d,%d" % [nr, nc]):
+                    continue
+                # Соседа за краем карты нет — «правильный» край не рисуем.
+                if nr < 0 or nr >= main_map.map_rows or nc < 0 or nc >= main_map.map_cols:
+                    continue
+                # Общая кромка: две вершины текущего гекса, ближайшие к центру
+                # соседнего. Для pointy-top гексов это и есть общее ребро.
+                var nb_center: Vector2 = HexUtils.hex_center(nr, nc, radius)
+                var dists: Array = []
+                for vi in range(6):
+                    var v: Vector2 = HexUtils.hex_vertex(row, col, vi, radius)
+                    dists.append({"idx": vi, "d": v.distance_squared_to(nb_center)})
+                dists.sort_custom(func(a, b): return a.d < b.d)
+                var p1: Vector2 = HexUtils.hex_vertex(row, col, int(dists[0].idx), radius)
+                var p2: Vector2 = HexUtils.hex_vertex(row, col, int(dists[1].idx), radius)
+                _influence_border_segments.append({"p1x": p1.x, "p1y": p1.y,
+                        "p2x": p2.x, "p2y": p2.y,
+                        "cr": bc[0], "cg": bc[1], "cb": bc[2], "ca": bc[3],
+                        "row": row, "col": col})
+
+    # --- Шаг 2: пре-рендер заливки в одну текстуру Региона ---
+    _build_town_fill_texture()
+
+# Пре-рендер заливки колец влияния в ОДНУ RGBA-текстуру, покрывающую весь
+# видимый Регион (Кольцо + Регион). Текстура строится в «мировых» пикселях
+# (без scroll-offset): при прокрутке кадр лишь прибавляет offset и делает один
+# draw_texture_rect. В Godot-классе Image нет векторных примитивов (только
+# fill/fill_rect/set_pixel), поэтому гексы заполняются построчно через
+# fill_rect по таблице половинных ширин (pointy-top гекс с плоскими боковыми
+# сторонами: левая и правая границы вертикальные).
+#
+# Если Регион слишком велик для одной текстуры (предел 4096 px) — оставляем
+# _influence_fill_texture = null, и _draw_town_influence рисует заливку
+# кэшированными полигонами (без дублей и тригонометрии за кадр).
+func _build_town_fill_texture() -> void:
+    _influence_fill_texture = null
+    if main_map == null or Engine.is_editor_hint():
+        return
+    if _influence_fill_centers.is_empty():
+        return
+    var r0: int = main_map.region_start_row
+    var r1: int = main_map.region_end_row
+    var c0: int = main_map.region_start_col
+    var c1: int = main_map.region_end_col
+    if r1 < r0 or c1 < c0:
+        return
+    var radius: float = main_map.HEX_RADIUS
+    var tl: Vector2 = HexUtils.hex_center(r0, c0, radius)
+    var tr: Vector2 = HexUtils.hex_center(r0, c1, radius)
+    var bl: Vector2 = HexUtils.hex_center(r1, c0, radius)
+    var br: Vector2 = HexUtils.hex_center(r1, c1, radius)
+    var min_x := minf(minf(tl.x, tr.x), minf(bl.x, br.x)) - radius
+    var max_x := maxf(maxf(tl.x, tr.x), maxf(bl.x, br.x)) + radius
+    var min_y := minf(minf(tl.y, tr.y), minf(bl.y, br.y)) - radius
+    var max_y := maxf(maxf(tl.y, tr.y), maxf(bl.y, br.y)) + radius
+    var tex_w: int = int(ceil(max_x - min_x))
+    var tex_h: int = int(ceil(max_y - min_y))
+    if tex_w <= 0 or tex_h <= 0 or tex_w > 4096 or tex_h > 4096:
+        return
+    var img: Image = Image.create_empty(tex_w, tex_h, false, Image.FORMAT_RGBA8)
+    if img == null:
+        return
+    img.fill(Color(0, 0, 0, 0))
+    var half: float = radius * 0.5
+    var rmax: int = int(ceil(radius)) + 1
+    # Половинные ширины (px) pointy-top гекса по смещениям dy. +1px на каждую
+    # сторону наружу — закрывает тонкие AA-швы на стыках гексов.
+    var hw: Dictionary = {}
+    for dy in range(-rmax, rmax + 1):
+        var ya: float = float(dy)
+        var w: float = radius * sqrt(3.0) * 0.5  # плоская ширина (|y| <= r/2)
+        if ya > half:
+            w = sqrt(3.0) * (radius - ya)
+        elif ya < -half:
+            w = sqrt(3.0) * (ya + radius)
+        hw[dy] = w + 1.0
+    var fill_color: Color = TownManager.INFLUENCE_FILL_COLOR
+    for h in _influence_fill_centers:
+        var cx: float = float(h.cx) - min_x
+        var cy: float = float(h.cy) - min_y
+        var base_x: int = int(floor(cx))
+        var base_y: int = int(floor(cy))
+        for dy in range(-rmax, rmax + 1):
+            var y: int = base_y + dy
+            if y < 0 or y >= tex_h:
+                continue
+            var w: float = float(hw[dy])
+            var x0: int = base_x - int(ceil(w))
+            var x1: int = base_x + int(ceil(w))
+            if x1 <= x0:
+                continue
+            img.fill_rect(Rect2i(x0, y, x1 - x0, 1), fill_color)
+    _influence_fill_texture = ImageTexture.create_from_image(img)
+    _influence_texture_origin = Vector2(min_x, min_y)
+    _influence_texture_size = Vector2(float(tex_w), float(tex_h))
+
 # Рисует кольца влияния всех городков (PHASE 1.7). По договорённости — только
-# для гексов внутри видимой области (visible = Кольцо + Регион). Кольцо
-# отображается и на исследованных, и на неисследованных гексах в Регионе:
-# игрок должен видеть «чужую территорию» в любой части видимого окна, иначе
-# при покупке чанков пришлось бы угадывать, не «зацепил» ли он кольцо.
-# За туманом войны (за пределами Региона) кольца НЕ рисуются: туман закрывает
-# всё, чтобы не «выдавать» содержимое неисследованной территории.
-#
-# Гексы колец хранятся в main_map.town_influence_hexes (зеркало из
-# town_manager). Функция работает «как рендерер»: считает вершины гекса в
-# экранных координатах и рисует полупрозрачный полигон поверх terrain.
-#
-# Viewport culling: гексы вне экрана пропускаются, чтобы не тратить
-# draw_colored_polygon на полностью невидимые тайлы.
+# для гексов внутри видимой области (visible = Кольцо + Регион): за туманом
+# войны кольца не рисуются, чтобы не «выдавать» неисследованную территорию.
+# Один кадр = один draw_texture_rect (текстура вырезана по Кольцо+Регион).
+# Fallback на полигоны — только в редакторе или при слишком большом Регионе.
 func _draw_town_influence(visible: Dictionary) -> void:
-    var radius = main_map.HEX_RADIUS
-    var fill_color = TownManager.INFLUENCE_FILL_COLOR
-    var offset_x = main_map.offset_x + main_map.scroll_offset.x
-    var offset_y = main_map.offset_y + main_map.scroll_offset.y
-    for h in main_map.town_influence_hexes:
-        var row: int = h.row
-        var col: int = h.col
-        # Видимость: гекс должен лежать в видимой области (Кольцо + Регион).
-        # Это ЕДИНСТВЕННЫЙ гейт: ни in_influence, ни is_explored не проверяем —
-        # кольцо должно быть видно и в неисследованной части Региона. За
-        # туманом войны (за region_* границами) гекс просто не входит в visible.
+    if main_map == null:
+        return
+    var radius: float = main_map.HEX_RADIUS
+    var offset_x: float = main_map.offset_x + main_map.scroll_offset.x
+    var offset_y: float = main_map.offset_y + main_map.scroll_offset.y
+    _ensure_town_influence_cache(visible)
+    if _influence_fill_texture != null:
+        draw_texture_rect(_influence_fill_texture, Rect2(
+                _influence_texture_origin.x + offset_x,
+                _influence_texture_origin.y + offset_y,
+                _influence_texture_size.x,
+                _influence_texture_size.y), false, Color(1, 1, 1, 1))
+        return
+    # Fallback: отрисовка гексами (редактор / Регион больше 4096px).
+    var fill_color: Color = TownManager.INFLUENCE_FILL_COLOR
+    for h in _influence_fill_centers:
+        var row: int = int(h.row)
+        var col: int = int(h.col)
+        # Видимость (как раньше): только Кольцо + Регион.
         if row < visible.row_start or row > visible.row_end \
                 or col < visible.col_start or col > visible.col_end:
             continue
-        var center = HexUtils.hex_center(row, col, radius)
-        center.x += offset_x
-        center.y += offset_y
-        if not _is_rect_visible(Rect2(
-                center.x - radius, center.y - radius, radius * 2, radius * 2)):
+        var cx: float = float(h.cx) + offset_x
+        var cy: float = float(h.cy) + offset_y
+        if not _is_rect_visible(Rect2(cx - radius, cy - radius, radius * 2, radius * 2)):
             continue
-        var vertices = HexUtils.hex_vertices(center.x, center.y, radius)
+        var vertices = HexUtils.hex_vertices(cx, cy, radius)
         draw_colored_polygon(vertices, fill_color)
 
 # Рисует границы колец влияния КАЖДОГО городка своим цветом (PHASE 1.7.1).
@@ -439,60 +645,37 @@ func _draw_town_influence(visible: Dictionary) -> void:
 # гексами одного кольца) не рисуются. За краем карты рёбра не рисуются —
 # там нет гекса-соседа, и кольцо просто заканчивается.
 #
+# Отрезки считаются ОДИН раз в _ensure_town_influence_cache() и хранятся в
+# мировых координатах (без offset). За кадр — только трансляция offset'ом,
+# viewport-проверка и draw_line: без тригонометрии и аллокаций словарей.
+#
 # Видимость — та же, что у заливки: только Кольцо + Регион. Клип колец на
 # стартовом Регионе уже применён к данным (в town_manager), так что чужие
 # городки в 1-й эпохе контуры не раскрывают.
 func _draw_town_influence_borders(visible: Dictionary) -> void:
-    var radius: float = main_map.HEX_RADIUS
+    if main_map == null:
+        return
+    _ensure_town_influence_cache(visible)
     var offset_x: float = main_map.offset_x + main_map.scroll_offset.x
     var offset_y: float = main_map.offset_y + main_map.scroll_offset.y
-    var offset := Vector2(offset_x, offset_y)
-
-    # Направления соседей для нечёт-r offset-сетки (как HexUtils.get_neighbors_odd_r).
-    var even_dirs := [[0, -1], [0, 1], [-1, -1], [-1, 0], [1, -1], [1, 0]]
-    var odd_dirs := [[0, -1], [0, 1], [-1, 0], [-1, 1], [1, 0], [1, 1]]
-
-    for town_entry in main_map.towns:
-        var ring: Array = town_entry.get("influence_hexes", [])
-        if ring.is_empty():
+    for seg in _influence_border_segments:
+        var row: int = int(seg.row)
+        var col: int = int(seg.col)
+        # Видимость (как в заливке): только Кольцо + Регион.
+        if row < visible.row_start or row > visible.row_end \
+                or col < visible.col_start or col > visible.col_end:
             continue
-        var bc: Array = town_entry.get("border_color", [1.0, 1.0, 1.0, 1.0])
-        var color: Color = Color(bc[0], bc[1], bc[2], bc[3])
-        # Карта членства "row,col" -> true для быстрой проверки «не в кольце».
-        var members: Dictionary = {}
-        for h in ring:
-            members["%d,%d" % [int(h.row), int(h.col)]] = true
-        for h in ring:
-            var row: int = int(h.row)
-            var col: int = int(h.col)
-            # Видимость (как в заливке): только Кольцо + Регион.
-            if row < visible.row_start or row > visible.row_end \
-                    or col < visible.col_start or col > visible.col_end:
-                continue
-            var center: Vector2 = HexUtils.hex_center(row, col, radius) + offset
-            if not _is_rect_visible(Rect2(
-                    center.x - radius, center.y - radius, radius * 2, radius * 2)):
-                continue
-            var dirs: Array = even_dirs if row % 2 == 0 else odd_dirs
-            for d in dirs:
-                var nr := row + int(d[0])
-                var nc := col + int(d[1])
-                if members.has("%d,%d" % [nr, nc]):
-                    continue
-                # Соседа за краем карты нет — «правильный» край не рисуем.
-                if nr < 0 or nr >= main_map.map_rows or nc < 0 or nc >= main_map.map_cols:
-                    continue
-                # Общая кромка: две вершины текущего гекса, ближайшие к центру
-                # соседнего. Для pointy-top гексов это и есть общее ребро.
-                var nb_center: Vector2 = HexUtils.hex_center(nr, nc, radius) + offset
-                var dists: Array = []
-                for vi in range(6):
-                    var v: Vector2 = HexUtils.hex_vertex(row, col, vi, radius) + offset
-                    dists.append({"idx": vi, "d": v.distance_squared_to(nb_center)})
-                dists.sort_custom(func(a, b): return a.d < b.d)
-                var p1: Vector2 = HexUtils.hex_vertex(row, col, int(dists[0].idx), radius) + offset
-                var p2: Vector2 = HexUtils.hex_vertex(row, col, int(dists[1].idx), radius) + offset
-                draw_line(p1, p2, color, TOWN_INFLUENCE_BORDER_WIDTH, true)
+        var p1 := Vector2(float(seg.p1x) + offset_x, float(seg.p1y) + offset_y)
+        var p2 := Vector2(float(seg.p2x) + offset_x, float(seg.p2y) + offset_y)
+        # Viewport culling сегмента по его bounding-box.
+        if not _is_rect_visible(Rect2(
+                minf(p1.x, p2.x) - TOWN_INFLUENCE_BORDER_WIDTH,
+                minf(p1.y, p2.y) - TOWN_INFLUENCE_BORDER_WIDTH,
+                abs(p1.x - p2.x) + TOWN_INFLUENCE_BORDER_WIDTH * 2.0,
+                abs(p1.y - p2.y) + TOWN_INFLUENCE_BORDER_WIDTH * 2.0)):
+            continue
+        var color := Color(seg.cr, seg.cg, seg.cb, seg.ca)
+        draw_line(p1, p2, color, TOWN_INFLUENCE_BORDER_WIDTH, true)
 
 # Рисует оверлей покрова (cover) поверх relief.
 # Если у покрова есть иконка — рисуем её (детерминированный выбор по seed),
