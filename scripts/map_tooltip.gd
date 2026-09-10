@@ -25,12 +25,27 @@ func _init(tooltip_text_label: Label, tooltip_products_container: VBoxContainer,
 # Используется во всех ветках _build_text (уникальная местность / неисследованная
 # / исследованная), чтобы тултип был консистентным: голубое пятно вокруг
 # городка всегда сопровождается пояснением «это чья-то территория».
-func _territory_lines_for(tile: Dictionary) -> Array:
+func _town_name_for_hex(row: int, col: int) -> String:
+    var main_map = _map_renderer.main_map if _map_renderer != null else null
+    if main_map == null:
+        return ""
+    for town in main_map.towns:
+        if int(town.get("row", -1)) == row and int(town.get("col", -1)) == col:
+            return str(town.get("name", ""))
+        for influence_hex in town.get("influence_hexes", []):
+            if int(influence_hex.get("row", -1)) == row \
+                    and int(influence_hex.get("col", -1)) == col:
+                return str(town.get("name", ""))
+    return ""
+
+
+func _territory_lines_for(tile: Dictionary, row: int, col: int) -> Array:
     var lines: Array = []
+    var town_name = _town_name_for_hex(row, col)
     if bool(tile.get("in_town_influence", false)):
-        lines.append("Территория города")
+        lines.append("Территория города %s" % town_name if town_name != "" else "Территория города")
     if bool(tile.get("has_town", false)):
-        lines.append("Город")
+        lines.append("Город %s" % town_name if town_name != "" else "Город")
     return lines
 
 
@@ -254,7 +269,7 @@ func _build_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_c
         # «Город», если гекс попал в кольцо или содержит городок.
         var desc = terrain_data.get("description", "")
         var uniq_text: String = desc if desc != "" else terrain_name
-        var uniq_terr: Array = _territory_lines_for(tile)
+        var uniq_terr: Array = _territory_lines_for(tile, row, col)
         if not uniq_terr.is_empty():
             uniq_text += "\n" + "\n".join(uniq_terr)
         return uniq_text
@@ -265,7 +280,7 @@ func _build_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_c
         # не поможет (build_manager всё равно запретит стройку), и приписка
         # только путает.
         var text: String = "Местность: %s" % terrain_with_cover
-        var terr: Array = _territory_lines_for(tile)
+        var terr: Array = _territory_lines_for(tile, row, col)
         if not terr.is_empty():
             text += "\n" + "\n".join(terr)
         if bool(tile.get("in_town_influence", false)):
@@ -281,7 +296,7 @@ func _build_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_c
     # остальной тултип. Строка «Город» добавляется ТОЛЬКО когда на гексе
     # действительно стоит городок (т.е. в центре кольца), а «Территория
     # города» — на любом гексе кольца, включая сам городок.
-    var terr: Array = _territory_lines_for(tile)
+    var terr: Array = _territory_lines_for(tile, row, col)
     if not terr.is_empty():
         text += "\n" + "\n".join(terr)
     text += "\nРесурс: %s" % res_name

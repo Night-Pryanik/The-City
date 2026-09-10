@@ -173,6 +173,7 @@ const INFLUENCE_NOTCH_MAX_DROPS := 3
 # из него (load_towns), поэтому любые будущие поля городка просто добавляются
 # в словарь без изменения форматов других сущностей.
 var towns: Array = []
+var _used_town_names: Dictionary = {}
 
 # Производные списки — плоские зеркала `towns` для обратной совместимости
 # (рендерер и main_map). Напрямую не редактируются, пересобираются из `towns`.
@@ -182,7 +183,7 @@ var town_hexes: Array = []
 var town_influence_hexes: Array = []
 
 
-# Создаёт новую запись городка. Имя пока пустое (будущий генератор имён).
+# Создаёт новую запись городка с уникальным именем из city_names.json.
 # Личное кольцо influence_hexes заполняется compute_all_town_influences().
 func _make_town_record(town_index: int, row: int, col: int,
         is_era2_guaranteed: bool) -> Dictionary:
@@ -190,7 +191,7 @@ func _make_town_record(town_index: int, row: int, col: int,
         "id": "town_%d" % town_index,
         "row": row,
         "col": col,
-        "name": "",
+        "name": _take_unique_town_name(),
         "is_era2_guaranteed": is_era2_guaranteed,
         "border_color": _make_border_color(town_index),
         "influence_radius": INFLUENCE_MAX_RADIUS,
@@ -198,6 +199,30 @@ func _make_town_record(town_index: int, row: int, col: int,
         "sell_pool": [],
         "buy_pool": [],
     }
+
+
+func _take_unique_town_name(preferred_name: String = "") -> String:
+    if preferred_name != "" and not _used_town_names.has(preferred_name):
+        _used_town_names[preferred_name] = true
+        return preferred_name
+
+    var available_names: Array = []
+    for city_name in GameData.city_names:
+        var candidate_name := str(city_name)
+        if candidate_name != "" and not _used_town_names.has(candidate_name):
+            available_names.append(candidate_name)
+    if not available_names.is_empty():
+        var selected_name: String = available_names[randi() % available_names.size()]
+        _used_town_names[selected_name] = true
+        return selected_name
+
+    var fallback_index := towns.size() + 1
+    var fallback_name := "Городок %d" % fallback_index
+    while _used_town_names.has(fallback_name):
+        fallback_index += 1
+        fallback_name = "Городок %d" % fallback_index
+    _used_town_names[fallback_name] = true
+    return fallback_name
 
 
 # Детерминированный цвет границ кольца городка по его индексу. Золотой угол
@@ -262,6 +287,9 @@ func generate_towns(tile_data: Array, rows: int, cols: int,
     # производные зеркала. ПРИМЕЧАНИЕ: используем clear(), а не `=` — так
     # ссылка main_map.towns на этот массив не рвётся при повторной генерации.
     towns.clear()
+    _used_town_names.clear()
+    if not CityData.city_name.is_empty():
+        _used_town_names[CityData.city_name] = true
     town_hexes = []
     town_influence_hexes = []
     for r in range(rows):
@@ -283,7 +311,7 @@ func generate_towns(tile_data: Array, rows: int, cols: int,
                 city_row, city_col,
                 exclusion_start_row, exclusion_end_row,
                 exclusion_start_col, exclusion_end_col,
-                -1, -1, -1, -1,  # без «обязательной зоны» на основном проходе
+                -1, -1, -1, -1, # без «обязательной зоны» на основном проходе
                 false)
         if placed.is_empty():
             print("town_manager: не удалось разместить городок #", towns.size() + 1,
@@ -359,7 +387,6 @@ func _try_place_one_town(tile_data: Array, rows: int, cols: int,
         require_in_region_start_row: int, require_in_region_end_row: int,
         require_in_region_start_col: int, require_in_region_end_col: int,
         ignore_exclusion: bool) -> Dictionary:
-
     # Собираем все приоритеты один раз (дешевле, чем на каждый шаг).
     # Каждый приоритет — словарь {name, points, radius}:
     #   radius — максимальное гекс-расстояние от точки тяготения до гекса
@@ -760,6 +787,9 @@ func load_towns(data) -> void:
         return
 
     towns.clear()
+    _used_town_names.clear()
+    if not CityData.city_name.is_empty():
+        _used_town_names[CityData.city_name] = true
     town_hexes = []
     town_influence_hexes = []
     for entry in data:
@@ -769,7 +799,7 @@ func load_towns(data) -> void:
                 "id": str(entry.get("id", "")),
                 "row": int(entry.get("row", 0)),
                 "col": int(entry.get("col", 0)),
-                "name": str(entry.get("name", "")),
+                "name": _take_unique_town_name(str(entry.get("name", ""))),
                 "is_era2_guaranteed": bool(entry.get("is_era2_guaranteed", false)),
                 "border_color": entry.get("border_color", [1.0, 1.0, 1.0, 1.0]),
                 "influence_radius": int(entry.get("influence_radius", INFLUENCE_MAX_RADIUS)),
@@ -898,7 +928,7 @@ func compute_town_influence(tile_data: Array, map_rows: int, map_cols: int,
         start_region_start_row: int = -1, start_region_end_row: int = -1,
         start_region_start_col: int = -1, start_region_end_col: int = -1,
         radius: int = INFLUENCE_MAX_RADIUS) -> Array:
-    var ring: Dictionary = {}  # ключ "r,c" -> true для быстрой проверки членства
+    var ring: Dictionary = {} # ключ "r,c" -> true для быстрой проверки членства
     var rng := RandomNumberGenerator.new()
     # Стабильный seed: каждая комбинация (row, col) даёт уникальный,
     # но воспроизводимый между сессиями сид. Простые простые числа — чтобы
@@ -1032,7 +1062,7 @@ func _hex_side(tr: int, tc: int, r: int, c: int) -> int:
 # страховка от вырожденного случая, в нормальной ситуации не срабатывает).
 func _path_between(fr: int, fc: int, tr: int, tc: int,
         map_rows: int, map_cols: int) -> Array:
-    var path: Array = [{"row": fr, "col": fc}]
+    var path: Array = [ {"row": fr, "col": fc}]
     var cur_r: int = fr
     var cur_c: int = fc
     var safety: int = 0
@@ -1052,4 +1082,3 @@ func _path_between(fr: int, fc: int, tr: int, tc: int,
         cur_c = int(best.col)
         path.append({"row": cur_r, "col": cur_c})
     return path
-

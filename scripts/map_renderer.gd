@@ -896,6 +896,7 @@ func _draw_hex_overlays(row: int, col: int):
             TownManager.TOWN_ICON_SIZE
         )
         draw_texture_rect(town_tex, town_rect, false)
+        _draw_town_name(row, col, center)
 
     # --- Конфликт «tech_reveal-ресурс vs чужое улучшение» ---
     # Если на гексе стоит улучшение, а под ним нашли скрытый ресурс (tech_reveal
@@ -907,6 +908,38 @@ func _draw_hex_overlays(row: int, col: int):
     var conflict = MapHelpers.get_tech_reveal_conflict(tile)
     if not conflict.is_empty() and is_resource_visible:
         _draw_tech_reveal_warning(center)
+
+func _draw_town_name(row: int, col: int, center: Vector2) -> void:
+    var town_name := ""
+    for town in main_map.towns:
+        if int(town.get("row", -1)) == row and int(town.get("col", -1)) == col:
+            town_name = str(town.get("name", ""))
+            break
+    if town_name.is_empty():
+        return
+
+    var font = ThemeDB.fallback_font
+    if font == null:
+        return
+    var font_size := 12
+    var text_size = font.get_string_size(town_name, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size)
+    var text_center = Vector2(center.x, center.y - main_map.HEX_RADIUS - 8)
+    var padding = Vector2(6, 3)
+    var text_ascent = font.get_ascent(font_size)
+    var text_descent = font.get_descent(font_size)
+    var background_height = text_ascent + text_descent + padding.y * 2.0
+    var background_rect = Rect2(
+        text_center.x - text_size.x / 2.0 - padding.x,
+        text_center.y - background_height / 2.0,
+        text_size.x + padding.x * 2.0,
+        background_height
+    )
+    draw_rect(background_rect, Color(0.2, 0.2, 0.2, 1.0), true, -1.0, true)
+    draw_rect(background_rect, Color(0.6, 0.6, 0.6, 1.0), false, 1.0, true)
+    var text_baseline = background_rect.position.y + padding.y + text_ascent
+    var text_pos = Vector2(text_center.x - text_size.x / 2.0, text_baseline)
+    draw_string(font, text_pos, town_name, HORIZONTAL_ALIGNMENT_CENTER,
+            -1, font_size, Color.WHITE)
 
 # Рисует звёздочки качества ресурса под его иконкой.
 # Только для раскрытых ресурсов после постройки улучшения. Если качество не задано
