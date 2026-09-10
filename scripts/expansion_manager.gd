@@ -5,7 +5,7 @@ extends Node
 # запасаются едой перед походом в новые регионы. Основная стоимость
 # освоения — ТРУД (см. expansion_cost в terrains.json), который
 # накапливается через стройку в build_manager.
-const FOOD_COST_PER_HEX = 5
+const FOOD_COST_PER_HEX = 50
 
 var is_expansion_mode = false
 var hexes_bought = 0

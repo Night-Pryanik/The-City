@@ -11,7 +11,7 @@
       "allowed_terrain": [ "plain", "hill", "mountain" ],
       "allowed_cover": [ "none", "sparse_forest", "forest" ],
       "improved_by": null,
-      "produces": { "meteorite_iron": [ 2, 5 ] },
+      "produces": { "meteorite_iron": [ 20, 50 ] },
       "spawn_count": [ 1, 10 ],
       "icon": "meteorite_iron.png",
       "color": [ 120, 130, 140 ]
@@ -27,7 +27,7 @@
       "allowed_terrain": [ "plain", "hill", "mountain" ],
       "allowed_cover": [ "none", "sparse_forest", "forest" ],
       "improved_by": null,
-      "produces": { "copper": [ 2, 5 ] },
+      "produces": { "copper": [ 20, 50 ] },
       "spawn_count": [ 1, 10 ],
       "icon": "copper.png",
       "color": [ 120, 130, 140 ]
@@ -43,7 +43,7 @@
       "allowed_terrain": [ "plain", "hill", "mountain" ],
       "allowed_cover": [ "none", "sparse_forest", "forest" ],
       "improved_by": null,
-      "produces": { "gold": [ 2, 5 ] },
+      "produces": { "gold": [ 20, 50 ] },
       "spawn_count": [ 1, 10 ],
       "icon": "gold.png",
       "color": [ 120, 130, 140 ]
@@ -59,7 +59,7 @@
       "allowed_terrain": [ "plain", "hill", "mountain" ],
       "allowed_cover": [ "none", "sparse_forest", "forest" ],
       "improved_by": null,
-      "produces": { "silver": [ 2, 5 ] },
+      "produces": { "silver": [ 20, 50 ] },
       "spawn_count": [ 1, 10 ],
       "icon": "silver.png",
       "color": [ 120, 130, 140 ]
@@ -77,7 +77,7 @@
       "allowed_terrain": [ "hill", "mountain" ],
       "allowed_cover": [ "none", "sparse_forest", "forest" ],
       "improved_by": "mine",
-      "produces": { "iron_ore": 1 },
+      "produces": { "iron_ore": 10 },
       "spawn_count": [ 1, 10 ],
       "icon": "iron.png",
       "color": [ 120, 130, 140 ]
@@ -95,7 +95,7 @@
       "allowed_terrain": [ "swamp" ],
       "allowed_cover": [ "none", "reed" ],
       "improved_by": "mine",
-      "produces": { "iron_ore": 1 },
+      "produces": { "iron_ore": 10 },
       "spawn_count": [ 1, 10 ],
       "icon": "iron.png",
       "color": [ 120, 130, 140 ]
@@ -113,7 +113,7 @@
       "allowed_terrain": [ "hill", "mountain" ],
       "allowed_cover": [ "none", "sparse_forest", "forest" ],
       "improved_by": "mine",
-      "produces": { "copper_ore": 1 },
+      "produces": { "copper_ore": 10 },
       "spawn_count": [ 1, 10 ],
       "icon": "copper.png",
       "color": [ 210, 180, 130 ]
@@ -131,7 +131,7 @@
       "allowed_terrain": [ "hill", "mountain" ],
       "allowed_cover": [ "none", "sparse_forest", "forest" ],
       "improved_by": "mine",
-      "produces": { "gold_ore": 1 },
+      "produces": { "gold_ore": 10 },
       "spawn_count": [ 1, 10 ],
       "icon": "gold.png",
       "color": [ 255, 215, 0 ]
@@ -149,7 +149,7 @@
       "allowed_terrain": [ "hill", "mountain" ],
       "allowed_cover": [ "none", "sparse_forest", "forest" ],
       "improved_by": "mine",
-      "produces": { "silver_ore": 1 },
+      "produces": { "silver_ore": 10 },
       "spawn_count": [ 1, 10 ],
       "icon": "silver.png",
       "color": [ 192, 192, 192 ]
@@ -167,7 +167,7 @@
       "allowed_terrain": [ "hill", "mountain" ],
       "allowed_cover": [ "none", "sparse_forest", "forest" ],
       "improved_by": "mine",
-      "produces": { "tin_ore": 1 },
+      "produces": { "tin_ore": 10 },
       "spawn_count": [ 1, 10 ],
       "icon": "tin.png",
       "color": [ 192, 192, 192 ]
@@ -185,7 +185,7 @@
       "allowed_terrain": [ "hill", "mountain" ],
       "allowed_cover": [ "none", "sparse_forest", "forest" ],
       "improved_by": "mine",
-      "produces": { "antimony_ore": 1 },
+      "produces": { "antimony_ore": 10 },
       "spawn_count": [ 1, 10 ],
       "icon": "antimony.png",
       "color": [ 192, 192, 192 ]
@@ -203,7 +203,7 @@
       "allowed_terrain": [ "hill", "mountain" ],
       "allowed_cover": [ "none", "sparse_forest", "forest" ],
       "improved_by": "mine",
-      "produces": { "arsenic_ore": 1 },
+      "produces": { "arsenic_ore": 10 },
       "spawn_count": [ 1, 10 ],
       "icon": "arsenic.png",
       "color": [ 192, 192, 192 ]

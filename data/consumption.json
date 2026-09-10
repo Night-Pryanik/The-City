@@ -46,14 +46,14 @@
     {
       "resource": "@boats",
       "profession": [ "fisherman" ],
-      "amount": 1,
+      "amount": 10,
       "interval": 10,
       "production_bonus": 0.5
     },
     {
       "resource": "@fruits",
       "profession": [ "all" ],
-      "amount": 1,
+      "amount": 10,
       "interval": 10,
       "production_bonus": 0.0
     }

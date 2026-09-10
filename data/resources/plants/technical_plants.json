@@ -11,7 +11,7 @@
       "allowed_cover": [ "none" ],
       "improved_by": "plantation",
       "tech_required": "plantations",
-      "produces": { "flax": 1, "feed": 4 },
+      "produces": { "flax": 10, "feed": 40 },
       "icon": "flax.png",
       "color": [ 200, 200, 255 ]
     },
@@ -26,7 +26,7 @@
       "allowed_cover": [ "none" ],
       "improved_by": "plantation",
       "tech_required": "plantations",
-      "produces": { "cotton": 1, "feed": 4 },
+      "produces": { "cotton": 10, "feed": 40 },
       "icon": "cotton.png",
       "color": [ 255, 255, 255 ]
     },
@@ -41,7 +41,7 @@
       "allowed_cover": [ "none" ],
       "improved_by": "plantation",
       "tech_required": "plantations",
-      "produces": { "hemp": 1, "feed": 4 },
+      "produces": { "hemp": 10, "feed": 40 },
       "icon": "hemp.png",
       "color": [ 100, 255, 100 ]
     },
@@ -56,7 +56,7 @@
       "allowed_cover": [ "none" ],
       "improved_by": "plantation",
       "tech_required": "plantations",
-      "produces": { "jute": 1, "feed": 4 },
+      "produces": { "jute": 10, "feed": 40 },
       "icon": "jute.png",
       "color": [ 200, 150, 100 ],
       "spawn_conditions": [ [ { "type": "near_river", "chance": 100 } ] ]
@@ -72,7 +72,7 @@
       "allowed_cover": [ "none" ],
       "improved_by": "plantation",
       "tech_required": "plantations",
-      "produces": { "ramie": 1, "feed": 4 },
+      "produces": { "ramie": 10, "feed": 40 },
       "icon": "ramie.png",
       "color": [ 150, 200, 150 ]
     },
@@ -89,7 +89,7 @@
       "allowed_cover": [ "none" ],
       "improved_by": "plantation",
       "tech_required": "plantations",
-      "produces": { "agave": 1, "feed": 4 },
+      "produces": { "agave": 10, "feed": 40 },
       "icon": "agave.png",
       "color": [ 200, 255, 200 ]
     },
@@ -104,7 +104,7 @@
       "allowed_cover": [ "none" ],
       "improved_by": "plantation",
       "tech_required": "sericulture",
-      "produces": { "mulberries": 1, "mulberry_bark": 1, "silk_cocoon": 1 },
+      "produces": { "mulberries": 10, "mulberry_bark": 10, "silk_cocoon": 10 },
       "icon": "mulberry.png",
       "color": [ 255, 100, 100 ]
     },
@@ -119,7 +119,7 @@
       "allowed_cover": [ "none" ],
       "improved_by": "plantation",
       "tech_required": "plantations",
-      "produces": { "sesame": 1, "feed": 4 },
+      "produces": { "sesame": 10, "feed": 40 },
       "icon": "sesame.png",
       "color": [ 255, 200, 150 ]
     },
@@ -134,7 +134,7 @@
       "allowed_cover": [ "none", "reeds" ],
       "improved_by": "plantation",
       "tech_required": "plantations",
-      "produces": { "papyrus_plant": 1, "feed": 4 },
+      "produces": { "papyrus_plant": 10, "feed": 40 },
       "icon": "papyrus_plant.png",
       "color": [ 200, 255, 200 ]
     }
