@@ -354,7 +354,7 @@
       "resources": { "wood": 1, "wax": 1 },
       "result": { "wax_tablet": 1 },
       "time": 5.0,
-      "unlock_tech": "beekeeping",
+      "unlock_tech": "writing",
       "description": "Создает деревянные таблички с углублением, в которое залит воск"
     },
     {
