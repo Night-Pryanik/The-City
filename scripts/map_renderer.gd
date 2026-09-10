@@ -8,6 +8,8 @@ const RESOURCE_ICON_SIZE = 80
 const IMPROVEMENT_ICON_SIZE = 32
 # Толщина контура границ кольца влияния городков (в пикселях).
 const TOWN_INFLUENCE_BORDER_WIDTH = 3.0
+# Прозрачность заливки территории городков.
+const TOWN_INFLUENCE_FILL_ALPHA = 0.22
 
 var tile_data = []
 var icon_textures = {}
@@ -520,7 +522,9 @@ func _ensure_town_influence_cache(visible: Dictionary) -> void:
                 seen[key] = true
                 var c: Vector2 = HexUtils.hex_center(row, col, radius)
                 _influence_fill_centers.append({"cx": c.x, "cy": c.y,
-                        "row": row, "col": col})
+                        "row": row, "col": col,
+                    "cr": bc[0], "cg": bc[1], "cb": bc[2],
+                    "ca": TOWN_INFLUENCE_FILL_ALPHA})
             # Граница: рёбра между кольцом городка и его окружением.
             var dirs: Array = even_dirs if row % 2 == 0 else odd_dirs
             for d in dirs:
@@ -602,10 +606,10 @@ func _build_town_fill_texture() -> void:
         elif ya < -half:
             w = sqrt(3.0) * (ya + radius)
         hw[dy] = w + 1.0
-    var fill_color: Color = TownManager.INFLUENCE_FILL_COLOR
     for h in _influence_fill_centers:
         var cx: float = float(h.cx) - min_x
         var cy: float = float(h.cy) - min_y
+        var fill_color := Color(h.cr, h.cg, h.cb, h.ca)
         var base_x: int = int(floor(cx))
         var base_y: int = int(floor(cy))
         for dy in range(-rmax, rmax + 1):
@@ -642,7 +646,6 @@ func _draw_town_influence(visible: Dictionary) -> void:
                 _influence_texture_size.y), false, Color(1, 1, 1, 1))
         return
     # Fallback: отрисовка гексами (редактор / Регион больше 4096px).
-    var fill_color: Color = TownManager.INFLUENCE_FILL_COLOR
     for h in _influence_fill_centers:
         var row: int = int(h.row)
         var col: int = int(h.col)
@@ -655,6 +658,7 @@ func _draw_town_influence(visible: Dictionary) -> void:
         if not _is_rect_visible(Rect2(cx - radius, cy - radius, radius * 2, radius * 2)):
             continue
         var vertices = HexUtils.hex_vertices(cx, cy, radius)
+        var fill_color := Color(h.cr, h.cg, h.cb, h.ca)
         draw_colored_polygon(vertices, fill_color)
 
 # Рисует границы колец влияния КАЖДОГО городка своим цветом (PHASE 1.7.1).
