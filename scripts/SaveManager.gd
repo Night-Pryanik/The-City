@@ -50,7 +50,8 @@ func save_game():
         "building_construction": CityData.building_construction,
         "rivers": main_map.river_manager.serialize_rivers(),
         "towns": main_map.town_manager.serialize_towns(),
-        "map_state": main_map.get_map_state()
+        "map_state": main_map.get_map_state(),
+        "city_name": CityData.city_name
     }
     var file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
     if file:
@@ -128,6 +129,13 @@ func apply_loaded_data():
     # Восстанавливаем стройки зданий (прогресс их строительства хранится в build_manager)
     CityData.building_construction = saved_data.get("building_construction", {})
     # tile_data будет восстановлен отдельно
+
+    # Название города. В старых сейвах поля нет — подставляем случайное,
+    # чтобы название на карте появилось и у ранее начатых партий.
+    CityData.city_name = saved_data.get("city_name", "")
+    if CityData.city_name.is_empty():
+        GameData.load_all_data()
+        CityData.city_name = GameData.get_random_city_name()
 
 func new_game():
     GameData.load_all_data()

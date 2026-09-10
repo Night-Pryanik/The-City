@@ -48,6 +48,9 @@ var last_research_messages: Array = []
 # --- НАСЕЛЕНИЕ ---
 var total_population: int = 1
 var idle_population: int = 1 # свободные жители (не занятые нигде)
+# Название города — выбирается игроком в диалоге при старте новой игры.
+# Пустая строка = имя ещё не задано (на карте тогда не рисуется).
+var city_name: String = ""
 var food_for_new_settler: int = 100
 var food_per_citizen: int = 1
 # Дебаг-переключатель: потребляет ли население еду. Управляется из
@@ -156,6 +159,7 @@ func setup():
     science_drain_accum = 0.0
     current_era_index = 0
     last_research_messages = []
+    city_name = ""
 
     total_population = 1
     idle_population = 1 # один житель, пока нигде не занят

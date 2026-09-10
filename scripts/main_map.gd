@@ -602,7 +602,9 @@ func _tick_pasture_fill(delta: float):
 
 func _initialize_map():
     GameData.load_all_data()
+    var selected_city_name = CityData.city_name
     CityData.setup()
+    CityData.city_name = selected_city_name
     map_renderer.build_icon_index()
     map_renderer.load_icons()
 

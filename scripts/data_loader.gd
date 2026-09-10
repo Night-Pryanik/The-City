@@ -21,6 +21,7 @@ var qualities: Dictionary = {} # данные о степенях качеств
 var map_config: Dictionary = {} # конфигурация карты мира (data/map_config.json)
 var professions: Dictionary = {} # id -> данные профессии (data/professions.json)
 var consumption_rules: Array = [] # записи потребления из data/consumption.json
+var city_names: Array = [] # варианты названий города (data/city_names.json)
 
 func load_all_data():
     var merged_data = _load_all_json_files("res://data")
@@ -76,6 +77,11 @@ func load_all_data():
             var sa_id = sa.get("id", "")
             if not sa_id.is_empty():
                 special_actions[sa_id] = sa
+
+    # Названия городов: в файле это объект { "city_names": [...] }.
+    var cn = merged_data.get("city_names", [])
+    if cn is Array:
+        city_names = cn
 
     # НОВОЕ: загружаем данные о степенях качества ресурсов.
     # В data/qualities.json ключи лежат на верхнем уровне (quality_levels,

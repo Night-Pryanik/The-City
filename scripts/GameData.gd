@@ -20,6 +20,7 @@ var qualities: Dictionary = {} # данные о степенях качеств
 var map_config: Dictionary = {} # конфигурация карты мира (data/map_config.json)
 var professions: Dictionary = {} # id -> данные профессии (data/professions.json)
 var consumption_rules: Array = [] # записи потребления (data/consumption.json)
+var city_names: Array = [] # варианты названий города (data/city_names.json)
 
 func load_all_data():
     var loader = load("res://scripts/data_loader.gd").new()
@@ -43,6 +44,14 @@ func load_all_data():
     map_config = loader.map_config
     professions = loader.professions
     consumption_rules = loader.consumption_rules
+    city_names = loader.city_names
+
+# Возвращает случайное название города из data/city_names.json.
+# Если список пуст или не загрузился — возвращает нейтральное имя по умолчанию.
+func get_random_city_name() -> String:
+    if city_names.is_empty():
+        return "Город"
+    return city_names[randi() % city_names.size()]
 
 # Возвращает имя группы по её ключу (с символом "@" или без).
 # Если ключ не является группой, возвращает пустую строку.

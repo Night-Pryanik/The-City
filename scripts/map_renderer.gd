@@ -276,6 +276,32 @@ func _draw():
         )
         draw_colored_polygon(city_vertices, Color.YELLOW)
 
+    # Рисуем прямоугольник с названием города немного выше гекса города
+    if not CityData.city_name.is_empty():
+        var font = ThemeDB.fallback_font
+        if font != null:
+            var font_size := 14
+            var text = CityData.city_name
+            var text_size = font.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size)
+            var text_center = Vector2(city_center.x, city_center.y - main_map.HEX_RADIUS - 10)
+            var padding = Vector2(8, 4)
+            var text_ascent = font.get_ascent(font_size)
+            var text_descent = font.get_descent(font_size)
+            var background_height = text_ascent + text_descent + padding.y * 2.0
+            var background_rect = Rect2(
+                text_center.x - text_size.x / 2.0 - padding.x,
+                text_center.y - background_height / 2.0,
+                text_size.x + padding.x * 2.0,
+                background_height
+            )
+            draw_rect(background_rect, Color(0.2, 0.2, 0.2, 1.0), true, -1.0, true)
+            draw_rect(background_rect, Color(0.6, 0.6, 0.6, 1.0), false, 1.0, true)
+            var text_baseline = background_rect.position.y + padding.y + text_ascent
+            var text_pos = Vector2(text_center.x - text_size.x / 2.0, text_baseline)
+            draw_string(
+                font, text_pos, text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color.WHITE
+            )
+
 func _draw_hex(row: int, col: int):
     var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
     var offset_x = main_map.offset_x + main_map.scroll_offset.x
@@ -570,7 +596,7 @@ func _build_town_fill_texture() -> void:
     var hw: Dictionary = {}
     for dy in range(-rmax, rmax + 1):
         var ya: float = float(dy)
-        var w: float = radius * sqrt(3.0) * 0.5  # плоская ширина (|y| <= r/2)
+        var w: float = radius * sqrt(3.0) * 0.5 # плоская ширина (|y| <= r/2)
         if ya > half:
             w = sqrt(3.0) * (radius - ya)
         elif ya < -half:
