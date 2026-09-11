@@ -204,6 +204,14 @@
       "category": "material",
       "unlock_tech": "native_metals",
       "icon": "iron_ore.png"
+    },
+    {
+      "id": "lazurite_ore",
+      "name": "Лазурит",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "dyeing",
+      "icon": "lazurite_ore.png"
     }
   ]
 }

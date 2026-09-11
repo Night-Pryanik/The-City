@@ -31,16 +31,6 @@
       "description": "Создаёт партию оружия для защиты города"
     },
     {
-      "id": "copper_jewelry",
-      "name": "Изготовление медных украшений",
-      "produced_in": [ "forge" ],
-      "resources": { "copper": 20, "charcoal": 10 },
-      "result": { "copper_jewelry": 10 },
-      "time": 5.0,
-      "unlock_tech": "jewelry",
-      "description": "Создаёт украшения из меди"
-    },
-    {
       "id": "gold",
       "name": "Выплавка золота",
       "produced_in": [ "smelter" ],
@@ -51,16 +41,6 @@
       "description": "Плавит золотую руду в чистое золото"
     },
     {
-      "id": "gold_jewelry",
-      "name": "Изготовление золотых украшений",
-      "produced_in": [ "forge" ],
-      "resources": { "gold": 20, "charcoal": 10 },
-      "result": { "gold_jewelry": 10 },
-      "time": 5.0,
-      "unlock_tech": "jewelry",
-      "description": "Создаёт украшения из золота"
-    },
-    {
       "id": "silver",
       "name": "Выплавка серебра",
       "produced_in": [ "smelter" ],
@@ -69,16 +49,6 @@
       "time": 5.0,
       "unlock_tech": "native_metals",
       "description": "Плавит серебряную руду в чистое серебро"
-    },
-    {
-      "id": "silver_jewelry",
-      "name": "Изготовление серебряных украшений",
-      "produced_in": [ "forge" ],
-      "resources": { "silver": 20, "charcoal": 10 },
-      "result": { "silver_jewelry": 10 },
-      "time": 5.0,
-      "unlock_tech": "jewelry",
-      "description": "Создаёт украшения из серебра"
     },
     {
       "id": "bronze",
@@ -111,16 +81,6 @@
       "description": "Создаёт партию оружия для защиты города"
     },
     {
-      "id": "bronze_jewelry",
-      "name": "Изготовление бронзовых украшений",
-      "produced_in": [ "forge" ],
-      "resources": { "bronze": 20, "charcoal": 10 },
-      "result": { "bronze_jewelry": 10 },
-      "time": 5.0,
-      "unlock_tech": "bronze",
-      "description": "Создаёт украшения из бронзы"
-    },
-    {
       "id": "iron",
       "name": "Выплавка железа",
       "produced_in": [ "bloomery" ],
@@ -149,16 +109,6 @@
       "time": 6.0,
       "unlock_tech": "iron_processing",
       "description": "Создаёт партию оружия для защиты города"
-    },
-    {
-      "id": "iron_jewelry",
-      "name": "Изготовление железных украшений",
-      "produced_in": [ "forge" ],
-      "resources": { "iron": 20, "charcoal": 20 },
-      "result": { "iron_jewelry": 10 },
-      "time": 5.0,
-      "unlock_tech": "iron_processing",
-      "description": "Создаёт украшения из железа"
     }
   ]
 }

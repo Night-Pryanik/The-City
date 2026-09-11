@@ -47,6 +47,14 @@
       "category": "luxury",
       "unlock_tech": "iron_processing",
       "icon": "iron_jewelry.png"
+    },
+    {
+      "id": "lazurite_jewelry",
+      "name": "Украшения из ляпис-лазури",
+      "type": "product",
+      "category": "luxury",
+      "unlock_tech": "jewelry",
+      "icon": "lazurite_jewelry.png"
     }
   ]
 }

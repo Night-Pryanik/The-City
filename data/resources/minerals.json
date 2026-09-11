@@ -232,6 +232,22 @@
       "icon": "salt.png",
       "color": [ 255, 255, 255 ],
       "spawn_conditions": [ [ { "type": "terrain", "terrain_id": "beach", "chance": 100 } ] ]
+    },
+    {
+      "id": "lazurite_deposit",
+      "name": "Лазурит",
+      "type": "raw",
+      "category": "minerals",
+      "group": "minerals",
+      "subgroup": [ "dye_minerals", "jewelry_minerals" ],
+      "strategic": true,
+      "tech_required": "mining",
+      "allowed_terrain": [ "plain", "hill" ],
+      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "improved_by": "mine",
+      "produces": { "lazurite_ore": 10 },
+      "icon": "lazurite.png",
+      "color": [ 0, 0, 255 ]
     }
   ]
 }
