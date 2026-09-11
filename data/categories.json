@@ -8,6 +8,7 @@
     { "id": "drinks", "name": "Напитки" },
     { "id": "spices", "name": "Пряности" },
     { "id": "technical_plants", "name": "Технические культуры" },
+    { "id": "aux_plants", "name": "Вспомогательные культуры" },
     { "id": "luxury", "name": "Роскошь" },
     { "id": "material", "name": "Материалы" },
     { "id": "construction_material", "name": "Стройматериалы" },

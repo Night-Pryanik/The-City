@@ -1,0 +1,34 @@
+{
+  "resources": [
+    {
+      "id": "tea_field",
+      "name": "Чай",
+      "type": "raw",
+      "category": "aux_plants",
+      "group": "stimulating_plants",
+      "subgroup": "stimulating_drinks",
+      "allowed_terrain": [ "mountain" ],
+      "allowed_cover": [ "none" ],
+      "improved_by": "plantation",
+      "tech_required": "plantations",
+      "produces": { "tea_plant": 10, "feed": 40 },
+      "icon": "tea.png",
+      "color": [ 200, 255, 200 ]
+    },
+    {
+      "id": "coffee_field",
+      "name": "Кофе",
+      "type": "raw",
+      "category": "aux_plants",
+      "group": "stimulating_plants",
+      "subgroup": "stimulating_drinks",
+      "allowed_terrain": [ "plain", "hill", "mountain" ],
+      "allowed_cover": [ "none" ],
+      "improved_by": "plantation",
+      "tech_required": "plantations",
+      "produces": { "coffee_beans": 10, "feed": 40 },
+      "icon": "coffee_plant.png",
+      "color": [ 200, 255, 200 ]
+    }
+  ]
+}

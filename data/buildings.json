@@ -330,12 +330,23 @@
     {
       "id": "paper_workshop",
       "name": "Бумажная мастерская",
-      "description": "Изготавливает бумагу.",
+      "description": "Изготовление бумаги.",
       "work_cost": 30,
       "additional_cost": [ { "planks": 100 }, { "@processed_construction_materials": 50 } ],
       "icon": "paper_workshop.png",
       "production_slots": 1.0,
       "unlock_tech": "paper",
+      "default_recipes": [  ]
+    },
+    {
+      "id": "dryer_house",
+      "name": "Дом сушильщика",
+      "description": "Сушка и завяливание различных продуктов.",
+      "work_cost": 35,
+      "additional_cost": [ { "planks": 100 }, { "@processed_construction_materials": 50 } ],
+      "icon": "dryer_house.png",
+      "production_slots": 1.0,
+      "unlock_tech": "fermentation",
       "default_recipes": [  ]
     }
   ]

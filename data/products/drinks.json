@@ -39,6 +39,22 @@
       "category": "drinks",
       "unlock_tech": "fermentation",
       "icon": "pulque.png"
+    },
+    {
+      "id": "tea",
+      "name": "Чай",
+      "type": "product",
+      "category": "drinks",
+      "unlock_tech": "fermentation",
+      "icon": "tea.png"
+    },
+    {
+      "id": "Кофе",
+      "name": "Чай",
+      "type": "product",
+      "category": "drinks",
+      "unlock_tech": "fermentation",
+      "icon": "coffee.png"
     }
   ]
 }

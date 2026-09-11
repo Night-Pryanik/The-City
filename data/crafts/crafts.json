@@ -318,16 +318,6 @@
       "description": "Производит пергамент из шкур животных с помощью золения их в извести"
     },
     {
-      "id": "science",
-      "name": "Наука",
-      "produced_in": [ "library" ],
-      "resources": { "@writing_mediums": 20 },
-      "result": { "science": 1 },
-      "time": 5.0,
-      "unlock_tech": "writing",
-      "description": "Переписчики и учёные превращают письменные материалы в знания, пополняющие пул науки города"
-    },
-    {
       "id": "sawing",
       "name": "Распиловка досок",
       "produced_in": [ "carpenter_workshop" ],

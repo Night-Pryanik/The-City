@@ -1,0 +1,119 @@
+{
+  "crafts": [
+    {
+      "id": "bread",
+      "name": "Выпечка хлеба",
+      "produced_in": [ "bakery" ],
+      "resources": { "flour": 10 },
+      "result": { "bread": 20 },
+      "time": 5
+    },
+    {
+      "id": "meat",
+      "name": "Разделка мяса",
+      "produced_in": [ "slaughterhouse" ],
+      "resources": { "raw_meat": 10 },
+      "result": { "meat": 10 },
+      "time": 5
+    },
+    {
+      "id": "cheese",
+      "name": "Сыроделие",
+      "produced_in": [ "dairy" ],
+      "resources": { "raw_milk": 10 },
+      "result": { "cheese": 10 },
+      "time": 5,
+      "unlock_tech": "cheese_making"
+    },
+    {
+      "id": "beer",
+      "name": "Варка пива",
+      "produced_in": [ "brewer_house" ],
+      "resources": { "@millable_grains": 20 },
+      "result": { "beer": 10 },
+      "time": 5.0,
+      "unlock_tech": "fermentation",
+      "description": "Варит пиво из зерновых культур"
+    },
+    {
+      "id": "mead",
+      "name": "Варка медового напитка",
+      "produced_in": [ "brewer_house" ],
+      "resources": { "honey": 20 },
+      "result": { "mead": 10 },
+      "time": 5.0,
+      "unlock_tech": "mead_making",
+      "description": "Варит медовый напиток из мёда"
+    },
+    {
+      "id": "sake",
+      "name": "Варка саке",
+      "produced_in": [ "brewer_house" ],
+      "resources": { "rice": 20 },
+      "result": { "sake": 10 },
+      "time": 5.0,
+      "unlock_tech": "fermentation",
+      "description": "Варит саке из риса"
+    },
+    {
+      "id": "pulque",
+      "name": "Варка пульке",
+      "produced_in": [ "brewer_house" ],
+      "resources": { "agave": 20 },
+      "result": { "pulque": 10 },
+      "time": 5.0,
+      "unlock_tech": "fermentation",
+      "description": "Варит пульке из агавы"
+    },
+    {
+      "id": "wine",
+      "name": "Виноделие",
+      "produced_in": [ "winemaker_house" ],
+      "resources": { "grapes": 20 },
+      "result": { "wine": 10 },
+      "time": 5.0,
+      "unlock_tech": "winemaking",
+      "description": "Варит вино из винограда"
+    },
+    {
+      "id": "vegetable_oil",
+      "name": "Изготовление растительного масла",
+      "produced_in": [ "hand_oil_press" ],
+      "resources": { "@oil_crops": 20 },
+      "result": { "vegetable_oil": 10 },
+      "time": 5.0,
+      "unlock_tech": "oil_making",
+      "description": "Выжимает масло из семян и плодов масличных культур"
+    },
+    {
+      "id": "fish",
+      "name": "Копчение рыбы",
+      "produced_in": [ "smokehouse" ],
+      "resources": { "raw_fish": 10 },
+      "result": { "fish": 10 },
+      "time": 5.0,
+      "unlock_tech": "fishing",
+      "description": "Коптит рыбу для длительного хранения"
+    },
+    {
+      "id": "tea",
+      "name": "Изготовление чая",
+      "produced_in": [ "dryer_house" ],
+      "resources": { "tea_leaves": 20 },
+      "result": { "tea": 10 },
+      "time": 5.0,
+      "unlock_tech": "fermentation",
+      "description": "Сушит, скручивает, вялит и ферментирует чайные листья"
+    },
+    {
+      "id": "coffee",
+      "name": "Изготовление кофе",
+      "produced_in": [ "dryer_house" ],
+      "resources": { "coffee_beans": 20 },
+      "result": { "coffee": 10 },
+      "time": 5.0,
+      "unlock_tech": "fermentation",
+      "description": "Сушит и обжаривает кофейные зерна"
+    }
+  ]
+}

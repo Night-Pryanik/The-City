@@ -55,6 +55,22 @@
       "icon": "ramie.png"
     },
     {
+      "id": "tea_leaves",
+      "name": "Чайные листья",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "fermentation",
+      "icon": "tea.png"
+    },
+    {
+      "id": "coffee_beans",
+      "name": "Кофейные зёрна",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "fermentation",
+      "icon": "coffee.png"
+    },
+    {
       "id": "sisal",
       "name": "Сизаль",
       "type": "product",
