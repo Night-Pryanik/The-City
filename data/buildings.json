@@ -20,12 +20,13 @@
       "icon": "animal_mill.png",
       "production_slots": 1.0,
       "unlock_tech": "draft_animals",
+      "upgrades_into": "water_mill",
       "default_recipes": [ "grind_grain_animal" ]
     },
     {
       "id": "water_mill",
       "name": "Водяная мельница",
-      "description": "Мельница, использующая воду для приведения в движение жерновов.",
+      "description": "Мельница, использующая воду для приведения в движение жернова.",
       "work_cost": 30,
       "additional_cost": [ { "planks": 120 }, { "@processed_construction_materials": 100 }, { "@building_stone": 10 } ],
       "icon": "water_mill.png",
@@ -46,7 +47,7 @@
     {
       "id": "bakery",
       "name": "Пекарня",
-      "description": "Печёт хлеб из муки — основа рациона города.",
+      "description": "Печёт хлеб из муки — основу рациона города.",
       "work_cost": 30,
       "additional_cost": [ { "planks": 100 }, { "@processed_construction_materials": 50 } ],
       "icon": "bakery.png",
