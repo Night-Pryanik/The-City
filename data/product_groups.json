@@ -36,7 +36,7 @@
     {
       "id": "fruits",
       "name": "Фрукты",
-      "products": [ "grapes", "olives", "mulberries", "figs", "dates" ]
+      "products": [ "grapes", "olives", "mulberries", "figs", "dates", "cactus_fruit" ]
     },
     {
       "id": "writing_mediums",
