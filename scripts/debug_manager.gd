@@ -37,7 +37,7 @@ var _status_label: Label
 var _dragging: bool = false
 var _drag_offset: Vector2 = Vector2.ZERO
 
-const WINDOW_SIZE := Vector2(320, 420)
+const WINDOW_SIZE := Vector2(350, 500)
 const TITLE_HEIGHT := 32
 
 func initialize(main_node: Node):
@@ -53,7 +53,7 @@ func _build_ui():
 
     # Панель окна
     _panel = Panel.new()
-    _panel.position = Vector2(80, 80)
+    _panel.position = Vector2(180, 0)
     _panel.size = WINDOW_SIZE
     _panel.mouse_filter = Control.MOUSE_FILTER_STOP
     add_child(_panel)
@@ -237,7 +237,7 @@ func _ignore_tech_label() -> String:
     var state := "ВЫКЛЮЧЕНО"
     if CityData.ignore_tech_requirements:
         state = "ВКЛЮЧЕНО"
-    return "[6] Не учитывать требования технологий (сейчас: %s)" % state
+    return "[6] Игнорировать требования технологий (сейчас: %s)" % state
 
 func _on_toggle_ignore_build_requirements_pressed():
     # Инвертируем дебаг-флаг CityData.ignore_build_requirements: он включает
@@ -376,6 +376,12 @@ func _clear_content():
 func _make_button(text: String) -> Button:
     var btn = Button.new()
     btn.text = text
+    # Текст выравниваем по левому краю и разрешаем перенос по словам, чтобы
+    # длинные надписи не выходили за пределы окна меню (кнопки растянуты
+    # на ширину контейнера, поэтому перенос происходит внутри окна).
+    btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+    btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    btn.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
     btn.custom_minimum_size = Vector2(0, 32)
     btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     btn.mouse_filter = Control.MOUSE_FILTER_STOP
