@@ -259,18 +259,37 @@ func show_group_tooltip(mouse_pos: Vector2, group_key: String, products_data: Di
         
         var label = Label.new()
         var special_yield = pdata.get("special_yield", {})
-        var yield_text = []
-        for yield_id in special_yield:
-            yield_text.append("%s: %d" % [
-                GameData.products.get(yield_id, {}).get("name", yield_id),
-                int(special_yield[yield_id])
-            ])
         label.text = pdata.get("name", prod_id)
-        if not yield_text.is_empty():
-            label.text += " — " + ", ".join(yield_text)
         label.add_theme_color_override("font_color", Color.WHITE)
         label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         row.add_child(label)
+
+        for yield_id in special_yield:
+            var separator = Label.new()
+            separator.text = " - "
+            separator.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+            separator.mouse_filter = Control.MOUSE_FILTER_IGNORE
+            row.add_child(separator)
+
+            var yield_data = products_data.get(yield_id, {})
+            var yield_icon_name = yield_data.get("icon", "")
+            if not yield_icon_name.is_empty() and icon_index.has(yield_icon_name):
+                var yield_tex = load(icon_index[yield_icon_name])
+                if yield_tex:
+                    var yield_icon_rect = TextureRect.new()
+                    yield_icon_rect.texture = yield_tex
+                    yield_icon_rect.custom_minimum_size = Vector2(20, 20)
+                    yield_icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+                    yield_icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
+                    yield_icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+                    row.add_child(yield_icon_rect)
+
+            var yield_label = Label.new()
+            yield_label.text = "%s: %d" % [
+                yield_data.get("name", yield_id), int(special_yield[yield_id])]
+            yield_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+            yield_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+            row.add_child(yield_label)
         
         group_tooltip_content.add_child(row)
     
