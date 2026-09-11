@@ -1,14 +1,24 @@
 {
   "crafts": [
     {
-      "id": "copper",
-      "name": "Выплавка меди",
+      "id": "copper_from_copper_ore",
+      "name": "Выплавка меди из медной руды",
       "produced_in": [ "smelter" ],
       "resources": { "copper_ore": 20, "charcoal": 10 },
       "result": { "copper": 10 },
       "time": 5.0,
       "unlock_tech": "native_metals",
       "description": "Плавит медную руду в чистую медь"
+    },
+    {
+      "id": "copper_malachite",
+      "name": "Выплавка меди из малахита",
+      "produced_in": [ "smelter" ],
+      "resources": { "malachite_ore": 20, "charcoal": 10 },
+      "result": { "copper": 10 },
+      "time": 5.0,
+      "unlock_tech": "native_metals",
+      "description": "Плавит малахитовую руду в чистую медь"
     },
     {
       "id": "copper_tools",

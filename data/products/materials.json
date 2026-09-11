@@ -222,6 +222,14 @@
       "icon": "lazurite_ore.png"
     },
     {
+      "id": "malachite_ore",
+      "name": "Малахит",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "dyeing",
+      "icon": "malachite_ore.png"
+    },
+    {
       "id": "indigofera_leaves",
       "name": "Листья индигоферы",
       "type": "product",

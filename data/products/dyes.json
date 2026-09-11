@@ -87,6 +87,14 @@
       "category": "material",
       "unlock_tech": "dyeing",
       "icon": "ultramarine.png"
+    },
+    {
+      "id": "malachite",
+      "name": "Зелёный пигмент (малахит)",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "dyeing",
+      "icon": "malachite.png"
     }
   ]
 }

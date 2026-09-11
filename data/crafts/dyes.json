@@ -99,6 +99,16 @@
       "time": 5.0,
       "unlock_tech": "dyeing",
       "description": "Создает краситель (ультрамарин) из руды"
+    },
+    {
+      "id": "malachite",
+      "name": "Производство зеленого пигмента",
+      "produced_in": [ "dyer_house" ],
+      "resources": { "malachite_ore": 20 },
+      "result": { "malachite": 10 },
+      "time": 5.0,
+      "unlock_tech": "dyeing",
+      "description": "Создает зеленый пигмент из руды"
     }
   ]
 }

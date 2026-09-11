@@ -264,6 +264,22 @@
       "produces": { "lazurite_ore": 10 },
       "icon": "lazurite.png",
       "color": [ 0, 0, 255 ]
+    },
+    {
+      "id": "malachite_deposit",
+      "name": "Малахит",
+      "type": "raw",
+      "category": "minerals",
+      "group": "minerals",
+      "subgroup": [ "dye_minerals", "jewelry_minerals" ],
+      "strategic": true,
+      "tech_required": "mining",
+      "allowed_terrain": [ "plain", "hill" ],
+      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "improved_by": "mine",
+      "produces": { "malachite_ore": 10 },
+      "icon": "malachite.png",
+      "color": [ 0, 255, 0 ]
     }
   ]
 }

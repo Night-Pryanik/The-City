@@ -54,11 +54,21 @@
       "id": "lazurite_jewelry",
       "name": "Изготовление украшений из ляпис-лазури",
       "produced_in": [ "jeweler_house" ],
-      "resources": { "lazurite": 20 },
+      "resources": { "lazurite_ore": 20 },
       "result": { "lazurite_jewelry": 10 },
       "time": 5.0,
       "unlock_tech": "jewelry",
       "description": "Создаёт украшения из ляпис-лазури"
+    },
+    {
+      "id": "malachite_jewelry",
+      "name": "Изготовление украшений из малахита",
+      "produced_in": [ "jeweler_house" ],
+      "resources": { "malachite_ore": 20 },
+      "result": { "malachite_jewelry": 10 },
+      "time": 5.0,
+      "unlock_tech": "jewelry",
+      "description": "Создаёт украшения из малахита"
     }
   ]
 }
