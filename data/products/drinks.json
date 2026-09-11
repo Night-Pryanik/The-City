@@ -49,8 +49,8 @@
       "icon": "tea.png"
     },
     {
-      "id": "Кофе",
-      "name": "Чай",
+      "id": "coffee",
+      "name": "Кофе",
       "type": "product",
       "category": "drinks",
       "unlock_tech": "fermentation",
