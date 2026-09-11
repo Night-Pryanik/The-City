@@ -305,7 +305,8 @@
       "production_slots": 1.0,
       "unlock_tech": "writing",
       "default_recipes": [ "science" ],
-      "additional_yield": { "science": 1 }
+      "additional_yield": { "science": 1 },
+      "upgrades_into": "scriptorium"
     },
     {
       "id": "carpenter_workshop",
