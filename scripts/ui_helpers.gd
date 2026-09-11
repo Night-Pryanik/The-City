@@ -235,7 +235,10 @@ func show_group_tooltip(mouse_pos: Vector2, group_key: String, products_data: Di
     title.mouse_filter = Control.MOUSE_FILTER_IGNORE
     group_tooltip_content.add_child(title)
     
-    # Список продуктов (по ID, чтобы можно было найти данные продукта)
+    # Список продуктов (по ID, чтобы можно было найти данные продукта).
+    # Названия собираем отдельно, чтобы выровнять special_yield по колонке
+    # самого длинного названия ресурса.
+    var product_labels: Array = []
     for prod_id in member_ids:
         var pdata = products_data.get(prod_id, {})
         var row = HBoxContainer.new()
@@ -263,6 +266,7 @@ func show_group_tooltip(mouse_pos: Vector2, group_key: String, products_data: Di
         label.add_theme_color_override("font_color", Color.WHITE)
         label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         row.add_child(label)
+        product_labels.append(label)
 
         for yield_id in special_yield:
             var separator = Label.new()
@@ -292,6 +296,13 @@ func show_group_tooltip(mouse_pos: Vector2, group_key: String, products_data: Di
             row.add_child(yield_label)
         
         group_tooltip_content.add_child(row)
+
+    var max_product_name_width := 0.0
+    for product_label in product_labels:
+        max_product_name_width = maxf(
+            max_product_name_width, product_label.get_minimum_size().x)
+    for product_label in product_labels:
+        product_label.custom_minimum_size.x = max_product_name_width
     
     # Явно пересчитываем размер панели под содержимое
     group_tooltip_content.reset_size()
