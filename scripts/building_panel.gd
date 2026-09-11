@@ -536,6 +536,20 @@ func _refresh_costs(bdata):
                 and_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
                 costs_container.add_child(and_label)
 
+    var additional_yield = bdata.get("additional_yield", {})
+    if not additional_yield.is_empty():
+        var yield_header = Label.new()
+        yield_header.text = "Дополнительный выход:"
+        costs_container.add_child(yield_header)
+        for yield_id in additional_yield:
+            var yield_name = GameData.products.get(yield_id, {}).get(
+                "name", yield_id)
+            var yield_label = Label.new()
+            yield_label.text = "%s: %d" % [
+                yield_name, int(additional_yield[yield_id])]
+            costs_container.add_child(yield_label)
+        has_costs = true
+
     var additional_req = String(bdata.get("additional_req", ""))
     if additional_req != "":
         var requirement_label = Label.new()

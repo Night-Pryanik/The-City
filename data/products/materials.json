@@ -87,6 +87,15 @@
       "icon": "mulberry_bark.png"
     },
     {
+      "id": "paper",
+      "name": "Бумага",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "paper",
+      "icon": "paper_tech.png",
+      "special_yield": { "science": 5 }
+    },
+    {
       "id": "silk_cocoon",
       "name": "Кокон тутового шелкопряда",
       "type": "product",
@@ -100,7 +109,8 @@
       "type": "product",
       "category": "material",
       "unlock_tech": "sericulture",
-      "icon": "silk.png"
+      "icon": "silk.png",
+      "special_yield": { "science": 3 }
     },
     {
       "id": "lime",

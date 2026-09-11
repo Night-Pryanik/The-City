@@ -112,9 +112,9 @@ func advance_era() -> void:
     emit_signal("city_updated")
 
 # --- НАУКА ---
-# Базовый доход науки города за один production-тик (даже без библиотек).
-# Город НЕ может генерировать меньше 1 очка науки за тик — иначе ранняя игра
-# без построек науки была бы заблокирована.
+# Базовый доход науки города за один production-тик без зданий науки.
+# Дополнительная наука начисляется рецептом «science» из выхода здания
+# и письменных основ.
 const BASE_SCIENCE_PER_TICK: float = 1.0
 # Скорость расхода пула науки на текущее исследование (очков в секунду).
 # Пул списывается по столько очков в секунду на исследование; это прямое
@@ -454,6 +454,20 @@ func do_tick():
                 for qid in consumed:
                     consumed_all[qid] = consumed_all.get(qid, 0) + consumed[qid]
 
+            if recipe_id == "science":
+                var science_amount := 0
+                for prod in resources_to_consume:
+                    var special_yield = GameData.get_special_yield(prod)
+                    science_amount += int(resources_to_consume[prod]) * int(
+                        special_yield.get("science", 0))
+                var building_yield = GameData.get_building_additional_yield(
+                    bld.get("id", ""))
+                science_amount += int(building_yield.get("science", 0))
+                if science_amount > 0:
+                    add_to_storage("science", science_amount)
+                    record_production_source("science", building_source,
+                        science_amount)
+
             # --- ДОБАВЛЯЕМ РЕЗУЛЬТАТ ---
             # Качество результата = взвешенное среднее качества потреблённого сырья.
             var result_quality = quality_from_breakdown(consumed_all)
@@ -657,17 +671,14 @@ func _complete_tech_instantly(tech_id: String) -> bool:
     print("Мгновенно изучена (дебаг): ", tech_data.get("name", tech_id))
     return true
 
-# Возвращает количество очков науки за тик — базовый доход города.
-# Учёных (специализированных зданий) пока не учитывает: вклад библиотек
-# идёт через пул науки (см. get_science_pool и tick_research_science_continuous).
+# Возвращает базовую часть науки за тик. Производство зданий и письменных
+# материалов начисляется отдельно через рецепт «science».
 # Город не может генерировать меньше 1 очка науки за тик.
 func get_science_per_tick() -> float:
     return BASE_SCIENCE_PER_TICK
 
-# Фактическая скорость науки за тик: базовый доход + вклад работающих зданий
-# науки (библиотек). Здания копят науку в пул, а пул во время исследования
-# списывается со скоростью SCIENCE_DRAIN_PER_SEC (≈1 очко за тик), поэтому
-# вклад зданий = фактический расход пула за тик (пока в пуле есть наука).
+# Фактическая скорость науки за тик: базовая часть плюс расход накопленного
+# пула науки во время исследования.
 func get_science_rate_per_tick() -> float:
     var drain_per_tick: float = SCIENCE_DRAIN_PER_SEC * PRODUCTION_INTERVAL
     return BASE_SCIENCE_PER_TICK + minf(drain_per_tick, get_science_pool())

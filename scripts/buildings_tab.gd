@@ -852,6 +852,22 @@ func _show_building_details(bdata: Dictionary):
     if not has_costs:
         content.add_child(_make_bullet_row("•", "0"))
 
+    var additional_yield = bdata.get("additional_yield", {})
+    if not additional_yield.is_empty():
+        content.add_child(_make_bullet_row("•", "Дополнительный выход:"))
+        for yield_id in additional_yield:
+            var yield_row = HBoxContainer.new()
+            yield_row.add_theme_constant_override("separation", 6)
+            yield_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+            var yield_indent = Control.new()
+            yield_indent.custom_minimum_size.x = 18
+            yield_row.add_child(yield_indent, false, 0)
+            yield_row.add_child(_make_bullet("◦"))
+            yield_row.add_child(ui_helpers.make_resource_entry(
+                yield_id, products_data, icon_paths,
+                int(additional_yield[yield_id]), "colon"))
+            content.add_child(yield_row)
+
     # Количество слотов производства
     var slots = bdata.get("production_slots", 0)
     var slots_label = Label.new()

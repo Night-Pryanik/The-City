@@ -258,7 +258,16 @@ func show_group_tooltip(mouse_pos: Vector2, group_key: String, products_data: Di
                 row.add_child(icon_rect)
         
         var label = Label.new()
+        var special_yield = pdata.get("special_yield", {})
+        var yield_text = []
+        for yield_id in special_yield:
+            yield_text.append("%s: %d" % [
+                GameData.products.get(yield_id, {}).get("name", yield_id),
+                int(special_yield[yield_id])
+            ])
         label.text = pdata.get("name", prod_id)
+        if not yield_text.is_empty():
+            label.text += " — " + ", ".join(yield_text)
         label.add_theme_color_override("font_color", Color.WHITE)
         label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         row.add_child(label)
@@ -527,7 +536,7 @@ func _make_bullet_row(symbol: String, text: String, text_color: Color) -> HBoxCo
 # Показывает тултип «источники прихода/расхода» ресурса (вкладка «Ресурсы»).
 # prod_sources / cons_sources: { источник -> { count, amount } }.
 # Строки сортируются по убыванию вклада; «хN» показывается при count > 1.
-func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dictionary, cons_sources: Dictionary):
+func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dictionary, cons_sources: Dictionary, special_yield: Dictionary = {}):
     if flow_tooltip_panel == null:
         return
     # Очищаем предыдущее содержимое.
@@ -542,7 +551,8 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dict
     for src in cons_sources:
         cons_lines.append({"name": src, "amount": int(cons_sources[src].get("amount", 0)), "count": int(cons_sources[src].get("count", 1))})
     cons_lines.sort_custom(func(a, b): return a.amount > b.amount)
-    if prod_lines.is_empty() and cons_lines.is_empty():
+    if prod_lines.is_empty() and cons_lines.is_empty() \
+            and special_yield.is_empty():
         flow_tooltip_panel.hide()
         return
     var header = Label.new()
@@ -551,6 +561,15 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dict
     header.add_theme_color_override("font_color", Color.WHITE)
     header.mouse_filter = Control.MOUSE_FILTER_IGNORE
     flow_tooltip_vbox.add_child(header)
+    for yield_id in special_yield:
+        var yield_label = Label.new()
+        yield_label.text = "%s: %d" % [
+            GameData.products.get(yield_id, {}).get("name", yield_id),
+            int(special_yield[yield_id])
+        ]
+        yield_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+        yield_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        flow_tooltip_vbox.add_child(yield_label)
     if not prod_lines.is_empty():
         var prod_title = Label.new()
         prod_title.text = "Производство:"

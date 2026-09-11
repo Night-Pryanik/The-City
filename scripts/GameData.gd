@@ -97,6 +97,15 @@ func format_resource_name(key: String) -> String:
         return key.trim_prefix("@")
     return products.get(key, {}).get("name", key)
 
+func get_special_yield(product_id: String) -> Dictionary:
+    return products.get(product_id, {}).get("special_yield", {})
+
+func get_building_additional_yield(building_id: String) -> Dictionary:
+    for building in buildings:
+        if building.get("id", "") == building_id:
+            return building.get("additional_yield", {})
+    return {}
+
 # Нормализует поле additional_cost в массив словарей {ресурс: количество}.
 # Поддерживает две формы:
 #   1) объект:        { "flour": 3.0, "wood": 10.0 }        → [ { "flour": 3.0, "wood": 10.0 } ]

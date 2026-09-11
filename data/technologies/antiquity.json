@@ -56,9 +56,19 @@
       "era": "antiquity",
       "science_cost": 3.0,
       "icon": "paper_tech.png",
-      "prerequisites": [ [ "wood_processing", "limestone_burning", "writing" ] ],
+      "prerequisites": [ [ "limestone_burning", "writing" ] ],
       "description": "Даёт возможность строить бумажную мастерскую.\nПозволяет производить бумагу из тутовника, конопли и рами с использованием извести.",
       "flavor": "Революционное изобретение позволило создать доступный и практичный материал для письма."
+    },
+    {
+      "id": "scriptoriums",
+      "name": "Скриптории",
+      "era": "antiquity",
+      "science_cost": 3.0,
+      "icon": "scriptoriums.png",
+      "prerequisites": [ [ "writing" ] ],
+      "description": "Даёт возможность строить скриптории.",
+      "flavor": "В скрипториях писцы копировали, переводили, переписывали и перекомпилировали тексты, связанные с управлением, культом божеств, магией и лечением болезней."
     }
   ]
 }

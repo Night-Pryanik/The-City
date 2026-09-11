@@ -304,7 +304,8 @@
       "icon": "library.png",
       "production_slots": 1.0,
       "unlock_tech": "writing",
-      "default_recipes": [ "science" ]
+      "default_recipes": [ "science" ],
+      "additional_yield": { "science": 1 }
     },
     {
       "id": "carpenter_workshop",
@@ -348,6 +349,18 @@
       "production_slots": 1.0,
       "unlock_tech": "fermentation",
       "default_recipes": [  ]
+    },
+    {
+      "id": "scriptorium",
+      "name": "Скрипторий",
+      "description": "Здание, где писцы копировали, переписывали и переводили документы. Производит науку.",
+      "work_cost": 50,
+      "additional_cost": [ { "planks": 120 }, { "@processed_construction_materials": 60 } ],
+      "icon": "scriptorium.png",
+      "production_slots": 1.0,
+      "unlock_tech": "scriptoriums",
+      "default_recipes": [ "science" ],
+      "additional_yield": { "science": 3 }
     }
   ]
 }

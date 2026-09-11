@@ -14,7 +14,8 @@
       "type": "product",
       "category": "material",
       "unlock_tech": "writing",
-      "icon": "clay_tablets.png"
+      "icon": "clay_tablets.png",
+      "special_yield": { "science": 1 }
     },
     {
       "id": "fabric_clothes",
@@ -110,7 +111,8 @@
       "type": "product",
       "category": "material",
       "unlock_tech": "writing",
-      "icon": "papyrus.png"
+      "icon": "papyrus.png",
+      "special_yield": { "science": 2 }
     },
     {
       "id": "reed_boat",
@@ -136,7 +138,8 @@
       "type": "product",
       "category": "material",
       "unlock_tech": "parchment",
-      "icon": "parchment.png"
+      "icon": "parchment.png",
+      "special_yield": { "science": 3 }
     },
     {
       "id": "wax_tablets",
@@ -144,7 +147,8 @@
       "type": "product",
       "category": "material",
       "unlock_tech": "beekeeping",
-      "icon": "wax_tablets.png"
+      "icon": "wax_tablets.png",
+      "special_yield": { "science": 1 }
     }
   ]
 }

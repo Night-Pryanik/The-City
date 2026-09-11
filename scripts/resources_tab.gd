@@ -418,14 +418,17 @@ func update_values():
         if ui_helpers.flow_tooltip_panel.visible:
             var fresh_prod_src = production_sources.get(active_flow_product, {})
             var fresh_cons_src = consumption_sources.get(active_flow_product, {})
-            if fresh_prod_src.is_empty() and fresh_cons_src.is_empty():
+            var special_yield = GameData.get_special_yield(active_flow_product)
+            if fresh_prod_src.is_empty() and fresh_cons_src.is_empty() \
+                    and special_yield.is_empty():
                 ui_helpers.hide_flow_tooltip()
             else:
                 ui_helpers.show_flow_tooltip(
                     get_viewport().get_mouse_position(),
                     active_flow_name,
                     fresh_prod_src,
-                    fresh_cons_src
+                    fresh_cons_src,
+                    special_yield
                 )
 
 # Добавляет метку с разбивкой по качеству в строку ресурса.
@@ -493,12 +496,15 @@ func _on_quality_exit():
 func _on_flow_hover(prod_id: String, product_name: String):
     var prod_src = production_sources.get(prod_id, {})
     var cons_src = consumption_sources.get(prod_id, {})
-    if prod_src.is_empty() and cons_src.is_empty():
+    var special_yield = GameData.get_special_yield(prod_id)
+    if prod_src.is_empty() and cons_src.is_empty() and special_yield.is_empty():
         return
     active_flow_product = prod_id
     active_flow_name = product_name
     if ui_helpers and is_instance_valid(ui_helpers):
-        ui_helpers.show_flow_tooltip(get_viewport().get_mouse_position(), product_name, prod_src, cons_src)
+        ui_helpers.show_flow_tooltip(
+            get_viewport().get_mouse_position(), product_name, prod_src, cons_src,
+            special_yield)
 
 # Скрывает тултип источников; при переходе на другую метку той же строки не мерцает.
 func _on_flow_exit(prod_id: String):

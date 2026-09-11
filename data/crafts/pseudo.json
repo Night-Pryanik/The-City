@@ -12,9 +12,9 @@
     {
       "id": "science",
       "name": "Наука",
-      "produced_in": [ "library" ],
+      "produced_in": [ "library", "scriptorium" ],
       "resources": { "@writing_mediums": 20 },
-      "result": { "science": 1 },
+      "result": {  },
       "time": 5.0,
       "unlock_tech": "writing",
       "description": "Переписчики и учёные превращают письменные материалы в знания, пополняющие пул науки города"
