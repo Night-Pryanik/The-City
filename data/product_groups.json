@@ -36,9 +36,6 @@
     {
       "id": "fruits",
       "name": "Фрукты",
-      // Группа зеркалит категорию "fruits" из data/categories.json (категории
-      // чисто визуальные и с группами товаров НЕ связаны). При добавлении
-      // нового продукта с категорией "fruits" его нужно внести и сюда.
       "products": [ "grapes", "olives", "mulberries", "figs", "dates" ]
     },
     {
@@ -50,6 +47,11 @@
       "id": "bronze_alloys",
       "name": "Бронзовые сплавы",
       "products": [ "tin", "antimony", "arsenic" ]
+    },
+    {
+      "id": "dyes",
+      "name": "Красители",
+      "products": [ "ochre", "indigo", "henna", "purple", "rose_madder", "woad", "campeche", "carthamin", "carmine", "cinnabar", "ultramarine" ]
     }
   ]
 }

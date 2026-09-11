@@ -1,0 +1,104 @@
+{
+  "crafts": [
+    {
+      "id": "ochre",
+      "name": "Производство охры",
+      "produced_in": [ "dyer_house" ],
+      "resources": { "iron_ore": 20 },
+      "result": { "ochre": 10 },
+      "time": 5.0,
+      "unlock_tech": "dyeing",
+      "description": "Создает краситель (охру) из железной руды"
+    },
+    {
+      "id": "indigo",
+      "name": "Производство индиго",
+      "produced_in": [ "dyer_house" ],
+      "resources": { "indigofera_leaves": 20 },
+      "result": { "indigo": 10 },
+      "time": 5.0,
+      "unlock_tech": "dyeing",
+      "description": "Создает краситель (индиго) из листьев индигоферы"
+    },
+    {
+      "id": "henna",
+      "name": "Производство хны",
+      "produced_in": [ "dyer_house" ],
+      "resources": { "lawsonia_leaves": 20 },
+      "result": { "henna": 10 },
+      "time": 5.0,
+      "unlock_tech": "dyeing",
+      "description": "Создает краситель (хну) из листьев лавсонии"
+    },
+    {
+      "id": "purple",
+      "name": "Производство пурпура",
+      "produced_in": [ "dyer_house" ],
+      "resources": { "raw_murex": 20 },
+      "result": { "purple": 10 },
+      "time": 5.0,
+      "unlock_tech": "dyeing",
+      "description": "Создает краситель (пурпур) из мурексов"
+    },
+    {
+      "id": "woad",
+      "name": "Производство вайды",
+      "produced_in": [ "dyer_house" ],
+      "resources": { "woad_leaves": 20 },
+      "result": { "woad": 10 },
+      "time": 5.0,
+      "unlock_tech": "dyeing",
+      "description": "Создает краситель (вайду) из листьев вайды"
+    },
+    {
+      "id": "campeche",
+      "name": "Производство кампеша",
+      "produced_in": [ "dyer_house" ],
+      "resources": { "campeche_wood": 20 },
+      "result": { "campeche": 10 },
+      "time": 5.0,
+      "unlock_tech": "dyeing",
+      "description": "Создает краситель (кампеш) из древесины кампешевого дерева"
+    },
+    {
+      "id": "сarthamin",
+      "name": "Производство картамина",
+      "produced_in": [ "dyer_house" ],
+      "resources": { "safflower_leaves": 20 },
+      "result": { "сarthamin": 10 },
+      "time": 5.0,
+      "unlock_tech": "dyeing",
+      "description": "Создает краситель (картамин) из листьев сафлора"
+    },
+    {
+      "id": "сarmine",
+      "name": "Производство кармина",
+      "produced_in": [ "dyer_house" ],
+      "resources": { "cochineal": 20 },
+      "result": { "сarmine": 10 },
+      "time": 5.0,
+      "unlock_tech": "dyeing",
+      "description": "Создает краситель (кармин) из кошенили"
+    },
+    {
+      "id": "cinnabar",
+      "name": "Производство киновари",
+      "produced_in": [ "dyer_house" ],
+      "resources": { "cinnabar_ore": 20 },
+      "result": { "cinnabar": 10 },
+      "time": 5.0,
+      "unlock_tech": "dyeing",
+      "description": "Создает краситель (киноварь) из руды"
+    },
+    {
+      "id": "ultramarine",
+      "name": "Производство ультрамарина",
+      "produced_in": [ "dyer_house" ],
+      "resources": { "lazurite_ore": 20 },
+      "result": { "ultramarine": 10 },
+      "time": 5.0,
+      "unlock_tech": "dyeing",
+      "description": "Создает краситель (ультрамарин) из руды"
+    }
+  ]
+}

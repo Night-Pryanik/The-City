@@ -234,6 +234,22 @@
       "spawn_conditions": [ [ { "type": "terrain", "terrain_id": "beach", "chance": 100 } ] ]
     },
     {
+      "id": "cinnabar_deposit",
+      "name": "Киноварь",
+      "type": "raw",
+      "category": "minerals",
+      "group": "minerals",
+      "subgroup": "dye_minerals",
+      "strategic": true,
+      "tech_required": "dyeing",
+      "allowed_terrain": [ "plain", "hill" ],
+      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "improved_by": "mine",
+      "produces": { "cinnabar_ore": 10 },
+      "icon": "cinnabar.png",
+      "color": [ 255, 0, 0 ]
+    },
+    {
       "id": "lazurite_deposit",
       "name": "Лазурит",
       "type": "raw",

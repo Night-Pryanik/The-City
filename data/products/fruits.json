@@ -11,6 +11,13 @@
     },
     { "id": "figs", "name": "Инжир", "type": "product", "category": "fruits", "icon": "figs.png" },
     { "id": "dates", "name": "Финики", "type": "product", "category": "fruits", "icon": "dates.png" },
-    { "id": "agave", "name": "Агава", "type": "product", "category": "fruits", "icon": "agave.png" }
+    { "id": "agave", "name": "Агава", "type": "product", "category": "fruits", "icon": "agave.png" },
+    {
+      "id": "cactus_fruit",
+      "name": "Опунция",
+      "type": "product",
+      "category": "fruits",
+      "icon": "cactus_fruit.png"
+    }
   ]
 }

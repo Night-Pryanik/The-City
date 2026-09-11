@@ -15,6 +15,7 @@
       "category": "material",
       "icon": "raw_fish.png"
     },
+    { "id": "raw_murex", "name": "Мурекс", "type": "product", "category": "material", "icon": "murex.png" },
     {
       "id": "feed",
       "name": "Корм",

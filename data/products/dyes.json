@@ -1,0 +1,92 @@
+{
+  "resources": [
+    {
+      "id": "ochre",
+      "name": "Охра",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "dyeing",
+      "icon": "ochre.png"
+    },
+    {
+      "id": "indigo",
+      "name": "Индиго",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "dyeing",
+      "icon": "indigo.png"
+    },
+    {
+      "id": "henna",
+      "name": "Хна",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "dyeing",
+      "icon": "henna.png"
+    },
+    {
+      "id": "purple",
+      "name": "Пурпур",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "dyeing",
+      "icon": "purple.png"
+    },
+    {
+      "id": "rose_madder",
+      "name": "Крапп",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "dyeing",
+      "icon": "rose_madder.png"
+    },
+    {
+      "id": "woad",
+      "name": "Вайда",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "dyeing",
+      "icon": "woad.png"
+    },
+    {
+      "id": "campeche",
+      "name": "Кампеш",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "dyeing",
+      "icon": "campeche.png"
+    },
+    {
+      "id": "сarthamin",
+      "name": "Картамин",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "dyeing",
+      "icon": "сarthamin.png"
+    },
+    {
+      "id": "сarmine",
+      "name": "Кармин",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "dyeing",
+      "icon": "carmine.png"
+    },
+    {
+      "id": "cinnabar",
+      "name": "Киноварь",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "dyeing",
+      "icon": "cinnabar.png"
+    },
+    {
+      "id": "ultramarine",
+      "name": "Ультрамарин",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "dyeing",
+      "icon": "ultramarine.png"
+    }
+  ]
+}

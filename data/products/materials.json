@@ -206,12 +206,76 @@
       "icon": "iron_ore.png"
     },
     {
+      "id": "cinnabar_ore",
+      "name": "Киноварь (руда)",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "dyeing",
+      "icon": "cinnabar_ore.png"
+    },
+    {
       "id": "lazurite_ore",
       "name": "Лазурит",
       "type": "product",
       "category": "material",
       "unlock_tech": "dyeing",
       "icon": "lazurite_ore.png"
+    },
+    {
+      "id": "indigofera_leaves",
+      "name": "Листья индигоферы",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "plantations",
+      "icon": "indigofera_leaves.png"
+    },
+    {
+      "id": "lawsonia_leaves",
+      "name": "Листья лавсонии",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "plantations",
+      "icon": "lawsonia_leaves.png"
+    },
+    {
+      "id": "marena_roots",
+      "name": "Корень марены",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "plantations",
+      "icon": "marena_roots.png"
+    },
+    {
+      "id": "woad_leaves",
+      "name": "Листья вайды",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "plantations",
+      "icon": "woad_leaves.png"
+    },
+    {
+      "id": "campeche_wood",
+      "name": "Древесина кампешевого дерева",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "plantations",
+      "icon": "campeche_wood.png"
+    },
+    {
+      "id": "safflower_leaves",
+      "name": "Листья сафлора",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "plantations",
+      "icon": "safflower_leaves.png"
+    },
+    {
+      "id": "cochineal",
+      "name": "Кошениль",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "plantations",
+      "icon": "cochineal.png"
     }
   ]
 }

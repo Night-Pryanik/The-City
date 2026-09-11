@@ -407,7 +407,7 @@
       "name": "Рыба",
       "type": "raw",
       "category": "animals",
-      "group": "fish",
+      "group": "water_animals",
       "subgroup": "fish",
       "strategic": true,
       "tech_required": "fishing",
@@ -419,10 +419,6 @@
       "time_to_mature": 0,
       "icon": "raw_fish.png",
       "color": [ 0, 100, 200 ],
-
-      // Разводить нельзя: это водный ресурс. Рыба добывается только рыбацкими
-      // лодками там, где есть природный ресурс; поле tile.crop_bred для неё
-      // не используется (см. docs.md, «Разведение животных и растений»).
       "breedable": false,
       "spawn_count": [10, 30]
     },
@@ -431,7 +427,7 @@
       "name": "Рыба",
       "type": "raw",
       "category": "animals",
-      "group": "fish",
+      "group": "water_animals",
       "subgroup": "fish",
       "strategic": true,
       "tech_required": "fishing",
@@ -443,10 +439,27 @@
       "time_to_mature": 0,
       "icon": "raw_fish.png",
       "color": [ 0, 50, 150 ],
-
-      // Разводить нельзя: см. комментарий у freshwater_fish.
       "breedable": false,
       "spawn_count": [10, 30]
+    },
+    {
+      "id": "murex",
+      "name": "Мурекс",
+      "type": "raw",
+      "category": "animals",
+      "group": "water_animals",
+      "subgroup": "mollusc",
+      "strategic": true,
+      "tech_required": "fishing",
+      "allowed_terrain": [ "sea" ],
+      "allowed_cover": [ "none" ],
+      "improved_by": "fishing_boats",
+      "produces": { "raw_murex": 10 },
+      "feed_consumption": 0,
+      "time_to_mature": 0,
+      "icon": "murex.png",
+      "color": [ 0, 100, 200 ],
+      "breedable": false
     }
   ]
 }
