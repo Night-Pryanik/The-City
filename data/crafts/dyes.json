@@ -102,13 +102,13 @@
     },
     {
       "id": "malachite",
-      "name": "Производство зеленого пигмента",
+      "name": "Производство малахита",
       "produced_in": [ "dyer_house" ],
       "resources": { "malachite_ore": 20 },
       "result": { "malachite": 10 },
       "time": 5.0,
       "unlock_tech": "dyeing",
-      "description": "Создает зеленый пигмент из руды"
+      "description": "Создает краситель (малахит) из руды"
     }
   ]
 }

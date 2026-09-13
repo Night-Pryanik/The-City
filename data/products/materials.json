@@ -223,7 +223,7 @@
     },
     {
       "id": "malachite_ore",
-      "name": "Малахит",
+      "name": "Малахит (руда)",
       "type": "product",
       "category": "material",
       "unlock_tech": "dyeing",

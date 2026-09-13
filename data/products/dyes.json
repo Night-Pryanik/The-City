@@ -90,7 +90,7 @@
     },
     {
       "id": "malachite",
-      "name": "Зелёный пигмент (малахит)",
+      "name": "Малахит",
       "type": "product",
       "category": "material",
       "unlock_tech": "dyeing",
