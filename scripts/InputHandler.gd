@@ -99,8 +99,7 @@ func handle_input(event: InputEvent):
             _hide_tooltip()
             # Убираем подсветку чанка Региона, оставшуюся от наведения
             # до захода курсора на панель/HUD.
-            if over_hud:
-                expansion_manager.clear_hovered_chunk()
+            expansion_manager.clear_hovered_chunk()
             return
 
     # Дебаг-меню открыто — блокируем взаимодействие с картой
