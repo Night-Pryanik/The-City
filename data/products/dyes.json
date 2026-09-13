@@ -57,7 +57,7 @@
       "icon": "campeche.png"
     },
     {
-      "id": "сarthamin",
+      "id": "carthamin",
       "name": "Картамин",
       "type": "product",
       "category": "material",
@@ -65,7 +65,7 @@
       "icon": "сarthamin.png"
     },
     {
-      "id": "сarmine",
+      "id": "carmine",
       "name": "Кармин",
       "type": "product",
       "category": "material",
