@@ -61,21 +61,21 @@
       "description": "Создает краситель (кампеш) из древесины кампешевого дерева"
     },
     {
-      "id": "сarthamin",
+      "id": "carthamin",
       "name": "Производство картамина",
       "produced_in": [ "dyer_house" ],
       "resources": { "safflower_leaves": 20 },
-      "result": { "сarthamin": 10 },
+      "result": { "carthamin": 10 },
       "time": 5.0,
       "unlock_tech": "dyeing",
       "description": "Создает краситель (картамин) из листьев сафлора"
     },
     {
-      "id": "сarmine",
+      "id": "carmine",
       "name": "Производство кармина",
       "produced_in": [ "dyer_house" ],
       "resources": { "cochineal": 20 },
-      "result": { "сarmine": 10 },
+      "result": { "carmine": 10 },
       "time": 5.0,
       "unlock_tech": "dyeing",
       "description": "Создает краситель (кармин) из кошенили"
