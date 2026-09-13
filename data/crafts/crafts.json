@@ -253,34 +253,14 @@
       "description": "Создает деревянные таблички с углублением, в которое залит воск"
     },
     {
-      "id": "paper_rm",
+      "id": "paper",
       "name": "Производство бумаги",
       "produced_in": [ "paper_workshop" ],
-      "resources": { "ramie": 10, "mulberry_bark": 10, "lime": 10 },
+      "resources": { "@paper_fibers": 10, "lime": 10 },
       "result": { "paper": 10 },
       "time": 5.0,
       "unlock_tech": "paper",
-      "description": "Создает бумагу из рами и коры тутовника"
-    },
-    {
-      "id": "paper_hm",
-      "name": "Производство бумаги",
-      "produced_in": [ "paper_workshop" ],
-      "resources": { "hemp": 10, "mulberry_bark": 10, "lime": 10 },
-      "result": { "paper": 10 },
-      "time": 5.0,
-      "unlock_tech": "paper",
-      "description": "Создает бумагу из конопли и коры тутовника"
-    },
-    {
-      "id": "paper_rh",
-      "name": "Производство бумаги",
-      "produced_in": [ "paper_workshop" ],
-      "resources": { "ramie": 10, "hemp": 10, "lime": 10 },
-      "result": { "paper": 10 },
-      "time": 5.0,
-      "unlock_tech": "paper",
-      "description": "Создает бумагу из рами и конопли"
+      "description": "Создает бумагу из различных растительных волокон"
     }
   ]
 }
