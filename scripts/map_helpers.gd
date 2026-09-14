@@ -816,7 +816,9 @@ static func ensure_food_plant(
 ## `filter` — словарь с полями для матча по данным ресурса (все совпадения
 ## проверяются по равенству). Обязательно поле `category`. Поля `group`
 ## и `subgroup` — необязательные дополнительные фильтры для подробных
-## категорий (бонусы за разнообразие). Примеры:
+## категорий (бонусы за разнообразие). Поля `group`/`subgroup` у ресурса
+## могут быть как строкой, так и массивом строк (несколько подгрупп сразу);
+## фильтр считается совпавшим, если требуемое значение есть в списке. Примеры:
 ##
 ##   { "category": "metals" }                                          — любой металл
 ##   { "category": "animals", "group": "meat_animals" }                — мясные животные
@@ -848,13 +850,15 @@ static func ensure_minimum_resource(
     var required_group: String = filter.get("group", "")
     var required_subgroup: String = filter.get("subgroup", "")
 
-    # Helper: данные ресурса подходят под фильтр?
+    # Helper: данные ресурса подходят под фильтр? Поля group/subgroup у ресурса
+    # могут быть как строкой, так и массивом строк (например, лазурит и малахит
+    # принадлежат сразу двум подгруппам) — сравниваем через список.
     var matches_filter = func(rdata: Dictionary) -> bool:
         if rdata.get("category", "") != required_category:
             return false
-        if required_group != "" and rdata.get("group", "") != required_group:
+        if required_group != "" and required_group not in _as_string_list(rdata.get("group", "")):
             return false
-        if required_subgroup != "" and rdata.get("subgroup", "") != required_subgroup:
+        if required_subgroup != "" and required_subgroup not in _as_string_list(rdata.get("subgroup", "")):
             return false
         return true
 
@@ -915,6 +919,16 @@ static func ensure_minimum_resource(
     var hex = possible[randi() % possible.size()]
     tile_data[hex.row][hex.col]["resource"] = chosen_id
     tile_data[hex.row][hex.col]["quality"] = GameData.roll_quality()
+
+
+## Нормализует значение `group`/`subgroup` ресурса в список строк:
+## строка -> [строка], массив -> как есть (несколько подгрупп), null/пусто -> [].
+static func _as_string_list(value) -> Array:
+    if value is Array:
+        return value
+    if value == null:
+        return []
+    return [value]
 
 
 ## --- Водные ресурсы и пристани (схема harbor_access) ---
