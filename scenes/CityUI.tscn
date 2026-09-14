@@ -2,14 +2,11 @@
 
 [ext_resource type="Script" uid="uid://db8sfnu5rqjpf" path="res://scripts/city_ui.gd" id="1_sxg55"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_o7tci"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dxjuo"]
 bg_color = Color(0.15686275, 0.15686275, 0.15686275, 1)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_yrkmr"]
 bg_color = Color(0.19607843, 0.19607843, 0.19607843, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dxjuo"]
-bg_color = Color(0.15686275, 0.15686275, 0.15686275, 1)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_s5pkp"]
 bg_color = Color(0.11764706, 0.11764706, 0.11764706, 1)
@@ -50,7 +47,7 @@ text = "Построенные здания"
 [node name="BuiltBuildingsList" type="VBoxContainer" parent="RightPanel/VBoxContainer" unique_id=1857158825]
 layout_mode = 2
 
-[node name="TabBarPanel" type="Panel" parent="."]
+[node name="TabBarPanel" type="Panel" parent="." unique_id=215368179]
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
@@ -58,7 +55,7 @@ offset_bottom = 50.0
 grow_horizontal = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_yrkmr")
 
-[node name="TabBar" type="HBoxContainer" parent="TabBarPanel"]
+[node name="TabBar" type="HBoxContainer" parent="TabBarPanel" unique_id=388558789]
 layout_mode = 1
 offset_left = 8.0
 offset_top = 8.0
@@ -66,22 +63,22 @@ offset_right = 200.0
 offset_bottom = 42.0
 theme_override_constants/separation = 4
 
-[node name="ResourcesTabButton" type="Button" parent="TabBarPanel/TabBar"]
+[node name="ResourcesTabButton" type="Button" parent="TabBarPanel/TabBar" unique_id=1545388005]
 custom_minimum_size = Vector2(36, 34)
 layout_mode = 2
 tooltip_text = "Ресурсы"
 
-[node name="BuildingsTabButton" type="Button" parent="TabBarPanel/TabBar"]
+[node name="BuildingsTabButton" type="Button" parent="TabBarPanel/TabBar" unique_id=1963724598]
 custom_minimum_size = Vector2(36, 34)
 layout_mode = 2
 tooltip_text = "Здания"
 
-[node name="TradeTabButton" type="Button" parent="TabBarPanel/TabBar"]
+[node name="TradeTabButton" type="Button" parent="TabBarPanel/TabBar" unique_id=390577073]
 custom_minimum_size = Vector2(36, 34)
 layout_mode = 2
 tooltip_text = "Торговля"
 
-[node name="TechnologiesTabButton" type="Button" parent="TabBarPanel/TabBar"]
+[node name="TechnologiesTabButton" type="Button" parent="TabBarPanel/TabBar" unique_id=1779431610]
 custom_minimum_size = Vector2(36, 34)
 layout_mode = 2
 tooltip_text = "Технологии"
@@ -104,7 +101,6 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 0.0
 offset_top = 50.0
 offset_right = 824.0
 offset_bottom = 768.0
@@ -167,9 +163,8 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="AvailableBuildingsPanel" type="Control" parent="ContentPanel/BuildingsPanel/PanelsLayout" unique_id=1098170534]
-custom_minimum_size = Vector2(300, 0)
+custom_minimum_size = Vector2(500, 0)
 layout_mode = 2
-size_flags_horizontal = 1
 size_flags_vertical = 3
 
 [node name="VBoxContainer" type="VBoxContainer" parent="ContentPanel/BuildingsPanel/PanelsLayout/AvailableBuildingsPanel" unique_id=1309099413]
@@ -200,9 +195,9 @@ anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
 offset_left = 4.0
-offset_top = -84.0
+offset_top = -34.0
 offset_right = 104.0
-offset_bottom = -53.0
+offset_bottom = -3.0
 grow_vertical = 0
 disabled = true
 text = "Построить"
@@ -238,7 +233,7 @@ offset_top = 8.0
 offset_right = 490.0
 offset_bottom = 58.0
 
-[node name="SciencePoolLabel" type="Label" parent="ContentPanel/TechnologiesPanel/CurrentResearch/VBoxContainer"]
+[node name="SciencePoolLabel" type="Label" parent="ContentPanel/TechnologiesPanel/CurrentResearch/VBoxContainer" unique_id=597162081]
 layout_mode = 2
 text = "Наука за тик: 1"
 
@@ -262,9 +257,7 @@ anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 0.0
 offset_top = 718.0
-offset_right = 0.0
 offset_bottom = 768.0
 grow_horizontal = 2
 grow_vertical = 0
