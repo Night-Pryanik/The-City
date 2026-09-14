@@ -236,7 +236,7 @@ godot --headless --path . res://tests/water_access_test.tscn
 | `type` | string | ✅ | Тип сущности. Для ресурсов на карте всегда `"raw"` | `"raw"` |
 | `category` | string | ✅ | Категория (см. `categories.json`) | `"plants"`, `"animals"`, `"minerals"` |
 | `group` | string | ✅ | Группа для бонусов за разнообразие (см. `groups.json`). Может быть пустой строкой | `"food_plants"`, `"meat_animals"`, `""` |
-| `subgroup` | string | ✅ | Подгруппа для бонусов за разнообразие (см. `groups.json`). Может быть пустой строкой | `"cereals"`, `"cattle"`, `""` |
+| `subgroup` | string \| array\<string\> | ✅ | Подгруппа(ы) для бонусов за разнообразие (см. `groups.json`). Может быть пустой строкой. Массив — ресурс принадлежит нескольким подгруппам сразу (например, лазурит — красители и ювелирный камень) | `"cereals"`, `"cattle"`, `""`, `["dye_minerals", "jewelry_minerals"]` |
 | `tech_required` | string | ⬜ | **Технология, открывающая появление ресурса на карте.** Пока не изучена — ресурс не спавнится. Отсутствует у дикоросов (`wild_food`) | `"farming"` |
 | `allowed_terrain` | array\<string\> | ✅ | **Рельефы**, на которых ресурс может заспавниться (см. `terrains.json`) | `["plain", "hill"]` |
 | `allowed_cover` | array\<string\> | ✅ | **Покровы**, на которых ресурс может заспавниться (см. `covers.json`). Логика — И с `allowed_terrain` | `["none", "sparse_forest", "forest"]` |

@@ -12,7 +12,7 @@
     { "id": "luxury", "name": "Роскошь" },
     { "id": "material", "name": "Материалы" },
     { "id": "construction_material", "name": "Стройматериалы" },
-    { "id": "mineral", "name": "Минералы" },
+    { "id": "minerals", "name": "Минералы" },
     { "id": "metals", "name": "Металлы" },
     { "id": "clothes", "name": "Одежда" },
     { "id": "household_items", "name": "Предметы быта" },
