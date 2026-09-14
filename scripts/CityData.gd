@@ -16,6 +16,14 @@ var consumption_rates: Dictionary = {}
 # Очищаются вместе со счётчиками в reset_counters().
 var production_sources: Dictionary = {}
 var consumption_sources: Dictionary = {}
+# Последнее фактическое потребление (живёт между тиками, НЕ сбрасывается):
+# product_id -> { "Имя источника": { "count": N, "amount": M } }. Обновляется
+# в reset_counters() данными прошедшего тика только для ресурсов, которые в
+# нём потреблялись. Нужно секции «Потребление (текущее)» тултипа ресурсов:
+# при интервальном потреблении (списание раз в N тиков) она показывает
+# последнее фактическое списание вместо пустоты, пока у ресурса есть
+# плановое потребление (см. resources_tab.gd, _get_current_cons_sources).
+var last_consumption_sources: Dictionary = {}
 var city_food_pool: Dictionary = {}
 var city_built_buildings: Array = []
 var domesticated_animals: Array = []
@@ -150,6 +158,7 @@ func setup():
     consumption_rates.clear()
     production_sources.clear()
     consumption_sources.clear()
+    last_consumption_sources.clear()
     city_food_pool.clear()
     city_built_buildings.clear()
     building_construction.clear()
@@ -189,6 +198,12 @@ func setup():
         city_quality_detail["meat"]["common"] = city_quality_detail["meat"].get("common", 0) + 10
 
 func reset_counters():
+    # Переживаем фактическое потребление прошедшего тика: для ресурсов, которые
+    # в нём потреблялись, оно становится «последним известным»
+    # (last_consumption_sources) — секция «Потребление (текущее)» тултипа
+    # не мигает между тиками списания при интервальном потреблении.
+    for pid in consumption_sources:
+        last_consumption_sources[pid] = consumption_sources[pid].duplicate(true)
     production_rates.clear()
     consumption_rates.clear()
     production_sources.clear()
@@ -246,6 +261,90 @@ func record_production_source(pid: String, source_name: String, amount: int):
 func record_consumption_source(pid: String, source_name: String, amount: int):
     consumption_rates[pid] = consumption_rates.get(pid, 0) + amount
     _record_source(consumption_sources, pid, source_name, amount)
+
+# --- ПЛАНОВЫЙ СПРОС ЗДАНИЙ (для «Потребление (плановое)» на вкладке «Ресурсы») ---
+# Кэш ссылки на TownsfolkManager: нужен и do_tick(), и подсчёту спроса зданий.
+# Ищется один раз и переиспользуется (is_instance_valid — на случай удаления узла).
+var _townsfolk_ref: Node = null
+
+func _get_townsfolk() -> Node:
+    if _townsfolk_ref != null and is_instance_valid(_townsfolk_ref):
+        return _townsfolk_ref
+    var main_map = get_tree().root.find_child("MainMap", true, false)
+    if main_map:
+        _townsfolk_ref = main_map.get_node_or_null("TownsfolkManager")
+    return _townsfolk_ref
+
+# Возвращает плановый спрос ПОСТРОЕННЫХ ЗДАНИЙ на ресурсы за один
+# production-тик. Рецепт в do_tick() исполняется КАЖДЫЙ тик при назначенном
+# горожанине и наличии ингредиентов (поле time рецептов в коде не используется),
+# поэтому единица спроса — «за тик». Формат результата:
+#   product_id -> { "Имя здания" -> { "amount": N, "count": M,
+#                                     "is_group": bool, "group_name": String } }
+#   amount — суммарный спрос этого здания на ресурс за тик (по всем слотам);
+#   count  — сколько слотов-рецептов дают этот спрос (для «хN» в тултипе);
+#   is_group / group_name — спрос задан группой «@»: относится к ЛЮБОМУ члену
+#   группы, в тултипе помечается именем группы.
+# Спрос показывается независимо от наличия ингредиентов на складе — это
+# плановое потребление (потребность), а не факт; факт считает do_tick().
+func get_building_planned_consumption() -> Dictionary:
+    var result: Dictionary = {}
+    var tm = _get_townsfolk()
+    for i in range(city_built_buildings.size()):
+        var bld = city_built_buildings[i]
+        var slots = bld.get("slots", [])
+        if slots.is_empty():
+            continue
+        # Без горожанина здание не работает и ничего не потребляет.
+        if tm == null or not tm.has_townsfolk(i):
+            continue
+        # Имя здания — источник спроса (совпадает с источником фактического
+        # расхода в do_tick, чтобы в тултипе это был один и тот же субъект).
+        var building_source = get_building_name(bld.get("id", ""))
+        for recipe_id in slots:
+            if recipe_id == "" or recipe_id == "empty":
+                continue
+            var recipe = null
+            for c in GameData.crafts:
+                if c["id"] == recipe_id:
+                    recipe = c
+                    break
+            if not recipe:
+                continue
+            var resources: Dictionary = recipe.get("resources", {})
+            for res in resources:
+                var amount_needed = int(resources[res])
+                if amount_needed <= 0:
+                    continue
+                if res.begins_with("@"):
+                    # Групповой ресурс: спрос относится к любому члену группы
+                    # (резолв группы — как в do_tick: по id, затем по имени).
+                    var group_key = res.trim_prefix("@")
+                    var group_products = GameData.product_groups.get(group_key, [])
+                    if group_products.is_empty():
+                        group_products = GameData.product_groups.get(_get_group_id_by_name(group_key), [])
+                    if group_products.is_empty():
+                        continue
+                    var group_name = GameData.get_product_group_name(res)
+                    for prod in group_products:
+                        _record_planned_demand(result, prod, building_source, amount_needed, true, group_name)
+                else:
+                    _record_planned_demand(result, res, building_source, amount_needed, false, "")
+    return result
+
+# Хелпер записи спроса здания на ресурс (см. get_building_planned_consumption).
+func _record_planned_demand(result: Dictionary, pid: String, source_name: String, amount: int, is_group: bool, group_name: String):
+    if not result.has(pid):
+        result[pid] = {}
+    var by_source: Dictionary = result[pid]
+    if not by_source.has(source_name):
+        by_source[source_name] = {"amount": 0, "count": 0, "is_group": false, "group_name": ""}
+    var entry: Dictionary = by_source[source_name]
+    entry["amount"] = int(entry.get("amount", 0)) + amount
+    entry["count"] = int(entry.get("count", 0)) + 1
+    entry["is_group"] = bool(entry.get("is_group", false)) or is_group
+    if str(entry.get("group_name", "")) == "":
+        entry["group_name"] = group_name
 
 # Возвращает человекочитаемое имя здания по его id (или сам id, если здание
 # не найдено в реестре).

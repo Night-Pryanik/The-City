@@ -441,3 +441,96 @@ func load_assignments(assignments: Array):
                         continue
                     assigned_hexes[str(row) + "," + str(col)] = true
     emit_signal("assignment_changed")
+
+# --- ПЛАНОВОЕ ПОТРЕБЛЕНИЕ РЕСУРСОВ ---
+# Для вкладки «Ресурсы»: тултип (блок «Потребление (плановое)») и динамика с
+# маркером «≈». Показывает, сколько ресурса БУДЕТ списано текущими
+# потребителями, независимо от фазы таймеров потребления и наличия на складе.
+# Фактические счётчики (CityData.consumption_rates/sources) живут один
+# production-тик и наполняются только в момент списания — отсюда «слепые
+# окна» у интервального потребления (лодки: 10 шт. раз в 10 сек).
+
+# Число рабочих по профессиям: prof_id -> count. Один проход по назначенным
+# гексам; профессия производна от улучшения (см. get_profession).
+func count_workers_by_profession() -> Dictionary:
+    var result: Dictionary = {}
+    for key in assigned_hexes.keys():
+        var parts = key.split(",", false)
+        if parts.size() != 2:
+            continue
+        var prof = get_profession(int(parts[0]), int(parts[1]))
+        if prof.is_empty():
+            continue
+        result[prof] = int(result.get(prof, 0)) + 1
+    return result
+
+# Собирает полную карту планового потребления:
+#   product_id -> { "Имя источника" -> { "amount": int, "interval": float,
+#                  "count": int, "is_group": bool, "group_name": String,
+#                  "is_population": bool } }
+# Источники:
+#   1) профессиональное потребление (data/consumption.json и устаревшее
+#      products[*].consumption): amount каждой записи × число рабочих профессии;
+#      при нескольких записях одного источника amount суммируется, а interval
+#      берётся минимальный — ровно так списывает tick_consumption (все записи
+#      списка разом по минимальному интервалу);
+#   2) городское потребление «all»: amount × total_population (is_population);
+#   3) спрос построенных зданий (рецепты слотов,
+#      CityData.get_building_planned_consumption): interval = 0 — «за тик».
+# Для групповых записей план относится к ЛЮБОМУ члену группы; в тултипе такие
+# строки помечаются именем группы (group_name = имя группы из данных).
+func get_planned_consumption_map() -> Dictionary:
+    var result: Dictionary = {}
+    # Профессиональное потребление: по фактическим рабочим на улучшениях.
+    var workers = count_workers_by_profession()
+    for prof_id in workers:
+        if prof_id == "all":
+            continue # псевдо-профессия не назначается на гексы; обрабатывается ниже
+        _record_profession_planned(result, prof_id, int(workers[prof_id]), false)
+    # Городское потребление «Все жители» — всегда (население ≥ 1), поголовно:
+    # count = total_population, а не число назначенных гексов.
+    if CityData.total_population > 0:
+        _record_profession_planned(result, "all", CityData.total_population, true)
+    # Спрос зданий (рецепты) — «за тик», interval = 0.
+    var building_demand = CityData.get_building_planned_consumption()
+    for pid in building_demand:
+        for source_name in building_demand[pid]:
+            var e: Dictionary = building_demand[pid][source_name]
+            _record_planned_entry(result, str(pid), str(source_name), int(e.get("amount", 0)), 0.0, int(e.get("count", 1)), bool(e.get("is_group", false)), str(e.get("group_name", "")), false)
+    return result
+
+# Записывает в result плановое потребление профессии prof_id при count
+# потребителях. Для псевдо-профессии «all» count = население города и
+# is_population = true (тултип показывает «(N чел.)»).
+func _record_profession_planned(result: Dictionary, prof_id: String, count: int, is_population: bool):
+    if count <= 0:
+        return
+    var source_name: String = GameData.professions.get(prof_id, {}).get("name", prof_id)
+    for entry in GameData.get_profession_consumption(prof_id):
+        var amount = int(entry.get("amount", 0)) * count
+        if amount <= 0:
+            continue
+        var interval = float(entry.get("interval", 0))
+        var is_group: bool = entry.get("is_group", false)
+        var targets: Array = entry.get("group_members", []) if is_group else [entry.get("product_id", "")]
+        var group_name: String = str(entry.get("product_name", "")) if is_group else ""
+        for pid in targets:
+            if str(pid).is_empty():
+                continue
+            _record_planned_entry(result, str(pid), source_name, amount, interval, count, is_group, group_name, is_population)
+
+# Хелпер записи/агрегации планового потребления (см. get_planned_consumption_map).
+func _record_planned_entry(result: Dictionary, pid: String, source_name: String, amount: int, interval: float, count: int, is_group: bool, group_name: String, is_population: bool):
+    if not result.has(pid):
+        result[pid] = {}
+    var by_source: Dictionary = result[pid]
+    if not by_source.has(source_name):
+        by_source[source_name] = {"amount": 0, "interval": interval, "count": 0, "is_group": false, "group_name": "", "is_population": false}
+    var entry: Dictionary = by_source[source_name]
+    entry["amount"] = int(entry.get("amount", 0)) + amount
+    entry["interval"] = minf(float(entry.get("interval", interval)), interval)
+    entry["count"] = maxi(int(entry.get("count", 0)), count)
+    entry["is_group"] = bool(entry.get("is_group", false)) or is_group
+    if str(entry.get("group_name", "")) == "":
+        entry["group_name"] = group_name
+    entry["is_population"] = bool(entry.get("is_population", false)) or is_population

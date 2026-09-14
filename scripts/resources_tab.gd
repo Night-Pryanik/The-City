@@ -29,12 +29,26 @@ var active_quality_name: String = ""
 var active_flow_product: String = ""
 var active_flow_name: String = ""
 
+# Ссылка на WorkerManager (прокидывается из main_map через city_ui.set_worker_manager).
+# По нему считается плановое потребление ресурсов (см. _update_planned_consumption_map).
+var worker_manager: Node = null
+# Кэш карты планового потребления: product_id -> { "Имя источника" -> {...} }.
+# Пересчитывается при каждом update_data()/refresh() (раз в тик при открытом городе).
+var planned_consumption_map: Dictionary = {}
+
 var resources_list: Node
 
 func setup(res_list: Node, helpers: Node):
     resources_list = res_list
     ui_helpers = helpers
     _build_icon_index()
+
+# Ссылка на WorkerManager прокидывается из main_map через
+# city_ui.set_worker_manager() (вызывается в _ready main_map — позже _ready
+# city_ui, где создаётся вкладка). До прокидывания planned_consumption_map
+# пуста: вкладка работает по-старому, только по фактической динамике за тик.
+func set_worker_manager(wm: Node):
+    worker_manager = wm
 
 func update_data(data: Dictionary):
     products = data.get("products", {})
@@ -46,6 +60,35 @@ func update_data(data: Dictionary):
     production_sources = data.get("production_sources", {})
     consumption_sources = data.get("consumption_sources", {})
     city_food_pool = data.get("city_food_pool", {})
+    _update_planned_consumption_map()
+
+# Пересчитывает кэш планового потребления по worker_manager. Если ссылка ещё не
+# прокинута (ранние вызовы до инициализации main_map) — карта пустая, вкладка
+# работает как раньше (только фактическая динамика за тик).
+func _update_planned_consumption_map():
+    planned_consumption_map.clear()
+    if worker_manager != null and is_instance_valid(worker_manager) \
+            and worker_manager.has_method("get_planned_consumption_map"):
+        planned_consumption_map = worker_manager.get_planned_consumption_map()
+
+# Плановое потребление конкретного ресурса: { "Имя источника" -> {...} }.
+func _get_planned_for(prod_id: String) -> Dictionary:
+    return planned_consumption_map.get(prod_id, {})
+
+# Фактическое потребление для секции «Потребление (текущее)» тултипа.
+# Обычно — списание за последний тик. Если в этом тике списания не было, но у
+# ресурса есть плановое потребление — показываем последнее фактическое
+# (CityData.last_consumption_sources): секция не мигает между тиками списания
+# при интервальном потреблении (доход +2/тик, списание 20 раз в 10 тиков).
+# Когда планового потребления нет (потребитель удалён), устаревшее значение
+# не показывается.
+func _get_current_cons_sources(prod_id: String) -> Dictionary:
+    var cons_src = consumption_sources.get(prod_id, {})
+    if cons_src.is_empty():
+        var planned = _get_planned_for(prod_id)
+        if not planned.is_empty():
+            cons_src = CityData.last_consumption_sources.get(prod_id, {})
+    return cons_src
 
 func _get_subgroup_name(subgroup_id: String) -> String:
     for g in GameData.groups:
@@ -93,6 +136,7 @@ func _get_icon_texture(icon_file: String) -> Texture2D:
 
 func refresh():
     _build_icon_index()
+    _update_planned_consumption_map()
     
     for child in resources_list.get_children():
         child.queue_free()
@@ -225,6 +269,11 @@ func refresh():
             continue
         var amount = city_storage[prod_id]
         var prod_val = production_rates.get(prod_id, 0)
+        # Общее правило списка: показываем ресурс только при наличии источника
+        # поступления (запас на складе или производство за тик). Плановое
+        # потребление НЕ добавляет строки: члены @-группы без своего
+        # прихода (просо при расходуемой группе «Зерновые культуры», где есть
+        # только пшеница) в список не попадают и метку плана не показывают.
         if amount <= 0 and prod_val <= 0:
             continue
         var pdata = products.get(prod_id, {})
@@ -303,9 +352,9 @@ func refresh():
             row.add_child(name_label)
             amount_labels[prod_id] = name_label
 
-            # Динамика
+            # Динамика. Красная метка — факт за тик, а при нуле факта —
+            # плановое потребление с маркером «≈» (см. _format_cons_label).
             var prod_val = production_rates.get(prod_id, 0)
-            var cons_val = consumption_rates.get(prod_id, 0)
 
             var green_label = Label.new()
             green_label.text = "[+%d" % prod_val
@@ -321,7 +370,7 @@ func refresh():
             row.add_child(slash_label)
 
             var red_label = Label.new()
-            red_label.text = "-%d]" % cons_val
+            red_label.text = _format_cons_label(prod_id)
             red_label.add_theme_color_override("font_color", Color.RED)
             red_label.mouse_filter = Control.MOUSE_FILTER_PASS
             row.add_child(red_label)
@@ -397,7 +446,7 @@ func update_values():
             prod_label.text = "[+%d" % production_rates.get(prod_id, 0)
         var cons_label = cons_labels.get(prod_id)
         if cons_label != null and is_instance_valid(cons_label):
-            cons_label.text = "-%d]" % consumption_rates.get(prod_id, 0)
+            cons_label.text = _format_cons_label(prod_id)
         var toggle = food_toggles.get(prod_id)
         if toggle != null and is_instance_valid(toggle):
             var enabled = city_food_pool.get(prod_id, true)
@@ -435,14 +484,18 @@ func update_values():
 
     # Обновляем открытый тултип источников прихода/расхода свежими данными.
     # Данные берутся за последний завершённый тик (словари сбрасываются в
-    # reset_counters() и наполняются заново при следующем тике).
+    # reset_counters() и наполняются заново при следующем тике). Плановое
+    # потребление не зависит от тика — берётся из кэша planned_consumption_map;
+    # фактическое при отсутствии списания в этом тике — последнее известное
+    # (см. _get_current_cons_sources).
     if active_flow_product != "" and ui_helpers and is_instance_valid(ui_helpers):
         if ui_helpers.flow_tooltip_panel.visible:
             var fresh_prod_src = production_sources.get(active_flow_product, {})
-            var fresh_cons_src = consumption_sources.get(active_flow_product, {})
+            var fresh_cons_src = _get_current_cons_sources(active_flow_product)
             var special_yield = GameData.get_special_yield(active_flow_product)
+            var fresh_planned = _get_planned_for(active_flow_product)
             if fresh_prod_src.is_empty() and fresh_cons_src.is_empty() \
-                    and special_yield.is_empty() \
+                    and special_yield.is_empty() and fresh_planned.is_empty() \
                     and GameData.get_price(active_flow_product) <= 0.0:
                 ui_helpers.hide_flow_tooltip()
             else:
@@ -452,7 +505,8 @@ func update_values():
                     fresh_prod_src,
                     fresh_cons_src,
                     special_yield,
-                    active_flow_product
+                    active_flow_product,
+                    fresh_planned
                 )
 
 # Добавляет метку с разбивкой по качеству в строку ресурса.
@@ -516,18 +570,44 @@ func _on_quality_exit():
     if ui_helpers and is_instance_valid(ui_helpers):
         ui_helpers.hide_quality_tooltip()
 
-# Показывает тултип ресурса (цена + источники прихода/расхода) при наведении
-# на название или динамику на вкладке «Ресурсы».
+# Текст красной метки динамики. При наличии списания за тик — факт ("-10]");
+# иначе, если есть плановое потребление, — план, приведённый к тику, с маркером
+# «≈» ("-2≈]"): amount × PRODUCTION_INTERVAL / interval для интервальных
+# записей и amount как есть для «за тик» (рецепты зданий). Приведение честно
+# показывает средний расход: 10 ед./10 сек = 2 ед. за тик.
+func _format_cons_label(prod_id: String) -> String:
+    var cons_val = consumption_rates.get(prod_id, 0)
+    if cons_val > 0:
+        return "-%d]" % cons_val
+    var planned = _get_planned_for(prod_id)
+    if planned.is_empty():
+        return "-0]"
+    var per_tick := 0.0
+    for source_name in planned:
+        var entry: Dictionary = planned[source_name]
+        var amount = float(entry.get("amount", 0))
+        var interval = float(entry.get("interval", 0))
+        if interval > 0.0:
+            per_tick += amount * CityData.PRODUCTION_INTERVAL / interval
+        else:
+            per_tick += amount
+    if per_tick <= 0.0:
+        return "-0]"
+    return "-%d≈]" % maxi(1, int(round(per_tick)))
+
+# Показывает тултип ресурса (цена + источники прихода/расхода + плановое
+# потребление) при наведении на название или динамику на вкладке «Ресурсы».
 func _on_flow_hover(prod_id: String, product_name: String):
     var prod_src = production_sources.get(prod_id, {})
-    var cons_src = consumption_sources.get(prod_id, {})
+    var cons_src = _get_current_cons_sources(prod_id)
     var special_yield = GameData.get_special_yield(prod_id)
+    var planned = _get_planned_for(prod_id)
     active_flow_product = prod_id
     active_flow_name = product_name
     if ui_helpers and is_instance_valid(ui_helpers):
         ui_helpers.show_flow_tooltip(
             get_viewport().get_mouse_position(), product_name, prod_src, cons_src,
-            special_yield, prod_id)
+            special_yield, prod_id, planned)
 
 # Скрывает тултип источников; при переходе на другую метку той же строки не мерцает.
 func _on_flow_exit(prod_id: String):

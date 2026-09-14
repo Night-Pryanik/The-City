@@ -327,6 +327,9 @@ func _ready():
     input_handler.set_tooltip_delay(tooltip_delay)
     input_handler.set_extended_tooltip_delay(extended_tooltip_delay)
     city_ui.set_building_detail_delay(building_detail_delay)
+    # Плановое потребление на вкладке «Ресурсы» (тултип и динамика «≈») считается
+    # по рабочим worker_manager — прокидываем ссылку в городской UI.
+    city_ui.set_worker_manager(worker_manager)
 
     # Инициализация DebugManager
     debug_manager.initialize(self)

@@ -570,13 +570,29 @@ func _format_price(value: float) -> String:
         return str(int(value))
     return "%.1f" % value
 
+# Форматирует интервал потребления для тултипа: целые секунды без дробной
+# части («10 сек»), дробные — с одним знаком («0.5 сек»).
+func _format_interval(interval: float) -> String:
+    if interval == floor(interval):
+        return str(int(interval))
+    return "%.1f" % interval
+
 # Показывает тултип «источники прихода/расхода» ресурса (вкладка «Ресурсы»).
 # prod_sources / cons_sources: { источник -> { count, amount } }.
 # Строки сортируются по убыванию вклада; «хN» показывается при count > 1.
 # resource_id — id ресурса/продукта: если задан, сверху выводится его текущая
 # цена (GameData.get_price). Тултип показывается, даже когда производство/
 # потребление пусты, но цена ресурса > 0.
-func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dictionary, cons_sources: Dictionary, special_yield: Dictionary = {}, resource_id: String = ""):
+# planned_consumption — плановое потребление:
+# { источник -> { amount, interval, count, is_group, group_name, is_population } };
+# interval > 0 — «ед./S сек» (профессии, «все жители»), interval = 0 — «ед./тик»
+# (спрос зданий по рецептам). Блок «Потребление (плановое):» показывается всегда,
+# когда план есть, — даже если фактического списания за последний тик не было.
+# cons_sources — фактическое потребление за последний тик; если списания в этом
+# тике не было, вызывающий может подставить последнее известное (см.
+# resources_tab._get_current_cons_sources), чтобы секция «Потребление
+# (текущее):» не мигала между тиками списания.
+func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dictionary, cons_sources: Dictionary, special_yield: Dictionary = {}, resource_id: String = "", planned_consumption: Dictionary = {}):
     if flow_tooltip_panel == null:
         return
     # Очищаем предыдущее содержимое.
@@ -595,7 +611,8 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dict
         cons_lines.append({"name": src, "amount": int(cons_sources[src].get("amount", 0)), "count": int(cons_sources[src].get("count", 1))})
     cons_lines.sort_custom(func(a, b): return a.amount > b.amount)
     if prod_lines.is_empty() and cons_lines.is_empty() \
-            and special_yield.is_empty() and price <= 0.0:
+            and special_yield.is_empty() and price <= 0.0 \
+            and planned_consumption.is_empty():
         flow_tooltip_panel.hide()
         return
     var header = Label.new()
@@ -635,7 +652,7 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dict
             flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, Color(0.3, 0.85, 0.3)))
     if not cons_lines.is_empty():
         var cons_title = Label.new()
-        cons_title.text = "Потребление:"
+        cons_title.text = "Потребление (текущее):"
         cons_title.add_theme_font_size_override("font_size", 14)
         cons_title.add_theme_color_override("font_color", Color(1.0, 0.6, 0.6))
         cons_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -646,6 +663,53 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dict
                 mult = " х%d" % int(row.count)
             var line_text = "%s%s: -%d" % [row.name, mult, int(row.amount)]
             flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, Color(0.9, 0.3, 0.3)))
+    # Плановое потребление: кто и сколько БУДЕТ списывать со склада —
+    # независимо от фазы таймеров потребления и факта последнего тика.
+    # interval > 0 — интервальное потребление («ед./S сек»: профессии, «все
+    # жители»), interval = 0 — спрос зданий за тик (рецепты). Групповые записи
+    # относятся к любому члену группы и помечаются её именем.
+    if not planned_consumption.is_empty():
+        var planned_title = Label.new()
+        planned_title.text = "Потребление (плановое):"
+        planned_title.add_theme_font_size_override("font_size", 14)
+        planned_title.add_theme_color_override("font_color", Color(1.0, 0.7, 0.45))
+        planned_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        flow_tooltip_vbox.add_child(planned_title)
+        var planned_lines: Array = []
+        for src in planned_consumption:
+            var e: Dictionary = planned_consumption[src]
+            planned_lines.append({
+                "name": src,
+                "amount": int(e.get("amount", 0)),
+                "count": int(e.get("count", 1)),
+                "interval": float(e.get("interval", 0)),
+                "is_group": bool(e.get("is_group", false)),
+                "group_name": str(e.get("group_name", "")),
+                "is_population": bool(e.get("is_population", false))
+            })
+        planned_lines.sort_custom(func(a, b): return a.amount > b.amount)
+        for row in planned_lines:
+            var line_text = str(row.name)
+            if bool(row.is_population):
+                # Потребление «всех жителей»: множитель населения — в скобках.
+                if int(row.count) > 1:
+                    line_text += " (%d чел.)" % int(row.count)
+            elif int(row.count) > 1:
+                line_text += " х%d" % int(row.count)
+            if bool(row.is_group) and not str(row.group_name).is_empty():
+                line_text += " (группа «%s»)" % str(row.group_name)
+            if float(row.interval) > 0.0:
+                line_text += ": %d ед./%s сек" % [int(row.amount), _format_interval(float(row.interval))]
+            else:
+                line_text += ": %d ед./тик" % int(row.amount)
+            flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, Color(0.95, 0.6, 0.35)))
+        # Пояснение к маркеру «≈» в динамике вкладки «Ресурсы».
+        var planned_note = Label.new()
+        planned_note.text = "≈ в динамике — плановый расход в пересчёте на тик"
+        planned_note.add_theme_font_size_override("font_size", 12)
+        planned_note.add_theme_color_override("font_color", Color(0.65, 0.65, 0.65))
+        planned_note.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        flow_tooltip_vbox.add_child(planned_note)
     flow_tooltip_vbox.reset_size()
     var content_size = flow_tooltip_vbox.get_minimum_size()
     # Отступы от края панели до текста: 6 слева/справа, 4 сверху/снизу —

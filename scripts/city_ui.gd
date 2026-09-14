@@ -22,6 +22,7 @@ var active_tab = "resources"
 var tab_buttons = []
 
 var ui_helpers: Node
+var worker_manager: Node # прокидывается из main_map (см. set_worker_manager)
 var resources_tab: Node
 var buildings_tab: Node
 var tech_tree: Control
@@ -55,6 +56,14 @@ var _cached_build_manager = null
 
 func set_building_detail_delay(value: float):
     building_detail_delay = maxf(0.0, value)
+
+# Прокидывает WorkerManager (из main_map) в городские вкладки: вкладке
+# «Ресурсы» он нужен для расчёта планового потребления (тултип ресурсов
+# и динамика с маркером «≈», см. resources_tab.gd).
+func set_worker_manager(wm: Node):
+    worker_manager = wm
+    if resources_tab != null:
+        resources_tab.set_worker_manager(wm)
 
 func _ready():
     # Загружаем модули
