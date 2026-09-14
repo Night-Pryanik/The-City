@@ -10,6 +10,7 @@ var tooltip_text_label: Label
 var tooltip_products_container: Node
 var worker_manager: Node
 var city_ui: Node
+var town_ui: Node
 var pause_menu: Node
 var expansion_manager: Node
 var debug_manager: Node
@@ -42,6 +43,7 @@ func initialize(main_node: Node):
     tooltip_products_container = main_node.tooltip_products_container
     worker_manager = main_node.worker_manager
     city_ui = main_node.city_ui
+    town_ui = main_node.town_ui
     pause_menu = main_node.pause_menu
     expansion_manager = main_node.expansion_manager
     debug_manager = main_node.debug_manager
@@ -57,6 +59,13 @@ func handle_input(event: InputEvent):
         return
 
     if event is InputEventKey and event.keycode == KEY_ESCAPE and event.pressed:
+        # ESC: если открыт интерфейс городка — закрываем именно его, даже если
+        # на карте выделен гекс или активно превью действия (окно городка
+        # поверх карты).
+        if town_ui.visible:
+            town_ui.close_town()
+            get_viewport().set_input_as_handled()
+            return
         # ESC: если открыт интерфейс города — закрываем именно его, даже если
         # на карте выделен гекс или активно превью действия (интерфейс города
         # поверх карты). Иначе сбрасываем превью действия в панели управления,
@@ -79,7 +88,7 @@ func handle_input(event: InputEvent):
         get_viewport().set_input_as_handled()
         return
 
-    if city_ui.visible or pause_menu.visible or (main_map.settings_menu and main_map.settings_menu.visible):
+    if town_ui.visible or city_ui.visible or pause_menu.visible or (main_map.settings_menu and main_map.settings_menu.visible):
         return
 
     # Взаимодействие с картой недоступно, когда курсор находится над панелью
@@ -126,7 +135,7 @@ func handle_process(delta: float):
     if Engine.is_editor_hint():
         return
 
-    if city_ui.visible or pause_menu.visible or (main_map.settings_menu and main_map.settings_menu.visible):
+    if town_ui.visible or city_ui.visible or pause_menu.visible or (main_map.settings_menu and main_map.settings_menu.visible):
         _hide_tooltip()
         return
 
@@ -226,7 +235,9 @@ func _is_hovered_tile_growing() -> bool:
     return MapHelpers.is_growing_resource(GameData.raw_resources.get(eff_res, {}))
 
 func _handle_esc():
-    if city_ui.visible:
+    if town_ui.visible:
+        town_ui.close_town()
+    elif city_ui.visible:
         city_ui.close_city()
     elif pause_menu.visible:
         pause_menu.hide()
@@ -274,6 +285,12 @@ func _handle_mouse_button(event: InputEventMouseButton):
                 if cur_time - main_map.last_city_click_time < 0.5:
                     main_map.open_city()
                 main_map.last_city_click_time = cur_time
+            # Двойной клик по гексу городка — переход в его интерфейс (торговля).
+            if main_map.tile_data[hex.row][hex.col].get("has_town", false):
+                var town_click_time = Time.get_ticks_msec() / 1000.0
+                if town_click_time - main_map.last_town_click_time < 0.5:
+                    main_map.open_town_ui(hex.row, hex.col)
+                main_map.last_town_click_time = town_click_time
         else:
             # Клик ЛКМ по пустому месту (туман войны, за пределами карты) —
             # снимаем выделение гекса, если оно было.
@@ -281,7 +298,7 @@ func _handle_mouse_button(event: InputEventMouseButton):
                 main_map.clear_selection()
 
 func _handle_mouse_motion(event: InputEventMouseMotion):
-    if city_ui.visible or pause_menu.visible:
+    if town_ui.visible or city_ui.visible or pause_menu.visible:
         return
 
     if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):

@@ -92,6 +92,8 @@ var town_influence_hexes: Array = []
 var towns: Array = []
 
 var last_city_click_time = 0.0
+# Последний момент клика по гексу городка (для детекции двойного клика).
+var last_town_click_time = 0.0
 var production_timer = 0.0
 var scouting_timer: float = 0.0
 # Есть ли пастбища, которые прямо сейчас заполняются (0% < fill < 100%).
@@ -113,6 +115,7 @@ var extended_tooltip_delay: float = 1.0
 var building_detail_delay: float = 0.5
 
 @onready var city_ui = $CityUI
+@onready var town_ui = $TownUI
 @onready var hex_tooltip = $HexTooltip
 @onready var tooltip_panel = $HexTooltip
 @onready var tooltip_text_label = $HexTooltip/TooltipVBox/TooltipTextLabel
@@ -334,6 +337,7 @@ func _ready():
     _update_population_hud()
 
     city_ui.closed.connect(_on_city_ui_close)
+    town_ui.closed.connect(_on_town_ui_close)
     city_button.pressed.connect(_on_city_button_pressed)
     expansion_button.pressed.connect(_on_expansion_button_pressed)
     city_ui.build_requested.connect(CityData.request_build)
@@ -1252,6 +1256,30 @@ func _on_city_ui_close():
     # Возвращаем панель управления гексом при выходе из интерфейса города.
     control_panel.show()
     _update_research_progress()
+
+# Открывает интерфейс городка (окно торговли) для гекса (row, col).
+# Вызывается из панели управления (кнопка действия на гексе городка) и
+# из InputHandler (двойной клик по гексу городка).
+func open_town_ui(row: int, col: int):
+    var town = find_town_at(row, col)
+    if town == null:
+        return
+    town_ui.open_town(town)
+    hud.hide()
+    # Панель управления гексом не нужна, пока открыт интерфейс городка.
+    control_panel.hide()
+
+# Возвращает запись городка на гексе (row, col) или null.
+func find_town_at(row: int, col: int):
+    if town_manager == null:
+        return null
+    return town_manager.find_town_at(row, col)
+
+func _on_town_ui_close():
+    town_ui.hide()
+    hud.show()
+    # Возвращаем панель управления гексом при выходе из интерфейса городка.
+    control_panel.show()
 
 func _on_research_error(message: String):
     if city_ui.visible:

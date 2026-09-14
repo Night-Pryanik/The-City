@@ -16,6 +16,7 @@
 [ext_resource type="Script" uid="uid://bqthdmil0kgn6" path="res://scripts/progress_bar_layer.gd" id="14_pblayer"]
 [ext_resource type="Script" uid="uid://bvivpa15khla" path="res://scripts/control_panel.gd" id="15_ctrlpanel"]
 [ext_resource type="Script" uid="uid://bcysm6it5igvq" path="res://scripts/town_manager.gd" id="16_twnmgr"]
+[ext_resource type="PackedScene" uid="uid://k2vtownui9ab" path="res://scenes/TownUI.tscn" id="17_twnui"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_o7tci"]
 bg_color = Color(0.19607843, 0.19607843, 0.19607843, 1)
@@ -34,6 +35,9 @@ script = ExtResource("6_82ayj")
 script = ExtResource("14_pblayer")
 
 [node name="CityUI" parent="." unique_id=1004795705 instance=ExtResource("2_a1mhp")]
+visible = false
+
+[node name="TownUI" parent="." unique_id=3000000001 instance=ExtResource("17_twnui")]
 visible = false
 
 [node name="HUD" type="Panel" parent="." unique_id=1988910692]

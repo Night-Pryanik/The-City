@@ -316,10 +316,29 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
     if row == main_map.city_row and col == main_map.city_col:
         return actions
 
-    # На гексе городка (мелкое поселение) тоже нельзя ничего строить и никаких
-    # спецдействий — по дизайну это «чужое» место на карте, функционал
-    # взаимодействия с ним пока не заложен (ТЗ: первый этап — только спавн).
+    # На гексе городка (мелкое поселение) нельзя строить улучшения и делать
+    # спецдействия — по дизайну это «чужое» место. Единственное действие —
+    # переход в интерфейс городка (торговля). Появляется по одиночному клику
+    # на гекс городка; тот же переход доступен по двойному клику (InputHandler).
     if tile.get("has_town", false):
+        var town_rec = null
+        if main_map.town_manager != null:
+            town_rec = main_map.town_manager.find_town_at(row, col)
+        var town_name = ""
+        if town_rec != null:
+            town_name = str(town_rec.get("name", ""))
+        var town_action_label = "Открыть городок"
+        var town_action_tooltip = "Перейти в интерфейс городка"
+        if town_name != "":
+            town_action_label = "Открыть %s" % town_name
+            town_action_tooltip = "Перейти в интерфейс городка «%s»" % town_name
+        actions.append({
+            "type": "open_town",
+            "label": town_action_label,
+            "enabled": true,
+            "tooltip": town_action_tooltip,
+            "icon": TownManager.TOWN_ICON_NAME
+        })
         return actions
 
     # Гекс вне Кольца Влияния — действия через панель управления:
@@ -797,6 +816,12 @@ func _make_research_action(tech_id: String, for_what: String = "ресурса")
 func _on_action_pressed(action: Dictionary):
     var type = action.get("type", "")
     if type == "info":
+        return
+    if type == "open_town":
+        # Переход в интерфейс городка (торговля). Сам переход выполняет
+        # main_map.open_town_ui (спрячет HUD и панель управления).
+        if _selected_hex != null:
+            main_map.open_town_ui(_selected_hex.row, _selected_hex.col)
         return
     if type == "scout_chunk":
         # Разведка чанка: списываем еду и отправляем разведчиков (время).

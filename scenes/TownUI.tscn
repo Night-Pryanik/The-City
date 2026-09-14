@@ -1,0 +1,83 @@
+[gd_scene format=3 uid="uid://k2vtownujaab"]
+
+[ext_resource type="Script" uid="uid://wn9townui4x0" path="res://scripts/town_ui.gd" id="1_twnui"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_window"]
+bg_color = Color(0.15686275, 0.15686275, 0.15686275, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.35, 0.35, 0.35, 1)
+
+[node name="TownUi" type="Control" unique_id=3000000001]
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_twnui")
+
+[node name="WindowPanel" type="Panel" parent="." unique_id=3000000002]
+layout_mode = 0
+offset_left = 276.0
+offset_top = 164.0
+offset_right = 876.0
+offset_bottom = 604.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_window")
+
+[node name="TitleLabel" type="Label" parent="WindowPanel" unique_id=3000000003]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 12.0
+offset_right = 524.0
+offset_bottom = 56.0
+text = "Городок"
+autowrap_mode = 2
+theme_override_font_sizes/font_size = 24
+
+[node name="CloseButton" type="Button" parent="WindowPanel" unique_id=3000000004]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -52.0
+offset_right = -12.0
+offset_top = 10.0
+offset_bottom = 42.0
+theme_override_font_sizes/font_size = 16
+text = "X"
+
+[node name="ColumnsHBox" type="HBoxContainer" parent="WindowPanel" unique_id=3000000005]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = 68.0
+offset_right = -16.0
+offset_bottom = -16.0
+theme_override_constants/separation = 16
+
+[node name="BuyColumn" type="VBoxContainer" parent="WindowPanel/ColumnsHBox" unique_id=3000000006]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="BuyHeader" type="Label" parent="WindowPanel/ColumnsHBox/BuyColumn" unique_id=3000000007]
+layout_mode = 2
+text = "Покупка"
+
+[node name="BuyList" type="VBoxContainer" parent="WindowPanel/ColumnsHBox/BuyColumn" unique_id=3000000008]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="SellColumn" type="VBoxContainer" parent="WindowPanel/ColumnsHBox" unique_id=3000000009]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="SellHeader" type="Label" parent="WindowPanel/ColumnsHBox/SellColumn" unique_id=3000000010]
+layout_mode = 2
+text = "Продажа"
+
+[node name="SellList" type="VBoxContainer" parent="WindowPanel/ColumnsHBox/SellColumn" unique_id=3000000011]
+layout_mode = 2
+size_flags_vertical = 3

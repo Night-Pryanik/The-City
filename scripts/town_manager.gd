@@ -244,6 +244,15 @@ func _rebuild_derived_town_hexes() -> void:
             "is_era2_guaranteed": bool(t.get("is_era2_guaranteed", false)),
         })
 
+# Возвращает запись городка на гексе (row, col) или null, если там нет городка.
+# Используется панелью управления (кнопка перехода в интерфейс городка) и
+# main_map.open_town_ui (двойной клик по гексу городка).
+func find_town_at(row: int, col: int):
+    for t in towns:
+        if int(t.get("row", -1)) == row and int(t.get("col", -1)) == col:
+            return t
+    return null
+
 
 # Восстанавливает список гексов кольца из формата [[row, col], ...].
 func _restore_hex_list(entries: Array) -> Array:
