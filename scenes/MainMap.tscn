@@ -63,6 +63,10 @@ text = "Население: 50"
 layout_mode = 2
 text = "1250 (Средневековье)"
 
+[node name="TreasuryLabel" type="Label" parent="HUD/VBoxContainer" unique_id=448771777]
+layout_mode = 2
+text = "Казна: 0"
+
 [node name="CityButton" type="Button" parent="HUD/VBoxContainer" unique_id=964408477]
 layout_mode = 2
 tooltip_text = "ЛКМ: переход в интерфейс города

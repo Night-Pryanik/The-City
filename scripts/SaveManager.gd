@@ -32,6 +32,7 @@ func save_game():
         "idle_population": CityData.idle_population,
         "food_for_new_settler": CityData.food_for_new_settler,
         "food_per_citizen": CityData.food_per_citizen,
+        "treasury": CityData.treasury,
         "tile_data": _serialize_tile_data(main_map),
         "worker_assignments": main_map.worker_manager.serialize_assignments(),
         # Таймеры профессионального потребления: для каждого рабочего с
@@ -126,6 +127,9 @@ func apply_loaded_data():
     CityData.idle_population = saved_data.get("idle_population", CityData.idle_population)
     CityData.food_for_new_settler = saved_data.get("food_for_new_settler", CityData.food_for_new_settler)
     CityData.food_per_citizen = saved_data.get("food_per_citizen", CityData.food_per_citizen)
+    # Казна города. В старых сейвах поля нет — восстанавливаем стартовую
+    # сумму из game_balance.json (initial_treasury), как при новой игре.
+    CityData.treasury = int(saved_data.get("treasury", int(GameData.game_balance.get("initial_treasury", 10))))
     # Восстанавливаем стройки зданий (прогресс их строительства хранится в build_manager)
     CityData.building_construction = saved_data.get("building_construction", {})
     # tile_data будет восстановлен отдельно

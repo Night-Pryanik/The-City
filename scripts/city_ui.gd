@@ -129,6 +129,12 @@ func _ready():
     if not CityData.city_updated.is_connected(_on_city_data_updated):
         CityData.city_updated.connect(_on_city_data_updated)
 
+    # Казна пополняется между тиками (доход внутреннего рынка списывается по
+    # своему interval) — обновляем верхнюю полосу сразу при поступлении монет,
+    # не дожидаясь ближайшего city_updated.
+    if not CityData.treasury_changed.is_connected(_on_treasury_changed):
+        CityData.treasury_changed.connect(_on_treasury_changed)
+
     # Подключаем сигнал завершения строительства здания для показа сообщения
     # в нижней панели CityUI (build_message сигнал выводит в HUD карты,
     # который скрыт, когда открыт интерфейс города).
@@ -295,9 +301,10 @@ func _update_food_label():
 
     var food_str = "Еда: %d [+%d / -%d]" % [food_sum, total_prod, total_cons]
     var pop_str = "Население: %d (свободных: %d)" % [CityData.total_population, CityData.idle_population]
+    var treasury_str = "Казна: %d" % CityData.treasury
 
     if top_food_label:
-        top_food_label.text = food_str + " | " + pop_str
+        top_food_label.text = food_str + " | " + pop_str + " | " + treasury_str
 
     # Обновляем метку еды на вкладке «Здания» (без населения)
     if buildings_tab.has_method("update_food_label"):
@@ -306,6 +313,11 @@ func _update_food_label():
     # Дополнительные ресурсы теперь отображаются в панели деталей здания
 
 func update_food_label():
+    _update_food_label()
+
+# Казна изменилась (сигнал treasury_changed несёт аргумент new_total) —
+# обновляем верхнюю полосу, где казна отображается рядом с едой и населением.
+func _on_treasury_changed(_new_total: int):
     _update_food_label()
 
 func refresh_buildings_tab():

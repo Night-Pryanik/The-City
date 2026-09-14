@@ -1,0 +1,25 @@
+{
+  // Игровой баланс: числовые константы, вынесенные из кода.
+  //
+  // Поля лежат в объекте "game_balance" (верхний ключ файла, как "consumption"
+  // в data/consumption.json или "map_config" в data/map_config.json).
+  // Загружается через data_loader.gd -> GameData.game_balance.
+  //
+  // Поля:
+  //   initial_treasury                 — монеты в казне города при старте новой
+  //                                      игры (поле "treasury" в CityData).
+  //   internal_market_price_multiplier — доля базовой цены товара (price из
+  //                                      data/products/*.json), по которой
+  //                                      внутренний рынок покупает товар у
+  //                                      города. Прибыль казны за единицу = 
+  //                                      round(price * multiplier );
+  //                                      казна всегда целочисленная.
+  //                                      Прибыль начисляется
+  //                                      только за реально списанные при
+  //                                      потреблении единицы (см. docs.md,
+  //                                      «Казна города и внутренний рынок»).
+  "game_balance": {
+    "initial_treasury": 100,
+    "internal_market_price_multiplier": 1.0
+  }
+}

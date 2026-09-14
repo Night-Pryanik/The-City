@@ -22,6 +22,7 @@ var map_config: Dictionary = {} # конфигурация карты мира (
 var professions: Dictionary = {} # id -> данные профессии (data/professions.json)
 var consumption_rules: Array = [] # записи потребления (data/consumption.json)
 var city_names: Array = [] # варианты названий города (data/city_names.json)
+var game_balance: Dictionary = {} # игровой баланс (data/game_balance.json)
 
 func load_all_data():
     var loader = load("res://scripts/data_loader.gd").new()
@@ -46,6 +47,7 @@ func load_all_data():
     professions = loader.professions
     consumption_rules = loader.consumption_rules
     city_names = loader.city_names
+    game_balance = loader.game_balance
 
 # Возвращает случайное название города из data/city_names.json.
 # Если список пуст или не загрузился — возвращает нейтральное имя по умолчанию.

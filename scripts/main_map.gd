@@ -335,6 +335,7 @@ func _ready():
     map_renderer.queue_redraw()
 
     _update_population_hud()
+    _update_treasury_hud()
 
     city_ui.closed.connect(_on_city_ui_close)
     town_ui.closed.connect(_on_town_ui_close)
@@ -344,6 +345,7 @@ func _ready():
     CityData.research_error.connect(_on_research_error)
     CityData.research_error.connect(hud.show_message)
     CityData.population_changed.connect(_on_population_changed)
+    CityData.treasury_changed.connect(_update_treasury_hud)
     city_ui.research_requested.connect(CityData.start_research)
     CityData.research_completed.connect(_on_research_completed)
     expansion_manager.chunk_hovered.connect(_on_chunk_hovered)
@@ -1689,6 +1691,13 @@ func _update_population_hud():
     var pop_label = hud.get_node_or_null("VBoxContainer/PopulationLabel")
     if pop_label:
         pop_label.text = "Население: %d" % CityData.total_population
+
+# Обновляет метку казны в HUD (ниже блока времени игры). Вызывается при
+# изменении казны (сигнал treasury_changed) и при старте/загрузке.
+func _update_treasury_hud(_new_total: int = -1):
+    var treasury_label = hud.get_node_or_null("VBoxContainer/TreasuryLabel")
+    if treasury_label:
+        treasury_label.text = "Казна: %d" % CityData.treasury
 
 func _on_assignment_changed():
     map_renderer.queue_redraw()

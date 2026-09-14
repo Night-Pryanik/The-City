@@ -22,6 +22,7 @@ var map_config: Dictionary = {} # конфигурация карты мира (
 var professions: Dictionary = {} # id -> данные профессии (data/professions.json)
 var consumption_rules: Array = [] # записи потребления из data/consumption.json
 var city_names: Array = [] # варианты названий города (data/city_names.json)
+var game_balance: Dictionary = {} # игровой баланс (data/game_balance.json)
 
 func load_all_data():
     var merged_data = _load_all_json_files("res://data")
@@ -128,6 +129,11 @@ func load_all_data():
     for cr in merged_data.get("consumption", []):
         if cr is Dictionary and not str(cr.get("resource", "")).is_empty():
             consumption_rules.append(cr)
+
+    # НОВОЕ: загружаем игровой баланс (data/game_balance.json).
+    # Числовые константы игры: стартовая казна города, множитель цены
+    # внутреннего рынка и т.п. Ключ "game_balance" лежит на верхнем уровне.
+    game_balance = merged_data.get("game_balance", {})
 
 
 func _load_all_json_files(folder_path: String) -> Dictionary:

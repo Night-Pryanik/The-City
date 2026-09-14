@@ -267,6 +267,8 @@ func tick_consumption(row: int, col: int, delta: float) -> float:
                         var take = min(avail, remaining)
                         CityData.remove_from_storage(pid, take, "best")
                         CityData.record_consumption_source(pid, prof_source, take)
+                        # Фактическое потребление на внутреннем рынке даёт доход в казну
+                        CityData.add_treasury(CityData.get_internal_market_price(pid) * take)
                         remaining -= take
                 else:
                     var pid = str(entry.get("product_id", ""))
@@ -274,6 +276,8 @@ func tick_consumption(row: int, col: int, delta: float) -> float:
                         continue
                     CityData.remove_from_storage(pid, amt, "best")
                     CityData.record_consumption_source(pid, prof_source, amt)
+                    # Фактическое потребление на внутреннем рынке даёт доход в казну.
+                    CityData.add_treasury(CityData.get_internal_market_price(pid) * amt)
             timer.elapsed = 0.0
         # else: таймер остаётся как есть, на следующем тике проверим снова
 
@@ -313,11 +317,13 @@ func load_consumption_timers(timers: Array):
 # берутся из того же реестра: GameData.get_profession_consumption("all").
 #
 # Семантика amount для "all": НА ОДНОГО жителя. Суммарное списание за тик =
-# amount * CityData.total_population. Проверка запаса и жадное списание из
-# группы — те же, что в tick_consumption(). production_bonus игнорируется:
-# городское потребление — пока тест инфраструктуры, бонусов не даёт.
-# Если ресурса не хватает — таймер сохраняется; при появлении ресурса
-# списание произойдёт сразу, без ожидания полного интервала.
+# amount * CityData.total_population. Списание идёт ПО ФАКТУ НАЛИЧИЯ: за
+# попытку списывается min(есть на складе, нужное количество) — ожидания
+# полного покрытия нет. Если на складе меньше нужного, списывается всё, что
+# есть, и таймер сбрасывается; если склад пуст — таймер сохраняется
+# «горячим», и всё, что появится, списывается на ближайшем тике без ожидания
+# полного интервала. Жадное списание из @-группы — как в tick_consumption().
+# production_bonus игнорируется: городское потребление бонусов не даёт.
 # Вызывается из main_map._process в production-тике с шагом
 # CityData.PRODUCTION_INTERVAL (та же точность, что у по-гексового потребления).
 func tick_city_consumption(delta: float) -> void:
@@ -352,9 +358,12 @@ func tick_city_consumption(delta: float) -> void:
             var total := 0
             for pid in members:
                 total += CityData.get_storage_amount(pid)
-            if total < amt:
-                continue # не хватает — таймер не сбрасываем
-            # Жадное списание остатка по членам группы (приоритет "best").
+            if total <= 0:
+                continue # склад пуст — таймер не сбрасываем: спишем сразу при появлении
+            # Жадное списание по членам группы (приоритет "best") ПО ФАКТУ
+            # НАЛИЧИЯ: берём всё, что есть, но не больше нужного. Ждать полного
+            # покрытия (amount * население) не требуется — частичное списание
+            # тоже происходит (и сбрасывает таймер, см. timer.elapsed ниже).
             var remaining = amt
             for pid in members:
                 if remaining <= 0:
@@ -365,15 +374,22 @@ func tick_city_consumption(delta: float) -> void:
                 var take = min(avail, remaining)
                 CityData.remove_from_storage(pid, take, "best")
                 CityData.record_consumption_source(pid, all_source, take)
+                # Горожане платят за потреблённый товар из казны (внутренний рынок).
+                CityData.add_treasury(CityData.get_internal_market_price(pid) * take)
                 remaining -= take
         else:
             var pid = str(entry.get("product_id", ""))
             if pid.is_empty():
                 continue
-            if CityData.get_storage_amount(pid) < amt:
-                continue
-            CityData.remove_from_storage(pid, amt, "best")
-            CityData.record_consumption_source(pid, all_source, amt)
+            var have = CityData.get_storage_amount(pid)
+            if have <= 0:
+                continue # склад пуст — таймер не сбрасываем: спишем сразу при появлении
+            # По факту наличия: списываем всё, что есть, но не больше нужного.
+            var take = min(have, amt)
+            CityData.remove_from_storage(pid, take, "best")
+            CityData.record_consumption_source(pid, all_source, take)
+            # Горожане платят за потреблённый товар из казны (внутренний рынок).
+            CityData.add_treasury(CityData.get_internal_market_price(pid) * take)
         timer.elapsed = 0.0
 
 # Сериализация таймеров городского потребления для сохранения.

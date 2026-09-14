@@ -20,6 +20,10 @@ var city_food_pool: Dictionary = {}
 var city_built_buildings: Array = []
 var domesticated_animals: Array = []
 var domesticated_plants: Array = []
+# Казна города (монеты). Всегда целое число; пополняется за счёт потребления
+# ресурсов на внутреннем рынке (см. add_treasury / get_internal_market_price и
+# docs.md, «Казна города и внутренний рынок»).
+var treasury: int = 0
 
 # Стройка зданий: ключ -> данные
 var building_construction: Dictionary = {}
@@ -131,6 +135,8 @@ signal city_updated()
 signal research_completed(tech_id: String)
 signal research_error(message: String)
 signal population_changed(new_population: int)
+# Казна изменилась: new_total — текущее целое число монет.
+signal treasury_changed(new_total: int)
 signal building_construction_started(building_id: String, build_key: String)
 signal building_construction_completed(building_id: String, build_key: String)
 # Апгрейд построенного здания запущен: idx — индекс здания в
@@ -161,6 +167,9 @@ func setup():
     last_research_messages = []
     city_name = ""
 
+    # Стартовая казна — из data/game_balance.json (поле initial_treasury).
+    treasury = int(GameData.game_balance.get("initial_treasury", 10))
+
     total_population = 1
     idle_population = 1 # один житель, пока нигде не занят
 
@@ -184,6 +193,29 @@ func reset_counters():
     consumption_rates.clear()
     production_sources.clear()
     consumption_sources.clear()
+
+# --- КАЗНА ГОРОДА ---
+# Добавляет монеты в казну. Казна всегда целое число монет: amount должен быть
+# целым (прибыль внутреннего рынка считается от округлённой цены единицы,
+# см. get_internal_market_price). Эмитит treasury_changed для обновления UI.
+func add_treasury(amount: int) -> void:
+    if amount == 0:
+        return
+    treasury += amount
+    emit_signal("treasury_changed", treasury)
+
+# Возвращает цену, по которой внутренний рынок покупает у города единицу
+# товара pid (в монетах казны). Это доля базовой цены товара (price из
+# data/products/*.json), заданная множителем internal_market_price_multiplier
+# в data/game_balance.json, с округлением
+# до ближайшего целого. Для товаров без цены возвращает 0.
+func get_internal_market_price(pid: String) -> int:
+    var prod = GameData.products.get(pid, {})
+    var base_price = float(prod.get("price", 0))
+    if base_price <= 0.0:
+        return 0
+    var mult = float(GameData.game_balance.get("internal_market_price_multiplier", 1.0))
+    return int(round(base_price * mult))
 
 # --- ЗАПИСЬ ИСТОЧНИКОВ ПРИХОДА/РАСХОДА (для тултипа вкладки «Ресурсы») ---
 # Обобщённый накопитель: добавляет amount от источника source_name к словарю
