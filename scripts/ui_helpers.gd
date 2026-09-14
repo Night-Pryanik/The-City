@@ -563,16 +563,29 @@ func _make_bullet_row(symbol: String, text: String, text_color: Color) -> HBoxCo
     row.add_child(label)
     return row
 
+# Форматирует цену для тултипа: целые значения без дробной части,
+# дробные (после динамических множителей цены) — с одним знаком.
+func _format_price(value: float) -> String:
+    if value == floor(value):
+        return str(int(value))
+    return "%.1f" % value
+
 # Показывает тултип «источники прихода/расхода» ресурса (вкладка «Ресурсы»).
 # prod_sources / cons_sources: { источник -> { count, amount } }.
 # Строки сортируются по убыванию вклада; «хN» показывается при count > 1.
-func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dictionary, cons_sources: Dictionary, special_yield: Dictionary = {}):
+# resource_id — id ресурса/продукта: если задан, сверху выводится его текущая
+# цена (GameData.get_price). Тултип показывается, даже когда производство/
+# потребление пусты, но цена ресурса > 0.
+func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dictionary, cons_sources: Dictionary, special_yield: Dictionary = {}, resource_id: String = ""):
     if flow_tooltip_panel == null:
         return
     # Очищаем предыдущее содержимое.
     for child in flow_tooltip_vbox.get_children():
         flow_tooltip_vbox.remove_child(child)
         child.queue_free()
+    var price := 0.0
+    if not resource_id.is_empty():
+        price = GameData.get_price(resource_id)
     var prod_lines: Array = []
     for src in prod_sources:
         prod_lines.append({"name": src, "amount": int(prod_sources[src].get("amount", 0)), "count": int(prod_sources[src].get("count", 1))})
@@ -582,7 +595,7 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dict
         cons_lines.append({"name": src, "amount": int(cons_sources[src].get("amount", 0)), "count": int(cons_sources[src].get("count", 1))})
     cons_lines.sort_custom(func(a, b): return a.amount > b.amount)
     if prod_lines.is_empty() and cons_lines.is_empty() \
-            and special_yield.is_empty():
+            and special_yield.is_empty() and price <= 0.0:
         flow_tooltip_panel.hide()
         return
     var header = Label.new()
@@ -591,6 +604,13 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dict
     header.add_theme_color_override("font_color", Color.WHITE)
     header.mouse_filter = Control.MOUSE_FILTER_IGNORE
     flow_tooltip_vbox.add_child(header)
+    # Текущая цена ресурса (с учётом динамических множителей).
+    if price > 0.0:
+        var price_label = Label.new()
+        price_label.text = "Цена: " + _format_price(price)
+        price_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+        price_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        flow_tooltip_vbox.add_child(price_label)
     for yield_id in special_yield:
         var yield_label = Label.new()
         yield_label.text = "%s: %d" % [

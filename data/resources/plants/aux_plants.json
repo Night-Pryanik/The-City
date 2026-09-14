@@ -1,7 +1,7 @@
 {
   "resources": [
     {
-      "id": "tea_field",
+      "id": "tea_field", "price": 6,
       "name": "Чай",
       "type": "raw",
       "category": "aux_plants",
@@ -16,7 +16,7 @@
       "color": [ 200, 255, 200 ]
     },
     {
-      "id": "coffee_field",
+      "id": "coffee_field", "price": 7,
       "name": "Кофе",
       "type": "raw",
       "category": "aux_plants",

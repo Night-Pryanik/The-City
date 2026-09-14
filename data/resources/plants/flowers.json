@@ -1,7 +1,7 @@
 {
   "resources": [
     {
-      "id": "tulip_field",
+      "id": "tulip_field", "price": 10,
       "name": "Тюльпаны",
       "type": "raw",
       "category": "plants",
@@ -16,7 +16,7 @@
       "color": [ 255, 100, 100 ]
     },
     {
-      "id": "rose_field",
+      "id": "rose_field", "price": 15,
       "name": "Розы",
       "type": "raw",
       "category": "plants",
@@ -31,7 +31,7 @@
       "color": [ 255, 50, 50 ]
     },
     {
-      "id": "chamomile_field",
+      "id": "chamomile_field", "price": 8,
       "name": "Ромашки",
       "type": "raw",
       "category": "plants",

@@ -133,6 +133,8 @@ func refresh():
             for animal in animal_subgroups[subgroup]:
                 var row = HBoxContainer.new()
                 row.add_theme_constant_override("separation", 6) # расстояние между иконкой и текстом
+                # Ховер на иконке/названии показывает цену ресурса
+                var animal_flow_labels: Array = []
                 if not animal["icon"].is_empty():
                     var tex = _get_icon_texture(animal["icon"])
                     if tex:
@@ -141,12 +143,21 @@ func refresh():
                         icon_rect.custom_minimum_size = Vector2(24, 24)
                         icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
                         icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
+                        icon_rect.mouse_filter = Control.MOUSE_FILTER_PASS
+                        icon_rect.mouse_entered.connect(_on_flow_hover.bind(animal["id"], animal["name"]))
+                        icon_rect.mouse_exited.connect(_on_flow_exit.bind(animal["id"]))
                         row.add_child(icon_rect)
+                        animal_flow_labels.append(icon_rect)
                 var animal_label = Label.new()
                 animal_label.text = animal["name"]
                 animal_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+                animal_label.mouse_filter = Control.MOUSE_FILTER_PASS
+                animal_label.mouse_entered.connect(_on_flow_hover.bind(animal["id"], animal["name"]))
+                animal_label.mouse_exited.connect(_on_flow_exit.bind(animal["id"]))
                 row.add_child(animal_label)
+                animal_flow_labels.append(animal_label)
                 resources_list.add_child(row)
+                row_flow_labels[animal["id"]] = animal_flow_labels
 
         var spacer = Label.new()
         spacer.text = ""
@@ -176,6 +187,8 @@ func refresh():
             for plant in plant_subgroups[subgroup]:
                 var row = HBoxContainer.new()
                 row.add_theme_constant_override("separation", 6)
+                # Ховер на иконке/названии показывает цену ресурса
+                var plant_flow_labels: Array = []
                 if not plant["icon"].is_empty():
                     var tex = _get_icon_texture(plant["icon"])
                     if tex:
@@ -184,12 +197,21 @@ func refresh():
                         icon_rect.custom_minimum_size = Vector2(24, 24)
                         icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
                         icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
+                        icon_rect.mouse_filter = Control.MOUSE_FILTER_PASS
+                        icon_rect.mouse_entered.connect(_on_flow_hover.bind(plant["id"], plant["name"]))
+                        icon_rect.mouse_exited.connect(_on_flow_exit.bind(plant["id"]))
                         row.add_child(icon_rect)
+                        plant_flow_labels.append(icon_rect)
                 var plant_label = Label.new()
                 plant_label.text = plant["name"]
                 plant_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+                plant_label.mouse_filter = Control.MOUSE_FILTER_PASS
+                plant_label.mouse_entered.connect(_on_flow_hover.bind(plant["id"], plant["name"]))
+                plant_label.mouse_exited.connect(_on_flow_exit.bind(plant["id"]))
                 row.add_child(plant_label)
+                plant_flow_labels.append(plant_label)
                 resources_list.add_child(row)
+                row_flow_labels[plant["id"]] = plant_flow_labels
 
         var spacer = Label.new()
         spacer.text = ""
@@ -420,7 +442,8 @@ func update_values():
             var fresh_cons_src = consumption_sources.get(active_flow_product, {})
             var special_yield = GameData.get_special_yield(active_flow_product)
             if fresh_prod_src.is_empty() and fresh_cons_src.is_empty() \
-                    and special_yield.is_empty():
+                    and special_yield.is_empty() \
+                    and GameData.get_price(active_flow_product) <= 0.0:
                 ui_helpers.hide_flow_tooltip()
             else:
                 ui_helpers.show_flow_tooltip(
@@ -428,7 +451,8 @@ func update_values():
                     active_flow_name,
                     fresh_prod_src,
                     fresh_cons_src,
-                    special_yield
+                    special_yield,
+                    active_flow_product
                 )
 
 # Добавляет метку с разбивкой по качеству в строку ресурса.
@@ -492,19 +516,18 @@ func _on_quality_exit():
     if ui_helpers and is_instance_valid(ui_helpers):
         ui_helpers.hide_quality_tooltip()
 
-# Показывает тултип источников прихода/расхода (название или динамика ресурса).
+# Показывает тултип ресурса (цена + источники прихода/расхода) при наведении
+# на название или динамику на вкладке «Ресурсы».
 func _on_flow_hover(prod_id: String, product_name: String):
     var prod_src = production_sources.get(prod_id, {})
     var cons_src = consumption_sources.get(prod_id, {})
     var special_yield = GameData.get_special_yield(prod_id)
-    if prod_src.is_empty() and cons_src.is_empty() and special_yield.is_empty():
-        return
     active_flow_product = prod_id
     active_flow_name = product_name
     if ui_helpers and is_instance_valid(ui_helpers):
         ui_helpers.show_flow_tooltip(
             get_viewport().get_mouse_position(), product_name, prod_src, cons_src,
-            special_yield)
+            special_yield, prod_id)
 
 # Скрывает тултип источников; при переходе на другую метку той же строки не мерцает.
 func _on_flow_exit(prod_id: String):

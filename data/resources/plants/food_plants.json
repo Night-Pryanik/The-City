@@ -12,7 +12,7 @@
   // (improved_by == null) и собираются спец-действием «Собрать дикоросы».
   "resources": [
     {
-      "id": "wild_food",
+      "id": "wild_food", "price": 1,
       "name": "Дикоросы",
       "type": "raw",
       "category": "plants",
@@ -27,7 +27,7 @@
       "color": [ 255, 200, 100 ]
     },
     {
-      "id": "wheat_field",
+      "id": "wheat_field", "price": 2,
       "name": "Пшеница",
       "type": "raw",
       "category": "plants",
@@ -42,7 +42,7 @@
       "color": [ 218, 165, 32 ]
     },
     {
-      "id": "oat_field",
+      "id": "oat_field", "price": 2,
       "name": "Овёс",
       "type": "raw",
       "category": "plants",
@@ -57,7 +57,7 @@
       "color": [ 214, 210, 82 ]
     },
     {
-      "id": "barley_field",
+      "id": "barley_field", "price": 2,
       "name": "Ячмень",
       "type": "raw",
       "category": "plants",
@@ -72,7 +72,7 @@
       "color": [ 218, 184, 96 ]
     },
     {
-      "id": "millet_field",
+      "id": "millet_field", "price": 2,
       "name": "Просо",
       "type": "raw",
       "category": "plants",
@@ -87,7 +87,7 @@
       "color": [ 240, 230, 140 ]
     },
     {
-      "id": "rye_field",
+      "id": "rye_field", "price": 2,
       "name": "Рожь",
       "type": "raw",
       "category": "plants",
@@ -102,7 +102,7 @@
       "color": [ 160, 150, 100 ]
     },
     {
-      "id": "rice_field",
+      "id": "rice_field", "price": 4,
       "name": "Рис",
       "type": "raw",
       "category": "plants",
@@ -118,7 +118,7 @@
       "spawn_conditions": [ [ { "type": "near_river", "chance": 100 } ] ]
     },
     {
-      "id": "soybean_field",
+      "id": "soybean_field", "price": 4,
       "name": "Соя",
       "type": "raw",
       "category": "plants",
@@ -133,7 +133,7 @@
       "color": [ 170, 190, 100 ]
     },
     {
-      "id": "quinoa_field",
+      "id": "quinoa_field", "price": 5,
       "name": "Киноа",
       "type": "raw",
       "category": "plants",
@@ -148,7 +148,7 @@
       "color": [ 210, 150, 110 ]
     },
     {
-      "id": "canihua_field",
+      "id": "canihua_field", "price": 4,
       "name": "Каньива",
       "type": "raw",
       "category": "plants",
@@ -163,7 +163,7 @@
       "color": [ 200, 140, 100 ]
     },
     {
-      "id": "potato_field",
+      "id": "potato_field", "price": 3,
       "name": "Картофель",
       "type": "raw",
       "category": "plants",
@@ -178,7 +178,7 @@
       "color": [ 180, 160, 110 ]
     },
     {
-      "id": "oca_field",
+      "id": "oca_field", "price": 4,
       "name": "Ока",
       "type": "raw",
       "category": "plants",
@@ -193,7 +193,7 @@
       "color": [ 230, 160, 120 ]
     },
     {
-      "id": "corn_field",
+      "id": "corn_field", "price": 3,
       "name": "Кукуруза",
       "type": "raw",
       "category": "plants",
@@ -208,7 +208,7 @@
       "color": [ 240, 200, 50 ]
     },
     {
-      "id": "yam_field",
+      "id": "yam_field", "price": 4,
       "name": "Ямс",
       "type": "raw",
       "category": "plants",
@@ -223,7 +223,7 @@
       "color": [ 160, 120, 80 ]
     },
     {
-      "id": "cassava_field",
+      "id": "cassava_field", "price": 3,
       "name": "Кассава",
       "type": "raw",
       "category": "plants",
@@ -238,7 +238,7 @@
       "color": [ 180, 140, 100 ]
     },
     {
-      "id": "sorghum_field",
+      "id": "sorghum_field", "price": 3,
       "name": "Сорго",
       "type": "raw",
       "category": "plants",
@@ -253,7 +253,7 @@
       "color": [ 200, 130, 70 ]
     },
     {
-      "id": "amaranth_field",
+      "id": "amaranth_field", "price": 3,
       "name": "Амарант",
       "type": "raw",
       "category": "plants",
@@ -268,7 +268,7 @@
       "color": [ 180, 50, 50 ]
     },
     {
-      "id": "teff_field",
+      "id": "teff_field", "price": 3,
       "name": "Теф",
       "type": "raw",
       "category": "plants",
@@ -283,7 +283,7 @@
       "color": [ 150, 100, 50 ]
     },
     {
-      "id": "taro_field",
+      "id": "taro_field", "price": 4,
       "name": "Таро",
       "type": "raw",
       "category": "plants",
@@ -299,7 +299,7 @@
       "spawn_conditions": [ [ { "type": "near_river", "chance": 100 } ] ]
     },
     {
-      "id": "maca_field",
+      "id": "maca_field", "price": 5,
       "name": "Мака",
       "type": "raw",
       "category": "plants",
@@ -314,7 +314,7 @@
       "color": [ 200, 180, 100 ]
     },
     {
-      "id": "buckwheat_field",
+      "id": "buckwheat_field", "price": 3,
       "name": "Гречиха",
       "type": "raw",
       "category": "plants",
@@ -329,7 +329,7 @@
       "color": [ 160, 110, 70 ]
     },
     {
-      "id": "bean_field",
+      "id": "bean_field", "price": 3,
       "name": "Фасоль",
       "type": "raw",
       "category": "plants",
@@ -344,7 +344,7 @@
       "color": [ 180, 100, 60 ]
     },
     {
-      "id": "cowpea_field",
+      "id": "cowpea_field", "price": 3,
       "name": "Вигна",
       "type": "raw",
       "category": "plants",
@@ -359,7 +359,7 @@
       "color": [ 170, 120, 80 ]
     },
     {
-      "id": "pea_field",
+      "id": "pea_field", "price": 3,
       "name": "Горох",
       "type": "raw",
       "category": "plants",
@@ -374,7 +374,7 @@
       "color": [ 120, 180, 80 ]
     },
     {
-      "id": "lentil_field",
+      "id": "lentil_field", "price": 4,
       "name": "Чечевица",
       "type": "raw",
       "category": "plants",
@@ -389,7 +389,7 @@
       "color": [ 160, 140, 80 ]
     },
     {
-      "id": "chickpea_field",
+      "id": "chickpea_field", "price": 4,
       "name": "Нут",
       "type": "raw",
       "category": "plants",

@@ -1,7 +1,7 @@
 {
   "resources": [
     {
-      "id": "basalt_deposit",
+      "id": "basalt_deposit", "price": 4,
       "name": "Базальт",
       "type": "raw",
       "category": "minerals",
@@ -17,7 +17,7 @@
       "color": [ 80, 80, 80 ]
     },
     {
-      "id": "tuff_deposit",
+      "id": "tuff_deposit", "price": 5,
       "name": "Туф",
       "type": "raw",
       "category": "minerals",
@@ -32,7 +32,7 @@
       "color": [ 180, 150, 100 ]
     },
     {
-      "id": "sandstone_deposit",
+      "id": "sandstone_deposit", "price": 4,
       "name": "Песчаник",
       "type": "raw",
       "category": "minerals",
@@ -47,7 +47,7 @@
       "color": [ 210, 180, 130 ]
     },
     {
-      "id": "marble_deposit",
+      "id": "marble_deposit", "price": 14,
       "name": "Мрамор",
       "type": "raw",
       "category": "minerals",
@@ -63,7 +63,7 @@
       "color": [ 220, 220, 220 ]
     },
     {
-      "id": "granite_deposit",
+      "id": "granite_deposit", "price": 10,
       "name": "Гранит",
       "type": "raw",
       "category": "minerals",
@@ -79,7 +79,7 @@
       "color": [ 120, 110, 100 ]
     },
     {
-      "id": "limestone_deposit",
+      "id": "limestone_deposit", "price": 4,
       "name": "Известняк",
       "type": "raw",
       "category": "minerals",
@@ -94,7 +94,7 @@
       "color": [ 200, 200, 180 ]
     },
     {
-      "id": "clay_deposit",
+      "id": "clay_deposit", "price": 3,
       "name": "Глина",
       "type": "raw",
       "category": "minerals",
@@ -114,7 +114,7 @@
       ]
     },
     {
-      "id": "quartz_sand_deposit",
+      "id": "quartz_sand_deposit", "price": 5,
       "name": "Кварцевый песок",
       "type": "raw",
       "category": "minerals",
@@ -130,7 +130,7 @@
       "color": [ 245, 245, 220 ]
     },
     {
-      "id": "soda_deposit",
+      "id": "soda_deposit", "price": 8,
       "name": "Сода",
       "type": "raw",
       "category": "minerals",
@@ -147,7 +147,7 @@
       "spawn_conditions": [ [ { "type": "terrain", "terrain_id": "soda_lake", "chance": 100 } ] ]
     },
     {
-      "id": "bitumen_deposit",
+      "id": "bitumen_deposit", "price": 9,
       "name": "Битум",
       "type": "raw",
       "category": "minerals",
@@ -163,7 +163,7 @@
       "color": [ 50, 50, 50 ]
     },
     {
-      "id": "bitumen_deposit_asphalt",
+      "id": "bitumen_deposit_asphalt", "price": 9,
       "name": "Битум",
       "type": "raw",
       "category": "minerals",
@@ -180,7 +180,7 @@
       "spawn_conditions": [ [ { "type": "terrain", "terrain_id": "asphalt_lake", "chance": 100 } ] ]
     },
     {
-      "id": "salt_deposit_lake",
+      "id": "salt_deposit_lake", "price": 6,
       "name": "Соль",
       "type": "raw",
       "category": "minerals",
@@ -197,7 +197,7 @@
       "spawn_conditions": [ [ { "type": "terrain", "terrain_id": "salt_lake", "chance": 100 } ] ]
     },
     {
-      "id": "salt_deposit_underground",
+      "id": "salt_deposit_underground", "price": 6,
       "name": "Соль",
       "type": "raw",
       "category": "minerals",
@@ -217,7 +217,7 @@
       ]
     },
     {
-      "id": "salt_evaporation",
+      "id": "salt_evaporation", "price": 6,
       "name": "Соль",
       "type": "raw",
       "category": "minerals",
@@ -234,7 +234,7 @@
       "spawn_conditions": [ [ { "type": "terrain", "terrain_id": "beach", "chance": 100 } ] ]
     },
     {
-      "id": "cinnabar_deposit",
+      "id": "cinnabar_deposit", "price": 12,
       "name": "Киноварь",
       "type": "raw",
       "category": "minerals",
@@ -250,7 +250,7 @@
       "color": [ 255, 0, 0 ]
     },
     {
-      "id": "lazurite_deposit",
+      "id": "lazurite_deposit", "price": 18,
       "name": "Лазурит",
       "type": "raw",
       "category": "minerals",
@@ -266,7 +266,7 @@
       "color": [ 0, 0, 255 ]
     },
     {
-      "id": "malachite_deposit",
+      "id": "malachite_deposit", "price": 14,
       "name": "Малахит",
       "type": "raw",
       "category": "minerals",

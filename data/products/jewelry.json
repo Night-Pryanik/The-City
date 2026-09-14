@@ -1,7 +1,7 @@
 {
   "resources": [
     {
-      "id": "glass_jewelry",
+      "id": "glass_jewelry", "price": 22,
       "name": "Стеклянные украшения",
       "type": "product",
       "category": "luxury",
@@ -9,7 +9,7 @@
       "icon": "glass_jewelry.png"
     },
     {
-      "id": "gold_jewelry",
+      "id": "gold_jewelry", "price": 140,
       "name": "Золотые украшения",
       "type": "product",
       "category": "luxury",
@@ -17,7 +17,7 @@
       "icon": "gold_jewelry.png"
     },
     {
-      "id": "copper_jewelry",
+      "id": "copper_jewelry", "price": 28,
       "name": "Медные украшения",
       "type": "product",
       "category": "luxury",
@@ -25,7 +25,7 @@
       "icon": "copper_jewelry.png"
     },
     {
-      "id": "silver_jewelry",
+      "id": "silver_jewelry", "price": 90,
       "name": "Серебряные украшения",
       "type": "product",
       "category": "luxury",
@@ -33,7 +33,7 @@
       "icon": "silver_jewelry.png"
     },
     {
-      "id": "bronze_jewelry",
+      "id": "bronze_jewelry", "price": 40,
       "name": "Бронзовые украшения",
       "type": "product",
       "category": "luxury",
@@ -41,7 +41,7 @@
       "icon": "bronze_jewelry.png"
     },
     {
-      "id": "iron_jewelry",
+      "id": "iron_jewelry", "price": 55,
       "name": "Железные украшения",
       "type": "product",
       "category": "luxury",
@@ -49,7 +49,7 @@
       "icon": "iron_jewelry.png"
     },
     {
-      "id": "lazurite_jewelry",
+      "id": "lazurite_jewelry", "price": 120,
       "name": "Украшения из ляпис-лазури",
       "type": "product",
       "category": "luxury",

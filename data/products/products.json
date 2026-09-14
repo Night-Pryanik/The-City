@@ -1,7 +1,7 @@
 {
   "resources": [
     {
-      "id": "pottery",
+      "id": "pottery", "price": 10,
       "name": "Глиняная посуда",
       "type": "product",
       "category": "household_items",
@@ -9,7 +9,7 @@
       "icon": "pottery.png"
     },
     {
-      "id": "clay_tablets",
+      "id": "clay_tablets", "price": 6,
       "name": "Глиняные таблички",
       "type": "product",
       "category": "material",
@@ -18,7 +18,7 @@
       "special_yield": { "science": 1 }
     },
     {
-      "id": "fabric_clothes",
+      "id": "fabric_clothes", "price": 16,
       "name": "Тканевая одежда",
       "type": "product",
       "category": "clothes",
@@ -26,7 +26,7 @@
       "icon": "fabric_clothes.png"
     },
     {
-      "id": "wool_clothes",
+      "id": "wool_clothes", "price": 20,
       "name": "Шерстяная одежда",
       "type": "product",
       "category": "clothes",
@@ -34,7 +34,7 @@
       "icon": "wool_clothes.png"
     },
     {
-      "id": "leather_clothes",
+      "id": "leather_clothes", "price": 28,
       "name": "Кожаная одежда",
       "type": "product",
       "category": "clothes",
@@ -42,7 +42,7 @@
       "icon": "leather_clothes.png"
     },
     {
-      "id": "silk_clothes",
+      "id": "silk_clothes", "price": 90,
       "name": "Шёлковая одежда",
       "type": "product",
       "category": "clothes",
@@ -50,7 +50,7 @@
       "icon": "silk_clothes.png"
     },
     {
-      "id": "vegetable_oil",
+      "id": "vegetable_oil", "price": 10,
       "name": "Растительное масло",
       "type": "product",
       "category": "material",
@@ -58,15 +58,7 @@
       "icon": "vegetable_oil.png"
     },
     {
-      "id": "wine",
-      "name": "Вино",
-      "type": "product",
-      "category": "drinks",
-      "unlock_tech": "winegrowing",
-      "icon": "wine.png"
-    },
-    {
-      "id": "ropes",
+      "id": "ropes", "price": 7,
       "name": "Веревки и канаты",
       "type": "product",
       "category": "material",
@@ -74,7 +66,7 @@
       "icon": "ropes.png"
     },
     {
-      "id": "tar",
+      "id": "tar", "price": 6,
       "name": "Смола",
       "type": "product",
       "category": "material",
@@ -82,7 +74,7 @@
       "icon": "tar.png"
     },
     {
-      "id": "tarred_ropes",
+      "id": "tarred_ropes", "price": 10,
       "name": "Просмоленные веревки",
       "type": "product",
       "category": "material",
@@ -90,7 +82,7 @@
       "icon": "tarred_ropes.png"
     },
     {
-      "id": "soap",
+      "id": "soap", "price": 8,
       "name": "Мыло",
       "type": "product",
       "category": "household_items",
@@ -98,7 +90,7 @@
       "icon": "soap.png"
     },
     {
-      "id": "salt",
+      "id": "salt", "price": 6,
       "name": "Соль",
       "type": "product",
       "category": "household_items",
@@ -106,7 +98,7 @@
       "icon": "salt.png"
     },
     {
-      "id": "papyrus",
+      "id": "papyrus", "price": 10,
       "name": "Папирус",
       "type": "product",
       "category": "material",
@@ -115,7 +107,7 @@
       "special_yield": { "science": 2 }
     },
     {
-      "id": "reed_boat",
+      "id": "reed_boat", "price": 12,
       "name": "Тростниковая лодка",
       "type": "product",
       "category": "other",
@@ -133,7 +125,7 @@
       // «Профессии и потребление ресурсов».
     },
     {
-      "id": "parchment",
+      "id": "parchment", "price": 16,
       "name": "Пергамент",
       "type": "product",
       "category": "material",
@@ -142,7 +134,7 @@
       "special_yield": { "science": 3 }
     },
     {
-      "id": "wax_tablets",
+      "id": "wax_tablets", "price": 12,
       "name": "Восковые таблички",
       "type": "product",
       "category": "material",

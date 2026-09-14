@@ -15,6 +15,7 @@ var eras: Array = []
 var product_groups: Dictionary = {}
 var product_group_names: Dictionary = {}
 var modifiers: Dictionary = {}
+var price_modifiers: Dictionary = {} # resource_id -> { фактор: множитель цены }
 var special_actions: Dictionary = {} # id -> данные спецдействия
 var qualities: Dictionary = {} # данные о степенях качества ресурсов
 var map_config: Dictionary = {} # конфигурация карты мира (data/map_config.json)
@@ -99,6 +100,56 @@ func format_resource_name(key: String) -> String:
 
 func get_special_yield(product_id: String) -> Dictionary:
     return products.get(product_id, {}).get("special_yield", {})
+
+# --- ЦЕНЫ НА РЕСУРСЫ ---
+# Базовая цена задана в JSON (поле "price" у ресурса/продукта). Итоговая цена
+# может динамически меняться через множители: например, голод поднимает цены
+# на еду, избыточное предложение или эрозия рынка — опускают. Множители
+# перемножаются между собой, итог = база × произведение всех активных.
+# Подробности — в docs.md, раздел «Цены на ресурсы».
+
+# Возвращает данные ресурса/продукта (сырьё или продукция) по id.
+func get_resource_data(res_id: String) -> Dictionary:
+    if raw_resources.has(res_id):
+        return raw_resources[res_id]
+    if products.has(res_id):
+        return products[res_id]
+    return {}
+
+# Базовая цена из JSON (поле "price"). Если поля нет — 0.
+func get_base_price(res_id: String) -> float:
+    return float(get_resource_data(res_id).get("price", 0.0))
+
+# Произведение всех активных множителей цены ресурса (без активных — 1.0).
+func get_price_multiplier(res_id: String) -> float:
+    var total := 1.0
+    var mods: Dictionary = price_modifiers.get(res_id, {})
+    for factor in mods:
+        total *= float(mods[factor])
+    return total
+
+# Итоговая цена ресурса на текущий момент: база × активные множители.
+func get_price(res_id: String) -> float:
+    return get_base_price(res_id) * get_price_multiplier(res_id)
+
+# Включает множитель цены (factor — имя фактора, напр. "famine" или
+# "market_glut"). Эффект применяется к конкретному ресурсу по его id; чтобы
+# распространить его на группу, примените ко всем членам группы.
+func apply_price_modifier(res_id: String, factor: String, multiplier: float):
+    if not price_modifiers.has(res_id):
+        price_modifiers[res_id] = {}
+    price_modifiers[res_id][factor] = multiplier
+
+# Отключает один фактор-множитель цены ресурса.
+func remove_price_modifier(res_id: String, factor: String):
+    if price_modifiers.has(res_id):
+        price_modifiers[res_id].erase(factor)
+        if price_modifiers[res_id].is_empty():
+            price_modifiers.erase(res_id)
+
+# Сбрасывает ВСЕ динамические множители цен (цены возвращаются к базовым).
+func clear_price_modifiers():
+    price_modifiers.clear()
 
 func get_building_additional_yield(building_id: String) -> Dictionary:
     for building in buildings:

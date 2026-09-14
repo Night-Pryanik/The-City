@@ -1,19 +1,19 @@
 {
   "resources": [
-    { "id": "grapes", "name": "Виноград", "type": "product", "category": "fruits", "icon": "grapes.png" },
-    { "id": "olives", "name": "Оливки", "type": "product", "category": "fruits", "icon": "olives.png" },
+    { "id": "grapes", "price": 6, "name": "Виноград", "type": "product", "category": "fruits", "icon": "grapes.png" },
+    { "id": "olives", "price": 7, "name": "Оливки", "type": "product", "category": "fruits", "icon": "olives.png" },
     {
-      "id": "mulberries",
+      "id": "mulberries", "price": 5,
       "name": "Шелковица",
       "type": "product",
       "category": "fruits",
       "icon": "mulberries.png"
     },
-    { "id": "figs", "name": "Инжир", "type": "product", "category": "fruits", "icon": "figs.png" },
-    { "id": "dates", "name": "Финики", "type": "product", "category": "fruits", "icon": "dates.png" },
-    { "id": "agave", "name": "Агава", "type": "product", "category": "fruits", "icon": "agave.png" },
+    { "id": "figs", "price": 8, "name": "Инжир", "type": "product", "category": "fruits", "icon": "figs.png" },
+    { "id": "dates", "price": 10, "name": "Финики", "type": "product", "category": "fruits", "icon": "dates.png" },
+    { "id": "agave", "price": 4, "name": "Агава", "type": "product", "category": "fruits", "icon": "agave.png" },
     {
-      "id": "cactus_fruit",
+      "id": "cactus_fruit", "price": 6,
       "name": "Опунция",
       "type": "product",
       "category": "fruits",

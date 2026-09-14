@@ -1,7 +1,7 @@
 {
   "resources": [
     {
-      "id": "flax_field",
+      "id": "flax_field", "price": 4,
       "name": "Лён",
       "type": "raw",
       "category": "technical_plants",
@@ -16,7 +16,7 @@
       "color": [ 200, 200, 255 ]
     },
     {
-      "id": "cotton_field",
+      "id": "cotton_field", "price": 6,
       "name": "Хлопок",
       "type": "raw",
       "category": "technical_plants",
@@ -31,7 +31,7 @@
       "color": [ 255, 255, 255 ]
     },
     {
-      "id": "hemp_field",
+      "id": "hemp_field", "price": 5,
       "name": "Конопля",
       "type": "raw",
       "category": "technical_plants",
@@ -46,7 +46,7 @@
       "color": [ 100, 255, 100 ]
     },
     {
-      "id": "jute_field",
+      "id": "jute_field", "price": 5,
       "name": "Джут",
       "type": "raw",
       "category": "technical_plants",
@@ -62,7 +62,7 @@
       "spawn_conditions": [ [ { "type": "near_river", "chance": 100 } ] ]
     },
     {
-      "id": "ramie_field",
+      "id": "ramie_field", "price": 5,
       "name": "Рами",
       "type": "raw",
       "category": "technical_plants",
@@ -79,7 +79,7 @@
     {
       // Дабы не плодить лишних сущностей, под единой "Агавой" здесь подразумеваются разные виды агавы
       // (агава американская, агава сизалевая, агава текильная и т.д.), которые в игре объединены в один ресурс.
-      "id": "agave_field",
+      "id": "agave_field", "price": 4,
       "name": "Агава",
       "type": "raw",
       "category": "technical_plants",
@@ -94,7 +94,7 @@
       "color": [ 200, 255, 200 ]
     },
     {
-      "id": "mulberry_tree",
+      "id": "mulberry_tree", "price": 5,
       "name": "Тутовое дерево",
       "type": "raw",
       "category": "technical_plants",
@@ -109,7 +109,7 @@
       "color": [ 255, 100, 100 ]
     },
     {
-      "id": "sesame_field",
+      "id": "sesame_field", "price": 12,
       "name": "Кунжут",
       "type": "raw",
       "category": "technical_plants",
@@ -124,7 +124,7 @@
       "color": [ 255, 200, 150 ]
     },
     {
-      "id": "papyrus_field",
+      "id": "papyrus_field", "price": 5,
       "name": "Папирус",
       "type": "raw",
       "category": "technical_plants",
@@ -139,7 +139,7 @@
       "color": [ 200, 255, 200 ]
     },
     {
-      "id": "indigofera_field",
+      "id": "indigofera_field", "price": 6,
       "name": "Индигофера",
       "type": "raw",
       "category": "technical_plants",
@@ -153,7 +153,7 @@
       "icon": "indigofera.png"
     },
     {
-      "id": "lawsonia_field",
+      "id": "lawsonia_field", "price": 6,
       "name": "Лавсония",
       "type": "raw",
       "category": "technical_plants",
@@ -167,7 +167,7 @@
       "icon": "lawsonia.png"
     },
     {
-      "id": "marena_field",
+      "id": "marena_field", "price": 8,
       "name": "Марена",
       "type": "raw",
       "category": "technical_plants",
@@ -181,7 +181,7 @@
       "icon": "marena.png"
     },
     {
-      "id": "woad_field",
+      "id": "woad_field", "price": 6,
       "name": "Вайда",
       "type": "raw",
       "category": "technical_plants",
@@ -195,7 +195,7 @@
       "icon": "woad.png"
     },
     {
-      "id": "campeche_tree",
+      "id": "campeche_tree", "price": 10,
       "name": "Кампешевое дерево",
       "type": "raw",
       "category": "technical_plants",
@@ -209,7 +209,7 @@
       "icon": "campeche_tree.png"
     },
     {
-      "id": "safflower_field",
+      "id": "safflower_field", "price": 7,
       "name": "Сафлор",
       "type": "raw",
       "category": "technical_plants",
@@ -223,7 +223,7 @@
       "icon": "safflower.png"
     },
     {
-      "id": "opuntia_field",
+      "id": "opuntia_field", "price": 6,
       "name": "Опунция",
       "type": "raw",
       "category": "technical_plants",

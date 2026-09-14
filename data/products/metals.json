@@ -1,19 +1,19 @@
 {
   "resources": [
     {
-      "id": "meteorite_iron",
+      "id": "meteorite_iron", "price": 45,
       "name": "Метеоритное железо",
       "type": "product",
       "category": "metals",
       "icon": "meteorite_iron.png"
     },
-    { "id": "copper", "name": "Медь", "type": "product", "category": "metals", "icon": "copper.png" },
-    { "id": "gold", "name": "Золото", "type": "product", "category": "metals", "icon": "gold.png" },
-    { "id": "silver", "name": "Серебро", "type": "product", "category": "metals", "icon": "silver.png" },
-    { "id": "iron", "name": "Железо", "type": "product", "category": "metals", "icon": "iron.png" },
-    { "id": "tin", "name": "Олово", "type": "product", "category": "metals", "icon": "tin.png" },
-    { "id": "antimony", "name": "Сурьма", "type": "product", "category": "metals", "icon": "antimony.png" },
-    { "id": "arsenic", "name": "Мышьяк", "type": "product", "category": "metals", "icon": "arsenic.png" },
-    { "id": "bronze", "name": "Бронза", "type": "product", "category": "metals", "icon": "bronze.png" }
+    { "id": "copper", "price": 14, "name": "Медь", "type": "product", "category": "metals", "icon": "copper.png" },
+    { "id": "gold", "price": 70, "name": "Золото", "type": "product", "category": "metals", "icon": "gold.png" },
+    { "id": "silver", "price": 40, "name": "Серебро", "type": "product", "category": "metals", "icon": "silver.png" },
+    { "id": "iron", "price": 26, "name": "Железо", "type": "product", "category": "metals", "icon": "iron.png" },
+    { "id": "tin", "price": 16, "name": "Олово", "type": "product", "category": "metals", "icon": "tin.png" },
+    { "id": "antimony", "price": 18, "name": "Сурьма", "type": "product", "category": "metals", "icon": "antimony.png" },
+    { "id": "arsenic", "price": 18, "name": "Мышьяк", "type": "product", "category": "metals", "icon": "arsenic.png" },
+    { "id": "bronze", "price": 34, "name": "Бронза", "type": "product", "category": "metals", "icon": "bronze.png" }
   ]
 }

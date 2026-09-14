@@ -11,7 +11,7 @@
   // и растений (схема crop_bred)».
   "resources": [
     {
-      "id": "cows",
+      "id": "cows", "price": 60,
       "name": "Коровы",
       "type": "raw",
       "category": "animals",
@@ -28,7 +28,7 @@
       "color": [ 139, 90, 43 ]
     },
     {
-      "id": "sheep",
+      "id": "sheep", "price": 30,
       "name": "Овцы",
       "type": "raw",
       "category": "animals",
@@ -45,7 +45,7 @@
       "color": [ 200, 200, 200 ]
     },
     {
-      "id": "goats",
+      "id": "goats", "price": 28,
       "name": "Козы",
       "type": "raw",
       "category": "animals",
@@ -62,7 +62,7 @@
       "color": [ 160, 140, 120 ]
     },
     {
-      "id": "horses",
+      "id": "horses", "price": 150,
       "name": "Лошади",
       "type": "raw",
       "category": "animals",
@@ -79,7 +79,7 @@
       "color": [ 100, 80, 60 ]
     },
     {
-      "id": "pigs",
+      "id": "pigs", "price": 35,
       "name": "Свиньи",
       "type": "raw",
       "category": "animals",
@@ -96,7 +96,7 @@
       "color": [ 255, 180, 180 ]
     },
     {
-      "id": "zebu",
+      "id": "zebu", "price": 55,
       "name": "Зебу",
       "type": "raw",
       "category": "animals",
@@ -113,7 +113,7 @@
       "color": [ 210, 180, 140 ]
     },
     {
-      "id": "banteng",
+      "id": "banteng", "price": 65,
       "name": "Бантенги",
       "type": "raw",
       "category": "animals",
@@ -130,7 +130,7 @@
       "color": [ 160, 120, 80 ]
     },
     {
-      "id": "buffalo",
+      "id": "buffalo", "price": 75,
       "name": "Буйволы",
       "type": "raw",
       "category": "animals",
@@ -147,7 +147,7 @@
       "color": [ 80, 60, 40 ]
     },
     {
-      "id": "bison",
+      "id": "bison", "price": 70,
       "name": "Бизоны",
       "type": "raw",
       "category": "animals",
@@ -164,7 +164,7 @@
       "color": [ 100, 70, 50 ]
     },
     {
-      "id": "yak",
+      "id": "yak", "price": 70,
       "name": "Яки",
       "type": "raw",
       "category": "animals",
@@ -181,7 +181,7 @@
       "color": [ 50, 50, 50 ]
     },
     {
-      "id": "llama",
+      "id": "llama", "price": 40,
       "name": "Ламы",
       "type": "raw",
       "category": "animals",
@@ -198,7 +198,7 @@
       "color": [ 220, 200, 180 ]
     },
     {
-      "id": "alpaca",
+      "id": "alpaca", "price": 40,
       "name": "Альпаки",
       "type": "raw",
       "category": "animals",
@@ -215,7 +215,7 @@
       "color": [ 240, 230, 210 ]
     },
     {
-      "id": "camel",
+      "id": "camel", "price": 120,
       "name": "Верблюды",
       "type": "raw",
       "category": "animals",
@@ -233,7 +233,7 @@
       "color": [ 200, 180, 140 ]
     },
     {
-      "id": "deer",
+      "id": "deer", "price": 50,
       "name": "Олени",
       "type": "raw",
       "category": "animals",
@@ -250,7 +250,7 @@
       "color": [ 180, 140, 100 ]
     },
     {
-      "id": "chicken",
+      "id": "chicken", "price": 10,
       "name": "Куры",
       "type": "raw",
       "category": "animals",
@@ -267,7 +267,7 @@
       "color": [ 255, 230, 150 ]
     },
     {
-      "id": "turkey",
+      "id": "turkey", "price": 14,
       "name": "Индейки",
       "type": "raw",
       "category": "animals",
@@ -284,7 +284,7 @@
       "color": [ 180, 130, 80 ]
     },
     {
-      "id": "duck",
+      "id": "duck", "price": 12,
       "name": "Утки",
       "type": "raw",
       "category": "animals",
@@ -301,7 +301,7 @@
       "color": [ 70, 130, 50 ]
     },
     {
-      "id": "goose",
+      "id": "goose", "price": 15,
       "name": "Гуси",
       "type": "raw",
       "category": "animals",
@@ -318,7 +318,7 @@
       "color": [ 200, 200, 200 ]
     },
     {
-      "id": "guineafowl",
+      "id": "guineafowl", "price": 12,
       "name": "Цесарки",
       "type": "raw",
       "category": "animals",
@@ -335,7 +335,7 @@
       "color": [ 100, 100, 100 ]
     },
     {
-      "id": "ostrich",
+      "id": "ostrich", "price": 40,
       "name": "Страусы",
       "type": "raw",
       "category": "animals",
@@ -352,7 +352,7 @@
       "color": [ 50, 50, 50 ]
     },
     {
-      "id": "bee",
+      "id": "bee", "price": 25,
       "name": "Пчёлы",
       "type": "raw",
       "category": "animals",
@@ -369,7 +369,7 @@
       "color": [ 255, 215, 0 ]
     },
     {
-      "id": "rabbit",
+      "id": "rabbit", "price": 8,
       "name": "Кролики",
       "type": "raw",
       "category": "animals",
@@ -386,7 +386,7 @@
       "color": [ 200, 200, 200 ]
     },
     {
-      "id": "pigeon",
+      "id": "pigeon", "price": 8,
       "name": "Голуби",
       "type": "raw",
       "category": "animals",
@@ -403,7 +403,7 @@
       "color": [ 150, 150, 150 ]
     },
     {
-      "id": "freshwater_fish",
+      "id": "freshwater_fish", "price": 5,
       "name": "Рыба",
       "type": "raw",
       "category": "animals",
@@ -423,7 +423,7 @@
       "spawn_count": [10, 30]
     },
     {
-      "id": "sea_fish",
+      "id": "sea_fish", "price": 5,
       "name": "Рыба",
       "type": "raw",
       "category": "animals",
@@ -443,7 +443,7 @@
       "spawn_count": [10, 30]
     },
     {
-      "id": "murex",
+      "id": "murex", "price": 40,
       "name": "Мурекс",
       "type": "raw",
       "category": "animals",

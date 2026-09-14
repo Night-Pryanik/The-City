@@ -1,14 +1,14 @@
 {
   "resources": [
-    { "id": "coal", "name": "Уголь", "type": "product", "category": "minerals", "icon": "coal.png" },
+    { "id": "coal", "price": 7, "name": "Уголь", "type": "product", "category": "minerals", "icon": "coal.png" },
     {
-      "id": "quartz_sand",
+      "id": "quartz_sand", "price": 5,
       "name": "Кварцевый песок",
       "type": "product",
       "category": "minerals",
       "icon": "quartz_sand.png"
     },
-    { "id": "soda", "name": "Сода", "type": "product", "category": "minerals", "icon": "soda.png" },
-    { "id": "bitumen", "name": "Битум", "type": "product", "category": "minerals", "icon": "bitumen.png" }
+    { "id": "soda", "price": 8, "name": "Сода", "type": "product", "category": "minerals", "icon": "soda.png" },
+    { "id": "bitumen", "price": 9, "name": "Битум", "type": "product", "category": "minerals", "icon": "bitumen.png" }
   ]
 }

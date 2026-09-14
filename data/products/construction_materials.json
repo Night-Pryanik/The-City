@@ -1,50 +1,50 @@
 {
   "resources": [
     {
-      "id": "basalt",
+      "id": "basalt", "price": 4,
       "name": "Базальт",
       "type": "product",
       "category": "construction_material",
       "icon": "basalt.png"
     },
-    { "id": "tuff", "name": "Туф", "type": "product", "category": "construction_material", "icon": "tuff.png" },
+    { "id": "tuff", "price": 5, "name": "Туф", "type": "product", "category": "construction_material", "icon": "tuff.png" },
     {
-      "id": "sandstone",
+      "id": "sandstone", "price": 4,
       "name": "Песчаник",
       "type": "product",
       "category": "construction_material",
       "icon": "sandstone.png"
     },
     {
-      "id": "marble",
+      "id": "marble", "price": 14,
       "name": "Мрамор",
       "type": "product",
       "category": "construction_material",
       "icon": "marble.png"
     },
     {
-      "id": "granite",
+      "id": "granite", "price": 10,
       "name": "Гранит",
       "type": "product",
       "category": "construction_material",
       "icon": "granite.png"
     },
     {
-      "id": "limestone",
+      "id": "limestone", "price": 4,
       "name": "Известняк",
       "type": "product",
       "category": "construction_material",
       "icon": "limestone.png"
     },
     {
-      "id": "bricks",
+      "id": "bricks", "price": 6,
       "name": "Кирпичи",
       "type": "product",
       "category": "construction_material",
       "icon": "bricks.png"
     },
     {
-      "id": "processed_building_stone",
+      "id": "processed_building_stone", "price": 16,
       "name": "Обработанный строительный камень",
       "type": "product",
       "category": "construction_material",
@@ -54,7 +54,7 @@
     {
       // Продукт «Доски». Производится в «Лесопилке» (sawmill) из древесины
       // по рецепту «Распиловка досок» (crafts.json).
-      "id": "planks",
+      "id": "planks", "price": 4,
       "name": "Доски",
       "type": "product",
       "category": "construction_material",
