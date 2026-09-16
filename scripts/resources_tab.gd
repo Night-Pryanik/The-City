@@ -391,9 +391,7 @@ func refresh():
             row.add_child(name_label)
             amount_labels[prod_id] = name_label
 
-            # Динамика. Зелёная метка — факт производства за тик, а при нуле
-            # факта — плановое производство с маркером «≈» (см.
-            # _format_prod_label). Красная — потребление (_format_cons_label).
+            # Динамика показывает только плановые показатели.
             var green_label = Label.new()
             green_label.text = _format_prod_label(prod_id)
             green_label.add_theme_color_override("font_color", Color.GREEN)
@@ -534,13 +532,10 @@ func update_values():
     # (см. _get_current_cons_sources).
     if active_flow_product != "" and ui_helpers and is_instance_valid(ui_helpers):
         if ui_helpers.flow_tooltip_panel.visible:
-            var fresh_prod_src = production_sources.get(active_flow_product, {})
-            var fresh_cons_src = _get_current_cons_sources(active_flow_product)
             var special_yield = GameData.get_special_yield(active_flow_product)
             var fresh_planned = _get_planned_for(active_flow_product)
             var fresh_planned_prod = planned_production_map.get(active_flow_product, {})
-            if fresh_prod_src.is_empty() and fresh_cons_src.is_empty() \
-                    and special_yield.is_empty() and fresh_planned.is_empty() \
+            if special_yield.is_empty() and fresh_planned.is_empty() \
                     and fresh_planned_prod.is_empty() \
                     and GameData.get_price(active_flow_product) <= 0.0:
                 ui_helpers.hide_flow_tooltip()
@@ -548,8 +543,8 @@ func update_values():
                 ui_helpers.show_flow_tooltip(
                     get_viewport().get_mouse_position(),
                     active_flow_name,
-                    fresh_prod_src,
-                    fresh_cons_src,
+                    {},
+                    {},
                     special_yield,
                     active_flow_product,
                     fresh_planned,
@@ -625,9 +620,6 @@ func _on_quality_exit():
 # есть для «за тик» (рецепты зданий). Приведение честно показывает средний
 # расход: 10 ед./10 сек = 1 ед./сек.
 func _format_cons_label(prod_id: String) -> String:
-    var cons_val = consumption_rates.get(prod_id, 0)
-    if cons_val > 0:
-        return "-%d]" % cons_val
     var planned = _get_planned_for(prod_id)
     if planned.is_empty():
         return "-0]"
@@ -652,9 +644,6 @@ func _format_cons_label(prod_id: String) -> String:
 # поэтому amount × SIMULATION_TICK / interval (запись без интервала — «за
 # тик», interval = 0 → amount).
 func _format_prod_label(prod_id: String) -> String:
-    var prod_val = production_rates.get(prod_id, 0)
-    if prod_val > 0:
-        return "[+%d" % prod_val
     var planned = planned_production_map.get(prod_id, {})
     if planned.is_empty():
         return "[+0"
@@ -674,8 +663,6 @@ func _format_prod_label(prod_id: String) -> String:
 # Показывает тултип ресурса (цена + источники прихода/расхода + плановое
 # потребление) при наведении на название или динамику на вкладке «Ресурсы».
 func _on_flow_hover(prod_id: String, product_name: String):
-    var prod_src = production_sources.get(prod_id, {})
-    var cons_src = _get_current_cons_sources(prod_id)
     var special_yield = GameData.get_special_yield(prod_id)
     var planned = _get_planned_for(prod_id)
     var planned_prod = planned_production_map.get(prod_id, {})
@@ -683,7 +670,7 @@ func _on_flow_hover(prod_id: String, product_name: String):
     active_flow_name = product_name
     if ui_helpers and is_instance_valid(ui_helpers):
         ui_helpers.show_flow_tooltip(
-            get_viewport().get_mouse_position(), product_name, prod_src, cons_src,
+            get_viewport().get_mouse_position(), product_name, {}, {},
             special_yield, prod_id, planned, planned_prod)
 
 # Скрывает тултип источников; при переходе на другую метку той же строки не мерцает.
