@@ -594,11 +594,11 @@ func _format_interval(interval: float) -> String:
 # (текущее):» не мигала между тиками списания.
 # planned_production — плановое производство: { источник -> { amount, count } } —
 # выпуск рецептов зданий за тик. Блок «Производство (плановое):» идёт сразу под
-# блоком «Потребление (текущее)», выше «Потребление (плановое):», и показывается,
-# когда производитель существует, но за тик ничего не произвёл (например, печи
-# не хватило дерева).
-# Порядок секций тултипа: цена / «Производство (текущее):» / «Потребление
-# (текущее):» / «Производство (плановое):» / «Потребление (плановое):» / сноска «≈».
+# своим фактом — блоком «Производство (текущее):», выше обоих блоков потребления,
+# и показывается, когда производитель существует, но за тик ничего не произвёл
+# (например, печи не хватило дерева).
+# Порядок секций тултипа: цена / «Производство (текущее):» / «Производство
+# (плановое):» / «Потребление (текущее):» / «Потребление (плановое):» / сноска «≈».
 func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dictionary, cons_sources: Dictionary, special_yield: Dictionary = {}, resource_id: String = "", planned_consumption: Dictionary = {}, planned_production: Dictionary = {}):
     if flow_tooltip_panel == null:
         return
@@ -642,7 +642,7 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dict
             GameData.products.get(yield_id, {}).get("name", yield_id),
             int(special_yield[yield_id])
         ]
-        yield_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+        yield_label.add_theme_color_override("font_color", Color(0.3, 1.0, 0.918, 1.0))
         yield_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         flow_tooltip_vbox.add_child(yield_label)
     if not prod_lines.is_empty():
@@ -658,28 +658,16 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dict
                 mult = " х%d" % int(row.count)
             var line_text = "%s%s: +%d" % [row.name, mult, int(row.amount)]
             flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, Color(0.3, 0.85, 0.3)))
-    if not cons_lines.is_empty():
-        var cons_title = Label.new()
-        cons_title.text = "Потребление (текущее):"
-        cons_title.add_theme_font_size_override("font_size", 14)
-        cons_title.add_theme_color_override("font_color", Color(1.0, 0.6, 0.6))
-        cons_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-        flow_tooltip_vbox.add_child(cons_title)
-        for row in cons_lines:
-            var mult = ""
-            if int(row.count) > 1:
-                mult = " х%d" % int(row.count)
-            var line_text = "%s%s: -%d" % [row.name, mult, int(row.amount)]
-            flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, Color(0.9, 0.3, 0.3)))
     # Плановое производство: что БУДЕТ произведено за тик текущими
-    # производителями (рецепты зданий с горожанином). Идёт сразу под блоком
-    # «Потребление (текущее)». Показывается и когда фактического производства
-    # за тик нет — например, печи не хватило дерева.
+    # производителями (рецепты зданий с горожанином). Идёт сразу под своим
+    # фактом — блоком «Производство (текущее)», выше обоих блоков потребления.
+    # Показывается и когда фактического производства за тик нет — например,
+    # печи не хватило дерева.
     if not planned_production.is_empty():
         var planned_prod_title = Label.new()
         planned_prod_title.text = "Производство (плановое):"
         planned_prod_title.add_theme_font_size_override("font_size", 14)
-        planned_prod_title.add_theme_color_override("font_color", Color(0.6, 1.0, 0.6))
+        planned_prod_title.add_theme_color_override("font_color", Color(0.845, 0.992, 0.0, 1.0))
         planned_prod_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
         flow_tooltip_vbox.add_child(planned_prod_title)
         var planned_prod_lines: Array = []
@@ -696,7 +684,20 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dict
             if int(row.count) > 1:
                 line_text += " х%d" % int(row.count)
             line_text += ": +%d ед./тик" % int(row.amount)
-            flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, Color(0.5, 0.9, 0.45)))
+            flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, Color(0.845, 0.992, 0.0, 1.0)))
+    if not cons_lines.is_empty():
+        var cons_title = Label.new()
+        cons_title.text = "Потребление (текущее):"
+        cons_title.add_theme_font_size_override("font_size", 14)
+        cons_title.add_theme_color_override("font_color", Color(1.0, 0.6, 0.6))
+        cons_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        flow_tooltip_vbox.add_child(cons_title)
+        for row in cons_lines:
+            var mult = ""
+            if int(row.count) > 1:
+                mult = " х%d" % int(row.count)
+            var line_text = "%s%s: -%d" % [row.name, mult, int(row.amount)]
+            flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, Color(0.9, 0.3, 0.3)))
     # Плановое потребление: кто и сколько БУДЕТ списывать со склада —
     # независимо от фазы таймеров потребления и факта последнего тика.
     # interval > 0 — интервальное потребление («ед./S сек»: профессии, «все
