@@ -626,10 +626,12 @@ func _format_cons_label(prod_id: String) -> String:
     return "-%d≈]" % maxi(1, int(round(per_tick)))
 
 # Текст зелёной метки динамики. При наличии производства за тик — факт
-# ("[+10"); иначе, если есть плановое производство, — план со знаком «≈»
-# ("[+10≈"): рецепты зданий дают план «за тик» (result рецепта), приведение
-# к тику не требуется. Производство улучшений непрерывно — его факт и есть
-# план, поэтому в карте планового производства улучшений нет.
+# ("[+10"); иначе, если есть плановое производство, — план, приведённый к тику,
+# со знаком «≈»: рецепты зданий исполняются раз в `time` секунд (см.
+# CityData.get_craft_time), поэтому amount × PRODUCTION_INTERVAL / interval
+# (рецепт без time — «за тик», interval = 0). Производство улучшений
+# непрерывно — его факт и есть план, поэтому в карте планового производства
+# улучшений нет.
 func _format_prod_label(prod_id: String) -> String:
     var prod_val = production_rates.get(prod_id, 0)
     if prod_val > 0:
@@ -637,10 +639,18 @@ func _format_prod_label(prod_id: String) -> String:
     var planned = planned_production_map.get(prod_id, {})
     if planned.is_empty():
         return "[+0"
-    var per_tick := 0
+    var per_tick := 0.0
     for source_name in planned:
-        per_tick += int(planned[source_name].get("amount", 0))
-    return "[+%d≈" % per_tick
+        var entry: Dictionary = planned[source_name]
+        var amount = float(entry.get("amount", 0))
+        var interval = float(entry.get("interval", 0))
+        if interval > 0.0:
+            per_tick += amount * CityData.PRODUCTION_INTERVAL / interval
+        else:
+            per_tick += amount
+    if per_tick <= 0.0:
+        return "[+0"
+    return "[+%d≈" % maxi(1, int(round(per_tick)))
 
 # Показывает тултип ресурса (цена + источники прихода/расхода + плановое
 # потребление) при наведении на название или динамику на вкладке «Ресурсы».

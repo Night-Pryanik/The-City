@@ -275,13 +275,18 @@ func _get_townsfolk() -> Node:
         _townsfolk_ref = main_map.get_node_or_null("TownsfolkManager")
     return _townsfolk_ref
 
-# Возвращает плановый спрос ПОСТРОЕННЫХ ЗДАНИЙ на ресурсы за один
-# production-тик. Рецепт в do_tick() исполняется КАЖДЫЙ тик при назначенном
-# горожанине и наличии ингредиентов (поле time рецептов в коде не используется),
-# поэтому единица спроса — «за тик». Формат результата:
-#   product_id -> { "Имя здания" -> { "amount": N, "count": M,
-#                                     "is_group": bool, "group_name": String } }
-#   amount — суммарный спрос этого здания на ресурс за тик (по всем слотам);
+# Возвращает плановый спрос ПОСТРОЕННЫХ ЗДАНИЙ на ресурсы за один крафт
+# рецепта. Рецепт в do_tick() исполняется раз в `time` секунд при назначенном
+# горожанине и наличии ингредиентов, поэтому спрос идёт вместе с временем
+# рецепта (interval, секунды). Формат результата:
+#   product_id -> { "Имя здания" -> { "amount": N, "interval": float,
+#                                     "count": M, "is_group": bool,
+#                                     "group_name": String } }
+#   amount   — суммарный спрос этого здания на ресурс за один крафт слотов;
+#   interval — время крафта, секунды (при нескольких слотах здания с разным
+#              time берётся минимальное — как у профессий в
+#              worker_manager.get_planned_consumption_map); 0 — «за тик»
+#              (рецепт без поля time);
 #   count  — сколько слотов-рецептов дают этот спрос (для «хN» в тултипе);
 #   is_group / group_name — спрос задан группой «@»: относится к ЛЮБОМУ члену
 #   группы, в тултипе помечается именем группы.
@@ -304,13 +309,11 @@ func get_building_planned_consumption() -> Dictionary:
         for recipe_id in slots:
             if recipe_id == "" or recipe_id == "empty":
                 continue
-            var recipe = null
-            for c in GameData.crafts:
-                if c["id"] == recipe_id:
-                    recipe = c
-                    break
-            if not recipe:
+            var recipe = get_craft_by_id(recipe_id)
+            if recipe.is_empty():
                 continue
+            # Время крафта слота — единица измерения планового спроса.
+            var craft_time := get_craft_time(recipe)
             var resources: Dictionary = recipe.get("resources", {})
             for res in resources:
                 var amount_needed = int(resources[res])
@@ -327,31 +330,36 @@ func get_building_planned_consumption() -> Dictionary:
                         continue
                     var group_name = GameData.get_product_group_name(res)
                     for prod in group_products:
-                        _record_planned_demand(result, prod, building_source, amount_needed, true, group_name)
+                        _record_planned_demand(result, prod, building_source, amount_needed, true, group_name, craft_time)
                 else:
-                    _record_planned_demand(result, res, building_source, amount_needed, false, "")
+                    _record_planned_demand(result, res, building_source, amount_needed, false, "", craft_time)
     return result
 
 # Хелпер записи спроса здания на ресурс (см. get_building_planned_consumption).
-func _record_planned_demand(result: Dictionary, pid: String, source_name: String, amount: int, is_group: bool, group_name: String):
+# interval — время крафта рецепта, секунды (0 — «за тик»); при нескольких
+# записях одного источника берётся минимальный — как у профессий в
+# worker_manager._record_planned_entry.
+func _record_planned_demand(result: Dictionary, pid: String, source_name: String, amount: int, is_group: bool, group_name: String, interval: float):
     if not result.has(pid):
         result[pid] = {}
     var by_source: Dictionary = result[pid]
     if not by_source.has(source_name):
-        by_source[source_name] = {"amount": 0, "count": 0, "is_group": false, "group_name": ""}
+        by_source[source_name] = {"amount": 0, "count": 0, "is_group": false, "group_name": "", "interval": interval}
     var entry: Dictionary = by_source[source_name]
     entry["amount"] = int(entry.get("amount", 0)) + amount
     entry["count"] = int(entry.get("count", 0)) + 1
+    entry["interval"] = minf(float(entry.get("interval", interval)), interval)
     entry["is_group"] = bool(entry.get("is_group", false)) or is_group
     if str(entry.get("group_name", "")) == "":
         entry["group_name"] = group_name
 
-# Возвращает плановое производство ПОСТРОЕННЫХ ЗДАНИЙ за один production-тик
-# (зеркально к спросу зданий: рецепт в do_tick() даёт result каждый тик при
-# горожанине и наличии ингредиентов). Формат результата:
-#   product_id -> { "Имя здания" -> { "amount": N, "count": M } }
-#   amount — суммарный выпуск этого здания за тик (по всем слотам);
-#   count  — сколько слотов-рецептов дают этот выпуск (для «хN» в тултипе).
+# Возвращает плановое производство ПОСТРОЕННЫХ ЗДАНИЙ за один крафт рецепта
+# (зеркально к спросу зданий: рецепт в do_tick() даёт result раз в `time`
+# секунд при горожанине и наличии ингредиентов). Формат результата:
+#   product_id -> { "Имя здания" -> { "amount": N, "interval": float, "count": M } }
+#   amount   — суммарный выпуск этого здания за один крафт (по всем слотам);
+#   interval — время крафта, секунды (min по слотам здания; 0 — «за тик»);
+#   count    — сколько слотов-рецептов дают этот выпуск (для «хN» в тултипе).
 # План показывается независимо от наличия ингредиентов — это способность
 # производителя, а не факт; факт считает do_tick().
 func get_building_planned_production() -> Dictionary:
@@ -371,35 +379,37 @@ func get_building_planned_production() -> Dictionary:
         for recipe_id in slots:
             if recipe_id == "" or recipe_id == "empty":
                 continue
-            var recipe = null
-            for c in GameData.crafts:
-                if c["id"] == recipe_id:
-                    recipe = c
-                    break
-            if not recipe:
+            var recipe = get_craft_by_id(recipe_id)
+            if recipe.is_empty():
                 continue
+            # Время крафта слота — единица измерения планового выпуска.
+            var craft_time := get_craft_time(recipe)
             var production: Dictionary = recipe.get("result", {})
             for res in production:
                 var amount = int(production[res])
                 if amount <= 0:
                     continue
-                _record_planned_supply(result, res, building_source, amount)
+                _record_planned_supply(result, res, building_source, amount, craft_time)
     return result
 
 # Хелпер записи выпуска здания (см. get_building_planned_production).
-func _record_planned_supply(result: Dictionary, pid: String, source_name: String, amount: int):
+# interval — время крафта рецепта, секунды (0 — «за тик»); при нескольких
+# записях одного источника берётся минимальный.
+func _record_planned_supply(result: Dictionary, pid: String, source_name: String, amount: int, interval: float):
     if not result.has(pid):
         result[pid] = {}
     var by_source: Dictionary = result[pid]
     if not by_source.has(source_name):
-        by_source[source_name] = {"amount": 0, "count": 0}
+        by_source[source_name] = {"amount": 0, "count": 0, "interval": interval}
     var entry: Dictionary = by_source[source_name]
     entry["amount"] = int(entry.get("amount", 0)) + amount
     entry["count"] = int(entry.get("count", 0)) + 1
+    entry["interval"] = minf(float(entry.get("interval", interval)), interval)
 
 # Точка входа планового производства. Сейчас — только рецепты зданий;
 # производство улучшений на карте непрерывно (каждый тик, пока есть рабочий),
 # поэтому его «Производство (текущее)» и есть план — в карту оно не входит.
+# Записи несут interval — время крафта рецепта в секундах (см. get_craft_time).
 func get_planned_production_map() -> Dictionary:
     return get_building_planned_production()
 
@@ -546,6 +556,86 @@ func add_raw_production(raw_id: String, multiplier: float = 1.0, quality: String
             else:
                 production_rates[pid] += amount
 
+# --- ВРЕМЯ РЕЦЕПТА (time) ---
+# Рецепт слота здания исполняется не каждый production-тик, а раз в `time`
+# секунд (поле time в data/crafts/*.json). Накопленное время хранится по слотам
+# в записи здания (ключ "slot_progress" — массив секунд по индексам слотов) и
+# сохраняется вместе с city_built_buildings.
+# Шаг накопления — PRODUCTION_INTERVAL (2 сек): если time не кратен шагу,
+# остаток переносится в следующий крафт, поэтому средняя скорость точная
+# (time = 5 при шаге 2 → крафты на 3-м, 5-м, 8-м... тиках → в среднем 5 сек).
+# Больше одного крафта за тик слот не делает: при time < PRODUCTION_INTERVAL
+# фактическая скорость ограничена одним крафтом за production-тик.
+
+# Время одного крафта рецепта в секундах. Поле time отсутствует или <= 0 —
+# рецепт ведёт себя как раньше: крафт каждый production-тик.
+func get_craft_time(recipe: Dictionary) -> float:
+    var t := float(recipe.get("time", 0.0))
+    if t <= 0.0:
+        return PRODUCTION_INTERVAL
+    return t
+
+# Возвращает данные рецепта по id (или пустой словарь, если рецепт не найден).
+func get_craft_by_id(recipe_id: String) -> Dictionary:
+    for c in GameData.crafts:
+        if c.get("id", "") == recipe_id:
+            return c
+    return {}
+
+# Прогресс слотов здания (секунды накопленного времени крафта). Массив
+# создаётся и подгоняется под текущее число слотов лениво: старые сейвы (без
+# ключа), здания после апгрейда и только что построенные здания.
+func get_slot_progress(b_index: int) -> Array:
+    if b_index < 0 or b_index >= city_built_buildings.size():
+        return []
+    var bld: Dictionary = city_built_buildings[b_index]
+    var slots: Array = bld.get("slots", [])
+    var progress = bld.get("slot_progress", [])
+    if not (progress is Array):
+        progress = []
+    while progress.size() < slots.size():
+        progress.append(0.0)
+    if progress.size() > slots.size():
+        progress.resize(slots.size())
+    bld["slot_progress"] = progress
+    return progress
+
+# Накопленное время одного слота; при некорректном индексе — 0.
+func get_slot_progress_value(b_index: int, slot_idx: int) -> float:
+    var progress := get_slot_progress(b_index)
+    if slot_idx < 0 or slot_idx >= progress.size():
+        return 0.0
+    return float(progress[slot_idx])
+
+# Время крафта рецепта в слоте здания (0, если слот пуст или рецепт не найден).
+func get_slot_craft_time(b_index: int, slot_idx: int) -> float:
+    if b_index < 0 or b_index >= city_built_buildings.size():
+        return 0.0
+    var slots: Array = city_built_buildings[b_index].get("slots", [])
+    if slot_idx < 0 or slot_idx >= slots.size():
+        return 0.0
+    var recipe_id := str(slots[slot_idx])
+    if recipe_id == "" or recipe_id == "empty":
+        return 0.0
+    var recipe = get_craft_by_id(recipe_id)
+    if not (recipe is Dictionary) or recipe.is_empty():
+        return 0.0
+    return get_craft_time(recipe)
+
+# Доля готовности текущего крафта слота (0..1) — для UI панели здания.
+func get_slot_progress_ratio(b_index: int, slot_idx: int) -> float:
+    var craft_time := get_slot_craft_time(b_index, slot_idx)
+    if craft_time <= 0.0:
+        return 0.0
+    return clampf(get_slot_progress_value(b_index, slot_idx) / craft_time, 0.0, 1.0)
+
+# Сбрасывает накопленное время слота: после смены рецепта слот начинает
+# отсчёт крафта заново.
+func reset_slot_progress(b_index: int, slot_idx: int) -> void:
+    var progress := get_slot_progress(b_index)
+    if slot_idx >= 0 and slot_idx < progress.size():
+        progress[slot_idx] = 0.0
+
 func do_tick():
     if Engine.is_editor_hint():
         return
@@ -571,17 +661,25 @@ func do_tick():
         if not has_worker:
             continue # здание не работает
 
-        for recipe_id in slots:
+        # Прогресс слотов этого здания (секунды накопленного времени крафта).
+        var slot_progress: Array = get_slot_progress(i)
+
+        for slot_idx in range(slots.size()):
+            var recipe_id = slots[slot_idx]
             if recipe_id == "" or recipe_id == "empty":
                 continue
 
-            var recipe = null
-            for c in GameData.crafts:
-                if c["id"] == recipe_id:
-                    recipe = c
-                    break
-            if not recipe:
+            var recipe = get_craft_by_id(recipe_id)
+            if recipe.is_empty():
                 continue
+
+            # --- ВРЕМЯ РЕЦЕПТА ---
+            # Рецепт исполняется раз в `time` секунд: копим время с шагом
+            # production-тика, крафтим, когда накопленного времени хватило.
+            var craft_time := get_craft_time(recipe)
+            slot_progress[slot_idx] = float(slot_progress[slot_idx]) + PRODUCTION_INTERVAL
+            if float(slot_progress[slot_idx]) < craft_time:
+                continue # время крафта ещё не вышло
 
             # --- ПРОВЕРКА РЕСУРСОВ (С ПОДДЕРЖКОЙ ГРУПП) ---
             var missing_resources = []
@@ -626,8 +724,11 @@ func do_tick():
                         break
                     resources_to_consume[res] = amount_needed
 
-            # Если не хватает ресурсов — пропускаем рецепт
+            # Если не хватает ресурсов — пропускаем рецепт. Таймер держим
+            # «горячим» (время не копим), чтобы крафт случился сразу при
+            # появлении сырья и без залпа из нескольких крафтов.
             if not missing_resources.is_empty():
+                slot_progress[slot_idx] = craft_time
                 continue
 
             # --- СПИСЫВАЕМ РЕСУРСЫ ---
@@ -663,6 +764,12 @@ func do_tick():
                 var amount = recipe["result"][res]
                 add_to_storage(res, amount, result_quality)
                 record_production_source(res, building_source, amount)
+
+            # Крафт выполнен: списываем время рецепта. Остаток (если time не
+            # кратен шагу тика) переносится в следующий крафт — так средняя
+            # скорость совпадает с time. Больше одного крафта за тик слот не
+            # делает, поэтому остаток сверх time не копится.
+            slot_progress[slot_idx] = minf(float(slot_progress[slot_idx]) - craft_time, craft_time)
 
     # --- Потребление еды населением ---
     # Еда потребляется без учёта качества (качество — визуальная механика),

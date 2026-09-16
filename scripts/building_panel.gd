@@ -38,6 +38,13 @@ var _last_panel_state: Dictionary = {}
 # каждый кадр в _process() БЕЗ пересоздания UI (иначе умирали бы тултипы).
 var _upgrade_progress_bars: Dictionary = {}
 
+# Прогресс-бары крафта слотов: "b_index:slot_idx" -> ProgressBar. Показывают,
+# сколько времени рецепта (data/crafts, поле time) уже накоплено слотом
+# (CityData.get_slot_progress_ratio). Тоже обновляются в _process() без
+# пересоздания UI. Бар создаётся только для рецептов с временем больше шага
+# тика — у остальных крафт и так идёт каждый production-тик.
+var _slot_progress_bars: Dictionary = {}
+
 # Тултип кнопки «Улучшить»: собственная панель с богатым содержимым
 # (иконки здания и материалов — обычный tooltip_text картинки не показывает).
 # Отдельная панель, а не ui_helpers.detail_tooltip_panel: та общая с вкладкой
@@ -195,6 +202,7 @@ func _refresh():
         costs_label.visible = false
         info_label.text = "Зданий: 0"
         _upgrade_progress_bars.clear()
+        _slot_progress_bars.clear()
         return
 
     var bdata = null
@@ -215,6 +223,7 @@ func _refresh():
     for child in slots_container.get_children():
         child.queue_free()
     _upgrade_progress_bars.clear()
+    _slot_progress_bars.clear()
     # Кнопки заголовков пересоздаются — тултип апгрейда мог остаться висеть
     # (mouse_exited у удаляемой кнопки не сработает), скрываем явно.
     _hide_upgrade_tooltip()
@@ -375,6 +384,29 @@ func _refresh():
             new_popup_map[popup_key] = popup
             select_btn.pressed.connect(_on_slot_button_pressed.bind(b_index, i, popup, select_btn))
             row.add_child(select_btn)
+
+            # Прогресс-бар крафта слота: сколько времени рецепта (time) уже
+            # накоплено. Показывается только у рецептов, которые длятся дольше
+            # production-тика (у мгновенных рецептов прогресс всегда «полный»).
+            # Обновляется в _process() без пересоздания UI.
+            var craft_time = CityData.get_slot_craft_time(b_index, i)
+            if craft_time > CityData.PRODUCTION_INTERVAL:
+                var craft_bar = ProgressBar.new()
+                craft_bar.custom_minimum_size = Vector2(70, 14)
+                craft_bar.show_percentage = false
+                craft_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+                craft_bar.max_value = craft_time
+                craft_bar.value = minf(craft_time, CityData.get_slot_progress_value(b_index, i))
+                # Имя рецепта — в мете бара: тултип обновляется в _process()
+                # без обращения к реестру рецептов каждый кадр.
+                craft_bar.set_meta("craft_name", _get_craft_name(str(current)))
+                craft_bar.tooltip_text = "Крафт «%s»: %d из %d сек" % [
+                    str(craft_bar.get_meta("craft_name")),
+                    int(craft_bar.value),
+                    int(craft_time)
+                ]
+                row.add_child(craft_bar)
+                _slot_progress_bars["%d:%d" % [b_index, i]] = craft_bar
             slots_container.add_child(row)
 
     # Динамически расширяем панель, если текст пунктов не помещается
@@ -735,7 +767,7 @@ func _get_toggle_icon(icon_name: String) -> Texture2D:
 # UI слотов (полная пересборка панели убивала бы тултипы; прогресс меняется
 # непрерывно, а не только на тиках city_updated).
 func _process(delta):
-    if _upgrade_progress_bars.is_empty():
+    if _upgrade_progress_bars.is_empty() and _slot_progress_bars.is_empty():
         return
     var finished: Array = []
     for b_index in _upgrade_progress_bars:
@@ -752,6 +784,34 @@ func _process(delta):
         bar.value = float(upgrade_data.get("progress", 0.0))
     for b_index in finished:
         _upgrade_progress_bars.erase(b_index)
+
+    # Прогресс-бары крафта слотов: значение пересчитывается от накопленного
+    # времени рецепта (CityData.get_slot_progress_value), тоже без пересборки UI.
+    var stale: Array = []
+    for key in _slot_progress_bars:
+        var craft_bar = _slot_progress_bars[key]
+        if not is_instance_valid(craft_bar):
+            stale.append(key)
+            continue
+        var parts = str(key).split(":", false)
+        if parts.size() != 2:
+            stale.append(key)
+            continue
+        var craft_time = CityData.get_slot_craft_time(int(parts[0]), int(parts[1]))
+        if craft_time <= 0.0:
+            # Слот опустошён или рецепт убран — бар снимет ближайшая пересборка.
+            stale.append(key)
+            continue
+        craft_bar.max_value = craft_time
+        craft_bar.value = minf(craft_time, CityData.get_slot_progress_value(int(parts[0]), int(parts[1])))
+        # Тултип держим свежим: «X из Y сек» без пересборки панели.
+        craft_bar.tooltip_text = "Крафт «%s»: %d из %d сек" % [
+            str(craft_bar.get_meta("craft_name", "")),
+            int(craft_bar.value),
+            int(craft_time)
+        ]
+    for key in stale:
+        _slot_progress_bars.erase(key)
 
 # Наведение на кнопку «Улучшить»: заполняем тултип с иконками и показываем
 # его рядом с кнопкой. Обычный tooltip_text не умеет показывать картинки,
@@ -906,6 +966,9 @@ func _on_craft_item_selected(b_index: int, slot_idx: int, craft_id: String, popu
     if slot_idx < slots.size():
         slots[slot_idx] = craft_id
         bld["slots"] = slots
+        # Новый рецепт может иметь другое время (time) — накопленный прогресс
+        # слота сбрасывается, чтобы не «доначислить» старый крафт.
+        CityData.reset_slot_progress(b_index, slot_idx)
         _update_slot_button(button, craft_id)
     popup.hide()
     open_popup = null
@@ -996,6 +1059,13 @@ func _make_craft_content(craft_name: String, craft_resources: Dictionary, craft_
             content.add_child(amount_label)
 
     return content
+
+# Человекочитаемое имя рецепта по его id (для тултипов; неизвестный id — как есть).
+func _get_craft_name(craft_id: String) -> String:
+    for c in crafts_data:
+        if c.get("id", "") == craft_id:
+            return str(c.get("name", craft_id))
+    return craft_id
 
 # Обновляет содержимое кнопки выбора рецепта: иконки рисуются рядом с продуктами, а не у левого края
 func _update_slot_button(button, craft_id: String):

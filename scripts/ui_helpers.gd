@@ -658,11 +658,12 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dict
                 mult = " х%d" % int(row.count)
             var line_text = "%s%s: +%d" % [row.name, mult, int(row.amount)]
             flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, Color(0.3, 0.85, 0.3)))
-    # Плановое производство: что БУДЕТ произведено за тик текущими
+    # Плановое производство: что БУДЕТ произведено за один крафт текущими
     # производителями (рецепты зданий с горожанином). Идёт сразу под своим
     # фактом — блоком «Производство (текущее)», выше обоих блоков потребления.
     # Показывается и когда фактического производства за тик нет — например,
-    # печи не хватило дерева.
+    # печи не хватило дерева. Единица выпуска — один крафт рецепта, поэтому при
+    # интервале больше тика строка показывает «ед./S сек» (см. CityData.get_craft_time).
     if not planned_production.is_empty():
         var planned_prod_title = Label.new()
         planned_prod_title.text = "Производство (плановое):"
@@ -676,14 +677,18 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dict
             planned_prod_lines.append({
                 "name": src,
                 "amount": int(e.get("amount", 0)),
-                "count": int(e.get("count", 1))
+                "count": int(e.get("count", 1)),
+                "interval": float(e.get("interval", 0))
             })
         planned_prod_lines.sort_custom(func(a, b): return a.amount > b.amount)
         for row in planned_prod_lines:
             var line_text = str(row.name)
             if int(row.count) > 1:
                 line_text += " х%d" % int(row.count)
-            line_text += ": +%d ед./тик" % int(row.amount)
+            if float(row.interval) > 0.0:
+                line_text += ": +%d ед./%s сек" % [int(row.amount), _format_interval(float(row.interval))]
+            else:
+                line_text += ": +%d ед./тик" % int(row.amount)
             flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, Color(0.845, 0.992, 0.0, 1.0)))
     if not cons_lines.is_empty():
         var cons_title = Label.new()
@@ -701,7 +706,8 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dict
     # Плановое потребление: кто и сколько БУДЕТ списывать со склада —
     # независимо от фазы таймеров потребления и факта последнего тика.
     # interval > 0 — интервальное потребление («ед./S сек»: профессии, «все
-    # жители»), interval = 0 — спрос зданий за тик (рецепты). Групповые записи
+    # жители», а также рецепты зданий со своим `time`), interval = 0 — спрос
+    # зданий за тик (рецепты без поля time). Групповые записи
     # относятся к любому члену группы и помечаются её именем.
     if not planned_consumption.is_empty():
         var planned_title = Label.new()

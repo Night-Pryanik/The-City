@@ -476,7 +476,8 @@ func count_workers_by_profession() -> Dictionary:
 #      списка разом по минимальному интервалу);
 #   2) городское потребление «all»: amount × total_population (is_population);
 #   3) спрос построенных зданий (рецепты слотов,
-#      CityData.get_building_planned_consumption): interval = 0 — «за тик».
+#      CityData.get_building_planned_consumption): amount — спрос за один крафт,
+#      interval — время крафта рецепта (`time`), см. CityData.get_craft_time.
 # Для групповых записей план относится к ЛЮБОМУ члену группы; в тултипе такие
 # строки помечаются именем группы (group_name = имя группы из данных).
 func get_planned_consumption_map() -> Dictionary:
@@ -491,12 +492,12 @@ func get_planned_consumption_map() -> Dictionary:
     # count = total_population, а не число назначенных гексов.
     if CityData.total_population > 0:
         _record_profession_planned(result, "all", CityData.total_population, true)
-    # Спрос зданий (рецепты) — «за тик», interval = 0.
+    # Спрос зданий (рецепты): amount — за один крафт, interval — время рецепта.
     var building_demand = CityData.get_building_planned_consumption()
     for pid in building_demand:
         for source_name in building_demand[pid]:
             var e: Dictionary = building_demand[pid][source_name]
-            _record_planned_entry(result, str(pid), str(source_name), int(e.get("amount", 0)), 0.0, int(e.get("count", 1)), bool(e.get("is_group", false)), str(e.get("group_name", "")), false)
+            _record_planned_entry(result, str(pid), str(source_name), int(e.get("amount", 0)), float(e.get("interval", 0.0)), int(e.get("count", 1)), bool(e.get("is_group", false)), str(e.get("group_name", "")), false)
     return result
 
 # Записывает в result плановое потребление профессии prof_id при count
