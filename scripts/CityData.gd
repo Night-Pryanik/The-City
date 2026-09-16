@@ -346,6 +346,63 @@ func _record_planned_demand(result: Dictionary, pid: String, source_name: String
     if str(entry.get("group_name", "")) == "":
         entry["group_name"] = group_name
 
+# Возвращает плановое производство ПОСТРОЕННЫХ ЗДАНИЙ за один production-тик
+# (зеркально к спросу зданий: рецепт в do_tick() даёт result каждый тик при
+# горожанине и наличии ингредиентов). Формат результата:
+#   product_id -> { "Имя здания" -> { "amount": N, "count": M } }
+#   amount — суммарный выпуск этого здания за тик (по всем слотам);
+#   count  — сколько слотов-рецептов дают этот выпуск (для «хN» в тултипе).
+# План показывается независимо от наличия ингредиентов — это способность
+# производителя, а не факт; факт считает do_tick().
+func get_building_planned_production() -> Dictionary:
+    var result: Dictionary = {}
+    var tm = _get_townsfolk()
+    for i in range(city_built_buildings.size()):
+        var bld = city_built_buildings[i]
+        var slots = bld.get("slots", [])
+        if slots.is_empty():
+            continue
+        # Без горожанина здание не работает и ничего не производит.
+        if tm == null or not tm.has_townsfolk(i):
+            continue
+        # Имя здания — источник выпуска (совпадает с источником фактического
+        # производства в do_tick, чтобы в тултипе это был один и тот же субъект).
+        var building_source = get_building_name(bld.get("id", ""))
+        for recipe_id in slots:
+            if recipe_id == "" or recipe_id == "empty":
+                continue
+            var recipe = null
+            for c in GameData.crafts:
+                if c["id"] == recipe_id:
+                    recipe = c
+                    break
+            if not recipe:
+                continue
+            var production: Dictionary = recipe.get("result", {})
+            for res in production:
+                var amount = int(production[res])
+                if amount <= 0:
+                    continue
+                _record_planned_supply(result, res, building_source, amount)
+    return result
+
+# Хелпер записи выпуска здания (см. get_building_planned_production).
+func _record_planned_supply(result: Dictionary, pid: String, source_name: String, amount: int):
+    if not result.has(pid):
+        result[pid] = {}
+    var by_source: Dictionary = result[pid]
+    if not by_source.has(source_name):
+        by_source[source_name] = {"amount": 0, "count": 0}
+    var entry: Dictionary = by_source[source_name]
+    entry["amount"] = int(entry.get("amount", 0)) + amount
+    entry["count"] = int(entry.get("count", 0)) + 1
+
+# Точка входа планового производства. Сейчас — только рецепты зданий;
+# производство улучшений на карте непрерывно (каждый тик, пока есть рабочий),
+# поэтому его «Производство (текущее)» и есть план — в карту оно не входит.
+func get_planned_production_map() -> Dictionary:
+    return get_building_planned_production()
+
 # Возвращает человекочитаемое имя здания по его id (или сам id, если здание
 # не найдено в реестре).
 func get_building_name(building_id: String) -> String:

@@ -35,6 +35,9 @@ var worker_manager: Node = null
 # Кэш карты планового потребления: product_id -> { "Имя источника" -> {...} }.
 # Пересчитывается при каждом update_data()/refresh() (раз в тик при открытом городе).
 var planned_consumption_map: Dictionary = {}
+# Кэш карты планового производства (рецепты зданий с горожанином): product_id ->
+# { "Имя здания" -> { "amount": N, "count": M } }. Пересчитывается там же.
+var planned_production_map: Dictionary = {}
 
 var resources_list: Node
 
@@ -61,6 +64,7 @@ func update_data(data: Dictionary):
     consumption_sources = data.get("consumption_sources", {})
     city_food_pool = data.get("city_food_pool", {})
     _update_planned_consumption_map()
+    planned_production_map = CityData.get_planned_production_map()
 
 # Пересчитывает кэш планового потребления по worker_manager. Если ссылка ещё не
 # прокинута (ранние вызовы до инициализации main_map) — карта пустая, вкладка
@@ -89,6 +93,25 @@ func _get_current_cons_sources(prod_id: String) -> Dictionary:
         if not planned.is_empty():
             cons_src = CityData.last_consumption_sources.get(prod_id, {})
     return cons_src
+
+# Общее правило списка ресурсов: строка видна только при наличии у игрока
+# источника поступления — запас на складе, производство за тик или плановое
+# производство (существующий производитель-здание с горожанином).
+# Плановое ПОТРЕБЛЕНИЕ строки НЕ добавляет: члены @-группы без своего прихода
+# (финики и инжир, когда производится только виноград из «Фруктов»; просо,
+# когда добывается только пшеница из «Зерновых культур») в списке не
+# появляются и метку плана не показывают. Импорт, когда он появится, даст
+# строке приход через производство/запас и сработает по тому же правилу.
+# Единственный источник истины для видимости строки — этот метод (и refresh(),
+# и update_values()).
+func _is_displayable(prod_id: String) -> bool:
+    var amount = city_storage.get(prod_id, 0)
+    if amount > 0:
+        return true
+    var prod_val = production_rates.get(prod_id, 0)
+    if prod_val > 0:
+        return true
+    return not planned_production_map.get(prod_id, {}).is_empty()
 
 func _get_subgroup_name(subgroup_id: String) -> String:
     for g in GameData.groups:
@@ -267,14 +290,13 @@ func refresh():
         # Наука не показывается на вкладке «Ресурсы» (общий пул, см. docs.md).
         if prod_id == "science":
             continue
-        var amount = city_storage[prod_id]
-        var prod_val = production_rates.get(prod_id, 0)
-        # Общее правило списка: показываем ресурс только при наличии источника
-        # поступления (запас на складе или производство за тик). Плановое
-        # потребление НЕ добавляет строки: члены @-группы без своего
-        # прихода (просо при расходуемой группе «Зерновые культуры», где есть
-        # только пшеница) в список не попадают и метку плана не показывают.
-        if amount <= 0 and prod_val <= 0:
+        # Общее правило списка — см. _is_displayable: ресурс виден только при
+        # наличии источника поступления (запас на складе, производство за тик
+        # или существующий производитель-здание). Плановое ПОТРЕБЛЕНИЕ строки
+        # не добавляет: члены @-группы без своего прихода (финики и инжир, когда
+        # производится только виноград из «Фруктов») в список не попадают и
+        # метку плана не показывают.
+        if not _is_displayable(prod_id):
             continue
         var pdata = products.get(prod_id, {})
         var cat = pdata.get("category", "other")
@@ -352,12 +374,11 @@ func refresh():
             row.add_child(name_label)
             amount_labels[prod_id] = name_label
 
-            # Динамика. Красная метка — факт за тик, а при нуле факта —
-            # плановое потребление с маркером «≈» (см. _format_cons_label).
-            var prod_val = production_rates.get(prod_id, 0)
-
+            # Динамика. Зелёная метка — факт производства за тик, а при нуле
+            # факта — плановое производство с маркером «≈» (см.
+            # _format_prod_label). Красная — потребление (_format_cons_label).
             var green_label = Label.new()
-            green_label.text = "[+%d" % prod_val
+            green_label.text = _format_prod_label(prod_id)
             green_label.add_theme_color_override("font_color", Color.GREEN)
             green_label.mouse_filter = Control.MOUSE_FILTER_PASS
             row.add_child(green_label)
@@ -423,19 +444,24 @@ func refresh():
 
 func update_values():
     # Лёгкое обновление: не пересоздаём узлы, а обновляем тексты существующих.
-    # Если появились новые продукты (структурное изменение) — вызываем полный refresh.
+    # Если состав списка изменился (появился источник поступления или пропал
+    # последний) — вызываем полный refresh.
     for prod_id in city_storage:
         # Наука хранится в city_storage, но на складе скрыта — отображается
         # отдельным пулом на вкладке «Технологии» (см. docs.md).
         if prod_id == "science":
             continue
-        var amount = city_storage[prod_id]
-        var prod_val = production_rates.get(prod_id, 0)
-        if amount <= 0 and prod_val <= 0:
-            continue
-        if not displayed_products.has(prod_id):
+        # Общее правило видимости строки — см. _is_displayable: источник
+        # поступления (запас, производство за тик или производитель-здание).
+        # Плановое потребление строки не добавляет.
+        var should_show = _is_displayable(prod_id)
+        # Состав списка изменился (появился приход или пропал последний
+        # источник) — пересобираем список, как и при появлении нового продукта.
+        if should_show != displayed_products.has(prod_id):
             refresh()
             return
+        if not should_show:
+            continue
         var amount_label = amount_labels.get(prod_id)
         if amount_label != null and is_instance_valid(amount_label):
             var pdata = products.get(prod_id, {})
@@ -443,7 +469,7 @@ func update_values():
             amount_label.text = "%s: %d  " % [prod_name, city_storage.get(prod_id, 0)]
         var prod_label = prod_labels.get(prod_id)
         if prod_label != null and is_instance_valid(prod_label):
-            prod_label.text = "[+%d" % production_rates.get(prod_id, 0)
+            prod_label.text = _format_prod_label(prod_id)
         var cons_label = cons_labels.get(prod_id)
         if cons_label != null and is_instance_valid(cons_label):
             cons_label.text = _format_cons_label(prod_id)
@@ -484,9 +510,10 @@ func update_values():
 
     # Обновляем открытый тултип источников прихода/расхода свежими данными.
     # Данные берутся за последний завершённый тик (словари сбрасываются в
-    # reset_counters() и наполняются заново при следующем тике). Плановое
-    # потребление не зависит от тика — берётся из кэша planned_consumption_map;
-    # фактическое при отсутствии списания в этом тике — последнее известное
+    # reset_counters() и наполняются заново при следующем тике). Плановые
+    # потребление и производство не зависят от тика — берутся из кэшей
+    # planned_consumption_map / planned_production_map; фактическое потребление
+    # при отсутствии списания в этом тике — последнее известное
     # (см. _get_current_cons_sources).
     if active_flow_product != "" and ui_helpers and is_instance_valid(ui_helpers):
         if ui_helpers.flow_tooltip_panel.visible:
@@ -494,8 +521,10 @@ func update_values():
             var fresh_cons_src = _get_current_cons_sources(active_flow_product)
             var special_yield = GameData.get_special_yield(active_flow_product)
             var fresh_planned = _get_planned_for(active_flow_product)
+            var fresh_planned_prod = planned_production_map.get(active_flow_product, {})
             if fresh_prod_src.is_empty() and fresh_cons_src.is_empty() \
                     and special_yield.is_empty() and fresh_planned.is_empty() \
+                    and fresh_planned_prod.is_empty() \
                     and GameData.get_price(active_flow_product) <= 0.0:
                 ui_helpers.hide_flow_tooltip()
             else:
@@ -506,7 +535,8 @@ func update_values():
                     fresh_cons_src,
                     special_yield,
                     active_flow_product,
-                    fresh_planned
+                    fresh_planned,
+                    fresh_planned_prod
                 )
 
 # Добавляет метку с разбивкой по качеству в строку ресурса.
@@ -595,6 +625,23 @@ func _format_cons_label(prod_id: String) -> String:
         return "-0]"
     return "-%d≈]" % maxi(1, int(round(per_tick)))
 
+# Текст зелёной метки динамики. При наличии производства за тик — факт
+# ("[+10"); иначе, если есть плановое производство, — план со знаком «≈»
+# ("[+10≈"): рецепты зданий дают план «за тик» (result рецепта), приведение
+# к тику не требуется. Производство улучшений непрерывно — его факт и есть
+# план, поэтому в карте планового производства улучшений нет.
+func _format_prod_label(prod_id: String) -> String:
+    var prod_val = production_rates.get(prod_id, 0)
+    if prod_val > 0:
+        return "[+%d" % prod_val
+    var planned = planned_production_map.get(prod_id, {})
+    if planned.is_empty():
+        return "[+0"
+    var per_tick := 0
+    for source_name in planned:
+        per_tick += int(planned[source_name].get("amount", 0))
+    return "[+%d≈" % per_tick
+
 # Показывает тултип ресурса (цена + источники прихода/расхода + плановое
 # потребление) при наведении на название или динамику на вкладке «Ресурсы».
 func _on_flow_hover(prod_id: String, product_name: String):
@@ -602,12 +649,13 @@ func _on_flow_hover(prod_id: String, product_name: String):
     var cons_src = _get_current_cons_sources(prod_id)
     var special_yield = GameData.get_special_yield(prod_id)
     var planned = _get_planned_for(prod_id)
+    var planned_prod = planned_production_map.get(prod_id, {})
     active_flow_product = prod_id
     active_flow_name = product_name
     if ui_helpers and is_instance_valid(ui_helpers):
         ui_helpers.show_flow_tooltip(
             get_viewport().get_mouse_position(), product_name, prod_src, cons_src,
-            special_yield, prod_id, planned)
+            special_yield, prod_id, planned, planned_prod)
 
 # Скрывает тултип источников; при переходе на другую метку той же строки не мерцает.
 func _on_flow_exit(prod_id: String):
