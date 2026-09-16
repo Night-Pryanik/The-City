@@ -82,7 +82,14 @@ var ignore_tech_requirements: bool = false
 # условия (additional_req). Тумблер из дебаг-меню, НЕ сохраняется в сейв.
 var ignore_build_requirements: bool = false
 
-const PRODUCTION_INTERVAL: float = 2.0
+# --- ТИК ИГРОВОЙ СИМУЛЯЦИИ ---
+# Единый шаг всей игровой симуляции: производство улучшений и зданий (крафт
+# слотов), потребление еды населением, профессиональное и городское потребление,
+# корм пастбищ, базовый прирост науки и т.д. — всё тикает раз в SIMULATION_TICK
+# секунд (шаг в main_map._process). Улучшения при этом выпускают продукцию по
+# своему собственному интервалу — полю "production_interval" из
+# data/improvements.json (см. get_improvement_production_interval).
+const SIMULATION_TICK: float = 1.0
 
 # --- ЭПОХИ ---
 # Возвращает индекс эпохи технологии в GameData.eras.
@@ -124,10 +131,10 @@ func advance_era() -> void:
     emit_signal("city_updated")
 
 # --- НАУКА ---
-# Базовый доход науки города за один production-тик без зданий науки.
-# Дополнительная наука начисляется рецептом «science» из выхода здания
-# и письменных основ.
-const BASE_SCIENCE_PER_TICK: float = 1.0
+# Базовый доход науки города за один тик симуляции (SIMULATION_TICK = 1 сек)
+# без зданий науки. Дополнительная наука начисляется рецептом «science»
+# из выхода здания и письменных основ.
+const BASE_SCIENCE_PER_SEC: float = 1.0
 # Скорость расхода пула науки на текущее исследование (очков в секунду).
 # Пул списывается по столько очков в секунду на исследование; это прямое
 # ускорение его изучения за счёт «произведённой» науки.
@@ -161,6 +168,8 @@ func setup():
     last_consumption_sources.clear()
     city_food_pool.clear()
     city_built_buildings.clear()
+    improvement_planned_production.clear()
+    improvement_planned_consumption.clear()
     building_construction.clear()
     domesticated_animals.clear()
     domesticated_plants.clear()
@@ -208,6 +217,11 @@ func reset_counters():
     consumption_rates.clear()
     production_sources.clear()
     consumption_sources.clear()
+    # Плановые выпуск/потребление улучшений — кэш текущего тика (наполняется
+    # из main_map.gd), живёт ровно один тик симуляции, как и фактические
+    # счётчики.
+    improvement_planned_production.clear()
+    improvement_planned_consumption.clear()
 
 # --- КАЗНА ГОРОДА ---
 # Добавляет монеты в казну. Казна всегда целое число монет: amount должен быть
@@ -406,12 +420,84 @@ func _record_planned_supply(result: Dictionary, pid: String, source_name: String
     entry["count"] = int(entry.get("count", 0)) + 1
     entry["interval"] = minf(float(entry.get("interval", interval)), interval)
 
-# Точка входа планового производства. Сейчас — только рецепты зданий;
-# производство улучшений на карте непрерывно (каждый тик, пока есть рабочий),
-# поэтому его «Производство (текущее)» и есть план — в карту оно не входит.
-# Записи несут interval — время крафта рецепта в секундах (см. get_craft_time).
+# Точка входа планового производства: рецепты зданий (interval = time рецепта,
+# 0 — «за тик») + улучшения на карте (interval = production_interval улучшения,
+# см. get_improvement_production_interval). Улучшение выдаёт продукцию раз в
+# production_interval секунд, поэтому между циклами «Производство (текущее)»
+# пустует — план закрывает пробел (записи наполняются из main_map.gd на каждом
+# тике симуляции).
 func get_planned_production_map() -> Dictionary:
-    return get_building_planned_production()
+    var result := get_building_planned_production()
+    for pid in improvement_planned_production:
+        if not result.has(pid):
+            result[pid] = {}
+        var by_source: Dictionary = result[pid]
+        for source_name in improvement_planned_production[pid]:
+            var src: Dictionary = improvement_planned_production[pid][source_name]
+            if not by_source.has(source_name):
+                by_source[source_name] = {"amount": 0, "count": 0, "interval": float(src.get("interval", 0.0))}
+            var entry: Dictionary = by_source[source_name]
+            entry["amount"] = int(entry.get("amount", 0)) + int(src.get("amount", 0))
+            entry["count"] = int(entry.get("count", 0)) + int(src.get("count", 1))
+            entry["interval"] = minf(float(entry.get("interval", 0.0)), float(src.get("interval", 0.0)))
+    return result
+
+# --- ПЛАНОВОЕ ПРОИЗВОДСТВО УЛУЧШЕНИЙ НА КАРТЕ ---
+# Кэш планового выпуска улучшений на текущий тик симуляции:
+#   product_id -> { "Имя улучшения" -> { "amount": N, "interval": float, "count": M } }
+#   amount   — суммарный выпуск улучшения за ОДИН цикл (по всем гексам);
+#   interval — production_interval улучшения, секунды;
+#   count    — сколько гексов с этим улучшением работают (для «хN» в тултипе).
+# Наполняется из main_map.gd на каждом тике, чистится в reset_counters()
+# вместе с фактическими счётчиками. Сейв не затрагивается — план всегда
+# выводится из текущих данных.
+var improvement_planned_production: Dictionary = {}
+
+# Время одного цикла производства улучшения imp_id в секундах — поле
+# "production_interval" из data/improvements.json. Поле отсутствует или <= 0 —
+# улучшение выпускает продукцию каждый тик симуляции (старые данные).
+func get_improvement_production_interval(imp_id: String) -> float:
+    var interval: float = float(GameData.improvements.get(imp_id, {}).get("production_interval", 0.0))
+    if interval <= 0.0:
+        return SIMULATION_TICK
+    return interval
+
+# Запись планового выпуска улучшения за один цикл (вызывается из main_map.gd
+# для каждого работающего улучшения на каждом тике симуляции).
+func record_planned_improvement_production(pid: String, source_name: String, amount: int, interval: float):
+    _record_cycle_entry(improvement_planned_production, pid, source_name, amount, interval)
+
+# --- ПЛАНОВОЕ ПОТРЕБЛЕНИЕ УЛУЧШЕНИЙ НА КАРТЕ (корм пастбищ) ---
+# Корм (feed_consumption ресурса) списывается ЗА ЦИКЛ производства (раз в
+# production_interval секунд), поэтому между циклами «Потребление (текущее)»
+# по корму пустует — план закрывает пробел (зеркально к плановому выпуску).
+# Наполняется из main_map.gd на каждом тике, чистится в reset_counters().
+var improvement_planned_consumption: Dictionary = {}
+
+# Запись планового потребления улучшения за один цикл (вызывается из main_map.gd).
+func record_planned_improvement_consumption(pid: String, source_name: String, amount: int, interval: float):
+    _record_cycle_entry(improvement_planned_consumption, pid, source_name, amount, interval)
+
+# Кэш планового потребления улучшений для мерджа во вкладке «Ресурсы»
+# (worker_manager.get_planned_consumption_map знает только профессии,
+# городское «all» и спрос зданий).
+func get_improvement_planned_consumption() -> Dictionary:
+    return improvement_planned_consumption
+
+# Общий хелпер записи цикловой записи (выпуск или потребление улучшения):
+# amount суммируется, count — число гексов-источников, interval — минимальный.
+func _record_cycle_entry(cache: Dictionary, pid: String, source_name: String, amount: int, interval: float):
+    if pid.is_empty() or amount <= 0:
+        return
+    if not cache.has(pid):
+        cache[pid] = {}
+    var by_source: Dictionary = cache[pid]
+    if not by_source.has(source_name):
+        by_source[source_name] = {"amount": 0, "count": 0, "interval": interval}
+    var entry: Dictionary = by_source[source_name]
+    entry["amount"] = int(entry.get("amount", 0)) + amount
+    entry["count"] = int(entry.get("count", 0)) + 1
+    entry["interval"] = minf(float(entry.get("interval", interval)), interval)
 
 # Возвращает человекочитаемое имя здания по его id (или сам id, если здание
 # не найдено в реестре).
@@ -557,22 +643,22 @@ func add_raw_production(raw_id: String, multiplier: float = 1.0, quality: String
                 production_rates[pid] += amount
 
 # --- ВРЕМЯ РЕЦЕПТА (time) ---
-# Рецепт слота здания исполняется не каждый production-тик, а раз в `time`
+# Рецепт слота здания исполняется не каждый тик симуляции, а раз в `time`
 # секунд (поле time в data/crafts/*.json). Накопленное время хранится по слотам
 # в записи здания (ключ "slot_progress" — массив секунд по индексам слотов) и
 # сохраняется вместе с city_built_buildings.
-# Шаг накопления — PRODUCTION_INTERVAL (2 сек): если time не кратен шагу,
+# Шаг накопления — SIMULATION_TICK (1 сек): если time не кратен шагу,
 # остаток переносится в следующий крафт, поэтому средняя скорость точная
-# (time = 5 при шаге 2 → крафты на 3-м, 5-м, 8-м... тиках → в среднем 5 сек).
-# Больше одного крафта за тик слот не делает: при time < PRODUCTION_INTERVAL
-# фактическая скорость ограничена одним крафтом за production-тик.
+# (time = 5 при шаге 1 → крафт на каждом 5-м тике → в среднем раз в 5 сек).
+# Больше одного крафта за тик слот не делает: при time < SIMULATION_TICK
+# фактическая скорость ограничена одним крафтом за тик симуляции.
 
 # Время одного крафта рецепта в секундах. Поле time отсутствует или <= 0 —
-# рецепт ведёт себя как раньше: крафт каждый production-тик.
+# рецепт ведёт себя как раньше: крафт каждый тик симуляции.
 func get_craft_time(recipe: Dictionary) -> float:
     var t := float(recipe.get("time", 0.0))
     if t <= 0.0:
-        return PRODUCTION_INTERVAL
+        return SIMULATION_TICK
     return t
 
 # Возвращает данные рецепта по id (или пустой словарь, если рецепт не найден).
@@ -675,9 +761,9 @@ func do_tick():
 
             # --- ВРЕМЯ РЕЦЕПТА ---
             # Рецепт исполняется раз в `time` секунд: копим время с шагом
-            # production-тика, крафтим, когда накопленного времени хватило.
+            # тика симуляции, крафтим, когда накопленного времени хватило.
             var craft_time := get_craft_time(recipe)
-            slot_progress[slot_idx] = float(slot_progress[slot_idx]) + PRODUCTION_INTERVAL
+            slot_progress[slot_idx] = float(slot_progress[slot_idx]) + SIMULATION_TICK
             if float(slot_progress[slot_idx]) < craft_time:
                 continue # время крафта ещё не вышло
 
@@ -966,17 +1052,17 @@ func _complete_tech_instantly(tech_id: String) -> bool:
     print("Мгновенно изучена (дебаг): ", tech_data.get("name", tech_id))
     return true
 
-# Возвращает базовую часть науки за тик. Производство зданий и письменных
-# материалов начисляется отдельно через рецепт «science».
+# Возвращает базовую часть науки за тик симуляции (1 сек). Производство зданий
+# и письменных материалов начисляется отдельно через рецепт «science».
 # Город не может генерировать меньше 1 очка науки за тик.
-func get_science_per_tick() -> float:
-    return BASE_SCIENCE_PER_TICK
+func get_science_per_sec() -> float:
+    return BASE_SCIENCE_PER_SEC
 
-# Фактическая скорость науки за тик: базовая часть плюс расход накопленного
-# пула науки во время исследования.
-func get_science_rate_per_tick() -> float:
-    var drain_per_tick: float = SCIENCE_DRAIN_PER_SEC * PRODUCTION_INTERVAL
-    return BASE_SCIENCE_PER_TICK + minf(drain_per_tick, get_science_pool())
+# Фактическая скорость науки (очков/сек): базовая часть плюс расход
+# накопленного пула науки во время исследования.
+func get_science_rate_per_sec() -> float:
+    var drain_per_sec: float = SCIENCE_DRAIN_PER_SEC * SIMULATION_TICK
+    return BASE_SCIENCE_PER_SEC + minf(drain_per_sec, get_science_pool())
 
 # Возвращает размер общего пула науки города (очков науки «про запас»).
 # Пул копится зданиями (например, Библиотекой через рецепт «Наука») в обычном
@@ -990,7 +1076,7 @@ func get_research_science_collected() -> float:
     return research_science_accumulated
 
 # Обновляет прогресс исследования непрерывно — вызывается каждый кадр
-# из _process в main_map.gd. База (rate = get_science_per_tick / интервал)
+# из _process в main_map.gd. База (rate = get_science_per_sec / SIMULATION_TICK)
 # даёт плавный минимальный прогресс; дополнительно накопленная наука из пула
 # библиотек списывается отсюда же и ускоряет текущее исследование.
 # Списание идёт целыми единицами (дробный остаток копится в science_drain_accum),
@@ -1002,7 +1088,7 @@ func tick_research_science_continuous(delta: float) -> void:
         return
     if current_research_science_cost <= 0:
         current_research_science_cost = 1
-    var rate: float = get_science_per_tick() / PRODUCTION_INTERVAL
+    var rate: float = get_science_per_sec() / SIMULATION_TICK
     research_science_accumulated += rate * delta
     # Расход пула науки на исследование: до N очков в секунду из общего пула.
     if get_science_pool() > 0.0:

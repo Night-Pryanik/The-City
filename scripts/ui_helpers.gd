@@ -577,6 +577,22 @@ func _format_interval(interval: float) -> String:
         return str(int(interval))
     return "%.1f" % interval
 
+# Форматирует скорость (ед./сек): целые значения без дробной части,
+# дробные — с одним знаком («0.5»).
+func _format_rate(value: float) -> String:
+    if value == floor(value):
+        return str(int(value))
+    return "%.1f" % value
+
+# Средняя скорость записи за секунду: amount × SIMULATION_TICK / interval
+# для циклических записей (рецепты зданий со своим time, профессии, «все
+# жители», улучшения с production_interval); interval = 0 — «за тик», а тик
+# симуляции равен SIMULATION_TICK сек, поэтому это amount × SIMULATION_TICK.
+func _planned_per_sec(amount: float, interval: float) -> float:
+    if interval > 0.0:
+        return amount * CityData.SIMULATION_TICK / interval
+    return amount * CityData.SIMULATION_TICK
+
 # Показывает тултип «источники прихода/расхода» ресурса (вкладка «Ресурсы»).
 # prod_sources / cons_sources: { источник -> { count, amount } }.
 # Строки сортируются по убыванию вклада; «хN» показывается при count > 1.
@@ -585,15 +601,18 @@ func _format_interval(interval: float) -> String:
 # потребление пусты, но цена ресурса > 0.
 # planned_consumption — плановое потребление:
 # { источник -> { amount, interval, count, is_group, group_name, is_population } };
-# interval > 0 — «ед./S сек» (профессии, «все жители»), interval = 0 — «ед./тик»
-# (спрос зданий по рецептам). Блок «Потребление (плановое):» показывается всегда,
+# строки показываются как средний расход В ПЕРЕСЧЁТЕ НА СЕКУНДУ («ед./сек»):
+# amount × SIMULATION_TICK / interval (interval = 0 — «за тик»).
+# Блок «Потребление (плановое):» показывается всегда,
 # когда план есть, — даже если фактического списания за последний тик не было.
 # cons_sources — фактическое потребление за последний тик; если списания в этом
 # тике не было, вызывающий может подставить последнее известное (см.
 # resources_tab._get_current_cons_sources), чтобы секция «Потребление
 # (текущее):» не мигала между тиками списания.
-# planned_production — плановое производство: { источник -> { amount, count } } —
-# выпуск рецептов зданий за тик. Блок «Производство (плановое):» идёт сразу под
+# planned_production — плановое производство: { источник -> { amount, interval, count } } —
+# выпуск рецептов зданий и циклов улучшений; строки показываются в ед./сек
+# (amount × SIMULATION_TICK / interval). Блок «Производство (плановое):» идёт
+# сразу под
 # своим фактом — блоком «Производство (текущее):», выше обоих блоков потребления,
 # и показывается, когда производитель существует, но за тик ничего не произвёл
 # (например, печи не хватило дерева).
@@ -658,12 +677,14 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dict
                 mult = " х%d" % int(row.count)
             var line_text = "%s%s: +%d" % [row.name, mult, int(row.amount)]
             flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, Color(0.3, 0.85, 0.3)))
-    # Плановое производство: что БУДЕТ произведено за один крафт текущими
-    # производителями (рецепты зданий с горожанином). Идёт сразу под своим
+    # Плановое производство: что БУДЕТ произведено текущими производителями
+    # (рецепты зданий с горожанином + улучшения на карте). Идёт сразу под своим
     # фактом — блоком «Производство (текущее)», выше обоих блоков потребления.
     # Показывается и когда фактического производства за тик нет — например,
-    # печи не хватило дерева. Единица выпуска — один крафт рецепта, поэтому при
-    # интервале больше тика строка показывает «ед./S сек» (см. CityData.get_craft_time).
+    # печи не хватило дерева или цикл производства улучшения ещё не вышел.
+    # Строки показывают средний выпуск В ПЕРЕСЧЁТЕ НА СЕКУНДУ («ед./сек»):
+    # amount × SIMULATION_TICK / interval (interval = time рецепта или
+    # production_interval улучшения; interval = 0 — «за тик»).
     if not planned_production.is_empty():
         var planned_prod_title = Label.new()
         planned_prod_title.text = "Производство (плановое):"
@@ -685,10 +706,7 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dict
             var line_text = str(row.name)
             if int(row.count) > 1:
                 line_text += " х%d" % int(row.count)
-            if float(row.interval) > 0.0:
-                line_text += ": +%d ед./%s сек" % [int(row.amount), _format_interval(float(row.interval))]
-            else:
-                line_text += ": +%d ед./тик" % int(row.amount)
+            line_text += ": +%s ед./сек" % _format_rate(_planned_per_sec(float(row.amount), float(row.interval)))
             flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, Color(0.845, 0.992, 0.0, 1.0)))
     if not cons_lines.is_empty():
         var cons_title = Label.new()
@@ -705,10 +723,10 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dict
             flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, Color(0.9, 0.3, 0.3)))
     # Плановое потребление: кто и сколько БУДЕТ списывать со склада —
     # независимо от фазы таймеров потребления и факта последнего тика.
-    # interval > 0 — интервальное потребление («ед./S сек»: профессии, «все
-    # жители», а также рецепты зданий со своим `time`), interval = 0 — спрос
-    # зданий за тик (рецепты без поля time). Групповые записи
-    # относятся к любому члену группы и помечаются её именем.
+    # Строки показывают средний расход В ПЕРЕСЧЁТЕ НА СЕКУНДУ («ед./сек»):
+    # interval > 0 — циклическое потребление (профессии, «все жители», рецепты
+    # зданий со своим `time`), interval = 0 — спрос зданий за тик. Групповые
+    # записи относятся к любому члену группы и помечаются её именем.
     if not planned_consumption.is_empty():
         var planned_title = Label.new()
         planned_title.text = "Потребление (плановое):"
@@ -739,17 +757,14 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dict
                 line_text += " х%d" % int(row.count)
             if bool(row.is_group) and not str(row.group_name).is_empty():
                 line_text += " (группа «%s»)" % str(row.group_name)
-            if float(row.interval) > 0.0:
-                line_text += ": %d ед./%s сек" % [int(row.amount), _format_interval(float(row.interval))]
-            else:
-                line_text += ": %d ед./тик" % int(row.amount)
+            line_text += ": %s ед./сек" % _format_rate(_planned_per_sec(float(row.amount), float(row.interval)))
             flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, Color(0.95, 0.6, 0.35)))
     # Пояснение к маркеру «≈» в динамике вкладки «Ресурсы» — для обоих
     # планов: производства и потребления. Показывается при любом непустом
     # плане, независимо от того, какая именно секция плана отрисовалась.
     if not planned_consumption.is_empty() or not planned_production.is_empty():
         var planned_note = Label.new()
-        planned_note.text = "≈ в динамике — плановое значение в пересчёте на тик"
+        planned_note.text = "≈ в динамике — плановое значение в пересчёте на секунду"
         planned_note.add_theme_font_size_override("font_size", 12)
         planned_note.add_theme_color_override("font_color", Color(0.65, 0.65, 0.65))
         planned_note.mouse_filter = Control.MOUSE_FILTER_IGNORE

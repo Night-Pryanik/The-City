@@ -35,8 +35,10 @@ var worker_manager: Node = null
 # Кэш карты планового потребления: product_id -> { "Имя источника" -> {...} }.
 # Пересчитывается при каждом update_data()/refresh() (раз в тик при открытом городе).
 var planned_consumption_map: Dictionary = {}
-# Кэш карты планового производства (рецепты зданий с горожанином): product_id ->
-# { "Имя здания" -> { "amount": N, "count": M } }. Пересчитывается там же.
+# Кэш карты планового производства (рецепты зданий с горожанином + улучшения
+# на карте с их production_interval): product_id ->
+# { "Имя источника" -> { "amount": N, "interval": S, "count": M } }.
+# Пересчитывается там же.
 var planned_production_map: Dictionary = {}
 
 var resources_list: Node
@@ -74,6 +76,21 @@ func _update_planned_consumption_map():
     if worker_manager != null and is_instance_valid(worker_manager) \
             and worker_manager.has_method("get_planned_consumption_map"):
         planned_consumption_map = worker_manager.get_planned_consumption_map()
+    # Плановое потребление улучшений (корм пастбищ за цикл) лежит в CityData:
+    # worker_manager знает только профессии, городское «all» и спрос зданий.
+    var improvement_demand = CityData.get_improvement_planned_consumption()
+    for pid in improvement_demand:
+        for source_name in improvement_demand[pid]:
+            var e: Dictionary = improvement_demand[pid][source_name]
+            if not planned_consumption_map.has(pid):
+                planned_consumption_map[pid] = {}
+            var by_source: Dictionary = planned_consumption_map[pid]
+            if not by_source.has(source_name):
+                by_source[source_name] = {"amount": 0, "interval": float(e.get("interval", 0.0)), "count": 0, "is_group": false, "group_name": "", "is_population": false}
+            var entry: Dictionary = by_source[source_name]
+            entry["amount"] = int(entry.get("amount", 0)) + int(e.get("amount", 0))
+            entry["count"] = int(entry.get("count", 0)) + int(e.get("count", 1))
+            entry["interval"] = minf(float(entry.get("interval", 0.0)), float(e.get("interval", 0.0)))
 
 # Плановое потребление конкретного ресурса: { "Имя источника" -> {...} }.
 func _get_planned_for(prod_id: String) -> Dictionary:
@@ -600,11 +617,13 @@ func _on_quality_exit():
     if ui_helpers and is_instance_valid(ui_helpers):
         ui_helpers.hide_quality_tooltip()
 
-# Текст красной метки динамики. При наличии списания за тик — факт ("-10]");
-# иначе, если есть плановое потребление, — план, приведённый к тику, с маркером
-# «≈» ("-2≈]"): amount × PRODUCTION_INTERVAL / interval для интервальных
-# записей и amount как есть для «за тик» (рецепты зданий). Приведение честно
-# показывает средний расход: 10 ед./10 сек = 2 ед. за тик.
+# Текст красной метки динамики. При наличии списания за тик — факт ("-10]")
+# (тик симуляции = SIMULATION_TICK = 1 сек, поэтому факт за тик — это и есть
+# расход за секунду); иначе, если есть плановое потребление, — средний расход
+# в пересчёте НА СЕКУНДУ с маркером «≈» ("-1≈]"):
+# amount × SIMULATION_TICK / interval для интервальных записей и amount как
+# есть для «за тик» (рецепты зданий). Приведение честно показывает средний
+# расход: 10 ед./10 сек = 1 ед./сек.
 func _format_cons_label(prod_id: String) -> String:
     var cons_val = consumption_rates.get(prod_id, 0)
     if cons_val > 0:
@@ -612,26 +631,26 @@ func _format_cons_label(prod_id: String) -> String:
     var planned = _get_planned_for(prod_id)
     if planned.is_empty():
         return "-0]"
-    var per_tick := 0.0
+    var per_sec := 0.0
     for source_name in planned:
         var entry: Dictionary = planned[source_name]
         var amount = float(entry.get("amount", 0))
         var interval = float(entry.get("interval", 0))
         if interval > 0.0:
-            per_tick += amount * CityData.PRODUCTION_INTERVAL / interval
+            per_sec += amount * CityData.SIMULATION_TICK / interval
         else:
-            per_tick += amount
-    if per_tick <= 0.0:
+            per_sec += amount
+    if per_sec <= 0.0:
         return "-0]"
-    return "-%d≈]" % maxi(1, int(round(per_tick)))
+    return "-%d≈]" % maxi(1, int(round(per_sec)))
 
 # Текст зелёной метки динамики. При наличии производства за тик — факт
-# ("[+10"); иначе, если есть плановое производство, — план, приведённый к тику,
-# со знаком «≈»: рецепты зданий исполняются раз в `time` секунд (см.
-# CityData.get_craft_time), поэтому amount × PRODUCTION_INTERVAL / interval
-# (рецепт без time — «за тик», interval = 0). Производство улучшений
-# непрерывно — его факт и есть план, поэтому в карте планового производства
-# улучшений нет.
+# ("[+10") (тик симуляции = SIMULATION_TICK = 1 сек, факт за тик — это и есть
+# выпуск за секунду); иначе, если есть плановое производство, — средний выпуск
+# в пересчёте НА СЕКУНДУ со знаком «≈»: рецепты зданий исполняются раз в `time`
+# секунд (см. CityData.get_craft_time), улучшения — раз в production_interval,
+# поэтому amount × SIMULATION_TICK / interval (запись без интервала — «за
+# тик», interval = 0 → amount).
 func _format_prod_label(prod_id: String) -> String:
     var prod_val = production_rates.get(prod_id, 0)
     if prod_val > 0:
@@ -639,18 +658,18 @@ func _format_prod_label(prod_id: String) -> String:
     var planned = planned_production_map.get(prod_id, {})
     if planned.is_empty():
         return "[+0"
-    var per_tick := 0.0
+    var per_sec := 0.0
     for source_name in planned:
         var entry: Dictionary = planned[source_name]
         var amount = float(entry.get("amount", 0))
         var interval = float(entry.get("interval", 0))
         if interval > 0.0:
-            per_tick += amount * CityData.PRODUCTION_INTERVAL / interval
+            per_sec += amount * CityData.SIMULATION_TICK / interval
         else:
-            per_tick += amount
-    if per_tick <= 0.0:
+            per_sec += amount
+    if per_sec <= 0.0:
         return "[+0"
-    return "[+%d≈" % maxi(1, int(round(per_tick)))
+    return "[+%d≈" % maxi(1, int(round(per_sec)))
 
 # Показывает тултип ресурса (цена + источники прихода/расхода + плановое
 # потребление) при наведении на название или динамику на вкладке «Ресурсы».

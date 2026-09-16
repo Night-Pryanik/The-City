@@ -174,6 +174,10 @@ func _serialize_tile_data(main_map: Node) -> Array:
                     # (time_to_mature). Сохраняется, чтобы после загрузки
                     # пастбище не начинало заполняться заново с нуля.
                     "fill_time": tile.get("fill_time", 0.0),
+                    # production_progress — накопленное время производственного
+                    # цикла улучшения (production_interval). Сохраняется, чтобы
+                    # после загрузки цикл не начинался с нуля.
+                    "production_progress": tile.get("production_progress", 0.0),
                     "quality": tile.get("quality", ""),
                     "terrain_icon": tile.get("terrain_icon", ""),
                     "in_influence": tile.get("in_influence", false),

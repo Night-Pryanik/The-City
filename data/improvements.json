@@ -8,6 +8,12 @@
   //   2) Гекс пустой — игрок разводит одомашненный вид. Id животного/
   //      растения пишется в tile.crop_bred, tile.resource остаётся null.
   //      Качество наследуется от уже одомашненного экземпляра этого вида.
+  // ПРОИЗВОДСТВО: поле "production_interval" — время в СЕКУНДАХ, за которое
+  // улучшение выдаёт свою продукцию (одной «пачкой», пока на нём есть рабочий).
+  // Отсчёт идёт по тику игровой симуляции SIMULATION_TICK = 1 сек
+  // (CityData.SIMULATION_TICK, шаг в main_map.gd). Корм (feed_consumption)
+  // списывается за цикл производства, а не каждый тик. Инфраструктурные
+  // улучшения (no_worker / без производства) носят поле формально.
   "improvements": [
     {
       "id": "farm",
@@ -19,6 +25,9 @@
       // Профессия рабочего на этом улучшении. Метка ставится/снимается
       // автоматически в worker_manager.gd при назначении/увольнении.
       "profession": "farmer",
+      // Главный источник еды: еда списывается каждый тик симуляции (1 сек),
+      // поэтому ферма выдаёт урожай каждую секунду.
+      "production_interval": 1,
       // Проводник пресной воды: после изучения технологии «Орошение» ферма
       // распространяет пресную воду на соседние гексы (схема water_access: chain).
       "conducts_water": true
@@ -30,7 +39,9 @@
       "color": [ 34, 139, 34 ],
       "work_cost": 25,
       "unlock_tech": "animal_husbandry",
-      "profession": "herder"
+      "profession": "herder",
+      // Корм (feed_consumption ресурса) списывается за цикл производства.
+      "production_interval": 2
     },
     {
       "id": "mine",
@@ -39,7 +50,8 @@
       "color": [ 105, 105, 105 ],
       "work_cost": 30,
       "unlock_tech": "mining",
-      "profession": "miner"
+      "profession": "miner",
+      "production_interval": 2
     },
     {
       "id": "quarry",
@@ -48,7 +60,8 @@
       "color": [ 139, 137, 137 ],
       "work_cost": 20,
       "unlock_tech": "masonry",
-      "profession": "quarryman"
+      "profession": "quarryman",
+      "production_interval": 2
     },
     {
       "id": "beehive",
@@ -57,7 +70,8 @@
       "color": [ 255, 215, 0 ],
       "work_cost": 12,
       "unlock_tech": "beekeeping",
-      "profession": "beekeeper"
+      "profession": "beekeeper",
+      "production_interval": 2
     },
     {
       "id": "vineyard",
@@ -66,7 +80,8 @@
       "color": [ 128, 0, 0 ],
       "work_cost": 35,
       "unlock_tech": "winegrowing",
-      "profession": "vinedresser"
+      "profession": "vinedresser",
+      "production_interval": 2
     },
     {
       "id": "clay_pit",
@@ -75,7 +90,8 @@
       "color": [ 210, 180, 140 ],
       "work_cost": 22,
       "unlock_tech": "pottery",
-      "profession": "potter"
+      "profession": "potter",
+      "production_interval": 2
     },
     {
       "id": "plantation",
@@ -85,6 +101,7 @@
       "work_cost": 28,
       "unlock_tech": "plantations",
       "profession": "planter",
+      "production_interval": 2,
       // Проводник пресной воды: после изучения технологии «Орошение» плантация
       // распространяет пресную воду на соседние гексы (схема water_access: chain).
       "conducts_water": true
@@ -96,7 +113,8 @@
       "color": [ 139, 69, 19 ],
       "work_cost": 30,
       "unlock_tech": "bitumen_extraction",
-      "profession": "tar_collector"
+      "profession": "tar_collector",
+      "production_interval": 3
     },
     {
       "id": "soda_quarry",
@@ -105,7 +123,8 @@
       "color": [ 200, 220, 255 ],
       "work_cost": 30,
       "unlock_tech": "soda_extraction",
-      "profession": "soda_extractor"
+      "profession": "soda_extractor",
+      "production_interval": 3
     },
     {
       "id": "salt_pond",
@@ -113,7 +132,8 @@
       "icon": "salt_pond.png",
       "color": [ 255, 255, 200 ],
       "work_cost": 30,
-      "unlock_tech": "salt_extraction"
+      "unlock_tech": "salt_extraction",
+      "production_interval": 2
     },
     {
       // Пристань — «ключ» к водным ресурсам конкретного водоёма. Строится на
@@ -139,7 +159,9 @@
       // рабочий не требуется (см. docs.md, «Профессии и потребление ресурсов»).
       "no_worker": true,
       // Маркер: это улучшение открывает водные ресурсы своего водоёма.
-      "water_body_harbor": true
+      "water_body_harbor": true,
+      // Инфраструктура без производства: поле формальное (единая схема данных).
+      "production_interval": 2
     },
     {
       // Рыбацкие лодки — добывают рыбу. Строить можно ТОЛЬКО на гексах с рыбным
@@ -152,6 +174,9 @@
       "work_cost": 15,
       "unlock_tech": "fishing",
       "profession": "fisherman",
+      // Рыба — еда: как и ферма, выдаёт улов каждую секунду (еда списывается
+      // каждый тик симуляции).
+      "production_interval": 1,
       // Маркер: для постройки требуется пристань на этом же водоёме.
       "requires_harbor": true,
       "no_road": true
@@ -172,7 +197,9 @@
       "no_worker": true,
       // Дорога к каналу НЕ прокладывается: это инфраструктурный элемент,
       // и тянуть к нему сеть дорог не имеет смысла.
-      "no_road": true
+      "no_road": true,
+      // Инфраструктура без производства: поле формальное (единая схема данных).
+      "production_interval": 2
     },
     {
       // Лесная делянка — улучшение лесозаготовки. Работает в ДВУХ режимах
@@ -197,7 +224,8 @@
       "color": [ 101, 67, 33 ],
       "work_cost": 18,
       "unlock_tech": "wood_processing",
-      "profession": "lumberjack"
+      "profession": "lumberjack",
+      "production_interval": 2
     }
   ]
 }

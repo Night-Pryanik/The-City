@@ -1032,7 +1032,7 @@ func _update_status_label():
     # только здесь, на вкладке «Технологии»). Здания копят науку в пул,
     # а пул расходуется на исследование — это и даёт фактический вклад.
     if science_pool_label != null and is_instance_valid(science_pool_label):
-        science_pool_label.text = "Наука за тик: %.1f" % CityData.get_science_rate_per_tick()
+        science_pool_label.text = "Наука: %.1f/сек" % CityData.get_science_rate_per_sec()
     if CityData.current_research_tech_id != "":
         var tech_data = _get_tech_data(CityData.current_research_tech_id)
         if not tech_data.is_empty():

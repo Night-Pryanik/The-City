@@ -308,12 +308,46 @@ func _update_food_label():
             total_prod += prod_rates.get(pid, 0)
             total_cons += cons_rates.get(pid, 0)
 
-    var food_str = "Еда: %d [+%d / -%d]" % [food_sum, total_prod, total_cons]
+    # Циклические производства/потребления (улучшения с production_interval,
+    # профессии с интервалом) выдают/списывают еду «пачками», поэтому в тик
+    # без события факт равен 0. Чтобы метка не мигала «+0», при нулевом факте
+    # показываем среднюю скорость из плановых карт (как динамика «≈» на
+    # вкладке «Ресурсы»).
+    var prod_mark := ""
+    var cons_mark := ""
+    if total_prod <= 0:
+        total_prod = _planned_food_per_sec(resources_tab.planned_production_map, pool)
+        if total_prod > 0:
+            prod_mark = "≈"
+    if total_cons <= 0:
+        total_cons = _planned_food_per_sec(resources_tab.planned_consumption_map, pool)
+        if total_cons > 0:
+            cons_mark = "≈"
+
+    var food_str = "Еда: %d [+%d%s / -%d%s]" % [food_sum, total_prod, prod_mark, total_cons, cons_mark]
     var pop_str = "Население: %d (свободных: %d)" % [CityData.total_population, CityData.idle_population]
     var treasury_str = "Казна: %d" % CityData.treasury
 
     if top_food_label:
         top_food_label.text = food_str + " | " + pop_str + " | " + treasury_str
+
+# Суммарная посекундная скорость записей плана (производства или потребления)
+# по продуктам из пула еды. Формат карт — product_id -> { источник -> { amount,
+# interval, ... } }; interval = 0 — «за тик» (tick = SIMULATION_TICK = 1 сек).
+func _planned_food_per_sec(map: Dictionary, pool: Dictionary) -> int:
+    var total := 0.0
+    for pid in pool:
+        if not pool[pid]:
+            continue
+        for source_name in map.get(pid, {}):
+            var entry: Dictionary = map[pid][source_name]
+            var amount = float(entry.get("amount", 0))
+            var interval = float(entry.get("interval", 0))
+            if interval > 0.0:
+                total += amount * CityData.SIMULATION_TICK / interval
+            else:
+                total += amount
+    return int(round(total))
 
     # Обновляем метку еды на вкладке «Здания» (без населения)
     if buildings_tab.has_method("update_food_label"):

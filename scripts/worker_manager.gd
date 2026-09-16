@@ -8,8 +8,8 @@ var assigned_hexes = {}
 # Таймеры потребления профессиональных ресурсов, ключ — "row,col".
 # Значение: { "elapsed": float, "interval": float } — сколько секунд прошло
 # с момента последнего списания и с каким интервалом нужно списывать.
-# Эти таймеры нужны, чтобы потребление шло НЕ каждый production-тик
-# (раз в 2 сек), а с интервалом, заданным в декларации потребления
+# Эти таймеры нужны, чтобы потребление шло НЕ каждый тик симуляции
+# (SIMULATION_TICK = 1 сек), а с интервалом, заданным в декларации потребления
 # (data/consumption.json или устаревшее поле consumption у продукта;
 # например, 10 сек для группы «Лодки»). Сам по себе таймер НЕ блокирует
 # производство: если ресурса нет, улучшение просто откатывается к базовому
@@ -324,8 +324,8 @@ func load_consumption_timers(timers: Array):
 # «горячим», и всё, что появится, списывается на ближайшем тике без ожидания
 # полного интервала. Жадное списание из @-группы — как в tick_consumption().
 # production_bonus игнорируется: городское потребление бонусов не даёт.
-# Вызывается из main_map._process в production-тике с шагом
-# CityData.PRODUCTION_INTERVAL (та же точность, что у по-гексового потребления).
+# Вызывается из main_map._process в тике симуляции с шагом
+# CityData.SIMULATION_TICK (та же точность, что у по-гексового потребления).
 func tick_city_consumption(delta: float) -> void:
     var cons_list = GameData.get_profession_consumption("all")
     var all_source = GameData.professions.get("all", {}).get("name", "all")
@@ -497,6 +497,15 @@ func get_planned_consumption_map() -> Dictionary:
     for pid in building_demand:
         for source_name in building_demand[pid]:
             var e: Dictionary = building_demand[pid][source_name]
+            _record_planned_entry(result, str(pid), str(source_name), int(e.get("amount", 0)), float(e.get("interval", 0.0)), int(e.get("count", 1)), bool(e.get("is_group", false)), str(e.get("group_name", "")), false)
+    # Плановое потребление улучшений на карте (корм пастбищ): amount — за один
+    # цикл производства, interval — production_interval улучшения. Корм
+    # списывается за цикл (см. main_map, блок «ЦИКЛ ПРОИЗВОДСТВА УЛУЧШЕНИЯ»),
+    # поэтому записи попадают в план наравне со спросом зданий.
+    var improvement_demand = CityData.get_improvement_planned_consumption()
+    for pid in improvement_demand:
+        for source_name in improvement_demand[pid]:
+            var e: Dictionary = improvement_demand[pid][source_name]
             _record_planned_entry(result, str(pid), str(source_name), int(e.get("amount", 0)), float(e.get("interval", 0.0)), int(e.get("count", 1)), bool(e.get("is_group", false)), str(e.get("group_name", "")), false)
     return result
 

@@ -186,7 +186,7 @@ func _ready():
                 # crop_bred — id одомашненного животного/растения, разводимого
                 # на пустом гексе (см. docs.md, раздел «Разведение животных/растений»).
                 # Для природных ресурсов остаётся tile.resource.
-                var tile = {"terrain": "plain", "cover": "none", "resource": null, "crop_bred": null, "improvement": null, "terrain_icon": "", "in_influence": false, "is_explored": false, "river_edges": [], "in_town_influence": false, "has_town": false}
+                var tile = {"terrain": "plain", "cover": "none", "resource": null, "crop_bred": null, "improvement": null, "production_progress": 0.0, "terrain_icon": "", "in_influence": false, "is_explored": false, "river_edges": [], "in_town_influence": false, "has_town": false}
                 if row < saved_tiles.size() and col < saved_tiles[row].size():
                     var saved = saved_tiles[row][col]
                     if not saved.is_empty():
@@ -205,6 +205,9 @@ func _ready():
                         tile["crop_bred"] = saved.get("crop_bred")
                         # Заполенность поголовья (старые сейвы: поле отсутствует — 0.0)
                         tile["fill_time"] = float(saved.get("fill_time", 0.0))
+                        # Прогресс производственного цикла улучшения (старые
+                        # сейвы: поле отсутствует — 0.0)
+                        tile["production_progress"] = float(saved.get("production_progress", 0.0))
                         tile["improvement"] = saved.get("improvement")
                         tile["quality"] = saved.get("quality", "")
                         tile["terrain_icon"] = saved.get("terrain_icon", "")
@@ -452,8 +455,8 @@ func _process(delta):
     if expansion_button:
         expansion_button.disabled = is_paused
 
-    # Наука копится каждый кадр, а не привязана к production-тику.
-    # Без этого прогресс-бар исследования прыгал скачками раз в 2 секунды.
+    # Наука копится каждый кадр, а не привязана к тику симуляции.
+    # Без этого прогресс-бар исследования прыгал скачками.
     if not is_paused:
         CityData.tick_research_science_continuous(delta)
         # Заполенность пастбищ — то же самое: копится каждый кадр, чтобы
@@ -461,8 +464,8 @@ func _process(delta):
         _tick_pasture_fill(delta)
 
     production_timer += delta
-    if production_timer >= CityData.PRODUCTION_INTERVAL:
-        production_timer -= CityData.PRODUCTION_INTERVAL
+    if production_timer >= CityData.SIMULATION_TICK:
+        production_timer -= CityData.SIMULATION_TICK
         # Пересобираем заново: тик ниже наполнит список актуальными растущими
         # пастбищами, а покадровое продвижение идёт в _tick_pasture_fill().
         _growing_pastures = {}
@@ -486,26 +489,39 @@ func _process(delta):
                         var wood_yield: float = MapHelpers.get_cover_wood_yield(tile)
                         if wood_yield > 0.0:
                             var lj_consumption_mult: float = worker_manager.tick_consumption(
-                                row, col, CityData.PRODUCTION_INTERVAL)
+                                row, col, CityData.SIMULATION_TICK)
                             var lj_imp_mult: float = CityData.get_improvement_production_multiplier(
                                 "lumberjack_hut", _is_hex_irrigated(row, col),
                                 tile.get("terrain", ""), "lumberjack_hut")
-                            var wood_amount = int(ceil(wood_yield * lj_imp_mult * lj_consumption_mult))
-                            CityData.add_to_storage("wood", wood_amount)
-                            CityData.record_production_source("wood",
-                                GameData.improvements.get("lumberjack_hut", {}).get("name", "Лесная делянка"),
-                                wood_amount)
+                            var lj_source = GameData.improvements.get("lumberjack_hut", {}).get("name", "Лесная делянка")
+                            # Цикл производства улучшения: копим секунды с шагом
+                            # тика симуляции, раз в production_interval выдаём
+                            # выпуск цикла (wood_yield × множители) пачкой.
+                            var lj_interval := CityData.get_improvement_production_interval("lumberjack_hut")
+                            tile["production_progress"] = float(tile.get("production_progress", 0.0)) + CityData.SIMULATION_TICK
+                            if float(tile["production_progress"]) >= lj_interval:
+                                tile["production_progress"] = minf(float(tile["production_progress"]) - lj_interval, lj_interval)
+                                var wood_amount = int(ceil(wood_yield * lj_imp_mult * lj_consumption_mult))
+                                CityData.add_to_storage("wood", wood_amount)
+                                CityData.record_production_source("wood", lj_source, wood_amount)
+                            # Плановый выпуск цикла: виден каждый тик, пока
+                            # рабочий на месте (закрывает пробелы между циклами).
+                            CityData.record_planned_improvement_production("wood", lj_source,
+                                int(ceil(wood_yield * lj_imp_mult * lj_consumption_mult)), lj_interval)
                     continue
 
                 # Профессиональное потребление: улучшения, у которых через
                 # профессию есть потребление (consumption у продукта), списывают
-                # ресурс по своему интервалу. tick_consumption возвращает
-                # итоговый множитель производства: 1.0 без бонуса, 1.0+bonus
-                # пока ресурс есть. Улучшение НЕ встаёт при нехватке — оно
-                # просто работает на базе. Таймер двигается шагом
-                # PRODUCTION_INTERVAL (точность ±2 сек на интервалах 10+ сек).
+                # ресурс по своему интервалу. Таймер двигается ШАГОМ ТИКА
+                # симуляции каждый тик (уход от «один тик, чтобы править
+                # всеми»): точность ±1 сек на интервалах 10+ сек. Вызов
+                # ОБЯЗАТЕЛЬНЫЙ для любого гекса с рабочим — иначе таймер
+                # потребления не двигается и бонус профессии «замирает».
+                # Возвращает итоговый множитель производства: 1.0 без бонуса,
+                # 1.0+bonus пока ресурс есть. Улучшение НЕ встаёт при нехватке —
+                # оно просто работает на базе.
                 var consumption_multiplier: float = worker_manager.tick_consumption(
-                    row, col, CityData.PRODUCTION_INTERVAL)
+                    row, col, CityData.SIMULATION_TICK)
 
                 var res_data = GameData.raw_resources.get(eff_res, {})
                 var feed_needed = res_data.get("feed_consumption", 0)
@@ -535,29 +551,54 @@ func _process(delta):
 
                 # Качество ресурса на гексе передаётся в производство.
                 var tile_quality = tile.get("quality", "common")
-                # Имя улучшения — источник прихода в тултипе ресурсов («Ферма» и т.п.).
+                # Имя улучшения — источник прихода/расхода в тултипе ресурсов
+                # («Ферма» и т.п.).
                 var improvement_source = GameData.improvements.get(tile.improvement, {}).get("name", tile.improvement)
-                if feed_needed > 0:
-                    var available_feed = CityData.city_storage.get("feed", 0)
-                    if available_feed >= feed_needed:
-                        CityData.remove_from_storage("feed", feed_needed, "best")
-                        # Имя улучшения (Ферма/Пастбище) — источник расхода корма,
-                        # чтобы в тултипе ресурса «Корм» было видно, кто его ест.
-                        CityData.record_consumption_source("feed", improvement_source, feed_needed)
-                        CityData.add_raw_production(eff_res, production_multiplier, tile_quality, improvement_source)
+                # --- ЦИКЛ ПРОИЗВОДСТВА УЛУЧШЕНИЯ ---
+                # Улучшение выдаёт продукцию раз в production_interval секунд
+                # (поле в data/improvements.json): копим секунды с шагом тика
+                # симуляции, по выходе цикла выпускаем продукцию ПАЧКОЙ и
+                # списываем корм (feed_consumption) за ЦЕЛЫЙ цикл.
+                var imp_interval := CityData.get_improvement_production_interval(tile.improvement)
+                tile["production_progress"] = float(tile.get("production_progress", 0.0)) + CityData.SIMULATION_TICK
+                if float(tile["production_progress"]) >= imp_interval:
+                    tile["production_progress"] = minf(float(tile["production_progress"]) - imp_interval, imp_interval)
+                    if feed_needed > 0:
+                        var available_feed = CityData.city_storage.get("feed", 0)
+                        if available_feed >= feed_needed:
+                            CityData.remove_from_storage("feed", feed_needed, "best")
+                            # Имя улучшения (Ферма/Пастбище) — источник расхода корма,
+                            # чтобы в тултипе ресурса «Корм» было видно, кто его ест.
+                            CityData.record_consumption_source("feed", improvement_source, feed_needed)
+                            CityData.add_raw_production(eff_res, production_multiplier, tile_quality, improvement_source)
+                        else:
+                            CityData.add_raw_production(eff_res, 0.25, tile_quality, improvement_source)
                     else:
-                        CityData.add_raw_production(eff_res, 0.25, tile_quality, improvement_source)
-                else:
-                    CityData.add_raw_production(eff_res, production_multiplier, tile_quality, improvement_source)
+                        CityData.add_raw_production(eff_res, production_multiplier, tile_quality, improvement_source)
+
+                # Плановые выпуск/потребление цикла: видны КАЖДЫЙ тик, пока
+                # рабочий на месте (закрывают пробелы между циклами на вкладке
+                # «Ресурсы» — те же «слепые окна», что у рецептов зданий).
+                for planned_pid in GameData.raw_resources.get(eff_res, {}).get("produces", {}):
+                    if not CityData.is_product_available(planned_pid):
+                        continue
+                    var planned_amount := 0
+                    if feed_needed > 0 and CityData.city_storage.get("feed", 0) < feed_needed:
+                        planned_amount = int(ceil(float(RangeUtils.get_min_value(res_data["produces"][planned_pid], 1)) * 0.25))
+                    else:
+                        planned_amount = int(ceil(float(RangeUtils.get_min_value(res_data["produces"][planned_pid], 1)) * production_multiplier))
+                    CityData.record_planned_improvement_production(planned_pid, improvement_source, planned_amount, imp_interval)
+                if feed_needed > 0:
+                    CityData.record_planned_improvement_consumption("feed", improvement_source, feed_needed, imp_interval)
 
         CityData.do_tick()
         # Городское потребление псевдо-профессии "all" (все жители города,
         # включая занятых): списывает ресурсы поголовно по total_population
         # по общему городскому таймеру (см. worker_manager.tick_city_consumption).
         # Никакого бонуса к производству не даёт — тест инфраструктуры.
-        worker_manager.tick_city_consumption(CityData.PRODUCTION_INTERVAL)
+        worker_manager.tick_city_consumption(CityData.SIMULATION_TICK)
         # tick_research_science вызывается каждый кадр ниже (см. _process),
-        # а не привязан к production-тику. Это даёт плавный progress-bar.
+        # а не привязан к тику симуляции. Это даёт плавный progress-bar.
 
     _update_research_progress()
     # Перерисовываем слой прогресс-баров ТОЛЬКО когда есть что показывать:
@@ -969,6 +1010,8 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
             tile.crop_bred = null
             # Стадо при сносе исчезает — накопленная заполенность сбрасывается.
             tile["fill_time"] = 0.0
+            # Прогресс производственного цикла снесённого улучшения — тоже.
+            tile["production_progress"] = 0.0
         else:
             # Террейн-действие (напр. осушение): сбрасываем ресурсы и 
             # улучшение, очищаем покров и crop_bred, чтобы гекс стал 
@@ -978,6 +1021,8 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
             tile.crop_bred = null
             tile.cover = "none"
             tile["fill_time"] = 0.0
+            # Прогресс производственного цикла убранного улучшения — тоже.
+            tile["production_progress"] = 0.0
 
         # Меняем тип местности только если result_terrain задан и не равен "dont_change".
         var result_terrain = sa.get("result_terrain", "")
@@ -993,6 +1038,8 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
     tile.improvement = imp_id
     # Новое улучшение — стадо/посев начинает набирать силу с нуля.
     tile["fill_time"] = 0.0
+    # Производственный цикл нового улучшения стартует с нуля.
+    tile["production_progress"] = 0.0
     if target_res_id != null:
         # Два сценария:
         # 1) На гексе УЖЕ был природный ресурс (tile.resource != null) — мы

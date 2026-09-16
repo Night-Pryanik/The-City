@@ -8,6 +8,13 @@ var _worker_manager
 # при периодическом обновлении — чтобы не пересобирать UI без изменений).
 var _last_products_key := ""
 
+# Форматирует скорость (шт./сек, ед./сек): целые значения без дробной части,
+# дробные — с одним знаком («1.5»).
+func _format_rate(value: float) -> String:
+    if value == floor(value):
+        return str(int(value))
+    return "%.1f" % value
+
 func _init(tooltip_text_label: Label, tooltip_products_container: VBoxContainer, map_renderer, worker_manager):
     _tooltip_text_label = tooltip_text_label
     _tooltip_products_container = tooltip_products_container
@@ -88,9 +95,12 @@ func render_products(products: Array, container: Node, wrap: bool = false):
             # потребления, когда на складе не хватает ресурса). Иначе —
             # обычный белый. Если amount == 0, выводим только подпись
             # (используется для строк потребления, где важна не цифра, а текст).
-            var amount_val = int(item.get("amount", 0))
+            # amount может быть дробным (скорость «ед./сек»); suffix
+            # дописывается после числа (например, « ед./сек»).
+            var amount_val = float(item.get("amount", 0))
             if amount_val > 0:
-                label_item.text = "%s: %d" % [item.get("name", ""), amount_val]
+                var amount_str = str(int(amount_val)) if amount_val == floor(amount_val) else "%.1f" % amount_val
+                label_item.text = "%s: %s%s" % [item.get("name", ""), amount_str, str(item.get("suffix", ""))]
             else:
                 label_item.text = item.get("name", "")
             var item_color: Color = item.get("color", Color.WHITE)
@@ -391,8 +401,15 @@ func _collect_production(row: int, col: int, res_id: String, prefix: String, til
     var has_worker = _worker_manager.has_worker(row, col)
 
     var bonus_multiplier = 1.0
+    # Интервал цикла производства улучшения: у построенного улучшения — своё
+    # production_interval, у подсказки «при постройке» — интервал будущего
+    # улучшения (improved_by ресурса).
+    var prod_interval: float = 1.0
     if tile.improvement != null and has_worker:
         bonus_multiplier = CityData.get_improvement_production_multiplier(tile.improvement, MapHelpers.is_hex_irrigated(row, col, tile_data, tile_data.size(), tile_data[0].size()), tile.get("terrain", ""), res_id)
+        prod_interval = CityData.get_improvement_production_interval(tile.improvement)
+    elif tile.improvement == null:
+        prod_interval = CityData.get_improvement_production_interval(str(res_data.get("improved_by", "")))
 
     var final_amounts := {}
     for prod_id in res_data["produces"]:
@@ -402,7 +419,8 @@ func _collect_production(row: int, col: int, res_id: String, prefix: String, til
         # берём детерминированный минимум диапазона (см. RangeUtils).
         var base_amount = float(RangeUtils.get_min_value(res_data["produces"][prod_id], 1))
         var final_amount = ceili(base_amount * bonus_multiplier)
-        final_amounts[prod_id] = {"base": base_amount, "final": final_amount}
+        # Показ — посекундный: выпуск цикла, делённый на production_interval.
+        final_amounts[prod_id] = {"base": base_amount, "per_sec": float(final_amount) / prod_interval}
 
     if final_amounts.is_empty():
         return result
@@ -410,14 +428,13 @@ func _collect_production(row: int, col: int, res_id: String, prefix: String, til
     result.append({"type": "header", "text": prefix})
 
     for prod_id in final_amounts:
-        var amount = final_amounts[prod_id].final
         var prod_name = GameData.products.get(prod_id, {}).get("name", prod_id)
         var icon_path = ""
         var prod_data = GameData.products.get(prod_id, {})
         if prod_data.has("icon"):
             var icon_name = prod_data["icon"]
             icon_path = _map_renderer.get_icon_path(icon_name)
-        result.append({"type": "product", "name": prod_name, "amount": amount, "icon_path": icon_path})
+        result.append({"type": "product", "name": prod_name, "amount": final_amounts[prod_id].per_sec, "icon_path": icon_path, "suffix": " ед./сек"})
 
     return result
 
@@ -440,13 +457,14 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
         if lj_yield > 0.0 and tile.improvement == null \
                 and CityData.is_product_available("wood"):
             var lj_name = GameData.improvements.get("lumberjack_hut", {}).get("name", "lumberjack_hut")
-            var lj_prod: int = int(ceil(lj_yield))
+            var lj_interval0 := CityData.get_improvement_production_interval("lumberjack_hut")
+            var lj_per_sec0: float = float(int(ceil(lj_yield))) / lj_interval0
             var wood_data0 = GameData.products.get("wood", {})
             var lj_icon_path0 = ""
             if wood_data0.has("icon"):
                 lj_icon_path0 = _map_renderer.get_icon_path(wood_data0["icon"])
             result.append({"type": "header", "text": "При постройке %s будет производить:" % lj_name})
-            result.append({"type": "product", "name": wood_data0.get("name", "Древесина"), "amount": lj_prod, "icon_path": lj_icon_path0})
+            result.append({"type": "product", "name": wood_data0.get("name", "Древесина"), "amount": lj_per_sec0, "icon_path": lj_icon_path0, "suffix": " ед./сек"})
         elif tile.improvement == "lumberjack_hut" and lj_yield > 0.0 \
                 and _worker_manager.has_worker(row, col) \
                 and CityData.is_product_available("wood"):
@@ -454,7 +472,8 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
                 "lumberjack_hut",
                 MapHelpers.is_hex_irrigated(row, col, tile_data, tile_data.size(), tile_data[0].size()),
                 tile.get("terrain", ""), "lumberjack_hut")
-            var lj_amount2 = ceili(lj_yield * lj_mult2)
+            var lj_interval2 := CityData.get_improvement_production_interval("lumberjack_hut")
+            var lj_per_sec2: float = float(ceili(lj_yield * lj_mult2)) / lj_interval2
             var wood_data2 = GameData.products.get("wood", {})
             var lj_icon_path2 = ""
             if wood_data2.has("icon"):
@@ -464,7 +483,7 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
                 var lj_base_str = str(int(lj_yield)) if lj_yield == floor(lj_yield) else "%.1f" % lj_yield
                 lj_label = "%s (база %s)" % [lj_label, lj_base_str]
             result.append({"type": "header", "text": "Производит:"})
-            result.append({"type": "product", "name": lj_label, "amount": lj_amount2, "icon_path": lj_icon_path2})
+            result.append({"type": "product", "name": lj_label, "amount": lj_per_sec2, "icon_path": lj_icon_path2, "suffix": " ед./сек"})
         return result
     var res_data = GameData.raw_resources.get(eff_res, {})
     if not res_data.has("produces"):
@@ -474,15 +493,22 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
     # непрерывного производства: их собирают спец-действием action_type "forage",
     # после чего ресурс исчезает с карты. В расширенной сводке («Производит:…»)
     # показывать для них нечего, а значение produces там — «число или [min, max]»
-    # (выход за один сбор), не базовый выход за тик улучшения.
+    # (выход за один сбор), не базовый выход за цикл улучшения.
     if res_data.get("improved_by", null) == null:
         return result
 
     var modifiers := []
     var bonus_multiplier = 1.0
+    # Интервал цикла производства: у построенного улучшения — своё
+    # production_interval, у подсказки «при постройке» — интервал будущего
+    # улучшения (improved_by ресурса).
+    var prod_interval: float = 1.0
     if tile.improvement != null and _worker_manager.has_worker(row, col):
         modifiers = CityData.get_improvement_production_modifiers(tile.improvement, MapHelpers.is_hex_irrigated(row, col, tile_data, tile_data.size(), tile_data[0].size()), tile.get("terrain", ""), eff_res)
         bonus_multiplier = CityData.get_improvement_production_multiplier(tile.improvement, MapHelpers.is_hex_irrigated(row, col, tile_data, tile_data.size(), tile_data[0].size()), tile.get("terrain", ""), eff_res)
+        prod_interval = CityData.get_improvement_production_interval(tile.improvement)
+    elif tile.improvement == null:
+        prod_interval = CityData.get_improvement_production_interval(str(res_data.get("improved_by", "")))
 
     var available_products := {}
     for prod_id in res_data["produces"]:
@@ -521,7 +547,8 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
         if prod_data.has("icon"):
             var icon_name = prod_data["icon"]
             icon_path = _map_renderer.get_icon_path(icon_name)
-        result.append({"type": "product", "name": prod_name, "amount": final_amount, "icon_path": icon_path})
+        # Показ — посекундный: выпуск цикла, делённый на production_interval.
+        result.append({"type": "product", "name": prod_name, "amount": float(final_amount) / prod_interval, "icon_path": icon_path, "suffix": " ед./сек"})
 
     for mod in modifiers:
         result.append({"type": "label", "text": " %s" % mod.get("label", ""), "color": Color(0.7, 0.9, 0.7)})
@@ -547,13 +574,14 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
                     var cons_name = entry.get("product_name", cons_pid)
                     var cons_amount = int(entry.get("amount", 0))
                     var cons_interval = float(entry.get("interval", 0))
-                    # Подпись строки потребления: «<имя>: <N> шт./<S> сек».
+                    # Подпись строки потребления: «<имя>: <N> шт./сек»
+                    # (amount записи, делённый на её interval).
                     # Если задан production_bonus — добавляем «+N% к производству»,
                     # чтобы игрок видел, зачем профессии этот расходник.
                     var cons_bonus: float = float(entry.get("production_bonus", 0.0))
-                    var cons_label := "%s: %d шт./%d сек" % [
-                        cons_name, cons_amount, int(round(cons_interval))
-                    ]
+                    # Показ — посекундный: amount записи за её interval секунд.
+                    var cons_rate: float = float(cons_amount) / cons_interval if cons_interval > 0.0 else float(cons_amount)
+                    var cons_label := "%s: %s шт./сек" % [cons_name, _format_rate(cons_rate)]
                     if cons_bonus > 0.0:
                         var bonus_pct := int(round(cons_bonus * 100.0))
                         cons_label += " (+%d%% к производству)" % bonus_pct

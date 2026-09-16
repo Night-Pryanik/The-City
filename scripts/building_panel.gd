@@ -27,7 +27,7 @@ var open_popup = null
 # Снимок состояния, при котором в последний раз был сделан _refresh().
 # Хранит количество зданий, рецепты в слотах, наличие работника и приоритет
 # качества по каждому индексу. Используется, чтобы НЕ пересоздавать панель
-# слотов на каждом игровом тике: city_updated эмитится раз в PRODUCTION_INTERVAL
+# слотов на каждом игровом тике: city_updated эмитится раз в SIMULATION_TICK
 # из do_tick(), и без этого _refresh() каждый тик уничтожает кнопки заголовков
 # (toggle_btn, quality_btn) вместе с их ОС-тултипами "Запустить/Приостановить"
 # и "Приоритет качества: ...".
@@ -42,7 +42,7 @@ var _upgrade_progress_bars: Dictionary = {}
 # сколько времени рецепта (data/crafts, поле time) уже накоплено слотом
 # (CityData.get_slot_progress_ratio). Тоже обновляются в _process() без
 # пересоздания UI. Бар создаётся только для рецептов с временем больше шага
-# тика — у остальных крафт и так идёт каждый production-тик.
+# тика — у остальных крафт и так идёт каждый тик симуляции.
 var _slot_progress_bars: Dictionary = {}
 
 # Тултип кнопки «Улучшить»: собственная панель с богатым содержимым
@@ -387,10 +387,10 @@ func _refresh():
 
             # Прогресс-бар крафта слота: сколько времени рецепта (time) уже
             # накоплено. Показывается только у рецептов, которые длятся дольше
-            # production-тика (у мгновенных рецептов прогресс всегда «полный»).
+            # тика симуляции (у мгновенных рецептов прогресс всегда «полный»).
             # Обновляется в _process() без пересоздания UI.
             var craft_time = CityData.get_slot_craft_time(b_index, i)
-            if craft_time > CityData.PRODUCTION_INTERVAL:
+            if craft_time > CityData.SIMULATION_TICK:
                 var craft_bar = ProgressBar.new()
                 craft_bar.custom_minimum_size = Vector2(70, 14)
                 craft_bar.show_percentage = false
@@ -609,7 +609,7 @@ func _on_assignments_changed():
         return
     # Если открыт попап со списком рецептов — НЕ вызываем _refresh(), чтобы
     # попап не перестраивался и не закрывался при каждом игровом тике.
-    # (city_updated эмитится каждые PRODUCTION_INTERVAL секунд из do_tick.)
+    # (city_updated эмитится каждый тик симуляции — SIMULATION_TICK — из do_tick.)
     if open_popup != null:
         return
     # Если открыт tooltip списка продуктов (группового ресурса) - тоже не вызываем

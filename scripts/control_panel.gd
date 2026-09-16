@@ -116,7 +116,7 @@ var _preview_header_container: VBoxContainer
 
 # Снимок состояния кнопок действий, при котором их строили в последний раз.
 # Используется, чтобы НЕ пересоздавать кнопки (и их ОС-тултипы) на каждом
-# игровом тике: CityData.city_updated эмитится раз в PRODUCTION_INTERVAL из
+# игровом тике: CityData.city_updated эмитится раз в SIMULATION_TICK из
 # do_tick(), и без этого _build_actions() каждый тик уничтожал бы кнопки
 # вместе с их тултипами «Нужна технология: ...», «Нет труда: ...» и т.п.
 # (тот же паттерн, что и _last_panel_state в building_panel.gd /
@@ -1048,6 +1048,9 @@ func _build_preview(row: int, col: int, tile: Dictionary):
             var lj_mult = CityData.get_improvement_production_multiplier(
                 "lumberjack_hut", lj_has_water, tile.get("terrain", ""), "lumberjack_hut")
             var lj_amount = ceili(lj_yield * lj_mult)
+            # Показ — посекундный: выпуск цикла, делённый на production_interval.
+            var lj_interval := CityData.get_improvement_production_interval("lumberjack_hut")
+            var lj_per_sec: float = float(lj_amount) / lj_interval
             var wood_data = GameData.products.get("wood", {})
             var wood_icon_path = ""
             if wood_data.has("icon"):
@@ -1058,7 +1061,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
             var wood_label = wood_data.get("name", "Древесина")
             if lj_mult != 1.0:
                 wood_label = "%s (база %s)" % [wood_label, lj_base_str]
-            lj_products.append({"type": "product", "name": wood_label, "amount": lj_amount, "icon_path": wood_icon_path})
+            lj_products.append({"type": "product", "name": wood_label, "amount": lj_per_sec, "icon_path": wood_icon_path, "suffix": " ед./сек"})
             var lj_box = VBoxContainer.new()
             map_tooltip.render_products(lj_products, lj_box, true)
             _preview_container.add_child(lj_box)
@@ -1072,6 +1075,9 @@ func _build_preview(row: int, col: int, tile: Dictionary):
             var terrain_id = tile.get("terrain", "")
             var bonus_multiplier = CityData.get_improvement_production_multiplier(imp_id, has_water, terrain_id, eff_res)
             var modifiers = CityData.get_improvement_production_modifiers(imp_id, has_water, terrain_id, eff_res)
+            # Показ — посекундный: выпуск цикла, делённый на production_interval
+            # улучшения (поле в data/improvements.json).
+            var prod_interval := CityData.get_improvement_production_interval(imp_id)
 
             var products := []
             products.append({"type": "header", "text": "Будет производить:"})
@@ -1092,7 +1098,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
                 if prod_data.has("icon"):
                     var icon_name = prod_data["icon"]
                     icon_path = main_map.map_renderer.get_icon_path(icon_name)
-                products.append({"type": "product", "name": prod_name, "amount": final_amount, "icon_path": icon_path})
+                products.append({"type": "product", "name": prod_name, "amount": float(final_amount) / prod_interval, "icon_path": icon_path, "suffix": " ед./сек"})
             for mod in modifiers:
                 products.append({"type": "label", "text": " %s" % mod.get("label", ""), "color": Color(0.7, 0.9, 0.7)})
             # Рендерим в ОТДЕЛЬНЫЙ бокс: render_products очищает переданный
