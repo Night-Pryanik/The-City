@@ -4,23 +4,15 @@
       "id": "grind_grain_hand",
       "name": "Ручной помол зерна",
       "produced_in": [ "hand_mill" ],
-      "resources": { "@millable_grains": 10 },
+      "resources": { "@millable_grains": 20 },
       "result": { "flour": 10 },
       "time": 10
-    },
-    {
-      "id": "grind_grain",
-      "name": "Помол зерна",
-      "produced_in": [ "windmill" ],
-      "resources": { "@millable_grains": 10 },
-      "result": { "flour": 20 },
-      "time": 5
     },
     {
       "id": "grind_grain_animal",
       "name": "Помол зерна с помощью тягловых животных",
       "produced_in": [ "animal_mill" ],
-      "resources": { "@millable_grains": 10, "feed": 10 },
+      "resources": { "@millable_grains": 20, "feed": 10 },
       "result": { "flour": 10 },
       "time": 5
     },
@@ -28,7 +20,7 @@
       "id": "grind_grain_water",
       "name": "Помол зерна с помощью водяного колеса",
       "produced_in": [ "water_mill" ],
-      "resources": { "@millable_grains": 10 },
+      "resources": { "@millable_grains": 20 },
       "result": { "flour": 10 },
       "time": 2
     },

@@ -12,7 +12,7 @@
       "id": "meat",
       "name": "Разделка мяса",
       "produced_in": [ "slaughterhouse" ],
-      "resources": { "raw_meat": 10 },
+      "resources": { "raw_meat": 20 },
       "result": { "meat": 10 },
       "time": 5
     },

@@ -36,15 +36,6 @@
       "default_recipes": [ "grind_grain_water" ]
     },
     {
-      "id": "windmill",
-      "name": "Мельница",
-      "description": "Ветряная мельница, перемалывающая зерно в муку с силой ветра.",
-      "work_cost": 35,
-      "icon": "windmill.png",
-      "production_slots": 1.0,
-      "default_recipes": [ "grind_grain" ]
-    },
-    {
       "id": "bakery",
       "name": "Пекарня",
       "description": "Печёт хлеб из муки — основу рациона города.",
