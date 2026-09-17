@@ -613,32 +613,26 @@ func _format_planned_rate(amount: float, interval: float) -> String:
         return "%d / %.1f сек" % [amt_int, iv]
     return "%d / сек" % amt_int
 
-# Показывает тултип «источники прихода/расхода» ресурса (вкладка «Ресурсы»).
-# prod_sources / cons_sources: { источник -> { count, amount } }.
-# Строки сортируются по убыванию вклада; «хN» показывается при count > 1.
+# Показывает тултип «источники планового прихода/расхода» ресурса (вкладка
+# «Ресурсы»). Фактическое производство/потребление (текущее) из тултипа
+# убрано (см. коммит 5790016).
 # resource_id — id ресурса/продукта: если задан, сверху выводится его текущая
 # цена (GameData.get_price). Тултип показывается, даже когда производство/
 # потребление пусты, но цена ресурса > 0.
 # planned_consumption — плановое потребление:
-# { источник -> { amount, interval, count, is_group, group_name, is_population } };
-# строки показываются как средний расход В ПЕРЕСЧЁТЕ НА СЕКУНДУ («ед./сек»):
-# amount × SIMULATION_TICK / interval (interval = 0 — «за тик»).
-# Блок «Потребление (плановое):» показывается всегда,
-# когда план есть, — даже если фактического списания за последний тик не было.
-# cons_sources — фактическое потребление за последний тик; если списания в этом
-# тике не было, вызывающий может подставить последнее известное (см.
-# resources_tab._get_current_cons_sources), чтобы секция «Потребление
-# (текущее):» не мигала между тиками списания.
+# { источник -> { amount, interval, count, is_group, group_name, is_population } }.
+# Строки показываются как пара «amount / interval сек» (см. _format_planned_rate).
+# Блок «Потребление (плановое):» показывается, когда план есть.
 # planned_production — плановое производство: { источник -> { amount, interval, count } } —
-# выпуск рецептов зданий и циклов улучшений; строки показываются в ед./сек
-# (amount × SIMULATION_TICK / interval). Блок «Производство (плановое):» идёт
-# сразу под
-# своим фактом — блоком «Производство (текущее):», выше обоих блоков потребления,
-# и показывается, когда производитель существует, но за тик ничего не произвёл
-# (например, печи не хватило дерева).
-# Порядок секций тултипа: цена / «Производство (текущее):» / «Производство
-# (плановое):» / «Потребление (текущее):» / «Потребление (плановое):» / сноска «≈».
-func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dictionary, cons_sources: Dictionary, special_yield: Dictionary = {}, resource_id: String = "", planned_consumption: Dictionary = {}, planned_production: Dictionary = {}):
+# выпуск рецептов зданий и циклов улучшений; формат строк аналогичный.
+# Блок «Производство (плановое):» показывается, когда производитель существует,
+# но за тик ничего не произвёл (например, печи не хватило дерева).
+# После коммита 5790016 фактическое (текущее) производство/потребление из
+# тултипа убрано: остались только плановые показатели (что БУДЕТ произведено/
+# потреблено при текущем состоянии производителей).
+# Порядок секций тултипа: цена / «Производство (плановое):» / «Потребление
+# (плановое):» / сноска «≈».
+func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dictionary = {}, resource_id: String = "", planned_consumption: Dictionary = {}, planned_production: Dictionary = {}):
     if flow_tooltip_panel == null:
         return
     # Очищаем предыдущее содержимое.
@@ -648,16 +642,7 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dict
     var price := 0.0
     if not resource_id.is_empty():
         price = GameData.get_price(resource_id)
-    var prod_lines: Array = []
-    for src in prod_sources:
-        prod_lines.append({"name": src, "amount": int(prod_sources[src].get("amount", 0)), "count": int(prod_sources[src].get("count", 1))})
-    prod_lines.sort_custom(func(a, b): return a.amount > b.amount)
-    var cons_lines: Array = []
-    for src in cons_sources:
-        cons_lines.append({"name": src, "amount": int(cons_sources[src].get("amount", 0)), "count": int(cons_sources[src].get("count", 1))})
-    cons_lines.sort_custom(func(a, b): return a.amount > b.amount)
-    if prod_lines.is_empty() and cons_lines.is_empty() \
-            and special_yield.is_empty() and price <= 0.0 \
+    if special_yield.is_empty() and price <= 0.0 \
             and planned_consumption.is_empty() \
             and planned_production.is_empty():
         flow_tooltip_panel.hide()
@@ -684,32 +669,17 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dict
         yield_label.add_theme_color_override("font_color", Color(0.3, 1.0, 0.918, 1.0))
         yield_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         flow_tooltip_vbox.add_child(yield_label)
-    if not prod_lines.is_empty():
-        var prod_title = Label.new()
-        prod_title.text = "Производство (текущее):"
-        prod_title.add_theme_font_size_override("font_size", 14)
-        prod_title.add_theme_color_override("font_color", Color(0.6, 1.0, 0.6))
-        prod_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-        flow_tooltip_vbox.add_child(prod_title)
-        for row in prod_lines:
-            var mult = ""
-            if int(row.count) > 1:
-                mult = " х%d" % int(row.count)
-            var line_text = "%s%s: +%d" % [row.name, mult, int(row.amount)]
-            flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, Color(0.3, 0.85, 0.3)))
     # Плановое производство: что БУДЕТ произведено текущими производителями
-    # (рецепты зданий с горожанином + улучшения на карте). Идёт сразу под своим
-    # фактом — блоком «Производство (текущее)», выше обоих блоков потребления.
-    # Показывается и когда фактического производства за тик нет — например,
-    # печи не хватило дерева или цикл производства улучшения ещё не вышел.
-    # Строки показывают средний выпуск В ПЕРЕСЧЁТЕ НА СЕКУНДУ («ед./сек»):
-    # amount × SIMULATION_TICK / interval (interval = time рецепта или
-    # production_interval улучшения; interval = 0 — «за тик»).
+    # (рецепты зданий с горожанином + улучшения на карте). Показывается и когда
+    # фактического производства за тик нет — например, печи не хватило дерева
+    # или цикл производства улучшения ещё не вышел.
+    # Строки показывают пару «amount / interval» через _format_planned_rate:
+    # для интервальных записей — «10 / 10 сек», для непрерывных — «5 / сек».
     if not planned_production.is_empty():
         var planned_prod_title = Label.new()
         planned_prod_title.text = "Производство (плановое):"
         planned_prod_title.add_theme_font_size_override("font_size", 14)
-        planned_prod_title.add_theme_color_override("font_color", Color(0.845, 0.992, 0.0, 1.0))
+        planned_prod_title.add_theme_color_override("font_color", Color(0.6, 1.0, 0.6))
         planned_prod_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
         flow_tooltip_vbox.add_child(planned_prod_title)
         var planned_prod_lines: Array = []
@@ -726,21 +696,8 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dict
             var line_text = str(row.name)
             if int(row.count) > 1:
                 line_text += " х%d" % int(row.count)
-            line_text += ": +%s" % _format_planned_rate(float(row.amount), float(row.interval))
-            flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, Color(0.845, 0.992, 0.0, 1.0)))
-    if not cons_lines.is_empty():
-        var cons_title = Label.new()
-        cons_title.text = "Потребление (текущее):"
-        cons_title.add_theme_font_size_override("font_size", 14)
-        cons_title.add_theme_color_override("font_color", Color(1.0, 0.6, 0.6))
-        cons_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-        flow_tooltip_vbox.add_child(cons_title)
-        for row in cons_lines:
-            var mult = ""
-            if int(row.count) > 1:
-                mult = " х%d" % int(row.count)
-            var line_text = "%s%s: -%d" % [row.name, mult, int(row.amount)]
-            flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, Color(0.9, 0.3, 0.3)))
+            line_text += ": %s" % _format_planned_rate(float(row.amount), float(row.interval))
+            flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, Color(0.3, 0.85, 0.3)))
     # Плановое потребление: кто и сколько БУДЕТ списывать со склада —
     # независимо от фазы таймеров потребления и факта последнего тика.
     # Строки показывают средний расход В ПЕРЕСЧЁТЕ НА СЕКУНДУ («ед./сек»):
@@ -751,7 +708,7 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dict
         var planned_title = Label.new()
         planned_title.text = "Потребление (плановое):"
         planned_title.add_theme_font_size_override("font_size", 14)
-        planned_title.add_theme_color_override("font_color", Color(1.0, 0.7, 0.45))
+        planned_title.add_theme_color_override("font_color", Color(1.0, 0.6, 0.6))
         planned_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
         flow_tooltip_vbox.add_child(planned_title)
         var planned_lines: Array = []
@@ -778,7 +735,7 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dict
             if bool(row.is_group) and not str(row.group_name).is_empty():
                 line_text += " (группа «%s»)" % str(row.group_name)
             line_text += ": %s" % _format_planned_rate(float(row.amount), float(row.interval))
-            flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, Color(0.95, 0.6, 0.35)))
+            flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, Color(0.9, 0.3, 0.3)))
     # Пояснение к маркеру «≈» в динамике вкладки «Ресурсы» — для обоих
     # планов: производства и потребления. Показывается при любом непустом
     # плане, независимо от того, какая именно секция плана отрисовалась.

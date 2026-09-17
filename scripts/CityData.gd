@@ -398,10 +398,11 @@ func _record_planned_supply(result: Dictionary, pid: String, source_name: String
 
 # Точка входа планового производства: рецепты зданий (interval = time рецепта,
 # 0 — «за тик») + улучшения на карте (interval = production_interval улучшения,
-# см. get_improvement_production_interval). Улучшение выдаёт продукцию раз в
-# production_interval секунд, поэтому между циклами «Производство (текущее)»
-# пустует — план закрывает пробел (записи наполняются из main_map.gd на каждом
-# тике симуляции).
+# см. get_improvement_production_interval). План нужен потому, что в
+# непрерывной модели (см. main_map._emit_continuous_production и CraftContainer)
+# выпуск идёт каждый тик по чуть-чуть, и метка динамики `[+N≈]` показывает
+# средний per_sec — этого достаточно для UI вкладки «Ресурсы». Записи
+# наполняются из main_map.gd на каждом тике симуляции.
 func get_planned_production_map() -> Dictionary:
     var result := get_building_planned_production()
     for pid in improvement_planned_production:
@@ -444,10 +445,11 @@ func record_planned_improvement_production(pid: String, source_name: String, amo
     _record_cycle_entry(improvement_planned_production, pid, source_name, amount, interval)
 
 # --- ПЛАНОВОЕ ПОТРЕБЛЕНИЕ УЛУЧШЕНИЙ НА КАРТЕ (корм пастбищ) ---
-# Корм (feed_consumption ресурса) списывается ЗА ЦИКЛ производства (раз в
-# production_interval секунд), поэтому между циклами «Потребление (текущее)»
-# по корму пустует — план закрывает пробел (зеркально к плановому выпуску).
-# Наполняется из main_map.gd на каждом тике, чистится в reset_counters().
+# Корм (feed_consumption ресурса) списывается непрерывно (см.
+# main_map._consume_feed_continuous), и в плане указывается средний расход за
+# цикл производства — для UI вкладки «Ресурсы» (зеркально к плановому
+# выпуску). Наполняется из main_map.gd на каждом тике, чистится в
+# reset_counters().
 var improvement_planned_consumption: Dictionary = {}
 
 # Запись планового потребления улучшения за один цикл (вызывается из main_map.gd).

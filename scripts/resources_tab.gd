@@ -116,9 +116,6 @@ func _update_planned_consumption_map():
 func _get_planned_for(prod_id: String) -> Dictionary:
     return planned_consumption_map.get(prod_id, {})
 
-# Фактическое потребление для секции «Потребление (текущее)» тултипа.
-# Обычно — списание за последний тик. Если в этом тике списания не было, но у
-# ресурса есть плановое потребление — показываем последнее фактическое
 # Общее правило списка ресурсов: строка видна только при наличии у игрока
 # источника поступления — запас на складе, производство за тик или плановое
 # производство (существующий производитель-здание с горожанином).
@@ -548,8 +545,6 @@ func update_values():
                 ui_helpers.show_flow_tooltip(
                     get_viewport().get_mouse_position(),
                     active_flow_name,
-                    {},
-                    {},
                     special_yield,
                     active_flow_product,
                     fresh_planned,
@@ -675,7 +670,7 @@ func _on_flow_hover(prod_id: String, product_name: String):
     active_flow_name = product_name
     if ui_helpers and is_instance_valid(ui_helpers):
         ui_helpers.show_flow_tooltip(
-            get_viewport().get_mouse_position(), product_name, {}, {},
+            get_viewport().get_mouse_position(), product_name,
             special_yield, prod_id, planned, planned_prod)
 
 # Скрывает тултип источников; при переходе на другую метку той же строки не мерцает.

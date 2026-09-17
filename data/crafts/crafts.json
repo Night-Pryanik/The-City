@@ -200,7 +200,7 @@
       "produced_in": [ "papyrus_workshop" ],
       "resources": { "papyrus_plant": 200 },
       "result": { "reed_boat": 10 },
-      "time": 5.0,
+      "time": 100,
       "unlock_tech": "fishing",
       "description": "Создает лодку из тростника"
     },
