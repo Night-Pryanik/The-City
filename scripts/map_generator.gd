@@ -301,37 +301,18 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
     var hex_index = _build_hex_index(tile_data, rows, cols, city_row, city_col)
     print("этап cover + hex_index: ", Time.get_ticks_msec() - t_cover, " ms")
 
-    # --- Животные ---
-    var animal_resources = {}
+    # --- Обычные ресурсы ---
+    # Категория является только классификацией ресурса и не определяет,
+    # должен ли он появляться на карте. Все ресурсы, добываемые улучшением,
+    # проходят единым пулом и фильтруются только своими allowed_* и
+    # spawn_conditions.
+    var regular_resources = {}
     for rid in raw_res.keys():
         var r = raw_res[rid]
-        if r.get("category", "") == "animals":
-            animal_resources[rid] = r
-    _place_resources(tile_data, animal_resources, rows, cols, city_row, city_col, hex_index)
-
-    # --- Растения ---
-    var plant_resources = {}
-    for rid in raw_res.keys():
-        var r = raw_res[rid]
-        if r.get("category", "") != "plants":
+        if r.get("improved_by", null) == null or r.get("improved_by", "") == "":
             continue
-        # Дикоросы (wild_food) размещаются отдельной функцией place_wild_food
-        # ТОЛЬКО внутри стартового Кольца Влияния, поэтому из общего спавна
-        # по всей карте их исключаем.
-        if rid == "wild_food":
-            continue
-        plant_resources[rid] = r
-    _place_resources(tile_data, plant_resources, rows, cols, city_row, city_col, hex_index)
-
-    # --- Минералы и металлы ---
-    # Металлы — отдельная пользовательская категория, но по механике спавна
-    # это такие же добываемые месторождения, как и minerals.
-    var mineral_resources = {}
-    for rid in raw_res.keys():
-        var r = raw_res[rid]
-        if r.get("category", "") in ["minerals", "metals"]:
-            mineral_resources[rid] = r
-    _place_resources(tile_data, mineral_resources, rows, cols, city_row, city_col, hex_index)
+        regular_resources[rid] = r
+    _place_resources(tile_data, regular_resources, rows, cols, city_row, city_col, hex_index)
 
     # --- Одноразовые (собираемые) ресурсы ---
     # Самородки металлов и аналогичные ресурсы с improved_by == null:
