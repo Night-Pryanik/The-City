@@ -121,7 +121,9 @@ func render_products(products: Array, container: Node, wrap: bool = false):
 # с модификаторами. Панель показывает всё сразу, без задержки наведения.
 func build_hex_info(row: int, col: int, tile_data: Array, city_row: int = 0, city_col: int = 0) -> Dictionary:
     var text = _build_text(row, col, tile_data, city_row, city_col)
-    var products = _collect_extended_production(row, col, tile_data)
+    # На гексе города нельзя строить улучшения, поэтому потенциальный выход
+    # продукции в левой колонке панели для него не показываем.
+    var products = [] if row == city_row and col == city_col else _collect_extended_production(row, col, tile_data)
     return {"text": text, "products": products}
 
 
