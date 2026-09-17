@@ -156,9 +156,9 @@ static func get_shared_edge_index(row: int, col: int, neighbor_row: int, neighbo
     var dr = neighbor_row - row
     var dc = neighbor_col - col
     if dr == 0 and dc == -1:
-        return 2  # W
+        return 2 # W
     if dr == 0 and dc == 1:
-        return 5  # E
+        return 5 # E
     var is_odd = (row % 2) == 1
     if dr == -1:
         # Верхний ряд: для чётной строки валидны dc=-1 (NW) и dc=0 (N),
@@ -471,6 +471,18 @@ static func can_breed_resource(res_id: String) -> bool:
     var raw = GameData.raw_resources.get(res_id, {})
     return bool(raw.get("breedable", true))
 
+## Возвращает улучшение, через которое можно разводить ресурс на пустом гексе.
+## Используется то же улучшение, что и для его природного ресурса.
+static func get_breeding_improvement(res_id: String) -> String:
+    var raw: Dictionary = GameData.raw_resources.get(res_id, {})
+    var improved_by = raw.get("improved_by", null)
+    if improved_by != null and improved_by != "":
+        return str(improved_by)
+    return ""
+
+static func can_breed_resource_by(res_id: String, improvement_id: String) -> bool:
+    return can_breed_resource(res_id) and get_breeding_improvement(res_id) == improvement_id
+
 ## --- Заполненность поголовья (time_to_mature) ---
 ## Ресурсы с time_to_mature > 0 (животные на пастбищах) набирают полную
 ## численность постепенно. Пока стадо не полное, выход ресурса пропорционален
@@ -654,24 +666,20 @@ static func get_buildable_improvement(tile: Dictionary) -> String:
                 return imp_id
         return ""
 
-    # Пустой гекс: пастбище или ферма из одомашненных видов.
+    # Пустой гекс: улучшение для разведения одомашненного вида.
     var tile_cover: String = tile.get("cover", "none")
-    if CityData.domesticated_animals.size() > 0 and CityData.is_improvement_unlocked("pasture"):
-        for animal_id in CityData.domesticated_animals:
-            var animal_data: Dictionary = GameData.raw_resources.get(animal_id, {})
-            # breedable: false (напр. водные ресурсы) — разведение недоступно.
-            if not can_breed_resource(animal_id):
-                continue
-            if tile.terrain in animal_data.get("allowed_terrain", []) and tile_cover in animal_data.get("allowed_cover", []):
-                return "pasture"
-    if CityData.domesticated_plants.size() > 0 and CityData.is_improvement_unlocked("farm"):
-        for plant_id in CityData.domesticated_plants:
-            var plant_data: Dictionary = GameData.raw_resources.get(plant_id, {})
-            # breedable: false (напр. водные ресурсы) — разведение недоступно.
-            if not can_breed_resource(plant_id):
-                continue
-            if tile.terrain in plant_data.get("allowed_terrain", []) and tile_cover in plant_data.get("allowed_cover", []):
-                return "farm"
+    var domesticated_ids: Array = []
+    domesticated_ids.append_array(CityData.domesticated_animals)
+    domesticated_ids.append_array(CityData.domesticated_plants)
+    for res_id in domesticated_ids:
+        var resource_data: Dictionary = GameData.raw_resources.get(res_id, {})
+        if not can_breed_resource(res_id):
+            continue
+        if tile.terrain not in resource_data.get("allowed_terrain", []) or tile_cover not in resource_data.get("allowed_cover", []):
+            continue
+        var improvement_id = get_breeding_improvement(res_id)
+        if improvement_id != "" and CityData.is_improvement_unlocked(improvement_id):
+            return improvement_id
     return ""
 
 

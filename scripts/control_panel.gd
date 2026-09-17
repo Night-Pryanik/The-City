@@ -305,7 +305,7 @@ func _actions_equal(a: Array, b: Array) -> bool:
 # Собирает список действий для гекса. Каждый элемент:
 #   { "type": String, "label": String, "enabled": bool, "tooltip": String,
 #     "imp_id": String, "target_res_id": String, "action_id": String }
-# type: "build_improvement" | "build_pasture" | "build_farm" | "special" |
+# type: "build_improvement" | "build_breeding" | "special" |
 #       "pause_improvement" | "resume_improvement" | "cancel_build" |
 #       "research_tech"
 func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
@@ -465,65 +465,36 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
 
     # 2. Пустой гекс: разведение одомашненных животных/растений.
     if tile.resource == null:
-        # Пастбище.
-        if CityData.domesticated_animals.size() > 0:
-            var pasture_unlocked = CityData.is_improvement_unlocked("pasture")
-            var pasture_enabled = pasture_unlocked
-            var pasture_tooltip = "Построить пастбище для одомашненного животного"
-            if not pasture_unlocked:
-                var unlock_tech = CityData.get_improvement_unlock_tech("pasture")
-                pasture_tooltip = "Пастбище — нужна технология: %s" % _get_tech_name(unlock_tech)
+        var breeding_ids: Array = CityData.domesticated_animals.duplicate()
+        breeding_ids.append_array(CityData.domesticated_plants)
+        var suitable_breeding_improvements: Dictionary = {}
+        for resource_id in breeding_ids:
+            var resource_data = GameData.raw_resources.get(resource_id, {})
+            var improvement_id = MapHelpers.get_breeding_improvement(resource_id)
+            if improvement_id == "" or not MapHelpers.can_breed_resource(resource_id):
+                continue
+            if tile.terrain in resource_data.get("allowed_terrain", []) \
+                    and tile.get("cover", "none") in resource_data.get("allowed_cover", []):
+                suitable_breeding_improvements[improvement_id] = true
+        for improvement_id in suitable_breeding_improvements:
+            var imp_name = GameData.improvements.get(improvement_id, {}).get("name", improvement_id)
+            var improvement_unlocked = CityData.is_improvement_unlocked(improvement_id)
+            var action_enabled = improvement_unlocked
+            var action_tooltip = "Построить %s для разведения" % imp_name
+            if not improvement_unlocked:
+                var unlock_tech = CityData.get_improvement_unlock_tech(improvement_id)
+                action_tooltip = "%s — нужна технология: %s" % [imp_name, _get_tech_name(unlock_tech)]
             elif build_manager.get_total_active_builds() >= CityData.total_population:
-                pasture_enabled = false
-                pasture_tooltip = "Нет труда: лимит строек (число жителей) исчерпан"
-            # Проверяем, есть ли подходящее животное для этого гекса.
-            var has_suitable_animal = false
-            for animal_id in CityData.domesticated_animals:
-                var animal_data = GameData.raw_resources.get(animal_id, {})
-                # breedable: false (напр. рыба и другие водные ресурсы) — не предлагаем разведение.
-                if not MapHelpers.can_breed_resource(animal_id):
-                    continue
-                if tile.terrain in animal_data.get("allowed_terrain", []) and tile.get("cover", "none") in animal_data.get("allowed_cover", []):
-                    has_suitable_animal = true
-                    break
-            if has_suitable_animal:
-                actions.append({
-                    "type": "build_pasture",
-                    "label": "Построить пастбище",
-                    "enabled": pasture_enabled,
-                    "tooltip": pasture_tooltip,
-                    "imp_id": "pasture",
-                    "icon": GameData.improvements.get("pasture", {}).get("icon", "")
-                })
-        # Ферма.
-        if CityData.domesticated_plants.size() > 0:
-            var farm_unlocked = CityData.is_improvement_unlocked("farm")
-            var farm_enabled = farm_unlocked
-            var farm_tooltip = "Построить ферму для одомашненного растения"
-            if not farm_unlocked:
-                var unlock_tech = CityData.get_improvement_unlock_tech("farm")
-                farm_tooltip = "Ферма — нужна технология: %s" % _get_tech_name(unlock_tech)
-            elif build_manager.get_total_active_builds() >= CityData.total_population:
-                farm_enabled = false
-                farm_tooltip = "Нет труда: лимит строек (число жителей) исчерпан"
-            var has_suitable_plant = false
-            for plant_id in CityData.domesticated_plants:
-                var plant_data = GameData.raw_resources.get(plant_id, {})
-                # breedable: false (напр. водные ресурсы) — не предлагаем разведение.
-                if not MapHelpers.can_breed_resource(plant_id):
-                    continue
-                if tile.terrain in plant_data.get("allowed_terrain", []) and tile.get("cover", "none") in plant_data.get("allowed_cover", []):
-                    has_suitable_plant = true
-                    break
-            if has_suitable_plant:
-                actions.append({
-                    "type": "build_farm",
-                    "label": "Построить ферму",
-                    "enabled": farm_enabled,
-                    "tooltip": farm_tooltip,
-                    "imp_id": "farm",
-                    "icon": GameData.improvements.get("farm", {}).get("icon", "")
-                })
+                action_enabled = false
+                action_tooltip = "Нет труда: лимит строек (число жителей) исчерпан"
+            actions.append({
+                "type": "build_breeding",
+                "label": "Построить %s" % imp_name,
+                "enabled": action_enabled,
+                "tooltip": action_tooltip,
+                "imp_id": improvement_id,
+                "icon": GameData.improvements.get(improvement_id, {}).get("icon", "")
+            })
 
     # 3. Пристань (схема harbor_access): открывает водные ресурсы конкретного
     #    водоёма. Предлагается на пустом прибрежном гексе (суша с соседом lake/sea,
@@ -873,7 +844,7 @@ func _on_action_pressed(action: Dictionary):
         clear_preview()
         return
 
-    # Действия с превью (постройка улучшения, пастбища, фермы, спец-действие).
+    # Действия с превью (постройка улучшения, разведение, спец-действие).
     var eff_res_for_preview = action.get("target_res_id", null)
     if eff_res_for_preview == null or eff_res_for_preview == "":
         eff_res_for_preview = MapHelpers.get_effective_resource(main_map.get_tile_data(_selected_hex.row, _selected_hex.col))
@@ -923,8 +894,8 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     # Для ферм/пастбищ эффективный ресурс — выбранная культура (растение/животное),
     # а не то, что лежит на гексе сейчас: на пустом гексе природного ресурса нет,
     # и без этого «Будет производить» в превью не показывалось.
-    if type == "build_farm" or type == "build_pasture":
-        var imp_kind_cult = "farm" if type == "build_farm" else "pasture"
+    if type == "build_breeding":
+        var imp_kind_cult = preview.get("imp_id", "")
         var cult_id = preview.get("selected_culture_id", null)
         if not _is_suitable_culture(row, col, cult_id, imp_kind_cult):
             cult_id = _first_suitable_culture(row, col, imp_kind_cult)
@@ -976,14 +947,14 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     header.add_child(cancel_btn)
     _preview_header_container.add_child(header)
 
-    # --- Для ферм/пастбищ: выбор конкретной культуры ---
+    # --- Для разведения: выбор конкретной культуры ---
     # Блок размещён сразу под заголовком, до расчётов производства и стоимости:
     # выбранный вид виден первым и не теряется в конце длинного списка.
     # Если на гексе можно выращивать/разводить несколько одомашненных видов,
     # даём выбрать, под какую именно культуру строить. Иначе строится
     # единственная подходящая культура (текущее поведение).
-    if type == "build_farm" or type == "build_pasture":
-        var imp_kind = "farm" if type == "build_farm" else "pasture"
+    if type == "build_breeding":
+        var imp_kind = preview.get("imp_id", "")
         var crops := _get_suitable_crops(row, col, imp_kind)
         if crops.size() > 1:
             # По умолчанию предвыбираем первую культуру из списка.
@@ -1183,20 +1154,15 @@ func _confirm_build():
 
     if type == "build_improvement":
         build_manager.start_build(row, col, imp_id, target_res_id)
-    elif type == "build_pasture":
-        # Строим пастбище под выбранное животное; если оно не задано/не подходит —
-        # берём первое подходящее.
+    elif type == "build_breeding":
+        # Строим выбранное улучшение под культуру; если культура не задана или
+        # не подходит, берём первую подходящую.
+        var breeding_imp = preview.get("imp_id", "")
         var chosen_animal = preview.get("selected_culture_id", null)
-        if not _is_suitable_culture(row, col, chosen_animal, "pasture"):
-            chosen_animal = _first_suitable_culture(row, col, "pasture")
+        if not _is_suitable_culture(row, col, chosen_animal, breeding_imp):
+            chosen_animal = _first_suitable_culture(row, col, breeding_imp)
         if chosen_animal != null:
-            build_manager.start_build(row, col, "pasture", chosen_animal)
-    elif type == "build_farm":
-        var chosen_plant = preview.get("selected_culture_id", null)
-        if not _is_suitable_culture(row, col, chosen_plant, "farm"):
-            chosen_plant = _first_suitable_culture(row, col, "farm")
-        if chosen_plant != null:
-            build_manager.start_build(row, col, "farm", chosen_plant)
+            build_manager.start_build(row, col, breeding_imp, chosen_animal)
     elif type == "special":
         build_manager.start_build(row, col, action_id)
 
@@ -1213,29 +1179,27 @@ func _get_tech_name(tech_id: String) -> String:
             return tech.get("name", tech_id)
     return tech_id
 
-# Возвращает список одомашненных культур (растений для ферм или животных для
-# пастбищ), которые можно выращивать/разводить на гексе (row, col).
+# Возвращает список одомашненных культур, которые можно разводить через
+# указанное улучшение на гексе (row, col).
 # Каждый элемент: { "id": String, "name": String }.
 func _get_suitable_crops(row: int, col: int, imp_kind: String) -> Array:
     var tile = main_map.get_tile_data(row, col)
     var tile_cover = tile.get("cover", "none")
     var ids: Array
-    if imp_kind == "farm":
-        ids = CityData.domesticated_plants
-    else:
-        ids = CityData.domesticated_animals
+    ids = CityData.domesticated_animals.duplicate()
+    ids.append_array(CityData.domesticated_plants)
     var out := []
     for id in ids:
         var data = GameData.raw_resources.get(id, {})
         # breedable: false (напр. рыба) — разводить нельзя, в выбор культур не попадает.
-        if not MapHelpers.can_breed_resource(id):
+        if not MapHelpers.can_breed_resource_by(id, imp_kind):
             continue
         if tile.terrain in data.get("allowed_terrain", []) and tile_cover in data.get("allowed_cover", []):
             out.append({"id": id, "name": data.get("name", id)})
     return out
 
 # Возвращает true, если культура (растение/животное) подходит для гекса (row, col)
-# и входит в одомашненные виды указанного типа (farm/pasture).
+# и входит в одомашненные виды, разрешённые указанным улучшением.
 func _is_suitable_culture(row: int, col: int, id, imp_kind: String) -> bool:
     if id == null or id == "":
         return false
@@ -1244,13 +1208,10 @@ func _is_suitable_culture(row: int, col: int, id, imp_kind: String) -> bool:
     var data = GameData.raw_resources.get(id, {})
     if data.is_empty():
         return false
-    var ids: Array
-    if imp_kind == "farm":
-        ids = CityData.domesticated_plants
-    else:
-        ids = CityData.domesticated_animals
+    var ids: Array = CityData.domesticated_animals.duplicate()
+    ids.append_array(CityData.domesticated_plants)
     # breedable: false (напр. рыба) — прямое подтверждение разведения невозможно.
-    if not MapHelpers.can_breed_resource(id):
+    if not MapHelpers.can_breed_resource_by(id, imp_kind):
         return false
     if not (id in ids):
         return false
@@ -1271,6 +1232,6 @@ func _select_preview_culture(id: String):
         # Синхронизируем эффективный ресурс, чтобы блок «Будет производить»
         # в превью пересчитался под новую культуру.
         var t = _preview_action.get("type", "")
-        if t == "build_farm" or t == "build_pasture":
+        if t == "build_breeding":
             _preview_action["eff_res"] = id
     _refresh()
