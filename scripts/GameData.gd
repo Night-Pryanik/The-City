@@ -275,11 +275,28 @@ func get_profession_name(prof_id: String) -> String:
 
 # Возвращает профессию, связанную с улучшением (id из data/improvements.json).
 # Если улучшение не задано или у него нет профессии — возвращает "".
-# Используется для отображения «Профессия: ...» в тултипе и панели.
+# Метка производна от улучшения и отдельной строкой в интерфейсе не выводится:
+# используется расчётом потребления и плановой картой вкладки «Ресурсы».
 func get_profession_for_improvement(imp_id: String) -> String:
     if imp_id.is_empty() or imp_id == null:
         return ""
     return improvements.get(imp_id, {}).get("profession", "")
+
+# Возвращает данные здания по id (или пустой словарь, если здание не найдено).
+func get_building_data(building_id: String) -> Dictionary:
+    if building_id.is_empty() or building_id == null:
+        return {}
+    for b in buildings:
+        if b.get("id", "") == building_id:
+            return b
+    return {}
+
+# Возвращает профессию горожанина, работающего в здании (поле "profession" в
+# data/buildings.json). Пусто — у здания нет профессии: оно работает по общей
+# модели слотов, без расхода расходников и без бонуса (см. docs.md,
+# «Профессии и потребление ресурсов»).
+func get_profession_for_building(building_id: String) -> String:
+    return get_building_data(building_id).get("profession", "")
 
 # Возвращает true, если улучшение инфраструктурное — не требует рабочего
 # для выполнения своих функций. Флаг задаётся полем "no_worker": true в

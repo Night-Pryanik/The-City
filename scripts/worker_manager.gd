@@ -14,6 +14,13 @@ var assigned_hexes = {}
 # дробным остатком для целочисленной точности), см. tick_consumption().
 var consumption_timers: Dictionary = {}
 
+# То же для профессий ГОРОДСКИХ ЗДАНИЙ (поле "profession" в buildings.json):
+# ключ — "b<индекс здания>". Индексы зданий стабильны (сноса нет, апгрейд
+# сохраняет индекс), поэтому ключ не «плывёт». Словарь отдельный: формат
+# ключей "row,col" по-гексовых таймеров и их сериализация не меняются.
+# См. tick_building_consumption().
+var building_consumption_timers: Dictionary = {}
+
 # Таймеры ГОРОДСКОГО потребления псевдо-профессии "all" (все жители города).
 # Ключ — display_key записи потребления ("@fruits" для группы, id продукта
 # для одиночного), значение { "elapsed": float }. Эти таймеры живут отдельно
@@ -115,7 +122,9 @@ func get_assigned_count() -> int:
 
 # Профессия рабочего на гексе (row, col). Возвращает id профессии по улучшению,
 # на которое он назначен, или "", если рабочего нет / улучшение без профессии.
-# Используется тултипом и панелью для отображения «Профессия: …».
+# Метка производна от улучшения и отдельной строкой «Профессия» в интерфейсе
+# не выводится: используется расчётом потребления и плановой картой вкладки
+# «Ресурсы» (имя профессии — источник расхода).
 func get_profession(row: int, col: int) -> String:
     if not has_worker(row, col):
         return ""
@@ -130,71 +139,103 @@ func get_profession(row: int, col: int) -> String:
         return ""
     return GameData.get_profession_for_improvement(imp)
 
-# Возвращает таймер потребления для гекса, при необходимости инициализируя
-# его по профессии рабочего. elapsed — сколько секунд прошло с последнего
-# списания (или с момента назначения), interval — с каким интервалом
-# производится списание (берётся из потребления профессии).
-# Если на гексе нет рабочего или у его профессии нет потребления —
-# возвращает { "active": false }.
-func get_consumption_timer(row: int, col: int) -> Dictionary:
-    var key = str(row) + "," + str(col)
-    if not has_worker(row, col):
-        return {"active": false}
-    var prof = get_profession(row, col)
-    if prof.is_empty():
-        return {"active": false}
-    var cons_list = GameData.get_profession_consumption(prof)
-    if cons_list.is_empty():
-        return {"active": false}
-    # Если у профессии несколько потребителей с разными интервалами,
-    # берём минимальный — он определяет ритм списания.
-    var min_interval := 1e9
-    for entry in cons_list:
-        var iv = float(entry.get("interval", 0))
-        if iv > 0 and iv < min_interval:
-            min_interval = iv
-    if min_interval >= 1e9:
-        return {"active": false}
-    if not consumption_timers.has(key):
-        consumption_timers[key] = {"elapsed": 0.0, "interval": min_interval}
-    return {"active": true, "elapsed": consumption_timers[key].elapsed, "interval": min_interval}
-
-# Двигает таймер потребления на delta секунд и возвращает итоговый множитель
-# производства для этого гекса. Логика:
+# Двигает таймер потребления гекса на delta секунд и возвращает итоговый
+# множитель производства. Ядро логики общее со зданиями —
+# _tick_profession_consumption (подробности у него):
 #   * Если у профессии нет потребления — возвращает 1.0 (без бонуса, без
 #     изменений для остальной системы).
 #   * На каждом вызове проверяет, хватает ли на складе ВСЕХ требуемых
 #     продуктов. Пока хватает — множитель = 1.0 + production_bonus
 #     (например, 1.5 при бонусе 0.5). Как только хоть одного не стало —
 #     множитель откатывается к 1.0, улучшение продолжает работать на базе.
-#   * Каждые interval секунд (для тростниковых лодок — раз в 10 сек) при
-#     наличии ресурса списывает amount единиц со склада и сбрасывает таймер.
-#     Для групповых записей списывается любой подходящий продукт группы:
-#     сначала запас суммируется по всем членам, затем расходуется жадно
-#     (приоритет качества «best»).
-#     Если ресурса нет — таймер НЕ сбрасывается; при появлении ресурса
-#     списание произойдёт сразу, без ожидания полного интервала.
+#   * Списание непрерывное: amount / interval единиц в секунду (дробные
+#     остатки копятся в sub-unit аккумуляторе). Для групповых записей
+#     списывается любой подходящий продукт группы — жадно по членам
+#     (приоритет качества «best»). Если ресурса нет — таймер не сбрасывается,
+#     при появлении ресурса списание произойдёт сразу.
+#   * Бонусы одиночных записей профессии складываются, у групповых берётся
+#     лучший доступный (см. _aggregate_production_bonus).
 # Улучшение НИКОГДА не «встаёт»: оно всегда даёт хотя бы базовое
 # производство. Бонус — надбавка за снабжение профессии расходниками.
 func tick_consumption(row: int, col: int, delta: float) -> float:
-    var key = str(row) + "," + str(col)
     if not has_worker(row, col):
         return 1.0
     var prof = get_profession(row, col)
     if prof.is_empty():
         return 1.0
+    return _tick_profession_consumption(prof, str(row) + "," + str(col), consumption_timers, delta)
+
+# Профессия горожанина в городском здании (поле "profession" в
+# data/buildings.json). Пустая строка — профессии у здания нет.
+func get_building_profession(b_index: int) -> String:
+    if b_index < 0 or b_index >= CityData.city_built_buildings.size():
+        return ""
+    var bld_id := str(CityData.city_built_buildings[b_index].get("id", ""))
+    return GameData.get_profession_for_building(bld_id)
+
+# Потребление и бонус профессии горожанина в здании: та же механика, что у
+# гекса (tick_consumption), но таймеры живут в отдельном словаре
+# building_consumption_timers, а ключ — "b<индекс здания>". Индексы зданий
+# стабильны (сноса нет, апгрейд сохраняет индекс), поэтому ключ не «плывёт».
+# Вызывается из CityData.do_tick() только для РАБОТАЮЩЕГО здания (есть
+# горожанин и хотя бы один непустой слот): простаивающее здание расходники
+# не тратит.
+func tick_building_consumption(b_index: int, delta: float) -> float:
+    var prof = get_building_profession(b_index)
+    if prof.is_empty():
+        return 1.0
+    return _tick_profession_consumption(prof, "b" + str(b_index), building_consumption_timers, delta)
+
+# Итоговый множитель производства профессии горожанина в здании БЕЗ расхода и
+# движения таймеров — для планового производства
+# (CityData.get_building_planned_production), чтобы метка «≈» совпадала с
+# фактом. 1.0 — у здания нет профессии либо расходников не хватает.
+func get_building_production_bonus(b_index: int) -> float:
+    var prof = get_building_profession(b_index)
+    if prof.is_empty():
+        return 1.0
+    return 1.0 + _aggregate_production_bonus(GameData.get_profession_consumption(prof))
+
+# Суммарный production_bonus профессии по доступным расходникам:
+#   * ОДИНОЧНЫЕ записи — каждая доступная добавляет свой бонус (складываются):
+#     перья +25% и чернила +25% → +50%;
+#   * ГРУППОВЫЕ записи — только максимальный из доступных: группа «Лодки»
+#     даёт бонус от лучшего доступного члена группы, а не ото всех сразу.
+# «Доступна» — на складе хватает полной пачки amount (см. _can_consume_full).
+func _aggregate_production_bonus(cons_list: Array) -> float:
+    var group_max := 0.0
+    var single_sum := 0.0
+    for entry in cons_list:
+        var b := float(entry.get("production_bonus", 0.0))
+        if b <= 0.0:
+            continue
+        if not _can_consume_full(entry, int(entry.get("amount", 0))):
+            continue
+        if entry.get("is_group", false):
+            group_max = maxf(group_max, b)
+        else:
+            single_sum += b
+    return group_max + single_sum
+
+# Общее ядро профессионального потребления: двигает sub-unit аккумуляторы
+# переданного словаря таймеров (timers), списывает ресурсы со склада и
+# возвращает множитель производства (1.0 — без бонуса).
+#   * На каждом вызове проверяет, хватает ли на складе ВСЕХ требуемых
+#     продуктов. Пока хватает — множитель = 1.0 + production_bonus
+#     (см. _aggregate_production_bonus). Как только хоть одного не стало —
+#     множитель откатывается к 1.0, объект продолжает работать на базе.
+#   * Per-second скорость потребления = amount / interval: каждый тик
+#     накапливается дробный остаток, целая часть списывается со склада.
+#     Для групповых записей списывается любой подходящий продукт группы:
+#     сначала запас суммируется по всем членам, затем расходуется жадно
+#     (приоритет качества «best»). Если ресурса нет — таймер НЕ сбрасывается;
+#     при появлении ресурса списание произойдёт сразу.
+# Объект НИКОГДА не «встаёт»: он всегда даёт хотя бы базовое производство.
+# Бонус — надбавка за снабжение профессии расходниками.
+func _tick_profession_consumption(prof: String, key: String, timers: Dictionary, delta: float) -> float:
     var cons_list = GameData.get_profession_consumption(prof)
     if cons_list.is_empty():
         return 1.0
-
-    # Суммарный production_bonus: у одной профессии может быть несколько
-    # потребителей с разными бонусами, в этом случае применяем максимальный
-    # (бонусы не складываются — это сознательное упрощение баланса).
-    var max_bonus := 0.0
-    for entry in cons_list:
-        var b = float(entry.get("production_bonus", 0.0))
-        if b > max_bonus:
-            max_bonus = b
 
     # Имя профессии — источник расхода в тултипе ресурсов («Рыбак» и т.п.).
     var prof_source = GameData.professions.get(prof, {}).get("name", prof)
@@ -213,19 +254,16 @@ func tick_consumption(row: int, col: int, delta: float) -> float:
     # can_consume определяется по ПОЛНОЙ пачке amount (как раньше) — бонус
     # включается только когда хватает ресурса на целый цикл. Если хватает
     # только частично — списываем сколько есть, бонус НЕ начисляется.
-    if not consumption_timers.has(key):
-        consumption_timers[key] = {"fractional": {}}
+    if not timers.has(key):
+        timers[key] = {"fractional": {}}
 
-    var fractional: Dictionary = consumption_timers[key].fractional
+    var fractional: Dictionary = timers[key].fractional
 
-    var any_consumed := false
     for entry in cons_list:
         var amt: int = int(entry.get("amount", 0))
         var interval: float = float(entry.get("interval", 0))
         if amt <= 0 or interval <= 0.0:
             continue
-
-        var can_consume_full := _can_consume_full(entry, amt)
 
         # Per-second скорость потребления = amt / interval. Каждый тик
         # накапливаем дробный остаток.
@@ -257,34 +295,22 @@ func tick_consumption(row: int, col: int, delta: float) -> float:
                 # Фактическое потребление на внутреннем рынке даёт доход в казну.
                 CityData.add_treasury(CityData.get_internal_market_price(member_pid) * take)
                 remaining -= take
-                any_consumed = true
         else:
             var pid: String = str(entry.get("product_id", ""))
             if pid.is_empty():
                 continue
-            var avail: int = CityData.get_storage_amount(pid)
-            if avail <= 0:
+            var avail_single: int = CityData.get_storage_amount(pid)
+            if avail_single <= 0:
                 continue
-            var take: int = mini(avail, floor_take)
-            if take <= 0:
+            var take_single: int = mini(avail_single, floor_take)
+            if take_single <= 0:
                 continue
-            CityData.remove_from_storage(pid, take, "best")
-            CityData.record_consumption_source(pid, prof_source, take)
-            CityData.add_treasury(CityData.get_internal_market_price(pid) * take)
-            any_consumed = true
+            CityData.remove_from_storage(pid, take_single, "best")
+            CityData.record_consumption_source(pid, prof_source, take_single)
+            CityData.add_treasury(CityData.get_internal_market_price(pid) * take_single)
 
-    consumption_timers[key].fractional = fractional
-    # Бонус применяется, когда хватает ресурса на полную пачку хотя бы по
-    # ОДНОМУ потребителю профессии (даже если другие потребители сейчас
-    # недоступны). Если ни один не может дать полный цикл — бонуса нет.
-    var bonus_active := false
-    for entry in cons_list:
-        if float(entry.get("production_bonus", 0.0)) <= 0.0:
-            continue
-        if _can_consume_full(entry, int(entry.get("amount", 0))):
-            bonus_active = true
-            break
-    return 1.0 + (max_bonus if bonus_active else 0.0)
+    timers[key].fractional = fractional
+    return 1.0 + _aggregate_production_bonus(cons_list)
 
 # Проверяет, хватает ли ресурса на полный цикл потребления для одной записи.
 # Для групп — суммарно по всем членам группы.
@@ -343,6 +369,31 @@ func load_consumption_timers(timers: Array):
                     "fractional": frac
                 }
 
+# Сериализация таймеров потребления зданий (см. building_consumption_timers).
+# Формат: [{ "index": int, "fractional": { dkey: float, ... } }, ...]
+func serialize_building_consumption_timers() -> Array:
+    var result = []
+    for key in building_consumption_timers.keys():
+        var k := str(key)
+        if not k.begins_with("b"):
+            continue
+        result.append({
+            "index": int(k.substr(1)),
+            "fractional": (building_consumption_timers[key].get("fractional", {}) as Dictionary).duplicate(true)
+        })
+    return result
+
+func load_building_consumption_timers(timers: Array):
+    building_consumption_timers.clear()
+    for item in timers:
+        if item is Dictionary and item.has("index"):
+            var idx = int(item.get("index", -1))
+            if idx >= 0:
+                var frac_raw = item.get("fractional", {})
+                var frac: Dictionary = frac_raw if frac_raw is Dictionary else {}
+                building_consumption_timers["b" + str(idx)] = {
+                    "fractional": frac
+                }
 # --- ГОРОДСКОЕ ПОТРЕБЛЕНИЕ (псевдо-профессия "all", все жители города) ---
 # Профессия "all" (data/professions.json) — вершина иерархии: покрывает ВСЕХ
 # жителей, включая занятых на улучшениях и в зданиях. Её потребление не
@@ -502,8 +553,11 @@ func count_workers_by_profession() -> Dictionary:
 #                  "count": int, "is_group": bool, "group_name": String,
 #                  "is_population": bool } }
 # Источники:
-#   1) профессиональное потребление (data/consumption.json и устаревшее
-#      products[*].consumption): amount каждой записи × число рабочих профессии;
+#   1) профессиональное потребление рабочих на улучшениях и горожан в
+#      зданиях (data/consumption.json и устаревшее products[*].consumption):
+#      amount каждой записи × число рабочих/горожан профессии; для зданий
+#      учитываются только РАБОТАЮЩИЕ (есть горожанин и непустой слот) —
+#      CityData.get_townsfolk_professions_count;
 #      при нескольких записях одного источника amount суммируется, а interval
 #      берётся минимальный — ровно так списывает tick_consumption (все записи
 #      списка разом по минимальному интервалу);
@@ -521,6 +575,15 @@ func get_planned_consumption_map() -> Dictionary:
         if prof_id == "all":
             continue # псевдо-профессия не назначается на гексы; обрабатывается ниже
         _record_profession_planned(result, prof_id, int(workers[prof_id]), false)
+    # Профессиональное потребление городских зданий: профессия горожанина
+    # (поле "profession" в data/buildings.json). Учитываются только РАБОТАЮЩИЕ
+    # здания — есть горожанин и хотя бы один непустой слот: расходники
+    # простаивающего здания в план не попадают (см. get_townsfolk_professions_count).
+    var town_workers = CityData.get_townsfolk_professions_count()
+    for prof_id in town_workers:
+        if prof_id == "all":
+            continue # псевдо-профессия не назначается на здания; обрабатывается ниже
+        _record_profession_planned(result, prof_id, int(town_workers[prof_id]), false)
     # Городское потребление «Все жители» — всегда (население ≥ 1), поголовно:
     # count = total_population, а не число назначенных гексов.
     if CityData.total_population > 0:

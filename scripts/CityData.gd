@@ -267,6 +267,39 @@ func _get_townsfolk() -> Node:
         _townsfolk_ref = main_map.get_node_or_null("TownsfolkManager")
     return _townsfolk_ref
 
+# Кэш ссылки на WorkerManager: нужен плановому производству зданий (бонус
+# профессии горожанина) и тику потребления — симметрично _get_townsfolk().
+var _worker_manager_ref: Node = null
+
+func _get_worker_manager() -> Node:
+    if _worker_manager_ref != null and is_instance_valid(_worker_manager_ref):
+        return _worker_manager_ref
+    var main_map = get_tree().root.find_child("MainMap", true, false)
+    if main_map:
+        _worker_manager_ref = main_map.get_node_or_null("WorkerManager")
+    return _worker_manager_ref
+
+# Число РАБОТАЮЩИХ горожан по профессиям: prof_id -> count. Профессия берётся
+# у здания (поле "profession" в data/buildings.json). Учитываются только
+# здания, где есть горожанин И хотя бы один непустой слот: простаивающее
+# здание расходники не тратит, поэтому в план его расход не попадает
+# (см. worker_manager.get_planned_consumption_map).
+func get_townsfolk_professions_count() -> Dictionary:
+    var result: Dictionary = {}
+    var tm = _get_townsfolk()
+    if tm == null:
+        return result
+    for i in range(city_built_buildings.size()):
+        if not tm.has_townsfolk(i):
+            continue
+        if are_all_slots_empty(i):
+            continue
+        var prof: String = tm.get_profession(i)
+        if prof.is_empty():
+            continue
+        result[prof] = int(result.get(prof, 0)) + 1
+    return result
+
 # Возвращает плановый спрос ПОСТРОЕННЫХ ЗДАНИЙ на ресурсы за один крафт
 # рецепта. Рецепт в do_tick() исполняется раз в `time` секунд при назначенном
 # горожанине и наличии ингредиентов, поэтому спрос идёт вместе с временем
@@ -357,6 +390,9 @@ func _record_planned_demand(result: Dictionary, pid: String, source_name: String
 func get_building_planned_production() -> Dictionary:
     var result: Dictionary = {}
     var tm = _get_townsfolk()
+    # Множитель профессии горожанина (worker_manager.get_building_production_bonus)
+    # — чтобы плановая метка «≈» совпадала с фактическим выпуском.
+    var wm = _get_worker_manager()
     for i in range(city_built_buildings.size()):
         var bld = city_built_buildings[i]
         var slots = bld.get("slots", [])
@@ -365,6 +401,12 @@ func get_building_planned_production() -> Dictionary:
         # Без горожанина здание не работает и ничего не производит.
         if tm == null or not tm.has_townsfolk(i):
             continue
+        # Бонус профессии: 1.0 без профессии или без расходников, иначе
+        # 1.0 + бонусы (см. worker_manager._aggregate_production_bonus).
+        # Простаивающее здание (все слоты пусты) бонуса не получает.
+        var prof_multiplier := 1.0
+        if wm != null and not are_all_slots_empty(i):
+            prof_multiplier = wm.get_building_production_bonus(i)
         # Имя здания — источник выпуска (совпадает с источником фактического
         # производства в do_tick, чтобы в тултипе это был один и тот же субъект).
         var building_source = get_building_name(bld.get("id", ""))
@@ -381,6 +423,12 @@ func get_building_planned_production() -> Dictionary:
                 var amount = int(production[res])
                 if amount <= 0:
                     continue
+                # Бонус профессии применяется к выпуску рецепта — как множитель
+                # производства у улучшений на карте.
+                if prof_multiplier != 1.0:
+                    amount = int(round(float(amount) * prof_multiplier))
+                    if amount <= 0:
+                        continue
                 _record_planned_supply(result, res, building_source, amount, craft_time)
     return result
 
@@ -697,6 +745,26 @@ func get_slot_containers(b_index: int) -> Array:
         containers.append(null)
     if containers.size() > slots.size():
         containers.resize(slots.size())
+    # Ленивое восстановление сериализованных контейнеров из сейва:
+    # SaveManager._serialize_buildings пишет плоские dict (JSON-совместимые),
+    # поэтому после загрузки здесь лежат dict, а не объекты. При первом
+    # обращении пересобираем CraftContainer по ТЕКУЩЕМУ рецепту слота;
+    # несовместимость рецепта контейнер разруливает сам
+    # (_restore_from_slot_data мерджит состояние по совпадающим ингредиентам).
+    # Без этого типизированное присваивание в _ensure_slot_container падало бы
+    # на dict после загрузки сейва.
+    for i in range(mini(containers.size(), slots.size())):
+        var c = containers[i]
+        if c == null or c is CraftContainer:
+            continue
+        var recipe = get_craft_by_id(str(slots[i]))
+        if recipe.is_empty():
+            # Рецепт слота не разрешается — слот считается пустым
+            # (та же семантика, что в _ensure_slot_container).
+            containers[i] = null
+            continue
+        var saved: Dictionary = c if c is Dictionary else {}
+        containers[i] = CraftContainer.new(recipe, saved)
     return containers
 
 # Внутренняя: создаёт массив CraftContainer из старого slot_progress или
@@ -824,6 +892,9 @@ func do_tick():
     # --- Работа зданий (только если есть горожанин) ---
     var main_map = get_tree().root.find_child("MainMap", true, false)
     var tm = main_map.get_node("TownsfolkManager") if main_map else null
+    # WorkerManager — потребление расходников профессией горожанина
+    # (tick_building_consumption) и множитель производства от неё.
+    var wm = main_map.get_node("WorkerManager") if main_map and main_map.has_node("WorkerManager") else null
 
     for i in range(city_built_buildings.size()):
         var bld = city_built_buildings[i]
@@ -841,6 +912,18 @@ func do_tick():
 
         if not has_worker:
             continue # здание не работает
+
+        # --- ПРОФЕССИЯ ГОРОЖАНИНА (поле "profession" в data/buildings.json) ---
+        # Потребление расходников профессией и множитель её производства.
+        # Тикает раз на здание за тик (не на слот!) и только у РАБОТАЮЩЕГО
+        # здания: у простаивающего (все слоты пусты) расходники впустую не
+        # тратятся. Множитель передаётся в CraftContainer ниже и применяется к
+        # начислению науки за завершённый цикл. Бонусы одиночных записей
+        # складываются, у групповых берётся лучший (см.
+        # worker_manager._aggregate_production_bonus).
+        var prof_multiplier := 1.0
+        if wm != null and not are_all_slots_empty(i):
+            prof_multiplier = wm.tick_building_consumption(i, SIMULATION_TICK)
 
         # --- НЕПРЕРЫВНЫЙ КРАФТ (CraftContainer) ---
         # Приоритет качества сырья: из здания или дефолт. Передаётся в контейнер
@@ -867,7 +950,7 @@ func do_tick():
             #              остаток fractional — выпускается ровно full_amount
             #              за весь цикл.
             #   completed — true если контейнер полон И прошло craft_time.
-            var tick_res: Dictionary = container.tick(SIMULATION_TICK, has_worker, priority)
+            var tick_res: Dictionary = container.tick(SIMULATION_TICK, has_worker, priority, prof_multiplier)
 
             # --- РЕГИСТРАЦИЯ РАСХОДА ЗА ТИК ---
             # Записываем consumption source для тултипа ресурсов и UI-метки
@@ -934,6 +1017,10 @@ func do_tick():
                     science_amount += int(per_pid_total[consumed_pid]) * int(special_yield.get("science", 0))
                 var building_yield = GameData.get_building_additional_yield(bld.get("id", ""))
                 science_amount += int(building_yield.get("science", 0))
+                # Бонус профессии (перья/чернила у Учёного) применяется ко всей
+                # науке за цикл: и от письменных материалов (special_yield), и
+                # от самого здания (additional_yield).
+                science_amount = int(round(float(science_amount) * prof_multiplier))
                 if science_amount > 0:
                     add_to_storage("science", science_amount)
                     record_production_source("science", building_source, science_amount)

@@ -40,6 +40,18 @@ func has_townsfolk(index: int) -> bool:
 func get_assigned_count() -> int:
     return assigned_buildings.size()
 
+# Профессия горожанина, работающего в здании с индексом index (поле
+# "profession" в data/buildings.json). Пусто — у здания нет профессии либо
+# горожанина на нём нет. Метка производна от здания, как у улучшений карты
+# (см. GameData.get_profession_for_building), и отдельно не хранится.
+func get_profession(index: int) -> String:
+    if not has_townsfolk(index):
+        return ""
+    if index < 0 or index >= CityData.city_built_buildings.size():
+        return ""
+    var bld_id := str(CityData.city_built_buildings[index].get("id", ""))
+    return GameData.get_profession_for_building(bld_id)
+
 func serialize_assignments() -> Array:
     var result = []
     for key in assigned_buildings.keys():

@@ -245,6 +245,10 @@ func _ready():
         # пересчитывается из данных при загрузке, храним только elapsed.
         worker_manager.load_city_consumption_timers(SaveManager.saved_data.get("city_consumption_timers", []))
         townsfolk_manager.load_assignments(SaveManager.saved_data.get("townsfolk_assignments", []))
+        # Таймеры профессионального потребления ГОРОДСКИХ ЗДАНИЙ — после
+        # назначений горожан: профессия определяется зданием (data/buildings.json),
+        # дробные остатки хранятся в сейве, интервалы пересчитываются из данных.
+        worker_manager.load_building_consumption_timers(SaveManager.saved_data.get("building_profession_consumption_timers", []))
 
         # Для уже изученных технологий гарантируем спавн открытых ими ресурсов
         CityData.ensure_tech_resources_spawned()

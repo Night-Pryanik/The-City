@@ -45,6 +45,10 @@ func save_game():
         # храним только elapsed по display_key; interval пересчитывается
         # из данных при загрузке.
         "city_consumption_timers": main_map.worker_manager.serialize_city_consumption_timers(),
+        # Таймеры профессионального потребления ГОРОДСКИХ ЗДАНИЙ (поле
+        # "profession" в data/buildings.json): ключ — индекс здания, храним
+        # только дробные остатки (интервалы пересчитываются из данных).
+        "building_profession_consumption_timers": main_map.worker_manager.serialize_building_consumption_timers(),
         "townsfolk_assignments": main_map.townsfolk_manager.serialize_assignments(),
         "active_builds": build_manager.active_builds if build_manager else {},
         "active_building_builds": build_manager.active_building_builds if build_manager else {},
@@ -158,8 +162,8 @@ func has_save() -> bool:
 
 # Сериализация зданий: конвертирует CraftContainer (RefCounted) в плоский
 # dict, чтобы JSON.stringify не упал на нестандартном типе. На загрузке
-# dict восстанавливается лениво в CityData._ensure_slot_container через
-# CraftContainer(recipe, slot_data).
+# dict восстанавливается лениво в CityData.get_slot_containers() (общая точка
+# входа для _ensure_slot_container и UI) через CraftContainer(recipe, slot_data).
 func _serialize_buildings(buildings: Array) -> Array:
     var out: Array = []
     if not (buildings is Array):

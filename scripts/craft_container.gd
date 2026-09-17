@@ -96,6 +96,9 @@ func _init_release_state(recipe: Dictionary):
 #
 # quality_priority — "best" / "worst" / "random": приоритет качества при
 # заборе со склада. Для @-групп всегда жадно по "best" внутри одного тика.
+# output_multiplier — множитель СКОРОСТИ ВЫПУСКА результата (бонус профессии:
+# 1.0 — без бонуса). Ингредиенты при этом списываются с базовой скоростью,
+# поэтому бонус не «съедает» лишнего сырья.
 #
 # Возвращает словарь:
 #   {
@@ -104,7 +107,7 @@ func _init_release_state(recipe: Dictionary):
 #     "missing": [String],                     # ключи ингредиентов, которых не хватает (для UI/тултипа)
 #     "releases": [{ "pid": "...", "amount": N, "quality": "..." }]  # что выпустить на склад в этот тик
 #   }
-func tick(delta: float, is_active: bool, quality_priority: String = "best") -> Dictionary:
+func tick(delta: float, is_active: bool, quality_priority: String = "best", output_multiplier: float = 1.0) -> Dictionary:
     var result := {
         "completed": false,
         "consumed_breakdown": {},
@@ -195,7 +198,7 @@ func tick(delta: float, is_active: bool, quality_priority: String = "best") -> D
             var full_amount: int = int(result_products[pid])
             if full_amount <= 0:
                 continue
-            var per_release: float = float(full_amount) * delta / craft_time
+            var per_release: float = float(full_amount) * delta / craft_time * output_multiplier
             var frac: float = float(release_fractional.get(pid, 0.0)) + per_release
             var floor_amount: int = int(floor(frac))
             frac = frac - float(floor_amount)
