@@ -180,7 +180,7 @@ layout_mode = 2
 text = "Доступные постройки:"
 
 [node name="AvailableBuildingsScroll" type="ScrollContainer" parent="ContentPanel/BuildingsPanel/PanelsLayout/AvailableBuildingsPanel/VBoxContainer" unique_id=1295887837]
-custom_minimum_size = Vector2(300, 550)
+custom_minimum_size = Vector2(300, 600)
 layout_mode = 2
 horizontal_scroll_mode = 0
 
