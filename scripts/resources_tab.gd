@@ -618,7 +618,7 @@ func _on_quality_exit():
 # в пересчёте НА СЕКУНДУ с маркером «≈» ("-1≈]"):
 # amount × SIMULATION_TICK / interval для интервальных записей и amount как
 # есть для «за тик» (рецепты зданий). Приведение честно показывает средний
-# расход: 10 ед./10 сек = 1 ед./сек.
+# расход: 10 ед./100 сек = 0.1 ед./сек.
 func _format_cons_label(prod_id: String) -> String:
     var planned = _get_planned_for(prod_id)
     if planned.is_empty():
@@ -634,7 +634,8 @@ func _format_cons_label(prod_id: String) -> String:
             per_sec += amount
     if per_sec <= 0.0:
         return "-0]"
-    return "-%d≈]" % maxi(1, int(round(per_sec)))
+    var rate_text = str(int(round(per_sec))) if is_equal_approx(per_sec, round(per_sec)) else "%.1f" % per_sec
+    return "-%s≈]" % rate_text
 
 # Текст зелёной метки динамики. При наличии производства за тик — факт
 # ("[+10") (тик симуляции = SIMULATION_TICK = 1 сек, факт за тик — это и есть
@@ -658,7 +659,8 @@ func _format_prod_label(prod_id: String) -> String:
             per_sec += amount
     if per_sec <= 0.0:
         return "[+0"
-    return "[+%d≈" % maxi(1, int(round(per_sec)))
+    var rate_text = str(int(round(per_sec))) if is_equal_approx(per_sec, round(per_sec)) else "%.1f" % per_sec
+    return "[+%s≈" % rate_text
 
 # Показывает тултип ресурса (цена + источники прихода/расхода + плановое
 # потребление) при наведении на название или динамику на вкладке «Ресурсы».
