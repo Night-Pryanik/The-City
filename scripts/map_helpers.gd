@@ -377,7 +377,7 @@ static func get_hex_water_access(
         return ""
 
     var visited := {}
-    var queue = [ {"row": row, "col": col, "dist": 0} ]
+    var queue = [ {"row": row, "col": col, "dist": 0}]
     visited["%d_%d" % [row, col]] = true
 
     while queue.size() > 0:
@@ -668,9 +668,7 @@ static func get_buildable_improvement(tile: Dictionary) -> String:
 
     # Пустой гекс: улучшение для разведения одомашненного вида.
     var tile_cover: String = tile.get("cover", "none")
-    var domesticated_ids: Array = []
-    domesticated_ids.append_array(CityData.domesticated_animals)
-    domesticated_ids.append_array(CityData.domesticated_plants)
+    var domesticated_ids: Array = CityData.domesticated_resources.duplicate()
     for res_id in domesticated_ids:
         var resource_data: Dictionary = GameData.raw_resources.get(res_id, {})
         if not can_breed_resource(res_id):
@@ -986,7 +984,7 @@ static func has_harbor_access(tile_data: Array, row: int, col: int, map_rows: in
         return false
 
     var visited := {}
-    var queue := [{"row": row, "col": col}]
+    var queue := [ {"row": row, "col": col}]
     visited[row * map_cols + col] = true
     while not queue.is_empty():
         var cur = queue.pop_front()

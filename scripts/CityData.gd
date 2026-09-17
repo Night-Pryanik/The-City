@@ -20,6 +20,7 @@ var city_food_pool: Dictionary = {}
 var city_built_buildings: Array = []
 var domesticated_animals: Array = []
 var domesticated_plants: Array = []
+var domesticated_resources: Array = []
 # Казна города (монеты). Всегда целое число; пополняется за счёт потребления
 # ресурсов на внутреннем рынке (см. add_treasury / get_internal_market_price и
 # docs.md, «Казна города и внутренний рынок»).
@@ -162,6 +163,7 @@ func setup():
     building_construction.clear()
     domesticated_animals.clear()
     domesticated_plants.clear()
+    domesticated_resources.clear()
     unlocked_technologies.clear()
 # Растениеводство — всегда открыта при старте игры
     unlocked_technologies.append("farming")
@@ -1912,16 +1914,22 @@ func can_craft_in(craft_id: String, building_id: String) -> bool:
 func add_animal(animal_id: String):
     if Engine.is_editor_hint():
         return
-    if GameData.raw_resources.has(animal_id) and GameData.raw_resources[animal_id].get("category") == "animals":
-        if not (animal_id in domesticated_animals):
-            domesticated_animals.append(animal_id)
+    register_domesticated_resource(animal_id)
+
+func register_domesticated_resource(res_id: String):
+    if Engine.is_editor_hint() or not GameData.raw_resources.has(res_id):
+        return
+    if not MapHelpers.can_breed_resource(res_id):
+        return
+    if MapHelpers.get_breeding_improvement(res_id).is_empty():
+        return
+    if not (res_id in domesticated_resources):
+        domesticated_resources.append(res_id)
 
 func add_plant(plant_id: String):
     if Engine.is_editor_hint():
         return
-    if GameData.raw_resources.has(plant_id) and GameData.raw_resources[plant_id].get("category") == "plants":
-        if not (plant_id in domesticated_plants):
-            domesticated_plants.append(plant_id)
+    register_domesticated_resource(plant_id)
 
 func is_product_available(product_id: String) -> bool:
     return _is_product_available(product_id)

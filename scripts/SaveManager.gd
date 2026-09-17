@@ -21,6 +21,7 @@ func save_game():
         "city_built_buildings": _serialize_buildings(CityData.city_built_buildings),
         "domesticated_animals": CityData.domesticated_animals,
         "domesticated_plants": CityData.domesticated_plants,
+        "domesticated_resources": CityData.domesticated_resources,
         "unlocked_technologies": CityData.unlocked_technologies,
         "current_research_tech_id": CityData.current_research_tech_id,
         "current_research_science_cost": CityData.current_research_science_cost,
@@ -111,6 +112,10 @@ func apply_loaded_data():
     CityData.migrate_old_save_format()
     CityData.domesticated_animals = saved_data.get("domesticated_animals", [])
     CityData.domesticated_plants = saved_data.get("domesticated_plants", [])
+    CityData.domesticated_resources = saved_data.get("domesticated_resources", [])
+    if CityData.domesticated_resources.is_empty():
+        CityData.domesticated_resources.append_array(CityData.domesticated_animals)
+        CityData.domesticated_resources.append_array(CityData.domesticated_plants)
     CityData.unlocked_technologies = saved_data.get("unlocked_technologies", [])
     # Растениеводство всегда открыта при старте игры — добавляем, если отсутствует
     if not ("farming" in CityData.unlocked_technologies):

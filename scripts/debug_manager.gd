@@ -321,6 +321,7 @@ func handle_hex_click(row: int, col: int):
     var tile = main_map.tile_data[row][col]
     var old_res = tile.get("resource", null)
     tile["resource"] = pending_resource_id
+    tile["quality"] = GameData.roll_quality()
     # Если на гексе было разводимое животное/растение (crop_bred), оно
     # конфликтует с новым природным ресурсом — сбрасываем. Иначе под старым
     # улучшением production-цикл мог бы смешать два разных ресурса.

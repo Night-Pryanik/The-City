@@ -466,8 +466,7 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
 
     # 2. Пустой гекс: разведение одомашненных животных/растений.
     if tile.resource == null:
-        var breeding_ids: Array = CityData.domesticated_animals.duplicate()
-        breeding_ids.append_array(CityData.domesticated_plants)
+        var breeding_ids: Array = CityData.domesticated_resources.duplicate()
         var suitable_breeding_improvements: Dictionary = {}
         for resource_id in breeding_ids:
             var resource_data = GameData.raw_resources.get(resource_id, {})
@@ -1185,8 +1184,7 @@ func _get_suitable_crops(row: int, col: int, imp_kind: String) -> Array:
     var tile = main_map.get_tile_data(row, col)
     var tile_cover = tile.get("cover", "none")
     var ids: Array
-    ids = CityData.domesticated_animals.duplicate()
-    ids.append_array(CityData.domesticated_plants)
+    ids = CityData.domesticated_resources.duplicate()
     var out := []
     for id in ids:
         var data = GameData.raw_resources.get(id, {})
@@ -1207,8 +1205,7 @@ func _is_suitable_culture(row: int, col: int, id, imp_kind: String) -> bool:
     var data = GameData.raw_resources.get(id, {})
     if data.is_empty():
         return false
-    var ids: Array = CityData.domesticated_animals.duplicate()
-    ids.append_array(CityData.domesticated_plants)
+    var ids: Array = CityData.domesticated_resources.duplicate()
     # breedable: false (напр. рыба) — прямое подтверждение разведения невозможно.
     if not MapHelpers.can_breed_resource_by(id, imp_kind):
         return false

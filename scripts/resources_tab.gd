@@ -198,20 +198,20 @@ func refresh():
     if ui_helpers and is_instance_valid(ui_helpers):
         ui_helpers.hide_flow_tooltip()
 
-    # --- Одомашненные животные по подгруппам ---
-    if CityData.domesticated_animals.size() > 0:
+    # --- Одомашненные ресурсы по подгруппам ---
+    if CityData.domesticated_resources.size() > 0:
         var title = Label.new()
-        title.text = "Одомашненные животные:"
+        title.text = "Одомашненные ресурсы:"
         title.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
         resources_list.add_child(title)
 
         var animal_subgroups = {}
-        for animal_id in CityData.domesticated_animals:
-            var data = GameData.raw_resources.get(animal_id, {})
+        for resource_id in CityData.domesticated_resources:
+            var data = GameData.raw_resources.get(resource_id, {})
             for subgroup in _get_subgroups(data):
                 if not animal_subgroups.has(subgroup):
                     animal_subgroups[subgroup] = []
-                animal_subgroups[subgroup].append({"id": animal_id, "name": data.get("name", animal_id), "icon": data.get("icon", "")})
+                animal_subgroups[subgroup].append({"id": resource_id, "name": data.get("name", resource_id), "icon": data.get("icon", "")})
 
         for subgroup in animal_subgroups.keys():
             var subgroup_label = Label.new()
@@ -247,60 +247,6 @@ func refresh():
                 animal_flow_labels.append(animal_label)
                 resources_list.add_child(row)
                 row_flow_labels[animal["id"]] = animal_flow_labels
-
-        var spacer = Label.new()
-        spacer.text = ""
-        resources_list.add_child(spacer)
-
-    # --- Одомашненные растения по подгруппам ---
-    if CityData.domesticated_plants.size() > 0:
-        var title = Label.new()
-        title.text = "Одомашненные растения:"
-        title.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
-        resources_list.add_child(title)
-
-        var plant_subgroups = {}
-        for plant_id in CityData.domesticated_plants:
-            var data = GameData.raw_resources.get(plant_id, {})
-            for subgroup in _get_subgroups(data):
-                if not plant_subgroups.has(subgroup):
-                    plant_subgroups[subgroup] = []
-                plant_subgroups[subgroup].append({"id": plant_id, "name": data.get("name", plant_id), "icon": data.get("icon", "")})
-
-        for subgroup in plant_subgroups.keys():
-            var subgroup_label = Label.new()
-            subgroup_label.text = "  Подгруппа: " + _get_subgroup_name(subgroup)
-            subgroup_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
-            resources_list.add_child(subgroup_label)
-
-            for plant in plant_subgroups[subgroup]:
-                var row = HBoxContainer.new()
-                row.add_theme_constant_override("separation", 6)
-                # Ховер на иконке/названии показывает цену ресурса
-                var plant_flow_labels: Array = []
-                if not plant["icon"].is_empty():
-                    var tex = _get_icon_texture(plant["icon"])
-                    if tex:
-                        var icon_rect = TextureRect.new()
-                        icon_rect.texture = tex
-                        icon_rect.custom_minimum_size = Vector2(24, 24)
-                        icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-                        icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
-                        icon_rect.mouse_filter = Control.MOUSE_FILTER_PASS
-                        icon_rect.mouse_entered.connect(_on_flow_hover.bind(plant["id"], plant["name"]))
-                        icon_rect.mouse_exited.connect(_on_flow_exit.bind(plant["id"]))
-                        row.add_child(icon_rect)
-                        plant_flow_labels.append(icon_rect)
-                var plant_label = Label.new()
-                plant_label.text = plant["name"]
-                plant_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
-                plant_label.mouse_filter = Control.MOUSE_FILTER_PASS
-                plant_label.mouse_entered.connect(_on_flow_hover.bind(plant["id"], plant["name"]))
-                plant_label.mouse_exited.connect(_on_flow_exit.bind(plant["id"]))
-                row.add_child(plant_label)
-                plant_flow_labels.append(plant_label)
-                resources_list.add_child(row)
-                row_flow_labels[plant["id"]] = plant_flow_labels
 
         var spacer = Label.new()
         spacer.text = ""
@@ -433,17 +379,13 @@ func refresh():
     var animal_subgroups_count = 0
     var plant_subgroups_count = 0
     var animal_subgroup_map = {}
-    for animal_id in CityData.domesticated_animals:
-        var data = GameData.raw_resources.get(animal_id, {})
+    for resource_id in CityData.domesticated_resources:
+        var data = GameData.raw_resources.get(resource_id, {})
         for subgroup in _get_subgroups(data):
             animal_subgroup_map[subgroup] = true
     animal_subgroups_count = animal_subgroup_map.size()
 
     var plant_subgroup_map = {}
-    for plant_id in CityData.domesticated_plants:
-        var data = GameData.raw_resources.get(plant_id, {})
-        for subgroup in _get_subgroups(data):
-            plant_subgroup_map[subgroup] = true
     plant_subgroups_count = plant_subgroup_map.size()
 
     var total_subgroups = animal_subgroups_count + plant_subgroups_count
@@ -503,15 +445,11 @@ func update_values():
 
     if diversity_label != null and is_instance_valid(diversity_label):
         var animal_subgroup_map = {}
-        for animal_id in CityData.domesticated_animals:
-            var data = GameData.raw_resources.get(animal_id, {})
+        for resource_id in CityData.domesticated_resources:
+            var data = GameData.raw_resources.get(resource_id, {})
             for subgroup in _get_subgroups(data):
                 animal_subgroup_map[subgroup] = true
         var plant_subgroup_map = {}
-        for plant_id in CityData.domesticated_plants:
-            var data = GameData.raw_resources.get(plant_id, {})
-            for subgroup in _get_subgroups(data):
-                plant_subgroup_map[subgroup] = true
         var total_subgroups = animal_subgroup_map.size() + plant_subgroup_map.size()
         diversity_label.text = "Разнообразие: %d подгрупп" % total_subgroups
 

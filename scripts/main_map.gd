@@ -1146,10 +1146,7 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
             else:
                 tile["quality"] = GameData.roll_quality()
         if CityData:
-            if GameData.raw_resources.has(target_res_id) and GameData.raw_resources[target_res_id].get("category") == "animals":
-                CityData.add_animal(target_res_id)
-            elif CityData.is_plant_resource(target_res_id):
-                CityData.add_plant(target_res_id)
+            CityData.register_domesticated_resource(target_res_id)
     build_manager.remove_build(row, col)
     road_manager.build_road_from(row, col, tile_data, map_rows, map_cols)
     if not worker_manager.assign_worker(row, col):
