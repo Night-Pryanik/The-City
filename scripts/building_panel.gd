@@ -14,8 +14,6 @@ var ui_helpers: Node
 var panel: Panel
 var title_label: Label
 var info_label: Label
-var costs_label: Label
-var costs_container: VBoxContainer
 var slots_container: VBoxContainer
 
 var icon_textures: Dictionary = {}
@@ -98,23 +96,13 @@ func _ready():
     info_label = Label.new()
     vbox.add_child(info_label)
 
-    # Блок "Затраты" — отдельный узел, чтобы тултип для групповых ресурсов
-    # срабатывал только при наведении на конкретную кнопку.
-    costs_label = Label.new()
-    costs_label.text = "Затраты:"
-    costs_label.add_theme_font_size_override("font_size", 16)
-    vbox.add_child(costs_label)
-
-    costs_container = VBoxContainer.new()
-    costs_container.add_theme_constant_override("separation", 4)
-    vbox.add_child(costs_container)
-
     var slots_title = Label.new()
     slots_title.text = "Слоты производства:"
     vbox.add_child(slots_title)
 
     var scroll = ScrollContainer.new()
     scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
     vbox.add_child(scroll)
 
     slots_container = VBoxContainer.new()
@@ -197,9 +185,6 @@ func _refresh():
         # очищаем панель, чтобы не показывать устаревшие слоты.
         for child in slots_container.get_children():
             child.queue_free()
-        for child in costs_container.get_children():
-            child.queue_free()
-        costs_label.visible = false
         info_label.text = "Зданий: 0"
         _upgrade_progress_bars.clear()
         _slot_progress_bars.clear()
@@ -216,9 +201,6 @@ func _refresh():
 
     info_label.text = "Зданий: %d" % indices.size()
 
-    # Заполняем блок "Затраты"
-    _refresh_costs(bdata)
-
     # Очищаем старые слоты
     for child in slots_container.get_children():
         child.queue_free()
@@ -233,6 +215,7 @@ func _refresh():
 
     var all_item_texts = []
     var max_item_icons = 0
+    var max_slot_row_width = 0.0
     var popups = []
     var new_popup_map = {}
     var building_number = 0
@@ -404,13 +387,16 @@ func _refresh():
                 # Имя рецепта — в мете бара: тултип обновляется в _process()
                 # без обращения к реестру рецептов каждый кадр.
                 craft_bar.set_meta("craft_name", _get_craft_name(str(current)))
-                var status_text = CityData.get_slot_status_text(b_index, i)
-                craft_bar.tooltip_text = "Крафт «%s»: %s" % [
-                    str(craft_bar.get_meta("craft_name")),
-                    status_text if not status_text.is_empty() else "—"
-                ]
+                craft_bar.tooltip_text = ""
+                craft_bar.mouse_entered.connect(_on_craft_bar_mouse_entered.bind(craft_bar))
+                craft_bar.mouse_exited.connect(_on_craft_bar_mouse_exited)
                 row.add_child(craft_bar)
                 _slot_progress_bars["%d:%d" % [b_index, i]] = craft_bar
+            var slot_row_width = slot_label.get_combined_minimum_size().x + 8.0
+            slot_row_width += select_btn.get_combined_minimum_size().x
+            if craft_time > CityData.SIMULATION_TICK:
+                slot_row_width += 8.0 + 70.0
+            max_slot_row_width = maxf(max_slot_row_width, slot_row_width)
             slots_container.add_child(row)
 
     # Динамически расширяем панель, если текст пунктов не помещается
@@ -421,8 +407,10 @@ func _refresh():
         var w = font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
         if w > max_text_width:
             max_text_width = w
-    # Ширина панели = текст + иконки (24 каждая) + отступы (40) + метка слота (70) + запас (40)
-    var needed_width = max_text_width + max_item_icons * 24 + 40 + 70 + 40
+    # Учитываем как пункты попапа, так и фактическую ширину строки слота,
+    # включая прогресс-бар справа от кнопки рецепта.
+    var popup_content_width = max_text_width + max_item_icons * 24 + 40 + 70 + 40
+    var needed_width = maxf(popup_content_width, max_slot_row_width + 40 + 16)
     # Не даём панели выйти за пределы viewport
     var max_panel_width = get_viewport_rect().size.x - 40
     if needed_width > max_panel_width:
@@ -522,78 +510,6 @@ func _fill_popup_content(popup, b_index: int, slot_idx: int, available: Array, b
         popup_vbox.add_child(item_btn)
 
     return result
-
-# Заполняет блок "Затраты" — отдельные строки для еды и каждого ресурса.
-# Групповые ресурсы (@...) становятся кнопками с тултипом.
-func _refresh_costs(bdata):
-    # Очищаем старые строки
-    for child in costs_container.get_children():
-        child.queue_free()
-
-    if not bdata:
-        costs_label.visible = false
-        return
-
-    var has_costs = false
-
-    # Дополнительные ресурсы. Поддерживают AND-логику: каждая пачка требует
-    # все свои ресурсы, и нужны ВСЕ пачки одновременно. Между пачками
-    # вставляется разделитель «И».
-    if bdata.has("additional_cost"):
-        var bundles = GameData.parse_additional_cost(bdata["additional_cost"])
-        for bi in bundles.size():
-            var bundle: Dictionary = bundles[bi]
-            var row = HBoxContainer.new()
-            row.add_theme_constant_override("separation", 6)
-
-            var first_in_row := true
-            for res_id in bundle:
-                var amount = bundle[res_id]
-                if not first_in_row:
-                    var sep = Label.new()
-                    sep.text = ", "
-                    row.add_child(sep)
-                first_in_row = false
-
-                if GameData.is_group_key(res_id):
-                    # Групповой ресурс — строка с тултипом, раскрывающим состав группы
-                    row.add_child(ui_helpers.make_resource_entry(res_id, _get_all_resources(), icon_paths, int(amount), "colon"))
-                else:
-                    # Обычный ресурс — "иконка + название: количество"
-                    row.add_child(ui_helpers.make_resource_entry(res_id, _get_all_resources(), icon_paths, int(amount), "colon"))
-
-            costs_container.add_child(row)
-            has_costs = true
-
-            # Между пачками вставляем разделитель «И»
-            if bi < bundles.size() - 1:
-                var and_label = Label.new()
-                and_label.text = "И"
-                and_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-                costs_container.add_child(and_label)
-
-    var additional_yield = bdata.get("additional_yield", {})
-    if not additional_yield.is_empty():
-        var yield_header = Label.new()
-        yield_header.text = "Дополнительный выход:"
-        costs_container.add_child(yield_header)
-        for yield_id in additional_yield:
-            var yield_name = GameData.products.get(yield_id, {}).get(
-                "name", yield_id)
-            var yield_label = Label.new()
-            yield_label.text = "%s: %d" % [
-                yield_name, int(additional_yield[yield_id])]
-            costs_container.add_child(yield_label)
-        has_costs = true
-
-    var additional_req = String(bdata.get("additional_req", ""))
-    if additional_req != "":
-        var requirement_label = Label.new()
-        requirement_label.text = "Условие: доступ города к пресной воде" if additional_req == "running_water" else "Условие: " + additional_req
-        costs_container.add_child(requirement_label)
-        has_costs = true
-
-    costs_label.visible = has_costs
 
 func _setup_assignments_listener():
     # Подключаемся к сигналу изменения назначений горожан, чтобы обновлять
@@ -813,12 +729,40 @@ func _process(delta):
         # Тултип держим свежим: «X/Y (T сек)» — заполненность ингредиентов
         # и сколько секунд прошло с начала крафта.
         var status_text = CityData.get_slot_status_text(int(parts[0]), int(parts[1]))
-        craft_bar.tooltip_text = "Крафт «%s»: %s" % [
-            str(craft_bar.get_meta("craft_name", "")),
-            status_text if not status_text.is_empty() else "—"
-        ]
+        if get_viewport().gui_get_hovered_control() == craft_bar:
+            _update_craft_bar_tooltip(craft_bar, status_text)
     for key in stale:
         _slot_progress_bars.erase(key)
+
+func _on_craft_bar_mouse_entered(craft_bar: ProgressBar):
+    _update_craft_bar_tooltip(craft_bar, CityData.get_slot_status_text(
+        _get_craft_bar_index(craft_bar), _get_craft_bar_slot(craft_bar)))
+
+func _on_craft_bar_mouse_exited():
+    if ui_helpers != null and is_instance_valid(ui_helpers):
+        ui_helpers.hide_progress_tooltip()
+
+func _update_craft_bar_tooltip(craft_bar: ProgressBar, status_text: String):
+    if ui_helpers == null or not is_instance_valid(ui_helpers):
+        return
+    ui_helpers.progress_tooltip_label.text = "Крафт «%s»: %s" % [
+        str(craft_bar.get_meta("craft_name", "")),
+        status_text if not status_text.is_empty() else "—"
+    ]
+    ui_helpers.show_progress_tooltip(get_viewport().get_mouse_position())
+    ui_helpers.progress_tooltip_panel.visible = true
+
+func _get_craft_bar_index(craft_bar: ProgressBar) -> int:
+    for key in _slot_progress_bars:
+        if _slot_progress_bars[key] == craft_bar:
+            return int(str(key).split(":", false)[0])
+    return -1
+
+func _get_craft_bar_slot(craft_bar: ProgressBar) -> int:
+    for key in _slot_progress_bars:
+        if _slot_progress_bars[key] == craft_bar:
+            return int(str(key).split(":", false)[1])
+    return -1
 
 # Наведение на кнопку «Улучшить»: заполняем тултип с иконками и показываем
 # его рядом с кнопкой. Обычный tooltip_text не умеет показывать картинки,
@@ -1092,6 +1036,9 @@ func _update_slot_button(button, craft_id: String):
     content.set_anchors_preset(Control.PRESET_FULL_RECT)
     content.offset_left = 8
     content.offset_right = -8
+    # Передаём минимальную ширину содержимого кнопке, чтобы длинный рецепт
+    # учитывался родительским рядом при расчёте ширины панели.
+    button.custom_minimum_size.x = content.get_minimum_size().x + 16
     button.add_child(content)
 
 func _input(event: InputEvent):
