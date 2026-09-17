@@ -229,7 +229,7 @@ func refresh():
                     if tex:
                         var icon_rect = TextureRect.new()
                         icon_rect.texture = tex
-                        icon_rect.custom_minimum_size = Vector2(32, 32)
+                        icon_rect.custom_minimum_size = Vector2(40, 40)
                         icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
                         icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
                         icon_rect.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -327,7 +327,7 @@ func refresh():
                 if tex:
                     var icon_rect = TextureRect.new()
                     icon_rect.texture = tex
-                    icon_rect.custom_minimum_size = Vector2(32, 32)
+                    icon_rect.custom_minimum_size = Vector2(40, 40)
                     icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
                     icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
                     row.add_child(icon_rect)

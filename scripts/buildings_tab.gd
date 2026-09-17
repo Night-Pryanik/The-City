@@ -128,7 +128,7 @@ func refresh_list():
         if building_icon:
             item_btn.icon = building_icon
             item_btn.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
-            item_btn.add_theme_constant_override("icon_max_width", 24)
+            item_btn.add_theme_constant_override("icon_max_width", 40)
         item_btn.pressed.connect(_on_building_list_pressed.bind(bld["id"]))
         item_btn.mouse_entered.connect(_on_building_hovered.bind(bld["id"]))
         item_btn.mouse_exited.connect(_on_building_unhovered.bind(bld["id"]))
@@ -236,7 +236,7 @@ func refresh_built():
         if building_icon:
             item_btn.icon = building_icon
             item_btn.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
-            item_btn.add_theme_constant_override("icon_max_width", 24)
+            item_btn.add_theme_constant_override("icon_max_width", 40)
 
         item_btn.pressed.connect(_on_building_slots_pressed.bind(g["id"]))
 
