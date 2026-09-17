@@ -41,6 +41,16 @@
       "description": "Создает краситель (пурпур) из мурексов"
     },
     {
+      "id": "sepia",
+      "name": "Производство сепии",
+      "produced_in": [ "dyer_house" ],
+      "resources": { "raw_cuttlefish": 20 },
+      "result": { "sepia": 10 },
+      "time": 5.0,
+      "unlock_tech": "dyeing",
+      "description": "Создает краситель (сепию) из каракатиц"
+    },
+    {
       "id": "woad",
       "name": "Производство вайды",
       "produced_in": [ "dyer_house" ],

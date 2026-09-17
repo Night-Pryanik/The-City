@@ -1,7 +1,8 @@
 {
   "resources": [
     {
-      "id": "ochre", "price": 5,
+      "id": "ochre",
+      "price": 5,
       "name": "Охра",
       "type": "product",
       "category": "material",
@@ -9,7 +10,8 @@
       "icon": "ochre.png"
     },
     {
-      "id": "indigo", "price": 22,
+      "id": "indigo",
+      "price": 22,
       "name": "Индиго",
       "type": "product",
       "category": "material",
@@ -17,7 +19,8 @@
       "icon": "indigo.png"
     },
     {
-      "id": "henna", "price": 12,
+      "id": "henna",
+      "price": 12,
       "name": "Хна",
       "type": "product",
       "category": "material",
@@ -25,7 +28,8 @@
       "icon": "henna.png"
     },
     {
-      "id": "purple", "price": 55,
+      "id": "purple",
+      "price": 55,
       "name": "Пурпур",
       "type": "product",
       "category": "material",
@@ -33,7 +37,17 @@
       "icon": "purple.png"
     },
     {
-      "id": "rose_madder", "price": 10,
+      "id": "sepia",
+      "price": 20,
+      "name": "Сепия",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "dyeing",
+      "icon": "sepia.png"
+    },
+    {
+      "id": "rose_madder",
+      "price": 10,
       "name": "Крапп",
       "type": "product",
       "category": "material",
@@ -41,7 +55,8 @@
       "icon": "rose_madder.png"
     },
     {
-      "id": "woad", "price": 8,
+      "id": "woad",
+      "price": 8,
       "name": "Вайда",
       "type": "product",
       "category": "material",
@@ -49,7 +64,8 @@
       "icon": "woad.png"
     },
     {
-      "id": "campeche", "price": 18,
+      "id": "campeche",
+      "price": 18,
       "name": "Кампеш",
       "type": "product",
       "category": "material",
@@ -57,7 +73,8 @@
       "icon": "campeche.png"
     },
     {
-      "id": "carthamin", "price": 15,
+      "id": "carthamin",
+      "price": 15,
       "name": "Картамин",
       "type": "product",
       "category": "material",
@@ -65,7 +82,8 @@
       "icon": "сarthamin.png"
     },
     {
-      "id": "carmine", "price": 32,
+      "id": "carmine",
+      "price": 32,
       "name": "Кармин",
       "type": "product",
       "category": "material",
@@ -73,7 +91,8 @@
       "icon": "carmine.png"
     },
     {
-      "id": "cinnabar", "price": 25,
+      "id": "cinnabar",
+      "price": 25,
       "name": "Киноварь",
       "type": "product",
       "category": "material",
@@ -81,7 +100,8 @@
       "icon": "cinnabar.png"
     },
     {
-      "id": "ultramarine", "price": 38,
+      "id": "ultramarine",
+      "price": 38,
       "name": "Ультрамарин",
       "type": "product",
       "category": "material",
@@ -89,7 +109,8 @@
       "icon": "ultramarine.png"
     },
     {
-      "id": "malachite", "price": 15,
+      "id": "malachite",
+      "price": 15,
       "name": "Малахит",
       "type": "product",
       "category": "material",

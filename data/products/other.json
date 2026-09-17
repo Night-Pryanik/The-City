@@ -1,23 +1,48 @@
 {
   "resources": [
-    { "id": "raw_meat", "price": 6, "name": "Сырое мясо", "type": "product", "category": "material", "icon": "raw_meat.png" },
     {
-      "id": "raw_milk", "price": 3,
+      "id": "raw_meat",
+      "price": 6,
+      "name": "Сырое мясо",
+      "type": "product",
+      "category": "material",
+      "icon": "raw_meat.png"
+    },
+    {
+      "id": "raw_milk",
+      "price": 3,
       "name": "Сырое молоко",
       "type": "product",
       "category": "material",
       "icon": "raw_milk.png"
     },
     {
-      "id": "raw_fish", "price": 5,
+      "id": "raw_fish",
+      "price": 5,
       "name": "Сырая рыба",
       "type": "product",
       "category": "material",
       "icon": "raw_fish.png"
     },
-    { "id": "raw_murex", "price": 40, "name": "Мурекс", "type": "product", "category": "material", "icon": "murex.png" },
     {
-      "id": "feed", "price": 1,
+      "id": "raw_murex",
+      "price": 40,
+      "name": "Мурекс",
+      "type": "product",
+      "category": "material",
+      "icon": "murex.png"
+    },
+    {
+      "id": "raw_cuttlefish",
+      "price": 10,
+      "name": "Каракатица",
+      "type": "product",
+      "category": "material",
+      "icon": "cuttlefish.png"
+    },
+    {
+      "id": "feed",
+      "price": 1,
       "name": "Корм",
       "type": "product",
       "category": "material",
@@ -25,8 +50,22 @@
       "unlock_improvement": "pasture",
       "icon": "feed.png"
     },
-    { "id": "tulips", "price": 10, "name": "Тюльпаны", "type": "product", "category": "other", "icon": "tulips.png" },
+    {
+      "id": "tulips",
+      "price": 10,
+      "name": "Тюльпаны",
+      "type": "product",
+      "category": "other",
+      "icon": "tulips.png"
+    },
     { "id": "roses", "price": 15, "name": "Розы", "type": "product", "category": "other", "icon": "roses.png" },
-    { "id": "chamomile", "price": 8, "name": "Ромашки", "type": "product", "category": "other", "icon": "chamomile.png" }
+    {
+      "id": "chamomile",
+      "price": 8,
+      "name": "Ромашки",
+      "type": "product",
+      "category": "other",
+      "icon": "chamomile.png"
+    }
   ]
 }
