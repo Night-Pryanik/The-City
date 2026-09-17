@@ -174,7 +174,8 @@ func _show_resource_list():
 
     for entry in entries:
         var res_id = entry[1]
-        var btn = _make_button(GameData.raw_resources[res_id].get("name", res_id))
+        var res_name = GameData.raw_resources[res_id].get("name", res_id)
+        var btn = _make_button("%s (%s)" % [res_name, res_id])
         btn.pressed.connect(_on_resource_selected.bind(res_id))
         _content_vbox.add_child(btn)
 
