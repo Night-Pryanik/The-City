@@ -324,6 +324,7 @@ func _ready():
 
     tooltip_text_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     tooltip_text_label.custom_minimum_size = Vector2(300, 0)
+    tooltip_text_label.bbcode_enabled = true
 
     add_child(settings_menu)
     settings_menu.hide()
@@ -1147,7 +1148,7 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
         if CityData:
             if GameData.raw_resources.has(target_res_id) and GameData.raw_resources[target_res_id].get("category") == "animals":
                 CityData.add_animal(target_res_id)
-            elif GameData.raw_resources.has(target_res_id) and GameData.raw_resources[target_res_id].get("category") == "plants":
+            elif CityData.is_plant_resource(target_res_id):
                 CityData.add_plant(target_res_id)
     build_manager.remove_build(row, col)
     road_manager.build_road_from(row, col, tile_data, map_rows, map_cols)

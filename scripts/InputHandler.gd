@@ -6,7 +6,7 @@ var map_renderer: Node
 var progress_bar_layer: Node
 var hud: Node
 var hex_tooltip: Node
-var tooltip_text_label: Label
+var tooltip_text_label: RichTextLabel
 var tooltip_products_container: Node
 var worker_manager: Node
 var city_ui: Node

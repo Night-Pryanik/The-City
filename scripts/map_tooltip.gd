@@ -1,6 +1,6 @@
 class_name MapTooltip
 
-var _tooltip_text_label: Label
+var _tooltip_text_label: RichTextLabel
 var _tooltip_products_container: VBoxContainer
 var _map_renderer
 var _worker_manager
@@ -15,7 +15,7 @@ func _format_rate(value: float) -> String:
         return str(int(value))
     return "%.1f" % value
 
-func _init(tooltip_text_label: Label, tooltip_products_container: VBoxContainer, map_renderer, worker_manager):
+func _init(tooltip_text_label: RichTextLabel, tooltip_products_container: VBoxContainer, map_renderer, worker_manager):
     _tooltip_text_label = tooltip_text_label
     _tooltip_products_container = tooltip_products_container
     _map_renderer = map_renderer
@@ -54,6 +54,20 @@ func _territory_lines_for(tile: Dictionary, row: int, col: int) -> Array:
     if bool(tile.get("has_town", false)):
         lines.append("Город %s" % town_name if town_name != "" else "Город")
     return lines
+
+
+func _format_resource_label_for_text(res_id: String, res_name: String) -> String:
+    if res_id == "" or res_name == "":
+        return res_name
+    var icon_name = GameData.raw_resources.get(res_id, {}).get("icon", "")
+    if icon_name == "":
+        return res_name
+    if _map_renderer == null:
+        return res_name
+    var icon_path = _map_renderer.get_icon_path(icon_name)
+    if icon_path == "":
+        return res_name
+    return "[img=18]%s[/img] %s" % [icon_path, res_name]
 
 
 # --- Общий рендер списка продуктов ---
@@ -311,7 +325,8 @@ func _build_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_c
     var terr: Array = _territory_lines_for(tile, row, col)
     if not terr.is_empty():
         text += "\n" + "\n".join(terr)
-    text += "\nРесурс: %s" % res_name
+    var resource_text = _format_resource_label_for_text(res_id, res_name)
+    text += "\nРесурс: %s" % resource_text
 
     var terrain_desc = terrain_data.get("description", "")
     if terrain_desc != "":

@@ -122,8 +122,10 @@ layout_mode = 0
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="TooltipTextLabel" type="Label" parent="HexTooltip/TooltipVBox" unique_id=1266942755]
+[node name="TooltipTextLabel" type="RichTextLabel" parent="HexTooltip/TooltipVBox" unique_id=1266942755]
 layout_mode = 2
+fit_content = true
+scroll_active = false
 
 [node name="TooltipProductsContainer" type="VBoxContainer" parent="HexTooltip/TooltipVBox" unique_id=239241664]
 layout_mode = 2
@@ -225,10 +227,12 @@ horizontal_scroll_mode = 0
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="InfoLabel" type="Label" parent="ControlPanel/InfoVBox/InfoScroll/InfoContent" unique_id=2061907306]
+[node name="InfoLabel" type="RichTextLabel" parent="ControlPanel/InfoVBox/InfoScroll/InfoContent" unique_id=2061907306]
 layout_mode = 2
 text = "Выберите гекс на карте (ЛКМ), чтобы увидеть информацию и доступные действия."
-autowrap_mode = 2
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
 
 [node name="ProductsContainer" type="VBoxContainer" parent="ControlPanel/InfoVBox/InfoScroll/InfoContent" unique_id=2061907307]
 layout_mode = 2

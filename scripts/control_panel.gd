@@ -105,7 +105,7 @@ var _selected_hex = null # { "row": int, "col": int }
 var _preview_action = null # { "type": String, "imp_id": String, "target_res_id": String, "label": String }
 
 # Ссылки на дочерние узлы UI.
-var _info_label: Label
+var _info_label: RichTextLabel
 var _products_container: VBoxContainer
 var _actions_container: FlowContainer
 var _preview_container: VBoxContainer
@@ -139,6 +139,7 @@ func initialize(main_node: Node):
     build_manager = main_node.build_manager
 
     _info_label = $InfoVBox/InfoScroll/InfoContent/InfoLabel
+    _info_label.bbcode_enabled = true
     _products_container = $InfoVBox/InfoScroll/InfoContent/ProductsContainer
     _actions_container = $ActionsVBox/ActionsScroll/ActionsContent/ActionsContainer
     _preview_container = $PreviewContainer/PreviewScroll/PreviewContent
