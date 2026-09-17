@@ -389,21 +389,25 @@ func _refresh():
             # накоплено. Показывается только у рецептов, которые длятся дольше
             # тика симуляции (у мгновенных рецептов прогресс всегда «полный»).
             # Обновляется в _process() без пересоздания UI.
+            # В continuous-модели прогресс-бар показывает completion_ratio (0..1):
+            # min(заполненность ингредиентов, время/craft_time). При дефиците
+            # сырья бар всё равно растёт, пока копится время, но не превышает
+            # 1.0 — это и есть «реальная степень готовности с учётом дефицита».
             var craft_time = CityData.get_slot_craft_time(b_index, i)
             if craft_time > CityData.SIMULATION_TICK:
                 var craft_bar = ProgressBar.new()
                 craft_bar.custom_minimum_size = Vector2(70, 14)
                 craft_bar.show_percentage = false
                 craft_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-                craft_bar.max_value = craft_time
-                craft_bar.value = minf(craft_time, CityData.get_slot_progress_value(b_index, i))
+                craft_bar.max_value = 1.0
+                craft_bar.value = CityData.get_slot_progress_ratio(b_index, i)
                 # Имя рецепта — в мете бара: тултип обновляется в _process()
                 # без обращения к реестру рецептов каждый кадр.
                 craft_bar.set_meta("craft_name", _get_craft_name(str(current)))
-                craft_bar.tooltip_text = "Крафт «%s»: %d из %d сек" % [
+                var status_text = CityData.get_slot_status_text(b_index, i)
+                craft_bar.tooltip_text = "Крафт «%s»: %s" % [
                     str(craft_bar.get_meta("craft_name")),
-                    int(craft_bar.value),
-                    int(craft_time)
+                    status_text if not status_text.is_empty() else "—"
                 ]
                 row.add_child(craft_bar)
                 _slot_progress_bars["%d:%d" % [b_index, i]] = craft_bar
@@ -785,8 +789,10 @@ func _process(delta):
     for b_index in finished:
         _upgrade_progress_bars.erase(b_index)
 
-    # Прогресс-бары крафта слотов: значение пересчитывается от накопленного
-    # времени рецепта (CityData.get_slot_progress_value), тоже без пересборки UI.
+    # Прогресс-бары крафта слотов: значение пересчитывается от completion_ratio
+    # (CityData.get_slot_progress_ratio), тоже без пересборки UI. В continuous-
+    # модели это min(заполненность, время/craft_time) — то есть реальная
+    # степень готовности с учётом дефицита сырья.
     var stale: Array = []
     for key in _slot_progress_bars:
         var craft_bar = _slot_progress_bars[key]
@@ -802,13 +808,14 @@ func _process(delta):
             # Слот опустошён или рецепт убран — бар снимет ближайшая пересборка.
             stale.append(key)
             continue
-        craft_bar.max_value = craft_time
-        craft_bar.value = minf(craft_time, CityData.get_slot_progress_value(int(parts[0]), int(parts[1])))
-        # Тултип держим свежим: «X из Y сек» без пересборки панели.
-        craft_bar.tooltip_text = "Крафт «%s»: %d из %d сек" % [
+        craft_bar.max_value = 1.0
+        craft_bar.value = CityData.get_slot_progress_ratio(int(parts[0]), int(parts[1]))
+        # Тултип держим свежим: «X/Y (T сек)» — заполненность ингредиентов
+        # и сколько секунд прошло с начала крафта.
+        var status_text = CityData.get_slot_status_text(int(parts[0]), int(parts[1]))
+        craft_bar.tooltip_text = "Крафт «%s»: %s" % [
             str(craft_bar.get_meta("craft_name", "")),
-            int(craft_bar.value),
-            int(craft_time)
+            status_text if not status_text.is_empty() else "—"
         ]
     for key in stale:
         _slot_progress_bars.erase(key)

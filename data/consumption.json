@@ -56,7 +56,7 @@
       "resource": "@fruits",
       "profession": [ "all" ],
       "amount": 10,
-      "interval": 2,
+      "interval": 1,
       "production_bonus": 0.0
     }
   ]

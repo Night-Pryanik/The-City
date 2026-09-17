@@ -18,7 +18,7 @@ func save_game():
         "production_rates": CityData.production_rates,
         "consumption_rates": CityData.consumption_rates,
         "city_food_pool": CityData.city_food_pool,
-        "city_built_buildings": CityData.city_built_buildings,
+        "city_built_buildings": _serialize_buildings(CityData.city_built_buildings),
         "domesticated_animals": CityData.domesticated_animals,
         "domesticated_plants": CityData.domesticated_plants,
         "unlocked_technologies": CityData.unlocked_technologies,
@@ -151,6 +151,35 @@ func new_game():
 func has_save() -> bool:
     return FileAccess.file_exists(SAVE_PATH)
 
+# Сериализация зданий: конвертирует CraftContainer (RefCounted) в плоский
+# dict, чтобы JSON.stringify не упал на нестандартном типе. На загрузке
+# dict восстанавливается лениво в CityData._ensure_slot_container через
+# CraftContainer(recipe, slot_data).
+func _serialize_buildings(buildings: Array) -> Array:
+    var out: Array = []
+    if not (buildings is Array):
+        return out
+    for bld in buildings:
+        if not (bld is Dictionary):
+            out.append(bld)
+            continue
+        var copy: Dictionary = bld.duplicate(true)
+        var conts = copy.get("slot_containers", null)
+        if conts is Array:
+            var serialized: Array = []
+            for c in conts:
+                if c == null:
+                    serialized.append(null)
+                elif c is CraftContainer:
+                    serialized.append(c.serialize())
+                elif c is Dictionary:
+                    serialized.append(c.duplicate(true))
+                else:
+                    serialized.append(null)
+            copy["slot_containers"] = serialized
+        out.append(copy)
+    return out
+
 func _serialize_tile_data(main_map: Node) -> Array:
     var result = []
     var rows = main_map.tile_data.size()
@@ -174,10 +203,17 @@ func _serialize_tile_data(main_map: Node) -> Array:
                     # (time_to_mature). Сохраняется, чтобы после загрузки
                     # пастбище не начинало заполняться заново с нуля.
                     "fill_time": tile.get("fill_time", 0.0),
-                    # production_progress — накопленное время производственного
-                    # цикла улучшения (production_interval). Сохраняется, чтобы
-                    # после загрузки цикл не начинался с нуля.
-                    "production_progress": tile.get("production_progress", 0.0),
+                    # production_fractional_remainder — дробный остаток
+                    # sub-unit accumulator непрерывного производства (см.
+                    # main_map._emit_continuous_production). Сохраняется,
+                    # чтобы средняя скорость не сбрасывалась к нулю при
+                    # загрузке. Старый ключ production_progress больше не
+                    # пишется — он был для пакетной модели.
+                    "production_fractional_remainder": tile.get("production_fractional_remainder", 0.0),
+                    # feed_fractional_remainder — дробный остаток корма
+                    # (см. main_map._consume_feed_continuous). Сохраняется
+                    # по той же причине.
+                    "feed_fractional_remainder": tile.get("feed_fractional_remainder", 0.0),
                     "quality": tile.get("quality", ""),
                     "terrain_icon": tile.get("terrain_icon", ""),
                     "in_influence": tile.get("in_influence", false),

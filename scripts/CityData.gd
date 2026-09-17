@@ -7,23 +7,15 @@ var city_storage: Dictionary = {}
 # Детализация склада по качеству: product_id -> { "common": N, "fine": N, ... }
 # Сумма по всем уровням качества всегда равна city_storage[product_id].
 var city_quality_detail: Dictionary = {}
+# Фактические счётчики производства/потребления за текущий тик симуляции.
+# Нужны для определения голода (CityData._check_population_change сравнивает
+# суммы по food_pool) и для TopBar'а (city_ui._update_food_label — метка
+# «Еда: N [+Y / -Z]» с фактом за тик, fallback на плановый при нулевом
+# факте). Детализация по источникам (production_sources / consumption_sources)
+# убрана из тултипа вкладки «Ресурсы» (см. коммит 5790016), и сами
+# источники больше не ведутся.
 var production_rates: Dictionary = {}
 var consumption_rates: Dictionary = {}
-# Детализация прихода/расхода по источникам ЗА ТИК (для тултипа на вкладке
-# «Ресурсы»): product_id -> { "Имя источника": { "count": N, "amount": M } }.
-#   count  — сколько однотипных источников дали вклад за тик (даёт «Ферма х10»);
-#   amount — суммарный вклад этих источников (число после знака +/-).
-# Очищаются вместе со счётчиками в reset_counters().
-var production_sources: Dictionary = {}
-var consumption_sources: Dictionary = {}
-# Последнее фактическое потребление (живёт между тиками, НЕ сбрасывается):
-# product_id -> { "Имя источника": { "count": N, "amount": M } }. Обновляется
-# в reset_counters() данными прошедшего тика только для ресурсов, которые в
-# нём потреблялись. Нужно секции «Потребление (текущее)» тултипа ресурсов:
-# при интервальном потреблении (списание раз в N тиков) она показывает
-# последнее фактическое списание вместо пустоты, пока у ресурса есть
-# плановое потребление (см. resources_tab.gd, _get_current_cons_sources).
-var last_consumption_sources: Dictionary = {}
 var city_food_pool: Dictionary = {}
 var city_built_buildings: Array = []
 var domesticated_animals: Array = []
@@ -163,9 +155,6 @@ func setup():
     city_quality_detail.clear()
     production_rates.clear()
     consumption_rates.clear()
-    production_sources.clear()
-    consumption_sources.clear()
-    last_consumption_sources.clear()
     city_food_pool.clear()
     city_built_buildings.clear()
     improvement_planned_production.clear()
@@ -207,16 +196,11 @@ func setup():
         city_quality_detail["meat"]["common"] = city_quality_detail["meat"].get("common", 0) + 10
 
 func reset_counters():
-    # Переживаем фактическое потребление прошедшего тика: для ресурсов, которые
-    # в нём потреблялись, оно становится «последним известным»
-    # (last_consumption_sources) — секция «Потребление (текущее)» тултипа
-    # не мигает между тиками списания при интервальном потреблении.
-    for pid in consumption_sources:
-        last_consumption_sources[pid] = consumption_sources[pid].duplicate(true)
+    # Фактические счётчики производства/потребления за тик: используются для
+    # определения голода (_check_population_change) и TopBar'а
+    # (city_ui._update_food_label). Живут ровно один тик симуляции.
     production_rates.clear()
     consumption_rates.clear()
-    production_sources.clear()
-    consumption_sources.clear()
     # Плановые выпуск/потребление улучшений — кэш текущего тика (наполняется
     # из main_map.gd), живёт ровно один тик симуляции, как и фактические
     # счётчики.
@@ -246,35 +230,27 @@ func get_internal_market_price(pid: String) -> int:
     var mult = float(GameData.game_balance.get("internal_market_price_multiplier", 1.0))
     return int(round(base_price * mult))
 
-# --- ЗАПИСЬ ИСТОЧНИКОВ ПРИХОДА/РАСХОДА (для тултипа вкладки «Ресурсы») ---
-# Обобщённый накопитель: добавляет amount от источника source_name к словарю
-# sources (product_id -> { source_name -> { count, amount } }). Если такой же
-# источник уже записан — увеличивает и count (число однотипных источников),
-# и amount (суммарный вклад). Так несколько ферм за один тик показываются как
-# «Ферма х10: +10».
-func _record_source(sources: Dictionary, pid: String, source_name: String, amount: int):
-    if amount <= 0:
-        return
-    if not sources.has(pid):
-        sources[pid] = {}
-    var by_source: Dictionary = sources[pid]
-    if not by_source.has(source_name):
-        by_source[source_name] = {"count": 0, "amount": 0}
-    var entry: Dictionary = by_source[source_name]
-    entry["count"] = int(entry.get("count", 0)) + 1
-    entry["amount"] = int(entry.get("amount", 0)) + amount
+# --- ЗАПИСЬ ФАКТА ЗА ТИК ---
+# Эти хелперы обновляют фактические счётчики производства/потребления за тик
+# (production_rates / consumption_rates). Используются для определения голода
+# (_check_population_change) и TopBar'а (city_ui._update_food_label).
+# Детализация по источникам (production_sources / consumption_sources) раньше
+# показывалась в тултипе вкладки «Ресурсы», но после коммита 5790016
+# тултип отображает только плановое производство/потребление, поэтому
+# детализация больше не ведётся — остались только суммарные rate'ы.
+#
+# Параметр source_name сохранён в сигнатуре для совместимости с вызывающими
+# (main_map.gd, worker_manager.gd); он никуда не записывается.
 
-# Публичный хелпер записи источника ПРОИЗВОДСТВА (используется и из
-# worker_manager.gd при профессиональном потреблении).
-func record_production_source(pid: String, source_name: String, amount: int):
+# Публичный хелпер записи ФАКТА производства за тик. Используется из
+# main_map.gd и do_tick().
+func record_production_source(pid: String, _source_name: String, amount: int):
     production_rates[pid] = production_rates.get(pid, 0) + amount
-    _record_source(production_sources, pid, source_name, amount)
 
-# Публичный хелпер записи источника ПОТРЕБЛЕНИЯ (используется и из
-# worker_manager.gd при профессиональном потреблении).
-func record_consumption_source(pid: String, source_name: String, amount: int):
+# Публичный хелпер записи ФАКТА потребления за тик. Используется из
+# main_map.gd, worker_manager.gd и do_tick().
+func record_consumption_source(pid: String, _source_name: String, amount: int):
     consumption_rates[pid] = consumption_rates.get(pid, 0) + amount
-    _record_source(consumption_sources, pid, source_name, amount)
 
 # --- ПЛАНОВЫЙ СПРОС ЗДАНИЙ (для «Потребление (плановое)» на вкладке «Ресурсы») ---
 # Кэш ссылки на TownsfolkManager: нужен и do_tick(), и подсчёту спроса зданий.
@@ -592,6 +568,24 @@ func _consume_quality_detail(pid: String, amount: int, priority: String) -> Dict
 # по разбивке consumed (словарь {quality: count}).
 # Используется при производстве: качество результата = взвешенное среднее
 # качества потреблённого сырья, округлённое до ближайшего уровня.
+# Собирает плоскую разбивку потреблённого сырья по качеству из контейнера
+# крафта: для каждого слота ингредиента проходит по накопленным «входам»
+# (consumed) и складывает в единый словарь {quality: count}.
+# Используется при завершении крафта для расчёта качества результата —
+# прямой аналог consumed_all в старой пакетной логике.
+func _collect_container_quality(container: CraftContainer) -> Dictionary:
+    var out := {}
+    if container == null:
+        return out
+    for slot in container.ingredient_slots:
+        for entry in slot.get("consumed", []):
+            var qty = int(entry.get("qty", 0))
+            var qid = str(entry.get("quality", "common"))
+            if qty <= 0:
+                continue
+            out[qid] = int(out.get(qid, 0)) + qty
+    return out
+
 func quality_from_breakdown(consumed: Dictionary) -> String:
     var levels = GameData.get_quality_levels()
     if levels.is_empty():
@@ -617,6 +611,11 @@ func quality_from_breakdown(consumed: Dictionary) -> String:
             best_qid = qid
     return best_qid
 
+# DEPRECATED: после перехода на continuous-модель (см. main_map.gd,
+# блок «НЕПРЕРЫВНОЕ ПРОИЗВОДСТВО УЛУЧШЕНИЯ») эта функция больше не вызывается
+# из тика симуляции. Оставлена для обратной совместимости: если во внешнем
+# коде где-то остался вызов (например, отладка, тесты), он продолжит работать.
+# Удалить после проверки сейвов и UI на отсутствие ссылок.
 func add_raw_production(raw_id: String, multiplier: float = 1.0, quality: String = "common", source_name: String = ""):
     if Engine.is_editor_hint():
         return
@@ -643,15 +642,21 @@ func add_raw_production(raw_id: String, multiplier: float = 1.0, quality: String
                 production_rates[pid] += amount
 
 # --- ВРЕМЯ РЕЦЕПТА (time) ---
-# Рецепт слота здания исполняется не каждый тик симуляции, а раз в `time`
-# секунд (поле time в data/crafts/*.json). Накопленное время хранится по слотам
-# в записи здания (ключ "slot_progress" — массив секунд по индексам слотов) и
-# сохраняется вместе с city_built_buildings.
-# Шаг накопления — SIMULATION_TICK (1 сек): если time не кратен шагу,
-# остаток переносится в следующий крафт, поэтому средняя скорость точная
-# (time = 5 при шаге 1 → крафт на каждом 5-м тике → в среднем раз в 5 сек).
-# Больше одного крафта за тик слот не делает: при time < SIMULATION_TICK
-# фактическая скорость ограничена одним крафтом за тик симуляции.
+# Рецепт слота здания исполняется непрерывно: ингредиенты забираются
+# со склада поштучно с рассчитанной скоростью (required / time ед./сек).
+# Крафт считается завершённым, когда ВСЕ ингредиенты набраны и прошло
+# craft_time секунд. Если сырья не хватает — контейнер «замерзает»
+# (время не копит, ингредиенты не забираются), и крафт автоматически
+# затягивается до появления сырья на складе.
+#
+# На каждый слот здания заводится CraftContainer (см. scripts/craft_container.gd),
+# который хранит состояние заполнения и список «входов» с качествами для
+# расчёта качества результата. Контейнеры сериализуются вместе с
+# city_built_buildings под ключом "slot_containers".
+#
+# Шаг симуляции — SIMULATION_TICK (1 сек). Дробные остатки за тик
+# копятся в контейнере (sub-unit accumulator), поэтому средняя скорость
+# не дрейфует (21/5 = 4.2 → чередуем 4 и 5 единиц).
 
 # Время одного крафта рецепта в секундах. Поле time отсутствует или <= 0 —
 # рецепт ведёт себя как раньше: крафт каждый тик симуляции.
@@ -668,30 +673,87 @@ func get_craft_by_id(recipe_id: String) -> Dictionary:
             return c
     return {}
 
-# Прогресс слотов здания (секунды накопленного времени крафта). Массив
-# создаётся и подгоняется под текущее число слотов лениво: старые сейвы (без
-# ключа), здания после апгрейда и только что построенные здания.
-func get_slot_progress(b_index: int) -> Array:
+# --- КОНТЕЙНЕРЫ СЛОТОВ (непрерывный крафт) ---
+# На каждый слот здания — CraftContainer. Массив лениво создаётся и
+# подгоняется под текущее число слотов. Старые сейвы без ключа
+# "slot_containers" мигрируют при первом обращении (slot_progress →
+# пустые контейнеры, см. _ensure_slot_containers).
+func get_slot_containers(b_index: int) -> Array:
     if b_index < 0 or b_index >= city_built_buildings.size():
         return []
     var bld: Dictionary = city_built_buildings[b_index]
     var slots: Array = bld.get("slots", [])
-    var progress = bld.get("slot_progress", [])
-    if not (progress is Array):
-        progress = []
-    while progress.size() < slots.size():
-        progress.append(0.0)
-    if progress.size() > slots.size():
-        progress.resize(slots.size())
-    bld["slot_progress"] = progress
-    return progress
+    var containers = bld.get("slot_containers", null)
+    if not (containers is Array):
+        # Миграция со старого формата (slot_progress).
+        containers = _migrate_slot_containers(b_index, slots)
+        bld["slot_containers"] = containers
+    # Подгоняем массив под текущее число слотов.
+    while containers.size() < slots.size():
+        containers.append(null)
+    if containers.size() > slots.size():
+        containers.resize(slots.size())
+    return containers
 
-# Накопленное время одного слота; при некорректном индексе — 0.
-func get_slot_progress_value(b_index: int, slot_idx: int) -> float:
-    var progress := get_slot_progress(b_index)
-    if slot_idx < 0 or slot_idx >= progress.size():
-        return 0.0
-    return float(progress[slot_idx])
+# Внутренняя: создаёт массив CraftContainer из старого slot_progress или
+# с нуля. Прогресс старого таймера не переносим — это были просто секунды,
+# не заполненность контейнера; корректный перевод невозможен без потери
+# семантики. После миграции слот начинает крафт заново.
+func _migrate_slot_containers(b_index: int, slots: Array) -> Array:
+    var out: Array = []
+    var bld: Dictionary = city_built_buildings[b_index]
+    var old_progress = bld.get("slot_progress", [])
+    for slot_idx in range(slots.size()):
+        var recipe_id = str(slots[slot_idx])
+        if recipe_id == "" or recipe_id == "empty":
+            out.append(null)
+            continue
+        var recipe = get_craft_by_id(recipe_id)
+        if recipe.is_empty():
+            out.append(null)
+            continue
+        # Используем сохранённое состояние, если оно соответствует
+        # текущему рецепту (для будущих сейвов в новом формате).
+        var saved = null
+        if slot_idx < old_progress.size() and old_progress[slot_idx] is Dictionary:
+            saved = old_progress[slot_idx]
+        out.append(CraftContainer.new(recipe, saved if saved != null else {}))
+    # Чистим старый ключ, чтобы не таскать его в сейвах.
+    bld.erase("slot_progress")
+    return out
+
+# Контейнер конкретного слота или null, если слот пуст / рецепт не найден.
+func get_slot_container(b_index: int, slot_idx: int) -> CraftContainer:
+    var containers := get_slot_containers(b_index)
+    if slot_idx < 0 or slot_idx >= containers.size():
+        return null
+    var c = containers[slot_idx]
+    if c is CraftContainer:
+        return c
+    return null
+
+# Возвращает или создаёт контейнер слота, синхронизируя с текущим рецептом.
+# Если рецепт в слоте изменился — пересоздаёт контейнер (сбрасывая прогресс).
+func _ensure_slot_container(b_index: int, slot_idx: int) -> CraftContainer:
+    var containers := get_slot_containers(b_index)
+    if slot_idx < 0 or slot_idx >= containers.size():
+        return null
+    var slots: Array = city_built_buildings[b_index].get("slots", [])
+    var recipe_id = str(slots[slot_idx])
+    if recipe_id == "" or recipe_id == "empty":
+        containers[slot_idx] = null
+        return null
+    var recipe = get_craft_by_id(recipe_id)
+    if recipe.is_empty():
+        containers[slot_idx] = null
+        return null
+    var existing: CraftContainer = containers[slot_idx]
+    if existing != null and existing.recipe_id == recipe_id:
+        return existing
+    # Рецепт изменился — пересоздаём.
+    var fresh = CraftContainer.new(recipe)
+    containers[slot_idx] = fresh
+    return fresh
 
 # Время крафта рецепта в слоте здания (0, если слот пуст или рецепт не найден).
 func get_slot_craft_time(b_index: int, slot_idx: int) -> float:
@@ -708,19 +770,48 @@ func get_slot_craft_time(b_index: int, slot_idx: int) -> float:
         return 0.0
     return get_craft_time(recipe)
 
+# --- LEGACY-СОВМЕСТИМОСТЬ: get_slot_progress/get_slot_progress_value ---
+# Старый API возвращал секунды накопленного таймера. В новой модели
+# аналога нет (контейнер заполняется, а не «копит время»). Эти функции
+# оставлены только ради старого UI, который ещё не переведён на
+# completion_ratio: возвращаем craft_time * completion_ratio, чтобы
+# прогресс-бар до перевода на новый API вёл себя правдоподобно.
+func get_slot_progress(b_index: int) -> Array:
+    if b_index < 0 or b_index >= city_built_buildings.size():
+        return []
+    var slots: Array = city_built_buildings[b_index].get("slots", [])
+    var out: Array = []
+    for slot_idx in range(slots.size()):
+        out.append(get_slot_progress_value(b_index, slot_idx))
+    return out
+
+func get_slot_progress_value(b_index: int, slot_idx: int) -> float:
+    var c := get_slot_container(b_index, slot_idx)
+    if c == null:
+        return 0.0
+    return c.completion_ratio() * get_slot_craft_time(b_index, slot_idx)
+
 # Доля готовности текущего крафта слота (0..1) — для UI панели здания.
 func get_slot_progress_ratio(b_index: int, slot_idx: int) -> float:
-    var craft_time := get_slot_craft_time(b_index, slot_idx)
-    if craft_time <= 0.0:
+    var c := get_slot_container(b_index, slot_idx)
+    if c == null:
         return 0.0
-    return clampf(get_slot_progress_value(b_index, slot_idx) / craft_time, 0.0, 1.0)
+    return c.completion_ratio()
 
-# Сбрасывает накопленное время слота: после смены рецепта слот начинает
+# Текстовое состояние контейнера слота для UI панели здания.
+# Пример: "8/20 (3.4 сек)" — заполненность первого ингредиента + время.
+func get_slot_status_text(b_index: int, slot_idx: int) -> String:
+    var c := get_slot_container(b_index, slot_idx)
+    if c == null:
+        return ""
+    return c.status_text()
+
+# Сбрасывает контейнер слота: после смены рецепта слот начинает
 # отсчёт крафта заново.
 func reset_slot_progress(b_index: int, slot_idx: int) -> void:
-    var progress := get_slot_progress(b_index)
-    if slot_idx >= 0 and slot_idx < progress.size():
-        progress[slot_idx] = 0.0
+    var c := get_slot_container(b_index, slot_idx)
+    if c != null:
+        c.reset()
 
 func do_tick():
     if Engine.is_editor_hint():
@@ -747,115 +838,104 @@ func do_tick():
         if not has_worker:
             continue # здание не работает
 
-        # Прогресс слотов этого здания (секунды накопленного времени крафта).
-        var slot_progress: Array = get_slot_progress(i)
+        # --- НЕПРЕРЫВНЫЙ КРАФТ (CraftContainer) ---
+        # Приоритет качества сырья: из здания или дефолт. Передаётся в контейнер
+        # для списания и влияет на выбор качества внутри @-групп.
+        var priority = bld.get("quality_priority", GameData.get_quality_priority_default())
 
         for slot_idx in range(slots.size()):
             var recipe_id = slots[slot_idx]
             if recipe_id == "" or recipe_id == "empty":
                 continue
 
-            var recipe = get_craft_by_id(recipe_id)
-            if recipe.is_empty():
+            var container: CraftContainer = _ensure_slot_container(i, slot_idx)
+            if container == null:
                 continue
 
-            # --- ВРЕМЯ РЕЦЕПТА ---
-            # Рецепт исполняется раз в `time` секунд: копим время с шагом
-            # тика симуляции, крафтим, когда накопленного времени хватило.
-            var craft_time := get_craft_time(recipe)
-            slot_progress[slot_idx] = float(slot_progress[slot_idx]) + SIMULATION_TICK
-            if float(slot_progress[slot_idx]) < craft_time:
-                continue # время крафта ещё не вышло
+            # Продвигаем контейнер на один тик. tick() сам списывает ингредиенты
+            # со склада (через CityData.remove_from_storage) и возвращает:
+            #   consumed_breakdown — разбивка по качествам для тултипа ресурсов
+            #                          и расчёта качества science;
+            #   releases — что выпустить на склад в этот тик (постепенный выпуск
+            #              результата пропорционально прогрессу: full_amount /
+            #              craft_time единиц/сек, с sub-unit accumulator для
+            #              целочисленной точности). При completed добивается
+            #              остаток fractional — выпускается ровно full_amount
+            #              за весь цикл.
+            #   completed — true если контейнер полон И прошло craft_time.
+            var tick_res: Dictionary = container.tick(SIMULATION_TICK, has_worker, priority)
 
-            # --- ПРОВЕРКА РЕСУРСОВ (С ПОДДЕРЖКОЙ ГРУПП) ---
-            var missing_resources = []
-            var resources_to_consume = {} # { "product_id": amount, ... }
+            # --- РЕГИСТРАЦИЯ РАСХОДА ЗА ТИК ---
+            # Записываем consumption source для тултипа ресурсов и UI-метки
+            # динамики. В continuous-модели потребление идёт каждый тик, и эта
+            # запись — основной источник данных для красной метки [−N≈].
+            var consumed_breakdown: Dictionary = tick_res.get("consumed_breakdown", {})
+            for consumed_pid in consumed_breakdown:
+                var total_consumed := 0
+                for qid in consumed_breakdown[consumed_pid]:
+                    total_consumed += int(consumed_breakdown[consumed_pid][qid])
+                if total_consumed > 0:
+                    record_consumption_source(consumed_pid, building_source, total_consumed)
 
-            for res in recipe["resources"]:
-                var amount_needed = recipe["resources"][res]
-                if res.begins_with("@"):
-                    # Групповой ресурс
-                    var group_key = res.trim_prefix("@")
-                    # Сначала ищем группу по id, затем по человекочитаемому имени
-                    var group_products = GameData.product_groups.get(group_key, [])
-                    if group_products.is_empty():
-                        group_products = GameData.product_groups.get(_get_group_id_by_name(group_key), [])
-                    if group_products.is_empty():
-                        # Группа не найдена — считаем рецепт недоступным
-                        missing_resources.append(res)
-                        break
+            # --- ПОСТЕПЕННЫЙ ВЫПУСК РЕЗУЛЬТАТА (каждый тик) ---
+            # Каждая «порция» выпуска имеет качество, рассчитанное по
+            # накопленному consumed на текущий момент (см. CraftContainer._compute_quality_from_consumed).
+            # Это семантически согласуется с UI: метка [≈] показывает плановый
+            # per_sec, а на склад фактически приходит +N за тик (в среднем).
+            var releases: Array = tick_res.get("releases", [])
+            for rel in releases:
+                var rel_pid: String = str(rel.get("pid", ""))
+                var rel_amount: int = int(rel.get("amount", 0))
+                var rel_quality: String = str(rel.get("quality", "common"))
+                if rel_amount <= 0 or rel_pid.is_empty():
+                    continue
+                add_to_storage(rel_pid, rel_amount, rel_quality)
+                record_production_source(rel_pid, building_source, rel_amount)
 
-                    var total_available = 0
-                    for prod in group_products:
-                        total_available += city_storage.get(prod, 0)
-                    if total_available < amount_needed:
-                        missing_resources.append(res)
-                        break
-
-                    # Собираем нужное количество из разных продуктов
-                    var remaining = amount_needed
-                    for prod in group_products:
-                        var available = city_storage.get(prod, 0)
-                        if available > 0:
-                            var take = min(available, remaining)
-                            if take > 0:
-                                resources_to_consume[prod] = resources_to_consume.get(prod, 0) + take
-                                remaining -= take
-                                if remaining <= 0:
-                                    break
-                else:
-                    # Обычный ресурс
-                    if city_storage.get(res, 0) < amount_needed:
-                        missing_resources.append(res)
-                        break
-                    resources_to_consume[res] = amount_needed
-
-            # Если не хватает ресурсов — пропускаем рецепт. Таймер держим
-            # «горячим» (время не копим), чтобы крафт случился сразу при
-            # появлении сырья и без залпа из нескольких крафтов.
-            if not missing_resources.is_empty():
-                slot_progress[slot_idx] = craft_time
+            if not bool(tick_res.get("completed", false)):
                 continue
 
-            # --- СПИСЫВАЕМ РЕСУРСЫ ---
-            # Приоритет выбора качества сырья: по умолчанию — лучшее.
-            var priority = bld.get("quality_priority", GameData.get_quality_priority_default())
-            var consumed_all = {} # объединённая разбивка потреблённого сырья по качеству
-            for prod in resources_to_consume:
-                var consumed = remove_from_storage(prod, resources_to_consume[prod], priority)
-                record_consumption_source(prod, building_source, resources_to_consume[prod])
-                # Суммируем разбивки потреблённого по всем ресурсам рецепта,
-                # чтобы вычислить итоговое качество результата как взвешенное среднее.
-                for qid in consumed:
-                    consumed_all[qid] = consumed_all.get(qid, 0) + consumed[qid]
-
+            # --- КРАФТ ЗАВЕРШЁН ---
+            # На этом этапе releases за тик уже включает «добивку» остатка
+            # fractional — суммарно за цикл выпускается ровно full_amount для
+            # каждого pid результата. Ничего дополнительно добавлять не нужно.
+            #
+            # Особый случай: рецепт «science» — начисляем science_yield × amount
+            # + дополнительный выход от здания. science_amount считается от
+            # ВСЕГО consumed за цикл (он хранится в container.ingredient_slots
+            # до reset() ниже).
             if recipe_id == "science":
                 var science_amount := 0
-                for prod in resources_to_consume:
-                    var special_yield = GameData.get_special_yield(prod)
-                    science_amount += int(resources_to_consume[prod]) * int(
-                        special_yield.get("science", 0))
-                var building_yield = GameData.get_building_additional_yield(
-                    bld.get("id", ""))
+                # Агрегируем container.consumed по pid: суммируем qty из слотов
+                # для каждого pid (ингредиент).
+                var per_pid_total: Dictionary = {}
+                for slot in container.ingredient_slots:
+                    var slot_pid = ""
+                    if str(slot.get("kind", "")) == "single":
+                        slot_pid = str(slot.get("pid", ""))
+                    else:
+                        # Для @-группы берём ВСЕ pid из членов группы.
+                        for member in slot.get("members", []):
+                            slot_pid = str(member)
+                            break
+                    if slot_pid.is_empty():
+                        continue
+                    var slot_total := 0
+                    for entry in slot.get("consumed", []):
+                        slot_total += int(entry.get("qty", 0))
+                    if slot_total > 0:
+                        per_pid_total[slot_pid] = int(per_pid_total.get(slot_pid, 0)) + slot_total
+                for consumed_pid in per_pid_total:
+                    var special_yield = GameData.get_special_yield(consumed_pid)
+                    science_amount += int(per_pid_total[consumed_pid]) * int(special_yield.get("science", 0))
+                var building_yield = GameData.get_building_additional_yield(bld.get("id", ""))
                 science_amount += int(building_yield.get("science", 0))
                 if science_amount > 0:
                     add_to_storage("science", science_amount)
-                    record_production_source("science", building_source,
-                        science_amount)
+                    record_production_source("science", building_source, science_amount)
 
-            # --- ДОБАВЛЯЕМ РЕЗУЛЬТАТ ---
-            # Качество результата = взвешенное среднее качества потреблённого сырья.
-            var result_quality = quality_from_breakdown(consumed_all)
-            for res in recipe["result"]:
-                var amount = recipe["result"][res]
-                add_to_storage(res, amount, result_quality)
-                record_production_source(res, building_source, amount)
-
-            # Крафт выполнен: списываем время рецепта. Остаток (если time не
-            # кратен шагу тика) переносится в следующий крафт — так средняя
-            # скорость совпадает с time. Больше одного крафта за тик слот не
-            # делает, поэтому остаток сверх time не копится.
-            slot_progress[slot_idx] = minf(float(slot_progress[slot_idx]) - craft_time, craft_time)
+            # --- СБРОС КОНТЕЙНЕРА ДЛЯ СЛЕДУЮЩЕГО КРАФТА ---
+            container.reset()
 
     # --- Потребление еды населением ---
     # Еда потребляется без учёта качества (качество — визуальная механика),

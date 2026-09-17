@@ -593,6 +593,26 @@ func _planned_per_sec(amount: float, interval: float) -> float:
         return amount * CityData.SIMULATION_TICK / interval
     return amount * CityData.SIMULATION_TICK
 
+# Текстовое представление плановой скорости для тултипа. Сохраняем исходную
+# пару «amount за interval» — так игрок видит ровно то, что объявлено в
+# данных (например, «10 / 10 сек» для профессионального потребления
+# «10 ед./10 сек»), а не производное per_sec.
+#
+#   amount = 10, interval = 10 → "10 / 10 сек"   (циклическое потребление)
+#   amount = 5,  interval = 0  → "5 / сек"      (непрерывный расход за тик)
+#   amount = 0               → "0"
+func _format_planned_rate(amount: float, interval: float) -> String:
+    var amt_int := int(round(amount))
+    if amt_int <= 0:
+        return "0"
+    if interval > 0.0:
+        var iv := interval
+        # Целый интервал — без дробной части.
+        if abs(iv - round(iv)) < 0.001:
+            return "%d / %d сек" % [amt_int, int(round(iv))]
+        return "%d / %.1f сек" % [amt_int, iv]
+    return "%d / сек" % amt_int
+
 # Показывает тултип «источники прихода/расхода» ресурса (вкладка «Ресурсы»).
 # prod_sources / cons_sources: { источник -> { count, amount } }.
 # Строки сортируются по убыванию вклада; «хN» показывается при count > 1.
@@ -706,7 +726,7 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dict
             var line_text = str(row.name)
             if int(row.count) > 1:
                 line_text += " х%d" % int(row.count)
-            line_text += ": +%s ед./сек" % _format_rate(_planned_per_sec(float(row.amount), float(row.interval)))
+            line_text += ": +%s" % _format_planned_rate(float(row.amount), float(row.interval))
             flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, Color(0.845, 0.992, 0.0, 1.0)))
     if not cons_lines.is_empty():
         var cons_title = Label.new()
@@ -757,7 +777,7 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, prod_sources: Dict
                 line_text += " х%d" % int(row.count)
             if bool(row.is_group) and not str(row.group_name).is_empty():
                 line_text += " (группа «%s»)" % str(row.group_name)
-            line_text += ": %s ед./сек" % _format_rate(_planned_per_sec(float(row.amount), float(row.interval)))
+            line_text += ": %s" % _format_planned_rate(float(row.amount), float(row.interval))
             flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, Color(0.95, 0.6, 0.35)))
     # Пояснение к маркеру «≈» в динамике вкладки «Ресурсы» — для обоих
     # планов: производства и потребления. Показывается при любом непустом

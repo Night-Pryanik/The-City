@@ -186,7 +186,7 @@ func _ready():
                 # crop_bred — id одомашненного животного/растения, разводимого
                 # на пустом гексе (см. docs.md, раздел «Разведение животных/растений»).
                 # Для природных ресурсов остаётся tile.resource.
-                var tile = {"terrain": "plain", "cover": "none", "resource": null, "crop_bred": null, "improvement": null, "production_progress": 0.0, "terrain_icon": "", "in_influence": false, "is_explored": false, "river_edges": [], "in_town_influence": false, "has_town": false}
+                var tile = {"terrain": "plain", "cover": "none", "resource": null, "crop_bred": null, "improvement": null, "production_fractional_remainder": 0.0, "feed_fractional_remainder": 0.0, "terrain_icon": "", "in_influence": false, "is_explored": false, "river_edges": [], "in_town_influence": false, "has_town": false}
                 if row < saved_tiles.size() and col < saved_tiles[row].size():
                     var saved = saved_tiles[row][col]
                     if not saved.is_empty():
@@ -205,9 +205,18 @@ func _ready():
                         tile["crop_bred"] = saved.get("crop_bred")
                         # Заполенность поголовья (старые сейвы: поле отсутствует — 0.0)
                         tile["fill_time"] = float(saved.get("fill_time", 0.0))
-                        # Прогресс производственного цикла улучшения (старые
-                        # сейвы: поле отсутствует — 0.0)
-                        tile["production_progress"] = float(saved.get("production_progress", 0.0))
+                        # Дробный остаток непрерывного производства улучшения.
+                        # Миграция старого формата (production_progress — секунды
+                        # до выпуска пачки): теперь не используется, при наличии
+                        # просто игнорируем, начинаем с нуля (теряем максимум
+                        # один цикл производства — приемлемо).
+                        if saved.has("production_progress"):
+                            # Миграция: сбрасываем дробный остаток.
+                            tile["production_fractional_remainder"] = 0.0
+                            tile["feed_fractional_remainder"] = 0.0
+                        else:
+                            tile["production_fractional_remainder"] = float(saved.get("production_fractional_remainder", 0.0))
+                            tile["feed_fractional_remainder"] = float(saved.get("feed_fractional_remainder", 0.0))
                         tile["improvement"] = saved.get("improvement")
                         tile["quality"] = saved.get("quality", "")
                         tile["terrain_icon"] = saved.get("terrain_icon", "")
@@ -494,16 +503,22 @@ func _process(delta):
                                 "lumberjack_hut", _is_hex_irrigated(row, col),
                                 tile.get("terrain", ""), "lumberjack_hut")
                             var lj_source = GameData.improvements.get("lumberjack_hut", {}).get("name", "Лесная делянка")
-                            # Цикл производства улучшения: копим секунды с шагом
-                            # тика симуляции, раз в production_interval выдаём
-                            # выпуск цикла (wood_yield × множители) пачкой.
+                            # --- НЕПРЕРЫВНОЕ ПРОИЗВОДСТВО ЛЕСНОЙ ДЕЛЯНКИ ---
+                            # Вместо пакетного выпуска раз в production_interval
+                            # каждый тик добавляем на склад (wood_yield ×
+                            # множители) / production_interval единиц. Дробный
+                            # остаток копится в tile.production_fractional_remainder,
+                            # чтобы средняя скорость не дрейфовала.
                             var lj_interval := CityData.get_improvement_production_interval("lumberjack_hut")
-                            tile["production_progress"] = float(tile.get("production_progress", 0.0)) + CityData.SIMULATION_TICK
-                            if float(tile["production_progress"]) >= lj_interval:
-                                tile["production_progress"] = minf(float(tile["production_progress"]) - lj_interval, lj_interval)
-                                var wood_amount = int(ceil(wood_yield * lj_imp_mult * lj_consumption_mult))
-                                CityData.add_to_storage("wood", wood_amount)
-                                CityData.record_production_source("wood", lj_source, wood_amount)
+                            var lj_per_sec: float = 0.0
+                            if lj_interval > 0.0:
+                                lj_per_sec = (wood_yield * lj_imp_mult * lj_consumption_mult) / lj_interval
+                            var lj_remainder: float = float(tile.get("production_fractional_remainder", 0.0)) + lj_per_sec * CityData.SIMULATION_TICK
+                            var lj_floor: int = int(floor(lj_remainder))
+                            tile["production_fractional_remainder"] = lj_remainder - float(lj_floor)
+                            if lj_floor > 0:
+                                CityData.add_to_storage("wood", lj_floor)
+                                CityData.record_production_source("wood", lj_source, lj_floor)
                             # Плановый выпуск цикла: виден каждый тик, пока
                             # рабочий на месте (закрывает пробелы между циклами).
                             CityData.record_planned_improvement_production("wood", lj_source,
@@ -554,27 +569,30 @@ func _process(delta):
                 # Имя улучшения — источник прихода/расхода в тултипе ресурсов
                 # («Ферма» и т.п.).
                 var improvement_source = GameData.improvements.get(tile.improvement, {}).get("name", tile.improvement)
-                # --- ЦИКЛ ПРОИЗВОДСТВА УЛУЧШЕНИЯ ---
-                # Улучшение выдаёт продукцию раз в production_interval секунд
-                # (поле в data/improvements.json): копим секунды с шагом тика
-                # симуляции, по выходе цикла выпускаем продукцию ПАЧКОЙ и
-                # списываем корм (feed_consumption) за ЦЕЛЫЙ цикл.
+                # --- НЕПРЕРЫВНОЕ ПРОИЗВОДСТВО УЛУЧШЕНИЯ ---
+                # Вместо пакетного выпуска раз в production_interval каждый
+                # тик добавляем на склад (amount_per_cycle × production_multiplier)
+                # / production_interval единиц продукции. Дробный остаток
+                # копится в tile.production_fractional_remainder, чтобы средняя
+                # скорость не дрейфовала.
+                #
+                # Корм (feed_consumption) ранее списывался за ЦЕЛЫЙ цикл
+                # (раз в production_interval). В continuous-модели — каждый
+                # тик по чуть-чуть: feed_per_sec = feed_needed / production_interval.
+                # Если корма не хватает — производство режется до 25% в этот
+                # тик (аналог старой логики «нет корма → 0.25×»).
                 var imp_interval := CityData.get_improvement_production_interval(tile.improvement)
-                tile["production_progress"] = float(tile.get("production_progress", 0.0)) + CityData.SIMULATION_TICK
-                if float(tile["production_progress"]) >= imp_interval:
-                    tile["production_progress"] = minf(float(tile["production_progress"]) - imp_interval, imp_interval)
-                    if feed_needed > 0:
-                        var available_feed = CityData.city_storage.get("feed", 0)
-                        if available_feed >= feed_needed:
-                            CityData.remove_from_storage("feed", feed_needed, "best")
-                            # Имя улучшения (Ферма/Пастбище) — источник расхода корма,
-                            # чтобы в тултипе ресурса «Корм» было видно, кто его ест.
-                            CityData.record_consumption_source("feed", improvement_source, feed_needed)
-                            CityData.add_raw_production(eff_res, production_multiplier, tile_quality, improvement_source)
-                        else:
-                            CityData.add_raw_production(eff_res, 0.25, tile_quality, improvement_source)
-                    else:
-                        CityData.add_raw_production(eff_res, production_multiplier, tile_quality, improvement_source)
+                var produces: Dictionary = res_data.get("produces", {})
+                var feed_per_sec: float = 0.0
+                if feed_needed > 0 and imp_interval > 0.0:
+                    feed_per_sec = float(feed_needed) / imp_interval
+
+                if feed_needed > 0:
+                    var feed_consumed: int = _consume_feed_continuous(tile, feed_per_sec, improvement_source)
+                    var actual_mult: float = production_multiplier if feed_consumed >= feed_per_sec * CityData.SIMULATION_TICK else 0.25
+                    _emit_continuous_production(tile, produces, actual_mult, imp_interval, tile_quality, improvement_source)
+                else:
+                    _emit_continuous_production(tile, produces, production_multiplier, imp_interval, tile_quality, improvement_source)
 
                 # Плановые выпуск/потребление цикла: видны КАЖДЫЙ тик, пока
                 # рабочий на месте (закрывают пробелы между циклами на вкладке
@@ -649,6 +667,58 @@ func _tick_pasture_fill(delta: float):
     # когда последнее пастбище заполнилось (иначе бар зависает на экране).
     if _has_growing_pastures or had_growing:
         progress_bar_layer.queue_redraw()
+
+# --- НЕПРЕРЫВНОЕ ПРОИЗВОДСТВО: HELPERS ---
+# Вынесенные функции для блока «НЕПРЕРЫВНОЕ ПРОИЗВОДСТВО УЛУЧШЕНИЯ» в _process.
+# Эти функции инкапсулируют работу с sub-unit accumulator и списанием корма,
+# чтобы основной цикл производства оставался компактным и читаемым.
+
+# Списывает корм непрерывно: feed_per_sec единиц/сек. Дробный остаток
+# копится в tile.feed_fractional_remainder. Возвращает, сколько единиц
+# корма удалось списать за тик (0, если на складе нет).
+#
+# При нехватке корма: списывается ВСЁ, что есть на складе (в пределах
+# накопленного остатка). Если даже частично не хватило — производство
+# режется до 0.25 в вызывающем коде.
+func _consume_feed_continuous(tile: Dictionary, feed_per_sec: float, improvement_source: String) -> int:
+    if feed_per_sec <= 0.0:
+        return 0
+    var remainder: float = float(tile.get("feed_fractional_remainder", 0.0)) + feed_per_sec * CityData.SIMULATION_TICK
+    var floor_amount: int = int(floor(remainder))
+    tile["feed_fractional_remainder"] = remainder - float(floor_amount)
+    if floor_amount <= 0:
+        return 0
+    var available := int(CityData.city_storage.get("feed", 0))
+    if available <= 0:
+        return 0
+    var take = mini(available, floor_amount)
+    CityData.remove_from_storage("feed", take, "best")
+    CityData.record_consumption_source("feed", improvement_source, take)
+    return take
+
+# Непрерывное производство улучшения: каждый тик добавляет на склад
+# (amount_per_cycle × production_multiplier) / production_interval единиц
+# продукции. Дробный остаток копится в tile.production_fractional_remainder,
+# чтобы средняя скорость не дрейфовала.
+#
+# production_multiplier может быть < 1.0 (например, 0.25 при нехватке корма)
+# или > 1.0 (бонус профессии). Нулевые значения пропускаются, чтобы не
+# плодить нулевые записи в источниках.
+func _emit_continuous_production(tile: Dictionary, produces: Dictionary, production_multiplier: float, imp_interval: float, tile_quality: String, improvement_source: String) -> void:
+    if produces.is_empty() or imp_interval <= 0.0:
+        return
+    var tick := float(CityData.SIMULATION_TICK)
+    for pid in produces:
+        if not CityData._is_product_available(pid):
+            continue
+        var per_cycle_amt := float(RangeUtils.get_min_value(produces[pid], 1))
+        var per_sec_amt: float = per_cycle_amt * production_multiplier / imp_interval
+        var remainder: float = float(tile.get("production_fractional_remainder", 0.0)) + per_sec_amt * tick
+        var floor_amount: int = int(floor(remainder))
+        tile["production_fractional_remainder"] = remainder - float(floor_amount)
+        if floor_amount > 0:
+            CityData.add_to_storage(pid, floor_amount, tile_quality)
+            CityData.record_production_source(pid, improvement_source, floor_amount)
 
 func _initialize_map():
     GameData.load_all_data()
@@ -1010,19 +1080,21 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
             tile.crop_bred = null
             # Стадо при сносе исчезает — накопленная заполенность сбрасывается.
             tile["fill_time"] = 0.0
-            # Прогресс производственного цикла снесённого улучшения — тоже.
-            tile["production_progress"] = 0.0
+            # Дробный остаток производственного цикла снесённого улучшения — тоже.
+            tile["production_fractional_remainder"] = 0.0
+            tile["feed_fractional_remainder"] = 0.0
         else:
-            # Террейн-действие (напр. осушение): сбрасываем ресурсы и 
-            # улучшение, очищаем покров и crop_bred, чтобы гекс стал 
+            # Террейн-действие (напр. осушение): сбрасываем ресурсы и
+            # улучшение, очищаем покров и crop_bred, чтобы гекс стал
             # чистой равниной (без болотного покрова).
             tile.resource = null
             tile.improvement = null
             tile.crop_bred = null
             tile.cover = "none"
             tile["fill_time"] = 0.0
-            # Прогресс производственного цикла убранного улучшения — тоже.
-            tile["production_progress"] = 0.0
+            # Дробный остаток производственного цикла убранного улучшения — тоже.
+            tile["production_fractional_remainder"] = 0.0
+            tile["feed_fractional_remainder"] = 0.0
 
         # Меняем тип местности только если result_terrain задан и не равен "dont_change".
         var result_terrain = sa.get("result_terrain", "")
@@ -1039,7 +1111,8 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
     # Новое улучшение — стадо/посев начинает набирать силу с нуля.
     tile["fill_time"] = 0.0
     # Производственный цикл нового улучшения стартует с нуля.
-    tile["production_progress"] = 0.0
+    tile["production_fractional_remainder"] = 0.0
+    tile["feed_fractional_remainder"] = 0.0
     if target_res_id != null:
         # Два сценария:
         # 1) На гексе УЖЕ был природный ресурс (tile.resource != null) — мы

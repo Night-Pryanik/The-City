@@ -5,15 +5,13 @@ signal assignment_changed()
 
 var assigned_hexes = {}
 
-# Таймеры потребления профессиональных ресурсов, ключ — "row,col".
-# Значение: { "elapsed": float, "interval": float } — сколько секунд прошло
-# с момента последнего списания и с каким интервалом нужно списывать.
-# Эти таймеры нужны, чтобы потребление шло НЕ каждый тик симуляции
-# (SIMULATION_TICK = 1 сек), а с интервалом, заданным в декларации потребления
-# (data/consumption.json или устаревшее поле consumption у продукта;
-# например, 10 сек для группы «Лодки»). Сам по себе таймер НЕ блокирует
-# производство: если ресурса нет, улучшение просто откатывается к базовому
-# множителю (без бонуса потребления). См. tick_consumption().
+# Sub-unit accumulator для НЕПРЕРЫВНОГО профессионального потребления,
+# ключ — "row,col". Значение: { "fractional": { dkey: float, ... } } —
+# дробные остатки потребления по каждой записи потребления профессии (dkey —
+# id продукта или "@id_группы"). Раньше здесь лежал пакетный таймер
+# { "elapsed", "interval" }, списывавший amount единиц раз в interval секунд;
+# в continuous-модели каждый тик забираем amount / interval единиц (с
+# дробным остатком для целочисленной точности), см. tick_consumption().
 var consumption_timers: Dictionary = {}
 
 # Таймеры ГОРОДСКОГО потребления псевдо-профессии "all" (все жители города).
@@ -189,104 +187,137 @@ func tick_consumption(row: int, col: int, delta: float) -> float:
     if cons_list.is_empty():
         return 1.0
 
-    # Считаем минимальный interval (для нескольких потребителей с разной
-    # частотой берём самый частый — он определяет ритм таймера).
-    # И суммарный production_bonus: у одной профессии может быть несколько
+    # Суммарный production_bonus: у одной профессии может быть несколько
     # потребителей с разными бонусами, в этом случае применяем максимальный
     # (бонусы не складываются — это сознательное упрощение баланса).
-    var min_interval := 1e9
     var max_bonus := 0.0
     for entry in cons_list:
-        var iv = float(entry.get("interval", 0))
-        if iv > 0 and iv < min_interval:
-            min_interval = iv
         var b = float(entry.get("production_bonus", 0.0))
         if b > max_bonus:
             max_bonus = b
-    if min_interval >= 1e9:
-        return 1.0
 
+    # Имя профессии — источник расхода в тултипе ресурсов («Рыбак» и т.п.).
+    var prof_source = GameData.professions.get(prof, {}).get("name", prof)
+
+    # --- НЕПРЕРЫВНОЕ ПРОФЕССИОНАЛЬНОЕ ПОТРЕБЛЕНИЕ ---
+    # Вместо пакетного списания раз в `interval` секунд — каждый тик забираем
+    # amount / interval единиц (с sub-unit accumulator). Раньше потребление
+    # было дискретным: при amount=10, interval=10 списание происходило раз в
+    # 10 секунд пачкой 10 штук, из-за чего инвентарь игрока мог «скакать»
+    # (на тике списания −10, всё остальное время −0). В continuous-модели
+    # списание идёт равномерно: −1 каждый тик — склад уменьшается плавно,
+    # производственный бонус включается/выключается плавно при колебаниях
+    # запасов. Это согласуется с производством ресурсов (фермы/шахты/мастерские),
+    # которые тоже переведены на непрерывный выпуск.
+    #
+    # can_consume определяется по ПОЛНОЙ пачке amount (как раньше) — бонус
+    # включается только когда хватает ресурса на целый цикл. Если хватает
+    # только частично — списываем сколько есть, бонус НЕ начисляется.
     if not consumption_timers.has(key):
-        consumption_timers[key] = {"elapsed": 0.0, "interval": min_interval}
+        consumption_timers[key] = {"fractional": {}}
 
-    var timer: Dictionary = consumption_timers[key]
-    timer.elapsed += delta
+    var fractional: Dictionary = consumption_timers[key].fractional
 
-    # Проверяем наличие всех требуемых ресурсов КАЖДЫЙ тик, чтобы бонус
-    # корректно включался/отключался при колебаниях запасов на складе.
-    # Групповые записи (is_group) проверяются по суммарному запасу всех
-    # членов группы — потребляется любой подходящий продукт из набора.
-    var can_consume := true
+    var any_consumed := false
     for entry in cons_list:
-        var amt = int(entry.get("amount", 0))
-        if amt <= 0:
+        var amt: int = int(entry.get("amount", 0))
+        var interval: float = float(entry.get("interval", 0))
+        if amt <= 0 or interval <= 0.0:
             continue
+
+        var can_consume_full := _can_consume_full(entry, amt)
+
+        # Per-second скорость потребления = amt / interval. Каждый тик
+        # накапливаем дробный остаток.
+        var per_tick: float = float(amt) / interval * delta
+        var frac_key: String = _fractional_key(entry)
+        var cur_frac: float = float(fractional.get(frac_key, 0.0)) + per_tick
+        var floor_take: int = int(floor(cur_frac))
+        if floor_take <= 0:
+            fractional[frac_key] = cur_frac
+            continue
+
+        cur_frac -= float(floor_take)
+        fractional[frac_key] = cur_frac
+
         if entry.get("is_group", false):
-            var members: Array = entry.get("group_members", [])
-            if members.is_empty():
-                can_consume = false
-                break
-            var total := 0
-            for pid in members:
-                total += CityData.get_storage_amount(pid)
-                if total >= amt:
+            # Списание из группы: жадно по членам (best-качество).
+            var remaining: int = floor_take
+            for member_pid in entry.get("group_members", []):
+                if remaining <= 0:
                     break
-            if total < amt:
-                can_consume = false
-                break
-        else:
-            var pid = str(entry.get("product_id", ""))
-            if pid == "":
-                continue
-            if CityData.get_storage_amount(pid) < amt:
-                can_consume = false
-                break
-
-    # Момент списания. Если ресурса хватает — списываем и сбрасываем таймер.
-    # Если не хватает — НЕ списываем, таймер сохраняем (при появлении
-    # ресурса спишем сразу, не дожидаясь полного интервала).
-    if timer.elapsed >= min_interval:
-        if can_consume:
-            # Имя профессии — источник расхода в тултипе ресурсов («Рыбак» и т.п.).
-            var prof_source = GameData.professions.get(prof, {}).get("name", prof)
-            for entry in cons_list:
-                var amt = int(entry.get("amount", 0))
-                if amt <= 0:
+                var avail: int = CityData.get_storage_amount(member_pid)
+                if avail <= 0:
                     continue
-                if entry.get("is_group", false):
-                    # Списание из группы: жадное заполнение остатка по членам
-                    # группы (как при расходовании групповых рецептов в крафте).
-                    # Приоритет качества — «best» (как у одиночных продуктов).
-                    var remaining = amt
-                    for pid in entry.get("group_members", []):
-                        if remaining <= 0:
-                            break
-                        var avail = CityData.get_storage_amount(pid)
-                        if avail <= 0:
-                            continue
-                        var take = min(avail, remaining)
-                        CityData.remove_from_storage(pid, take, "best")
-                        CityData.record_consumption_source(pid, prof_source, take)
-                        # Фактическое потребление на внутреннем рынке даёт доход в казну
-                        CityData.add_treasury(CityData.get_internal_market_price(pid) * take)
-                        remaining -= take
-                else:
-                    var pid = str(entry.get("product_id", ""))
-                    if pid == "":
-                        continue
-                    CityData.remove_from_storage(pid, amt, "best")
-                    CityData.record_consumption_source(pid, prof_source, amt)
-                    # Фактическое потребление на внутреннем рынке даёт доход в казну.
-                    CityData.add_treasury(CityData.get_internal_market_price(pid) * amt)
-            timer.elapsed = 0.0
-        # else: таймер остаётся как есть, на следующем тике проверим снова
+                var take: int = mini(avail, remaining)
+                if take <= 0:
+                    continue
+                CityData.remove_from_storage(member_pid, take, "best")
+                CityData.record_consumption_source(member_pid, prof_source, take)
+                # Фактическое потребление на внутреннем рынке даёт доход в казну.
+                CityData.add_treasury(CityData.get_internal_market_price(member_pid) * take)
+                remaining -= take
+                any_consumed = true
+        else:
+            var pid: String = str(entry.get("product_id", ""))
+            if pid.is_empty():
+                continue
+            var avail: int = CityData.get_storage_amount(pid)
+            if avail <= 0:
+                continue
+            var take: int = mini(avail, floor_take)
+            if take <= 0:
+                continue
+            CityData.remove_from_storage(pid, take, "best")
+            CityData.record_consumption_source(pid, prof_source, take)
+            CityData.add_treasury(CityData.get_internal_market_price(pid) * take)
+            any_consumed = true
 
-    consumption_timers[key] = timer
-    return 1.0 + (max_bonus if can_consume else 0.0)
+    consumption_timers[key].fractional = fractional
+    # Бонус применяется, когда хватает ресурса на полную пачку хотя бы по
+    # ОДНОМУ потребителю профессии (даже если другие потребители сейчас
+    # недоступны). Если ни один не может дать полный цикл — бонуса нет.
+    var bonus_active := false
+    for entry in cons_list:
+        if float(entry.get("production_bonus", 0.0)) <= 0.0:
+            continue
+        if _can_consume_full(entry, int(entry.get("amount", 0))):
+            bonus_active = true
+            break
+    return 1.0 + (max_bonus if bonus_active else 0.0)
+
+# Проверяет, хватает ли ресурса на полный цикл потребления для одной записи.
+# Для групп — суммарно по всем членам группы.
+func _can_consume_full(entry: Dictionary, amt: int) -> bool:
+    if amt <= 0:
+        return false
+    if entry.get("is_group", false):
+        var members: Array = entry.get("group_members", [])
+        if members.is_empty():
+            return false
+        var total: int = 0
+        for pid in members:
+            total += CityData.get_storage_amount(pid)
+            if total >= amt:
+                return true
+        return total >= amt
+    var pid := str(entry.get("product_id", ""))
+    if pid.is_empty():
+        return false
+    return CityData.get_storage_amount(pid) >= amt
+
+# Ключ для fractional-аккумулятора по типу ресурса (одиночный/группа).
+# Один аккумулятор на запись потребления.
+func _fractional_key(entry: Dictionary) -> String:
+    if entry.get("is_group", false):
+        return "@" + str(entry.get("display_key", ""))
+    return str(entry.get("product_id", entry.get("display_key", "")))
 
 # Сериализация таймеров потребления для сохранения.
-# Формат: [{ "row": int, "col": int, "elapsed": float }, ...]
-# interval не сохраняем — он вычисляется из профессии при загрузке.
+# Формат: [{ "row": int, "col": int, "fractional": { dkey: float, ... } }, ...]
+# Дробные остатки накапливаются по dkey (id продукта или @-группа) — после
+# перевода на continuous-модель хранить нечего, кроме них (новые правила
+# amount/interval вычисляются из профессии при загрузке).
 func serialize_consumption_timers() -> Array:
     var result = []
     for key in consumption_timers.keys():
@@ -295,7 +326,7 @@ func serialize_consumption_timers() -> Array:
             result.append({
                 "row": int(parts[0]),
                 "col": int(parts[1]),
-                "elapsed": float(consumption_timers[key].get("elapsed", 0.0))
+                "fractional": (consumption_timers[key].get("fractional", {}) as Dictionary).duplicate(true)
             })
     return result
 
@@ -306,8 +337,10 @@ func load_consumption_timers(timers: Array):
             var row = int(item.get("row", -1))
             var col = int(item.get("col", -1))
             if row >= 0 and col >= 0:
+                var frac_raw = item.get("fractional", {})
+                var frac: Dictionary = frac_raw if frac_raw is Dictionary else {}
                 consumption_timers[str(row) + "," + str(col)] = {
-                    "elapsed": float(item.get("elapsed", 0.0))
+                    "fractional": frac
                 }
 
 # --- ГОРОДСКОЕ ПОТРЕБЛЕНИЕ (псевдо-профессия "all", все жители города) ---

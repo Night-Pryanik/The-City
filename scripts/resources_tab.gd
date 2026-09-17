@@ -8,8 +8,6 @@ var city_storage: Dictionary = {}
 var city_quality_detail: Dictionary = {}
 var production_rates: Dictionary = {}
 var consumption_rates: Dictionary = {}
-var production_sources: Dictionary = {}
-var consumption_sources: Dictionary = {}
 var city_food_pool: Dictionary = {}
 var food_toggles: Dictionary = {}
 var amount_labels: Dictionary = {}
@@ -62,8 +60,6 @@ func update_data(data: Dictionary):
     city_quality_detail = data.get("city_quality_detail", {})
     production_rates = data.get("production_rates", {})
     consumption_rates = data.get("consumption_rates", {})
-    production_sources = data.get("production_sources", {})
-    consumption_sources = data.get("consumption_sources", {})
     city_food_pool = data.get("city_food_pool", {})
     _update_planned_consumption_map()
     planned_production_map = CityData.get_planned_production_map()
@@ -91,6 +87,30 @@ func _update_planned_consumption_map():
             entry["amount"] = int(entry.get("amount", 0)) + int(e.get("amount", 0))
             entry["count"] = int(entry.get("count", 0)) + int(e.get("count", 1))
             entry["interval"] = minf(float(entry.get("interval", 0.0)), float(e.get("interval", 0.0)))
+    # Питание населения: добавляется плановым потреблением для всех продуктов
+    # из city_food_pool. Суммарный расход в секунду = (total_population - 1) ×
+    # food_per_citizen (один житель — основатель, не ест), интервал SIMULATION_TICK.
+    # После коммита 5790016 тултип показывает только плановое потребление —
+    # поэтому фактическое «Питание населения» теперь присутствует здесь как
+    # план (consumption_sources больше не ведётся). count = число едящих
+    # жителей, чтобы UI тултипа показал «(N чел.)» рядом с источником.
+    var eaters := int(max(0, CityData.total_population - 1))
+    if eaters > 0:
+        var pop_food_demand := eaters * int(CityData.food_per_citizen)
+        for pid in CityData.city_food_pool:
+            if not CityData.city_food_pool.get(pid, false):
+                continue
+            if not planned_consumption_map.has(pid):
+                planned_consumption_map[pid] = {}
+            var by_source_pop: Dictionary = planned_consumption_map[pid]
+            by_source_pop["Питание населения"] = {
+                "amount": pop_food_demand,
+                "interval": CityData.SIMULATION_TICK,
+                "count": eaters,
+                "is_group": false,
+                "group_name": "",
+                "is_population": true
+            }
 
 # Плановое потребление конкретного ресурса: { "Имя источника" -> {...} }.
 func _get_planned_for(prod_id: String) -> Dictionary:
@@ -99,18 +119,6 @@ func _get_planned_for(prod_id: String) -> Dictionary:
 # Фактическое потребление для секции «Потребление (текущее)» тултипа.
 # Обычно — списание за последний тик. Если в этом тике списания не было, но у
 # ресурса есть плановое потребление — показываем последнее фактическое
-# (CityData.last_consumption_sources): секция не мигает между тиками списания
-# при интервальном потреблении (доход +2/тик, списание 20 раз в 10 тиков).
-# Когда планового потребления нет (потребитель удалён), устаревшее значение
-# не показывается.
-func _get_current_cons_sources(prod_id: String) -> Dictionary:
-    var cons_src = consumption_sources.get(prod_id, {})
-    if cons_src.is_empty():
-        var planned = _get_planned_for(prod_id)
-        if not planned.is_empty():
-            cons_src = CityData.last_consumption_sources.get(prod_id, {})
-    return cons_src
-
 # Общее правило списка ресурсов: строка видна только при наличии у игрока
 # источника поступления — запас на складе, производство за тик или плановое
 # производство (существующий производитель-здание с горожанином).
@@ -524,12 +532,9 @@ func update_values():
                 )
 
     # Обновляем открытый тултип источников прихода/расхода свежими данными.
-    # Данные берутся за последний завершённый тик (словари сбрасываются в
-    # reset_counters() и наполняются заново при следующем тике). Плановые
-    # потребление и производство не зависят от тика — берутся из кэшей
-    # planned_consumption_map / planned_production_map; фактическое потребление
-    # при отсутствии списания в этом тике — последнее известное
-    # (см. _get_current_cons_sources).
+    # Плановые потребление и производство не зависят от тика — берутся из кэшей
+    # planned_consumption_map / planned_production_map. Фактическое производство/
+    # потребление в тултипе больше не показывается (см. коммит 5790016).
     if active_flow_product != "" and ui_helpers and is_instance_valid(ui_helpers):
         if ui_helpers.flow_tooltip_panel.visible:
             var special_yield = GameData.get_special_yield(active_flow_product)
