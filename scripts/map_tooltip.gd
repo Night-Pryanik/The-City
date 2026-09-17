@@ -415,7 +415,9 @@ func _collect_production(row: int, col: int, res_id: String, prefix: String, til
 
     var final_amounts := {}
     for prod_id in res_data["produces"]:
-        if not CityData.is_product_available(prod_id):
+        # Потенциальный выход показываем целиком: игрок уже видит ресурс на
+        # гексе, даже если технология готового продукта еще не изучена.
+        if tile.improvement != null and not CityData.is_product_available(prod_id):
             continue
         # produces может быть числом или диапазоном [min, max] — для показа
         # берём детерминированный минимум диапазона (см. RangeUtils).
@@ -514,7 +516,7 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
 
     var available_products := {}
     for prod_id in res_data["produces"]:
-        if CityData.is_product_available(prod_id):
+        if tile.improvement == null or CityData.is_product_available(prod_id):
             available_products[prod_id] = res_data["produces"][prod_id]
 
     if available_products.is_empty():

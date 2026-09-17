@@ -1053,8 +1053,6 @@ func _build_preview(row: int, col: int, tile: Dictionary):
             var products := []
             products.append({"type": "header", "text": "Будет производить:"})
             for prod_id in res_data["produces"]:
-                if not CityData.is_product_available(prod_id):
-                    continue
                 # produces может быть числом или диапазоном [min, max] — в
                 # превью показываем детерминированный минимум (см. RangeUtils).
                 var base_amount = float(RangeUtils.get_min_value(res_data["produces"][prod_id], 1))
