@@ -1,7 +1,8 @@
 {
   "resources": [
     {
-      "id": "meteorite_iron_nugget", "price": 45,
+      "id": "meteorite_iron_nugget",
+      "price": 45,
       "name": "Метеоритное железо",
       "type": "raw",
       "category": "metals",
@@ -17,7 +18,8 @@
       "color": [ 120, 130, 140 ]
     },
     {
-      "id": "copper_nugget", "price": 14,
+      "id": "copper_nugget",
+      "price": 14,
       "name": "Медный самородок",
       "type": "raw",
       "category": "metals",
@@ -33,7 +35,8 @@
       "color": [ 120, 130, 140 ]
     },
     {
-      "id": "gold_nugget", "price": 70,
+      "id": "gold_nugget",
+      "price": 70,
       "name": "Золотой самородок",
       "type": "raw",
       "category": "metals",
@@ -49,7 +52,8 @@
       "color": [ 120, 130, 140 ]
     },
     {
-      "id": "silver_nugget", "price": 40,
+      "id": "silver_nugget",
+      "price": 40,
       "name": "Серебряный самородок",
       "type": "raw",
       "category": "metals",
@@ -65,7 +69,8 @@
       "color": [ 120, 130, 140 ]
     },
     {
-      "id": "gematite_deposit", "price": 10,
+      "id": "gematite_deposit",
+      "price": 10,
       "name": "Железо",
       "type": "raw",
       "category": "metals",
@@ -83,7 +88,8 @@
       "color": [ 120, 130, 140 ]
     },
     {
-      "id": "limonite_deposit", "price": 10,
+      "id": "limonite_deposit",
+      "price": 10,
       "name": "Железо",
       "type": "raw",
       "category": "metals",
@@ -101,7 +107,8 @@
       "color": [ 120, 130, 140 ]
     },
     {
-      "id": "copper_deposit", "price": 6,
+      "id": "copper_deposit",
+      "price": 6,
       "name": "Медь",
       "type": "raw",
       "category": "metals",
@@ -119,7 +126,8 @@
       "color": [ 210, 180, 130 ]
     },
     {
-      "id": "gold_deposit", "price": 22,
+      "id": "gold_deposit",
+      "price": 22,
       "name": "Золото",
       "type": "raw",
       "category": "metals",
@@ -137,7 +145,8 @@
       "color": [ 255, 215, 0 ]
     },
     {
-      "id": "silver_deposit", "price": 16,
+      "id": "silver_deposit",
+      "price": 16,
       "name": "Серебро",
       "type": "raw",
       "category": "metals",
@@ -155,7 +164,8 @@
       "color": [ 192, 192, 192 ]
     },
     {
-      "id": "tin_deposit", "price": 8,
+      "id": "tin_deposit",
+      "price": 8,
       "name": "Олово",
       "type": "raw",
       "category": "metals",
@@ -173,7 +183,8 @@
       "color": [ 192, 192, 192 ]
     },
     {
-      "id": "antimony_deposit", "price": 12,
+      "id": "antimony_deposit",
+      "price": 12,
       "name": "Сурьма",
       "type": "raw",
       "category": "metals",
@@ -191,7 +202,8 @@
       "color": [ 192, 192, 192 ]
     },
     {
-      "id": "arsenic_deposit", "price": 12,
+      "id": "arsenic_deposit",
+      "price": 12,
       "name": "Мышьяк",
       "type": "raw",
       "category": "metals",

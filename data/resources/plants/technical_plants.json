@@ -150,7 +150,8 @@
       "allowed_cover": [ "none" ],
       "improved_by": "plantation",
       "produces": { "indigofera_leaves": 10 },
-      "icon": "indigofera.png"
+      "icon": "indigofera.png",
+      "color": [ 200, 255, 200 ]
     },
     {
       "id": "lawsonia_field", "price": 6,
@@ -164,7 +165,8 @@
       "allowed_cover": [ "none" ],
       "improved_by": "plantation",
       "produces": { "lawsonia_leaves": 10 },
-      "icon": "lawsonia.png"
+      "icon": "lawsonia.png",
+      "color": [ 200, 255, 200 ]
     },
     {
       "id": "marena_field", "price": 8,
@@ -178,7 +180,8 @@
       "allowed_cover": [ "none" ],
       "improved_by": "plantation",
       "produces": { "marena_roots": 10 },
-      "icon": "marena.png"
+      "icon": "marena.png",
+      "color": [ 200, 255, 200 ]
     },
     {
       "id": "woad_field", "price": 6,
@@ -192,7 +195,8 @@
       "allowed_cover": [ "none" ],
       "improved_by": "plantation",
       "produces": { "woad_leaves": 10 },
-      "icon": "woad.png"
+      "icon": "woad.png",
+      "color": [ 200, 255, 200 ]
     },
     {
       "id": "campeche_tree", "price": 10,
@@ -206,7 +210,8 @@
       "allowed_cover": [ "none" ],
       "improved_by": "plantation",
       "produces": { "campeche_wood": 10 },
-      "icon": "campeche_tree.png"
+      "icon": "campeche_tree.png",
+      "color": [ 200, 255, 200 ]
     },
     {
       "id": "safflower_field", "price": 7,
@@ -220,7 +225,8 @@
       "allowed_cover": [ "none" ],
       "improved_by": "plantation",
       "produces": { "safflower_leaves": 10 },
-      "icon": "safflower.png"
+      "icon": "safflower.png",
+      "color": [ 200, 255, 200 ]
     },
     {
       "id": "opuntia_field", "price": 6,
@@ -233,7 +239,7 @@
       "allowed_cover": [ "none" ],
       "improved_by": "plantation",
       "tech_required": "plantations",
-      "produces": { "cactus_fruit": 10, "cochineal ": 10 },
+      "produces": { "cactus_fruit": 10, "cochineal": 10 },
       "icon": "opuntia.png",
       "color": [ 200, 255, 200 ]
     }

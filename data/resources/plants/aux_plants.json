@@ -1,7 +1,8 @@
 {
   "resources": [
     {
-      "id": "tea_field", "price": 6,
+      "id": "tea_field",
+      "price": 6,
       "name": "Чай",
       "type": "raw",
       "category": "aux_plants",
@@ -11,12 +12,13 @@
       "allowed_cover": [ "none" ],
       "improved_by": "plantation",
       "tech_required": "plantations",
-      "produces": { "tea_plant": 10, "feed": 40 },
+      "produces": { "tea_leaves": 10, "feed": 40 },
       "icon": "tea.png",
       "color": [ 200, 255, 200 ]
     },
     {
-      "id": "coffee_field", "price": 7,
+      "id": "coffee_field",
+      "price": 7,
       "name": "Кофе",
       "type": "raw",
       "category": "aux_plants",
