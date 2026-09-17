@@ -222,9 +222,8 @@
       "group": "livestock",
       "subgroup": [ "meat_animals", "milk_animals" ],
       "tech_required": "animal_husbandry",
-      // todo: изменить allowed_terrain на desert, когда будет добавлена пустыня
-      "allowed_terrain": [ "plain", "hill" ],
-      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "allowed_terrain": [ "desert" ],
+      "allowed_cover": [ "none" ],
       "improved_by": "pasture",
       "produces": { "raw_meat": 40, "raw_milk": 20, "hide": 10 },
       "feed_consumption": 70,
