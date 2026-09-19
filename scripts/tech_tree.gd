@@ -35,7 +35,11 @@ const ERA_LINE_WIDTH: float = 2.0 # толщина вертикального р
 
 # --- Внешние ссылки (заполняются в setup) ---
 var current_label: Label # "Изучается: ..." (Label вверху панели)
-var science_pool_label: Label # "Пул науки: ..." (общий пул наук)
+var science_pool_label: Label # «Наука: X/сек» (скорость исследований города)
+
+# --- Тултип разбивки науки по источникам (панель в стиле прочих тултипов) ---
+var science_tooltip_panel: Panel = null
+var science_tooltip_label: Label = null
 
 # --- Внутренние узлы ---
 var _scroll: ScrollContainer
@@ -62,6 +66,102 @@ func setup(parent: Control, current_lbl: Label, science_lbl: Label = null):
     science_pool_label = science_lbl
     _build_tech_icon_index()
     _build_ui(parent)
+    _setup_science_tooltip()
+
+# --- Тултип разбивки науки («Наука: X/сек») ---
+# Панель в стиле прочих тултипов проекта (mouse_filter IGNORE — не мешает
+# вводу): показывается при наведении на метку скорости науки и отображает,
+# из чего складывается итоговое число (база + здания + основы + бонус перьев).
+func _setup_science_tooltip():
+    if science_pool_label == null:
+        return
+    # Label по умолчанию mouse_filter IGNORE — наведение на него не ловится.
+    # PASS позволяет принимать mouse_entered/mouse_exited.
+    science_pool_label.mouse_filter = Control.MOUSE_FILTER_PASS
+    science_pool_label.mouse_entered.connect(_show_science_tooltip)
+    science_pool_label.mouse_exited.connect(_hide_science_tooltip)
+
+    science_tooltip_panel = Panel.new()
+    science_tooltip_panel.visible = false
+    science_tooltip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    # Поверх дерева технологий (z_index как у group_tooltip в ui_helpers).
+    science_tooltip_panel.z_index = 1100
+    var style := StyleBoxFlat.new()
+    style.bg_color = Color(0.2, 0.2, 0.2, 1.0)
+    style.set_border_width_all(1)
+    style.border_color = Color(0.6, 0.6, 0.6)
+    science_tooltip_panel.add_theme_stylebox_override("panel", style)
+    add_child(science_tooltip_panel)
+
+    science_tooltip_label = Label.new()
+    science_tooltip_label.add_theme_color_override("font_color", Color.WHITE)
+    science_tooltip_label.add_theme_font_size_override("font_size", 14)
+    science_tooltip_panel.add_child(science_tooltip_label)
+
+# Собирает многострочный текст разбивки из кэша CityData.science_breakdown.
+func _build_science_tooltip_text() -> String:
+    var lines: Array = []
+    var bd: Dictionary = CityData.get_science_breakdown()
+    var base: float = float(bd.get("base", CityData.BASE_SCIENCE_PER_SEC))
+    var total: float = CityData.get_science_rate_per_sec()
+    lines.append("Наука: %.1f/сек" % total)
+    lines.append("• База: %.1f/сек" % base)
+    for bld_entry in bd.get("buildings", []):
+        var bld_name: String = str(bld_entry.get("name", "Здание"))
+        var fixed: float = float(bld_entry.get("fixed", 0.0))
+        var mediums: float = float(bld_entry.get("mediums", 0.0))
+        var bonus: float = float(bld_entry.get("bonus", 1.0))
+        var bld_total := fixed + mediums
+        lines.append("• %s: %.1f/сек" % [bld_name, bld_total])
+        if fixed > 0.0:
+            lines.append("    здание: %.1f/сек" % fixed)
+        if mediums > 0.0:
+            var names: Array = bld_entry.get("mediums_names", [])
+            var names_str := ""
+            if not names.is_empty():
+                # Уникальные имена в порядке первого появления.
+                var seen := {}
+                var uniq: Array = []
+                for n in names:
+                    if not seen.has(n):
+                        seen[n] = true
+                        uniq.append(n)
+                names_str = " (" + ", ".join(uniq) + ")"
+            lines.append("    основа: %.1f/сек%s" % [mediums, names_str])
+        if abs(bonus - 1.0) > 0.001:
+            lines.append("    перья: +%d%%" % int(round((bonus - 1.0) * 100.0)))
+    lines.append("Итого: %.1f/сек" % total)
+    return "\n".join(lines)
+
+func _show_science_tooltip():
+    if science_tooltip_panel == null or science_pool_label == null:
+        return
+    science_tooltip_label.text = _build_science_tooltip_text()
+    science_tooltip_panel.visible = true
+    _position_science_tooltip()
+
+# Позиция: под меткой (глобальный rect метки минус глобальная позиция
+# tech_tree, т.к. панель — ребёнок tech_tree), со сдвигом, чтобы не вылезать
+# за правый край вьюпорта.
+func _position_science_tooltip():
+    if science_tooltip_panel == null or science_pool_label == null:
+        return
+    var label_global := science_pool_label.get_global_rect()
+    var local_pos := label_global.position - global_position + Vector2(0, label_global.size.y + 4)
+    science_tooltip_panel.position = local_pos
+    # Размер по содержимому.
+    science_tooltip_panel.size = science_tooltip_label.get_minimum_size() + Vector2(12, 8)
+    # Не вылезать за правый/нижний край вьюпорта.
+    var vp_size := get_viewport_rect().size
+    var panel_global := local_pos + global_position
+    if panel_global.x + science_tooltip_panel.size.x > vp_size.x:
+        science_tooltip_panel.position.x = vp_size.x - science_tooltip_panel.size.x - global_position.x - 4
+    if panel_global.y + science_tooltip_panel.size.y > vp_size.y:
+        science_tooltip_panel.position.y = vp_size.y - science_tooltip_panel.size.y - global_position.y - 4
+
+func _hide_science_tooltip():
+    if science_tooltip_panel != null:
+        science_tooltip_panel.visible = false
 
 func _build_ui(parent: Control):
     _scroll = ScrollContainer.new()
@@ -1024,13 +1124,18 @@ func update_values():
 func update_progress():
     # Лёгкое обновление: только метка текущего исследования.
     _update_status_label()
+    # Тултип науки живой: пока курсор на метке, текст обновляется каждый тик.
+    if science_tooltip_panel != null and science_tooltip_panel.visible:
+        science_tooltip_label.text = _build_science_tooltip_text()
+        _position_science_tooltip()
 
 func _update_status_label():
     if current_label == null:
         return
-    # Скорость науки города (база + вклад работающих зданий науки; видна
-    # только здесь, на вкладке «Технологии»). Здания копят науку в пул,
-    # а пул расходуется на исследование — это и даёт фактический вклад.
+    # Скорость науки города — прямая сумма источников: база + вклад работающих
+    # зданий науки (видна только здесь, на вкладке «Технологии»). Пула науки
+    # нет: эта же скорость напрямую начисляется в прогресс исследования
+    # (CityData.tick_research_science_continuous).
     if science_pool_label != null and is_instance_valid(science_pool_label):
         science_pool_label.text = "Наука: %.1f/сек" % CityData.get_science_rate_per_sec()
     if CityData.current_research_tech_id != "":

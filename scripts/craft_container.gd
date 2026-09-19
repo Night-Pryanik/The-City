@@ -18,6 +18,10 @@
 #     "filled": int,                  # уже набрано (целое)
 #     "fractional": float,            # дробный остаток за тик
 #     "consumed": [{ qty: int, quality: String }],  # для качества результата
+#     "consumed_pids": { pid: int },  # накопленный состав потреблённого ПО PID
+#                                     # через все циклы (НЕ сбрасывается в
+#                                     # reset(); для науки — средневзвешенный
+#                                     # special_yield смеси, см. CityData.do_tick)
 #   }
 #
 # Качество результата рассчитывается в момент завершения крафта как
@@ -148,6 +152,15 @@ func tick(delta: float, is_active: bool, quality_priority: String = "best", outp
         var breakdown: Dictionary = take_res.get("breakdown", {})
         var taken_pids: Dictionary = take_res.get("pids", {})
 
+        # Накапливаем состав потреблённого ПО PID. В отличие от slot["consumed"]
+        # (сбрасывается в reset()) эта копия переживает циклы и нужна науке:
+        # средневзвешенный special_yield фактически расходуемой смеси основ
+        # (см. CityData.do_tick, блок «РЕЦЕПТ „НАУКА"»).
+        var consumed_pids: Dictionary = slot.get("consumed_pids", {})
+        for tp in taken_pids:
+            consumed_pids[str(tp)] = int(consumed_pids.get(str(tp), 0)) + int(taken_pids[tp])
+        slot["consumed_pids"] = consumed_pids
+
         if taken <= 0:
             all_full = false
             result["missing"].append(_slot_display_key(slot))
@@ -235,6 +248,9 @@ func reset():
         slot["filled"] = 0
         slot["fractional"] = 0.0
         slot["consumed"] = []
+        # slot["consumed_pids"] НЕ сбрасываем: это накопленный состав
+        # потреблённого по pid через все циклы (нужен науке — средневзвешенный
+        # special_yield смеси основ), см. CityData.do_tick.
     for pid in release_fractional:
         release_fractional[pid] = 0.0
 
@@ -353,6 +369,7 @@ func _restore_from_slot_data(recipe: Dictionary, slot_data: Dictionary):
             fresh["filled"] = int(saved.get("filled", 0))
             fresh["fractional"] = float(saved.get("fractional", 0.0))
             fresh["consumed"] = saved.get("consumed", [])
+            fresh["consumed_pids"] = saved.get("consumed_pids", {})
         # Иначе остаётся свежий пустой слот (рецепт изменился).
     # release_fractional восстанавливается, если сохранён в актуальном виде.
     var saved_release = slot_data.get("release_fractional", null)
@@ -382,7 +399,8 @@ func _build_slots_from_recipe(recipe: Dictionary) -> Array:
             "required": amt,
             "filled": 0,
             "fractional": 0.0,
-            "consumed": []
+            "consumed": [],
+            "consumed_pids": {}
         }
         if str(res_key).begins_with("@"):
             var group_key = str(res_key).trim_prefix("@")

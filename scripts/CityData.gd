@@ -35,10 +35,6 @@ var current_research_tech_id: String = ""
 var current_research_science_cost: int = 0
 var research_progress: float = 0.0
 var research_science_accumulated: float = 0.0
-# Дробный остаток «дренажа» пула науки: списываем целыми единицами из пула,
-# а нецелый остаток копим здесь, чтобы скорость была плавной (см. docs.md,
-# «Наука: производство и исследования»).
-var science_drain_accum: float = 0.0
 
 # --- ТЕКУЩАЯ ЭПОХА ---
 # Индекс текущей эпохи в GameData.eras (см. data/eras.json).
@@ -124,14 +120,37 @@ func advance_era() -> void:
     emit_signal("city_updated")
 
 # --- НАУКА ---
-# Базовый доход науки города за один тик симуляции (SIMULATION_TICK = 1 сек)
-# без зданий науки. Дополнительная наука начисляется рецептом «science»
-# из выхода здания и письменных основ.
+# Базовый доход науки города (очков/сек). Город никогда не производит меньше
+# этой скорости, даже без зданий науки — чтобы ранняя игра не блокировалась.
 const BASE_SCIENCE_PER_SEC: float = 1.0
-# Скорость расхода пула науки на текущее исследование (очков в секунду).
-# Пул списывается по столько очков в секунду на исследование; это прямое
-# ускорение его изучения за счёт «произведённой» науки.
-const SCIENCE_DRAIN_PER_SEC: float = 0.5
+# Кэш вклада работающих зданий науки в скорость исследований (очков/сек).
+# Пересчитывается с нуля раз в тик симуляции в do_tick(): фиксированный выход
+# зданий (additional_yield.science) + плановая скорость потребления основ
+# рецептом «Наука», умноженная на средневзвешенный special_yield фактически
+# расходуемой смеси, и всё это — на бонус профессии учёного (перья/чернила).
+# Пула науки нет — произведённая наука не копится на складе, а напрямую
+# складывается в скорость изучения технологий (см. get_science_rate_per_sec,
+# tick_research_science_continuous и docs.md, «Наука: производство и
+# исследования»).
+var science_buildings_rate_per_sec: float = 0.0
+# Кэш разбивки скорости науки по источникам (для тултипа на вкладке
+# «Технологии»). Заполняется раз в тик в do_tick() рядом с
+# science_buildings_rate_per_sec из тех же величин:
+#   {
+#     "base": 1.0,                  # BASE_SCIENCE_PER_SEC
+#     "buildings": [                # по каждому работающему зданию науки
+#       {
+#         "name": "Библиотека",
+#         "fixed": 1.0,             # additional_yield.science, очков/сек
+#         "mediums": 4.0,           # required/craft_time × спец. yield смеси
+#         "bonus": 1.25,            # множитель профессии (перья/чернила)
+#         "mediums_names": ["Глиняные таблички"],  # что фактически расходуется
+#       }, ...
+#     ],
+#     "total": 6.3,                 # = get_science_rate_per_sec()
+#   }
+# До первого тика — пустой словарь (тултип показывает только базу).
+var science_breakdown: Dictionary = {}
 
 # --- ТРУД ---
 # Труд = скорость работы города. 1 житель = 1 труд/сек.
@@ -171,7 +190,8 @@ func setup():
     current_research_science_cost = 0
     research_progress = 0.0
     research_science_accumulated = 0.0
-    science_drain_accum = 0.0
+    science_buildings_rate_per_sec = 0.0
+    science_breakdown = {}
     current_era_index = 0
     last_research_messages = []
     city_name = ""
@@ -889,6 +909,13 @@ func do_tick():
     if Engine.is_editor_hint():
         return
 
+    # Вклад зданий науки в скорость пересчитывается с нуля каждый тик
+    # (см. блок «РЕЦЕПТ „НАУКА"» в цикле зданий ниже). Записи по зданиям
+    # собираются в промежуточный список, после цикла из него собирается
+    # science_breakdown.
+    science_buildings_rate_per_sec = 0.0
+    var science_breakdown_buildings: Array = []
+
     # --- Работа зданий (только если есть горожанин) ---
     var main_map = get_tree().root.find_child("MainMap", true, false)
     var tm = main_map.get_node("TownsfolkManager") if main_map else null
@@ -964,6 +991,64 @@ func do_tick():
                 if total_consumed > 0:
                     record_consumption_source(consumed_pid, building_source, total_consumed)
 
+            # --- РЕЦЕПТ «НАУКА»: прямой вклад в скорость исследований ---
+            # Пула науки больше нет: наука зданий не копится на складе, а
+            # напрямую складывается в скорость изучения технологий (см.
+            # docs.md, «Наука: производство и исследования»). Вклад за тик:
+            #   * фиксированный выход здания (additional_yield.science —
+            #     очков/сек у Библиотеки и Скриптория) — течёт, пока здание
+            #     работает (есть горожанин и непустой слот), даже без основ;
+            #   * наука от основ для письма — по ПЛАНОВОЙ скорости потребления
+            #     рецепта (required / craft_time ед./сек), пока сырьё доступно
+            #     (missing пуст). Такой вклад гладкий по построению: фактические
+            #     списания целыми единицами (0 или 1 за тик) в среднем дают
+            #     ровно required/craft_time, поэтому в скорость наука течёт
+            #     ровно, без скачков. Каждая единица даёт special_yield.science
+            #     своего продукта (глин. таблички +1, папирус +2, пергамент +3,
+            #     шёлк +3, бумага +5); смесь считается средневзвешенно по
+            #     накопленному составу потребления в слоте (consumed_pids).
+            #   * всё умножается на бонус профессии учёного (перья/чернила).
+            if recipe_id == "science":
+                var missing: Array = tick_res.get("missing", [])
+                var building_fixed := float(GameData.get_building_additional_yield(bld.get("id", "")).get("science", 0))
+                var building_mediums := 0.0
+                var mediums_names: Array = []
+                if missing.is_empty() and container.craft_time > 0.0:
+                    for slot in container.ingredient_slots:
+                        var required_total := int(slot.get("required", 0))
+                        if required_total <= 0:
+                            continue
+                        # Средневзвешенный special_yield смеси основ, которую
+                        # фактически расходует слот (consumed_pids копится по
+                        # pid и переживает reset цикла; пока состава нет —
+                        # нейтральный yield 1.0, дальше уточняется фактом).
+                        var consumed_pids: Dictionary = slot.get("consumed_pids", {})
+                        var yield_sum := 0.0
+                        var qty_sum := 0
+                        for consumed_pid in consumed_pids:
+                            var consumed_qty := int(consumed_pids[consumed_pid])
+                            if consumed_qty <= 0:
+                                continue
+                            var medium_science := float(GameData.get_special_yield(str(consumed_pid)).get("science", 0))
+                            yield_sum += medium_science * float(consumed_qty)
+                            qty_sum += consumed_qty
+                            mediums_names.append(GameData.format_resource_name(str(consumed_pid)))
+                        var effective_yield := 1.0
+                        if qty_sum > 0:
+                            effective_yield = yield_sum / float(qty_sum)
+                        building_mediums += effective_yield * float(required_total) / container.craft_time
+                var science_instant := (building_fixed + building_mediums) * prof_multiplier
+                science_buildings_rate_per_sec += science_instant
+                # Разбивка для тултипа (см. science_breakdown).
+                var science_bld_entry := {
+                    "name": building_source,
+                    "fixed": building_fixed * prof_multiplier,
+                    "mediums": building_mediums * prof_multiplier,
+                    "bonus": prof_multiplier,
+                    "mediums_names": mediums_names
+                }
+                science_breakdown_buildings.append(science_bld_entry)
+
             # --- ПОСТЕПЕННЫЙ ВЫПУСК РЕЗУЛЬТАТА (каждый тик) ---
             # Каждая «порция» выпуска имеет качество, рассчитанное по
             # накопленному consumed на текущий момент (см. CraftContainer._compute_quality_from_consumed).
@@ -986,47 +1071,19 @@ func do_tick():
             # На этом этапе releases за тик уже включает «добивку» остатка
             # fractional — суммарно за цикл выпускается ровно full_amount для
             # каждого pid результата. Ничего дополнительно добавлять не нужно.
-            #
-            # Особый случай: рецепт «science» — начисляем science_yield × amount
-            # + дополнительный выход от здания. science_amount считается от
-            # ВСЕГО consumed за цикл (он хранится в container.ingredient_slots
-            # до reset() ниже).
-            if recipe_id == "science":
-                var science_amount := 0
-                # Агрегируем container.consumed по pid: суммируем qty из слотов
-                # для каждого pid (ингредиент).
-                var per_pid_total: Dictionary = {}
-                for slot in container.ingredient_slots:
-                    var slot_pid = ""
-                    if str(slot.get("kind", "")) == "single":
-                        slot_pid = str(slot.get("pid", ""))
-                    else:
-                        # Для @-группы берём ВСЕ pid из членов группы.
-                        for member in slot.get("members", []):
-                            slot_pid = str(member)
-                            break
-                    if slot_pid.is_empty():
-                        continue
-                    var slot_total := 0
-                    for entry in slot.get("consumed", []):
-                        slot_total += int(entry.get("qty", 0))
-                    if slot_total > 0:
-                        per_pid_total[slot_pid] = int(per_pid_total.get(slot_pid, 0)) + slot_total
-                for consumed_pid in per_pid_total:
-                    var special_yield = GameData.get_special_yield(consumed_pid)
-                    science_amount += int(per_pid_total[consumed_pid]) * int(special_yield.get("science", 0))
-                var building_yield = GameData.get_building_additional_yield(bld.get("id", ""))
-                science_amount += int(building_yield.get("science", 0))
-                # Бонус профессии (перья/чернила у Учёного) применяется ко всей
-                # науке за цикл: и от письменных материалов (special_yield), и
-                # от самого здания (additional_yield).
-                science_amount = int(round(float(science_amount) * prof_multiplier))
-                if science_amount > 0:
-                    add_to_storage("science", science_amount)
-                    record_production_source("science", building_source, science_amount)
+            # Особый случай рецепта «science» не нужен: его вклад в скорость
+            # исследований начисляется каждый тик выше (блок «РЕЦЕПТ
+            # „НАУКА"»), на склад наука не поступает.
 
             # --- СБРОС КОНТЕЙНЕРА ДЛЯ СЛЕДУЮЩЕГО КРАФТА ---
             container.reset()
+
+    # --- РАЗБИВКА СКОРОСТИ НАУКИ ПО ИСТОЧНИКАМ (для тултипа) ---
+    science_breakdown = {
+        "base": BASE_SCIENCE_PER_SEC,
+        "buildings": science_breakdown_buildings,
+        "total": get_science_rate_per_sec()
+    }
 
     # --- Потребление еды населением ---
     # Еда потребляется без учёта качества (качество — визуальная механика),
@@ -1223,35 +1280,30 @@ func _complete_tech_instantly(tech_id: String) -> bool:
     print("Мгновенно изучена (дебаг): ", tech_data.get("name", tech_id))
     return true
 
-# Возвращает базовую часть науки за тик симуляции (1 сек). Производство зданий
-# и письменных материалов начисляется отдельно через рецепт «science».
-# Город не может генерировать меньше 1 очка науки за тик.
-func get_science_per_sec() -> float:
-    return BASE_SCIENCE_PER_SEC
-
-# Фактическая скорость науки (очков/сек): базовая часть плюс расход
-# накопленного пула науки во время исследования.
+# Фактическая скорость науки города (очков/сек) — прямая сумма источников:
+# базовый доход (BASE_SCIENCE_PER_SEC) плюс вклад работающих зданий науки
+# (кэш science_buildings_rate_per_sec, пересчитывается раз в тик в do_tick).
+# Пула науки нет: произведённая наука не копится на складе, а сразу задаёт
+# скорость изучения технологий (см. tick_research_science_continuous и
+# docs.md, «Наука: производство и исследования»).
 func get_science_rate_per_sec() -> float:
-    var drain_per_sec: float = SCIENCE_DRAIN_PER_SEC * SIMULATION_TICK
-    return BASE_SCIENCE_PER_SEC + minf(drain_per_sec, get_science_pool())
+    return BASE_SCIENCE_PER_SEC + science_buildings_rate_per_sec
 
-# Возвращает размер общего пула науки города (очков науки «про запас»).
-# Пул копится зданиями (например, Библиотекой через рецепт «Наука») в обычном
-# city_storage["science"], но на вкладке «Ресурсы» наука скрыта. Расходуется
-# на ускорение текущего исследования (см. tick_research_science_continuous).
-func get_science_pool() -> float:
-    return float(city_storage.get("science", 0))
+# Разбивка скорости науки по источникам (см. science_breakdown) — для тултипа
+# на вкладке «Технологии». Кэш заполняется раз в тик в do_tick().
+func get_science_breakdown() -> Dictionary:
+    return science_breakdown
 
 # Возвращает количество накопленных очков науки по текущему исследованию.
 func get_research_science_collected() -> float:
     return research_science_accumulated
 
 # Обновляет прогресс исследования непрерывно — вызывается каждый кадр
-# из _process в main_map.gd. База (rate = get_science_per_sec / SIMULATION_TICK)
-# даёт плавный минимальный прогресс; дополнительно накопленная наука из пула
-# библиотек списывается отсюда же и ускоряет текущее исследование.
-# Списание идёт целыми единицами (дробный остаток копится в science_drain_accum),
-# чтобы не «измельчать» пул и не замедлять его расход плавающей арифметикой.
+# из _process в main_map.gd. Скорость — прямая сумма всех источников науки
+# (get_science_rate_per_sec: база + работающие здания науки), поэтому
+# прогресс-бар растёт плавно покадрово. Наука НЕ копится: пока исследования
+# нет, начисления не происходит, а выработка зданий «впустую» теряется
+# (пул науки убран, см. docs.md, «Наука: производство и исследования»).
 func tick_research_science_continuous(delta: float) -> void:
     if Engine.is_editor_hint():
         return
@@ -1259,19 +1311,7 @@ func tick_research_science_continuous(delta: float) -> void:
         return
     if current_research_science_cost <= 0:
         current_research_science_cost = 1
-    var rate: float = get_science_per_sec() / SIMULATION_TICK
-    research_science_accumulated += rate * delta
-    # Расход пула науки на исследование: до N очков в секунду из общего пула.
-    if get_science_pool() > 0.0:
-        science_drain_accum += SCIENCE_DRAIN_PER_SEC * delta
-        var drain: int = int(science_drain_accum)
-        if drain > 0:
-            science_drain_accum -= drain
-            var available: int = int(get_science_pool())
-            var actual: int = min(drain, available)
-            if actual > 0:
-                research_science_accumulated += float(actual)
-                remove_from_storage("science", actual, "best")
+    research_science_accumulated += get_science_rate_per_sec() * delta
     research_progress = clamp(research_science_accumulated / float(current_research_science_cost), 0.0, 1.0)
     if research_science_accumulated >= current_research_science_cost:
         _complete_research()

@@ -27,7 +27,6 @@ func save_game():
         "current_research_science_cost": CityData.current_research_science_cost,
         "research_science_accumulated": CityData.research_science_accumulated,
         "research_progress": CityData.research_progress,
-        "science_drain_accum": CityData.science_drain_accum,
         "current_era_index": CityData.current_era_index,
         "total_population": CityData.total_population,
         "idle_population": CityData.idle_population,
@@ -128,7 +127,6 @@ func apply_loaded_data():
     CityData.current_research_science_cost = saved_data.get("current_research_science_cost", 0)
     CityData.research_science_accumulated = saved_data.get("research_science_accumulated", 0.0)
     CityData.research_progress = saved_data.get("research_progress", 0.0)
-    CityData.science_drain_accum = saved_data.get("science_drain_accum", 0.0)
     # Текущая эпоха. Если в сейве поля нет (старые сейвы), значение будет
     # восстановлено из map_state в main_map._apply_saved_map_state().
     CityData.current_era_index = saved_data.get("current_era_index", 0)
