@@ -79,14 +79,24 @@
       "cover_chance": { "none": 100 }
     },
     {
-      "id": "desert",
-      "name": "Пустыня",
+      "id": "sandy_desert",
+      "name": "Песчаная пустыня",
+      "color": [ 220, 200, 140 ],
+      "move_cost": 2.5,
+      "expansion_cost": 2.5,
+      "work_cost_mult": 2,
+      "icons": [ "beach_1.png" ],
+      "cover_chance": { "none": 95, "oasis": 5 }
+    },
+    {
+      "id": "rocky_desert",
+      "name": "Каменистая пустыня",
       "color": [ 220, 200, 140 ],
       "move_cost": 2,
       "expansion_cost": 2,
       "work_cost_mult": 1.5,
-      "icons": [ "beach_1.png" ],
-      "cover_chance": { "none": 100 }
+      "icons": [ "rocky_desert_1.png", "rocky_desert_2.png", "rocky_desert_3.png" ],
+      "cover_chance": { "none": 95, "oasis": 5 }
     }
   ]
 }

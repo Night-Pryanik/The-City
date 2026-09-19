@@ -26,12 +26,13 @@
     // не задан свой target_cluster в terrain_config.
     "target_cluster": 22,
     "terrain_config": {
-      "plain":     { "density": 0.35, "target_cluster": 22 },
-      "hill":      { "density": 0.25, "target_cluster": 30 },
-      "lake":      { "density": 0.10, "target_cluster": 50 },
-      "mountain":  { "density": 0.20, "target_cluster": 25 },
-      "swamp":     { "density": 0.05, "target_cluster": 5 },
-      "desert":    { "density": 0.05, "target_cluster": 5 }
+      "plain":        { "density": 0.30, "target_cluster": 22 },
+      "hill":         { "density": 0.25, "target_cluster": 30 },
+      "lake":         { "density": 0.10, "target_cluster": 50 },
+      "mountain":     { "density": 0.20, "target_cluster": 25 },
+      "swamp":        { "density": 0.05, "target_cluster": 5 },
+      "sandy_desert": { "density": 0.05, "target_cluster": 5 },
+      "rocky_desert": { "density": 0.05, "target_cluster": 5 }
     },
 
   // --- Генерация морей ---

@@ -47,6 +47,14 @@
       "alpha": 0.9,
       "move_cost_bonus": 0,
       "icons": [ "swamp_forest_sparse_1.png" ]
+    },
+    {
+      "id": "oasis",
+      "name": "Оазис",
+      "color": [ 34, 139, 34 ],
+      "alpha": 0.9,
+      "move_cost_bonus": 0,
+      "icons": [ "oasis_1.png", "oasis_2.png" ]
     }
   ]
 }
