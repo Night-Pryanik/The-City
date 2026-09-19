@@ -124,14 +124,16 @@ func advance_era() -> void:
 # этой скорости, даже без зданий науки — чтобы ранняя игра не блокировалась.
 const BASE_SCIENCE_PER_SEC: float = 1.0
 # Кэш вклада работающих зданий науки в скорость исследований (очков/сек).
-# Пересчитывается с нуля раз в тик симуляции в do_tick(): фиксированный выход
-# зданий (additional_yield.science) + плановая скорость потребления основ
-# рецептом «Наука», умноженная на средневзвешенный special_yield фактически
-# расходуемой смеси, и всё это — на бонус профессии учёного (перья/чернила).
+# Пересчитывается с нуля раз в тик симуляции в do_tick(). Формула по зданию:
+#   (additional_yield.science + средневзвешенный special_yield расходуемой
+#    смеси основ) × бонус профессии учёного (перья/чернила, ×1.25).
+# Ни required, ни craft_time рецепта «Наука» в скорость науки НЕ входят:
+# рецепт — лишь «пропуск» (пока сырьё доступно, учёные работают), его вход
+# задаёт только расход топлива. Скорость работы учёных определяется самим
+# special_yield основ (см. docs.md, «Наука: производство и исследования»).
 # Пула науки нет — произведённая наука не копится на складе, а напрямую
 # складывается в скорость изучения технологий (см. get_science_rate_per_sec,
-# tick_research_science_continuous и docs.md, «Наука: производство и
-# исследования»).
+# tick_research_science_continuous).
 var science_buildings_rate_per_sec: float = 0.0
 # Кэш разбивки скорости науки по источникам (для тултипа на вкладке
 # «Технологии»). Заполняется раз в тик в do_tick() рядом с
@@ -140,15 +142,17 @@ var science_buildings_rate_per_sec: float = 0.0
 #     "base": 1.0,                  # BASE_SCIENCE_PER_SEC
 #     "buildings": [                # по каждому работающему зданию науки
 #       {
-#         "name": "Библиотека",
-#         "fixed": 1.0,             # additional_yield.science, очков/сек
-#         "mediums": 4.0,           # required/craft_time × спец. yield смеси
+#         "name": "Скрипторий",
+#         "fixed": 3.0,             # additional_yield.science, БЕЗ бонуса
+#         "mediums": 2.0,           # средневзвешенный special_yield смеси, БЕЗ бонуса
 #         "bonus": 1.25,            # множитель профессии (перья/чернила)
-#         "mediums_names": ["Глиняные таблички"],  # что фактически расходуется
+#         "mediums_names": ["Папирус"],        # что фактически расходуется
+#         "bonus_names": ["Перья"],            # что даёт бонус потребления
 #       }, ...
 #     ],
-#     "total": 6.3,                 # = get_science_rate_per_sec()
+#     "total": 7.5,                 # = get_science_rate_per_sec()
 #   }
+# Итог здания = (fixed + mediums) × bonus — собирается в тултипе.
 # До первого тика — пустой словарь (тултип показывает только базу).
 var science_breakdown: Dictionary = {}
 
@@ -994,34 +998,36 @@ func do_tick():
             # --- РЕЦЕПТ «НАУКА»: прямой вклад в скорость исследований ---
             # Пула науки больше нет: наука зданий не копится на складе, а
             # напрямую складывается в скорость изучения технологий (см.
-            # docs.md, «Наука: производство и исследования»). Вклад за тик:
+            # docs.md, «Наука: производство и исследования»). Формула
+            # по зданию:
             #   * фиксированный выход здания (additional_yield.science —
             #     очков/сек у Библиотеки и Скриптория) — течёт, пока здание
             #     работает (есть горожанин и непустой слот), даже без основ;
-            #   * наука от основ для письма — по ПЛАНОВОЙ скорости потребления
-            #     рецепта (required / craft_time ед./сек), пока сырьё доступно
-            #     (missing пуст). Такой вклад гладкий по построению: фактические
-            #     списания целыми единицами (0 или 1 за тик) в среднем дают
-            #     ровно required/craft_time, поэтому в скорость наука течёт
-            #     ровно, без скачков. Каждая единица даёт special_yield.science
-            #     своего продукта (глин. таблички +1, папирус +2, пергамент +3,
-            #     шёлк +3, бумага +5); смесь считается средневзвешенно по
-            #     накопленному составу потребления в слоте (consumed_pids).
-            #   * всё умножается на бонус профессии учёного (перья/чернила).
+            #   * наука от основ для письма — средневзвешенный special_yield
+            #     смеси, которую здание фактически расходует (consumed_pids).
+            #     Ни required, ни craft_time рецепта в скорость НЕ входят:
+            #     рецепт — лишь «пропуск» (пока сырьё доступно — missing
+            #     пуст — учёные работают), его вход задаёт только расход
+            #     топлива со склада. Скорость работы учёных определяется
+            #     самим special_yield основ (глин. таблички +1, папирус +2,
+            #     пергамент +3, шёлк +3, бумага +5). Пока состава нет —
+            #     вклад основ 0.
+            #   * всё это умножается на бонус профессии учёного
+            #     (перья/чернила): (fixed + mediums) × prof_multiplier.
             if recipe_id == "science":
                 var missing: Array = tick_res.get("missing", [])
                 var building_fixed := float(GameData.get_building_additional_yield(bld.get("id", "")).get("science", 0))
                 var building_mediums := 0.0
                 var mediums_names: Array = []
-                if missing.is_empty() and container.craft_time > 0.0:
+                if missing.is_empty():
                     for slot in container.ingredient_slots:
                         var required_total := int(slot.get("required", 0))
                         if required_total <= 0:
                             continue
                         # Средневзвешенный special_yield смеси основ, которую
                         # фактически расходует слот (consumed_pids копится по
-                        # pid и переживает reset цикла; пока состава нет —
-                        # нейтральный yield 1.0, дальше уточняется фактом).
+                        # pid и переживает reset цикла). Это и есть вклад
+                        # основ в скорость науки — без множителей.
                         var consumed_pids: Dictionary = slot.get("consumed_pids", {})
                         var yield_sum := 0.0
                         var qty_sum := 0
@@ -1033,19 +1039,27 @@ func do_tick():
                             yield_sum += medium_science * float(consumed_qty)
                             qty_sum += consumed_qty
                             mediums_names.append(GameData.format_resource_name(str(consumed_pid)))
-                        var effective_yield := 1.0
                         if qty_sum > 0:
-                            effective_yield = yield_sum / float(qty_sum)
-                        building_mediums += effective_yield * float(required_total) / container.craft_time
+                            building_mediums += yield_sum / float(qty_sum)
                 var science_instant := (building_fixed + building_mediums) * prof_multiplier
                 science_buildings_rate_per_sec += science_instant
-                # Разбивка для тултипа (см. science_breakdown).
+                # Разбивка для тултипа: fixed/mediums пишутся БЕЗ бонуса —
+                # множитель применяется к сумме при выводе. bonus_names —
+                # продукты, чьё потребление даёт бонус профессии здания.
+                var bonus_names: Array = []
+                var bld_prof: String = str(bld.get("profession", ""))
+                if bld_prof != "" and prof_multiplier > 1.001:
+                    for cons_entry in GameData.get_profession_consumption(bld_prof):
+                        if float(cons_entry.get("production_bonus", 0.0)) <= 0.0:
+                            continue
+                        bonus_names.append(str(cons_entry.get("product_name", "")))
                 var science_bld_entry := {
                     "name": building_source,
-                    "fixed": building_fixed * prof_multiplier,
-                    "mediums": building_mediums * prof_multiplier,
+                    "fixed": building_fixed,
+                    "mediums": building_mediums,
                     "bonus": prof_multiplier,
-                    "mediums_names": mediums_names
+                    "mediums_names": mediums_names,
+                    "bonus_names": bonus_names
                 }
                 science_breakdown_buildings.append(science_bld_entry)
 

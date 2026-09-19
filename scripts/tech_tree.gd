@@ -136,7 +136,9 @@ func _make_bullet_sub_row(text: String) -> HBoxContainer:
     return row
 
 # Пересобирает содержимое тултипа из кэша CityData.science_breakdown:
-# заголовок + маркированный список источников (подпункты зданий — «◦»).
+# маркированный список источников (подпункты зданий — «◦»). Арифметика
+# тултипа сходится с меткой: итог здания = (Здание + Писчие материалы) ×
+# Бонус потребления, «Итого» = База + суммы зданий.
 func _rebuild_science_tooltip():
     if science_tooltip_vbox == null:
         return
@@ -148,39 +150,43 @@ func _rebuild_science_tooltip():
     var base: float = float(bd.get("base", CityData.BASE_SCIENCE_PER_SEC))
     var total: float = CityData.get_science_rate_per_sec()
 
-    var header = Label.new()
-    header.text = "Наука: %.1f/сек" % total
-    header.add_theme_color_override("font_color", Color.WHITE)
-    header.add_theme_font_size_override("font_size", 14)
-    header.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    science_tooltip_vbox.add_child(header)
-
     science_tooltip_vbox.add_child(_make_bullet_row("•", "База: %.1f/сек" % base))
     for bld_entry in bd.get("buildings", []):
         var bld_name: String = str(bld_entry.get("name", "Здание"))
         var fixed: float = float(bld_entry.get("fixed", 0.0))
         var mediums: float = float(bld_entry.get("mediums", 0.0))
         var bonus: float = float(bld_entry.get("bonus", 1.0))
-        var bld_total := fixed + mediums
+        var bld_total := (fixed + mediums) * bonus
         science_tooltip_vbox.add_child(_make_bullet_row("•", "%s: %.1f/сек" % [bld_name, bld_total]))
         if fixed > 0.0:
+            # Чистое значение additional_yield.science, без бонусов.
             science_tooltip_vbox.add_child(_make_bullet_sub_row("Здание: %.1f/сек" % fixed))
         if mediums > 0.0:
-            var names: Array = bld_entry.get("mediums_names", [])
-            var names_str := ""
-            if not names.is_empty():
-                # Уникальные имена в порядке первого появления.
-                var seen := {}
-                var uniq: Array = []
-                for n in names:
-                    if not seen.has(n):
-                        seen[n] = true
-                        uniq.append(n)
-                names_str = " (" + ", ".join(uniq) + ")"
+            var names_str := _join_unique_names(bld_entry.get("mediums_names", []))
+            # Чистый средневзвешенный special_yield смеси, без бонусов.
             science_tooltip_vbox.add_child(_make_bullet_sub_row("Писчие материалы: %.1f/сек%s" % [mediums, names_str]))
         if abs(bonus - 1.0) > 0.001:
-            science_tooltip_vbox.add_child(_make_bullet_sub_row("Бонус потребления: +%d%%" % int(round((bonus - 1.0) * 100.0))))
+            var bonus_str := "+%d%%" % int(round((bonus - 1.0) * 100.0))
+            var bonus_names_str := _join_unique_names(bld_entry.get("bonus_names", []))
+            science_tooltip_vbox.add_child(_make_bullet_sub_row("Бонус потребления: %s%s" % [bonus_str, bonus_names_str]))
     science_tooltip_vbox.add_child(_make_bullet_row("•", "Итого: %.1f/сек" % total))
+
+# « (Имя1, Имя2)» по уникальным именам в порядке первого появления; для
+# пустого списка — пустая строка.
+func _join_unique_names(names: Array) -> String:
+    if names.is_empty():
+        return ""
+    var seen := {}
+    var uniq: Array = []
+    for n in names:
+        var s := str(n)
+        if s == "" or seen.has(s):
+            continue
+        seen[s] = true
+        uniq.append(s)
+    if uniq.is_empty():
+        return ""
+    return " (" + ", ".join(uniq) + ")"
 
 func _show_science_tooltip():
     if science_tooltip_panel == null or science_pool_label == null:
