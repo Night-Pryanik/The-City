@@ -463,7 +463,9 @@ func _fill_popup_content(popup, b_index: int, slot_idx: int, available: Array, b
             if c["id"] == craft_id:
                 craft_name = c.get("name", craft_id)
                 craft_resources = c.get("resources", {})
-                craft_result = c.get("result", {})
+                # display_result — UI-подсказка для «нематериальных» выходов
+                # (наука и будущие псевдо-ресурсы): механикой не читается.
+                craft_result = c.get("display_result", c.get("result", {}))
                 break
         # Формируем текст пункта для расчёта ширины
         var item_text = ""
@@ -1027,7 +1029,9 @@ func _update_slot_button(button, craft_id: String):
         if c["id"] == craft_id:
             craft_name = c.get("name", craft_id)
             craft_resources = c.get("resources", {})
-            craft_result = c.get("result", {})
+            # display_result — UI-подсказка для «нематериальных» выходов
+            # (наука и будущие псевдо-ресурсы): механикой не читается.
+            craft_result = c.get("display_result", c.get("result", {}))
             break
     # Удаляем старое содержимое кнопки
     for child in button.get_children():

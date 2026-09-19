@@ -1057,7 +1057,9 @@ func _refresh_recipes_list(bdata: Dictionary):
     for craft in available_recipes:
         var craft_name = craft.get("name", craft["id"])
         var craft_resources = craft.get("resources", {})
-        var craft_result = craft.get("result", {})
+        # display_result — UI-подсказка для «нематериальных» выходов (наука и
+        # будущие псевдо-ресурсы): механикой не читается.
+        var craft_result = craft.get("display_result", craft.get("result", {}))
 
         var row = HBoxContainer.new()
         row.add_theme_constant_override("separation", 4)
