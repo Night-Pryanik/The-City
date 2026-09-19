@@ -838,7 +838,12 @@ func _draw_hex_overlays(row: int, col: int):
         # затемнения, даже когда has_worker == false.
         var is_infra = GameData.is_no_worker_improvement(tile.improvement)
         var draw_active = has_worker or is_infra
-        var icon_pos = Vector2(center.x, center.y - main_map.HEX_RADIUS * 0.75)
+        # Если на гексе нет ресурса (ни природного, ни разводимого) — рисуем
+        # иконку улучшения по центру гекса (ирригационный канал, лесная
+        # делянка и т.п.). Иначе — над верхним краем, над иконкой ресурса.
+        var icon_pos = Vector2(center.x, center.y)
+        if eff_res != "":
+            icon_pos = Vector2(center.x, center.y - main_map.HEX_RADIUS * 0.75)
         if imp_icon != "" and icon_textures.has(imp_icon):
             var tex = icon_textures[imp_icon]
             var icon_rect = Rect2(icon_pos.x - IMPROVEMENT_ICON_SIZE / 2.0, icon_pos.y - IMPROVEMENT_ICON_SIZE / 2.0, IMPROVEMENT_ICON_SIZE, IMPROVEMENT_ICON_SIZE)
