@@ -39,8 +39,8 @@
       "products": [ "grapes", "olives", "mulberries", "figs", "dates", "cactus_fruit" ]
     },
     {
-      "id": "writing_mediums",
-      "name": "Основа для письма",
+      "id": "writing_materials",
+      "name": "Писчие материалы",
       "products": ["clay_tablets", "wax_tablets", "papyrus", "parchment", "silk", "paper"]
     },
     {

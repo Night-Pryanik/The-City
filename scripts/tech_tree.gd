@@ -39,7 +39,7 @@ var science_pool_label: Label # «Наука: X/сек» (скорость ис�
 
 # --- Тултип разбивки науки по источникам (панель в стиле прочих тултипов) ---
 var science_tooltip_panel: Panel = null
-var science_tooltip_label: Label = null
+var science_tooltip_vbox: VBoxContainer = null
 
 # --- Внутренние узлы ---
 var _scroll: ScrollContainer
@@ -93,28 +93,78 @@ func _setup_science_tooltip():
     science_tooltip_panel.add_theme_stylebox_override("panel", style)
     add_child(science_tooltip_panel)
 
-    science_tooltip_label = Label.new()
-    science_tooltip_label.add_theme_color_override("font_color", Color.WHITE)
-    science_tooltip_label.add_theme_font_size_override("font_size", 14)
-    science_tooltip_panel.add_child(science_tooltip_label)
+    science_tooltip_vbox = VBoxContainer.new()
+    science_tooltip_vbox.add_theme_constant_override("separation", 3)
+    science_tooltip_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    science_tooltip_panel.add_child(science_tooltip_vbox)
 
-# Собирает многострочный текст разбивки из кэша CityData.science_breakdown.
-func _build_science_tooltip_text() -> String:
-    var lines: Array = []
+# --- Буллет-хелперы тултипа науки (по образцу buildings_tab._make_bullet*) ---
+# Главный пункт списка: «• текст».
+func _make_bullet(symbol: String) -> Label:
+    var bullet = Label.new()
+    bullet.text = symbol
+    bullet.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+    bullet.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    return bullet
+
+func _make_bullet_row(symbol: String, text: String) -> HBoxContainer:
+    var row = HBoxContainer.new()
+    row.add_theme_constant_override("separation", 6)
+    row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    row.add_child(_make_bullet(symbol))
+    var label = Label.new()
+    label.text = text
+    label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+    label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    row.add_child(label)
+    return row
+
+# Подпункт: отступ + «◦ текст» (как подпункты стоимости в тултипе здания).
+func _make_bullet_sub_row(text: String) -> HBoxContainer:
+    var row = HBoxContainer.new()
+    row.add_theme_constant_override("separation", 6)
+    row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    var indent = Control.new()
+    indent.custom_minimum_size = Vector2(18, 0)
+    row.add_child(indent)
+    row.add_child(_make_bullet("◦"))
+    var label = Label.new()
+    label.text = text
+    label.add_theme_color_override("font_color", Color(0.75, 0.75, 0.75))
+    label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    row.add_child(label)
+    return row
+
+# Пересобирает содержимое тултипа из кэша CityData.science_breakdown:
+# заголовок + маркированный список источников (подпункты зданий — «◦»).
+func _rebuild_science_tooltip():
+    if science_tooltip_vbox == null:
+        return
+    for child in science_tooltip_vbox.get_children():
+        science_tooltip_vbox.remove_child(child)
+        child.queue_free()
+
     var bd: Dictionary = CityData.get_science_breakdown()
     var base: float = float(bd.get("base", CityData.BASE_SCIENCE_PER_SEC))
     var total: float = CityData.get_science_rate_per_sec()
-    lines.append("Наука: %.1f/сек" % total)
-    lines.append("• База: %.1f/сек" % base)
+
+    var header = Label.new()
+    header.text = "Наука: %.1f/сек" % total
+    header.add_theme_color_override("font_color", Color.WHITE)
+    header.add_theme_font_size_override("font_size", 14)
+    header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    science_tooltip_vbox.add_child(header)
+
+    science_tooltip_vbox.add_child(_make_bullet_row("•", "База: %.1f/сек" % base))
     for bld_entry in bd.get("buildings", []):
         var bld_name: String = str(bld_entry.get("name", "Здание"))
         var fixed: float = float(bld_entry.get("fixed", 0.0))
         var mediums: float = float(bld_entry.get("mediums", 0.0))
         var bonus: float = float(bld_entry.get("bonus", 1.0))
         var bld_total := fixed + mediums
-        lines.append("• %s: %.1f/сек" % [bld_name, bld_total])
+        science_tooltip_vbox.add_child(_make_bullet_row("•", "%s: %.1f/сек" % [bld_name, bld_total]))
         if fixed > 0.0:
-            lines.append("    здание: %.1f/сек" % fixed)
+            science_tooltip_vbox.add_child(_make_bullet_sub_row("Здание: %.1f/сек" % fixed))
         if mediums > 0.0:
             var names: Array = bld_entry.get("mediums_names", [])
             var names_str := ""
@@ -127,16 +177,15 @@ func _build_science_tooltip_text() -> String:
                         seen[n] = true
                         uniq.append(n)
                 names_str = " (" + ", ".join(uniq) + ")"
-            lines.append("    основа: %.1f/сек%s" % [mediums, names_str])
+            science_tooltip_vbox.add_child(_make_bullet_sub_row("Писчие материалы: %.1f/сек%s" % [mediums, names_str]))
         if abs(bonus - 1.0) > 0.001:
-            lines.append("    перья: +%d%%" % int(round((bonus - 1.0) * 100.0)))
-    lines.append("Итого: %.1f/сек" % total)
-    return "\n".join(lines)
+            science_tooltip_vbox.add_child(_make_bullet_sub_row("Бонус потребления: +%d%%" % int(round((bonus - 1.0) * 100.0))))
+    science_tooltip_vbox.add_child(_make_bullet_row("•", "Итого: %.1f/сек" % total))
 
 func _show_science_tooltip():
     if science_tooltip_panel == null or science_pool_label == null:
         return
-    science_tooltip_label.text = _build_science_tooltip_text()
+    _rebuild_science_tooltip()
     science_tooltip_panel.visible = true
     _position_science_tooltip()
 
@@ -144,13 +193,16 @@ func _show_science_tooltip():
 # tech_tree, т.к. панель — ребёнок tech_tree), со сдвигом, чтобы не вылезать
 # за правый край вьюпорта.
 func _position_science_tooltip():
-    if science_tooltip_panel == null or science_pool_label == null:
+    if science_tooltip_panel == null or science_tooltip_vbox == null or science_pool_label == null:
         return
     var label_global := science_pool_label.get_global_rect()
     var local_pos := label_global.position - global_position + Vector2(0, label_global.size.y + 4)
     science_tooltip_panel.position = local_pos
-    # Размер по содержимому.
-    science_tooltip_panel.size = science_tooltip_label.get_minimum_size() + Vector2(12, 8)
+    # Размер по содержимому vbox (как show_built_tooltip в ui_helpers):
+    # сброс размера, минимум контента + отступы 6/6/4/4.
+    science_tooltip_vbox.reset_size()
+    science_tooltip_vbox.position = Vector2(6, 4)
+    science_tooltip_panel.size = science_tooltip_vbox.get_minimum_size() + Vector2(12, 8)
     # Не вылезать за правый/нижний край вьюпорта.
     var vp_size := get_viewport_rect().size
     var panel_global := local_pos + global_position
@@ -1124,9 +1176,10 @@ func update_values():
 func update_progress():
     # Лёгкое обновление: только метка текущего исследования.
     _update_status_label()
-    # Тултип науки живой: пока курсор на метке, текст обновляется каждый тик.
+    # Тултип науки живой: пока курсор на метке, содержимое обновляется каждый
+    # тик (разбивка пересобирается из кэша CityData.science_breakdown).
     if science_tooltip_panel != null and science_tooltip_panel.visible:
-        science_tooltip_label.text = _build_science_tooltip_text()
+        _rebuild_science_tooltip()
         _position_science_tooltip()
 
 func _update_status_label():

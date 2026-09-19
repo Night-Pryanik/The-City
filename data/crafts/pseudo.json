@@ -13,7 +13,7 @@
       "id": "science",
       "name": "Наука",
       "produced_in": [ "library", "scriptorium" ],
-      "resources": { "@writing_mediums": 20 },
+      "resources": { "@writing_materials": 20 },
       "result": {  },
       "display_result": { "science": 1 },
       "time": 5.0,
