@@ -247,6 +247,10 @@ func _build_actions(row: int, col: int, tile: Dictionary):
     # Если состояние действий для этого гекса не изменилось с прошлого раза —
     # не пересоздаём кнопки. Это сохраняет открытые ОС-тултипы (иначе каждый
     # игровой тик пересоздание кнопок сбрасывало бы наведённый тултип).
+    # ВАЖНО: поэтому в тултипы НЕЛЬЗЯ включать значения, меняющиеся каждый тик
+    # (текущая казна, текущий запас еды и т.п.): тогда тултипы отличаются на
+    # каждом тике, сравнение _actions_equal() не совпадает, кнопки пересоздаются
+    # и тултип сбрасывается. Динамические значения игрок смотрит в HUD.
     var actions := _collect_actions(row, col, tile)
     var prev = _last_actions_snapshot
     if prev.get("row", -1) == row and prev.get("col", -1) == col \
@@ -701,7 +705,11 @@ func _collect_region_actions(row: int, col: int) -> Array:
         if main_map.is_scouting:
             tooltip = "Разведка уже идёт"
         else:
-            tooltip = "Отправить разведчиков: %d монет из казны (в казне %d), время [%.0f сек.]" % [cost, CityData.treasury, scout_time]
+            # ВАЖНО: не включать в тултип значения, меняющиеся КАЖДЫЙ ТИК
+            # (текущую казну, текущий запас еды). _build_actions() сравнивает
+            # тултипы между тиками и пересоздаёт кнопки при любом отличии —
+            # это сбрасывает наведённый тултип. Казну игрок всегда видит в HUD.
+            tooltip = "Отправить разведчиков: %d монет из казны, время [%.0f сек.]" % [cost, scout_time]
         actions.append({
             "type": "scout_chunk",
             "label": "Отправить разведчиков",
@@ -729,7 +737,7 @@ func _collect_region_actions(row: int, col: int) -> Array:
     if not has_neighbor:
         buy_tooltip = "Чанк не граничит с вашими владениями"
     else:
-        buy_tooltip = "Освоить чанк (%d клеток): %d монет из казны (в казне %d) и %d труда (%.0f сек.)" % [chunk.size(), money_cost, CityData.treasury, work_cost, work_cost / max(1.0, labor)]
+        buy_tooltip = "Освоить чанк (%d клеток): %d монет из казны и %d труда (%.0f сек.)" % [chunk.size(), money_cost, work_cost, work_cost / max(1.0, labor)]
     actions.append({
         "type": "buy_chunk",
         "label": "Освоить область",
