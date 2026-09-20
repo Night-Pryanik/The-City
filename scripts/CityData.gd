@@ -1335,11 +1335,7 @@ func _complete_research():
         return
     var completed_tech_id = current_research_tech_id
     unlocked_technologies.append(current_research_tech_id)
-    var tech_name = current_research_tech_id
-    for t in GameData.technologies:
-        if t["id"] == current_research_tech_id:
-            tech_name = t["name"]
-            break
+    var tech_name = get_tech_name(current_research_tech_id)
     emit_signal("research_error", "Исследование завершено: " + tech_name)
     # Технология может открывать новые виды ресурсов — спавним их на карте.
     # Сообщения готовим ДО сигнала research_completed, чтобы попап
@@ -1355,6 +1351,15 @@ func _complete_research():
 
 func is_tech_unlocked(tech_id: String) -> bool:
     return tech_id in unlocked_technologies
+
+# Человекочитаемое название технологии по её id (для сообщений игроку и
+# тултипов). Если технология не найдена — возвращается сам id, чтобы в
+# сообщении не оказалось пустой строки.
+func get_tech_name(tech_id: String) -> String:
+    for t in GameData.technologies:
+        if t.get("id", "") == tech_id:
+            return str(t.get("name", tech_id))
+    return tech_id
 
 func _get_tech_data(tech_id: String):
     for t in GameData.technologies:

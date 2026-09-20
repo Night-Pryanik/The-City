@@ -124,8 +124,11 @@ func handle_input(event: InputEvent):
         _handle_mouse_button(event)
     elif event is InputEventMouseMotion:
         _handle_mouse_motion(event)
-        # Обновляем подсветку чанка при наведении на гексы вне Кольца Влияния
-        var h = _pixel_to_hex(event.global_position.x, event.global_position.y)
+        # Обновляем подсветку чанка при наведении на гексы вне Кольца Влияния.
+        # Гекс берём через _interactive_hex_at(): до изучения Картографии
+        # гексы тумана войны (вне Региона) недоступны, и жёлтое выделение
+        # чанка на них не рисуется.
+        var h = _interactive_hex_at(event.global_position.x, event.global_position.y)
         if h != null and not main_map.tile_data[h.row][h.col].get("in_influence", false):
             expansion_manager.update_hovered_chunk(h.row, h.col)
         else:
@@ -276,12 +279,14 @@ func _handle_mouse_button(event: InputEventMouseButton):
     # При перетаскивании обработка уже прервана выше (return при is_dragging).
     if event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
         var mouse_pos = event.global_position
-        var hex = _pixel_to_hex(mouse_pos.x, mouse_pos.y)
+        var hex = _interactive_hex_at(mouse_pos.x, mouse_pos.y)
         if hex != null:
-            # ЛКМ выделяет любой гекс карты, который видно на экране: внутри
-            # Кольца Влияния — информация/действия, вне Кольца — разведка
-            # (в тумане войны и на территории городков тоже) или покупка
-            # чанка (см. control_panel._collect_region_actions).
+            # ЛКМ выделяет любой ДОСТУПНЫЙ гекс, который видно на экране:
+            # внутри Кольца Влияния — информация/действия, вне Кольца —
+            # разведка или покупка чанка (см. control_panel.
+            # _collect_region_actions). До изучения Картографии гексы тумана
+            # войны недоступны (см. main_map.is_hex_interactive): выделить их
+            # нельзя, разведчиков туда не отправить.
             main_map.select_hex(hex.row, hex.col)
             if main_map.tile_data[hex.row][hex.col].get("in_influence", false) \
                     and hex.row == main_map.city_row and hex.col == main_map.city_col:
@@ -300,9 +305,14 @@ func _handle_mouse_button(event: InputEventMouseButton):
                     main_map.open_town_ui(hex.row, hex.col)
                 main_map.last_town_click_time = town_click_time
         else:
-            # Клик ЛКМ по пустому месту (за пределами карты) — снимаем
-            # выделение гекса, если оно было. Клик по гексу в тумане войны
-            # теперь выделяет его: там можно отправить разведчиков.
+            # Клик ЛКМ по недоступному месту: либо пустота за пределами
+            # карты, либо гекс тумана войны до изучения Картографии.
+            # В последнем случае объясняем игроку, чего не хватает, — иначе
+            # клик «молча» ничего не делает.
+            var blocked_hex = _pixel_to_hex(mouse_pos.x, mouse_pos.y)
+            if blocked_hex != null and not main_map.is_cartography_researched():
+                main_map.hud.show_message("Для разведки за пределами Региона нужна технология «%s»"
+                        % main_map.get_cartography_tech_name())
             if main_map.control_panel.has_selection():
                 main_map.clear_selection()
 
@@ -330,7 +340,7 @@ func _handle_mouse_motion(event: InputEventMouseMotion):
                 progress_bar_layer.queue_redraw()
             return
 
-    var hex = _pixel_to_hex(event.global_position.x, event.global_position.y)
+    var hex = _interactive_hex_at(event.global_position.x, event.global_position.y)
     if hex != _hovered_hex:
         _hovered_hex = hex
         _hover_start_time = 0.0
@@ -347,7 +357,7 @@ func _handle_mouse_motion(event: InputEventMouseMotion):
     # изменении чанка, а этот сигнал подключён к main_map._on_chunk_hovered(),
     # который вызывает map_renderer.queue_redraw(). Так мы убираем лишние
     # перерисовки всей карты при каждом движении мыши.
-    var h = _pixel_to_hex(event.global_position.x, event.global_position.y)
+    var h = _interactive_hex_at(event.global_position.x, event.global_position.y)
     if h != null and not main_map.tile_data[h.row][h.col].get("in_influence", false):
         expansion_manager.update_hovered_chunk(h.row, h.col)
     else:
@@ -366,11 +376,12 @@ func _hide_tooltip():
 func _pixel_to_hex(mx: float, my: float):
     # Быстрое обратное преобразование координат: вычисляем приблизительный гекс,
     # затем проверяем его и соседей в небольшом радиусе — вместо итерации по
-    # всей карте. Проверяются гексы ВСЕЙ КАРТЫ, а не только Региона: гексы в
-    # тумане войны тоже можно выделить, чтобы отправить туда разведчиков
-    # (см. control_panel._collect_region_actions). Отдельный предел не нужен:
-    # скролл ограничен main_map.get_max_scroll(), поэтому недостижимые гексы
-    # физически не могут оказаться под курсором.
+    # всей карте. Проверяются гексы ВСЕЙ КАРТЫ: функция отвечает только за
+    # геометрию и не знает игровых правил. Доступность гекса для наведения и
+    # клика проверяется отдельно — см. _interactive_hex_at().
+    # Отдельный предел для всей карты не нужен: скролл ограничен
+    # main_map.get_max_scroll(), поэтому недостижимые гексы физически не могут
+    # оказаться под курсором.
     var radius = main_map.HEX_RADIUS
     var x_spacing = radius * sqrt(3.0)
     var y_spacing = radius * 1.5
@@ -396,3 +407,19 @@ func _pixel_to_hex(mx: float, my: float):
             if HexUtils.point_in_polygon(mx, my, verts):
                 return {"row": row, "col": col}
     return null
+
+# Гекс под курсором, если с ним МОЖНО взаимодействовать: наведение
+# (тултип), подсветка чанка разведки/покупки, выделение кликом ЛКМ.
+# Вне Региона гексы доступны только после изучения технологии
+# «Картография» (туман войны): без неё разведка ограничена Регионом,
+# а гексы тумана войны не реагируют ни на наведение, ни на клик
+# (см. main_map.is_hex_interactive). _pixel_to_hex() остаётся чистой
+# геометрией и используется напрямую там, где правила не нужны
+# (например, дебаг-режим размещения ресурса).
+func _interactive_hex_at(mx: float, my: float):
+    var hex = _pixel_to_hex(mx, my)
+    if hex == null:
+        return null
+    if not main_map.is_hex_interactive(hex.row, hex.col):
+        return null
+    return hex
