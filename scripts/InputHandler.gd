@@ -169,10 +169,13 @@ func handle_process(delta: float):
 
         if scroll != Vector2.ZERO:
             main_map.scroll_offset += scroll
-            var max_scroll_x = ((main_map.region_end_col - main_map.region_start_col + 1) * main_map.HEX_RADIUS)
-            var max_scroll_y = ((main_map.region_end_row - main_map.region_start_row + 1) * main_map.HEX_RADIUS)
-            main_map.scroll_offset.x = clamp(main_map.scroll_offset.x, -max_scroll_x, max_scroll_x)
-            main_map.scroll_offset.y = clamp(main_map.scroll_offset.y, -max_scroll_y, max_scroll_y)
+            # Максимальная дистанция скролла карты — единый источник истины
+            # (main_map.get_max_scroll). Тем же значением ограничивается и
+            # досягаемость гексов: разведку можно отправить только туда,
+            # куда игрок может проскроллить (main_map.get_scout_reach_bounds).
+            var max_scroll = main_map.get_max_scroll()
+            main_map.scroll_offset.x = clamp(main_map.scroll_offset.x, -max_scroll.x, max_scroll.x)
+            main_map.scroll_offset.y = clamp(main_map.scroll_offset.y, -max_scroll.y, max_scroll.y)
             map_renderer.queue_redraw()
             if progress_bar_layer:
                 progress_bar_layer.queue_redraw()
@@ -275,9 +278,10 @@ func _handle_mouse_button(event: InputEventMouseButton):
         var mouse_pos = event.global_position
         var hex = _pixel_to_hex(mouse_pos.x, mouse_pos.y)
         if hex != null:
-            # ЛКМ выделяет любой гекс видимого окна: внутри Кольца Влияния —
-            # информация/действия, вне Кольца — разведка/покупка чанка
-            # (см. control_panel._collect_region_actions).
+            # ЛКМ выделяет любой гекс карты, который видно на экране: внутри
+            # Кольца Влияния — информация/действия, вне Кольца — разведка
+            # (в тумане войны и на территории городков тоже) или покупка
+            # чанка (см. control_panel._collect_region_actions).
             main_map.select_hex(hex.row, hex.col)
             if main_map.tile_data[hex.row][hex.col].get("in_influence", false) \
                     and hex.row == main_map.city_row and hex.col == main_map.city_col:
@@ -286,14 +290,19 @@ func _handle_mouse_button(event: InputEventMouseButton):
                     main_map.open_city()
                 main_map.last_city_click_time = cur_time
             # Двойной клик по гексу городка — переход в его интерфейс (торговля).
-            if main_map.tile_data[hex.row][hex.col].get("has_town", false):
+            # Только для РАСКРЫТОГО гекса: в тумане войны городок виден лишь
+            # намёком (полупрозрачная иконка), и торговля с ним невозможна.
+            var click_tile = main_map.tile_data[hex.row][hex.col]
+            if click_tile.get("has_town", false) \
+                    and (click_tile.get("in_influence", false) or click_tile.get("is_explored", false)):
                 var town_click_time = Time.get_ticks_msec() / 1000.0
                 if town_click_time - main_map.last_town_click_time < 0.5:
                     main_map.open_town_ui(hex.row, hex.col)
                 main_map.last_town_click_time = town_click_time
         else:
-            # Клик ЛКМ по пустому месту (туман войны, за пределами карты) —
-            # снимаем выделение гекса, если оно было.
+            # Клик ЛКМ по пустому месту (за пределами карты) — снимаем
+            # выделение гекса, если оно было. Клик по гексу в тумане войны
+            # теперь выделяет его: там можно отправить разведчиков.
             if main_map.control_panel.has_selection():
                 main_map.clear_selection()
 
@@ -309,10 +318,13 @@ func _handle_mouse_motion(event: InputEventMouseMotion):
         if is_dragging:
             var delta = mouse_pos - drag_start_mouse
             main_map.scroll_offset = drag_start_scroll_offset + delta
-            var max_scroll_x = ((main_map.region_end_col - main_map.region_start_col + 1) * main_map.HEX_RADIUS)
-            var max_scroll_y = ((main_map.region_end_row - main_map.region_start_row + 1) * main_map.HEX_RADIUS)
-            main_map.scroll_offset.x = clamp(main_map.scroll_offset.x, -max_scroll_x, max_scroll_x)
-            main_map.scroll_offset.y = clamp(main_map.scroll_offset.y, -max_scroll_y, max_scroll_y)
+            # Клэмп скролла — единый источник истины (main_map.get_max_scroll).
+            # Та же формула, что и для скролла краями экрана выше; иначе при
+            # перетаскивании карта упиралась бы в границы Региона и нельзя было
+            # бы проскроллить туман войны для разведки.
+            var max_scroll = main_map.get_max_scroll()
+            main_map.scroll_offset.x = clamp(main_map.scroll_offset.x, -max_scroll.x, max_scroll.x)
+            main_map.scroll_offset.y = clamp(main_map.scroll_offset.y, -max_scroll.y, max_scroll.y)
             map_renderer.queue_redraw()
             if progress_bar_layer:
                 progress_bar_layer.queue_redraw()
@@ -353,8 +365,12 @@ func _hide_tooltip():
 
 func _pixel_to_hex(mx: float, my: float):
     # Быстрое обратное преобразование координат: вычисляем приблизительный гекс,
-    # затем проверяем его и соседей в небольшом радиусе. Это заменяет итерацию
-    # по всему региону (Кольцо + Регион) и ускоряет обработку движения мыши.
+    # затем проверяем его и соседей в небольшом радиусе — вместо итерации по
+    # всей карте. Проверяются гексы ВСЕЙ КАРТЫ, а не только Региона: гексы в
+    # тумане войны тоже можно выделить, чтобы отправить туда разведчиков
+    # (см. control_panel._collect_region_actions). Отдельный предел не нужен:
+    # скролл ограничен main_map.get_max_scroll(), поэтому недостижимые гексы
+    # физически не могут оказаться под курсором.
     var radius = main_map.HEX_RADIUS
     var x_spacing = radius * sqrt(3.0)
     var y_spacing = radius * 1.5
@@ -368,10 +384,10 @@ func _pixel_to_hex(mx: float, my: float):
     # Проверяем приблизительный гекс и соседей в радиусе 2
     # (покрывает смещение нечётных рядов и неточность обратного преобразования).
     for row in range(approx_row - 2, approx_row + 3):
-        if row < main_map.region_start_row or row > main_map.region_end_row:
+        if row < 0 or row >= main_map.map_rows:
             continue
         for col in range(approx_col - 2, approx_col + 3):
-            if col < main_map.region_start_col or col > main_map.region_end_col:
+            if col < 0 or col >= main_map.map_cols:
                 continue
             var center = HexUtils.hex_center(row, col, radius)
             center.x += main_map.offset_x + main_map.scroll_offset.x
@@ -379,21 +395,4 @@ func _pixel_to_hex(mx: float, my: float):
             var verts = HexUtils.hex_vertices(center.x, center.y, radius)
             if HexUtils.point_in_polygon(mx, my, verts):
                 return {"row": row, "col": col}
-
-    # Уникальная местность (например, содовое озеро) за пределами Региона:
-    # такие гексы отрисовываются отдельно (см. map_renderer._draw_unique_terrain_hex),
-    # поэтому проверяем их из списка unique_terrain_hexes. Гексы внутри Региона
-    # уже обработаны циклом выше — пропускаем их, чтобы не проверять дважды.
-    for hex_data in main_map.unique_terrain_hexes:
-        var row = hex_data.row
-        var col = hex_data.col
-        if row >= main_map.region_start_row and row <= main_map.region_end_row \
-                and col >= main_map.region_start_col and col <= main_map.region_end_col:
-            continue
-        var center = HexUtils.hex_center(row, col, radius)
-        center.x += main_map.offset_x + main_map.scroll_offset.x
-        center.y += main_map.offset_y + main_map.scroll_offset.y
-        var verts = HexUtils.hex_vertices(center.x, center.y, radius)
-        if HexUtils.point_in_polygon(mx, my, verts):
-            return {"row": row, "col": col}
     return null

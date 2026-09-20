@@ -34,7 +34,10 @@ var influence_start_col: int = 0
 var influence_end_col: int = 0
 
 # Абсолютные границы видимого окна «Кольцо + Регион» (инклюзивные).
-# Всё за пределами этого окна скрыто туманом войны (не отрисовывается).
+# Регион — единственная зона, где можно ПОКУПАТЬ (осваивать) чанки.
+# Разведка этим не ограничена: отправить разведчиков можно в любую точку,
+# достижимую скроллом карты (см. get_scout_reach_bounds). Гексы за окном
+# отрисовываются затемнённым туманом войны без содержимого.
 var region_start_row: int = 0
 var region_end_row: int = 0
 var region_start_col: int = 0
@@ -67,14 +70,15 @@ var offset_x: float = 0.0
 var offset_y: float = 0.0
 var scroll_offset = Vector2.ZERO
 
-# Гексы уникальной местности (например, содовое озеро soda_lake),
-# которые всегда отображаются на карте даже за пределами видимого Региона.
+# Реестр гексов уникальной местности (например, содовое озеро soda_lake).
+# Отрисовку ведёт общий проход рендерера: внутри Региона — детально, за его
+# пределами (туман войны) — затемнённым рельефом без содержимого.
 var unique_terrain_hexes: Array = []
 
-# Гексы с городками. Параллельный список к unique_terrain_hexes: рендерер
-# рисует иконки городков и в видимом Регионе, и ЗА ним (затемнёнными, как
-# неисследованная уникальная местность). Сами гексы помечены флагом
-# tile.has_town, а этот список — для рендерера.
+# Реестр гексов с городками (зеркало town_manager.town_hexes). Сами гексы
+# помечены флагом tile.has_town — именно по нему рендерер рисует иконки:
+# в Регионе и на разведанных гексах — полностью, в тумане войны — намёком
+# (полупрозрачная иконка без имени, только с эпохи >= 1).
 var town_hexes: Array = []
 
 # Гексы колец влияния всех городков. Параллелен town_hexes: живёт в
@@ -1502,8 +1506,67 @@ func is_expansion_mode_active() -> bool:
     return expansion_manager.is_active()
 
 func is_valid_hex(row: int, col: int) -> bool:
-    # Валиден гекс в пределах ВИДИМОГО окна (Кольцо + Регион).
+    # Валиден ли гекс В ПРЕДЕЛАХ РЕГИОНА (Кольцо + Регион).
+    # Используется там, где важна именно принадлежность Региону: покупка
+    # (освоение) чанков, проверка состава чанка. Разведка этим не
+    # ограничена — см. get_scout_reach_bounds().
     return row >= region_start_row and row <= region_end_row and col >= region_start_col and col <= region_end_col
+
+# Возвращает true, если гекс существует на карте (в её границах). Нужен для
+# действий, доступных за пределами Региона, — в первую очередь разведки
+# (см. expansion_manager.get_chunk_hexes).
+func is_hex_on_map(row: int, col: int) -> bool:
+    return row >= 0 and row < map_rows and col >= 0 and col < map_cols
+
+# Максимальная дистанция скролла карты по осям (в пикселях). ЕДИНЫЙ источник
+# истины: тем же значением ограничивается панорамирование в InputHandler и,
+# как следствие, досягаемость гексов для разведки (get_scout_reach_bounds).
+#
+# Считается от размеров Региона (Кольцо + Регион), а не всей карты: это
+# ограничивает видимую скроллом область ближайшими окрестностями Региона —
+# туда должен доставать разведчик (включая туман войны и территорию
+# городков рядом с Регионом), но вся карта НЕ должна быть доступна со
+# старта. С ростом Региона (смена эпохи) дистанция скролла увеличивается
+# вместе с ним.
+func get_max_scroll() -> Vector2:
+    return Vector2(
+        float(region_end_col - region_start_col + 1) * HEX_RADIUS,
+        float(region_end_row - region_start_row + 1) * HEX_RADIUS
+    )
+
+# Возвращает инклюзивные hex-границы области, которую игрок может увидеть
+# прокруткой карты: дальше клэмп get_max_scroll() не пускает. За этими
+# границами нет ни отрисовки тумана, ни возможности клика — именно этой
+# областью ограничивается отправка разведчиков (включая территорию городков
+# и гексы в тумане войны). Покупка чанков при этом по-прежнему ограничена
+# только Регионом (is_valid_hex).
+func get_scout_reach_bounds() -> Dictionary:
+    var viewport_size = Vector2(1152, 768)
+    if not Engine.is_editor_hint():
+        viewport_size = get_viewport_rect().size
+    var max_scroll = get_max_scroll()
+    var x_spacing = HEX_RADIUS * sqrt(3.0)
+    var y_spacing = HEX_RADIUS * 1.5
+    # Объединяем экранный прямоугольник при обоих крайних положениях
+    # скролла: world = -offset - scroll .. -offset - scroll + viewport.
+    var world_left = - (offset_x + max_scroll.x)
+    var world_right = - offset_x + max_scroll.x + viewport_size.x
+    var world_top = - (offset_y + max_scroll.y)
+    var world_bottom = - offset_y + max_scroll.y + viewport_size.y
+    # Запас в 2 гекса: смещение нечётных рядов и частично видимые гексы
+    # у краёв экрана (иначе крайние достижимые гексы «выпадали» бы из
+    # чанков разведки, хотя по ним можно кликнуть).
+    var margin = 2
+    var col_start = int(floor(world_left / x_spacing)) - margin
+    var col_end = int(ceil(world_right / x_spacing)) + margin
+    var row_start = int(floor(world_top / y_spacing)) - margin
+    var row_end = int(ceil(world_bottom / y_spacing)) + margin
+    return {
+        "row_start": max(row_start, 0),
+        "row_end": min(row_end, map_rows - 1),
+        "col_start": max(col_start, 0),
+        "col_end": min(col_end, map_cols - 1)
+    }
 
 func _on_chunk_hovered(_chunk: Array):
     map_renderer.queue_redraw()

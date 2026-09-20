@@ -69,14 +69,29 @@ func initialize(td, main_node):
     # сбрасываем кэш их рендера — пересоберётся лениво со следующим кадром.
     invalidate_town_influence_cache()
 
+# Возвращает размер viewport в пикселях. В редакторе get_viewport_rect()
+# недоступен (нет окна игры) — используем запасное значение, как и раньше.
+func _get_viewport_size() -> Vector2:
+    if Engine.is_editor_hint():
+        return Vector2(1152, 768)
+    return get_viewport_rect().size
+
 # Возвращает словарь с границами видимых гексов (инклюзивно),
-# ограниченными границами региона. Используется для viewport culling:
-# вместо итерации по всему региону рисуем только те гексы, которые
-# пересекают прямоугольник экрана.
+# ограниченными областью, достижимой скроллом карты (scout_reach).
+# Используется для viewport culling: вместо итерации по всей карте
+# рисуем только те гексы, которые пересекают прямоугольник экрана.
+#
+# Область шире Региона — это нужно для двух сценариев:
+#   1. После разведки гексы в тумане войны (вне Региона) должны
+#      отрисовываться как обычные — туман «раскрывается», иначе
+#      разведка не даёт визуального эффекта.
+#   2. Прогресс-бар разведки может лежать в тумане (стартовый гекс
+#      чанка не обязан быть в Регионе).
+# `_draw_hex` и `_draw_hex_overlays` сами решают, что рисовать:
+# неисследованные гексы вне Региона — это настоящий туман войны, и
+# для них функция просто выходит раньше времени.
 func _get_visible_hex_range() -> Dictionary:
-    var viewport_size = Vector2(1152, 768)
-    if not Engine.is_editor_hint():
-        viewport_size = get_viewport_rect().size
+    var viewport_size = _get_viewport_size()
 
     var offset_x = main_map.offset_x + main_map.scroll_offset.x
     var offset_y = main_map.offset_y + main_map.scroll_offset.y
@@ -100,11 +115,12 @@ func _get_visible_hex_range() -> Dictionary:
     var row_start = int(floor(world_top / y_spacing)) - margin
     var row_end = int(ceil(world_bottom / y_spacing)) + margin
 
-    # Ограничиваем границами региона (Кольцо + Регион).
-    col_start = max(col_start, main_map.region_start_col)
-    col_end = min(col_end, main_map.region_end_col)
-    row_start = max(row_start, main_map.region_start_row)
-    row_end = min(row_end, main_map.region_end_row)
+    # Ограничиваем областью, достижимой скроллом карты (scout_reach).
+    var reach = main_map.get_scout_reach_bounds()
+    col_start = max(col_start, reach.col_start)
+    col_end = min(col_end, reach.col_end)
+    row_start = max(row_start, reach.row_start)
+    row_end = min(row_end, reach.row_end)
 
     return {
         "row_start": row_start,
@@ -115,10 +131,7 @@ func _get_visible_hex_range() -> Dictionary:
 
 # Проверяет, пересекается ли прямоугольник (в экранных координатах) с viewport.
 func _is_rect_visible(rect: Rect2) -> bool:
-    var viewport_size = Vector2(1152, 768)
-    if not Engine.is_editor_hint():
-        viewport_size = get_viewport_rect().size
-    var viewport_rect = Rect2(Vector2.ZERO, viewport_size)
+    var viewport_rect = Rect2(Vector2.ZERO, _get_viewport_size())
     return rect.intersects(viewport_rect)
 
 func build_icon_index():
@@ -189,38 +202,29 @@ func _draw():
     # гексы, которые пересекают прямоугольник экрана.
     var visible = _get_visible_hex_range()
 
-    # ФАЗА 1: Рисуем ВИДИМОЕ окно (Кольцо + Регион). Гексы за его пределами
-    # скрыты туманом войны (не отрисовываются вовсе).
+    # ФАЗА 1: Рисуем все гексы, попавшие на экран в пределах досягаемости
+    # скролла. Гексы Региона — детально, гексы за его пределами (туман войны) —
+    # затемнёнными (см. _draw_hex): такие гексы можно выделить и отправить
+    # туда разведчиков. Совсем за пределами досягаемости скролла не рисуется
+    # ничего (см. _get_visible_hex_range).
     for row in range(visible.row_start, visible.row_end + 1):
         for col in range(visible.col_start, visible.col_end + 1):
             _draw_hex(row, col)
 
-    # ФАЗА 1.5: Рисуем уникальную местность (например, содовое озеро soda_lake)
-    # ЗА пределами видимого Региона, если она попадает в viewport. Такие гексы
-    # отображаются затемнёнными (как неисследованный Регион), чтобы их было видно
-    # на фоне тумана войны, но они не раскрывают ресурсы/улучшения.
-    for hex_data in main_map.unique_terrain_hexes:
-        _draw_unique_terrain_hex(hex_data.row, hex_data.col)
-
-    # ФАЗА 1.6: Аналогично для городков ЗА пределами Региона — рисуем
-    # иконку city.png с пониженной прозрачностью, чтобы игрок видел «что-то
-    # есть», но без лишних деталей (без ресурсов/улучшений).
-    # Городки за пределами стартовой области скрыты до перехода в эпоху
-    # Античности (current_era >= 1): в Древней эпохе игрок не должен видеть
-    # даже полупрозрачные иконки городков в тумане войны. После перехода
-    # эпохи (advance_to_next_era) и при загрузке сейва map_renderer
-    # перерисовывается через queue_redraw().
-    if main_map.current_era >= 1:
-        for hex_data in main_map.town_hexes:
-            _draw_town_hex_outside_region(hex_data.row, hex_data.col)
+    # ПРИМЕЧАНИЕ: гексы вне Региона (туман войны) рисует тот же проход
+    # ФАЗЫ 1 — они затемнены в _draw_hex, а их содержимое (ресурсы,
+    # улучшения, кольца городков) скрыто. Отдельные проходы для уникальной
+    # местности и городков за пределами Региона больше не нужны: их
+    # поведение перенесено в _draw_hex и _draw_hex_overlays (иконка городка
+    # в тумане — полупрозрачная и без имени, и только с эпохи >= 1).
 
     # ФАЗА 1.7: Кольца влияния городков — полупрозрачная голубая заливка.
-    # Рисуется ПОСЛЕ terrain (фаза 1) и городков «в тумане» (1.6), но ДО дорог,
-    # рек и иконок (2/2.5/2.75/3) — чтобы заливка подсвечивала местность
-    # и не перекрывала важные детали. По договорённости с пользователем
-    # кольца видны ТОЛЬКО в пределах видимой области (Кольцо + Регион):
-    # за туманом войны они не рисуются, чтобы не «выдавать» содержимое
-    # неисследованной территории.
+    # Рисуется ПОСЛЕ terrain (фаза 1), но ДО дорог, рек и иконок
+    # (2/2.5/2.75/3) — чтобы заливка подсвечивала местность и не перекрывала
+    # важные детали. По договорённости с пользователем кольца видны ТОЛЬКО
+    # в пределах Региона (см. _get_region_visible_range): за туманом войны они
+    # не рисуются, чтобы не «выдавать» содержимое неисследованной территории,
+    # хотя сам туман войны теперь отрисовывается и доступен для разведки.
     _draw_town_influence(visible)
     # ФАЗА 1.7.1: границы колец городков — каждая своим цветом. Рисуются
     # сразу после заливки (поверх неё, поверх terrain), но до дорог/рек/
@@ -251,9 +255,10 @@ func _draw():
                 # Гекс в Кольце Влияния: выделяется только он сам.
                 _draw_selected_hex_highlight(sel.row, sel.col)
             else:
-                # Гекс в Регионе: выделяется весь чанк разведки/покупки —
+                # Гекс вне Кольца: выделяется весь чанк разведки/покупки —
                 # тот же чанк, с которым работают действия панели
-                # (control_panel._collect_region_actions).
+                # (control_panel._collect_region_actions). Чанк может
+                # включать гексы в Регионе и в тумане войны рядом.
                 for chunk_hex in main_map.expansion_manager.get_chunk_hexes(sel.row, sel.col):
                     _draw_selected_hex_highlight(chunk_hex.row, chunk_hex.col)
 
@@ -318,6 +323,14 @@ func _draw_hex(row: int, col: int):
 
     var tile = tile_data[row][col]
     var in_influence = tile.get("in_influence", false)
+    var is_explored = tile.get("is_explored", false)
+
+    # Настоящий туман войны: неисследованный гекс за пределами Региона
+    # вообще не рисуем — виден только тёмный фон канваса. После разведки
+    # (`is_explored = true`) гекс снова отрисовывается как обычный: туман
+    # «раскрывается» и разведка даёт визуальный эффект.
+    if not in_influence and not is_explored and not main_map.is_valid_hex(row, col):
+        return
 
     var terrain_color = Color.BLACK
     var terrain = tile.terrain
@@ -356,100 +369,6 @@ func _draw_hex(row: int, col: int):
 
     if main_map.show_hex_borders:
         draw_polyline(closed_vertices, Color.WHITE, 2, true)
-
-# Рисует уникальную местность (например, содовое озеро) ЗА пределами
-# видимого Региона (туман войны). Рисуется только рельеф (цвет-заглушка),
-# без ресурсов/улучшений/покрова, затемнённый как неисследованный Регион.
-func _draw_unique_terrain_hex(row: int, col: int):
-    # Если гекс уже входит в видимый Регион, его рисует основной проход
-    # (_draw_hex) — здесь пропускаем, чтобы не рисовать дважды.
-    if row >= main_map.region_start_row and row <= main_map.region_end_row \
-            and col >= main_map.region_start_col and col <= main_map.region_end_col:
-        return
-
-    var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
-    center.x += main_map.offset_x + main_map.scroll_offset.x
-    center.y += main_map.offset_y + main_map.scroll_offset.y
-    var vertices = HexUtils.hex_vertices(center.x, center.y, main_map.HEX_RADIUS)
-
-    # Viewport culling: пропускаем, если гекс не пересекает экран.
-    if not _is_rect_visible(Rect2(
-            center.x - main_map.HEX_RADIUS,
-            center.y - main_map.HEX_RADIUS,
-            main_map.HEX_RADIUS * 2,
-            main_map.HEX_RADIUS * 2)):
-        return
-
-    var tile = tile_data[row][col]
-    var terrain_id = tile.get("terrain", "plain")
-    var terrain_color = Color.BLACK
-    if GameData.terrains.has(terrain_id):
-        var t = GameData.terrains[terrain_id]
-        var c = t.get("color", [0, 0, 0])
-        terrain_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
-
-    draw_colored_polygon(vertices, terrain_color)
-
-    # Затемняем как неисследованный регион (туман войны).
-    draw_colored_polygon(vertices, Color(0, 0, 0, 0.5))
-
-    var closed_verts = PackedVector2Array()
-    closed_verts.append_array(vertices)
-    closed_verts.append(vertices[0])
-    if main_map.show_hex_borders:
-        draw_polyline(closed_verts, Color.WHITE, 2, true)
-
-# Рисует гекс с городком ЗА пределами видимого Региона (туман войны).
-# Аналог _draw_unique_terrain_hex: рельеф + затемнение + иконка городка
-# с пониженной alpha, чтобы игрок знал «там что-то есть», но без деталей
-# (ресурсы/улучшения не показываются).
-func _draw_town_hex_outside_region(row: int, col: int):
-    # Если гекс уже входит в видимый Регион, его рисует основной проход
-    # (_draw_hex + _draw_hex_overlays) — здесь пропускаем, чтобы не дублировать.
-    if row >= main_map.region_start_row and row <= main_map.region_end_row \
-            and col >= main_map.region_start_col and col <= main_map.region_end_col:
-        return
-
-    var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
-    center.x += main_map.offset_x + main_map.scroll_offset.x
-    center.y += main_map.offset_y + main_map.scroll_offset.y
-    var vertices = HexUtils.hex_vertices(center.x, center.y, main_map.HEX_RADIUS)
-
-    # Viewport culling: пропускаем, если гекс не пересекает экран.
-    if not _is_rect_visible(Rect2(
-            center.x - main_map.HEX_RADIUS,
-            center.y - main_map.HEX_RADIUS,
-            main_map.HEX_RADIUS * 2,
-            main_map.HEX_RADIUS * 2)):
-        return
-
-    # Рельеф (как у _draw_unique_terrain_hex): фон местности + затемнение.
-    var tile = tile_data[row][col]
-    var terrain_id = tile.get("terrain", "plain")
-    var terrain_color = Color.BLACK
-    if GameData.terrains.has(terrain_id):
-        var t = GameData.terrains[terrain_id]
-        var c = t.get("color", [0, 0, 0])
-        terrain_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
-    draw_colored_polygon(vertices, terrain_color)
-    draw_colored_polygon(vertices, Color(0, 0, 0, 0.5))
-
-    # Иконка городка поверх, с пониженной alpha — «что-то видно, но далеко».
-    if icon_textures.has(TownManager.TOWN_ICON_NAME):
-        var tex = icon_textures[TownManager.TOWN_ICON_NAME]
-        var icon_rect = Rect2(
-            center.x - TownManager.TOWN_ICON_SIZE / 2.0,
-            center.y - TownManager.TOWN_ICON_SIZE / 2.0,
-            TownManager.TOWN_ICON_SIZE,
-            TownManager.TOWN_ICON_SIZE
-        )
-        draw_texture_rect(tex, icon_rect, false, Color(1, 1, 1, TownManager.FOG_TOWN_ICON_ALPHA))
-
-    var closed_verts = PackedVector2Array()
-    closed_verts.append_array(vertices)
-    closed_verts.append(vertices[0])
-    if main_map.show_hex_borders:
-        draw_polyline(closed_verts, Color.WHITE, 2, true)
 
 # --- Кэш рендера колец влияния городков (PHASE 1.7 / 1.7.1) ---
 # Раньше кольца пересчитывались и рисовались КАЖДЫЙ кадр: на каждый гекс
@@ -626,9 +545,22 @@ func _build_town_fill_texture() -> void:
     _influence_texture_origin = Vector2(min_x, min_y)
     _influence_texture_size = Vector2(float(tex_w), float(tex_h))
 
+# Сужает видимый диапазон гексов до границ Региона (Кольцо + Регион).
+# Нужен для колец влияния городков: туман войны теперь отрисовывается и
+# доступен для разведки, но чужая территория в нём не раскрывается —
+# заливка и границы колец рисуются только внутри Региона.
+func _get_region_visible_range(visible: Dictionary) -> Dictionary:
+    return {
+        "row_start": max(visible.row_start, main_map.region_start_row),
+        "row_end": min(visible.row_end, main_map.region_end_row),
+        "col_start": max(visible.col_start, main_map.region_start_col),
+        "col_end": min(visible.col_end, main_map.region_end_col)
+    }
+
 # Рисует кольца влияния всех городков (PHASE 1.7). По договорённости — только
-# для гексов внутри видимой области (visible = Кольцо + Регион): за туманом
-# войны кольца не рисуются, чтобы не «выдавать» неисследованную территорию.
+# для гексов внутри РЕГИОНА (см. _get_region_visible_range): за туманом войны
+# кольца не рисуются, чтобы не «выдавать» неисследованную территорию, хотя
+# сам туман теперь отрисовывается и доступен для разведки.
 # Один кадр = один draw_texture_rect (текстура вырезана по Кольцо+Регион).
 # Fallback на полигоны — только в редакторе или при слишком большом Регионе.
 func _draw_town_influence(visible: Dictionary) -> void:
@@ -646,12 +578,13 @@ func _draw_town_influence(visible: Dictionary) -> void:
                 _influence_texture_size.y), false, Color(1, 1, 1, 1))
         return
     # Fallback: отрисовка гексами (редактор / Регион больше 4096px).
+    var region_visible = _get_region_visible_range(visible)
     for h in _influence_fill_centers:
         var row: int = int(h.row)
         var col: int = int(h.col)
         # Видимость (как раньше): только Кольцо + Регион.
-        if row < visible.row_start or row > visible.row_end \
-                or col < visible.col_start or col > visible.col_end:
+        if row < region_visible.row_start or row > region_visible.row_end \
+                or col < region_visible.col_start or col > region_visible.col_end:
             continue
         var cx: float = float(h.cx) + offset_x
         var cy: float = float(h.cy) + offset_y
@@ -686,14 +619,15 @@ func _draw_town_influence_borders(visible: Dictionary) -> void:
     if main_map == null:
         return
     _ensure_town_influence_cache(visible)
+    var region_visible = _get_region_visible_range(visible)
     var offset_x: float = main_map.offset_x + main_map.scroll_offset.x
     var offset_y: float = main_map.offset_y + main_map.scroll_offset.y
     for seg in _influence_border_segments:
         var row: int = int(seg.row)
         var col: int = int(seg.col)
         # Видимость (как в заливке): только Кольцо + Регион.
-        if row < visible.row_start or row > visible.row_end \
-                or col < visible.col_start or col > visible.col_end:
+        if row < region_visible.row_start or row > region_visible.row_end \
+                or col < region_visible.col_start or col > region_visible.col_end:
             continue
         var p1 := Vector2(float(seg.p1x) + offset_x, float(seg.p1y) + offset_y)
         var p2 := Vector2(float(seg.p2x) + offset_x, float(seg.p2y) + offset_y)
@@ -767,8 +701,16 @@ func _draw_hex_overlays(row: int, col: int):
 
     var tile = tile_data[row][col]
     var in_influence = tile.get("in_influence", false)
+    var is_explored = tile.get("is_explored", false)
 
     if row == main_map.city_row and col == main_map.city_col:
+        return
+
+    # Настоящий туман войны: неисследованный гекс за Регионом — никаких
+    # оверлеев (ресурсы, иконки улучшений, городки, конфликты tech_reveal).
+    # `_draw_hex` уже отказался его рисовать; тут тоже выходим, чтобы
+    # случайно не «выдать» содержимое.
+    if not in_influence and not is_explored and not main_map.is_valid_hex(row, col):
         return
 
     # Ресурсы Региона вне Кольца Влияния скрыты, пока область не разведана.
@@ -897,15 +839,26 @@ func _draw_hex_overlays(row: int, col: int):
     if tile.get("has_town", false) \
             and not (row == main_map.city_row and col == main_map.city_col) \
             and icon_textures.has(TownManager.TOWN_ICON_NAME):
-        var town_tex = icon_textures[TownManager.TOWN_ICON_NAME]
-        var town_rect = Rect2(
-            center.x - TownManager.TOWN_ICON_SIZE / 2.0,
-            center.y - TownManager.TOWN_ICON_SIZE / 2.0,
-            TownManager.TOWN_ICON_SIZE,
-            TownManager.TOWN_ICON_SIZE
-        )
-        draw_texture_rect(town_tex, town_rect, false)
-        _draw_town_name(row, col, center)
+        # Раскрыт ли гекс: в Кольце Влияния или разведан разведчиками.
+        var town_revealed: bool = in_influence or bool(tile.get("is_explored", false))
+        # Раскрытый городок — полная иконка + имя. Неразведанный (туман войны)
+        # виден лишь намёком: полупрозрачная иконка без имени, а до эпохи
+        # Античности (current_era < 1) не показывается вовсе — как и раньше
+        # в отдельном проходе для городков за пределами Региона.
+        if town_revealed or main_map.current_era >= 1:
+            var town_tex = icon_textures[TownManager.TOWN_ICON_NAME]
+            var town_rect = Rect2(
+                center.x - TownManager.TOWN_ICON_SIZE / 2.0,
+                center.y - TownManager.TOWN_ICON_SIZE / 2.0,
+                TownManager.TOWN_ICON_SIZE,
+                TownManager.TOWN_ICON_SIZE
+            )
+            if town_revealed:
+                draw_texture_rect(town_tex, town_rect, false)
+                _draw_town_name(row, col, center)
+            else:
+                draw_texture_rect(town_tex, town_rect, false,
+                        Color(1, 1, 1, TownManager.FOG_TOWN_ICON_ALPHA))
 
     # --- Конфликт «tech_reveal-ресурс vs чужое улучшение» ---
     # Если на гексе стоит улучшение, а под ним нашли скрытый ресурс (tech_reveal
@@ -1020,12 +973,14 @@ func _draw_tech_reveal_warning(center: Vector2):
     draw_string(font, text_pos, text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color.WHITE)
 
 # Рисует подсветку выбранного гекса: полупрозрачная заливка + яркая рамка.
+# Вызывается как для одиночного гекса в Кольце Влияния, так и для каждого
+# гекса SELECTED чанка (Phase 3.5). Чанк может выходить за пределы Региона
+# — в этом случае часть его гексов лежит в тумане войны, и подсветка должна
+# быть видна и там (одинаково с Регионом). Видимостью НЕ фильтруем: гексы
+# уже ограничены либо Кольцом Влияния (одиночный вызов), либо
+# `scout_reach_bounds` (вызов из чанка), а вне viewport канвас сам обрежет
+# отрисовку.
 func _draw_selected_hex_highlight(row: int, col: int):
-    # Если гекс вне видимой области, пропускаем (его всё равно не видно).
-    if row < _get_visible_hex_range().row_start or row > _get_visible_hex_range().row_end \
-            or col < _get_visible_hex_range().col_start or col > _get_visible_hex_range().col_end:
-        return
-
     var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
     center.x += main_map.offset_x + main_map.scroll_offset.x
     center.y += main_map.offset_y + main_map.scroll_offset.y
@@ -1153,8 +1108,9 @@ func _draw_rivers():
 
 
 # Рисует список рек с заданным стилем (берег, тело, блик).
-# Реки обрезаются по границе видимой области (Кольцо + Регион), чтобы не
-# отрисовываться сквозь туман войны за её пределами.
+# Реки обрезаются по прямоугольнику экрана: за его пределами они не видны,
+# а внутри (в том числе в тумане войны, который теперь отрисовывается
+# затемнённым) рисуются полностью.
 func _draw_river_list(river_list: Array, offset_x: float, offset_y: float, radius: float,
         shore_color: Color, shore_width: float,
         body_color: Color, body_width: float,
@@ -1212,10 +1168,12 @@ func _draw_river_list(river_list: Array, offset_x: float, offset_y: float, radiu
                 smooth_points[i].y + offset_y
             )
 
-        # Обрезаем сглаженную линию по видимой области.
-        var region_rect = _get_region_world_rect()
-        region_rect.position += Vector2(offset_x, offset_y)
-        var clipped_lines = _clip_river_to_rect(shifted_points, region_rect)
+        # Обрезаем сглаженную линию по прямоугольнику экрана. Раньше клип шёл
+        # по Региону (туман войны не отрисовывался вовсе), но теперь гексы в
+        # достижимой скроллом полосе рисуются затемнёнными — реки не должны
+        # обрываться на границе Региона.
+        var screen_rect = Rect2(Vector2(-offset_x, -offset_y), _get_viewport_size())
+        var clipped_lines = _clip_river_to_rect(shifted_points, screen_rect)
         if clipped_lines.is_empty():
             continue
 
@@ -1225,22 +1183,6 @@ func _draw_river_list(river_list: Array, offset_x: float, offset_y: float, radiu
             draw_polyline(line, shore_color, shore_width, true)
             draw_polyline(line, body_color, body_width, true)
             draw_polyline(line, highlight_color, highlight_width, true)
-
-
-# Возвращает прямоугольник видимой области (Кольцо + Регион) в world-координатах
-# (без учёта offset). Строится по центрам крайних гексов региона с запасом на
-# пол-гекса, чтобы клиппинг рек совпадал с видимой границей.
-func _get_region_world_rect() -> Rect2:
-    var radius = main_map.HEX_RADIUS
-    var c_tl = HexUtils.hex_center(main_map.region_start_row, main_map.region_start_col, radius)
-    var c_tr = HexUtils.hex_center(main_map.region_start_row, main_map.region_end_col, radius)
-    var c_bl = HexUtils.hex_center(main_map.region_end_row, main_map.region_start_col, radius)
-    var c_br = HexUtils.hex_center(main_map.region_end_row, main_map.region_end_col, radius)
-    var left = min(c_tl.x, c_bl.x) - radius
-    var right = max(c_tr.x, c_br.x) + radius
-    var top = min(c_tl.y, c_tr.y) - radius
-    var bottom = max(c_bl.y, c_br.y) + radius
-    return Rect2(left, top, right - left, bottom - top)
 
 
 # Обрезает отрезок (start -> end) по прямоугольнику rect (алгоритм Лиан–Барски).
@@ -1417,30 +1359,36 @@ func _draw_exploration_highlights():
     if not expansion_manager:
         return
 
-    # --- 1. Рисуем слои: не исследован / исследован (всегда) ---
     var visible = _get_visible_hex_range()
+
+    # --- 1. Зелёная подсветка исследованных гексов (только в видимой области) ---
+    # Вне видимой области (туман войны) terrain не рисуется рендерером, поэтому
+    # зелёный фон для исследованных гексов там не нужен.
     for row in range(visible.row_start, visible.row_end + 1):
         for col in range(visible.col_start, visible.col_end + 1):
             var tile = tile_data[row][col]
             if tile.get("in_influence", false):
                 continue
-
             var is_explored = tile.get("is_explored", false)
-
+            if not is_explored:
+                continue
             var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
             center.x += main.offset_x + main.scroll_offset.x
             center.y += main.offset_y + main.scroll_offset.y
             var vertices = HexUtils.hex_vertices(center.x, center.y, main_map.HEX_RADIUS)
+            # Исследован: светло-зелёный + белая рамка
+            draw_colored_polygon(vertices, Color(0.652, 0.855, 0.652, 0.25))
+            var closed_verts = PackedVector2Array()
+            closed_verts.append_array(vertices)
+            closed_verts.append(vertices[0])
+            draw_polyline(closed_verts, Color.WHITE, 1.5)
 
-            if is_explored:
-                # Исследован: светло-зелёный + белая рамка
-                draw_colored_polygon(vertices, Color(0.652, 0.855, 0.652, 0.25))
-                var closed_verts = PackedVector2Array()
-                closed_verts.append_array(vertices)
-                closed_verts.append(vertices[0])
-                draw_polyline(closed_verts, Color.WHITE, 1.5)
-
-    # --- 2. Жёлтая подсветка чанка под мышью (поверх всего) ---
+    # --- 2. Жёлтая подсветка выделенного чанка (Регион + туман войны) ---
+    # Чанк может включать гексы в тумане войны (разведка) — подсветка рисуется
+    # ДЛЯ КАЖДОГО гекса чанка, без фильтра по видимой области. Иначе в тумане
+    # игрок не видит, какой именно участок сейчас выделен и куда полетят
+    # разведчики. Заливку делаем чуть ярче, чтобы жёлтый контрастно читался
+    # на тёмном фоне канваса тумана.
     var chunk = expansion_manager.current_chunk
     if chunk.is_empty():
         return

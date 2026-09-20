@@ -42,30 +42,44 @@ func get_hex_cost(row: int, col: int) -> int:
     return int(ceil(float(base_cost) * MapHelpers.get_construction_cost_mult()))
 
 # Возвращает чанк (список гексов), который включает стартовый гекс.
-# Чанк однороден по статусу исследования: если стартовый гекс не исследован,
-# в чанк включаются только неисследованные гексы (для разведки).
-# Если стартовый гекс исследован — только исследованные (для освоения).
-#
-# Чанк НЕ заходит в кольцо влияния чужого городка: гексы с in_town_influence
-# пропускаются при BFS так же, как гексы уже в Кольце Влияния игрока.
-# Если сам стартовый гекс лежит в кольце — возвращается пустой массив:
-# покупать там нечего, осваивать чужую территорию запрещено (см. design_doc.md,
-# раздел «Кольцо влияния»). Это согласуется с тем, что build_manager
+# Чанк однороден по статусу исследования стартового гекса, и от этого
+# статуса зависит его назначение:
+#   - стартовый гекс НЕ исследован → чанк для РАЗВЕДКИ. BFS идёт по всей
+#     области, достижимой скроллом карты (main_map.get_scout_reach_bounds),
+#     пропуская только Кольцо Влияния игрока. Кольца влияния чужих городков
+#     ПРОХОДИМЫ: разведчиков разрешено посылать в туман войны и на территорию
+#     городков (см. design_doc.md, раздел «Карта и мир»).
+#   - стартовый гекс исследован → чанк для ПОКУПКИ (освоения). BFS ограничен
+#     Регионом (main_map.is_valid_hex), а гексы in_town_influence пропускаются:
+#     осваивать можно только свою будущую территорию внутри Региона.
+# Если стартовый гекс исследован и лежит в кольце влияния чужого городка или
+# вне Региона — возвращается пустой массив: покупать там нечего, осваивать
+# чужую территорию запрещено. Это согласуется с тем, что build_manager
 # отклоняет строительство на гексах в кольце.
 func get_chunk_hexes(start_row: int, start_col: int) -> Array:
     var chunk = []
-    # Стартовый гекс лежит в кольце влияния чужого городка — никаких действий.
-    # Этот короткий circuit важно оставить ДО любых других проверок: иначе
-    # BFS всё равно добавит стартовый гекс в чанк, и панель покажет
-    # «Освоить область (1 клетка)» на гексе, который освоить нельзя.
     var start_tile = main_map.tile_data[start_row][start_col]
-    if start_tile != null and bool(start_tile.get("in_town_influence", false)):
+    if start_tile == null:
         return chunk
+    var start_explored: bool = bool(start_tile.get("is_explored", false))
+    # Покупка возможна только на исследованном гексе внутри Региона и не на
+    # территории чужого городка. Проверки идут ДО BFS: иначе он добавил бы
+    # стартовый гекс в чанк, и панель показала бы «Освоить область» там, где
+    # осваивать нельзя. Для разведки (неисследованный гекс) таких запретов нет.
+    if start_explored:
+        if bool(start_tile.get("in_town_influence", false)):
+            return chunk
+        if not main_map.is_valid_hex(start_row, start_col):
+            return chunk
     var visited = {}
     var queue = [ {"row": start_row, "col": start_col}]
     var key = str(start_row) + "," + str(start_col)
     visited[key] = true
-    var start_explored = main_map.tile_data[start_row][start_col].get("is_explored", false)
+    # Область, доступная разведке: все гексы, достижимые скроллом карты.
+    # Считается один раз; границы уже обрезаны по краям карты.
+    var scout_reach: Dictionary = {}
+    if not start_explored:
+        scout_reach = main_map.get_scout_reach_bounds()
 
     while queue.size() > 0 and chunk.size() < 5:
         var current = queue.pop_front()
@@ -75,22 +89,32 @@ func get_chunk_hexes(start_row: int, start_col: int) -> Array:
             var n_key = str(n.row) + "," + str(n.col)
             if visited.has(n_key):
                 continue
-            if not main_map.is_valid_hex(n.row, n.col):
-                continue
+            if start_explored:
+                # Покупка (освоение): только Регион.
+                if not main_map.is_valid_hex(n.row, n.col):
+                    continue
+            else:
+                # Разведка: только то, что достижимо скроллом карты.
+                if n.row < scout_reach.row_start or n.row > scout_reach.row_end \
+                        or n.col < scout_reach.col_start or n.col > scout_reach.col_end:
+                    continue
             var tile = main_map.tile_data[n.row][n.col]
+            if tile == null:
+                continue
             if tile.get("in_influence", false):
                 continue
-            # Гексы в кольце влияния чужого городка — не часть покупаемого
-            # чанка. Пропускаем так же, как in_influence выше; ring-гексы
-            # становятся «непроходимым барьером» для BFS, и чанк естественно
-            # ограничивается границей кольца (но не «обходит» его с другой
-            # стороны, потому что у BFS лимит 5 и нет обходных путей вокруг
-            # целого кольца — что и нужно по дизайну).
-            if tile.get("in_town_influence", false):
+            # Гексы в кольце влияния чужого городка НЕ входят в чанк покупки:
+            # пропускаем так же, как in_influence выше. Ring-гексы становятся
+            # «непроходимым барьером» для BFS, и чанк естественно ограничивается
+            # границей кольца (но не «обходит» его с другой стороны, потому что
+            # у BFS лимит 5 и нет обходных путей вокруг целого кольца).
+            # Для РАЗВЕДКИ чужое кольцо проходимо: разведчиков можно послать
+            # и на территорию городка.
+            if start_explored and bool(tile.get("in_town_influence", false)):
                 continue
             # Исключаем гексы с отличающимся статусом исследования,
             # чтобы не включать в чанк разведки уже исследованные гексы
-            if tile.get("is_explored", false) != start_explored:
+            if bool(tile.get("is_explored", false)) != start_explored:
                 continue
             visited[n_key] = true
             queue.append(n)

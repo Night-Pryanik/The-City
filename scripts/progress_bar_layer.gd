@@ -24,7 +24,10 @@ func _draw():
             _draw_progress_bars(row, col)
 
 # Возвращает словарь с границами видимых гексов (инклюзивно),
-# ограниченными границами региона. Используется для viewport culling.
+# ограниченными областью, достижимой скроллом карты (scout_reach).
+# Используется для viewport culling. Границы шире Региона: стартовый
+# гекс чанка разведки может лежать в тумане войны (за Регионом), и
+# прогресс-бар разведки должен быть виден и там.
 func _get_visible_hex_range() -> Dictionary:
     var viewport_size = Vector2(1152, 768)
     if not Engine.is_editor_hint():
@@ -49,10 +52,14 @@ func _get_visible_hex_range() -> Dictionary:
     var row_start = int(floor(world_top / y_spacing)) - margin
     var row_end = int(ceil(world_bottom / y_spacing)) + margin
 
-    col_start = max(col_start, main_map.region_start_col)
-    col_end = min(col_end, main_map.region_end_col)
-    row_start = max(row_start, main_map.region_start_row)
-    row_end = min(row_end, main_map.region_end_row)
+    # Ограничиваем областью, достижимой скроллом карты: прогресс-бар
+    # разведки должен быть виден и в тумане войны (стартовый гекс чанка
+    # может лежать за Регионом).
+    var reach = main_map.get_scout_reach_bounds()
+    col_start = max(col_start, reach.col_start)
+    col_end = min(col_end, reach.col_end)
+    row_start = max(row_start, reach.row_start)
+    row_end = min(row_end, reach.row_end)
 
     return {
         "row_start": row_start,

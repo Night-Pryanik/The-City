@@ -48,7 +48,12 @@ func _town_name_for_hex(row: int, col: int) -> String:
 
 func _territory_lines_for(tile: Dictionary, row: int, col: int) -> Array:
     var lines: Array = []
-    var town_name = _town_name_for_hex(row, col)
+    # Имя городка НЕ раскрывается на неразведанном гексе: в тумане войны игрок
+    # видит только «что-то есть» (полупрозрачную иконку), а название узнаёт
+    # после разведки. На раскрытых гексах (Кольцо или разведанные) — как было.
+    var revealed: bool = bool(tile.get("in_influence", false)) \
+            or bool(tile.get("is_explored", false))
+    var town_name = _town_name_for_hex(row, col) if revealed else ""
     if bool(tile.get("in_town_influence", false)):
         lines.append("Территория города %s" % town_name if town_name != "" else "Территория города")
     if bool(tile.get("has_town", false)):
@@ -301,18 +306,15 @@ func _build_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_c
         return uniq_text
 
     if not is_revealed:
-        # Неисследованный гекс в Регионе: стандартный текст с подсказкой
-        # про разведку. Для кольца городка подсказку убираем — там разведка
-        # не поможет (build_manager всё равно запретит стройку), и приписка
-        # только путает.
+        # Неисследованный гекс (в Регионе или в тумане войны): стандартный
+        # текст с подсказкой про разведку. Разведчиков можно послать в любую
+        # точку, достижимую скроллом, — включая территорию городков, поэтому
+        # подсказка одинакова для всех неисследованных гексов.
         var text: String = "Местность: %s" % terrain_with_cover
         var terr: Array = _territory_lines_for(tile, row, col)
         if not terr.is_empty():
             text += "\n" + "\n".join(terr)
-        if bool(tile.get("in_town_influence", false)):
-            text += "\nРесурс: неизвестно"
-        else:
-            text += "\nРесурс: неизвестно (проведите разведку)"
+        text += "\nРесурс: неизвестно (проведите разведку)"
         return text
 
     var imp_name = GameData.improvements.get(tile.improvement, {}).get("name", "нет") if tile.improvement != null else "нет"

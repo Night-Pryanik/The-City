@@ -178,15 +178,17 @@ func get_selected_hex():
     return _selected_hex
 
 # Обновляет панель. Вызывается при внешних изменениях (сигналы) и при
-# выделении/сбросе. Если выделенный гекс стал невалидным (например, после
-# перехода в новую эпоху) — снимаем выделение.
+# выделении/сбросе. Если выделенного гекса больше нет на карте (например,
+# загружен сейв с картой другого размера) — снимаем выделение.
+# Проверка именно по границам КАРТЫ: выделять гексы вне Региона (туман войны,
+# территория городков) теперь можно — там доступна разведка.
 func refresh():
     if _selected_hex == null:
         _clear_ui()
         return
     var row = _selected_hex.row
     var col = _selected_hex.col
-    if not main_map.is_valid_hex(row, col):
+    if not main_map.is_hex_on_map(row, col):
         clear_selection()
         return
     _refresh()
@@ -321,7 +323,11 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
     # спецдействия — по дизайну это «чужое» место. Единственное действие —
     # переход в интерфейс городка (торговля). Появляется по одиночному клику
     # на гекс городка; тот же переход доступен по двойному клику (InputHandler).
-    if tile.get("has_town", false):
+    # Только для РАСКРЫТОГО гекса: неразведанный городок в тумане войны
+    # показывается лишь полупрозрачной иконкой, и торговать с ним нельзя —
+    # такой гекс обрабатывается как обычный гекс разведки (ниже).
+    if tile.get("has_town", false) \
+            and (in_influence or tile.get("is_explored", false)):
         var town_rec = null
         if main_map.town_manager != null:
             town_rec = main_map.town_manager.find_town_at(row, col)
@@ -343,8 +349,10 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
         return actions
 
     # Гекс вне Кольца Влияния — действия через панель управления:
-    #   неисследованная область → «Разведать регион»;
+    #   неисследованная область (в т.ч. туман войны и территория городков) →
+    #     «Отправить разведчиков»: доступно везде, куда можно проскроллить;
     #   исследованная → «Освоить область» (покупка чанка за еду + труд).
+    #     Покупка возможна только внутри Региона (см. _collect_region_actions).
     if not in_influence:
         return _collect_region_actions(row, col)
 
@@ -637,12 +645,39 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
     return actions
 
 # Добавляет спец-действия (special_actions.json), применимые к гексу.
-# Собирает действия для гекса вне Кольца Влияния (Регион):
-# неисследованная область — разведка чанка; исследованная — покупка (освоение).
+# Собирает действия для гекса вне Кольца Влияния:
+#   неисследованная область (включая туман войны и территорию городков) —
+#     разведка чанка: доступна на всём, что достижимо скроллом карты;
+#   исследованная область — покупка (освоение), но ТОЛЬКО в пределах Региона.
 func _collect_region_actions(row: int, col: int) -> Array:
     var actions := []
+    var tile = main_map.get_tile_data(row, col)
+    if tile == null:
+        return actions
     var chunk = main_map.expansion_manager.get_chunk_hexes(row, col)
     if chunk.is_empty():
+        # Пустой чанк — действий нет, но игрок должен понимать ПОЧЕМУ.
+        # Для исследованного гекса показываем неактивную кнопку освоения
+        # с причиной; для неисследованного пустой чанк не встречается.
+        if not bool(tile.get("is_explored", false)):
+            return actions
+        var reason := ""
+        if bool(tile.get("in_town_influence", false)):
+            reason = "Освоить нельзя: территория чужого городка"
+        elif not main_map.is_valid_hex(row, col):
+            reason = "Осваивать можно только чанки в Регионе"
+        if reason == "":
+            return actions
+        actions.append({
+            "type": "buy_chunk",
+            "label": "Освоить область",
+            "enabled": false,
+            "tooltip": reason,
+            "chunk": [],
+            "food_cost": 0,
+            "work_cost": 0,
+            "icon": "check.svg"
+        })
         return actions
 
     var unexplored_count := 0
@@ -666,7 +701,7 @@ func _collect_region_actions(row: int, col: int) -> Array:
             tooltip = "Подготовить экспедицию [еды: %d/%d] и отправить разведчиков [%.0f сек.]" % [cost, available_food, scout_time]
         actions.append({
             "type": "scout_chunk",
-            "label": "Разведать регион",
+            "label": "Отправить разведчиков",
             "enabled": not main_map.is_scouting,
             "tooltip": tooltip,
             "chunk": chunk,
