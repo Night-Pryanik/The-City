@@ -354,7 +354,7 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
     #     неисследованной части Региона (в тумане войны чанк не собирается,
     #     см. expansion_manager.get_chunk_hexes); после Картографии — везде,
     #     куда можно проскроллить;
-    #   исследованная → «Освоить область» (покупка чанка за еду + труд).
+    #   исследованная → «Освоить область» (покупка чанка за монеты из казны + труд).
     #     Покупка возможна только внутри Региона (см. _collect_region_actions).
     if not in_influence:
         return _collect_region_actions(row, col)
@@ -678,7 +678,7 @@ func _collect_region_actions(row: int, col: int) -> Array:
             "enabled": false,
             "tooltip": reason,
             "chunk": [],
-            "food_cost": 0,
+            "money_cost": 0,
             "work_cost": 0,
             "icon": "check.svg"
         })
@@ -690,19 +690,18 @@ func _collect_region_actions(row: int, col: int) -> Array:
             unexplored_count += 1
 
     if unexplored_count > 0:
-        # Неисследованный чанк: отправить разведчиков.
-        var cost = unexplored_count * 3
+        # Неисследованный чанк: отправить разведчиков. Экспедиция оплачивается
+        # МОНЕТАМИ из казны: цена — сумма по гексам чанка (база
+        # scouting_cost_per_hex и универсальный модификатор дальности
+        # distance_cost_modifier_per_hex из data/game_balance.json, см.
+        # expansion_manager.get_chunk_scout_cost).
+        var cost = main_map.expansion_manager.get_chunk_scout_cost(chunk)
         var scout_time = main_map._get_scouting_time(unexplored_count)
-        # Доступно еды (только «активные» источники из пула питания города).
-        var available_food := 0
-        for pid in CityData.city_food_pool:
-            if CityData.city_food_pool[pid]:
-                available_food += CityData.city_storage.get(pid, 0)
         var tooltip: String
         if main_map.is_scouting:
             tooltip = "Разведка уже идёт"
         else:
-            tooltip = "Подготовить экспедицию [еды: %d/%d] и отправить разведчиков [%.0f сек.]" % [cost, available_food, scout_time]
+            tooltip = "Отправить разведчиков: %d монет из казны (в казне %d), время [%.0f сек.]" % [cost, CityData.treasury, scout_time]
         actions.append({
             "type": "scout_chunk",
             "label": "Отправить разведчиков",
@@ -714,7 +713,7 @@ func _collect_region_actions(row: int, col: int) -> Array:
         })
         return actions
 
-    # Исследованный чанк: покупка (освоение) за еду + труд.
+    # Исследованный чанк: покупка (освоение) за монеты из казны + труд.
     var has_neighbor = false
     for hex in chunk:
         for n in HexUtils.get_neighbors_odd_r(hex.row, hex.col, main_map.map_rows, main_map.map_cols):
@@ -723,21 +722,21 @@ func _collect_region_actions(row: int, col: int) -> Array:
                 break
         if has_neighbor:
             break
-    var food_cost = main_map.expansion_manager.get_chunk_food_cost(chunk)
+    var money_cost = main_map.expansion_manager.get_chunk_money_cost(chunk)
     var work_cost = main_map.expansion_manager.get_chunk_cost(chunk)
     var labor = CityData.get_total_labor()
     var buy_tooltip: String
     if not has_neighbor:
         buy_tooltip = "Чанк не граничит с вашими владениями"
     else:
-        buy_tooltip = "Освоить чанк (%d клеток): %d еды сразу и %d труда (%.0f сек.)" % [chunk.size(), food_cost, work_cost, work_cost / max(1.0, labor)]
+        buy_tooltip = "Освоить чанк (%d клеток): %d монет из казны (в казне %d) и %d труда (%.0f сек.)" % [chunk.size(), money_cost, CityData.treasury, work_cost, work_cost / max(1.0, labor)]
     actions.append({
         "type": "buy_chunk",
         "label": "Освоить область",
         "enabled": has_neighbor,
         "tooltip": buy_tooltip,
         "chunk": chunk,
-        "food_cost": food_cost,
+        "money_cost": money_cost,
         "work_cost": work_cost,
         "icon": "check.svg"
     })
@@ -834,15 +833,17 @@ func _on_action_pressed(action: Dictionary):
             main_map.open_town_ui(_selected_hex.row, _selected_hex.col)
         return
     if type == "scout_chunk":
-        # Разведка чанка: списываем еду и отправляем разведчиков (время).
-        main_map.start_scouting(action.get("chunk", []), action.get("cost", 0))
+        # Разведка чанка: списываем монеты из казны и отправляем разведчиков
+        # (время). Цена считается внутри start_scouting — единый источник истины.
+        main_map.start_scouting(action.get("chunk", []))
         main_map.redraw_progress_layer()
         _refresh()
         return
     if type == "buy_chunk":
-        # Покупка (освоение) чанка: еда сразу, труд накапливается через стройку.
+        # Покупка (освоение) чанка: монеты из казны сразу, труд накапливается
+        # через стройку.
         var ok = main_map.expansion_manager.handle_action(
-            action.get("chunk", []), action.get("food_cost", 0), action.get("work_cost", 0))
+            action.get("chunk", []), action.get("money_cost", 0), action.get("work_cost", 0))
         if ok:
             main_map.map_renderer.queue_redraw()
             if main_map.city_ui.visible:
@@ -1139,8 +1140,9 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     _preview_container.add_child(terrain_label)
 
     var dist_label = Label.new()
-    # Расчёт множителя расстояния: исходный (1 + гексов × 0.25) плюс
-    # влияние изученных технологий (например, «Колесо» -30%).
+    # Расчёт множителя расстояния: исходный (1 + гексов × УНИВЕРСАЛЬНЫЙ
+    # модификатор дальности из data/game_balance.json) плюс влияние изученных
+    # технологий (например, «Колесо» -30%).
     var dist_text: String = " Расстояние до города: %d гекс(а) → база ×%.2f" % [cost_data["distance"], cost_data["distance_mult_base"]]
     if cost_data.has("distance_tech_mult") and cost_data["distance_tech_mult"] != 1.0:
         dist_text += ", технологии ×%.2f" % cost_data["distance_tech_mult"]

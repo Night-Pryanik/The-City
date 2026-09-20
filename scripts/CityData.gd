@@ -243,6 +243,19 @@ func add_treasury(amount: int) -> void:
     treasury += amount
     emit_signal("treasury_changed", treasury)
 
+# Списывает монеты из казны (оплата разведки, освоения чанка и т.п.).
+# Возвращает false и НИЧЕГО не списывает, если монет не хватает: казна никогда
+# не уходит в минус, а вызывающий сам показывает игроку причину отказа.
+# Неположительная сумма — «бесплатное» действие: считаем его успешным.
+func spend_treasury(amount: int) -> bool:
+    if amount <= 0:
+        return true
+    if treasury < amount:
+        return false
+    treasury -= amount
+    emit_signal("treasury_changed", treasury)
+    return true
+
 # Возвращает цену, по которой внутренний рынок покупает у города единицу
 # товара pid (в монетах казны). Это доля базовой цены товара (price из
 # data/products/*.json), заданная множителем internal_market_price_multiplier

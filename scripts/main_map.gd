@@ -1947,7 +1947,7 @@ func _on_townsfolk_assignment_changed():
 func _get_scouting_time(hex_count: int) -> float:
     return hex_count * SCOUTING_TIME_PER_HEX
 
-func start_scouting(chunk: Array, cost: int):
+func start_scouting(chunk: Array):
     if is_scouting:
         hud.show_message("Разведка уже идёт!")
         return
@@ -1962,30 +1962,20 @@ func start_scouting(chunk: Array, cost: int):
                 hud.show_message("Для разведки за пределами Региона нужна технология «%s»"
                         % get_cartography_tech_name())
                 return
-    var available_food = 0
-    for pid in CityData.city_food_pool:
-        if CityData.city_food_pool[pid]:
-            available_food += CityData.city_storage.get(pid, 0)
-    if available_food < cost:
-        hud.show_message("Недостаточно еды! Нужно %d" % cost)
+    # Цена экспедиции НЕ принимается параметром: единый источник истины —
+    # expansion_manager.get_chunk_scout_cost() (база и модификатор дальности
+    # из data/game_balance.json). Иначе UI и фактическое списание могли бы
+    # разойтись. Оплата — монетами из казны города, сразу.
+    var expedition_cost: int = expansion_manager.get_chunk_scout_cost(chunk)
+    if not CityData.spend_treasury(expedition_cost):
+        hud.show_message("Недостаточно монет в казне! Нужно %d, в казне %d"
+                % [expedition_cost, CityData.treasury])
         return
-    # Списываем еду
-    var remaining = cost
-    var active_food = []
-    for pid in CityData.city_food_pool:
-        if CityData.city_food_pool[pid] and CityData.city_storage.get(pid, 0) > 0:
-            active_food.append(pid)
-    while remaining > 0 and active_food.size() > 0:
-        var pid = active_food[randi() % active_food.size()]
-        CityData.remove_from_storage(pid, 1, "best")
-        remaining -= 1
-        if CityData.city_storage.get(pid, 0) <= 0:
-            active_food.erase(pid)
     scouting_chunk = chunk
     scouting_timer = 0.0
     is_scouting = true
     _redraw_progress_layer()
-    hud.show_message("Разведчики отправлены...")
+    hud.show_message("Разведчики отправлены... (оплачено %d монет из казны)" % expedition_cost)
 
 func _complete_scouting():
     for hex in scouting_chunk:

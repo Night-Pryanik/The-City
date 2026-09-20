@@ -1,11 +1,14 @@
 # expansion_manager.gd
 extends Node
 
-# Еда за освоение — фиксированная, небольшая. Обоснование: поселенцы
-# запасаются едой перед походом в новые регионы. Основная стоимость
-# освоения — ТРУД (см. expansion_cost в terrains.json), который
-# накапливается через стройку в build_manager.
-const FOOD_COST_PER_HEX = 50
+# Стоимости территории (разведка и освоение) — в МОНЕТАХ из казны города.
+# Базовая цена одного гекса и универсальный модификатор дальности берутся из
+# data/game_balance.json (см. get_scout_cost_per_hex / get_expansion_cost_per_hex
+# и MapHelpers.get_distance_mult), то есть хардкода цен здесь нет.
+# Освоение дополнительно требует ТРУД (см. expansion_cost в terrains.json),
+# который накапливается через стройку в build_manager. Решение по балансу:
+# труд остаётся ПЛОСКИМ и расстоянием НЕ масштабируется — дальше от города
+# дорожает только денежная часть (логистика), а не сама работа.
 
 var is_expansion_mode = false
 var hexes_bought = 0
@@ -40,6 +43,30 @@ func get_hex_cost(row: int, col: int) -> int:
     # Модификаторы технологий (target = "construction_cost", см. data/modifiers.json)
     # также снижают стоимость освоения территории (труд накапливается через стройку).
     return int(ceil(float(base_cost) * MapHelpers.get_construction_cost_mult()))
+
+# Базовая цена разведки одного гекса в монетах казны (data/game_balance.json).
+func get_scout_cost_per_hex() -> int:
+    return int(GameData.game_balance.get("scouting_cost_per_hex", 3))
+
+# Базовая цена освоения одного гекса в монетах казны (data/game_balance.json).
+# Труд считается отдельно — см. get_hex_cost().
+func get_expansion_cost_per_hex() -> int:
+    return int(GameData.game_balance.get("expansion_cost_per_hex", 5))
+
+# Цена РАЗВЕДКИ одного гекса: база × универсальный модификатор дальности
+# (MapHelpers.get_distance_mult — значение из game_balance.json). По аналогии
+# со строительством улучшений (MapHelpers.get_improvement_work_cost) дальние
+# гексы дороже, но БЕЗ тех-модификаторов: «Колесо» — про перевозку грузов,
+# разведчики же идут пешком или едут на лошадях.
+func get_hex_scout_cost(row: int, col: int) -> int:
+    var distance := HexUtils.hex_distance(row, col, main_map.city_row, main_map.city_col)
+    return int(ceil(float(get_scout_cost_per_hex()) * MapHelpers.get_distance_mult(distance)))
+
+# Цена ОСВОЕНИЯ одного гекса в монетах: база × универсальный модификатор
+# дальности. Списывается сразу при старте освоения (труд — отдельно, см. get_hex_cost).
+func get_hex_money_cost(row: int, col: int) -> int:
+    var distance := HexUtils.hex_distance(row, col, main_map.city_row, main_map.city_col)
+    return int(ceil(float(get_expansion_cost_per_hex()) * MapHelpers.get_distance_mult(distance)))
 
 # Возвращает чанк (список гексов), который включает стартовый гекс.
 # Чанк однороден по статусу исследования стартового гекса, и от этого
@@ -162,13 +189,26 @@ func get_chunk_cost(chunk: Array) -> int:
         total += get_hex_cost(hex.row, hex.col)
     return total
 
-# Стоимость ЕДЫ всего чанка — фиксированная, небольшая.
-func get_chunk_food_cost(chunk: Array) -> int:
-    return chunk.size() * FOOD_COST_PER_HEX
+# Цена РАЗВЕДКИ всего чанка в монетах казны = сумма цен по гексам (каждый гекс
+# со своим модификатором дальности от города).
+func get_chunk_scout_cost(chunk: Array) -> int:
+    var total = 0
+    for hex in chunk:
+        total += get_hex_scout_cost(hex.row, hex.col)
+    return total
 
-# Запускает освоение чанка. Еда списывается сразу (фиксированная, небольшая),
-# а труд накапливается через стройку в build_manager (прогресс во времени).
-func handle_action(chunk: Array, food_cost: int, work_cost: int) -> bool:
+# Цена ОСВОЕНИЯ всего чанка в монетах казны = сумма цен по гексам.
+# Труд чанка считается отдельно — get_chunk_cost().
+func get_chunk_money_cost(chunk: Array) -> int:
+    var total = 0
+    for hex in chunk:
+        total += get_hex_money_cost(hex.row, hex.col)
+    return total
+
+# Запускает освоение чанка. Монеты (цена чанка, см. get_chunk_money_cost)
+# списываются сразу из казны, а труд накапливается через стройку в
+# build_manager (прогресс во времени).
+func handle_action(chunk: Array, money_cost: int, work_cost: int) -> bool:
     # --- Защитный повтор: чанк не должен содержать гексов из кольца влияния
     # чужого городка. get_chunk_hexes этого не допускает, но handle_action —
     # публичная точка входа: сюда могут приходить чанки из других путей
@@ -184,31 +224,21 @@ func handle_action(chunk: Array, food_cost: int, work_cost: int) -> bool:
             main_map.hud.show_message("Чанк пересекается с кольцом влияния чужого городка — покупка невозможна")
             return false
 
-    # --- Проверка и списание еды (запас поселенцев перед походом) ---
-    var available_food = 0
-    for pid in CityData.city_food_pool:
-        if CityData.city_food_pool[pid]:
-            available_food += CityData.city_storage.get(pid, 0)
-    if available_food < food_cost:
-        main_map.hud.show_message("Недостаточно еды! Нужно %d, есть %d" % [food_cost, available_food])
+    # --- Проверка и списание монет из казны ---
+    if not CityData.spend_treasury(money_cost):
+        main_map.hud.show_message("Недостаточно монет в казне! Нужно %d, в казне %d"
+                % [money_cost, CityData.treasury])
         return false
-
-    var remaining = food_cost
-    var active_food = []
-    for pid in CityData.city_food_pool:
-        if CityData.city_food_pool[pid] and CityData.city_storage.get(pid, 0) > 0:
-            active_food.append(pid)
-    while remaining > 0 and active_food.size() > 0:
-        var pid = active_food[randi() % active_food.size()]
-        CityData.remove_from_storage(pid, 1, "best")
-        remaining -= 1
-        if CityData.city_storage.get(pid, 0) <= 0:
-            active_food.erase(pid)
 
     # --- Запуск стройки освоения (труд накапливается во времени) ---
     var bm = main_map.build_manager
     if bm and bm.has_method("start_expansion_build"):
-        return bm.start_expansion_build(chunk, work_cost)
+        if bm.start_expansion_build(chunk, work_cost):
+            return true
+        # Стройка не запустилась (например, исчерпан лимит одновременных
+        # строек) — возвращаем монеты, чтобы они не пропали.
+        CityData.add_treasury(money_cost)
+        return false
     # Fallback: если build_manager недоступен — осваиваем мгновенно.
     _complete_expansion(chunk)
     return true

@@ -20,6 +20,21 @@ static func get_construction_cost_mult() -> float:
             construction_tech_mult *= 1.0 + value / 100.0
     return construction_tech_mult
 
+## Универсальный модификатор дальности: прибавка к стоимости действия за каждый
+## гекс расстояния от города (доля; 0.25 = +25% за гекс). Источник —
+## data/game_balance.json, поле "distance_cost_modifier_per_hex".
+## ЕДИНОЕ значение для всех зависящих от расстояния стоимостей: труд
+## строительства улучшений и спецдействий (get_improvement_work_cost), монеты
+## разведки и освоения чанка (expansion_manager). НЕ хардкодить локально —
+## иначе баланс расползётся по файлам.
+static func get_distance_cost_modifier() -> float:
+    return float(GameData.game_balance.get("distance_cost_modifier_per_hex", 0.25))
+
+## Множитель стоимости от расстояния до города (в гексах) БЕЗ тех-модификаторов:
+## 1 + расстояние × get_distance_cost_modifier().
+static func get_distance_mult(distance: int) -> float:
+    return 1.0 + float(distance) * get_distance_cost_modifier()
+
 ## Возвращает фактическую стоимость труда для постройки улучшения imp_id на гексе (row, col).
 ## Стоимость зависит от базового work_cost улучшения, типа местности (move_cost) и
 ## расстояния от города. Возвращает словарь с итоговой стоимостью и деталями расчёта
@@ -76,9 +91,13 @@ static func get_improvement_work_cost(
             var value = float(mod.get("value", 0))
             distance_tech_mult *= 1.0 + value / 100.0
 
-    # Исходный множитель расстояния (без влияния технологий) и итоговый с учётом тех-модификаторов.
-    var distance_mult_base := 1.0 + float(distance) * 0.25
-    var distance_mult := 1.0 + float(distance) * 0.25 * distance_tech_mult
+    # Исходный множитель расстояния (УНИВЕРСАЛЬНОЕ значение из
+    # data/game_balance.json — поле distance_cost_modifier_per_hex) и итоговый
+    # с учётом тех-модификаторов. Значение одно для улучшений, спецдействий,
+    # разведки и освоения — см. get_distance_cost_modifier().
+    var distance_modifier := get_distance_cost_modifier()
+    var distance_mult_base := get_distance_mult(distance)
+    var distance_mult := 1.0 + float(distance) * distance_modifier * distance_tech_mult
 
     var final_cost := int(ceil(base_cost * terrain_mult * distance_mult * get_construction_cost_mult()))
 
