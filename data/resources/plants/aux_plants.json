@@ -29,7 +29,7 @@
       "improved_by": "plantation",
       "tech_required": "plantations",
       "produces": { "coffee_beans": 10, "feed": 40 },
-      "icon": "coffee_plant.png",
+      "icon": "coffee.png",
       "color": [ 200, 255, 200 ]
     }
   ]

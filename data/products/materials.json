@@ -60,7 +60,7 @@
       "type": "product",
       "category": "material",
       "unlock_tech": "fermentation",
-      "icon": "tea.png"
+      "icon": "tea_leaves.png"
     },
     {
       "id": "coffee_beans", "price": 7,
@@ -68,7 +68,7 @@
       "type": "product",
       "category": "material",
       "unlock_tech": "fermentation",
-      "icon": "coffee.png"
+      "icon": "coffee_beans.png"
     },
     {
       "id": "sisal", "price": 6,
