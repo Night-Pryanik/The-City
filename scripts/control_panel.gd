@@ -679,7 +679,7 @@ func _collect_region_actions(row: int, col: int) -> Array:
         if bool(tile.get("in_town_influence", false)):
             reason = "Освоить нельзя: территория чужого городка"
         elif not main_map.is_valid_hex(row, col):
-            reason = "Осваивать можно только чанки в Регионе"
+            reason = "Осваивать можно только области в Регионе"
         if reason == "":
             return actions
         actions.append({
@@ -711,14 +711,14 @@ func _collect_region_actions(row: int, col: int) -> Array:
         # территории (Кольцо Влияния или разведанные гексы) — см.
         # main_map.is_chunk_adjacent_to_known. Чанк при этом остаётся собранным:
         # жёлтая подсветка и неактивная кнопка с причиной объясняют игроку
-        # правило (тот же UX, что у освоения: «Чанк не граничит с вашими
+        # правило (тот же UX, что у освоения: Область не граничит с вашими
         # владениями» ниже).
         var known_neighbor: bool = main_map.is_chunk_adjacent_to_known(chunk)
         var tooltip: String
         if main_map.is_scouting:
             tooltip = "Разведка уже идёт"
         elif not known_neighbor:
-            tooltip = "Чанк не граничит с исследованной территорией"
+            tooltip = "Область не граничит с исследованной территорией"
         else:
             # ВАЖНО: не включать в тултип значения, меняющиеся КАЖДЫЙ ТИК
             # (текущую казну, текущий запас еды). _build_actions() сравнивает
@@ -750,9 +750,9 @@ func _collect_region_actions(row: int, col: int) -> Array:
     var labor = CityData.get_total_labor()
     var buy_tooltip: String
     if not has_neighbor:
-        buy_tooltip = "Чанк не граничит с вашими владениями"
+        buy_tooltip = "Область не граничит с вашими владениями"
     else:
-        buy_tooltip = "Освоить чанк (%d клеток): %d монет из казны и %d труда (%.0f сек.)" % [chunk.size(), money_cost, work_cost, work_cost / max(1.0, labor)]
+        buy_tooltip = "Освоить область (%d клеток): %d монет из казны и %d труда (%.0f сек.)" % [chunk.size(), money_cost, work_cost, work_cost / max(1.0, labor)]
     actions.append({
         "type": "buy_chunk",
         "label": "Освоить область",

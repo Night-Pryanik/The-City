@@ -256,16 +256,16 @@ func _draw():
     if main_map.control_panel and main_map.control_panel.has_selection():
         var sel = main_map.control_panel.get_selected_hex()
         if sel != null:
-            if main_map.tile_data[sel.row][sel.col].get('in_influence', false):
-                # Гекс в Кольце Влияния: выделяется только он сам.
-                _draw_selected_hex_highlight(sel.row, sel.col)
-            else:
-                # Гекс вне Кольца: выделяется весь чанк разведки/покупки —
-                # тот же чанк, с которым работают действия панели
-                # (control_panel._collect_region_actions). Чанк может
-                # включать гексы в Регионе и в тумане войны рядом.
-                for chunk_hex in main_map.expansion_manager.get_chunk_hexes(sel.row, sel.col):
-                    _draw_selected_hex_highlight(chunk_hex.row, chunk_hex.col)
+            # Жёлто-оранжевая заливка + рамка. Набор гексов считает
+            # expansion_manager.get_highlight_hexes(): гекс в Кольце Влияния —
+            # только он сам; вне Кольца — весь чанк разведки/покупки (тот же
+            # чанк, с которым работают действия панели, см.
+            # control_panel._collect_region_actions); если чанка нет
+            # (исследованный гекс вне Региона или гекс в кольце влияния чужого
+            # городка) — сам гекс, чтобы клик не был «молчаливым». Чанк может
+            # включать гексы в Регионе и в тумане войны рядом.
+            for highlight_hex in main_map.expansion_manager.get_highlight_hexes(sel.row, sel.col):
+                _draw_selected_hex_highlight(highlight_hex.row, highlight_hex.col)
 
     # ФАЗА 4: Рисуем город в конце
     var offset_pos = Vector2(
@@ -1381,12 +1381,11 @@ func _draw_exploration_highlights():
             center.x += main.offset_x + main.scroll_offset.x
             center.y += main.offset_y + main.scroll_offset.y
             var vertices = HexUtils.hex_vertices(center.x, center.y, main_map.HEX_RADIUS)
-            # Исследован: светло-зелёный + белая рамка
+            # Исследован: только светло-зелёная заливка — белой рамки здесь нет
+            # намеренно: она сливалась с сеткой гексов и визуально «раздувала»
+            # разведанную область. Рамку рисуют только hover/выделение чанка
+            # (см. _draw_selected_hex_highlight).
             draw_colored_polygon(vertices, Color(0.652, 0.855, 0.652, 0.25))
-            var closed_verts = PackedVector2Array()
-            closed_verts.append_array(vertices)
-            closed_verts.append(vertices[0])
-            draw_polyline(closed_verts, Color.WHITE, 1.5)
 
     # --- 2. Жёлтая подсветка выделенного чанка (Регион + туман войны) ---
     # Чанк может включать гексы в тумане войны (разведка) — подсветка рисуется
@@ -1400,9 +1399,17 @@ func _draw_exploration_highlights():
     # путали бы игрока (см. main_map.is_cartography_researched). Чанки,
     # собранные expansion_manager, это правило уже соблюдают — фильтр ниже
     # страховочный (например, устаревший current_chunk после загрузки сейва).
-    var chunk = expansion_manager.current_chunk
+    var chunk: Array = expansion_manager.current_chunk
     if chunk.is_empty():
-        return
+        # Чанка под курсором нет (исследованный гекс вне Региона или гекс в
+        # кольце влияния чужого городка): подсвечиваем сам гекс под курсором —
+        # тем же цветом, что и чанк. Иначе наведение было бы «молчаливым», а
+        # клик по такому гексу подсветку уже даёт (см. ФАЗУ 3.5 и
+        # expansion_manager.get_highlight_hexes).
+        var hover_hex = expansion_manager.current_hover_hex
+        if hover_hex == null:
+            return
+        chunk = expansion_manager.get_highlight_hexes(hover_hex.row, hover_hex.col)
 
     var cartography: bool = main_map.is_cartography_researched()
     for hex in chunk:

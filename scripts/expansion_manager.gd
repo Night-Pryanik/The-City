@@ -171,6 +171,30 @@ func get_chunk_hexes(start_row: int, start_col: int) -> Array:
             queue.append(n)
     return chunk
 
+# Возвращает гексы, которые надо подсветить при наведении или выделении гекса
+# (row, col) — единая точка правды для рендерера (ФАЗА 2.5 hover и ФАЗА 3.5
+# выделение), чтобы подсветка не расходилась с чанком, с которым работают
+# действия панели:
+#   - гекс в Кольце Влияния → только он сам;
+#   - иначе → чанк разведки/покупки (get_chunk_hexes);
+#   - если чанка нет (исследованный гекс вне Региона или гекс в кольце влияния
+#     чужого городка) → сам гекс: наведение и клик не должны быть
+#     «молчаливыми» — игрок видит, что именно выбрал, а панель управления
+#     объясняет, почему действие недоступно.
+func get_highlight_hexes(row: int, col: int) -> Array:
+    var single := [{"row": row, "col": col}]
+    if not main_map.is_hex_on_map(row, col):
+        return []
+    var tile = main_map.tile_data[row][col]
+    if tile == null:
+        return []
+    if bool(tile.get("in_influence", false)):
+        return single
+    var chunk = get_chunk_hexes(row, col)
+    if chunk.is_empty():
+        return single
+    return chunk
+
 # Обновляет текущий подсвеченный чанк
 func update_hovered_chunk(row: int, col: int):
     current_hover_hex = {"row": row, "col": col}
