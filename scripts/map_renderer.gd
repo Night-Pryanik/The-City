@@ -256,7 +256,7 @@ func _draw():
     if main_map.control_panel and main_map.control_panel.has_selection():
         var sel = main_map.control_panel.get_selected_hex()
         if sel != null:
-            # Жёлто-оранжевая заливка + рамка. Набор гексов считает
+            # Заливка + рамка. Набор гексов считает
             # expansion_manager.get_highlight_hexes(): гекс в Кольце Влияния —
             # только он сам; вне Кольца — весь чанк разведки/покупки (тот же
             # чанк, с которым работают действия панели, см.
@@ -264,8 +264,12 @@ func _draw():
             # (исследованный гекс вне Региона или гекс в кольце влияния чужого
             # городка) — сам гекс, чтобы клик не был «молчаливым». Чанк может
             # включать гексы в Регионе и в тумане войны рядом.
-            for highlight_hex in main_map.expansion_manager.get_highlight_hexes(sel.row, sel.col):
-                _draw_selected_hex_highlight(highlight_hex.row, highlight_hex.col)
+            # Цвета — по типу чанка (разведка/освоение × можно/нельзя), см.
+            # _get_highlight_style; стиль считается один раз на весь набор.
+            var selected_hexes: Array = main_map.expansion_manager.get_highlight_hexes(sel.row, sel.col)
+            var style: Dictionary = _get_highlight_style(selected_hexes, sel.row, sel.col, true)
+            for highlight_hex in selected_hexes:
+                _draw_selected_hex_highlight(highlight_hex.row, highlight_hex.col, style)
 
     # ФАЗА 4: Рисуем город в конце
     var offset_pos = Vector2(
@@ -977,29 +981,88 @@ func _draw_tech_reveal_warning(center: Vector2):
     var text_pos = Vector2(cx - text_size.x / 2.0, cy + text_size.y / 2.0 - 1)
     draw_string(font, text_pos, text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color.WHITE)
 
+# Возвращает стиль подсветки чанка — {"fill": Color, "border": Color,
+# "width": float} — по четырём типам чанков. Палитра «хюэ = действие,
+# обесцвечивание = действие недоступно» (вариант 1):
+#   - разведка прилегающего чанка    → голубой (можно исследовать);
+#   - разведка неприлегающего чанка  → серо-голубой (нельзя);
+#   - освоение прилегающего чанка    → жёлтый / жёлто-оранжевый (можно
+#     осваивать; одиночный гекс в Кольце Влияния — тоже он: своя территория);
+#   - освоение неприлегающего чанка  → серо-жёлтый (нельзя).
+# anchor_row/anchor_col — гекс, с которого начато выделение (наведение/клик):
+# его статус определяет тип действия (is_explored/in_influence → освоение,
+# иначе → разведка; чанк гомогенен по статусу, поэтому расхождений нет).
+# Доступность считается так же, как в control_panel._collect_region_actions:
+#   - освоение: чанк непуст, гекс не в кольце чужого городка, внутри Региона
+#     и хотя бы один гекс чанка примыкает к in_influence (своя территория —
+#     всегда «доступно»);
+#   - разведка: main_map.is_chunk_adjacent_to_known (примыкание к известному
+#     миру) — тот же гейт, что у кнопки «Отправить разведчиков».
+# Состояние is_scouting (экспедиция уже идёт) НЕ серим: это временный
+# режим, а не свойство чанка. selected = false → наведение (тонкая рамка),
+# true → клик (толстая рамка).
+func _get_highlight_style(chunk: Array, anchor_row: int, anchor_col: int, selected: bool) -> Dictionary:
+    var tile = null
+    if main_map.is_hex_on_map(anchor_row, anchor_col):
+        tile = main_map.tile_data[anchor_row][anchor_col]
+    var acquire: bool = tile != null \
+            and (bool(tile.get("is_explored", false)) \
+            or bool(tile.get("in_influence", false)))
+    var available := false
+    if acquire:
+        if tile != null and bool(tile.get("in_influence", false)):
+            available = true
+        elif tile != null and not bool(tile.get("in_town_influence", false)) \
+                and main_map.is_valid_hex(anchor_row, anchor_col):
+            for hex in chunk:
+                for n in HexUtils.get_neighbors_odd_r(hex.row, hex.col, main_map.map_rows, main_map.map_cols):
+                    if bool(main_map.tile_data[n.row][n.col].get("in_influence", false)):
+                        available = true
+                        break
+                if available:
+                    break
+    else:
+        available = not chunk.is_empty() and main_map.is_chunk_adjacent_to_known(chunk)
+    if acquire:
+        if available:
+            if selected:
+                return {"fill": Color(1.0, 0.9, 0.3, 0.25), "border": Color(1.0, 0.85, 0.2, 0.95), "width": 3.0}
+            return {"fill": Color(1.0, 1.0, 0.0, 0.3), "border": Color(1.0, 1.0, 0.0, 0.9), "width": 2.0}
+        if selected:
+            return {"fill": Color(0.72, 0.67, 0.48, 0.16), "border": Color(0.58, 0.54, 0.42, 0.8), "width": 3.0}
+        return {"fill": Color(0.72, 0.67, 0.48, 0.2), "border": Color(0.58, 0.54, 0.42, 0.85), "width": 2.0}
+    if available:
+        if selected:
+            return {"fill": Color(0.3, 0.72, 1.0, 0.25), "border": Color(0.2, 0.62, 1.0, 0.95), "width": 3.0}
+        return {"fill": Color(0.35, 0.78, 1.0, 0.3), "border": Color(0.3, 0.72, 1.0, 0.9), "width": 2.0}
+    if selected:
+        return {"fill": Color(0.58, 0.68, 0.75, 0.18), "border": Color(0.5, 0.57, 0.63, 0.8), "width": 3.0}
+    return {"fill": Color(0.58, 0.68, 0.75, 0.22), "border": Color(0.5, 0.57, 0.63, 0.85), "width": 2.0}
+
 # Рисует подсветку выбранного гекса: полупрозрачная заливка + яркая рамка.
 # Вызывается как для одиночного гекса в Кольце Влияния, так и для каждого
-# гекса SELECTED чанка (Phase 3.5). Чанк может выходить за пределы Региона
-# — в этом случае часть его гексов лежит в тумане войны, и подсветка должна
-# быть видна и там (одинаково с Регионом). Видимостью НЕ фильтруем: гексы
-# уже ограничены либо Кольцом Влияния (одиночный вызов), либо
-# `scout_reach_bounds` (вызов из чанка), а вне viewport канвас сам обрежет
-# отрисовку.
-func _draw_selected_hex_highlight(row: int, col: int):
+# гекса SELECTED чанка (Phase 3.5). Цвета берутся из style — см.
+# _get_highlight_style (четыре типа чанков: разведка/освоение × можно/
+# нельзя). Чанк может выходить за пределы Региона — в этом случае часть его
+# гексов лежит в тумане войны, и подсветка должна быть видна и там (одинаково
+# с Регионом). Видимостью НЕ фильтруем: гексы уже ограничены либо Кольцом
+# Влияния (одиночный вызов), либо `scout_reach_bounds` (вызов из чанка), а
+# вне viewport канвас сам обрежет отрисовку.
+func _draw_selected_hex_highlight(row: int, col: int, style: Dictionary):
     var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
     center.x += main_map.offset_x + main_map.scroll_offset.x
     center.y += main_map.offset_y + main_map.scroll_offset.y
     var vertices = PackedVector2Array()
     vertices.append_array(HexUtils.hex_vertices(center.x, center.y, main_map.HEX_RADIUS))
 
-    # Лёгкая жёлтая заливка (полупрозрачная, поверх terrain, но под иконками ресурсов/улучшений).
-    draw_colored_polygon(vertices, Color(1.0, 0.9, 0.3, 0.25))
+    # Полупрозрачная заливка (поверх terrain, но под иконками ресурсов/улучшений).
+    draw_colored_polygon(vertices, style.fill)
 
-    # Яркая жёлто-белая рамка.
+    # Яркая рамка.
     var closed_vertices = PackedVector2Array()
     closed_vertices.append_array(vertices)
     closed_vertices.append(vertices[0])
-    draw_polyline(closed_vertices, Color(1.0, 0.85, 0.2, 0.95), 3.0)
+    draw_polyline(closed_vertices, style.border, style.width)
 
 # Рисует заполненный (сложную) звезду.
 func _draw_star(cx: float, cy: float, r_outer: float, r_inner: float, color: Color):
@@ -1387,29 +1450,35 @@ func _draw_exploration_highlights():
             # (см. _draw_selected_hex_highlight).
             draw_colored_polygon(vertices, Color(0.652, 0.855, 0.652, 0.25))
 
-    # --- 2. Жёлтая подсветка выделенного чанка (Регион + туман войны) ---
+    # --- 2. Подсветка выделенного чанка (Регион + туман войны) ---
     # Чанк может включать гексы в тумане войны (разведка) — подсветка рисуется
     # ДЛЯ КАЖДОГО гекса чанка, без фильтра по видимой области. Иначе в тумане
     # игрок не видит, какой именно участок сейчас выделен и куда полетят
-    # разведчики. Заливку делаем чуть ярче, чтобы жёлтый контрастно читался
-    # на тёмном фоне канваса тумана.
+    # разведчики. Цвет зависит от типа чанка (разведка/освоение × можно/
+    # нельзя — см. _get_highlight_style): голубой / жёлтый, серый подтон —
+    # действие недоступно.
     #
     # До изучения Картографии подсветка НЕ выходит за пределы Региона: там
-    # разведка недоступна, и жёлтые гексы на тёмном канвасе тумана только
-    # путали бы игрока (см. main_map.is_cartography_researched). Чанки,
+    # разведка недоступна, и подсветка на тёмном канвасе тумана только
+    # путала бы игрока (см. main_map.is_cartography_researched). Чанки,
     # собранные expansion_manager, это правило уже соблюдают — фильтр ниже
     # страховочный (например, устаревший current_chunk после загрузки сейва).
     var chunk: Array = expansion_manager.current_chunk
+    var anchor = expansion_manager.current_hover_hex
     if chunk.is_empty():
         # Чанка под курсором нет (исследованный гекс вне Региона или гекс в
         # кольце влияния чужого городка): подсвечиваем сам гекс под курсором —
         # тем же цветом, что и чанк. Иначе наведение было бы «молчаливым», а
         # клик по такому гексу подсветку уже даёт (см. ФАЗУ 3.5 и
         # expansion_manager.get_highlight_hexes).
-        var hover_hex = expansion_manager.current_hover_hex
-        if hover_hex == null:
+        if anchor == null:
             return
-        chunk = expansion_manager.get_highlight_hexes(hover_hex.row, hover_hex.col)
+        chunk = expansion_manager.get_highlight_hexes(anchor.row, anchor.col)
+    if anchor == null:
+        # Устаревший current_chunk без гекса под курсором (страховка):
+        # берём первый гекс чанка как точку отсчёта для классификации.
+        anchor = chunk[0]
+    var style: Dictionary = _get_highlight_style(chunk, anchor.row, anchor.col, false)
 
     var cartography: bool = main_map.is_cartography_researched()
     for hex in chunk:
@@ -1419,11 +1488,11 @@ func _draw_exploration_highlights():
         center.x += main.offset_x + main.scroll_offset.x
         center.y += main.offset_y + main.scroll_offset.y
         var vertices = HexUtils.hex_vertices(center.x, center.y, main_map.HEX_RADIUS)
-        draw_colored_polygon(vertices, Color(1.0, 1.0, 0.0, 0.3))
+        draw_colored_polygon(vertices, style.fill)
         var closed_verts = PackedVector2Array()
         closed_verts.append_array(vertices)
         closed_verts.append(vertices[0])
-        draw_polyline(closed_verts, Color.YELLOW, 2.0)
+        draw_polyline(closed_verts, style.border, style.width)
 
 func get_icon_path(icon_name: String) -> String:
     if icon_paths.has(icon_name):
