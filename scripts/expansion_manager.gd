@@ -171,16 +171,62 @@ func get_chunk_hexes(start_row: int, start_col: int) -> Array:
             queue.append(n)
     return chunk
 
+# Возвращает чанк ПОДСВЕТКИ (до 5 гексов) для ИССЛЕДОВАННОГО гекса, у которого
+# нет чанка действий (вне Региона — покупка там невозможна). Строится BFS
+# наружу от гекса под курсором (как чанки разведки/покупки — лимит 5), по
+# разведанным гексам; in_influence и in_town_influence в чанк не входят.
+# Результат сортируется канонически (row, col), поэтому один и тот же набор,
+# построенный от разных гексов участка, даёт идентичный массив — детекция
+# изменений в update_hovered_chunk не считает его новым чанком.
+func _get_explored_chunk_hexes(start_row: int, start_col: int) -> Array:
+    var chunk = []
+    if not main_map.is_hex_on_map(start_row, start_col):
+        return chunk
+    var start_tile = main_map.tile_data[start_row][start_col]
+    if start_tile == null or not bool(start_tile.get("is_explored", false)):
+        return chunk
+    var visited = {}
+    var queue = [{"row": start_row, "col": start_col}]
+    visited[str(start_row) + "," + str(start_col)] = true
+    while queue.size() > 0 and chunk.size() < 5:
+        var current = queue.pop_front()
+        chunk.append(current)
+        for n in _get_neighbors(current.row, current.col):
+            var n_key = str(n.row) + "," + str(n.col)
+            if visited.has(n_key):
+                continue
+            if not main_map.is_hex_on_map(n.row, n.col):
+                continue
+            var tile = main_map.tile_data[n.row][n.col]
+            if tile == null:
+                continue
+            if not bool(tile.get("is_explored", false)):
+                continue
+            if bool(tile.get("in_influence", false)) \
+                    or bool(tile.get("in_town_influence", false)):
+                continue
+            visited[n_key] = true
+            queue.append(n)
+    # Канонический порядок: подсветка одного участка не должна зависеть от
+    # того, с какого его гекса начался BFS.
+    chunk.sort_custom(func(a, b):
+        if a.row != b.row:
+            return a.row < b.row
+        return a.col < b.col)
+    return chunk
+
 # Возвращает гексы, которые надо подсветить при наведении или выделении гекса
 # (row, col) — единая точка правды для рендерера (ФАЗА 2.5 hover и ФАЗА 3.5
 # выделение), чтобы подсветка не расходилась с чанком, с которым работают
 # действия панели:
 #   - гекс в Кольце Влияния → только он сам;
 #   - иначе → чанк разведки/покупки (get_chunk_hexes);
-#   - если чанка нет (исследованный гекс вне Региона или гекс в кольце влияния
-#     чужого городка) → сам гекс: наведение и клик не должны быть
-#     «молчаливыми» — игрок видит, что именно выбрал, а панель управления
-#     объясняет, почему действие недоступно.
+#   - если чанка нет, а гекс ИССЛЕДОВАН (разведанная область вне Региона —
+#     покупать там нельзя) → чанк подсветки до 5 гексов, построенный наружу
+#     от гекса под курсором (_get_explored_chunk_hexes): наведение и клик не
+#     должны быть «молчаливыми»;
+#   - если чанка нет и гекс в кольце влияния чужого городка (или в тумане без
+#     Картографии) → сам гекс.
 func get_highlight_hexes(row: int, col: int) -> Array:
     var single := [{"row": row, "col": col}]
     if not main_map.is_hex_on_map(row, col):
@@ -192,16 +238,27 @@ func get_highlight_hexes(row: int, col: int) -> Array:
         return single
     var chunk = get_chunk_hexes(row, col)
     if chunk.is_empty():
+        # Исследованный гекс вне Региона → чанк подсветки. Гекс в кольце
+        # чужого городка — исключение: там покупка запрещена всегда, и
+        # подсвечиваем только сам гекс (BFS не должен «выходить» из кольца
+        # на соседние разведанные гексы).
+        if bool(tile.get("is_explored", false)) \
+                and not bool(tile.get("in_town_influence", false)):
+            return _get_explored_chunk_hexes(row, col)
         return single
     return chunk
 
-# Обновляет текущий подсвеченный чанк
+# Обновляет текущий подсвеченный чанк. Детекция изменений и хранение идут по
+# НАБОРУ ПОДСВЕТКИ (get_highlight_hexes), а не по чанку действий: у
+# исследованных гексов вне Региона чанк действий всегда пуст, и сравнение
+# [] == [] не давало сигнала — подсветка «застывала» на предыдущей позиции
+# курсора при переходе между такими участками.
 func update_hovered_chunk(row: int, col: int):
     current_hover_hex = {"row": row, "col": col}
-    var chunk = get_chunk_hexes(row, col)
-    if _chunk_equals(chunk, current_chunk):
+    var highlight = get_highlight_hexes(row, col)
+    if _chunk_equals(highlight, current_chunk):
         return
-    current_chunk = chunk
+    current_chunk = highlight
     emit_signal("chunk_hovered", current_chunk)
 
 func clear_hovered_chunk():
