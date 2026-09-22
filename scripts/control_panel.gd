@@ -357,7 +357,9 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
     #     «Отправить разведчиков»: до изучения Картографии — только в
     #     неисследованной части Региона (в тумане войны чанк не собирается,
     #     см. expansion_manager.get_chunk_hexes); после Картографии — везде,
-    #     куда можно проскроллить;
+    #     куда можно проскроллить. В обоих случаях чанк обязан примыкать к
+    #     известной территории (Кольцо Влияния или разведанные гексы) —
+    #     см. main_map.is_chunk_adjacent_to_known;
     #   исследованная → «Освоить область» (покупка чанка за монеты из казны + труд).
     #     Покупка возможна только внутри Региона (см. _collect_region_actions).
     if not in_influence:
@@ -656,6 +658,10 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
 #   неисследованная область — разведка чанка: до изучения Картографии
 #     только в неисследованной части Региона, после — на всём, что
 #     достижимо скроллом карты (включая туман войны и территорию городков);
+#     и в том, и в другом случае чанк обязан примыкать к известной
+#     территории (Кольцо Влияния или разведанные гексы) — иначе кнопка
+#     разведки показывается неактивной с причиной
+#     (см. main_map.is_chunk_adjacent_to_known);
 #   исследованная область — покупка (освоение), но ТОЛЬКО в пределах Региона.
 func _collect_region_actions(row: int, col: int) -> Array:
     var actions := []
@@ -701,9 +707,18 @@ func _collect_region_actions(row: int, col: int) -> Array:
         # expansion_manager.get_chunk_scout_cost).
         var cost = main_map.expansion_manager.get_chunk_scout_cost(chunk)
         var scout_time = main_map._get_scouting_time(unexplored_count)
+        # Разведку можно отправить только в чанк, примыкающий к известной
+        # территории (Кольцо Влияния или разведанные гексы) — см.
+        # main_map.is_chunk_adjacent_to_known. Чанк при этом остаётся собранным:
+        # жёлтая подсветка и неактивная кнопка с причиной объясняют игроку
+        # правило (тот же UX, что у освоения: «Чанк не граничит с вашими
+        # владениями» ниже).
+        var known_neighbor: bool = main_map.is_chunk_adjacent_to_known(chunk)
         var tooltip: String
         if main_map.is_scouting:
             tooltip = "Разведка уже идёт"
+        elif not known_neighbor:
+            tooltip = "Чанк не граничит с исследованной территорией"
         else:
             # ВАЖНО: не включать в тултип значения, меняющиеся КАЖДЫЙ ТИК
             # (текущую казну, текущий запас еды). _build_actions() сравнивает
@@ -713,7 +728,7 @@ func _collect_region_actions(row: int, col: int) -> Array:
         actions.append({
             "type": "scout_chunk",
             "label": "Отправить разведчиков",
-            "enabled": not main_map.is_scouting,
+            "enabled": not main_map.is_scouting and known_neighbor,
             "tooltip": tooltip,
             "chunk": chunk,
             "cost": cost,

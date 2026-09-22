@@ -1548,6 +1548,38 @@ func is_hex_interactive(row: int, col: int) -> bool:
         return true
     return is_cartography_researched()
 
+# Гекс уже известен игроку: своё Кольцо Влияния (in_influence) или
+# разведанный гекс (is_explored). Это «граница известного мира» — только от
+# неё можно отправлять разведчиков дальше (см. is_chunk_adjacent_to_known).
+# Кольца влияния чужих городков сюда НЕ входят: их территория не наша.
+# Флаг is_explored у Кольца Влияния намеренно не выставляется (см.
+# _initialize_map: весь мир, включая Кольцо, стартует с is_explored = false),
+# поэтому in_influence проверяется отдельно — иначе на старте новой игры
+# разведывать было бы нечего вообще (софт-лок).
+func is_hex_known(row: int, col: int) -> bool:
+    if not is_hex_on_map(row, col):
+        return false
+    var tile = tile_data[row][col]
+    if tile == null:
+        return false
+    return bool(tile.get("in_influence", false)) or bool(tile.get("is_explored", false))
+
+# Есть ли у чанка хотя бы один гекс, граничащий с известной игроку
+# территорией (см. is_hex_known). Разведку можно отправить только в
+# «примыкающий» чанк: иначе разведчики перепрыгивали бы через туман войны и
+# вскрывали островки вдали от границы известного мира.
+# Проверяется ЧАНК, а не кликнутый гекс: BFS-чанк (до 5 гексов), дотянувшийся
+# до границы известного мира, разрешён, даже если сам клик был сделан на гекс
+# на один шаг глубже. Это согласуется с тем, что чанк — единица действия.
+# Соседи берутся через HexUtils.get_neighbors_odd_r (он же клипует их по краям
+# карты), то есть выход за карту здесь невозможен.
+func is_chunk_adjacent_to_known(chunk: Array) -> bool:
+    for hex in chunk:
+        for n in HexUtils.get_neighbors_odd_r(hex.row, hex.col, map_rows, map_cols):
+            if is_hex_known(n.row, n.col):
+                return true
+    return false
+
 # Инклюзивные hex-границы Региона — в том же формате, что и
 # get_scout_reach_bounds(). Нужны BFS чанка разведки: до изучения
 # Картографии чанк собирается только внутри Региона.
@@ -1951,6 +1983,11 @@ func start_scouting(chunk: Array):
     if is_scouting:
         hud.show_message("Разведка уже идёт!")
         return
+    # Пустой чанк — нечего разведывать. Контрольная проверка для публичной
+    # точки входа: иначе казна «списалась» бы на 0 монет, а is_scouting
+    # завис бы на пустом чанке (бар разведки без гексов).
+    if chunk.is_empty():
+        return
     # Страховочный повтор правила: до изучения Картографии разведка
     # ограничена неисследованной частью Региона. Чанк приходит из
     # expansion_manager.get_chunk_hexes (он уже это соблюдает), но
@@ -1962,6 +1999,13 @@ func start_scouting(chunk: Array):
                 hud.show_message("Для разведки за пределами Региона нужна технология «%s»"
                         % get_cartography_tech_name())
                 return
+    # Страховочный повтор правила «разведка только в чанк, примыкающий к
+    # известной территории» (см. is_chunk_adjacent_to_known). UI такую кнопку
+    # не активирует, но отказ обязан быть и здесь — ДО списания монет и запуска
+    # таймера, чтобы цена и фактическое действие не разошлись.
+    if not is_chunk_adjacent_to_known(chunk):
+        hud.show_message("Чанк не граничит с исследованной территорией — сначала разведайте соседние гексы")
+        return
     # Цена экспедиции НЕ принимается параметром: единый источник истины —
     # expansion_manager.get_chunk_scout_cost() (база и модификатор дальности
     # из data/game_balance.json). Иначе UI и фактическое списание могли бы
