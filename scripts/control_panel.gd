@@ -205,9 +205,16 @@ func _refresh():
         return
 
     # --- Левая часть: полная информация о гексе ---
-    var info = map_tooltip.build_hex_info(row, col, main_map.tile_data, main_map.city_row, main_map.city_col)
-    _info_label.text = info["text"]
-    map_tooltip.render_products(info["products"], _products_container, true)
+    # Гекс в тумане войны: местность, ресурсы и улучшения игроку не известны —
+    # вместо информации показываем заглушку. Действия справа (разведка)
+    # остаются: они содержимое гекса не раскрывают (см. main_map.is_hex_in_fog).
+    if main_map.is_hex_in_fog(row, col):
+        _info_label.text = "Область не разведана — информация недоступна.\n\nМестность, ресурсы и улучшения станут известны после разведки."
+        map_tooltip.render_products([], _products_container, true)
+    else:
+        var info = map_tooltip.build_hex_info(row, col, main_map.tile_data, main_map.city_row, main_map.city_col)
+        _info_label.text = info["text"]
+        map_tooltip.render_products(info["products"], _products_container, true)
 
     # --- Правая часть: кнопки действий ---
     _build_actions(row, col, tile)

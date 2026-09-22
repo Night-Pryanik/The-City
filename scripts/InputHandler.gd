@@ -341,6 +341,13 @@ func _handle_mouse_motion(event: InputEventMouseMotion):
             return
 
     var hex = _interactive_hex_at(event.global_position.x, event.global_position.y)
+    # Гекс в тумане войны не участвует в тултипе: местность, ресурсы и
+    # улучшения игроку не известны (см. main_map.is_hex_in_fog). Наведение
+    # обнуляем ДО логики тултипа — тултип не появится даже после задержки.
+    # Подсветка чанка и клик при этом работают: они содержимое гекса не
+    # раскрывают (ниже отдельный вызов _interactive_hex_at).
+    if hex != null and main_map.is_hex_in_fog(hex.row, hex.col):
+        hex = null
     if hex != _hovered_hex:
         _hovered_hex = hex
         _hover_start_time = 0.0

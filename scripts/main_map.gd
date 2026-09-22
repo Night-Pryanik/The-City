@@ -995,6 +995,12 @@ func _calc_offsets():
     offset_y = offsets.y
 
 func update_tooltip_text(row: int, col: int):
+    # Страховка публичной точки входа: для гекса в тумане войны тултип не
+    # наполняется вовсе (основной гейт — в InputHandler._handle_mouse_motion,
+    # где туманный гекс вообще не становится «наведённым»). Иначе после
+    # задержки наведения всплыл бы тултип с содержимым прошлого гекса.
+    if is_hex_in_fog(row, col):
+        return
     map_tooltip.update_tooltip_text(row, col, tile_data, city_row, city_col)
 
 # Возвращает id улучшения, которое можно построить на гексе (row, col),
@@ -1579,6 +1585,25 @@ func is_chunk_adjacent_to_known(chunk: Array) -> bool:
             if is_hex_known(n.row, n.col):
                 return true
     return false
+
+# Скрыт ли гекс туманом войны: информация о нём (местность, ресурсы,
+# улучшения) игроку не известна, поэтому тултип при наведении и левая колонка
+# панели управления не должны её показывать. Туман — гекс на карте, который НЕ
+# входит в Кольцо Влияния, НЕ разведан и лежит вне Региона: Кольцо+Регион видны
+# на карте (там игроку известна местность, а ресурсы открывает разведка —
+# см. map_tooltip._build_text), за их пределами не видно ничего.
+# Гейт используют тултип (InputHandler и update_tooltip_text) и левая колонка
+# панели (control_panel._refresh); подсветка чанка и кнопка разведки остаются —
+# они содержимое гекса не раскрывают.
+func is_hex_in_fog(row: int, col: int) -> bool:
+    if not is_hex_on_map(row, col):
+        return false
+    if is_valid_hex(row, col):
+        return false
+    var tile = tile_data[row][col]
+    if tile == null:
+        return false
+    return not (bool(tile.get("in_influence", false)) or bool(tile.get("is_explored", false)))
 
 # Инклюзивные hex-границы Региона — в том же формате, что и
 # get_scout_reach_bounds(). Нужны BFS чанка разведки: до изучения
