@@ -126,7 +126,7 @@ func handle_input(event: InputEvent):
         _handle_mouse_motion(event)
         # Обновляем подсветку чанка при наведении на гексы вне Кольца Влияния.
         # Гекс берём через _interactive_hex_at(): до изучения Картографии
-        # гексы тумана войны (вне Региона) недоступны, и жёлтое выделение
+        # гексы тумана войны (вне Региона) недоступны, и выделение
         # чанка на них не рисуется.
         var h = _interactive_hex_at(event.global_position.x, event.global_position.y)
         if h != null and not main_map.tile_data[h.row][h.col].get("in_influence", false):
