@@ -398,10 +398,31 @@ func _try_place_one_town(tile_data: Array, rows: int, cols: int,
     #   городка. Для воды (река/озеро/море) радиус 0: спавн строго на самой
     #   точке (речной гекс, берег озера, пляж у моря).
     var tiers: Array = [
-        {"name": "strategic", "points": _collect_strategic_attraction_points(tile_data, rows, cols), "radius": MAX_ATTRACTION_DISTANCE},
-        {"name": "river", "points": _collect_river_attraction_points(tile_data, rows, cols), "radius": WATER_ATTRACTION_RADIUS},
-        {"name": "lake_coast", "points": _collect_lake_coast_attraction_points(tile_data, rows, cols), "radius": WATER_ATTRACTION_RADIUS},
-        {"name": "sea_coast", "points": _collect_sea_coast_attraction_points(tile_data, rows, cols), "radius": WATER_ATTRACTION_RADIUS},
+        {
+            "name": "multi_resource",
+            "points": _collect_multi_resource_attraction_points(tile_data, rows, cols),
+            "radius": MAX_ATTRACTION_DISTANCE
+        },
+        {
+            "name": "strategic",
+            "points": _collect_strategic_attraction_points(tile_data, rows, cols),
+            "radius": MAX_ATTRACTION_DISTANCE
+        },
+        {
+            "name": "river",
+            "points": _collect_river_attraction_points(tile_data, rows, cols),
+            "radius": WATER_ATTRACTION_RADIUS
+        },
+        {
+            "name": "lake_coast",
+            "points": _collect_lake_coast_attraction_points(tile_data, rows, cols),
+            "radius": WATER_ATTRACTION_RADIUS
+        },
+        {
+            "name": "sea_coast",
+            "points": _collect_sea_coast_attraction_points(tile_data, rows, cols),
+            "radius": WATER_ATTRACTION_RADIUS
+        }
     ]
 
     # Первый непустой приоритет — «основной». С него стартуем каскад.
@@ -673,7 +694,36 @@ func _is_impassable_terrain(terrain_id: String) -> bool:
 
 # --- Сбор точек тяготения по приоритетам ---
 
-# Приоритет 1: гексы со стратегическими ресурсами (resource.strategic == true).
+# Приоритет 1: гексы с 2+ разных ресурсов в радиусе MAX_ATTRACTION_DISTANCE.
+func _collect_multi_resource_attraction_points(tile_data: Array, rows: int, cols: int) -> Array:
+    var result: Array = []
+    # Сначала соберем все ресурсы на карте
+    var all_resources := {}
+    for r in range(rows):
+        for c in range(cols):
+            var res = tile_data[r][c].get("resource", null)
+            if res != null and res != "":
+                all_resources[Vector2i(r, c)] = res
+    
+    # Теперь ищем гексы, в радиусе которых есть 2+ разных ресурса
+    for r in range(rows):
+        for c in range(cols):
+            # Соберем все уникальные ресурсы в радиусе MAX_ATTRACTION_DISTANCE
+            var nearby_resources := {}
+            for res_r in range(max(0, r - MAX_ATTRACTION_DISTANCE), min(rows, r + MAX_ATTRACTION_DISTANCE + 1)):
+                for res_c in range(max(0, c - MAX_ATTRACTION_DISTANCE), min(cols, c + MAX_ATTRACTION_DISTANCE + 1)):
+                    if HexUtils.hex_distance(r, c, res_r, res_c) <= MAX_ATTRACTION_DISTANCE:
+                        var res = tile_data[res_r][res_c].get("resource", null)
+                        if res != null and res != "":
+                            nearby_resources[res] = true
+            
+            # Если есть 2+ разных ресурса, добавляем гекс в результат
+            if nearby_resources.size() >= 2:
+                result.append({"row": r, "col": c})
+    
+    return result
+
+# Приоритет 2: гексы со стратегическими ресурсами (resource.strategic == true).
 # Ресурс, в радиусе MAX_ATTRACTION_DISTANCE от которого УЖЕ стоит городок,
 # исключается: один и тот же заспавнившийся ресурс не должен притягивать
 # несколько городков одновременно. town_hexes пополняется по мере размещения,
@@ -699,7 +749,7 @@ func _collect_strategic_attraction_points(tile_data: Array, rows: int, cols: int
     return result
 
 
-# Приоритет 2: гексы, через которые текут реки (river_edges непустой).
+# Приоритет 3: гексы, через которые текут реки (river_edges непустой).
 func _collect_river_attraction_points(tile_data: Array, rows: int, cols: int) -> Array:
     var result: Array = []
     for r in range(rows):
@@ -710,7 +760,7 @@ func _collect_river_attraction_points(tile_data: Array, rows: int, cols: int) ->
     return result
 
 
-# Приоритет 3: морское побережье. Пляжные гексы — это суша рядом с морем
+# Приоритет 4: морское побережье. Пляжные гексы — это суша рядом с морем
 # (см. SeaManager._apply_beach), ровно то, что нам нужно.
 func _collect_sea_coast_attraction_points(tile_data: Array, rows: int, cols: int) -> Array:
     var result: Array = []
@@ -721,7 +771,7 @@ func _collect_sea_coast_attraction_points(tile_data: Array, rows: int, cols: int
     return result
 
 
-# Приоритет 4: побережье озёр. Озёра окружены сушей, и нам нужны именно
+# Приоритет 5: побережье озёр. Озёра окружены сушей, и нам нужны именно
 # сухопутные гексы, соседние с озером. Каждый подходящий гекс добавляется
 # один раз (через seen).
 func _collect_lake_coast_attraction_points(tile_data: Array, rows: int, cols: int) -> Array:
@@ -751,7 +801,7 @@ func _collect_lake_coast_attraction_points(tile_data: Array, rows: int, cols: in
 # Городки сериализуются как массив словарей — по одной записи towns на
 # городок. Так в сейв попадают ВСЕ данные городка: id, имя, цвет границ,
 # радиус и личное кольцо влияния, пулы торговли. Словарь сохраняется в JSON
-# напрямую (борщи Color не хранится — для цвета используем массив [r,g,b,a]).
+# напрямую (для цвета используем массив [r,g,b,a]).
 # Благодаря полной записи будущие поля городка добавляются в serialize/load
 # симметрично, без изменения форматов других сущностей.
 
