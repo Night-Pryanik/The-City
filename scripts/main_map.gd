@@ -127,6 +127,10 @@ var use_edge_scrolling = true
 var tooltip_delay: float = 0.5
 var extended_tooltip_delay: float = 1.0
 var building_detail_delay: float = 0.5
+# Интервал обновления данных о ресурсах в UI (сек, 1..5 с шагом 1; ключ
+# game/resource_display_interval в user://settings.cfg). Хранится также в
+# CityData.resource_display_interval — там же накопитель и «эпоха» отображения.
+var resource_display_interval: float = 1.0
 
 @onready var city_ui = $CityUI
 @onready var town_ui = $TownUI
@@ -358,6 +362,7 @@ func _ready():
     input_handler.set_tooltip_delay(tooltip_delay)
     input_handler.set_extended_tooltip_delay(extended_tooltip_delay)
     city_ui.set_building_detail_delay(building_detail_delay)
+    CityData.set_resource_display_interval(resource_display_interval)
     # Плановое потребление на вкладке «Ресурсы» (тултип и динамика «≈») считается
     # по рабочим worker_manager — прокидываем ссылку в городской UI.
     city_ui.set_worker_manager(worker_manager)
@@ -392,7 +397,9 @@ func _ready():
     build_manager.build_completed.connect(_on_control_panel_build_changed)
     build_manager.build_cancelled.connect(_on_control_panel_build_changed)
     build_manager.build_paused.connect(_on_control_panel_build_changed)
-    CityData.city_updated.connect(control_panel.refresh)
+    # Тиковое обновление (а не refresh): инфо-колонка с ресурсами и превью
+    # обновляются с интервалом отображения (см. control_panel.on_city_updated).
+    CityData.city_updated.connect(control_panel.on_city_updated)
     CityData.research_completed.connect(control_panel.refresh)
     expansion_manager.territory_expanded.connect(control_panel.refresh)
 
@@ -490,6 +497,12 @@ func _process(delta):
         # Заполенность пастбищ — то же самое: копится каждый кадр, чтобы
         # прогресс-бар заполенности двигался плавно, а не скачком раз в тик.
         _tick_pasture_fill(delta)
+
+    # Двигаем «эпоху» отображения ресурсов: места, где показываются ресурсы
+    # (вкладка «Ресурсы», верхняя полоса, ресурсные тултипы), обновляются с
+    # интервалом из настроек, а не каждым тиком. На паузе дерева _process не
+    # идёт — интервал считается игровым временем (см. CityData).
+    CityData.tick_resource_display(delta)
 
     production_timer += delta
     if production_timer >= CityData.SIMULATION_TICK:
@@ -1963,18 +1976,21 @@ func _load_settings():
         tooltip_delay = settings_config.get_value("interface", "tooltip_delay", 0.5)
         extended_tooltip_delay = settings_config.get_value("interface", "extended_tooltip_delay", 1.0)
         building_detail_delay = settings_config.get_value("interface", "building_detail_delay", 0.5)
+        resource_display_interval = settings_config.get_value("game", "resource_display_interval", 1.0)
     else:
         show_hex_borders = true
         use_edge_scrolling = true
         tooltip_delay = 0.5
         extended_tooltip_delay = 1.0
         building_detail_delay = 0.5
+        resource_display_interval = 1.0
 
 func apply_settings():
     _load_settings()
     input_handler.set_tooltip_delay(tooltip_delay)
     input_handler.set_extended_tooltip_delay(extended_tooltip_delay)
     city_ui.set_building_detail_delay(building_detail_delay)
+    CityData.set_resource_display_interval(resource_display_interval)
     map_renderer.queue_redraw()
 
 func _on_population_changed(_new_pop: int):

@@ -30,6 +30,13 @@ var trade_tab: Node
 
 var data_cache: Dictionary = {}
 
+# Последняя «эпоха» отображения ресурсов (см. CityData.resource_display_interval):
+# значения вкладки «Ресурсы» и верхней строки города обновляются только когда
+# эпоха изменилась, а не каждым тиком. Событийные пути (refresh при открытии,
+# refresh_light по смене назначений, update_food_label по тумблеру еды)
+# обновляются мгновенно и синхронизируют эпоху.
+var _display_epoch: int = -1
+
 # Отслеживание структурных изменений для лёгкого обновления (тик)
 var _cached_built_count: int = -1
 var _cached_research_id: String = ""
@@ -144,6 +151,11 @@ func _ready():
     if not CityData.treasury_changed.is_connected(_on_treasury_changed):
         CityData.treasury_changed.connect(_on_treasury_changed)
 
+    # Население в верхней строке города («… | Население: N …») обновляется по
+    # событию (рост/гибель), не дожидаясь интервала отображения ресурсов.
+    if not CityData.population_changed.is_connected(_on_population_changed_label):
+        CityData.population_changed.connect(_on_population_changed_label)
+
     # Подключаем сигнал завершения строительства здания для показа сообщения
     # в нижней панели CityUI (build_message сигнал выводит в HUD карты,
     # который скрыт, когда открыт интерфейс города).
@@ -186,33 +198,47 @@ func _update_data_cache():
     buildings_tab.update_data(data_cache)
 
 func refresh():
-    # Полное обновление: пересоздаём списки (открытие города, структурные изменения)
+    # Полное обновление: пересоздаём списки (открытие города, структурные изменения).
+    # Это событие (игрок открыл город / построено здание) — обновляем всё сразу
+    # и синхронизируем эпоху отображения ресурсов.
     _update_data_cache()
     _cached_built_count = CityData.city_built_buildings.size()
     _cached_research_id = CityData.current_research_tech_id
     _refresh_all()
+    _display_epoch = CityData.resource_display_epoch
 
-func _refresh_light():
+func _refresh_light(force_resources := false):
     # Лёгкое обновление: обновляем значения без пересоздания узлов.
     # Это не сбрасывает тултипы (узлы, на которых висит курсор, сохраняются).
+    #
+    # Значения ресурсов (запас, динамика, качество) и верхняя строка «Еда: N»
+    # обновляются с интервалом из настроек (CityData.resource_display_interval):
+    # тиковый путь (city_updated) ждёт наступления эпохи, событийные пути
+    # (force_resources=true) обновляются мгновенно.
     if not visible:
         return
     _update_data_cache()
 
     if _needs_full_refresh():
+        # Структурные изменения (новое здание, начало/завершение исследования) —
+        # событие: обновляем сразу, включая значения ресурсов, и синхронизируем
+        # эпоху отображения.
         _cached_built_count = CityData.city_built_buildings.size()
         _cached_research_id = CityData.current_research_tech_id
         _refresh_all()
+        _display_epoch = CityData.resource_display_epoch
         return
 
-    resources_tab.update_values()
+    if force_resources or CityData.resource_display_due(_display_epoch):
+        _display_epoch = CityData.resource_display_epoch
+        resources_tab.update_values()
+        _update_food_label()
     buildings_tab.update_built_status()
     # Прогресс исследования обновляем только когда вкладка Технологии
     # активна — иначе лишняя работа на каждом тике. Стоимость минимальна,
     # но привычка «не делать лишнего, если не нужно» важна.
     if active_tab == "technologies":
         tech_tree.update_progress()
-    _update_food_label()
 
 func _needs_full_refresh() -> bool:
     # Полное обновление требуется только при структурных изменениях:
@@ -231,7 +257,9 @@ func show_technologies_tab():
 
 func refresh_light():
     # Публичный метод для лёгкого обновления при изменении назначений.
-    _refresh_light()
+    # Смена назначений — действие игрока: значения ресурсов обновляются
+    # мгновенно, не дожидаясь интервала отображения (force_resources=true).
+    _refresh_light(true)
 
 func _refresh_all():
     resources_tab.refresh()
@@ -359,6 +387,11 @@ func update_food_label():
 # Казна изменилась (сигнал treasury_changed несёт аргумент new_total) —
 # обновляем верхнюю полосу, где казна отображается рядом с едой и населением.
 func _on_treasury_changed(_new_total: int):
+    _update_food_label()
+
+# Население изменилось (рост/гибель) — верхняя строка города показывает его
+# рядом с едой и казной; обновляем сразу, мимо интервала отображения ресурсов.
+func _on_population_changed_label(_new_pop: int):
     _update_food_label()
 
 func refresh_buildings_tab():

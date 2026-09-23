@@ -21,8 +21,11 @@ var _tooltip_visible: bool = false
 var _tooltip_visible_time: float = 0.0
 var _extended_tooltip_shown: bool = false
 # Период обновления СОДЕРЖИМОГО тултипа без движения мыши. Нужен для
-# динамических данных (заполенность пастбища), которые меняются со временем.
-const TOOLTIP_CONTENT_REFRESH_INTERVAL: float = 0.5
+# динамических данных (заполенность пастбища, производство), которые меняются
+# со временем. Период равен настройке «Интервал обновления данных о ресурсах»
+# (CityData.resource_display_interval, меню «Настройки → Игра») — тултип на
+# карте обновляется тем же ритмом, что и остальные места с ресурсами.
+# Первая отрисовка при смене гекса остаётся мгновенной.
 var _tooltip_content_refresh_timer: float = 0.0
 var is_dragging: bool = false
 var drag_start_scroll_offset: Vector2 = Vector2.ZERO
@@ -225,7 +228,7 @@ func handle_process(delta: float):
             # контент статичен, дёргать перерисовку смысла нет.
             if _is_hovered_tile_growing():
                 _tooltip_content_refresh_timer += delta
-                if _tooltip_content_refresh_timer >= TOOLTIP_CONTENT_REFRESH_INTERVAL:
+                if _tooltip_content_refresh_timer >= CityData.resource_display_interval:
                     _tooltip_content_refresh_timer = 0.0
                     main_map.update_tooltip_text(_hovered_hex.row, _hovered_hex.col)
     else:

@@ -103,6 +103,11 @@ func _set_content_visible(visible_now: bool):
 # Текущее выделение и превью.
 var _selected_hex = null # { "row": int, "col": int }
 var _preview_action = null # { "type": String, "imp_id": String, "target_res_id": String, "label": String }
+# Последняя «эпоха» отображения ресурсов (CityData.resource_display_interval):
+# тиковый путь on_city_updated() перерисовывает инфо-колонку и превью только
+# когда эпоха изменилась; событийный путь (refresh()/_refresh(), клик, действие)
+# обновляется мгновенно и синхронизирует эпоху.
+var _display_epoch: int = -1
 
 # Ссылки на дочерние узлы UI.
 var _info_label: RichTextLabel
@@ -177,6 +182,33 @@ func has_selection() -> bool:
 func get_selected_hex():
     return _selected_hex
 
+# Тиковое обновление (CityData.city_updated, подключается в main_map._ready):
+# левая колонка (местность, «Производит/Потребляет … за тик»), список
+# продукции и превью действия обновляются с интервалом отображения ресурсов
+# (CityData.resource_display_interval) — их числа раньше прыгали каждый тик.
+# Кнопки действий при этом поддерживаются каждый тик, как раньше: их тултипы
+# по дизайну не содержат значений, меняющихся каждый тик (см.
+# комментарий в _build_actions), а снапшот _last_actions_snapshot не даёт
+# пересоздать кнопки без реальных изменений.
+func on_city_updated():
+    if _selected_hex == null:
+        _clear_ui()
+        return
+    var row = _selected_hex.row
+    var col = _selected_hex.col
+    if not main_map.is_hex_on_map(row, col):
+        clear_selection()
+        return
+    if CityData.resource_display_due(_display_epoch):
+        _refresh()
+        return
+    # Интервал ещё не прошёл: поддерживаем только доступность кнопок действий.
+    var tile = main_map.get_tile_data(row, col)
+    if tile == null:
+        clear_selection()
+        return
+    _build_actions(row, col, tile)
+
 # Обновляет панель. Вызывается при внешних изменениях (сигналы) и при
 # выделении/сбросе. Если выделенного гекса больше нет на карте (например,
 # загружен сейв с картой другого размера) — снимаем выделение.
@@ -194,6 +226,10 @@ func refresh():
     _refresh()
 
 func _refresh():
+    # Событийное обновление (клик по гексу, действие, исследование, освоение):
+    # всё рисуется сразу и синхронизирует эпоху отображения ресурсов — по
+    # интервалу ждёт только тиковое обновление (см. on_city_updated).
+    _display_epoch = CityData.resource_display_epoch
     if _selected_hex == null:
         _clear_ui()
         return

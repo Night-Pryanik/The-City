@@ -12,6 +12,10 @@ extends Control
     "BuildingDetailDelaySlider", true, false)
 @onready var building_detail_delay_value_label: Label = find_child(
     "BuildingDetailDelayValueLabel", true, false)
+@onready var resource_display_interval_slider: HSlider = find_child(
+    "ResourceDisplayIntervalSlider", true, false)
+@onready var resource_display_interval_value_label: Label = find_child(
+    "ResourceDisplayIntervalValueLabel", true, false)
 
 var config = ConfigFile.new()
 
@@ -22,7 +26,9 @@ func _ready():
             or not extended_tooltip_delay_slider \
             or not extended_tooltip_delay_value_label \
             or not building_detail_delay_slider \
-            or not building_detail_delay_value_label
+            or not building_detail_delay_value_label \
+            or not resource_display_interval_slider \
+            or not resource_display_interval_value_label
     if missing_controls:
         print("Ошибка: не все элементы найдены в сцене настроек!")
         return
@@ -32,6 +38,7 @@ func _ready():
     tooltip_delay_value_label.add_theme_color_override("font_color", Color.WHITE)
     extended_tooltip_delay_value_label.add_theme_color_override("font_color", Color.WHITE)
     building_detail_delay_value_label.add_theme_color_override("font_color", Color.WHITE)
+    resource_display_interval_value_label.add_theme_color_override("font_color", Color.WHITE)
 
     load_settings()
     back_button.pressed.connect(_on_back_pressed)
@@ -40,6 +47,7 @@ func _ready():
     tooltip_delay_slider.value_changed.connect(_on_tooltip_delay_changed)
     extended_tooltip_delay_slider.value_changed.connect(_on_extended_tooltip_delay_changed)
     building_detail_delay_slider.value_changed.connect(_on_building_detail_delay_changed)
+    resource_display_interval_slider.value_changed.connect(_on_resource_display_interval_changed)
 
 func load_settings():
     var err = config.load("user://settings.cfg")
@@ -50,17 +58,21 @@ func load_settings():
         extended_tooltip_delay_slider.value = config.get_value("interface", "extended_tooltip_delay", 1.0)
         building_detail_delay_slider.value = config.get_value(
             "interface", "building_detail_delay", 0.5)
+        resource_display_interval_slider.value = config.get_value(
+            "game", "resource_display_interval", 1.0)
     else:
         hex_borders_checkbox.button_pressed = true
         edge_scrolling_checkbox.button_pressed = true
         tooltip_delay_slider.value = 0.5
         extended_tooltip_delay_slider.value = 1.0
         building_detail_delay_slider.value = 0.5
+        resource_display_interval_slider.value = 1.0
     # Минимальное значение расширенного тултипа не может быть меньше основного
     extended_tooltip_delay_slider.min_value = tooltip_delay_slider.value
     _update_tooltip_delay_label()
     _update_extended_tooltip_delay_label()
     _update_building_detail_delay_label()
+    _update_resource_display_interval_label()
 
 func save_settings():
     config.set_value("interface", "show_hex_borders", hex_borders_checkbox.button_pressed)
@@ -68,6 +80,7 @@ func save_settings():
     config.set_value("interface", "tooltip_delay", tooltip_delay_slider.value)
     config.set_value("interface", "extended_tooltip_delay", extended_tooltip_delay_slider.value)
     config.set_value("interface", "building_detail_delay", building_detail_delay_slider.value)
+    config.set_value("game", "resource_display_interval", resource_display_interval_slider.value)
     config.save("user://settings.cfg")
 
 func _apply_to_game():
@@ -106,6 +119,11 @@ func _on_building_detail_delay_changed(_value: float):
     save_settings()
     _apply_to_game()
 
+func _on_resource_display_interval_changed(_value: float):
+    _update_resource_display_interval_label()
+    save_settings()
+    _apply_to_game()
+
 func _update_tooltip_delay_label():
     var seconds = snappedf(tooltip_delay_slider.value, 0.25)
     tooltip_delay_value_label.text = "%.2f сек" % seconds
@@ -117,6 +135,12 @@ func _update_extended_tooltip_delay_label():
 func _update_building_detail_delay_label():
     var seconds = snappedf(building_detail_delay_slider.value, 0.25)
     building_detail_delay_value_label.text = "%.2f сек" % seconds
+
+func _update_resource_display_interval_label():
+    # Шаг слайдера — 1 секунда, дробных значений не бывает (см. CityData:
+    # тик симуляции = 1 сек, дробный интервал дал бы неравномерный ритм).
+    var seconds = int(round(resource_display_interval_slider.value))
+    resource_display_interval_value_label.text = "%d сек" % seconds
 
 func _on_back_pressed():
     hide()

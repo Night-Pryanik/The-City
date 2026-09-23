@@ -33,6 +33,37 @@ current_tab = 0
 layout_mode = 2
 metadata/_tab_index = 0
 
+[node name="VBoxContainer" type="VBoxContainer" parent="TabContainer/Игра" unique_id=871000001]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+grow_horizontal = 2
+
+[node name="Label" type="Label" parent="TabContainer/Игра/VBoxContainer" unique_id=871000002]
+layout_mode = 2
+text = "Интервал обновления данных о ресурсах"
+
+[node name="LabelHint" type="Label" parent="TabContainer/Игра/VBoxContainer" unique_id=871000003]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Запасы, динамика и тултипы с ресурсами обновляются с этим интервалом (от 1 до 5 секунд). Расчёты симуляции идут как обычно, раз в секунду."
+autowrap_mode = 3
+
+[node name="HBoxContainer" type="HBoxContainer" parent="TabContainer/Игра/VBoxContainer" unique_id=871000004]
+layout_mode = 2
+
+[node name="ResourceDisplayIntervalSlider" type="HSlider" parent="TabContainer/Игра/VBoxContainer/HBoxContainer" unique_id=871000005]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 1.0
+max_value = 5.0
+step = 1.0
+value = 1.0
+
+[node name="ResourceDisplayIntervalValueLabel" type="Label" parent="TabContainer/Игра/VBoxContainer/HBoxContainer" unique_id=871000006]
+layout_mode = 2
+text = "1 сек"
+
 [node name="Видео" type="Control" parent="TabContainer" unique_id=563583163]
 visible = false
 layout_mode = 2

@@ -26,6 +26,11 @@ var _hovered_building_id: String = "" # здание под курсором (д
 var building_buttons: Dictionary = {}
 var _detail_material_rows: Array = []
 var _detail_requirement_label: Label = null
+# Последняя «эпоха» отображения ресурсов (CityData.resource_display_interval):
+# живое обновление строки «Требуется/на складе» в тултипе деталей здания ждёт
+# наступления эпохи, а не идёт каждым тиком. Первичная сборка тултипа
+# (_show_building_details, по наведению) остаётся мгновенной.
+var _display_epoch: int = -1
 
 var resume_icon: Texture2D
 var pause_icon: Texture2D
@@ -91,7 +96,11 @@ func update_data(data: Dictionary):
     city_storage = data.get("city_storage", {})
     city_food_pool = data.get("city_food_pool", {})
     built_buildings = data.get("built_buildings", [])
-    refresh_building_detail_tooltip()
+    # Живое обновление строки «Требуется/на складе» в открытом тултипе деталей —
+    # с интервалом отображения ресурсов, а не каждым тиком.
+    if CityData.resource_display_due(_display_epoch):
+        _display_epoch = CityData.resource_display_epoch
+        refresh_building_detail_tooltip()
 
 func refresh_list():
     for child in buildings_list.get_children():

@@ -80,6 +80,57 @@ var ignore_build_requirements: bool = false
 # data/improvements.json (см. get_improvement_production_interval).
 const SIMULATION_TICK: float = 1.0
 
+# --- ИНТЕРВАЛ ОТОБРАЖЕНИЯ РЕСУРСОВ (настройка «Настройки → Игра → Интервал
+# обновления данных о ресурсах»). Симуляция тикает каждую SIMULATION_TICK
+# секунды, а ОТОБРАЖЕНИЕ ресурсов (вкладка «Ресурсы», верхняя полоса города,
+# тултип деталей здания, левая колонка панели управления, тултипы с ресурсами)
+# обновляется не чаще resource_display_interval секунд.
+#
+# Механика — «эпоха отображения» (epoch): единый счётчик в autoload, который
+# двигает main_map._process (на паузе дерева _process не идёт — интервал
+# считается игровым временем). Каждое UI-место хранит последнюю увиденную
+# эпоху и обновляется только когда она изменилась (resource_display_due) —
+# так все места обновляются одновременно, одним «рывком» раз в интервал.
+# Обновления по явным действиям игрока (открытие окна, клик по гексу, смена
+# назначений, тумблер еды) эпоху НЕ ждут — они вызываются напрямую и после
+# себя синхронизируют эпоху.
+#
+# Допустимые значения: 1..5 секунд с шагом 1: данные меняются только на
+# тиках в 1 секунду, дробный интервал дал бы лишь неравномерный ритм
+# обновлений (обновления попадали бы в разную фазу тиков) при неизменно
+# корректных целых числах на экране.
+var resource_display_interval: float = 1.0
+var resource_display_epoch: int = 0
+var _resource_display_accum: float = 0.0
+
+# Устанавливает интервал отображения ресурсов (шаг 1, диапазон 1..5 сек).
+# Смена значения сбрасывает накопитель и повышает эпоху — все места
+# обновляются немедленно при ближайшей проверке. То же значение — no-op.
+func set_resource_display_interval(value: float) -> void:
+    var new_interval := clampf(roundf(value), 1.0, 5.0)
+    if is_equal_approx(new_interval, resource_display_interval):
+        return
+    resource_display_interval = new_interval
+    _resource_display_accum = 0.0
+    resource_display_epoch += 1
+
+# Накапливает игровое время и повышает эпоху, когда прошёл интервал.
+# Вызывается из main_map._process каждый кадр.
+func tick_resource_display(delta: float) -> void:
+    if resource_display_interval <= 0.0:
+        return
+    _resource_display_accum += delta
+    if _resource_display_accum >= resource_display_interval:
+        # fmod удерживает фазу вместо копления бесконечного остатка: интервал
+        # кратен шагу тика (1 сек), дробная часть почти не накапливается.
+        _resource_display_accum = fmod(_resource_display_accum, resource_display_interval)
+        resource_display_epoch += 1
+
+# True, если место с последней проверки не обновляло отображение ресурсов.
+# Вызывающий после обновления запоминает CityData.resource_display_epoch.
+func resource_display_due(last_epoch: int) -> bool:
+    return last_epoch != resource_display_epoch
+
 # --- ЭПОХИ ---
 # Возвращает индекс эпохи технологии в GameData.eras.
 # Если технология не найдена или её era отсутствует в списке эпох — -1.
