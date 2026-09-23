@@ -2135,6 +2135,19 @@ func _is_treasury_hovered(mouse_pos: Vector2) -> bool:
         return true
     return false
 
+# Курсор сейчас над показанным («залипшим») тултипом разбивки казны HUD-слоя.
+# Тултип перекрывает карту, и карта под ним не должна реагировать на курсор:
+# ни тултип гекса, ни подсветка чанка, ни клики/выделение, ни скролл краями
+# (см. InputHandler.handle_input / handle_process). Метка казны здесь не
+# проверяется: она лежит внутри HUD, и её перекрывает проверка «курсор над HUD».
+func is_mouse_over_treasury_tooltip(pos: Vector2) -> bool:
+    if not (_map_ui_helpers and is_instance_valid(_map_ui_helpers)):
+        return false
+    var panel: Panel = _map_ui_helpers.treasury_tooltip_panel
+    if not is_instance_valid(panel) or not panel.visible:
+        return false
+    return panel.get_global_rect().has_point(pos)
+
 # Показывает тултип разбивки казны под курсором (HUD-вариант). Данные — из
 # worker_manager (плановый доход по источникам) и CityData (снимок расходов
 # за окно). Аналогичен методу в city_ui.gd (см. _show_treasury_tooltip там).

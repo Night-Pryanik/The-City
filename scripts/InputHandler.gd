@@ -101,16 +101,20 @@ func handle_input(event: InputEvent):
     # Взаимодействие с картой также недоступно, когда курсор находится над
     # HUD (левый верхний угол): иначе движение мыши через HUD подсвечивает
     # чанки Региона и всплывают тултипы, а клик по HUD выделяет гекс под ним.
+    # И над «залипшим» тултипом разбивки казны: тултип перекрывает карту, и
+    # сквозь него не должен всплывать тултип гекса, подсвечиваться чанк или
+    # выделяться гекс под ним.
     # Кнопки HUD при этом продолжают работать: они обрабатываются через GUI-
     # фазу (pressed / gui_input), независимо от этого обработчика.
     if event is InputEventMouse:
         var over_hud = hud != null and hud.get_global_rect().has_point(event.global_position)
         var over_panel = main_map.control_panel != null \
                 and main_map.control_panel.get_global_rect().has_point(event.global_position)
-        if over_panel or over_hud:
+        var over_treasury_tooltip = _is_mouse_over_treasury_tooltip(event.global_position)
+        if over_panel or over_hud or over_treasury_tooltip:
             _hide_tooltip()
             # Убираем подсветку чанка Региона, оставшуюся от наведения
-            # до захода курсора на панель/HUD.
+            # до захода курсора на панель/HUD/тултип.
             expansion_manager.clear_hovered_chunk()
             return
 
@@ -155,6 +159,18 @@ func handle_process(delta: float):
     if main_map.control_panel \
             and main_map.control_panel.get_global_rect().has_point(main_map.get_global_mouse_position()):
         _hide_tooltip()
+        return
+
+    # То же — когда курсор на «залипшем» тултипе разбивки казны: пока он там,
+    # карта не реагирует (сквозь тултип не всплывает тултип гекса и не
+    # подсвечивается чанк, нет и скролла краями окна). _hide_tooltip() гасит
+    # и состояние наведения, поэтому тултип гекса не появится и по задержке.
+    var mouse_pos_ui: Vector2 = main_map.get_global_mouse_position()
+    if _is_mouse_over_treasury_tooltip(mouse_pos_ui):
+        _hide_tooltip()
+        # Подсветку чанка тоже снимаем: тултип мог «залипнуть» уже под
+        # стоящим на месте курсором (панель у края экрана сдвигается внутрь).
+        expansion_manager.clear_hovered_chunk()
         return
 
     # Скролл краями
@@ -372,6 +388,16 @@ func _handle_mouse_motion(event: InputEventMouseMotion):
         expansion_manager.update_hovered_chunk(h.row, h.col)
     else:
         expansion_manager.clear_hovered_chunk()
+
+# Курсор сейчас над показанным («залипшим») тултипом разбивки казны HUD-слоя.
+# Такой тултип перекрывает карту, и карта под ним не должна реагировать на
+# курсор: ни тултип гекса, ни подсветка чанка, ни клики/выделение, ни скролл
+# краями окна. Проверку владеет main_map — здесь только делегирование (с
+# мягкой проверкой has_method: InputHandler работает и со сценами без HUD-слоя).
+func _is_mouse_over_treasury_tooltip(pos: Vector2) -> bool:
+    if main_map == null or not main_map.has_method("is_mouse_over_treasury_tooltip"):
+        return false
+    return bool(main_map.is_mouse_over_treasury_tooltip(pos))
 
 func _hide_tooltip():
     hex_tooltip.visible = false
