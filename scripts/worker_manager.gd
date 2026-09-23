@@ -582,7 +582,7 @@ func count_workers_by_profession() -> Dictionary:
 #      interval — время крафта рецепта (`time`), см. CityData.get_craft_time.
 # Для групповых записей план относится к ЛЮБОМУ члену группы; в тултипе такие
 # строки помечаются именем группы (group_name = имя группы из данных).
-func get_planned_consumption_map() -> Dictionary:
+func get_planned_consumption_map(include_production_inputs: bool = true) -> Dictionary:
     var result: Dictionary = {}
     # Профессиональное потребление: по фактическим рабочим на улучшениях.
     var workers = count_workers_by_profession()
@@ -603,6 +603,8 @@ func get_planned_consumption_map() -> Dictionary:
     # count = total_population, а не число назначенных гексов.
     if CityData.total_population > 0:
         _record_profession_planned(result, "all", CityData.total_population, true)
+    if not include_production_inputs:
+        return result
     # Спрос зданий (рецепты): amount — за один крафт, interval — время рецепта.
     var building_demand = CityData.get_building_planned_consumption()
     for pid in building_demand:
@@ -649,7 +651,8 @@ func get_planned_treasury_income_map() -> Dictionary:
     return result
 
 # Доход от потребления на внутреннем рынке: профессиональное потребление
-# рабочих + городское потребление «all» + спрос зданий/улучшений.
+# рабочих + городское потребление «all». Входы рецептов зданий и улучшений
+# сюда не входят: они расходуются производством, а не продаются населением.
 # Сейчас единственный запланированный источник казны — живёт под типом
 # «Потребление населения». Объединён в отдельный метод, чтобы будущие
 # типы («Налоги», «Торговля» и т.п.) добавлялись параллельно без правки
@@ -659,7 +662,8 @@ func _fill_consumption_income(result: Dictionary) -> void:
     if not result.has(income_type):
         result[income_type] = {}
     var type_dict: Dictionary = result[income_type]
-    var planned := get_planned_consumption_map()
+    var planned := get_planned_consumption_map(false)
+    var planned_production := CityData.get_planned_production_map()
     for pid in planned:
         var market_price: int = CityData.get_internal_market_price(str(pid))
         if market_price <= 0:
@@ -667,6 +671,14 @@ func _fill_consumption_income(result: Dictionary) -> void:
         var product_name: String = GameData.products.get(pid, {}).get("name", pid)
         for source_name in planned[pid]:
             var entry: Dictionary = planned[pid][source_name]
+            # Групповое потребление списывается только из реально доступных
+            # членов группы. Не показываем в казне остальные члены группы,
+            # которые лишь были перечислены при её разворачивании.
+            if bool(entry.get("is_group", false)) \
+                    and CityData.get_storage_amount(str(pid)) <= 0 \
+                    and int(CityData.production_rates.get(pid, 0)) <= 0 \
+                    and planned_production.get(pid, {}).is_empty():
+                continue
             var amount := float(entry.get("amount", 0))
             var interval := float(entry.get("interval", 0))
             # Per-second потребление записи (см. ui_helpers._planned_per_sec).

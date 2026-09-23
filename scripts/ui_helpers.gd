@@ -928,9 +928,9 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
                 })
         type_lines.sort_custom(func(a, b): return a.total > b.total)
         for type_row in type_lines:
-            # Заголовок типа: «Потребление населения:»
+            # Первый уровень разбивки: «• Потребление населения:»
             var type_header = Label.new()
-            type_header.text = "  " + str(type_row.name) + ":"
+            type_header.text = "• " + str(type_row.name) + ":"
             type_header.add_theme_font_size_override("font_size", 13)
             type_header.add_theme_color_override("font_color", Color(0.85, 1.0, 0.85))
             type_header.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -949,9 +949,9 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
                     })
             source_lines.sort_custom(func(a, b): return a.total > b.total)
             for src_row in source_lines:
-                # Строка источника: «Все жители (3.0 / сек):»
+                # Второй уровень разбивки: «  ◦ Все жители (3.0 / сек):»
                 var src_header = Label.new()
-                src_header.text = "    %s (%s / сек):" % [
+                src_header.text = "  ◦ %s (%s / сек):" % [
                     str(src_row.name), _format_rate(float(src_row.total))
                 ]
                 src_header.add_theme_font_size_override("font_size", 13)
@@ -973,7 +973,7 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
                         prod_name, _format_rate(prod_rate)
                     ]
                     treasury_tooltip_vbox.add_child(
-                        _make_bullet_row("•", line_text, Color(0.3, 0.85, 0.3)))
+                        _make_bullet_row("    ▪", line_text, Color(0.3, 0.85, 0.3)))
 
     # --- Расходы (факт, за последние N сек): тип → источник → нетто-сумма ---
     if has_expense:
