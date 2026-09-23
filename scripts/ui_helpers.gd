@@ -33,6 +33,14 @@ var flow_tooltip_panel: Panel
 var flow_tooltip_vbox: VBoxContainer
 var flow_tooltip_scroll: ScrollContainer
 
+# Тултип разбивки казны по источникам дохода/расхода (HUD карты и
+# верхняя полоса интерфейса города): показывает баланс, плановую скорость
+# дохода (по источникам внутреннего рынка) и факт расходов за последнее окно
+# отображения (разведка, освоение чанков).
+var treasury_tooltip_panel: Panel
+var treasury_tooltip_vbox: VBoxContainer
+var treasury_tooltip_scroll: ScrollContainer
+
 # Ограничение высоты «богатых» тултипов (детали здания, потоки ресурсов на
 # вкладке «Ресурсы»): контент выше DETAIL_TOOLTIP_MAX_ROWS строк (по ROW_HEIGHT
 # px каждая) обрезается, а внутри появляется вертикальный скроллбар.
@@ -150,6 +158,35 @@ func setup(main_ui: Control, message_lbl: Label):
     flow_tooltip_scroll.add_child(flow_tooltip_vbox)
 
     flow_tooltip_panel.add_theme_stylebox_override("panel", _make_tooltip_style())
+
+    # Тултип разбивки казны (по источникам дохода/расхода): один на оба
+    # места (HUD карты и верхняя полоса CityUI) — структура одна и та же.
+    treasury_tooltip_panel = Panel.new()
+    treasury_tooltip_panel.visible = false
+    treasury_tooltip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    treasury_tooltip_panel.z_index = 1000
+    main_ui.add_child(treasury_tooltip_panel)
+
+    # Скролл-контейнер: ограничивает высоту тултипа и показывает вертикальный
+    # скроллбар, когда источников дохода/расхода слишком много (как в
+    # flow_tooltip).
+    treasury_tooltip_vbox = VBoxContainer.new()
+    treasury_tooltip_vbox.add_theme_constant_override("separation", 4)
+    treasury_tooltip_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    treasury_tooltip_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    treasury_tooltip_scroll = ScrollContainer.new()
+    treasury_tooltip_scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+    treasury_tooltip_scroll.offset_left = 6
+    treasury_tooltip_scroll.offset_top = 4
+    treasury_tooltip_scroll.offset_right = -6
+    treasury_tooltip_scroll.offset_bottom = -4
+    treasury_tooltip_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+    treasury_tooltip_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+    treasury_tooltip_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
+    treasury_tooltip_panel.add_child(treasury_tooltip_scroll)
+    treasury_tooltip_scroll.add_child(treasury_tooltip_vbox)
+
+    treasury_tooltip_panel.add_theme_stylebox_override("panel", _make_tooltip_style())
     # Тултип деталей выбранного здания (вкладка «Здания»).
     detail_tooltip_panel = Panel.new()
     detail_tooltip_panel.visible = false
@@ -787,6 +824,246 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
 func hide_flow_tooltip():
     if flow_tooltip_panel:
         flow_tooltip_panel.hide()
+
+# Показывает тултип с разбивкой казны по типам прибыли/расхода при наведении
+# на «Казна: N» в HUD карты или в верхней полосе CityUI.
+#   balance            — текущий баланс казны (целое число монет).
+#   planned_income     — ИЕРАРХИЧЕСКАЯ карта плановой скорости дохода:
+#                        {
+#                          "Потребление населения": {                # тип
+#                            "Все жители": {                          # источник
+#                              "fruit": {coins_per_sec: 2.5, product_name: "Фрукты"},
+#                              ...
+#                            },
+#                            ...
+#                          },
+#                          # будущие: "Налоги": { ... }, "Торговля": { ... }
+#                        }
+#                        Из worker_manager.get_planned_treasury_income_map().
+#                        Типы и источники рисуются по убыванию итоговой скорости
+#                        (наверху — основной заработок); продукты внутри источника
+#                        тоже по убыванию. Пустые типы/источники скрываются.
+#   expense_snapshot   — снимок факта расходов за последнее завершённое окно,
+#                        flat-словарь { "Имя источника" -> signed_amount }.
+#                        Положительное = потрачено, отрицательное = возврат
+#                        (refund netted в том же источнике, см.
+#                        expansion_manager.handle_action). Источники с
+#                        отрицательным или нулевым нетто скрываются, иначе
+#                        показывается сумма со знаком «−».
+#                        Из CityData.treasury_expense_snapshot.
+#   window_sec         — длина окна (для подписи в тултипе, обычно
+#                        CityData.treasury_window_length_sec).
+#
+# Структура секций:
+#   * Заголовок: «Казна: N».
+#   * «Прибыль (планируемая, /сек):» — три уровня вложенности (тип → источник →
+#     продукт), см. пример в комментарии параметра planned_income.
+#   * «Расходы (факт, за последние N сек):» — плоский список источников
+#     с нетто-суммой за окно (плюс тип «Действия на карте» как заголовок).
+#   * Пояснение «≈» в подвале секции прибыли (как в тултипе ресурсов).
+#   * Если расходов в игре нет — ремарка «Нет разовых расходов…» (как раньше).
+func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dictionary, expense_snapshot: Dictionary, window_sec: float):
+    if treasury_tooltip_panel == null:
+        return
+    # Очищаем предыдущее содержимое.
+    for child in treasury_tooltip_vbox.get_children():
+        treasury_tooltip_vbox.remove_child(child)
+        child.queue_free()
+
+    # Предрасчёт нетто-расходов: только источники с amount > 0 (отрицательные
+    # — чистые возвраты без компенсирующей траты; не показываем). Суммируем
+    # по типам заодно с группировкой для рендера: сейчас есть только тип
+    # «Действия на карте», но структура snapshot-а flat — тип добавляется
+    # здесь, в рендере.
+    var expense_by_type: Dictionary = {"Действия на карте": {}}
+    for src in expense_snapshot:
+        var amt: int = int(expense_snapshot[src])
+        if amt <= 0:
+            continue
+        expense_by_type["Действия на карте"][src] = amt
+
+    var has_income: bool = not planned_income.is_empty()
+    var has_expense: bool = false
+    for t in expense_by_type:
+        if not expense_by_type[t].is_empty():
+            has_expense = true
+            break
+
+    # Пустой тултип (нет ни плана, ни факта расходов) скрываем: показывать
+    # только «Казна: N» без разбивки не имеет смысла — стрелка-курсор уже
+    # рядом с цифрой в HUD/TopBar.
+    if not has_income and not has_expense:
+        treasury_tooltip_panel.hide()
+        return
+
+    # --- Заголовок: текущий баланс ---
+    var header = Label.new()
+    header.text = "Казна: %d" % balance
+    header.add_theme_font_size_override("font_size", 15)
+    header.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+    header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    treasury_tooltip_vbox.add_child(header)
+
+    # --- Прибыль (планируемая, /сек): иерархия тип → источник → продукт ---
+    if has_income:
+        var income_title = Label.new()
+        income_title.text = "Прибыль (планируемая):"
+        income_title.add_theme_font_size_override("font_size", 14)
+        income_title.add_theme_color_override("font_color", Color(0.6, 1.0, 0.6))
+        income_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        treasury_tooltip_vbox.add_child(income_title)
+        # Сортируем типы по суммарной скорости (убывание): «Потребление населения»
+        # vs будущие «Налоги» — кто больше приносит, тот наверху.
+        var type_lines: Array = []
+        for income_type in planned_income:
+            var type_total: float = 0.0
+            for source_name in planned_income[income_type]:
+                for pid in planned_income[income_type][source_name]:
+                    type_total += float(planned_income[income_type][source_name][pid].get("coins_per_sec", 0.0))
+            if type_total > 0.0:
+                type_lines.append({
+                    "name": income_type,
+                    "total": type_total,
+                    "sources": planned_income[income_type]
+                })
+        type_lines.sort_custom(func(a, b): return a.total > b.total)
+        for type_row in type_lines:
+            # Заголовок типа: «Потребление населения:»
+            var type_header = Label.new()
+            type_header.text = "  " + str(type_row.name) + ":"
+            type_header.add_theme_font_size_override("font_size", 13)
+            type_header.add_theme_color_override("font_color", Color(0.85, 1.0, 0.85))
+            type_header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+            treasury_tooltip_vbox.add_child(type_header)
+            # Источники внутри типа — сортируем по сумме по источнику.
+            var source_lines: Array = []
+            for src in type_row.sources:
+                var src_total: float = 0.0
+                for pid in type_row.sources[src]:
+                    src_total += float(type_row.sources[src][pid].get("coins_per_sec", 0.0))
+                if src_total > 0.0:
+                    source_lines.append({
+                        "name": src,
+                        "total": src_total,
+                        "products": type_row.sources[src]
+                    })
+            source_lines.sort_custom(func(a, b): return a.total > b.total)
+            for src_row in source_lines:
+                # Строка источника: «Все жители (3.0 / сек):»
+                var src_header = Label.new()
+                src_header.text = "    %s (%s / сек):" % [
+                    str(src_row.name), _format_rate(float(src_row.total))
+                ]
+                src_header.add_theme_font_size_override("font_size", 13)
+                src_header.add_theme_color_override("font_color", Color(0.55, 0.95, 0.55))
+                src_header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+                treasury_tooltip_vbox.add_child(src_header)
+                # Продукты внутри источника — сортируем по убыванию.
+                var product_lines: Array = []
+                for pid in src_row.products:
+                    product_lines.append({
+                        "name": str(src_row.products[pid].get("product_name", pid)),
+                        "rate": float(src_row.products[pid].get("coins_per_sec", 0.0))
+                    })
+                product_lines.sort_custom(func(a, b): return a.rate > b.rate)
+                for prod_row in product_lines:
+                    var prod_name: String = str(prod_row.name)
+                    var prod_rate: float = float(prod_row.rate)
+                    var line_text := "%s: %s / сек" % [
+                        prod_name, _format_rate(prod_rate)
+                    ]
+                    treasury_tooltip_vbox.add_child(
+                        _make_bullet_row("•", line_text, Color(0.3, 0.85, 0.3)))
+
+    # --- Расходы (факт, за последние N сек): тип → источник → нетто-сумма ---
+    if has_expense:
+        var window_str: String = "%d" % int(round(window_sec))
+        if absf(window_sec - round(window_sec)) > 0.001:
+            window_str = "%.1f" % window_sec
+        var expense_title = Label.new()
+        expense_title.text = "Расходы (факт, за последние %s сек):" % window_str
+        expense_title.add_theme_font_size_override("font_size", 14)
+        expense_title.add_theme_color_override("font_color", Color(1.0, 0.6, 0.6))
+        expense_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        treasury_tooltip_vbox.add_child(expense_title)
+        for expense_type in expense_by_type:
+            if expense_by_type[expense_type].is_empty():
+                continue
+            var expense_type_label = Label.new()
+            expense_type_label.text = "  " + str(expense_type) + ":"
+            expense_type_label.add_theme_font_size_override("font_size", 13)
+            expense_type_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.85))
+            expense_type_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+            treasury_tooltip_vbox.add_child(expense_type_label)
+            var expense_lines: Array = []
+            for src in expense_by_type[expense_type]:
+                expense_lines.append({
+                    "name": src,
+                    "amount": int(expense_by_type[expense_type][src])
+                })
+            expense_lines.sort_custom(func(a, b): return a.amount > b.amount)
+            for row in expense_lines:
+                var amt: int = int(row.amount)
+                # Знак: сюда проходят только amount > 0 (см. предрасчёт выше),
+                # возврат ноттирован в том же источнике.
+                var sign: String = "−" if amt > 0 else "+"
+                var mag: int = abs(amt)
+                var line_text := "%s: %s%d" % [str(row.name), sign, mag]
+                treasury_tooltip_vbox.add_child(
+                    _make_bullet_row("•", line_text, Color(0.9, 0.3, 0.3)))
+
+    # --- Подвал: ссылка на динамику «≈» (как в тултипе ресурсов) ---
+    if has_income:
+        var note = Label.new()
+        note.text = "≈ средняя скорость дохода; фактический баланс меняется по тикам"
+        note.add_theme_font_size_override("font_size", 12)
+        note.add_theme_color_override("font_color", Color(0.65, 0.65, 0.65))
+        note.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        treasury_tooltip_vbox.add_child(note)
+
+    # --- Подвал: ремарка, если расходов в игре пока нет ---
+    if not has_expense:
+        var no_expense_note = Label.new()
+        no_expense_note.text = "Нет разовых расходов в казну за последнее окно"
+        no_expense_note.add_theme_font_size_override("font_size", 12)
+        no_expense_note.add_theme_color_override("font_color", Color(0.65, 0.65, 0.65))
+        no_expense_note.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        treasury_tooltip_vbox.add_child(no_expense_note)
+
+    treasury_tooltip_vbox.reset_size()
+    var content_size = treasury_tooltip_vbox.get_minimum_size()
+    # Отступы от края панели: те же 6/4/6/4 пикселя, что в flow_tooltip —
+    # скролл-контейнер с PRECEDE_FULL_RECT + offset_*.
+    var pad_left = 6
+    var pad_top = 4
+    var pad_right = 6
+    var pad_bottom = 4
+    var max_content_height = DETAIL_TOOLTIP_MAX_ROWS * DETAIL_TOOLTIP_ROW_HEIGHT
+    var content_height = min(content_size.y, max_content_height)
+    var scrollbar_width = 0.0
+    if content_size.y > max_content_height:
+        scrollbar_width = DETAIL_TOOLTIP_SCROLLBAR_WIDTH
+    treasury_tooltip_panel.size = Vector2(
+        content_size.x + scrollbar_width + pad_left + pad_right,
+        content_height + pad_top + pad_bottom
+    )
+    # Тултип только что показан — скролл наверх (как в flow_tooltip_panel).
+    if not treasury_tooltip_panel.visible:
+        treasury_tooltip_scroll.scroll_vertical = 0.0
+    var viewport_size = get_viewport().get_visible_rect().size
+    var pos = mouse_pos + Vector2(15, 15)
+    if pos.x + treasury_tooltip_panel.size.x > viewport_size.x:
+        pos.x = mouse_pos.x - treasury_tooltip_panel.size.x - 15
+    if pos.y + treasury_tooltip_panel.size.y > viewport_size.y:
+        pos.y = mouse_pos.y - treasury_tooltip_panel.size.y - 15
+    pos.x = max(0.0, min(pos.x, maxf(0.0, viewport_size.x - treasury_tooltip_panel.size.x)))
+    pos.y = max(0.0, min(pos.y, maxf(0.0, viewport_size.y - treasury_tooltip_panel.size.y)))
+    treasury_tooltip_panel.position = pos
+    treasury_tooltip_panel.show()
+
+func hide_treasury_tooltip():
+    if treasury_tooltip_panel:
+        treasury_tooltip_panel.hide()
 
 func set_message(text: String):
     if message_label:

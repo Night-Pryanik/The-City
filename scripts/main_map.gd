@@ -139,6 +139,29 @@ var resource_display_interval: float = 1.0
 # тултипы).
 var _treasury_display_epoch: int = -1
 
+# Состояние ховера на «Казна: N» в HUD карты и UI-хелперы для HUD-тултипов.
+# Отдельный экземпляр ui_helpers (параллельно city_ui) — у каждого корня UI
+# своя иерархия тултип-панелей, потому что они добавляются как дети
+# переданного Control-родителя. Свой CanvasLayer гарантирует, что тултипы
+# отрисовываются поверх HUD и карты, не завися от city_ui.
+var _map_ui_helpers: Node = null
+var _treasury_hover_timer: float = 0.0
+var _treasury_hover_leave_timer: float = 0.0
+var _treasury_tooltip_display_epoch: int = -1
+# Кеш значения казны, показываемого в HUD-метке и в тултипе разбивки. Оба
+# потребителя ОБЯЗАНЫ показывать одно и то же значение — иначе в тултипе
+# «убегает вперёд» на 1+ тиков из-за того, что CityData.treasury меняется
+# каждым тиком потребления, а HUD/TopBar обновляются с интервалом из
+# настроек. Кеш обновляется в _update_treasury_hud() (та же точка, что и
+# само обновление лейбла); тултип читает кеш, не CityData напрямую.
+var _displayed_treasury: int = 0
+
+# Задержка показа и grace-таймер (общие значения с city_ui — единый ритм
+# тултипов, одинаково отзывчивые). BUILDING_DETAIL_LEAVE_GRACE используется
+# без прямой ссылки на city_ui — литерал 0.35 сек (см. city_ui.gd).
+const MAP_TOOLTIP_DELAY: float = 0.5
+const MAP_TOOLTIP_LEAVE_GRACE: float = 0.35
+
 @onready var city_ui = $CityUI
 @onready var town_ui = $TownUI
 @onready var hex_tooltip = $HexTooltip
@@ -377,6 +400,14 @@ func _ready():
     # Инициализация DebugManager
     debug_manager.initialize(self)
 
+    # UI-хелперы для тултипов HUD (разбивка казны, и потенциально будущие
+    # тултипы на элементах HUD). Свой CanvasLayer и Control-хост, чтобы
+    # тултипы лежали поверх HUD и карты; детальный список панелей внутри
+    # ui_helpers.setup() — см. соответствующий скрипт. Передаём null в
+    # message_label: своё сообщение HUD показывает через hud_message.gd,
+    # дублировать канал не нужно.
+    _setup_hud_tooltip_layer()
+
     _calc_offsets()
     map_renderer.queue_redraw()
 
@@ -514,6 +545,25 @@ func _process(delta):
     # интервалом из настроек, а не каждым тиком. На паузе дерева _process не
     # идёт — интервал считается игровым временем (см. CityData).
     CityData.tick_resource_display(delta)
+
+    # Тултип разбивки казны по источникам дохода/расхода: polling + grace.
+    # Логика повторяет city_ui.gd (там — для тултипа над TopFoodLabel):
+    # единый ритм, единые константы задержки.
+    var mouse_pos_now: Vector2 = get_viewport().get_mouse_position()
+    if _is_treasury_label_hovered(mouse_pos_now):
+        _treasury_hover_leave_timer = 0.0
+        _treasury_hover_timer += delta
+        if _treasury_hover_timer >= MAP_TOOLTIP_DELAY:
+            _show_treasury_tooltip(mouse_pos_now)
+    else:
+        _treasury_hover_timer = 0.0
+        if _map_ui_helpers and is_instance_valid(_map_ui_helpers) \
+                and _map_ui_helpers.treasury_tooltip_panel \
+                and _map_ui_helpers.treasury_tooltip_panel.visible:
+            _treasury_hover_leave_timer += delta
+            if _treasury_hover_leave_timer >= MAP_TOOLTIP_LEAVE_GRACE:
+                _map_ui_helpers.hide_treasury_tooltip()
+                _treasury_hover_leave_timer = 0.0
 
     production_timer += delta
     if production_timer >= CityData.SIMULATION_TICK:
@@ -2020,10 +2070,72 @@ func _update_population_hud():
 # Обновляет метку казны в HUD (ниже блока времени игры). Вызывается
 # из _ready (старт/загрузка), из apply_settings (смена интервала) и из
 # _on_city_data_updated (тиковый путь с проверкой эпохи отображения).
+# Захватывает CityData.treasury в _displayed_treasury — этот же кеш
+# использует тултип разбивки казны (см. _show_treasury_tooltip), чтобы
+# лейбл и тултип показывали одно значение, без «убегания» на 1+ тик.
 func _update_treasury_hud():
+    _displayed_treasury = CityData.treasury
     var treasury_label = hud.get_node_or_null("VBoxContainer/TreasuryLabel")
     if treasury_label:
-        treasury_label.text = "Казна: %d" % CityData.treasury
+        treasury_label.text = "Казна: %d" % _displayed_treasury
+
+# Создаёт CanvasLayer + Control-хост и инстанциирует ui_helpers для
+# HUD-тултипов (разбивка казны и будущие). Добавляется в дерево один раз в
+# _ready; повторные вызовы — no-op. Вынесено в отдельный метод, чтобы не
+# нагромождать _ready.
+func _setup_hud_tooltip_layer():
+    if _map_ui_helpers != null and is_instance_valid(_map_ui_helpers):
+        return
+    var layer := CanvasLayer.new()
+    layer.name = "HUDTooltipLayer"
+    layer.layer = 100 # поверх HUD (HUD как Panel на main-сцене)
+    add_child(layer)
+    var host := Control.new()
+    host.name = "HUDTooltipHost"
+    host.set_anchors_preset(Control.PRESET_FULL_RECT)
+    host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    layer.add_child(host)
+    _map_ui_helpers = load("res://scripts/ui_helpers.gd").new()
+    _map_ui_helpers.setup(host, null)
+    layer.add_child(_map_ui_helpers)
+
+# Возвращает true, если курсор сейчас над меткой казны или над активным
+# тултипом разбивки (это нужно, чтобы при переходе курсора с метки на
+# тултип тултип не моргал — leave срабатывает только по grace).
+func _is_treasury_label_hovered(mouse_pos: Vector2) -> bool:
+    if not (hud and is_instance_valid(hud)):
+        return false
+    var treasury_label = hud.get_node_or_null("VBoxContainer/TreasuryLabel")
+    if treasury_label and is_instance_valid(treasury_label) \
+            and treasury_label.get_global_rect().has_point(mouse_pos):
+        return true
+    if _map_ui_helpers and is_instance_valid(_map_ui_helpers) \
+            and _map_ui_helpers.treasury_tooltip_panel \
+            and _map_ui_helpers.treasury_tooltip_panel.visible \
+            and _map_ui_helpers.treasury_tooltip_panel.get_global_rect().has_point(mouse_pos):
+        return true
+    return false
+
+# Показывает тултип разбивки казны под курсором (HUD-вариант). Данные — из
+# worker_manager (плановый доход по источникам) и CityData (снимок расходов
+# за окно). Аналогичен методу в city_ui.gd (см. _show_treasury_tooltip там).
+func _show_treasury_tooltip(mouse_pos: Vector2):
+    if not worker_manager:
+        return
+    var planned_income: Dictionary = {}
+    if worker_manager.has_method("get_planned_treasury_income_map"):
+        planned_income = worker_manager.get_planned_treasury_income_map()
+    # Берём _displayed_treasury (кеш лейбла HUD), а не CityData.treasury —
+    # иначе в тултипе будет видно «свежее» значение казны, которое обгоняет
+    # метку HUD на 1+ тиков потребления (см. developer_diary, регресс
+    # «убегает вперёд»).
+    _map_ui_helpers.show_treasury_tooltip(
+        mouse_pos,
+        _displayed_treasury,
+        planned_income,
+        CityData.treasury_expense_snapshot,
+        CityData.treasury_window_length_sec
+    )
 
 # Тиковый обработчик: обновляет HUD-метку казны с интервалом отображения
 # ресурсов. Аналогично control_panel.on_city_updated и city_ui._refresh_light —
@@ -2033,6 +2145,16 @@ func _on_city_data_updated():
     if CityData.resource_display_due(_treasury_display_epoch):
         _treasury_display_epoch = CityData.resource_display_epoch
         _update_treasury_hud()
+        # На смене эпохи обновляем открытый тултип разбивки казны свежими
+        # данными (плановый доход пересчитан, снимок расходов обновлён). Это
+        # «живой» апдейт — игрок видит актуальные цифры, пока курсор на
+        # метке или на тултипе.
+        if _map_ui_helpers and is_instance_valid(_map_ui_helpers) \
+                and _map_ui_helpers.treasury_tooltip_panel \
+                and _map_ui_helpers.treasury_tooltip_panel.visible \
+                and CityData.resource_display_due(_treasury_tooltip_display_epoch):
+            _treasury_tooltip_display_epoch = CityData.resource_display_epoch
+            _show_treasury_tooltip(get_viewport().get_mouse_position())
 
 func _on_assignment_changed():
     map_renderer.queue_redraw()
@@ -2082,6 +2204,11 @@ func start_scouting(chunk: Array):
         hud.show_message("Недостаточно монет в казне! Нужно %d, в казне %d"
                 % [expedition_cost, CityData.treasury])
         return
+    # Источник расхода для тултипа «Казна» (см. show_treasury_tooltip).
+    # Разовые траты на разведку — событийные, в плане их нет, поэтому разбивка
+    # расходов показывает факт за последнее окно отображения.
+    if expedition_cost > 0:
+        CityData.record_treasury_expense("Разведка", expedition_cost)
     scouting_chunk = chunk
     scouting_timer = 0.0
     is_scouting = true

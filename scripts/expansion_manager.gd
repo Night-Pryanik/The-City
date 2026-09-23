@@ -315,6 +315,11 @@ func handle_action(chunk: Array, money_cost: int, work_cost: int) -> bool:
         main_map.hud.show_message("Недостаточно монет в казне! Нужно %d, в казне %d"
                 % [money_cost, CityData.treasury])
         return false
+    # Источник расхода для тултипа «Казна» (см. show_treasury_tooltip).
+    # Разовые траты на освоение чанка — событийные, в плане их нет, поэтому
+    # разбивка расходов показывает факт за последнее окно отображения.
+    if money_cost > 0:
+        CityData.record_treasury_expense("Освоение чанков", money_cost)
 
     # --- Запуск стройки освоения (труд накапливается во времени) ---
     var bm = main_map.build_manager
@@ -324,6 +329,17 @@ func handle_action(chunk: Array, money_cost: int, work_cost: int) -> bool:
         # Стройка не запустилась (например, исчерпан лимит одновременных
         # строек) — возвращаем монеты, чтобы они не пропали.
         CityData.add_treasury(money_cost)
+        if money_cost > 0:
+            # Возврат идёт в ТОТ ЖЕ источник расходов «Освоение чанков»
+            # отрицательной записью: record_treasury_expense принимает
+            # signed amount, отрицательное число вычитается из накопленного
+            # расхода по этому источнику. Нетто за окно сходится с фактом
+            # изменения казны (платил Y → получил Y назад → 0 за окно).
+            # Раньше возврат шёл отдельным источником дохода «… (возврат)»,
+            # но при иерархической разбивке казны он не ложится ни в один
+            # тип («Потребление населения» — это не возврат), поэтому
+            # ноттируем внутри расхода.
+            CityData.record_treasury_expense("Освоение чанков", -money_cost)
         return false
     # Fallback: если build_manager недоступен — осваиваем мгновенно.
     _complete_expansion(chunk)

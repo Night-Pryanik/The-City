@@ -293,7 +293,11 @@ func _tick_profession_consumption(prof: String, key: String, timers: Dictionary,
                 CityData.remove_from_storage(member_pid, take, "best")
                 CityData.record_consumption_source(member_pid, prof_source, take)
                 # Фактическое потребление на внутреннем рынке даёт доход в казну.
-                CityData.add_treasury(CityData.get_internal_market_price(member_pid) * take)
+                var member_take_price: int = CityData.get_internal_market_price(member_pid) * take
+                CityData.add_treasury(member_take_price)
+                # Источник дохода для тултипа «Казна» по тому же ключу,
+                # что и в плановой карте (имя профессии, напр. «Рыбак»).
+                CityData.record_treasury_income(prof_source, member_take_price)
                 remaining -= take
         else:
             var pid: String = str(entry.get("product_id", ""))
@@ -307,7 +311,11 @@ func _tick_profession_consumption(prof: String, key: String, timers: Dictionary,
                 continue
             CityData.remove_from_storage(pid, take_single, "best")
             CityData.record_consumption_source(pid, prof_source, take_single)
-            CityData.add_treasury(CityData.get_internal_market_price(pid) * take_single)
+            var single_take_price: int = CityData.get_internal_market_price(pid) * take_single
+            CityData.add_treasury(single_take_price)
+            # Источник дохода для тултипа «Казна» по тому же ключу,
+            # что и в плановой карте (имя профессии, напр. «Рыбак»).
+            CityData.record_treasury_income(prof_source, single_take_price)
 
     timers[key].fractional = fractional
     return 1.0 + _aggregate_production_bonus(cons_list)
@@ -459,7 +467,11 @@ func tick_city_consumption(delta: float) -> void:
                 CityData.remove_from_storage(pid, take, "best")
                 CityData.record_consumption_source(pid, all_source, take)
                 # Горожане платят за потреблённый товар из казны (внутренний рынок).
-                CityData.add_treasury(CityData.get_internal_market_price(pid) * take)
+                var group_take_price: int = CityData.get_internal_market_price(pid) * take
+                CityData.add_treasury(group_take_price)
+                # Источник дохода для тултипа «Казна» (городское потребление,
+                # имя берётся из data/professions.json → «Все жители»).
+                CityData.record_treasury_income(all_source, group_take_price)
                 remaining -= take
         else:
             var pid = str(entry.get("product_id", ""))
@@ -473,7 +485,10 @@ func tick_city_consumption(delta: float) -> void:
             CityData.remove_from_storage(pid, take, "best")
             CityData.record_consumption_source(pid, all_source, take)
             # Горожане платят за потреблённый товар из казны (внутренний рынок).
-            CityData.add_treasury(CityData.get_internal_market_price(pid) * take)
+            var city_take_price: int = CityData.get_internal_market_price(pid) * take
+            CityData.add_treasury(city_take_price)
+            # Источник дохода для тултипа «Казна» (городское потребление).
+            CityData.record_treasury_income(all_source, city_take_price)
         timer.elapsed = 0.0
 
 # Сериализация таймеров городского потребления для сохранения.
@@ -604,6 +619,69 @@ func get_planned_consumption_map() -> Dictionary:
             var e: Dictionary = improvement_demand[pid][source_name]
             _record_planned_entry(result, str(pid), str(source_name), int(e.get("amount", 0)), float(e.get("interval", 0.0)), int(e.get("count", 1)), bool(e.get("is_group", false)), str(e.get("group_name", "")), false)
     return result
+
+# Плановая скорость ДОХОДА казны по ТИПАМ прибыли — для тултипа «Казна»
+# в HUD карты и в верхней полосе интерфейса города.
+# Аналог «Производство (плановое)» на вкладке «Ресурсы»: равномерный поток,
+# не мигает на тиках без списания. Возвращает иерархическую структуру:
+#   {
+#     "Потребление населения": {              # тип прибыли (top level)
+#       "Все жители": {                       # источник (= имя профессии/горожан)
+#         "fruit":  { coins_per_sec: 2.5, product_name: "Фрукты" },
+#         "salt":   { coins_per_sec: 0.5, product_name: "Соль" }
+#       },
+#       "Рыбак": {
+#         "reed_boat": { coins_per_sec: 1.2, product_name: "Лодки" }
+#       }
+#     }
+#     # будущие типы: "Налоги", "Торговля" — добавляются сюда же отдельной
+#     # функцией, чтобы шкала типов расширялась без правки тултипа.
+#   }
+# Внутри одного «источника» продукты могут повторяться (например, для
+# `@boats` группа раскладывается по членам — каждый член отдельным
+# pid). Тултип сортирует источники и продукты по убыванию скорости.
+#
+# Товары без базовой цены (price ≤ 0) исключены: цена внутреннего рынка
+# для них = 0 и в прибыли не участвуют.
+func get_planned_treasury_income_map() -> Dictionary:
+    var result: Dictionary = {}
+    _fill_consumption_income(result)
+    return result
+
+# Доход от потребления на внутреннем рынке: профессиональное потребление
+# рабочих + городское потребление «all» + спрос зданий/улучшений.
+# Сейчас единственный запланированный источник казны — живёт под типом
+# «Потребление населения». Объединён в отдельный метод, чтобы будущие
+# типы («Налоги», «Торговля» и т.п.) добавлялись параллельно без правки
+# этой функции.
+func _fill_consumption_income(result: Dictionary) -> void:
+    var income_type := "Потребление населения"
+    if not result.has(income_type):
+        result[income_type] = {}
+    var type_dict: Dictionary = result[income_type]
+    var planned := get_planned_consumption_map()
+    for pid in planned:
+        var market_price: int = CityData.get_internal_market_price(str(pid))
+        if market_price <= 0:
+            continue
+        var product_name: String = GameData.products.get(pid, {}).get("name", pid)
+        for source_name in planned[pid]:
+            var entry: Dictionary = planned[pid][source_name]
+            var amount := float(entry.get("amount", 0))
+            var interval := float(entry.get("interval", 0))
+            # Per-second потребление записи (см. ui_helpers._planned_per_sec).
+            var per_sec: float
+            if interval > 0.0:
+                per_sec = amount * CityData.SIMULATION_TICK / interval
+            else:
+                per_sec = amount * CityData.SIMULATION_TICK
+            if per_sec <= 0.0:
+                continue
+            var coins_per_sec: float = per_sec * float(market_price)
+            if not type_dict.has(source_name):
+                type_dict[source_name] = {}
+            var source_dict: Dictionary = type_dict[source_name]
+            source_dict[pid] = {"coins_per_sec": coins_per_sec, "product_name": product_name}
 
 # Записывает в result плановое потребление профессии prof_id при count
 # потребителях. Для псевдо-профессии «all» count = население города и

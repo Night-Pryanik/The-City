@@ -125,6 +125,21 @@ func tick_resource_display(delta: float) -> void:
         # кратен шагу тика (1 сек), дробная часть почти не накапливается.
         _resource_display_accum = fmod(_resource_display_accum, resource_display_interval)
         resource_display_epoch += 1
+        # Окно отображения разбивки казны обновляется своим ритмом
+        # (treasury_window_length_sec, по умолчанию 3 сек — см.
+        # DEFAULT_TREASURY_WINDOW_SEC). Привязка к эпохе ресурсов удобна
+        # для UI (одной галочкой «обновились ресурсы → обновилась разбивка
+        # казны»), но отрезок короче: эпоха тикает раз в
+        # resource_display_interval (1..5 сек), а здесь считаем свои тики
+        # тем же delta, что и ресурсная эпоха (ровный шаг 1 сек не нужен —
+        # точность требует только «плюс-минус секунда»).
+        _treasury_window_accum_sec += float(resource_display_interval)
+        if _treasury_window_accum_sec >= treasury_window_length_sec:
+            rotate_treasury_window()
+            _treasury_window_accum_sec = 0.0
+
+# Накопитель игрового времени для окна разбивки казны. Только здесь.
+var _treasury_window_accum_sec: float = 0.0
 
 # True, если место с последней проверки не обновляло отображение ресурсов.
 # Вызывающий после обновления запоминает CityData.resource_display_epoch.
@@ -253,6 +268,14 @@ func setup():
 
     # Стартовая казна — из data/game_balance.json (поле initial_treasury).
     treasury = int(GameData.game_balance.get("initial_treasury", 10))
+    # Трекинг доходов/расходов для тултипа «Казна»: разовая транзакция при
+    # старте игры невозможна, но снимки прошлого окна могли остаться от
+    # предыдущей сессии/сейва — очищаем.
+    treasury_income_accum.clear()
+    treasury_expense_accum.clear()
+    treasury_income_snapshot.clear()
+    treasury_expense_snapshot.clear()
+    treasury_window_length_sec = DEFAULT_TREASURY_WINDOW_SEC
 
     total_population = 1
     idle_population = 1 # один житель, пока нигде не занят
@@ -306,6 +329,77 @@ func spend_treasury(amount: int) -> bool:
     treasury -= amount
     emit_signal("treasury_changed", treasury)
     return true
+
+# --- РАЗБИВКА КАЗНЫ ПО ИСТОЧНИКАМ (для тултипа) ---
+# Источники прибыли/расхода казны собираются в тултип при наведении на
+# «Казна: N» в HUD карты и в верхней полосе интерфейса города
+# (см. show_treasury_tooltip в ui_helpers.gd). Поведение отдельное для двух
+# сторон баланса:
+#
+#   * Прибыль — непрерывный поток от потребления на внутреннем рынке
+#     (worker_manager.get_planned_treasury_income_map): считается из
+#     planned_consumption_map × internal_market_price. Аналог «Производство
+#     (плановое)» на вкладке «Ресурсы» — равномерно и без мельтешения.
+#
+#   * Расходы — событийные транзакции игрока (разведка, освоение чанка, возврат
+#     при отказе стройки). У автоматического расхода в казну нет запланированной
+#     скорости — это разовые суммы по клику, поэтому в тултипе показывается
+#     факт за ПОСЛЕДНЕЕ ОКНО отображения (по умолчанию — 3 секунды), а не
+#     «/сек». Окно сбрасывается раз в `treasury_window_length_sec` рядом с
+#     ресурсной эпохой (см. tick_resource_display), чтобы тултип был стабилен
+#     и не мигал на каждом тике.
+#
+# Снимки (`treasury_*_snapshot`) хранят данные прошедшего окна, тултип читает
+# их. Текущий тик (после очередной смены эпохи) — в `treasury_*_accum`, эти
+# счётчики наполняются из record_treasury_income/_expense и сбрасываются в
+# снимок при rotate_treasury_window().
+var treasury_income_accum: Dictionary = {}
+var treasury_expense_accum: Dictionary = {}
+var treasury_income_snapshot: Dictionary = {}
+var treasury_expense_snapshot: Dictionary = {}
+var treasury_window_length_sec: float = 3.0
+
+# Записывает доход казны по источнику (накапливается в текущем окне). Вызов
+# рядом с add_treasury в местах фактического пополнения казны (см. callers).
+# source_name — человекочитаемое имя источника («Рыбак», «Все жители» и т.п.).
+func record_treasury_income(source_name: String, amount: int) -> void:
+    if amount == 0 or source_name.is_empty():
+        return
+    treasury_income_accum[source_name] = int(treasury_income_accum.get(source_name, 0)) + amount
+
+# Записывает расход казны по источнику (накапливается в текущем окне).
+# Вызов рядом со spend_treasury в местах фактического списания. signed amount:
+#   amount > 0 — gross расход (трата);
+#   amount < 0 — возврат (refund) в ТОТ ЖЕ источник: ноттируется в накопленную
+#                 сумму по этому источнику (отрицательная запись вычитается).
+#                 См. expansion_manager.handle_action для примера: gross +
+#                 refund в одной паре даёт net-расход в снапшоте.
+#   amount == 0 — no-op (отбрасывается).
+# Возврат ноттируется внутри источника потому, что возврат не вписывается
+# ни в один тип дохода из иерархической разбивки (там только «Потребление
+# населения» и будущие «Налоги»/«Торговля»). Если в снапшоте источник
+# оказался с нетто <= 0 (только возвраты без компенсирующей траты), тултип
+# его не показывает — для игрока это эквивалентно отсутствию расхода.
+func record_treasury_expense(source_name: String, amount: int) -> void:
+    if amount == 0 or source_name.is_empty():
+        return
+    treasury_expense_accum[source_name] = int(treasury_expense_accum.get(source_name, 0)) + amount
+
+# Сбрасывает текущее окно в «прошлое» и обнуляет аккумуляторы. Вызывается раз
+# в `treasury_window_length_sec` рядом со сменой эпохи отображения ресурсов
+# (см. tick_resource_display). Тултип всегда читает snapshot — данные прошлого
+# полного окна; так новые накопления текущего окна не «прыгают» на каждом тике
+# при обновлении.
+func rotate_treasury_window() -> void:
+    treasury_income_snapshot = treasury_income_accum.duplicate()
+    treasury_expense_snapshot = treasury_expense_accum.duplicate()
+    treasury_income_accum.clear()
+    treasury_expense_accum.clear()
+
+# Длительность окна в секундах. По умолчанию 3 сек — короче минимально возможного
+# интервала отображения ресурсов (1 сек), но достаточно для захвата разовых
+# транзакций разведки/освоения без размывания факта.
+const DEFAULT_TREASURY_WINDOW_SEC: float = 3.0
 
 # Возвращает цену, по которой внутренний рынок покупает у города единицу
 # товара pid (в монетах казны). Это доля базовой цены товара (price из

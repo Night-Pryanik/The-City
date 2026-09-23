@@ -83,18 +83,27 @@ custom_minimum_size = Vector2(36, 34)
 layout_mode = 2
 tooltip_text = "Технологии"
 
-[node name="TopFoodLabel" type="Label" parent="TabBarPanel" unique_id=1528058809]
+[node name="TopFoodLabel" type="HBoxContainer" parent="TabBarPanel" unique_id=1528058809]
 layout_mode = 1
-anchors_preset = 15
 anchor_right = 1.0
-anchor_bottom = 1.0
 offset_left = 190.0
 offset_top = 8.0
 offset_right = -60.0
-offset_bottom = 36.0
-grow_horizontal = 2
-grow_vertical = 2
+offset_bottom = 42.0
+theme_override_constants/separation = 8
+
+[node name="FoodLabel" type="Label" parent="TabBarPanel/TopFoodLabel" unique_id=1528058810]
+layout_mode = 2
 text = "Еда: 0"
+
+[node name="PopLabel" type="Label" parent="TabBarPanel/TopFoodLabel" unique_id=1528058811]
+layout_mode = 2
+text = "Население: 1"
+
+[node name="TreasuryLabel" type="Label" parent="TabBarPanel/TopFoodLabel" unique_id=1528058812]
+layout_mode = 2
+mouse_filter = 2
+text = "Казна: 0"
 
 [node name="ContentPanel" type="Panel" parent="." unique_id=606119453]
 layout_mode = 1

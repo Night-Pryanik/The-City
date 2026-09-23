@@ -15,8 +15,25 @@ extends Control
 @onready var close_button_top = $CloseButtonTop
 
 # Верхняя полоса
+# TopFoodLabel — контейнер HBox с тремя дочерними метками: еда / население /
+# казна. Казна — отдельная метка с ховером, потому что тултип нужен только
+# на ней (разбивка по источникам дохода/расхода казны).
 @onready var top_food_label = $TabBarPanel/TopFoodLabel
+@onready var top_food_value_label = $TabBarPanel/TopFoodLabel/FoodLabel
+@onready var top_pop_value_label = $TabBarPanel/TopFoodLabel/PopLabel
+@onready var top_treasury_value_label = $TabBarPanel/TopFoodLabel/TreasuryLabel
 @onready var message_label = $BottomPanel/MessageLabel
+
+# Состояние ховера на «Казна: N» в верхней полосе города. Снимок источников
+# дохода/расхода обновляется раз в ресурсную эпоху через _refresh_light, чтобы
+# счётчик «/сек» не мельтешил каждый тик.
+var _treasury_display_epoch: int = -1
+# Кеш значения казны, показываемого в TopFoodLabel и в тултипе разбивки.
+# Оба потребителя ОБЯЗАНЫ показывать одно и то же значение: CityData.treasury
+# меняется каждым тиком потребления, а TopFoodLabel обновляется с интервалом
+# из настроек (см. _refresh_light). Кеш обновляется в _update_food_label
+# (рядом с записью в TopFoodLabel); тултип читает кеш, не CityData напрямую.
+var _displayed_treasury: int = 0
 
 var active_tab = "resources"
 var tab_buttons = []
@@ -49,6 +66,12 @@ var building_detail_leave_timer: float = 0.0
 var building_detail_locked: bool = false
 var building_detail_locked_id: String = ""
 var building_detail_delay: float = 0.5
+# Ховер-таймер для тултипа разбивки казны (см. _process).
+var treasury_hover_timer: float = 0.0
+# Таймер grace при уходе курсора с метки/тултипа казны — защищает от
+# мерцания при переходе курсора с метки на тултип и обратно (как в тултипе
+# деталей здания, см. BUILDING_DETAIL_LEAVE_GRACE).
+var treasury_hover_leave_timer: float = 0.0
 const TOOLTIP_DELAY: float = 0.5
 const BUILDING_DETAIL_LEAVE_GRACE: float = 0.35
 
@@ -145,6 +168,17 @@ func _ready():
     if not CityData.city_updated.is_connected(_on_city_data_updated):
         CityData.city_updated.connect(_on_city_data_updated)
 
+    # Начальное значение кеша казны — первое же открытие тултипа должно
+    # показать актуальную казну, а не «0» из дефолта. Дальше кеш обновляется
+    # в _update_food_label на каждой ресурсной эпохе.
+    _displayed_treasury = CityData.treasury
+
+    # Ховер на метке «Казна: N» в верхней полосе — показ тултипа разбивки
+    # казны по источникам дохода/расхода. Подход polling + grace-таймер
+    # (см. building_detail_tooltip ниже) — он работает независимо от
+    # mouse_filter и сам корректно «переживает» переход курсора с метки на
+    # тултип.
+
     # Казна в верхней полосе города обновляется через тиковый путь
     # (city_updated → _refresh_light) с проверкой эпохи отображения ресурсов —
     # синхронно с остальной верхней строкой и ресурсами вкладки «Ресурсы».
@@ -234,6 +268,14 @@ func _refresh_light(force_resources := false):
         _display_epoch = CityData.resource_display_epoch
         resources_tab.update_values()
         _update_food_label()
+        # На смене ресурсной эпохи обновляем открытый тултип разбивки казны
+        # свежими данными (плановый доход пересчитан, снимок расходов
+        # обновлён, см. CityData.tick_resource_display → rotate_treasury_window).
+        if ui_helpers and is_instance_valid(ui_helpers) \
+                and ui_helpers.treasury_tooltip_panel \
+                and ui_helpers.treasury_tooltip_panel.visible:
+            _show_treasury_tooltip(get_viewport().get_mouse_position())
+            _treasury_display_epoch = CityData.resource_display_epoch
     buildings_tab.update_built_status()
     # Прогресс исследования обновляем только когда вкладка Технологии
     # активна — иначе лишняя работа на каждом тике. Стоимость минимальна,
@@ -353,10 +395,60 @@ func _update_food_label():
 
     var food_str = "Еда: %d [+%d%s / -%d%s]" % [food_sum, total_prod, prod_mark, total_cons, cons_mark]
     var pop_str = "Население: %d (свободных: %d)" % [CityData.total_population, CityData.idle_population]
-    var treasury_str = "Казна: %d" % CityData.treasury
+    # Захватываем значение казны в кеш — этот же кеш читает тултип разбивки
+    # казны (см. _show_treasury_tooltip). Синхронизация важна, иначе при
+    # интервале отображения > 1 сек метка TopFoodLabel показывает старое
+    # значение, а тултип — каждый тик свежее (визуальный регресс «убегает
+    # вперёд», см. developer_diary).
+    _displayed_treasury = CityData.treasury
+    var treasury_str = "Казна: %d" % _displayed_treasury
 
-    if top_food_label:
-        top_food_label.text = food_str + " | " + pop_str + " | " + treasury_str
+    # TopFoodLabel — HBoxContainer с тремя дочерними метками
+    # (FoodLabel/PopLabel/TreasuryLabel), см. сцену CityUI.tscn. Разделитель
+    # «|» рисуется между ними отдельной меткой в сцене.
+    if top_food_value_label:
+        top_food_value_label.text = food_str
+    if top_pop_value_label:
+        top_pop_value_label.text = pop_str
+    if top_treasury_value_label:
+        top_treasury_value_label.text = treasury_str
+
+# Курсор сейчас над меткой казны или над активным тултипом разбивки казны.
+    # Если да — тултип удерживается открытым, ухода с grace-таймером не
+    # происходит (это нужно, чтобы при переходе курсора с метки на тултип
+    # тултип не моргал). Аналогично логике building_detail_tooltip ниже.
+func _is_treasury_hovered(mouse_pos: Vector2) -> bool:
+    if not visible:
+        return false
+    if top_treasury_value_label and top_treasury_value_label.get_global_rect().has_point(mouse_pos):
+        return true
+    if ui_helpers and is_instance_valid(ui_helpers) \
+            and ui_helpers.treasury_tooltip_panel \
+            and ui_helpers.treasury_tooltip_panel.visible \
+            and ui_helpers.treasury_tooltip_panel.get_global_rect().has_point(mouse_pos):
+        return true
+    return false
+
+# Показывает тултип разбивки казны под курсором. Данные — из worker_manager
+    # (плановый доход по источникам) и CityData (снимок расходов за окно).
+    # Вызывается из _process по истечении TOOLTIP_DELAY и при смене эпохи
+    # отображения ресурсов (см. _refresh_light).
+func _show_treasury_tooltip(mouse_pos: Vector2):
+    if not (ui_helpers and is_instance_valid(ui_helpers) and worker_manager):
+        return
+    var planned_income: Dictionary = {}
+    if worker_manager.has_method("get_planned_treasury_income_map"):
+        planned_income = worker_manager.get_planned_treasury_income_map()
+    # Берём _displayed_treasury (кеш TopFoodLabel), а не CityData.treasury —
+    # иначе в тултипе будет видно «свежее» значение казны, обгоняющее метку
+    # TopFoodLabel на 1+ тиков потребления (см. developer_diary).
+    ui_helpers.show_treasury_tooltip(
+        mouse_pos,
+        _displayed_treasury,
+        planned_income,
+        CityData.treasury_expense_snapshot,
+        CityData.treasury_window_length_sec
+    )
 
 # Суммарная посекундная скорость записей плана (производства или потребления)
 # по продуктам из пула еды. Формат карт — product_id -> { источник -> { amount,
@@ -529,6 +621,25 @@ func _process(delta):
         building_detail_locked = false
         building_detail_locked_id = ""
         ui_helpers.hide_building_detail_tooltip()
+
+    # Тултип разбивки казны по источникам дохода/расхода: polling + grace
+    # (по образцу тултипа деталей здания выше). Задержка та же TOOLTIP_DELAY.
+    # live-update контента в реальном времени делается в _refresh_light — там
+    # пересчитываем тултип на смене ресурсной эпохи, если он видим.
+    if _is_treasury_hovered(mouse_pos):
+        treasury_hover_leave_timer = 0.0
+        treasury_hover_timer += delta
+        if treasury_hover_timer >= TOOLTIP_DELAY:
+            _show_treasury_tooltip(mouse_pos)
+    else:
+        treasury_hover_timer = 0.0
+        if ui_helpers and is_instance_valid(ui_helpers) \
+                and ui_helpers.treasury_tooltip_panel \
+                and ui_helpers.treasury_tooltip_panel.visible:
+            treasury_hover_leave_timer += delta
+            if treasury_hover_leave_timer >= BUILDING_DETAIL_LEAVE_GRACE:
+                ui_helpers.hide_treasury_tooltip()
+                treasury_hover_leave_timer = 0.0
 
 func set_message(text: String):
     if ui_helpers:
