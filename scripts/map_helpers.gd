@@ -268,29 +268,60 @@ static func can_build_canal(row: int, col: int, tile_data: Array, map_rows: int,
     return {"ok": true, "reason": ""}
 
 
+## Является ли terrain (по его id) источником пресной воды. Читает флаг
+## `fresh_water_source: true` из data/terrains.json. Сейчас — "lake",
+## но новые пресноводные террейны достаточно наделить этим полем.
+static func _is_fresh_water_source_terrain(terrain_id: String) -> bool:
+    if terrain_id == "":
+        return false
+    var t: Dictionary = GameData.terrains.get(terrain_id, {})
+    return bool(t.get("fresh_water_source", false))
+
+## Является ли cover (по его id) источником пресной воды. Читает флаг
+## `fresh_water_source: true` из data/covers.json. Сейчас — "oasis".
+static func _is_fresh_water_source_cover(cover_id: String) -> bool:
+    if cover_id == "":
+        return false
+    var c: Dictionary = GameData.covers.get(cover_id, {})
+    return bool(c.get("fresh_water_source", false))
+
+## Является ли гекс прямым источником пресной воды по своим terrain/cover.
+## Реки здесь НЕ учитываются: river_edges — отдельный источник (см.
+## `_is_direct_water_source`), а oasis может лежать на террейне
+## песка/камня пустыни, который сам по себе пресной воды не даёт.
+static func _is_fresh_water_source_tile(tile: Dictionary) -> bool:
+    if tile == null:
+        return false
+    if _is_fresh_water_source_terrain(tile.get("terrain", "")):
+        return true
+    if _is_fresh_water_source_cover(tile.get("cover", "none")):
+        return true
+    return false
+
 ## Является ли гекс (row, col) ПРЯМЫМ источником пресной воды:
-## ТОЛЬКО сам гекс с водой — озеро (terrain == "lake") или река
-## (river_edges на общих рёбрах). Никаких "сосед канала", "сосед озера",
-## "сам канал" — передача воды в любую сторону идёт
-## через chain-BFS и подчиняется лимиту дальности (irrigation/canals).
-## Это база для схемы water_access: source-гекс (озеро/река) даёт
-## "direct", всё остальное — "chain" или "".
+## ТОЛЬКО сам гекс с водой — террейн/покров с fresh_water_source=true
+## (озеро, оазис) или река (river_edges на общих рёбрах). Никаких
+## "сосед канала", "сосед озера", "сам канал" — передача воды в любую
+## сторону идёт через chain-BFS и подчиняется лимиту дальности
+## (irrigation/canals). Это база для схемы water_access: source-гекс
+## (озеро/оазис/река) даёт "direct", всё остальное — "chain" или "".
 static func _is_direct_water_source(row: int, col: int, tile_data: Array, map_rows: int, map_cols: int) -> bool:
     if row < 0 or row >= map_rows or col < 0 or col >= map_cols:
         return false
     var tile = tile_data[row][col]
     if tile == null:
         return false
-    if tile.get("terrain", "plain") == "lake":
+    if _is_fresh_water_source_tile(tile):
         return true
     if tile.get("river_edges", []).size() > 0:
         return true
     return false
 
-## Проверяет, является ли гекс (row, col) соседом озера: у него есть
-## сосед с terrain == "lake". Гекс на берегу озера считается имеющим
+## Проверяет, является ли гекс (row, col) соседом прямого пресноводного
+## источника (озера/оазиса): у него есть сосед с terrain/cover, у которого
+## `fresh_water_source: true`. Такой береговой гекс считается имеющим
 ## ПРЯМОЙ доступ к пресной воде, независимо от изученных технологий.
-static func _is_adjacent_to_lake(
+static func _is_adjacent_to_fresh_water_source(
     row: int,
     col: int,
     tile_data: Array,
@@ -304,7 +335,7 @@ static func _is_adjacent_to_lake(
         var neighbor_tile = tile_data[n.row][n.col]
         if neighbor_tile == null:
             continue
-        if neighbor_tile.get("terrain", "") == "lake":
+        if _is_fresh_water_source_tile(neighbor_tile):
             return true
     return false
 
@@ -335,7 +366,10 @@ static func _is_water_conductor(
 
 
 ## Возвращает тип доступа гекса (row, col) к пресной воде:
-##   - "direct" — прямой доступ (озеро, река, канал-сосед, сосед-озеро);
+##   - "direct" — прямой доступ: гекс с terrain/cover, у которого
+##                `fresh_water_source: true` (озеро/оазис), река по общему
+##                ребру, сам канал (`is_canal: true` у улучшения) или
+##                сосед такого источника/канала;
 ##   - "chain"  — доступ через цепочку проводников (ферм/плантаций/каналов),
 ##                который срабатывает ТОЛЬКО после изучения технологии
 ##                «Орошение» (tech_id: "irrigation");
@@ -367,11 +401,12 @@ static func get_hex_water_access(
     if tile == null:
         return ""
 
-    # Прямой доступ — только гекс с водой (озеро/река).
+    # Прямой доступ — только гекс с водой (озеро/оазис/река).
     if _is_direct_water_source(row, col, tile_data, map_rows, map_cols):
         return "direct"
-    # Гекс на берегу озера имеет ПРЯМОЙ доступ к воде (без технологий).
-    if _is_adjacent_to_lake(row, col, tile_data, map_rows, map_cols):
+    # Гекс на берегу пресноводного источника имеет ПРЯМОЙ доступ к воде
+    # (без технологий): сосед с terrain/cover, у которого `fresh_water_source: true`.
+    if _is_adjacent_to_fresh_water_source(row, col, tile_data, map_rows, map_cols):
         return "direct"
 
     # Цепочка проводников: длина берётся из модификаторов технологий
@@ -415,10 +450,11 @@ static func get_hex_water_access(
             var neighbor_tile = tile_data[n.row][n.col]
             if neighbor_tile == null:
                 continue
-            # Прямой источник — озеро (всегда) или река по ОБЩЕМУ ребру
-            # (река должна течь именно по грани между текущим гексом и соседом;
-            # река на «чужом» ребре соседа не даёт воду текущему гексу).
-            if neighbor_tile.get("terrain", "") == "lake":
+            # Прямой источник — террейн/покров с fresh_water_source=true
+            # (озеро/оазис) или река по ОБЩЕМУ ребру (река должна течь именно
+            # по грани между текущим гексом и соседом; река на «чужом» ребре
+            # соседа не даёт воду текущему гексу).
+            if _is_fresh_water_source_tile(neighbor_tile):
                 return "chain"
             var n_edges: Array = neighbor_tile.get("river_edges", [])
             if n_edges.size() > 0:
