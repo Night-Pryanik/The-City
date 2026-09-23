@@ -132,6 +132,13 @@ var building_detail_delay: float = 0.5
 # CityData.resource_display_interval — там же накопитель и «эпоха» отображения.
 var resource_display_interval: float = 1.0
 
+# Последняя «эпоха» отображения, на которой HUD-метка казны была обновлена.
+# Тиковый путь (city_updated → _on_city_data_updated) перерисовывает метку
+# только когда эпоха изменилась — синхронно с остальными местами, которые
+# подчиняются интервалу ресурсов (вкладка «Ресурсы», верхняя полоса города,
+# тултипы).
+var _treasury_display_epoch: int = -1
+
 @onready var city_ui = $CityUI
 @onready var town_ui = $TownUI
 @onready var hex_tooltip = $HexTooltip
@@ -384,7 +391,11 @@ func _ready():
     CityData.research_error.connect(_on_research_error)
     CityData.research_error.connect(hud.show_message)
     CityData.population_changed.connect(_on_population_changed)
-    CityData.treasury_changed.connect(_update_treasury_hud)
+    # Казна в HUD обновляется через тиковый путь (city_updated) с проверкой
+    # эпохи отображения ресурсов — синхронно с остальными ресурсами. Прямой
+    # сигнал treasury_changed здесь не нужен: доход внутреннего рынка меняет
+    # казну каждый тик, и без сдерживания HUD-метка мигала бы каждый тик.
+    CityData.city_updated.connect(_on_city_data_updated)
     city_ui.research_requested.connect(CityData.start_research)
     CityData.research_completed.connect(_on_research_completed)
     expansion_manager.chunk_hovered.connect(_on_chunk_hovered)
@@ -1990,7 +2001,12 @@ func apply_settings():
     input_handler.set_tooltip_delay(tooltip_delay)
     input_handler.set_extended_tooltip_delay(extended_tooltip_delay)
     city_ui.set_building_detail_delay(building_detail_delay)
+    # set_resource_display_interval повышает эпоху при смене значения — сразу
+    # подхватываем её и обновляем HUD-метку казны, чтобы игрок увидел эффект
+    # нового интервала без ожидания ближайшего city_updated.
     CityData.set_resource_display_interval(resource_display_interval)
+    _treasury_display_epoch = CityData.resource_display_epoch
+    _update_treasury_hud()
     map_renderer.queue_redraw()
 
 func _on_population_changed(_new_pop: int):
@@ -2001,12 +2017,22 @@ func _update_population_hud():
     if pop_label:
         pop_label.text = "Население: %d" % CityData.total_population
 
-# Обновляет метку казны в HUD (ниже блока времени игры). Вызывается при
-# изменении казны (сигнал treasury_changed) и при старте/загрузке.
-func _update_treasury_hud(_new_total: int = -1):
+# Обновляет метку казны в HUD (ниже блока времени игры). Вызывается
+# из _ready (старт/загрузка), из apply_settings (смена интервала) и из
+# _on_city_data_updated (тиковый путь с проверкой эпохи отображения).
+func _update_treasury_hud():
     var treasury_label = hud.get_node_or_null("VBoxContainer/TreasuryLabel")
     if treasury_label:
         treasury_label.text = "Казна: %d" % CityData.treasury
+
+# Тиковый обработчик: обновляет HUD-метку казны с интервалом отображения
+# ресурсов. Аналогично control_panel.on_city_updated и city_ui._refresh_light —
+# всё подчинено одной эпохе (CityData.resource_display_epoch), чтобы все
+# ресурсные места обновлялись одновременно, одним «рывком» раз в интервал.
+func _on_city_data_updated():
+    if CityData.resource_display_due(_treasury_display_epoch):
+        _treasury_display_epoch = CityData.resource_display_epoch
+        _update_treasury_hud()
 
 func _on_assignment_changed():
     map_renderer.queue_redraw()

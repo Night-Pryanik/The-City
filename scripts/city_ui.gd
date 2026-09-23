@@ -145,11 +145,12 @@ func _ready():
     if not CityData.city_updated.is_connected(_on_city_data_updated):
         CityData.city_updated.connect(_on_city_data_updated)
 
-    # Казна пополняется между тиками (доход внутреннего рынка списывается по
-    # своему interval) — обновляем верхнюю полосу сразу при поступлении монет,
-    # не дожидаясь ближайшего city_updated.
-    if not CityData.treasury_changed.is_connected(_on_treasury_changed):
-        CityData.treasury_changed.connect(_on_treasury_changed)
+    # Казна в верхней полосе города обновляется через тиковый путь
+    # (city_updated → _refresh_light) с проверкой эпохи отображения ресурсов —
+    # синхронно с остальной верхней строкой и ресурсами вкладки «Ресурсы».
+    # Прямой сигнал treasury_changed здесь не нужен: доход внутреннего рынка
+    # меняет казну каждый тик, и без сдерживания верхняя полоса обновлялась
+    # бы каждый тик (мельтешение значений).
 
     # Население в верхней строке города («… | Население: N …») обновляется по
     # событию (рост/гибель), не дожидаясь интервала отображения ресурсов.
@@ -382,11 +383,6 @@ func _planned_food_per_sec(map: Dictionary, pool: Dictionary) -> int:
     # Дополнительные ресурсы теперь отображаются в панели деталей здания
 
 func update_food_label():
-    _update_food_label()
-
-# Казна изменилась (сигнал treasury_changed несёт аргумент new_total) —
-# обновляем верхнюю полосу, где казна отображается рядом с едой и населением.
-func _on_treasury_changed(_new_total: int):
     _update_food_label()
 
 # Население изменилось (рост/гибель) — верхняя строка города показывает его
