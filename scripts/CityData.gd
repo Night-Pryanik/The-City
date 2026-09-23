@@ -332,6 +332,41 @@ func spend_treasury(amount: int) -> bool:
     emit_signal("treasury_changed", treasury)
     return true
 
+# --- НАЛОГИ ---
+# Каждый житель платит в казну базовый налог за КАЖДЫЙ тик симуляции
+# (значение — base_tax_per_citizen в data/game_balance.json). Единая точка
+# сбора — collect_taxes(), её вызывает do_tick().
+# В разбивке казны налог пока ОДИН, поэтому он не раскладывается по
+# источникам/продуктам, а рисуется одной строкой под типом TAX_INCOME_TYPE
+# (см. TREASURY_FLAT_TYPE_KEY и ui_helpers.show_treasury_tooltip).
+const TAX_INCOME_TYPE: String = "Налоги"
+# Источник налога в ПЛОСКОМ накопителе доходов (treasury_income_accum →
+# treasury_income_snapshot, см. record_treasury_income). Отдельное имя — чтобы
+# сбор налогов не смешивался с рыночным доходом от «Все жители» в плоском
+# накопителе (иерархическая разбивка тултипа плоский снимок не читает).
+const TAX_INCOME_SOURCE: String = "Подушный налог"
+
+# Базовый налог с одного жителя за один тик симуляции
+# (data/game_balance.json, поле base_tax_per_citizen).
+func get_base_tax_per_citizen() -> int:
+    return int(GameData.game_balance.get("base_tax_per_citizen", 2))
+
+# Налоговое поступление за один тик симуляции: базовый налог × население.
+# Единый источник истины для сбора (collect_taxes) и для строки «Налоги» в
+# тултипе казны (worker_manager._fill_tax_income).
+func get_tax_income_per_tick() -> int:
+    return get_base_tax_per_citizen() * total_population
+
+# Сбор налогов за тик: каждый житель платит базовый налог в казну.
+# Возвращает фактически собранную сумму (0 — платить некому).
+func collect_taxes() -> int:
+    var amount: int = get_tax_income_per_tick()
+    if amount <= 0:
+        return 0
+    add_treasury(amount)
+    record_treasury_income(TAX_INCOME_SOURCE, amount)
+    return amount
+
 # --- РАЗБИВКА КАЗНЫ ПО ИСТОЧНИКАМ (для тултипа) ---
 # Источники прибыли/расхода казны собираются в тултип при наведении на
 # «Казна: N» в HUD карты и в верхней полосе интерфейса города
@@ -362,6 +397,15 @@ var treasury_income_snapshot: Dictionary = {}
 var treasury_income_product_snapshot: Dictionary = {}
 var treasury_expense_snapshot: Dictionary = {}
 var treasury_window_length_sec: float = 3.0
+
+# Маркер «ПЛОСКОГО» типа дохода в разбивке казны. Обычный тип раскрывается
+# тремя уровнями (тип → источник → продукт), а тип, у которого под этим ключом
+# лежит { "rate": float, "label": String }, тултип рисует ОДНОЙ строкой:
+#   • Налоги: 2 × 3 чел. = 6 / сек
+# Нужен для доходов без товарной разбивки — сейчас это налоги (налог один,
+# делить его по источникам/продуктам не на что). Саму скорость дописывает
+# рендер (ui_helpers.show_treasury_tooltip), «label» — правая часть до «=».
+const TREASURY_FLAT_TYPE_KEY: String = "@flat"
 
 # Записывает доход казны по источнику (накапливается в текущем окне). Вызов
 # рядом с add_treasury в местах фактического пополнения казны (см. callers).
@@ -1288,6 +1332,13 @@ func do_tick():
                 if food_eaten >= food_needed:
                     break
 
+    # --- НАЛОГИ: каждый житель платит базовый налог в казну каждый тик ---
+    # Порядок важен: сбор идёт ПОСЛЕ потребления еды и ДО
+    # _check_population_change() — налог за тик платят те, кто жил в этом тике
+    # (рост/убыль населения учтутся со следующего тика). Сумма и запись в
+    # разбивку казны — внутри collect_taxes() (см. «Казна города и внутренний
+    # рынок» в docs.md, раздел «Налоги»).
+    collect_taxes()
     _check_population_change()
     emit_signal("city_updated")
 

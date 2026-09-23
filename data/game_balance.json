@@ -8,6 +8,14 @@
   // Поля:
   //   initial_treasury                 — монеты в казне города при старте новой
   //                                      игры (поле "treasury" в CityData).
+  //   base_tax_per_citizen             — базовый налог: монеты, которые КАЖДЫЙ
+  //                                      житель города платит в казну за один
+  //                                      тик симуляции (SIMULATION_TICK = 1 сек).
+  //                                      Сбор — CityData.collect_taxes() из
+  //                                      CityData.do_tick(); сумма за тик =
+  //                                      base_tax_per_citizen × total_population
+  //                                      (см. docs.md, «Казна города и
+  //                                      внутренний рынок», «Налоги»).
   //   internal_market_price_multiplier — доля базовой цены товара (price из
   //                                      data/products/*.json), по которой
   //                                      внутренний рынок покупает товар у
@@ -49,6 +57,7 @@
   //                                      data/terrains.json.
   "game_balance": {
     "initial_treasury": 100,
+    "base_tax_per_citizen": 2,
     "internal_market_price_multiplier": 1.0,
     "distance_cost_modifier_per_hex": 0.25,
     "scouting_cost_per_hex": 3,

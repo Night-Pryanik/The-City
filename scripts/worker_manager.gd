@@ -648,44 +648,70 @@ func get_planned_consumption_map(include_production_inputs: bool = true) -> Dict
 func get_planned_treasury_income_map() -> Dictionary:
     var result: Dictionary = {}
     _fill_consumption_income(result)
+    _fill_tax_income(result)
     return result
 
 # Фактическая скорость дохода казны по источникам и продуктам за последнее
 # окно отображения. Если первое окно еще не завершено, используем его текущий
 # накопитель, чтобы тултип не был пустым сразу после запуска игры.
+# Налоги (тип «Налоги») не зависят от окна: они приходят каждый тик, поэтому
+# добавляются всегда — строка налога не пустует и в первом окне после
+# старта/загрузки (см. _fill_tax_income).
 func get_actual_treasury_income_map() -> Dictionary:
     var product_income: Dictionary = CityData.treasury_income_product_snapshot
     var window_sec := CityData.treasury_window_length_sec
     if product_income.is_empty():
         product_income = CityData.treasury_income_product_accum
-    if product_income.is_empty() or window_sec <= 0.0:
-        return {}
 
-    var result: Dictionary = {"Потребление населения": {}}
-    var income_by_source: Dictionary = result["Потребление населения"]
-    for source_name in product_income:
-        var source_products: Dictionary = product_income[source_name]
-        for pid in source_products:
-            var amount: int = int(source_products[pid])
-            if amount <= 0:
-                continue
-            if not income_by_source.has(source_name):
-                income_by_source[source_name] = {}
-            income_by_source[source_name][pid] = {
-                "coins_per_sec": float(amount) / window_sec,
-                "product_name": GameData.products.get(pid, {}).get("name", pid)
-            }
-    if income_by_source.is_empty():
-        return {}
+    var result: Dictionary = {}
+    if not product_income.is_empty() and window_sec > 0.0:
+        var income_by_source: Dictionary = {}
+        for source_name in product_income:
+            var source_products: Dictionary = product_income[source_name]
+            for pid in source_products:
+                var amount: int = int(source_products[pid])
+                if amount <= 0:
+                    continue
+                if not income_by_source.has(source_name):
+                    income_by_source[source_name] = {}
+                income_by_source[source_name][pid] = {
+                    "coins_per_sec": float(amount) / window_sec,
+                    "product_name": GameData.products.get(pid, {}).get("name", pid)
+                }
+        if not income_by_source.is_empty():
+            result["Потребление населения"] = income_by_source
+    _fill_tax_income(result)
     return result
+
+# Налоги — второй тип дохода казны («Потребление населения» + «Налоги»).
+# Каждый житель платит базовый налог каждый тик, поэтому плановая и
+# фактическая скорость совпадают и считаются ОДНИМ выражением из текущего
+# населения: CityData.get_tax_income_per_tick() (единый источник истины, там
+# же — ставка из data/game_balance.json).
+# Формат записи — «плоский» тип (CityData.TREASURY_FLAT_TYPE_KEY): налог пока
+# один, раскладывать его по источникам/продуктам не на что, поэтому тултип
+# рисует его одной строкой «• Налоги: 2 × 3 чел. = 6 / сек». «label» — правая
+# часть до знака «=» (ставка × число плательщиков), скорость форматирует и
+# дописывает сам рендер (ui_helpers.show_treasury_tooltip).
+func _fill_tax_income(result: Dictionary) -> void:
+    var per_tick: int = CityData.get_tax_income_per_tick()
+    if per_tick <= 0:
+        return
+    result[CityData.TAX_INCOME_TYPE] = {
+        CityData.TREASURY_FLAT_TYPE_KEY: {
+            "rate": float(per_tick) / CityData.SIMULATION_TICK,
+            "label": "%d × %d чел." % [
+                CityData.get_base_tax_per_citizen(), CityData.total_population
+            ]
+        }
+    }
 
 # Доход от потребления на внутреннем рынке: профессиональное потребление
 # рабочих + городское потребление «all». Входы рецептов зданий и улучшений
 # сюда не входят: они расходуются производством, а не продаются населением.
-# Сейчас единственный запланированный источник казны — живёт под типом
-# «Потребление населения». Объединён в отдельный метод, чтобы будущие
-# типы («Налоги», «Торговля» и т.п.) добавлялись параллельно без правки
-# этой функции.
+# Рыночный доход живёт под типом «Потребление населения»; прочие типы
+# («Налоги» — см. _fill_tax_income, «Торговля» и т.п.) добавляются
+# параллельно без правки этой функции.
 func _fill_consumption_income(result: Dictionary) -> void:
     var income_type := "Потребление населения"
     if not result.has(income_type):

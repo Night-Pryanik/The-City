@@ -837,9 +837,19 @@ func hide_flow_tooltip():
 #                            },
 #                            ...
 #                          },
-#                          # будущие: "Налоги": { ... }, "Торговля": { ... }
+#                          # «Плоский» тип — доход без товарной разбивки
+#                          # (налог пока один, делить его не на что): под
+#                          # ключом CityData.TREASURY_FLAT_TYPE_KEY лежит
+#                          # { rate, label }, и тип рисуется ОДНОЙ строкой:
+#                          #   • Налоги: 2 × 3 чел. = 6 / сек
+#                          \"Налоги\": {
+#                            CityData.TREASURY_FLAT_TYPE_KEY: {
+#                              rate: 6.0, label: "2 × 3 чел."
+#                            }
+#                          }
 #                        }
-#                        Из worker_manager.get_planned_treasury_income_map().
+#                        Из worker_manager.get_actual_treasury_income_map()
+#                        (формат тот же у get_planned_treasury_income_map).
 #                        Типы и источники рисуются по убыванию итоговой скорости
 #                        (наверху — основной заработок); продукты внутри источника
 #                        тоже по убыванию. Пустые типы/источники скрываются.
@@ -911,24 +921,44 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
     header.mouse_filter = Control.MOUSE_FILTER_IGNORE
     treasury_tooltip_vbox.add_child(header)
 
-    # --- Прибыль (фактическая, средняя): иерархия тип → источник → продукт ---
+    # --- Прибыль (фактическая, средняя): типы, один из которых — «плоский» ---
     if has_income:
-        # Сортируем типы по суммарной скорости (убывание): «Потребление населения»
-        # vs будущие «Налоги» — кто больше приносит, тот наверху. Заодно копим
-        # ИТОГ по всем типам: он идёт в заголовок секции и по построению равен
-        # сумме строк, которые рисуются ниже.
+        # Сортируем типы по суммарной скорости (убывание). Среди типов есть
+        # «плоский» тип — вместо иерархии «тип → источник → продукт» он рисуется
+        # одной строкой вида
+        #   • Налоги: 2 × 3 чел. = 6 / сек
+        # (поле CityData.TREASURY_FLAT_TYPE_KEY под ключом типа содержит {rate, label}).
+        # Остальные типы рисуются тремя уровнями: тип → источник → продукт.
+        # Итог по всем типам копится тем же циклом (включая плоский тип) и попадает
+        # в заголовок секции; «плоский» тип в тот же итог входит.
         var type_lines: Array = []
         var total_income: float = 0.0
         for income_type in planned_income:
+            var type_dict: Dictionary = planned_income[income_type]
+            # «Плоский» тип (например «Налоги»): вместо иерархии
+            # «источник → продукт» — одна строка, доход не раскладывается по
+            # товарам (налог пока один, см. CityData.TREASURY_FLAT_TYPE_KEY).
+            var flat_row: Dictionary = type_dict.get(CityData.TREASURY_FLAT_TYPE_KEY, {})
+            if not flat_row.is_empty():
+                var flat_rate: float = float(flat_row.get("rate", 0.0))
+                if flat_rate > 0.0:
+                    type_lines.append({
+                        "name": income_type,
+                        "total": flat_rate,
+                        "flat_label": str(flat_row.get("label", "")),
+                        "sources": {}
+                    })
+                    total_income += flat_rate
+                continue
             var type_total: float = 0.0
-            for source_name in planned_income[income_type]:
-                for pid in planned_income[income_type][source_name]:
-                    type_total += float(planned_income[income_type][source_name][pid].get("coins_per_sec", 0.0))
+            for source_name in type_dict:
+                for pid in type_dict[source_name]:
+                    type_total += float(type_dict[source_name][pid].get("coins_per_sec", 0.0))
             if type_total > 0.0:
                 type_lines.append({
                     "name": income_type,
                     "total": type_total,
-                    "sources": planned_income[income_type]
+                    "sources": type_dict
                 })
                 total_income += type_total
         type_lines.sort_custom(func(a, b): return a.total > b.total)
@@ -941,6 +971,19 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
         income_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
         treasury_tooltip_vbox.add_child(income_title)
         for type_row in type_lines:
+            # «Плоский» тип (налог) — ОДНА строка вместо иерархии:
+            # «• Налоги: 2 × 3 чел. = 6 / сек». Слева — ставка × число
+            # плательщиков (готовый label из worker_manager), справа — скорость
+            # в том же формате _format_rate, что у источников и продуктов.
+            if type_row.has("flat_label"):
+                var flat_text: String = str(type_row.name)
+                var flat_label: String = str(type_row.get("flat_label", ""))
+                if not flat_label.is_empty():
+                    flat_text += ": " + flat_label
+                flat_text += " = %s / сек" % _format_rate(float(type_row.total))
+                treasury_tooltip_vbox.add_child(
+                    _make_bullet_row("•", flat_text, Color(0.85, 1.0, 0.85)))
+                continue
             # Первый уровень разбивки: «• Потребление населения:»
             var type_header = Label.new()
             type_header.text = "• " + str(type_row.name) + ":"
