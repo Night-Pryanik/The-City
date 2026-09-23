@@ -856,8 +856,10 @@ func hide_flow_tooltip():
 #
 # Структура секций:
 #   * Заголовок: «Казна: N».
-#   * «Прибыль (планируемая, /сек):» — три уровня вложенности (тип → источник →
-#     продукт), см. пример в комментарии параметра planned_income.
+#   * «Прибыль (фактическая, средняя): X / сек» — ИТОГОВАЯ средняя прибыль
+#     (сумма по всем типам/источникам/продуктам), затем три уровня вложенности
+#     (тип → источник → продукт), см. пример в комментарии параметра
+#     planned_income. Итог в заголовке совпадает с суммой строк секции.
 #   * «Расходы (факт, за последние N сек):» — плоский список источников
 #     с нетто-суммой за окно (плюс тип «Действия на карте» как заголовок).
 #   * Пояснение «≈» в подвале секции прибыли (как в тултипе ресурсов).
@@ -909,17 +911,14 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
     header.mouse_filter = Control.MOUSE_FILTER_IGNORE
     treasury_tooltip_vbox.add_child(header)
 
-    # --- Прибыль (планируемая, /сек): иерархия тип → источник → продукт ---
+    # --- Прибыль (фактическая, средняя): иерархия тип → источник → продукт ---
     if has_income:
-        var income_title = Label.new()
-        income_title.text = "Прибыль (фактическая, средняя):"
-        income_title.add_theme_font_size_override("font_size", 14)
-        income_title.add_theme_color_override("font_color", Color(0.6, 1.0, 0.6))
-        income_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-        treasury_tooltip_vbox.add_child(income_title)
         # Сортируем типы по суммарной скорости (убывание): «Потребление населения»
-        # vs будущие «Налоги» — кто больше приносит, тот наверху.
+        # vs будущие «Налоги» — кто больше приносит, тот наверху. Заодно копим
+        # ИТОГ по всем типам: он идёт в заголовок секции и по построению равен
+        # сумме строк, которые рисуются ниже.
         var type_lines: Array = []
+        var total_income: float = 0.0
         for income_type in planned_income:
             var type_total: float = 0.0
             for source_name in planned_income[income_type]:
@@ -931,7 +930,16 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
                     "total": type_total,
                     "sources": planned_income[income_type]
                 })
+                total_income += type_total
         type_lines.sort_custom(func(a, b): return a.total > b.total)
+        # Заголовок секции с итоговой средней прибылью. Единица «/ сек» — как у
+        # строк источников и продуктов ниже (тот же формат _format_rate).
+        var income_title = Label.new()
+        income_title.text = "Прибыль (фактическая, средняя): %s / сек" % _format_rate(total_income)
+        income_title.add_theme_font_size_override("font_size", 14)
+        income_title.add_theme_color_override("font_color", Color(0.6, 1.0, 0.6))
+        income_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        treasury_tooltip_vbox.add_child(income_title)
         for type_row in type_lines:
             # Первый уровень разбивки: «• Потребление населения:»
             var type_header = Label.new()
