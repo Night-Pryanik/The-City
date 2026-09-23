@@ -1,7 +1,7 @@
 # tech_popup.gd
 # Окно, появляющееся после завершения исследования технологии.
-# Показывает название технологии, список добавленных фич (description),
-# историческую справку (flavor) и найденные ресурсы. Кнопки: "Ок" и
+# Показывает название технологии, список добавленных фич (description)
+# и историческую справку (flavor). Кнопки: "Ок" и
 # "Перейти к списку технологий".
 #
 # Окно работает и при get_tree().paused == true (PROCESS_MODE_ALWAYS),
@@ -12,7 +12,6 @@ var panel: Panel
 var title_label: Label
 var description_label: Label
 var flavor_label: Label
-var resources_label: Label
 var techs_btn: Button   # «Перейти к списку технологий» — скрываем, если игрок уже там
 
 signal go_to_technologies()
@@ -96,18 +95,6 @@ func _ready():
     flavor_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     scroll_body.add_child(flavor_label)
 
-    # Секция «Найденные ресурсы» (заполняется после изучения технологии).
-    var res_title = Label.new()
-    res_title.text = "Разведка региона:"
-    res_title.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
-    scroll_body.add_child(res_title)
-
-    resources_label = Label.new()
-    resources_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    resources_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.5))
-    resources_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    scroll_body.add_child(resources_label)
-
     var buttons = HBoxContainer.new()
     buttons.alignment = BoxContainer.ALIGNMENT_CENTER
     buttons.add_theme_constant_override("separation", 16)
@@ -138,11 +125,6 @@ func show_tech(tech_id: String, found_resources: Array = []):
     title_label.text = "Технология изучена: %s" % tech_data.get("name", tech_id)
     description_label.text = tech_data.get("description", "Нет описания.")
     flavor_label.text = tech_data.get("flavor", "")
-
-    if found_resources.is_empty():
-        resources_label.text = "Новые ресурсы не обнаружены."
-    else:
-        resources_label.text = "\n".join(found_resources)
 
     # Если игрок уже на вкладке Технологии — кнопка «Перейти к списку
     # технологий» бессмысленна, прячем её.
