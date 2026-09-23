@@ -241,7 +241,7 @@ func _ready():
                 # crop_bred — id одомашненного животного/растения, разводимого
                 # на пустом гексе (см. docs.md, раздел «Разведение животных/растений»).
                 # Для природных ресурсов остаётся tile.resource.
-                var tile = {"terrain": "plain", "cover": "none", "resource": null, "crop_bred": null, "improvement": null, "production_fractional_remainder": 0.0, "feed_fractional_remainder": 0.0, "terrain_icon": "", "in_influence": false, "is_explored": false, "river_edges": [], "in_town_influence": false, "has_town": false}
+                var tile = {"terrain": "plain", "cover": "none", "resource": null, "crop_bred": null, "improvement": null, "decorative": false, "production_fractional_remainder": 0.0, "feed_fractional_remainder": 0.0, "terrain_icon": "", "in_influence": false, "is_explored": false, "river_edges": [], "in_town_influence": false, "has_town": false}
                 if row < saved_tiles.size() and col < saved_tiles[row].size():
                     var saved = saved_tiles[row][col]
                     if not saved.is_empty():
@@ -273,6 +273,7 @@ func _ready():
                             tile["production_fractional_remainder"] = float(saved.get("production_fractional_remainder", 0.0))
                             tile["feed_fractional_remainder"] = float(saved.get("feed_fractional_remainder", 0.0))
                         tile["improvement"] = saved.get("improvement")
+                        tile["decorative"] = bool(saved.get("decorative", false))
                         tile["quality"] = saved.get("quality", "")
                         tile["terrain_icon"] = saved.get("terrain_icon", "")
                         tile["in_influence"] = saved.get("in_influence", false)
@@ -364,6 +365,9 @@ func _ready():
         town_manager.compute_all_town_influences(tile_data, map_rows, map_cols,
                 start_region_start_row, start_region_end_row,
                 start_region_start_col, start_region_end_col)
+        # Заполняем кольца городков декоративными улучшениями и для старых
+        # сохранений, где эти метки ещё отсутствовали.
+        town_manager._place_decorative_town_improvements(tile_data, map_rows, map_cols)
         town_influence_hexes = []
         for h in town_manager.town_influence_hexes:
             town_influence_hexes.append({"row": h.row, "col": h.col})
@@ -587,7 +591,8 @@ func _process(delta):
         for row in range(region_start_row, region_end_row + 1):
             for col in range(region_start_col, region_end_col + 1):
                 var tile = tile_data[row][col]
-                if tile.improvement == null or not worker_manager.has_worker(row, col):
+                if tile.improvement == null or bool(tile.get("decorative", false)) \
+                        or not worker_manager.has_worker(row, col):
                     continue
                 # Производство идёт и с природного ресурса (tile.resource), и с
                 # разводимого (tile.crop_bred, см. схему разведения). Если оба
@@ -754,7 +759,8 @@ func _tick_pasture_fill(delta: float):
         var col: int = entry["col"]
         # Проверяем актуальность: улучшение могли снести, рабочего — снять.
         var tile = tile_data[row][col]
-        if tile.improvement == null or not worker_manager.has_worker(row, col):
+        if tile.improvement == null or bool(tile.get("decorative", false)) \
+                or not worker_manager.has_worker(row, col):
             continue
         var res_data = GameData.raw_resources.get(MapHelpers.get_effective_resource(tile), {})
         if not MapHelpers.is_growing_resource(res_data):

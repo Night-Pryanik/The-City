@@ -788,7 +788,9 @@ func _draw_hex_overlays(row: int, col: int):
         # не привязаны к рабочему: рисуем их всегда в полный цвет, без серого
         # затемнения, даже когда has_worker == false.
         var is_infra = GameData.is_no_worker_improvement(tile.improvement)
-        var draw_active = has_worker or is_infra
+        # Декоративные улучшения городков всегда рисуются полноцветными,
+        # хотя рабочего у них намеренно нет.
+        var draw_active = has_worker or is_infra or bool(tile.get("decorative", false))
         # Если на гексе нет ресурса (ни природного, ни разводимого) — рисуем
         # иконку улучшения по центру гекса (ирригационный канал, лесная
         # делянка и т.п.). Иначе — над верхним краем, над иконкой ресурса.

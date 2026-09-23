@@ -414,6 +414,10 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
     if tile.get("in_town_influence", false):
         return actions
 
+    # Декоративные улучшения городка полностью недоступны игроку:
+    # нельзя запускать, сносить или заменять их через панель.
+    if bool(tile.get("decorative", false)):
+        return actions
     # --- Улучшение уже построено ---
     if tile.improvement != null:
         var imp_name = GameData.improvements.get(tile.improvement, {}).get("name", tile.improvement)

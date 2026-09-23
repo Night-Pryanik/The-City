@@ -39,7 +39,7 @@ func find_vacancy() -> Dictionary:
             if tile == null:
                 continue
             var improvement = tile.get("improvement")
-            if improvement == null:
+            if improvement == null or bool(tile.get("decorative", false)):
                 continue
             # Инфраструктурные улучшения (поле "no_worker" в improvements.json,
             # например пристань) рабочих не требуют и не должны получать их
@@ -86,6 +86,8 @@ func assign_worker(row: int = -1, col: int = -1) -> bool:
     var mm = get_parent()
     if mm != null and row >= 0 and row < mm.map_rows and col >= 0 and col < mm.map_cols:
         var target_tile = mm.tile_data[row][col]
+        if target_tile != null and bool(target_tile.get("decorative", false)):
+            return false
         if target_tile != null and target_tile.get("improvement", null) != null \
                 and GameData.is_no_worker_improvement(target_tile.improvement):
             return false
@@ -535,6 +537,8 @@ func load_assignments(assignments: Array):
                     # Такие назначения недопустимы — отбрасываем их (житель
                     # вернётся в свободные при пересчёте idle_population).
                     var load_tile = main_map.tile_data[row][col]
+                    if load_tile != null and bool(load_tile.get("decorative", false)):
+                        continue
                     if load_tile != null and load_tile.get("improvement", null) != null \
                             and GameData.is_no_worker_improvement(load_tile.improvement):
                         continue

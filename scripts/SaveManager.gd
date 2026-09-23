@@ -201,6 +201,7 @@ func _serialize_tile_data(main_map: Node) -> Array:
                     "cover": tile.get("cover", "none"),
                     "resource": tile.get("resource"),
                     "improvement": tile.get("improvement"),
+                    "decorative": tile.get("decorative", false),
                     # crop_bred — id животного/растения, разводимого на пустом
                     # гексе через постройку пастбища/фермы. null, если гекс
                     # не используется для разведения. Сохраняется в сейв,

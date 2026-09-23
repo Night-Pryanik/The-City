@@ -374,6 +374,11 @@ func generate_towns(tile_data: Array, rows: int, cols: int,
             exclusion_start_row, exclusion_end_row,
             exclusion_start_col, exclusion_end_col)
 
+    # После построения колец заполняем их декоративными улучшениями. Они
+    # принадлежат городкам, не требуют рабочих и никогда не участвуют в
+    # производстве игрока (см. tile.decorative).
+    _place_decorative_town_improvements(tile_data, rows, cols)
+
     print("town_manager: всего размещено городков=", town_hexes.size(),
             " (целевое=", num_towns, ")")
 
@@ -690,8 +695,71 @@ func _is_valid_town_hex(tile_data: Array, row: int, col: int,
 func _is_impassable_terrain(terrain_id: String) -> bool:
     var t: Dictionary = GameData.terrains.get(terrain_id, {})
     return int(t.get("move_cost", 1)) >= 999
+# Расставляет в кольце городка «заполнители» мира. Такие улучшения нужны
+# только для вида: они не являются стройками игрока, не получают рабочих и
+# не дают ресурсов. Для ресурсов источник улучшения берётся исключительно из
+# improved_by, поэтому добавление новых типов ресурсов не требует правок.
+func _place_decorative_town_improvements(tile_data: Array, rows: int, cols: int) -> void:
+    for town in towns:
+        var candidates: Array = []
+        for h in town.get("influence_hexes", []):
+            var row := int(h.get("row", -1))
+            var col := int(h.get("col", -1))
+            if row < 0 or row >= rows or col < 0 or col >= cols:
+                continue
+            var tile: Dictionary = tile_data[row][col]
+            if tile == null or bool(tile.get("has_town", false)):
+                continue
+            candidates.append({"row": row, "col": col, "tile": tile})
 
+        var has_food_plant := false
+        for candidate in candidates:
+            var resource_id = candidate.tile.get("resource", null)
+            var resource_data: Dictionary = GameData.raw_resources.get(str(resource_id), {})
+            if resource_data.get("group", "") == "food_plants":
+                has_food_plant = true
+            var imp_id := str(resource_data.get("improved_by", ""))
+            if imp_id != "" and GameData.improvements.has(imp_id) \
+                    and candidate.tile.get("improvement", null) == null:
+                _set_decorative_improvement(candidate.tile, imp_id)
 
+        # Если продовольственных растений в кольце нет, добавляем 1–2
+        # декоративные фермы на свободных равнинах без покрова.
+        if not has_food_plant:
+            var farm_candidates: Array = []
+            for candidate in candidates:
+                var tile: Dictionary = candidate.tile
+                if tile.get("improvement", null) == null \
+                        and tile.get("resource", null) == null \
+                        and tile.get("terrain", "") == "plain" \
+                        and tile.get("cover", "none") == "none":
+                    farm_candidates.append(candidate)
+            farm_candidates.shuffle()
+            for i in range(mini(2, farm_candidates.size())):
+                _set_decorative_improvement(farm_candidates[i].tile, "farm")
+
+        # По одному декоративному объекту на лесном покрове и на горе/холме.
+        var forest_done := false
+        var quarry_done := false
+        for candidate in candidates:
+            var tile: Dictionary = candidate.tile
+            if tile.get("improvement", null) != null:
+                continue
+            if not forest_done and float(GameData.covers.get(tile.get("cover", "none"), {}).get("wood_yield", 0)) > 0.0 \
+                    and GameData.improvements.has("lumberjack_hut"):
+                _set_decorative_improvement(tile, "lumberjack_hut")
+                forest_done = true
+            elif not quarry_done and tile.get("terrain", "") in ["mountain", "hill"] \
+                    and GameData.improvements.has("quarry"):
+                _set_decorative_improvement(tile, "quarry")
+                quarry_done = true
+func _set_decorative_improvement(tile: Dictionary, imp_id: String) -> void:
+    tile["improvement"] = imp_id
+    tile["decorative"] = true
+    tile["crop_bred"] = null
+    tile["fill_time"] = 0.0
+    tile["production_fractional_remainder"] = 0.0
+    tile["feed_fractional_remainder"] = 0.0
 # --- Сбор точек тяготения по приоритетам ---
 
 # Приоритет 1: гексы с 2+ разных ресурсов в радиусе MAX_ATTRACTION_DISTANCE.

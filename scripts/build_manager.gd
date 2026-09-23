@@ -123,6 +123,9 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null) -> bo
     if main_map_check and row >= 0 and row < main_map_check.tile_data.size() \
             and col >= 0 and col < main_map_check.tile_data[row].size():
         var t_tile = main_map_check.tile_data[row][col]
+        if t_tile != null and bool(t_tile.get("decorative", false)):
+            emit_signal("build_message", "Это декоративное улучшение городка — нельзя изменять")
+            return false
         if t_tile != null and bool(t_tile.get("has_town", false)):
             emit_signal("build_message", "Здесь стоит чужой городок — нельзя строить")
             return false
