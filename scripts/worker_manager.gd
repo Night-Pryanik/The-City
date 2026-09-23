@@ -297,7 +297,7 @@ func _tick_profession_consumption(prof: String, key: String, timers: Dictionary,
                 CityData.add_treasury(member_take_price)
                 # Источник дохода для тултипа «Казна» по тому же ключу,
                 # что и в плановой карте (имя профессии, напр. «Рыбак»).
-                CityData.record_treasury_income(prof_source, member_take_price)
+                CityData.record_treasury_income(prof_source, member_take_price, str(member_pid))
                 remaining -= take
         else:
             var pid: String = str(entry.get("product_id", ""))
@@ -315,7 +315,7 @@ func _tick_profession_consumption(prof: String, key: String, timers: Dictionary,
             CityData.add_treasury(single_take_price)
             # Источник дохода для тултипа «Казна» по тому же ключу,
             # что и в плановой карте (имя профессии, напр. «Рыбак»).
-            CityData.record_treasury_income(prof_source, single_take_price)
+            CityData.record_treasury_income(prof_source, single_take_price, pid)
 
     timers[key].fractional = fractional
     return 1.0 + _aggregate_production_bonus(cons_list)
@@ -471,7 +471,7 @@ func tick_city_consumption(delta: float) -> void:
                 CityData.add_treasury(group_take_price)
                 # Источник дохода для тултипа «Казна» (городское потребление,
                 # имя берётся из data/professions.json → «Все жители»).
-                CityData.record_treasury_income(all_source, group_take_price)
+                CityData.record_treasury_income(all_source, group_take_price, str(pid))
                 remaining -= take
         else:
             var pid = str(entry.get("product_id", ""))
@@ -488,7 +488,7 @@ func tick_city_consumption(delta: float) -> void:
             var city_take_price: int = CityData.get_internal_market_price(pid) * take
             CityData.add_treasury(city_take_price)
             # Источник дохода для тултипа «Казна» (городское потребление).
-            CityData.record_treasury_income(all_source, city_take_price)
+            CityData.record_treasury_income(all_source, city_take_price, pid)
         timer.elapsed = 0.0
 
 # Сериализация таймеров городского потребления для сохранения.
@@ -648,6 +648,35 @@ func get_planned_consumption_map(include_production_inputs: bool = true) -> Dict
 func get_planned_treasury_income_map() -> Dictionary:
     var result: Dictionary = {}
     _fill_consumption_income(result)
+    return result
+
+# Фактическая скорость дохода казны по источникам и продуктам за последнее
+# окно отображения. Если первое окно еще не завершено, используем его текущий
+# накопитель, чтобы тултип не был пустым сразу после запуска игры.
+func get_actual_treasury_income_map() -> Dictionary:
+    var product_income: Dictionary = CityData.treasury_income_product_snapshot
+    var window_sec := CityData.treasury_window_length_sec
+    if product_income.is_empty():
+        product_income = CityData.treasury_income_product_accum
+    if product_income.is_empty() or window_sec <= 0.0:
+        return {}
+
+    var result: Dictionary = {"Потребление населения": {}}
+    var income_by_source: Dictionary = result["Потребление населения"]
+    for source_name in product_income:
+        var source_products: Dictionary = product_income[source_name]
+        for pid in source_products:
+            var amount: int = int(source_products[pid])
+            if amount <= 0:
+                continue
+            if not income_by_source.has(source_name):
+                income_by_source[source_name] = {}
+            income_by_source[source_name][pid] = {
+                "coins_per_sec": float(amount) / window_sec,
+                "product_name": GameData.products.get(pid, {}).get("name", pid)
+            }
+    if income_by_source.is_empty():
+        return {}
     return result
 
 # Доход от потребления на внутреннем рынке: профессиональное потребление

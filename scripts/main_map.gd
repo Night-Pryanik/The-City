@@ -2123,8 +2123,8 @@ func _show_treasury_tooltip(mouse_pos: Vector2):
     if not worker_manager:
         return
     var planned_income: Dictionary = {}
-    if worker_manager.has_method("get_planned_treasury_income_map"):
-        planned_income = worker_manager.get_planned_treasury_income_map()
+    if worker_manager.has_method("get_actual_treasury_income_map"):
+        planned_income = worker_manager.get_actual_treasury_income_map()
     # Берём _displayed_treasury (кеш лейбла HUD), а не CityData.treasury —
     # иначе в тултипе будет видно «свежее» значение казны, которое обгоняет
     # метку HUD на 1+ тиков потребления (см. developer_diary, регресс

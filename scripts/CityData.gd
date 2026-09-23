@@ -272,8 +272,10 @@ func setup():
     # старте игры невозможна, но снимки прошлого окна могли остаться от
     # предыдущей сессии/сейва — очищаем.
     treasury_income_accum.clear()
+    treasury_income_product_accum.clear()
     treasury_expense_accum.clear()
     treasury_income_snapshot.clear()
+    treasury_income_product_snapshot.clear()
     treasury_expense_snapshot.clear()
     treasury_window_length_sec = DEFAULT_TREASURY_WINDOW_SEC
 
@@ -354,18 +356,25 @@ func spend_treasury(amount: int) -> bool:
 # счётчики наполняются из record_treasury_income/_expense и сбрасываются в
 # снимок при rotate_treasury_window().
 var treasury_income_accum: Dictionary = {}
+var treasury_income_product_accum: Dictionary = {}
 var treasury_expense_accum: Dictionary = {}
 var treasury_income_snapshot: Dictionary = {}
+var treasury_income_product_snapshot: Dictionary = {}
 var treasury_expense_snapshot: Dictionary = {}
 var treasury_window_length_sec: float = 3.0
 
 # Записывает доход казны по источнику (накапливается в текущем окне). Вызов
 # рядом с add_treasury в местах фактического пополнения казны (см. callers).
 # source_name — человекочитаемое имя источника («Рыбак», «Все жители» и т.п.).
-func record_treasury_income(source_name: String, amount: int) -> void:
+func record_treasury_income(source_name: String, amount: int, product_id: String = "") -> void:
     if amount == 0 or source_name.is_empty():
         return
     treasury_income_accum[source_name] = int(treasury_income_accum.get(source_name, 0)) + amount
+    if not product_id.is_empty():
+        if not treasury_income_product_accum.has(source_name):
+            treasury_income_product_accum[source_name] = {}
+        var source_products: Dictionary = treasury_income_product_accum[source_name]
+        source_products[product_id] = int(source_products.get(product_id, 0)) + amount
 
 # Записывает расход казны по источнику (накапливается в текущем окне).
 # Вызов рядом со spend_treasury в местах фактического списания. signed amount:
@@ -392,8 +401,10 @@ func record_treasury_expense(source_name: String, amount: int) -> void:
 # при обновлении.
 func rotate_treasury_window() -> void:
     treasury_income_snapshot = treasury_income_accum.duplicate()
+    treasury_income_product_snapshot = treasury_income_product_accum.duplicate(true)
     treasury_expense_snapshot = treasury_expense_accum.duplicate()
     treasury_income_accum.clear()
+    treasury_income_product_accum.clear()
     treasury_expense_accum.clear()
 
 # Длительность окна в секундах. По умолчанию 3 сек — короче минимально возможного

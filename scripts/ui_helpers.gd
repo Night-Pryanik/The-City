@@ -907,7 +907,7 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
     # --- Прибыль (планируемая, /сек): иерархия тип → источник → продукт ---
     if has_income:
         var income_title = Label.new()
-        income_title.text = "Прибыль (планируемая):"
+        income_title.text = "Прибыль (фактическая, средняя):"
         income_title.add_theme_font_size_override("font_size", 14)
         income_title.add_theme_color_override("font_color", Color(0.6, 1.0, 0.6))
         income_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
