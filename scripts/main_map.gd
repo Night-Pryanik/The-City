@@ -147,6 +147,11 @@ var _treasury_display_epoch: int = -1
 var _map_ui_helpers: Node = null
 var _treasury_hover_timer: float = 0.0
 var _treasury_hover_leave_timer: float = 0.0
+# Тултип разбивки казны «залип»: игрок продержал курсор на HUD-метке задержку
+# (building_detail_delay) — панель зафиксирована на месте, и курсор можно
+# перевести на сам тултип. Снимается по grace-таймеру ухода (аналог
+# building_detail_locked у тултипа деталей здания, см. city_ui.gd).
+var _treasury_locked: bool = false
 var _treasury_tooltip_display_epoch: int = -1
 # Кеш значения казны, показываемого в HUD-метке и в тултипе разбивки. Оба
 # потребителя ОБЯЗАНЫ показывать одно и то же значение — иначе в тултипе
@@ -156,10 +161,12 @@ var _treasury_tooltip_display_epoch: int = -1
 # само обновление лейбла); тултип читает кеш, не CityData напрямую.
 var _displayed_treasury: int = 0
 
-# Задержка показа и grace-таймер (общие значения с city_ui — единый ритм
+# Grace-таймер ухода курсора (общее значение с city_ui — единый ритм
 # тултипов, одинаково отзывчивые). BUILDING_DETAIL_LEAVE_GRACE используется
 # без прямой ссылки на city_ui — литерал 0.35 сек (см. city_ui.gd).
-const MAP_TOOLTIP_DELAY: float = 0.5
+# Задержка показа тултипа разбивки казны берётся из building_detail_delay
+# (настройка «Интерфейс → задержка подсказки о деталях здания»): этой же
+# задержкой пользуется и тултип деталей здания — ритм у них общий.
 const MAP_TOOLTIP_LEAVE_GRACE: float = 0.35
 
 @onready var city_ui = $CityUI
@@ -546,24 +553,28 @@ func _process(delta):
     # идёт — интервал считается игровым временем (см. CityData).
     CityData.tick_resource_display(delta)
 
-    # Тултип разбивки казны по источникам дохода/расхода: polling + grace.
-    # Логика повторяет city_ui.gd (там — для тултипа над TopFoodLabel):
-    # единый ритм, единые константы задержки.
+    # Тултип разбивки казны по источникам дохода/расхода: polling + залипание
+    # (логика повторяет city_ui.gd — там то же самое для тултипа над
+    # TopFoodLabel; единый ритм, единая задержка building_detail_delay).
     var mouse_pos_now: Vector2 = get_viewport().get_mouse_position()
-    if _is_treasury_label_hovered(mouse_pos_now):
+    var hovered_treasury := _is_treasury_hovered(mouse_pos_now)
+    var hovered_treasury_label := _is_treasury_label_hovered(mouse_pos_now)
+    if hovered_treasury:
         _treasury_hover_leave_timer = 0.0
-        _treasury_hover_timer += delta
-        if _treasury_hover_timer >= MAP_TOOLTIP_DELAY:
-            _show_treasury_tooltip(mouse_pos_now)
+        if hovered_treasury_label and not _treasury_locked:
+            _treasury_hover_timer += delta
+            if _treasury_hover_timer >= building_detail_delay:
+                _treasury_locked = _show_treasury_tooltip(mouse_pos_now)
     else:
         _treasury_hover_timer = 0.0
-        if _map_ui_helpers and is_instance_valid(_map_ui_helpers) \
-                and _map_ui_helpers.treasury_tooltip_panel \
-                and _map_ui_helpers.treasury_tooltip_panel.visible:
-            _treasury_hover_leave_timer += delta
-            if _treasury_hover_leave_timer >= MAP_TOOLTIP_LEAVE_GRACE:
-                _map_ui_helpers.hide_treasury_tooltip()
-                _treasury_hover_leave_timer = 0.0
+        # Курсор ушёл с метки и с тултипа: «залипшую» панель держим ещё
+        # grace-окно (переход курсора на сам тултип не должен моргать), затем
+        # снимаем залипание и скрываем. НЕ return — ниже тик симуляции.
+        _treasury_hover_leave_timer += delta
+        if not _treasury_locked or _treasury_hover_leave_timer >= MAP_TOOLTIP_LEAVE_GRACE:
+            _treasury_hover_leave_timer = 0.0
+            _treasury_locked = false
+            _map_ui_helpers.hide_treasury_tooltip()
 
     production_timer += delta
     if production_timer >= CityData.SIMULATION_TICK:
@@ -2099,15 +2110,23 @@ func _setup_hud_tooltip_layer():
     _map_ui_helpers.setup(host, null)
     layer.add_child(_map_ui_helpers)
 
-# Возвращает true, если курсор сейчас над меткой казны или над активным
-# тултипом разбивки (это нужно, чтобы при переходе курсора с метки на
-# тултип тултип не моргал — leave срабатывает только по grace).
+# Курсор сейчас над меткой казны HUD — именно и только это запускает
+# ховер-таймер «залипания» тултипа разбивки. Если HUD скрыт (открыт интерфейс
+# города), метка не считается наведённой, даже если её прямоугольник совпал с
+# позицией курсора.
 func _is_treasury_label_hovered(mouse_pos: Vector2) -> bool:
-    if not (hud and is_instance_valid(hud)):
+    if not (hud and is_instance_valid(hud)) or not hud.visible:
         return false
     var treasury_label = hud.get_node_or_null("VBoxContainer/TreasuryLabel")
-    if treasury_label and is_instance_valid(treasury_label) \
-            and treasury_label.get_global_rect().has_point(mouse_pos):
+    return is_instance_valid(treasury_label) \
+        and treasury_label.get_global_rect().has_point(mouse_pos)
+
+# Возвращает true, если курсор сейчас над меткой казны или над активным
+# (в т.ч. «залипшим») тултипом разбивки (это нужно, чтобы при переходе
+# курсора с метки на тултип тултип не моргал — leave срабатывает только по
+# grace).
+func _is_treasury_hovered(mouse_pos: Vector2) -> bool:
+    if _is_treasury_label_hovered(mouse_pos):
         return true
     if _map_ui_helpers and is_instance_valid(_map_ui_helpers) \
             and _map_ui_helpers.treasury_tooltip_panel \
@@ -2119,9 +2138,12 @@ func _is_treasury_label_hovered(mouse_pos: Vector2) -> bool:
 # Показывает тултип разбивки казны под курсором (HUD-вариант). Данные — из
 # worker_manager (плановый доход по источникам) и CityData (снимок расходов
 # за окно). Аналогичен методу в city_ui.gd (см. _show_treasury_tooltip там).
-func _show_treasury_tooltip(mouse_pos: Vector2):
+# keep_position=true — live-update уже показанного («залипшего») тултипа:
+# панель остаётся на месте. Возвращает true, если тултип в итоге видим
+# (пустая разбивка скрывает панель — «залипания» тогда нет).
+func _show_treasury_tooltip(mouse_pos: Vector2, keep_position: bool = false) -> bool:
     if not worker_manager:
-        return
+        return false
     var planned_income: Dictionary = {}
     if worker_manager.has_method("get_actual_treasury_income_map"):
         planned_income = worker_manager.get_actual_treasury_income_map()
@@ -2134,8 +2156,11 @@ func _show_treasury_tooltip(mouse_pos: Vector2):
         _displayed_treasury,
         planned_income,
         CityData.treasury_expense_snapshot,
-        CityData.treasury_window_length_sec
+        CityData.treasury_window_length_sec,
+        keep_position
     )
+    var panel = _map_ui_helpers.treasury_tooltip_panel if is_instance_valid(_map_ui_helpers) else null
+    return is_instance_valid(panel) and panel.visible
 
 # Тиковый обработчик: обновляет HUD-метку казны с интервалом отображения
 # ресурсов. Аналогично control_panel.on_city_updated и city_ui._refresh_light —
@@ -2148,13 +2173,14 @@ func _on_city_data_updated():
         # На смене эпохи обновляем открытый тултип разбивки казны свежими
         # данными (плановый доход пересчитан, снимок расходов обновлён). Это
         # «живой» апдейт — игрок видит актуальные цифры, пока курсор на
-        # метке или на тултипе.
+        # метке или на тултипе. keep_position=true: «залипшая» панель
+        # остаётся на месте, а не уезжает за курсором.
         if _map_ui_helpers and is_instance_valid(_map_ui_helpers) \
                 and _map_ui_helpers.treasury_tooltip_panel \
                 and _map_ui_helpers.treasury_tooltip_panel.visible \
                 and CityData.resource_display_due(_treasury_tooltip_display_epoch):
             _treasury_tooltip_display_epoch = CityData.resource_display_epoch
-            _show_treasury_tooltip(get_viewport().get_mouse_position())
+            _show_treasury_tooltip(get_viewport().get_mouse_position(), true)
 
 func _on_assignment_changed():
     map_renderer.queue_redraw()

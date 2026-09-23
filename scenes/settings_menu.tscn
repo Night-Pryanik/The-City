@@ -141,7 +141,7 @@ text = "1,00 сек"
 
 [node name="Label5" type="Label" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1054639228]
 layout_mode = 2
-text = "Задержка появления всплывающей подсказки о деталях здания"
+text = "Задержка появления всплывающих подсказок (детали здания, разбивка казны)"
 
 [node name="HBoxContainer3" type="HBoxContainer" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1054639229]
 layout_mode = 2

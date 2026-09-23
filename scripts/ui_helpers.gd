@@ -862,7 +862,12 @@ func hide_flow_tooltip():
 #     с нетто-суммой за окно (плюс тип «Действия на карте» как заголовок).
 #   * Пояснение «≈» в подвале секции прибыли (как в тултипе ресурсов).
 #   * Если расходов в игре нет — ремарка «Нет разовых расходов…» (как раньше).
-func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dictionary, expense_snapshot: Dictionary, window_sec: float):
+# keep_position = true — это перерисовка УЖЕ показанного («залипшего»)
+# тултипа: панель остаётся на прежнем месте, меняется только содержимое и
+# размер (live-update на смене ресурсной эпохи). Иначе live-update уводил бы
+# панель за курсором и «залипание» было бы невозможным (см. city_ui/main_map:
+# залипание по образцу building_detail_tooltip).
+func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dictionary, expense_snapshot: Dictionary, window_sec: float, keep_position: bool = false):
     if treasury_tooltip_panel == null:
         return
     # Очищаем предыдущее содержимое.
@@ -1051,11 +1056,18 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
     if not treasury_tooltip_panel.visible:
         treasury_tooltip_scroll.scroll_vertical = 0.0
     var viewport_size = get_viewport().get_visible_rect().size
-    var pos = mouse_pos + Vector2(15, 15)
-    if pos.x + treasury_tooltip_panel.size.x > viewport_size.x:
-        pos.x = mouse_pos.x - treasury_tooltip_panel.size.x - 15
-    if pos.y + treasury_tooltip_panel.size.y > viewport_size.y:
-        pos.y = mouse_pos.y - treasury_tooltip_panel.size.y - 15
+    # «Залипший» тултип перерисовывается НА МЕСТЕ (панель уже стоит там, куда
+    # её перевёл курсор игрока) — иначе панель убегала бы из-под курсора.
+    # Пересчёт размера выше всё равно выполняется: контент мог подрасти.
+    var pos: Vector2
+    if keep_position and treasury_tooltip_panel.visible:
+        pos = treasury_tooltip_panel.position
+    else:
+        pos = mouse_pos + Vector2(15, 15)
+        if pos.x + treasury_tooltip_panel.size.x > viewport_size.x:
+            pos.x = mouse_pos.x - treasury_tooltip_panel.size.x - 15
+        if pos.y + treasury_tooltip_panel.size.y > viewport_size.y:
+            pos.y = mouse_pos.y - treasury_tooltip_panel.size.y - 15
     pos.x = max(0.0, min(pos.x, maxf(0.0, viewport_size.x - treasury_tooltip_panel.size.x)))
     pos.y = max(0.0, min(pos.y, maxf(0.0, viewport_size.y - treasury_tooltip_panel.size.y)))
     treasury_tooltip_panel.position = pos
