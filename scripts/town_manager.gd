@@ -958,9 +958,43 @@ func compute_all_town_influences(tile_data: Array, map_rows: int, map_cols: int,
                 tile_data[rh.row][rh.col]["in_town_influence"] = true
             town_influence_hexes.append(rh)
         t["influence_hexes"] = clipped
+    # Пул продажи городка формируется из ресурсов, которые действительно
+    # находятся в его личном кольце. Пересобираем его после клипа колец, чтобы
+    # соседние городки не получили ресурс, оставшийся в кольце другого города.
+    _refresh_sell_pools(tile_data)
     print("town_manager: всего гексов в кольцах влияния=", town_influence_hexes.size(),
             " (городков=", towns.size(), ")")
 
+# Пересобирает пул продажи каждого городка по его личному кольцу влияния.
+# Один и тот же тип ресурса в нескольких гексах отображается одной строкой:
+# торговый пул содержит перечень доступных типов ресурсов, а не каждое
+# месторождение отдельно. Порядок обхода кольца стабилен и совпадает с
+# порядком гексов в сохранённом кольце.
+func _refresh_sell_pools(tile_data: Array) -> void:
+    for town in towns:
+        var resources: Array = []
+        var seen: Dictionary = {}
+        for hex in town.get("influence_hexes", []):
+            var row := int(hex.get("row", -1))
+            var col := int(hex.get("col", -1))
+            if row < 0 or row >= tile_data.size() or col < 0 \
+                    or tile_data[row] == null or col >= tile_data[row].size():
+                continue
+            var tile = tile_data[row][col]
+            if tile == null:
+                continue
+            var raw_resource = tile.get("resource", null)
+            # В JSON/сейвах отсутствие ресурса представлено null. Нельзя
+            # преобразовывать его в строку: str(null) даёт "<null>" и этот
+            # псевдоресурс попадал первым в каждый пул продажи.
+            if raw_resource == null:
+                continue
+            var resource_id := str(raw_resource).strip_edges()
+            if resource_id.is_empty() or resource_id == "<null>" or seen.has(resource_id):
+                continue
+            seen[resource_id] = true
+            resources.append(resource_id)
+        town["sell_pool"] = resources
 # Вычисляет кольцо влияния для ОДНОГО городка. Возвращает Array of
 # {row, col} — список гексов в кольце. Подробности алгоритма (база,
 # асимметрия, пути до ресурсов) — в комментарии к INFLUENCE_MAX_RADIUS.

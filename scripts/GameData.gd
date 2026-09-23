@@ -98,7 +98,9 @@ func format_resource_name(key: String) -> String:
         if group_name != "":
             return group_name
         return key.trim_prefix("@")
-    return products.get(key, {}).get("name", key)
+    # В пуле продажи могут быть как продукты, так и сырьевые ресурсы.
+    var resource_data := get_resource_data(key)
+    return str(resource_data.get("name", key))
 
 func get_special_yield(product_id: String) -> Dictionary:
     return products.get(product_id, {}).get("special_yield", {})
