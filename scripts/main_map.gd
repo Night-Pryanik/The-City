@@ -355,16 +355,14 @@ func _ready():
             tile_data[h.row][h.col]["has_town"] = true
             town_hexes.append({"row": h.row, "col": h.col})
 
-        # Личные кольца городков приходят из сейва с записями
-        # (town["influence_hexes"]); для мигрированных старых сейвов их
-        # пересчитывает compute_all_town_influences. Она же проставляет
-        # флаги in_town_influence на тайлы и собирает плоское зеркало
-        # town_influence_hexes для рендерера. Границы стартового Региона
-        # передаём для клипа колец всех городков: ни одно кольцо не должно
-        # «выдавать» чужой городок в неисследованной зоне Региона в 1-й эпохе.
-        town_manager.compute_all_town_influences(tile_data, map_rows, map_cols,
-                start_region_start_row, start_region_end_row,
-                start_region_start_col, start_region_end_col)
+        # Личные кольца городков пересобираются по радиусу из записи
+        # (compute_all_town_influences). Она же проставляет флаги
+        # in_town_influence на тайлы и собирает плоское зеркало
+        # town_influence_hexes для рендерера. Кольцо строится ЦЕЛИКОМ (без
+        # клипа по Региону), поэтому старые сейвы, где кольцо было срезано по
+        # стартовому Региону, чинятся сами собой; что из кольца видно игроку —
+        # решает рендерер (туман войны + эпоха).
+        town_manager.compute_all_town_influences(tile_data, map_rows, map_cols)
         # Заполняем кольца городков декоративными улучшениями и для старых
         # сохранений, где эти метки ещё отсутствовали.
         town_manager._place_decorative_town_improvements(tile_data, map_rows, map_cols)
@@ -1940,20 +1938,25 @@ func advance_to_next_era():
         return
 
     # 1-2. Исследуем и присоединяем весь текущий Регион бесплатно.
-    # Гексы в кольце влияния чужого городка пропускаем: они не должны
-    # автоматически становиться частью Кольца Влияния игрока. Иначе после
-    # перехода эпохи кольцо «расширяется» поверх чужого городка и
-    # нарушает принцип «чужое — не наше». Эти гексы остаются in_influence=false
-    # и is_explored=false: игрок не сможет там ни строить (build_manager уже
+    # Гексы в кольце влияния чужого городка НЕ присоединяем: они не должны
+    # автоматически стать частью Кольца Влияния игрока. Иначе после перехода
+    # эпохи кольцо «расширяется» поверх чужого городка и нарушает принцип
+    # «чужое — не наше». Игрок не сможет там ни строить (build_manager
     # блокирует по in_town_influence), ни покупать чанк (expansion_manager
-    # блокирует по тому же флагу). Фактически это «мёртвая зона» в Регионе
-    # рядом с чужим городком.
+    # блокирует по тому же флагу) — это «мёртвая зона» в Регионе рядом с
+    # чужим городком.
+    #
+    # Такие гексы всё же ИССЛЕДОВАНЫ: иначе они остались бы туманом и
+    # рисовались бы чёрной дырой посреди только что присвоенной территории.
+    # Исследованный гекс виден (местность, ресурсы) и помечен заливкой кольца
+    # городка — игрок сразу видит, чья это земля и почему её нельзя купить.
     for row in range(region_start_row, region_end_row + 1):
         for col in range(region_start_col, region_end_col + 1):
             var tile = tile_data[row][col]
             if tile == null:
                 continue
             if bool(tile.get("in_town_influence", false)):
+                tile["is_explored"] = true
                 continue
             tile["is_explored"] = true
             tile["in_influence"] = true
@@ -1975,11 +1978,15 @@ func advance_to_next_era():
     region_cols = ring_cols + region_width * 2
 
     # 5. Пересчитываем границы; гексы нового Региона не исследованы и не в влиянии.
+    # Гексы колец чужих городков не трогаем: их исследовали в шаге 1-2 (см.
+    # там комментарий про «мёртвую зону»), сбрасывать их обратно в туман нельзя.
     _recalculate_bounds()
     for row in range(region_start_row, region_end_row + 1):
         for col in range(region_start_col, region_end_col + 1):
             var tile = tile_data[row][col]
             if tile == null:
+                continue
+            if bool(tile.get("in_town_influence", false)):
                 continue
             if not is_in_influence(row, col):
                 tile["in_influence"] = false

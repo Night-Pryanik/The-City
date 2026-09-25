@@ -396,7 +396,19 @@ func _draw_hex(row: int, col: int):
 #           draw_texture_rect вместо сотен полупрозрачных полигонов.
 # За кадр остаются: 1 blit заливки + лёгкие draw_line границ без тригонометрии
 # и аллокаций. Пересборка — только по invalidate_town_influence_cache()
-# (инициализация карты / загрузка сейва) либо при смене Региона (эпоха).
+# (инициализация карты / загрузка сейва / смена эпохи) либо при смене Региона.
+#
+# ЧТО ИМЕННО ВИДИТ ИГРОК (единственное место, где решается видимость колец;
+# сами кольца в данных полные — см. town_manager.compute_all_town_influences):
+#   1. эпоха — в 1-й эпохе (current_era < 1) кольца не рисуются вовсе, как и
+#      сами городки: иначе кольцо, залезающее в Регион, выдало бы чужой
+#      городок с самого начала игры;
+#   2. туман войны — гекс в тумане заливки не получает (is_hex_in_fog).
+#      Обратное тоже верно: разведанный гекс за пределами Региона заливку
+#      ПОЛУЧАЕТ (так работает разведка).
+# Границы текстуры заливки считаются по фактической заливке, а не по Региону
+# (см. _build_town_fill_texture), поэтому гекс никогда не обрезается краем
+# текстуры — «заливка наполовину» невозможна в принципе.
 
 # Публичный доступ к кэшу заливки для тестов и отладки: список гексов
 # заливки в виде [{"row": int, "col": int}, ...]. Гексы, отфильтрованные по
@@ -442,6 +454,14 @@ func _ensure_town_influence_cache(visible: Dictionary) -> void:
     # --- Шаг 1: уникальные гексы заливки + мировые отрезки границ ---
     _influence_fill_centers = []
     _influence_border_segments = []
+    # Кольца в данных полные (town_manager больше не клипует их по Региону),
+    # поэтому ЗДЕСЬ решается, что из них видит игрок: в 1-й эпохе (current_era
+    # < 1) чужой городок не показывается вовсе — ровно как его иконка
+    # (см. _draw_hex_overlays), значит не рисуем и кольцо. Иначе кольцо,
+    # залезающее в Регион, «выдавало» бы городка с самого начала игры.
+    if main_map.current_era < 1:
+        _build_town_fill_texture()
+        return
     var seen: Dictionary = {}
     var radius: float = main_map.HEX_RADIUS
     var towns: Array = main_map.towns
@@ -464,8 +484,12 @@ func _ensure_town_influence_cache(visible: Dictionary) -> void:
             var col: int = int(h.col)
             # Гекс под туманом войны (неизвестен игроку) заливку не получает:
             # иначе кольцо «выдаёт» присутствие чужого городка. Проверка идёт
-            # именно по туману, а не по Региону — так же, как работает гейт
-            # тумана в main_map.is_hex_in_fog.
+            # именно по туману, а не по Региону: разведанный гекс ЗА пределами
+            # Региона заливку получает (так работает разведка — см. коммит
+            # «заливка не рисуется на гексах в тумане войны»). Обрезать такие
+            # гексы нечем: границы текстуры считаются по самой заливке
+            # (_build_town_fill_texture), поэтому каждый её гекс помещается в
+            # текстуру целиком.
             if main_map.is_hex_in_fog(row, col):
                 continue
             # Заливка: гекс рисуем один раз, даже если он в кольцах нескольких
@@ -509,38 +533,47 @@ func _ensure_town_influence_cache(visible: Dictionary) -> void:
     # --- Шаг 2: пре-рендер заливки в одну текстуру Региона ---
     _build_town_fill_texture()
 
-# Пре-рендер заливки колец влияния в ОДНУ RGBA-текстуру, покрывающую весь
-# видимый Регион (Кольцо + Регион). Текстура строится в «мировых» пикселях
+# Пре-рендер заливки колец влияния в ОДНУ RGBA-текстуру, покрывающую всю
+# область заливки. Текстура строится в «мировых» пикселях
 # (без scroll-offset): при прокрутке кадр лишь прибавляет offset и делает один
 # draw_texture_rect. В Godot-классе Image нет векторных примитивов (только
 # fill/fill_rect/set_pixel), поэтому гексы заполняются построчно через
 # fill_rect по таблице половинных ширин (pointy-top гекс с плоскими боковыми
 # сторонами: левая и правая границы вертикальные).
 #
-# Если Регион слишком велик для одной текстуры (предел 4096 px) — оставляем
-# _influence_fill_texture = null, и _draw_town_influence рисует заливку
-# кэшированными полигонами (без дублей и тригонометрии за кадр).
+# Если область заливки слишком велика для одной текстуры (предел 4096 px) —
+# оставляем _influence_fill_texture = null, и _draw_town_influence рисует
+# заливку кэшированными полигонами (без дублей и тригонометрии за кадр).
 func _build_town_fill_texture() -> void:
     _influence_fill_texture = null
     if main_map == null or Engine.is_editor_hint():
         return
     if _influence_fill_centers.is_empty():
         return
-    var r0: int = main_map.region_start_row
-    var r1: int = main_map.region_end_row
-    var c0: int = main_map.region_start_col
-    var c1: int = main_map.region_end_col
-    if r1 < r0 or c1 < c0:
-        return
     var radius: float = main_map.HEX_RADIUS
-    var tl: Vector2 = HexUtils.hex_center(r0, c0, radius)
-    var tr: Vector2 = HexUtils.hex_center(r0, c1, radius)
-    var bl: Vector2 = HexUtils.hex_center(r1, c0, radius)
-    var br: Vector2 = HexUtils.hex_center(r1, c1, radius)
-    var min_x := minf(minf(tl.x, tr.x), minf(bl.x, br.x)) - radius
-    var max_x := maxf(maxf(tl.x, tr.x), maxf(bl.x, br.x)) + radius
-    var min_y := minf(minf(tl.y, tr.y), minf(bl.y, br.y)) - radius
-    var max_y := maxf(maxf(tl.y, tr.y), maxf(bl.y, br.y)) + radius
+    # Границы текстуры считаем ПО ФАКТИЧЕСКОЙ ЗАЛИВКЕ, а не по углам
+    # Региона. На odd-r сетке нечётные ряды сдвинуты на пол-гекса
+    # (HexUtils.hex_center), поэтому углы Региона — не крайние точки карты:
+    # гексы колонок-краёв в чётных рядах вылезают за них на ~0.73 радиуса, и
+    # текстура срезала их краем — заливка выглядела «нарисованной наполовину»
+    # (заметнее слева: там минимум берётся от угла с нечётным рядом). Отсюда
+    # и запас 1 px сверх габаритов гекса — на сглаживание стыков.
+    var half_w: float = radius * sqrt(3.0) * 0.5 # полуширина гекса по X
+    var min_x := INF
+    var min_y := INF
+    var max_x := -INF
+    var max_y := -INF
+    for h in _influence_fill_centers:
+        var cx: float = float(h.cx)
+        var cy: float = float(h.cy)
+        min_x = minf(min_x, cx - half_w)
+        max_x = maxf(max_x, cx + half_w)
+        min_y = minf(min_y, cy - radius)
+        max_y = maxf(max_y, cy + radius)
+    min_x -= 1.0
+    min_y -= 1.0
+    max_x += 1.0
+    max_y += 1.0
     var tex_w: int = int(ceil(max_x - min_x))
     var tex_h: int = int(ceil(max_y - min_y))
     if tex_w <= 0 or tex_h <= 0 or tex_w > 4096 or tex_h > 4096:

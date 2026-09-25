@@ -369,12 +369,9 @@ func generate_towns(tile_data: Array, rows: int, cols: int,
     # Кольца влияния строятся ПОСЛЕ размещения всех городков (включая
     # гарантийный для эры-2), потому что при обходе ресурсов в радиусе 3
     # от каждого городка нужны финальные позиции И все ресурсы уже на карте.
-    # Границы стартового Региона (exclusion_*) нужны для клипа колец всех
-    # городков — иначе кольца, залезающие в Регион, «выдают» чужой городок
-    # в неисследованной зоне в 1-й эпохе.
-    compute_all_town_influences(tile_data, rows, cols,
-            exclusion_start_row, exclusion_end_row,
-            exclusion_start_col, exclusion_end_col)
+    # Границы Региона здесь НЕ нужны: кольцо строится целиком, а что из него
+    # видно игроку — решает рендерер (туман войны + эпоха).
+    compute_all_town_influences(tile_data, rows, cols)
 
     # После построения колец заполняем их декоративными улучшениями. Они
     # принадлежат городкам, не требуют рабочих и никогда не участвуют в
@@ -951,12 +948,11 @@ func load_towns(data) -> void:
 #     для эры-2) — старт новой игры;
 #   - из main_map при загрузке сейва — кольца восстанавливаются.
 #
-# Личное кольцо городка, ВОССТАНОВЛЕННОЕ из сейва, является источником истины:
-# оно может отличаться от «расчёта по радиусу» (кольцо меняется механиками),
-# поэтому для загруженной партии используем сохранённый список as-is. Если
-# кольца нет (новая игра либо мигрированный старый сейв) — считаем заново
-# по текущему радиусу городка через compute_town_influence(). На тайлы при
-# любом варианте проставляется флаг in_town_influence.
+# Состав кольца ВСЕГДА считается заново по радиусу из записи городка
+# (influence_radius) — это единственный источник его размера. Так чинятся и
+# старые сейвы: в них кольцо было срезано по стартовому Региону (см. абзац
+# «ВАЖНО» ниже), и без пересчёта артефакт тянулся бы из партии в партию.
+# На тайлы проставляется флаг in_town_influence.
 #
 # Кольца разных городков НЕ пересекаются. Городки обрабатываются в порядке
 # массива towns (порядок размещения; для сейва — порядок записей): гекс, уже
@@ -965,14 +961,17 @@ func load_towns(data) -> void:
 # кольцо, срезанное со стороны соседа. Обрезанный состав кольца сохраняется
 # в запись городка (и в сейв), поэтому повторный пересчёт идемпотентен.
 #
-# Параметры start_region_* задают границы стартового Региона игрока
-# (видимая область в 1-й эпохе: Кольцо + Регион). Используются для клипа
-# колец при расчёте (и для новых игр, и для мигрированных сейвов): иначе
-# любое кольцо, залезающее в Регион, «выдаёт» чужой городок в неисследованной
-# зоне в 1-й эпохе. Если передано -1 (или start > end), клип отключён.
-func compute_all_town_influences(tile_data: Array, map_rows: int, map_cols: int,
-        start_region_start_row: int = -1, start_region_end_row: int = -1,
-        start_region_start_col: int = -1, start_region_end_col: int = -1) -> void:
+# ВАЖНО: кольцо НЕ клипуется по Региону. Раньше гексы кольца, попадавшие в
+# Регион, выбрасывались — чтобы чужой городок не «выдавал» себя в неисследованной
+# зоне 1-й эпохи. Но такая нарезка МОРОЗИЛА кольцо на границах 1-й эпохи
+# навсегда: с ростом Региона (смена эпохи) заливка городка оставалась огрызком —
+# рисовалась лишь часть кольца, попавшая в НОВЫЙ Регион, а срезанная часть не
+# возвращалась (измеренные потери — до 18% гексов заливки, городок у левой
+# границы Региона терял 5 гексов из 18). Теперь кольцо хранится целиком, а
+# видимость решает рендерер: заливка и контур рисуются только на гексах вне
+# тумана (main_map.is_hex_in_fog) и не раньше эры Античности — ровно там же,
+# где и сам городок (см. map_renderer._ensure_town_influence_cache).
+func compute_all_town_influences(tile_data: Array, map_rows: int, map_cols: int) -> void:
     # Перед пересчётом снимаем старые флаги in_town_influence со ВСЕХ гексов —
     # иначе при изменении состава городков (например, удалении/добавлении)
     # старые пометки останутся на гексах, которые больше не входят ни в одно
@@ -992,15 +991,11 @@ func compute_all_town_influences(tile_data: Array, map_rows: int, map_cols: int,
     # срезается со стороны соседа.
     var claimed: Dictionary = {}
     for t in towns:
-        var ring: Array = t.get("influence_hexes", [])
-        if ring.is_empty():
-            # Личного кольца ещё нет (новая игра / старый сейв) — считаем
-            # по радиусу этого городка и сохраняем в его запись.
-            ring = compute_town_influence(tile_data, map_rows, map_cols,
-                    int(t.row), int(t.col), t,
-                    start_region_start_row, start_region_end_row,
-                    start_region_start_col, start_region_end_col,
-                    int(t.get("influence_radius", INFLUENCE_MAX_RADIUS)))
+        # Кольцо всегда считается заново по радиусу этого городка (см. выше):
+        # сохранённый в сейве состав может быть срезан по стартовому Региону.
+        var ring: Array = compute_town_influence(tile_data, map_rows, map_cols,
+                int(t.row), int(t.col), t,
+                int(t.get("influence_radius", INFLUENCE_MAX_RADIUS)))
         # Клип личного кольца: гексы, уже заявленные более ранним городком,
         # отбрасываем и НЕ записываем в кольцо этого городка. Заливка и
         # границы (рендерер строит их по influence_hexes) у разных городков
@@ -1067,19 +1062,16 @@ func _refresh_sell_pools(tile_data: Array) -> void:
 #   tile_data — 2D-массив гексов. Нужен для проверки tile.resource (шаг 3).
 #   map_rows, map_cols — размеры карты (для обхода соседей в path-функции).
 #   town_row, town_col — координаты городка, вокруг которого строится кольцо.
-#   town_dict — запись города (словарь) из towns. Сейчас на клип НЕ влияет:
-#     клип применяется ко всем городкам одинаково. Параметр оставлен для
+#   town_dict — запись города (словарь) из towns. Параметр оставлен для
 #     будущих механик, которым понадобится различать городки.
-#   start_region_* — границы стартового Региона. Передаются из main_map,
-#     чтобы не лазить в GameData из town_manager (town_manager не знает,
-#     где Регион лежит на карте). Используются для клипа колец.
 #   radius — радиус кольца для ЭТОГО городка (per-town). По умолчанию
 #     INFLUENCE_MAX_RADIUS; будущие механики роста/сжатия кольца передают
 #     сюда радиус из записи города.
+#
+# Кольцо строится ЦЕЛИКОМ, без клипа по Региону: что из него видно игроку,
+# решает рендерер (туман войны + эпоха, см. compute_all_town_influences).
 func compute_town_influence(tile_data: Array, map_rows: int, map_cols: int,
         town_row: int, town_col: int, town_dict: Dictionary = {},
-        start_region_start_row: int = -1, start_region_end_row: int = -1,
-        start_region_start_col: int = -1, start_region_end_col: int = -1,
         radius: int = INFLUENCE_MAX_RADIUS) -> Array:
     var ring: Dictionary = {} # ключ "r,c" -> true для быстрой проверки членства
     var rng := RandomNumberGenerator.new()
@@ -1142,36 +1134,11 @@ func compute_town_influence(tile_data: Array, map_rows: int, map_cols: int,
             for ph in path:
                 ring["%d,%d" % [ph.row, ph.col]] = true
 
-    # --- Шаг 4: клип кольца на стартовом Регионе.
-    # В 1-й эпохе игрок не должен видеть «чужую территорию» в своём
-    # неисследованном Регионе: и сами городки, и их кольца должны быть
-    # невидимы. Сами городки скрыты через current_era-проверку в рендерере
-    # (PHASE 1.6), но кольца рисуются в видимой области по данным
-    # town_influence_hexes — без клипа любое кольцо, залезающее в Регион,
-    # «выдаёт» присутствие чужого городка. Клип применяется ко ВСЕМ
-    # городкам (а не только к гарантийному эры-2): случайные городки тоже
-    # могут оказаться у границы Региона, особенно на маленьких картах,
-    # и без клипа их кольца подсвечивали бы часть неисследованной зоны.
-    if start_region_start_row >= 0 and start_region_end_row >= 0 \
-            and start_region_start_col >= 0 and start_region_end_col >= 0 \
-            and start_region_start_row <= start_region_end_row \
-            and start_region_start_col <= start_region_end_col:
-        var keys_to_remove: Array = []
-        for key in ring.keys():
-            var parts: PackedStringArray = key.split(",")
-            var rr: int = int(parts[0])
-            var cc: int = int(parts[1])
-            if rr >= start_region_start_row and rr <= start_region_end_row \
-                    and cc >= start_region_start_col and cc <= start_region_end_col:
-                keys_to_remove.append(key)
-        for key in keys_to_remove:
-            ring.erase(key)
-        if keys_to_remove.size() > 0:
-            print("town_manager: кольцо городка (", town_row, ",", town_col,
-                    ") обрезано на ", keys_to_remove.size(),
-                    " гекс(ов) стартового Региона")
-
     # --- Конвертация словаря в Array of {row, col} ---
+    # Клипа по Региону здесь НЕТ намеренно (см. шапку функции): кольцо хранится
+    # целиком, иначе с ростом Региона заливка городка навсегда оставалась бы
+    # огрызком — рисовалась бы только та часть кольца, что попала в Регион
+    # ПОСЛЕ смены эпохи.
     var result: Array = []
     for key in ring.keys():
         var parts: PackedStringArray = key.split(",")
