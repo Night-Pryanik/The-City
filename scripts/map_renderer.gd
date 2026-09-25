@@ -791,15 +791,28 @@ func _draw_hex_overlays(row: int, col: int):
         # Декоративные улучшения городков всегда рисуются полноцветными,
         # хотя рабочего у них намеренно нет.
         var draw_active = has_worker or is_infra or bool(tile.get("decorative", false))
-        # Если на гексе нет ресурса (ни природного, ни разводимого) — рисуем
-        # иконку улучшения по центру гекса (ирригационный канал, лесная
-        # делянка и т.п.). Иначе — над верхним краем, над иконкой ресурса.
+        # Если на гексе нет ресурса (ни природного, ни разводимого) — улучшение
+        # это единственный «предмет» на гексе (ирригационный канал, лесная
+        # делянка на пустом лесном гексе, декоративные улучшения городков на
+        # пустых гексах). Рисуем его по центру гекса КРУПНО — размером с
+        # иконку ресурса (RESOURCE_ICON_SIZE): фактически оно заменяет собой
+        # отсутствующую иконку ресурса. Если ресурс есть — иконка улучшения
+        # остаётся маленьким маркером (IMPROVEMENT_ICON_SIZE) над верхним
+        # краем, над иконкой ресурса.
+        var imp_icon_size: float = IMPROVEMENT_ICON_SIZE
+        # Радиус заглушки-круга, если текстура иконки не найдена. Для крупной
+        # иконки берём ту же формулу, что и у ресурса (RESOURCE_ICON_SIZE/3),
+        # чтобы выглядела как обычная иконка ресурса-заглушки.
+        var imp_fallback_radius: float = IMPROVEMENT_ICON_SIZE / 2.5
         var icon_pos = Vector2(center.x, center.y)
         if eff_res != "":
             icon_pos = Vector2(center.x, center.y - main_map.HEX_RADIUS * 0.75)
+        else:
+            imp_icon_size = RESOURCE_ICON_SIZE
+            imp_fallback_radius = RESOURCE_ICON_SIZE / 3.0
         if imp_icon != "" and icon_textures.has(imp_icon):
             var tex = icon_textures[imp_icon]
-            var icon_rect = Rect2(icon_pos.x - IMPROVEMENT_ICON_SIZE / 2.0, icon_pos.y - IMPROVEMENT_ICON_SIZE / 2.0, IMPROVEMENT_ICON_SIZE, IMPROVEMENT_ICON_SIZE)
+            var icon_rect = Rect2(icon_pos.x - imp_icon_size / 2.0, icon_pos.y - imp_icon_size / 2.0, imp_icon_size, imp_icon_size)
             if not draw_active:
                 draw_texture_rect(tex, icon_rect, false, Color(0.5, 0.5, 0.5))
             else:
@@ -810,7 +823,7 @@ func _draw_hex_overlays(row: int, col: int):
                 var fallback_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
                 if not draw_active:
                     fallback_color = Color(0.5, 0.5, 0.5)
-                draw_circle(icon_pos, IMPROVEMENT_ICON_SIZE / 2.5, fallback_color)
+                draw_circle(icon_pos, imp_fallback_radius, fallback_color)
 
         # Капелька пресной воды рядом с иконкой улучшения. Показываем для
         # любого улучшения, у которого есть доступ к воде (direct или chain).
@@ -820,7 +833,16 @@ func _draw_hex_overlays(row: int, col: int):
         if tile.improvement != null:
             var water_access = MapHelpers.get_hex_water_access(row, col, tile_data, main_map.map_rows, main_map.map_cols)
             if water_access != "":
-                var drop_center = icon_pos + Vector2(IMPROVEMENT_ICON_SIZE * 0.5 + 6, 0)
+                # Позиция капельки зависит от размера иконки улучшения:
+                #   маленькая (32) — как раньше, справа от иконки;
+                #   крупная (RESOURCE_ICON_SIZE, гекс без ресурса) — справа
+                #   капелька упирается в грань гекса (полуширина гекса ≈ 47.6px
+                #   при HEX_RADIUS = 55), а снизу мешают прогресс-бары, поэтому
+                #   ставим её по центру НАД иконкой, в верхней части гекса.
+                var drop_offset := Vector2(imp_icon_size * 0.5 + 6, 0)
+                if imp_icon_size > IMPROVEMENT_ICON_SIZE:
+                    drop_offset = Vector2(0, -(imp_icon_size * 0.5 + 6))
+                var drop_center = icon_pos + drop_offset
                 var drop_radius = 6.0
                 var drop_points = [
                     Vector2(0, -drop_radius),
