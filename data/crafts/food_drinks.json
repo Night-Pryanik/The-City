@@ -114,6 +114,16 @@
       "time": 5.0,
       "unlock_tech": "fermentation",
       "description": "Сушит и обжаривает кофейные зерна"
+    },
+    {
+      "id": "vinegar",
+      "name": "Изготовление уксуса",
+      "produced_in": [ "brewer_house" ],
+      "resources": { "@alcohol": 20 },
+      "result": { "vinegar": 10 },
+      "time": 5.0,
+      "unlock_tech": "fermentation",
+      "description": "Варит уксус из алкоголя"
     }
   ]
 }

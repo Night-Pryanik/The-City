@@ -1,7 +1,8 @@
 {
   "resources": [
     {
-      "id": "beer", "price": 8,
+      "id": "beer",
+      "price": 8,
       "name": "Пиво",
       "type": "product",
       "category": "drinks",
@@ -9,7 +10,8 @@
       "icon": "beer.png"
     },
     {
-      "id": "mead", "price": 12,
+      "id": "mead",
+      "price": 12,
       "name": "Медовый напиток",
       "type": "product",
       "category": "drinks",
@@ -17,7 +19,8 @@
       "icon": "mead.png"
     },
     {
-      "id": "wine", "price": 18,
+      "id": "wine",
+      "price": 18,
       "name": "Вино",
       "type": "product",
       "category": "drinks",
@@ -25,7 +28,8 @@
       "icon": "wine.png"
     },
     {
-      "id": "sake", "price": 14,
+      "id": "sake",
+      "price": 14,
       "name": "Саке",
       "type": "product",
       "category": "drinks",
@@ -33,7 +37,8 @@
       "icon": "sake.png"
     },
     {
-      "id": "pulque", "price": 7,
+      "id": "pulque",
+      "price": 7,
       "name": "Пульке",
       "type": "product",
       "category": "drinks",
@@ -41,7 +46,8 @@
       "icon": "pulque.png"
     },
     {
-      "id": "tea", "price": 15,
+      "id": "tea",
+      "price": 15,
       "name": "Чай",
       "type": "product",
       "category": "drinks",
@@ -49,12 +55,22 @@
       "icon": "tea.png"
     },
     {
-      "id": "coffee", "price": 18,
+      "id": "coffee",
+      "price": 18,
       "name": "Кофе",
       "type": "product",
       "category": "drinks",
       "unlock_tech": "fermentation",
       "icon": "coffee.png"
+    },
+    {
+      "id": "vinegar",
+      "price": 18,
+      "name": "Уксус",
+      "type": "product",
+      "category": "drinks",
+      "unlock_tech": "fermentation",
+      "icon": "vinegar.png"
     }
   ]
 }
