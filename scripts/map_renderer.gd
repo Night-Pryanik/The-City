@@ -398,6 +398,25 @@ func _draw_hex(row: int, col: int):
 # и аллокаций. Пересборка — только по invalidate_town_influence_cache()
 # (инициализация карты / загрузка сейва) либо при смене Региона (эпоха).
 
+# Публичный доступ к кэшу заливки для тестов и отладки: список гексов
+# заливки в виде [{"row": int, "col": int}, ...]. Гексы, отфильтрованные по
+# туману войны, в списке нет вовсе. Пустой список означает, что кэш ещё не
+# собран: вызовите сначала invalidate_town_influence_cache().
+func get_town_fill_hexes() -> Array:
+    var out: Array = []
+    for h in _influence_fill_centers:
+        out.append({"row": int(h.row), "col": int(h.col)})
+    return out
+
+# Публичный доступ к кэшу границ для тестов и отладки: список гексов, по
+# которым проходят отрезки контуров, в том же формате, что и
+# get_town_fill_hexes().
+func get_town_border_hexes() -> Array:
+    var out: Array = []
+    for seg in _influence_border_segments:
+        out.append({"row": int(seg.row), "col": int(seg.col)})
+    return out
+
 func invalidate_town_influence_cache() -> void:
     # Сбрасываем кэш рендера: пересоберётся лениво на следующем кадре.
     # Старая ImageTexture освобождается автоматически (ref-count) при
@@ -443,6 +462,12 @@ func _ensure_town_influence_cache(visible: Dictionary) -> void:
         for h in ring:
             var row: int = int(h.row)
             var col: int = int(h.col)
+            # Гекс под туманом войны (неизвестен игроку) заливку не получает:
+            # иначе кольцо «выдаёт» присутствие чужого городка. Проверка идёт
+            # именно по туману, а не по Региону — так же, как работает гейт
+            # тумана в main_map.is_hex_in_fog.
+            if main_map.is_hex_in_fog(row, col):
+                continue
             # Заливка: гекс рисуем один раз, даже если он в кольцах нескольких
             # городков (раньше — по N раз с «двойным» затемнением пересечений).
             var key := "%d,%d" % [row, col]
@@ -462,6 +487,9 @@ func _ensure_town_influence_cache(visible: Dictionary) -> void:
                     continue
                 # Соседа за краем карты нет — «правильный» край не рисуем.
                 if nr < 0 or nr >= main_map.map_rows or nc < 0 or nc >= main_map.map_cols:
+                    continue
+                # Ребро уходит в туман войны — контур там не рисуется.
+                if main_map.is_hex_in_fog(nr, nc):
                     continue
                 # Общая кромка: две вершины текущего гекса, ближайшие к центру
                 # соседнего. Для pointy-top гексов это и есть общее ребро.

@@ -1605,6 +1605,9 @@ func _on_expansion_mode_changed(_active: bool):
 func _on_territory_expanded(_row: int, _col: int, cost: int):
     # cost — это труд, затраченный на освоение (см. expansion_manager).
     hud.show_message("Территория расширена! (затрачено %d труда)" % cost)
+    # Освоение снимает туман с гексов (in_influence = true) — кэш заливки колец
+    # городков пересобираем, иначе новая территория останется без заливки.
+    map_renderer.invalidate_town_influence_cache()
     map_renderer.queue_redraw()
     if city_ui.visible:
         city_ui.refresh()
@@ -1983,6 +1986,9 @@ func advance_to_next_era():
                 tile["is_explored"] = false
 
     current_era += 1
+    # Границы Региона выросли: часть ранее туманных гексов теперь входит в
+    # Регион, поэтому кэш заливки/границ колец городков устарел.
+    map_renderer.invalidate_town_influence_cache()
     # Синхронизируем текущую эпоху в CityData — от неё зависит ограничение
     # на изучение технологий (только текущая и предыдущие эпохи).
     CityData.current_era_index = current_era
@@ -2267,6 +2273,9 @@ func _complete_scouting():
     hud.show_message("Разведка завершена! %s" % info)
     is_scouting = false
     scouting_chunk = []
+    # Разведка снимает туман войны с гексов, значит заливка колец городков
+    # на открывшейся территории должна появиться — кэш рендера пересобираем.
+    map_renderer.invalidate_town_influence_cache()
     map_renderer.queue_redraw()
     _redraw_progress_layer()
 
