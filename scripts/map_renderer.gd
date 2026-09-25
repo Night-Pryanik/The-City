@@ -4,8 +4,8 @@ extends Node2D
 
 const CITY_ICON_SIZE = 130
 const TERRAIN_ICON_SIZE = 130
-const RESOURCE_ICON_SIZE = 80
-const IMPROVEMENT_ICON_SIZE = 32
+const RESOURCE_ICON_SIZE = 75
+const IMPROVEMENT_ICON_SIZE = 35
 # Толщина контура границ кольца влияния городков (в пикселях).
 const TOWN_INFLUENCE_BORDER_WIDTH = 3.0
 # Прозрачность заливки территории городков.
@@ -841,7 +841,7 @@ func _draw_hex_overlays(row: int, col: int):
                 #   ставим её по центру НАД иконкой, в верхней части гекса.
                 var drop_offset := Vector2(imp_icon_size * 0.5 + 6, 0)
                 if imp_icon_size > IMPROVEMENT_ICON_SIZE:
-                    drop_offset = Vector2(0, -(imp_icon_size * 0.5 + 6))
+                    drop_offset = Vector2(0, - (imp_icon_size * 0.5 + 6))
                 var drop_center = icon_pos + drop_offset
                 var drop_radius = 6.0
                 var drop_points = [
