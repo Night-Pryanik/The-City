@@ -151,11 +151,15 @@ func update_tooltip_text(row: int, col: int, tile_data: Array, city_row: int = 0
 
     var tile = tile_data[row][col]
     var is_revealed = tile.get("in_influence", false) or tile.get("is_explored", false)
+    # В кольце влияния чужого городка тултип не раскрывает состояние и выпуск
+    # улучшений: игрок не управляет этими гексами и не должен получать рабочие
+    # показатели чужой территории.
+    var in_town_influence = bool(tile.get("in_town_influence", false))
     var terrain_data = GameData.terrains.get(tile.terrain, {})
     var products = []
     if terrain_data.get("unique", false) and not is_revealed:
         pass # products остаются пустыми — см. проверку ниже
-    elif not is_revealed:
+    elif not is_revealed or in_town_influence:
         pass
     else:
         var res_id = MapHelpers.get_effective_resource(tile)
@@ -248,7 +252,7 @@ func update_extended_tooltip(row: int, col: int, tile_data: Array, city_row: int
 
     var tile = tile_data[row][col]
     var is_revealed = tile.get("in_influence", false) or tile.get("is_explored", false)
-    if not is_revealed:
+    if not is_revealed or bool(tile.get("in_town_influence", false)):
         return
 
     # Расчёты стоимости постройки (база/местность/расстояние) перенесены
@@ -340,9 +344,12 @@ func _build_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_c
         var q_name = GameData.get_quality_name(tile_quality)
         text += "\nКачество: %s (%s)" % [q_stars, q_name]
 
+    var in_town_influence = bool(tile.get("in_town_influence", false))
     var imp_status = ""
     if tile.improvement != null:
-        if GameData.is_no_worker_improvement(tile.improvement):
+        if in_town_influence:
+            imp_status = ""
+        elif GameData.is_no_worker_improvement(tile.improvement):
             # Инфраструктурное улучшение (no_worker, например пристань):
             # функционирует само по себе — статус «нет рабочего» неприменим.
             imp_status = " (инфраструктура: рабочий не требуется)"
@@ -360,7 +367,7 @@ func _build_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_c
             if res_data.get("improved_by", null) != null and res_data.has("produces"):
                 imp_status = " (не построено)"
 
-    if res_id != "":
+    if res_id != "" and not in_town_influence:
         var res_data = GameData.raw_resources.get(res_id, {})
         var feed_consumption = res_data.get("feed_consumption", 0)
         if feed_consumption > 0:
