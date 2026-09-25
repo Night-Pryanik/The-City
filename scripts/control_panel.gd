@@ -533,13 +533,10 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
         var breeding_ids: Array = CityData.domesticated_resources.duplicate()
         var suitable_breeding_improvements: Dictionary = {}
         for resource_id in breeding_ids:
-            var resource_data = GameData.raw_resources.get(resource_id, {})
             var improvement_id = MapHelpers.get_breeding_improvement(resource_id)
-            if improvement_id == "" or not MapHelpers.can_breed_resource(resource_id):
+            if improvement_id == "" or not MapHelpers.can_breed_resource_on_tile(resource_id, tile):
                 continue
-            if tile.terrain in resource_data.get("allowed_terrain", []) \
-                    and tile.get("cover", "none") in resource_data.get("allowed_cover", []):
-                suitable_breeding_improvements[improvement_id] = true
+            suitable_breeding_improvements[improvement_id] = true
         for improvement_id in suitable_breeding_improvements:
             var imp_name = GameData.improvements.get(improvement_id, {}).get("name", improvement_id)
             var improvement_unlocked = CityData.is_improvement_unlocked(improvement_id)
@@ -1291,17 +1288,18 @@ func _get_tech_name(tech_id: String) -> String:
 # Каждый элемент: { "id": String, "name": String }.
 func _get_suitable_crops(row: int, col: int, imp_kind: String) -> Array:
     var tile = main_map.get_tile_data(row, col)
-    var tile_cover = tile.get("cover", "none")
     var ids: Array
     ids = CityData.domesticated_resources.duplicate()
     var out := []
     for id in ids:
         var data = GameData.raw_resources.get(id, {})
-        # breedable: false (напр. рыба) — разводить нельзя, в выбор культур не попадает.
+        # breedable и биом разведения проверяются единым хелпером; в частности,
+        # он учитывает дополнительные условия поля resource.breeding.
         if not MapHelpers.can_breed_resource_by(id, imp_kind):
             continue
-        if tile.terrain in data.get("allowed_terrain", []) and tile_cover in data.get("allowed_cover", []):
-            out.append({"id": id, "name": data.get("name", id)})
+        if not MapHelpers.can_breed_resource_on_tile(id, tile):
+            continue
+        out.append({"id": id, "name": data.get("name", id)})
     return out
 
 # Возвращает true, если культура (растение/животное) подходит для гекса (row, col)
@@ -1310,7 +1308,6 @@ func _is_suitable_culture(row: int, col: int, id, imp_kind: String) -> bool:
     if id == null or id == "":
         return false
     var tile = main_map.get_tile_data(row, col)
-    var tile_cover = tile.get("cover", "none")
     var data = GameData.raw_resources.get(id, {})
     if data.is_empty():
         return false
@@ -1320,7 +1317,7 @@ func _is_suitable_culture(row: int, col: int, id, imp_kind: String) -> bool:
         return false
     if not (id in ids):
         return false
-    return tile.terrain in data.get("allowed_terrain", []) and tile_cover in data.get("allowed_cover", [])
+    return MapHelpers.can_breed_resource_on_tile(id, tile)
 
 # Возвращает id первого одомашненного вида, подходящего для гекса, или null.
 func _first_suitable_culture(row: int, col: int, imp_kind: String):

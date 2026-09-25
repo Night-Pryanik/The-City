@@ -526,6 +526,81 @@ static func can_breed_resource(res_id: String) -> bool:
     var raw = GameData.raw_resources.get(res_id, {})
     return bool(raw.get("breedable", true))
 
+## Значение условия breeding может быть одной строкой или массивом строк.
+## Для строки проверяется равенство; для массива — вхождение фактического
+## значения гекса. Другие типы и пустые массивы не совпадают.
+static func _breeding_value_matches(actual: String, expected: Variant) -> bool:
+    if expected is String:
+        return actual == expected
+    if expected is Array:
+        for value in expected:
+            if value is String and actual == value:
+                return true
+    return false
+
+## Проверяет, можно ли разводить ресурс res_id на конкретном гексе.
+## Базовые места разведения задаются парами allowed_terrain/allowed_cover.
+## Необязательное поле breeding добавляет дополнительные группы условий:
+## внешний массив объединён ИЛИ, условия внутри группы — И. Условия с
+## terrain и/или cover проверяются как строки или массивы строк; пустая,
+## неизвестная или некорректная группа не разрешает разведение. Приоритет имеет
+## breedable: даже подходящий по breeding ресурс с breedable=false разводить нельзя.
+static func can_breed_resource_on_tile(res_id: String, tile: Dictionary) -> bool:
+    if not can_breed_resource(res_id):
+        return false
+
+    var raw: Dictionary = GameData.raw_resources.get(res_id, {})
+    if raw.is_empty():
+        return false
+
+    var terrain_id: String = str(tile.get("terrain", ""))
+    var cover_id: String = str(tile.get("cover", "none"))
+    var allowed_terrain: Variant = raw.get("allowed_terrain", [])
+    var allowed_cover: Variant = raw.get("allowed_cover", [])
+    if allowed_terrain is Array and allowed_cover is Array \
+            and terrain_id in allowed_terrain and cover_id in allowed_cover:
+        return true
+
+    var breeding_value: Variant = raw.get("breeding", [])
+    if not (breeding_value is Array):
+        return false
+    var breeding_groups: Array = breeding_value
+    for group in breeding_groups:
+        if not (group is Array) or group.is_empty():
+            continue
+
+        var group_met := true
+        for condition in group:
+            if not (condition is Dictionary):
+                group_met = false
+                break
+
+            var has_supported_condition := false
+            for key in condition.keys():
+                if key != "terrain" and key != "cover":
+                    group_met = false
+                    break
+            if not group_met:
+                break
+
+            if condition.has("terrain"):
+                has_supported_condition = true
+                if not _breeding_value_matches(terrain_id, condition.get("terrain")):
+                    group_met = false
+                    break
+            if condition.has("cover"):
+                has_supported_condition = true
+                if not _breeding_value_matches(cover_id, condition.get("cover")):
+                    group_met = false
+                    break
+            if not has_supported_condition:
+                group_met = false
+                break
+
+        if group_met:
+            return true
+    return false
+
 ## Возвращает улучшение, через которое можно разводить ресурс на пустом гексе.
 ## Используется то же улучшение, что и для его природного ресурса.
 static func get_breeding_improvement(res_id: String) -> String:
@@ -722,13 +797,9 @@ static func get_buildable_improvement(tile: Dictionary) -> String:
         return ""
 
     # Пустой гекс: улучшение для разведения одомашненного вида.
-    var tile_cover: String = tile.get("cover", "none")
     var domesticated_ids: Array = CityData.domesticated_resources.duplicate()
     for res_id in domesticated_ids:
-        var resource_data: Dictionary = GameData.raw_resources.get(res_id, {})
-        if not can_breed_resource(res_id):
-            continue
-        if tile.terrain not in resource_data.get("allowed_terrain", []) or tile_cover not in resource_data.get("allowed_cover", []):
+        if not can_breed_resource_on_tile(res_id, tile):
             continue
         var improvement_id = get_breeding_improvement(res_id)
         if improvement_id != "" and CityData.is_improvement_unlocked(improvement_id):
