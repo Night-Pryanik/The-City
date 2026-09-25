@@ -1575,8 +1575,8 @@ func _on_pause_load():
         print("Ошибка загрузки сохранения")
 
 func _on_pause_new_game():
-    SaveManager.new_game()
-    get_tree().change_scene_to_file("res://scenes/MainMap.tscn")
+    # Пункт меню паузы не создаёт новую партию, а возвращает в главное меню.
+    get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
 
 func get_tile_data(row: int, col: int):
     if row >= 0 and row < tile_data.size() and col >= 0 and col < tile_data[row].size():

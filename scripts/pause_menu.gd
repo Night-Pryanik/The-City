@@ -27,7 +27,11 @@ func _ready():
     if load_btn: load_btn.pressed.connect(_on_load)
     else: printerr("LoadButton not found in PauseMenu")
 
-    if new_game_btn: new_game_btn.pressed.connect(_on_new_game)
+    if new_game_btn:
+        # Кнопка в меню паузы всегда действует из запущенной партии:
+        # вместо начала новой игры она возвращает в главное меню.
+        new_game_btn.text = "Перейти в главное меню"
+        new_game_btn.pressed.connect(_on_new_game)
     else: printerr("NewGameButton not found in PauseMenu")
 
     if exit_btn: exit_btn.pressed.connect(_on_exit)
