@@ -378,6 +378,17 @@
       "production_slots": 1.0,
       "unlock_tech": "jewelry",
       "default_recipes": [  ]
+    },
+    {
+      "id": "alchemist_house",
+      "name": "Дом алхимика",
+      "description": "Здание, алхимики проводят различные химические реакции.",
+      "work_cost": 35,
+      "additional_cost": [ { "planks": 100 }, { "@processed_construction_materials": 50 } ],
+      "icon": "alchemist_house.png",
+      "production_slots": 1.0,
+      "unlock_tech": "alchemy",
+      "default_recipes": [  ]
     }
   ]
 }
