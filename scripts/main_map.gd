@@ -2107,7 +2107,17 @@ func _update_treasury_hud():
     _displayed_treasury = CityData.treasury
     var treasury_label = hud.get_node_or_null("VBoxContainer/TreasuryLabel")
     if treasury_label:
-        treasury_label.text = "Казна: %d" % _displayed_treasury
+        # Динамика прибыли/расходов — тот же факт, что и в тултипе разбивки
+        # (CityData.get_treasury_flow_text), но в секунду. Считается на том же
+        # ритме обновления, что и баланс, — цифры не мельтешат каждый тик.
+        treasury_label.text = "Казна: %d %s" % [
+            _displayed_treasury, CityData.get_treasury_flow_text()
+        ]
+        # Панель HUD в сцене фиксированной ширины, а строка растёт вместе с
+        # балансом — пересчитываем ширину под новый текст, иначе длинная строка
+        # вылезет на карту и ховер по «хвосту» перестанет срабатывать.
+        if hud.has_method("refresh_size"):
+            hud.refresh_size()
 
 # Создаёт CanvasLayer + Control-хост и инстанциирует ui_helpers для
 # HUD-тултипов (разбивка казны и будущие). Добавляется в дерево один раз в

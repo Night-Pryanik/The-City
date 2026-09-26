@@ -17,6 +17,9 @@
 #      label = «2 × 3 чел.»; налог виден и когда рыночного дохода ещё нет.
 #   7. Рендер тултипа (ui_helpers.show_treasury_tooltip): одна строка
 #      «• Налоги: 2 × 3 чел. = 6 / сек», итог секции прибыли учитывает налог.
+#   8. Строка «Казна: N [+X≈ / -Y≈]» в HUD карты и в верхней полосе города:
+#      динамика фактических прибыли/расходов доехала до обеих меток, совпала с
+#      CityData.get_treasury_flow_text() и влезла в ширину HUD-панели.
 extends SceneTree
 
 # Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
@@ -164,6 +167,38 @@ func _run() -> void:
 	var expected_total: float = _sum_map_rates(mixed, city.TREASURY_FLAT_TYPE_KEY)
 	check(texts.has("Прибыль (фактическая, средняя): %s / сек" % _fmt_rate(expected_total)),
 			"итог секции прибыли: ожидалось «%s»" % _fmt_rate(expected_total), state)
+
+	# --- 8. Строка «Казна» в HUD и верхней полосе: динамика прибыли/расхода ---
+	# Метки собирают текст из CityData.get_treasury_flow_text() — проверяем, что
+	# динамика реально доехала до обеих строк и совпадает с расчётом (без
+	# автолоадов это не проверить: нужен живой MainMap).
+	var flow: Dictionary = city.get_treasury_flow_per_sec()
+	var flow_text: String = city.get_treasury_flow_text()
+	check(flow_text.contains("[+") and flow_text.contains("≈]"),
+			"динамика казны должна выглядеть как [+X≈ / -Y≈], получено «%s»" % flow_text, state)
+	var hud_label = main_map.hud.get_node_or_null("VBoxContainer/TreasuryLabel")
+	check(hud_label != null, "метка казны в HUD не найдена", state)
+	if hud_label != null:
+		check(hud_label.text == "Казна: %d %s" % [city.treasury, flow_text],
+				"в HUD должно быть «Казна: N %s», получено «%s»" % [flow_text, hud_label.text], state)
+	# Верхняя полоса города обновляется из city_ui._update_food_label — дёргаем её
+	# напрямую (в тесте интерфейс города не открыт, тиковый путь не сработает).
+	main_map.city_ui._update_food_label()
+	var city_treasury_label = main_map.city_ui.get_node_or_null("TabBarPanel/TopFoodLabel/TreasuryLabel")
+	check(city_treasury_label != null, "метка казны в верхней полосе города не найдена", state)
+	if city_treasury_label != null:
+		check(city_treasury_label.text == "Казна: %d %s" % [city.treasury, flow_text],
+				"в верхней полосе должно быть «Казна: N %s», получено «%s»"
+						% [flow_text, city_treasury_label.text], state)
+	# Подгонка размера HUD под длинную строку: панель не должна быть уже метки,
+	# иначе текст вылезет на карту, а ховер по «хвосту» строки не сработает.
+	check(main_map.hud.size.x >= hud_label.get_combined_minimum_size().x,
+			"ширина HUD (%d) должна покрывать метку казны (%d)"
+					% [main_map.hud.size.x, hud_label.get_combined_minimum_size().x], state)
+	# Доход по налогу обязан попадать в динамику: в этом тике собрано
+	# base_tax × 3, окно 3 сек → base_tax / сек.
+	check(float(flow.get("income", 0.0)) > 0.0,
+			"доход в динамике должен быть ненулевым, получено %s" % str(flow.get("income", 0.0)), state)
 
 	_finish(main_map, state)
 

@@ -456,6 +456,64 @@ func rotate_treasury_window() -> void:
 # транзакций разведки/освоения без размывания факта.
 const DEFAULT_TREASURY_WINDOW_SEC: float = 3.0
 
+# --- ДИНАМИКА КАЗНЫ ДЛЯ СТРОКИ «Казна: N [+X / -Y]» (HUD карты и верхняя
+# полоса города) ---
+# Фактические скорости прибыли и расхода в МОНЕТАХ/СЕКУНДУ по данным того же
+# окна отображения, что и тултип разбивки (см. rotate_treasury_window выше):
+# сумма, накопленная за окно, делится на длину окна. Обе цифры — ФАКТ по тем
+# же точкам, где вызывается add_treasury/spend_treasury; плановых карт здесь
+# нет и не нужно: у казны нет плановой скорости расходов (расходы — событийные
+# траты игрока), а доход и так пишется в плоский накопитель рядом с пополнением.
+# Это те же данные, что читает тултип, — строки в HUD и в городе не могут
+# разойтись с разбивкой.
+#
+# Пока первое окно не завершилось, снимки пусты — берём текущие накопители
+# (ровно как worker_manager.get_actual_treasury_income_map). Иначе первые
+# секунды после старта/загрузки строка показывала бы «+0 / -0» при идущем
+# доходе.
+func get_treasury_flow_per_sec() -> Dictionary:
+    var income_map: Dictionary = treasury_income_snapshot
+    if income_map.is_empty():
+        income_map = treasury_income_accum
+    var expense_map: Dictionary = treasury_expense_snapshot
+    if expense_map.is_empty():
+        expense_map = treasury_expense_accum
+    var window_sec: float = treasury_window_length_sec
+    if window_sec <= 0.0:
+        return {"income": 0.0, "expense": 0.0}
+    var income := 0.0
+    for source_name in income_map:
+        income += float(int(income_map[source_name]))
+    # Расход — только положительные нетто по источнику: возврат при отказе
+    # освоения ноттируется минусом в том же источнике, и для игрока это равно
+    # «расхода не было» (то же правило, что в рендере тултипа разбивки).
+    var expense := 0.0
+    for source_name in expense_map:
+        var amount := int(expense_map[source_name])
+        if amount > 0:
+            expense += float(amount)
+    return {
+        "income": maxf(income, 0.0) / window_sec,
+        "expense": expense / window_sec,
+    }
+
+# Текст динамики для строки «Казна»: «[+123≈ / -456≈]». Обе цифры — факт за
+# последнее окно, пересчитанный в секунду, поэтому помечены «≈»: тот же
+# маркер, что на вкладке «Ресурсы» и в подвале тултипа казны.
+func get_treasury_flow_text() -> String:
+    var flow: Dictionary = get_treasury_flow_per_sec()
+    return "[+%s≈ / -%s≈]" % [
+        _format_treasury_rate(float(flow.get("income", 0.0))),
+        _format_treasury_rate(float(flow.get("expense", 0.0))),
+    ]
+
+# Формат скорости — как ui_helpers._format_rate: целое без дробной части,
+# иначе одна десятая (0.3 монеты/сек не округляем до нуля).
+func _format_treasury_rate(value: float) -> String:
+    if is_equal_approx(value, round(value)):
+        return str(int(round(value)))
+    return "%.1f" % value
+
 # Возвращает цену, по которой внутренний рынок покупает у города единицу
 # товара pid (в монетах казны). Это доля базовой цены товара (price из
 # data/products/*.json), заданная множителем internal_market_price_multiplier

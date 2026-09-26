@@ -1,6 +1,8 @@
 # Smoke-тест разбивки казны по источникам (headless):
 #   godot --headless --path "E:\The City" --script res://tools/test_treasury_breakdown.gd
-# Проверяет state-машину CityData.record_treasury_* / rotate_treasury_window.
+# Проверяет state-машину CityData.record_treasury_* / rotate_treasury_window и
+# динамику строки «Казна: N [+X≈ / -Y≈]» (CityData.get_treasury_flow_per_sec /
+# get_treasury_flow_text: факт окна, пересчитанный в секунду).
 # Не использует autoload-зависимый API (GameData/CityData игрового процесса),
 # потому что в `--script`-режиме autoload-цепочка не поднимается (см.
 # developer_diary, «Багфикс: ...»): для интеграционной проверки нужен
@@ -95,6 +97,69 @@ func _initialize():
     cd3.rotate_treasury_window()
     check(int(cd3.treasury_expense_snapshot.get("Освоение чанков", 0)) == -10,
         "чистый возврат без траты: ожидалось -10, получено %d" % int(cd3.treasury_expense_snapshot.get("Освоение чанков", 0)), state)
+
+    # ---- 7. Динамика строки «Казна: N [+X / -Y]» (факт в секунду) ----
+    # Считается по тем же снимкам окна, что и тултип разбивки: сумма за окно,
+    # делённая на его длину (treasury_window_length_sec = 3.0).
+    var cd4 = load("res://scripts/CityData.gd").new()
+    cd4.record_treasury_income("Рыбак", 30) # 30 монет за окно = 10 / сек
+    cd4.record_treasury_income("Подушный налог", 6) # ещё 2 / сек
+    cd4.record_treasury_expense("Разведка", 9) # 9 за окно = 3 / сек
+    var flow_before_rotate: Dictionary = cd4.get_treasury_flow_per_sec()
+    check(is_equal_approx(float(flow_before_rotate.get("income", 0.0)), 12.0),
+        "до первой ротации берётся накопитель окна: ожидалось 12.0 / сек, получено %s"
+            % str(flow_before_rotate.get("income", 0.0)), state)
+    check(is_equal_approx(float(flow_before_rotate.get("expense", 0.0)), 3.0),
+        "расход до ротации: ожидалось 3.0 / сек, получено %s"
+            % str(flow_before_rotate.get("expense", 0.0)), state)
+    check(cd4.get_treasury_flow_text() == "[+12≈ / -3≈]",
+        "текст динамики до ротации, получено «%s»" % cd4.get_treasury_flow_text(), state)
+
+    cd4.rotate_treasury_window()
+    var flow_after_rotate: Dictionary = cd4.get_treasury_flow_per_sec()
+    check(is_equal_approx(float(flow_after_rotate.get("income", 0.0)), 12.0),
+        "после ротации доход берётся из снимка: ожидалось 12.0 / сек, получено %s"
+            % str(flow_after_rotate.get("income", 0.0)), state)
+    check(is_equal_approx(float(flow_after_rotate.get("expense", 0.0)), 3.0),
+        "после ротации расход берётся из снимка: ожидалось 3.0 / сек, получено %s"
+            % str(flow_after_rotate.get("expense", 0.0)), state)
+    # Снимок НЕ пустеет вместе с накопителями: в нём осталось то, что попало в
+    # окно, — динамика в строке не схлопывается в ноль на следующем окне.
+    check(cd4.get_treasury_flow_text() == "[+12≈ / -3≈]",
+        "текст динамики после ротации, получено «%s»" % cd4.get_treasury_flow_text(), state)
+
+    # Дробная скорость: 1 монета за окно 3 сек = 0.3 / сек — не округляем в ноль,
+    # формат тот же, что у ui_helpers._format_rate (одна десятая).
+    var cd5 = load("res://scripts/CityData.gd").new()
+    cd5.record_treasury_income("Рыбак", 1)
+    check(cd5.get_treasury_flow_text() == "[+0.3≈ / -0≈]",
+        "дробная скорость дохода: получено «%s»" % cd5.get_treasury_flow_text(), state)
+
+    # Чистые возвраты (amount < 0 без компенсирующей траты) в расход строки не
+    # идут — так же, как их прячет тултип разбивки (см. record_treasury_expense).
+    var cd6 = load("res://scripts/CityData.gd").new()
+    cd6.record_treasury_expense("Освоение чанков", -12)
+    cd6.rotate_treasury_window()
+    check(is_equal_approx(float(cd6.get_treasury_flow_per_sec().get("expense", -1.0)), 0.0),
+        "чистый возврат не должен давать расход в строке", state)
+    # А нетто-расход после возврата — обычный расход: 25 − 10 = 15 за окно.
+    var cd7 = load("res://scripts/CityData.gd").new()
+    cd7.record_treasury_expense("Освоение чанков", 25)
+    cd7.record_treasury_expense("Освоение чанков", -10)
+    cd7.rotate_treasury_window()
+    check(cd7.get_treasury_flow_text() == "[+0≈ / -5≈]",
+        "нетто-расход 15 за окно 3 сек = 5 / сек, получено «%s»"
+            % cd7.get_treasury_flow_text(), state)
+
+    # Окно нулевой длины (страховка от деления на ноль) — нули, не NaN/inf.
+    var cd8 = load("res://scripts/CityData.gd").new()
+    cd8.record_treasury_income("Рыбак", 30)
+    cd8.treasury_window_length_sec = 0.0
+    var zero_window: Dictionary = cd8.get_treasury_flow_per_sec()
+    check(is_equal_approx(float(zero_window.get("income", -1.0)), 0.0)
+            and is_equal_approx(float(zero_window.get("expense", -1.0)), 0.0),
+        "окно нулевой длины: скорости должны быть нулевыми, получено %s"
+            % str(zero_window), state)
 
     if state.failed:
         print("FAIL")

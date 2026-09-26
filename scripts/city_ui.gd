@@ -408,7 +408,13 @@ func _update_food_label():
     # значение, а тултип — каждый тик свежее (визуальный регресс «убегает
     # вперёд», см. developer_diary).
     _displayed_treasury = CityData.treasury
-    var treasury_str = "Казна: %d" % _displayed_treasury
+    # Динамика прибыли/расходов казны — по тем же данным окна, что и тултип
+    # разбивки (CityData.get_treasury_flow_text), но в секунду. Ровно тот же
+    # текст, что в HUD-метке карты: обе строки собираются из одного метода,
+    # поэтому разойтись не могут.
+    var treasury_str = "Казна: %d %s" % [
+        _displayed_treasury, CityData.get_treasury_flow_text()
+    ]
 
     # TopFoodLabel — HBoxContainer с тремя дочерними метками
     # (FoodLabel/PopLabel/TreasuryLabel), см. сцену CityUI.tscn. Разделитель
