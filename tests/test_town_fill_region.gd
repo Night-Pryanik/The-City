@@ -1,5 +1,5 @@
 # Headless-тест: заливка колец городков покрывает кольцо ЦЕЛИКОМ.
-#   godot --headless --path "E:\The City" --script res://tests/test_town_fill_region.gd
+#   godot --headless --path . --script res://tests/test_town_fill_region.gd
 #
 # Регресс на дефект, из-за которого заливка выглядела «нарисованной наполовину»
 # (особенно у левой границы Региона): кольца городков клипались по СТАРТОВОМУ

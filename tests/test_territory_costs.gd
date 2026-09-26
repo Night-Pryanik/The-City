@@ -1,7 +1,7 @@
 # Headless-тест стоимости территории: разведка и освоение оплачиваются МОНЕТАМИ
 # из казны города, цена гекса растёт с расстоянием от города (универсальный
 # модификатор из data/game_balance.json), еда при этом НЕ тратится.
-#   godot --headless --path "E:\The City" --script res://tools/test_territory_costs.gd
+#   godot --headless --path . --script res://tests/test_territory_costs.gd
 #
 # Проверки:
 #   1. Универсальное поле distance_cost_modifier_per_hex реально читается:

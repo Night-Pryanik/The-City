@@ -1,5 +1,5 @@
 # Headless-тест «залипания» тултипа разбивки казны:
-#   godot --headless --path "E:\The City" --script res://tools/test_treasury_tooltip_pin.gd
+#   godot --headless --path . --script res://tests/test_treasury_tooltip_pin.gd
 #
 # Тултип разбивки казны (HUD карты и верхняя полоса CityUI) использует один и
 # тот же ui_helpers.show_treasury_tooltip. Поведение при наведении — как у

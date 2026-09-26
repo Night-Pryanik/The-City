@@ -1,5 +1,5 @@
 # Headless-тест: заливка колец городков не протекает в туман войны.
-#   godot --headless --path "E:\The City" --script res://tests/test_town_fill_fog.gd
+#   godot --headless --path . --script res://tests/test_town_fill_fog.gd
 #
 # Проверяется на живых данных реальной сцены MainMap (новая игра):
 #   1. В 1-й эпохе колец не видно вообще — иначе чужой городок выдал бы себя

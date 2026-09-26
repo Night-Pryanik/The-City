@@ -1,6 +1,6 @@
 # Headless-тест каскадно-уточняющего размещения городков
 # (scripts/town_manager.gd).
-#   godot --headless --path "E:\The City" --script res://tools/test_town_priorities.gd
+#   godot --headless --path . --script res://tests/test_town_priorities.gd
 #
 # Проверки (на синтетических картах — детерминированно, без случайной карты):
 #   1. База = ВЫСШИЙ приоритет, у которого есть валидный гекс НА ВСЕЙ КАРТЕ:

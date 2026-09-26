@@ -1,5 +1,5 @@
 # Headless-тест подсветки наведения/выделения гексов (map_renderer, ФАЗЫ 2.5 и 3.5):
-#   godot --headless --path "E:\The City" --script res://tools/test_highlight_hexes.gd
+#   godot --headless --path . --script res://tests/test_highlight_hexes.gd
 #
 # Рендерер подсвечивает набор гексов, который отдаёт
 # expansion_manager.get_highlight_hexes(row, col):

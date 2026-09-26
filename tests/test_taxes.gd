@@ -1,5 +1,5 @@
 # Headless-тест налогов населения (подушный налог в казну):
-#   godot --headless --path "E:\The City" --script res://tools/test_taxes.gd
+#   godot --headless --path . --script res://tests/test_taxes.gd
 #
 # Каждый житель платит в казну базовый налог (base_tax_per_citizen из
 # data/game_balance.json) за КАЖДЫЙ тик симуляции. Проверки:

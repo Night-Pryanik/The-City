@@ -1,5 +1,5 @@
 # Headless-тест «залипшего» скроллбара тултипов (детали здания, потоки ресурсов):
-#   godot --headless --path "E:\The City" --script res://tests/test_detail_tooltip.gd
+#   godot --headless --path . --script res://tests/test_detail_tooltip.gd
 #
 # Сценарий бага: тултип показан для «большого» здания (> 15 строк, со
 # скроллбаром), затем контент пересобирается под «маленькое» здание (как при

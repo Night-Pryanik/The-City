@@ -1,5 +1,5 @@
 # Headless-тест времени рецептов (поле `time` в data/crafts/*.json):
-#   godot --headless --path "E:\The City" --script res://tests/test_craft_time.gd
+#   godot --headless --path . --script res://tests/test_craft_time.gd
 #
 # Проверяет:
 #   1) get_craft_time() читает поле time и откатывается на SIMULATION_TICK;

@@ -1,5 +1,5 @@
 # Headless-тест цены товара по качеству (data/qualities.json, price_multiplier):
-#   godot --headless --path "E:\The City" --script res://tests/test_quality_price.gd
+#   godot --headless --path . --script res://tests/test_quality_price.gd
 #
 # Качество влияет на цену множителем: цена единицы = база × price_multiplier
 # уровня, с округлением до целого числа монет. Проверки:

@@ -1,5 +1,5 @@
 # Временный smoke-тест системы потребления (headless):
-#   godot --headless --path "E:\The City" --script res://tests/test_consumption.gd
+#   godot --headless --path . --script res://tests/test_consumption.gd
 # Проверяет: загрузку data/consumption.json, резолвинг группы "@boats",
 # дедупликацию и жадное списание из группы. После проверки файл можно удалить.
 extends SceneTree

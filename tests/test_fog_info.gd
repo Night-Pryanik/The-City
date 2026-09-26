@@ -1,5 +1,5 @@
 # Headless-тест правила «Гекс в тумане войны не выдаёт информацию»:
-#   godot --headless --path "E:\The City" --script res://tools/test_fog_info.gd
+#   godot --headless --path . --script res://tests/test_fog_info.gd
 #
 # Проверяется на живых данных реальной сцены MainMap (новая игра):
 #   1. main_map.is_hex_in_fog(): гекс города и разведанные гексы — не туман;

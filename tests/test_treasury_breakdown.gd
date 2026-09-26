@@ -1,5 +1,5 @@
 # Smoke-тест разбивки казны по источникам (headless):
-#   godot --headless --path "E:\The City" --script res://tools/test_treasury_breakdown.gd
+#   godot --headless --path . --script res://tests/test_treasury_breakdown.gd
 # Проверяет state-машину CityData.record_treasury_* / rotate_treasury_window и
 # динамику строки «Казна: N [+X≈ / -Y≈]» (CityData.get_treasury_flow_per_sec /
 # get_treasury_flow_text: факт окна, пересчитанный в секунду).

@@ -1,5 +1,5 @@
 # Headless-тест правила «Разведка вне Региона — только после Картографии»:
-#   godot --headless --path "E:\The City" --script res://tools/test_cartography_gate.gd
+#   godot --headless --path . --script res://tests/test_cartography_gate.gd
 #
 # Тест поднимает РЕАЛЬНУЮ сцену MainMap (новая игра на настоящей карте) и
 # проверяет правило на живых данных:

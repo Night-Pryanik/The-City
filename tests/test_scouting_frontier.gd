@@ -1,5 +1,5 @@
 # Headless-тест правила «Чанк разведки должен граничить с известной территорией»:
-#   godot --headless --path "E:\The City" --script res://tools/test_scouting_frontier.gd
+#   godot --headless --path . --script res://tests/test_scouting_frontier.gd
 #
 # Тест поднимает РЕАЛЬНУЮ сцену MainMap (новая игра на настоящей карте) и
 # проверяет правило на живых данных:

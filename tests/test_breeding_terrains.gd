@@ -1,5 +1,5 @@
 # Headless-тест дополнительных мест разведения (`breeding`):
-#   godot --headless --path "E:\The City" --script res://tests/test_breeding_terrains.gd
+#   godot --headless --path . --script res://tests/test_breeding_terrains.gd
 #
 # Проверяет реальные JSON-данные и общий MapHelpers.can_breed_resource_on_tile:
 # базовые места сохраняются, группы breeding работают по И/ИЛИ-семантике,

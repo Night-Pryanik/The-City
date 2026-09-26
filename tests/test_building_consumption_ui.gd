@@ -1,5 +1,5 @@
 # Headless-тест показа ПРОФЕССИОНАЛЬНОГО ПОТРЕБЛЕНИЯ ЗДАНИЙ:
-#   godot --headless --path "E:\The City" --script res://tests/test_building_consumption_ui.gd
+#   godot --headless --path . --script res://tests/test_building_consumption_ui.gd
 #
 # Проверяется:
 #   1. ConsumptionUi.build_rows_for_building(): строки расхода профессии здания

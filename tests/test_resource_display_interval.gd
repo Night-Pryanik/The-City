@@ -1,5 +1,5 @@
 # Headless-тест настройки «Интервал обновления данных о ресурсах»:
-#   godot --headless --path "E:\The City" --script res://tools/test_resource_display_interval.gd
+#   godot --headless --path . --script res://tests/test_resource_display_interval.gd
 #
 # Проверяется:
 #   1. Слайдер в настройках (вкладка «Игра»): диапазон 1..5, шаг 1; ключ
