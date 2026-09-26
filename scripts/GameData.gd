@@ -229,6 +229,89 @@ func get_quality_value(quality_id: String) -> int:
 func get_quality_stars(quality_id: String) -> String:
     return get_quality_data(quality_id).get("stars", "")
 
+# --- ЦЕНА ПО КАЧЕСТВУ (data/qualities.json, поле price_multiplier) ---
+# Множитель умножается на цену единицы товара: лучшее качество дороже.
+# Множитель, а не фиксированная прибавка в монетах, — чтобы наценка была
+# пропорциональна на всей шкале цен (1…150), см. шапку qualities.json.
+
+# Множитель цены уровня качества. Для "common", неизвестного id и любого
+# уровня без поля — 1.0 (мягкий дефолт: качество не ломает цену, даже
+# если поле забыли или данные старые).
+func get_quality_price_multiplier(quality_id: String) -> float:
+    var m = float(get_quality_data(quality_id).get("price_multiplier", 1.0))
+    if m <= 0.0:
+        return 1.0
+    return m
+
+# Текущая цена единицы товара с учётом качества: цена (база × динамические
+# множители рынка) × множитель качества. Дробный результат — округление
+# делает вызывающий (нужны ЦЕЛЫЕ монеты, см. get_price_breakdown_for_quality).
+func get_price_for_quality(res_id: String, quality_id: String) -> float:
+    return get_price(res_id) * get_quality_price_multiplier(quality_id)
+
+# Разбивка цены единицы товара по качеству для тултипа:
+#   { "base": int, "multiplier": float, "total": int }
+# База (текущая цена с динамическими множителями рынка) округляется до
+# целого ОДИН раз, итог — round(base × множитель качества). Все числа в
+# тултипе целые, кроме самого множителя, — он и показывается отдельным
+# слагаемым: «Цена: 4 * 1.30 (★★) = 5».
+# У товара без цены (например, псевдоресурс science) — нули.
+func get_price_breakdown_for_quality(res_id: String, quality_id: String) -> Dictionary:
+    var mult := get_quality_price_multiplier(quality_id)
+    var base := int(round(get_price(res_id)))
+    if base <= 0:
+        return {"base": 0, "multiplier": mult, "total": 0}
+    return {"base": base, "multiplier": mult, "total": int(round(float(base) * mult))}
+
+# Строка цены уровня качества для тултипа:
+#   "Цена: 4 * 1.30 (★★) = 5"
+# Пустая строка, если показывать нечего: у товара нет цены или качество
+# не выше самого низкого уровня шкалы (у него множитель 1.0, цена та же).
+func format_quality_price_line(res_id: String, quality_id: String) -> String:
+    var levels = get_quality_levels()
+    if levels.is_empty() or quality_id == "" or quality_id == str(levels[0]):
+        return ""
+    var d = get_price_breakdown_for_quality(res_id, quality_id)
+    if int(d["total"]) <= 0:
+        return ""
+    return "Цена: %d * %s (%s) = %d" % [
+        int(d["base"]), "%.2f" % float(d["multiplier"]),
+        get_quality_stars(quality_id), int(d["total"])
+    ]
+
+# Цены по уровням качества, которые РЕАЛЬНО лежат на складе, для тултипа строки
+# вкладки «Ресурсы». Показываются только уровни, присутствующие в
+# quality_breakdown ({quality_id: count} — разбивка склада из
+# CityData.city_quality_detail, см. CityData.get_quality_breakdown): цену
+# «превосходного» уровня, которого на складе нет, показывать незачем —
+# это вводит в заблуждение.
+# Уровни выводятся от худшего к лучшему (порядок data/qualities.json) и
+# ТОЛЬКО ВЫШЕ самого низкого в шкале: у обычного качества множитель 1.0,
+# его цена уже показана базовой строкой «Цена: N» над блоком.
+# Формат строки — ТОТ ЖЕ, что в тултипе звёзд (format_quality_price_line):
+# «Цена: 4 * 1.30 (★★) = 5». Строка собирается той же функцией, а не
+# отдельно, чтобы два тултипа не разъехались по стилю при правке формата.
+# Пустой массив: у товара нет цены (например, science), не задан id или в шкале
+# качества всего один уровень.
+func format_quality_price_scale_lines(res_id: String, quality_breakdown: Dictionary = {}) -> Array:
+    var lines: Array = []
+    var levels = get_quality_levels()
+    if res_id.is_empty() or levels.size() <= 1 or get_base_price(res_id) <= 0.0:
+        return lines
+    for i in range(1, levels.size()):
+        var qid: String = str(levels[i])
+        # Уровня нет на складе — цена не показана (в т.ч. count == 0).
+        if int(quality_breakdown.get(qid, 0)) <= 0:
+            continue
+        # Пустая строка — у уровня без цены. Обычное качество сюда не доходит
+        # (цикл начинается с levels[1]), но проверка оставлена на случай шкалы
+        # из одного уровня с непустой разбивкой.
+        var line := format_quality_price_line(res_id, qid)
+        if line == "":
+            continue
+        lines.append(line)
+    return lines
+
 # Случайно выбирает уровень качества по весам spawn_weight.
 func roll_quality() -> String:
     var levels = get_quality_levels()

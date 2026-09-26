@@ -458,7 +458,10 @@ func hide_progress_tooltip():
 
 # Показывает тулитп с разбивкой продукта по качеству.
 # quality_breakdown — словарь {quality_id: count}, например {"common": 50, "fine": 30}.
-func show_quality_tooltip(mouse_pos: Vector2, prod_name: String, quality_breakdown: Dictionary):
+# prod_id — id товара в реестре GameData: нужен, чтобы под уровнем качества
+# показать, во сколько раз множитель качества (data/qualities.json,
+# price_multiplier) подняет цену единицы. Пустая строка — строки цены нет.
+func show_quality_tooltip(mouse_pos: Vector2, prod_name: String, quality_breakdown: Dictionary, prod_id: String = ""):
     # Очищаем содержимое
     for child in quality_tooltip_vbox.get_children():
         quality_tooltip_vbox.remove_child(child)
@@ -494,6 +497,17 @@ func show_quality_tooltip(mouse_pos: Vector2, prod_name: String, quality_breakdo
         row.add_child(name_label)
 
         quality_tooltip_vbox.add_child(row)
+
+        # Строка цены — только для уровней ВЫШЕ самого низкого в шкале: у
+        # обычного качества множитель 1.0, цена не меняется, показывать
+        # нечего. У товара без цены (например, science) тоже пусто.
+        var price_text := GameData.format_quality_price_line(prod_id, str(qid)) if not prod_id.is_empty() else ""
+        if price_text != "":
+            var price_label = Label.new()
+            price_label.text = "  " + price_text
+            price_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+            price_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+            quality_tooltip_vbox.add_child(price_label)
 
     quality_tooltip_vbox.reset_size()
     var content_size = quality_tooltip_vbox.get_minimum_size()
@@ -654,8 +668,16 @@ func _format_planned_rate(amount: float, interval: float) -> String:
 # «Ресурсы»). Фактическое производство/потребление (текущее) из тултипа
 # убрано (см. коммит 5790016).
 # resource_id — id ресурса/продукта: если задан, сверху выводится его текущая
-# цена (GameData.get_price). Тултип показывается, даже когда производство/
-# потребление пусты, но цена ресурса > 0.
+# цена (GameData.get_price), а под ней — цены по тем уровням качества,
+# которые РЕАЛЬНО лежат на складе (quality_breakdown), в том же формате, что
+# и в тултипе звёзд: «Цена: 4 * 1.30 (★★) = 5» (строки с отступом 2 пробела).
+# Пустая разбивка или товар без цены — строк нет.
+# quality_breakdown — разбивка склада по качеству
+# ({quality_id: count}, см. CityData.get_quality_breakdown). По ней решается,
+# какие уровни показывать: цена уровня, которого на складе нет, игроку
+# не нужна и только вводит в заблуждение.
+# Тултип показывается, даже когда производство/потребление пусты, но цена
+# ресурса > 0.
 # planned_consumption — плановое потребление:
 # { источник -> { amount, interval, count, is_group, group_name, is_population } }.
 # Строки показываются как пара «amount / interval сек» (см. _format_planned_rate).
@@ -669,7 +691,7 @@ func _format_planned_rate(amount: float, interval: float) -> String:
 # потреблено при текущем состоянии производителей).
 # Порядок секций тултипа: цена / «Производство (плановое):» / «Потребление
 # (плановое):» / сноска «≈».
-func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dictionary = {}, resource_id: String = "", planned_consumption: Dictionary = {}, planned_production: Dictionary = {}):
+func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dictionary = {}, resource_id: String = "", planned_consumption: Dictionary = {}, planned_production: Dictionary = {}, quality_breakdown: Dictionary = {}):
     if flow_tooltip_panel == null:
         return
     # Очищаем предыдущее содержимое.
@@ -697,6 +719,18 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
         price_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
         price_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         flow_tooltip_vbox.add_child(price_label)
+        # Цены по качеству, которые РЕАЛЬНО лежат на складе: внутренний рынок
+        # берёт каждую единицу по цене ЕЁ уровня, поэтому под базовой ценой
+        # показываем, сколько стоит товар каждого качества из разбивки склада
+        # (quality_breakdown). Уровней, которых на складе нет, строки не
+        # создаются: цена несуществующего на складе товара показываться не
+        # должна. У товара без цены (science) строк нет вовсе.
+        for quality_line in GameData.format_quality_price_scale_lines(resource_id, quality_breakdown):
+            var quality_price_label = Label.new()
+            quality_price_label.text = "  " + str(quality_line)
+            quality_price_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+            quality_price_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+            flow_tooltip_vbox.add_child(quality_price_label)
     for yield_id in special_yield:
         var yield_label = Label.new()
         yield_label.text = "%s: %d" % [

@@ -292,10 +292,13 @@ func _tick_profession_consumption(prof: String, key: String, timers: Dictionary,
                 var take: int = mini(avail, remaining)
                 if take <= 0:
                     continue
-                CityData.remove_from_storage(member_pid, take, "best")
+                var member_consumed: Dictionary = CityData.remove_from_storage(member_pid, take, "best")
                 CityData.record_consumption_source(member_pid, prof_source, take)
                 # Фактическое потребление на внутреннем рынке даёт доход в казну.
-                var member_take_price: int = CityData.get_internal_market_price(member_pid) * take
+                # Цена — по качеству КАЖДОЙ списанной единицы: разбивка consumed
+                # приходит из remove_from_storage (см. docs.md, «Казна города и
+                # внутренний рынок»).
+                var member_take_price: int = CityData.get_internal_market_income(member_pid, member_consumed)
                 CityData.add_treasury(member_take_price)
                 # Источник дохода для тултипа «Казна» по тому же ключу,
                 # что и в плановой карте (имя профессии, напр. «Рыбак»).
@@ -311,9 +314,10 @@ func _tick_profession_consumption(prof: String, key: String, timers: Dictionary,
             var take_single: int = mini(avail_single, floor_take)
             if take_single <= 0:
                 continue
-            CityData.remove_from_storage(pid, take_single, "best")
+            var single_consumed: Dictionary = CityData.remove_from_storage(pid, take_single, "best")
             CityData.record_consumption_source(pid, prof_source, take_single)
-            var single_take_price: int = CityData.get_internal_market_price(pid) * take_single
+            # Цена — по качеству каждой списанной единицы (см. выше).
+            var single_take_price: int = CityData.get_internal_market_income(pid, single_consumed)
             CityData.add_treasury(single_take_price)
             # Источник дохода для тултипа «Казна» по тому же ключу,
             # что и в плановой карте (имя профессии, напр. «Рыбак»).
@@ -466,10 +470,11 @@ func tick_city_consumption(delta: float) -> void:
                 if avail <= 0:
                     continue
                 var take = min(avail, remaining)
-                CityData.remove_from_storage(pid, take, "best")
+                var group_consumed: Dictionary = CityData.remove_from_storage(pid, take, "best")
                 CityData.record_consumption_source(pid, all_source, take)
                 # Горожане платят за потреблённый товар из казны (внутренний рынок).
-                var group_take_price: int = CityData.get_internal_market_price(pid) * take
+                # Цена — по качеству каждой списанной единицы.
+                var group_take_price: int = CityData.get_internal_market_income(pid, group_consumed)
                 CityData.add_treasury(group_take_price)
                 # Источник дохода для тултипа «Казна» (городское потребление,
                 # имя берётся из data/professions.json → «Все жители»).
@@ -484,10 +489,11 @@ func tick_city_consumption(delta: float) -> void:
                 continue # склад пуст — таймер не сбрасываем: спишем сразу при появлении
             # По факту наличия: списываем всё, что есть, но не больше нужного.
             var take = min(have, amt)
-            CityData.remove_from_storage(pid, take, "best")
+            var city_consumed: Dictionary = CityData.remove_from_storage(pid, take, "best")
             CityData.record_consumption_source(pid, all_source, take)
             # Горожане платят за потреблённый товар из казны (внутренний рынок).
-            var city_take_price: int = CityData.get_internal_market_price(pid) * take
+            # Цена — по качеству каждой списанной единицы.
+            var city_take_price: int = CityData.get_internal_market_income(pid, city_consumed)
             CityData.add_treasury(city_take_price)
             # Источник дохода для тултипа «Казна» (городское потребление).
             CityData.record_treasury_income(all_source, city_take_price, pid)
@@ -724,7 +730,12 @@ func _fill_consumption_income(result: Dictionary) -> void:
     var planned := get_planned_consumption_map(false)
     var planned_production := CityData.get_planned_production_map()
     for pid in planned:
-        var market_price: int = CityData.get_internal_market_price(str(pid))
+        # План — доход по СРЕДНЕМУ качеству того, что реально лежит на складе
+        # (CityData.get_stock_quality_price_multiplier): качество будущей
+        # сделки неизвестно, а план по обычному качеству занижал бы факт.
+        var market_price: int = int(round(
+            float(CityData.get_internal_market_price(str(pid)))
+            * CityData.get_stock_quality_price_multiplier(str(pid))))
         if market_price <= 0:
             continue
         var product_name: String = GameData.products.get(pid, {}).get("name", pid)

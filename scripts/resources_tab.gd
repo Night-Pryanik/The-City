@@ -465,7 +465,8 @@ func update_values():
                 ui_helpers.show_quality_tooltip(
                     get_viewport().get_mouse_position(),
                     active_quality_name,
-                    fresh_detail
+                    fresh_detail,
+                    active_quality_product
                 )
 
     # Обновляем открытый тултип источников прихода/расхода свежими данными.
@@ -488,7 +489,10 @@ func update_values():
                     special_yield,
                     active_flow_product,
                     fresh_planned,
-                    fresh_planned_prod
+                    fresh_planned_prod,
+                    # Разбивка по качеству — свежая: пока товар списывается,
+                    # уровни в тултипе должны исчезать вместе с запасом.
+                    CityData.get_quality_breakdown(active_flow_product)
                 )
 
 # Добавляет метку с разбивкой по качеству в строку ресурса.
@@ -543,7 +547,8 @@ func _on_quality_hover(prod_id: String, product_name: String):
     active_quality_product = prod_id
     active_quality_name = product_name
     if ui_helpers and is_instance_valid(ui_helpers):
-        ui_helpers.show_quality_tooltip(get_viewport().get_mouse_position(), product_name, detail)
+        ui_helpers.show_quality_tooltip(
+            get_viewport().get_mouse_position(), product_name, detail, prod_id)
 
 # Скрывает тулитп качества.
 func _on_quality_exit():
@@ -613,7 +618,8 @@ func _on_flow_hover(prod_id: String, product_name: String):
     if ui_helpers and is_instance_valid(ui_helpers):
         ui_helpers.show_flow_tooltip(
             get_viewport().get_mouse_position(), product_name,
-            special_yield, prod_id, planned, planned_prod)
+            special_yield, prod_id, planned, planned_prod,
+            CityData.get_quality_breakdown(prod_id))
 
 # Скрывает тултип источников; при переходе на другую метку той же строки не мерцает.
 func _on_flow_exit(prod_id: String):

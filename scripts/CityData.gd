@@ -461,13 +461,52 @@ const DEFAULT_TREASURY_WINDOW_SEC: float = 3.0
 # data/products/*.json), заданная множителем internal_market_price_multiplier
 # в data/game_balance.json, с округлением
 # до ближайшего целого. Для товаров без цены возвращает 0.
-func get_internal_market_price(pid: String) -> int:
+#
+# quality_id — уровень качества СПИСЫВАЕМОЙ единицы (""/"common" — обычное):
+# цена умножается на множитель качества (data/qualities.json,
+# price_multiplier) и снова округляется до целого, поэтому монеты всегда
+# целые, а хороший товар внутренний рынок покупает дороже.
+func get_internal_market_price(pid: String, quality_id: String = "") -> int:
     var prod = GameData.products.get(pid, {})
     var base_price = float(prod.get("price", 0))
     if base_price <= 0.0:
         return 0
     var mult = float(GameData.game_balance.get("internal_market_price_multiplier", 1.0))
-    return int(round(base_price * mult))
+    var market_base := int(round(base_price * mult))
+    return int(round(float(market_base) * GameData.get_quality_price_multiplier(quality_id)))
+
+# Доход казны за фактически списанные единицы товара с учётом КАЧЕСТВА каждой
+# единицы. consumed — разбивка {quality: count}, которую вернул
+# remove_from_storage(): цена считается по каждому уровню отдельно, поэтому
+# смешанный склад приносит больше, чем count × цена обычного качества.
+# Пустая разбивка (списывать было нечего) — доход 0.
+func get_internal_market_income(pid: String, consumed: Dictionary) -> int:
+    var income := 0
+    for qid in consumed:
+        var count := int(consumed[qid])
+        if count <= 0:
+            continue
+        income += get_internal_market_price(pid, str(qid)) * count
+    return income
+
+# Средний множитель цены по качеству, взвешенный по разбивке склада
+# (city_quality_detail). Нужен там, где качество будущей сделки неизвестно —
+# прежде всего для ПЛАНОВОГО дохода казны в тултипе: план по обычному
+# качеству систематически занижал бы факт, если на складе есть хороший товар.
+# Без разбивки (старый сейв, пустой склад) — 1.0.
+func get_stock_quality_price_multiplier(pid: String) -> float:
+    var detail: Dictionary = city_quality_detail.get(pid, {})
+    var total := 0
+    var weighted := 0.0
+    for qid in detail:
+        var count := int(detail[qid])
+        if count <= 0:
+            continue
+        total += count
+        weighted += float(count) * GameData.get_quality_price_multiplier(str(qid))
+    if total <= 0:
+        return 1.0
+    return weighted / float(total)
 
 # --- ЗАПИСЬ ФАКТА ЗА ТИК ---
 # Эти хелперы обновляют фактические счётчики производства/потребления за тик
