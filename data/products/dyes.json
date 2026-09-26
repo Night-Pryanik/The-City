@@ -52,7 +52,7 @@
       "type": "product",
       "category": "material",
       "unlock_tech": "dyeing",
-      "icon": "rose_madder.png"
+      "icon": "carmine.png"
     },
     {
       "id": "woad",
@@ -61,7 +61,7 @@
       "type": "product",
       "category": "material",
       "unlock_tech": "dyeing",
-      "icon": "woad.png"
+      "icon": "indigo.png"
     },
     {
       "id": "campeche",
