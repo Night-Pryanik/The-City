@@ -15,6 +15,10 @@ var panel: Panel
 var title_label: Label
 var info_label: Label
 var slots_container: VBoxContainer
+# Секция «Потребляет:» — профессиональное потребление профессии горожанина
+# в зданиях этого типа. Живёт между «Зданий: N» и списком слотов, пересобирается
+# в _refresh() (контейнер создаётся один раз в _ready()).
+var consumption_box: VBoxContainer
 
 var icon_textures: Dictionary = {}
 var icon_paths: Dictionary = {}
@@ -95,6 +99,13 @@ func _ready():
 
     info_label = Label.new()
     vbox.add_child(info_label)
+
+    # Секция профессионального потребления здания («Потребляет:»). Содержимое
+    # собирает _refresh() — так секция не зависит от пересоздания слотов.
+    consumption_box = VBoxContainer.new()
+    consumption_box.add_theme_constant_override("separation", 4)
+    consumption_box.visible = false
+    vbox.add_child(consumption_box)
 
     var slots_title = Label.new()
     slots_title.text = "Слоты производства:"
@@ -186,6 +197,7 @@ func _refresh():
         for child in slots_container.get_children():
             child.queue_free()
         info_label.text = "Зданий: 0"
+        _clear_consumption_section()
         _upgrade_progress_bars.clear()
         _slot_progress_bars.clear()
         return
@@ -212,6 +224,12 @@ func _refresh():
 
     var main_map = get_tree().root.find_child("MainMap", true, false)
     var tm = main_map.get_node("TownsfolkManager") if main_map else null
+
+    # Профессиональное потребление зданий этого типа: сумма по РАБОЧИМ зданиям
+    # (есть горожанин и хотя бы один непустой слот — расходники простаивающего
+    # здания не тратятся, см. CityData.get_townsfolk_professions_count).
+    # Ширина секции участвует в подгонке ширины панели ниже.
+    var consumption_width := _fill_consumption_section(tm, indices)
 
     var all_item_texts = []
     var max_item_icons = 0
@@ -411,6 +429,10 @@ func _refresh():
     # включая прогресс-бар справа от кнопки рецепта.
     var popup_content_width = max_text_width + max_item_icons * 24 + 40 + 70 + 40
     var needed_width = maxf(popup_content_width, max_slot_row_width + 40 + 16)
+    # Секция «Потребляет:» — ещё одна строка содержимого: её подпись
+    # («4 шт./сек (2 здания) (+25% к производству)») иначе вылезла бы за
+    # край панели, посчитанный только по слотам и попапам.
+    needed_width = maxf(needed_width, consumption_width + 40 + 16)
     # Не даём панели выйти за пределы viewport
     var max_panel_width = get_viewport_rect().size.x - 40
     if needed_width > max_panel_width:
@@ -439,6 +461,91 @@ func _refresh():
     # на пустых тиках не делали повторный _refresh() и не убивали ОС-тултипы
     # на кнопках заголовков (toggle_btn, quality_btn).
     _last_panel_state = _collect_panel_state(tm)
+
+# Заполняет (или прячет) секцию «Потребляет:» — профессиональное потребление
+# профессии горожанина в зданиях ЭТОГО типа. Показывается сумма по рабочим
+# зданиям: скорость строки умножается на их число, в подписи появляется
+# «(2 здания)»; при одном рабочем здании строка совпадает с тултипом гекса.
+# Формат строк даёт общий ConsumptionUi — тот же, что у расширенного тултипа
+# гекса, левой колонки панели управления и тултипа деталей здания.
+# Возвращает ширину содержимого секции: она участвует в подгонке ширины
+# панели вместе со слотами и попапами.
+func _fill_consumption_section(tm, indices: Array) -> float:
+    _clear_consumption_section()
+    var rows = ConsumptionUi.build_rows_for_building(
+        building_id, _count_working_buildings(tm, indices))
+    if rows.is_empty():
+        return 0.0
+
+    var header = Label.new()
+    header.text = "Потребляет:"
+    header.add_theme_font_size_override("font_size", 16)
+    header.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+    header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    consumption_box.add_child(header)
+
+    var all_resources := _get_all_resources()
+    var font = get_theme_default_font()
+    var font_size = get_theme_default_font_size()
+    var content_width := 0.0
+    for row in rows:
+        var line = HBoxContainer.new()
+        line.add_theme_constant_override("separation", 6)
+        line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        var indent = Control.new()
+        indent.custom_minimum_size.x = 18
+        indent.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        line.add_child(indent)
+        var bullet = Label.new()
+        bullet.text = "◦"
+        bullet.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+        bullet.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        line.add_child(bullet)
+        # Имя ресурса с иконкой рисует общий хелпер (у @-группы подчёркнутое
+        # имя с составом по наведению), скорость и бонус дописываем справа.
+        line.add_child(ui_helpers.make_resource_entry(
+            str(row.get("display_key", "")), all_resources, icon_paths))
+        var rate_label = Label.new()
+        rate_label.text = ": %s" % str(row.get("rate_label", ""))
+        rate_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+        rate_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        line.add_child(rate_label)
+        consumption_box.add_child(line)
+        # Ширина строки: имя ресурса + «: » + хвост подписи, плюс отступ,
+        # маркер, иконка (20 px) и разделители HBox.
+        var row_width := font.get_string_size(
+                str(row.get("name", "")), HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x \
+            + font.get_string_size(" " + str(row.get("rate_label", "")),
+                HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x \
+            + 18.0 + 12.0 + 20.0 + 24.0
+        content_width = maxf(content_width, row_width)
+    consumption_box.visible = true
+    return content_width
+
+# Число зданий этого типа, которые реально тратят расходники: есть горожанин
+# и хотя бы один непустой слот. При нуле таких зданий секция показывает
+# скорость «на одно здание» с пометкой «(рабочих зданий нет)».
+func _count_working_buildings(tm, indices: Array) -> int:
+    var result := 0
+    if tm == null:
+        return result
+    for b_index in indices:
+        if not tm.has_townsfolk(b_index):
+            continue
+        if CityData.are_all_slots_empty(b_index):
+            continue
+        result += 1
+    return result
+
+# Очищает секцию «Потребляет:» и прячет её: у здания без профессии (или без
+# расходников у неё) показывать нечего.
+func _clear_consumption_section():
+    if consumption_box == null:
+        return
+    for child in consumption_box.get_children():
+        consumption_box.remove_child(child)
+        child.queue_free()
+    consumption_box.visible = false
 
 # Заполняет содержимое попапа списком доступных рецептов.
 # Возвращает словарь с текстами пунктов и максимальным количеством иконок

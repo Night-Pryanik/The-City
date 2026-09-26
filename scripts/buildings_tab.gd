@@ -861,6 +861,37 @@ func _show_building_details(bdata: Dictionary):
     if not has_costs:
         content.add_child(_make_bullet_row("•", "0"))
 
+    # Профессиональное потребление здания: расходники, которые тратит профессия
+    # горожанина в нём (поле "profession" в data/buildings.json). Показывается
+    # как свойство типа здания — рядом с «Стоимость:» и до «Дополнительного
+    # выхода»: это постоянная часть работы здания, а не разовые затраты на
+    # постройку, поэтому видно и до постройки. Формат строк даёт общий
+    # ConsumptionUi — тот же, что у секции «Потребляет:» в тултипе гекса
+    # и в левой колонке панели управления (см. docs.md).
+    var cons_rows = ConsumptionUi.build_rows_for_building(bdata.get("id", ""))
+    if not cons_rows.is_empty():
+        content.add_child(_make_bullet_row("•", "Потребляет:"))
+        for cons in cons_rows:
+            var cons_row = HBoxContainer.new()
+            cons_row.add_theme_constant_override("separation", 6)
+            cons_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+            var cons_indent = Control.new()
+            cons_indent.custom_minimum_size.x = 18
+            cons_indent.mouse_filter = Control.MOUSE_FILTER_IGNORE
+            cons_row.add_child(cons_indent)
+            cons_row.add_child(_make_bullet("◦"))
+            # Имя ресурса рисует общий хелпер (иконка + для @-группы
+            # подчёркнутое имя с составом по наведению), а скорость расхода и
+            # бонус к производству дописываем справа.
+            cons_row.add_child(ui_helpers.make_resource_entry(
+                str(cons.get("display_key", "")), products_data, icon_paths))
+            var cons_rate_label = Label.new()
+            cons_rate_label.text = ": %s" % str(cons.get("rate_label", ""))
+            cons_rate_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+            cons_rate_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+            cons_row.add_child(cons_rate_label)
+            content.add_child(cons_row)
+
     var additional_yield = bdata.get("additional_yield", {})
     if not additional_yield.is_empty():
         content.add_child(_make_bullet_row("•", "Дополнительный выход:"))

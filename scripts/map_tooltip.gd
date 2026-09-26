@@ -8,12 +8,10 @@ var _worker_manager
 # при периодическом обновлении — чтобы не пересобирать UI без изменений).
 var _last_products_key := ""
 
-# Форматирует скорость (шт./сек, ед./сек): целые значения без дробной части,
-# дробные — с одним знаком («1.5»).
-func _format_rate(value: float) -> String:
-    if value == floor(value):
-        return str(int(value))
-    return "%.1f" % value
+# Форматирование скорости (шт./сек, ед./сек) живёт в общих помощниках:
+# ConsumptionUi.format_rate — для строк профессионального потребления.
+# Собственного форматировщика здесь больше нет: раньше он жил именно в этом
+# файле, и новые места показа расхода копипастили бы его.
 
 func _init(tooltip_text_label: RichTextLabel, tooltip_products_container: VBoxContainer, map_renderer, worker_manager):
     _tooltip_text_label = tooltip_text_label
@@ -577,7 +575,8 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
 
     # --- Потребление профессии ---
     # Показываем список ресурсов, которые профессия рабочего на этом гексе
-    # расходует со склада. Источник: поле consumption у продуктов (см. docs.md).
+    # расходует со склада. Источник записей — реестр data/consumption.json
+    # (плюс устаревшее поле consumption у продуктов), см. docs.md.
     # Секция появляется только если:
     #   1) улучшение построено,
     #   2) на нём есть рабочий,
@@ -586,47 +585,29 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
     # Само производство улучшения при нехватке ресурса НЕ останавливается —
     # оно откатывается к базовому множителю (без бонуса).
     if tile.improvement != null and _worker_manager.has_worker(row, col):
-        var prof_id = GameData.get_profession_for_improvement(tile.improvement)
-        if not prof_id.is_empty():
-            var cons_list = GameData.get_profession_consumption(prof_id)
-            if not cons_list.is_empty():
-                result.append({"type": "header", "text": "Потребляет:"})
-                for entry in cons_list:
-                    var cons_pid = entry.get("product_id", "")
-                    var cons_name = entry.get("product_name", cons_pid)
-                    var cons_amount = int(entry.get("amount", 0))
-                    var cons_interval = float(entry.get("interval", 0))
-                    # Подпись строки потребления: «<имя>: <N> шт./сек»
-                    # (amount записи, делённый на её interval).
-                    # Если задан production_bonus — добавляем «+N% к производству»,
-                    # чтобы игрок видел, зачем профессии этот расходник.
-                    var cons_bonus: float = float(entry.get("production_bonus", 0.0))
-                    # Показ — посекундный: amount записи за её interval секунд.
-                    var cons_rate: float = float(cons_amount) / cons_interval if cons_interval > 0.0 else float(cons_amount)
-                    var cons_label := "%s: %s шт./сек" % [cons_name, _format_rate(cons_rate)]
-                    if cons_bonus > 0.0:
-                        var bonus_pct := int(round(cons_bonus * 100.0))
-                        cons_label += " (+%d%% к производству)" % bonus_pct
-                    # Иконка потребляемого ресурса (если есть).
-                    # Для групповой записи берём иконку первого члена группы,
-                    # у которого она задана (GameData кладёт её в поле "icon").
-                    var cons_icon_path := ""
-                    if entry.get("is_group", false):
-                        var cons_icon_name = str(entry.get("icon", ""))
-                        if cons_icon_name != "":
-                            cons_icon_path = _map_renderer.get_icon_path(cons_icon_name)
-                    else:
-                        var cons_prod_data = GameData.products.get(cons_pid, {})
-                        if cons_prod_data.has("icon"):
-                            cons_icon_path = _map_renderer.get_icon_path(cons_prod_data["icon"])
-                    if cons_icon_path != "":
-                        result.append({
-                            "type": "product",
-                            "name": cons_label,
-                            "amount": 0, # число не выводим: важна текстовая подпись
-                            "icon_path": cons_icon_path
-                        })
-                    else:
-                        result.append({"type": "label", "text": cons_label, "color": Color(0.85, 0.85, 0.85)})
+        # Строки показа собирает общий ConsumptionUi: те же строки рисует
+        # тултип деталей здания (вкладка «Здания») и окно деталей здания,
+        # поэтому формат расхода один на все эти места.
+        var cons_rows = ConsumptionUi.build_rows(
+            GameData.get_profession_for_improvement(tile.improvement))
+        if not cons_rows.is_empty():
+            result.append({"type": "header", "text": "Потребляет:"})
+            for cons in cons_rows:
+                var cons_label: String = str(cons.get("label", ""))
+                # Иконка потребляемого ресурса; у группы берётся иконка
+                # первого члена с картинкой (её кладёт GameData в "icon").
+                # Тип указан явно: _map_renderer нетипизирован, и вывод
+                # метода иначе не выводится.
+                var cons_icon_path: String = _map_renderer.get_icon_path(
+                    str(cons.get("icon", "")))
+                if cons_icon_path != "":
+                    result.append({
+                        "type": "product",
+                        "name": cons_label,
+                        "amount": 0, # число не выводим: важна текстовая подпись
+                        "icon_path": cons_icon_path
+                    })
+                else:
+                    result.append({"type": "label", "text": cons_label, "color": Color(0.85, 0.85, 0.85)})
 
     return result
