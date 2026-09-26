@@ -1,5 +1,5 @@
 # Временный smoke-тест системы потребления (headless):
-#   godot --headless --path "E:\The City" --script res://tools/test_consumption.gd
+#   godot --headless --path "E:\The City" --script res://tests/test_consumption.gd
 # Проверяет: загрузку data/consumption.json, резолвинг группы "@boats",
 # дедупликацию и жадное списание из группы. После проверки файл можно удалить.
 extends SceneTree
@@ -15,8 +15,24 @@ func _initialize():
 	var gd = load("res://scripts/GameData.gd").new()
 	gd.load_all_data()
 
-	# 1) Реестр загружен (2 записи: @boats для fisherman, @fruits для "all")
-	check(gd.consumption_rules.size() == 2, "ожидалось 2 правила consumption, получено: %d" % gd.consumption_rules.size(), state)
+	# 1) Реестр загружен и каждое правило из data/consumption.json разбирается.
+	#    Конкретное число правил НЕ хардкодится: реестр пополняется данными
+	#    (например, правило «перья учёного»), и само число не должно ронять
+	#    тест. Проверяются инварианты: реестр непуст, у каждого правила есть
+	#    ресурс, список профессий и положительные amount/interval, а ресурс
+	#    резолвится — одиночный продукт либо @-группа из product_groups.json.
+	check(not gd.consumption_rules.is_empty(), "реестр consumption не загрузился", state)
+	for rule in gd.consumption_rules:
+		var res_key := str(rule.get("resource", ""))
+		check(not res_key.is_empty(), "правило consumption без поля resource: %s" % str(rule), state)
+		check(not rule.get("profession", []).is_empty(), "правило %s без поля profession" % res_key, state)
+		check(int(rule.get("amount", 0)) > 0, "у правила %s amount <= 0" % res_key, state)
+		check(float(rule.get("interval", 0.0)) > 0.0, "у правила %s interval <= 0" % res_key, state)
+		if res_key.begins_with("@"):
+			check(not gd.product_groups.get(res_key.substr(1), []).is_empty(),
+				"группа %s из consumption.json не найдена в product_groups.json" % res_key, state)
+		else:
+			check(gd.products.has(res_key), "продукт %s из consumption.json не найден в products" % res_key, state)
 
 	# 2) Потребление рыбака — групповая запись "@boats"
 	var cons = gd.get_profession_consumption("fisherman")
@@ -27,9 +43,18 @@ func _initialize():
 		check(e.get("display_key", "") == "@boats", "display_key != @boats", state)
 		check(e.get("product_name", "") == "Лодки", "имя группы != Лодки", state)
 		check(e.get("group_members", []) == ["reed_boat"], "члены группы неверны", state)
-		check(e.get("amount", 0) == 10, "amount != 10", state)
-		check(abs(float(e.get("interval", 0)) - 10.0) < 0.01, "interval != 10", state)
 		check(e.get("icon", "") == "reed_boat.png", "иконка группы неверна", state)
+		# amount/interval — балансные числа из data/consumption.json, поэтому
+		# сверяем их с САМИМ правилом реестра, а не с константой в тесте. Так
+		# тест по-прежнему ловит потерю/подмену полей при разборе записи, но
+		# не ломается при правке баланса.
+		var rule_boats := _rule_for(gd.consumption_rules, "@boats", "fisherman")
+		check(not rule_boats.is_empty(), "в реестре нет правила @boats для fisherman", state)
+		if not rule_boats.is_empty():
+			check(int(e.get("amount", -1)) == int(rule_boats.get("amount", -2)),
+				"amount @boats потерян при разборе правила: %s" % str(e.get("amount", null)), state)
+			check(abs(float(e.get("interval", -1.0)) - float(rule_boats.get("interval", -2.0))) < 0.01,
+				"interval @boats потерян при разборе правила: %s" % str(e.get("interval", null)), state)
 
 	# 3) Дубликаты: после перевода лодки на реестр продукт не должен
 	#    дублироваться (у reed_boat больше нет поля consumption)
@@ -76,8 +101,14 @@ func _initialize():
 		check(ea.get("product_name", "") == "Фрукты", "имя группы != Фрукты", state)
 		check(ea.get("group_members", []) == ["grapes", "olives", "mulberries", "figs", "dates", "cactus_fruit"],
 			"члены группы @fruits неверны: %s" % str(ea.get("group_members", [])), state)
-		check(ea.get("amount", 0) == 10, "amount all != 10", state)
-		check(abs(float(ea.get("interval", 0)) - 2.0) < 0.01, "interval all != 2", state)
+		# Как и выше — amount/interval сверяем с самим правилом реестра.
+		var rule_all := _rule_for(gd.consumption_rules, "@fruits", "all")
+		check(not rule_all.is_empty(), "в реестре нет правила @fruits для all", state)
+		if not rule_all.is_empty():
+			check(int(ea.get("amount", -1)) == int(rule_all.get("amount", -2)),
+				"amount all потерян при разборе правила: %s" % str(ea.get("amount", null)), state)
+			check(abs(float(ea.get("interval", -1.0)) - float(rule_all.get("interval", -2.0))) < 0.01,
+				"interval all потерян при разборе правила: %s" % str(ea.get("interval", null)), state)
 
 	# 8) Городское потребление "all": списание ПОГОЛОВНО (amount * население)
 	#    ПО ФАКТУ НАЛИЧИЯ, без ожидания полного покрытия. Жадное заполнение из
@@ -136,6 +167,15 @@ func _initialize():
 	else:
 		print("SMOKE TEST OK")
 		quit(0)
+
+# Первое правило реестра consumption.json для пары (ресурс, профессия).
+# Нужно, чтобы сверять балансные amount/interval с источником данных, а не
+# с константой внутри теста: баланс в json меняется, тест — нет.
+func _rule_for(rules: Array, res_key: String, prof_id: String) -> Dictionary:
+	for r in rules:
+		if str(r.get("resource", "")) == res_key and (prof_id in r.get("profession", [])):
+			return r
+	return {}
 
 func check(cond: bool, msg: String, state: Dictionary):
 	if not cond:
