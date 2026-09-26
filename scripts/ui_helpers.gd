@@ -456,19 +456,20 @@ func show_progress_tooltip(mouse_pos: Vector2):
 func hide_progress_tooltip():
     progress_tooltip_panel.hide()
 
-# Показывает тулитп с разбивкой продукта по качеству.
+# Показывает тултип с разбивкой продукта по уровням качества.
 # quality_breakdown — словарь {quality_id: count}, например {"common": 50, "fine": 30}.
-# prod_id — id товара в реестре GameData: нужен, чтобы под уровнем качества
-# показать, во сколько раз множитель качества (data/qualities.json,
-# price_multiplier) подняет цену единицы. Пустая строка — строки цены нет.
-func show_quality_tooltip(mouse_pos: Vector2, prod_name: String, quality_breakdown: Dictionary, prod_id: String = ""):
+# Цен здесь нет намеренно: у каждого уровня своя цена, полный список цен
+# занял бы столько же места, сколько сам тултип (лестница цен живёт в тултипе
+# строки — см. show_flow_tooltip). Здесь только состав склада: сколько
+# единиц какого качества и какая доля каждого уровня.
+func show_quality_tooltip(mouse_pos: Vector2, prod_name: String, quality_breakdown: Dictionary):
     # Очищаем содержимое
     for child in quality_tooltip_vbox.get_children():
         quality_tooltip_vbox.remove_child(child)
         child.queue_free()
 
     var header = Label.new()
-    header.text = "Разборка: %s" % prod_name
+    header.text = "Уровни качества ресурса: %s" % prod_name
     header.add_theme_font_size_override("font_size", 15)
     header.add_theme_color_override("font_color", Color.WHITE)
     header.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -477,37 +478,33 @@ func show_quality_tooltip(mouse_pos: Vector2, prod_name: String, quality_breakdo
     var levels = GameData.get_quality_levels()
     # Выводим уровни от худшего к лучшему (как в data/qualities.json).
     for qid in levels:
-        var count = quality_breakdown.get(qid, 0)
+        var count = int(quality_breakdown.get(qid, 0))
         if count <= 0:
             continue
         var row = HBoxContainer.new()
         row.add_theme_constant_override("separation", 6)
         row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
+        # Звёзды — в цвете уровня (data/qualities.json, color), чтобы уровень
+        # читался по цвету так же, как лестница цен в тултипе строки.
         var stars_label = Label.new()
         stars_label.text = GameData.get_quality_stars(qid)
-        stars_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2, 1.0))
+        stars_label.add_theme_color_override("font_color", GameData.get_quality_color(str(qid)))
         stars_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         row.add_child(stars_label)
 
+        # Количество и доля уровня на складе. Доля — от общего количества
+        # товара, поэтому строка читается как «сколько склада хорошего».
         var name_label = Label.new()
-        name_label.text = "%s: %d" % [GameData.get_quality_name(qid), count]
+        name_label.text = "%s: %d (%d%%)" % [
+            GameData.get_quality_name(qid), count,
+            GameData.get_quality_share_percent(count, quality_breakdown)
+        ]
         name_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
         name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         row.add_child(name_label)
 
         quality_tooltip_vbox.add_child(row)
-
-        # Строка цены — только для уровней ВЫШЕ самого низкого в шкале: у
-        # обычного качества множитель 1.0, цена не меняется, показывать
-        # нечего. У товара без цены (например, science) тоже пусто.
-        var price_text := GameData.format_quality_price_line(prod_id, str(qid)) if not prod_id.is_empty() else ""
-        if price_text != "":
-            var price_label = Label.new()
-            price_label.text = "  " + price_text
-            price_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
-            price_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-            quality_tooltip_vbox.add_child(price_label)
 
     quality_tooltip_vbox.reset_size()
     var content_size = quality_tooltip_vbox.get_minimum_size()
@@ -722,13 +719,17 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
         # Цены по качеству, которые РЕАЛЬНО лежат на складе: внутренний рынок
         # берёт каждую единицу по цене ЕЁ уровня, поэтому под базовой ценой
         # показываем, сколько стоит товар каждого качества из разбивки склада
-        # (quality_breakdown). Уровней, которых на складе нет, строки не
-        # создаются: цена несуществующего на складе товара показываться не
-        # должна. У товара без цены (science) строк нет вовсе.
-        for quality_line in GameData.format_quality_price_scale_lines(resource_id, quality_breakdown):
+        # (quality_breakdown) — лестницей от худшего уровня к лучшему.
+        # Уровней, которых на складе нет, строки не создаются: цену
+        # несуществующего на складе товара показывать незачем. У товара без
+        # цены (science) строк нет вовсе. Каждая строка красится в цвет своего
+        # уровня (data/qualities.json, color) — по звёздам в начале строки
+        # видно, где какое качество, даже не читая текст.
+        for quality_row in GameData.format_quality_price_scale_rows(resource_id, quality_breakdown):
             var quality_price_label = Label.new()
-            quality_price_label.text = "  " + str(quality_line)
-            quality_price_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+            quality_price_label.text = "  " + str(quality_row["text"])
+            quality_price_label.add_theme_color_override("font_color",
+                GameData.get_quality_color(str(quality_row["qid"])))
             quality_price_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
             flow_tooltip_vbox.add_child(quality_price_label)
     for yield_id in special_yield:

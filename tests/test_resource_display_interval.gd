@@ -13,10 +13,15 @@
 #      в тултипе деталей здания и левая колонка панели управления обновляются
 #      ТОЛЬКО по наступлении интервала; событийный city_ui.refresh_light()
 #      обновляет мгновенно.
+#   4. Метка качества в строке вкладки «Ресурсы» — это RichTextLabel с
+#      включённым BBCode (текст с тегами [color=…]), и на пустой разбивке по
+#      качеству она прячется.
 #
 # ВАЖНО: после последнего await весь проверочный код идёт синхронно в одном
 # кадре — накопитель main_map._process не успевает сместить эпоху, и проверки
-# детерминированы.
+# детерминированы. Единственный await после них — в самом конце (пункт 3f, замер
+#      геометрии строк): контейнеры пересчитывают размеры в конце кадра, а эпохи
+#      там уже не проверяются.
 extends SceneTree
 
 # Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
@@ -246,6 +251,102 @@ func _run() -> void:
 	city.emit_signal("city_updated")
 	check(cp._info_label.text != "СЕНТИНЕЛ" and cp._info_label.text != "",
 		"после интервала левая колонка перерисована", state)
+
+	# --- 3e. Метка качества в строке вкладки «Ресурсы» ---
+	# Метка обязана быть RichTextLabel: теги [color=…] (BBCode) понимает только
+	# он, а в строку попадает ровно такой текст (GameData.format_quality_share_text).
+	# На обычном Label та же строка вывелась бы как «[color=#a0a0a0]30%[/color]».
+	var gd = get_root().get_node("GameData")
+	var q_pid := ""
+	for k in res_tab.quality_labels.keys():
+		q_pid = str(k)
+		break
+	check(q_pid != "", "в списке ресурсов есть строка с меткой качества", state)
+	if q_pid != "":
+		var q_breakdown := {"common": 30, "perfect": 60}
+		city.city_quality_detail[q_pid] = q_breakdown
+		city_ui.refresh_light()  # событийное обновление — мгновенно
+		var q_label = res_tab.quality_labels.get(q_pid)
+		check(q_label is RichTextLabel,
+			"метка качества должна быть RichTextLabel (BBCode есть только у него), получено: %s"
+			% (q_label.get_class() if q_label != null else "null"), state)
+		if q_label is RichTextLabel:
+			check((q_label as RichTextLabel).bbcode_enabled,
+				"у метки качества включён bbcode_enabled", state)
+			check((q_label as RichTextLabel).fit_content,
+				"метка качества вписывается в содержимое (fit_content)", state)
+			check((q_label as RichTextLabel).autowrap_mode == TextServer.AUTOWRAP_OFF,
+				"у метки качества выключен перенос строк (AUTOWRAP_OFF) — иначе она сообщает
+				минимальную ширину 1 px, строка встаёт в столбик, а иконка растягивается
+				(получено: %d)" % (q_label as RichTextLabel).autowrap_mode, state)
+			check((q_label as RichTextLabel).vertical_alignment == VERTICAL_ALIGNMENT_CENTER,
+				"текст метки качества выровнен по центру строки", state)
+			var q_expected := "[color=#%s]★[/color] %s" % [
+				res_tab.QUALITY_MARKER_COLOR.to_html(false),
+				gd.format_quality_share_text(q_breakdown)]
+			check(str((q_label as RichTextLabel).text) == q_expected,
+				"метка качества = голубая звезда + доли по складу (ожидалось: «%s», получено: «%s»)"
+				% [q_expected, str((q_label as RichTextLabel).text)], state)
+			# Пустая разбивка — метка прячется, а не показывает 0%.
+			city.city_quality_detail[q_pid] = {}
+			city_ui.refresh_light()
+			check(not (q_label as RichTextLabel).visible,
+				"при пустой разбивке метка качества прячется", state)
+			# Возвращаем разбивку: дальше по тесту она больше не нужна.
+			city.city_quality_detail[q_pid] = q_breakdown
+			city_ui.refresh_light()
+
+	# --- 3f. Геометрия строк списка ресурсов (после реальной раскладки) ---
+	# Контейнеры пересчитывают размеры в конце кадра, поэтому здесь и нужен
+	# await: эпохи выше уже проверены, а ниже они больше не используются.
+	# Регресс, который ловит этот пункт: RichTextLabel с fit_content и включённым
+	# переносом строк сообщает минимальную ширину 1 px → HBox отдаёт метке 1 px →
+	# «★ (33%/67%)» встаёт в столбик по букве → строка расползается до ~200 px, а
+	# иконка (STRETCH_SCALE, вертикальный FILL) растягивается в 40×200. Итог:
+	# «звезда размером 1 пиксель» и «поломанные» иконки ресурсов.
+	await process_frame
+	await process_frame
+	var res_list = city_ui.get_node("ContentPanel/ResourcesPanel/ScrollContainer/ResourcesList")
+	var tall_rows: int = 0
+	var bad_icons: int = 0
+	var bad_markers: int = 0
+	var rows_checked: int = 0
+	var icons_checked: int = 0
+	var markers_checked: int = 0
+	for node in res_list.get_children():
+		if not (node is HBoxContainer):
+			continue
+		rows_checked += 1
+		var row: HBoxContainer = node
+		if row.size.y > 64.0:
+			tall_rows += 1
+			print("  высокая строка (%.1f px): %s" % [row.size.y, str(row.get_child(0).name)])
+		for child in row.get_children():
+			if child is TextureRect:
+				icons_checked += 1
+				var ic: TextureRect = child
+				if not is_equal_approx(ic.size.x, 40.0) or not is_equal_approx(ic.size.y, 40.0):
+					bad_icons += 1
+					print("  иконка %s: %s" % [str(ic.texture.resource_path.get_file()), str(ic.size)])
+			elif child is RichTextLabel and (child as Control).visible:
+				# Скрытые метки (пустая разбивка по качеству) в раскладке не участвуют
+				# и остаются с нулевым размером — их не считаем.
+				var rl: RichTextLabel = child
+				markers_checked += 1
+				if rl.size.x < 20.0:
+					bad_markers += 1
+					print("  схлопнувшаяся метка качества: %s" % str(rl.size))
+	check(rows_checked > 0, "в списке ресурсов есть строки-HBoxContainer для замера геометрии", state)
+	check(icons_checked > 0, "в списке ресурсов есть иконки для замера геометрии (проверено: %d)" % icons_checked, state)
+	check(markers_checked > 0, "в списке есть видимые метки качества для замера геометрии (проверено: %d)" % markers_checked, state)
+	check(tall_rows == 0,
+		"ни одна строка списка ресурсов не расползлась по высоте (строк с высотой > 64 px: %d из %d)"
+		% [tall_rows, rows_checked], state)
+	check(bad_icons == 0,
+		"все иконки ресурсов ровно 40×40 и не растянуты по высоте строки (искажённых: %d из %d)"
+		% [bad_icons, icons_checked], state)
+	check(bad_markers == 0,
+		"метки качества не схлопнулись до 1 px по ширине (схлопнутых: %d)" % bad_markers, state)
 
 	_finish(main_map, state)
 

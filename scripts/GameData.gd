@@ -229,6 +229,21 @@ func get_quality_value(quality_id: String) -> int:
 func get_quality_stars(quality_id: String) -> String:
     return get_quality_data(quality_id).get("stars", "")
 
+# --- ЦВЕТ УРОВНЯ КАЧЕСТВА (data/qualities.json, поле color) ---
+# Цвет задан массивом [R, G, B] в диапазоне 0…255 — та же форма записи, что у
+# покрытий (data/covers.json), улучшений и ресурсов. Красит звёзды в тултипе
+# разбора качества, строки лестницы цен в тултипе строки и проценты доли
+# уровня в строке списка (resources_tab._update_quality_label).
+# Мягкий дефолт: поля color нет (старые данные) или это не массив из трёх
+# чисел — светло-серый, чтобы интерфейс не поехал на битых данных.
+const QUALITY_COLOR_FALLBACK := Color(0.8, 0.8, 0.8)
+
+func get_quality_color(quality_id: String) -> Color:
+    var c = get_quality_data(quality_id).get("color", null)
+    if c is Array and c.size() == 3:
+        return Color(float(c[0]) / 255.0, float(c[1]) / 255.0, float(c[2]) / 255.0)
+    return QUALITY_COLOR_FALLBACK
+
 # --- ЦЕНА ПО КАЧЕСТВУ (data/qualities.json, поле price_multiplier) ---
 # Множитель умножается на цену единицы товара: лучшее качество дороже.
 # Множитель, а не фиксированная прибавка в монетах, — чтобы наценка была
@@ -263,54 +278,91 @@ func get_price_breakdown_for_quality(res_id: String, quality_id: String) -> Dict
         return {"base": 0, "multiplier": mult, "total": 0}
     return {"base": base, "multiplier": mult, "total": int(round(float(base) * mult))}
 
-# Строка цены уровня качества для тултипа:
-#   "Цена: 4 * 1.30 (★★) = 5"
-# Пустая строка, если показывать нечего: у товара нет цены или качество
-# не выше самого низкого уровня шкалы (у него множитель 1.0, цена та же).
+# Строка цены уровня качества для тултипа строки вкладки «Ресурсы»:
+#   "★★ = x1.30 = 5"
+# Подпись «Цена:» в строке не нужна: уровень и так назван звёздами, а над
+# блоком лестницы уже стоит базовая «Цена: N» того же товара.
+# Строка собирается для ЛЮБОГО уровня шкалы, включая самый низкий
+# («★ = x1.00 = 4»): лестница читается как одна таблица, где множитель виден
+# для каждого уровня, а не начинается с середины. Раньше нижний уровень
+# отбрасывался, и у склада, где лежит только обычное качество, блока не было
+# вовсе — не было видно, что множитель 1.0 это тоже множитель.
+# Пустая строка, если показывать нечего: у товара нет цены или уровня
+# качества нет в шкале (без звёзд строку не из чего собрать).
 func format_quality_price_line(res_id: String, quality_id: String) -> String:
-    var levels = get_quality_levels()
-    if levels.is_empty() or quality_id == "" or quality_id == str(levels[0]):
+    if quality_id.is_empty() or not get_quality_levels().has(quality_id):
         return ""
     var d = get_price_breakdown_for_quality(res_id, quality_id)
     if int(d["total"]) <= 0:
         return ""
-    return "Цена: %d * %s (%s) = %d" % [
-        int(d["base"]), "%.2f" % float(d["multiplier"]),
-        get_quality_stars(quality_id), int(d["total"])
+    return "%s = x%s = %d" % [
+        get_quality_stars(quality_id), "%.2f" % float(d["multiplier"]), int(d["total"])
     ]
 
 # Цены по уровням качества, которые РЕАЛЬНО лежат на складе, для тултипа строки
 # вкладки «Ресурсы». Показываются только уровни, присутствующие в
 # quality_breakdown ({quality_id: count} — разбивка склада из
 # CityData.city_quality_detail, см. CityData.get_quality_breakdown): цену
-# «превосходного» уровня, которого на складе нет, показывать незачем —
-# это вводит в заблуждение.
-# Уровни выводятся от худшего к лучшему (порядок data/qualities.json) и
-# ТОЛЬКО ВЫШЕ самого низкого в шкале: у обычного качества множитель 1.0,
-# его цена уже показана базовой строкой «Цена: N» над блоком.
-# Формат строки — ТОТ ЖЕ, что в тултипе звёзд (format_quality_price_line):
-# «Цена: 4 * 1.30 (★★) = 5». Строка собирается той же функцией, а не
-# отдельно, чтобы два тултипа не разъехались по стилю при правке формата.
-# Пустой массив: у товара нет цены (например, science), не задан id или в шкале
-# качества всего один уровень.
-func format_quality_price_scale_lines(res_id: String, quality_breakdown: Dictionary = {}) -> Array:
-    var lines: Array = []
-    var levels = get_quality_levels()
-    if res_id.is_empty() or levels.size() <= 1 or get_base_price(res_id) <= 0.0:
-        return lines
-    for i in range(1, levels.size()):
-        var qid: String = str(levels[i])
+# «превосходного» уровня, которого на складе нет, показывать незачем — это
+# вводит в заблуждение.
+# Уровни выводятся от худшего к лучшему (порядок data/qualities.json).
+# Формат строки — ТОТ ЖЕ, что у format_quality_price_line («★★ = x1.30 = 5»), и
+# собирается той же функцией, а не отдельно, чтобы два тултипа не разъехались
+# по стилю при правке формата.
+# Возвращается массив записей {"qid": quality_id, "text": строка}: id уровня
+# нужен вызывающему, чтобы покрасить строку в цвет уровня
+# (get_quality_color) — так текст строки и её цвет не могут разойтись.
+# Пустой массив: у товара нет цены (например, science) или не задан id.
+func format_quality_price_scale_rows(res_id: String, quality_breakdown: Dictionary = {}) -> Array:
+    var rows: Array = []
+    if res_id.is_empty() or get_base_price(res_id) <= 0.0:
+        return rows
+    for qid in get_quality_levels():
         # Уровня нет на складе — цена не показана (в т.ч. count == 0).
         if int(quality_breakdown.get(qid, 0)) <= 0:
             continue
-        # Пустая строка — у уровня без цены. Обычное качество сюда не доходит
-        # (цикл начинается с levels[1]), но проверка оставлена на случай шкалы
-        # из одного уровня с непустой разбивкой.
-        var line := format_quality_price_line(res_id, qid)
-        if line == "":
+        var text := format_quality_price_line(res_id, str(qid))
+        if text == "":
             continue
-        lines.append(line)
-    return lines
+        rows.append({"qid": str(qid), "text": text})
+    return rows
+
+# --- ДОЛЯ УРОВНЯ НА СКЛАДЕ (проценты в строке списка и в тултипе разбора) ---
+# Процент count от суммы всей разбивки: доли считаются от ОБЩЕГО количества
+# товара на складе, поэтому в сумме показывают ~100% (а не долю лучшего
+# уровня от остальных — из-за чего строка «★ (67%)» читалась как «две трети
+# склада хорошего»).
+# Проценты округляются по отдельности, поэтому сумма может разойтись на
+# единицу (33%/33%/33%): «допиливать» их до ровных 100% значило бы врать о
+# дробных долях. При пустой или нулевой разбивке — 0.
+func get_quality_share_percent(count: int, quality_breakdown: Dictionary) -> int:
+    var total := 0
+    for qid in quality_breakdown:
+        total += int(quality_breakdown[qid])
+    if total <= 0:
+        return 0
+    return int(round(float(count) / float(total) * 100.0))
+
+# Разбивка склада строкой для строки списка ресурсов:
+#   "(33%/67%)" — доля каждого уровня, реально лежащего на складе, в цвете
+# этого уровня (data/qualities.json, color). Уровни от худшего к лучшему, как
+# в data/qualities.json; уровни с нулевым количеством пропускаются.
+# Возвращается BBCode (теги [color=…]) для Label с включённым bbcode_enabled:
+# одним текстом видны все уровни, и каждый процент покрашен в цвет своего
+# уровня. Пустая строка, если разбивка пуста или в ней только нули.
+func format_quality_share_text(quality_breakdown: Dictionary) -> String:
+    var parts: Array = []
+    for qid in get_quality_levels():
+        var count := int(quality_breakdown.get(qid, 0))
+        if count <= 0:
+            continue
+        parts.append("[color=#%s]%d%%[/color]" % [
+            get_quality_color(str(qid)).to_html(false),
+            get_quality_share_percent(count, quality_breakdown)
+        ])
+    if parts.is_empty():
+        return ""
+    return "(" + "/".join(parts) + ")"
 
 # Случайно выбирает уровень качества по весам spawn_weight.
 func roll_quality() -> String:

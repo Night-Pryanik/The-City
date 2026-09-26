@@ -1,6 +1,12 @@
 # resources_tab.gd
 extends Node
 
+# Голубая звезда-маркер в начале метки качества (см. _update_quality_label).
+# Цвет тот же, что у строк специального прироста (ui_helpers, accent
+# интерфейса): маркер не должен выглядеть как уровень качества, поэтому он
+# не совпадает ни с одним из цветов data/qualities.json.
+const QUALITY_MARKER_COLOR := Color(0.3, 1.0, 0.918)
+
 var ui_helpers: Node
 var products: Dictionary = {}
 var categories: Array = []
@@ -232,6 +238,12 @@ func refresh():
                         icon_rect.custom_minimum_size = Vector2(40, 40)
                         icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
                         icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
+                        # Иконка не тянется по высоте строки: если строка почему-либо
+                        # станет выше 40 px (например, из-за соседней метки), иконка
+                        # останется 40×40 и просто отцентрируется, а не растянется в
+                        # столбик. По умолчанию SIZE_FILL тянет TextureRect на всю
+                        # высоту, и STRETCH_SCALE искажает картинку.
+                        icon_rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
                         icon_rect.mouse_filter = Control.MOUSE_FILTER_PASS
                         icon_rect.mouse_entered.connect(_on_flow_hover.bind(animal["id"], animal["name"]))
                         icon_rect.mouse_exited.connect(_on_flow_exit.bind(animal["id"]))
@@ -332,6 +344,9 @@ func refresh():
                     icon_rect.custom_minimum_size = Vector2(40, 40)
                     icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
                     icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
+                    # Не тянется по высоте строки (см. такую же иконку в секции
+                    # одомашненных ресурсов выше): иконка всегда 40×40.
+                    icon_rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
                     row.add_child(icon_rect)
 
             var name_label = Label.new()
@@ -465,8 +480,7 @@ func update_values():
                 ui_helpers.show_quality_tooltip(
                     get_viewport().get_mouse_position(),
                     active_quality_name,
-                    fresh_detail,
-                    active_quality_product
+                    fresh_detail
                 )
 
     # Обновляем открытый тултип источников прихода/расхода свежими данными.
@@ -505,8 +519,31 @@ func _add_quality_label(row: HBoxContainer, prod_id: String, product_name: Strin
     if total <= 0:
         return
 
-    var quality_label = Label.new()
-    quality_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2, 0.9))
+    # RichTextLabel, а не Label: BBCode (теги [color=…]) есть только у него, а он
+    # нужен, чтобы каждый процент в разбивке был покрашен в цвет своего уровня.
+    var quality_label := RichTextLabel.new()
+    quality_label.bbcode_enabled = true
+    quality_label.fit_content = true
+    quality_label.scroll_active = false
+    # Перенос строк внутри метки ОБЯЗАТЕЛЬНО выключен. Пока он включён,
+    # RichTextLabel не умеет сообщить контейнеру ширину содержимого:
+    # get_minimum_size() = (1, 0), HBoxContainer выдаёт метке ровно этот 1 px,
+    # и «★ (33%/67%)» встаёт в столбик по одной букве. Из-за этого строка
+    # расползалась до ~200 px высоты, а иконка ресурса (STRETCH_SCALE +
+    # вертикальный FILL) растягивалась до 40×200 — «поломанные» иконки, а
+    # голубая звезда-маркер была шириной в 1 пиксель. С AUTOWRAP_OFF метка
+    # сообщает настоящую ширину текста (≈90 px), строка остаётся 40 px, иконка
+    # 40×40. Проверено headless-пробой и интеграционным тестом
+    # (tests/test_resource_display_interval.gd, пункт 3e).
+    quality_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+    # Текст по центру строки: у RichTextLabel своя тема, и без этого текст
+    # прижимается к верху, а соседние Label стоят по середине.
+    quality_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    # Кегль берём у самой строки: тема настраивает Label (font_size), а у
+    # RichTextLabel своя тема (normal_font_size), и без этого текст в строке
+    # мог бы отличаться от соседних подписей.
+    quality_label.add_theme_font_size_override("normal_font_size", row.get_theme_font_size("font_size"))
+    quality_label.add_theme_color_override("default_color", Color(1.0, 0.85, 0.2, 0.9))
     quality_label.mouse_filter = Control.MOUSE_FILTER_PASS # пропускаем клики к родительской кнопке
     # Показ звёздочек с наведением — тулитп с разбором по качеству
     quality_label.mouse_entered.connect(_on_quality_hover.bind(prod_id, product_name))
@@ -515,29 +552,25 @@ func _add_quality_label(row: HBoxContainer, prod_id: String, product_name: Strin
     row.add_child(quality_label)
     quality_labels[prod_id] = quality_label
 
-# Обновляет текст метки качества.
-func _update_quality_label(label: Label, prod_id: String):
+# Обновляет текст метки качества: одна голубая звезда как символ того, что у
+# товара есть качество, и разбивка склада по уровням — «★ (33%/67%)», где каждый
+# процент покрашен в цвет своего уровня.
+# Раньше здесь стояли звёзды ЛУЧШЕГО уровня и его доля от остальных
+# («★★★★ (67%)» у склада 3147 обычных и 6365 превосходных), и строка читалась
+# как «две трети склада превосходного» вместо «две трети превосходного среди
+# обычного». Теперь видно все уровни сразу, и проценты честно делят 100%.
+func _update_quality_label(label: RichTextLabel, prod_id: String):
     var detail = city_quality_detail.get(prod_id, {})
-    var total = 0
-    for qid in detail:
-        total += int(detail[qid])
-    if total <= 0:
-        label.hide()
-        return
-    var levels = GameData.get_quality_levels()
-    # Лучший уровень, который РЕАЛЬНО есть на складе, а не вершина шкалы.
-    var shown_qid = ""
-    for i in range(levels.size() - 1, -1, -1):
-        if int(detail.get(levels[i], 0)) > 0:
-            shown_qid = levels[i]
-            break
-    if shown_qid == "":
+    var share_text: String = GameData.format_quality_share_text(detail)
+    if share_text == "":
         label.hide()
         return
     label.show()
-    var shown_count = int(detail.get(shown_qid, 0))
-    var shown_pct = int(round(float(shown_count) / float(total) * 100.0))
-    label.text = " %s (%d%%)" % [GameData.get_quality_stars(shown_qid), shown_pct]
+    # Звезда-маркер всегда одна и всегда голубая (акцент интерфейса): это
+    # символ «у товара есть разбивка по качеству», а не уровень качества —
+    # уровни показывают проценты справа, каждый своим цветом.
+    label.text = "[color=#%s]★[/color] %s" % [
+        QUALITY_MARKER_COLOR.to_html(false), share_text]
 
 # Показывает тултип с разбивкой по качеству при наведении.
 func _on_quality_hover(prod_id: String, product_name: String):
@@ -548,7 +581,7 @@ func _on_quality_hover(prod_id: String, product_name: String):
     active_quality_name = product_name
     if ui_helpers and is_instance_valid(ui_helpers):
         ui_helpers.show_quality_tooltip(
-            get_viewport().get_mouse_position(), product_name, detail, prod_id)
+            get_viewport().get_mouse_position(), product_name, detail)
 
 # Скрывает тулитп качества.
 func _on_quality_exit():
