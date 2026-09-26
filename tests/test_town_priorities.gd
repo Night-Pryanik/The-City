@@ -23,6 +23,10 @@
 #      приоритету (2+ разных ресурса в радиусе MAX_ATTRACTION_DISTANCE).
 extends SceneTree
 
+# Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
+# молчание. Подробности — в tests/watchdog.gd.
+const WATCHDOG = preload("res://tests/watchdog.gd")
+
 # Дублируем константу town_manager.gd — тест проверяет поведение независимо.
 const MAX_ATTRACTION_DISTANCE := 3
 
@@ -31,6 +35,7 @@ var _gdata = null
 var _hex_utils = null
 
 func _initialize():
+    WATCHDOG.arm(self)
     _run()
 
 func _run() -> void:

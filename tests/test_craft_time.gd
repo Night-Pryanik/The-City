@@ -13,10 +13,20 @@
 #      до карты worker_manager.get_planned_consumption_map() (её читает тултип).
 extends SceneTree
 
+# Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
+# молчание. Подробности — в tests/watchdog.gd.
+const WATCHDOG = preload("res://tests/watchdog.gd")
+
 # Автозагрузки попадают «внутрь дерева» только после инициализации, поэтому
 # тест запускается из первого кадра (_process), а не из _initialize:
 # иначе get_tree() внутри do_tick() вернёт null.
 var _done := false
+
+# Сторож поднимается в _initialize, а сам тест стартует из первого _process —
+# таймеру всё равно, откуда начали. Смысл разделения тот же, что у остальных
+# тестов: любой обрыв внутри _run() должен приводить к коду 2, а не висеть.
+func _initialize() -> void:
+	WATCHDOG.arm(self)
 
 func _process(_delta) -> bool:
 	if _done:

@@ -4,7 +4,12 @@
 # дедупликацию и жадное списание из группы. После проверки файл можно удалить.
 extends SceneTree
 
+# Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
+# молчание. Подробности — в tests/watchdog.gd.
+const WATCHDOG = preload("res://tests/watchdog.gd")
+
 func _initialize():
+	WATCHDOG.arm(self)
 	var state = {"failed": false}
 
 	var gd = load("res://scripts/GameData.gd").new()

@@ -9,27 +9,16 @@
 # который малому контенту не нужен, не остаётся.
 extends SceneTree
 
-# Любая ошибка времени выполнения внутри _run() — например, вызов с аргументом
-# не того типа — обрывает корутину: до quit() управление не доходит, и процесс
-# висел бы вечно (именно так выглядел зависший прогон из-за вызова
-# show_flow_tooltip с Dictionary вместо String). Сторож превращает любое такое
-# зависание в exit code 2 с внятным сообщением.
-const WATCHDOG_SECONDS: float = 60.0
+# Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
+# молчание (именно так выглядел зависший прогон из-за вызова show_flow_tooltip с
+# Dictionary вместо String). Подробности — в tests/watchdog.gd.
+const WATCHDOG = preload("res://tests/watchdog.gd")
 
 var _failed := false
-var _finished := false
 
 func _initialize():
-	create_timer(WATCHDOG_SECONDS, true, false, true).timeout.connect(_on_watchdog)
+	WATCHDOG.arm(self)
 	_run()
-
-func _on_watchdog() -> void:
-	if _finished:
-		return
-	push_error("WATCHDOG: тест не завершился за %.0f с — обрыв где-то внутри _run()"
-		% WATCHDOG_SECONDS)
-	print("DETAIL TOOLTIP TEST HUNG")
-	quit(2)
 
 func _run() -> void:
 	await process_frame
@@ -121,8 +110,6 @@ func _run() -> void:
 	check(not fscroll.get_v_scroll_bar().visible,
 		"скроллбар потока не должен оставаться у малого контента")
 
-	# Сторож снят: тест дошёл до конца — выходим штатно (0/1 по _failed).
-	_finished = true
 	if _failed:
 		print("DETAIL TOOLTIP TEST FAILED")
 		quit(1)

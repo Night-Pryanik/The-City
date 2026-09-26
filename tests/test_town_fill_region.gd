@@ -16,7 +16,12 @@
 #      заливки (текстура не может обрезать гекс пополам).
 extends SceneTree
 
+# Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
+# молчание. Подробности — в tests/watchdog.gd.
+const WATCHDOG = preload("res://tests/watchdog.gd")
+
 func _initialize() -> void:
+	WATCHDOG.arm(self)
 	_run()
 
 func _run() -> void:

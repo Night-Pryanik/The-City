@@ -19,7 +19,12 @@
 # детерминированы.
 extends SceneTree
 
+# Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
+# молчание. Подробности — в tests/watchdog.gd.
+const WATCHDOG = preload("res://tests/watchdog.gd")
+
 func _initialize():
+	WATCHDOG.arm(self)
 	_run()
 
 func _run() -> void:

@@ -8,7 +8,12 @@
 # short headless-прогоне на 240 кадров — ошибок парсинга и SCRIPT ERROR нет).
 extends SceneTree
 
+# Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
+# молчание. Подробности — в tests/watchdog.gd.
+const WATCHDOG = preload("res://tests/watchdog.gd")
+
 func _initialize():
+    WATCHDOG.arm(self)
     var state: Dictionary = {"failed": false}
 
     var cd = load("res://scripts/CityData.gd").new()
