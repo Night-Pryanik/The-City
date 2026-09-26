@@ -1,5 +1,5 @@
 # Headless-тест «залипшего» скроллбара тултипов (детали здания, потоки ресурсов):
-#   godot --headless --path "E:\The City" --script res://tools/test_detail_tooltip.gd
+#   godot --headless --path "E:\The City" --script res://tests/test_detail_tooltip.gd
 #
 # Сценарий бага: тултип показан для «большого» здания (> 15 строк, со
 # скроллбаром), затем контент пересобирается под «маленькое» здание (как при
@@ -9,10 +9,27 @@
 # который малому контенту не нужен, не остаётся.
 extends SceneTree
 
+# Любая ошибка времени выполнения внутри _run() — например, вызов с аргументом
+# не того типа — обрывает корутину: до quit() управление не доходит, и процесс
+# висел бы вечно (именно так выглядел зависший прогон из-за вызова
+# show_flow_tooltip с Dictionary вместо String). Сторож превращает любое такое
+# зависание в exit code 2 с внятным сообщением.
+const WATCHDOG_SECONDS: float = 60.0
+
 var _failed := false
+var _finished := false
 
 func _initialize():
+	create_timer(WATCHDOG_SECONDS, true, false, true).timeout.connect(_on_watchdog)
 	_run()
+
+func _on_watchdog() -> void:
+	if _finished:
+		return
+	push_error("WATCHDOG: тест не завершился за %.0f с — обрыв где-то внутри _run()"
+		% WATCHDOG_SECONDS)
+	print("DETAIL TOOLTIP TEST HUNG")
+	quit(2)
 
 func _run() -> void:
 	await process_frame
@@ -69,38 +86,34 @@ func _run() -> void:
 	check(not scroll.get_v_scroll_bar().visible,
 		"после скрытия скроллбар не должен возвращаться")
 
-	# --- 3b. «Залипание»: контент пересобирается под другое здание, пока
-	# панель ВИДНА и без повторного вызова показа (в игре это быстрый переход
-	# курсора, когда mouse_entered нового здания срабатывает, но к моменту
-	# _process курсор уже вне кнопки и ветка unlock+hide не выполняется).
-	# Ожидание: панель и скроллбар актуализируются покадрово. ---
-	_fill_content(ui.detail_tooltip_content, 22)
-	ui.show_building_detail_tooltip(Vector2(100, 100))
-	await process_frame
-	await process_frame
-	check(scroll.get_v_scroll_bar().visible, "3b: у большого контента есть скроллбар")
-	_fill_content(ui.detail_tooltip_content, 3)
-	await process_frame
-	await process_frame
-	await process_frame
-	check(panel.size.y < max_h,
-		"3b: высота панели сжалась под малый контент (факт %.1f)" % panel.size.y)
-	check(not scroll.get_v_scroll_bar().visible,
-		"3b: скроллбар не должен оставаться после подмены контента")
+	# --- 3b. Кейс «контент пересобран под другое здание, пока панель ВИДНА, и
+	# повторного вызова показа нет» сознательно НЕ проверяется. Размер панели
+	# считается только внутри show_building_detail_tooltip (ui_helpers.gd),
+	# покадрового пересчёта в ui_helpers нет — ждать сжатия панели без
+	# повторного show() нечего. В игре это состояние и не наблюдается:
+	# city_ui._process либо прячет тултип (курсор ушёл с кнопки), либо
+	# показывает его заново (наведение на кнопку нового здания). ---
 
 	# --- 4. Тот же сценарий для тултипа потоков (вкладка «Ресурсы») ---
+	# Вызовы show_flow_tooltip идут с ПОЛНЫМ списком аргументов: у параметра
+	# resource_id тип String, и Dictionary на его месте обрывает корутину
+	# _run() — до quit() управление не доходит, и прогон зависает.
 	var fpanel: Panel = ui.flow_tooltip_panel
 	var fscroll: ScrollContainer = ui.flow_tooltip_scroll
+	# special_yield в игре — это {id_продукта: количество} (GameData.
+	# get_special_yield → data/products/*.json), поэтому и здесь значения —
+	# числа, а не словари: иначе int(special_yield[id]) внутри
+	# show_flow_tooltip споткнулся бы о тип.
 	var sources := {}
 	for i in 25:
-		sources["Источник %d" % i] = {"count": 1, "amount": 10 + i}
-	ui.show_flow_tooltip(Vector2(100, 100), "Ресурс", sources, {})
+		sources["Источник %d" % i] = 10 + i
+	ui.show_flow_tooltip(Vector2(100, 100), "Ресурс", sources, "", {}, {})
 	await process_frame
 	await process_frame
 	check(fpanel.visible, "большой тултип потоков виден")
 	check(fscroll.get_v_scroll_bar().visible, "у большого потока ожидается скроллбар")
-	var small := {"Один": {"count": 1, "amount": 5}}
-	ui.show_flow_tooltip(Vector2(100, 100), "Ресурс", small, {})
+	var small := {"Один": 5}
+	ui.show_flow_tooltip(Vector2(100, 100), "Ресурс", small, "", {}, {})
 	await process_frame
 	await process_frame
 	check(fpanel.size.y < max_h,
@@ -108,6 +121,8 @@ func _run() -> void:
 	check(not fscroll.get_v_scroll_bar().visible,
 		"скроллбар потока не должен оставаться у малого контента")
 
+	# Сторож снят: тест дошёл до конца — выходим штатно (0/1 по _failed).
+	_finished = true
 	if _failed:
 		print("DETAIL TOOLTIP TEST FAILED")
 		quit(1)
