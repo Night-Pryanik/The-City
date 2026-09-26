@@ -366,6 +366,10 @@ func _ready():
         # Заполняем кольца городков декоративными улучшениями и для старых
         # сохранений, где эти метки ещё отсутствовали.
         town_manager._place_decorative_town_improvements(tile_data, map_rows, map_cols)
+        # Дороги городков строим ТОЛЬКО ЗДЕСЬ: улучшения в кольцах уже стоят
+        # (вызов выше), а сами городки уже загружены из сейва. До этой точки
+        # сетей городков на карте не было.
+        _rebuild_town_roads()
         town_influence_hexes = []
         for h in town_manager.town_influence_hexes:
             town_influence_hexes.append({"row": h.row, "col": h.col})
@@ -378,6 +382,9 @@ func _ready():
         randomize()
         _initialize_map()
         road_manager.initialize(city_row, city_col)
+        # Сеть дорог города игрока готова — можно строить сети городков
+        # (городки и их улучшения уже расставлены в _initialize_map).
+        _rebuild_town_roads()
         map_renderer.initialize(tile_data, self)
         progress_bar_layer.initialize(tile_data, self)
 
@@ -485,6 +492,19 @@ func _ready():
 
     _setup_research_hud()
     _setup_era_advance_ui()
+
+# Строит сети дорог городков: от центра каждого городка — к его улучшениям
+# в кольце влияния, по тем же правилам, что и дороги города игрока (см.
+# road_manager.rebuild_town_roads). Сети городков НЕ связаны с сетью города
+# игрока и друг с другом.
+#
+# Вызывается из двух мест, и оба — строго после того, как в кольцах стоят
+# улучшения (их расставляет town_manager._place_decorative_town_improvements):
+#   - новая игра: после road_manager.initialize() в _ready;
+#   - загрузка сейва: после восстановления городков и их улучшений.
+# В сейв дороги не сохраняются — сеть пересчитывается, как и городские.
+func _rebuild_town_roads() -> void:
+    road_manager.rebuild_town_roads(town_manager.towns, tile_data, map_rows, map_cols)
 
 func _input(event):
     # Дебаг-меню: открытие/закрытие по F9

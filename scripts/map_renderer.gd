@@ -10,6 +10,10 @@ const IMPROVEMENT_ICON_SIZE = 35
 const TOWN_INFLUENCE_BORDER_WIDTH = 3.0
 # Прозрачность заливки территории городков.
 const TOWN_INFLUENCE_FILL_ALPHA = 0.22
+# Стиль дорог — общий для города игрока и городков (различаются только тем,
+# ЧЬИ это дороги, см. _draw_all_roads).
+const ROAD_COLOR = Color(0.55, 0.35, 0.15)
+const ROAD_WIDTH = 6
 
 var tile_data = []
 var icon_textures = {}
@@ -235,7 +239,8 @@ func _draw():
     # иконок: контур должен быть виден, не перекрывая содержимое гексов.
     _draw_town_influence_borders(visible)
 
-    # ФАЗА 2: Рисуем дороги (ПЕРЕД иконками ресурсов и улучшений)
+    # ФАЗА 2: Рисуем дороги (ПЕРЕД иконками ресурсов и улучшений) — сети города
+    # игрока и сетей городков (см. _draw_all_roads)
     _draw_all_roads()
 
     # ФАЗА 2.75: Рисуем реки
@@ -1198,12 +1203,48 @@ func _draw_all_roads():
         return
 
     var road_manager = main_map.get_node("RoadManager")
-    var all_segments = road_manager.get_all_road_segments()
-    
-    if all_segments.is_empty():
+
+    # ФАЗА 2а: дороги ГОРОДА ИГРОКА. Гейтов видимости у них нет и не было:
+    # они всегда лежат на собственной освоенной территории, где тумана войны
+    # не бывает.
+    _draw_road_segments(road_manager.get_all_road_segments(), false)
+
+    # ФАЗА 2б: дороги ГОРОДКОВ — отдельная сеть, но рисуется тем же стилем
+    # (см. road_manager.rebuild_town_roads: сеть каждого городка идёт от его
+    # центра к улучшениям в кольце влияния и не связана с дорогами города).
+    # Видимость — ровно та же, что у заливки колец: см. are_town_roads_visible()
+    # и is_town_road_segment_visible() ниже.
+    if not are_town_roads_visible():
+        return
+    _draw_road_segments(road_manager.get_all_town_road_segments(), true)
+
+# Показываются ли дороги городков. Тот же гейт, что у заливки колец влияния
+# (_ensure_town_influence_cache): в 1-й эпохе чужой городок не показывается
+# вовсе, иначе дорога выдала бы его в неисследованной зоне Региона с самого
+# начала игры.
+func are_town_roads_visible() -> bool:
+    if main_map == null:
+        return false
+    return main_map.current_era >= 1
+
+# Виден ли конкретный сегмент дороги городка. Сегмент не рисуется, если хоть
+# один его конец лежит в тумане войны: иначе дорога «выдавала» бы содержимое
+# неисследованной территории. Разведанный гекс за пределами Региона дорогу
+# показывает (так работает разведка).
+func is_town_road_segment_visible(row1: int, col1: int, row2: int, col2: int) -> bool:
+    if not are_town_roads_visible():
+        return false
+    return not (main_map.is_hex_in_fog(row1, col1) or main_map.is_hex_in_fog(row2, col2))
+
+# Рисует набор сегментов дорог.
+# hide_in_fog — гейт для сегмента, у которого хотя бы ОДИН конец лежит в тумане
+# войны: такой сегмент не рисуется (он выдавал бы содержимое неисследованной
+# территории). Для дорог города игрока гейт выключен.
+func _draw_road_segments(segments: Dictionary, hide_in_fog: bool) -> void:
+    if segments.is_empty():
         return
     
-    for segment_key in all_segments.keys():
+    for segment_key in segments.keys():
         var parts = segment_key.split("|")
         if parts.size() != 2:
             continue
@@ -1218,6 +1259,9 @@ func _draw_all_roads():
         var col1 = int(start_parts[1])
         var row2 = int(end_parts[0])
         var col2 = int(end_parts[1])
+
+        if hide_in_fog and not is_town_road_segment_visible(row1, col1, row2, col2):
+            continue
 
         # Viewport culling: пропускаем сегменты дорог, которые не пересекают экран.
         var c1 = HexUtils.hex_center(row1, col1, main_map.HEX_RADIUS)
@@ -1236,7 +1280,7 @@ func _draw_all_roads():
             continue
 
         var points = _generate_natural_road(row1, col1, row2, col2, main_map.HEX_RADIUS)
-        draw_polyline(points, Color(0.55, 0.35, 0.15), 6, true)
+        draw_polyline(points, ROAD_COLOR, ROAD_WIDTH, true)
 
 func _draw_rivers():
     if main_map == null:
