@@ -255,6 +255,26 @@ func find_town_at(row: int, col: int):
             return t
     return null
 
+# === Требование дороги для торговли с городком (ЗАГЛУШКА) ===
+#
+# Торговля с городками ещё не реализована: окно городка (town_ui) только
+# показывает, что у него есть на продажу и на покупку, и открывается ВСЕГДА,
+# как бы дороги ни было. Дорога пока ничего не блокирует — её роль сейчас
+# в том, что игрок видит: городок соединён (иконка над гексом) или нет
+# (подпись в окне городка).
+#
+# Когда появится настоящая торговля, требование станет настоящим: значение
+# константы меняется на false (торговля без дороги) либо сама функция
+# переписывается под реальные правила. Точка снятия заглушки — ОДНА:
+# эта функция; всё, что спрашивает про торговлю, спрашивает именно её.
+const TOWN_TRADE_REQUIRES_ROAD := true
+
+# Доступна ли торговля с этим городком.
+func is_trade_available(town: Dictionary) -> bool:
+    if not TOWN_TRADE_REQUIRES_ROAD:
+        return true
+    return bool(town.get("road_linked", false))
+
 
 # Восстанавливает список гексов кольца из формата [[row, col], ...].
 func _restore_hex_list(entries: Array) -> Array:
@@ -883,6 +903,12 @@ func serialize_towns() -> Array:
             "influence_hexes": hexes,
             "sell_pool": t.get("sell_pool", []),
             "buy_pool": t.get("buy_pool", []),
+            # road_linked — игрок построил дорогу от города до этого городка.
+            # Как и с остальными дорогами, сегменты в сейв не пишутся: по этому
+            # флагу связь пересчитывается при загрузке (main_map._rebuild_town_roads
+            # -> road_manager.rebuild_player_roads), а доступность торговли
+            # читается из него же (is_trade_available).
+            "road_linked": bool(t.get("road_linked", false)),
         })
     return result
 
@@ -924,6 +950,9 @@ func load_towns(data) -> void:
                 "influence_hexes": _restore_hex_list(entry.get("influence_hexes", [])),
                 "sell_pool": entry.get("sell_pool", []),
                 "buy_pool": entry.get("buy_pool", []),
+                # road_linked — дорога от города до городка (см. serialize_towns).
+                # В старых сейвах поля нет: связи ещё не существовало.
+                "road_linked": bool(entry.get("road_linked", false)),
             }
             towns.append(t)
         elif entry is Array and entry.size() >= 2:

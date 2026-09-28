@@ -115,6 +115,36 @@ static func get_improvement_work_cost(
         "construction_tech_mult": get_construction_cost_mult()
     }
 
+## Стоимость труда для дороги, которую строит игрок (спецдействие
+## `build_road`, action_type "road"). Цена ЗА ОДИН НОВЫЙ УЧАСТОК трассы, а
+## трасса может быть любой длины — поэтому итог = work_cost × segments.
+##
+## Множитель расстояния из game_balance.json здесь НЕ применяется: дальность
+## уже отражена длиной трассы (иначе дорога к дальнему городку дорожала бы
+## дважды — за расстояние и за количество гексов). Применяется только общий
+## множитель стоимости строительства от технологий — дорога такая же стройка,
+## как и любое улучшение.
+##
+## segments — число новых участков (из road_manager.plan_road_to). Если пути
+## нет (segments <= 0), стоимость 0: превью в этом случае не показывает
+## цену, а объясняет, почему дорога невозможна.
+static func get_road_work_cost(action_id: String, segments: int) -> Dictionary:
+    var base_cost := 0.0
+    if GameData.special_actions.has(action_id):
+        base_cost = float(GameData.special_actions[action_id].get("work_cost", 0))
+
+    var construction_tech_mult := get_construction_cost_mult()
+    var final_cost := 0
+    if segments > 0:
+        final_cost = int(ceil(base_cost * float(segments) * construction_tech_mult))
+
+    return {
+        "cost": final_cost,
+        "base_cost": int(base_cost),
+        "segments": segments,
+        "construction_tech_mult": construction_tech_mult
+    }
+
 ## --- Лесная делянка (lumberjack_hut) ---
 
 ## Выход древесины с покрова гекса (поле wood_yield в data/covers.json).

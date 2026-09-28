@@ -12,6 +12,7 @@ signal closed()
 
 @onready var window_panel = $WindowPanel
 @onready var title_label = $WindowPanel/TitleLabel
+@onready var status_label = $WindowPanel/StatusLabel
 @onready var close_button = $WindowPanel/CloseButton
 @onready var buy_list = $WindowPanel/ColumnsHBox/BuyColumn/BuyList
 @onready var sell_list = $WindowPanel/ColumnsHBox/SellColumn/SellList
@@ -20,6 +21,12 @@ signal closed()
 var icon_paths: Dictionary = {}
 # Текущий городок (запись из town_manager.towns). null — окно закрыто.
 var _town = null
+# Доступна ли торговля с этим городком (town_manager.is_trade_available).
+# Пока сама торговля не реализована, это только строка-статус под названием:
+# окно открывается и без дороги — видно, что у городка есть на продажу и
+# на покупку. Когда появится реальная торговля, этот флаг начнёт решать,
+# можно ли покупать и продавать (см. town_manager.is_trade_available).
+var _trade_available := true
 func _ready():
     _build_icon_index()
     if close_button:
@@ -27,8 +34,11 @@ func _ready():
 
 # Открывает окно интерфейса для городка.
 # town — запись городка из town_manager.towns (поля row, col, name, ...).
-func open_town(town: Dictionary):
+# trade_available — доступна ли торговля с ним (по умолчанию true: окно
+# открывается всегда, см. поле _trade_available).
+func open_town(town: Dictionary, trade_available: bool = true):
     _town = town
+    _trade_available = trade_available
     _refresh()
     show()
 
@@ -37,6 +47,12 @@ func _refresh():
     if _town == null:
         return
     title_label.text = str(_town.get("name", "Городок"))
+    if status_label:
+        # Статус торговли — пока только подпись. Пустая строка при доступной
+        # торговле: «всё в порядке, ничего сообщать не нужно».
+        status_label.text = "" if _trade_available \
+                else "Торговля недоступна: от города нет дороги до этого городка"
+        status_label.visible = not status_label.text.is_empty()
     _fill_resource_list(buy_list, _town.get("buy_pool", []), "Городок ничего не покупает")
     _fill_resource_list(sell_list, _town.get("sell_pool", []), "В кольце влияния нет ресурсов")
 

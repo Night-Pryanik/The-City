@@ -226,7 +226,13 @@ func _serialize_tile_data(main_map: Node) -> Array:
                     "terrain_icon": tile.get("terrain_icon", ""),
                     "in_influence": tile.get("in_influence", false),
                     "is_explored": tile.get("is_explored", false),
-                    "river_edges": tile.get("river_edges", [])
+                    "river_edges": tile.get("river_edges", []),
+                    # road_built — факт «игрок построил дорогу до этого гекса»
+                    # (спецдействие «Построить дорогу»). Сами сегменты дорог
+                    # в сейв не пишутся ни для города, ни для городков: сеть
+                    # пересчитывается при загрузке, а этого флага хватает как
+                    # входных данных (road_manager.rebuild_player_roads).
+                    "road_built": tile.get("road_built", false)
                 })
             else:
                 row_arr.append({})

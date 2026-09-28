@@ -14,6 +14,12 @@ const TOWN_INFLUENCE_FILL_ALPHA = 0.22
 # ЧЬИ это дороги, см. _draw_all_roads).
 const ROAD_COLOR = Color(0.55, 0.35, 0.15)
 const ROAD_WIDTH = 6
+# Радиус иконок-маркеров, рисуемых поверх гекса: капелька пресной воды у
+# улучшения и значок торговли над соединённым городком. Задано ОДНОЙ
+# константой, чтобы оба маркера гарантированно были одного размера.
+const MARKER_ICON_RADIUS = 6.0
+# Цвет маркеров на гексе (капелька воды и значок торговли).
+const MARKER_ICON_COLOR = Color(0.45, 0.8, 1.0)
 
 var tile_data = []
 var icon_textures = {}
@@ -909,7 +915,7 @@ func _draw_hex_overlays(row: int, col: int):
                 if imp_icon_size > IMPROVEMENT_ICON_SIZE:
                     drop_offset = Vector2(0, - (imp_icon_size * 0.5 + 6))
                 var drop_center = icon_pos + drop_offset
-                var drop_radius = 6.0
+                var drop_radius = MARKER_ICON_RADIUS
                 var drop_points = [
                     Vector2(0, -drop_radius),
                     Vector2(-drop_radius * 0.7, -drop_radius * 0.2),
@@ -921,7 +927,7 @@ func _draw_hex_overlays(row: int, col: int):
                 for i in range(drop_points.size()):
                     drop_points[i] += drop_center
                 if water_access == "direct":
-                    draw_polygon(drop_points, [Color(0.45, 0.8, 1.0, 1.0)])
+                    draw_polygon(drop_points, [MARKER_ICON_COLOR])
                 else:
                     # chain: контурная капля приглушённого цвета.
                     var closed_points = PackedVector2Array()
@@ -955,6 +961,16 @@ func _draw_hex_overlays(row: int, col: int):
             if town_revealed:
                 draw_texture_rect(town_tex, town_rect, false)
                 _draw_town_name(row, col, center)
+                # Значок торговли над соединённым с городом городком.
+                # Рисуется только для раскрытого городка (тот же гейт, что и
+                # сама иконка): в тумане войны он выдавал бы то, до чего
+                # игрок ещё не дошёл.
+                if _is_town_trade_connected(row, col):
+                    # Над иконкой городка, но внутри гекса: подпись названия
+                    # городка вынесена за верхнюю грань гекса, и значок
+                    # наезжал бы на неё.
+                    _draw_trade_link_icon(
+                        center + Vector2(0, -(TownManager.TOWN_ICON_SIZE * 0.5 + 8.0)))
             else:
                 draw_texture_rect(town_tex, town_rect, false,
                         Color(1, 1, 1, TownManager.FOG_TOWN_ICON_ALPHA))
@@ -969,6 +985,48 @@ func _draw_hex_overlays(row: int, col: int):
     var conflict = MapHelpers.get_tech_reveal_conflict(tile)
     if not conflict.is_empty() and is_resource_visible:
         _draw_tech_reveal_warning(center)
+
+# Соединён ли город с этим городком дорогами. Единственный источник истины —
+# road_manager: сети города и городка пересеклись (см. is_town_linked_to_city).
+func _is_town_trade_connected(row: int, col: int) -> bool:
+    if main_map == null or not main_map.has_node("RoadManager"):
+        return false
+    var road_manager = main_map.get_node("RoadManager")
+    return road_manager.is_town_linked_to_city(row, col)
+
+# Значок торговли над гексом соединённого городка: две изогнутые стрелки,
+# направленные друг к другу. Размер — ровно как у капельки пресной воды
+# (MARKER_ICON_RADIUS, та же константа), рисуется процедурно, как и капелька:
+# отдельная иконка такого размера была бы нечитаема.
+#
+# Ставится над иконкой городка, внутри верхней части гекса: подпись названия
+# городка вынесена за верхнюю грань гекса, и значок наезжал бы на неё.
+func _draw_trade_link_icon(center: Vector2) -> void:
+    var r := MARKER_ICON_RADIUS
+    var arc_radius := r * 0.65
+    var arc_offset := r * 0.35
+    var line_width := maxf(1.0, r * 0.22)
+    var color := MARKER_ICON_COLOR
+    # Верхняя дуга: слева направо, наконечник смотрит вниз.
+    var top_center := center + Vector2(0, -arc_offset)
+    draw_arc(top_center, arc_radius, PI, TAU, 12, color, line_width, true)
+    _draw_arrow_head(top_center + Vector2(arc_radius, 0), Vector2(0, 1), color, r)
+    # Нижняя дуга — зеркально: справа налево, наконечник смотрит вверх.
+    var bottom_center := center + Vector2(0, arc_offset)
+    draw_arc(bottom_center, arc_radius, 0, PI, 12, color, line_width, true)
+    _draw_arrow_head(bottom_center + Vector2(-arc_radius, 0), Vector2(0, -1), color, r)
+
+# Наконечник стрелки значка торговли: маленький треугольник от точки tip
+# в направлении dir.
+func _draw_arrow_head(tip: Vector2, dir: Vector2, color: Color, size: float) -> void:
+    var d := dir.normalized()
+    var side := Vector2(-d.y, d.x)
+    var points := PackedVector2Array([
+        tip,
+        tip - d * size * 0.75 + side * size * 0.42,
+        tip - d * size * 0.75 - side * size * 0.42,
+    ])
+    draw_colored_polygon(points, color)
 
 func _draw_town_name(row: int, col: int, center: Vector2) -> void:
     var town_name := ""
@@ -1217,6 +1275,14 @@ func _draw_all_roads():
     if not are_town_roads_visible():
         return
     _draw_road_segments(road_manager.get_all_town_road_segments(), true)
+
+    # ФАЗА 2в: дороги, соединяющие город с городками (спецдействие
+    # «Построить дорогу», нажатое на гексе городка). Это дороги СЕТИ ГОРОДА,
+    # но их трасса ведёт к чужому поселению и может проходить по
+    # неисследованным гексам — поэтому гейты видимости у них ровно такие же,
+    # как у дорог городков (иначе дорога выдавала бы то, что игрок ещё не
+    # разведал).
+    _draw_road_segments(road_manager.get_all_town_link_segments(), true)
 
 # Показываются ли дороги городков. Тот же гейт, что у заливки колец влияния
 # (_ensure_town_influence_cache): в 1-й эпохе чужой городок не показывается

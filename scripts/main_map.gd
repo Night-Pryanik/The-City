@@ -241,7 +241,7 @@ func _ready():
                 # crop_bred — id одомашненного животного/растения, разводимого
                 # на пустом гексе (см. docs.md, раздел «Разведение животных/растений»).
                 # Для природных ресурсов остаётся tile.resource.
-                var tile = {"terrain": "plain", "cover": "none", "resource": null, "crop_bred": null, "improvement": null, "decorative": false, "production_fractional_remainder": 0.0, "feed_fractional_remainder": 0.0, "terrain_icon": "", "in_influence": false, "is_explored": false, "river_edges": [], "in_town_influence": false, "has_town": false}
+                var tile = {"terrain": "plain", "cover": "none", "resource": null, "crop_bred": null, "improvement": null, "decorative": false, "production_fractional_remainder": 0.0, "feed_fractional_remainder": 0.0, "terrain_icon": "", "in_influence": false, "is_explored": false, "river_edges": [], "in_town_influence": false, "has_town": false, "road_built": false}
                 if row < saved_tiles.size() and col < saved_tiles[row].size():
                     var saved = saved_tiles[row][col]
                     if not saved.is_empty():
@@ -279,6 +279,13 @@ func _ready():
                         tile["in_influence"] = saved.get("in_influence", false)
                         tile["is_explored"] = saved.get("is_explored", false)
                         tile["river_edges"] = saved.get("river_edges", [])
+                        # road_built — в гексе проложена дорога, построенная
+                        # игроком (спецдействие «Построить дорогу»). Сегменты в
+                        # сейв не пишутся, поэтому сохраняется только факт:
+                        # по нему сеть пересчитывается при загрузке (см.
+                        # road_manager.rebuild_player_roads). В старых сейвах
+                        # поля нет — просто false.
+                        tile["road_built"] = bool(saved.get("road_built", false))
                 col_array.append(tile)
             tile_data.append(col_array)
 
@@ -505,6 +512,12 @@ func _ready():
 # В сейв дороги не сохраняются — сеть пересчитывается, как и городские.
 func _rebuild_town_roads() -> void:
     road_manager.rebuild_town_roads(town_manager.towns, tile_data, map_rows, map_cols)
+    # Дороги, построенные игроком через спецдействие «Построить дорогу»
+    # (в том числе соединения с городками), восстанавливаются последними:
+    # их цель — дорожная сеть города и дорожные сети городков, обе должны
+    # уже существовать. Входные данные (флаги road_built / road_linked) лежат
+    # в сейве, сегменты считаются заново — как и для всех остальных дорог.
+    road_manager.rebuild_player_roads(town_manager.towns, tile_data, map_rows, map_cols)
 
 func _input(event):
     # Дебаг-меню: открытие/закрытие по F9
@@ -1217,6 +1230,13 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
             # Дробный остаток производственного цикла снесённого улучшения — тоже.
             tile["production_fractional_remainder"] = 0.0
             tile["feed_fractional_remainder"] = 0.0
+        elif action_type == "road":
+            # Дорога, построенная игроком. Прокладывается ОПЛАЧЕННАЯ часть
+            # трассы; если игрок оплатил не всю (длинная дорога), стройка
+            # остаётся активной и доплачивается дальше — поэтому нужен
+            # ранний выход из общего хвоста функции.
+            if not _apply_paid_road(row, col, imp_id):
+                return
         else:
             # Террейн-действие (напр. осушение): сбрасываем ресурсы и
             # улучшение, очищаем покров и crop_bred, чтобы гекс стал
@@ -1286,6 +1306,83 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
         pass
     map_renderer.queue_redraw()
     _redraw_progress_layer()
+
+# Прокладывает оплаченную часть трассы дороги (спецдействие build_road).
+# Возвращает true, если дорога построена полностью и стройку можно закрыть
+# (вызывающий код убирает её из build_manager общим хвостом _on_build_completed),
+# и false — если оплачена лишь часть длинной трассы: тогда стройка остаётся
+# активной с остатком стоимости, и игрок доплачивает следующие участки.
+func _apply_paid_road(row: int, col: int, action_id: String) -> bool:
+    var tile = tile_data[row][col]
+    var build_key := str(row) + "," + str(col)
+    # Сколько игрок реально оплатил — берём из самой стройки: за время
+    # стройки сеть города могла измениться (построена другая дорога), и
+    # пересчитанная цена была бы уже не той, что показана в превью.
+    var build_data: Dictionary = build_manager.active_builds.get(build_key, {})
+    var cost_data := get_improvement_work_cost(action_id, row, col)
+    var paid_work := int(build_data.get("work_cost", 0))
+    if paid_work <= 0:
+        paid_work = int(cost_data.get("cost", 0))
+
+    var plan := get_road_plan(row, col)
+    if not plan.get("ok", false):
+        # Трассы больше нет (например, она исчезла из-за изменений на карте) —
+        # снимаем стройку, чтобы игрок не платил в пустоту.
+        hud.show_message("Дорогу построить не удалось: %s" % plan.get("reason", "нет пути"))
+        return true
+
+    # Цена одного участка: work_cost из данных × множитель технологий.
+    var per_hex := float(cost_data.get("base_cost", 1)) \
+            * float(cost_data.get("construction_tech_mult", 1.0))
+    var total_segments := int(plan.get("segments", 0))
+    var total_work := int(ceil(per_hex * float(total_segments)))
+    var remaining_work := total_work - paid_work
+
+    if remaining_work <= 0:
+        # Оплачено с запасом (или ровно всю трассу) — строим её целиком.
+        road_manager.build_road_to(row, col, tile_data, map_rows, map_cols,
+                get_town_influence_hexes(row, col))
+        _mark_road_built(row, col, plan)
+        map_renderer.queue_redraw()
+        _redraw_progress_layer()
+        return true
+
+    # Оплачена часть трассы: строим оплаченные участки и оставляем стройку
+    # активной с остатком стоимости. Записи может не быть — например, при
+    # включённом «Игнорировать требования строительства» стройка завершается
+    # мгновенно, не попадая в active_builds; тогда остаток просто нечего
+    # переносить, а вся трасса считается оплаченной.
+    if not build_manager.active_builds.has(build_key):
+        road_manager.build_road_to(row, col, tile_data, map_rows, map_cols,
+                get_town_influence_hexes(row, col))
+        _mark_road_built(row, col, plan)
+        return true
+    var paid_segments := int(floor(float(paid_work) / per_hex))
+    paid_segments = clampi(paid_segments, 1, total_segments)
+    road_manager.build_road_to(row, col, tile_data, map_rows, map_cols,
+            get_town_influence_hexes(row, col), paid_segments)
+    build_manager.active_builds[build_key]["work_cost"] = remaining_work
+    build_manager.active_builds[build_key]["progress"] = 0.0
+    map_renderer.queue_redraw()
+    _redraw_progress_layer()
+    return false
+
+# Помечает цель дороги построенной — это входные данные для восстановления
+# дороги из сейва (сегменты в сейв не пишутся, см. road_manager).
+# Обычному гексу ставится флаг на самом гексе, городку — на гексе (чтобы
+# rebuild_player_roads нашёл его кольцо влияния) и в записи городка (по нему
+# же читается доступность торговли, см. town_manager.is_trade_available).
+func _mark_road_built(row: int, col: int, plan: Dictionary) -> void:
+    tile_data[row][col]["road_built"] = true
+    if not bool(plan.get("is_town", false)):
+        hud.show_message("Дорога построена!")
+        return
+    var town = find_town_at(row, col)
+    if town == null:
+        return
+    town["road_linked"] = true
+    hud.show_message("Дорога до городка «%s» построена — торговля доступна!"
+            % str(town.get("name", "Городок")))
 
 func _on_building_build_completed(building_id: String, build_key: String):
     # Стройка здания завершена - добавляем его в город
@@ -1516,11 +1613,16 @@ func _on_city_ui_close():
 # Открывает интерфейс городка (окно торговли) для гекса (row, col).
 # Вызывается из панели управления (кнопка действия на гексе городка) и
 # из InputHandler (двойной клик по гексу городка).
+#
+# Доступ в интерфейс НЕ зависит от дороги: разведанный городок можно
+# открыть всегда — там видно, что у него есть на продажу и на покупку.
+# Дорога гейтит только торговлю (см. town_manager.is_trade_available), и
+# её доступность передаётся в окно статусом, а не блокировкой.
 func open_town_ui(row: int, col: int):
     var town = find_town_at(row, col)
     if town == null:
         return
-    town_ui.open_town(town)
+    town_ui.open_town(town, town_manager.is_trade_available(town))
     hud.hide()
     # Панель управления гексом не нужна, пока открыт интерфейс городка.
     control_panel.hide()
@@ -1606,7 +1708,32 @@ func get_tile_data(row: int, col: int):
 # расстояния от города. Возвращает словарь с итоговой стоимостью и деталями расчёта
 # (для расширенного тултипа).
 func get_improvement_work_cost(imp_id: String, row: int, col: int) -> Dictionary:
+    # Дорога (спецдействие build_road) — исключение: её цена не зависит от
+    # местности и расстояния до города, а от ДЛИНЫ новой трассы (цена за
+    # гекс × число новых участков). Планирование здесь, а не в build_manager,
+    # чтобы превью в панели и реальная стройка считали цену одним кодом.
+    var special_action: Dictionary = GameData.special_actions.get(imp_id, {})
+    if str(special_action.get("action_type", "")) == "road":
+        return MapHelpers.get_road_work_cost(imp_id, get_road_plan(row, col).get("segments", 0))
     return MapHelpers.get_improvement_work_cost(imp_id, row, col, tile_data, city_row, city_col)
+
+# План дороги от сети города до гекса (row, col) — тот же объект, что
+# возвращает road_manager.plan_road_to. Нужен панели управления (превью
+# цены) и main_map.get_improvement_work_cost. Кольцо влияния городка
+# подставляется здесь: road_manager о городках не знает.
+func get_road_plan(row: int, col: int) -> Dictionary:
+    return road_manager.plan_road_to(row, col, tile_data, map_rows, map_cols,
+            get_town_influence_hexes(row, col))
+
+# Кольцо влияния городка на гексе (row, col) или пустой массив, если на
+# гексе нет городка.
+func get_town_influence_hexes(row: int, col: int) -> Array:
+    if town_manager == null:
+        return []
+    var town = town_manager.find_town_at(row, col)
+    if town == null:
+        return []
+    return town.get("influence_hexes", [])
 
 func _on_city_button_gui_input(event: InputEvent):
     if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:

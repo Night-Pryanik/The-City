@@ -116,6 +116,16 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null) -> bo
         emit_signal("build_message", "Нельзя строить на гексе города")
         return false
 
+    # Дорога (спецдействие build_road) — единственное действие, применимое
+    # на гексе чужого городка: она строит не улучшение на его гексе, а
+    # соединяет сеть ДОРОГ города с дорожной сетью городка в его кольце
+    # влияния (см. road_manager.plan_road_to). Поэтому запреты «здесь чужой
+    # городок» и «здесь кольцо влияния» её не касаются. Декоративные
+    # улучшения она по-прежнему не трогает.
+    var is_road_action := imp_id != "" \
+            and GameData.special_actions.has(imp_id) \
+            and str(GameData.special_actions[imp_id].get("action_type", "")) == "road"
+
     # На гексе городка (мелкое поселение) строительство тоже запрещено —
     # это «чужое» место, по дизайну там ничего нельзя строить и никаких
     # спецдействий. Сейчас (первый этап) городки чисто декоративные; в
@@ -126,7 +136,7 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null) -> bo
         if t_tile != null and bool(t_tile.get("decorative", false)):
             emit_signal("build_message", "Это декоративное улучшение городка — нельзя изменять")
             return false
-        if t_tile != null and bool(t_tile.get("has_town", false)):
+        if t_tile != null and bool(t_tile.get("has_town", false)) and not is_road_action:
             emit_signal("build_message", "Здесь стоит чужой городок — нельзя строить")
             return false
         # В кольце влияния чужого городка строить нельзя: вокруг чужого
@@ -134,7 +144,7 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null) -> bo
         # игрок не может «воткнуть» туда своё улучшение. Сами кольца
         # рисует рендерер (полупрозрачная голубая заливка) — это даёт
         # игроку визуальный сигнал ещё до попытки построить.
-        if t_tile != null and bool(t_tile.get("in_town_influence", false)):
+        if t_tile != null and bool(t_tile.get("in_town_influence", false)) and not is_road_action:
             emit_signal("build_message", "Здесь — кольцо влияния чужого городка, строить нельзя")
             return false
 
@@ -160,6 +170,14 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null) -> bo
 
     # Строительство теперь требует труд, а не еду. При включённом
     # «Игнорировать требования строительства» улучшения строятся мгновенно.
+    # У дороги нулевая цена — это не «мгновенная стройка», а отсутствие
+    # трассы (гекс отрезан водой, до городка не дойти). Без этой проверки
+    # стройка завершилась бы мгновенно, игрок не получил бы дороги и не
+    # понял бы почему.
+    if is_road_action and work_cost <= 0:
+        emit_signal("build_message", "Дорогу сюда построить нельзя: нет сухопутного пути от города")
+        return false
+
     if work_cost <= 0 or CityData.ignore_build_requirements:
         emit_signal("build_message", "Построено мгновенно: %s" % imp_name)
         emit_signal("build_completed", row, col, imp_id, target_res_id)

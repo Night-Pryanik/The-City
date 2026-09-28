@@ -17,6 +17,11 @@
 #   CityData.city_updated, CityData.research_completed, expansion_manager.territory_expanded.
 extends Panel
 
+# id спецдействия «Построить дорогу» в data/special_actions.json. Единственное
+# место, где панель знает про дорогу по имени: и кнопку на гексе городка, и
+# особый блок цены в превью.
+const ROAD_ACTION_ID := "build_road"
+
 # Ссылки на узлы (заполняются из main_map.gd через initialize()).
 var main_map: Node
 var map_tooltip: MapTooltip
@@ -367,12 +372,14 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
         return actions
 
     # На гексе городка (мелкое поселение) нельзя строить улучшения и делать
-    # спецдействия — по дизайну это «чужое» место. Единственное действие —
-    # переход в интерфейс городка (торговля). Появляется по одиночному клику
-    # на гекс городка; тот же переход доступен по двойному клику (InputHandler).
-    # Только для РАСКРЫТОГО гекса: неразведанный городок в тумане войны
-    # показывается лишь полупрозрачной иконкой, и торговать с ним нельзя —
-    # такой гекс обрабатывается как обычный гекс разведки (ниже).
+    # спецдействия — по дизайну это «чужое» место. Действия здесь два:
+    # переход в интерфейс городка и дорога от города ДО него (цель дороги —
+    # не сам гекс городка, а ближайшая дорога в его кольце влияния, см.
+    # road_manager.plan_road_to). Оба появляются по одиночному клику на гекс
+    # городка; переход в интерфейс доступен также по двойному клику
+    # (InputHandler). Только для РАСКРЫТОГО гекса: неразведанный городок в
+    # тумане войны показывается лишь полупрозрачной иконкой, и взаимодействовать
+    # с ним нельзя — такой гекс обрабатывается как обычный гекс разведки (ниже).
     if tile.get("has_town", false) \
             and (in_influence or tile.get("is_explored", false)):
         var town_rec = null
@@ -381,11 +388,30 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
         var town_name = ""
         if town_rec != null:
             town_name = str(town_rec.get("name", ""))
+        # Открыть интерфейс можно ВСЕГДА, независимо от дороги: там видно, что
+        # у городка есть на продажу и на покупку. Дорога гейтит только саму
+        # торговлю, и её состояние показывается в тултипе.
+        var trade_available := true
+        if town_rec != null:
+            trade_available = main_map.town_manager.is_trade_available(town_rec)
         var town_action_label = "Открыть городок"
         var town_action_tooltip = "Перейти в интерфейс городка"
         if town_name != "":
             town_action_label = "Открыть %s" % town_name
             town_action_tooltip = "Перейти в интерфейс городка «%s»" % town_name
+        if not trade_available:
+            town_action_tooltip += " (торговля недоступна: нет дороги до городка)"
+
+        # Дорога до городка — то же спецдействие «Построить дорогу», что и на
+        # обычном гексе, но с другим текстом: здесь дорога не доходит до гекса
+        # городка, а соединяет город с дорогами кольца влияния.
+        if not main_map.road_manager.is_town_linked_to_city(row, col):
+            var road_sa: Dictionary = GameData.special_actions.get(ROAD_ACTION_ID, {})
+            if not road_sa.is_empty():
+                _append_special_action(actions, ROAD_ACTION_ID, road_sa,
+                        "Построить дорогу от города до городка%s — откроет торговлю"
+                                % ((" «%s»" % town_name) if town_name != "" else ""))
+
         actions.append({
             "type": "open_town",
             "label": town_action_label,
@@ -840,34 +866,60 @@ func _add_special_actions(actions: Array, row: int, col: int, tile: Dictionary):
                         applicable = true
         elif action_type == "demolish":
             applicable = tile.improvement != null
+        elif action_type == "road":
+            # Дорога, которую строит игрок. Кнопка показывается на гексе, к
+            # которому дороги ещё нет. Проверки здесь только дешёвые (панель
+            # пересобирает действия каждый тик): гекс сухой, улучшения с
+            # флагом no_road нет (к ирригационному каналу дорога по дизайну
+            # не строится — см. road_manager._find_connect_path), и гекс ещё
+            # не подключён к сети дорог города.
+            # Длину трассы и цену считает превью — main_map.get_road_plan.
+            applicable = not MapHelpers.is_water_terrain(tile.get("terrain", "plain")) \
+                    and not main_map.road_manager.is_hex_connected(row, col)
+            if applicable and tile.get("improvement", null) != null:
+                var tile_imp: Dictionary = GameData.improvements.get(tile.improvement, {})
+                applicable = not bool(tile_imp.get("no_road", false))
         if not applicable:
             continue
 
-        var sa_name = sa.get("name", sa_id)
-        var enabled = true
-        var tooltip = sa_name
-        var unlock_tech = sa.get("unlock_tech", "")
-        if unlock_tech != "" and not CityData.is_tech_unlocked(unlock_tech):
-            enabled = false
-            tooltip = "%s — нужна технология: %s" % [sa_name, _get_tech_name(unlock_tech)]
-            # Кнопка изучения СЛЕДУЮЩЕГО не изученного шага технологической
-            # цепочки, необходимой для разблокировки спецдействия (аналог
-            # механики для ресурсов/улучшений, см. _collect_actions).
-            var chain = CityData.get_tech_study_chain(unlock_tech)
-            if not chain.is_empty():
-                actions.append(_make_research_action(chain[0], sa_name))
-        elif build_manager.get_total_active_builds() >= CityData.total_population:
-            enabled = false
-            tooltip = "Нет труда: лимит строек (число жителей) исчерпан"
-        actions.append({
-            "type": "special",
-            "label": sa_name,
-            "enabled": enabled,
-            "tooltip": tooltip,
-            "action_id": sa_id,
-            # Иконка берётся из special_actions.json (имя файла в icons/).
-            "icon": sa.get("icon", "")
-        })
+        if action_type == "road":
+            # У города: цель — сам гекс. У городка цель другая (кольцо
+            # влияния), там кнопку собирает ветка городка в _collect_actions.
+            _append_special_action(actions, sa_id, sa,
+                    "Построить дорогу от города до этого гекса")
+        else:
+            _append_special_action(actions, sa_id, sa)
+
+# Собирает кнопку спецдействия в колонке действий: учитывает требование
+# технологии и общий лимит строек. tooltip_override (если задан) заменяет
+# название в тултипе — им пользуется дорога, у которой текст зависит от
+# цели (обычный гекс или городок).
+func _append_special_action(actions: Array, sa_id: String, sa: Dictionary, tooltip_override: String = "") -> void:
+    var sa_name = sa.get("name", sa_id)
+    var enabled = true
+    var tooltip = tooltip_override if not tooltip_override.is_empty() else sa_name
+    var unlock_tech = sa.get("unlock_tech", "")
+    if unlock_tech != "" and not CityData.is_tech_unlocked(unlock_tech):
+        enabled = false
+        tooltip = "%s — нужна технология: %s" % [sa_name, _get_tech_name(unlock_tech)]
+        # Кнопка изучения СЛЕДУЮЩЕГО не изученного шага технологической
+        # цепочки, необходимой для разблокировки спецдействия (аналог
+        # механики для ресурсов/улучшений, см. _collect_actions).
+        var chain = CityData.get_tech_study_chain(unlock_tech)
+        if not chain.is_empty():
+            actions.append(_make_research_action(chain[0], sa_name))
+    elif build_manager.get_total_active_builds() >= CityData.total_population:
+        enabled = false
+        tooltip = "Нет труда: лимит строек (число жителей) исчерпан"
+    actions.append({
+        "type": "special",
+        "label": sa_name,
+        "enabled": enabled,
+        "tooltip": tooltip,
+        "action_id": sa_id,
+        # Иконка берётся из special_actions.json (имя файла в icons/).
+        "icon": sa.get("icon", "")
+    })
 
 # Формирует действие «Изучить технологию» для колонки действий панели.
 # for_what — причина изучения, подставляется в тултип (название ресурса/
@@ -1184,6 +1236,15 @@ func _build_preview(row: int, col: int, tile: Dictionary):
             map_tooltip.render_products(products, products_box, true)
             _preview_container.add_child(products_box)
 
+    # Дорога (спецдействие «Построить дорогу») — свой блок вместо общего
+    # разбора «местность/расстояние»: её цена зависит от длины новой
+    # трассы, а эти множители к дороге не применяются.
+    if type == "special" and _is_road_action(action_id):
+        if not _build_road_preview(row, col, action_id):
+            # Трассы нет — подтверждать нечего, кнопка «Начать» блокируется.
+            build_btn.disabled = true
+        return
+
     # Стоимость труда: детальный расчёт (база, местность, расстояние).
     var cost_data = MapHelpers.get_improvement_work_cost(cost_imp_id, row, col, main_map.tile_data, main_map.city_row, main_map.city_col)
     var cost_label = Label.new()
@@ -1233,6 +1294,66 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     total_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     total_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
     _preview_container.add_child(total_label)
+
+# Действие ли это дорога (спецдействие build_road)?
+func _is_road_action(action_id: String) -> bool:
+    if action_id != ROAD_ACTION_ID:
+        return false
+    return str(GameData.special_actions.get(action_id, {}).get("action_type", "")) == "road"
+
+# Блок превью для дороги: куда пойдёт трасса, из скольких участков она
+# состоит и сколько это труда. Возвращает false, если трассы нет — тогда
+# кнопка «Начать» блокируется, а игрок видит причину.
+func _build_road_preview(row: int, col: int, action_id: String) -> bool:
+    var plan: Dictionary = main_map.get_road_plan(row, col)
+    if not plan.get("ok", false):
+        var warn := Label.new()
+        warn.text = " %s" % str(plan.get("reason", "Дорогу построить нельзя"))
+        warn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        warn.add_theme_color_override("font_color", Color(0.9, 0.6, 0.6))
+        _preview_container.add_child(warn)
+        return false
+
+    # Куда пойдёт дорога. У городка цель — не сам его гекс, а дороги его
+    # кольца влияния (см. road_manager.plan_road_to).
+    var target_label := Label.new()
+    if bool(plan.get("is_town", false)):
+        var town = null
+        if main_map.town_manager != null:
+            town = main_map.town_manager.find_town_at(row, col)
+        var town_name := str(town.get("name", "городка")) if town != null else "городка"
+        target_label.text = " Куда: ближайшая дорога в кольце влияния городка «%s»" % town_name
+    else:
+        target_label.text = " Куда: от ближайшей дороги города до этого гекса"
+    target_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    target_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
+    _preview_container.add_child(target_label)
+
+    var cost_data := MapHelpers.get_road_work_cost(action_id, int(plan.get("segments", 0)))
+    var cost_label := Label.new()
+    cost_label.text = " Стоимость: %d труда" % cost_data["cost"]
+    cost_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    cost_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+    _preview_container.add_child(cost_label)
+
+    var base_label := Label.new()
+    base_label.text = " За гекс дороги: %d труда" % cost_data["base_cost"]
+    base_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    base_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+    _preview_container.add_child(base_label)
+
+    var segments_label := Label.new()
+    segments_label.text = " Новых участков трассы: %d" % cost_data["segments"]
+    segments_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    segments_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+    _preview_container.add_child(segments_label)
+
+    var total_label := Label.new()
+    total_label.text = " Итого: %d труда" % cost_data["cost"]
+    total_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    total_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
+    _preview_container.add_child(total_label)
+    return true
 
 # Сравнивает два снапшота блока превью по значимым полям.
 func _preview_equal(a: Dictionary, b: Dictionary) -> bool:

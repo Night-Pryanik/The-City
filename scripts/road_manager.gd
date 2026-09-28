@@ -1,6 +1,12 @@
 # road_manager.gd
 extends Node
 
+# Эмитится, когда город впервые соединяется дорогой с городком: сегменты
+# дорожной сети города дотянулись до дорожной сети этого городка. На этом
+# событии в будущем будет открываться торговля (сейчас — только иконка
+# над гексом городка и статус в его окне, см. town_manager.is_trade_available).
+signal town_link_established(row: int, col: int)
+
 # Храним дороги как Set строк в формате "row1,col1|row2,col2" (каноническое направление)
 # Каноническое = с меньшей суммой row+col, или если равны, то с меньшим col
 var road_segments: Dictionary = {}
@@ -9,6 +15,14 @@ var road_segments: Dictionary = {}
 var connected_hexes: Dictionary = {}
 var city_row: int = 0
 var city_col: int = 0
+
+# Версия дорожной сети города. Растёт при ЛЮБОМ её изменении и по ней
+# сбрасывается кэш планирования дорог (см. _plan_cache): панель управления
+# спрашивает план на КАЖДЫЙ тик, а поиск пути — Дейкстра по всей карте, так
+# что без кэша это была бы тяжёлая работа в игровом цикле.
+var _network_version: int = 0
+# Кэш планов: "версия|row,col" -> { ok, reason, path, segments, is_town }.
+var _plan_cache: Dictionary = {}
 
 # === Сети дорог городков ===
 # У каждого городка своя независимая сеть: от центра городка — к его
@@ -29,6 +43,22 @@ var city_col: int = 0
 var town_road_segments: Dictionary = {}
 var town_connected_hexes: Dictionary = {}
 
+# === Дороги, которые строит игрок (спецдействие «Построить дорогу») ===
+#
+# Спецдействие build_road (action_type "road") строит участок дорожной СЕТИ
+# ГОРОДА до указанного гекса — от ближайшей уже построенной дороги, обычным
+# алгоритмом build_road_from. Сегменты попадают в road_segments, а их гексы —
+# в connected_hexes, то есть новая дорога становится частью сети города и
+# укорочивает все следующие трассы.
+#
+# town_link_segments — подмножество road_segments: те из них, что соединяют
+# город с ДОРОЖНОЙ СЕТЬЮ ГОРОДКА (цель — ближайшая дорога в кольце влияния
+# городка, а не сам его гекс). Хранятся отдельно только ради отрисовки:
+# такая дорога может пройти по неисследованной территории, поэтому рисуется
+# с теми же гейтами тумана, что и дороги городков (map_renderer.
+# is_town_road_segment_visible) — иначе она выдавала бы содержимое тумана.
+var town_link_segments: Dictionary = {}
+
 # Инициализация после генерации карты
 func initialize(new_city_row: int, new_city_col: int):
     self.city_row = new_city_row
@@ -39,6 +69,8 @@ func initialize(new_city_row: int, new_city_col: int):
     road_segments.clear()
     connected_hexes.clear()
     clear_town_roads()
+    town_link_segments.clear()
+    _invalidate_plan_cache()
     var key = _hex_key(new_city_row, new_city_col)
     connected_hexes[key] = true
 
@@ -82,6 +114,7 @@ func build_road_from(
         _add_road_segment(from_hex.row, from_hex.col, to_hex.row, to_hex.col)
         connected_hexes[_hex_key(from_hex.row, from_hex.col)] = true
         connected_hexes[_hex_key(to_hex.row, to_hex.col)] = true
+    _invalidate_plan_cache()
 
 # Общий для города и городков поиск пути от (start_row, start_col) до
 # ближайшего гекса из `connected`. Возвращает путь (Array of {row, col}) от
@@ -207,6 +240,7 @@ func _town_connected(town_row: int, town_col: int) -> Dictionary:
 func clear_town_roads() -> void:
     town_road_segments.clear()
     town_connected_hexes.clear()
+    _invalidate_plan_cache()
 
 # Проверяет, соединён ли гекс дорогами с центром ЭТОГО городка.
 func is_town_connected(town_row: int, town_col: int, row: int, col: int) -> bool:
@@ -223,6 +257,211 @@ func _add_town_road_segment(row1: int, col1: int, row2: int, col2: int):
 # Все сегменты дорог городков (для отрисовки).
 func get_all_town_road_segments() -> Dictionary:
     return town_road_segments.duplicate()
+
+# === Дороги, которые строит игрок ===
+
+# Сбрасывает кэш планов. Вызывается при ЛЮБОМ изменении сетей (см.
+# _network_version), потому что план зависит от того, что уже подключено.
+func _invalidate_plan_cache() -> void:
+    _network_version += 1
+    _plan_cache.clear()
+
+# Подключён ли гекс к сети дорог ГОРОДА (по нему уже проложена дорога —
+# либо он гекс города, либо через него прошла трасса). Это и есть проверка
+# «на этом гексе дороги ещё нет» для кнопки спецдействия.
+func is_hex_connected(row: int, col: int) -> bool:
+    return connected_hexes.has(_hex_key(row, col))
+
+# Соединён ли город с ЭТИМ городком дорогами. Проверка вычисляемая, а не
+# сохранённая: сети города и городка соединились, если хотя бы один гекс
+# сети городка подключён к сети города. Именно этот признак открывает
+# торговлю (см. town_manager.is_trade_available) и рисует иконку над городком.
+# Сохранённый флаг town["road_linked"] — другое: он помнит, что игрок ЭТО
+# делал, и по нему связь восстанавливается из сейва (см. rebuild_player_roads).
+func is_town_linked_to_city(town_row: int, town_col: int) -> bool:
+    var town_net = town_connected_hexes.get(_hex_key(town_row, town_col), null)
+    if town_net == null or town_net.is_empty():
+        return false
+    for key in town_net.keys():
+        if connected_hexes.has(key):
+            return true
+    return false
+
+# Гексы дорожной сети ГОРОДКА, лежащие в его кольце влияния, — именно они
+# являются целью дороги «город → городок» («до ближайшей дороги в кольце
+# влияния»). Сам гекс городка целью не является: в него дорога не ведётся.
+# Кольцо влияния передаётся снаружи: road_manager о мире ничего не знает.
+func _town_road_targets_in_ring(
+    town_row: int, town_col: int, town_influence_hexes: Array) -> Dictionary:
+    var targets: Dictionary = {}
+    var town_net = town_connected_hexes.get(_hex_key(town_row, town_col), null)
+    if town_net == null:
+        return targets
+    for h in town_influence_hexes:
+        var key := _hex_key(int(h.get("row", -1)), int(h.get("col", -1)))
+        if town_net.has(key):
+            targets[key] = true
+    return targets
+
+# Планирует дорогу от сети ГОРОДА до гекса (row, col) — БЕЗ побочных эффектов
+# (сеть не меняется: это чистый расчёт для превью в панели управления).
+#
+# Два случая по типу гекса:
+#   - обычный гекс — цель сам гекс, трасса ищется до ближайшего гекса сети
+#     города обычным алгоритмом (_find_connect_path);
+#   - гекс ГОРОДКА — цель ближайшая дорога в КОЛЬЦЕ ВЛИЯНИЯ городка
+#     (см. _town_road_targets_in_ring), то есть соединяются две сети.
+#
+# Возвращает { ok, reason, path, segments, is_town }. segments — число НОВЫХ
+# участков трассы; именно оно умножается на цену за гекс
+# (MapHelpers.get_road_work_cost). Результат кэшируется по версии сети:
+# панель спрашивает план на каждом тике, а поиск пути — Дейкстра по карте.
+func plan_road_to(
+    row: int,
+    col: int,
+    tile_data: Array,
+    region_rows: int,
+    region_cols: int,
+    town_influence_hexes: Array = []
+) -> Dictionary:
+    var cache_key := "%d|%s" % [_network_version, _hex_key(row, col)]
+    if _plan_cache.has(cache_key):
+        return _plan_cache[cache_key]
+    var plan := _compute_road_plan(
+        row, col, tile_data, region_rows, region_cols, town_influence_hexes)
+    _plan_cache[cache_key] = plan
+    return plan
+
+func _compute_road_plan(
+    row: int,
+    col: int,
+    tile_data: Array,
+    region_rows: int,
+    region_cols: int,
+    town_influence_hexes: Array
+) -> Dictionary:
+    if row < 0 or row >= tile_data.size() or col < 0 or col >= tile_data[row].size():
+        return _road_plan(false, "Гекс за пределами карты", [], 0, false)
+    var tile = tile_data[row][col]
+    if tile == null:
+        return _road_plan(false, "Гекс за пределами карты", [], 0, false)
+    var is_town := bool(tile.get("has_town", false))
+
+    # --- Гекс ГОРОДКА: соединяем с дорожной сетью городка в его кольце ---
+    if is_town:
+        if is_town_linked_to_city(row, col):
+            return _road_plan(false, "Городок уже соединён дорогой", [], 0, true)
+        var targets := _town_road_targets_in_ring(row, col, town_influence_hexes)
+        if targets.is_empty():
+            return _road_plan(false, "У городка нет дороги в кольце влияния", [], 0, true)
+        # Многоточечный поиск: от всех дорог кольца — к ближайшей дороге города.
+        var town_path = _find_path_between(targets, connected_hexes,
+                tile_data, region_rows, region_cols)
+        if town_path.is_empty():
+            return _road_plan(false, "От города нет сухопутного пути до городка", [], 0, true)
+        if not _validate_path(town_path):
+            printerr("Ошибка: путь дороги к городку содержит несоседние гексы!")
+            return _road_plan(false, "Не удалось найти путь до городка", [], 0, true)
+        return _road_plan(true, "", town_path, town_path.size() - 1, true)
+
+    # --- Обычный гекс: дорога до него от ближайшей дороги города ---
+    if is_hex_connected(row, col):
+        return _road_plan(false, "К гексу уже проложена дорога", [], 0, false)
+    if MapHelpers.is_water_terrain(tile.get("terrain", "plain")):
+        return _road_plan(false, "По воде дорога не строится", [], 0, false)
+    var hex_path = _find_connect_path(row, col, connected_hexes,
+            tile_data, region_rows, region_cols)
+    if hex_path.is_empty():
+        return _road_plan(false, "От города нет сухопутного пути до этого гекса", [], 0, false)
+    return _road_plan(true, "", hex_path, hex_path.size() - 1, false)
+
+func _road_plan(ok: bool, reason: String, path: Array, segments: int, is_town: bool) -> Dictionary:
+    return {
+        "ok": ok,
+        "reason": reason,
+        "path": path,
+        "segments": segments,
+        "is_town": is_town
+    }
+
+# Строит дорогу по плану от plan_road_to: сегменты и подключённые гексы
+# добавляются в СЕТЬ ГОРОДА, поэтому новая дорога сразу укорачивает все
+# следующие трассы. segments_to_build — сколько новых участков оплачено
+# (-1 = вся трасса): см. вызов из main_map._on_build_completed.
+func build_road_to(
+    row: int,
+    col: int,
+    tile_data: Array,
+    region_rows: int,
+    region_cols: int,
+    town_influence_hexes: Array = [],
+    segments_to_build: int = -1
+) -> bool:
+    var plan := plan_road_to(row, col, tile_data, region_rows, region_cols, town_influence_hexes)
+    if not plan.get("ok", false):
+        return false
+    var is_town := bool(plan.get("is_town", false))
+    var road_path: Array = plan.get("path", [])
+    # Трасса может быть длиннее оплаченной части: недоплаченные участки
+    # просто не строятся (стройка не завершится, пока труд не собран).
+    var limit := road_path.size() - 1
+    if segments_to_build >= 0:
+        limit = mini(limit, segments_to_build)
+    if limit <= 0:
+        return false
+
+    for i in range(mini(road_path.size() - 1, limit)):
+        var from_hex = road_path[i]
+        var to_hex = road_path[i + 1]
+        _add_road_segment(from_hex.row, from_hex.col, to_hex.row, to_hex.col)
+        connected_hexes[_hex_key(from_hex.row, from_hex.col)] = true
+        connected_hexes[_hex_key(to_hex.row, to_hex.col)] = true
+        if is_town:
+            # Такая дорога соединяет город с городком — она рисуется с
+            # гейтами тумана (см. town_link_segments), а при полной оплате
+            # трассы эмитится сигнал открытия связи.
+            town_link_segments[_get_canonical_road_key(
+                from_hex.row, from_hex.col, to_hex.row, to_hex.col)] = true
+    _invalidate_plan_cache()
+
+    if is_town and limit >= road_path.size() - 1:
+        emit_signal("town_link_established", row, col)
+    return true
+
+# Восстанавливает дороги, построенные игроком через спецдействие
+# «Построить дорогу». Как и с дорогами к улучшениям, в сейв пишутся не
+# сегменты, а входные данные: на гексе стоит флаг tile["road_built"], а у
+# записи городка — флаг town["road_linked"]; сеть считается заново.
+#
+# Вызывать ПОСЛЕ rebuild_roads_from_existing (сеть города) и
+# rebuild_town_roads (дорожные сети городков — они и есть цель дороги
+# до городка). Для гекса городка цель не сам гекс, а кольцо влияния,
+# поэтому towns нужен здесь: road_manager о нём ничего не знает.
+func rebuild_player_roads(
+    towns: Array,
+    tile_data: Array,
+    region_rows: int,
+    region_cols: int
+) -> void:
+    var ring_by_town: Dictionary = {}
+    for town in towns:
+        var t_row := int(town.get("row", -1))
+        var t_col := int(town.get("col", -1))
+        if t_row < 0 or t_col < 0:
+            continue
+        ring_by_town[_hex_key(t_row, t_col)] = town.get("influence_hexes", [])
+    for row in range(region_rows):
+        for col in range(region_cols):
+            var tile = tile_data[row][col]
+            if tile == null or not bool(tile.get("road_built", false)):
+                continue
+            var ring: Array = ring_by_town.get(_hex_key(row, col), [])
+            build_road_to(row, col, tile_data, region_rows, region_cols, ring)
+
+# Сегменты дорог, соединяющих город с городками (для отрисовки с гейтами
+# тумана — см. town_link_segments).
+func get_all_town_link_segments() -> Dictionary:
+    return town_link_segments.duplicate()
 
 # Ключ гекса "row,col" — единый формат ключей во всех словарях менеджера.
 func _hex_key(row: int, col: int) -> String:
@@ -251,42 +490,48 @@ func _validate_path(path: Array) -> bool:
     return true
 
 # Dijkstra с приоритетной очередью для поиска кратчайшего пути
-# до ближайшего гекса из `connected` (у города — connected_hexes, у городка —
-# его личный набор в town_connected_hexes).
-func _find_path_dijkstra(
-    start_row: int,
-    start_col: int,
+# от ЛЮБОГО гекса из `sources` до ближайшего гекса из `targets`.
+# Оба множества — словари "row,col" -> true, поэтому один и тот же поиск
+# обслуживает и обычную дорогу (sources = {старт}, targets = connected_hexes
+# города), и соединение с дорожной сетью городка (sources = кольцо влияния,
+# targets = connected_hexes) — см. plan_road_to.
+#
+# Исходный гекс сам по себе целью не считается (как раньше, до обобщения):
+# если источник уже лежит в targets, дорога не строится «сама в себя».
+func _find_path_between(
+    sources: Dictionary,
+    targets: Dictionary,
     tile_data: Array,
     region_rows: int,
-    region_cols: int,
-    connected: Dictionary
+    region_cols: int
 ) -> Array:
     var visited = {}
     var parent = {}
     var cost_so_far = {}
-    var start_key = _hex_key(start_row, start_col)
-    
-    # Инициализация
-    cost_so_far[start_key] = 0
-    parent[start_key] = null
-    
-    var current_key = start_key
-    
+
+    # Инициализация: все источники стартуют с нулевой стоимости
+    for source_key in sources.keys():
+        cost_so_far[source_key] = 0
+        parent[source_key] = null
+    if cost_so_far.is_empty():
+        return []
+
+    var current_key = _cheapest_open_node(cost_so_far, visited)
+
     while true:
+        # Достигли цели — восстанавливаем путь от источника до неё
+        if targets.has(current_key) and not sources.has(current_key):
+            return _reconstruct_path(current_key, parent)
+
+        visited[current_key] = true
+
         var cur_row = int(current_key.split(",")[0])
         var cur_col = int(current_key.split(",")[1])
-        
-        # Проверяем, подключён ли текущий гекс к сети
-        if connected.has(current_key) and current_key != start_key:
-            # Восстанавливаем путь
-            return _reconstruct_path(current_key, parent)
-        
-        visited[current_key] = true
-        
+
         var neighbors = _get_neighbors(cur_row, cur_col, region_rows, region_cols)
         for n in neighbors:
             var n_key = _hex_key(n.row, n.col)
-            
+
             if visited.has(n_key):
                 continue
 
@@ -297,28 +542,46 @@ func _find_path_dijkstra(
             var move_cost = 1
             if GameData.terrains.has(terrain_id):
                 move_cost = GameData.terrains[terrain_id].get("move_cost", 1)
-            
+
             var new_cost = cost_so_far[current_key] + move_cost
             if not cost_so_far.has(n_key) or new_cost < cost_so_far[n_key]:
                 cost_so_far[n_key] = new_cost
                 parent[n_key] = current_key
-        
-        # Выбираем следующий узел с минимальной стоимостью
-        var min_cost = INF
-        var next_key = null
-        for key in cost_so_far.keys():
-            if not visited.has(key) and cost_so_far[key] < min_cost:
-                min_cost = cost_so_far[key]
-                next_key = key
-        
-        if next_key == null:
+
+        current_key = _cheapest_open_node(cost_so_far, visited)
+        if current_key == null:
             # Путь не найден
             return []
-        
-        current_key = next_key
-    
+
     # Никогда не должны достичь этой точки
     return []
+
+# Возвращает ключ ещё не посещённого гекса с минимальной накопленной
+# стоимостью (или null, если таких больше нет).
+func _cheapest_open_node(cost_so_far: Dictionary, visited: Dictionary):
+    var min_cost = INF
+    var next_key = null
+    for key in cost_so_far.keys():
+        if not visited.has(key) and cost_so_far[key] < min_cost:
+            min_cost = cost_so_far[key]
+            next_key = key
+    return next_key
+
+# Поиск пути от одного гекса до ближайшего гекса из `connected`
+# (у города — connected_hexes, у городка — его личный набор
+# в town_connected_hexes). Тонкая обёртка над общим многоточечным поиском.
+func _find_path_dijkstra(
+    start_row: int,
+    start_col: int,
+    tile_data: Array,
+    region_rows: int,
+    region_cols: int,
+    connected: Dictionary
+) -> Array:
+    return _find_path_between(
+        {_hex_key(start_row, start_col): true}, connected,
+        tile_data, region_rows, region_cols
+    )
 
 # Восстанавливает путь от конца к началу
 func _reconstruct_path(end_key: String, parent: Dictionary) -> Array:
