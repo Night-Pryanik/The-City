@@ -57,7 +57,7 @@
     {
       "id": "leather",
       "name": "Кожа",
-      "produced_in": [ "tanner_house" ],
+      "produced_in": [ "leatherworker_house" ],
       "resources": { "hide": 10 },
       "result": { "leather": 10 },
       "time": 4.0,
