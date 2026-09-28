@@ -239,7 +239,7 @@
       "name": "Восковые таблички",
       "produced_in": [ "carpenter_workshop" ],
       "resources": { "wood": 10, "wax": 10 },
-      "result": { "wax_tablet": 10 },
+      "result": { "wax_tablets": 10 },
       "time": 5.0,
       "unlock_tech": "writing",
       "description": "Создает деревянные таблички с углублением, в которое залит воск"
