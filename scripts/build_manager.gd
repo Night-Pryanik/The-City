@@ -62,10 +62,12 @@ func _process(delta):
     var to_complete_buildings = []
     var to_complete_expansions = []
     for data in active_builds_list:
-        if CityData.ignore_build_requirements and not data.has("chunk"):
-            # Дебаг: «Игнорировать требования строительства» — стройки зданий
-            # и улучшений мгновенно доводятся до 100% за один кадр. Освоение
-            # территории (expansion) этот режим не затрагивает.
+        if CityData.ignore_build_requirements:
+            # Дебаг: «Игнорировать требования строительства» — ВСЕ стройки
+            # (здания, улучшения, спецдействия, освоение территории) мгновенно
+            # доводятся до 100% за один кадр. Исключений нет: стройка, начатая
+            # до включения флага, тоже завершается сразу — иначе переключатель
+            # действовал бы не на всё, что уже в пуле.
             data["progress"] = data["work_cost"]
         else:
             data["progress"] += labor_per_build * delta
@@ -221,6 +223,14 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null) -> bo
 func start_expansion_build(chunk: Array, work_cost: int) -> bool:
     if chunk.is_empty() or work_cost <= 0:
         return false
+
+    # При включённом «Игнорировать требования строительства» освоение не ждёт
+    # труд, а лимит одновременных строек не применяется: чанк присоединяется
+    # к Кольцу Влияния тем же сигналом, что и при обычном завершении.
+    if CityData.ignore_build_requirements:
+        emit_signal("build_message", "Освоение завершено мгновенно!")
+        emit_signal("expansion_build_completed", chunk)
+        return true
 
     # Общий лимит одновременных строек (здания + улучшения + освоение)
     # равен числу жителей.

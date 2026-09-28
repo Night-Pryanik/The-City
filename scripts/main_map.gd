@@ -466,7 +466,6 @@ func _ready():
     # обновляются с интервалом отображения (см. control_panel.on_city_updated).
     CityData.city_updated.connect(control_panel.on_city_updated)
     CityData.research_completed.connect(control_panel.refresh)
-    expansion_manager.territory_expanded.connect(control_panel.refresh)
 
     tech_popup = _make_tech_popup()
     add_child(tech_popup)
@@ -1770,6 +1769,11 @@ func _on_territory_expanded(_row: int, _col: int, cost: int):
     road_manager.bump_map_knowledge()
     map_renderer.invalidate_town_influence_cache()
     map_renderer.queue_redraw()
+    # Панель управления перерисовывается здесь, а не прямой подпиской на сигнал:
+    # territory_expanded несёт три аргумента, а control_panel.refresh() не
+    # принимает ни одного — при прямом подключении Godot ронял вызов, и панель
+    # после освоения оставалась со старыми действиями и подсветкой.
+    control_panel.refresh()
     if city_ui.visible:
         city_ui.refresh()
 
@@ -2437,18 +2441,27 @@ func start_scouting(chunk: Array):
     # expansion_manager.get_chunk_scout_cost() (база и модификатор дальности
     # из data/game_balance.json). Иначе UI и фактическое списание могли бы
     # разойтись. Оплата — монетами из казны города, сразу.
+    # Дебаг: при включённом «Игнорировать требования строительства» разведка
+    # бесплатна и мгновенна — монеты не списываются, таймер не запускается,
+    # чанк открывается тем же _complete_scouting(), что и при обычном финише.
     var expedition_cost: int = expansion_manager.get_chunk_scout_cost(chunk)
-    if not CityData.spend_treasury(expedition_cost):
-        hud.show_message("Недостаточно монет в казне! Нужно %d, в казне %d"
-                % [expedition_cost, CityData.treasury])
-        return
-    # Источник расхода для тултипа «Казна» (см. show_treasury_tooltip).
-    # Разовые траты на разведку — событийные, в плане их нет, поэтому разбивка
-    # расходов показывает факт за последнее окно отображения.
-    if expedition_cost > 0:
-        CityData.record_treasury_expense("Разведка", expedition_cost)
+    if not CityData.ignore_build_requirements:
+        if not CityData.spend_treasury(expedition_cost):
+            hud.show_message("Недостаточно монет в казне! Нужно %d, в казне %d"
+                    % [expedition_cost, CityData.treasury])
+            return
+        # Источник расхода для тултипа «Казна» (см. show_treasury_tooltip).
+        # Разовые траты на разведку — событийные, в плане их нет, поэтому разбивка
+        # расходов показывает факт за последнее окно отображения.
+        if expedition_cost > 0:
+            CityData.record_treasury_expense("Разведка", expedition_cost)
     scouting_chunk = chunk
     scouting_timer = 0.0
+    if CityData.ignore_build_requirements:
+        # Мгновенный финиш: is_scouting даже не включаем, иначе на один кадр
+        # мелькнул бы прогресс-бар разведки, которого игрок не успевает увидеть.
+        _complete_scouting()
+        return
     is_scouting = true
     _redraw_progress_layer()
     hud.show_message("Разведчики отправлены... (оплачено %d монет из казны)" % expedition_cost)

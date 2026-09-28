@@ -311,15 +311,20 @@ func handle_action(chunk: Array, money_cost: int, work_cost: int) -> bool:
             return false
 
     # --- Проверка и списание монет из казны ---
-    if not CityData.spend_treasury(money_cost):
-        main_map.hud.show_message("Недостаточно монет в казне! Нужно %d, в казне %d"
-                % [money_cost, CityData.treasury])
-        return false
-    # Источник расхода для тултипа «Казна» (см. show_treasury_tooltip).
-    # Разовые траты на освоение чанка — событийные, в плане их нет, поэтому
-    # разбивка расходов показывает факт за последнее окно отображения.
-    if money_cost > 0:
-        CityData.record_treasury_expense("Освоение чанков", money_cost)
+    # Дебаг: при включённом «Игнорировать требования строительства» освоение
+    # бесплатное — монеты не проверяются и не списываются (строки расходов
+    # тоже не пишутся, иначе разбивка казны показывала бы несуществующий
+    # расход). Тот же принцип, что у дополнительных материалов зданий.
+    if not CityData.ignore_build_requirements:
+        if not CityData.spend_treasury(money_cost):
+            main_map.hud.show_message("Недостаточно монет в казне! Нужно %d, в казне %d"
+                    % [money_cost, CityData.treasury])
+            return false
+        # Источник расхода для тултипа «Казна» (см. show_treasury_tooltip).
+        # Разовые траты на освоение чанка — событийные, в плане их нет, поэтому
+        # разбивка расходов показывает факт за последнее окно отображения.
+        if money_cost > 0:
+            CityData.record_treasury_expense("Освоение чанков", money_cost)
 
     # --- Запуск стройки освоения (труд накапливается во времени) ---
     var bm = main_map.build_manager

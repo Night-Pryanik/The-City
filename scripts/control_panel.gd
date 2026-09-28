@@ -789,6 +789,10 @@ func _collect_region_actions(row: int, col: int) -> Array:
             tooltip = "Разведка уже идёт"
         elif not known_neighbor:
             tooltip = "Область не граничит с исследованной территорией"
+        elif CityData.ignore_build_requirements:
+            # Дебаг: разведка бесплатна и мгновенна. Текст статичный (без
+            # казны и времени), поэтому конвенция _build_actions не нарушается.
+            tooltip = "Отправить разведчиков: мгновенно и бесплатно (дебаг)"
         else:
             # ВАЖНО: не включать в тултип значения, меняющиеся КАЖДЫЙ ТИК
             # (текущую казну, текущий запас еды). _build_actions() сравнивает
@@ -821,6 +825,10 @@ func _collect_region_actions(row: int, col: int) -> Array:
     var buy_tooltip: String
     if not has_neighbor:
         buy_tooltip = "Область не граничит с вашими владениями"
+    elif CityData.ignore_build_requirements:
+        # Дебаг: освоение бесплатно и мгновенно (см. start_scouting — тот же
+        # принцип в разведке). Текст статичный, как и требует _build_actions.
+        buy_tooltip = "Освоить область (%d клеток): мгновенно и бесплатно (дебаг)" % chunk.size()
     else:
         buy_tooltip = "Освоить область (%d клеток): %d монет из казны и %d труда (%.0f сек.)" % [chunk.size(), money_cost, work_cost, work_cost / max(1.0, labor)]
     actions.append({
@@ -908,7 +916,8 @@ func _append_special_action(actions: Array, sa_id: String, sa: Dictionary, toolt
         var chain = CityData.get_tech_study_chain(unlock_tech)
         if not chain.is_empty():
             actions.append(_make_research_action(chain[0], sa_name))
-    elif build_manager.get_total_active_builds() >= CityData.total_population:
+    elif not CityData.ignore_build_requirements \
+            and build_manager.get_total_active_builds() >= CityData.total_population:
         enabled = false
         tooltip = "Нет труда: лимит строек (число жителей) исчерпан"
     actions.append({
@@ -1034,7 +1043,11 @@ func _build_preview(row: int, col: int, tile: Dictionary):
         "action_id": preview.get("action_id", ""),
         "target_res_id": preview.get("target_res_id", null),
         "eff_res": preview.get("eff_res", ""),
-        "selected_culture_id": preview.get("selected_culture_id", null)
+        "selected_culture_id": preview.get("selected_culture_id", null),
+        # Состояние дебаг-флага входит в снапшот: переключение «Игнорировать
+        # требования строительства» меняет блок превью, и без этого поля он
+        # остался бы старым до перевыбора гекса.
+        "ignore_build": CityData.ignore_build_requirements
     }
     if _preview_equal(_last_preview_snapshot, snapshot):
         return
@@ -1295,6 +1308,21 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     total_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
     _preview_container.add_child(total_label)
 
+    # Дебаг «Игнорировать требования строительства»: цена выше остаётся
+    # расчётом «как было бы без флага», а выполняться действие будет сразу и
+    # бесплатно. Без этой строки игрок видел бы цену и не понимал, почему
+    # прогресс-бар не появляется.
+    if CityData.ignore_build_requirements:
+        _add_instant_hint()
+
+# Жёлтая строка «выполняется мгновенно» для блоков превью.
+func _add_instant_hint() -> void:
+    var hint := Label.new()
+    hint.text = " Дебаг: выполняется мгновенно и бесплатно"
+    hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    hint.add_theme_color_override("font_color", Color(0.9, 0.9, 0.5))
+    _preview_container.add_child(hint)
+
 # Действие ли это дорога (спецдействие build_road)?
 func _is_road_action(action_id: String) -> bool:
     if action_id != ROAD_ACTION_ID:
@@ -1358,6 +1386,11 @@ func _build_road_preview(row: int, col: int, action_id: String) -> bool:
     total_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     total_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
     _preview_container.add_child(total_label)
+
+    # Дебаг «Игнорировать требования строительства» — та же строка, что и в
+    # обычном превью: трасса прокладывается целиком и без ожидания.
+    if CityData.ignore_build_requirements:
+        _add_instant_hint()
     return true
 
 # Сравнивает два снапшота блока превью по значимым полям.
@@ -1370,7 +1403,8 @@ func _preview_equal(a: Dictionary, b: Dictionary) -> bool:
         and a.get("action_id", "") == b.get("action_id", "") \
         and a.get("target_res_id", null) == b.get("target_res_id", null) \
         and a.get("eff_res", "") == b.get("eff_res", "") \
-        and a.get("selected_culture_id", null) == b.get("selected_culture_id", null)
+        and a.get("selected_culture_id", null) == b.get("selected_culture_id", null) \
+        and a.get("ignore_build", false) == b.get("ignore_build", false)
 
 # Подтверждение постройки из превью.
 func _confirm_build():
