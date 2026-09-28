@@ -273,6 +273,12 @@ func _refresh():
         # Сбрасываем снапшот: следующая открытая превью должна пересоздать
         # свой блок (даже если opens то же самое действие на том же гексе).
         _last_preview_snapshot = {}
+    # Маршрут на карте приводим в соответствие с текущим превью: он появился,
+    # сменился или исчез. Именно здесь, а не в _build_road_preview(), потому
+    # что _build_preview выходит рано по снапшоту — превью того же действия на
+    # том же гексе не перестраивается, и «призрачная» дорога застряла бы на
+    # старом маршруте (например, после разведки пути к городку).
+    _sync_road_preview_on_map()
 
 func _clear_ui():
     _info_label.text = "Выберите гекс на карте (ЛКМ), чтобы увидеть информацию и доступные действия."
@@ -289,6 +295,8 @@ func _clear_ui():
     # ничего не нужно (и кнопки бы не появились).
     _last_actions_snapshot = {}
     _last_preview_snapshot = {}
+    # Прекращаем показ маршрута: выделение снято, значит и превью нет.
+    _set_map_road_preview({})
 
 # --- Построение кнопок действий ---
 func _build_actions(row: int, col: int, tile: Dictionary):
@@ -1322,6 +1330,34 @@ func _add_instant_hint() -> void:
     hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     hint.add_theme_color_override("font_color", Color(0.9, 0.9, 0.5))
     _preview_container.add_child(hint)
+
+# Синхронизирует «призрачную» дорогу на карте с текущим превью. Маршрут
+# показывается только для превью спецдействия «Построить дорогу» на выделенном
+# гексе и только если трасса вообще есть; во всех остальных случаях маршрут
+# снимается. Вызывается из _refresh(), поэтому покрывает и ESC, и клик по
+# другому гексу, и подтверждение постройки.
+func _sync_road_preview_on_map() -> void:
+    if main_map == null or main_map.map_renderer == null or _selected_hex == null:
+        _set_map_road_preview({})
+        return
+    if _preview_action == null \
+            or str(_preview_action.get("type", "")) != "special" \
+            or not _is_road_action(str(_preview_action.get("action_id", ""))):
+        _set_map_road_preview({})
+        return
+    var plan: Dictionary = main_map.get_road_plan(
+            int(_selected_hex.row), int(_selected_hex.col))
+    if not plan.get("ok", false):
+        # Трассы нет (например, к городку не разведан путь) — показывать
+        # нечего, панель об этом уже сказала строкой с причиной.
+        _set_map_road_preview({})
+        return
+    _set_map_road_preview(main_map.road_manager.get_plan_new_segments(plan))
+
+func _set_map_road_preview(segments: Dictionary) -> void:
+    if main_map == null or main_map.map_renderer == null:
+        return
+    main_map.map_renderer.set_road_preview_segments(segments)
 
 # Действие ли это дорога (спецдействие build_road)?
 func _is_road_action(action_id: String) -> bool:

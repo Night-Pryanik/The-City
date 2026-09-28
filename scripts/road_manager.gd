@@ -484,6 +484,26 @@ func build_road_to(
         emit_signal("town_link_established", row, col)
     return true
 
+# Новые, ещё НЕ построенные сегменты трассы плана — в том же формате ключей,
+# что и road_segments (см. _get_canonical_road_key), поэтому рендерер рисует их
+# тем же кодом, что и настоящие дороги, но своим стилем. Побочных эффектов нет:
+# план уже посчитан и закэширован, повторный поиск пути не выполняется. Уже
+# существующие участки пропускаются — рисовать их в превью незачем, за них
+# игрок не платит.
+func get_plan_new_segments(plan: Dictionary) -> Dictionary:
+    var segments: Dictionary = {}
+    if not plan.get("ok", false):
+        return segments
+    var road_path: Array = plan.get("path", [])
+    for i in range(maxi(road_path.size() - 1, 0)):
+        var from_hex = road_path[i]
+        var to_hex = road_path[i + 1]
+        if has_road_between(from_hex.row, from_hex.col, to_hex.row, to_hex.col):
+            continue
+        segments[_get_canonical_road_key(
+                from_hex.row, from_hex.col, to_hex.row, to_hex.col)] = true
+    return segments
+
 # Восстанавливает дороги, построенные игроком через спецдействие
 # «Построить дорогу». Как и с дорогами к улучшениям, в сейв пишутся не
 # сегменты, а входные данные: на гексе стоит флаг tile["road_built"], а у

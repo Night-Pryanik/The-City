@@ -24,6 +24,9 @@
 #   6. Торговля: гейт — одна функция town_manager.is_trade_available; окно
 #      городка открывается БЕЗ дороги (доступ свободен), но торговля помечена
 #      как недоступная и после постройки дороги становится доступной.
+#   7. «Призрачная» дорога на карте: пока открыто превью «Построить дорогу»,
+#      маршрут нарисован (только новые сегменты плана) и исчезает вместе с
+#      превью; у городка маршрут целиком идёт по разведанной земле.
 extends SceneTree
 
 # Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как
@@ -69,6 +72,7 @@ func _run() -> void:
     _test_plan_and_build_hex(state)
     _test_impossible_targets(state)
     _test_town_road_needs_known_territory(state)
+    _test_ghost_segments(state)
     _test_town_link(state)
     _test_restore_from_save_flags(state)
 
@@ -310,6 +314,83 @@ func _known_hex_filter(tile_data: Array) -> Callable:
         return bool(tile.get("in_influence", false)) or bool(tile.get("is_explored", false))
 
 # -------------------------------------------------------
+# 3c. Данные для «призрачной» дороги: новые сегменты плана
+# -------------------------------------------------------
+
+# Превью на карте рисует НОВЫЕ сегменты плана (road_manager
+# .get_plan_new_segments). Проверяем ровно то, за что платит игрок: столько же
+# сегментов, сколько в плане, каждый — между соседними гексами, ни один ещё не
+# построен, а маршрут упирается в уже готовую сеть города.
+func _test_ghost_segments(state: Dictionary) -> void:
+    var tile_data := _make_map()
+    _rm.initialize(CITY_ROW, CITY_COL)
+    var target := {"row": CITY_ROW - 4, "col": CITY_COL}
+    var plan: Dictionary = _rm.plan_road_to(target.row, target.col,
+            tile_data, ROWS, COLS)
+    check(plan.get("ok", false), "для проверки превью нужна успешная трасса: %s"
+            % plan.get("reason", ""), state)
+
+    var ghost: Dictionary = _rm.get_plan_new_segments(plan)
+    check(not ghost.is_empty(), "у плана должны быть новые сегменты для превью", state)
+    check(ghost.size() == int(plan.get("segments", -1)),
+            "призрачная дорога показывает столько же сегментов, сколько их в плане: %d и %d"
+                    % [ghost.size(), int(plan.get("segments", -1))], state)
+    var built: Dictionary = _rm.get_all_road_segments()
+    for key in ghost.keys():
+        check(not built.has(key),
+                "в превью не должно быть уже построенного сегмента: %s" % key, state)
+        var s := _parse_segment(key)
+        check(_hu.hex_distance(s[0], s[1], s[2], s[3]) == 1,
+                "сегмент превью должен соединять соседние гексы: %s" % key, state)
+    check(_ghost_reaches_network(ghost, _rm, target.row, target.col),
+            "маршрут превью должен доходить до уже построенной сети города", state)
+    # Превью ничего не строит — это чистая выборка из кэшированного плана.
+    check(_rm.get_all_road_segments().is_empty(),
+            "получение сегментов превью не должно строить дорогу", state)
+
+    _rm.build_road_to(target.row, target.col, tile_data, ROWS, COLS)
+    var after: Dictionary = _rm.plan_road_to(target.row, target.col, tile_data, ROWS, COLS)
+    check(_rm.get_plan_new_segments(after).is_empty(),
+            "после постройки показывать нечего: новых сегментов нет", state)
+
+# Доходит ли маршрут превью до уже построенной сети города: идём по сегментам
+# превью от целевого гекса и ждём гекс, который сеть уже покрывает. Проверять
+# цепочку до самого гекса города нельзя — последний участок к нему УЖЕ
+# построен, и в превью его нет (это и есть разница превью и постройки).
+func _ghost_reaches_network(ghost: Dictionary, rm, start_row: int, start_col: int) -> bool:
+    if ghost.is_empty():
+        return false
+    var seen := {"%d,%d" % [start_row, start_col]: true}
+    var queue: Array = [{"row": start_row, "col": start_col}]
+    while not queue.is_empty():
+        var cur: Dictionary = queue.pop_front()
+        if (cur.row != start_row or cur.col != start_col) \
+                and rm.is_hex_connected(int(cur.row), int(cur.col)):
+            return true
+        for key in ghost.keys():
+            var s := _parse_segment(key)
+            var other = null
+            if s[0] == cur.row and s[1] == cur.col:
+                other = {"row": s[2], "col": s[3]}
+            elif s[2] == cur.row and s[3] == cur.col:
+                other = {"row": s[0], "col": s[1]}
+            if other == null:
+                continue
+            var k := "%d,%d" % [int(other.row), int(other.col)]
+            if not seen.has(k):
+                seen[k] = true
+                queue.append(other)
+    return false
+
+# Все ли гексы маршрута превью известны игроку (в Кольце Влияния или разведаны).
+func _ghost_is_known(main_map, ghost: Dictionary) -> bool:
+    for key in ghost.keys():
+        var s := _parse_segment(key)
+        if not main_map.is_hex_known(s[0], s[1]) or not main_map.is_hex_known(s[2], s[3]):
+            return false
+    return true
+
+# -------------------------------------------------------
 # 4. Дорога до городка: до ближайшей дороги в кольце влияния
 # -------------------------------------------------------
 
@@ -495,12 +576,24 @@ func _test_live_scene(state: Dictionary) -> void:
                 "в превью должна показываться цена за гекс дороги", state)
         check(preview_text.contains("Новых участков трассы: %d" % int(plan.get("segments", 0))),
                 "в превью должно показываться число новых участков трассы", state)
+
+        # «Призрачная» дорога: пока превью открыто, маршрут нарисован на карте,
+        # и уже построенных сегментов в нём нет (рисовать их незачем).
+        var ghost: Dictionary = main_map.map_renderer._road_preview_segments
+        check(not ghost.is_empty() and ghost.size() == int(plan.get("segments", -1)),
+                "превью должно рисовать маршрут из стольких же сегментов, сколько в плане: %d и %d"
+                        % [ghost.size(), int(plan.get("segments", -1))], state)
+        var built_now: Dictionary = rm.get_all_road_segments()
+        for key in ghost.keys():
+            check(not built_now.has(key),
+                    "в маршруте превью не должно быть уже построенных сегментов: %s" % key, state)
         panel.clear_preview()
+        check(main_map.map_renderer._road_preview_segments.is_empty(),
+                "после закрытия превью маршрут должен исчезнуть с карты", state)
 
         # Полный цикл: кнопка -> стройка -> сегменты дороги на карте.
         check(bm.start_build(row, col, ROAD_ACTION_ID),
                 "стройку дороги должно быть можно запустить", state)
-        check(bm.is_building(row, col), "после запуска на гексе должна идти стройка", state)
         check(bm.is_building(row, col), "после запуска на гексе должна идти стройка", state)
         await _finish_build(state)
         check(rm.is_hex_connected(row, col),
@@ -600,6 +693,22 @@ func _test_town_road_cycle(main_map, bm, panel, town, state: Dictionary) -> void
             % town_plan.get("reason", ""), state)
     check(_path_is_known(main_map, town_plan.get("path", [])),
             "ни один гекс трассы не должен быть неразведанным", state)
+
+    # Превью дороги к городку рисует весь маршрут — и весь он по разведанной
+    # земле (об этом предупреждает подпись в панели: высокая цена не из-за сбоя,
+    # а из-за крюка по разведанной территории).
+    panel.select_hex(t_row, t_col)
+    panel._preview_action = {"type": "special", "action_id": ROAD_ACTION_ID,
+            "imp_id": "", "target_res_id": null, "label": "Построить дорогу",
+            "eff_res": "", "selected_culture_id": null}
+    panel._refresh()
+    var ghost: Dictionary = main_map.map_renderer._road_preview_segments
+    check(not ghost.is_empty(), "превью дороги к городку должно рисовать маршрут", state)
+    check(_ghost_is_known(main_map, ghost),
+            "в маршруте к городку не должно быть неразведанных гексов", state)
+    panel.clear_preview()
+    check(main_map.map_renderer._road_preview_segments.is_empty(),
+            "после закрытия превью маршрут к городку должен исчезнуть", state)
 
     # Стройка дороги на гексе городка разрешена: запреты «здесь городок» и
     # «здесь кольцо влияния» её не касаются (см. build_manager.start_build).

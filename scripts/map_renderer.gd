@@ -14,6 +14,15 @@ const TOWN_INFLUENCE_FILL_ALPHA = 0.22
 # ЧЬИ это дороги, см. _draw_all_roads).
 const ROAD_COLOR = Color(0.55, 0.35, 0.15)
 const ROAD_WIDTH = 6
+# Стиль «призрачной» дороги — непостроенной трассы, которую игрок сейчас смотрит
+# в превью. Главное отличие от настоящей дороги — полупрозрачность: маршрут
+# должен читаться как подсказка, а не как уже проложенная дорога, иначе игрок
+# решит, что дорога уже есть. Рисуется ореол + линия поверх: так маршрут
+# заметен и на светлой местности, и на тёмной.
+const ROAD_PREVIEW_COLOR = Color(0.98, 0.86, 0.45, 0.8)
+const ROAD_PREVIEW_WIDTH = 5
+const ROAD_PREVIEW_HALO_COLOR = Color(0.98, 0.86, 0.45, 0.22)
+const ROAD_PREVIEW_HALO_WIDTH = 12
 # Радиус иконок-маркеров, рисуемых поверх гекса: капелька пресной воды у
 # улучшения и значок торговли над соединённым городком. Задано ОДНОЙ
 # константой, чтобы оба маркера гарантированно были одного размера.
@@ -1254,6 +1263,28 @@ func _is_resource_locked(resource_id: String) -> bool:
 func is_resource_locked(resource_id: String) -> bool:
     return _is_resource_locked(resource_id)
 
+# --- «Призрачная» дорога: непостроенная трасса из превью ---
+# Панель управления кладёт сюда НОВЫЕ сегменты плана (road_manager
+# .get_plan_new_segments) на время, пока открыто превью спецдействия
+# «Построить дорогу», и снимает их, как только превью закрыто. Это подсказка,
+# а не дорога: она полупрозрачна и рисуется последним проходом.
+var _road_preview_segments: Dictionary = {}
+# Подпись набора сегментов. Панель держит превью открытым между тиками, и без
+# сравнения карта перерисовывалась бы на каждом обновлении панели впустую.
+var _road_preview_signature: String = ""
+
+# Показать «призрачную» дорогу (пустой словарь — скрыть). Перерисовка только
+# при реальном изменении маршрута.
+func set_road_preview_segments(segments: Dictionary) -> void:
+    var keys := segments.keys()
+    keys.sort()
+    var signature := str(keys)
+    if signature == _road_preview_signature:
+        return
+    _road_preview_signature = signature
+    _road_preview_segments = segments
+    queue_redraw()
+
 func _draw_all_roads():
     if main_map == null or not main_map.has_method("get"):
         return
@@ -1273,18 +1304,25 @@ func _draw_all_roads():
     # центра к улучшениям в кольце влияния и не связана с дорогами города).
     # Видимость — ровно та же, что у заливки колец: см. are_town_roads_visible()
     # и is_town_road_segment_visible() ниже.
-    if not are_town_roads_visible():
-        return
-    _draw_road_segments(road_manager.get_all_town_road_segments(), true)
+    if are_town_roads_visible():
+        _draw_road_segments(road_manager.get_all_town_road_segments(), true)
 
-    # ФАЗА 2в: дороги, соединяющие город с городками (спецдействие
-    # «Построить дорогу», нажатое на гексе городка). Это дороги СЕТИ ГОРОДА,
-    # и по разведанной (но не освоенной) земле — поэтому гейты видимости у
-    # них те же, что у дорог городков. Строго говоря, построить их через
-    # неисследованный гекс нельзя (см. main_map.get_road_plan), так что гейт
-    # тут — страховка на будущее, если правило «только по разведанной земле»
-    # когда-нибудь смягчат.
-    _draw_road_segments(road_manager.get_all_town_link_segments(), true)
+        # ФАЗА 2в: дороги, соединяющие город с городками (спецдействие
+        # «Построить дорогу», нажатое на гексе городка). Это дороги СЕТИ ГОРОДА,
+        # и по разведанной (но не освоенной) земле — поэтому гейты видимости у
+        # них те же, что у дорог городков. Строго говоря, построить их через
+        # неисследованный гекс нельзя (см. main_map.get_road_plan), так что
+        # гейт тут — страховка на будущее, если правило «только по разведанной
+        # земле» когда-нибудь смягчат.
+        _draw_road_segments(road_manager.get_all_town_link_segments(), true)
+
+    # ФАЗА 2г: «призрачная» дорога — трасса из открытого превью. Рисуется
+    # последним проходом (поверх дорог), но до рек, подсветок и иконок, как и
+    # остальные дороги. Гейт эры ей НЕ нужен: это подсказка, а не постройка,
+    # и она показывается в любую эру, как дороги города. Гейт тумана проверяется
+    # на всякий случай — планирование идёт только по разведанной земле, так что
+    # попасть в туман не может, но возможность «выдать» туман исключена.
+    _draw_road_preview()
 
 # Показываются ли дороги городков. Тот же гейт, что у заливки колец влияния
 # (_ensure_town_influence_cache): в 1-й эпохе чужой городок не показывается
@@ -1302,13 +1340,22 @@ func are_town_roads_visible() -> bool:
 func is_town_road_segment_visible(row1: int, col1: int, row2: int, col2: int) -> bool:
     if not are_town_roads_visible():
         return false
+    return _segment_clear_of_fog(row1, col1, row2, col2)
+
+# Оба конца сегмента вне тумана войны — без проверки эры. Вынесено отдельно,
+# потому что «призрачной» дороге гейт эры не нужен (она не постройка), а гейт
+# тумана нужен.
+func _segment_clear_of_fog(row1: int, col1: int, row2: int, col2: int) -> bool:
     return not (main_map.is_hex_in_fog(row1, col1) or main_map.is_hex_in_fog(row2, col2))
 
 # Рисует набор сегментов дорог.
 # hide_in_fog — гейт для сегмента, у которого хотя бы ОДИН конец лежит в тумане
 # войны: такой сегмент не рисуется (он выдавал бы содержимое неисследованной
 # территории). Для дорог города игрока гейт выключен.
-func _draw_road_segments(segments: Dictionary, hide_in_fog: bool) -> void:
+# color / width — стиль: по умолчанию настоящая дорога, для превью передаются
+# свои значения (см. ROAD_PREVIEW_*).
+func _draw_road_segments(segments: Dictionary, hide_in_fog: bool,
+        color: Color = ROAD_COLOR, width: int = ROAD_WIDTH) -> void:
     if segments.is_empty():
         return
     
@@ -1348,7 +1395,32 @@ func _draw_road_segments(segments: Dictionary, hide_in_fog: bool) -> void:
             continue
 
         var points = _generate_natural_road(row1, col1, row2, col2, main_map.HEX_RADIUS)
-        draw_polyline(points, ROAD_COLOR, ROAD_WIDTH, true)
+        draw_polyline(points, color, width, true)
+
+# «Призрачная» дорога: сегменты плана, открытого в превью. Два прохода — широкий
+# полупрозрачный ореол и линия поверх: маршрут читается поверх местности, рек и
+# настоящих дорог.
+func _draw_road_preview() -> void:
+    if _road_preview_segments.is_empty():
+        return
+    # Сегменты, у которых хоть один конец в тумане, не рисуются никогда
+    # (см. комментарий к ФАЗЕ 2г в _draw_all_roads).
+    var visible: Dictionary = {}
+    for segment_key in _road_preview_segments.keys():
+        var parts = str(segment_key).split("|")
+        if parts.size() != 2:
+            continue
+        var start_parts = parts[0].split(",")
+        var end_parts = parts[1].split(",")
+        if start_parts.size() != 2 or end_parts.size() != 2:
+            continue
+        if _segment_clear_of_fog(int(start_parts[0]), int(start_parts[1]),
+                int(end_parts[0]), int(end_parts[1])):
+            visible[segment_key] = true
+    if visible.is_empty():
+        return
+    _draw_road_segments(visible, false, ROAD_PREVIEW_HALO_COLOR, ROAD_PREVIEW_HALO_WIDTH)
+    _draw_road_segments(visible, false, ROAD_PREVIEW_COLOR, ROAD_PREVIEW_WIDTH)
 
 func _draw_rivers():
     if main_map == null:
