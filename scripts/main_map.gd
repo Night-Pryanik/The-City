@@ -517,7 +517,8 @@ func _rebuild_town_roads() -> void:
     # их цель — дорожная сеть города и дорожные сети городков, обе должны
     # уже существовать. Входные данные (флаги road_built / road_linked) лежат
     # в сейве, сегменты считаются заново — как и для всех остальных дорог.
-    road_manager.rebuild_player_roads(town_manager.towns, tile_data, map_rows, map_cols)
+    road_manager.rebuild_player_roads(town_manager.towns, tile_data, map_rows, map_cols,
+            _road_hex_allowed())
 
 func _input(event):
     # Дебаг-меню: открытие/закрытие по F9
@@ -1341,7 +1342,7 @@ func _apply_paid_road(row: int, col: int, action_id: String) -> bool:
     if remaining_work <= 0:
         # Оплачено с запасом (или ровно всю трассу) — строим её целиком.
         road_manager.build_road_to(row, col, tile_data, map_rows, map_cols,
-                get_town_influence_hexes(row, col))
+                get_town_influence_hexes(row, col), -1, _road_hex_allowed())
         _mark_road_built(row, col, plan)
         map_renderer.queue_redraw()
         _redraw_progress_layer()
@@ -1354,13 +1355,13 @@ func _apply_paid_road(row: int, col: int, action_id: String) -> bool:
     # переносить, а вся трасса считается оплаченной.
     if not build_manager.active_builds.has(build_key):
         road_manager.build_road_to(row, col, tile_data, map_rows, map_cols,
-                get_town_influence_hexes(row, col))
+                get_town_influence_hexes(row, col), -1, _road_hex_allowed())
         _mark_road_built(row, col, plan)
         return true
     var paid_segments := int(floor(float(paid_work) / per_hex))
     paid_segments = clampi(paid_segments, 1, total_segments)
     road_manager.build_road_to(row, col, tile_data, map_rows, map_cols,
-            get_town_influence_hexes(row, col), paid_segments)
+            get_town_influence_hexes(row, col), paid_segments, _road_hex_allowed())
     build_manager.active_builds[build_key]["work_cost"] = remaining_work
     build_manager.active_builds[build_key]["progress"] = 0.0
     map_renderer.queue_redraw()
@@ -1721,9 +1722,22 @@ func get_improvement_work_cost(imp_id: String, row: int, col: int) -> Dictionary
 # возвращает road_manager.plan_road_to. Нужен панели управления (превью
 # цены) и main_map.get_improvement_work_cost. Кольцо влияния городка
 # подставляется здесь: road_manager о городках не знает.
+#
+# hex_allowed = is_hex_known — дорога, которую строит игрок, идёт ТОЛЬКО по
+# известной территории (Кольцо Влияния или разведано). В первую очередь это
+# касается дороги к городку: взаимодействовать с городком можно только на
+# разведанном гексе, и подойти к нему тоже можно только по разведанной земле.
+# Автоматические сети дорог фильтр не получают (см. road_manager
+# ._find_path_between).
 func get_road_plan(row: int, col: int) -> Dictionary:
     return road_manager.plan_road_to(row, col, tile_data, map_rows, map_cols,
-            get_town_influence_hexes(row, col))
+            get_town_influence_hexes(row, col), _road_hex_allowed())
+
+# Предикат «по этому гексу можно вести дорогу игрока». Отдельная функция,
+# чтобы все вызовы (планирование, постройка, восстановление из сейва) искали
+# по одной и той же ссылке на метод, а Callable каждый раз создавался заново.
+func _road_hex_allowed() -> Callable:
+    return Callable(self, "is_hex_known")
 
 # Кольцо влияния городка на гексе (row, col) или пустой массив, если на
 # гексе нет городка.
@@ -1752,6 +1766,8 @@ func _on_territory_expanded(_row: int, _col: int, cost: int):
     hud.show_message("Территория расширена! (затрачено %d труда)" % cost)
     # Освоение снимает туман с гексов (in_influence = true) — кэш заливки колец
     # городков пересобираем, иначе новая территория останется без заливки.
+    # Заодно сбрасывается кэш планов дорог: купленный гекс стал известным.
+    road_manager.bump_map_knowledge()
     map_renderer.invalidate_town_influence_cache()
     map_renderer.queue_redraw()
     if city_ui.visible:
@@ -2059,6 +2075,9 @@ func debug_open_whole_map():
             tile["in_influence"] = true
             tile["is_explored"] = true
 
+    # Открыта вся карта — известность изменилась, планы дорог пересчитываются.
+    road_manager.bump_map_knowledge()
+
     # Расширяем Кольцо и Регион до размеров всей карты — is_in_influence()
     # и is_valid_hex() будут возвращать true для любых координат.
     ring_rows = map_rows
@@ -2107,6 +2126,10 @@ func advance_to_next_era():
                 continue
             tile["is_explored"] = true
             tile["in_influence"] = true
+
+    # Весь Регион стал известным — планы дорог пересчитываются (трасса к
+    # городку идёт по разведанной земле).
+    road_manager.bump_map_knowledge()
 
     # 3. Бывшие Кольцо + Регион становятся новым Кольцом.
     ring_rows = region_rows
@@ -2433,6 +2456,9 @@ func start_scouting(chunk: Array):
 func _complete_scouting():
     for hex in scouting_chunk:
         tile_data[hex.row][hex.col]["is_explored"] = true
+    # Разведка открыла новые гексы — планы дорог могли измениться (трасса к
+    # городку идёт только по разведанной земле), поэтому кэш планов сбрасывается.
+    road_manager.bump_map_knowledge()
     var info = _get_chunk_info(scouting_chunk)
     hud.show_message("Разведка завершена! %s" % info)
     is_scouting = false

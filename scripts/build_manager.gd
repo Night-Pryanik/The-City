@@ -175,7 +175,17 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null) -> bo
     # стройка завершилась бы мгновенно, игрок не получил бы дороги и не
     # понял бы почему.
     if is_road_action and work_cost <= 0:
-        emit_signal("build_message", "Дорогу сюда построить нельзя: нет сухопутного пути от города")
+        # Причина берётся прямо из плана: у городка это обычно «нет разведанного
+        # пути», и сказать «нет сухопутного пути» было бы неверно — к городку
+        # сухопутный путь есть, просто игрок его ещё не разведал.
+        var reason := "нет сухопутного пути от города"
+        if main_map and main_map.has_method("get_road_plan"):
+            reason = str(main_map.get_road_plan(row, col).get("reason", reason))
+        if not reason.is_empty():
+            # Причины из плана начинаются с заглавной — после двоеточия в
+            # предложении это выглядит ошибкой.
+            reason = reason.substr(0, 1).to_lower() + reason.substr(1)
+        emit_signal("build_message", "Дорогу сюда построить нельзя: %s" % reason)
         return false
 
     if work_cost <= 0 or CityData.ignore_build_requirements:

@@ -1323,6 +1323,11 @@ func _build_road_preview(row: int, col: int, action_id: String) -> bool:
             town = main_map.town_manager.find_town_at(row, col)
         var town_name := str(town.get("name", "городка")) if town != null else "городка"
         target_label.text = " Куда: ближайшая дорога в кольце влияния городка «%s»" % town_name
+        # Маршрут может оказаться длиннее, чем «прямая» дорога: он идёт только
+        # по разведанной территории — ровно тем путём, которым игрок дошёл до
+        # городка. Без этой строки цена в 2–3 раза выше ожидаемой выглядит
+        # ошибкой.
+        target_label.text += " (только по разведанной территории)"
     else:
         target_label.text = " Куда: от ближайшей дороги города до этого гекса"
     target_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

@@ -14,6 +14,10 @@
 #   4. Дорога до ГОРОДКА идёт не в гекс городка, а к ближайшей дороге в его
 #      кольце влияния; после постройки сети города и городка пересеклись
 #      (is_town_linked_to_city), а сегменты связи помечены отдельно.
+#   4a. Дорога, которую строит игрок, идёт ТОЛЬКО по известной территории
+#      (в Кольце Влияния или разведано): разведанный городок без разведанного
+#      пути к нему недостижим, причина зовёт разведчиков, а после разведки
+#      коридора дорога появляется. Автоматические сети дорог фильтр не получают.
 #   5. Восстановление из сейва: флаг road_built на гексе и road_linked в
 #      записи городка возвращают и дорогу, и связь (rebuild_player_roads),
 #      а сериализация их записывает.
@@ -64,6 +68,7 @@ func _run() -> void:
     _test_cost_per_hex(state)
     _test_plan_and_build_hex(state)
     _test_impossible_targets(state)
+    _test_town_road_needs_known_territory(state)
     _test_town_link(state)
     _test_restore_from_save_flags(state)
 
@@ -243,6 +248,66 @@ func _test_impossible_targets(state: Dictionary) -> void:
             tile_data, ROWS, COLS)
     check(not canal_plan.get("ok", true),
             "к ирригационному каналу дорога не строится (no_road)", state)
+
+# -------------------------------------------------------
+# 3b. Дорога к городку идёт только по разведанной территории
+# -------------------------------------------------------
+
+func _test_town_road_needs_known_territory(state: Dictionary) -> void:
+    var tile_data := _make_map()
+    _rm.initialize(CITY_ROW, CITY_COL)
+    var town := _setup_town(tile_data)
+    var ring: Array = town["influence_hexes"]
+
+    # Без ограничения по известности трасса есть — это «старые» правила.
+    var open_plan: Dictionary = _rm.plan_road_to(TOWN_ROW, TOWN_COL,
+            tile_data, ROWS, COLS, ring)
+    check(open_plan.get("ok", false),
+            "без ограничения по известности дорога до городка строится", state)
+
+    # Правило игры: взаимодействовать с городком можно только на разведанном
+    # гексе, и подойти к нему можно только по разведанной земле. Здесь игрок
+    # разведал сам городок, но пути к нему ещё нет — режем «коридор» полосой
+    # неразведанных гексов между городом и городком.
+    _set_corridor_known(tile_data, false)
+    var filtered: Dictionary = _rm.plan_road_to(TOWN_ROW, TOWN_COL,
+            tile_data, ROWS, COLS, ring, _known_hex_filter(tile_data))
+    check(not filtered.get("ok", true),
+            "через неразведанную территорию дорога к городку строиться не должна", state)
+    check(str(filtered.get("reason", "")).contains("разведан"),
+            "причина должна говорить про разведку, а не про «пути нет вообще»: %s"
+                    % filtered.get("reason", ""), state)
+
+    # Как только игрок разведал проход — дорога появляется. Кэш плана при этом
+    # обязан сбрасываться (bump_map_knowledge), иначе остался бы старый ответ.
+    _set_corridor_known(tile_data, true)
+    _rm.bump_map_knowledge()
+    var after_scouting: Dictionary = _rm.plan_road_to(TOWN_ROW, TOWN_COL,
+            tile_data, ROWS, COLS, ring, _known_hex_filter(tile_data))
+    check(after_scouting.get("ok", false),
+            "после разведки прохода дорога к городку должна появиться: %s"
+                    % after_scouting.get("reason", ""), state)
+    check(_rm.build_road_to(TOWN_ROW, TOWN_COL, tile_data, ROWS, COLS, ring, -1,
+            _known_hex_filter(tile_data)),
+            "дорога по разведанному пути строится", state)
+    check(_rm.is_town_linked_to_city(TOWN_ROW, TOWN_COL),
+            "городок соединён с городом", state)
+
+# Полоса гексов строго между городом и городком: known=true делает её
+# разведанной, false — неразведанной (коридор, которого ещё нет).
+func _set_corridor_known(tile_data: Array, known: bool) -> void:
+    for row in range(mini(TOWN_ROW, CITY_ROW) + 1, maxi(TOWN_ROW, CITY_ROW)):
+        for col in range(COLS):
+            tile_data[row][col]["in_influence"] = false
+            tile_data[row][col]["is_explored"] = known
+
+# Предикат «известен ли гекс игроку» — та же логика, что у main_map.is_hex_known.
+func _known_hex_filter(tile_data: Array) -> Callable:
+    return func(row: int, col: int) -> bool:
+        var tile = tile_data[row][col]
+        if tile == null:
+            return false
+        return bool(tile.get("in_influence", false)) or bool(tile.get("is_explored", false))
 
 # -------------------------------------------------------
 # 4. Дорога до городка: до ближайшей дороги в кольце влияния
@@ -452,7 +517,9 @@ func _test_live_scene(state: Dictionary) -> void:
     if town != null:
         var t_row := int(town.get("row", -1))
         var t_col := int(town.get("col", -1))
+        # Разведка открыла САМ городок, но не путь к нему: коридора ещё нет.
         main_map.tile_data[t_row][t_col]["is_explored"] = true
+        main_map.road_manager.bump_map_knowledge()
         var tile = main_map.tile_data[t_row][t_col]
 
         # Окно городка открывается БЕЗ дороги: доступ свободен, гейтится
@@ -472,51 +539,7 @@ func _test_live_scene(state: Dictionary) -> void:
         check(not open_action.is_empty() and bool(open_action.get("enabled", false)),
                 "кнопка «Открыть городок» активна и без дороги", state)
 
-        # Стройка дороги на гексе городка разрешена: запреты «здесь городок» и
-        # «здесь кольцо влияния» её не касаются (см. build_manager.start_build).
-        check(bm.start_build(t_row, t_col, ROAD_ACTION_ID),
-                "дорогу до городка должно быть можно построить", state)
-        await _finish_build(state)
-        check(rm.is_town_linked_to_city(t_row, t_col),
-                "после стройки городок должен быть соединён с городом", state)
-        check(bool(town.get("road_linked", false)),
-                "в записи городка должен стоять флаг road_linked", state)
-        check(main_map.town_manager.is_trade_available(town),
-                "с дорогой торговля с городком доступна", state)
-        check(not _has_action(panel._collect_actions(t_row, t_col, tile),
-                "special", ROAD_ACTION_ID),
-                "к соединённому городку кнопка дороги больше не показывается", state)
-        main_map.open_town_ui(t_row, t_col)
-        check(main_map.town_ui.visible, "окно городка открывается и с дорогой", state)
-        check(main_map.town_ui.status_label.text.is_empty(),
-                "с дорогой подпись о недоступной торговле исчезает", state)
-        main_map.town_ui.close_town()
-
-        # Значок торговли рисуется только у соединённого и раскрытого городка.
-        check(main_map.map_renderer._is_town_trade_connected(t_row, t_col),
-                "рендерер должен считать городок соединённым", state)
-        # Сегменты связи рисуются с теми же гейтами, что и дороги городков:
-        # сначала эры, потом тумана — иначе дорога выдала бы неисследованную
-        # территорию.
-        var link_segments: Dictionary = rm.get_all_town_link_segments()
-        check(not link_segments.is_empty(), "у построенной связи должны быть сегменты", state)
-        check(not main_map.map_renderer.are_town_roads_visible(),
-                "в 1-й эпохе дороги к городкам не рисуются", state)
-        for key in link_segments.keys():
-            check(not main_map.map_renderer.is_town_road_segment_visible(
-                    _parse_segment(key)[0], _parse_segment(key)[1],
-                    _parse_segment(key)[2], _parse_segment(key)[3]),
-                    "в 1-й эпохе сегмент связи не должен рисоваться: %s" % key, state)
-        # С эры Античности связь видна, но по-прежнему не выдаёт туман.
-        main_map.advance_to_next_era()
-        await process_frame
-        for key in link_segments.keys():
-            var s := _parse_segment(key)
-            var visible_by_rule: bool = not main_map.is_hex_in_fog(s[0], s[1]) \
-                    and not main_map.is_hex_in_fog(s[2], s[3])
-            check(main_map.map_renderer.is_town_road_segment_visible(s[0], s[1], s[2], s[3])
-                    == visible_by_rule,
-                    "видимость сегмента связи не совпала с правилом тумана: %s" % key, state)
+        await _test_town_road_cycle(main_map, bm, panel, town, state)
 
     # --- Флаг дороги попадает в сейв ---
     var save_manager = get_root().get_node("SaveManager")
@@ -532,6 +555,96 @@ func _test_live_scene(state: Dictionary) -> void:
     if main_map != null and is_instance_valid(main_map):
         get_root().remove_child(main_map)
         main_map.free()
+
+# -------------------------------------------------------
+# 6b. Сценарий дороги до городка на живой сцене
+# -------------------------------------------------------
+
+# Полный цикл: сначала дороги НЕТ (городок разведан, а пути к нему нет), затем
+# разведка открывает коридор, затем дорога строится и связывает городки.
+# Отдельная функция, потому что сценарий асинхронный (await) и должен уметь
+# выйти досрочно: городок, вообще не связанный с городом сушей (остров), — не
+# баг механики, и такой случай честнее пропустить, чем подгонять карту.
+func _test_town_road_cycle(main_map, bm, panel, town, state: Dictionary) -> void:
+    var rm = main_map.road_manager
+    var t_row := int(town.get("row", -1))
+    var t_col := int(town.get("col", -1))
+    var tile = main_map.tile_data[t_row][t_col]
+
+    # Проверка «есть ли вообще сухопутный путь» — план БЕЗ ограничения по
+    # известности (его не делает сам игровой код, но для выбора сценария он
+    # годится: никаких побочных эффектов у plan_road_to нет).
+    var open_plan: Dictionary = rm.plan_road_to(t_row, t_col, main_map.tile_data,
+            main_map.map_rows, main_map.map_cols,
+            main_map.get_town_influence_hexes(t_row, t_col))
+    if not open_plan.get("ok", false):
+        print("ПРОПУЩЕНО: выбранный городок не связан с городом сушей")
+        return
+
+    # Пока к городку нет разведанного пути, дороги не будет: известен только
+    # сам городок, а идти к нему не через что. Это главное правило — раньше
+    # трасса шла напрямую через неисследованную землю.
+    var no_route: Dictionary = main_map.get_road_plan(t_row, t_col)
+    check(not no_route.get("ok", true),
+            "без разведанного пути дорога до городка строиться не должна", state)
+    check(str(no_route.get("reason", "")).contains("разведан"),
+            "причина должна звать разведчиков: %s" % no_route.get("reason", ""), state)
+    check(not bm.start_build(t_row, t_col, ROAD_ACTION_ID),
+            "стройка дороги без разведанного пути должна быть отклонена", state)
+
+    # Разведчик доходит по суше от городка до города — открыт коридор.
+    var opened := _explore_corridor(main_map, t_row, t_col)
+    check(opened > 0, "разведка должна открыть коридор к городку", state)
+    var town_plan: Dictionary = main_map.get_road_plan(t_row, t_col)
+    check(town_plan.get("ok", false), "после разведки пути дорога доступна: %s"
+            % town_plan.get("reason", ""), state)
+    check(_path_is_known(main_map, town_plan.get("path", [])),
+            "ни один гекс трассы не должен быть неразведанным", state)
+
+    # Стройка дороги на гексе городка разрешена: запреты «здесь городок» и
+    # «здесь кольцо влияния» её не касаются (см. build_manager.start_build).
+    check(bm.start_build(t_row, t_col, ROAD_ACTION_ID),
+            "дорогу до городка должно быть можно построить", state)
+    await _finish_build(state)
+    check(rm.is_town_linked_to_city(t_row, t_col),
+            "после стройки городок должен быть соединён с городом", state)
+    check(bool(town.get("road_linked", false)),
+            "в записи городка должен стоять флаг road_linked", state)
+    check(main_map.town_manager.is_trade_available(town),
+            "с дорогой торговля с городком доступна", state)
+    check(not _has_action(panel._collect_actions(t_row, t_col, tile),
+            "special", ROAD_ACTION_ID),
+            "к соединённому городку кнопка дороги больше не показывается", state)
+    main_map.open_town_ui(t_row, t_col)
+    check(main_map.town_ui.visible, "окно городка открывается и с дорогой", state)
+    check(main_map.town_ui.status_label.text.is_empty(),
+            "с дорогой подпись о недоступной торговле исчезает", state)
+    main_map.town_ui.close_town()
+
+    # Значок торговли рисуется только у соединённого и раскрытого городка.
+    check(main_map.map_renderer._is_town_trade_connected(t_row, t_col),
+            "рендерер должен считать городок соединённым", state)
+    # Сегменты связи рисуются с теми же гейтами, что и дороги городков:
+    # сначала эры, потом тумана.
+    var link_segments: Dictionary = rm.get_all_town_link_segments()
+    check(not link_segments.is_empty(), "у построенной связи должны быть сегменты", state)
+    check(not main_map.map_renderer.are_town_roads_visible(),
+            "в 1-й эпохе дороги к городкам не рисуются", state)
+    for key in link_segments.keys():
+        check(not main_map.map_renderer.is_town_road_segment_visible(
+                _parse_segment(key)[0], _parse_segment(key)[1],
+                _parse_segment(key)[2], _parse_segment(key)[3]),
+                "в 1-й эпохе сегмент связи не должен рисоваться: %s" % key, state)
+    # С эры Античности связь видна, но по-прежнему не выдаёт туман.
+    main_map.advance_to_next_era()
+    await process_frame
+    for key in link_segments.keys():
+        var s := _parse_segment(key)
+        var visible_by_rule: bool = not main_map.is_hex_in_fog(s[0], s[1]) \
+                and not main_map.is_hex_in_fog(s[2], s[3])
+        check(main_map.map_renderer.is_town_road_segment_visible(s[0], s[1], s[2], s[3])
+                == visible_by_rule,
+                "видимость сегмента связи не совпала с правилом тумана: %s" % key, state)
 
 # -------------------------------------------------------
 # Хелперы
@@ -647,6 +760,43 @@ func _find_unlinked_town(main_map):
         if not rm.is_town_linked_to_city(int(town.get("row", -1)), int(town.get("col", -1))):
             return town
     return null
+
+# Имитирует разведку пути от городка к городу: игрок открывает гексы по
+# сухопутному пути, пока не встретит уже известную землю. Так выглядит
+# разведанный коридор в настоящей игре — чанки разведки всегда примыкают к
+# известной территории. Возвращает число открытых гексов.
+func _explore_corridor(main_map, from_row: int, from_col: int) -> int:
+    var queue: Array = [{"row": from_row, "col": from_col}]
+    var visited := {"%d,%d" % [from_row, from_col]: true}
+    var opened := 0
+    # Разведка идёт ОТ городка, который уже разведан, поэтому первый гекс
+    # разведку не останавливает — исключение делается только для него.
+    var first := true
+    while not queue.is_empty():
+        var cur: Dictionary = queue.pop_front()
+        if not first and main_map.is_hex_known(int(cur.row), int(cur.col)):
+            continue
+        first = false
+        main_map.tile_data[cur.row][cur.col]["is_explored"] = true
+        opened += 1
+        for n in _hu.get_neighbors_odd_r(int(cur.row), int(cur.col),
+                main_map.map_rows, main_map.map_cols):
+            var key := "%d,%d" % [n.row, n.col]
+            if visited.has(key):
+                continue
+            visited[key] = true
+            if _is_water(main_map.tile_data[n.row][n.col]):
+                continue
+            queue.append({"row": n.row, "col": n.col})
+    main_map.road_manager.bump_map_knowledge()
+    return opened
+
+# Все ли гексы трассы известны игроку (в Кольце Влияния или разведаны).
+func _path_is_known(main_map, path: Array) -> bool:
+    for hex in path:
+        if not main_map.is_hex_known(int(hex.row), int(hex.col)):
+            return false
+    return true
 
 func check(cond: bool, msg: String, state: Dictionary):
     if not cond:

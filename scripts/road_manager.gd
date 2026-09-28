@@ -21,7 +21,13 @@ var city_col: int = 0
 # спрашивает план на КАЖДЫЙ тик, а поиск пути — Дейкстра по всей карте, так
 # что без кэша это была бы тяжёлая работа в игровом цикле.
 var _network_version: int = 0
-# Кэш планов: "версия|row,col" -> { ok, reason, path, segments, is_town }.
+# Версия ЗНАНИЯ карты игроком: сколько раз менялось «что известно» (разведка
+# завершилась, куплен чанк, сменилась эпоха, дебаг-открытие карты). План
+# дороги зависит и от неё — трасса к городку идёт только по разведанной земле,
+# — поэтому версия входит в ключ кэша наравне с версией сети дорог.
+var _knowledge_version: int = 0
+# Кэш планов: "версия сети:версия знаний:фильтр|row,col" ->
+# { ok, reason, path, segments, is_town }.
 var _plan_cache: Dictionary = {}
 
 # === Сети дорог городков ===
@@ -139,7 +145,8 @@ func _find_connect_path(
     connected: Dictionary,
     tile_data: Array,
     region_rows: int,
-    region_cols: int
+    region_cols: int,
+    hex_allowed: Callable = Callable()
 ) -> Array:
     if start_row >= 0 and start_row < tile_data.size() \
             and start_col >= 0 and start_col < tile_data[start_row].size():
@@ -151,8 +158,9 @@ func _find_connect_path(
                 and GameData.improvements[start_imp_id].get("no_road", false):
             return []
 
-    var best_path = _find_path_dijkstra(
-        start_row, start_col, tile_data, region_rows, region_cols, connected
+    var best_path = _find_path_between(
+        {_hex_key(start_row, start_col): true}, connected,
+        tile_data, region_rows, region_cols, hex_allowed
     )
     if best_path.is_empty():
         return []
@@ -266,6 +274,16 @@ func _invalidate_plan_cache() -> void:
     _network_version += 1
     _plan_cache.clear()
 
+# Сообщает менеджеру, что на карте изменилось, что ИЗВЕСТНО игроку: завершилась
+# разведка, куплен чанк, сменилась эпоха, открыта вся карта в дебаге. План
+# дороги игрока строится по разведанной территории, поэтому без этой версии
+# кэш отдавал бы устаревший маршрут (например, «дороги нет» сразу после того,
+# как игрок разведал проход к городку).
+# Вызывается из main_map — там, где меняется is_explored / in_influence.
+func bump_map_knowledge() -> void:
+    _knowledge_version += 1
+    _plan_cache.clear()
+
 # Подключён ли гекс к сети дорог ГОРОДА (по нему уже проложена дорога —
 # либо он гекс города, либо через него прошла трасса). Это и есть проверка
 # «на этом гексе дороги ещё нет» для кнопки спецдействия.
@@ -312,23 +330,32 @@ func _town_road_targets_in_ring(
 #   - гекс ГОРОДКА — цель ближайшая дорога в КОЛЬЦЕ ВЛИЯНИЯ городка
 #     (см. _town_road_targets_in_ring), то есть соединяются две сети.
 #
+# hex_allowed (необязательный Callable) ограничивает трассу известной игроку
+# территорией; его передаёт main_map.get_road_plan (is_hex_known). Признак
+# фильтра входит в ключ кэша: план без фильтра и план с фильтром — разные
+# маршруты, и путать их нельзя.
+#
 # Возвращает { ok, reason, path, segments, is_town }. segments — число НОВЫХ
 # участков трассы; именно оно умножается на цену за гекс
-# (MapHelpers.get_road_work_cost). Результат кэшируется по версии сети:
-# панель спрашивает план на каждом тике, а поиск пути — Дейкстра по карте.
+# (MapHelpers.get_road_work_cost). Результат кэшируется по версиям сети дорог
+# и знаний о карте: панель спрашивает план на каждом тике, а поиск пути —
+# Дейкстра по карте.
 func plan_road_to(
     row: int,
     col: int,
     tile_data: Array,
     region_rows: int,
     region_cols: int,
-    town_influence_hexes: Array = []
+    town_influence_hexes: Array = [],
+    hex_allowed: Callable = Callable()
 ) -> Dictionary:
-    var cache_key := "%d|%s" % [_network_version, _hex_key(row, col)]
+    var cache_key := "%d:%d:%d|%s" % [
+        _network_version, _knowledge_version,
+        int(hex_allowed.is_valid()), _hex_key(row, col)]
     if _plan_cache.has(cache_key):
         return _plan_cache[cache_key]
     var plan := _compute_road_plan(
-        row, col, tile_data, region_rows, region_cols, town_influence_hexes)
+        row, col, tile_data, region_rows, region_cols, town_influence_hexes, hex_allowed)
     _plan_cache[cache_key] = plan
     return plan
 
@@ -338,7 +365,8 @@ func _compute_road_plan(
     tile_data: Array,
     region_rows: int,
     region_cols: int,
-    town_influence_hexes: Array
+    town_influence_hexes: Array,
+    hex_allowed: Callable
 ) -> Dictionary:
     if row < 0 or row >= tile_data.size() or col < 0 or col >= tile_data[row].size():
         return _road_plan(false, "Гекс за пределами карты", [], 0, false)
@@ -355,10 +383,13 @@ func _compute_road_plan(
         if targets.is_empty():
             return _road_plan(false, "У городка нет дороги в кольце влияния", [], 0, true)
         # Многоточечный поиск: от всех дорог кольца — к ближайшей дороге города.
+        # Трасса идёт ТОЛЬКО по известной территории (см. hex_allowed): к
+        # городку нельзя даже подойти, не разведав дорогу до него.
         var town_path = _find_path_between(targets, connected_hexes,
-                tile_data, region_rows, region_cols)
+                tile_data, region_rows, region_cols, hex_allowed)
         if town_path.is_empty():
-            return _road_plan(false, "От города нет сухопутного пути до городка", [], 0, true)
+            return _road_plan(false, _town_road_failure_reason(targets, tile_data,
+                    region_rows, region_cols, hex_allowed), [], 0, true)
         if not _validate_path(town_path):
             printerr("Ошибка: путь дороги к городку содержит несоседние гексы!")
             return _road_plan(false, "Не удалось найти путь до городка", [], 0, true)
@@ -370,10 +401,33 @@ func _compute_road_plan(
     if MapHelpers.is_water_terrain(tile.get("terrain", "plain")):
         return _road_plan(false, "По воде дорога не строится", [], 0, false)
     var hex_path = _find_connect_path(row, col, connected_hexes,
-            tile_data, region_rows, region_cols)
+            tile_data, region_rows, region_cols, hex_allowed)
     if hex_path.is_empty():
         return _road_plan(false, "От города нет сухопутного пути до этого гекса", [], 0, false)
     return _road_plan(true, "", hex_path, hex_path.size() - 1, false)
+
+# Почему не получилось дойти до городка, и что игроку с этим делать. Случая два,
+# и советы должны быть разными:
+#   - сухопутный путь ЕСТЬ, но идёт по неразведанной земле → нужен разведчик;
+#     «городок виден, но подойти не через что»;
+#   - сухопутного пути НЕТ вообще (городок за водой) → разведчики не помогут,
+#     тут нужен другой городок (морская торговля в игре пока не заведена).
+# Второй случай проверяется тем же поиском, но без ограничения по известности.
+# Лишняя работа — один Дейкстра, и только на неудачном плане, а результат плана
+# кэшируется, так что на каждый тик она не повторяется.
+func _town_road_failure_reason(
+        targets: Dictionary,
+        tile_data: Array,
+        region_rows: int,
+        region_cols: int,
+        hex_allowed: Callable) -> String:
+    if not hex_allowed.is_valid():
+        return "От города нет сухопутного пути до городка"
+    var any_path := _find_path_between(targets, connected_hexes,
+            tile_data, region_rows, region_cols)
+    if any_path.is_empty():
+        return "От города нет сухопутного пути до городка (городок за водой)"
+    return "Нет разведанного пути от города до городка — отправьте туда разведчиков"
 
 func _road_plan(ok: bool, reason: String, path: Array, segments: int, is_town: bool) -> Dictionary:
     return {
@@ -395,9 +449,11 @@ func build_road_to(
     region_rows: int,
     region_cols: int,
     town_influence_hexes: Array = [],
-    segments_to_build: int = -1
+    segments_to_build: int = -1,
+    hex_allowed: Callable = Callable()
 ) -> bool:
-    var plan := plan_road_to(row, col, tile_data, region_rows, region_cols, town_influence_hexes)
+    var plan := plan_road_to(row, col, tile_data, region_rows, region_cols,
+            town_influence_hexes, hex_allowed)
     if not plan.get("ok", false):
         return false
     var is_town := bool(plan.get("is_town", false))
@@ -437,11 +493,15 @@ func build_road_to(
 # rebuild_town_roads (дорожные сети городков — они и есть цель дороги
 # до городка). Для гекса городка цель не сам гекс, а кольцо влияния,
 # поэтому towns нужен здесь: road_manager о нём ничего не знает.
+# hex_allowed — тот же Callable «известна ли территория», что и при обычном
+# планировании (его передаёт main_map): восстановленная дорога обязана идти
+# по разведанной земле ровно так же, как строилась.
 func rebuild_player_roads(
     towns: Array,
     tile_data: Array,
     region_rows: int,
-    region_cols: int
+    region_cols: int,
+    hex_allowed: Callable = Callable()
 ) -> void:
     var ring_by_town: Dictionary = {}
     for town in towns:
@@ -456,7 +516,7 @@ func rebuild_player_roads(
             if tile == null or not bool(tile.get("road_built", false)):
                 continue
             var ring: Array = ring_by_town.get(_hex_key(row, col), [])
-            build_road_to(row, col, tile_data, region_rows, region_cols, ring)
+            build_road_to(row, col, tile_data, region_rows, region_cols, ring, -1, hex_allowed)
 
 # Сегменты дорог, соединяющих город с городками (для отрисовки с гейтами
 # тумана — см. town_link_segments).
@@ -496,6 +556,15 @@ func _validate_path(path: Array) -> bool:
 # города), и соединение с дорожной сетью городка (sources = кольцо влияния,
 # targets = connected_hexes) — см. plan_road_to.
 #
+# hex_allowed (необязательный) — Callable(row, col) -> bool: какие гексы вообще
+# можно использовать в трассе. Им ограничиваются ТОЛЬКО дороги, которые строит
+# игрок: они идут по известной игроку территории (main_map.is_hex_known —
+# в Кольце Влияния или разведано), потому что взаимодействовать с городком
+# можно только на разведанном гексе, и дорога к нему обязана идти тем же
+# разведанным путём. Автоматические сети (дороги к улучшениям города и
+# городков) фильтр не передают и ведут себя как раньше: улучшения стоят в
+# Кольце Влияния, а городок разведывает окрестности сам.
+#
 # Исходный гекс сам по себе целью не считается (как раньше, до обобщения):
 # если источник уже лежит в targets, дорога не строится «сама в себя».
 func _find_path_between(
@@ -503,14 +572,22 @@ func _find_path_between(
     targets: Dictionary,
     tile_data: Array,
     region_rows: int,
-    region_cols: int
+    region_cols: int,
+    hex_allowed: Callable = Callable()
 ) -> Array:
     var visited = {}
     var parent = {}
     var cost_so_far = {}
 
-    # Инициализация: все источники стартуют с нулевой стоимости
+    # Инициализация: все источники стартуют с нулевой стоимости. Источники,
+    # которым запрещено прохождение (туман войны), отбрасываются: иначе трасса
+    # начиналась бы с гекса, которого игрок не знает, и первый же сегмент уходил
+    # бы в неисследованную землю.
     for source_key in sources.keys():
+        if hex_allowed.is_valid() \
+                and not bool(hex_allowed.call(
+                        int(source_key.split(",")[0]), int(source_key.split(",")[1]))):
+            continue
         cost_so_far[source_key] = 0
         parent[source_key] = null
     if cost_so_far.is_empty():
@@ -537,6 +614,11 @@ func _find_path_between(
 
             var tile = tile_data[n.row][n.col]
             if tile == null or MapHelpers.is_water_terrain(tile.get("terrain", "plain")):
+                continue
+            # Территория, по которой дорога строить нельзя (туман войны):
+            # проверяется ДО подсчёта стоимости, чтобы такие гексы вообще не
+            # попадали в поиск.
+            if hex_allowed.is_valid() and not bool(hex_allowed.call(n.row, n.col)):
                 continue
             var terrain_id = tile.get("terrain", "plain")
             var move_cost = 1
@@ -566,22 +648,6 @@ func _cheapest_open_node(cost_so_far: Dictionary, visited: Dictionary):
             min_cost = cost_so_far[key]
             next_key = key
     return next_key
-
-# Поиск пути от одного гекса до ближайшего гекса из `connected`
-# (у города — connected_hexes, у городка — его личный набор
-# в town_connected_hexes). Тонкая обёртка над общим многоточечным поиском.
-func _find_path_dijkstra(
-    start_row: int,
-    start_col: int,
-    tile_data: Array,
-    region_rows: int,
-    region_cols: int,
-    connected: Dictionary
-) -> Array:
-    return _find_path_between(
-        {_hex_key(start_row, start_col): true}, connected,
-        tile_data, region_rows, region_cols
-    )
 
 # Восстанавливает путь от конца к началу
 func _reconstruct_path(end_key: String, parent: Dictionary) -> Array:
