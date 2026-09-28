@@ -55,6 +55,14 @@
       "category": "luxury",
       "unlock_tech": "jewelry",
       "icon": "lazurite_jewelry.png"
+    },
+    {
+      "id": "malachite_jewelry", "price": 120,
+      "name": "Украшения из малахита",
+      "type": "product",
+      "category": "luxury",
+      "unlock_tech": "jewelry",
+      "icon": "malachite_jewelry.png"
     }
   ]
 }
