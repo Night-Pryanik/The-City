@@ -51,6 +51,16 @@
       "description": "Создает краситель (сепию) из каракатиц"
     },
     {
+      "id": "rose_madder",
+      "name": "Крапп",
+      "produced_in": [ "dyer_house" ],
+      "resources": { "marena_roots": 20 },
+      "result": { "rose_madder": 10 },
+      "time": 5.0,
+      "unlock_tech": "dyeing",
+      "description": "Создает краситель (крапп) из корней марены"
+    },
+    {
       "id": "woad",
       "name": "Вайда",
       "produced_in": [ "dyer_house" ],
