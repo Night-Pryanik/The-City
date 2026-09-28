@@ -278,8 +278,29 @@ func get_price_breakdown_for_quality(res_id: String, quality_id: String) -> Dict
         return {"base": 0, "multiplier": mult, "total": 0}
     return {"base": base, "multiplier": mult, "total": int(round(float(base) * mult))}
 
+# Хвост строки цены уровня качества для тултипа строки вкладки «Ресурсы» —
+#   " = x1.30 = 5", то есть всё, КРОМЕ звёзд.
+# Звёзды отдаются отдельно не для красоты, а по требованию оформления: в
+# тултипе строки звёзды красятся в цвет уровня (data/qualities.json, color), а
+# сам расчёт цены — золотым (ui_helpers.PRICE_TEXT_COLOR), и одним Label с
+# одним цветом на всю строку это не выразить.
+# Пустая строка, если показывать нечего: у товара нет цены или уровня
+# качества нет в шкале (без звёзд строку не из чего собрать).
+func format_quality_price_tail(res_id: String, quality_id: String) -> String:
+    if quality_id.is_empty() or not get_quality_levels().has(quality_id):
+        return ""
+    var d = get_price_breakdown_for_quality(res_id, quality_id)
+    if int(d["total"]) <= 0:
+        return ""
+    return " = x%s = %d" % [
+        "%.2f" % float(d["multiplier"]), int(d["total"])
+    ]
+
 # Строка цены уровня качества для тултипа строки вкладки «Ресурсы»:
 #   "★★ = x1.30 = 5"
+# Собирается из звёзд уровня и хвоста выше — обе части берутся из данных, так
+# что текст строки и её части (звёзды отдельно, расчёт отдельно) не могут
+# разойтись.
 # Подпись «Цена:» в строке не нужна: уровень и так назван звёздами, а над
 # блоком лестницы уже стоит базовая «Цена: N» того же товара.
 # Строка собирается для ЛЮБОГО уровня шкалы, включая самый низкий
@@ -290,14 +311,10 @@ func get_price_breakdown_for_quality(res_id: String, quality_id: String) -> Dict
 # Пустая строка, если показывать нечего: у товара нет цены или уровня
 # качества нет в шкале (без звёзд строку не из чего собрать).
 func format_quality_price_line(res_id: String, quality_id: String) -> String:
-    if quality_id.is_empty() or not get_quality_levels().has(quality_id):
+    var tail := format_quality_price_tail(res_id, quality_id)
+    if tail == "":
         return ""
-    var d = get_price_breakdown_for_quality(res_id, quality_id)
-    if int(d["total"]) <= 0:
-        return ""
-    return "%s = x%s = %d" % [
-        get_quality_stars(quality_id), "%.2f" % float(d["multiplier"]), int(d["total"])
-    ]
+    return get_quality_stars(quality_id) + tail
 
 # Цены по уровням качества, которые РЕАЛЬНО лежат на складе, для тултипа строки
 # вкладки «Ресурсы». Показываются только уровни, присутствующие в
@@ -306,11 +323,15 @@ func format_quality_price_line(res_id: String, quality_id: String) -> String:
 # «превосходного» уровня, которого на складе нет, показывать незачем — это
 # вводит в заблуждение.
 # Уровни выводятся от худшего к лучшему (порядок data/qualities.json).
-# Формат строки — ТОТ ЖЕ, что у format_quality_price_line («★★ = x1.30 = 5»), и
-# собирается той же функцией, а не отдельно, чтобы два тултипа не разъехались
-# по стилю при правке формата.
-# Возвращается массив записей {"qid": quality_id, "text": строка}: id уровня
-# нужен вызывающему, чтобы покрасить строку в цвет уровня
+# Возвращается массив записей:
+#   { "qid":   quality_id,
+#     "stars": "★★",        ← звёзды уровня, красятся в его цвет
+#     "tail":  " = x1.30 = 5" ← сам расчёт цены, красится золотым,
+#     "text":  "★★ = x1.30 = 5" }
+# Звёзды и хвост отдаются ОТДЕЛЬНО, потому что тултип строки красит их разными
+# цветами (звёзды — цвет уровня из data/qualities.json, расчёт — золотой), а
+# text остаётся готовой строкой целиком для тех, кому одного цвета хватает.
+# qid нужен вызывающему, чтобы покрасить звёзды в цвет уровня
 # (get_quality_color) — так текст строки и её цвет не могут разойтись.
 # Пустой массив: у товара нет цены (например, science) или не задан id.
 func format_quality_price_scale_rows(res_id: String, quality_breakdown: Dictionary = {}) -> Array:
@@ -321,10 +342,11 @@ func format_quality_price_scale_rows(res_id: String, quality_breakdown: Dictiona
         # Уровня нет на складе — цена не показана (в т.ч. count == 0).
         if int(quality_breakdown.get(qid, 0)) <= 0:
             continue
-        var text := format_quality_price_line(res_id, str(qid))
-        if text == "":
+        var tail := format_quality_price_tail(res_id, str(qid))
+        if tail == "":
             continue
-        rows.append({"qid": str(qid), "text": text})
+        var stars := get_quality_stars(str(qid))
+        rows.append({"qid": str(qid), "stars": stars, "tail": tail, "text": stars + tail})
     return rows
 
 # --- ДОЛЯ УРОВНЯ НА СКЛАДЕ (проценты в строке списка и в тултипе разбора) ---

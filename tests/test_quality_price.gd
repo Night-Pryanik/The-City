@@ -20,9 +20,11 @@
 #     total >= base (качество не удешевляет товар).
 #  4. Формат строки цены уровня — «★★ = x1.30 = 5»: множитель с двумя
 #     знаками после x, итог целый, строка собирается для ЛЮБОГО уровня шкалы,
-#     включая обычное («★ = x1.00 = 4»). Контрольный пример (товар с базовой
-#     ценой 4) сверяется с точной строкой. У товара без цены (science), без
-#     id и у несуществующего уровня строки нет.
+#     включая обычное («★ = x1.00 = 4»). Строка склеивается из звёзд уровня и
+#     хвоста « = x1.30 = 5» (format_quality_price_tail), потому что тултип
+#     красит их разными цветами. Контрольный пример (товар с базовой ценой 4)
+#     сверяется с точной строкой. У товара без цены (science), без id и у
+#     несуществующего уровня строки нет.
 #  5. Внутренний рынок: цена единицы растёт с качеством, а доход за
 #     смешанный склад считается ПО КАЧЕСТВУ каждой списанной единицы
 #     (10 обычных + 5 хороших НЕ равно 15 × цена обычного), пустая
@@ -34,11 +36,14 @@
 #     количеством и долей, звёзды в цвете уровня. Цен в нём нет вовсе:
 #     полный список цен живёт в тултипе строки.
 #  8. Тултип СТРОКИ на вкладке «Ресурсы» (show_flow_tooltip): под базовой
-#     строкой «Цена: N» идёт лестница «★★ = x1.30 = 5» по ВСЕМ уровням,
-#     которые РЕАЛЬНО лежат на складе (разбивка city_quality_detail), в том
-#     же формате, что даёт format_quality_price_line, от худшего к лучшему и
-#     в цвете своего уровня. Уровней, которых на складе нет (в т.ч. при
-#     пустой разбивке), строк нет — как и у товара без цены.
+#     строкой «Цена: N» (золотой) идёт лестница «★★ = x1.30 = 5» по ВСЕМ
+#     уровням, которые РЕАЛЬНО лежат на складе (разбивка
+#     city_quality_detail), от худшего к лучшему. Строка лестницы ДВУХЦВЕТНАЯ:
+#     звёзды — в цвете своего уровня (data/qualities.json), расчёт цены —
+#     золотым (ui_helpers.PRICE_TEXT_COLOR); обе части совпадают с
+#     format_quality_price_scale_rows и не схлопнуты по ширине. Уровней,
+#     которых на складе нет (в т.ч. при пустой разбивке), строк нет — как и
+#     у товара без цены.
 extends SceneTree
 
 # Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
@@ -217,6 +222,31 @@ func _run() -> void:
 			"в строке должен быть итог round(база × множитель): «%s»" % line)
 		# Нижний уровень шкалы — не исключение: множитель 1.0 тоже показываем.
 		check(line != "", "у уровня «%s» строка цены не должна быть пустой" % qid)
+	# Хвост строки — всё, КРОМЕ звёзд (« = x1.30 = 5»): именно его тултип строки
+	# красит золотым, а звёзды — в цвет уровня. Формат хвоста проверяется
+	# отдельно, и строка целиком обязана собираться из звёзд и хвоста без
+	# единого разночтения — иначе покрашенные части разъедутся с текстом.
+	var tail_re := RegEx.new()
+	var tail_err := tail_re.compile("^ = x[0-9]+\\.[0-9]{2} = [0-9]+$")
+	check(tail_err == OK, "не скомпилировалась проверка формата хвоста: %d" % tail_err)
+	for qid in levels:
+		var tail: String = gd.format_quality_price_tail(sample_id, qid)
+		var q_line: String = gd.format_quality_price_line(sample_id, qid)
+		check(tail_re.search(tail) != null,
+			"хвост строки цены не по формату « = x1.30 = 5»: «%s»" % tail)
+		check(q_line == gd.get_quality_stars(qid) + tail,
+			"строка должна собираться из звёзд и хвоста: «%s» вместо «%s%s»"
+			% [q_line, gd.get_quality_stars(qid), tail])
+	check(gd.format_quality_price_tail(sample_id, "fine") == " = x1.30 = 5",
+		"контрольный пример хвоста хорошего уровня: «%s»"
+		% gd.format_quality_price_tail(sample_id, "fine"))
+	check(gd.format_quality_price_tail(sample_id, "exceptional") == " = x1.75 = 7",
+		"контрольный пример хвоста исключительного уровня (4 × 1.75 = 7): «%s»"
+		% gd.format_quality_price_tail(sample_id, "exceptional"))
+	check(gd.format_quality_price_tail("science", "perfect") == "",
+		"у товара без цены хвост не показывается")
+	check(gd.format_quality_price_tail(sample_id, "no_such_quality") == "",
+		"у несуществующего уровня хвост не показывается")
 	# Точные контрольные примеры: цена 4, обычное/хорошее/превосходное.
 	check(gd.format_quality_price_line(sample_id, "common") == "★ = x1.00 = 4",
 		"контрольный пример обычного уровня: ожидалось «★ = x1.00 = 4», получено «%s»"
@@ -406,6 +436,17 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
 			% [i, str(row["text"]), gd.format_quality_price_line(sample_id, qid)])
 		check(line_re.search(str(row["text"])) != null,
 			"строка №%d не по формату лестницы «★★ = x1.30 = 5»: «%s»" % [i, str(row["text"])])
+		# Части строки отдаются ОТДЕЛЬНО: тултип красит звёзды в цвет уровня, а
+		# хвост расчёта — золотым, и обе части обязаны в точности сходиться с
+		# готовой строкой (иначе подсвеченное не совпадёт с текстом).
+		check(str(row["stars"]) == gd.get_quality_stars(qid),
+			"звёзды строки №%d должны быть звёздами уровня «%s»: «%s» вместо «%s»"
+			% [i, qid, str(row["stars"]), gd.get_quality_stars(qid)])
+		check(str(row["tail"]) == gd.format_quality_price_tail(sample_id, qid),
+			"хвост строки №%d не совпал с расчётным: «%s» вместо «%s»"
+			% [i, str(row["tail"]), gd.format_quality_price_tail(sample_id, qid)])
+		check(str(row["text"]) == str(row["stars"]) + str(row["tail"]),
+			"строка №%d должна склеиваться из звёзд и хвоста: «%s»" % [i, str(row["text"])])
 	# Исключительного (★★★) на складе нет. Проверять по подстроке звёзд
 	# нельзя: «★★★» входит в «★★★★», поэтому сверяем id уровня в строке.
 	var has_exceptional := false
@@ -425,8 +466,8 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
 		"при count == 0 строка показываться не должна")
 
 	# Рендер: строки лестницы подставляются в тултип строки с отступом 2
-	# пробела и в цвете своего уровня, а товар без разбивки и без цены не
-	# даёт ни одной строки.
+	# пробела; звёзды в них — в цвете своего уровня, а расчёт цены — золотым.
+	# Товар без разбивки и без цены не даёт ни одной строки.
 	var holder := Control.new()
 	get_root().add_child(holder)
 	var ui = load("res://scripts/ui_helpers.gd").new()
@@ -439,33 +480,71 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
 	await process_frame
 
 	var base_line := ""
-	var scale_lines: Array = []
-	var scale_colors: Array = []
+	var scale_stars: Array = []
+	var scale_tails: Array = []
 	for child in ui.flow_tooltip_vbox.get_children():
-		if not (child is Label):
-			continue
-		var label := child as Label
-		if label.text.begins_with("Цена: "):
-			base_line = label.text
-		elif label.text.begins_with("  ★"):
-			scale_lines.append(label.text)
-			scale_colors.append(label.get_theme_color("font_color"))
+		if child is Label:
+			var label := child as Label
+			if label.text.begins_with("Цена: "):
+				base_line = label.text
+		elif child is HBoxContainer and child.get_child_count() == 2:
+			# Строка лестницы — HBox из двух Label: звёзды в цвете уровня и
+			# золотой хвост расчёта цены.
+			var stars_label := child.get_child(0) as Label
+			var tail_label := child.get_child(1) as Label
+			if stars_label == null or tail_label == null:
+				continue
+			if not str(stars_label.text).begins_with("  ★"):
+				continue
+			scale_stars.append({
+				"text": str(stars_label.text),
+				"color": stars_label.get_theme_color("font_color"),
+				"width": stars_label.size.x,
+			})
+			scale_tails.append({
+				"text": str(tail_label.text),
+				"color": tail_label.get_theme_color("font_color"),
+				"width": tail_label.size.x,
+			})
 	check(base_line == "Цена: %d" % int(round(gd.get_price(sample_id))),
 		"в тултипе строки должна быть базовая цена, получено «%s»" % base_line)
-	check(scale_lines.size() == 3,
+	check(scale_stars.size() == 3,
 		"в тултипе строки должно быть 3 строки (только уровни со склада), показано %d: %s"
-		% [scale_lines.size(), str(scale_lines)])
-	# Порядок строк и их текст — как у format_quality_price_scale_rows, а цвет
-	# каждой строки — цвет её уровня.
-	for i in range(mini(scale_lines.size(), rows.size())):
+		% [scale_stars.size(), str(scale_stars)])
+	# Порядок строк и их текст — как у format_quality_price_scale_rows. Звёзды
+	# покрашены в цвет СВОЕГО уровня (data/qualities.json), а сам расчёт цены —
+	# золотым (ui_helpers.PRICE_TEXT_COLOR).
+	for i in range(mini(scale_stars.size(), rows.size())):
 		var qid: String = expected_order[i]
-		var expected_text: String = "  " + str((rows[i] as Dictionary)["text"])
-		check(str(scale_lines[i]) == expected_text,
-			"строка №%d в тултипе не совпала с расчётной: «%s» вместо «%s»"
-			% [i, str(scale_lines[i]), expected_text])
-		check(scale_colors[i] == gd.get_quality_color(qid),
-			"строка №%d («%s») должна быть в цвете уровня «%s»: %s вместо %s"
-			% [i, str(scale_lines[i]), qid, str(scale_colors[i]), str(gd.get_quality_color(qid))])
+		var row: Dictionary = rows[i]
+		var stars_cell: Dictionary = scale_stars[i]
+		var tail_cell: Dictionary = scale_tails[i]
+		check(str(stars_cell["text"]) == "  " + str(row["stars"]),
+			"звёзды строки №%d не совпали с расчётными: «%s» вместо «%s»"
+			% [i, str(stars_cell["text"]), "  " + str(row["stars"])])
+		check(str(tail_cell["text"]) == str(row["tail"]),
+			"расчёт цены строки №%d не совпал с расчётным: «%s» вместо «%s»"
+			% [i, str(tail_cell["text"]), str(row["tail"])])
+		check(stars_cell["color"] == gd.get_quality_color(qid),
+			"звёзды строки №%d («%s») должны быть в цвете уровня «%s»: %s вместо %s"
+			% [i, str(stars_cell["text"]), qid, str(stars_cell["color"]),
+				str(gd.get_quality_color(qid))])
+		check(tail_cell["color"] == ui.PRICE_TEXT_COLOR,
+			"расчёт цены строки №%d («%s») должен быть золотым: %s вместо %s"
+			% [i, str(tail_cell["text"]), str(tail_cell["color"]), str(ui.PRICE_TEXT_COLOR)])
+		# Ни одна часть строки не схлопнулась по ширине.
+		check(float(stars_cell["width"]) > 5.0 and float(tail_cell["width"]) > 20.0,
+			"строка №%d схлопнулась по ширине (звёзды %s px, расчёт %s px)"
+			% [i, str(stars_cell["width"]), str(tail_cell["width"])])
+	# Цвет звёзд и золотой расчёт различаются хотя бы там, где это видно глазом:
+	# иначе «звёзды в цвете уровня» ничего бы не значило.
+	var fine_stars: Dictionary = scale_stars[1] if scale_stars.size() > 1 else {}
+	check(fine_stars.get("color", Color.BLACK) != ui.PRICE_TEXT_COLOR,
+		"звёзды уровня не должны совпадать по цвету с золотым расчётом цены")
+	# Панель тултипа не схлопнулась: её ширина считается по минимальному размеру
+	# содержимого, поэтому узкая панель = узкие строки внутри.
+	check(ui.flow_tooltip_panel.size.x > 100.0,
+		"панель тултипа строки схлопнулась по ширине: %s" % str(ui.flow_tooltip_panel.size))
 
 	# Пустая разбивка: блока цен по качеству нет вовсе.
 	ui.show_flow_tooltip(Vector2(50, 50), "Товар", {}, sample_id, {}, {}, {})
@@ -487,7 +566,13 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
 func _count_scale_lines(ui) -> int:
 	var result := 0
 	for child in ui.flow_tooltip_vbox.get_children():
-		if child is Label and (child as Label).text.begins_with("  ★"):
+		# Строка лестницы — HBox из двух Label, первый из них «  ★…» (второй —
+		# золотой хвост расчёта). Отступ 2 пробела отличает лестницу от
+		# базовой «Цена: N», у которой отступа нет.
+		if not (child is HBoxContainer) or child.get_child_count() != 2:
+			continue
+		var stars_label := child.get_child(0) as Label
+		if stars_label != null and str(stars_label.text).begins_with("  ★"):
 			result += 1
 	return result
 

@@ -48,6 +48,12 @@ const DETAIL_TOOLTIP_MAX_ROWS: int = 15
 const DETAIL_TOOLTIP_ROW_HEIGHT: float = 24.0
 const DETAIL_TOOLTIP_SCROLLBAR_WIDTH: float = 14.0
 
+# Золотой цвет денег в тултипах: строка «Цена: N» и хвосты строк лестницы цен
+# по качеству («= x1.30 = 5»). Единая константа, чтобы цена в тултипе строки
+# везде была одного оттенка, а звёзды при этом оставались в цвете СВОЕГО
+# уровня (data/qualities.json) — цвет деньгам не подменяет.
+const PRICE_TEXT_COLOR := Color(1.0, 0.507, 0.0, 1.0)
+
 var message_label: Label
 # Общий стиль фона для всех тултипов: полностью непрозрачный тёмный фон
 # со светлой рамкой в 1px.
@@ -611,6 +617,33 @@ func _make_bullet_row(symbol: String, text: String, text_color: Color) -> HBoxCo
     row.add_child(label)
     return row
 
+# Создаёт строку лестницы цен по качеству для тултипа строки: звёзды в цвете
+# СВОЕГО уровня (data/qualities.json, get_quality_color), сам расчёт цены —
+# золотым (PRICE_TEXT_COLOR). Два Label в HBox, а не один Label с BBCode:
+# так у строки не появляется ни одной зависимости от RichTextLabel (его
+# fit_content с переносом строк схлопывает метку до 1 px — см.
+# resources_tab._add_quality_label), и цвета берутся из темы так же, как у
+# остальных строк тултипов.
+#   stars       — "★★" (отступ 2 пробела ставится здесь)
+#   tail        — " = x1.30 = 5", хвост строки без звёзд
+#   level_color — цвет уровня из данных
+func _make_quality_price_row(stars: String, tail: String, level_color: Color) -> HBoxContainer:
+    var row = HBoxContainer.new()
+    row.add_theme_constant_override("separation", 4)
+    row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    # Отступ 2 пробела отделяет строки лестницы от базовой «Цена: N» над ними.
+    var stars_label = Label.new()
+    stars_label.text = "  " + stars
+    stars_label.add_theme_color_override("font_color", level_color)
+    stars_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    row.add_child(stars_label)
+    var tail_label = Label.new()
+    tail_label.text = tail
+    tail_label.add_theme_color_override("font_color", PRICE_TEXT_COLOR)
+    tail_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    row.add_child(tail_label)
+    return row
+
 # Форматирует цену для тултипа: целые значения без дробной части,
 # дробные (после динамических множителей цены) — с одним знаком.
 func _format_price(value: float) -> String:
@@ -666,8 +699,10 @@ func _format_planned_rate(amount: float, interval: float) -> String:
 # убрано (см. коммит 5790016).
 # resource_id — id ресурса/продукта: если задан, сверху выводится его текущая
 # цена (GameData.get_price), а под ней — цены по тем уровням качества,
-# которые РЕАЛЬНО лежат на складе (quality_breakdown), в том же формате, что
-# и в тултипе звёзд: «Цена: 4 * 1.30 (★★) = 5» (строки с отступом 2 пробела).
+# которые РЕАЛЬНО лежат на складе (quality_breakdown), в формате
+# «★★ = x1.30 = 5» (строки с отступом 2 пробела). Строка лестницы двухцветная:
+# звёзды в цвете своего уровня (data/qualities.json), расчёт цены — золотым
+# (PRICE_TEXT_COLOR, как строка «Цена: N»).
 # Пустая разбивка или товар без цены — строк нет.
 # quality_breakdown — разбивка склада по качеству
 # ({quality_id: count}, см. CityData.get_quality_breakdown). По ней решается,
@@ -713,7 +748,7 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
     if price > 0.0:
         var price_label = Label.new()
         price_label.text = "Цена: " + _format_price(price)
-        price_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+        price_label.add_theme_color_override("font_color", PRICE_TEXT_COLOR)
         price_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         flow_tooltip_vbox.add_child(price_label)
         # Цены по качеству, которые РЕАЛЬНО лежат на складе: внутренний рынок
@@ -722,16 +757,14 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
         # (quality_breakdown) — лестницей от худшего уровня к лучшему.
         # Уровней, которых на складе нет, строки не создаются: цену
         # несуществующего на складе товара показывать незачем. У товара без
-        # цены (science) строк нет вовсе. Каждая строка красится в цвет своего
-        # уровня (data/qualities.json, color) — по звёздам в начале строки
-        # видно, где какое качество, даже не читая текст.
+        # цены (science) строк нет вовсе. Каждая строка двухцветная: звёзды —
+        # в цвете СВОЕГО уровня (data/qualities.json, color), по ним видно,
+        # где какое качество, даже не читая текст, а сам расчёт цены
+        # («= x1.75 = 7») — золотым, как и строка «Цена: N» над лестницей.
         for quality_row in GameData.format_quality_price_scale_rows(resource_id, quality_breakdown):
-            var quality_price_label = Label.new()
-            quality_price_label.text = "  " + str(quality_row["text"])
-            quality_price_label.add_theme_color_override("font_color",
-                GameData.get_quality_color(str(quality_row["qid"])))
-            quality_price_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-            flow_tooltip_vbox.add_child(quality_price_label)
+            flow_tooltip_vbox.add_child(_make_quality_price_row(
+                str(quality_row["stars"]), str(quality_row["tail"]),
+                GameData.get_quality_color(str(quality_row["qid"]))))
     for yield_id in special_yield:
         var yield_label = Label.new()
         yield_label.text = "%s: %d" % [

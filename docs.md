@@ -1705,8 +1705,9 @@ GameData.remove_price_modifier("wheat", "famine")
 | `GameData.get_quality_price_multiplier(qid)` | множитель уровня качества (для неизвестного id и `common` — 1.0) |
 | `GameData.get_price_for_quality(res_id, qid)` | цена с качеством, без округления |
 | `GameData.get_price_breakdown_for_quality(res_id, qid)` | `{ base, multiplier, total }` — числа для тултипа |
-| `GameData.format_quality_price_line(res_id, qid)` | строка одного уровня: `★★ = x1.30 = 5` |
-| `GameData.format_quality_price_scale_rows(res_id, quality_breakdown)` | цены по уровням, которые реально лежат на складе (разбивка `city_quality_detail`) — массив записей `{ "qid", "text" }` того же формата. `qid` нужен вызывающему, чтобы покрасить строку в цвет уровня |
+| `GameData.format_quality_price_line(res_id, qid)` | строка одного уровня: `★★ = x1.30 = 5` (склеивается из звёзд и хвоста) |
+| `GameData.format_quality_price_tail(res_id, qid)` | хвост строки без звёзд: ` = x1.30 = 5` — именно его тултип красит стандартным цветом цены, поэтому он отдаётся отдельно |
+| `GameData.format_quality_price_scale_rows(res_id, quality_breakdown)` | цены по уровням, которые реально лежат на складе (разбивка `city_quality_detail`) — массив записей `{ "qid", "stars", "tail", "text" }`. `stars` красится в цвет уровня, `tail` — стандартный цвет цены, `text` — готовая строка целиком; части склеены из тех же данных, поэтому текст и цвет разойтись не могут |
 | `GameData.get_quality_color(qid)` | цвет уровня из поля `color` (без поля — светло-серый дефолт) |
 | `GameData.get_quality_share_percent(count, quality_breakdown)` | доля уровня в процентах от общего количества товара на складе |
 | `GameData.format_quality_share_text(quality_breakdown)` | строка разбивки склада для строки списка: `(33%/67%)` с BBCode-цветом каждого процента |
@@ -1747,8 +1748,9 @@ GameData.remove_price_modifier("wheat", "famine")
    вертикали. Регресс ловит `tests/test_resource_display_interval.gd`
    (пункт 3f: замер геометрии всех строк списка после реальной раскладки —
    высота строки, размер каждой иконки, ширина каждой видимой метки).
-2. **Тултип строки** (`ui_helpers.show_flow_tooltip`): каждая строка лестницы
-   цен красится в цвет своего уровня.
+2. **Тултип строки** (`ui_helpers.show_flow_tooltip`): в строке лестницы цен
+   **звёзды** красятся в цвет своего уровня, а сам расчёт цены — стандартным цветом цены
+   (`ui_helpers.PRICE_TEXT_COLOR`, `_make_quality_price_row`).
 3. **Тултип «Уровни качества ресурса»** (`ui_helpers.show_quality_tooltip`):
    звёзды в цвете уровня.
 
@@ -1768,6 +1770,15 @@ GameData.remove_price_modifier("wheat", "famine")
   ★★ = x1.30 = 5
   ★★★★ = x2.30 = 9
 ```
+
+Каждая строка лестницы **двухцветная**: **звёзды — в цвете своего уровня**
+(`data/qualities.json`, `color`: серый → зелёный → фиолетовый → золотой), а
+**сам расчёт цены** (`= x1.75 = 7`) — **стандартным цветом цены**, тем же оттенком, что и строка
+«Цена: N» над лестницей (`ui_helpers.PRICE_TEXT_COLOR`). Уровень читается по
+цвету звёзд, не читая текст, а деньги выглядят как деньги, а не как качество.
+Исключение по совпадению оттенков — «превосходное» уровень: он и так золотой,
+поэтому его строка целиком золотая; это свойство данных, а не отдельное
+решение в коде.
 
 Уровень в строке назван звёздами, поэтому подпись «Цена:» в ней не нужна: над
 лестницей уже стоит базовая цена того же товара. Показывается **вся** шкала,
