@@ -2,7 +2,7 @@
   "crafts": [
     {
       "id": "bread",
-      "name": "Выпечка хлеба",
+      "name": "Хлеб",
       "produced_in": [ "bakery" ],
       "resources": { "flour": 10 },
       "result": { "bread": 20 },
@@ -10,7 +10,7 @@
     },
     {
       "id": "meat",
-      "name": "Разделка мяса",
+      "name": "Мясо",
       "produced_in": [ "slaughterhouse" ],
       "resources": { "raw_meat": 20 },
       "result": { "meat": 10 },
@@ -18,7 +18,7 @@
     },
     {
       "id": "cheese",
-      "name": "Сыроделие",
+      "name": "Сыр",
       "produced_in": [ "dairy" ],
       "resources": { "raw_milk": 10 },
       "result": { "cheese": 10 },
@@ -27,7 +27,7 @@
     },
     {
       "id": "beer",
-      "name": "Варка пива",
+      "name": "Пиво",
       "produced_in": [ "brewer_house" ],
       "resources": { "@millable_grains": 20 },
       "result": { "beer": 10 },
@@ -37,7 +37,7 @@
     },
     {
       "id": "mead",
-      "name": "Варка медового напитка",
+      "name": "Медовый напиток",
       "produced_in": [ "brewer_house" ],
       "resources": { "honey": 20 },
       "result": { "mead": 10 },
@@ -47,7 +47,7 @@
     },
     {
       "id": "sake",
-      "name": "Варка саке",
+      "name": "Саке",
       "produced_in": [ "brewer_house" ],
       "resources": { "rice": 20 },
       "result": { "sake": 10 },
@@ -57,7 +57,7 @@
     },
     {
       "id": "pulque",
-      "name": "Варка пульке",
+      "name": "Пульке",
       "produced_in": [ "brewer_house" ],
       "resources": { "agave": 20 },
       "result": { "pulque": 10 },
@@ -87,7 +87,7 @@
     },
     {
       "id": "vegetable_oil",
-      "name": "Изготовление растительного масла",
+      "name": "Растительное масло",
       "produced_in": [ "hand_oil_press" ],
       "resources": { "@oil_crops": 20 },
       "result": { "vegetable_oil": 10 },
@@ -97,7 +97,7 @@
     },
     {
       "id": "fish",
-      "name": "Копчение рыбы",
+      "name": "Копченая рыба",
       "produced_in": [ "smokehouse" ],
       "resources": { "raw_fish": 10 },
       "result": { "fish": 10 },
@@ -107,7 +107,7 @@
     },
     {
       "id": "tea",
-      "name": "Изготовление чая",
+      "name": "Чай",
       "produced_in": [ "dryer_house" ],
       "resources": { "tea_leaves": 20 },
       "result": { "tea": 10 },
@@ -117,7 +117,7 @@
     },
     {
       "id": "coffee",
-      "name": "Изготовление кофе",
+      "name": "Кофе",
       "produced_in": [ "dryer_house" ],
       "resources": { "coffee_beans": 20 },
       "result": { "coffee": 10 },
@@ -127,7 +127,7 @@
     },
     {
       "id": "vinegar",
-      "name": "Изготовление уксуса",
+      "name": "Уксуса",
       "produced_in": [ "brewer_house" ],
       "resources": { "@alcohol": 20 },
       "result": { "vinegar": 10 },

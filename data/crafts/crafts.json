@@ -2,7 +2,7 @@
   "crafts": [
     {
       "id": "grind_grain_hand",
-      "name": "Ручной помол зерна",
+      "name": "Мука (вручную)",
       "produced_in": [ "hand_mill" ],
       "resources": { "@millable_grains": 20 },
       "result": { "flour": 10 },
@@ -10,7 +10,7 @@
     },
     {
       "id": "grind_grain_animal",
-      "name": "Помол зерна с помощью тягловых животных",
+      "name": "Мука (с помощью тягловых животных)",
       "produced_in": [ "animal_mill" ],
       "resources": { "@millable_grains": 20, "feed": 10 },
       "result": { "flour": 10 },
@@ -18,7 +18,7 @@
     },
     {
       "id": "grind_grain_water",
-      "name": "Помол зерна с помощью водяного колеса",
+      "name": "Мука (с помощью водяного колеса)",
       "produced_in": [ "water_mill" ],
       "resources": { "@millable_grains": 20 },
       "result": { "flour": 10 },
@@ -26,7 +26,7 @@
     },
     {
       "id": "pottery",
-      "name": "Гончарное дело (посуда)",
+      "name": "Глиняная посуда",
       "produced_in": [ "pottery_workshop" ],
       "resources": { "clay": 20 },
       "result": { "pottery": 10 },
@@ -36,7 +36,7 @@
     },
     {
       "id": "bricks",
-      "name": "Гончарное дело (кирпичи)",
+      "name": "Кирпичи",
       "produced_in": [ "pottery_workshop" ],
       "resources": { "clay": 30 },
       "result": { "bricks": 10 },
@@ -56,7 +56,7 @@
     },
     {
       "id": "leather",
-      "name": "Выделка кожи",
+      "name": "Кожа",
       "produced_in": [ "tanner_house" ],
       "resources": { "hide": 10 },
       "result": { "leather": 10 },
@@ -66,7 +66,7 @@
     },
     {
       "id": "fabric_clothes",
-      "name": "Ткачество (ткань)",
+      "name": "Тканевая одежда",
       "produced_in": [ "weaver_house" ],
       "resources": { "@textile_crops": 20 },
       "result": { "fabric_clothes": 10 },
@@ -76,7 +76,7 @@
     },
     {
       "id": "wool_clothes",
-      "name": "Ткачество (шерсть)",
+      "name": "Шерстяная одежда",
       "produced_in": [ "weaver_house" ],
       "resources": { "wool": 20 },
       "result": { "wool_clothes": 10 },
@@ -86,7 +86,7 @@
     },
     {
       "id": "silk_clothes",
-      "name": "Ткачество (шёлк)",
+      "name": "Шёлковая одежда",
       "produced_in": [ "weaver_house" ],
       "resources": { "silk": 20 },
       "result": { "silk_clothes": 10 },
@@ -96,7 +96,7 @@
     },
     {
       "id": "leather_clothes",
-      "name": "Пошив кожаной одежды",
+      "name": "Кожаная одежда",
       "produced_in": [ "leatherworker_house" ],
       "resources": { "leather": 20 },
       "result": { "leather_clothes": 10 },
@@ -106,7 +106,7 @@
     },
     {
       "id": "processed_building_stone",
-      "name": "Обработка строительного камня",
+      "name": "Строительный камень",
       "produced_in": [ "mason_workshop" ],
       "resources": { "@building_stone": 20 },
       "result": { "processed_building_stone": 10 },
@@ -115,18 +115,18 @@
       "description": "Обрабатывает дикий камень в форму, пригодную для строительства"
     },
     {
-      "id": "glass",
-      "name": "Стеклоделие",
+      "id": "glassware",
+      "name": "Стеклянная посуда",
       "produced_in": [ "glassmaker_house" ],
       "resources": { "quartz_sand": 20, "soda": 10 },
-      "result": { "glass_jewelry": 10 },
+      "result": { "glassware": 10 },
       "time": 5.0,
       "unlock_tech": "glassmaking",
-      "description": "Превращает песок и соду в стекло"
+      "description": "Превращает песок и соду в стеклянную посуду"
     },
     {
       "id": "ropes",
-      "name": "Изготовление веревок и канатов",
+      "name": "Верёвки и канаты",
       "produced_in": [ "ropemaker_house" ],
       "resources": { "@rope_fibers": 20 },
       "result": { "ropes": 10 },
@@ -136,7 +136,7 @@
     },
     {
       "id": "tar",
-      "name": "Производство смолы",
+      "name": "Смола",
       "produced_in": [ "tar_distillery" ],
       "resources": { "bitumen": 20 },
       "result": { "tar": 10 },
@@ -146,7 +146,7 @@
     },
     {
       "id": "tarred_ropes",
-      "name": "Производство просмоленных веревок",
+      "name": "Просмоленные верёвки",
       "produced_in": [ "tar_distillery" ],
       "resources": { "ropes": 10, "tar": 10 },
       "result": { "tarred_ropes": 10 },
@@ -156,7 +156,7 @@
     },
     {
       "id": "soap",
-      "name": "Производство мыла",
+      "name": "Мыло",
       "produced_in": [ "soap_maker_house" ],
       "resources": { "vegetable_oil": 10, "soda": 10 },
       "result": { "soap": 10 },
@@ -166,7 +166,7 @@
     },
     {
       "id": "silk",
-      "name": "Производство шёлка",
+      "name": "Шёлк",
       "produced_in": [ "silk_maker_house" ],
       "resources": { "silk_cocoon": 20 },
       "result": { "silk": 10 },
@@ -176,7 +176,7 @@
     },
     {
       "id": "lime",
-      "name": "Обжиг извести",
+      "name": "Известь",
       "produced_in": [ "lime_kilns" ],
       "resources": { "limestone": 20 },
       "result": { "lime": 10 },
@@ -186,7 +186,7 @@
     },
     {
       "id": "papyrus",
-      "name": "Производство папируса",
+      "name": "Папирус",
       "produced_in": [ "papyrus_workshop" ],
       "resources": { "papyrus_plant": 20 },
       "result": { "papyrus": 10 },
@@ -196,7 +196,7 @@
     },
     {
       "id": "reed_boat",
-      "name": "Изготовление тростниковой лодки",
+      "name": "Тростниковые лодки",
       "produced_in": [ "papyrus_workshop" ],
       "resources": { "papyrus_plant": 200 },
       "result": { "reed_boat": 10 },
@@ -206,7 +206,7 @@
     },
     {
       "id": "parchment",
-      "name": "Изготовление пергамента",
+      "name": "Пергамент",
       "produced_in": [ "parchment_workshop" ],
       "resources": { "hide": 20, "lime": 10 },
       "result": { "parchment": 10 },
@@ -215,8 +215,8 @@
       "description": "Производит пергамент из шкур животных с помощью золения их в извести"
     },
     {
-      "id": "sawing",
-      "name": "Распиловка досок",
+      "id": "planks",
+      "name": "Доски",
       "produced_in": [ "carpenter_workshop" ],
       "resources": { "wood": 20 },
       "result": { "planks": 10 },
@@ -226,7 +226,7 @@
     },
     {
       "id": "charcoal",
-      "name": "Производство древесного угля",
+      "name": "Древесный уголь",
       "produced_in": [ "charcoal_kiln" ],
       "resources": { "wood": 20 },
       "result": { "charcoal": 10 },
@@ -236,7 +236,7 @@
     },
     {
       "id": "wax_tablets",
-      "name": "Производство восковых табличек",
+      "name": "Восковые таблички",
       "produced_in": [ "carpenter_workshop" ],
       "resources": { "wood": 10, "wax": 10 },
       "result": { "wax_tablet": 10 },
@@ -246,7 +246,7 @@
     },
     {
       "id": "paper",
-      "name": "Производство бумаги",
+      "name": "Бумага",
       "produced_in": [ "paper_workshop" ],
       "resources": { "@paper_fibers": 10, "lime": 10 },
       "result": { "paper": 10 },

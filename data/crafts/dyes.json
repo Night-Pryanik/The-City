@@ -2,7 +2,7 @@
   "crafts": [
     {
       "id": "ochre",
-      "name": "Производство охры",
+      "name": "Охра",
       "produced_in": [ "dyer_house" ],
       "resources": { "iron_ore": 20 },
       "result": { "ochre": 10 },
@@ -12,7 +12,7 @@
     },
     {
       "id": "indigo",
-      "name": "Производство индиго",
+      "name": "Индиго",
       "produced_in": [ "dyer_house" ],
       "resources": { "indigofera_leaves": 20 },
       "result": { "indigo": 10 },
@@ -22,7 +22,7 @@
     },
     {
       "id": "henna",
-      "name": "Производство хны",
+      "name": "Хна",
       "produced_in": [ "dyer_house" ],
       "resources": { "lawsonia_leaves": 20 },
       "result": { "henna": 10 },
@@ -32,7 +32,7 @@
     },
     {
       "id": "purple",
-      "name": "Производство пурпура",
+      "name": "Пурпур",
       "produced_in": [ "dyer_house" ],
       "resources": { "raw_murex": 20 },
       "result": { "purple": 10 },
@@ -42,7 +42,7 @@
     },
     {
       "id": "sepia",
-      "name": "Производство сепии",
+      "name": "Сепия",
       "produced_in": [ "dyer_house" ],
       "resources": { "raw_cuttlefish": 20 },
       "result": { "sepia": 10 },
@@ -52,7 +52,7 @@
     },
     {
       "id": "woad",
-      "name": "Производство вайды",
+      "name": "Вайда",
       "produced_in": [ "dyer_house" ],
       "resources": { "woad_leaves": 20 },
       "result": { "woad": 10 },
@@ -62,7 +62,7 @@
     },
     {
       "id": "campeche",
-      "name": "Производство кампеша",
+      "name": "Кампеш",
       "produced_in": [ "dyer_house" ],
       "resources": { "campeche_wood": 20 },
       "result": { "campeche": 10 },
@@ -72,7 +72,7 @@
     },
     {
       "id": "carthamin",
-      "name": "Производство картамина",
+      "name": "Картамин",
       "produced_in": [ "dyer_house" ],
       "resources": { "safflower_leaves": 20 },
       "result": { "carthamin": 10 },
@@ -82,7 +82,7 @@
     },
     {
       "id": "carmine",
-      "name": "Производство кармина",
+      "name": "Кармин",
       "produced_in": [ "dyer_house" ],
       "resources": { "cochineal": 20 },
       "result": { "carmine": 10 },
@@ -92,7 +92,7 @@
     },
     {
       "id": "cinnabar",
-      "name": "Производство киновари",
+      "name": "Киноварь",
       "produced_in": [ "dyer_house" ],
       "resources": { "cinnabar_ore": 20 },
       "result": { "cinnabar": 10 },
@@ -102,7 +102,7 @@
     },
     {
       "id": "ultramarine",
-      "name": "Производство ультрамарина",
+      "name": "Ультрамарин",
       "produced_in": [ "dyer_house" ],
       "resources": { "lazurite_ore": 20 },
       "result": { "ultramarine": 10 },
@@ -112,7 +112,7 @@
     },
     {
       "id": "malachite",
-      "name": "Производство малахита",
+      "name": "Малахит",
       "produced_in": [ "dyer_house" ],
       "resources": { "malachite_ore": 20 },
       "result": { "malachite": 10 },

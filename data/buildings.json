@@ -87,7 +87,7 @@
       "icon": "forge.png",
       "production_slots": 1.0,
       "unlock_tech": "native_metals",
-      "default_recipes": [ "empty" ]
+      "default_recipes": [  ]
     },
     {
       "id": "smelter",
@@ -98,7 +98,7 @@
       "icon": "smelter.png",
       "production_slots": 1.0,
       "unlock_tech": "metallurgy",
-      "default_recipes": [ "empty" ]
+      "default_recipes": [  ]
     },
     {
       "id": "bloomery",
@@ -109,7 +109,7 @@
       "icon": "bloomery.png",
       "production_slots": 1.0,
       "unlock_tech": "iron_processing",
-      "default_recipes": [ "empty" ]
+      "default_recipes": [ "iron" ]
     },
     {
       "id": "pottery_workshop",
@@ -120,7 +120,7 @@
       "icon": "pottery.png",
       "production_slots": 1.0,
       "unlock_tech": "pottery",
-      "default_recipes": [ "pottery" ]
+      "default_recipes": [  ]
     },
     {
       "id": "mason_workshop",
@@ -153,7 +153,7 @@
       "icon": "weaver_house.png",
       "production_slots": 1.0,
       "unlock_tech": "weaving",
-      "default_recipes": [ "fabric_clothes" ]
+      "default_recipes": [  ]
     },
     {
       "id": "brewer_house",
@@ -164,18 +164,18 @@
       "icon": "brewer_house.png",
       "production_slots": 1.0,
       "unlock_tech": "fermentation",
-      "default_recipes": [ "beer" ]
+      "default_recipes": [  ]
     },
     {
       "id": "winemaker_house",
       "name": "Дом винодела",
-      "description": "Производство вина из собранного винограда.",
+      "description": "Производство вина из винограда или фруктов.",
       "work_cost": 30,
       "additional_cost": [ { "planks": 100 } ],
       "icon": "winemaker_house.png",
       "production_slots": 1.0,
       "unlock_tech": "winemaking",
-      "default_recipes": [ "wine" ]
+      "default_recipes": [  ]
     },
     {
       "id": "hand_oil_press",
@@ -197,7 +197,7 @@
       "icon": "glassmaker_house.png",
       "production_slots": 1.0,
       "unlock_tech": "glassmaking",
-      "default_recipes": [ "glass" ]
+      "default_recipes": [  ]
     },
     {
       "id": "ropemaker_house",
@@ -219,7 +219,7 @@
       "icon": "tar_distillery.png",
       "production_slots": 1.0,
       "unlock_tech": "bitumen_extraction",
-      "default_recipes": [ "tar" ]
+      "default_recipes": [  ]
     },
     {
       "id": "soap_maker_house",
@@ -263,7 +263,7 @@
       "icon": "papyrus_workshop.png",
       "production_slots": 1.0,
       "unlock_tech": "writing",
-      "default_recipes": [ "papyrus" ]
+      "default_recipes": [  ]
     },
     {
       "id": "smokehouse",
@@ -310,7 +310,7 @@
       "icon": "carpenter_workshop.png",
       "production_slots": 1.0,
       "unlock_tech": "wood_processing",
-      "default_recipes": [ "sawing" ]
+      "default_recipes": [ "planks" ]
     },
     {
       "id": "market",

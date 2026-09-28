@@ -141,6 +141,14 @@
       "unlock_tech": "beekeeping",
       "icon": "wax_tablets.png",
       "special_yield": { "science": 1 }
+    },
+    {
+      "id": "glassware", "price": 15,
+      "name": "Стеклянная посуда",
+      "type": "product",
+      "category": "household_items",
+      "unlock_tech": "glassmaking",
+      "icon": "glassware.png"
     }
   ]
 }

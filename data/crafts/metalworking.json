@@ -2,7 +2,7 @@
   "crafts": [
     {
       "id": "copper_from_copper_ore",
-      "name": "Выплавка меди из медной руды",
+      "name": "Медь (из медной руды)",
       "produced_in": [ "smelter" ],
       "resources": { "copper_ore": 20, "charcoal": 10 },
       "result": { "copper": 10 },
@@ -11,8 +11,8 @@
       "description": "Плавит медную руду в чистую медь"
     },
     {
-      "id": "copper_malachite",
-      "name": "Выплавка меди из малахита",
+      "id": "copper_from_malachite",
+      "name": "Медь (из малахита)",
       "produced_in": [ "smelter" ],
       "resources": { "malachite_ore": 20, "charcoal": 10 },
       "result": { "copper": 10 },
@@ -22,7 +22,7 @@
     },
     {
       "id": "copper_tools",
-      "name": "Изготовление медных инструментов",
+      "name": "Медные инструменты",
       "produced_in": [ "forge" ],
       "resources": { "copper": 20, "charcoal": 10 },
       "result": { "copper_tools": 10 },
@@ -32,7 +32,7 @@
     },
     {
       "id": "copper_weapons",
-      "name": "Изготовление медного оружия",
+      "name": "Медное оружие",
       "produced_in": [ "forge" ],
       "resources": { "copper": 30, "charcoal": 10 },
       "result": { "copper_weapons": 10 },
@@ -42,7 +42,7 @@
     },
     {
       "id": "gold",
-      "name": "Выплавка золота",
+      "name": "Золото",
       "produced_in": [ "smelter" ],
       "resources": { "gold_ore": 20, "charcoal": 10 },
       "result": { "gold": 10 },
@@ -52,7 +52,7 @@
     },
     {
       "id": "silver",
-      "name": "Выплавка серебра",
+      "name": "Серебро",
       "produced_in": [ "smelter" ],
       "resources": { "silver_ore": 20, "charcoal": 10 },
       "result": { "silver": 10 },
@@ -62,7 +62,7 @@
     },
     {
       "id": "bronze",
-      "name": "Выплавка бронзы",
+      "name": "Бронза",
       "produced_in": [ "smelter" ],
       "resources": { "copper": 20, "@bronze_alloys": 10, "charcoal": 10 },
       "result": { "bronze": 10 },
@@ -72,7 +72,7 @@
     },
     {
       "id": "bronze_tools",
-      "name": "Изготовление бронзовых инструментов",
+      "name": "Бронзовые инструменты",
       "produced_in": [ "forge" ],
       "resources": { "bronze": 20, "charcoal": 10 },
       "result": { "bronze_tools": 10 },
@@ -82,7 +82,7 @@
     },
     {
       "id": "bronze_weapons",
-      "name": "Изготовление бронзовoго оружия",
+      "name": "Бронзовoе оружие",
       "produced_in": [ "forge" ],
       "resources": { "bronze": 30, "charcoal": 10 },
       "result": { "bronze_weapons": 10 },
@@ -92,7 +92,7 @@
     },
     {
       "id": "iron",
-      "name": "Выплавка железа",
+      "name": "Железо",
       "produced_in": [ "bloomery" ],
       "resources": { "iron_ore": 20, "charcoal": 20 },
       "result": { "iron": 10 },
@@ -102,7 +102,7 @@
     },
     {
       "id": "iron_tools",
-      "name": "Изготовление железных инструментов",
+      "name": "Железные инструменты",
       "produced_in": [ "forge" ],
       "resources": { "iron": 20, "charcoal": 20 },
       "result": { "iron_tools": 10 },
@@ -112,7 +112,7 @@
     },
     {
       "id": "iron_weapons",
-      "name": "Изготовление железного оружия",
+      "name": "Железное оружие",
       "produced_in": [ "forge" ],
       "resources": { "iron": 30, "charcoal": 20 },
       "result": { "iron_weapons": 10 },
