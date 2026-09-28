@@ -114,7 +114,7 @@
     {
       "id": "alcohol",
       "name": "Алкоголь",
-      "products": [ "beer", "mead", "sake", "pulque", "wine" ]
+      "products": [ "beer", "mead", "sake", "pulque", "wine", "fruit_wine" ]
     }
   ]
 }

@@ -71,6 +71,15 @@
       "category": "drinks",
       "unlock_tech": "fermentation",
       "icon": "vinegar.png"
+    },
+    {
+      "id": "fruit_wine",
+      "price": 18,
+      "name": "Фруктовое вино",
+      "type": "product",
+      "category": "drinks",
+      "unlock_tech": "fermentation",
+      "icon": "fruit_wine.png"
     }
   ]
 }

@@ -67,13 +67,23 @@
     },
     {
       "id": "wine",
-      "name": "Виноделие",
+      "name": "Виноградное вино",
       "produced_in": [ "winemaker_house" ],
       "resources": { "grapes": 20 },
       "result": { "wine": 10 },
       "time": 5.0,
       "unlock_tech": "winemaking",
       "description": "Варит вино из винограда"
+    },
+    {
+      "id": "fruit_wine",
+      "name": "Фруктовое вино",
+      "produced_in": [ "winemaker_house" ],
+      "resources": { "@fruits": 20 },
+      "result": { "fruit_wine": 10 },
+      "time": 5.0,
+      "unlock_tech": "winemaking",
+      "description": "Варит вино из фруктов"
     },
     {
       "id": "vegetable_oil",
