@@ -89,7 +89,7 @@
       "allowed_cover": [ "none", "oasis" ],
       "improved_by": "plantation",
       "tech_required": "plantations",
-      "produces": { "agave": 10, "feed": 40 },
+      "produces": { "agave": 10, "sisal": 10, "feed": 40 },
       "icon": "agave.png",
       "color": [ 200, 255, 200 ]
     },
