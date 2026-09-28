@@ -119,6 +119,36 @@
       "time": 6.0,
       "unlock_tech": "iron_processing",
       "description": "Создаёт партию оружия для защиты города"
+    },
+    {
+      "id": "tin",
+      "name": "Олово",
+      "produced_in": [ "smelter" ],
+      "resources": { "tin_ore": 20, "charcoal": 10 },
+      "result": { "tin": 10 },
+      "time": 5.0,
+      "unlock_tech": "native_metals",
+      "description": "Плавит оловянную руду в чистое олово"
+    },
+    {
+      "id": "arsenic",
+      "name": "Мышьяк",
+      "produced_in": [ "smelter" ],
+      "resources": { "arsenic_ore": 20, "charcoal": 10 },
+      "result": { "arsenic": 10 },
+      "time": 5.0,
+      "unlock_tech": "native_metals",
+      "description": "Плавит мышьяковую руду в чистый мышьяк"
+    },
+    {
+      "id": "antimony",
+      "name": "Сурьма",
+      "produced_in": [ "smelter" ],
+      "resources": { "antimony_ore": 20, "charcoal": 10 },
+      "result": { "antimony": 10 },
+      "time": 5.0,
+      "unlock_tech": "native_metals",
+      "description": "Плавит сурьмяную руду в чистую сурьму"
     }
   ]
 }
