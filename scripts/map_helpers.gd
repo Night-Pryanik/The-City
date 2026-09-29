@@ -30,6 +30,29 @@ static func get_construction_cost_mult() -> float:
 static func get_distance_cost_modifier() -> float:
     return float(GameData.game_balance.get("distance_cost_modifier_per_hex", 0.25))
 
+## Тех-многители, влияющие на ВКЛАД расстояния в стоимость труда: читает
+## data/modifiers.json, блок "tech_modifiers", target = "improvement_distance_cost"
+## (например, «Колесо» снижает его на 30%). Множители от разных технологий
+## перемножаются. Значение value интерпретируется как процент: -30 → 0.7.
+##
+## Вынесено отдельной функцией, потому что вклад расстояния теперь есть и у
+## улучшений, и у участков дороги (см. get_road_step_work_cost). Две копии
+## этого цикла разъедутся при первой же правке: технология снизила бы цену
+## улучшения, но не дороги, и правило «дальность удешевляется технологиями»
+## перестало бы выполняться.
+static func get_distance_tech_mult() -> float:
+    var mult := 1.0
+    for tm in GameData.modifiers.get("tech_modifiers", []):
+        var tech_id = tm.get("tech_id", "")
+        if tech_id == "" or not CityData.is_tech_unlocked(tech_id):
+            continue
+        for mod in tm.get("modifiers", []):
+            if mod.get("target", "") != "improvement_distance_cost":
+                continue
+            var value = float(mod.get("value", 0))
+            mult *= 1.0 + value / 100.0
+    return mult
+
 ## Множитель стоимости от расстояния до города (в гексах) БЕЗ тех-модификаторов:
 ## 1 + расстояние × get_distance_cost_modifier().
 static func get_distance_mult(distance: int) -> float:
@@ -78,18 +101,9 @@ static func get_improvement_work_cost(
     var distance := HexUtils.hex_distance(row, col, city_row, city_col)
 
     # Тех-модификаторы, влияющие на вклад расстояния в стоимость труда
-    # (например, «Колесо» снижает его на 30%). См. data/modifiers.json,
-    # блок "tech_modifiers", target = "improvement_distance_cost".
-    var distance_tech_mult := 1.0
-    for tm in GameData.modifiers.get("tech_modifiers", []):
-        var tech_id = tm.get("tech_id", "")
-        if tech_id == "" or not CityData.is_tech_unlocked(tech_id):
-            continue
-        for mod in tm.get("modifiers", []):
-            if mod.get("target", "") != "improvement_distance_cost":
-                continue
-            var value = float(mod.get("value", 0))
-            distance_tech_mult *= 1.0 + value / 100.0
+    # (например, «Колесо» снижает его на 30%). Общая функция — та же самая,
+    # что и у участков дороги (см. get_distance_tech_mult).
+    var distance_tech_mult := get_distance_tech_mult()
 
     # Исходный множитель расстояния (УНИВЕРСАЛЬНОЕ значение из
     # data/game_balance.json — поле distance_cost_modifier_per_hex) и итоговый
@@ -115,33 +129,98 @@ static func get_improvement_work_cost(
         "construction_tech_mult": get_construction_cost_mult()
     }
 
-## Стоимость труда для дороги, которую строит игрок (спецдействие
-## `build_road`, action_type "road"). Цена ЗА ОДИН НОВЫЙ УЧАСТОК трассы, а
-## трасса может быть любой длины — поэтому итог = work_cost × segments.
+## Множитель сложности строительства по МЕСТНОСТИ гекса. Источник —
+## data/terrains/terrains.json, поле "work_cost_mult" (равнина 1.0, болото 2.0,
+## горы 2.5). Если поле не задано, множитель считается по move_cost как
+## 1 + (move_cost − 1) × 0.35 — той же формулой, что и у улучшений
+## (см. get_improvement_work_cost), чтобы «холмы» стоили одинаково везде.
 ##
-## Множитель расстояния из game_balance.json здесь НЕ применяется: дальность
-## уже отражена длиной трассы (иначе дорога к дальнему городку дорожала бы
-## дважды — за расстояние и за количество гексов). Применяется только общий
-## множитель стоимости строительства от технологий — дорога такая же стройка,
-## как и любое улучшение.
+## То же поле, что и у улучшений: «сложность строительства» не зависит от того,
+## что именно строят. Дорога, которая идёт через горы, — это ровно тот случай,
+## когда обойти нельзя (городок за хребтом, река), и планировщик
+## (road_manager._find_path_between — Дейкстра по move_cost) сам выбирает
+## обходной путь, когда он есть.
+static func get_terrain_work_mult(terrain_id: String) -> float:
+    if not GameData.terrains.has(terrain_id):
+        return 1.0
+    var override = float(GameData.terrains[terrain_id].get("work_cost_mult", -1.0))
+    if override >= 0.0:
+        return override
+    var move_cost = float(GameData.terrains[terrain_id].get("move_cost", 1))
+    return 1.0 + (move_cost - 1.0) * 0.35
+
+## Модификатор дальности ДЛЯ УЧАСТКА ДОРОГИ. Отдельное поле
+## game_balance.json ("road_distance_cost_modifier_per_hex"), а НЕ общий
+## distance_cost_modifier_per_hex улучшений, и вот почему.
 ##
-## segments — число новых участков (из road_manager.plan_road_to). Если пути
-## нет (segments <= 0), стоимость 0: превью в этом случае не показывает
-## цену, а объясняет, почему дорога невозможна.
-static func get_road_work_cost(action_id: String, segments: int) -> Dictionary:
+## Общий множитель применяется к ОДНОЙ постройке, где игрок сам выбирает гекс.
+## Дорога — цепочка участков, и формула применяется к каждому: цена растёт
+## вместе с расстоянием каждого гекса. При 0.25 множитель дальности участка
+## №20 равен 6.0, и сумма по трассе выходит в разы дороже базовой. Коэффициент
+## 0.1 даёт 1.1, 1.2, …, 2.0 — множитель читается в тултипе и считается в уме
+## без калькулятора. Оба значения живут в game_balance.json, поэтому баланс
+## крутится данными, а не правкой кода.
+static func get_road_distance_cost_modifier() -> float:
+    return float(GameData.game_balance.get("road_distance_cost_modifier_per_hex", 0.1))
+
+## Множитель дальности участка дороги БЕЗ тех-модификаторов:
+## 1 + расстояние × get_road_distance_cost_modifier().
+static func get_road_distance_mult(distance: int) -> float:
+    return 1.0 + float(distance) * get_road_distance_cost_modifier()
+
+## Стоимость труда за ОДИН участок дороги, которую строит игрок (спецдействие
+## `build_road`, action_type "road"). Участок соединяет два соседних гекса, и
+## цена зависит от гекса, который шаг ПРИСОЕДИНЯЕТ к сети (to_hex): `from`
+## уже в сети и за него заплатили, когда дорога дошла до него.
+##
+## Множители, в порядке применения:
+##   work_cost (из special_actions.json) — база за участок;
+##   work_cost_mult (местность to_hex) — в горах дороже, в болотах тоже;
+##   дальность от города (to_hex) — тащить материалы дальше;
+##   «Колесо» (improvement_distance_cost) — снижает вклад дальности;
+##   «Математика» (construction_cost) — снижает всю стоимость строительства.
+##
+## Никакого отдельного множителя за длину трассы нет и не нужно: длинная дорога
+## строится дольше потому, что участков больше, а не потому, что за «длину»
+## берут надбавку. Каждый участок оплачивается по своим merits — цена на нём
+## видна на его прогресс-баре.
+static func get_road_step_work_cost(
+    action_id: String,
+    to_row: int,
+    to_col: int,
+    city_row: int,
+    city_col: int,
+    terrain_id: String
+) -> Dictionary:
     var base_cost := 0.0
     if GameData.special_actions.has(action_id):
         base_cost = float(GameData.special_actions[action_id].get("work_cost", 0))
 
+    var distance := HexUtils.hex_distance(to_row, to_col, city_row, city_col)
+    var terrain_mult := get_terrain_work_mult(terrain_id)
+    var distance_mult := get_road_distance_mult(distance)
+    var distance_tech_mult := get_distance_tech_mult()
     var construction_tech_mult := get_construction_cost_mult()
-    var final_cost := 0
-    if segments > 0:
-        final_cost = int(ceil(base_cost * float(segments) * construction_tech_mult))
+
+    # distance_mult уже включает «Колесо»? Нет: он «чистый», а tech-множитель
+    # применяется к ВКЛАДУ расстояния, поэтому итоговый множитель дальности
+    # такой же формы, как у улучшений: 1 + d × коэффициент × tech.
+    var distance_mult_total := 1.0 + float(distance) \
+            * get_road_distance_cost_modifier() * distance_tech_mult
+
+    var final_cost := int(ceil(base_cost * terrain_mult * distance_mult_total \
+            * construction_tech_mult))
 
     return {
-        "cost": final_cost,
+        "cost": maxi(1, final_cost),
         "base_cost": int(base_cost),
-        "segments": segments,
+        "terrain_id": terrain_id,
+        "terrain_name": GameData.terrains.get(terrain_id, {}).get("name", terrain_id),
+        "terrain_mult": terrain_mult,
+        "distance": distance,
+        "distance_mult_base": distance_mult,
+        "distance_tech_mult": distance_tech_mult,
+        "distance_mult": distance_mult_total,
         "construction_tech_mult": construction_tech_mult
     }
 

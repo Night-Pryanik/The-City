@@ -1392,10 +1392,15 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
 func start_road_project(row: int, col: int, action_id: String) -> bool:
     # Трасса может исчезнуть между нажатием кнопки и подтверждением (например,
     # игрок успел построить другую дорогу) — тогда просто сообщаем причину.
-    var plan := get_road_plan(row, col)
-    if not plan.get("ok", false):
-        hud.show_message("Дорогу построить не удалось: %s" % plan.get("reason", "нет пути"))
+    # Шаги и цену берём из get_road_cost_breakdown — того же источника, что и
+    # превью, поэтому старт не может взять другую цену, чем показали.
+    var breakdown: Dictionary = get_road_cost_breakdown(row, col, action_id)
+    if not breakdown.get("ok", false):
+        hud.show_message("Дорогу построить не удалось: %s" % breakdown.get("reason", "нет пути"))
         return false
+    var steps: Array = breakdown.get("steps", [])
+    var plan := get_road_plan(row, col)
+    var is_town := bool(plan.get("is_town", false))
 
     # Общий лимит одновременных строек равен числу жителей. Дорога занимает
     # один слот, а не по числу гексов: одновременно строится один участок.
@@ -1403,12 +1408,6 @@ func start_road_project(row: int, col: int, action_id: String) -> bool:
             and build_manager.get_total_active_builds() >= CityData.total_population:
         hud.show_message("Можно строить не более %d зданий или улучшений одновременно (лимит = число жителей)"
                 % CityData.total_population)
-        return false
-
-    var is_town := bool(plan.get("is_town", false))
-    var steps := _build_road_steps(plan, action_id)
-    if steps.is_empty():
-        hud.show_message("Дорогу построить не удалось: нет новых участков")
         return false
 
     var title := "Дорога"
@@ -1439,11 +1438,22 @@ func start_road_project(row: int, col: int, action_id: String) -> bool:
 
 # Превращает план дороги в очередь шагов — по одному на новый участок.
 #
+# Это ЕДИНСТВЕННЫЙ источник цены дороги. И превью в панели, и реальный старт
+# проекта берут шаги отсюда, поэтому «сколько показали» и «сколько берут» не
+# могут разойтись. Раньше цена считалась отдельно в трёх местах, и превью
+# показывало цену ВСЕХ сегментов пути (plan.segments = path.size() − 1),
+# тогда как шаги фильтровали уже построенные: на маршруте, идущем по
+# частично построенной дороге, игрок видел завышенную цену.
+#
 # Порядок шагов — ОТ СЕТИ К ЦЕЛИ, хотя plan_road_to возвращает путь от цели
 # к городу (так его строит поиск). Это не косметика: у каждого шага два гекса,
 # и строить от сети значит, что участок всегда присоединяется к уже готовой
 # дороге, а не повисает в воздухе до конца стройки. По той же причине
 # прогресс-бар едет от города к цели, а призрак «съедается» с города.
+#
+# Цена шага (MapHelpers.get_road_step_work_cost) зависит от гекса to_hex:
+# местность, дальность от города, технологии. Отдельной надбавки за длину
+# трассы нет — длинная дорога дольше строится потому, что участков больше.
 func _build_road_steps(plan: Dictionary, action_id: String) -> Array:
     var road_path: Array = plan.get("path", [])
     var is_town := bool(plan.get("is_town", false))
@@ -1474,24 +1484,27 @@ func _build_road_steps(plan: Dictionary, action_id: String) -> Array:
     if pairs.is_empty():
         return []
 
-    # Цена проекта та же, что показывает превью: цена за гекс × число новых
-    # участков. Пошагово цена округляется вверх, поэтому последний шаг
-    # добирает остаток — сумма шагов равна показанной в панели цене, и игрок
-    # платит ровно столько, сколько ему показали.
-    var total_work := int(MapHelpers.get_road_work_cost(action_id, pairs.size()).get("cost", 0))
-    var per_step := int(MapHelpers.get_road_work_cost(action_id, 1).get("cost", 0))
     var steps: Array = []
     for i in range(pairs.size()):
         var pair: Dictionary = pairs[i]
         var to_hex: Dictionary = pair["to"]
-        var work_cost := per_step
-        if i == pairs.size() - 1:
-            work_cost = maxi(1, total_work - per_step * (pairs.size() - 1))
+        var t_row := int(to_hex["row"])
+        var t_col := int(to_hex["col"])
+        # Местность гекса to: именно его шаг присоединяет к сети, и по нему
+        # уже считается цена. Гекс from в сети уже, за него заплатили раньше.
+        var terrain_id := "plain"
+        if t_row >= 0 and t_row < tile_data.size() and t_col >= 0 \
+                and t_col < tile_data[t_row].size() and tile_data[t_row][t_col] != null:
+            terrain_id = str(tile_data[t_row][t_col].get("terrain", "plain"))
+        var price := MapHelpers.get_road_step_work_cost(
+                action_id, t_row, t_col, city_row, city_col, terrain_id)
         steps.append({
             "label": "Участок %d/%d" % [i + 1, pairs.size()],
-            "work_cost": work_cost,
+            "work_cost": int(price.get("cost", 1)),
+            # Детали расчёта — для тултипа на прогресс-баре и для превью.
+            "price": price,
             # Прогресс-бар рисуется на гексе, который шаг присоединяет к сети.
-            "hex": {"row": int(to_hex["row"]), "col": int(to_hex["col"])},
+            "hex": {"row": t_row, "col": t_col},
             "ghost": pair["ghost"],
             "data": {
                 "from": pair["from"],
@@ -1500,6 +1513,56 @@ func _build_road_steps(plan: Dictionary, action_id: String) -> Array:
             },
         })
     return steps
+
+# Цена дороги и её шаги для превью в панели управления. Возвращает
+# {ok, reason, cost, steps}, где cost — ТОЧНАЯ сумма цен шагов.
+#
+# Инвариант «сумма шагов = цена в превью» выполняется по построению: каждый
+# шаг округляется вверх отдельно, и итог просто складывается. Раньше цена
+# бралась как ceil(base × segments), а последний шаг «добирал остаток» — с
+# разными ценами шагов такая схема дала бы переплату или недобор.
+func get_road_cost_breakdown(row: int, col: int, action_id: String) -> Dictionary:
+    var plan := get_road_plan(row, col)
+    if not plan.get("ok", false):
+        return {"ok": false, "reason": plan.get("reason", "Дорогу построить нельзя"),
+                "cost": 0, "steps": []}
+    var steps := _build_road_steps(plan, action_id)
+    if steps.is_empty():
+        return {"ok": false, "reason": "На этом маршруте нет новых участков",
+                "cost": 0, "steps": []}
+    var total := 0
+    # Минимумы стартуют с -1, а НЕ с INF: mini()/maxi() понижают тип до int, и
+    # INF превращается в INT64_MIN, на котором минимум «залипает» навсегда
+    # (проявлялось как расстояние -9223372036854775808 в превью).
+    var min_cost := -1
+    var max_cost := 0
+    var min_dist := -1
+    var max_dist := 0
+    var terrains: Dictionary = {}
+    for step in steps:
+        var c := int(step.get("work_cost", 0))
+        total += c
+        min_cost = c if min_cost < 0 else mini(min_cost, c)
+        max_cost = maxi(max_cost, c)
+        var price: Dictionary = step.get("price", {})
+        var d := int(price.get("distance", 0))
+        min_dist = d if min_dist < 0 else mini(min_dist, d)
+        max_dist = maxi(max_dist, d)
+        var tid := str(price.get("terrain_id", ""))
+        if tid != "":
+            terrains[tid] = true
+    return {
+        "ok": true,
+        "reason": "",
+        "cost": total,
+        "steps": steps,
+        "segments": steps.size(),
+        "min_step_cost": min_cost,
+        "max_step_cost": max_cost,
+        "min_distance": maxi(min_dist, 0),
+        "max_distance": max_dist,
+        "terrains": terrains.keys(),
+    }
 
 # Эффект одного участка дороги: сегмент уходит в сеть города, оба его гекса
 # становятся подключёнными. Флаг road_built ставится на КАЖДЫЙ присоединённый
@@ -1899,13 +1962,26 @@ func get_tile_data(row: int, col: int):
 # расстояния от города. Возвращает словарь с итоговой стоимостью и деталями расчёта
 # (для расширенного тултипа).
 func get_improvement_work_cost(imp_id: String, row: int, col: int) -> Dictionary:
-    # Дорога (спецдействие build_road) — исключение: её цена не зависит от
-    # местности и расстояния до города, а от ДЛИНЫ новой трассы (цена за
-    # гекс × число новых участков). Планирование здесь, а не в build_manager,
-    # чтобы превью в панели и реальная стройка считали цену одним кодом.
+    # Дорога (спецдействие build_road) — исключение: улучшений и гекса
+    # строительства у неё нет, у неё ЦЕЛАЯ ТРАССА из отдельных участков. Цена
+    # каждого участка зависит от его местности и дальности, поэтому и общая
+    # цена — это сумма шагов (main_map._build_road_steps, единый источник с
+    # превью). build_manager зовёт эту функцию только ради проверки «цена > 0».
     var special_action: Dictionary = GameData.special_actions.get(imp_id, {})
     if str(special_action.get("action_type", "")) == "road":
-        return MapHelpers.get_road_work_cost(imp_id, get_road_plan(row, col).get("segments", 0))
+        var breakdown: Dictionary = get_road_cost_breakdown(row, col, imp_id)
+        return {
+            "cost": int(breakdown.get("cost", 0)),
+            "base_cost": int(GameData.special_actions.get(imp_id, {}).get("work_cost", 0)),
+            "segments": int(breakdown.get("segments", 0)),
+            "ok": bool(breakdown.get("ok", false)),
+            "reason": str(breakdown.get("reason", "")),
+            "min_step_cost": int(breakdown.get("min_step_cost", 0)),
+            "max_step_cost": int(breakdown.get("max_step_cost", 0)),
+            "min_distance": int(breakdown.get("min_distance", 0)),
+            "max_distance": int(breakdown.get("max_distance", 0)),
+            "terrains": breakdown.get("terrains", []),
+        }
     return MapHelpers.get_improvement_work_cost(imp_id, row, col, tile_data, city_row, city_col)
 
 # План дороги от сети города до гекса (row, col) — тот же объект, что

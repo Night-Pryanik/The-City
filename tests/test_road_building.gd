@@ -2,10 +2,13 @@
 # дорогу», action_type "road"), и соединения города с городком.
 #   godot --headless --path . --script res://tests/test_road_building.gd
 #
-# Проверки (на детерминированной синтетической карте + живая сцена MainMap):
-#   1. Цена дороги = цена за гекс × число НОВЫХ участков трассы
-#      (MapHelpers.get_road_work_cost), множитель расстояния к ней не
-#      применяется: дальность уже отражена длиной трассы.
+# Проверки (на детерминированной синтемической карте + живая сцена MainMap):
+#   1. Цена УЧАСТКА дороги = база × множитель местности × множитель дальности
+#      (MapHelpers.get_road_step_work_cost). Дальше от города — дороже; в
+#      трудной местности — дороже. Коэффициент дальности дороги берётся из
+#      game_balance.json и ОТДЕЛЕН от коэффициента улучшений: множитель
+#      дальности множится на длину трассы, и при 0.25 дорога к дальнему
+#      городку становилась бы недоступной. Надбавки за длину трассы нет.
 #   2. Планирование дороги ничего не меняет (план — чистый расчёт для
 #      превью), а после build_road_to гекс подключён к сети города и до
 #      города идёт цепочка сегментов (проверка формы сети, а не флага).
@@ -139,7 +142,7 @@ func _make_town() -> Dictionary:
     }
 
 # -------------------------------------------------------
-# 1. Цена дороги: за гекс × число новых участков
+# 1. Цена УЧАСТКА дороги: база × местность × дальность
 # -------------------------------------------------------
 
 func _test_cost_per_hex(state: Dictionary) -> void:
@@ -152,20 +155,55 @@ func _test_cost_per_hex(state: Dictionary) -> void:
     var per_hex := int(sa.get("work_cost", 0))
     check(per_hex > 0, "цена за гекс дороги должна быть задана в work_cost", state)
 
-    # Цена линейна по длине трассы и НЕ умножается на расстояние до города:
-    # дальность уже отражена количеством новых гексов.
-    for segments in [1, 3, 7, 12]:
-        var cost: Dictionary = _mh.get_road_work_cost(ROAD_ACTION_ID, segments)
-        var expected := int(ceil(per_hex * float(segments) \
-                * float(cost.get("construction_tech_mult", 1.0))))
-        check(int(cost.get("cost", -1)) == expected,
-                "цена дороги на %d участков должна быть %d, получено %d"
-                        % [segments, expected, int(cost.get("cost", -1))], state)
-        check(int(cost.get("base_cost", -1)) == per_hex,
-                "цена за гекс в расчёте должна совпадать с work_cost из данных", state)
-    # Пути нет — цены нет (иначе стройка «завершилась бы мгновенно»).
-    check(int(_mh.get_road_work_cost(ROAD_ACTION_ID, 0).get("cost", -1)) == 0,
-            "дорога без трассы не должна стоить ничего", state)
+    # Коэффициент дальности участка — из game_balance.json и БЕЗ тех-модификаторов.
+    var road_mod: float = float(_gdata.game_balance.get("road_distance_cost_modifier_per_hex", -1.0))
+    check(road_mod > 0.0,
+            "в game_balance.json должен быть road_distance_cost_modifier_per_hex", state)
+    check(absf(_mh.get_road_distance_cost_modifier() - road_mod) < 0.0001,
+            "MapHelpers должен брать коэффициент дальности дороги из данных", state)
+    # Формула та же, что у улучшений, но со своим коэффициентом: 1 + d × знач.
+    check(absf(_mh.get_road_distance_mult(0) - 1.0) < 0.0001,
+            "множитель дальности на гексе самого города должен быть 1.0", state)
+    check(absf(_mh.get_road_distance_mult(5) - (1.0 + 5.0 * road_mod)) < 0.0001,
+            "множитель дальности участка должен быть 1 + расстояние × коэффициент", state)
+
+    # Цена участка на равнине в 1 гексе от города: база × 1.0 (местность)
+    # × множитель дальности. Никакой надбавки за длину трассы.
+    var near_price: Dictionary = _mh.get_road_step_work_cost(
+            ROAD_ACTION_ID, CITY_ROW, CITY_COL + 1, CITY_ROW, CITY_COL, "plain")
+    var near_expected := int(ceil(per_hex * 1.0 * _mh.get_road_distance_mult(1) \
+            * float(near_price.get("construction_tech_mult", 1.0))))
+    check(int(near_price.get("cost", -1)) == near_expected,
+            "цена участка рядом с городом = база × множитель дальности (ожидалось %d, получено %d)"
+                    % [near_expected, int(near_price.get("cost", -1))], state)
+    check(int(near_price.get("base_cost", -1)) == per_hex,
+            "база в расчёте должна совпадать с work_cost из данных", state)
+
+    # ДАЛЬШЕ ОТ ГОРОДА — ДОРОЖЕ, на той же местности.
+    var far_price: Dictionary = _mh.get_road_step_work_cost(
+            ROAD_ACTION_ID, CITY_ROW - 6, CITY_COL, CITY_ROW, CITY_COL, "plain")
+    check(int(far_price.get("cost", 0)) > int(near_price.get("cost", 0)),
+            "участок дальше от города должен стоить дороже на той же местности", state)
+
+    # ТРУДНАЯ МЕСТНОСТЬ — ДОРОЖЕ, на том же расстоянии.
+    var mountain_price: Dictionary = _mh.get_road_step_work_cost(
+            ROAD_ACTION_ID, CITY_ROW, CITY_COL + 1, CITY_ROW, CITY_COL, "mountain")
+    check(int(mountain_price.get("cost", 0)) > int(near_price.get("cost", 0)),
+            "участок в горах должен стоить дороже участка на равнине", state)
+    # Множитель местности — тот же work_cost_mult, что у улучшений.
+    check(absf(float(mountain_price.get("terrain_mult", 0.0)) \
+            - float(_gdata.terrains.get("mountain", {}).get("work_cost_mult", -1.0))) < 0.0001,
+            "множитель местности участка должен браться из work_cost_mult в данных", state)
+    check(absf(_mh.get_terrain_work_mult("plain") - 1.0) < 0.0001,
+            "равнина должна стоить ровно базу", state)
+    # Неизвестная местность не должна ломать расчёт.
+    check(_mh.get_terrain_work_mult("no_such_terrain") == 1.0,
+            "неизвестная местность должна давать нейтральный множитель", state)
+
+    # «Колесо» снижает ВКЛАД расстояния — и в улучшениях, и в дороге. Формула
+    # одна на оба случая, поэтому проверяем именно равенство результатов.
+    check(absf(_mh.get_distance_tech_mult() - 1.0) < 0.0001,
+            "без технологий множитель вклада расстояния должен быть 1.0", state)
 
 # -------------------------------------------------------
 # 2. Планирование не меняет сеть, постройка подключает гекс
@@ -551,17 +589,41 @@ func _test_live_scene(state: Dictionary) -> void:
         check(_has_action(actions, "special", ROAD_ACTION_ID),
                 "на гексе без дороги должна быть кнопка «Построить дорогу»", state)
 
-        # Цена превью и цена реальной стройки — один и тот же расчёт.
+        # Цена превью и цена реальной стройки — один и тот же расчёт, из
+        # ЕДИНОГО источника шагов. Главное здесь — инвариант: сумма цен шагов
+        # равна показанной цене. Раньше это держалось на «последний шаг добирает
+        # остаток», а теперь выполняется по построению.
         var plan: Dictionary = main_map.get_road_plan(row, col)
         check(plan.get("ok", false), "до гекса без дороги должна быть трасса: %s"
                 % plan.get("reason", ""), state)
+        var breakdown: Dictionary = main_map.get_road_cost_breakdown(row, col, ROAD_ACTION_ID)
+        check(breakdown.get("ok", false), "разбор цены дороги должен быть доступен", state)
+        var steps: Array = breakdown.get("steps", [])
+        check(steps.size() > 0, "у дороги должен быть хотя бы один шаг", state)
+        var sum_steps := 0
+        for step in steps:
+            sum_steps += int(step.get("work_cost", 0))
+        check(sum_steps == int(breakdown.get("cost", -1)),
+                "цена дороги должна быть ТОЧНОЙ суммой цен её шагов (сумма %d, цена %d)"
+                        % [sum_steps, int(breakdown.get("cost", -1))], state)
+        # Шагов ровно столько, сколько новых участков на карте: уже
+        # построенные сегменты в очередь не попадают и не тарифицируются.
+        check(steps.size() == main_map.road_manager.get_plan_new_segments(plan).size(),
+                "шагов должно быть ровно столько же, сколько новых участков на карте",
+                state)
+        # Каждый шаг стоит не меньше базы и учитывает свою дальность.
+        for step in steps:
+            var w: int = int(step.get("work_cost", 0))
+            var price: Dictionary = step.get("price", {})
+            check(w >= int(price.get("base_cost", 0)) and w > 0,
+                    "цена шага не может быть нулевой или меньше базы", state)
+
+        # То же самое через get_improvement_work_cost — им пользуется
+        # build_manager для проверки «цена > 0».
         var cost: Dictionary = main_map.get_improvement_work_cost(ROAD_ACTION_ID, row, col)
-        var expected_cost := int(ceil(float(cost.get("base_cost", 0)) \
-                * float(plan.get("segments", 0)) \
-                * float(cost.get("construction_tech_mult", 1.0))))
-        check(int(cost.get("cost", -1)) == expected_cost and expected_cost > 0,
-                "цена дороги = цена за гекс × число участков (ожидалось %d, получено %d)"
-                        % [expected_cost, int(cost.get("cost", -1))], state)
+        check(int(cost.get("cost", -1)) == int(breakdown.get("cost", -2)) \
+                and int(cost.get("cost", 0)) > 0,
+                "build_manager должен видеть ту же цену, что и превью", state)
 
         # Превью в колонке предпросмотра: цена дороги и длина трассы.
         panel.select_hex(row, col)
@@ -570,11 +632,15 @@ func _test_live_scene(state: Dictionary) -> void:
                 "eff_res": "", "selected_culture_id": null}
         panel._refresh()
         var preview_text := _collect_text(panel._preview_container)
-        check(preview_text.contains("Стоимость: %d труда" % expected_cost),
+        check(preview_text.contains("Стоимость: %d труда" % int(breakdown.get("cost", 0))),
                 "в превью должна показываться итоговая стоимость дороги", state)
-        check(preview_text.contains("За гекс дороги"),
-                "в превью должна показываться цена за гекс дороги", state)
-        check(preview_text.contains("Новых участков трассы: %d" % int(plan.get("segments", 0))),
+        check(preview_text.contains("За участок"),
+                "в превью должна показываться цена за участок", state)
+        check(preview_text.contains("Расстояние до города"),
+                "в превью должно показываться, как дальность влияет на цену", state)
+        check(preview_text.contains("Местность на трассе"),
+                "в превью должно показываться, как местность влияет на цену", state)
+        check(preview_text.contains("Новых участков трассы: %d" % steps.size()),
                 "в превью должно показываться число новых участков трассы", state)
 
         # «Призрачная» дорога: пока превью открыто, маршрут нарисован на карте,

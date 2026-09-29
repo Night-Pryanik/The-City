@@ -1440,30 +1440,77 @@ func _build_road_preview(row: int, col: int, action_id: String) -> bool:
     target_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
     _preview_container.add_child(target_label)
 
-    var cost_data := MapHelpers.get_road_work_cost(action_id, int(plan.get("segments", 0)))
+    # Цена и шаги — из ЕДИНОГО источника (main_map.get_road_cost_breakdown),
+    # из которого потом стартует проект. Итог здесь равен сумме цен участков
+    # по построению, а не пересчитывается отдельно.
+    # Тип указан явно: main_map в панели не типизирован, а без подсказки
+    # Godot не может вывести тип возврата динамического вызова.
+    var breakdown: Dictionary = main_map.get_road_cost_breakdown(row, col, action_id)
+    if not breakdown.get("ok", false):
+        var warn2 := Label.new()
+        warn2.text = " %s" % str(breakdown.get("reason", "Дорогу построить нельзя"))
+        warn2.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        warn2.add_theme_color_override("font_color", Color(0.9, 0.6, 0.6))
+        _preview_container.add_child(warn2)
+        return false
+
     var cost_label := Label.new()
-    cost_label.text = " Стоимость: %d труда" % cost_data["cost"]
+    cost_label.text = " Стоимость: %d труда" % int(breakdown.get("cost", 0))
     cost_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     cost_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
     _preview_container.add_child(cost_label)
 
-    var base_label := Label.new()
-    base_label.text = " За гекс дороги: %d труда" % cost_data["base_cost"]
-    base_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    base_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
-    _preview_container.add_child(base_label)
+    # Цены участков РАЗНЫЕ: у каждого своя местность и своя дальность от
+    # города. Поэтому показываем диапазон, а не одну цифу — иначе игрок видит
+    # на карте участки с очень разными прогресс-барами и не понимает почему.
+    var min_step := int(breakdown.get("min_step_cost", 0))
+    var max_step := int(breakdown.get("max_step_cost", 0))
+    var step_text := " За участок: %d труда" % min_step
+    if max_step != min_step:
+        step_text = " За участок: от %d до %d труда" % [min_step, max_step]
+    step_text += " (база %d)" % int(GameData.special_actions.get(action_id, {}).get("work_cost", 0))
+    var step_label := Label.new()
+    step_label.text = step_text
+    step_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    step_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+    _preview_container.add_child(step_label)
 
     var segments_label := Label.new()
-    segments_label.text = " Новых участков трассы: %d" % cost_data["segments"]
+    segments_label.text = " Новых участков трассы: %d" % int(breakdown.get("segments", 0))
     segments_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     segments_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
     _preview_container.add_child(segments_label)
 
-    var total_label := Label.new()
-    total_label.text = " Итого: %d труда" % cost_data["cost"]
-    total_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    total_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
-    _preview_container.add_child(total_label)
+    # Дальность: тащить материалы до дальних гексов дороже. Диапазон по
+    # трассе, потому что участки идут от сети к цели и удаляются от города.
+    var min_dist := int(breakdown.get("min_distance", 0))
+    var max_dist := int(breakdown.get("max_distance", 0))
+    var dist_label := Label.new()
+    var dist_text := " Расстояние до города: %d гекс(а)" % min_dist
+    if max_dist != min_dist:
+        dist_text = " Расстояние до города: от %d до %d гекс(а)" % [min_dist, max_dist]
+    dist_text += " → база ×%.2f…×%.2f" % [
+        MapHelpers.get_road_distance_mult(min_dist),
+        MapHelpers.get_road_distance_mult(max_dist)]
+    dist_label.text = dist_text
+    dist_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    dist_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
+    _preview_container.add_child(dist_label)
+
+    # Местности на трассе с множителями: объясняет вторую половину цены.
+    # Без этой строки «почему так дорого» остаётся без ответа, когда трасса
+    # идёт через болото или горы.
+    var terrain_ids: Array = breakdown.get("terrains", [])
+    if not terrain_ids.is_empty():
+        var parts: Array[String] = []
+        for tid in terrain_ids:
+            var tname: String = str(GameData.terrains.get(tid, {}).get("name", tid))
+            parts.append("%s ×%.2f" % [tname, MapHelpers.get_terrain_work_mult(tid)])
+        var terr_label := Label.new()
+        terr_label.text = " Местность на трассе: %s" % ", ".join(parts)
+        terr_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        terr_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
+        _preview_container.add_child(terr_label)
 
     # Как именно пойдёт стройка: дорога строится ПО УЧАСТКАМ — по одному гексу,
     # с прогресс-баром на текущем участке. Без этой строки игрок ждёт готовую
