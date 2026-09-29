@@ -127,7 +127,7 @@
     },
     {
       "id": "vinegar",
-      "name": "Уксуса",
+      "name": "Уксус",
       "produced_in": [ "brewer_house" ],
       "resources": { "@alcohol": 20 },
       "result": { "vinegar": 10 },
