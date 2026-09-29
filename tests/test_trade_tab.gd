@@ -196,12 +196,131 @@ func _run() -> void:
 		check(int(boats_row.get("consumers_total", 0)) == 1,
 			"потребителей у @boats должен быть один рыбак: %d" % int(boats_row.get("consumers_total", 0)), state)
 
-	# ---- 6. Факт живёт ровно один тик ----
+	# ---- 6. Норма на одного потребителя (строка «Расход на 1») ----
+	# Карточка показывает норму ОДНОГО жителя из data/consumption.json, а не
+	# сумму по городу: при населении 3 сумма была бы втрое больше, и игрок
+	# не видел бы своих собственных чисел из данных.
+	if pop_map.has(all_key):
+		var unit_row: Dictionary = pop_map[all_key]
+		var json_amount := 0
+		var json_interval := 0.0
+		for e in gdata.get_profession_consumption("all"):
+			if str(e.get("display_key", "")) != all_key:
+				continue
+			json_amount = int(e.get("amount", 0))
+			json_interval = float(e.get("interval", 0))
+			break
+		check(int(unit_row.get("per_consumer_amount", -1)) == json_amount,
+			"норма на одного должна совпадать с amount из consumption.json: ожидалось %d, получено %d"
+				% [json_amount, int(unit_row.get("per_consumer_amount", 0))], state)
+		check(is_equal_approx(float(unit_row.get("per_consumer_interval", -1.0)), json_interval),
+			"интервал нормы должен совпадать с consumption.json", state)
+		var expected_unit_per_sec: float = (json_amount * city.SIMULATION_TICK / json_interval
+			if json_interval > 0.0 else json_amount * city.SIMULATION_TICK)
+		check(absf(float(unit_row.get("per_consumer_per_sec", -1.0)) - expected_unit_per_sec) < 0.01,
+			"per_consumer_per_sec должен быть нормой на одного, а не суммой: ожидалось %.2f, получено %.2f"
+				% [expected_unit_per_sec, float(unit_row.get("per_consumer_per_sec", 0.0))], state)
+		check(float(unit_row.get("per_consumer_per_sec", 0.0))
+				< float(unit_row.get("per_sec", 0.0)),
+			"норма на одного должна быть меньше суммы по городу", state)
+		# В источнике тоже сохранена норма (amount без умножения на count).
+		var src_all: Dictionary = (unit_row.get("sources", {}) as Dictionary).get("Все жители", {})
+		check(int(src_all.get("unit_amount", -1)) == json_amount,
+			"unit_amount в источнике должен быть amount из consumption.json", state)
+		check(int(src_all.get("amount", 0)) == json_amount * int(city.total_population),
+			"amount в источнике должен быть суммой по всем жителям", state)
+
+	# ---- 7. Доход по карточкам: план и факт ----
+	# План (спрос × цена) обязан сходиться с планом «Потребление населения»
+	# в тултипе казны — оба берут одну формулу (_planned_market_income_per_pid).
+	var income_map: Dictionary = wm.get_population_income_map()
+	check(not income_map.is_empty(),
+		"план дохода по карточкам не должен быть пустым при живом населении", state)
+	var treasury_plan: Dictionary = wm.get_planned_treasury_income_map()
+	var treasury_consumption: Dictionary = treasury_plan.get("Потребление населения", {})
+	var total_card_income := 0.0
+	var total_treasury_market := 0.0
+	for dkey in income_map:
+		total_card_income += float(income_map[dkey].get("coins_per_sec", 0.0))
+	for source_name in treasury_consumption:
+		for pid in treasury_consumption[source_name]:
+			total_treasury_market += float(treasury_consumption[source_name][pid].get("coins_per_sec", 0.0))
+	check(absf(total_card_income - total_treasury_market) < 0.01,
+		"сумма плана дохода карточек (%.2f) должна совпадать с планом тултипа казны (%.2f)"
+			% [total_card_income, total_treasury_market], state)
+	# Ключи дохода — display_key, а не pid членов группы.
+	var income_group_key := ""
+	for dkey in income_map:
+		if str(dkey).begins_with("@"):
+			income_group_key = str(dkey)
+			break
+	check(not income_group_key.is_empty(),
+		"доход группового ресурса должен приходить под ключом @группа", state)
+	# Сверка факта требует чистой базы: обнуляем окно казны и делаем
+	# ровно одно списание ЭТИМ экземпляром worker_manager. Иначе в казне
+	# может лежать доход от источников, которых нет в плане этого
+	# экземпляра (например, от живого worker_manager сцены), и суммы
+	# разойдутся не из-за карточек.
+	city.treasury_income_accum.clear()
+	city.treasury_income_product_accum.clear()
+	city.treasury_income_snapshot.clear()
+	city.treasury_income_product_snapshot.clear()
+	wm.tick_city_consumption(1.0)
+	city.rotate_treasury_window()
+	# ФАКТ дохода в карточках — то, что рынок реально принёс. Он обязан
+	# сходиться с блоком «Потребление населения» тултипа казны: это тот же
+	# факт, из которого берётся и строка «Казна: N [+X≈]» в верхней полосе.
+	# Регрессия: строка «Доход» показывала ПЛАН (спрос × цена), из-за чего у
+	# «Фруктов» выходило 2730 монет/сек при десяти единицах на складе, и цифра
+	# в карточке не сходилась с казной.
+	var actual_map: Dictionary = wm.get_actual_market_income_map()
+	var treasury_actual: Dictionary = wm.get_actual_treasury_income_map()
+	var actual_consumption: Dictionary = treasury_actual.get("Потребление населения", {})
+	var total_card_actual := 0.0
+	var total_treasury_actual := 0.0
+	for dkey in actual_map:
+		total_card_actual += float(actual_map[dkey].get("coins_per_sec", 0.0))
+	for source_name in actual_consumption:
+		for pid in actual_consumption[source_name]:
+			total_treasury_actual += float(actual_consumption[source_name][pid].get("coins_per_sec", 0.0))
+	check(absf(total_card_actual - total_treasury_actual) < 0.01,
+		"сумма факта дохода карточек (%.2f) должна совпадать с фактом тултипа казны (%.2f)"
+			% [total_card_actual, total_treasury_actual], state)
+	# Разбивка факта по покупателям обязана быть у карточек, у которых есть
+	# факт, и ни у кого не может быть отрицательной скорости.
+	var actual_group_key := ""
+	for dkey in actual_map:
+		var arow: Dictionary = actual_map[dkey]
+		check(float(arow.get("coins_per_sec", 0.0)) >= 0.0,
+			"факт дохода не может быть отрицательным", state)
+		if str(dkey).begins_with("@") and not (arow.get("by_source", {}) as Dictionary).is_empty():
+			actual_group_key = str(dkey)
+	check(not actual_group_key.is_empty(),
+		"факт группового ресурса должен приходить под ключом @группа с разбивкой по покупателям", state)
+
+	# ---- 8. Окно факта потребления ----
+	# Тиковый счётчик живёт один тик, а карточке нужен факт, переживающий
+	# интервал отображения из настроек (1..5 сек).
 	check(city.market_consumption_rates.size() > 0,
 		"факт рынка должен быть наполнен после списания", state)
 	city.reset_counters()
 	check(city.market_consumption_rates.is_empty(),
-		"reset_counters должен очищать факт рынка", state)
+		"reset_counters должен очищать тиковый факт рынка", state)
+	check(not city.market_consumption_accum.is_empty(),
+		"окно факта рынка должно переживать reset_counters", state)
+	city.rotate_market_consumption_window()
+	check(not city.market_consumption_snapshot.is_empty(),
+		"после ротации снимок окна не должен быть пустым", state)
+	check(city.market_consumption_accum.is_empty(),
+		"ротация должна обнулять накопитель окна", state)
+	var per_sec_window: Dictionary = city.get_market_consumption_per_sec()
+	check(not per_sec_window.is_empty(),
+		"окно должно давать факт в ед./сек для карточек", state)
+	var first_window_pid: String = str(per_sec_window.keys()[0])
+	var expected_window: float = float(city.market_consumption_snapshot[first_window_pid]) \
+		/ city.resource_display_interval
+	check(absf(float(per_sec_window[first_window_pid]) - expected_window) < 0.01,
+		"факт в ед./сек должен быть суммой окна, делённой на интервал отображения", state)
 
 	# ---- 7. Сохранение настроек ----
 	city.set_market_consumption_enabled(all_key, false)
@@ -257,50 +376,134 @@ func _run() -> void:
 		check(list != null, "нет списка карточек внутренней торговли", state)
 		if list != null and list.get_child_count() > 0:
 			var card = list.get_child(0)
-			check(card.get_node_or_null("Layout/Header/TradeToggleRect") != null,
-				"в карточке нет кнопки-прямоугольника", state)
+			# Тумблер ОДИН: вариант с двумя кнопками (прямоугольник +
+			# CheckBox) убран, в карточке остался только CheckBox.
+			check(card.get_node_or_null("Layout/Header/TradeToggleRect") == null,
+				"в карточке не должно быть кнопки-прямоугольника", state)
 			check(card.get_node_or_null("Layout/Header/TradeCheckBox") != null,
 				"в карточке нет чекбокса", state)
 			check(card.get_node_or_null("Layout/Header/PriorityButton") != null,
 				"в карточке нет кнопки приоритета", state)
+			check(card.get_node_or_null("Layout/IncomeRow/IncomeValue") != null,
+				"в карточке нет строки дохода", state)
 			var tab = city_ui.trade_tab
 			if tab != null and not tab.cards.is_empty():
 				var key: String = str(tab.cards.keys()[0])
 				var ctx: Dictionary = tab.cards[key]
-				var rect: ColorRect = ctx["toggle_rect"]
 				var box: CheckBox = ctx["checkbox"]
 				var before: bool = city.is_market_consumption_enabled(key)
-				var expected_color := Color(0, 0.8, 0, 1) if before else Color(0.8, 0.1, 0.1, 1)
-				check(rect.color == expected_color,
-					"цвет прямоугольника должен соответствовать состоянию", state)
 				check(box.button_pressed == before,
-					"чекбокс должен показывать то же состояние, что и прямоугольник", state)
+					"чекбокс должен показывать состояние рынка", state)
 				# Клик по чекбоксу переключает состояние рынка.
 				box.button_pressed = not before
 				box.toggled.emit(box.button_pressed)
 				check(city.is_market_consumption_enabled(key) != before,
 					"клик по чекбоксу должен менять состояние рынка", state)
-				# Клик по прямоугольнику — тоже (тот же тумблер).
-				var after_box: bool = city.is_market_consumption_enabled(key)
-				var click := InputEventMouseButton.new()
-				click.button_index = MOUSE_BUTTON_LEFT
-				click.pressed = true
-				tab._on_toggle_rect_input(click, key)
-				check(city.is_market_consumption_enabled(key) != after_box,
-					"клик по прямоугольнику должен менять состояние рынка", state)
-				# После правки обе кнопки показывают одно состояние.
+				# После правки чекбокс показывает новое состояние.
 				tab.update_values()
-				var current: bool = city.is_market_consumption_enabled(key)
-				check(box.button_pressed == current,
-					"обе кнопки должны показывать одно состояние после правки", state)
-				var rect_after := Color(0, 0.8, 0, 1) if current else Color(0.8, 0.1, 0.1, 1)
-				check(rect.color == rect_after,
-					"прямоугольник должен совпадать с чекбоксом после обновления", state)
+				check(box.button_pressed == city.is_market_consumption_enabled(key),
+					"чекбокс должен совпадать с состоянием рынка после обновления", state)
+				# Запрещённый ресурс показывает «—» в расходе и доходе.
+				city.set_market_consumption_enabled(key, false)
+				tab.update_values()
+				var consumption: Label = ctx["consumption"]
+				var income: Label = ctx["income"]
+				check(consumption.text == "—" and income.text == "—",
+					"у запрещённого ресурса расход и доход должны быть «—», получено «%s» / «%s»"
+						% [consumption.text, income.text], state)
+				city.set_market_consumption_enabled(key, true)
+				tab.update_values()
 				# Кнопка приоритета циклит настройку.
 				var priority_was: String = city.get_consumption_priority(key)
 				tab._on_priority_pressed(key)
 				check(city.get_consumption_priority(key) != priority_was,
 					"кнопка приоритета должна менять приоритет потребления", state)
+				# Узлы с тултипами ОБЯЗАНЫ ловить мышь. У Label по умолчанию
+				# mouse_filter = IGNORE: наведение на узел не приходит, и штатный
+				# тултип не показывается НИКОГДА. Так пропала половина подсказок
+				# карточки: цена, покупатели, расход и доход.
+				for node_key in ["price", "consumers", "consumption", "income"]:
+					var tip_node: Control = ctx[node_key]
+					check(tip_node.mouse_filter != Control.MOUSE_FILTER_IGNORE,
+						"узел «%s» должен ловить мышь (mouse_filter != IGNORE), иначе тултип не покажется"
+						% node_key, state)
+				# Тултипы заполняются при обновлении карточки и переживают его:
+				# присваивание tooltip_text снимает показанное окно, поэтому
+				# неизменный текст не переприсваивается.
+				tab.update_values()
+				var consumers_tip: String = (ctx["consumers"] as Label).tooltip_text
+				tab.update_values()
+				tab.update_values()
+				check((ctx["consumers"] as Label).tooltip_text == consumers_tip,
+					"тултип покупателей должен пережить обновление значений", state)
+				check(consumers_tip.contains(":"),
+					"тултип покупателей должен перечислять покупателей, получено «%s»"
+						% consumers_tip, state)
+				check((ctx["price"] as Label).tooltip_text.contains("Цена"),
+					"тултип цены должен объяснять расчёт цены, получено «%s»"
+					% (ctx["price"] as Label).tooltip_text, state)
+				check((ctx["consumption"] as Label).tooltip_text.contains("Расход"),
+					"тултип расхода должен перечислять нормы покупателей, получено «%s»"
+					% (ctx["consumption"] as Label).tooltip_text, state)
+				check((ctx["income"] as Label).tooltip_text.contains("Доход"),
+					"тултип дохода должен разбирать сумму, получено «%s»"
+					% (ctx["income"] as Label).tooltip_text, state)
+				# ГЛАВНАЯ регрессия: смена ЗНАЧЕНИЙ не должна пересоздавать
+				# карточки. Раньше refresh() склеивал подпись состава из
+				# отсортированных ключей, а update_values() сравнивал её с
+				# подписью в порядке вставки словаря — подписи не совпадали
+				# НИКОГДА, и весь список пересобирался каждый тик. Отсюда были
+				# и мигание чисел, и исчезающие тултипы.
+				var list2 = city_ui.get_node_or_null(
+					"ContentPanel/TradePanel/Split/InternalPanel/InternalScroll/InternalList")
+				if list2 != null and list2.get_child_count() > 0:
+					var ids_before: Array = []
+					for node in list2.get_children():
+						ids_before.append(node.get_instance_id())
+					# Меняем данные так, чтобы значения карточек обновились.
+					city.add_to_storage(str(all_members[0]), 777, "common")
+					tab.update_values()
+					tab.update_values()
+					var ids_after: Array = []
+					for node in list2.get_children():
+						ids_after.append(node.get_instance_id())
+					check(ids_before == ids_after,
+						"карточки должны переиспользоваться при смене значений, а не пересоздаваться", state)
+					check(tab._signature_of(tab._collect_data()) == tab._signature,
+						"подпись состава должна совпадать с фактическим набором карточек", state)
+					# Регрессия «доход-фантом». На складе 1 единица превосходного
+					# качества, а план (весь спрос города × цена лучшего качества) в
+					# разы больше того, что рынок способен выручить. Раньше строка
+					# «Доход» показывала именно план — 2730 монет/сек, которых в
+					# казне не было и быть не могло.
+					if tab.cards.has(all_key):
+						for m in all_members:
+							city.city_storage.erase(str(m))
+							city.city_quality_detail.erase(str(m))
+						city.add_to_storage(str(all_members[0]), 1, "perfect")
+						city.market_consumption_accum.clear()
+						city.market_consumption_snapshot.clear()
+						city.treasury_income_accum.clear()
+						city.treasury_income_product_accum.clear()
+						city.treasury_income_snapshot.clear()
+						city.treasury_income_product_snapshot.clear()
+						# План читаем ДО списания: единственная единица уходит в кассу,
+						# склад пустеет, и план честно обнуляется.
+						var plan_value := float(wm.get_population_income_map()
+							.get(all_key, {}).get("coins_per_sec", 0.0))
+						wm.tick_city_consumption(1.0)
+						city.rotate_treasury_window()
+						var fact_value := float(wm.get_actual_market_income_map()
+							.get(all_key, {}).get("coins_per_sec", 0.0))
+						check(plan_value > fact_value * 10.0,
+							"сценарий обязан воспроизводить расхождение: план (%.1f) должен быть кратно больше факта (%.1f)"
+							% [plan_value, fact_value], state)
+						tab.update_values()
+						var ghost_income: Label = tab.cards[all_key]["income"]
+						var expected_income := "%s/сек" % tab._format_rate(fact_value)
+						check(ghost_income.text == expected_income,
+							"строка «Доход» обязана показывать факт «%s», получено «%s»"
+							% [expected_income, ghost_income.text], state)
 	# Уборка состояния, чтобы тест не влиял на следующие прогоны.
 	city.total_population = 1
 	city.city_storage.clear()

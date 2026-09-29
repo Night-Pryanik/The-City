@@ -14,6 +14,7 @@ var groups: Array = []
 var eras: Array = []
 var product_groups: Dictionary = {}
 var product_group_names: Dictionary = {}
+var product_group_icons: Dictionary = {} # id -> имя файла иконки группы ("" — не задана)
 var modifiers: Dictionary = {}
 var price_modifiers: Dictionary = {} # resource_id -> { фактор: множитель цены }
 var special_actions: Dictionary = {} # id -> данные спецдействия
@@ -40,6 +41,7 @@ func load_all_data():
     eras = loader.eras
     product_groups = loader.product_groups
     product_group_names = loader.product_group_names
+    product_group_icons = loader.product_group_icons
     modifiers = loader.modifiers
     special_actions = loader.special_actions
     qualities = loader.qualities
@@ -63,6 +65,39 @@ func get_product_group_name(key: String) -> String:
     if product_group_names.has(gkey):
         return product_group_names[gkey]
     return ""
+
+# Иконка группы продуктов для карточки «Торговля» + источник этой иконки.
+# Приоритет выбора:
+#   1. собственное поле "icon" группы (data/product_groups.json) — автор
+#      данных явно выбрал пиктограмму для группы;
+#   2. иконка ПЕРВОГО члена группы, у которого иконка задана (старый порядок,
+#      обратная совместимость для групп без своего "icon").
+# Вторая ветка нужна, потому что первый член группы нередко не представитель
+# группы: у «Алкоголя» это пиво, хотя группа — напитки из зерна.
+#
+# Возвращает { "icon": String, "source_pid": String, "own": bool }:
+#   icon      — имя файла иконки ("" — иконки нет, вызывающая скрывает узел);
+#   source_pid — id товара, чей icon использован ("" при своей иконке группы);
+#   own       — true, если иконка задана самой группой. Карточка показывает
+#               источник в тултипе: без него игрок не понимает, почему у
+#               «Алкоголя» нарисован кувшин.
+func get_product_group_icon_info(key: String) -> Dictionary:
+    var gkey = key.trim_prefix("@")
+    if not product_groups.has(gkey):
+        return {"icon": "", "source_pid": "", "own": false}
+    var own_icon: String = str(product_group_icons.get(gkey, ""))
+    if not own_icon.is_empty():
+        return {"icon": own_icon, "source_pid": "", "own": true}
+    for pid in product_groups[gkey]:
+        var icon: String = str(products.get(pid, {}).get("icon", ""))
+        if not icon.is_empty():
+            return {"icon": icon, "source_pid": str(pid), "own": false}
+    return {"icon": "", "source_pid": "", "own": false}
+
+# Только имя файла иконки группы — для мест, где источник иконки не нужен.
+func get_product_group_icon(key: String) -> String:
+    return str(get_product_group_icon_info(key).get("icon", ""))
+
 
 # Возвращает список человекочитаемых названий продуктов, входящих в группу.
 # Если ключ не является группой, возвращает пустой массив.
@@ -507,14 +542,10 @@ func _build_consumption_entry(res_key: String, rule: Dictionary) -> Dictionary:
         entry["is_group"] = true
         entry["group_members"] = members.duplicate()
         entry["display_key"] = res_key
-        # Иконка группы: первый член, у которого иконка задана.
-        var icon_name := ""
-        for mid in members:
-            var mdata: Dictionary = products.get(mid, {})
-            if mdata.has("icon"):
-                icon_name = mdata["icon"]
-                break
-        entry["icon"] = icon_name
+        # Иконка группы — своя, если она задана в data/product_groups.json,
+        # иначе первая иконка среди членов (GameData.get_product_group_icon_info).
+        # Раньше здесь был отдельный обход членов, дублировавший правило.
+        entry["icon"] = get_product_group_icon(res_key)
     else:
         entry["product_id"] = res_key
         entry["product_name"] = products.get(res_key, {}).get("name", res_key)

@@ -703,10 +703,15 @@ func get_planned_consumption_map(include_production_inputs: bool = true) -> Dict
 #     "enabled": bool,         — разрешено ли потребление на рынке,
 #     "priority": String,      — приоритет списания по качеству,
 #     "sources": { имя профессии -> {
-#         "amount": int, "interval": float, "count": int,
+#         "amount": int,        — СУММА по всем потребителям этой профессии,
+#         "unit_amount": int,   — НОРМА НА ОДНОГО (amount из consumption.json),
+#         "interval": float, "count": int,
 #         "is_population": bool } },
 #     "consumers_total": int,  — сколько жителей потребляет (см. ниже),
-#     "per_sec": float }       — суммарный плановый расход, ед./сек.
+#     "per_sec": float,       — суммарный плановый расход, ед./сек.
+#     "per_consumer_per_sec": float,   — норма на одного потребителя, ед./сек;
+#     "per_consumer_amount": int,     — amount из consumption.json;
+#     "per_consumer_interval": float }
 #
 # consumers_total берётся как max(«Все жители», Σ профессий): псевдо-профессия
 # all покрывает всё население, включая занятых, поэтому простое сложение
@@ -767,6 +772,12 @@ func _record_population_row(result: Dictionary, prof_id: String, count: int, is_
         var prev_amount: int = int(sources.get(source_name, {}).get("amount", 0))
         sources[source_name] = {
             "amount": prev_amount + amount,
+            # Норма на ОДНОГО потребителя — ровно то, что объявлено в
+            # data/consumption.json (amount), без умножения на число
+            # потребителей. Именно её показывает карточка «Торговли» в строке
+            # «Расход на 1»: сумма по жителям (10 ед. × 21 = 210) — это уже
+            # «сколько съедает город», путать её с нормой нельзя.
+            "unit_amount": int(entry.get("amount", 0)),
             "interval": float(entry.get("interval", 0)),
             "count": count,
             "is_population": is_population,
@@ -782,6 +793,16 @@ func _finalize_population_row(result: Dictionary, display_key: String) -> void:
     var population_count := 0
     var professions_count := 0
     var per_sec := 0.0
+    # Норма на одного потребителя. У ресурса бывает несколько покупателей с
+    # РАЗНЫМИ нормами (например, «Все жители» едят фрукты по 10 ед./сек, а
+    # учёный — перья по 10 ед./5 сек). Показываем норму самого массового
+    # покупателя: у карточки одна строка «Расход на 1», и норма «главного»
+    # покупателя — единственное, что не врёт. Нормы остальных видны в
+    # тултипе этой строки (см. trade_tab._on_consumption_hover).
+    var best_count := -1
+    var per_consumer_per_sec := 0.0
+    var per_consumer_amount := 0
+    var per_consumer_interval := 0.0
     for source_name in sources:
         var entry: Dictionary = sources[source_name]
         var count := int(entry.get("count", 0))
@@ -795,8 +816,25 @@ func _finalize_population_row(result: Dictionary, display_key: String) -> void:
             per_sec += amount * CityData.SIMULATION_TICK / interval
         else:
             per_sec += amount * CityData.SIMULATION_TICK
+        # Норма источника на одного потребителя: unit_amount — это amount из
+        # data/consumption.json, уже без умножения на count (см.
+        # _record_population_row), поэтому делить больше не на что.
+        var unit_amount := float(entry.get("unit_amount", 0))
+        var unit_per_sec := (unit_amount * CityData.SIMULATION_TICK / interval
+            if interval > 0.0 else unit_amount * CityData.SIMULATION_TICK)
+        # При равенстве потребителей побеждает тот, кто жрёт больше в пересчёте
+        # на одного: так при 1 рыбаке и 1 жителе строка не покажет норму
+        # случайного профиля.
+        if count > best_count or (count == best_count and unit_per_sec > per_consumer_per_sec):
+            best_count = count
+            per_consumer_per_sec = unit_per_sec
+            per_consumer_amount = int(unit_amount)
+            per_consumer_interval = interval
     row["consumers_total"] = maxi(population_count, professions_count)
     row["per_sec"] = per_sec
+    row["per_consumer_per_sec"] = per_consumer_per_sec
+    row["per_consumer_amount"] = per_consumer_amount
+    row["per_consumer_interval"] = per_consumer_interval
 
 # Плановая скорость ДОХОДА казны по ТИПАМ прибыли — для тултипа «Казна»
 # в HUD карты и в верхней полосе интерфейса города.
@@ -888,33 +926,46 @@ func _fill_tax_income(result: Dictionary) -> void:
 # Рыночный доход живёт под типом «Потребление населения»; прочие типы
 # («Налоги» — см. _fill_tax_income, «Торговля» и т.п.) добавляются
 # параллельно без правки этой функции.
-func _fill_consumption_income(result: Dictionary) -> void:
-    var income_type := "Потребление населения"
-    if not result.has(income_type):
-        result[income_type] = {}
-    var type_dict: Dictionary = result[income_type]
+# Плановый доход казны от рынка, СВЁРНУТЫЙ ПО КАРТОЧКАМ вкладки «Торговля»:
+# display_key -> { "coins_per_sec": float, "by_source": { профессия: монет/сек } }.
+#
+# Ключ — display_key, а не pid, ровно как в get_population_consumption_map: у
+# карточки «Фрукты» шесть членов группы, и суммировать доход по pid значило бы
+# показать шесть строк вместо одной. Записи плана помечены display_key
+# (см. _record_planned_entry), поэтому сворачивание точное.
+#
+# ФОРМУЛА — та же, что у _fill_consumption_income (план «Потребление
+# населения» в тултипе казны): per_sec × цена, где цена — рыночная с
+# поправкой на среднее качество того, что реально лежит на складе. Общая
+# формула вынесена в _planned_market_income_per_pid, чтобы карточка и тултип
+# казны физически не могли разойтись в цифре.
+# Строки планового дохода рынка — ОБЩИЙ источник истины для двух
+# потребителей: строки «Доход» карточек «Торговли» и блока
+# «Потребление населения» в тултипе казны. Возвращает массив:
+#   { "pid": String, "source": String, "coins_per_sec": float,
+#     "product_name": String }
+#
+# Формула дохода — per_sec × цена, где цена берётся из
+# _planned_market_income_per_pid (рыночная, с поправкой на среднее качество
+# склада). Формула живёт в одном месте не из любви к красоте: когда копии
+# расходились, карточка показывала 3570 монет/сек, а тултип казны 1260 —
+# и ни один из них не выглядел сломанным.
+func _planned_market_income_rows() -> Array:
+    var rows: Array = []
+    var per_pid := _planned_market_income_per_pid()
     var planned := get_planned_consumption_map(false)
-    var planned_production := CityData.get_planned_production_map()
-    for pid in planned:
-        # План — доход по СРЕДНЕМУ качеству того, что реально лежит на складе
-        # (CityData.get_stock_quality_price_multiplier): качество будущей
-        # сделки неизвестно, а план по обычному качеству занижал бы факт.
-        var market_price: int = int(round(
-            float(CityData.get_internal_market_price(str(pid)))
-            * CityData.get_stock_quality_price_multiplier(str(pid))))
-        if market_price <= 0:
+    for pid in per_pid:
+        if not planned.has(pid):
             continue
+        # Член группы без остатка и без производства не продаётся: группа —
+        # это «любой подходящий товар», и без фильтра в доход попадали бы
+        # все шесть членов «Фруктов» разом.
+        if not bool(per_pid[pid]["available"]):
+            continue
+        var market_price: float = float(per_pid[pid]["price"])
         var product_name: String = GameData.products.get(pid, {}).get("name", pid)
         for source_name in planned[pid]:
             var entry: Dictionary = planned[pid][source_name]
-            # Групповое потребление списывается только из реально доступных
-            # членов группы. Не показываем в казне остальные члены группы,
-            # которые лишь были перечислены при её разворачивании.
-            if bool(entry.get("is_group", false)) \
-                    and CityData.get_storage_amount(str(pid)) <= 0 \
-                    and int(CityData.production_rates.get(pid, 0)) <= 0 \
-                    and planned_production.get(pid, {}).is_empty():
-                continue
             var amount := float(entry.get("amount", 0))
             var interval := float(entry.get("interval", 0))
             # Per-second потребление записи (см. ui_helpers._planned_per_sec).
@@ -925,11 +976,123 @@ func _fill_consumption_income(result: Dictionary) -> void:
                 per_sec = amount * CityData.SIMULATION_TICK
             if per_sec <= 0.0:
                 continue
-            var coins_per_sec: float = per_sec * float(market_price)
-            if not type_dict.has(source_name):
-                type_dict[source_name] = {}
-            var source_dict: Dictionary = type_dict[source_name]
-            source_dict[pid] = {"coins_per_sec": coins_per_sec, "product_name": product_name}
+            rows.append({
+                "pid": str(pid),
+                "source": str(source_name),
+                "coins_per_sec": per_sec * market_price,
+                "product_name": product_name,
+            })
+    return rows
+
+func get_population_income_map() -> Dictionary:
+    var result: Dictionary = {}
+    var planned := get_planned_consumption_map(false)
+    for row_data in _planned_market_income_rows():
+        var pid := str(row_data["pid"])
+        var entry: Dictionary = planned[pid].get(str(row_data["source"]), {})
+        var dkey := str(entry.get("display_key", ""))
+        # Пустой display_key — запись не из потребления населения (спрос
+        # зданий, корм улучшений): это производственные входы, они не
+        # продаются городу и в доход рынка не входят.
+        if dkey.is_empty():
+            continue
+        var coins := float(row_data["coins_per_sec"])
+        if not result.has(dkey):
+            result[dkey] = {"coins_per_sec": 0.0, "by_source": {}}
+        var row: Dictionary = result[dkey]
+        row["coins_per_sec"] = float(row.get("coins_per_sec", 0.0)) + coins
+        var by_source: Dictionary = row["by_source"]
+        by_source[str(row_data["source"])] = \
+            float(by_source.get(str(row_data["source"]), 0.0)) + coins
+    return result
+
+# ФАКТИЧЕСКИЙ доход внутреннего рынка за окно отображения, свёрнутый по
+# карточкам вкладки «Торговля»: display_key -> { "coins_per_sec": float,
+# "by_source": { профессия: монет/сек } }. Формат тот же, что у
+# get_population_income_map, но там ПЛАН, а здесь ФАКТ.
+#
+# Источник — те же записи CityData.record_treasury_income(профессия, цена, pid),
+# из которых собираются тултип казны и строка «Казна: N [+X≈]». Поэтому сумма
+# строк «Доход» карточек равна фактической рыночной прибыли казны: разойтись
+# им не по чему. Показывать же нужно именно факт: план (весь спрос × цена) не
+# ограничен складом и для полупустого склада давал фантастические тысячи
+# монет в секунду, которых в казне никогда не было.
+#
+# Ключ вычисляется ТОЧНО так же, как в get_population_income_map (display_key
+# плановой записи той же пары «источник + товар»): у группы это «@<группа>», и
+# доход шести членов «Фруктов» попадает в одну карточку, а не в шесть строк.
+func get_actual_market_income_map() -> Dictionary:
+    var result: Dictionary = {}
+    var actual: Dictionary = get_actual_treasury_income_map().get("Потребление населения", {})
+    if actual.is_empty():
+        return result
+    var planned := get_planned_consumption_map(false)
+    for source_name in actual:
+        var products: Dictionary = actual[source_name]
+        for pid in products:
+            var entry: Dictionary = planned.get(str(pid), {}).get(str(source_name), {})
+            var dkey := str(entry.get("display_key", ""))
+            # Пустой display_key — доход не от потребления населения (см. выше).
+            if dkey.is_empty():
+                continue
+            var coins := float(products[pid].get("coins_per_sec", 0.0))
+            if not result.has(dkey):
+                result[dkey] = {"coins_per_sec": 0.0, "by_source": {}}
+            var row: Dictionary = result[dkey]
+            row["coins_per_sec"] = float(row.get("coins_per_sec", 0.0)) + coins
+            var by_source: Dictionary = row["by_source"]
+            by_source[str(source_name)] = \
+                float(by_source.get(str(source_name), 0.0)) + coins
+    return result
+
+# Общая формула планового дохода рынка: pid -> { "price": int, "available": bool }.
+# price — цена внутреннего рынка с поправкой на средний множитель качества
+# склада (CityData.get_stock_quality_price_multiplier): качество будущей сделки
+# неизвестно, а план по обычному качеству занижал бы факт.
+# available — есть ли у товара хоть какой-то запас/производство. Для ГРУППОВОЙ
+# записи член без наличия не продаётся: группа — это «любой подходящий товар»,
+# и без фильтра в доход попадали бы все шесть членов «Фруктов» разом.
+func _planned_market_income_per_pid() -> Dictionary:
+    var result: Dictionary = {}
+    var planned_production := CityData.get_planned_production_map()
+    var planned := get_planned_consumption_map(false)
+    for pid in planned:
+        var market_price: int = int(round(
+            float(CityData.get_internal_market_price(str(pid)))
+            * CityData.get_stock_quality_price_multiplier(str(pid))))
+        if market_price <= 0:
+            continue
+        var available := true
+        for source_name in planned[pid]:
+            var entry: Dictionary = planned[pid][source_name]
+            if not bool(entry.get("is_group", false)):
+                continue
+            # Член группы без остатка и без производства в доход не идёт.
+            if CityData.get_storage_amount(str(pid)) <= 0 \
+                    and int(CityData.production_rates.get(pid, 0)) <= 0 \
+                    and planned_production.get(pid, {}).is_empty():
+                available = false
+                break
+        result[str(pid)] = {"price": market_price, "available": available}
+    return result
+
+func _fill_consumption_income(result: Dictionary) -> void:
+    var income_type := "Потребление населения"
+    if not result.has(income_type):
+        result[income_type] = {}
+    var type_dict: Dictionary = result[income_type]
+    # Ровно те же строки, что у строки «Доход» в карточках «Торговли»
+    # (get_population_income_map) — общий хелпер, поэтому расхождение цифр
+    # между карточкой и тултипом невозможно по построению.
+    for row_data in _planned_market_income_rows():
+        var source_name := str(row_data["source"])
+        if not type_dict.has(source_name):
+            type_dict[source_name] = {}
+        var source_dict: Dictionary = type_dict[source_name]
+        source_dict[str(row_data["pid"])] = {
+            "coins_per_sec": float(row_data["coins_per_sec"]),
+            "product_name": str(row_data["product_name"]),
+        }
 
 # Записывает в result плановое потребление профессии prof_id при count
 # потребителях. Для псевдо-профессии «all» count = население города и
@@ -955,15 +1118,15 @@ func _record_profession_planned(result: Dictionary, prof_id: String, count: int,
         for pid in targets:
             if str(pid).is_empty():
                 continue
-            _record_planned_entry(result, str(pid), source_name, amount, interval, count, is_group, group_name, is_population)
+            _record_planned_entry(result, str(pid), source_name, amount, interval, count, is_group, group_name, is_population, str(entry.get("display_key", "")))
 
 # Хелпер записи/агрегации планового потребления (см. get_planned_consumption_map).
-func _record_planned_entry(result: Dictionary, pid: String, source_name: String, amount: int, interval: float, count: int, is_group: bool, group_name: String, is_population: bool):
+func _record_planned_entry(result: Dictionary, pid: String, source_name: String, amount: int, interval: float, count: int, is_group: bool, group_name: String, is_population: bool, display_key: String = ""):
     if not result.has(pid):
         result[pid] = {}
     var by_source: Dictionary = result[pid]
     if not by_source.has(source_name):
-        by_source[source_name] = {"amount": 0, "interval": interval, "count": 0, "is_group": false, "group_name": "", "is_population": false}
+        by_source[source_name] = {"amount": 0, "interval": interval, "count": 0, "is_group": false, "group_name": "", "is_population": false, "display_key": ""}
     var entry: Dictionary = by_source[source_name]
     entry["amount"] = int(entry.get("amount", 0)) + amount
     entry["interval"] = minf(float(entry.get("interval", interval)), interval)
@@ -972,3 +1135,11 @@ func _record_planned_entry(result: Dictionary, pid: String, source_name: String,
     if str(entry.get("group_name", "")) == "":
         entry["group_name"] = group_name
     entry["is_population"] = bool(entry.get("is_population", false)) or is_population
+    # display_key адресует КАРТОЧКУ, а pid — конкретный товар. Одно и то же
+    # потребление «Фруктов» планом пишется в каждый член группы, и без
+    # display_key нельзя было бы свернуть эти записи обратно в одну строку
+    # карточки (см. get_population_income_map). Пустое значение — запись не
+    # из потребления населения (спрос зданий, корм улучшений), она в
+    # доходе рынка не участвует.
+    if str(entry.get("display_key", "")) == "" and not display_key.is_empty():
+        entry["display_key"] = display_key

@@ -93,9 +93,21 @@ func _initialize():
 	check(gd.professions.has("all"), "в professions.json нет псевдо-профессии all", state)
 	check(gd.professions.get("all", {}).get("pseudo", false) == true, "all не помечена pseudo", state)
 	var cons_all = gd.get_profession_consumption("all")
-	check(cons_all.size() == 1, "ожидалась 1 запись для all, получено: %d" % cons_all.size(), state)
-	if cons_all.size() == 1:
-		var ea = cons_all[0]
+	# Сколько записей у «Все жители» — вопрос ДАННЫХ, а не константа теста:
+	# в реестре их несколько (@fruits и @alcohol), и добавление новой группы
+	# не должно ронять тест. Раньше здесь стояло size() == 1, из-за чего
+	# тест падал после добавления второй записи, хотя разбор был верен.
+	check(cons_all.size() >= 1,
+		"у псевдо-профессии all должен быть хотя бы один ресурс, получено: %d" % cons_all.size(), state)
+	# Проверяем КОНКРЕТНУЮ группу @fruits внутри списка, а не первый элемент:
+	# порядок записей не задан и менялся вместе с балансом.
+	var ea: Dictionary = {}
+	for entry in cons_all:
+		if str(entry.get("display_key", "")) == "@fruits":
+			ea = entry
+			break
+	check(not ea.is_empty(), "в потреблении «Все жителей» нет записи @fruits", state)
+	if not ea.is_empty():
 		check(ea.get("is_group", false) == true, "запись all не групповая", state)
 		check(ea.get("display_key", "") == "@fruits", "display_key != @fruits", state)
 		check(ea.get("product_name", "") == "Фрукты", "имя группы != Фрукты", state)
@@ -152,9 +164,17 @@ func _initialize():
 	wm.tick_city_consumption(10.0)
 	check(city.get_storage_amount("olives") == 0, "появившийся фрукт не списан сразу", state)
 	check(city.treasury == 20 * coin_g + 20 * coin_o + coin_o, "доход казны за 1 фрукт неверен: %d" % city.treasury, state)
-	# Таймер сериализуется/восстанавливается
+	# Таймер сериализуется/восстанавливается. Ищем @fruits среди таймеров, а
+	# не требуем ровно один: у «Все жителей» несколько ресурсов (@fruits и
+	# @alcohol), и по каждому свой таймер. Проверка «таймеров ровно один»
+	# ломалась от добавления любой новой группы в реестр.
 	var ser = wm.serialize_city_consumption_timers()
-	check(ser.size() == 1 and ser[0].get("resource", "") == "@fruits", "таймер all не сериализуется", state)
+	var has_fruits_timer := false
+	for item in ser:
+		if str(item.get("resource", "")) == "@fruits":
+			has_fruits_timer = true
+			break
+	check(has_fruits_timer, "таймер all не сериализуется: %s" % str(ser), state)
 	var wm2 = load("res://scripts/worker_manager.gd").new()
 	wm2.load_city_consumption_timers(ser)
 	check(wm2.city_consumption_timers.has("@fruits"), "таймер all не восстанавливается", state)

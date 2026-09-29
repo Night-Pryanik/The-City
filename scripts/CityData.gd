@@ -39,6 +39,16 @@ var consumption_priority: Dictionary = {}
 # входы зданий), а карточке «Торговли» нужен именно рынок. Живёт ровно
 # один тик симуляции, очищается в reset_counters() — как остальные rate'ы.
 var market_consumption_rates: Dictionary = {}
+# market_consumption_accum / _snapshot — тот же факт, но накопленный за ОКНО
+# отображения, а не за один тик. Тикового счётчика недостаточно: интервал
+# отображения настраивается игроком (1..5 сек), и при чтении раз в 2–5 секунд
+# тиковый счётчик почти всегда уже очищен (reset_counters) — «факт» в карточке
+# либо не появлялся бы вовсе, либо скакал между нулями. Окно даёт стабильную
+# величину, которую видно и на частоте обновления 1 сек.
+# Наполняется в record_market_consumption(), сбрасывается в снимок в
+# rotate_market_consumption_window() (рядом с rotate_treasury_window).
+var market_consumption_accum: Dictionary = {}
+var market_consumption_snapshot: Dictionary = {}
 var city_built_buildings: Array = []
 var domesticated_animals: Array = []
 var domesticated_plants: Array = []
@@ -167,6 +177,12 @@ func tick_resource_display(delta: float) -> void:
         if _treasury_window_accum_sec >= treasury_window_length_sec:
             rotate_treasury_window()
             _treasury_window_accum_sec = 0.0
+        # Окно факта потребления рынка — по длине ресурсной эпохи (1..5 сек):
+        # карточка «Торговли» обновляется именно тогда, поэтому её «факт» и
+        # должен накапливаться ровно через столько же. Своей длины у него
+        # нет намеренно — любая другая обрекла бы карточку на интервал, а
+        # при интервале 5 сек окно в 3 сек обновлялось бы чаще карточки.
+        rotate_market_consumption_window()
 
 # Накопитель игрового времени для окна разбивки казны. Только здесь.
 var _treasury_window_accum_sec: float = 0.0
@@ -279,6 +295,8 @@ func setup():
     market_consumption_enabled.clear()
     consumption_priority.clear()
     market_consumption_rates.clear()
+    market_consumption_accum.clear()
+    market_consumption_snapshot.clear()
     city_built_buildings.clear()
     improvement_planned_production.clear()
     improvement_planned_consumption.clear()
@@ -702,6 +720,35 @@ func record_market_consumption(pid: String, amount: int) -> void:
     if amount <= 0:
         return
     market_consumption_rates[pid] = int(market_consumption_rates.get(pid, 0)) + amount
+    # Тот же факт копится в окно отображения: тиковый счётчик гаснет в
+    # reset_counters(), а карточке «Торговли» нужен факт, переживающий
+    # интервал отображения из настроек (см. market_consumption_accum).
+    market_consumption_accum[pid] = int(market_consumption_accum.get(pid, 0)) + amount
+
+# Сбрасывает окно факта потребления рынка в «прошлое» и обнуляет
+# аккумулятор. Вызывается рядом с rotate_treasury_window (см.
+# tick_resource_display). Пока первое окно не завершилось, снимок пуст —
+# get_market_consumption_per_sec() берёт текущий аккумулятор, чтобы строка
+# не показывала «0» при идущем потреблении.
+func rotate_market_consumption_window() -> void:
+    market_consumption_snapshot = market_consumption_accum.duplicate()
+    market_consumption_accum.clear()
+
+# Факт потребления на внутреннем рынке в единицах В СЕКУНДУ по прошедшему
+# окну отображения: product_id -> ед./сек. Окно короче симуляционного тика не
+# бывает (минимум 1 сек), поэтому за окно факт всегда есть.
+func get_market_consumption_per_sec() -> Dictionary:
+    var source: Dictionary = market_consumption_snapshot
+    if source.is_empty():
+        source = market_consumption_accum
+    if source.is_empty() or resource_display_interval <= 0.0:
+        return {}
+    var result: Dictionary = {}
+    for pid in source:
+        var amount := int(source[pid])
+        if amount > 0:
+            result[str(pid)] = float(amount) / resource_display_interval
+    return result
 
 # --- ПЛАНОВЫЙ СПРОС ЗДАНИЙ (для «Потребление (плановое)» на вкладке «Ресурсы») ---
 # Кэш ссылки на TownsfolkManager: нужен и do_tick(), и подсчёту спроса зданий.

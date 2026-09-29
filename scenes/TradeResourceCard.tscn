@@ -9,7 +9,14 @@
 ;   Icon / NameLabel / PriorityButton — заголовок;
 ;   StockValue / QualityLabel         — запас и разбивка по качеству;
 ;   PriceValue / ConsumersValue / ConsumptionValue — цифры;
-;   TradeToggleRect / TradeCheckBox   — две кнопки одного тумблера.
+;   IncomeValue                        — доход в казну;
+;   TradeCheckBox                      — тумблер разрешения потребления.
+;
+; ВАЖНО: у PriceValue / ConsumersValue / ConsumptionValue / IncomeValue стоит
+; mouse_filter = 0 (STOP). У Label по умолчанию mouse_filter = IGNORE, и
+; тогда узел не ловит мышь: сигнал mouse_entered не приходит НИКОГДА, а
+; вместе с ним и штатный тултип. Именно из-за этого тултипы цены, покупателей,
+; расхода и дохода не показывались (проверено на Godot 4.7).
 
 [node name="TradeCard" type="PanelContainer"]
 custom_minimum_size = Vector2(0, 0)
@@ -43,13 +50,6 @@ layout_mode = 2
 size_flags_vertical = 4
 tooltip_text = "Приоритет потребления"
 text = "★"
-
-[node name="TradeToggleRect" type="ColorRect" parent="Layout/Header"]
-custom_minimum_size = Vector2(14, 14)
-layout_mode = 2
-size_flags_vertical = 4
-color = Color(0, 1, 0, 1)
-mouse_filter = 0
 
 [node name="TradeCheckBox" type="CheckBox" parent="Layout/Header"]
 layout_mode = 2
@@ -90,6 +90,7 @@ text = "Цена:"
 
 [node name="PriceValue" type="Label" parent="Layout/DetailRow"]
 layout_mode = 2
+mouse_filter = 0
 text = "0"
 
 [node name="ConsumersCaption" type="Label" parent="Layout/DetailRow"]
@@ -99,13 +100,29 @@ text = "Покупателей:"
 
 [node name="ConsumersValue" type="Label" parent="Layout/DetailRow"]
 layout_mode = 2
+mouse_filter = 0
 text = "0"
 
 [node name="ConsumptionCaption" type="Label" parent="Layout/DetailRow"]
 layout_mode = 2
 size_flags_vertical = 1
-text = "Расход:"
+text = "Расход на 1:"
 
 [node name="ConsumptionValue" type="Label" parent="Layout/DetailRow"]
 layout_mode = 2
+mouse_filter = 0
+text = "0/сек"
+
+[node name="IncomeRow" type="HBoxContainer" parent="Layout"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="IncomeCaption" type="Label" parent="Layout/IncomeRow"]
+layout_mode = 2
+size_flags_vertical = 1
+text = "Доход:"
+
+[node name="IncomeValue" type="Label" parent="Layout/IncomeRow"]
+layout_mode = 2
+mouse_filter = 0
 text = "0/сек"

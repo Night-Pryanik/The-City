@@ -15,6 +15,7 @@ var groups: Array = []
 var eras: Array = []
 var product_groups: Dictionary = {} # id -> products
 var product_group_names: Dictionary = {} # id -> human-readable name
+var product_group_icons: Dictionary = {} # id -> имя файла иконки ("" — не задана)
 var modifiers: Dictionary = {}
 var special_actions: Dictionary = {} # id -> данные спецдействия
 var qualities: Dictionary = {} # данные о степенях качества ресурсов
@@ -61,12 +62,17 @@ func load_all_data():
     # НОВОЕ: загружаем группы товаров
     product_groups = {}
     product_group_names = {}
+    product_group_icons = {}
     for pg in merged_data.get("product_groups", []):
         if pg is Dictionary:
             var group_id = pg.get("id", "")
             if not group_id.is_empty():
                 product_groups[group_id] = pg.get("products", [])
                 product_group_names[group_id] = pg.get("name", group_id)
+                # Необязательное поле "icon": своя иконка группы. Пустая строка
+                # — иконка не задана, тогда GameData возьмёт иконку первого
+                # члена с иконкой (см. GameData.get_product_group_icon).
+                product_group_icons[group_id] = str(pg.get("icon", ""))
 
     # НОВОЕ: загружаем глобальные модификаторы
     modifiers = merged_data.get("modifiers", {})

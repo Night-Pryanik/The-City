@@ -1,11 +1,16 @@
 # resources_tab.gd
 extends Node
 
+# Скрипт-«источник истины» для констант оформления. Нужен на этапе парсинга
+# для const QUALITY_MARKER_COLOR ниже (в GDScript константа не видит
+# переменные, объявленные позже, но видит предзагруженные скрипты).
+const UiHelpers = preload("res://scripts/ui_helpers.gd")
+
 # Голубая звезда-маркер в начале метки качества (см. _update_quality_label).
-# Цвет тот же, что у строк специального прироста (ui_helpers, accent
-# интерфейса): маркер не должен выглядеть как уровень качества, поэтому он
-# не совпадает ни с одним из цветов data/qualities.json.
-const QUALITY_MARKER_COLOR := Color(0.3, 1.0, 0.918)
+# Цвет берётся из ui_helpers.QUALITY_MARKER_COLOR — тот же акцент интерфейса
+# в карточках «Торговли»: маркер не должен выглядеть как уровень качества,
+# поэтому он не совпадает ни с одним из цветов data/qualities.json.
+const QUALITY_MARKER_COLOR := UiHelpers.QUALITY_MARKER_COLOR
 
 var ui_helpers: Node
 var products: Dictionary = {}

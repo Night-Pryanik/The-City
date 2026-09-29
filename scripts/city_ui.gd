@@ -282,6 +282,14 @@ func _refresh_light(force_resources := false):
         _display_epoch = CityData.resource_display_epoch
         resources_tab.update_values()
         _update_food_label()
+        # Карточки внутренней торговли обновляются с тем же интервалом из
+        # настроек: раньше они пересчитывались каждый тик, из-за чего мигали
+        # числа, а открытый тултип исчезал (состав списка не совпадал с
+        # подписью, и карточки пересоздавались целиком). Пересчёт ради
+        # невидимой вкладки — лишняя работа, поэтому только когда вкладка
+        # активна.
+        if active_tab == "trade":
+            trade_tab.update_values()
         # На смене ресурсной эпохи обновляем открытый тултип разбивки казны
         # свежими данными (плановый доход пересчитан, снимок расходов
         # обновлён, см. CityData.tick_resource_display → rotate_treasury_window).
@@ -292,12 +300,15 @@ func _refresh_light(force_resources := false):
                 and ui_helpers.treasury_tooltip_panel.visible:
             _show_treasury_tooltip(get_viewport().get_mouse_position(), true)
             _treasury_display_epoch = CityData.resource_display_epoch
+        # Тултип разбора качества в карточке «Торговли» — по тому же
+        # правилу: остаётся на месте, содержимое обновляется.
+        if active_tab == "trade" and trade_tab != null \
+                and trade_tab.has_method("refresh_open_tooltip"):
+            trade_tab.refresh_open_tooltip()
     buildings_tab.update_built_status()
-    # Карточки внутренней торговли обновляем только когда вкладка активна:
-    # пересчёт потребления на каждом тике ради невидимых карточек — лишняя
-    # работа (та же мысль, что и для tech_tree ниже).
-    if active_tab == "trade":
-        trade_tab.update_values()
+    # Открытый тултип разбора качества карточки обновляем свежими данными
+    # на смене эпохи (см. trade_tab.refresh_open_tooltip): панель остаётся
+    # под курсором, но её числа перестают устаревать.
     # Прогресс исследования обновляем только когда вкладка Технологии
     # активна — иначе лишняя работа на каждом тике. Стоимость минимальна,
     # но привычка «не делать лишнего, если не нужно» важна.
