@@ -18,6 +18,11 @@ func save_game():
         "production_rates": CityData.production_rates,
         "consumption_rates": CityData.consumption_rates,
         "city_food_pool": CityData.city_food_pool,
+        # Внутренний рынок (вкладка «Торговля»): тумблеры разрешения
+        # потребления и приоритет списания по качеству. Ключи — display_key
+        # (id продукта или "@группа").
+        "market_consumption_enabled": CityData.market_consumption_enabled,
+        "consumption_priority": CityData.consumption_priority,
         "city_built_buildings": _serialize_buildings(CityData.city_built_buildings),
         "domesticated_animals": CityData.domesticated_animals,
         "domesticated_plants": CityData.domesticated_plants,
@@ -96,6 +101,11 @@ func apply_loaded_data():
     CityData.production_rates = saved_data.get("production_rates", {})
     CityData.consumption_rates = saved_data.get("consumption_rates", {})
     CityData.city_food_pool = saved_data.get("city_food_pool", {})
+    # Настройки внутреннего рынка (вкладка «Торговля»). В старых сейвах
+    # полей нет — тогда всё разрешено и взят приоритет по умолчанию, что
+    # и делает пустой словарь: CityData трактует отсутствие ключа именно так.
+    CityData.market_consumption_enabled = saved_data.get("market_consumption_enabled", {})
+    CityData.consumption_priority = saved_data.get("consumption_priority", {})
     CityData.city_built_buildings = saved_data.get("city_built_buildings", [])
 
     # Дополняем склад недостающими продуктами (на случай, если в сейве нет

@@ -1,0 +1,111 @@
+[gd_scene format=3]
+
+; Шаблон карточки ресурса для левой колонки вкладки «Торговля»
+; (внутренняя торговля). Разметка целиком живёт здесь, а скрипт
+; trade_tab.gd только инстанцирует карточку и подставляет значения —
+; поэтому любой элемент можно передвинуть мышкой в редакторе сцены.
+;
+; Узлы, к которым обращается скрипт (имена менять нельзя):
+;   Icon / NameLabel / PriorityButton — заголовок;
+;   StockValue / QualityLabel         — запас и разбивка по качеству;
+;   PriceValue / ConsumersValue / ConsumptionValue — цифры;
+;   TradeToggleRect / TradeCheckBox   — две кнопки одного тумблера.
+
+[node name="TradeCard" type="PanelContainer"]
+custom_minimum_size = Vector2(0, 0)
+offset_right = 520.0
+offset_bottom = 104.0
+
+[node name="Layout" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Header" type="HBoxContainer" parent="Layout"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Icon" type="TextureRect" parent="Layout/Header"]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+size_flags_vertical = 4
+expand_mode = 1
+stretch_mode = 5
+
+[node name="NameLabel" type="Label" parent="Layout/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 1
+text = "Ресурс"
+
+[node name="PriorityButton" type="Button" parent="Layout/Header"]
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+size_flags_vertical = 4
+tooltip_text = "Приоритет потребления"
+text = "★"
+
+[node name="TradeToggleRect" type="ColorRect" parent="Layout/Header"]
+custom_minimum_size = Vector2(14, 14)
+layout_mode = 2
+size_flags_vertical = 4
+color = Color(0, 1, 0, 1)
+mouse_filter = 0
+
+[node name="TradeCheckBox" type="CheckBox" parent="Layout/Header"]
+layout_mode = 2
+size_flags_vertical = 4
+tooltip_text = "Разрешить потребление на внутреннем рынке"
+button_pressed = true
+
+[node name="StockRow" type="HBoxContainer" parent="Layout"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="StockCaption" type="Label" parent="Layout/StockRow"]
+layout_mode = 2
+size_flags_vertical = 1
+text = "Склад:"
+
+[node name="StockValue" type="Label" parent="Layout/StockRow"]
+layout_mode = 2
+text = "0"
+
+[node name="QualityLabel" type="RichTextLabel" parent="Layout/StockRow"]
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+size_flags_vertical = 4
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
+autowrap_mode = 0
+
+[node name="DetailRow" type="HBoxContainer" parent="Layout"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="PriceCaption" type="Label" parent="Layout/DetailRow"]
+layout_mode = 2
+size_flags_vertical = 1
+text = "Цена:"
+
+[node name="PriceValue" type="Label" parent="Layout/DetailRow"]
+layout_mode = 2
+text = "0"
+
+[node name="ConsumersCaption" type="Label" parent="Layout/DetailRow"]
+layout_mode = 2
+size_flags_vertical = 1
+text = "Покупателей:"
+
+[node name="ConsumersValue" type="Label" parent="Layout/DetailRow"]
+layout_mode = 2
+text = "0"
+
+[node name="ConsumptionCaption" type="Label" parent="Layout/DetailRow"]
+layout_mode = 2
+size_flags_vertical = 1
+text = "Расход:"
+
+[node name="ConsumptionValue" type="Label" parent="Layout/DetailRow"]
+layout_mode = 2
+text = "0/сек"

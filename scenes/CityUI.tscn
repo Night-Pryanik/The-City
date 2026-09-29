@@ -221,6 +221,45 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
+[node name="Split" type="HBoxContainer" parent="ContentPanel/TradePanel" unique_id=1900000201]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 8
+
+[node name="InternalPanel" type="VBoxContainer" parent="ContentPanel/TradePanel/Split" unique_id=1900000202]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+theme_override_constants/separation = 4
+
+[node name="TitleLabel" type="Label" parent="ContentPanel/TradePanel/Split/InternalPanel" unique_id=1900000203]
+layout_mode = 2
+text = "Внутренняя торговля"
+
+[node name="InternalScroll" type="ScrollContainer" parent="ContentPanel/TradePanel/Split/InternalPanel" unique_id=1900000204]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="InternalList" type="VBoxContainer" parent="ContentPanel/TradePanel/Split/InternalPanel/InternalScroll" unique_id=1900000205]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="ExternalPanel" type="VBoxContainer" parent="ContentPanel/TradePanel/Split" unique_id=1900000206]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+theme_override_constants/separation = 4
+
+[node name="TitleLabel" type="Label" parent="ContentPanel/TradePanel/Split/ExternalPanel" unique_id=1900000207]
+layout_mode = 2
+text = "Внешняя торговля"
+
 [node name="TechnologiesPanel" type="Panel" parent="ContentPanel" unique_id=1065922502]
 layout_mode = 1
 anchors_preset = 15

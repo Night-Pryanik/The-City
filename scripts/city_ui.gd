@@ -99,6 +99,11 @@ func set_worker_manager(wm: Node):
     worker_manager = wm
     if resources_tab != null:
         resources_tab.set_worker_manager(wm)
+    # Вкладке «Торговля» WorkerManager нужен для карточек внутренней
+    # торговли: он считает, кто и сколько потребляет (профессии +
+    # псевдо-профессия «Все жители»).
+    if trade_tab != null:
+        trade_tab.set_worker_manager(wm)
 
 func _ready():
     # Загружаем модули
@@ -147,6 +152,10 @@ func _ready():
     $ContentPanel/TechnologiesPanel/TreeRoot.add_child(tech_tree)
 
     trade_tab = load("res://scripts/trade_tab.gd").new()
+    trade_tab.setup(
+        $ContentPanel/TradePanel/Split/InternalPanel/InternalScroll/InternalList,
+        ui_helpers
+    )
     add_child(trade_tab)
 
     # Сигналы кнопок
@@ -284,6 +293,11 @@ func _refresh_light(force_resources := false):
             _show_treasury_tooltip(get_viewport().get_mouse_position(), true)
             _treasury_display_epoch = CityData.resource_display_epoch
     buildings_tab.update_built_status()
+    # Карточки внутренней торговли обновляем только когда вкладка активна:
+    # пересчёт потребления на каждом тике ради невидимых карточек — лишняя
+    # работа (та же мысль, что и для tech_tree ниже).
+    if active_tab == "trade":
+        trade_tab.update_values()
     # Прогресс исследования обновляем только когда вкладка Технологии
     # активна — иначе лишняя работа на каждом тике. Стоимость минимальна,
     # но привычка «не делать лишнего, если не нужно» важна.
@@ -315,6 +329,7 @@ func _refresh_all():
     resources_tab.refresh()
     buildings_tab.refresh_built()
     tech_tree.refresh()
+    trade_tab.refresh()
     _update_food_label()
 
 func _switch_tab(tab_id: String):
@@ -340,6 +355,10 @@ func _switch_tab(tab_id: String):
         buildings_tab.refresh_list()
     elif tab_id == "technologies":
         tech_tree.refresh()
+    elif tab_id == "trade":
+        # Состав карточек зависит от назначений и населения, поэтому при
+        # открытии вкладки список пересобирается целиком.
+        trade_tab.refresh()
 
     ui_helpers.set_message("")
     _highlight_active_tab_button()

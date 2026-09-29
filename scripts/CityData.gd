@@ -17,6 +17,28 @@ var city_quality_detail: Dictionary = {}
 var production_rates: Dictionary = {}
 var consumption_rates: Dictionary = {}
 var city_food_pool: Dictionary = {}
+# --- ВНУТРЕННИЙ РЫНОК (вкладка «Торговля») ---
+# Ключ состояния во всех трёх словарях ниже — DISPLAY_KEY ресурса: id
+# одиночного продукта ("feathers") или "@группа" ("@boats"). Это ровно тот
+# ключ, который кладёт в запись GameData.get_profession_consumption()
+# (поле display_key), поэтому адресация одинакова и для одиночных
+# ресурсов, и для групп продуктов.
+#
+# market_consumption_enabled — разрешено ли городу покупать этот ресурс на
+# внутреннем рынке (тумблер на карточке «Торговли»). Отсутствие ключа =
+# разрешено (по умолчанию рынок открыт для всего).
+var market_consumption_enabled: Dictionary = {}
+# consumption_priority — приоритет списания ПО КАЧЕСТВУ на внутреннем
+# рынке: "best" | "worst" | "random" (data/qualities.json,
+# priority_options). Дефолт — GameData.get_quality_priority_default(),
+# ровно как quality_priority у зданий (см. building_panel).
+var consumption_priority: Dictionary = {}
+# market_consumption_rates — ФАКТИЧЕСКОЕ потребление на внутреннем рынке
+# за текущий тик: product_id -> единиц. Отдельный счётчик, потому что
+# общий consumption_rates смешан со всеми каналами (в т.ч. производственные
+# входы зданий), а карточке «Торговли» нужен именно рынок. Живёт ровно
+# один тик симуляции, очищается в reset_counters() — как остальные rate'ы.
+var market_consumption_rates: Dictionary = {}
 var city_built_buildings: Array = []
 var domesticated_animals: Array = []
 var domesticated_plants: Array = []
@@ -254,6 +276,9 @@ func setup():
     production_rates.clear()
     consumption_rates.clear()
     city_food_pool.clear()
+    market_consumption_enabled.clear()
+    consumption_priority.clear()
+    market_consumption_rates.clear()
     city_built_buildings.clear()
     improvement_planned_production.clear()
     improvement_planned_consumption.clear()
@@ -316,6 +341,9 @@ func reset_counters():
     # счётчики.
     improvement_planned_production.clear()
     improvement_planned_consumption.clear()
+    # Факт потребления на внутреннем рынке за тик (вкладка «Торговля») —
+    # такой же счётчик на один тик, как два выше.
+    market_consumption_rates.clear()
 
 # --- КАЗНА ГОРОДА ---
 # Добавляет монеты в казну. Казна всегда целое число монет: amount должен быть
@@ -596,6 +624,85 @@ func record_production_source(pid: String, _source_name: String, amount: int):
 func record_consumption_source(pid: String, _source_name: String, amount: int):
     consumption_rates[pid] = consumption_rates.get(pid, 0) + amount
 
+# --- ВНУТРЕННИЙ РЫНОК: РАЗРЕШЕНИЕ И ПРИОРИТЕТ СПИСАНИЯ ---
+# Весь раздел работает с DISPLAY_KEY (см. описание словарей выше):
+# id одиночного продукта либо "@группа". Пустой ключ — no-op: он не может
+# ничего адресовать, и молча проглоченный клик по несуществующей строке
+# был бы хуже явного игнора.
+
+# Разрешено ли потребление ресурса на внутреннем рынке. Нет ключа —
+# разрешено (рынок открыт по умолчанию).
+func is_market_consumption_enabled(display_key: String) -> bool:
+    if display_key.is_empty():
+        return true
+    return bool(market_consumption_enabled.get(display_key, true))
+
+# Разрешает/запрещает потребление. Запрет означает полное отсутствие
+# списания: worker_manager не списывает ресурс со склада, не платит в
+# казну и не даёт бонус производства по этой записи (см.
+# worker_manager._aggregate_production_bonus).
+func set_market_consumption_enabled(display_key: String, value: bool) -> void:
+    if display_key.is_empty():
+        return
+    market_consumption_enabled[display_key] = value
+
+# Переключатель тумблера «Торговли». Возвращает новое состояние, чтобы
+# вызывающая сторона (карточка) сразу обновила обе кнопки-варианта.
+func toggle_market_consumption_enabled(display_key: String) -> bool:
+    var new_value := not is_market_consumption_enabled(display_key)
+    set_market_consumption_enabled(display_key, new_value)
+    return new_value
+
+# Приоритет списания по качеству. Нет ключа — дефолт из данных
+# (data/qualities.json, priority_default). Значение, которого нет в списке
+# опций (испорченный сейв, правило переименовали), тоже читается как
+# дефолт: проверка живёт и при чтении, и при записи, иначе сломанный сейв
+# молча сломал бы списание.
+func get_consumption_priority(display_key: String) -> String:
+    if display_key.is_empty():
+        return GameData.get_quality_priority_default()
+    var stored := str(consumption_priority.get(display_key, ""))
+    if stored.is_empty() or not GameData.get_quality_priority_options().has(stored):
+        return GameData.get_quality_priority_default()
+    return stored
+
+# Назначает приоритет. Неизвестное значение молча заменяется дефолтом:
+# так испорченный сейв не ломает списание, а приводит к «лучшее
+# качество» — безопасному поведению по умолчанию.
+func set_consumption_priority(display_key: String, priority: String) -> void:
+    if display_key.is_empty():
+        return
+    if not GameData.get_quality_priority_options().has(priority):
+        priority = GameData.get_quality_priority_default()
+    consumption_priority[display_key] = priority
+
+# Циклически переключает приоритет (best → worst → random → best) и
+# возвращает новое значение. Порядок и набор — из data/qualities.json
+# (get_quality_priority_options), тот же цикл, что у кнопки приоритета
+# качества здания (см. building_panel._on_quality_priority_pressed).
+func cycle_consumption_priority(display_key: String) -> String:
+    var options: Array = GameData.get_quality_priority_options()
+    if options.is_empty():
+        return get_consumption_priority(display_key)
+    var current := get_consumption_priority(display_key)
+    var idx: int = options.find(current)
+    if idx < 0:
+        # Текущее значение не из списка (старый сейв) — начинаем цикл
+        # с первого варианта, а не с непредсказуемой позиции -1.
+        idx = 0
+    var new_priority := str(options[(idx + 1) % options.size()])
+    set_consumption_priority(display_key, new_priority)
+    return new_priority
+
+# Запись ФАКТА списания на внутреннем рынке за тик. Отдельный счётчик
+# (market_consumption_rates), потому что общий consumption_rates
+# смешан с производственными входами зданий. Пишется из worker_manager
+# ровно в тех местах, где ресурс уходит городу за деньги.
+func record_market_consumption(pid: String, amount: int) -> void:
+    if amount <= 0:
+        return
+    market_consumption_rates[pid] = int(market_consumption_rates.get(pid, 0)) + amount
+
 # --- ПЛАНОВЫЙ СПРОС ЗДАНИЙ (для «Потребление (плановое)» на вкладке «Ресурсы») ---
 # Кэш ссылки на TownsfolkManager: нужен и do_tick(), и подсчёту спроса зданий.
 # Ищется один раз и переиспользуется (is_instance_valid — на случай удаления узла).
@@ -604,6 +711,10 @@ var _townsfolk_ref: Node = null
 func _get_townsfolk() -> Node:
     if _townsfolk_ref != null and is_instance_valid(_townsfolk_ref):
         return _townsfolk_ref
+    # Узел может быть вне дерева (тесты вызывают счётчики напрямую, до
+    # добавления сцены) — тогда искать нечего, и null — правильный ответ.
+    if not is_inside_tree():
+        return null
     var main_map = get_tree().root.find_child("MainMap", true, false)
     if main_map:
         _townsfolk_ref = main_map.get_node_or_null("TownsfolkManager")
@@ -616,6 +727,9 @@ var _worker_manager_ref: Node = null
 func _get_worker_manager() -> Node:
     if _worker_manager_ref != null and is_instance_valid(_worker_manager_ref):
         return _worker_manager_ref
+    # См. _get_townsfolk: вне дерева искать нечего.
+    if not is_inside_tree():
+        return null
     var main_map = get_tree().root.find_child("MainMap", true, false)
     if main_map:
         _worker_manager_ref = main_map.get_node_or_null("WorkerManager")
