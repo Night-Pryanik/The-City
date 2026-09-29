@@ -7,6 +7,7 @@
 [ext_resource type="Script" uid="uid://ioi24pjoaapx" path="res://scripts/build_manager.gd" id="5_6ic70"]
 [ext_resource type="Script" uid="uid://b2anvgprhgych" path="res://scripts/map_renderer.gd" id="6_82ayj"]
 [ext_resource type="Script" uid="uid://b7pijc74chsbo" path="res://scripts/road_manager.gd" id="7_2m761"]
+[ext_resource type="Script" uid="uid://coq275q8pnqnc" path="res://scripts/project_manager.gd" id="7b_pm01"]
 [ext_resource type="Script" uid="uid://d5hdforsqjlr" path="res://scripts/expansion_manager.gd" id="8_8fkir"]
 [ext_resource type="Script" uid="uid://clfermtbeqck1" path="res://scripts/worker_manager.gd" id="9_nmjbi"]
 [ext_resource type="Script" uid="uid://f5r75bb5rgdq" path="res://scripts/townsfolk_manager.gd" id="10_yd4n3"]
@@ -135,6 +136,9 @@ script = ExtResource("5_6ic70")
 
 [node name="RoadManager" type="Node" parent="." unique_id=2061907274]
 script = ExtResource("7_2m761")
+
+[node name="ProjectManager" type="Node" parent="." unique_id=2061907275]
+script = ExtResource("7b_pm01")
 
 [node name="ExpansionManager" type="Node" parent="." unique_id=1230720441]
 script = ExtResource("8_8fkir")

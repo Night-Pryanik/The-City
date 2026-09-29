@@ -184,6 +184,7 @@ const MAP_TOOLTIP_LEAVE_GRACE: float = 0.35
 @onready var map_renderer = $MapRenderer
 @onready var progress_bar_layer = $MapRenderer/ProgressBarLayer
 @onready var road_manager = $RoadManager
+@onready var project_manager = $ProjectManager
 @onready var expansion_manager = $ExpansionManager
 @onready var river_manager = $RiverManager
 @onready var town_manager = $TownManager
@@ -298,6 +299,13 @@ func _ready():
         build_manager.restore_builds(SaveManager.saved_data.get("active_builds", {}))
         build_manager.restore_building_builds(SaveManager.saved_data.get("active_building_builds", {}))
         build_manager.restore_expansion_builds(SaveManager.saved_data.get("active_expansion_builds", {}))
+
+        # Восстанавливаем незаконченные поэтапные проекты (дорога по гексам).
+        # Их сегменты в сейв не пишутся: уже проложенная часть восстановится
+        # по флагам road_built, поставленным на каждом подключённом гексе
+        # шага (см. _on_project_step_completed), а очередь оставшихся
+        # участков продолжает достраиваться.
+        project_manager.restore_projects(SaveManager.saved_data.get("active_projects", {}))
 
         # Восстанавливаем назначения рабочих и горожан
         worker_manager.load_assignments(SaveManager.saved_data.get("worker_assignments", []))
@@ -488,6 +496,12 @@ func _ready():
     build_manager.build_building_completed.connect(_on_building_build_completed)
     build_manager.building_upgrade_completed.connect(_on_building_upgrade_completed)
     build_manager.expansion_build_completed.connect(expansion_manager.on_expansion_build_completed)
+    # Пошаговые проекты (дорога по гексам): раздачу труда build_manager делает
+    # сам, а эффект каждого достроенного участка применяет main_map.
+    build_manager.project_manager = project_manager
+    project_manager.step_completed.connect(_on_project_step_completed)
+    project_manager.project_completed.connect(_on_project_completed)
+    project_manager.project_cancelled.connect(_on_project_cancelled)
     city_button.gui_input.connect(_on_city_button_gui_input)
 
     # Сигналы от ExpansionManager
@@ -760,7 +774,8 @@ func _process(delta):
 
     _update_research_progress()
     # Перерисовываем слой прогресс-баров ТОЛЬКО когда есть что показывать:
-    # идёт исследование, есть активные стройки или идёт разведка. В противном
+    # идёт исследование, есть активные стройки (включая шаги поэтапных
+    # проектов — их считает has_active_builds) или идёт разведка. В противном
     # случае слой лёгкий и его _draw() ничего не рисует — нет смысла вызывать
     # queue_redraw() каждый кадр. Когда строительство/исследование/разведка
     # завершились/начались, соответствующие обработчики вызывают
@@ -1177,6 +1192,54 @@ func _on_control_panel_build_changed(_a = null, _b = null, _c = null, _d = null)
 func confirm_cancel_build(row: int, col: int):
     _confirm_cancel_build(row, col)
 
+# Отмена поэтапного проекта к гексу (row, col) — например, незаконченной
+# дороги. Диалог подтверждения тот же, что и у обычной стройки: отмена
+# необратима, а уже проложенные участки дороги остаются на карте.
+func confirm_cancel_project(row: int, col: int):
+    if project_manager == null:
+        return
+    var project: Dictionary = project_manager.get_project_at(row, col)
+    if project.is_empty():
+        return
+    var steps: Array = project.get("steps", [])
+    var done := int(project.get("step_index", 0))
+    var left := maxi(0, steps.size() - done)
+    var title := str(project.get("title", "Строительство"))
+
+    var dialog = AcceptDialog.new()
+    dialog.title = "Отмена строительства"
+    var text := "Отменить «%s»?\n\n" % title
+    if left > 0:
+        text += "Недостроенных участков: %d. Потраченный на них труд (%.0f/%d) будет потерян.\n\n" % [
+            left,
+            float(project_manager.get_step_progress_at(row, col).get("progress", 0.0)),
+            int(project_manager.get_step_progress_at(row, col).get("work_cost", 0.0)),
+        ]
+    if done > 0:
+        text += "Уже построенные участки (%d) останутся на карте." % done
+    dialog.dialog_text = text
+    dialog.get_ok_button().text = "Да"
+    var was_paused = get_tree().paused
+    get_tree().paused = true
+    dialog.process_mode = Node.PROCESS_MODE_ALWAYS
+
+    dialog.confirmed.connect(func():
+        if not was_paused:
+            get_tree().paused = false
+        if project_manager.cancel_project(str(project.get("id", ""))):
+            hud.show_message("Строительство отменено")
+        _refresh_project_ghost()
+        _redraw_progress_layer()
+    )
+    add_child(dialog)
+    dialog.popup_centered()
+    # У AcceptDialog нет сигнала canceled: закрытие окна крестиком просто
+    # прячет диалог. Снимаем паузу и в этом случае.
+    dialog.visibility_changed.connect(func():
+        if not dialog.visible and not was_paused:
+            get_tree().paused = false
+    )
+
 func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = null):
     var tile = tile_data[row][col]
 
@@ -1231,12 +1294,16 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
             tile["production_fractional_remainder"] = 0.0
             tile["feed_fractional_remainder"] = 0.0
         elif action_type == "road":
-            # Дорога, построенная игроком. Прокладывается ОПЛАЧЕННАЯ часть
-            # трассы; если игрок оплатил не всю (длинная дорога), стройка
-            # остаётся активной и доплачивается дальше — поэтому нужен
-            # ранний выход из общего хвоста функции.
-            if not _apply_paid_road(row, col, imp_id):
-                return
+            # Дорога — поэтапный проект (project_manager), а не обычная стройка
+            # на этом гексе: её участки добавляются в сеть по одному, пока
+            # project_manager не доведёт очередь до конца. Сюда выполнение
+            # попасть не может — старт дороги перехватывается в
+            # build_manager.start_build и уходит в start_road_project.
+            # Ветка оставлена как «ничего не делать»: если дорога каким-то
+            # образом дошла до обычной стройки (старый сейв), завершение
+            # просто не трогает карту, а не чинит что попало.
+            build_manager.remove_build(row, col)
+            return
         else:
             # Террейн-действие (напр. осушение): сбрасываем ресурсы и
             # улучшение, очищаем покров и crop_bred, чтобы гекс стал
@@ -1307,65 +1374,189 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
     map_renderer.queue_redraw()
     _redraw_progress_layer()
 
-# Прокладывает оплаченную часть трассы дороги (спецдействие build_road).
-# Возвращает true, если дорога построена полностью и стройку можно закрыть
-# (вызывающий код убирает её из build_manager общим хвостом _on_build_completed),
-# и false — если оплачена лишь часть длинной трассы: тогда стройка остаётся
-# активной с остатком стоимости, и игрок доплачивает следующие участки.
-func _apply_paid_road(row: int, col: int, action_id: String) -> bool:
-    var tile = tile_data[row][col]
-    var build_key := str(row) + "," + str(col)
-    # Сколько игрок реально оплатил — берём из самой стройки: за время
-    # стройки сеть города могла измениться (построена другая дорога), и
-    # пересчитанная цена была бы уже не той, что показана в превью.
-    var build_data: Dictionary = build_manager.active_builds.get(build_key, {})
-    var cost_data := get_improvement_work_cost(action_id, row, col)
-    var paid_work := int(build_data.get("work_cost", 0))
-    if paid_work <= 0:
-        paid_work = int(cost_data.get("cost", 0))
+# === Поэтапное строительство дороги (спецдействие build_road) ===
+#
+# Дорога — проект из отдельных участков, а не одна стройка на всю трассу:
+# игрок подтверждает маршрут, он целиком встаёт в очередь (project_manager) и
+# достраивается по одному гексу. «Призрак» маршрута остаётся на карте до
+# конца, а построенные участки исчезают из него и становятся настоящей
+# дорогой.
+#
+# Раньше здесь была одна стройка на всю длину трассы и частичная оплата:
+# игрок мог оплатить часть маршрута, а дорога достраивалась добиранием
+# остатка. С поэтапностью это исчезло — за каждый участок платит отдельный
+# шаг, и недоплаченный участок просто не начинается.
 
+# Спецдействие «Построить дорогу» на гексе (row, col). Вызывается из
+# build_manager.start_build, поэтому возвращает bool в его смысле.
+func start_road_project(row: int, col: int, action_id: String) -> bool:
+    # Трасса может исчезнуть между нажатием кнопки и подтверждением (например,
+    # игрок успел построить другую дорогу) — тогда просто сообщаем причину.
     var plan := get_road_plan(row, col)
     if not plan.get("ok", false):
-        # Трассы больше нет (например, она исчезла из-за изменений на карте) —
-        # снимаем стройку, чтобы игрок не платил в пустоту.
         hud.show_message("Дорогу построить не удалось: %s" % plan.get("reason", "нет пути"))
-        return true
+        return false
 
-    # Цена одного участка: work_cost из данных × множитель технологий.
-    var per_hex := float(cost_data.get("base_cost", 1)) \
-            * float(cost_data.get("construction_tech_mult", 1.0))
-    var total_segments := int(plan.get("segments", 0))
-    var total_work := int(ceil(per_hex * float(total_segments)))
-    var remaining_work := total_work - paid_work
+    # Общий лимит одновременных строек равен числу жителей. Дорога занимает
+    # один слот, а не по числу гексов: одновременно строится один участок.
+    if not CityData.ignore_build_requirements \
+            and build_manager.get_total_active_builds() >= CityData.total_population:
+        hud.show_message("Можно строить не более %d зданий или улучшений одновременно (лимит = число жителей)"
+                % CityData.total_population)
+        return false
 
-    if remaining_work <= 0:
-        # Оплачено с запасом (или ровно всю трассу) — строим её целиком.
-        road_manager.build_road_to(row, col, tile_data, map_rows, map_cols,
-                get_town_influence_hexes(row, col), -1, _road_hex_allowed())
-        _mark_road_built(row, col, plan)
-        map_renderer.queue_redraw()
-        _redraw_progress_layer()
-        return true
+    var is_town := bool(plan.get("is_town", false))
+    var steps := _build_road_steps(plan, action_id)
+    if steps.is_empty():
+        hud.show_message("Дорогу построить не удалось: нет новых участков")
+        return false
 
-    # Оплачена часть трассы: строим оплаченные участки и оставляем стройку
-    # активной с остатком стоимости. Записи может не быть — например, при
-    # включённом «Игнорировать требования строительства» стройка завершается
-    # мгновенно, не попадая в active_builds; тогда остаток просто нечего
-    # переносить, а вся трасса считается оплаченной.
-    if not build_manager.active_builds.has(build_key):
-        road_manager.build_road_to(row, col, tile_data, map_rows, map_cols,
-                get_town_influence_hexes(row, col), -1, _road_hex_allowed())
-        _mark_road_built(row, col, plan)
-        return true
-    var paid_segments := int(floor(float(paid_work) / per_hex))
-    paid_segments = clampi(paid_segments, 1, total_segments)
-    road_manager.build_road_to(row, col, tile_data, map_rows, map_cols,
-            get_town_influence_hexes(row, col), paid_segments, _road_hex_allowed())
-    build_manager.active_builds[build_key]["work_cost"] = remaining_work
-    build_manager.active_builds[build_key]["progress"] = 0.0
+    var title := "Дорога"
+    if is_town:
+        var town = find_town_at(row, col)
+        if town != null:
+            title = "Дорога до городка «%s»" % str(town.get("name", ""))
+
+    # Цель кладём в meta: событие project_completed приходит уже ПОСЛЕ того,
+    # как проект выброшен из менеджера, и больше негде взять гекс, который
+    # нужно пометить входными данными для сейва.
+    var project_id: String = project_manager.start_project("road", title, row, col, steps, {
+        "action_id": action_id,
+        "is_town": is_town,
+        "target_row": row,
+        "target_col": col,
+    })
+    if project_id == "":
+        return false
+    hud.show_message("%s: участков %d, строится по одному" % [title, steps.size()])
+    # Призрак маршрута появляется сразу после подтверждения и живёт до конца
+    # стройки: с этого момента панель закрывается, а игрок всё равно должен
+    # видеть на карте весь проект и понимать, сколько ещё предстоит.
+    _refresh_project_ghost()
     map_renderer.queue_redraw()
     _redraw_progress_layer()
-    return false
+    return true
+
+# Превращает план дороги в очередь шагов — по одному на новый участок.
+#
+# Порядок шагов — ОТ СЕТИ К ЦЕЛИ, хотя plan_road_to возвращает путь от цели
+# к городу (так его строит поиск). Это не косметика: у каждого шага два гекса,
+# и строить от сети значит, что участок всегда присоединяется к уже готовой
+# дороге, а не повисает в воздухе до конца стройки. По той же причине
+# прогресс-бар едет от города к цели, а призрак «съедается» с города.
+func _build_road_steps(plan: Dictionary, action_id: String) -> Array:
+    var road_path: Array = plan.get("path", [])
+    var is_town := bool(plan.get("is_town", false))
+    if road_path.size() < 2:
+        return []
+
+    # Только НОВЫЕ участки: уже проложенные платить не нужно (их шага в
+    # очереди не будет, и в призраке они тоже не появятся). Путь идёт от
+    # цели к городу, поэтому новые участки разворачиваем — шаг за шагом от
+    # сети.
+    var pairs: Array = []
+    for i in range(road_path.size() - 2, -1, -1):
+        var from_hex: Dictionary = road_path[i + 1]
+        var to_hex: Dictionary = road_path[i]
+        var f_row := int(from_hex.get("row", -1))
+        var f_col := int(from_hex.get("col", -1))
+        var t_row := int(to_hex.get("row", -1))
+        var t_col := int(to_hex.get("col", -1))
+        if f_row < 0 or t_row < 0:
+            continue
+        if road_manager.has_road_between(f_row, f_col, t_row, t_col):
+            continue
+        pairs.append({
+            "from": {"row": f_row, "col": f_col},
+            "to": {"row": t_row, "col": t_col},
+            "ghost": {road_manager.get_road_segment_key(f_row, f_col, t_row, t_col): true},
+        })
+    if pairs.is_empty():
+        return []
+
+    # Цена проекта та же, что показывает превью: цена за гекс × число новых
+    # участков. Пошагово цена округляется вверх, поэтому последний шаг
+    # добирает остаток — сумма шагов равна показанной в панели цене, и игрок
+    # платит ровно столько, сколько ему показали.
+    var total_work := int(MapHelpers.get_road_work_cost(action_id, pairs.size()).get("cost", 0))
+    var per_step := int(MapHelpers.get_road_work_cost(action_id, 1).get("cost", 0))
+    var steps: Array = []
+    for i in range(pairs.size()):
+        var pair: Dictionary = pairs[i]
+        var to_hex: Dictionary = pair["to"]
+        var work_cost := per_step
+        if i == pairs.size() - 1:
+            work_cost = maxi(1, total_work - per_step * (pairs.size() - 1))
+        steps.append({
+            "label": "Участок %d/%d" % [i + 1, pairs.size()],
+            "work_cost": work_cost,
+            # Прогресс-бар рисуется на гексе, который шаг присоединяет к сети.
+            "hex": {"row": int(to_hex["row"]), "col": int(to_hex["col"])},
+            "ghost": pair["ghost"],
+            "data": {
+                "from": pair["from"],
+                "to": pair["to"],
+                "is_town": is_town,
+            },
+        })
+    return steps
+
+# Эффект одного участка дороги: сегмент уходит в сеть города, оба его гекса
+# становятся подключёнными. Флаг road_built ставится на КАЖДЫЙ присоединённый
+# гекс, а не только на цель проекта: сегменты в сейв не пишутся, и по этим
+# флагам сеть пересчитывается при загрузке (road_manager.rebuild_player_roads).
+# Так полупостроенная дорога переживает перезапуск, а не исчезает.
+func _on_project_step_completed(_project_id: String, kind: String, step: Dictionary) -> void:
+    if kind != "road":
+        return
+    var data: Dictionary = step.get("data", {})
+    var from_hex: Dictionary = data.get("from", {})
+    var to_hex: Dictionary = data.get("to", {})
+    var f_row := int(from_hex.get("row", -1))
+    var f_col := int(from_hex.get("col", -1))
+    var t_row := int(to_hex.get("row", -1))
+    var t_col := int(to_hex.get("col", -1))
+    if f_row < 0 or t_row < 0:
+        return
+    road_manager.build_road_step(f_row, f_col, t_row, t_col, bool(data.get("is_town", false)))
+    if t_row < tile_data.size() and t_col < tile_data[t_row].size() \
+            and tile_data[t_row][t_col] != null:
+        tile_data[t_row][t_col]["road_built"] = true
+    _refresh_project_ghost()
+    map_renderer.queue_redraw()
+    _redraw_progress_layer()
+    control_panel.refresh()
+
+# Дорога достроена целиком: отмечаем цель входными данными для сейва и
+# открываем торговлю, если дорога шла к городку.
+func _on_project_completed(project_id: String, kind: String, meta: Dictionary) -> void:
+    _refresh_project_ghost()
+    if kind == "road":
+        # Проект к этому моменту уже выброшен из менеджера, поэтому цель
+        # берём из meta, заполненного при старте (см. start_road_project).
+        var row := int(meta.get("target_row", -1))
+        var col := int(meta.get("target_col", -1))
+        if row >= 0 and col >= 0:
+            _mark_road_built(row, col, meta)
+    map_renderer.queue_redraw()
+    _redraw_progress_layer()
+    control_panel.refresh()
+
+func _on_project_cancelled(_project_id: String, _kind: String, _meta: Dictionary) -> void:
+    # Проложенные участки остаются (отмена не откатывает дорогу), исчезает
+    # только призрак того, что достроить не удалось.
+    _refresh_project_ghost()
+    map_renderer.queue_redraw()
+    _redraw_progress_layer()
+    control_panel.refresh()
+
+# Призрак на карте = сегменты ещё не построенных шагов активных проектов.
+# Обновляется на каждом событии проекта, поэтому построенный участок пропадает
+# из маршрута сам собой.
+func _refresh_project_ghost() -> void:
+    if map_renderer == null:
+        return
+    map_renderer.set_project_ghost_segments(project_manager.get_pending_ghost_segments())
 
 # Помечает цель дороги построенной — это входные данные для восстановления
 # дороги из сейва (сегменты в сейв не пишутся, см. road_manager).

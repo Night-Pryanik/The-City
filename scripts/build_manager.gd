@@ -27,6 +27,20 @@ var active_expansion_builds: Dictionary = {} # освоение территор
 # для решения о перерисовке слоя прогресс-баров).
 var _active_build_count: int = 0
 
+# === Пошаговые проекты (project_manager) ===
+#
+# Проект (трасса дороги по гексам) — это очередь шагов, каждый из которых
+# строится отдельно и занимает в пуле труда ровно ОДИН слот: одновременно
+# идёт только текущий шаг. Ставку труда здесь НЕ выдумывается заново, а
+# считается в том же _process по тем же правилам, что и для улучшений: один
+# разделённый между всеми труд на город. Иначе поэтапный проект получил бы
+# свою ставку поверх общей и город строил бы быстрее самого себя.
+#
+# Подключение намеренно узкое: менеджер объявляет, сколько шагов идёт, и
+# получает готовую ставку (receive_labor). Знать про дороги и акведуки
+# build_manager не обязан.
+var project_manager: Node = null
+
 func _ready():
     set_process(not Engine.is_editor_hint())
     _recount_active_builds()
@@ -50,13 +64,16 @@ func _process(delta):
         if data.get("status", "active") == "active":
             active_builds_list.append(data)
 
-    # Если нет активных строек — ничего не делаем
-    if active_builds_list.is_empty():
+    # Если нет активных строек — ничего не делаем. Шаги поэтапных проектов
+    # тоже считаются стройками (см. project_manager ниже), поэтому проверка
+    # не должна обрывать раздачу труда, когда идёт только проект.
+    var project_steps := _get_active_project_steps()
+    if active_builds_list.is_empty() and project_steps <= 0:
         return
 
     # Распределяем общий труд между активными стройками поровну
     var total_labor = CityData.get_total_labor()
-    var labor_per_build = total_labor / active_builds_list.size()
+    var labor_per_build = total_labor / (active_builds_list.size() + project_steps)
 
     var to_complete = []
     var to_complete_buildings = []
@@ -110,6 +127,22 @@ func _process(delta):
     # После завершения строек в _process обновляем кэш счётчика.
     if not to_complete.is_empty() or not to_complete_buildings.is_empty() or not to_complete_expansions.is_empty():
         _recount_active_builds()
+
+    # Шаги поэтапных проектов получают ту же самую поделённую ставку и
+    # разбираются ПО ОДНОМУ за кадр. Вызывается после раздачи своим стройкам,
+    # потому что обработчик шага (main_map) может тронуть сеть дорог и тем
+    # самым изменить число активных проектов — на уже посчитанной ставке это
+    # не скажется, а на следующем кадре учтётся.
+    if project_manager != null and project_steps > 0:
+        project_manager.receive_labor(labor_per_build, delta,
+                CityData.ignore_build_requirements)
+
+# Сколько пошаговых проектов сейчас строятся. Каждый занимает ровно один слот
+# в пуле труда: одновременно идёт только текущий шаг, остальные ждут очереди.
+func _get_active_project_steps() -> int:
+    if project_manager == null:
+        return 0
+    return project_manager.get_active_step_count()
 
 func start_build(row: int, col: int, imp_id: String, target_res_id = null) -> bool:
     # На гексе города строительство улучшений запрещено.
@@ -189,6 +222,18 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null) -> bo
             reason = reason.substr(0, 1).to_lower() + reason.substr(1)
         emit_signal("build_message", "Дорогу сюда построить нельзя: %s" % reason)
         return false
+
+    # Дорога — не одна стройка на всю трассу, а ПОЭТАПНЫЙ проект: очередь
+    # участков, каждый строится отдельно (project_manager). Запуск отдан
+    # main_map: он владеет и планировщиком дорог (road_manager), и менеджером
+    # проектов, поэтому собирать шаги ему же. Точка входа остаётся прежней
+    # (start_build), чтобы панели и прочим вызывающим не пришлось знать,
+    # какие спецдействия поэтапные.
+    if is_road_action:
+        if main_map == null or not main_map.has_method("start_road_project"):
+            emit_signal("build_message", "Дорогу построить не удалось")
+            return false
+        return main_map.start_road_project(row, col, imp_id)
 
     if work_cost <= 0 or CityData.ignore_build_requirements:
         emit_signal("build_message", "Построено мгновенно: %s" % imp_name)
@@ -458,16 +503,20 @@ func cancel_building_build(build_key: String):
     emit_signal("build_building_cancelled", build_key)
     emit_signal("build_message", "Строительство %s отменено. Потрачено %.0f/%d труда" % [building_name, work_done, work_total])
 
-# Возвращает общее количество активных строек (улучшения + здания + освоение).
+# Возвращает общее количество активных строек (улучшения + здания + освоение
+# + текущие шаги поэтапных проектов). Проект занимает один слот, а не по
+# числу гексов: одновременно строится только один его участок.
 func get_total_active_builds() -> int:
-    return active_builds.size() + active_building_builds.size() + active_expansion_builds.size()
+    return active_builds.size() + active_building_builds.size() \
+        + active_expansion_builds.size() + _get_active_project_steps()
 
 # Возвращает true, если есть хотя бы одна активная стройка (улучшение, здание
 # или освоение территории). Работает за O(1) через кэшированный счётчик —
 # используется в main_map._process для решения, нужно ли перерисовывать слой
-# прогресс-баров каждый кадр.
+# прогресс-баров каждый кадр. Шаги проектов в счётчик не входят: их каждый
+# кадр опрашивает project_manager, а не кэш build_manager.
 func has_active_builds() -> bool:
-    return _active_build_count > 0
+    return _active_build_count > 0 or _get_active_project_steps() > 0
 
 # Пересчитывает кэш числа активных строек по фактическому размеру словарей.
 # Вызывается при восстановлении строек из сохранения и в _ready.

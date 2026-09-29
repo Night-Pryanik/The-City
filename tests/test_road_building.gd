@@ -591,13 +591,43 @@ func _test_live_scene(state: Dictionary) -> void:
         check(main_map.map_renderer._road_preview_segments.is_empty(),
                 "после закрытия превью маршрут должен исчезнуть с карты", state)
 
-        # Полный цикл: кнопка -> стройка -> сегменты дороги на карте.
+        # Полный цикл: кнопка -> ПОЭТАПНЫЙ проект -> сегменты дороги на карте.
+        # Дорога больше не обычная стройка на этом гексе, а очередь участков,
+        # поэтому идёт проект, а не запись в active_builds.
         check(bm.start_build(row, col, ROAD_ACTION_ID),
                 "стройку дороги должно быть можно запустить", state)
-        check(bm.is_building(row, col), "после запуска на гексе должна идти стройка", state)
+        var project = main_map.project_manager.get_project_at(row, col)
+        check(not project.is_empty(),
+                "после запуска на гексе должен идти поэтапный проект дороги", state)
+        var step_count: int = project.get("steps", []).size()
+        check(step_count > 0, "в проекте должен быть хотя бы один участок", state)
+        check(not bm.is_building(row, col),
+                "участки дороги не должны быть обычной стройкой на гексе", state)
+
+        # Призрак проекта живёт на карте до конца стройки и равен числу
+        # непостроенных участков.
+        var ghost_during: Dictionary = main_map.map_renderer._project_ghost_segments
+        check(ghost_during.size() == step_count,
+                "призрак проекта должен показывать все непостроенные участки: %d и %d"
+                        % [ghost_during.size(), step_count], state)
+        check(not rm.is_hex_connected(row, col),
+                "до завершения проекта дороги до цели ещё нет", state)
+
+        # Кнопка «Построить дорогу» на гексе стройки не показывается — вместо
+        # неё предлагается отмена проекта.
+        var during_actions: Array = panel._collect_actions(row, col, main_map.tile_data[row][col])
+        check(not _has_action(during_actions, "special", ROAD_ACTION_ID),
+                "на гексе идущей стройки кнопка «Построить дорогу» не показывается", state)
+        check(_has_action(during_actions, "cancel_project", ""),
+                "на гексе идущей стройки должна быть кнопка отмены проекта", state)
+
         await _finish_build(state)
+        check(main_map.project_manager.get_project_at(row, col).is_empty(),
+                "после завершения проекта он должен исчезнуть из очереди", state)
         check(rm.is_hex_connected(row, col),
                 "после завершения стройки гекс должен получить дорогу", state)
+        check(main_map.map_renderer._project_ghost_segments.is_empty(),
+                "после завершения проекта призрак маршрута должен исчезнуть", state)
         check(bool(main_map.tile_data[row][col].get("road_built", false)),
                 "на гексе должен стоять флаг road_built (входные данные для сейва)", state)
         check(not _has_action(panel._collect_actions(row, col, main_map.tile_data[row][col]),

@@ -57,6 +57,10 @@ func save_game():
         "active_builds": build_manager.active_builds if build_manager else {},
         "active_building_builds": build_manager.active_building_builds if build_manager else {},
         "active_expansion_builds": build_manager.active_expansion_builds if build_manager else {},
+        # Незаконченные поэтапные проекты (очередь участков дороги). Сохраняется
+        # именно очередь, а не сегменты дорог: сегменты, как и все прочие
+        # дороги, восстанавливаются по флагам гексов.
+        "active_projects": _serialize_projects(main_map),
         "building_construction": CityData.building_construction,
         "rivers": main_map.river_manager.serialize_rivers(),
         "towns": main_map.town_manager.serialize_towns(),
@@ -196,6 +200,14 @@ func _serialize_buildings(buildings: Array) -> Array:
             copy["slot_containers"] = serialized
         out.append(copy)
     return out
+
+# Очередь шагов незаконченных поэтапных проектов для сейва. Менеджера может не
+# быть (старая партия без узла) — тогда сохраняем пустую очередь.
+func _serialize_projects(main_map: Node) -> Dictionary:
+    var project_manager = main_map.get_node_or_null("ProjectManager")
+    if project_manager == null or not project_manager.has_method("serialize_projects"):
+        return {}
+    return project_manager.serialize_projects()
 
 func _serialize_tile_data(main_map: Node) -> Array:
     var result = []

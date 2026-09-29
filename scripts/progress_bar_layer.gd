@@ -140,6 +140,27 @@ func _draw_progress_bars(row: int, col: int):
             draw_rect(Rect2(bar_x, bar_y, fill_width, bar_height), Color.YELLOW)
             draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color.WHITE, false)
 
+    # --- Прогресс-бар текущего участка поэтапного проекта (дорога по гексам) ---
+    # Рисуется на гексе, который строящийся участок присоединяет к сети. Когда
+    # участок достроен, менеджер проектов переходит к следующему — и бар сам
+    # переезжает на следующий гекс. Общий механизм: подойдёт любому
+    # поэтапному проекту (акведуку и т.п.), а не только дороге.
+    if main_map.project_manager != null:
+        var project_progress = main_map.project_manager.get_step_progress_at(row, col)
+        if not project_progress.is_empty():
+            var proj_bar_width = RESOURCE_ICON_SIZE
+            var proj_bar_height = 6
+            var proj_bar_x = center.x - proj_bar_width / 2.0
+            # Ниже бара стройки, чтобы не накладываться на него: у гекса может
+            # одновременно идти и стройка улучшения, и участок дороги.
+            var proj_bar_y = center.y + RESOURCE_ICON_SIZE / 2.0 + 16
+            draw_rect(Rect2(proj_bar_x, proj_bar_y, proj_bar_width, proj_bar_height), Color(0.2, 0.2, 0.2))
+            var p_work_cost = maxf(1.0, float(project_progress.get("work_cost", 1.0)))
+            var p_progress = float(project_progress.get("progress", 0.0))
+            var proj_fill_width = proj_bar_width * clamp(p_progress / p_work_cost, 0.0, 1.0)
+            draw_rect(Rect2(proj_bar_x, proj_bar_y, proj_fill_width, proj_bar_height), Color(0.45, 0.75, 1.0))
+            draw_rect(Rect2(proj_bar_x, proj_bar_y, proj_bar_width, proj_bar_height), Color.WHITE, false)
+
     # --- Прогресс-бар освоения территории (покупка чанка за труд) ---
     # Показывается на первом гексе чанка, который осваивается.
     var expansion_progress = main_map.build_manager.get_expansion_progress_for_hex(row, col)

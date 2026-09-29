@@ -484,6 +484,43 @@ func build_road_to(
         emit_signal("town_link_established", row, col)
     return true
 
+# Канонический ключ сегмента дороги — тот же формат, что у road_segments
+# ("row1,col1|row2,col2" в каноническом направлении). Открытая обёртка над
+# внутренним _get_canonical_road_key: ключи сегментов нужны не только самому
+# road_manager, но и владельцу поэтапного проекта (main_map собирает из них
+# «призрак» непостроенных участков на карте).
+func get_road_segment_key(row1: int, col1: int, row2: int, col2: int) -> String:
+    return _get_canonical_road_key(row1, col1, row2, col2)
+
+# Строит ОДИН участок поэтапной дороги: сегмент уходит в сеть ГОРОДА, оба
+# его гекса подключаются, кэш планов сбрасывается. Главное отличие от
+# build_road_to, который прокладывает всю трассу одним вызовом, — здесь
+# добавляется ровно один сегмент, потому что очередь шагов проекта
+# (project_manager) разбирается по одному.
+#
+# is_town — трасса идёт к городку: такой сегмент дополнительно попадает в
+# town_link_segments, чтобы рисоваться с гейтами тумана (см.
+# get_all_town_link_segments). Событие открытия связи при этом НЕ эмитится:
+# оно наступит, когда достроится ПОСЛЕДНИЙ участок, и его эмитит владелец
+# проекта (main_map) — здесь такого знания ещё нет.
+func build_road_step(
+    from_row: int,
+    from_col: int,
+    to_row: int,
+    to_col: int,
+    is_town: bool = false
+) -> bool:
+    if has_road_between(from_row, from_col, to_row, to_col):
+        return false
+    _add_road_segment(from_row, from_col, to_row, to_col)
+    connected_hexes[_hex_key(from_row, from_col)] = true
+    connected_hexes[_hex_key(to_row, to_col)] = true
+    if is_town:
+        town_link_segments[_get_canonical_road_key(
+                from_row, from_col, to_row, to_col)] = true
+    _invalidate_plan_cache()
+    return true
+
 # Новые, ещё НЕ построенные сегменты трассы плана — в том же формате ключей,
 # что и road_segments (см. _get_canonical_road_key), поэтому рендерер рисует их
 # тем же кодом, что и настоящие дороги, но своим стилем. Побочных эффектов нет:

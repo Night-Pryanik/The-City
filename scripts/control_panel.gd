@@ -414,11 +414,17 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
         # обычном гексе, но с другим текстом: здесь дорога не доходит до гекса
         # городка, а соединяет город с дорогами кольца влияния.
         if not main_map.road_manager.is_town_linked_to_city(row, col):
-            var road_sa: Dictionary = GameData.special_actions.get(ROAD_ACTION_ID, {})
-            if not road_sa.is_empty():
-                _append_special_action(actions, ROAD_ACTION_ID, road_sa,
-                        "Построить дорогу от города до городка%s — откроет торговлю"
-                                % ((" «%s»" % town_name) if town_name != "" else ""))
+            # Пока идёт поэтапный проект к этому городку, кнопку строительства
+            # не показываем — вместо неё отмена уже начатой стройки.
+            if main_map.project_manager != null \
+                    and main_map.project_manager.has_project_at(row, col):
+                actions.append(_make_project_cancel_action(main_map.project_manager, row, col))
+            else:
+                var road_sa: Dictionary = GameData.special_actions.get(ROAD_ACTION_ID, {})
+                if not road_sa.is_empty():
+                    _append_special_action(actions, ROAD_ACTION_ID, road_sa,
+                            "Построить дорогу от города до городка%s — откроет торговлю"
+                                    % ((" «%s»" % town_name) if town_name != "" else ""))
 
         actions.append({
             "type": "open_town",
@@ -728,8 +734,35 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
             "tooltip": "Отменить текущее строительство на этом гексе",
             "icon": "cross.svg"
         })
+    elif main_map.project_manager != null \
+            and main_map.project_manager.has_project_at(row, col):
+        # Идёт поэтапный проект (дорога по гексам). Кнопки «Построить
+        # дорогу» здесь уже нет — вместо неё отмена проекта.
+        actions.append(_make_project_cancel_action(main_map.project_manager,
+                row, col))
 
     return actions
+
+# Кнопка отмены идущего поэтапного проекта. Показывает, сколько участков
+# уже построено и сколько осталось: игрок видит, сколько работы пропадёт.
+func _make_project_cancel_action(project_manager: Node, row: int, col: int) -> Dictionary:
+    var project: Dictionary = project_manager.get_project_at(row, col)
+    var steps: Array = project.get("steps", [])
+    var done := int(project.get("step_index", 0))
+    var left := maxi(0, steps.size() - done)
+    var label := "Отменить стройку"
+    var tooltip := "Отменить строительство на этом гексе"
+    if not steps.is_empty():
+        label = "Отменить стройку (осталось %d)" % left
+        tooltip = "Отменить проект. Уже построенные участки останутся на карте"
+    return {
+        "type": "cancel_project",
+        "label": label,
+        "enabled": true,
+        "tooltip": tooltip,
+        "project_id": str(project.get("id", "")),
+        "icon": "cross.svg"
+    }
 
 # Добавляет спец-действия (special_actions.json), применимые к гексу.
 # Собирает действия для гекса вне Кольца Влияния:
@@ -895,6 +928,11 @@ func _add_special_actions(actions: Array, row: int, col: int, tile: Dictionary):
             if applicable and tile.get("improvement", null) != null:
                 var tile_imp: Dictionary = GameData.improvements.get(tile.improvement, {})
                 applicable = not bool(tile_imp.get("no_road", false))
+            # Дорога к гексу уже строится (поэтапный проект): вторую очередь
+            # на тот же маршрут не создаём, вместо кнопки — отмена проекта.
+            if applicable and main_map.project_manager != null \
+                    and main_map.project_manager.has_project_at(row, col):
+                applicable = false
         if not applicable:
             continue
 
@@ -1000,6 +1038,10 @@ func _on_action_pressed(action: Dictionary):
         return
     if type == "cancel_build":
         main_map.confirm_cancel_build(_selected_hex.row, _selected_hex.col)
+        return
+    if type == "cancel_project":
+        if _selected_hex != null and main_map.project_manager != null:
+            main_map.confirm_cancel_project(_selected_hex.row, _selected_hex.col)
         return
     if type == "research_tech":
         # Аналог пункта «Изучить X» в контекстном меню (ПКМ): мгновенный старт
@@ -1422,6 +1464,15 @@ func _build_road_preview(row: int, col: int, action_id: String) -> bool:
     total_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     total_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
     _preview_container.add_child(total_label)
+
+    # Как именно пойдёт стройка: дорога строится ПО УЧАСТКАМ — по одному гексу,
+    # с прогресс-баром на текущем участке. Без этой строки игрок ждёт готовую
+    # дорогу целиком и не понимает, почему она появляется по кускам.
+    var steps_hint := Label.new()
+    steps_hint.text = " Будет строиться участками: по одному гексу за раз"
+    steps_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    steps_hint.add_theme_color_override("font_color", Color(0.8, 0.85, 0.95))
+    _preview_container.add_child(steps_hint)
 
     # Дебаг «Игнорировать требования строительства» — та же строка, что и в
     # обычном превью: трасса прокладывается целиком и без ожидания.

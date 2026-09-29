@@ -1285,6 +1285,29 @@ func set_road_preview_segments(segments: Dictionary) -> void:
     _road_preview_segments = segments
     queue_redraw()
 
+# «Призрак» идущего проекта: сегменты ЕЩЁ НЕ ПОСТРОЕННЫХ участков очереди.
+# В отличие от превью он живёт не до нажатия «Отменить», а до конца стройки —
+# игрок всё это время видит на карте весь маршрут и понимает, что ещё
+# предстоит. Построенный участок пропадает из набора сам (шаг ушёл из очереди,
+# набор пересобирается на каждом событии проекта), поэтому участок
+# превращается из призрака в настоящую дорогу.
+#
+# Это общий механизм для любых поэтапных проектов: сегменты приходят от
+# project_manager (get_pending_ghost_segments), а стиль отрисовки у road и
+# будущего акведука будет своим — здесь общий для обоих.
+var _project_ghost_segments: Dictionary = {}
+var _project_ghost_signature: String = ""
+
+func set_project_ghost_segments(segments: Dictionary) -> void:
+    var keys := segments.keys()
+    keys.sort()
+    var signature := str(keys)
+    if signature == _project_ghost_signature:
+        return
+    _project_ghost_signature = signature
+    _project_ghost_segments = segments
+    queue_redraw()
+
 func _draw_all_roads():
     if main_map == null or not main_map.has_method("get"):
         return
@@ -1316,13 +1339,49 @@ func _draw_all_roads():
         # земле» когда-нибудь смягчат.
         _draw_road_segments(road_manager.get_all_town_link_segments(), true)
 
-    # ФАЗА 2г: «призрачная» дорога — трасса из открытого превью. Рисуется
-    # последним проходом (поверх дорог), но до рек, подсветок и иконок, как и
-    # остальные дороги. Гейт эры ей НЕ нужен: это подсказка, а не постройка,
-    # и она показывается в любую эру, как дороги города. Гейт тумана проверяется
-    # на всякий случай — планирование идёт только по разведанной земле, так что
-    # попасть в туман не может, но возможность «выдать» туман исключена.
+    # ФАЗА 2г: «призрак» идущего проекта — остаток маршрута, который ещё не
+    # построен. Живёт до конца стройки, а не до закрытия панели, и рисуется
+    # тем же стилем и в том же проходе, что и превью (то есть поверх настоящих
+    # дорог, но под реками и иконками). Гейты эры и тумана те же: это подсказка,
+    # а не постройка, и она не должна выдавать неисследованное.
+    #
+    # Идёт ДО превью: превью — то, что игрок рассматривает прямо сейчас, и оно
+    # должно лежать сверху. Одновременно открыты оба набора редко (нужно
+    # подтвердить дорогу и тут же начать новую), но когда это случается, видны
+    # оба маршрута, и активный не должен тонуть в фоне.
+    _draw_project_ghost()
+
+    # ФАЗА 2д: «призрачная» дорога — трасса из открытого превью. Рисуется
+    # последним проходом (поверх дорог и призрака проекта), но до рек,
+    # подсветок и иконок, как и остальные дороги. Гейт эры ей НЕ нужен: это
+    # подсказка, а не постройка, и она показывается в любую эру, как дороги
+    # города. Гейт тумана проверяется на всякий случай — планирование идёт
+    # только по разведанной земле, так что попасть в туман не может, но
+    # возможность «выдать» туман исключена.
     _draw_road_preview()
+
+# «Призрак» незаконченного проекта. Отдельный набор сегментов, а не общий с
+# превью: превью живёт, пока открыта панель, призрак проекта — пока идёт
+# стройка, и появляется он уже ПОСЛЕ подтверждения.
+func _draw_project_ghost() -> void:
+    if _project_ghost_segments.is_empty():
+        return
+    var visible: Dictionary = {}
+    for segment_key in _project_ghost_segments.keys():
+        var parts := str(segment_key).split("|")
+        if parts.size() != 2:
+            continue
+        var start_parts = parts[0].split(",")
+        var end_parts = parts[1].split(",")
+        if start_parts.size() != 2 or end_parts.size() != 2:
+            continue
+        if _segment_clear_of_fog(int(start_parts[0]), int(start_parts[1]),
+                int(end_parts[0]), int(end_parts[1])):
+            visible[segment_key] = true
+    if visible.is_empty():
+        return
+    _draw_road_segments(visible, false, ROAD_PREVIEW_HALO_COLOR, ROAD_PREVIEW_HALO_WIDTH)
+    _draw_road_segments(visible, false, ROAD_PREVIEW_COLOR, ROAD_PREVIEW_WIDTH)
 
 # Показываются ли дороги городков. Тот же гейт, что у заливки колец влияния
 # (_ensure_town_influence_cache): в 1-й эпохе чужой городок не показывается
