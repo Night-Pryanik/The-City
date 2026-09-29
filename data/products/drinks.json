@@ -78,7 +78,7 @@
       "name": "Фруктовое вино",
       "type": "product",
       "category": "drinks",
-      "unlock_tech": "fermentation",
+      "unlock_tech": "winemaking",
       "icon": "fruit_wine.png"
     }
   ]
