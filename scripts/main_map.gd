@@ -1195,10 +1195,16 @@ func confirm_cancel_build(row: int, col: int):
 # Отмена поэтапного проекта к гексу (row, col) — например, незаконченной
 # дороги. Диалог подтверждения тот же, что и у обычной стройки: отмена
 # необратима, а уже проложенные участки дороги остаются на карте.
-func confirm_cancel_project(row: int, col: int):
-    if project_manager == null:
+# Отмена поэтапного проекта. Вызывается с ЛЮБОГО его гекса, поэтому проект
+# передаётся по project_id, а не ищется по координатам: гекс, с которого
+# нажали, может быть серединой трассы, а не целью.
+#
+# Диалог подтверждения тот же, что и у обычной стройки: отмена необратима,
+# а уже проложенные участки дороги остаются на карте.
+func confirm_cancel_project(project_id: String):
+    if project_manager == null or project_id == "":
         return
-    var project: Dictionary = project_manager.get_project_at(row, col)
+    var project: Dictionary = project_manager.get_project(project_id)
     if project.is_empty():
         return
     var steps: Array = project.get("steps", [])
@@ -1210,10 +1216,17 @@ func confirm_cancel_project(row: int, col: int):
     dialog.title = "Отмена строительства"
     var text := "Отменить «%s»?\n\n" % title
     if left > 0:
-        text += "Недостроенных участков: %d. Потраченный на них труд (%.0f/%d) будет потерян.\n\n" % [
-            left,
-            float(project_manager.get_step_progress_at(row, col).get("progress", 0.0)),
-            int(project_manager.get_step_progress_at(row, col).get("work_cost", 0.0)),
+        # Труд берём из ТЕКУЩЕГО шага проекта, а не из get_step_progress_at по
+        # нажатому гексу: там возвращается пустой словарь, если игрок нажал не
+        # на гекс прогресс-бара, и потерянный труд вышел бы нулём.
+        var progress := 0.0
+        var step_cost := 0.0
+        if done < steps.size():
+            var cur: Dictionary = steps[done]
+            progress = float(cur.get("progress", 0.0))
+            step_cost = float(cur.get("work_cost", 0.0))
+        text += "Недостроенных участков: %d. Потраченный на них труд (%.0f/%.0f) будет потерян.\n\n" % [
+            left, progress, step_cost,
         ]
     if done > 0:
         text += "Уже построенные участки (%d) останутся на карте." % done
@@ -2748,6 +2761,99 @@ func _complete_scouting():
     map_renderer.invalidate_town_influence_cache()
     map_renderer.queue_redraw()
     _redraw_progress_layer()
+
+# Общая часть диалогов отмены: пауза на время вопроса, локализованная кнопка
+# подтверждения и обязательное снятие паузы, если окно закрыли крестиком
+# (у AcceptDialog нет сигнала canceled).
+func _show_cancel_dialog(dialog: AcceptDialog, on_confirm: Callable) -> void:
+    var was_paused = get_tree().paused
+    get_tree().paused = true
+    dialog.process_mode = Node.PROCESS_MODE_ALWAYS
+    dialog.confirmed.connect(func():
+        if not was_paused:
+            get_tree().paused = false
+        on_confirm.call()
+    )
+    add_child(dialog)
+    dialog.popup_centered()
+    dialog.visibility_changed.connect(func():
+        if not dialog.visible and not was_paused:
+            get_tree().paused = false
+    )
+
+# Отмена освоения территории с гекса (row, col) — того самого, где рисуется
+# прогресс-бар освоения (первый гекс чанка). Монеты, списанные при старте,
+# возвращаются: они платили за присоединение чанка к Кольцу Влияния, а оно не
+# произошло. Труд пропадает — это и есть цена отказа.
+func confirm_cancel_expansion(row: int, col: int):
+    if build_manager == null:
+        return
+    var data: Dictionary = build_manager.get_expansion_progress_for_hex(row, col)
+    if data.is_empty():
+        return
+    var chunk: Array = data.get("chunk", [])
+    var dialog = AcceptDialog.new()
+    dialog.title = "Отмена освоения"
+    var text := "Прервать освоение области (%d клеток)?\n\n" % chunk.size()
+    text += "Потраченный труд (%.0f/%d) будет потерян." % [
+        float(data.get("progress", 0.0)), int(data.get("work_cost", 0))]
+    var money_cost := int(data.get("money_cost", 0))
+    if money_cost > 0:
+        text += "\n\nУже оплаченные %d монет вернутся в казну." % money_cost
+    else:
+        text += "\n\nМонеты за освоение не списывались."
+    dialog.dialog_text = text
+    dialog.get_ok_button().text = "Да"
+    _show_cancel_dialog(dialog, func():
+        if build_manager.cancel_expansion_at_hex(row, col):
+            _after_cancel_long_action())
+
+# Отмена разведки. Экспедиция в игре одна на всё время (main_map.is_scouting),
+# поэтому кнопка появляется на гексе её чанка, а сам таймер сбрасывается.
+# Как и у освоения: деньги за старт возвращаются, время экспедиции — нет.
+func confirm_cancel_scouting(row: int, col: int):
+    if not is_scouting or scouting_chunk.is_empty():
+        return
+    var first = scouting_chunk[0]
+    if first == null or int(first.row) != row or int(first.col) != col:
+        return
+    var chunk: Array = scouting_chunk
+    var dialog = AcceptDialog.new()
+    dialog.title = "Отмена разведки"
+    var text := "Отозвать разведчиков?\n\nОбследовано не будет ни одной клетки из %d." % chunk.size()
+    if not CityData.ignore_build_requirements:
+        text += "\n\nОплаченные %d монет вернутся в казну." % expansion_manager.get_chunk_scout_cost(chunk)
+    dialog.dialog_text = text
+    dialog.get_ok_button().text = "Да"
+    _show_cancel_dialog(dialog, func():
+        cancel_scouting())
+
+# Прерывает разведку: таймер обнуляется, чанк забывается, деньги за старт
+# возвращаются. Туман с чанка НЕ снимается — разведка применяется целиком в
+# _complete_scouting, промежуточного состояния у неё нет.
+func cancel_scouting() -> bool:
+    if not is_scouting or scouting_chunk.is_empty():
+        return false
+    var chunk: Array = scouting_chunk.duplicate()
+    is_scouting = false
+    scouting_chunk = []
+    scouting_timer = 0.0
+    if not CityData.ignore_build_requirements:
+        var cost: int = expansion_manager.get_chunk_scout_cost(chunk)
+        if cost > 0:
+            CityData.add_treasury(cost)
+            CityData.record_treasury_expense("Разведка", -cost)
+    hud.show_message("Разведка отменена")
+    _after_cancel_long_action()
+    return true
+
+# Действия после отмены освоения/разведки: у обоих пропадает прогресс-бар, а
+# _process больше не будет перерисовывать слой, если это была последняя
+# активная стройка.
+func _after_cancel_long_action() -> void:
+    map_renderer.queue_redraw()
+    _redraw_progress_layer()
+    control_panel.refresh()
 
 func _get_chunk_info(chunk: Array) -> String:
     return MapHelpers.get_chunk_info(chunk, tile_data)

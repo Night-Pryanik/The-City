@@ -329,7 +329,7 @@ func handle_action(chunk: Array, money_cost: int, work_cost: int) -> bool:
     # --- Запуск стройки освоения (труд накапливается во времени) ---
     var bm = main_map.build_manager
     if bm and bm.has_method("start_expansion_build"):
-        if bm.start_expansion_build(chunk, work_cost):
+        if bm.start_expansion_build(chunk, work_cost, money_cost):
             return true
         # Стройка не запустилась (например, исчерпан лимит одновременных
         # строек) — возвращаем монеты, чтобы они не пропали.

@@ -265,7 +265,7 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null) -> bo
 # через общий пул труда (как стройка зданий/улучшений). Когда труд накоплен,
 # эмитится сигнал expansion_build_completed(chunk), и expansion_manager
 # присоединяет чанк к Кольцу Влияния.
-func start_expansion_build(chunk: Array, work_cost: int) -> bool:
+func start_expansion_build(chunk: Array, work_cost: int, money_cost: int = 0) -> bool:
     if chunk.is_empty() or work_cost <= 0:
         return false
 
@@ -287,6 +287,10 @@ func start_expansion_build(chunk: Array, work_cost: int) -> bool:
     active_expansion_builds[build_key] = {
         "progress": 0.0,
         "work_cost": work_cost,
+        # Цена в монетах, списанная при старте. Сохраняется, чтобы отмена
+        # могла её вернуть (cancel_expansion) — деньги ушли из казны ДО того,
+        # как начался труд, и без этого числа вернуть их нечем.
+        "money_cost": money_cost,
         "chunk": chunk,
         "build_key": build_key,
         "status": "active",
@@ -447,6 +451,39 @@ func resume_build(row: int, col: int) -> bool:
     data["status"] = "active"
     emit_signal("build_message", "Строительство %s возобновлено" % data["imp_name"])
     return true
+
+# Отменяет освоение территории по его build_key. Труд, уже вложенный в чанк,
+# пропадает, а монеты, списанные при старте, ВОЗВРАЩАЮТСЯ: деньги платили за
+# присоединение чанка к Кольцу Влияния, а оно не произошло. Так же уже поступает
+# expansion_manager.handle_action, когда стройка не смогла стартовать — там
+# возврат обязателен, чтобы цена не пропала. Согласие «отмена возвращает
+# стартовые траты, но не труд» то же, что и для разведки.
+func cancel_expansion(build_key: String) -> bool:
+    if not active_expansion_builds.has(build_key):
+        return false
+    var data: Dictionary = active_expansion_builds[build_key]
+    active_expansion_builds.erase(build_key)
+    var money_cost := int(data.get("money_cost", 0))
+    if money_cost > 0 and not CityData.ignore_build_requirements:
+        CityData.add_treasury(money_cost)
+        # Возврат идёт в ТОТ ЖЕ источник расходов отрицательной записью: за окно
+        # отображения получается сходящийся с фактом итог (платил Y → получил Y
+        # назад → 0). Отдельный «доход» не подошёл бы иерархической разбивке
+        # казны — та же причина, что и в expansion_manager.handle_action.
+        CityData.record_treasury_expense("Освоение чанков", -money_cost)
+    emit_signal("build_message", "Освоение отменено. Потрачено %.0f/%d труда"
+            % [float(data.get("progress", 0.0)), int(data.get("work_cost", 0))])
+    _recount_active_builds()
+    return true
+
+# Отменяет освоение по гексу (row, col) — берёт первый гекс осваиваемого чанка,
+# ровно как get_expansion_progress_for_hex. Так кнопка в панели не зависит от
+# формата ключа записи во внутреннем словаре.
+func cancel_expansion_at_hex(row: int, col: int) -> bool:
+    var data := get_expansion_progress_for_hex(row, col)
+    if data.is_empty():
+        return false
+    return cancel_expansion(str(data.get("build_key", "")))
 
 func cancel_build(row: int, col: int):
     var key = str(row) + "," + str(col)

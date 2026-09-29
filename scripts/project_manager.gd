@@ -106,6 +106,15 @@ func cancel_project_at(row: int, col: int) -> bool:
         return false
     return cancel_project(str(project.get("id", "")))
 
+## Отменяет проект, ЗАНИМАЮЩИЙ гекс (row, col) — любой его гекс, не только
+## цель. Парный к get_project_at_hex: прервать можно с гекса, который видит
+## игрок, а не только с того, который был нажат при запуске.
+func cancel_project_at_hex(row: int, col: int) -> bool:
+    var project := get_project_at_hex(row, col)
+    if project.is_empty():
+        return false
+    return cancel_project(str(project.get("id", "")))
+
 func get_project(project_id: String) -> Dictionary:
     return projects.get(project_id, {})
 
@@ -122,6 +131,52 @@ func get_project_at(row: int, col: int) -> Dictionary:
                 and int(project.get("target_col", -1)) == col:
             return project
     return {}
+
+## Проект, ЗАНИМАЮЩИЙ этот гекс — любой его шаг, а не только цель.
+##
+## Зачем два разных вопроса. has_project_at() (по цели) нужен, чтобы прятать
+## кнопку «Построить дорогу» на гексе, к которому дорога УЖЕ идёт. А вот кнопка
+## отмены должна появляться на ЛЮБОМ гексе проекта: игрок видит дорогу как
+## призрак на десятке гексов и прогресс-бар на текущем участке, и жмёт туда,
+## где видит стройку. Кнопка, спрятанная на дальнем конце маршрута (возможно,
+## за пределами экрана), не находится — это и был исходный баг.
+##
+## Гекс шага известен из двух мест, и оба нужны:
+##   · "hex" — гекс, на котором рисуется прогресс-бар (участок, который
+##     присоединяется к сети);
+##   · "data".from / "data".to — оба конца участка. Гекс from уже присоединён
+##     предыдущим шагом, но игрок видит на нём дорогу, и кликать он будет
+##     именно по нему.
+func get_project_at_hex(row: int, col: int) -> Dictionary:
+    for project_id in projects.keys():
+        var project: Dictionary = projects[project_id]
+        if _project_touches_hex(project, row, col):
+            return project
+    return {}
+
+func has_project_at_hex(row: int, col: int) -> bool:
+    return not get_project_at_hex(row, col).is_empty()
+
+## Принадлежит ли гекс проекту. Цель проверяется отдельно от шагов: у
+## уже начатого проекта target равен гексу последнего шага, но полагаться на
+## это равенство нельзя — порядок шагов меняли и ещё поменяем.
+func _project_touches_hex(project: Dictionary, row: int, col: int) -> bool:
+    if int(project.get("target_row", -1)) == row \
+            and int(project.get("target_col", -1)) == col:
+        return true
+    var steps: Array = project.get("steps", [])
+    # Уже построенные шаги тоже учитываем намеренно: они стали настоящей
+    # дорогой на карте, и игрок кликает по ней — отмена должна работать.
+    for step in steps:
+        var bar_hex: Dictionary = step.get("hex", {})
+        if int(bar_hex.get("row", -1)) == row and int(bar_hex.get("col", -1)) == col:
+            return true
+        var data: Dictionary = step.get("data", {})
+        for key in ["from", "to"]:
+            var h: Dictionary = data.get(key, {})
+            if int(h.get("row", -1)) == row and int(h.get("col", -1)) == col:
+                return true
+    return false
 
 func has_active_projects() -> bool:
     return not projects.is_empty()

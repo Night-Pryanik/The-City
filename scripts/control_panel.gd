@@ -415,16 +415,22 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
         # городка, а соединяет город с дорогами кольца влияния.
         if not main_map.road_manager.is_town_linked_to_city(row, col):
             # Пока идёт поэтапный проект к этому городку, кнопку строительства
-            # не показываем — вместо неё отмена уже начатой стройки.
-            if main_map.project_manager != null \
-                    and main_map.project_manager.has_project_at(row, col):
-                actions.append(_make_project_cancel_action(main_map.project_manager, row, col))
-            else:
+            # не показываем — вместо неё прерывание уже начатой стройки, его
+            # добавит общий помощник ниже. Ищем по ЦЕЛИ (has_project_at), а не
+            # по гексу: здесь интересует именно проект, целящийся в городок.
+            if not (main_map.project_manager != null \
+                    and main_map.project_manager.has_project_at(row, col)):
                 var road_sa: Dictionary = GameData.special_actions.get(ROAD_ACTION_ID, {})
                 if not road_sa.is_empty():
                     _append_special_action(actions, ROAD_ACTION_ID, road_sa,
                             "Построить дорогу от города до городка%s — откроет торговлю"
                                     % ((" «%s»" % town_name) if town_name != "" else ""))
+
+        # Прерывание нужно и на гексе самого городка, и в его кольце влияния:
+        # дорога к городку заканчивается участком ВНУТРИ кольца, так что без
+        # этого вызова кнопка исчезала бы на последнем шаге дороги. Дубликата
+        # с блоком выше уже нет — тот только прячет кнопку строительства.
+        _append_cancel_actions(actions, row, col)
 
         actions.append({
             "type": "open_town",
@@ -451,7 +457,12 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
     # Гекс внутри Кольца Влияния, но в кольце чужого городка — строить
     # нельзя. Парный check к build_manager.start_build: панель не должна
     # показывать заведомо невозможные экшены.
+    #
+    # ИСКЛЮЧЕНИЕ — прерывание проекта: дорога к городку заканчивается
+    # участком именно в его кольце влияния, и если кольцо «немое», дорогу к
+    # городку нельзя ни достроить, ни прервать.
     if tile.get("in_town_influence", false):
+        _append_cancel_actions(actions, row, col)
         return actions
 
     # Декоративные улучшения городка полностью недоступны игроку:
@@ -485,15 +496,12 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
         # Спец-действия, применимые к гексу с улучшением (например, снос).
         _add_special_actions(actions, row, col, tile)
 
-        # Если идёт строительство — добавляем опцию отмены.
-        if build_manager.is_building(row, col):
-            actions.append({
-                "type": "cancel_build",
-                "label": "Отменить стройку",
-                "enabled": true,
-                "tooltip": "Отменить текущее строительство на этом гексе",
-                "icon": "cross.svg"
-            })
+        # Прерывание стройки и/или проекта. Именно здесь проверка проекта
+        # ТЕРЯЛАСЬ раньше: ветка гекса с улучшением делала return, не доходя
+        # до общего блока отмены. А дорогу к гексу с улучшением построить можно
+        # (кнопка «Построить дорогу» доступна, если улучшение не no_road), то
+        # есть можно было запустить проект и нельзя было его прервать.
+        _append_cancel_actions(actions, row, col)
         return actions
 
     # --- Гекс без улучшения ---
@@ -725,44 +733,100 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
     # 5. Спец-действия (вырубка леса, сбор дикоросов и т.п.).
     _add_special_actions(actions, row, col, tile)
 
-    # 6. Если идёт стройка — отмена.
-    if build_manager.is_building(row, col):
-        actions.append({
-            "type": "cancel_build",
-            "label": "Отменить стройку",
-            "enabled": true,
-            "tooltip": "Отменить текущее строительство на этом гексе",
-            "icon": "cross.svg"
-        })
-    elif main_map.project_manager != null \
-            and main_map.project_manager.has_project_at(row, col):
-        # Идёт поэтапный проект (дорога по гексам). Кнопки «Построить
-        # дорогу» здесь уже нет — вместо неё отмена проекта.
-        actions.append(_make_project_cancel_action(main_map.project_manager,
-                row, col))
+    # 6. Прерывание того, что идёт на этом гексе: обычной стройки и/или
+    # поэтапного проекта. Это ДВЕ независимые вещи (например, к гексу с
+    # фермой идёт дорога, и на нём же можно строить что-то ещё), поэтому при
+    # обоих показываются обе кнопки, а не одна.
+    _append_cancel_actions(actions, row, col)
 
     return actions
 
-# Кнопка отмены идущего поэтапного проекта. Показывает, сколько участков
-# уже построено и сколько осталось: игрок видит, сколько работы пропадёт.
-func _make_project_cancel_action(project_manager: Node, row: int, col: int) -> Dictionary:
-    var project: Dictionary = project_manager.get_project_at(row, col)
+# Добавляет кнопки прерывания для всего, что идёт на гексе (row, col).
+#
+# Единая точка для всех веток _collect_actions. Раньше проверка проекта жила
+# только в двух местах — на пустом гексе и на гексе городка, — и терялась на
+# ранних return: гекс с улучшением и гекс в кольце влияния городка. Дорогу к
+# гексу с улучшением построить можно, но отменить её было нельзя; дорога к
+# городку заканчивается в его кольце влияния, где кнопки тоже не было.
+func _append_cancel_actions(actions: Array, row: int, col: int) -> void:
+    # Обычная стройка: улучшения, спецдействия (осушение, вырубка, сбор,
+    # снос). Имя действия берём из данных стройки, чтобы кнопка называла, что
+    # именно прерывается: «Прервать: Осушение болот», а не «Отменить стройку» —
+    # по кнопке игрок должен понимать, куда он нажал.
+    if build_manager != null and build_manager.is_building(row, col):
+        var prog: Dictionary = build_manager.get_progress(row, col)
+        var action_name := str(prog.get("imp_name", "стройку"))
+        actions.append({
+            "type": "cancel_build",
+            "label": "Прервать: %s" % action_name,
+            "enabled": true,
+            "tooltip": "Прервать «%s». Потраченный труд будет потерян" % action_name,
+            "icon": "cross.svg"
+        })
+
+    # Поэтапный проект (дорога). Кнопка появляется на ЛЮБОМ его гексе, а не
+    # только на цели: игрок жмёт туда, где видит стройку, — на прогресс-бар
+    # текущего участка или на участок призрака.
+    if main_map.project_manager == null:
+        return
+    var project: Dictionary = main_map.project_manager.get_project_at_hex(row, col)
+    if project.is_empty():
+        return
+    actions.append(_make_project_cancel_action(project))
+
+# Кнопка отмены идущего поэтапного проекта.
+#
+# Название берём у проекта («Дорога», «Дорога до городка «X»»), а не пишем
+# родовым «Отменить стройку»: по кнопке должно быть видно, ЧТО прерывается.
+# Число остатка — в кнопке, а не только в диалоге: игрок жмёт с гекса в
+# середине трассы и должен ДО нажатия понимать, что отменяет всю дорогу целиком,
+# а не один участок. Иначе нажатие на середине маршрута выглядит как отмена
+# «вот этого кусочка», а отменяется всё.
+func _make_project_cancel_action(project: Dictionary) -> Dictionary:
     var steps: Array = project.get("steps", [])
     var done := int(project.get("step_index", 0))
     var left := maxi(0, steps.size() - done)
-    var label := "Отменить стройку"
-    var tooltip := "Отменить строительство на этом гексе"
-    if not steps.is_empty():
-        label = "Отменить стройку (осталось %d)" % left
-        tooltip = "Отменить проект. Уже построенные участки останутся на карте"
+    var title := str(project.get("title", "Строительство"))
+    var tooltip := "Прервать «%s»" % title
+    if left > 0:
+        tooltip += " — недостроенных участков: %d" % left
+    if done > 0:
+        tooltip += ". Уже построенные участки (%d) останутся" % done
     return {
         "type": "cancel_project",
-        "label": label,
+        "label": "Прервать: %s" % title,
         "enabled": true,
         "tooltip": tooltip,
         "project_id": str(project.get("id", "")),
         "icon": "cross.svg"
     }
+
+# Кнопки прерывания для действий ВНЕ Кольца Влияния: разведки и освоения
+# территории. Отдельная от _append_cancel_actions по причине: у них нет
+# улучшения на гексе, и они не идут через build_manager.active_builds, а у
+# разведки к тому же экспедиция одна на всё время (main_map.is_scouting).
+func _append_long_action_cancel(actions: Array, row: int, col: int) -> void:
+    if build_manager != null and build_manager.has_method("get_expansion_progress_for_hex"):
+        var exp: Dictionary = build_manager.get_expansion_progress_for_hex(row, col)
+        if not exp.is_empty():
+            var chunk: Array = exp.get("chunk", [])
+            actions.append({
+                "type": "cancel_expansion",
+                "label": "Прервать: Освоение области",
+                "enabled": true,
+                "tooltip": "Прервать освоение области (%d клеток). Потраченный труд пропадёт, оплаченные монеты вернутся" % chunk.size(),
+                "icon": "cross.svg"
+            })
+    if main_map.is_scouting and not main_map.scouting_chunk.is_empty():
+        var first = main_map.scouting_chunk[0]
+        if first != null and int(first.row) == row and int(first.col) == col:
+            actions.append({
+                "type": "cancel_scouting",
+                "label": "Прервать: Разведка",
+                "enabled": true,
+                "tooltip": "Отозвать разведчиков. Обследован не будет ни один гекс, оплаченные монеты вернутся",
+                "icon": "cross.svg"
+            })
 
 # Добавляет спец-действия (special_actions.json), применимые к гексу.
 # Собирает действия для гекса вне Кольца Влияния:
@@ -776,6 +840,11 @@ func _make_project_cancel_action(project_manager: Node, row: int, col: int) -> D
 #   исследованная область — покупка (освоение), но ТОЛЬКО в пределах Региона.
 func _collect_region_actions(row: int, col: int) -> Array:
     var actions := []
+    # Прерывание идёт ПЕРЕД всеми ранними return: разведка и освоение —
+    # длительные действия, и кнопка отмены должна появляться на гексе чанка
+    # независимо от того, разведан он уже или нет. Раньше здесь отмены не
+    # было вовсе — экспедицию и освоение можно было только ждать.
+    _append_long_action_cancel(actions, row, col)
     var tile = main_map.get_tile_data(row, col)
     if tile == null:
         return actions
@@ -1040,8 +1109,18 @@ func _on_action_pressed(action: Dictionary):
         main_map.confirm_cancel_build(_selected_hex.row, _selected_hex.col)
         return
     if type == "cancel_project":
-        if _selected_hex != null and main_map.project_manager != null:
-            main_map.confirm_cancel_project(_selected_hex.row, _selected_hex.col)
+        # Проект передаётся по id, а не ищется по нажатому гексу: кнопка
+        # появляется на ЛЮБОМ гексе трассы, а не только на цели.
+        if main_map.project_manager != null:
+            main_map.confirm_cancel_project(str(action.get("project_id", "")))
+        return
+    if type == "cancel_expansion":
+        if _selected_hex != null:
+            main_map.confirm_cancel_expansion(_selected_hex.row, _selected_hex.col)
+        return
+    if type == "cancel_scouting":
+        if _selected_hex != null:
+            main_map.confirm_cancel_scouting(_selected_hex.row, _selected_hex.col)
         return
     if type == "research_tech":
         # Аналог пункта «Изучить X» в контекстном меню (ПКМ): мгновенный старт
