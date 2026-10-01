@@ -3,7 +3,7 @@
     {
       "id": "grapes_plant",
       "price": 6,
-      "name": "Виноград",
+      "name": "Grapes",
       "type": "raw",
       "category": "plants",
       "group": "extra_food_plants",
@@ -20,7 +20,7 @@
     {
       "id": "olives_plant",
       "price": 7,
-      "name": "Оливки",
+      "name": "Olives",
       "type": "raw",
       "category": "plants",
       "group": "extra_food_plants",
@@ -37,7 +37,7 @@
     {
       "id": "fig_plant",
       "price": 8,
-      "name": "Инжир",
+      "name": "Figs",
       "type": "raw",
       "category": "plants",
       "group": "extra_food_plants",
@@ -54,7 +54,7 @@
     {
       "id": "date_palm",
       "price": 10,
-      "name": "Финики",
+      "name": "Dates",
       "type": "raw",
       "category": "plants",
       "group": "extra_food_plants",

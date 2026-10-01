@@ -74,15 +74,15 @@ func _on_new_game():
 
 func _show_city_name_dialog():
     var dialog = ConfirmationDialog.new()
-    dialog.title = "Выберите название города"
-    dialog.ok_button_text = "Ок"
-    dialog.cancel_button_text = "Назад"
+    dialog.title = tr("Choose a city name")
+    dialog.ok_button_text = tr("OK")
+    dialog.cancel_button_text = tr("Back")
 
     var name_row = HBoxContainer.new()
     name_row.custom_minimum_size = Vector2(0, 30)
     name_row.add_theme_constant_override("separation", 4)
     var line_edit = LineEdit.new()
-    line_edit.text = "Город"
+    line_edit.text = tr("City")
     line_edit.custom_minimum_size = Vector2(260, 30)
     line_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     line_edit.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -94,7 +94,7 @@ func _show_city_name_dialog():
     random_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
     random_button.expand_icon = true
     random_button.icon = load("res://icons/dice.svg")
-    random_button.tooltip_text = "Предложить другое название"
+    random_button.tooltip_text = tr("Suggest another name")
     random_button.pressed.connect(func():
         line_edit.text = GameData.get_random_city_name()
         line_edit.select_all()

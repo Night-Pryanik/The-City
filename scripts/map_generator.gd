@@ -800,7 +800,7 @@ func _remove_hex_from_index(hex_index: Dictionary, row: int, col: int, terrain_i
 func _resolve_spawn_count(data: Dictionary) -> int:
     var res_id: String = str(data.get("id", "?"))
     return RangeUtils.roll_value(data.get("spawn_count", 1),
-            "spawn_count ресурса '%s'" % res_id, 1)
+            tr("spawn_count of resource '%s'") % res_id, 1)
 
 func _place_resources(tile_data: Array, res_dict: Dictionary, rows: int, cols: int, city_row: int, city_col: int, hex_index: Dictionary):
     if res_dict.size() == 0:

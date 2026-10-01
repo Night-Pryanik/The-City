@@ -3,7 +3,7 @@
     {
       "id": "tea_field",
       "price": 6,
-      "name": "Чай",
+      "name": "Tea",
       "type": "raw",
       "category": "aux_plants",
       "group": "stimulating_plants",
@@ -19,7 +19,7 @@
     {
       "id": "coffee_field",
       "price": 7,
-      "name": "Кофе",
+      "name": "Coffee",
       "type": "raw",
       "category": "aux_plants",
       "group": "stimulating_plants",

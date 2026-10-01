@@ -53,9 +53,9 @@ func _territory_lines_for(tile: Dictionary, row: int, col: int) -> Array:
             or bool(tile.get("is_explored", false))
     var town_name = _town_name_for_hex(row, col) if revealed else ""
     if bool(tile.get("in_town_influence", false)):
-        lines.append("Территория города %s" % town_name if town_name != "" else "Территория города")
+        lines.append(tr("Territory of the city %s") % town_name if town_name != "" else tr("City territory"))
     if bool(tile.get("has_town", false)):
-        lines.append("Город %s" % town_name if town_name != "" else "Город")
+        lines.append(tr("City %s") % town_name if town_name != "" else tr("City"))
     return lines
 
 
@@ -168,7 +168,7 @@ func update_tooltip_text(row: int, col: int, tile_data: Array, city_row: int = 0
             if res_id != "":
                 var res_data = GameData.raw_resources.get(res_id, {})
                 if res_data.has("produces"):
-                    products = _collect_production(row, col, res_id, " Производит:", tile_data)
+                    products = _collect_production(row, col, res_id, tr(" Produces:"), tile_data)
         else:
             if res_id != "":
                 var res_data = GameData.raw_resources.get(res_id, {})
@@ -179,7 +179,7 @@ func update_tooltip_text(row: int, col: int, tile_data: Array, city_row: int = 0
                     var improvement_id = res_data["improved_by"]
                     var imp_data = GameData.improvements.get(improvement_id, {})
                     var imp_name_display = imp_data.get("name", improvement_id)
-                    products = _collect_production(row, col, res_id, " При постройке %s будет давать:" % imp_name_display, tile_data)
+                    products = _collect_production(row, col, res_id, tr(" Once built, %s will give:") % imp_name_display, tile_data)
 
     # Обновляем UI только при РЕАЛЬНОМ изменении содержимого. Периодический
     # рефреш (заполенность пастбища) вызывает эту функцию несколько раз в
@@ -244,7 +244,7 @@ func update_extended_tooltip(row: int, col: int, tile_data: Array, city_row: int
     var tooltip_lines = _tooltip_text_label.text.split("\n")
     var filtered_lines := []
     for line in tooltip_lines:
-        if not line.begins_with("Строительство:"):
+        if not line.begins_with(tr("Construction:")):
             filtered_lines.append(line)
     _tooltip_text_label.text = "\n".join(filtered_lines)
 
@@ -284,7 +284,7 @@ func _build_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_c
     # показываем гекс как пустой (без названия ресурса, улучшения и выхода).
     if res_id != "" and not MapHelpers.is_resource_revealed(tile):
         res_id = ""
-    var res_name = "нет"
+    var res_name = tr("none")
     if res_id != "":
         res_name = GameData.raw_resources.get(res_id, {}).get("name", res_id)
 
@@ -312,15 +312,15 @@ func _build_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_c
         # текст с подсказкой про разведку. Разведчиков можно послать в любую
         # точку, достижимую скроллом, — включая территорию городков, поэтому
         # подсказка одинакова для всех неисследованных гексов.
-        var text: String = "Местность: %s" % terrain_with_cover
+        var text: String = tr("Terrain: %s") % terrain_with_cover
         var terr: Array = _territory_lines_for(tile, row, col)
         if not terr.is_empty():
             text += "\n" + "\n".join(terr)
-        text += "\nРесурс: неизвестно (проведите разведку)"
+        text += tr("\nResource: unknown (send scouts)")
         return text
 
-    var imp_name = GameData.improvements.get(tile.improvement, {}).get("name", "нет") if tile.improvement != null else "нет"
-    var text: String = "Местность: %s" % terrain_with_cover
+    var imp_name = GameData.improvements.get(tile.improvement, {}).get("name", tr("none")) if tile.improvement != null else tr("none")
+    var text: String = tr("Terrain: %s") % terrain_with_cover
     # Маркеры чужой территории в кольце/на месте городка: сразу после
     # «Местность», чтобы игрок видел «кто здесь» прежде, чем читать
     # остальной тултип. Строка «Город» добавляется ТОЛЬКО когда на гексе
@@ -330,7 +330,7 @@ func _build_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_c
     if not terr.is_empty():
         text += "\n" + "\n".join(terr)
     var resource_text = _format_resource_label_for_text(res_id, res_name)
-    text += "\nРесурс: %s" % resource_text
+    text += tr("\nResource: %s") % resource_text
 
     var terrain_desc = terrain_data.get("description", "")
     if terrain_desc != "":
@@ -340,7 +340,7 @@ func _build_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_c
     if tile_quality != "" and tile.improvement != null:
         var q_stars = GameData.get_quality_stars(tile_quality)
         var q_name = GameData.get_quality_name(tile_quality)
-        text += "\nКачество: %s (%s)" % [q_stars, q_name]
+        text += tr("\nQuality: %s (%s)") % [q_stars, q_name]
 
     var in_town_influence = bool(tile.get("in_town_influence", false))
     var imp_status = ""
@@ -350,26 +350,26 @@ func _build_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_c
         elif GameData.is_no_worker_improvement(tile.improvement):
             # Инфраструктурное улучшение (no_worker, например пристань):
             # функционирует само по себе — статус «нет рабочего» неприменим.
-            imp_status = " (инфраструктура: рабочий не требуется)"
+            imp_status = tr(" (infrastructure: no worker required)")
         else:
             var has_worker = _worker_manager.has_worker(row, col)
             if not has_worker:
-                imp_status = " (неактивно: нет рабочего)"
+                imp_status = tr(" (inactive: no worker)")
             else:
-                imp_status = " (работает)"
+                imp_status = tr(" (working)")
     else:
         if res_id != "":
             var res_data = GameData.raw_resources.get(res_id, {})
             # У одноразового ресурса (improved_by == null) нечего строить —
             # статус «(не построено)» не показываем.
             if res_data.get("improved_by", null) != null and res_data.has("produces"):
-                imp_status = " (не построено)"
+                imp_status = tr(" (not built)")
 
     if res_id != "" and not in_town_influence:
         var res_data = GameData.raw_resources.get(res_id, {})
         var feed_consumption = res_data.get("feed_consumption", 0)
         if feed_consumption > 0:
-            text += "\nПотребляет корма: %d за цикл" % feed_consumption
+            text += tr("\nFeed consumption: %d per cycle") % feed_consumption
         var time_to_mature = res_data.get("time_to_mature", 0)
         if time_to_mature > 0:
             # Растущий ресурс (животные на пастбище): показываем текущую
@@ -377,28 +377,28 @@ func _build_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_c
             if tile.improvement != null and _worker_manager.has_worker(row, col):
                 var fill_frac = MapHelpers.get_fill_fraction(tile, res_data)
                 if fill_frac >= 1.0:
-                    text += "\nПоголовье: полное (100%)"
+                    text += tr("\nHerd: full (100%)")
                 else:
                     var t_left = MapHelpers.get_time_to_full(tile, res_data)
-                    text += "\nЗаполненность: %d%% (полное через %.0f сек)" % [roundi(fill_frac * 100), ceilf(t_left)]
+                    text += tr("\nFill level: %d%% (full in %.0f sec)") % [roundi(fill_frac * 100), ceilf(t_left)]
             else:
-                text += "\nВремя заполнения: %.0f сек" % time_to_mature
+                text += tr("\nFill time: %.0f sec") % time_to_mature
 
-    text += "\nУлучшение: %s%s" % [imp_name, imp_status]
+    text += tr("\nImprovement: %s%s") % [imp_name, imp_status]
 
     # Доступ к пресной воде показываем для ВСЕХ гексов.
     var water_access = MapHelpers.get_hex_water_access(row, col, tile_data, tile_data.size(), tile_data[0].size())
     if water_access == "direct":
-        text += "\nДоступ к пресной воде: прямой"
+        text += tr("\nFresh water access: direct")
     elif water_access == "chain":
-        text += "\nДоступ к пресной воде: по цепочке"
+        text += tr("\nFresh water access: via chain")
 
     # --- Конфликт «tech_reveal-ресурс под чужим улучшением» ---
     var conflict = MapHelpers.get_tech_reveal_conflict(tile)
     if not conflict.is_empty():
         var current_imp_name: String = GameData.improvements.get(tile.improvement, {}).get("name", tile.improvement)
-        text += "\n\nЗдесь обнаружено: %s" % conflict.get("res_name", "")
-        text += "\nСнесите %s, чтобы построить %s" % [current_imp_name, conflict.get("imp_name", "")]
+        text += tr("\n\nFound here: %s") % conflict.get("res_name", "")
+        text += tr("\nDemolish %s to build %s") % [current_imp_name, conflict.get("imp_name", "")]
 
     # Стоимость постройки в тултипе/левой панели больше не показывается —
     # расчёты перенесены в Превью панели управления.
@@ -454,7 +454,7 @@ func _collect_production(row: int, col: int, res_id: String, prefix: String, til
         if prod_data.has("icon"):
             var icon_name = prod_data["icon"]
             icon_path = _map_renderer.get_icon_path(icon_name)
-        result.append({"type": "product", "name": prod_name, "amount": final_amounts[prod_id].per_sec, "icon_path": icon_path, "suffix": " ед./сек"})
+        result.append({"type": "product", "name": prod_name, "amount": final_amounts[prod_id].per_sec, "icon_path": icon_path, "suffix": tr(" units/sec")})
 
     return result
 
@@ -483,8 +483,8 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
             var lj_icon_path0 = ""
             if wood_data0.has("icon"):
                 lj_icon_path0 = _map_renderer.get_icon_path(wood_data0["icon"])
-            result.append({"type": "header", "text": "При постройке %s будет производить:" % lj_name})
-            result.append({"type": "product", "name": wood_data0.get("name", "Древесина"), "amount": lj_per_sec0, "icon_path": lj_icon_path0, "suffix": " ед./сек"})
+            result.append({"type": "header", "text": tr("Once built, %s will produce:") % lj_name})
+            result.append({"type": "product", "name": wood_data0.get("name", tr("Wood")), "amount": lj_per_sec0, "icon_path": lj_icon_path0, "suffix": tr(" units/sec")})
         elif tile.improvement == "lumberjack_hut" and lj_yield > 0.0 \
                 and _worker_manager.has_worker(row, col) \
                 and CityData.is_product_available("wood"):
@@ -498,12 +498,12 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
             var lj_icon_path2 = ""
             if wood_data2.has("icon"):
                 lj_icon_path2 = _map_renderer.get_icon_path(wood_data2["icon"])
-            var lj_label = wood_data2.get("name", "Древесина")
+            var lj_label = wood_data2.get("name", tr("Wood"))
             if lj_mult2 != 1.0:
                 var lj_base_str = str(int(lj_yield)) if lj_yield == floor(lj_yield) else "%.1f" % lj_yield
-                lj_label = "%s (база %s)" % [lj_label, lj_base_str]
-            result.append({"type": "header", "text": "Производит:"})
-            result.append({"type": "product", "name": lj_label, "amount": lj_per_sec2, "icon_path": lj_icon_path2, "suffix": " ед./сек"})
+                lj_label = tr("%s (base %s)") % [lj_label, lj_base_str]
+            result.append({"type": "header", "text": tr("Produces:")})
+            result.append({"type": "product", "name": lj_label, "amount": lj_per_sec2, "icon_path": lj_icon_path2, "suffix": tr(" units/sec")})
         return result
     var res_data = GameData.raw_resources.get(eff_res, {})
     if not res_data.has("produces"):
@@ -538,11 +538,11 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
     if available_products.is_empty():
         return result
 
-    var header_text = "Производит:"
+    var header_text = tr("Produces:")
     if tile.improvement == null:
         var improvement_id = res_data.get("improved_by", "")
         var imp_name_display = GameData.improvements.get(improvement_id, {}).get("name", improvement_id)
-        header_text = "При постройке %s будет производить:" % imp_name_display
+        header_text = tr("Once built, %s will produce:") % imp_name_display
     result.append({"type": "header", "text": header_text})
 
     # Растущие ресурсы: пока пастбище заполняется, фактический выход
@@ -561,14 +561,14 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
         # (у разных продуктов она своя, одна общая строка «База» вводила в заблуждение).
         if bonus_multiplier != 1.0 or fill_frac != 1.0:
             var base_str = str(int(base_amount)) if base_amount == floor(base_amount) else "%.1f" % base_amount
-            prod_name = "%s (база %s)" % [prod_name, base_str]
+            prod_name = tr("%s (base %s)") % [prod_name, base_str]
         var icon_path = ""
         var prod_data = GameData.products.get(prod_id, {})
         if prod_data.has("icon"):
             var icon_name = prod_data["icon"]
             icon_path = _map_renderer.get_icon_path(icon_name)
         # Показ — посекундный: выпуск цикла, делённый на production_interval.
-        result.append({"type": "product", "name": prod_name, "amount": float(final_amount) / prod_interval, "icon_path": icon_path, "suffix": " ед./сек"})
+        result.append({"type": "product", "name": prod_name, "amount": float(final_amount) / prod_interval, "icon_path": icon_path, "suffix": tr(" units/sec")})
 
     for mod in modifiers:
         result.append({"type": "label", "text": " %s" % mod.get("label", ""), "color": Color(0.7, 0.9, 0.7)})
@@ -591,7 +591,7 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
         var cons_rows = ConsumptionUi.build_rows(
             GameData.get_profession_for_improvement(tile.improvement))
         if not cons_rows.is_empty():
-            result.append({"type": "header", "text": "Потребляет:"})
+            result.append({"type": "header", "text": tr("Consumes:")})
             for cons in cons_rows:
                 var cons_label: String = str(cons.get("label", ""))
                 # Иконка потребляемого ресурса; у группы берётся иконка

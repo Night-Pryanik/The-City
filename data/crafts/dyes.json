@@ -2,133 +2,133 @@
   "crafts": [
     {
       "id": "ochre",
-      "name": "Охра",
+      "name": "Ochre",
       "produced_in": [ "dyer_house" ],
       "resources": { "iron_ore": 20 },
       "result": { "ochre": 10 },
       "time": 5.0,
       "unlock_tech": "dyeing",
-      "description": "Создает краситель (охру) из железной руды"
+      "description": "Makes a dye (ochre) from iron ore."
     },
     {
       "id": "indigo",
-      "name": "Индиго",
+      "name": "Indigo",
       "produced_in": [ "dyer_house" ],
       "resources": { "indigofera_leaves": 20 },
       "result": { "indigo": 10 },
       "time": 5.0,
       "unlock_tech": "dyeing",
-      "description": "Создает краситель (индиго) из листьев индигоферы"
+      "description": "Makes a dye (indigo) from indigo plant leaves."
     },
     {
       "id": "henna",
-      "name": "Хна",
+      "name": "Henna",
       "produced_in": [ "dyer_house" ],
       "resources": { "lawsonia_leaves": 20 },
       "result": { "henna": 10 },
       "time": 5.0,
       "unlock_tech": "dyeing",
-      "description": "Создает краситель (хну) из листьев лавсонии"
+      "description": "Makes a dye (henna) from henna leaves."
     },
     {
       "id": "purple",
-      "name": "Пурпур",
+      "name": "Purple",
       "produced_in": [ "dyer_house" ],
       "resources": { "raw_murex": 20 },
       "result": { "purple": 10 },
       "time": 5.0,
       "unlock_tech": "dyeing",
-      "description": "Создает краситель (пурпур) из мурексов"
+      "description": "Makes a dye (purple) from murex shells."
     },
     {
       "id": "sepia",
-      "name": "Сепия",
+      "name": "Sepia",
       "produced_in": [ "dyer_house" ],
       "resources": { "raw_cuttlefish": 20 },
       "result": { "sepia": 10 },
       "time": 5.0,
       "unlock_tech": "dyeing",
-      "description": "Создает краситель (сепию) из каракатиц"
+      "description": "Makes a dye (sepia) from cuttlefish."
     },
     {
       "id": "rose_madder",
-      "name": "Крапп",
+      "name": "Rose Madder",
       "produced_in": [ "dyer_house" ],
       "resources": { "marena_roots": 20 },
       "result": { "rose_madder": 10 },
       "time": 5.0,
       "unlock_tech": "dyeing",
-      "description": "Создает краситель (крапп) из корней марены"
+      "description": "Makes a dye (madder) from madder roots."
     },
     {
       "id": "woad",
-      "name": "Вайда",
+      "name": "Woad",
       "produced_in": [ "dyer_house" ],
       "resources": { "woad_leaves": 20 },
       "result": { "woad": 10 },
       "time": 5.0,
       "unlock_tech": "dyeing",
-      "description": "Создает краситель (вайду) из листьев вайды"
+      "description": "Makes a dye (woad) from woad leaves."
     },
     {
       "id": "campeche",
-      "name": "Кампеш",
+      "name": "Campeche",
       "produced_in": [ "dyer_house" ],
       "resources": { "campeche_wood": 20 },
       "result": { "campeche": 10 },
       "time": 5.0,
       "unlock_tech": "dyeing",
-      "description": "Создает краситель (кампеш) из древесины кампешевого дерева"
+      "description": "Makes a dye (campeche) from campeche wood."
     },
     {
       "id": "carthamin",
-      "name": "Картамин",
+      "name": "Carthamin",
       "produced_in": [ "dyer_house" ],
       "resources": { "safflower_leaves": 20 },
       "result": { "carthamin": 10 },
       "time": 5.0,
       "unlock_tech": "dyeing",
-      "description": "Создает краситель (картамин) из листьев сафлора"
+      "description": "Makes a dye (carthamin) from safflower leaves."
     },
     {
       "id": "carmine",
-      "name": "Кармин",
+      "name": "Carmine",
       "produced_in": [ "dyer_house" ],
       "resources": { "cochineal": 20 },
       "result": { "carmine": 10 },
       "time": 5.0,
       "unlock_tech": "dyeing",
-      "description": "Создает краситель (кармин) из кошенили"
+      "description": "Makes a dye (carmine) from cochineal."
     },
     {
       "id": "cinnabar",
-      "name": "Киноварь",
+      "name": "Cinnabar",
       "produced_in": [ "dyer_house" ],
       "resources": { "cinnabar_ore": 20 },
       "result": { "cinnabar": 10 },
       "time": 5.0,
       "unlock_tech": "dyeing",
-      "description": "Создает краситель (киноварь) из руды"
+      "description": "Makes a dye (cinnabar) from ore."
     },
     {
       "id": "ultramarine",
-      "name": "Ультрамарин",
+      "name": "Ultramarine",
       "produced_in": [ "dyer_house" ],
       "resources": { "lazurite_ore": 20 },
       "result": { "ultramarine": 10 },
       "time": 5.0,
       "unlock_tech": "dyeing",
-      "description": "Создает краситель (ультрамарин) из руды"
+      "description": "Makes a dye (ultramarine) from ore."
     },
     {
       "id": "malachite",
-      "name": "Малахит",
+      "name": "Malachite",
       "produced_in": [ "dyer_house" ],
       "resources": { "malachite_ore": 20 },
       "result": { "malachite": 10 },
       "time": 5.0,
       "unlock_tech": "dyeing",
-      "description": "Создает краситель (малахит) из руды"
+      "description": "Makes a dye (malachite) from ore."
     }
   ]
 }

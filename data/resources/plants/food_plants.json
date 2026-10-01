@@ -13,7 +13,7 @@
   "resources": [
     {
       "id": "wild_food", "price": 1,
-      "name": "Дикоросы",
+      "name": "Foraged Food",
       "type": "raw",
       "category": "plants",
       "group": "wild",
@@ -28,7 +28,7 @@
     },
     {
       "id": "wheat_field", "price": 2,
-      "name": "Пшеница",
+      "name": "Wheat",
       "type": "raw",
       "category": "plants",
       "group": "food_plants",
@@ -44,7 +44,7 @@
     },
     {
       "id": "oat_field", "price": 2,
-      "name": "Овёс",
+      "name": "Oats",
       "type": "raw",
       "category": "plants",
       "group": "food_plants",
@@ -59,7 +59,7 @@
     },
     {
       "id": "barley_field", "price": 2,
-      "name": "Ячмень",
+      "name": "Barley",
       "type": "raw",
       "category": "plants",
       "group": "food_plants",
@@ -75,7 +75,7 @@
     },
     {
       "id": "millet_field", "price": 2,
-      "name": "Просо",
+      "name": "Millet",
       "type": "raw",
       "category": "plants",
       "group": "food_plants",
@@ -91,7 +91,7 @@
     },
     {
       "id": "rye_field", "price": 2,
-      "name": "Рожь",
+      "name": "Rye",
       "type": "raw",
       "category": "plants",
       "group": "food_plants",
@@ -106,7 +106,7 @@
     },
     {
       "id": "rice_field", "price": 4,
-      "name": "Рис",
+      "name": "Rice",
       "type": "raw",
       "category": "plants",
       "group": "food_plants",
@@ -123,7 +123,7 @@
     },
     {
       "id": "soybean_field", "price": 4,
-      "name": "Соя",
+      "name": "Soybean",
       "type": "raw",
       "category": "plants",
       "group": "food_plants",
@@ -138,7 +138,7 @@
     },
     {
       "id": "quinoa_field", "price": 5,
-      "name": "Киноа",
+      "name": "Quinoa",
       "type": "raw",
       "category": "plants",
       "group": "food_plants",
@@ -153,7 +153,7 @@
     },
     {
       "id": "canihua_field", "price": 4,
-      "name": "Каньива",
+      "name": "Canihua",
       "type": "raw",
       "category": "plants",
       "group": "food_plants",
@@ -168,7 +168,7 @@
     },
     {
       "id": "potato_field", "price": 3,
-      "name": "Картофель",
+      "name": "Potato",
       "type": "raw",
       "category": "plants",
       "group": "food_plants",
@@ -183,7 +183,7 @@
     },
     {
       "id": "oca_field", "price": 4,
-      "name": "Ока",
+      "name": "Oca",
       "type": "raw",
       "category": "plants",
       "group": "food_plants",
@@ -198,7 +198,7 @@
     },
     {
       "id": "corn_field", "price": 3,
-      "name": "Кукуруза",
+      "name": "Corn",
       "type": "raw",
       "category": "plants",
       "group": "food_plants",
@@ -214,7 +214,7 @@
     },
     {
       "id": "yam_field", "price": 4,
-      "name": "Ямс",
+      "name": "Yam",
       "type": "raw",
       "category": "plants",
       "group": "food_plants",
@@ -229,7 +229,7 @@
     },
     {
       "id": "cassava_field", "price": 3,
-      "name": "Кассава",
+      "name": "Cassava",
       "type": "raw",
       "category": "plants",
       "group": "food_plants",
@@ -244,7 +244,7 @@
     },
     {
       "id": "sorghum_field", "price": 3,
-      "name": "Сорго",
+      "name": "Sorghum",
       "type": "raw",
       "category": "plants",
       "group": "food_plants",
@@ -260,7 +260,7 @@
     },
     {
       "id": "amaranth_field", "price": 3,
-      "name": "Амарант",
+      "name": "Amaranth",
       "type": "raw",
       "category": "plants",
       "group": "food_plants",
@@ -276,7 +276,7 @@
     },
     {
       "id": "teff_field", "price": 3,
-      "name": "Теф",
+      "name": "Teff",
       "type": "raw",
       "category": "plants",
       "group": "food_plants",
@@ -291,7 +291,7 @@
     },
     {
       "id": "taro_field", "price": 4,
-      "name": "Таро",
+      "name": "Taro",
       "type": "raw",
       "category": "plants",
       "group": "food_plants",
@@ -307,7 +307,7 @@
     },
     {
       "id": "maca_field", "price": 5,
-      "name": "Мака",
+      "name": "Maca",
       "type": "raw",
       "category": "plants",
       "group": "food_plants",
@@ -322,7 +322,7 @@
     },
     {
       "id": "buckwheat_field", "price": 3,
-      "name": "Гречиха",
+      "name": "Buckwheat",
       "type": "raw",
       "category": "plants",
       "group": "food_plants",
@@ -337,7 +337,7 @@
     },
     {
       "id": "bean_field", "price": 3,
-      "name": "Фасоль",
+      "name": "Beans",
       "type": "raw",
       "category": "plants",
       "group": "food_plants",
@@ -353,7 +353,7 @@
     },
     {
       "id": "cowpea_field", "price": 3,
-      "name": "Вигна",
+      "name": "Cowpea",
       "type": "raw",
       "category": "plants",
       "group": "food_plants",
@@ -369,7 +369,7 @@
     },
     {
       "id": "pea_field", "price": 3,
-      "name": "Горох",
+      "name": "Peas",
       "type": "raw",
       "category": "plants",
       "group": "food_plants",
@@ -384,7 +384,7 @@
     },
     {
       "id": "lentil_field", "price": 4,
-      "name": "Чечевица",
+      "name": "Lentils",
       "type": "raw",
       "category": "plants",
       "group": "food_plants",
@@ -400,7 +400,7 @@
     },
     {
       "id": "chickpea_field", "price": 4,
-      "name": "Нут",
+      "name": "Chickpeas",
       "type": "raw",
       "category": "plants",
       "group": "food_plants",

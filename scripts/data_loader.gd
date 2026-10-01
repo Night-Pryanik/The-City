@@ -32,6 +32,16 @@ var game_balance: Dictionary = {} # игровой баланс (data/game_balan
 # строку. Подробности — в шапке _remember_sources.
 var entity_sources: Dictionary = {}
 
+# Поля данных, значение которых видит игрок. В data/*.json лежит английский
+# исходный текст, а перевод накладывается здесь, при чтении файлов: ключом
+# перевода служит сам английский текст. Благодаря этому остальному коду не
+# нужно знать про локализацию — он по-прежнему читает "name"/"description".
+const DISPLAY_FIELDS := ["name", "description", "flavor"]
+
+# Поля-словари, где подпись для игрока лежит в ЗНАЧЕНИИ, а ключ — служебный
+# идентификатор (см. _localize_display_fields).
+const VALUE_MAP_FIELDS := ["priority_names"]
+
 # Верхнеуровневые ключи, у элементов которых есть "id" — по ним и ищем
 # объявление сущности. Порядок и состав повторяют то, что разбирает load_all_data.
 const SOURCE_COLLECTIONS := [
@@ -50,6 +60,12 @@ func load_all_data():
     if merged_data == null:
         print("Ошибка: не удалось загрузить данные из папки data.")
         return
+
+    # Перевод накладывается ДО сборки сущностей в словари: дальше все, кто
+    # читает GameData.products[id]["name"], получают уже готовый к показу
+    # текст на текущем языке. Смена языка перечитывает данные заново
+    # (LocalizationManager.set_locale → GameData.load_all_data).
+    _localize_display_fields(merged_data)
 
     terrains = {}
     for t in merged_data.get("terrains", []):
@@ -160,6 +176,30 @@ func load_all_data():
     # Числовые константы игры: стартовая казна города, множитель цены
     # внутреннего рынка и т.п. Ключ "game_balance" лежит на верхнем уровне.
     game_balance = merged_data.get("game_balance", {})
+
+
+# Переводит значения полей, которые видит игрок (DISPLAY_FIELDS), на текущий
+# язык игры. Обход рекурсивный: одна функция покрывает и плоские списки
+# сущностей, и вложенные (technologies[].unlock_effects[].name).
+#
+# Отдельный случай — qualities.json: там "priority_names" это словарь
+# {код_приоритета: подпись для игрока}, то есть подпись лежит в ЗНАЧЕНИИ, а
+# ключ остаётся служебным. Такие словари перечислены в VALUE_MAP_FIELDS.
+func _localize_display_fields(node: Variant) -> void:
+    if node is Dictionary:
+        for key in node.keys():
+            var value: Variant = node[key]
+            if DISPLAY_FIELDS.has(key) and value is String:
+                node[key] = tr(str(value))
+            elif VALUE_MAP_FIELDS.has(key) and value is Dictionary:
+                for option_key in value.keys():
+                    if value[option_key] is String:
+                        value[option_key] = tr(str(value[option_key]))
+            else:
+                _localize_display_fields(value)
+    elif node is Array:
+        for item in node:
+            _localize_display_fields(item)
 
 
 func _load_all_json_files(folder_path: String) -> Dictionary:

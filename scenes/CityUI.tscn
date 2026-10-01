@@ -42,7 +42,7 @@ grow_vertical = 2
 
 [node name="BuiltBuildingsLabel" type="Label" parent="RightPanel/VBoxContainer" unique_id=970030327]
 layout_mode = 2
-text = "Построенные здания"
+text = "Built buildings"
 
 [node name="BuiltBuildingsList" type="VBoxContainer" parent="RightPanel/VBoxContainer" unique_id=1857158825]
 layout_mode = 2
@@ -66,22 +66,22 @@ theme_override_constants/separation = 4
 [node name="ResourcesTabButton" type="Button" parent="TabBarPanel/TabBar" unique_id=1545388005]
 custom_minimum_size = Vector2(36, 34)
 layout_mode = 2
-tooltip_text = "Ресурсы"
+tooltip_text = "Resources"
 
 [node name="BuildingsTabButton" type="Button" parent="TabBarPanel/TabBar" unique_id=1963724598]
 custom_minimum_size = Vector2(36, 34)
 layout_mode = 2
-tooltip_text = "Здания"
+tooltip_text = "Buildings"
 
 [node name="TradeTabButton" type="Button" parent="TabBarPanel/TabBar" unique_id=390577073]
 custom_minimum_size = Vector2(36, 34)
 layout_mode = 2
-tooltip_text = "Торговля"
+tooltip_text = "Trade"
 
 [node name="TechnologiesTabButton" type="Button" parent="TabBarPanel/TabBar" unique_id=1779431610]
 custom_minimum_size = Vector2(36, 34)
 layout_mode = 2
-tooltip_text = "Технологии"
+tooltip_text = "Technologies"
 
 [node name="TopFoodLabel" type="HBoxContainer" parent="TabBarPanel" unique_id=1528058809]
 layout_mode = 1
@@ -94,16 +94,16 @@ theme_override_constants/separation = 8
 
 [node name="FoodLabel" type="Label" parent="TabBarPanel/TopFoodLabel" unique_id=1528058810]
 layout_mode = 2
-text = "Еда: 0"
+text = "Food: 0"
 
 [node name="PopLabel" type="Label" parent="TabBarPanel/TopFoodLabel" unique_id=1528058811]
 layout_mode = 2
-text = "Население: 1"
+text = "Population: 1"
 
 [node name="TreasuryLabel" type="Label" parent="TabBarPanel/TopFoodLabel" unique_id=1528058812]
 layout_mode = 2
 mouse_filter = 2
-text = "Казна: 0"
+text = "Treasury: 0"
 
 [node name="ContentPanel" type="Panel" parent="." unique_id=606119453]
 layout_mode = 1
@@ -131,7 +131,7 @@ offset_left = 4.0
 offset_top = 6.0
 offset_right = 183.0
 offset_bottom = 29.0
-text = "Список ресурсов"
+text = "Resource list"
 
 [node name="ScrollContainer" type="ScrollContainer" parent="ContentPanel/ResourcesPanel" unique_id=1162039807]
 layout_mode = 1
@@ -160,7 +160,7 @@ layout_mode = 1
 anchors_preset = -1
 offset_right = 184.0
 offset_bottom = 23.0
-text = "Еды доступно: 0"
+text = "Food available: 0"
 
 [node name="PanelsLayout" type="HBoxContainer" parent="ContentPanel/BuildingsPanel" unique_id=1962390109]
 layout_mode = 1
@@ -187,7 +187,7 @@ grow_vertical = 2
 
 [node name="AvailableBuildingsLabel" type="Label" parent="ContentPanel/BuildingsPanel/PanelsLayout/AvailableBuildingsPanel/VBoxContainer" unique_id=101904791]
 layout_mode = 2
-text = "Доступные постройки:"
+text = "Available buildings:"
 
 [node name="AvailableBuildingsScroll" type="ScrollContainer" parent="ContentPanel/BuildingsPanel/PanelsLayout/AvailableBuildingsPanel/VBoxContainer" unique_id=1295887837]
 custom_minimum_size = Vector2(300, 600)
@@ -210,7 +210,7 @@ offset_right = 104.0
 offset_bottom = -3.0
 grow_vertical = 0
 disabled = true
-text = "Построить"
+text = "Build"
 
 [node name="TradePanel" type="Control" parent="ContentPanel" unique_id=730713259]
 visible = false
@@ -238,7 +238,7 @@ theme_override_constants/separation = 4
 
 [node name="TitleLabel" type="Label" parent="ContentPanel/TradePanel/Split/InternalPanel" unique_id=1900000203]
 layout_mode = 2
-text = "Внутренняя торговля"
+text = "Domestic trade"
 
 [node name="InternalScroll" type="ScrollContainer" parent="ContentPanel/TradePanel/Split/InternalPanel" unique_id=1900000204]
 layout_mode = 2
@@ -258,7 +258,7 @@ theme_override_constants/separation = 4
 
 [node name="TitleLabel" type="Label" parent="ContentPanel/TradePanel/Split/ExternalPanel" unique_id=1900000207]
 layout_mode = 2
-text = "Внешняя торговля"
+text = "Foreign trade"
 
 [node name="TechnologiesPanel" type="Panel" parent="ContentPanel" unique_id=1065922502]
 layout_mode = 1
@@ -284,11 +284,11 @@ offset_bottom = 58.0
 
 [node name="SciencePoolLabel" type="Label" parent="ContentPanel/TechnologiesPanel/CurrentResearch/VBoxContainer" unique_id=597162081]
 layout_mode = 2
-text = "Наука: 1.0/сек"
+text = "Science: 1.0/sec"
 
 [node name="TechCurrentLabel" type="Label" parent="ContentPanel/TechnologiesPanel/CurrentResearch/VBoxContainer" unique_id=882780081]
 layout_mode = 2
-text = "Нет текущего исследования"
+text = "No current research"
 
 [node name="TreeRoot" type="Control" parent="ContentPanel/TechnologiesPanel" unique_id=1900000001]
 layout_mode = 1

@@ -475,6 +475,11 @@ func _ready():
     CityData.city_updated.connect(control_panel.on_city_updated)
     CityData.research_completed.connect(control_panel.refresh)
 
+    # Смена языка на лету: текст, заданный в сценах, Godot переводит сам, а
+    # всё, что собрано в коде (списки вкладок, панель гекса, HUD), нужно
+    # перестроить. Данные к этому моменту уже перечитаны менеджером языка.
+    LocalizationManager.locale_changed.connect(_on_locale_changed)
+
     tech_popup = _make_tech_popup()
     add_child(tech_popup)
     tech_popup.hide()
@@ -656,7 +661,7 @@ func _process(delta):
                             var lj_imp_mult: float = CityData.get_improvement_production_multiplier(
                                 "lumberjack_hut", _is_hex_irrigated(row, col),
                                 tile.get("terrain", ""), "lumberjack_hut")
-                            var lj_source = GameData.improvements.get("lumberjack_hut", {}).get("name", "Лесная делянка")
+                            var lj_source = GameData.improvements.get("lumberjack_hut", {}).get("name", tr("Woodcutter's Camp"))
                             # --- НЕПРЕРЫВНОЕ ПРОИЗВОДСТВО ЛЕСНОЙ ДЕЛЯНКИ ---
                             # Вместо пакетного выпуска раз в production_interval
                             # каждый тик добавляем на склад (wood_yield ×
@@ -1210,11 +1215,11 @@ func confirm_cancel_project(project_id: String):
     var steps: Array = project.get("steps", [])
     var done := int(project.get("step_index", 0))
     var left := maxi(0, steps.size() - done)
-    var title := str(project.get("title", "Строительство"))
+    var title := str(project.get("title", tr("Construction")))
 
     var dialog = AcceptDialog.new()
-    dialog.title = "Отмена строительства"
-    var text := "Отменить «%s»?\n\n" % title
+    dialog.title = tr("Cancel construction")
+    var text := tr("Cancel \"%s\"?\n\n") % title
     if left > 0:
         # Труд берём из ТЕКУЩЕГО шага проекта, а не из get_step_progress_at по
         # нажатому гексу: там возвращается пустой словарь, если игрок нажал не
@@ -1225,13 +1230,13 @@ func confirm_cancel_project(project_id: String):
             var cur: Dictionary = steps[done]
             progress = float(cur.get("progress", 0.0))
             step_cost = float(cur.get("work_cost", 0.0))
-        text += "Недостроенных участков: %d. Потраченный на них труд (%.0f/%.0f) будет потерян.\n\n" % [
+        text += tr("Unfinished sections: %d. Work spent on them (%.0f/%.0f) will be lost.\n\n") % [
             left, progress, step_cost,
         ]
     if done > 0:
-        text += "Уже построенные участки (%d) останутся на карте." % done
+        text += tr("Already built sections (%d) will stay on the map.") % done
     dialog.dialog_text = text
-    dialog.get_ok_button().text = "Да"
+    dialog.get_ok_button().text = tr("Yes")
     var was_paused = get_tree().paused
     get_tree().paused = true
     dialog.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -1240,7 +1245,7 @@ func confirm_cancel_project(project_id: String):
         if not was_paused:
             get_tree().paused = false
         if project_manager.cancel_project(str(project.get("id", ""))):
-            hud.show_message("Строительство отменено")
+            hud.show_message(tr("Construction cancelled"))
         _refresh_project_ghost()
         _redraw_progress_layer()
     )
@@ -1286,11 +1291,11 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
                 var res_produces: Dictionary = harvest_data.get("produces", {})
                 for prod_id in res_produces:
                     var amount = RangeUtils.roll_value(res_produces[prod_id],
-                            "produces продукта '%s' ресурса '%s'" % [prod_id, harvest_res_id], 0)
+                            tr("produces goods '%s' from resource '%s'") % [prod_id, harvest_res_id], 0)
                     if amount <= 0:
                         continue
                     CityData.add_to_storage(prod_id, amount, forage_quality)
-                    hud.show_message("Собрано %d %s!" % [amount, GameData.products.get(prod_id, {}).get("name", prod_id)])
+                    hud.show_message(tr("Collected %d %s!") % [amount, GameData.products.get(prod_id, {}).get("name", prod_id)])
                 # Ресурс исчезает с карты после сбора.
                 tile.resource = null
         elif action_type == "demolish":
@@ -1409,7 +1414,7 @@ func start_road_project(row: int, col: int, action_id: String) -> bool:
     # превью, поэтому старт не может взять другую цену, чем показали.
     var breakdown: Dictionary = get_road_cost_breakdown(row, col, action_id)
     if not breakdown.get("ok", false):
-        hud.show_message("Дорогу построить не удалось: %s" % breakdown.get("reason", "нет пути"))
+        hud.show_message(tr("Failed to build the road: %s") % breakdown.get("reason", tr("no path")))
         return false
     var steps: Array = breakdown.get("steps", [])
     var plan := get_road_plan(row, col)
@@ -1419,15 +1424,15 @@ func start_road_project(row: int, col: int, action_id: String) -> bool:
     # один слот, а не по числу гексов: одновременно строится один участок.
     if not CityData.ignore_build_requirements \
             and build_manager.get_total_active_builds() >= CityData.total_population:
-        hud.show_message("Можно строить не более %d зданий или улучшений одновременно (лимит = число жителей)"
+        hud.show_message(tr("You can build or upgrade no more than %d buildings at once (limit = number of citizens)")
                 % CityData.total_population)
         return false
 
-    var title := "Дорога"
+    var title := tr("Road")
     if is_town:
         var town = find_town_at(row, col)
         if town != null:
-            title = "Дорога до городка «%s»" % str(town.get("name", ""))
+            title = tr("Road to town \"%s\"") % str(town.get("name", ""))
 
     # Цель кладём в meta: событие project_completed приходит уже ПОСЛЕ того,
     # как проект выброшен из менеджера, и больше негде взять гекс, который
@@ -1440,7 +1445,7 @@ func start_road_project(row: int, col: int, action_id: String) -> bool:
     })
     if project_id == "":
         return false
-    hud.show_message("%s: участков %d, строится по одному" % [title, steps.size()])
+    hud.show_message(tr("%s: %d sections, built one at a time") % [title, steps.size()])
     # Призрак маршрута появляется сразу после подтверждения и живёт до конца
     # стройки: с этого момента панель закрывается, а игрок всё равно должен
     # видеть на карте весь проект и понимать, сколько ещё предстоит.
@@ -1512,7 +1517,7 @@ func _build_road_steps(plan: Dictionary, action_id: String) -> Array:
         var price := MapHelpers.get_road_step_work_cost(
                 action_id, t_row, t_col, city_row, city_col, terrain_id)
         steps.append({
-            "label": "Участок %d/%d" % [i + 1, pairs.size()],
+            "label": tr("Section %d/%d") % [i + 1, pairs.size()],
             "work_cost": int(price.get("cost", 1)),
             # Детали расчёта — для тултипа на прогресс-баре и для превью.
             "price": price,
@@ -1537,11 +1542,11 @@ func _build_road_steps(plan: Dictionary, action_id: String) -> Array:
 func get_road_cost_breakdown(row: int, col: int, action_id: String) -> Dictionary:
     var plan := get_road_plan(row, col)
     if not plan.get("ok", false):
-        return {"ok": false, "reason": plan.get("reason", "Дорогу построить нельзя"),
+        return {"ok": false, "reason": plan.get("reason", tr("Cannot build a road")),
                 "cost": 0, "steps": []}
     var steps := _build_road_steps(plan, action_id)
     if steps.is_empty():
-        return {"ok": false, "reason": "На этом маршруте нет новых участков",
+        return {"ok": false, "reason": tr("No new sections on this route"),
                 "cost": 0, "steps": []}
     var total := 0
     # Минимумы стартуют с -1, а НЕ с INF: mini()/maxi() понижают тип до int, и
@@ -1642,14 +1647,14 @@ func _refresh_project_ghost() -> void:
 func _mark_road_built(row: int, col: int, plan: Dictionary) -> void:
     tile_data[row][col]["road_built"] = true
     if not bool(plan.get("is_town", false)):
-        hud.show_message("Дорога построена!")
+        hud.show_message(tr("Road built!"))
         return
     var town = find_town_at(row, col)
     if town == null:
         return
     town["road_linked"] = true
-    hud.show_message("Дорога до городка «%s» построена — торговля доступна!"
-            % str(town.get("name", "Городок")))
+    hud.show_message(tr("Road to town \"%s\" built — trade available!")
+            % str(town.get("name", tr("Town"))))
 
 func _on_building_build_completed(building_id: String, build_key: String):
     # Стройка здания завершена - добавляем его в город
@@ -1733,7 +1738,7 @@ func _setup_research_hud():
     research_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
     inner.add_child(research_label)
 
-    research_button.tooltip_text = "Выберите технологию для изучения"
+    research_button.tooltip_text = tr("Select a technology to research")
     research_button.pressed.connect(_on_research_hud_button_pressed)
     research_hbox.add_child(research_button)
 
@@ -1765,7 +1770,7 @@ func _update_research_progress():
         if research_label:
             research_label.visible = true
             research_label.text = "!"
-        research_button.tooltip_text = "Никакая технология не изучается. Нажмите, чтобы выбрать технологию"
+        research_button.tooltip_text = tr("No technology is being researched. Click to select a technology")
         research_progress_bar.value = 0.0
         research_progress_bar.modulate = Color(1, 1, 1, 1)
         _apply_research_button_warning(true)
@@ -1779,7 +1784,7 @@ func _update_research_progress():
             tech_data = t
             break
     if tech_data:
-        research_button.tooltip_text = "Изучается: %s" % tech_data.get("name", tech_id)
+        research_button.tooltip_text = tr("Researching: %s") % tech_data.get("name", tech_id)
         var icon_name: String = tech_data.get("icon", "")
         if icon_name != "" and research_icon:
             var path = map_renderer.get_icon_path(icon_name)
@@ -1815,7 +1820,7 @@ func _update_research_progress():
         if research_label:
             research_label.visible = true
             research_label.text = "?"
-        research_button.tooltip_text = "Изучается технология"
+        research_button.tooltip_text = tr("A technology is being researched")
     _apply_research_button_warning(false)
 
     if CityData.current_research_science_cost > 0:
@@ -1935,7 +1940,7 @@ func _on_tech_popup_go_to_techs():
 
 func _on_pause_save():
     SaveManager.save_game()
-    hud.show_message("Игра сохранена.")
+    hud.show_message(tr("Game saved."))
 
 func _on_pause_menu_visibility_changed():
     var menu_visible = pause_menu.visible
@@ -2042,7 +2047,7 @@ func _on_expansion_mode_changed(_active: bool):
 
 func _on_territory_expanded(_row: int, _col: int, cost: int):
     # cost — это труд, затраченный на освоение (см. expansion_manager).
-    hud.show_message("Территория расширена! (затрачено %d труда)" % cost)
+    hud.show_message(tr("Territory expanded! (%d work spent)") % cost)
     # Освоение снимает туман с гексов (in_influence = true) — кэш заливки колец
     # городков пересобираем, иначе новая территория останется без заливки.
     # Заодно сбрасывается кэш планов дорог: купленный гекс стал известным.
@@ -2374,7 +2379,7 @@ func debug_open_whole_map():
     map_renderer.queue_redraw()
 
     if hud:
-        hud.show_message("Дебаг: вся карта открыта и в Кольце Влияния (%d×%d)" % [map_rows, map_cols])
+        hud.show_message(tr("Debug: whole map revealed and inside the Influence Ring (%d×%d)") % [map_rows, map_cols])
 
 # --- ПЕРЕХОД В СЛЕДУЮЩУЮ ЭПОХУ ---
 # Инфраструктура расширения мира:
@@ -2457,7 +2462,7 @@ func advance_to_next_era():
     _calc_offsets()
     map_renderer.queue_redraw()
     if hud:
-        hud.show_message("Новая эпоха! Границы города расширены. Кольцо влияния: %d×%d" % [ring_rows, ring_cols])
+        hud.show_message(tr("New era! City borders expanded. Influence ring: %d×%d") % [ring_rows, ring_cols])
 
 # --- ЕСТЕСТВЕННЫЙ ПЕРЕХОД В СЛЕДУЮЩУЮ ЭПОХУ ---
 # Рынок - условие перехода из первой эпохи. После его постройки игра
@@ -2467,18 +2472,18 @@ func advance_to_next_era():
 # эпохе столько, сколько захочет.
 func _setup_era_advance_ui():
     era_advance_button = Button.new()
-    era_advance_button.text = "Новая эпоха"
-    era_advance_button.tooltip_text = "Условие перехода выполнено. Нажмите, чтобы перейти в следующую эпоху."
+    era_advance_button.text = tr("New era")
+    era_advance_button.tooltip_text = tr("Advance requirement met. Click to advance to the next era.")
     era_advance_button.visible = false
     era_advance_button.pressed.connect(_show_era_advance_offer)
     hud.get_node("VBoxContainer").add_child(era_advance_button)
 
     era_dialog = ConfirmationDialog.new()
-    era_dialog.title = "Новая эпоха"
+    era_dialog.title = tr("New era")
     era_dialog.dialog_text = "Поздравляем, ваш город достиг следующего уровня развития!
 Перейти в следующую эпоху?"
-    era_dialog.ok_button_text = "Да"
-    era_dialog.cancel_button_text = "Нет"
+    era_dialog.ok_button_text = tr("Yes")
+    era_dialog.cancel_button_text = tr("No")
     era_dialog.process_mode = Node.PROCESS_MODE_WHEN_PAUSED
     era_dialog.confirmed.connect(_on_era_dialog_confirmed)
     era_dialog.canceled.connect(_on_era_dialog_declined)
@@ -2541,6 +2546,28 @@ func apply_settings():
     CityData.set_resource_display_interval(resource_display_interval)
     _treasury_display_epoch = CityData.resource_display_epoch
     _update_treasury_hud()
+
+# Пересборка интерфейса после смены языка.
+#
+# LocalizationManager к этому моменту уже перевёл сцены (Godot делает это сам
+# по уведомлению TranslationServer) и ПЕРЕЧИТАЛ данные игры — поэтому здесь
+# достаточно позвать у каждого экрана его refresh(): они строят заново узлы
+# со своим текстом и берут названия из уже переведённых данных.
+#
+# Кнопка исследования и метки HUD собирают текст в коде, поэтому обновляются
+# явно. Панель гекса и городок умеют обновляться и в закрытом виде.
+func _on_locale_changed(_locale: String) -> void:
+    if city_ui:
+        city_ui.refresh()
+    if control_panel:
+        control_panel.refresh()
+    if town_ui and town_ui.has_method("_refresh"):
+        town_ui._refresh()
+    if tech_popup and tech_popup.has_method("refresh"):
+        tech_popup.refresh()
+    _update_research_progress()
+    _update_population_hud()
+    _update_treasury_hud()
     map_renderer.queue_redraw()
 
 func _on_population_changed(_new_pop: int):
@@ -2549,7 +2576,7 @@ func _on_population_changed(_new_pop: int):
 func _update_population_hud():
     var pop_label = hud.get_node_or_null("VBoxContainer/PopulationLabel")
     if pop_label:
-        pop_label.text = "Население: %d" % CityData.total_population
+        pop_label.text = tr("Population: %d") % CityData.total_population
 
 # Обновляет метку казны в HUD (ниже блока времени игры). Вызывается
 # из _ready (старт/загрузка), из apply_settings (смена интервала) и из
@@ -2564,7 +2591,7 @@ func _update_treasury_hud():
         # Динамика прибыли/расходов — тот же факт, что и в тултипе разбивки
         # (CityData.get_treasury_flow_text), но в секунду. Считается на том же
         # ритме обновления, что и баланс, — цифры не мельтешат каждый тик.
-        treasury_label.text = "Казна: %d %s" % [
+        treasury_label.text = tr("Treasury: %d %s") % [
             _displayed_treasury, CityData.get_treasury_flow_text()
         ]
         # Панель HUD в сцене фиксированной ширины, а строка растёт вместе с
@@ -2692,7 +2719,7 @@ func _get_scouting_time(hex_count: int) -> float:
 
 func start_scouting(chunk: Array):
     if is_scouting:
-        hud.show_message("Разведка уже идёт!")
+        hud.show_message(tr("Scouting already in progress!"))
         return
     # Пустой чанк — нечего разведывать. Контрольная проверка для публичной
     # точки входа: иначе казна «списалась» бы на 0 монет, а is_scouting
@@ -2707,7 +2734,7 @@ func start_scouting(chunk: Array):
     if not is_cartography_researched():
         for hex in chunk:
             if not is_valid_hex(hex.row, hex.col):
-                hud.show_message("Для разведки за пределами Региона нужна технология «%s»"
+                hud.show_message(tr("Scouting beyond the Region requires the technology \"%s\"")
                         % get_cartography_tech_name())
                 return
     # Страховочный повтор правила «разведка только в чанк, примыкающий к
@@ -2715,7 +2742,7 @@ func start_scouting(chunk: Array):
     # не активирует, но отказ обязан быть и здесь — ДО списания монет и запуска
     # таймера, чтобы цена и фактическое действие не разошлись.
     if not is_chunk_adjacent_to_known(chunk):
-        hud.show_message("Чанк не граничит с исследованной территорией — сначала разведайте соседние гексы")
+        hud.show_message(tr("The chunk does not border explored territory — scout the neighbouring hexes first"))
         return
     # Цена экспедиции НЕ принимается параметром: единый источник истины —
     # expansion_manager.get_chunk_scout_cost() (база и модификатор дальности
@@ -2727,14 +2754,14 @@ func start_scouting(chunk: Array):
     var expedition_cost: int = expansion_manager.get_chunk_scout_cost(chunk)
     if not CityData.ignore_build_requirements:
         if not CityData.spend_treasury(expedition_cost):
-            hud.show_message("Недостаточно монет в казне! Нужно %d, в казне %d"
+            hud.show_message(tr("Not enough coins in the treasury! Need %d, treasury has %d")
                     % [expedition_cost, CityData.treasury])
             return
         # Источник расхода для тултипа «Казна» (см. show_treasury_tooltip).
         # Разовые траты на разведку — событийные, в плане их нет, поэтому разбивка
         # расходов показывает факт за последнее окно отображения.
         if expedition_cost > 0:
-            CityData.record_treasury_expense("Разведка", expedition_cost)
+            CityData.record_treasury_expense(tr("Scouting"), expedition_cost)
     scouting_chunk = chunk
     scouting_timer = 0.0
     if CityData.ignore_build_requirements:
@@ -2744,7 +2771,7 @@ func start_scouting(chunk: Array):
         return
     is_scouting = true
     _redraw_progress_layer()
-    hud.show_message("Разведчики отправлены... (оплачено %d монет из казны)" % expedition_cost)
+    hud.show_message(tr("Scouts sent... (%d coins paid from the treasury)") % expedition_cost)
 
 func _complete_scouting():
     for hex in scouting_chunk:
@@ -2753,7 +2780,7 @@ func _complete_scouting():
     # городку идёт только по разведанной земле), поэтому кэш планов сбрасывается.
     road_manager.bump_map_knowledge()
     var info = _get_chunk_info(scouting_chunk)
-    hud.show_message("Разведка завершена! %s" % info)
+    hud.show_message(tr("Scouting complete! %s") % info)
     is_scouting = false
     scouting_chunk = []
     # Разведка снимает туман войны с гексов, значит заливка колец городков
@@ -2793,17 +2820,17 @@ func confirm_cancel_expansion(row: int, col: int):
         return
     var chunk: Array = data.get("chunk", [])
     var dialog = AcceptDialog.new()
-    dialog.title = "Отмена освоения"
-    var text := "Прервать освоение области (%d клеток)?\n\n" % chunk.size()
-    text += "Потраченный труд (%.0f/%d) будет потерян." % [
+    dialog.title = tr("Cancel claiming")
+    var text := tr("Stop claiming land (%d tiles)?\n\n") % chunk.size()
+    text += tr("Spent work (%.0f/%d) will be lost.") % [
         float(data.get("progress", 0.0)), int(data.get("work_cost", 0))]
     var money_cost := int(data.get("money_cost", 0))
     if money_cost > 0:
-        text += "\n\nУже оплаченные %d монет вернутся в казну." % money_cost
+        text += tr("\n\nThe %d coins already paid will be returned to the treasury.") % money_cost
     else:
-        text += "\n\nМонеты за освоение не списывались."
+        text += tr("\n\nNo coins were deducted for the claim.")
     dialog.dialog_text = text
-    dialog.get_ok_button().text = "Да"
+    dialog.get_ok_button().text = tr("Yes")
     _show_cancel_dialog(dialog, func():
         if build_manager.cancel_expansion_at_hex(row, col):
             _after_cancel_long_action())
@@ -2819,12 +2846,12 @@ func confirm_cancel_scouting(row: int, col: int):
         return
     var chunk: Array = scouting_chunk
     var dialog = AcceptDialog.new()
-    dialog.title = "Отмена разведки"
-    var text := "Отозвать разведчиков?\n\nОбследовано не будет ни одной клетки из %d." % chunk.size()
+    dialog.title = tr("Cancel scouting")
+    var text := tr("Recall the scouts?\n\nNone of the %d tiles will be surveyed.") % chunk.size()
     if not CityData.ignore_build_requirements:
-        text += "\n\nОплаченные %d монет вернутся в казну." % expansion_manager.get_chunk_scout_cost(chunk)
+        text += tr("\n\nThe %d coins paid will be returned to the treasury.") % expansion_manager.get_chunk_scout_cost(chunk)
     dialog.dialog_text = text
-    dialog.get_ok_button().text = "Да"
+    dialog.get_ok_button().text = tr("Yes")
     _show_cancel_dialog(dialog, func():
         cancel_scouting())
 
@@ -2842,8 +2869,8 @@ func cancel_scouting() -> bool:
         var cost: int = expansion_manager.get_chunk_scout_cost(chunk)
         if cost > 0:
             CityData.add_treasury(cost)
-            CityData.record_treasury_expense("Разведка", -cost)
-    hud.show_message("Разведка отменена")
+            CityData.record_treasury_expense(tr("Scouting"), -cost)
+    hud.show_message(tr("Scouting cancelled"))
     _after_cancel_long_action()
     return true
 
@@ -2862,17 +2889,17 @@ func _confirm_cancel_build(row: int, col: int):
     var prog = build_manager.get_progress(row, col)
     if prog.is_empty():
         return
-    var imp_name = prog.get("imp_name", "Улучшение")
+    var imp_name = prog.get("imp_name", tr("Upgrade"))
     var work_done = prog.get("progress", 0.0)
     var work_total = prog.get("work_cost", 0)
 
     # Создаём диалог подтверждения
     var dialog = AcceptDialog.new()
-    dialog.title = "Отмена строительства"
-    dialog.dialog_text = "Отменить строительство «%s»?\n\nПотраченный труд (%.0f/%d) будет потерян." % [imp_name, work_done, work_total]
+    dialog.title = tr("Cancel construction")
+    dialog.dialog_text = tr("Cancel construction of \"%s\"?\n\nSpent work (%.0f/%d) will be lost.") % [imp_name, work_done, work_total]
     # Локализуем кнопку подтверждения (по умолчанию Godot показывает «OK» —
     # проект без файлов переводов).
-    dialog.get_ok_button().text = "Да"
+    dialog.get_ok_button().text = tr("Yes")
     # Ставим игру на паузу, пока открыт диалог подтверждения отмены.
     var was_paused = get_tree().paused
     get_tree().paused = true

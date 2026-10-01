@@ -34,7 +34,7 @@
     "quality_levels": [
         {
             "id": "common",
-            "name": "Обычное",
+            "name": "Common",
             "value": 1,
             "stars": "★",
             "color": [ 160, 160, 160 ],
@@ -43,7 +43,7 @@
         },
         {
             "id": "fine",
-            "name": "Хорошее",
+            "name": "Fine",
             "value": 2,
             "stars": "★★",
             "color": [ 90, 200, 110 ],
@@ -52,7 +52,7 @@
         },
         {
             "id": "exceptional",
-            "name": "Исключительное",
+            "name": "Exceptional",
             "value": 3,
             "stars": "★★★",
             "color": [ 186, 120, 255 ],
@@ -61,7 +61,7 @@
         },
         {
             "id": "perfect",
-            "name": "Превосходное",
+            "name": "Perfect",
             "value": 4,
             "stars": "★★★★",
             "color": [ 255, 215, 0 ],
@@ -74,8 +74,8 @@
     "priority_default": "best",
     "priority_options": ["best", "worst", "random"],
     "priority_names": {
-        "best": "Лучшее качество",
-        "worst": "Худшее качество",
-        "random": "Случайно"
+        "best": "Best quality",
+        "worst": "Worst quality",
+        "random": "Random"
     }
 }

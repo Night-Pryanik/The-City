@@ -2,153 +2,153 @@
   "crafts": [
     {
       "id": "copper_from_copper_ore",
-      "name": "Медь (из медной руды)",
+      "name": "Copper (from copper ore)",
       "produced_in": [ "smelter" ],
       "resources": { "copper_ore": 20, "charcoal": 10 },
       "result": { "copper": 10 },
       "time": 5.0,
       "unlock_tech": "native_metals",
-      "description": "Плавит медную руду в чистую медь"
+      "description": "Smelts copper ore into pure copper."
     },
     {
       "id": "copper_from_malachite",
-      "name": "Медь (из малахита)",
+      "name": "Copper (from malachite)",
       "produced_in": [ "smelter" ],
       "resources": { "malachite_ore": 20, "charcoal": 10 },
       "result": { "copper": 10 },
       "time": 5.0,
       "unlock_tech": "native_metals",
-      "description": "Плавит малахитовую руду в чистую медь"
+      "description": "Smelts malachite ore into pure copper."
     },
     {
       "id": "copper_tools",
-      "name": "Медные инструменты",
+      "name": "Copper Tools",
       "produced_in": [ "forge" ],
       "resources": { "copper": 20, "charcoal": 10 },
       "result": { "copper_tools": 10 },
       "time": 5.0,
       "unlock_tech": "metallurgy",
-      "description": "Создаёт набор инструментов для ремесленников"
+      "description": "Makes a set of tools for craftsmen."
     },
     {
       "id": "copper_weapons",
-      "name": "Медное оружие",
+      "name": "Copper Weapons",
       "produced_in": [ "forge" ],
       "resources": { "copper": 30, "charcoal": 10 },
       "result": { "copper_weapons": 10 },
       "time": 6.0,
       "unlock_tech": "metallurgy",
-      "description": "Создаёт партию оружия для защиты города"
+      "description": "Makes a batch of weapons to defend the city."
     },
     {
       "id": "gold",
-      "name": "Золото",
+      "name": "Gold",
       "produced_in": [ "smelter" ],
       "resources": { "gold_ore": 20, "charcoal": 10 },
       "result": { "gold": 10 },
       "time": 5.0,
       "unlock_tech": "native_metals",
-      "description": "Плавит золотую руду в чистое золото"
+      "description": "Smelts gold ore into pure gold."
     },
     {
       "id": "silver",
-      "name": "Серебро",
+      "name": "Silver",
       "produced_in": [ "smelter" ],
       "resources": { "silver_ore": 20, "charcoal": 10 },
       "result": { "silver": 10 },
       "time": 5.0,
       "unlock_tech": "native_metals",
-      "description": "Плавит серебряную руду в чистое серебро"
+      "description": "Smelts silver ore into pure silver."
     },
     {
       "id": "bronze",
-      "name": "Бронза",
+      "name": "Bronze",
       "produced_in": [ "smelter" ],
       "resources": { "copper": 20, "@bronze_alloys": 10, "charcoal": 10 },
       "result": { "bronze": 10 },
       "time": 5.0,
       "unlock_tech": "bronze",
-      "description": "Создаёт бронзовый сплав из меди/сурьмы/мышьяка и олова"
+      "description": "Makes a bronze alloy from copper/antimony/arsenic and tin."
     },
     {
       "id": "bronze_tools",
-      "name": "Бронзовые инструменты",
+      "name": "Bronze Tools",
       "produced_in": [ "forge" ],
       "resources": { "bronze": 20, "charcoal": 10 },
       "result": { "bronze_tools": 10 },
       "time": 5.0,
       "unlock_tech": "metallurgy",
-      "description": "Создаёт набор инструментов для ремесленников"
+      "description": "Makes a set of tools for craftsmen."
     },
     {
       "id": "bronze_weapons",
-      "name": "Бронзовoе оружие",
+      "name": "Bronze Weapons",
       "produced_in": [ "forge" ],
       "resources": { "bronze": 30, "charcoal": 10 },
       "result": { "bronze_weapons": 10 },
       "time": 6.0,
       "unlock_tech": "metallurgy",
-      "description": "Создаёт партию оружия для защиты города"
+      "description": "Makes a batch of weapons to defend the city."
     },
     {
       "id": "iron",
-      "name": "Железо",
+      "name": "Iron",
       "produced_in": [ "bloomery" ],
       "resources": { "iron_ore": 20, "charcoal": 20 },
       "result": { "iron": 10 },
       "time": 5.0,
       "unlock_tech": "iron_processing",
-      "description": "Изготавливает железо из руды"
+      "description": "Makes iron out of ore."
     },
     {
       "id": "iron_tools",
-      "name": "Железные инструменты",
+      "name": "Iron Tools",
       "produced_in": [ "forge" ],
       "resources": { "iron": 20, "charcoal": 20 },
       "result": { "iron_tools": 10 },
       "time": 5.0,
       "unlock_tech": "iron_processing",
-      "description": "Создаёт набор инструментов для ремесленников"
+      "description": "Makes a set of tools for craftsmen."
     },
     {
       "id": "iron_weapons",
-      "name": "Железное оружие",
+      "name": "Iron Weapons",
       "produced_in": [ "forge" ],
       "resources": { "iron": 30, "charcoal": 20 },
       "result": { "iron_weapons": 10 },
       "time": 6.0,
       "unlock_tech": "iron_processing",
-      "description": "Создаёт партию оружия для защиты города"
+      "description": "Makes a batch of weapons to defend the city."
     },
     {
       "id": "tin",
-      "name": "Олово",
+      "name": "Tin",
       "produced_in": [ "smelter" ],
       "resources": { "tin_ore": 20, "charcoal": 10 },
       "result": { "tin": 10 },
       "time": 5.0,
       "unlock_tech": "native_metals",
-      "description": "Плавит оловянную руду в чистое олово"
+      "description": "Smelts tin ore into pure tin."
     },
     {
       "id": "arsenic",
-      "name": "Мышьяк",
+      "name": "Arsenic",
       "produced_in": [ "smelter" ],
       "resources": { "arsenic_ore": 20, "charcoal": 10 },
       "result": { "arsenic": 10 },
       "time": 5.0,
       "unlock_tech": "native_metals",
-      "description": "Плавит мышьяковую руду в чистый мышьяк"
+      "description": "Smelts arsenic ore into pure arsenic."
     },
     {
       "id": "antimony",
-      "name": "Сурьма",
+      "name": "Antimony",
       "produced_in": [ "smelter" ],
       "resources": { "antimony_ore": 20, "charcoal": 10 },
       "result": { "antimony": 10 },
       "time": 5.0,
       "unlock_tech": "native_metals",
-      "description": "Плавит сурьмяную руду в чистую сурьму"
+      "description": "Smelts antimony ore into pure antimony."
     }
   ]
 }

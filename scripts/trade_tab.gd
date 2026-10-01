@@ -104,7 +104,7 @@ func refresh() -> void:
     _signature = _signature_of(data)
     if internal_list.get_child_count() == 0:
         var empty := Label.new()
-        empty.text = "Пока никто ничего не потребляет"
+        empty.text = tr("Nobody consumes anything yet")
         empty.add_theme_color_override("font_color", COLOR_CAPTION)
         internal_list.add_child(empty)
 
@@ -265,12 +265,12 @@ func _format_quality(stock: Dictionary) -> String:
 # и должен видеть, чтобы понимать, что произойдёт при росте населения.
 func _format_unit_rate(amount: int, interval: float) -> String:
     if amount <= 0:
-        return "0/сек"
+        return tr("0/sec")
     if interval <= 0.0:
-        return "%d ед./сек" % amount
+        return tr("%d units/sec") % amount
     if is_equal_approx(interval, round(interval)):
-        return "%d ед./%d сек" % [amount, int(round(interval))]
-    return "%d ед./%.1f сек" % [amount, interval]
+        return tr("%d units/%d sec") % [amount, int(round(interval))]
+    return tr("%d units/%.1f sec") % [amount, interval]
 
 # Форматирование скорости: целые значения без дробной части, дробные — с
 # одним знаком (та же конвенция, что в ui_helpers._format_rate).
@@ -342,16 +342,16 @@ func _create_card(display_key: String, row: Dictionary) -> void:
 func _set_icon_tooltip(icon: TextureRect, row: Dictionary, display_key: String) -> void:
     var icon_file := str(row.get("icon", ""))
     if not bool(row.get("is_group", false)):
-        _set_tooltip(icon, "Иконка: %s" % icon_file)
+        _set_tooltip(icon, tr("Icon: %s") % icon_file)
         return
     var info: Dictionary = GameData.get_product_group_icon_info(display_key)
     if bool(info.get("own", false)):
-        _set_tooltip(icon, "Иконка группы «%s»: %s (задана в data/product_groups.json)" % [
+        _set_tooltip(icon, tr("Icon of group \"%s\": %s (set in data/product_groups.json)") % [
             _row_title(row, display_key), icon_file])
     else:
         var source_pid := str(info.get("source_pid", ""))
         var source_name := str(GameData.products.get(source_pid, {}).get("name", source_pid))
-        _set_tooltip(icon, "Иконка группы «%s» взята у товара «%s»" % [
+        _set_tooltip(icon, tr("Icon of group \"%s\" taken from goods \"%s\"") % [
             _row_title(row, display_key), source_name])
 
 # Обновляет значения существующей карточки (без пересоздания узлов).
@@ -360,7 +360,7 @@ func _update_card(ctx: Dictionary, row: Dictionary) -> void:
     var enabled := bool(row.get("enabled", true))
     var title: String = str(row.get("name", display_key))
     if bool(row.get("is_group", false)):
-        title += " (группа)"
+        title += tr(" (group)")
     var name_label: Label = ctx["name"]
     _set_text(name_label, title)
     var stock: Dictionary = row.get("stock", {})
@@ -396,7 +396,7 @@ func _update_card(ctx: Dictionary, row: Dictionary) -> void:
     if not enabled:
         _set_text(income, "—")
     else:
-        _set_text(income, "%s/сек" % _format_rate(float(fact_income.get("coins_per_sec", 0.0))))
+        _set_text(income, tr("%s/sec") % _format_rate(float(fact_income.get("coins_per_sec", 0.0))))
     # Состояние приглушается у запрещённого ресурса: он остаётся в списке
     # (иначе его нельзя было бы включить обратно), но выглядит отключённым.
     var card: PanelContainer = ctx["card"]
@@ -429,7 +429,7 @@ func _update_priority_button(button: Button, priority: String) -> void:
         button.text = "★"
     # Через _set_tooltip: присваивание tooltip_text сбрасывает открытый
     # тултип, даже если строка не изменилась.
-    _set_tooltip(button, "Приоритет потребления: %s (нажмите чтобы переключить)" \
+    _set_tooltip(button, tr("Consumption priority: %s (click to switch)") \
         % GameData.get_quality_priority_name(priority))
 
 # Синхронизирует тумблер с состоянием рынка. Проверка на изменение значения
@@ -470,14 +470,14 @@ func _on_priority_pressed(display_key: String) -> void:
     var ctx: Dictionary = cards[display_key]
     _update_priority_button(ctx["priority_btn"], priority)
     var row: Dictionary = _collect_data().get(display_key, {})
-    _show_message("%s: приоритет потребления — %s" % [
+    _show_message(tr("%s: consumption priority — %s") % [
         _row_title(row, display_key), GameData.get_quality_priority_name(priority)])
 
 # Заголовок карточки для сообщений (с пометкой группы, как в самой карточке).
 func _row_title(row: Dictionary, display_key: String) -> String:
     var title := str(row.get("name", display_key))
     if bool(row.get("is_group", false)):
-        title += " (группа)"
+        title += tr(" (group)")
     return title
 
 # --- ТУЛТИПЫ ---
@@ -527,14 +527,14 @@ func _price_tooltip_text(row: Dictionary) -> String:
         return ""
     var lines: Array = []
     var market_mult := float(GameData.game_balance.get("internal_market_price_multiplier", 1.0))
-    lines.append("Цена = базовая цена товара ×%.2f (рынок) × множитель качества" % market_mult)
+    lines.append(tr("Price = base price of the goods ×%.2f (market) × quality multiplier") % market_mult)
     lines.append("")
     for pid in row.get("members", []):
         var member := str(pid)
         var member_name: String = str(GameData.products.get(member, {}).get("name", member))
         var base_price: float = GameData.get_base_price(member)
         if base_price <= 0.0:
-            lines.append("%s: товар без цены" % member_name)
+            lines.append(tr("%s: goods without a price") % member_name)
             continue
         var stock_detail: Dictionary = CityData.get_quality_breakdown(member)
         var stock_total := 0
@@ -545,10 +545,10 @@ func _price_tooltip_text(row: Dictionary) -> String:
         # строкой. Без этого тултип группы из 13 товаров растягивался на
         # пол-экрана, и нужная строка тонула в общем списке.
         if stock_total <= 0:
-            lines.append("%s (база %d): %s" % [
+            lines.append(tr("%s (base %d): %s") % [
                 member_name, int(round(base_price)), _price_ladder_inline(member)])
             continue
-        lines.append("%s (база %d):" % [member_name, int(round(base_price))])
+        lines.append(tr("%s (base %d):") % [member_name, int(round(base_price))])
         for qid in GameData.get_quality_levels():
             var tail := GameData.format_quality_price_tail(member, str(qid))
             if tail == "":
@@ -558,12 +558,12 @@ func _price_tooltip_text(row: Dictionary) -> String:
             # Количество на складе дописывается только когда уровень реально
             # лежит: иначе каждая строка лестницы несла бы «0» и тултип
             # превращался бы в таблицу нулей.
-            var suffix := " — на складе: %d" % in_stock if in_stock > 0 else ""
+            var suffix := tr(" — in storage: %d") % in_stock if in_stock > 0 else ""
             lines.append("  %s%s%s" % [stars, tail, suffix])
     lines.append("")
     if bool(row.get("is_group", false)):
-        lines.append("Диапазон — потому что у товаров группы разные базовые цены.")
-    lines.append("Цена за единицу: наличие на складе её не меняет. Склад влияет на доход (строка «Доход»).")
+        lines.append(tr("A range is shown because the goods in the group have different base prices."))
+    lines.append(tr("Price per unit: having it in storage does not change it. Storage affects income (the \"Income\" row)."))
     return "\n".join(lines)
 
 # Покупатели: кто именно покупает ресурс и в каком количестве.
@@ -574,7 +574,7 @@ func _price_tooltip_text(row: Dictionary) -> String:
 func _consumers_tooltip_text(row: Dictionary) -> String:
     if row.is_empty():
         return ""
-    var lines: Array = ["Покупают ресурс:"]
+    var lines: Array = [tr("Buyers of the resource:")]
     var sources: Dictionary = row.get("sources", {})
     var entries: Array = []
     for source_name in sources:
@@ -593,7 +593,7 @@ func _consumers_tooltip_text(row: Dictionary) -> String:
 func _consumption_tooltip_text(row: Dictionary) -> String:
     if row.is_empty():
         return ""
-    var lines: Array = ["Расход по покупателям:"]
+    var lines: Array = [tr("Expenses by buyers:")]
     var sources: Dictionary = row.get("sources", {})
     for source_name in sources:
         var entry: Dictionary = sources[source_name]
@@ -604,17 +604,17 @@ func _consumption_tooltip_text(row: Dictionary) -> String:
             continue
         # «норма × число покупателей = всего»: так видно и своё число из
         # данных, и итог по городу, без двух одинаковых подряд «10 ед./1 сек».
-        lines.append("%s: %d ед. раз в %s на человека × %d = %d за цикл" % [
+        lines.append(tr("%s: %d units every %s per person × %d = %d per cycle") % [
             source_name, amount,
-            ("%d сек" % int(round(interval))) if interval > 0.0 else "сек",
+            (tr("%d sec") % int(round(interval))) if interval > 0.0 else tr("sec"),
             count, amount * count])
     var plan_per_sec := float(row.get("per_sec", 0.0))
     if plan_per_sec > 0.0:
         lines.append("")
-        lines.append("Итого по городу (план): %s ед./сек" % _format_rate(plan_per_sec))
+        lines.append(tr("City total (plan): %s units/sec") % _format_rate(plan_per_sec))
     var fact := float(row.get("actual", 0.0))
     if fact > 0.0:
-        lines.append("Факт за окно: %s ед./сек — столько реально купили" % _format_rate(fact))
+        lines.append(tr("Actual over the window: %s units/sec — that is what was really bought") % _format_rate(fact))
     if lines.size() <= 1:
         return ""
     return "\n".join(lines)
@@ -632,7 +632,7 @@ func _income_tooltip_text(row: Dictionary) -> String:
     if row.is_empty():
         return ""
     if not bool(row.get("enabled", true)):
-        return "Потребление на внутреннем рынке запрещено — дохода нет."
+        return tr("Consumption on the domestic market is disabled — no income.")
     var fact_row: Dictionary = row.get("actual_income", {})
     var plan_row: Dictionary = row.get("planned_income", {})
     var fact := float(fact_row.get("coins_per_sec", 0.0))
@@ -642,26 +642,26 @@ func _income_tooltip_text(row: Dictionary) -> String:
         return ""
     # Длина окна в первой строке: по ней игрок может сверить факт со строкой
     # «Казна: N [+X≈]» — она тоже считается за это окно.
-    var lines: Array = ["Доход в казну за %s сек: %s монет/сек" % [
+    var lines: Array = [tr("Income to the treasury over %s sec: %s coins/sec") % [
         _format_rate(CityData.treasury_window_length_sec), _format_rate(fact)]]
     if plan > 0.0:
-        lines.append("План: спрос %s ед./сек × цена %s = %s монет/сек" % [
+        lines.append(tr("Plan: demand %s units/sec × price %s = %s coins/sec") % [
             _format_rate(per_sec), str(row.get("price_text", "—")), _format_rate(plan)])
     # Нулевой факт при ненулевом спросе — это не ошибка, а отсутствие товара:
     # продавать нечего. Без этой строки игрок видит «0» и думает, что сломан
     # расчёт.
     if fact <= 0.0 and per_sec > 0.0:
-        lines.append("Пока на складе нет товара этой группы, покупать нечего — дохода не будет.")
+        lines.append(tr("As long as the group has no goods in storage there is nothing to buy — no income."))
     elif fact > 0.0 and plan > fact * 1.5:
-        lines.append("Факт ниже плана: покупатели хотят больше, чем лежит на складе.")
+        lines.append(tr("Actual is below plan: buyers want more than what is in storage."))
     var by_source: Dictionary = fact_row.get("by_source", {})
     if by_source.size() > 0:
         lines.append("")
-        lines.append("По покупателям (факт):")
+        lines.append(tr("By buyers (actual):"))
         var names: Array = by_source.keys()
         names.sort()
         for source_name in names:
-            lines.append("%s: %s монет/сек" % [
+            lines.append(tr("%s: %s coins/sec") % [
                 str(source_name), _format_rate(float(by_source[source_name]))])
     return "\n".join(lines)
 

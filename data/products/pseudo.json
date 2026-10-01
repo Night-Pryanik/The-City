@@ -3,7 +3,7 @@
     {
       // Наука — виртуальный продукт. Не копится на складе, а идёт напрямую в исследования.
       "id": "science",
-      "name": "Наука",
+      "name": "Science",
       "type": "product",
       "category": "other",
       "unlock_tech": "writing",

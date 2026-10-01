@@ -893,7 +893,7 @@ func get_actual_treasury_income_map() -> Dictionary:
                     "product_name": GameData.products.get(pid, {}).get("name", pid)
                 }
         if not income_by_source.is_empty():
-            result["Потребление населения"] = income_by_source
+            result[tr("Population consumption")] = income_by_source
     _fill_tax_income(result)
     return result
 
@@ -914,7 +914,7 @@ func _fill_tax_income(result: Dictionary) -> void:
     result[CityData.TAX_INCOME_TYPE] = {
         CityData.TREASURY_FLAT_TYPE_KEY: {
             "rate": float(per_tick) / CityData.SIMULATION_TICK,
-            "label": "%d × %d чел." % [
+            "label": tr("%d × %d people") % [
                 CityData.get_base_tax_per_citizen(), CityData.total_population
             ]
         }
@@ -1023,7 +1023,7 @@ func get_population_income_map() -> Dictionary:
 # доход шести членов «Фруктов» попадает в одну карточку, а не в шесть строк.
 func get_actual_market_income_map() -> Dictionary:
     var result: Dictionary = {}
-    var actual: Dictionary = get_actual_treasury_income_map().get("Потребление населения", {})
+    var actual: Dictionary = get_actual_treasury_income_map().get(tr("Population consumption"), {})
     if actual.is_empty():
         return result
     var planned := get_planned_consumption_map(false)
@@ -1077,7 +1077,7 @@ func _planned_market_income_per_pid() -> Dictionary:
     return result
 
 func _fill_consumption_income(result: Dictionary) -> void:
-    var income_type := "Потребление населения"
+    var income_type := tr("Population consumption")
     if not result.has(income_type):
         result[income_type] = {}
     var type_dict: Dictionary = result[income_type]

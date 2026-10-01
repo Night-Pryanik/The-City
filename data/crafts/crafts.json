@@ -2,7 +2,7 @@
   "crafts": [
     {
       "id": "grind_grain_hand",
-      "name": "Мука (вручную)",
+      "name": "Flour (by hand)",
       "produced_in": [ "hand_mill" ],
       "resources": { "@millable_grains": 20 },
       "result": { "flour": 10 },
@@ -10,7 +10,7 @@
     },
     {
       "id": "grind_grain_animal",
-      "name": "Мука (с помощью тягловых животных)",
+      "name": "Flour (with draft animals)",
       "produced_in": [ "animal_mill" ],
       "resources": { "@millable_grains": 20, "feed": 10 },
       "result": { "flour": 10 },
@@ -18,7 +18,7 @@
     },
     {
       "id": "grind_grain_water",
-      "name": "Мука (с помощью водяного колеса)",
+      "name": "Flour (with a water wheel)",
       "produced_in": [ "water_mill" ],
       "resources": { "@millable_grains": 20 },
       "result": { "flour": 10 },
@@ -26,233 +26,233 @@
     },
     {
       "id": "pottery",
-      "name": "Глиняная посуда",
+      "name": "Pottery",
       "produced_in": [ "pottery_workshop" ],
       "resources": { "clay": 20 },
       "result": { "pottery": 10 },
       "time": 4.0,
       "unlock_tech": "pottery",
-      "description": "Создаёт глиняную посуду для хранения"
+      "description": "Creates clay pots for storage."
     },
     {
       "id": "bricks",
-      "name": "Кирпичи",
+      "name": "Bricks",
       "produced_in": [ "pottery_workshop" ],
       "resources": { "clay": 30 },
       "result": { "bricks": 10 },
       "time": 5.0,
       "unlock_tech": "pottery",
-      "description": "Обжигает глину в строительные кирпичи"
+      "description": "Fires clay into building bricks."
     },
     {
       "id": "clay_tablets",
-      "name": "Глиняные таблички",
+      "name": "Clay Tablets",
       "produced_in": [ "pottery_workshop" ],
       "resources": { "clay": 20 },
       "result": { "clay_tablets": 10 },
       "time": 5.0,
       "unlock_tech": "pottery",
-      "description": "Создаёт глиняные таблички для записей"
+      "description": "Creates clay tablets for writing."
     },
     {
       "id": "leather",
-      "name": "Кожа",
+      "name": "Leather",
       "produced_in": [ "leatherworker_house" ],
       "resources": { "hide": 10 },
       "result": { "leather": 10 },
       "time": 4.0,
       "unlock_tech": "leatherworking",
-      "description": "Превращает шкуры в прочную кожу"
+      "description": "Turns hides into tough leather."
     },
     {
       "id": "fabric_clothes",
-      "name": "Тканевая одежда",
+      "name": "Cloth Clothes",
       "produced_in": [ "weaver_house" ],
       "resources": { "@textile_crops": 20 },
       "result": { "fabric_clothes": 10 },
       "time": 4.0,
       "unlock_tech": "weaving",
-      "description": "Ткёт одежду из ткани"
+      "description": "Weaves clothes out of cloth."
     },
     {
       "id": "wool_clothes",
-      "name": "Шерстяная одежда",
+      "name": "Wool Clothes",
       "produced_in": [ "weaver_house" ],
       "resources": { "wool": 20 },
       "result": { "wool_clothes": 10 },
       "time": 4.0,
       "unlock_tech": "weaving",
-      "description": "Ткёт одежду из шерсти"
+      "description": "Weaves clothes out of wool."
     },
     {
       "id": "silk_clothes",
-      "name": "Шёлковая одежда",
+      "name": "Silk Clothes",
       "produced_in": [ "weaver_house" ],
       "resources": { "silk": 20 },
       "result": { "silk_clothes": 10 },
       "time": 4.0,
       "unlock_tech": "sericulture",
-      "description": "Ткёт одежду из шёлка"
+      "description": "Weaves clothes out of silk."
     },
     {
       "id": "leather_clothes",
-      "name": "Кожаная одежда",
+      "name": "Leather Clothes",
       "produced_in": [ "leatherworker_house" ],
       "resources": { "leather": 20 },
       "result": { "leather_clothes": 10 },
       "time": 4.0,
       "unlock_tech": "leatherworking",
-      "description": "Шьёт одежду из кожи"
+      "description": "Sews clothes out of leather."
     },
     {
       "id": "processed_building_stone",
-      "name": "Строительный камень",
+      "name": "Building Stone",
       "produced_in": [ "mason_workshop" ],
       "resources": { "@building_stone": 20 },
       "result": { "processed_building_stone": 10 },
       "time": 4.0,
       "unlock_tech": "masonry",
-      "description": "Обрабатывает дикий камень в форму, пригодную для строительства"
+      "description": "Shapes rough stone into a form fit for building."
     },
     {
       "id": "glassware",
-      "name": "Стеклянная посуда",
+      "name": "Glassware",
       "produced_in": [ "glassmaker_house" ],
       "resources": { "quartz_sand": 20, "soda": 10 },
       "result": { "glassware": 10 },
       "time": 5.0,
       "unlock_tech": "glassmaking",
-      "description": "Превращает песок и соду в стеклянную посуду"
+      "description": "Turns sand and soda into glassware."
     },
     {
       "id": "ropes",
-      "name": "Верёвки и канаты",
+      "name": "Ropes and Cables",
       "produced_in": [ "ropemaker_house" ],
       "resources": { "@rope_fibers": 20 },
       "result": { "ropes": 10 },
       "time": 5.0,
       "unlock_tech": "rope_making",
-      "description": "Свивает верёвки и канаты из волокон"
+      "description": "Twists ropes and cables from fibers."
     },
     {
       "id": "tar",
-      "name": "Смола",
+      "name": "Tar",
       "produced_in": [ "tar_distillery" ],
       "resources": { "bitumen": 20 },
       "result": { "tar": 10 },
       "time": 5.0,
       "unlock_tech": "bitumen_extraction",
-      "description": "Превращает битум в смолу"
+      "description": "Turns bitumen into tar."
     },
     {
       "id": "tarred_ropes",
-      "name": "Просмоленные верёвки",
+      "name": "Tarred Ropes",
       "produced_in": [ "tar_distillery" ],
       "resources": { "ropes": 10, "tar": 10 },
       "result": { "tarred_ropes": 10 },
       "time": 5.0,
       "unlock_tech": "bitumen_extraction",
-      "description": "Пропитывает верёвки смолой для водонепроницаемости"
+      "description": "Soaks ropes in tar to make them waterproof."
     },
     {
       "id": "soap",
-      "name": "Мыло",
+      "name": "Soap",
       "produced_in": [ "soap_maker_house" ],
       "resources": { "vegetable_oil": 10, "soda": 10 },
       "result": { "soap": 10 },
       "time": 5.0,
       "unlock_tech": "soap_making",
-      "description": "Превращает масло и соду в мыло"
+      "description": "Turns oil and soda into soap."
     },
     {
       "id": "silk",
-      "name": "Шёлк",
+      "name": "Silk",
       "produced_in": [ "silk_maker_house" ],
       "resources": { "silk_cocoon": 20 },
       "result": { "silk": 10 },
       "time": 5.0,
       "unlock_tech": "sericulture",
-      "description": "Превращает коконы тутового шелкопряда в шёлк"
+      "description": "Turns silkworm cocoons into silk."
     },
     {
       "id": "lime",
-      "name": "Известь",
+      "name": "Lime",
       "produced_in": [ "lime_kilns" ],
       "resources": { "limestone": 20 },
       "result": { "lime": 10 },
       "time": 5.0,
       "unlock_tech": "limestone_burning",
-      "description": "Обжигает известняк в известь"
+      "description": "Burns limestone into lime."
     },
     {
       "id": "papyrus",
-      "name": "Папирус",
+      "name": "Papyrus",
       "produced_in": [ "papyrus_workshop" ],
       "resources": { "papyrus_plant": 20 },
       "result": { "papyrus": 10 },
       "time": 5.0,
       "unlock_tech": "writing",
-      "description": "Превращает стебли папируса в папирус"
+      "description": "Turns papyrus stems into papyrus."
     },
     {
       "id": "reed_boat",
-      "name": "Тростниковые лодки",
+      "name": "Reed Boats",
       "produced_in": [ "papyrus_workshop" ],
       "resources": { "papyrus_plant": 200 },
       "result": { "reed_boat": 10 },
       "time": 100,
       "unlock_tech": "fishing",
-      "description": "Создает лодку из тростника"
+      "description": "Builds a boat from reeds."
     },
     {
       "id": "parchment",
-      "name": "Пергамент",
+      "name": "Parchment",
       "produced_in": [ "parchment_workshop" ],
       "resources": { "hide": 20, "lime": 10 },
       "result": { "parchment": 10 },
       "time": 5.0,
       "unlock_tech": "parchment",
-      "description": "Производит пергамент из шкур животных с помощью золения их в извести"
+      "description": "Produces parchment from animal hides by liming them."
     },
     {
       "id": "planks",
-      "name": "Доски",
+      "name": "Planks",
       "produced_in": [ "carpenter_workshop" ],
       "resources": { "wood": 20 },
       "result": { "planks": 10 },
       "time": 4.0,
       "unlock_tech": "wood_processing",
-      "description": "Распиливает древесину на доски для строительства"
+      "description": "Saws timber into planks for construction."
     },
     {
       "id": "charcoal",
-      "name": "Древесный уголь",
+      "name": "Charcoal",
       "produced_in": [ "charcoal_kiln" ],
       "resources": { "wood": 20 },
       "result": { "charcoal": 10 },
       "time": 5.0,
       "unlock_tech": "native_metals",
-      "description": "Обжигает древесину в древесный уголь"
+      "description": "Burns wood into charcoal."
     },
     {
       "id": "wax_tablets",
-      "name": "Восковые таблички",
+      "name": "Wax Tablets",
       "produced_in": [ "carpenter_workshop" ],
       "resources": { "wood": 10, "wax": 10 },
       "result": { "wax_tablets": 10 },
       "time": 5.0,
       "unlock_tech": "writing",
-      "description": "Создает деревянные таблички с углублением, в которое залит воск"
+      "description": "Makes wooden tablets with a hollow filled with wax."
     },
     {
       "id": "paper",
-      "name": "Бумага",
+      "name": "Paper",
       "produced_in": [ "paper_workshop" ],
       "resources": { "@paper_fibers": 10, "lime": 10 },
       "result": { "paper": 10 },
       "time": 5.0,
       "unlock_tech": "paper",
-      "description": "Создает бумагу из различных растительных волокон"
+      "description": "Makes paper from various plant fibers."
     }
   ]
 }

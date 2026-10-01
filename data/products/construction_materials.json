@@ -2,50 +2,50 @@
   "resources": [
     {
       "id": "basalt", "price": 4,
-      "name": "Базальт",
+      "name": "Basalt",
       "type": "product",
       "category": "construction_material",
       "icon": "basalt.png"
     },
-    { "id": "tuff", "price": 5, "name": "Туф", "type": "product", "category": "construction_material", "icon": "tuff.png" },
+    { "id": "tuff", "price": 5, "name": "Tuff", "type": "product", "category": "construction_material", "icon": "tuff.png" },
     {
       "id": "sandstone", "price": 4,
-      "name": "Песчаник",
+      "name": "Sandstone",
       "type": "product",
       "category": "construction_material",
       "icon": "sandstone.png"
     },
     {
       "id": "marble", "price": 14,
-      "name": "Мрамор",
+      "name": "Marble",
       "type": "product",
       "category": "construction_material",
       "icon": "marble.png"
     },
     {
       "id": "granite", "price": 10,
-      "name": "Гранит",
+      "name": "Granite",
       "type": "product",
       "category": "construction_material",
       "icon": "granite.png"
     },
     {
       "id": "limestone", "price": 4,
-      "name": "Известняк",
+      "name": "Limestone",
       "type": "product",
       "category": "construction_material",
       "icon": "limestone.png"
     },
     {
       "id": "bricks", "price": 6,
-      "name": "Кирпичи",
+      "name": "Bricks",
       "type": "product",
       "category": "construction_material",
       "icon": "bricks.png"
     },
     {
       "id": "processed_building_stone", "price": 16,
-      "name": "Обработанный строительный камень",
+      "name": "Processed Building Stone",
       "type": "product",
       "category": "construction_material",
       "unlock_tech": "masonry",
@@ -55,7 +55,7 @@
       // Продукт «Доски». Производится в «Лесопилке» (sawmill) из древесины
       // по рецепту «Распиловка досок» (crafts.json).
       "id": "planks", "price": 4,
-      "name": "Доски",
+      "name": "Planks",
       "type": "product",
       "category": "construction_material",
       "unlock_tech": "wood_processing",

@@ -1,0 +1,3250 @@
+# The City — localization catalog.
+# Copyright (C) 2026 the authors of The City.
+# This file is distributed under the same license as the The City project.
+#
+# Source language: en. Every target language has its own file in locale/,
+# built from the same msgids.
+# Catalog role: template for translators; every msgstr is empty.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: The City\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "\n\nFound here: %s"
+msgstr ""
+
+msgid "\n\nNo coins were deducted for the claim."
+msgstr ""
+
+msgid "\n\nThe %d coins already paid will be returned to the treasury."
+msgstr ""
+
+msgid "\n\nThe %d coins paid will be returned to the treasury."
+msgstr ""
+
+msgid "\n\n[Era: %s — advance to it first]"
+msgstr ""
+
+msgid "\n\n[Required: %s]"
+msgstr ""
+
+msgid "\n\n[Researched]"
+msgstr ""
+
+msgid "\n\n[Researching]"
+msgstr ""
+
+msgid "\n\n[Unavailable: requires advancing to the next era]"
+msgstr ""
+
+msgid "\nConcurrent construction limit reached (%d/%d, limit = number of citizens)"
+msgstr ""
+
+msgid "\nConstructions: %d/%d (limit = number of citizens)"
+msgstr ""
+
+msgid "\nDemolish %s to build %s"
+msgstr ""
+
+msgid "\nFeed consumption: %d per cycle"
+msgstr ""
+
+msgid "\nFill level: %d%% (full in %.0f sec)"
+msgstr ""
+
+msgid "\nFill time: %.0f sec"
+msgstr ""
+
+msgid "\nFresh water access: direct"
+msgstr ""
+
+msgid "\nFresh water access: via chain"
+msgstr ""
+
+msgid "\nHerd: full (100%)"
+msgstr ""
+
+msgid "\nImprovement: %s%s"
+msgstr ""
+
+msgid "\nQuality: %s (%s)"
+msgstr ""
+
+msgid "\nResource: %s"
+msgstr ""
+
+msgid "\nResource: unknown (send scouts)"
+msgstr ""
+
+msgid "  Subgroup: "
+msgstr ""
+
+msgid "  ◦ %s (%s / sec):"
+msgstr ""
+
+msgid " (%d people)"
+msgstr ""
+
+msgid " (+%d%% to production)"
+msgstr ""
+
+msgid " (base %d)"
+msgstr ""
+
+msgid " (group \"%s\")"
+msgstr ""
+
+msgid " (group)"
+msgstr ""
+
+msgid " (idle)"
+msgstr ""
+
+msgid " (inactive: no worker)"
+msgstr ""
+
+msgid " (infrastructure: no worker required)"
+msgstr ""
+
+msgid " (no working buildings)"
+msgstr ""
+
+msgid " (not built)"
+msgstr ""
+
+msgid " (not working)"
+msgstr ""
+
+msgid " (only across scouted territory)"
+msgstr ""
+
+msgid " (trade unavailable: no road to the town)"
+msgstr ""
+
+msgid " (working)"
+msgstr ""
+
+msgid " = %s / sec"
+msgstr ""
+
+msgid " Base: %d work"
+msgstr ""
+
+msgid " Construction technologies: ×%.2f"
+msgstr ""
+
+msgid " Construction technologies: ×1.00"
+msgstr ""
+
+msgid " Cost: %d work"
+msgstr ""
+
+msgid " Debug: instant and free"
+msgstr ""
+
+msgid " Destination: from the city's nearest road to this hex"
+msgstr ""
+
+msgid " Destination: the nearest road in the town \"%s\" influence ring"
+msgstr ""
+
+msgid " Distance to city: %d hex(es)"
+msgstr ""
+
+msgid " Distance to city: %d hex(es) → base ×%.2f"
+msgstr ""
+
+msgid " Distance to city: %d to %d hex(es)"
+msgstr ""
+
+msgid " New route sections: %d"
+msgstr ""
+
+msgid " Once built, %s will give:"
+msgstr ""
+
+msgid " Per section: %d to %d work"
+msgstr ""
+
+msgid " Per section: %d work"
+msgstr ""
+
+msgid " Produces:"
+msgstr ""
+
+msgid " Terrain on the route: %s"
+msgstr ""
+
+msgid " Terrain: %s (move cost: %s) ×%.2f"
+msgstr ""
+
+msgid " Total: %d work"
+msgstr ""
+
+msgid " Will be built in sections: one hex at a time"
+msgstr ""
+
+msgid " and "
+msgstr ""
+
+msgid " or "
+msgstr ""
+
+msgid " units/sec"
+msgstr ""
+
+msgid " x%d"
+msgstr ""
+
+msgid " | Required: "
+msgstr ""
+
+msgid " | Requires advancing to the next era"
+msgstr ""
+
+msgid " — in storage: %d"
+msgstr ""
+
+msgid " — unfinished sections: %d"
+msgstr ""
+
+msgid " → base ×%.2f…×%.2f"
+msgstr ""
+
+msgid "\"%s\" belongs to the next era. Advance to the %s era first."
+msgstr ""
+
+msgid "%.2f sec"
+msgstr ""
+
+msgid "%d / %.1f sec"
+msgstr ""
+
+msgid "%d / %d sec"
+msgstr ""
+
+msgid "%d / sec"
+msgstr ""
+
+msgid "%d of %d working"
+msgstr ""
+
+msgid "%d of %d working, %d idle"
+msgstr ""
+
+msgid "%d sec"
+msgstr ""
+
+msgid "%d units/%.1f sec"
+msgstr ""
+
+msgid "%d units/%d sec"
+msgstr ""
+
+msgid "%d units/sec"
+msgstr ""
+
+msgid "%d × %d people"
+msgstr ""
+
+msgid "%d/%d (%.1f sec)"
+msgstr ""
+
+msgid "%s\n\nScience: %d"
+msgstr ""
+
+msgid "%s\nScience: %d%s"
+msgstr ""
+
+msgid "%s (base %d):"
+msgstr ""
+
+msgid "%s (base %d): %s"
+msgstr ""
+
+msgid "%s (base %s)"
+msgstr ""
+
+msgid "%s [%s] (science: %d)"
+msgstr ""
+
+msgid "%s [%s] (science: %d)%s"
+msgstr ""
+
+msgid "%s units/sec"
+msgstr ""
+
+msgid "%s — no work available: construction limit (number of citizens) reached"
+msgstr ""
+
+msgid "%s — requires a Dock on the shore of this water body"
+msgstr ""
+
+msgid "%s — requires technology: %s"
+msgstr ""
+
+msgid "%s/sec"
+msgstr ""
+
+msgid "%s: %.1f/sec"
+msgstr ""
+
+msgid "%s: %d sections, built one at a time"
+msgstr ""
+
+msgid "%s: %d units every %s per person × %d = %d per cycle"
+msgstr ""
+
+msgid "%s: %s / sec"
+msgstr ""
+
+msgid "%s: %s coins/sec"
+msgstr ""
+
+msgid "%s: consumption priority — %s"
+msgstr ""
+
+msgid "%s: goods without a price"
+msgstr ""
+
+msgid "%s: quality priority — %s"
+msgstr ""
+
+msgid "+%d%% (Fresh water access)"
+msgstr ""
+
+msgid "+30% to resource production on plantations."
+msgstr ""
+
+msgid "+50% to resource production on farms."
+msgstr ""
+
+msgid ", forest"
+msgstr ""
+
+msgid ", technology ×%.2f"
+msgstr ""
+
+msgid "-10% to the work cost of construction."
+msgstr ""
+
+msgid ". Already built sections (%d) will remain"
+msgstr ""
+
+msgid "0"
+msgstr ""
+
+msgid "0.50 sec"
+msgstr ""
+
+msgid "0/sec"
+msgstr ""
+
+msgid "1 sec"
+msgstr ""
+
+msgid "1.00 sec"
+msgstr ""
+
+msgid "1250 (Middle Ages)"
+msgstr ""
+
+msgid "A building where alchemists run all kinds of chemical reactions."
+msgstr ""
+
+msgid "A building where dyes are extracted from all sorts of organic and inorganic materials."
+msgstr ""
+
+msgid "A building where jewelry is made from all sorts of materials."
+msgstr ""
+
+msgid "A building where scribes copy, rewrite and translate documents. Produces science."
+msgstr ""
+
+msgid "A city building for trade. Building it unlocks the transition to the Antiquity era."
+msgstr ""
+
+msgid "A collection of written works, where scholars produce science."
+msgstr ""
+
+msgid "A long shed for twisting ropes and cables."
+msgstr ""
+
+msgid "A loom for weaving cloth out of yarn."
+msgstr ""
+
+msgid "A mill that uses draft animals to turn the millstones."
+msgstr ""
+
+msgid "A mill that uses water to set the millstones in motion."
+msgstr ""
+
+msgid "A plow yoked to oxen made it possible to work heavy soils and raised yields."
+msgstr ""
+
+msgid "A protoscience of attempts to turn base metals into gold."
+msgstr ""
+
+msgid "A pseudo-profession that covers the whole population of the city, including employed citizens."
+msgstr ""
+
+msgid "A range is shown because the goods in the group have different base prices."
+msgstr ""
+
+msgid "A road to the hex already exists"
+msgstr ""
+
+msgid "A technology is being researched"
+msgstr ""
+
+msgid "Active bonuses: (coming later)"
+msgstr ""
+
+msgid "Actual is below plan: buyers want more than what is in storage."
+msgstr ""
+
+msgid "Actual over the window: %s units/sec — that is what was really bought"
+msgstr ""
+
+msgid "Advance requirement met. Click to advance to the next era."
+msgstr ""
+
+msgid "Agave"
+msgstr ""
+
+msgid "Alchemist's House"
+msgstr ""
+
+msgid "Alchemy"
+msgstr ""
+
+msgid "Alcohol"
+msgstr ""
+
+msgid "All Citizens"
+msgstr ""
+
+msgid "Allow consumption on the domestic market"
+msgstr ""
+
+msgid "Allows scouts to explore areas in the fog of war."
+msgstr ""
+
+msgid "Allows you to build a dock and fishing boats."
+msgstr ""
+
+msgid "Allows you to build canals to bring water to remote areas."
+msgstr ""
+
+msgid "Allows you to build farms."
+msgstr ""
+
+msgid "Allows you to build forest plots (logging) and the carpenter's workshop (timber → planks)."
+msgstr ""
+
+msgid "Allows you to build libraries."
+msgstr ""
+
+msgid "Allows you to build mines."
+msgstr ""
+
+msgid "Allows you to build pastures."
+msgstr ""
+
+msgid "Allows you to build scriptoriums."
+msgstr ""
+
+msgid "Allows you to build the Market city building."
+msgstr ""
+
+msgid "Allows you to build the alchemist's house."
+msgstr ""
+
+msgid "Allows you to build the apiary."
+msgstr ""
+
+msgid "Allows you to build the brewer's house. Unlocks recipes for brewing beer, pulque and sake."
+msgstr ""
+
+msgid "Allows you to build the clay pit and the pottery workshop."
+msgstr ""
+
+msgid "Allows you to build the dairy: raw milk → cheese."
+msgstr ""
+
+msgid "Allows you to build the glassmaker's house: sand and soda → glass."
+msgstr ""
+
+msgid "Allows you to build the hand oil press: seeds, fruits and other parts of oil crops → vegetable oil."
+msgstr ""
+
+msgid "Allows you to build the lime kilns: limestone → lime."
+msgstr ""
+
+msgid "Allows you to build the paper workshop.\nAllows you to produce paper from mulberry, hemp and ramie with the help of lime."
+msgstr ""
+
+msgid "Allows you to build the quarry and the mason's workshop."
+msgstr ""
+
+msgid "Allows you to build the quarry for soda extraction."
+msgstr ""
+
+msgid "Allows you to build the ropemaker's house: fibers → ropes."
+msgstr ""
+
+msgid "Allows you to build the silkmaker's house: cocoons → silk."
+msgstr ""
+
+msgid "Allows you to build the smelter and smelt metal out of ore."
+msgstr ""
+
+msgid "Allows you to build the soapmaker's house: vegetable oil and soda → soap."
+msgstr ""
+
+msgid "Allows you to build the tanner's house: hides → leather."
+msgstr ""
+
+msgid "Allows you to build the tar pit and the tar distillery: bitumen → tar."
+msgstr ""
+
+msgid "Allows you to build the vineyard."
+msgstr ""
+
+msgid "Allows you to build the weaver's house: various materials → clothes."
+msgstr ""
+
+msgid "Allows you to build the winemaker's house: grapes → wine."
+msgstr ""
+
+msgid "Allows you to extract various dyes from organic and inorganic materials."
+msgstr ""
+
+msgid "Alpacas"
+msgstr ""
+
+msgid "Already built sections (%d) will stay on the map."
+msgstr ""
+
+msgid "Amaranth"
+msgstr ""
+
+msgid "Ancient"
+msgstr ""
+
+msgid "Ancient civilizations could count, but only now has knowledge moved from simple recipes to strict proofs. Geometry and abstract calculation let people not just watch the world but compute it: from the shape of a wheel's teeth to the motion of the stars."
+msgstr ""
+
+msgid "Animal Husbandry"
+msgstr ""
+
+msgid "Animal Mill"
+msgstr ""
+
+msgid "Another town stands here"
+msgstr ""
+
+msgid "Another town stands here — cannot build"
+msgstr ""
+
+msgid "Antimony"
+msgstr ""
+
+msgid "Antimony Ore"
+msgstr ""
+
+msgid "Antiquity"
+msgstr ""
+
+msgid "Apiary"
+msgstr ""
+
+msgid "Area not scouted — information unavailable.\n\nTerrain, resources and improvements become known after scouting."
+msgstr ""
+
+msgid "Aromatic Plants"
+msgstr ""
+
+msgid "Arsenic"
+msgstr ""
+
+msgid "Arsenic Ore"
+msgstr ""
+
+msgid "As long as the group has no goods in storage there is nothing to buy — no income."
+msgstr ""
+
+msgid "Asphalt Lake"
+msgstr ""
+
+msgid "Assign a worker to the improvement"
+msgstr ""
+
+msgid "Audio"
+msgstr ""
+
+msgid "Auxiliary Crops"
+msgstr ""
+
+msgid "Available buildings:"
+msgstr ""
+
+msgid "Available recipes:"
+msgstr ""
+
+msgid "Available work: %.0f/sec (%d citizens)"
+msgstr ""
+
+msgid "Back"
+msgstr ""
+
+msgid "Bakery"
+msgstr ""
+
+msgid "Bakes bread from flour, the staple of the city diet."
+msgstr ""
+
+msgid "Banteng"
+msgstr ""
+
+msgid "Barley"
+msgstr ""
+
+msgid "Basalt"
+msgstr ""
+
+msgid "Base: %.1f/sec"
+msgstr ""
+
+msgid "Beach"
+msgstr ""
+
+msgid "Beans"
+msgstr ""
+
+msgid "Beekeeper"
+msgstr ""
+
+msgid "Beekeeping"
+msgstr ""
+
+msgid "Beer"
+msgstr ""
+
+msgid "Bees"
+msgstr ""
+
+msgid "Best quality"
+msgstr ""
+
+msgid "Bison"
+msgstr ""
+
+msgid "Bitumen"
+msgstr ""
+
+msgid "Bitumen Extraction"
+msgstr ""
+
+msgid "Bitumen became an important material for waterproofing, and for making glue and fuel."
+msgstr ""
+
+msgid "Blacksmith"
+msgstr ""
+
+msgid "Blacksmiths forge metal tools and goods here."
+msgstr ""
+
+msgid "Bloomery"
+msgstr ""
+
+msgid "Boats"
+msgstr ""
+
+msgid "Bread"
+msgstr ""
+
+msgid "Brewer's House"
+msgstr ""
+
+msgid "Brews beer from grain."
+msgstr ""
+
+msgid "Brews mead from honey."
+msgstr ""
+
+msgid "Brews pulque from agave."
+msgstr ""
+
+msgid "Brews sake from rice."
+msgstr ""
+
+msgid "Brews various low-alcohol drinks by fermentation."
+msgstr ""
+
+msgid "Bricks"
+msgstr ""
+
+msgid "Bronze"
+msgstr ""
+
+msgid "Bronze Alloys"
+msgstr ""
+
+msgid "Bronze Jewelry"
+msgstr ""
+
+msgid "Bronze Tools"
+msgstr ""
+
+msgid "Bronze Weapons"
+msgstr ""
+
+msgid "Buckwheat"
+msgstr ""
+
+msgid "Buffalo"
+msgstr ""
+
+msgid "Build"
+msgstr ""
+
+msgid "Build %s"
+msgstr ""
+
+msgid "Build %s for breeding"
+msgstr ""
+
+msgid "Build %s — extends fresh water further"
+msgstr ""
+
+msgid "Build %s — harvests timber from the forest cover"
+msgstr ""
+
+msgid "Build %s — unlocks the water resources of this water body"
+msgstr ""
+
+msgid "Build Road"
+msgstr ""
+
+msgid "Build a road from the city to the town%s — unlocks trade"
+msgstr ""
+
+msgid "Build a road from the city to this hex"
+msgstr ""
+
+msgid "Build instantly (free)"
+msgstr ""
+
+msgid "Building"
+msgstr ""
+
+msgid "Building %d%s"
+msgstr ""
+
+msgid "Building Materials"
+msgstr ""
+
+msgid "Building Stone"
+msgstr ""
+
+msgid "Building not found"
+msgstr ""
+
+msgid "Building: %.1f/sec"
+msgstr ""
+
+msgid "Buildings"
+msgstr ""
+
+msgid "Buildings: %d"
+msgstr ""
+
+msgid "Buildings: 0"
+msgstr ""
+
+msgid "Builds a boat from reeds."
+msgstr ""
+
+msgid "Built buildings"
+msgstr ""
+
+msgid "Built instantly: %s"
+msgstr ""
+
+msgid "Built: %s"
+msgstr ""
+
+msgid "Burning limestone in kilns made lime possible, a key building material and an ingredient for making cement."
+msgstr ""
+
+msgid "Burns limestone into lime."
+msgstr ""
+
+msgid "Burns wood in a sealed kiln to produce charcoal."
+msgstr ""
+
+msgid "Burns wood into charcoal."
+msgstr ""
+
+msgid "Butchers livestock for meat, hides and bones to feed the city's crafts."
+msgstr ""
+
+msgid "Buyers of the resource:"
+msgstr ""
+
+msgid "Buyers:"
+msgstr ""
+
+msgid "Buying"
+msgstr ""
+
+msgid "By buyers (actual):"
+msgstr ""
+
+msgid "By mixing fat with lye, people got soap, the first step toward hygiene and medicine."
+msgstr ""
+
+msgid "Calendar"
+msgstr ""
+
+msgid "Camels"
+msgstr ""
+
+msgid "Campeche"
+msgstr ""
+
+msgid "Campeche Tree"
+msgstr ""
+
+msgid "Campeche Wood"
+msgstr ""
+
+msgid "Canals"
+msgstr ""
+
+msgid "Canals let people manage water flows, improving irrigation and opening new routes for trade."
+msgstr ""
+
+msgid "Cancel"
+msgstr ""
+
+msgid "Cancel \"%s\"?\n\n"
+msgstr ""
+
+msgid "Cancel claiming"
+msgstr ""
+
+msgid "Cancel construction"
+msgstr ""
+
+msgid "Cancel construction of \"%s\"?\n\nSpent work (%.0f/%d) will be lost."
+msgstr ""
+
+msgid "Cancel scouting"
+msgstr ""
+
+msgid "Cancel the construction? Spent work will be lost."
+msgstr ""
+
+msgid "Cancel upgrade"
+msgstr ""
+
+msgid "Canihua"
+msgstr ""
+
+msgid "Cannot build a road"
+msgstr ""
+
+msgid "Cannot build a road here: %s"
+msgstr ""
+
+msgid "Cannot build in the mountains"
+msgstr ""
+
+msgid "Cannot build on a city hex"
+msgstr ""
+
+msgid "Cannot build on a marsh"
+msgstr ""
+
+msgid "Cannot build on impassable terrain"
+msgstr ""
+
+msgid "Cannot build on water"
+msgstr ""
+
+msgid "Cannot claim: another town's territory"
+msgstr ""
+
+msgid "Carmine"
+msgstr ""
+
+msgid "Carpenter's Workshop"
+msgstr ""
+
+msgid "Carthamin"
+msgstr ""
+
+msgid "Cartography"
+msgstr ""
+
+msgid "Cassava"
+msgstr ""
+
+msgid "Cattle"
+msgstr ""
+
+msgid "Ceramics"
+msgstr ""
+
+msgid "Chamomile"
+msgstr ""
+
+msgid "Charcoal"
+msgstr ""
+
+msgid "Charcoal Burner"
+msgstr ""
+
+msgid "Charcoal Kiln"
+msgstr ""
+
+msgid "Cheese"
+msgstr ""
+
+msgid "Cheese Making"
+msgstr ""
+
+msgid "Cheese kept milk for months, becoming an important winter supply."
+msgstr ""
+
+msgid "Chickens"
+msgstr ""
+
+msgid "Chickpeas"
+msgstr ""
+
+msgid "Choose a city name"
+msgstr ""
+
+msgid "Cinnabar"
+msgstr ""
+
+msgid "Cinnabar (Ore)"
+msgstr ""
+
+msgid "City"
+msgstr ""
+
+msgid "City %s"
+msgstr ""
+
+msgid "City territory"
+msgstr ""
+
+msgid "City total (plan): %s units/sec"
+msgstr ""
+
+msgid "Claim the area"
+msgstr ""
+
+msgid "Claim the area (%d tiles): %d coins from the treasury and %d work (%.0f sec.)"
+msgstr ""
+
+msgid "Claim the area (%d tiles): instantly and free (debug)"
+msgstr ""
+
+msgid "Claiming cancelled. Spent %.0f/%d work"
+msgstr ""
+
+msgid "Claiming complete instantly!"
+msgstr ""
+
+msgid "Claiming complete!"
+msgstr ""
+
+msgid "Claiming land chunks"
+msgstr ""
+
+msgid "Claiming land started (%d work)"
+msgstr ""
+
+msgid "Classical"
+msgstr ""
+
+msgid "Clay"
+msgstr ""
+
+msgid "Clay Pit"
+msgstr ""
+
+msgid "Clay Tablets"
+msgstr ""
+
+msgid "Clay tablets became the first carrier of information, letting people pass knowledge across the centuries."
+msgstr ""
+
+msgid "Clear Forest"
+msgstr ""
+
+msgid "Click — building control panel"
+msgstr ""
+
+msgid "Close"
+msgstr ""
+
+msgid "Cloth Clothes"
+msgstr ""
+
+msgid "Clothes"
+msgstr ""
+
+msgid "Coal"
+msgstr ""
+
+msgid "Cochineal"
+msgstr ""
+
+msgid "Coffee"
+msgstr ""
+
+msgid "Coffee Beans"
+msgstr ""
+
+msgid "Collapse panel"
+msgstr ""
+
+msgid "Collected %d %s!"
+msgstr ""
+
+msgid "Common"
+msgstr ""
+
+msgid "Completed: %s"
+msgstr ""
+
+msgid "Confirm"
+msgstr ""
+
+msgid "Construction"
+msgstr ""
+
+msgid "Construction Materials"
+msgstr ""
+
+msgid "Construction cancelled"
+msgstr ""
+
+msgid "Construction is already underway here"
+msgstr ""
+
+msgid "Construction manager unavailable"
+msgstr ""
+
+msgid "Construction of %s cancelled. Spent %.0f/%d work"
+msgstr ""
+
+msgid "Construction of %s complete"
+msgstr ""
+
+msgid "Construction of %s paused"
+msgstr ""
+
+msgid "Construction of %s resumed"
+msgstr ""
+
+msgid "Construction of %s started (%.0f work)"
+msgstr ""
+
+msgid "Construction of %s started (%.0f work, %.0f sec)"
+msgstr ""
+
+msgid "Construction paused"
+msgstr ""
+
+msgid "Construction resumed"
+msgstr ""
+
+msgid "Construction:"
+msgstr ""
+
+msgid "Construction: %d work, %.0f sec.\n"
+msgstr ""
+
+msgid "Construction: -10% labor cost"
+msgstr ""
+
+msgid "Consumes:"
+msgstr ""
+
+msgid "Consumption (planned):"
+msgstr ""
+
+msgid "Consumption bonus: %s%s"
+msgstr ""
+
+msgid "Consumption on the domestic market is disabled — no income."
+msgstr ""
+
+msgid "Consumption per 1:"
+msgstr ""
+
+msgid "Consumption priority"
+msgstr ""
+
+msgid "Consumption priority: %s (click to switch)"
+msgstr ""
+
+msgid "Contemporary"
+msgstr ""
+
+msgid "Copies and studies texts in the library and scriptorium, adding to the city's science."
+msgstr ""
+
+msgid "Copper"
+msgstr ""
+
+msgid "Copper (from copper ore)"
+msgstr ""
+
+msgid "Copper (from malachite)"
+msgstr ""
+
+msgid "Copper Jewelry"
+msgstr ""
+
+msgid "Copper Nugget"
+msgstr ""
+
+msgid "Copper Ore"
+msgstr ""
+
+msgid "Copper Tools"
+msgstr ""
+
+msgid "Copper Weapons"
+msgstr ""
+
+msgid "Corn"
+msgstr ""
+
+msgid "Cost:"
+msgstr ""
+
+msgid "Cost: %d work"
+msgstr ""
+
+msgid "Cotton"
+msgstr ""
+
+msgid "Could not find a path to the town"
+msgstr ""
+
+msgid "Cowpea"
+msgstr ""
+
+msgid "Crafting \"%s\": %s"
+msgstr ""
+
+msgid "Creates clay pots for storage."
+msgstr ""
+
+msgid "Creates clay tablets for writing."
+msgstr ""
+
+msgid "Cultivates the vineyard and gathers the harvest."
+msgstr ""
+
+msgid "Culture:"
+msgstr ""
+
+msgid "Cuttlefish"
+msgstr ""
+
+msgid "Dairy"
+msgstr ""
+
+msgid "Dairy Animals"
+msgstr ""
+
+msgid "Dates"
+msgstr ""
+
+msgid "Debug: whole map revealed and inside the Influence Ring (%d×%d)"
+msgstr ""
+
+msgid "Deer"
+msgstr ""
+
+msgid "Demolish Improvement"
+msgstr ""
+
+msgid "Digs and sorts clay for firing."
+msgstr ""
+
+msgid "Digs ore and minerals out of the ground."
+msgstr ""
+
+msgid "Diversity: %d subgroups"
+msgstr ""
+
+msgid "Domestic trade"
+msgstr ""
+
+msgid "Draft Animals"
+msgstr ""
+
+msgid "Draft animals let people harness animal strength for heavy work, greatly raising output and efficiency in farming and construction."
+msgstr ""
+
+msgid "Drain Water"
+msgstr ""
+
+msgid "Dries and cures various goods."
+msgstr ""
+
+msgid "Dries and roasts coffee beans."
+msgstr ""
+
+msgid "Dries, rolls, withers and ferments tea leaves."
+msgstr ""
+
+msgid "Drinks"
+msgstr ""
+
+msgid "Dryer's House"
+msgstr ""
+
+msgid "Ducks"
+msgstr ""
+
+msgid "Dyeing"
+msgstr ""
+
+msgid "Dyeing cloth and pottery with various dyes is one of the oldest crafts."
+msgstr ""
+
+msgid "Dyer's House"
+msgstr ""
+
+msgid "Dyes"
+msgstr ""
+
+msgid "Eggs"
+msgstr ""
+
+msgid "Empty"
+msgstr ""
+
+msgid "Equipment"
+msgstr ""
+
+msgid "Exceptional"
+msgstr ""
+
+msgid "Exit game"
+msgstr ""
+
+msgid "Expand panel"
+msgstr ""
+
+msgid "Expansion"
+msgstr ""
+
+msgid "Expenses (actual, over the last %s sec):"
+msgstr ""
+
+msgid "Expenses by buyers:"
+msgstr ""
+
+msgid "Extended map tooltip delay"
+msgstr ""
+
+msgid "Extra materials:"
+msgstr ""
+
+msgid "Extra output:"
+msgstr ""
+
+msgid "Extracts soda from natural deposits."
+msgstr ""
+
+msgid "Extracts stone from open quarries."
+msgstr ""
+
+msgid "Failed to build the road"
+msgstr ""
+
+msgid "Failed to build the road: %s"
+msgstr ""
+
+msgid "Farm"
+msgstr ""
+
+msgid "Farmer"
+msgstr ""
+
+msgid "Farming"
+msgstr ""
+
+msgid "Farms: +50% production"
+msgstr ""
+
+msgid "Feathers"
+msgstr ""
+
+msgid "Fells trees in forest plots and hauls in the timber."
+msgstr ""
+
+msgid "Fermentation"
+msgstr ""
+
+msgid "Fermentation let people turn grain and fruit into alcohol, drunk in rituals and in daily life."
+msgstr ""
+
+msgid "Figs"
+msgstr ""
+
+msgid "Fine"
+msgstr ""
+
+msgid "Fired clay became humanity's first artificial material, letting people store grain and water."
+msgstr ""
+
+msgid "Fires clay into building bricks."
+msgstr ""
+
+msgid "Fish"
+msgstr ""
+
+msgid "Fisherman"
+msgstr ""
+
+msgid "Fishes from boats on any water body with a dock."
+msgstr ""
+
+msgid "Fishing"
+msgstr ""
+
+msgid "Fishing Boats"
+msgstr ""
+
+msgid "Fishing is one of humanity's oldest trades, and the first way to take food from the water."
+msgstr ""
+
+msgid "Flax"
+msgstr ""
+
+msgid "Flour"
+msgstr ""
+
+msgid "Flour (by hand)"
+msgstr ""
+
+msgid "Flour (with a water wheel)"
+msgstr ""
+
+msgid "Flour (with draft animals)"
+msgstr ""
+
+msgid "Fodder"
+msgstr ""
+
+msgid "Food"
+msgstr ""
+
+msgid "Food available: 0"
+msgstr ""
+
+msgid "Food: %d [+%d%s / -%d%s]"
+msgstr ""
+
+msgid "Food: 0"
+msgstr ""
+
+msgid "For centuries potters watched sand and alkali turn in their kilns into a shining crust of glass. Then one day someone had the idea of doing it on purpose. Glassmaking became more than an accident: it became a deliberate craft. The new material changed the world: beads, amulets, and later tableware and windows. Transparency became a symbol of enlightenment."
+msgstr ""
+
+msgid "Forage Resource"
+msgstr ""
+
+msgid "Foraged Food"
+msgstr ""
+
+msgid "Foreign trade"
+msgstr ""
+
+msgid "Forest"
+msgstr ""
+
+msgid "Forge"
+msgstr ""
+
+msgid "Forges tools, weapons and ornaments from metal."
+msgstr ""
+
+msgid "Fresh water passes through in a chain (up to 3 tiles)"
+msgstr ""
+
+msgid "Fresh water passes through in a chain (up to 4 tiles)"
+msgstr ""
+
+msgid "Freshwater Lake"
+msgstr ""
+
+msgid "Fruit Wine"
+msgstr ""
+
+msgid "Fruits"
+msgstr ""
+
+msgid "Fur Animals"
+msgstr ""
+
+msgid "Fuses glass and blows glassware."
+msgstr ""
+
+msgid "Game"
+msgstr ""
+
+msgid "Game saved."
+msgstr ""
+
+msgid "Gathers and boils down natural tar."
+msgstr ""
+
+msgid "Geese"
+msgstr ""
+
+msgid "Glass Jewelry"
+msgstr ""
+
+msgid "Glassmaker"
+msgstr ""
+
+msgid "Glassmaker's House"
+msgstr ""
+
+msgid "Glassmaking"
+msgstr ""
+
+msgid "Glassware"
+msgstr ""
+
+msgid "Go to the technology list"
+msgstr ""
+
+msgid "Goats"
+msgstr ""
+
+msgid "Gold"
+msgstr ""
+
+msgid "Gold Jewelry"
+msgstr ""
+
+msgid "Gold Nugget"
+msgstr ""
+
+msgid "Gold Ore"
+msgstr ""
+
+msgid "Granite"
+msgstr ""
+
+msgid "Grape Wine"
+msgstr ""
+
+msgid "Grapes"
+msgstr ""
+
+msgid "Grows technical and spice crops."
+msgstr ""
+
+msgid "Guineafowl"
+msgstr ""
+
+msgid "Hand Mill"
+msgstr ""
+
+msgid "Hand Oil Press"
+msgstr ""
+
+msgid "Handles every step of making tar and tarring materials."
+msgstr ""
+
+msgid "Harbor"
+msgstr ""
+
+msgid "Hemp"
+msgstr ""
+
+msgid "Henna"
+msgstr ""
+
+msgid "Herder"
+msgstr ""
+
+msgid "Hex does not exist"
+msgstr ""
+
+msgid "Hex is already occupied by an improvement"
+msgstr ""
+
+msgid "Hex is not empty"
+msgstr ""
+
+msgid "Hex outside the Influence Ring"
+msgstr ""
+
+msgid "Hex outside the map"
+msgstr ""
+
+msgid "Hide"
+msgstr ""
+
+msgid "Hills"
+msgstr ""
+
+msgid "Historical background:"
+msgstr ""
+
+msgid "Honey"
+msgstr ""
+
+msgid "Horses"
+msgstr ""
+
+msgid "Household Items"
+msgstr ""
+
+msgid "Icon of group \"%s\" taken from goods \"%s\""
+msgstr ""
+
+msgid "Icon of group \"%s\": %s (set in data/product_groups.json)"
+msgstr ""
+
+msgid "Icon: %s"
+msgstr ""
+
+msgid "Improved building version not found"
+msgstr ""
+
+msgid "Improvement: "
+msgstr ""
+
+msgid "In scriptoriums scribes copied, translated, rewrote and recensioned texts on administration, the worship of the gods, magic and the curing of disease."
+msgstr ""
+
+msgid "Income to the treasury over %s sec: %s coins/sec"
+msgstr ""
+
+msgid "Income:"
+msgstr ""
+
+msgid "Indigo"
+msgstr ""
+
+msgid "Indigofera"
+msgstr ""
+
+msgid "Indigofera Leaves"
+msgstr ""
+
+msgid "Inside another town's influence ring"
+msgstr ""
+
+msgid "Interface"
+msgstr ""
+
+msgid "Iron"
+msgstr ""
+
+msgid "Iron Jewelry"
+msgstr ""
+
+msgid "Iron Ore"
+msgstr ""
+
+msgid "Iron Processing"
+msgstr ""
+
+msgid "Iron Tools"
+msgstr ""
+
+msgid "Iron Weapons"
+msgstr ""
+
+msgid "Irrigation"
+msgstr ""
+
+msgid "Irrigation Canal"
+msgstr ""
+
+msgid "It seems your region has no %s."
+msgstr ""
+
+msgid "Jeweler's House"
+msgstr ""
+
+msgid "Jewelry"
+msgstr ""
+
+msgid "Jute"
+msgstr ""
+
+msgid "Language"
+msgstr ""
+
+msgid "Language of the interface and of the game data. The option \"Language of the system\" follows the language of your operating system."
+msgstr ""
+
+msgid "Language of the system"
+msgstr ""
+
+msgid "Lawsonia"
+msgstr ""
+
+msgid "Lawsonia Leaves"
+msgstr ""
+
+msgid "Lazurite"
+msgstr ""
+
+msgid "Lazurite Jewelry"
+msgstr ""
+
+msgid "Leather"
+msgstr ""
+
+msgid "Leather Clothes"
+msgstr ""
+
+msgid "Leatherworking"
+msgstr ""
+
+msgid "Lentils"
+msgstr ""
+
+msgid "Library"
+msgstr ""
+
+msgid "Lime"
+msgstr ""
+
+msgid "Lime Kilns"
+msgstr ""
+
+msgid "Limestone"
+msgstr ""
+
+msgid "Limestone Burning"
+msgstr ""
+
+msgid "Llamas"
+msgstr ""
+
+msgid "Load game"
+msgstr ""
+
+msgid "Locals boast that the white crust along the shores of this lake has unusual properties — it foams and helps to wash clothes clean."
+msgstr ""
+
+msgid "Lumberjack"
+msgstr ""
+
+msgid "Luxury"
+msgstr ""
+
+msgid "Maca"
+msgstr ""
+
+msgid "Madder"
+msgstr ""
+
+msgid "Madder Root"
+msgstr ""
+
+msgid "Makes a batch of weapons to defend the city."
+msgstr ""
+
+msgid "Makes a bronze alloy from copper/antimony/arsenic and tin."
+msgstr ""
+
+msgid "Makes a dye (campeche) from campeche wood."
+msgstr ""
+
+msgid "Makes a dye (carmine) from cochineal."
+msgstr ""
+
+msgid "Makes a dye (carthamin) from safflower leaves."
+msgstr ""
+
+msgid "Makes a dye (cinnabar) from ore."
+msgstr ""
+
+msgid "Makes a dye (henna) from henna leaves."
+msgstr ""
+
+msgid "Makes a dye (indigo) from indigo plant leaves."
+msgstr ""
+
+msgid "Makes a dye (madder) from madder roots."
+msgstr ""
+
+msgid "Makes a dye (malachite) from ore."
+msgstr ""
+
+msgid "Makes a dye (ochre) from iron ore."
+msgstr ""
+
+msgid "Makes a dye (purple) from murex shells."
+msgstr ""
+
+msgid "Makes a dye (sepia) from cuttlefish."
+msgstr ""
+
+msgid "Makes a dye (ultramarine) from ore."
+msgstr ""
+
+msgid "Makes a dye (woad) from woad leaves."
+msgstr ""
+
+msgid "Makes a set of tools for craftsmen."
+msgstr ""
+
+msgid "Makes clay pots, bricks and tablets on the potter's wheel."
+msgstr ""
+
+msgid "Makes iron out of ore."
+msgstr ""
+
+msgid "Makes jewelry out of bronze."
+msgstr ""
+
+msgid "Makes jewelry out of copper."
+msgstr ""
+
+msgid "Makes jewelry out of gold."
+msgstr ""
+
+msgid "Makes jewelry out of iron."
+msgstr ""
+
+msgid "Makes jewelry out of lazurite."
+msgstr ""
+
+msgid "Makes jewelry out of malachite."
+msgstr ""
+
+msgid "Makes jewelry out of silver."
+msgstr ""
+
+msgid "Makes lime from limestone."
+msgstr ""
+
+msgid "Makes paper from various plant fibers."
+msgstr ""
+
+msgid "Makes paper."
+msgstr ""
+
+msgid "Makes soap from vegetable oil and soda."
+msgstr ""
+
+msgid "Makes vinegar from alcohol."
+msgstr ""
+
+msgid "Makes wine from fruit."
+msgstr ""
+
+msgid "Makes wine from grapes."
+msgstr ""
+
+msgid "Makes wooden tablets with a hollow filled with wax."
+msgstr ""
+
+msgid "Malachite"
+msgstr ""
+
+msgid "Malachite (Ore)"
+msgstr ""
+
+msgid "Malachite Jewelry"
+msgstr ""
+
+msgid "Managing water flows became the key to claiming new lands: irrigation did more than water the fields, it drained waterlogged ground and turned marshes into fertile plains."
+msgstr ""
+
+msgid "Map actions"
+msgstr ""
+
+msgid "Map movement"
+msgstr ""
+
+msgid "Map movement at window edges"
+msgstr ""
+
+msgid "Map tooltip delay"
+msgstr ""
+
+msgid "Marble"
+msgstr ""
+
+msgid "Market"
+msgstr ""
+
+msgid "Market ("
+msgstr ""
+
+msgid "Marsh"
+msgstr ""
+
+msgid "Mason's Workshop"
+msgstr ""
+
+msgid "Masonry"
+msgstr ""
+
+msgid "Mastering metals revolutionized the crafts: copper tools were tougher than stone."
+msgstr ""
+
+msgid "Materials"
+msgstr ""
+
+msgid "Mathematics"
+msgstr ""
+
+msgid "Mead"
+msgstr ""
+
+msgid "Mead Making"
+msgstr ""
+
+msgid "Mead is the oldest alcohol, brewed from honey and water."
+msgstr ""
+
+msgid "Meat"
+msgstr ""
+
+msgid "Meat Animals"
+msgstr ""
+
+msgid "Medicinal Plants"
+msgstr ""
+
+msgid "Medieval"
+msgstr ""
+
+msgid "Menu"
+msgstr ""
+
+msgid "Metallurgy"
+msgstr ""
+
+msgid "Metals"
+msgstr ""
+
+msgid "Meteorite Iron"
+msgstr ""
+
+msgid "Millable Grains"
+msgstr ""
+
+msgid "Millet"
+msgstr ""
+
+msgid "Mine"
+msgstr ""
+
+msgid "Miner"
+msgstr ""
+
+msgid "Minerals"
+msgstr ""
+
+msgid "Mining"
+msgstr ""
+
+msgid "Missing: "
+msgstr ""
+
+msgid "Modern"
+msgstr ""
+
+msgid "Money"
+msgstr ""
+
+msgid "Mountains"
+msgstr ""
+
+msgid "Mulberries"
+msgstr ""
+
+msgid "Mulberry Bark"
+msgstr ""
+
+msgid "Mulberry Tree"
+msgstr ""
+
+msgid "Murex"
+msgstr ""
+
+msgid "Native Metals"
+msgstr ""
+
+msgid "New era"
+msgstr ""
+
+msgid "New era! City borders expanded. Influence ring: %d×%d"
+msgstr ""
+
+msgid "New game"
+msgstr ""
+
+msgid "No"
+msgstr ""
+
+msgid "No access to fresh water"
+msgstr ""
+
+msgid "No building selected"
+msgstr ""
+
+msgid "No current research"
+msgstr ""
+
+msgid "No description available."
+msgstr ""
+
+msgid "No description."
+msgstr ""
+
+msgid "No free citizens!"
+msgstr ""
+
+msgid "No free workers"
+msgstr ""
+
+msgid "No free workers!"
+msgstr ""
+
+msgid "No new sections on this route"
+msgstr ""
+
+msgid "No one-off treasury expenses in the last window"
+msgstr ""
+
+msgid "No resources in the influence ring"
+msgstr ""
+
+msgid "No scouted route from the city to the town — send scouts there"
+msgstr ""
+
+msgid "No technology is being researched. Click to select a technology"
+msgstr ""
+
+msgid "No water access within the chain's reach (irrigation/canals: 3/4 hops from a river/lake)"
+msgstr ""
+
+msgid "No work available: construction limit (number of citizens) reached"
+msgstr ""
+
+msgid "Nobody consumes anything yet"
+msgstr ""
+
+msgid "None"
+msgstr ""
+
+msgid "Not enough coins in the treasury! Need %d, treasury has %d"
+msgstr ""
+
+msgid "OK"
+msgstr ""
+
+msgid "Oasis"
+msgstr ""
+
+msgid "Oats"
+msgstr ""
+
+msgid "Oca"
+msgstr ""
+
+msgid "Ochre"
+msgstr ""
+
+msgid "Oil Crops"
+msgstr ""
+
+msgid "Oil Making"
+msgstr ""
+
+msgid "Oil Plants"
+msgstr ""
+
+msgid "Olives"
+msgstr ""
+
+msgid "Once built, %s will produce:"
+msgstr ""
+
+msgid "Only areas within the Region can be claimed"
+msgstr ""
+
+msgid "Open %s"
+msgstr ""
+
+msgid "Open the town interface"
+msgstr ""
+
+msgid "Open the town interface \"%s\""
+msgstr ""
+
+msgid "Open town"
+msgstr ""
+
+msgid "Ornamental Plants"
+msgstr ""
+
+msgid "Ostriches"
+msgstr ""
+
+msgid "Other"
+msgstr ""
+
+msgid "Other Seafood"
+msgstr ""
+
+msgid "Paper"
+msgstr ""
+
+msgid "Paper Fibers"
+msgstr ""
+
+msgid "Paper Workshop"
+msgstr ""
+
+msgid "Papyrus"
+msgstr ""
+
+msgid "Papyrus Workshop"
+msgstr ""
+
+msgid "Parchment"
+msgstr ""
+
+msgid "Parchment Workshop"
+msgstr ""
+
+msgid "Parchment became an important carrier of information in the ancient world."
+msgstr ""
+
+msgid "Pasture"
+msgstr ""
+
+msgid "Pause"
+msgstr ""
+
+msgid "Pause "
+msgstr ""
+
+msgid "Pause construction"
+msgstr ""
+
+msgid "Pause operation (%s)"
+msgstr ""
+
+msgid "Pause upgrade"
+msgstr ""
+
+msgid "Paused"
+msgstr ""
+
+msgid "Peas"
+msgstr ""
+
+msgid "People have tracked the turning of the seasons since the earliest times, but only now has the calendar become a standard tool of management: precise planning of sowing, pruning and harvest let plantations reach their full potential."
+msgstr ""
+
+msgid "People learned to alloy copper with tin to make bronze, a hard metal for tools and weapons. Bronze became a key material for crafts and warfare."
+msgstr ""
+
+msgid "People learned to draw stone and ore from the depths of the earth, opening a new era in tools."
+msgstr ""
+
+msgid "People learned to find and use native metals, which occur in nature in pure form, with no need to smelt them out of ore."
+msgstr ""
+
+msgid "People learned to tame bees for honey and wax, the only natural sweeteners and the stuff of candles."
+msgstr ""
+
+msgid "People noticed that the white crust on the shores of salt lakes cleanses and bleaches wonderfully. So began the extraction of soda, a valuable mineral without which neither glassmaking nor soapmaking is possible."
+msgstr ""
+
+msgid "Perfect"
+msgstr ""
+
+msgid "Pigeons"
+msgstr ""
+
+msgid "Pigs"
+msgstr ""
+
+msgid "Plain"
+msgstr ""
+
+msgid "Plan: demand %s units/sec × price %s = %s coins/sec"
+msgstr ""
+
+msgid "Planks"
+msgstr ""
+
+msgid "Plantation"
+msgstr ""
+
+msgid "Plantations"
+msgstr ""
+
+msgid "Plantations made it possible to grow olives and citrus in bulk, providing valuable goods and oils."
+msgstr ""
+
+msgid "Plantations: +30% production"
+msgstr ""
+
+msgid "Planter"
+msgstr ""
+
+msgid "Plow"
+msgstr ""
+
+msgid "Poll tax"
+msgstr ""
+
+msgid "Population consumption"
+msgstr ""
+
+msgid "Population food"
+msgstr ""
+
+msgid "Population: %d"
+msgstr ""
+
+msgid "Population: %d (free: %d)"
+msgstr ""
+
+msgid "Population: 1"
+msgstr ""
+
+msgid "Population: 50"
+msgstr ""
+
+msgid "Potato"
+msgstr ""
+
+msgid "Potter"
+msgstr ""
+
+msgid "Pottery"
+msgstr ""
+
+msgid "Pottery Workshop"
+msgstr ""
+
+msgid "Poultry"
+msgstr ""
+
+msgid "Presses oil from the seeds and fruits of oil crops."
+msgstr ""
+
+msgid "Presses vegetable oil out of oil crops."
+msgstr ""
+
+msgid "Price = base price of the goods ×%.2f (market) × quality multiplier"
+msgstr ""
+
+msgid "Price per unit: having it in storage does not change it. Storage affects income (the \"Income\" row)."
+msgstr ""
+
+msgid "Price:"
+msgstr ""
+
+msgid "Price: "
+msgstr ""
+
+msgid "Prickly Pear"
+msgstr ""
+
+msgid "Processed Building Materials"
+msgstr ""
+
+msgid "Processed Building Stone"
+msgstr ""
+
+msgid "Produces papyrus and other goods from papyrus stems."
+msgstr ""
+
+msgid "Produces parchment from animal hides by liming them."
+msgstr ""
+
+msgid "Produces parchment."
+msgstr ""
+
+msgid "Produces silk cloth."
+msgstr ""
+
+msgid "Produces smoked fish."
+msgstr ""
+
+msgid "Produces wine from grapes or fruit."
+msgstr ""
+
+msgid "Produces:"
+msgstr ""
+
+msgid "Production (planned):"
+msgstr ""
+
+msgid "Production slots:"
+msgstr ""
+
+msgid "Production slots: %d"
+msgstr ""
+
+msgid "Profit (actual, average): %s / sec"
+msgstr ""
+
+msgid "Pulque"
+msgstr ""
+
+msgid "Purple"
+msgstr ""
+
+msgid "Quality priority: %s (click to switch)"
+msgstr ""
+
+msgid "Quality priority: use best/worst"
+msgstr ""
+
+msgid "Quarry"
+msgstr ""
+
+msgid "Quarryman"
+msgstr ""
+
+msgid "Quartz Sand"
+msgstr ""
+
+msgid "Quinoa"
+msgstr ""
+
+msgid "Quit"
+msgstr ""
+
+msgid "Rabbits"
+msgstr ""
+
+msgid "Ramie"
+msgstr ""
+
+msgid "Random"
+msgstr ""
+
+msgid "Raw Fish"
+msgstr ""
+
+msgid "Raw Meat"
+msgstr ""
+
+msgid "Raw Milk"
+msgstr ""
+
+msgid "Really exit the game?\nUnsaved progress will be lost."
+msgstr ""
+
+msgid "Really return to the main menu?\nUnsaved progress will be lost."
+msgstr ""
+
+msgid "Recall the scouts. No hex will be surveyed, paid coins will be refunded"
+msgstr ""
+
+msgid "Recall the scouts?\n\nNone of the %d tiles will be surveyed."
+msgstr ""
+
+msgid "Reduces the effect of distance from the city on labor cost when building improvements by 30%"
+msgstr ""
+
+msgid "Reduces the effect of distance from the city on the work cost of building improvements by 30%."
+msgstr ""
+
+msgid "Reed Boat"
+msgstr ""
+
+msgid "Reed Boats"
+msgstr ""
+
+msgid "Reeds"
+msgstr ""
+
+msgid "Remove the worker from the improvement"
+msgstr ""
+
+msgid "Renaissance"
+msgstr ""
+
+msgid "Requirement:"
+msgstr ""
+
+msgid "Requirement: "
+msgstr ""
+
+msgid "Requirement: city access to fresh water"
+msgstr ""
+
+msgid "Requirements not met: "
+msgstr ""
+
+msgid "Requires the \"Canals\" technology"
+msgstr ""
+
+msgid "Research"
+msgstr ""
+
+msgid "Research %s"
+msgstr ""
+
+msgid "Research %s (science: %d) to unlock %s"
+msgstr ""
+
+msgid "Research already in progress: "
+msgstr ""
+
+msgid "Research complete: "
+msgstr ""
+
+msgid "Research the technology that unlocks \"%s\" first"
+msgstr ""
+
+msgid "Researching: %s"
+msgstr ""
+
+msgid "Researching: %s (science: %.0f/%d)"
+msgstr ""
+
+msgid "Researching: ???"
+msgstr ""
+
+msgid "Resource"
+msgstr ""
+
+msgid "Resource data refresh interval"
+msgstr ""
+
+msgid "Resource list"
+msgstr ""
+
+msgid "Resource quality levels: %s"
+msgstr ""
+
+msgid "Resources"
+msgstr ""
+
+msgid "Resume "
+msgstr ""
+
+msgid "Return to game"
+msgstr ""
+
+msgid "Return to main menu"
+msgstr ""
+
+msgid "Rice"
+msgstr ""
+
+msgid "Road"
+msgstr ""
+
+msgid "Road built!"
+msgstr ""
+
+msgid "Road to town \"%s\""
+msgstr ""
+
+msgid "Road to town \"%s\" built — trade available!"
+msgstr ""
+
+msgid "Roads cannot be built over water"
+msgstr ""
+
+msgid "Rocky Desert"
+msgstr ""
+
+msgid "Rope Fibers"
+msgstr ""
+
+msgid "Rope Making"
+msgstr ""
+
+msgid "Ropemaker's House"
+msgstr ""
+
+msgid "Ropes and Cables"
+msgstr ""
+
+msgid "Ropes became an important material for building, sailing and farming, letting people bind, haul and hoist loads."
+msgstr ""
+
+msgid "Rose Madder"
+msgstr ""
+
+msgid "Roses"
+msgstr ""
+
+msgid "Rye"
+msgstr ""
+
+msgid "Safflower"
+msgstr ""
+
+msgid "Safflower Leaves"
+msgstr ""
+
+msgid "Sake"
+msgstr ""
+
+msgid "Salt"
+msgstr ""
+
+msgid "Salt Extraction"
+msgstr ""
+
+msgid "Salt Lake"
+msgstr ""
+
+msgid "Salt Pond"
+msgstr ""
+
+msgid "Salt became an important product for preserving food."
+msgstr ""
+
+msgid "Sandstone"
+msgstr ""
+
+msgid "Sandy Desert"
+msgstr ""
+
+msgid "Save game"
+msgstr ""
+
+msgid "Saws timber into planks for construction and crafts."
+msgstr ""
+
+msgid "Saws timber into planks for construction."
+msgstr ""
+
+msgid "Scholar"
+msgstr ""
+
+msgid "Scholarly materials: %.1f/sec%s"
+msgstr ""
+
+msgid "Scholars estimate: your region may contain %s."
+msgstr ""
+
+msgid "Science"
+msgstr ""
+
+msgid "Science: %.1f/sec"
+msgstr ""
+
+msgid "Science: 1.0/sec"
+msgstr ""
+
+msgid "Scout and claim neighboring lands."
+msgstr ""
+
+msgid "Scouting"
+msgstr ""
+
+msgid "Scouting already in progress"
+msgstr ""
+
+msgid "Scouting already in progress!"
+msgstr ""
+
+msgid "Scouting beyond the Region requires the technology \"%s\""
+msgstr ""
+
+msgid "Scouting cancelled"
+msgstr ""
+
+msgid "Scouting complete! %s"
+msgstr ""
+
+msgid "Scouts sent... (%d coins paid from the treasury)"
+msgstr ""
+
+msgid "Scribes and scholars turn written material into knowledge that speeds up technology research."
+msgstr ""
+
+msgid "Scriptorium"
+msgstr ""
+
+msgid "Scriptoriums"
+msgstr ""
+
+msgid "Sea"
+msgstr ""
+
+msgid "Section %d/%d"
+msgstr ""
+
+msgid "Select a hex on the map (LMB) to see information and available actions."
+msgstr ""
+
+msgid "Select a technology to research"
+msgstr ""
+
+msgid "Selling"
+msgstr ""
+
+msgid "Send scouts"
+msgstr ""
+
+msgid "Send scouts: %d coins from the treasury, time [%.0f sec.]"
+msgstr ""
+
+msgid "Send scouts: instantly and free (debug)"
+msgstr ""
+
+msgid "Sepia"
+msgstr ""
+
+msgid "Sericulture"
+msgstr ""
+
+msgid "Sesame"
+msgstr ""
+
+msgid "Settings"
+msgstr ""
+
+msgid "Sews clothes out of leather."
+msgstr ""
+
+msgid "Shapes rough stone into a form fit for building."
+msgstr ""
+
+msgid "Sheep"
+msgstr ""
+
+msgid "Show borders between tiles"
+msgstr ""
+
+msgid "Silk"
+msgstr ""
+
+msgid "Silk Clothes"
+msgstr ""
+
+msgid "Silk Cocoon"
+msgstr ""
+
+msgid "Silk became a valuable material for clothing and trade, opening new possibilities for crafts and the economy."
+msgstr ""
+
+msgid "Silkmaker's House"
+msgstr ""
+
+msgid "Silver"
+msgstr ""
+
+msgid "Silver Jewelry"
+msgstr ""
+
+msgid "Silver Nugget"
+msgstr ""
+
+msgid "Silver Ore"
+msgstr ""
+
+msgid "Sisal"
+msgstr ""
+
+msgid "Slaughterhouse"
+msgstr ""
+
+msgid "Slot %d:"
+msgstr ""
+
+msgid "Smelter"
+msgstr ""
+
+msgid "Smelter Worker"
+msgstr ""
+
+msgid "Smelts antimony ore into pure antimony."
+msgstr ""
+
+msgid "Smelts arsenic ore into pure arsenic."
+msgstr ""
+
+msgid "Smelts copper ore into pure copper."
+msgstr ""
+
+msgid "Smelts gold ore into pure gold."
+msgstr ""
+
+msgid "Smelts iron ore into metal for the forge."
+msgstr ""
+
+msgid "Smelts malachite ore into pure copper."
+msgstr ""
+
+msgid "Smelts metal ores into metal for the forge."
+msgstr ""
+
+msgid "Smelts ore into pure metals."
+msgstr ""
+
+msgid "Smelts silver ore into pure silver."
+msgstr ""
+
+msgid "Smelts tin ore into pure tin."
+msgstr ""
+
+msgid "Smoked Fish"
+msgstr ""
+
+msgid "Smokehouse"
+msgstr ""
+
+msgid "Smokes fish for long storage."
+msgstr ""
+
+msgid "Soaks ropes in tar to make them waterproof."
+msgstr ""
+
+msgid "Soap"
+msgstr ""
+
+msgid "Soap Making"
+msgstr ""
+
+msgid "Soapmaker's House"
+msgstr ""
+
+msgid "Soda"
+msgstr ""
+
+msgid "Soda Extraction"
+msgstr ""
+
+msgid "Soda Extractor"
+msgstr ""
+
+msgid "Soda Lake"
+msgstr ""
+
+msgid "Soda Quarry"
+msgstr ""
+
+msgid "Sorghum"
+msgstr ""
+
+msgid "Soybean"
+msgstr ""
+
+msgid "Sparse Forest"
+msgstr ""
+
+msgid "Specialized farming: growing cash crops. Allows you to build plantations."
+msgstr ""
+
+msgid "Spent work (%.0f/%d) will be lost."
+msgstr ""
+
+msgid "Spices"
+msgstr ""
+
+msgid "Start"
+msgstr ""
+
+msgid "Start operation (%s)"
+msgstr ""
+
+msgid "Stop \"%s\""
+msgstr ""
+
+msgid "Stop \"%s\". Spent work will be lost"
+msgstr ""
+
+msgid "Stop claiming land (%d tiles). Spent work will be lost, paid coins will be refunded"
+msgstr ""
+
+msgid "Stop claiming land (%d tiles)?\n\n"
+msgstr ""
+
+msgid "Stop: %s"
+msgstr ""
+
+msgid "Stop: Claiming land"
+msgstr ""
+
+msgid "Stop: Scouting"
+msgstr ""
+
+msgid "Storage:"
+msgstr ""
+
+msgid "Suggest another name"
+msgstr ""
+
+msgid "Supplies, dynamics and resource tooltips update at this interval (from 1 to 5 seconds). Simulation calculations run as usual, once per second."
+msgstr ""
+
+msgid "Swamp"
+msgstr ""
+
+msgid "Tamed resources:"
+msgstr ""
+
+msgid "Taming animals gave people a steady source of meat, milk and hides."
+msgstr ""
+
+msgid "Tanner's House"
+msgstr ""
+
+msgid "Tanning gave people a tough, flexible material for clothing, footwear and gear."
+msgstr ""
+
+msgid "Tans hides and sews leather goods."
+msgstr ""
+
+msgid "Tar"
+msgstr ""
+
+msgid "Tar Burner"
+msgstr ""
+
+msgid "Tar Distillery"
+msgstr ""
+
+msgid "Tar Pit"
+msgstr ""
+
+msgid "Taro"
+msgstr ""
+
+msgid "Tarred Ropes"
+msgstr ""
+
+msgid "Taxes"
+msgstr ""
+
+msgid "Tea"
+msgstr ""
+
+msgid "Tea Leaves"
+msgstr ""
+
+msgid "Technical Crops"
+msgstr ""
+
+msgid "Technical Plants"
+msgstr ""
+
+msgid "Technologies"
+msgstr ""
+
+msgid "Technology already researched: "
+msgstr ""
+
+msgid "Technology effect"
+msgstr ""
+
+msgid "Technology not found: "
+msgstr ""
+
+msgid "Technology researched: %s"
+msgstr ""
+
+msgid "Teff"
+msgstr ""
+
+msgid "Tends the herd and keeps count of the livestock."
+msgstr ""
+
+msgid "Tends the hives and harvests honey."
+msgstr ""
+
+msgid "Terrain: %s"
+msgstr ""
+
+msgid "Terrain: %s. Resources: %s"
+msgstr ""
+
+msgid "Territory expanded! (%d work spent)"
+msgstr ""
+
+msgid "Territory of the city %s"
+msgstr ""
+
+msgid "Textile Crops"
+msgstr ""
+
+msgid "Textile Plants"
+msgstr ""
+
+msgid "The area does not border explored territory"
+msgstr ""
+
+msgid "The area does not border your territory"
+msgstr ""
+
+msgid "The art of exploring the land and drawing maps of it."
+msgstr ""
+
+msgid "The bed of this drying lake is covered in a thick layer of white powder. Locals say it makes food taste better, keeps it from spoiling longer, and heals wounds."
+msgstr ""
+
+msgid "The chunk does not border explored territory — scout the neighbouring hexes first"
+msgstr ""
+
+msgid "The chunk overlaps another town's influence ring — purchase impossible"
+msgstr ""
+
+msgid "The city needs access to fresh water"
+msgstr ""
+
+msgid "The first farmers noticed that seeds thrown into the ground grew again. Thus began the age of settled life."
+msgstr ""
+
+msgid "The grape is one of the oldest crops, from which people learned to make wine, a drink for feasts and rituals."
+msgstr ""
+
+msgid "The idea of value and exchange led to money, the basis of trade and city growth."
+msgstr ""
+
+msgid "The loom turned wool and flax into cloth, from which clothes were sewn."
+msgstr ""
+
+msgid "The simplest millstone, grinding grain into flour by hand."
+msgstr ""
+
+msgid "The skill of laying stone made it possible to build sturdy buildings that outlived centuries."
+msgstr ""
+
+msgid "The surface of this lake has hardened into a black glossy crust. Locals say it clings to your feet and smells of pitch."
+msgstr ""
+
+msgid "The town buys nothing"
+msgstr ""
+
+msgid "The town has no road inside the influence ring"
+msgstr ""
+
+msgid "The town is already connected by a road"
+msgstr ""
+
+msgid "The water wheel became an important source of power in the ancient world, automating the processing of grain and other materials."
+msgstr ""
+
+msgid "The wheel is one of humanity's greatest inventions, and it changed trade and war."
+msgstr ""
+
+msgid "There is no land route from the city to the town"
+msgstr ""
+
+msgid "There is no land route from the city to the town (the town is across water)"
+msgstr ""
+
+msgid "There is no land route from the city to this hex"
+msgstr ""
+
+msgid "This building has no improved version"
+msgstr ""
+
+msgid "This building is already being upgraded"
+msgstr ""
+
+msgid "This is a decorative town improvement — it cannot be modified"
+msgstr ""
+
+msgid "This is inside another town's influence ring — cannot build"
+msgstr ""
+
+msgid "This revolutionary invention made it possible to create an affordable, practical material for writing."
+msgstr ""
+
+msgid "This slot produces nothing."
+msgstr ""
+
+msgid "Tile borders"
+msgstr ""
+
+msgid "Tin"
+msgstr ""
+
+msgid "Tin Ore"
+msgstr ""
+
+msgid "Toggle using this product as food"
+msgstr ""
+
+msgid "Tools"
+msgstr ""
+
+msgid "Tooltip delay (building details, treasury breakdown)"
+msgstr ""
+
+msgid "Total: %.1f/sec"
+msgstr ""
+
+msgid "Town"
+msgstr ""
+
+msgid "Town %d"
+msgstr ""
+
+msgid "Trade"
+msgstr ""
+
+msgid "Trade unavailable: there is no road from the city to this town"
+msgstr ""
+
+msgid "Treasury: %d"
+msgstr ""
+
+msgid "Treasury: %d %s"
+msgstr ""
+
+msgid "Treasury: 0"
+msgstr ""
+
+msgid "Tuff"
+msgstr ""
+
+msgid "Tulips"
+msgstr ""
+
+msgid "Turkeys"
+msgstr ""
+
+msgid "Turns bitumen into tar."
+msgstr ""
+
+msgid "Turns hides into tough leather."
+msgstr ""
+
+msgid "Turns milk into cheese, a good that keeps for a long time."
+msgstr ""
+
+msgid "Turns oil and soda into soap."
+msgstr ""
+
+msgid "Turns papyrus stems into papyrus."
+msgstr ""
+
+msgid "Turns sand and soda into glass jewelry."
+msgstr ""
+
+msgid "Turns sand and soda into glass."
+msgstr ""
+
+msgid "Turns sand and soda into glassware."
+msgstr ""
+
+msgid "Turns silkworm cocoons into silk."
+msgstr ""
+
+msgid "Twists ropes and cables from fibers."
+msgstr ""
+
+msgid "Ultramarine"
+msgstr ""
+
+msgid "Under construction"
+msgstr ""
+
+msgid "Unfinished sections: %d. Work spent on them (%.0f/%.0f) will be lost.\n\n"
+msgstr ""
+
+msgid "Unknown construction requirement: %s"
+msgstr ""
+
+msgid "Unlocks parchment and allows you to create written material."
+msgstr ""
+
+msgid "Unlocks recipes for brewing mead."
+msgstr ""
+
+msgid "Unlocks recipes for bronze and bronze goods."
+msgstr ""
+
+msgid "Unlocks recipes for iron and iron goods.\nUnlocks the bloomery."
+msgstr ""
+
+msgid "Unlocks recipes for making jewelry out of metals."
+msgstr ""
+
+msgid "Unlocks salt extraction in salt deposits (on the surface of salt lakes and in salt mines) and the salt pond."
+msgstr ""
+
+msgid "Unlocks the ability to find and gather native metals."
+msgstr ""
+
+msgid "Unlocks the ability to find and gather native metals.\nUnlocks metal ores (gold, silver, copper) and metalloids (antimony and arsenic).\nAllows you to build the forge."
+msgstr ""
+
+msgid "Unlocks the ability to grow water-loving crops: rice and taro."
+msgstr ""
+
+msgid "Unlocks the ability to grow water-loving crops: rice and taro.\nAllows farms and plantations to pass fresh water along a chain (up to 3 hexes).\nAllows you to drain marshes."
+msgstr ""
+
+msgid "Unlocks the use of draft animals to turn millstones."
+msgstr ""
+
+msgid "Unlocks the use of the water wheel to set millstones in motion."
+msgstr ""
+
+msgid "Upgrade"
+msgstr ""
+
+msgid "Upgrade of %s started (%.0f work)"
+msgstr ""
+
+msgid "Upgrade to"
+msgstr ""
+
+msgid "Upgraded: %s"
+msgstr ""
+
+msgid "Upgrading to \"%s\""
+msgstr ""
+
+msgid "Vegetable Oil"
+msgstr ""
+
+msgid "Vegetable oil became an important food and a source of light."
+msgstr ""
+
+msgid "Video"
+msgstr ""
+
+msgid "Vinedresser"
+msgstr ""
+
+msgid "Vinegar"
+msgstr ""
+
+msgid "Vineyard"
+msgstr ""
+
+msgid "Water Mill"
+msgstr ""
+
+msgid "Water Wheel"
+msgstr ""
+
+msgid "Wax"
+msgstr ""
+
+msgid "Wax Tablets"
+msgstr ""
+
+msgid "Weapons"
+msgstr ""
+
+msgid "Weaver's House"
+msgstr ""
+
+msgid "Weaves clothes out of cloth."
+msgstr ""
+
+msgid "Weaves clothes out of silk."
+msgstr ""
+
+msgid "Weaves clothes out of wool."
+msgstr ""
+
+msgid "Weaving"
+msgstr ""
+
+msgid "What the technology gives:"
+msgstr ""
+
+msgid "Wheat"
+msgstr ""
+
+msgid "Wheel"
+msgstr ""
+
+msgid "Will produce:"
+msgstr ""
+
+msgid "Wine"
+msgstr ""
+
+msgid "Wine was made from grapes: it was a drink for feasts and rituals, and it also kept the perishable grapes from spoiling."
+msgstr ""
+
+msgid "Winegrowing"
+msgstr ""
+
+msgid "Winemaker's House"
+msgstr ""
+
+msgid "Winemaking"
+msgstr ""
+
+msgid "Woad"
+msgstr ""
+
+msgid "Woad Leaves"
+msgstr ""
+
+msgid "Wood"
+msgstr ""
+
+msgid "Wood Processing"
+msgstr ""
+
+msgid "Wood is the oldest building material, and with the first axes people learned to fell trees and saw the trunks into planks."
+msgstr ""
+
+msgid "Woodcutter's Camp"
+msgstr ""
+
+msgid "Wool"
+msgstr ""
+
+msgid "Wool Animals"
+msgstr ""
+
+msgid "Wool Clothes"
+msgstr ""
+
+msgid "Work: %d"
+msgstr ""
+
+msgid "Work: %d (%.0f sec)"
+msgstr ""
+
+msgid "Working precious stones and metals turned the craft into art."
+msgstr ""
+
+msgid "Works stone into hewn blocks and stone goods for construction."
+msgstr ""
+
+msgid "Works the fields and tends the crops."
+msgstr ""
+
+msgid "Worst quality"
+msgstr ""
+
+msgid "Writing"
+msgstr ""
+
+msgid "Writing Materials"
+msgstr ""
+
+msgid "X"
+msgstr ""
+
+msgid "Yak"
+msgstr ""
+
+msgid "Yam"
+msgstr ""
+
+msgid "Yes"
+msgstr ""
+
+msgid "You can build or upgrade no more than %d buildings at once (limit = number of citizens)"
+msgstr ""
+
+msgid "Zebu"
+msgstr ""
+
+msgid "[center][color=#c9c9c9]Advance requirement:[/color] build "
+msgstr ""
+
+msgid "at least 1 citizen is needed to build"
+msgstr ""
+
+msgid "city access to fresh water"
+msgstr ""
+
+msgid "construction"
+msgstr ""
+
+msgid "idle"
+msgstr ""
+
+msgid "impassable"
+msgstr ""
+
+msgid "no land route from the city"
+msgstr ""
+
+msgid "no path"
+msgstr ""
+
+msgid "none"
+msgstr ""
+
+msgid "not working"
+msgstr ""
+
+msgid "produces goods '%s' from resource '%s'"
+msgstr ""
+
+msgid "sec"
+msgstr ""
+
+msgid "spawn_count of resource '%s'"
+msgstr ""
+
+msgid "the construction"
+msgstr ""
+
+msgid "the town"
+msgstr ""
+
+msgid "upgrade"
+msgstr ""
+
+msgid "upgradeable"
+msgstr ""
+
+msgid "working"
+msgstr ""
+
+msgid "≈ in the \"Treasury\" row — average profit and expenses over the last window, per second"
+msgstr ""
+
+msgid "≈ in the live view — the planned value per second"
+msgstr ""
+
+msgid "★"
+msgstr ""
+
+msgctxt "consumption_buildings_few"
+msgid "buildings"
+msgstr ""
+
+msgctxt "consumption_buildings_many"
+msgid "buildings"
+msgstr ""
+
+msgctxt "consumption_buildings_one"
+msgid "building"
+msgstr ""

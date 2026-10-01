@@ -1,11 +1,11 @@
 {
   "eras": [
-    {"id": "ancient", "name": "Древняя", "region_width": 2},
-    {"id": "antiquity", "name": "Античность", "region_width": 2},
-    {"id": "classical", "name": "Классическая", "region_width": 2},
-    {"id": "medieval", "name": "Средневековье", "region_width": 2},
-    {"id": "renaissance", "name": "Возрождение", "region_width": 2},
-    {"id": "modern", "name": "Новое время", "region_width": 2},
-    {"id": "contemporary", "name": "Новейшее время", "region_width": 2}
+    {"id": "ancient", "name": "Ancient", "region_width": 2},
+    {"id": "antiquity", "name": "Antiquity", "region_width": 2},
+    {"id": "classical", "name": "Classical", "region_width": 2},
+    {"id": "medieval", "name": "Medieval", "region_width": 2},
+    {"id": "renaissance", "name": "Renaissance", "region_width": 2},
+    {"id": "modern", "name": "Modern", "region_width": 2},
+    {"id": "contemporary", "name": "Contemporary", "region_width": 2}
   ]
 }

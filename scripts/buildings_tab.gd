@@ -286,7 +286,7 @@ func _refresh_construction_rows():
                 break
         var base_name = bdata["name"] if bdata else display_id
         if is_upgrade:
-            base_name = "Улучшение: " + base_name
+            base_name = tr("Improvement: ") + base_name
 
         var row = HBoxContainer.new()
         row.add_theme_constant_override("separation", 6)
@@ -312,8 +312,8 @@ func _refresh_construction_rows():
         pause_btn.custom_minimum_size = Vector2(28, 28)
         pause_btn.expand_icon = true
         pause_btn.icon = _get_icon("pause")
-        pause_btn.tooltip_text = "Приостановить апгрейд" \
-            if is_upgrade else "Приостановить строительство"
+        pause_btn.tooltip_text = tr("Pause upgrade") \
+            if is_upgrade else tr("Pause construction")
         pause_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
         pause_btn.pressed.connect(_on_construction_pause_pressed.bind(build_key))
         row.add_child(pause_btn)
@@ -322,7 +322,7 @@ func _refresh_construction_rows():
         var cancel_btn = Button.new()
         cancel_btn.custom_minimum_size = Vector2(28, 28)
         cancel_btn.text = "✕"
-        cancel_btn.tooltip_text = "Отменить апгрейд" if is_upgrade else "Отменить строительство"
+        cancel_btn.tooltip_text = tr("Cancel upgrade") if is_upgrade else tr("Cancel construction")
         cancel_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
         cancel_btn.pressed.connect(_on_construction_cancel_pressed.bind(build_key))
         row.add_child(cancel_btn)
@@ -359,13 +359,13 @@ func _update_construction_rows():
         bar.value = percent
 
         var pause_btn = row_data["pause_btn"]
-        var action_name = "апгрейд" if row_data.get("is_upgrade", false) else "строительство"
+        var action_name = tr("upgrade") if row_data.get("is_upgrade", false) else tr("construction")
         if status == "paused":
             pause_btn.icon = _get_icon("resume")
-            pause_btn.tooltip_text = "Возобновить " + action_name
+            pause_btn.tooltip_text = tr("Resume ") + action_name
         else:
             pause_btn.icon = _get_icon("pause")
-            pause_btn.tooltip_text = "Приостановить " + action_name
+            pause_btn.tooltip_text = tr("Pause ") + action_name
 
 func _get_active_building_construction_count() -> int:
     var bm = _get_build_manager()
@@ -394,9 +394,9 @@ func get_hovered_construction_bar(mouse_pos: Vector2) -> Dictionary:
             if work_cost > 0:
                 percent = progress_value / work_cost * 100.0
             var status = progress_data.get("status", "active")
-            var status_text = "Строится"
+            var status_text = tr("Under construction")
             if status == "paused":
-                status_text = "Приостановлено"
+                status_text = tr("Paused")
             return {
                 "bar": bar,
                 "status_text": status_text,
@@ -415,17 +415,17 @@ func _get_built_status_info(working: int, idle: int, total: int) -> Dictionary:
         # Есть простаивающие здания (работник есть, но все слоты пустые)
         if total > 1:
             if idle == total:
-                text = "простаивает"
+                text = tr("idle")
             else:
-                text = "работает %d из %d, простаивает %d" % [working, total, idle]
+                text = tr("%d of %d working, %d idle") % [working, total, idle]
         else:
-            text = "простаивает"
+            text = tr("idle")
         color = Color.ORANGE
     elif total > 1:
-        text = "работает %d из %d" % [working, total]
+        text = tr("%d of %d working") % [working, total]
         color = Color.GREEN if working == total else (Color.YELLOW if working > 0 else Color.RED)
     else:
-        text = "работает" if working > 0 else "не работает"
+        text = tr("working") if working > 0 else tr("not working")
         color = Color.GREEN if working > 0 else Color.RED
     return {"text": text, "color": color}
 
@@ -472,7 +472,7 @@ func _fill_built_tooltip(group: Dictionary):
         content.add_child(row)
 
     var footer = Label.new()
-    footer.text = "Клик — панель управления зданием"
+    footer.text = tr("Click — building control panel")
     footer.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
     footer.mouse_filter = Control.MOUSE_FILTER_IGNORE
     content.add_child(footer)
@@ -542,22 +542,22 @@ func _get_built_states(group: Dictionary) -> Array:
     if total > 1:
         var properly_working = working - idle
         if properly_working > 0:
-            states.append(["работает", "%d" % properly_working, COLOR_WORKS])
+            states.append([tr("working"), "%d" % properly_working, COLOR_WORKS])
         if idle > 0:
-            states.append(["простаивает", "%d" % idle, COLOR_IDLE])
+            states.append([tr("idle"), "%d" % idle, COLOR_IDLE])
         var not_working = total - working
         if not_working > 0:
-            states.append(["не работает", "%d" % not_working, COLOR_OFF])
+            states.append([tr("not working"), "%d" % not_working, COLOR_OFF])
     else:
         if idle > 0:
-            states.append(["простаивает", "", COLOR_IDLE])
+            states.append([tr("idle"), "", COLOR_IDLE])
         elif working > 0:
-            states.append(["работает", "", COLOR_WORKS])
+            states.append([tr("working"), "", COLOR_WORKS])
         else:
-            states.append(["не работает", "", COLOR_OFF])
+            states.append([tr("not working"), "", COLOR_OFF])
 
     if upgradeable > 0:
-        states.append(["можно улучшить", "%d" % upgradeable, COLOR_UPGRADE])
+        states.append([tr("upgradeable"), "%d" % upgradeable, COLOR_UPGRADE])
     return states
 
 # Задаёт цвет текста кнопки во всех состояниях (обычное, наведение, нажатие,
@@ -770,7 +770,7 @@ func _show_building_details(bdata: Dictionary):
 
     # Заголовок стоимости
     var cost_header = Label.new()
-    cost_header.text = "Стоимость:"
+    cost_header.text = tr("Cost:")
     cost_header.add_theme_font_size_override("font_size", 14)
     cost_header.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
     cost_header.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -791,7 +791,7 @@ func _show_building_details(bdata: Dictionary):
         var actual_work_cost = int(ceil(float(work_cost) * MapHelpers.get_construction_cost_mult()))
         var labor = CityData.get_total_labor()
         var build_time = actual_work_cost / max(1.0, labor)
-        content.add_child(_make_bullet_row("•", "Труд: %d (%.0f сек)" % [actual_work_cost, build_time]))
+        content.add_child(_make_bullet_row("•", tr("Work: %d (%.0f sec)") % [actual_work_cost, build_time]))
         has_costs = true
 
     if bdata.has("additional_cost"):
@@ -803,7 +803,7 @@ func _show_building_details(bdata: Dictionary):
                 mat_rows.append([res_id, int(bundle[res_id])])
         if not mat_rows.is_empty():
             has_costs = true
-            content.add_child(_make_bullet_row("•", "Дополнительные материалы:"))
+            content.add_child(_make_bullet_row("•", tr("Extra materials:")))
             for entry in mat_rows:
                 var required_amount: int = int(entry[1])
                 var available_amount: int = int(GameData.get_storage_amount(entry[0], city_storage))
@@ -836,14 +836,14 @@ func _show_building_details(bdata: Dictionary):
     var additional_req = String(bdata.get("additional_req", ""))
     if additional_req != "":
         has_costs = true
-        var requirement_text = "доступ города к пресной воде" \
+        var requirement_text = tr("city access to fresh water") \
                 if additional_req == "running_water" else additional_req
         var requirement_row = HBoxContainer.new()
         requirement_row.add_theme_constant_override("separation", 6)
         requirement_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
         requirement_row.add_child(_make_bullet("•"))
         var requirement_prefix = Label.new()
-        requirement_prefix.text = "Условие:"
+        requirement_prefix.text = tr("Requirement:")
         requirement_prefix.mouse_filter = Control.MOUSE_FILTER_IGNORE
         requirement_row.add_child(requirement_prefix)
         var requirement_label = Label.new()
@@ -870,7 +870,7 @@ func _show_building_details(bdata: Dictionary):
     # и в левой колонке панели управления (см. docs.md).
     var cons_rows = ConsumptionUi.build_rows_for_building(bdata.get("id", ""))
     if not cons_rows.is_empty():
-        content.add_child(_make_bullet_row("•", "Потребляет:"))
+        content.add_child(_make_bullet_row("•", tr("Consumes:")))
         for cons in cons_rows:
             var cons_row = HBoxContainer.new()
             cons_row.add_theme_constant_override("separation", 6)
@@ -894,7 +894,7 @@ func _show_building_details(bdata: Dictionary):
 
     var additional_yield = bdata.get("additional_yield", {})
     if not additional_yield.is_empty():
-        content.add_child(_make_bullet_row("•", "Дополнительный выход:"))
+        content.add_child(_make_bullet_row("•", tr("Extra output:")))
         for yield_id in additional_yield:
             var yield_row = HBoxContainer.new()
             yield_row.add_theme_constant_override("separation", 6)
@@ -911,7 +911,7 @@ func _show_building_details(bdata: Dictionary):
     # Количество слотов производства
     var slots = bdata.get("production_slots", 0)
     var slots_label = Label.new()
-    slots_label.text = "Слотов производства: %d" % int(slots)
+    slots_label.text = tr("Production slots: %d") % int(slots)
     slots_label.add_theme_font_size_override("font_size", 14)
     slots_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
     slots_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -923,12 +923,12 @@ func _show_building_details(bdata: Dictionary):
 func _on_build_pressed():
     if selected_building_id == "":
         if ui_helpers:
-            ui_helpers.set_message("Не выбрано здание")
+            ui_helpers.set_message(tr("No building selected"))
         return
 
     if _has_active_building_construction() and not CityData.ignore_build_requirements:
         if ui_helpers:
-            ui_helpers.set_message("Можно строить не более %d зданий или улучшений одновременно (лимит = число жителей)" % CityData.total_population)
+            ui_helpers.set_message(tr("You can build or upgrade no more than %d buildings at once (limit = number of citizens)") % CityData.total_population)
         return
 
     var bdata = null
@@ -950,7 +950,7 @@ func _on_build_pressed():
     
     # Проверяем, достаточно ли населения для строительства
     if work_cost > 0 and not CityData.ignore_build_requirements and CityData.get_total_labor() <= 0:
-        missing_parts.append("нужен хотя бы 1 житель для строительства")
+        missing_parts.append(tr("at least 1 citizen is needed to build"))
 
     # Проверка дополнительных материалов (additional_cost) не проводится при
     # включённом «Игнорировать требования строительства».
@@ -968,7 +968,7 @@ func _on_build_pressed():
 
     if missing_parts.size() > 0:
         if ui_helpers:
-            ui_helpers.set_message("Не хватает: " + ", ".join(missing_parts))
+            ui_helpers.set_message(tr("Missing: ") + ", ".join(missing_parts))
         return
 
     emit_signal("build_requested", selected_building_id)
@@ -978,12 +978,12 @@ func _on_build_pressed():
     # уже построено мгновенно — сообщаем об этом.
     if ui_helpers:
         if CityData.ignore_build_requirements:
-            ui_helpers.set_message("Построено мгновенно: %s" % bdata.get("name", selected_building_id))
+            ui_helpers.set_message(tr("Built instantly: %s") % bdata.get("name", selected_building_id))
         elif work_cost > 0:
             var actual_work_cost = int(ceil(float(work_cost) * MapHelpers.get_construction_cost_mult()))
             var labor = CityData.get_total_labor()
             var build_time = actual_work_cost / max(1.0, labor)
-            ui_helpers.set_message("Начато строительство %s (%.0f труда, %.0f сек)" % [bdata.get("name", selected_building_id), actual_work_cost, build_time])
+            ui_helpers.set_message(tr("Construction of %s started (%.0f work, %.0f sec)") % [bdata.get("name", selected_building_id), actual_work_cost, build_time])
 
 # Очищает список рецептов
 func _has_active_building_construction() -> bool:
@@ -1001,11 +1001,11 @@ func _on_construction_pause_pressed(build_key: String):
     if bm.is_building_build_paused(build_key):
         if bm.resume_building_build(build_key):
             if ui_helpers:
-                ui_helpers.set_message("Строительство возобновлено")
+                ui_helpers.set_message(tr("Construction resumed"))
     else:
         if bm.pause_building_build(build_key):
             if ui_helpers:
-                ui_helpers.set_message("Строительство приостановлено")
+                ui_helpers.set_message(tr("Construction paused"))
 
     _update_construction_rows()
 
@@ -1014,12 +1014,12 @@ func _on_construction_cancel_pressed(build_key: String):
 
 func _confirm_cancel_construction(build_key: String):
     var dialog = ConfirmationDialog.new()
-    dialog.title = "Подтверждение"
-    dialog.dialog_text = "Отменить стройку? Потраченный труд сгорит."
+    dialog.title = tr("Confirm")
+    dialog.dialog_text = tr("Cancel the construction? Spent work will be lost.")
     # Локализуем стандартные кнопки диалога (по умолчанию Godot показывает
     # английские «OK» / «Cancel» — проект без файлов переводов).
-    dialog.get_ok_button().text = "Да"
-    dialog.get_cancel_button().text = "Отмена"
+    dialog.get_ok_button().text = tr("Yes")
+    dialog.get_cancel_button().text = tr("Cancel")
     add_child(dialog)
 
     # Ставим игру на паузу, пока открыт диалог подтверждения отмены.
@@ -1046,7 +1046,7 @@ func _cancel_construction(build_key: String):
         bm.cancel_building_build(build_key)
     CityData.building_construction.erase(build_key)
     if ui_helpers:
-        ui_helpers.set_message("Стройка отменена")
+        ui_helpers.set_message(tr("Construction cancelled"))
     CityData.emit_signal("city_updated")
     refresh_built()
 
@@ -1088,7 +1088,7 @@ func _refresh_recipes_list(bdata: Dictionary):
     _build_icon_index_local(icon_paths)
 
     var header = Label.new()
-    header.text = "Доступные рецепты:"
+    header.text = tr("Available recipes:")
     header.add_theme_font_size_override("font_size", 14)
     header.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
     header.mouse_filter = Control.MOUSE_FILTER_IGNORE

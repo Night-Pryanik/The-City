@@ -59,111 +59,111 @@
     // рабочего, а счётчик населения.
     {
       "id": "all",
-      "name": "Все жители",
-      "description": "Псевдо-профессия: охватывает всё население города, включая занятых жителей.",
+      "name": "All Citizens",
+      "description": "A pseudo-profession that covers the whole population of the city, including employed citizens.",
       "pseudo": true
     },
     {
       "id": "farmer",
-      "name": "Фермер",
+      "name": "Farmer",
       "icon": "profession_farmer.png",
-      "description": "Возделывает поля, ухаживает за посевами."
+      "description": "Works the fields and tends the crops."
     },
     {
       "id": "herder",
-      "name": "Скотовод",
+      "name": "Herder",
       "icon": "profession_herder.png",
-      "description": "Присматривает за стадом, следит за поголовьем."
+      "description": "Tends the herd and keeps count of the livestock."
     },
     {
       "id": "miner",
-      "name": "Шахтёр",
+      "name": "Miner",
       "icon": "profession_miner.png",
-      "description": "Добывает руду и минералы под землёй."
+      "description": "Digs ore and minerals out of the ground."
     },
     {
       "id": "quarryman",
-      "name": "Каменотёс",
+      "name": "Quarryman",
       "icon": "profession_quarryman.png",
-      "description": "Добывает камень в открытых карьерах."
+      "description": "Extracts stone from open quarries."
     },
     {
       "id": "beekeeper",
-      "name": "Пчеловод",
+      "name": "Beekeeper",
       "icon": "profession_beekeeper.png",
-      "description": "Следит за ульями, собирает мёд."
+      "description": "Tends the hives and harvests honey."
     },
     {
       "id": "vinedresser",
-      "name": "Виноградарь",
+      "name": "Vinedresser",
       "icon": "profession_vinedresser.png",
-      "description": "Возделывает виноградник, собирает урожай."
+      "description": "Cultivates the vineyard and gathers the harvest."
     },
     {
       "id": "potter",
-      "name": "Гончар",
+      "name": "Potter",
       "icon": "profession_potter.png",
-      "description": "Копает и сортирует глину для обжига."
+      "description": "Digs and sorts clay for firing."
     },
     {
       "id": "planter",
-      "name": "Плантатор",
+      "name": "Planter",
       "icon": "profession_planter.png",
-      "description": "Возделывает технические и пряные культуры."
+      "description": "Grows technical and spice crops."
     },
     {
       "id": "tar_collector",
-      "name": "Смолокур",
+      "name": "Tar Burner",
       "icon": "profession_tar_collector.png",
-      "description": "Собирает и выпаривает природную смолу."
+      "description": "Gathers and boils down natural tar."
     },
     {
       "id": "soda_extractor",
-      "name": "Содовщик",
+      "name": "Soda Extractor",
       "icon": "profession_soda_extractor.png",
-      "description": "Добывает соду из природных отложений."
+      "description": "Extracts soda from natural deposits."
     },
     {
       "id": "fisherman",
-      "name": "Рыбак",
+      "name": "Fisherman",
       "icon": "profession_fisherman.png",
-      "description": "Ловит рыбу с лодок на водоёмах с пристанью."
+      "description": "Fishes from boats on any water body with a dock."
     },
     {
       "id": "lumberjack",
-      "name": "Лесоруб",
+      "name": "Lumberjack",
       "icon": "profession_lumberjack.png",
-      "description": "Рубит деревья на лесной делянке и заготавливает древесину."
+      "description": "Fells trees in forest plots and hauls in the timber."
     },
     {
       "id": "charcoal_burner",
-      "name": "Углежог",
+      "name": "Charcoal Burner",
       "icon": "profession_charcoal_burner.png",
-      "description": "Обжигает древесину в древесный уголь."
+      "description": "Burns wood into charcoal."
     },
     {
       "id": "glassmaker",
-      "name": "Стеклодел",
+      "name": "Glassmaker",
       "icon": "profession_glassmaker.png",
-      "description": "Превращает песок и соду в стекло."
+      "description": "Turns sand and soda into glass."
     },
     {
       "id": "smelter",
-      "name": "Плавильщик",
+      "name": "Smelter Worker",
       "icon": "profession_smelter.png",
-      "description": "Плавит руду в чистые металлы."
+      "description": "Smelts ore into pure metals."
     },
     {
       "id": "blacksmith",
-      "name": "Кузнец",
+      "name": "Blacksmith",
       "icon": "profession_blacksmith.png",
-      "description": "Кует инструменты, оружие и украшения из металла."
+      "description": "Forges tools, weapons and ornaments from metal."
     },
     {
       "id": "scientist",
-      "name": "Учёный",
+      "name": "Scholar",
       "icon": "profession_scientist.png",
-      "description": "Переписывает и исследует тексты в библиотеке и скриптории, пополняя пул науки."
+      "description": "Copies and studies texts in the library and scriptorium, adding to the city's science."
     }
   ]
 }

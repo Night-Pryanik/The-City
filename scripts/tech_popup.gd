@@ -13,6 +13,14 @@ var title_label: Label
 var description_label: Label
 var flavor_label: Label
 var techs_btn: Button   # «Перейти к списку технологий» — скрываем, если игрок уже там
+# Подписи, которые не зависят от изученной технологии: держат ссылки, чтобы
+# переставить их на новом языке (см. _apply_static_text).
+var desc_title: Label
+var flavor_title: Label
+var ok_btn: Button
+# Что сейчас показано в окне — нужно, чтобы пересобрать его при смене языка.
+var _current_tech_id: String = ""
+var _current_found_resources: Array = []
 
 signal go_to_technologies()
 
@@ -74,8 +82,8 @@ func _ready():
     scroll_body.add_theme_constant_override("separation", 10)
     scroll.add_child(scroll_body)
 
-    var desc_title = Label.new()
-    desc_title.text = "Что даёт технология:"
+    var desc_title_local = Label.new()
+    desc_title = desc_title_local
     desc_title.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
     scroll_body.add_child(desc_title)
 
@@ -84,8 +92,8 @@ func _ready():
     description_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     scroll_body.add_child(description_label)
 
-    var flavor_title = Label.new()
-    flavor_title.text = "Историческая справка:"
+    var flavor_title_local = Label.new()
+    flavor_title = flavor_title_local
     flavor_title.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
     scroll_body.add_child(flavor_title)
 
@@ -100,18 +108,38 @@ func _ready():
     buttons.add_theme_constant_override("separation", 16)
     vbox.add_child(buttons)
 
-    var ok_btn = Button.new()
-    ok_btn.text = "Ок"
+    var ok_btn_local = Button.new()
+    ok_btn = ok_btn_local
     ok_btn.custom_minimum_size = Vector2(140, 36)
     ok_btn.pressed.connect(_on_ok_pressed)
     buttons.add_child(ok_btn)
 
     var techs_btn_local = Button.new()
     techs_btn = techs_btn_local  # сохраняем ссылку для условного скрытия
-    techs_btn.text = "Перейти к списку технологий"
     techs_btn.custom_minimum_size = Vector2(260, 36)
     techs_btn.pressed.connect(_on_techs_pressed)
     buttons.add_child(techs_btn)
+
+    _apply_static_text()
+
+# Подписи окна, не зависящие от технологии. Ставятся один раз при создании и
+# ещё раз при смене языка: узлы, собранные в коде, Godot сам не переводит.
+func _apply_static_text():
+    if desc_title:
+        desc_title.text = tr("What the technology gives:")
+    if flavor_title:
+        flavor_title.text = tr("Historical background:")
+    if ok_btn:
+        ok_btn.text = tr("OK")
+    if techs_btn:
+        techs_btn.text = tr("Go to the technology list")
+
+# Пересобирает окно на новом языке. Вызывается из LocalizationManager
+# (см. main_map._on_locale_changed); на скрытом окне ничего не делает.
+func refresh() -> void:
+    _apply_static_text()
+    if visible and not _current_tech_id.is_empty():
+        show_tech(_current_tech_id, _current_found_resources)
 
 func show_tech(tech_id: String, found_resources: Array = []):
     var tech_data = null
@@ -122,8 +150,12 @@ func show_tech(tech_id: String, found_resources: Array = []):
     if tech_data == null:
         return
 
-    title_label.text = "Технология изучена: %s" % tech_data.get("name", tech_id)
-    description_label.text = tech_data.get("description", "Нет описания.")
+    # Запоминаем, что показано: по этому окно пересобирается при смене языка.
+    _current_tech_id = tech_id
+    _current_found_resources = found_resources
+
+    title_label.text = tr("Technology researched: %s") % tech_data.get("name", tech_id)
+    description_label.text = tech_data.get("description", tr("No description."))
     flavor_label.text = tech_data.get("flavor", "")
 
     # Если игрок уже на вкладке Технологии — кнопка «Перейти к списку

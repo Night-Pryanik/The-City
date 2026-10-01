@@ -2,7 +2,7 @@
   "resources": [
     {
       "id": "pottery", "price": 10,
-      "name": "Глиняная посуда",
+      "name": "Pottery",
       "type": "product",
       "category": "household_items",
       "unlock_tech": "pottery",
@@ -10,7 +10,7 @@
     },
     {
       "id": "clay_tablets", "price": 6,
-      "name": "Глиняные таблички",
+      "name": "Clay Tablets",
       "type": "product",
       "category": "material",
       "unlock_tech": "writing",
@@ -19,7 +19,7 @@
     },
     {
       "id": "fabric_clothes", "price": 16,
-      "name": "Тканевая одежда",
+      "name": "Cloth Clothes",
       "type": "product",
       "category": "clothes",
       "unlock_tech": "weaving",
@@ -27,7 +27,7 @@
     },
     {
       "id": "wool_clothes", "price": 20,
-      "name": "Шерстяная одежда",
+      "name": "Wool Clothes",
       "type": "product",
       "category": "clothes",
       "unlock_tech": "weaving",
@@ -35,7 +35,7 @@
     },
     {
       "id": "leather_clothes", "price": 28,
-      "name": "Кожаная одежда",
+      "name": "Leather Clothes",
       "type": "product",
       "category": "clothes",
       "unlock_tech": "leatherworking",
@@ -43,7 +43,7 @@
     },
     {
       "id": "silk_clothes", "price": 90,
-      "name": "Шёлковая одежда",
+      "name": "Silk Clothes",
       "type": "product",
       "category": "clothes",
       "unlock_tech": "sericulture",
@@ -51,7 +51,7 @@
     },
     {
       "id": "vegetable_oil", "price": 10,
-      "name": "Растительное масло",
+      "name": "Vegetable Oil",
       "type": "product",
       "category": "material",
       "unlock_tech": "oil_making",
@@ -59,7 +59,7 @@
     },
     {
       "id": "ropes", "price": 7,
-      "name": "Веревки и канаты",
+      "name": "Ropes and Cables",
       "type": "product",
       "category": "material",
       "unlock_tech": "rope_making",
@@ -67,7 +67,7 @@
     },
     {
       "id": "tar", "price": 6,
-      "name": "Смола",
+      "name": "Tar",
       "type": "product",
       "category": "material",
       "unlock_tech": "bitumen_extraction",
@@ -75,7 +75,7 @@
     },
     {
       "id": "tarred_ropes", "price": 10,
-      "name": "Просмоленные веревки",
+      "name": "Tarred Ropes",
       "type": "product",
       "category": "material",
       "unlock_tech": "bitumen_extraction",
@@ -83,7 +83,7 @@
     },
     {
       "id": "soap", "price": 8,
-      "name": "Мыло",
+      "name": "Soap",
       "type": "product",
       "category": "household_items",
       "unlock_tech": "soap_making",
@@ -91,7 +91,7 @@
     },
     {
       "id": "salt", "price": 6,
-      "name": "Соль",
+      "name": "Salt",
       "type": "product",
       "category": "household_items",
       "unlock_tech": "salt_extraction",
@@ -99,7 +99,7 @@
     },
     {
       "id": "papyrus", "price": 10,
-      "name": "Папирус",
+      "name": "Papyrus",
       "type": "product",
       "category": "material",
       "unlock_tech": "writing",
@@ -108,7 +108,7 @@
     },
     {
       "id": "reed_boat", "price": 12,
-      "name": "Тростниковая лодка",
+      "name": "Reed Boat",
       "type": "product",
       "category": "other",
       "unlock_tech": "fishing",
@@ -126,7 +126,7 @@
     },
     {
       "id": "parchment", "price": 16,
-      "name": "Пергамент",
+      "name": "Parchment",
       "type": "product",
       "category": "material",
       "unlock_tech": "parchment",
@@ -135,7 +135,7 @@
     },
     {
       "id": "wax_tablets", "price": 12,
-      "name": "Восковые таблички",
+      "name": "Wax Tablets",
       "type": "product",
       "category": "material",
       "unlock_tech": "beekeeping",
@@ -144,7 +144,7 @@
     },
     {
       "id": "glassware", "price": 15,
-      "name": "Стеклянная посуда",
+      "name": "Glassware",
       "type": "product",
       "category": "household_items",
       "unlock_tech": "glassmaking",

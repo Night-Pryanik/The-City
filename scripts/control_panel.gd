@@ -55,7 +55,7 @@ var _saved_offset_top := -1.0
 func _setup_collapse_button():
     _toggle_btn = Button.new()
     _toggle_btn.text = "▼"
-    _toggle_btn.tooltip_text = "Свернуть панель"
+    _toggle_btn.tooltip_text = tr("Collapse panel")
     _toggle_btn.focus_mode = Control.FOCUS_NONE
     _toggle_btn.flat = true
     _toggle_btn.custom_minimum_size = Vector2(28, 24)
@@ -90,13 +90,13 @@ func _set_collapsed(collapsed: bool):
         offset_top = offset_bottom - _COLLAPSED_HEIGHT
         _set_content_visible(false)
         _toggle_btn.text = "▲"
-        _toggle_btn.tooltip_text = "Развернуть панель"
+        _toggle_btn.tooltip_text = tr("Expand panel")
     else:
         if _saved_offset_top >= 0.0:
             offset_top = _saved_offset_top
         _set_content_visible(true)
         _toggle_btn.text = "▼"
-        _toggle_btn.tooltip_text = "Свернуть панель"
+        _toggle_btn.tooltip_text = tr("Collapse panel")
 
 # Скрывает/показывает содержимое панели (при сворачивании остаётся только кнопка).
 func _set_content_visible(visible_now: bool):
@@ -250,7 +250,7 @@ func _refresh():
     # вместо информации показываем заглушку. Действия справа (разведка)
     # остаются: они содержимое гекса не раскрывают (см. main_map.is_hex_in_fog).
     if main_map.is_hex_in_fog(row, col):
-        _info_label.text = "Область не разведана — информация недоступна.\n\nМестность, ресурсы и улучшения станут известны после разведки."
+        _info_label.text = tr("Area not scouted — information unavailable.\n\nTerrain, resources and improvements become known after scouting.")
         map_tooltip.render_products([], _products_container, true)
     else:
         var info = map_tooltip.build_hex_info(row, col, main_map.tile_data, main_map.city_row, main_map.city_col)
@@ -281,7 +281,7 @@ func _refresh():
     _sync_road_preview_on_map()
 
 func _clear_ui():
-    _info_label.text = "Выберите гекс на карте (ЛКМ), чтобы увидеть информацию и доступные действия."
+    _info_label.text = tr("Select a hex on the map (LMB) to see information and available actions.")
     for child in _products_container.get_children():
         child.queue_free()
     for child in _actions_container.get_children():
@@ -402,13 +402,13 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
         var trade_available := true
         if town_rec != null:
             trade_available = main_map.town_manager.is_trade_available(town_rec)
-        var town_action_label = "Открыть городок"
-        var town_action_tooltip = "Перейти в интерфейс городка"
+        var town_action_label = tr("Open town")
+        var town_action_tooltip = tr("Open the town interface")
         if town_name != "":
-            town_action_label = "Открыть %s" % town_name
-            town_action_tooltip = "Перейти в интерфейс городка «%s»" % town_name
+            town_action_label = tr("Open %s") % town_name
+            town_action_tooltip = tr("Open the town interface \"%s\"") % town_name
         if not trade_available:
-            town_action_tooltip += " (торговля недоступна: нет дороги до городка)"
+            town_action_tooltip += tr(" (trade unavailable: no road to the town)")
 
         # Дорога до городка — то же спецдействие «Построить дорогу», что и на
         # обычном гексе, но с другим текстом: здесь дорога не доходит до гекса
@@ -423,7 +423,7 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
                 var road_sa: Dictionary = GameData.special_actions.get(ROAD_ACTION_ID, {})
                 if not road_sa.is_empty():
                     _append_special_action(actions, ROAD_ACTION_ID, road_sa,
-                            "Построить дорогу от города до городка%s — откроет торговлю"
+                            tr("Build a road from the city to the town%s — unlocks trade")
                                     % ((" «%s»" % town_name) if town_name != "" else ""))
 
         # Прерывание нужно и на гексе самого городка, и в его кольце влияния:
@@ -479,17 +479,17 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
             if has_worker:
                 actions.append({
                     "type": "pause_improvement",
-                    "label": "Приостановить работу (%s)" % imp_name,
+                    "label": tr("Pause operation (%s)") % imp_name,
                     "enabled": true,
-                    "tooltip": "Снять рабочего с улучшения",
+                    "tooltip": tr("Remove the worker from the improvement"),
                     "icon": "building_pause.png"
                 })
             else:
                 actions.append({
                     "type": "resume_improvement",
-                    "label": "Запустить работу (%s)" % imp_name,
+                    "label": tr("Start operation (%s)") % imp_name,
                     "enabled": CityData.idle_population > 0,
-                    "tooltip": "Назначить рабочего на улучшение" if CityData.idle_population > 0 else "Нет свободных рабочих",
+                    "tooltip": tr("Assign a worker to the improvement") if CityData.idle_population > 0 else tr("No free workers"),
                     "icon": "building_resume.png"
                 })
 
@@ -514,7 +514,7 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
             var imp_data = GameData.improvements.get(imp_id, {})
             var imp_name = imp_data.get("name", imp_id)
             var enabled = true
-            var tooltip = "Построить %s" % imp_name
+            var tooltip = tr("Build %s") % imp_name
             # Проверка: ресурс скрыт tech_reveal-гейтом. Действие НЕ показываем
             # вовсе (ни кнопки, ни тултипа): игрок не должен знать, где
             # находится скрытый ресурс, пока не откроет соответствующую технологию.
@@ -554,21 +554,21 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
                     if not CityData.is_improvement_unlocked(imp_id):
                         var tech_name = _get_tech_name(imp_unlock_tech)
                         enabled = false
-                        tooltip = "%s — нужна технология: %s" % [imp_name, tech_name]
+                        tooltip = tr("%s — requires technology: %s") % [imp_name, tech_name]
                     # Схема harbor_access: улучшения с requires_harbor (рыбацкие лодки)
                     # строятся только на водоёме, где есть пристань. BFS по воде от
                     # этого гекса ищет сушу с water_body_harbor-улучшением.
                     elif bool(imp_data.get("requires_harbor", false)) \
                             and not MapHelpers.has_harbor_access(main_map.tile_data, row, col, main_map.map_rows, main_map.map_cols):
                         enabled = false
-                        tooltip = "%s — нужна Пристань на берегу этого водоёма" % imp_name
+                        tooltip = tr("%s — requires a Dock on the shore of this water body") % imp_name
                     # Проверка: лимит строек.
                     elif build_manager.get_total_active_builds() >= CityData.total_population:
                         enabled = false
-                        tooltip = "Нет труда: лимит строек (число жителей) исчерпан"
+                        tooltip = tr("No work available: construction limit (number of citizens) reached")
                     actions.append({
                         "type": "build_improvement",
-                        "label": "Построить %s" % imp_name,
+                        "label": tr("Build %s") % imp_name,
                         "enabled": enabled,
                         "tooltip": tooltip,
                         "imp_id": imp_id,
@@ -589,16 +589,16 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
             var imp_name = GameData.improvements.get(improvement_id, {}).get("name", improvement_id)
             var improvement_unlocked = CityData.is_improvement_unlocked(improvement_id)
             var action_enabled = improvement_unlocked
-            var action_tooltip = "Построить %s для разведения" % imp_name
+            var action_tooltip = tr("Build %s for breeding") % imp_name
             if not improvement_unlocked:
                 var unlock_tech = CityData.get_improvement_unlock_tech(improvement_id)
-                action_tooltip = "%s — нужна технология: %s" % [imp_name, _get_tech_name(unlock_tech)]
+                action_tooltip = tr("%s — requires technology: %s") % [imp_name, _get_tech_name(unlock_tech)]
             elif build_manager.get_total_active_builds() >= CityData.total_population:
                 action_enabled = false
-                action_tooltip = "Нет труда: лимит строек (число жителей) исчерпан"
+                action_tooltip = tr("No work available: construction limit (number of citizens) reached")
             actions.append({
                 "type": "build_breeding",
-                "label": "Построить %s" % imp_name,
+                "label": tr("Build %s") % imp_name,
                 "enabled": action_enabled,
                 "tooltip": action_tooltip,
                 "imp_id": improvement_id,
@@ -615,10 +615,10 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
             and tile.terrain != "mountain" and not MapHelpers.is_water_terrain(tile.terrain) \
             and MapHelpers.is_coastal_hex(main_map.tile_data, row, col, main_map.map_rows, main_map.map_cols)
     if harbor_potential_tile:
-        var harbor_name = GameData.improvements.get("harbor", {}).get("name", "Пристань")
+        var harbor_name = GameData.improvements.get("harbor", {}).get("name", tr("Harbor"))
         var harbor_tech_unlocked = CityData.is_improvement_unlocked("harbor")
         var harbor_unlock_tech = CityData.get_improvement_unlock_tech("harbor")
-        var harbor_tooltip = "Построить %s — откроет водные ресурсы этого водоёма" % harbor_name
+        var harbor_tooltip = tr("Build %s — unlocks the water resources of this water body") % harbor_name
         # Кнопки изучения и постройки пристани (заблокированной технологией)
         # показываем только если до открывающей технологии осталось не более
         # TECH_HOPS_MAX «хопов» (по аналогии с каналом и лесной делянкой).
@@ -626,10 +626,10 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
         if harbor_tech_unlocked:
             show_harbor = true
             if build_manager.get_total_active_builds() >= CityData.total_population:
-                harbor_tooltip = "%s — нет труда: лимит строек (число жителей) исчерпан" % harbor_name
+                harbor_tooltip = tr("%s — no work available: construction limit (number of citizens) reached") % harbor_name
         else:
             var harbor_tech_name = _get_tech_name(harbor_unlock_tech)
-            harbor_tooltip = "%s — нужна технология: %s" % [harbor_name, harbor_tech_name]
+            harbor_tooltip = tr("%s — requires technology: %s") % [harbor_name, harbor_tech_name]
             if CityData.get_tech_hops(harbor_unlock_tech) <= CityData.TECH_HOPS_MAX:
                 show_harbor = true
                 var harbor_chain = CityData.get_tech_study_chain(harbor_unlock_tech)
@@ -638,7 +638,7 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
         if show_harbor:
             actions.append({
                 "type": "build_improvement",
-                "label": "Построить %s" % harbor_name,
+                "label": tr("Build %s") % harbor_name,
                 "enabled": harbor_tech_unlocked,
                 "tooltip": harbor_tooltip,
                 "imp_id": "harbor",
@@ -666,11 +666,11 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
             and tile.terrain != "swamp" and tile.terrain != "marsh" \
             and MapHelpers.would_canal_have_water(row, col, main_map.tile_data, main_map.map_rows, main_map.map_cols)
     if canal_potential_tile:
-        var canal_name = GameData.improvements.get("irrigation_canal", {}).get("name", "Ирригационный канал")
+        var canal_name = GameData.improvements.get("irrigation_canal", {}).get("name", tr("Irrigation Canal"))
         var canal_icon = GameData.improvements.get("irrigation_canal", {}).get("icon", "")
         var canal_tech_unlocked = CityData.is_improvement_unlocked("irrigation_canal")
         var canal_unlock_tech = CityData.get_improvement_unlock_tech("irrigation_canal")
-        var canal_tooltip = "Построить %s — распространит пресную воду дальше" % canal_name
+        var canal_tooltip = tr("Build %s — extends fresh water further") % canal_name
         # Кнопки изучения и постройки канала (заблокированного технологией «Каналы»)
         # показываем только если до открывающей технологии улучшения осталось
         # не более TECH_HOPS_MAX «хопов».
@@ -678,10 +678,10 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
         if canal_tech_unlocked:
             show_canal = true
             if build_manager.get_total_active_builds() >= CityData.total_population:
-                canal_tooltip = "%s — нет труда: лимит строек (число жителей) исчерпан" % canal_name
+                canal_tooltip = tr("%s — no work available: construction limit (number of citizens) reached") % canal_name
         else:
             var tech_name = _get_tech_name(canal_unlock_tech)
-            canal_tooltip = "%s — нужна технология: %s" % [canal_name, tech_name]
+            canal_tooltip = tr("%s — requires technology: %s") % [canal_name, tech_name]
             if CityData.get_tech_hops(canal_unlock_tech) <= CityData.TECH_HOPS_MAX:
                 show_canal = true
                 var chain = CityData.get_tech_study_chain(canal_unlock_tech)
@@ -690,7 +690,7 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
         if show_canal:
             actions.append({
                 "type": "build_improvement",
-                "label": "Построить %s" % canal_name,
+                "label": tr("Build %s") % canal_name,
                 "enabled": canal_tech_unlocked,
                 "tooltip": canal_tooltip,
                 "imp_id": "irrigation_canal",
@@ -702,19 +702,19 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
     #     кнопка видна только там, где делянку МОЖНО построить. Если не хватает
     #     технологии — рядом добавляется кнопка «Изучить …».
     if MapHelpers.can_build_lumberjack_hut(tile):
-        var lj_name = GameData.improvements.get("lumberjack_hut", {}).get("name", "Лесная делянка")
+        var lj_name = GameData.improvements.get("lumberjack_hut", {}).get("name", tr("Woodcutter's Camp"))
         var lj_icon = GameData.improvements.get("lumberjack_hut", {}).get("icon", "")
         var lj_tech_unlocked = CityData.is_improvement_unlocked("lumberjack_hut")
         var lj_unlock_tech = CityData.get_improvement_unlock_tech("lumberjack_hut")
-        var lj_tooltip = "Построить %s — заготавливает древесину из лесного покрова" % lj_name
+        var lj_tooltip = tr("Build %s — harvests timber from the forest cover") % lj_name
         var show_lj := false
         if lj_tech_unlocked:
             show_lj = true
             if build_manager.get_total_active_builds() >= CityData.total_population:
-                lj_tooltip = "%s — нет труда: лимит строек (число жителей) исчерпан" % lj_name
+                lj_tooltip = tr("%s — no work available: construction limit (number of citizens) reached") % lj_name
         else:
             var lj_tech_name = _get_tech_name(lj_unlock_tech)
-            lj_tooltip = "%s — нужна технология: %s" % [lj_name, lj_tech_name]
+            lj_tooltip = tr("%s — requires technology: %s") % [lj_name, lj_tech_name]
             if CityData.get_tech_hops(lj_unlock_tech) <= CityData.TECH_HOPS_MAX:
                 show_lj = true
                 var lj_chain = CityData.get_tech_study_chain(lj_unlock_tech)
@@ -723,7 +723,7 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
         if show_lj:
             actions.append({
                 "type": "build_improvement",
-                "label": "Построить %s" % lj_name,
+                "label": tr("Build %s") % lj_name,
                 "enabled": lj_tech_unlocked,
                 "tooltip": lj_tooltip,
                 "imp_id": "lumberjack_hut",
@@ -755,12 +755,12 @@ func _append_cancel_actions(actions: Array, row: int, col: int) -> void:
     # по кнопке игрок должен понимать, куда он нажал.
     if build_manager != null and build_manager.is_building(row, col):
         var prog: Dictionary = build_manager.get_progress(row, col)
-        var action_name := str(prog.get("imp_name", "стройку"))
+        var action_name := str(prog.get("imp_name", tr("the construction")))
         actions.append({
             "type": "cancel_build",
-            "label": "Прервать: %s" % action_name,
+            "label": tr("Stop: %s") % action_name,
             "enabled": true,
-            "tooltip": "Прервать «%s». Потраченный труд будет потерян" % action_name,
+            "tooltip": tr("Stop \"%s\". Spent work will be lost") % action_name,
             "icon": "cross.svg"
         })
 
@@ -786,15 +786,15 @@ func _make_project_cancel_action(project: Dictionary) -> Dictionary:
     var steps: Array = project.get("steps", [])
     var done := int(project.get("step_index", 0))
     var left := maxi(0, steps.size() - done)
-    var title := str(project.get("title", "Строительство"))
-    var tooltip := "Прервать «%s»" % title
+    var title := str(project.get("title", tr("Construction")))
+    var tooltip := tr("Stop \"%s\"") % title
     if left > 0:
-        tooltip += " — недостроенных участков: %d" % left
+        tooltip += tr(" — unfinished sections: %d") % left
     if done > 0:
-        tooltip += ". Уже построенные участки (%d) останутся" % done
+        tooltip += tr(". Already built sections (%d) will remain") % done
     return {
         "type": "cancel_project",
-        "label": "Прервать: %s" % title,
+        "label": tr("Stop: %s") % title,
         "enabled": true,
         "tooltip": tooltip,
         "project_id": str(project.get("id", "")),
@@ -812,9 +812,9 @@ func _append_long_action_cancel(actions: Array, row: int, col: int) -> void:
             var chunk: Array = exp.get("chunk", [])
             actions.append({
                 "type": "cancel_expansion",
-                "label": "Прервать: Освоение области",
+                "label": tr("Stop: Claiming land"),
                 "enabled": true,
-                "tooltip": "Прервать освоение области (%d клеток). Потраченный труд пропадёт, оплаченные монеты вернутся" % chunk.size(),
+                "tooltip": tr("Stop claiming land (%d tiles). Spent work will be lost, paid coins will be refunded") % chunk.size(),
                 "icon": "cross.svg"
             })
     if main_map.is_scouting and not main_map.scouting_chunk.is_empty():
@@ -822,9 +822,9 @@ func _append_long_action_cancel(actions: Array, row: int, col: int) -> void:
         if first != null and int(first.row) == row and int(first.col) == col:
             actions.append({
                 "type": "cancel_scouting",
-                "label": "Прервать: Разведка",
+                "label": tr("Stop: Scouting"),
                 "enabled": true,
-                "tooltip": "Отозвать разведчиков. Обследован не будет ни один гекс, оплаченные монеты вернутся",
+                "tooltip": tr("Recall the scouts. No hex will be surveyed, paid coins will be refunded"),
                 "icon": "cross.svg"
             })
 
@@ -857,14 +857,14 @@ func _collect_region_actions(row: int, col: int) -> Array:
             return actions
         var reason := ""
         if bool(tile.get("in_town_influence", false)):
-            reason = "Освоить нельзя: территория чужого городка"
+            reason = tr("Cannot claim: another town's territory")
         elif not main_map.is_valid_hex(row, col):
-            reason = "Осваивать можно только области в Регионе"
+            reason = tr("Only areas within the Region can be claimed")
         if reason == "":
             return actions
         actions.append({
             "type": "buy_chunk",
-            "label": "Освоить область",
+            "label": tr("Claim the area"),
             "enabled": false,
             "tooltip": reason,
             "chunk": [],
@@ -896,22 +896,22 @@ func _collect_region_actions(row: int, col: int) -> Array:
         var known_neighbor: bool = main_map.is_chunk_adjacent_to_known(chunk)
         var tooltip: String
         if main_map.is_scouting:
-            tooltip = "Разведка уже идёт"
+            tooltip = tr("Scouting already in progress")
         elif not known_neighbor:
-            tooltip = "Область не граничит с исследованной территорией"
+            tooltip = tr("The area does not border explored territory")
         elif CityData.ignore_build_requirements:
             # Дебаг: разведка бесплатна и мгновенна. Текст статичный (без
             # казны и времени), поэтому конвенция _build_actions не нарушается.
-            tooltip = "Отправить разведчиков: мгновенно и бесплатно (дебаг)"
+            tooltip = tr("Send scouts: instantly and free (debug)")
         else:
             # ВАЖНО: не включать в тултип значения, меняющиеся КАЖДЫЙ ТИК
             # (текущую казну, текущий запас еды). _build_actions() сравнивает
             # тултипы между тиками и пересоздаёт кнопки при любом отличии —
             # это сбрасывает наведённый тултип. Казну игрок всегда видит в HUD.
-            tooltip = "Отправить разведчиков: %d монет из казны, время [%.0f сек.]" % [cost, scout_time]
+            tooltip = tr("Send scouts: %d coins from the treasury, time [%.0f sec.]") % [cost, scout_time]
         actions.append({
             "type": "scout_chunk",
-            "label": "Отправить разведчиков",
+            "label": tr("Send scouts"),
             "enabled": not main_map.is_scouting and known_neighbor,
             "tooltip": tooltip,
             "chunk": chunk,
@@ -934,16 +934,16 @@ func _collect_region_actions(row: int, col: int) -> Array:
     var labor = CityData.get_total_labor()
     var buy_tooltip: String
     if not has_neighbor:
-        buy_tooltip = "Область не граничит с вашими владениями"
+        buy_tooltip = tr("The area does not border your territory")
     elif CityData.ignore_build_requirements:
         # Дебаг: освоение бесплатно и мгновенно (см. start_scouting — тот же
         # принцип в разведке). Текст статичный, как и требует _build_actions.
-        buy_tooltip = "Освоить область (%d клеток): мгновенно и бесплатно (дебаг)" % chunk.size()
+        buy_tooltip = tr("Claim the area (%d tiles): instantly and free (debug)") % chunk.size()
     else:
-        buy_tooltip = "Освоить область (%d клеток): %d монет из казны и %d труда (%.0f сек.)" % [chunk.size(), money_cost, work_cost, work_cost / max(1.0, labor)]
+        buy_tooltip = tr("Claim the area (%d tiles): %d coins from the treasury and %d work (%.0f sec.)") % [chunk.size(), money_cost, work_cost, work_cost / max(1.0, labor)]
     actions.append({
         "type": "buy_chunk",
-        "label": "Освоить область",
+        "label": tr("Claim the area"),
         "enabled": has_neighbor,
         "tooltip": buy_tooltip,
         "chunk": chunk,
@@ -1009,7 +1009,7 @@ func _add_special_actions(actions: Array, row: int, col: int, tile: Dictionary):
             # У города: цель — сам гекс. У городка цель другая (кольцо
             # влияния), там кнопку собирает ветка городка в _collect_actions.
             _append_special_action(actions, sa_id, sa,
-                    "Построить дорогу от города до этого гекса")
+                    tr("Build a road from the city to this hex"))
         else:
             _append_special_action(actions, sa_id, sa)
 
@@ -1024,7 +1024,7 @@ func _append_special_action(actions: Array, sa_id: String, sa: Dictionary, toolt
     var unlock_tech = sa.get("unlock_tech", "")
     if unlock_tech != "" and not CityData.is_tech_unlocked(unlock_tech):
         enabled = false
-        tooltip = "%s — нужна технология: %s" % [sa_name, _get_tech_name(unlock_tech)]
+        tooltip = tr("%s — requires technology: %s") % [sa_name, _get_tech_name(unlock_tech)]
         # Кнопка изучения СЛЕДУЮЩЕГО не изученного шага технологической
         # цепочки, необходимой для разблокировки спецдействия (аналог
         # механики для ресурсов/улучшений, см. _collect_actions).
@@ -1034,7 +1034,7 @@ func _append_special_action(actions: Array, sa_id: String, sa: Dictionary, toolt
     elif not CityData.ignore_build_requirements \
             and build_manager.get_total_active_builds() >= CityData.total_population:
         enabled = false
-        tooltip = "Нет труда: лимит строек (число жителей) исчерпан"
+        tooltip = tr("No work available: construction limit (number of citizens) reached")
     actions.append({
         "type": "special",
         "label": sa_name,
@@ -1057,9 +1057,9 @@ func _make_research_action(tech_id: String, for_what: String = "ресурса")
             break
     return {
         "type": "research_tech",
-        "label": "Изучить %s" % tech_name,
+        "label": tr("Research %s") % tech_name,
         "enabled": true,
-        "tooltip": "Изучить %s (наука: %d) для разблокировки %s" % [tech_name, tech_cost, for_what],
+        "tooltip": tr("Research %s (science: %d) to unlock %s") % [tech_name, tech_cost, for_what],
         "tech_id": tech_id,
         "icon": "lock.png"
     }
@@ -1101,7 +1101,7 @@ func _on_action_pressed(action: Dictionary):
         return
     if type == "resume_improvement":
         if not worker_manager.assign_worker(_selected_hex.row, _selected_hex.col):
-            main_map.hud.show_message("Нет свободных рабочих!")
+            main_map.hud.show_message(tr("No free workers!"))
         main_map.map_renderer.queue_redraw()
         _refresh()
         return
@@ -1218,7 +1218,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     header.add_child(header_label)
     var build_btn = Button.new()
     build_btn.custom_minimum_size = Vector2(40, 40) # маленькая квадратная кнопка
-    build_btn.tooltip_text = "Начать"
+    build_btn.tooltip_text = tr("Start")
     build_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
     var check_tex = _load_action_icon("check.svg")
     if check_tex != null:
@@ -1233,7 +1233,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     header.add_child(build_btn)
     var cancel_btn = Button.new()
     cancel_btn.custom_minimum_size = Vector2(40, 40)
-    cancel_btn.tooltip_text = "Отменить"
+    cancel_btn.tooltip_text = tr("Cancel")
     cancel_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
     var cross_tex = _load_action_icon("cross.svg")
     if cross_tex != null:
@@ -1265,7 +1265,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
                 preview["selected_culture_id"] = selected
 
             var cult_label = Label.new()
-            cult_label.text = "Культура:"
+            cult_label.text = tr("Culture:")
             cult_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
             cult_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
             _preview_container.add_child(cult_label)
@@ -1328,12 +1328,12 @@ func _build_preview(row: int, col: int, tile: Dictionary):
             if wood_data.has("icon"):
                 wood_icon_path = main_map.map_renderer.get_icon_path(wood_data["icon"])
             var lj_products := []
-            lj_products.append({"type": "header", "text": "Будет производить:"})
+            lj_products.append({"type": "header", "text": tr("Will produce:")})
             var lj_base_str = str(int(lj_yield)) if lj_yield == floor(lj_yield) else "%.1f" % lj_yield
-            var wood_label = wood_data.get("name", "Древесина")
+            var wood_label = wood_data.get("name", tr("Wood"))
             if lj_mult != 1.0:
-                wood_label = "%s (база %s)" % [wood_label, lj_base_str]
-            lj_products.append({"type": "product", "name": wood_label, "amount": lj_per_sec, "icon_path": wood_icon_path, "suffix": " ед./сек"})
+                wood_label = tr("%s (base %s)") % [wood_label, lj_base_str]
+            lj_products.append({"type": "product", "name": wood_label, "amount": lj_per_sec, "icon_path": wood_icon_path, "suffix": tr(" units/sec")})
             var lj_box = VBoxContainer.new()
             map_tooltip.render_products(lj_products, lj_box, true)
             _preview_container.add_child(lj_box)
@@ -1352,7 +1352,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
             var prod_interval := CityData.get_improvement_production_interval(imp_id)
 
             var products := []
-            products.append({"type": "header", "text": "Будет производить:"})
+            products.append({"type": "header", "text": tr("Will produce:")})
             for prod_id in res_data["produces"]:
                 # produces может быть числом или диапазоном [min, max] — в
                 # превью показываем детерминированный минимум (см. RangeUtils).
@@ -1362,13 +1362,13 @@ func _build_preview(row: int, col: int, tile: Dictionary):
                 # При активных модификаторах база указывается у каждого продукта.
                 if bonus_multiplier != 1.0:
                     var base_str = str(int(base_amount)) if base_amount == floor(base_amount) else "%.1f" % base_amount
-                    prod_name = "%s (база %s)" % [prod_name, base_str]
+                    prod_name = tr("%s (base %s)") % [prod_name, base_str]
                 var icon_path = ""
                 var prod_data = GameData.products.get(prod_id, {})
                 if prod_data.has("icon"):
                     var icon_name = prod_data["icon"]
                     icon_path = main_map.map_renderer.get_icon_path(icon_name)
-                products.append({"type": "product", "name": prod_name, "amount": float(final_amount) / prod_interval, "icon_path": icon_path, "suffix": " ед./сек"})
+                products.append({"type": "product", "name": prod_name, "amount": float(final_amount) / prod_interval, "icon_path": icon_path, "suffix": tr(" units/sec")})
             for mod in modifiers:
                 products.append({"type": "label", "text": " %s" % mod.get("label", ""), "color": Color(0.7, 0.9, 0.7)})
             # Рендерим в ОТДЕЛЬНЫЙ бокс: render_products очищает переданный
@@ -1390,21 +1390,21 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     # Стоимость труда: детальный расчёт (база, местность, расстояние).
     var cost_data = MapHelpers.get_improvement_work_cost(cost_imp_id, row, col, main_map.tile_data, main_map.city_row, main_map.city_col)
     var cost_label = Label.new()
-    cost_label.text = "Стоимость: %d труда" % cost_data["cost"]
+    cost_label.text = tr("Cost: %d work") % cost_data["cost"]
     cost_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     cost_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
     _preview_container.add_child(cost_label)
 
     # Детализация стоимости (переехала сюда из расширенного тултипа).
     var base_label = Label.new()
-    base_label.text = " База: %d труда" % cost_data["base_cost"]
+    base_label.text = tr(" Base: %d work") % cost_data["base_cost"]
     base_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     base_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
     _preview_container.add_child(base_label)
 
-    var move_cost_text = "непроходимо" if cost_data["move_cost"] >= 999.0 else str(int(cost_data["move_cost"]))
+    var move_cost_text = tr("impassable") if cost_data["move_cost"] >= 999.0 else str(int(cost_data["move_cost"]))
     var terrain_label = Label.new()
-    terrain_label.text = " Местность: %s (стоимость передвижения: %s) ×%.2f" % [cost_data["terrain_name"], move_cost_text, cost_data["terrain_mult"]]
+    terrain_label.text = tr(" Terrain: %s (move cost: %s) ×%.2f") % [cost_data["terrain_name"], move_cost_text, cost_data["terrain_mult"]]
     terrain_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     terrain_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
     _preview_container.add_child(terrain_label)
@@ -1413,9 +1413,9 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     # Расчёт множителя расстояния: исходный (1 + гексов × УНИВЕРСАЛЬНЫЙ
     # модификатор дальности из data/game_balance.json) плюс влияние изученных
     # технологий (например, «Колесо» -30%).
-    var dist_text: String = " Расстояние до города: %d гекс(а) → база ×%.2f" % [cost_data["distance"], cost_data["distance_mult_base"]]
+    var dist_text: String = tr(" Distance to city: %d hex(es) → base ×%.2f") % [cost_data["distance"], cost_data["distance_mult_base"]]
     if cost_data.has("distance_tech_mult") and cost_data["distance_tech_mult"] != 1.0:
-        dist_text += ", технологии ×%.2f" % cost_data["distance_tech_mult"]
+        dist_text += tr(", technology ×%.2f") % cost_data["distance_tech_mult"]
     dist_text += " = ×%.2f" % cost_data["distance_mult"]
     dist_label.text = dist_text
     dist_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1424,15 +1424,15 @@ func _build_preview(row: int, col: int, tile: Dictionary):
 
     var const_label = Label.new()
     if cost_data.has("construction_tech_mult") and cost_data["construction_tech_mult"] != 1.0:
-        const_label.text = " Технологии строительства: ×%.2f" % cost_data["construction_tech_mult"]
+        const_label.text = tr(" Construction technologies: ×%.2f") % cost_data["construction_tech_mult"]
     else:
-        const_label.text = " Технологии строительства: ×1.00"
+        const_label.text = tr(" Construction technologies: ×1.00")
     const_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     const_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
     _preview_container.add_child(const_label)
 
     var total_label = Label.new()
-    total_label.text = " Итого: %d труда" % cost_data["cost"]
+    total_label.text = tr(" Total: %d work") % cost_data["cost"]
     total_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     total_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
     _preview_container.add_child(total_label)
@@ -1447,7 +1447,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
 # Жёлтая строка «выполняется мгновенно» для блоков превью.
 func _add_instant_hint() -> void:
     var hint := Label.new()
-    hint.text = " Дебаг: выполняется мгновенно и бесплатно"
+    hint.text = tr(" Debug: instant and free")
     hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     hint.add_theme_color_override("font_color", Color(0.9, 0.9, 0.5))
     _preview_container.add_child(hint)
@@ -1493,7 +1493,7 @@ func _build_road_preview(row: int, col: int, action_id: String) -> bool:
     var plan: Dictionary = main_map.get_road_plan(row, col)
     if not plan.get("ok", false):
         var warn := Label.new()
-        warn.text = " %s" % str(plan.get("reason", "Дорогу построить нельзя"))
+        warn.text = " %s" % str(plan.get("reason", tr("Cannot build a road")))
         warn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
         warn.add_theme_color_override("font_color", Color(0.9, 0.6, 0.6))
         _preview_container.add_child(warn)
@@ -1506,15 +1506,15 @@ func _build_road_preview(row: int, col: int, action_id: String) -> bool:
         var town = null
         if main_map.town_manager != null:
             town = main_map.town_manager.find_town_at(row, col)
-        var town_name := str(town.get("name", "городка")) if town != null else "городка"
-        target_label.text = " Куда: ближайшая дорога в кольце влияния городка «%s»" % town_name
+        var town_name := str(town.get("name", tr("the town"))) if town != null else tr("the town")
+        target_label.text = tr(" Destination: the nearest road in the town \"%s\" influence ring") % town_name
         # Маршрут может оказаться длиннее, чем «прямая» дорога: он идёт только
         # по разведанной территории — ровно тем путём, которым игрок дошёл до
         # городка. Без этой строки цена в 2–3 раза выше ожидаемой выглядит
         # ошибкой.
-        target_label.text += " (только по разведанной территории)"
+        target_label.text += tr(" (only across scouted territory)")
     else:
-        target_label.text = " Куда: от ближайшей дороги города до этого гекса"
+        target_label.text = tr(" Destination: from the city's nearest road to this hex")
     target_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     target_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
     _preview_container.add_child(target_label)
@@ -1527,14 +1527,14 @@ func _build_road_preview(row: int, col: int, action_id: String) -> bool:
     var breakdown: Dictionary = main_map.get_road_cost_breakdown(row, col, action_id)
     if not breakdown.get("ok", false):
         var warn2 := Label.new()
-        warn2.text = " %s" % str(breakdown.get("reason", "Дорогу построить нельзя"))
+        warn2.text = " %s" % str(breakdown.get("reason", tr("Cannot build a road")))
         warn2.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
         warn2.add_theme_color_override("font_color", Color(0.9, 0.6, 0.6))
         _preview_container.add_child(warn2)
         return false
 
     var cost_label := Label.new()
-    cost_label.text = " Стоимость: %d труда" % int(breakdown.get("cost", 0))
+    cost_label.text = tr(" Cost: %d work") % int(breakdown.get("cost", 0))
     cost_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     cost_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
     _preview_container.add_child(cost_label)
@@ -1544,10 +1544,10 @@ func _build_road_preview(row: int, col: int, action_id: String) -> bool:
     # на карте участки с очень разными прогресс-барами и не понимает почему.
     var min_step := int(breakdown.get("min_step_cost", 0))
     var max_step := int(breakdown.get("max_step_cost", 0))
-    var step_text := " За участок: %d труда" % min_step
+    var step_text := tr(" Per section: %d work") % min_step
     if max_step != min_step:
-        step_text = " За участок: от %d до %d труда" % [min_step, max_step]
-    step_text += " (база %d)" % int(GameData.special_actions.get(action_id, {}).get("work_cost", 0))
+        step_text = tr(" Per section: %d to %d work") % [min_step, max_step]
+    step_text += tr(" (base %d)") % int(GameData.special_actions.get(action_id, {}).get("work_cost", 0))
     var step_label := Label.new()
     step_label.text = step_text
     step_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1555,7 +1555,7 @@ func _build_road_preview(row: int, col: int, action_id: String) -> bool:
     _preview_container.add_child(step_label)
 
     var segments_label := Label.new()
-    segments_label.text = " Новых участков трассы: %d" % int(breakdown.get("segments", 0))
+    segments_label.text = tr(" New route sections: %d") % int(breakdown.get("segments", 0))
     segments_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     segments_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
     _preview_container.add_child(segments_label)
@@ -1565,10 +1565,10 @@ func _build_road_preview(row: int, col: int, action_id: String) -> bool:
     var min_dist := int(breakdown.get("min_distance", 0))
     var max_dist := int(breakdown.get("max_distance", 0))
     var dist_label := Label.new()
-    var dist_text := " Расстояние до города: %d гекс(а)" % min_dist
+    var dist_text := tr(" Distance to city: %d hex(es)") % min_dist
     if max_dist != min_dist:
-        dist_text = " Расстояние до города: от %d до %d гекс(а)" % [min_dist, max_dist]
-    dist_text += " → база ×%.2f…×%.2f" % [
+        dist_text = tr(" Distance to city: %d to %d hex(es)") % [min_dist, max_dist]
+    dist_text += tr(" → base ×%.2f…×%.2f") % [
         MapHelpers.get_road_distance_mult(min_dist),
         MapHelpers.get_road_distance_mult(max_dist)]
     dist_label.text = dist_text
@@ -1586,7 +1586,7 @@ func _build_road_preview(row: int, col: int, action_id: String) -> bool:
             var tname: String = str(GameData.terrains.get(tid, {}).get("name", tid))
             parts.append("%s ×%.2f" % [tname, MapHelpers.get_terrain_work_mult(tid)])
         var terr_label := Label.new()
-        terr_label.text = " Местность на трассе: %s" % ", ".join(parts)
+        terr_label.text = tr(" Terrain on the route: %s") % ", ".join(parts)
         terr_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
         terr_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
         _preview_container.add_child(terr_label)
@@ -1595,7 +1595,7 @@ func _build_road_preview(row: int, col: int, action_id: String) -> bool:
     # с прогресс-баром на текущем участке. Без этой строки игрок ждёт готовую
     # дорогу целиком и не понимает, почему она появляется по кускам.
     var steps_hint := Label.new()
-    steps_hint.text = " Будет строиться участками: по одному гексу за раз"
+    steps_hint.text = tr(" Will be built in sections: one hex at a time")
     steps_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     steps_hint.add_theme_color_override("font_color", Color(0.8, 0.85, 0.95))
     _preview_container.add_child(steps_hint)

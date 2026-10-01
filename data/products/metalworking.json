@@ -2,42 +2,42 @@
   "resources": [
     {
       "id": "copper_tools", "price": 40,
-      "name": "Медные инструменты",
+      "name": "Copper Tools",
       "type": "product",
       "category": "tools",
       "icon": "copper_tools.png"
     },
     {
       "id": "bronze_tools", "price": 60,
-      "name": "Бронзовые инструменты",
+      "name": "Bronze Tools",
       "type": "product",
       "category": "tools",
       "icon": "bronze_tools.png"
     },
     {
       "id": "iron_tools", "price": 90,
-      "name": "Железные инструменты",
+      "name": "Iron Tools",
       "type": "product",
       "category": "tools",
       "icon": "iron_tools.png"
     },
     {
       "id": "copper_weapons", "price": 45,
-      "name": "Медное оружие",
+      "name": "Copper Weapons",
       "type": "product",
       "category": "weapons",
       "icon": "copper_weapons.png"
     },
     {
       "id": "bronze_weapons", "price": 70,
-      "name": "Бронзовое оружие",
+      "name": "Bronze Weapons",
       "type": "product",
       "category": "weapons",
       "icon": "bronze_weapons.png"
     },
     {
       "id": "iron_weapons", "price": 110,
-      "name": "Железное оружие",
+      "name": "Iron Weapons",
       "type": "product",
       "category": "weapons",
       "icon": "iron_weapons.png"

@@ -1,14 +1,14 @@
 {
   "resources": [
-    { "id": "hide", "price": 5, "name": "Шкура", "type": "product", "category": "material", "icon": "hide.png" },
-    { "id": "wool", "price": 8, "name": "Шерсть", "type": "product", "category": "material", "icon": "wool.png" },
-    { "id": "wax", "price": 9, "name": "Воск", "type": "product", "category": "material", "icon": "wax.png" },
-    { "id": "feathers", "price": 4, "name": "Перья", "type": "product", "category": "material", "icon": "feathers.png" },
-    { "id": "flour", "price": 4, "name": "Мука", "type": "product", "category": "material", "icon": "flour.png" },
-    { "id": "clay", "price": 3, "name": "Глина", "type": "product", "category": "material", "icon": "clay.png" },
+    { "id": "hide", "price": 5, "name": "Hide", "type": "product", "category": "material", "icon": "hide.png" },
+    { "id": "wool", "price": 8, "name": "Wool", "type": "product", "category": "material", "icon": "wool.png" },
+    { "id": "wax", "price": 9, "name": "Wax", "type": "product", "category": "material", "icon": "wax.png" },
+    { "id": "feathers", "price": 4, "name": "Feathers", "type": "product", "category": "material", "icon": "feathers.png" },
+    { "id": "flour", "price": 4, "name": "Flour", "type": "product", "category": "material", "icon": "flour.png" },
+    { "id": "clay", "price": 3, "name": "Clay", "type": "product", "category": "material", "icon": "clay.png" },
     {
       "id": "leather", "price": 14,
-      "name": "Кожа",
+      "name": "Leather",
       "type": "product",
       "category": "material",
       "unlock_tech": "leatherworking",
@@ -16,7 +16,7 @@
     },
     {
       "id": "flax", "price": 4,
-      "name": "Лён",
+      "name": "Flax",
       "type": "product",
       "category": "material",
       "unlock_tech": "weaving",
@@ -24,7 +24,7 @@
     },
     {
       "id": "cotton", "price": 6,
-      "name": "Хлопок",
+      "name": "Cotton",
       "type": "product",
       "category": "material",
       "unlock_tech": "weaving",
@@ -32,7 +32,7 @@
     },
     {
       "id": "hemp", "price": 5,
-      "name": "Конопля",
+      "name": "Hemp",
       "type": "product",
       "category": "material",
       "unlock_tech": "weaving",
@@ -40,7 +40,7 @@
     },
     {
       "id": "jute", "price": 5,
-      "name": "Джут",
+      "name": "Jute",
       "type": "product",
       "category": "material",
       "unlock_tech": "weaving",
@@ -48,7 +48,7 @@
     },
     {
       "id": "ramie", "price": 5,
-      "name": "Рами",
+      "name": "Ramie",
       "type": "product",
       "category": "material",
       "unlock_tech": "weaving",
@@ -56,7 +56,7 @@
     },
     {
       "id": "tea_leaves", "price": 6,
-      "name": "Чайные листья",
+      "name": "Tea Leaves",
       "type": "product",
       "category": "material",
       "unlock_tech": "fermentation",
@@ -64,7 +64,7 @@
     },
     {
       "id": "coffee_beans", "price": 7,
-      "name": "Кофейные зёрна",
+      "name": "Coffee Beans",
       "type": "product",
       "category": "material",
       "unlock_tech": "fermentation",
@@ -72,7 +72,7 @@
     },
     {
       "id": "sisal", "price": 6,
-      "name": "Сизаль",
+      "name": "Sisal",
       "type": "product",
       "category": "material",
       "unlock_tech": "weaving",
@@ -80,7 +80,7 @@
     },
     {
       "id": "mulberry_bark", "price": 6,
-      "name": "Кора тутовника",
+      "name": "Mulberry Bark",
       "type": "product",
       "category": "material",
       "unlock_tech": "paper",
@@ -88,7 +88,7 @@
     },
     {
       "id": "paper", "price": 14,
-      "name": "Бумага",
+      "name": "Paper",
       "type": "product",
       "category": "material",
       "unlock_tech": "paper",
@@ -97,7 +97,7 @@
     },
     {
       "id": "silk_cocoon", "price": 30,
-      "name": "Кокон тутового шелкопряда",
+      "name": "Silk Cocoon",
       "type": "product",
       "category": "material",
       "unlock_tech": "sericulture",
@@ -105,7 +105,7 @@
     },
     {
       "id": "silk", "price": 60,
-      "name": "Шёлк",
+      "name": "Silk",
       "type": "product",
       "category": "material",
       "unlock_tech": "sericulture",
@@ -114,7 +114,7 @@
     },
     {
       "id": "lime", "price": 6,
-      "name": "Известь",
+      "name": "Lime",
       "type": "product",
       "category": "material",
       "unlock_tech": "pottery",
@@ -122,7 +122,7 @@
     },
     {
       "id": "papyrus_plant", "price": 5,
-      "name": "Папирус",
+      "name": "Papyrus",
       "type": "product",
       "category": "material",
       "unlock_tech": "writing",
@@ -135,7 +135,7 @@
       // data/covers.json). Направляется в «Лесопилку» (рецепт «Распиловка
       // досок» → Доски).
       "id": "wood", "price": 2,
-      "name": "Древесина",
+      "name": "Wood",
       "type": "product",
       "category": "material",
       "unlock_tech": "wood_processing",
@@ -143,7 +143,7 @@
     },
     {
       "id": "charcoal", "price": 5,
-      "name": "Древесный уголь",
+      "name": "Charcoal",
       "type": "product",
       "category": "material",
       "unlock_tech": "native_metals",
@@ -151,7 +151,7 @@
     },
     {
       "id": "copper_ore", "price": 6,
-      "name": "Медная руда",
+      "name": "Copper Ore",
       "type": "product",
       "category": "material",
       "unlock_tech": "native_metals",
@@ -159,7 +159,7 @@
     },
     {
       "id": "gold_ore", "price": 22,
-      "name": "Золотая руда",
+      "name": "Gold Ore",
       "type": "product",
       "category": "material",
       "unlock_tech": "native_metals",
@@ -167,7 +167,7 @@
     },
     {
       "id": "silver_ore", "price": 16,
-      "name": "Серебряная руда",
+      "name": "Silver Ore",
       "type": "product",
       "category": "material",
       "unlock_tech": "native_metals",
@@ -175,7 +175,7 @@
     },
     {
       "id": "tin_ore", "price": 8,
-      "name": "Оловянная руда",
+      "name": "Tin Ore",
       "type": "product",
       "category": "material",
       "unlock_tech": "native_metals",
@@ -183,7 +183,7 @@
     },
     {
       "id": "antimony_ore", "price": 12,
-      "name": "Сурьмяная руда",
+      "name": "Antimony Ore",
       "type": "product",
       "category": "material",
       "unlock_tech": "native_metals",
@@ -191,7 +191,7 @@
     },
     {
       "id": "arsenic_ore", "price": 12,
-      "name": "Мышьяковая руда",
+      "name": "Arsenic Ore",
       "type": "product",
       "category": "material",
       "unlock_tech": "native_metals",
@@ -199,7 +199,7 @@
     },
     {
       "id": "iron_ore", "price": 10,
-      "name": "Железная руда",
+      "name": "Iron Ore",
       "type": "product",
       "category": "material",
       "unlock_tech": "native_metals",
@@ -207,7 +207,7 @@
     },
     {
       "id": "cinnabar_ore", "price": 12,
-      "name": "Киноварь (руда)",
+      "name": "Cinnabar (Ore)",
       "type": "product",
       "category": "material",
       "unlock_tech": "dyeing",
@@ -215,7 +215,7 @@
     },
     {
       "id": "lazurite_ore", "price": 18,
-      "name": "Лазурит",
+      "name": "Lazurite",
       "type": "product",
       "category": "material",
       "unlock_tech": "dyeing",
@@ -223,7 +223,7 @@
     },
     {
       "id": "malachite_ore", "price": 14,
-      "name": "Малахит (руда)",
+      "name": "Malachite (Ore)",
       "type": "product",
       "category": "material",
       "unlock_tech": "dyeing",
@@ -231,7 +231,7 @@
     },
     {
       "id": "indigofera_leaves", "price": 6,
-      "name": "Листья индигоферы",
+      "name": "Indigofera Leaves",
       "type": "product",
       "category": "material",
       "unlock_tech": "plantations",
@@ -239,7 +239,7 @@
     },
     {
       "id": "lawsonia_leaves", "price": 6,
-      "name": "Листья лавсонии",
+      "name": "Lawsonia Leaves",
       "type": "product",
       "category": "material",
       "unlock_tech": "plantations",
@@ -247,7 +247,7 @@
     },
     {
       "id": "marena_roots", "price": 8,
-      "name": "Корень марены",
+      "name": "Madder Root",
       "type": "product",
       "category": "material",
       "unlock_tech": "plantations",
@@ -255,7 +255,7 @@
     },
     {
       "id": "woad_leaves", "price": 6,
-      "name": "Листья вайды",
+      "name": "Woad Leaves",
       "type": "product",
       "category": "material",
       "unlock_tech": "plantations",
@@ -263,7 +263,7 @@
     },
     {
       "id": "campeche_wood", "price": 10,
-      "name": "Древесина кампешевого дерева",
+      "name": "Campeche Wood",
       "type": "product",
       "category": "material",
       "unlock_tech": "plantations",
@@ -271,7 +271,7 @@
     },
     {
       "id": "safflower_leaves", "price": 7,
-      "name": "Листья сафлора",
+      "name": "Safflower Leaves",
       "type": "product",
       "category": "material",
       "unlock_tech": "plantations",
@@ -279,7 +279,7 @@
     },
     {
       "id": "cochineal", "price": 12,
-      "name": "Кошениль",
+      "name": "Cochineal",
       "type": "product",
       "category": "material",
       "unlock_tech": "plantations",

@@ -327,7 +327,7 @@ func status_text() -> String:
     var slot0: Dictionary = ingredient_slots[0]
     var filled = int(slot0.get("filled", 0))
     var required = int(slot0.get("required", 0))
-    return "%d/%d (%.1f сек)" % [filled, required, elapsed]
+    return tr("%d/%d (%.1f sec)") % [filled, required, elapsed]
 
 # --- СЕРИАЛИЗАЦИЯ ---
 # Формат:

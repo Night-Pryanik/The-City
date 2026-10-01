@@ -3,7 +3,7 @@
     {
       "id": "ochre",
       "price": 5,
-      "name": "Охра",
+      "name": "Ochre",
       "type": "product",
       "category": "material",
       "unlock_tech": "dyeing",
@@ -12,7 +12,7 @@
     {
       "id": "indigo",
       "price": 22,
-      "name": "Индиго",
+      "name": "Indigo",
       "type": "product",
       "category": "material",
       "unlock_tech": "dyeing",
@@ -21,7 +21,7 @@
     {
       "id": "henna",
       "price": 12,
-      "name": "Хна",
+      "name": "Henna",
       "type": "product",
       "category": "material",
       "unlock_tech": "dyeing",
@@ -30,7 +30,7 @@
     {
       "id": "purple",
       "price": 55,
-      "name": "Пурпур",
+      "name": "Purple",
       "type": "product",
       "category": "material",
       "unlock_tech": "dyeing",
@@ -39,7 +39,7 @@
     {
       "id": "sepia",
       "price": 20,
-      "name": "Сепия",
+      "name": "Sepia",
       "type": "product",
       "category": "material",
       "unlock_tech": "dyeing",
@@ -48,7 +48,7 @@
     {
       "id": "rose_madder",
       "price": 10,
-      "name": "Крапп",
+      "name": "Rose Madder",
       "type": "product",
       "category": "material",
       "unlock_tech": "dyeing",
@@ -57,7 +57,7 @@
     {
       "id": "woad",
       "price": 8,
-      "name": "Вайда",
+      "name": "Woad",
       "type": "product",
       "category": "material",
       "unlock_tech": "dyeing",
@@ -66,7 +66,7 @@
     {
       "id": "campeche",
       "price": 18,
-      "name": "Кампеш",
+      "name": "Campeche",
       "type": "product",
       "category": "material",
       "unlock_tech": "dyeing",
@@ -75,7 +75,7 @@
     {
       "id": "carthamin",
       "price": 15,
-      "name": "Картамин",
+      "name": "Carthamin",
       "type": "product",
       "category": "material",
       "unlock_tech": "dyeing",
@@ -84,7 +84,7 @@
     {
       "id": "carmine",
       "price": 32,
-      "name": "Кармин",
+      "name": "Carmine",
       "type": "product",
       "category": "material",
       "unlock_tech": "dyeing",
@@ -93,7 +93,7 @@
     {
       "id": "cinnabar",
       "price": 25,
-      "name": "Киноварь",
+      "name": "Cinnabar",
       "type": "product",
       "category": "material",
       "unlock_tech": "dyeing",
@@ -102,7 +102,7 @@
     {
       "id": "ultramarine",
       "price": 38,
-      "name": "Ультрамарин",
+      "name": "Ultramarine",
       "type": "product",
       "category": "material",
       "unlock_tech": "dyeing",
@@ -111,7 +111,7 @@
     {
       "id": "malachite",
       "price": 15,
-      "name": "Малахит",
+      "name": "Malachite",
       "type": "product",
       "category": "material",
       "unlock_tech": "dyeing",

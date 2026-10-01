@@ -3,7 +3,7 @@
     {
       "id": "meteorite_iron_nugget",
       "price": 45,
-      "name": "Метеоритное железо",
+      "name": "Meteorite Iron",
       "type": "raw",
       "category": "metals",
       "group": "",
@@ -20,7 +20,7 @@
     {
       "id": "copper_nugget",
       "price": 14,
-      "name": "Медный самородок",
+      "name": "Copper Nugget",
       "type": "raw",
       "category": "metals",
       "group": "",
@@ -37,7 +37,7 @@
     {
       "id": "gold_nugget",
       "price": 70,
-      "name": "Золотой самородок",
+      "name": "Gold Nugget",
       "type": "raw",
       "category": "metals",
       "group": "",
@@ -54,7 +54,7 @@
     {
       "id": "silver_nugget",
       "price": 40,
-      "name": "Серебряный самородок",
+      "name": "Silver Nugget",
       "type": "raw",
       "category": "metals",
       "group": "",
@@ -71,7 +71,7 @@
     {
       "id": "hematite_deposit",
       "price": 10,
-      "name": "Железо",
+      "name": "Iron",
       "type": "raw",
       "category": "metals",
       "group": "",
@@ -90,7 +90,7 @@
     {
       "id": "limonite_deposit",
       "price": 10,
-      "name": "Железо",
+      "name": "Iron",
       "type": "raw",
       "category": "metals",
       "group": "",
@@ -109,7 +109,7 @@
     {
       "id": "copper_deposit",
       "price": 6,
-      "name": "Медь",
+      "name": "Copper",
       "type": "raw",
       "category": "metals",
       "group": "",
@@ -128,7 +128,7 @@
     {
       "id": "gold_deposit",
       "price": 22,
-      "name": "Золото",
+      "name": "Gold",
       "type": "raw",
       "category": "metals",
       "group": "",
@@ -147,7 +147,7 @@
     {
       "id": "silver_deposit",
       "price": 16,
-      "name": "Серебро",
+      "name": "Silver",
       "type": "raw",
       "category": "metals",
       "group": "",
@@ -166,7 +166,7 @@
     {
       "id": "tin_deposit",
       "price": 8,
-      "name": "Олово",
+      "name": "Tin",
       "type": "raw",
       "category": "metals",
       "group": "",
@@ -185,7 +185,7 @@
     {
       "id": "antimony_deposit",
       "price": 12,
-      "name": "Сурьма",
+      "name": "Antimony",
       "type": "raw",
       "category": "metals",
       "group": "",
@@ -204,7 +204,7 @@
     {
       "id": "arsenic_deposit",
       "price": 12,
-      "name": "Мышьяк",
+      "name": "Arsenic",
       "type": "raw",
       "category": "metals",
       "group": "",

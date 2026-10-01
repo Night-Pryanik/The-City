@@ -3,7 +3,7 @@
     {
       "id": "beer",
       "price": 8,
-      "name": "Пиво",
+      "name": "Beer",
       "type": "product",
       "category": "drinks",
       "unlock_tech": "fermentation",
@@ -12,7 +12,7 @@
     {
       "id": "mead",
       "price": 12,
-      "name": "Медовый напиток",
+      "name": "Mead",
       "type": "product",
       "category": "drinks",
       "unlock_tech": "mead_making",
@@ -21,7 +21,7 @@
     {
       "id": "wine",
       "price": 18,
-      "name": "Вино",
+      "name": "Wine",
       "type": "product",
       "category": "drinks",
       "unlock_tech": "winemaking",
@@ -30,7 +30,7 @@
     {
       "id": "sake",
       "price": 14,
-      "name": "Саке",
+      "name": "Sake",
       "type": "product",
       "category": "drinks",
       "unlock_tech": "fermentation",
@@ -39,7 +39,7 @@
     {
       "id": "pulque",
       "price": 7,
-      "name": "Пульке",
+      "name": "Pulque",
       "type": "product",
       "category": "drinks",
       "unlock_tech": "fermentation",
@@ -48,7 +48,7 @@
     {
       "id": "tea",
       "price": 15,
-      "name": "Чай",
+      "name": "Tea",
       "type": "product",
       "category": "drinks",
       "unlock_tech": "fermentation",
@@ -57,7 +57,7 @@
     {
       "id": "coffee",
       "price": 18,
-      "name": "Кофе",
+      "name": "Coffee",
       "type": "product",
       "category": "drinks",
       "unlock_tech": "fermentation",
@@ -66,7 +66,7 @@
     {
       "id": "vinegar",
       "price": 18,
-      "name": "Уксус",
+      "name": "Vinegar",
       "type": "product",
       "category": "drinks",
       "unlock_tech": "fermentation",
@@ -75,7 +75,7 @@
     {
       "id": "fruit_wine",
       "price": 18,
-      "name": "Фруктовое вино",
+      "name": "Fruit Wine",
       "type": "product",
       "category": "drinks",
       "unlock_tech": "winemaking",

@@ -371,19 +371,19 @@ func _compute_road_plan(
     hex_allowed: Callable
 ) -> Dictionary:
     if row < 0 or row >= tile_data.size() or col < 0 or col >= tile_data[row].size():
-        return _road_plan(false, "Гекс за пределами карты", [], 0, false)
+        return _road_plan(false, tr("Hex outside the map"), [], 0, false)
     var tile = tile_data[row][col]
     if tile == null:
-        return _road_plan(false, "Гекс за пределами карты", [], 0, false)
+        return _road_plan(false, tr("Hex outside the map"), [], 0, false)
     var is_town := bool(tile.get("has_town", false))
 
     # --- Гекс ГОРОДКА: соединяем с дорожной сетью городка в его кольце ---
     if is_town:
         if is_town_linked_to_city(row, col):
-            return _road_plan(false, "Городок уже соединён дорогой", [], 0, true)
+            return _road_plan(false, tr("The town is already connected by a road"), [], 0, true)
         var targets := _town_road_targets_in_ring(row, col, town_influence_hexes)
         if targets.is_empty():
-            return _road_plan(false, "У городка нет дороги в кольце влияния", [], 0, true)
+            return _road_plan(false, tr("The town has no road inside the influence ring"), [], 0, true)
         # Многоточечный поиск: от всех дорог кольца — к ближайшей дороге города.
         # Трасса идёт ТОЛЬКО по известной территории (см. hex_allowed): к
         # городку нельзя даже подойти, не разведав дорогу до него.
@@ -394,18 +394,18 @@ func _compute_road_plan(
                     region_rows, region_cols, hex_allowed), [], 0, true)
         if not _validate_path(town_path):
             printerr("Ошибка: путь дороги к городку содержит несоседние гексы!")
-            return _road_plan(false, "Не удалось найти путь до городка", [], 0, true)
+            return _road_plan(false, tr("Could not find a path to the town"), [], 0, true)
         return _road_plan(true, "", town_path, town_path.size() - 1, true)
 
     # --- Обычный гекс: дорога до него от ближайшей дороги города ---
     if is_hex_connected(row, col):
-        return _road_plan(false, "К гексу уже проложена дорога", [], 0, false)
+        return _road_plan(false, tr("A road to the hex already exists"), [], 0, false)
     if MapHelpers.is_water_terrain(tile.get("terrain", "plain")):
-        return _road_plan(false, "По воде дорога не строится", [], 0, false)
+        return _road_plan(false, tr("Roads cannot be built over water"), [], 0, false)
     var hex_path = _find_connect_path(row, col, connected_hexes,
             tile_data, region_rows, region_cols, hex_allowed)
     if hex_path.is_empty():
-        return _road_plan(false, "От города нет сухопутного пути до этого гекса", [], 0, false)
+        return _road_plan(false, tr("There is no land route from the city to this hex"), [], 0, false)
     return _road_plan(true, "", hex_path, hex_path.size() - 1, false)
 
 # Почему не получилось дойти до городка, и что игроку с этим делать. Случая два,
@@ -424,12 +424,12 @@ func _town_road_failure_reason(
         region_cols: int,
         hex_allowed: Callable) -> String:
     if not hex_allowed.is_valid():
-        return "От города нет сухопутного пути до городка"
+        return tr("There is no land route from the city to the town")
     var any_path := _find_path_between(targets, connected_hexes,
             tile_data, region_rows, region_cols)
     if any_path.is_empty():
-        return "От города нет сухопутного пути до городка (городок за водой)"
-    return "Нет разведанного пути от города до городка — отправьте туда разведчиков"
+        return tr("There is no land route from the city to the town (the town is across water)")
+    return tr("No scouted route from the city to the town — send scouts there")
 
 func _road_plan(ok: bool, reason: String, path: Array, segments: int, is_town: bool) -> Dictionary:
     return {

@@ -2,7 +2,7 @@
   "resources": [
     {
       "id": "glass_jewelry", "price": 22,
-      "name": "Стеклянные украшения",
+      "name": "Glass Jewelry",
       "type": "product",
       "category": "luxury",
       "unlock_tech": "glassmaking",
@@ -10,7 +10,7 @@
     },
     {
       "id": "gold_jewelry", "price": 140,
-      "name": "Золотые украшения",
+      "name": "Gold Jewelry",
       "type": "product",
       "category": "luxury",
       "unlock_tech": "metallurgy",
@@ -18,7 +18,7 @@
     },
     {
       "id": "copper_jewelry", "price": 28,
-      "name": "Медные украшения",
+      "name": "Copper Jewelry",
       "type": "product",
       "category": "luxury",
       "unlock_tech": "metallurgy",
@@ -26,7 +26,7 @@
     },
     {
       "id": "silver_jewelry", "price": 90,
-      "name": "Серебряные украшения",
+      "name": "Silver Jewelry",
       "type": "product",
       "category": "luxury",
       "unlock_tech": "metallurgy",
@@ -34,7 +34,7 @@
     },
     {
       "id": "bronze_jewelry", "price": 40,
-      "name": "Бронзовые украшения",
+      "name": "Bronze Jewelry",
       "type": "product",
       "category": "luxury",
       "unlock_tech": "bronze",
@@ -42,7 +42,7 @@
     },
     {
       "id": "iron_jewelry", "price": 55,
-      "name": "Железные украшения",
+      "name": "Iron Jewelry",
       "type": "product",
       "category": "luxury",
       "unlock_tech": "iron_processing",
@@ -50,7 +50,7 @@
     },
     {
       "id": "lazurite_jewelry", "price": 120,
-      "name": "Украшения из ляпис-лазури",
+      "name": "Lazurite Jewelry",
       "type": "product",
       "category": "luxury",
       "unlock_tech": "jewelry",
@@ -58,7 +58,7 @@
     },
     {
       "id": "malachite_jewelry", "price": 120,
-      "name": "Украшения из малахита",
+      "name": "Malachite Jewelry",
       "type": "product",
       "category": "luxury",
       "unlock_tech": "jewelry",

@@ -2,83 +2,83 @@
   "crafts": [
     {
       "id": "copper_jewelry",
-      "name": "Медные украшения",
+      "name": "Copper Jewelry",
       "produced_in": [ "jeweler_house" ],
       "resources": { "copper": 10, "charcoal": 10 },
       "result": { "copper_jewelry": 10 },
       "time": 15,
       "unlock_tech": "jewelry",
-      "description": "Создаёт украшения из меди"
+      "description": "Makes jewelry out of copper."
     },
     {
       "id": "gold_jewelry",
-      "name": "Золотые украшения",
+      "name": "Gold Jewelry",
       "produced_in": [ "jeweler_house" ],
       "resources": { "gold": 10, "charcoal": 10 },
       "result": { "gold_jewelry": 10 },
       "time": 20,
       "unlock_tech": "jewelry",
-      "description": "Создаёт украшения из золота"
+      "description": "Makes jewelry out of gold."
     },
     {
       "id": "silver_jewelry",
-      "name": "Серебряные украшения",
+      "name": "Silver Jewelry",
       "produced_in": [ "jeweler_house" ],
       "resources": { "silver": 10, "charcoal": 10 },
       "result": { "silver_jewelry": 10 },
       "time": 20,
       "unlock_tech": "jewelry",
-      "description": "Создаёт украшения из серебра"
+      "description": "Makes jewelry out of silver."
     },
     {
       "id": "bronze_jewelry",
-      "name": "Бронзовые украшения",
+      "name": "Bronze Jewelry",
       "produced_in": [ "jeweler_house" ],
       "resources": { "bronze": 10, "charcoal": 10 },
       "result": { "bronze_jewelry": 10 },
       "time": 15,
       "unlock_tech": "bronze",
-      "description": "Создаёт украшения из бронзы"
+      "description": "Makes jewelry out of bronze."
     },
     {
       "id": "iron_jewelry",
-      "name": "Железные украшения",
+      "name": "Iron Jewelry",
       "produced_in": [ "jeweler_house" ],
       "resources": { "iron": 10, "charcoal": 20 },
       "result": { "iron_jewelry": 10 },
       "time": 15,
       "unlock_tech": "iron_processing",
-      "description": "Создаёт украшения из железа"
+      "description": "Makes jewelry out of iron."
     },
     {
       "id": "lazurite_jewelry",
-      "name": "Украшения из ляпис-лазури",
+      "name": "Lazurite Jewelry",
       "produced_in": [ "jeweler_house" ],
       "resources": { "lazurite_ore": 10 },
       "result": { "lazurite_jewelry": 10 },
       "time": 18,
       "unlock_tech": "jewelry",
-      "description": "Создаёт украшения из ляпис-лазури"
+      "description": "Makes jewelry out of lazurite."
     },
     {
       "id": "malachite_jewelry",
-      "name": "Украшения из малахита",
+      "name": "Malachite Jewelry",
       "produced_in": [ "jeweler_house" ],
       "resources": { "malachite_ore": 10 },
       "result": { "malachite_jewelry": 10 },
       "time": 18,
       "unlock_tech": "jewelry",
-      "description": "Создаёт украшения из малахита"
+      "description": "Makes jewelry out of malachite."
     },
     {
       "id": "glass_jewelry",
-      "name": "Стекло",
+      "name": "Glass Jewelry",
       "produced_in": [ "glassmaker_house" ],
       "resources": { "quartz_sand": 20, "soda": 10 },
       "result": { "glass_jewelry": 10 },
       "time": 5.0,
       "unlock_tech": "glassmaking",
-      "description": "Превращает песок и соду в стеклянные украшения"
+      "description": "Turns sand and soda into glass jewelry."
     }
   ]
 }

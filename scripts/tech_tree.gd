@@ -150,26 +150,26 @@ func _rebuild_science_tooltip():
     var base: float = float(bd.get("base", CityData.BASE_SCIENCE_PER_SEC))
     var total: float = CityData.get_science_rate_per_sec()
 
-    science_tooltip_vbox.add_child(_make_bullet_row("•", "База: %.1f/сек" % base))
+    science_tooltip_vbox.add_child(_make_bullet_row("•", tr("Base: %.1f/sec") % base))
     for bld_entry in bd.get("buildings", []):
-        var bld_name: String = str(bld_entry.get("name", "Здание"))
+        var bld_name: String = str(bld_entry.get("name", tr("Building")))
         var fixed: float = float(bld_entry.get("fixed", 0.0))
         var mediums: float = float(bld_entry.get("mediums", 0.0))
         var bonus: float = float(bld_entry.get("bonus", 1.0))
         var bld_total := (fixed + mediums) * bonus
-        science_tooltip_vbox.add_child(_make_bullet_row("•", "%s: %.1f/сек" % [bld_name, bld_total]))
+        science_tooltip_vbox.add_child(_make_bullet_row("•", tr("%s: %.1f/sec") % [bld_name, bld_total]))
         if fixed > 0.0:
             # Чистое значение additional_yield.science, без бонусов.
-            science_tooltip_vbox.add_child(_make_bullet_sub_row("Здание: %.1f/сек" % fixed))
+            science_tooltip_vbox.add_child(_make_bullet_sub_row(tr("Building: %.1f/sec") % fixed))
         if mediums > 0.0:
             var names_str := _join_unique_names(bld_entry.get("mediums_names", []))
             # Чистый средневзвешенный special_yield смеси, без бонусов.
-            science_tooltip_vbox.add_child(_make_bullet_sub_row("Писчие материалы: %.1f/сек%s" % [mediums, names_str]))
+            science_tooltip_vbox.add_child(_make_bullet_sub_row(tr("Scholarly materials: %.1f/sec%s") % [mediums, names_str]))
         if abs(bonus - 1.0) > 0.001:
             var bonus_str := "+%d%%" % int(round((bonus - 1.0) * 100.0))
             var bonus_names_str := _join_unique_names(bld_entry.get("bonus_names", []))
-            science_tooltip_vbox.add_child(_make_bullet_sub_row("Бонус потребления: %s%s" % [bonus_str, bonus_names_str]))
-    science_tooltip_vbox.add_child(_make_bullet_row("•", "Итого: %.1f/сек" % total))
+            science_tooltip_vbox.add_child(_make_bullet_sub_row(tr("Consumption bonus: %s%s") % [bonus_str, bonus_names_str]))
+    science_tooltip_vbox.add_child(_make_bullet_row("•", tr("Total: %.1f/sec") % total))
 
 # « (Имя1, Имя2)» по уникальным именам в порядке первого появления; для
 # пустого списка — пустая строка.
@@ -660,7 +660,7 @@ func _create_antiquity_era_label(group: Dictionary) -> void:
     rtl.add_theme_font_size_override("normal_font_size", 12)
     rtl.add_theme_color_override("default_color", Color(0.9, 0.9, 0.95, 1.0))
     rtl.position = Vector2(group["x_center"] - ERA_LABEL_WIDTH * 0.5, 0.0)
-    rtl.text = "[center]" + group["era_name"] + "[/center]\n" + "[center][color=#c9c9c9]Условие для перехода:[/color] построен " + icon_tag + "Рынок (" + count_text + ")" + check + "[/center]"
+    rtl.text = "[center]" + group["era_name"] + "[/center]\n" + tr("[center][color=#c9c9c9]Advance requirement:[/color] build ") + icon_tag + tr("Market (") + count_text + ")" + check + "[/center]"
     _inner.add_child(rtl)
     _era_labels.append(rtl)
 
@@ -837,9 +837,9 @@ func _create_tech_button(tech_data: Dictionary) -> Button:
     # после системной задержки (Project Settings → gui/timets/tooltip_delay_sec).
     var description: String = tech_data.get("description", "")
     if description.is_empty():
-        description = "Описание отсутствует."
+        description = tr("No description available.")
     var cost: int = int(tech_data.get("science_cost", 3))
-    btn.tooltip_text = "%s\n\nНаука: %d" % [description, cost]
+    btn.tooltip_text = tr("%s\n\nScience: %d") % [description, cost]
 
     # Клик — наверх, через сигнал.
     var tech_id: String = tech_data["id"]
@@ -922,7 +922,7 @@ func _get_unlock_items(tech_id: String) -> Array:
         if m.get("tech_id", "") != tech_id:
             continue
         if m.has("icon"):
-            var tip: String = m.get("name", "Эффект технологии")
+            var tip: String = m.get("name", tr("Technology effect"))
             _add_unlock_item(result, seen, m["icon"], tip)
 
     # Произвольные эффекты, заданные прямо в технологии (technologies.json):
@@ -930,7 +930,7 @@ func _get_unlock_items(tech_id: String) -> Array:
     var tech_data: Dictionary = _get_tech_data(tech_id)
     for eff in tech_data.get("unlock_effects", []):
         if eff is Dictionary:
-            _add_unlock_item(result, seen, eff.get("icon", ""), eff.get("name", "Эффект технологии"))
+            _add_unlock_item(result, seen, eff.get("icon", ""), eff.get("name", tr("Technology effect")))
 
     return result
 
@@ -1070,18 +1070,18 @@ func _update_states():
         if not tech_data.is_empty():
             var desc: String = tech_data.get("description", "")
             if desc.is_empty():
-                desc = "Описание отсутствует."
+                desc = tr("No description available.")
             var cost: int = int(tech_data.get("science_cost", 3))
             var extra := ""
             if is_unlocked:
-                extra = "\n\n[Изучено]"
+                extra = tr("\n\n[Researched]")
             elif is_current:
-                extra = "\n\n[Изучается]"
+                extra = tr("\n\n[Researching]")
             elif not is_available:
                 if CityData.is_tech_era_allowed(tech_id):
                     var prereq: String = CityData.get_tech_prerequisites_text(tech_id)
                     if not prereq.is_empty():
-                        extra = "\n\n[Требуется: %s]" % prereq
+                        extra = tr("\n\n[Required: %s]") % prereq
                 else:
                     # Prereq могут быть выполнены, но эпоха технологии выше текущей.
                     var era_idx: int = CityData.get_tech_era_index(tech_id)
@@ -1089,10 +1089,10 @@ func _update_states():
                     if era_idx >= 0 and era_idx < GameData.eras.size():
                         era_name = GameData.eras[era_idx].get("name", "")
                     if era_name.is_empty():
-                        extra = "\n\n[Недоступно: требуется переход в следующую эпоху]"
+                        extra = tr("\n\n[Unavailable: requires advancing to the next era]")
                     else:
-                        extra = "\n\n[Эпоха: %s — сначала перейдите в неё]" % era_name
-            btn.tooltip_text = "%s\nНаука: %d%s" % [desc, cost, extra]
+                        extra = tr("\n\n[Era: %s — advance to it first]") % era_name
+            btn.tooltip_text = tr("%s\nScience: %d%s") % [desc, cost, extra]
     
 func _find_progress_in_button(btn: Button) -> ProgressBar:
     for child in btn.get_children():
@@ -1196,17 +1196,17 @@ func _update_status_label():
     # нет: эта же скорость напрямую начисляется в прогресс исследования
     # (CityData.tick_research_science_continuous).
     if science_pool_label != null and is_instance_valid(science_pool_label):
-        science_pool_label.text = "Наука: %.1f/сек" % CityData.get_science_rate_per_sec()
+        science_pool_label.text = tr("Science: %.1f/sec") % CityData.get_science_rate_per_sec()
     if CityData.current_research_tech_id != "":
         var tech_data = _get_tech_data(CityData.current_research_tech_id)
         if not tech_data.is_empty():
             var collected: float = CityData.get_research_science_collected()
             var cost: int = CityData.current_research_science_cost
-            current_label.text = "Изучается: %s (наука: %.0f/%d)" % [tech_data["name"], collected, cost]
+            current_label.text = tr("Researching: %s (science: %.0f/%d)") % [tech_data["name"], collected, cost]
             return
-        current_label.text = "Изучается: ???"
+        current_label.text = tr("Researching: ???")
     else:
-        current_label.text = "Нет текущего исследования"
+        current_label.text = tr("No current research")
 func _on_tech_pressed(tech_id: String):
     emit_signal("research_requested", tech_id)
 

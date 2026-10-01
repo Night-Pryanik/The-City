@@ -5,37 +5,37 @@
       {
         "tech_id": "plow",
         "icon": "production_bonus.png",
-        "name": "Фермы: +50% к производству",
+        "name": "Farms: +50% production",
         "production_multiplier": { "farm": 1.5 }
       },
       {
         "tech_id": "wheel",
         "icon": "time_bonus.png",
-        "name": "Снижает вклад расстояния от города в стоимость труда при строительстве улучшений на 30%",
+        "name": "Reduces the effect of distance from the city on labor cost when building improvements by 30%",
         "modifiers": [ { "target": "improvement_distance_cost", "type": "percent", "value": -30 } ]
       },
       {
         "tech_id": "mathematics",
         "icon": "time_bonus.png",
-        "name": "Строительство: -10% к затратам труда",
+        "name": "Construction: -10% labor cost",
         "modifiers": [ { "target": "construction_cost", "type": "percent", "value": -10 } ]
       },
       {
         "tech_id": "irrigation",
         "icon": "water_chain.png",
-        "name": "Передача пресной воды по цепочке (до 3 гексов)",
+        "name": "Fresh water passes through in a chain (up to 3 tiles)",
         "modifiers": [ { "target": "water_chain_length", "value": 3 } ]
       },
       {
         "tech_id": "canals",
         "icon": "water_chain.png",
-        "name": "Передача пресной воды по цепочке (до 4 гексов)",
+        "name": "Fresh water passes through in a chain (up to 4 tiles)",
         "modifiers": [ { "target": "water_chain_length", "value": 4 } ]
       },
       {
         "tech_id": "calendar",
         "icon": "production_bonus.png",
-        "name": "Плантации: +30% к производству",
+        "name": "Plantations: +30% production",
         "production_multiplier": { "plantation": 1.3 }
       }
     ],

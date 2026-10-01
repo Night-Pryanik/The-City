@@ -17,7 +17,7 @@
   "improvements": [
     {
       "id": "farm",
-      "name": "Ферма",
+      "name": "Farm",
       "icon": "farm.png",
       "color": [ 255, 255, 0 ],
       "work_cost": 8,
@@ -34,7 +34,7 @@
     },
     {
       "id": "pasture",
-      "name": "Пастбище",
+      "name": "Pasture",
       "icon": "pasture.png",
       "color": [ 34, 139, 34 ],
       "work_cost": 25,
@@ -45,7 +45,7 @@
     },
     {
       "id": "mine",
-      "name": "Шахта",
+      "name": "Mine",
       "icon": "mine.png",
       "color": [ 105, 105, 105 ],
       "work_cost": 30,
@@ -55,7 +55,7 @@
     },
     {
       "id": "quarry",
-      "name": "Каменоломня",
+      "name": "Quarry",
       "icon": "quarry.png",
       "color": [ 139, 137, 137 ],
       "work_cost": 20,
@@ -65,7 +65,7 @@
     },
     {
       "id": "beehive",
-      "name": "Пасека",
+      "name": "Apiary",
       "icon": "beehive.png",
       "color": [ 255, 215, 0 ],
       "work_cost": 12,
@@ -75,7 +75,7 @@
     },
     {
       "id": "vineyard",
-      "name": "Виноградник",
+      "name": "Vineyard",
       "icon": "vineyard.png",
       "color": [ 128, 0, 0 ],
       "work_cost": 35,
@@ -85,7 +85,7 @@
     },
     {
       "id": "clay_pit",
-      "name": "Глиняная яма",
+      "name": "Clay Pit",
       "icon": "clay_pit.png",
       "color": [ 210, 180, 140 ],
       "work_cost": 22,
@@ -95,7 +95,7 @@
     },
     {
       "id": "plantation",
-      "name": "Плантация",
+      "name": "Plantation",
       "icon": "plantation.png",
       "color": [ 34, 139, 34 ],
       "work_cost": 28,
@@ -108,7 +108,7 @@
     },
     {
       "id": "tar_pit",
-      "name": "Смоляная яма",
+      "name": "Tar Pit",
       "icon": "tar_pit.png",
       "color": [ 139, 69, 19 ],
       "work_cost": 30,
@@ -118,7 +118,7 @@
     },
     {
       "id": "soda_quarry",
-      "name": "Содовый карьер",
+      "name": "Soda Quarry",
       "icon": "soda_quarry.png",
       "color": [ 200, 220, 255 ],
       "work_cost": 30,
@@ -128,7 +128,7 @@
     },
     {
       "id": "salt_pond",
-      "name": "Соляный пруд",
+      "name": "Salt Pond",
       "icon": "salt_pond.png",
       "color": [ 255, 255, 200 ],
       "work_cost": 30,
@@ -150,7 +150,7 @@
       // требует рабочего для выполнения своих функций (рабочих нельзя
       // назначать, кнопок «Запустить/Приостановить работу» в панели нет).
       "id": "harbor",
-      "name": "Пристань",
+      "name": "Harbor",
       "icon": "harbor.png",
       "color": [ 139, 90, 43 ],
       "work_cost": 25,
@@ -168,7 +168,7 @@
       // ресурсом, принадлежащих водоёму, на котором есть пристань (см. флаги
       // water_body_harbor у пристани и has_harbor_access в map_helpers.gd).
       "id": "fishing_boats",
-      "name": "Рыбацкие лодки",
+      "name": "Fishing Boats",
       "icon": "fishing_boats.png",
       "color": [ 70, 130, 180 ],
       "work_cost": 15,
@@ -187,7 +187,7 @@
       // в режиме «по цепочке» (is_canal): цепочка воды идёт через каналы,
       // как и через фермы/плантации, с ограничением дальности из tech_modifiers.
       "id": "irrigation_canal",
-      "name": "Ирригационный канал",
+      "name": "Irrigation Canal",
       "icon": "irrigation_canal.png",
       "color": [ 0, 191, 255 ],
       "work_cost": 20,
@@ -219,7 +219,7 @@
       // Реализация: расчёт/зачисление — в main_map.gd (тик производства),
       // доступность/превью — в control_panel.gd и map_tooltip.gd.
       "id": "lumberjack_hut",
-      "name": "Лесная делянка",
+      "name": "Woodcutter's Camp",
       "icon": "lumberjack_hut.png",
       "color": [ 101, 67, 33 ],
       "work_cost": 18,

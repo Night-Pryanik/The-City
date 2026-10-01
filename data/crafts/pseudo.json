@@ -2,23 +2,23 @@
   "crafts": [
     {
       "id": "empty",
-      "name": "Пусто",
+      "name": "Empty",
       "produced_in": [ "*" ],
       "resources": {  },
       "result": {  },
       "time": 0,
-      "description": "Слот не производит ничего"
+      "description": "This slot produces nothing."
     },
     {
       "id": "science",
-      "name": "Наука",
+      "name": "Science",
       "produced_in": [ "library", "scriptorium" ],
       "resources": { "@writing_materials": 20 },
       "result": {  },
       "display_result": { "science": 1 },
       "time": 5.0,
       "unlock_tech": "writing",
-      "description": "Переписчики и учёные превращают письменные материалы в знания, ускоряющие исследования технологий"
+      "description": "Scribes and scholars turn written material into knowledge that speeds up technology research."
     }
   ]
 }

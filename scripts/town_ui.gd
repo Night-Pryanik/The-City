@@ -46,15 +46,15 @@ func open_town(town: Dictionary, trade_available: bool = true):
 func _refresh():
     if _town == null:
         return
-    title_label.text = str(_town.get("name", "Городок"))
+    title_label.text = str(_town.get("name", tr("Town")))
     if status_label:
         # Статус торговли — пока только подпись. Пустая строка при доступной
         # торговле: «всё в порядке, ничего сообщать не нужно».
         status_label.text = "" if _trade_available \
-                else "Торговля недоступна: от города нет дороги до этого городка"
+                else tr("Trade unavailable: there is no road from the city to this town")
         status_label.visible = not status_label.text.is_empty()
-    _fill_resource_list(buy_list, _town.get("buy_pool", []), "Городок ничего не покупает")
-    _fill_resource_list(sell_list, _town.get("sell_pool", []), "В кольце влияния нет ресурсов")
+    _fill_resource_list(buy_list, _town.get("buy_pool", []), tr("The town buys nothing"))
+    _fill_resource_list(sell_list, _town.get("sell_pool", []), tr("No resources in the influence ring"))
 
 # Заполняет колонку одной строкой на каждый ресурс торгового пула.
 # Пул продажи содержит id ресурсов, поэтому имя берём из общего справочника.

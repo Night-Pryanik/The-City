@@ -2,23 +2,23 @@
 // Не путать с product_groups.json: здесь группы для бонусов, там — реестр групп для использования в рецептах и при учете потребления профессиями
 {
   "groups": [
-    {"id": "meat_animals", "name": "Мясные животные"},
-    {"id": "milk_animals", "name": "Молочные животные"},
-    {"id": "wool_animals", "name": "Шерстяные животные"},
-    {"id": "poultry", "name": "Домашняя птица"},
-    {"id": "fur_animals", "name": "Пушные животные"},
-    {"id": "bees", "name": "Пчёлы"},
-    {"id": "fish", "name": "Рыба"},
-    {"id": "misc_fish", "name": "Прочие водные животные"},
-    {"id": "decorative_plants", "name": "Декоративные растения"},
-    {"id": "medicinal_plants", "name": "Лекарственные растения"},
-    {"id": "aromatic_plants", "name": "Парфюмерные растения"},
-    {"id": "textile_plants", "name": "Текстильные растения"},
-    {"id": "oil_plants", "name": "Масличные растения"},
-    {"id": "technical_plants", "name": "Технические растения"},
-    {"id": "spices", "name": "Пряности"},
-    {"id": "fruits", "name": "Фрукты"},
-    {"id": "construction_materials", "name": "Строительные материалы"},
-    {"id": "other", "name": "Прочие"}
+    {"id": "meat_animals", "name": "Meat Animals"},
+    {"id": "milk_animals", "name": "Dairy Animals"},
+    {"id": "wool_animals", "name": "Wool Animals"},
+    {"id": "poultry", "name": "Poultry"},
+    {"id": "fur_animals", "name": "Fur Animals"},
+    {"id": "bees", "name": "Bees"},
+    {"id": "fish", "name": "Fish"},
+    {"id": "misc_fish", "name": "Other Seafood"},
+    {"id": "decorative_plants", "name": "Ornamental Plants"},
+    {"id": "medicinal_plants", "name": "Medicinal Plants"},
+    {"id": "aromatic_plants", "name": "Aromatic Plants"},
+    {"id": "textile_plants", "name": "Textile Plants"},
+    {"id": "oil_plants", "name": "Oil Plants"},
+    {"id": "technical_plants", "name": "Technical Plants"},
+    {"id": "spices", "name": "Spices"},
+    {"id": "fruits", "name": "Fruits"},
+    {"id": "construction_materials", "name": "Construction Materials"},
+    {"id": "other", "name": "Other"}
   ]
 }

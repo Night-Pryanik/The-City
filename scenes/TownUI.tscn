@@ -29,7 +29,7 @@ offset_left = 16.0
 offset_top = 12.0
 offset_right = 524.0
 offset_bottom = 56.0
-text = "Городок"
+text = "Town"
 autowrap_mode = 2
 theme_override_font_sizes/font_size = 24
 
@@ -72,7 +72,7 @@ theme_override_constants/separation = 8
 
 [node name="BuyHeader" type="Label" parent="WindowPanel/ColumnsHBox/BuyColumn" unique_id=3000000007]
 layout_mode = 2
-text = "Покупка"
+text = "Buying"
 
 [node name="BuyList" type="VBoxContainer" parent="WindowPanel/ColumnsHBox/BuyColumn" unique_id=3000000008]
 layout_mode = 2
@@ -85,7 +85,7 @@ theme_override_constants/separation = 8
 
 [node name="SellHeader" type="Label" parent="WindowPanel/ColumnsHBox/SellColumn" unique_id=3000000010]
 layout_mode = 2
-text = "Продажа"
+text = "Selling"
 
 [node name="SellList" type="VBoxContainer" parent="WindowPanel/ColumnsHBox/SellColumn" unique_id=3000000011]
 layout_mode = 2

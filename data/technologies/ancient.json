@@ -2,378 +2,378 @@
   "technologies": [
     {
       "id": "farming",
-      "name": "Растениеводство",
+      "name": "Farming",
       "era": "ancient",
       "science_cost": 0.0,
       "icon": "farming.png",
-      "description": "Позволяет строить фермы.",
-      "flavor": "Первые земледельцы заметили, что брошенные в землю семена дают новые всходы. Так началась эпоха оседлой жизни."
+      "description": "Allows you to build farms.",
+      "flavor": "The first farmers noticed that seeds thrown into the ground grew again. Thus began the age of settled life."
     },
     {
       "id": "mining",
-      "name": "Горное дело",
+      "name": "Mining",
       "era": "ancient",
       "science_cost": 30.0,
       "icon": "mining.png",
-      "description": "Даёт возможность строить шахты.",
-      "flavor": "Люди научились добывать камень и руду из недр земли, открыв новую эру в развитии орудий труда."
+      "description": "Allows you to build mines.",
+      "flavor": "People learned to draw stone and ore from the depths of the earth, opening a new era in tools."
     },
     {
       "id": "native_metals",
-      "name": "Самородные металлы",
+      "name": "Native Metals",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "native_metals.png",
       "prerequisites": [ [ "mining" ] ],
-      "description": "Открывает возможность находить и собирать самородные металлы.\nОткрывает руды металлов (золото, серебро, медь) и металлоидов (сурьма и мышьяк).\nДаёт возможность строить кузницу.",
-      "flavor": "Люди научились находить и использовать самородные металлы, которые встречаются в природе в чистом виде, без необходимости их выплавки из руды.",
+      "description": "Unlocks the ability to find and gather native metals.\nUnlocks metal ores (gold, silver, copper) and metalloids (antimony and arsenic).\nAllows you to build the forge.",
+      "flavor": "People learned to find and use native metals, which occur in nature in pure form, with no need to smelt them out of ore.",
       "unlock_effects": [
         {
           "icon": "new_resource.png",
-          "name": "Открывает возможность находить и собирать самородные металлы."
+          "name": "Unlocks the ability to find and gather native metals."
         }
       ]
     },
     {
       "id": "metallurgy",
-      "name": "Металлургия",
+      "name": "Metallurgy",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "metallurgy.png",
       "prerequisites": [ [ "native_metals" ] ],
-      "description": "Даёт возможность строить плавильную печь и плавить металл из руды.",
-      "flavor": "Освоение металлов произвело революцию в ремёслах: медные орудия были прочнее каменных."
+      "description": "Allows you to build the smelter and smelt metal out of ore.",
+      "flavor": "Mastering metals revolutionized the crafts: copper tools were tougher than stone."
     },
     {
       "id": "bronze",
-      "name": "Бронза",
+      "name": "Bronze",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "bronze_tech.png",
       "prerequisites": [ [ "metallurgy" ] ],
-      "description": "Открывает рецепты изготовления бронзы и бронзовых изделий.",
-      "flavor": "Люди научились сплавлять медь с оловом, получая бронзу — прочный металл для орудий и оружия. Бронза стала важным материалом для ремёсел и военного дела."
+      "description": "Unlocks recipes for bronze and bronze goods.",
+      "flavor": "People learned to alloy copper with tin to make bronze, a hard metal for tools and weapons. Bronze became a key material for crafts and warfare."
     },
     {
       "id": "iron_processing",
-      "name": "Обработка железа",
+      "name": "Iron Processing",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "iron_processing.png",
       "prerequisites": [ [ "metallurgy" ] ],
-      "description": "Открывает рецепты изготовления железа и железных изделий.\nОткрывает сыродутную печь.",
-      "flavor": "Люди научились сплавлять медь с оловом, получая бронзу — прочный металл для орудий и оружия. Бронза стала важным материалом для ремёсел и военного дела."
+      "description": "Unlocks recipes for iron and iron goods.\nUnlocks the bloomery.",
+      "flavor": "People learned to alloy copper with tin to make bronze, a hard metal for tools and weapons. Bronze became a key material for crafts and warfare."
     },
     {
       "id": "animal_husbandry",
-      "name": "Животноводство",
+      "name": "Animal Husbandry",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "animal_husbandry.png",
-      "description": "Даёт возможность строить пастбища.",
-      "flavor": "Одомашнивание животных дало людям постоянный источник мяса, молока и шкур."
+      "description": "Allows you to build pastures.",
+      "flavor": "Taming animals gave people a steady source of meat, milk and hides."
     },
     {
       "id": "pottery",
-      "name": "Гончарное дело",
+      "name": "Ceramics",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "pottery_tech.png",
-      "description": "Даёт возможность строить глиняную яму и гончарную мастерскую.",
-      "flavor": "Обожжённая глина стала первым искусственным материалом человечества, позволив хранить зерно и воду."
+      "description": "Allows you to build the clay pit and the pottery workshop.",
+      "flavor": "Fired clay became humanity's first artificial material, letting people store grain and water."
     },
     {
       "id": "beekeeping",
-      "name": "Пчеловодство",
+      "name": "Beekeeping",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "beekeeping.png",
-      "description": "Даёт возможность строить пасеку.",
-      "flavor": "Люди научились приручать пчёл, получая мёд и воск — единственные природные подсластители и материал для свечей."
+      "description": "Allows you to build the apiary.",
+      "flavor": "People learned to tame bees for honey and wax, the only natural sweeteners and the stuff of candles."
     },
     {
       "id": "fishing",
-      "name": "Рыболовство",
+      "name": "Fishing",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "fishing.png",
-      "description": "Даёт возможность строить пристань и рыбацкие лодки.",
-      "flavor": "Рыболовство — одно из древнейших занятий человека, которое позволило получать пищу из воды."
+      "description": "Allows you to build a dock and fishing boats.",
+      "flavor": "Fishing is one of humanity's oldest trades, and the first way to take food from the water."
     },
     {
       "id": "wood_processing",
-      "name": "Обработка дерева",
+      "name": "Wood Processing",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "wood_processing.png",
-      "description": "Даёт возможность строить лесную делянку (добыча древесины) и плотницкую мастерскую (древесина → доски).",
-      "flavor": "Дерево — древнейший строительный материал, и с первыми топорами люди научились валить лес и распиливать стволы на доски."
+      "description": "Allows you to build forest plots (logging) and the carpenter's workshop (timber → planks).",
+      "flavor": "Wood is the oldest building material, and with the first axes people learned to fell trees and saw the trunks into planks."
     },
     {
       "id": "irrigation",
-      "name": "Ирригация",
+      "name": "Irrigation",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "irrigation.png",
       "prerequisites": [ [ "farming" ] ],
-      "description": "Открывает возможность возделывать влаголюбивые культуры: рис и таро.\nПозволяет фермам и плантациям передавать пресную воду по цепочке (до 3 гексов).\nПозволяет осушать болота.",
-      "flavor": "Управление водными потоками стало ключом к освоению новых земель: ирригация позволяла не только поливать поля, но и осушать переувлажнённые участки, превращая болота в плодородные равнины.",
+      "description": "Unlocks the ability to grow water-loving crops: rice and taro.\nAllows farms and plantations to pass fresh water along a chain (up to 3 hexes).\nAllows you to drain marshes.",
+      "flavor": "Managing water flows became the key to claiming new lands: irrigation did more than water the fields, it drained waterlogged ground and turned marshes into fertile plains.",
       "unlock_effects": [
         {
           "icon": "new_resource.png",
-          "name": "Открывает возможность возделывать влаголюбивые культуры: рис и таро."
+          "name": "Unlocks the ability to grow water-loving crops: rice and taro."
         }
       ]
     },
     {
       "id": "wheel",
-      "name": "Колесо",
+      "name": "Wheel",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "wheel.png",
       "prerequisites": [ [ "pottery" ] ],
-      "description": "Снижает вклад расстояния от города в стоимость труда при строительстве улучшений на 30%.",
-      "flavor": "Колесо — одно из величайших изобретений человечества, изменившее торговлю и войну."
+      "description": "Reduces the effect of distance from the city on the work cost of building improvements by 30%.",
+      "flavor": "The wheel is one of humanity's greatest inventions, and it changed trade and war."
     },
     {
       "id": "plow",
-      "name": "Плуг",
+      "name": "Plow",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "plow.png",
       "prerequisites": [ [ "animal_husbandry" ] ],
-      "description": "+50% к производству ресурсов на фермах.",
-      "flavor": "Плуг, запряжённый волами, позволил обрабатывать тяжёлые почвы и поднял урожайность."
+      "description": "+50% to resource production on farms.",
+      "flavor": "A plow yoked to oxen made it possible to work heavy soils and raised yields."
     },
     {
       "id": "masonry",
-      "name": "Каменная кладка",
+      "name": "Masonry",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "masonry.png",
       "prerequisites": [ [ "mining" ] ],
-      "description": "Даёт возможность строить каменоломню и каменотёсную мастерскую.",
-      "flavor": "Умение класть камень позволило строить прочные здания, которые переживали века."
+      "description": "Allows you to build the quarry and the mason's workshop.",
+      "flavor": "The skill of laying stone made it possible to build sturdy buildings that outlived centuries."
     },
     {
       "id": "cheese_making",
-      "name": "Сыроварение",
+      "name": "Cheese Making",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "cheese_making.png",
       "prerequisites": [ [ "animal_husbandry", "fermentation" ] ],
-      "description": "Даёт возможность строить сыроварню: сырое молоко → сыр.",
-      "flavor": "Сыр позволял сохранять молоко на долгие месяцы, становясь важным запасом на зиму."
+      "description": "Allows you to build the dairy: raw milk → cheese.",
+      "flavor": "Cheese kept milk for months, becoming an important winter supply."
     },
     {
       "id": "leatherworking",
-      "name": "Кожевенное дело",
+      "name": "Leatherworking",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "leatherworking.png",
       "prerequisites": [ [ "animal_husbandry" ] ],
-      "description": "Даёт возможность строить дом кожевника: шкуры → кожа.",
-      "flavor": "Выделка кожи дала людям прочный и гибкий материал для одежды, обуви и снаряжения."
+      "description": "Allows you to build the tanner's house: hides → leather.",
+      "flavor": "Tanning gave people a tough, flexible material for clothing, footwear and gear."
     },
     {
       "id": "writing",
-      "name": "Письменность",
+      "name": "Writing",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "writing.png",
       "prerequisites": [ [ "pottery" ] ],
-      "description": "Дает возможность строить библиотеки.",
-      "flavor": "Глиняные таблички стали первым носителем информации, позволив людям передавать знания через века."
+      "description": "Allows you to build libraries.",
+      "flavor": "Clay tablets became the first carrier of information, letting people pass knowledge across the centuries."
     },
     {
       "id": "weaving",
-      "name": "Ткачество",
+      "name": "Weaving",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "weaving.png",
       "prerequisites": [ [ "animal_husbandry" ] ],
-      "description": "Даёт возможность строить дом ткача: различные материалы → одежда.",
-      "flavor": "Ткацкий станок превратил шерсть и лён в ткань, из которой шили одежду."
+      "description": "Allows you to build the weaver's house: various materials → clothes.",
+      "flavor": "The loom turned wool and flax into cloth, from which clothes were sewn."
     },
     {
       "id": "oil_making",
-      "name": "Маслоделие",
+      "name": "Oil Making",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "oil_making.png",
       "prerequisites": [ [ "farming" ] ],
-      "description": "Даёт возможность строить ручную маслодавку: семена, плоды и прочие части масличных культур → растительное масло.",
-      "flavor": "Растительное масло стало важным продуктом питания и основой для освещения."
+      "description": "Allows you to build the hand oil press: seeds, fruits and other parts of oil crops → vegetable oil.",
+      "flavor": "Vegetable oil became an important food and a source of light."
     },
     {
       "id": "soap_making",
-      "name": "Мыловарение",
+      "name": "Soap Making",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "soap_making.png",
       "prerequisites": [ [ "oil_making", "soda_extraction" ] ],
-      "description": "Даёт возможность строить дом мыловара: растительное масло и сода → мыло.",
-      "flavor": "Смешивая жир со щёлоком, люди получали мыло — первый шаг к гигиене и медицине."
+      "description": "Allows you to build the soapmaker's house: vegetable oil and soda → soap.",
+      "flavor": "By mixing fat with lye, people got soap, the first step toward hygiene and medicine."
     },
     {
       "id": "fermentation",
-      "name": "Ферментация",
+      "name": "Fermentation",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "fermentation.png",
       "prerequisites": [ [ "farming" ] ],
-      "description": "Даёт возможность строить дом варщика. Открывает рецепты варки пива, пульке и саке.",
-      "flavor": "Ферментация позволила людям превращать зерно и фрукты в алкогольные напитки, которые использовались в ритуалах и повседневной жизни."
+      "description": "Allows you to build the brewer's house. Unlocks recipes for brewing beer, pulque and sake.",
+      "flavor": "Fermentation let people turn grain and fruit into alcohol, drunk in rituals and in daily life."
     },
     {
       "id": "mead_making",
-      "name": "Медоварение",
+      "name": "Mead Making",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "mead_making.png",
       "prerequisites": [ [ "beekeeping", "fermentation" ] ],
-      "description": "Открывает рецепты варки медового напитка.",
-      "flavor": "Медовый напиток — древнейший алкогольный напиток, который варили из мёда и воды."
+      "description": "Unlocks recipes for brewing mead.",
+      "flavor": "Mead is the oldest alcohol, brewed from honey and water."
     },
     {
       "id": "jewelry",
-      "name": "Ювелирное дело",
+      "name": "Jewelry",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "jewelry.png",
       "prerequisites": [ [ "native_metals" ] ],
-      "description": "Открывает рецепты изготовления ювелирных изделий из металлов.",
-      "flavor": "Обработка драгоценных камней и металлов превратила ремесло в искусство."
+      "description": "Unlocks recipes for making jewelry out of metals.",
+      "flavor": "Working precious stones and metals turned the craft into art."
     },
     {
       "id": "winegrowing",
-      "name": "Виноградарство",
+      "name": "Winegrowing",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "winegrowing.png",
       "prerequisites": [ [ "farming" ] ],
-      "description": "Даёт возможность строить виноградник.",
-      "flavor": "Виноград — древнейшая культура, из которой люди научились делать вино, важный напиток для праздников и ритуалов."
+      "description": "Allows you to build the vineyard.",
+      "flavor": "The grape is one of the oldest crops, from which people learned to make wine, a drink for feasts and rituals."
     },
     {
       "id": "winemaking",
-      "name": "Виноделие",
+      "name": "Winemaking",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "winemaking.png",
       "prerequisites": [ [ "winegrowing", "fermentation" ] ],
-      "description": "Даёт возможность строить дом винодела: виноград → вино.",
-      "flavor": "Вино делали из винограда — оно было важным напитком для праздников и ритуалов, а также помогало сохранить скоропортящиещиеся сорта винограда от порчи."
+      "description": "Allows you to build the winemaker's house: grapes → wine.",
+      "flavor": "Wine was made from grapes: it was a drink for feasts and rituals, and it also kept the perishable grapes from spoiling."
     },
     {
       "id": "plantations",
-      "name": "Плантации",
+      "name": "Plantations",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "plantations.png",
       "prerequisites": [ [ "irrigation" ] ],
-      "description": "Специализированное земледелие: выращивание товарных культур. Даёт возможность строить плантации.",
-      "flavor": "Плантации позволили выращивать оливки и цитрусовые в больших количествах, обеспечивая людей ценными продуктами и маслами."
+      "description": "Specialized farming: growing cash crops. Allows you to build plantations.",
+      "flavor": "Plantations made it possible to grow olives and citrus in bulk, providing valuable goods and oils."
     },
     {
       "id": "soda_extraction",
-      "name": "Добыча соды",
+      "name": "Soda Extraction",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "soda.png",
       "prerequisites": [ [ "mining" ] ],
-      "description": "Даёт возможность строить строить карьер для добычи соды.",
-      "flavor": "Люди заметили, что белый налёт на берегах солёных озёр отлично отстирывает и отбеливает. Так началась добыча соды — ценного минерала, без которого не обойтись ни в стеклоделии, ни в мыловарении."
+      "description": "Allows you to build the quarry for soda extraction.",
+      "flavor": "People noticed that the white crust on the shores of salt lakes cleanses and bleaches wonderfully. So began the extraction of soda, a valuable mineral without which neither glassmaking nor soapmaking is possible."
     },
     {
       "id": "glassmaking",
-      "name": "Стеклоделие",
+      "name": "Glassmaking",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "glass_making.png",
       "prerequisites": [ [ "soda_extraction", "pottery" ] ],
-      "description": "Даёт возможность строить дом стеклодела: песок и сода → стекло.",
-      "flavor": "Веками гончары наблюдали, как песок и щелочь в их печах превращаются в блестящую стеклянную корку. Однажды кому-то пришло в голову сделать это намеренно. Стеклоделие стало не просто случайностью, а осознанным ремеслом. Новый материал изменил мир: бусы, амулеты, а позже — посуда и окна. Прозрачность стала символом просвещения."
+      "description": "Allows you to build the glassmaker's house: sand and soda → glass.",
+      "flavor": "For centuries potters watched sand and alkali turn in their kilns into a shining crust of glass. Then one day someone had the idea of doing it on purpose. Glassmaking became more than an accident: it became a deliberate craft. The new material changed the world: beads, amulets, and later tableware and windows. Transparency became a symbol of enlightenment."
     },
     {
       "id": "rope_making",
-      "name": "Канатное дело",
+      "name": "Rope Making",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "rope_making.png",
       "prerequisites": [ [ "weaving" ] ],
-      "description": "Даёт возможность строить дом канатчика: волокна → верёвки.",
-      "flavor": "Верёвки стали важным материалом для строительства, мореплавания и сельского хозяйства, позволяя связывать, тянуть и поднимать грузы."
+      "description": "Allows you to build the ropemaker's house: fibers → ropes.",
+      "flavor": "Ropes became an important material for building, sailing and farming, letting people bind, haul and hoist loads."
     },
     {
       "id": "bitumen_extraction",
-      "name": "Добыча битума",
+      "name": "Bitumen Extraction",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "bitumen_extraction.png",
       "prerequisites": [ [ "mining" ] ],
-      "description": "Даёт возможность строить смоляную яму, а также смолокурню: битум → смола.",
-      "flavor": "Битум стал важным материалом для водонепроницаемого покрытия, а также для производства клея и топлива."
+      "description": "Allows you to build the tar pit and the tar distillery: bitumen → tar.",
+      "flavor": "Bitumen became an important material for waterproofing, and for making glue and fuel."
     },
     {
       "id": "salt_extraction",
-      "name": "Добыча соли",
+      "name": "Salt Extraction",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "salt_extraction.png",
       "prerequisites": [ [ "mining" ] ],
-      "description": "Открывает возможность добычи соли в соляных месторождениях (на поверхности соляных озёр и в соляных шахтах) и соляном пруду.",
-      "flavor": "Соль стала важным продуктом для сохранения пищи."
+      "description": "Unlocks salt extraction in salt deposits (on the surface of salt lakes and in salt mines) and the salt pond.",
+      "flavor": "Salt became an important product for preserving food."
     },
     {
       "id": "sericulture",
-      "name": "Шёлководство",
+      "name": "Sericulture",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "sericulture.png",
       "prerequisites": [ [ "plantations" ] ],
-      "description": "Даёт возможность строить дом шелкопряда: коконы → шёлк.",
-      "flavor": "Шёлк стал ценным материалом для одежды и торговли, открывая новые возможности для ремесел и экономики."
+      "description": "Allows you to build the silkmaker's house: cocoons → silk.",
+      "flavor": "Silk became a valuable material for clothing and trade, opening new possibilities for crafts and the economy."
     },
     {
       "id": "limestone_burning",
-      "name": "Обжиг известняка",
+      "name": "Limestone Burning",
       "era": "ancient",
       "science_cost": 3.0,
       "icon": "limestone_burning.png",
       "prerequisites": [ [ "pottery", "masonry" ] ],
-      "description": "Даёт возможность строить печи для обжига известняка: известняк → известь.",
-      "flavor": "Обжиг известняка в печах позволил получать известь, важный строительный материал и компонент для производства цемента."
+      "description": "Allows you to build the lime kilns: limestone → lime.",
+      "flavor": "Burning limestone in kilns made lime possible, a key building material and an ingredient for making cement."
     },
     {
       "id": "currency",
-      "name": "Деньги",
+      "name": "Money",
       "era": "ancient",
       "science_cost": 4.0,
       "icon": "currency.png",
       "prerequisites": [ [ "writing" ] ],
-      "description": "Даёт возможность строить городское здание Рынок.",
-      "flavor": "Понятие стоимости и обмена привело к появлению денег — основы торговли и роста городов."
+      "description": "Allows you to build the Market city building.",
+      "flavor": "The idea of value and exchange led to money, the basis of trade and city growth."
     },
     {
       "id": "canals",
-      "name": "Каналы",
+      "name": "Canals",
       "era": "ancient",
       "science_cost": 4.0,
       "icon": "canals.png",
       "prerequisites": [ [ "irrigation", "masonry" ] ],
-      "description": "Позволяет строить каналы для обеспечения водой отдаленных областей.",
-      "flavor": "Каналы позволили людям управлять водными потоками, улучшая ирригацию и создавая новые пути для торговли."
+      "description": "Allows you to build canals to bring water to remote areas.",
+      "flavor": "Canals let people manage water flows, improving irrigation and opening new routes for trade."
     },
     {
       "id": "dyeing",
-      "name": "Красильное дело",
+      "name": "Dyeing",
       "era": "ancient",
       "science_cost": 4.0,
       "icon": "dyeing.png",
       "prerequisites": [ [ "weaving" ], [ "pottery" ] ],
-      "description": "Позволяет добывать различные красители из органических и неорганических материалов.",
-      "flavor": "Окрашивание тканей и посуды с помощью различных красителей - древнейшее ремесло."
+      "description": "Allows you to extract various dyes from organic and inorganic materials.",
+      "flavor": "Dyeing cloth and pottery with various dyes is one of the oldest crafts."
     }
   ]
 }

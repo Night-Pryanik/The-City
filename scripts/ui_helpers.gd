@@ -82,7 +82,7 @@ func setup(main_ui: Control, message_lbl: Label):
     main_ui.add_child(tooltip_panel)
 
     tooltip_label = Label.new()
-    tooltip_label.text = "Вкл/выкл использование этого продукта как еды"
+    tooltip_label.text = tr("Toggle using this product as food")
     tooltip_label.add_theme_color_override("font_color", Color.WHITE)
     tooltip_label.add_theme_font_size_override("font_size", 14)
     tooltip_panel.add_child(tooltip_label)
@@ -481,7 +481,7 @@ func show_quality_tooltip(mouse_pos: Vector2, prod_name: String, quality_breakdo
         child.queue_free()
 
     var header = Label.new()
-    header.text = "Уровни качества ресурса: %s" % prod_name
+    header.text = tr("Resource quality levels: %s") % prod_name
     header.add_theme_font_size_override("font_size", 15)
     header.add_theme_color_override("font_color", Color.WHITE)
     header.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -696,9 +696,9 @@ func _format_planned_rate(amount: float, interval: float) -> String:
         var iv := interval
         # Целый интервал — без дробной части.
         if abs(iv - round(iv)) < 0.001:
-            return "%d / %d сек" % [amt_int, int(round(iv))]
-        return "%d / %.1f сек" % [amt_int, iv]
-    return "%d / сек" % amt_int
+            return tr("%d / %d sec") % [amt_int, int(round(iv))]
+        return tr("%d / %.1f sec") % [amt_int, iv]
+    return tr("%d / sec") % amt_int
 
 # Показывает тултип «источники планового прихода/расхода» ресурса (вкладка
 # «Ресурсы»). Фактическое производство/потребление (текущее) из тултипа
@@ -753,7 +753,7 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
     # Текущая цена ресурса (с учётом динамических множителей).
     if price > 0.0:
         var price_label = Label.new()
-        price_label.text = "Цена: " + _format_price(price)
+        price_label.text = tr("Price: ") + _format_price(price)
         price_label.add_theme_color_override("font_color", PRICE_TEXT_COLOR)
         price_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         flow_tooltip_vbox.add_child(price_label)
@@ -788,7 +788,7 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
     # для интервальных записей — «10 / 10 сек», для непрерывных — «5 / сек».
     if not planned_production.is_empty():
         var planned_prod_title = Label.new()
-        planned_prod_title.text = "Производство (плановое):"
+        planned_prod_title.text = tr("Production (planned):")
         planned_prod_title.add_theme_font_size_override("font_size", 14)
         planned_prod_title.add_theme_color_override("font_color", Color(0.6, 1.0, 0.6))
         planned_prod_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -806,7 +806,7 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
         for row in planned_prod_lines:
             var line_text = str(row.name)
             if int(row.count) > 1:
-                line_text += " х%d" % int(row.count)
+                line_text += tr(" x%d") % int(row.count)
             line_text += ": %s" % _format_planned_rate(float(row.amount), float(row.interval))
             flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, Color(0.3, 0.85, 0.3)))
     # Плановое потребление: кто и сколько БУДЕТ списывать со склада —
@@ -817,7 +817,7 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
     # записи относятся к любому члену группы и помечаются её именем.
     if not planned_consumption.is_empty():
         var planned_title = Label.new()
-        planned_title.text = "Потребление (плановое):"
+        planned_title.text = tr("Consumption (planned):")
         planned_title.add_theme_font_size_override("font_size", 14)
         planned_title.add_theme_color_override("font_color", Color(1.0, 0.6, 0.6))
         planned_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -840,11 +840,11 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
             if bool(row.is_population):
                 # Потребление «всех жителей»: множитель населения — в скобках.
                 if int(row.count) > 1:
-                    line_text += " (%d чел.)" % int(row.count)
+                    line_text += tr(" (%d people)") % int(row.count)
             elif int(row.count) > 1:
-                line_text += " х%d" % int(row.count)
+                line_text += tr(" x%d") % int(row.count)
             if bool(row.is_group) and not str(row.group_name).is_empty():
-                line_text += " (группа «%s»)" % str(row.group_name)
+                line_text += tr(" (group \"%s\")") % str(row.group_name)
             line_text += ": %s" % _format_planned_rate(float(row.amount), float(row.interval))
             flow_tooltip_vbox.add_child(_make_bullet_row("•", line_text, Color(0.9, 0.3, 0.3)))
     # Пояснение к маркеру «≈» в динамике вкладки «Ресурсы» — для обоих
@@ -852,7 +852,7 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
     # плане, независимо от того, какая именно секция плана отрисовалась.
     if not planned_consumption.is_empty() or not planned_production.is_empty():
         var planned_note = Label.new()
-        planned_note.text = "≈ в динамике — плановое значение в пересчёте на секунду"
+        planned_note.text = tr("≈ in the live view — the planned value per second")
         planned_note.add_theme_font_size_override("font_size", 12)
         planned_note.add_theme_color_override("font_color", Color(0.65, 0.65, 0.65))
         planned_note.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -971,12 +971,12 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
     # по типам заодно с группировкой для рендера: сейчас есть только тип
     # «Действия на карте», но структура snapshot-а flat — тип добавляется
     # здесь, в рендере.
-    var expense_by_type: Dictionary = {"Действия на карте": {}}
+    var expense_by_type: Dictionary = {tr("Map actions"): {}}
     for src in expense_snapshot:
         var amt: int = int(expense_snapshot[src])
         if amt <= 0:
             continue
-        expense_by_type["Действия на карте"][src] = amt
+        expense_by_type[tr("Map actions")][src] = amt
 
     var has_income: bool = not planned_income.is_empty()
     var has_expense: bool = false
@@ -994,7 +994,7 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
 
     # --- Заголовок: текущий баланс ---
     var header = Label.new()
-    header.text = "Казна: %d" % balance
+    header.text = tr("Treasury: %d") % balance
     header.add_theme_font_size_override("font_size", 15)
     header.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
     header.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1044,7 +1044,7 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
         # Заголовок секции с итоговой средней прибылью. Единица «/ сек» — как у
         # строк источников и продуктов ниже (тот же формат _format_rate).
         var income_title = Label.new()
-        income_title.text = "Прибыль (фактическая, средняя): %s / сек" % _format_rate(total_income)
+        income_title.text = tr("Profit (actual, average): %s / sec") % _format_rate(total_income)
         income_title.add_theme_font_size_override("font_size", 14)
         income_title.add_theme_color_override("font_color", Color(0.6, 1.0, 0.6))
         income_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1055,17 +1055,19 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
             # плательщиков (готовый label из worker_manager), справа — скорость
             # в том же формате _format_rate, что у источников и продуктов.
             if type_row.has("flat_label"):
-                var flat_text: String = str(type_row.name)
+                # Ключ типа приходит из CityData константой и хранит английский
+                # текст (tr() нельзя вызвать в константе) — переводим здесь.
+                var flat_text: String = tr(str(type_row.name))
                 var flat_label: String = str(type_row.get("flat_label", ""))
                 if not flat_label.is_empty():
                     flat_text += ": " + flat_label
-                flat_text += " = %s / сек" % _format_rate(float(type_row.total))
+                flat_text += tr(" = %s / sec") % _format_rate(float(type_row.total))
                 treasury_tooltip_vbox.add_child(
                     _make_bullet_row("•", flat_text, Color(0.85, 1.0, 0.85)))
                 continue
             # Первый уровень разбивки: «• Потребление населения:»
             var type_header = Label.new()
-            type_header.text = "• " + str(type_row.name) + ":"
+            type_header.text = "• " + tr(str(type_row.name)) + ":"
             type_header.add_theme_font_size_override("font_size", 13)
             type_header.add_theme_color_override("font_color", Color(0.85, 1.0, 0.85))
             type_header.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1086,8 +1088,8 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
             for src_row in source_lines:
                 # Второй уровень разбивки: «  ◦ Все жители (3.0 / сек):»
                 var src_header = Label.new()
-                src_header.text = "  ◦ %s (%s / сек):" % [
-                    str(src_row.name), _format_rate(float(src_row.total))
+                src_header.text = tr("  ◦ %s (%s / sec):") % [
+                    tr(str(src_row.name)), _format_rate(float(src_row.total))
                 ]
                 src_header.add_theme_font_size_override("font_size", 13)
                 src_header.add_theme_color_override("font_color", Color(0.55, 0.95, 0.55))
@@ -1104,7 +1106,7 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
                 for prod_row in product_lines:
                     var prod_name: String = str(prod_row.name)
                     var prod_rate: float = float(prod_row.rate)
-                    var line_text := "%s: %s / сек" % [
+                    var line_text := tr("%s: %s / sec") % [
                         prod_name, _format_rate(prod_rate)
                     ]
                     treasury_tooltip_vbox.add_child(
@@ -1116,7 +1118,7 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
         if absf(window_sec - round(window_sec)) > 0.001:
             window_str = "%.1f" % window_sec
         var expense_title = Label.new()
-        expense_title.text = "Расходы (факт, за последние %s сек):" % window_str
+        expense_title.text = tr("Expenses (actual, over the last %s sec):") % window_str
         expense_title.add_theme_font_size_override("font_size", 14)
         expense_title.add_theme_color_override("font_color", Color(1.0, 0.6, 0.6))
         expense_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1153,7 +1155,7 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
     # верхняя полоса города, см. CityData.get_treasury_flow_text). Поэтому
     # строка показывается всегда, когда тултип вообще отрисован.
     var note = Label.new()
-    note.text = "≈ в строке «Казна» — средние прибыль и расход за последнее окно, в секунду"
+    note.text = tr("≈ in the \"Treasury\" row — average profit and expenses over the last window, per second")
     note.add_theme_font_size_override("font_size", 12)
     note.add_theme_color_override("font_color", Color(0.65, 0.65, 0.65))
     note.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1162,7 +1164,7 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
     # --- Подвал: ремарка, если расходов в игре пока нет ---
     if not has_expense:
         var no_expense_note = Label.new()
-        no_expense_note.text = "Нет разовых расходов в казну за последнее окно"
+        no_expense_note.text = tr("No one-off treasury expenses in the last window")
         no_expense_note.add_theme_font_size_override("font_size", 12)
         no_expense_note.add_theme_color_override("font_color", Color(0.65, 0.65, 0.65))
         no_expense_note.mouse_filter = Control.MOUSE_FILTER_IGNORE

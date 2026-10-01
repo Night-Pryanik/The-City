@@ -116,13 +116,22 @@ static func build_rows_for_building(building_id: String, workers: int = 1) -> Ar
 # расходник: пока ресурса хватает, производство идёт с бонусом, при нехватке
 # — откатывается к базовому множителю (само производство не встаёт).
 static func _format_rate_label(per_sec: float, bonus: float, workers: int) -> String:
-	var text := "%s шт./сек" % format_rate(per_sec)
+	var text := TranslationServer.translate("%s units/sec") % format_rate(per_sec)
 	if workers > 1:
 		# Расход делят несколько рабочих объектов одного типа — показываем
 		# сумму и сколько её даёт (окно деталей зданий).
-		text += " (%d %s)" % [workers, _plural(workers, "здание", "здания", "зданий")]
+		#
+		# Три формы множественного числа различаются КОНТЕКСТОМ, а не разными
+		# английскими словами: по-английски «buildings» одно слово, по-русски
+		# это «здания» (2-4) и «зданий» (5+). В статической функции нельзя
+		# вызвать tr_n(), зато работает TranslationServer.translate() с
+		# контекстом — см. соответствующие записи в каталоге locale/<код>.po.
+		text += " (%d %s)" % [workers, _plural(workers,
+			TranslationServer.translate("building", "consumption_buildings_one"),
+			TranslationServer.translate("buildings", "consumption_buildings_few"),
+			TranslationServer.translate("buildings", "consumption_buildings_many"))]
 	elif workers == 0:
-		text += " (рабочих зданий нет)"
+		text += TranslationServer.translate(" (no working buildings)")
 	if bonus > 0.0:
-		text += " (+%d%% к производству)" % int(round(bonus * 100.0))
+		text += TranslationServer.translate(" (+%d%% to production)") % int(round(bonus * 100.0))
 	return text

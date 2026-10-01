@@ -1,9 +1,9 @@
 {
   "covers": [
-    { "id": "none", "name": "Нет", "color": [ 0, 0, 0 ], "alpha": 0.0, "move_cost_bonus": 0, "icons": [  ] },
+    { "id": "none", "name": "None", "color": [ 0, 0, 0 ], "alpha": 0.0, "move_cost_bonus": 0, "icons": [  ] },
     {
       "id": "sparse_forest",
-      "name": "Редколесье",
+      "name": "Sparse Forest",
       "color": [ 34, 139, 34 ],
       "alpha": 0.9,
       "move_cost_bonus": 0,
@@ -17,7 +17,7 @@
     },
     {
       "id": "forest",
-      "name": "Лес",
+      "name": "Forest",
       "color": [ 34, 139, 34 ],
       "alpha": 0.9,
       "move_cost_bonus": 0,
@@ -26,7 +26,7 @@
     },
     {
       "id": "reeds",
-      "name": "Тростник",
+      "name": "Reeds",
       "color": [ 154, 205, 50 ],
       "alpha": 0.9,
       "move_cost_bonus": 0,
@@ -34,7 +34,7 @@
     },
     {
       "id": "swamp_forest",
-      "name": "Лес",
+      "name": "Forest",
       "color": [ 34, 139, 34 ],
       "alpha": 0.9,
       "move_cost_bonus": 0,
@@ -42,7 +42,7 @@
     },
     {
       "id": "swamp_forest_sparse",
-      "name": "Редколесье",
+      "name": "Sparse Forest",
       "color": [ 34, 139, 34 ],
       "alpha": 0.9,
       "move_cost_bonus": 0,
@@ -50,7 +50,7 @@
     },
     {
       "id": "oasis",
-      "name": "Оазис",
+      "name": "Oasis",
       "color": [ 34, 139, 34 ],
       "alpha": 0.9,
       "move_cost_bonus": 0,

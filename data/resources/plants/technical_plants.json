@@ -2,7 +2,7 @@
   "resources": [
     {
       "id": "flax_field", "price": 4,
-      "name": "Лён",
+      "name": "Flax",
       "type": "raw",
       "category": "technical_plants",
       "group": "technical_plants",
@@ -17,7 +17,7 @@
     },
     {
       "id": "cotton_field", "price": 6,
-      "name": "Хлопок",
+      "name": "Cotton",
       "type": "raw",
       "category": "technical_plants",
       "group": "technical_plants",
@@ -32,7 +32,7 @@
     },
     {
       "id": "hemp_field", "price": 5,
-      "name": "Конопля",
+      "name": "Hemp",
       "type": "raw",
       "category": "technical_plants",
       "group": "technical_plants",
@@ -47,7 +47,7 @@
     },
     {
       "id": "jute_field", "price": 5,
-      "name": "Джут",
+      "name": "Jute",
       "type": "raw",
       "category": "technical_plants",
       "group": "technical_plants",
@@ -63,7 +63,7 @@
     },
     {
       "id": "ramie_field", "price": 5,
-      "name": "Рами",
+      "name": "Ramie",
       "type": "raw",
       "category": "technical_plants",
       "group": "technical_plants",
@@ -80,7 +80,7 @@
       // Дабы не плодить лишних сущностей, под единой "Агавой" здесь подразумеваются разные виды агавы
       // (агава американская, агава сизалевая, агава текильная и т.д.), которые в игре объединены в один ресурс.
       "id": "agave_field", "price": 4,
-      "name": "Агава",
+      "name": "Agave",
       "type": "raw",
       "category": "technical_plants",
       "group": "technical_plants",
@@ -95,7 +95,7 @@
     },
     {
       "id": "mulberry_tree", "price": 5,
-      "name": "Тутовое дерево",
+      "name": "Mulberry Tree",
       "type": "raw",
       "category": "technical_plants",
       "group": "technical_plants",
@@ -110,7 +110,7 @@
     },
     {
       "id": "sesame_field", "price": 12,
-      "name": "Кунжут",
+      "name": "Sesame",
       "type": "raw",
       "category": "technical_plants",
       "group": "technical_plants",
@@ -125,7 +125,7 @@
     },
     {
       "id": "papyrus_field", "price": 5,
-      "name": "Папирус",
+      "name": "Papyrus",
       "type": "raw",
       "category": "technical_plants",
       "group": "technical_plants",
@@ -140,7 +140,7 @@
     },
     {
       "id": "indigofera_field", "price": 6,
-      "name": "Индигофера",
+      "name": "Indigofera",
       "type": "raw",
       "category": "technical_plants",
       "group": "technical_plants",
@@ -155,7 +155,7 @@
     },
     {
       "id": "lawsonia_field", "price": 6,
-      "name": "Лавсония",
+      "name": "Lawsonia",
       "type": "raw",
       "category": "technical_plants",
       "group": "technical_plants",
@@ -170,7 +170,7 @@
     },
     {
       "id": "marena_field", "price": 8,
-      "name": "Марена",
+      "name": "Madder",
       "type": "raw",
       "category": "technical_plants",
       "group": "technical_plants",
@@ -185,7 +185,7 @@
     },
     {
       "id": "woad_field", "price": 6,
-      "name": "Вайда",
+      "name": "Woad",
       "type": "raw",
       "category": "technical_plants",
       "group": "technical_plants",
@@ -200,7 +200,7 @@
     },
     {
       "id": "campeche_tree", "price": 10,
-      "name": "Кампешевое дерево",
+      "name": "Campeche Tree",
       "type": "raw",
       "category": "technical_plants",
       "group": "technical_plants",
@@ -215,7 +215,7 @@
     },
     {
       "id": "safflower_field", "price": 7,
-      "name": "Сафлор",
+      "name": "Safflower",
       "type": "raw",
       "category": "technical_plants",
       "group": "technical_plants",
@@ -230,7 +230,7 @@
     },
     {
       "id": "opuntia_field", "price": 6,
-      "name": "Опунция",
+      "name": "Prickly Pear",
       "type": "raw",
       "category": "technical_plants",
       "group": "technical_plants",

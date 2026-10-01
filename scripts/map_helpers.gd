@@ -341,39 +341,39 @@ static func would_canal_have_water(row: int, col: int, tile_data: Array, map_row
 
 static func can_build_canal(row: int, col: int, tile_data: Array, map_rows: int, map_cols: int) -> Dictionary:
     if row < 0 or row >= map_rows or col < 0 or col >= map_cols:
-        return {"ok": false, "reason": "Гекс вне карты"}
+        return {"ok": false, "reason": TranslationServer.translate("Hex outside the map")}
     var tile = tile_data[row][col]
     if tile == null:
-        return {"ok": false, "reason": "Гекс не существует"}
+        return {"ok": false, "reason": TranslationServer.translate("Hex does not exist")}
     if not tile.get("in_influence", false):
-        return {"ok": false, "reason": "Гекс вне Кольца Влияния"}
+        return {"ok": false, "reason": TranslationServer.translate("Hex outside the Influence Ring")}
     if tile.get("has_town", false):
-        return {"ok": false, "reason": "Здесь стоит чужой городок"}
+        return {"ok": false, "reason": TranslationServer.translate("Another town stands here")}
     # В кольце влияния чужого городка канал тоже нельзя — парный check
     # к build_manager.start_build для консистентности UI.
     if tile.get("in_town_influence", false):
-        return {"ok": false, "reason": "В кольце влияния чужого городка"}
+        return {"ok": false, "reason": TranslationServer.translate("Inside another town's influence ring")}
     if tile.get("improvement", null) != null:
-        return {"ok": false, "reason": "Гекс уже занят улучшением"}
+        return {"ok": false, "reason": TranslationServer.translate("Hex is already occupied by an improvement")}
     if tile.get("resource", null) != null or tile.get("crop_bred", null) != null:
-        return {"ok": false, "reason": "Гекс не пуст"}
+        return {"ok": false, "reason": TranslationServer.translate("Hex is not empty")}
     var terrain_id: String = tile.get("terrain", "plain")
     if is_water_terrain(terrain_id):
-        return {"ok": false, "reason": "Нельзя строить на воде"}
+        return {"ok": false, "reason": TranslationServer.translate("Cannot build on water")}
     if terrain_id == "mountain":
-        return {"ok": false, "reason": "Нельзя строить в горах"}
+        return {"ok": false, "reason": TranslationServer.translate("Cannot build in the mountains")}
     if terrain_id == "swamp" or terrain_id == "marsh":
-        return {"ok": false, "reason": "Нельзя строить на болоте/маршах"}
+        return {"ok": false, "reason": TranslationServer.translate("Cannot build on a marsh")}
     # Запрет «непроходимых» кастомных террейнов: move_cost >= 999 — это уже
     # вода по move_cost-логике (is_water_terrain ловит sea/lake, но кастомные
     # озёра вроде asphalt_lake/salt_lake/soda_lake тоже непройдут по нему).
     var t_data: Dictionary = GameData.terrains.get(terrain_id, {})
     if int(t_data.get("move_cost", 1)) >= 999:
-        return {"ok": false, "reason": "Нельзя строить на непроходимой местности"}
+        return {"ok": false, "reason": TranslationServer.translate("Cannot build on impassable terrain")}
     if not CityData.is_improvement_unlocked("irrigation_canal"):
-        return {"ok": false, "reason": "Нужна технология «Каналы»"}
+        return {"ok": false, "reason": TranslationServer.translate("Requires the \"Canals\" technology")}
     if not would_canal_have_water(row, col, tile_data, map_rows, map_cols):
-        return {"ok": false, "reason": "Нет доступа к воде в зоне досягаемости цепочки (irrigation/canals: 3/4 хопа от реки/озера)"}
+        return {"ok": false, "reason": TranslationServer.translate("No water access within the chain's reach (irrigation/canals: 3/4 hops from a river/lake)")}
     return {"ok": true, "reason": ""}
 
 
@@ -943,9 +943,12 @@ static func get_chunk_info(chunk: Array, tile_data: Array) -> String:
         terrain_names.append(GameData.terrains.get(terrain_id, {}).get("name", terrain_id))
     var terrain_str := ", ".join(terrain_names)
     if cover_forests:
-        terrain_str += ", лес"
-    var resource_str := ", ".join(resources) if resources.size() > 0 else "нет"
-    return "Ландшафт: %s. Ресурсы: %s" % [terrain_str, resource_str]
+        terrain_str += TranslationServer.translate(", forest")
+    # Тип указан явно: в статической функции tr() недоступен, а
+    # TranslationServer.translate() компилятор не считает заведомо String,
+    # и вывод через := дал бы Variant (в проекте это warning-as-error).
+    var resource_str: String = ", ".join(resources) if resources.size() > 0 else TranslationServer.translate("none")
+    return TranslationServer.translate("Terrain: %s. Resources: %s") % [terrain_str, resource_str]
 
 ## Пересчитывает абсолютные границы Кольца Влияния и видимого окна
 ## (Кольцо + Регион) вокруг города.

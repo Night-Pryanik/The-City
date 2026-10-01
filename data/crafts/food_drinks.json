@@ -2,7 +2,7 @@
   "crafts": [
     {
       "id": "bread",
-      "name": "Хлеб",
+      "name": "Bread",
       "produced_in": [ "bakery" ],
       "resources": { "flour": 10 },
       "result": { "bread": 20 },
@@ -10,7 +10,7 @@
     },
     {
       "id": "meat",
-      "name": "Мясо",
+      "name": "Meat",
       "produced_in": [ "slaughterhouse" ],
       "resources": { "raw_meat": 20 },
       "result": { "meat": 10 },
@@ -18,7 +18,7 @@
     },
     {
       "id": "cheese",
-      "name": "Сыр",
+      "name": "Cheese",
       "produced_in": [ "dairy" ],
       "resources": { "raw_milk": 10 },
       "result": { "cheese": 10 },
@@ -27,113 +27,113 @@
     },
     {
       "id": "beer",
-      "name": "Пиво",
+      "name": "Beer",
       "produced_in": [ "brewer_house" ],
       "resources": { "@millable_grains": 20 },
       "result": { "beer": 10 },
       "time": 5.0,
       "unlock_tech": "fermentation",
-      "description": "Варит пиво из зерновых культур"
+      "description": "Brews beer from grain."
     },
     {
       "id": "mead",
-      "name": "Медовый напиток",
+      "name": "Mead",
       "produced_in": [ "brewer_house" ],
       "resources": { "honey": 20 },
       "result": { "mead": 10 },
       "time": 5.0,
       "unlock_tech": "mead_making",
-      "description": "Варит медовый напиток из мёда"
+      "description": "Brews mead from honey."
     },
     {
       "id": "sake",
-      "name": "Саке",
+      "name": "Sake",
       "produced_in": [ "brewer_house" ],
       "resources": { "rice": 20 },
       "result": { "sake": 10 },
       "time": 5.0,
       "unlock_tech": "fermentation",
-      "description": "Варит саке из риса"
+      "description": "Brews sake from rice."
     },
     {
       "id": "pulque",
-      "name": "Пульке",
+      "name": "Pulque",
       "produced_in": [ "brewer_house" ],
       "resources": { "agave": 20 },
       "result": { "pulque": 10 },
       "time": 5.0,
       "unlock_tech": "fermentation",
-      "description": "Варит пульке из агавы"
+      "description": "Brews pulque from agave."
     },
     {
       "id": "wine",
-      "name": "Виноградное вино",
+      "name": "Grape Wine",
       "produced_in": [ "winemaker_house" ],
       "resources": { "grapes": 20 },
       "result": { "wine": 10 },
       "time": 5.0,
       "unlock_tech": "winemaking",
-      "description": "Варит вино из винограда"
+      "description": "Makes wine from grapes."
     },
     {
       "id": "fruit_wine",
-      "name": "Фруктовое вино",
+      "name": "Fruit Wine",
       "produced_in": [ "winemaker_house" ],
       "resources": { "@fruits": 20 },
       "result": { "fruit_wine": 10 },
       "time": 5.0,
       "unlock_tech": "winemaking",
-      "description": "Варит вино из фруктов"
+      "description": "Makes wine from fruit."
     },
     {
       "id": "vegetable_oil",
-      "name": "Растительное масло",
+      "name": "Vegetable Oil",
       "produced_in": [ "hand_oil_press" ],
       "resources": { "@oil_crops": 20 },
       "result": { "vegetable_oil": 10 },
       "time": 5.0,
       "unlock_tech": "oil_making",
-      "description": "Выжимает масло из семян и плодов масличных культур"
+      "description": "Presses oil from the seeds and fruits of oil crops."
     },
     {
       "id": "fish",
-      "name": "Копченая рыба",
+      "name": "Smoked Fish",
       "produced_in": [ "smokehouse" ],
       "resources": { "raw_fish": 10 },
       "result": { "fish": 10 },
       "time": 5.0,
       "unlock_tech": "fishing",
-      "description": "Коптит рыбу для длительного хранения"
+      "description": "Smokes fish for long storage."
     },
     {
       "id": "tea",
-      "name": "Чай",
+      "name": "Tea",
       "produced_in": [ "dryer_house" ],
       "resources": { "tea_leaves": 20 },
       "result": { "tea": 10 },
       "time": 5.0,
       "unlock_tech": "fermentation",
-      "description": "Сушит, скручивает, вялит и ферментирует чайные листья"
+      "description": "Dries, rolls, withers and ferments tea leaves."
     },
     {
       "id": "coffee",
-      "name": "Кофе",
+      "name": "Coffee",
       "produced_in": [ "dryer_house" ],
       "resources": { "coffee_beans": 20 },
       "result": { "coffee": 10 },
       "time": 5.0,
       "unlock_tech": "fermentation",
-      "description": "Сушит и обжаривает кофейные зерна"
+      "description": "Dries and roasts coffee beans."
     },
     {
       "id": "vinegar",
-      "name": "Уксус",
+      "name": "Vinegar",
       "produced_in": [ "brewer_house" ],
       "resources": { "@alcohol": 20 },
       "result": { "vinegar": 10 },
       "time": 5.0,
       "unlock_tech": "fermentation",
-      "description": "Варит уксус из алкоголя"
+      "description": "Makes vinegar from alcohol."
     }
   ]
 }

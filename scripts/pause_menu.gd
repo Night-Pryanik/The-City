@@ -41,7 +41,7 @@ func _ready():
     if new_game_btn:
         # Кнопка в меню паузы всегда действует из запущенной партии:
         # вместо начала новой игры она возвращает в главное меню.
-        new_game_btn.text = "Перейти в главное меню"
+        new_game_btn.text = tr("Return to main menu")
         new_game_btn.pressed.connect(_on_new_game)
     else: printerr("NewGameButton not found in PauseMenu")
 
@@ -55,8 +55,8 @@ func _make_confirm_dialog():
     confirm_dialog = ConfirmationDialog.new()
     # Локализуем стандартные кнопки диалога (по умолчанию Godot показывает
     # английские «OK» / «Cancel» — проект без файлов переводов).
-    confirm_dialog.get_ok_button().text = "Да"
-    confirm_dialog.get_cancel_button().text = "Отмена"
+    confirm_dialog.get_ok_button().text = tr("Yes")
+    confirm_dialog.get_cancel_button().text = tr("Cancel")
     # Пока открыто меню паузы, игра стоит на паузе, поэтому диалог должен
     # принимать ввод при get_tree().paused == true.
     confirm_dialog.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -132,8 +132,8 @@ func _on_load():
 func _on_new_game():
     # Пункт не создаёт новую партию, а возвращает в главное меню. Переход
     # необратим (текущая партия теряется), поэтому спрашиваем подтверждение.
-    _ask_confirmation("Переход в главное меню",
-        "Действительно выйти в главное меню?\nНесохранённый прогресс будет потерян.",
+    _ask_confirmation(tr("Return to main menu"),
+        tr("Really return to the main menu?\nUnsaved progress will be lost."),
         _confirm_new_game)
 
 func _confirm_new_game():
@@ -142,8 +142,8 @@ func _confirm_new_game():
 
 func _on_exit():
     # Выход из игры необратим и несохранённый прогресс пропадает.
-    _ask_confirmation("Выход из игры",
-        "Действительно выйти из игры?\nНесохранённый прогресс будет потерян.",
+    _ask_confirmation(tr("Exit game"),
+        tr("Really exit the game?\nUnsaved progress will be lost."),
         _confirm_exit)
 
 func _confirm_exit():

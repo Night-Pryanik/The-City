@@ -58,26 +58,26 @@ theme_override_constants/separation = 4
 
 [node name="PopulationLabel" type="Label" parent="HUD/VBoxContainer" unique_id=448761200]
 layout_mode = 2
-text = "Население: 50"
+text = "Population: 50"
 
 [node name="YearLabel" type="Label" parent="HUD/VBoxContainer" unique_id=1082760423]
 layout_mode = 2
-text = "1250 (Средневековье)"
+text = "1250 (Middle Ages)"
 
 [node name="TreasuryLabel" type="Label" parent="HUD/VBoxContainer" unique_id=448771777]
 layout_mode = 2
-text = "Казна: 0"
+text = "Treasury: 0"
 
 [node name="CityButton" type="Button" parent="HUD/VBoxContainer" unique_id=964408477]
 layout_mode = 2
 tooltip_text = "ЛКМ: переход в интерфейс города
 ПКМ: центрирование карты на городе"
-text = "Город"
+text = "City"
 
 [node name="ExpansionButton" type="Button" parent="HUD/VBoxContainer" unique_id=1722725868]
 layout_mode = 2
-tooltip_text = "Разведка и освоение соседних земель"
-text = "Развитие"
+tooltip_text = "Scout and claim neighboring lands."
+text = "Expansion"
 
 [node name="MapMessageLabel" type="Label" parent="HUD/VBoxContainer" unique_id=1468814370]
 visible = false
@@ -107,7 +107,7 @@ anchor_bottom = 1.0
 offset_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-text = "Меню"
+text = "Menu"
 
 [node name="PauseMenu" parent="." unique_id=513166833 instance=ExtResource("3_2t08r")]
 visible = false
@@ -233,7 +233,7 @@ size_flags_horizontal = 3
 
 [node name="InfoLabel" type="RichTextLabel" parent="ControlPanel/InfoVBox/InfoScroll/InfoContent" unique_id=2061907306]
 layout_mode = 2
-text = "Выберите гекс на карте (ЛКМ), чтобы увидеть информацию и доступные действия."
+text = "Select a hex on the map (LMB) to see information and available actions."
 bbcode_enabled = true
 fit_content = true
 scroll_active = false

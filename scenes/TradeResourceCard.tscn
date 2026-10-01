@@ -42,19 +42,19 @@ stretch_mode = 5
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 1
-text = "Ресурс"
+text = "Resource"
 
 [node name="PriorityButton" type="Button" parent="Layout/Header"]
 custom_minimum_size = Vector2(28, 28)
 layout_mode = 2
 size_flags_vertical = 4
-tooltip_text = "Приоритет потребления"
+tooltip_text = "Consumption priority"
 text = "★"
 
 [node name="TradeCheckBox" type="CheckBox" parent="Layout/Header"]
 layout_mode = 2
 size_flags_vertical = 4
-tooltip_text = "Разрешить потребление на внутреннем рынке"
+tooltip_text = "Allow consumption on the domestic market"
 button_pressed = true
 
 [node name="StockRow" type="HBoxContainer" parent="Layout"]
@@ -64,7 +64,7 @@ theme_override_constants/separation = 6
 [node name="StockCaption" type="Label" parent="Layout/StockRow"]
 layout_mode = 2
 size_flags_vertical = 1
-text = "Склад:"
+text = "Storage:"
 
 [node name="StockValue" type="Label" parent="Layout/StockRow"]
 layout_mode = 2
@@ -86,7 +86,7 @@ theme_override_constants/separation = 6
 [node name="PriceCaption" type="Label" parent="Layout/DetailRow"]
 layout_mode = 2
 size_flags_vertical = 1
-text = "Цена:"
+text = "Price:"
 
 [node name="PriceValue" type="Label" parent="Layout/DetailRow"]
 layout_mode = 2
@@ -96,7 +96,7 @@ text = "0"
 [node name="ConsumersCaption" type="Label" parent="Layout/DetailRow"]
 layout_mode = 2
 size_flags_vertical = 1
-text = "Покупателей:"
+text = "Buyers:"
 
 [node name="ConsumersValue" type="Label" parent="Layout/DetailRow"]
 layout_mode = 2
@@ -106,12 +106,12 @@ text = "0"
 [node name="ConsumptionCaption" type="Label" parent="Layout/DetailRow"]
 layout_mode = 2
 size_flags_vertical = 1
-text = "Расход на 1:"
+text = "Consumption per 1:"
 
 [node name="ConsumptionValue" type="Label" parent="Layout/DetailRow"]
 layout_mode = 2
 mouse_filter = 0
-text = "0/сек"
+text = "0/sec"
 
 [node name="IncomeRow" type="HBoxContainer" parent="Layout"]
 layout_mode = 2
@@ -120,9 +120,9 @@ theme_override_constants/separation = 6
 [node name="IncomeCaption" type="Label" parent="Layout/IncomeRow"]
 layout_mode = 2
 size_flags_vertical = 1
-text = "Доход:"
+text = "Income:"
 
 [node name="IncomeValue" type="Label" parent="Layout/IncomeRow"]
 layout_mode = 2
 mouse_filter = 0
-text = "0/сек"
+text = "0/sec"

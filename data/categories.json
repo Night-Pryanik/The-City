@@ -3,22 +3,22 @@
 // Чисто визуальное разделение, не оказывающее влияния на геймплей, с единственным исключением:
 // все ресурсы категории 'food' складываются и учитываются как Еда на складе. */
   "categories": [
-    { "id": "food", "name": "Еда" },
-    { "id": "fruits", "name": "Фрукты" },
-    { "id": "drinks", "name": "Напитки" },
-    { "id": "spices", "name": "Пряности" },
-    { "id": "technical_plants", "name": "Технические культуры" },
-    { "id": "aux_plants", "name": "Вспомогательные культуры" },
-    { "id": "luxury", "name": "Роскошь" },
-    { "id": "material", "name": "Материалы" },
-    { "id": "construction_material", "name": "Стройматериалы" },
-    { "id": "minerals", "name": "Минералы" },
-    { "id": "metals", "name": "Металлы" },
-    { "id": "clothes", "name": "Одежда" },
-    { "id": "household_items", "name": "Предметы быта" },
-    { "id": "tools", "name": "Инструменты" },
-    { "id": "weapons", "name": "Оружие" },
-    { "id": "equipment", "name": "Оборудование" },
-    { "id": "other", "name": "Прочее" }
+    { "id": "food", "name": "Food" },
+    { "id": "fruits", "name": "Fruits" },
+    { "id": "drinks", "name": "Drinks" },
+    { "id": "spices", "name": "Spices" },
+    { "id": "technical_plants", "name": "Technical Crops" },
+    { "id": "aux_plants", "name": "Auxiliary Crops" },
+    { "id": "luxury", "name": "Luxury" },
+    { "id": "material", "name": "Materials" },
+    { "id": "construction_material", "name": "Building Materials" },
+    { "id": "minerals", "name": "Minerals" },
+    { "id": "metals", "name": "Metals" },
+    { "id": "clothes", "name": "Clothes" },
+    { "id": "household_items", "name": "Household Items" },
+    { "id": "tools", "name": "Tools" },
+    { "id": "weapons", "name": "Weapons" },
+    { "id": "equipment", "name": "Equipment" },
+    { "id": "other", "name": "Other" }
   ]
 }

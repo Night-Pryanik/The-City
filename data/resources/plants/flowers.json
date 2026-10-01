@@ -2,7 +2,7 @@
   "resources": [
     {
       "id": "tulip_field", "price": 10,
-      "name": "Тюльпаны",
+      "name": "Tulips",
       "type": "raw",
       "category": "plants",
       "group": "flowers",
@@ -17,7 +17,7 @@
     },
     {
       "id": "rose_field", "price": 15,
-      "name": "Розы",
+      "name": "Roses",
       "type": "raw",
       "category": "plants",
       "group": "flowers",
@@ -32,7 +32,7 @@
     },
     {
       "id": "chamomile_field", "price": 8,
-      "name": "Ромашки",
+      "name": "Chamomile",
       "type": "raw",
       "category": "plants",
       "group": "flowers",

@@ -39,14 +39,27 @@ anchors_preset = 10
 anchor_right = 1.0
 grow_horizontal = 2
 
+[node name="LanguageLabel" type="Label" parent="TabContainer/Игра/VBoxContainer"]
+layout_mode = 2
+text = "Language"
+
+[node name="LanguageHint" type="Label" parent="TabContainer/Игра/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Language of the interface and of the game data. The option \"Language of the system\" follows the language of your operating system."
+autowrap_mode = 3
+
+[node name="LanguageOptionButton" type="OptionButton" parent="TabContainer/Игра/VBoxContainer"]
+layout_mode = 2
+
 [node name="Label" type="Label" parent="TabContainer/Игра/VBoxContainer" unique_id=871000002]
 layout_mode = 2
-text = "Интервал обновления данных о ресурсах"
+text = "Resource data refresh interval"
 
 [node name="LabelHint" type="Label" parent="TabContainer/Игра/VBoxContainer" unique_id=871000003]
 layout_mode = 2
 theme_override_font_sizes/font_size = 14
-text = "Запасы, динамика и тултипы с ресурсами обновляются с этим интервалом (от 1 до 5 секунд). Расчёты симуляции идут как обычно, раз в секунду."
+text = "Supplies, dynamics and resource tooltips update at this interval (from 1 to 5 seconds). Simulation calculations run as usual, once per second."
 autowrap_mode = 3
 
 [node name="HBoxContainer" type="HBoxContainer" parent="TabContainer/Игра/VBoxContainer" unique_id=871000004]
@@ -62,7 +75,7 @@ value = 1.0
 
 [node name="ResourceDisplayIntervalValueLabel" type="Label" parent="TabContainer/Игра/VBoxContainer/HBoxContainer" unique_id=871000006]
 layout_mode = 2
-text = "1 сек"
+text = "1 sec"
 
 [node name="Видео" type="Control" parent="TabContainer" unique_id=563583163]
 visible = false
@@ -87,23 +100,23 @@ grow_horizontal = 2
 
 [node name="Label" type="Label" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1054639215]
 layout_mode = 2
-text = "Границы клеток"
+text = "Tile borders"
 
 [node name="HexBordersCheckBox" type="CheckBox" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1647564177]
 layout_mode = 2
-text = "Показывать границы между клетками"
+text = "Show borders between tiles"
 
 [node name="Label2" type="Label" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1944413823]
 layout_mode = 2
-text = "Перемещение карты"
+text = "Map movement"
 
 [node name="EdgeScrollingCheckBox" type="CheckBox" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1099766743]
 layout_mode = 2
-text = "Перемещение карты у краёв окна"
+text = "Map movement at window edges"
 
 [node name="Label3" type="Label" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1054639220]
 layout_mode = 2
-text = "Задержка появления всплывающей подсказки на карте"
+text = "Map tooltip delay"
 
 [node name="HBoxContainer" type="HBoxContainer" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1054639221]
 layout_mode = 2
@@ -118,11 +131,11 @@ value = 0.5
 
 [node name="TooltipDelayValueLabel" type="Label" parent="TabContainer/Интерфейс/VBoxContainer/HBoxContainer" unique_id=1054639223]
 layout_mode = 2
-text = "0,50 сек"
+text = "0.50 sec"
 
 [node name="Label4" type="Label" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1054639224]
 layout_mode = 2
-text = "Задержка появления расширенной подсказки на карте"
+text = "Extended map tooltip delay"
 
 [node name="HBoxContainer2" type="HBoxContainer" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1054639225]
 layout_mode = 2
@@ -137,11 +150,11 @@ value = 1.0
 
 [node name="ExtendedTooltipDelayValueLabel" type="Label" parent="TabContainer/Интерфейс/VBoxContainer/HBoxContainer2" unique_id=1054639227]
 layout_mode = 2
-text = "1,00 сек"
+text = "1.00 sec"
 
 [node name="Label5" type="Label" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1054639228]
 layout_mode = 2
-text = "Задержка появления всплывающих подсказок (детали здания, разбивка казны)"
+text = "Tooltip delay (building details, treasury breakdown)"
 
 [node name="HBoxContainer3" type="HBoxContainer" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1054639229]
 layout_mode = 2
@@ -156,7 +169,7 @@ value = 0.5
 
 [node name="BuildingDetailDelayValueLabel" type="Label" parent="TabContainer/Интерфейс/VBoxContainer/HBoxContainer3" unique_id=1054639231]
 layout_mode = 2
-text = "0,50 сек"
+text = "0.50 sec"
 
 [node name="BackButton" type="Button" parent="." unique_id=1943295540]
 layout_mode = 1
@@ -171,4 +184,4 @@ offset_bottom = 42.0
 grow_horizontal = 2
 grow_vertical = 0
 theme_override_font_sizes/font_size = 24
-text = "Назад"
+text = "Back"

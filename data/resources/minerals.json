@@ -3,7 +3,7 @@
     {
       "id": "basalt_deposit",
       "price": 4,
-      "name": "Базальт",
+      "name": "Basalt",
       "type": "raw",
       "category": "minerals",
       "group": "minerals",
@@ -20,7 +20,7 @@
     {
       "id": "tuff_deposit",
       "price": 5,
-      "name": "Туф",
+      "name": "Tuff",
       "type": "raw",
       "category": "minerals",
       "group": "minerals",
@@ -36,7 +36,7 @@
     {
       "id": "sandstone_deposit",
       "price": 4,
-      "name": "Песчаник",
+      "name": "Sandstone",
       "type": "raw",
       "category": "minerals",
       "group": "minerals",
@@ -52,7 +52,7 @@
     {
       "id": "marble_deposit",
       "price": 14,
-      "name": "Мрамор",
+      "name": "Marble",
       "type": "raw",
       "category": "minerals",
       "group": "minerals",
@@ -69,7 +69,7 @@
     {
       "id": "granite_deposit",
       "price": 10,
-      "name": "Гранит",
+      "name": "Granite",
       "type": "raw",
       "category": "minerals",
       "group": "minerals",
@@ -86,7 +86,7 @@
     {
       "id": "limestone_deposit",
       "price": 4,
-      "name": "Известняк",
+      "name": "Limestone",
       "type": "raw",
       "category": "minerals",
       "group": "minerals",
@@ -102,7 +102,7 @@
     {
       "id": "clay_deposit",
       "price": 3,
-      "name": "Глина",
+      "name": "Clay",
       "type": "raw",
       "category": "minerals",
       "group": "minerals",
@@ -123,7 +123,7 @@
     {
       "id": "quartz_sand_deposit",
       "price": 5,
-      "name": "Кварцевый песок",
+      "name": "Quartz Sand",
       "type": "raw",
       "category": "minerals",
       "group": "minerals",
@@ -140,7 +140,7 @@
     {
       "id": "soda_deposit",
       "price": 8,
-      "name": "Сода",
+      "name": "Soda",
       "type": "raw",
       "category": "minerals",
       "group": "minerals",
@@ -158,7 +158,7 @@
     {
       "id": "bitumen_deposit",
       "price": 9,
-      "name": "Битум",
+      "name": "Bitumen",
       "type": "raw",
       "category": "minerals",
       "group": "minerals",
@@ -175,7 +175,7 @@
     {
       "id": "bitumen_deposit_asphalt",
       "price": 9,
-      "name": "Битум",
+      "name": "Bitumen",
       "type": "raw",
       "category": "minerals",
       "group": "minerals",
@@ -193,7 +193,7 @@
     {
       "id": "salt_deposit_lake",
       "price": 6,
-      "name": "Соль",
+      "name": "Salt",
       "type": "raw",
       "category": "minerals",
       "group": "minerals",
@@ -211,7 +211,7 @@
     {
       "id": "salt_deposit_underground",
       "price": 6,
-      "name": "Соль",
+      "name": "Salt",
       "type": "raw",
       "category": "minerals",
       "group": "minerals",
@@ -233,7 +233,7 @@
     {
       "id": "salt_evaporation",
       "price": 6,
-      "name": "Соль",
+      "name": "Salt",
       "type": "raw",
       "category": "minerals",
       "group": "minerals",
@@ -251,7 +251,7 @@
     {
       "id": "cinnabar_deposit",
       "price": 12,
-      "name": "Киноварь",
+      "name": "Cinnabar",
       "type": "raw",
       "category": "minerals",
       "group": "minerals",
@@ -268,7 +268,7 @@
     {
       "id": "lazurite_deposit",
       "price": 18,
-      "name": "Лазурит",
+      "name": "Lazurite",
       "type": "raw",
       "category": "minerals",
       "group": "minerals",
@@ -285,7 +285,7 @@
     {
       "id": "malachite_deposit",
       "price": 14,
-      "name": "Малахит",
+      "name": "Malachite",
       "type": "raw",
       "category": "minerals",
       "group": "minerals",

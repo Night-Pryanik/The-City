@@ -4,6 +4,8 @@ extends Control
 @onready var hex_borders_checkbox: CheckBox = find_child("HexBordersCheckBox", true, false)
 @onready var edge_scrolling_checkbox: CheckBox = find_child("EdgeScrollingCheckBox", true, false)
 @onready var back_button: Button = find_child("BackButton", true, false)
+@onready var language_option_button: OptionButton = find_child("LanguageOptionButton", true, false)
+@onready var tab_container: TabContainer = find_child("TabContainer", true, false)
 @onready var tooltip_delay_slider: HSlider = find_child("TooltipDelaySlider", true, false)
 @onready var tooltip_delay_value_label: Label = find_child("TooltipDelayValueLabel", true, false)
 @onready var extended_tooltip_delay_slider: HSlider = find_child("ExtendedTooltipDelaySlider", true, false)
@@ -28,19 +30,23 @@ func _ready():
             or not building_detail_delay_slider \
             or not building_detail_delay_value_label \
             or not resource_display_interval_slider \
-            or not resource_display_interval_value_label
+            or not resource_display_interval_value_label \
+            or not language_option_button
     if missing_controls:
         print("Ошибка: не все элементы найдены в сцене настроек!")
         return
 
     hex_borders_checkbox.add_theme_color_override("font_color", Color.WHITE)
     edge_scrolling_checkbox.add_theme_color_override("font_color", Color.WHITE)
+    language_option_button.add_theme_color_override("font_color", Color.WHITE)
     tooltip_delay_value_label.add_theme_color_override("font_color", Color.WHITE)
     extended_tooltip_delay_value_label.add_theme_color_override("font_color", Color.WHITE)
     building_detail_delay_value_label.add_theme_color_override("font_color", Color.WHITE)
     resource_display_interval_value_label.add_theme_color_override("font_color", Color.WHITE)
 
+    _apply_tab_titles()
     load_settings()
+    _setup_language_option()
     back_button.pressed.connect(_on_back_pressed)
     hex_borders_checkbox.toggled.connect(_on_hex_borders_toggled)
     edge_scrolling_checkbox.toggled.connect(_on_edge_scrolling_toggled)
@@ -48,6 +54,49 @@ func _ready():
     extended_tooltip_delay_slider.value_changed.connect(_on_extended_tooltip_delay_changed)
     building_detail_delay_slider.value_changed.connect(_on_building_detail_delay_changed)
     resource_display_interval_slider.value_changed.connect(_on_resource_display_interval_changed)
+    language_option_button.item_selected.connect(_on_language_selected)
+
+# Заголовки вкладок ставятся вручную: Godot берёт их из ИМЁН узлов, а имена
+# узлов не переводятся. Заголовки переводятся здесь вызовами tr() с
+# литералами — иначе их не увидит ни сборщик каталогов, ни генерация .pot
+# в редакторе. Функция вызывается и при открытии окна, и при смене языка.
+func _apply_tab_titles():
+    if not tab_container:
+        return
+    var titles := [
+        tr("Game"),
+        tr("Video"),
+        tr("Audio"),
+        tr("Interface"),
+    ]
+    for i in min(titles.size(), tab_container.get_tab_count()):
+        tab_container.set_tab_title(i, titles[i])
+
+# Заполняет выпадающий список языков и ставит в него сохранённый выбор.
+# Значение пункта — код языка; пункт «язык системы» хранится как "system".
+func _setup_language_option():
+    var languages: Array = LocalizationManager.available_languages()
+    var selected := LocalizationManager.get_stored_locale()
+    var selected_index := 0
+    language_option_button.clear()
+    for i in languages.size():
+        var code := str(languages[i]["code"])
+        if code == selected:
+            selected_index = i
+        language_option_button.add_item(LocalizationManager.get_language_label(code), i)
+        language_option_button.set_item_metadata(i, code)
+    language_option_button.select(selected_index)
+    # Сигнал подключается в _ready, а select() его не шлёт: при открытии окна
+    # настроек язык заново не выбирается, а просто показывается текущий.
+
+func _on_language_selected(index: int):
+    var code := str(language_option_button.get_item_metadata(index))
+    if LocalizationManager.set_locale(code):
+        # Подписи вкладок и текст сцен Godot переведёт сам по уведомлению
+        # TranslationServer, а список языков и подпись выбранного пункта
+        # зависят от LocalizationManager — обновляем их вручную.
+        _apply_tab_titles()
+        _setup_language_option()
 
 func load_settings():
     var err = config.load("user://settings.cfg")
@@ -75,6 +124,9 @@ func load_settings():
     _update_resource_display_interval_label()
 
 func save_settings():
+    # Перечитываем файл перед записью: язык сюда пишет LocalizationManager,
+    # и без перечитывания его ключ был бы затёрт нашими значениями.
+    config.load("user://settings.cfg")
     config.set_value("interface", "show_hex_borders", hex_borders_checkbox.button_pressed)
     config.set_value("interface", "edge_scrolling", edge_scrolling_checkbox.button_pressed)
     config.set_value("interface", "tooltip_delay", tooltip_delay_slider.value)
@@ -126,21 +178,21 @@ func _on_resource_display_interval_changed(_value: float):
 
 func _update_tooltip_delay_label():
     var seconds = snappedf(tooltip_delay_slider.value, 0.25)
-    tooltip_delay_value_label.text = "%.2f сек" % seconds
+    tooltip_delay_value_label.text = tr("%.2f sec") % seconds
 
 func _update_extended_tooltip_delay_label():
     var seconds = snappedf(extended_tooltip_delay_slider.value, 0.25)
-    extended_tooltip_delay_value_label.text = "%.2f сек" % seconds
+    extended_tooltip_delay_value_label.text = tr("%.2f sec") % seconds
 
 func _update_building_detail_delay_label():
     var seconds = snappedf(building_detail_delay_slider.value, 0.25)
-    building_detail_delay_value_label.text = "%.2f сек" % seconds
+    building_detail_delay_value_label.text = tr("%.2f sec") % seconds
 
 func _update_resource_display_interval_label():
     # Шаг слайдера — 1 секунда, дробных значений не бывает (см. CityData:
     # тик симуляции = 1 сек, дробный интервал дал бы неравномерный ритм).
     var seconds = int(round(resource_display_interval_slider.value))
-    resource_display_interval_value_label.text = "%d сек" % seconds
+    resource_display_interval_value_label.text = tr("%d sec") % seconds
 
 func _on_back_pressed():
     hide()

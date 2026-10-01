@@ -114,7 +114,7 @@ func _update_planned_consumption_map():
             if not planned_consumption_map.has(pid):
                 planned_consumption_map[pid] = {}
             var by_source_pop: Dictionary = planned_consumption_map[pid]
-            by_source_pop["Питание населения"] = {
+            by_source_pop[tr("Population food")] = {
                 "amount": pop_food_demand,
                 "interval": CityData.SIMULATION_TICK,
                 "count": eaters,
@@ -212,7 +212,7 @@ func refresh():
     # --- Одомашненные ресурсы по подгруппам ---
     if CityData.domesticated_resources.size() > 0:
         var title = Label.new()
-        title.text = "Одомашненные ресурсы:"
+        title.text = tr("Tamed resources:")
         title.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
         resources_list.add_child(title)
 
@@ -226,7 +226,7 @@ func refresh():
 
         for subgroup in animal_subgroups.keys():
             var subgroup_label = Label.new()
-            subgroup_label.text = "  Подгруппа: " + _get_subgroup_name(subgroup)
+            subgroup_label.text = tr("  Subgroup: ") + _get_subgroup_name(subgroup)
             subgroup_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
             resources_list.add_child(subgroup_label)
 
@@ -416,13 +416,13 @@ func refresh():
         spacer.text = ""
         resources_list.add_child(spacer)
         var div_label = Label.new()
-        div_label.text = "Разнообразие: %d подгрупп" % total_subgroups
+        div_label.text = tr("Diversity: %d subgroups") % total_subgroups
         div_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.3))
         resources_list.add_child(div_label)
         diversity_label = div_label
 
         var bonus_label = Label.new()
-        bonus_label.text = "Активные бонусы: (будут позже)"
+        bonus_label.text = tr("Active bonuses: (coming later)")
         bonus_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.3))
         resources_list.add_child(bonus_label)
 
@@ -473,7 +473,7 @@ func update_values():
                 animal_subgroup_map[subgroup] = true
         var plant_subgroup_map = {}
         var total_subgroups = animal_subgroup_map.size() + plant_subgroup_map.size()
-        diversity_label.text = "Разнообразие: %d подгрупп" % total_subgroups
+        diversity_label.text = tr("Diversity: %d subgroups") % total_subgroups
 
     # Обновляем открытый тултип качества свежими данными (в реальном времени).
     if active_quality_product != "" and ui_helpers and is_instance_valid(ui_helpers):

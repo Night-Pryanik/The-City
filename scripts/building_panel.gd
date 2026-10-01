@@ -108,7 +108,7 @@ func _ready():
     vbox.add_child(consumption_box)
 
     var slots_title = Label.new()
-    slots_title.text = "Слоты производства:"
+    slots_title.text = tr("Production slots:")
     vbox.add_child(slots_title)
 
     var scroll = ScrollContainer.new()
@@ -121,7 +121,7 @@ func _ready():
     scroll.add_child(slots_container)
 
     var close_btn = Button.new()
-    close_btn.text = "Закрыть"
+    close_btn.text = tr("Close")
     close_btn.pressed.connect(_on_close_pressed)
     vbox.add_child(close_btn)
 
@@ -196,7 +196,7 @@ func _refresh():
         # очищаем панель, чтобы не показывать устаревшие слоты.
         for child in slots_container.get_children():
             child.queue_free()
-        info_label.text = "Зданий: 0"
+        info_label.text = tr("Buildings: 0")
         _clear_consumption_section()
         _upgrade_progress_bars.clear()
         _slot_progress_bars.clear()
@@ -211,7 +211,7 @@ func _refresh():
     var building_name = bdata["name"] if bdata else building_id
     title_label.text = building_name
 
-    info_label.text = "Зданий: %d" % indices.size()
+    info_label.text = tr("Buildings: %d") % indices.size()
 
     # Очищаем старые слоты
     for child in slots_container.get_children():
@@ -248,10 +248,10 @@ func _refresh():
 
         var has_worker = tm.has_townsfolk(b_index) if tm else false
         var is_idle = has_worker and CityData.are_all_slots_empty(b_index)
-        var status = " (простаивает)" if is_idle else (" (работает)" if has_worker else " (не работает)")
+        var status = tr(" (idle)") if is_idle else (tr(" (working)") if has_worker else tr(" (not working)"))
 
         var header_label = Label.new()
-        header_label.text = "Здание %d%s" % [building_number, status]
+        header_label.text = tr("Building %d%s") % [building_number, status]
         if is_idle:
             header_label.add_theme_color_override("font_color", Color.ORANGE)
         else:
@@ -274,7 +274,7 @@ func _refresh():
             upgrade_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
             upgrade_bar.max_value = maxf(1.0, float(upgrade_data.get("work_cost", 1)))
             upgrade_bar.value = float(upgrade_data.get("progress", 0.0))
-            upgrade_bar.tooltip_text = "Идёт улучшение до «%s»" % upgrade_data.get("upgrade_name", upgrade_data.get("upgrade_to", ""))
+            upgrade_bar.tooltip_text = tr("Upgrading to \"%s\"") % upgrade_data.get("upgrade_name", upgrade_data.get("upgrade_to", ""))
             header.add_child(upgrade_bar)
             _upgrade_progress_bars[b_index] = upgrade_bar
         elif CityData.can_upgrade_building(b_index):
@@ -295,11 +295,11 @@ func _refresh():
         toggle_btn.expand_icon = true
         if has_worker:
             toggle_btn.icon = _get_toggle_icon("pause")
-            toggle_btn.tooltip_text = "Приостановить"
+            toggle_btn.tooltip_text = tr("Pause")
             toggle_btn.pressed.connect(_on_toggle_pressed.bind(b_index, false))
         else:
             toggle_btn.icon = _get_toggle_icon("resume")
-            toggle_btn.tooltip_text = "Запустить"
+            toggle_btn.tooltip_text = tr("Start")
             toggle_btn.pressed.connect(_on_toggle_pressed.bind(b_index, true))
         header.add_child(toggle_btn)
 
@@ -307,7 +307,7 @@ func _refresh():
         var quality_btn = Button.new()
         quality_btn.custom_minimum_size = Vector2(28, 28)
         quality_btn.expand_icon = true
-        quality_btn.tooltip_text = "Приоритет качества: используйте лучшее/худшее"
+        quality_btn.tooltip_text = tr("Quality priority: use best/worst")
         quality_btn.pressed.connect(_on_quality_priority_pressed.bind(b_index))
         _update_quality_button(quality_btn, b_index)
         header.add_child(quality_btn)
@@ -319,7 +319,7 @@ func _refresh():
             row.add_theme_constant_override("separation", 8)
 
             var slot_label = Label.new()
-            slot_label.text = "Слот %d:" % (i + 1)
+            slot_label.text = tr("Slot %d:") % (i + 1)
             slot_label.custom_minimum_size = Vector2(70, 0)
             row.add_child(slot_label)
 
@@ -478,7 +478,7 @@ func _fill_consumption_section(tm, indices: Array) -> float:
         return 0.0
 
     var header = Label.new()
-    header.text = "Потребляет:"
+    header.text = tr("Consumes:")
     header.add_theme_font_size_override("font_size", 16)
     header.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
     header.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -720,7 +720,7 @@ func _on_toggle_pressed(b_index: int, enable: bool):
             # Показываем сообщение через городской UI, если доступен
             var city_ui = get_tree().root.find_child("CityUi", true, false)
             if city_ui and city_ui.has_method("set_message"):
-                city_ui.set_message("Нет свободных жителей!")
+                city_ui.set_message(tr("No free citizens!"))
             return
         tm.assign_townsfolk(b_index)
     else:
@@ -762,7 +762,7 @@ func _on_quality_priority_pressed(b_index: int):
                     break
             var bname = bdata.get("name", label) if bdata else label
             var priority_text = GameData.get_quality_priority_name(new_priority)
-            hud.show_message("%s: приоритет качества — %s" % [bname, priority_text])
+            hud.show_message(tr("%s: quality priority — %s") % [bname, priority_text])
     # Обновляем кнопку в интерфейсе
     _refresh()
     CityData.emit_signal("city_updated")
@@ -783,7 +783,7 @@ func _update_quality_button(button: Button, b_index: int):
         button.text = "🎲"
     else:
         button.text = "★"
-    button.tooltip_text = "Приоритет качества: %s (нажмите чтобы переключить)" % GameData.get_quality_priority_name(priority)
+    button.tooltip_text = tr("Quality priority: %s (click to switch)") % GameData.get_quality_priority_name(priority)
 
 func _get_toggle_icon(icon_name: String) -> Texture2D:
     if icon_name == "resume":
@@ -854,7 +854,7 @@ func _on_craft_bar_mouse_exited():
 func _update_craft_bar_tooltip(craft_bar: ProgressBar, status_text: String):
     if ui_helpers == null or not is_instance_valid(ui_helpers):
         return
-    ui_helpers.progress_tooltip_label.text = "Крафт «%s»: %s" % [
+    ui_helpers.progress_tooltip_label.text = tr("Crafting \"%s\": %s") % [
         str(craft_bar.get_meta("craft_name", "")),
         status_text if not status_text.is_empty() else "—"
     ]
@@ -913,7 +913,7 @@ func _fill_upgrade_tooltip_content(b_index: int) -> bool:
     header.add_theme_constant_override("separation", 6)
     header.mouse_filter = Control.MOUSE_FILTER_IGNORE
     var header_label = Label.new()
-    header_label.text = "Улучшить до"
+    header_label.text = tr("Upgrade to")
     header_label.add_theme_font_size_override("font_size", 16)
     header_label.add_theme_color_override("font_color", Color.WHITE)
     header_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -941,7 +941,7 @@ func _fill_upgrade_tooltip_content(b_index: int) -> bool:
     var work_cost = int(ceil(float(up_data.get("work_cost", 0)) * MapHelpers.get_construction_cost_mult()))
     if work_cost > 0:
         var labor_label = Label.new()
-        labor_label.text = "Труд: %d" % work_cost
+        labor_label.text = tr("Work: %d") % work_cost
         labor_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
         labor_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         upgrade_tooltip_content.add_child(labor_label)
@@ -959,7 +959,7 @@ func _fill_upgrade_tooltip_content(b_index: int) -> bool:
     var additional_req = String(up_data.get("additional_req", ""))
     if additional_req != "":
         var req_label = Label.new()
-        req_label.text = "Условие: доступ города к пресной воде" if additional_req == "running_water" else "Условие: " + additional_req
+        req_label.text = tr("Requirement: city access to fresh water") if additional_req == "running_water" else tr("Requirement: ") + additional_req
         req_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
         req_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         upgrade_tooltip_content.add_child(req_label)

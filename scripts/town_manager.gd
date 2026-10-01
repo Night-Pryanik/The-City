@@ -215,10 +215,10 @@ func _take_unique_town_name(preferred_name: String = "") -> String:
         return selected_name
 
     var fallback_index := towns.size() + 1
-    var fallback_name := "Городок %d" % fallback_index
+    var fallback_name := tr("Town %d") % fallback_index
     while _used_town_names.has(fallback_name):
         fallback_index += 1
-        fallback_name = "Городок %d" % fallback_index
+        fallback_name = tr("Town %d") % fallback_index
     _used_town_names[fallback_name] = true
     return fallback_name
 

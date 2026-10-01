@@ -2,7 +2,7 @@
   "terrains": [
     {
       "id": "plain",
-      "name": "Равнина",
+      "name": "Plain",
       "color": [ 144, 238, 144 ],
       "move_cost": 1,
       "expansion_cost": 2,
@@ -11,7 +11,7 @@
     },
     {
       "id": "hill",
-      "name": "Холмы",
+      "name": "Hills",
       "color": [ 139, 90, 43 ],
       "move_cost": 2,
       "expansion_cost": 3,
@@ -20,7 +20,7 @@
     },
     {
       "id": "mountain",
-      "name": "Горы",
+      "name": "Mountains",
       "color": [ 105, 105, 105 ],
       "move_cost": 3,
       "expansion_cost": 5,
@@ -30,7 +30,7 @@
     },
     {
       "id": "lake",
-      "name": "Пресноводное озеро",
+      "name": "Freshwater Lake",
       "color": [ 66, 129, 180 ],
       "move_cost": 999,
       "expansion_cost": 6,
@@ -45,7 +45,7 @@
     },
     {
       "id": "swamp",
-      "name": "Болото",
+      "name": "Swamp",
       "color": [ 90, 120, 80 ],
       "move_cost": 2,
       "expansion_cost": 4,
@@ -55,7 +55,7 @@
     },
     {
       "id": "marsh",
-      "name": "Марши",
+      "name": "Marsh",
       "color": [ 80, 100, 70 ],
       "move_cost": 2,
       "expansion_cost": 3,
@@ -65,7 +65,7 @@
     },
     {
       "id": "sea",
-      "name": "Море",
+      "name": "Sea",
       "color": [ 40, 90, 140 ],
       "move_cost": 999,
       "expansion_cost": 0,
@@ -75,7 +75,7 @@
     },
     {
       "id": "beach",
-      "name": "Пляж",
+      "name": "Beach",
       "color": [ 220, 200, 140 ],
       "move_cost": 1,
       "expansion_cost": 2,
@@ -85,7 +85,7 @@
     },
     {
       "id": "sandy_desert",
-      "name": "Песчаная пустыня",
+      "name": "Sandy Desert",
       "color": [ 220, 200, 140 ],
       "move_cost": 2.5,
       "expansion_cost": 2.5,
@@ -95,7 +95,7 @@
     },
     {
       "id": "rocky_desert",
-      "name": "Каменистая пустыня",
+      "name": "Rocky Desert",
       "color": [ 220, 200, 140 ],
       "move_cost": 2,
       "expansion_cost": 2,

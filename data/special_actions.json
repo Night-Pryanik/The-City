@@ -2,7 +2,7 @@
   "special_actions": [
     {
       "id": "clear_forest",
-      "name": "Вырубка леса",
+      "name": "Clear Forest",
       "action_type": "cover",
       "icon": "clear_forest.png",
       "source_cover": [ "forest", "sparse_forest" ],
@@ -21,7 +21,7 @@
       // (число или [min, max]) — см. main_map.gd, ветка action_type == "forage".
       // После сбора ресурс исчезает с карты (tile.resource = null).
       "id": "forage_resource",
-      "name": "Собрать ресурс",
+      "name": "Forage Resource",
       "action_type": "forage",
       "icon": "new_resource.png",
       "result_terrain": "dont_change",
@@ -33,7 +33,7 @@
       // «Разведение животных и растений (схема crop_bred)»). Природный
       // tile.resource при сносе НЕ трогается.
       "id": "demolish_improvement",
-      "name": "Снести улучшение",
+      "name": "Demolish Improvement",
       "action_type": "demolish",
       "icon": "demolish.svg",
       "result_terrain": "dont_change",
@@ -44,7 +44,7 @@
       // source_terrains — список типов местности, к которым применимо действие.
       // Стоимость значительная — 3x строительства фермы
       "id": "drain_water",
-      "name": "Осушение болот",
+      "name": "Drain Water",
       "action_type": "terrain",
       "icon": "drain_swamp.png",
       "source_terrains": [ "swamp", "marsh" ],
@@ -94,7 +94,7 @@
       // дорожная сеть этого городка. Такое соединение открывает торговлю
       // (см. town_manager.is_trade_available).
       "id": "build_road",
-      "name": "Построить дорогу",
+      "name": "Build Road",
       "action_type": "road",
       "icon": "road.svg",
       "result_terrain": "dont_change",

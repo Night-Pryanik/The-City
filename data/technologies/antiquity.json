@@ -2,99 +2,99 @@
   "technologies": [
     {
       "id": "parchment",
-      "name": "Пергамент",
+      "name": "Parchment",
       "era": "antiquity",
       "science_cost": 3.0,
       "prerequisites": [ [ "leatherworking", "limestone_burning" ] ],
       "icon": "parchment_tech.png",
-      "description": "Открывает пергамент и позволяет создавать письменные материалы.",
-      "flavor": "Пергамент стал важным носителем информации в древнем мире."
+      "description": "Unlocks parchment and allows you to create written material.",
+      "flavor": "Parchment became an important carrier of information in the ancient world."
     },
     {
       "id": "mathematics",
-      "name": "Математика",
+      "name": "Mathematics",
       "era": "antiquity",
       "science_cost": 4.0,
       "prerequisites": [ [ "writing" ] ],
       "icon": "mathematics.png",
-      "description": "-10% к затратам труда на строительство.",
-      "flavor": "Древние цивилизации умели считать, но именно сейчас знания перешли от простых рецептов к строгим доказательствам. Геометрия и абстрактные вычисления позволили не просто наблюдать за миром, а рассчитывать его: от формы зубьев колеса до движения звёзд."
+      "description": "-10% to the work cost of construction.",
+      "flavor": "Ancient civilizations could count, but only now has knowledge moved from simple recipes to strict proofs. Geometry and abstract calculation let people not just watch the world but compute it: from the shape of a wheel's teeth to the motion of the stars."
     },
     {
       "id": "calendar",
-      "name": "Календарь",
+      "name": "Calendar",
       "era": "antiquity",
       "science_cost": 5.0,
       "prerequisites": [ [ "mathematics", "plantations" ] ],
       "icon": "calendar.png",
-      "description": "+30% к производству ресурсов на плантациях.",
-      "flavor": "Хотя люди отслеживали смену сезонов с древнейших времён, именно сейчас календарь стал стандартизированным инструментом управления: точное планирование посева, обрезки и сбора урожая позволило плантациям раскрыть свой полный потенциал."
+      "description": "+30% to resource production on plantations.",
+      "flavor": "People have tracked the turning of the seasons since the earliest times, but only now has the calendar become a standard tool of management: precise planning of sowing, pruning and harvest let plantations reach their full potential."
     },
     {
       "id": "draft_animals",
-      "name": "Тягловые животные",
+      "name": "Draft Animals",
       "era": "antiquity",
       "science_cost": 4.0,
       "prerequisites": [ [ "animal_husbandry", "wheel" ] ],
       "icon": "draft_animals.png",
-      "description": "Открывает использование тягловых животных для вращения мельничных жерновов.",
-      "flavor": "Тягловые животные позволили людям использовать силу животных для выполнения тяжелой работы, что значительно увеличило производительность и эффективность в сельском хозяйстве и строительстве."
+      "description": "Unlocks the use of draft animals to turn millstones.",
+      "flavor": "Draft animals let people harness animal strength for heavy work, greatly raising output and efficiency in farming and construction."
     },
     {
       "id": "water_wheel",
-      "name": "Водяное колесо",
+      "name": "Water Wheel",
       "era": "antiquity",
       "science_cost": 5.0,
       "prerequisites": [ [ "irrigation", "wheel" ] ],
       "icon": "water_wheel.png",
-      "description": "Открывает использование водяного колеса для приведения в движение мельничных жерновов.",
-      "flavor": "Водяное колесо стало важным источником энергии в древнем мире, позволяя автоматизировать процессы обработки зерна и других материалов."
+      "description": "Unlocks the use of the water wheel to set millstones in motion.",
+      "flavor": "The water wheel became an important source of power in the ancient world, automating the processing of grain and other materials."
     },
     {
       "id": "paper",
-      "name": "Бумага",
+      "name": "Paper",
       "era": "antiquity",
       "science_cost": 3.0,
       "icon": "paper_tech.png",
       "prerequisites": [ [ "limestone_burning", "writing" ] ],
-      "description": "Даёт возможность строить бумажную мастерскую.\nПозволяет производить бумагу из тутовника, конопли и рами с использованием извести.",
-      "flavor": "Революционное изобретение позволило создать доступный и практичный материал для письма."
+      "description": "Allows you to build the paper workshop.\nAllows you to produce paper from mulberry, hemp and ramie with the help of lime.",
+      "flavor": "This revolutionary invention made it possible to create an affordable, practical material for writing."
     },
     {
       "id": "scriptoriums",
-      "name": "Скриптории",
+      "name": "Scriptoriums",
       "era": "antiquity",
       "science_cost": 3.0,
       "icon": "scriptoriums.png",
       "prerequisites": [ [ "writing" ] ],
-      "description": "Даёт возможность строить скриптории.",
-      "flavor": "В скрипториях писцы копировали, переводили, переписывали и перекомпилировали тексты, связанные с управлением, культом божеств, магией и лечением болезней."
+      "description": "Allows you to build scriptoriums.",
+      "flavor": "In scriptoriums scribes copied, translated, rewrote and recensioned texts on administration, the worship of the gods, magic and the curing of disease."
     },
     {
       "id": "cartography",
-      "name": "Картография",
+      "name": "Cartography",
       "era": "antiquity",
       "science_cost": 3.0,
       "icon": "cartography.png",
       "prerequisites": [ [ "writing" ] ],
-      "description": "Даёт возможность разведчикам исследовать области в тумане войны.",
-      "flavor": "Наука об исследовании местности и рисовании карт.",
+      "description": "Allows scouts to explore areas in the fog of war.",
+      "flavor": "The art of exploring the land and drawing maps of it.",
       "unlock_effects": [
         {
           "icon": "visibility.png",
-          "name": "Открывает возможность разведчикам исследовать области в тумане войны."
+          "name": "Allows scouts to explore areas in the fog of war."
         }
       ]
     },
     {
       "id": "alchemy",
-      "name": "Алхимия",
+      "name": "Alchemy",
       "era": "antiquity",
       "science_cost": 3.0,
       "icon": "alchemy.png",
       "prerequisites": [ [ "metallurgy", "writing" ] ],
-      "description": "Даёт возможность строить дом алхимика.",
-      "flavor": "Протонаука о попытках превращения неблагородных металлов в золото."
+      "description": "Allows you to build the alchemist's house.",
+      "flavor": "A protoscience of attempts to turn base metals into gold."
     }
   ]
 }

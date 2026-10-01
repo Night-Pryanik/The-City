@@ -10,7 +10,7 @@
   "product_groups": [
     {
       "id": "millable_grains",
-      "name": "Зерновые культуры",
+      "name": "Millable Grains",
       "products": [
         "wheat",
         "rye",
@@ -25,7 +25,7 @@
     },
     {
       "id": "building_stone",
-      "name": "Строительный камень",
+      "name": "Building Stone",
       "products": [
         "basalt",
         "tuff",
@@ -37,12 +37,12 @@
     },
     {
       "id": "processed_construction_materials",
-      "name": "Обработанные стройматериалы",
+      "name": "Processed Building Materials",
       "products": [ "processed_building_stone", "bricks" ]
     },
     {
       "id": "oil_crops",
-      "name": "Масличные культуры",
+      "name": "Oil Crops",
       "products": [
       //  "sunflower",
         "sesame",
@@ -55,18 +55,18 @@
     },
     {
       "id": "textile_crops",
-      "name": "Текстильные культуры",
+      "name": "Textile Crops",
       "products": [ "cotton", "flax", "hemp", "jute", "ramie" ]
     },
     {
       "id": "rope_fibers",
-      "name": "Волокна для канатов",
+      "name": "Rope Fibers",
       "products": [ "hemp", "jute", "ramie", "sisal", "papyrus" ]
     },
-    { "id": "boats", "name": "Лодки", "products": [ "reed_boat" ] },
+    { "id": "boats", "name": "Boats", "products": [ "reed_boat" ] },
     {
       "id": "fruits",
-      "name": "Фрукты",
+      "name": "Fruits",
       "products": [
         "grapes",
         "olives",
@@ -78,7 +78,7 @@
     },
     {
       "id": "writing_materials",
-      "name": "Писчие материалы",
+      "name": "Writing Materials",
       "products": [
         "clay_tablets",
         "wax_tablets",
@@ -90,12 +90,12 @@
     },
     {
       "id": "bronze_alloys",
-      "name": "Бронзовые сплавы",
+      "name": "Bronze Alloys",
       "products": [ "tin", "antimony", "arsenic" ]
     },
     {
       "id": "dyes",
-      "name": "Красители",
+      "name": "Dyes",
       "products": [
         "ochre",
         "indigo",
@@ -114,12 +114,12 @@
     },
     {
       "id": "paper_fibers",
-      "name": "Волокна для бумаги",
+      "name": "Paper Fibers",
       "products": [ "mulberry_bark", "hemp", "ramie" ]
     },
     {
       "id": "alcohol",
-      "name": "Алкоголь",
+      "name": "Alcohol",
       "products": [ "beer", "mead", "sake", "pulque", "wine", "fruit_wine" ]
     }
   ]

@@ -66,7 +66,7 @@ func load_all_data():
 # Если список пуст или не загрузился — возвращает нейтральное имя по умолчанию.
 func get_random_city_name() -> String:
     if city_names.is_empty():
-        return "Город"
+        return tr("City")
     return city_names[randi() % city_names.size()]
 
 # Возвращает имя группы по её ключу (с символом "@" или без).

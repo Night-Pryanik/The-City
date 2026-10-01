@@ -32,13 +32,13 @@ func _refresh_status_labels():
         if tech_data:
             var collected = CityData.get_research_science_collected()
             var cost = CityData.current_research_science_cost
-            tech_current_label.text = "Изучается: %s (наука: %.0f/%d)" % [tech_data["name"], collected, cost]
+            tech_current_label.text = tr("Researching: %s (science: %.0f/%d)") % [tech_data["name"], collected, cost]
             tech_progress_bar.value = CityData.research_progress * 100.0
         else:
-            tech_current_label.text = "Изучается: ???"
+            tech_current_label.text = tr("Researching: ???")
             tech_progress_bar.value = 0
     else:
-        tech_current_label.text = "Нет текущего исследования"
+        tech_current_label.text = tr("No current research")
         tech_progress_bar.value = 0
 
 func _get_era_name(era_id: String) -> String:
@@ -66,24 +66,24 @@ func _rebuild_lists():
         var era_str = _get_era_name(tech.get("era", ""))
         var name_label = Label.new()
         if is_available:
-            name_label.text = "%s [%s] (наука: %d)" % [tech["name"], era_str, tech.get("science_cost", 3)]
+            name_label.text = tr("%s [%s] (science: %d)") % [tech["name"], era_str, tech.get("science_cost", 3)]
             name_label.add_theme_color_override("font_color", Color.WHITE)
         else:
             var req_str = ""
             if not CityData.is_tech_era_allowed(tech_id):
                 # Эпоха технологии выше текущей — переход в неё ещё не совершён.
-                req_str = " | Требуется переход в следующую эпоху"
+                req_str = tr(" | Requires advancing to the next era")
             else:
                 var prereq_text = CityData.get_tech_prerequisites_text(tech_id)
                 if prereq_text != "":
-                    req_str = " | Требуется: " + prereq_text
-            name_label.text = "%s [%s] (наука: %d)%s" % [tech["name"], era_str, tech.get("science_cost", 3), req_str]
+                    req_str = tr(" | Required: ") + prereq_text
+            name_label.text = tr("%s [%s] (science: %d)%s") % [tech["name"], era_str, tech.get("science_cost", 3), req_str]
             name_label.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
         row.add_child(name_label)
 
         if is_available:
             var btn = Button.new()
-            btn.text = "Изучить"
+            btn.text = tr("Research")
             btn.pressed.connect(_on_research_button_pressed.bind(tech_id))
             row.add_child(btn)
 

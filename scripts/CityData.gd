@@ -393,12 +393,18 @@ func spend_treasury(amount: int) -> bool:
 # В разбивке казны налог пока ОДИН, поэтому он не раскладывается по
 # источникам/продуктам, а рисуется одной строкой под типом TAX_INCOME_TYPE
 # (см. TREASURY_FLAT_TYPE_KEY и ui_helpers.show_treasury_tooltip).
-const TAX_INCOME_TYPE: String = "Налоги"
+#
+# Здесь ВАЖНО: обе константы хранят АНГЛИЙСКИЙ текст, потому что tr() нельзя
+# вызвать в выражении константы. Перевод накладывается в точке отрисовки —
+# ui_helpers оборачивает подпись в tr() (см. show_treasury_tooltip). Так ключи
+# остаются одинаковыми при любом языке, и смена языка не требует пересборки
+# накопителей казны.
+const TAX_INCOME_TYPE: String = "Taxes"
 # Источник налога в ПЛОСКОМ накопителе доходов (treasury_income_accum →
 # treasury_income_snapshot, см. record_treasury_income). Отдельное имя — чтобы
 # сбор налогов не смешивался с рыночным доходом от «Все жители» в плоском
 # накопителе (иерархическая разбивка тултипа плоский снимок не читает).
-const TAX_INCOME_SOURCE: String = "Подушный налог"
+const TAX_INCOME_SOURCE: String = "Poll tax"
 
 # Базовый налог с одного жителя за один тик симуляции
 # (data/game_balance.json, поле base_tax_per_citizen).
@@ -1593,7 +1599,7 @@ func do_tick():
                 var available = city_storage[pid]
                 var to_take = min(available, food_needed - food_eaten)
                 remove_from_storage(pid, to_take, "best")
-                record_consumption_source(pid, "Питание населения", to_take)
+                record_consumption_source(pid, tr("Population food"), to_take)
                 food_eaten += to_take
                 if food_eaten >= food_needed:
                     break
@@ -1717,7 +1723,7 @@ func start_research(tech_id: String) -> bool:
             if t["id"] == current_research_tech_id:
                 current_tech_name = t["name"]
                 break
-        emit_signal("research_error", "Уже идёт исследование: " + current_tech_name)
+        emit_signal("research_error", tr("Research already in progress: ") + current_tech_name)
         return false
     if tech_id in unlocked_technologies:
         var tech_name = tech_id
@@ -1725,7 +1731,7 @@ func start_research(tech_id: String) -> bool:
             if t["id"] == tech_id:
                 tech_name = t["name"]
                 break
-        emit_signal("research_error", "Технология уже изучена: " + tech_name)
+        emit_signal("research_error", tr("Technology already researched: ") + tech_name)
         return false
     var tech_data = null
     for t in GameData.technologies:
@@ -1733,16 +1739,16 @@ func start_research(tech_id: String) -> bool:
             tech_data = t
             break
     if tech_data == null:
-        emit_signal("research_error", "Технология не найдена: " + tech_id)
+        emit_signal("research_error", tr("Technology not found: ") + tech_id)
         return false
     if not are_prerequisites_met(tech_id):
         var prereq_text = get_tech_prerequisites_text(tech_id)
-        emit_signal("research_error", "Не выполнены требования: " + prereq_text)
+        emit_signal("research_error", tr("Requirements not met: ") + prereq_text)
         return false
     if not is_tech_era_allowed(tech_id):
         var tech_name = tech_data.get("name", tech_id)
         var next_era_name = _get_era_name_by_index(current_era_index + 1)
-        emit_signal("research_error", "«%s» относится к следующей эпохе. Сначала перейдите в эпоху %s." % [tech_name, next_era_name])
+        emit_signal("research_error", tr("\"%s\" belongs to the next era. Advance to the %s era first.") % [tech_name, next_era_name])
         return false
     # Исследование не требует еды — только очки науки.
     current_research_tech_id = tech_id
@@ -1765,11 +1771,11 @@ func _complete_tech_instantly(tech_id: String) -> bool:
             if t["id"] == tech_id:
                 tech_name = t["name"]
                 break
-        emit_signal("research_error", "Технология уже изучена: " + tech_name)
+        emit_signal("research_error", tr("Technology already researched: ") + tech_name)
         return false
     var tech_data = _get_tech_data(tech_id)
     if tech_data == null:
-        emit_signal("research_error", "Технология не найдена: " + tech_id)
+        emit_signal("research_error", tr("Technology not found: ") + tech_id)
         return false
     unlocked_technologies.append(tech_id)
     # Технология может открывать новые виды ресурсов — спавним их на карте и
@@ -1822,7 +1828,7 @@ func _complete_research():
     var completed_tech_id = current_research_tech_id
     unlocked_technologies.append(current_research_tech_id)
     var tech_name = get_tech_name(current_research_tech_id)
-    emit_signal("research_error", "Исследование завершено: " + tech_name)
+    emit_signal("research_error", tr("Research complete: ") + tech_name)
     # Технология может открывать новые виды ресурсов — спавним их на карте.
     # Сообщения готовим ДО сигнала research_completed, чтобы попап
     # мог отобразить найденные ресурсы сразу.
@@ -1889,8 +1895,8 @@ func get_tech_prerequisites_text(tech_id: String) -> String:
         for req_id in group:
             var req_data = _get_tech_data(req_id)
             and_names.append(req_data.get("name", req_id) if req_data else req_id)
-        or_parts.append(" и ".join(and_names))
-    return " или ".join(or_parts)
+        or_parts.append(tr(" and ").join(and_names))
+    return tr(" or ").join(or_parts)
 
 # Доступна ли технология для изучения (prerequisites выполнены, не изучена,
 # не в процессе, эпоха не выше текущей).
@@ -1980,7 +1986,7 @@ func check_building_additional_req(building_id: String) -> Dictionary:
             building_data = b
             break
     if building_data == null:
-        return {"ok": false, "reason": "Здание не найдено"}
+        return {"ok": false, "reason": tr("Building not found")}
 
     var requirement = String(building_data.get("additional_req", ""))
     if requirement == "":
@@ -1989,7 +1995,7 @@ func check_building_additional_req(building_id: String) -> Dictionary:
     if requirement == "running_water":
         var main_map = get_tree().root.find_child("MainMap", true, false)
         if main_map == null or main_map.tile_data.is_empty():
-            return {"ok": false, "reason": "Нет доступа к пресной воде"}
+            return {"ok": false, "reason": tr("No access to fresh water")}
         var water_access = MapHelpers.get_hex_water_access(
             main_map.city_row,
             main_map.city_col,
@@ -1999,9 +2005,9 @@ func check_building_additional_req(building_id: String) -> Dictionary:
         )
         if water_access != "":
             return {"ok": true, "reason": ""}
-        return {"ok": false, "reason": "Нужен доступ города к пресной воде"}
+        return {"ok": false, "reason": tr("The city needs access to fresh water")}
 
-    return {"ok": false, "reason": "Неизвестное условие строительства: %s" % requirement}
+    return {"ok": false, "reason": tr("Unknown construction requirement: %s") % requirement}
 
 # Открыто ли улучшение игроку (по полю unlock_tech самого улучшения).
 func is_improvement_unlocked(imp_id: String) -> bool:
@@ -2055,9 +2061,9 @@ func spawn_resource_on_tech_research(tech_id: String) -> Array:
             continue
         var res_name: String = data.get("name", res_id)
         if _is_resource_on_map(tile_data, res_id):
-            messages.append("Учёные оценили: в вашем регионе можно найти %s." % res_name)
+            messages.append(tr("Scholars estimate: your region may contain %s.") % res_name)
         else:
-            messages.append("Похоже, в вашем регионе %s отсутствует." % res_name)
+            messages.append(tr("It seems your region has no %s.") % res_name)
     return messages
 
 # Проверяет, есть ли на карте хотя бы один гекс с указанным ресурсом.
@@ -2194,11 +2200,11 @@ func can_upgrade_building(idx: int) -> bool:
 # строительства»). Возвращает { "ok": bool, "reason": String } для UI.
 func start_building_upgrade(idx: int) -> Dictionary:
     if idx < 0 or idx >= city_built_buildings.size():
-        return {"ok": false, "reason": "Здание не найдено"}
+        return {"ok": false, "reason": tr("Building not found")}
     var from_id: String = city_built_buildings[idx].get("id", "")
     var upgrade_to: String = get_building_upgrade_target(from_id)
     if upgrade_to == "":
-        return {"ok": false, "reason": "У этого здания нет улучшенной версии"}
+        return {"ok": false, "reason": tr("This building has no improved version")}
 
     var upgrade_data = null
     for b in GameData.buildings:
@@ -2206,11 +2212,11 @@ func start_building_upgrade(idx: int) -> Dictionary:
             upgrade_data = b
             break
     if upgrade_data == null:
-        return {"ok": false, "reason": "Улучшенная версия здания не найдена"}
+        return {"ok": false, "reason": tr("Improved building version not found")}
 
     # Улучшенная версия должна быть открыта технологией.
     if not is_building_unlocked(upgrade_to):
-        return {"ok": false, "reason": "Сначала изучите технологию, открывающую «%s»" % upgrade_data.get("name", upgrade_to)}
+        return {"ok": false, "reason": tr("Research the technology that unlocks \"%s\" first") % upgrade_data.get("name", upgrade_to)}
 
     # Дополнительные условия улучшенной версии (additional_req).
     var additional_req_check = check_building_additional_req(upgrade_to)
@@ -2220,18 +2226,18 @@ func start_building_upgrade(idx: int) -> Dictionary:
     var main_map = get_tree().root.find_child("MainMap", true, false)
     var bm = main_map.get_node("BuildManager") if main_map and main_map.has_node("BuildManager") else null
     if bm == null:
-        return {"ok": false, "reason": "Менеджер строительства недоступен"}
+        return {"ok": false, "reason": tr("Construction manager unavailable")}
 
     # Апгрейд этого здания уже идёт — повторный запуск невозможен.
     if not bm.get_building_upgrade_by_index(idx).is_empty():
-        return {"ok": false, "reason": "Улучшение этого здания уже идёт"}
+        return {"ok": false, "reason": tr("This building is already being upgraded")}
 
     # Общий лимит одновременных строек (здания + улучшения + апгрейды) равен
     # числу жителей. Проверяем ДО списания материалов.
     var work_cost = upgrade_data.get("work_cost", 0)
     if work_cost > 0 and not ignore_build_requirements:
         if bm.get_total_active_builds() >= total_population:
-            return {"ok": false, "reason": "Можно строить не более %d зданий или улучшений одновременно (лимит = число жителей)" % total_population}
+            return {"ok": false, "reason": tr("You can build or upgrade no more than %d buildings at once (limit = number of citizens)") % total_population}
 
     # Атомарно списываем additional_cost улучшенной версии (при включённом
     # дебаг-флаге материалы не проверяются и не списываются).
@@ -2240,7 +2246,7 @@ func start_building_upgrade(idx: int) -> Dictionary:
         var missing_names = []
         for m in cost_check.get("missing", []):
             missing_names.append(str(m))
-        return {"ok": false, "reason": "Не хватает: " + ", ".join(missing_names)}
+        return {"ok": false, "reason": tr("Missing: ") + ", ".join(missing_names)}
 
     var build_key = bm.start_building_upgrade(idx, from_id, upgrade_to)
     if build_key == "":
@@ -2596,7 +2602,7 @@ func get_improvement_production_modifiers(imp_id: String, has_fresh_water: bool,
             var m = float(multipliers[imp_id])
             if m != 1.0:
                 result.append({
-                    "label": "+%d%% (Доступ к пресной воде)" % int(round((m - 1.0) * 100.0)),
+                    "label": tr("+%d%% (Fresh water access)") % int(round((m - 1.0) * 100.0)),
                     "multiplier": m
                 })
 

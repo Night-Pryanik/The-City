@@ -12,7 +12,7 @@
   "resources": [
     {
       "id": "cows", "price": 60,
-      "name": "Коровы",
+      "name": "Cattle",
       "type": "raw",
       "category": "animals",
       "group": "livestock",
@@ -29,7 +29,7 @@
     },
     {
       "id": "sheep", "price": 30,
-      "name": "Овцы",
+      "name": "Sheep",
       "type": "raw",
       "category": "animals",
       "group": "livestock",
@@ -47,7 +47,7 @@
     },
     {
       "id": "goats", "price": 28,
-      "name": "Козы",
+      "name": "Goats",
       "type": "raw",
       "category": "animals",
       "group": "livestock",
@@ -65,7 +65,7 @@
     },
     {
       "id": "horses", "price": 150,
-      "name": "Лошади",
+      "name": "Horses",
       "type": "raw",
       "category": "animals",
       "group": "livestock",
@@ -82,7 +82,7 @@
     },
     {
       "id": "pigs", "price": 35,
-      "name": "Свиньи",
+      "name": "Pigs",
       "type": "raw",
       "category": "animals",
       "group": "livestock",
@@ -99,7 +99,7 @@
     },
     {
       "id": "zebu", "price": 55,
-      "name": "Зебу",
+      "name": "Zebu",
       "type": "raw",
       "category": "animals",
       "group": "livestock",
@@ -116,7 +116,7 @@
     },
     {
       "id": "banteng", "price": 65,
-      "name": "Бантенги",
+      "name": "Banteng",
       "type": "raw",
       "category": "animals",
       "group": "livestock",
@@ -133,7 +133,7 @@
     },
     {
       "id": "buffalo", "price": 75,
-      "name": "Буйволы",
+      "name": "Buffalo",
       "type": "raw",
       "category": "animals",
       "group": "livestock",
@@ -151,7 +151,7 @@
     },
     {
       "id": "bison", "price": 70,
-      "name": "Бизоны",
+      "name": "Bison",
       "type": "raw",
       "category": "animals",
       "group": "livestock",
@@ -168,7 +168,7 @@
     },
     {
       "id": "yak", "price": 70,
-      "name": "Яки",
+      "name": "Yak",
       "type": "raw",
       "category": "animals",
       "group": "livestock",
@@ -185,7 +185,7 @@
     },
     {
       "id": "llama", "price": 40,
-      "name": "Ламы",
+      "name": "Llamas",
       "type": "raw",
       "category": "animals",
       "group": "livestock",
@@ -202,7 +202,7 @@
     },
     {
       "id": "alpaca", "price": 40,
-      "name": "Альпаки",
+      "name": "Alpacas",
       "type": "raw",
       "category": "animals",
       "group": "livestock",
@@ -219,7 +219,7 @@
     },
     {
       "id": "camel", "price": 120,
-      "name": "Верблюды",
+      "name": "Camels",
       "type": "raw",
       "category": "animals",
       "group": "livestock",
@@ -236,7 +236,7 @@
     },
     {
       "id": "deer", "price": 50,
-      "name": "Олени",
+      "name": "Deer",
       "type": "raw",
       "category": "animals",
       "group": "livestock",
@@ -253,7 +253,7 @@
     },
     {
       "id": "chicken", "price": 10,
-      "name": "Куры",
+      "name": "Chickens",
       "type": "raw",
       "category": "animals",
       "group": "livestock",
@@ -270,7 +270,7 @@
     },
     {
       "id": "turkey", "price": 14,
-      "name": "Индейки",
+      "name": "Turkeys",
       "type": "raw",
       "category": "animals",
       "group": "livestock",
@@ -287,7 +287,7 @@
     },
     {
       "id": "duck", "price": 12,
-      "name": "Утки",
+      "name": "Ducks",
       "type": "raw",
       "category": "animals",
       "group": "livestock",
@@ -305,7 +305,7 @@
     },
     {
       "id": "goose", "price": 15,
-      "name": "Гуси",
+      "name": "Geese",
       "type": "raw",
       "category": "animals",
       "group": "livestock",
@@ -324,7 +324,7 @@
     },
     {
       "id": "guineafowl", "price": 12,
-      "name": "Цесарки",
+      "name": "Guineafowl",
       "type": "raw",
       "category": "animals",
       "group": "livestock",
@@ -341,7 +341,7 @@
     },
     {
       "id": "ostrich", "price": 40,
-      "name": "Страусы",
+      "name": "Ostriches",
       "type": "raw",
       "category": "animals",
       "group": "livestock",
@@ -359,7 +359,7 @@
     },
     {
       "id": "bee", "price": 25,
-      "name": "Пчёлы",
+      "name": "Bees",
       "type": "raw",
       "category": "animals",
       "group": "livestock",
@@ -377,7 +377,7 @@
     },
     {
       "id": "rabbit", "price": 8,
-      "name": "Кролики",
+      "name": "Rabbits",
       "type": "raw",
       "category": "animals",
       "group": "livestock",
@@ -394,7 +394,7 @@
     },
     {
       "id": "pigeon", "price": 8,
-      "name": "Голуби",
+      "name": "Pigeons",
       "type": "raw",
       "category": "animals",
       "group": "livestock",
@@ -411,7 +411,7 @@
     },
     {
       "id": "freshwater_fish", "price": 5,
-      "name": "Рыба",
+      "name": "Fish",
       "type": "raw",
       "category": "animals",
       "group": "aquatic_animals",
@@ -431,7 +431,7 @@
     },
     {
       "id": "sea_fish", "price": 5,
-      "name": "Рыба",
+      "name": "Fish",
       "type": "raw",
       "category": "animals",
       "group": "aquatic_animals",
@@ -451,7 +451,7 @@
     },
     {
       "id": "murex", "price": 40,
-      "name": "Мурекс",
+      "name": "Murex",
       "type": "raw",
       "category": "animals",
       "group": "aquatic_animals",
@@ -470,7 +470,7 @@
     },
     {
       "id": "cuttlefish", "price": 40,
-      "name": "Каракатица",
+      "name": "Cuttlefish",
       "type": "raw",
       "category": "animals",
       "group": "aquatic_animals",

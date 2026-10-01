@@ -223,7 +223,7 @@ func _get_build_manager():
 func _on_building_build_completed(building_id: String, build_key: String):
     if ui_helpers and visible:
         var building_name = CityData.get_building_name(building_id)
-        ui_helpers.set_message("Строительство %s завершено" % building_name)
+        ui_helpers.set_message(tr("Construction of %s complete") % building_name)
 
 func _on_city_data_updated():
     if visible:
@@ -430,8 +430,8 @@ func _update_food_label():
         if total_cons > 0:
             cons_mark = "≈"
 
-    var food_str = "Еда: %d [+%d%s / -%d%s]" % [food_sum, total_prod, prod_mark, total_cons, cons_mark]
-    var pop_str = "Население: %d (свободных: %d)" % [CityData.total_population, CityData.idle_population]
+    var food_str = tr("Food: %d [+%d%s / -%d%s]") % [food_sum, total_prod, prod_mark, total_cons, cons_mark]
+    var pop_str = tr("Population: %d (free: %d)") % [CityData.total_population, CityData.idle_population]
     # Захватываем значение казны в кеш — этот же кеш читает тултип разбивки
     # казны (см. _show_treasury_tooltip). Синхронизация важна, иначе при
     # интервале отображения > 1 сек метка TopFoodLabel показывает старое
@@ -442,7 +442,7 @@ func _update_food_label():
     # разбивки (CityData.get_treasury_flow_text), но в секунду. Ровно тот же
     # текст, что в HUD-метке карты: обе строки собираются из одного метода,
     # поэтому разойтись не могут.
-    var treasury_str = "Казна: %d %s" % [
+    var treasury_str = tr("Treasury: %d %s") % [
         _displayed_treasury, CityData.get_treasury_flow_text()
     ]
 
@@ -586,7 +586,7 @@ func _process(delta):
         if build_hover_timer >= TOOLTIP_DELAY:
             var hint = ""
             if buildings_tab.selected_building_id == "":
-                hint = "Не выбрано здание"
+                hint = tr("No building selected")
             else:
                 var bdata = null
                 for b in data_cache.get("buildings_data", []):
@@ -600,10 +600,10 @@ func _process(delta):
                     var labor = CityData.get_total_labor()
                     if work_cost > 0:
                         var build_time = work_cost / max(1.0, labor)
-                        hint = "Строительство: %d труда, %.0f сек.\n" % [work_cost, build_time]
-                        hint += "Доступный труд: %.0f/сек (%d жителей)" % [labor, CityData.total_population]
+                        hint = tr("Construction: %d work, %.0f sec.\n") % [work_cost, build_time]
+                        hint += tr("Available work: %.0f/sec (%d citizens)") % [labor, CityData.total_population]
                     else:
-                        hint = "Построить мгновенно (бесплатно)"
+                        hint = tr("Build instantly (free)")
                     # Информация о лимите одновременных строек (здания + улучшения).
                     # Лимит равен общему числу жителей.
                     var construction_count = CityData.building_construction.size()
@@ -613,9 +613,9 @@ func _process(delta):
                         construction_count = bm.get_total_active_builds()
                     var construction_limit = CityData.total_population
                     if construction_count >= construction_limit:
-                        hint += "\nЛимит одновременных строек достигнут (%d/%d, лимит = число жителей)" % [construction_count, construction_limit]
+                        hint += tr("\nConcurrent construction limit reached (%d/%d, limit = number of citizens)") % [construction_count, construction_limit]
                     elif construction_count > 0:
-                        hint += "\nСтроек: %d/%d (лимит = число жителей)" % [construction_count, construction_limit]
+                        hint += tr("\nConstructions: %d/%d (limit = number of citizens)") % [construction_count, construction_limit]
             if hint != "":
                 ui_helpers.build_tooltip_label.text = hint
                 ui_helpers.show_build_tooltip(mouse_pos)
@@ -631,7 +631,7 @@ func _process(delta):
     if buildings_panel.visible:
         hovered_bar = buildings_tab.get_hovered_construction_bar(mouse_pos)
     if not hovered_bar.is_empty():
-        var status_text = hovered_bar.get("status_text", "Строится")
+        var status_text = hovered_bar.get("status_text", tr("Under construction"))
         var percent = hovered_bar.get("percent", 0.0)
         ui_helpers.progress_tooltip_label.text = "%s: %.0f%%" % [status_text, percent]
         ui_helpers.show_progress_tooltip(mouse_pos)

@@ -2,7 +2,7 @@
   "terrains": [
     {
       "id": "soda_lake",
-      "name": "Содовое озеро",
+      "name": "Soda Lake",
       "color": [ 200, 220, 255 ],
       "move_cost": 999,
       "expansion_cost": 200,
@@ -10,12 +10,12 @@
       "icons": [ "soda_lake_1.png", "soda_lake_2.png", "soda_lake_3.png" ],
       "unique": true,
       "cluster_size": 3,
-      "description": "Местные жители хвастаются, что белый налёт по берегам этого озера обладает необычными свойствами — он пенится и помогает отстирывать одежду.",
+      "description": "Locals boast that the white crust along the shores of this lake has unusual properties — it foams and helps to wash clothes clean.",
       "cover_chance": { "none": 100 }
     },
     {
       "id": "asphalt_lake",
-      "name": "Асфальтовое озеро",
+      "name": "Asphalt Lake",
       "color": [ 30, 30, 30 ],
       "move_cost": 999,
       "expansion_cost": 200,
@@ -23,12 +23,12 @@
       "icons": [ "asphalt_lake_1.png", "asphalt_lake_2.png", "asphalt_lake_3.png" ],
       "unique": true,
       "cluster_size": 3,
-      "description": "Поверхность этого озера застыла в чёрную блестящую корку. Местные жители говорят, что она липнет к ногам и пахнет смолой.",
+      "description": "The surface of this lake has hardened into a black glossy crust. Locals say it clings to your feet and smells of pitch.",
       "cover_chance": { "none": 100 }
     },
     {
       "id": "salt_lake",
-      "name": "Соленое озеро",
+      "name": "Salt Lake",
       "color": [ 255, 255, 200 ],
       "move_cost": 999,
       "expansion_cost": 200,
@@ -36,7 +36,7 @@
       "icons": [ "salt_lake_1.png", "salt_lake_2.png", "salt_lake_3.png" ],
       "unique": true,
       "cluster_size": 3,
-      "description": "Дно этого пересыхающего озера покрыто толстым слоем белого порошка. Местные жители говорят, что он делает еду вкуснее, помогает дольше сохранять пищу от порчи и лечит раны.",
+      "description": "The bed of this drying lake is covered in a thick layer of white powder. Locals say it makes food taste better, keeps it from spoiling longer, and heals wounds.",
       "cover_chance": { "none": 100 }
     }
   ]
