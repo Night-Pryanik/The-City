@@ -77,10 +77,9 @@
       ]
     },
     {
-      "id": "fruits_no_grapes",
+      "id": "wine_fruits",
       "name": "Fruits",
       "products": [
-        "olives",
         "mulberries",
         "figs",
         "dates",
