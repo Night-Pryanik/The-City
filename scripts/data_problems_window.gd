@@ -46,129 +46,129 @@ var all_problems: Array = []
 
 
 func _ready():
-	process_mode = Node.PROCESS_MODE_ALWAYS
+    process_mode = Node.PROCESS_MODE_ALWAYS
 
-	# Затемнение фона — окно читается как отдельный экран, а не как
-	# всплывающая подсказка поверх меню.
-	var dim = ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.5)
-	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(dim)
+    # Затемнение фона — окно читается как отдельный экран, а не как
+    # всплывающая подсказка поверх меню.
+    var dim = ColorRect.new()
+    dim.color = Color(0, 0, 0, 0.5)
+    dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    add_child(dim)
 
-	var center = CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(center)
+    var center = CenterContainer.new()
+    center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    add_child(center)
 
-	var panel = Panel.new()
-	panel.custom_minimum_size = PANEL_MIN_SIZE
-	panel.add_theme_stylebox_override("panel", _make_panel_style())
-	center.add_child(panel)
+    var panel = Panel.new()
+    panel.custom_minimum_size = PANEL_MIN_SIZE
+    panel.add_theme_stylebox_override("panel", _make_panel_style())
+    center.add_child(panel)
 
-	var vbox = VBoxContainer.new()
-	vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	vbox.offset_left = 24
-	vbox.offset_top = 24
-	vbox.offset_right = -24
-	vbox.offset_bottom = -24
-	vbox.add_theme_constant_override("separation", 10)
-	panel.add_child(vbox)
+    var vbox = VBoxContainer.new()
+    vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    vbox.offset_left = 24
+    vbox.offset_top = 24
+    vbox.offset_right = -24
+    vbox.offset_bottom = -24
+    vbox.add_theme_constant_override("separation", 10)
+    panel.add_child(vbox)
 
-	var title = Label.new()
-	title.text = "Ошибки в игровых данных"
-	title.add_theme_font_size_override("font_size", 22)
-	title.add_theme_color_override("font_color", TITLE_COLOR)
-	vbox.add_child(title)
+    var title = Label.new()
+    title.text = "Ошибки в игровых данных"
+    title.add_theme_font_size_override("font_size", 22)
+    title.add_theme_color_override("font_color", TITLE_COLOR)
+    vbox.add_child(title)
 
-	summary_label = Label.new()
-	summary_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	summary_label.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85))
-	vbox.add_child(summary_label)
+    summary_label = Label.new()
+    summary_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    summary_label.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85))
+    vbox.add_child(summary_label)
 
-	# Проблем может быть много (одна опечатка в id даёт десятки строк),
-	# поэтому список всегда в ScrollContainer, а кнопки прижаты к низу.
-	var scroll = ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	vbox.add_child(scroll)
+    # Проблем может быть много (одна опечатка в id даёт десятки строк),
+    # поэтому список всегда в ScrollContainer, а кнопки прижаты к низу.
+    var scroll = ScrollContainer.new()
+    scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+    scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+    vbox.add_child(scroll)
 
-	problems_box = VBoxContainer.new()
-	problems_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	problems_box.add_theme_constant_override("separation", 6)
-	scroll.add_child(problems_box)
+    problems_box = VBoxContainer.new()
+    problems_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    problems_box.add_theme_constant_override("separation", 6)
+    scroll.add_child(problems_box)
 
-	var buttons = HBoxContainer.new()
-	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
-	buttons.add_theme_constant_override("separation", 16)
-	vbox.add_child(buttons)
+    var buttons = HBoxContainer.new()
+    buttons.alignment = BoxContainer.ALIGNMENT_CENTER
+    buttons.add_theme_constant_override("separation", 16)
+    vbox.add_child(buttons)
 
-	var copy_btn = Button.new()
-	copy_btn.text = "Скопировать список"
-	copy_btn.custom_minimum_size = Vector2(200, 36)
-	copy_btn.pressed.connect(_on_copy_pressed)
-	buttons.add_child(copy_btn)
+    var copy_btn = Button.new()
+    copy_btn.text = "Скопировать список"
+    copy_btn.custom_minimum_size = Vector2(200, 36)
+    copy_btn.pressed.connect(_on_copy_pressed)
+    buttons.add_child(copy_btn)
 
-	var ok_btn = Button.new()
-	ok_btn.text = "Закрыть"
-	ok_btn.custom_minimum_size = Vector2(160, 36)
-	ok_btn.pressed.connect(_on_ok_pressed)
-	buttons.add_child(ok_btn)
+    var ok_btn = Button.new()
+    ok_btn.text = "Закрыть"
+    ok_btn.custom_minimum_size = Vector2(160, 36)
+    ok_btn.pressed.connect(_on_ok_pressed)
+    buttons.add_child(ok_btn)
 
-	# _ready() вызывается при add_child(), а список проблем приходит
-	# отдельным вызовом — на время между ними окно невидимо.
-	hide()
+    # _ready() вызывается при add_child(), а список проблем приходит
+    # отдельным вызовом — на время между ними окно невидимо.
+    hide()
 
 
 # Показывает список проблем. problems — массив записей из
 # DataValidator.validate() (см. шапка scripts/data_validator.gd).
 func show_problems(problems: Array):
-	all_problems = problems
-	_build_content(problems)
+    all_problems = problems
+    _build_content(problems)
 
-	# Оверлей растягивается по родителю. Родителем обязан быть корень
-	# окна (get_tree().root), а не Control главного меню: у того якоря
-	# заданы не по краям экрана (см. scenes/main_menu.tscn), и оверлей
-	# накрыл бы только часть экрана.
-	#
-	# Именно set_anchors_and_offsets_preset, а не set_anchors_preset:
-	# второй меняет якоря, но сохраняет текущий прямоугольник (подгоняет
-	# отступы), и оверлей оставался бы размером со свою панель. Первый
-	# обнуляет отступы, и PRESET_FULL_RECT растягивает Control по
-	# родителю при любом разрешении и режиме растяжения.
-	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	show()
-	move_to_front()
+    # Оверлей растягивается по родителю. Родителем обязан быть корень
+    # окна (get_tree().root), а не Control главного меню: у того якоря
+    # заданы не по краям экрана (см. scenes/main_menu.tscn), и оверлей
+    # накрыл бы только часть экрана.
+    #
+    # Именно set_anchors_and_offsets_preset, а не set_anchors_preset:
+    # второй меняет якоря, но сохраняет текущий прямоугольник (подгоняет
+    # отступы), и оверлей оставался бы размером со свою панель. Первый
+    # обнуляет отступы, и PRESET_FULL_RECT растягивает Control по
+    # родителю при любом разрешении и режиме растяжения.
+    set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    show()
+    move_to_front()
 
 
 func _build_content(problems: Array):
-	for child in problems_box.get_children():
-		problems_box.remove_child(child)
-		child.queue_free()
+    for child in problems_box.get_children():
+        problems_box.remove_child(child)
+        child.queue_free()
 
-	# Сводка: сколько всего и сколько по видам проверок.
-	var counts := _count_by_kind(problems)
-	var summary := "Найдено проблем: %d. Часть рецептов, ресурсов и технологий может работать некорректно — проверьте файлы в папке res://data." % problems.size()
-	var details: Array = []
-	for kind in _kinds_in_display_order(counts.keys()):
-		details.append("  • %s — %d" % [_check_title(kind), int(counts[kind])])
-	if not details.is_empty():
-		summary += "\n" + "\n".join(details)
-	summary_label.text = summary
+    # Сводка: сколько всего и сколько по видам проверок.
+    var counts := _count_by_kind(problems)
+    var summary := "Найдено проблем: %d. Часть рецептов, ресурсов и технологий может работать некорректно — проверьте файлы в папке res://data." % problems.size()
+    var details: Array = []
+    for kind in _kinds_in_display_order(counts.keys()):
+        details.append("  • %s — %d" % [_check_title(kind), int(counts[kind])])
+    if not details.is_empty():
+        summary += "\n" + "\n".join(details)
+    summary_label.text = summary
 
-	# Проблемы идут блоками по виду проверки: заголовок блока объясняет,
-	# ЧТО сломалось, строки под ним — где именно.
-	var current_kind := ""
-	for problem in problems:
-		var kind := str(problem.get("kind", ""))
-		if kind != current_kind:
-			current_kind = kind
-			var header := Label.new()
-			header.text = _check_title(kind)
-			header.add_theme_font_size_override("font_size", 16)
-			header.add_theme_color_override("font_color", GROUP_COLOR)
-			problems_box.add_child(header)
-		problems_box.add_child(_make_problem_label(problem))
+    # Проблемы идут блоками по виду проверки: заголовок блока объясняет,
+    # ЧТО сломалось, строки под ним — где именно.
+    var current_kind := ""
+    for problem in problems:
+        var kind := str(problem.get("kind", ""))
+        if kind != current_kind:
+            current_kind = kind
+            var header := Label.new()
+            header.text = _check_title(kind)
+            header.add_theme_font_size_override("font_size", 16)
+            header.add_theme_color_override("font_color", GROUP_COLOR)
+            problems_box.add_child(header)
+        problems_box.add_child(_make_problem_label(problem))
 
 
 # Строка одной проблемы: первая строка — чего не хватает (id подсвечен),
@@ -179,104 +179,104 @@ func _build_content(problems: Array):
 # текст (та же причина, по которой в resources_tab.gd для разбивки по
 # качеству взят RichTextLabel).
 func _make_problem_label(problem: Dictionary) -> RichTextLabel:
-	var ref_id := str(problem.get("ref_id", ""))
-	var headline := str(problem.get("headline", ""))
-	# Подсвечиваем сам идентификатор, чтобы он читался с одного взгляда.
-	var marked_headline := headline.replace(
-		"«%s»" % ref_id,
-		"[color=#%s]«%s»[/color]" % [REF_ID_COLOR.to_html(false), ref_id])
+    var ref_id := str(problem.get("ref_id", ""))
+    var headline := str(problem.get("headline", ""))
+    # Подсвечиваем сам идентификатор, чтобы он читался с одного взгляда.
+    var marked_headline := headline.replace(
+        "«%s»" % ref_id,
+        "[color=#%s]«%s»[/color]" % [REF_ID_COLOR.to_html(false), ref_id])
 
-	var label := RichTextLabel.new()
-	label.bbcode_enabled = true
-	label.fit_content = true
-	label.scroll_active = false
-	# Сообщения длинные и должны переноситься. Ширину здесь задаёт
-	# контейнер (ScrollContainer по ширине панели), поэтому в отличие от
-	# строки в HBoxContainer у resources_tab.gd перенос включать можно:
-	# метка не просит у контейнера «свою» ширину, а берёт готовую.
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	# У RichTextLabel своя тема: без явных размеров и цвета текст был бы
-	# мельче и бледнее соседних Label.
-	label.add_theme_font_size_override("normal_font_size",
-			problems_box.get_theme_font_size("font_size"))
-	label.add_theme_color_override("default_color", Color.WHITE)
-	# Метка не должна мешать тянуть список мышью.
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    var label := RichTextLabel.new()
+    label.bbcode_enabled = true
+    label.fit_content = true
+    label.scroll_active = false
+    # Сообщения длинные и должны переноситься. Ширину здесь задаёт
+    # контейнер (ScrollContainer по ширине панели), поэтому в отличие от
+    # строки в HBoxContainer у resources_tab.gd перенос включать можно:
+    # метка не просит у контейнера «свою» ширину, а берёт готовую.
+    label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    # У RichTextLabel своя тема: без явных размеров и цвета текст был бы
+    # мельче и бледнее соседних Label.
+    label.add_theme_font_size_override("normal_font_size",
+            problems_box.get_theme_font_size("font_size"))
+    label.add_theme_color_override("default_color", Color.WHITE)
+    # Метка не должна мешать тянуть список мышью.
+    label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	# Три строки: чего не хватает, где нашли ссылку и в каком файле.
-	# Путь к файлу — то самое, ради чего окно и делается: с ним ошибку
-	# видно и исправляется, не открывая все файлы data/ подряд.
-	var text := "• [b]%s[/b]\n   [color=#%s]%s[/color]" % [
-		marked_headline,
-		WHERE_COLOR.to_html(false),
-		str(problem.get("where", "")),
-	]
-	var location := str(problem.get("location", ""))
-	if not location.is_empty():
-		text += "\n   [color=#%s]%s[/color]" % [FILE_COLOR.to_html(false), location]
-	label.text = text
-	return label
+    # Три строки: чего не хватает, где нашли ссылку и в каком файле.
+    # Путь к файлу — то самое, ради чего окно и делается: с ним ошибку
+    # видно и исправляется, не открывая все файлы data/ подряд.
+    var text := "• [b]%s[/b]\n   [color=#%s]%s[/color]" % [
+        marked_headline,
+        WHERE_COLOR.to_html(false),
+        str(problem.get("where", "")),
+    ]
+    var location := str(problem.get("location", ""))
+    if not location.is_empty():
+        text += "\n   [color=#%s]%s[/color]" % [FILE_COLOR.to_html(false), location]
+    label.text = text
+    return label
 
 
 func _on_copy_pressed():
-	# Список копируется целиком — удобно приложить к задаче или сразу
-	# пойти править JSON.
-	var lines: Array = []
-	for problem in all_problems:
-		lines.append(str(problem.get("message", "")))
-	DisplayServer.clipboard_set("\n".join(lines))
+    # Список копируется целиком — удобно приложить к задаче или сразу
+    # пойти править JSON.
+    var lines: Array = []
+    for problem in all_problems:
+        lines.append(str(problem.get("message", "")))
+    DisplayServer.clipboard_set("\n".join(lines))
 
 
 func _on_ok_pressed():
-	# Окно живёт в корне дерева сцены, а не в главном меню, поэтому само
-	# себя не убирает — закрытие это queue_free(). Иначе после ухода в
-	# партию и возвращения в меню накопилос бы по скрытому оверлею на
-	# каждое посещение.
-	queue_free()
+    # Окно живёт в корне дерева сцены, а не в главном меню, поэтому само
+    # себя не убирает — закрытие это queue_free(). Иначе после ухода в
+    # партию и возвращения в меню накопилос бы по скрытому оверлею на
+    # каждое посещение.
+    queue_free()
 
 
 func _input(event):
-	# Esc закрывает окно, но только пока оно видно: скрытый оверлей иначе
-	# перехватил бы Esc у главного меню.
-	if not is_visible_in_tree():
-		return
-	if event.is_action_pressed("ui_cancel"):
-		_on_ok_pressed()
-		get_viewport().set_input_as_handled()
+    # Esc закрывает окно, но только пока оно видно: скрытый оверлей иначе
+    # перехватил бы Esc у главного меню.
+    if not is_visible_in_tree():
+        return
+    if event.is_action_pressed("ui_cancel"):
+        _on_ok_pressed()
+        get_viewport().set_input_as_handled()
 
 
 # Порядок блоков совпадает с порядком проверок в data_validator.gd,
 # поэтому окно читается сверху вниз в том же порядке, в каком идут данные.
 func _kinds_in_display_order(kinds) -> Array:
-	var order: Array = []
-	for kind in DataValidator.CHECK_ORDER:
-		if kinds.has(kind):
-			order.append(kind)
-	# Виды, которых нет в списке порядка (если проверка добавится и туда
-	# не попадёт), показываем в конце, а не теряем.
-	for kind in kinds:
-		if not order.has(kind):
-			order.append(kind)
-	return order
+    var order: Array = []
+    for kind in DataValidator.CHECK_ORDER:
+        if kinds.has(kind):
+            order.append(kind)
+    # Виды, которых нет в списке порядка (если проверка добавится и туда
+    # не попадёт), показываем в конце, а не теряем.
+    for kind in kinds:
+        if not order.has(kind):
+            order.append(kind)
+    return order
 
 
 func _check_title(kind: String) -> String:
-	return str(DataValidator.CHECK_TITLES.get(kind, kind))
+    return str(DataValidator.CHECK_TITLES.get(kind, kind))
 
 
 func _count_by_kind(problems: Array) -> Dictionary:
-	var counts := {}
-	for problem in problems:
-		var kind := str(problem.get("kind", ""))
-		counts[kind] = int(counts.get(kind, 0)) + 1
-	return counts
+    var counts := {}
+    for problem in problems:
+        var kind := str(problem.get("kind", ""))
+        counts[kind] = int(counts.get(kind, 0)) + 1
+    return counts
 
 
 func _make_panel_style() -> StyleBoxFlat:
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.13, 0.13, 0.13, 1.0)
-	style.set_border_width_all(2)
-	style.border_color = Color(0.4, 0.4, 0.4, 1.0)
-	style.set_corner_radius_all(4)
-	return style
+    var style = StyleBoxFlat.new()
+    style.bg_color = Color(0.13, 0.13, 0.13, 1.0)
+    style.set_border_width_all(2)
+    style.border_color = Color(0.4, 0.4, 0.4, 1.0)
+    style.set_corner_radius_all(4)
+    return style

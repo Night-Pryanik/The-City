@@ -2320,7 +2320,7 @@ func complete_building_upgrade(idx: int, upgrade_to: String) -> bool:
     return true
 
 # TODO: временная миграция старых сейвов (формат "recipe"). Удалить после того,
-#	   как все старые сохранения перестанут использоваться.
+#    как все старые сохранения перестанут использоваться.
 # Конвертирует старые записи зданий {"id": ..., "recipe": ...} в новый формат {"id": ..., "slots": [...]}.
 func migrate_old_save_format():
     for bld in city_built_buildings:

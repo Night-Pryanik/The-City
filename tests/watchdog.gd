@@ -48,22 +48,22 @@ const DEFAULT_TIMEOUT: float = 120.0
 static var _armed := false
 
 static func arm(tree: SceneTree, timeout: float = DEFAULT_TIMEOUT) -> void:
-	if _armed:
-		return
-	_armed = true
-	var label := _label(tree)
-	tree.create_timer(timeout, true, false, true).timeout.connect(
-		func() -> void:
-			var msg := "WATCHDOG [%s]: тест не завершился за %.0f с — завис или оборвался внутри _run()" % [label, timeout]
-			push_error(msg)
-			print(msg)
-			print("WATCHDOG [%s] HUNG" % label)
-			tree.quit(2)
-	)
+    if _armed:
+        return
+    _armed = true
+    var label := _label(tree)
+    tree.create_timer(timeout, true, false, true).timeout.connect(
+        func() -> void:
+            var msg := "WATCHDOG [%s]: тест не завершился за %.0f с — завис или оборвался внутри _run()" % [label, timeout]
+            push_error(msg)
+            print(msg)
+            print("WATCHDOG [%s] HUNG" % label)
+            tree.quit(2)
+    )
 
 # Метка для сообщения — имя файла теста без пути и расширения.
 static func _label(tree: SceneTree) -> String:
-	var script := tree.get_script() as Script
-	if script == null or script.resource_path == "":
-		return "без имени"
-	return script.resource_path.get_file().get_basename()
+    var script := tree.get_script() as Script
+    if script == null or script.resource_path == "":
+        return "без имени"
+    return script.resource_path.get_file().get_basename()
