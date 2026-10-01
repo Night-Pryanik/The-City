@@ -279,7 +279,12 @@ func _run() -> void:
     # в карточке не сходилась с казной.
     var actual_map: Dictionary = wm.get_actual_market_income_map()
     var treasury_actual: Dictionary = wm.get_actual_treasury_income_map()
-    var actual_consumption: Dictionary = treasury_actual.get("Потребление населения", {})
+    # Ключ блока в карте — КОНСТАНТА CityData.POPULATION_INCOME_TYPE (английская),
+    # а в подпись её переводит рендер. Искать по русскому названию значит не
+    # найти ключ НИКОГДА: проверка проходила только когда обе суммы случайно
+    # оказывались нулевыми, и падала, как только рынок что-то приносил.
+    var actual_consumption: Dictionary = treasury_actual.get(
+            city.POPULATION_INCOME_TYPE, {})
     var total_card_actual := 0.0
     var total_treasury_actual := 0.0
     for dkey in actual_map:
@@ -366,8 +371,15 @@ func _run() -> void:
             "в сцене нет правой колонки «Внешняя торговля»", state)
         if external_panel != null:
             var ext_title: Label = external_panel.get_node_or_null("TitleLabel")
-            check(ext_title != null and ext_title.text == "Внешняя торговля",
-                "у внешней торговли должен быть заголовок", state)
+            # Заголовок колонки. Движок НЕ переводит text, заданный прямо в
+            # сцене (проверено зондом: Label остаётся «Foreign trade» при любом
+            # языке), поэтому сверяем с исходной строкой сцены и с её
+            # переводом — требовать именно русский текст значит запрещать
+            # игре работать на английском.
+            var ext_source := "Foreign trade"
+            check(ext_title != null and ext_title.text in [ext_source, tr(ext_source)],
+                "у внешней торговли должен быть заголовок: %s"
+                        % (ext_title.text if ext_title != null else "узла нет"), state)
             # Внешняя торговля — заглушка: кроме заголовка ничего нет.
             check(external_panel.get_child_count() == 1,
                 "колонка внешней торговли пока должна содержать только заголовок", state)

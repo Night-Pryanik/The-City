@@ -316,8 +316,14 @@ func _test_town_road_needs_known_territory(state: Dictionary) -> void:
             tile_data, ROWS, COLS, ring, _known_hex_filter(tile_data))
     check(not filtered.get("ok", true),
             "через неразведанную территорию дорога к городку строиться не должна", state)
-    check(str(filtered.get("reason", "")).contains("разведан"),
-            "причина должна говорить про разведку, а не про «пути нет вообще»: %s"
+    # Причина — ПЕРЕВОДИМАЯ строка интерфейса, поэтому сверяем её с тем же
+    # tr(), которым она построена в road_manager. Язык на момент этой
+    # проверки может быть любым: LocalizationManager применяет его на первом
+    # кадре, а этот блок _run() выполняется до первого await. Проверяем
+    # ВЕТКУ (зовёт разведчиков), а не наличие русского слова в тексте.
+    var scouting_reason := "No scouted route from the city to the town — send scouts there"
+    check(str(filtered.get("reason", "")) == _rm.tr(scouting_reason),
+            "причина должна звать разведчиков, а не говорить «пути нет вообще»: %s"
                     % filtered.get("reason", ""), state)
 
     # Как только игрок разведал проход — дорога появляется. Кэш плана при этом

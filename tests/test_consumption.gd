@@ -41,8 +41,27 @@ func _initialize():
         var e = cons[0]
         check(e.get("is_group", false) == true, "запись не групповая", state)
         check(e.get("display_key", "") == "@boats", "display_key != @boats", state)
-        check(e.get("product_name", "") == "Лодки", "имя группы != Лодки", state)
-        check(e.get("group_members", []) == ["reed_boat"], "члены группы неверны", state)
+        # Имя группы сверяем с САМИМ реестром product_group_names, а не с
+        # русским словом: подпись переводится при загрузке данных
+        # (data_loader._localize_display_fields), и в этом headless-прогоне
+        # она одинаково может прийти русской или английской — зависит от
+        # языка в настройках. Проверяем то, что важно: подпись взята из
+        # данных, а не сложена из идентификатора.
+        var boats_name: String = str(gd.product_group_names.get("boats", ""))
+        check(not boats_name.is_empty(), "у группы boats должно быть имя", state)
+        check(boats_name != "boats", "имя группы не должно совпадать с её id", state)
+        check(e.get("product_name", "") == boats_name,
+            "имя @boats взято не из реестра: %s" % str(e.get("product_name", "")), state)
+        # Состав группы — тоже вопрос данных: автор вправе её дополнять,
+        # поэтому сверяем с product_groups, а каждый член проверяем как
+        # существующий продукт — иначе группа с «призрачным» id тихо прошла бы.
+        var boats_members: Array = gd.product_groups.get("boats", [])
+        check(not boats_members.is_empty(), "группа boats не должна быть пустой", state)
+        check(e.get("group_members", []) == boats_members,
+            "члены @boats взяты не из реестра: %s" % str(e.get("group_members", [])), state)
+        for member_id in boats_members:
+            check(gd.products.has(str(member_id)),
+                "член @boats «%s» должен быть продуктом" % member_id, state)
         check(e.get("icon", "") == "reed_boat.png", "иконка группы неверна", state)
         # amount/interval — балансные числа из data/consumption.json, поэтому
         # сверяем их с САМИМ правилом реестра, а не с константой в тесте. Так
@@ -110,9 +129,21 @@ func _initialize():
     if not ea.is_empty():
         check(ea.get("is_group", false) == true, "запись all не групповая", state)
         check(ea.get("display_key", "") == "@fruits", "display_key != @fruits", state)
-        check(ea.get("product_name", "") == "Фрукты", "имя группы != Фрукты", state)
-        check(ea.get("group_members", []) == ["grapes", "olives", "mulberries", "figs", "dates", "cactus_fruit"],
-            "члены группы @fruits неверны: %s" % str(ea.get("group_members", [])), state)
+        # Как и выше: имя группы — из реестра, а не зашитое в тест слово.
+        var fruits_name: String = str(gd.product_group_names.get("fruits", ""))
+        check(not fruits_name.is_empty(), "у группы fruits должно быть имя", state)
+        check(ea.get("product_name", "") == fruits_name,
+            "имя @fruits взято не из реестра: %s" % str(ea.get("product_name", "")), state)
+        # Состав группы — вопрос ДАННЫХ (автор пополняет её фруктами), так
+        # что сверяем его с product_groups.json. Содержательный инвариант
+        # рядом: grapes и olives остаются в группе — на них построена проверка
+        # городского потребления ниже, без них списывать нечего.
+        var fruits_members: Array = gd.product_groups.get("fruits", [])
+        check(ea.get("group_members", []) == fruits_members,
+            "члены @fruits взяты не из реестра: %s" % str(ea.get("group_members", [])), state)
+        for required_id in ["grapes", "olives"]:
+            check(required_id in fruits_members,
+                "в группе @fruits должен остаться %s" % required_id, state)
         # Как и выше — amount/interval сверяем с самим правилом реестра.
         var rule_all := _rule_for(gd.consumption_rules, "@fruits", "all")
         check(not rule_all.is_empty(), "в реестре нет правила @fruits для all", state)
