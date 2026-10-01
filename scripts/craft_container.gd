@@ -414,17 +414,12 @@ func _build_slots_from_recipe(recipe: Dictionary) -> Array:
     return out
 
 func _resolve_group_members(group_key: String) -> Array:
-    # Резолв @-группы по id или по человекочитаемому имени.
+    # Резолв @-группы по id из data/product_groups.json. Обратного поиска по
+    # человекочитаемому имени нет намеренно: он молча подставил бы членов
+    # другой группы с похожим названием (в данных @-ключи всегда id).
     if not is_instance_valid(GameData):
         return []
-    var members: Array = GameData.product_groups.get(group_key, [])
-    if members.is_empty() and GameData.product_group_names.has(group_key):
-        # Обратный путь: ключ — человекочитаемое имя, нужен id группы.
-        for gid in GameData.product_group_names:
-            if str(GameData.product_group_names[gid]) == group_key:
-                members = GameData.product_groups.get(gid, [])
-                break
-    return members
+    return GameData.product_groups.get(group_key, [])
 
 # Забирает amount единиц со склада для слота. Для одиночного — напрямую;
 # для @-группы — жадно по членам с приоритетом "best" внутри тика.

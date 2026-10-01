@@ -324,7 +324,7 @@ func handle_action(chunk: Array, money_cost: int, work_cost: int) -> bool:
         # Разовые траты на освоение чанка — событийные, в плане их нет, поэтому
         # разбивка расходов показывает факт за последнее окно отображения.
         if money_cost > 0:
-            CityData.record_treasury_expense(tr("Claiming land chunks"), money_cost)
+            CityData.record_treasury_expense(GameData.SRC_CLAIMING, money_cost)
 
     # --- Запуск стройки освоения (труд накапливается во времени) ---
     var bm = main_map.build_manager
@@ -344,7 +344,7 @@ func handle_action(chunk: Array, money_cost: int, work_cost: int) -> bool:
             # но при иерархической разбивке казны он не ложится ни в один
             # тип («Потребление населения» — это не возврат), поэтому
             # ноттируем внутри расхода.
-            CityData.record_treasury_expense(tr("Claiming land chunks"), -money_cost)
+            CityData.record_treasury_expense(GameData.SRC_CLAIMING, -money_cost)
         return false
     # Fallback: если build_manager недоступен — осваиваем мгновенно.
     _complete_expansion(chunk)

@@ -122,9 +122,12 @@ func _run() -> void:
 	# не должен выбрасывать из плана @alcohol.
 	var plan: Dictionary = wm.get_planned_consumption_map(false)
 	var plan_leak := ""
+	# Ключ источника — идентификатор профессии (GameData.get_source_display_name),
+	# а не её подпись: подписи зависят от языка, а план от него не зависит.
+	var all_source_id: String = gdata.profession_source_id("all")
 	for m in all_members:
 		var member := str(m)
-		if plan.has(member) and plan[member].has("Все жители"):
+		if plan.has(member) and plan[member].has(all_source_id):
 			plan_leak = member
 			break
 	check(plan_leak == "",
@@ -224,7 +227,8 @@ func _run() -> void:
 				< float(unit_row.get("per_sec", 0.0)),
 			"норма на одного должна быть меньше суммы по городу", state)
 		# В источнике тоже сохранена норма (amount без умножения на count).
-		var src_all: Dictionary = (unit_row.get("sources", {}) as Dictionary).get("Все жители", {})
+		var src_all: Dictionary = (unit_row.get("sources", {}) as Dictionary).get(
+		gdata.profession_source_id("all"), {})
 		check(int(src_all.get("unit_amount", -1)) == json_amount,
 			"unit_amount в источнике должен быть amount из consumption.json", state)
 		check(int(src_all.get("amount", 0)) == json_amount * int(city.total_population),
@@ -237,14 +241,14 @@ func _run() -> void:
 	check(not income_map.is_empty(),
 		"план дохода по карточкам не должен быть пустым при живом населении", state)
 	var treasury_plan: Dictionary = wm.get_planned_treasury_income_map()
-	var treasury_consumption: Dictionary = treasury_plan.get("Потребление населения", {})
+	var treasury_consumption: Dictionary = treasury_plan.get(city.POPULATION_INCOME_TYPE, {})
 	var total_card_income := 0.0
 	var total_treasury_market := 0.0
 	for dkey in income_map:
 		total_card_income += float(income_map[dkey].get("coins_per_sec", 0.0))
-	for source_name in treasury_consumption:
-		for pid in treasury_consumption[source_name]:
-			total_treasury_market += float(treasury_consumption[source_name][pid].get("coins_per_sec", 0.0))
+	for source_id in treasury_consumption:
+		for pid in treasury_consumption[source_id]:
+			total_treasury_market += float(treasury_consumption[source_id][pid].get("coins_per_sec", 0.0))
 	check(absf(total_card_income - total_treasury_market) < 0.01,
 		"сумма плана дохода карточек (%.2f) должна совпадать с планом тултипа казны (%.2f)"
 			% [total_card_income, total_treasury_market], state)

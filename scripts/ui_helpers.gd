@@ -797,7 +797,7 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
         for src in planned_production:
             var e: Dictionary = planned_production[src]
             planned_prod_lines.append({
-                "name": src,
+                "name": GameData.get_source_display_name(str(src)),
                 "amount": int(e.get("amount", 0)),
                 "count": int(e.get("count", 1)),
                 "interval": float(e.get("interval", 0))
@@ -826,7 +826,7 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
         for src in planned_consumption:
             var e: Dictionary = planned_consumption[src]
             planned_lines.append({
-                "name": src,
+                "name": GameData.get_source_display_name(str(src)),
                 "amount": int(e.get("amount", 0)),
                 "count": int(e.get("count", 1)),
                 "interval": float(e.get("interval", 0)),
@@ -1030,9 +1030,9 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
                     total_income += flat_rate
                 continue
             var type_total: float = 0.0
-            for source_name in type_dict:
-                for pid in type_dict[source_name]:
-                    type_total += float(type_dict[source_name][pid].get("coins_per_sec", 0.0))
+            for source_id in type_dict:
+                for pid in type_dict[source_id]:
+                    type_total += float(type_dict[source_id][pid].get("coins_per_sec", 0.0))
             if type_total > 0.0:
                 type_lines.append({
                     "name": income_type,
@@ -1080,16 +1080,18 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
                     src_total += float(type_row.sources[src][pid].get("coins_per_sec", 0.0))
                 if src_total > 0.0:
                     source_lines.append({
-                        "name": src,
+                        "name": GameData.get_source_display_name(str(src)),
                         "total": src_total,
                         "products": type_row.sources[src]
                     })
             source_lines.sort_custom(func(a, b): return a.total > b.total)
             for src_row in source_lines:
                 # Второй уровень разбивки: «  ◦ Все жители (3.0 / сек):»
+                # src_row.name — уже подпись, резолвленная из id источника
+                # при сортировке строк ниже.
                 var src_header = Label.new()
                 src_header.text = tr("  ◦ %s (%s / sec):") % [
-                    tr(str(src_row.name)), _format_rate(float(src_row.total))
+                    str(src_row.name), _format_rate(float(src_row.total))
                 ]
                 src_header.add_theme_font_size_override("font_size", 13)
                 src_header.add_theme_color_override("font_color", Color(0.55, 0.95, 0.55))
@@ -1135,7 +1137,7 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
             var expense_lines: Array = []
             for src in expense_by_type[expense_type]:
                 expense_lines.append({
-                    "name": src,
+                    "name": GameData.get_source_display_name(str(src)),
                     "amount": int(expense_by_type[expense_type][src])
                 })
             expense_lines.sort_custom(func(a, b): return a.amount > b.amount)

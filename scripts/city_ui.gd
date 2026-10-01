@@ -513,8 +513,8 @@ func _planned_food_per_sec(map: Dictionary, pool: Dictionary) -> int:
     for pid in pool:
         if not pool[pid]:
             continue
-        for source_name in map.get(pid, {}):
-            var entry: Dictionary = map[pid][source_name]
+        for source_id in map.get(pid, {}):
+            var entry: Dictionary = map[pid][source_id]
             var amount = float(entry.get("amount", 0))
             var interval = float(entry.get("interval", 0))
             if interval > 0.0:

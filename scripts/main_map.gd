@@ -661,7 +661,10 @@ func _process(delta):
                             var lj_imp_mult: float = CityData.get_improvement_production_multiplier(
                                 "lumberjack_hut", _is_hex_irrigated(row, col),
                                 tile.get("terrain", ""), "lumberjack_hut")
-                            var lj_source = GameData.improvements.get("lumberjack_hut", {}).get("name", tr("Woodcutter's Camp"))
+                            # Идентификатор улучшения — источник прихода/расхода (подпись
+                            # резолвит ui_helpers по id, см.
+                            # GameData.get_source_display_name).
+                            var lj_source = GameData.improvement_source_id("lumberjack_hut")
                             # --- НЕПРЕРЫВНОЕ ПРОИЗВОДСТВО ЛЕСНОЙ ДЕЛЯНКИ ---
                             # Вместо пакетного выпуска раз в production_interval
                             # каждый тик добавляем на склад (wood_yield ×
@@ -725,9 +728,10 @@ func _process(delta):
 
                 # Качество ресурса на гексе передаётся в производство.
                 var tile_quality = tile.get("quality", "common")
-                # Имя улучшения — источник прихода/расхода в тултипе ресурсов
-                # («Ферма» и т.п.).
-                var improvement_source = GameData.improvements.get(tile.improvement, {}).get("name", tile.improvement)
+                # Идентификатор улучшения — источник прихода/расхода в плане
+                # (подпись резолвит ui_helpers, см.
+                # GameData.get_source_display_name).
+                var improvement_source = GameData.improvement_source_id(str(tile.improvement))
                 # --- НЕПРЕРЫВНОЕ ПРОИЗВОДСТВО УЛУЧШЕНИЯ ---
                 # Вместо пакетного выпуска раз в production_interval каждый
                 # тик добавляем на склад (amount_per_cycle × production_multiplier)
@@ -2761,7 +2765,7 @@ func start_scouting(chunk: Array):
         # Разовые траты на разведку — событийные, в плане их нет, поэтому разбивка
         # расходов показывает факт за последнее окно отображения.
         if expedition_cost > 0:
-            CityData.record_treasury_expense(tr("Scouting"), expedition_cost)
+            CityData.record_treasury_expense(GameData.SRC_SCOUTING, expedition_cost)
     scouting_chunk = chunk
     scouting_timer = 0.0
     if CityData.ignore_build_requirements:
@@ -2869,7 +2873,7 @@ func cancel_scouting() -> bool:
         var cost: int = expansion_manager.get_chunk_scout_cost(chunk)
         if cost > 0:
             CityData.add_treasury(cost)
-            CityData.record_treasury_expense(tr("Scouting"), -cost)
+            CityData.record_treasury_expense(GameData.SRC_SCOUTING, -cost)
     hud.show_message(tr("Scouting cancelled"))
     _after_cancel_long_action()
     return true

@@ -405,6 +405,12 @@ const TAX_INCOME_TYPE: String = "Taxes"
 # сбор налогов не смешивался с рыночным доходом от «Все жители» в плоском
 # накопителе (иерархическая разбивка тултипа плоский снимок не читает).
 const TAX_INCOME_SOURCE: String = "Poll tax"
+# Тип верхнего уровня в разбивке казны: доход от внутреннего рынка. По той же
+# причине, что и TAX_INCOME_TYPE, хранит английский текст и переводится в
+# ui_helpers.show_treasury_tooltip. Раньше этот ключ получался вызовом
+# tr("Population consumption") прямо в worker_manager, и он менялся вместе с
+# языком — в середине окна накопления старый и новый ключ не сошлись бы.
+const POPULATION_INCOME_TYPE: String = "Population consumption"
 
 # Базовый налог с одного жителя за один тик симуляции
 # (data/game_balance.json, поле base_tax_per_citizen).
@@ -469,15 +475,18 @@ const TREASURY_FLAT_TYPE_KEY: String = "@flat"
 
 # Записывает доход казны по источнику (накапливается в текущем окне). Вызов
 # рядом с add_treasury в местах фактического пополнения казны (см. callers).
-# source_name — человекочитаемое имя источника («Рыбак», «Все жители» и т.п.).
-func record_treasury_income(source_name: String, amount: int, product_id: String = "") -> void:
-    if amount == 0 or source_name.is_empty():
+# source_id — идентификатор источника, а не его подпись: "@prof:fisherman",
+# "@bld:bakery" (см. GameData.get_source_display_name). Ключ накопителя не
+# должен зависеть от языка — LocalizationManager.set_locale перечитывает данные,
+# но накопители не сбрасывает, и переведённый ключ разошёлся бы со старым.
+func record_treasury_income(source_id: String, amount: int, product_id: String = "") -> void:
+    if amount == 0 or source_id.is_empty():
         return
-    treasury_income_accum[source_name] = int(treasury_income_accum.get(source_name, 0)) + amount
+    treasury_income_accum[source_id] = int(treasury_income_accum.get(source_id, 0)) + amount
     if not product_id.is_empty():
-        if not treasury_income_product_accum.has(source_name):
-            treasury_income_product_accum[source_name] = {}
-        var source_products: Dictionary = treasury_income_product_accum[source_name]
+        if not treasury_income_product_accum.has(source_id):
+            treasury_income_product_accum[source_id] = {}
+        var source_products: Dictionary = treasury_income_product_accum[source_id]
         source_products[product_id] = int(source_products.get(product_id, 0)) + amount
 
 # Записывает расход казны по источнику (накапливается в текущем окне).
@@ -493,10 +502,10 @@ func record_treasury_income(source_name: String, amount: int, product_id: String
 # населения» и будущие «Налоги»/«Торговля»). Если в снапшоте источник
 # оказался с нетто <= 0 (только возвраты без компенсирующей траты), тултип
 # его не показывает — для игрока это эквивалентно отсутствию расхода.
-func record_treasury_expense(source_name: String, amount: int) -> void:
-    if amount == 0 or source_name.is_empty():
+func record_treasury_expense(source_id: String, amount: int) -> void:
+    if amount == 0 or source_id.is_empty():
         return
-    treasury_expense_accum[source_name] = int(treasury_expense_accum.get(source_name, 0)) + amount
+    treasury_expense_accum[source_id] = int(treasury_expense_accum.get(source_id, 0)) + amount
 
 # Сбрасывает текущее окно в «прошлое» и обнуляет аккумуляторы. Вызывается раз
 # в `treasury_window_length_sec` рядом со сменой эпохи отображения ресурсов
@@ -542,14 +551,14 @@ func get_treasury_flow_per_sec() -> Dictionary:
     if window_sec <= 0.0:
         return {"income": 0.0, "expense": 0.0}
     var income := 0.0
-    for source_name in income_map:
-        income += float(int(income_map[source_name]))
+    for source_id in income_map:
+        income += float(int(income_map[source_id]))
     # Расход — только положительные нетто по источнику: возврат при отказе
     # освоения ноттируется минусом в том же источнике, и для игрока это равно
     # «расхода не было» (то же правило, что в рендере тултипа разбивки).
     var expense := 0.0
-    for source_name in expense_map:
-        var amount := int(expense_map[source_name])
+    for source_id in expense_map:
+        var amount := int(expense_map[source_id])
         if amount > 0:
             expense += float(amount)
     return {
@@ -635,17 +644,21 @@ func get_stock_quality_price_multiplier(pid: String) -> float:
 # тултип отображает только плановое производство/потребление, поэтому
 # детализация больше не ведётся — остались только суммарные rate'ы.
 #
-# Параметр source_name сохранён в сигнатуре для совместимости с вызывающими
+# Параметр source_id сохранён в сигнатуре для совместимости с вызывающими
 # (main_map.gd, worker_manager.gd); он никуда не записывается.
 
 # Публичный хелпер записи ФАКТА производства за тик. Используется из
 # main_map.gd и do_tick().
-func record_production_source(pid: String, _source_name: String, amount: int):
+#   source_id — идентификатор источника (см. GameData.get_source_display_name:
+#   "@prof:fisherman", "@bld:bakery", "@imp:farm", "@pop_food"). Это ключ
+#   накопителя, а не подпись: подпись резолвится в ui_helpers при отрисовке.
+func record_production_source(pid: String, _source_id: String, amount: int):
     production_rates[pid] = production_rates.get(pid, 0) + amount
 
 # Публичный хелпер записи ФАКТА потребления за тик. Используется из
-# main_map.gd, worker_manager.gd и do_tick().
-func record_consumption_source(pid: String, _source_name: String, amount: int):
+# main_map.gd, worker_manager.gd и do_tick(). source_id — идентификатор
+# источника (см. GameData.get_source_display_name), не подпись.
+func record_consumption_source(pid: String, _source_id: String, amount: int):
     consumption_rates[pid] = consumption_rates.get(pid, 0) + amount
 
 # --- ВНУТРЕННИЙ РЫНОК: РАЗРЕШЕНИЕ И ПРИОРИТЕТ СПИСАНИЯ ---
@@ -837,9 +850,10 @@ func get_building_planned_consumption() -> Dictionary:
         # Без горожанина здание не работает и ничего не потребляет.
         if tm == null or not tm.has_townsfolk(i):
             continue
-        # Имя здания — источник спроса (совпадает с источником фактического
-        # расхода в do_tick, чтобы в тултипе это был один и тот же субъект).
-        var building_source = get_building_name(bld.get("id", ""))
+        # Идентификатор здания — источник спроса (совпадает с источником
+        # фактического расхода в do_tick, чтобы в тултипе это был один и тот
+        # же субъект). Подпись резолвится в ui_helpers по id.
+        var building_source = GameData.building_source_id(str(bld.get("id", "")))
         for recipe_id in slots:
             if recipe_id == "" or recipe_id == "empty":
                 continue
@@ -854,12 +868,10 @@ func get_building_planned_consumption() -> Dictionary:
                 if amount_needed <= 0:
                     continue
                 if res.begins_with("@"):
-                    # Групповой ресурс: спрос относится к любому члену группы
-                    # (резолв группы — как в do_tick: по id, затем по имени).
+                    # Групповой ресурс: спрос относится к любому члену группы.
+                    # Ключ "@"-группы — всегда id из product_groups.json.
                     var group_key = res.trim_prefix("@")
                     var group_products = GameData.product_groups.get(group_key, [])
-                    if group_products.is_empty():
-                        group_products = GameData.product_groups.get(_get_group_id_by_name(group_key), [])
                     if group_products.is_empty():
                         continue
                     var group_name = GameData.get_product_group_name(res)
@@ -873,13 +885,13 @@ func get_building_planned_consumption() -> Dictionary:
 # interval — время крафта рецепта, секунды (0 — «за тик»); при нескольких
 # записях одного источника берётся минимальный — как у профессий в
 # worker_manager._record_planned_entry.
-func _record_planned_demand(result: Dictionary, pid: String, source_name: String, amount: int, is_group: bool, group_name: String, interval: float):
+func _record_planned_demand(result: Dictionary, pid: String, source_id: String, amount: int, is_group: bool, group_name: String, interval: float):
     if not result.has(pid):
         result[pid] = {}
     var by_source: Dictionary = result[pid]
-    if not by_source.has(source_name):
-        by_source[source_name] = {"amount": 0, "count": 0, "is_group": false, "group_name": "", "interval": interval}
-    var entry: Dictionary = by_source[source_name]
+    if not by_source.has(source_id):
+        by_source[source_id] = {"amount": 0, "count": 0, "is_group": false, "group_name": "", "interval": interval}
+    var entry: Dictionary = by_source[source_id]
     entry["amount"] = int(entry.get("amount", 0)) + amount
     entry["count"] = int(entry.get("count", 0)) + 1
     entry["interval"] = minf(float(entry.get("interval", interval)), interval)
@@ -916,9 +928,10 @@ func get_building_planned_production() -> Dictionary:
         var prof_multiplier := 1.0
         if wm != null and not are_all_slots_empty(i):
             prof_multiplier = wm.get_building_production_bonus(i)
-        # Имя здания — источник выпуска (совпадает с источником фактического
-        # производства в do_tick, чтобы в тултипе это был один и тот же субъект).
-        var building_source = get_building_name(bld.get("id", ""))
+        # Идентификатор здания — источник выпуска (совпадает с источником
+        # фактического производства в do_tick, чтобы в тултипе это был один и
+        # тот же субъект).
+        var building_source = GameData.building_source_id(str(bld.get("id", "")))
         for recipe_id in slots:
             if recipe_id == "" or recipe_id == "empty":
                 continue
@@ -944,13 +957,13 @@ func get_building_planned_production() -> Dictionary:
 # Хелпер записи выпуска здания (см. get_building_planned_production).
 # interval — время крафта рецепта, секунды (0 — «за тик»); при нескольких
 # записях одного источника берётся минимальный.
-func _record_planned_supply(result: Dictionary, pid: String, source_name: String, amount: int, interval: float):
+func _record_planned_supply(result: Dictionary, pid: String, source_id: String, amount: int, interval: float):
     if not result.has(pid):
         result[pid] = {}
     var by_source: Dictionary = result[pid]
-    if not by_source.has(source_name):
-        by_source[source_name] = {"amount": 0, "count": 0, "interval": interval}
-    var entry: Dictionary = by_source[source_name]
+    if not by_source.has(source_id):
+        by_source[source_id] = {"amount": 0, "count": 0, "interval": interval}
+    var entry: Dictionary = by_source[source_id]
     entry["amount"] = int(entry.get("amount", 0)) + amount
     entry["count"] = int(entry.get("count", 0)) + 1
     entry["interval"] = minf(float(entry.get("interval", interval)), interval)
@@ -968,11 +981,11 @@ func get_planned_production_map() -> Dictionary:
         if not result.has(pid):
             result[pid] = {}
         var by_source: Dictionary = result[pid]
-        for source_name in improvement_planned_production[pid]:
-            var src: Dictionary = improvement_planned_production[pid][source_name]
-            if not by_source.has(source_name):
-                by_source[source_name] = {"amount": 0, "count": 0, "interval": float(src.get("interval", 0.0))}
-            var entry: Dictionary = by_source[source_name]
+        for source_id in improvement_planned_production[pid]:
+            var src: Dictionary = improvement_planned_production[pid][source_id]
+            if not by_source.has(source_id):
+                by_source[source_id] = {"amount": 0, "count": 0, "interval": float(src.get("interval", 0.0))}
+            var entry: Dictionary = by_source[source_id]
             entry["amount"] = int(entry.get("amount", 0)) + int(src.get("amount", 0))
             entry["count"] = int(entry.get("count", 0)) + int(src.get("count", 1))
             entry["interval"] = minf(float(entry.get("interval", 0.0)), float(src.get("interval", 0.0)))
@@ -1000,8 +1013,8 @@ func get_improvement_production_interval(imp_id: String) -> float:
 
 # Запись планового выпуска улучшения за один цикл (вызывается из main_map.gd
 # для каждого работающего улучшения на каждом тике симуляции).
-func record_planned_improvement_production(pid: String, source_name: String, amount: int, interval: float):
-    _record_cycle_entry(improvement_planned_production, pid, source_name, amount, interval)
+func record_planned_improvement_production(pid: String, source_id: String, amount: int, interval: float):
+    _record_cycle_entry(improvement_planned_production, pid, source_id, amount, interval)
 
 # --- ПЛАНОВОЕ ПОТРЕБЛЕНИЕ УЛУЧШЕНИЙ НА КАРТЕ (корм пастбищ) ---
 # Корм (feed_consumption ресурса) списывается непрерывно (см.
@@ -1012,8 +1025,8 @@ func record_planned_improvement_production(pid: String, source_name: String, amo
 var improvement_planned_consumption: Dictionary = {}
 
 # Запись планового потребления улучшения за один цикл (вызывается из main_map.gd).
-func record_planned_improvement_consumption(pid: String, source_name: String, amount: int, interval: float):
-    _record_cycle_entry(improvement_planned_consumption, pid, source_name, amount, interval)
+func record_planned_improvement_consumption(pid: String, source_id: String, amount: int, interval: float):
+    _record_cycle_entry(improvement_planned_consumption, pid, source_id, amount, interval)
 
 # Кэш планового потребления улучшений для мерджа во вкладке «Ресурсы»
 # (worker_manager.get_planned_consumption_map знает только профессии,
@@ -1023,26 +1036,23 @@ func get_improvement_planned_consumption() -> Dictionary:
 
 # Общий хелпер записи цикловой записи (выпуск или потребление улучшения):
 # amount суммируется, count — число гексов-источников, interval — минимальный.
-func _record_cycle_entry(cache: Dictionary, pid: String, source_name: String, amount: int, interval: float):
+func _record_cycle_entry(cache: Dictionary, pid: String, source_id: String, amount: int, interval: float):
     if pid.is_empty() or amount <= 0:
         return
     if not cache.has(pid):
         cache[pid] = {}
     var by_source: Dictionary = cache[pid]
-    if not by_source.has(source_name):
-        by_source[source_name] = {"amount": 0, "count": 0, "interval": interval}
-    var entry: Dictionary = by_source[source_name]
+    if not by_source.has(source_id):
+        by_source[source_id] = {"amount": 0, "count": 0, "interval": interval}
+    var entry: Dictionary = by_source[source_id]
     entry["amount"] = int(entry.get("amount", 0)) + amount
     entry["count"] = int(entry.get("count", 0)) + 1
     entry["interval"] = minf(float(entry.get("interval", interval)), interval)
 
 # Возвращает человекочитаемое имя здания по его id (или сам id, если здание
-# не найдено в реестре).
+# не найдено в реестре). Единственное место знания об этом — GameData.
 func get_building_name(building_id: String) -> String:
-    for b in GameData.buildings:
-        if b.get("id", "") == building_id:
-            return b.get("name", building_id)
-    return building_id
+    return GameData.get_building_display_name(building_id)
 
 # --- ХЕЛПЕРЫ ДЛЯ РАБОТЫ С КАЧЕСТВОМ РЕСУРСОВ ---
 # city_storage хранит общее количество, city_quality_detail — разбивку по качеству.
@@ -1177,7 +1187,7 @@ func quality_from_breakdown(consumed: Dictionary) -> String:
 # из тика симуляции. Оставлена для обратной совместимости: если во внешнем
 # коде где-то остался вызов (например, отладка, тесты), он продолжит работать.
 # Удалить после проверки сейвов и UI на отсутствие ссылок.
-func add_raw_production(raw_id: String, multiplier: float = 1.0, quality: String = "common", source_name: String = ""):
+func add_raw_production(raw_id: String, multiplier: float = 1.0, quality: String = "common", source_id: String = ""):
     if Engine.is_editor_hint():
         return
     var raw = GameData.raw_resources.get(raw_id, {})
@@ -1197,8 +1207,8 @@ func add_raw_production(raw_id: String, multiplier: float = 1.0, quality: String
             # вообще не записывался — это и был баг «тултип пустой на новом
             # производстве»).
             add_to_storage(pid, amount, quality)
-            if source_name != "":
-                record_production_source(pid, source_name, amount)
+            if source_id != "":
+                record_production_source(pid, source_id, amount)
             else:
                 production_rates[pid] += amount
 
@@ -1417,9 +1427,10 @@ func do_tick():
         var slots = bld.get("slots", [])
         if slots.is_empty():
             continue
-        # Имя здания — общий источник для прихода и расхода его рецептов
-        # (показывает «Ручная мельница», «Дом варщика» в тултипе ресурсов).
-        var building_source = get_building_name(bld.get("id", ""))
+        # Идентификатор здания — общий источник для прихода и расхода его
+        # рецептов (показывает «Ручная мельница», «Дом варщика» в тултипе
+        # ресурсов; подпись резолвит ui_helpers по id).
+        var building_source = GameData.building_source_id(str(bld.get("id", "")))
 
         # Проверяем, есть ли горожанин на этом здании
         var has_worker = false
@@ -1599,7 +1610,7 @@ func do_tick():
                 var available = city_storage[pid]
                 var to_take = min(available, food_needed - food_eaten)
                 remove_from_storage(pid, to_take, "best")
-                record_consumption_source(pid, tr("Population food"), to_take)
+                record_consumption_source(pid, GameData.SRC_POP_FOOD, to_take)
                 food_eaten += to_take
                 if food_eaten >= food_needed:
                     break
@@ -1613,13 +1624,6 @@ func do_tick():
     collect_taxes()
     _check_population_change()
     emit_signal("city_updated")
-
-# Возвращает id группы по её человекочитаемому имени (или сам ключ, если это id).
-func _get_group_id_by_name(gname: String) -> String:
-    for gid in GameData.product_group_names:
-        if GameData.product_group_names[gid] == gname:
-            return gid
-    return gname
 
 func _check_population_change():
     var available_food = 0
@@ -2365,9 +2369,8 @@ func consume_additional_cost(bdata: Dictionary) -> Dictionary:
                 continue
             if GameData.is_group_key(res_id):
                 var group_key = res_id.trim_prefix("@")
+                # Ключ "@"-группы — всегда id из product_groups.json.
                 var group_products = GameData.product_groups.get(group_key, [])
-                if group_products.is_empty():
-                    group_products = GameData.product_groups.get(_get_group_id_by_name(group_key), [])
                 if group_products.is_empty():
                     missing.append(res_id)
                     continue

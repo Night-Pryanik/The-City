@@ -123,7 +123,7 @@ func _run() -> void:
 	var taxes_only: Dictionary = main_map.worker_manager.get_actual_treasury_income_map()
 	check(taxes_only.has(city.TAX_INCOME_TYPE),
 			"налоги должны быть в разбивке и без рыночного дохода", state)
-	check(not taxes_only.has("Потребление населения"),
+	check(not taxes_only.has(city.POPULATION_INCOME_TYPE),
 			"без рыночного дохода тип «Потребление населения» показываться не должен", state)
 	check(main_map.worker_manager.get_planned_treasury_income_map().has(city.TAX_INCOME_TYPE),
 			"плановый генератор разбивки тоже должен знать про налоги", state)
@@ -137,8 +137,11 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 
+	# Ключ типа в карте — английский CityData.TAX_INCOME_TYPE, но рисуется он
+	# ПОСЛЕ перевода (ui_helpers.show_treasury_tooltip оборачивает его в tr()),
+	# поэтому ожидаемая строка собирается из переведённой подписи.
 	var tax_line: String = "%s: %d × 3 чел. = %s / сек" % [
-		city.TAX_INCOME_TYPE, base_tax, _fmt_rate(float(base_tax * 3))
+		tr(city.TAX_INCOME_TYPE), base_tax, _fmt_rate(float(base_tax * 3))
 	]
 	ui.show_treasury_tooltip(Vector2(80, 80), city.treasury, taxes_only, {}, 3.0)
 	await process_frame
@@ -153,8 +156,8 @@ func _run() -> void:
 
 	# Рынок + налог: итог секции = сумма строк, налог по-прежнему одной строкой.
 	var mixed: Dictionary = taxes_only.duplicate(true)
-	mixed["Потребление населения"] = {
-		"Все жители": {
+	mixed[city.POPULATION_INCOME_TYPE] = {
+		gdata.profession_source_id("all"): {
 			"fish": {"coins_per_sec": 2.5, "product_name": "Рыба"}
 		}
 	}

@@ -577,9 +577,9 @@ func _consumers_tooltip_text(row: Dictionary) -> String:
     var lines: Array = [tr("Buyers of the resource:")]
     var sources: Dictionary = row.get("sources", {})
     var entries: Array = []
-    for source_name in sources:
-        var entry: Dictionary = sources[source_name]
-        entries.append({"name": source_name, "count": int(entry.get("count", 0))})
+    for source_id in sources:
+        var entry: Dictionary = sources[source_id]
+        entries.append({"name": GameData.get_source_display_name(str(source_id)), "count": int(entry.get("count", 0))})
     # По убыванию числа покупателей: главный покупатель идёт первой строкой.
     entries.sort_custom(func(a, b): return int(a["count"]) > int(b["count"]))
     for item in entries:
@@ -595,8 +595,8 @@ func _consumption_tooltip_text(row: Dictionary) -> String:
         return ""
     var lines: Array = [tr("Expenses by buyers:")]
     var sources: Dictionary = row.get("sources", {})
-    for source_name in sources:
-        var entry: Dictionary = sources[source_name]
+    for source_id in sources:
+        var entry: Dictionary = sources[source_id]
         var count := int(entry.get("count", 0))
         var amount := int(entry.get("unit_amount", 0))
         var interval := float(entry.get("interval", 0))
@@ -605,7 +605,7 @@ func _consumption_tooltip_text(row: Dictionary) -> String:
         # «норма × число покупателей = всего»: так видно и своё число из
         # данных, и итог по городу, без двух одинаковых подряд «10 ед./1 сек».
         lines.append(tr("%s: %d units every %s per person × %d = %d per cycle") % [
-            source_name, amount,
+            GameData.get_source_display_name(str(source_id)), amount,
             (tr("%d sec") % int(round(interval))) if interval > 0.0 else tr("sec"),
             count, amount * count])
     var plan_per_sec := float(row.get("per_sec", 0.0))

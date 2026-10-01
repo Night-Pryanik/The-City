@@ -470,7 +470,7 @@ func cancel_expansion(build_key: String) -> bool:
         # отображения получается сходящийся с фактом итог (платил Y → получил Y
         # назад → 0). Отдельный «доход» не подошёл бы иерархической разбивке
         # казны — та же причина, что и в expansion_manager.handle_action.
-        CityData.record_treasury_expense(tr("Claiming land chunks"), -money_cost)
+        CityData.record_treasury_expense(GameData.SRC_CLAIMING, -money_cost)
     emit_signal("build_message", tr("Claiming cancelled. Spent %.0f/%d work")
             % [float(data.get("progress", 0.0)), int(data.get("work_cost", 0))])
     _recount_active_builds()

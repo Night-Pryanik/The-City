@@ -513,15 +513,77 @@ func is_no_worker_improvement(imp_id: String) -> bool:
         return false
     return improvements.get(imp_id, {}).get("no_worker", false)
 
-# Ищет id группы продуктов по человекочитаемому имени.
-# Используется как fallback при разборе "@"-ключей реестра потребления
-# (по аналогии с разбором групповых рецептов в CityData). Если группа не
-# найдена — пустая строка.
-func _find_group_id_by_name(group_name: String) -> String:
-    for gid in product_group_names:
-        if product_group_names[gid] == group_name:
-            return gid
-    return ""
+# Человекочитаемое имя улучшения по id (или сам id, если улучшения нет в
+# реестре). Имя уже переведено загрузчиком данных (data_loader.
+# _localize_display_fields), поэтому дополнительный tr() здесь не нужен.
+func get_improvement_display_name(imp_id: String) -> String:
+    if imp_id.is_empty():
+        return ""
+    return improvements.get(imp_id, {}).get("name", imp_id)
+
+# Человекочитаемое имя здания по id (или сам id, если здания нет в реестре).
+func get_building_display_name(building_id: String) -> String:
+    if building_id.is_empty():
+        return ""
+    return get_building_data(building_id).get("name", building_id)
+
+# --- ИСТОЧНИКИ ПОТОКА: ИДЕНТИФИКАТОР → ПОДПИСЬ ---
+#
+# Источники прихода/расхода (профессии, здания, улучшения, служебные строки)
+# адресуются в плановых картах и накопителях казны ИДЕНТИФИКАТОРОМ, а не
+# именем. Имя — только подпись в интерфейсе, и оно резолвится здесь, в точке
+# отрисовки. Так ключи не зависят от языка (LocalizationManager.set_locale
+# перечитывает данные, но не сбрасывает накопители — смена языка посреди окна
+# накопления не должна делить один источник надвое) и не сливаются при
+# совпадении имён.
+#
+# Префикс разделяет пространства имён: id "smelter" есть и у профессии
+# (data/professions.json), и у здания (data/buildings.json), а в плановых
+# картах оба попадают в один словарь — без префикса строки слились бы.
+#   "@prof:<id>" — профессия (включая псевдо-профессию "all");
+#   "@bld:<id>"  — городское здание;
+#   "@imp:<id>"  — улучшение на гексе;
+#   "@pop_food"  — питание населения (отдельной сущности в данных нет);
+#   "@scouting" / "@claim" — разовые траты казны (разведка, освоение чанка).
+# Служебные источники хранят в ключе английский текст, как TAX_INCOME_TYPE:
+# tr() нельзя вызвать в выражении константы, перевод накладывает резолвер.
+const SRC_PREFIX_PROFESSION := "@prof:"
+const SRC_PREFIX_BUILDING := "@bld:"
+const SRC_PREFIX_IMPROVEMENT := "@imp:"
+const SRC_POP_FOOD := "@pop_food"
+const SRC_SCOUTING := "@scouting"
+const SRC_CLAIMING := "@claim"
+
+# Идентификатор источника для сущности данных. Пустой id даёт пустой ключ —
+# запись без источника в планы не идёт (вызывающие проверяют это до записи).
+func profession_source_id(prof_id: String) -> String:
+    return SRC_PREFIX_PROFESSION + prof_id
+
+func building_source_id(building_id: String) -> String:
+    return SRC_PREFIX_BUILDING + building_id
+
+func improvement_source_id(imp_id: String) -> String:
+    return SRC_PREFIX_IMPROVEMENT + imp_id
+
+# Подпись источника для интерфейса: идентификатор → человекочитаемое имя.
+# Неизвестный источник отдаётся как есть — недостающая запись в данных
+# должна быть видна как «smelter», а не молчать пустой строкой.
+func get_source_display_name(source_id: String) -> String:
+    if source_id.is_empty():
+        return ""
+    if source_id == SRC_POP_FOOD:
+        return tr("Population food")
+    if source_id == SRC_SCOUTING:
+        return tr("Scouting")
+    if source_id == SRC_CLAIMING:
+        return tr("Claiming land chunks")
+    if source_id.begins_with(SRC_PREFIX_PROFESSION):
+        return get_profession_name(source_id.substr(SRC_PREFIX_PROFESSION.length()))
+    if source_id.begins_with(SRC_PREFIX_BUILDING):
+        return get_building_display_name(source_id.substr(SRC_PREFIX_BUILDING.length()))
+    if source_id.begins_with(SRC_PREFIX_IMPROVEMENT):
+        return get_improvement_display_name(source_id.substr(SRC_PREFIX_IMPROVEMENT.length()))
+    return source_id
 
 # Собирает запись о потреблении из правила data/consumption.json.
 # res_key — поле "resource" правила ("ид_продукта" или "@ид_группы").
@@ -539,12 +601,10 @@ func _build_consumption_entry(res_key: String, rule: Dictionary) -> Dictionary:
     }
     if is_group_key(res_key):
         var gkey = res_key.trim_prefix("@")
+        # Ключ "@"-группы — всегда id из data/product_groups.json. Поиска по
+        # человекочитаемому имени тут намеренно нет: такой fallback молча
+        # подставлял бы данные по похожей группе и ломал бы адресацию.
         var members: Array = product_groups.get(gkey, [])
-        if members.is_empty():
-            # Fallback: поиск группы по человекочитаемому имени (как в рецептах).
-            var gid_by_name = _find_group_id_by_name(gkey)
-            if not gid_by_name.is_empty():
-                members = product_groups.get(gid_by_name, [])
         if members.is_empty():
             print("GameData: группа '", res_key, "' из data/consumption.json не найдена — запись пропущена.")
             return {}

@@ -87,14 +87,14 @@ func _update_planned_consumption_map():
     # worker_manager знает только профессии, городское «all» и спрос зданий.
     var improvement_demand = CityData.get_improvement_planned_consumption()
     for pid in improvement_demand:
-        for source_name in improvement_demand[pid]:
-            var e: Dictionary = improvement_demand[pid][source_name]
+        for source_id in improvement_demand[pid]:
+            var e: Dictionary = improvement_demand[pid][source_id]
             if not planned_consumption_map.has(pid):
                 planned_consumption_map[pid] = {}
             var by_source: Dictionary = planned_consumption_map[pid]
-            if not by_source.has(source_name):
-                by_source[source_name] = {"amount": 0, "interval": float(e.get("interval", 0.0)), "count": 0, "is_group": false, "group_name": "", "is_population": false}
-            var entry: Dictionary = by_source[source_name]
+            if not by_source.has(source_id):
+                by_source[source_id] = {"amount": 0, "interval": float(e.get("interval", 0.0)), "count": 0, "is_group": false, "group_name": "", "is_population": false}
+            var entry: Dictionary = by_source[source_id]
             entry["amount"] = int(entry.get("amount", 0)) + int(e.get("amount", 0))
             entry["count"] = int(entry.get("count", 0)) + int(e.get("count", 1))
             entry["interval"] = minf(float(entry.get("interval", 0.0)), float(e.get("interval", 0.0)))
@@ -114,7 +114,7 @@ func _update_planned_consumption_map():
             if not planned_consumption_map.has(pid):
                 planned_consumption_map[pid] = {}
             var by_source_pop: Dictionary = planned_consumption_map[pid]
-            by_source_pop[tr("Population food")] = {
+            by_source_pop[GameData.SRC_POP_FOOD] = {
                 "amount": pop_food_demand,
                 "interval": CityData.SIMULATION_TICK,
                 "count": eaters,
@@ -607,8 +607,8 @@ func _format_cons_label(prod_id: String) -> String:
     if planned.is_empty():
         return "-0]"
     var per_sec := 0.0
-    for source_name in planned:
-        var entry: Dictionary = planned[source_name]
+    for source_id in planned:
+        var entry: Dictionary = planned[source_id]
         var amount = float(entry.get("amount", 0))
         var interval = float(entry.get("interval", 0))
         if interval > 0.0:
@@ -632,8 +632,8 @@ func _format_prod_label(prod_id: String) -> String:
     if planned.is_empty():
         return "[+0"
     var per_sec := 0.0
-    for source_name in planned:
-        var entry: Dictionary = planned[source_name]
+    for source_id in planned:
+        var entry: Dictionary = planned[source_id]
         var amount = float(entry.get("amount", 0))
         var interval = float(entry.get("interval", 0))
         if interval > 0.0:

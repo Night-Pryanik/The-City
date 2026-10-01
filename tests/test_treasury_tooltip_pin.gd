@@ -108,10 +108,13 @@ func _run() -> void:
 
 # Карта дохода в формате worker_manager.get_actual_treasury_income_map():
 # тип → источник → продукт → { coins_per_sec, product_name }.
+# Ключи — ИДЕНТИФИКАТОРЫ (CityData.POPULATION_INCOME_TYPE и
+# GameData.profession_source_id), а не подписи: подпись резолвится в рендере
+# (ui_helpers.show_treasury_tooltip → GameData.get_source_display_name).
 func _income_one_source() -> Dictionary:
     return {
-        "Потребление населения": {
-            "Все жители": {
+        _income_type_key(): {
+            _source_key("all"): {
                 "fish": {"coins_per_sec": 3.0, "product_name": "Рыба"}
             }
         }
@@ -119,10 +122,18 @@ func _income_one_source() -> Dictionary:
 
 func _income_two_sources() -> Dictionary:
     var income: Dictionary = _income_one_source()
-    income["Потребление населения"]["Рыбак"] = {
+    income[_income_type_key()][_source_key("fisherman")] = {
         "fish": {"coins_per_sec": 2.0, "product_name": "Рыба"}
     }
     return income
+
+func _income_type_key() -> String:
+    var city = root.get_node("CityData")
+    return city.POPULATION_INCOME_TYPE
+
+func _source_key(prof_id: String) -> String:
+    var gdata = root.get_node("GameData")
+    return gdata.profession_source_id(prof_id)
 
 func check(cond: bool, msg: String) -> void:
     if cond:

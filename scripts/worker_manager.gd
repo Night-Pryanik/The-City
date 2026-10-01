@@ -245,8 +245,9 @@ func _tick_profession_consumption(prof: String, key: String, timers: Dictionary,
     if cons_list.is_empty():
         return 1.0
 
-    # Имя профессии — источник расхода в тултипе ресурсов («Рыбак» и т.п.).
-    var prof_source = GameData.professions.get(prof, {}).get("name", prof)
+    # Идентификатор профессии — источник расхода (см. GameData
+    # .get_source_display_name: подпись резолвится в ui_helpers при отрисовке).
+    var prof_source = GameData.profession_source_id(prof)
 
     # --- НЕПРЕРЫВНОЕ ПРОФЕССИОНАЛЬНОЕ ПОТРЕБЛЕНИЕ ---
     # Вместо пакетного списания раз в `interval` секунд — каждый тик забираем
@@ -461,7 +462,7 @@ func load_building_consumption_timers(timers: Array):
 # CityData.SIMULATION_TICK (та же точность, что у по-гексового потребления).
 func tick_city_consumption(delta: float) -> void:
     var cons_list = GameData.get_profession_consumption("all")
-    var all_source = GameData.professions.get("all", {}).get("name", "all")
+    var all_source = GameData.profession_source_id("all")
     if cons_list.is_empty():
         return
     for entry in cons_list:
@@ -666,18 +667,18 @@ func get_planned_consumption_map(include_production_inputs: bool = true) -> Dict
     # Спрос зданий (рецепты): amount — за один крафт, interval — время рецепта.
     var building_demand = CityData.get_building_planned_consumption()
     for pid in building_demand:
-        for source_name in building_demand[pid]:
-            var e: Dictionary = building_demand[pid][source_name]
-            _record_planned_entry(result, str(pid), str(source_name), int(e.get("amount", 0)), float(e.get("interval", 0.0)), int(e.get("count", 1)), bool(e.get("is_group", false)), str(e.get("group_name", "")), false)
+        for source_id in building_demand[pid]:
+            var e: Dictionary = building_demand[pid][source_id]
+            _record_planned_entry(result, str(pid), str(source_id), int(e.get("amount", 0)), float(e.get("interval", 0.0)), int(e.get("count", 1)), bool(e.get("is_group", false)), str(e.get("group_name", "")), false)
     # Плановое потребление улучшений на карте (корм пастбищ): amount — за один
     # цикл производства, interval — production_interval улучшения. Корм
     # списывается за цикл (см. main_map, блок «ЦИКЛ ПРОИЗВОДСТВА УЛУЧШЕНИЯ»),
     # поэтому записи попадают в план наравне со спросом зданий.
     var improvement_demand = CityData.get_improvement_planned_consumption()
     for pid in improvement_demand:
-        for source_name in improvement_demand[pid]:
-            var e: Dictionary = improvement_demand[pid][source_name]
-            _record_planned_entry(result, str(pid), str(source_name), int(e.get("amount", 0)), float(e.get("interval", 0.0)), int(e.get("count", 1)), bool(e.get("is_group", false)), str(e.get("group_name", "")), false)
+        for source_id in improvement_demand[pid]:
+            var e: Dictionary = improvement_demand[pid][source_id]
+            _record_planned_entry(result, str(pid), str(source_id), int(e.get("amount", 0)), float(e.get("interval", 0.0)), int(e.get("count", 1)), bool(e.get("is_group", false)), str(e.get("group_name", "")), false)
     return result
 
 # Потребление НАСЕЛЕНИЕМ, ключованное DISPLAY_KEY, — источник данных для
@@ -744,7 +745,8 @@ func get_population_consumption_map() -> Dictionary:
 func _record_population_row(result: Dictionary, prof_id: String, count: int, is_population: bool) -> void:
     if count <= 0:
         return
-    var source_name: String = GameData.professions.get(prof_id, {}).get("name", prof_id)
+    # Ключ источника — идентификатор профессии; подпись резолвит trade_tab.
+    var source_id: String = GameData.profession_source_id(prof_id)
     for entry in GameData.get_profession_consumption(prof_id):
         var amount := int(entry.get("amount", 0)) * count
         if amount <= 0:
@@ -769,8 +771,8 @@ func _record_population_row(result: Dictionary, prof_id: String, count: int, is_
         if is_group and (row.get("members", []) as Array).is_empty():
             row["members"] = (entry.get("group_members", []) as Array).duplicate()
         var sources: Dictionary = row["sources"]
-        var prev_amount: int = int(sources.get(source_name, {}).get("amount", 0))
-        sources[source_name] = {
+        var prev_amount: int = int(sources.get(source_id, {}).get("amount", 0))
+        sources[source_id] = {
             "amount": prev_amount + amount,
             # Норма на ОДНОГО потребителя — ровно то, что объявлено в
             # data/consumption.json (amount), без умножения на число
@@ -803,8 +805,8 @@ func _finalize_population_row(result: Dictionary, display_key: String) -> void:
     var per_consumer_per_sec := 0.0
     var per_consumer_amount := 0
     var per_consumer_interval := 0.0
-    for source_name in sources:
-        var entry: Dictionary = sources[source_name]
+    for source_id in sources:
+        var entry: Dictionary = sources[source_id]
         var count := int(entry.get("count", 0))
         if bool(entry.get("is_population", false)):
             population_count = maxi(population_count, count)
@@ -880,20 +882,20 @@ func get_actual_treasury_income_map() -> Dictionary:
     var result: Dictionary = {}
     if not product_income.is_empty() and window_sec > 0.0:
         var income_by_source: Dictionary = {}
-        for source_name in product_income:
-            var source_products: Dictionary = product_income[source_name]
+        for source_id in product_income:
+            var source_products: Dictionary = product_income[source_id]
             for pid in source_products:
                 var amount: int = int(source_products[pid])
                 if amount <= 0:
                     continue
-                if not income_by_source.has(source_name):
-                    income_by_source[source_name] = {}
-                income_by_source[source_name][pid] = {
+                if not income_by_source.has(source_id):
+                    income_by_source[source_id] = {}
+                income_by_source[source_id][pid] = {
                     "coins_per_sec": float(amount) / window_sec,
                     "product_name": GameData.products.get(pid, {}).get("name", pid)
                 }
         if not income_by_source.is_empty():
-            result[tr("Population consumption")] = income_by_source
+            result[CityData.POPULATION_INCOME_TYPE] = income_by_source
     _fill_tax_income(result)
     return result
 
@@ -964,8 +966,8 @@ func _planned_market_income_rows() -> Array:
             continue
         var market_price: float = float(per_pid[pid]["price"])
         var product_name: String = GameData.products.get(pid, {}).get("name", pid)
-        for source_name in planned[pid]:
-            var entry: Dictionary = planned[pid][source_name]
+        for source_id in planned[pid]:
+            var entry: Dictionary = planned[pid][source_id]
             var amount := float(entry.get("amount", 0))
             var interval := float(entry.get("interval", 0))
             # Per-second потребление записи (см. ui_helpers._planned_per_sec).
@@ -978,7 +980,7 @@ func _planned_market_income_rows() -> Array:
                 continue
             rows.append({
                 "pid": str(pid),
-                "source": str(source_name),
+                "source": str(source_id),
                 "coins_per_sec": per_sec * market_price,
                 "product_name": product_name,
             })
@@ -1023,14 +1025,14 @@ func get_population_income_map() -> Dictionary:
 # доход шести членов «Фруктов» попадает в одну карточку, а не в шесть строк.
 func get_actual_market_income_map() -> Dictionary:
     var result: Dictionary = {}
-    var actual: Dictionary = get_actual_treasury_income_map().get(tr("Population consumption"), {})
+    var actual: Dictionary = get_actual_treasury_income_map().get(CityData.POPULATION_INCOME_TYPE, {})
     if actual.is_empty():
         return result
     var planned := get_planned_consumption_map(false)
-    for source_name in actual:
-        var products: Dictionary = actual[source_name]
+    for source_id in actual:
+        var products: Dictionary = actual[source_id]
         for pid in products:
-            var entry: Dictionary = planned.get(str(pid), {}).get(str(source_name), {})
+            var entry: Dictionary = planned.get(str(pid), {}).get(str(source_id), {})
             var dkey := str(entry.get("display_key", ""))
             # Пустой display_key — доход не от потребления населения (см. выше).
             if dkey.is_empty():
@@ -1041,8 +1043,8 @@ func get_actual_market_income_map() -> Dictionary:
             var row: Dictionary = result[dkey]
             row["coins_per_sec"] = float(row.get("coins_per_sec", 0.0)) + coins
             var by_source: Dictionary = row["by_source"]
-            by_source[str(source_name)] = \
-                float(by_source.get(str(source_name), 0.0)) + coins
+            by_source[str(source_id)] = \
+                float(by_source.get(str(source_id), 0.0)) + coins
     return result
 
 # Общая формула планового дохода рынка: pid -> { "price": int, "available": bool }.
@@ -1063,8 +1065,8 @@ func _planned_market_income_per_pid() -> Dictionary:
         if market_price <= 0:
             continue
         var available := true
-        for source_name in planned[pid]:
-            var entry: Dictionary = planned[pid][source_name]
+        for source_id in planned[pid]:
+            var entry: Dictionary = planned[pid][source_id]
             if not bool(entry.get("is_group", false)):
                 continue
             # Член группы без остатка и без производства в доход не идёт.
@@ -1077,7 +1079,7 @@ func _planned_market_income_per_pid() -> Dictionary:
     return result
 
 func _fill_consumption_income(result: Dictionary) -> void:
-    var income_type := tr("Population consumption")
+    var income_type := CityData.POPULATION_INCOME_TYPE
     if not result.has(income_type):
         result[income_type] = {}
     var type_dict: Dictionary = result[income_type]
@@ -1085,10 +1087,10 @@ func _fill_consumption_income(result: Dictionary) -> void:
     # (get_population_income_map) — общий хелпер, поэтому расхождение цифр
     # между карточкой и тултипом невозможно по построению.
     for row_data in _planned_market_income_rows():
-        var source_name := str(row_data["source"])
-        if not type_dict.has(source_name):
-            type_dict[source_name] = {}
-        var source_dict: Dictionary = type_dict[source_name]
+        var source_id := str(row_data["source"])
+        if not type_dict.has(source_id):
+            type_dict[source_id] = {}
+        var source_dict: Dictionary = type_dict[source_id]
         source_dict[str(row_data["pid"])] = {
             "coins_per_sec": float(row_data["coins_per_sec"]),
             "product_name": str(row_data["product_name"]),
@@ -1100,7 +1102,8 @@ func _fill_consumption_income(result: Dictionary) -> void:
 func _record_profession_planned(result: Dictionary, prof_id: String, count: int, is_population: bool):
     if count <= 0:
         return
-    var source_name: String = GameData.professions.get(prof_id, {}).get("name", prof_id)
+    # Ключ источника — идентификатор профессии; подпись резолвит ui_helpers.
+    var source_id: String = GameData.profession_source_id(prof_id)
     for entry in GameData.get_profession_consumption(prof_id):
         # Запрещённый на внутреннем рынке ресурс в план не попадает: иначе
         # вкладка «Ресурсы» показывала бы расход, а тултип казны — доход,
@@ -1118,16 +1121,17 @@ func _record_profession_planned(result: Dictionary, prof_id: String, count: int,
         for pid in targets:
             if str(pid).is_empty():
                 continue
-            _record_planned_entry(result, str(pid), source_name, amount, interval, count, is_group, group_name, is_population, str(entry.get("display_key", "")))
+            _record_planned_entry(result, str(pid), source_id, amount, interval, count, is_group, group_name, is_population, str(entry.get("display_key", "")))
 
 # Хелпер записи/агрегации планового потребления (см. get_planned_consumption_map).
-func _record_planned_entry(result: Dictionary, pid: String, source_name: String, amount: int, interval: float, count: int, is_group: bool, group_name: String, is_population: bool, display_key: String = ""):
+# Ключ by_source — идентификатор источника (GameData.get_source_display_name).
+func _record_planned_entry(result: Dictionary, pid: String, source_id: String, amount: int, interval: float, count: int, is_group: bool, group_name: String, is_population: bool, display_key: String = ""):
     if not result.has(pid):
         result[pid] = {}
     var by_source: Dictionary = result[pid]
-    if not by_source.has(source_name):
-        by_source[source_name] = {"amount": 0, "interval": interval, "count": 0, "is_group": false, "group_name": "", "is_population": false, "display_key": ""}
-    var entry: Dictionary = by_source[source_name]
+    if not by_source.has(source_id):
+        by_source[source_id] = {"amount": 0, "interval": interval, "count": 0, "is_group": false, "group_name": "", "is_population": false, "display_key": ""}
+    var entry: Dictionary = by_source[source_id]
     entry["amount"] = int(entry.get("amount", 0)) + amount
     entry["interval"] = minf(float(entry.get("interval", interval)), interval)
     entry["count"] = maxi(int(entry.get("count", 0)), count)
