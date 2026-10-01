@@ -25,6 +25,26 @@ var consumption_rules: Array = [] # записи потребления из dat
 var city_names: Array = [] # варианты названий города (data/city_names.json)
 var game_balance: Dictionary = {} # игровой баланс (data/game_balance.json)
 
+# Откуда пришла каждая сущность: "коллекция:id" → { "file": String, "line": int }.
+# Заполняется при чтении файлов (_remember_sources), потому что после слияния
+# файлов в один словарь происхождение уже не восстановить. Нужен рантайм-валидатору
+# (scripts/data_validator.gd), чтобы указывать проблему на конкретный файл и
+# строку. Подробности — в шапке _remember_sources.
+var entity_sources: Dictionary = {}
+
+# Верхнеуровневые ключи, у элементов которых есть "id" — по ним и ищем
+# объявление сущности. Порядок и состав повторяют то, что разбирает load_all_data.
+const SOURCE_COLLECTIONS := [
+    "resources",
+    "crafts",
+    "buildings",
+    "improvements",
+    "technologies",
+    "categories",
+    "professions",
+    "product_groups",
+]
+
 func load_all_data():
     var merged_data = _load_all_json_files("res://data")
     if merged_data == null:
@@ -168,10 +188,68 @@ func _load_all_json_files(folder_path: String) -> Dictionary:
                 if data == null:
                     print("Ошибка: не удалось распарсить JSON из ", file_path)
                 else:
+                    _remember_sources(file_path, text, data)
                     _merge_dictionaries(result, data)
         file_name = dir.get_next()
     dir.list_dir_end()
     return result
+
+# --- ПРОИСХОЖДЕНИЕ СУЩНОСТЕЙ (файл + строка) -------------------------------
+#
+# _merge_dictionaries сливает файлы в один словарь и место каждой сущности
+# стирает: после загрузки не сказать, объявлена ли «Пшеница» в
+# data/products/food.json или в data/products/products.json. Рантайм-валидатор
+# (scripts/data_validator.gd) на этом и спотыкается: он умеет назвать проблему
+# («Продукта «sunflower» не существует»), но без файла автору пришлось бы искать
+# опечатку вручную по всем файлам data/.
+#
+# Поэтому параллельно со слиянием записывается индекс: "коллекция:id" → файл и
+# строка объявления. Именно объявления, а не упоминания: id может встретиться
+# в файле и как член группы, и как результат рецепта, и номер строки тогда
+# указал бы не туда.
+func _remember_sources(file_path: String, raw_text: String, data: Dictionary):
+    if not (data is Dictionary):
+        return
+    for collection in SOURCE_COLLECTIONS:
+        var entries = data.get(collection, null)
+        if not (entries is Array):
+            continue
+        for entry in entries:
+            if not (entry is Dictionary):
+                continue
+            var id := str(entry.get("id", ""))
+            if id.is_empty():
+                continue
+            entity_sources["%s:%s" % [collection, id]] = {
+                "file": file_path,
+                "line": _find_decl_line(raw_text, id),
+            }
+
+# Строка, на которой сущность с таким id ОБЪЯВЛЕНА, — или 0, если не нашлась.
+#
+# Ищем в ИСХОДНОМ тексте файла, а не в очищенном от комментариев: _strip_json_comments
+# выбрасывает переносы строк внутри /* … */, поэтому нумерация строк очищенного
+# текста не совпала бы с тем, что автор видит в редакторе (у data/improvements.json
+# шапка-комментарий занимает полэкрана).
+#
+# Сначала ищем строку, где id стоит рядом с "id" (компактная запись
+# { "id": "salt", "price": 6 }) — это и есть объявление. Если такой нет, берём
+# первую строку, где id вообще встречается: у многострочных записей вроде
+# product_groups.json (id в одной строке, "products" — в следующих) это всё
+# равно приводит к строке объявления.
+func _find_decl_line(raw_text: String, id: String) -> int:
+    var needle := "\"%s\"" % id
+    var lines := raw_text.split("\n")
+    var fallback := 0
+    for i in lines.size():
+        var line: String = lines[i]
+        if not line.contains(needle):
+            continue
+        if line.contains("\"id\""):
+            return i + 1
+        if fallback == 0:
+            fallback = i + 1
+    return fallback
 
 func _merge_dictionaries(target: Dictionary, source: Dictionary):
     for key in source.keys():

@@ -94,7 +94,7 @@
       "name": "Соль",
       "type": "product",
       "category": "household_items",
-      "unlock_tech": "salt_mining",
+      "unlock_tech": "salt_extraction",
       "icon": "salt.png"
     },
     {

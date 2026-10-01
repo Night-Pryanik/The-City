@@ -1,5 +1,12 @@
 extends Control
 
+# Валидатор перекрёстных ссылок в data/*.json. Объявлен через preload, а не
+# автозагрузку: он не хранит состояния между вызовами, а нужен только
+# главному меню. Автозагрузка ради одного вызова держала бы в памяти набор
+# правил без единого потребителя.
+const DataValidator = preload("res://scripts/data_validator.gd")
+const DataProblemsWindow = preload("res://scripts/data_problems_window.gd")
+
 @onready var new_game_button = $VBoxContainer/NewGameButton
 @onready var load_game_button = $VBoxContainer/LoadGameButton
 @onready var settings_button = $VBoxContainer/SettingsButton
@@ -15,6 +22,49 @@ func _ready():
     load_game_button.pressed.connect(_on_load_game)
     settings_button.pressed.connect(_on_settings)
     quit_button.pressed.connect(_on_quit)
+
+    _check_game_data()
+
+# Проверяет целостность игровых данных до начала партии.
+#
+# Главное меню — первая сцена (run/main_scene в project.godot), поэтому
+# проверка срабатывает сразу после запуска игры и до того, как игрок начнёт
+# строить: сцена MainMap с генерацией карты ещё не создана.
+#
+# Найденные проблемы показываются ОКНОМ, а не записью в консоль: автору
+# данных нужно увидеть, какого идентификатора не хватает и в каком поле на
+# него сослались. В консоль дублируется только краткая сводка — чтобы
+# ошибка не потерялась при запуске в headless-режиме.
+func _check_game_data():
+    # Валидатору нужен полный набор данных. Обычно они уже загружены
+    # (например, при возврате из партии), но на холодном старте — нет.
+    if not GameData.data_loaded:
+        GameData.load_all_data()
+
+    var problems: Array = DataValidator.new().validate(GameData)
+    if problems.is_empty():
+        return
+
+    # Окно вешаем на корень окна, а не на главное меню: у Control меню
+    # якоря заданы не по краям экрана (scenes/main_menu.tscn), и оверлей
+    # накрыл бы только часть экрана.
+    #
+    # Добавление отложенное: этот код работает внутри _ready() главного
+    # меню, а значит корень дерева в этот момент ещё настраивает детей
+    # (он добавляет сцену main_menu) — прямой add_child() на корне
+    # отклоняется с "Parent node is busy setting up children". Содержимое
+    # наполняем по сигналу ready: до него _ready() окна не построил
+    # верстку, и show_problems() упал бы на null-узлах.
+    var window = Control.new()
+    window.set_script(DataProblemsWindow)
+    window.ready.connect(window.show_problems.bind(problems), CONNECT_ONE_SHOT)
+    get_tree().root.add_child.call_deferred(window)
+
+    var counts := DataValidator.new().count_by_kind(problems)
+    print("Проверка игровых данных: найдено проблем — %d (%s)" % [
+        problems.size(), str(counts)])
+    for problem in problems:
+        print("  - ", problem["message"])
 
 func _on_new_game():
     # Загружаем данные заранее: нужно для случайного названия-предложения

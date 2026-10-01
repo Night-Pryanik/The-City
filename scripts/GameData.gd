@@ -24,6 +24,15 @@ var professions: Dictionary = {} # id -> данные профессии (data/p
 var consumption_rules: Array = [] # записи потребления (data/consumption.json)
 var city_names: Array = [] # варианты названий города (data/city_names.json)
 var game_balance: Dictionary = {} # игровой баланс (data/game_balance.json)
+# Факт того, что данные уже загружены. Нужен, чтобы не читать data/*.json
+# дважды подряд: главное меню проверяет данные валидатором
+# (scripts/data_validator.gd) при входе, а новая партия грузит их снова.
+# Аналог SaveManager.is_loaded.
+var data_loaded: bool = false
+# Откуда пришла каждая сущность: "коллекция:id" → { "file": String, "line": int }.
+# Читает рантайм-валидатор (scripts/data_validator.gd), чтобы указывать проблему
+# на конкретный файл и строку, а не заставлять искать опечатку вручную.
+var entity_sources: Dictionary = {}
 
 func load_all_data():
     var loader = load("res://scripts/data_loader.gd").new()
@@ -50,6 +59,8 @@ func load_all_data():
     consumption_rules = loader.consumption_rules
     city_names = loader.city_names
     game_balance = loader.game_balance
+    entity_sources = loader.entity_sources
+    data_loaded = true
 
 # Возвращает случайное название города из data/city_names.json.
 # Если список пуст или не загрузился — возвращает нейтральное имя по умолчанию.

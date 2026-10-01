@@ -44,12 +44,12 @@
       "id": "oil_crops",
       "name": "Масличные культуры",
       "products": [
-        "sunflower",
+      //  "sunflower",
         "sesame",
-        "rapeseed",
+      //  "rapeseed",
         "flax",
         "soybean",
-        "peanut",
+      //  "peanut",
         "olives"
       ]
     },
