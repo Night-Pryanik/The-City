@@ -31,8 +31,10 @@ const MARKER_ICON_RADIUS = 6.0
 const MARKER_ICON_COLOR = Color(0.45, 0.8, 1.0)
 
 var tile_data = []
+# Локальный кэш текстур для отрисовки карты (горячий путь: обращение на
+# каждый гекс каждый кадр). Сами пути и загрузку даёт IconRegistry — своего
+# индекса у рендерера больше нет.
 var icon_textures = {}
-var icon_paths = {}
 
 # Ссылка на главный узел для доступа к offset_x, offset_y, scroll_offset, build_manager и CityData
 var main_map: Node
@@ -155,68 +157,47 @@ func _is_rect_visible(rect: Rect2) -> bool:
     var viewport_rect = Rect2(Vector2.ZERO, _get_viewport_size())
     return rect.intersects(viewport_rect)
 
-func build_icon_index():
-    icon_paths.clear()
-    _scan_folder("res://icons")
-
-func _scan_folder(folder_path: String):
-    var dir = DirAccess.open(folder_path)
-    if dir == null: return
-    dir.list_dir_begin()
-    var file_name = dir.get_next()
-    while file_name != "":
-        if dir.current_is_dir():
-            _scan_folder(folder_path.path_join(file_name))
-        else:
-            var full_path = folder_path.path_join(file_name)
-            if icon_paths.has(file_name): print("Предупреждение: дубликат иконки ", file_name)
-            icon_paths[file_name] = full_path
-        file_name = dir.get_next()
-    dir.list_dir_end()
-
 func load_icons():
     icon_textures.clear()
     for res_id in GameData.raw_resources.keys():
         var res = GameData.raw_resources[res_id]
         if res.has("icon"):
-            var file_name = res.icon
-            if icon_paths.has(file_name):
-                icon_textures[file_name] = load(icon_paths[file_name])
+            _cache_icon(res.icon)
     for imp_id in GameData.improvements.keys():
         var imp = GameData.improvements[imp_id]
         if imp.has("icon"):
-            var file_name = imp.icon
-            if icon_paths.has(file_name):
-                icon_textures[file_name] = load(icon_paths[file_name])
+            _cache_icon(imp.icon)
     for t_id in GameData.terrains.keys():
         var t = GameData.terrains[t_id]
         if t.has("icon"):
-            var file_name = t.icon
-            if icon_paths.has(file_name):
-                icon_textures[file_name] = load(icon_paths[file_name])
+            _cache_icon(t.icon)
         if t.has("icons"):
             for icon_name in t.icons:
-                if icon_paths.has(icon_name):
-                    icon_textures[icon_name] = load(icon_paths[icon_name])
+                _cache_icon(icon_name)
     for tech in GameData.technologies:
         if tech.has("icon"):
-            var file_name = tech.icon
-            if icon_paths.has(file_name):
-                icon_textures[file_name] = load(icon_paths[file_name])
+            _cache_icon(tech.icon)
     # Покров (cover): загружаем его иконки (оверлеи леса и т.п.)
     for c_id in GameData.covers.keys():
         var c = GameData.covers[c_id]
         if c.has("icons"):
             for icon_name in c.icons:
-                if icon_paths.has(icon_name):
-                    icon_textures[icon_name] = load(icon_paths[icon_name])
-    if icon_paths.has("city.png"):
-        icon_textures["city"] = load(icon_paths["city.png"])
-        # Ключ "city.png" нужен рендереру городков (town_manager.TOWN_ICON_NAME),
-        # чтобы достать ту же текстуру по «полному» имени файла.
-        icon_textures["city.png"] = icon_textures["city"]
-    if icon_paths.has("lock.png"):
-        icon_textures["lock.png"] = load(icon_paths["lock.png"])
+                _cache_icon(icon_name)
+    _cache_icon("city.png")
+    # Ключ "city" нужен рендереру городков (town_manager.TOWN_ICON_NAME),
+    # чтобы достать ту же текстуру по «полному» имени файла.
+    if icon_textures.has("city.png"):
+        icon_textures["city"] = icon_textures["city.png"]
+    _cache_icon("lock.png")
+
+# Кладёт текстуру иконки в локальный кэш отрисовки. Путь берётся из
+# IconRegistry, поэтому индекс иконок в проекте один.
+func _cache_icon(icon_name: String):
+    if icon_name.is_empty():
+        return
+    var tex := IconRegistry.get_texture(icon_name)
+    if tex != null:
+        icon_textures[icon_name] = tex
 
 func _draw():
     # Вычисляем видимый диапазон гексов (viewport culling): рисуем только те
@@ -1821,12 +1802,6 @@ func _draw_exploration_highlights():
         closed_verts.append_array(vertices)
         closed_verts.append(vertices[0])
         draw_polyline(closed_verts, style.border, style.width)
-
-func get_icon_path(icon_name: String) -> String:
-    if icon_paths.has(icon_name):
-        return icon_paths[icon_name]
-    return ""
-
 
 # Возвращает компактную строку-ключ для кэша сглаженной реки.
 # Сериализует координаты точек реки (мировые, без offset). Используется

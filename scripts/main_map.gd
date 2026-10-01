@@ -226,7 +226,6 @@ func _ready():
 
     if SaveManager.is_loaded:
         GameData.load_all_data()
-        map_renderer.build_icon_index()
         map_renderer.load_icons()
         SaveManager.apply_loaded_data()
 
@@ -890,7 +889,6 @@ func _initialize_map():
     var selected_city_name = CityData.city_name
     CityData.setup()
     CityData.city_name = selected_city_name
-    map_renderer.build_icon_index()
     map_renderer.load_icons()
 
     # Устанавливаем стартовые размеры Кольца и Региона из конфигурации.
@@ -1791,7 +1789,7 @@ func _update_research_progress():
         research_button.tooltip_text = tr("Researching: %s") % tech_data.get("name", tech_id)
         var icon_name: String = tech_data.get("icon", "")
         if icon_name != "" and research_icon:
-            var path = map_renderer.get_icon_path(icon_name)
+            var path = IconRegistry.icon_path(icon_name)
             if path != "":
                 var tex = load(path)
                 if tex:

@@ -67,7 +67,7 @@ func _format_resource_label_for_text(res_id: String, res_name: String) -> String
         return res_name
     if _map_renderer == null:
         return res_name
-    var icon_path = _map_renderer.get_icon_path(icon_name)
+    var icon_path = IconRegistry.icon_path(icon_name)
     if icon_path == "":
         return res_name
     return "[img=18]%s[/img] %s" % [icon_path, res_name]
@@ -453,7 +453,7 @@ func _collect_production(row: int, col: int, res_id: String, prefix: String, til
         var prod_data = GameData.products.get(prod_id, {})
         if prod_data.has("icon"):
             var icon_name = prod_data["icon"]
-            icon_path = _map_renderer.get_icon_path(icon_name)
+            icon_path = IconRegistry.icon_path(icon_name)
         result.append({"type": "product", "name": prod_name, "amount": final_amounts[prod_id].per_sec, "icon_path": icon_path, "suffix": tr(" units/sec")})
 
     return result
@@ -482,7 +482,7 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
             var wood_data0 = GameData.products.get("wood", {})
             var lj_icon_path0 = ""
             if wood_data0.has("icon"):
-                lj_icon_path0 = _map_renderer.get_icon_path(wood_data0["icon"])
+                lj_icon_path0 = IconRegistry.icon_path(wood_data0["icon"])
             result.append({"type": "header", "text": tr("Once built, %s will produce:") % lj_name})
             result.append({"type": "product", "name": wood_data0.get("name", tr("Wood")), "amount": lj_per_sec0, "icon_path": lj_icon_path0, "suffix": tr(" units/sec")})
         elif tile.improvement == "lumberjack_hut" and lj_yield > 0.0 \
@@ -497,7 +497,7 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
             var wood_data2 = GameData.products.get("wood", {})
             var lj_icon_path2 = ""
             if wood_data2.has("icon"):
-                lj_icon_path2 = _map_renderer.get_icon_path(wood_data2["icon"])
+                lj_icon_path2 = IconRegistry.icon_path(wood_data2["icon"])
             var lj_label = wood_data2.get("name", tr("Wood"))
             if lj_mult2 != 1.0:
                 var lj_base_str = str(int(lj_yield)) if lj_yield == floor(lj_yield) else "%.1f" % lj_yield
@@ -566,7 +566,7 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
         var prod_data = GameData.products.get(prod_id, {})
         if prod_data.has("icon"):
             var icon_name = prod_data["icon"]
-            icon_path = _map_renderer.get_icon_path(icon_name)
+            icon_path = IconRegistry.icon_path(icon_name)
         # Показ — посекундный: выпуск цикла, делённый на production_interval.
         result.append({"type": "product", "name": prod_name, "amount": float(final_amount) / prod_interval, "icon_path": icon_path, "suffix": tr(" units/sec")})
 
@@ -596,9 +596,7 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
                 var cons_label: String = str(cons.get("label", ""))
                 # Иконка потребляемого ресурса; у группы берётся иконка
                 # первого члена с картинкой (её кладёт GameData в "icon").
-                # Тип указан явно: _map_renderer нетипизирован, и вывод
-                # метода иначе не выводится.
-                var cons_icon_path: String = _map_renderer.get_icon_path(
+                var cons_icon_path: String = IconRegistry.icon_path(
                     str(cons.get("icon", "")))
                 if cons_icon_path != "":
                     result.append({

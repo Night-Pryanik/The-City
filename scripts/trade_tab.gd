@@ -694,34 +694,9 @@ func _show_message(text: String) -> void:
         ui_helpers.set_message(text)
 
 # --- ИКОНКИ ---
-# Индекс иконок строится один раз и кэшируется: обход res://icons на
-# каждый кадр был бы лишней работой (тот же приём, что в resources_tab).
-var _icon_paths: Dictionary = {}
-var _icon_textures: Dictionary = {}
+# Иконки берутся из общего реестра IconRegistry (автозагрузка): индекс имён
+# файлов и кэш текстур там общие на весь проект, поэтому вкладке «Торговля»
+# не нужен собственный обход res://icons и свой кэш.
 
 func _get_icon_texture(icon_file: String) -> Texture2D:
-    if icon_file.is_empty():
-        return null
-    if _icon_textures.has(icon_file):
-        return _icon_textures[icon_file]
-    if _icon_paths.is_empty():
-        _scan_icons("res://icons")
-    if _icon_paths.has(icon_file):
-        var texture: Texture2D = load(_icon_paths[icon_file])
-        _icon_textures[icon_file] = texture
-        return texture
-    return null
-
-func _scan_icons(folder_path: String) -> void:
-    var dir := DirAccess.open(folder_path)
-    if dir == null:
-        return
-    dir.list_dir_begin()
-    var file_name := dir.get_next()
-    while file_name != "":
-        if dir.current_is_dir():
-            _scan_icons(folder_path.path_join(file_name))
-        else:
-            _icon_paths[file_name] = folder_path.path_join(file_name)
-        file_name = dir.get_next()
-    dir.list_dir_end()
+    return IconRegistry.get_texture(icon_file)

@@ -16,9 +16,8 @@ signal closed()
 @onready var close_button = $WindowPanel/CloseButton
 @onready var buy_list = $WindowPanel/ColumnsHBox/BuyColumn/BuyList
 @onready var sell_list = $WindowPanel/ColumnsHBox/SellColumn/SellList
-# Индекс иконок строится рекурсивно: ресурсы распределены по подпапкам
-# res://icons/ (как и в окне технологий и вкладке «Ресурсы»).
-var icon_paths: Dictionary = {}
+# Иконки ресурсов берутся из общего реестра IconRegistry (автозагрузка):
+# индекс строится один раз за игру, а не в каждом открытии окна.
 # Текущий городок (запись из town_manager.towns). null — окно закрыто.
 var _town = null
 # Доступна ли торговля с этим городком (town_manager.is_trade_available).
@@ -28,7 +27,6 @@ var _town = null
 # можно ли покупать и продавать (см. town_manager.is_trade_available).
 var _trade_available := true
 func _ready():
-    _build_icon_index()
     if close_button:
         close_button.pressed.connect(close_town)
 
@@ -78,9 +76,10 @@ func _fill_resource_list(container: VBoxContainer, pool, empty_text: String) -> 
         var resource_row := HBoxContainer.new()
         resource_row.add_theme_constant_override("separation", 6)
         var icon_name := _get_resource_icon_name(id)
-        if icon_paths.has(icon_name):
+        var icon_tex := IconRegistry.get_texture(icon_name)
+        if icon_tex != null:
             var resource_icon := TextureRect.new()
-            resource_icon.texture = load(icon_paths[icon_name])
+            resource_icon.texture = icon_tex
             resource_icon.custom_minimum_size = Vector2(28, 28)
             resource_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
             resource_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -97,26 +96,6 @@ func _fill_resource_list(container: VBoxContainer, pool, empty_text: String) -> 
 func _get_resource_icon_name(resource_id: String) -> String:
     var resource_data := GameData.get_resource_data(resource_id)
     return str(resource_data.get("icon", ""))
-
-# Собирает пути всех файлов в res://icons/ и его подпапках.
-# В данных ресурсов хранится только имя файла, поэтому индексируется basename.
-func _build_icon_index() -> void:
-    icon_paths.clear()
-    _scan_icon_folder("res://icons")
-
-func _scan_icon_folder(folder_path: String) -> void:
-    var dir := DirAccess.open(folder_path)
-    if dir == null:
-        return
-    dir.list_dir_begin()
-    var file_name := dir.get_next()
-    while not file_name.is_empty():
-        if dir.current_is_dir():
-            _scan_icon_folder(folder_path.path_join(file_name))
-        else:
-            icon_paths[file_name] = folder_path.path_join(file_name)
-        file_name = dir.get_next()
-    dir.list_dir_end()
 
 func _get_resource_display_name(resource_id: String) -> String:
     var resource_data := GameData.get_resource_data(resource_id)

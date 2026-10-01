@@ -55,16 +55,14 @@ var _related_techs: Dictionary = {} # tech_id -> bool, связанные тех
 var _era_labels: Array = [] # Label-заголовки эпох (очищаются в rebuild)
 var _era_groups: Array = [] # [{era_id, era_name, col_start, col_end, x_center, x_boundary}]
 
-# --- Кэш иконок технологий (рекурсивный обход res://icons, как в map_renderer) ---
-var icon_paths: Dictionary = {} # имя файла -> полный путь
-var icon_textures: Dictionary = {} # имя файла -> загруженная Texture2D
+# Иконки технологий берутся из общего реестра IconRegistry (автозагрузка):
+# индекс имён файлов строится там один раз за игру.
 
 signal research_requested(tech_id: String)
 
 func setup(parent: Control, current_lbl: Label, science_lbl: Label = null):
     current_label = current_lbl
     science_pool_label = science_lbl
-    _build_tech_icon_index()
     _build_ui(parent)
     _setup_science_tooltip()
 
@@ -647,8 +645,9 @@ func _create_antiquity_era_label(group: Dictionary) -> void:
     var count_text: String = "1/1" if market_built else "0/1"
     var check: String = " [color=#4caf50]✔[/color]" if market_built else ""
     var icon_tag: String = ""
-    if icon_paths.has("market.png"):
-        icon_tag = "[img=18]" + icon_paths["market.png"] + "[/img] "
+    var market_icon_path := IconRegistry.icon_path("market.png")
+    if not market_icon_path.is_empty():
+        icon_tag = "[img=18]" + market_icon_path + "[/img] "
     var rtl := RichTextLabel.new()
     rtl.name = "EraLabel"
     rtl.bbcode_enabled = true
@@ -997,40 +996,8 @@ func _find_label_in_button(btn: Button) -> Label:
                             return c3
     return null
 
-# Строит индекс иконок рекурсивным обходом res://icons (как в map_renderer.gd:
-# build_icon_index/_scan_folder), чтобы пути не хардкодились, а иконки
-# находились по имени файла в любой подпапке.
-func _build_tech_icon_index():
-    icon_paths.clear()
-    _scan_icon_folder("res://icons")
-
-func _scan_icon_folder(folder_path: String):
-    var dir = DirAccess.open(folder_path)
-    if dir == null: return
-    dir.list_dir_begin()
-    var file_name = dir.get_next()
-    while file_name != "":
-        if dir.current_is_dir():
-            _scan_icon_folder(folder_path.path_join(file_name))
-        else:
-            var full_path = folder_path.path_join(file_name)
-            if icon_paths.has(file_name):
-                print("Предупреждение: дубликат иконки ", file_name)
-            icon_paths[file_name] = full_path
-        file_name = dir.get_next()
-    dir.list_dir_end()
-
 func _load_tech_icon(icon_name: String) -> Texture2D:
-    if icon_name.is_empty():
-        return null
-    if icon_textures.has(icon_name):
-        return icon_textures[icon_name]
-    if icon_paths.has(icon_name):
-        var tex = load(icon_paths[icon_name])
-        if tex is Texture2D:
-            icon_textures[icon_name] = tex
-            return tex
-    return null
+    return IconRegistry.get_texture(icon_name)
 
 func _get_tech_data(tech_id: String) -> Dictionary:
     # Возвращаем пустой Dictionary вместо null, чтобы вызывающий код

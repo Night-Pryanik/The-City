@@ -265,7 +265,7 @@ func show_build_tooltip(mouse_pos: Vector2):
     build_tooltip_panel.position.x = max(0, build_tooltip_panel.position.x)
     build_tooltip_panel.position.y = max(0, build_tooltip_panel.position.y)
 
-func show_group_tooltip(mouse_pos: Vector2, group_key: String, products_data: Dictionary, icon_index: Dictionary):
+func show_group_tooltip(mouse_pos: Vector2, group_key: String, products_data: Dictionary):
     # Очищаем предыдущее содержимое (remove_child + queue_free, чтобы узлы
     # удалялись из дерева немедленно и не влияли на расчёт размера)
     for child in group_tooltip_content.get_children():
@@ -298,8 +298,8 @@ func show_group_tooltip(mouse_pos: Vector2, group_key: String, products_data: Di
         
         # Иконка
         var icon_name = pdata.get("icon", "")
-        if not icon_name.is_empty() and icon_index.has(icon_name):
-            var tex = load(icon_index[icon_name])
+        if not icon_name.is_empty():
+            var tex = IconRegistry.get_texture(icon_name)
             if tex:
                 var icon_rect = TextureRect.new()
                 icon_rect.texture = tex
@@ -326,8 +326,8 @@ func show_group_tooltip(mouse_pos: Vector2, group_key: String, products_data: Di
 
             var yield_data = products_data.get(yield_id, {})
             var yield_icon_name = yield_data.get("icon", "")
-            if not yield_icon_name.is_empty() and icon_index.has(yield_icon_name):
-                var yield_tex = load(icon_index[yield_icon_name])
+            if not yield_icon_name.is_empty():
+                var yield_tex = IconRegistry.get_texture(yield_icon_name)
                 if yield_tex:
                     var yield_icon_rect = TextureRect.new()
                     yield_icon_rect.texture = yield_tex
@@ -379,12 +379,14 @@ func hide_group_tooltip():
 # составом группы (раскрывает, какие продукты входят в группу) — по аналогии с
 # рецептами и окном слотов производства.
 #   products_data — словарь {id: {name, icon}} (продукты + сырьё).
-#   icon_paths    — словарь {имя_иконки: путь} для загрузки текстур.
 #   amount        — если > 0, добавляется количество после названия.
 #   amount_style  — "x" → "Имя xN", "colon" → "Имя: N", иначе без количества.
 #   icon_size     — размер иконки в пикселях.
+# Иконки берутся из IconRegistry — индекс иконок в проекте общий (autoload),
+# раньше словарь с путями приходилось тащить сюда аргументом из каждого
+# модуля, и восемь разных модулей строили его копию.
 # Возвращает HBoxContainer, который можно добавлять в контейнеры списков.
-func make_resource_entry(res_id: String, products_data: Dictionary, icon_paths: Dictionary, amount: int = -1, amount_style: String = "x", icon_size: int = 20) -> HBoxContainer:
+func make_resource_entry(res_id: String, products_data: Dictionary, amount: int = -1, amount_style: String = "x", icon_size: int = 20) -> HBoxContainer:
     var entry = HBoxContainer.new()
     entry.add_theme_constant_override("separation", 4)
     entry.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -392,8 +394,8 @@ func make_resource_entry(res_id: String, products_data: Dictionary, icon_paths: 
     # Иконка (только для одиночных ресурсов, у групп своего изображения нет)
     var pdata = products_data.get(res_id, {})
     var icon_name = pdata.get("icon", "")
-    if not icon_name.is_empty() and icon_paths.has(icon_name):
-        var tex = load(icon_paths[icon_name])
+    if not icon_name.is_empty():
+        var tex = IconRegistry.get_texture(icon_name)
         if tex:
             var icon_rect = TextureRect.new()
             icon_rect.texture = tex
@@ -425,7 +427,7 @@ func make_resource_entry(res_id: String, products_data: Dictionary, icon_paths: 
         link_label.underline_text = group_name
         link_label.mouse_filter = Control.MOUSE_FILTER_PASS
         link_label.mouse_entered.connect(_on_resource_group_hover.bind(
-            link_label, res_id, products_data, icon_paths))
+            link_label, res_id, products_data))
         link_label.mouse_exited.connect(_on_resource_group_exit)
         entry.add_child(link_label)
         return entry
@@ -443,8 +445,8 @@ func make_resource_entry(res_id: String, products_data: Dictionary, icon_paths: 
     return entry
 
 # Показывает тултип с составом группы при наведении на строку ресурса
-func _on_resource_group_hover(control: Control, res_id: String, products_data: Dictionary, icon_paths: Dictionary):
-    show_group_tooltip(get_viewport().get_mouse_position(), res_id, products_data, icon_paths)
+func _on_resource_group_hover(control: Control, res_id: String, products_data: Dictionary):
+    show_group_tooltip(get_viewport().get_mouse_position(), res_id, products_data)
 
 # Скрывает тултип состава группы при отводе курсора
 func _on_resource_group_exit():

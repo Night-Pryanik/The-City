@@ -36,9 +36,6 @@ var resume_icon: Texture2D
 var pause_icon: Texture2D
 var info_icon: Texture2D
 
-var icon_textures: Dictionary = {}
-var icon_paths: Dictionary = {}
-
 # Строки строящихся зданий: build_key -> { "row": HBoxContainer, "bar": ProgressBar, "pause_btn": Button }
 var construction_rows: Dictionary = {}
 
@@ -64,9 +61,7 @@ func setup(list: Node, btn: Button, built_list: Node, food_lbl: Label, helpers: 
 
     set_process(true)
 
-    _build_icon_index()
-
-    # Единая радиогруппа для списка доступных построек: клик по одной кнопке
+    # Единая радиогрупка для списка доступных построек: клик по одной кнопке
     # автоматически снимает остальные. allow_unpress=false запрещает «отжать»
     # уже выбранную кнопку — в любой момент выбрано ровно одно здание.
     buildings_group = ButtonGroup.new()
@@ -609,18 +604,10 @@ func _groups_signature(groups: Array) -> String:
         parts.append("%s:%d" % [grp.get("id", ""), int(grp.get("total", 0))])
     return "|".join(parts)
 
-# Возвращает текстуру иконки по имени файла (из icon_paths), кэшируя её.
+# Возвращает текстуру иконки по имени файла (общий реестр IconRegistry).
 # Если файла нет или имя пустое — возвращает null (тогда иконка не ставится).
 func _get_icon_texture_from_paths(icon_file: String) -> Texture2D:
-    if icon_file.is_empty():
-        return null
-    if icon_textures.has(icon_file):
-        return icon_textures[icon_file]
-    if icon_paths.has(icon_file):
-        var tex = load(icon_paths[icon_file])
-        icon_textures[icon_file] = tex
-        return tex
-    return null
+    return IconRegistry.get_texture(icon_file)
 
 func _get_icon(icon_name: String) -> Texture2D:
     if icon_name == "resume" and resume_icon:
@@ -632,13 +619,13 @@ func _get_icon(icon_name: String) -> Texture2D:
 
     match icon_name:
         "resume":
-            resume_icon = load("res://icons/building_resume.png")
+            resume_icon = IconRegistry.get_texture("building_resume.png")
             return resume_icon
         "pause":
-            pause_icon = load("res://icons/building_pause.png")
+            pause_icon = IconRegistry.get_texture("building_pause.png")
             return pause_icon
         "info":
-            info_icon = load("res://icons/additional_info.png")
+            info_icon = IconRegistry.get_texture("additional_info.png")
             return info_icon
     return null
 
@@ -781,8 +768,6 @@ func _show_building_details(bdata: Dictionary):
         products_data[pid] = products[pid]
     for rid in raw_resources:
         products_data[rid] = raw_resources[rid]
-    var icon_paths = {}
-    _build_icon_index_local(icon_paths)
 
     var has_costs := false
     var work_cost = bdata.get("work_cost", 0)
@@ -816,7 +801,7 @@ func _show_building_details(bdata: Dictionary):
                 row.add_child(indent)
                 row.add_child(sub_bullet)
                 var resource_entry = ui_helpers.make_resource_entry(
-                    entry[0], products_data, icon_paths)
+                    entry[0], products_data)
                 row.add_child(resource_entry)
                 var amount_label = Label.new()
                 amount_label.text = "%d/%d" % [required_amount, available_amount]
@@ -884,7 +869,7 @@ func _show_building_details(bdata: Dictionary):
             # подчёркнутое имя с составом по наведению), а скорость расхода и
             # бонус к производству дописываем справа.
             cons_row.add_child(ui_helpers.make_resource_entry(
-                str(cons.get("display_key", "")), products_data, icon_paths))
+                str(cons.get("display_key", "")), products_data))
             var cons_rate_label = Label.new()
             cons_rate_label.text = ": %s" % str(cons.get("rate_label", ""))
             cons_rate_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
@@ -904,7 +889,7 @@ func _show_building_details(bdata: Dictionary):
             yield_row.add_child(yield_indent, false, 0)
             yield_row.add_child(_make_bullet("◦"))
             yield_row.add_child(ui_helpers.make_resource_entry(
-                yield_id, products_data, icon_paths,
+                yield_id, products_data,
                 int(additional_yield[yield_id]), "colon"))
             content.add_child(yield_row)
 
@@ -1079,13 +1064,12 @@ func _refresh_recipes_list(bdata: Dictionary):
     )
 
     # Для отображения иконок ресурсов/продуктов нужен словарь products + raw_resources
+    # (сами иконки берёт ui_helpers через общий IconRegistry).
     var products_data = {}
     for pid in products:
         products_data[pid] = products[pid]
     for rid in raw_resources:
         products_data[rid] = raw_resources[rid]
-    var icon_paths = {}
-    _build_icon_index_local(icon_paths)
 
     var header = Label.new()
     header.text = tr("Available recipes:")
@@ -1121,7 +1105,7 @@ func _refresh_recipes_list(bdata: Dictionary):
         row.add_child(name_label)
 
         # Ресурсы -> результат в одну строку
-        var content_entry = _make_craft_content_local("", craft_resources, craft_result, products_data, icon_paths, {})
+        var content_entry = _make_craft_content_local("", craft_resources, craft_result, products_data)
         content_entry.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         content_entry.mouse_filter = Control.MOUSE_FILTER_IGNORE
         row.add_child(content_entry)
@@ -1129,7 +1113,7 @@ func _refresh_recipes_list(bdata: Dictionary):
         content.add_child(row)
 
 # Строит содержимое строки рецепта: "[иконка] ресурс [xN] + ... -> [иконка] продукт [xN]"
-func _make_craft_content_local(craft_name: String, craft_resources: Dictionary, craft_result: Dictionary, products_data: Dictionary, icon_paths: Dictionary, icon_textures: Dictionary) -> HBoxContainer:
+func _make_craft_content_local(craft_name: String, craft_resources: Dictionary, craft_result: Dictionary, products_data: Dictionary) -> HBoxContainer:
     var content = HBoxContainer.new()
     content.add_theme_constant_override("separation", 4)
     content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1146,7 +1130,7 @@ func _make_craft_content_local(craft_name: String, craft_resources: Dictionary, 
                 content.add_child(sep)
             first = false
 
-            content.add_child(ui_helpers.make_resource_entry(res_id, products_data, icon_paths))
+            content.add_child(ui_helpers.make_resource_entry(res_id, products_data))
 
             var amount = craft_resources[res_id]
             if amount >= 1:
@@ -1174,7 +1158,7 @@ func _make_craft_content_local(craft_name: String, craft_resources: Dictionary, 
                 content.add_child(sep)
             first = false
 
-            content.add_child(ui_helpers.make_resource_entry(prod_id, products_data, icon_paths))
+            content.add_child(ui_helpers.make_resource_entry(prod_id, products_data))
 
             var amount = craft_result[prod_id]
             if amount >= 1:
@@ -1185,42 +1169,3 @@ func _make_craft_content_local(craft_name: String, craft_resources: Dictionary, 
                 content.add_child(amount_label)
 
     return content
-
-func _build_icon_index_local(out_paths: Dictionary):
-    out_paths.clear()
-    _scan_folder_local("res://icons", out_paths)
-
-func _scan_folder_local(folder_path: String, out_paths: Dictionary):
-    var dir = DirAccess.open(folder_path)
-    if dir == null:
-        return
-    dir.list_dir_begin()
-    var file_name = dir.get_next()
-    while file_name != "":
-        if dir.current_is_dir():
-            _scan_folder_local(folder_path.path_join(file_name), out_paths)
-        else:
-            var full_path = folder_path.path_join(file_name)
-            if not out_paths.has(file_name):
-                out_paths[file_name] = full_path
-        file_name = dir.get_next()
-    dir.list_dir_end()
-
-func _build_icon_index():
-    icon_paths.clear()
-    _scan_folder("res://icons")
-
-func _scan_folder(folder_path: String):
-    var dir = DirAccess.open(folder_path)
-    if dir == null: return
-    dir.list_dir_begin()
-    var file_name = dir.get_next()
-    while file_name != "":
-        if dir.current_is_dir():
-            _scan_folder(folder_path.path_join(file_name))
-        else:
-            var full_path = folder_path.path_join(file_name)
-            if not icon_paths.has(file_name):
-                icon_paths[file_name] = full_path
-        file_name = dir.get_next()
-    dir.list_dir_end()

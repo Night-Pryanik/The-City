@@ -28,8 +28,6 @@ var quality_labels: Dictionary = {}
 var displayed_products: Dictionary = {}
 var row_flow_labels: Dictionary = {}
 var diversity_label: Label = null
-var icon_textures: Dictionary = {}
-var icon_paths: Dictionary = {}
 
 # Активный тултип качества (продукт, имя) — для обновления в реальном времени.
 var active_quality_product: String = ""
@@ -55,7 +53,6 @@ var resources_list: Node
 func setup(res_list: Node, helpers: Node):
     resources_list = res_list
     ui_helpers = helpers
-    _build_icon_index()
 
 # Ссылка на WorkerManager прокидывается из main_map через
 # city_ui.set_worker_manager() (вызывается в _ready main_map — позже _ready
@@ -159,39 +156,10 @@ func _get_subgroups(data: Dictionary) -> Array:
         return subgroup
     return [subgroup]
 
-func _build_icon_index():
-    icon_paths.clear()
-    _scan_folder("res://icons")
-
-func _scan_folder(folder_path: String):
-    var dir = DirAccess.open(folder_path)
-    if dir == null: return
-    dir.list_dir_begin()
-    var file_name = dir.get_next()
-    while file_name != "":
-        if dir.current_is_dir():
-            _scan_folder(folder_path.path_join(file_name))
-        else:
-            var full_path = folder_path.path_join(file_name)
-            if icon_paths.has(file_name):
-                print("Предупреждение: дубликат иконки ", file_name)
-            icon_paths[file_name] = full_path
-        file_name = dir.get_next()
-    dir.list_dir_end()
-
 func _get_icon_texture(icon_file: String) -> Texture2D:
-    if icon_file.is_empty():
-        return null
-    if icon_textures.has(icon_file):
-        return icon_textures[icon_file]
-    if icon_paths.has(icon_file):
-        var tex = load(icon_paths[icon_file])
-        icon_textures[icon_file] = tex
-        return tex
-    return null
+    return IconRegistry.get_texture(icon_file)
 
 func refresh():
-    _build_icon_index()
     _update_planned_consumption_map()
     
     for child in resources_list.get_children():

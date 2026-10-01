@@ -341,16 +341,13 @@ func _build_actions(row: int, col: int, tile: Dictionary):
         )
         _actions_container.add_child(btn)
 
-# Загружает Texture2D для имени файла иконки действия через индекс иконок
-# map_renderer (тот же индекс, что используют тултип и отрисовка карты).
+# Загружает Texture2D для имени файла иконки действия через общий реестр
+# иконок IconRegistry (тот же, что используют тултип и отрисовка карты).
 # Возвращает null, если имя пустое или файл не найден (тогда кнопка покажет «?»).
 func _load_action_icon(icon_name: String) -> Texture2D:
-    if icon_name.is_empty() or main_map == null or main_map.map_renderer == null:
+    if icon_name.is_empty():
         return null
-    var path: String = main_map.map_renderer.get_icon_path(icon_name)
-    if path.is_empty() or not FileAccess.file_exists(path):
-        return null
-    return load(path)
+    return IconRegistry.get_texture(icon_name)
 
 # Сравнивает два списка действий (по значимым полям, чтобы у неработающего
 # поля type/imp_id не пересоздавались кнопки вхолостую).
@@ -1326,7 +1323,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
             var wood_data = GameData.products.get("wood", {})
             var wood_icon_path = ""
             if wood_data.has("icon"):
-                wood_icon_path = main_map.map_renderer.get_icon_path(wood_data["icon"])
+                wood_icon_path = IconRegistry.icon_path(wood_data["icon"])
             var lj_products := []
             lj_products.append({"type": "header", "text": tr("Will produce:")})
             var lj_base_str = str(int(lj_yield)) if lj_yield == floor(lj_yield) else "%.1f" % lj_yield
@@ -1367,7 +1364,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
                 var prod_data = GameData.products.get(prod_id, {})
                 if prod_data.has("icon"):
                     var icon_name = prod_data["icon"]
-                    icon_path = main_map.map_renderer.get_icon_path(icon_name)
+                    icon_path = IconRegistry.icon_path(icon_name)
                 products.append({"type": "product", "name": prod_name, "amount": float(final_amount) / prod_interval, "icon_path": icon_path, "suffix": tr(" units/sec")})
             for mod in modifiers:
                 products.append({"type": "label", "text": " %s" % mod.get("label", ""), "color": Color(0.7, 0.9, 0.7)})

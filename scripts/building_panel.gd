@@ -20,8 +20,6 @@ var slots_container: VBoxContainer
 # в _refresh() (контейнер создаётся один раз в _ready()).
 var consumption_box: VBoxContainer
 
-var icon_textures: Dictionary = {}
-var icon_paths: Dictionary = {}
 var popups_list: Array = []
 var popup_map: Dictionary = {}
 var open_popup = null
@@ -55,7 +53,6 @@ var upgrade_tooltip_panel: Panel = null
 var upgrade_tooltip_content: VBoxContainer = null
 
 func _ready():
-    _build_icon_index()
     # Подписываемся на изменение назначений работников, чтобы панель
     # обновлялась в реальном времени (например, при рождении жителя,
     # который автоматически встаёт на работу).
@@ -504,7 +501,7 @@ func _fill_consumption_section(tm, indices: Array) -> float:
         # Имя ресурса с иконкой рисует общий хелпер (у @-группы подчёркнутое
         # имя с составом по наведению), скорость и бонус дописываем справа.
         line.add_child(ui_helpers.make_resource_entry(
-            str(row.get("display_key", "")), all_resources, icon_paths))
+            str(row.get("display_key", "")), all_resources))
         var rate_label = Label.new()
         rate_label.text = ": %s" % str(row.get("rate_label", ""))
         rate_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
@@ -787,10 +784,10 @@ func _update_quality_button(button: Button, b_index: int):
 
 func _get_toggle_icon(icon_name: String) -> Texture2D:
     if icon_name == "resume":
-        return load("res://icons/building_resume.png")
+        return IconRegistry.get_texture("building_resume.png")
     if icon_name == "upgrade":
-        return load("res://icons/building_upgrade.png")
-    return load("res://icons/building_pause.png")
+        return IconRegistry.get_texture("building_upgrade.png")
+    return IconRegistry.get_texture("building_pause.png")
 
 # Обновляет прогресс-бары идущих апгрейдов зданий каждый кадр, БЕЗ пересоздания
 # UI слотов (полная пересборка панели убивала бы тултипы; прогресс меняется
@@ -919,8 +916,8 @@ func _fill_upgrade_tooltip_content(b_index: int) -> bool:
     header_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
     header.add_child(header_label)
     var icon_name = String(up_data.get("icon", ""))
-    if not icon_name.is_empty() and icon_paths.has(icon_name):
-        var tex = load(icon_paths[icon_name])
+    if not icon_name.is_empty():
+        var tex = IconRegistry.get_texture(icon_name)
         if tex:
             var icon_rect = TextureRect.new()
             icon_rect.texture = tex
@@ -954,7 +951,7 @@ func _fill_upgrade_tooltip_content(b_index: int) -> bool:
         for bundle in bundles:
             for res_id in bundle:
                 upgrade_tooltip_content.add_child(ui_helpers.make_resource_entry(
-                    res_id, products_data, icon_paths, int(bundle[res_id])))
+                    res_id, products_data, int(bundle[res_id])))
 
     var additional_req = String(up_data.get("additional_req", ""))
     if additional_req != "":
@@ -1067,7 +1064,7 @@ func _make_craft_content(craft_name: String, craft_resources: Dictionary, craft_
         # Групповой ресурс — подпись с тултипом (через единый хелпер).
         # Используем MOUSE_FILTER_PASS, чтобы наведение показывало тултип,
         # а клик проходил к родительской кнопке (выбор рецепта).
-        content.add_child(ui_helpers.make_resource_entry(res_id, _get_all_resources(), icon_paths))
+        content.add_child(ui_helpers.make_resource_entry(res_id, _get_all_resources()))
         var amount = craft_resources[res_id]
         if amount >= 1:
             var amount_label = Label.new()
@@ -1175,36 +1172,8 @@ func _input(event: InputEvent):
             hide()
             get_viewport().set_input_as_handled()
 
-func _build_icon_index():
-    icon_paths.clear()
-    _scan_folder("res://icons")
-
-func _scan_folder(folder_path: String):
-    var dir = DirAccess.open(folder_path)
-    if dir == null: return
-    dir.list_dir_begin()
-    var file_name = dir.get_next()
-    while file_name != "":
-        if dir.current_is_dir():
-            _scan_folder(folder_path.path_join(file_name))
-        else:
-            var full_path = folder_path.path_join(file_name)
-            if icon_paths.has(file_name):
-                print("Предупреждение: дубликат иконки ", file_name)
-            icon_paths[file_name] = full_path
-        file_name = dir.get_next()
-    dir.list_dir_end()
-
 func _get_icon_texture(icon_file: String) -> Texture2D:
-    if icon_file.is_empty():
-        return null
-    if icon_textures.has(icon_file):
-        return icon_textures[icon_file]
-    if icon_paths.has(icon_file):
-        var tex = load(icon_paths[icon_file])
-        icon_textures[icon_file] = tex
-        return tex
-    return null
+    return IconRegistry.get_texture(icon_file)
 
 func _on_close_pressed():
     if ui_helpers:
