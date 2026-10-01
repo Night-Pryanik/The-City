@@ -59,42 +59,44 @@ func _territory_lines_for(tile: Dictionary, row: int, col: int) -> Array:
     return lines
 
 
-# Уровни участков дороги, примыкающих к гексу, по возрастанию. Пусто — дороги
-# нет. Уровни берутся из СЕТИ (road_manager), а не из tile["road_level"]:
-# у гекса может быть несколько участков разных уровней (стык дорог), и
-# уровень из данных гекса описывал бы только тот, которым гекс подключили.
+# Уровень дороги на гексе (0 — дороги нет). Берётся из СЕТИ
+# (road_manager), а не из tile["road_level"]: поле на гексе описывает только
+# участок, которым гекс подключили к сети.
 #
 # main_map достаётся так же, как в _town_name_for_hex: напрямую из рендерера,
 # а сеть дорог берётся публичным полем. Отдельный параметр «сеть дорог» в
 # конструкторе не добавляется: он нужен ровно здесь и в
 # has_extended_tooltip_info, а MapTooltip и так работает с картой.
-func _hex_road_levels(row: int, col: int) -> Array:
+func _hex_road_level(row: int, col: int) -> int:
     var main_map = _map_renderer.main_map if _map_renderer != null else null
     if main_map == null:
-        return []
+        return 0
     var road_manager = main_map.road_manager
-    if road_manager == null or not road_manager.has_method("get_hex_road_levels"):
-        return []
-    return road_manager.get_hex_road_levels(row, col)
+    if road_manager == null or not road_manager.has_method("get_hex_road_level"):
+        return 0
+    return int(road_manager.get_hex_road_level(row, col))
 
-# «Тропка (уровень 1, до 10 ед./сек на участок)» — по названию уровня, его
-# номеру и пропускной способности. Номер нужен не для красоты: игрок читает
-# «уровень 2» в кнопке выбора и в подписи маршрута, и без него непонятно,
-# какая кнопка соответствует строке на гексе.
+# «Тележная дорога (уровень 2, до 30 ед./сек на участок)» — ЛУЧШАЯ дорога,
+# доходящая до гекса: уровень гекса = максимум по примыкающим участкам
+# (road_manager.get_hex_road_level). На перекрёстке из двух тропок и одной
+# тележной дороги показывается тележная дорога — так же, как гекс выглядит
+# на карте.
 #
-# На стыке уровней (тележная дорога входит в гекс, тропка выходит) они
-# перечисляются оба: выбрать один наугад значило бы соврать о половине
-# примыкающей дороги.
+# Формулировка «до N ед./сек на участок» важна: по гексу едет ЛУЧШАЯ дорога,
+# а не всякий примыкающий участок. Узкое место маршрута игрок видит
+# отдельно (строка «Маршрут до города»), поэтому подпись не должна читаться
+# как «вся дорога сюда везёт N».
+#
+# Номер уровня нужен не для красоты: игрок читает «уровень 2» в кнопке выбора
+# и в подписи маршрута, и без него непонятно, какая кнопка соответствует
+# строке на гексе.
 func road_level_line(row: int, col: int) -> String:
-    var levels: Array = _hex_road_levels(row, col)
-    if levels.is_empty():
+    var level := _hex_road_level(row, col)
+    if level <= 0:
         return ""
-    var parts: Array[String] = []
-    for level in levels:
-        parts.append(tr("%s (level %d, up to %d units/sec per section)") % [
-                GameData.get_road_name(int(level)), int(level),
-                GameData.get_road_max_speed(int(level))])
-    return ", ".join(parts)
+    return tr("%s (level %d, up to %d units/sec per section)") % [
+            GameData.get_road_name(level), level,
+            GameData.get_road_max_speed(level)]
 
 func _format_resource_label_for_text(res_id: String, res_name: String) -> String:
     if res_id == "" or res_name == "":

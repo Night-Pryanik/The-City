@@ -19,9 +19,13 @@
 #   6. ЖИВАЯ СЦЕНА. На улучшении с дорогой есть кнопка «Улучшить дорогу»
 #      и строка маршрута; клик подсвечивает маршрут на карте; превью
 #      показывает призрак улучшаемых участков; уровень влияет на цену.
-#   7. УРОВЕНЬ ДОРОГИ НА ГЕКСЕ. Строка с уровнем (и пропускной
-#      способностью участка) показывается в расширенном тултипе и в левой
-#      колонке панели управления; в обычном тултипе её нет.
+#   7. УРОВЕНЬ ДОРОГИ НА ГЕКСЕ. Правило «уровень гекса = максимум по
+#      примыкающим участкам»: на перекрёстке из двух тропок и одной тележной
+#      дороги гекс показывает тележную дорогу, а тропки остаются тропками.
+#      Строка с уровнем показывается в расширенном тултипе и в левой колонке
+#      панели управления; в обычном тултипе её нет.
+#   8. КНОПКА УЛУЧШЕНИЯ. Остаётся на частично улучшенном маршруте: улучшен
+#      один участок из нескольких — кнопка обязана быть, пока есть тропки.
 extends SceneTree
 
 # Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
@@ -39,6 +43,10 @@ var _rm = null
 var _gdata = null
 var _cdata = null
 var _mh = null
+# HexUtils грузим через load(): имя класса в режиме --script на этапе
+# компиляции ещё не в кеше (та же причина, по которой MapHelpers тоже
+# берётся через load()).
+var _hu = null
 
 func _initialize() -> void:
     WATCHDOG.arm(self)
@@ -54,6 +62,7 @@ func _run() -> void:
     _gdata = get_root().get_node("GameData")
     _cdata = get_root().get_node("CityData")
     _mh = load("res://scripts/map_helpers.gd")
+    _hu = load("res://scripts/HexUtils.gd")
 
     _rm = load("res://scripts/road_manager.gd").new()
     get_root().add_child(_rm)
@@ -412,6 +421,7 @@ func _test_live_scene(state: Dictionary) -> void:
                 "трасса тележной дороги должна стоить труда", state)
 
     await _test_road_level_in_hex_info(main_map, state)
+    await _test_upgrade_button_on_partial_route(main_map, state)
 
     if main_map != null and is_instance_valid(main_map):
         get_root().remove_child(main_map)
@@ -458,10 +468,8 @@ func _test_road_level_in_hex_info(main_map, state: Dictionary) -> void:
     # гексом может быть несколько гексов, и участка «город → гекс» может не
     # существовать вовсе.
     rm.build_road_from(row, col, main_map.tile_data, main_map.map_rows, main_map.map_cols)
-    var trail_levels: Array = rm.get_hex_road_levels(row, col)
-    check(trail_levels == [1],
-            "дорога к гексу по умолчанию — тропка (получено уровней: %s)" % [trail_levels],
-            state)
+    check(rm.get_hex_road_level(row, col) == 1,
+            "дорога к гексу по умолчанию — тропка", state)
     check(tooltip.has_extended_tooltip_info(row, col, main_map.tile_data),
             "на гексе с дорогой расширенный тултип должен показываться", state)
 
@@ -482,23 +490,36 @@ func _test_road_level_in_hex_info(main_map, state: Dictionary) -> void:
             "в обычном тултипе строки уровня дороги быть не должно (получено: %s)" % text,
             state)
 
-    # Смешанный стык: тропка уходит от гекса, тележная дорога приходит.
-    # Показываем оба уровня — выбрать один наугад значило бы соврать о второй
-    # дороге. Стык строится явно: ещё один участок от гекса строится тропкой,
-    # затем улучшается до тележной дороги.
-    var edge := _hex_in_direction(main_map, row, col)
-    if not edge.is_empty() \
-            and rm.build_road_step(row, col, int(edge.row), int(edge.col)):
-        check(rm.upgrade_road_segment(row, col, int(edge.row), int(edge.col), 2),
-                "участок от гекса должен улучшаться", state)
-        var mixed_levels: Array = rm.get_hex_road_levels(row, col)
-        check(mixed_levels.size() >= 2 and mixed_levels.has(1) and mixed_levels.has(2),
-                "на стыке должны быть собраны оба уровня (получено: %s)" % [mixed_levels],
-                state)
-        var mixed_text: String = tooltip.road_level_line(row, col)
-        check(mixed_text.contains("уровень 1") and mixed_text.contains("уровень 2"),
-                "на стыке строка уровня должна перечислять оба (получено: %s)" % mixed_text,
-                state)
+    # Перекрёсток из двух тропок и одной тележной дороги — ровно тот случай,
+# ради которого введено правило «уровень гекса = максимум»: гекс показывает
+# тележную дорогу (уровень 2), как он и выглядит на карте, хотя две тропки
+# через него проходят и остаются тропками.
+    #
+    # Схема (см. _test_crossroad_* ниже): гекс соединён с городом тропкой,
+    # к нему же примыкают ещё два соседа — с тропкой и с тележной дорогой.
+    var edge1 := _hex_in_direction(main_map, row, col)
+    if not edge1.is_empty():
+        # Сосед с тропкой: строим участок уровня 1.
+        rm.build_road_step(row, col, int(edge1.row), int(edge1.col))
+        var edge2 := _hex_in_direction(main_map, row, col, int(edge1.row), int(edge1.col))
+        if not edge2.is_empty():
+            # Сосед с тележной дорогой: тот же участок строится тропкой и
+            # улучшается — так проверяется, что уровень гекса берётся по
+            # максимуму, а не по «первому попавшемуся» участку.
+            if rm.build_road_step(row, col, int(edge2.row), int(edge2.col)):
+                rm.upgrade_road_segment(row, col, int(edge2.row), int(edge2.col), 2)
+                check(rm.get_hex_road_level(row, col) == 2,
+                        "на перекрёстке 2 тропки + тележная дорога уровень гекса должен быть 2",
+                        state)
+                # Тропки при этом остаются тропками: уровень гекса —
+                # производная величина, а не распорка «поднять всё сразу».
+                check(rm.get_segment_level(row, col, int(edge1.row), int(edge1.col)) == 1,
+                        "участок-тропка через перекрёсток должен остаться тропкой",
+                        state)
+                var mixed_text: String = tooltip.road_level_line(row, col)
+                check(mixed_text.contains("уровень 2") and mixed_text.contains("Тележная дорога"),
+                        "строка уровня на перекрёстке должна называть тележную дорогу (получено: %s)"
+                                % mixed_text, state)
 
     # Левая колонка панели собирается из того же текста — строка обязана быть
     # и там, а не только в тултипе под курсором.
@@ -507,9 +528,29 @@ func _test_road_level_in_hex_info(main_map, state: Dictionary) -> void:
             "в левой колонке панели должен быть показан уровень дороги", state)
 
 
-# Соседний гекс в направлении от (row, col), через который можно протянуть
-# второй участок (для проверки стыка уровней).
-func _hex_in_direction(main_map, row: int, col: int) -> Dictionary:
+# Первый свободный гекс в Кольце Влияния на расстоянии не меньше min_dist
+# от города. Нужен там, где важна ДЛИНА маршрута: маршрут из одного участка
+# нельзя частично улучшить, и проверка «кнопка осталась» на нём бессмысленна.
+func _find_hex_far_from_city(main_map, min_dist: int) -> Dictionary:
+    for row in range(main_map.influence_start_row, main_map.influence_end_row + 1):
+        for col in range(main_map.influence_start_col, main_map.influence_end_col + 1):
+            var tile = main_map.tile_data[row][col]
+            if tile == null or tile.get("improvement", null) != null:
+                continue
+            if _hex_is_busy(main_map, row, col, tile):
+                continue
+            if main_map.road_manager.is_hex_connected(row, col):
+                continue
+            if _hu.hex_distance(row, col, main_map.city_row, main_map.city_col) < min_dist:
+                continue
+            return {"row": row, "col": col}
+    return {}
+
+# Свободный сосед гекса (row, col) в указанном направлении — для построения
+# схемы перекрёстка. exclude уже использованного соседа нельзя: иначе второй
+# участок может лечь на уже построенный, и build_road_step вернёт false.
+func _hex_in_direction(main_map, row: int, col: int,
+        exclude_row: int = -1, exclude_col: int = -1) -> Dictionary:
     var main_map_ref = main_map
     var candidates := [
         {"row": row - 1, "col": col},
@@ -520,6 +561,8 @@ func _hex_in_direction(main_map, row: int, col: int) -> Dictionary:
     for candidate in candidates:
         var t_row := int(candidate.row)
         var t_col := int(candidate.col)
+        if t_row == exclude_row and t_col == exclude_col:
+            continue
         if t_row < 0 or t_col < 0 or t_row >= main_map_ref.map_rows \
                 or t_col >= main_map_ref.map_cols:
             continue
@@ -530,6 +573,66 @@ func _hex_in_direction(main_map, row: int, col: int) -> Dictionary:
             continue
         return {"row": t_row, "col": t_col}
     return {}
+
+
+# -------------------------------------------------------
+# 8. Кнопка «Улучшить дорогу» на частично улучшенном маршруте
+# -------------------------------------------------------
+#
+# Регрессия: кнопка проверяла МАКСИМУМ уровней маршрута, и стоило улучшить
+# ОДИН участок из четырёх, как максимум становился равен лучшему уровню и
+# кнопка исчезала — хотя три тропки оставались. Для игрока это выглядело как
+# «маршрут уже улучшен», и дотянуть дорогу было нечем.
+func _test_upgrade_button_on_partial_route(main_map, state: Dictionary) -> void:
+    var panel = main_map.control_panel
+    var rm = main_map.road_manager
+
+    var spot := _find_hex_far_from_city(main_map, 4)
+    check(not spot.is_empty(),
+            "для проверки нужен гекс в удалении от города (маршрут из нескольких участков)",
+            state)
+    if spot.is_empty():
+        return
+    var row := int(spot.row)
+    var col := int(spot.col)
+    main_map.tile_data[row][col]["improvement"] = "farm"
+    rm.build_road_from(row, col, main_map.tile_data, main_map.map_rows, main_map.map_cols)
+    if _gdata.get_max_unlocked_road_level() <= 1:
+        # «Колесо» не изучено: улучшать некуда, кнопки нет — и это правильно.
+        check(not _has_action(panel._collect_actions(row, col, main_map.tile_data[row][col]),
+                panel.UPGRADE_ROAD_TYPE),
+                "без исследованной технологии кнопки улучшения быть не должно", state)
+        return
+    check(_has_action(panel._collect_actions(row, col, main_map.tile_data[row][col]),
+            panel.UPGRADE_ROAD_TYPE),
+            "на маршруте из тропок кнопка улучшения должна быть", state)
+
+    # Улучшаем ОДИН участок маршрута — не весь. Остальные участки остаются
+    # тропками, и кнопка обязана остаться: маршрут ещё не доведён до конца.
+    var route: Dictionary = main_map.get_route_to_city(row, col)
+    var segments: Array = route.get("segments", [])
+    check(segments.size() >= 2,
+            "для проверки нужен маршрут хотя бы из двух участков (получено %d)"
+                    % segments.size(), state)
+    if segments.size() < 2:
+        return
+    var first: String = str(segments[0])
+    var parts := first.split("|")
+    var a := parts[0].split(",")
+    var b := parts[1].split(",")
+    check(rm.upgrade_road_segment(int(a[0]), int(a[1]), int(b[0]), int(b[1]), 2),
+            "один участок маршрута должен улучшаться", state)
+
+    var after: Dictionary = main_map.get_route_to_city(row, col)
+    var still_trails := 0
+    for level in after.get("levels", []):
+        if int(level) < _gdata.get_max_unlocked_road_level():
+            still_trails += 1
+    check(still_trails > 0,
+            "после улучшения одного участка маршрут не должен стать целиком лучшим", state)
+    check(_has_action(panel._collect_actions(row, col, main_map.tile_data[row][col]),
+            panel.UPGRADE_ROAD_TYPE),
+            "на частично улучшенном маршруте кнопка улучшения обязана остаться", state)
 
 
 # -------------------------------------------------------

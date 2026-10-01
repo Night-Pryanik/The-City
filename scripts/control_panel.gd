@@ -1078,10 +1078,16 @@ func _append_upgrade_road_action(actions: Array, row: int, col: int) -> void:
     if levels.is_empty():
         return
     var best_level := GameData.get_max_unlocked_road_level()
-    var current_best := 1
+    # Улучшать имеет смысл, пока на маршруте есть хоть ОДИН участок ниже
+    # лучшего уровня — то есть проверяется МИНИМУМ, а не максимум.
+    # С максимумом кнопка пряталась на частично улучшенном маршруте: стоит
+    # улучшить один участок из четырёх, максимум становится равен лучшему
+    # уровню, и кнопка исчезает — хотя три тропки остаются и улучшать есть
+    # что. Раньше это выглядело как «маршрут уже улучшен».
+    var worst_level := 999
     for level in levels:
-        current_best = maxi(current_best, int(level))
-    if current_best >= best_level:
+        worst_level = mini(worst_level, int(level))
+    if worst_level >= best_level:
         return
     var min_speed := int(route.get("min_speed", 0))
     actions.append({
