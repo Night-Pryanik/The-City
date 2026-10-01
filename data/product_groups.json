@@ -77,6 +77,17 @@
       ]
     },
     {
+      "id": "fruits_no_grapes",
+      "name": "Fruits",
+      "products": [
+        "olives",
+        "mulberries",
+        "figs",
+        "dates",
+        "cactus_fruit"
+      ]
+    },
+    {
       "id": "writing_materials",
       "name": "Writing Materials",
       "products": [

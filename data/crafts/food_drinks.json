@@ -79,7 +79,7 @@
       "id": "fruit_wine",
       "name": "Fruit Wine",
       "produced_in": [ "winemaker_house" ],
-      "resources": { "@fruits": 20 },
+      "resources": { "@fruits_no_grapes": 20 },
       "result": { "fruit_wine": 10 },
       "time": 5.0,
       "unlock_tech": "winemaking",
