@@ -23,6 +23,14 @@ const ROAD_PREVIEW_COLOR = Color(0.98, 0.86, 0.45, 0.8)
 const ROAD_PREVIEW_WIDTH = 5
 const ROAD_PREVIEW_HALO_COLOR = Color(0.98, 0.86, 0.45, 0.22)
 const ROAD_PREVIEW_HALO_WIDTH = 12
+# Стиль подсветки МАРШРУТА — дороги, по которым груз уже едет к городу.
+# Отличается от призрака превью намеренно: маршрут состоит из СУЩЕСТВУЮЩИХ
+# дорог, и полупрозрачность сказала бы игроку «здесь ничего нет». Поэтому
+# это тонкая линия поверх дороги — она читается как «путь груза», а не как
+# «то, что будет построено». Цианит выбран потому, что жёлтый занят
+# призраком, а зелёный — подсветкой гексов.
+const ROUTE_COLOR = Color(0.35, 0.85, 0.95, 0.9)
+const ROUTE_WIDTH = 3
 # Радиус иконок-маркеров, рисуемых поверх гекса: капелька пресной воды у
 # улучшения и значок торговли над соединённым городком. Задано ОДНОЙ
 # константой, чтобы оба маркера гарантированно были одного размера.
@@ -1289,6 +1297,26 @@ func set_project_ghost_segments(segments: Dictionary) -> void:
     _project_ghost_segments = segments
     queue_redraw()
 
+# Подсветка МАРШРУТА, по которому груз едет от выбранного гекса к городу.
+# Отдельный набор от превью: превью — это «что будет построено», а здесь —
+# «что уже построено и работает сейчас». Панель кладёт сюда сегменты
+# существующего маршрута (road_manager.find_route_to_city) и снимает их при
+# смене выделения. Как и превью, сравнивает подпись набора: панель держит
+# маршрут открытым между тиками, и без сравнения карта перерисовывалась бы
+# впустую.
+var _route_segments: Dictionary = {}
+var _route_signature: String = ""
+
+func set_route_segments(segments: Dictionary) -> void:
+    var keys := segments.keys()
+    keys.sort()
+    var signature := str(keys)
+    if signature == _route_signature:
+        return
+    _route_signature = signature
+    _route_segments = segments
+    queue_redraw()
+
 func _draw_all_roads():
     if main_map == null or not main_map.has_method("get"):
         return
@@ -1301,7 +1329,11 @@ func _draw_all_roads():
     # они всегда лежат на собственной освоенной территории, где тумана войны
     # не бывает. Исключение — дороги, СВЯЗЫВАЮЩИЕ город с городком (ФАЗА 2в):
     # их игрок строит по разведанной, но не освоенной земле.
-    _draw_road_segments(road_manager.get_all_road_segments(), false)
+    #
+    # Дороги рисуются ПО УРОВНЯМ: участки одного уровня получают цвет и толщину
+    # из data/roads.json, поэтому улучшенная дорога видна на карте сразу, без
+    # открытия панели. Раньше все дороги были одного цвета и толщины.
+    _draw_road_segments_by_level(road_manager.get_all_road_segments(), false)
 
     # ФАЗА 2б: дороги ГОРОДКОВ — отдельная сеть, но рисуется тем же стилем
     # (см. road_manager.rebuild_town_roads: сеть каждого городка идёт от его
@@ -1340,6 +1372,33 @@ func _draw_all_roads():
     # только по разведанной земле, так что попасть в туман не может, но
     # возможность «выдать» туман исключена.
     _draw_road_preview()
+
+    # ФАЗА 2е: подсветка МАРШРУТА выбранного гекса к городу. Идёт после всех
+    # дорожных слоёв и поверх них: это тонкая линия поверх уже нарисованных
+    # дорог, и она должна быть видна поверх них. Гейта эры ей не нужно, как и
+    # превью: маршрут идёт по дорогам, которые нарисованы с теми же гейтами.
+    _draw_route()
+
+# Подсветка маршрута: его сегменты уже нарисованы как дороги, поэтому здесь
+# рисуется только тонкая линия поверх — по той же геометрии, что и дорога.
+func _draw_route() -> void:
+    if _route_segments.is_empty():
+        return
+    var visible: Dictionary = {}
+    for segment_key in _route_segments.keys():
+        var parts := str(segment_key).split("|")
+        if parts.size() != 2:
+            continue
+        var start_parts = parts[0].split(",")
+        var end_parts = parts[1].split(",")
+        if start_parts.size() != 2 or end_parts.size() != 2:
+            continue
+        if _segment_clear_of_fog(int(start_parts[0]), int(start_parts[1]),
+                int(end_parts[0]), int(end_parts[1])):
+            visible[segment_key] = true
+    if visible.is_empty():
+        return
+    _draw_road_segments(visible, false, ROUTE_COLOR, ROUTE_WIDTH)
 
 # «Призрак» незаконченного проекта. Отдельный набор сегментов, а не общий с
 # превью: превью живёт, пока открыта панель, призрак проекта — пока идёт
@@ -1387,6 +1446,40 @@ func is_town_road_segment_visible(row1: int, col1: int, row2: int, col2: int) ->
 # тумана нужен.
 func _segment_clear_of_fog(row1: int, col1: int, row2: int, col2: int) -> bool:
     return not (main_map.is_hex_in_fog(row1, col1) or main_map.is_hex_in_fog(row2, col2))
+
+# Рисует дороги, группируя участки ПО УРОВНЮ: цвет и толщина берутся из
+# data/roads.json (поля color/width). Так уровень дороги виден на карте
+# без открытия панели.
+#
+# Набор сегментов хранит уровень ЗНАЧЕНИЕМ (см. road_manager.road_segments),
+# поэтому группировка бесплатна — это один проход по словарю.
+#
+# hide_in_fog — тот же гейт, что у _draw_road_segments (для дорог городков).
+# Уровень, которого нет в данных, рисуется стилем по умолчанию ROAD_COLOR:
+# это ошибка данных, а не повод молча не рисовать дорогу.
+func _draw_road_segments_by_level(segments: Dictionary, hide_in_fog: bool) -> void:
+    if segments.is_empty():
+        return
+    var by_level: Dictionary = {}
+    for segment_key in segments.keys():
+        var level := int(segments[segment_key])
+        if not by_level.has(level):
+            by_level[level] = {}
+        by_level[level][segment_key] = true
+    var levels: Array = by_level.keys()
+    levels.sort()
+    for level in levels:
+        var road: Dictionary = GameData.get_road_by_level(int(level))
+        if road.is_empty():
+            _draw_road_segments(by_level[level], hide_in_fog)
+            continue
+        var rgb: Array = road.get("color", [])
+        var color := ROAD_COLOR
+        if rgb is Array and rgb.size() == 3:
+            color = Color(float(rgb[0]) / 255.0, float(rgb[1]) / 255.0,
+                    float(rgb[2]) / 255.0)
+        _draw_road_segments(by_level[level], hide_in_fog, color,
+                int(road.get("width", ROAD_WIDTH)))
 
 # Рисует набор сегментов дорог.
 # hide_in_fog — гейт для сегмента, у которого хотя бы ОДИН конец лежит в тумане

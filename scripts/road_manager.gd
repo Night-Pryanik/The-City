@@ -1,6 +1,11 @@
 # road_manager.gd
 extends Node
 
+# Уровень дороги по умолчанию: тропка. Участки без явного уровня (например,
+# поднятые из старого сейва, где road_level ещё не было) считаются тропками —
+# это самый слабый уровень, то есть безопасное по умолчанию.
+const DEFAULT_ROAD_LEVEL := 1
+
 # Эмитится, когда город впервые соединяется дорогой с городком: сегменты
 # дорожной сети города дотянулись до дорожной сети этого городка. На этом
 # событии в будущем будет открываться торговля (сейчас — только иконка
@@ -9,6 +14,14 @@ signal town_link_established(row: int, col: int)
 
 # Храним дороги как Set строк в формате "row1,col1|row2,col2" (каноническое направление)
 # Каноническое = с меньшей суммой row+col, или если равны, то с меньшим col
+#
+# ЗНАЧЕНИЕ — НЕ true, а УРОВЕНЬ участка (int, см. data/roads.json). Изначально
+# здесь был Set, и это работало, пока все дороги были одинаковыми. С появлением
+# уровней значение стало полезной нагрузкой: участок помнит, какого он уровня,
+# и нигде не нужно отдельного списка «какой участок какого уровня» — который
+# разошёлся бы с этим словарём при первом же изменении сети.
+# Уровень по умолчанию — тропка (DEFAULT_ROAD_LEVEL), она же база цены: см.
+# GameData.get_road_by_level.
 var road_segments: Dictionary = {}
 
 # Список "подключённых" гексов (те, к которым уже есть дорога)
@@ -41,8 +54,10 @@ var _plan_cache: Dictionary = {}
 # между собой одной паутиной дорог через него.
 #
 # town_road_segments — все сегменты дорог городков в одном плоском словаре
-# (канонический ключ сегмента -> true): для отрисовки набор всё равно один, и
-# совпавший с сегментом другого городка сегмент просто рисуется один раз.
+# (канонический ключ сегмента -> уровень): для отрисовки набор всё равно один,
+# и совпавший с сегментом другого городка сегмент просто рисуется один раз.
+# Автоматические дороги городков всегда тропки (DEFAULT_ROAD_LEVEL): их строит
+# сам городок от своего центра, улучшать их нечем.
 # town_connected_hexes ключуется координатами ЦЕНТРА городка ("row,col"), а не
 # индексом в towns: такой ключ не «поедет», если городки в списке поменяются
 # местами.
@@ -64,6 +79,14 @@ var town_connected_hexes: Dictionary = {}
 # с теми же гейтами тумана, что и дороги городков (map_renderer.
 # is_town_road_segment_visible) — иначе она выдавала бы содержимое тумана.
 var town_link_segments: Dictionary = {}
+
+# Кэш МАРШРУТОВ: "версия сети|row,col|town_row,town_col" -> маршрут
+# (см. find_route_to_city). Панель управления спрашивает маршрут выбранного
+# гекса при каждом обновлении, а поиск — обход всей сети, поэтому без кэша
+# это была бы лишняя работа в игровом цикле. В отличие от _plan_cache ключ не
+# включает версию знаний о карте: маршрут идёт по УЖЕ ПОСТРОЕННЫМ дорогам,
+# а не по местности, поэтому от разведки не зависит.
+var _route_cache: Dictionary = {}
 
 # Инициализация после генерации карты
 func initialize(new_city_row: int, new_city_col: int):
@@ -97,12 +120,20 @@ func rebuild_roads_from_existing(tile_data: Array, region_rows: int, region_cols
 
 # Прокладывает дорогу от нового улучшения до ближайшего подключённого гекса
 # в сети ГОРОДА ИГРОКА.
+#
+# road_level — уровень прокладываемой дороги. По умолчанию тропка: дорога,
+# которая строится вместе с улучшением, бесплатна (см. work_cost уровня 1 в
+# data/roads.json). Панель управления передаёт здесь уровень, выбранный
+# игроком в превью постройки улучшения, поэтому дорога к улучшению может
+# оказаться лучше тропки — и это уже оплачено в цене улучшения
+# (main_map.get_improvement_work_cost).
 func build_road_from(
     start_row: int,
     start_col: int,
     tile_data: Array,
     region_rows: int,
-    region_cols: int
+    region_cols: int,
+    road_level: int = DEFAULT_ROAD_LEVEL
 ):
     var start_key = _hex_key(start_row, start_col)
     if connected_hexes.has(start_key):
@@ -117,7 +148,7 @@ func build_road_from(
     for i in range(best_path.size() - 1):
         var from_hex = best_path[i]
         var to_hex = best_path[i + 1]
-        _add_road_segment(from_hex.row, from_hex.col, to_hex.row, to_hex.col)
+        _add_road_segment(from_hex.row, from_hex.col, to_hex.row, to_hex.col, road_level)
         connected_hexes[_hex_key(from_hex.row, from_hex.col)] = true
         connected_hexes[_hex_key(to_hex.row, to_hex.col)] = true
     _invalidate_plan_cache()
@@ -257,10 +288,12 @@ func is_town_connected(town_row: int, town_col: int, row: int, col: int) -> bool
         return false
     return connected.has(_hex_key(row, col))
 
-# Добавляет сегмент дороги городка в каноническом направлении (без дубликатов)
+# Добавляет сегмент дороги городка в каноническом направлении (без дубликатов).
+# Дороги городков — всегда тропки: их строит сам городок от своего центра,
+# и уровень у них не выбирается (см. шапку файла).
 func _add_town_road_segment(row1: int, col1: int, row2: int, col2: int):
     var key = _get_canonical_road_key(row1, col1, row2, col2)
-    town_road_segments[key] = true
+    town_road_segments[key] = DEFAULT_ROAD_LEVEL
 
 # Все сегменты дорог городков (для отрисовки).
 func get_all_town_road_segments() -> Dictionary:
@@ -273,6 +306,7 @@ func get_all_town_road_segments() -> Dictionary:
 func _invalidate_plan_cache() -> void:
     _network_version += 1
     _plan_cache.clear()
+    _route_cache.clear()
 
 # Сообщает менеджеру, что на карте изменилось, что ИЗВЕСТНО игроку: завершилась
 # разведка, куплен чанк, сменилась эпоха, открыта вся карта в дебаге. План
@@ -452,7 +486,8 @@ func build_road_to(
     region_cols: int,
     town_influence_hexes: Array = [],
     segments_to_build: int = -1,
-    hex_allowed: Callable = Callable()
+    hex_allowed: Callable = Callable(),
+    road_level: int = DEFAULT_ROAD_LEVEL
 ) -> bool:
     var plan := plan_road_to(row, col, tile_data, region_rows, region_cols,
             town_influence_hexes, hex_allowed)
@@ -471,7 +506,7 @@ func build_road_to(
     for i in range(mini(road_path.size() - 1, limit)):
         var from_hex = road_path[i]
         var to_hex = road_path[i + 1]
-        _add_road_segment(from_hex.row, from_hex.col, to_hex.row, to_hex.col)
+        _add_road_segment(from_hex.row, from_hex.col, to_hex.row, to_hex.col, road_level)
         connected_hexes[_hex_key(from_hex.row, from_hex.col)] = true
         connected_hexes[_hex_key(to_hex.row, to_hex.col)] = true
         if is_town:
@@ -510,11 +545,12 @@ func build_road_step(
     from_col: int,
     to_row: int,
     to_col: int,
-    is_town: bool = false
+    is_town: bool = false,
+    road_level: int = DEFAULT_ROAD_LEVEL
 ) -> bool:
     if has_road_between(from_row, from_col, to_row, to_col):
         return false
-    _add_road_segment(from_row, from_col, to_row, to_col)
+    _add_road_segment(from_row, from_col, to_row, to_col, road_level)
     connected_hexes[_hex_key(from_row, from_col)] = true
     connected_hexes[_hex_key(to_row, to_col)] = true
     if is_town:
@@ -575,7 +611,186 @@ func rebuild_player_roads(
             if tile == null or not bool(tile.get("road_built", false)):
                 continue
             var ring: Array = ring_by_town.get(_hex_key(row, col), [])
-            build_road_to(row, col, tile_data, region_rows, region_cols, ring, -1, hex_allowed)
+            build_road_to(row, col, tile_data, region_rows, region_cols, ring, -1,
+                    hex_allowed, _tile_road_level(tile))
+
+# Уровень дороги гекса — входные данные для восстановления из сейва (сегменты
+# с уровнями, как и сами сегменты, в сейв не пишутся). Старые сейвы поля не
+# содержат — там тропка, то есть самый слабый уровень.
+func _tile_road_level(tile: Dictionary) -> int:
+    return int(tile.get("road_level", DEFAULT_ROAD_LEVEL))
+
+# === МАРШРУТ ДО ГОРОДА И СКОРОСТЬ ===
+
+# Ищет маршрут от гекса (row, col) до гекса города ПО УЖЕ ПОСТРОЕННЫМ дорогам
+# и возвращает его вместе со скоростью.
+#
+# Отличие от plan_road_to принципиально: там ищется путь по МЕСТНОСТИ (куда
+# можно проложить новую дорогу), здесь — по сети (как реально дойти). Поэтому
+# поиск другой (обход сети, а не Дейкстра по карте) и фильтр известности не
+# нужен: дорога уже стоит там, где её видно.
+#
+# town_row/town_col — если исходная точка принадлежит городку, маршрут идёт по
+# сети ЭТОГО городка, потом по участку связи (town_link_segments) и дальше по
+# сети города.
+#
+# ПРО avg_speed: это среднее арифметическое max_speed участков — «насколько
+# быстро в среднем едет груз по этому маршруту». Отдельно отдаётся min_speed:
+# физически узкое место ограничивает поток сильнее среднего (груз всё равно
+# должен пройти через самый узкий участок), поэтому игроку показываются оба
+# числа, и решение «улучшить дорогу» принимается по min_speed.
+func find_route_to_city(
+    row: int,
+    col: int,
+    town_row: int = -1,
+    town_col: int = -1
+) -> Dictionary:
+    var cache_key := "%d|%d,%d|%d,%d" % [_network_version, row, col, town_row, town_col]
+    if _route_cache.has(cache_key):
+        return _route_cache[cache_key]
+    var route := _compute_route_to_city(row, col, town_row, town_col)
+    _route_cache[cache_key] = route
+    return route
+
+func _compute_route_to_city(
+    row: int,
+    col: int,
+    town_row: int,
+    town_col: int
+) -> Dictionary:
+    var start_key := _hex_key(row, col)
+    var city_key := _hex_key(city_row, city_col)
+    var no_route := tr("No road connects this hex to the city")
+    if start_key == city_key:
+        # Сам город: маршрут пустой. Скорость 0, а не «бесконечность»:
+        # участков нет, делить на их количество нельзя, а показывать
+        # игроку бесконечную скорость города нечестно — доставка начинается
+        # на подходе к городу, а не на его гексе.
+        return _route(false, tr("This is the city itself"), [], [], [], 0, 0.0, 0)
+
+    # Сеть, по которой идём: участки города + (для городка) участки его
+    # собственной сети. Сети городков не склеиваются между собой, поэтому
+    # участки чужого городка в маршрут не попадают (см. шапку файла).
+    var segments: Dictionary = {}
+    for key in road_segments.keys():
+        segments[key] = true
+    if town_row >= 0 and town_col >= 0:
+        var town_net = town_connected_hexes.get(_hex_key(town_row, town_col), null)
+        if town_net != null:
+            for key in town_road_segments.keys():
+                segments[key] = true
+
+    # Список смежности: "row,col" -> [{"key": String, "to": "row,col"}].
+    var adjacency: Dictionary = {}
+    for key in segments.keys():
+        var ends := _parse_segment_key(key)
+        if ends.is_empty():
+            continue
+        var a_key := _hex_key(int(ends[0]), int(ends[1]))
+        var b_key := _hex_key(int(ends[2]), int(ends[3]))
+        if not adjacency.has(a_key):
+            adjacency[a_key] = []
+        if not adjacency.has(b_key):
+            adjacency[b_key] = []
+        adjacency[a_key].append({"key": key, "to": b_key})
+        adjacency[b_key].append({"key": key, "to": a_key})
+
+    if not adjacency.has(start_key):
+        return _route(false, no_route, [], [], [], 0, 0.0, 0)
+
+    # Обход в ширину: маршрут с наименьшим числом участков. Все участки стоят
+    # одинаково, поэтому взвешивать расстояния не нужно — их и нет.
+    var parent: Dictionary = {start_key: null}
+    var visited: Dictionary = {start_key: true}
+    var queue: Array = [start_key]
+    var found := false
+    while not queue.is_empty():
+        var current: String = queue.pop_front()
+        if current == city_key:
+            found = true
+            break
+        for edge in adjacency.get(current, []):
+            var next_key: String = str(edge["to"])
+            if visited.has(next_key):
+                continue
+            visited[next_key] = true
+            parent[next_key] = {"from": current, "key": str(edge["key"])}
+            queue.append(next_key)
+
+    if not found:
+        return _route(false, no_route, [], [], [], 0, 0.0, 0)
+
+    # Восстанавливаем маршрут ОТ УЛУЧШЕНИЯ К ГОРОДУ. Обход шёл в обратную
+    # сторону (от гекса к городу), поэтому восстановленный список разворачиваем
+    # push_front-ом — так path, segments и levels идут в одном порядке.
+    #
+    # Инвариант порядка: segments[i] соединяет path[i] и path[i + 1]. От него
+    # зависят и подсветка маршрута на карте, и очередь улучшения (шаги идут
+    # в обратном порядке — от города к цели), поэтому «почти наоборот» здесь
+    # недопустимо.
+    var path: Array = []
+    var segment_keys: Array = []
+    var levels: Array = []
+    var speed_sum := 0
+    var min_speed := 0
+    var current_key: String = city_key
+    while current_key != start_key:
+        var step = parent.get(current_key, null)
+        if step == null:
+            return _route(false, no_route, [], [], [], 0, 0.0, 0)
+        var hex_parts := str(current_key).split(",")
+        path.push_front({"row": int(hex_parts[0]), "col": int(hex_parts[1])})
+        var seg_key: String = str(step["key"])
+        segment_keys.push_front(seg_key)
+        var level := _segment_level_by_key(seg_key)
+        levels.push_front(level)
+        var speed := GameData.get_road_max_speed(level)
+        speed_sum += speed
+        if min_speed == 0 or speed < min_speed:
+            min_speed = speed
+        current_key = str(step["from"])
+    path.push_front({"row": row, "col": col})
+
+    var length := segment_keys.size()
+    var avg_speed := 0.0 if length == 0 else float(speed_sum) / float(length)
+    return _route(true, "", path, segment_keys, levels, length, avg_speed, min_speed)
+
+func _route(ok: bool, reason: String, path: Array, segments: Array, levels: Array,
+        length: int, avg_speed: float, min_speed: int) -> Dictionary:
+    return {
+        "ok": ok,
+        "reason": reason,
+        "path": path,
+        "segments": segments,
+        "levels": levels,
+        "length": length,
+        "avg_speed": avg_speed,
+        "min_speed": min_speed
+    }
+
+# Уровень участка по его строковому ключу. Участка в сети города нет — 0 не
+# возвращаем: участок может принадлежать сети городка (town_road_segments), и
+# для маршрута от городка такой участок — обычная тропка.
+func _segment_level_by_key(key: String) -> int:
+    if road_segments.has(key):
+        return int(road_segments[key])
+    return DEFAULT_ROAD_LEVEL
+
+# Разбирает ключ участка "row1,col1|row2,col2" в [row1, col1, row2, col2].
+# Пустой массив — ключ повреждён; вызывающий его пропускает, потому что
+# нарисовать или тарифицировать такой участок всё равно нельзя.
+func _parse_segment_key(key: String) -> Array:
+    var ends := key.split("|")
+    if ends.size() != 2:
+        return []
+    var a := ends[0].split(",")
+    var b := ends[1].split(",")
+    if a.size() != 2 or b.size() != 2:
+        return []
+    if not (a[0].is_valid_int() and a[1].is_valid_int()
+            and b[0].is_valid_int() and b[1].is_valid_int()):
+        return []
+    return [int(a[0]), int(a[1]), int(b[0]), int(b[1])]
 
 # Сегменты дорог, соединяющих город с городками (для отрисовки с гейтами
 # тумана — см. town_link_segments).
@@ -586,10 +801,59 @@ func get_all_town_link_segments() -> Dictionary:
 func _hex_key(row: int, col: int) -> String:
     return str(row) + "," + str(col)
 
-# Добавляет сегмент дороги в каноническом направлении (без дубликатов)
-func _add_road_segment(row1: int, col1: int, row2: int, col2: int):
+# Добавляет сегмент дороги в каноническом направлении (без дубликатов).
+# Уровень передаётся явно: участок помнит свой уровень (см. шапку файла).
+func _add_road_segment(row1: int, col1: int, row2: int, col2: int,
+        road_level: int = DEFAULT_ROAD_LEVEL):
     var key = _get_canonical_road_key(row1, col1, row2, col2)
-    road_segments[key] = true
+    road_segments[key] = road_level
+
+# Уникальные уровни участков дороги, примыкающих к гексу, по возрастанию.
+# Пустой массив — к гексу не примыкает ни один участок, то есть дороги нет.
+#
+# Считается по СЕТИ, а не по tile["road_level"]: у гекса может быть несколько
+# участков (перекрёсток, развилка), и уровень из данных гекса описывал бы
+# только тот, которым гекс подключили к сети. Именно поэтому на стыке
+# тележной дороги и тропки показываются оба уровня, а не один из них.
+#
+# Участки сетей ГОРОДКОВ здесь не учитываются: их уровень всегда 1, они не
+# принадлежат игроку и не улучшаются. Показывать «Тропка» на гексе чужого
+# городка значило бы показывать то, что игрок не может изменить.
+func get_hex_road_levels(row: int, col: int) -> Array:
+    var levels: Array = []
+    for neighbor in _get_neighbors(row, col, 999, 999):
+        var level := get_segment_level(row, col, int(neighbor.row), int(neighbor.col))
+        # 0 — участка нет: считать его дорогой нельзя.
+        if level <= 0 or levels.has(level):
+            continue
+        levels.append(level)
+    levels.sort()
+    return levels
+
+# Уровень участка дороги. Участка нет — 0 (не тропка!): вызывающий должен
+# отличать «участка нет» от «участок-тропка», иначе несуществующий участок
+# молча посчитался бы дорогой с пропускной способностью.
+func get_segment_level(row1: int, col1: int, row2: int, col2: int) -> int:
+    var key = _get_canonical_road_key(row1, col1, row2, col2)
+    if not road_segments.has(key):
+        return 0
+    return int(road_segments[key])
+
+# Повышает уровень уже построенного участка (спецдействие «Улучшить дорогу»).
+# Возвращает false, если участка нет или он уже не ниже уровня: улучшать
+# нечего, и пустой шаг проекта был бы шагом без работы.
+func upgrade_road_segment(row1: int, col1: int, row2: int, col2: int,
+        road_level: int) -> bool:
+    var key = _get_canonical_road_key(row1, col1, row2, col2)
+    if not road_segments.has(key):
+        return false
+    if int(road_segments[key]) >= road_level:
+        return false
+    road_segments[key] = road_level
+    # Сеть изменилась по составу уровней: маршруты и их средняя скорость
+    # теперь другие, кэш маршрутов сбрасываем.
+    _invalidate_plan_cache()
+    return true
 
 # Получает канонический ключ для пары гексов
 func _get_canonical_road_key(row1: int, col1: int, row2: int, col2: int) -> String:

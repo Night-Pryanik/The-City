@@ -34,6 +34,9 @@
 #   resource_group     — рецепт ссылается на несуществующую @-группу
 #   resource           — рецепт требует несуществующий ресурс
 #   prerequisite       — технология требует несуществующую технологию
+#   road_level         — у уровня дороги неверный или повторяющийся номер
+#   road_max_speed     — у уровня дороги неположительная максимальная скорость
+#   road_work_cost     — у уровня дороги отрицательная цена участка
 #
 # Класс НЕ зависит от автозагрузок: проверяемые данные передаются
 # аргументом, поэтому валидатор гоняется headless-тестом на искусственных
@@ -57,6 +60,7 @@ const ENTITIES := {
     "category": {"title": "Категории", "ref": "эту категорию", "source": "категории"},
     "group": {"title": "Группы", "ref": "эту группу", "source": "группе"},
     "recipe": {"title": "Рецепта", "ref": "этот рецепт", "source": "рецепте"},
+    "road": {"title": "Уровня дороги", "ref": "этот уровень дороги", "source": "уровне дороги"},
 }
 
 # Заголовки групп проверок (порядок = порядок блоков в окне).
@@ -72,6 +76,9 @@ const CHECK_TITLES := {
     "resource_group": "Рецепт ссылается на несуществующую группу продуктов",
     "resource": "Рецепт ссылается на несуществующий ресурс",
     "prerequisite": "Технология требует несуществующую технологию",
+    "road_level": "Уровень дороги: неверный или повторяющийся номер",
+    "road_max_speed": "Максимальная скорость дороги должна быть больше нуля",
+    "road_work_cost": "Цена участка дороги не может быть отрицательной",
 }
 
 # Индекс происхождения сущностей текущего прогона: "коллекция:id" → файл+строка.
@@ -96,6 +103,7 @@ const SOURCE_COLLECTIONS := {
     "technology": "technologies",
     "product": "resources",
     "group": "product_groups",
+    "road": "roads",
 }
 
 # Порядок вывода блоков проблем в окне.
@@ -111,6 +119,9 @@ const CHECK_ORDER := [
     "resource_group",
     "resource",
     "prerequisite",
+    "road_level",
+    "road_max_speed",
+    "road_work_cost",
 ]
 
 
@@ -147,9 +158,47 @@ func validate(gd: Object) -> Array:
     _validate_resources(products, raw_resources, categories, technologies, improvements, problems)
     _validate_product_groups(product_groups, group_names, products, problems)
     _validate_technologies(technologies, problems)
+    _validate_roads(gd.roads, technologies, problems)
 
     _sort_problems(problems)
     return problems
+
+
+# --- УРОВНИ ДОРОГ (data/roads.json) -------------------------------------
+#
+# Проверяются ссылка на технологию (общая с остальными сущностями) и сами
+# числа уровня. Числа проверяем потому, что они бьют по геймплею молча:
+# max_speed = 0 даст участок, который не везёт ничего, и это видно только в
+# игре; work_cost с дробью округлится вверх и «съест» копейку без причины.
+func _validate_roads(roads, technologies: Dictionary, problems: Array) -> void:
+    if not (roads is Array):
+        return
+    var seen_levels := {}
+    for road in roads:
+        if not (road is Dictionary):
+            continue
+        var road_id := str(road.get("id", ""))
+        var rname := _entity_name(road, road_id)
+
+        _check_tech_ref(road.get("unlock_tech", null), technologies, problems,
+                "road", rname, road_id, "unlock_tech")
+
+        var level := int(road.get("level", 0))
+        if level <= 0:
+            _add(problems, "road_level", "road", road_id,
+                    "road", rname, road_id, "level")
+        elif seen_levels.has(level):
+            _add(problems, "road_level", "road", road_id,
+                    "road", rname, road_id, "level")
+        else:
+            seen_levels[level] = true
+
+        if int(road.get("max_speed", 0)) <= 0:
+            _add(problems, "road_max_speed", "road", road_id,
+                    "road", rname, road_id, "max_speed")
+        if int(road.get("work_cost", 0)) < 0:
+            _add(problems, "road_work_cost", "road", road_id,
+                    "road", rname, road_id, "work_cost")
 
 
 # --- РЕЦЕПТЫ ---------------------------------------------------------------

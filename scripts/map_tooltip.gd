@@ -59,6 +59,43 @@ func _territory_lines_for(tile: Dictionary, row: int, col: int) -> Array:
     return lines
 
 
+# Уровни участков дороги, примыкающих к гексу, по возрастанию. Пусто — дороги
+# нет. Уровни берутся из СЕТИ (road_manager), а не из tile["road_level"]:
+# у гекса может быть несколько участков разных уровней (стык дорог), и
+# уровень из данных гекса описывал бы только тот, которым гекс подключили.
+#
+# main_map достаётся так же, как в _town_name_for_hex: напрямую из рендерера,
+# а сеть дорог берётся публичным полем. Отдельный параметр «сеть дорог» в
+# конструкторе не добавляется: он нужен ровно здесь и в
+# has_extended_tooltip_info, а MapTooltip и так работает с картой.
+func _hex_road_levels(row: int, col: int) -> Array:
+    var main_map = _map_renderer.main_map if _map_renderer != null else null
+    if main_map == null:
+        return []
+    var road_manager = main_map.road_manager
+    if road_manager == null or not road_manager.has_method("get_hex_road_levels"):
+        return []
+    return road_manager.get_hex_road_levels(row, col)
+
+# «Тропка (уровень 1, до 10 ед./сек на участок)» — по названию уровня, его
+# номеру и пропускной способности. Номер нужен не для красоты: игрок читает
+# «уровень 2» в кнопке выбора и в подписи маршрута, и без него непонятно,
+# какая кнопка соответствует строке на гексе.
+#
+# На стыке уровней (тележная дорога входит в гекс, тропка выходит) они
+# перечисляются оба: выбрать один наугад значило бы соврать о половине
+# примыкающей дороги.
+func road_level_line(row: int, col: int) -> String:
+    var levels: Array = _hex_road_levels(row, col)
+    if levels.is_empty():
+        return ""
+    var parts: Array[String] = []
+    for level in levels:
+        parts.append(tr("%s (level %d, up to %d units/sec per section)") % [
+                GameData.get_road_name(int(level)), int(level),
+                GameData.get_road_max_speed(int(level))])
+    return ", ".join(parts)
+
 func _format_resource_label_for_text(res_id: String, res_name: String) -> String:
     if res_id == "" or res_name == "":
         return res_name
@@ -207,6 +244,13 @@ func has_extended_tooltip_info(row: int, col: int, tile_data: Array) -> bool:
     if not is_revealed:
         return false
 
+    # Уровень дороги на гексе — повод показать расширенный тултип, даже когда
+    # производства нет: игроку нужно видеть, какая дорога ведёт к этому гексу,
+    # иначе улучшать её вслепую. Функция только ОТВЕЧАЕТ, показывать ли
+    # расширенный блок; сама строка добавляется в update_extended_tooltip.
+    if not road_level_line(row, col).is_empty():
+        return true
+
     # Расширенный тултип показываем, если на гексе идёт активное производство:
     # улучшение построено, рабочий назначен, и на гексе есть «эффективный»
     # ресурс (природный или разводимый) с produces.
@@ -248,9 +292,24 @@ func update_extended_tooltip(row: int, col: int, tile_data: Array, city_row: int
             filtered_lines.append(line)
     _tooltip_text_label.text = "\n".join(filtered_lines)
 
+    # Уровень дороги на гексе. Добавляется ПЕРВЫМ, до проверок ниже: у гекса с
+    # дорогой, но без улучшения (например, пустой гекс под дорогой) все ранние
+    # выходы сработали бы раньше, и строка не появилась бы вовсе — а именно там
+    # игрок и решает, какую дорогу ему улучшать.
+    #
+    # Строки КОПЯТСЯ и рендерятся ОДИН раз в конце: render_products чистит
+    # контейнер, и два вызова подряд стёрли бы первый — на гексе с дорогой и
+    # природным ресурсом (например, с дикоросами) уровень молча исчезал бы.
+    var extra_products: Array = []
+    var road_line := road_level_line(row, col)
+    if not road_line.is_empty():
+        extra_products.append({"type": "label", "text": tr("Road: %s") % road_line,
+                "color": Color(0.7, 0.9, 0.7)})
+
     var tile = tile_data[row][col]
     var is_revealed = tile.get("in_influence", false) or tile.get("is_explored", false)
     if not is_revealed or bool(tile.get("in_town_influence", false)):
+        _render_extra_products(extra_products)
         return
 
     # Расчёты стоимости постройки (база/местность/расстояние) перенесены
@@ -261,12 +320,21 @@ func update_extended_tooltip(row: int, col: int, tile_data: Array, city_row: int
     if res_id != "" and not MapHelpers.is_resource_revealed(tile):
         res_id = ""
     if res_id == "":
+        _render_extra_products(extra_products)
         return
     var res_data = GameData.raw_resources.get(res_id, {})
     if not res_data.has("produces"):
+        _render_extra_products(extra_products)
         return
 
-    render_products(_collect_extended_production(row, col, tile_data), _tooltip_products_container)
+    extra_products.append_array(_collect_extended_production(row, col, tile_data))
+    _render_extra_products(extra_products)
+
+# Единственная точка рендера расширенного блока тултипа. Пустой список — тоже
+# вызов: он чистит контейнер, и без этого на гексе без расширенной информации
+# остались бы строки от предыдущего гекса.
+func _render_extra_products(products: Array):
+    render_products(products, _tooltip_products_container)
 
 
 # --- Построение полного текста тултипа ---

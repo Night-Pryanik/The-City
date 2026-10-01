@@ -24,6 +24,10 @@ var professions: Dictionary = {} # id -> данные профессии (data/p
 var consumption_rules: Array = [] # записи потребления (data/consumption.json)
 var city_names: Array = [] # варианты названий города (data/city_names.json)
 var game_balance: Dictionary = {} # игровой баланс (data/game_balance.json)
+# Уровни дорог (data/roads.json). roads_by_level — уровень -> данные уровня:
+# участок сети дорог хранит номер уровня, поэтому нужен именно такой индекс.
+var roads: Array = []
+var roads_by_level: Dictionary = {}
 # Факт того, что данные уже загружены. Нужен, чтобы не читать data/*.json
 # дважды подряд: главное меню проверяет данные валидатором
 # (scripts/data_validator.gd) при входе, а новая партия грузит их снова.
@@ -59,8 +63,85 @@ func load_all_data():
     consumption_rules = loader.consumption_rules
     city_names = loader.city_names
     game_balance = loader.game_balance
+    roads = loader.roads
+    roads_by_level = loader.roads_by_level
     entity_sources = loader.entity_sources
     data_loaded = true
+
+# === УРОВНИ ДОРОГ (data/roads.json) ===
+#
+# Уровень — целое число, начиная с 1. Участок сети дорог хранит именно
+# номер уровня, поэтому roads_by_level и есть рабочий индекс.
+
+# Данные уровня по его номеру. Пустой словарь — если уровня нет в данных:
+# вызывающий решает сам, что делать (обычно это ошибка данных, и её ловит
+# data_validator.gd, а не молчаливая подмена «на уровень ниже»).
+func get_road_by_level(level: int) -> Dictionary:
+    return roads_by_level.get(level, {})
+
+# Название уровня для игрока (уже переведено data_loader).
+func get_road_name(level: int) -> String:
+    var road: Dictionary = get_road_by_level(level)
+    if road.is_empty():
+        return str(level)
+    return str(road.get("name", level))
+
+# Базовая цена ОДНОГО участка этого уровня в труде, до множителей.
+func get_road_work_cost(level: int) -> int:
+    return int(get_road_by_level(level).get("work_cost", 0))
+
+# «Максимальная скорость» уровня: сколько единиц ресурса в секунду этот
+# участок способен перевозить (НЕ скорость юнитов — см. шапку data/roads.json).
+func get_road_max_speed(level: int) -> int:
+    return int(get_road_by_level(level).get("max_speed", 0))
+
+# Открыт ли уровень игроку. Уровень без unlock_tech доступен всегда; иначе
+# нужна соответствующая технология. Неизвестный уровень считаем закрытым:
+# показать игроку дорогу, которой нет в данных, хуже, чем не показать.
+#
+# Поле unlock_tech в JSON бывает null (у тропки технологии нет), поэтому
+# значение читаем через _road_unlock_tech: `null or ""` в GDScript НЕ даёт
+# строку, и наивная проверка is_empty() пропустила бы null в CityData.
+func is_road_level_unlocked(level: int) -> bool:
+    var road: Dictionary = get_road_by_level(level)
+    if road.is_empty():
+        return false
+    var tech_id := _road_unlock_tech(level)
+    if tech_id.is_empty():
+        return true
+    return CityData.is_tech_unlocked(tech_id)
+
+# id технологии, открывающей уровень; "" — уровень доступен изначально.
+func _road_unlock_tech(level: int) -> String:
+    var raw = get_road_by_level(level).get("unlock_tech", null)
+    if raw == null or not (raw is String):
+        return ""
+    return str(raw)
+
+# Все уровни по возрастанию номера — порядок выбора в панели управления.
+# Сортировка нужна, потому что в JSON уровни идут по порядку, а полагаться
+# на порядок ключей словаря нельзя.
+func get_road_levels() -> Array:
+    var levels: Array = roads_by_level.keys()
+    levels.sort()
+    return levels
+
+# Исследованные уровни по возрастанию — именно их игрок может выбрать.
+func get_unlocked_road_levels() -> Array:
+    var result: Array = []
+    for level in get_road_levels():
+        if is_road_level_unlocked(int(level)):
+            result.append(int(level))
+    return result
+
+# Самый продвинутый исследованный уровень — то, что предлагается по умолчанию.
+# Уровня в данных быть не должно, но если файлы данных ещё не загружены,
+# возвращаем 1: тропка доступна всегда и ничего не ломает.
+func get_max_unlocked_road_level() -> int:
+    var levels: Array = get_unlocked_road_levels()
+    if levels.is_empty():
+        return 1
+    return int(levels.back())
 
 # Возвращает случайное название города из data/city_names.json.
 # Если список пуст или не загрузился — возвращает нейтральное имя по умолчанию.

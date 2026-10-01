@@ -241,7 +241,7 @@ func _ready():
                 # crop_bred — id одомашненного животного/растения, разводимого
                 # на пустом гексе (см. docs.md, раздел «Разведение животных/растений»).
                 # Для природных ресурсов остаётся tile.resource.
-                var tile = {"terrain": "plain", "cover": "none", "resource": null, "crop_bred": null, "improvement": null, "decorative": false, "production_fractional_remainder": 0.0, "feed_fractional_remainder": 0.0, "terrain_icon": "", "in_influence": false, "is_explored": false, "river_edges": [], "in_town_influence": false, "has_town": false, "road_built": false}
+                var tile = {"terrain": "plain", "cover": "none", "resource": null, "crop_bred": null, "improvement": null, "decorative": false, "production_fractional_remainder": 0.0, "feed_fractional_remainder": 0.0, "terrain_icon": "", "in_influence": false, "is_explored": false, "river_edges": [], "in_town_influence": false, "has_town": false, "road_built": false, "road_level": 1}
                 if row < saved_tiles.size() and col < saved_tiles[row].size():
                     var saved = saved_tiles[row][col]
                     if not saved.is_empty():
@@ -286,6 +286,10 @@ func _ready():
                         # road_manager.rebuild_player_roads). В старых сейвах
                         # поля нет — просто false.
                         tile["road_built"] = bool(saved.get("road_built", false))
+                        # road_level — уровень дороги к этому гексу (см.
+                        # SaveManager._serialize_tile_data). Старые сейвы поля не
+                        # содержат — там тропка (уровень 1).
+                        tile["road_level"] = int(saved.get("road_level", 1))
                 col_array.append(tile)
             tile_data.append(col_array)
 
@@ -1387,8 +1391,15 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
                 tile["quality"] = GameData.roll_quality()
         if CityData:
             CityData.register_domesticated_resource(target_res_id)
+    # Уровень дороги к улучшению берём из САМОЙ СТРОЙКИ: игрок выбрал его в
+    # превью, и build_manager сохранил выбор в записи стройки. Не из данных
+    # гекса — там может лежать уровень ПРЕДЫДУЩЕЙ дороги, построенной ранее.
+    # Читаем ДО remove_build: тот стирает запись.
+    var road_level: int = road_manager.DEFAULT_ROAD_LEVEL
+    if build_manager != null:
+        road_level = int(build_manager.get_build_road_level(row, col))
     build_manager.remove_build(row, col)
-    road_manager.build_road_from(row, col, tile_data, map_rows, map_cols)
+    road_manager.build_road_from(row, col, tile_data, map_rows, map_cols, road_level)
     if not worker_manager.assign_worker(row, col):
         pass
     map_renderer.queue_redraw()
@@ -1409,18 +1420,27 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
 
 # Спецдействие «Построить дорогу» на гексе (row, col). Вызывается из
 # build_manager.start_build, поэтому возвращает bool в его смысле.
-func start_road_project(row: int, col: int, action_id: String) -> bool:
+func start_road_project(row: int, col: int, road_level: int) -> bool:
     # Трасса может исчезнуть между нажатием кнопки и подтверждением (например,
     # игрок успел построить другую дорогу) — тогда просто сообщаем причину.
     # Шаги и цену берём из get_road_cost_breakdown — того же источника, что и
     # превью, поэтому старт не может взять другую цену, чем показали.
-    var breakdown: Dictionary = get_road_cost_breakdown(row, col, action_id)
+    var breakdown: Dictionary = get_road_cost_breakdown(row, col, road_level)
     if not breakdown.get("ok", false):
         hud.show_message(tr("Failed to build the road: %s") % breakdown.get("reason", tr("no path")))
         return false
     var steps: Array = breakdown.get("steps", [])
     var plan := get_road_plan(row, col)
     var is_town := bool(plan.get("is_town", false))
+
+    # Уровень проверяем ЗДЕСЬ, а не в панели: панель — это отображение, а
+    # единственное место, где решается, можно ли вообще что-то построить.
+    # Само правило «уровень открыт своей технологией» живёт в данных и в
+    # GameData.is_road_level_unlocked, здесь мы лишь отказываемся строить
+    # неисследованный уровень.
+    if not GameData.is_road_level_unlocked(road_level):
+        hud.show_message(tr("Road level %d requires a technology") % road_level)
+        return false
 
     # Общий лимит одновременных строек равен числу жителей. Дорога занимает
     # один слот, а не по числу гексов: одновременно строится один участок.
@@ -1429,6 +1449,13 @@ func start_road_project(row: int, col: int, action_id: String) -> bool:
         hud.show_message(tr("You can build or upgrade no more than %d buildings at once (limit = number of citizens)")
                 % CityData.total_population)
         return false
+
+    # Бесплатный уровень (тропка) не может ждать: шаг без работы в очереди
+    # проекта — это шаг, который никогда не закончится сам по себе и держит
+    # слот. Для бесплатной дороги сразу проходим все шаги: платить нечего,
+    # ждать нечего.
+    if breakdown.get("cost", 0) <= 0:
+        return _finish_free_road_project(row, col, steps, is_town, road_level)
 
     var title := tr("Road")
     if is_town:
@@ -1440,7 +1467,7 @@ func start_road_project(row: int, col: int, action_id: String) -> bool:
     # как проект выброшен из менеджера, и больше негде взять гекс, который
     # нужно пометить входными данными для сейва.
     var project_id: String = project_manager.start_project("road", title, row, col, steps, {
-        "action_id": action_id,
+        "mode": "build",
         "is_town": is_town,
         "target_row": row,
         "target_col": col,
@@ -1455,6 +1482,153 @@ func start_road_project(row: int, col: int, action_id: String) -> bool:
     map_renderer.queue_redraw()
     _redraw_progress_layer()
     return true
+
+# Бесплатная дорога (тропка) строится целиком и сразу: платить за неё нечего,
+# поэтому ждать в очереди проекта незачем. Эффекты шагов применяются те же и в
+# том же порядке (от сети к цели), что и у обычного проекта, — общая функция
+# эффекта шага (_on_project_step_completed) вызывается из обоих путей, чтобы
+# правило «участок появился — гекс подключён» не существовало в двух видах.
+func _finish_free_road_project(row: int, col: int, steps: Array, is_town: bool,
+        road_level: int) -> bool:
+    for step in steps:
+        _on_project_step_completed("", "road", step)
+    _mark_road_built(row, col, {"is_town": is_town})
+    map_renderer.queue_redraw()
+    _redraw_progress_layer()
+    control_panel.refresh()
+    return true
+
+# Улучшение уже построенной дороги от города до гекса (row, col).
+#
+# Отличие от постройки новой дороги: участки УЖЕ ЕСТЬ, поэтому шаг проекта не
+# добавляет сегмент, а повышает его уровень (road_manager.upgrade_road_segment).
+# Сама очередь и «призрак» — те же, что у постройки: игрок видит маршрут до
+# цели и понимает, сколько участков ещё предстоит улучшить.
+#
+# Шаги идут ОТ ГОРОДА к цели, как при постройке: так прогресс-бар едет в ту же
+# сторону, что и призрак, и игрок видит, где дорога уже улучшена.
+func start_road_upgrade_project(row: int, col: int, road_level: int) -> bool:
+    if not GameData.is_road_level_unlocked(road_level):
+        hud.show_message(tr("Road level %d requires a technology") % road_level)
+        return false
+    var breakdown := get_road_upgrade_breakdown(row, col, road_level)
+    if not breakdown.get("ok", false):
+        hud.show_message(tr("Nothing to upgrade: %s")
+                % breakdown.get("reason", tr("no route to the city")))
+        return false
+    var steps: Array = breakdown.get("steps", [])
+
+    if not CityData.ignore_build_requirements \
+            and build_manager.get_total_active_builds() >= CityData.total_population:
+        hud.show_message(tr("You can build or upgrade no more than %d buildings at once (limit = number of citizens)")
+                % CityData.total_population)
+        return false
+
+    var project_id: String = project_manager.start_project(
+            "road_upgrade", tr("Upgrade road"), row, col, steps, {
+        "mode": "upgrade",
+        "target_row": row,
+        "target_col": col,
+        "road_level": road_level,
+    })
+    if project_id == "":
+        return false
+    hud.show_message(tr("Upgrading the road to the city: %d sections") % steps.size())
+    _refresh_project_ghost()
+    map_renderer.queue_redraw()
+    _redraw_progress_layer()
+    return true
+
+# Цена и шаги улучшения дороги до гекса (row, col) до уровня road_level.
+# ЕДИНЫЙ источник для превью и для реального запуска — как у новой дороги.
+#
+# Улучшаются только те участки маршрута, которые ниже целевого уровня: участок
+# более высокого уровня оставляем как есть (понижать дорогу нельзя).
+func get_road_upgrade_breakdown(row: int, col: int, road_level: int) -> Dictionary:
+    var route: Dictionary = get_route_to_city(row, col)
+    if not route.get("ok", false):
+        return {"ok": false, "reason": route.get("reason", ""), "cost": 0, "steps": []}
+    var segments: Array = route.get("segments", [])
+    var levels: Array = route.get("levels", [])
+    var steps: Array = []
+    var total := 0
+    # Шаги от ГОРОДА к цели: путь маршрута идёт от гекса к городу, поэтому
+    # индексы идут в обратном порядке.
+    for i in range(segments.size() - 1, -1, -1):
+        var seg_key: String = str(segments[i])
+        if int(levels[i]) >= road_level:
+            continue
+        var ends := _split_segment_key(seg_key)
+        if ends.is_empty():
+            continue
+        var from_row := int(ends[0])
+        var from_col := int(ends[1])
+        var to_row := int(ends[2])
+        var to_col := int(ends[3])
+        # Цена участка улучшения считается по ТОМУ ЖЕ гексу, который шаг
+        # присоединяет к сети при постройке, — то есть по дальнему от города
+        # концу: трасса идёт от города, и этот конец тащит материалы дальше.
+        var far_row := to_row
+        var far_col := to_col
+        if HexUtils.hex_distance(from_row, from_col, city_row, city_col) \
+                > HexUtils.hex_distance(to_row, to_col, city_row, city_col):
+            far_row = from_row
+            far_col = from_col
+        var terrain_id := "plain"
+        if far_row >= 0 and far_row < tile_data.size() and far_col >= 0 \
+                and far_col < tile_data[far_row].size() and tile_data[far_row][far_col] != null:
+            terrain_id = str(tile_data[far_row][far_col].get("terrain", "plain"))
+        var price := MapHelpers.get_road_step_work_cost(
+                road_level, far_row, far_col, city_row, city_col, terrain_id)
+        var cost := int(price.get("cost", 0))
+        total += cost
+        steps.append({
+            "label": tr("Upgrade section %d/%d") % [steps.size() + 1, segments.size()],
+            "work_cost": cost,
+            "price": price,
+            "hex": {"row": far_row, "col": far_col},
+            # Призрак улучшения — тот же участок: он уже нарисован дорогой,
+            # и подсветка показывает, какой именно участок улучшается.
+            "ghost": {seg_key: true},
+            "data": {
+                "from": {"row": from_row, "col": from_col},
+                "to": {"row": to_row, "col": to_col},
+                "is_upgrade": true,
+                "road_level": road_level,
+            },
+        })
+    if steps.is_empty():
+        return {"ok": false, "cost": 0, "steps": [],
+                "reason": tr("the route is already at this level")}
+    return {"ok": true, "reason": "", "cost": total, "steps": steps,
+            "segments": steps.size(), "road_level": road_level}
+
+# Разбирает ключ участка "row1,col1|row2,col2" в [row1, col1, row2, col2].
+# Пустой массив — ключ повреждён; такой участок пропускаем: улучшать и
+# тарифицировать его всё равно нельзя.
+func _split_segment_key(key: String) -> Array:
+    var ends := key.split("|")
+    if ends.size() != 2:
+        return []
+    var a := ends[0].split(",")
+    var b := ends[1].split(",")
+    if a.size() != 2 or b.size() != 2:
+        return []
+    if not (a[0].is_valid_int() and a[1].is_valid_int()
+            and b[0].is_valid_int() and b[1].is_valid_int()):
+        return []
+    return [int(a[0]), int(a[1]), int(b[0]), int(b[1])]
+
+# Публичная обёртка над поиском маршрута: нужна панели управления (блок
+# «Маршрут до города») и рендереру (подсветка маршрута на карте). Гекс городка
+# маршрутизируется по СВОЕЙ сети дорог, поэтому городок передаётся менеджеру
+# отдельно (см. road_manager.find_route_to_city).
+func get_route_to_city(row: int, col: int) -> Dictionary:
+    var town = find_town_at(row, col)
+    if town != null:
+        return road_manager.find_route_to_city(row, col,
+                int(town.get("row", -1)), int(town.get("col", -1)))
+    return road_manager.find_route_to_city(row, col)
 
 # Превращает план дороги в очередь шагов — по одному на новый участок.
 #
@@ -1474,7 +1648,7 @@ func start_road_project(row: int, col: int, action_id: String) -> bool:
 # Цена шага (MapHelpers.get_road_step_work_cost) зависит от гекса to_hex:
 # местность, дальность от города, технологии. Отдельной надбавки за длину
 # трассы нет — длинная дорога дольше строится потому, что участков больше.
-func _build_road_steps(plan: Dictionary, action_id: String) -> Array:
+func _build_road_steps(plan: Dictionary, road_level: int) -> Array:
     var road_path: Array = plan.get("path", [])
     var is_town := bool(plan.get("is_town", false))
     if road_path.size() < 2:
@@ -1517,10 +1691,10 @@ func _build_road_steps(plan: Dictionary, action_id: String) -> Array:
                 and t_col < tile_data[t_row].size() and tile_data[t_row][t_col] != null:
             terrain_id = str(tile_data[t_row][t_col].get("terrain", "plain"))
         var price := MapHelpers.get_road_step_work_cost(
-                action_id, t_row, t_col, city_row, city_col, terrain_id)
+                road_level, t_row, t_col, city_row, city_col, terrain_id)
         steps.append({
             "label": tr("Section %d/%d") % [i + 1, pairs.size()],
-            "work_cost": int(price.get("cost", 1)),
+            "work_cost": int(price.get("cost", 0)),
             # Детали расчёта — для тултипа на прогресс-баре и для превью.
             "price": price,
             # Прогресс-бар рисуется на гексе, который шаг присоединяет к сети.
@@ -1530,6 +1704,10 @@ func _build_road_steps(plan: Dictionary, action_id: String) -> Array:
                 "from": pair["from"],
                 "to": pair["to"],
                 "is_town": is_town,
+                # Уровень участка едет в шаге, а не берётся в обработчике
+                # завершения: там уже нет выбранного игроком уровня, есть
+                # только сигнал «шаг готов».
+                "road_level": road_level,
             },
         })
     return steps
@@ -1541,12 +1719,12 @@ func _build_road_steps(plan: Dictionary, action_id: String) -> Array:
 # шаг округляется вверх отдельно, и итог просто складывается. Раньше цена
 # бралась как ceil(base × segments), а последний шаг «добирал остаток» — с
 # разными ценами шагов такая схема дала бы переплату или недобор.
-func get_road_cost_breakdown(row: int, col: int, action_id: String) -> Dictionary:
+func get_road_cost_breakdown(row: int, col: int, road_level: int) -> Dictionary:
     var plan := get_road_plan(row, col)
     if not plan.get("ok", false):
         return {"ok": false, "reason": plan.get("reason", tr("Cannot build a road")),
                 "cost": 0, "steps": []}
-    var steps := _build_road_steps(plan, action_id)
+    var steps := _build_road_steps(plan, road_level)
     if steps.is_empty():
         return {"ok": false, "reason": tr("No new sections on this route"),
                 "cost": 0, "steps": []}
@@ -1577,6 +1755,7 @@ func get_road_cost_breakdown(row: int, col: int, action_id: String) -> Dictionar
         "cost": total,
         "steps": steps,
         "segments": steps.size(),
+        "road_level": road_level,
         "min_step_cost": min_cost,
         "max_step_cost": max_cost,
         "min_distance": maxi(min_dist, 0),
@@ -1589,8 +1768,13 @@ func get_road_cost_breakdown(row: int, col: int, action_id: String) -> Dictionar
 # гекс, а не только на цель проекта: сегменты в сейв не пишутся, и по этим
 # флагам сеть пересчитывается при загрузке (road_manager.rebuild_player_roads).
 # Так полупостроенная дорога переживает перезапуск, а не исчезает.
+#
+# Тот же обработчик обслуживает и улучшение дороги (kind "road_upgrade"):
+# участок уже есть, поэтому вместо добавления сегмента его уровень
+# повышается. Оба режима в одном месте — правило «шаг применён к гексу»
+# не должно существовать в двух видах.
 func _on_project_step_completed(_project_id: String, kind: String, step: Dictionary) -> void:
-    if kind != "road":
+    if kind != "road" and kind != "road_upgrade":
         return
     var data: Dictionary = step.get("data", {})
     var from_hex: Dictionary = data.get("from", {})
@@ -1601,10 +1785,21 @@ func _on_project_step_completed(_project_id: String, kind: String, step: Diction
     var t_col := int(to_hex.get("col", -1))
     if f_row < 0 or t_row < 0:
         return
-    road_manager.build_road_step(f_row, f_col, t_row, t_col, bool(data.get("is_town", false)))
+    var road_level := int(data.get("road_level", road_manager.DEFAULT_ROAD_LEVEL))
+    if bool(data.get("is_upgrade", false)):
+        road_manager.upgrade_road_segment(f_row, f_col, t_row, t_col, road_level)
+        if t_row < tile_data.size() and t_col < tile_data[t_row].size() \
+                and tile_data[t_row][t_col] != null:
+            tile_data[t_row][t_col]["road_level"] = road_level
+        return
+    road_manager.build_road_step(f_row, f_col, t_row, t_col,
+            bool(data.get("is_town", false)), road_level)
     if t_row < tile_data.size() and t_col < tile_data[t_row].size() \
             and tile_data[t_row][t_col] != null:
         tile_data[t_row][t_col]["road_built"] = true
+        # Уровень участка — входные данные для сейва наравне с road_built:
+        # без него восстановленная сеть была бы сплошной тропкой.
+        tile_data[t_row][t_col]["road_level"] = road_level
     _refresh_project_ghost()
     map_renderer.queue_redraw()
     _redraw_progress_layer()
@@ -1981,7 +2176,8 @@ func get_tile_data(row: int, col: int):
 # Стоимость зависит от базового work_cost улучшения, типа местности (move_cost) и
 # расстояния от города. Возвращает словарь с итоговой стоимостью и деталями расчёта
 # (для расширенного тултипа).
-func get_improvement_work_cost(imp_id: String, row: int, col: int) -> Dictionary:
+func get_improvement_work_cost(imp_id: String, row: int, col: int,
+        road_level: int = road_manager.DEFAULT_ROAD_LEVEL) -> Dictionary:
     # Дорога (спецдействие build_road) — исключение: улучшений и гекса
     # строительства у неё нет, у неё ЦЕЛАЯ ТРАССА из отдельных участков. Цена
     # каждого участка зависит от его местности и дальности, поэтому и общая
@@ -1989,10 +2185,11 @@ func get_improvement_work_cost(imp_id: String, row: int, col: int) -> Dictionary
     # превью). build_manager зовёт эту функцию только ради проверки «цена > 0».
     var special_action: Dictionary = GameData.special_actions.get(imp_id, {})
     if str(special_action.get("action_type", "")) == "road":
-        var breakdown: Dictionary = get_road_cost_breakdown(row, col, imp_id)
+        var breakdown: Dictionary = get_road_cost_breakdown(row, col, road_level)
         return {
             "cost": int(breakdown.get("cost", 0)),
-            "base_cost": int(GameData.special_actions.get(imp_id, {}).get("work_cost", 0)),
+            "base_cost": GameData.get_road_work_cost(road_level),
+            "road_level": road_level,
             "segments": int(breakdown.get("segments", 0)),
             "ok": bool(breakdown.get("ok", false)),
             "reason": str(breakdown.get("reason", "")),
@@ -2002,7 +2199,35 @@ func get_improvement_work_cost(imp_id: String, row: int, col: int) -> Dictionary
             "max_distance": int(breakdown.get("max_distance", 0)),
             "terrains": breakdown.get("terrains", []),
         }
-    return MapHelpers.get_improvement_work_cost(imp_id, row, col, tile_data, city_row, city_col)
+    var cost_data := MapHelpers.get_improvement_work_cost(imp_id, row, col, tile_data, city_row, city_col)
+    # Дорога к улучшению строится вместе с ним (road_manager.build_road_from),
+    # поэтому её стоимость — часть цены улучшения. Бесплатна только тропка
+    # (work_cost уровня 1 = 0), остальные уровни тарифицируются по той же
+    # формуле, что и участок дороги, и той же трассе: платить за дорогу
+    # ровно столько, сколько игрок увидел в превью.
+    var road_cost := get_road_cost_for_improvement(row, col, road_level)
+    cost_data["road_cost"] = road_cost
+    cost_data["road_level"] = road_level
+    cost_data["cost"] = int(cost_data.get("cost", 0)) + road_cost
+    return cost_data
+
+# Стоимость дороги, которую игрок выбрал при постройке улучшения на гексе
+# (row, col). Считается по плану дороги ДО этого гекса — тем же расчётом, что и
+# превью «Построить дорогу», поэтому цифры совпадают.
+#
+# Тропка (уровень 1) бесплатна — возврат 0 без расчёта. Ошибки плана (гекс уже
+# подключён, пути нет, улучшение с флагом no_road) дают 0: дорогу там не
+# строят вовсе, и начислять за неё цену незачем. Платить придётся отдельным
+# действием «Улучшить дорогу», если игрок захочет лучше.
+func get_road_cost_for_improvement(row: int, col: int, road_level: int) -> int:
+    if road_level <= road_manager.DEFAULT_ROAD_LEVEL:
+        return 0
+    if road_manager.is_hex_connected(row, col):
+        return 0
+    var breakdown := get_road_cost_breakdown(row, col, road_level)
+    if not breakdown.get("ok", false):
+        return 0
+    return int(breakdown.get("cost", 0))
 
 # План дороги от сети города до гекса (row, col) — тот же объект, что
 # возвращает road_manager.plan_road_to. Нужен панели управления (превью

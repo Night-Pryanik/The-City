@@ -22,6 +22,12 @@ extends Panel
 # особый блок цены в превью.
 const ROAD_ACTION_ID := "build_road"
 
+# Тип действия «Улучшить дорогу». Это НЕ спецдействие из data/special_actions.json:
+# улучшение не меняет содержимое гекса и не имеет своей work_cost (цена участка
+# берётся из уровня дороги, см. roads.json), поэтому оно живёт как отдельный
+# тип действия панели, а не как ещё одна запись в общем списке.
+const UPGRADE_ROAD_TYPE := "upgrade_road"
+
 # Ссылки на узлы (заполняются из main_map.gd через initialize()).
 var main_map: Node
 var map_tooltip: MapTooltip
@@ -256,6 +262,11 @@ func _refresh():
         var info = map_tooltip.build_hex_info(row, col, main_map.tile_data, main_map.city_row, main_map.city_col)
         _info_label.text = info["text"]
         map_tooltip.render_products(info["products"], _products_container, true)
+        # Маршрут до города показываем ОТДЕЛЬНОЙ строкой в том же блоке: он
+        # относится не к свойствам гекса, а к его связи с городом. Без него
+        # игрок на улучшении не видит ни длины маршрута, ни его скорости, а
+        # именно по ним решается, стоит ли улучшать дорогу.
+        _append_route_info(row, col)
 
     # --- Правая часть: кнопки действий ---
     _build_actions(row, col, tile)
@@ -295,8 +306,39 @@ func _clear_ui():
     # ничего не нужно (и кнопки бы не появились).
     _last_actions_snapshot = {}
     _last_preview_snapshot = {}
-    # Прекращаем показ маршрута: выделение снято, значит и превью нет.
+    # Прекращаем показ маршрута и призрака: выделение снято, значит и превью нет.
     _set_map_road_preview({})
+    _set_map_route_display({})
+
+# Строка «Маршрут до города» в левой колонке панели: сколько участков,
+# средняя скорость и самое узкое место. Показывается только когда маршрут
+# есть; на гексе без дороги строки нет — писать «маршрута нет» на каждом
+# пустом гексе значило бы засорять панель.
+#
+# Средняя скорость отвечает на вопрос «насколько быстро в среднем едет груз»,
+# минимальная — «где именно он вязнет». Обе нужны: улучшать надо узкое
+# место, а не среднее по маршруту.
+func _append_route_info(row: int, col: int) -> void:
+    if main_map == null or not main_map.has_method("get_route_to_city"):
+        return
+    # Уровень дороги на самом гексе идёт ПЕРЕД строкой маршрута: маршрут
+    # читается как «куда едет груз», и уровень гекса — его начало. На гексе без
+    # дороги уровня нет, но маршрут тоже пустой, так что обе строки пусты.
+    var road_line: String = map_tooltip.road_level_line(row, col)
+    if not road_line.is_empty():
+        var road_label := Label.new()
+        road_label.text = tr(" Road: %s") % road_line
+        road_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        road_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
+        _products_container.add_child(road_label)
+    var route: Dictionary = main_map.get_route_to_city(row, col)
+    if not route.get("ok", false):
+        return
+    var route_label := Label.new()
+    route_label.text = tr(" Route to the city: %d sections, average %.1f units/sec (bottleneck %d)") % [int(route.get("length", 0)), float(route.get("avg_speed", 0.0)), int(route.get("min_speed", 0))]
+    route_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    route_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
+    _products_container.add_child(route_label)
 
 # --- Построение кнопок действий ---
 func _build_actions(row: int, col: int, tile: Dictionary):
@@ -492,6 +534,12 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
 
         # Спец-действия, применимые к гексу с улучшением (например, снос).
         _add_special_actions(actions, row, col, tile)
+
+        # Улучшение дороги до этого гекса: доступно, когда дорога уже есть и
+        # её есть куда улучшать. Кнопка появляется на ЛЮБОМ гексе с маршрутом
+        # до города — не только на улучшениях: игрок может улучшить дорогу и
+        # до пустого гекса, если решит, что там будет улучшение.
+        _append_upgrade_road_action(actions, row, col)
 
         # Прерывание стройки и/или проекта. Именно здесь проверка проекта
         # ТЕРЯЛАСЬ раньше: ветка гекса с улучшением делала return, не доходя
@@ -1010,6 +1058,42 @@ func _add_special_actions(actions: Array, row: int, col: int, tile: Dictionary):
         else:
             _append_special_action(actions, sa_id, sa)
 
+# Кнопка «Улучшить дорогу» для гекса (row, col).
+#
+# Показывается, только когда улучшать ЕСТЬ ЧТО: до гекса уже есть маршрут до
+# города, и хотя бы один его участок ниже лучшего доступного уровня. Иначе
+# кнопка с недостижимой целью — шум в колонке действий.
+#
+# Улучшается ВЕСЬ маршрут от города до гекса, а не только последний участок:
+# скорость маршрута определяется самым узким участком (см.
+# road_manager.find_route_to_city), поэтому улучшение одного конца ничего не
+# даёт — игрок должен видеть это в тултипе.
+func _append_upgrade_road_action(actions: Array, row: int, col: int) -> void:
+    if main_map == null or not main_map.has_method("get_route_to_city"):
+        return
+    var route: Dictionary = main_map.get_route_to_city(row, col)
+    if not route.get("ok", false):
+        return
+    var levels: Array = route.get("levels", [])
+    if levels.is_empty():
+        return
+    var best_level := GameData.get_max_unlocked_road_level()
+    var current_best := 1
+    for level in levels:
+        current_best = maxi(current_best, int(level))
+    if current_best >= best_level:
+        return
+    var min_speed := int(route.get("min_speed", 0))
+    actions.append({
+        "type": UPGRADE_ROAD_TYPE,
+        "label": tr("Upgrade road"),
+        "enabled": true,
+        "tooltip": tr("Upgrade the road from this hex to the city to %s (%d units/sec per section, now the bottleneck is %d units/sec)")
+                % [GameData.get_road_name(best_level),
+                        GameData.get_road_max_speed(best_level), min_speed],
+        "icon": "road.svg"
+    })
+
 # Собирает кнопку спецдействия в колонке действий: учитывает требование
 # технологии и общий лимит строек. tooltip_override (если задан) заменяет
 # название в тултипе — им пользуется дорога, у которой текст зависит от
@@ -1138,7 +1222,8 @@ func _on_action_pressed(action: Dictionary):
         clear_preview()
         return
 
-    # Действия с превью (постройка улучшения, разведение, спец-действие).
+    # Действия с превью (постройка улучшения, разведение, спец-действие,
+    # улучшение дороги).
     var eff_res_for_preview = action.get("target_res_id", null)
     if eff_res_for_preview == null or eff_res_for_preview == "":
         eff_res_for_preview = MapHelpers.get_effective_resource(main_map.get_tile_data(_selected_hex.row, _selected_hex.col))
@@ -1149,7 +1234,11 @@ func _on_action_pressed(action: Dictionary):
         "action_id": action.get("action_id", ""),
         "label": action.get("label", ""),
         "eff_res": eff_res_for_preview,
-        "selected_culture_id": null
+        "selected_culture_id": null,
+        # Уровень дороги по умолчанию — лучший доступный. Именно его
+        # предлагает правило «по умолчанию предлагаются самые продвинутые
+        # версии»; любой другой игрок выбирает кнопкой в превью.
+        "road_level": GameData.get_max_unlocked_road_level(),
     }
     _refresh()
 
@@ -1173,7 +1262,12 @@ func _build_preview(row: int, col: int, tile: Dictionary):
         # Состояние дебаг-флага входит в снапшот: переключение «Игнорировать
         # требования строительства» меняет блок превью, и без этого поля он
         # остался бы старым до перевыбора гекса.
-        "ignore_build": CityData.ignore_build_requirements
+        "ignore_build": CityData.ignore_build_requirements,
+        # Уровень дороги — ТОЖЕ входит в снапшот: смена уровня перестраивает
+        # весь блок превью (цену, число участков, подпись), и без этого поля
+        # превью осталось бы от предыдущего уровня — игрок бы увидел цену
+        # тропки, а построил бы тележную дорогу.
+        "road_level": int(preview.get("road_level", GameData.get_max_unlocked_road_level())),
     }
     if _preview_equal(_last_preview_snapshot, snapshot):
         return
@@ -1379,18 +1473,51 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     # разбора «местность/расстояние»: её цена зависит от длины новой
     # трассы, а эти множители к дороге не применяются.
     if type == "special" and _is_road_action(action_id):
+        _build_road_level_selector(int(preview.get("road_level", 1)))
         if not _build_road_preview(row, col, action_id):
             # Трассы нет — подтверждать нечего, кнопка «Начать» блокируется.
             build_btn.disabled = true
         return
 
+    # Улучшение дороги — свой блок: участки уже стоят, платится только
+    # разница уровней, и показывается это по той же схеме, что и постройка.
+    if type == UPGRADE_ROAD_TYPE:
+        _build_road_level_selector(int(preview.get("road_level", 1)))
+        if not _build_road_upgrade_preview(row, col):
+            build_btn.disabled = true
+        return
+
+    # Улучшение: дорога к нему строится вместе с ним, поэтому её уровень —
+    # такой же выбор, как у «Построить дорогу». Селектор ставим ДО расчёта
+    # цены: цена ниже включает доплату за дорогу выбранного уровня, и без
+    # кнопки игрок не видел бы, откуда взялась эта сумма.
+    if type == "build_improvement" or type == "build_breeding":
+        _build_road_level_selector(int(preview.get("road_level", 1)))
+
     # Стоимость труда: детальный расчёт (база, местность, расстояние).
-    var cost_data = MapHelpers.get_improvement_work_cost(cost_imp_id, row, col, main_map.tile_data, main_map.city_row, main_map.city_col)
+    # Дорога к улучшению строится вместе с ним, поэтому её цена — часть
+    # цены улучшения. Расчёт берём из main_map (тот же источник, что и в
+    # build_manager), иначе превью показало бы цену улучшения БЕЗ дороги,
+    # а списалось бы с дорогой.
+    var road_level := int(preview.get("road_level", 1))
+    var cost_data = main_map.get_improvement_work_cost(cost_imp_id, row, col, road_level)
+    var road_cost := int(cost_data.get("road_cost", 0))
     var cost_label = Label.new()
     cost_label.text = tr("Cost: %d work") % cost_data["cost"]
     cost_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     cost_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
     _preview_container.add_child(cost_label)
+
+    # Доплата за дорогу к улучшению — отдельной строкой: игрок видит, что
+    # часть цены относится не к самому улучшению. Тропка бесплатна, и тогда
+    # строка не показывается вовсе — платить нечего.
+    if road_cost > 0:
+        var road_hint := Label.new()
+        road_hint.text = tr(" Road to the city (%s): %d work") % [
+            GameData.get_road_name(road_level), road_cost]
+        road_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        road_hint.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
+        _preview_container.add_child(road_hint)
 
     # Детализация стоимости (переехала сюда из расширенного тултипа).
     var base_label = Label.new()
@@ -1449,33 +1576,93 @@ func _add_instant_hint() -> void:
     hint.add_theme_color_override("font_color", Color(0.9, 0.9, 0.5))
     _preview_container.add_child(hint)
 
-# Синхронизирует «призрачную» дорогу на карте с текущим превью. Маршрут
-# показывается только для превью спецдействия «Построить дорогу» на выделенном
-# гексе и только если трасса вообще есть; во всех остальных случаях маршрут
-# снимается. Вызывается из _refresh(), поэтому покрывает и ESC, и клик по
-# другому гексу, и подтверждение постройки.
+# Синхронизирует «призрачную» дорогу и подсветку МАРШРУТА на карте с текущим
+# состоянием панели. Три случая, и порядок важен:
+#   · открыто превью улучшения дороги — рисуем призрак улучшаемых участков
+#     (тот же стиль, что и при постройке, — участки уже стоят, но игрок должен
+#     видеть, какой из них улучшается);
+#   · открыто превью «Построить дорогу» — рисуем новые сегменты плана;
+#   · превью нет — рисуем СУЩЕСТВУЮЩИЙ маршрут выбранного гекса до города.
+# Последнее и есть требование «при нажатии на улучшение показывать маршрут»:
+# без открытого превью игрок видит, по каким именно дорогам едет его груз.
+# Вызывается из _refresh(), поэтому покрывает и ESC, и клик по другому гексу,
+# и подтверждение постройки.
 func _sync_road_preview_on_map() -> void:
     if main_map == null or main_map.map_renderer == null or _selected_hex == null:
         _set_map_road_preview({})
         return
-    if _preview_action == null \
-            or str(_preview_action.get("type", "")) != "special" \
-            or not _is_road_action(str(_preview_action.get("action_id", ""))):
+    var row := int(_selected_hex.row)
+    var col := int(_selected_hex.col)
+    var preview_type := ""
+    var action_id := ""
+    if _preview_action != null:
+        preview_type = str(_preview_action.get("type", ""))
+        action_id = str(_preview_action.get("action_id", ""))
+        if action_id != "" and not _is_road_action(action_id):
+            action_id = ""
+    if preview_type == UPGRADE_ROAD_TYPE:
+        _set_map_road_preview(_get_upgrade_preview_segments(row, col))
+        return
+    if action_id != "":
+        var plan: Dictionary = main_map.get_road_plan(row, col)
+        if not plan.get("ok", false):
+            # Трассы нет (например, к городку не разведан путь) — показывать
+            # нечего, панель об этом уже сказала строкой с причиной.
+            _set_map_road_preview({})
+            return
+        _set_map_road_preview(main_map.road_manager.get_plan_new_segments(plan))
+        return
+    if preview_type != "":
+        # Открыто превью другого действия: маршрут не показываем, чтобы две
+        # подсветки не спорили за карту.
         _set_map_road_preview({})
         return
-    var plan: Dictionary = main_map.get_road_plan(
-            int(_selected_hex.row), int(_selected_hex.col))
-    if not plan.get("ok", false):
-        # Трассы нет (например, к городку не разведан путь) — показывать
-        # нечего, панель об этом уже сказала строкой с причиной.
-        _set_map_road_preview({})
-        return
-    _set_map_road_preview(main_map.road_manager.get_plan_new_segments(plan))
+    # Превью закрыто: призрак снимаем ВСЕГДА (иначе он остался бы висеть
+    # после ESC), и вместо него показываем существующий маршрут гекса.
+    _set_map_road_preview({})
+    _set_map_route_display(_get_route_display_segments(row, col))
+
+# Участки существующего маршрута выбранного гекса — для подсветки на карте.
+# Пусто (не ошибка) у гексов без дороги, у самого города и у гексов вне
+# влияния: там маршрута нет и показывать нечего.
+func _get_route_display_segments(row: int, col: int) -> Dictionary:
+    if not main_map.has_method("get_route_to_city"):
+        return {}
+    var route: Dictionary = main_map.get_route_to_city(row, col)
+    if not route.get("ok", false):
+        return {}
+    var segments: Dictionary = {}
+    for key in route.get("segments", []):
+        segments[str(key)] = true
+    return segments
+
+# Участки, которые улучшит подтверждённое превью «Улучшить дорогу». Берём
+# те же шаги, из которых потом стартует проект, — иначе подсветка и реальная
+# стройка разошлись бы.
+func _get_upgrade_preview_segments(row: int, col: int) -> Dictionary:
+    var segments: Dictionary = {}
+    var road_level := int(_preview_action.get("road_level", 1))
+    var breakdown: Dictionary = main_map.get_road_upgrade_breakdown(row, col, road_level)
+    if not breakdown.get("ok", false):
+        return segments
+    for step in breakdown.get("steps", []):
+        for key in step.get("ghost", {}).keys():
+            segments[str(key)] = true
+    return segments
 
 func _set_map_road_preview(segments: Dictionary) -> void:
     if main_map == null or main_map.map_renderer == null:
         return
     main_map.map_renderer.set_road_preview_segments(segments)
+    # Подсветка маршрута и призрак превью не должны гореть одновременно:
+    # это разные смыслы (существующий маршрут vs. то, что будет построено).
+    if not segments.is_empty():
+        main_map.map_renderer.set_route_segments({})
+
+func _set_map_route_display(segments: Dictionary) -> void:
+    if main_map == null or main_map.map_renderer == null:
+        return
+    main_map.map_renderer.set_route_segments(segments)
 
 # Действие ли это дорога (спецдействие build_road)?
 func _is_road_action(action_id: String) -> bool:
@@ -1483,10 +1670,130 @@ func _is_road_action(action_id: String) -> bool:
         return false
     return str(GameData.special_actions.get(action_id, {}).get("action_type", "")) == "road"
 
+# --- Выбор уровня дороги ---
+# По кнопке на каждый ИССЛЕДОВАННЫЙ уровень, от лучшего к худшему. Общий блок
+# для трёх случаев — «Построить дорогу», постройка улучшения (дорога к нему
+# строится вместе с ним) и «Улучшить дорогу»: правило выбора одно, поэтому и
+# вид один.
+#
+# Кнопка показывает уровень ПРОСВЕЧЕННЫМ («free» у тропки), иначе игрок не
+# понимает, почему её нажатие ничего не стоит.
+func _build_road_level_selector(selected_level: int) -> void:
+    var levels: Array = GameData.get_unlocked_road_levels()
+    if levels.size() <= 1:
+        # Выбирать нечего: доступен только базовый уровень. Молчаливый пропуск
+        # лучше серой кнопки — игрок и так видит единственный вариант в цене.
+        return
+
+    var label := Label.new()
+    label.text = tr("Road level:")
+    label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+    _preview_container.add_child(label)
+
+    var flow := FlowContainer.new()
+    flow.add_theme_constant_override("h_separation", 4)
+    flow.add_theme_constant_override("v_separation", 4)
+    _preview_container.add_child(flow)
+
+    for i in range(levels.size() - 1, -1, -1):
+        var level := int(levels[i])
+        var level_name := GameData.get_road_name(level)
+        var cost := GameData.get_road_work_cost(level)
+        var speed := GameData.get_road_max_speed(level)
+        var btn := Button.new()
+        btn.toggle_mode = true
+        btn.set_pressed_no_signal(level == selected_level)
+        # Тултип несёт обе цифры уровня: цену участка и пропускную
+        # способность. Без них кнопка «Cart Road» ничего не объясняет.
+        btn.tooltip_text = tr("%s: up to %d units/sec per section, base %d work per section") % [level_name, speed, cost]
+        var shown_name: String = level_name if cost > 0 \
+                else tr("%s (free)") % level_name
+        btn.text = shown_name
+        # Явная рамка у выбранного уровня — по образцу выбора культуры.
+        var pressed_style = StyleBoxFlat.new()
+        pressed_style.set_border_width_all(2)
+        pressed_style.border_color = Color(1.0, 0.85, 0.2)
+        btn.add_theme_stylebox_override("pressed", pressed_style)
+        btn.add_theme_stylebox_override("hover_pressed", pressed_style)
+        btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+        var chosen := level
+        btn.pressed.connect(func():
+            _select_preview_road_level(chosen)
+        )
+        flow.add_child(btn)
+
+# Выбор уровня дороги в превью. Уровень пишется в _preview_action, и превью
+# перестраивается: снапшот включает road_level (см. _build_preview), поэтому
+# блок не остаётся от прежнего уровня.
+func _select_preview_road_level(level: int):
+    if _preview_action == null:
+        return
+    _preview_action["road_level"] = level
+    _refresh()
+
+# Блок превью для улучшения дороги: какие участки и до какого уровня, и
+# сколько это стоит. Возвращает false, если улучшать нечего — тогда кнопка
+# «Начать» блокируется, и игрок видит причину.
+func _build_road_upgrade_preview(row: int, col: int) -> bool:
+    var road_level := int(_preview_action.get("road_level", 1))
+    var breakdown: Dictionary = main_map.get_road_upgrade_breakdown(row, col, road_level)
+    if not breakdown.get("ok", false):
+        var warn := Label.new()
+        warn.text = " %s" % str(breakdown.get("reason", tr("Nothing to upgrade")))
+        warn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        warn.add_theme_color_override("font_color", Color(0.9, 0.6, 0.6))
+        _preview_container.add_child(warn)
+        return false
+
+    var target_label := Label.new()
+    target_label.text = tr(" Destination: from the city to this hex along the existing road")
+    target_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    target_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
+    _preview_container.add_child(target_label)
+
+    var cost_label := Label.new()
+    cost_label.text = tr(" Cost: %d work") % int(breakdown.get("cost", 0))
+    cost_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    cost_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+    _preview_container.add_child(cost_label)
+
+    var base_label := Label.new()
+    base_label.text = tr(" Base: %d work per section") % GameData.get_road_work_cost(road_level)
+    base_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    base_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+    _preview_container.add_child(base_label)
+
+    var sections_label := Label.new()
+    sections_label.text = tr(" Sections to upgrade: %d") % int(breakdown.get("segments", 0))
+    sections_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    sections_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+    _preview_container.add_child(sections_label)
+
+    # Что получится по скорости: узкое место маршрута после улучшения. Без
+    # этой строки игрок видит только цену и не понимает, что именно он
+    # покупает — ведь улучшается ради пропускной способности.
+    var route: Dictionary = main_map.get_route_to_city(row, col)
+    if route.get("ok", false):
+        var speed_label := Label.new()
+        speed_label.text = tr(" Bottleneck: %d → %d units/sec, average %d units/sec") % [
+            int(route.get("min_speed", 0)),
+            GameData.get_road_max_speed(road_level),
+            int(ceil(float(GameData.get_road_max_speed(road_level)))),
+        ]
+        speed_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        speed_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
+        _preview_container.add_child(speed_label)
+
+    if CityData.ignore_build_requirements:
+        _add_instant_hint()
+    return true
+
 # Блок превью для дороги: куда пойдёт трасса, из скольких участков она
 # состоит и сколько это труда. Возвращает false, если трассы нет — тогда
 # кнопка «Начать» блокируется, а игрок видит причину.
 func _build_road_preview(row: int, col: int, action_id: String) -> bool:
+    var road_level := int(_preview_action.get("road_level", 1))
     var plan: Dictionary = main_map.get_road_plan(row, col)
     if not plan.get("ok", false):
         var warn := Label.new()
@@ -1521,7 +1828,7 @@ func _build_road_preview(row: int, col: int, action_id: String) -> bool:
     # по построению, а не пересчитывается отдельно.
     # Тип указан явно: main_map в панели не типизирован, а без подсказки
     # Godot не может вывести тип возврата динамического вызова.
-    var breakdown: Dictionary = main_map.get_road_cost_breakdown(row, col, action_id)
+    var breakdown: Dictionary = main_map.get_road_cost_breakdown(row, col, road_level)
     if not breakdown.get("ok", false):
         var warn2 := Label.new()
         warn2.text = " %s" % str(breakdown.get("reason", tr("Cannot build a road")))
@@ -1544,7 +1851,7 @@ func _build_road_preview(row: int, col: int, action_id: String) -> bool:
     var step_text := tr(" Per section: %d work") % min_step
     if max_step != min_step:
         step_text = tr(" Per section: %d to %d work") % [min_step, max_step]
-    step_text += tr(" (base %d)") % int(GameData.special_actions.get(action_id, {}).get("work_cost", 0))
+    step_text += tr(" (base %d)") % GameData.get_road_work_cost(road_level)
     var step_label := Label.new()
     step_label.text = step_text
     step_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1614,6 +1921,7 @@ func _preview_equal(a: Dictionary, b: Dictionary) -> bool:
         and a.get("target_res_id", null) == b.get("target_res_id", null) \
         and a.get("eff_res", "") == b.get("eff_res", "") \
         and a.get("selected_culture_id", null) == b.get("selected_culture_id", null) \
+        and int(a.get("road_level", 1)) == int(b.get("road_level", 1)) \
         and a.get("ignore_build", false) == b.get("ignore_build", false)
 
 # Подтверждение постройки из превью.
@@ -1627,9 +1935,10 @@ func _confirm_build():
     var imp_id = preview.get("imp_id", "")
     var target_res_id = preview.get("target_res_id", null)
     var action_id = preview.get("action_id", "")
+    var road_level = int(preview.get("road_level", GameData.get_max_unlocked_road_level()))
 
     if type == "build_improvement":
-        build_manager.start_build(row, col, imp_id, target_res_id)
+        build_manager.start_build(row, col, imp_id, target_res_id, road_level)
     elif type == "build_breeding":
         # Строим выбранное улучшение под культуру; если культура не задана или
         # не подходит, берём первую подходящую.
@@ -1638,9 +1947,11 @@ func _confirm_build():
         if not _is_suitable_culture(row, col, chosen_animal, breeding_imp):
             chosen_animal = _first_suitable_culture(row, col, breeding_imp)
         if chosen_animal != null:
-            build_manager.start_build(row, col, breeding_imp, chosen_animal)
+            build_manager.start_build(row, col, breeding_imp, chosen_animal, road_level)
+    elif type == UPGRADE_ROAD_TYPE:
+        main_map.start_road_upgrade_project(row, col, road_level)
     elif type == "special":
-        build_manager.start_build(row, col, action_id)
+        build_manager.start_build(row, col, action_id, null, road_level)
 
     # После подтверждения сбрасываем превью, но оставляем выделение.
     _preview_action = null

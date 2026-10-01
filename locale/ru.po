@@ -135,6 +135,12 @@ msgstr " = %s / сек"
 msgid " Base: %d work"
 msgstr " База: %d труда"
 
+msgid " Base: %d work per section"
+msgstr " База: %d труда за участок"
+
+msgid " Bottleneck: %d → %d units/sec, average %d units/sec"
+msgstr " Узкое место: %d → %d ед./сек, среднее %d ед./сек"
+
 msgid " Construction technologies: ×%.2f"
 msgstr " Технологии строительства: ×%.2f"
 
@@ -146,6 +152,9 @@ msgstr " Стоимость: %d труда"
 
 msgid " Debug: instant and free"
 msgstr " Дебаг: выполняется мгновенно и бесплатно"
+
+msgid " Destination: from the city to this hex along the existing road"
+msgstr " Куда: от города до этого гекса по существующей дороге"
 
 msgid " Destination: from the city's nearest road to this hex"
 msgstr " Куда: от ближайшей дороги города до этого гекса"
@@ -176,6 +185,18 @@ msgstr " За участок: %d труда"
 
 msgid " Produces:"
 msgstr " Производит:"
+
+msgid " Road to the city (%s): %d work"
+msgstr " Дорога до города (%s): %d труда"
+
+msgid " Road: %s"
+msgstr " Дорога: %s"
+
+msgid " Route to the city: %d sections, average %.1f units/sec (bottleneck %d)"
+msgstr " Маршрут до города: %d участков, средняя %.1f ед./сек (узкое место: %d)"
+
+msgid " Sections to upgrade: %d"
+msgstr " Участков к улучшению: %d"
 
 msgid " Terrain on the route: %s"
 msgstr " Местность на трассе: %s"
@@ -270,6 +291,12 @@ msgstr "%s (база %d): %s"
 msgid "%s (base %s)"
 msgstr "%s (база %s)"
 
+msgid "%s (free)"
+msgstr "%s (бесплатно)"
+
+msgid "%s (level %d, up to %d units/sec per section)"
+msgstr "%s (уровень %d, до %d ед./сек на участок)"
+
 msgid "%s [%s] (science: %d)"
 msgstr "%s [%s] (наука: %d)"
 
@@ -314,6 +341,12 @@ msgstr "%s: товар без цены"
 
 msgid "%s: quality priority — %s"
 msgstr "%s: приоритет качества — %s"
+
+msgid "%s: up to %d units/sec per section"
+msgstr "%s: до %d ед./сек на участок"
+
+msgid "%s: up to %d units/sec per section, base %d work per section"
+msgstr "%s: до %d ед./сек на участок, база %d труда за участок"
 
 msgid "+%d%% (Fresh water access)"
 msgstr "+%d%% (Доступ к пресной воде)"
@@ -372,6 +405,9 @@ msgstr "Городское здание торговли. Его построй�
 msgid "A collection of written works, where scholars produce science."
 msgstr "Собрание письменных трудов, где учёные производят Науку."
 
+msgid "A leveled road for carts. Three times the load of a trail."
+msgstr "Ровная дорога для телег. Втрое больше, чем везёт тропка."
+
 msgid "A long shed for twisting ropes and cables."
 msgstr "Длинное помещение для свивания канатов и тросов."
 
@@ -398,6 +434,9 @@ msgstr "Диапазон — потому что у товаров группы 
 
 msgid "A road to the hex already exists"
 msgstr "К гексу уже проложена дорога"
+
+msgid "A simple footpath worn into the ground. Free, but it carries very little."
+msgstr "Простая тропа, протоптанная в земле. Бесплатна, но мало что везёт."
 
 msgid "A technology is being researched"
 msgstr "Изучается технология"
@@ -887,6 +926,9 @@ msgstr "Кармин"
 
 msgid "Carpenter's Workshop"
 msgstr "Плотницкая мастерская"
+
+msgid "Cart Road"
+msgstr "Тележная дорога"
 
 msgid "Carthamin"
 msgstr "Картамин"
@@ -1944,6 +1986,9 @@ msgstr "Нет разовых расходов в казну за последн
 msgid "No resources in the influence ring"
 msgstr "В кольце влияния нет ресурсов"
 
+msgid "No road connects this hex to the city"
+msgstr "Дороги от этого гекса до города нет"
+
 msgid "No scouted route from the city to the town — send scouts there"
 msgstr "Нет разведанного пути от города до городка — отправьте туда разведчиков"
 
@@ -1964,6 +2009,12 @@ msgstr "Нет"
 
 msgid "Not enough coins in the treasury! Need %d, treasury has %d"
 msgstr "Недостаточно монет в казне! Нужно %d, в казне %d"
+
+msgid "Nothing to upgrade"
+msgstr "Улучшать нечего"
+
+msgid "Nothing to upgrade: %s"
+msgstr "Улучшать нечего: %s"
 
 msgid "OK"
 msgstr "Ок"
@@ -2286,6 +2337,9 @@ msgstr "Снижает вклад расстояния от города в ст
 msgid "Reduces the effect of distance from the city on the work cost of building improvements by 30%."
 msgstr "Снижает вклад расстояния от города в стоимость труда при строительстве улучшений на 30%."
 
+msgid "Reduces the effect of distance from the city on the work cost of building improvements by 30%.\nUnlocks the Cart Road (road level 2): up to 30 units/sec per section instead of 10."
+msgstr "Снижает вклад расстояния от города в стоимость труда при строительстве улучшений на 30%.\nОткрывает тележную дорогу (уровень дороги 2): до 30 ед./сек на участок вместо 10."
+
 msgid "Reed Boat"
 msgstr "Тростниковая лодка"
 
@@ -2376,11 +2430,20 @@ msgstr "Дорога"
 msgid "Road built!"
 msgstr "Дорога построена!"
 
+msgid "Road level %d requires a technology"
+msgstr "Для уровня дороги %d нужна технология"
+
+msgid "Road level:"
+msgstr "Уровень дороги:"
+
 msgid "Road to town \"%s\""
 msgstr "Дорога до городка «%s»"
 
 msgid "Road to town \"%s\" built — trade available!"
 msgstr "Дорога до городка «%s» построена — торговля доступна!"
+
+msgid "Road: %s"
+msgstr "Дорога: %s"
 
 msgid "Roads cannot be built over water"
 msgstr "По воде дорога не строится"
@@ -2883,6 +2946,9 @@ msgstr "Это декоративное улучшение городка — н
 msgid "This is inside another town's influence ring — cannot build"
 msgstr "Здесь — кольцо влияния чужого городка, строить нельзя"
 
+msgid "This is the city itself"
+msgstr "Это сам город"
+
 msgid "This revolutionary invention made it possible to create an affordable, practical material for writing."
 msgstr "Революционное изобретение позволило создать доступный и практичный материал для письма."
 
@@ -2921,6 +2987,9 @@ msgstr "Торговля"
 
 msgid "Trade unavailable: there is no road from the city to this town"
 msgstr "Торговля недоступна: от города нет дороги до этого городка"
+
+msgid "Trail"
+msgstr "Тропка"
 
 msgid "Treasury: %d"
 msgstr "Казна: %d"
@@ -3000,6 +3069,9 @@ msgstr "Открывает рецепты изготовления ювелир�
 msgid "Unlocks salt extraction in salt deposits (on the surface of salt lakes and in salt mines) and the salt pond."
 msgstr "Открывает возможность добычи соли в соляных месторождениях (на поверхности соляных озёр и в соляных шахтах) и соляном пруду."
 
+msgid "Unlocks the Cart Road (road level 2): 30 units/sec per section."
+msgstr "Открывает тележную дорогу (уровень дороги 2): 30 ед./сек на участок."
+
 msgid "Unlocks the ability to find and gather native metals."
 msgstr "Открывает возможность находить и собирать самородные металлы."
 
@@ -3024,11 +3096,23 @@ msgstr "Улучшение"
 msgid "Upgrade of %s started (%.0f work)"
 msgstr "Улучшение %s начато (%.0f труда)"
 
+msgid "Upgrade road"
+msgstr "Улучшить дорогу"
+
+msgid "Upgrade section %d/%d"
+msgstr "Улучшение участка %d/%d"
+
+msgid "Upgrade the road from this hex to the city to %s (%d units/sec per section, now the bottleneck is %d units/sec)"
+msgstr "Улучшить дорогу от этого гекса до города до уровня «%s» (%d ед./сек на участок, сейчас узкое место: %d ед./сек)"
+
 msgid "Upgrade to"
 msgstr "Улучшить до"
 
 msgid "Upgraded: %s"
 msgstr "Улучшено: %s"
+
+msgid "Upgrading the road to the city: %d sections"
+msgstr "Улучшение дороги до города: %d участков"
 
 msgid "Upgrading to \"%s\""
 msgstr "Идёт улучшение до «%s»"
@@ -3201,6 +3285,9 @@ msgstr "нет сухопутного пути от города"
 msgid "no path"
 msgstr "нет пути"
 
+msgid "no route to the city"
+msgstr "нет маршрута до города"
+
 msgid "none"
 msgstr "нет"
 
@@ -3218,6 +3305,9 @@ msgstr "spawn_count ресурса '%s'"
 
 msgid "the construction"
 msgstr "стройку"
+
+msgid "the route is already at this level"
+msgstr "маршрут уже этого уровня"
 
 msgid "the town"
 msgstr "городка"

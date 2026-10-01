@@ -168,13 +168,21 @@ static func get_road_distance_cost_modifier() -> float:
 static func get_road_distance_mult(distance: int) -> float:
     return 1.0 + float(distance) * get_road_distance_cost_modifier()
 
-## Стоимость труда за ОДИН участок дороги, которую строит игрок (спецдействие
-## `build_road`, action_type "road"). Участок соединяет два соседних гекса, и
+## Стоимость труда за ОДИН участок дороги. Участок соединяет два соседних гекса, и
 ## цена зависит от гекса, который шаг ПРИСОЕДИНЯЕТ к сети (to_hex): `from`
 ## уже в сети и за него заплатили, когда дорога дошла до него.
 ##
+## road_level — уровень дороги (data/roads.json). Раньше первым аргументом был
+## id спецдействия и база бралась из его work_cost; теперь база — work_cost
+## уровня. Разница не косметическая: участок принадлежит уровню, и уровень же
+## определяет, сколько такой участок везёт (max_speed). Два разных файла с
+## одной и той же ценой разошлись бы при первой правке баланса, и «Построить
+## дорогу» показало бы цену тропки вместо выбранной игроком.
+##
 ## Множители, в порядке применения:
-##   work_cost (из special_actions.json) — база за участок;
+##   work_cost уровня (data/roads.json) — база за участок; 0 у тропки, поэтому
+##     тропка бесплатна и участок не тарифицируется вовсе (см. main_map:
+##     улучшение всегда получает дорогу к городу, но платить за тропку не нужно);
 ##   work_cost_mult (местность to_hex) — в горах дороже, в болотах тоже;
 ##   дальность от города (to_hex) — тащить материалы дальше;
 ##   «Колесо» (improvement_distance_cost) — снижает вклад дальности;
@@ -185,16 +193,14 @@ static func get_road_distance_mult(distance: int) -> float:
 ## берут надбавку. Каждый участок оплачивается по своим merits — цена на нём
 ## видна на его прогресс-баре.
 static func get_road_step_work_cost(
-    action_id: String,
+    road_level: int,
     to_row: int,
     to_col: int,
     city_row: int,
     city_col: int,
     terrain_id: String
 ) -> Dictionary:
-    var base_cost := 0.0
-    if GameData.special_actions.has(action_id):
-        base_cost = float(GameData.special_actions[action_id].get("work_cost", 0))
+    var base_cost := float(GameData.get_road_work_cost(road_level))
 
     var distance := HexUtils.hex_distance(to_row, to_col, city_row, city_col)
     var terrain_mult := get_terrain_work_mult(terrain_id)
@@ -211,8 +217,20 @@ static func get_road_step_work_cost(
     var final_cost := int(ceil(base_cost * terrain_mult * distance_mult_total \
             * construction_tech_mult))
 
+    # Бесплатный уровень (тропка) тарифицируется нулём, а не единицей.
+    # Раньше здесь стоял maxi(1, …): цена участка всегда была положительной,
+    # потому что база бралась из work_cost спецдействия, где было 10. С
+    # появлением уровней база стала свойством уровня, и у тропки она 0 — она
+    # строится вместе с улучшением бесплатно. maxi(1, …) превратил бы её в
+    # платный участок и сломал бы и бесплатную постройку улучшения, и
+    # превью «Улучшить дорогу» (там 0-шаговый шаг был бы шагом без работы).
+    # Для платных уровней потолок снизу остаётся: множители меньше единицы
+    # не должны давать отрицательный или нулевой труд.
+    var cost := 0 if base_cost <= 0.0 else maxi(1, final_cost)
+
     return {
-        "cost": maxi(1, final_cost),
+        "cost": cost,
+        "road_level": road_level,
         "base_cost": int(base_cost),
         "terrain_id": terrain_id,
         "terrain_name": GameData.terrains.get(terrain_id, {}).get("name", terrain_id),

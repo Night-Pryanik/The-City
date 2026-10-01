@@ -24,6 +24,10 @@ var professions: Dictionary = {} # id -> данные профессии (data/p
 var consumption_rules: Array = [] # записи потребления из data/consumption.json
 var city_names: Array = [] # варианты названий города (data/city_names.json)
 var game_balance: Dictionary = {} # игровой баланс (data/game_balance.json)
+# Уровни дорог (data/roads.json). roads_by_level — уровень -> данные уровня:
+# участок сети дорог хранит номер уровня, поэтому нужен именно такой индекс.
+var roads: Array = []
+var roads_by_level: Dictionary = {}
 
 # Откуда пришла каждая сущность: "коллекция:id" → { "file": String, "line": int }.
 # Заполняется при чтении файлов (_remember_sources), потому что после слияния
@@ -53,6 +57,7 @@ const SOURCE_COLLECTIONS := [
     "categories",
     "professions",
     "product_groups",
+    "roads",
 ]
 
 func load_all_data():
@@ -125,6 +130,15 @@ func load_all_data():
     var cn = merged_data.get("city_names", [])
     if cn is Array:
         city_names = cn
+
+    # НОВОЕ: загружаем уровни дорог (data/roads.json). roads_by_level нужен
+    # участку сети дорог: он хранит номер уровня, а не id.
+    roads = []
+    roads_by_level = {}
+    for road in merged_data.get("roads", []):
+        if road is Dictionary:
+            roads.append(road)
+            roads_by_level[int(road.get("level", 0))] = road
 
     # НОВОЕ: загружаем данные о степенях качества ресурсов.
     # В data/qualities.json ключи лежат на верхнем уровне (quality_levels,

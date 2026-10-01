@@ -81,6 +81,12 @@ msgstr ""
 msgid "\nResource: unknown (send scouts)"
 msgstr ""
 
+msgid "\nRoad: %s"
+msgstr ""
+
+msgid "\nRoads: %s"
+msgstr ""
+
 msgid "  Subgroup: "
 msgstr ""
 
@@ -135,6 +141,12 @@ msgstr ""
 msgid " Base: %d work"
 msgstr ""
 
+msgid " Base: %d work per section"
+msgstr ""
+
+msgid " Bottleneck: %d → %d units/sec, average %d units/sec"
+msgstr ""
+
 msgid " Construction technologies: ×%.2f"
 msgstr ""
 
@@ -145,6 +157,9 @@ msgid " Cost: %d work"
 msgstr ""
 
 msgid " Debug: instant and free"
+msgstr ""
+
+msgid " Destination: from the city to this hex along the existing road"
 msgstr ""
 
 msgid " Destination: from the city's nearest road to this hex"
@@ -175,6 +190,18 @@ msgid " Per section: %d work"
 msgstr ""
 
 msgid " Produces:"
+msgstr ""
+
+msgid " Road to the city (%s): %d work"
+msgstr ""
+
+msgid " Road: %s"
+msgstr ""
+
+msgid " Route to the city: %d sections, average %.1f units/sec (bottleneck %d)"
+msgstr ""
+
+msgid " Sections to upgrade: %d"
 msgstr ""
 
 msgid " Terrain on the route: %s"
@@ -270,6 +297,15 @@ msgstr ""
 msgid "%s (base %s)"
 msgstr ""
 
+msgid "%s (free)"
+msgstr ""
+
+msgid "%s (level %d)"
+msgstr ""
+
+msgid "%s (level %d, up to %d units/sec per section)"
+msgstr ""
+
 msgid "%s [%s] (science: %d)"
 msgstr ""
 
@@ -313,6 +349,12 @@ msgid "%s: goods without a price"
 msgstr ""
 
 msgid "%s: quality priority — %s"
+msgstr ""
+
+msgid "%s: up to %d units/sec per section"
+msgstr ""
+
+msgid "%s: up to %d units/sec per section, base %d work per section"
 msgstr ""
 
 msgid "+%d%% (Fresh water access)"
@@ -372,6 +414,9 @@ msgstr ""
 msgid "A collection of written works, where scholars produce science."
 msgstr ""
 
+msgid "A leveled road for carts. Three times the load of a trail."
+msgstr ""
+
 msgid "A long shed for twisting ropes and cables."
 msgstr ""
 
@@ -397,6 +442,9 @@ msgid "A range is shown because the goods in the group have different base price
 msgstr ""
 
 msgid "A road to the hex already exists"
+msgstr ""
+
+msgid "A simple footpath worn into the ground. Free, but it carries very little."
 msgstr ""
 
 msgid "A technology is being researched"
@@ -886,6 +934,9 @@ msgid "Carmine"
 msgstr ""
 
 msgid "Carpenter's Workshop"
+msgstr ""
+
+msgid "Cart Road"
 msgstr ""
 
 msgid "Carthamin"
@@ -1944,6 +1995,9 @@ msgstr ""
 msgid "No resources in the influence ring"
 msgstr ""
 
+msgid "No road connects this hex to the city"
+msgstr ""
+
 msgid "No scouted route from the city to the town — send scouts there"
 msgstr ""
 
@@ -1963,6 +2017,12 @@ msgid "None"
 msgstr ""
 
 msgid "Not enough coins in the treasury! Need %d, treasury has %d"
+msgstr ""
+
+msgid "Nothing to upgrade"
+msgstr ""
+
+msgid "Nothing to upgrade: %s"
 msgstr ""
 
 msgid "OK"
@@ -2286,6 +2346,9 @@ msgstr ""
 msgid "Reduces the effect of distance from the city on the work cost of building improvements by 30%."
 msgstr ""
 
+msgid "Reduces the effect of distance from the city on the work cost of building improvements by 30%.\nUnlocks the Cart Road (road level 2): up to 30 units/sec per section instead of 10."
+msgstr ""
+
 msgid "Reed Boat"
 msgstr ""
 
@@ -2376,10 +2439,19 @@ msgstr ""
 msgid "Road built!"
 msgstr ""
 
+msgid "Road level %d requires a technology"
+msgstr ""
+
+msgid "Road level:"
+msgstr ""
+
 msgid "Road to town \"%s\""
 msgstr ""
 
 msgid "Road to town \"%s\" built — trade available!"
+msgstr ""
+
+msgid "Road: %s"
 msgstr ""
 
 msgid "Roads cannot be built over water"
@@ -2883,6 +2955,9 @@ msgstr ""
 msgid "This is inside another town's influence ring — cannot build"
 msgstr ""
 
+msgid "This is the city itself"
+msgstr ""
+
 msgid "This revolutionary invention made it possible to create an affordable, practical material for writing."
 msgstr ""
 
@@ -2920,6 +2995,9 @@ msgid "Trade"
 msgstr ""
 
 msgid "Trade unavailable: there is no road from the city to this town"
+msgstr ""
+
+msgid "Trail"
 msgstr ""
 
 msgid "Treasury: %d"
@@ -3000,6 +3078,9 @@ msgstr ""
 msgid "Unlocks salt extraction in salt deposits (on the surface of salt lakes and in salt mines) and the salt pond."
 msgstr ""
 
+msgid "Unlocks the Cart Road (road level 2): 30 units/sec per section."
+msgstr ""
+
 msgid "Unlocks the ability to find and gather native metals."
 msgstr ""
 
@@ -3024,10 +3105,22 @@ msgstr ""
 msgid "Upgrade of %s started (%.0f work)"
 msgstr ""
 
+msgid "Upgrade road"
+msgstr ""
+
+msgid "Upgrade section %d/%d"
+msgstr ""
+
+msgid "Upgrade the road from this hex to the city to %s (%d units/sec per section, now the bottleneck is %d units/sec)"
+msgstr ""
+
 msgid "Upgrade to"
 msgstr ""
 
 msgid "Upgraded: %s"
+msgstr ""
+
+msgid "Upgrading the road to the city: %d sections"
 msgstr ""
 
 msgid "Upgrading to \"%s\""
@@ -3201,6 +3294,9 @@ msgstr ""
 msgid "no path"
 msgstr ""
 
+msgid "no route to the city"
+msgstr ""
+
 msgid "none"
 msgstr ""
 
@@ -3217,6 +3313,9 @@ msgid "spawn_count of resource '%s'"
 msgstr ""
 
 msgid "the construction"
+msgstr ""
+
+msgid "the route is already at this level"
 msgstr ""
 
 msgid "the town"

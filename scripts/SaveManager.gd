@@ -254,7 +254,14 @@ func _serialize_tile_data(main_map: Node) -> Array:
                     # в сейв не пишутся ни для города, ни для городков: сеть
                     # пересчитывается при загрузке, а этого флага хватает как
                     # входных данных (road_manager.rebuild_player_roads).
-                    "road_built": tile.get("road_built", false)
+                    "road_built": tile.get("road_built", false),
+                    # road_level — уровень дороги, которой этот гекс
+                    # подключён к сети (data/roads.json). Сегменты с уровнями,
+                    # как и сами сегменты, в сейв не пишутся, поэтому уровень
+                    # лежит на гексе рядом с road_built: без него сеть
+                    # восстановилась бы сплошной тропкой. Старые сейвы поля не
+                    # содержат — там тропка (уровень 1).
+                    "road_level": tile.get("road_level", 1)
                 })
             else:
                 row_arr.append({})

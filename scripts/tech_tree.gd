@@ -913,6 +913,16 @@ func _get_unlock_items(tech_id: String) -> Array:
         if sa.get("unlock_tech", "") == tech_id:
             _add_unlock_item(result, seen, sa.get("icon", ""), sa.get("name", sa_id))
 
+    # Уровни дорог (data/roads.json, поле unlock_tech). Без них в дереве не было бы
+    # видно, что технология открывает, кроме уже добавленного в технологию
+    # unlock_effects: иконки уровней дорог в дереве полезнее — по ним сразу
+    # видно, насколько дорога станет провезопоспособнее.
+    for road in GameData.roads:
+        if road is Dictionary and str(road.get("unlock_tech", "")) == tech_id:
+            _add_unlock_item(result, seen, "road.svg",
+                    tr("%s: up to %d units/sec per section") % [str(road.get("name", "")),
+                            int(road.get("max_speed", 0))])
+
     # Эффекты-модификаторы технологии (modifiers.json -> tech_modifiers).
     var mods: Dictionary = GameData.modifiers
     for m in mods.get("tech_modifiers", []):

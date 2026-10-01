@@ -132,8 +132,14 @@
       "science_cost": 3.0,
       "icon": "wheel.png",
       "prerequisites": [ [ "pottery" ] ],
-      "description": "Reduces the effect of distance from the city on the work cost of building improvements by 30%.",
-      "flavor": "The wheel is one of humanity's greatest inventions, and it changed trade and war."
+      "description": "Reduces the effect of distance from the city on the work cost of building improvements by 30%.\nUnlocks the Cart Road (road level 2): up to 30 units/sec per section instead of 10.",
+      "flavor": "The wheel is one of humanity's greatest inventions, and it changed trade and war.",
+      "unlock_effects": [
+        {
+          "icon": "road.svg",
+          "name": "Unlocks the Cart Road (road level 2): 30 units/sec per section."
+        }
+      ]
     },
     {
       "id": "plow",

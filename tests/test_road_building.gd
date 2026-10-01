@@ -30,6 +30,9 @@
 #   7. «Призрачная» дорога на карте: пока открыто превью «Построить дорогу»,
 #      маршрут нарисован (только новые сегменты плана) и исчезает вместе с
 #      превью; у городка маршрут целиком идёт по разведанной земле.
+#   8. Уровни дороги (уровень выбран в превью, бесплатная тропка строится
+#      сразу и не занимает очередь проекта). Собственные проверки уровней,
+#      маршрута и улучшения — в tests/test_road_levels.gd.
 extends SceneTree
 
 # Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как
@@ -108,6 +111,18 @@ const CITY_COL := 10
 const TOWN_ROW := 4
 const TOWN_COL := 4
 
+# Первый уровень дороги с ненулевой ценой участка. Уровень 1 (тропка)
+# бесплатен, а проверки формулы цены нуждаются в базе, которую можно
+# умножать на множители. Если платных уровней в данных нет — тест падает
+# здесь, а не молча проверяет нули.
+func _first_paid_road_level(state: Dictionary) -> int:
+    for level in _gdata.get_road_levels():
+        if _gdata.get_road_work_cost(int(level)) > 0:
+            return int(level)
+    check(false, "в roads.json должен быть хотя бы один платный уровень дороги",
+            state)
+    return 1
+
 func _make_map() -> Array:
     var tile_data := []
     for r in range(ROWS):
@@ -152,8 +167,17 @@ func _test_cost_per_hex(state: Dictionary) -> void:
     var sa: Dictionary = _gdata.special_actions.get(ROAD_ACTION_ID, {})
     check(str(sa.get("action_type", "")) == "road",
             "у спецдействия дороги должен быть action_type == \"road\"", state)
-    var per_hex := int(sa.get("work_cost", 0))
-    check(per_hex > 0, "цена за гекс дороги должна быть задана в work_cost", state)
+    check(not sa.has("work_cost"),
+            "цену участка нельзя держать в спецдействии: она свойство уровня дороги",
+            state)
+
+    # База цены участка берётся из УРОВНЯ дороги (data/roads.json), а не из
+    # спецдействия. Проверяем на платном уровне: у тропки база 0 (дорога,
+    # строящаяся вместе с улучшением, бесплатна), и на её месте нечего
+    # умножать на множители.
+    var paid_level := _first_paid_road_level(state)
+    var per_hex: int = _gdata.get_road_work_cost(paid_level)
+    check(per_hex > 0, "цена за участок дороги должна быть задана в roads.json", state)
 
     # Коэффициент дальности участка — из game_balance.json и БЕЗ тех-модификаторов.
     var road_mod: float = float(_gdata.game_balance.get("road_distance_cost_modifier_per_hex", -1.0))
@@ -170,24 +194,31 @@ func _test_cost_per_hex(state: Dictionary) -> void:
     # Цена участка на равнине в 1 гексе от города: база × 1.0 (местность)
     # × множитель дальности. Никакой надбавки за длину трассы.
     var near_price: Dictionary = _mh.get_road_step_work_cost(
-            ROAD_ACTION_ID, CITY_ROW, CITY_COL + 1, CITY_ROW, CITY_COL, "plain")
+            paid_level, CITY_ROW, CITY_COL + 1, CITY_ROW, CITY_COL, "plain")
     var near_expected := int(ceil(per_hex * 1.0 * _mh.get_road_distance_mult(1) \
             * float(near_price.get("construction_tech_mult", 1.0))))
     check(int(near_price.get("cost", -1)) == near_expected,
             "цена участка рядом с городом = база × множитель дальности (ожидалось %d, получено %d)"
                     % [near_expected, int(near_price.get("cost", -1))], state)
     check(int(near_price.get("base_cost", -1)) == per_hex,
-            "база в расчёте должна совпадать с work_cost из данных", state)
+            "база в расчёте должна совпадать с work_cost уровня дороги", state)
+
+    # Тропка бесплатна: множители на нулевой базе не дают «минимальной» цены.
+    # Это тот случай, ради которого в get_road_step_work_cost убрали maxi(1, …).
+    var trail_price: Dictionary = _mh.get_road_step_work_cost(
+            1, CITY_ROW, CITY_COL + 1, CITY_ROW, CITY_COL, "mountain")
+    check(int(trail_price.get("cost", -1)) == 0,
+            "участок тропки должен стоить 0 труда даже в горах", state)
 
     # ДАЛЬШЕ ОТ ГОРОДА — ДОРОЖЕ, на той же местности.
     var far_price: Dictionary = _mh.get_road_step_work_cost(
-            ROAD_ACTION_ID, CITY_ROW - 6, CITY_COL, CITY_ROW, CITY_COL, "plain")
+            paid_level, CITY_ROW - 6, CITY_COL, CITY_ROW, CITY_COL, "plain")
     check(int(far_price.get("cost", 0)) > int(near_price.get("cost", 0)),
             "участок дальше от города должен стоить дороже на той же местности", state)
 
     # ТРУДНАЯ МЕСТНОСТЬ — ДОРОЖЕ, на том же расстоянии.
     var mountain_price: Dictionary = _mh.get_road_step_work_cost(
-            ROAD_ACTION_ID, CITY_ROW, CITY_COL + 1, CITY_ROW, CITY_COL, "mountain")
+            paid_level, CITY_ROW, CITY_COL + 1, CITY_ROW, CITY_COL, "mountain")
     check(int(mountain_price.get("cost", 0)) > int(near_price.get("cost", 0)),
             "участок в горах должен стоить дороже участка на равнине", state)
     # Множитель местности — тот же work_cost_mult, что у улучшений.
@@ -585,6 +616,43 @@ func _test_live_scene(state: Dictionary) -> void:
     var panel = main_map.control_panel
     var bm = main_map.build_manager
 
+    # Исследуем технологии всех уровней дороги (сейчас это «Колесо»).
+    # Проверяемая ниже постройка — ПОЭТАПНАЯ, а поэтапность имеет смысл
+    # только у платного уровня: тропка (work_cost = 0) строится сразу и в
+    # очередь проекта не встаёт. Без технологии лучший доступный уровень —
+    # тропка, и весь сценарий ниже проверял бы мгновенную постройку вместо
+    # очереди участков.
+    for level in _gdata.get_road_levels():
+        var raw = _gdata.get_road_by_level(int(level)).get("unlock_tech", null)
+        # Поле бывает null (у тропки технологии нет), а `null or ""` в
+        # GDScript НЕ даёт пустую строку — без этой проверки в список
+        # технологий попала бы строка "<null>" и цикл сломался бы.
+        if not (raw is String) or str(raw).is_empty():
+            continue
+        if not _cdata.is_tech_unlocked(str(raw)):
+            _cdata.unlocked_technologies.append(str(raw))
+    var default_level: int = _gdata.get_max_unlocked_road_level()
+    check(_gdata.get_road_work_cost(default_level) > 0,
+            "после исследования технологии лучший уровень дороги должен быть платным",
+            state)
+
+    # --- Бесплатная тропка: строится сразу и не занимает очередь проекта ---
+    # Это следствие «включая бесплатную тропку»: у нулевой цены не может
+    # быть «шага, который копит труд» — такого шага не накопилось бы.
+    var trail_target := _find_hex_without_road(main_map)
+    if not trail_target.is_empty():
+        var t_row2 := int(trail_target.row)
+        var t_col2 := int(trail_target.col)
+        var t_plan: Dictionary = main_map.get_road_plan(t_row2, t_col2)
+        if t_plan.get("ok", false) \
+                and main_map.get_road_cost_breakdown(t_row2, t_col2, 1).get("cost", 1) == 0:
+            check(bm.start_build(t_row2, t_col2, ROAD_ACTION_ID, null, 1),
+                    "бесплатную тропку должно быть можно построить", state)
+            check(main_map.project_manager.get_project_at(t_row2, t_col2).is_empty(),
+                    "бесплатная тропка не должна вставать в очередь проекта", state)
+            check(rm.is_hex_connected(t_row2, t_col2),
+                    "после постройки тропки гекс должен быть подключён к сети", state)
+
     # --- Кнопка «Построить дорогу» на гексе, где дороги ещё нет ---
     var target := _find_hex_without_road(main_map)
     check(not target.is_empty(), "на живой карте должен найтись гекс без дороги", state)
@@ -602,7 +670,13 @@ func _test_live_scene(state: Dictionary) -> void:
         var plan: Dictionary = main_map.get_road_plan(row, col)
         check(plan.get("ok", false), "до гекса без дороги должна быть трасса: %s"
                 % plan.get("reason", ""), state)
-        var breakdown: Dictionary = main_map.get_road_cost_breakdown(row, col, ROAD_ACTION_ID)
+        # Разбор цены считаем для ПЛАТНОГО уровня: у тропки все шаги стоят 0,
+        # и инвариант «сумма шагов = цена» проверялся бы на нулях, не замечая
+        # ошибки округления. Платный уровень выбираем явно, а не «по умолчанию»:
+        # в живой партии «Колесо» может быть и не изучено, и тогда лучший
+        # доступный уровень — бесплатная тропка.
+        var paid_level := _first_paid_road_level(state)
+        var breakdown: Dictionary = main_map.get_road_cost_breakdown(row, col, paid_level)
         check(breakdown.get("ok", false), "разбор цены дороги должен быть доступен", state)
         var steps: Array = breakdown.get("steps", [])
         check(steps.size() > 0, "у дороги должен быть хотя бы один шаг", state)
@@ -626,7 +700,7 @@ func _test_live_scene(state: Dictionary) -> void:
 
         # То же самое через get_improvement_work_cost — им пользуется
         # build_manager для проверки «цена > 0».
-        var cost: Dictionary = main_map.get_improvement_work_cost(ROAD_ACTION_ID, row, col)
+        var cost: Dictionary = main_map.get_improvement_work_cost(ROAD_ACTION_ID, row, col, paid_level)
         check(int(cost.get("cost", -1)) == int(breakdown.get("cost", -2)) \
                 and int(cost.get("cost", 0)) > 0,
                 "build_manager должен видеть ту же цену, что и превью", state)
@@ -635,7 +709,8 @@ func _test_live_scene(state: Dictionary) -> void:
         panel.select_hex(row, col)
         panel._preview_action = {"type": "special", "action_id": ROAD_ACTION_ID,
                 "imp_id": "", "target_res_id": null, "label": "Построить дорогу",
-                "eff_res": "", "selected_culture_id": null}
+                "eff_res": "", "selected_culture_id": null,
+                "road_level": paid_level}
         panel._refresh()
         var preview_text := _collect_text(panel._preview_container)
         check(preview_text.contains("Стоимость: %d труда" % int(breakdown.get("cost", 0))),
@@ -666,7 +741,7 @@ func _test_live_scene(state: Dictionary) -> void:
         # Полный цикл: кнопка -> ПОЭТАПНЫЙ проект -> сегменты дороги на карте.
         # Дорога больше не обычная стройка на этом гексе, а очередь участков,
         # поэтому идёт проект, а не запись в active_builds.
-        check(bm.start_build(row, col, ROAD_ACTION_ID),
+        check(bm.start_build(row, col, ROAD_ACTION_ID, null, paid_level),
                 "стройку дороги должно быть можно запустить", state)
         var project = main_map.project_manager.get_project_at(row, col)
         check(not project.is_empty(),
