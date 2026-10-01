@@ -1164,6 +1164,13 @@ func has_extended_tooltip_info(row: int, col: int) -> bool:
 func update_extended_tooltip(row: int, col: int):
     map_tooltip.update_extended_tooltip(row, col, tile_data, city_row, city_col)
 
+# Сбрасывает привязку расширенного блока тултипа к гексу (см.
+# MapTooltip.clear_extended_tooltip). Вызывается при смене гекса и при скрытии
+# тултипа — иначе возврат на тот же гекс нарисовал бы расширенный блок сразу,
+# минуя задержку наведения.
+func clear_extended_tooltip():
+    map_tooltip.clear_extended_tooltip()
+
 # Выбирает иконку ландшафта для гекса (row, col) на основе его террейна.
 func _assign_terrain_icon(row: int, col: int) -> void:
     tile_data[row][col]["terrain_icon"] = MapHelpers.get_terrain_icon(row, col, tile_data)

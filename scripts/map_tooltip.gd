@@ -7,6 +7,17 @@ var _worker_manager
 # Ключ последнего отрисованного списка продукции тултипа (для сравнения
 # при периодическом обновлении — чтобы не пересобирать UI без изменений).
 var _last_products_key := ""
+# Гекс, для которого расширенный блок (строка «Дорога: …», производство с
+# модификаторами) уже показан; -1 — блок не показан.
+#
+# Расширенный блок и базовый тултип живут в ОДНОМ контейнере, а render_products
+# его чистит. Поэтому любой повторный вызов update_tooltip_text на том же гексе
+# (например, периодический рефреш заполненности пастбища из InputHandler)
+# без этого состояния стирал бы строку уровня дороги через секунду после её
+# появления — и до ухода курсора она не возвращалась бы, потому что
+# расширенный блок рисуется всего один раз за наведение.
+var _extended_row: int = -1
+var _extended_col: int = -1
 
 # Форматирование скорости (шт./сек, ед./сек) живёт в общих помощниках:
 # ConsumptionUi.format_rate — для строк профессионального потребления.
@@ -220,6 +231,12 @@ func update_tooltip_text(row: int, col: int, tile_data: Array, city_row: int = 0
                     var imp_name_display = imp_data.get("name", improvement_id)
                     products = _collect_production(row, col, res_id, tr(" Once built, %s will give:") % imp_name_display, tile_data)
 
+    # Если для этого гекса уже показан расширенный блок, итоговый набор строк —
+    # именно он, а не базовый. Иначе рефреш пересобрал бы контейнер с нуля и
+    # строка «Дорога: …» исчезла бы (см. комментарий к _extended_row).
+    if _extended_row == row and _extended_col == col:
+        products = _collect_extended_block(row, col, tile_data)
+
     # Обновляем UI только при РЕАЛЬНОМ изменении содержимого. Периодический
     # рефреш (заполенность пастбища) вызывает эту функцию несколько раз в
     # секунду: полная пересборка контейнера каждый раз выглядела как рывки.
@@ -284,9 +301,17 @@ func has_extended_tooltip_info(row: int, col: int, tile_data: Array) -> bool:
 
 
 func update_extended_tooltip(row: int, col: int, tile_data: Array, city_row: int, city_col: int):
-    for child in _tooltip_products_container.get_children():
-        child.queue_free()
+    # Запоминаем гекс: с этого момента повторный вызов update_tooltip_text
+    # (рефреш заполненности пастбища) перерисует ИМЕННО расширенный блок.
+    _extended_row = row
+    _extended_col = col
 
+    _render_extra_products(_collect_extended_block(row, col, tile_data))
+
+# Собирает строки расширенного блока тултипа. Единственный источник этих строк:
+# и показ блока (update_extended_tooltip), и его перерисовка при рефреше
+# (update_tooltip_text) берут результат отсюда — иначе списки разъехались бы.
+func _collect_extended_block(row: int, col: int, tile_data: Array) -> Array:
     var tooltip_lines = _tooltip_text_label.text.split("\n")
     var filtered_lines := []
     for line in tooltip_lines:
@@ -299,7 +324,7 @@ func update_extended_tooltip(row: int, col: int, tile_data: Array, city_row: int
     # выходы сработали бы раньше, и строка не появилась бы вовсе — а именно там
     # игрок и решает, какую дорогу ему улучшать.
     #
-    # Строки КОПЯТСЯ и рендерятся ОДИН раз в конце: render_products чистит
+    # Строки КОПЯТСЯ и рендерятся ОДИН раз вызывающим: render_products чистит
     # контейнер, и два вызова подряд стёрли бы первый — на гексе с дорогой и
     # природным ресурсом (например, с дикоросами) уровень молча исчезал бы.
     var extra_products: Array = []
@@ -311,8 +336,7 @@ func update_extended_tooltip(row: int, col: int, tile_data: Array, city_row: int
     var tile = tile_data[row][col]
     var is_revealed = tile.get("in_influence", false) or tile.get("is_explored", false)
     if not is_revealed or bool(tile.get("in_town_influence", false)):
-        _render_extra_products(extra_products)
-        return
+        return extra_products
 
     # Расчёты стоимости постройки (база/местность/расстояние) перенесены
     # в Превью панели управления — здесь они больше не показываются.
@@ -322,21 +346,35 @@ func update_extended_tooltip(row: int, col: int, tile_data: Array, city_row: int
     if res_id != "" and not MapHelpers.is_resource_revealed(tile):
         res_id = ""
     if res_id == "":
-        _render_extra_products(extra_products)
-        return
+        return extra_products
     var res_data = GameData.raw_resources.get(res_id, {})
     if not res_data.has("produces"):
-        _render_extra_products(extra_products)
-        return
+        return extra_products
 
     extra_products.append_array(_collect_extended_production(row, col, tile_data))
-    _render_extra_products(extra_products)
+    return extra_products
+
+# Сбрасывает привязку расширенного блока к гексу. Вызывается владельцем тултипа
+# (InputHandler) при смене гекса и при скрытии тултипа — там же, где сбрасывается
+# его собственный флаг «блок уже показан».
+#
+# Без сброса возврат на тот же гекс нарисовал бы расширенный блок сразу, минуя
+# задержку наведения: update_tooltip_text увидел бы старую привязку.
+func clear_extended_tooltip():
+    _extended_row = -1
+    _extended_col = -1
 
 # Единственная точка рендера расширенного блока тултипа. Пустой список — тоже
 # вызов: он чистит контейнер, и без этого на гексе без расширенной информации
 # остались бы строки от предыдущего гекса.
+#
+# Ключ обновляется ЗДЕСЬ: дальше он описывает уже расширенный блок, а не базовый
+# набор из update_tooltip_text. Иначе первый же рефреш после показа блока видел
+# бы «изменилось» и зря пересобирал контейнер (а после него ключ всё равно
+# устаревал бы — сравнение шло бы не по тому, что нарисовано).
 func _render_extra_products(products: Array):
     render_products(products, _tooltip_products_container)
+    _last_products_key = var_to_str(products)
 
 
 # --- Построение полного текста тултипа ---

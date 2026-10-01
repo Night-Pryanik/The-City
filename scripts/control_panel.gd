@@ -1230,9 +1230,16 @@ func _on_action_pressed(action: Dictionary):
 
     # Действия с превью (постройка улучшения, разведение, спец-действие,
     # улучшение дороги).
+    #
+    # Для улучшения дороги eff_res НЕ вычисляется: это ресурс гекса, который
+    # к улучшению дороги отношения не имеет. Раньше он подставлялся в превью,
+    # и блок производства рисовал выпуск улучшения, которое игрок и не
+    # собирался строить.
     var eff_res_for_preview = action.get("target_res_id", null)
     if eff_res_for_preview == null or eff_res_for_preview == "":
-        eff_res_for_preview = MapHelpers.get_effective_resource(main_map.get_tile_data(_selected_hex.row, _selected_hex.col))
+        if type != UPGRADE_ROAD_TYPE:
+            eff_res_for_preview = MapHelpers.get_effective_resource(
+                    main_map.get_tile_data(_selected_hex.row, _selected_hex.col))
     _preview_action = {
         "type": type,
         "imp_id": action.get("imp_id", ""),
@@ -1435,8 +1442,14 @@ func _build_preview(row: int, col: int, tile: Dictionary):
             map_tooltip.render_products(lj_products, lj_box, true)
             _preview_container.add_child(lj_box)
 
-    # Расчёт производства (для улучшений и разведения, кроме спец-действий).
-    if type != "special" and eff_res != "":
+    # Расчёт производства — только для ПОСТРОЙКИ улучшения и разведения.
+    # Типы перечислены явно, а не «всё, кроме спецдействий»: улучшение дороги
+    # тоже не special, и при таком условии оно попадало сюда и рисовало «Будет
+    # производить» на гексе, где улучшение уже стоит. Игрок нажал кнопку
+    # улучшения дороги ради дороги, а блок производства — это «будущее»
+    # улучшения, которого он не строит. Он же вытеснял селектор уровней дорог
+    # вниз и заставлял прокручивать превью.
+    if (type == "build_improvement" or type == "build_breeding") and eff_res != "":
         var res_data = GameData.raw_resources.get(eff_res, {})
         if res_data.has("produces"):
             # Множитель производства с учётом модификаторов (вода, местность, технологии).

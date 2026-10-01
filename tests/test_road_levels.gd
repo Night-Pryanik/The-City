@@ -26,6 +26,12 @@
 #      панели управления; в обычном тултипе её нет.
 #   8. КНОПКА УЛУЧШЕНИЯ. Остаётся на частично улучшенном маршруте: улучшен
 #      один участок из нескольких — кнопка обязана быть, пока есть тропки.
+#      Превью улучшения дороги не содержит блока производства: игрок нажал
+#      кнопку ради дороги, и «Будет производить» к улучшению дороги
+#      отношения не имеет (а блок вытеснял выбор уровня вниз).
+#   9. РЕФРЕШ И РАСШИРЕННЫЙ БЛОК. Периодическое обновление содержимого (оно
+#      идёт только по «растущим» ресурсам, то есть по пастбищам) не стирает
+#      строку уровня дороги: расширенный блок живёт дольше одного вызова.
 extends SceneTree
 
 # Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
@@ -421,6 +427,7 @@ func _test_live_scene(state: Dictionary) -> void:
                 "трасса тележной дороги должна стоить труда", state)
 
     await _test_road_level_in_hex_info(main_map, state)
+    await _test_extended_tooltip_survives_refresh(main_map, state)
     await _test_upgrade_button_on_partial_route(main_map, state)
 
     if main_map != null and is_instance_valid(main_map):
@@ -526,6 +533,27 @@ func _test_road_level_in_hex_info(main_map, state: Dictionary) -> void:
     panel.select_hex(row, col)
     check(_collect_text(panel).contains("уровень"),
             "в левой колонке панели должен быть показан уровень дороги", state)
+
+    # Превью улучшения дороги НЕ содержит блока производства: игрок нажал
+    # кнопку улучшения дороги ради дороги, а «Будет производить» относится
+    # к улучшению, которое он не строит. Блок к тому же вытеснял селектор
+    # уровней дорог вниз и заставлял прокручивать превью.
+    if _gdata.get_max_unlocked_road_level() <= 1:
+        return
+    panel._preview_action = {"type": panel.UPGRADE_ROAD_TYPE, "imp_id": "",
+            "target_res_id": null, "action_id": "", "label": "Улучшить дорогу",
+            "eff_res": "", "selected_culture_id": null, "road_level": 2}
+    panel._refresh()
+    var upgrade_preview_text := _collect_text(panel._preview_container)
+    check(not upgrade_preview_text.contains("Будет производить"),
+            "в превью улучшения дороги не должно быть блока производства (получено: %s)"
+                    % upgrade_preview_text, state)
+    check(upgrade_preview_text.contains("Уровень дороги:"),
+            "в превью улучшения дороги должен быть выбор уровня (получено: %s)"
+                    % upgrade_preview_text, state)
+    check(upgrade_preview_text.contains("Стоимость"),
+            "в превью улучшения дороги должна быть цена (получено: %s)"
+                    % upgrade_preview_text, state)
 
 
 # Первый свободный гекс в Кольце Влияния на расстоянии не меньше min_dist
@@ -636,8 +664,117 @@ func _test_upgrade_button_on_partial_route(main_map, state: Dictionary) -> void:
 
 
 # -------------------------------------------------------
+# 9. Рефреш содержимого не стирает расширенный блок
+# -------------------------------------------------------
+#
+# Регрессия: на гексе с пастбищем строка «Дорога: …» в расширенном тултипе
+# жила ровно один тик. Расширенный блок рисуется один раз за наведение, но
+# InputHandler с интервалом resource_display_interval зовёт update_tooltip_text
+# для «растущих» ресурсов (time_to_mature > 0 — то есть только для пастбищ), а
+# тот пересобирает контейнер с нуля и заменяет блок базовым списком. Строка
+# исчезала и до ухода курсора не возвращалась. Фермы и лесные делянки не
+# задеты: у них time_to_mature нет, рефреш не вызывается.
+func _test_extended_tooltip_survives_refresh(main_map, state: Dictionary) -> void:
+    var rm = main_map.road_manager
+    # Тип не указываем — как в _test_road_level_in_hex_info: имя класса
+    # MapTooltip на этапе компиляции этого файла ещё не в кеше.
+    var tooltip = main_map.map_tooltip
+
+    var res_id := _find_growing_resource_id()
+    check(not res_id.is_empty(),
+            "в данных нужен растущий ресурс (time_to_mature > 0) для проверки рефреша",
+            state)
+    if res_id.is_empty():
+        return
+
+    var spot := _find_hex_in_influence(main_map)
+    check(not spot.is_empty(),
+            "для проверки рефреша нужен гекс в влиянии", state)
+    if spot.is_empty():
+        return
+    var row := int(spot.row)
+    var col := int(spot.col)
+    var tile: Dictionary = main_map.tile_data[row][col]
+    tile["improvement"] = str(_gdata.raw_resources.get(res_id, {}).get("improved_by", "pasture"))
+    tile["resource"] = res_id
+    rm.build_road_from(row, col, main_map.tile_data, main_map.map_rows, main_map.map_cols)
+    check(not tooltip.road_level_line(row, col).is_empty(),
+            "к гексу с пастбищем должна быть проложена дорога", state)
+
+    # Наведение: сначала базовый тултип, затем по задержке — расширенный блок.
+    main_map.update_tooltip_text(row, col)
+    check(tooltip.has_extended_tooltip_info(row, col, main_map.tile_data),
+            "на гексе с дорогой расширенный тултип должен показываться", state)
+    main_map.update_extended_tooltip(row, col)
+    var extended_text := _collect_text(tooltip._tooltip_products_container)
+    check(extended_text.contains("Дорога:"),
+            "расширенный тултип должен содержать строку уровня дороги (получено: %s)"
+                    % extended_text, state)
+
+    # Рефреш. Меняем fill_time, чтобы текст заполненности действительно изменился:
+    # иначе сработал бы ранний выход «ничего не изменилось», контейнер бы не
+    # трогали — и проверка прошла бы, ничего не проверяя. Именно изменившийся
+    # текст и запускает рефреш в игре.
+    var ttm: float = float(_gdata.raw_resources.get(res_id, {}).get("time_to_mature", 60.0))
+    tile["fill_time"] = ttm * 0.5
+    main_map.update_tooltip_text(row, col)
+    var after_refresh := _collect_text(tooltip._tooltip_products_container)
+    check(after_refresh.contains("Дорога:"),
+            "после рефреша содержимого строка уровня дороги обязана остаться (получено: %s)"
+                    % after_refresh, state)
+    # Ровно один раз: строка не должна ни задваиваться, ни теряться.
+    check(_count_occurrences(after_refresh, "Дорога:") == 1,
+            "строка уровня дороги должна быть ровно одна (получено: %s)" % after_refresh, state)
+
+    # Второй тик подряд — на пастбище рефреш ходит каждый интервал, а не раз.
+    tile["fill_time"] = ttm * 0.75
+    main_map.update_tooltip_text(row, col)
+    var after_second := _collect_text(tooltip._tooltip_products_container)
+    check(after_second.contains("Дорога:"),
+            "после второго рефреша строка уровня дороги обязана остаться (получено: %s)"
+                    % after_second, state)
+
+    # После сброса привязки (смена гекса / скрытие тултипа) расширенный блок
+    # больше не рисуется: базовый тултип уровня дороги по-прежнему не показывает.
+    main_map.clear_extended_tooltip()
+    main_map.update_tooltip_text(row, col)
+    var after_clear := _collect_text(tooltip._tooltip_products_container)
+    check(not after_clear.contains("Дорога:"),
+            "после сброса расширенного блока строка уровня дороги быть не должна (получено: %s)"
+                    % after_clear, state)
+
+# Id ресурса с time_to_mature > 0 (растущий — рефрешится на пастбищах).
+# Берём из данных, а не хардкодим «cows»: проверка должна пережить переименование
+# или замену ресурса в animals.json.
+func _find_growing_resource_id() -> String:
+    for id in _gdata.raw_resources.keys():
+        var data: Dictionary = _gdata.raw_resources.get(id, {})
+        if not data.has("produces"):
+            continue
+        if not _mh.is_growing_resource(data):
+            continue
+        if str(data.get("improved_by", "")) == "":
+            continue
+        return str(id)
+    return ""
+
+
+# -------------------------------------------------------
 # Хелперы
 # -------------------------------------------------------
+
+# Сколько раз подстрока встречается в тексте — для проверки, что строка не
+# задваивалась. Строки тултипа склеены по "\n", поэтому обычного contains()
+# (проверка «есть ли хоть раз») для этого недостаточно.
+func _count_occurrences(text: String, sub: String) -> int:
+    if sub.is_empty():
+        return 0
+    var count := 0
+    var pos := text.find(sub)
+    while pos != -1:
+        count += 1
+        pos = text.find(sub, pos + sub.length())
+    return count
 
 func _has_action(actions: Array, type: String) -> bool:
     for action in actions:

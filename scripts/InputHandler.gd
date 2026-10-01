@@ -371,6 +371,11 @@ func _handle_mouse_motion(event: InputEventMouseMotion):
         _hovered_hex = hex
         _hover_start_time = 0.0
         _extended_tooltip_shown = false
+        # Привязку расширенного блока сбрасываем здесь же: пока она жива,
+        # update_tooltip_text ниже нарисовал бы расширенный блок на новом гексе
+        # без задержки наведения.
+        if main_map.has_method("clear_extended_tooltip"):
+            main_map.clear_extended_tooltip()
         if _tooltip_visible:
             hex_tooltip.visible = false
             _tooltip_visible = false
@@ -406,6 +411,9 @@ func _hide_tooltip():
     _tooltip_content_refresh_timer = 0.0
     _hovered_hex = null
     _hover_start_time = 0.0
+    # Как и флаг выше — здесь: тултип скрыт, расширенный блок не показан.
+    if main_map != null and main_map.has_method("clear_extended_tooltip"):
+        main_map.clear_extended_tooltip()
     for child in tooltip_products_container.get_children():
         child.queue_free()
 
