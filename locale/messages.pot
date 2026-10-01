@@ -2127,6 +2127,9 @@ msgstr ""
 msgid "Poll tax"
 msgstr ""
 
+msgid "Pomegranates"
+msgstr ""
+
 msgid "Population consumption"
 msgstr ""
 

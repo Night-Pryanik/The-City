@@ -3,7 +3,8 @@
     { "id": "grapes", "price": 6, "name": "Grapes", "type": "product", "category": "fruits", "icon": "grapes.png" },
     { "id": "olives", "price": 7, "name": "Olives", "type": "product", "category": "fruits", "icon": "olives.png" },
     {
-      "id": "mulberries", "price": 5,
+      "id": "mulberries",
+      "price": 5,
       "name": "Mulberries",
       "type": "product",
       "category": "fruits",
@@ -13,11 +14,20 @@
     { "id": "dates", "price": 10, "name": "Dates", "type": "product", "category": "fruits", "icon": "dates.png" },
     { "id": "agave", "price": 4, "name": "Agave", "type": "product", "category": "fruits", "icon": "agave.png" },
     {
-      "id": "cactus_fruit", "price": 6,
+      "id": "cactus_fruit",
+      "price": 6,
       "name": "Prickly Pear",
       "type": "product",
       "category": "fruits",
       "icon": "cactus_fruit.png"
+    },
+    {
+      "id": "pomegranates",
+      "price": 9,
+      "name": "Pomegranates",
+      "type": "product",
+      "category": "fruits",
+      "icon": "pomegranates.png"
     }
   ]
 }

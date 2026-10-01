@@ -66,6 +66,23 @@
       "produces": { "dates": 10 },
       "icon": "dates.png",
       "color": [ 200, 150, 100 ]
+    },
+    {
+      "id": "pomegranate_plant",
+      "price": 9,
+      "name": "Pomegranates",
+      "type": "raw",
+      "category": "plants",
+      "group": "extra_food_plants",
+      "subgroup": "fruits",
+      "allowed_terrain": [ "plain", "hill" ],
+      "allowed_cover": [ "none" ],
+      "breeding": [ [ { "terrain": "sandy_desert" }, { "cover": "oasis" } ], [ { "terrain": "rocky_desert" }, { "cover": "oasis" } ] ],
+      "improved_by": "plantation",
+      "tech_required": "plantations",
+      "produces": { "pomegranates": 10 },
+      "icon": "pomegranates.png",
+      "color": [ 200, 100, 100 ]
     }
   ]
 }
