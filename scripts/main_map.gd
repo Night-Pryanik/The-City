@@ -377,9 +377,16 @@ func _ready():
         # (compute_all_town_influences). Она же проставляет флаги
         # in_town_influence на тайлы и собирает плоское зеркало
         # town_influence_hexes для рендерера. Кольцо строится ЦЕЛИКОМ (без
-        # клипа по Региону), поэтому старые сейвы, где кольцо было срезано по
-        # стартовому Региону, чинятся сами собой; что из кольца видно игроку —
-        # решает рендерер (туман войны + эпоха).
+        # клипа по текущему Региону), поэтому старые сейвы, где кольцо было
+        # срезано по стартовому Региону, чинятся сами собой; что из кольца
+        # видно игроку — решает рендерер (туман войны + эпоха).
+        #
+        # ПЕРЕД пересчётом отдаём менеджеру стартовую область игрока: её
+        # границы восстановлены из сейва, а при генерации она задаётся в
+        # generate_towns. Территория городков вырезается из неё — по всей карте
+        # (включая гексы под туманом) гексы игрока остаются его.
+        town_manager.set_player_start_area(start_region_start_row, start_region_end_row,
+                start_region_start_col, start_region_end_col)
         town_manager.compute_all_town_influences(tile_data, map_rows, map_cols)
         # Заполняем кольца городков декоративными улучшениями и для старых
         # сохранений, где эти метки ещё отсутствовали.
@@ -2503,6 +2510,14 @@ func is_in_influence(row: int, col: int) -> bool:
         and col >= influence_start_col and col <= influence_end_col
 
 # Возвращает словарь с текущим состоянием мира/окна для сохранения.
+#
+# start_region_* — границы СТАРТОВОЙ области игрока (Кольцо + Регион 1-й эпохи)
+# на момент генерации. Они не меняются всю партию, но нужны после загрузки:
+# по ним территория городков вырезается из стартовой области (см.
+# town_manager.set_player_start_area), иначе загруженная партия получила бы
+# городков, залезающих на землю игрока. Пересчитать их из start_ring_* и
+# region_width нельзя: region_width в сейве уже мог смениться при переходе в
+# следующую эру.
 func get_map_state() -> Dictionary:
     return {
         "map_rows": map_rows,
@@ -2514,7 +2529,11 @@ func get_map_state() -> Dictionary:
         "ring_cols": ring_cols,
         "region_rows": region_rows,
         "region_cols": region_cols,
-        "current_era": current_era
+        "current_era": current_era,
+        "start_region_start_row": start_region_start_row,
+        "start_region_end_row": start_region_end_row,
+        "start_region_start_col": start_region_start_col,
+        "start_region_end_col": start_region_end_col,
     }
 
 # Вычисляет абсолютные границы ВИДИМОЙ области 2-й эпохи
@@ -2581,6 +2600,29 @@ func _apply_saved_map_state():
     city_row = map_rows / 2
     city_col = map_cols / 2
     _recalculate_bounds()
+    _restore_start_region_bounds(st)
+
+# Восстанавливает границы СТАРТОВОЙ области игрока (Кольцо + Регион 1-й эпохи).
+# В сейве они лежат отдельными полями map_state — их нельзя пересчитать из
+# start_ring_* и region_width, потому что region_width меняется при смене эпохи
+# и в сейве хранит уже значение НЫНЕШНЕЙ эпохи. В старых сейвах полей нет:
+# там пересчитываем от стартового кольца и текущей ширины региона (для партии,
+# начавшейся в 1-й эпохе, это точное значение; для поздней — приближение
+# «лучше, чем никаких границ»).
+func _restore_start_region_bounds(st: Dictionary) -> void:
+    if st.has("start_region_start_row") and st.has("start_region_end_row") \
+            and st.has("start_region_start_col") and st.has("start_region_end_col"):
+        start_region_start_row = int(st["start_region_start_row"])
+        start_region_end_row = int(st["start_region_end_row"])
+        start_region_start_col = int(st["start_region_start_col"])
+        start_region_end_col = int(st["start_region_end_col"])
+        return
+    var start_ring_rows_ := start_ring_rows + region_width * 2
+    var start_ring_cols_ := start_ring_cols + region_width * 2
+    start_region_start_row = maxi(0, city_row - start_ring_rows_ / 2)
+    start_region_end_row = mini(map_rows - 1, start_region_start_row + start_ring_rows_ - 1)
+    start_region_start_col = maxi(0, city_col - start_ring_cols_ / 2)
+    start_region_end_col = mini(map_cols - 1, start_region_start_col + start_ring_cols_ - 1)
 
 # --- ДЕБАГ: ОТКРЫТЬ ВСЮ КАРТУ ---
 # Вся карта целиком становится Кольцом Влияния: все гексы помечаются

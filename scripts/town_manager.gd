@@ -64,6 +64,16 @@
 #     (используется для гарантии «городок в эре-2»);
 #   - на гексе ещё нет постройки.
 #
+# --- Стартовая область игрока (player_start_area) ---
+# Это тот же прямоугольник «Кольцо + стартовый Регион», но правило жёстче и
+# касается не только ЦЕНТРА городка, а всего кольца влияния:
+#   - ресурсы внутри области не считаются точками притяжения
+#     (_build_multi_resource_mask / _build_strategic_mask);
+#   - каждый гекс области вырезается из кольца влияния
+#     (compute_all_town_influences), поэтому территория городка на стартовую
+#     область игрока не заходит НИ при каких обстоятельствах.
+# Правило одинаковое для всех городков, включая гарантийный городок 2-й эпохи.
+#
 # --- Гарантия «хотя бы 1 городок в области 2-й эпохи» ---
 # После основного прохода проверяем, есть ли хоть один городок в
 # эра-2-видимой области (Кольцо_2 + Регион_2). Если нет — пробуем
@@ -179,6 +189,49 @@ var _used_town_names: Dictionary = {}
 #   town_influence_hexes  — плоский список гексов колец ВСЕХ городков.
 var town_hexes: Array = []
 var town_influence_hexes: Array = []
+
+# Стартовая область игрока: Кольцо Влияния + Регион 1-й эпохи (то самое, что
+# игрок видит и в чём строит с первой секунды игры). Хранится как
+# {"start_row", "end_row", "start_col", "end_col"}; пустой словарь — область не
+# задана (тесты, вызовы без ограничения).
+#
+# Это ДВА ограничения в одном прямоугольнике, и это не совпадение:
+#   1) _is_valid_town_hex не ставит здесь ЦЕНТР городка (иначе чужое поселение
+#      было бы видно с самого начала игры);
+#   2) compute_all_town_influences вырезает из кольца влияния КАЖДЫЙ гекс этой
+#      области — территория городка не должна заходить на землю игрока ни при
+#      каких обстоятельствах.
+# Область заполняется ОДИН раз при генерации (generate_towns) и при загрузке
+# сейва (main_map перед compute_all_town_influences) и больше не меняется.
+# Поэтому клип не «замораживает» кольцо намертво, как это делал клип по
+# растущему Региону: с ростом Региона при смене эпохи вырезанным остаётся
+# ровно то, что и так принадлежит игроку. Для всех городков правило одинаковое,
+# включая гарантийный городок 2-й эпохи.
+var player_start_area: Dictionary = {}
+
+
+# Задаёт стартовую область игрока. Пустой прямоугольник (start > end) и любые
+# отрицательные значения отключают ограничение — так же, как exclusion_* в
+# generate_towns.
+func set_player_start_area(start_row: int, end_row: int,
+        start_col: int, end_col: int) -> void:
+    if start_row < 0 or start_col < 0 or end_row < start_row or end_col < start_col:
+        player_start_area = {}
+        return
+    player_start_area = {
+        "start_row": start_row, "end_row": end_row,
+        "start_col": start_col, "end_col": end_col,
+    }
+
+
+# Лежит ли гекс (row, col) в стартовой области игрока.
+func _is_in_player_start_area(row: int, col: int) -> bool:
+    if player_start_area.is_empty():
+        return false
+    return row >= int(player_start_area["start_row"]) \
+        and row <= int(player_start_area["end_row"]) \
+        and col >= int(player_start_area["start_col"]) \
+        and col <= int(player_start_area["end_col"])
 
 
 # Создаёт новую запись городка с уникальным именем из city_names.json.
@@ -319,6 +372,16 @@ func generate_towns(tile_data: Array, rows: int, cols: int,
         _used_town_names[CityData.city_name] = true
     town_hexes = []
     town_influence_hexes = []
+
+    # Запоминаем стартовую область игрока: exclusion_* — это ровно она
+    # (Кольцо + стартовый Регион). Область нужна не только для запрета на ЦЕНТР
+    # городка (это делает _is_valid_town_hex), но и для двух вещей при
+    # генерации: ресурсы внутри области не считаются точками притяжения
+    # (см. _build_multi_resource_mask / _build_strategic_mask), а из колец
+    # влияния она вырезается (см. compute_all_town_influences).
+    set_player_start_area(exclusion_start_row, exclusion_end_row,
+            exclusion_start_col, exclusion_end_col)
+
     for r in range(rows):
         for c in range(cols):
             if tile_data[r][c] != null:
@@ -389,8 +452,10 @@ func generate_towns(tile_data: Array, rows: int, cols: int,
     # Кольца влияния строятся ПОСЛЕ размещения всех городков (включая
     # гарантийный для эры-2), потому что при обходе ресурсов в радиусе 3
     # от каждого городка нужны финальные позиции И все ресурсы уже на карте.
-    # Границы Региона здесь НЕ нужны: кольцо строится целиком, а что из него
-    # видно игроку — решает рендерер (туман войны + эпоха).
+    # Границы текущего Региона здесь НЕ нужны: кольцо строится целиком по
+    # радиусу, из него вырезается только стартовая область игрока (которая не
+    # меняется никогда) и кольца соседних городков, а что из кольца видно
+    # игроку — решает рендерер (туман войны + эпоха).
     compute_all_town_influences(tile_data, rows, cols)
 
     # После построения колец заполняем их декоративными улучшениями. Они
@@ -789,8 +854,11 @@ func _build_claimed_resource_mask(rows: int, cols: int) -> PackedByteArray:
 
 # Приоритет 1: «кучка ресурсов в окрестностях» — у САМОГО гекса
 # MIN_RESOURCES_FOR_CLUSTER (2+) РАЗНЫХ ресурса в радиусе
-# MAX_ATTRACTION_DISTANCE. Занятые городками ресурсы (см.
-# _build_claimed_resource_mask) при подсчёте не учитываются.
+# MAX_ATTRACTION_DISTANCE. Не учитываются:
+#   - занятые городками ресурсы (см. _build_claimed_resource_mask);
+#   - ресурсы в СТАРТОВОЙ ОБЛАСТИ ИГРОКА — она уже его, притягивать к ней
+#     городок бессмысленно: кольцо всё равно не сможет ею воспользоваться
+#     (см. вырезание стартовой области в compute_all_town_influences).
 func _build_multi_resource_mask(tile_data: Array, rows: int, cols: int) -> PackedByteArray:
     var mask: PackedByteArray = _new_tier_mask(rows, cols)
     var claimed: PackedByteArray = _build_claimed_resource_mask(rows, cols)
@@ -805,6 +873,8 @@ func _build_multi_resource_mask(tile_data: Array, rows: int, cols: int) -> Packe
                         continue
                     if claimed[res_r * cols + res_c] == 1:
                         continue
+                    if _is_in_player_start_area(res_r, res_c):
+                        continue
                     var res = tile_data[res_r][res_c].get("resource", null)
                     if res == null or res == "":
                         continue
@@ -815,14 +885,17 @@ func _build_multi_resource_mask(tile_data: Array, rows: int, cols: int) -> Packe
 
 
 # Приоритет 2: стратегический ресурс (resource.strategic == true) в радиусе
-# MAX_ATTRACTION_DISTANCE от гекса городка. Занятые ресурсы (см.
-# _build_claimed_resource_mask) не учитываются.
+# MAX_ATTRACTION_DISTANCE от гекса городка. Не учитываются занятые городками
+# ресурсы (см. _build_claimed_resource_mask) и ресурсы в стартовой области
+# игрока (см. пояснение в _build_multi_resource_mask).
 func _build_strategic_mask(tile_data: Array, rows: int, cols: int) -> PackedByteArray:
     var mask: PackedByteArray = _new_tier_mask(rows, cols)
     var claimed: PackedByteArray = _build_claimed_resource_mask(rows, cols)
     for r in range(rows):
         for c in range(cols):
             if claimed[r * cols + c] == 1:
+                continue
+            if _is_in_player_start_area(r, c):
                 continue
             var res = tile_data[r][c].get("resource", null)
             if res == null or res == "":
@@ -990,16 +1063,26 @@ func load_towns(data) -> void:
 # кольцо, срезанное со стороны соседа. Обрезанный состав кольца сохраняется
 # в запись городка (и в сейв), поэтому повторный пересчёт идемпотентен.
 #
-# ВАЖНО: кольцо НЕ клипуется по Региону. Раньше гексы кольца, попадавшие в
-# Регион, выбрасывались — чтобы чужой городок не «выдавал» себя в неисследованной
-# зоне 1-й эпохи. Но такая нарезка МОРОЗИЛА кольцо на границах 1-й эпохи
-# навсегда: с ростом Региона (смена эпохи) заливка городка оставалась огрызком —
-# рисовалась лишь часть кольца, попавшая в НОВЫЙ Регион, а срезанная часть не
-# возвращалась (измеренные потери — до 18% гексов заливки, городок у левой
-# границы Региона терял 5 гексов из 18). Теперь кольцо хранится целиком, а
-# видимость решает рендерер: заливка и контур рисуются только на гексах вне
-# тумана (main_map.is_hex_in_fog) и не раньше эры Античности — ровно там же,
-# где и сам городок (см. map_renderer._ensure_town_influence_cache).
+# ВЫРЕЗКА ПО СТАРТОВОЙ ОБЛАСТИ ИГРОКА (player_start_area = Кольцо + Регион 1-й
+# эпохи). Правило жёсткое: территория городка не заходит на стартовую
+# область НИ при каких обстоятельствах, для всех городков без исключения
+# (включая гарантийный городок 2-й эпохи). Вырезанные гексы не получают флаг
+# in_town_influence, не попадают в influence_hexes, в пул продажи и в
+# декоративные улучшения — то есть игрок на своей изначальной земле может
+# строить, улучшать ресурсы и покупать чанки без оглядки на городков.
+#
+# ВАЖНО: кольцо НЕ клипуется по ТЕКУЩЕМУ Региону. Раньше гексы кольца,
+# попадавшие в Регион, выбрасывались — чтобы чужой городок не «выдавал» себя в
+# неисследованной зоне 1-й эпохи. Но такая нарезка МОРОЗИЛА кольцо на границах
+# 1-й эпохи навсегда: с ростом Региона (смена эпохи) заливка городка оставалась
+# огрызком — рисовалась лишь часть кольца, попавшая в НОВЫЙ Регион, а срезанная
+# часть не возвращалась (измеренные потери — до 18% гексов заливки, городок у
+# левой границы Региона терял 5 гексов из 18). Теперь кольцо хранится целиком
+# (минус стартовая область игрока, которая не меняется никогда, и минус кольца
+# соседних городков), а видимость решает рендерер: заливка и контур рисуются
+# только на гексах вне тумана (main_map.is_hex_in_fog) и не раньше эры
+# Античности — ровно там же, где и сам городок (см.
+# map_renderer._ensure_town_influence_cache).
 func compute_all_town_influences(tile_data: Array, map_rows: int, map_cols: int) -> void:
     # Перед пересчётом снимаем старые флаги in_town_influence со ВСЕХ гексов —
     # иначе при изменении состава городков (например, удалении/добавлении)
@@ -1012,6 +1095,9 @@ func compute_all_town_influences(tile_data: Array, map_rows: int, map_cols: int)
                 tile_data[r][c]["in_town_influence"] = false
 
     town_influence_hexes = []
+    # Счётчик срезанных по стартовой области игрока гексов — только для печати
+    # в конце (диагностика «городок у края Региона потерял полкольца»).
+    var clipped_by_player := 0
     # Таблица «заявленных» гексов: ключ "r,c" -> true. Городки обходятся в
     # порядке массива towns (порядок размещения; для сейва — порядок записей),
     # поэтому гекс, впервые заявленный одним городком, не может попасть в
@@ -1025,25 +1111,38 @@ func compute_all_town_influences(tile_data: Array, map_rows: int, map_cols: int)
         var ring: Array = compute_town_influence(tile_data, map_rows, map_cols,
                 int(t.row), int(t.col), t,
                 int(t.get("influence_radius", INFLUENCE_MAX_RADIUS)))
-        # Клип личного кольца: гексы, уже заявленные более ранним городком,
-        # отбрасываем и НЕ записываем в кольцо этого городка. Заливка и
-        # границы (рендерер строит их по influence_hexes) у разных городков
-        # поэтому гарантированно не пересекаются. Обрезанное кольцо попадает
-        # в запись городка и затем в сейв (serialize_towns).
+        # Клип личного кольца, в порядке значимости:
+        #   1) СТАРТОВАЯ ОБЛАСТЬ ИГРОКА (Кольцо + Регион 1-й эпохи) — гексы
+        #      выбрасываются ВСЕГДА и для ВСЕХ городков, включая гарантийный
+        #      городок 2-й эпохи. Там игрок строит, покупает и разведывает
+        #      изначально, поэтому чужая территория там означала бы
+        #      «мёртвую зону» посреди своей земли (и невозможность улучшить
+        #      ресурс, который по сюжету уже свой). Проверка идёт ДО таблицы
+        #      claimed: игрок сильнее любого соседа-городка.
+        #   2) гексы, уже заявленные более ранним городком, — отбрасываем и НЕ
+        #      записываем в кольцо этого городка. Заливка и границы (рендерер
+        #      строит их по influence_hexes) у разных городков поэтому
+        #      гарантированно не пересекаются. Обрезанное кольцо попадает в
+        #      запись городка и затем в сейв (serialize_towns).
         var clipped: Array = []
         for rh in ring:
-            var key := "%d,%d" % [int(rh.row), int(rh.col)]
+            var hex_row := int(rh.row)
+            var hex_col := int(rh.col)
+            if _is_in_player_start_area(hex_row, hex_col):
+                clipped_by_player += 1
+                continue
+            var key := "%d,%d" % [hex_row, hex_col]
             if claimed.has(key):
                 continue
             claimed[key] = true
             clipped.append(rh)
             # Проставляем флаг на тайле — build_manager и валидаторы читают
             # его напрямую, без поиска по списку.
-            if rh.row >= 0 and rh.row < map_rows \
-                    and rh.col >= 0 and rh.col < map_cols \
-                    and tile_data[rh.row] != null and rh.col < tile_data[rh.row].size() \
-                    and tile_data[rh.row][rh.col] != null:
-                tile_data[rh.row][rh.col]["in_town_influence"] = true
+            if hex_row >= 0 and hex_row < map_rows \
+                    and hex_col >= 0 and hex_col < map_cols \
+                    and tile_data[hex_row] != null and hex_col < tile_data[hex_row].size() \
+                    and tile_data[hex_row][hex_col] != null:
+                tile_data[hex_row][hex_col]["in_town_influence"] = true
             town_influence_hexes.append(rh)
         t["influence_hexes"] = clipped
     # Пул продажи городка формируется из ресурсов, которые действительно
@@ -1052,6 +1151,9 @@ func compute_all_town_influences(tile_data: Array, map_rows: int, map_cols: int)
     _refresh_sell_pools(tile_data)
     print("town_manager: всего гексов в кольцах влияния=", town_influence_hexes.size(),
             " (городков=", towns.size(), ")")
+    if clipped_by_player > 0:
+        print("town_manager: вырезано по стартовой области игрока гексов колец=",
+                clipped_by_player, " (кольца городков у края Региона подрезаны)")
 
 # Пересобирает пул продажи каждого городка по его личному кольцу влияния.
 # Один и тот же тип ресурса в нескольких гексах отображается одной строкой:
@@ -1097,8 +1199,10 @@ func _refresh_sell_pools(tile_data: Array) -> void:
 #     INFLUENCE_MAX_RADIUS; будущие механики роста/сжатия кольца передают
 #     сюда радиус из записи города.
 #
-# Кольцо строится ЦЕЛИКОМ, без клипа по Региону: что из него видно игроку,
-# решает рендерер (туман войны + эпоха, см. compute_all_town_influences).
+# Кольцо строится ЦЕЛИКОМ по радиусу (без клипа по Региону): что из него
+# видно игроку, решает рендерер. Вырезание по стартовой области игрока и по
+# кольцам соседних городков делает вызывающая сторона —
+# compute_all_town_influences.
 func compute_town_influence(tile_data: Array, map_rows: int, map_cols: int,
         town_row: int, town_col: int, town_dict: Dictionary = {},
         radius: int = INFLUENCE_MAX_RADIUS) -> Array:

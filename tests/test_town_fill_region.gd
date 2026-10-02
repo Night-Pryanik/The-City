@@ -8,8 +8,11 @@
 # Регион (измеренные потери — до 18% гексов заливки).
 #
 # Проверяется на живых данных реальной сцены MainMap (новая игра):
-#   1. Кольцо в данных равно кольцу по радиусу (клипа по Региону больше нет)
-#      и флаг in_town_influence выставлен ровно на гексах колец.
+#   1. В данных кольцо равно кольцу по радиусу, из которого вырезаны ровно
+#      две вещи: стартовая область игрока (Кольцо + Регион 1-й эпохи —
+#      территория городка туда не заходит НИ при каких обстоятельствах) и
+#      гексы, занятые более ранним городком. Флаг in_town_influence выставлен
+#      ровно на гексах колец и НИКОГДА — на гексах стартовой области.
 #   2. В 1-й эпохе заливки нет вообще — кольца не выдают чужой городок.
 #   3. После смены эпохи заливка равна «кольцо минус туман»: потерь нет.
 #   4. Гекс заливки не лежит в тумане, а его полный bbox — внутри текстуры
@@ -36,20 +39,26 @@ func _run() -> void:
     var tm = main_map.town_manager
     var r = main_map.map_renderer
 
-    # --- 1: кольца в данных полные (регресс на клип по Региону) ---
-    # Допустимое отличие от «кольца по радиусу» — только межгородской клип
-    # «кто первый встал, того и тапки»: гекс, уже занятый более ранним
-    # городком, из кольца выбрасывается. Любое другое расхождение — дефект.
+    # --- 1: кольца в данных = кольцо по радиусу минус вырезанное ---
+    # Допустимые отличия от «кольца по радиусу» — ровно два:
+    #   а) вырезка стартовой области игрока (Кольцо + Регион 1-й эпохи):
+    #      территория городка на неё не заходит никогда;
+    #   б) межгородской клип «кто первый встал, того и тапки»: гекс, уже
+    #      занятый более ранним городком, из кольца выбрасывается.
+    # Любое другое расхождение — дефект.
     var ring_keys: Dictionary = {}
     var claimed: Dictionary = {}
+    var player_area := _player_start_keys(main_map)
     for t in main_map.towns:
         var expected := _key_set(_full_ring(main_map, tm, t))
+        for k in player_area.keys():
+            expected.erase(k)
         for k in expected.keys():
             if claimed.has(k):
                 expected.erase(k)
         var stored := _key_set(t.get("influence_hexes", []))
         check(expected == stored,
-            "кольцо городка (%d,%d) должно совпадать с кольцом по радиусу минус занятые соседями гексы; нет в данных: %s, лишние: %s"
+            "кольцо городка (%d,%d) должно совпадать с кольцом по радиусу минус стартовая область игрока минус занятые соседями гексы; нет в данных: %s, лишние: %s"
                 % [int(t.row), int(t.col), str(_keys_only_in(expected, stored)),
                     str(_keys_only_in(stored, expected))], state)
         for k in stored.keys():
@@ -64,6 +73,25 @@ func _run() -> void:
                 stray.append([row, col])
     check(stray.is_empty(),
         "флаг in_town_influence стоит только на гексах колец (лишних: %s)" % str(stray), state)
+
+    # Гексы стартовой области игрока — его собственные: ни флага кольца, ни
+    # улучшений городков на них быть не должно (иначе ресурс в Кольце Влияния
+    # оказывается недоступен: build_manager блокирует по in_town_influence).
+    check(not player_area.is_empty(),
+        "на живой карте стартовая область игрока должна быть непустой", state)
+    var intruders: Array = []
+    for k in player_area.keys():
+        var parts: PackedStringArray = k.split(",")
+        var tile = main_map.tile_data[int(parts[0])][int(parts[1])]
+        if tile == null:
+            continue
+        if bool(tile.get("in_town_influence", false)) \
+                or bool(tile.get("has_town", false)) \
+                or bool(tile.get("decorative", false)):
+            intruders.append([int(parts[0]), int(parts[1])])
+    check(intruders.is_empty(),
+        "на стартовой области игрока не должно быть городков и их территорий (нарушителей: %s)"
+            % str(intruders), state)
 
     # --- 2: в 1-й эпохе заливки нет ---
     r.invalidate_town_influence_cache()
@@ -81,6 +109,11 @@ func _run() -> void:
     var should_be: Dictionary = {}
     for t in main_map.towns:
         for h in _full_ring(main_map, tm, t):
+            if main_map.start_region_start_row <= int(h.row) \
+                    and int(h.row) <= main_map.start_region_end_row \
+                    and main_map.start_region_start_col <= int(h.col) \
+                    and int(h.col) <= main_map.start_region_end_col:
+                continue
             if not main_map.is_hex_in_fog(int(h.row), int(h.col)):
                 should_be["%d,%d" % [int(h.row), int(h.col)]] = true
     check(not should_be.is_empty(),
@@ -121,12 +154,25 @@ func _run() -> void:
         quit(0)
 
 # Кольцо городка по его радиусу — эталон «как должно быть» (town_manager
-# строит кольца ровно так; клипа по Региону в нём больше нет).
+# строит кольца ровно так; вырезка стартовой области и клип по соседям делаются
+# при разборе результата, а не внутри compute_town_influence).
 func _full_ring(main_map, tm, t) -> Array:
     return tm.compute_town_influence(
             main_map.tile_data, main_map.map_rows, main_map.map_cols,
             int(t.row), int(t.col), t,
             int(t.get("influence_radius", 3)))
+
+# Множество ключей "row,col" стартовой области игрока (Кольцо + Регион 1-й
+# эпохи). Из неё территория городков вырезается всегда — это и есть инвариант,
+# который проверяет тест.
+func _player_start_keys(main_map) -> Dictionary:
+    var out: Dictionary = {}
+    for row in range(main_map.start_region_start_row, main_map.start_region_end_row + 1):
+        for col in range(main_map.start_region_start_col, main_map.start_region_end_col + 1):
+            if row < 0 or row >= main_map.map_rows or col < 0 or col >= main_map.map_cols:
+                continue
+            out["%d,%d" % [row, col]] = true
+    return out
 
 # Текстура должна покрывать гекс заливки ЦЕЛИКОМ: гекс, обрезанный её край,
 # — это и есть «заливка наполовину». Проверяем, что текстура содержит точный
