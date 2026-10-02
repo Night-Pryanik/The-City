@@ -30,6 +30,7 @@
 #   unlock_tech        — здание/улучшение/продукт/рецепт → несуществующая технология
 #   profession         — здание/улучшение → несуществующая профессия
 #   category           — продукт → несуществующая категория
+#   product_source     — продукт не производится НИ картой, НИ рецептом
 #   group_member       — в @-группе несуществующий продукт
 #   resource_group     — рецепт ссылается на несуществующую @-группу
 #   resource           — рецепт требует несуществующий ресурс
@@ -47,6 +48,25 @@ extends RefCounted
 # Обрабатывается в CityData.can_craft_in, поэтому это НЕ битая ссылка —
 # пропускаем, иначе валидатор ругался бы на псевдорецепт "empty".
 const ANY_BUILDING_MARKER := "*"
+
+# --- ЛЕСНАЯ ДЕЛЯНКА: единственный производитель, которого НЕТ в produces ---
+#
+# Продукт «Древесина» не участвует ни в одном produces: её делает лесная
+# делянка на ПУСТОМ лесном гексе, и выход берётся из поля wood_yield
+# ПОКРОВА (data/covers.json), а не из ресурса на гексе:
+#
+#   main_map.gd, тик производства → CityData.add_to_storage("wood", …)
+#   MapHelpers.get_cover_wood_yield(tile) — покров → wood_yield
+#
+# Связь «покров → делянка → продукт» зашита в код, поэтому из данных её
+# не видно, и наивная сверка объявила бы древесину продуктом без
+# источника. Здесь связь восстанавливается ЧИТАТЕЛЬНО: источник есть, если
+# делянка объявлена И хотя бы у одного покрова wood_yield > 0. Если автор
+# уберёт делянку или выход с покровов — валидатор честно скажет, что
+# древесина недостижима (см. тест tests/test_data_validation.gd).
+const LUMBERJACK_PRODUCT := "wood"
+const LUMBERJACK_IMPROVEMENT := "lumberjack_hut"
+const COVER_YIELD_FIELD := "wood_yield"
 
 # Сущности: title — родительный падеж ед.ч. для «X с идентификатором … не
 # существует», ref — винительный падеж для «ссылка на X», source — предложный
@@ -72,6 +92,7 @@ const CHECK_TITLES := {
     "unlock_tech": "Ссылка на несуществующую технологию",
     "profession": "Ссылка на несуществующую профессию",
     "category": "Ссылка на несуществующую категорию",
+    "product_source": "Продукт не имеет источника (его не производит ни карта, ни рецепт)",
     "group_member": "В группе продуктов несуществующий продукт",
     "resource_group": "Рецепт ссылается на несуществующую группу продуктов",
     "resource": "Рецепт ссылается на несуществующий ресурс",
@@ -110,6 +131,7 @@ const SOURCE_COLLECTIONS := {
 const CHECK_ORDER := [
     "produced_in",
     "result",
+    "product_source",
     "improved_by",
     "unlock_improvement",
     "unlock_tech",
@@ -156,6 +178,7 @@ func validate(gd: Object) -> Array:
     _validate_buildings(gd.buildings, technologies, professions, problems)
     _validate_improvements(improvements, technologies, professions, problems)
     _validate_resources(products, raw_resources, categories, technologies, improvements, problems)
+    _validate_product_sources(products, _produced_ids(gd, all_resources), problems)
     _validate_product_groups(product_groups, group_names, products, problems)
     _validate_technologies(technologies, problems)
     _validate_roads(gd.roads, technologies, problems)
@@ -322,6 +345,87 @@ func _validate_resource(res_id, resource, categories: Dictionary, technologies: 
                 "product", rname, rid, "category")
 
 
+# --- ПРОДУКТЫ БЕЗ ИСТОЧНИКА ----------------------------------------------
+#
+# Каждый продукт обязан откуда-то появляться: его либо производит улучшение
+# на карте, либо он выходит из рецепта. Продукт без источника недостижим:
+# он не появится на складе ниоткуда, а рецепты, которые его требуют, будут
+# вечно вставать «нет сырья» — и в игре это видно только как пустой склад,
+# без единого слова «почему».
+#
+# Проверяются ТОЛЬКО продукты. Сырьё (gd.raw_resources) по определению
+# берётся с карты генерацией, поэтому у него источник всегда есть; проверка
+# сырья дала бы ложные срабатывания на каждом из 112 ресурсов.
+func _validate_product_sources(products: Dictionary, produced_ids: Dictionary,
+        problems: Array) -> void:
+    for product_id in products:
+        var pid := str(product_id)
+        if produced_ids.has(pid):
+            continue
+        var product = products[product_id]
+        if not (product is Dictionary):
+            continue
+        _add_missing_source(problems, _entity_name(product, pid), pid)
+
+
+# Множество id, которые хоть где-то выпускаются.
+#
+# Четыре пути появления товара — все четыре нужны, иначе проверка шумит:
+#   result рецепта        — обычный выход крафта;
+#   display_result        — псевдо-выход: реального товара не создаёт, но
+#                          рисуется как результат («Наука», science);
+#   produces у ресурса    — производство улучшением на карте. Ресурс любой
+#                          (сырьё или продукт): механизм один;
+#   additional_yield      — фиксированный выход здания в секунду (наука у
+#                          библиотеки и скриптория), т.е. такой же источник.
+#
+# Пятый путь — лесная делянка — из produces не виден вовсе и добавляется
+# отдельно (см. константы LUMBERJACK_* в шапке файла).
+func _produced_ids(gd: Object, all_resources: Dictionary) -> Dictionary:
+    var produced := {}
+
+    for craft in gd.crafts:
+        if not (craft is Dictionary):
+            continue
+        for field in ["result", "display_result"]:
+            for produced_id in _as_dict(craft.get(field, {})).keys():
+                produced[str(produced_id)] = true
+
+    for res_id in all_resources:
+        var resource = all_resources[res_id]
+        if not (resource is Dictionary):
+            continue
+        for produced_id in _as_dict(resource.get("produces", {})).keys():
+            produced[str(produced_id)] = true
+
+    for building in gd.buildings:
+        if not (building is Dictionary):
+            continue
+        for produced_id in _as_dict(building.get("additional_yield", {})).keys():
+            produced[str(produced_id)] = true
+
+    if _lumberjack_produces(gd.improvements, gd.covers):
+        produced[LUMBERJACK_PRODUCT] = true
+
+    return produced
+
+
+# Лесная делянка даёт древесину, только если ОБА условия из кода выполнены:
+# улучшение объявлено И у покрова гекса есть выход. Условие не «декларация о
+# намерении», а реальная достижимость: снесённая делянка или обнулённый
+# wood_yield делают древесину недостижимой, и валидатор должен об этом сказать.
+func _lumberjack_produces(improvements: Dictionary, covers: Dictionary) -> bool:
+    if not improvements.has(LUMBERJACK_IMPROVEMENT):
+        return false
+    for cover_id in covers:
+        var cover = covers[cover_id]
+        if not (cover is Dictionary):
+            continue
+        if float(cover.get(COVER_YIELD_FIELD, 0.0)) > 0.0:
+            return true
+    return false
+
+
 # --- ГРУППЫ ПРОДУКТОВ -----------------------------------------------------
 # Члены @-группы → продукт. Именно эта проверка ловит «@oil_crops» с
 # несуществующими sunflower / rapeseed / peanut.
@@ -398,6 +502,37 @@ func _add(problems: Array, kind: String, target: String, ref_id: String,
         field,
     ]
 
+    _push(problems, kind, target, ref_id,
+            source_kind, source_name, source_id, field, headline, where)
+
+
+# Проблема «продукт есть, а взять его неоткуда».
+#
+# Тексты собираются здесь, а не в _add(): там первая строка всегда «X с
+# идентификатором … не существует» — битой ССЫЛКИ. Здесь бит не в ссылке, а
+# в её отсутствии, поэтому и формулировка другая. Владелец проблемы — сам
+# продукт, поэтому его id попадает и в ref_id (чтобы окно подсветило его, как
+# и остальные идентификаторы), и в source_id (чтобы нашлась строка объявления
+# в файле). Поле field пустое: указать нечего — нет поля, в котором стоило бы
+# дописать источник.
+func _add_missing_source(problems: Array, product_name: String, product_id: String) -> void:
+    var headline := "Продукт «%s» нигде не производится." % product_id
+    var where := ("Источник не найден: продукт «%s» (%s) не встречается ни в produces "
+            + "ни одного ресурса карты, ни в result/display_result ни одного рецепта, "
+            + "ни в additional_yield ни одного здания. Добавьте источник данных "
+            + "или удалите продукт из файла.") % [product_name, product_id]
+
+    _push(problems, "product_source", "product", product_id,
+            "product", product_name, product_id, "", headline, where)
+
+
+# Общая часть записи проблемы: словарь полей (см. шапку файла), поиск файла и
+# строки объявления владельца и склейка message. Вынесена отдельно от _add(),
+# потому что формулировки проблем у разных проверок разные, а формат записи,
+# наоборот, один: от него зависят и data_problems_window.gd, и тест.
+func _push(problems: Array, kind: String, target: String, ref_id: String,
+        source_kind: String, source_name: String, source_id: String, field: String,
+        headline: String, where: String) -> void:
     # «Файл: res://data/crafts/crafts.json, строка 7.»
     # Пустая строка, если происхождение неизвестно (данные без индекса) —
     # тогда вторая строка просто ничего не добавляет.
@@ -415,6 +550,7 @@ func _add(problems: Array, kind: String, target: String, ref_id: String,
             location += ", строка %d" % line
         location += "."
 
+    var target_entity: Dictionary = ENTITIES.get(target, ENTITIES["product"])
     problems.append({
         "kind": kind,
         "check_title": str(CHECK_TITLES.get(kind, kind)),

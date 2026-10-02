@@ -1,6 +1,5 @@
 {
   "resources": [
-    { "id": "coal", "price": 7, "name": "Coal", "type": "product", "category": "minerals", "icon": "coal.png" },
     {
       "id": "quartz_sand",
       "price": 5,

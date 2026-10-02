@@ -1,20 +1,29 @@
 # Тест рантайм-валидатора игровых данных (headless):
 #   godot --headless --path . --script res://tests/test_data_validation.gd
 #
-# Проверяет две вещи:
+# Проверяет пять вещей:
 #   1) ДЕТЕКТОР (главное). На искусственных данных в каждый вид проверки
 #      вносится ровно одна поломка, и тест требует найти каждую — с
 #      правильным видом проверки, идентификатором и владельцем ссылки.
 #      Данные синтетические намеренно: тест не должен сломаться, когда
 #      автор починит настоящие data/*.json.
-#   2) ЛОЖНЫЕ СРАБАТЫВАНИЯ. Два места, где валидатор обязан промолчать:
+#   2) ЛОЖНЫЕ СРАБАТЫВАНИЯ. Три места, где валидатор обязан промолчать:
 #      produced_in == "*" (служебный маркер «в любом здании», см.
-#      CityData.can_craft_in) и category у СЫРЬЯ (там это фильтр генерации
+#      CityData.can_craft_in), category у СЫРЬЯ (там это фильтр генерации
 #      карты со своим набором значений — animals/plants/metals/minerals,
-#      а не категории из data/categories.json).
+#      а не категории из data/categories.json) и «продукт без источника»
+#      у товара, который производится display_result'ом, produces'ом
+#      ресурса карты либо лесной делянкой.
+#   3) ИСКЛЮЧЕНИЕ ЛЕСНОЙ ДЕЛЯНКИ вычисляется из данных, а не зашито
+#      списком: снесли делянку или обнулили wood_yield — древесина
+#      теряет источник, и валидатор обязан это заметить.
+#   4) Настоящие data/*.json: валидатор не падает, проблемы корректно
+#      указывают на продукт-владельца.
+#   5) Указание на файл и строку (см. _check_file_and_line).
 #
-# Реальные data/*.json прогоняются в конце только на предмет «валидатор не
-# падает»; сам их список проблем не проверяется и печатается для справки.
+# Реальные data/*.json прогоняются в конце на инварианты, а не на
+# ожидаемый список: их автор починит, и тест упал бы на ровно том, ради
+# чего валидатор написан. Их список проблем печатается для справки.
 extends SceneTree
 
 # Сторож зависаний: без него обрыв корутины _initialize() выглядит снаружи
@@ -30,6 +39,7 @@ func _initialize():
 
     _test_detector(state)
     _test_no_false_positives_on_synthetic(state)
+    _test_lumberjack_depends_on_data(state)
     _test_real_data(state)
 
     if state["failed"]:
@@ -68,6 +78,10 @@ func _test_detector(state: Dictionary):
         "resource_group": [["@ghost_group", "bad_group_ref"]],
         "resource": [["ghost_raw", "bad_resource_ref"]],
         "prerequisite": [["ghost_tech", "bad_tech_prereq"]],
+        # У проблемы «продукт без источника» нет недостающего идентификатора:
+        # бит не в ссылке, а в её отсутствии. Поэтому ref_id и source_id —
+        # оба id самого продукта-владельца.
+        "product_source": [["no_source_product", "no_source_product"]],
     }
 
     var problems: Array = DataValidator.new().validate(gd)
@@ -113,6 +127,26 @@ func _test_no_false_positives_on_synthetic(state: Dictionary):
     check(_find(problems, "category", "animals", "wildcard_raw").is_empty(),
         "category у сырья («animals») не должен сверяться с data/categories.json", state)
 
+    # --- Ложные срабатывания проверки «продукт без источника» ---
+    #
+    # Наивная версия этой проверки ругалась бы на три обычных способа
+    # получить товар, каждый из которых встречается в настоящих data/.
+    check(_find(problems, "product_source", "science", "science").is_empty(),
+        "продукт только из display_result («Наука») не должен считаться без источника",
+        state)
+    check(_find(problems, "product_source", "wood", "wood").is_empty(),
+        "продукт лесной делянки (wood_yield покрова) не должен считаться без источника",
+        state)
+    check(_find(problems, "product_source", "wheat", "wheat").is_empty(),
+        "продукт из produces ресурса карты не должен считаться без источника", state)
+    check(_find(problems, "product_source", "flour", "flour").is_empty(),
+        "продукт из result рецепта не должен считаться без источника", state)
+    # СЫРЬЁ (produces которого проверяется на наличие значений, а не на
+    # «откуда оно») не должно попадать под проверку: оно берётся с карты
+    # генерацией, источник у него по определению есть.
+    check(_find(problems, "product_source", "wheat_field", "wheat_field").is_empty(),
+        "сырьё не должно проверяться на наличие источника", state)
+
     # Явно пустые поля (null) — не ссылки. Ни одна из этих сущностей не
     # должна попасть в результат ни под каким видом проверки.
     for entity_id in ["null_fields", "null_product", "null_improvement", "null_building"]:
@@ -142,7 +176,42 @@ func _test_no_false_positives_on_synthetic(state: Dictionary):
     gd.free()
 
 
-# --- 3) Настоящие данные: валидатор не падает -----------------------------
+# --- 3) Исключение лесной делянки вычисляется из данных -------------------
+#
+# «Древесина» — единственный продукт, у которого нет источника в produces.
+# Связь «покров → делянка → продукт» зашита в коде, и её можно закрыть двояко:
+# жёстким списком исключений в валидаторе (тогда о снятой делянке или
+# обнулённом wood_yield он молчал бы вечно) или чтением данных. Тест требует
+# второго: древесина обязана «терять источник», когда данные перестают её
+# производить, — иначе проверка врала бы автору, что всё в порядке.
+func _test_lumberjack_depends_on_data(state: Dictionary):
+    # Обнулили выход с покрова — делянке нечего производить.
+    var gd = _make_data()
+    gd.covers["forest"]["wood_yield"] = 0
+    var problems: Array = DataValidator.new().validate(gd)
+    check(not _find(problems, "product_source", "wood", "wood").is_empty(),
+        "после обнуления wood_yield у всех покровов древесина теряет источник, " +
+        "и валидатор обязан это заметить", state)
+    gd.free()
+
+    # Снесли саму делянку — производства тоже нет.
+    var gd2 = _make_data()
+    gd2.improvements.erase("lumberjack_hut")
+    var problems2: Array = DataValidator.new().validate(gd2)
+    check(not _find(problems2, "product_source", "wood", "wood").is_empty(),
+        "после удаления лесной делянки древесина теряет источник, " +
+        "и валидатор обязан это заметить", state)
+    gd2.free()
+
+    # Обратная сторона: целые данные — источник есть, проблемы нет.
+    var gd3 = _make_data()
+    var problems3: Array = DataValidator.new().validate(gd3)
+    check(_find(problems3, "product_source", "wood", "wood").is_empty(),
+        "при целых данных (делянка есть, wood_yield > 0) древесина имеет источник", state)
+    gd3.free()
+
+
+# --- 4) Настоящие данные: валидатор не падает -----------------------------
 
 func _test_real_data(state: Dictionary):
     var gd = load("res://scripts/GameData.gd").new()
@@ -185,6 +254,17 @@ func _test_real_data(state: Dictionary):
         check(not str(problem.get("where", "")).is_empty(),
             "проблема без where", state)
 
+    # Проблема «продукт без источника» указывает на сам продукт — значит, её
+    # владелец обязан быть в GameData.products, а не сырьём и не зданием.
+    for problem in problems:
+        if problem.get("kind") != "product_source":
+            continue
+        var owner_id := str(problem.get("source_id", ""))
+        check(products.has(owner_id),
+            "проблема product_source у не-продукта «%s»" % owner_id, state)
+        check(problem.get("target") == "product",
+            "у product_source неверный target: %s" % str(problem.get("target", "")), state)
+
     _check_file_and_line(state, problems)
 
     # count_by_kind обязан согласовываться с самим списком.
@@ -198,7 +278,7 @@ func _test_real_data(state: Dictionary):
     gd.free()
 
 
-# --- 4) Указание на файл и строку -----------------------------------------
+# --- 5) Указание на файл и строку -----------------------------------------
 #
 # Проблема обязана называть не только сущность, но и ФАЙЛ, в котором сущность
 # объявлена, и строку. Смысл такой строки — «здесь смотри», поэтому проверяется
@@ -271,15 +351,35 @@ func _make_data() -> Node:
     gd.improvements = {
         "farm": {"id": "farm", "name": "Ферма"},
         "quarry": {"id": "quarry", "name": "Карьер"},
+        # Лесная делянка — производитель, которого нет ни в одном produces
+        # (см. константы LUMBERJACK_* в data_validator.gd). Пока есть делянка
+        # и покров с wood_yield, продукт «wood» имеет источник.
+        "lumberjack_hut": {"id": "lumberjack_hut", "name": "Лесная делянка"},
+    }
+    gd.covers = {
+        "forest": {"id": "forest", "name": "Лес", "wood_yield": 2},
+        "plain": {"id": "plain", "name": "Равнина"},
     }
     gd.products = {
         "wheat": {"id": "wheat", "name": "Пшеница", "category": "food"},
         "flour": {"id": "flour", "name": "Мука", "category": "food"},
         "tools": {"id": "tools", "name": "Инструменты", "category": "other"},
+        # Производится лесной делянкой из wood_yield покрова. Единственный
+        # источник древесины в наборе: ни в produces, ни в рецептах её нет.
+        "wood": {"id": "wood", "name": "Древесина", "category": "other"},
+        # Псевдо-продукт: есть только в display_result, реального result нет.
+        "science": {"id": "science", "name": "Наука", "category": "other"},
+        # Продукт с тем же id, что и у сырья clay_deposit: так выглядит
+        # обычная ситуация «сырьё добывают, продукт используют» — валидатор
+        # обязан различать их по коллекциям, а не по id.
+        "clay": {"id": "clay", "name": "Глина", "category": "other"},
     }
     gd.raw_resources = {
-        "wood": {"id": "wood", "name": "Дерево", "type": "raw", "category": "plants"},
-        "clay": {"id": "clay", "name": "Глина", "type": "raw", "category": "plants"},
+        "wheat_field": {"id": "wheat_field", "name": "Пшеничное поле", "type": "raw",
+                "category": "plants", "improved_by": "farm",
+                "produces": {"wheat": 10, "tools": 1}},
+        "clay_deposit": {"id": "clay_deposit", "name": "Глина", "type": "raw",
+                "category": "plants", "improved_by": "quarry", "produces": {"clay": 10}},
     }
     gd.product_groups = {
         "grains": ["wheat"],
@@ -314,6 +414,11 @@ func _make_data() -> Node:
     # unlock_tech у продукта
     gd.products["bad_product_tech"] = {"id": "bad_product_tech", "name": "Соль",
             "category": "food", "unlock_tech": "ghost_tech"}
+    # Продукт, который не производит НИ карта, НИ рецепт: ни в чьём produces,
+    # ни в чьём result/display_result/additional_yield его нет. Единственная
+    # поломка новой проверки product_source.
+    gd.products["no_source_product"] = {"id": "no_source_product", "name": "Алхимия",
+            "category": "other"}
     # category у продукта
     gd.products["bad_category"] = {"id": "bad_category", "name": "Мёд",
             "category": "ghost_category"}
@@ -323,13 +428,16 @@ func _make_data() -> Node:
     # prerequisites технологии (ИЛИ-группа с одним несуществующим id)
     gd.technologies.append({"id": "bad_tech_prereq", "name": "Плохая технология",
             "prerequisites": [["t_wheel", "ghost_tech"]]})
-
-    # Ловушки ложных срабатываний.
+# Ловушки ложных срабатываний.
     gd.crafts = [
         # Корректные рецепты — на них валидатор молчит.
         {"id": "good_recipe", "name": "Хороший рецепт", "produced_in": ["bakery"],
                 "resources": {"wood": 2, "@grains": 5}, "result": {"flour": 3},
                 "unlock_tech": "t_fire"},
+        # Псевдо-выход: result пуст, товар «появляется» только в
+        # display_result — как «Наука» в data/crafts/pseudo.json.
+        {"id": "pseudo_recipe", "name": "Псевдо-рецепт", "produced_in": ["bakery"],
+                "resources": {}, "result": {}, "display_result": {"science": 1}},
         # "*" — служебный маркер «в любом здании».
         {"id": "wildcard_recipe", "name": "Пустой рецепт", "produced_in": ["*"],
                 "resources": {}, "result": {}},
@@ -348,6 +456,15 @@ func _make_data() -> Node:
                 "produced_in": ["bakery"], "resources": {"@ghost_group": 5}, "result": {}},
         {"id": "bad_resource_ref", "name": "Рецепт с призрачным ресурсом",
                 "produced_in": ["bakery"], "resources": {"ghost_raw": 5}, "result": {}},
+        # Донор: даёт ВСЕ продукты с намеренными поломками в других полях
+        # (улучшения / технологии / категории) и продукт с явно пустыми
+        # полями. Без него каждая из этих записей попала бы в проблемы ещё и
+        # по product_source, и одна намеренная поломка давала бы сразу две
+        # проблемы — а тест требует ровно одну поломку каждого вида.
+        {"id": "donor_recipe", "name": "Донор", "produced_in": ["bakery"],
+                "resources": {}, "result": {
+                    "bad_unlock_improvement": 1, "bad_product_tech": 1,
+                    "bad_category": 1, "null_product": 1}},
     ]
     # Категория "animals" у сырья — фильтр генерации карты, не категория
     # из categories.json. Проверяется у сырья отдельно ниже.
