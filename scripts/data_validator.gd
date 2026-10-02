@@ -23,6 +23,8 @@
 #   }
 #
 # Проверки:
+#   id_charset         — идентификатор вне ASCII (кириллица в id неотличима от латиницы)
+#   id_lookalike       — идентификатор отличается от другого только похожими символами
 #   produced_in        — рецепт ссылается на несуществующее здание
 #   result             — рецепт (result / display_result) даёт несуществующий ресурс
 #   improved_by        — ресурс улучшается несуществующим улучшением
@@ -68,6 +70,79 @@ const LUMBERJACK_PRODUCT := "wood"
 const LUMBERJACK_IMPROVEMENT := "lumberjack_hut"
 const COVER_YIELD_FIELD := "wood_yield"
 
+# --- ПРАВИЛА ИДЕНТИФИКАТОРОВ ---------------------------------------------
+#
+# Идентификаторы — это ключи, по которым данные сшиваются между файлами, и
+# потому что автор ищет их глазами в редакторе. Оба свойства ломаются
+# молча, поэтому проверяются отдельно.
+#
+# РАЗРЕШЁННЫЙ АЛФАВИТ: латинские буквы a-z, цифры и подчёркивание. Именно
+# этот набор используется во всех 515 идентификаторах data/, поэтому строгое
+# правило не даёт ни одного ложного срабатывания. Всё остальное — пробелы,
+# дефисы, капс, кириллица — ошибка, и каждая из них опасна: автор не видит
+# разницы между «carmine» и «сarmine» (кириллическая с) на глаз.
+const IDENT_CHARS := "abcdefghijklmnopqrstuvwxyz0123456789_"
+const IDENT_UPPER := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+# Символы, которые неотличимы от латинских на глаз → их латинский вид.
+#
+# Нужны для подсказки в сообщении: напечатать в тексте «с» бесполезно —
+# автор прочитает её как «c» и решит, что всё в порядке. Поэтому в сообщение
+# попадает КОД Unicode (U+0441) и подсказка «на латинице это c».
+#
+# Таблица НЕполная и НЕ является отображением всех похожих символов: она
+# покрывает тот случай, который реально встречался (кириллица в русской
+# раскладке при наборе латинских id). Если символа в таблице нет — подсказка
+# просто не выводится, и это честнее, чем угадывать вид «на глаз».
+const IDENT_LOOKALIKES := {
+    "а": "a", "в": "b", "е": "e", "к": "k", "м": "m", "н": "h",
+    "о": "o", "р": "p", "с": "c", "т": "t", "у": "y", "х": "x",
+    "і": "i", "ј": "j", "ѕ": "s", "ԁ": "d", "һ": "h", "ӏ": "l",
+    "А": "A", "В": "B", "Е": "E", "К": "K", "М": "M", "Н": "H",
+    "О": "O", "Р": "P", "С": "C", "Т": "T", "У": "Y", "Х": "X",
+}
+
+# Названия алфавитов для сообщения: символу с кодом U+XXXX полезно сказать,
+# из какого он блока — это вторая половина ценности подсказки (первая — сам
+# код). Перечислены только блоки, в которых ошибка правдоподобна; символ вне
+# них остаётся без названия, и это честнее, чем подписывать его наугад.
+const IDENT_BLOCKS := [
+    {"from": 0x0400, "to": 0x04FF, "name": "кириллица"},
+    {"from": 0x0370, "to": 0x03FF, "name": "греческая"},
+    {"from": 0xFF10, "to": 0xFF19, "name": "полноширинная латинская"},
+]
+
+# Коллекции с идентификаторами: где искать объявления.
+#
+# Единый список для проверок id_charset / id_lookalike: они ортогональны
+# остальным проверкам (тем важно ЗНАЧЕНИЕ ссылок, этим — сам текст id), и
+# держать список в одном месте дешевле, чем добавлять по вызову в каждую из
+# пятнадцати коллекций. Пары «поле GameData → вид сущности для сообщения»:
+# второе нужно, чтобы в тексте проблемы было «Продукта», а не «Ресурса».
+const IDENT_COLLECTIONS := [
+    {"field": "products", "kind": "product"},
+    {"field": "raw_resources", "kind": "product"},
+    {"field": "improvements", "kind": "improvement"},
+    {"field": "professions", "kind": "profession"},
+    {"field": "product_groups", "kind": "group"},
+    {"field": "qualities", "kind": "quality_level"},
+    {"field": "special_actions", "kind": "special_action"},
+    {"field": "terrains", "kind": "terrain"},
+    {"field": "covers", "kind": "cover"},
+    {"field": "crafts", "kind": "recipe"},
+    {"field": "buildings", "kind": "building"},
+    {"field": "technologies", "kind": "technology"},
+    {"field": "categories", "kind": "category"},
+    {"field": "eras", "kind": "era"},
+    {"field": "roads", "kind": "road"},
+]
+
+# Уровни качества лежат не в словаре, а в массиве внутри словаря
+# (data/qualities.json → "quality_levels": [...]), поэтому обрабатываются
+# отдельно: обход коллекций выше проходит по полям GameData и такой вложенный
+# список не увидит.
+const QUALITY_LEVELS_FIELD := "quality_levels"
+
 # Сущности: title — родительный падеж ед.ч. для «X с идентификатором … не
 # существует», ref — винительный падеж для «ссылка на X», source — предложный
 # падеж для «присутствует в …».
@@ -81,10 +156,19 @@ const ENTITIES := {
     "group": {"title": "Группы", "ref": "эту группу", "source": "группе"},
     "recipe": {"title": "Рецепта", "ref": "этот рецепт", "source": "рецепте"},
     "road": {"title": "Уровня дороги", "ref": "этот уровень дороги", "source": "уровне дороги"},
+    "terrain": {"title": "Местности", "ref": "эту местность", "source": "местности"},
+    "cover": {"title": "Покрова", "ref": "этот покров", "source": "покрове"},
+    "era": {"title": "Эпохи", "ref": "эту эпоху", "source": "эпохе"},
+    "quality_level": {"title": "Уровня качества", "ref": "этот уровень качества",
+        "source": "уровне качества"},
+    "special_action": {"title": "Спецдействия", "ref": "это спецдействие",
+        "source": "спецдействии"},
 }
 
 # Заголовки групп проверок (порядок = порядок блоков в окне).
 const CHECK_TITLES := {
+    "id_charset": "Недопустимые символы в идентификаторе",
+    "id_lookalike": "Идентификатор неотличим на глаз от другого",
     "produced_in": "Рецепт производится в несуществующем здании",
     "result": "Рецепт даёт несуществующий ресурс",
     "improved_by": "Ресурс улучшается несуществующим улучшением",
@@ -125,10 +209,19 @@ const SOURCE_COLLECTIONS := {
     "product": "resources",
     "group": "product_groups",
     "road": "roads",
+    # Виды, нужные только проверкам идентификаторов: они объявляются в
+    # своих коллекциях, но ни одна другая проверка на них не ссылается.
+    "terrain": "terrains",
+    "cover": "covers",
+    "era": "eras",
+    "quality_level": "quality_levels",
+    "special_action": "special_actions",
 }
 
 # Порядок вывода блоков проблем в окне.
 const CHECK_ORDER := [
+    "id_charset",
+    "id_lookalike",
     "produced_in",
     "result",
     "product_source",
@@ -174,6 +267,7 @@ func validate(gd: Object) -> Array:
     all_resources.merge(raw_resources)
     all_resources.merge(products)
 
+    _validate_identifiers(gd, problems)
     _validate_crafts(gd.crafts, buildings, technologies, all_resources, product_groups, problems)
     _validate_buildings(gd.buildings, technologies, professions, problems)
     _validate_improvements(improvements, technologies, professions, problems)
@@ -187,7 +281,190 @@ func validate(gd: Object) -> Array:
     return problems
 
 
-# --- УРОВНИ ДОРОГ (data/roads.json) -------------------------------------
+# --- ИДЕНТИФИКАТОРЫ: АЛФАВИТ И ОМОГЛИФЫ ----------------------------------
+#
+# Проверяются ТОЛЬКО объявления (поле "id"), не ссылки на них. Это не
+# упрощение, а следствие устройства остальных проверок: если ссылка
+# содержит тот же не-ASCII символ, что и объявление, — проблему найдёт эта
+# проверка; если указывает на латинский идентификатор — её найдёт любая из
+# проверок битых ссылок. Отдельный проход по ссылкам не нашёл бы ни одного
+# нового случая.
+func _validate_identifiers(gd: Object, problems: Array) -> void:
+    # Все объявленные идентификаторы: id → сведения об объявлении.
+    # Заполняется одним проходом по коллекциям, потому что омоглифы ищутся
+    # ПО ВСЕМ объявлениям сразу: «сarmine» сам по себе — опечатка в одной
+    # строке, а рядом с уже существующим «carmine» — ещё и мёртвый дубль.
+    var declared := {}
+
+    for entry in IDENT_COLLECTIONS:
+        var field := str(entry["field"])
+        var kind := str(entry["kind"])
+        var collection = gd.get(field)
+
+        if collection is Dictionary:
+            for key in collection:
+                var entity = collection[key]
+                # Ключ словаря — тот же id, что и в поле "id". Берём id из
+                # данных, но если поле потерялось — ключ всё равно известен.
+                var id := _as_id(entity.get("id", "")) if entity is Dictionary else ""
+                if id.is_empty():
+                    id = str(key)
+                _collect_identifier(declared, problems, field, kind, id,
+                        entity if entity is Dictionary else {})
+            # Уровни качества лежат не в словаре, а в массиве ВНУТРИ него
+            # (data/qualities.json → "quality_levels": [...]) — проход по
+            # полям GameData такой вложенный список не увидит.
+            _collect_quality_levels(declared, problems, collection)
+        elif collection is Array:
+            for entity in collection:
+                if not (entity is Dictionary):
+                    continue
+                _collect_identifier(declared, problems, field, kind,
+                        _as_id(entity.get("id", "")), entity)
+
+    _check_lookalikes(declared, problems)
+
+
+func _collect_quality_levels(declared: Dictionary, problems: Array,
+        collection: Dictionary) -> void:
+    var levels = collection.get(QUALITY_LEVELS_FIELD, null)
+    if not (levels is Array):
+        return
+    for level in levels:
+        if not (level is Dictionary):
+            continue
+        _collect_identifier(declared, problems, QUALITY_LEVELS_FIELD,
+                "quality_level", _as_id(level.get("id", "")), level)
+
+
+# Запоминает объявление и проверяет его алфавит.
+func _collect_identifier(declared: Dictionary, problems: Array, collection: String,
+        kind: String, id: String, entity: Dictionary) -> void:
+    if id.is_empty():
+        return
+    declared[id] = {"collection": collection, "kind": kind, "entity": entity}
+    _check_ident_charset(problems, id, kind, entity)
+
+
+# Позиции символов вне разрешённого алфавита:
+# [{ "pos": int, "char": String, "code": int, "block": String, "lookalike": String }, …]
+func _bad_ident_chars(id: String) -> Array:
+    var bad: Array = []
+    var index := 0
+    for ch in id:
+        if not IDENT_CHARS.contains(ch) and not IDENT_UPPER.contains(ch):
+            bad.append({
+                "pos": index,
+                "char": ch,
+                "code": ch.unicode_at(0),
+                "block": _ident_block_name(ch.unicode_at(0)),
+                "lookalike": str(IDENT_LOOKALIKES.get(ch, "")),
+            })
+        index += 1
+    return bad
+
+
+func _ident_block_name(code: int) -> String:
+    for block in IDENT_BLOCKS:
+        if code >= int(block["from"]) and code <= int(block["to"]):
+            return str(block["name"])
+    return ""
+
+
+# Одна проблема на идентификатор со ВСЕМИ плохими символами сразу: в «cоal»
+# их два, а чинить нужно одну строку — две строки в окне про одну и ту же
+# правку только раздражают.
+func _check_ident_charset(problems: Array, id: String, kind: String,
+        entity: Dictionary) -> void:
+    var bad := _bad_ident_chars(id)
+    if bad.is_empty():
+        return
+
+    var parts: Array = []
+    for item in bad:
+        var part := "позиция %d: «%s» (U+%04X" % [int(item["pos"]) + 1,
+                str(item["char"]), int(item["code"])]
+        var block := str(item["block"])
+        if not block.is_empty():
+            part += ", %s" % block
+        part += ")"
+        # На латинском этот символ выглядит так же. Без подсказки автор
+        # прочитает «с» как «c» и не поймёт, в чём дело.
+        var lookalike := str(item["lookalike"])
+        if not lookalike.is_empty():
+            part += ", на латинице «%s»" % lookalike
+        parts.append(part + ";")
+
+    var headline := "Идентификатор «%s» содержит недопустимые символы." % id
+    var template := "Разрешены только латинские буквы a-z, цифры и «_». " \
+            + "Недопустимо: %s Такие символы неотличимы от латинских на глаз — " \
+            + "исправьте этот идентификатор и ВСЕ ссылки на него сразу."
+    var where := template % " ".join(parts)
+
+    _push(problems, "id_charset", kind, id, kind,
+            _entity_name(entity, id), id, "id", headline, where)
+
+
+# Два идентификатора, различающиеся только похожими символами («carmine» и
+# «сarmine»), — для движка это ДВА разных ресурса. Ссылка на латинский
+# «carmine» проходит любую проверку битых ссылок, потому что он существует,
+# а кириллический лежит мёртвым грузом. Настоящие проверки ссылок такой
+# случай пропускают целиком — поэтому он ловится здесь.
+func _check_lookalikes(declared: Dictionary, problems: Array) -> void:
+    # Нормализованный id → ВСЕ объявления, дающие такую форму.
+    var groups := {}
+    for id in declared:
+        var key := _ascii_fold(id)
+        if not groups.has(key):
+            groups[key] = []
+        (groups[key] as Array).append(id)
+
+    for key in groups:
+        var members: Array = groups[key]
+        if members.size() < 2:
+            # Одиночка. Если это кириллица, её поймал id_charset: сравнивать
+            # не с чем.
+            continue
+        # В группе из двух и больше участников латинское написание есть
+        # обязательно: два РАЗНЫХ чисто латинских id нормализоваться в одну
+        # строку не могут (для латиницы fold — тождественное отображение).
+        # Значит, все «лишние» — те, где fold что-то заменил.
+        var latin := ""
+        for id in members:
+            if _ascii_fold(id) == id:
+                latin = id
+                break
+
+        # Сообщаем по одной проблеме на группу: несколько участников —
+        # это одна и та же опечатка, и перечислять её дважды незачем.
+        for id in members:
+            if id == latin:
+                continue
+            var info: Dictionary = declared[id]
+            var latin_info: Dictionary = declared[latin]
+            var headline := "Идентификатор «%s» неотличим на глаз от «%s»." % [id, latin]
+            var template := "Различия в написании нет, но для игры это РАЗНЫЕ " \
+                    + "идентификаторы: всё, что ссылается на «%s», не попадёт в «%s» " \
+                    + "и наоборот. При этом ссылка на «%s» ссылки НЕ ломает — он " \
+                    + "объявлен и выглядит правильно, поэтому обычные проверки " \
+                    + "битых ссылок эту опечатку и не видели. Оставьте один " \
+                    + "идентификатор и переименуйте второй во всех файлах."
+            var where := template % [latin, id, latin]
+
+            # Владелец проблемы — испорченное объявление (его и надо удалить),
+            # поэтому в source_id оно, а не латинное написание.
+            _push(problems, "id_lookalike", str(latin_info["kind"]), latin,
+                    str(info["kind"]), _entity_name(info["entity"], id), id, "id",
+                    headline, where)
+
+
+# Приводит символы, неотличимые от латинских, к латинскому виду. Служит
+# ТОЛЬКО для сравнения id между собой, никогда — для правки данных.
+func _ascii_fold(id: String) -> String:
+    var result := ""
+    for ch in id:
+        result += str(IDENT_LOOKALIKES.get(ch, ch))
+    return result
 #
 # Проверяются ссылка на технологию (общая с остальными сущностями) и сами
 # числа уровня. Числа проверяем потому, что они бьют по геймплею молча:

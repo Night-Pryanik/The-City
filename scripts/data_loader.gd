@@ -58,6 +58,16 @@ const SOURCE_COLLECTIONS := [
     "professions",
     "product_groups",
     "roads",
+    # Коллекции, на которые не ссылается ни одна проверка битых ссылок, но
+    # чьи идентификаторы проверяет data_validator.gd на алфавит и омоглифы.
+    # Без них проблема «carmine с кириллической с» указала бы на сущность без
+    # файла и строки — а файл и строка здесь и есть главная ценность.
+    "terrains",
+    "covers",
+    "eras",
+    "groups",
+    "quality_levels",
+    "special_actions",
 ]
 
 func load_all_data():
