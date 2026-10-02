@@ -258,26 +258,71 @@ func _test_route_and_speeds(state: Dictionary) -> void:
     check(route.get("path", []).size() == 5,
             "маршрут из 4 участков содержит 5 гексов", state)
 
-    # Сплошная тропка: средняя = минимальная = её скорость.
+    # Сплошная тропка: средняя равна скорости тропки.
     var trail_speed: int = _gdata.get_road_max_speed(1)
+    var cart_speed: int = _gdata.get_road_max_speed(2)
     check(absf(float(route.get("avg_speed", 0.0)) - float(trail_speed)) < 0.01,
             "на маршруте из одной тропки средняя скорость равна скорости тропки",
             state)
-    check(int(route.get("min_speed", -1)) == trail_speed,
-            "на маршруте из одной тропки минимум равен её скорости", state)
+    check(not route.has("min_speed"),
+            "маршрут не должен содержать «узкое место»: скорость маршрута — средняя",
+            state)
 
     # Смешанный маршрут: три тропки и одна тележная дорога. Среднее выше
-    # минимума — именно поэтому показываются обе величины.
+    # скорости тропки — плохая ямка не должна ронять скорость всего хайвея.
     _rm.upgrade_road_segment(CITY_ROW + 3, CITY_COL, CITY_ROW + 4, CITY_COL, 2)
     var mixed: Dictionary = _rm.find_route_to_city(CITY_ROW + 4, CITY_COL)
-    var expected_avg := (3.0 * float(trail_speed) + float(_gdata.get_road_max_speed(2))) / 4.0
+    var expected_avg := (3.0 * float(trail_speed) + float(cart_speed)) / 4.0
     check(absf(float(mixed.get("avg_speed", 0.0)) - expected_avg) < 0.01,
             "средняя скорость = среднее max_speed по участкам (ожидалось %.2f, получено %.2f)"
                     % [expected_avg, float(mixed.get("avg_speed", 0.0))], state)
-    check(int(mixed.get("min_speed", -1)) == trail_speed,
-            "минимальная скорость = самое узкое место маршрута", state)
-    check(float(mixed.get("avg_speed", 0.0)) > float(mixed.get("min_speed", 0)),
-            "на смешанном маршруте средняя скорость должна быть выше минимума", state)
+    check(float(mixed.get("avg_speed", 0.0)) > float(trail_speed),
+            "одна тележная дорога должна поднимать среднюю, а не понижать её до минимума",
+            state)
+
+    # Ключевой пример автора: девять тележных дорог и одна тропка = 28 ед./сек,
+    # а не 10. Отдельный экземпляр менеджера — иначе длинный маршрут перебил бы
+    # сеть, на которой проверяются уровни и порядок сегментов выше.
+    var rm2 = load("res://scripts/road_manager.gd").new()
+    get_root().add_child(rm2)
+    rm2.initialize(CITY_ROW, CITY_COL)
+    for i in range(10):
+        rm2.build_road_step(CITY_ROW + i, CITY_COL, CITY_ROW + i + 1, CITY_COL,
+                false, 2)
+    var long_route: Dictionary = rm2.find_route_to_city(CITY_ROW + 10, CITY_COL)
+    check(long_route.get("ok", false),
+            "маршрут длиной 10 участков должен находиться", state)
+    check(int(long_route.get("length", 0)) == 10,
+            "маршрут должен состоять из 10 участков (получено %d)"
+                    % int(long_route.get("length", 0)), state)
+    check(absf(float(long_route.get("avg_speed", 0.0)) - 30.0) < 0.01,
+            "десять тележных дорог дают среднюю 30 ед./сек", state)
+
+    # Одна тропка на десяти участках: (9*30 + 1*10)/10 = 28.
+    #
+    # Конфигурация строится сразу, а не понижением уровня: upgrade_road_segment
+    # умеет только ПОВЫШАТЬ (участок не ниже уровня — false), поэтому собрать
+    # смешанный маршрут понижением нельзя в принципе.
+    var rm3 = load("res://scripts/road_manager.gd").new()
+    get_root().add_child(rm3)
+    rm3.initialize(CITY_ROW, CITY_COL)
+    for i in range(9):
+        rm3.build_road_step(CITY_ROW + i, CITY_COL, CITY_ROW + i + 1, CITY_COL,
+                false, 2)
+    rm3.build_road_step(CITY_ROW + 9, CITY_COL, CITY_ROW + 10, CITY_COL, false, 1)
+    var mixed_long: Dictionary = rm3.find_route_to_city(CITY_ROW + 10, CITY_COL)
+    check(int(mixed_long.get("length", 0)) == 10,
+            "смешанный маршрут должен состоять из 10 участков", state)
+    check(absf(float(mixed_long.get("avg_speed", 0.0)) - 28.0) < 0.01,
+            "девять тележных дорог и одна тропка = (9*30 + 1*10)/10 = 28 ед./сек"
+                    + " (получено %.2f)" % float(mixed_long.get("avg_speed", 0.0)), state)
+    # Главное: это НЕ 10 ед./сек. Одна плохая ямка не роняет весь хайвей.
+    check(float(mixed_long.get("avg_speed", 0.0)) > 25.0,
+            "одна тропка не должна ронять маршрут до её скорости 10 ед./сек", state)
+    get_root().remove_child(rm2)
+    rm2.free()
+    get_root().remove_child(rm3)
+    rm3.free()
 
     # Уровни маршрута идут в том же порядке, что и участки: от улучшения к
     # городу. Улучшен был участок, примыкающий к улучшению, — он первый.
@@ -288,10 +333,12 @@ func _test_route_and_speeds(state: Dictionary) -> void:
 
     # Скорость пересчитывается после улучшения участка: маршрут — это
     # производная от сети, и кэш обязан сбрасываться вместе с ней.
+    # Две тележные дороги и две тропки: (2*30 + 2*10)/4 = 20.
     _rm.upgrade_road_segment(CITY_ROW + 2, CITY_COL, CITY_ROW + 3, CITY_COL, 2)
     var mixed2: Dictionary = _rm.find_route_to_city(CITY_ROW + 4, CITY_COL)
-    check(int(mixed2.get("min_speed", 0)) == trail_speed,
-            "узкое место осталось там, где участок ещё тропка", state)
+    check(absf(float(mixed2.get("avg_speed", 0.0)) - 20.0) < 0.01,
+            "после улучшения средняя пересчиталась: (2*30 + 2*10)/4 = 20 ед./сек"
+                    + " (получено %.2f)" % float(mixed2.get("avg_speed", 0.0)), state)
 
     # Гекса без дороги маршрута не имеет; сам город маршрутом не считается.
     check(not _rm.find_route_to_city(CITY_ROW, CITY_COL - 3).get("ok", true),
@@ -359,8 +406,9 @@ func _test_live_scene(state: Dictionary) -> void:
     check(route.get("ok", false), "у улучшения с дорогой должен быть маршрут", state)
     check(int(route.get("length", 0)) >= 1,
             "маршрут должен состоять хотя бы из одного участка", state)
-    check(int(route.get("min_speed", 0)) == _gdata.get_road_max_speed(1),
-            "изначально маршрут идёт по тропкам", state)
+    check(absf(float(route.get("avg_speed", 0.0)) - float(_gdata.get_road_max_speed(1))) < 0.01,
+            "изначально маршрут идёт по одним тропкам, и средняя равна их скорости",
+            state)
 
     # Клик по улучшению: в панели есть строка маршрута, на карте — подсветка
     # существующих участков маршрута.
@@ -406,8 +454,9 @@ func _test_live_scene(state: Dictionary) -> void:
         check(int(rm.road_segments[key]) == 2,
                 "все участки маршрута должны стать второго уровня", state)
     var after: Dictionary = main_map.get_route_to_city(row, col)
-    check(int(after.get("min_speed", 0)) == _gdata.get_road_max_speed(2),
-            "после улучшения узкое место маршрута должно вырасти", state)
+    check(absf(float(after.get("avg_speed", 0.0)) - float(_gdata.get_road_max_speed(2))) < 0.01,
+            "после улучшения средняя маршрута должна вырасти до скорости тележной дороги",
+            state)
 
     # Повторное улучшение до того же уровня предлагать нечего.
     check(not _has_action(panel._collect_actions(row, col, main_map.tile_data[row][col]),

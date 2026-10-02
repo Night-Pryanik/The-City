@@ -635,10 +635,13 @@ func _tile_road_level(tile: Dictionary) -> int:
 # сети города.
 #
 # ПРО avg_speed: это среднее арифметическое max_speed участков — «насколько
-# быстро в среднем едет груз по этому маршруту». Отдельно отдаётся min_speed:
-# физически узкое место ограничивает поток сильнее среднего (груз всё равно
-# должен пройти через самый узкий участок), поэтому игроку показываются оба
-# числа, и решение «улучшить дорогу» принимается по min_speed.
+# быстро в среднем едет груз по всему маршруту». Именно среднее, а НЕ минимум
+# по маршруту: маршрут из девяти тележных дорог и одной тропки даёт
+# (9*30 + 1*10)/10 = 28 ед./сек, а не 10. Одна плохая ямка на хайвее не должна
+# внезапно снижать скорость всего хайвея.
+#
+# Отдельной величины «узкое место» (min_speed) здесь намеренно нет: она была
+# введена без запроса и удалена по требованию автора.
 func find_route_to_city(
     row: int,
     col: int,
@@ -666,7 +669,7 @@ func _compute_route_to_city(
         # участков нет, делить на их количество нельзя, а показывать
         # игроку бесконечную скорость города нечестно — доставка начинается
         # на подходе к городу, а не на его гексе.
-        return _route(false, tr("This is the city itself"), [], [], [], 0, 0.0, 0)
+        return _route(false, tr("This is the city itself"), [], [], [], 0, 0.0)
 
     # Сеть, по которой идём: участки города + (для городка) участки его
     # собственной сети. Сети городков не склеиваются между собой, поэтому
@@ -696,7 +699,7 @@ func _compute_route_to_city(
         adjacency[b_key].append({"key": key, "to": a_key})
 
     if not adjacency.has(start_key):
-        return _route(false, no_route, [], [], [], 0, 0.0, 0)
+        return _route(false, no_route, [], [], [], 0, 0.0)
 
     # Обход в ширину: маршрут с наименьшим числом участков. Все участки стоят
     # одинаково, поэтому взвешивать расстояния не нужно — их и нет.
@@ -718,7 +721,7 @@ func _compute_route_to_city(
             queue.append(next_key)
 
     if not found:
-        return _route(false, no_route, [], [], [], 0, 0.0, 0)
+        return _route(false, no_route, [], [], [], 0, 0.0)
 
     # Восстанавливаем маршрут ОТ УЛУЧШЕНИЯ К ГОРОДУ. Обход шёл в обратную
     # сторону (от гекса к городу), поэтому восстановленный список разворачиваем
@@ -732,31 +735,27 @@ func _compute_route_to_city(
     var segment_keys: Array = []
     var levels: Array = []
     var speed_sum := 0
-    var min_speed := 0
     var current_key: String = city_key
     while current_key != start_key:
         var step = parent.get(current_key, null)
         if step == null:
-            return _route(false, no_route, [], [], [], 0, 0.0, 0)
+            return _route(false, no_route, [], [], [], 0, 0.0)
         var hex_parts := str(current_key).split(",")
         path.push_front({"row": int(hex_parts[0]), "col": int(hex_parts[1])})
         var seg_key: String = str(step["key"])
         segment_keys.push_front(seg_key)
         var level := _segment_level_by_key(seg_key)
         levels.push_front(level)
-        var speed := GameData.get_road_max_speed(level)
-        speed_sum += speed
-        if min_speed == 0 or speed < min_speed:
-            min_speed = speed
+        speed_sum += GameData.get_road_max_speed(level)
         current_key = str(step["from"])
     path.push_front({"row": row, "col": col})
 
     var length := segment_keys.size()
     var avg_speed := 0.0 if length == 0 else float(speed_sum) / float(length)
-    return _route(true, "", path, segment_keys, levels, length, avg_speed, min_speed)
+    return _route(true, "", path, segment_keys, levels, length, avg_speed)
 
 func _route(ok: bool, reason: String, path: Array, segments: Array, levels: Array,
-        length: int, avg_speed: float, min_speed: int) -> Dictionary:
+        length: int, avg_speed: float) -> Dictionary:
     return {
         "ok": ok,
         "reason": reason,
@@ -764,8 +763,7 @@ func _route(ok: bool, reason: String, path: Array, segments: Array, levels: Arra
         "segments": segments,
         "levels": levels,
         "length": length,
-        "avg_speed": avg_speed,
-        "min_speed": min_speed
+        "avg_speed": avg_speed
     }
 
 # Уровень участка по его строковому ключу. Участка в сети города нет — 0 не
@@ -820,10 +818,9 @@ func _add_road_segment(row1: int, col1: int, row2: int, col2: int,
 # хранили уровень гекса и требовали, чтобы все примыкающие участки были
 # его уровня, то повышение одного участка требовало бы поднять все
 # остальные, примыкающие к тому же гексу, а те — все примыкающие к ним,
-# и так далее: уровень расползёлся бы на всю связную сеть дорог, а
-# avg_speed стал бы тождественен min_speed. Правило максимума не требует
-# ничего подобного: оранжевая тропка через перекрёсток остаётся тропкой,
-# а показывается лучшая дорога, до гекса доходящая.
+# и так далее: уровень расползёлся бы на всю связную сеть дорог. Правило
+# максимума не требует ничего подобного: оранжевая тропка через перекрёсток
+# остаётся тропкой, а показывается лучшая дорога, до гекса доходящая.
 #
 # Участки сетей ГОРОДКОВ здесь не учитываются: их уровень всегда 1, они не
 # принадлежат игроку и не улучшаются.

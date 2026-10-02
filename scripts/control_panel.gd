@@ -310,14 +310,14 @@ func _clear_ui():
     _set_map_road_preview({})
     _set_map_route_display({})
 
-# Строка «Маршрут до города» в левой колонке панели: сколько участков,
-# средняя скорость и самое узкое место. Показывается только когда маршрут
-# есть; на гексе без дороги строки нет — писать «маршрута нет» на каждом
-# пустом гексе значило бы засорять панель.
+# Строка «Маршрут до города» в левой колонке панели: сколько участков и
+# средняя скорость по маршруту. Показывается только когда маршрут есть; на
+# гексе без дороги строки нет — писать «маршрута нет» на каждом пустом гексе
+# значило бы засорять панель.
 #
-# Средняя скорость отвечает на вопрос «насколько быстро в среднем едет груз»,
-# минимальная — «где именно он вязнет». Обе нужны: улучшать надо узкое
-# место, а не среднее по маршруту.
+# Средняя арифметическая по участкам — сознательно, а не минимум по маршруту:
+# девять тележных дорог и одна тропка дают 28 ед./сек, а не 10. Отдельной
+# строки «узкое место» здесь нет (см. road_manager.find_route_to_city).
 func _append_route_info(row: int, col: int) -> void:
     if main_map == null or not main_map.has_method("get_route_to_city"):
         return
@@ -335,7 +335,7 @@ func _append_route_info(row: int, col: int) -> void:
     if not route.get("ok", false):
         return
     var route_label := Label.new()
-    route_label.text = tr(" Route to the city: %d sections, average %.1f units/sec (bottleneck %d)") % [int(route.get("length", 0)), float(route.get("avg_speed", 0.0)), int(route.get("min_speed", 0))]
+    route_label.text = tr(" Route to the city: %d sections, average %.1f units/sec") % [int(route.get("length", 0)), float(route.get("avg_speed", 0.0))]
     route_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     route_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
     _products_container.add_child(route_label)
@@ -1089,14 +1089,13 @@ func _append_upgrade_road_action(actions: Array, row: int, col: int) -> void:
         worst_level = mini(worst_level, int(level))
     if worst_level >= best_level:
         return
-    var min_speed := int(route.get("min_speed", 0))
     actions.append({
         "type": UPGRADE_ROAD_TYPE,
         "label": tr("Upgrade road"),
         "enabled": true,
-        "tooltip": tr("Upgrade the road from this hex to the city to %s (%d units/sec per section, now the bottleneck is %d units/sec)")
+        "tooltip": tr("Upgrade the road from this hex to the city to %s (%d units/sec per section)")
                 % [GameData.get_road_name(best_level),
-                        GameData.get_road_max_speed(best_level), min_speed],
+                        GameData.get_road_max_speed(best_level)],
         "icon": "road.svg"
     })
 
@@ -1788,21 +1787,6 @@ func _build_road_upgrade_preview(row: int, col: int) -> bool:
     sections_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     sections_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
     _preview_container.add_child(sections_label)
-
-    # Что получится по скорости: узкое место маршрута после улучшения. Без
-    # этой строки игрок видит только цену и не понимает, что именно он
-    # покупает — ведь улучшается ради пропускной способности.
-    var route: Dictionary = main_map.get_route_to_city(row, col)
-    if route.get("ok", false):
-        var speed_label := Label.new()
-        speed_label.text = tr(" Bottleneck: %d → %d units/sec, average %d units/sec") % [
-            int(route.get("min_speed", 0)),
-            GameData.get_road_max_speed(road_level),
-            int(ceil(float(GameData.get_road_max_speed(road_level)))),
-        ]
-        speed_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-        speed_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
-        _preview_container.add_child(speed_label)
 
     if CityData.ignore_build_requirements:
         _add_instant_hint()

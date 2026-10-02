@@ -138,9 +138,6 @@ msgstr " База: %d труда"
 msgid " Base: %d work per section"
 msgstr " База: %d труда за участок"
 
-msgid " Bottleneck: %d → %d units/sec, average %d units/sec"
-msgstr " Узкое место: %d → %d ед./сек, среднее %d ед./сек"
-
 msgid " Construction technologies: ×%.2f"
 msgstr " Технологии строительства: ×%.2f"
 
@@ -192,8 +189,8 @@ msgstr " Дорога до города (%s): %d труда"
 msgid " Road: %s"
 msgstr " Дорога: %s"
 
-msgid " Route to the city: %d sections, average %.1f units/sec (bottleneck %d)"
-msgstr " Маршрут до города: %d участков, средняя %.1f ед./сек (узкое место: %d)"
+msgid " Route to the city: %d sections, average %.1f units/sec"
+msgstr " Маршрут до города: %d участков, средняя %.1f ед./сек"
 
 msgid " Sections to upgrade: %d"
 msgstr " Участков к улучшению: %d"
@@ -3123,8 +3120,8 @@ msgstr "Улучшить дорогу"
 msgid "Upgrade section %d/%d"
 msgstr "Улучшение участка %d/%d"
 
-msgid "Upgrade the road from this hex to the city to %s (%d units/sec per section, now the bottleneck is %d units/sec)"
-msgstr "Улучшить дорогу от этого гекса до города до уровня «%s» (%d ед./сек на участок, сейчас узкое место: %d ед./сек)"
+msgid "Upgrade the road from this hex to the city to %s (%d units/sec per section)"
+msgstr "Улучшить дорогу от этого гекса до города до уровня «%s» (%d ед./сек на участок)"
 
 msgid "Upgrade to"
 msgstr "Улучшить до"
