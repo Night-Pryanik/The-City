@@ -138,9 +138,6 @@ msgstr ""
 msgid " Base: %d work per section"
 msgstr ""
 
-msgid " Bottleneck: %d → %d units/sec, average %d units/sec"
-msgstr ""
-
 msgid " Construction technologies: ×%.2f"
 msgstr ""
 
@@ -192,7 +189,7 @@ msgstr ""
 msgid " Road: %s"
 msgstr ""
 
-msgid " Route to the city: %d sections, average %.1f units/sec (bottleneck %d)"
+msgid " Route to the city: %d sections, average %.1f units/sec"
 msgstr ""
 
 msgid " Sections to upgrade: %d"
@@ -454,6 +451,9 @@ msgid "Advance requirement met. Click to advance to the next era."
 msgstr ""
 
 msgid "Agave"
+msgstr ""
+
+msgid "Alabaster"
 msgstr ""
 
 msgid "Alchemist's House"
@@ -1206,6 +1206,9 @@ msgstr ""
 msgid "Culture:"
 msgstr ""
 
+msgid "Cuts stone into plates, bowls, and cups."
+msgstr ""
+
 msgid "Cuttlefish"
 msgstr ""
 
@@ -1803,6 +1806,12 @@ msgstr ""
 msgid "Makes jewelry out of malachite."
 msgstr ""
 
+msgid "Makes jewelry out of nephrite."
+msgstr ""
+
+msgid "Makes jewelry out of porphyry."
+msgstr ""
+
 msgid "Makes jewelry out of silver."
 msgstr ""
 
@@ -1957,6 +1966,12 @@ msgid "Murex"
 msgstr ""
 
 msgid "Native Metals"
+msgstr ""
+
+msgid "Nephrite"
+msgstr ""
+
+msgid "Nephrite Jewelry"
 msgstr ""
 
 msgid "New era"
@@ -2215,6 +2230,12 @@ msgid "Population: 1"
 msgstr ""
 
 msgid "Population: 50"
+msgstr ""
+
+msgid "Porphyry"
+msgstr ""
+
+msgid "Porphyry Jewelry"
 msgstr ""
 
 msgid "Potato"
@@ -2727,6 +2748,9 @@ msgstr ""
 msgid "Soapmaker's House"
 msgstr ""
 
+msgid "Soapstone"
+msgstr ""
+
 msgid "Soda"
 msgstr ""
 
@@ -2766,6 +2790,9 @@ msgstr ""
 msgid "Start operation (%s)"
 msgstr ""
 
+msgid "Stone Tableware"
+msgstr ""
+
 msgid "Stop \"%s\""
 msgstr ""
 
@@ -2797,6 +2824,12 @@ msgid "Supplies, dynamics and resource tooltips update at this interval (from 1 
 msgstr ""
 
 msgid "Swamp"
+msgstr ""
+
+msgid "Tableware"
+msgstr ""
+
+msgid "Tableware Stones"
 msgstr ""
 
 msgid "Tamed resources:"
@@ -3123,7 +3156,7 @@ msgstr ""
 msgid "Upgrade section %d/%d"
 msgstr ""
 
-msgid "Upgrade the road from this hex to the city to %s (%d units/sec per section, now the bottleneck is %d units/sec)"
+msgid "Upgrade the road from this hex to the city to %s (%d units/sec per section)"
 msgstr ""
 
 msgid "Upgrade to"

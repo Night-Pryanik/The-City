@@ -72,6 +72,20 @@
       "production_bonus": 0.0
     },
     {
+      "resource": "@tableware",
+      "profession": [ "all" ],
+      "amount": 10,
+      "interval": 1,
+      "production_bonus": 0.0
+    },
+    {
+      "resource": "jewelry",
+      "profession": [ "all" ],
+      "amount": 10,
+      "interval": 10,
+      "production_bonus": 0.0
+    },
+    {
       // Учёный (Библиотека, Скрипторий). Письменные материалы он берёт
       // рецептом «Наука» ("@writing_mediums", см. data/crafts/pseudo.json),
       // а перья — СВЕРХ этого: пока перья есть на складе, наука здания

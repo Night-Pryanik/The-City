@@ -253,6 +253,16 @@
       "time": 5.0,
       "unlock_tech": "paper",
       "description": "Makes paper from various plant fibers."
+    },
+    {
+      "id": "stone_tableware",
+      "name": "Stone Tableware",
+      "produced_in": [ "mason_workshop" ],
+      "resources": { "@tableware_stones": 20 },
+      "result": { "stone_tableware": 10 },
+      "time": 5.0,
+      "unlock_tech": "masonry",
+      "description": "Cuts stone into plates, bowls, and cups."
     }
   ]
 }

@@ -79,6 +79,26 @@
       "time": 5.0,
       "unlock_tech": "glassmaking",
       "description": "Turns sand and soda into glass jewelry."
+    },
+    {
+      "id": "nephrite_jewelry",
+      "name": "Nephrite Jewelry",
+      "produced_in": [ "jeweler_house" ],
+      "resources": { "nephrite": 10 },
+      "result": { "nephrite_jewelry": 10 },
+      "time": 18,
+      "unlock_tech": "jewelry",
+      "description": "Makes jewelry out of nephrite."
+    },
+    {
+      "id": "porphyry_jewelry",
+      "name": "Porphyry Jewelry",
+      "produced_in": [ "jeweler_house" ],
+      "resources": { "porphyry": 10 },
+      "result": { "porphyry_jewelry": 10 },
+      "time": 18,
+      "unlock_tech": "jewelry",
+      "description": "Makes jewelry out of porphyry."
     }
   ]
 }

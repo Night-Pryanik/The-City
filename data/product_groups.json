@@ -32,7 +32,24 @@
         "sandstone",
         "marble",
         "granite",
-        "limestone"
+        "limestone",
+        "soapstone"
+      ]
+    },
+    {
+      "id": "tableware_stones",
+      "name": "Tableware Stones",
+      "products": [
+        "alabaster",
+        "nephrite",
+        "porphyry",
+        "basalt",
+        "tuff",
+        "sandstone",
+        "marble",
+        "granite",
+        "limestone",
+        "soapstone"
       ]
     },
     {
@@ -133,6 +150,30 @@
       "id": "alcohol",
       "name": "Alcohol",
       "products": [ "beer", "mead", "sake", "pulque", "wine", "fruit_wine" ]
+    },
+    {
+      "id": "tableware",
+      "name": "Tableware",
+      "products": [
+        "stone_tableware",
+        "pottery",
+        "glassware"
+        // "metal_tableware"
+      ]
+    },
+    {
+      "id": "jewelry",
+      "name": "Jewelry",
+      "products": [
+        "gold_jewelry",
+        "silver_jewelry",
+        "bronze_jewelry",
+        "iron_jewelry",
+        "lazurite_jewelry",
+        "malachite_jewelry",
+        "nephrite_jewelry",
+        "porphyry_jewelry"
+      ]
     }
   ]
 }

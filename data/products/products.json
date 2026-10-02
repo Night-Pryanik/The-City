@@ -1,7 +1,8 @@
 {
   "resources": [
     {
-      "id": "pottery", "price": 10,
+      "id": "pottery",
+      "price": 10,
       "name": "Pottery",
       "type": "product",
       "category": "household_items",
@@ -9,7 +10,8 @@
       "icon": "pottery.png"
     },
     {
-      "id": "clay_tablets", "price": 6,
+      "id": "clay_tablets",
+      "price": 6,
       "name": "Clay Tablets",
       "type": "product",
       "category": "material",
@@ -18,7 +20,8 @@
       "special_yield": { "science": 1 }
     },
     {
-      "id": "fabric_clothes", "price": 16,
+      "id": "fabric_clothes",
+      "price": 16,
       "name": "Cloth Clothes",
       "type": "product",
       "category": "clothes",
@@ -26,7 +29,8 @@
       "icon": "fabric_clothes.png"
     },
     {
-      "id": "wool_clothes", "price": 20,
+      "id": "wool_clothes",
+      "price": 20,
       "name": "Wool Clothes",
       "type": "product",
       "category": "clothes",
@@ -34,7 +38,8 @@
       "icon": "wool_clothes.png"
     },
     {
-      "id": "leather_clothes", "price": 28,
+      "id": "leather_clothes",
+      "price": 28,
       "name": "Leather Clothes",
       "type": "product",
       "category": "clothes",
@@ -42,7 +47,8 @@
       "icon": "leather_clothes.png"
     },
     {
-      "id": "silk_clothes", "price": 90,
+      "id": "silk_clothes",
+      "price": 90,
       "name": "Silk Clothes",
       "type": "product",
       "category": "clothes",
@@ -50,7 +56,8 @@
       "icon": "silk_clothes.png"
     },
     {
-      "id": "vegetable_oil", "price": 10,
+      "id": "vegetable_oil",
+      "price": 10,
       "name": "Vegetable Oil",
       "type": "product",
       "category": "material",
@@ -58,7 +65,8 @@
       "icon": "vegetable_oil.png"
     },
     {
-      "id": "ropes", "price": 7,
+      "id": "ropes",
+      "price": 7,
       "name": "Ropes and Cables",
       "type": "product",
       "category": "material",
@@ -66,7 +74,8 @@
       "icon": "ropes.png"
     },
     {
-      "id": "tar", "price": 6,
+      "id": "tar",
+      "price": 6,
       "name": "Tar",
       "type": "product",
       "category": "material",
@@ -74,7 +83,8 @@
       "icon": "tar.png"
     },
     {
-      "id": "tarred_ropes", "price": 10,
+      "id": "tarred_ropes",
+      "price": 10,
       "name": "Tarred Ropes",
       "type": "product",
       "category": "material",
@@ -82,7 +92,8 @@
       "icon": "tarred_ropes.png"
     },
     {
-      "id": "soap", "price": 8,
+      "id": "soap",
+      "price": 8,
       "name": "Soap",
       "type": "product",
       "category": "household_items",
@@ -90,7 +101,8 @@
       "icon": "soap.png"
     },
     {
-      "id": "salt", "price": 6,
+      "id": "salt",
+      "price": 6,
       "name": "Salt",
       "type": "product",
       "category": "household_items",
@@ -98,7 +110,8 @@
       "icon": "salt.png"
     },
     {
-      "id": "papyrus", "price": 10,
+      "id": "papyrus",
+      "price": 10,
       "name": "Papyrus",
       "type": "product",
       "category": "material",
@@ -107,25 +120,17 @@
       "special_yield": { "science": 2 }
     },
     {
-      "id": "reed_boat", "price": 12,
+      "id": "reed_boat",
+      "price": 12,
       "name": "Reed Boat",
       "type": "product",
       "category": "other",
       "unlock_tech": "fishing",
       "icon": "reed_boat.png"
-      // Потребление этого продукта профессиями описывается НЕ здесь,
-      // а в data/consumption.json. Сейчас рыбак потребляет группу продуктов
-      // «Лодки» ("@boats", включая тростниковую лодку): 10 шт. каждые 10 сек,
-      // пока на складе хватает. Пока лодки есть — производство рыбы получает
-      // бонус +0.5 к множителю (то есть x1.5). Если лодок нет — бонус
-      // снимается, улучшение НЕ останавливается, а просто откатывается к
-      // базовому производству. Схема «потребление от ресурса» через поле
-      // "consumption" здесь сохранена для одиночных случаев (когда у ресурса
-      // нет аналогов для группы). Подробности — в docs.md,
-      // «Профессии и потребление ресурсов».
     },
     {
-      "id": "parchment", "price": 16,
+      "id": "parchment",
+      "price": 16,
       "name": "Parchment",
       "type": "product",
       "category": "material",
@@ -134,7 +139,8 @@
       "special_yield": { "science": 3 }
     },
     {
-      "id": "wax_tablets", "price": 12,
+      "id": "wax_tablets",
+      "price": 12,
       "name": "Wax Tablets",
       "type": "product",
       "category": "material",
@@ -143,12 +149,22 @@
       "special_yield": { "science": 1 }
     },
     {
-      "id": "glassware", "price": 15,
+      "id": "glassware",
+      "price": 15,
       "name": "Glassware",
       "type": "product",
       "category": "household_items",
       "unlock_tech": "glassmaking",
       "icon": "glassware.png"
+    },
+    {
+      "id": "stone_tableware",
+      "price": 20,
+      "name": "Stone Tableware",
+      "type": "product",
+      "category": "household_items",
+      "unlock_tech": "masonry",
+      "icon": "stone_tableware.png"
     }
   ]
 }

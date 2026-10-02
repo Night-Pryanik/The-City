@@ -1,7 +1,8 @@
 {
   "resources": [
     {
-      "id": "glass_jewelry", "price": 22,
+      "id": "glass_jewelry",
+      "price": 22,
       "name": "Glass Jewelry",
       "type": "product",
       "category": "luxury",
@@ -9,7 +10,8 @@
       "icon": "glass_jewelry.png"
     },
     {
-      "id": "gold_jewelry", "price": 140,
+      "id": "gold_jewelry",
+      "price": 140,
       "name": "Gold Jewelry",
       "type": "product",
       "category": "luxury",
@@ -17,7 +19,8 @@
       "icon": "gold_jewelry.png"
     },
     {
-      "id": "copper_jewelry", "price": 28,
+      "id": "copper_jewelry",
+      "price": 28,
       "name": "Copper Jewelry",
       "type": "product",
       "category": "luxury",
@@ -25,7 +28,8 @@
       "icon": "copper_jewelry.png"
     },
     {
-      "id": "silver_jewelry", "price": 90,
+      "id": "silver_jewelry",
+      "price": 90,
       "name": "Silver Jewelry",
       "type": "product",
       "category": "luxury",
@@ -33,7 +37,8 @@
       "icon": "silver_jewelry.png"
     },
     {
-      "id": "bronze_jewelry", "price": 40,
+      "id": "bronze_jewelry",
+      "price": 40,
       "name": "Bronze Jewelry",
       "type": "product",
       "category": "luxury",
@@ -41,7 +46,8 @@
       "icon": "bronze_jewelry.png"
     },
     {
-      "id": "iron_jewelry", "price": 55,
+      "id": "iron_jewelry",
+      "price": 55,
       "name": "Iron Jewelry",
       "type": "product",
       "category": "luxury",
@@ -49,7 +55,8 @@
       "icon": "iron_jewelry.png"
     },
     {
-      "id": "lazurite_jewelry", "price": 120,
+      "id": "lazurite_jewelry",
+      "price": 120,
       "name": "Lazurite Jewelry",
       "type": "product",
       "category": "luxury",
@@ -57,12 +64,31 @@
       "icon": "lazurite_jewelry.png"
     },
     {
-      "id": "malachite_jewelry", "price": 120,
+      "id": "malachite_jewelry",
+      "price": 120,
       "name": "Malachite Jewelry",
       "type": "product",
       "category": "luxury",
       "unlock_tech": "jewelry",
       "icon": "malachite_jewelry.png"
+    },
+    {
+      "id": "nephrite_jewelry",
+      "price": 120,
+      "name": "Nephrite Jewelry",
+      "type": "product",
+      "category": "luxury",
+      "unlock_tech": "jewelry",
+      "icon": "nephrite_jewelry.png"
+    },
+    {
+      "id": "porphyry_jewelry",
+      "price": 120,
+      "name": "Porphyry Jewelry",
+      "type": "product",
+      "category": "luxury",
+      "unlock_tech": "jewelry",
+      "icon": "porphyry_jewelry.png"
     }
   ]
 }
