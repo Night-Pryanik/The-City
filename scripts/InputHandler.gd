@@ -231,8 +231,8 @@ func handle_process(delta: float):
             tip_pos.x = max(0, tip_pos.x)
             tip_pos.y = max(0, tip_pos.y)
             hex_tooltip.position = tip_pos
-            # Расширенный тултип: показываем, если есть бонусы производства
-            # или можно построить улучшение (тогда показываем расчёт труда)
+            # Расширенный тултип: свойства гекса (качество, корм, заполненность,
+            # доступ к пресной воде), производство, потребление, уровень дороги.
             if _tooltip_visible_time >= extended_tooltip_delay and not _extended_tooltip_shown and main_map.has_method("has_extended_tooltip_info") and main_map.has_method("update_extended_tooltip"):
                 if main_map.has_extended_tooltip_info(_hovered_hex.row, _hovered_hex.col):
                     _extended_tooltip_shown = true

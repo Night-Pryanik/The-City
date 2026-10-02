@@ -1156,8 +1156,10 @@ func update_tooltip_text(row: int, col: int):
 func _get_buildable_improvement(row: int, col: int) -> String:
     return MapHelpers.get_buildable_improvement(tile_data[row][col])
 
-# Возвращает true, если для гекса нужно показывать расширенный тултип:
-# есть бонусы производства ИЛИ можно построить улучшение (тогда показываем расчёт труда).
+# Возвращает true, если для гекса нужно показывать расширенный тултип (свойства
+# гекса, производство, потребление, уровень дороги). Условия перечислены не
+# здесь: их спрашивает тот же сборщик, который строит сам блок, — см.
+# MapTooltip.has_extended_tooltip_info.
 func has_extended_tooltip_info(row: int, col: int) -> bool:
     return map_tooltip.has_extended_tooltip_info(row, col, tile_data)
 

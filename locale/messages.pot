@@ -81,12 +81,6 @@ msgstr ""
 msgid "\nResource: unknown (send scouts)"
 msgstr ""
 
-msgid "\nRoad: %s"
-msgstr ""
-
-msgid "\nRoads: %s"
-msgstr ""
-
 msgid "  Subgroup: "
 msgstr ""
 
@@ -298,9 +292,6 @@ msgid "%s (base %s)"
 msgstr ""
 
 msgid "%s (free)"
-msgstr ""
-
-msgid "%s (level %d)"
 msgstr ""
 
 msgid "%s (level %d, up to %d units/sec per section)"
@@ -1350,6 +1341,9 @@ msgstr ""
 msgid "Feathers"
 msgstr ""
 
+msgid "Feed consumption: %d per cycle"
+msgstr ""
+
 msgid "Fells trees in forest plots and hauls in the timber."
 msgstr ""
 
@@ -1360,6 +1354,12 @@ msgid "Fermentation let people turn grain and fruit into alcohol, drunk in ritua
 msgstr ""
 
 msgid "Figs"
+msgstr ""
+
+msgid "Fill level: %d%% (full in %.0f sec)"
+msgstr ""
+
+msgid "Fill time: %.0f sec"
 msgstr ""
 
 msgid "Fine"
@@ -1438,6 +1438,12 @@ msgid "Forge"
 msgstr ""
 
 msgid "Forges tools, weapons and ornaments from metal."
+msgstr ""
+
+msgid "Fresh water access: direct"
+msgstr ""
+
+msgid "Fresh water access: via chain"
 msgstr ""
 
 msgid "Fresh water passes through in a chain (up to 3 tiles)"
@@ -1537,6 +1543,9 @@ msgid "Hemp"
 msgstr ""
 
 msgid "Henna"
+msgstr ""
+
+msgid "Herd: full (100%)"
 msgstr ""
 
 msgid "Herder"
@@ -2293,6 +2302,9 @@ msgid "Quality priority: %s (click to switch)"
 msgstr ""
 
 msgid "Quality priority: use best/worst"
+msgstr ""
+
+msgid "Quality: %s (%s)"
 msgstr ""
 
 msgid "Quarry"

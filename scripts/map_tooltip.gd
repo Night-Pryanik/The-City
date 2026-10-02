@@ -7,8 +7,8 @@ var _worker_manager
 # Ключ последнего отрисованного списка продукции тултипа (для сравнения
 # при периодическом обновлении — чтобы не пересобирать UI без изменений).
 var _last_products_key := ""
-# Гекс, для которого расширенный блок (строка «Дорога: …», производство с
-# модификаторами) уже показан; -1 — блок не показан.
+# Гекс, для которого расширенный блок (строка «Дорога: …», свойства гекса,
+# производство с модификаторами) уже показан; -1 — блок не показан.
 #
 # Расширенный блок и базовый тултип живут в ОДНОМ контейнере, а render_products
 # его чистит. Поэтому любой повторный вызов update_tooltip_text на том же гексе
@@ -184,8 +184,10 @@ func render_products(products: Array, container: Node, wrap: bool = false):
 
 # --- Полная информация о гексе для панели управления ---
 # Возвращает { "text": String, "products": Array }.
-# text — полный текст (как в тултипе), products — расширенное производство
-# с модификаторами. Панель показывает всё сразу, без задержки наведения.
+# text — ПОЛНЫЙ текст гекса: левая колонка панели показывает всё сразу, без
+# задержки наведения, поэтому свойства гекса в ней остаются (в обычном тултипе
+# их нет — см. _build_text с basic_only = true). products — расширенное
+# производство с модификаторами.
 func build_hex_info(row: int, col: int, tile_data: Array, city_row: int = 0, city_col: int = 0) -> Dictionary:
     var text = _build_text(row, col, tile_data, city_row, city_col)
     # На гексе города нельзя строить улучшения, поэтому потенциальный выход
@@ -195,45 +197,19 @@ func build_hex_info(row: int, col: int, tile_data: Array, city_row: int = 0, cit
 
 
 func update_tooltip_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_col: int = 0):
-    var text = _build_text(row, col, tile_data, city_row, city_col)
+    # basic_only = true: обычный тултип отвечает на вопрос «что на этом гексе» и
+    # показывает только местность, ресурс и улучшение. Свойства гекса,
+    # производство и потребление живут в расширенном блоке, который появляется
+    # по задержке наведения. Своего блока «Once built, ... will give» у тултипа
+    # больше нет: расширенный показывает то же самое, но с бонусами и
+    # модификаторами.
+    var text = _build_text(row, col, tile_data, city_row, city_col, true)
 
-    var tile = tile_data[row][col]
-    var is_revealed = tile.get("in_influence", false) or tile.get("is_explored", false)
-    # В кольце влияния чужого городка тултип не раскрывает состояние и выпуск
-    # улучшений: игрок не управляет этими гексами и не должен получать рабочие
-    # показатели чужой территории.
-    var in_town_influence = bool(tile.get("in_town_influence", false))
-    var terrain_data = GameData.terrains.get(tile.terrain, {})
-    var products = []
-    if terrain_data.get("unique", false) and not is_revealed:
-        pass # products остаются пустыми — см. проверку ниже
-    elif not is_revealed or in_town_influence:
-        pass
-    else:
-        var res_id = MapHelpers.get_effective_resource(tile)
-        # Скрытый ресурс не показываем — как будто его на гексе нет.
-        if res_id != "" and not MapHelpers.is_resource_revealed(tile):
-            res_id = ""
-        if tile.improvement != null:
-            if res_id != "":
-                var res_data = GameData.raw_resources.get(res_id, {})
-                if res_data.has("produces"):
-                    products = _collect_production(row, col, res_id, tr(" Produces:"), tile_data)
-        else:
-            if res_id != "":
-                var res_data = GameData.raw_resources.get(res_id, {})
-                # improved_by == null — одноразовый ресурс (дикоросы, самородки):
-                # он не требует улучшения и собирается спец-действием, поэтому
-                # подсказку «При постройке … будет давать» не показываем.
-                if res_data.get("improved_by", null) != null and res_data.has("produces"):
-                    var improvement_id = res_data["improved_by"]
-                    var imp_data = GameData.improvements.get(improvement_id, {})
-                    var imp_name_display = imp_data.get("name", improvement_id)
-                    products = _collect_production(row, col, res_id, tr(" Once built, %s will give:") % imp_name_display, tile_data)
-
+    var products: Array = []
     # Если для этого гекса уже показан расширенный блок, итоговый набор строк —
-    # именно он, а не базовый. Иначе рефреш пересобрал бы контейнер с нуля и
-    # строка «Дорога: …» исчезла бы (см. комментарий к _extended_row).
+    # именно он. Иначе рефреш (подвижная заполненность пастбища) пересобрал бы
+    # контейнер с нуля и все строки блока исчезли бы (см. комментарий
+    # к _extended_row).
     if _extended_row == row and _extended_col == col:
         products = _collect_extended_block(row, col, tile_data)
 
@@ -257,47 +233,15 @@ func update_tooltip_text(row: int, col: int, tile_data: Array, city_row: int = 0
     _last_products_key = products_key
 
 
+# Отвечает, показывать ли расширенный блок тултипа на этом гексе.
+#
+# Условия перечислены НЕ здесь: проверка спрашивает у того же сборщика, который
+# строит сам блок, и сравнивает результат с пустым списком. Список условий и
+# список строк, написанные отдельно, рано или поздно расходятся — и тогда
+# расширенный блок либо не покажется вовсе, либо покажется пустым (см. docs.md,
+# раздел «Обычный и расширенный тултипы гекса»).
 func has_extended_tooltip_info(row: int, col: int, tile_data: Array) -> bool:
-    var tile = tile_data[row][col]
-    var is_revealed = tile.get("in_influence", false) or tile.get("is_explored", false)
-    if not is_revealed:
-        return false
-
-    # Уровень дороги на гексе — повод показать расширенный тултип, даже когда
-    # производства нет: игроку нужно видеть, какая дорога ведёт к этому гексу,
-    # иначе улучшать её вслепую. Функция только ОТВЕЧАЕТ, показывать ли
-    # расширенный блок; сама строка добавляется в update_extended_tooltip.
-    if not road_level_line(row, col).is_empty():
-        return true
-
-    # Расширенный тултип показываем, если на гексе идёт активное производство:
-    # улучшение построено, рабочий назначен, и на гексе есть «эффективный»
-    # ресурс (природный или разводимый) с produces.
-    var eff_res = MapHelpers.get_effective_resource(tile)
-    # Скрытый ресурс не учитываем — информации о нём быть не должно.
-    if eff_res != "" and not MapHelpers.is_resource_revealed(tile):
-        eff_res = ""
-    if tile.improvement != null and eff_res != "" and _worker_manager.has_worker(row, col):
-        var res_data = GameData.raw_resources.get(eff_res, {})
-        if res_data.has("produces"):
-            var bonus_multiplier = CityData.get_improvement_production_multiplier(tile.improvement, MapHelpers.is_hex_irrigated(row, col, tile_data, tile_data.size(), tile_data[0].size()), tile.get("terrain", ""), eff_res)
-            if bonus_multiplier > 1.0:
-                return true
-
-    # Показываем расширенный тултип и при наличии профессионального потребления
-    # у работающего улучшения: рыбак тратит тростниковые лодки, шахтёр — патроны
-    # и т.п. Эту инфу важно показать ДО того, как игрок начнёт замечать
-    # «улучшение встало без видимых причин» в логах.
-    if tile.improvement != null and _worker_manager.has_worker(row, col):
-        var prof_id = GameData.get_profession_for_improvement(tile.improvement)
-        if not prof_id.is_empty():
-            if not GameData.get_profession_consumption(prof_id).is_empty():
-                return true
-
-    # Стоимость постройки в расширенном тултипе больше не показывается —
-    # расчёты перенесены в Превью панели управления.
-
-    return false
+    return not _collect_extended_block(row, col, tile_data).is_empty()
 
 
 func update_extended_tooltip(row: int, col: int, tile_data: Array, city_row: int, city_col: int):
@@ -308,17 +252,16 @@ func update_extended_tooltip(row: int, col: int, tile_data: Array, city_row: int
 
     _render_extra_products(_collect_extended_block(row, col, tile_data))
 
-# Собирает строки расширенного блока тултипа. Единственный источник этих строк:
-# и показ блока (update_extended_tooltip), и его перерисовка при рефреше
-# (update_tooltip_text) берут результат отсюда — иначе списки разъехались бы.
-func _collect_extended_block(row: int, col: int, tile_data: Array) -> Array:
-    var tooltip_lines = _tooltip_text_label.text.split("\n")
-    var filtered_lines := []
-    for line in tooltip_lines:
-        if not line.begins_with(tr("Construction:")):
-            filtered_lines.append(line)
-    _tooltip_text_label.text = "\n".join(filtered_lines)
 
+# Собирает строки расширенного блока тултипа. Единственный источник этих строк:
+# и проверка «показывать ли» (has_extended_tooltip_info), и показ блока
+# (update_extended_tooltip), и его перерисовка при рефреше (update_tooltip_text)
+# берут результат отсюда — иначе списки разъехались бы.
+#
+# Функция ЧИСТАЯ: ничего не рисует и не меняет подписи. Побочный эффект здесь
+# был бы вдвойне опасен — её зовёт проверка из handle_process (InputHandler),
+# то есть каждый кадр, пока блок не показан.
+func _collect_extended_block(row: int, col: int, tile_data: Array) -> Array:
     # Уровень дороги на гексе. Добавляется ПЕРВЫМ, до проверок ниже: у гекса с
     # дорогой, но без улучшения (например, пустой гекс под дорогой) все ранние
     # выходы сработали бы раньше, и строка не появилась бы вовсе — а именно там
@@ -332,6 +275,16 @@ func _collect_extended_block(row: int, col: int, tile_data: Array) -> Array:
     if not road_line.is_empty():
         extra_products.append({"type": "label", "text": tr("Road: %s") % road_line,
                 "color": Color(0.7, 0.9, 0.7)})
+
+    # Свойства гекса: качество ресурса, расход корма, заполненность пастбища,
+    # доступ к пресной воде. Перенесены сюда из базового тултипа, где остались
+    # только местность, ресурс и улучшение.
+    #
+    # Добавляются ДО ранних выходов ниже: доступ к воде есть и на гексе без
+    # ресурса, и в кольце влияния чужого городка — гейты на корм и заполненность
+    # живут внутри _collect_hex_properties.
+    for property_line in _collect_hex_properties(row, col, tile_data):
+        extra_products.append({"type": "label", "text": property_line})
 
     var tile = tile_data[row][col]
     var is_revealed = tile.get("in_influence", false) or tile.get("is_explored", false)
@@ -353,6 +306,74 @@ func _collect_extended_block(row: int, col: int, tile_data: Array) -> Array:
 
     extra_products.append_array(_collect_extended_production(row, col, tile_data))
     return extra_products
+
+
+# --- Свойства гекса: то, что уехало из базового тултипа ---
+#
+# Качество ресурса, расход корма, заполненность пастбища и доступ к пресной
+# воде. Обычный тултип отвечает на вопрос «что на этом гексе» (местность,
+# ресурс, улучшение), поэтому свойства показываются только в расширенном блоке.
+#
+# Единственный источник строк: и расширенный блок тултипа, и полный текст гекса
+# для левой колонки панели управления. Строки возвращаются БЕЗ ведущего перевода
+# строки — вызывающий склеивает их сам: в тексте это перевод строки плюс строка,
+# а в контейнере строк тултипа у каждой строки свой отступ.
+func _collect_hex_properties(row: int, col: int, tile_data: Array) -> Array:
+    var lines: Array = []
+    var tile = tile_data[row][col]
+    if tile == null:
+        return lines
+    # Неисследованный гекс: свойств не раскрываем. Базовый тултип для него тоже
+    # молчит — там только местность и подсказка про разведку.
+    var is_revealed = tile.get("in_influence", false) or tile.get("is_explored", false)
+    if not is_revealed:
+        return lines
+
+    # Качество — свойство улучшения: без построенного улучшения его на гексе
+    # ещё нет.
+    var tile_quality = tile.get("quality", "")
+    if tile_quality != "" and tile.improvement != null:
+        lines.append(tr("Quality: %s (%s)") % [
+                GameData.get_quality_stars(tile_quality),
+                GameData.get_quality_name(tile_quality)])
+
+    var res_id = MapHelpers.get_effective_resource(tile)
+    # Скрытый ресурс (tech_reveal не изучен): о нём игроку знать нельзя.
+    if res_id != "" and not MapHelpers.is_resource_revealed(tile):
+        res_id = ""
+    # Корм и заполненность стада — хозяйственные показатели улучшения. В кольце
+    # влияния ЧУЖОГО городка их не показываем: игрок не управляет этими гексами
+    # (тот же гейт, что был у базового тултипа).
+    if res_id != "" and not bool(tile.get("in_town_influence", false)):
+        var res_data = GameData.raw_resources.get(res_id, {})
+        var feed_consumption = res_data.get("feed_consumption", 0)
+        if feed_consumption > 0:
+            lines.append(tr("Feed consumption: %d per cycle") % feed_consumption)
+        var time_to_mature = res_data.get("time_to_mature", 0)
+        if time_to_mature > 0:
+            # Растущий ресурс (животные на пастбище): текущая заполненность и
+            # остаток времени — если улучшение уже работает.
+            if tile.improvement != null and _worker_manager.has_worker(row, col):
+                var fill_frac = MapHelpers.get_fill_fraction(tile, res_data)
+                if fill_frac >= 1.0:
+                    lines.append(tr("Herd: full (100%)"))
+                else:
+                    var t_left = MapHelpers.get_time_to_full(tile, res_data)
+                    lines.append(tr("Fill level: %d%% (full in %.0f sec)") % [
+                            roundi(fill_frac * 100), ceilf(t_left)])
+            else:
+                lines.append(tr("Fill time: %.0f sec") % time_to_mature)
+
+    # Доступ к пресной воде показываем для ВСЕХ гексов.
+    var water_access = MapHelpers.get_hex_water_access(
+            row, col, tile_data, tile_data.size(), tile_data[0].size())
+    if water_access == "direct":
+        lines.append(tr("Fresh water access: direct"))
+    elif water_access == "chain":
+        lines.append(tr("Fresh water access: via chain"))
+
+    return lines
+
 
 # Сбрасывает привязку расширенного блока к гексу. Вызывается владельцем тултипа
 # (InputHandler) при смене гекса и при скрытии тултипа — там же, где сбрасывается
@@ -377,10 +398,19 @@ func _render_extra_products(products: Array):
     _last_products_key = var_to_str(products)
 
 
-# --- Построение полного текста тултипа ---
+# --- Построение текста гекса ---
 # Вынесено из update_tooltip_text, чтобы панель управления (control_panel.gd)
-# могла показывать ту же информацию без дублирования кода.
-func _build_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_col: int = 0) -> String:
+# показывала ту же информацию без дублирования кода.
+#
+# basic_only = true — БАЗОВЫЙ текст обычного тултипа: только местность, ресурс и
+# улучшение, то есть физически то, что лежит на гексе. Всё прочее — качество,
+# корм, заполненность, доступ к пресной воде, производство, потребление — живёт
+# в расширенном блоке (см. _collect_extended_block и _collect_hex_properties).
+#
+# basic_only = false (по умолчанию) — ПОЛНЫЙ текст для левой колонки панели
+# управления: там показывается всё сразу, без задержки наведения, поэтому
+# свойства гекса в ней остаются (см. build_hex_info).
+func _build_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_col: int = 0, basic_only: bool = false) -> String:
     var tile = tile_data[row][col]
     var terrain_name = GameData.terrains.get(tile.terrain, {}).get("name", tile.terrain)
     var cover_id = tile.get("cover", "none")
@@ -444,12 +474,6 @@ func _build_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_c
     if terrain_desc != "":
         text += "\n%s" % terrain_desc
 
-    var tile_quality = tile.get("quality", "")
-    if tile_quality != "" and tile.improvement != null:
-        var q_stars = GameData.get_quality_stars(tile_quality)
-        var q_name = GameData.get_quality_name(tile_quality)
-        text += tr("\nQuality: %s (%s)") % [q_stars, q_name]
-
     var in_town_influence = bool(tile.get("in_town_influence", false))
     var imp_status = ""
     if tile.improvement != null:
@@ -473,33 +497,14 @@ func _build_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_c
             if res_data.get("improved_by", null) != null and res_data.has("produces"):
                 imp_status = tr(" (not built)")
 
-    if res_id != "" and not in_town_influence:
-        var res_data = GameData.raw_resources.get(res_id, {})
-        var feed_consumption = res_data.get("feed_consumption", 0)
-        if feed_consumption > 0:
-            text += tr("\nFeed consumption: %d per cycle") % feed_consumption
-        var time_to_mature = res_data.get("time_to_mature", 0)
-        if time_to_mature > 0:
-            # Растущий ресурс (животные на пастбище): показываем текущую
-            # заполенность и остаток времени, если улучшение уже работает.
-            if tile.improvement != null and _worker_manager.has_worker(row, col):
-                var fill_frac = MapHelpers.get_fill_fraction(tile, res_data)
-                if fill_frac >= 1.0:
-                    text += tr("\nHerd: full (100%)")
-                else:
-                    var t_left = MapHelpers.get_time_to_full(tile, res_data)
-                    text += tr("\nFill level: %d%% (full in %.0f sec)") % [roundi(fill_frac * 100), ceilf(t_left)]
-            else:
-                text += tr("\nFill time: %.0f sec") % time_to_mature
-
     text += tr("\nImprovement: %s%s") % [imp_name, imp_status]
 
-    # Доступ к пресной воде показываем для ВСЕХ гексов.
-    var water_access = MapHelpers.get_hex_water_access(row, col, tile_data, tile_data.size(), tile_data[0].size())
-    if water_access == "direct":
-        text += tr("\nFresh water access: direct")
-    elif water_access == "chain":
-        text += tr("\nFresh water access: via chain")
+    # Свойства гекса (качество, корм, заполненность, доступ к пресной воде) в
+    # обычном тултипе НЕ показываются — они живут в расширенном блоке. Здесь
+    # они дописываются только к полному тексту, то есть к левой колонке панели.
+    if not basic_only:
+        for property_line in _collect_hex_properties(row, col, tile_data):
+            text += "\n" + property_line
 
     # --- Конфликт «tech_reveal-ресурс под чужим улучшением» ---
     var conflict = MapHelpers.get_tech_reveal_conflict(tile)
@@ -512,59 +517,6 @@ func _build_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_c
     # расчёты перенесены в Превью панели управления.
 
     return text
-
-
-# --- Сбор базового производства (для hover-тултипа) ---
-func _collect_production(row: int, col: int, res_id: String, prefix: String, tile_data: Array) -> Array:
-    var result = []
-    if res_id == "":
-        return result
-    var res_data = GameData.raw_resources.get(res_id, {})
-    if not res_data.has("produces"):
-        return result
-
-    var tile = tile_data[row][col]
-    var has_worker = _worker_manager.has_worker(row, col)
-
-    var bonus_multiplier = 1.0
-    # Интервал цикла производства улучшения: у построенного улучшения — своё
-    # production_interval, у подсказки «при постройке» — интервал будущего
-    # улучшения (improved_by ресурса).
-    var prod_interval: float = 1.0
-    if tile.improvement != null and has_worker:
-        bonus_multiplier = CityData.get_improvement_production_multiplier(tile.improvement, MapHelpers.is_hex_irrigated(row, col, tile_data, tile_data.size(), tile_data[0].size()), tile.get("terrain", ""), res_id)
-        prod_interval = CityData.get_improvement_production_interval(tile.improvement)
-    elif tile.improvement == null:
-        prod_interval = CityData.get_improvement_production_interval(str(res_data.get("improved_by", "")))
-
-    var final_amounts := {}
-    for prod_id in res_data["produces"]:
-        # Потенциальный выход показываем целиком: игрок уже видит ресурс на
-        # гексе, даже если технология готового продукта еще не изучена.
-        if tile.improvement != null and not CityData.is_product_available(prod_id):
-            continue
-        # produces может быть числом или диапазоном [min, max] — для показа
-        # берём детерминированный минимум диапазона (см. RangeUtils).
-        var base_amount = float(RangeUtils.get_min_value(res_data["produces"][prod_id], 1))
-        var final_amount = ceili(base_amount * bonus_multiplier)
-        # Показ — посекундный: выпуск цикла, делённый на production_interval.
-        final_amounts[prod_id] = {"base": base_amount, "per_sec": float(final_amount) / prod_interval}
-
-    if final_amounts.is_empty():
-        return result
-
-    result.append({"type": "header", "text": prefix})
-
-    for prod_id in final_amounts:
-        var prod_name = GameData.products.get(prod_id, {}).get("name", prod_id)
-        var icon_path = ""
-        var prod_data = GameData.products.get(prod_id, {})
-        if prod_data.has("icon"):
-            var icon_name = prod_data["icon"]
-            icon_path = IconRegistry.icon_path(icon_name)
-        result.append({"type": "product", "name": prod_name, "amount": final_amounts[prod_id].per_sec, "icon_path": icon_path, "suffix": tr(" units/sec")})
-
-    return result
 
 
 # --- Сбор расширенного производства (с модификаторами) ---

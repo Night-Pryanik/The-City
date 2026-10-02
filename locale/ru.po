@@ -1341,6 +1341,9 @@ msgstr "Фермы: +50% к производству"
 msgid "Feathers"
 msgstr "Перья"
 
+msgid "Feed consumption: %d per cycle"
+msgstr "Потребляет корма: %d за цикл"
+
 msgid "Fells trees in forest plots and hauls in the timber."
 msgstr "Рубит деревья на лесной делянке и заготавливает древесину."
 
@@ -1352,6 +1355,12 @@ msgstr "Ферментация позволила людям превращат�
 
 msgid "Figs"
 msgstr "Инжир"
+
+msgid "Fill level: %d%% (full in %.0f sec)"
+msgstr "Заполненность: %d%% (полное через %.0f сек)"
+
+msgid "Fill time: %.0f sec"
+msgstr "Время заполнения: %.0f сек"
 
 msgid "Fine"
 msgstr "Хорошее"
@@ -1430,6 +1439,12 @@ msgstr "Кузница"
 
 msgid "Forges tools, weapons and ornaments from metal."
 msgstr "Кует инструменты, оружие и украшения из металла."
+
+msgid "Fresh water access: direct"
+msgstr "Доступ к пресной воде: прямой"
+
+msgid "Fresh water access: via chain"
+msgstr "Доступ к пресной воде: по цепочке"
 
 msgid "Fresh water passes through in a chain (up to 3 tiles)"
 msgstr "Передача пресной воды по цепочке (до 3 гексов)"
@@ -1529,6 +1544,9 @@ msgstr "Конопля"
 
 msgid "Henna"
 msgstr "Хна"
+
+msgid "Herd: full (100%)"
+msgstr "Поголовье: полное (100%)"
 
 msgid "Herder"
 msgstr "Скотовод"
@@ -2285,6 +2303,9 @@ msgstr "Приоритет качества: %s (нажмите чтобы пе�
 
 msgid "Quality priority: use best/worst"
 msgstr "Приоритет качества: используйте лучшее/худшее"
+
+msgid "Quality: %s (%s)"
+msgstr "Качество: %s (%s)"
 
 msgid "Quarry"
 msgstr "Каменоломня"
