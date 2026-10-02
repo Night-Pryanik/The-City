@@ -158,7 +158,13 @@ func _draw_progress_bars(row: int, col: int):
             var p_work_cost = maxf(1.0, float(project_progress.get("work_cost", 1.0)))
             var p_progress = float(project_progress.get("progress", 0.0))
             var proj_fill_width = proj_bar_width * clamp(p_progress / p_work_cost, 0.0, 1.0)
-            draw_rect(Rect2(proj_bar_x, proj_bar_y, proj_fill_width, proj_bar_height), Color(0.45, 0.75, 1.0))
+            # Шаг улучшения в цепочке «дорога → улучшение» красится в жёлтый —
+            # тот же цвет, что и обычная стройка улучшения: игрок должен видеть,
+            # что на гексе строится улучшение, а не участок дороги.
+            var proj_color := Color(0.45, 0.75, 1.0)
+            if str(project_progress.get("step_type", "")) == "improvement":
+                proj_color = Color(1.0, 0.85, 0.0)
+            draw_rect(Rect2(proj_bar_x, proj_bar_y, proj_fill_width, proj_bar_height), proj_color)
             draw_rect(Rect2(proj_bar_x, proj_bar_y, proj_bar_width, proj_bar_height), Color.WHITE, false)
 
     # --- Прогресс-бар освоения территории (покупка чанка за труд) ---

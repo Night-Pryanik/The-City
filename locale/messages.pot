@@ -186,6 +186,15 @@ msgstr ""
 msgid " Road to the city (%s): %d work"
 msgstr ""
 
+msgid " Road to the city (%s): %d work, %d new sections"
+msgstr ""
+
+msgid " Road to the city: already under construction"
+msgstr ""
+
+msgid " Road to the city: not needed"
+msgstr ""
+
 msgid " Road: %s"
 msgstr ""
 
@@ -199,6 +208,9 @@ msgid " Terrain on the route: %s"
 msgstr ""
 
 msgid " Terrain: %s (move cost: %s) ×%.2f"
+msgstr ""
+
+msgid " The road is built in sections, in parallel with the improvement"
 msgstr ""
 
 msgid " Total: %d work"
@@ -444,7 +456,7 @@ msgstr ""
 msgid "A road to the hex already exists"
 msgstr ""
 
-msgid "A simple footpath worn into the ground. Free, but it carries very little."
+msgid "A simple footpath worn into the ground. Cheap, but it carries very little."
 msgstr ""
 
 msgid "A technology is being researched"
@@ -1647,6 +1659,9 @@ msgstr ""
 msgid "Improvement: "
 msgstr ""
 
+msgid "Improvement: %d work"
+msgstr ""
+
 msgid "In scriptoriums scribes copied, translated, rewrote and recensioned texts on administration, the worship of the gods, magic and the curing of disease."
 msgstr ""
 
@@ -2566,6 +2581,9 @@ msgid "Road level: wrong or duplicate number"
 msgstr ""
 
 msgid "Road max speed must be greater than zero"
+msgstr ""
+
+msgid "Road to %s"
 msgstr ""
 
 msgid "Road to town \"%s\""

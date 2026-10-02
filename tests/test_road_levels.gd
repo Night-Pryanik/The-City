@@ -144,10 +144,12 @@ func _test_road_data(state: Dictionary) -> void:
                 "у уровня %d должна быть положительная максимальная скорость" % int(level),
                 state)
 
-    # Тропка бесплатна: дорога, строящаяся вместе с улучшением, не должна
-    # стоить труда, иначе улучшение на дальнем гексе невозможно построить.
-    check(_gdata.get_road_work_cost(1) == 0,
-            "уровень 1 (тропка) должен быть бесплатным", state)
+    # Тропка платная: дорога, строящаяся вместе с улучшением, стоит ровно
+    # столько же, сколько такая же дорога, построенная отдельно. Раньше здесь
+    # стояла проверка на 0 — из-за неё постройка улучшения на дальнем гексе
+    # была бесплатной и неоплачиваемой, а дорога к нему не строилась поэтапно.
+    check(_gdata.get_road_work_cost(1) > 0,
+            "уровень 1 (тропка) должен быть платным", state)
     check(_gdata.get_road_max_speed(1) > 0,
             "у тропки всё равно должна быть положительная скорость", state)
 
@@ -465,15 +467,17 @@ func _test_live_scene(state: Dictionary) -> void:
     check(not main_map.get_road_upgrade_breakdown(row, col, 2).get("ok", true),
             "улучшать маршрут до его текущего уровня нечего", state)
 
-    # Уровень влияет на цену новой дороги: тропка бесплатна, тележная — нет.
+    # Уровень влияет на цену новой дороги: тропка дешевле тележной, но обе
+    # стоят труда — включая ту, что строится вместе с улучшением.
     var road_target := _find_hex_without_road(main_map)
     if not road_target.is_empty():
         var r2 := int(road_target.row)
         var c2 := int(road_target.col)
-        check(main_map.get_road_cost_breakdown(r2, c2, 1).get("cost", -1) == 0,
-                "трасса тропки должна стоить 0 труда", state)
-        check(main_map.get_road_cost_breakdown(r2, c2, 2).get("cost", 0) > 0,
-                "трасса тележной дороги должна стоить труда", state)
+        check(main_map.get_road_cost_breakdown(r2, c2, 1).get("cost", 0) > 0,
+                "трасса тропки должна стоить труда", state)
+        check(main_map.get_road_cost_breakdown(r2, c2, 2).get("cost", 0)
+                > main_map.get_road_cost_breakdown(r2, c2, 1).get("cost", 0),
+                "трасса тележной дороги должна стоить дороже тропки", state)
 
     await _test_road_level_in_hex_info(main_map, state)
     await _test_extended_tooltip_survives_refresh(main_map, state)
@@ -844,7 +848,13 @@ func _collect_text(node: Node) -> String:
     return "\n".join(parts)
 
 # Первый свободный гекс в Кольце Влияния: сухой, известный, без улучшения,
-# городка и дороги.
+# городка и дороги — И с дорогой, до которой реально можно дойти.
+#
+# Проверка плана обязательна: вызывающие потом строят к гексу дорогу, а на части
+# случайно сгенерированных карт свободный гекс оказывается отрезан рекой, и
+# дорога к нему не строится. Тогда проверка падала бы из-за карты, а не из-за
+# правила. Если подходящего гекса нет вовсе — возвращаем пусто, и вызывающий
+# честно сообщает, что сценарий пропущен.
 func _find_hex_in_influence(main_map) -> Dictionary:
     for row in range(main_map.influence_start_row, main_map.influence_end_row + 1):
         for col in range(main_map.influence_start_col, main_map.influence_end_col + 1):
@@ -852,6 +862,9 @@ func _find_hex_in_influence(main_map) -> Dictionary:
             if tile == null or tile.get("improvement", null) != null:
                 continue
             if _hex_is_busy(main_map, row, col, tile):
+                continue
+            var plan: Dictionary = main_map.get_road_plan(row, col)
+            if not plan.get("ok", false):
                 continue
             return {"row": row, "col": col}
     return {}

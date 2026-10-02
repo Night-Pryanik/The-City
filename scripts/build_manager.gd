@@ -188,6 +188,13 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null,
     if active_builds.has(key):
         emit_signal("build_message", tr("Construction is already underway here"))
         return false
+    # Гекс может быть занят и ПОЭТАПНЫМ проектом: улучшение, ждущее в очереди
+    # «дорога → улучшение», не лежит в active_builds, поэтому по нему одной
+    # проверки выше мало. Без неё на гексе, где улучшение ещё не построено,
+    # можно было бы запустить вторую стройку — и две постройки делили бы гекс.
+    if project_manager != null and project_manager.has_project_at(row, col):
+        emit_signal("build_message", tr("Construction is already underway here"))
+        return false
 
     var imp_data = GameData.improvements.get(imp_id, {})
     var imp_name = imp_data.get("name", imp_id)
@@ -215,10 +222,10 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null,
     # «Игнорировать требования строительства» улучшения строятся мгновенно.
     # У дороги проверка НЕ по цене, а по ПЛАНУ. Раньше нулевая цена означала
     # «трассы нет» (гекс отрезан водой, до городка не дойти), и без этой
-    # проверки стройка завершалась бы мгновенно. Теперь нулевая цена у дороги
-    # — законное состояние: тропка бесплатна (work_cost уровня 1 = 0), и такую
-    # дорогу нельзя объявлять невозможной. Признак «дорогу построить нельзя» —
-    # это !ok у плана, а не цена.
+    # проверки стройка завершалась бы мгновенно. Нулевая цена у дороги —
+    # законное состояние (уровень с work_cost = 0), и такую дорогу нельзя
+    # объявлять невозможной. Признак «дорогу построить нельзя» — это !ok у
+    # плана, а не цена.
     if is_road_action and main_map != null and main_map.has_method("get_road_plan") \
             and not bool(main_map.get_road_plan(row, col).get("ok", false)):
         # Причина берётся прямо из плана: у городка это обычно «нет разведанного
@@ -244,6 +251,21 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null,
             return false
         return main_map.start_road_project(row, col, effective_road_level)
 
+    # Улучшению, которому полагается дорога, уходит в ЦЕПОЧКУ «дорога →
+    # улучшение»: один поэтапный проект и один слот, сначала участки дороги,
+    # последним шагом — сама постройка (main_map.start_improvement_road_project).
+    # Улучшения без дороги (гекс уже подключён, no_road, нет пути) остаются
+    # обычной стройкой ниже — для них разбор не даёт новых участков.
+    var is_special_action: bool = GameData.special_actions.has(imp_id)
+    if not is_special_action and main_map != null \
+            and main_map.has_method("start_improvement_road_project") \
+            and main_map.has_method("get_road_cost_breakdown_for_improvement"):
+        var road_bd: Dictionary = main_map.get_road_cost_breakdown_for_improvement(
+                row, col, effective_road_level)
+        if bool(road_bd.get("ok", false)):
+            return main_map.start_improvement_road_project(row, col, imp_id, imp_name,
+                    target_res_id, effective_road_level)
+
     if work_cost <= 0 or CityData.ignore_build_requirements:
         emit_signal("build_message", tr("Built instantly: %s") % imp_name)
         emit_signal("build_completed", row, col, imp_id, target_res_id)
@@ -264,10 +286,6 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null,
         "col": col,
         "status": "active",
         "allocated_labor": 0.0,
-        # Уровень дороги к этому улучшению. Поле хранится в записи стройки,
-        # потому что дорога строится в момент завершения улучшения
-        # (main_map._on_build_completed), а выбор игрока из превью потеряется.
-        "road_level": effective_road_level,
     }
     _active_build_count += 1
 
@@ -587,15 +605,6 @@ func get_progress(row: int, col: int) -> Dictionary:
     if active_builds.has(key):
         return active_builds[key]
     return {}
-
-# Уровень дороги, выбранный игроком при постройке улучшения на этом гексе.
-# Читает его main_map._on_build_completed в момент постройки дороги. Если
-# стройки нет — тропка: безопасное значение по умолчанию (уровень 1).
-func get_build_road_level(row: int, col: int) -> int:
-    var data = get_progress(row, col)
-    if data.is_empty():
-        return 1
-    return int(data.get("road_level", 1))
 
 # Возвращает данные стройки освоения территории, если гекс (row, col) — ПЕРВЫЙ
 # гекс осваиваемого чанка. Используется для отрисовки прогресс-бара освоения

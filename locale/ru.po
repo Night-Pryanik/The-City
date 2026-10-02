@@ -186,6 +186,15 @@ msgstr " Производит:"
 msgid " Road to the city (%s): %d work"
 msgstr " Дорога до города (%s): %d труда"
 
+msgid " Road to the city (%s): %d work, %d new sections"
+msgstr " Дорога до города (%s): %d труда, новых участков: %d"
+
+msgid " Road to the city: already under construction"
+msgstr " Дорога до города: уже строится"
+
+msgid " Road to the city: not needed"
+msgstr " Дорога до города: не нужна"
+
 msgid " Road: %s"
 msgstr " Дорога: %s"
 
@@ -200,6 +209,9 @@ msgstr " Местность на трассе: %s"
 
 msgid " Terrain: %s (move cost: %s) ×%.2f"
 msgstr " Местность: %s (стоимость передвижения: %s) ×%.2f"
+
+msgid " The road is built in sections, in parallel with the improvement"
+msgstr " Дорога строится по участкам, одновременно с улучшением"
 
 msgid " Total: %d work"
 msgstr " Итого: %d труда"
@@ -444,8 +456,8 @@ msgstr "Ссылка на %s присутствует в %s %s, поле %s."
 msgid "A road to the hex already exists"
 msgstr "К гексу уже проложена дорога"
 
-msgid "A simple footpath worn into the ground. Free, but it carries very little."
-msgstr "Простая тропа, протоптанная в земле. Бесплатна, но мало что везёт."
+msgid "A simple footpath worn into the ground. Cheap, but it carries very little."
+msgstr "Простая тропа, протоптанная в земле. Дёшево, но мало что везёт."
 
 msgid "A technology is being researched"
 msgstr "Изучается технология"
@@ -1647,6 +1659,9 @@ msgstr "Улучшенная версия здания не найдена"
 msgid "Improvement: "
 msgstr "Улучшение: "
 
+msgid "Improvement: %d work"
+msgstr "Улучшение: %d труда"
+
 msgid "In scriptoriums scribes copied, translated, rewrote and recensioned texts on administration, the worship of the gods, magic and the curing of disease."
 msgstr "В скрипториях писцы копировали, переводили, переписывали и перекомпилировали тексты, связанные с управлением, культом божеств, магией и лечением болезней."
 
@@ -2567,6 +2582,9 @@ msgstr "Уровень дороги: неверный или повторяющ�
 
 msgid "Road max speed must be greater than zero"
 msgstr "Максимальная скорость дороги должна быть больше нуля"
+
+msgid "Road to %s"
+msgstr "Дорога к «%s»"
 
 msgid "Road to town \"%s\""
 msgstr "Дорога до городка «%s»"

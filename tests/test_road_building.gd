@@ -172,12 +172,15 @@ func _test_cost_per_hex(state: Dictionary) -> void:
             state)
 
     # База цены участка берётся из УРОВНЯ дороги (data/roads.json), а не из
-    # спецдействия. Проверяем на платном уровне: у тропки база 0 (дорога,
-    # строящаяся вместе с улучшением, бесплатна), и на её месте нечего
-    # умножать на множители.
+    # спецдействия. Проверяем на базовом уровне 1 (тропка): он не бесплатный,
+    # поэтому на нём есть и база, и множители. Дорога к улучшению стоит
+    # ровно столько же — обнулять её ради постройки улучшения нельзя.
     var paid_level := _first_paid_road_level(state)
     var per_hex: int = _gdata.get_road_work_cost(paid_level)
     check(per_hex > 0, "цена за участок дороги должна быть задана в roads.json", state)
+    check(_gdata.get_road_work_cost(1) > 0,
+            "базовая тропка тоже должна быть платной: дорога к улучшению не бесплатна",
+            state)
 
     # Коэффициент дальности участка — из game_balance.json и БЕЗ тех-модификаторов.
     var road_mod: float = float(_gdata.game_balance.get("road_distance_cost_modifier_per_hex", -1.0))
@@ -203,12 +206,14 @@ func _test_cost_per_hex(state: Dictionary) -> void:
     check(int(near_price.get("base_cost", -1)) == per_hex,
             "база в расчёте должна совпадать с work_cost уровня дороги", state)
 
-    # Тропка бесплатна: множители на нулевой базе не дают «минимальной» цены.
-    # Это тот случай, ради которого в get_road_step_work_cost убрали maxi(1, …).
+    # Тропка тоже тарифицируется по общей формуле: множители на ненулевой базе
+    # дают положительную цену даже в трудной местности. Раньше здесь стоял
+    # maxi(1, …) и база была 0 — из-за этого дорога к улучшению была и
+    # бесплатной, и мгновенной.
     var trail_price: Dictionary = _mh.get_road_step_work_cost(
             1, CITY_ROW, CITY_COL + 1, CITY_ROW, CITY_COL, "mountain")
-    check(int(trail_price.get("cost", -1)) == 0,
-            "участок тропки должен стоить 0 труда даже в горах", state)
+    check(int(trail_price.get("cost", -1)) > 0,
+            "участок тропки должен стоить труда даже в горах", state)
 
     # ДАЛЬШЕ ОТ ГОРОДА — ДОРОЖЕ, на той же местности.
     var far_price: Dictionary = _mh.get_road_step_work_cost(
@@ -636,22 +641,27 @@ func _test_live_scene(state: Dictionary) -> void:
             "после исследования технологии лучший уровень дороги должен быть платным",
             state)
 
-    # --- Бесплатная тропка: строится сразу и не занимает очередь проекта ---
-    # Это следствие «включая бесплатную тропку»: у нулевой цены не может
-    # быть «шага, который копит труд» — такого шага не накопилось бы.
+    # --- Базовая тропка: платная и поэтапная, как любая дорога ---
+# Раньше уровень 1 был бесплатным, и тогда у него не могло быть «шага,
+# который копит труд»: такой шаг не накопил бы труд и держал бы слот вечно.
+# Теперь база есть и у тропки, поэтому она идёт обычной очередью проекта.
     var trail_target := _find_hex_without_road(main_map)
     if not trail_target.is_empty():
         var t_row2 := int(trail_target.row)
         var t_col2 := int(trail_target.col)
-        var t_plan: Dictionary = main_map.get_road_plan(t_row2, t_col2)
-        if t_plan.get("ok", false) \
-                and main_map.get_road_cost_breakdown(t_row2, t_col2, 1).get("cost", 1) == 0:
+        var trail_breakdown: Dictionary = main_map.get_road_cost_breakdown(
+                t_row2, t_col2, 1)
+        if trail_breakdown.get("ok", false):
+            check(int(trail_breakdown.get("cost", 0)) > 0,
+                    "трасса тропки должна что-то стоить", state)
             check(bm.start_build(t_row2, t_col2, ROAD_ACTION_ID, null, 1),
-                    "бесплатную тропку должно быть можно построить", state)
-            check(main_map.project_manager.get_project_at(t_row2, t_col2).is_empty(),
-                    "бесплатная тропка не должна вставать в очередь проекта", state)
-            check(rm.is_hex_connected(t_row2, t_col2),
-                    "после постройки тропки гекс должен быть подключён к сети", state)
+                    "тропку должно быть можно построить", state)
+            check(not main_map.project_manager.get_project_at(t_row2, t_col2).is_empty(),
+                    "тропка должна встать в очередь проекта, а не строиться мгновенно",
+                    state)
+            check(not rm.is_hex_connected(t_row2, t_col2),
+                    "до постройки гекс не должен быть подключён к сети", state)
+            main_map.project_manager.cancel_project_at(t_row2, t_col2)
 
     # --- Кнопка «Построить дорогу» на гексе, где дороги ещё нет ---
     var target := _find_hex_without_road(main_map)

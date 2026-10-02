@@ -223,6 +223,10 @@ func get_step_progress_at(row: int, col: int) -> Dictionary:
             return {
                 "project_id": project_id,
                 "kind": str(project.get("kind", "")),
+                # Тип ШАГА, а не проекта: в цепочке «дорога → улучшение» шаги
+                # разные, и слой прогресс-баров красит шаг улучшения в жёлтый
+                # (цвет стройки улучшения), а участок дороги — в синий.
+                "step_type": str(step.get("data", {}).get("step_type", "")),
                 "title": str(project.get("title", "")),
                 "label": str(step.get("label", "")),
                 "progress": float(step.get("progress", 0.0)),

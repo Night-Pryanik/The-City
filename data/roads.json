@@ -25,9 +25,10 @@
   //   name        — название для игрока (переводится через data_loader,
   //                 см. DISPLAY_FIELDS);
   //   description — короткое пояснение, чем уровень лучше предыдущего;
-  //   work_cost   — см. выше. 0 у тропки: дорога, которая строится вместе с
-  //                 улучшением, бесплатна (см. road_manager.build_road_from),
-  //                 и «включая бесплатную тропку» из правила выбора уровня;
+  //   work_cost   — см. выше. Цена участка одинакова для всех дорог, в том числе
+  //                 для той, что строится вместе с улучшением: она идёт
+  //                 поэтапным проектом и оплачивается по участкам, поэтому
+  //                 обнулять её ради постройки улучшения нельзя;
   //   max_speed   — см. выше, ед./сек на один участок;
   //   unlock_tech — id технологии, открывающей уровень. null/"" — уровень
   //                 доступен с начала игры. Проверяется data_validator.gd
@@ -48,7 +49,7 @@
       "id": "trail",
       "level": 1,
       "name": "Trail",
-      "description": "A simple footpath worn into the ground. Free, but it carries very little.",
+      "description": "A simple footpath worn into the ground. Cheap, but it carries very little.",
       "work_cost": 5,
       "max_speed": 10,
       "unlock_tech": null,

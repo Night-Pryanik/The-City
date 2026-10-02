@@ -1513,29 +1513,56 @@ func _build_preview(row: int, col: int, tile: Dictionary):
         _build_road_level_selector(int(preview.get("road_level", 1)))
 
     # Стоимость труда: детальный расчёт (база, местность, расстояние).
-    # Дорога к улучшению строится вместе с ним, поэтому её цена — часть
-    # цены улучшения. Расчёт берём из main_map (тот же источник, что и в
-    # build_manager), иначе превью показало бы цену улучшения БЕЗ дороги,
-    # а списалось бы с дорогой.
+    # Расчёт берём из main_map — тот же источник, что и в build_manager, поэтому
+    # превью и старт показывают одну и ту же цену. Дорога к улучшению приходит
+    # оттуда же и отдельными числами: в цену самого улучшения она не входит.
     var road_level := int(preview.get("road_level", 1))
     var cost_data = main_map.get_improvement_work_cost(cost_imp_id, row, col, road_level)
+    # Дорога к гексу полагается только УЛУЧШЕНИЮ. Спецдействия (сбор дикоросов,
+    # вырубка леса, осушение, снос улучшения) выполняются обычной стройкой и
+    # дорог не строят вовсе, поэтому main_map отдаёт для них road_applicable =
+    # false. Рисовать им строки про дорогу значило бы обещать игроку постройку,
+    # которой не будет, а «Итого» — сумму с её ценой.
+    var road_applicable: bool = bool(cost_data.get("road_applicable", false))
     var road_cost := int(cost_data.get("road_cost", 0))
+    var road_segments := int(cost_data.get("road_segments", 0))
     var cost_label = Label.new()
-    cost_label.text = tr("Cost: %d work") % cost_data["cost"]
+    cost_label.text = tr("Improvement: %d work") % cost_data["cost"]
     cost_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     cost_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
     _preview_container.add_child(cost_label)
 
-    # Доплата за дорогу к улучшению — отдельной строкой: игрок видит, что
-    # часть цены относится не к самому улучшению. Тропка бесплатна, и тогда
-    # строка не показывается вовсе — платить нечего.
-    if road_cost > 0:
+    # Дорога к улучшению — отдельной строкой, всегда, когда дорога вообще может
+    # строиться: игрок должен видеть, во сколько обойдётся вторая половина
+    # постройки, и понимать, что она не бесплатна (даже базовая тропка). Когда
+    # дорога не нужна — гекс уже подключён, улучшение с флагом no_road,
+    # сухопутного пути нет — вместо нулевой цены пишем, что её не будет:
+    # «0 труда» читалось бы как «даром».
+    if road_applicable:
         var road_hint := Label.new()
-        road_hint.text = tr(" Road to the city (%s): %d work") % [
-            GameData.get_road_name(road_level), road_cost]
+        if road_segments > 0:
+            road_hint.text = tr(" Road to the city (%s): %d work, %d new sections") % [
+                    GameData.get_road_name(road_level), road_cost, road_segments]
+        elif bool(cost_data.get("road_pending", false)):
+            # Дорога к гексу уже идёт вторым проектом (улучшение отклонили по
+            # лимиту) — показывать её цену второй раз нельзя, её уже оплачивает
+            # та очередь.
+            road_hint.text = tr(" Road to the city: already under construction")
+        else:
+            road_hint.text = tr(" Road to the city: not needed")
         road_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
         road_hint.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
         _preview_container.add_child(road_hint)
+
+        # Поэтапность и параллельный старт видны только по подтверждению, а сказать
+        # о них нужно ДО него: иначе игрок ждёт готовую дорогу целиком и не
+        # понимает, почему она появляется по кускам.
+        if road_segments > 0:
+            var road_steps_hint := Label.new()
+            road_steps_hint.text = tr(" The road is built in sections, in parallel with the improvement")
+            road_steps_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+            road_steps_hint.add_theme_color_override("font_color", Color(0.8, 0.85, 0.95))
+            _preview_container.add_child(road_steps_hint)
 
     # Детализация стоимости (переехала сюда из расширенного тултипа).
     var base_label = Label.new()
@@ -1573,11 +1600,15 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     const_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
     _preview_container.add_child(const_label)
 
-    var total_label = Label.new()
-    total_label.text = tr(" Total: %d work") % cost_data["cost"]
-    total_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    total_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
-    _preview_container.add_child(total_label)
+    # Итог — улучшение ПЛЮС дорога к нему, поэтому строка есть только там, где
+    # дорога действительно строится. Без неё суммировать нечего, и «Итого» был бы
+    # копией цены строчкой выше (для спецдействий — именно так и выходило).
+    if road_applicable:
+        var total_label = Label.new()
+        total_label.text = tr(" Total: %d work") % cost_data["total_cost"]
+        total_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        total_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+        _preview_container.add_child(total_label)
 
     # Дебаг «Игнорировать требования строительства»: цена выше остаётся
     # расчётом «как было бы без флага», а выполняться действие будет сразу и
@@ -1621,6 +1652,14 @@ func _sync_road_preview_on_map() -> void:
     if preview_type == UPGRADE_ROAD_TYPE:
         _set_map_road_preview(_get_upgrade_preview_segments(row, col))
         return
+    if preview_type == "build_improvement" or preview_type == "build_breeding":
+        # Превью улучшения: показываем маршрут дороги, которая построится
+        # вместе с ним. Дорога — самостоятельная поэтапная постройка с
+        # отдельной ценой, и без её маршрута строка «Дорога до города: N труда»
+        # выглядела бы завышенной или заниженной наугад. Уже построенные
+        # участки в призрак не попадают — за них платить не нужно.
+        _set_map_road_preview(_get_new_road_segments(row, col))
+        return
     if action_id != "":
         var plan: Dictionary = main_map.get_road_plan(row, col)
         if not plan.get("ok", false):
@@ -1639,6 +1678,17 @@ func _sync_road_preview_on_map() -> void:
     # после ESC), и вместо него показываем существующий маршрут гекса.
     _set_map_road_preview({})
     _set_map_route_display(_get_route_display_segments(row, col))
+
+# Новые участки дороги к гексу — из плана, тем же способом, что и превью
+# «Построить дорогу». Пусто (не ошибка), когда дорога не нужна: гекс уже
+# подключён, улучшение с флагом no_road или сухопутного пути нет.
+func _get_new_road_segments(row: int, col: int) -> Dictionary:
+    if main_map == null or not main_map.has_method("get_road_plan"):
+        return {}
+    var plan: Dictionary = main_map.get_road_plan(row, col)
+    if not plan.get("ok", false):
+        return {}
+    return main_map.road_manager.get_plan_new_segments(plan)
 
 # Участки существующего маршрута выбранного гекса — для подсветки на карте.
 # Пусто (не ошибка) у гексов без дороги, у самого города и у гексов вне

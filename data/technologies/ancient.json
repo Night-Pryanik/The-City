@@ -27,12 +27,7 @@
       "prerequisites": [ [ "mining" ] ],
       "description": "Unlocks the ability to find and gather native metals.\nUnlocks metal ores (gold, silver, copper) and metalloids (antimony and arsenic).\nAllows you to build the forge.",
       "flavor": "People learned to find and use native metals, which occur in nature in pure form, with no need to smelt them out of ore.",
-      "unlock_effects": [
-        {
-          "icon": "new_resource.png",
-          "name": "Unlocks the ability to find and gather native metals."
-        }
-      ]
+      "unlock_effects": [ { "icon": "new_resource.png", "name": "Unlocks the ability to find and gather native metals." } ]
     },
     {
       "id": "metallurgy",
@@ -118,12 +113,7 @@
       "prerequisites": [ [ "farming" ] ],
       "description": "Unlocks the ability to grow water-loving crops: rice and taro.\nAllows farms and plantations to pass fresh water along a chain (up to 3 hexes).\nAllows you to drain marshes.",
       "flavor": "Managing water flows became the key to claiming new lands: irrigation did more than water the fields, it drained waterlogged ground and turned marshes into fertile plains.",
-      "unlock_effects": [
-        {
-          "icon": "new_resource.png",
-          "name": "Unlocks the ability to grow water-loving crops: rice and taro."
-        }
-      ]
+      "unlock_effects": [ { "icon": "new_resource.png", "name": "Unlocks the ability to grow water-loving crops: rice and taro." } ]
     },
     {
       "id": "wheel",
@@ -133,13 +123,7 @@
       "icon": "wheel.png",
       "prerequisites": [ [ "pottery" ] ],
       "description": "Reduces the effect of distance from the city on the work cost of building improvements by 30%.\nUnlocks the Cart Road (road level 2): up to 30 units/sec per section instead of 10.",
-      "flavor": "The wheel is one of humanity's greatest inventions, and it changed trade and war.",
-      "unlock_effects": [
-        {
-          "icon": "road.svg",
-          "name": "Unlocks the Cart Road (road level 2): 30 units/sec per section."
-        }
-      ]
+      "flavor": "The wheel is one of humanity's greatest inventions, and it changed trade and war."
     },
     {
       "id": "plow",
