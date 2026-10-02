@@ -44,6 +44,7 @@ func _initialize():
     _test_no_false_positives_on_synthetic(state)
     _test_lumberjack_depends_on_data(state)
     _test_real_data(state)
+    _test_localization(state)
 
     if state["failed"]:
         print("VALIDATION TEST FAILED")
@@ -205,8 +206,13 @@ func _test_no_false_positives_on_synthetic(state: Dictionary):
             "без индекса происхождения строка не должна быть ненулевой", state)
         check(str(problem.get("location", "")).is_empty(),
             "без индекса происхождения location должен быть пустым", state)
-        check(not str(problem.get("message", "")).contains("Файл:"),
-            "в сообщении не должно быть строки «Файл:» без индекса: %s" % [
+        # Строка с файлом — это и есть location, и проверка выше уже
+        # потребовала её пустоты. Здесь ловим другое: путь к файлу не должен
+        # просочиться в message ни через какой-то другой шаблон. Проверяем
+        # по САМОМУ пути, а не по словам «Файл:»/«File:»: слова принадлежат переводу
+        # и меняются вместе с языком, а res://data/ — нет.
+        check(not str(problem.get("message", "")).contains("res://data/"),
+            "в сообщении не должно быть пути к файлу без индекса: %s" % [
                 str(problem.get("message", ""))], state)
 
     gd.free()
@@ -374,6 +380,88 @@ func _check_file_and_line(state: Dictionary, problems: Array):
         check(decl.contains("\"%s\"" % source_id),
             "строка %d файла %s — это не объявление «%s»: %s" % [
                 line, file_path, source_id, decl.strip_edges()], state)
+
+
+# --- 6) Локализация текстов проблем ----------------------------------------
+#
+# Формулировки проблемы переводятся (data_validator.gd → locale/<код>.po), и
+# проверяется ровно то, что ради этого перевода сделано:
+#   * на двух языках получаются РАЗНЫЕ тексты, а не английский везде;
+#   * английский текст не содержит кириллицы (значит, каталог заполнен);
+#   * localize_problems() пересобирает уже собранные тексты при смене языка,
+#     НЕ прогоняя проверку заново: структура проблемы от языка не зависит.
+#
+# Идентификаторы (ghost_mill, produced_in) в тексте остаются как есть — это
+# машинные имена, а не переводимые слова.
+func _test_localization(state: Dictionary):
+    var original := TranslationServer.get_locale()
+    var gd = _make_data()
+    var problems: Array = DataValidator.new().validate(gd)
+
+    # Тексты собираются при validate() — на языке, который действовал в этот
+    # момент. Поэтому язык переключаем ДО чтения, а localize_problems()
+    # пересобирает уже собранные сообщения, не прогоняя проверку заново.
+    TranslationServer.set_locale("en")
+    DataValidator.localize_problems(problems)
+    var en_sample := _find(problems, "produced_in", "ghost_mill", "bad_produced_in")
+    check(not en_sample.is_empty(),
+        "синтетические данные должны давать проблему produced_in", state)
+    var en_message := str(en_sample.get("message", ""))
+    var en_headline := str(en_sample.get("headline", ""))
+    var en_title := DataValidator.check_title("produced_in")
+    var en_forms := DataValidator.entity_forms("building")
+
+    TranslationServer.set_locale("ru")
+    DataValidator.localize_problems(problems)
+    var ru_message := str(en_sample.get("message", ""))
+    var ru_headline := str(en_sample.get("headline", ""))
+    var ru_title := DataValidator.check_title("produced_in")
+    var ru_forms := DataValidator.entity_forms("building")
+
+    check(ru_message != en_message,
+        "текст проблемы обязан отличаться между языками: en=%s ru=%s" % [
+            en_message, ru_message], state)
+    check(ru_headline != en_headline,
+        "первая строка проблемы обязана переводиться: en=%s ru=%s" % [
+            en_headline, ru_headline], state)
+    check(ru_message.contains("не существует"),
+        "в русском тексте нет ожидаемой формулировки: %s" % ru_message, state)
+
+    # Кириллицы в английском тексте быть не должно. Проверяем headline, а не
+    # message: в message попадает название сущности из данных, а оно в этом
+    # тесте намеренно русское (см. _test_no_false_positives_on_synthetic —
+    # кириллица в name законна и не должна считаться ошибкой id).
+    check(not _has_cyrillic(en_headline),
+        "в английском тексте не должно быть кириллицы: %s" % en_headline, state)
+
+    # Заголовок группы проверки — тоже пользовательский текст.
+    check(ru_title != en_title,
+        "заголовок проверки обязан переводиться: en=%s ru=%s" % [
+            en_title, ru_title], state)
+    check(not _has_cyrillic(en_title),
+        "в английском заголовке проверки не должно быть кириллицы: %s" % en_title,
+        state)
+
+    # Падежи: одна и та же сущность в трёх грамматических формах. По-русски
+    # это «Здания» / «это здание» / «здании» — три разных слова.
+    for role in ["title", "ref", "source"]:
+        check(not _has_cyrillic(str(en_forms[role])),
+            "английская форма %s не должна быть кириллицей: %s" % [
+                role, str(en_forms[role])], state)
+    check(str(ru_forms["ref"]) != str(ru_forms["source"]),
+        "русские формы ref и source не должны совпадать: %s / %s" % [
+            str(ru_forms["ref"]), str(ru_forms["source"])], state)
+
+    TranslationServer.set_locale(original)
+    gd.free()
+
+
+# Кириллица в строке — признак того, что сообщение осталось русским там, где
+# должен быть английский (или наоборот).
+func _has_cyrillic(text: String) -> bool:
+    var regex := RegEx.new()
+    regex.compile("[\u0400-\u04FF]")
+    return regex.search(text) != null
 
 
 # --- ВСПОМОГАТЕЛЬНОЕ ------------------------------------------------------

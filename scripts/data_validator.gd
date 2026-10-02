@@ -6,19 +6,28 @@
 # точным указанием проблемной сущности.
 #
 # Проверяются ССЫЛКИ между сущностями (не синтаксис JSON — этим занят
-# tools/validate_json.py). Каждая проблема описывается словарём:
+# tools/validate_json.py). Проблема хранится в двух слоях:
+#
+#   1) СТРУКТУРА — от языка не зависит: что не так, где и в каком поле.
+#   2) ТЕКСТ — переводится (см. build_text ниже). Собирается ОТДЕЛЬНО от
+#      проверки именно потому, что язык можно переключить, не прогоняя
+#      проверку заново: localize_problems() пересобирает тексты на новом
+#      языке по той же структуре.
 #
 #   {
 #     "kind":        String,  # машинное имя проверки, напр. "produced_in"
 #     "check_title": String,  # заголовок группы проверки для окна
-#     "target_title":String,  # "Здания" — родительный падеж ед.ч. ("Здания
-#                             #   с идентификатором «x» не существует")
+#     "target_title":String,  # "Building" — вид искомой сущности
 #     "ref_id":      String,  # искомый идентификатор ("x")
-#     "headline":    String,  # первая строка сообщения
-#     "where":       String,  # вторая строка: где именно нашли ссылку
+#     "source_kind": String,  # вид сущности-владельца ("recipe")
+#     "source_name": String,  # её название из данных ("Grain Mill")
+#     "source_id":   String,  # её идентификатор ("grind_grain_hand")
+#     "field":       String,  # поле, в котором нашли ссылку
 #     "file":        String,  # файл, в котором объявлен владелец ссылки
 #     "line":        int,     # строка объявления в этом файле (0 — неизвестно)
-#     "location":    String,  # третья строка: «Файл: …, строка N.» ("" — нет)
+#     "headline":    String,  # первая строка сообщения
+#     "where":       String,  # вторая строка: где именно нашли ссылку
+#     "location":    String,  # третья строка: "File: …, line N." ("" — нет)
 #     "message":     String,  # все строки вместе (для логов и тестов)
 #   }
 #
@@ -102,14 +111,15 @@ const IDENT_LOOKALIKES := {
     "О": "O", "Р": "P", "С": "C", "Т": "T", "У": "Y", "Х": "X",
 }
 
-# Названия алфавитов для сообщения: символу с кодом U+XXXX полезно сказать,
-# из какого он блока — это вторая половина ценности подсказки (первая — сам
-# код). Перечислены только блоки, в которых ошибка правдоподобна; символ вне
-# них остаётся без названия, и это честнее, чем подписывать его наугад.
+# Диапазоны Unicode-блоков, в которых ошибка правдоподобна. Имя блока НЕ
+# хранится здесь: константа не может вызвать перевод, а сборщик каталога
+# (tools/i18n_build_po.py) берёт msgid литералом прямо в вызове
+# translate() — из словаря он его не достанет. Подписи лежат в
+# _block_label() ниже, а здесь остаются только границы диапазонов.
 const IDENT_BLOCKS := [
-    {"from": 0x0400, "to": 0x04FF, "name": "кириллица"},
-    {"from": 0x0370, "to": 0x03FF, "name": "греческая"},
-    {"from": 0xFF10, "to": 0xFF19, "name": "полноширинная латинская"},
+    {"from": 0x0400, "to": 0x04FF, "key": "cyrillic"},
+    {"from": 0x0370, "to": 0x03FF, "key": "greek"},
+    {"from": 0xFF10, "to": 0xFF19, "key": "fullwidth_latin"},
 ]
 
 # Коллекции с идентификаторами: где искать объявления.
@@ -143,48 +153,148 @@ const IDENT_COLLECTIONS := [
 # список не увидит.
 const QUALITY_LEVELS_FIELD := "quality_levels"
 
-# Сущности: title — родительный падеж ед.ч. для «X с идентификатором … не
-# существует», ref — винительный падеж для «ссылка на X», source — предложный
-# падеж для «присутствует в …».
-const ENTITIES := {
-    "building": {"title": "Здания", "ref": "это здание", "source": "здании"},
-    "product": {"title": "Продукта", "ref": "этот продукт", "source": "продукте"},
-    "improvement": {"title": "Улучшения", "ref": "это улучшение", "source": "улучшении"},
-    "technology": {"title": "Технологии", "ref": "эту технологию", "source": "технологии"},
-    "profession": {"title": "Профессии", "ref": "эту профессию", "source": "профессии"},
-    "category": {"title": "Категории", "ref": "эту категорию", "source": "категории"},
-    "group": {"title": "Группы", "ref": "эту группу", "source": "группе"},
-    "recipe": {"title": "Рецепта", "ref": "этот рецепт", "source": "рецепте"},
-    "road": {"title": "Уровня дороги", "ref": "этот уровень дороги", "source": "уровне дороги"},
-    "terrain": {"title": "Местности", "ref": "эту местность", "source": "местности"},
-    "cover": {"title": "Покрова", "ref": "этот покров", "source": "покрове"},
-    "era": {"title": "Эпохи", "ref": "эту эпоху", "source": "эпохе"},
-    "quality_level": {"title": "Уровня качества", "ref": "этот уровень качества",
-        "source": "уровне качества"},
-    "special_action": {"title": "Спецдействия", "ref": "это спецдействие",
-        "source": "спецдействии"},
-}
+# Виды сущностей, встречающихся в тексте проблемы.
+#
+# Это список для подстановки запасного вида, а не источник подписей: сами
+# подписи живут в entity_forms() ниже. Словарь с названиями стоял бы ровно
+# затем, чтобы их значения не попали в каталог переводов — см. примечание
+# к entity_forms() про то, как их читает сборщик.
+const ENTITIES := [
+    "building", "product", "improvement", "technology", "profession",
+    "category", "group", "recipe", "road", "terrain", "cover", "era",
+    "quality_level", "special_action",
+]
 
-# Заголовки групп проверок (порядок = порядок блоков в окне).
-const CHECK_TITLES := {
-    "id_charset": "Недопустимые символы в идентификаторе",
-    "id_lookalike": "Идентификатор неотличим на глаз от другого",
-    "produced_in": "Рецепт производится в несуществующем здании",
-    "result": "Рецепт даёт несуществующий ресурс",
-    "improved_by": "Ресурс улучшается несуществующим улучшением",
-    "unlock_improvement": "Продукт открывается несуществующим улучшением",
-    "unlock_tech": "Ссылка на несуществующую технологию",
-    "profession": "Ссылка на несуществующую профессию",
-    "category": "Ссылка на несуществующую категорию",
-    "product_source": "Продукт не имеет источника (его не производит ни карта, ни рецепт)",
-    "group_member": "В группе продуктов несуществующий продукт",
-    "resource_group": "Рецепт ссылается на несуществующую группу продуктов",
-    "resource": "Рецепт ссылается на несуществующий ресурс",
-    "prerequisite": "Технология требует несуществующую технологию",
-    "road_level": "Уровень дороги: неверный или повторяющийся номер",
-    "road_max_speed": "Максимальная скорость дороги должна быть больше нуля",
-    "road_work_cost": "Цена участка дороги не может быть отрицательной",
-}
+
+# Названия вида сущности в трёх грамматических формах:
+#   title  — родительный падеж («Здания с идентификатором «x» не существует»);
+#   ref    — винительный падеж («Ссылка на это здание присутствует в…»);
+#   source — предложный падеж («…присутствует в рецепте «…»»).
+#
+# Английский падежей не знает, поэтому три формы — это три разных msgid
+# («Building», «this building», «building»), а по-русски им соответствуют
+# «Здания», «это здание», «здании». msgctxt при этом не нужен: английские
+# тексты и так разные, а различие уезжает в саму формулировку. Ровно тот же
+# приём, что с множественными числами в consumption_ui.gd.
+#
+# Подписи перечислены ЯВНО, литералами прямо в вызовах translate(), а не
+# взяты из словаря константы. Это требование сборщика каталога:
+# tools/i18n_build_po.py разбирает код построчно и берёт msgid литералом в
+# этом вызове. Словарь спрятал бы msgid от сканера, и в locale/<код>.po
+# переводов этих подписей просто не оказалось бы — они остались бы
+# английскими при любом языке.
+#
+# fallback — вид на случай неизвестного ключа: «product» для искомой
+# сущности, «recipe» для владельца ссылки (см. _add).
+static func entity_forms(kind: String, fallback: String = "product") -> Dictionary:
+    if not ENTITIES.has(kind):
+        kind = fallback
+    match kind:
+        "building":
+            return {"title": TranslationServer.translate("Building", "validator_entity_title_building"),
+                "ref": TranslationServer.translate("this building", "validator_entity_ref_building"),
+                "source": TranslationServer.translate("building", "validator_entity_source_building")}
+        "product":
+            return {"title": TranslationServer.translate("Product", "validator_entity_title_product"),
+                "ref": TranslationServer.translate("this product", "validator_entity_ref_product"),
+                "source": TranslationServer.translate("product", "validator_entity_source_product")}
+        "improvement":
+            return {"title": TranslationServer.translate("Improvement", "validator_entity_title_improvement"),
+                "ref": TranslationServer.translate("this improvement", "validator_entity_ref_improvement"),
+                "source": TranslationServer.translate("improvement", "validator_entity_source_improvement")}
+        "technology":
+            return {"title": TranslationServer.translate("Technology", "validator_entity_title_technology"),
+                "ref": TranslationServer.translate("this technology", "validator_entity_ref_technology"),
+                "source": TranslationServer.translate("technology", "validator_entity_source_technology")}
+        "profession":
+            return {"title": TranslationServer.translate("Profession", "validator_entity_title_profession"),
+                "ref": TranslationServer.translate("this profession", "validator_entity_ref_profession"),
+                "source": TranslationServer.translate("profession", "validator_entity_source_profession")}
+        "category":
+            return {"title": TranslationServer.translate("Category", "validator_entity_title_category"),
+                "ref": TranslationServer.translate("this category", "validator_entity_ref_category"),
+                "source": TranslationServer.translate("category", "validator_entity_source_category")}
+        "group":
+            return {"title": TranslationServer.translate("Goods group", "validator_entity_title_group"),
+                "ref": TranslationServer.translate("this goods group", "validator_entity_ref_group"),
+                "source": TranslationServer.translate("goods group", "validator_entity_source_group")}
+        "recipe":
+            return {"title": TranslationServer.translate("Recipe", "validator_entity_title_recipe"),
+                "ref": TranslationServer.translate("this recipe", "validator_entity_ref_recipe"),
+                "source": TranslationServer.translate("recipe", "validator_entity_source_recipe")}
+        "road":
+            return {"title": TranslationServer.translate("Road level", "validator_entity_title_road"),
+                "ref": TranslationServer.translate("this road level", "validator_entity_ref_road"),
+                "source": TranslationServer.translate("road level", "validator_entity_source_road")}
+        "terrain":
+            return {"title": TranslationServer.translate("Terrain", "validator_entity_title_terrain"),
+                "ref": TranslationServer.translate("this terrain", "validator_entity_ref_terrain"),
+                "source": TranslationServer.translate("terrain", "validator_entity_source_terrain")}
+        "cover":
+            return {"title": TranslationServer.translate("Terrain cover", "validator_entity_title_cover"),
+                "ref": TranslationServer.translate("this terrain cover", "validator_entity_ref_cover"),
+                "source": TranslationServer.translate("terrain cover", "validator_entity_source_cover")}
+        "era":
+            return {"title": TranslationServer.translate("Era", "validator_entity_title_era"),
+                "ref": TranslationServer.translate("this era", "validator_entity_ref_era"),
+                "source": TranslationServer.translate("era", "validator_entity_source_era")}
+        "quality_level":
+            return {"title": TranslationServer.translate("Quality level", "validator_entity_title_quality_level"),
+                "ref": TranslationServer.translate("this quality level", "validator_entity_ref_quality_level"),
+                "source": TranslationServer.translate("quality level", "validator_entity_source_quality_level")}
+        _:
+            # Спецдействие замыкает список: неизвестный вид подставляет
+            # fallback выше, сюда попасть можно только с опечаткой в коде.
+            return {"title": TranslationServer.translate("Special action", "validator_entity_title_special_action"),
+                "ref": TranslationServer.translate("this special action", "validator_entity_ref_special_action"),
+                "source": TranslationServer.translate("special action", "validator_entity_source_special_action")}
+
+
+# Заголовок группы проверки для окна проблем. Порядок блоков задаёт
+# CHECK_ORDER, а не этот список.
+#
+# Как и подписи сущностей, заголовки перечислены литералами прямо в вызовах
+# translate() — иначе сборщик каталога их не увидит (см. entity_forms).
+static func check_title(kind: String) -> String:
+    match kind:
+        "id_charset":
+            return TranslationServer.translate("Disallowed characters in an identifier")
+        "id_lookalike":
+            return TranslationServer.translate("Identifier is indistinguishable from another by eye")
+        "produced_in":
+            return TranslationServer.translate("Recipe is produced in a nonexistent building")
+        "result":
+            return TranslationServer.translate("Recipe yields a nonexistent resource")
+        "improved_by":
+            return TranslationServer.translate("Resource is improved by a nonexistent improvement")
+        "unlock_improvement":
+            return TranslationServer.translate("Product is unlocked by a nonexistent improvement")
+        "unlock_tech":
+            return TranslationServer.translate("Reference to a nonexistent technology")
+        "profession":
+            return TranslationServer.translate("Reference to a nonexistent profession")
+        "category":
+            return TranslationServer.translate("Reference to a nonexistent category")
+        "product_source":
+            return TranslationServer.translate("Product has no source (neither the map nor a recipe produces it)")
+        "group_member":
+            return TranslationServer.translate("Nonexistent product in a goods group")
+        "resource_group":
+            return TranslationServer.translate("Recipe references a nonexistent goods group")
+        "resource":
+            return TranslationServer.translate("Recipe references a nonexistent resource")
+        "prerequisite":
+            return TranslationServer.translate("Technology requires a nonexistent technology")
+        "road_level":
+            return TranslationServer.translate("Road level: wrong or duplicate number")
+        "road_max_speed":
+            return TranslationServer.translate("Road max speed must be greater than zero")
+        "road_work_cost":
+            return TranslationServer.translate("Road work cost cannot be negative")
+        _:
+            # Неизвестный вид проверки: показываем машинное имя — по нему видно,
+            # чего не хватает в CHECK_ORDER, и оно переживает любой язык.
+            return kind
 
 # Индекс происхождения сущностей текущего прогона: "коллекция:id" → файл+строка.
 # Заполняется в validate(), читается в _add(). Пустой, если данные пришли
@@ -348,6 +458,10 @@ func _collect_identifier(declared: Dictionary, problems: Array, collection: Stri
 
 # Позиции символов вне разрешённого алфавита:
 # [{ "pos": int, "char": String, "code": int, "block": String, "lookalike": String }, …]
+#
+# block — ИСХОДНОЕ имя блока (английский msgid), а не готовая подпись:
+# переводом оно станет только при сборке текста (build_text), иначе смена
+# языка не пересобрала бы уже собранное сообщение.
 func _bad_ident_chars(id: String) -> Array:
     var bad: Array = []
     var index := 0
@@ -364,45 +478,45 @@ func _bad_ident_chars(id: String) -> Array:
     return bad
 
 
+# Ключ блока Unicode, в который попал символ. Пустая строка — блок не
+# перечислен: подписывать наугад нечестнее, чем не подписать вовсе.
 func _ident_block_name(code: int) -> String:
     for block in IDENT_BLOCKS:
         if code >= int(block["from"]) and code <= int(block["to"]):
-            return str(block["name"])
+            return str(block["key"])
     return ""
+
+
+# Название блока для сообщения: символу с кодом U+XXXX полезно сказать, из
+# какого он блока — это вторая половина ценности подсказки (первая — сам
+# код).
+#
+# msgid литералами прямо в вызовах — по той же причине, что и в
+# entity_forms(): иначе сборщик каталога этих трёх слов не увидит.
+static func _block_label(key: String) -> String:
+    match key:
+        "cyrillic":
+            return TranslationServer.translate("Cyrillic")
+        "greek":
+            return TranslationServer.translate("Greek")
+        "fullwidth_latin":
+            return TranslationServer.translate("Fullwidth Latin")
+        _:
+            return ""
 
 
 # Одна проблема на идентификатор со ВСЕМИ плохими символами сразу: в «cоal»
 # их два, а чинить нужно одну строку — две строки в окне про одну и ту же
-# правку только раздражают.
+# правку только раздражают. Список плохих символов уходит в структуру
+# проблемы ("bad_chars"), текст собирает build_text.
 func _check_ident_charset(problems: Array, id: String, kind: String,
         entity: Dictionary) -> void:
     var bad := _bad_ident_chars(id)
     if bad.is_empty():
         return
 
-    var parts: Array = []
-    for item in bad:
-        var part := "позиция %d: «%s» (U+%04X" % [int(item["pos"]) + 1,
-                str(item["char"]), int(item["code"])]
-        var block := str(item["block"])
-        if not block.is_empty():
-            part += ", %s" % block
-        part += ")"
-        # На латинском этот символ выглядит так же. Без подсказки автор
-        # прочитает «с» как «c» и не поймёт, в чём дело.
-        var lookalike := str(item["lookalike"])
-        if not lookalike.is_empty():
-            part += ", на латинице «%s»" % lookalike
-        parts.append(part + ";")
-
-    var headline := "Идентификатор «%s» содержит недопустимые символы." % id
-    var template := "Разрешены только латинские буквы a-z, цифры и «_». " \
-            + "Недопустимо: %s Такие символы неотличимы от латинских на глаз — " \
-            + "исправьте этот идентификатор и ВСЕ ссылки на него сразу."
-    var where := template % " ".join(parts)
-
     _push(problems, "id_charset", kind, id, kind,
-            _entity_name(entity, id), id, "id", headline, where)
+            _entity_name(entity, id), id, "id", {"bad_chars": bad})
 
 
 # Два идентификатора, различающиеся только похожими символами («carmine» и
@@ -442,20 +556,13 @@ func _check_lookalikes(declared: Dictionary, problems: Array) -> void:
                 continue
             var info: Dictionary = declared[id]
             var latin_info: Dictionary = declared[latin]
-            var headline := "Идентификатор «%s» неотличим на глаз от «%s»." % [id, latin]
-            var template := "Различия в написании нет, но для игры это РАЗНЫЕ " \
-                    + "идентификаторы: всё, что ссылается на «%s», не попадёт в «%s» " \
-                    + "и наоборот. При этом ссылка на «%s» ссылки НЕ ломает — он " \
-                    + "объявлен и выглядит правильно, поэтому обычные проверки " \
-                    + "битых ссылок эту опечатку и не видели. Оставьте один " \
-                    + "идентификатор и переименуйте второй во всех файлах."
-            var where := template % [latin, id, latin]
 
             # Владелец проблемы — испорченное объявление (его и надо удалить),
-            # поэтому в source_id оно, а не латинное написание.
+            # поэтому в source_id оно, а не латинное написание. Тексты
+            # собирает build_text по этой структуре.
             _push(problems, "id_lookalike", str(latin_info["kind"]), latin,
                     str(info["kind"]), _entity_name(info["entity"], id), id, "id",
-                    headline, where)
+                    {"latin": latin})
 
 
 # Приводит символы, неотличимые от латинских, к латинскому виду. Служит
@@ -760,59 +867,46 @@ func _check_profession_ref(value, professions: Dictionary, problems: Array,
 
 
 # --- СБОРКА ЗАПИСИ ПРОБЛЕМЫ ----------------------------------------------
+#
+# Здесь и дальше запись делится надвое:
+#   * _add / _add_missing_source / _push — СТРУКТУРА (что, где, в каком поле);
+#   * build_text — ТЕКСТ под текущий язык.
+#
+# Раньше формулировки жили в _add, и это было связано: смени язык — уже
+# собранные сообщения остались на старом. Теперь текст собирается отдельно и
+# пересобирается функцией localize_problems() (окно вызывает её по сигналу
+# LocalizationManager.locale_changed), а проверка при этом НЕ перезапускается.
 
 func _add(problems: Array, kind: String, target: String, ref_id: String,
         source_kind: String, source_name: String, source_id: String, field: String) -> void:
-    var target_entity: Dictionary = ENTITIES.get(target, ENTITIES["product"])
-    var source_entity: Dictionary = ENTITIES.get(source_kind, ENTITIES["recipe"])
-
-    # «Здания с идентификатором «hand_mill» не существует.»
-    var headline := "%s с идентификатором «%s» не существует." % [
-        str(target_entity["title"]), ref_id]
-
-    # «Ссылка на это здание присутствует в рецепте «Молот зерна»
-    #  (grind_grain_hand), поле produced_in.»
-    var where := "Ссылка на %s присутствует в %s %s, поле %s." % [
-        str(target_entity["ref"]),
-        str(source_entity["source"]),
-        _quote_owner(source_name, source_id),
-        field,
-    ]
-
     _push(problems, kind, target, ref_id,
-            source_kind, source_name, source_id, field, headline, where)
+            source_kind, source_name, source_id, field)
 
 
 # Проблема «продукт есть, а взять его неоткуда».
 #
-# Тексты собираются здесь, а не в _add(): там первая строка всегда «X с
-# идентификатором … не существует» — битой ССЫЛКИ. Здесь бит не в ссылке, а
-# в её отсутствии, поэтому и формулировка другая. Владелец проблемы — сам
-# продукт, поэтому его id попадает и в ref_id (чтобы окно подсветило его, как
-# и остальные идентификаторы), и в source_id (чтобы нашлась строка объявления
-# в файле). Поле field пустое: указать нечего — нет поля, в котором стоило бы
-# дописать источник.
+# Владелец проблемы — сам продукт, поэтому его id попадает и в ref_id (чтобы
+# окно подсветило его, как и остальные идентификаторы), и в source_id (чтобы
+# нашлась строка объявления в файле). Поле field пустое: указать нечего — нет
+# поля, в котором стоило бы дописать источник.
 func _add_missing_source(problems: Array, product_name: String, product_id: String) -> void:
-    var headline := "Продукт «%s» нигде не производится." % product_id
-    var where := ("Источник не найден: продукт «%s» (%s) не встречается ни в produces "
-            + "ни одного ресурса карты, ни в result/display_result ни одного рецепта, "
-            + "ни в additional_yield ни одного здания. Добавьте источник данных "
-            + "или удалите продукт из файла.") % [product_name, product_id]
-
     _push(problems, "product_source", "product", product_id,
-            "product", product_name, product_id, "", headline, where)
+            "product", product_name, product_id, "")
 
 
 # Общая часть записи проблемы: словарь полей (см. шапку файла), поиск файла и
-# строки объявления владельца и склейка message. Вынесена отдельно от _add(),
-# потому что формулировки проблем у разных проверок разные, а формат записи,
-# наоборот, один: от него зависят и data_problems_window.gd, и тест.
+# строки объявления владельца. Вынесена отдельно от _add(), потому что
+# формулировки проблем у разных проверок разные, а формат записи, наоборот,
+# один: от него зависят и data_problems_window.gd, и тест.
+#
+# extra — данные, нужные только тексту конкретной проверки ("bad_chars" у
+# id_charset, "latin" у id_lookalike). Это строительный материал для
+# build_text, а не часть структуры проблемы.
 func _push(problems: Array, kind: String, target: String, ref_id: String,
         source_kind: String, source_name: String, source_id: String, field: String,
-        headline: String, where: String) -> void:
-    # «Файл: res://data/crafts/crafts.json, строка 7.»
+        extra: Dictionary = {}) -> void:
     # Пустая строка, если происхождение неизвестно (данные без индекса) —
-    # тогда вторая строка просто ничего не добавляет.
+    # тогда строка с файлом просто ничего не добавляет.
     var file_path := ""
     var line := 0
     var source_key := "%s:%s" % [str(SOURCE_COLLECTIONS.get(source_kind, "")), source_id]
@@ -820,19 +914,10 @@ func _push(problems: Array, kind: String, target: String, ref_id: String,
     if origin is Dictionary:
         file_path = str(origin.get("file", ""))
         line = int(origin.get("line", 0))
-    var location := ""
-    if not file_path.is_empty():
-        location = "Файл: %s" % file_path
-        if line > 0:
-            location += ", строка %d" % line
-        location += "."
 
-    var target_entity: Dictionary = ENTITIES.get(target, ENTITIES["product"])
-    problems.append({
+    var problem := {
         "kind": kind,
-        "check_title": str(CHECK_TITLES.get(kind, kind)),
         "target": target,
-        "target_title": str(target_entity["title"]),
         "ref_id": ref_id,
         "source_kind": source_kind,
         "source_name": source_name,
@@ -840,16 +925,108 @@ func _push(problems: Array, kind: String, target: String, ref_id: String,
         "field": field,
         "file": file_path,
         "line": line,
-        "headline": headline,
-        "where": where,
-        "location": location,
-        "message": headline + " " + where + (" " + location if not location.is_empty() else ""),
-    })
+    }
+    for key in extra:
+        problem[key] = extra[key]
+
+    build_text(problem)
+    problems.append(problem)
+
+
+# Пересобирает текстовые поля problems на ТЕКУЩЕМ языке.
+#
+# Проверка не перезапускается: структура проблемы от языка не зависит, текст
+# выводится из неё. Нужна окну проблем — смена языка в настройках идёт, когда
+# окно уже на экране, и без этого пересборки заголовки и описания остались бы
+# на старом языке.
+static func localize_problems(problems: Array) -> void:
+    for problem in problems:
+        if problem is Dictionary:
+            build_text(problem)
+
+
+# Текст проблемы под текущий язык. Пишет прямо в переданный словарь.
+#
+# Единая точка, где живут ВСЕ пользовательские формулировки валидатора: их
+# видно списком, и переводчик находит их в каталоге как обычные сообщения.
+# Сами проверки (выше по файлу) не содержат ни одного пользовательского
+# текста — только структуру.
+#
+# Каждый вызов translate() занимает ОДНУ строку и содержит РОВНО один
+# строковый литерал. Это не вкусовое требование, а требование сборщика
+# каталога: tools/i18n_build_po.py разбирает код построчно, и многострочный
+# вызов он не увидит. Второй литерал он принял бы за msgctxt, поэтому
+# склеивать строки внутри вызова тоже нельзя — отсюда длинные строки.
+static func build_text(problem: Dictionary) -> void:
+    var kind := str(problem.get("kind", ""))
+    var headline := ""
+    var where := ""
+
+    match kind:
+        "id_charset":
+            headline = TranslationServer.translate("Identifier \"%s\" contains disallowed characters.") % str(problem.get("ref_id", ""))
+            where = TranslationServer.translate("Only Latin letters a-z, digits and \"_\" are allowed. Disallowed: %s Such characters are indistinguishable from Latin ones by eye — fix this identifier and ALL references to it at once.") % _bad_chars_text(problem.get("bad_chars", []))
+        "id_lookalike":
+            var latin := str(problem.get("latin", ""))
+            headline = TranslationServer.translate("Identifier \"%s\" is indistinguishable from \"%s\" by eye.") % [str(problem.get("source_id", "")), latin]
+            where = TranslationServer.translate("There is no difference in spelling, but for the game these are DIFFERENT identifiers: everything that references \"%s\" will not reach \"%s\" and vice versa. Note that a reference to \"%s\" does NOT break anything — it is declared and looks correct, so the regular broken-reference checks did not see this typo either. Keep one identifier and rename the other in all files.") % [latin, str(problem.get("source_id", "")), latin]
+        "product_source":
+            headline = TranslationServer.translate("Product \"%s\" is not produced anywhere.") % str(problem.get("ref_id", ""))
+            where = TranslationServer.translate("Source not found: product \"%s\" (%s) appears neither in produces of any map resource, nor in result/display_result of any recipe, nor in additional_yield of any building. Add a data source or remove the product from the file.") % [str(problem.get("source_name", "")), str(problem.get("source_id", ""))]
+        _:
+            # Остальные проверки — битая ССЫЛКА: «X с идентификатором … не
+            # существует» + где именно на неё сослались.
+            var target_forms := entity_forms(str(problem.get("target", "")))
+            var source_forms := entity_forms(str(problem.get("source_kind", "")), "recipe")
+            headline = TranslationServer.translate("%s with the identifier \"%s\" does not exist.") % [str(target_forms["title"]), str(problem.get("ref_id", ""))]
+            where = TranslationServer.translate("A reference to %s is present in %s %s, field %s.") % [str(target_forms["ref"]), str(source_forms["source"]), _quote_owner(str(problem.get("source_name", "")), str(problem.get("source_id", ""))), str(problem.get("field", ""))]
+
+    # «File: res://data/crafts/crafts.json, line 7.»
+    var location := ""
+    var file_path := str(problem.get("file", ""))
+    if not file_path.is_empty():
+        location = TranslationServer.translate("File: %s") % file_path
+        var line := int(problem.get("line", 0))
+        if line > 0:
+            location += TranslationServer.translate(", line %d") % line
+        location += "."
+
+    problem["check_title"] = check_title(kind)
+    problem["target_title"] = str(entity_forms(str(problem.get("target", "")))["title"])
+    problem["headline"] = headline
+    problem["where"] = where
+    problem["location"] = location
+    problem["message"] = headline + " " + where + (
+        " " + location if not location.is_empty() else "")
+
+
+# Список плохих символов идентификатора одной строкой:
+# «position 1: "с" (U+0441, Cyrillic), looks like "c" in Latin;».
+#
+# Имя блока переводится здесь, а не в _bad_ident_chars: там оно ещё msgid,
+# и перевод должен применяться в момент сборки текста.
+static func _bad_chars_text(bad) -> String:
+    var parts: Array = []
+    for item in bad:
+        if not (item is Dictionary):
+            continue
+        var part := TranslationServer.translate("position %d: \"%s\" (U+%04X") % [int(item.get("pos", 0)) + 1, str(item.get("char", "")), int(item.get("code", 0))]
+        var block := str(item.get("block", ""))
+        if not block.is_empty():
+            part += ", %s" % _block_label(block)
+        part += ")"
+        # На латинском этот символ выглядит так же. Без подсказки автор
+        # прочитает «с» как «c» и не поймёт, в чём дело.
+        var lookalike := str(item.get("lookalike", ""))
+        if not lookalike.is_empty():
+            part += TranslationServer.translate(", looks like \"%s\" in Latin") % lookalike
+        parts.append(part + ";")
+    return " ".join(parts)
 
 
 # Владелец ссылки в скобках: «Молот зерна» (grind_grain_hand). Если имени
 # нет — только идентификатор, чтобы строка не выглядела «в  (), поле …».
-func _quote_owner(source_name: String, source_id: String) -> String:
+static func _quote_owner(source_name: String, source_id: String) -> String:
     if source_name.is_empty() or source_name == source_id:
         return "«%s»" % source_id
     return "«%s» (%s)" % [source_name, source_id]

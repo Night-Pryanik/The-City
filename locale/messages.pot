@@ -303,6 +303,9 @@ msgstr ""
 msgid "%s units/sec"
 msgstr ""
 
+msgid "%s with the identifier \"%s\" does not exist."
+msgstr ""
+
 msgid "%s — no work available: construction limit (number of citizens) reached"
 msgstr ""
 
@@ -355,6 +358,12 @@ msgid "+50% to resource production on farms."
 msgstr ""
 
 msgid ", forest"
+msgstr ""
+
+msgid ", line %d"
+msgstr ""
+
+msgid ", looks like \"%s\" in Latin"
 msgstr ""
 
 msgid ", technology ×%.2f"
@@ -427,6 +436,9 @@ msgid "A pseudo-profession that covers the whole population of the city, includi
 msgstr ""
 
 msgid "A range is shown because the goods in the group have different base prices."
+msgstr ""
+
+msgid "A reference to %s is present in %s %s, field %s."
 msgstr ""
 
 msgid "A road to the hex already exists"
@@ -1173,6 +1185,9 @@ msgstr ""
 msgid "Copper Weapons"
 msgstr ""
 
+msgid "Copy the list"
+msgstr ""
+
 msgid "Corn"
 msgstr ""
 
@@ -1212,6 +1227,9 @@ msgstr ""
 msgid "Cuttlefish"
 msgstr ""
 
+msgid "Cyrillic"
+msgstr ""
+
 msgid "Dairy"
 msgstr ""
 
@@ -1234,6 +1252,9 @@ msgid "Digs and sorts clay for firing."
 msgstr ""
 
 msgid "Digs ore and minerals out of the ground."
+msgstr ""
+
+msgid "Disallowed characters in an identifier"
 msgstr ""
 
 msgid "Diversity: %d subgroups"
@@ -1288,6 +1309,9 @@ msgid "Empty"
 msgstr ""
 
 msgid "Equipment"
+msgstr ""
+
+msgid "Errors in the game data"
 msgstr ""
 
 msgid "Exceptional"
@@ -1357,6 +1381,9 @@ msgid "Fermentation let people turn grain and fruit into alcohol, drunk in ritua
 msgstr ""
 
 msgid "Figs"
+msgstr ""
+
+msgid "File: %s"
 msgstr ""
 
 msgid "Fill level: %d%% (full in %.0f sec)"
@@ -1443,6 +1470,9 @@ msgstr ""
 msgid "Forges tools, weapons and ornaments from metal."
 msgstr ""
 
+msgid "Found %d problems. Some recipes, resources and technologies may work incorrectly — check the files in the res://data folder."
+msgstr ""
+
 msgid "Fresh water access: direct"
 msgstr ""
 
@@ -1462,6 +1492,9 @@ msgid "Fruit Wine"
 msgstr ""
 
 msgid "Fruits"
+msgstr ""
+
+msgid "Fullwidth Latin"
 msgstr ""
 
 msgid "Fur Animals"
@@ -1522,6 +1555,9 @@ msgid "Grape Wine"
 msgstr ""
 
 msgid "Grapes"
+msgstr ""
+
+msgid "Greek"
 msgstr ""
 
 msgid "Grows technical and spice crops."
@@ -1594,6 +1630,15 @@ msgid "Icon of group \"%s\": %s (set in data/product_groups.json)"
 msgstr ""
 
 msgid "Icon: %s"
+msgstr ""
+
+msgid "Identifier \"%s\" contains disallowed characters."
+msgstr ""
+
+msgid "Identifier \"%s\" is indistinguishable from \"%s\" by eye."
+msgstr ""
+
+msgid "Identifier is indistinguishable from another by eye"
 msgstr ""
 
 msgid "Improved building version not found"
@@ -2040,6 +2085,9 @@ msgstr ""
 msgid "None"
 msgstr ""
 
+msgid "Nonexistent product in a goods group"
+msgstr ""
+
 msgid "Not enough coins in the treasury! Need %d, treasury has %d"
 msgstr ""
 
@@ -2077,6 +2125,9 @@ msgid "Olives"
 msgstr ""
 
 msgid "Once built, %s will produce:"
+msgstr ""
+
+msgid "Only Latin letters a-z, digits and \"_\" are allowed. Disallowed: %s Such characters are indistinguishable from Latin ones by eye — fix this identifier and ALL references to it at once."
 msgstr ""
 
 msgid "Only areas within the Region can be claimed"
@@ -2301,6 +2352,15 @@ msgstr ""
 msgid "Produces:"
 msgstr ""
 
+msgid "Product \"%s\" is not produced anywhere."
+msgstr ""
+
+msgid "Product has no source (neither the map nor a recipe produces it)"
+msgstr ""
+
+msgid "Product is unlocked by a nonexistent improvement"
+msgstr ""
+
 msgid "Production (planned):"
 msgstr ""
 
@@ -2373,6 +2433,18 @@ msgstr ""
 msgid "Recall the scouts?\n\nNone of the %d tiles will be surveyed."
 msgstr ""
 
+msgid "Recipe is produced in a nonexistent building"
+msgstr ""
+
+msgid "Recipe references a nonexistent goods group"
+msgstr ""
+
+msgid "Recipe references a nonexistent resource"
+msgstr ""
+
+msgid "Recipe yields a nonexistent resource"
+msgstr ""
+
 msgid "Reduces the effect of distance from the city on labor cost when building improvements by 30%"
 msgstr ""
 
@@ -2389,6 +2461,15 @@ msgid "Reed Boats"
 msgstr ""
 
 msgid "Reeds"
+msgstr ""
+
+msgid "Reference to a nonexistent category"
+msgstr ""
+
+msgid "Reference to a nonexistent profession"
+msgstr ""
+
+msgid "Reference to a nonexistent technology"
 msgstr ""
 
 msgid "Remove the worker from the improvement"
@@ -2445,6 +2526,9 @@ msgstr ""
 msgid "Resource data refresh interval"
 msgstr ""
 
+msgid "Resource is improved by a nonexistent improvement"
+msgstr ""
+
 msgid "Resource list"
 msgstr ""
 
@@ -2478,10 +2562,19 @@ msgstr ""
 msgid "Road level:"
 msgstr ""
 
+msgid "Road level: wrong or duplicate number"
+msgstr ""
+
+msgid "Road max speed must be greater than zero"
+msgstr ""
+
 msgid "Road to town \"%s\""
 msgstr ""
 
 msgid "Road to town \"%s\" built — trade available!"
+msgstr ""
+
+msgid "Road work cost cannot be negative"
 msgstr ""
 
 msgid "Road: %s"
@@ -2769,6 +2862,9 @@ msgstr ""
 msgid "Sorghum"
 msgstr ""
 
+msgid "Source not found: product \"%s\" (%s) appears neither in produces of any map resource, nor in result/display_result of any recipe, nor in additional_yield of any building. Add a data source or remove the product from the file."
+msgstr ""
+
 msgid "Soybean"
 msgstr ""
 
@@ -2892,6 +2988,9 @@ msgstr ""
 msgid "Technology not found: "
 msgstr ""
 
+msgid "Technology requires a nonexistent technology"
+msgstr ""
+
 msgid "Technology researched: %s"
 msgstr ""
 
@@ -2977,6 +3076,9 @@ msgid "The water wheel became an important source of power in the ancient world,
 msgstr ""
 
 msgid "The wheel is one of humanity's greatest inventions, and it changed trade and war."
+msgstr ""
+
+msgid "There is no difference in spelling, but for the game these are DIFFERENT identifiers: everything that references \"%s\" will not reach \"%s\" and vice versa. Note that a reference to \"%s\" does NOT break anything — it is declared and looks correct, so the regular broken-reference checks did not see this typo either. Keep one identifier and rename the other in all files."
 msgstr ""
 
 msgid "There is no land route from the city to the town"
@@ -3348,6 +3450,9 @@ msgstr ""
 msgid "not working"
 msgstr ""
 
+msgid "position %d: \"%s\" (U+%04X"
+msgstr ""
+
 msgid "produces goods '%s' from resource '%s'"
 msgstr ""
 
@@ -3394,4 +3499,172 @@ msgstr ""
 
 msgctxt "consumption_buildings_one"
 msgid "building"
+msgstr ""
+
+msgctxt "validator_entity_ref_building"
+msgid "this building"
+msgstr ""
+
+msgctxt "validator_entity_ref_category"
+msgid "this category"
+msgstr ""
+
+msgctxt "validator_entity_ref_cover"
+msgid "this terrain cover"
+msgstr ""
+
+msgctxt "validator_entity_ref_era"
+msgid "this era"
+msgstr ""
+
+msgctxt "validator_entity_ref_group"
+msgid "this goods group"
+msgstr ""
+
+msgctxt "validator_entity_ref_improvement"
+msgid "this improvement"
+msgstr ""
+
+msgctxt "validator_entity_ref_product"
+msgid "this product"
+msgstr ""
+
+msgctxt "validator_entity_ref_profession"
+msgid "this profession"
+msgstr ""
+
+msgctxt "validator_entity_ref_quality_level"
+msgid "this quality level"
+msgstr ""
+
+msgctxt "validator_entity_ref_recipe"
+msgid "this recipe"
+msgstr ""
+
+msgctxt "validator_entity_ref_road"
+msgid "this road level"
+msgstr ""
+
+msgctxt "validator_entity_ref_special_action"
+msgid "this special action"
+msgstr ""
+
+msgctxt "validator_entity_ref_technology"
+msgid "this technology"
+msgstr ""
+
+msgctxt "validator_entity_ref_terrain"
+msgid "this terrain"
+msgstr ""
+
+msgctxt "validator_entity_source_building"
+msgid "building"
+msgstr ""
+
+msgctxt "validator_entity_source_category"
+msgid "category"
+msgstr ""
+
+msgctxt "validator_entity_source_cover"
+msgid "terrain cover"
+msgstr ""
+
+msgctxt "validator_entity_source_era"
+msgid "era"
+msgstr ""
+
+msgctxt "validator_entity_source_group"
+msgid "goods group"
+msgstr ""
+
+msgctxt "validator_entity_source_improvement"
+msgid "improvement"
+msgstr ""
+
+msgctxt "validator_entity_source_product"
+msgid "product"
+msgstr ""
+
+msgctxt "validator_entity_source_profession"
+msgid "profession"
+msgstr ""
+
+msgctxt "validator_entity_source_quality_level"
+msgid "quality level"
+msgstr ""
+
+msgctxt "validator_entity_source_recipe"
+msgid "recipe"
+msgstr ""
+
+msgctxt "validator_entity_source_road"
+msgid "road level"
+msgstr ""
+
+msgctxt "validator_entity_source_special_action"
+msgid "special action"
+msgstr ""
+
+msgctxt "validator_entity_source_technology"
+msgid "technology"
+msgstr ""
+
+msgctxt "validator_entity_source_terrain"
+msgid "terrain"
+msgstr ""
+
+msgctxt "validator_entity_title_building"
+msgid "Building"
+msgstr ""
+
+msgctxt "validator_entity_title_category"
+msgid "Category"
+msgstr ""
+
+msgctxt "validator_entity_title_cover"
+msgid "Terrain cover"
+msgstr ""
+
+msgctxt "validator_entity_title_era"
+msgid "Era"
+msgstr ""
+
+msgctxt "validator_entity_title_group"
+msgid "Goods group"
+msgstr ""
+
+msgctxt "validator_entity_title_improvement"
+msgid "Improvement"
+msgstr ""
+
+msgctxt "validator_entity_title_product"
+msgid "Product"
+msgstr ""
+
+msgctxt "validator_entity_title_profession"
+msgid "Profession"
+msgstr ""
+
+msgctxt "validator_entity_title_quality_level"
+msgid "Quality level"
+msgstr ""
+
+msgctxt "validator_entity_title_recipe"
+msgid "Recipe"
+msgstr ""
+
+msgctxt "validator_entity_title_road"
+msgid "Road level"
+msgstr ""
+
+msgctxt "validator_entity_title_special_action"
+msgid "Special action"
+msgstr ""
+
+msgctxt "validator_entity_title_technology"
+msgid "Technology"
+msgstr ""
+
+msgctxt "validator_entity_title_terrain"
+msgid "Terrain"
 msgstr ""

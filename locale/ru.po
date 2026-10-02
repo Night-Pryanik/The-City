@@ -9,188 +9,77 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: The City\n"
-"POT-Creation-Date: \n"
-"PO-Revision-Date: \n"
-"Last-Translator: \n"
-"Language-Team: \n"
 "Language: ru\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"X-Generator: Poedit 3.9\n"
 
-msgid ""
-"\n"
-"\n"
-"Found here: %s"
-msgstr ""
-"\n"
-"\n"
-"Здесь обнаружено: %s"
+msgid "\n\nFound here: %s"
+msgstr "\n\nЗдесь обнаружено: %s"
 
-msgid ""
-"\n"
-"\n"
-"No coins were deducted for the claim."
-msgstr ""
-"\n"
-"\n"
-"Монеты за освоение не списывались."
+msgid "\n\nNo coins were deducted for the claim."
+msgstr "\n\nМонеты за освоение не списывались."
 
-msgid ""
-"\n"
-"\n"
-"The %d coins already paid will be returned to the treasury."
-msgstr ""
-"\n"
-"\n"
-"Уже оплаченные %d монет вернутся в казну."
+msgid "\n\nThe %d coins already paid will be returned to the treasury."
+msgstr "\n\nУже оплаченные %d монет вернутся в казну."
 
-msgid ""
-"\n"
-"\n"
-"The %d coins paid will be returned to the treasury."
-msgstr ""
-"\n"
-"\n"
-"Оплаченные %d монет вернутся в казну."
+msgid "\n\nThe %d coins paid will be returned to the treasury."
+msgstr "\n\nОплаченные %d монет вернутся в казну."
 
-msgid ""
-"\n"
-"\n"
-"[Era: %s — advance to it first]"
-msgstr ""
-"\n"
-"\n"
-"[Эпоха: %s — сначала перейдите в неё]"
+msgid "\n\n[Era: %s — advance to it first]"
+msgstr "\n\n[Эпоха: %s — сначала перейдите в неё]"
 
-msgid ""
-"\n"
-"\n"
-"[Required: %s]"
-msgstr ""
-"\n"
-"\n"
-"[Требуется: %s]"
+msgid "\n\n[Required: %s]"
+msgstr "\n\n[Требуется: %s]"
 
-msgid ""
-"\n"
-"\n"
-"[Researched]"
-msgstr ""
-"\n"
-"\n"
-"[Изучено]"
+msgid "\n\n[Researched]"
+msgstr "\n\n[Изучено]"
 
-msgid ""
-"\n"
-"\n"
-"[Researching]"
-msgstr ""
-"\n"
-"\n"
-"[Изучается]"
+msgid "\n\n[Researching]"
+msgstr "\n\n[Изучается]"
 
-msgid ""
-"\n"
-"\n"
-"[Unavailable: requires advancing to the next era]"
-msgstr ""
-"\n"
-"\n"
-"[Недоступно: требуется переход в следующую эпоху]"
+msgid "\n\n[Unavailable: requires advancing to the next era]"
+msgstr "\n\n[Недоступно: требуется переход в следующую эпоху]"
 
-msgid ""
-"\n"
-"Concurrent construction limit reached (%d/%d, limit = number of citizens)"
-msgstr ""
-"\n"
-"Лимит одновременных строек достигнут (%d/%d, лимит = число жителей)"
+msgid "\nConcurrent construction limit reached (%d/%d, limit = number of citizens)"
+msgstr "\nЛимит одновременных строек достигнут (%d/%d, лимит = число жителей)"
 
-msgid ""
-"\n"
-"Constructions: %d/%d (limit = number of citizens)"
-msgstr ""
-"\n"
-"Строек: %d/%d (лимит = число жителей)"
+msgid "\nConstructions: %d/%d (limit = number of citizens)"
+msgstr "\nСтроек: %d/%d (лимит = число жителей)"
 
-msgid ""
-"\n"
-"Demolish %s to build %s"
-msgstr ""
-"\n"
-"Снесите %s, чтобы построить %s"
+msgid "\nDemolish %s to build %s"
+msgstr "\nСнесите %s, чтобы построить %s"
 
-msgid ""
-"\n"
-"Feed consumption: %d per cycle"
-msgstr ""
-"\n"
-"Потребляет корма: %d за цикл"
+msgid "\nFeed consumption: %d per cycle"
+msgstr "\nПотребляет корма: %d за цикл"
 
-msgid ""
-"\n"
-"Fill level: %d%% (full in %.0f sec)"
-msgstr ""
-"\n"
-"Заполненность: %d%% (полное через %.0f сек)"
+msgid "\nFill level: %d%% (full in %.0f sec)"
+msgstr "\nЗаполненность: %d%% (полное через %.0f сек)"
 
-msgid ""
-"\n"
-"Fill time: %.0f sec"
-msgstr ""
-"\n"
-"Время заполнения: %.0f сек"
+msgid "\nFill time: %.0f sec"
+msgstr "\nВремя заполнения: %.0f сек"
 
-msgid ""
-"\n"
-"Fresh water access: direct"
-msgstr ""
-"\n"
-"Доступ к пресной воде: прямой"
+msgid "\nFresh water access: direct"
+msgstr "\nДоступ к пресной воде: прямой"
 
-msgid ""
-"\n"
-"Fresh water access: via chain"
-msgstr ""
-"\n"
-"Доступ к пресной воде: по цепочке"
+msgid "\nFresh water access: via chain"
+msgstr "\nДоступ к пресной воде: по цепочке"
 
-msgid ""
-"\n"
-"Herd: full (100%)"
-msgstr ""
-"\n"
-"Поголовье: полное (100%)"
+msgid "\nHerd: full (100%)"
+msgstr "\nПоголовье: полное (100%)"
 
-msgid ""
-"\n"
-"Improvement: %s%s"
-msgstr ""
-"\n"
-"Улучшение: %s%s"
+msgid "\nImprovement: %s%s"
+msgstr "\nУлучшение: %s%s"
 
-msgid ""
-"\n"
-"Quality: %s (%s)"
-msgstr ""
-"\n"
-"Качество: %s (%s)"
+msgid "\nQuality: %s (%s)"
+msgstr "\nКачество: %s (%s)"
 
-msgid ""
-"\n"
-"Resource: %s"
-msgstr ""
-"\n"
-"Ресурс: %s"
+msgid "\nResource: %s"
+msgstr "\nРесурс: %s"
 
-msgid ""
-"\n"
-"Resource: unknown (send scouts)"
-msgstr ""
-"\n"
-"Ресурс: неизвестно (проведите разведку)"
+msgid "\nResource: unknown (send scouts)"
+msgstr "\nРесурс: неизвестно (проведите разведку)"
 
 msgid "  Subgroup: "
 msgstr "  Подгруппа: "
@@ -384,21 +273,11 @@ msgstr "%d × %d чел."
 msgid "%d/%d (%.1f sec)"
 msgstr "%d/%d (%.1f сек)"
 
-msgid ""
-"%s\n"
-"\n"
-"Science: %d"
-msgstr ""
-"%s\n"
-"\n"
-"Наука: %d"
+msgid "%s\n\nScience: %d"
+msgstr "%s\n\nНаука: %d"
 
-msgid ""
-"%s\n"
-"Science: %d%s"
-msgstr ""
-"%s\n"
-"Наука: %d%s"
+msgid "%s\nScience: %d%s"
+msgstr "%s\nНаука: %d%s"
 
 msgid "%s (base %d):"
 msgstr "%s (база %d):"
@@ -423,6 +302,9 @@ msgstr "%s [%s] (наука: %d)%s"
 
 msgid "%s units/sec"
 msgstr "%s шт./сек"
+
+msgid "%s with the identifier \"%s\" does not exist."
+msgstr "%s с идентификатором «%s» не существует."
 
 msgid "%s — no work available: construction limit (number of citizens) reached"
 msgstr "%s — нет труда: лимит строек (число жителей) исчерпан"
@@ -477,6 +359,12 @@ msgstr "+50% к производству ресурсов на фермах."
 
 msgid ", forest"
 msgstr ", лес"
+
+msgid ", line %d"
+msgstr ", строка %d"
+
+msgid ", looks like \"%s\" in Latin"
+msgstr ", на латинице «%s»"
 
 msgid ", technology ×%.2f"
 msgstr ", технологии ×%.2f"
@@ -549,6 +437,9 @@ msgstr "Псевдо-профессия: охватывает всё насел�
 
 msgid "A range is shown because the goods in the group have different base prices."
 msgstr "Диапазон — потому что у товаров группы разные базовые цены."
+
+msgid "A reference to %s is present in %s %s, field %s."
+msgstr "Ссылка на %s присутствует в %s %s, поле %s."
 
 msgid "A road to the hex already exists"
 msgstr "К гексу уже проложена дорога"
@@ -646,12 +537,8 @@ msgstr "Даёт возможность строить ручную маслод
 msgid "Allows you to build the lime kilns: limestone → lime."
 msgstr "Даёт возможность строить печи для обжига известняка: известняк → известь."
 
-msgid ""
-"Allows you to build the paper workshop.\n"
-"Allows you to produce paper from mulberry, hemp and ramie with the help of lime."
-msgstr ""
-"Даёт возможность строить бумажную мастерскую.\n"
-"Позволяет производить бумагу из тутовника, конопли и рами с использованием извести."
+msgid "Allows you to build the paper workshop.\nAllows you to produce paper from mulberry, hemp and ramie with the help of lime."
+msgstr "Даёт возможность строить бумажную мастерскую.\nПозволяет производить бумагу из тутовника, конопли и рами с использованием извести."
 
 msgid "Allows you to build the quarry and the mason's workshop."
 msgstr "Даёт возможность строить каменоломню и каменотёсную мастерскую."
@@ -728,14 +615,8 @@ msgstr "Античность"
 msgid "Apiary"
 msgstr "Пасека"
 
-msgid ""
-"Area not scouted — information unavailable.\n"
-"\n"
-"Terrain, resources and improvements become known after scouting."
-msgstr ""
-"Область не разведана — информация недоступна.\n"
-"\n"
-"Местность, ресурсы и улучшения станут известны после разведки."
+msgid "Area not scouted — information unavailable.\n\nTerrain, resources and improvements become known after scouting."
+msgstr "Область не разведана — информация недоступна.\n\nМестность, ресурсы и улучшения станут известны после разведки."
 
 msgid "Aromatic Plants"
 msgstr "Парфюмерные растения"
@@ -1004,12 +885,8 @@ msgstr "Каналы позволили людям управлять водны
 msgid "Cancel"
 msgstr "Отмена"
 
-msgid ""
-"Cancel \"%s\"?\n"
-"\n"
-msgstr ""
-"Отменить «%s»?\n"
-"\n"
+msgid "Cancel \"%s\"?\n\n"
+msgstr "Отменить «%s»?\n\n"
 
 msgid "Cancel claiming"
 msgstr "Отмена освоения"
@@ -1017,14 +894,8 @@ msgstr "Отмена освоения"
 msgid "Cancel construction"
 msgstr "Отмена строительства"
 
-msgid ""
-"Cancel construction of \"%s\"?\n"
-"\n"
-"Spent work (%.0f/%d) will be lost."
-msgstr ""
-"Отменить строительство «%s»?\n"
-"\n"
-"Потраченный труд (%.0f/%d) будет потерян."
+msgid "Cancel construction of \"%s\"?\n\nSpent work (%.0f/%d) will be lost."
+msgstr "Отменить строительство «%s»?\n\nПотраченный труд (%.0f/%d) будет потерян."
 
 msgid "Cancel scouting"
 msgstr "Отмена разведки"
@@ -1314,6 +1185,9 @@ msgstr "Медные инструменты"
 msgid "Copper Weapons"
 msgstr "Медное оружие"
 
+msgid "Copy the list"
+msgstr "Скопировать список"
+
 msgid "Corn"
 msgstr "Кукуруза"
 
@@ -1353,6 +1227,9 @@ msgstr "Вырезает из камня тарелки, миски и чашк�
 msgid "Cuttlefish"
 msgstr "Каракатица"
 
+msgid "Cyrillic"
+msgstr "кириллица"
+
 msgid "Dairy"
 msgstr "Сыроварня"
 
@@ -1376,6 +1253,9 @@ msgstr "Копает и сортирует глину для обжига."
 
 msgid "Digs ore and minerals out of the ground."
 msgstr "Добывает руду и минералы под землёй."
+
+msgid "Disallowed characters in an identifier"
+msgstr "Недопустимые символы в идентификаторе"
 
 msgid "Diversity: %d subgroups"
 msgstr "Разнообразие: %d подгрупп"
@@ -1430,6 +1310,9 @@ msgstr "Пусто"
 
 msgid "Equipment"
 msgstr "Оборудование"
+
+msgid "Errors in the game data"
+msgstr "Ошибки в игровых данных"
 
 msgid "Exceptional"
 msgstr "Исключительное"
@@ -1499,6 +1382,9 @@ msgstr "Ферментация позволила людям превращат�
 
 msgid "Figs"
 msgstr "Инжир"
+
+msgid "File: %s"
+msgstr "Файл: %s"
 
 msgid "Fill level: %d%% (full in %.0f sec)"
 msgstr "Заполненность: %d%% (полное через %.0f сек)"
@@ -1584,6 +1470,9 @@ msgstr "Кузница"
 msgid "Forges tools, weapons and ornaments from metal."
 msgstr "Кует инструменты, оружие и украшения из металла."
 
+msgid "Found %d problems. Some recipes, resources and technologies may work incorrectly — check the files in the res://data folder."
+msgstr "Найдено проблем: %d. Часть рецептов, ресурсов и технологий может работать некорректно — проверьте файлы в папке res://data."
+
 msgid "Fresh water access: direct"
 msgstr "Доступ к пресной воде: прямой"
 
@@ -1604,6 +1493,9 @@ msgstr "Фруктовое вино"
 
 msgid "Fruits"
 msgstr "Фрукты"
+
+msgid "Fullwidth Latin"
+msgstr "полноширинная латинская"
 
 msgid "Fur Animals"
 msgstr "Пушные животные"
@@ -1664,6 +1556,9 @@ msgstr "Виноградное вино"
 
 msgid "Grapes"
 msgstr "Виноград"
+
+msgid "Greek"
+msgstr "греческая"
 
 msgid "Grows technical and spice crops."
 msgstr "Возделывает технические и пряные культуры."
@@ -1736,6 +1631,15 @@ msgstr "Иконка группы «%s»: %s (задана в data/product_group
 
 msgid "Icon: %s"
 msgstr "Иконка: %s"
+
+msgid "Identifier \"%s\" contains disallowed characters."
+msgstr "Идентификатор «%s» содержит недопустимые символы."
+
+msgid "Identifier \"%s\" is indistinguishable from \"%s\" by eye."
+msgstr "Идентификатор «%s» неотличим на глаз от «%s»."
+
+msgid "Identifier is indistinguishable from another by eye"
+msgstr "Идентификатор неотличим на глаз от другого"
 
 msgid "Improved building version not found"
 msgstr "Улучшенная версия здания не найдена"
@@ -2181,6 +2085,9 @@ msgstr "Пока никто ничего не потребляет"
 msgid "None"
 msgstr "Нет"
 
+msgid "Nonexistent product in a goods group"
+msgstr "В группе продуктов несуществующий продукт"
+
 msgid "Not enough coins in the treasury! Need %d, treasury has %d"
 msgstr "Недостаточно монет в казне! Нужно %d, в казне %d"
 
@@ -2219,6 +2126,9 @@ msgstr "Оливки"
 
 msgid "Once built, %s will produce:"
 msgstr "При постройке %s будет производить:"
+
+msgid "Only Latin letters a-z, digits and \"_\" are allowed. Disallowed: %s Such characters are indistinguishable from Latin ones by eye — fix this identifier and ALL references to it at once."
+msgstr "Разрешены только латинские буквы a-z, цифры и «_». Недопустимо: %s Такие символы неотличимы от латинских на глаз — исправьте этот идентификатор и ВСЕ ссылки на него сразу."
 
 msgid "Only areas within the Region can be claimed"
 msgstr "Осваивать можно только области в Регионе"
@@ -2442,6 +2352,15 @@ msgstr "Производство вина из винограда или фру�
 msgid "Produces:"
 msgstr "Производит:"
 
+msgid "Product \"%s\" is not produced anywhere."
+msgstr "Продукт «%s» нигде не производится."
+
+msgid "Product has no source (neither the map nor a recipe produces it)"
+msgstr "Продукт не имеет источника (его не производит ни карта, ни рецепт)"
+
+msgid "Product is unlocked by a nonexistent improvement"
+msgstr "Продукт открывается несуществующим улучшением"
+
 msgid "Production (planned):"
 msgstr "Производство (плановое):"
 
@@ -2502,31 +2421,29 @@ msgstr "Сырое мясо"
 msgid "Raw Milk"
 msgstr "Сырое молоко"
 
-msgid ""
-"Really exit the game?\n"
-"Unsaved progress will be lost."
-msgstr ""
-"Действительно выйти из игры?\n"
-"Несохранённый прогресс будет потерян."
+msgid "Really exit the game?\nUnsaved progress will be lost."
+msgstr "Действительно выйти из игры?\nНесохранённый прогресс будет потерян."
 
-msgid ""
-"Really return to the main menu?\n"
-"Unsaved progress will be lost."
-msgstr ""
-"Действительно выйти в главное меню?\n"
-"Несохранённый прогресс будет потерян."
+msgid "Really return to the main menu?\nUnsaved progress will be lost."
+msgstr "Действительно выйти в главное меню?\nНесохранённый прогресс будет потерян."
 
 msgid "Recall the scouts. No hex will be surveyed, paid coins will be refunded"
 msgstr "Отозвать разведчиков. Обследован не будет ни один гекс, оплаченные монеты вернутся"
 
-msgid ""
-"Recall the scouts?\n"
-"\n"
-"None of the %d tiles will be surveyed."
-msgstr ""
-"Отозвать разведчиков?\n"
-"\n"
-"Обследовано не будет ни одной клетки из %d."
+msgid "Recall the scouts?\n\nNone of the %d tiles will be surveyed."
+msgstr "Отозвать разведчиков?\n\nОбследовано не будет ни одной клетки из %d."
+
+msgid "Recipe is produced in a nonexistent building"
+msgstr "Рецепт производится в несуществующем здании"
+
+msgid "Recipe references a nonexistent goods group"
+msgstr "Рецепт ссылается на несуществующую группу продуктов"
+
+msgid "Recipe references a nonexistent resource"
+msgstr "Рецепт ссылается на несуществующий ресурс"
+
+msgid "Recipe yields a nonexistent resource"
+msgstr "Рецепт даёт несуществующий ресурс"
 
 msgid "Reduces the effect of distance from the city on labor cost when building improvements by 30%"
 msgstr "Снижает вклад расстояния от города в стоимость труда при строительстве улучшений на 30%"
@@ -2534,12 +2451,8 @@ msgstr "Снижает вклад расстояния от города в ст
 msgid "Reduces the effect of distance from the city on the work cost of building improvements by 30%."
 msgstr "Снижает вклад расстояния от города в стоимость труда при строительстве улучшений на 30%."
 
-msgid ""
-"Reduces the effect of distance from the city on the work cost of building improvements by 30%.\n"
-"Unlocks the Cart Road (road level 2): up to 30 units/sec per section instead of 10."
-msgstr ""
-"Снижает вклад расстояния от города в стоимость труда при строительстве улучшений на 30%.\n"
-"Открывает тележную дорогу (уровень дороги 2): до 30 ед./сек на участок вместо 10."
+msgid "Reduces the effect of distance from the city on the work cost of building improvements by 30%.\nUnlocks the Cart Road (road level 2): up to 30 units/sec per section instead of 10."
+msgstr "Снижает вклад расстояния от города в стоимость труда при строительстве улучшений на 30%.\nОткрывает тележную дорогу (уровень дороги 2): до 30 ед./сек на участок вместо 10."
 
 msgid "Reed Boat"
 msgstr "Тростниковая лодка"
@@ -2549,6 +2462,15 @@ msgstr "Тростниковые лодки"
 
 msgid "Reeds"
 msgstr "Тростник"
+
+msgid "Reference to a nonexistent category"
+msgstr "Ссылка на несуществующую категорию"
+
+msgid "Reference to a nonexistent profession"
+msgstr "Ссылка на несуществующую профессию"
+
+msgid "Reference to a nonexistent technology"
+msgstr "Ссылка на несуществующую технологию"
 
 msgid "Remove the worker from the improvement"
 msgstr "Снять рабочего с улучшения"
@@ -2604,6 +2526,9 @@ msgstr "Ресурс"
 msgid "Resource data refresh interval"
 msgstr "Интервал обновления данных о ресурсах"
 
+msgid "Resource is improved by a nonexistent improvement"
+msgstr "Ресурс улучшается несуществующим улучшением"
+
 msgid "Resource list"
 msgstr "Список ресурсов"
 
@@ -2637,11 +2562,20 @@ msgstr "Для уровня дороги %d нужна технология"
 msgid "Road level:"
 msgstr "Уровень дороги:"
 
+msgid "Road level: wrong or duplicate number"
+msgstr "Уровень дороги: неверный или повторяющийся номер"
+
+msgid "Road max speed must be greater than zero"
+msgstr "Максимальная скорость дороги должна быть больше нуля"
+
 msgid "Road to town \"%s\""
 msgstr "Дорога до городка «%s»"
 
 msgid "Road to town \"%s\" built — trade available!"
 msgstr "Дорога до городка «%s» построена — торговля доступна!"
+
+msgid "Road work cost cannot be negative"
+msgstr "Цена участка дороги не может быть отрицательной"
 
 msgid "Road: %s"
 msgstr "Дорога: %s"
@@ -2928,6 +2862,9 @@ msgstr "Содовый карьер"
 msgid "Sorghum"
 msgstr "Сорго"
 
+msgid "Source not found: product \"%s\" (%s) appears neither in produces of any map resource, nor in result/display_result of any recipe, nor in additional_yield of any building. Add a data source or remove the product from the file."
+msgstr "Источник не найден: продукт «%s» (%s) не встречается ни в produces ни одного ресурса карты, ни в result/display_result ни одного рецепта, ни в additional_yield ни одного здания. Добавьте источник данных или удалите продукт из файла."
+
 msgid "Soybean"
 msgstr "Соя"
 
@@ -2961,12 +2898,8 @@ msgstr "Прервать «%s». Потраченный труд будет по
 msgid "Stop claiming land (%d tiles). Spent work will be lost, paid coins will be refunded"
 msgstr "Прервать освоение области (%d клеток). Потраченный труд пропадёт, оплаченные монеты вернутся"
 
-msgid ""
-"Stop claiming land (%d tiles)?\n"
-"\n"
-msgstr ""
-"Прервать освоение области (%d клеток)?\n"
-"\n"
+msgid "Stop claiming land (%d tiles)?\n\n"
+msgstr "Прервать освоение области (%d клеток)?\n\n"
 
 msgid "Stop: %s"
 msgstr "Прервать: %s"
@@ -3055,6 +2988,9 @@ msgstr "Эффект технологии"
 msgid "Technology not found: "
 msgstr "Технология не найдена: "
 
+msgid "Technology requires a nonexistent technology"
+msgstr "Технология требует несуществующую технологию"
+
 msgid "Technology researched: %s"
 msgstr "Технология изучена: %s"
 
@@ -3141,6 +3077,9 @@ msgstr "Водяное колесо стало важным источником
 
 msgid "The wheel is one of humanity's greatest inventions, and it changed trade and war."
 msgstr "Колесо — одно из величайших изобретений человечества, изменившее торговлю и войну."
+
+msgid "There is no difference in spelling, but for the game these are DIFFERENT identifiers: everything that references \"%s\" will not reach \"%s\" and vice versa. Note that a reference to \"%s\" does NOT break anything — it is declared and looks correct, so the regular broken-reference checks did not see this typo either. Keep one identifier and rename the other in all files."
+msgstr "Различия в написании нет, но для игры это РАЗНЫЕ идентификаторы: всё, что ссылается на «%s», не попадёт в «%s» и наоборот. При этом ссылка на «%s» ссылки НЕ ломает — он объявлен и выглядит правильно, поэтому обычные проверки битых ссылок эту опечатку и не видели. Оставьте один идентификатор и переименуйте второй во всех файлах."
 
 msgid "There is no land route from the city to the town"
 msgstr "От города нет сухопутного пути до городка"
@@ -3262,12 +3201,8 @@ msgstr "Ультрамарин"
 msgid "Under construction"
 msgstr "Строится"
 
-msgid ""
-"Unfinished sections: %d. Work spent on them (%.0f/%.0f) will be lost.\n"
-"\n"
-msgstr ""
-"Недостроенных участков: %d. Потраченный на них труд (%.0f/%.0f) будет потерян.\n"
-"\n"
+msgid "Unfinished sections: %d. Work spent on them (%.0f/%.0f) will be lost.\n\n"
+msgstr "Недостроенных участков: %d. Потраченный на них труд (%.0f/%.0f) будет потерян.\n\n"
 
 msgid "Unknown construction requirement: %s"
 msgstr "Неизвестное условие строительства: %s"
@@ -3281,12 +3216,8 @@ msgstr "Открывает рецепты варки медового напит
 msgid "Unlocks recipes for bronze and bronze goods."
 msgstr "Открывает рецепты изготовления бронзы и бронзовых изделий."
 
-msgid ""
-"Unlocks recipes for iron and iron goods.\n"
-"Unlocks the bloomery."
-msgstr ""
-"Открывает рецепты изготовления железа и железных изделий.\n"
-"Открывает сыродутную печь."
+msgid "Unlocks recipes for iron and iron goods.\nUnlocks the bloomery."
+msgstr "Открывает рецепты изготовления железа и железных изделий.\nОткрывает сыродутную печь."
 
 msgid "Unlocks recipes for making jewelry out of metals."
 msgstr "Открывает рецепты изготовления ювелирных изделий из металлов."
@@ -3300,26 +3231,14 @@ msgstr "Открывает тележную дорогу (уровень дор�
 msgid "Unlocks the ability to find and gather native metals."
 msgstr "Открывает возможность находить и собирать самородные металлы."
 
-msgid ""
-"Unlocks the ability to find and gather native metals.\n"
-"Unlocks metal ores (gold, silver, copper) and metalloids (antimony and arsenic).\n"
-"Allows you to build the forge."
-msgstr ""
-"Открывает возможность находить и собирать самородные металлы.\n"
-"Открывает руды металлов (золото, серебро, медь) и металлоидов (сурьма и мышьяк).\n"
-"Даёт возможность строить кузницу."
+msgid "Unlocks the ability to find and gather native metals.\nUnlocks metal ores (gold, silver, copper) and metalloids (antimony and arsenic).\nAllows you to build the forge."
+msgstr "Открывает возможность находить и собирать самородные металлы.\nОткрывает руды металлов (золото, серебро, медь) и металлоидов (сурьма и мышьяк).\nДаёт возможность строить кузницу."
 
 msgid "Unlocks the ability to grow water-loving crops: rice and taro."
 msgstr "Открывает возможность возделывать влаголюбивые культуры: рис и таро."
 
-msgid ""
-"Unlocks the ability to grow water-loving crops: rice and taro.\n"
-"Allows farms and plantations to pass fresh water along a chain (up to 3 hexes).\n"
-"Allows you to drain marshes."
-msgstr ""
-"Открывает возможность возделывать влаголюбивые культуры: рис и таро.\n"
-"Позволяет фермам и плантациям передавать пресную воду по цепочке (до 3 гексов).\n"
-"Позволяет осушать болота."
+msgid "Unlocks the ability to grow water-loving crops: rice and taro.\nAllows farms and plantations to pass fresh water along a chain (up to 3 hexes).\nAllows you to drain marshes."
+msgstr "Открывает возможность возделывать влаголюбивые культуры: рис и таро.\nПозволяет фермам и плантациям передавать пресную воду по цепочке (до 3 гексов).\nПозволяет осушать болота."
 
 msgid "Unlocks the use of draft animals to turn millstones."
 msgstr "Открывает использование тягловых животных для вращения мельничных жерновов."
@@ -3531,6 +3450,9 @@ msgstr "нет"
 msgid "not working"
 msgstr "не работает"
 
+msgid "position %d: \"%s\" (U+%04X"
+msgstr "позиция %d: «%s» (U+%04X"
+
 msgid "produces goods '%s' from resource '%s'"
 msgstr "produces продукта '%s' ресурса '%s'"
 
@@ -3578,3 +3500,171 @@ msgstr "зданий"
 msgctxt "consumption_buildings_one"
 msgid "building"
 msgstr "здание"
+
+msgctxt "validator_entity_ref_building"
+msgid "this building"
+msgstr "это здание"
+
+msgctxt "validator_entity_ref_category"
+msgid "this category"
+msgstr "эту категорию"
+
+msgctxt "validator_entity_ref_cover"
+msgid "this terrain cover"
+msgstr "этот покров"
+
+msgctxt "validator_entity_ref_era"
+msgid "this era"
+msgstr "эту эпоху"
+
+msgctxt "validator_entity_ref_group"
+msgid "this goods group"
+msgstr "эту группу"
+
+msgctxt "validator_entity_ref_improvement"
+msgid "this improvement"
+msgstr "это улучшение"
+
+msgctxt "validator_entity_ref_product"
+msgid "this product"
+msgstr "этот продукт"
+
+msgctxt "validator_entity_ref_profession"
+msgid "this profession"
+msgstr "эту профессию"
+
+msgctxt "validator_entity_ref_quality_level"
+msgid "this quality level"
+msgstr "этот уровень качества"
+
+msgctxt "validator_entity_ref_recipe"
+msgid "this recipe"
+msgstr "этот рецепт"
+
+msgctxt "validator_entity_ref_road"
+msgid "this road level"
+msgstr "этот уровень дороги"
+
+msgctxt "validator_entity_ref_special_action"
+msgid "this special action"
+msgstr "это спецдействие"
+
+msgctxt "validator_entity_ref_technology"
+msgid "this technology"
+msgstr "эту технологию"
+
+msgctxt "validator_entity_ref_terrain"
+msgid "this terrain"
+msgstr "эту местность"
+
+msgctxt "validator_entity_source_building"
+msgid "building"
+msgstr "здании"
+
+msgctxt "validator_entity_source_category"
+msgid "category"
+msgstr "категории"
+
+msgctxt "validator_entity_source_cover"
+msgid "terrain cover"
+msgstr "покрове"
+
+msgctxt "validator_entity_source_era"
+msgid "era"
+msgstr "эпохе"
+
+msgctxt "validator_entity_source_group"
+msgid "goods group"
+msgstr "группе"
+
+msgctxt "validator_entity_source_improvement"
+msgid "improvement"
+msgstr "улучшении"
+
+msgctxt "validator_entity_source_product"
+msgid "product"
+msgstr "продукте"
+
+msgctxt "validator_entity_source_profession"
+msgid "profession"
+msgstr "профессии"
+
+msgctxt "validator_entity_source_quality_level"
+msgid "quality level"
+msgstr "уровне качества"
+
+msgctxt "validator_entity_source_recipe"
+msgid "recipe"
+msgstr "рецепте"
+
+msgctxt "validator_entity_source_road"
+msgid "road level"
+msgstr "уровне дороги"
+
+msgctxt "validator_entity_source_special_action"
+msgid "special action"
+msgstr "спецдействии"
+
+msgctxt "validator_entity_source_technology"
+msgid "technology"
+msgstr "технологии"
+
+msgctxt "validator_entity_source_terrain"
+msgid "terrain"
+msgstr "местности"
+
+msgctxt "validator_entity_title_building"
+msgid "Building"
+msgstr "Здания"
+
+msgctxt "validator_entity_title_category"
+msgid "Category"
+msgstr "Категории"
+
+msgctxt "validator_entity_title_cover"
+msgid "Terrain cover"
+msgstr "Покрова"
+
+msgctxt "validator_entity_title_era"
+msgid "Era"
+msgstr "Эпохи"
+
+msgctxt "validator_entity_title_group"
+msgid "Goods group"
+msgstr "Группы"
+
+msgctxt "validator_entity_title_improvement"
+msgid "Improvement"
+msgstr "Улучшения"
+
+msgctxt "validator_entity_title_product"
+msgid "Product"
+msgstr "Продукта"
+
+msgctxt "validator_entity_title_profession"
+msgid "Profession"
+msgstr "Профессии"
+
+msgctxt "validator_entity_title_quality_level"
+msgid "Quality level"
+msgstr "Уровня качества"
+
+msgctxt "validator_entity_title_recipe"
+msgid "Recipe"
+msgstr "Рецепта"
+
+msgctxt "validator_entity_title_road"
+msgid "Road level"
+msgstr "Уровня дороги"
+
+msgctxt "validator_entity_title_special_action"
+msgid "Special action"
+msgstr "Спецдействия"
+
+msgctxt "validator_entity_title_technology"
+msgid "Technology"
+msgstr "Технологии"
+
+msgctxt "validator_entity_title_terrain"
+msgid "Terrain"
+msgstr "Местности"

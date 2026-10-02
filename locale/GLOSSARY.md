@@ -158,3 +158,51 @@ register it in `project.godot` under
   (`scripts/data_loader.gd`). The English text stays in the JSON.
 * Invented proper nouns (the city names in `data/city_names.json`) are **not**
   translated — they are treated as names, not as text.
+
+## When one English text needs several translations
+
+A language may need more forms of a word than English has. Russian, for
+example, has three cases where English has one:
+
+| need | English msgid | Russian |
+|---|---|---|
+| subject of a sentence | `Building` | Здания |
+| object after "a reference to" | `this building` | это здание |
+| "present in ___" | `building` | здании |
+
+Two ways to express that in the catalog:
+
+1. **Different msgids** (`Building` / `this building` / `building`) — used by
+   the data validator for entity names (`validator_entity_*`). Each form is
+   its own translatable word, so no context is needed.
+2. **Same msgid, different msgctxt** — used for plural forms
+   (`consumption_buildings_one` / `_few` / `_many`): English has a single
+   "buildings", so the only thing that distinguishes the entries is the
+   context passed as the second argument to `tr()` /
+   `TranslationServer.translate()`.
+
+Choose form 1 when the surrounding English wording differs anyway (it is the
+clearer catalog), and form 2 when the English word is genuinely one word.
+
+## Rules for the data validator's texts
+
+`scripts/data_validator.gd` reports broken cross-references in `data/*.json`
+through a window (`scripts/data_problems_window.gd`).
+
+* A problem record is split in two: a **language-independent structure**
+  (`kind`, `ref_id`, `source_kind`, `field`, `file`, `line`) and the **text**
+  (`headline`, `where`, `location`, `message`). The text is rebuilt from the
+  structure by `DataValidator.build_text()`.
+* Because of that split, changing the language re-renders the already open
+  window without re-running the validation: the window listens to
+  `LocalizationManager.locale_changed` and calls
+  `DataValidator.localize_problems()`. The checks themselves never call
+  `tr()`.
+* Every `translate()` call in that file sits on **one line** and holds
+  **exactly one** string literal. This is a requirement of
+  `tools/i18n_build_po.py`, which parses the code line by line and takes the
+  msgid from the literal inside the call. A multi-line call, a dictionary of
+  texts, or a string concatenated inside the call would hide the msgid from
+  the builder, and the text would stay English in every language.
+* Identifiers (`hand_mill`, `produced_in`) and file paths are not translated —
+  they are read from the data and must match it exactly.

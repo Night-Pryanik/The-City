@@ -40,6 +40,14 @@ const FILE_COLOR := Color(0.55, 0.78, 1.0)
 var summary_label: Label
 var problems_box: VBoxContainer
 
+# Узлы, подписи которых меняются при смене языка. Запоминаем их явно:
+# автоперевод Control покрывает только то, что задано в СЦЕНЕ, а это окно
+# строится кодом, поэтому переподписать их придётся вручную (см.
+# _on_locale_changed).
+var title_label: Label
+var copy_button: Button
+var ok_button: Button
+
 # Текущий список проблем: нужен кнопке «Скопировать список». Сама отрисовка
 # его не хранит — содержимое лежит в узлах problems_box.
 var all_problems: Array = []
@@ -47,6 +55,12 @@ var all_problems: Array = []
 
 func _ready():
     process_mode = Node.PROCESS_MODE_ALWAYS
+
+    # Язык можно переключить прямо в главном меню, и окно проблем на экране
+    # в этот момент. Текст в нём собран из данных валидатора на языке
+    # запуска, поэтому без пересборки он остался бы на старом. Сами данные не
+    # трогаем: проверка не перезапускается, пересобираются только формулировки.
+    LocalizationManager.locale_changed.connect(_on_locale_changed)
 
     # Затемнение фона — окно читается как отдельный экран, а не как
     # всплывающая подсказка поверх меню.
@@ -74,11 +88,11 @@ func _ready():
     vbox.add_theme_constant_override("separation", 10)
     panel.add_child(vbox)
 
-    var title = Label.new()
-    title.text = "Ошибки в игровых данных"
-    title.add_theme_font_size_override("font_size", 22)
-    title.add_theme_color_override("font_color", TITLE_COLOR)
-    vbox.add_child(title)
+    title_label = Label.new()
+    title_label.text = tr("Errors in the game data")
+    title_label.add_theme_font_size_override("font_size", 22)
+    title_label.add_theme_color_override("font_color", TITLE_COLOR)
+    vbox.add_child(title_label)
 
     summary_label = Label.new()
     summary_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -103,17 +117,17 @@ func _ready():
     buttons.add_theme_constant_override("separation", 16)
     vbox.add_child(buttons)
 
-    var copy_btn = Button.new()
-    copy_btn.text = "Скопировать список"
-    copy_btn.custom_minimum_size = Vector2(200, 36)
-    copy_btn.pressed.connect(_on_copy_pressed)
-    buttons.add_child(copy_btn)
+    copy_button = Button.new()
+    copy_button.text = tr("Copy the list")
+    copy_button.custom_minimum_size = Vector2(200, 36)
+    copy_button.pressed.connect(_on_copy_pressed)
+    buttons.add_child(copy_button)
 
-    var ok_btn = Button.new()
-    ok_btn.text = "Закрыть"
-    ok_btn.custom_minimum_size = Vector2(160, 36)
-    ok_btn.pressed.connect(_on_ok_pressed)
-    buttons.add_child(ok_btn)
+    ok_button = Button.new()
+    ok_button.text = tr("Close")
+    ok_button.custom_minimum_size = Vector2(160, 36)
+    ok_button.pressed.connect(_on_ok_pressed)
+    buttons.add_child(ok_button)
 
     # _ready() вызывается при add_child(), а список проблем приходит
     # отдельным вызовом — на время между ними окно невидимо.
@@ -141,6 +155,21 @@ func show_problems(problems: Array):
     move_to_front()
 
 
+# Пересобирает содержимое окна на новом языке.
+#
+# Два независимых источника текста, и оба зависят от языка:
+#   * формулировки проблем — лежат в самих записях, их пересобирает
+#     DataValidator.localize_problems() (проверка при этом не перезапускается);
+#   * заголовок, сводка и подписи кнопок — наши собственные, их Godot
+#     переводит сам, потому что заданы через tr() на узлах.
+func _on_locale_changed(_locale: String) -> void:
+    DataValidator.localize_problems(all_problems)
+    _build_content(all_problems)
+    title_label.text = tr("Errors in the game data")
+    copy_button.text = tr("Copy the list")
+    ok_button.text = tr("Close")
+
+
 func _build_content(problems: Array):
     for child in problems_box.get_children():
         problems_box.remove_child(child)
@@ -148,7 +177,7 @@ func _build_content(problems: Array):
 
     # Сводка: сколько всего и сколько по видам проверок.
     var counts := _count_by_kind(problems)
-    var summary := "Найдено проблем: %d. Часть рецептов, ресурсов и технологий может работать некорректно — проверьте файлы в папке res://data." % problems.size()
+    var summary := tr("Found %d problems. Some recipes, resources and technologies may work incorrectly — check the files in the res://data folder.") % problems.size()
     var details: Array = []
     for kind in _kinds_in_display_order(counts.keys()):
         details.append("  • %s — %d" % [_check_title(kind), int(counts[kind])])
@@ -182,9 +211,7 @@ func _make_problem_label(problem: Dictionary) -> RichTextLabel:
     var ref_id := str(problem.get("ref_id", ""))
     var headline := str(problem.get("headline", ""))
     # Подсвечиваем сам идентификатор, чтобы он читался с одного взгляда.
-    var marked_headline := headline.replace(
-        "«%s»" % ref_id,
-        "[color=#%s]«%s»[/color]" % [REF_ID_COLOR.to_html(false), ref_id])
+    var marked_headline := _highlight_id(headline, ref_id)
 
     var label := RichTextLabel.new()
     label.bbcode_enabled = true
@@ -217,6 +244,46 @@ func _make_problem_label(problem: Dictionary) -> RichTextLabel:
         text += "\n   [color=#%s]%s[/color]" % [FILE_COLOR.to_html(false), location]
     label.text = text
     return label
+
+
+# Подсвечивает идентификатор в тексте проблемы.
+#
+# Ищет его как отдельное СЛОВО, а не по кавычкам вокруг. Раньше подстановка
+# искала «%s» вместе с кавычками-ёлочками, и это работало только пока текст
+# был русским: кавычки принадлежат переводу, и в другом языке (или если
+# переводчик их снимет) подсветка просто пропадала бы молча.
+#
+# Проверка границ — чтобы «wood» не подсветился внутри «wood_field»: соседние
+# символы не должны быть частью идентификатора. Границы считаются по
+# Unicode-кодам, а не сравнением строк, иначе кириллический «с» прошёл бы
+# мимо проверки.
+func _highlight_id(text: String, id: String) -> String:
+    if id.is_empty():
+        return text
+    var at := text.find(id)
+    while at >= 0:
+        var before := "" if at == 0 else text.substr(at - 1, 1)
+        var after_at := at + id.length()
+        var after := "" if after_at >= text.length() else text.substr(after_at, 1)
+        if not _is_ident_char(before) and not _is_ident_char(after):
+            return text.substr(0, at) + "[color=#%s]%s[/color]" % [
+                REF_ID_COLOR.to_html(false), id] + text.substr(after_at)
+        at = text.find(id, at + 1)
+    return text
+
+
+# Символ, который мог бы быть частью идентификатора: буква (латинская или
+# кириллическая), цифра или подчёркивание. Зеркалит IDENT_CHARS/IDENT_UPPER
+# из data_validator.gd — тот же набор, который валидатор считает допустимым.
+func _is_ident_char(ch: String) -> bool:
+    if ch.length() != 1:
+        return false
+    var code := ch.unicode_at(0)
+    return (code >= 0x30 and code <= 0x39) \
+        or (code >= 0x41 and code <= 0x5A) \
+        or (code >= 0x61 and code <= 0x7A) \
+        or (code >= 0x410 and code <= 0x44F) \
+        or ch == "_"
 
 
 func _on_copy_pressed():
@@ -262,7 +329,7 @@ func _kinds_in_display_order(kinds) -> Array:
 
 
 func _check_title(kind: String) -> String:
-    return str(DataValidator.CHECK_TITLES.get(kind, kind))
+    return DataValidator.check_title(kind)
 
 
 func _count_by_kind(problems: Array) -> Dictionary:
