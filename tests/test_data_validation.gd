@@ -76,11 +76,17 @@ func _test_detector(state: Dictionary):
         "profession": [
             ["ghost_prof", "bad_building_prof"],
             ["ghost_prof", "bad_improvement_prof"],
+            ["ghost_prof", "wheat"],
         ],
         "category": [["ghost_category", "bad_category"]],
         "group_member": [["ghost_member", "bad_group"]],
         "resource_group": [["@ghost_group", "bad_group_ref"]],
         "resource": [["ghost_raw", "bad_resource_ref"]],
+        # Правила потребления. Владелец ссылки — само правило, а оно
+        # идентифицируется значением "resource" (см. data_validator
+        # _validate_consumption), поэтому source_id совпадает с ref_id.
+        "consumption_resource": [["ghost_product", "ghost_product"]],
+        "consumption_group": [["@ghost_group", "@ghost_group"]],
         "prerequisite": [["ghost_tech", "bad_tech_prereq"]],
         # У проблемы «продукт без источника» нет недостающего идентификатора:
         # бит не в ссылке, а в её отсутствии. Поэтому ref_id и source_id —
@@ -183,6 +189,20 @@ func _test_no_false_positives_on_synthetic(state: Dictionary):
     # Одиночный id без «кириллического двойника» — не пара, а обычное объявление.
     check(_find(problems, "id_lookalike", "wheat", "wheat").is_empty(),
         "одиночный id без пары-омоглифа не должен давать проблем", state)
+
+    # --- Ложные срабатывания проверок правил потребления ---
+    #
+    # Правило реестра обязано уметь ссылаться и на одиночный продукт, и на
+    # @-группу, и на псевдо-профессию. Здесь в наборе есть продукты, группы
+    # и профессии, и все три ссылки верны — шуметь на них нельзя. Без этой
+    # проверки наивная реализация искала бы «id» в GameData.professions и
+    # ругалась бы на каждое правило сразу.
+    check(_find(problems, "consumption_resource", "tools", "tools").is_empty(),
+        "правило потребления существующего продукта не должно считаться поломкой",
+        state)
+    check(_find(problems, "consumption_group", "@jewelry", "@jewelry").is_empty(),
+        "правило потребления существующей @-группы не должно считаться поломкой",
+        state)
 
     # Явно пустые поля (null) — не ссылки. Ни одна из этих сущностей не
     # должна попасть в результат ни под каким видом проверки.
@@ -524,10 +544,12 @@ func _make_data() -> Node:
     gd.product_groups = {
         "grains": ["wheat"],
         "food": ["wheat", "flour"],
+        "jewelry": ["tools"],
     }
     gd.product_group_names = {
         "grains": "Злаки",
         "food": "Еда",
+        "jewelry": "Украшения",
     }
     gd.buildings = [
         {"id": "bakery", "name": "Пекарня"},
@@ -622,6 +644,24 @@ func _make_data() -> Node:
     # из categories.json. Проверяется у сырья отдельно ниже.
     gd.raw_resources["wildcard_raw"] = {"id": "wildcard_raw", "name": "Корова",
             "type": "raw", "category": "animals"}
+
+    # --- Правила потребления (data/consumption.json) ---
+    #
+    # Хорошие записи обязаны молчать: продукт без "@", существующая @-группа,
+    # настоящая профессия. Плохие — по одной на каждый новый вид проверки.
+    # Реальный прообраз плохих записей — забытый "@": автор пишет id группы
+    # там, где нужен ресурс (в data/consumption.json так было с "jewelry",
+    # которого как продукта не существует, — есть только группа "@jewelry").
+    gd.consumption_rules = [
+        # Хорошие записи.
+        {"resource": "tools", "profession": ["farmer"]},
+        {"resource": "@jewelry", "profession": ["blacksmith"]},
+        # Плохие: несуществующая @-группа, несуществующий продукт,
+        # несуществующая профессия.
+        {"resource": "@ghost_group", "profession": ["farmer"]},
+        {"resource": "ghost_product", "profession": ["farmer"]},
+        {"resource": "wheat", "profession": ["ghost_prof"]},
+    ]
 
     # Явно пустые поля (null). В data/*.json так записаны, например,
     # "improved_by": null у самородков — это «улучшения нет», а не ссылка

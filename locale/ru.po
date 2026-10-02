@@ -1167,6 +1167,12 @@ msgstr "Приоритет потребления"
 msgid "Consumption priority: %s (click to switch)"
 msgstr "Приоритет потребления: %s (нажмите чтобы переключить)"
 
+msgid "Consumption rule references a nonexistent goods group"
+msgstr "Правило потребления ссылается на несуществующую группу продуктов"
+
+msgid "Consumption rule references a nonexistent product"
+msgstr "Правило потребления ссылается на несуществующий продукт"
+
 msgid "Contemporary"
 msgstr "Новейшее время"
 
@@ -3527,6 +3533,10 @@ msgctxt "validator_entity_ref_category"
 msgid "this category"
 msgstr "эту категорию"
 
+msgctxt "validator_entity_ref_consumption_rule"
+msgid "this consumption rule"
+msgstr "это правило потребления"
+
 msgctxt "validator_entity_ref_cover"
 msgid "this terrain cover"
 msgstr "этот покров"
@@ -3583,6 +3593,10 @@ msgctxt "validator_entity_source_category"
 msgid "category"
 msgstr "категории"
 
+msgctxt "validator_entity_source_consumption_rule"
+msgid "consumption rule"
+msgstr "правиле потребления"
+
 msgctxt "validator_entity_source_cover"
 msgid "terrain cover"
 msgstr "покрове"
@@ -3638,6 +3652,10 @@ msgstr "Здания"
 msgctxt "validator_entity_title_category"
 msgid "Category"
 msgstr "Категории"
+
+msgctxt "validator_entity_title_consumption_rule"
+msgid "Consumption rule"
+msgstr "Правила потребления"
 
 msgctxt "validator_entity_title_cover"
 msgid "Terrain cover"

@@ -45,6 +45,8 @@
 #   group_member       — в @-группе несуществующий продукт
 #   resource_group     — рецепт ссылается на несуществующую @-группу
 #   resource           — рецепт требует несуществующий ресурс
+#   consumption_resource— правило потребления → несуществующий продукт
+#   consumption_group   — правило потребления → несуществующая @-группа
 #   prerequisite       — технология требует несуществующую технологию
 #   road_level         — у уровня дороги неверный или повторяющийся номер
 #   road_max_speed     — у уровня дороги неположительная максимальная скорость
@@ -162,7 +164,7 @@ const QUALITY_LEVELS_FIELD := "quality_levels"
 const ENTITIES := [
     "building", "product", "improvement", "technology", "profession",
     "category", "group", "recipe", "road", "terrain", "cover", "era",
-    "quality_level", "special_action",
+    "quality_level", "special_action", "consumption_rule",
 ]
 
 
@@ -242,6 +244,10 @@ static func entity_forms(kind: String, fallback: String = "product") -> Dictiona
             return {"title": TranslationServer.translate("Quality level", "validator_entity_title_quality_level"),
                 "ref": TranslationServer.translate("this quality level", "validator_entity_ref_quality_level"),
                 "source": TranslationServer.translate("quality level", "validator_entity_source_quality_level")}
+        "consumption_rule":
+            return {"title": TranslationServer.translate("Consumption rule", "validator_entity_title_consumption_rule"),
+                "ref": TranslationServer.translate("this consumption rule", "validator_entity_ref_consumption_rule"),
+                "source": TranslationServer.translate("consumption rule", "validator_entity_source_consumption_rule")}
         _:
             # Спецдействие замыкает список: неизвестный вид подставляет
             # fallback выше, сюда попасть можно только с опечаткой в коде.
@@ -283,6 +289,10 @@ static func check_title(kind: String) -> String:
             return TranslationServer.translate("Recipe references a nonexistent goods group")
         "resource":
             return TranslationServer.translate("Recipe references a nonexistent resource")
+        "consumption_resource":
+            return TranslationServer.translate("Consumption rule references a nonexistent product")
+        "consumption_group":
+            return TranslationServer.translate("Consumption rule references a nonexistent goods group")
         "prerequisite":
             return TranslationServer.translate("Technology requires a nonexistent technology")
         "road_level":
@@ -319,6 +329,10 @@ const SOURCE_COLLECTIONS := {
     "product": "resources",
     "group": "product_groups",
     "road": "roads",
+    # Правило потребления не объявляет себя полем "id" (см. data_loader
+    # _remember_consumption_sources), поэтому идентификатором записи в индексе
+    # происхождения служит её "resource".
+    "consumption_rule": "consumption",
     # Виды, нужные только проверкам идентификаторов: они объявляются в
     # своих коллекциях, но ни одна другая проверка на них не ссылается.
     "terrain": "terrains",
@@ -343,6 +357,8 @@ const CHECK_ORDER := [
     "group_member",
     "resource_group",
     "resource",
+    "consumption_resource",
+    "consumption_group",
     "prerequisite",
     "road_level",
     "road_max_speed",
@@ -384,6 +400,7 @@ func validate(gd: Object) -> Array:
     _validate_resources(products, raw_resources, categories, technologies, improvements, problems)
     _validate_product_sources(products, _produced_ids(gd, all_resources), problems)
     _validate_product_groups(product_groups, group_names, products, problems)
+    _validate_consumption(gd.consumption_rules, products, product_groups, professions, problems)
     _validate_technologies(technologies, problems)
     _validate_roads(gd.roads, technologies, problems)
 
@@ -826,6 +843,44 @@ func _validate_product_groups(product_groups: Dictionary, group_names: Dictionar
             if not products.has(product_id):
                 _add(problems, "group_member", "product", product_id,
                         "group", gname, gid, "products")
+
+
+# --- ПРАВИЛА ПОТРЕБЛЕНИЯ (data/consumption.json) ---------------------------
+#
+# resource → продукт ИЛИ @-группа продуктов; profession → профессия.
+#
+# Проверка зеркалит РЕЗОЛВЕР GameData._build_consumption_entry, а не общие
+# ссылки рецептов: ключ без "@" ищется именно в GameData.products. Потребление
+# берёт товары со склада, а не сырьё с гекса, поэтому «сырьё» здесь не подходит.
+#
+# Самая частая поломка здесь — забытый "@": автор пишет id группы там, где нужен
+# ресурс. До проверки такая запись не роняла ничего: резолвер подставлял
+# products.get(id, {}) и подпись-идентификатор, а списать было нечего, поэтому
+# строка потребления молча висела в интерфейсе и никогда не списывалась.
+func _validate_consumption(rules, products: Dictionary, product_groups: Dictionary,
+        professions: Dictionary, problems: Array) -> void:
+    if not (rules is Array):
+        return
+    for rule in rules:
+        if not (rule is Dictionary):
+            continue
+        var res_key := _as_id(rule.get("resource", ""))
+        if res_key.is_empty():
+            continue
+        # Идентификатором правила служит его "resource" — им же помечена
+        # строка объявления (см. SOURCE_COLLECTIONS и data_loader).
+        if res_key.begins_with("@"):
+            if not product_groups.has(res_key.substr(1)):
+                _add(problems, "consumption_group", "group", res_key,
+                        "consumption_rule", res_key, res_key, "resource")
+        elif not products.has(res_key):
+            _add(problems, "consumption_resource", "product", res_key,
+                    "consumption_rule", res_key, res_key, "resource")
+
+        # profession → профессия. Вид проверки общий с зданиями и улучшениями:
+        # сообщение «ссылка на несуществующую профессию» одинаково верно здесь.
+        _check_profession_ref(rule.get("profession", []), professions, problems,
+                "consumption_rule", res_key, res_key, "profession")
 
 
 # --- ТЕХНОЛОГИИ -----------------------------------------------------------

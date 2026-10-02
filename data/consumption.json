@@ -79,7 +79,7 @@
       "production_bonus": 0.0
     },
     {
-      "resource": "jewelry",
+      "resource": "@jewelry",
       "profession": [ "all" ],
       "amount": 10,
       "interval": 10,

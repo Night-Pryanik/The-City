@@ -1167,6 +1167,12 @@ msgstr ""
 msgid "Consumption priority: %s (click to switch)"
 msgstr ""
 
+msgid "Consumption rule references a nonexistent goods group"
+msgstr ""
+
+msgid "Consumption rule references a nonexistent product"
+msgstr ""
+
 msgid "Contemporary"
 msgstr ""
 
@@ -3527,6 +3533,10 @@ msgctxt "validator_entity_ref_category"
 msgid "this category"
 msgstr ""
 
+msgctxt "validator_entity_ref_consumption_rule"
+msgid "this consumption rule"
+msgstr ""
+
 msgctxt "validator_entity_ref_cover"
 msgid "this terrain cover"
 msgstr ""
@@ -3583,6 +3593,10 @@ msgctxt "validator_entity_source_category"
 msgid "category"
 msgstr ""
 
+msgctxt "validator_entity_source_consumption_rule"
+msgid "consumption rule"
+msgstr ""
+
 msgctxt "validator_entity_source_cover"
 msgid "terrain cover"
 msgstr ""
@@ -3637,6 +3651,10 @@ msgstr ""
 
 msgctxt "validator_entity_title_category"
 msgid "Category"
+msgstr ""
+
+msgctxt "validator_entity_title_consumption_rule"
+msgid "Consumption rule"
 msgstr ""
 
 msgctxt "validator_entity_title_cover"

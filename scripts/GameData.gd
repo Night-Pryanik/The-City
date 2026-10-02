@@ -699,6 +699,13 @@ func _build_consumption_entry(res_key: String, rule: Dictionary) -> Dictionary:
         # Раньше здесь был отдельный обход членов, дублировавший правило.
         entry["icon"] = get_product_group_icon(res_key)
     else:
+        # Несуществующий продукт: раньше запись всё равно создавалась, с
+        # подписью-идентификатором и пустой иконкой, и тихо висела в
+        # интерфейсе, ни разу ничего не списав. Теперь это видно в консоли —
+        # плюс ту же ошибку показывает data_validator как проблему данных.
+        if not products.has(res_key):
+            print("GameData: продукт '", res_key, "' из data/consumption.json не найден — запись пропущена.")
+            return {}
         entry["product_id"] = res_key
         entry["product_name"] = products.get(res_key, {}).get("name", res_key)
         entry["is_group"] = false

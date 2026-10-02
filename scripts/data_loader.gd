@@ -288,6 +288,57 @@ func _remember_sources(file_path: String, raw_text: String, data: Dictionary):
                 "file": file_path,
                 "line": _find_decl_line(raw_text, id),
             }
+    _remember_consumption_sources(file_path, raw_text, data)
+
+
+# Правила потребления (data/consumption.json) идентификатора в себе не имеют:
+# запись объявляется полями resource/profession/amount/interval, а поля "id" в
+# ней нет, поэтому общий проход выше их пропускает. Без отдельного прохода
+# проблема «ресурс не существует» осталась бы без указания файла — а файл и
+# строка здесь и есть главная ценность сообщения.
+#
+# Ключом служит само значение "resource" (с "@" для групп). Так ключ индекса
+# совпадает с тем, что валидатор передаёт как source_id
+# (data_validator._validate_consumption), и обе стороны сходятся.
+#
+# Совпадение ключа у двух правил с одинаковым ресурром невозможно: реестр это
+# запрещает (GameData.get_profession_consumption отбрасывает дубль по
+# display_key), поэтому перезапись индекса тут не случается.
+func _remember_consumption_sources(file_path: String, raw_text: String, data: Dictionary):
+    var rules = data.get("consumption", null)
+    if not (rules is Array):
+        return
+    for rule in rules:
+        if not (rule is Dictionary):
+            continue
+        var res_key := str(rule.get("resource", ""))
+        if res_key.is_empty():
+            continue
+        entity_sources["consumption:%s" % res_key] = {
+            "file": file_path,
+            "line": _find_resource_decl_line(raw_text, res_key),
+        }
+
+
+# Строка объявления правила потребления — та, где стоит поле "resource" с этим
+# значением.
+#
+# Свой _find_decl_line здесь не годится: он ищет первое вхождение значения в
+# СЫРОМ тексте, комментарии не вырезает, и объявление опережает любой комментарий
+# вида // ... "resource" со значением, о котором автор пишет пояснение. Указание
+# тогда указывает на пояснение, а не на правило, — ровно то, ради чего индекс
+# происхождения и затевался.
+func _find_resource_decl_line(raw_text: String, res_key: String) -> int:
+    var needle := "\"%s\"" % res_key
+    var lines := raw_text.split("\n")
+    for i in lines.size():
+        var line: String = lines[i]
+        # Имя поля и значение в одной строке — компактная запись
+        # { "resource": "@boats", ... }. Многострочная запись не встречается,
+        # но и в этом случае вернётся 0, а не укажет на чужую строку.
+        if line.contains("\"resource\"") and line.contains(needle):
+            return i + 1
+    return 0
 
 # Строка, на которой сущность с таким id ОБЪЯВЛЕНА, — или 0, если не нашлась.
 #
