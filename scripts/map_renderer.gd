@@ -160,10 +160,19 @@ func _get_visible_hex_range() -> Dictionary:
         "col_end": col_end
     }
 
+# Экранный прямоугольник в ЭКРАННЫХ координатах — единственный источник
+# истины и для viewport culling, и для отсечения рек.
+#
+# Инвариант: всё, что мы отсекаем, уже сдвинуто на offset (см.
+# _build_visible_river_lines), поэтому и прямоугольник должен быть экранным.
+# `-offset_x / -offset_y` здесь означали бы МИРОВУЮ систему координат и
+# отсекли бы всё — именно так реки однажды и пропадали с карты.
+func _get_screen_rect() -> Rect2:
+    return Rect2(Vector2.ZERO, _get_viewport_size())
+
 # Проверяет, пересекается ли прямоугольник (в экранных координатах) с viewport.
 func _is_rect_visible(rect: Rect2) -> bool:
-    var viewport_rect = Rect2(Vector2.ZERO, _get_viewport_size())
-    return rect.intersects(viewport_rect)
+    return rect.intersects(_get_screen_rect())
 
 func load_icons():
     icon_textures.clear()
@@ -1579,81 +1588,95 @@ func _draw_rivers():
 
 
 # Рисует список рек с заданным стилем (берег, тело, блик).
-# Реки обрезаются по прямоугольнику экрана: за его пределами они не видны,
-# а внутри (в том числе в тумане войны, который теперь отрисовывается
-# затемнённым) рисуются полностью.
+# Вся геометрия и отсечение невидимого — в _build_visible_river_lines.
 func _draw_river_list(river_list: Array, offset_x: float, offset_y: float, radius: float,
         shore_color: Color, shore_width: float,
         body_color: Color, body_width: float,
         highlight_color: Color, highlight_width: float):
     for river in river_list:
-        if river.size() < 2:
-            continue
-
-        # Viewport culling: пропускаем реки, которые не пересекают экран.
-        var min_x = INF
-        var max_x = - INF
-        var min_y = INF
-        var max_y = - INF
-        for pt in river:
-            var px = pt.x + offset_x
-            var py = pt.y + offset_y
-            min_x = min(min_x, px)
-            max_x = max(max_x, px)
-            min_y = min(min_y, py)
-            max_y = max(max_y, py)
-        var river_rect = Rect2(
-            min_x - radius,
-            min_y - radius,
-            (max_x - min_x) + radius * 2,
-            (max_y - min_y) + radius * 2
-        )
-        if not _is_rect_visible(river_rect):
-            continue
-
-        # Сглаженные меандровые точки реки в МИРОВЫХ координатах (без offset).
-        # Вычисляем их один раз на реку и кэшируем: сглаживание (_generate_natural_river
-        # + _chaikin_smooth) — дорогая операция, а точки рек не меняются при прокрутке,
-        # поэтому пересчёт каждый кадр избыточен. Ключ кэша — компактная сериализация
-        # исходных точек реки (с уникальным хэшем количества точек).
-        var cache_key = "%d|" % river.size() + _points_to_cache_key(river)
-        var smooth_points: PackedVector2Array
-        if _river_smooth_cache.has(cache_key):
-            smooth_points = _river_smooth_cache[cache_key]
-        else:
-            # Строим естественные меандры по полной реке в МИРОВЫХ координатах,
-            # затем при отрисовке к ним добавится offset. Так волны остаются
-            # непрерывными на границе, а за ней река не рисуется (туман войны).
-            var world_points = PackedVector2Array()
-            for pt in river:
-                world_points.append(Vector2(pt.x, pt.y))
-            smooth_points = _generate_natural_river(world_points, radius)
-            _river_smooth_cache[cache_key] = smooth_points
-
-        # Смещаем сглаженные мировые точки на текущий offset (прокрутка/центр).
-        var shifted_points = PackedVector2Array()
-        shifted_points.resize(smooth_points.size())
-        for i in range(smooth_points.size()):
-            shifted_points[i] = Vector2(
-                smooth_points[i].x + offset_x,
-                smooth_points[i].y + offset_y
-            )
-
-        # Обрезаем сглаженную линию по прямоугольнику экрана. Раньше клип шёл
-        # по Региону (туман войны не отрисовывался вовсе), но теперь гексы в
-        # достижимой скроллом полосе рисуются затемнёнными — реки не должны
-        # обрываться на границе Региона.
-        var screen_rect = Rect2(Vector2(-offset_x, -offset_y), _get_viewport_size())
-        var clipped_lines = _clip_river_to_rect(shifted_points, screen_rect)
-        if clipped_lines.is_empty():
-            continue
-
-        for line in clipped_lines:
-            if line.size() < 2:
-                continue
+        for line in _build_visible_river_lines(river, offset_x, offset_y, radius):
             draw_polyline(line, shore_color, shore_width, true)
             draw_polyline(line, body_color, body_width, true)
             draw_polyline(line, highlight_color, highlight_width, true)
+
+
+# Геометрия ОДНОЙ реки в ЭКРАННЫХ координатах: viewport culling, сглаживание
+# (с кэшем), сдвиг на offset и отсечение по экрану. Вынесено из
+# _draw_river_list, чтобы результат можно было проверять headless-тестом,
+# не заходя в _draw() (см. tests/test_river_rendering.gd).
+#
+# Реки обрезаются по прямоугольнику экрана: за его пределами они не видны,
+# а внутри (в том числе в тумане войны, который теперь отрисовывается
+# затемнённым) рисуются полностью.
+func _build_visible_river_lines(river: Array, offset_x: float, offset_y: float,
+        radius: float) -> Array:
+    var lines: Array = []
+    if river.size() < 2:
+        return lines
+
+    # Viewport culling: пропускаем реки, которые не пересекают экран.
+    var min_x = INF
+    var max_x = - INF
+    var min_y = INF
+    var max_y = - INF
+    for pt in river:
+        var px = pt.x + offset_x
+        var py = pt.y + offset_y
+        min_x = min(min_x, px)
+        max_x = max(max_x, px)
+        min_y = min(min_y, py)
+        max_y = max(max_y, py)
+    var river_rect = Rect2(
+        min_x - radius,
+        min_y - radius,
+        (max_x - min_x) + radius * 2,
+        (max_y - min_y) + radius * 2
+    )
+    if not _is_rect_visible(river_rect):
+        return lines
+
+    # Сглаженные меандровые точки реки в МИРОВЫХ координатах (без offset).
+    # Вычисляем их один раз на реку и кэшируем: сглаживание (_generate_natural_river
+    # + _chaikin_smooth) — дорогая операция, а точки рек не меняются при прокрутке,
+    # поэтому пересчёт каждый кадр избыточен. Ключ кэша — компактная сериализация
+    # исходных точек реки (с уникальным хэшем количества точек).
+    var cache_key = "%d|" % river.size() + _points_to_cache_key(river)
+    var smooth_points: PackedVector2Array
+    if _river_smooth_cache.has(cache_key):
+        smooth_points = _river_smooth_cache[cache_key]
+    else:
+        # Строим естественные меандры по полной реке в МИРОВЫХ координатах,
+        # затем при отрисовке к ним добавится offset. Так волны остаются
+        # непрерывными на границе, а за ней река не рисуется (туман войны).
+        var world_points = PackedVector2Array()
+        for pt in river:
+            world_points.append(Vector2(pt.x, pt.y))
+        smooth_points = _generate_natural_river(world_points, radius)
+        _river_smooth_cache[cache_key] = smooth_points
+
+    # Смещаем сглаженные мировые точки на текущий offset (прокрутка/центр) —
+    # с этого момента точки живут в ЭКРАННЫХ координатах.
+    var shifted_points = PackedVector2Array()
+    shifted_points.resize(smooth_points.size())
+    for i in range(smooth_points.size()):
+        shifted_points[i] = Vector2(
+            smooth_points[i].x + offset_x,
+            smooth_points[i].y + offset_y
+        )
+
+    # Обрезаем сглаженную линию по прямоугольнику экрана. Прямоугольник —
+    # ЭКРАННЫЙ (_get_screen_rect), как и сами точки: раньше здесь стоял
+    # Rect2(Vector2(-offset_x, -offset_y), ...), то есть МИРОВОЕ окно, и при
+    # центрировании карты (offset_x ~ -2280) реки отсекались целиком — они
+    # оставались в данных (river_edges), но не рисовались. Раньше клип шёл по
+    # Региону (туман войны не отрисовывался вовсе), но теперь гексы в
+    # достижимой скроллом полосе рисуются затемнёнными — реки не должны
+    # обрываться на границе Региона.
+    var clipped_lines = _clip_river_to_rect(shifted_points, _get_screen_rect())
+    for line in clipped_lines:
+        if line.size() >= 2:
+            lines.append(line)
+    return lines
 
 
 # Обрезает отрезок (start -> end) по прямоугольнику rect (алгоритм Лиан–Барски).
