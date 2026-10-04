@@ -460,7 +460,9 @@ func generate_towns(tile_data: Array, rows: int, cols: int,
 
     # После построения колец заполняем их декоративными улучшениями. Они
     # принадлежат городкам, не требуют рабочих и никогда не участвуют в
-    # производстве игрока (см. tile.decorative).
+    # производстве игрока (см. tile.decorative). Пищевые поля — единственное
+    # исключение в смысле торговли: засеянная культура попадает в пул продажи
+    # городка, но на склад игрока не идёт.
     _place_decorative_town_improvements(tile_data, rows, cols)
 
     print("town_manager: всего размещено городков=", town_hexes.size(),
@@ -752,6 +754,14 @@ func _is_impassable_terrain(terrain_id: String) -> bool:
 # только для вида: они не являются стройками игрока, не получают рабочих и
 # не дают ресурсов. Для ресурсов источник улучшения берётся исключительно из
 # improved_by, поэтому добавление новых типов ресурсов не требует правок.
+#
+# ИСКЛЮЧЕНИЕ — пищевые поля городка (см. блок с фермами ниже). Если в кольце
+# нет ни одного пищевого растения, декоративные фермы засеваются одомашненными
+# культурами — по своей на каждое поле, — и все они попадают в пул продажи.
+# Производства игроку это не даёт (прод-цикл main_map и worker_manager
+# пропускают tile.decorative) — нужно ровно то, ради чего всё и затевалось:
+# чтобы городок выглядел и торговал как живой, а игрок не думал «как они не
+# голодают?».
 func _place_decorative_town_improvements(tile_data: Array, rows: int, cols: int) -> void:
     for town in towns:
         var candidates: Array = []
@@ -766,11 +776,26 @@ func _place_decorative_town_improvements(tile_data: Array, rows: int, cols: int)
             candidates.append({"row": row, "col": col, "tile": tile})
 
         var has_food_plant := false
+        # Заполнительные фермы — улучшения farm без природного ресурса. Их
+        # городок получает потому, что в кольце нет пищевых растений, и всего
+        # это 1-2 поля. Собираем ВСЕ такие (и голые, и уже засеянные): они —
+        # признак того, что проход по кольцу уже был.
+        var filler_farms: Array = []
+        # Голые из них — те, что ещё без культуры. Их засеваем: и только что
+        # поставленные, и оставшиеся от прежних проходов (партия, сохранённая
+        # до появления пищевых полей). Уже засеянные поля сюда не попадают,
+        # поэтому при загрузке сейва городок не пересеивается.
+        var bare_farms: Array = []
         for candidate in candidates:
             var resource_id = candidate.tile.get("resource", null)
             var resource_data: Dictionary = GameData.raw_resources.get(str(resource_id), {})
             if resource_data.get("group", "") == "food_plants":
                 has_food_plant = true
+            if resource_id == null and str(candidate.tile.get("improvement", "")) == "farm":
+                filler_farms.append(candidate.tile)
+                var crop = candidate.tile.get("crop_bred", null)
+                if crop == null or crop == "":
+                    bare_farms.append(candidate.tile)
             var imp_id := str(resource_data.get("improved_by", ""))
             if imp_id != "" and GameData.improvements.has(imp_id) \
                     and candidate.tile.get("improvement", null) == null:
@@ -779,17 +804,31 @@ func _place_decorative_town_improvements(tile_data: Array, rows: int, cols: int)
         # Если продовольственных растений в кольце нет, добавляем 1–2
         # декоративные фермы на свободных равнинах без покрова.
         if not has_food_plant:
-            var farm_candidates: Array = []
-            for candidate in candidates:
-                var tile: Dictionary = candidate.tile
-                if tile.get("improvement", null) == null \
-                        and tile.get("resource", null) == null \
-                        and tile.get("terrain", "") == "plain" \
-                        and tile.get("cover", "none") == "none":
-                    farm_candidates.append(candidate)
-            farm_candidates.shuffle()
-            for i in range(mini(2, farm_candidates.size())):
-                _set_decorative_improvement(farm_candidates[i].tile, "farm")
+            # ... но только ОДИН раз за партию. Свои поля уже есть — значит,
+            # проход по кольцу был раньше (например, при загрузке сейва), и
+            # доливать нельзя: иначе каждая перезагрузка добавляла бы ещё две
+            # фермы, и кольцо постепенно зарастало бы ими.
+            if filler_farms.is_empty():
+                var farm_candidates: Array = []
+                for candidate in candidates:
+                    var tile: Dictionary = candidate.tile
+                    if tile.get("improvement", null) == null \
+                            and tile.get("resource", null) == null \
+                            and tile.get("terrain", "") == "plain" \
+                            and tile.get("cover", "none") == "none":
+                        farm_candidates.append(candidate)
+                farm_candidates.shuffle()
+                var farm_count: int = mini(2, farm_candidates.size())
+                for i in range(farm_count):
+                    _set_decorative_improvement(farm_candidates[i].tile, "farm")
+                    bare_farms.append(farm_candidates[i].tile)
+            # ... и засеваем каждое СВОЕЙ культурой. Голые фермы — витрина без
+            # товара: игрок видит поля, а продавать нечего, и вопрос «как же они
+            # не голодают?» остаётся без ответа. Две разные культуры подряд —
+            # это хозяйство, а не однотипный клин, и у городка сразу два товара
+            # в продаже вместо одного.
+            for tile in bare_farms:
+                _seed_decorative_field(tile, _pick_town_field_crop(tile))
 
         # По одному декоративному объекту на лесном покрове и на горе/холме.
         var forest_done := false
@@ -806,6 +845,14 @@ func _place_decorative_town_improvements(tile_data: Array, rows: int, cols: int)
                     and GameData.improvements.has("quarry"):
                 _set_decorative_improvement(tile, "quarry")
                 quarry_done = true
+
+    # Пул продажи пересобираем ПОСЛЕ расстановки улучшений: часть колец
+    # пополнилась полями с культурой (tile.crop_bred), и городок, у которого
+    # больше нет никаких ресурсов, должен получить её в продажу. Раньше пул
+    # собирался раньше этого шага, и поля оставались немыми.
+    _refresh_sell_pools(tile_data)
+
+
 func _set_decorative_improvement(tile: Dictionary, imp_id: String) -> void:
     tile["improvement"] = imp_id
     tile["decorative"] = true
@@ -813,6 +860,52 @@ func _set_decorative_improvement(tile: Dictionary, imp_id: String) -> void:
     tile["fill_time"] = 0.0
     tile["production_fractional_remainder"] = 0.0
     tile["feed_fractional_remainder"] = 0.0
+
+
+# Выбирает случайную пищевую культуру, которую можно развести на гексе
+# городка. Берём ТОЛЬКО группу "food_plants": дикорсы (wild_food, группа
+# "wild") сюда не попадают — на ферме их не вырастишь, они собираются
+# спец-действием, и «городок, который жуёт дикорсы», не отвечает на вопрос
+# игрока про голод. Разводимость проверяем ровно тем же правилом, что и при
+# постройке фермы игроком (MapHelpers.can_breed_resource_on_tile), поэтому
+# культура всегда подходит своему гексу, а новых полей в JSON править не
+# придётся. Пустая строка — не подошёл ни один вид.
+func _pick_town_field_crop(tile: Dictionary) -> String:
+    var options: Array = []
+    for res_id in GameData.raw_resources:
+        var res_data: Dictionary = GameData.raw_resources[res_id]
+        if res_data.get("group", "") != "food_plants":
+            continue
+        if MapHelpers.can_breed_resource_on_tile(str(res_id), tile):
+            options.append(str(res_id))
+    if options.is_empty():
+        return ""
+    return str(options[randi() % options.size()])
+
+
+# Засевает декоративную ферму городка одомашненной пищевой культурой.
+# Культура подбирается на КАЖДОЕ поле отдельно (_pick_town_field_crop), так
+# что два поля городка — это два разных товара, а не однотипный клин.
+#
+# Именно crop_bred, а не resource: ферма на пустом гексе — это разведение
+# (схема crop_bred), а не природная залежь. Благодаря этому:
+#   - на гексе честно видно «своё поле», а не найденную залежь;
+#   - культура попадает в пул продажи городка (refresh_sell_pools читает
+#     эффективный ресурс — природный ИЛИ разводимый);
+#   - логика «природных» ресурсов (отладка, покупка чанков, инструменты по
+#     месторождениям) остаётся непричастной к полям чужого городка.
+# Качество — как при разведении игроком: своё у каждого поля. Уже засеянное
+# поле не пересеиваем.
+func _seed_decorative_field(tile: Dictionary, crop_id: String) -> void:
+    if tile == null or crop_id == "":
+        return
+    if str(tile.get("improvement", "")) != "farm":
+        return
+    if not MapHelpers.can_breed_resource_on_tile(crop_id, tile):
+        return
+    tile["crop_bred"] = crop_id
+    if str(tile.get("quality", "")) == "":
+        tile["quality"] = GameData.roll_quality()
 
 
 # --- Маски приоритетов ---
@@ -1160,6 +1253,11 @@ func compute_all_town_influences(tile_data: Array, map_rows: int, map_cols: int)
 # торговый пул содержит перечень доступных типов ресурсов, а не каждое
 # месторождение отдельно. Порядок обхода кольца стабилен и совпадает с
 # порядком гексов в сохранённом кольце.
+#
+# Учитываются ОБА вида ресурса на гексе: природный (tile.resource) и
+# разводимый (tile.crop_bred — например, культура на пищевом поле городка).
+# Второй вклад даёт в пул ровно то, ради чего поле и засевается: городок без
+# других ресурсов получает что продавать и не выглядит вымершим.
 func _refresh_sell_pools(tile_data: Array) -> void:
     for town in towns:
         var resources: Array = []
@@ -1173,13 +1271,17 @@ func _refresh_sell_pools(tile_data: Array) -> void:
             var tile = tile_data[row][col]
             if tile == null:
                 continue
-            var raw_resource = tile.get("resource", null)
-            # В JSON/сейвах отсутствие ресурса представлено null. Нельзя
-            # преобразовывать его в строку: str(null) даёт "<null>" и этот
-            # псевдоресурс попадал первым в каждый пул продажи.
-            if raw_resource == null:
-                continue
-            var resource_id := str(raw_resource).strip_edges()
+            # Эффективный ресурс гекса — природный (tile.resource) ИЛИ
+            # разводимый на ферме городка (tile.crop_bred). Раньше читался
+            # только resource, и поля городка вместе со своей культурой в
+            # пул не попадали: фермы были немыми, а пул — пустым.
+            #
+            # Отсутствие ресурса в JSON/сейвах — это null, и превращать его
+            # в строку нельзя: str(null) даёт "<null>", и такой псевдоресурс
+            # попадал первым в каждый пул продажи. get_effective_resource
+            # возвращает в этом случае пустую строку, но проверку "<null>"
+            # оставляем — на всякий случай для старых сейвов.
+            var resource_id := MapHelpers.get_effective_resource(tile).strip_edges()
             if resource_id.is_empty() or resource_id == "<null>" or seen.has(resource_id):
                 continue
             seen[resource_id] = true
