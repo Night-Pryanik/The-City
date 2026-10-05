@@ -412,14 +412,14 @@ func validate(gd: Object) -> Array:
     var buildings := _index_by_id(gd.buildings)
     var technologies := _index_by_id(gd.technologies)
     var categories := _index_by_id(gd.categories)
-    # Эти три в GameData уже словари id -> данные (data_loader.gd).
+    # All three are already id -> data dictionaries in GameData (data_loader.gd).
     var improvements: Dictionary = gd.improvements
     var professions: Dictionary = gd.professions
     var products: Dictionary = gd.products
     var raw_resources: Dictionary = gd.raw_resources
     var product_groups: Dictionary = gd.product_groups
     var group_names: Dictionary = gd.product_group_names
-# These three are already the dictionaries id -> data in GameData (data_loader.gd).
+    # These three are already the dictionaries id -> data in GameData (data_loader.gd).
     var all_resources: Dictionary = {}
     all_resources.merge(raw_resources)
     all_resources.merge(products)
@@ -441,15 +441,15 @@ func validate(gd: Object) -> Array:
 
     # The raw materials and the products in one space for the references to the resources:
     # a recipe is allowed to require both "clay" (a raw material) and "flour" (a product).
-#
-# --- THE IDENTIFIERS: THE ALPHABET AND THE LOOKALIKES ----------------------------------
-#
-# ONLY the declarations are checked (the field "id"), and not the references to them. This is not
-# a simplification, but a consequence of the structure of the other checks: if a reference
-# contains the same non-ASCII character as the declaration, — this check will find
-# the problem; if it points to a Latin identifier — it will be found by any of
-# the checks of the broken references. A separate pass over the references would not find a single
-# new case.
+    #
+    # --- THE IDENTIFIERS: THE ALPHABET AND THE LOOKALIKES ----------------------------------
+    #
+    # ONLY the declarations are checked (the field "id"), and not the references to them. This is not
+    # a simplification, but a consequence of the structure of the other checks: if a reference
+    # contains the same non-ASCII character as the declaration, — this check will find
+    # the problem; if it points to a Latin identifier — it will be found by any of
+    # the checks of the broken references. A separate pass over the references would not find a single
+    # new case.
 func _validate_identifiers(gd: Object, problems: Array) -> void:
     # All the declared identifiers: id → the details about the declaration.
     # It is filled in by one pass over the collections, because the lookalikes are searched
@@ -510,9 +510,9 @@ func _collect_identifier(declared: Dictionary, problems: Array, collection: Stri
 # The positions of the characters outside the allowed alphabet:
 # [{ "pos": int, "char": String, "code": int, "block": String, "lookalike": String }, …]
 #
-# block — ИСХОДНОЕ имя блока (английский msgid), а не готовая подпись:
-# переводом оно станет только при сборке текста (build_text), иначе смена
-# языка не пересобрала бы уже собранное сообщение.
+# block — the ORIGINAL name of the block (the English msgid), and not a ready-made label:
+# it only becomes a translation at the moment the text is assembled (build_text), otherwise
+# a language change would not rebuild the message that has already been assembled.
 func _bad_ident_chars(id: String) -> Array:
     var bad: Array = []
     var index := 0
@@ -591,7 +591,7 @@ func _check_lookalikes(declared: Dictionary, problems: Array) -> void:
             # A loner. If it is the Cyrillic, id_charset has already caught it: there is
             # nothing to compare with.
             continue
-# A loner. If it is the Cyrillic, id_charset has already caught it: there is
+            # A loner. If it is the Cyrillic, id_charset has already caught it: there is
             # nothing to compare with.
         var latin := ""
         for id in members:
@@ -607,7 +607,7 @@ func _check_lookalikes(declared: Dictionary, problems: Array) -> void:
             var info: Dictionary = declared[id]
             var latin_info: Dictionary = declared[latin]
 
-# In a group of two or more participants the Latin spelling is necessarily present:
+        # In a group of two or more participants the Latin spelling is necessarily present:
         # two DIFFERENT purely Latin ids cannot normalize into one
         # string (for the Latin the fold is an identity mapping).
         # Therefore all the "extra" ones are those where fold has replaced something.
@@ -623,8 +623,8 @@ func _ascii_fold(id: String) -> String:
     for ch in id:
         result += str(IDENT_LOOKALIKES.get(ch, ch))
     return result
-#
-# We report one problem per group: several participants are
+        #
+        # We report one problem per group: several participants are
         # the same typo, and there is no reason to list it twice.
 func _validate_roads(roads, technologies: Dictionary, problems: Array) -> void:
     if not (roads is Array):
@@ -667,7 +667,7 @@ func _validate_crafts(crafts, buildings: Dictionary, technologies: Dictionary,
         var craft_id := str(craft.get("id", ""))
         var craft_name := _entity_name(craft, craft_id)
 
-# The owner of the problem is the corrupted declaration (it is the one that has to be deleted),
+            # The owner of the problem is the corrupted declaration (it is the one that has to be deleted),
             # therefore it is in the source_id, and not the Latin spelling. The texts
             # are assembled by build_text from this structure.
         for building_id in _as_string_list(craft.get("produced_in", [])):
@@ -677,18 +677,18 @@ func _validate_crafts(crafts, buildings: Dictionary, technologies: Dictionary,
                 _add(problems, "produced_in", "building", building_id,
                         "recipe", craft_name, craft_id, "produced_in")
 
-# Brings the characters that are indistinguishable from the Latin ones to the Latin look. It serves
-# ONLY for the comparison of the ids with each other, and never — for the editing of the data.
+        # Brings the characters that are indistinguishable from the Latin ones to the Latin look. It serves
+        # ONLY for the comparison of the ids with each other, and never — for the editing of the data.
         for field in ["result", "display_result"]:
             for product_id in _as_dict(craft.get(field, {})).keys():
                 if not all_resources.has(str(product_id)):
                     _add(problems, "result", "product", str(product_id),
                             "recipe", craft_name, craft_id, field)
 
-# The reference to a technology (common with the other entities) and the level
-# numbers themselves are checked. We check the numbers because they hit the gameplay silently:
-# max_speed = 0 will give a segment that carries nothing, and this is visible only in the
-# game; work_cost with a fraction will be rounded up and will "eat" a coin for no reason.
+        # The reference to a technology (common with the other entities) and the level
+        # numbers themselves are checked. We check the numbers because they hit the gameplay silently:
+        # max_speed = 0 will give a segment that carries nothing, and this is visible only in the
+        # game; work_cost with a fraction will be rounded up and will "eat" a coin for no reason.
         for key in _as_dict(craft.get("resources", {})).keys():
             var res_key := str(key)
             if res_key.begins_with("@"):
@@ -699,14 +699,14 @@ func _validate_crafts(crafts, buildings: Dictionary, technologies: Dictionary,
                 _add(problems, "resource", "product", res_key,
                         "recipe", craft_name, craft_id, "resources")
 
-# --- THE RECIPES ---------------------------------------------------------------
-# produced_in, result / display_result, the resources (including the @-groups), unlock_tech.
+        # --- THE RECIPES ---------------------------------------------------------------
+        # produced_in, result / display_result, the resources (including the @-groups), unlock_tech.
         _check_tech_ref(craft.get("unlock_tech", ""), technologies, problems,
                 "recipe", craft_name, craft_id, "unlock_tech")
 
 
         # produced_in → a building. "*" is the service marker "in any building".
-# unlock_tech, profession.
+        # unlock_tech, profession.
 func _validate_buildings(buildings, technologies: Dictionary, professions: Dictionary,
         problems: Array) -> void:
     for building in buildings:
@@ -722,7 +722,7 @@ func _validate_buildings(buildings, technologies: Dictionary, professions: Dicti
 
 
         # result (and its displayable variant) → a resource.
-# unlock_tech, profession.
+        # unlock_tech, profession.
 func _validate_improvements(improvements: Dictionary, technologies: Dictionary,
         professions: Dictionary, problems: Array) -> void:
     for improvement_id in improvements:
@@ -739,7 +739,7 @@ func _validate_improvements(improvements: Dictionary, technologies: Dictionary,
 
 
         # resources → a resource or an @-group of products.
-# improved_by, unlock_improvement, unlock_tech, category.
+        # improved_by, unlock_improvement, unlock_tech, category.
 func _validate_resources(products: Dictionary, raw_resources: Dictionary,
         categories: Dictionary, technologies: Dictionary, improvements: Dictionary,
         problems: Array) -> void:
@@ -764,7 +764,7 @@ func _validate_resource(res_id, resource, categories: Dictionary, technologies: 
         _add(problems, "improved_by", "improvement", improved_by,
                 "product", rname, rid, "improved_by")
 
-# --- THE BUILDINGS ---------------------------------------------------------------
+    # --- THE BUILDINGS ---------------------------------------------------------------
     var unlock_improvement := _as_id(resource.get("unlock_improvement", ""))
     if not unlock_improvement.is_empty() and not improvements.has(unlock_improvement):
         _add(problems, "unlock_improvement", "improvement", unlock_improvement,
@@ -773,20 +773,20 @@ func _validate_resource(res_id, resource, categories: Dictionary, technologies: 
     _check_tech_ref(resource.get("unlock_tech", ""), technologies, problems,
             "product", rname, rid, "unlock_tech")
 
-# --- THE IMPROVEMENTS ------------------------------------------------------------
+    # --- THE IMPROVEMENTS ------------------------------------------------------------
     var category := _as_id(resource.get("category", ""))
     if is_product and not category.is_empty() and not categories.has(category):
         _add(problems, "category", "category", category,
                 "product", rname, rid, "category")
 
 
-# --- THE RESOURCES (the raw materials + the products) -------------------------------------------
-#
+    # --- THE RESOURCES (the raw materials + the products) -------------------------------------------
+    #
     # improved_by → an improvement (the field of the raw material: "by which improvement it is grown").
-#
-# ONLY the products are checked. The raw materials (gd.raw_resources) by definition
-# are taken from the map by the generation, therefore their source always exists; the check of
-# the raw materials would give false positives on each of the 112 resources.
+    #
+    # ONLY the products are checked. The raw materials (gd.raw_resources) by definition
+    # are taken from the map by the generation, therefore their source always exists; the check of
+    # the raw materials would give false positives on each of the 112 resources.
 func _validate_product_sources(products: Dictionary, produced_ids: Dictionary,
         problems: Array) -> void:
     for product_id in products:
