@@ -232,7 +232,7 @@ func _ready():
         for row in range(map_rows):
             var col_array = []
             for col in range(map_cols):
-# crop_bred — the id of a domesticated animal/plant which is bred
+                # crop_bred — the id of a domesticated animal/plant which is bred
                 # on an empty hex (see docs.md, the section "Breeding of animals/plants").
                 # For the natural resources tile.resource remains.
                 var tile = {"terrain": "plain", "cover": "none", "resource": null, "crop_bred": null, "improvement": null, "decorative": false, "production_fractional_remainder": 0.0, "feed_fractional_remainder": 0.0, "terrain_icon": "", "in_influence": false, "is_explored": false, "river_edges": [], "in_town_influence": false, "has_town": false, "road_built": false, "road_level": 1, "road_staged": false}
@@ -307,23 +307,23 @@ func _ready():
         # The timers of the occupational consumption — after the assignments, so that
         # the interval for each hex is recalculated by the current profession.
         worker_manager.load_consumption_timers(SaveManager.saved_data.get("profession_consumption_timers", []))
-# The timers of the consumption of the city ("all", all the citizens of the city) — the interval
+        # The timers of the consumption of the city ("all", all the citizens of the city) — the interval
         # is recalculated from the data on loading, we store only elapsed.
         worker_manager.load_city_consumption_timers(SaveManager.saved_data.get("city_consumption_timers", []))
         townsfolk_manager.load_assignments(SaveManager.saved_data.get("townsfolk_assignments", []))
-# The timers of the occupational consumption of the CITY BUILDINGS — after
+        # The timers of the occupational consumption of the CITY BUILDINGS — after
         # the assignments of the citizens: the profession is determined by the building (data/buildings.json),
         # the fractional remainders are stored in the save, the intervals are recalculated from the data.
         worker_manager.load_building_consumption_timers(SaveManager.saved_data.get("building_profession_consumption_timers", []))
 
-# For the already researched technologies we guarantee the spawn of the resources opened by them
+        # For the already researched technologies we guarantee the spawn of the resources opened by them
         CityData.ensure_tech_resources_spawned()
 
-# We recalculate the free citizens by the actually restored assignments
+        # We recalculate the free citizens by the actually restored assignments
         var total_assigned = worker_manager.get_assigned_count() + townsfolk_manager.get_assigned_count()
         CityData.idle_population = max(0, CityData.total_population - total_assigned)
 
-# --- THE CHECK: if there are assignments of the citizens, but they do not coincide with the number of the buildings, we fix it ---
+        # --- THE CHECK: if there are assignments of the citizens, but they do not coincide with the number of the buildings, we fix it ---
         var current_buildings_count = CityData.city_built_buildings.size()
         var invalid_keys = []
         for key in townsfolk_manager.assigned_buildings.keys():
@@ -342,11 +342,11 @@ func _ready():
         road_manager.rebuild_roads_from_existing(tile_data, map_rows, map_cols,
                 Callable(self, "_skip_improvement_road_restore"))
 
-# We restore the rivers from the save and mark river_edges in the hexes
+        # We restore the rivers from the save and mark river_edges in the hexes
         river_manager.load_rivers(SaveManager.saved_data.get("rivers", []))
         river_manager.mark_river_edges(tile_data, map_rows, map_cols, HEX_RADIUS)
 
-# We collect the hexes of a unique terrain (for example, a soda lake) after the loading.
+        # We collect the hexes of a unique terrain (for example, a soda lake) after the loading.
         unique_terrain_hexes = []
         for row in range(map_rows):
             for col in range(map_cols):
@@ -432,7 +432,7 @@ func _ready():
     # The initialization of DebugManager
     debug_manager.initialize(self)
 
-# The UI-helpers for the HUD tooltips (the breakdown of the treasury, and potentially the future
+    # The UI-helpers for the HUD tooltips (the breakdown of the treasury, and potentially the future
     # tooltips on the elements of the HUD). Its own CanvasLayer and Control-host, so that
     # the tooltips lie over the HUD and the map; the detailed list of the panels is inside
     # ui_helpers.setup() — see the corresponding script. We pass null into
@@ -454,7 +454,7 @@ func _ready():
     CityData.research_error.connect(_on_research_error)
     CityData.research_error.connect(hud.show_message)
     CityData.population_changed.connect(_on_population_changed)
-# The treasury in the HUD is updated via the tick path (city_updated) with the check of
+    # The treasury in the HUD is updated via the tick path (city_updated) with the check of
     # the era of the display of the resources — synchronously with the other resources. The direct
     # signal treasury_changed is not needed here: the income of the internal market changes
     # the treasury on every tick, and without throttling the HUD label would flicker every tick.
@@ -464,19 +464,19 @@ func _ready():
     expansion_manager.chunk_hovered.connect(_on_chunk_hovered)
     worker_manager.assignment_changed.connect(_on_assignment_changed)
     townsfolk_manager.assignment_changed.connect(_on_townsfolk_assignment_changed)
-# The control panel must react to the external changes: the assignment
+    # The control panel must react to the external changes: the assignment
     # of the workers, the completion/cancellation of the builds, the update of the city, the learning of the technologies,
     # the expansion of the territory. Otherwise it would show the outdated information.
     worker_manager.assignment_changed.connect(control_panel.refresh)
     build_manager.build_completed.connect(_on_control_panel_build_changed)
     build_manager.build_cancelled.connect(_on_control_panel_build_changed)
     build_manager.build_paused.connect(_on_control_panel_build_changed)
-# The tick update (and not refresh): the info column with the resources and the preview
+    # The tick update (and not refresh): the info column with the resources and the preview
     # are updated with the display interval (see control_panel.on_city_updated).
     CityData.city_updated.connect(control_panel.on_city_updated)
     CityData.research_completed.connect(control_panel.refresh)
 
-# The change of the language on the fly: the text set in the scenes is translated by Godot itself, and
+    # The change of the language on the fly: the text set in the scenes is translated by Godot itself, and
     # everything assembled in the code (the lists of the tabs, the panel of the hex, the HUD) has to be
     # rebuilt. By this moment the data has already been re-read by the language manager.
     LocalizationManager.locale_changed.connect(_on_locale_changed)
@@ -502,7 +502,7 @@ func _ready():
     build_manager.build_building_completed.connect(_on_building_build_completed)
     build_manager.building_upgrade_completed.connect(_on_building_upgrade_completed)
     build_manager.expansion_build_completed.connect(expansion_manager.on_expansion_build_completed)
-# The phased projects (the road by the hexes): the distribution of the labour is done by build_manager itself,
+    # The phased projects (the road by the hexes): the distribution of the labour is done by build_manager itself,
     # and the effect of each completed segment is applied by main_map.
     build_manager.project_manager = project_manager
     project_manager.step_completed.connect(_on_project_step_completed)
@@ -624,7 +624,7 @@ func _process(delta):
     # not go — the interval is counted in the game time (see CityData).
     CityData.tick_resource_display(delta)
 
-# The tooltip of the breakdown of the treasury by the sources of income/expense: polling + the sticking
+    # The tooltip of the breakdown of the treasury by the sources of income/expense: polling + the sticking
     # (the logic repeats city_ui.gd — there the same thing for the tooltip over
     # TopFoodLabel; a single rhythm, a single delay building_detail_delay).
     var mouse_pos_now: Vector2 = get_viewport().get_mouse_position()
@@ -661,12 +661,12 @@ func _process(delta):
                 if tile.improvement == null or bool(tile.get("decorative", false)) \
                         or not worker_manager.has_worker(row, col):
                     continue
-# The production goes both from the natural resource (tile.resource), and from
+                # The production goes both from the natural resource (tile.resource), and from
                 # the bred one (tile.crop_bred, see the breeding scheme). If both are
                 # null — there is nothing to produce on the hex.
                 var eff_res = MapHelpers.get_effective_resource(tile)
                 if eff_res == "":
-# A forest plot on an empty forest hex: there is no resource, but
+                    # A forest plot on an empty forest hex: there is no resource, but
                     # the cover gives wood (wood_yield > 0 in covers.json).
                     # The output = wood_yield × the multipliers of the improvement and the profession.
                     # The future covers with wood_yield > 0 will be picked up automatically.
@@ -682,7 +682,7 @@ func _process(delta):
                             # is resolved by ui_helpers by the id, see
                             # GameData.get_source_display_name).
                             var lj_source = GameData.improvement_source_id("lumberjack_hut")
-# --- THE CONTINUOUS PRODUCTION OF THE FOREST PLOT ---
+                            # --- THE CONTINUOUS PRODUCTION OF THE FOREST PLOT ---
                             # Instead of the batch release once per production_interval,
                             # on every tick we add to the storage (wood_yield ×
                             # the multipliers) / production_interval units. The fractional
@@ -698,7 +698,7 @@ func _process(delta):
                             if lj_floor > 0:
                                 CityData.add_to_storage("wood", lj_floor)
                                 CityData.record_production_source("wood", lj_source, lj_floor)
-# The planned release of the cycle: it is visible on every tick, while
+                            # The planned release of the cycle: it is visible on every tick, while
                             # the worker is in place (it closes the gaps between the cycles).
                             CityData.record_planned_improvement_production("wood", lj_source,
                                 int(ceil(wood_yield * lj_imp_mult * lj_consumption_mult)), lj_interval)
@@ -712,7 +712,7 @@ func _process(delta):
                 # is OBLIGATORY for any hex with a worker — otherwise the timer of the
                 # consumption does not advance and the bonus of the profession "freezes".
                 
-# It returns the total multiplier of the production: 1.0 without the bonus,
+                # It returns the total multiplier of the production: 1.0 without the bonus,
                 # 1.0+bonus while the resource is there. The improvement does NOT stop on a shortage —
                 # it simply works at the base.
                 var consumption_multiplier: float = worker_manager.tick_consumption(
@@ -722,19 +722,19 @@ func _process(delta):
                 var feed_needed = res_data.get("feed_consumption", 0)
                 var production_multiplier = 1.0
                 if tile.improvement != null:
-# We pass terrain_id and resource_id for the modifiers by
+                    # We pass terrain_id and resource_id for the modifiers by
                     # the terrain (for example, the bitumen on the asphalt lake x2).
                     production_multiplier = CityData.get_improvement_production_multiplier(
                         tile.improvement, _is_hex_irrigated(row, col),
                         tile.get("terrain", ""), eff_res)
 
-# We apply the bonus of the occupational consumption (for example,
+                # We apply the bonus of the occupational consumption (for example,
                 # +50% to the production of fish, while there are reed boats).
                 # The multiplier comes from worker_manager.tick_consumption();
                 # it is equal to 1.0 without the bonus or with a shortage of the supplies.
                 production_multiplier *= consumption_multiplier
 
-# The growing resources (time_to_mature > 0): while the pasture is filling up,
+                # The growing resources (time_to_mature > 0): while the pasture is filling up,
                 # the output is proportional to the degree of the occupancy. The filling itself
                 # is advanced FRAME BY FRAME in _tick_pasture_fill() (a smooth bar),
                 # here we only collect the list of the growing pastures and cut the output.
@@ -750,7 +750,7 @@ func _process(delta):
                 # (the label is resolved by ui_helpers, see
                 # GameData.get_source_display_name).
                 var improvement_source = GameData.improvement_source_id(str(tile.improvement))
-# --- THE CONTINUOUS PRODUCTION OF AN IMPROVEMENT ---
+                # --- THE CONTINUOUS PRODUCTION OF AN IMPROVEMENT ---
                 # Instead of the batch release once per production_interval, on every
                 # tick we add to the storage (amount_per_cycle × production_multiplier)
                 # / production_interval units of the product. The fractional remainder
@@ -775,7 +775,7 @@ func _process(delta):
                 else:
                     _emit_continuous_production(tile, produces, production_multiplier, imp_interval, tile_quality, improvement_source)
 
-# The planned release/consumption of the cycle: they are visible on EVERY tick, while
+                # The planned release/consumption of the cycle: they are visible on EVERY tick, while
                 # the worker is in place (they close the gaps between the cycles on the tab
                 # "Resources" — the same "blind windows" as for the recipes of the buildings).
                 for planned_pid in GameData.raw_resources.get(eff_res, {}).get("produces", {}):
@@ -791,12 +791,12 @@ func _process(delta):
                     CityData.record_planned_improvement_consumption("feed", improvement_source, feed_needed, imp_interval)
 
         CityData.do_tick()
-# The consumption of the city of the pseudo-profession "all" (all the citizens of the city,
+        # The consumption of the city of the pseudo-profession "all" (all the citizens of the city,
         # including the employed ones): it writes off the resources per head by total_population
         # by the common city timer (see worker_manager.tick_city_consumption).
         # It gives no bonus to the production — a test of the infrastructure.
         worker_manager.tick_city_consumption(CityData.SIMULATION_TICK)
-# tick_research_science is called every frame below (see _process),
+        # tick_research_science is called every frame below (see _process),
         # and not bound to the tick of the simulation. This gives a smooth progress bar.
 
     _update_research_progress()
@@ -917,7 +917,7 @@ func _initialize_map():
     region_cols = ring_cols + region_width * 2
     _recalculate_bounds()
 
-# We remember the starting boundaries (the Ring + the visible window). They are needed for
+    # We remember the starting boundaries (the Ring + the visible window). They are needed for
     # the guarantees of the spawn of the resources, so that the metal and food_plant do NOT appear beyond
     # the initially visible area even after the expansion to a new era.
     start_influence_start_row = influence_start_row
@@ -931,7 +931,7 @@ func _initialize_map():
 
     # We generate the WHOLE map of the world at once (the relief, the cover, the rivers).
     var generator = load("res://scripts/map_generator.gd").new()
-# The number of the Voronoi centres for each terrain type is computed
+    # The number of the Voronoi centres for each terrain type is computed
     # from the configuration terrain_config (density + target_cluster),
     # set in data/map_config.json.
     var terrain_counts = generator.make_terrain_counts(map_rows, map_cols)
@@ -941,7 +941,7 @@ func _initialize_map():
     # We guarantee that the city is on a permitted terrain (a plain or the hills)
     _ensure_city_valid_terrain()
 
-# We mark the starting Influence Ring and reset the research.
+    # We mark the starting Influence Ring and reset the research.
     # The flags are set for the WHOLE map, because the generators (place_wild_food and so on)
     # iterate over all the hexes and refer to "in_influence".
     for row in range(map_rows):
@@ -950,7 +950,7 @@ func _initialize_map():
             tile["in_influence"] = is_in_influence(row, col)
             tile["is_explored"] = false
 
-# We collect the hexes of a unique terrain (for example, a soda lake).
+    # We collect the hexes of a unique terrain (for example, a soda lake).
     # They are displayed on the map even beyond the visible Region
     # (see map_renderer._draw), therefore we store them in a separate list.
     unique_terrain_hexes = []
@@ -961,11 +961,11 @@ func _initialize_map():
             if t_data.get("unique", false):
                 unique_terrain_hexes.append({"row": row, "col": col})
 
-# The hexes of the towns and of the influence ring are mirrored AFTER town_manager.generate_towns
+    # The hexes of the towns and of the influence ring are mirrored AFTER town_manager.generate_towns
     # below (it itself calls compute_all_town_influences at the end, see the script town_manager).
     # Here we do not mirror anything yet: the master copies are still empty.
 
-# The wild plants and the guaranteed food_plant spawn ONLY once at the
+    # The wild plants and the guaranteed food_plant spawn ONLY once at the
     # start of a new game and ONLY inside the starting Influence Ring.
     # We pass the explicit boundaries of the starting Ring, so that these functions never
     # go beyond its limits (even if the Ring expands later).
@@ -989,20 +989,20 @@ func _initialize_map():
                 if res != null and influence_resource_types.has(res):
                     tile_data[row][col]["resource"] = null
 
-# --- The guarantees for the starting area "Ring + Region" ---
+    # --- The guarantees for the starting area "Ring + Region" ---
     # We use the starting boundaries (and not the current ones), so that on a future
     # expansion to a new era it does not fire again. At the moment in the game
     # the only metal is the iron; when adding a new one the function will choose
     # one of them at random. The same for the other categories below.
     #
-# The food plant is guaranteed separately (see _ensure_food_plant above)
+    # The food plant is guaranteed separately (see _ensure_food_plant above)
     # and remains ONLY in the starting Ring — the player must have the possibility
     # to put a farm immediately without the scouting/buying of the region.
     _ensure_minimum_resource({"category": "metals"})
     _ensure_minimum_resource({"category": "animals", "group": "meat_animals"})
     _ensure_minimum_resource({"category": "minerals", "subgroup": "construction_materials"})
 
-# --- The post-processing: we guarantee a sufficient number of FREE hexes ---
+    # --- The post-processing: we guarantee a sufficient number of FREE hexes ---
     # After the placement of all the resources of each terrain type in the Influence Ring
     # there must remain at least FREE_TERRAIN_HEXES free (resource == null)
     # hexes. This excludes a soft-lock: if a resource (for example, quinoa — only the mountains)
@@ -1035,20 +1035,20 @@ func _initialize_map():
                 else:
                     tile["terrain_icon"] = ""
 
-# We generate the river system (the main rivers + the tributaries) over the whole map
+    # We generate the river system (the main rivers + the tributaries) over the whole map
     # and mark the river edges in the data of the hexes. We pass tile_data (for the mountains/lakes)
     # and the boundaries of the starting area "Ring + Region" (the guarantee of the intersection).
     river_manager.generate_rivers(map_rows, map_cols, HEX_RADIUS, tile_data,
             region_start_row, region_end_row, region_start_col, region_end_col)
     river_manager.mark_river_edges(tile_data, map_rows, map_cols, HEX_RADIUS, river_manager.get_cached_graph())
 
-# --- The towns (the small settlements) ---
+    # --- The towns (the small settlements) ---
     # They are placed AFTER the rivers, so that river_edges have already been set and
     # are used as the points of attraction (priority 2). The number and the priorities
     # of the points of attraction are in data/map_config.json, the section "num_towns".
     # The details are in scripts/town_manager.gd.
     #
-# We pass two areas:
+    # We pass two areas:
     #   exclusion_* — the starting visible area (the Ring + the starting Region).
     #     Inside it the towns do NOT spawn, otherwise they would be visible from the very
     #     beginning of the game and the sense of "the small unknown settlements" would be lost.
@@ -1063,7 +1063,7 @@ func _initialize_map():
             era2_region_bounds.start_row, era2_region_bounds.end_row,
             era2_region_bounds.start_col, era2_region_bounds.end_col)
 
-# The mirrors town_hexes / town_influence_hexes are built ONLY AFTER generate_towns:
+    # The mirrors town_hexes / town_influence_hexes are built ONLY AFTER generate_towns:
     # town_manager calls compute_all_town_influences at the end of generate_towns,
     # and only after that both master copies contain the data. Previously the mirror
     # stood higher (around the line 650), but in that place town_manager.town_hexes
@@ -1075,12 +1075,12 @@ func _initialize_map():
     town_influence_hexes = []
     for h in town_manager.town_influence_hexes:
         town_influence_hexes.append({"row": h.row, "col": h.col})
-# The full records of the towns — a reference to the master list of the manager (and not a snapshot):
+    # The full records of the towns — a reference to the master list of the manager (and not a snapshot):
     # the renderer reads the per-town rings and the colours, and any future edits in
     # town_manager are immediately reflected on the map without a repeated mirroring.
     towns = town_manager.towns
 
-# The final guarantee: on the hex of the city there should be no resource, and the terrain
+    # The final guarantee: on the hex of the city there should be no resource, and the terrain
     # must be a permitted one (plain or hill). It is a safety-net for the case,
     # if some function of the spawn of the resources or of the conversion of the terrain
     # has missed the check of the coordinates of the city.
@@ -1100,7 +1100,7 @@ func _is_hex_irrigated(row: int, col: int) -> bool:
     return MapHelpers.is_hex_irrigated(row, col, tile_data, map_rows, map_cols)
 
 func _ensure_minimum_resource(filter: Dictionary):
-# The guarantee works by the STARTING boundaries "Ring + Region", and not by the
+    # The guarantee works by the STARTING boundaries "Ring + Region", and not by the
     # current ones (which can be expanded by a transition to a new era).
     # It is used on the initialization of the map, so that in the starting area
     # there is always at least one resource satisfying the filter.
@@ -1158,7 +1158,7 @@ func _calc_offsets():
     offset_y = offsets.y
 
 func update_tooltip_text(row: int, col: int):
-# The insurance of the public entry point: for a hex in the fog of war the tooltip is not
+    # The insurance of the public entry point: for a hex in the fog of war the tooltip is not
     # filled in at all (the main gate is in InputHandler._handle_mouse_motion,
     # where the foggy hex does not become "hovered" at all). Otherwise after
     # the hover delay a tooltip with the contents of the previous hex would float up.
@@ -1255,8 +1255,8 @@ func confirm_cancel_project(project_id: String):
     dialog.title = tr("Cancel construction")
     var text := tr("Cancel \"%s\"?\n\n") % title
     if left > 0:
-# The confirmation dialog is the same as for an ordinary build: the cancellation is irreversible,
-# and the already laid segments of the road remain on the map.
+        # The confirmation dialog is the same as for an ordinary build: the cancellation is irreversible,
+        # and the already laid segments of the road remain on the map.
         var progress := 0.0
         var step_cost := 0.0
         if done < steps.size():
@@ -1284,7 +1284,7 @@ func confirm_cancel_project(project_id: String):
     )
     add_child(dialog)
     dialog.popup_centered()
-# We take the labour from the CURRENT step of the project, and not from get_step_progress_at by
+        # We take the labour from the CURRENT step of the project, and not from get_step_progress_at by
         # the clicked hex: there an empty dictionary is returned, if the player did not click
         # on the hex of the progress bar, and the lost labour would come out as zero.
     dialog.visibility_changed.connect(func():
@@ -1300,7 +1300,7 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
     if GameData.special_actions.has(imp_id):
         var sa = GameData.special_actions[imp_id]
         var action_type = sa.get("action_type", "terrain")
-# A special action (the felling of the forest, the gathering of the wild plants, the demolition of the improvements and so on)
+        # A special action (the felling of the forest, the gathering of the wild plants, the demolition of the improvements and so on)
         if worker_manager.has_worker(row, col):
             worker_manager.remove_worker(row, col)
 
@@ -1310,7 +1310,7 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
             tile.cover = result_cover
         elif action_type == "forage":
             # The felling of the forest: we change only the cover (cover), terrain/resource is not touched.
-# The gathering of a one-off resource (the wild plants, the metal nuggets and so on):
+            # The gathering of a one-off resource (the wild plants, the metal nuggets and so on):
             # we remove the resource from the hex and add the harvest to the storage.
             # The quality of the gathered harvest = the quality of the resource on the hex.
             # The output of the product is taken from the produces field of the RESOURCE (a number or
@@ -1332,7 +1332,7 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
                         continue
                     CityData.add_to_storage(prod_id, amount, forage_quality)
                     hud.show_message(tr("Collected %d %s!") % [amount, GameData.products.get(prod_id, {}).get("name", prod_id)])
-# The resource disappears from the map after the gathering.
+                # The resource disappears from the map after the gathering.
                 tile.resource = null
         elif action_type == "demolish":
             # The demolition of an improvement: we remove the improvement. The natural tile.resource
@@ -1348,7 +1348,7 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
             tile["production_fractional_remainder"] = 0.0
             tile["feed_fractional_remainder"] = 0.0
         elif action_type == "road":
-# The road is a phased project (project_manager), and not an ordinary build
+            # The road is a phased project (project_manager), and not an ordinary build
             # on this hex: its segments are added to the network one by one, until
             # project_manager brings the queue to the end. It cannot get here — the start
             # of the road is intercepted in
@@ -1359,7 +1359,7 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
             build_manager.remove_build(row, col)
             return
         else:
-# The terrain action (for example, the drainage): we reset the resources and
+            # The terrain action (for example, the drainage): we reset the resources and
             # the improvement, clear the cover and crop_bred, so that the hex becomes
             # a clean plain (without the marsh cover).
             tile.resource = null
@@ -1382,7 +1382,7 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
         _redraw_progress_layer()
         return
 
-# The improvement is the only thing that has remained after the branch of the special actions. The
+    # The improvement is the only thing that has remained after the branch of the special actions. The
     # construction itself is applied by _apply_improvement: the same code is needed by the last step of
     # the project "road → improvement", where the record of the build in build_manager does not
     # exist at all (the improvement lies in the queue of the project, and not in active_builds).
@@ -1406,7 +1406,7 @@ func _apply_improvement(row: int, col: int, imp_id: String, target_res_id = null
     tile["production_fractional_remainder"] = 0.0
     tile["feed_fractional_remainder"] = 0.0
     if target_res_id != null:
-# Two scenarios:
+        # Two scenarios:
         # 1) There was ALREADY a natural resource on the hex (tile.resource != null) — we
         #    place the improvement in order to extract it. tile.resource is preserved,
         #    crop_bred remains null. The quality is the current quality of the resource.
@@ -1417,7 +1417,7 @@ func _apply_improvement(row: int, col: int, imp_id: String, target_res_id = null
         var was_existing_resource = tile.resource != null
         if was_existing_resource:
             tile.resource = target_res_id
-# The quality of the resource is determined like this:
+            # The quality of the resource is determined like this:
             # - If there was ALREADY a resource on the hex (an improvement of the existing one) — we preserve
             #   its quality. Otherwise any construction of a farm/mine would reset
             #   quality to "common", because there is no quality field in the JSON of the resources.
@@ -1425,7 +1425,7 @@ func _apply_improvement(row: int, col: int, imp_id: String, target_res_id = null
             if existing_q == "" or existing_q == null:
                 tile["quality"] = GameData.roll_quality()
         else:
-# The breeding on an empty hex: the id of the resource lives in crop_bred.
+            # The breeding on an empty hex: the id of the resource lives in crop_bred.
             # - If this is the breeding of a NEW animal/plant (the hex was empty) —
             #   we look on the map for the already domesticated instance of this resource and
             #   inherit its quality ("exceptional produces exceptional").
@@ -2501,11 +2501,11 @@ func is_expansion_mode_active() -> bool:
     return expansion_manager.is_active()
 
 func is_valid_hex(row: int, col: int) -> bool:
-# Is the hex valid WITHIN the Region (the Ring + the Region).
-# It is used where the belonging to the Region is exactly what matters: the purchase
-# (claiming) of the chunks, the check of the composition of the chunk, the scouting before the learning of
-# the Cartography (see get_region_bounds). After the Cartography the scouting is not
-# limited by this — see get_scout_reach_bounds().
+    # Is the hex valid WITHIN the Region (the Ring + the Region).
+    # It is used where the belonging to the Region is exactly what matters: the purchase
+    # (claiming) of the chunks, the check of the composition of the chunk, the scouting before the learning of
+    # the Cartography (see get_region_bounds). After the Cartography the scouting is not
+    # limited by this — see get_scout_reach_bounds().
     return row >= region_start_row and row <= region_end_row and col >= region_start_col and col <= region_end_col
 
 # Is the technology "Cartography" learned. It opens the scouting beyond the
@@ -2786,7 +2786,7 @@ func _apply_saved_map_state():
         region_rows = int(st.get("region_rows", region_rows))
         region_cols = int(st.get("region_cols", region_cols))
         current_era = int(st.get("current_era", 0))
-# We synchronise the era with CityData (the restriction of the learning of the technologies by the eras).
+    # We synchronise the era with CityData (the restriction of the learning of the technologies by the eras).
     if st.has("current_era"):
         CityData.current_era_index = current_era
     city_row = map_rows / 2
@@ -2923,12 +2923,12 @@ func advance_to_next_era():
     # We synchronise the current era in CityData — the restriction
     # on the learning of the technologies depends on it (only the current and the previous eras).
     map_renderer.invalidate_town_influence_cache()
-# --- THE NATURAL TRANSITION TO THE NEXT ERA ---
-# The Market is the condition of the transition from the first era. After its construction the game
-# is paused and a dialog with a Yes/No choice is shown.
-# In case of a refusal a small button appears in the HUD, opening the same dialog.
-# No timers, no prohibitions and no reminders: the player can play in the current
-# era as long as he wants.
+    # --- THE NATURAL TRANSITION TO THE NEXT ERA ---
+    # The Market is the condition of the transition from the first era. After its construction the game
+    # is paused and a dialog with a Yes/No choice is shown.
+    # In case of a refusal a small button appears in the HUD, opening the same dialog.
+    # No timers, no prohibitions and no reminders: the player can play in the current
+    # era as long as he wants.
     CityData.current_era_index = current_era
     CityData.emit_signal("city_updated")
     _calc_offsets()
@@ -2981,7 +2981,7 @@ func _on_era_dialog_confirmed():
     advance_to_next_era()
 
 func _on_era_dialog_declined():
-# The player remains in the current era: we unpause, we leave the button in the HUD.
+    # The player remains in the current era: we unpause, we leave the button in the HUD.
     get_tree().paused = false
     era_advance_button.visible = (current_era == 0)
 func _load_settings():
