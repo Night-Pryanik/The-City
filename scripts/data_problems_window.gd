@@ -159,14 +159,14 @@ func show_problems(problems: Array):
     move_to_front()
 
 
-# Rebuilds the window contents in the new language.
-#
-# Two independent sources of text, and both depend on the language:
-#   * the wordings of the problems — they lie in the entries themselves, they are
+    # Rebuilds the window contents in the new language.
+    #
+    # Two independent sources of text, and both depend on the language:
+    #   * the wordings of the problems — they lie in the entries themselves, they are
     #     rebuilt by DataValidator.localize_problems() (the check itself is not
     #     restarted);
-#   * the title, the summary and the button labels — our own ones, Godot
-#         translates them itself, because they are set via tr() on the nodes.
+    #   * the title, the summary and the button labels — our own ones, Godot
+    #         translates them itself, because they are set via tr() on the nodes.
 func _on_locale_changed(_locale: String) -> void:
     DataValidator.localize_problems(all_problems)
     _build_content(all_problems)
@@ -279,7 +279,7 @@ func _highlight_id(text: String, id: String) -> String:
     return text
 
 
-# A character that could be part of an identifier: a letter (Latin or
+    # A character that could be part of an identifier: a letter (Latin or
     # Cyrillic), a digit or an underscore. It mirrors IDENT_CHARS/IDENT_UPPER
     # from data_validator.gd — the same set that the validator considers valid.
 func _is_ident_char(ch: String) -> bool:
@@ -320,7 +320,7 @@ func _input(event):
         get_viewport().set_input_as_handled()
 
 
-# The order of the blocks matches the order of the checks in data_validator.gd,
+    # The order of the blocks matches the order of the checks in data_validator.gd,
     # therefore the window is read from top to bottom in the same order as the data goes.
 func _kinds_in_display_order(kinds) -> Array:
     var order: Array = []
