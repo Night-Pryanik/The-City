@@ -17,10 +17,11 @@ script = ExtResource("1_twnui")
 
 [node name="WindowPanel" type="Panel" parent="." unique_id=3000000002]
 layout_mode = 0
-offset_left = 276.0
-offset_top = 164.0
-offset_right = 876.0
-offset_bottom = 604.0
+offset_left = 192.0
+offset_top = 84.0
+offset_right = 960.0
+offset_bottom = 684.0
+clip_contents = true
 theme_override_styles/panel = SubResource("StyleBoxFlat_window")
 
 [node name="TitleLabel" type="Label" parent="WindowPanel" unique_id=3000000003]
@@ -74,9 +75,14 @@ theme_override_constants/separation = 8
 layout_mode = 2
 text = "Buying"
 
-[node name="BuyList" type="VBoxContainer" parent="WindowPanel/ColumnsHBox/BuyColumn" unique_id=3000000008]
+[node name="BuyScroll" type="ScrollContainer" parent="WindowPanel/ColumnsHBox/BuyColumn" unique_id=3000000013]
 layout_mode = 2
 size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="BuyList" type="VBoxContainer" parent="WindowPanel/ColumnsHBox/BuyColumn/BuyScroll" unique_id=3000000008]
+layout_mode = 2
+size_flags_horizontal = 3
 
 [node name="SellColumn" type="VBoxContainer" parent="WindowPanel/ColumnsHBox" unique_id=3000000009]
 layout_mode = 2
@@ -87,6 +93,11 @@ theme_override_constants/separation = 8
 layout_mode = 2
 text = "Selling"
 
-[node name="SellList" type="VBoxContainer" parent="WindowPanel/ColumnsHBox/SellColumn" unique_id=3000000011]
+[node name="SellScroll" type="ScrollContainer" parent="WindowPanel/ColumnsHBox/SellColumn" unique_id=3000000014]
 layout_mode = 2
 size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="SellList" type="VBoxContainer" parent="WindowPanel/ColumnsHBox/SellColumn/SellScroll" unique_id=3000000011]
+layout_mode = 2
+size_flags_horizontal = 3

@@ -8,23 +8,27 @@
 # спрашивает «как же они не голодают?».
 #
 # Теперь каждое поле засевается СВОЕЙ одомашненной пищевой культурой
-# (crop_bred — ферма на пустом гексе это разведение, а не залежь), и все
-# культуры попадают в пул продажи.
+# (crop_bred — ферма на пустом гексе это разведение, а не залежь), и в пул
+# продажи городка попадает ПРОДУКЦИЯ культур (wheat, cassava, ...), а не сами
+# поля (см. TownEconomy.collect_base_resources: городок продаёт урожай, а не
+# «поле пшеницы»). Поэтому все проверки ниже смотрят на продукцию.
 #
 # Проверки (на синтетических картах):
 #   1. Городок без пищевых ресурсов получает фермы с культурами из группы
 #      food_plants; каждая разводима на своём гексе, качество проставлено, и
-#      все культуры попадают в пул продажи (городок без ресурсов больше не
-#      пуст).
+#      продукция всех культур попадает в пул продажи (городок без ресурсов
+#      больше не пуст).
 #   2. Дикорсы (wild_food, группа "wild") пищевым растением НЕ считаются:
 #      кольцо с одними дикорсами всё равно получает настоящие культуры, и
-#      дикорсом культура городка быть не может.
+#      дикорсом культура городка быть не может. Сам дикорс — одноразовая
+#      находка, поэтому ни он, ни его foraged_food в пул не идут.
 #   3. Культура выбирается на КАЖДОЕ поле отдельно: два поля городка — это
 #      два разных товара, а не однотипный клин.
 #   4. Повторный проход (как при загрузке сейва) культуры НЕ меняет: ни одно
 #      поле не пересеивается, пул продажи стабилен.
 #   5. Городок, у которого в кольце УЖЕ есть пищевое растение, ничего не
-#      меняет: своих ферм не получает, в пуле — его собственное растение.
+#      меняет: своих ферм не получает, в пуле — урожай его собственного
+#      растения.
 #   6. Если мест для ферм нет (кольцо без свободных равнин) — городок остаётся
 #      без еды, но ничего не ломается и культура не выдумывается.
 #   7. Выбор случаен: у множества городков культуры различаются, а поля
@@ -40,6 +44,9 @@ const WATCHDOG = preload("res://tests/watchdog.gd")
 # Пищевое растение-эталон (группа food_plants) и дикорсы (группа wild).
 const FOOD_PLANT := "wheat_field"
 const WILD_FOOD := "wild_food"
+# Продукт, который собирают с дикорсов. Одноразовая находка: в пул продажи
+# он не попадает (см. TownEconomy.collect_base_resources).
+const FORAGE_FOOD := "foraged_food"
 
 var _tm = null
 var _gdata = null
@@ -172,6 +179,24 @@ func _res_group(res_id) -> String:
     var data: Dictionary = _gdata.raw_resources.get(str(res_id), {})
     return str(data.get("group", ""))
 
+# Продукция ресурса (wheat_field -> wheat/feed, cows -> raw_meat/hide).
+# Именно она, а не сам ресурс, попадает в пул продажи (см.
+# TownEconomy.collect_base_resources), поэтому проверки торговли смотрят
+# сюда. Пустой массив означает «продавать нечего».
+func _produces(res_id) -> Array:
+    var ids: Array = []
+    var data: Dictionary = _gdata.raw_resources.get(str(res_id), {})
+    for product_id in data.get("produces", {}):
+        ids.append(str(product_id))
+    return ids
+
+# Категория ТОВАРА из data/products (food, materials, metals, ...). Продуктов
+# в GameData.raw_resources нет, поэтому «есть ли в пуле пища» — это вопрос про
+# категорию продукта, а не про группу ресурса-поля.
+func _product_category(res_id) -> String:
+    var data: Dictionary = _gdata.products.get(str(res_id), {})
+    return str(data.get("category", ""))
+
 
 # -------------------------------------------------------
 # 1. Городок без пищевых ресурсов получает поля с культурой
@@ -205,15 +230,25 @@ func _test_town_without_food_gets_field(state: Dictionary) -> void:
         check(bool(tile.get("decorative", false)),
             "поле городка остаётся декоративным: оно не должно давать игроку производство или рабочих", state)
 
-    # Пул продажи: культура обязана попасть в продажу, иначе игрок по-прежнему
-    # видит пустое окно городка.
+    # Пул продажи: в нём должна быть ПРОДУКЦИЯ культур (wheat, feed, ...), а
+    # не сами поля. Городок продаёт урожай, а не «поле пшеницы»: поле — это
+    # описание гекса, и в списке продажи оно только путало.
     var pool: Array = town.get("sell_pool", [])
-    var crop_ids := []
+    var missing: Array = []
     for tile in farms:
-        if not pool.has(str(tile.get("crop_bred"))):
-            crop_ids.append(str(tile.get("crop_bred")))
-    check(crop_ids.is_empty(),
-        "культура поля должна попасть в пул продажи городка (не попали: %s, пул: %s)" % [str(crop_ids), str(pool)], state)
+        var crop := str(tile.get("crop_bred"))
+        for product_id in _produces(crop):
+            if not pool.has(product_id):
+                missing.append("%s->%s" % [crop, product_id])
+    check(missing.is_empty(),
+        "продукция культуры поля должна попасть в пул продажи городка (не попали: %s, пул: %s)" % [str(missing), str(pool)], state)
+    # Регресс на «две пшеницы»: самого поля в пуле быть не должно вовсе.
+    var raw_in_pool: Array = []
+    for res_id in pool:
+        if _gdata.raw_resources.has(str(res_id)):
+            raw_in_pool.append(str(res_id))
+    check(raw_in_pool.is_empty(),
+        "пул продажи не должен содержать сами ресурсы-поля, только их продукцию (найдено: %s)" % str(raw_in_pool), state)
 
 
 # -------------------------------------------------------
@@ -239,8 +274,19 @@ func _test_wild_food_is_not_a_field(state: Dictionary) -> void:
     for tile in farms:
         check(str(tile.get("crop_bred")) != WILD_FOOD,
             "дикорсы нельзя разводить на ферме (wild_food не проходит can_breed_resource_on_tile)", state)
-    check(town.get("sell_pool", []).size() > 1,
-        "в пуле продажи должны быть и дикорсы гекса, и культура поля (пул: %s)" % str(town.get("sell_pool", [])), state)
+    # Дикорсы — одноразовая находка: их нельзя собирать бесконечно, поэтому
+    # ни сам дикорс, ни его foraged_food в торговле не появляются. Поле —
+    # другой случай: его продукция в пуле обязана быть.
+    var pool: Array = town.get("sell_pool", [])
+    check(not pool.has(WILD_FOOD) and not pool.has(FORAGE_FOOD),
+        "дикорсы и собранная с них пища не должны попадать в пул продажи (пул: %s)" % str(pool), state)
+    var crop_products: Array = []
+    for tile in farms:
+        for product_id in _produces(str(tile.get("crop_bred"))):
+            if pool.has(product_id):
+                crop_products.append(product_id)
+    check(not crop_products.is_empty(),
+        "в пуле продажи должны быть продукты культурных полей (пул: %s)" % str(pool), state)
 
 
 # -------------------------------------------------------
@@ -310,10 +356,15 @@ func _test_crop_is_picked_per_field(state: Dictionary) -> void:
     if farms.size() != 2:
         return
     var pool: Array = town.get("sell_pool", [])
+    var missing: Array = []
     for tile in farms:
         var crop := str(tile.get("crop_bred"))
-        check(pool.has(crop),
-            "культура «%s» должна попасть в пул продажи (пул: %s)" % [crop, str(pool)], state)
+        for product_id in _produces(crop):
+            if not pool.has(product_id):
+                missing.append("%s->%s" % [crop, product_id])
+    check(missing.is_empty(),
+        "продукция обеих культур должна попасть в пул продажи, чтобы городок торговал двумя разными товарами (не попали: %s, пул: %s)"
+            % [str(missing), str(pool)], state)
 
 
 # -------------------------------------------------------
@@ -334,8 +385,17 @@ func _test_town_with_own_food_plant_unchanged(state: Dictionary) -> void:
     # еда уже есть.
     check(_cropped_farms(tile_data, town).is_empty(),
         "городок с пищевым растением в кольце не должен получать засеянных полей", state)
-    check(town.get("sell_pool", []).has(FOOD_PLANT),
-        "пищевое растение кольца должно продаваться (пул: %s)" % str(town.get("sell_pool", [])), state)
+    var pool: Array = town.get("sell_pool", [])
+    var wheat_products: Array = []
+    for product_id in _produces(FOOD_PLANT):
+        if pool.has(product_id):
+            wheat_products.append(product_id)
+    check(not wheat_products.is_empty(),
+        "городок должен продавать урожай пищевого растения кольца, а не само растение (найдено: %s, пул: %s)"
+            % [str(wheat_products), str(pool)], state)
+    check(not pool.has(FOOD_PLANT),
+        "само поле «%s» в пуле продажи быть не должно: городок продаёт пшеницу, а не пшеничное поле (пул: %s)"
+            % [FOOD_PLANT, str(pool)], state)
     # Соседние свободные равнины остались свободными: культура не выдумывается
     # там, где игрок может построить своё.
     var untouched_plains := 0
@@ -366,12 +426,15 @@ func _test_town_without_plain_stays_foodless(state: Dictionary) -> void:
     check(_cropped_farms(tile_data, town).is_empty(),
         "без мест под ферму городок не должен получать полей", state)
     var pool: Array = town.get("sell_pool", [])
+    # Пул не должен пополняться выдуманной пищей: ресурсов-полей в нём быть не
+    # может в принципе, а продукты без источника (поля/залежи в кольце) взяться
+    # неоткуда — значит, пул остаётся ровно тем, что дали настоящие гексы.
     var invented: Array = []
     for res_id in pool:
-        if _res_group(res_id) == "food_plants":
-            invented.append(res_id)
+        if _gdata.raw_resources.has(str(res_id)):
+            invented.append(str(res_id))
     check(invented.is_empty(),
-        "пул продажи не должен пополняться выдуманной пищей (найдено: %s)" % str(invented), state)
+        "пул продажи не должен содержать сырьё, даже если полей нет (найдено: %s)" % str(invented), state)
 
 
 # -------------------------------------------------------
@@ -473,11 +536,14 @@ func _test_live_scene(state: Dictionary) -> void:
     check(crops_ok,
         "все поля городков засеяны пищевыми растениями, а не дикорсами", state)
 
+    # Пища у городка — это ПРОДУКТЫ категории food в data/products (wheat,
+    # cassava, ...), а не поля-ресурсы с группой food_plants: в пуле лежат
+    # урожаи, а не сами посевы.
     var sold_somewhere := 0
     for t in main_map.towns:
         var sells_food := false
         for res_id in t.get("sell_pool", []):
-            if _res_group(res_id) == "food_plants":
+            if _product_category(res_id) == "food":
                 sells_food = true
         if sells_food:
             sold_somewhere += 1
@@ -548,11 +614,16 @@ func _test_old_save_bare_farms_get_seeded(state: Dictionary) -> void:
     var seeded := _cropped_farms(tile_data, town)
     check(not seeded.is_empty(),
         "городок старой партии должен получить пищевое поле", state)
+    var pool: Array = town.get("sell_pool", [])
+    var missing: Array = []
     for tile in seeded:
-        if not town.get("sell_pool", []).has(str(tile.get("crop_bred"))):
-            check(false, "культура «%s» должна попасть в пул продажи (пул: %s)"
-                % [str(tile.get("crop_bred")), str(town.get("sell_pool", []))], state)
-            break
+        var crop := str(tile.get("crop_bred"))
+        for product_id in _produces(crop):
+            if not pool.has(product_id):
+                missing.append("%s->%s" % [crop, product_id])
+    check(missing.is_empty(),
+        "продукция засеянных полей старой партии должна попасть в пул продажи (не попали: %s, пул: %s)"
+            % [str(missing), str(pool)], state)
 
 
 func check(cond: bool, msg: String, state: Dictionary):

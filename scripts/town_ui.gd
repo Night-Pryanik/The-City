@@ -3,19 +3,29 @@
 # Открывается из панели управления (кнопка действия на гексе городка)
 # или двойным кликом по гексу городка на карте (см. InputHandler).
 #
-# Начальный этап: окно с заголовком (название городка) и двумя пустыми
-# колонками «Покупка» и «Продажа». Окно не на весь экран — фиксированная
-# раскладка задана прямо в сцене TownUI.tscn, без кода во время рантайма.
+# Начальный этап: окно с заголовком (название городка) и двумя колонками
+# «Покупка» и «Продажа». Окно не на весь экран — фиксированная раскладка
+# задана прямо в сцене TownUI.tscn, без кода во время рантайма.
+#
+# Списки лежат внутри ScrollContainer (см. BuyScroll/SellScroll в сцене):
+# пул продажи у городка — это десятки строк, и без прокрутки они вылезали
+# за нижний край окна прямо на карту.
 extends Control
 
 signal closed()
+
+# Минимальная высота строки списка. Равна высоте иконки (28 px): подпись с
+# переносом строки не должна прижимать иконку и следующую строку.
+const ROW_HEIGHT := 28
 
 @onready var window_panel = $WindowPanel
 @onready var title_label = $WindowPanel/TitleLabel
 @onready var status_label = $WindowPanel/StatusLabel
 @onready var close_button = $WindowPanel/CloseButton
-@onready var buy_list = $WindowPanel/ColumnsHBox/BuyColumn/BuyList
-@onready var sell_list = $WindowPanel/ColumnsHBox/SellColumn/SellList
+@onready var buy_scroll = $WindowPanel/ColumnsHBox/BuyColumn/BuyScroll
+@onready var sell_scroll = $WindowPanel/ColumnsHBox/SellColumn/SellScroll
+@onready var buy_list = $WindowPanel/ColumnsHBox/BuyColumn/BuyScroll/BuyList
+@onready var sell_list = $WindowPanel/ColumnsHBox/SellColumn/SellScroll/SellList
 # Иконки ресурсов берутся из общего реестра IconRegistry (автозагрузка):
 # индекс строится один раз за игру, а не в каждом открытии окна.
 # Текущий городок (запись из town_manager.towns). null — окно закрыто.
@@ -56,6 +66,14 @@ func _refresh():
 
 # Заполняет колонку одной строкой на каждый ресурс торгового пула.
 # Пул продажи содержит id ресурсов, поэтому имя берём из общего справочника.
+#
+# Строки с одинаковым отображаемым именем показываются один раз. Основная
+# защита живёт в данных: пул строится из ПРОДУКЦИИ ресурсов (см.
+# TownEconomy.collect_base_resources), поэтому «две пшеницы» из-за поля и
+# зерна там уже невозможны. Но в данных есть ровно одна пара, где разные id
+# называются одинаково: papyrus_plant (выращивается на papyrus_field) и
+# papyrus (крафтится из него) оба зовутся «Papyrus» — и оба могут попасть в
+# пул одного городка. Игроку дважды показать «Papyrus» нельзя.
 func _fill_resource_list(container: VBoxContainer, pool, empty_text: String) -> void:
     if container == null:
         return
@@ -67,14 +85,23 @@ func _fill_resource_list(container: VBoxContainer, pool, empty_text: String) -> 
         empty_label.modulate = Color(0.65, 0.65, 0.65)
         container.add_child(empty_label)
         return
+    var shown_names: Dictionary = {}
     for resource_id in pool:
         if resource_id == null:
             continue
         var id := str(resource_id).strip_edges()
         if id.is_empty() or id == "<null>":
             continue
+        var display_name := _get_resource_display_name(id)
+        if shown_names.has(display_name):
+            continue
+        shown_names[display_name] = true
         var resource_row := HBoxContainer.new()
         resource_row.add_theme_constant_override("separation", 6)
+        # Строка не должна схлопываться, даже если подпись не влезла в одну
+        # строку и перенеслась: без минимума по высоте строки наезжали друг на
+        # друга (см. autowrap у resource_label ниже).
+        resource_row.custom_minimum_size = Vector2(0, ROW_HEIGHT)
         var icon_name := _get_resource_icon_name(id)
         var icon_tex := IconRegistry.get_texture(icon_name)
         if icon_tex != null:
@@ -87,7 +114,7 @@ func _fill_resource_list(container: VBoxContainer, pool, empty_text: String) -> 
             resource_row.add_child(resource_icon)
 
         var resource_label := Label.new()
-        resource_label.text = _get_resource_display_name(id)
+        resource_label.text = display_name
         resource_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
         resource_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         resource_row.add_child(resource_label)
@@ -112,6 +139,21 @@ func _get_resource_display_name(resource_id: String) -> String:
 
 # Закрывает окно интерфейса городка. Эмитит closed — main_map вернёт
 # HUD и панель управления (см. main_map._on_town_ui_close).
+# Отображаемые имена строк, которые сейчас показаны в контейнере.
+# Служебный доступ для тестов: проверка «двух одинаковых названий в списке»
+# читает именно то, что видит игрок (см. tests/test_town_economy.gd).
+func _visible_row_names(container: VBoxContainer) -> Array:
+    var names: Array = []
+    if container == null:
+        return names
+    for child in container.get_children():
+        if child is HBoxContainer:
+            for node in child.get_children():
+                if node is Label:
+                    names.append(node.text)
+                    break
+    return names
+
 func close_town():
     if not visible:
         return

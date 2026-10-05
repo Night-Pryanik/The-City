@@ -125,6 +125,16 @@ func _fill_player_area_with_resources(tile_data: Array) -> void:
 func _in_player_area(row: int, col: int) -> bool:
     return row >= AREA_R0 and row <= AREA_R1 and col >= AREA_C0 and col <= AREA_C1
 
+# Продукция ресурса (sheep -> raw_meat/raw_milk/wool). В пуле продажи городка
+# лежит именно она, а не сам ресурс (см. TownEconomy.collect_base_resources),
+# поэтому проверки утечек смотрят сюда.
+func _produces(resource_id: String) -> Array:
+    var ids: Array = []
+    var data: Dictionary = _gdata.raw_resources.get(resource_id, {})
+    for product_id in data.get("produces", {}):
+        ids.append(str(product_id))
+    return ids
+
 
 # То же для произвольных границ — нужна в проверке generate_towns, где
 # стартовая область задаётся вызовом, а не константами карты.
@@ -244,13 +254,22 @@ func _test_ring_is_clipped_by_player_area(state: Dictionary) -> void:
     check(flagged.is_empty(),
         "на стартовой области игрока не должно быть флага in_town_influence (нарушителей: %s)" % str(flagged), state)
 
-    # Ресурс игрока не попал в пул продажи городка.
-    var sold_player_resource := false
+    # Продукция ресурса игрока не попала в пул продажи городка.
+    # Проверяется именно ПРОДУКЦИЯ (wool/raw_meat/raw_milk овцы), а не сам
+    # «sheep»: в пуле продажи лежит урожай и товары, а не животные (см.
+    # TownEconomy.collect_base_resources), поэтому «sheep в пуле» не может
+    # случиться в принципе и проверка была бы вечно зелёной.
+    var player_products := _produces(RES_A)
+    check(not player_products.is_empty(),
+        "у ресурса «%s» должна быть продукция, иначе проверка утечки бессмысленна" % RES_A, state)
+    var sold_player_output: Array = []
     for t in _tm.towns:
-        if t.get("sell_pool", []).has(RES_A):
-            sold_player_resource = true
-    check(not sold_player_resource,
-        "городок не должен продавать ресурсы, лежащие в стартовой области игрока", state)
+        for res_id in t.get("sell_pool", []):
+            if player_products.has(str(res_id)):
+                sold_player_output.append([int(t.row), int(t.col), str(res_id)])
+    check(sold_player_output.is_empty(),
+        "городок не должен продавать продукцию ресурсов, лежащих в стартовой области игрока (утечки: %s)"
+            % str(sold_player_output), state)
 
     # Декоративные улучшения не строятся на земле игрока.
     _tm._place_decorative_town_improvements(tile_data, rows, cols)

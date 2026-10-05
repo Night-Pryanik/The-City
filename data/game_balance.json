@@ -82,6 +82,15 @@
     "distance_cost_modifier_per_hex": 0.25,
     "road_distance_cost_modifier_per_hex": 0.1,
     "scouting_cost_per_hex": 3,
-    "expansion_cost_per_hex": 5
+    "expansion_cost_per_hex": 5,
+    //                                      сколько РАЗНЫХ ингредиентов городок
+    //                                      готов докупить ради одного рецепта
+    //                                      (scripts/town_economy.gd). Рецепт с
+    //                                      одним недостающим проходит всегда, с
+    //                                      двумя — если повезло с броском, с
+    //                                      тремя — никогда: закупка трёх разных
+    //                                      товаров ради одного изделия городку
+    //                                      не по карману.
+    "max_import_gaps": 2
   }
 }
