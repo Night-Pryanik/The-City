@@ -837,7 +837,7 @@ func get_building_planned_consumption() -> Dictionary:
             continue
         # The identifier of the building is the source of the demand (it coincides with the source of
         # the actual expense in do_tick, so that in the tooltip it is the same
-        # же субъект). Подпись резолвится в ui_helpers по id.
+# the same subject). The label is resolved in ui_helpers by the id.
         var building_source = GameData.building_source_id(str(bld.get("id", "")))
         for recipe_id in slots:
             if recipe_id == "" or recipe_id == "empty":
@@ -845,7 +845,7 @@ func get_building_planned_consumption() -> Dictionary:
             var recipe = get_craft_by_id(recipe_id)
             if recipe.is_empty():
                 continue
-            # Время крафта слота — единица измерения планового спроса.
+            # The time of the crafting of the slot is the unit of measurement of the planned demand.
             var craft_time := get_craft_time(recipe)
             var resources: Dictionary = recipe.get("resources", {})
             for res in resources:
@@ -853,8 +853,8 @@ func get_building_planned_consumption() -> Dictionary:
                 if amount_needed <= 0:
                     continue
                 if res.begins_with("@"):
-                    # Групповой ресурс: спрос относится к любому члену группы.
-                    # Ключ "@"-группы — всегда id из product_groups.json.
+                    # A group resource: the demand refers to any member of the group.
+                    # The key of the "@"-group is always the id from product_groups.json.
                     var group_key = res.trim_prefix("@")
                     var group_products = GameData.product_groups.get(group_key, [])
                     if group_products.is_empty():
@@ -866,9 +866,9 @@ func get_building_planned_consumption() -> Dictionary:
                     _record_planned_demand(result, res, building_source, amount_needed, false, "", craft_time)
     return result
 
-# Хелпер записи спроса здания на ресурс (см. get_building_planned_consumption).
-# interval — время крафта рецепта, секунды (0 — «за тик»); при нескольких
-# записях одного источника берётся минимальный — как у профессий в
+# The helper of the recording of the demand of a building for a resource (see get_building_planned_consumption).
+# interval is the time of the crafting of the recipe, in seconds (0 is "per tick"); with several
+# records of one source the minimum is taken — as for the professions in
 # worker_manager._record_planned_entry.
 func _record_planned_demand(result: Dictionary, pid: String, source_id: String, amount: int, is_group: bool, group_name: String, interval: float):
     if not result.has(pid):
@@ -884,38 +884,38 @@ func _record_planned_demand(result: Dictionary, pid: String, source_id: String, 
     if str(entry.get("group_name", "")) == "":
         entry["group_name"] = group_name
 
-# Возвращает плановое производство ПОСТРОЕННЫХ ЗДАНИЙ за один крафт рецепта
-# (зеркально к спросу зданий: рецепт в do_tick() даёт result раз в `time`
-# секунд при горожанине и наличии ингредиентов). Формат результата:
-#   product_id -> { "Имя здания" -> { "amount": N, "interval": float, "count": M } }
-#   amount   — суммарный выпуск этого здания за один крафт (по всем слотам);
-#   interval — время крафта, секунды (min по слотам здания; 0 — «за тик»);
-#   count    — сколько слотов-рецептов дают этот выпуск (для «хN» в тултипе).
-# План показывается независимо от наличия ингредиентов — это способность
-# производителя, а не факт; факт считает do_tick().
+# Returns the planned production of the BUILT BUILDINGS per one crafting of the recipe
+# (mirrored to the demand of the buildings: the recipe in do_tick() gives result once per `time`
+# seconds with a citizen and the ingredients present). The format of the result:
+#   product_id -> { "The name of the building" -> { "amount": N, "interval": float, "count": M } }
+#   amount   is the total output of this building per one crafting (over all the slots);
+#   interval is the time of the crafting, in seconds (min over the slots of the building; 0 is "per tick");
+#   count    is how many slots-recipes give this output (for the "xN" in the tooltip).
+# The plan is shown regardless of the presence of the ingredients — this is the ability of the
+# producer, and not the fact; the fact is counted by do_tick().
 func get_building_planned_production() -> Dictionary:
     var result: Dictionary = {}
     var tm = _get_townsfolk()
-    # Множитель профессии горожанина (worker_manager.get_building_production_bonus)
-    # — чтобы плановая метка «≈» совпадала с фактическим выпуском.
+    # The multiplier of the profession of the citizen (worker_manager.get_building_production_bonus)
+    # — so that the planned label "≈" coincides with the actual output.
     var wm = _get_worker_manager()
     for i in range(city_built_buildings.size()):
         var bld = city_built_buildings[i]
         var slots = bld.get("slots", [])
         if slots.is_empty():
             continue
-        # Без горожанина здание не работает и ничего не производит.
+        # Without a citizen the building does not work and produces nothing.
         if tm == null or not tm.has_townsfolk(i):
             continue
-        # Бонус профессии: 1.0 без профессии или без расходников, иначе
-        # 1.0 + бонусы (см. worker_manager._aggregate_production_bonus).
-        # Простаивающее здание (все слоты пусты) бонуса не получает.
+        # The bonus of the profession: 1.0 without a profession or without the supplies, otherwise
+        # 1.0 + the bonuses (see worker_manager._aggregate_production_bonus).
+        # An idle building (all the slots are empty) receives no bonus.
         var prof_multiplier := 1.0
         if wm != null and not are_all_slots_empty(i):
             prof_multiplier = wm.get_building_production_bonus(i)
-        # Идентификатор здания — источник выпуска (совпадает с источником
-        # фактического производства в do_tick, чтобы в тултипе это был один и
-        # тот же субъект).
+        # The identifier of the building is the source of the output (it coincides with the source of
+        # the actual production in do_tick, so that in the tooltip it is one and
+        # the same subject).
         var building_source = GameData.building_source_id(str(bld.get("id", "")))
         for recipe_id in slots:
             if recipe_id == "" or recipe_id == "empty":
@@ -923,15 +923,15 @@ func get_building_planned_production() -> Dictionary:
             var recipe = get_craft_by_id(recipe_id)
             if recipe.is_empty():
                 continue
-            # Время крафта слота — единица измерения планового выпуска.
+            # The time of the crafting of the slot is the unit of measurement of the planned output.
             var craft_time := get_craft_time(recipe)
             var production: Dictionary = recipe.get("result", {})
             for res in production:
                 var amount = int(production[res])
                 if amount <= 0:
                     continue
-                # Бонус профессии применяется к выпуску рецепта — как множитель
-                # производства у улучшений на карте.
+                # The bonus of the profession is applied to the output of the recipe — as the multiplier
+                # of the production at the improvements on the map.
                 if prof_multiplier != 1.0:
                     amount = int(round(float(amount) * prof_multiplier))
                     if amount <= 0:
@@ -939,9 +939,9 @@ func get_building_planned_production() -> Dictionary:
                 _record_planned_supply(result, res, building_source, amount, craft_time)
     return result
 
-# Хелпер записи выпуска здания (см. get_building_planned_production).
-# interval — время крафта рецепта, секунды (0 — «за тик»); при нескольких
-# записях одного источника берётся минимальный.
+# The helper of the recording of the output of a building (see get_building_planned_production).
+# interval is the time of the crafting of the recipe, in seconds (0 is "per tick"); with several
+# records of one source the minimum is taken.
 func _record_planned_supply(result: Dictionary, pid: String, source_id: String, amount: int, interval: float):
     if not result.has(pid):
         result[pid] = {}
@@ -953,13 +953,13 @@ func _record_planned_supply(result: Dictionary, pid: String, source_id: String, 
     entry["count"] = int(entry.get("count", 0)) + 1
     entry["interval"] = minf(float(entry.get("interval", interval)), interval)
 
-# Точка входа планового производства: рецепты зданий (interval = time рецепта,
-# 0 — «за тик») + улучшения на карте (interval = production_interval улучшения,
-# см. get_improvement_production_interval). План нужен потому, что в
-# непрерывной модели (см. main_map._emit_continuous_production и CraftContainer)
-# выпуск идёт каждый тик по чуть-чуть, и метка динамики `[+N≈]` показывает
-# средний per_sec — этого достаточно для UI вкладки «Ресурсы». Записи
-# наполняются из main_map.gd на каждом тике симуляции.
+# The entry point of the planned production: the recipes of the buildings (interval = time of the recipe,
+# 0 is "per tick") + the improvements on the map (interval = production_interval of the improvement,
+# see get_improvement_production_interval). The plan is needed, because in
+# the continuous model (see main_map._emit_continuous_production and CraftContainer)
+# the output goes on every tick a little bit, and the label of the dynamics `[+N≈]` shows
+# the average per_sec — that is enough for the UI of the tab "Resources". The records
+# are filled from main_map.gd on every tick of the simulation.
 func get_planned_production_map() -> Dictionary:
     var result := get_building_planned_production()
     for pid in improvement_planned_production:
@@ -976,51 +976,51 @@ func get_planned_production_map() -> Dictionary:
             entry["interval"] = minf(float(entry.get("interval", 0.0)), float(src.get("interval", 0.0)))
     return result
 
-# --- ПЛАНОВОЕ ПРОИЗВОДСТВО УЛУЧШЕНИЙ НА КАРТЕ ---
-# Кэш планового выпуска улучшений на текущий тик симуляции:
-#   product_id -> { "Имя улучшения" -> { "amount": N, "interval": float, "count": M } }
-#   amount   — суммарный выпуск улучшения за ОДИН цикл (по всем гексам);
-#   interval — production_interval улучшения, секунды;
-#   count    — сколько гексов с этим улучшением работают (для «хN» в тултипе).
-# Наполняется из main_map.gd на каждом тике, чистится в reset_counters()
-# вместе с фактическими счётчиками. Сейв не затрагивается — план всегда
-# выводится из текущих данных.
+# --- THE PLANNED PRODUCTION OF THE IMPROVEMENTS ON THE MAP ---
+# The cache of the planned output of the improvements for the current tick of the simulation:
+#   product_id -> { "The name of the improvement" -> { "amount": N, "interval": float, "count": M } }
+#   amount   is the total output of the improvement per ONE cycle (over all the hexes);
+#   interval is production_interval of the improvement, in seconds;
+#   count    is how many hexes with this improvement are working (for the "xN" in the tooltip).
+# It is filled from main_map.gd on every tick, it is cleared in reset_counters()
+# together with the actual counters. The save is not affected — the plan is always
+# computed from the current data.
 var improvement_planned_production: Dictionary = {}
 
-# Время одного цикла производства улучшения imp_id в секундах — поле
-# "production_interval" из data/improvements.json. Поле отсутствует или <= 0 —
-# улучшение выпускает продукцию каждый тик симуляции (старые данные).
+# The time of one production cycle of the improvement imp_id in seconds — the field
+# "production_interval" from data/improvements.json. The field is absent, or <= 0 —
+# the improvement releases the product on every tick of the simulation (the old data).
 func get_improvement_production_interval(imp_id: String) -> float:
     var interval: float = float(GameData.improvements.get(imp_id, {}).get("production_interval", 0.0))
     if interval <= 0.0:
         return SIMULATION_TICK
     return interval
 
-# Запись планового выпуска улучшения за один цикл (вызывается из main_map.gd
-# для каждого работающего улучшения на каждом тике симуляции).
+# The record of the planned output of the improvement per one cycle (it is called from main_map.gd
+# for each working improvement on each tick of the simulation).
 func record_planned_improvement_production(pid: String, source_id: String, amount: int, interval: float):
     _record_cycle_entry(improvement_planned_production, pid, source_id, amount, interval)
 
-# --- ПЛАНОВОЕ ПОТРЕБЛЕНИЕ УЛУЧШЕНИЙ НА КАРТЕ (корм пастбищ) ---
-# Корм (feed_consumption ресурса) списывается непрерывно (см.
-# main_map._consume_feed_continuous), и в плане указывается средний расход за
-# цикл производства — для UI вкладки «Ресурсы» (зеркально к плановому
-# выпуску). Наполняется из main_map.gd на каждом тике, чистится в
+# --- THE PLANNED CONSUMPTION OF THE IMPROVEMENTS ON THE MAP (the feed of the pastures) ---
+# The feed (the feed_consumption of the resource) is written off continuously (see
+# main_map._consume_feed_continuous), and in the plan the average expense per
+# the production cycle is given — for the UI of the tab "Resources" (mirrored to the planned
+# output). It is filled from main_map.gd on every tick, it is cleared in
 # reset_counters().
 var improvement_planned_consumption: Dictionary = {}
 
-# Запись планового потребления улучшения за один цикл (вызывается из main_map.gd).
+# The record of the planned consumption of the improvement per one cycle (it is called from main_map.gd).
 func record_planned_improvement_consumption(pid: String, source_id: String, amount: int, interval: float):
     _record_cycle_entry(improvement_planned_consumption, pid, source_id, amount, interval)
 
-# Кэш планового потребления улучшений для мерджа во вкладке «Ресурсы»
-# (worker_manager.get_planned_consumption_map знает только профессии,
-# городское «all» и спрос зданий).
+# The cache of the planned consumption of the improvements for the merge in the tab "Resources"
+# (worker_manager.get_planned_consumption_map knows only about the professions,
+# the city "all" and the demand of the buildings).
 func get_improvement_planned_consumption() -> Dictionary:
     return improvement_planned_consumption
 
-# Общий хелпер записи цикловой записи (выпуск или потребление улучшения):
-# amount суммируется, count — число гексов-источников, interval — минимальный.
+# The common helper of the recording of a cyclic record (the output or the consumption of an improvement):
+# amount is summed up, count is the number of the hexes-sources, interval is the minimum.
 func _record_cycle_entry(cache: Dictionary, pid: String, source_id: String, amount: int, interval: float):
     if pid.is_empty() or amount <= 0:
         return
@@ -1034,27 +1034,27 @@ func _record_cycle_entry(cache: Dictionary, pid: String, source_id: String, amou
     entry["count"] = int(entry.get("count", 0)) + 1
     entry["interval"] = minf(float(entry.get("interval", interval)), interval)
 
-# Возвращает человекочитаемое имя здания по его id (или сам id, если здание
-# не найдено в реестре). Единственное место знания об этом — GameData.
+# Returns the human-readable name of the building by its id (or the id itself, if the building
+# is not found in the registry). The single place of the knowledge about it is GameData.
 func get_building_name(building_id: String) -> String:
     return GameData.get_building_display_name(building_id)
 
-# --- ХЕЛПЕРЫ ДЛЯ РАБОТЫ С КАЧЕСТВОМ РЕСУРСОВ ---
-# city_storage хранит общее количество, city_quality_detail — разбивку по качеству.
-# Все операции добавления/списания должны идти через эти хелперы, чтобы
-# сумма по деталям всегда совпадала с city_storage.
+# --- THE HELPERS FOR WORKING WITH THE QUALITY OF THE RESOURCES ---
+# city_storage stores the total amount, city_quality_detail is the breakdown by quality.
+# All the operations of the addition/write-off must go through these helpers, so that
+# the sum over the details always coincides with city_storage.
 
-# Возвращает разбивку по качеству для продукта (словарь {quality: count}).
-# Если разбивки нет (старый сейв), возвращает пустой словарь.
+# Returns the breakdown by quality for the product (a dictionary {quality: count}).
+# If there is no breakdown (an old save), it returns an empty dictionary.
 func get_quality_breakdown(pid: String) -> Dictionary:
     return city_quality_detail.get(pid, {})
 
-# Возвращает общее количество продукта на складе.
+# Returns the total amount of the product in the storage.
 func get_storage_amount(pid: String) -> int:
     return city_storage.get(pid, 0)
 
-# Добавляет amount единиц продукта pid указанного качества.
-# Синхронно обновляет city_storage и city_quality_detail.
+# Adds amount units of the product pid of the specified quality.
+# It synchronously updates city_storage and city_quality_detail.
 func add_to_storage(pid: String, amount: int, quality: String = "common"):
     if amount <= 0:
         return
@@ -1064,10 +1064,10 @@ func add_to_storage(pid: String, amount: int, quality: String = "common"):
     var detail: Dictionary = city_quality_detail[pid]
     detail[quality] = detail.get(quality, 0) + amount
 
-# Уменьшает общее количество продукта pid на amount единиц.
-# Списывает по приоритету качества (best/worst/random) и возвращает
-# разбивку фактически списанного: {quality: count}.
-# Если приоритет не указан, используется "best".
+# Decreases the total amount of the product pid by amount units.
+# It writes off by the priority of the quality (best/worst/random) and returns
+# the breakdown of what has actually been written off: {quality: count}.
+# If the priority is not specified, "best" is used.
 func remove_from_storage(pid: String, amount: int, priority: String = "best") -> Dictionary:
     if amount <= 0:
         return {}
@@ -1077,12 +1077,12 @@ func remove_from_storage(pid: String, amount: int, priority: String = "best") ->
     city_storage[pid] = available - to_remove
     return consumed
 
-# Списывает amount единиц из разбивки по качеству согласно приоритету.
-# Возвращает словарь {quality: count} фактически списанного.
+# Writes off amount units from the breakdown by quality according to the priority.
+# It returns a dictionary {quality: count} of what has actually been written off.
 func _consume_quality_detail(pid: String, amount: int, priority: String) -> Dictionary:
     var detail: Dictionary = city_quality_detail.get(pid, {})
     if detail.is_empty():
-        # Нет разбивки (старый сейв) — считаем всё "common".
+        # There is no breakdown (an old save) — we count everything as "common".
         return {"common": amount}
 
     var levels = GameData.get_quality_levels()
@@ -1092,14 +1092,14 @@ func _consume_quality_detail(pid: String, amount: int, priority: String) -> Dict
     var consumed = {}
     var remaining = amount
 
-    # Определяем порядок списания уровней качества.
+    # We determine the order of the write-off of the levels of the quality.
     var order = []
     if priority == "worst":
-        order = levels.duplicate() # от худшего к лучшему
+        order = levels.duplicate() # from the worst to the best
     elif priority == "random":
         order = levels.duplicate()
         order.shuffle()
-    else: # "best" и по умолчанию — от лучшего к худшему
+    else: # "best" and by default — from the best to the worst
         order = levels.duplicate()
         order.reverse()
 
@@ -1114,15 +1114,15 @@ func _consume_quality_detail(pid: String, amount: int, priority: String) -> Dict
         consumed[qid] = consumed.get(qid, 0) + take
         remaining -= take
 
-    # Если осталось (например, разбивка неполная) — списываем как common.
+    # If something has remained (for example, the breakdown is incomplete) — we write it off as common.
     if remaining > 0:
         consumed["common"] = consumed.get("common", 0) + remaining
 
     return consumed
 
-# Возвращает уровень качества, соответствующий взвешенному среднему
-# по разбивке consumed (словарь {quality: count}).
-# Используется при производстве: качество результата = взвешенное среднее
+# Returns the level of the quality corresponding to the weighted average
+# by the breakdown consumed (a dictionary {quality: count}).
+# It is used on the production: the quality of the result = the weighted average,
 # качества потреблённого сырья, округлённое до ближайшего уровня.
 # Собирает плоскую разбивку потреблённого сырья по качеству из контейнера
 # крафта: для каждого слота ингредиента проходит по накопленным «входам»
