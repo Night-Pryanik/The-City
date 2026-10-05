@@ -1283,16 +1283,16 @@ func _migrate_slot_containers(b_index: int, slots: Array) -> Array:
             out.append(null)
             continue
         # We use the saved state, if it corresponds
-        # текущему рецепту (для будущих сейвов в новом формате).
+# to the current recipe (for the future saves in the new format).
         var saved = null
         if slot_idx < old_progress.size() and old_progress[slot_idx] is Dictionary:
             saved = old_progress[slot_idx]
         out.append(CraftContainer.new(recipe, saved if saved != null else {}))
-    # Чистим старый ключ, чтобы не таскать его в сейвах.
+    # We clear the obsolete key, so as not to carry it in the saves.
     bld.erase("slot_progress")
     return out
 
-# Контейнер конкретного слота или null, если слот пуст / рецепт не найден.
+# The container of a particular slot or null, if the slot is empty / the recipe is not found.
 func get_slot_container(b_index: int, slot_idx: int) -> CraftContainer:
     var containers := get_slot_containers(b_index)
     if slot_idx < 0 or slot_idx >= containers.size():
@@ -1302,8 +1302,8 @@ func get_slot_container(b_index: int, slot_idx: int) -> CraftContainer:
         return c
     return null
 
-# Возвращает или создаёт контейнер слота, синхронизируя с текущим рецептом.
-# Если рецепт в слоте изменился — пересоздаёт контейнер (сбрасывая прогресс).
+# Returns or creates the container of the slot, synchronising it with the current recipe.
+# If the recipe in the slot has changed — it recreates the container (resetting the progress).
 func _ensure_slot_container(b_index: int, slot_idx: int) -> CraftContainer:
     var containers := get_slot_containers(b_index)
     if slot_idx < 0 or slot_idx >= containers.size():
@@ -1320,12 +1320,12 @@ func _ensure_slot_container(b_index: int, slot_idx: int) -> CraftContainer:
     var existing: CraftContainer = containers[slot_idx]
     if existing != null and existing.recipe_id == recipe_id:
         return existing
-    # Рецепт изменился — пересоздаём.
+    # The recipe has changed — we recreate it.
     var fresh = CraftContainer.new(recipe)
     containers[slot_idx] = fresh
     return fresh
 
-# Время крафта рецепта в слоте здания (0, если слот пуст или рецепт не найден).
+# The time of the crafting of the recipe in the slot of the building (0, if the slot is empty or the recipe is not found).
 func get_slot_craft_time(b_index: int, slot_idx: int) -> float:
     if b_index < 0 or b_index >= city_built_buildings.size():
         return 0.0
@@ -1359,23 +1359,23 @@ func get_slot_progress_value(b_index: int, slot_idx: int) -> float:
         return 0.0
     return c.completion_ratio() * get_slot_craft_time(b_index, slot_idx)
 
-# Доля готовности текущего крафта слота (0..1) — для UI панели здания.
+# The share of the readiness of the current crafting of the slot (0..1) — for the UI of the panel of the building.
 func get_slot_progress_ratio(b_index: int, slot_idx: int) -> float:
     var c := get_slot_container(b_index, slot_idx)
     if c == null:
         return 0.0
     return c.completion_ratio()
 
-# Текстовое состояние контейнера слота для UI панели здания.
-# Пример: "8/20 (3.4 сек)" — заполненность первого ингредиента + время.
+# The text state of the container of the slot for the UI of the panel of the building.
+# An example: "8/20 (3.4 sec)" — the filling of the first ingredient + the time.
 func get_slot_status_text(b_index: int, slot_idx: int) -> String:
     var c := get_slot_container(b_index, slot_idx)
     if c == null:
         return ""
     return c.status_text()
 
-# Сбрасывает контейнер слота: после смены рецепта слот начинает
-# отсчёт крафта заново.
+# Resets the container of the slot: after a change of the recipe the slot starts
+# the counting of the crafting from scratch.
 func reset_slot_progress(b_index: int, slot_idx: int) -> void:
     var c := get_slot_container(b_index, slot_idx)
     if c != null:
@@ -1385,18 +1385,18 @@ func do_tick():
     if Engine.is_editor_hint():
         return
 
-    # Вклад зданий науки в скорость пересчитывается с нуля каждый тик
-    # (см. блок «РЕЦЕПТ „НАУКА"» в цикле зданий ниже). Записи по зданиям
-    # собираются в промежуточный список, после цикла из него собирается
+    # The contribution of the science buildings to the rate is recalculated from scratch on every tick
+    # (see the block "THE RECIPE "SCIENCE"" in the loop of the buildings below). The records by the buildings
+    # are collected into an intermediate list, after the loop the rate is assembled from it
     # science_breakdown.
     science_buildings_rate_per_sec = 0.0
     var science_breakdown_buildings: Array = []
 
-    # --- Работа зданий (только если есть горожанин) ---
+    # --- The work of the buildings (only if there is a citizen) ---
     var main_map = get_tree().root.find_child("MainMap", true, false)
     var tm = main_map.get_node("TownsfolkManager") if main_map else null
-    # WorkerManager — потребление расходников профессией горожанина
-    # (tick_building_consumption) и множитель производства от неё.
+    # WorkerManager — the consumption of the supplies by the profession of the citizen
+    # (tick_building_consumption) and the multiplier of the production from it.
     var wm = main_map.get_node("WorkerManager") if main_map and main_map.has_node("WorkerManager") else null
 
     for i in range(city_built_buildings.size()):
@@ -1404,34 +1404,34 @@ func do_tick():
         var slots = bld.get("slots", [])
         if slots.is_empty():
             continue
-        # Идентификатор здания — общий источник для прихода и расхода его
-        # рецептов (показывает «Ручная мельница», «Дом варщика» в тултипе
-        # ресурсов; подпись резолвит ui_helpers по id).
+        # The identifier of the building is the common source for the income and the expense of its
+        # recipes (it shows "Hand mill", "Brewer's house" in the tooltip of the
+        # resources; the label is resolved by ui_helpers by the id).
         var building_source = GameData.building_source_id(str(bld.get("id", "")))
 
-        # Проверяем, есть ли горожанин на этом здании
+        # We check whether there is a citizen on this building
         var has_worker = false
         if tm:
             has_worker = tm.has_townsfolk(i)
 
         if not has_worker:
-            continue # здание не работает
+            continue # the building does not work
 
-        # --- ПРОФЕССИЯ ГОРОЖАНИНА (поле "profession" в data/buildings.json) ---
-        # Потребление расходников профессией и множитель её производства.
-        # Тикает раз на здание за тик (не на слот!) и только у РАБОТАЮЩЕГО
-        # здания: у простаивающего (все слоты пусты) расходники впустую не
-        # тратятся. Множитель передаётся в CraftContainer ниже и применяется к
-        # начислению науки за завершённый цикл. Бонусы одиночных записей
-        # складываются, у групповых берётся лучший (см.
+        # --- THE PROFESSION OF THE CITIZEN (the field "profession" in data/buildings.json) ---
+        # The consumption of the supplies by the profession and the multiplier of its production.
+        # It ticks once per building per tick (and not per slot!) and only for a WORKING
+        # building: at an idle one (all the slots are empty) the supplies are spent in vain.
+        # The multiplier is passed into the CraftContainer below and is applied to
+        # the crediting of the science for a completed cycle. The bonuses of the single records
+        # are summed up, of the group ones the best is taken (see
         # worker_manager._aggregate_production_bonus).
         var prof_multiplier := 1.0
         if wm != null and not are_all_slots_empty(i):
             prof_multiplier = wm.tick_building_consumption(i, SIMULATION_TICK)
 
-        # --- НЕПРЕРЫВНЫЙ КРАФТ (CraftContainer) ---
-        # Приоритет качества сырья: из здания или дефолт. Передаётся в контейнер
-        # для списания и влияет на выбор качества внутри @-групп.
+        # --- THE CONTINUOUS CRAFTING (CraftContainer) ---
+        # The priority of the quality of the raw material: from the building or the default. It is passed into the container
+        # for the write-off and affects the choice of the quality inside the "@"-group.
         var priority = bld.get("quality_priority", GameData.get_quality_priority_default())
 
         for slot_idx in range(slots.size()):
@@ -1443,23 +1443,23 @@ func do_tick():
             if container == null:
                 continue
 
-            # Продвигаем контейнер на один тик. tick() сам списывает ингредиенты
-            # со склада (через CityData.remove_from_storage) и возвращает:
-            #   consumed_breakdown — разбивка по качествам для тултипа ресурсов
-            #                          и расчёта качества science;
-            #   releases — что выпустить на склад в этот тик (постепенный выпуск
-            #              результата пропорционально прогрессу: full_amount /
-            #              craft_time единиц/сек, с sub-unit accumulator для
-            #              целочисленной точности). При completed добивается
-            #              остаток fractional — выпускается ровно full_amount
-            #              за весь цикл.
-            #   completed — true если контейнер полон И прошло craft_time.
+            # We advance the container by one tick. tick() itself writes off the ingredients
+            # from the storage (through CityData.remove_from_storage) and returns:
+            #   consumed_breakdown — the breakdown by the qualities for the tooltip of the resources
+            #                          and the calculation of the quality of the science;
+            #   releases — what to release into the storage on this tick (the gradual release
+            #              of the result in proportion to the progress: full_amount /
+            #              craft_time units/sec, with a sub-unit accumulator for
+            #              the integer accuracy). On completed the fractional
+            #              remainder is caught up — exactly full_amount is released
+            #              over the whole cycle.
+            #   completed — true if the container is full AND craft_time has passed.
             var tick_res: Dictionary = container.tick(SIMULATION_TICK, has_worker, priority, prof_multiplier)
 
-            # --- РЕГИСТРАЦИЯ РАСХОДА ЗА ТИК ---
-            # Записываем consumption source для тултипа ресурсов и UI-метки
-            # динамики. В continuous-модели потребление идёт каждый тик, и эта
-            # запись — основной источник данных для красной метки [−N≈].
+            # --- THE RECORDING OF THE EXPENSE FOR THE TICK ---
+            # We record the consumption source for the tooltip of the resources and the UI label
+# of the dynamics. In the continuous model the consumption goes on every tick, and this
+# record is the main source of the data for the red label [-N≈].
             var consumed_breakdown: Dictionary = tick_res.get("consumed_breakdown", {})
             for consumed_pid in consumed_breakdown:
                 var total_consumed := 0
@@ -1468,25 +1468,25 @@ func do_tick():
                 if total_consumed > 0:
                     record_consumption_source(consumed_pid, building_source, total_consumed)
 
-            # --- РЕЦЕПТ «НАУКА»: прямой вклад в скорость исследований ---
-            # Пула науки больше нет: наука зданий не копится на складе, а
-            # напрямую складывается в скорость изучения технологий (см.
-            # docs.md, «Наука: производство и исследования»). Формула
-            # по зданию:
-            #   * фиксированный выход здания (additional_yield.science —
-            #     очков/сек у Библиотеки и Скриптория) — течёт, пока здание
-            #     работает (есть горожанин и непустой слот), даже без основ;
-            #   * наука от основ для письма — средневзвешенный special_yield
-            #     смеси, которую здание фактически расходует (consumed_pids).
-            #     Ни required, ни craft_time рецепта в скорость НЕ входят:
-            #     рецепт — лишь «пропуск» (пока сырьё доступно — missing
-            #     пуст — учёные работают), его вход задаёт только расход
-            #     топлива со склада. Скорость работы учёных определяется
-            #     самим special_yield основ (глин. таблички +1, папирус +2,
-            #     пергамент +3, шёлк +3, бумага +5). Пока состава нет —
-            #     вклад основ 0.
-            #   * всё это умножается на бонус профессии учёного
-            #     (перья/чернила): (fixed + mediums) × prof_multiplier.
+            # --- THE RECIPE "SCIENCE": the direct contribution to the rate of the research ---
+            # There is no pool of the science any more: the science of the buildings is not accumulated in the storage, but
+            # is directly added to the rate of the learning of the technologies (see
+            # docs.md, "Science: production and research"). The formula
+            # per building:
+            #   * the fixed output of the building (additional_yield.science —
+            #     points/sec of the Library and the Scriptorium) — it flows while the building
+            #     works (there is a citizen and a non-empty slot), even without the bases;
+            #   * the science from the bases for the writing — the weighted average of the special_yield
+            #     of the mixture which the building actually consumes (consumed_pids).
+            #     Neither required nor craft_time of the recipe enters the rate:
+            #     the recipe is only a "pass" (while the raw material is available — the missing
+            #     is empty — the scholars work), its input only sets the expense
+            #     of the fuel from the storage. The rate of the work of the scholars is determined by
+            #     the special_yield of the bases themselves (clay tablets +1, papyrus +2,
+            #     parchment +3, silk +3, paper +5). While there is no composition —
+            #     the contribution of the bases is 0.
+            #   * all of this is multiplied by the bonus of the profession of the scholar
+            #     (the feathers/ink): (fixed + mediums) × prof_multiplier.
             if recipe_id == "science":
                 var missing: Array = tick_res.get("missing", [])
                 var building_fixed := float(GameData.get_building_additional_yield(bld.get("id", "")).get("science", 0))
@@ -1497,10 +1497,10 @@ func do_tick():
                         var required_total := int(slot.get("required", 0))
                         if required_total <= 0:
                             continue
-                        # Средневзвешенный special_yield смеси основ, которую
-                        # фактически расходует слот (consumed_pids копится по
-                        # pid и переживает reset цикла). Это и есть вклад
-                        # основ в скорость науки — без множителей.
+                        # The weighted average of the special_yield of the mixture of the bases which
+                        # the slot actually consumes (consumed_pids accumulates by
+                        # pid and survives the reset of the cycle). This is the contribution
+                        # of the bases to the rate of the science — without the multipliers.
                         var consumed_pids: Dictionary = slot.get("consumed_pids", {})
                         var yield_sum := 0.0
                         var qty_sum := 0
@@ -1516,9 +1516,9 @@ func do_tick():
                             building_mediums += yield_sum / float(qty_sum)
                 var science_instant := (building_fixed + building_mediums) * prof_multiplier
                 science_buildings_rate_per_sec += science_instant
-                # Разбивка для тултипа: fixed/mediums пишутся БЕЗ бонуса —
-                # множитель применяется к сумме при выводе. bonus_names —
-                # продукты, чьё потребление даёт бонус профессии здания.
+                # The breakdown for the tooltip: fixed/mediums are written WITHOUT the bonus —
+                # the multiplier is applied to the sum at the output. bonus_names are the
+                # products whose consumption gives the bonus of the profession of the building.
                 var bonus_names: Array = []
                 var bld_prof: String = str(bld.get("profession", ""))
                 if bld_prof != "" and prof_multiplier > 1.001:
@@ -1536,11 +1536,11 @@ func do_tick():
                 }
                 science_breakdown_buildings.append(science_bld_entry)
 
-            # --- ПОСТЕПЕННЫЙ ВЫПУСК РЕЗУЛЬТАТА (каждый тик) ---
-            # Каждая «порция» выпуска имеет качество, рассчитанное по
-            # накопленному consumed на текущий момент (см. CraftContainer._compute_quality_from_consumed).
-            # Это семантически согласуется с UI: метка [≈] показывает плановый
-            # per_sec, а на склад фактически приходит +N за тик (в среднем).
+            # --- THE GRADUAL RELEASE OF THE RESULT (every tick) ---
+            # Each "portion" of the release has the quality, calculated by
+            # the accumulated consumed at the current moment (see CraftContainer._compute_quality_from_consumed).
+            # This agrees with the UI semantically: the label [≈] shows the planned
+            # per_sec, and the storage actually receives +N per tick (on average).
             var releases: Array = tick_res.get("releases", [])
             for rel in releases:
                 var rel_pid: String = str(rel.get("pid", ""))
@@ -1554,31 +1554,31 @@ func do_tick():
             if not bool(tick_res.get("completed", false)):
                 continue
 
-            # --- КРАФТ ЗАВЕРШЁН ---
-            # На этом этапе releases за тик уже включает «добивку» остатка
-            # fractional — суммарно за цикл выпускается ровно full_amount для
-            # каждого pid результата. Ничего дополнительно добавлять не нужно.
-            # Особый случай рецепта «science» не нужен: его вклад в скорость
-            # исследований начисляется каждый тик выше (блок «РЕЦЕПТ
-            # „НАУКА"»), на склад наука не поступает.
+            # --- THE CRAFTING IS COMPLETED ---
+            # At this stage the releases per tick already include the "catching up" of the fractional
+            # remainder — over the whole cycle exactly full_amount is released for
+            # each pid of the result. Nothing extra has to be added.
+            # The special case of the recipe "science" is not needed: its contribution to the rate of the
+            # research is credited on every tick above (the block "THE RECIPE
+            # "SCIENCE""), the science does not arrive into the storage.
 
-            # --- СБРОС КОНТЕЙНЕРА ДЛЯ СЛЕДУЮЩЕГО КРАФТА ---
+            # --- THE RESET OF THE CONTAINER FOR THE NEXT CRAFTING ---
             container.reset()
 
-    # --- РАЗБИВКА СКОРОСТИ НАУКИ ПО ИСТОЧНИКАМ (для тултипа) ---
+    # --- THE BREAKDOWN OF THE RATE OF THE SCIENCE BY THE SOURCES (for the tooltip) ---
     science_breakdown = {
         "base": BASE_SCIENCE_PER_SEC,
         "buildings": science_breakdown_buildings,
         "total": get_science_rate_per_sec()
     }
 
-    # --- Потребление еды населением ---
-    # Еда потребляется без учёта качества (качество — визуальная механика),
-    # поэтому списываем по умолчанию "best" через хелпер, чтобы детализация
-    # качества всегда оставалась консистентной.
-    # Дебаг-переключатель: пока food_consumption_enabled == false жители
-    # НЕ едят еду (тумблер в дебаг-меню). Рост/убыль населения при этом
-    # считается как обычно — отключено только само списание еды со склада.
+    # --- The consumption of the food by the population ---
+    # The food is consumed without taking the quality into account (the quality is a visual mechanics),
+    # therefore we write off by the default "best" through the helper, so that the breakdown
+    # of the quality always remains consistent.
+    # The debug toggle: while food_consumption_enabled == false the citizens
+    # do NOT eat the food (the toggle in the debug menu). The growth/decline of the population is at that time
+    # counted as usual — only the write-off of the food from the storage is disabled.
     if food_consumption_enabled:
         var food_needed = max(0, total_population - 1) * food_per_citizen
         var food_eaten = 0
@@ -1592,12 +1592,12 @@ func do_tick():
                 if food_eaten >= food_needed:
                     break
 
-    # --- НАЛОГИ: каждый житель платит базовый налог в казну каждый тик ---
-    # Порядок важен: сбор идёт ПОСЛЕ потребления еды и ДО
-    # _check_population_change() — налог за тик платят те, кто жил в этом тике
-    # (рост/убыль населения учтутся со следующего тика). Сумма и запись в
-    # разбивку казны — внутри collect_taxes() (см. «Казна города и внутренний
-    # рынок» в docs.md, раздел «Налоги»).
+    # --- THE TAXES: every citizen pays the base tax into the treasury on every tick ---
+    # The order matters: the collection goes AFTER the consumption of the food and BEFORE
+    # _check_population_change() — the tax for the tick is paid by those who lived in this tick
+    # (the growth/decline of the population will be taken into account from the next tick). The amount and the record into
+    # the breakdown of the treasury are inside collect_taxes() (see "The treasury of the city and the internal
+    # market" in docs.md, the section "Taxes").
     collect_taxes()
     _check_population_change()
     emit_signal("city_updated")
@@ -1608,7 +1608,7 @@ func _check_population_change():
         if city_food_pool[pid]:
             available_food += city_storage.get(pid, 0)
 
-    # --- ДИНАМИКА ЕДЫ (для определения голода) ---
+    # --- THE DYNAMICS OF THE FOOD (for the determination of the famine) ---
     var total_prod = 0
     var total_cons = 0
     for pid in city_food_pool:
@@ -1618,24 +1618,24 @@ func _check_population_change():
 
     var main_map = get_tree().root.find_child("MainMap", true, false)
 
-    # --- РОСТ НАСЕЛЕНИЯ ---
+    # --- THE GROWTH OF THE POPULATION ---
     if available_food >= food_for_new_settler and total_population > 0:
         total_population += 1
-        idle_population += 1 # новый житель пока свободен
+        idle_population += 1 # the new citizen is free for now
 
-        # Пытаемся назначить его на работу (сначала на улучшение, потом в город)
+        # We try to assign him to a work (first to an improvement, then to the city)
         var assigned = false
         if main_map and main_map.has_node("WorkerManager"):
             var wm = main_map.get_node("WorkerManager")
-            assigned = wm.assign_worker() # уменьшит idle_population при успехе
+            assigned = wm.assign_worker() # it will decrease idle_population on success
 
         if not assigned and main_map and main_map.has_node("TownsfolkManager"):
             var tm = main_map.get_node("TownsfolkManager")
             assigned = tm.assign_townsfolk()
 
-        # Если никуда не назначился — остаётся в idle_population
+        # If he has not been assigned anywhere — he remains in idle_population
 
-        # Списываем еду за рождение
+        # We write off the food for the birth
         var remaining = food_for_new_settler
         var active_food = []
         for pid in city_food_pool:
@@ -1649,22 +1649,22 @@ func _check_population_change():
                 active_food.erase(pid)
 
         emit_signal("population_changed", total_population)
-        print("Население выросло до ", total_population)
+        print("The population has grown to ", total_population)
 
-    # --- ГОЛОД (смерть от недостатка еды) ---
+    # --- THE FAMINE (the death from the lack of the food) ---
     elif available_food == 0 and total_cons > total_prod and total_population > 1:
         total_population -= 1
 
-        # Убираем одного жителя с работы (сначала горожанина, потом рабочего).
-        # Умерший НЕ переходит в категорию свободных, поэтому после снятия
-        # с работы компенсируем увеличение idle_population.
+        # We remove one citizen from the work (first the citizen, then the worker).
+        # The deceased does NOT pass into the category of the free, therefore after the removal
+        # from the work we compensate the increase of idle_population.
         var removed = false
         if main_map and main_map.has_node("TownsfolkManager"):
             var tm = main_map.get_node("TownsfolkManager")
             for i in range(city_built_buildings.size()):
                 if tm.has_townsfolk(i):
-                    tm.remove_townsfolk(i) # увеличит idle_population
-                    idle_population -= 1 # умерший не становится свободным
+                    tm.remove_townsfolk(i) # it will increase idle_population
+                    idle_population -= 1 # the deceased does not become free
                     removed = true
                     break
 
@@ -1673,29 +1673,29 @@ func _check_population_change():
             for key in wm.assigned_hexes.keys():
                 var parts = key.split(",")
                 if parts.size() == 2:
-                    wm.remove_worker(int(parts[0]), int(parts[1])) # увеличит idle_population
-                    idle_population -= 1 # умерший не становится свободным
+                    wm.remove_worker(int(parts[0]), int(parts[1])) # it will increase idle_population
+                    idle_population -= 1 # the deceased does not become free
                     removed = true
                     break
 
-        # Если житель был свободен (не работал), просто уменьшаем idle_population
+        # If the citizen was free (did not work), we simply decrease idle_population
         if not removed and idle_population > 0:
             idle_population -= 1
 
-        # Корректируем idle_population, чтобы он не превышал total_population
+        # We correct idle_population, so that it does not exceed total_population
         if idle_population > total_population:
             idle_population = total_population
 
         emit_signal("population_changed", total_population)
-        print("Население уменьшилось до ", total_population)
+        print("The population has decreased to ", total_population)
 
-# --- ИССЛЕДОВАНИЯ ---
+# --- THE RESEARCH ---
 func start_research(tech_id: String) -> bool:
     if Engine.is_editor_hint():
         return false
-    # Дебаг: при включённом «не учитывать требования» технология изучается
-    # мгновенно — без постановки в очередь, проверки prereq/эпох и накопления
-    # науки. Текущее исследование при этом не прерывается.
+    # Debug: with "do not observe the requirements" enabled the technology is learned
+    # instantly — without putting it in the queue, without the check of prereq/eras and without the accumulation
+    # of the science. The current research is not interrupted at that time.
     if ignore_tech_requirements:
         return _complete_tech_instantly(tech_id)
     if current_research_tech_id != "":
@@ -1731,20 +1731,20 @@ func start_research(tech_id: String) -> bool:
         var next_era_name = _get_era_name_by_index(current_era_index + 1)
         emit_signal("research_error", tr("\"%s\" belongs to the next era. Advance to the %s era first.") % [tech_name, next_era_name])
         return false
-    # Исследование не требует еды — только очки науки.
+    # The research does not require the food — only the points of the science.
     current_research_tech_id = tech_id
     current_research_science_cost = int(tech_data.get("science_cost", 3))
     research_progress = 0.0
     research_science_accumulated = 0.0
-    print("Начато исследование: ", tech_data["name"])
+    print("The research has started: ", tech_data["name"])
     emit_signal("city_updated")
     return true
 
-# Мгновенно разблокирует технологию — используется в дебаг-режиме
-# «не учитывать требования технологий» (ignore_tech_requirements), когда
-# изучение должно происходить сразу, без очереди и накопления науки.
-# Изучается только выбранная технология: предшественники НЕ добавляются.
-# Текущее исследование (current_research_tech_id) не трогается.
+# Instantly unlocks the technology — it is used in the debug mode
+# "do not observe the requirements of the technologies" (ignore_tech_requirements), when
+# the learning has to happen at once, without the queue and the accumulation of the science.
+# Only the selected technology is learned: the predecessors are NOT added.
+# The current research (current_research_tech_id) is not touched.
 func _complete_tech_instantly(tech_id: String) -> bool:
     if tech_id in unlocked_technologies:
         var tech_name = tech_id
@@ -1759,7 +1759,7 @@ func _complete_tech_instantly(tech_id: String) -> bool:
         emit_signal("research_error", tr("Technology not found: ") + tech_id)
         return false
     unlocked_technologies.append(tech_id)
-    # Технология может открывать новые виды ресурсов — спавним их на карте и
+    # The technology can open the new kinds of the resources — we spawn them on the map and
     # готовим сообщения для попапа (аналогично _complete_research).
     last_research_messages = spawn_resource_on_tech_research(tech_id)
     emit_signal("research_completed", tech_id)
