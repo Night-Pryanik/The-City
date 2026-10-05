@@ -106,10 +106,9 @@ func apply_loaded_data():
     CityData.production_rates = saved_data.get("production_rates", {})
     CityData.consumption_rates = saved_data.get("consumption_rates", {})
     CityData.city_food_pool = saved_data.get("city_food_pool", {})
-    # The internal market settings (the "Trade" tab). In old saves
-    # the fields are absent — then everything is permitted and the default priority
-    # is taken, which is exactly what an empty dictionary does: CityData treats
-    # a missing key precisely that way.
+    # The internal market settings (the "Trade" tab). The missing keys mean that
+    # everything is permitted and the default priority is taken, which is exactly
+    # what an empty dictionary does: CityData treats a missing key precisely that way.
     CityData.market_consumption_enabled = saved_data.get("market_consumption_enabled", {})
     CityData.consumption_priority = saved_data.get("consumption_priority", {})
     CityData.city_built_buildings = saved_data.get("city_built_buildings", [])
@@ -126,8 +125,6 @@ func apply_loaded_data():
         if GameData.products[pid].get("category") == "food":
             CityData.city_food_pool[pid] = true
 
-    # TODO: a temporary migration of old saves (the building format with "recipe"). Delete after
-    #       all the old saves stop being used.
     CityData.migrate_old_save_format()
     CityData.domesticated_animals = saved_data.get("domesticated_animals", [])
     CityData.domesticated_plants = saved_data.get("domesticated_plants", [])
@@ -143,22 +140,21 @@ func apply_loaded_data():
     CityData.current_research_science_cost = saved_data.get("current_research_science_cost", 0)
     CityData.research_science_accumulated = saved_data.get("research_science_accumulated", 0.0)
     CityData.research_progress = saved_data.get("research_progress", 0.0)
-    # The current era. If the field is absent in the save (old saves), the value will be
+    # The current era. If the field is absent, the value is
     # restored from map_state in main_map._apply_saved_map_state().
     CityData.current_era_index = saved_data.get("current_era_index", 0)
     CityData.total_population = saved_data.get("total_population", CityData.total_population)
     CityData.idle_population = saved_data.get("idle_population", CityData.idle_population)
     CityData.food_for_new_settler = saved_data.get("food_for_new_settler", CityData.food_for_new_settler)
     CityData.food_per_citizen = saved_data.get("food_per_citizen", CityData.food_per_citizen)
-    # The city treasury. In old saves the field is absent — we restore the starting
-    # amount from game_balance.json (initial_treasury), just as on a new game.
+    # The city treasury. If the field is absent, the starting
+    # amount is restored from game_balance.json (initial_treasury), just as on a new game.
     CityData.treasury = int(saved_data.get("treasury", int(GameData.game_balance.get("initial_treasury", 10))))
     # We restore the building constructions (their construction progress is stored in build_manager)
     CityData.building_construction = saved_data.get("building_construction", {})
     # tile_data will be restored separately
 
-    # The city name. In old saves the field is absent — we substitute a random one,
-    # so that the name appears on the map for the previously started games as well.
+    # The city name. If the field is absent, a random one is substituted.
     CityData.city_name = saved_data.get("city_name", "")
     if CityData.city_name.is_empty():
         GameData.load_all_data()
@@ -262,8 +258,7 @@ func _serialize_tile_data(main_map: Node) -> Array:
                     # with levels, as well as the segments themselves, are not written
                     # to the save, therefore the level
                     # lies on the hex next to road_built: without it the network
-                    # would be restored as a solid trail. The old saves do not contain
-                    # the field — there it is a trail (level 1).
+                    # would be restored as a solid trail.
                     "road_level": tile.get("road_level", 1),
                     # road_staged — the road to an improvement on this hex goes as
                     # a staged project. Its state is stored by road_built and
@@ -271,8 +266,8 @@ func _serialize_tile_data(main_map: Node) -> Array:
                     # queue; without this flag the network recalculation "by the fact
                     # of an improvement" (road_manager.rebuild_roads_from_existing)
                     # would consider the hex ready and finish the rest of the route
-                    # for free. It does not affect the old saves — their roads
-                    # to improvements, as before, are implied by the improvement.
+                    # for free. The roads to the improvements, as before, are implied
+                    # by the improvement.
                     "road_staged": tile.get("road_staged", false)
                 })
             else:

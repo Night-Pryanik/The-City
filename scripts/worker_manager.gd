@@ -587,7 +587,6 @@ func load_assignments(assignments: Array):
             var col = int(item.get("col", -1))
             if row >= 0 and col >= 0:
                 if main_map and row < main_map.map_rows and col < main_map.map_cols:
-                    # Миграция старых сохранений: в сейвах, сделанных до поля
                     # "no_worker", на пристань мог быть назначен рабочий.
                     # Такие назначения недопустимы — отбрасываем их (житель
                     # вернётся в свободные при пересчёте idle_population).

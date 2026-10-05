@@ -1182,11 +1182,6 @@ func quality_from_breakdown(consumed: Dictionary) -> String:
             best_qid = qid
     return best_qid
 
-# DEPRECATED: после перехода на continuous-модель (см. main_map.gd,
-# блок «НЕПРЕРЫВНОЕ ПРОИЗВОДСТВО УЛУЧШЕНИЯ») эта функция больше не вызывается
-# из тика симуляции. Оставлена для обратной совместимости: если во внешнем
-# коде где-то остался вызов (например, отладка, тесты), он продолжит работать.
-# Удалить после проверки сейвов и UI на отсутствие ссылок.
 func add_raw_production(raw_id: String, multiplier: float = 1.0, quality: String = "common", source_id: String = ""):
     if Engine.is_editor_hint():
         return
@@ -1244,11 +1239,9 @@ func get_craft_by_id(recipe_id: String) -> Dictionary:
             return c
     return {}
 
-# --- КОНТЕЙНЕРЫ СЛОТОВ (непрерывный крафт) ---
-# На каждый слот здания — CraftContainer. Массив лениво создаётся и
-# подгоняется под текущее число слотов. Старые сейвы без ключа
-# "slot_containers" мигрируют при первом обращении (slot_progress →
-# пустые контейнеры, см. _ensure_slot_containers).
+# --- THE SLOT CONTAINERS (continuous crafting) ---
+# One CraftContainer per slot of a building. The array is created lazily and
+# is fitted to the current number of the slots.
 func get_slot_containers(b_index: int) -> Array:
     if b_index < 0 or b_index >= city_built_buildings.size():
         return []
@@ -1256,7 +1249,6 @@ func get_slot_containers(b_index: int) -> Array:
     var slots: Array = bld.get("slots", [])
     var containers = bld.get("slot_containers", null)
     if not (containers is Array):
-        # Миграция со старого формата (slot_progress).
         containers = _migrate_slot_containers(b_index, slots)
         bld["slot_containers"] = containers
     # Подгоняем массив под текущее число слотов.
@@ -1286,10 +1278,10 @@ func get_slot_containers(b_index: int) -> Array:
         containers[i] = CraftContainer.new(recipe, saved)
     return containers
 
-# Внутренняя: создаёт массив CraftContainer из старого slot_progress или
-# с нуля. Прогресс старого таймера не переносим — это были просто секунды,
-# не заполненность контейнера; корректный перевод невозможен без потери
-# семантики. После миграции слот начинает крафт заново.
+# Internal: creates the array of CraftContainer from the obsolete slot_progress,
+# or from scratch. The progress of the obsolete timer is not carried over — those
+# were just seconds, and not the occupancy of the container; a correct conversion
+# is impossible without a loss of meaning, so the slot starts crafting anew.
 func _migrate_slot_containers(b_index: int, slots: Array) -> Array:
     var out: Array = []
     var bld: Dictionary = city_built_buildings[b_index]
@@ -1361,12 +1353,10 @@ func get_slot_craft_time(b_index: int, slot_idx: int) -> float:
         return 0.0
     return get_craft_time(recipe)
 
-# --- LEGACY-СОВМЕСТИМОСТЬ: get_slot_progress/get_slot_progress_value ---
-# Старый API возвращал секунды накопленного таймера. В новой модели
-# аналога нет (контейнер заполняется, а не «копит время»). Эти функции
-# оставлены только ради старого UI, который ещё не переведён на
-# completion_ratio: возвращаем craft_time * completion_ratio, чтобы
-# прогресс-бар до перевода на новый API вёл себя правдоподобно.
+# --- THE OLD UI API: get_slot_progress/get_slot_progress_value ---
+# These functions return the accumulated time of the slot as craft_time * completion_ratio.
+# The new model has no analogue (the container fills up, and does not "accumulate the time"),
+# but the callers that still show a progress bar need exactly these values.
 func get_slot_progress(b_index: int) -> Array:
     if b_index < 0 or b_index >= city_built_buildings.size():
         return []
@@ -2319,8 +2309,6 @@ func complete_building_upgrade(idx: int, upgrade_to: String) -> bool:
     emit_signal("city_updated")
     return true
 
-# TODO: временная миграция старых сейвов (формат "recipe"). Удалить после того,
-#    как все старые сохранения перестанут использоваться.
 # Конвертирует старые записи зданий {"id": ..., "recipe": ...} в новый формат {"id": ..., "slots": [...]}.
 func migrate_old_save_format():
     for bld in city_built_buildings:
@@ -2328,7 +2316,7 @@ func migrate_old_save_format():
             bld["slots"] = _slots_from_legacy(bld)
             bld.erase("recipe")
 
-# TODO: временная миграция. Удалить вместе с migrate_old_save_format().
+# The slots of a building from the obsolete "recipe" field.
 func _slots_from_legacy(bld: Dictionary) -> Array:
     var building_id = bld.get("id", "")
     var slots = _auto_assign_slots(building_id)

@@ -378,7 +378,7 @@ func _restore_from_slot_data(recipe: Dictionary, slot_data: Dictionary):
         for pid in result_products:
             release_fractional[pid] = float(saved_release.get(pid, 0.0))
     else:
-        # An old save (without release_fractional) — we initialize with zeros.
+        # The fractional remainders are absent — we initialise them with zeros.
         for pid in result_products:
             release_fractional[pid] = 0.0
 

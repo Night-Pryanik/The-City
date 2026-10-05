@@ -811,7 +811,7 @@ func load_rivers(river_data) -> void:
         main_rivers = _deserialize_list(river_data.get("main", []))
         tributaries = _deserialize_list(river_data.get("tributaries", []))
     else:
-        # The old format: a simple array — we consider all the rivers main.
+        # An array instead of a dictionary — we consider all the rivers main.
         main_rivers = _deserialize_list(river_data)
 
     rivers = main_rivers + tributaries

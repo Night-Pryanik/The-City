@@ -148,19 +148,19 @@ var _treasury_hover_leave_timer: float = 0.0
 var _treasury_locked: bool = false
 var _treasury_tooltip_display_epoch: int = -1
 # Кеш значения казны, показываемого в HUD-метке и в тултипе разбивки. Оба
-# потребителя ОБЯЗАНЫ показывать одно и то же значение — иначе в тултипе
-# «убегает вперёд» на 1+ тиков из-за того, что CityData.treasury меняется
-# каждым тиком потребления, а HUD/TopBar обновляются с интервалом из
-# настроек. Кеш обновляется в _update_treasury_hud() (та же точка, что и
-# само обновление лейбла); тултип читает кеш, не CityData напрямую.
+# of a consumer are REQUIRED to show one and the same value — otherwise in the tooltip
+# it "runs ahead" by 1+ ticks because CityData.treasury changes
+# on every consumption tick, and the HUD/TopBar are updated with the interval from
+# the settings. The cache is updated in _update_treasury_hud() (the same point as
+# the update of the label itself); the tooltip reads the cache, not CityData directly.
 var _displayed_treasury: int = 0
 
-# Grace-таймер ухода курсора (общее значение с city_ui — единый ритм
-# тултипов, одинаково отзывчивые). BUILDING_DETAIL_LEAVE_GRACE используется
-# без прямой ссылки на city_ui — литерал 0.35 сек (см. city_ui.gd).
-# Задержка показа тултипа разбивки казны берётся из building_detail_delay
-# (настройка «Интерфейс → задержка подсказки о деталях здания»): этой же
-# задержкой пользуется и тултип деталей здания — ритм у них общий.
+# The grace timer of leaving the cursor (a common value with city_ui — a single rhythm
+# of the tooltips, equally responsive). BUILDING_DETAIL_LEAVE_GRACE is used
+# without a direct reference to city_ui — a literal of 0.35 sec (see city_ui.gd).
+# The delay of the showing of the tooltip of the breakdown of the treasury is taken from building_detail_delay
+# (the setting "Interface → the delay of the hint about the details of a building"): the tooltip
+# of the details of a building uses the same delay — their rhythm is common.
 const MAP_TOOLTIP_LEAVE_GRACE: float = 0.35
 
 @onready var city_ui = $CityUI
@@ -193,12 +193,12 @@ var map_tooltip: MapTooltip
 var tech_popup: Control
 var research_hbox: HBoxContainer
 var research_button: Button
-var research_icon: TextureRect # дочерний TextureRect внутри research_button
-var research_label: Label # дочерний Label внутри research_button
+var research_icon: TextureRect # the child TextureRect inside research_button
+var research_label: Label # the child Label inside research_button
 var research_progress_bar: ProgressBar
 var _last_research_hud_tech: String = ""
 
-# --- Естественный переход в следующую эпоху ---
+# --- The natural transition to the next era ---
 var era_dialog: ConfirmationDialog
 var era_advance_button: Button
 
@@ -223,7 +223,7 @@ func _ready():
         map_renderer.load_icons()
         SaveManager.apply_loaded_data()
 
-        # Восстанавливаем состояние мира/окна из сохранения ДО построения tile_data.
+        # We restore the state of the world/window from the save BEFORE the building of tile_data.
         _apply_saved_map_state()
 
         tile_data = []
@@ -232,15 +232,14 @@ func _ready():
         for row in range(map_rows):
             var col_array = []
             for col in range(map_cols):
-                # crop_bred — id одомашненного животного/растения, разводимого
-                # на пустом гексе (см. docs.md, раздел «Разведение животных/растений»).
-                # Для природных ресурсов остаётся tile.resource.
+# crop_bred — the id of a domesticated animal/plant which is bred
+                # on an empty hex (see docs.md, the section "Breeding of animals/plants").
+                # For the natural resources tile.resource remains.
                 var tile = {"terrain": "plain", "cover": "none", "resource": null, "crop_bred": null, "improvement": null, "decorative": false, "production_fractional_remainder": 0.0, "feed_fractional_remainder": 0.0, "terrain_icon": "", "in_influence": false, "is_explored": false, "river_edges": [], "in_town_influence": false, "has_town": false, "road_built": false, "road_level": 1, "road_staged": false}
                 if row < saved_tiles.size() and col < saved_tiles[row].size():
                     var saved = saved_tiles[row][col]
                     if not saved.is_empty():
-                        # Миграция старых сейвов: раньше лес был отдельным типом
-                        # местности, теперь это покров (cover) поверх terrain.
+                        # The forest is a cover (cover) over the terrain.
                         var saved_terrain = saved.get("terrain", "plain")
                         var saved_cover = saved.get("cover", "none")
                         if saved_terrain == "forest":
@@ -249,18 +248,13 @@ func _ready():
                         tile["terrain"] = saved_terrain
                         tile["cover"] = saved_cover
                         tile["resource"] = saved.get("resource")
-                        # crop_bred добавился в схеме разведения; в старых сейвах
-                        # его нет, но тогда и нечего мигрировать — поле просто null.
                         tile["crop_bred"] = saved.get("crop_bred")
-                        # Заполенность поголовья (старые сейвы: поле отсутствует — 0.0)
+                        # The occupancy of the livestock
                         tile["fill_time"] = float(saved.get("fill_time", 0.0))
-                        # Дробный остаток непрерывного производства улучшения.
-                        # Миграция старого формата (production_progress — секунды
-                        # до выпуска пачки): теперь не используется, при наличии
-                        # просто игнорируем, начинаем с нуля (теряем максимум
-                        # один цикл производства — приемлемо).
+                        # The fractional remainder of the continuous production of an improvement.
+                        # The obsolete production_progress is not used; if it is present
+                        # we simply ignore it and start from zero.
                         if saved.has("production_progress"):
-                            # Миграция: сбрасываем дробный остаток.
                             tile["production_fractional_remainder"] = 0.0
                             tile["feed_fractional_remainder"] = 0.0
                         else:
@@ -273,32 +267,27 @@ func _ready():
                         tile["in_influence"] = saved.get("in_influence", false)
                         tile["is_explored"] = saved.get("is_explored", false)
                         tile["river_edges"] = saved.get("river_edges", [])
-                        # road_built — в гексе проложена дорога, построенная
-                        # игроком (спецдействие «Построить дорогу»). Сегменты в
-                        # сейв не пишутся, поэтому сохраняется только факт:
-                        # по нему сеть пересчитывается при загрузке (см.
-                        # road_manager.rebuild_player_roads). В старых сейвах
-                        # поля нет — просто false.
+                        # road_built — a road is laid on the hex, built by
+                        # the player (the special action "Build a road"). The segments are not
+                        # written to the save, therefore only the fact is saved:
+                        # by it the network is recalculated on loading (see
+                        # road_manager.rebuild_player_roads).
                         tile["road_built"] = bool(saved.get("road_built", false))
-                        # road_level — уровень дороги к этому гексу (см.
-                        # SaveManager._serialize_tile_data). Старые сейвы поля не
-                        # содержат — там тропка (уровень 1).
+                        # road_level — the road level to this hex (see
+                        # SaveManager._serialize_tile_data).
                         tile["road_level"] = int(saved.get("road_level", 1))
-                        # road_staged — дорога к улучшению на этом гексе идёт
-                        # поэтапным проектом, её состояние хранится флагами
-                        # road_built/road_level и очередью проектов. Такой гекс
-                        # пересчёт rebuild_roads_from_existing обязан пропустить,
-                        # иначе недоплаченную (или отменённую) дорогу он
-                        # достроил бы бесплатно. В старых сейвах поля нет — там
-                        # дороги к улучшениям, как и раньше, полагаются от
-                        # самого факта улучшения.
+                        # road_staged — the road to an improvement on this hex is going
+                        # by a phased project, its state is stored by the flags
+                        # road_built/road_level and the queue of the projects. Such a hex
+                        # the recalculation rebuild_roads_from_existing must skip,
+                        # otherwise it would finish the unpaid (or the cancelled) road
+                        # for free.
                         tile["road_staged"] = bool(saved.get("road_staged", false))
                 col_array.append(tile)
             tile_data.append(col_array)
 
         # Гарантируем, что город находится на разрешённой местности при загрузке сохранения
         _ensure_city_valid_terrain()
-        # Помечаем гекс города (проводник воды); ставится явно и для старых сейвов.
         _mark_city_hex()
 
         # Восстанавливаем стройки улучшений, зданий и освоения территории
@@ -309,32 +298,32 @@ func _ready():
         # Восстанавливаем незаконченные поэтапные проекты (дорога по гексам).
         # Их сегменты в сейв не пишутся: уже проложенная часть восстановится
         # по флагам road_built, поставленным на каждом подключённом гексе
-        # шага (см. _on_project_step_completed), а очередь оставшихся
-        # участков продолжает достраиваться.
+        # of the step (see _on_project_step_completed), and the queue of the remaining
+        # segments continues to be completed.
         project_manager.restore_projects(SaveManager.saved_data.get("active_projects", {}))
 
-        # Восстанавливаем назначения рабочих и горожан
+        # We restore the assignments of the workers and the citizens
         worker_manager.load_assignments(SaveManager.saved_data.get("worker_assignments", []))
-        # Таймеры профессионального потребления — после назначений, чтобы
-        # interval для каждого гекса пересчитался по текущей профессии.
+        # The timers of the occupational consumption — after the assignments, so that
+        # the interval for each hex is recalculated by the current profession.
         worker_manager.load_consumption_timers(SaveManager.saved_data.get("profession_consumption_timers", []))
-        # Таймеры городского потребления ("all", все жители города) — interval
-        # пересчитывается из данных при загрузке, храним только elapsed.
+# The timers of the consumption of the city ("all", all the citizens of the city) — the interval
+        # is recalculated from the data on loading, we store only elapsed.
         worker_manager.load_city_consumption_timers(SaveManager.saved_data.get("city_consumption_timers", []))
         townsfolk_manager.load_assignments(SaveManager.saved_data.get("townsfolk_assignments", []))
-        # Таймеры профессионального потребления ГОРОДСКИХ ЗДАНИЙ — после
-        # назначений горожан: профессия определяется зданием (data/buildings.json),
-        # дробные остатки хранятся в сейве, интервалы пересчитываются из данных.
+# The timers of the occupational consumption of the CITY BUILDINGS — after
+        # the assignments of the citizens: the profession is determined by the building (data/buildings.json),
+        # the fractional remainders are stored in the save, the intervals are recalculated from the data.
         worker_manager.load_building_consumption_timers(SaveManager.saved_data.get("building_profession_consumption_timers", []))
 
-        # Для уже изученных технологий гарантируем спавн открытых ими ресурсов
+# For the already researched technologies we guarantee the spawn of the resources opened by them
         CityData.ensure_tech_resources_spawned()
 
-        # Пересчитываем свободных жителей по фактически восстановленным назначениям
+# We recalculate the free citizens by the actually restored assignments
         var total_assigned = worker_manager.get_assigned_count() + townsfolk_manager.get_assigned_count()
         CityData.idle_population = max(0, CityData.total_population - total_assigned)
 
-        # --- ПРОВЕРКА: если назначения горожан есть, но они не совпадают с количеством зданий, исправляем ---
+# --- THE CHECK: if there are assignments of the citizens, but they do not coincide with the number of the buildings, we fix it ---
         var current_buildings_count = CityData.city_built_buildings.size()
         var invalid_keys = []
         for key in townsfolk_manager.assigned_buildings.keys():
@@ -353,11 +342,11 @@ func _ready():
         road_manager.rebuild_roads_from_existing(tile_data, map_rows, map_cols,
                 Callable(self, "_skip_improvement_road_restore"))
 
-        # Восстанавливаем реки из сохранения и помечаем river_edges в гексах
+# We restore the rivers from the save and mark river_edges in the hexes
         river_manager.load_rivers(SaveManager.saved_data.get("rivers", []))
         river_manager.mark_river_edges(tile_data, map_rows, map_cols, HEX_RADIUS)
 
-        # Собираем гексы уникальной местности (например, содовое озеро) после загрузки.
+# We collect the hexes of a unique terrain (for example, a soda lake) after the loading.
         unique_terrain_hexes = []
         for row in range(map_rows):
             for col in range(map_cols):
@@ -366,10 +355,9 @@ func _ready():
                 if t_data.get("unique", false):
                     unique_terrain_hexes.append({"row": row, "col": col})
 
-        # Восстанавливаем городки из сейва и зеркалим в town_hexes для рендерера.
-        # town_manager.load_towns заполняет master-список towns, а производный
-        # town_hexes — внутри менеджера; плюс вручную выставляем tile.has_town
-        # (на случай, если сейв старый, где флага ещё не было — миграция).
+        # We restore the towns from the save and mirror them into town_hexes for the renderer.
+        # town_manager.load_towns fills the master list towns, and the derived
+        # town_hexes — inside the manager; plus we manually set tile.has_town
         town_manager.load_towns(SaveManager.saved_data.get("towns", []))
         towns = town_manager.towns
         town_hexes = []
@@ -377,27 +365,26 @@ func _ready():
             tile_data[h.row][h.col]["has_town"] = true
             town_hexes.append({"row": h.row, "col": h.col})
 
-        # Личные кольца городков пересобираются по радиусу из записи
-        # (compute_all_town_influences). Она же проставляет флаги
-        # in_town_influence на тайлы и собирает плоское зеркало
-        # town_influence_hexes для рендерера. Кольцо строится ЦЕЛИКОМ (без
-        # клипа по текущему Региону), поэтому старые сейвы, где кольцо было
-        # срезано по стартовому Региону, чинятся сами собой; что из кольца
-        # видно игроку — решает рендерер (туман войны + эпоха).
+        # The personal rings of the towns are rebuilt by the radius from the record
+        # (compute_all_town_influences). It also sets the flags
+        # in_town_influence on the tiles and collects the flat mirror
+        # town_influence_hexes for the renderer. The ring is built WHOLLY (without
+        # a clip by the current Region); what of the ring
+        # is visible to the player is decided by the renderer (the fog of war + the era).
         #
-        # ПЕРЕД пересчётом отдаём менеджеру стартовую область игрока: её
-        # границы восстановлены из сейва, а при генерации она задаётся в
-        # generate_towns. Территория городков вырезается из неё — по всей карте
-        # (включая гексы под туманом) гексы игрока остаются его.
+        # BEFORE the recalculation we give the manager the starting area of the player: its
+        # boundaries are restored from the save, and on the generation it is set in
+        # generate_towns. The territory of the towns is cut out of it — over the whole map
+        # (including the hexes under the fog) the hexes of the player remain his.
         town_manager.set_player_start_area(start_region_start_row, start_region_end_row,
                 start_region_start_col, start_region_end_col)
         town_manager.compute_all_town_influences(tile_data, map_rows, map_cols)
-        # Заполняем кольца городков декоративными улучшениями и для старых
-        # сохранений, где эти метки ещё отсутствовали.
+        # We fill the rings of the towns with the decorative improvements and also for the old
+        # saves, where these marks were still absent.
         town_manager._place_decorative_town_improvements(tile_data, map_rows, map_cols)
-        # Дороги городков строим ТОЛЬКО ЗДЕСЬ: улучшения в кольцах уже стоят
-        # (вызов выше), а сами городки уже загружены из сейва. До этой точки
-        # сетей городков на карте не было.
+        # We build the roads of the towns ONLY HERE: the improvements in the rings already stand
+        # (the call above), and the towns themselves are already loaded from the save. Up to this point
+        # there were no networks of the towns on the map.
         _rebuild_town_roads()
         town_influence_hexes = []
         for h in town_manager.town_influence_hexes:
@@ -411,8 +398,8 @@ func _ready():
         randomize()
         _initialize_map()
         road_manager.initialize(city_row, city_col)
-        # Сеть дорог города игрока готова — можно строить сети городков
-        # (городки и их улучшения уже расставлены в _initialize_map).
+        # The road network of the city of the player is ready — it is possible to build the networks of the towns
+        # (the towns and their improvements are already placed in _initialize_map).
         _rebuild_town_roads()
         map_renderer.initialize(tile_data, self)
         progress_bar_layer.initialize(tile_data, self)
@@ -426,19 +413,19 @@ func _ready():
     add_child(settings_menu)
     settings_menu.hide()
 
-    # Инициализация InputHandler
+    # The initialization of InputHandler
     input_handler.initialize(self)
 
     map_tooltip = MapTooltip.new(tooltip_text_label, tooltip_products_container, map_renderer, worker_manager)
 
-    # Инициализация панели управления гексом (нижняя панель).
+    # The initialization of the panel of the hex (the bottom panel).
     control_panel.initialize(self)
 
     input_handler.set_tooltip_delay(tooltip_delay)
     input_handler.set_extended_tooltip_delay(extended_tooltip_delay)
     city_ui.set_building_detail_delay(building_detail_delay)
     CityData.set_resource_display_interval(resource_display_interval)
-    # Плановое потребление на вкладке «Ресурсы» (тултип и динамика «≈») считается
+    # The planned consumption on the tab "Resources" (the tooltip and the dynamics "≈") is counted
     # по рабочим worker_manager — прокидываем ссылку в городской UI.
     city_ui.set_worker_manager(worker_manager)
 
@@ -2794,7 +2781,6 @@ func _apply_saved_map_state():
         region_cols = int(st.get("region_cols", region_cols))
         current_era = int(st.get("current_era", 0))
     # Синхронизируем эпоху с CityData (ограничение изучения технологий по эпохам).
-    # Для старых сейвов приоритет у значения в состоянии карты.
     if st.has("current_era"):
         CityData.current_era_index = current_era
     city_row = map_rows / 2
@@ -2805,7 +2791,6 @@ func _apply_saved_map_state():
 # Восстанавливает границы СТАРТОВОЙ области игрока (Кольцо + Регион 1-й эпохи).
 # В сейве они лежат отдельными полями map_state — их нельзя пересчитать из
 # start_ring_* и region_width, потому что region_width меняется при смене эпохи
-# и в сейве хранит уже значение НЫНЕШНЕЙ эпохи. В старых сейвах полей нет:
 # там пересчитываем от стартового кольца и текущей ширины региона (для партии,
 # начавшейся в 1-й эпохе, это точное значение; для поздней — приближение
 # «лучше, чем никаких границ»).

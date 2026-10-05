@@ -638,8 +638,6 @@ func rebuild_player_roads(
                     hex_allowed, _tile_road_level(tile))
 
 # Уровень дороги гекса — входные данные для восстановления из сейва (сегменты
-# с уровнями, как и сами сегменты, в сейв не пишутся). Старые сейвы поля не
-# содержат — там тропка, то есть самый слабый уровень.
 func _tile_road_level(tile: Dictionary) -> int:
     return int(tile.get("road_level", DEFAULT_ROAD_LEVEL))
 

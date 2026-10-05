@@ -241,8 +241,7 @@ func refresh():
     var grouped = {}
     for prod_id in city_storage:
         # Science is not shown on the "Resources" tab: it is not a stored good,
-        # but the research rate (see docs.md). The skip is also left for
-        # the inert "science" remainders in the old saves.
+        # but the research rate (see docs.md).
         if prod_id == "science":
             continue
         # The general rule of the list — see _is_displayable: the resource is visible only when

@@ -1086,8 +1086,6 @@ func serialize_towns() -> Array:
 
 # Восстанавливает towns из сейва. Понимает два формата:
 #   - НОВЫЙ: словарь записи города (id, имя, радиус, личное кольцо, цвет…);
-#   - СТАРЫЙ: [row, col] / [row, col, is_era2_guaranteed] — эпоха кольца
-#     неизвестна, поэтому при миграции радиус берётся по умолчанию,
 #     личное кольцо пересчитается в compute_all_town_influences().
 # Если данных нет / массив пуст (новая игра) — towns не трогаем (обычно уже
 # заполнен generate_towns, вызванным из _initialize_map).
@@ -1122,12 +1120,10 @@ func load_towns(data) -> void:
                 "sell_pool": entry.get("sell_pool", []),
                 "buy_pool": entry.get("buy_pool", []),
                 # road_linked — дорога от города до городка (см. serialize_towns).
-                # В старых сейвах поля нет: связи ещё не существовало.
                 "road_linked": bool(entry.get("road_linked", false)),
             }
             towns.append(t)
         elif entry is Array and entry.size() >= 2:
-            # Миграция старого формата: [row, col] / [row, col, flag].
             # Кольца нет — вычислится в compute_all_town_influences.
             var is_era2_guaranteed: bool = entry.size() >= 3 and bool(entry[2])
             var t := _make_town_record(towns.size(), int(entry[0]), int(entry[1]),
@@ -1148,11 +1144,9 @@ func load_towns(data) -> void:
 #     для эры-2) — старт новой игры;
 #   - из main_map при загрузке сейва — кольца восстанавливаются.
 #
-# Состав кольца ВСЕГДА считается заново по радиусу из записи городка
-# (influence_radius) — это единственный источник его размера. Так чинятся и
-# старые сейвы: в них кольцо было срезано по стартовому Региону (см. абзац
-# «ВАЖНО» ниже), и без пересчёта артефакт тянулся бы из партии в партию.
-# На тайлы проставляется флаг in_town_influence.
+# The composition of the ring is ALWAYS recalculated from the radius of the town record
+# (influence_radius) — it is the single source of its size.
+# The flag in_town_influence is set on the tiles.
 #
 # Кольца разных городков НЕ пересекаются. Городки обрабатываются в порядке
 # массива towns (порядок размещения; для сейва — порядок записей): гекс, уже

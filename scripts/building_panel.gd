@@ -179,7 +179,6 @@ func open(building_id_arg: String, data: Dictionary):
     show()
 
 func _refresh():
-    # Гарантируем, что у зданий есть слоты (на случай старых сейвов/сессий)
     CityData.migrate_old_save_format()
 
     # Собираем все индексы построенных зданий с нужным id
