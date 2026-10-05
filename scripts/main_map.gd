@@ -18,7 +18,7 @@ var region_width: int = 2 # The width of the Region around the Ring (in hexes)
 var ring_rows: int = 7
 var ring_cols: int = 9
 
-# Текущее видимое окно: Кольцо + Регион.
+# The current visible window: the Ring + the Region.
 var region_rows: int = 11
 var region_cols: int = 13
 
@@ -26,7 +26,7 @@ var region_cols: int = 13
 var city_row: int = 30
 var city_col: int = 30
 
-# Абсолютные границы Кольца Влияния (инклюзивные) на всей карте.
+# The absolute boundaries of the Influence Ring (inclusive) over the whole map.
 var influence_start_row: int = 0
 var influence_end_row: int = 0
 var influence_start_col: int = 0
@@ -141,13 +141,13 @@ var _treasury_display_epoch: int = -1
 var _map_ui_helpers: Node = null
 var _treasury_hover_timer: float = 0.0
 var _treasury_hover_leave_timer: float = 0.0
-# Тултип разбивки казны «залип»: игрок продержал курсор на HUD-метке задержку
-# (building_detail_delay) — панель зафиксирована на месте, и курсор можно
-# перевести на сам тултип. Снимается по grace-таймеру ухода (аналог
-# building_detail_locked у тултипа деталей здания, см. city_ui.gd).
+# The tooltip of the breakdown of the treasury "stuck": the player held the cursor on the HUD label for the delay
+# (building_detail_delay) — the panel is fixed in place, and the cursor can be
+# moved to the tooltip itself. It is removed by the grace timer of leaving (an analogue
+# of building_detail_locked at the tooltip of the building details, see city_ui.gd).
 var _treasury_locked: bool = false
 var _treasury_tooltip_display_epoch: int = -1
-# Кеш значения казны, показываемого в HUD-метке и в тултипе разбивки. Оба
+# The cache of the value of the treasury, shown in the HUD label and in the tooltip of the breakdown. Both
 # of a consumer are REQUIRED to show one and the same value — otherwise in the tooltip
 # it "runs ahead" by 1+ ticks because CityData.treasury changes
 # on every consumption tick, and the HUD/TopBar are updated with the interval from
@@ -286,18 +286,18 @@ func _ready():
                 col_array.append(tile)
             tile_data.append(col_array)
 
-        # Гарантируем, что город находится на разрешённой местности при загрузке сохранения
+        # We guarantee that the city is on a permitted terrain on loading a save
         _ensure_city_valid_terrain()
         _mark_city_hex()
 
-        # Восстанавливаем стройки улучшений, зданий и освоения территории
+        # We restore the builds of the improvements, the buildings and the claiming of the territory
         build_manager.restore_builds(SaveManager.saved_data.get("active_builds", {}))
         build_manager.restore_building_builds(SaveManager.saved_data.get("active_building_builds", {}))
         build_manager.restore_expansion_builds(SaveManager.saved_data.get("active_expansion_builds", {}))
 
-        # Восстанавливаем незаконченные поэтапные проекты (дорога по гексам).
-        # Их сегменты в сейв не пишутся: уже проложенная часть восстановится
-        # по флагам road_built, поставленным на каждом подключённом гексе
+        # We restore the unfinished phased projects (the road by the hexes).
+        # Their segments are not written to the save: the already laid part is restored
+        # by the flags road_built, set on each connected hex
         # of the step (see _on_project_step_completed), and the queue of the remaining
         # segments continues to be completed.
         project_manager.restore_projects(SaveManager.saved_data.get("active_projects", {}))
@@ -426,7 +426,7 @@ func _ready():
     city_ui.set_building_detail_delay(building_detail_delay)
     CityData.set_resource_display_interval(resource_display_interval)
     # The planned consumption on the tab "Resources" (the tooltip and the dynamics "≈") is counted
-    # по рабочим worker_manager — прокидываем ссылку в городской UI.
+    # by the workers worker_manager — we pass the reference into the UI of the city.
     city_ui.set_worker_manager(worker_manager)
 
     # The initialization of DebugManager
@@ -547,29 +547,29 @@ func _skip_improvement_road_restore(row: int, col: int) -> bool:
 # The roads are not saved — the network is recalculated, as well as the city ones.
 func _rebuild_town_roads() -> void:
     road_manager.rebuild_town_roads(town_manager.towns, tile_data, map_rows, map_cols)
-    # Дороги, построенные игроком через спецдействие «Построить дорогу»
-    # (в том числе соединения с городками), восстанавливаются последними:
-    # их цель — дорожная сеть города и дорожные сети городков, обе должны
-    # уже существовать. Входные данные (флаги road_built / road_linked) лежат
-    # в сейве, сегменты считаются заново — как и для всех остальных дорог.
+    # The roads built by the player through the special action "Build a road"
+    # (including the connections with the towns) are restored last:
+    # their target is the road network of the city and the road networks of the towns, both must
+    # already exist. The input data (the flags road_built / road_linked) lie
+    # in the save, the segments are counted anew — as for all the other roads.
     road_manager.rebuild_player_roads(town_manager.towns, tile_data, map_rows, map_cols,
             _road_hex_allowed())
 
 func _input(event):
-    # Дебаг-меню: открытие/закрытие по F9
+    # The debug menu: opening/closing on F9
     if event is InputEventKey and event.pressed and event.keycode == KEY_F9:
         debug_manager.toggle()
         get_viewport().set_input_as_handled()
         return
 
-    # ESC закрывает дебаг-меню, если оно открыто
+    # ESC closes the debug menu, if it is open
     if debug_manager.is_open:
         if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
             debug_manager.close()
             get_viewport().set_input_as_handled()
             return
-        # Горячие клавиши пунктов дебаг-меню: цифра 1..9, 0 вызывает
-        # соответствующий пункт главного меню (см. debug_manager.trigger_hotkey).
+        # The hotkeys of the items of the debug menu: the digit 1..9, 0 calls
+        # the corresponding item of the main menu (see debug_manager.trigger_hotkey).
         if event is InputEventKey and event.pressed:
             var num = _debug_hotkey_number(event.keycode)
             if num >= 0:
@@ -581,8 +581,8 @@ func _input(event):
 
     input_handler.handle_input(event)
 
-# Возвращает цифру для дебаг-хоткея по коду клавиши, или -1, если клавиша
-# не является цифровой (основной ряд + клавиатурная цифра 0).
+# Returns the digit for the debug hotkey by the key code, or -1, if the key
+# is not a digit (the main row + the keyboard digit 0).
 func _debug_hotkey_number(keycode: Key) -> int:
     match keycode:
         KEY_1: return 1
@@ -601,7 +601,7 @@ func _process(delta):
     if Engine.is_editor_hint():
         return
 
-    # Блокируем кнопки HUD, если игра на паузе.
+    # We block the buttons of the HUD, if the game is paused.
     var is_paused = get_tree().paused
     if research_button:
         research_button.disabled = is_paused
@@ -610,8 +610,8 @@ func _process(delta):
     if expansion_button:
         expansion_button.disabled = is_paused
 
-    # Наука копится каждый кадр, а не привязана к тику симуляции.
-    # Без этого прогресс-бар исследования прыгал скачками.
+    # The science accumulates every frame, and is not bound to the tick of the simulation.
+    # Without this the progress bar of the research jumped by jerks.
     if not is_paused:
         CityData.tick_research_science_continuous(delta)
         # The occupancy of the pastures — the same thing: it accumulates every frame, so that
@@ -1227,10 +1227,10 @@ func _on_control_panel_build_changed(_a = null, _b = null, _c = null, _d = null)
 func confirm_cancel_build(row: int, col: int):
     _confirm_cancel_build(row, col)
 
-# Отмена поэтапного проекта к гексу (row, col) — например, незаконченной
-# дороги. Диалог подтверждения тот же, что и у обычной стройки: отмена
-# необратима, а уже проложенные участки дороги остаются на карте.
-# Отмена поэтапного проекта. Вызывается с ЛЮБОГО его гекса, поэтому проект
+# The cancellation of a phased project to the hex (row, col) — for example, an unfinished
+# road. The confirmation dialog is the same as for an ordinary build: the cancellation
+# is irreversible, and the already laid segments of the road remain on the map.
+# The cancellation of a phased project. It is called from ANY of its hexes, therefore the project
 # is passed by project_id, and not searched by the coordinates: the hex on which
 # the player clicked may be the middle of the route, and not the target.
 #
@@ -1568,10 +1568,10 @@ func start_improvement_road_project(row: int, col: int, imp_id: String, imp_name
     if not imp_name.is_empty():
         title = tr("Road to %s") % imp_name
 
-    # Входные данные для сейва: дорога этого гекса ведётся поэтапным
-    # проектом. Пока флага нет, пересчёт сети «по факту улучшения»
-    # (road_manager.rebuild_roads_from_existing) счёл бы гекс готовым и
-    # достроил бы остаток трассы бесплатно. Ставим флаг ДО старта и убираем,
+    # The input data for the save: the road of this hex is going by a phased
+    # project. While the flag is absent, the recalculation of the network "by the fact of the improvement"
+    # (road_manager.rebuild_roads_from_existing) would count the hex as ready and
+    # would finish the rest of the route for free. We set the flag BEFORE the start and remove it,
     # if the project has not started after all, — otherwise the hex would remain forever
     # an "improvement without a road" in the data of the save.
     tile_data[row][col]["road_staged"] = true
@@ -1702,9 +1702,9 @@ func get_road_upgrade_breakdown(row: int, col: int, road_level: int) -> Dictiona
         var from_col := int(ends[1])
         var to_row := int(ends[2])
         var to_col := int(ends[3])
-        # Цена участка улучшения считается по ТОМУ ЖЕ гексу, который шаг
-        # присоединяет к сети при постройке, — то есть по дальнему от города
-        # концу: трасса идёт от города, и этот конец тащит материалы дальше.
+        # The price of the segment of the improvement is counted by THAT SAME hex, which the step
+        # connects to the network during the construction, — that is, by the far end from the city:
+        # the route goes from the city, and that end carries the materials further.
         var far_row := to_row
         var far_col := to_col
         if HexUtils.hex_distance(from_row, from_col, city_row, city_col) \
@@ -1724,7 +1724,7 @@ func get_road_upgrade_breakdown(row: int, col: int, road_level: int) -> Dictiona
             "work_cost": cost,
             "price": price,
             "hex": {"row": far_row, "col": far_col},
-            # Призрак улучшения — тот же участок: он уже нарисован дорогой,
+            # The ghost of the improvement — the same segment: it is already drawn by the road,
             # and the highlighting shows which exactly segment is being improved.
             "ghost": {seg_key: true},
             "data": {
@@ -1903,21 +1903,21 @@ func get_road_cost_breakdown(row: int, col: int, road_level: int) -> Dictionary:
 # The effect of one segment of the road: the segment goes into the network of the city, both of its hexes
 # становятся подключёнными. Флаг road_built ставится на КАЖДЫЙ присоединённый
 # гекс, а не только на цель проекта: сегменты в сейв не пишутся, и по этим
-# флагам сеть пересчитывается при загрузке (road_manager.rebuild_player_roads).
-# Так полупостроенная дорога переживает перезапуск, а не исчезает.
+# the flags the network is recalculated on loading (road_manager.rebuild_player_roads).
+# In this way a half-built road survives the restart, and does not disappear.
 #
-# Тот же обработчик обслуживает и улучшение дороги (kind "road_upgrade"):
-# участок уже есть, поэтому вместо добавления сегмента его уровень
-# повышается. Оба режима в одном месте — правило «шаг применён к гексу»
-# не должно существовать в двух видах.
+# The same handler also serves the improvement of the road (kind "road_upgrade"):
+# the segment already exists, therefore instead of adding a segment its level
+# is raised. Both modes in one place — the rule "the step has been applied to the hex"
+# must not exist in two forms.
 func _on_project_step_completed(_project_id: String, kind: String, step: Dictionary) -> void:
     var data: Dictionary = step.get("data", {})
 
-    # Последний шаг цепочки «дорога → улучшение»: ставим улучшение. Его данные
-    # едут в шаге (imp_id, разводимое животное/растение), потому что записи
-    # стройки в build_manager на этом гексе нет — улучшение лежит в очереди
-    # проекта. Эффект применяет тот же _apply_improvement, что и обычная
-    # стройка из active_builds.
+    # The last step of the chain "road → improvement": we place the improvement. Its data
+    # travels in the step (imp_id, the bred animal/plant), because the records
+    # of the build in build_manager on this hex are absent — the improvement lies in the queue
+    # of the project. The effect is applied by the same _apply_improvement as an ordinary
+    # build from active_builds.
     if str(data.get("step_type", "")) == "improvement":
         var imp_id := str(data.get("improvement", ""))
         if imp_id.is_empty():
@@ -1953,53 +1953,53 @@ func _on_project_step_completed(_project_id: String, kind: String, step: Diction
     if t_row < tile_data.size() and t_col < tile_data[t_row].size() \
             and tile_data[t_row][t_col] != null:
         tile_data[t_row][t_col]["road_built"] = true
-        # Уровень участка — входные данные для сейва наравне с road_built:
-        # без него восстановленная сеть была бы сплошной тропкой.
+        # The level of the segment is the input data for the save on a par with road_built:
+        # without it the restored network would be a solid trail.
         tile_data[t_row][t_col]["road_level"] = road_level
     _refresh_project_ghost()
     map_renderer.queue_redraw()
     _redraw_progress_layer()
     control_panel.refresh()
 
-# Дорога достроена целиком: отмечаем цель входными данными для сейва и
-# открываем торговлю, если дорога шла к городку.
+# The road is completed entirely: we mark the target with the input data for the save and
+# open the trade, if the road was going to a town.
 func _on_project_completed(project_id: String, kind: String, meta: Dictionary) -> void:
     _refresh_project_ghost()
     if kind == "road":
-        # Проект к этому моменту уже выброшен из менеджера, поэтому цель
-        # берём из meta, заполненного при старте (см. start_road_project).
+        # The project has already been thrown out of the manager by this moment, therefore we take the target
+        # from meta, filled in at the start (see start_road_project).
         var row := int(meta.get("target_row", -1))
         var col := int(meta.get("target_col", -1))
         if row >= 0 and col >= 0:
-            # У цепочки «дорога → улучшение» сообщение о готовой дороге было бы
-            # лишним: последним шагом уже отработало улучшение и сказало о себе
-            # (_on_project_step_completed). Флаг road_built ставим в любом случае.
+            # For the chain "road → improvement" the message of the finished road would be
+            # in vain: the improvement has already worked as the last step and has spoken about itself
+            # (_on_project_step_completed). The flag road_built is set in any case.
             _mark_road_built(row, col, meta, not meta.has("improvement"))
     map_renderer.queue_redraw()
     _redraw_progress_layer()
     control_panel.refresh()
 
 func _on_project_cancelled(_project_id: String, _kind: String, _meta: Dictionary) -> void:
-    # Проложенные участки остаются (отмена не откатывает дорогу), исчезает
-    # только призрак того, что достроить не удалось.
+    # The laid segments remain (the cancellation does not roll back the road), only
+    # the ghost of what could not be completed disappears.
     _refresh_project_ghost()
     map_renderer.queue_redraw()
     _redraw_progress_layer()
     control_panel.refresh()
 
-# Призрак на карте = сегменты ещё не построенных шагов активных проектов.
-# Обновляется на каждом событии проекта, поэтому построенный участок пропадает
-# из маршрута сам собой.
+# The ghost on the map = the segments of the steps of the active projects that are not built yet.
+# It is updated on every event of the project, therefore the built segment disappears
+# from the route by itself.
 func _refresh_project_ghost() -> void:
     if map_renderer == null:
         return
     map_renderer.set_project_ghost_segments(project_manager.get_pending_ghost_segments())
 
-# Помечает цель дороги построенной — это входные данные для восстановления
-# дороги из сейва (сегменты в сейв не пишутся, см. road_manager).
-# Обычному гексу ставится флаг на самом гексе, городку — на гексе (чтобы
-# rebuild_player_roads нашёл его кольцо влияния) и в записи городка (по нему
-# же читается доступность торговли, см. town_manager.is_trade_available).
+# Marks the target of the road as built — this is the input data for the restoration of the
+# road from the save (the segments are not written to the save, see road_manager).
+# An ordinary hex gets the flag on the hex itself, a town — on the hex (so that
+# rebuild_player_roads finds its influence ring) and in the record of the town (by it
+# the availability of the trade is read, see town_manager.is_trade_available).
 func _mark_road_built(row: int, col: int, plan: Dictionary,
         show_message: bool = true) -> void:
     tile_data[row][col]["road_built"] = true
@@ -2016,7 +2016,7 @@ func _mark_road_built(row: int, col: int, plan: Dictionary,
                 % str(town.get("name", tr("Town"))))
 
 func _on_building_build_completed(building_id: String, build_key: String):
-    # Стройка здания завершена - добавляем его в город
+    # The construction of the building is complete - we add it to the city
     var slots = []
     if CityData.building_construction.has(build_key):
         var construction_data = CityData.building_construction[build_key]
@@ -2025,7 +2025,7 @@ func _on_building_build_completed(building_id: String, build_key: String):
     
     CityData.city_built_buildings.append({"id": building_id, "slots": slots})
     
-    # Назначаем горожанина
+    # We assign the citizen
     if has_node("TownsfolkManager"):
         var tm = get_node("TownsfolkManager")
         tm.assign_townsfolk()
@@ -2034,16 +2034,16 @@ func _on_building_build_completed(building_id: String, build_key: String):
     map_renderer.queue_redraw()
     _redraw_progress_layer()
 
-    # Естественный триггер перехода в следующую эпоху: построен Рынок.
+    # The natural trigger of the transition to the next era: the Market has been built.
     if building_id == "market":
         _on_market_built()
 
 func _on_building_upgrade_completed(build_key: String, idx: int, upgrade_to: String, building_name: String):
-    # Апгрейд здания завершён — заменяем здание под этим индексом на улучшенную
-    # версию с переносом настроек (рецепты слотов, приоритет качества; работник
-    # остаётся привязан к индексу здания, поэтому состояние «работает/
-    # приостановлено» переносится само). Сигнал city_updated эмитится внутри
-    # CityData.complete_building_upgrade, панель города обновится сама.
+    # The upgrade of the building is complete — we replace the building under this index with the improved
+    # version with the transfer of the settings (the recipes of the slots, the priority of the quality; the worker
+    # remains bound to the index of the building, therefore the state "working/
+    # paused" is transferred by itself). The signal city_updated is emitted inside
+    # CityData.complete_building_upgrade, the panel of the city will update itself.
     CityData.complete_building_upgrade(idx, upgrade_to)
 
 func pixel_to_hex(mx: float, my: float):
@@ -2054,8 +2054,8 @@ func pixel_to_hex(mx: float, my: float):
         scroll_offset, HEX_RADIUS)
 
 func _setup_research_hud():
-    # Создаём панель исследования: кнопка с иконкой технологии + прогресс-бар.
-    # Размещаем между меткой даты и кнопкой "Город".
+    # We create the panel of the research: a button with the icon of the technology + a progress bar.
+    # We place it between the label of the date and the "City" button.
     var vbox = hud.get_node("VBoxContainer")
     research_hbox = HBoxContainer.new()
     research_hbox.add_theme_constant_override("separation", 4)
@@ -2064,11 +2064,11 @@ func _setup_research_hud():
     research_button.custom_minimum_size = Vector2(36, 24)
     research_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
     research_button.text = ""
-    # Иконку кладём как дочерний TextureRect, а не через Button.icon.
-    # Причина: PNG 64×64 в кнопке 36×24 растягивается/вылезает, а в Godot
-    # 4.7 нет ни icon_scale, ни icon_max_width, ни нормального способа
-    # ограничить размер Button.icon. Свой TextureRect с custom_minimum_size
-    # = 24×24 решает проблему раз и навсегда.
+    # We put the icon as a child TextureRect, and not through Button.icon.
+    # The reason: a PNG 64×64 in a button 36×24 is stretched/crops, and in Godot
+    # 4.7 there is neither icon_scale, nor icon_max_width, nor a normal way
+    # to limit the size of Button.icon. Its own TextureRect with custom_minimum_size
+    # = 24×24 solves the problem once and for all.
     var inner = HBoxContainer.new()
     inner.name = "InnerBox"
     inner.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -2109,7 +2109,7 @@ func _setup_research_hud():
     research_progress_bar.show_percentage = false
     research_hbox.add_child(research_progress_bar)
 
-    # Вставляем после YearLabel (даты), перед CityButton.
+    # We insert after YearLabel (the date), before CityButton.
     var year_label = vbox.get_node("YearLabel")
     vbox.add_child(research_hbox)
     vbox.move_child(research_hbox, year_label.get_index() + 1)
@@ -2121,8 +2121,8 @@ func _update_research_progress():
         return
     var tech_id = CityData.current_research_tech_id
     if tech_id == "":
-        # Ничего не изучается — привлекаем внимание красным.
-        # Иконку обязательно прячем, иначе старая технология торчит на кнопке.
+        # Nothing is being researched — we attract the attention with red.
+        # We must definitely hide the icon, otherwise the old technology sticks out on the button.
         if research_icon:
             research_icon.visible = false
             research_icon.texture = null
@@ -2136,7 +2136,7 @@ func _update_research_progress():
         _last_research_hud_tech = ""
         return
 
-    # Изучается технология — показываем иконку (если есть) и прогресс.
+    # The technology is being researched — we show the icon (if there is one) and the progress.
     var tech_data = null
     for t in GameData.technologies:
         if t["id"] == tech_id:
@@ -2152,9 +2152,9 @@ func _update_research_progress():
                 if tex:
                     research_icon.texture = tex
                     research_icon.visible = true
-                    # Скрываем Label, чтобы HBox не резервировал под него
-                    # место. Иначе иконка «прилипает» к левому краю кнопки,
-                    # а справа — пустая область под скрытый label.
+                    # We hide the Label, so that the HBox does not reserve a place for it.
+                    # Otherwise the icon "sticks" to the left edge of the button,
+                    # and on the right — an empty area under the hidden label.
                     if research_label:
                         research_label.visible = false
                 else:
@@ -2190,7 +2190,7 @@ func _update_research_progress():
     _last_research_hud_tech = tech_id
 
 func _apply_research_button_warning(warning: bool):
-    # Красная рамка/подсветка при отсутствии исследования.
+    # The red frame/highlighting in the absence of a research.
     var normal = StyleBoxFlat.new()
     normal.bg_color = Color(0.3, 0.3, 0.3, 1.0)
     normal.set_border_width_all(2)
@@ -2199,8 +2199,8 @@ func _apply_research_button_warning(warning: bool):
     else:
         normal.border_color = Color(0.4, 0.4, 0.4, 1.0)
     research_button.add_theme_stylebox_override("normal", normal)
-    # Переопределяем hover/pressed/focus тем же стилем, чтобы при наведении
-    # не менялись content margins и размер кнопки оставался прежним.
+    # We override hover/pressed/focus with the same style, so that on hover
+    # the content margins do not change and the size of the button remains the same.
     research_button.add_theme_stylebox_override("hover", normal)
     research_button.add_theme_stylebox_override("pressed", normal)
     research_button.add_theme_stylebox_override("focus", normal)
@@ -2210,14 +2210,14 @@ func _apply_research_button_warning(warning: bool):
         research_button.add_theme_color_override("font_color", Color.WHITE)
 
 func _on_research_hud_button_pressed():
-    # Переход в интерфейс города на вкладку "Технологии".
+    # The transition to the interface of the city on the tab "Technologies".
     if pause_menu.visible:
         return
     city_ui.refresh()
     city_ui.show_technologies_tab()
     city_ui.show()
     hud.hide()
-    # Панель управления гексом не нужна, пока открыт интерфейс города.
+    # The control panel of the hex is not needed while the interface of the city is open.
     control_panel.hide()
 
 func open_city():
@@ -2225,7 +2225,7 @@ func open_city():
     city_ui.show()
     city_ui.show_resources_tab()
     hud.hide()
-    # Панель управления гексом не нужна, пока открыт интерфейс города.
+    # The control panel of the hex is not needed while the interface of the city is open.
     control_panel.hide()
 
 func _on_city_button_pressed():
@@ -2237,28 +2237,28 @@ func _on_city_button_pressed():
 func _on_city_ui_close():
     city_ui.hide()
     hud.show()
-    # Возвращаем панель управления гексом при выходе из интерфейса города.
+    # We return the control panel of the hex on the exit from the interface of the city.
     control_panel.show()
     _update_research_progress()
 
-# Открывает интерфейс городка (окно торговли) для гекса (row, col).
-# Вызывается из панели управления (кнопка действия на гексе городка) и
-# из InputHandler (двойной клик по гексу городка).
+# Opens the interface of the town (the window of the trade) for the hex (row, col).
+# It is called from the control panel (the action button on the hex of the town) and
+# from InputHandler (a double click on the hex of the town).
 #
-# Доступ в интерфейс НЕ зависит от дороги: разведанный городок можно
-# открыть всегда — там видно, что у него есть на продажу и на покупку.
-# Дорога гейтит только торговлю (см. town_manager.is_trade_available), и
-# её доступность передаётся в окно статусом, а не блокировкой.
+# The access to the interface does NOT depend on the road: a scouted town can
+# always be opened — there one can see what it has for sale and for purchase.
+# The road gates only the trade (see town_manager.is_trade_available), and
+# its availability is passed into the window by the status, and not by a blocking.
 func open_town_ui(row: int, col: int):
     var town = find_town_at(row, col)
     if town == null:
         return
     town_ui.open_town(town, town_manager.is_trade_available(town))
     hud.hide()
-    # Панель управления гексом не нужна, пока открыт интерфейс городка.
+    # The control panel of the hex is not needed while the interface of the town is open.
     control_panel.hide()
 
-# Возвращает запись городка на гексе (row, col) или null.
+# Returns the record of the town on the hex (row, col) or null.
 func find_town_at(row: int, col: int):
     if town_manager == null:
         return null
@@ -2267,7 +2267,7 @@ func find_town_at(row: int, col: int):
 func _on_town_ui_close():
     town_ui.hide()
     hud.show()
-    # Возвращаем панель управления гексом при выходе из интерфейса городка.
+    # We return the control panel of the hex on the exit from the interface of the town.
     control_panel.show()
 
 func _on_research_error(message: String):
@@ -2279,22 +2279,21 @@ func _on_research_error(message: String):
 func _on_research_completed(tech_id: String):
     map_renderer.queue_redraw()
     _redraw_progress_layer()
-    # Показываем окно изученной технологии и ставим игру на паузу,
-    # чтобы игрок не мог взаимодействовать с картой и HUD, пока окно открыто.
+    # We show the window of the learned technology and pause the game,
+    # so that the player cannot interact with the map and the HUD while the window is open.
     if tech_popup and tech_popup.has_method("show_tech"):
         get_tree().paused = true
         tech_popup.show_tech(tech_id, CityData.last_research_messages)
-    # Сообщения переданы в попап — очищаем их.
+    # The messages are passed into the popup — we clear them.
     CityData.last_research_messages = []
 
 func _on_tech_popup_go_to_techs():
-    # Снимаем паузу и открываем интерфейс города на вкладке "Технологии"
-    get_tree().paused = false
+    # We unpause and open the interface of the city on the tab "Technologies"
     city_ui.refresh()
     city_ui.show_technologies_tab()
     city_ui.show()
     hud.hide()
-    # Панель управления гексом не нужна, пока открыт интерфейс города.
+    # The control panel of the hex is not needed while the interface of the city is open.
     control_panel.hide()
 
 func _on_pause_save():
@@ -2311,7 +2310,7 @@ func open_pause_menu():
     pause_menu.show()
     city_button.disabled = true
     expansion_button.disabled = true
-    # Приостанавливаем игру, пока открыто меню паузы
+    # We pause the game while the menu of the pause is open
     get_tree().paused = true
 
 func _on_menu_button_pressed():
@@ -2323,10 +2322,10 @@ func _on_pause_load():
     if SaveManager.load_game():
         get_tree().reload_current_scene()
     else:
-        print("Ошибка загрузки сохранения")
+        print("Error of the loading of the save")
 
 func _on_pause_new_game():
-    # Пункт меню паузы не создаёт новую партию, а возвращает в главное меню.
+    # The item of the menu of the pause does not create a new game, but returns to the main menu.
     get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
 
 func get_tile_data(row: int, col: int):
@@ -2334,26 +2333,26 @@ func get_tile_data(row: int, col: int):
         return tile_data[row][col]
     return null
 
-# Возвращает фактическую стоимость труда для постройки улучшения imp_id на гексе (row, col).
-# Стоимость зависит от базового work_cost улучшения, типа местности (move_cost) и
-# расстояния от города. Возвращает словарь с итоговой стоимостью и деталями расчёта
-# (для расширенного тултипа).
+# Returns the actual cost of the labour for the construction of the improvement imp_id on the hex (row, col).
+# The cost depends on the base work_cost of the improvement, the type of the terrain (move_cost) and
+# the distance from the city. It returns a dictionary with the total cost and the details of the calculation
+# (for the extended tooltip).
 #
-# Про улучшение ключи такие:
-#   cost          — цена САМОГО улучшения (её и берёт build_manager);
-#   road_applicable— строится ли вместе с ним дорога (у спецдействий — нет);
-#   road_cost     — цена дороги к гексу, выбранного уровня;
-#   road_segments — сколько новых участков эта дорога добавит;
-#   total_cost    — сумма, то есть во сколько обойдётся всё вместе.
-# Дорога в cost НЕ входит: она отдельная поэтапная постройка и платится своими
-# шагами (см. start_improvement_road_project).
+# About the improvement the keys are like this:
+#   cost          — the price of the IMPROVEMENT itself (it is what build_manager takes);
+#   road_applicable— whether the road is built together with it (for the special actions — no);
+#   road_cost     — the price of the road to the hex, of the chosen level;
+#   road_segments — how many new segments this road will add;
+#   total_cost    — the sum, that is, how much everything will cost together.
+# The road is NOT included in cost: it is a separate phased construction and is paid by its own
+# steps (see start_improvement_road_project).
 func get_improvement_work_cost(imp_id: String, row: int, col: int,
         road_level: int = road_manager.DEFAULT_ROAD_LEVEL) -> Dictionary:
-    # Дорога (спецдействие build_road) — исключение: улучшений и гекса
-    # строительства у неё нет, у неё ЦЕЛАЯ ТРАССА из отдельных участков. Цена
-    # каждого участка зависит от его местности и дальности, поэтому и общая
-    # цена — это сумма шагов (main_map._build_road_steps, единый источник с
-    # превью). build_manager зовёт эту функцию только ради проверки «цена > 0».
+    # The road (the special action build_road) is the exception: it has no improvements and no hex
+    # of the construction, it has a WHOLE ROUTE of separate segments. The price
+    # of each segment depends on its terrain and the distance, therefore the total
+    # price is the sum of the steps (main_map._build_road_steps, the single source with
+    # the preview). build_manager calls this function only for the check "price > 0".
     var special_action: Dictionary = GameData.special_actions.get(imp_id, {})
     if str(special_action.get("action_type", "")) == "road":
         var breakdown: Dictionary = get_road_cost_breakdown(row, col, road_level)
@@ -2371,12 +2370,12 @@ func get_improvement_work_cost(imp_id: String, row: int, col: int,
             "terrains": breakdown.get("terrains", []),
         }
     var cost_data := MapHelpers.get_improvement_work_cost(imp_id, row, col, tile_data, city_row, city_col)
-    # Спецдействия (сбор дикоросов, вырубка леса, осушение, снос улучшения)
-    # дороги НЕ строят: build_manager.start_build отправляет их в обычную стройку
-    # мимо start_improvement_road_project, и выполняет их _on_build_completed,
-    # который к сети дорог не притрагивается. Поэтому разбор дороги для них не
-    # считается вовсе: иначе превью показывало бы игроку цену и число участков
-    # постройки, которой не будет, а «Итого» — сумму с ней.
+    # The special actions (the gathering of the wild plants, the felling of the forest, the drainage, the demolition of an improvement)
+    # do NOT build a road: build_manager.start_build sends them into an ordinary build
+    # bypassing start_improvement_road_project, and executes their _on_build_completed,
+    # which does not touch the road network. Therefore the parsing of the road for them is
+    # not counted at all: otherwise the preview would show the player the price and the number of the segments
+    # of a construction which will not happen, and the "Total" — a sum with it.
     if GameData.special_actions.has(imp_id):
         cost_data["road_applicable"] = false
         cost_data["road_cost"] = 0
@@ -2385,12 +2384,12 @@ func get_improvement_work_cost(imp_id: String, row: int, col: int,
         cost_data["road_pending"] = false
         cost_data["total_cost"] = int(cost_data.get("cost", 0))
         return cost_data
-    # Дорога к улучшению — ОТДЕЛЬНАЯ постройка: поэтапный проект, который
-    # запускается вместе со стройкой улучшения и оплачивается по участкам
-    # (main_map.start_improvement_road_project). Поэтому её цена НЕ входит в
-    # цену улучшения: иначе труд за дорогу списался бы дважды. Панели нужны
-    # обе цифры (см. control_panel._build_preview), build_manager берёт
-    # только `cost` — улучшение.
+    # The road to an improvement is a SEPARATE construction: a phased project, which
+    # is started together with the construction of the improvement and is paid by the segments
+    # (main_map.start_improvement_road_project). Therefore its price is NOT included in the
+    # price of the improvement: otherwise the labour for the road would be written off twice. The panels need
+    # both numbers (see control_panel._build_preview), build_manager takes
+    # only `cost` — the improvement.
     var road_bd := get_road_cost_breakdown_for_improvement(row, col, road_level)
     var road_cost := int(road_bd.get("cost", 0))
     cost_data["road_applicable"] = true
@@ -2401,20 +2400,20 @@ func get_improvement_work_cost(imp_id: String, row: int, col: int,
     cost_data["total_cost"] = int(cost_data.get("cost", 0)) + road_cost
     return cost_data
 
-# Цена и число участков дороги, которую игрок выбрал при постройке улучшения на
-# гексе (row, col). Это тот же разбор, что и у превью «Построить дорогу»
-# (get_road_cost_breakdown), поэтому цифры в панели и в старте совпадают.
+# The price and the number of the segments of the road which the player has chosen during the construction of the improvement on the
+# hex (row, col). It is the same parsing as in the preview "Build a road"
+# (get_road_cost_breakdown), therefore the numbers in the panel and at the start coincide.
 #
-# Дорога, которая улучшению не нужна (гекс уже подключён, улучшение с флагом
-# no_road, сухопутного пути нет), сюда не попадает: у неё нет новых участков,
-# и цена 0. Так превью не показывает «дорога: 0» там, где дорога не строится.
+# The road which is not needed by the improvement (the hex is already connected, the improvement with the flag
+# no_road, there is no land route) does not get here: it has no new segments,
+# and the price is 0. In this way the preview does not show "road: 0" where there is no road to build.
 func get_road_cost_breakdown_for_improvement(row: int, col: int,
         road_level: int) -> Dictionary:
-    # К гексу уже идёт дорожный проект (например, игрок отдельно построил
-    # сюда дорогу по спецдействию). Её участки уже оплачивает та очередь,
-    # поэтому повторно показывать их цену нельзя — иначе игрок увидит сумму,
-    # которую не спишут. Сама постройка улучшения на таком гексе и не
-    # запустится: гекс занят.
+    # A road project is already going to the hex (for example, the player has separately built
+    # a road here by the special action). Its segments are already paid by that queue,
+    # therefore it is not allowed to show their price again — otherwise the player will see a sum,
+    # which will not be written off. The construction of the improvement on such a hex will not
+    # start either: the hex is busy.
     if project_manager != null and project_manager.has_project_at(row, col):
         return {"ok": false, "pending": true, "reason": "", "cost": 0,
                 "segments": 0, "road_level": road_level}
@@ -2424,43 +2423,43 @@ func get_road_cost_breakdown_for_improvement(row: int, col: int,
                 "segments": 0, "road_level": road_level}
     return breakdown
 
-# Стоимость дороги к улучшению одним числом — для мест, где разбор не нужен.
+# The cost of the road to an improvement as a single number — for the places where the parsing is not needed.
 #
-# Бесплатной тропки здесь больше нет: дорога к улучшению стоит столько же,
-# сколько такая же дорога, построенная спецдействием, — по формуле уровня из
-# data/roads.json. Раньше уровень 1 возвращал 0 без расчёта, из-за чего дорога
-# к улучшению была бесплатной и неоплачиваемой: игрок не видел её цены, а
-# поэтапно она не строилась.
+# There is no free trail here any more: the road to an improvement costs exactly as much
+# as the same road built by the special action, — by the formula of the level from
+# data/roads.json. Previously the level 1 returned 0 without the calculation, which is why the road
+# to an improvement was free and not payable: the player did not see its price, and
+# in phases it was not built.
 #
-# Ноль остаётся там, где дороги нет вовсе: гекс уже подключён, улучшение с
-# флагом no_road, сухопутного пути нет.
+# The zero remains where there is no road at all: the hex is already connected, the improvement with the
+# flag no_road, there is no land route.
 func get_road_cost_for_improvement(row: int, col: int, road_level: int) -> int:
     return int(get_road_cost_breakdown_for_improvement(row, col, road_level)
             .get("cost", 0))
 
-# План дороги от сети города до гекса (row, col) — тот же объект, что
-# возвращает road_manager.plan_road_to. Нужен панели управления (превью
-# цены) и main_map.get_improvement_work_cost. Кольцо влияния городка
-# подставляется здесь: road_manager о городках не знает.
+# The plan of the road from the network of the city to the hex (row, col) — the same object that
+# road_manager.plan_road_to returns. It is needed by the control panel (the preview of
+# the price) and by main_map.get_improvement_work_cost. The influence ring of the town
+# is substituted here: road_manager knows nothing about the towns.
 #
-# hex_allowed = is_hex_known — дорога, которую строит игрок, идёт ТОЛЬКО по
-# известной территории (Кольцо Влияния или разведано). В первую очередь это
-# касается дороги к городку: взаимодействовать с городком можно только на
-# разведанном гексе, и подойти к нему тоже можно только по разведанной земле.
-# Автоматические сети дорог фильтр не получают (см. road_manager
+# hex_allowed = is_hex_known — the road which the player builds goes ONLY over the
+# known territory (the Influence Ring or scouted). In the first place this
+# concerns the road to a town: you can interact with a town only on
+# a scouted hex, and you can approach it only over the scouted land as well.
+# The automatic road networks do not get the filter (see road_manager
 # ._find_path_between).
 func get_road_plan(row: int, col: int) -> Dictionary:
     return road_manager.plan_road_to(row, col, tile_data, map_rows, map_cols,
             get_town_influence_hexes(row, col), _road_hex_allowed())
 
-# Предикат «по этому гексу можно вести дорогу игрока». Отдельная функция,
-# чтобы все вызовы (планирование, постройка, восстановление из сейва) искали
-# по одной и той же ссылке на метод, а Callable каждый раз создавался заново.
+# The predicate "a road of the player can be built on this hex". A separate function,
+# so that all the calls (planning, construction, restoration from the save) look up
+# by one and the same reference to the method, and not a Callable created anew every time.
 func _road_hex_allowed() -> Callable:
     return Callable(self, "is_hex_known")
 
-# Кольцо влияния городка на гексе (row, col) или пустой массив, если на
-# гексе нет городка.
+# The influence ring of the town on the hex (row, col) or an empty array, if there is no town on the hex
+# hex has no town.
 func get_town_influence_hexes(row: int, col: int) -> Array:
     if town_manager == null:
         return []
@@ -2475,25 +2474,25 @@ func _on_city_button_gui_input(event: InputEvent):
         map_renderer.queue_redraw()
 
 func _on_expansion_button_pressed():
-    # Кнопка "Развитие" больше не имеет функционала
+    # The "Development" button no longer has any functionality
     pass
 
 func _on_expansion_mode_changed(_active: bool):
     map_renderer.queue_redraw()
 
 func _on_territory_expanded(_row: int, _col: int, cost: int):
-    # cost — это труд, затраченный на освоение (см. expansion_manager).
+    # cost is the labour spent on the claiming (see expansion_manager).
     hud.show_message(tr("Territory expanded! (%d work spent)") % cost)
-    # Освоение снимает туман с гексов (in_influence = true) — кэш заливки колец
-    # городков пересобираем, иначе новая территория останется без заливки.
-    # Заодно сбрасывается кэш планов дорог: купленный гекс стал известным.
+    # The claiming removes the fog from the hexes (in_influence = true) — the cache of the fill of the rings of
+    # the towns is rebuilt, otherwise the new territory would remain without the fill.
+    # The cache of the plans of the roads is also reset: the bought hex has become known.
     road_manager.bump_map_knowledge()
     map_renderer.invalidate_town_influence_cache()
     map_renderer.queue_redraw()
-    # Панель управления перерисовывается здесь, а не прямой подпиской на сигнал:
-    # territory_expanded несёт три аргумента, а control_panel.refresh() не
-    # принимает ни одного — при прямом подключении Godot ронял вызов, и панель
-    # после освоения оставалась со старыми действиями и подсветкой.
+    # The control panel is redrawn here, and not by a direct subscription to the signal:
+    # territory_expanded carries three arguments, and control_panel.refresh() does not
+    # accept a single one — on a direct connection Godot broke the call, and the panel
+    # after the claiming remained with the old actions and the highlighting.
     control_panel.refresh()
     if city_ui.visible:
         city_ui.refresh()
@@ -2502,31 +2501,31 @@ func is_expansion_mode_active() -> bool:
     return expansion_manager.is_active()
 
 func is_valid_hex(row: int, col: int) -> bool:
-    # Валиден ли гекс В ПРЕДЕЛАХ РЕГИОНА (Кольцо + Регион).
-    # Используется там, где важна именно принадлежность Региону: покупка
-    # (освоение) чанков, проверка состава чанка, разведка до изучения
-    # Картографии (см. get_region_bounds). После Картографии разведка этим
-    # не ограничена — см. get_scout_reach_bounds().
+# Is the hex valid WITHIN the Region (the Ring + the Region).
+# It is used where the belonging to the Region is exactly what matters: the purchase
+# (claiming) of the chunks, the check of the composition of the chunk, the scouting before the learning of
+# the Cartography (see get_region_bounds). After the Cartography the scouting is not
+# limited by this — see get_scout_reach_bounds().
     return row >= region_start_row and row <= region_end_row and col >= region_start_col and col <= region_end_col
 
-# Изучена ли технология «Картография». Она открывает разведку за пределами
-# Региона: туман войны и территорию городков. До неё разведчиков можно
-# посылать только в неисследованную часть Региона, а гексы вне Региона
-# недоступны для наведения и клика (см. is_hex_interactive).
+# Is the technology "Cartography" learned. It opens the scouting beyond the
+# Region: the fog of war and the territory of the towns. Before it the scouts can be
+# sent only into the unexplored part of the Region, and the hexes outside the Region
+# are inaccessible for the hover and the click (see is_hex_interactive).
 func is_cartography_researched() -> bool:
     return CityData.is_tech_unlocked(CARTOGRAPHY_TECH_ID)
 
-# Название технологии «Картография» для сообщений игроку (единый источник
-# id — CARTOGRAPHY_TECH_ID; если технологию переименуют в JSON, сообщение
-# обновится автоматически).
+# The name of the technology "Cartography" for the messages to the player (the single source of
+# the id — CARTOGRAPHY_TECH_ID; if the technology is renamed in the JSON, the message
+# will update automatically).
 func get_cartography_tech_name() -> String:
     return CityData.get_tech_name(CARTOGRAPHY_TECH_ID)
 
-# Доступен ли гекс для взаимодействия игрока: тултип при наведении,
-# подсветка чанка разведки/покупки, выделение кликом ЛКМ. Регион доступен
-# всегда (включая его неисследованную часть — там работает разведка),
-# туман войны — только после изучения Картографии. Гексы за пределами
-# карты недоступны всегда.
+# Is the hex available for the interaction of the player: the tooltip on hover,
+# the highlighting of the chunk of the scouting/purchase, the selection by a click of the LMB. The Region is available
+# always (including its unexplored part — the scouting works there),
+# the fog of war — only after the learning of the Cartography. The hexes beyond
+# the edge of the map are unavailable always.
 func is_hex_interactive(row: int, col: int) -> bool:
     if not is_hex_on_map(row, col):
         return false
@@ -2534,14 +2533,14 @@ func is_hex_interactive(row: int, col: int) -> bool:
         return true
     return is_cartography_researched()
 
-# Гекс уже известен игроку: своё Кольцо Влияния (in_influence) или
-# разведанный гекс (is_explored). Это «граница известного мира» — только от
-# неё можно отправлять разведчиков дальше (см. is_chunk_adjacent_to_known).
-# Кольца влияния чужих городков сюда НЕ входят: их территория не наша.
-# Флаг is_explored у Кольца Влияния намеренно не выставляется (см.
-# _initialize_map: весь мир, включая Кольцо, стартует с is_explored = false),
-# поэтому in_influence проверяется отдельно — иначе на старте новой игры
-# разведывать было бы нечего вообще (софт-лок).
+# Is the hex already known to the player: its own Influence Ring (in_influence) or
+# a scouted hex (is_explored). This is the "border of the known world" — only from
+# it the scouts can be sent further (see is_chunk_adjacent_to_known).
+# The influence rings of the other towns do NOT enter here: their territory is not ours.
+# The flag is_explored of the Influence Ring is deliberately not set (see
+# _initialize_map: the whole world, including the Ring, starts with is_explored = false),
+# therefore in_influence is checked separately — otherwise at the start of a new game
+# there would be nothing to scout at all (a soft-lock).
 func is_hex_known(row: int, col: int) -> bool:
     if not is_hex_on_map(row, col):
         return false
@@ -2550,15 +2549,15 @@ func is_hex_known(row: int, col: int) -> bool:
         return false
     return bool(tile.get("in_influence", false)) or bool(tile.get("is_explored", false))
 
-# Есть ли у чанка хотя бы один гекс, граничащий с известной игроку
-# территорией (см. is_hex_known). Разведку можно отправить только в
-# «примыкающий» чанк: иначе разведчики перепрыгивали бы через туман войны и
-# вскрывали островки вдали от границы известного мира.
-# Проверяется ЧАНК, а не кликнутый гекс: BFS-чанк (до 5 гексов), дотянувшийся
-# до границы известного мира, разрешён, даже если сам клик был сделан на гекс
-# на один шаг глубже. Это согласуется с тем, что чанк — единица действия.
-# Соседи берутся через HexUtils.get_neighbors_odd_r (он же клипует их по краям
-# карты), то есть выход за карту здесь невозможен.
+# Does the chunk have at least one hex bordering the territory known to the player
+# (see is_hex_known). The scouting can be sent only into an
+# "adjacent" chunk: otherwise the scouts would jump over the fog of war and
+# uncover the islets far away from the border of the known world.
+# The CHUNK is checked, and not the clicked hex: the BFS-chunk (up to 5 hexes), which has reached
+# the border of the known world, is allowed, even if the click itself was made on a hex
+# one step deeper. This agrees with the fact that the chunk is the unit of the action.
+# The neighbours are taken through HexUtils.get_neighbors_odd_r (it also clips them by the edges of
+# the map), that is, going out of the map is impossible here.
 func is_chunk_adjacent_to_known(chunk: Array) -> bool:
     for hex in chunk:
         for n in HexUtils.get_neighbors_odd_r(hex.row, hex.col, map_rows, map_cols):
@@ -2566,15 +2565,15 @@ func is_chunk_adjacent_to_known(chunk: Array) -> bool:
                 return true
     return false
 
-# Скрыт ли гекс туманом войны: информация о нём (местность, ресурсы,
-# улучшения) игроку не известна, поэтому тултип при наведении и левая колонка
-# панели управления не должны её показывать. Туман — гекс на карте, который НЕ
-# входит в Кольцо Влияния, НЕ разведан и лежит вне Региона: Кольцо+Регион видны
-# на карте (там игроку известна местность, а ресурсы открывает разведка —
-# см. map_tooltip._build_text), за их пределами не видно ничего.
-# Гейт используют тултип (InputHandler и update_tooltip_text) и левая колонка
-# панели (control_panel._refresh); подсветка чанка и кнопка разведки остаются —
-# они содержимое гекса не раскрывают.
+# Is the hex hidden by the fog of war: the information about it (the terrain, the resources,
+# the improvements) is not known to the player, therefore the tooltip on hover and the left column
+# of the control panel must not show it. The fog is a hex on the map which is NOT
+# a part of the Influence Ring, is NOT scouted and lies outside the Region: the Ring+Region are visible
+# on the map (there the player knows the terrain, and the resources are opened by the scouting —
+# see map_tooltip._build_text), beyond them nothing is visible.
+# The gate is used by the tooltip (InputHandler and update_tooltip_text) and by the left column
+# of the panel (control_panel._refresh); the highlighting of the chunk and the button of the scouting remain —
+# they do not disclose the contents of the hex.
 func is_hex_in_fog(row: int, col: int) -> bool:
     if not is_hex_on_map(row, col):
         return false
@@ -2585,9 +2584,9 @@ func is_hex_in_fog(row: int, col: int) -> bool:
         return false
     return not (bool(tile.get("in_influence", false)) or bool(tile.get("is_explored", false)))
 
-# Инклюзивные hex-границы Региона — в том же формате, что и
-# get_scout_reach_bounds(). Нужны BFS чанка разведки: до изучения
-# Картографии чанк собирается только внутри Региона.
+# The inclusive hex-boundaries of the Region — in the same format as
+# get_scout_reach_bounds(). They are needed by the BFS of the chunk of the scouting: before the learning of
+# the Cartography the chunk is collected only inside the Region.
 func get_region_bounds() -> Dictionary:
     return {
         "row_start": region_start_row,
@@ -2596,35 +2595,35 @@ func get_region_bounds() -> Dictionary:
         "col_end": region_end_col
     }
 
-# Возвращает true, если гекс существует на карте (в её границах). Нужен для
-# действий, доступных за пределами Региона, — в первую очередь разведки
-# (см. expansion_manager.get_chunk_hexes).
+# Returns true, if the hex exists on the map (within its boundaries). It is needed by the
+# actions available beyond the Region, — in the first place the scouting
+# (see expansion_manager.get_chunk_hexes).
 func is_hex_on_map(row: int, col: int) -> bool:
     return row >= 0 and row < map_rows and col >= 0 and col < map_cols
 
-# Максимальная дистанция скролла карты по осям (в пикселях). ЕДИНЫЙ источник
-# истины: тем же значением ограничивается панорамирование в InputHandler и,
-# как следствие, досягаемость гексов для разведки (get_scout_reach_bounds).
+# The maximum distance of the scrolling of the map by the axes (in pixels). The SINGLE source of
+# truth: the panning in InputHandler is limited by the same value, and
+# as a consequence, the reachability of the hexes for the scouting (get_scout_reach_bounds).
 #
-# Считается от размеров Региона (Кольцо + Регион), а не всей карты: это
-# ограничивает видимую скроллом область ближайшими окрестностями Региона —
-# туда должен доставать разведчик (включая туман войны и территорию
-# городков рядом с Регионом), но вся карта НЕ должна быть доступна со
-# старта. С ростом Региона (смена эпохи) дистанция скролла увеличивается
-# вместе с ним.
+# It is counted from the dimensions of the Region (the Ring + the Region), and not of the whole map: this
+# limits the area visible by the scrolling to the nearest surroundings of the Region —
+# a scout must reach there (including the fog of war and the territory of the
+# towns near the Region), but the WHOLE map must NOT be available from
+# the start. With the growth of the Region (a change of the era) the distance of the scrolling increases
+# together with it.
 func get_max_scroll() -> Vector2:
     return Vector2(
         float(region_end_col - region_start_col + 1) * HEX_RADIUS,
         float(region_end_row - region_start_row + 1) * HEX_RADIUS
     )
 
-# Возвращает инклюзивные hex-границы области, которую игрок может увидеть
-# прокруткой карты: дальше клэмп get_max_scroll() не пускает. За этими
-# границами нет ни отрисовки тумана, ни возможности клика. Именно этой
-# областью ограничивается отправка разведчиков (включая территорию городков
-# и гексы в тумане войны) — но ТОЛЬКО после изучения Картографии: до неё
-# разведка ограничена Регионом (см. get_region_bounds). Покупка чанков
-# при этом по-прежнему ограничена только Регионом (is_valid_hex).
+# Returns the inclusive hex-boundaries of the area which the player can see
+# by the scrolling of the map: further the clamp of get_max_scroll() does not let. Beyond these
+# boundaries there is neither the drawing of the fog, nor the possibility of a click. It is exactly this
+# area by which the sending of the scouts is limited (including the territory of the towns
+# and the hexes in the fog of war) — but ONLY after the learning of the Cartography: before it
+# the scouting is limited by the Region (see get_region_bounds). The purchase of the chunks
+# is still limited only by the Region (is_valid_hex).
 func get_scout_reach_bounds() -> Dictionary:
     var viewport_size = Vector2(1152, 768)
     if not Engine.is_editor_hint():
@@ -2632,15 +2631,15 @@ func get_scout_reach_bounds() -> Dictionary:
     var max_scroll = get_max_scroll()
     var x_spacing = HEX_RADIUS * sqrt(3.0)
     var y_spacing = HEX_RADIUS * 1.5
-    # Объединяем экранный прямоугольник при обоих крайних положениях
-    # скролла: world = -offset - scroll .. -offset - scroll + viewport.
+    # We unite the screen rectangle at both extreme positions
+    # of the scrolling: world = -offset - scroll .. -offset - scroll + viewport.
     var world_left = - (offset_x + max_scroll.x)
     var world_right = - offset_x + max_scroll.x + viewport_size.x
     var world_top = - (offset_y + max_scroll.y)
     var world_bottom = - offset_y + max_scroll.y + viewport_size.y
-    # Запас в 2 гекса: смещение нечётных рядов и частично видимые гексы
-    # у краёв экрана (иначе крайние достижимые гексы «выпадали» бы из
-    # чанков разведки, хотя по ним можно кликнуть).
+    # The margin of 2 hexes: the offset of the odd rows and the partially visible hexes
+    # at the edges of the screen (otherwise the extreme reachable hexes would "fall out" of
+    # the chunks of the scouting, although one can click on them).
     var margin = 2
     var col_start = int(floor(world_left / x_spacing)) - margin
     var col_end = int(ceil(world_right / x_spacing)) + margin
@@ -2656,8 +2655,8 @@ func get_scout_reach_bounds() -> Dictionary:
 func _on_chunk_hovered(_chunk: Array):
     map_renderer.queue_redraw()
 
-# Загружает параметры карты/окна из data/map_config.json (через GameData).
-# Значения используются как стартовые для новой игры.
+# Loads the parameters of the map/window from data/map_config.json (through GameData).
+# The values are used as the starting ones for a new game.
 func _load_map_config():
     var cfg: Dictionary = GameData.map_config
     if cfg.is_empty():
@@ -2678,9 +2677,9 @@ func _load_map_config():
     city_row = map_rows / 2
     city_col = map_cols / 2
 
-# Пересчитывает АБСОЛЮТНЫЕ границы Кольца Влияния и видимого окна
-# (Кольцо + Регион) вокруг города. Вызывается после изменения
-# ring_rows/ring_cols/region_rows/region_cols (новая игра, загрузка, эпоха).
+# Recalculates the ABSOLUTE boundaries of the Influence Ring and of the visible window
+# (the Ring + the Region) around the city. It is called after a change of
+# ring_rows/ring_cols/region_rows/region_cols (a new game, a loading, an era).
 func _recalculate_bounds():
     var bounds = MapHelpers.recalculate_bounds(
         city_row, city_col,
@@ -2697,20 +2696,20 @@ func _recalculate_bounds():
     region_start_col = bounds.region_start_col
     region_end_col = bounds.region_end_col
 
-# Возвращает true, если гекс (row, col) входит в текущее Кольцо Влияния.
+# Returns true, if the hex (row, col) enters the current Influence Ring.
 func is_in_influence(row: int, col: int) -> bool:
     return row >= influence_start_row and row <= influence_end_row \
         and col >= influence_start_col and col <= influence_end_col
 
-# Возвращает словарь с текущим состоянием мира/окна для сохранения.
+# Returns a dictionary with the current state of the world/window for the save.
 #
-# start_region_* — границы СТАРТОВОЙ области игрока (Кольцо + Регион 1-й эпохи)
-# на момент генерации. Они не меняются всю партию, но нужны после загрузки:
-# по ним территория городков вырезается из стартовой области (см.
-# town_manager.set_player_start_area), иначе загруженная партия получила бы
-# городков, залезающих на землю игрока. Пересчитать их из start_ring_* и
-# region_width нельзя: region_width в сейве уже мог смениться при переходе в
-# следующую эру.
+# start_region_* — the boundaries of the STARTING area of the player (the Ring + the Region of the 1st era)
+# at the moment of the generation. They do not change during the whole game, but they are needed after the loading:
+# by them the territory of the towns is cut out of the starting area (see
+# town_manager.set_player_start_area), otherwise the loaded game would get
+# towns creeping onto the land of the player. It is impossible to recalculate them from start_ring_* and
+# region_width: region_width in the save may have already changed on the transition to
+# the next era.
 func get_map_state() -> Dictionary:
     return {
         "map_rows": map_rows,
@@ -2729,34 +2728,35 @@ func get_map_state() -> Dictionary:
         "start_region_end_col": start_region_end_col,
     }
 
-# Вычисляет абсолютные границы ВИДИМОЙ области 2-й эпохи
-# (Кольцо_2 + Регион_2). Используется town_manager'ом как «обязательная
-# зона» для гарантии «≥1 городок в эре-2».
+# Computes the absolute boundaries of the VISIBLE area of the 2nd era
+# (Ring_2 + Region_2). It is used by town_manager as the "mandatory
+# zone" for the guarantee "≥1 town in the era-2".
 #
-# Схема (см. advance_to_next_era):
-#   1) всё текущее (Кольцо + Регион) бесплатно исследуется и присоединяется;
-#   2) старое (Кольцо + Регион) становится новым Кольцом;
-#   3) вокруг нового Кольца формируется новый Регион ширины era2_region_width.
 #
-# Размеры:
+# The scheme (see advance_to_next_era):
+#   1) everything current (the Ring + the Region) is scouted for free and joined;
+#   2) the old (the Ring + the Region) becomes the new Ring;
+#   3) around the new Ring a new Region of the width era2_region_width is formed.
+#
+# The dimensions:
 #   ring_2  = region_1   = (start_ring + start_region_width*2)
 #   region_2 = ring_2 + era2_region_width*2
-# Абсолютные границы считаются от центра города и обрезаются по карте.
+# The absolute boundaries are counted from the centre of the city and are clipped by the map.
 func _compute_era2_region_bounds() -> Dictionary:
-    # Ширина Региона второй эпохи. По умолчанию — текущая region_width
-    # (для старых eras.json без поля region_width). Если в data/eras.json
-    # у эры с индексом 1 (вторая по счёту, считая древнюю как 0) есть
-    # своё значение — берём его.
+    # The width of the Region of the second era. By default — the current region_width
+    # (for the old eras.json without the field region_width). If in data/eras.json
+    # the era with the index 1 (the second by count, counting the ancient one as 0) has
+    # its own value — we take it.
     var era2_region_width: int = region_width
     if GameData.eras.size() >= 2:
         var era2_data: Dictionary = GameData.eras[1]
         if era2_data.has("region_width"):
             era2_region_width = int(era2_data.get("region_width", region_width))
 
-    # Кольцо 2-й эпохи = Регион 1-й эпохи (стартовая видимая область).
+    # The Ring of the 2nd era = the Region of the 1st era (the starting visible area).
     var era2_ring_rows: int = region_rows
     var era2_ring_cols: int = region_cols
-    # Регион 2-й эпохи = Кольцо_2 + era2_region_width*2 в каждую сторону.
+    # The Region of the 2nd era = Ring_2 + era2_region_width*2 in each direction.
     var era2_region_rows: int = era2_ring_rows + era2_region_width * 2
     var era2_region_cols: int = era2_ring_cols + era2_region_width * 2
 
@@ -2771,8 +2771,8 @@ func _compute_era2_region_bounds() -> Dictionary:
         "end_col": end_col,
     }
 
-# Восстанавливает состояние мира/окна из сохранения.
-# Вызывается ДО построения tile_data при загрузке.
+# Restores the state of the world/window from the save.
+# It is called BEFORE the building of tile_data on loading.
 func _apply_saved_map_state():
     var st: Dictionary = SaveManager.saved_data.get("map_state", {})
     if not st.is_empty():
@@ -2786,7 +2786,7 @@ func _apply_saved_map_state():
         region_rows = int(st.get("region_rows", region_rows))
         region_cols = int(st.get("region_cols", region_cols))
         current_era = int(st.get("current_era", 0))
-    # Синхронизируем эпоху с CityData (ограничение изучения технологий по эпохам).
+# We synchronise the era with CityData (the restriction of the learning of the technologies by the eras).
     if st.has("current_era"):
         CityData.current_era_index = current_era
     city_row = map_rows / 2
@@ -2794,12 +2794,12 @@ func _apply_saved_map_state():
     _recalculate_bounds()
     _restore_start_region_bounds(st)
 
-# Восстанавливает границы СТАРТОВОЙ области игрока (Кольцо + Регион 1-й эпохи).
-# В сейве они лежат отдельными полями map_state — их нельзя пересчитать из
-# start_ring_* и region_width, потому что region_width меняется при смене эпохи
-# там пересчитываем от стартового кольца и текущей ширины региона (для партии,
-# начавшейся в 1-й эпохе, это точное значение; для поздней — приближение
-# «лучше, чем никаких границ»).
+# Restores the boundaries of the STARTING area of the player (the Ring + the Region of the 1st era).
+# In the save they lie as separate fields of map_state — they cannot be recalculated from
+# start_ring_* and region_width, because region_width changes on a change of the era
+# and there we recalculate from the starting ring and the current width of the region (for a game
+# which started in the 1st era it is the exact value; for a later one — an approximation
+# "better than no boundaries at all").
 func _restore_start_region_bounds(st: Dictionary) -> void:
     if st.has("start_region_start_row") and st.has("start_region_end_row") \
             and st.has("start_region_start_col") and st.has("start_region_end_col"):
@@ -2815,10 +2815,10 @@ func _restore_start_region_bounds(st: Dictionary) -> void:
     start_region_start_col = maxi(0, city_col - start_ring_cols_ / 2)
     start_region_end_col = mini(map_cols - 1, start_region_start_col + start_ring_cols_ - 1)
 
-# --- ДЕБАГ: ОТКРЫТЬ ВСЮ КАРТУ ---
-# Вся карта целиком становится Кольцом Влияния: все гексы помечаются
-# как принадлежащие Кольцу и исследованные, границы Кольца/Региона
-# расширяются до размеров всей карты. После этого можно строить/улучшать
+# --- DEBUG: OPEN THE WHOLE MAP ---
+# The whole map at once becomes the Influence Ring: all the hexes are marked
+# as belonging to the Ring and as scouted, the boundaries of the Ring/Region
+# are expanded to the dimensions of the whole map. After that one can build/improve
 # на любом гексе без разведки и покупки территории.
 func debug_open_whole_map():
     if tile_data.is_empty():
