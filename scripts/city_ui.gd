@@ -1,45 +1,45 @@
 # city_ui.gd
 extends Control
 
-# Вкладки (панели)
+# The tabs (panels)
 @onready var resources_panel = $ContentPanel/ResourcesPanel
 @onready var buildings_panel = $ContentPanel/BuildingsPanel
 @onready var trade_panel = $ContentPanel/TradePanel
 @onready var technologies_panel = $ContentPanel/TechnologiesPanel
 
-# Кнопки вкладок
+# The tab buttons
 @onready var resources_tab_button = $TabBarPanel/TabBar/ResourcesTabButton
 @onready var buildings_tab_button = $TabBarPanel/TabBar/BuildingsTabButton
 @onready var trade_tab_button = $TabBarPanel/TabBar/TradeTabButton
 @onready var technologies_tab_button = $TabBarPanel/TabBar/TechnologiesTabButton
 @onready var close_button_top = $CloseButtonTop
 
-# Верхняя полоса
-# TopFoodLabel — контейнер HBox с тремя дочерними метками: еда / население /
-# казна. Казна — отдельная метка с ховером, потому что тултип нужен только
-# на ней (разбивка по источникам дохода/расхода казны).
+# The top bar
+# TopFoodLabel — an HBox container with three child labels: food / population /
+# treasury. The treasury is a separate label with a hover, because the tooltip is needed only
+# on it (the breakdown by the sources of income/expense of the treasury).
 @onready var top_food_label = $TabBarPanel/TopFoodLabel
 @onready var top_food_value_label = $TabBarPanel/TopFoodLabel/FoodLabel
 @onready var top_pop_value_label = $TabBarPanel/TopFoodLabel/PopLabel
 @onready var top_treasury_value_label = $TabBarPanel/TopFoodLabel/TreasuryLabel
 @onready var message_label = $BottomPanel/MessageLabel
 
-# Состояние ховера на «Казна: N» в верхней полосе города. Снимок источников
-# дохода/расхода обновляется раз в ресурсную эпоху через _refresh_light, чтобы
-# счётчик «/сек» не мельтешил каждый тик.
+# The hover state on "Treasury: N" in the top bar of the city. The snapshot of the sources
+# of income/expense is updated once per resource era through _refresh_light, so that
+# the "/sec" counter does not flicker every tick.
 var _treasury_display_epoch: int = -1
-# Кеш значения казны, показываемого в TopFoodLabel и в тултипе разбивки.
-# Оба потребителя ОБЯЗАНЫ показывать одно и то же значение: CityData.treasury
-# меняется каждым тиком потребления, а TopFoodLabel обновляется с интервалом
-# из настроек (см. _refresh_light). Кеш обновляется в _update_food_label
-# (рядом с записью в TopFoodLabel); тултип читает кеш, не CityData напрямую.
+# The cache of the treasury value shown in TopFoodLabel and in the breakdown tooltip.
+# Both consumers are REQUIRED to show the same value: CityData.treasury
+# changes on every consumption tick, and TopFoodLabel is updated with the interval
+# from the settings (see _refresh_light). The cache is updated in _update_food_label
+# (next to the write to TopFoodLabel); the tooltip reads the cache, not CityData directly.
 var _displayed_treasury: int = 0
 
 var active_tab = "resources"
 var tab_buttons = []
 
 var ui_helpers: Node
-var worker_manager: Node # прокидывается из main_map (см. set_worker_manager)
+var worker_manager: Node # it is passed from main_map (see set_worker_manager)
 var resources_tab: Node
 var buildings_tab: Node
 var tech_tree: Control
@@ -47,18 +47,18 @@ var trade_tab: Node
 
 var data_cache: Dictionary = {}
 
-# Последняя «эпоха» отображения ресурсов (см. CityData.resource_display_interval):
-# значения вкладки «Ресурсы» и верхней строки города обновляются только когда
-# эпоха изменилась, а не каждым тиком. Событийные пути (refresh при открытии,
-# refresh_light по смене назначений, update_food_label по тумблеру еды)
-# обновляются мгновенно и синхронизируют эпоху.
+# The last "era" of the resource display (see CityData.resource_display_interval):
+# the values of the "Resources" tab and of the top row of the city are updated only when
+# the era has changed, and not every tick. The event-driven paths (refresh on opening,
+# refresh_light on a change of the assignments, update_food_label on the food toggle)
+# are updated instantly and synchronise the era.
 var _display_epoch: int = -1
 
-# Отслеживание структурных изменений для лёгкого обновления (тик)
+# The tracking of the structural changes for a light refresh (a tick)
 var _cached_built_count: int = -1
 var _cached_research_id: String = ""
 
-# Тултипы (таймеры)
+# The tooltips (timers)
 var food_hover_timer: float = 0.0
 var build_hover_timer: float = 0.0
 var building_detail_hover_timer: float = 0.0
@@ -66,16 +66,16 @@ var building_detail_leave_timer: float = 0.0
 var building_detail_locked: bool = false
 var building_detail_locked_id: String = ""
 var building_detail_delay: float = 0.5
-# Ховер-таймер для тултипа разбивки казны (см. _process).
+# The hover timer for the treasury breakdown tooltip (see _process).
 var treasury_hover_timer: float = 0.0
-# Таймер grace при уходе курсора с метки/тултипа казны — защищает от
-# мерцания при переходе курсора с метки на тултип и обратно (как в тултипе
-# деталей здания, см. BUILDING_DETAIL_LEAVE_GRACE).
+# The grace timer on leaving the label/the treasury tooltip — protects against
+# the flickering when moving the cursor from the label to the tooltip and back (as in the tooltip
+# of the building details, see BUILDING_DETAIL_LEAVE_GRACE).
 var treasury_hover_leave_timer: float = 0.0
-# Тултип разбивки казны «залип»: игрок продержал курсор на метке задержку
-# (building_detail_delay) — панель зафиксирована на месте, и курсор можно
-# перевести на сам тултип. Снимается по grace-таймеру ухода (аналог
-# building_detail_locked у тултипа деталей здания).
+# The "stuck" treasury breakdown tooltip: the player held the cursor on the label for the delay
+# (building_detail_delay) — the panel is fixed in place, and the cursor can be
+# moved to the tooltip itself. It is removed by the grace timer of leaving (an analogue
+# of building_detail_locked in the tooltip of the building details).
 var treasury_locked: bool = false
 const TOOLTIP_DELAY: float = 0.5
 const BUILDING_DETAIL_LEAVE_GRACE: float = 0.35
@@ -86,35 +86,35 @@ signal closed()
 
 var building_panel
 
-# Кэш ссылки на BuildManager для подключения сигналов завершения строительства
+# The cache of the reference to BuildManager for connecting the signals of the construction completion
 var _cached_build_manager = null
 
 func set_building_detail_delay(value: float):
     building_detail_delay = maxf(0.0, value)
 
-# Прокидывает WorkerManager (из main_map) в городские вкладки: вкладке
-# «Ресурсы» он нужен для расчёта планового потребления (тултип ресурсов
-# и динамика с маркером «≈», см. resources_tab.gd).
+# Passes WorkerManager (from main_map) into the city tabs: the
+# "Resources" tab needs it to compute the planned consumption (the tooltip of the resources
+# and the dynamics with the "≈" marker, see resources_tab.gd).
 func set_worker_manager(wm: Node):
     worker_manager = wm
     if resources_tab != null:
         resources_tab.set_worker_manager(wm)
-    # Вкладке «Торговля» WorkerManager нужен для карточек внутренней
-    # торговли: он считает, кто и сколько потребляет (профессии +
-    # псевдо-профессия «Все жители»).
+    # The "Trade" tab needs WorkerManager for the cards of the internal
+    # trade: it computes who consumes how much (the professions +
+    # the pseudo-profession "All citizens").
     if trade_tab != null:
         trade_tab.set_worker_manager(wm)
 
 func _ready():
-    # Загружаем модули
+    # We load the modules
     ui_helpers = load("res://scripts/ui_helpers.gd").new()
     ui_helpers.setup(self, message_label)
     add_child(ui_helpers)
 
-    # Иконки кнопок вкладок (левый верхний угол) и раскладка панелей на всю
-    # ширину окна. CityUi имеет anchors_preset=0 и размер 0×0 (как в
-    # оригинальной сцене), поэтому панели позиционируются вручную, а при
-    # изменении размера окна раскладка пересчитывается заново.
+    # The icons of the tab buttons (the top left corner) and the layout of the panels over the whole
+    # width of the window. CityUi has anchors_preset=0 and the size 0×0 (as in
+    # the original scene), therefore the panels are positioned manually, and when
+    # the window size changes the layout is recalculated from scratch.
     _setup_tab_bar_icons()
     _layout_ui()
     get_viewport().size_changed.connect(_layout_ui)
@@ -139,9 +139,9 @@ func _ready():
     add_child(building_panel)
     building_panel.hide()
 
-    # Дерево технологий в стиле Civ: горизонтальная прокрутка, вертикальные
-    # колонки по «слоям зависимостей», стрелки от предка к наследнику.
-    # Создаём отдельный Control внутри TreeRoot, чтобы он заполнил панель.
+    # The technology tree in the Civ style: horizontal scrolling, vertical
+    # columns by the "dependency layers", arrows from the ancestor to the descendant.
+    # We create a separate Control inside TreeRoot, so that it fills the panel.
     tech_tree = load("res://scripts/tech_tree.gd").new()
     tech_tree.setup(
         $ContentPanel/TechnologiesPanel/TreeRoot,
@@ -158,14 +158,14 @@ func _ready():
     )
     add_child(trade_tab)
 
-    # Сигналы кнопок
+    # The signals of the buttons
     for btn in [resources_tab_button, buildings_tab_button, trade_tab_button, technologies_tab_button]:
         if not btn.pressed.is_connected(_on_tab_button_pressed):
             btn.pressed.connect(_on_tab_button_pressed.bind(btn))
     if not close_button_top.pressed.is_connected(_on_close_pressed):
         close_button_top.pressed.connect(_on_close_pressed)
 
-    # Прозрачность панелей
+    # The transparency of the panels
     $TabBarPanel.self_modulate = Color(1, 1, 1, 0.8)
     $RightPanel.self_modulate = Color(1, 1, 1, 0.8)
     $ContentPanel.self_modulate = Color(1, 1, 1, 0.8)
@@ -182,32 +182,32 @@ func _ready():
     if not CityData.city_updated.is_connected(_on_city_data_updated):
         CityData.city_updated.connect(_on_city_data_updated)
 
-    # Начальное значение кеша казны — первое же открытие тултипа должно
-    # показать актуальную казну, а не «0» из дефолта. Дальше кеш обновляется
-    # в _update_food_label на каждой ресурсной эпохе.
+    # The initial value of the treasury cache — the very first opening of the tooltip should
+    # show the current treasury, and not the "0" of the default. Further on the cache is updated
+    # in _update_food_label on every resource era.
     _displayed_treasury = CityData.treasury
 
-    # Ховер на метке «Казна: N» в верхней полосе — показ тултипа разбивки
-    # казны по источникам дохода/расхода. Подход polling + grace-таймер
-    # (см. building_detail_tooltip ниже) — он работает независимо от
-    # mouse_filter и сам корректно «переживает» переход курсора с метки на
-    # тултип.
+    # Hovering over the "Treasury: N" label in the top bar — showing the tooltip of the breakdown
+    # of the treasury by the sources of income/expense. The approach is polling + the grace timer
+    # (see building_detail_tooltip below) — it works independently of
+    # mouse_filter and correctly "survives" the transition of the cursor from the label to
+    # the tooltip.
 
-    # Казна в верхней полосе города обновляется через тиковый путь
-    # (city_updated → _refresh_light) с проверкой эпохи отображения ресурсов —
-    # синхронно с остальной верхней строкой и ресурсами вкладки «Ресурсы».
-    # Прямой сигнал treasury_changed здесь не нужен: доход внутреннего рынка
-    # меняет казну каждый тик, и без сдерживания верхняя полоса обновлялась
-    # бы каждый тик (мельтешение значений).
+    # The treasury in the top bar of the city is updated via the tick path
+    # (city_updated → _refresh_light) with a check of the resource display era —
+    # in sync with the rest of the top row and with the resources of the "Resources" tab.
+    # The direct signal treasury_changed is not needed here: the income of the internal market
+    # changes the treasury every tick, and without throttling the top bar would
+    # be updated every tick (the values would flicker).
 
-    # Население в верхней строке города («… | Население: N …») обновляется по
-    # событию (рост/гибель), не дожидаясь интервала отображения ресурсов.
+    # The population in the top row of the city ("… | Population: N …") is updated by
+    # the event (growth/death), without waiting for the resource display interval.
     if not CityData.population_changed.is_connected(_on_population_changed_label):
         CityData.population_changed.connect(_on_population_changed_label)
 
-    # Подключаем сигнал завершения строительства здания для показа сообщения
-    # в нижней панели CityUI (build_message сигнал выводит в HUD карты,
-    # который скрыт, когда открыт интерфейс города).
+    # We connect the signal of the completion of the building construction to show the message
+    # in the bottom panel of CityUI (the build_message signal goes to the map HUD,
+    # which is hidden when the city interface is open).
     var bm = _get_build_manager()
     if bm and not bm.build_building_completed.is_connected(_on_building_build_completed):
         bm.build_building_completed.connect(_on_building_build_completed)
@@ -218,8 +218,8 @@ func _get_build_manager():
         _cached_build_manager = main_map.get_node("BuildManager") if main_map and main_map.has_node("BuildManager") else null
     return _cached_build_manager
 
-# Обработчик завершения строительства здания: показывает сообщение
-# "Строительство <здание> завершено" в нижней панели CityUI.
+# The handler of the completion of the building construction: shows the message
+# "Construction of <building> complete" in the bottom panel of CityUI.
 func _on_building_build_completed(building_id: String, build_key: String):
     if ui_helpers and visible:
         var building_name = CityData.get_building_name(building_id)
@@ -247,9 +247,9 @@ func _update_data_cache():
     buildings_tab.update_data(data_cache)
 
 func refresh():
-    # Полное обновление: пересоздаём списки (открытие города, структурные изменения).
-    # Это событие (игрок открыл город / построено здание) — обновляем всё сразу
-    # и синхронизируем эпоху отображения ресурсов.
+    # A full refresh: we recreate the lists (opening the city, structural changes).
+    # This is an event (the player opened the city / a building was built) — we update everything at once
+    # and synchronise the era of the resource display.
     _update_data_cache()
     _cached_built_count = CityData.city_built_buildings.size()
     _cached_research_id = CityData.current_research_tech_id
@@ -257,21 +257,21 @@ func refresh():
     _display_epoch = CityData.resource_display_epoch
 
 func _refresh_light(force_resources := false):
-    # Лёгкое обновление: обновляем значения без пересоздания узлов.
-    # Это не сбрасывает тултипы (узлы, на которых висит курсор, сохраняются).
+    # A light refresh: we update the values without recreating the nodes.
+    # This does not reset the tooltips (the nodes on which the cursor hangs are preserved).
     #
-    # Значения ресурсов (запас, динамика, качество) и верхняя строка «Еда: N»
-    # обновляются с интервалом из настроек (CityData.resource_display_interval):
-    # тиковый путь (city_updated) ждёт наступления эпохи, событийные пути
-    # (force_resources=true) обновляются мгновенно.
+    # The resource values (the stock, the dynamics, the quality) and the top row "Food: N"
+    # are updated with the interval from the settings (CityData.resource_display_interval):
+    # the tick path (city_updated) waits for the era to come, the event-driven paths
+    # (force_resources=true) are updated instantly.
     if not visible:
         return
     _update_data_cache()
 
     if _needs_full_refresh():
-        # Структурные изменения (новое здание, начало/завершение исследования) —
-        # событие: обновляем сразу, включая значения ресурсов, и синхронизируем
-        # эпоху отображения.
+        # The structural changes (a new building, the start/completion of a research) —
+        # an event: we update at once, including the resource values, and synchronise the
+        # era of the display.
         _cached_built_count = CityData.city_built_buildings.size()
         _cached_research_id = CityData.current_research_tech_id
         _refresh_all()
@@ -282,42 +282,42 @@ func _refresh_light(force_resources := false):
         _display_epoch = CityData.resource_display_epoch
         resources_tab.update_values()
         _update_food_label()
-        # Карточки внутренней торговли обновляются с тем же интервалом из
-        # настроек: раньше они пересчитывались каждый тик, из-за чего мигали
-        # числа, а открытый тултип исчезал (состав списка не совпадал с
-        # подписью, и карточки пересоздавались целиком). Пересчёт ради
-        # невидимой вкладки — лишняя работа, поэтому только когда вкладка
-        # активна.
+        # The cards of the internal trade are updated with the same interval from
+        # the settings: previously they were recalculated every tick, which made the
+        # numbers flicker, and the open tooltip disappeared (the composition of the list
+        # did not match the label, and the cards were recreated entirely). A recalculation for the sake of
+        # an invisible tab is extra work, therefore only when the tab
+        # is active.
         if active_tab == "trade":
             trade_tab.update_values()
-        # На смене ресурсной эпохи обновляем открытый тултип разбивки казны
-        # свежими данными (плановый доход пересчитан, снимок расходов
-        # обновлён, см. CityData.tick_resource_display → rotate_treasury_window).
-        # keep_position=true: «залипшая» панель остаётся на месте — иначе
-        # live-update увёл бы её из-под курсора.
+        # On a change of the resource era we update the open tooltip of the treasury breakdown
+        # with the fresh data (the planned income is recalculated, the snapshot of the expenses
+        # is updated, see CityData.tick_resource_display → rotate_treasury_window).
+        # keep_position=true: the "stuck" panel stays in place — otherwise
+        # the live-update would drag it out from under the cursor.
         if ui_helpers and is_instance_valid(ui_helpers) \
                 and ui_helpers.treasury_tooltip_panel \
                 and ui_helpers.treasury_tooltip_panel.visible:
             _show_treasury_tooltip(get_viewport().get_mouse_position(), true)
             _treasury_display_epoch = CityData.resource_display_epoch
-        # Тултип разбора качества в карточке «Торговли» — по тому же
-        # правилу: остаётся на месте, содержимое обновляется.
+        # The quality breakdown tooltip in the "Trade" card — by the same
+        # rule: it stays in place, the contents are updated.
         if active_tab == "trade" and trade_tab != null \
                 and trade_tab.has_method("refresh_open_tooltip"):
             trade_tab.refresh_open_tooltip()
     buildings_tab.update_built_status()
-    # Открытый тултип разбора качества карточки обновляем свежими данными
-    # на смене эпохи (см. trade_tab.refresh_open_tooltip): панель остаётся
-    # под курсором, но её числа перестают устаревать.
-    # Прогресс исследования обновляем только когда вкладка Технологии
-    # активна — иначе лишняя работа на каждом тике. Стоимость минимальна,
-    # но привычка «не делать лишнего, если не нужно» важна.
+    # We update the open quality breakdown tooltip of the card with the fresh data
+    # on a change of the era (see trade_tab.refresh_open_tooltip): the panel stays
+    # under the cursor, but its numbers stop becoming outdated.
+    # We update the research progress only when the Technologies tab
+    # is active — otherwise it is extra work on every tick. The cost is minimal,
+    # but the habit of "not doing anything extra if it is not needed" matters.
     if active_tab == "technologies":
         tech_tree.update_progress()
 
 func _needs_full_refresh() -> bool:
-    # Полное обновление требуется только при структурных изменениях:
-    # постройка здания или начало/завершение исследования.
+    # A full refresh is required only on structural changes:
+    # the construction of a building or the start/completion of a research.
     if CityData.city_built_buildings.size() != _cached_built_count:
         return true
     if CityData.current_research_tech_id != _cached_research_id:
@@ -331,9 +331,9 @@ func show_technologies_tab():
     _switch_tab("technologies")
 
 func refresh_light():
-    # Публичный метод для лёгкого обновления при изменении назначений.
-    # Смена назначений — действие игрока: значения ресурсов обновляются
-    # мгновенно, не дожидаясь интервала отображения (force_resources=true).
+    # A public method for a light refresh on a change of the assignments.
+    # A change of the assignments is an action of the player: the resource values are updated
+    # instantly, without waiting for the display interval (force_resources=true).
     _refresh_light(true)
 
 func _refresh_all():
@@ -350,10 +350,10 @@ func _switch_tab(tab_id: String):
     trade_panel.visible = (tab_id == "trade")
     technologies_panel.visible = (tab_id == "technologies")
 
-    # Правая панель «Построенные здания» показывается только на вкладках
-    # «Ресурсы» и «Здания» (когда окно делится поровну); на «Торговле» и
-    # «Технологиях» контент занимает всю ширину окна. Расчёт смещений — в
-    # общем _layout_ui().
+    # The right panel "Built buildings" is shown only on the tabs
+    # "Resources" and "Buildings" (when the window is divided in half); on "Trade" and
+    # "Technologies" the content occupies the whole width of the window. The calculation of the offsets is in
+    # the common _layout_ui().
     _layout_ui()
 
     if ui_helpers:
@@ -367,8 +367,8 @@ func _switch_tab(tab_id: String):
     elif tab_id == "technologies":
         tech_tree.refresh()
     elif tab_id == "trade":
-        # Состав карточек зависит от назначений и населения, поэтому при
-        # открытии вкладки список пересобирается целиком.
+        # The composition of the cards depends on the assignments and the population, therefore on
+        # opening the tab the list is rebuilt entirely.
         trade_tab.refresh()
 
     ui_helpers.set_message("")
@@ -414,11 +414,11 @@ func _update_food_label():
             total_prod += prod_rates.get(pid, 0)
             total_cons += cons_rates.get(pid, 0)
 
-    # Циклические производства/потребления (улучшения с production_interval,
-    # профессии с интервалом) выдают/списывают еду «пачками», поэтому в тик
-    # без события факт равен 0. Чтобы метка не мигала «+0», при нулевом факте
-    # показываем среднюю скорость из плановых карт (как динамика «≈» на
-    # вкладке «Ресурсы»).
+    # The cyclic productions/consumptions (the improvements with production_interval,
+    # the professions with an interval) issue/write off the food in "batches", therefore in a tick
+    # without an event the fact equals 0. So that the label does not flicker "+0", with a zero fact
+    # we show the average rate from the planned maps (as the "≈" dynamics on
+    # the "Resources" tab).
     var prod_mark := ""
     var cons_mark := ""
     if total_prod <= 0:
@@ -432,23 +432,23 @@ func _update_food_label():
 
     var food_str = tr("Food: %d [+%d%s / -%d%s]") % [food_sum, total_prod, prod_mark, total_cons, cons_mark]
     var pop_str = tr("Population: %d (free: %d)") % [CityData.total_population, CityData.idle_population]
-    # Захватываем значение казны в кеш — этот же кеш читает тултип разбивки
-    # казны (см. _show_treasury_tooltip). Синхронизация важна, иначе при
-    # интервале отображения > 1 сек метка TopFoodLabel показывает старое
-    # значение, а тултип — каждый тик свежее (визуальный регресс «убегает
-    # вперёд», см. developer_diary).
+    # We capture the value of the treasury in the cache — this same cache is read by the breakdown tooltip
+    # of the treasury (see _show_treasury_tooltip). The synchronisation is important, otherwise with
+    # a display interval > 1 sec the TopFoodLabel label shows the old
+    # value, and the tooltip — a fresher one every tick (a visual regression "runs
+    # ahead", see developer_diary).
     _displayed_treasury = CityData.treasury
-    # Динамика прибыли/расходов казны — по тем же данным окна, что и тултип
-    # разбивки (CityData.get_treasury_flow_text), но в секунду. Ровно тот же
-    # текст, что в HUD-метке карты: обе строки собираются из одного метода,
-    # поэтому разойтись не могут.
+    # The dynamics of the profit/expense of the treasury — by the same window data as the breakdown
+    # tooltip (CityData.get_treasury_flow_text), but per second. Exactly the same
+    # text as in the HUD label of the map: both rows are assembled from one method,
+    # therefore they cannot diverge.
     var treasury_str = tr("Treasury: %d %s") % [
         _displayed_treasury, CityData.get_treasury_flow_text()
     ]
 
-    # TopFoodLabel — HBoxContainer с тремя дочерними метками
-    # (FoodLabel/PopLabel/TreasuryLabel), см. сцену CityUI.tscn. Разделитель
-    # «|» рисуется между ними отдельной меткой в сцене.
+    # TopFoodLabel — an HBoxContainer with three child labels
+    # (FoodLabel/PopLabel/TreasuryLabel), see the scene CityUI.tscn. The "|" separator
+    # is drawn between them by a separate label in the scene.
     if top_food_value_label:
         top_food_value_label.text = food_str
     if top_pop_value_label:
@@ -456,18 +456,18 @@ func _update_food_label():
     if top_treasury_value_label:
         top_treasury_value_label.text = treasury_str
 
-# Курсор сейчас над меткой казны — именно и только это запускает
-# ховер-таймер «залипания» тултипа разбивки казны.
+# The cursor is now over the treasury label — exactly and only this starts
+# the hover timer of "sticking" the treasury breakdown tooltip.
 func _is_treasury_label_hovered(mouse_pos: Vector2) -> bool:
     if not visible:
         return false
     return is_instance_valid(top_treasury_value_label) \
         and top_treasury_value_label.get_global_rect().has_point(mouse_pos)
 
-# Курсор сейчас над меткой казны ИЛИ над активным (в т.ч. «залипшим»)
-# тултипом разбивки казны. Если да — тултип удерживается открытым, ухода с
-# grace-таймером не происходит (это нужно, чтобы при переходе курсора с метки
-# на тултип тултип не моргал). Аналогично логике building_detail_tooltip ниже.
+# The cursor is now over the treasury label OR over the active (including "stuck")
+# treasury breakdown tooltip. If yes — the tooltip is kept open, and there is no leaving via
+# the grace timer (this is needed so that when moving the cursor from the label to
+# the tooltip the tooltip does not blink). Analogously to the logic of building_detail_tooltip below.
 func _is_treasury_hovered(mouse_pos: Vector2) -> bool:
     if _is_treasury_label_hovered(mouse_pos):
         return true
@@ -478,22 +478,22 @@ func _is_treasury_hovered(mouse_pos: Vector2) -> bool:
         return true
     return false
 
-# Показывает тултип разбивки казны под курсором. Данные — из worker_manager
-# (плановый доход по источникам) и CityData (снимок расходов за окно).
-# Вызывается из _process по истечении building_detail_delay (залипание) и при
-# смене эпохи отображения ресурсов (см. _refresh_light) — тогда с
-# keep_position=true: панель остаётся на месте, обновляется только содержимое.
-# Возвращает true, если тултип в итоге видим: пустая разбивка скрывает
-# панель, и вызывающий не должен считать тултип «залипшим».
+# Shows the breakdown tooltip of the treasury under the cursor. The data is from worker_manager
+# (the planned income by sources) and CityData (a snapshot of the expenses over the window).
+# It is called from _process after building_detail_delay has expired (the sticking) and on
+# a change of the resource display era (see _refresh_light) — then with
+# keep_position=true: the panel stays in place, only the contents are updated.
+# It returns true if the tooltip is visible in the end: an empty breakdown hides
+# the panel, and the caller must not consider the tooltip "stuck".
 func _show_treasury_tooltip(mouse_pos: Vector2, keep_position: bool = false) -> bool:
     if not (ui_helpers and is_instance_valid(ui_helpers) and worker_manager):
         return false
     var planned_income: Dictionary = {}
     if worker_manager.has_method("get_actual_treasury_income_map"):
         planned_income = worker_manager.get_actual_treasury_income_map()
-    # Берём _displayed_treasury (кеш TopFoodLabel), а не CityData.treasury —
-    # иначе в тултипе будет видно «свежее» значение казны, обгоняющее метку
-    # TopFoodLabel на 1+ тиков потребления (см. developer_diary).
+    # We take _displayed_treasury (the cache of TopFoodLabel), and not CityData.treasury —
+    # otherwise the tooltip would show a "fresh" value of the treasury, getting ahead of the
+    # TopFoodLabel label by 1+ consumption ticks (see developer_diary).
     ui_helpers.show_treasury_tooltip(
         mouse_pos,
         _displayed_treasury,
@@ -505,9 +505,9 @@ func _show_treasury_tooltip(mouse_pos: Vector2, keep_position: bool = false) -> 
     var panel = ui_helpers.treasury_tooltip_panel
     return is_instance_valid(panel) and panel.visible
 
-# Суммарная посекундная скорость записей плана (производства или потребления)
-# по продуктам из пула еды. Формат карт — product_id -> { источник -> { amount,
-# interval, ... } }; interval = 0 — «за тик» (tick = SIMULATION_TICK = 1 сек).
+# The total per-second rate of the entries of the plan (production or consumption)
+# by the products from the food pool. The format of the maps — product_id -> { source -> { amount,
+# interval, ... } }; interval = 0 — "per tick" (tick = SIMULATION_TICK = 1 sec).
 func _planned_food_per_sec(map: Dictionary, pool: Dictionary) -> int:
     var total := 0.0
     for pid in pool:
@@ -523,17 +523,17 @@ func _planned_food_per_sec(map: Dictionary, pool: Dictionary) -> int:
                 total += amount
     return int(round(total))
 
-    # Обновляем метку еды на вкладке «Здания» (без населения)
+    # We update the food label on the "Buildings" tab (without the population)
     if buildings_tab.has_method("update_food_label"):
         buildings_tab.update_food_label()
 
-    # Дополнительные ресурсы теперь отображаются в панели деталей здания
+    # The additional resources are now displayed in the panel of the building details
 
 func update_food_label():
     _update_food_label()
 
-# Население изменилось (рост/гибель) — верхняя строка города показывает его
-# рядом с едой и казной; обновляем сразу, мимо интервала отображения ресурсов.
+# The population has changed (growth/death) — the top row of the city shows it
+# next to the food and the treasury; we update it at once, bypassing the resource display interval.
 func _on_population_changed_label(_new_pop: int):
     _update_food_label()
 
@@ -555,9 +555,9 @@ func _on_research_requested(tech_id: String):
 func _process(delta):
     var mouse_pos = get_viewport().get_mouse_position()
 
-    # Тултип для переключателей еды (только на вкладке «Ресурсы» — иначе
-    # скрытые тумблеры «просачиваются» в другие вкладки через get_global_rect,
-    # который возвращает координаты даже у скрытых панелей).
+    # The tooltip for the food toggles (only on the "Resources" tab — otherwise the
+    # hidden toggles "leak" into the other tabs through get_global_rect,
+    # which returns the coordinates even for hidden panels).
     var hovered_food = false
     if resources_panel.visible:
         for pid in resources_tab.get_food_toggles():
@@ -575,7 +575,7 @@ func _process(delta):
         food_hover_timer = 0.0
         ui_helpers.tooltip_panel.visible = false
 
-    # Тултип для кнопки "Построить"
+    # The tooltip for the "Build" button
     var hovered_build = false
     if buildings_panel.visible and buildings_tab.build_button:
         if buildings_tab.build_button.get_global_rect().has_point(mouse_pos):
@@ -604,8 +604,8 @@ func _process(delta):
                         hint += tr("Available work: %.0f/sec (%d citizens)") % [labor, CityData.total_population]
                     else:
                         hint = tr("Build instantly (free)")
-                    # Информация о лимите одновременных строек (здания + улучшения).
-                    # Лимит равен общему числу жителей.
+                    # The information about the limit of simultaneous builds (buildings + improvements).
+                    # The limit equals the total number of citizens.
                     var construction_count = CityData.building_construction.size()
                     var main_map = get_tree().root.find_child("MainMap", true, false)
                     var bm = main_map.get_node("BuildManager") if main_map and main_map.has_node("BuildManager") else null
@@ -626,7 +626,7 @@ func _process(delta):
         build_hover_timer = 0.0
         ui_helpers.build_tooltip_panel.visible = false
 
-    # Тултип для прогресс-баров строящихся зданий (обновляется в реальном времени)
+    # The tooltip for the progress bars of the buildings under construction (updated in real time)
     var hovered_bar = {}
     if buildings_panel.visible:
         hovered_bar = buildings_tab.get_hovered_construction_bar(mouse_pos)
@@ -639,8 +639,8 @@ func _process(delta):
     else:
         ui_helpers.hide_progress_tooltip()
 
-    # Тултип деталей здания (вкладка «Здания»): показываем при наведении
-    # на любую кнопку здания; содержимое собирается в buildings_tab.
+    # The building details tooltip (the "Buildings" tab): we show it on hovering
+    # over any building button; the contents are assembled in buildings_tab.
     var hovered_detail = false
     var hovered_detail_button = false
     if buildings_panel.visible and buildings_tab.has_method("get_hovered_button"):
@@ -677,14 +677,14 @@ func _process(delta):
         building_detail_locked_id = ""
         ui_helpers.hide_building_detail_tooltip()
 
-    # Тултип разбивки казны по источникам дохода/расхода: polling + залипание
-    # (тот же паттерн, что у тултипа деталей здания выше, и та же задержка
-    # building_detail_delay). Пока курсор на метке и тултип ещё не залип —
-    # копим задержку и показываем ОДИН раз; дальше панель стоит на месте, и
-    # курсор можно перевести на сам тултип. Пустая разбивка тултип не
-    # показывает — тогда «залипания» нет и опрос продолжается (доход может
-    # появиться на следующем тике, без перевода курсора).
-    # live-update контента — в _refresh_light (с keep_position).
+    # The breakdown tooltip of the treasury by the sources of income/expense: polling + the sticking
+    # (the same pattern as the building details tooltip above, and the same delay
+    # building_detail_delay). While the cursor is on the label and the tooltip is not yet stuck —
+    # we accumulate the delay and show it ONCE; further on the panel stands in place, and
+    # the cursor can be moved onto the tooltip itself. An empty breakdown does not show
+    # the tooltip — then there is no "sticking" and the polling continues (the income may
+    # appear on the next tick, without moving the cursor).
+    # The live-update of the contents is in _refresh_light (with keep_position).
     var hovered_treasury := _is_treasury_hovered(mouse_pos)
     var hovered_treasury_label := _is_treasury_label_hovered(mouse_pos)
     if hovered_treasury:
@@ -713,7 +713,7 @@ func _input(event: InputEvent):
     if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
         var click_pos = event.global_position
 
-        # Если панель здания открыта — её обработчик уже закрыл её, выходим
+        # If the building panel is open — its handler has already closed it, we exit
         if building_panel and building_panel.visible:
             return
 
@@ -743,9 +743,9 @@ func _close_ui():
         ui_helpers.hide_flow_tooltip()
         ui_helpers.hide_built_tooltip()
         ui_helpers.hide_treasury_tooltip()
-    # Сброс состояния «залипания» казны: при следующем открытии города тултип
-    # должен появляться заново по задержке, а не «всплывать» уже открытым
-    # (панель живёт вместе с CityUi и наследует её скрытие).
+    # A reset of the state of "sticking" of the treasury: on the next opening of the city the tooltip
+    # should appear anew after the delay, and not "pop up" already open
+    # (the panel lives together with CityUi and inherits its hiding).
     treasury_hover_timer = 0.0
     treasury_hover_leave_timer = 0.0
     treasury_locked = false
@@ -758,9 +758,9 @@ func close_city():
     _close_ui()
 
 func _position_close_button_top() -> void:
-    # Закрепляет CloseButtonTop в правом верхнем углу viewport. Сделано
-    # вручную, потому что CityUi имеет anchors_preset=0 (размер 0×0) и
-    # anchor_right=1.0 у кнопки не дал бы привязки к краю экрана.
+    # It pins CloseButtonTop to the top right corner of the viewport. It is done
+    # manually, because CityUi has anchors_preset=0 (size 0×0) and
+    # anchor_right=1.0 of the button would not give a binding to the edge of the screen.
     if close_button_top == null:
         return
     var w: float = get_viewport_rect().size.x
@@ -772,7 +772,7 @@ func _position_close_button_top() -> void:
     close_button_top.position = Vector2(w - 37, 0)
 
 func _setup_tab_bar_icons() -> void:
-    # Иконки для маленьких кнопок вкладок в левом верхнем углу.
+    # The icons for the small tab buttons in the top left corner.
     var icons = {
         resources_tab_button: "res://icons/resources/products/bread.png",
         buildings_tab_button: "res://icons/buildings/market.png",
@@ -791,11 +791,11 @@ func _setup_tab_bar_icons() -> void:
             btn.add_theme_constant_override("icon_max_height", 32)
 
 func _layout_ui() -> void:
-    # Раскладка панелей интерфейса города на всю ширину окна.
+    # The layout of the panels of the city interface over the whole width of the window.
     var w: float = get_viewport_rect().size.x
     var h: float = get_viewport_rect().size.y
 
-    # Вкладки — слева сверху в верхней полосе на всю ширину окна.
+    # The tabs — at the top left in the top bar over the whole width of the window.
     var tab_bar_panel = $TabBarPanel
     if tab_bar_panel:
         tab_bar_panel.offset_left = 0
@@ -806,14 +806,14 @@ func _layout_ui() -> void:
     if tab_bar:
         tab_bar.position = Vector2(8, 8)
 
-    # Нижняя панель сообщений — на всю ширину окна.
+    # The bottom panel of messages — over the whole width of the window.
     $BottomPanel.offset_left = 0
     $BottomPanel.offset_right = w
     $BottomPanel.offset_top = h - 50.0
     $BottomPanel.offset_bottom = h
 
-    # Правая панель «Построенные здания» — на вкладках «Ресурсы» и «Здания»
-    # (окно делится на две равные части), на остальных вкладках скрыта.
+    # The right panel "Built buildings" — on the tabs "Resources" and "Buildings"
+    # (the window is divided into two equal parts), on the other tabs it is hidden.
     var show_right: bool = (active_tab == "resources" or active_tab == "buildings")
     if $RightPanel.visible != show_right:
         $RightPanel.visible = show_right
@@ -832,5 +832,5 @@ func _layout_ui() -> void:
         $ContentPanel.offset_top = 50.0
         $ContentPanel.offset_bottom = h - 50.0
 
-    # Кнопка закрытия — в правом верхнем углу поверх всего.
+    # The close button — in the top right corner over everything.
     _position_close_button_top()
