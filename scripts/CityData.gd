@@ -78,7 +78,7 @@ var last_research_messages: Array = []
 # debug menu (the item "Toggle the consumption of the food"), it is NOT saved to the save —
 # this is a runtime bypass toggle for the debugging, and not a game state.
 var total_population: int = 1
-var idle_population: int = 1 # свободные жители (не занятые нигде)
+var idle_population: int = 1 # the free citizens (not busy anywhere)
 # The name of the city — it is chosen by the player in the dialog at the start of a new game.
 # An empty string = the name is not set yet (then it is not drawn on the map).
 var city_name: String = ""
@@ -1765,7 +1765,7 @@ func _complete_tech_instantly(tech_id: String) -> bool:
     last_research_messages = spawn_resource_on_tech_research(tech_id)
     emit_signal("research_completed", tech_id)
     emit_signal("city_updated")
-    print("Мгновенно изучена (дебаг): ", tech_data.get("name", tech_id))
+    print("Instantly learned (debug): ", tech_data.get("name", tech_id))
     return true
 
 # The actual rate of the science of the city (points/sec) — a direct sum of the sources:
@@ -2403,23 +2403,23 @@ func request_build(building_id: String) -> bool:
         return false
     # The building must be unlocked by a learned technology
     if not is_building_unlocked(building_id):
-        print("Здание недоступно: ", bdata.get("name", building_id))
+        print("The building is unavailable: ", bdata.get("name", building_id))
         return false
     var additional_req_check = check_building_additional_req(building_id)
     if not additional_req_check["ok"]:
-        print("Не выполнено условие для постройки ",
+        print("The condition for the construction is not met ",
             bdata.get("name", building_id), ": ", additional_req_check["reason"])
         return false
-    # Списываем additional_cost (если есть) — атомарно, до старта стройки.
-    # Поддерживает массив пачек (AND-логика) и групповые ключи (@xxx).
+    # We write off the additional_cost (if there is one) — atomically, before the start of the build.
+    # It supports the array of batches (the AND logic) and the group keys (@xxx).
     var cost_check = consume_additional_cost(bdata)
     if not cost_check["ok"]:
-        print("Не хватает ресурсов для постройки ", bdata.get("name", building_id), ": ", cost_check.get("missing", []))
+        print("There are not enough resources for the construction ", bdata.get("name", building_id), ": ", cost_check.get("missing", []))
         return false
     var work_cost = bdata.get("work_cost", 0)
     # The common limit of the simultaneous builds (the buildings + the improvements) is equal to the total number of the citizens.
-    # При включённом «Игнорировать требования строительства» лимит не применяется —
-    # здания строятся мгновенно и не попадают в очередь строек.
+    # With "Ignore building requirements" enabled the limit does not apply —
+    # the buildings are built instantly and do not enter the queue of the builds.
     if work_cost > 0 and not ignore_build_requirements:
         var main_map = get_tree().root.find_child("MainMap", true, false)
         var bm = main_map.get_node("BuildManager") if main_map and main_map.has_node("BuildManager") else null
@@ -2427,16 +2427,16 @@ func request_build(building_id: String) -> bool:
         if bm:
             total_active = bm.get_total_active_builds()
         if total_active >= total_population:
-            print("Можно строить не более %d зданий или улучшений одновременно (лимит = число жителей)" % total_population)
+            print("At most %d buildings or improvements can be built at the same time (the limit = the number of the citizens)" % total_population)
             return false
-    # Строительство зданий теперь требует труд, а не еду. При включённом
-    # «Игнорировать требования строительства» даже здания с work_cost > 0
-    # строятся мгновенно (флаг CityData.ignore_build_requirements).
+    # The construction of the buildings now requires the labour, and not the food. With
+    # "Ignore building requirements" enabled even the buildings with work_cost > 0
+    # are built instantly (the flag CityData.ignore_build_requirements).
     if work_cost <= 0 or ignore_build_requirements:
-        # Если стоимость 0 (например, ручная мельница), строим мгновенно
+        # If the cost is 0 (for example, a hand mill), we build instantly
         city_built_buildings.append({"id": building_id, "slots": _auto_assign_slots(building_id)})
 
-        # Автоматически назначаем горожанина на новое здание, если есть свободные
+    # We automatically assign a citizen to the new building, if there are free ones
         var townsfolk_map = get_tree().root.find_child("MainMap", true, false)
         if townsfolk_map and townsfolk_map.has_node("TownsfolkManager"):
             var tm = townsfolk_map.get_node("TownsfolkManager")
@@ -2445,13 +2445,13 @@ func request_build(building_id: String) -> bool:
         emit_signal("city_updated")
         return true
 
-    # Для зданий с work_cost > 0 запускаем стройку через build_manager
+    # For the buildings with work_cost > 0 we start the build through build_manager
     var main_map = get_tree().root.find_child("MainMap", true, false)
     if main_map and main_map.has_node("BuildManager"):
         var bm = main_map.get_node("BuildManager")
         var build_key = bm.start_building_build(building_id)
         if build_key != "":
-            # Сохраняем стройку в отдельный словарь, здание появится в городе только после завершения
+    # We store the build in a separate dictionary, the building will appear in the city only after the completion
             building_construction[build_key] = {
                 "building_id": building_id,
                 "build_key": build_key,
@@ -2462,7 +2462,7 @@ func request_build(building_id: String) -> bool:
             return true
         return false
 
-    # Если build_manager недоступен, строим мгновенно (fallback)
+    # If build_manager is unavailable, we build instantly (fallback)
     city_built_buildings.append({"id": building_id, "slots": _auto_assign_slots(building_id)})
     if main_map and main_map.has_node("TownsfolkManager"):
         var tm2 = main_map.get_node("TownsfolkManager")
@@ -2470,11 +2470,11 @@ func request_build(building_id: String) -> bool:
     emit_signal("city_updated")
     return true
 
-# Автоназначение рецептов на слоты при постройке здания:
-# 1. Берём default_recipes здания
-# 2. Назначаем на слоты по порядку, без повторения
-# 3. Если слотов больше, чем рецептов — остальные получают "empty"
-# 4. Если рецептов больше, чем слотов — лишние просто не помещаются
+    # The auto-assignment of the recipes to the slots on the construction of the building:
+    # 1. We take the default_recipes of the building
+    # 2. We assign them to the slots in order, without a repetition
+    # 3. If there are more slots than the recipes — the rest get "empty"
+    # 4. If there are more recipes than the slots — the extra ones simply do not fit
 func _auto_assign_slots(building_id: String) -> Array:
     var result = []
     var bdata = null
@@ -2495,8 +2495,8 @@ func _auto_assign_slots(building_id: String) -> Array:
             result.append("empty")
     return result
 
-# Возвращает true, если все слоты здания пусты (рецепт "Пусто" или "").
-# Используется для отображения статуса "простаивает".
+# Returns true, if all the slots of the building are empty (the recipe "Empty" or "").
+# It is used for the display of the status "idle".
 func are_all_slots_empty(b_index: int) -> bool:
     if b_index < 0 or b_index >= city_built_buildings.size():
         return false
@@ -2509,8 +2509,8 @@ func are_all_slots_empty(b_index: int) -> bool:
             return false
     return true
 
-# Проверяет, может ли рецепт исполняться в указанном здании.
-# produced_in поддерживает массив значений; "*" означает "в любом здании" (пустой рецепт).
+# Checks whether the recipe can be executed in the specified building.
+# produced_in supports an array of values; "*" means "in any building" (the empty recipe).
 func can_craft_in(craft_id: String, building_id: String) -> bool:
     var recipe = null
     for c in GameData.crafts:
@@ -2521,7 +2521,7 @@ func can_craft_in(craft_id: String, building_id: String) -> bool:
         return false
 
     var produced_in = recipe.get("produced_in", [])
-    # Обратная совместимость: если produced_in — строка, приводим к массиву
+    # The backward compatibility: if produced_in is a string, we bring it to an array
     if produced_in is String:
         produced_in = [produced_in]
 
@@ -2554,11 +2554,11 @@ func add_plant(plant_id: String):
 func is_product_available(product_id: String) -> bool:
     return _is_product_available(product_id)
 
-# Возвращает итоговый множитель производства для улучшения imp_id.
-# has_fresh_water — есть ли доступ к пресной проточной воде на гексе.
-# terrain_id — тип местности гекса (для модификаторов по местности,
-#   например, асфальтовое озеро даёт x2 к битуму).
-# resource_id — id ресурса на гексе (для модификаторов по местности).
+# Returns the total multiplier of the production for the improvement imp_id.
+# has_fresh_water is whether there is access to the fresh running water on the hex.
+# terrain_id is the type of the terrain of the hex (for the modifiers by the terrain,
+#   for example, the asphalt lake gives x2 to the bitumen).
+# resource_id is the id of the resource on the hex (for the modifiers by the terrain).
 func get_improvement_production_multiplier(imp_id: String, has_fresh_water: bool,
         terrain_id: String = "", resource_id: String = "") -> float:
     var multiplier = 1.0
@@ -2566,17 +2566,17 @@ func get_improvement_production_multiplier(imp_id: String, has_fresh_water: bool
         multiplier *= mod.get("multiplier", 1.0)
     return multiplier
 
-# Возвращает список активных модификаторов производства для улучшения imp_id.
-# Каждый элемент: { "label": String, "multiplier": float }
-# terrain_id — тип местности гекса (для модификаторов по местности).
-# resource_id — id ресурса на гексе (для модификаторов по местности).
+# Returns the list of the active production modifiers for the improvement imp_id.
+# Each element: { "label": String, "multiplier": float }
+# terrain_id is the type of the terrain of the hex (for the modifiers by the terrain).
+# resource_id is the id of the resource on the hex (for the modifiers by the terrain).
 func get_improvement_production_modifiers(imp_id: String, has_fresh_water: bool,
         terrain_id: String = "", resource_id: String = "") -> Array:
     var result = []
     if imp_id == null or imp_id == "":
         return result
 
-    # Модификатор доступа к пресной проточной воде
+    # The modifier of the access to the fresh running water
     if has_fresh_water:
         var fw = GameData.modifiers.get("fresh_water", {})
         var multipliers = fw.get("production_multiplier", {})
@@ -2588,11 +2588,11 @@ func get_improvement_production_modifiers(imp_id: String, has_fresh_water: bool,
                     "multiplier": m
                 })
 
-    # Модификаторы по типу местности (terrain_modifiers).
-    # Применяются, когда на гексе с указанным terrain_id добывается
-    # указанный resource_id (через улучшение). Например, битум на
-    # асфальтовом озере (asphalt_lake) даёт x2 к производству.
-    # См. data/modifiers.json, блок "terrain_modifiers".
+    # The modifiers by the type of the terrain (terrain_modifiers).
+    # They are applied, when the specified resource_id is extracted on a hex
+    # with the specified terrain_id (through an improvement). For example, the bitumen on
+    # the asphalt lake (asphalt_lake) gives x2 to the production.
+    # See data/modifiers.json, the block "terrain_modifiers".
     if terrain_id != "" and resource_id != "":
         for tm in GameData.modifiers.get("terrain_modifiers", []):
             if tm.get("terrain_id", "") != terrain_id:
@@ -2607,7 +2607,7 @@ func get_improvement_production_modifiers(imp_id: String, has_fresh_water: bool,
                     "multiplier": m
                 })
 
-    # Модификаторы от изученных технологий
+    # The modifiers from the learned technologies
     for tm in GameData.modifiers.get("tech_modifiers", []):
         var tech_id = tm.get("tech_id", "")
         if tech_id == "" or not is_tech_unlocked(tech_id):
@@ -2618,8 +2618,8 @@ func get_improvement_production_modifiers(imp_id: String, has_fresh_water: bool,
                 tech_name = t["name"]
                 break
 
-        # Универсальный формат: "production_multiplier": { "<imp_id>": 1.05 }
-        # (по аналогии с бонусом от пресной воды).
+    # The universal format: "production_multiplier": { "<imp_id>": 1.05 }
+    # (by analogy with the bonus of the fresh water).
         var multipliers = tm.get("production_multiplier", {})
         if multipliers.has(imp_id):
             var m = float(multipliers[imp_id])
@@ -2629,7 +2629,7 @@ func get_improvement_production_modifiers(imp_id: String, has_fresh_water: bool,
                     "multiplier": m
                 })
 
-        # Старый формат с полем "modifiers" (target == "<imp_id>_production").
+    # The obsolete format with the field "modifiers" (target == "<imp_id>_production").
         for mod in tm.get("modifiers", []):
             var target = mod.get("target", "")
             if target != imp_id + "_production":
