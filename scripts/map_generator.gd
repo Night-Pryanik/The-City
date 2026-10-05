@@ -2,40 +2,40 @@
 @tool
 extends Node
 
-# Минимальное количество СВОБОДНЫХ (без ресурса) гексов каждого типа местности,
-# которое должно оставаться внутри Кольца Влияния после размещения всех ресурсов.
-# Гарантирует, что у игрока всегда будет достаточно места для постройки
-# нескольких ферм/пастбищ одного ресурса (например, киноа растёт только
-# в горах — нужно ≥2 свободных горных гекса, чтобы построить ≥2 фермы).
+# The minimum number of FREE (without a resource) hexes of each terrain type,
+# which must remain inside the Influence Ring after the placement of all the resources.
+# It guarantees that the player will always have enough space to build
+# several farms/pastures of one resource (for example, quinoa grows only
+# in the mountains — at least 2 free mountain hexes are needed to build at least 2 farms).
 const FREE_TERRAIN_HEXES := 2
 
-# Порог «избыточности» типа местности: если какого-то типа в Кольце Влияния
-# больше этого значения, его свободные гексы можно конвертировать
-# в недостающие типы.
+# The threshold of the "excess" of a terrain type: if there are more than this
+# number of a type inside the Influence Ring, its free hexes can be converted
+# into the missing types.
 const OVER_REP_THRESHOLD := 3
 
-# Радиус «безопасного двора» вокруг города: все гексы в этом радиусе
-# принудительно становятся равниной (plain). Покров генерируется как у
-# обычной равнины (могут появиться леса), чтобы двор не выглядел голым.
-# Гарантирует, что у города всегда есть свободное проходимое пространство
-# для стартовой застройки и что город не «утонет» в озере. Применяется
-# ПОСЛЕ размещения уникальных террейнов и ДО генерации покрова/ресурсов.
+# The radius of the "safe yard" around the city: all the hexes within this radius
+# forcibly become a plain (plain). The cover is generated as that of
+# an ordinary plain (forests may appear), so that the yard does not look bare.
+# It guarantees that the city always has a free passable space
+# for the starting construction and that the city does not "sink" in a lake. It is applied
+# AFTER the placement of the unique terrains and BEFORE the generation of the cover/resources.
 const PLAIN_ZONE_RADIUS := 2
 
-# Радиус, в котором ЗАПРЕЩАЕТСЯ размещать центры Вороного непроходимых
-# типов местности (move_cost >= 999, например озёра). Благодаря свойству
-# диаграммы Вороного это математически гарантирует, что в этой области
-# не может появиться непроходимый террейн («утопленный двор» вокруг города).
+# The radius within which placing the Voronoi centres of impassable
+# terrain types (move_cost >= 999, for example the lakes) is FORBIDDEN. Thanks to the property
+# of the Voronoi diagram this mathematically guarantees that in this area
+# an impassable terrain cannot appear (a "sunken yard" around the city).
 const CENTER_EXCLUSION_RADIUS := 6
 
-# Возвращает список типов местности, которые участвуют в алгоритме Вороного
-# (базовый рельеф). НЕ входят:
-#   - уникальные типы (unique: true) — их размещает place_unique_terrains;
-#   - типы, не перечисленные в terrain_config (марши) — они создаются
-#     только пост-обработкой (_apply_marshes).
-# Участие в Вороном теперь задаётся явно через конфиг: добавление нового
-# типа в terrains.json больше не заставляет его автоматически расползаться
-# по всей карте.
+# Returns the list of the terrain types that take part in the Voronoi algorithm
+# (the base relief). They do NOT include:
+#   - the unique types (unique: true) — they are placed by place_unique_terrains;
+#   - the types that are not listed in terrain_config (the marshes) — they are created
+#     only by the post-processing (_apply_marshes).
+# The participation in the Voronoi is now set explicitly through the config: adding a new
+# type to terrains.json no longer makes it automatically spread
+# over the whole map.
 static func _get_base_terrain_ids() -> Array:
     var cfg: Dictionary = GameData.map_config.get("terrain_config", {})
     var ids: Array = []
@@ -48,10 +48,10 @@ static func _get_base_terrain_ids() -> Array:
         ids.append(tid)
     return ids
 
-# Возвращает список уникальных типов местности (unique: true), которые
-# размещаются универсальной функцией place_unique_terrains. Это позволяет
-# добавлять новые уникальные типы местности в data/terrains.json без изменения
-# этого кода — функция сама итерирует по всем таким типам.
+# Returns the list of the unique terrain types (unique: true), which are
+# placed by the universal function place_unique_terrains. This allows
+# adding new unique terrain types to data/terrains.json without changing
+# this code — the function itself iterates over all such types.
 static func _get_unique_terrain_ids() -> Array:
     var unique_ids = []
     for terrain_id in GameData.terrains.keys():
@@ -60,18 +60,18 @@ static func _get_unique_terrain_ids() -> Array:
             unique_ids.append(terrain_id)
     return unique_ids
 
-# Вычисляет количество центров Вороного для каждого типа местности на основе
-# конфигурации terrain_config (density + target_cluster) из data/map_config.json.
-# density приоритетна; target_cluster — ограничение сверху (число центров не
-# может быть больше area / target_cluster). Избыток total перераспределяется
-# на типы без ограничения target_cluster пропорционально их density.
-# Участвуют ТОЛЬКО типы, явно перечисленные в terrain_config (см.
-# _get_base_terrain_ids): остальные (марши) создаются пост-обработкой.
+# Computes the number of Voronoi centres for each terrain type based on
+# the terrain_config configuration (density + target_cluster) from data/map_config.json.
+# density is the priority; target_cluster is an upper bound (the number of centres cannot
+# be more than area / target_cluster). The excess of total is redistributed
+# to the types without a target_cluster bound in proportion to their density.
+# ONLY the types explicitly listed in terrain_config take part (see
+# _get_base_terrain_ids): the others (the marshes) are created by the post-processing.
 func make_terrain_counts(rows: int, cols: int) -> Dictionary:
     var cfg: Dictionary = GameData.map_config
     var area := rows * cols
 
-    # Глобальный target_cluster — запасное значение для total.
+    # The global target_cluster — a fallback value for total.
     var global_cluster: int = int(cfg.get("target_cluster", 22))
     var total := maxi(12, int(round(float(area) / global_cluster)))
 
@@ -88,14 +88,14 @@ func make_terrain_counts(rows: int, cols: int) -> Dictionary:
         if w <= 0.0:
             w = _default_density(terrain_id)
 
-        var cluster_limit := -1 # -1 = ограничение не задано
+        var cluster_limit := -1 # -1 = no bound is set
         if tc.has("target_cluster"):
             cluster_limit = int(tc.get("target_cluster", 0))
 
         weights[terrain_id] = w
 
-        # Нижняя граница «минимум 1 центр» — только для типов с положительной
-        # плотностью: явный ноль не должен порождать центры-сироты.
+        # The lower bound of "at least 1 centre" — only for the types with a positive
+        # density: an explicit zero must not produce orphan centres.
         var count := int(round(total * w))
         if w > 0.0:
             count = maxi(1, count)
@@ -108,8 +108,8 @@ func make_terrain_counts(rows: int, cols: int) -> Dictionary:
             has_cluster[terrain_id] = false
         counts[terrain_id] = count
 
-    # Перераспределение избытка: если сумма < total, избыток распределяется
-    # на типы БЕЗ ограничения target_cluster пропорционально их density.
+    # Redistribution of the excess: if the sum is < total, the excess is distributed
+    # to the types WITHOUT a target_cluster bound in proportion to their density.
     var sum_counts := 0
     for tid in counts.keys():
         sum_counts += counts[tid]
@@ -128,7 +128,7 @@ func make_terrain_counts(rows: int, cols: int) -> Dictionary:
                 deficit -= add
                 if deficit <= 0:
                     break
-            # Остаток распределяем по одному, пока не исчерпаем.
+            # We distribute the remainder one by one, until it is exhausted.
             var i := 0
             while deficit > 0:
                 counts[free_types[i % free_types.size()]] += 1
@@ -137,7 +137,7 @@ func make_terrain_counts(rows: int, cols: int) -> Dictionary:
 
     return counts
 
-# Дефолтная плотность для типов, не указанных в map_config.json.
+# The default density for the types that are not listed in map_config.json.
 func _default_density(terrain_id: String) -> float:
     match terrain_id:
         "plain":
@@ -153,11 +153,11 @@ func _default_density(terrain_id: String) -> float:
         _:
             return 0.05
 
-# Пост-обработка после Вороного: превращает часть равнинных гексов вокруг
-# озёр и морей в марши. Кольцо шириной в 1 гекс — перебираем только
-# непосредственных соседей каждого озера/моря. Каждый такой сосед-равнина
-# становится маршем с шансом 15% (MARSH_CHANCE). Гексы помечаются
-# временным флагом _is_marsh, чтобы генерация покрова потом могла выставить им cover.
+# The post-processing after the Voronoi: it turns part of the plain hexes around
+# the lakes and the seas into marshes. A ring of 1 hex wide — we iterate only
+# the immediate neighbours of each lake/sea. Each such neighbour-plain
+# becomes a marsh with a chance of 15% (MARSH_CHANCE). The hexes are marked
+# with the temporary flag _is_marsh, so that the cover generation can then set a cover for them.
 const MARSH_CHANCE := 0.15
 
 func _apply_marshes(tile_data: Array, rows: int, cols: int) -> void:
@@ -167,7 +167,7 @@ func _apply_marshes(tile_data: Array, rows: int, cols: int) -> void:
             if tile_data[r][c].get("terrain", "plain") == "lake":
                 lake_hexes.append({"row": r, "col": c})
 
-    # У озёр: марши образуются на окружающей равнине (кольцо вокруг озера).
+    # At the lakes: the marshes are formed on the surrounding plain (a ring around the lake).
     for water in lake_hexes:
         var neighbors = HexUtils.get_neighbors_odd_r(water.row, water.col, rows, cols)
         for n in neighbors:
@@ -178,9 +178,9 @@ func _apply_marshes(tile_data: Array, rows: int, cols: int) -> void:
                 t["terrain"] = "marsh"
                 t["_is_marsh"] = true
 
-    # У морей: марши на побережье (beach) делает SeaManager — оно знает
-    # про свою маску и флаги и не должно зависеть от внутреннего состояния
-    # map_generator. Вызывается ПОСЛЕ применения маски моря/пляжа.
+    # At the seas: the marshes on the coast (beach) are done by SeaManager — it knows
+    # about its mask and flags and should not depend on the internal state
+    # of map_generator. It is called AFTER the application of the sea/beach mask.
     SeaManager.apply_sea_coast_marshes(tile_data, rows, cols)
 
 func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: Dictionary, terrain_counts: Dictionary) -> Array:
@@ -192,18 +192,18 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
             col_array.append({"terrain": "plain", "cover": "none", "resource": null, "improvement": null})
         tile_data.append(col_array)
 
-    # --- МОРЯ (маска ДО Вороного) ---
-    # Море не участвует в алгоритме Вороного (не входит в terrain_config).
-    # Маска моря генерируется здесь и запоминается во временном флаге _is_sea,
-    # а после Вороного повторно применяется поверх результата (см. ниже),
-    # чтобы Вороной не перезаписал море/пляж. Логика целиком в SeaManager.
+    # --- THE SEAS (the mask BEFORE Voronoi) ---
+    # The sea does not take part in the Voronoi algorithm (it is not in terrain_config).
+    # The sea mask is generated here and is remembered in the temporary flag _is_sea,
+    # and after the Voronoi it is re-applied on top of the result (see below),
+    # so that the Voronoi does not overwrite the sea/beach. The logic is entirely in SeaManager.
     var sea_mask = SeaManager.apply_sea(tile_data, rows, cols, city_row, city_col)
 
-    # Генерируем центры для Вороного. Для непроходимых типов местности
-    # (озёра и т.п., move_cost >= 999) центры НЕ должны попадать в радиус
-    # CENTER_EXCLUSION_RADIUS вокруг города: благодаря свойству диаграммы
-    # Вороного это математически гарантирует, что в этой области не
-    # появится непроходимый террейн (город не окажется на острове).
+    # We generate the centres for the Voronoi. For the impassable terrain types
+    # (the lakes and so on, move_cost >= 999) the centres must NOT get into the
+    # CENTER_EXCLUSION_RADIUS around the city: thanks to the property of the diagram
+    # of the Voronoi this mathematically guarantees that in this area no
+    # impassable terrain will appear (the city will not end up on an island).
     var centers = []
     for terrain_id in terrain_counts.keys():
         var count = terrain_counts[terrain_id]
@@ -212,8 +212,8 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
             var r = randi() % rows
             var c = randi() % cols
             if exclude_center and HexUtils.hex_distance(r, c, city_row, city_col) <= CENTER_EXCLUSION_RADIUS:
-                # Перебираем позиции, пока не найдём место за пределами зоны
-                # исключения (или не исчерпаем попытки — тогда оставляем как есть).
+                # We iterate over the positions until we find a place outside the exclusion
+                # zone (or the attempts are exhausted — then we leave it as is).
                 for _try in range(50):
                     r = randi() % rows
                     c = randi() % cols
@@ -221,29 +221,29 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
                         break
             centers.append({"r": r, "c": c, "terrain": terrain_id})
 
-    # Jump Flood Algorithm (JFA): строим диаграмму Вороного за O(n log n)
-    # вместо наивного O(n * centers). Для карты 200x200 это ~2.5 млн операций
-    # вместо ~73 млн, что ускоряет генерацию рельефа в десятки раз.
+    # Jump Flood Algorithm (JFA): we build the Voronoi diagram in O(n log n)
+    # instead of the naive O(n * centers). For a 200x200 map this is ~2.5 million operations
+    # instead of ~73 million, which speeds up the relief generation by tens of times.
     var t_jfa = Time.get_ticks_msec()
     var voronoi = _jump_flood_voronoi(rows, cols, centers)
-    print("этап JFA: ", Time.get_ticks_msec() - t_jfa, " ms")
+    print("JFA stage: ", Time.get_ticks_msec() - t_jfa, " ms")
     for row in range(rows):
         for col in range(cols):
             tile_data[row][col]["terrain"] = voronoi[row][col]
 
-    # --- ПОВТОРНОЕ ПРИМЕНЕНИЕ МАСКИ МОРЯ/ПЛЯЖА ---
-    # Вороной заполнил всю карту своим рельефом, поэтому поверх него
-    # заново накладываем море (по флагу _is_sea) и пляж (по флагу _is_beach),
-    # чтобы они не были перезаписаны. Делает SeaManager по флагам, выставленным
-    # на этапе apply_sea ДО Вороного.
+    # --- THE REPEATED APPLICATION OF THE SEA/BEACH MASK ---
+    # The Voronoi filled the whole map with its relief, therefore on top of it
+    # we re-apply the sea (by the flag _is_sea) and the beach (by the flag _is_beach),
+    # so that they are not overwritten. It is done by SeaManager according to the flags set
+    # at the apply_sea stage BEFORE the Voronoi.
     SeaManager.reapply_sea_mask(tile_data)
 
-    # Морские острова не должны состоять из озёр: заменяем озёра в замкнутых
-    # морем land-компонентах на равнину до проверки минимального числа озёр.
+    # The sea islands must not consist of lakes: we replace the lakes in the land components
+    # enclosed by the sea with a plain before the check of the minimum number of lakes.
     SeaManager.replace_island_lakes(tile_data, sea_mask, rows, cols)
 
-    # Гарантируем минимальный объём озёр на карте: озеро не должно исчезать
-    # в слишком маленьких картах или при редких случайностях генерации центров.
+    # We guarantee a minimum amount of lakes on the map: a lake should not disappear
+    # on the too small maps or on the rare accidents of the generation of the centres.
     var lake_tiles := 0
     for row in range(rows):
         for col in range(cols):
@@ -264,30 +264,30 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
             if lake_tiles >= 3:
                 break
 
-    # --- МАРШИ (пост-обработка после Вороного) ---
-    # Вокруг каждого озера с шансом ~40-50% соседние равнинные гексы
-    # превращаются в марши — кольцо шириной в 1 гекс. Такие гексы
-    # помечаются временным флагом _is_marsh, чтобы при генерации покрова
-    # получить cover.
+    # --- THE MARSHES (the post-processing after the Voronoi) ---
+    # Around each lake with a chance of ~40-50% the neighbouring plain hexes
+    # turn into marshes — a ring 1 hex wide. Such hexes
+    # are marked with the temporary flag _is_marsh, so that during the cover generation
+    # they get a cover.
     _apply_marshes(tile_data, rows, cols)
 
-    # --- УНИКАЛЬНЫЕ ТИПЫ МЕСТНОСТИ ---
-    # Размещаются ПОСЛЕ Вороного, но ДО генерации покрова и ресурсов.
-    # Универсальная функция place_unique_terrains сама итерирует по всем
-    # уникальным типам местности (unique: true) из data/terrains.json и читает
-    # для каждого максимальный размер кластера (cluster_size). Каждый тип
-    # размещается один раз, кластером 1..cluster_size гексов, за пределами
-    # стартового Кольца Влияния. Добавление нового уникального типа в
-    # terrains.json не требует изменения этого кода.
+    # --- THE UNIQUE TERRAIN TYPES ---
+    # They are placed AFTER the Voronoi, but BEFORE the generation of the cover and the resources.
+    # The universal function place_unique_terrains itself iterates over all
+    # the unique terrain types (unique: true) from data/terrains.json and reads
+    # the maximum cluster size (cluster_size) for each one. Each type
+    # is placed once, as a cluster of 1..cluster_size hexes, outside
+    # the starting Influence Ring. Adding a new unique type to
+    # terrains.json does not require any change to this code.
     place_unique_terrains(tile_data, rows, cols, city_row, city_col)
 
-    # --- БЕЗОПАСНЫЙ ДВОР ВОКРУГ ГОРОДА ---
-    # Принудительно превращаем гексы в радиусе PLAIN_ZONE_RADIUS вокруг города
-    # в равнину; покров генерируется как у обычной равнины. Это гарантирует
-    # свободное проходимое пространство для стартовой застройки и перекрывает
-    # возможные марши/уникальные озёра, которые могли попасть в эту зону.
-    # Выполняется ПОСЛЕ размещения уникальных террейнов и ДО генерации покрова
-    # и ресурсов.
+    # --- THE SAFE YARD AROUND THE CITY ---
+    # We forcibly turn the hexes within PLAIN_ZONE_RADIUS around the city
+    # into a plain; the cover is generated as that of an ordinary plain. This guarantees
+    # a free passable space for the starting construction and covers
+    # the possible marshes/unique lakes that could have got into this zone.
+    # It is performed AFTER the placement of the unique terrains and BEFORE the generation
+    # of the cover and the resources.
     _ensure_plain_zone(tile_data, rows, cols, city_row, city_col, PLAIN_ZONE_RADIUS)
 
     var t_cover = Time.get_ticks_msec()
@@ -296,15 +296,15 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
             var terrain_id = tile_data[row][col]["terrain"]
             tile_data[row][col]["cover"] = _roll_cover(terrain_id)
 
-    # Мультиииндекс свободных гексов по (terrain, cover) — для быстрого
-    # размещения ресурсов без полного сканирования карты на каждый ресурс.
+    # The multi-index of the free hexes by (terrain, cover) — for a fast
+    # placement of the resources without a full scan of the map for each resource.
     var hex_index = _build_hex_index(tile_data, rows, cols, city_row, city_col)
-    print("этап cover + hex_index: ", Time.get_ticks_msec() - t_cover, " ms")
+    print("cover + hex_index stage: ", Time.get_ticks_msec() - t_cover, " ms")
 
-    # --- Обычные ресурсы ---
-    # Категория является только классификацией ресурса и не определяет,
-    # должен ли он появляться на карте. Все ресурсы, добываемые улучшением,
-    # проходят единым пулом и фильтруются только своими allowed_* и
+    # --- The ordinary resources ---
+    # The category is only a classification of the resource and does not determine
+    # whether it should appear on the map. All the resources extracted by an improvement
+    # go through a single pool and are filtered only by their allowed_* and
     # spawn_conditions.
     var regular_resources = {}
     for rid in raw_res.keys():
@@ -314,38 +314,38 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
         regular_resources[rid] = r
     _place_resources(tile_data, regular_resources, rows, cols, city_row, city_col, hex_index)
 
-    # --- Одноразовые (собираемые) ресурсы ---
-    # Самородки металлов и аналогичные ресурсы с improved_by == null:
-    # спавнятся по ВСЕЙ карте при старте игры, как дикоросы. Количество
-    # экземпляров берётся из spawn_count, выход при сборе — из produces.
-    # Дикоросы (wild_food) размещаются отдельно (см. place_wild_food).
+    # --- The one-off (gatherable) resources ---
+    # The metal nuggets and the analogous resources with improved_by == null:
+    # they spawn across the WHOLE map at the start of the game, like the wild plants. The number
+    # of specimens is taken from spawn_count, the output on gathering — from produces.
+    # The wild plants (wild_food) are placed separately (see place_wild_food).
     place_one_time_resources(tile_data, raw_res, rows, cols, city_row, city_col, hex_index)
 
-    # --- Все ресурсы спавнятся на старте, включая tech_required и tech_reveal ---
-    # Раньше ресурсы с tech_required фильтровались здесь и спавнились
-    # лениво через CityData.spawn_resource_on_tech_research. Теперь они
-    # появляются сразу на карте, а видимость/добыча регулируется полями
-    # tech_reveal (видимость) и tech_required (постройка улучшения).
-    # См. docs.md, раздел «tech_reveal: скрытые ресурсы».
+    # --- All the resources spawn at the start, including tech_required and tech_reveal ---
+    # Previously the resources with tech_required were filtered here and spawned
+    # lazily through CityData.spawn_resource_on_tech_research. Now they
+    # appear on the map right away, and the visibility/extraction is regulated by the fields
+    # tech_reveal (visibility) and tech_required (the building of the improvement).
+    # See docs.md, the section "tech_reveal: hidden resources".
 
-    # --- ГАРАНТИЯ ВЫХОДА НАРУЖУ ---
-    # Страховочная проверка: если несмотря на запрет центров озер город всё же
-    # оказался изолирован непроходимым террейном, прокладываем коридор в равнину
-    # к внешнему миру. Выполняется в самом конце, чтобы учесть все уже
-    # размещённые марши и уникальные озёра.
+    # --- THE GUARANTEE OF A WAY OUT ---
+    # A safety check: if despite the ban on the lake centres the city has still
+    # been isolated by an impassable terrain, we lay a corridor of a plain
+    # to the outside world. It is performed at the very end, so as to take into account all the already
+    # placed marshes and unique lakes.
     _ensure_outward_corridor(tile_data, rows, cols, city_row, city_col)
 
-    print("этап generate_map: ", Time.get_ticks_msec() - t0, " ms")
+    print("generate_map stage: ", Time.get_ticks_msec() - t0, " ms")
     return tile_data
 
-# Универсальная функция размещения всех уникальных типов местности на карте.
-# Итерирует по всем типам с "unique": true в data/terrains.json и для каждого
-# размещает ОДИН сомкнутный кластер размером 1..cluster_size гексов за
-# пределами стартового Кольца Влияния. Максимальный размер кластера читается
-# из поля "cluster_size" данных террейна (дефолт 3, если поле не задано).
-# Добавление нового уникального типа в terrains.json не требует изменения кода.
+# The universal function that places all the unique terrain types on the map.
+# It iterates over all the types with "unique": true in data/terrains.json and for each one
+# places ONE connected cluster of 1..cluster_size hexes outside
+# the limits of the starting Influence Ring. The maximum cluster size is read
+# from the "cluster_size" field of the terrain data (the default is 3, if the field is not set).
+# Adding a new unique type to terrains.json does not require any change to the code.
 func place_unique_terrains(tile_data: Array, rows: int, cols: int, city_row: int, city_col: int) -> void:
-    # Границы стартового Кольца Влияния из конфигурации.
+    # The bounds of the starting Influence Ring from the configuration.
     var cfg: Dictionary = GameData.map_config
     var ring_rows: int = int(cfg.get("start_ring_rows", 5))
     var ring_cols: int = int(cfg.get("start_ring_cols", 7))
@@ -354,7 +354,7 @@ func place_unique_terrains(tile_data: Array, rows: int, cols: int, city_row: int
     var inf_start_col: int = int(floor(city_col - ring_cols / 2.0))
     var inf_end_col: int = inf_start_col + ring_cols - 1
 
-    # Собираем все гексы вне Кольца, не занятые городом.
+    # We collect all the hexes outside the Ring that are not occupied by the city.
     var candidates: Array = []
     for r in range(rows):
         for c in range(cols):
@@ -364,20 +364,20 @@ func place_unique_terrains(tile_data: Array, rows: int, cols: int, city_row: int
                 continue
             candidates.append({"row": r, "col": c})
     if candidates.is_empty():
-        print("ОШИБКА place_unique_terrains: нет гексов за пределами Кольца Влияния!")
+        print("ERROR place_unique_terrains: there are no hexes outside the Influence Ring!")
         return
 
     for terrain_type in _get_unique_terrain_ids():
         var t: Dictionary = GameData.terrains[terrain_type]
         var max_cluster_size: int = int(t.get("cluster_size", 3))
 
-        # Случайный размер кластера от 1 до max_cluster_size.
+        # A random cluster size from 1 to max_cluster_size.
         var cluster_size: int = randi_range(1, maxi(1, max_cluster_size))
 
-        # Случайная точка старта в пределах допустимой области.
+        # A random start point within the allowed area.
         var start = candidates[randi() % candidates.size()]
 
-        # BFS: строим связный кластер из cluster_size гексов, прилегающих к старту.
+        # BFS: we build a connected cluster of cluster_size hexes adjacent to the start.
         var cluster: Array = [start]
         var visited := {}
         visited["%d,%d" % [start.row, start.col]] = true
@@ -404,21 +404,21 @@ func place_unique_terrains(tile_data: Array, rows: int, cols: int, city_row: int
                     break
             frontier = next_frontier
 
-        # Меняем террайн на уникальный для выбранных гексов (только если там нет улучшения).
+        # We change the terrain to the unique one for the chosen hexes (only if there is no improvement there).
         for hex in cluster:
             var tile = tile_data[hex.row][hex.col]
             if tile.get("improvement", null) == null:
                 tile["terrain"] = terrain_type
                 tile["cover"] = _roll_cover(terrain_type)
 
-        print("Уникальный тип местности %s размещён: %d гексов" % [terrain_type, cluster.size()])
+        print("The unique terrain type %s is placed: %d hexes" % [terrain_type, cluster.size()])
 
-# Jump Flood Algorithm (JFA) для построения диаграммы Вороного на
-# гексагональной сетке (odd-r). Сложность O(rows * cols * log2(max(rows, cols)))
-# вместо наивного O(rows * cols * centers.size()).
-# Возвращает 2D-массив terrain_id для каждой клетки.
+# The Jump Flood Algorithm (JFA) for building the Voronoi diagram on
+# a hexagonal grid (odd-r). The complexity is O(rows * cols * log2(max(rows, cols)))
+# instead of the naive O(rows * cols * centers.size()).
+# It returns a 2D array of terrain_id for each cell.
 func _jump_flood_voronoi(rows: int, cols: int, centers: Array) -> Array:
-    # Сетка индексов ближайших центров (-1 = пусто).
+    # The grid of the indices of the nearest centres (-1 = empty).
     var grid = []
     for r in range(rows):
         var row_arr = []
@@ -426,32 +426,32 @@ func _jump_flood_voronoi(rows: int, cols: int, centers: Array) -> Array:
         row_arr.fill(-1)
         grid.append(row_arr)
 
-    # Предвычисляем q-координаты центров (для быстрой hex_distance).
+    # We precompute the q-coordinates of the centres (for a fast hex_distance).
     var center_q = []
     for ci in range(centers.size()):
         var center = centers[ci]
         center_q.append(center.c - ((center.r - (center.r & 1)) >> 1))
 
-    # Размещаем центры в сетке.
+    # We place the centres on the grid.
     for ci in range(centers.size()):
         var center = centers[ci]
         grid[center.r][center.c] = ci
 
-    # Начальный шаг: наибольшая степень двойки, не превосходящая max(rows, cols).
+    # The initial step: the largest power of two not exceeding max(rows, cols).
     var max_dim = maxi(rows, cols)
     var step = 1
     while step * 2 <= max_dim:
         step *= 2
 
-    # 8 направлений JFA (прямоугольный шаблон).
+    # The 8 directions of the JFA (a rectangular template).
     var dirs = [
         Vector2i(-1, -1), Vector2i(-1, 0), Vector2i(-1, 1),
         Vector2i(0, -1), Vector2i(0, 1),
         Vector2i(1, -1), Vector2i(1, 0), Vector2i(1, 1)
     ]
 
-    # Двойная буферизация (ping-pong), чтобы информация распространялась
-    # ровно на один "прыжок" за итерацию.
+    # Double buffering (ping-pong), so that the information spreads
+    # exactly by one "jump" per iteration.
     var read_grid = grid
     var write_grid = []
     for r in range(rows):
@@ -486,14 +486,14 @@ func _jump_flood_voronoi(rows: int, cols: int, centers: Array) -> Array:
                         best_dist = dist3
                         best_ci = neighbor_ci
                 write_grid[r][c] = best_ci
-        # Меняем буферы местами.
+        # We swap the buffers.
         var tmp = read_grid
         read_grid = write_grid
         write_grid = tmp
         step >>= 1
 
-    # Финальный проход по 6 гексагональным соседям: убирает артефакты
-    # прямоугольного шаблона JFA и доводит границы до гексагональной метрики.
+    # The final pass over the 6 hexagonal neighbours: it removes the artefacts
+    # of the rectangular JFA template and brings the boundaries to the hexagonal metric.
     var even_dirs = [
         Vector2i(0, -1), Vector2i(0, 1),
         Vector2i(-1, -1), Vector2i(-1, 0),
@@ -531,7 +531,7 @@ func _jump_flood_voronoi(rows: int, cols: int, centers: Array) -> Array:
                     best_ci = nb_ci
             read_grid[r][c] = best_ci
 
-    # Превращаем индексы центров в terrain_id.
+    # We turn the centre indices into terrain_id.
     var result = []
     for r in range(rows):
         var row_arr = []
