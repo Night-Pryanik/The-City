@@ -14,28 +14,28 @@ var groups: Array = []
 var eras: Array = []
 var product_groups: Dictionary = {}
 var product_group_names: Dictionary = {}
-var product_group_icons: Dictionary = {} # id -> имя файла иконки группы ("" — не задана)
+var product_group_icons: Dictionary = {} # id -> the icon file name of the group ("" — not set)
 var modifiers: Dictionary = {}
-var price_modifiers: Dictionary = {} # resource_id -> { фактор: множитель цены }
-var special_actions: Dictionary = {} # id -> данные спецдействия
-var qualities: Dictionary = {} # данные о степенях качества ресурсов
-var map_config: Dictionary = {} # конфигурация карты мира (data/map_config.json)
-var professions: Dictionary = {} # id -> данные профессии (data/professions.json)
-var consumption_rules: Array = [] # записи потребления (data/consumption.json)
-var city_names: Array = [] # варианты названий города (data/city_names.json)
-var game_balance: Dictionary = {} # игровой баланс (data/game_balance.json)
-# Уровни дорог (data/roads.json). roads_by_level — уровень -> данные уровня:
-# участок сети дорог хранит номер уровня, поэтому нужен именно такой индекс.
+var price_modifiers: Dictionary = {} # resource_id -> { factor: the price multiplier }
+var special_actions: Dictionary = {} # id -> special action data
+var qualities: Dictionary = {} # data about resource quality levels
+var map_config: Dictionary = {} # the world map configuration (data/map_config.json)
+var professions: Dictionary = {} # id -> profession data (data/professions.json)
+var consumption_rules: Array = [] # consumption entries (data/consumption.json)
+var city_names: Array = [] # city name variants (data/city_names.json)
+var game_balance: Dictionary = {} # the game balance (data/game_balance.json)
+# The road levels (data/roads.json). roads_by_level — level -> level data:
+# a road network segment stores a level number, therefore exactly such an index is needed.
 var roads: Array = []
 var roads_by_level: Dictionary = {}
-# Факт того, что данные уже загружены. Нужен, чтобы не читать data/*.json
-# дважды подряд: главное меню проверяет данные валидатором
-# (scripts/data_validator.gd) при входе, а новая партия грузит их снова.
-# Аналог SaveManager.is_loaded.
+# The fact that the data is already loaded. It is needed so as not to read data/*.json
+# twice in a row: the main menu checks the data with the validator
+# (scripts/data_validator.gd) on entry, and a new game loads them again.
+# An analogue of SaveManager.is_loaded.
 var data_loaded: bool = false
-# Откуда пришла каждая сущность: "коллекция:id" → { "file": String, "line": int }.
-# Читает рантайм-валидатор (scripts/data_validator.gd), чтобы указывать проблему
-# на конкретный файл и строку, а не заставлять искать опечатку вручную.
+# Where each entity came from: "collection:id" → { "file": String, "line": int }.
+# It is read by the runtime validator (scripts/data_validator.gd) in order to point a problem
+# at a specific file and line, and not make it look for the typo manually.
 var entity_sources: Dictionary = {}
 
 func load_all_data():
@@ -68,40 +68,40 @@ func load_all_data():
     entity_sources = loader.entity_sources
     data_loaded = true
 
-# === УРОВНИ ДОРОГ (data/roads.json) ===
+# === ROAD LEVELS (data/roads.json) ===
 #
-# Уровень — целое число, начиная с 1. Участок сети дорог хранит именно
-# номер уровня, поэтому roads_by_level и есть рабочий индекс.
+# The level is an integer, starting from 1. A road network segment stores exactly
+# the level number, therefore roads_by_level is the working index.
 
-# Данные уровня по его номеру. Пустой словарь — если уровня нет в данных:
-# вызывающий решает сам, что делать (обычно это ошибка данных, и её ловит
-# data_validator.gd, а не молчаливая подмена «на уровень ниже»).
+# The data of the level by its number. An empty dictionary — if the level is not in the data:
+# the caller decides itself what to do (usually this is a data error, and it is caught by
+# data_validator.gd, and not by a silent substitution "to the level below").
 func get_road_by_level(level: int) -> Dictionary:
     return roads_by_level.get(level, {})
 
-# Название уровня для игрока (уже переведено data_loader).
+# The name of the level for the player (already translated by data_loader).
 func get_road_name(level: int) -> String:
     var road: Dictionary = get_road_by_level(level)
     if road.is_empty():
         return str(level)
     return str(road.get("name", level))
 
-# Базовая цена ОДНОГО участка этого уровня в труде, до множителей.
+# The base price of ONE segment of this level in labour, before the multipliers.
 func get_road_work_cost(level: int) -> int:
     return int(get_road_by_level(level).get("work_cost", 0))
 
-# «Максимальная скорость» уровня: сколько единиц ресурса в секунду этот
-# участок способен перевозить (НЕ скорость юнитов — см. шапку data/roads.json).
+# The "maximum speed" of the level: how many units of resource per second this
+# segment is able to carry (NOT the speed of units — see the header of data/roads.json).
 func get_road_max_speed(level: int) -> int:
     return int(get_road_by_level(level).get("max_speed", 0))
 
-# Открыт ли уровень игроку. Уровень без unlock_tech доступен всегда; иначе
-# нужна соответствующая технология. Неизвестный уровень считаем закрытым:
-# показать игроку дорогу, которой нет в данных, хуже, чем не показать.
+# Is the level unlocked for the player. A level without unlock_tech is always available; otherwise
+# the corresponding technology is needed. An unknown level is considered locked:
+# showing the player a road that is not in the data is worse than not showing it.
 #
-# Поле unlock_tech в JSON бывает null (у тропки технологии нет), поэтому
-# значение читаем через _road_unlock_tech: `null or ""` в GDScript НЕ даёт
-# строку, и наивная проверка is_empty() пропустила бы null в CityData.
+# The unlock_tech field in JSON is sometimes null (the trail has no technology), therefore
+# the value is read via _road_unlock_tech: `null or ""` in GDScript does NOT give
+# a string, and a naive is_empty() check would let null into CityData.
 func is_road_level_unlocked(level: int) -> bool:
     var road: Dictionary = get_road_by_level(level)
     if road.is_empty():
@@ -111,22 +111,22 @@ func is_road_level_unlocked(level: int) -> bool:
         return true
     return CityData.is_tech_unlocked(tech_id)
 
-# id технологии, открывающей уровень; "" — уровень доступен изначально.
+# The id of the technology that unlocks the level; "" — the level is available from the start.
 func _road_unlock_tech(level: int) -> String:
     var raw = get_road_by_level(level).get("unlock_tech", null)
     if raw == null or not (raw is String):
         return ""
     return str(raw)
 
-# Все уровни по возрастанию номера — порядок выбора в панели управления.
-# Сортировка нужна, потому что в JSON уровни идут по порядку, а полагаться
-# на порядок ключей словаря нельзя.
+# All the levels by ascending number — the order of selection in the control panel.
+# The sorting is needed, because in the JSON the levels go in order, and one cannot rely
+# on the order of the keys of a dictionary.
 func get_road_levels() -> Array:
     var levels: Array = roads_by_level.keys()
     levels.sort()
     return levels
 
-# Исследованные уровни по возрастанию — именно их игрок может выбрать.
+# The researched levels by ascending — exactly those the player can choose.
 func get_unlocked_road_levels() -> Array:
     var result: Array = []
     for level in get_road_levels():
@@ -134,45 +134,46 @@ func get_unlocked_road_levels() -> Array:
             result.append(int(level))
     return result
 
-# Самый продвинутый исследованный уровень — то, что предлагается по умолчанию.
-# Уровня в данных быть не должно, но если файлы данных ещё не загружены,
-# возвращаем 1: тропка доступна всегда и ничего не ломает.
+# The most advanced researched level — the one that is offered by default.
+# There should not be a level in the data, but if the data files are not loaded yet,
+# we return 1: the trail is always available and nothing breaks.
 func get_max_unlocked_road_level() -> int:
     var levels: Array = get_unlocked_road_levels()
     if levels.is_empty():
         return 1
     return int(levels.back())
 
-# Возвращает случайное название города из data/city_names.json.
-# Если список пуст или не загрузился — возвращает нейтральное имя по умолчанию.
+# Returns a random city name from data/city_names.json.
+# If the list is empty or not loaded — it returns a neutral default name.
 func get_random_city_name() -> String:
     if city_names.is_empty():
         return tr("City")
     return city_names[randi() % city_names.size()]
 
-# Возвращает имя группы по её ключу (с символом "@" или без).
-# Если ключ не является группой, возвращает пустую строку.
+# Returns the name of the group by its key (with or without the "@" symbol).
+# If the key is not a group, it returns an empty string.
 func get_product_group_name(key: String) -> String:
     var gkey = key.trim_prefix("@")
     if product_group_names.has(gkey):
         return product_group_names[gkey]
     return ""
 
-# Иконка группы продуктов для карточки «Торговля» + источник этой иконки.
-# Приоритет выбора:
-#   1. собственное поле "icon" группы (data/product_groups.json) — автор
-#      данных явно выбрал пиктограмму для группы;
-#   2. иконка ПЕРВОГО члена группы, у которого иконка задана (старый порядок,
-#      обратная совместимость для групп без своего "icon").
-# Вторая ветка нужна, потому что первый член группы нередко не представитель
-# группы: у «Алкоголя» это пиво, хотя группа — напитки из зерна.
+# The icon of the product group for the "Trade" card + the source of this icon.
+# The priority of the choice:
+#   1. the own "icon" field of the group (data/product_groups.json) — the data
+#      author has explicitly chosen a pictogram for the group;
+#   2. the icon of the FIRST member of the group that has an icon set (the old order,
+#      backward compatibility for the groups without their own "icon").
+# The second branch is needed, because the first member of a group is often not a
+# representative of the group: for "Alcohol" it is beer, although the group is grain
+# beverages.
 #
-# Возвращает { "icon": String, "source_pid": String, "own": bool }:
-#   icon      — имя файла иконки ("" — иконки нет, вызывающая скрывает узел);
-#   source_pid — id товара, чей icon использован ("" при своей иконке группы);
-#   own       — true, если иконка задана самой группой. Карточка показывает
-#               источник в тултипе: без него игрок не понимает, почему у
-#               «Алкоголя» нарисован кувшин.
+# It returns { "icon": String, "source_pid": String, "own": bool }:
+#   icon      — the icon file name ("" — there is no icon, the caller hides the node);
+#   source_pid — the id of the product whose icon is used ("" for the own icon of the group);
+#   own       — true, if the icon is set by the group itself. The card shows
+#               the source in the tooltip: without it the player does not understand why
+#               a jug is drawn for "Alcohol".
 func get_product_group_icon_info(key: String) -> Dictionary:
     var gkey = key.trim_prefix("@")
     if not product_groups.has(gkey):
@@ -186,13 +187,13 @@ func get_product_group_icon_info(key: String) -> Dictionary:
             return {"icon": icon, "source_pid": str(pid), "own": false}
     return {"icon": "", "source_pid": "", "own": false}
 
-# Только имя файла иконки группы — для мест, где источник иконки не нужен.
+# Only the icon file name of the group — for the places where the source of the icon is not needed.
 func get_product_group_icon(key: String) -> String:
     return str(get_product_group_icon_info(key).get("icon", ""))
 
 
-# Возвращает список человекочитаемых названий продуктов, входящих в группу.
-# Если ключ не является группой, возвращает пустой массив.
+# Returns the list of the human-readable names of the products that are members of the group.
+# If the key is not a group, it returns an empty array.
 func get_product_group_member_names(key: String) -> Array:
     var gkey = key.trim_prefix("@")
     if not product_groups.has(gkey):
@@ -202,44 +203,44 @@ func get_product_group_member_names(key: String) -> Array:
         names.append(products.get(prod_id, {}).get("name", prod_id))
     return names
 
-# Является ли ресурсный ключ групповым (начинается с "@")?
+# Is the resource key a group one (does it start with "@")?
 func is_group_key(key: String) -> bool:
     return key.begins_with("@")
 
-# Форматирует ресурсный вход рецепта: для групповых ключей возвращает
-# "Имя группы - количество", иначе "Имя продукта - количество".
+# Formats the resource entry of a recipe: for the group keys it returns
+# "Group name - amount", otherwise "Product name - amount".
 func format_resource_input(key: String, amount: float) -> String:
     if is_group_key(key):
         var group_name = get_product_group_name(key)
         if group_name != "":
             return "%s - %d" % [group_name, int(amount)]
-        # Группа не найдена — показываем ключ без "@"
+        # The group was not found — we show the key without the "@"
         return "%s - %d" % [key.trim_prefix("@"), int(amount)]
     return "%s - %d" % [products.get(key, {}).get("name", key), int(amount)]
 
-# Форматирует название ресурса для отображения в интерфейсе (стоимости, запасы).
-# Для групповых ресурсов возвращает только название группы (без списка членов).
+# Formats the name of the resource for display in the interface (the costs, the stocks).
+# For the group resources it returns only the name of the group (without the list of members).
 func format_resource_name(key: String) -> String:
     if is_group_key(key):
         var group_name = get_product_group_name(key)
         if group_name != "":
             return group_name
         return key.trim_prefix("@")
-    # В пуле продажи могут быть как продукты, так и сырьевые ресурсы.
+    # The sale pool can contain both the products and the raw resources.
     var resource_data := get_resource_data(key)
     return str(resource_data.get("name", key))
 
 func get_special_yield(product_id: String) -> Dictionary:
     return products.get(product_id, {}).get("special_yield", {})
 
-# --- ЦЕНЫ НА РЕСУРСЫ ---
-# Базовая цена задана в JSON (поле "price" у ресурса/продукта). Итоговая цена
-# может динамически меняться через множители: например, голод поднимает цены
-# на еду, избыточное предложение или эрозия рынка — опускают. Множители
-# перемножаются между собой, итог = база × произведение всех активных.
-# Подробности — в docs.md, раздел «Цены на ресурсы».
+# --- THE PRICES OF THE RESOURCES ---
+# The base price is set in the JSON (the "price" field of the resource/product). The final price
+# can change dynamically through the multipliers: for example, the famine raises the prices
+# of the food, an excess supply or an erosion of the market — lowers them. The multipliers
+# are multiplied by each other, the total = base × the product of all the active ones.
+# The details are in docs.md, the section "Resource prices".
 
-# Возвращает данные ресурса/продукта (сырьё или продукция) по id.
+# Returns the data of the resource/product (raw material or product) by id.
 func get_resource_data(res_id: String) -> Dictionary:
     if raw_resources.has(res_id):
         return raw_resources[res_id]
@@ -247,11 +248,11 @@ func get_resource_data(res_id: String) -> Dictionary:
         return products[res_id]
     return {}
 
-# Базовая цена из JSON (поле "price"). Если поля нет — 0.
+# The base price from the JSON (the "price" field). If the field is absent — 0.
 func get_base_price(res_id: String) -> float:
     return float(get_resource_data(res_id).get("price", 0.0))
 
-# Произведение всех активных множителей цены ресурса (без активных — 1.0).
+# The product of all the active price multipliers of the resource (with no active ones — 1.0).
 func get_price_multiplier(res_id: String) -> float:
     var total := 1.0
     var mods: Dictionary = price_modifiers.get(res_id, {})
@@ -259,26 +260,26 @@ func get_price_multiplier(res_id: String) -> float:
         total *= float(mods[factor])
     return total
 
-# Итоговая цена ресурса на текущий момент: база × активные множители.
+# The final price of the resource at the current moment: base × the active multipliers.
 func get_price(res_id: String) -> float:
     return get_base_price(res_id) * get_price_multiplier(res_id)
 
-# Включает множитель цены (factor — имя фактора, напр. "famine" или
-# "market_glut"). Эффект применяется к конкретному ресурсу по его id; чтобы
-# распространить его на группу, примените ко всем членам группы.
+# Enables the price multiplier (factor — the name of the factor, e.g. "famine" or
+# "market_glut"). The effect is applied to a particular resource by its id; in order to
+# spread it to a group, apply it to all the members of the group.
 func apply_price_modifier(res_id: String, factor: String, multiplier: float):
     if not price_modifiers.has(res_id):
         price_modifiers[res_id] = {}
     price_modifiers[res_id][factor] = multiplier
 
-# Отключает один фактор-множитель цены ресурса.
+# Disables one factor-multiplier of the price of the resource.
 func remove_price_modifier(res_id: String, factor: String):
     if price_modifiers.has(res_id):
         price_modifiers[res_id].erase(factor)
         if price_modifiers[res_id].is_empty():
             price_modifiers.erase(res_id)
 
-# Сбрасывает ВСЕ динамические множители цен (цены возвращаются к базовым).
+# Resets ALL the dynamic price multipliers (the prices return to the base ones).
 func clear_price_modifiers():
     price_modifiers.clear()
 
@@ -288,12 +289,12 @@ func get_building_additional_yield(building_id: String) -> Dictionary:
             return building.get("additional_yield", {})
     return {}
 
-# Нормализует поле additional_cost в массив словарей {ресурс: количество}.
-# Поддерживает две формы:
-#   1) объект:        { "flour": 3.0, "wood": 10.0 }        → [ { "flour": 3.0, "wood": 10.0 } ]
-#   2) массив пачек:  [ { "flour": 3.0 }, { "gold": 50.0 } ]  → как есть
-# Логика AND-объединения пачек: нужны ресурсы из КАЖДОЙ пачки одновременно.
-# Возвращает пустой массив для null/невалидных значений.
+# Normalizes the additional_cost field into an array of dictionaries {resource: amount}.
+# It supports two forms:
+#   1) an object:         { "flour": 3.0, "wood": 10.0 }        → [ { "flour": 3.0, "wood": 10.0 } ]
+#   2) an array of batches: [ { "flour": 3.0 }, { "gold": 50.0 } ]  → as is
+# The logic of the AND-combination of the batches: the resources from EACH batch are needed at the same time.
+# It returns an empty array for null/invalid values.
 func parse_additional_cost(raw) -> Array:
     var result: Array = []
     if raw == null:
@@ -309,11 +310,11 @@ func parse_additional_cost(raw) -> Array:
         return result
     return result
 
-# Сколько единиц ресурса/группы есть в storage?
-# Для обычного ключа (например, "flour") возвращает storage.get(key, 0).
-# Для группового ключа (например, "@millable_grains") — сумму по всем членам
-# группы из product_groups. Это «любой продукт из группы», как в recipes.
-# Если группа не найдена — возвращает 0.
+# How many units of the resource/group are there in the storage?
+# For an ordinary key (for example, "flour") it returns storage.get(key, 0).
+# For a group key (for example, "@millable_grains") — the sum over all the members
+# of the group from product_groups. This is "any product from the group", as in the recipes.
+# If the group is not found — it returns 0.
 func get_storage_amount(key: String, storage: Dictionary) -> float:
     if is_group_key(key):
         var group_key = key.trim_prefix("@")
@@ -326,10 +327,10 @@ func get_storage_amount(key: String, storage: Dictionary) -> float:
         return total
     return float(storage.get(key, 0))
 
-# --- ХЕЛПЕРЫ ДЛЯ РАБОТЫ С КАЧЕСТВОМ РЕСУРСОВ ---
-# Данные загружаются из data/qualities.json в поле qualities.
+# --- THE HELPERS FOR WORKING WITH THE QUALITY OF THE RESOURCES ---
+# The data is loaded from data/qualities.json into the qualities field.
 
-# Возвращает список id уровней качества в порядке от худшего к лучшему.
+# Returns the list of the ids of the quality levels in the order from the worst to the best.
 func get_quality_levels() -> Array:
     var levels = []
     for q in qualities.get("quality_levels", []):
@@ -337,32 +338,32 @@ func get_quality_levels() -> Array:
             levels.append(q["id"])
     return levels
 
-# Возвращает данные уровня качества по id (или пустой словарь).
+# Returns the data of the quality level by id (or an empty dictionary).
 func get_quality_data(quality_id: String) -> Dictionary:
     for q in qualities.get("quality_levels", []):
         if q is Dictionary and q.get("id", "") == quality_id:
             return q
     return {}
 
-# Возвращает человекочитаемое название уровня качества.
+# Returns the human-readable name of the quality level.
 func get_quality_name(quality_id: String) -> String:
     return get_quality_data(quality_id).get("name", quality_id)
 
-# Возвращает числовой вес уровня качества (для взвешенного среднего).
+# Returns the numeric weight of the quality level (for the weighted average).
 func get_quality_value(quality_id: String) -> int:
     return int(get_quality_data(quality_id).get("value", 1))
 
-# Возвращает строку из звёзд для уровня качества (например, "★★★").
+# Returns the string of stars for the quality level (for example, "★★★").
 func get_quality_stars(quality_id: String) -> String:
     return get_quality_data(quality_id).get("stars", "")
 
-# --- ЦВЕТ УРОВНЯ КАЧЕСТВА (data/qualities.json, поле color) ---
-# Цвет задан массивом [R, G, B] в диапазоне 0…255 — та же форма записи, что у
-# покрытий (data/covers.json), улучшений и ресурсов. Красит звёзды в тултипе
-# разбора качества, строки лестницы цен в тултипе строки и проценты доли
-# уровня в строке списка (resources_tab._update_quality_label).
-# Мягкий дефолт: поля color нет (старые данные) или это не массив из трёх
-# чисел — светло-серый, чтобы интерфейс не поехал на битых данных.
+# --- THE COLOUR OF THE QUALITY LEVEL (data/qualities.json, the color field) ---
+# The colour is set as an [R, G, B] array in the range 0…255 — the same entry format as for
+# the covers (data/covers.json), the improvements and the resources. It paints the stars in the tooltip
+# of the quality breakdown, the rows of the price ladder in the row tooltip, and the percentages of the share
+# of the level in the row of the list (resources_tab._update_quality_label).
+# A soft default: the color field is absent (old data) or it is not an array of three
+# numbers — a light grey, so that the interface does not go haywire on broken data.
 const QUALITY_COLOR_FALLBACK := Color(0.8, 0.8, 0.8)
 
 func get_quality_color(quality_id: String) -> Color:
@@ -371,33 +372,33 @@ func get_quality_color(quality_id: String) -> Color:
         return Color(float(c[0]) / 255.0, float(c[1]) / 255.0, float(c[2]) / 255.0)
     return QUALITY_COLOR_FALLBACK
 
-# --- ЦЕНА ПО КАЧЕСТВУ (data/qualities.json, поле price_multiplier) ---
-# Множитель умножается на цену единицы товара: лучшее качество дороже.
-# Множитель, а не фиксированная прибавка в монетах, — чтобы наценка была
-# пропорциональна на всей шкале цен (1…150), см. шапку qualities.json.
+# --- THE PRICE BY QUALITY (data/qualities.json, the price_multiplier field) ---
+# The multiplier is multiplied by the price of one unit of the product: the better quality is more expensive.
+# A multiplier, and not a fixed addition in coins — so that the markup is
+# proportional over the whole price scale (1…150), see the header of qualities.json.
 
-# Множитель цены уровня качества. Для "common", неизвестного id и любого
-# уровня без поля — 1.0 (мягкий дефолт: качество не ломает цену, даже
-# если поле забыли или данные старые).
+# The price multiplier of the quality level. For "common", an unknown id and any
+# level without the field — 1.0 (a soft default: the quality does not break the price, even
+# if the field was forgotten or the data is old).
 func get_quality_price_multiplier(quality_id: String) -> float:
     var m = float(get_quality_data(quality_id).get("price_multiplier", 1.0))
     if m <= 0.0:
         return 1.0
     return m
 
-# Текущая цена единицы товара с учётом качества: цена (база × динамические
-# множители рынка) × множитель качества. Дробный результат — округление
-# делает вызывающий (нужны ЦЕЛЫЕ монеты, см. get_price_breakdown_for_quality).
+# The current price of one unit of the product taking the quality into account: the price (base × the dynamic
+# market multipliers) × the quality multiplier. The fractional result — the rounding
+# is done by the caller (WHOLE coins are needed, see get_price_breakdown_for_quality).
 func get_price_for_quality(res_id: String, quality_id: String) -> float:
     return get_price(res_id) * get_quality_price_multiplier(quality_id)
 
-# Разбивка цены единицы товара по качеству для тултипа:
+# The breakdown of the price of one unit of the product by quality for the tooltip:
 #   { "base": int, "multiplier": float, "total": int }
-# База (текущая цена с динамическими множителями рынка) округляется до
-# целого ОДИН раз, итог — round(base × множитель качества). Все числа в
-# тултипе целые, кроме самого множителя, — он и показывается отдельным
-# слагаемым: «Цена: 4 * 1.30 (★★) = 5».
-# У товара без цены (например, псевдоресурс science) — нули.
+# The base (the current price with the dynamic market multipliers) is rounded to a
+# whole number ONCE, the total is round(base × the quality multiplier). All the numbers in
+# the tooltip are whole, except for the multiplier itself — it is shown as a separate
+# addend: "Price: 4 * 1.30 (★★) = 5".
+# For a product without a price (for example, the pseudo-resource science) — zeros.
 func get_price_breakdown_for_quality(res_id: String, quality_id: String) -> Dictionary:
     var mult := get_quality_price_multiplier(quality_id)
     var base := int(round(get_price(res_id)))
@@ -405,14 +406,14 @@ func get_price_breakdown_for_quality(res_id: String, quality_id: String) -> Dict
         return {"base": 0, "multiplier": mult, "total": 0}
     return {"base": base, "multiplier": mult, "total": int(round(float(base) * mult))}
 
-# Хвост строки цены уровня качества для тултипа строки вкладки «Ресурсы» —
-#   " = x1.30 = 5", то есть всё, КРОМЕ звёзд.
-# Звёзды отдаются отдельно не для красоты, а по требованию оформления: в
-# тултипе строки звёзды красятся в цвет уровня (data/qualities.json, color), а
-# сам расчёт цены — золотым (ui_helpers.PRICE_TEXT_COLOR), и одним Label с
-# одним цветом на всю строку это не выразить.
-# Пустая строка, если показывать нечего: у товара нет цены или уровня
-# качества нет в шкале (без звёзд строку не из чего собрать).
+# The tail of the row of the price of the quality level for the row tooltip of the "Resources" tab —
+#   " = x1.30 = 5", that is, everything EXCEPT the stars.
+# The stars are returned separately not for the sake of beauty, but because of the design
+# requirement: in the row tooltip the stars are painted in the colour of the level (data/qualities.json, color), and
+# the price calculation itself — in gold (ui_helpers.PRICE_TEXT_COLOR), and by one Label with
+# one colour for the whole row this cannot be expressed.
+# An empty string if there is nothing to show: the product has no price or the level
+# is not in the scale (without the stars there is nothing to assemble the row from).
 func format_quality_price_tail(res_id: String, quality_id: String) -> String:
     if quality_id.is_empty() or not get_quality_levels().has(quality_id):
         return ""
@@ -423,50 +424,50 @@ func format_quality_price_tail(res_id: String, quality_id: String) -> String:
         "%.2f" % float(d["multiplier"]), int(d["total"])
     ]
 
-# Строка цены уровня качества для тултипа строки вкладки «Ресурсы»:
+# The row of the price of the quality level for the row tooltip of the "Resources" tab:
 #   "★★ = x1.30 = 5"
-# Собирается из звёзд уровня и хвоста выше — обе части берутся из данных, так
-# что текст строки и её части (звёзды отдельно, расчёт отдельно) не могут
-# разойтись.
-# Подпись «Цена:» в строке не нужна: уровень и так назван звёздами, а над
-# блоком лестницы уже стоит базовая «Цена: N» того же товара.
-# Строка собирается для ЛЮБОГО уровня шкалы, включая самый низкий
-# («★ = x1.00 = 4»): лестница читается как одна таблица, где множитель виден
-# для каждого уровня, а не начинается с середины. Раньше нижний уровень
-# отбрасывался, и у склада, где лежит только обычное качество, блока не было
-# вовсе — не было видно, что множитель 1.0 это тоже множитель.
-# Пустая строка, если показывать нечего: у товара нет цены или уровня
-# качества нет в шкале (без звёзд строку не из чего собрать).
+# It is assembled from the stars of the level and the tail above — both parts are taken from the data, so
+# that the text of the row and its parts (the stars separately, the calculation separately) cannot
+# diverge.
+# The "Price:" label in the row is not needed: the level is already named by the stars, and above
+# the block of the ladder there is already the base "Price: N" of the same product.
+# The row is assembled for ANY level of the scale, including the lowest one
+# ("★ = x1.00 = 4"): the ladder is read as one table, where the multiplier is visible
+# for each level, and not starting from the middle. Previously the bottom level
+# was discarded, and for a storage where only the common quality lies, there was no block
+# at all — it was not visible that the multiplier 1.0 is also a multiplier.
+# An empty string if there is nothing to show: the product has no price or the level
+# is not in the scale (without the stars there is nothing to assemble the row from).
 func format_quality_price_line(res_id: String, quality_id: String) -> String:
     var tail := format_quality_price_tail(res_id, quality_id)
     if tail == "":
         return ""
     return get_quality_stars(quality_id) + tail
 
-# Цены по уровням качества, которые РЕАЛЬНО лежат на складе, для тултипа строки
-# вкладки «Ресурсы». Показываются только уровни, присутствующие в
-# quality_breakdown ({quality_id: count} — разбивка склада из
-# CityData.city_quality_detail, см. CityData.get_quality_breakdown): цену
-# «превосходного» уровня, которого на складе нет, показывать незачем — это
-# вводит в заблуждение.
-# Уровни выводятся от худшего к лучшему (порядок data/qualities.json).
-# Возвращается массив записей:
+# The prices by the quality levels that are REALLY in the storage, for the row tooltip
+# of the "Resources" tab. Only the levels that are present in
+# quality_breakdown ({quality_id: count} — the breakdown of the storage from
+# CityData.city_quality_detail, see CityData.get_quality_breakdown): the price of the
+# "exceptional" level, which is not in the storage, is pointless to show — that
+# is misleading.
+# The levels are output from the worst to the best (the order of data/qualities.json).
+# It returns an array of records:
 #   { "qid":   quality_id,
-#     "stars": "★★",        ← звёзды уровня, красятся в его цвет
-#     "tail":  " = x1.30 = 5" ← сам расчёт цены, красится золотым,
+#     "stars": "★★",        ← the stars of the level, painted in its colour
+#     "tail":  " = x1.30 = 5" ← the price calculation itself, painted in gold,
 #     "text":  "★★ = x1.30 = 5" }
-# Звёзды и хвост отдаются ОТДЕЛЬНО, потому что тултип строки красит их разными
-# цветами (звёзды — цвет уровня из data/qualities.json, расчёт — золотой), а
-# text остаётся готовой строкой целиком для тех, кому одного цвета хватает.
-# qid нужен вызывающему, чтобы покрасить звёзды в цвет уровня
-# (get_quality_color) — так текст строки и её цвет не могут разойтись.
-# Пустой массив: у товара нет цены (например, science) или не задан id.
+# The stars and the tail are returned SEPARATELY, because the row tooltip paints them in different
+# colours (the stars — the colour of the level from data/qualities.json, the calculation — gold), and
+# text remains a whole ready row for those whom one colour is enough.
+# The caller needs qid in order to paint the stars in the colour of the level
+# (get_quality_color) — in this way the text of the row and its colour cannot diverge.
+# An empty array: the product has no price (for example, science) or the id is not set.
 func format_quality_price_scale_rows(res_id: String, quality_breakdown: Dictionary = {}) -> Array:
     var rows: Array = []
     if res_id.is_empty() or get_base_price(res_id) <= 0.0:
         return rows
     for qid in get_quality_levels():
-        # Уровня нет на складе — цена не показана (в т.ч. count == 0).
+        # The level is not in the storage — the price is not shown (including count == 0).
         if int(quality_breakdown.get(qid, 0)) <= 0:
             continue
         var tail := format_quality_price_tail(res_id, str(qid))
@@ -476,14 +477,14 @@ func format_quality_price_scale_rows(res_id: String, quality_breakdown: Dictiona
         rows.append({"qid": str(qid), "stars": stars, "tail": tail, "text": stars + tail})
     return rows
 
-# --- ДОЛЯ УРОВНЯ НА СКЛАДЕ (проценты в строке списка и в тултипе разбора) ---
-# Процент count от суммы всей разбивки: доли считаются от ОБЩЕГО количества
-# товара на складе, поэтому в сумме показывают ~100% (а не долю лучшего
-# уровня от остальных — из-за чего строка «★ (67%)» читалась как «две трети
-# склада хорошего»).
-# Проценты округляются по отдельности, поэтому сумма может разойтись на
-# единицу (33%/33%/33%): «допиливать» их до ровных 100% значило бы врать о
-# дробных долях. При пустой или нулевой разбивке — 0.
+# --- THE SHARE OF THE LEVEL IN THE STORAGE (the percentages in the row of the list and in the breakdown tooltip) ---
+# The percent of count from the sum of the whole breakdown: the shares are computed from the TOTAL amount
+# of the product in the storage, therefore in the sum they show ~100% (and not the share of the best
+# level from the others — which is why the row "★ (67%)" was read as "two thirds
+# of the storage is good").
+# The percentages are rounded separately, therefore the sum may differ by
+# one unit (33%/33%/33%): "patching" them up to exactly 100% would mean lying about
+# the fractional shares. With an empty or zero breakdown — 0.
 func get_quality_share_percent(count: int, quality_breakdown: Dictionary) -> int:
     var total := 0
     for qid in quality_breakdown:
@@ -492,13 +493,13 @@ func get_quality_share_percent(count: int, quality_breakdown: Dictionary) -> int
         return 0
     return int(round(float(count) / float(total) * 100.0))
 
-# Разбивка склада строкой для строки списка ресурсов:
-#   "(33%/67%)" — доля каждого уровня, реально лежащего на складе, в цвете
-# этого уровня (data/qualities.json, color). Уровни от худшего к лучшему, как
-# в data/qualities.json; уровни с нулевым количеством пропускаются.
-# Возвращается BBCode (теги [color=…]) для Label с включённым bbcode_enabled:
-# одним текстом видны все уровни, и каждый процент покрашен в цвет своего
-# уровня. Пустая строка, если разбивка пуста или в ней только нули.
+# The breakdown of the storage as a string for the row of the resource list:
+#   "(33%/67%)" — the share of each level that is really in the storage, in the colour
+# of that level (data/qualities.json, color). The levels from the worst to the best, as
+# in data/qualities.json; the levels with a zero count are skipped.
+# It returns BBCode (the [color=…] tags) for a Label with bbcode_enabled:
+# in one text all the levels are visible, and each percentage is painted in the colour of its
+# level. An empty string if the breakdown is empty or contains only zeros.
 func format_quality_share_text(quality_breakdown: Dictionary) -> String:
     var parts: Array = []
     for qid in get_quality_levels():
@@ -513,7 +514,7 @@ func format_quality_share_text(quality_breakdown: Dictionary) -> String:
         return ""
     return "(" + "/".join(parts) + ")"
 
-# Случайно выбирает уровень качества по весам spawn_weight.
+# Randomly chooses the quality level by the spawn_weight weights.
 func roll_quality() -> String:
     var levels = get_quality_levels()
     if levels.is_empty():
@@ -533,42 +534,43 @@ func roll_quality() -> String:
             break
     return chosen
 
-# Возвращает приоритет выбора сырья по умолчанию (из qualities.json).
+# Returns the default priority of choosing raw materials (from qualities.json).
 func get_quality_priority_default() -> String:
     return qualities.get("priority_default", "best")
 
-# Возвращает список доступных приоритетов выбора сырья.
+# Returns the list of the available priorities of choosing raw materials.
 func get_quality_priority_options() -> Array:
     return qualities.get("priority_options", ["best", "worst", "random"])
 
-# Возвращает человекочитаемое название приоритета выбора сырья.
+# Returns the human-readable name of the priority of choosing raw materials.
 func get_quality_priority_name(priority: String) -> String:
     var names: Dictionary = qualities.get("priority_names", {})
     return names.get(priority, priority)
 
-# --- ПРОФЕССИИ И ПОТРЕБЛЕНИЕ ---
+# --- THE PROFESSIONS AND THE CONSUMPTION ---
 
-# Возвращает данные профессии по id (или пустой словарь).
+# Returns the data of the profession by id (or an empty dictionary).
 func get_profession(prof_id: String) -> Dictionary:
     return professions.get(prof_id, {})
 
-# Возвращает имя профессии в именительном падеже («Фермер»).
-# Если id не найден — возвращает сам id как fallback.
+# Returns the name of the profession in the singular nominative form ("Farmer").
+# If the id is not found — it returns the id itself as a fallback.
 func get_profession_name(prof_id: String) -> String:
     if prof_id.is_empty():
         return ""
     return professions.get(prof_id, {}).get("name", prof_id)
 
-# Возвращает профессию, связанную с улучшением (id из data/improvements.json).
-# Если улучшение не задано или у него нет профессии — возвращает "".
-# Метка производна от улучшения и отдельной строкой в интерфейсе не выводится:
-# используется расчётом потребления и плановой картой вкладки «Ресурсы».
+# Returns the profession associated with the improvement (the id from data/improvements.json).
+# If the improvement is not set or it has no profession — it returns "".
+# The label is derived from the improvement and is not displayed in the interface as a
+# separate row: it is used by the consumption calculation and by the planned map of
+# the "Resources" tab.
 func get_profession_for_improvement(imp_id: String) -> String:
     if imp_id.is_empty() or imp_id == null:
         return ""
     return improvements.get(imp_id, {}).get("profession", "")
 
-# Возвращает данные здания по id (или пустой словарь, если здание не найдено).
+# Returns the data of the building by id (or an empty dictionary, if the building is not found).
 func get_building_data(building_id: String) -> Dictionary:
     if building_id.is_empty() or building_id == null:
         return {}
@@ -577,57 +579,57 @@ func get_building_data(building_id: String) -> Dictionary:
             return b
     return {}
 
-# Возвращает профессию горожанина, работающего в здании (поле "profession" в
-# data/buildings.json). Пусто — у здания нет профессии: оно работает по общей
-# модели слотов, без расхода расходников и без бонуса (см. docs.md,
-# «Профессии и потребление ресурсов»).
+# Returns the profession of the citizen working in the building (the "profession" field in
+# data/buildings.json). Empty — the building has no profession: it works by the general
+# slot model, without the expense of supplies and without a bonus (see docs.md,
+# "Professions and resource consumption").
 func get_profession_for_building(building_id: String) -> String:
     return get_building_data(building_id).get("profession", "")
 
-# Возвращает true, если улучшение инфраструктурное — не требует рабочего
-# для выполнения своих функций. Флаг задаётся полем "no_worker": true в
-# data/improvements.json (например, пристань, схема harbor_access).
-# Используется worker_manager (исключение из автоназначения), панелью
-# управления (без кнопок запуска/паузы) и тултипом (особый статус).
+# Returns true if the improvement is infrastructure one — it does not require a worker
+# to perform its functions. The flag is set by the "no_worker": true field in
+# data/improvements.json (for example, a harbor, the harbor_access scheme).
+# It is used by worker_manager (an exception from the auto-assignment), by the control
+# panel (without the start/pause buttons) and by the tooltip (a special status).
 func is_no_worker_improvement(imp_id: String) -> bool:
     if imp_id.is_empty() or imp_id == null:
         return false
     return improvements.get(imp_id, {}).get("no_worker", false)
 
-# Человекочитаемое имя улучшения по id (или сам id, если улучшения нет в
-# реестре). Имя уже переведено загрузчиком данных (data_loader.
-# _localize_display_fields), поэтому дополнительный tr() здесь не нужен.
+# The human-readable name of the improvement by id (or the id itself, if the improvement is not
+# in the registry). The name is already translated by the data loader (data_loader.
+# _localize_display_fields), therefore an additional tr() is not needed here.
 func get_improvement_display_name(imp_id: String) -> String:
     if imp_id.is_empty():
         return ""
     return improvements.get(imp_id, {}).get("name", imp_id)
 
-# Человекочитаемое имя здания по id (или сам id, если здания нет в реестре).
+# The human-readable name of the building by id (or the id itself, if the building is not in the registry).
 func get_building_display_name(building_id: String) -> String:
     if building_id.is_empty():
         return ""
     return get_building_data(building_id).get("name", building_id)
 
-# --- ИСТОЧНИКИ ПОТОКА: ИДЕНТИФИКАТОР → ПОДПИСЬ ---
+# --- THE SOURCES OF THE FLOW: IDENTIFIER → LABEL ---
 #
-# Источники прихода/расхода (профессии, здания, улучшения, служебные строки)
-# адресуются в плановых картах и накопителях казны ИДЕНТИФИКАТОРОМ, а не
-# именем. Имя — только подпись в интерфейсе, и оно резолвится здесь, в точке
-# отрисовки. Так ключи не зависят от языка (LocalizationManager.set_locale
-# перечитывает данные, но не сбрасывает накопители — смена языка посреди окна
-# накопления не должна делить один источник надвое) и не сливаются при
-# совпадении имён.
+# The sources of income/expense (the professions, the buildings, the improvements, the service rows)
+# are addressed in the planned maps and the accumulators of the treasury by an IDENTIFIER, and not by
+# a name. The name is only a label in the interface, and it is resolved here, at the point
+# of the drawing. In this way the keys do not depend on the language (LocalizationManager.set_locale
+# re-reads the data, but does not reset the accumulators — a change of language in the middle
+# of the accumulation window should not split one source in two) and do not merge when
+# the names coincide.
 #
-# Префикс разделяет пространства имён: id "smelter" есть и у профессии
-# (data/professions.json), и у здания (data/buildings.json), а в плановых
-# картах оба попадают в один словарь — без префикса строки слились бы.
-#   "@prof:<id>" — профессия (включая псевдо-профессию "all");
-#   "@bld:<id>"  — городское здание;
-#   "@imp:<id>"  — улучшение на гексе;
-#   "@pop_food"  — питание населения (отдельной сущности в данных нет);
-#   "@scouting" / "@claim" — разовые траты казны (разведка, освоение чанка).
-# Служебные источники хранят в ключе английский текст, как TAX_INCOME_TYPE:
-# tr() нельзя вызвать в выражении константы, перевод накладывает резолвер.
+# The prefix separates the namespaces: the id "smelter" exists both for a profession
+# (data/professions.json) and for a building (data/buildings.json), and in the planned
+# maps both go into one dictionary — without the prefix the rows would merge.
+#   "@prof:<id>" — a profession (including the pseudo-profession "all");
+#   "@bld:<id>"  — a city building;
+#   "@imp:<id>"  — an improvement on a hex;
+#   "@pop_food"  — the feeding of the population (there is no separate entity in the data);
+#   "@scouting" / "@claim" — the one-off treasury costs (scouting, claiming a chunk).
+# The service sources store the English text in the key, like TAX_INCOME_TYPE:
+# tr() cannot be called in a constant expression, the translation is applied by the resolver.
 const SRC_PREFIX_PROFESSION := "@prof:"
 const SRC_PREFIX_BUILDING := "@bld:"
 const SRC_PREFIX_IMPROVEMENT := "@imp:"
@@ -635,8 +637,8 @@ const SRC_POP_FOOD := "@pop_food"
 const SRC_SCOUTING := "@scouting"
 const SRC_CLAIMING := "@claim"
 
-# Идентификатор источника для сущности данных. Пустой id даёт пустой ключ —
-# запись без источника в планы не идёт (вызывающие проверяют это до записи).
+# The source identifier for a data entity. An empty id gives an empty key —
+    # a record without a source does not go into the plans (the callers check this before writing).
 func profession_source_id(prof_id: String) -> String:
     return SRC_PREFIX_PROFESSION + prof_id
 
@@ -646,9 +648,9 @@ func building_source_id(building_id: String) -> String:
 func improvement_source_id(imp_id: String) -> String:
     return SRC_PREFIX_IMPROVEMENT + imp_id
 
-# Подпись источника для интерфейса: идентификатор → человекочитаемое имя.
-# Неизвестный источник отдаётся как есть — недостающая запись в данных
-# должна быть видна как «smelter», а не молчать пустой строкой.
+# The source label for the interface: identifier → human-readable name.
+# An unknown source is returned as is — a missing entry in the data
+# should be visible as "smelter", and not to be silent with an empty string.
 func get_source_display_name(source_id: String) -> String:
     if source_id.is_empty():
         return ""
@@ -666,14 +668,14 @@ func get_source_display_name(source_id: String) -> String:
         return get_improvement_display_name(source_id.substr(SRC_PREFIX_IMPROVEMENT.length()))
     return source_id
 
-# Собирает запись о потреблении из правила data/consumption.json.
-# res_key — поле "resource" правила ("ид_продукта" или "@ид_группы").
-# Для группы члены резолвятся через product_groups; если группа не найдена
-# или amount <= 0 — возвращается пустой словарь (запись пропускается).
+# Assembles the consumption record from the rule of data/consumption.json.
+# res_key — the "resource" field of the rule ("product_id" or "@group_id").
+# For a group the members are resolved through product_groups; if the group is not found
+# or amount <= 0 — an empty dictionary is returned (the record is skipped).
 func _build_consumption_entry(res_key: String, rule: Dictionary) -> Dictionary:
     var amount := int(rule.get("amount", 0))
     if amount <= 0:
-        print("GameData: правило потребления без корректного amount пропущено: ", rule)
+        print("GameData: a consumption rule without a correct amount is skipped: ", rule)
         return {}
     var entry := {
         "amount": amount,
@@ -682,29 +684,29 @@ func _build_consumption_entry(res_key: String, rule: Dictionary) -> Dictionary:
     }
     if is_group_key(res_key):
         var gkey = res_key.trim_prefix("@")
-        # Ключ "@"-группы — всегда id из data/product_groups.json. Поиска по
-        # человекочитаемому имени тут намеренно нет: такой fallback молча
-        # подставлял бы данные по похожей группе и ломал бы адресацию.
+        # The key of an "@"-group is always the id from data/product_groups.json. A search by
+        # the human-readable name is intentionally absent here: such a fallback would silently
+        # substitute the data of a similar group and would break the addressing.
         var members: Array = product_groups.get(gkey, [])
         if members.is_empty():
-            print("GameData: группа '", res_key, "' из data/consumption.json не найдена — запись пропущена.")
+            print("GameData: the group '", res_key, "' from data/consumption.json was not found — the record is skipped.")
             return {}
-        entry["product_id"] = "" # групповая запись не привязана к продукту
+        entry["product_id"] = "" # a group record is not bound to a product
         entry["product_name"] = get_product_group_name(res_key)
         entry["is_group"] = true
         entry["group_members"] = members.duplicate()
         entry["display_key"] = res_key
-        # Иконка группы — своя, если она задана в data/product_groups.json,
-        # иначе первая иконка среди членов (GameData.get_product_group_icon_info).
-        # Раньше здесь был отдельный обход членов, дублировавший правило.
+        # The icon of the group — its own, if it is set in data/product_groups.json,
+        # otherwise the first icon among the members (GameData.get_product_group_icon_info).
+        # Previously there was a separate walk of the members here, duplicating the rule.
         entry["icon"] = get_product_group_icon(res_key)
     else:
-        # Несуществующий продукт: раньше запись всё равно создавалась, с
-        # подписью-идентификатором и пустой иконкой, и тихо висела в
-        # интерфейсе, ни разу ничего не списав. Теперь это видно в консоли —
-        # плюс ту же ошибку показывает data_validator как проблему данных.
+        # A non-existent product: previously the record was created anyway, with
+        # an identifier as the label and an empty icon, and it quietly hung in the
+        # interface without ever writing anything off. Now it is visible in the console —
+        # plus the same error is shown by data_validator as a data problem.
         if not products.has(res_key):
-            print("GameData: продукт '", res_key, "' из data/consumption.json не найден — запись пропущена.")
+            print("GameData: the product '", res_key, "' from data/consumption.json was not found — the record is skipped.")
             return {}
         entry["product_id"] = res_key
         entry["product_name"] = products.get(res_key, {}).get("name", res_key)
@@ -714,32 +716,32 @@ func _build_consumption_entry(res_key: String, rule: Dictionary) -> Dictionary:
         entry["icon"] = products.get(res_key, {}).get("icon", "")
     return entry
 
-# Возвращает массив записей о потреблении для профессии. Источники (в порядке
-# приоритета):
-#   1) реестр data/consumption.json — записи вида
-#      { "resource": "<id>|@<группа>", "profession": ["<id>"],
+# Returns the array of the consumption records for a profession. The sources (in the order of
+# priority):
+#   1) the registry data/consumption.json — the records of the kind
+#      { "resource": "<id>|@<group>", "profession": ["<id>"],
 #        "amount": N, "interval": S, "production_bonus": B }.
-#      Поддерживает группы продуктов: потребляется любой подходящий продукт
-#      из группы (см. worker_manager.tick_consumption()).
-#   2) устаревшая схема «от ресурса»: поле consumption у продукта в
-#      data/products/*.json (оставлено для одиночных случаев — когда у ресурса
-#      нет аналогов для группы). Инфраструктура не изменена.
-# Дубликаты отсекаются по display_key: один и тот же ресурс не попадёт в
-# результат дважды (приоритет у записи из реестра). Каждая запись:
+#      It supports the product groups: any suitable product is consumed
+#      from the group (see worker_manager.tick_consumption()).
+#   2) the deprecated "from the resource" scheme: the consumption field of the product in
+#      data/products/*.json (left for the single cases — when the resource
+#      has no analogue for the group). The infrastructure is not changed.
+# The duplicates are cut off by display_key: the same resource will not get into
+# the result twice (the record from the registry takes priority). Each record:
 #   { "product_id": String, "product_name": String,
 #     "amount": int, "interval": float, "production_bonus": float,
 #     "is_group": bool, "group_members": Array[String],
 #     "display_key": String, "icon": String }
-# product_id пуст для групповых записей; product_name — имя группы.
-# production_bonus — прибавка к множителю производства, пока ресурс есть
-# на складе (0.5 = +50%, то есть множитель x1.5). 0 = без бонуса.
-# Если профессия неизвестна или не имеет потребителей — пустой массив.
+# product_id is empty for the group records; product_name — the name of the group.
+# production_bonus — an addition to the production multiplier, while the resource is
+# in the storage (0.5 = +50%, that is, the multiplier x1.5). 0 = no bonus.
+# If the profession is unknown or has no consumers — an empty array.
 func get_profession_consumption(prof_id: String) -> Array:
     var result: Array = []
     if prof_id.is_empty():
         return result
-    # Источник 1: реестр data/consumption.json.
-    var covered := {} # display_key -> true (защита от двойного списания)
+    # Source 1: the registry data/consumption.json.
+    var covered := {} # display_key -> true (protection from a double write-off)
     for rule in consumption_rules:
         if not (rule is Dictionary):
             continue
@@ -756,9 +758,9 @@ func get_profession_consumption(prof_id: String) -> Array:
             continue
         covered[entry["display_key"]] = true
         result.append(entry)
-    # Источник 2: потребление «от ресурса» (products[*].consumption).
-    # Записи, уже покрытые реестром, пропускаются, чтобы ресурс
-    # не списывался дважды одной профессией.
+    # Source 2: the consumption "from the resource" (products[*].consumption).
+    # The records already covered by the registry are skipped, so that the resource
+    # is not written off twice by one profession.
     for pid in products:
         var prod = products[pid]
         if not prod.has("consumption"):
@@ -782,14 +784,14 @@ func get_profession_consumption(prof_id: String) -> Array:
         })
     return result
 
-# Возвращает все ресурсы, которые потребляются профессией (без деталей по
-# amount/interval) — используется для подсчёта «сколько какой профессии
-# нужно таких-то ресурсов» в сводных тултипах.
-# Возвращает словарь: display_key -> { "name": String, "is_group": bool,
+# Returns all the resources that are consumed by a profession (without the details of
+# amount/interval) — it is used to count "how many such and such resources a profession
+# needs" in the summary tooltips.
+# It returns a dictionary: display_key -> { "name": String, "is_group": bool,
 #   "group_members": Array, "amount": int, "interval": float,
 #   "production_bonus": float }.
-# Ключ одиночного продукта — его id; группового ресурса — "@<id_группы>".
-# Если разные ресурсы требуются с разной частотой, берётся первая встреченная.
+# The key of a single product is its id; of a group resource it is "@<group_id>".
+# If different resources are required with a different frequency, the first encountered one is taken.
 func get_profession_consumption_summary(prof_id: String) -> Dictionary:
     var result: Dictionary = {}
     for entry in get_profession_consumption(prof_id):
