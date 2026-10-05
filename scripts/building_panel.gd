@@ -1,7 +1,7 @@
 # building_panel.gd
-# Панель деталей здания: отображает информацию о здании (возможно, нескольких
-# однотипных) и их слотах, позволяет менять рецепт в каждом слоте,
-# а также приостанавливать/запускать отдельные здания.
+# The details panel of a building: shows the information about a building
+# (possibly several of the same type) and about their slots, allows changing
+# the recipe in every slot, and pausing/resuming the individual buildings.
 extends Control
 
 var building_id: String = ""
@@ -15,51 +15,56 @@ var panel: Panel
 var title_label: Label
 var info_label: Label
 var slots_container: VBoxContainer
-# Секция «Потребляет:» — профессиональное потребление профессии горожанина
-# в зданиях этого типа. Живёт между «Зданий: N» и списком слотов, пересобирается
-# в _refresh() (контейнер создаётся один раз в _ready()).
+# The "Consumes:" section — the professional consumption of the profession of a
+# citizen in the buildings of this type. It lives between "Buildings: N" and the
+# list of the slots, and is rebuilt in _refresh() (the container itself is
+# created once in _ready()).
 var consumption_box: VBoxContainer
 
 var popups_list: Array = []
 var popup_map: Dictionary = {}
 var open_popup = null
 
-# Снимок состояния, при котором в последний раз был сделан _refresh().
-# Хранит количество зданий, рецепты в слотах, наличие работника и приоритет
-# качества по каждому индексу. Используется, чтобы НЕ пересоздавать панель
-# слотов на каждом игровом тике: city_updated эмитится раз в SIMULATION_TICK
-# из do_tick(), и без этого _refresh() каждый тик уничтожает кнопки заголовков
-# (toggle_btn, quality_btn) вместе с их ОС-тултипами "Запустить/Приостановить"
-# и "Приоритет качества: ...".
-# Формат: {"count": int, "items": {b_index: {"slots": [..], "priority": String, "has_worker": bool, "can_upgrade": bool}}}
+# The snapshot of the state at which _refresh() was last done.
+# It holds the number of buildings, the recipes in the slots, the presence of a
+# worker and the quality priority for every index. It is used in order NOT to
+# rebuild the panel of the slots on every game tick: city_updated is emitted
+# once per SIMULATION_TICK by do_tick(), and without this _refresh() would
+# destroy the header buttons (toggle_btn, quality_btn) together with their OS
+# tooltips (the pause/resume one and the quality priority one) on every tick.
+# Format: {"count": int, "items": {b_index: {"slots": [..], "priority": String, "has_worker": bool, "can_upgrade": bool}}}
 var _last_panel_state: Dictionary = {}
 
-# Прогресс-бары идущих апгрейдов зданий: b_index -> ProgressBar. Обновляются
-# каждый кадр в _process() БЕЗ пересоздания UI (иначе умирали бы тултипы).
+# The progress bars of the building upgrades that are under way: b_index ->
+# ProgressBar. They are updated every frame in _process() WITHOUT rebuilding
+# the UI (otherwise the tooltips would die).
 var _upgrade_progress_bars: Dictionary = {}
 
-# Прогресс-бары крафта слотов: "b_index:slot_idx" -> ProgressBar. Показывают,
-# сколько времени рецепта (data/crafts, поле time) уже накоплено слотом
-# (CityData.get_slot_progress_ratio). Тоже обновляются в _process() без
-# пересоздания UI. Бар создаётся только для рецептов с временем больше шага
-# тика — у остальных крафт и так идёт каждый тик симуляции.
+# The progress bars of the crafting of the slots: "b_index:slot_idx" ->
+# ProgressBar. They show how much of the time of the recipe (data/crafts, the
+# "time" field) the slot has already accumulated
+# (CityData.get_slot_progress_ratio). These are updated in _process() as well,
+# without rebuilding the UI. A bar is created only for the recipes whose time
+# is longer than one tick — for the rest the crafting happens on every
+# simulation tick anyway.
 var _slot_progress_bars: Dictionary = {}
 
-# Тултип кнопки «Улучшить»: собственная панель с богатым содержимым
-# (иконки здания и материалов — обычный tooltip_text картинки не показывает).
-# Отдельная панель, а не ui_helpers.detail_tooltip_panel: та общая с вкладкой
-# «Здания», а панель здания рисуется поверх CityUi.
+# The tooltip of the "Upgrade" button: a panel of its own with rich content
+# (the icons of the building and of the materials — the plain tooltip_text
+# cannot show pictures). A panel of its own, and not
+# ui_helpers.detail_tooltip_panel: that one is shared with the "Buildings" tab,
+# and the panel of the building is drawn on top of the CityUi.
 var upgrade_tooltip_panel: Panel = null
 var upgrade_tooltip_content: VBoxContainer = null
 
 func _ready():
-    # Подписываемся на изменение назначений работников, чтобы панель
-    # обновлялась в реальном времени (например, при рождении жителя,
-    # который автоматически встаёт на работу).
+    # We subscribe to the changes of the worker assignments, so that the panel
+    # is updated in real time (for example, on the birth of a resident who
+    # automatically takes a job).
     call_deferred("_setup_assignments_listener")
-    # Создаём оверлей-панель поверх CityUI.
-    # ВАЖНО: CityUI — дочерний узел Node2D-сцены, поэтому у него нет собственного rect.
-    # Задаём размеры корневого Control вручную в open().
+    # We create the overlay panel on top of the CityUI.
+    # IMPORTANT: the CityUI is a child node of a Node2D scene, therefore it has
+    # no rect of its own. The sizes of the root Control are set by hand in open().
     var dim = ColorRect.new()
     dim.color = Color(0, 0, 0, 0.5)
     dim.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -72,7 +77,7 @@ func _ready():
 
     panel = Panel.new()
     panel.custom_minimum_size = Vector2(460, 400)
-    # Непрозрачный тёмный фон для панели
+    # An opaque dark background for the panel
     var style = StyleBoxFlat.new()
     style.bg_color = Color(0.13, 0.13, 0.13, 1.0)
     style.set_border_width_all(2)
@@ -97,8 +102,9 @@ func _ready():
     info_label = Label.new()
     vbox.add_child(info_label)
 
-    # Секция профессионального потребления здания («Потребляет:»). Содержимое
-    # собирает _refresh() — так секция не зависит от пересоздания слотов.
+    # The section of the professional consumption of the building ("Consumes:").
+    # Its content is assembled by _refresh() — that way the section does not
+    # depend on the slots being rebuilt.
     consumption_box = VBoxContainer.new()
     consumption_box.add_theme_constant_override("separation", 4)
     consumption_box.visible = false
@@ -122,10 +128,10 @@ func _ready():
     close_btn.pressed.connect(_on_close_pressed)
     vbox.add_child(close_btn)
 
-    # Тултип кнопки «Улучшить»: панель с иконками (здание, материалы).
-    # mouse_filter IGNORE — тултип не перехватывает ввод; z_index ниже, чем у
-    # group_tooltip (1100), чтобы при наведении на групповой ресурс состав
-    # группы рисовался поверх этого тултипа.
+    # The tooltip of the "Upgrade" button: a panel with icons (the building, the
+    # materials). mouse_filter IGNORE — the tooltip does not intercept the input;
+    # z_index is lower than the one of group_tooltip (1100), so that on hovering
+    # a group resource the composition of the group is drawn on top of it.
     upgrade_tooltip_panel = Panel.new()
     upgrade_tooltip_panel.visible = false
     upgrade_tooltip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -138,8 +144,8 @@ func _ready():
     upgrade_tooltip_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
     upgrade_tooltip_panel.add_child(upgrade_tooltip_content)
 
-# Стиль фона тултипа — как у тултипов ui_helpers: непрозрачный тёмный фон
-# со светлой рамкой в 1px.
+# The style of the background of the tooltip — the same as the tooltips of
+# ui_helpers: an opaque dark background with a light frame of 1px.
 func _make_tooltip_style() -> StyleBoxFlat:
     var style = StyleBoxFlat.new()
     style.bg_color = Color(0.2, 0.2, 0.2, 1.0)
@@ -151,9 +157,9 @@ func _make_tooltip_style() -> StyleBoxFlat:
     return style
 
 func open(building_id_arg: String, data: Dictionary):
-    # Очищаем старые попапы при открытии (контент мог устареть, например,
-    # после изучения новых технологий). При периодическом _refresh() попапы
-    # будут переиспользованы и не закроются.
+    # We clear the old popups on opening (the content may have become stale, for
+    # example after a new technology has been researched). On a periodic
+    # _refresh() the popups are reused and stay open.
     for key in popup_map.keys():
         var old_popup = popup_map[key]
         if is_instance_valid(old_popup):
@@ -166,14 +172,15 @@ func open(building_id_arg: String, data: Dictionary):
     raw_resources = data.get("raw_resources", {})
     crafts_data = data.get("crafts_data", [])
     ui_helpers = data.get("ui_helpers", null)
-    # Сбрасываем ширину панели к базовой, чтобы она не оставалась широкой от предыдущего здания
+    # We reset the width of the panel to the base one, so that it does not stay wide from the previous building
     panel.custom_minimum_size.x = 460
-    # Задаём размер корневого Control = размер viewport, чтобы оверлей покрывал всё
+    # We set the size of the root Control = the size of the viewport, so that the overlay covers everything
     var vp_size = get_viewport_rect().size
     size = vp_size
     position = Vector2.ZERO
-    # Сбрасываем кэш состояния, чтобы _refresh() гарантированно отработал
-    # при открытии панели (иначе он бы сразу же вышел по «состояние не изменилось»).
+    # We reset the state cache, so that _refresh() is guaranteed to do its work
+    # when the panel opens (otherwise it would return right away on "the state
+    # has not changed").
     _last_panel_state = {}
     _refresh()
     show()
@@ -181,15 +188,16 @@ func open(building_id_arg: String, data: Dictionary):
 func _refresh():
     CityData.migrate_old_save_format()
 
-    # Собираем все индексы построенных зданий с нужным id
+    # We collect the indices of the built buildings with the required id
     var indices = []
     for idx in range(CityData.city_built_buildings.size()):
         if CityData.city_built_buildings[idx].get("id", "") == building_id:
             indices.append(idx)
 
     if indices.is_empty():
-        # Все здания этого типа улучшены (апгрейд меняет id) или снесены —
-        # очищаем панель, чтобы не показывать устаревшие слоты.
+        # All the buildings of this type have been upgraded (an upgrade changes
+        # the id) or demolished — we clear the panel, so that it does not show
+        # the stale slots.
         for child in slots_container.get_children():
             child.queue_free()
         info_label.text = tr("Buildings: 0")
@@ -209,22 +217,24 @@ func _refresh():
 
     info_label.text = tr("Buildings: %d") % indices.size()
 
-    # Очищаем старые слоты
+    # We clear the old slots
     for child in slots_container.get_children():
         child.queue_free()
     _upgrade_progress_bars.clear()
     _slot_progress_bars.clear()
-    # Кнопки заголовков пересоздаются — тултип апгрейда мог остаться висеть
-    # (mouse_exited у удаляемой кнопки не сработает), скрываем явно.
+    # The header buttons are recreated — the tooltip of the upgrade may have
+    # stayed hanging (the mouse_exited of a button being removed will not fire),
+    # so we hide it explicitly.
     _hide_upgrade_tooltip()
 
     var main_map = get_tree().root.find_child("MainMap", true, false)
     var tm = main_map.get_node("TownsfolkManager") if main_map else null
 
-    # Профессиональное потребление зданий этого типа: сумма по РАБОЧИМ зданиям
-    # (есть горожанин и хотя бы один непустой слот — расходники простаивающего
-    # здания не тратятся, см. CityData.get_townsfolk_professions_count).
-    # Ширина секции участвует в подгонке ширины панели ниже.
+    # The professional consumption of the buildings of this type: the sum over
+    # the WORKING buildings (there is a citizen and at least one non-empty slot —
+    # the supplies of an idle building are not spent, see
+    # CityData.get_townsfolk_professions_count).
+    # The width of the section takes part in fitting the width of the panel below.
     var consumption_width := _fill_consumption_section(tm, indices)
 
     var all_item_texts = []
@@ -238,7 +248,7 @@ func _refresh():
         var bld = CityData.city_built_buildings[b_index]
         var slots = bld.get("slots", [])
 
-        # Заголовок отдельного здания с кнопкой приостановки/запуска
+        # The header of a single building, with the pause/resume button
         var header = HBoxContainer.new()
         header.add_theme_constant_override("separation", 8)
 
@@ -255,15 +265,16 @@ func _refresh():
         header_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         header.add_child(header_label)
 
-        # Кнопка «Улучшить» — напротив здания, у которого есть улучшенная
-        # версия (поле upgrades_into в buildings.json). Появляется после
-        # изучения технологии, открывающей улучшенную версию. Тултип показывает
-        # стоимость постройки улучшенной версии. На время апгрейда здание
-        # работает как обычно, вместо кнопки отображается прогресс-бар.
+        # The "Upgrade" button — next to a building that has an improved version
+        # (the upgrades_into field in buildings.json). It appears after the
+        # technology that opens the improved version has been researched. The
+        # tooltip shows the cost of building the improved version. While the
+        # upgrade is under way the building works as usual, and a progress bar
+        # is displayed instead of the button.
         var upgrade_data = CityData.get_building_upgrade_data(b_index)
         if not upgrade_data.is_empty():
-            # Апгрейд этого здания уже идёт — показываем прогресс (обновляется
-            # в _process() без пересоздания UI).
+            # The upgrade of this building is already under way — we show the
+            # progress (it is updated in _process() without rebuilding the UI).
             var upgrade_bar = ProgressBar.new()
             upgrade_bar.custom_minimum_size = Vector2(90, 18)
             upgrade_bar.show_percentage = false
@@ -278,9 +289,9 @@ func _refresh():
             upgrade_btn.custom_minimum_size = Vector2(28, 28)
             upgrade_btn.expand_icon = true
             upgrade_btn.icon = _get_toggle_icon("upgrade")
-            # Тултип с иконками рисуется собственной панелью по наведению
-            # (см. _on_upgrade_btn_hovered) — обычный tooltip_text не умеет
-            # показывать картинки.
+            # The tooltip with the icons is drawn by a panel of its own on hover
+            # (see _on_upgrade_btn_hovered) — the plain tooltip_text is not able
+            # to show pictures.
             upgrade_btn.pressed.connect(_on_upgrade_pressed.bind(b_index))
             upgrade_btn.mouse_entered.connect(_on_upgrade_btn_hovered.bind(upgrade_btn, b_index))
             upgrade_btn.mouse_exited.connect(_hide_upgrade_tooltip)
@@ -299,7 +310,7 @@ func _refresh():
             toggle_btn.pressed.connect(_on_toggle_pressed.bind(b_index, true))
         header.add_child(toggle_btn)
 
-        # Кнопка приоритета качества: best (лучшее) / worst (худшее)
+        # The quality priority button: best (the best) / worst (the worst)
         var quality_btn = Button.new()
         quality_btn.custom_minimum_size = Vector2(28, 28)
         quality_btn.expand_icon = true
@@ -319,8 +330,8 @@ func _refresh():
             slot_label.custom_minimum_size = Vector2(70, 0)
             row.add_child(slot_label)
 
-            # Собираем доступные рецепты: "empty" + все, что можно исполнять в этом здании
-            # (с фильтрацией по изученным технологиям)
+            # We collect the available recipes: "empty" + all the ones that can
+            # be crafted in this building (filtered by the researched technologies)
             var available = []
             available.append("empty")
             for craft in crafts_data:
@@ -335,7 +346,7 @@ func _refresh():
 
             var current = slots[i]
 
-            # Кнопка выбора рецепта
+            # The recipe selection button
             var select_btn = Button.new()
             select_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
             select_btn.add_theme_constant_override("icon_max_width", 24)
@@ -344,10 +355,10 @@ func _refresh():
 
             var popup_key = "%d:%d" % [b_index, i]
             var popup = null
-            # Переиспользуем существующий попап, если он есть
+            # We reuse the existing popup, if there is one
             if popup_map.has(popup_key) and is_instance_valid(popup_map[popup_key]):
                 popup = popup_map[popup_key]
-                # Попап существует — заменяем его содержимое с актуальной кнопкой
+                # The popup exists — we replace its content with the actual button
                 for child in popup.get_children():
                     popup.remove_child(child)
                     child.free()
@@ -357,9 +368,10 @@ func _refresh():
                 if int(fill_data["max_icons"]) > max_item_icons:
                     max_item_icons = int(fill_data["max_icons"])
             else:
-                # Кастомный попап со списком рецептов (поддерживает несколько иконок результата)
-                # ВАЖНО: попап (Window) нужно добавить в дерево ДО добавления содержимого,
-                # иначе layout не пересчитывается.
+                # A custom popup with the list of the recipes (it supports several
+                # result icons)
+                # IMPORTANT: the popup (Window) has to be added to the tree BEFORE
+                # the content is added, otherwise the layout is not recalculated.
                 popup = PopupPanel.new()
                 var popup_style = StyleBoxFlat.new()
                 popup_style.bg_color = Color(0.15, 0.15, 0.15, 1.0)
@@ -370,7 +382,7 @@ func _refresh():
                 popup.set_meta("popup_key", popup_key)
                 add_child(popup)
                 popup.hide()
-                # Заполняем содержимое попапа и получаем данные для расчёта ширины
+                # We fill the content of the popup and get the data for the calculation of the width
                 var fill_data = _fill_popup_content(popup, b_index, i, available, select_btn)
                 for t in fill_data["item_texts"]:
                     all_item_texts.append(t)
@@ -382,14 +394,16 @@ func _refresh():
             select_btn.pressed.connect(_on_slot_button_pressed.bind(b_index, i, popup, select_btn))
             row.add_child(select_btn)
 
-            # Прогресс-бар крафта слота: сколько времени рецепта (time) уже
-            # накоплено. Показывается только у рецептов, которые длятся дольше
-            # тика симуляции (у мгновенных рецептов прогресс всегда «полный»).
-            # Обновляется в _process() без пересоздания UI.
-            # В continuous-модели прогресс-бар показывает completion_ratio (0..1):
-            # min(заполненность ингредиентов, время/craft_time). При дефиците
-            # сырья бар всё равно растёт, пока копится время, но не превышает
-            # 1.0 — это и есть «реальная степень готовности с учётом дефицита».
+            # The progress bar of the crafting of a slot: how much of the time of
+            # the recipe (time) has already been accumulated. It is shown only for
+            # the recipes that last longer than a simulation tick (for an instant
+            # recipe the progress is always "full").
+            # It is updated in _process() without rebuilding the UI.
+            # In the continuous model the progress bar shows the completion_ratio
+            # (0..1): min(the filling of the ingredients, time/craft_time). When
+            # there is a shortage of the raw materials the bar still grows while
+            # the time accumulates, but it does not exceed 1.0 — that is the "real
+            # degree of readiness taking the shortage into account".
             var craft_time = CityData.get_slot_craft_time(b_index, i)
             if craft_time > CityData.SIMULATION_TICK:
                 var craft_bar = ProgressBar.new()
@@ -398,8 +412,9 @@ func _refresh():
                 craft_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
                 craft_bar.max_value = 1.0
                 craft_bar.value = CityData.get_slot_progress_ratio(b_index, i)
-                # Имя рецепта — в мете бара: тултип обновляется в _process()
-                # без обращения к реестру рецептов каждый кадр.
+                # The name of the recipe is in the label of the bar: the tooltip is
+                # updated in _process() without a lookup in the recipe registry on
+                # every frame.
                 craft_bar.set_meta("craft_name", _get_craft_name(str(current)))
                 craft_bar.tooltip_text = ""
                 craft_bar.mouse_entered.connect(_on_craft_bar_mouse_entered.bind(craft_bar))
@@ -413,7 +428,7 @@ func _refresh():
             max_slot_row_width = maxf(max_slot_row_width, slot_row_width)
             slots_container.add_child(row)
 
-    # Динамически расширяем панель, если текст пунктов не помещается
+    # We widen the panel dynamically, if the text of the items does not fit
     var max_text_width = 0
     var font = get_theme_default_font()
     var font_size = get_theme_default_font_size()
@@ -421,27 +436,27 @@ func _refresh():
         var w = font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
         if w > max_text_width:
             max_text_width = w
-    # Учитываем как пункты попапа, так и фактическую ширину строки слота,
-    # включая прогресс-бар справа от кнопки рецепта.
+    # We take into account both the items of the popup and the actual width of the
+    # row of the slot, including the progress bar to the right of the recipe button.
     var popup_content_width = max_text_width + max_item_icons * 24 + 40 + 70 + 40
     var needed_width = maxf(popup_content_width, max_slot_row_width + 40 + 16)
-    # Секция «Потребляет:» — ещё одна строка содержимого: её подпись
-    # («4 шт./сек (2 здания) (+25% к производству)») иначе вылезла бы за
-    # край панели, посчитанный только по слотам и попапам.
+    # The "Consumes:" section is one more row of content: its label would
+    # otherwise stick out past the edge of the panel, which is calculated from
+    # the slots and the popups alone.
     needed_width = maxf(needed_width, consumption_width + 40 + 16)
-    # Не даём панели выйти за пределы viewport
+    # We do not let the panel go beyond the limits of the viewport
     var max_panel_width = get_viewport_rect().size.x - 40
     if needed_width > max_panel_width:
         needed_width = max_panel_width
     if needed_width > panel.custom_minimum_size.x:
         panel.custom_minimum_size.x = needed_width
 
-    # Приводим ширину попапов в соответствие с шириной панели
+    # We bring the width of the popups in line with the width of the panel
     var popup_width = panel.custom_minimum_size.x - 70 - 40
     for popup in popups:
         popup.min_size.x = popup_width
 
-    # Обновляем popup_map и удаляем попапы, которые больше не нужны
+    # We update popup_map and remove the popups that are no longer needed
     for key in popup_map.keys():
         if not new_popup_map.has(key):
             var old_popup = popup_map[key]
@@ -453,19 +468,22 @@ func _refresh():
         if is_instance_valid(popup_map[key]):
             popups_list.append(popup_map[key])
 
-    # Фиксируем снимок состояния, чтобы последующие _on_assignments_changed()
-    # на пустых тиках не делали повторный _refresh() и не убивали ОС-тултипы
-    # на кнопках заголовков (toggle_btn, quality_btn).
+    # We record the state snapshot, so that the subsequent
+    # _on_assignments_changed() on the idle ticks does not do a repeated
+    # _refresh() and does not kill the OS tooltips of the header buttons
+    # (toggle_btn, quality_btn).
     _last_panel_state = _collect_panel_state(tm)
 
-# Заполняет (или прячет) секцию «Потребляет:» — профессиональное потребление
-# профессии горожанина в зданиях ЭТОГО типа. Показывается сумма по рабочим
-# зданиям: скорость строки умножается на их число, в подписи появляется
-# «(2 здания)»; при одном рабочем здании строка совпадает с тултипом гекса.
-# Формат строк даёт общий ConsumptionUi — тот же, что у расширенного тултипа
-# гекса, левой колонки панели управления и тултипа деталей здания.
-# Возвращает ширину содержимого секции: она участвует в подгонке ширины
-# панели вместе со слотами и попапами.
+# Fills (or hides) the "Consumes:" section — the professional consumption of the
+# profession of a citizen in the buildings of THIS type. The sum over the working
+# buildings is shown: the rate of the row is multiplied by their number, and the
+# label gains a "(2 buildings)"; with a single working building the row is the
+# same as in the tooltip of the hex.
+# The format of the rows is given by the shared ConsumptionUi — the same one as
+# in the extended tooltip of the hex, in the left column of the control panel and
+# in the details tooltip of the building.
+# Returns the width of the content of the section: it takes part in fitting the
+# width of the panel together with the slots and the popups.
 func _fill_consumption_section(tm, indices: Array) -> float:
     _clear_consumption_section()
     var rows = ConsumptionUi.build_rows_for_building(
@@ -497,8 +515,9 @@ func _fill_consumption_section(tm, indices: Array) -> float:
         bullet.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
         bullet.mouse_filter = Control.MOUSE_FILTER_IGNORE
         line.add_child(bullet)
-        # Имя ресурса с иконкой рисует общий хелпер (у @-группы подчёркнутое
-        # имя с составом по наведению), скорость и бонус дописываем справа.
+        # The name of the resource with the icon is drawn by the shared helper
+        # (for an @-group it is an underlined name with the composition on
+        # hover), the rate and the bonus are appended to the right.
         line.add_child(ui_helpers.make_resource_entry(
             str(row.get("display_key", "")), all_resources))
         var rate_label = Label.new()
@@ -507,8 +526,9 @@ func _fill_consumption_section(tm, indices: Array) -> float:
         rate_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         line.add_child(rate_label)
         consumption_box.add_child(line)
-        # Ширина строки: имя ресурса + «: » + хвост подписи, плюс отступ,
-        # маркер, иконка (20 px) и разделители HBox.
+        # The width of the row: the name of the resource + ": " + the tail of the
+        # label, plus the indent, the marker, the icon (20 px) and the separators
+        # of the HBox.
         var row_width := font.get_string_size(
                 str(row.get("name", "")), HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x \
             + font.get_string_size(" " + str(row.get("rate_label", "")),
@@ -518,9 +538,10 @@ func _fill_consumption_section(tm, indices: Array) -> float:
     consumption_box.visible = true
     return content_width
 
-# Число зданий этого типа, которые реально тратят расходники: есть горожанин
-# и хотя бы один непустой слот. При нуле таких зданий секция показывает
-# скорость «на одно здание» с пометкой «(рабочих зданий нет)».
+# The number of the buildings of this type that really spend the supplies: there
+# is a citizen and at least one non-empty slot. When there are no such buildings,
+# the section shows the rate "per one building" with the note
+# "(there are no working buildings)".
 func _count_working_buildings(tm, indices: Array) -> int:
     var result := 0
     if tm == null:
@@ -533,8 +554,8 @@ func _count_working_buildings(tm, indices: Array) -> int:
         result += 1
     return result
 
-# Очищает секцию «Потребляет:» и прячет её: у здания без профессии (или без
-# расходников у неё) показывать нечего.
+# Clears the "Consumes:" section and hides it: for a building without a profession
+# (or without any supplies for it) there is nothing to show.
 func _clear_consumption_section():
     if consumption_box == null:
         return
@@ -543,9 +564,9 @@ func _clear_consumption_section():
         child.queue_free()
     consumption_box.visible = false
 
-# Заполняет содержимое попапа списком доступных рецептов.
-# Возвращает словарь с текстами пунктов и максимальным количеством иконок
-# (нужно для расчёта ширины панели в _refresh()).
+# Fills the content of the popup with the list of the available recipes.
+# Returns a dictionary with the texts of the items and the maximum number of
+# icons (it is needed for the calculation of the width of the panel in _refresh()).
 func _fill_popup_content(popup, b_index: int, slot_idx: int, available: Array, button) -> Dictionary:
     var result = {"item_texts": [], "max_icons": 0}
 
@@ -566,11 +587,12 @@ func _fill_popup_content(popup, b_index: int, slot_idx: int, available: Array, b
             if c["id"] == craft_id:
                 craft_name = c.get("name", craft_id)
                 craft_resources = c.get("resources", {})
-                # display_result — UI-подсказка для «нематериальных» выходов
-                # (наука и будущие псевдо-ресурсы): механикой не читается.
+                # display_result — a UI hint for the "non-material" outputs
+                # (science and the future pseudo-resources): it is not read by
+                # the mechanics.
                 craft_result = c.get("display_result", c.get("result", {}))
                 break
-        # Формируем текст пункта для расчёта ширины
+        # We build the text of the item for the calculation of the width
         var item_text = ""
         if not craft_resources.is_empty():
             var res_names = []
@@ -590,7 +612,7 @@ func _fill_popup_content(popup, b_index: int, slot_idx: int, available: Array, b
         if icon_count > int(result["max_icons"]):
             result["max_icons"] = icon_count
 
-        # Пункт списка — Button с содержимым и встроенной подсветкой при наведении
+        # An item of the list — a Button with the content and a built-in highlight on hover
         var item_btn = Button.new()
         item_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
         item_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -617,37 +639,41 @@ func _fill_popup_content(popup, b_index: int, slot_idx: int, available: Array, b
     return result
 
 func _setup_assignments_listener():
-    # Подключаемся к сигналу изменения назначений горожан, чтобы обновлять
-    # панель в реальном времени (например, когда новый житель автоматически
-    # встаёт на работу).
+    # We connect to the signal of the change of the assignments of the citizens,
+    # in order to update the panel in real time (for example, when a new resident
+    # automatically takes a job).
     var main_map = get_tree().root.find_child("MainMap", true, false)
     var tm = main_map.get_node("TownsfolkManager") if main_map else null
     if tm and not tm.assignment_changed.is_connected(_on_assignments_changed):
         tm.assignment_changed.connect(_on_assignments_changed)
-    # Подписываемся на обновление города, чтобы панель обновлялась при
-    # смене рецептов (статус "простаивает" появляется/исчезает сразу).
+    # We subscribe to the update of the city, so that the panel is updated when
+    # the recipes change (the "idle" status appears/disappears at once).
     if not CityData.city_updated.is_connected(_on_assignments_changed):
         CityData.city_updated.connect(_on_assignments_changed)
 
 func _on_assignments_changed():
     if not visible:
         return
-    # Если открыт попап со списком рецептов — НЕ вызываем _refresh(), чтобы
-    # попап не перестраивался и не закрывался при каждом игровом тике.
-    # (city_updated эмитится каждый тик симуляции — SIMULATION_TICK — из do_tick.)
+    # If the popup with the list of the recipes is open — we do NOT call
+    # _refresh(), so that the popup is not rebuilt and does not close on every
+    # game tick.
+    # (city_updated is emitted on every simulation tick — SIMULATION_TICK — by
+    # do_tick.)
     if open_popup != null:
         return
-    # Если открыт tooltip списка продуктов (группового ресурса) - тоже не вызываем
-    # _refresh(), чтобы он не исчезал при пересоздании строк затрат.
+    # If the tooltip of the list of the products (of a group resource) is open —
+    # we do not call _refresh() either, so that it does not disappear when the
+    # rows of the costs are rebuilt.
     if ui_helpers != null and is_instance_valid(ui_helpers):
         var gtp = ui_helpers.group_tooltip_panel
         if is_instance_valid(gtp) and gtp.visible:
             return
 
-    # Сравниваем текущее состояние с тем, при котором был последний _refresh().
-    # Если ничего не изменилось (а на обычном тике do_tick() меняется только
-    # содержимое складов, не состав зданий/слотов/работников) — выходим без
-    # пересоздания UI. Иначе каждый тик умирают кнопки заголовков и их ОС-тултипы.
+    # We compare the current state with the one at which the last _refresh() was
+    # done. If nothing has changed (and on an ordinary tick of do_tick() only the
+    # content of the storages changes, not the composition of the
+    # buildings/slots/workers) — we return without rebuilding the UI. Otherwise
+    # the header buttons and their OS tooltips die on every tick.
     var main_map = get_tree().root.find_child("MainMap", true, false)
     var tm = main_map.get_node("TownsfolkManager") if main_map else null
     var current_state = _collect_panel_state(tm)
@@ -656,7 +682,8 @@ func _on_assignments_changed():
     _last_panel_state = current_state
     _refresh()
 
-# Собирает снимок данных, от которых зависит внешний вид панели слотов.
+# Assembles a snapshot of the data that the look of the panel of the slots
+# depends on.
 func _collect_panel_state(tm) -> Dictionary:
     var state = {"count": 0, "items": {}}
     for idx in range(CityData.city_built_buildings.size()):
@@ -669,15 +696,17 @@ func _collect_panel_state(tm) -> Dictionary:
             "slots": (bld.get("slots", []) as Array).duplicate(),
             "priority": bld.get("quality_priority", GameData.get_quality_priority_default()),
             "has_worker": has_worker,
-            # Доступность апгрейда: старт апгрейда и изучение открывающей его
-            # технологии должны пересобирать панель (кнопка «Улучшить» <->
-            # прогресс-бар). Во время апгрейда can_upgrade == false.
+            # The availability of the upgrade: the start of the upgrade and the
+            # research of the technology that opens it have to rebuild the panel
+            # (the "Upgrade" button <-> the progress bar). During the upgrade
+            # can_upgrade == false.
             "can_upgrade": CityData.can_upgrade_building(idx),
         }
     return state
 
-# Сравнивает два снимка состояния панели. Игнорирует количественные изменения
-# складов/производства — они не должны вызывать пересоздание UI слотов.
+# Compares two snapshots of the state of the panel. It ignores the quantitative
+# changes of the storages/production — they must not cause a rebuild of the UI of
+# the slots.
 func _panel_state_equal(a: Dictionary, b: Dictionary) -> bool:
     if a.get("count", 0) != b.get("count", 0):
         return false
@@ -713,7 +742,7 @@ func _on_toggle_pressed(b_index: int, enable: bool):
 
     if enable:
         if CityData.idle_population <= 0:
-            # Показываем сообщение через городской UI, если доступен
+            # We show the message through the city UI, if it is available
             var city_ui = get_tree().root.find_child("CityUi", true, false)
             if city_ui and city_ui.has_method("set_message"):
                 city_ui.set_message(tr("No free citizens!"))
@@ -722,14 +751,14 @@ func _on_toggle_pressed(b_index: int, enable: bool):
     else:
         tm.remove_townsfolk(b_index)
 
-    # Скрываем открытые попапы перед пересозданием слотов, чтобы они
-    # не ссылались на удаляемые элементы и не оставались висячими.
+    # We hide the open popups before rebuilding the slots, so that they do not
+    # refer to the elements being removed and do not stay hanging.
     for p in popups_list:
         if is_instance_valid(p) and p.visible:
             p.hide()
     _refresh()
 
-# Переключает приоритет качества здания и обновляет кнопку.
+# Switches the quality priority of the building and updates the button.
 func _on_quality_priority_pressed(b_index: int):
     if b_index < 0 or b_index >= CityData.city_built_buildings.size():
         return
@@ -737,7 +766,7 @@ func _on_quality_priority_pressed(b_index: int):
     var current = bld.get("quality_priority", GameData.get_quality_priority_default())
     var options = GameData.get_quality_priority_options()
     var new_priority = options[0] if not options.is_empty() else "best"
-    # Циклически переключаем: best → worst → random → best
+    # We switch cyclically: best → worst → random → best
     if not options.is_empty():
         var idx = options.find(current)
         if idx < 0:
@@ -745,7 +774,7 @@ func _on_quality_priority_pressed(b_index: int):
         idx = (idx + 1) % options.size()
         new_priority = options[idx]
     bld["quality_priority"] = new_priority
-    # Показываем сообщение
+    # We show the message
     var main_map = get_tree().root.find_child("MainMap", true, false)
     if main_map and main_map.has_node("HUD"):
         var hud = main_map.get_node("HUD")
@@ -759,18 +788,18 @@ func _on_quality_priority_pressed(b_index: int):
             var bname = bdata.get("name", label) if bdata else label
             var priority_text = GameData.get_quality_priority_name(new_priority)
             hud.show_message(tr("%s: quality priority — %s") % [bname, priority_text])
-    # Обновляем кнопку в интерфейсе
+    # We update the button in the interface
     _refresh()
     CityData.emit_signal("city_updated")
 
-# Обновляет текст/подсказку кнопки приоритета качества.
+# Updates the text/tooltip of the quality priority button.
 func _update_quality_button(button: Button, b_index: int):
     if b_index < 0 or b_index >= CityData.city_built_buildings.size():
         return
     var bld = CityData.city_built_buildings[b_index]
     var priority = bld.get("quality_priority", GameData.get_quality_priority_default())
     var levels = GameData.get_quality_levels()
-    # Индикация приоритета: звёздочки лучшего/худшего качества или 🎲 для random.
+    # The indication of the priority: the stars of the best/worst quality, or 🎲 for random.
     if priority == "best" and levels.size() > 0:
         button.text = GameData.get_quality_stars(levels.back())
     elif priority == "worst" and levels.size() > 0:
@@ -788,9 +817,10 @@ func _get_toggle_icon(icon_name: String) -> Texture2D:
         return IconRegistry.get_texture("building_upgrade.png")
     return IconRegistry.get_texture("building_pause.png")
 
-# Обновляет прогресс-бары идущих апгрейдов зданий каждый кадр, БЕЗ пересоздания
-# UI слотов (полная пересборка панели убивала бы тултипы; прогресс меняется
-# непрерывно, а не только на тиках city_updated).
+# Updates the progress bars of the building upgrades that are under way on every
+# frame, WITHOUT rebuilding the UI of the slots (a full rebuild of the panel would
+# kill the tooltips; the progress changes continuously, and not only on the ticks
+# of city_updated).
 func _process(delta):
     if _upgrade_progress_bars.is_empty() and _slot_progress_bars.is_empty():
         return
@@ -802,7 +832,7 @@ func _process(delta):
             continue
         var upgrade_data = CityData.get_building_upgrade_data(b_index)
         if upgrade_data.is_empty():
-            # Апгрейд завершён — бар уберёт ближайшая пересборка панели.
+            # The upgrade is finished — the next rebuild of the panel will remove the bar.
             finished.append(b_index)
             continue
         bar.max_value = maxf(1.0, float(upgrade_data.get("work_cost", 1)))
@@ -810,10 +840,11 @@ func _process(delta):
     for b_index in finished:
         _upgrade_progress_bars.erase(b_index)
 
-    # Прогресс-бары крафта слотов: значение пересчитывается от completion_ratio
-    # (CityData.get_slot_progress_ratio), тоже без пересборки UI. В continuous-
-    # модели это min(заполненность, время/craft_time) — то есть реальная
-    # степень готовности с учётом дефицита сырья.
+    # The progress bars of the crafting of the slots: the value is recalculated
+    # from the completion_ratio (CityData.get_slot_progress_ratio), also without
+    # rebuilding the UI. In the continuous model it is
+    # min(the filling, time/craft_time) — that is the real degree of readiness
+    # taking the shortage of the raw materials into account.
     var stale: Array = []
     for key in _slot_progress_bars:
         var craft_bar = _slot_progress_bars[key]
@@ -826,13 +857,14 @@ func _process(delta):
             continue
         var craft_time = CityData.get_slot_craft_time(int(parts[0]), int(parts[1]))
         if craft_time <= 0.0:
-            # Слот опустошён или рецепт убран — бар снимет ближайшая пересборка.
+            # The slot is emptied or the recipe is removed — the next rebuild will remove the bar.
             stale.append(key)
             continue
         craft_bar.max_value = 1.0
         craft_bar.value = CityData.get_slot_progress_ratio(int(parts[0]), int(parts[1]))
-        # Тултип держим свежим: «X/Y (T сек)» — заполненность ингредиентов
-        # и сколько секунд прошло с начала крафта.
+        # We keep the tooltip fresh: "X/Y (T sec)" — the filling of the
+        # ingredients and how many seconds have passed since the start of the
+        # crafting.
         var status_text = CityData.get_slot_status_text(int(parts[0]), int(parts[1]))
         if get_viewport().gui_get_hovered_control() == craft_bar:
             _update_craft_bar_tooltip(craft_bar, status_text)
@@ -869,9 +901,9 @@ func _get_craft_bar_slot(craft_bar: ProgressBar) -> int:
             return int(str(key).split(":", false)[1])
     return -1
 
-# Наведение на кнопку «Улучшить»: заполняем тултип с иконками и показываем
-# его рядом с кнопкой. Обычный tooltip_text не умеет показывать картинки,
-# поэтому используется собственная панель upgrade_tooltip_panel.
+# Hovering the "Upgrade" button: we fill the tooltip with the icons and show it
+# next to the button. The plain tooltip_text is not able to show pictures,
+# therefore a panel of its own, upgrade_tooltip_panel, is used.
 func _on_upgrade_btn_hovered(btn: Button, b_index: int):
     if upgrade_tooltip_panel == null or ui_helpers == null:
         return
@@ -880,12 +912,13 @@ func _on_upgrade_btn_hovered(btn: Button, b_index: int):
         return
     _show_upgrade_tooltip_panel(btn)
 
-# Заполняет содержимое тултипа апгрейда: заголовок «Улучшить до <иконка> "Имя"»,
-# труд, материалы построчно («<иконка> Доски x8»), условие additional_req.
-# Возвращает false, если показывать нечего.
+# Fills the content of the upgrade tooltip: the header "Upgrade to <icon>
+# "Name"", the labour, the materials line by line ("<icon> Planks x8"), the
+# additional_req condition.
+# Returns false if there is nothing to show.
 func _fill_upgrade_tooltip_content(b_index: int) -> bool:
-    # Очищаем предыдущее содержимое (remove_child + queue_free — как в
-    # ui_helpers.show_group_tooltip, чтобы размер пересчитывался корректно).
+    # We clear the previous content (remove_child + queue_free — as in
+    # ui_helpers.show_group_tooltip, so that the size is recalculated correctly).
     for child in upgrade_tooltip_content.get_children():
         upgrade_tooltip_content.remove_child(child)
         child.queue_free()
@@ -904,7 +937,8 @@ func _fill_upgrade_tooltip_content(b_index: int) -> bool:
     if up_data == null:
         return false
 
-    # Заголовок: «Улучшить до» + иконка улучшенного здания + имя в кавычках.
+    # The header: "Upgrade to" + the icon of the improved building + the name in
+    # quotes.
     var header = HBoxContainer.new()
     header.add_theme_constant_override("separation", 6)
     header.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -933,7 +967,8 @@ func _fill_upgrade_tooltip_content(b_index: int) -> bool:
     header.add_child(name_label)
     upgrade_tooltip_content.add_child(header)
 
-    # Труд — как при фактическом апгрейде (с модификатором строительства).
+    # The labour — the same as for the actual upgrade (with the construction
+    # modifier).
     var work_cost = int(ceil(float(up_data.get("work_cost", 0)) * MapHelpers.get_construction_cost_mult()))
     if work_cost > 0:
         var labor_label = Label.new()
@@ -942,8 +977,9 @@ func _fill_upgrade_tooltip_content(b_index: int) -> bool:
         labor_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         upgrade_tooltip_content.add_child(labor_label)
 
-    # Материалы: строка «<иконка> Имя xN» на каждый ресурс каждой пачки
-    # additional_cost. Иконки и групповые ссылки даёт ui_helpers.make_resource_entry.
+    # The materials: a row "<icon> Name xN" for every resource of every batch of
+    # additional_cost. The icons and the group references are given by
+    # ui_helpers.make_resource_entry.
     if up_data.has("additional_cost"):
         var bundles = GameData.parse_additional_cost(up_data["additional_cost"])
         var products_data = _get_all_resources()
@@ -962,8 +998,8 @@ func _fill_upgrade_tooltip_content(b_index: int) -> bool:
 
     return true
 
-# Размер, позиция и показ тултипа: под кнопкой (как попапы выбора рецепта),
-# с переносом внутрь экрана у краёв.
+# The size, the position and the showing of the tooltip: under the button (as the
+# popups of the recipe selection), with a shift inside the screen at the edges.
 func _show_upgrade_tooltip_panel(btn: Button):
     upgrade_tooltip_content.reset_size()
     var content_min_size = upgrade_tooltip_content.get_minimum_size()
@@ -985,8 +1021,8 @@ func _hide_upgrade_tooltip():
     if upgrade_tooltip_panel != null:
         upgrade_tooltip_panel.hide()
 
-# Обработчик кнопки «Улучшить»: запускает апгрейд здания; при неудаче
-# показывает причину в строке сообщений городского интерфейса.
+# The handler of the "Upgrade" button: it starts the upgrade of the building; on
+# failure it shows the reason in the message line of the city interface.
 func _on_upgrade_pressed(b_index: int):
     var result = CityData.start_building_upgrade(b_index)
     if not result.get("ok", false):
@@ -994,22 +1030,23 @@ func _on_upgrade_pressed(b_index: int):
         if city_ui and city_ui.has_method("set_message"):
             city_ui.set_message(String(result.get("reason", "")))
         return
-    # Пересобираем панель: вместо кнопки появится прогресс-бар апгрейда.
-    # Скрываем открытые попапы перед пересозданием слотов, чтобы они не
-    # ссылались на удаляемые элементы.
+    # We rebuild the panel: instead of the button the progress bar of the upgrade
+    # will appear.
+    # We hide the open popups before rebuilding the slots, so that they do not
+    # refer to the elements being removed.
     for p in popups_list:
         if is_instance_valid(p) and p.visible:
             p.hide()
     _refresh()
 
 func _on_slot_button_pressed(b_index: int, slot_idx: int, popup, button):
-    # Закрываем другие открытые попапы
+    # We close the other open popups
     for p in popups_list:
         if is_instance_valid(p) and p != popup and p.visible:
             p.hide()
-    # Пересчитываем размер окна под содержимое
+    # We recalculate the size of the window for the content
     popup.reset_size()
-    # Позиционируем попап сразу под кнопкой
+    # We position the popup right under the button
     popup.position = button.global_position + Vector2(0, button.size.y)
     popup.popup()
     open_popup = popup
@@ -1022,8 +1059,9 @@ func _on_craft_item_selected(b_index: int, slot_idx: int, craft_id: String, popu
     if slot_idx < slots.size():
         slots[slot_idx] = craft_id
         bld["slots"] = slots
-        # Новый рецепт может иметь другое время (time) — накопленный прогресс
-        # слота сбрасывается, чтобы не «доначислить» старый крафт.
+        # The new recipe may have a different time (time) — the accumulated
+        # progress of the slot is reset, so that the old crafting is not
+        # "finished off".
         CityData.reset_slot_progress(b_index, slot_idx)
         _update_slot_button(button, craft_id)
     popup.hide()
@@ -1032,16 +1070,19 @@ func _on_craft_item_selected(b_index: int, slot_idx: int, craft_id: String, popu
         ui_helpers.hide_group_tooltip()
     CityData.emit_signal("city_updated")
 
-# Строит содержимое строки: "[иконка] Требуемый ресурс [xN] -> [иконка] Продукт [xN]"
-# Для групповых ресурсов (@...) — подпись с тултипом.
-# Если ресурсы и результат пусты (рецепт "Пусто"), показываем название рецепта.
+# Builds the content of the row: "[icon] Required resource [xN] -> [icon] Product
+# [xN]"
+# For the group resources (@...) it is a label with a tooltip.
+# If the resources and the result are empty (the recipe "Empty"), we show the name
+# of the recipe.
 func _make_craft_content(craft_name: String, craft_resources: Dictionary, craft_result: Dictionary) -> HBoxContainer:
     var content = HBoxContainer.new()
     content.add_theme_constant_override("separation", 6)
     content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     content.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-    # Рецепт без ресурсов и результата (например, "Пусто") — показываем только название
+    # A recipe without resources and result (for example, "Empty") — we show only
+    # the name
     if craft_resources.is_empty() and craft_result.is_empty():
         var empty_label = Label.new()
         empty_label.text = craft_name
@@ -1049,7 +1090,7 @@ func _make_craft_content(craft_name: String, craft_resources: Dictionary, craft_
         content.add_child(empty_label)
         return content
 
-    # Требуемые ресурсы
+    # The required resources
     var first_res = true
     for res_id in craft_resources:
         if not first_res:
@@ -1060,9 +1101,9 @@ func _make_craft_content(craft_name: String, craft_resources: Dictionary, craft_
             content.add_child(sep_label)
         first_res = false
 
-        # Групповой ресурс — подпись с тултипом (через единый хелпер).
-        # Используем MOUSE_FILTER_PASS, чтобы наведение показывало тултип,
-        # а клик проходил к родительской кнопке (выбор рецепта).
+        # A group resource — a label with a tooltip (through the single helper).
+        # We use MOUSE_FILTER_PASS, so that the hover shows the tooltip and the
+        # click passes through to the parent button (the recipe selection).
         content.add_child(ui_helpers.make_resource_entry(res_id, _get_all_resources()))
         var amount = craft_resources[res_id]
         if amount >= 1:
@@ -1072,7 +1113,7 @@ func _make_craft_content(craft_name: String, craft_resources: Dictionary, craft_
             amount_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
             content.add_child(amount_label)
 
-    # Стрелка
+    # The arrow
     if not craft_resources.is_empty() and not craft_result.is_empty():
         var arrow_label = Label.new()
         arrow_label.text = "->"
@@ -1080,7 +1121,7 @@ func _make_craft_content(craft_name: String, craft_resources: Dictionary, craft_
         arrow_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         content.add_child(arrow_label)
 
-    # Производимые продукты
+    # The producible products
     var first_prod = true
     for prod_id in craft_result:
         if not first_prod:
@@ -1116,14 +1157,16 @@ func _make_craft_content(craft_name: String, craft_resources: Dictionary, craft_
 
     return content
 
-# Человекочитаемое имя рецепта по его id (для тултипов; неизвестный id — как есть).
+# The human-readable name of a recipe by its id (for the tooltips; an unknown id is
+# left as is).
 func _get_craft_name(craft_id: String) -> String:
     for c in crafts_data:
         if c.get("id", "") == craft_id:
             return str(c.get("name", craft_id))
     return craft_id
 
-# Обновляет содержимое кнопки выбора рецепта: иконки рисуются рядом с продуктами, а не у левого края
+# Updates the content of the recipe selection button: the icons are drawn next to
+# the products, and not at the left edge
 func _update_slot_button(button, craft_id: String):
     var craft_name = craft_id
     var craft_resources = {}
@@ -1132,19 +1175,21 @@ func _update_slot_button(button, craft_id: String):
         if c["id"] == craft_id:
             craft_name = c.get("name", craft_id)
             craft_resources = c.get("resources", {})
-            # display_result — UI-подсказка для «нематериальных» выходов
-            # (наука и будущие псевдо-ресурсы): механикой не читается.
+            # display_result — a UI hint for the "non-material" outputs
+            # (science and the future pseudo-resources): it is not read by the
+            # mechanics.
             craft_result = c.get("display_result", c.get("result", {}))
             break
-    # Удаляем старое содержимое кнопки
+    # We remove the old content of the button
     for child in button.get_children():
         child.queue_free()
     var content = _make_craft_content(craft_name, craft_resources, craft_result)
     content.set_anchors_preset(Control.PRESET_FULL_RECT)
     content.offset_left = 8
     content.offset_right = -8
-    # Передаём минимальную ширину содержимого кнопке, чтобы длинный рецепт
-    # учитывался родительским рядом при расчёте ширины панели.
+    # We pass the minimum width of the content to the button, so that a long
+    # recipe is taken into account by the parent row when the width of the panel
+    # is calculated.
     button.custom_minimum_size.x = content.get_minimum_size().x + 16
     button.add_child(content)
 
@@ -1152,7 +1197,7 @@ func _input(event: InputEvent):
     if not visible:
         return
     if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-        # Если открыт какой-либо попап, клик вне панели закрывает только попап
+        # If any popup is open, a click outside the panel closes only the popup
         open_popup = null
         for p in popups_list:
             if is_instance_valid(p) and p.visible:
@@ -1164,7 +1209,7 @@ func _input(event: InputEvent):
                 open_popup.hide()
                 get_viewport().set_input_as_handled()
             return
-        # Клик вне панели (по затемнению) закрывает её
+        # A click outside the panel (on the dimming) closes it
         if not panel.get_global_rect().has_point(event.global_position):
             if ui_helpers:
                 ui_helpers.hide_group_tooltip()
@@ -1180,7 +1225,7 @@ func _on_close_pressed():
     _hide_upgrade_tooltip()
     hide()
 
-# Возвращает объединённый словарь всех ресурсов (сырьё + товары)
+# Returns the merged dictionary of all the resources (the raw materials + the goods)
 func _get_all_resources() -> Dictionary:
     var all = {}
     for key in raw_resources:
@@ -1189,7 +1234,7 @@ func _get_all_resources() -> Dictionary:
         all[key] = products[key]
     return all
 
-# Возвращает имя иконки ресурса (из товаров или сырья)
+# Returns the icon name of a resource (from the goods or from the raw materials)
 func _get_resource_icon(res_id: String) -> String:
     if products.has(res_id):
         return products[res_id].get("icon", "")
@@ -1197,7 +1242,7 @@ func _get_resource_icon(res_id: String) -> String:
         return raw_resources[res_id].get("icon", "")
     return ""
 
-# Возвращает человекочитаемое имя ресурса (из товаров или сырья)
+# Returns the human-readable name of a resource (from the goods or from the raw materials)
 func _get_resource_name(res_id: String) -> String:
     if products.has(res_id):
         return products[res_id].get("name", res_id)
