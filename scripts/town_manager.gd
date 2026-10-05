@@ -74,7 +74,6 @@
 #     (compute_all_town_influences), therefore the territory of a town does not enter the starting
 #     area of the player under ANY circumstances.
 # The rule is the same for all the towns, including the guaranteed town of the 2nd era.
-# Правило одинаковое для всех городков, включая гарантийный городок 2-й эпохи.
 # --- The guarantee "at least 1 town in the area of the 2nd era" ---
 # After the main pass we check whether there is at least one town in
 # the era-2-visible area (the Ring_2 + the Region_2). If not - we try
@@ -82,16 +81,13 @@
 # with the "mandatory area" = the era-2-visible one. The exception of the starting area
 # is preserved, so the new town falls into the new "strip" between
 # era 1 and era 2 - that is, it appears for the player exactly on the transition to era 2.
-# эрой-1 и эрой-2 — то есть появится у игрока именно при переходе в эру 2.
 # --- The configuration ---
 #   data/map_config.json: "num_towns" - the target number of towns (moderately 8
 #   for a map of 60x60). If 0 or negative - the towns are not generated.
-#   для карты 60x60). Если 0 или отрицательное — городки не генерируются.
 # --- Save/load ---
 # The list of the hexes is saved as [[row, col], ...] in SaveManager.saved_data["towns"]
 # and is restored in main_map._ready (after the load of tile_data).
 # In tile_data the hexes are marked with the flag has_town for the renderer and the control panel.
-# В tile_data гексы помечаются флагом has_town для рендерера и панели управления.
 @tool
 class_name TownManager
 extends Node
@@ -323,14 +319,14 @@ func find_town_at(row: int, col: int):
 # this function; everything that asks about the trade asks exactly it.
 const TOWN_TRADE_REQUIRES_ROAD := true
 
-# Доступна ли торговля с этим городком.
+# Is the trade with this town available.
 func is_trade_available(town: Dictionary) -> bool:
     if not TOWN_TRADE_REQUIRES_ROAD:
         return true
     return bool(town.get("road_linked", false))
 
 
-# Восстанавливает список гексов кольца из формата [[row, col], ...].
+# Restores the list of the hexes of the ring from the format [[row, col], ...].
 func _restore_hex_list(entries: Array) -> Array:
     var result: Array = []
     for e in entries:
@@ -339,8 +335,8 @@ func _restore_hex_list(entries: Array) -> Array:
     return result
 
 
-# Генерирует городки. Вызывается из main_map._initialize_map ПОСЛЕ
-# генерации рек (чтобы river_edges уже были проставлены в tile_data).
+# Generates the towns. It is called from main_map._initialize_map AFTER
+# the generation of the rivers (so that river_edges are already set in tile_data).
 #
 # The parameters:
 #   tile_data            - a 2D array of the hexes.
