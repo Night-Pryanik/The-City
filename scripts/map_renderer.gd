@@ -422,7 +422,8 @@ func _draw_hex(row: int, col: int):
     # the rings themselves in the data are full - see town_manager.compute_all_town_influences):
     #   1. the epoch - in the 1st epoch (current_era < 1) the rings are not drawn at all, as are
     #      the towns themselves: otherwise a ring which intrudes into the Region would give away
-    #      a foreign town from the very start of the game;
+    #      a foreign town from the very start of the game. The exception is the deliberate debug
+    #      reveal of the whole map (main_map.debug_whole_map_revealed): nothing left to hide;
     #   2. the fog of war - a hex in the fog does not get the fill (is_hex_in_fog).
     #      The reverse is also true: a scouted hex beyond the limits of the Region DOES get the fill
     #      (this is how the scouting works).
@@ -476,10 +477,12 @@ func _ensure_town_influence_cache(visible: Dictionary) -> void:
     _influence_border_segments = []
     # The rings in the data are full (town_manager no longer clips them by the Region),
     # therefore IT IS DECIDED HERE what of them the player sees: in the 1st epoch (current_era
-    # < 1) a foreign town is not shown at all - exactly as its icon
-    # (see _draw_hex_overlays), therefore we do not draw the ring either. Otherwise a ring
-    # which intrudes into the Region would "give away" the town from the very start of the game.
-    if main_map.current_era < 1:
+    # < 1) a foreign town is not shown at all - exactly as its icon (see _draw_hex_overlays),
+    # therefore we do not draw the ring either - unless the whole map was revealed on purpose
+    # by the debug action (main_map.debug_whole_map_revealed), where there is nothing left to
+    # hide. Otherwise a ring which intrudes into the Region would "give away" the town from
+    # the very start of the game.
+    if main_map.current_era < 1 and not main_map.debug_whole_map_revealed:
         _build_town_fill_texture()
         return
     var seen: Dictionary = {}
@@ -1433,11 +1436,11 @@ func _draw_project_ghost() -> void:
 # Are the roads of the towns shown. The same gate as that of the fill of the influence rings
 # (_ensure_town_influence_cache): in the 1st epoch a foreign town is not shown
 # at all, otherwise the road would give it away in the unexplored zone of the Region from the very
-# beginning of the game.
+# beginning of the game - except when the whole map was revealed on purpose by the debug action.
 func are_town_roads_visible() -> bool:
     if main_map == null:
         return false
-    return main_map.current_era >= 1
+    return main_map.current_era >= 1 or main_map.debug_whole_map_revealed
 
 # Is a specific segment of the road of a town visible. A segment is not drawn if at least
 # one of its ends lies in the fog of war: otherwise the road would "give away" the contents

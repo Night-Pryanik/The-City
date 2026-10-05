@@ -55,6 +55,12 @@ var start_region_end_col: int = 0
 # The position of the city (the centre of the whole map).
 var current_era: int = 0
 
+# The debug action "Open the whole map" has revealed the whole map (debug_open_whole_map).
+# The renderer lifts the era gate of the rings and of the roads of the towns on such a map
+# (map_renderer._ensure_town_influence_cache / are_town_roads_visible): the reveal is
+# deliberate, there is nothing left to hide. Stored in the save together with the tiles.
+var debug_whole_map_revealed: bool = false
+
 const SCOUTING_TIME_PER_HEX: float = 3.0
 
 # The technology that opens the scouting beyond the Region (the fog of war and
@@ -2722,6 +2728,7 @@ func get_map_state() -> Dictionary:
         "region_rows": region_rows,
         "region_cols": region_cols,
         "current_era": current_era,
+        "debug_whole_map_revealed": debug_whole_map_revealed,
         "start_region_start_row": start_region_start_row,
         "start_region_end_row": start_region_end_row,
         "start_region_start_col": start_region_start_col,
@@ -2789,6 +2796,10 @@ func _apply_saved_map_state():
     # We synchronise the era with CityData (the restriction of the learning of the technologies by the eras).
     if st.has("current_era"):
         CityData.current_era_index = current_era
+    # The reveal belongs to the save and not to the session: the tiles (is_explored/in_influence)
+    # are restored from it, and without this flag a loaded game would hide the rings of the towns
+    # behind the era gate again.
+    debug_whole_map_revealed = bool(st.get("debug_whole_map_revealed", false))
     city_row = map_rows / 2
     city_col = map_cols / 2
     _recalculate_bounds()
@@ -2820,9 +2831,13 @@ func _restore_start_region_bounds(st: Dictionary) -> void:
 # as belonging to the Ring and as scouted, the boundaries of the Ring/Region
 # are expanded to the dimensions of the whole map. After that one can build/improve
 # on any hex without the scouting and the purchase of the territory.
+# debug_whole_map_revealed lifts the era gate of the rings and of the roads of the towns:
+# the reveal is deliberate, so there is nothing left to hide in the 1st era.
 func debug_open_whole_map():
     if tile_data.is_empty():
         return
+
+    debug_whole_map_revealed = true
 
     # We mark each hex as a part of the Influence Ring and as scouted.
     for row in range(map_rows):
@@ -2845,6 +2860,9 @@ func debug_open_whole_map():
 
     _recalculate_bounds()
     _calc_offsets()
+    # The fill of the rings is filtered by the fog of war, and the reveal changes the fog:
+    # the render cache must be dropped explicitly, the Region bounds do not always change.
+    map_renderer.invalidate_town_influence_cache()
     map_renderer.queue_redraw()
 
     if hud:
