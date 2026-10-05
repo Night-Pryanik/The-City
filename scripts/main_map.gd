@@ -3,19 +3,18 @@ extends Node2D
 
 const HEX_RADIUS = 55
 
-# --- Размеры и границы мира/окна ---
-# Основные параметры (map_rows, map_cols, start_ring_rows, start_ring_cols,
-# region_width) загружаются из data/map_config.json в _load_map_config().
-# Они НЕ являются константами, потому что:
-#   1) значения приходят из JSON;
-#   2) при переходе в следующую эпоху Кольцо и Регион расширяются.
-var map_rows: int = 60 # Вся карта: ряды (гексы)
-var map_cols: int = 60 # Вся карта: колонки (гексы)
-var start_ring_rows: int = 7 # Стартовое Кольцо Влияния: ряды
-var start_ring_cols: int = 9 # Стартовое Кольцо Влияния: колонки
-var region_width: int = 2 # Ширина Региона вокруг Кольца (в гексах)
+# --- The dimensions and the boundaries of the world/window ---
 
-# Текущее (динамически растущее) Кольцо Влияния.
+# The main parameters (map_rows, map_cols, start_ring_rows, start_ring_cols,
+# region_width) are loaded from data/map_config.json in _load_map_config().
+# They are NOT constants, because:
+#   1) the values come from the JSON;
+#   2) on the transition to the next era the Ring and the Region expand.
+var map_rows: int = 60 # The whole map: the rows (hexes)
+var map_cols: int = 60 # The whole map: the columns (hexes)
+var start_ring_rows: int = 7 # The starting Influence Ring: the rows
+var start_ring_cols: int = 9 # The starting Influence Ring: the columns
+var region_width: int = 2 # The width of the Region around the Ring (in hexes)
 var ring_rows: int = 7
 var ring_cols: int = 9
 
@@ -23,7 +22,7 @@ var ring_cols: int = 9
 var region_rows: int = 11
 var region_cols: int = 13
 
-# Положение города (центр всей карты).
+# The current (dynamically growing) Influence Ring.
 var city_row: int = 30
 var city_col: int = 30
 
@@ -33,24 +32,17 @@ var influence_end_row: int = 0
 var influence_start_col: int = 0
 var influence_end_col: int = 0
 
-# Абсолютные границы видимого окна «Кольцо + Регион» (инклюзивные).
-# Регион — единственная зона, где можно ПОКУПАТЬ (осваивать) чанки.
-# Разведка Регионом не ограничена ТОЛЬКО после изучения технологии
-# «Картография»: до неё разведчиков можно посылать лишь в неисследованную
-# часть Региона (см. is_cartography_researched / expansion_manager).
-# После Картографии отправить разведчиков можно в любую точку, достижимую
-# скроллом карты (см. get_scout_reach_bounds). Неисследованные гексы за
-# окном отрисовываются как туман войны (не рисуются вовсе) без содержимого.
+# The current visible window: the Ring + the Region.
 var region_start_row: int = 0
 var region_end_row: int = 0
 var region_start_col: int = 0
 var region_end_col: int = 0
 
-# Стартовые границы «Кольцо» и «Кольцо + Регион» на момент генерации карты.
-# Сохраняются ОДИН раз в _initialize_map и далее НЕ меняются — нужны для
-# гарантий спавна ресурсов, чтобы они работали по исходным, а не будущим
-# расширенным границам. Например, _ensure_minimum_resource({"category": "metals"})
-# опирается именно на эти поля, а не на текущие influence_* / region_*.
+# The starting boundaries of "Ring" and "Ring + Region" at the moment of the generation of the map.
+# They are saved ONCE in _initialize_map and further do NOT change — they are needed for
+# the guarantees of the spawn of the resources, so that they work by the original, and not the future
+# expanded boundaries. For example, _ensure_minimum_resource({"category": "metals"})
+# relies exactly on these fields, and not on the current influence_* / region_*.
 var start_influence_start_row: int = 0
 var start_influence_end_row: int = 0
 var start_influence_start_col: int = 0
@@ -60,62 +52,64 @@ var start_region_end_row: int = 0
 var start_region_start_col: int = 0
 var start_region_end_col: int = 0
 
-# Текущая эпоха (0 = стартовая). Используется инфраструктурой расширения.
+# The position of the city (the centre of the whole map).
 var current_era: int = 0
 
 const SCOUTING_TIME_PER_HEX: float = 3.0
 
-# Технология, открывающая разведку за пределами Региона (туман войны и
-# территорию городков). До её изучения разведчиков можно посылать только
-# в неисследованную часть Региона, а гексы вне Региона недоступны для
-# наведения и клика (см. is_hex_interactive). Данные технологии —
+# The technology that opens the scouting beyond the Region (the fog of war and
+# the territory of the towns). Before it is learned the scouts can be sent only
+# into the unexplored part of the Region, and the hexes outside the Region are inaccessible for
+# the hover and the click (see is_hex_interactive). The data of the technology —
 # data/technologies/antiquity.json, id "cartography".
 const CARTOGRAPHY_TECH_ID := "cartography"
-# Спец-действия (вырубка леса, сбор дикоросов, снос улучшений и т.п.)
-# загружаются из data/special_actions.json и реализуются через систему
-# труда build_manager, но не являются улучшениями.
+# The absolute boundaries of the Influence Ring (inclusive) over the whole map.
 
 var tile_data = []
 var offset_x: float = 0.0
 var offset_y: float = 0.0
 var scroll_offset = Vector2.ZERO
 
-# Реестр гексов уникальной местности (например, содовое озеро soda_lake).
-# Отрисовку ведёт общий проход рендерера: внутри Региона — детально, за его
-# пределами (туман войны) — затемнённым рельефом без содержимого.
+# The absolute boundaries of the visible window "Ring + Region" (inclusive).
+# The Region is the only zone where the chunks can be BOUGHT (claimed).
+# The scouting of the Region is not limited ONLY after the learning of the technology
+# "Cartography": before it the scouts can be sent only into the unexplored
+# part of the Region (see is_cartography_researched / expansion_manager).
+# After the Cartography the scouts can be sent to any point reachable by
+# the scrolling of the map (see get_scout_reach_bounds). The unexplored hexes beyond
+# the window are drawn as the fog of war (they are not drawn at all) without the contents.
 var unique_terrain_hexes: Array = []
 
-# Реестр гексов с городками (зеркало town_manager.town_hexes). Сами гексы
-# помечены флагом tile.has_town — именно по нему рендерер рисует иконки:
-# в Регионе и на разведанных гексах — полностью, в тумане войны — намёком
-# (полупрозрачная иконка без имени, только с эпохи >= 1).
+# The starting boundaries of "Ring" and "Ring + Region" at the moment of the generation of the map.
+# They are saved ONCE in _initialize_map and further do NOT change — they are needed for
+# the guarantees of the spawn of the resources, so that they work by the original, and not the future
+# expanded boundaries. For example, _ensure_minimum_resource({"category": "metals"})
+# relies exactly on these fields, and not on the current influence_* / region_*.
 var town_hexes: Array = []
 
-# Гексы колец влияния всех городков. Параллелен town_hexes: живёт в
-# town_manager (master), здесь — зеркало для рендерера. На тайлы также
-# проставлен флаг tile.in_town_influence — build_manager и валидаторы
-# читают его напрямую, без поиска по списку. В сейв не сохраняется,
-# пересчитывается/зеркалится из town_manager.towns.
+# The current era (0 = the starting one). It is used by the infrastructure of the expansion.
+# read it directly, without a search through the list. It is not saved,
+# it is recalculated/mirrored from town_manager.towns.
 var town_influence_hexes: Array = []
 
-# Полные записи городков (master-список живёт в town_manager.towns; здесь —
-# ССЫЛКА на него, не снимок). Рендерер читает из этой переменной per-town
-# данные: личное кольцо (town["influence_hexes"]) и цвет границ
-# (town["border_color"]). Ссылочная природа гарантирует, что любые правки
-# колец/полей в town_manager сразу видны на карте без повторного зеркалирования.
+# The full records of the towns (the master list lives in town_manager.towns; here —
+# a REFERENCE to it, and not a snapshot). The renderer reads from this variable the per-town
+# data: the personal ring (town["influence_hexes"]) and the colour of the borders
+# (town["border_color"]). The reference nature guarantees that any edits
+# of the rings/fields in town_manager are immediately visible on the map without a repeated mirroring.
 var towns: Array = []
 
 var last_city_click_time = 0.0
-# Последний момент клика по гексу городка (для детекции двойного клика).
+# The last moment of the click on the hex of a town (for the detection of a double click).
 var last_town_click_time = 0.0
 var production_timer = 0.0
 var scouting_timer: float = 0.0
-# Есть ли пастбища, которые прямо сейчас заполняются (0% < fill < 100%).
-# Используется как условие перерисовки слоя прогресс-баров: пока стадо растёт,
-# слой обновляется; когда всё полное — слой снова «спит».
+# Whether there are pastures which are being filled right now (0% < fill < 100%).
+# It is used as the condition of the redrawing of the layer of the progress bars: while the herd is growing,
+# the layer is updated; when everything is full — the layer "sleeps" again.
 var _has_growing_pastures := false
-# Растущие прямо сейчас пастбища (ключ "row,col" → {"row", "col"}).
-# Собирается на прод-тике, покадрово продвигается в _tick_pasture_fill().
+# The pastures growing right now (the key "row,col" → {"row", "col"}).
+# It is assembled on the production tick, it advances frame by frame in _tick_pasture_fill().
 var _growing_pastures := {}
 
 var scouting_chunk: Array = []
@@ -127,23 +121,23 @@ var use_edge_scrolling = true
 var tooltip_delay: float = 0.5
 var extended_tooltip_delay: float = 1.0
 var building_detail_delay: float = 0.5
-# Интервал обновления данных о ресурсах в UI (сек, 1..5 с шагом 1; ключ
-# game/resource_display_interval в user://settings.cfg). Хранится также в
-# CityData.resource_display_interval — там же накопитель и «эпоха» отображения.
+# The interval of the update of the data about the resources in the UI (sec, 1..5 with a step of 1; the key
+# game/resource_display_interval in user://settings.cfg). It is also stored in
+# CityData.resource_display_interval — there is also the accumulator and the "era" of the display.
 var resource_display_interval: float = 1.0
 
-# Последняя «эпоха» отображения, на которой HUD-метка казны была обновлена.
-# Тиковый путь (city_updated → _on_city_data_updated) перерисовывает метку
-# только когда эпоха изменилась — синхронно с остальными местами, которые
-# подчиняются интервалу ресурсов (вкладка «Ресурсы», верхняя полоса города,
-# тултипы).
+# The last "era" of the display on which the HUD label of the treasury has been updated.
+# The tick path (city_updated → _on_city_data_updated) redraws the label
+# only when the era has changed — synchronously with the other places which
+# are subordinated to the interval of the resources (the tab "Resources", the top bar of the city,
+# the tooltips).
 var _treasury_display_epoch: int = -1
 
-# Состояние ховера на «Казна: N» в HUD карты и UI-хелперы для HUD-тултипов.
-# Отдельный экземпляр ui_helpers (параллельно city_ui) — у каждого корня UI
-# своя иерархия тултип-панелей, потому что они добавляются как дети
-# переданного Control-родителя. Свой CanvasLayer гарантирует, что тултипы
-# отрисовываются поверх HUD и карты, не завися от city_ui.
+# The hover state on "Treasury: N" in the HUD of the map and the UI-helpers for the HUD tooltips.
+# A separate instance of ui_helpers (in parallel with city_ui) — each root of the UI
+# has its own hierarchy of the tooltip panels, because they are added as the children
+# of the passed Control-parent. Its own CanvasLayer guarantees that the tooltips
+# are drawn over the HUD and the map, regardless of city_ui.
 var _map_ui_helpers: Node = null
 var _treasury_hover_timer: float = 0.0
 var _treasury_hover_leave_timer: float = 0.0
