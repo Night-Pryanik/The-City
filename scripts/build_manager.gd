@@ -8,37 +8,37 @@ signal build_cancelled(row: int, col: int)
 signal build_building_completed(building_id: String, build_key: String)
 signal build_building_paused(build_key: String)
 signal build_building_cancelled(build_key: String)
-# Апгрейд построенного здания города в улучшенную версию. Эмитится, когда
-# труд накоплен и здание готово к замене на улучшенную версию.
-# build_key — ключ стройки; idx — индекс здания в CityData.city_built_buildings;
-# upgrade_to — id улучшенной версии; building_name — её человекочитаемое имя.
+# The upgrade of a built city building to an improved version. It is emitted when
+# the labour is accumulated and the building is ready to be replaced by the improved version.
+# build_key — the build key; idx — the index of the building in CityData.city_built_buildings;
+# upgrade_to — the id of the improved version; building_name — its human-readable name.
 signal building_upgrade_completed(build_key: String, idx: int, upgrade_to: String, building_name: String)
-# Освоение территории (покупка чанка за труд). Эмитится, когда труд
-# накоплен и чанк готов к присоединению к Кольцу Влияния.
+# The claiming of the territory (buying a chunk for labour). It is emitted when the labour
+# is accumulated and the chunk is ready to be joined to the Influence Ring.
 signal expansion_build_completed(chunk: Array)
 
-var active_builds: Dictionary = {} # улучшения на карте: ключ "row,col"
-var active_building_builds: Dictionary = {} # стройка зданий: ключ "building_<индекс>"
-var active_expansion_builds: Dictionary = {} # освоение территории: ключ "expansion_<индекс>"
+var active_builds: Dictionary = {} # the improvements on the map: the key "row,col"
+var active_building_builds: Dictionary = {} # the building of buildings: the key "building_<index>"
+var active_expansion_builds: Dictionary = {} # the claiming of the territory: the key "expansion_<index>"
 
-# Кэш числа активных строек (улучшения + здания). Обновляется при каждом
-# добавлении/удалении стройки, чтобы has_active_builds() мог бы работать за
-# O(1), не сканируя словари каждый кадр (используется в main_map._process
-# для решения о перерисовке слоя прогресс-баров).
+# The cache of the number of active builds (improvements + buildings). It is updated on every
+# addition/removal of a build, so that has_active_builds() could work in
+# O(1), without scanning the dictionaries every frame (it is used in main_map._process
+# for the decision to redraw the progress bar layer).
 var _active_build_count: int = 0
 
-# === Пошаговые проекты (project_manager) ===
+# === Staged projects (project_manager) ===
 #
-# Проект (трасса дороги по гексам) — это очередь шагов, каждый из которых
-# строится отдельно и занимает в пуле труда ровно ОДИН слот: одновременно
-# идёт только текущий шаг. Ставку труда здесь НЕ выдумывается заново, а
-# считается в том же _process по тем же правилам, что и для улучшений: один
-# разделённый между всеми труд на город. Иначе поэтапный проект получил бы
-# свою ставку поверх общей и город строил бы быстрее самого себя.
+# A project (a road route over hexes) is a queue of steps, each of which is
+# built separately and takes exactly ONE slot in the labour pool: only the current
+# step goes at the same time. The labour rate here is NOT reinvented, but
+# is computed in the same _process by the same rules as for the improvements: one
+# labour divided among all for the city. Otherwise a staged project would get
+# its own rate on top of the general one, and the city would build faster than itself.
 #
-# Подключение намеренно узкое: менеджер объявляет, сколько шагов идёт, и
-# получает готовую ставку (receive_labor). Знать про дороги и акведуки
-# build_manager не обязан.
+# The connection is intentionally narrow: the manager declares how many steps are going, and
+# gets the ready rate (receive_labor). build_manager is not obliged to know
+# about roads and aqueducts.
 var project_manager: Node = null
 
 func _ready():
@@ -49,7 +49,7 @@ func _process(delta):
     if Engine.is_editor_hint():
         return
 
-    # Собираем активные (не приостановленные) стройки улучшений, зданий и освоения
+    # We collect the active (not paused) builds of improvements, buildings and claims
     var active_builds_list = []
     for key in active_builds.keys():
         var data = active_builds[key]
@@ -64,14 +64,14 @@ func _process(delta):
         if data.get("status", "active") == "active":
             active_builds_list.append(data)
 
-    # Если нет активных строек — ничего не делаем. Шаги поэтапных проектов
-    # тоже считаются стройками (см. project_manager ниже), поэтому проверка
-    # не должна обрывать раздачу труда, когда идёт только проект.
+    # If there are no active builds — we do nothing. The steps of the staged projects
+    # are also counted as builds (see project_manager below), therefore the check
+    # must not cut off the labour distribution when only a project is going.
     var project_steps := _get_active_project_steps()
     if active_builds_list.is_empty() and project_steps <= 0:
         return
 
-    # Распределяем общий труд между активными стройками поровну
+    # We distribute the total labour equally among the active builds
     var total_labor = CityData.get_total_labor()
     var labor_per_build = total_labor / (active_builds_list.size() + project_steps)
 
@@ -80,11 +80,11 @@ func _process(delta):
     var to_complete_expansions = []
     for data in active_builds_list:
         if CityData.ignore_build_requirements:
-            # Дебаг: «Игнорировать требования строительства» — ВСЕ стройки
-            # (здания, улучшения, спецдействия, освоение территории) мгновенно
-            # доводятся до 100% за один кадр. Исключений нет: стройка, начатая
-            # до включения флага, тоже завершается сразу — иначе переключатель
-            # действовал бы не на всё, что уже в пуле.
+            # Debug: "Ignore building requirements" — ALL builds
+            # (buildings, improvements, special actions, territory claiming) are instantly
+            # brought to 100% in one frame. There are no exceptions: a build started
+            # before the flag was enabled also completes right away — otherwise the switch
+            # would not apply to everything already in the pool.
             data["progress"] = data["work_cost"]
         else:
             data["progress"] += labor_per_build * delta
@@ -105,13 +105,13 @@ func _process(delta):
 
     for data in to_complete_buildings:
         var bkey = data.get("build_key", "")
-        # Сначала удаляем запись из активных строек: обработчики сигналов
-        # могут сразу обновить панель города и должны увидеть завершённое состояние.
+        # First we remove the entry from the active builds: the signal handlers
+        # may immediately update the city panel and must see the completed state.
         active_building_builds.erase(bkey)
         _active_build_count -= 1
         if data.get("is_upgrade", false):
-            # Завершился апгрейд здания — сигнал для CityData, который заменит
-            # здание на улучшенную версию (а не добавит новое в конец списка).
+            # The upgrade of the building is complete — a signal for CityData, which will replace
+            # the building with the improved version (and not add a new one at the end of the list).
             emit_signal("build_message", tr("Upgraded: %s") % data.get("upgrade_name", data.get("upgrade_to", "")))
             emit_signal("building_upgrade_completed", bkey, data.get("upgrade_idx", -1), data.get("upgrade_to", ""), data.get("upgrade_name", ""))
         else:
@@ -124,21 +124,21 @@ func _process(delta):
         emit_signal("expansion_build_completed", data["chunk"])
         active_expansion_builds.erase(ekey)
 
-    # После завершения строек в _process обновляем кэш счётчика.
+    # After the completion of the builds in _process we update the cache of the counter.
     if not to_complete.is_empty() or not to_complete_buildings.is_empty() or not to_complete_expansions.is_empty():
         _recount_active_builds()
 
-    # Шаги поэтапных проектов получают ту же самую поделённую ставку и
-    # разбираются ПО ОДНОМУ за кадр. Вызывается после раздачи своим стройкам,
-    # потому что обработчик шага (main_map) может тронуть сеть дорог и тем
-    # самым изменить число активных проектов — на уже посчитанной ставке это
-    # не скажется, а на следующем кадре учтётся.
+    # The steps of the staged projects get the very same divided rate and
+    # are sorted ONE PER FRAME. It is called after the distribution to its own builds,
+    # because the step handler (main_map) may touch the road network and thereby
+    # change the number of active projects — that does not affect the already computed rate,
+    # but it will be taken into account on the next frame.
     if project_manager != null and project_steps > 0:
         project_manager.receive_labor(labor_per_build, delta,
                 CityData.ignore_build_requirements)
 
-# Сколько пошаговых проектов сейчас строятся. Каждый занимает ровно один слот
-# в пуле труда: одновременно идёт только текущий шаг, остальные ждут очереди.
+# How many staged projects are being built now. Each takes exactly one slot
+# in the labour pool: only the current step goes at the same time, the others wait in the queue.
 func _get_active_project_steps() -> int:
     if project_manager == null:
         return 0
@@ -146,26 +146,26 @@ func _get_active_project_steps() -> int:
 
 func start_build(row: int, col: int, imp_id: String, target_res_id = null,
         road_level: int = 0) -> bool:
-    # На гексе города строительство улучшений запрещено.
+    # On a city hex the construction of improvements is forbidden.
     var main_map_check = get_tree().root.find_child("MainMap", true, false)
     if main_map_check and row == main_map_check.city_row and col == main_map_check.city_col:
         emit_signal("build_message", tr("Cannot build on a city hex"))
         return false
 
-    # Дорога (спецдействие build_road) — единственное действие, применимое
-    # на гексе чужого городка: она строит не улучшение на его гексе, а
-    # соединяет сеть ДОРОГ города с дорожной сетью городка в его кольце
-    # влияния (см. road_manager.plan_road_to). Поэтому запреты «здесь чужой
-    # городок» и «здесь кольцо влияния» её не касаются. Декоративные
-    # улучшения она по-прежнему не трогает.
+    # The road (the build_road special action) is the only action applicable
+    # on the hex of another town: it does not build an improvement on its hex, but
+    # connects the road network of the CITY with the road network of the town in its influence
+    # ring (see road_manager.plan_road_to). Therefore the prohibitions "there is someone else's
+    # town here" and "there is an influence ring here" do not concern it. It still
+    # does not touch the decorative improvements.
     var is_road_action := imp_id != "" \
             and GameData.special_actions.has(imp_id) \
             and str(GameData.special_actions[imp_id].get("action_type", "")) == "road"
 
-    # На гексе городка (мелкое поселение) строительство тоже запрещено —
-    # это «чужое» место, по дизайну там ничего нельзя строить и никаких
-    # спецдействий. Сейчас (первый этап) городки чисто декоративные; в
-    # будущем здесь появится взаимодействие (торговля и т.п.).
+    # On a town hex (a small settlement) the construction is also forbidden —
+    # it is a "someone else's" place, by design nothing can be built there and no
+    # special actions either. At the moment (the first stage) the towns are purely
+    # decorative; in the future the interaction will appear here (trade and so on).
     if main_map_check and row >= 0 and row < main_map_check.tile_data.size() \
             and col >= 0 and col < main_map_check.tile_data[row].size():
         var t_tile = main_map_check.tile_data[row][col]
@@ -175,11 +175,12 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null,
         if t_tile != null and bool(t_tile.get("has_town", false)) and not is_road_action:
             emit_signal("build_message", tr("Another town stands here — cannot build"))
             return false
-        # В кольце влияния чужого городка строить нельзя: вокруг чужого
-        # поселения фактически заняты поля/выпасы/инфраструктура, и
-        # игрок не может «воткнуть» туда своё улучшение. Сами кольца
-        # рисует рендерер (полупрозрачная голубая заливка) — это даёт
-        # игроку визуальный сигнал ещё до попытки построить.
+        # In the influence ring of another town it is impossible to build: around someone else's
+        # settlement the fields/pastures/infrastructure are actually occupied, and
+        # the player cannot "stick" their own improvement there. The rings themselves
+        # are drawn by the renderer (a semi-transparent blue fill) — that gives
+        # the player a visual signal even before attempting to build.
+        # The rings of the player's own town are not affected (checked below).
         if t_tile != null and bool(t_tile.get("in_town_influence", false)) and not is_road_action:
             emit_signal("build_message", tr("This is inside another town's influence ring — cannot build"))
             return false
@@ -188,26 +189,26 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null,
     if active_builds.has(key):
         emit_signal("build_message", tr("Construction is already underway here"))
         return false
-    # Гекс может быть занят и ПОЭТАПНЫМ проектом: улучшение, ждущее в очереди
-    # «дорога → улучшение», не лежит в active_builds, поэтому по нему одной
-    # проверки выше мало. Без неё на гексе, где улучшение ещё не построено,
-    # можно было бы запустить вторую стройку — и две постройки делили бы гекс.
+    # The hex may also be occupied by a STAGED project: an improvement waiting in the queue
+    # "road → improvement" does not lie in active_builds, therefore the checks
+    # above alone are not enough. Without it, on a hex where the improvement is not yet built,
+    # it would be possible to start a second build — and two buildings would share the hex.
     if project_manager != null and project_manager.has_project_at(row, col):
         emit_signal("build_message", tr("Construction is already underway here"))
         return false
 
     var imp_data = GameData.improvements.get(imp_id, {})
     var imp_name = imp_data.get("name", imp_id)
-    # Спец-действия (вырубка леса, осушение болот и т.п.) не являются улучшениями —
-    # имя берём из GameData.special_actions.
+    # The special actions (logging, draining swamps, etc.) are not improvements —
+    # we take the name from GameData.special_actions.
     if GameData.special_actions.has(imp_id):
         imp_name = GameData.special_actions[imp_id].get("name", imp_id)
 
-    # Стоимость труда зависит от типа местности и расстояния до города.
+    # The labour cost depends on the terrain type and the distance to the city.
     var main_map = get_tree().root.find_child("MainMap", true, false)
-    # road_level — уровень дороги, выбранный игроком в превью постройки
-    # улучшения; 0 означает «не задан» и тогда берётся лучший доступный
-    # уровень, то же, что панель показывает по умолчанию.
+    # road_level — the road level chosen by the player in the improvement build
+    # preview; 0 means "not set" and then the best available
+    # level is taken, the same one the panel shows by default.
     var effective_road_level := road_level
     if effective_road_level <= 0:
         effective_road_level = GameData.get_max_unlocked_road_level()
@@ -218,44 +219,44 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null,
     else:
         work_cost = imp_data.get("work_cost", 0)
 
-    # Строительство теперь требует труд, а не еду. При включённом
-    # «Игнорировать требования строительства» улучшения строятся мгновенно.
-    # У дороги проверка НЕ по цене, а по ПЛАНУ. Раньше нулевая цена означала
-    # «трассы нет» (гекс отрезан водой, до городка не дойти), и без этой
-    # проверки стройка завершалась бы мгновенно. Нулевая цена у дороги —
-    # законное состояние (уровень с work_cost = 0), и такую дорогу нельзя
-    # объявлять невозможной. Признак «дорогу построить нельзя» — это !ok у
-    # плана, а не цена.
+    # The construction now requires labour, and not food. With
+    # "Ignore building requirements" enabled the improvements are built instantly.
+    # The road is checked NOT by the price, but by the PLAN. Previously a zero price meant
+    # "there is no route" (the hex is cut off by water, the town cannot be reached), and without this
+    # check the build would complete instantly. A zero price for a road is
+    # a legitimate state (a level with work_cost = 0), and such a road must not be
+    # declared impossible. The sign "the road cannot be built" is !ok of
+    # the plan, and not the price.
     if is_road_action and main_map != null and main_map.has_method("get_road_plan") \
             and not bool(main_map.get_road_plan(row, col).get("ok", false)):
-        # Причина берётся прямо из плана: у городка это обычно «нет разведанного
-        # пути», и сказать «нет сухопутного пути» было бы неверно — к городку
-        # сухопутный путь есть, просто игрок его ещё не разведал.
+        # The reason is taken straight from the plan: for a town it is usually "there is no explored
+        # path", and saying "there is no land path" would be wrong — there is
+        # a land path to the town, the player just has not explored it yet.
         var reason := str(main_map.get_road_plan(row, col).get("reason", ""))
         if not reason.is_empty():
-            # Причины из плана начинаются с заглавной — после двоеточия в
-            # предложении это выглядит ошибкой.
+            # The reasons from the plan start with a capital letter — after a colon in
+            # a sentence it looks like an error.
             reason = reason.substr(0, 1).to_lower() + reason.substr(1)
         emit_signal("build_message", tr("Cannot build a road here: %s") % reason)
         return false
 
-    # Дорога — не одна стройка на всю трассу, а ПОЭТАПНЫЙ проект: очередь
-    # участков, каждый строится отдельно (project_manager). Запуск отдан
-    # main_map: он владеет и планировщиком дорог (road_manager), и менеджером
-    # проектов, поэтому собирать шаги ему же. Точка входа остаётся прежней
-    # (start_build), чтобы панели и прочим вызывающим не пришлось знать,
-    # какие спецдействия поэтапные.
+    # A road is not one build for the whole route, but a STAGED project: a queue
+    # of segments, each is built separately (project_manager). The launch is delegated to
+    # main_map: it owns both the road planner (road_manager) and the project
+    # manager, therefore it assembles the steps itself. The entry point stays the same
+    # (start_build), so that the panels and other callers do not have to know
+    # which special actions are staged.
     if is_road_action:
         if main_map == null or not main_map.has_method("start_road_project"):
             emit_signal("build_message", tr("Failed to build the road"))
             return false
         return main_map.start_road_project(row, col, effective_road_level)
 
-    # Улучшению, которому полагается дорога, уходит в ЦЕПОЧКУ «дорога →
-    # улучшение»: один поэтапный проект и один слот, сначала участки дороги,
-    # последним шагом — сама постройка (main_map.start_improvement_road_project).
-    # Улучшения без дороги (гекс уже подключён, no_road, нет пути) остаются
-    # обычной стройкой ниже — для них разбор не даёт новых участков.
+    # The improvement that requires a road goes into the CHAIN "road →
+    # improvement": one staged project and one slot, first the road segments,
+    # the last step — the build itself (main_map.start_improvement_road_project).
+    # The improvements without a road (the hex is already connected, no_road, there is no
+    # path) remain an ordinary build below — for them the analysis gives no new segments.
     var is_special_action: bool = GameData.special_actions.has(imp_id)
     if not is_special_action and main_map != null \
             and main_map.has_method("start_improvement_road_project") \
@@ -271,7 +272,7 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null,
         emit_signal("build_completed", row, col, imp_id, target_res_id)
         return true
 
-    # Общий лимит одновременных строек (здания + улучшения) равен числу жителей
+    # The general limit of simultaneous builds (buildings + improvements) equals the number of citizens
     if get_total_active_builds() >= CityData.total_population:
         emit_signal("build_message", tr("You can build or upgrade no more than %d buildings at once (limit = number of citizens)") % CityData.total_population)
         return false
@@ -292,24 +293,24 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null,
     emit_signal("build_message", tr("Construction of %s started (%.0f work)") % [imp_name, work_cost])
     return true
 
-# Запускает освоение чанка территории за труд. Труд накапливается во времени
-# через общий пул труда (как стройка зданий/улучшений). Когда труд накоплен,
-# эмитится сигнал expansion_build_completed(chunk), и expansion_manager
-# присоединяет чанк к Кольцу Влияния.
+# Starts the claiming of a chunk of territory for labour. The labour accumulates over time
+# through the common labour pool (like the building of buildings/improvements). When the
+# labour is accumulated, the signal expansion_build_completed(chunk) is emitted,
+# and expansion_manager joins the chunk to the Influence Ring.
 func start_expansion_build(chunk: Array, work_cost: int, money_cost: int = 0) -> bool:
     if chunk.is_empty() or work_cost <= 0:
         return false
 
-    # При включённом «Игнорировать требования строительства» освоение не ждёт
-    # труд, а лимит одновременных строек не применяется: чанк присоединяется
-    # к Кольцу Влияния тем же сигналом, что и при обычном завершении.
+    # With "Ignore building requirements" enabled the claiming does not wait
+    # for labour, and the limit of simultaneous builds does not apply: the chunk is joined
+    # to the Influence Ring by the same signal as on a normal completion.
     if CityData.ignore_build_requirements:
         emit_signal("build_message", tr("Claiming complete instantly!"))
         emit_signal("expansion_build_completed", chunk)
         return true
 
-    # Общий лимит одновременных строек (здания + улучшения + освоение)
-    # равен числу жителей.
+    # The general limit of simultaneous builds (buildings + improvements + claims)
+    # equals the number of citizens.
     if get_total_active_builds() >= CityData.total_population:
         emit_signal("build_message", tr("You can build or upgrade no more than %d buildings at once (limit = number of citizens)") % CityData.total_population)
         return false
@@ -318,9 +319,9 @@ func start_expansion_build(chunk: Array, work_cost: int, money_cost: int = 0) ->
     active_expansion_builds[build_key] = {
         "progress": 0.0,
         "work_cost": work_cost,
-        # Цена в монетах, списанная при старте. Сохраняется, чтобы отмена
-        # могла её вернуть (cancel_expansion) — деньги ушли из казны ДО того,
-        # как начался труд, и без этого числа вернуть их нечем.
+        # The price in coins, written off at the start. It is stored so that the cancel
+        # could return it (cancel_expansion) — the money left the treasury BEFORE
+        # the labour began, and without this number there is nothing to return.
         "money_cost": money_cost,
         "chunk": chunk,
         "build_key": build_key,
@@ -346,18 +347,18 @@ func start_building_build(building_id: String) -> String:
         emit_signal("build_message", additional_req_check["reason"])
         return ""
 
-    # Модификаторы технологий (target = "construction_cost", см. data/modifiers.json)
-    # снижают стоимость стройки зданий так же, как и улучшений.
+    # The technology modifiers (target = "construction_cost", see data/modifiers.json)
+    # reduce the cost of building buildings just as they do for the improvements.
     if work_cost > 0:
         work_cost = int(ceil(float(work_cost) * MapHelpers.get_construction_cost_mult()))
 
-    # При включённом «Игнорировать требования строительства» здание строится
-    # мгновенно — сразу завершаем стройку (флаг CityData.ignore_build_requirements).
+    # With "Ignore building requirements" enabled the building is built
+    # instantly — we complete the build right away (the CityData.ignore_build_requirements flag).
     if work_cost <= 0 or CityData.ignore_build_requirements:
         emit_signal("build_building_completed", building_id, "")
         return ""
 
-    # Общий лимит одновременных строек (здания + улучшения) равен числу жителей
+    # The general limit of simultaneous builds (buildings + improvements) equals the number of citizens
     if get_total_active_builds() >= CityData.total_population:
         emit_signal("build_message", tr("You can build or upgrade no more than %d buildings at once (limit = number of citizens)") % CityData.total_population)
         return ""
@@ -377,19 +378,19 @@ func start_building_build(building_id: String) -> String:
     emit_signal("build_message", tr("Construction of %s started (%.0f work)") % [building_name, work_cost])
     return build_key
 
-# Запускает апгрейд уже построенного здания города (idx — индекс в
-# CityData.city_built_buildings, from_id — текущий id здания) в его улучшенную
-# версию upgrade_to. Возвращает build_key стройки или "" при неудаче.
-# Апгрейд — обычная стройка в общем пуле труда: участвует в общем лимите
-# одновременных строек и в равном распределении труда между стройками.
+# Starts the upgrade of an already built city building (idx — the index in
+# CityData.city_built_buildings, from_id — the current id of the building) to its improved
+# version upgrade_to. It returns the build_key of the build, or "" on failure.
+# The upgrade is an ordinary build in the common labour pool: it participates in the common
+# limit of simultaneous builds and in the equal distribution of labour among the builds.
 func start_building_upgrade(idx: int, from_id: String, upgrade_to: String) -> String:
-    # Апгрейд можно запустить только для существующего здания этого id.
+    # The upgrade can only be started for an existing building of that id.
     if idx < 0 or idx >= CityData.city_built_buildings.size():
         return ""
     if CityData.city_built_buildings[idx].get("id", "") != from_id:
         return ""
 
-    # Апгрейд этого же здания уже идёт.
+    # The upgrade of this same building is already going.
     for key in active_building_builds.keys():
         var data = active_building_builds[key]
         if data.get("is_upgrade", false) and data.get("upgrade_idx", -1) == idx:
@@ -409,19 +410,19 @@ func start_building_upgrade(idx: int, from_id: String, upgrade_to: String) -> St
         emit_signal("build_message", additional_req_check["reason"])
         return ""
 
-    # Модификаторы технологий (target = "construction_cost", см. data/modifiers.json)
-    # снижают стоимость апгрейда так же, как и стоимость новой стройки.
+    # The technology modifiers (target = "construction_cost", see data/modifiers.json)
+    # reduce the cost of the upgrade just as they reduce the cost of a new build.
     if work_cost > 0:
         work_cost = int(ceil(float(work_cost) * MapHelpers.get_construction_cost_mult()))
 
-    # При нулевой стоимости апгрейда или включённом дебаг-флаге завершаем
-    # мгновенно — сигналом building_upgrade_completed.
+    # With a zero cost of the upgrade or the debug flag enabled we complete
+    # instantly — with the building_upgrade_completed signal.
     if work_cost <= 0 or CityData.ignore_build_requirements:
         emit_signal("building_upgrade_completed", "", idx, upgrade_to, upgrade_name)
         return ""
 
-    # Общий лимит одновременных строек (здания + улучшения + апгрейды) равен
-    # числу жителей.
+    # The general limit of simultaneous builds (buildings + improvements + upgrades) equals
+    # the number of citizens.
     if get_total_active_builds() >= CityData.total_population:
         emit_signal("build_message", tr("You can build or upgrade no more than %d buildings at once (limit = number of citizens)") % CityData.total_population)
         return ""
@@ -445,9 +446,9 @@ func start_building_upgrade(idx: int, from_id: String, upgrade_to: String) -> St
     emit_signal("build_message", tr("Upgrade of %s started (%.0f work)") % [upgrade_name, work_cost])
     return build_key
 
-# Возвращает данные идущего апгрейда здания по его индексу в городе
-# (пустой словарь, если апгрейд не идёт). Используется панелью здания для
-# показа прогресса улучшения и кнопкой «Улучшить» для блокировки повтора.
+# Returns the data of the ongoing upgrade of a building by its index in the city
+# (an empty dictionary if the upgrade is not going). It is used by the building panel for
+# showing the progress of the improvement and by the "Upgrade" button to block a repeat.
 func get_building_upgrade_by_index(idx: int) -> Dictionary:
     for key in active_building_builds.keys():
         var data = active_building_builds[key]
@@ -483,12 +484,12 @@ func resume_build(row: int, col: int) -> bool:
     emit_signal("build_message", tr("Construction of %s resumed") % data["imp_name"])
     return true
 
-# Отменяет освоение территории по его build_key. Труд, уже вложенный в чанк,
-# пропадает, а монеты, списанные при старте, ВОЗВРАЩАЮТСЯ: деньги платили за
-# присоединение чанка к Кольцу Влияния, а оно не произошло. Так же уже поступает
-# expansion_manager.handle_action, когда стройка не смогла стартовать — там
-# возврат обязателен, чтобы цена не пропала. Согласие «отмена возвращает
-# стартовые траты, но не труд» то же, что и для разведки.
+# Cancels the claiming of the territory by its build_key. The labour already invested
+# in the chunk is lost, and the coins written off at the start are RETURNED: the money was paid for
+# joining the chunk to the Influence Ring, and it did not happen. The already done so is
+# expansion_manager.handle_action, when the build could not start — there
+# the refund is mandatory, so that the price does not disappear. The agreement "the cancel returns
+# the starting costs, but not the labour" is the same as for the scouting.
 func cancel_expansion(build_key: String) -> bool:
     if not active_expansion_builds.has(build_key):
         return false
@@ -497,19 +498,19 @@ func cancel_expansion(build_key: String) -> bool:
     var money_cost := int(data.get("money_cost", 0))
     if money_cost > 0 and not CityData.ignore_build_requirements:
         CityData.add_treasury(money_cost)
-        # Возврат идёт в ТОТ ЖЕ источник расходов отрицательной записью: за окно
-        # отображения получается сходящийся с фактом итог (платил Y → получил Y
-        # назад → 0). Отдельный «доход» не подошёл бы иерархической разбивке
-        # казны — та же причина, что и в expansion_manager.handle_action.
+        # The refund goes to THE SAME expense source as a negative record: over the display
+        # window the total agrees with the actual result (paid Y → got Y
+        # back → 0). A separate "income" would not suit the hierarchical breakdown
+        # of the treasury — the same reason as in expansion_manager.handle_action.
         CityData.record_treasury_expense(GameData.SRC_CLAIMING, -money_cost)
     emit_signal("build_message", tr("Claiming cancelled. Spent %.0f/%d work")
             % [float(data.get("progress", 0.0)), int(data.get("work_cost", 0))])
     _recount_active_builds()
     return true
 
-# Отменяет освоение по гексу (row, col) — берёт первый гекс осваиваемого чанка,
-# ровно как get_expansion_progress_for_hex. Так кнопка в панели не зависит от
-# формата ключа записи во внутреннем словаре.
+# Cancels the claiming by the hex (row, col) — it takes the first hex of the claimed chunk,
+# exactly as get_expansion_progress_for_hex. In this way the button in the panel does not depend on
+# the format of the key of the entry in the internal dictionary.
 func cancel_expansion_at_hex(row: int, col: int) -> bool:
     var data := get_expansion_progress_for_hex(row, col)
     if data.is_empty():
@@ -571,23 +572,23 @@ func cancel_building_build(build_key: String):
     emit_signal("build_building_cancelled", build_key)
     emit_signal("build_message", tr("Construction of %s cancelled. Spent %.0f/%d work") % [building_name, work_done, work_total])
 
-# Возвращает общее количество активных строек (улучшения + здания + освоение
-# + текущие шаги поэтапных проектов). Проект занимает один слот, а не по
-# числу гексов: одновременно строится только один его участок.
+# Returns the total number of active builds (improvements + buildings + claims
+# + the current steps of the staged projects). A project takes one slot, and not
+# per hex: only one of its segments is built at the same time.
 func get_total_active_builds() -> int:
     return active_builds.size() + active_building_builds.size() \
         + active_expansion_builds.size() + _get_active_project_steps()
 
-# Возвращает true, если есть хотя бы одна активная стройка (улучшение, здание
-# или освоение территории). Работает за O(1) через кэшированный счётчик —
-# используется в main_map._process для решения, нужно ли перерисовывать слой
-# прогресс-баров каждый кадр. Шаги проектов в счётчик не входят: их каждый
-# кадр опрашивает project_manager, а не кэш build_manager.
+# Returns true if there is at least one active build (an improvement, a building
+# or a territory claim). It works in O(1) via the cached counter —
+# it is used in main_map._process to decide whether the progress bar layer
+# needs to be redrawn every frame. The project steps are not in the counter: they are
+# polled every frame by project_manager, and not by the build_manager cache.
 func has_active_builds() -> bool:
     return _active_build_count > 0 or _get_active_project_steps() > 0
 
-# Пересчитывает кэш числа активных строек по фактическому размеру словарей.
-# Вызывается при восстановлении строек из сохранения и в _ready.
+# Recalculates the cache of the number of active builds by the actual size of the dictionaries.
+# It is called when restoring the builds from the save and in _ready.
 func _recount_active_builds():
     _active_build_count = active_builds.size() + active_building_builds.size() + active_expansion_builds.size()
 
@@ -606,9 +607,9 @@ func get_progress(row: int, col: int) -> Dictionary:
         return active_builds[key]
     return {}
 
-# Возвращает данные стройки освоения территории, если гекс (row, col) — ПЕРВЫЙ
-# гекс осваиваемого чанка. Используется для отрисовки прогресс-бара освоения
-# ТОЛЬКО на выбранном гексе (а не на всех гексах чанка).
+# Returns the data of the territory claim build, if the hex (row, col) is the FIRST
+# hex of the claimed chunk. It is used for drawing the progress bar of the claim
+# ONLY on the selected hex (and not on all the hexes of the chunk).
 func get_expansion_progress_for_hex(row: int, col: int) -> Dictionary:
     for key in active_expansion_builds.keys():
         var data = active_expansion_builds[key]
@@ -625,7 +626,7 @@ func remove_build(row: int, col: int):
     if active_builds.erase(key):
         _active_build_count -= 1
 
-# Восстанавливает стройки улучшений из сохранения.
+# Restores the improvement builds from the save.
 func restore_builds(data: Dictionary):
     active_builds.clear()
     if data.is_empty():
@@ -635,7 +636,7 @@ func restore_builds(data: Dictionary):
         var build_data = data[key]
         if not (build_data is Dictionary):
             continue
-        # Валидируем: стройка должна иметь координаты и imp_id
+        # We validate: the build must have the coordinates and imp_id
         if not build_data.has("row") or not build_data.has("col") or not build_data.has("imp_id"):
             continue
         active_builds[String(key)] = {
@@ -651,7 +652,7 @@ func restore_builds(data: Dictionary):
         }
     _recount_active_builds()
 
-# Восстанавливает стройки освоения территории из сохранения.
+# Restores the territory claim builds from the save.
 func restore_expansion_builds(data: Dictionary):
     active_expansion_builds.clear()
     if data.is_empty():
@@ -661,7 +662,7 @@ func restore_expansion_builds(data: Dictionary):
         var build_data = data[key]
         if not (build_data is Dictionary):
             continue
-        # Валидируем: стройка освоения должна иметь chunk и work_cost
+        # We validate: the claim build must have chunk and work_cost
         if not build_data.has("chunk") or not build_data.has("work_cost"):
             continue
         active_expansion_builds[String(key)] = {
@@ -674,7 +675,7 @@ func restore_expansion_builds(data: Dictionary):
         }
     _recount_active_builds()
 
-# Восстанавливает стройки зданий из сохранения.
+# Restores the building builds from the save.
 func restore_building_builds(data: Dictionary):
     active_building_builds.clear()
     if data.is_empty():
@@ -684,7 +685,7 @@ func restore_building_builds(data: Dictionary):
         var build_data = data[key]
         if not (build_data is Dictionary):
             continue
-        # Валидируем: стройка должна иметь building_id
+        # We validate: the build must have building_id
         if not build_data.has("building_id"):
             continue
         active_building_builds[String(key)] = {
@@ -695,7 +696,7 @@ func restore_building_builds(data: Dictionary):
             "build_key": String(build_data.get("build_key", key)),
             "status": String(build_data.get("status", "active")),
             "allocated_labor": float(build_data.get("allocated_labor", 0.0)),
-            # Поля апгрейда здания (для обычных строек is_upgrade == false).
+            # The building upgrade fields (for ordinary builds is_upgrade == false).
             "is_upgrade": bool(build_data.get("is_upgrade", false)),
             "upgrade_idx": int(build_data.get("upgrade_idx", -1)),
             "upgrade_to": String(build_data.get("upgrade_to", "")),
