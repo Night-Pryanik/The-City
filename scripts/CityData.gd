@@ -726,23 +726,23 @@ func record_market_consumption(pid: String, amount: int) -> void:
     if amount <= 0:
         return
     market_consumption_rates[pid] = int(market_consumption_rates.get(pid, 0)) + amount
-    # Тот же факт копится в окно отображения: тиковый счётчик гаснет в
-    # reset_counters(), а карточке «Торговли» нужен факт, переживающий
-    # интервал отображения из настроек (см. market_consumption_accum).
+    # The same fact is accumulated into the display window: the tick counter goes out in
+    # reset_counters(), and the card of "Trade" needs a fact which survives
+    # the display interval from the settings (see market_consumption_accum).
     market_consumption_accum[pid] = int(market_consumption_accum.get(pid, 0)) + amount
 
-# Сбрасывает окно факта потребления рынка в «прошлое» и обнуляет
-# аккумулятор. Вызывается рядом с rotate_treasury_window (см.
-# tick_resource_display). Пока первое окно не завершилось, снимок пуст —
-# get_market_consumption_per_sec() берёт текущий аккумулятор, чтобы строка
-# не показывала «0» при идущем потреблении.
+# Resets the window of the fact of the consumption of the market into the "past" and zeroes
+# the accumulator. It is called next to rotate_treasury_window (see
+# tick_resource_display). Until the first window has finished, the snapshot is empty —
+# get_market_consumption_per_sec() takes the current accumulator, so that the row
+# does not show "0" with a going consumption.
 func rotate_market_consumption_window() -> void:
     market_consumption_snapshot = market_consumption_accum.duplicate()
     market_consumption_accum.clear()
 
-# Факт потребления на внутреннем рынке в единицах В СЕКУНДУ по прошедшему
-# окну отображения: product_id -> ед./сек. Окно короче симуляционного тика не
-# бывает (минимум 1 сек), поэтому за окно факт всегда есть.
+# The fact of the consumption on the internal market in units PER SECOND over the past
+# display window: product_id -> units/sec. The window is not shorter than the tick of the simulation
+# (the minimum is 1 sec), therefore over the window the fact always exists.
 func get_market_consumption_per_sec() -> Dictionary:
     var source: Dictionary = market_consumption_snapshot
     if source.is_empty():
@@ -756,16 +756,16 @@ func get_market_consumption_per_sec() -> Dictionary:
             result[str(pid)] = float(amount) / resource_display_interval
     return result
 
-# --- ПЛАНОВЫЙ СПРОС ЗДАНИЙ (для «Потребление (плановое)» на вкладке «Ресурсы») ---
-# Кэш ссылки на TownsfolkManager: нужен и do_tick(), и подсчёту спроса зданий.
-# Ищется один раз и переиспользуется (is_instance_valid — на случай удаления узла).
+# --- THE PLANNED DEMAND OF THE BUILDINGS (for "Consumption (planned)" on the tab "Resources") ---
+# The cache of the reference to TownsfolkManager: it is needed by do_tick(), and by the counting of the demand of the buildings.
+# It is looked up once and reused (is_instance_valid — in case the node is deleted).
 var _townsfolk_ref: Node = null
 
 func _get_townsfolk() -> Node:
     if _townsfolk_ref != null and is_instance_valid(_townsfolk_ref):
         return _townsfolk_ref
-    # Узел может быть вне дерева (тесты вызывают счётчики напрямую, до
-    # добавления сцены) — тогда искать нечего, и null — правильный ответ.
+    # The node can be outside the tree (the tests call the counters directly, before
+    # adding the scene) — then there is nothing to look up, and null is the right answer.
     if not is_inside_tree():
         return null
     var main_map = get_tree().root.find_child("MainMap", true, false)
@@ -773,14 +773,14 @@ func _get_townsfolk() -> Node:
         _townsfolk_ref = main_map.get_node_or_null("TownsfolkManager")
     return _townsfolk_ref
 
-# Кэш ссылки на WorkerManager: нужен плановому производству зданий (бонус
-# профессии горожанина) и тику потребления — симметрично _get_townsfolk().
+# The cache of the reference to WorkerManager: it is needed by the planned production of the buildings (the bonus
+# of the profession of the citizen) and by the tick of the consumption — symmetrically _get_townsfolk().
 var _worker_manager_ref: Node = null
 
 func _get_worker_manager() -> Node:
     if _worker_manager_ref != null and is_instance_valid(_worker_manager_ref):
         return _worker_manager_ref
-    # См. _get_townsfolk: вне дерева искать нечего.
+    # See _get_townsfolk: outside the tree there is nothing to look up.
     if not is_inside_tree():
         return null
     var main_map = get_tree().root.find_child("MainMap", true, false)
@@ -788,11 +788,11 @@ func _get_worker_manager() -> Node:
         _worker_manager_ref = main_map.get_node_or_null("WorkerManager")
     return _worker_manager_ref
 
-# Число РАБОТАЮЩИХ горожан по профессиям: prof_id -> count. Профессия берётся
-# у здания (поле "profession" в data/buildings.json). Учитываются только
-# здания, где есть горожанин И хотя бы один непустой слот: простаивающее
-# здание расходники не тратит, поэтому в план его расход не попадает
-# (см. worker_manager.get_planned_consumption_map).
+# The number of WORKING citizens by the professions: prof_id -> count. The profession is taken
+# from the building (the field "profession" in data/buildings.json). Only the buildings
+# where there is a citizen AND at least one non-empty slot are taken into account: an idle
+# building does not spend the supplies, therefore its expense does not enter the plan
+# (see worker_manager.get_planned_consumption_map).
 func get_townsfolk_professions_count() -> Dictionary:
     var result: Dictionary = {}
     var tm = _get_townsfolk()
@@ -809,23 +809,21 @@ func get_townsfolk_professions_count() -> Dictionary:
         result[prof] = int(result.get(prof, 0)) + 1
     return result
 
-# Возвращает плановый спрос ПОСТРОЕННЫХ ЗДАНИЙ на ресурсы за один крафт
-# рецепта. Рецепт в do_tick() исполняется раз в `time` секунд при назначенном
-# горожанине и наличии ингредиентов, поэтому спрос идёт вместе с временем
-# рецепта (interval, секунды). Формат результата:
-#   product_id -> { "Имя здания" -> { "amount": N, "interval": float,
-#                                     "count": M, "is_group": bool,
-#                                     "group_name": String } }
-#   amount   — суммарный спрос этого здания на ресурс за один крафт слотов;
-#   interval — время крафта, секунды (при нескольких слотах здания с разным
-#              time берётся минимальное — как у профессий в
-#              worker_manager.get_planned_consumption_map); 0 — «за тик»
-#              (рецепт без поля time);
-#   count  — сколько слотов-рецептов дают этот спрос (для «хN» в тултипе);
-#   is_group / group_name — спрос задан группой «@»: относится к ЛЮБОМУ члену
-#   группы, в тултипе помечается именем группы.
-# Спрос показывается независимо от наличия ингредиентов на складе — это
-# плановое потребление (потребность), а не факт; факт считает do_tick().
+# Returns the planned demand of the BUILT buildings for the resources per one crafting of the
+# recipe. The recipe in do_tick() is executed once per `time` seconds with a citizen assigned
+# and the ingredients present, therefore the demand goes together with the time of the
+# recipe (interval, seconds). The format of the result:
+#   product_id -> { "The name of the building" -> { "amount": N, "interval": float,
+#   amount   is the total demand of this building for the resource per one crafting of the slots;
+#   interval is the time of the crafting, in seconds (with several slots of the building with a different
+#              time the minimum is taken — as for the professions in
+#              worker_manager.get_planned_consumption_map); 0 is "per tick"
+#              (a recipe without the field time);
+#   count  is how many slots-recipes give this demand (for the "xN" in the tooltip);
+#   is_group / group_name is the demand set by the group "@": it refers to ANY member
+#   of the group, in the tooltip it is marked by the name of the group.
+# The demand is shown regardless of the presence of the ingredients in the storage — this is the
+# planned consumption (the need), and not the fact; the fact is counted by do_tick().
 func get_building_planned_consumption() -> Dictionary:
     var result: Dictionary = {}
     var tm = _get_townsfolk()
@@ -834,11 +832,11 @@ func get_building_planned_consumption() -> Dictionary:
         var slots = bld.get("slots", [])
         if slots.is_empty():
             continue
-        # Без горожанина здание не работает и ничего не потребляет.
+        # Without a citizen the building does not work and consumes nothing.
         if tm == null or not tm.has_townsfolk(i):
             continue
-        # Идентификатор здания — источник спроса (совпадает с источником
-        # фактического расхода в do_tick, чтобы в тултипе это был один и тот
+        # The identifier of the building is the source of the demand (it coincides with the source of
+        # the actual expense in do_tick, so that in the tooltip it is the same
         # же субъект). Подпись резолвится в ui_helpers по id.
         var building_source = GameData.building_source_id(str(bld.get("id", "")))
         for recipe_id in slots:
