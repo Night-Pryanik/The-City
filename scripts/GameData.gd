@@ -637,7 +637,7 @@ const SRC_POP_FOOD := "@pop_food"
 const SRC_SCOUTING := "@scouting"
 const SRC_CLAIMING := "@claim"
 
-# The source identifier for a data entity. An empty id gives an empty key —
+    # The source identifier for a data entity. An empty id gives an empty key —
     # a record without a source does not go into the plans (the callers check this before writing).
 func profession_source_id(prof_id: String) -> String:
     return SRC_PREFIX_PROFESSION + prof_id
