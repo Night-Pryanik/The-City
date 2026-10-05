@@ -2863,17 +2863,14 @@ func advance_to_next_era():
 
     # 1-2. Исследуем и присоединяем весь текущий Регион бесплатно.
     # Гексы в кольце влияния чужого городка НЕ присоединяем: они не должны
-    # автоматически стать частью Кольца Влияния игрока. Иначе после перехода
-    # эпохи кольцо «расширяется» поверх чужого городка и нарушает принцип
-    # «чужое — не наше». Игрок не сможет там ни строить (build_manager
-    # блокирует по in_town_influence), ни покупать чанк (expansion_manager
-    # блокирует по тому же флагу) — это «мёртвая зона» в Регионе рядом с
-    # чужим городком.
+    # blocks by in_town_influence), nor to buy a chunk (expansion_manager
+    # blocks by the same flag) — this is a "dead zone" in the Region near
+    # someone else's town.
     #
-    # Такие гексы всё же ИССЛЕДОВАНЫ: иначе они остались бы туманом и
-    # рисовались бы чёрной дырой посреди только что присвоенной территории.
-    # Исследованный гекс виден (местность, ресурсы) и помечен заливкой кольца
-    # городка — игрок сразу видит, чья это земля и почему её нельзя купить.
+    # Such hexes are nevertheless SCOUTED: otherwise they would remain fog
+    # and would be drawn as a black hole in the middle of the just claimed territory.
+    # A scouted hex is visible (the terrain, the resources) and is marked with the fill of the ring of
+    # the town — the player immediately sees whose land it is and why it cannot be bought.
     for row in range(region_start_row, region_end_row + 1):
         for col in range(region_start_col, region_end_col + 1):
             var tile = tile_data[row][col]
@@ -2885,17 +2882,17 @@ func advance_to_next_era():
             tile["is_explored"] = true
             tile["in_influence"] = true
 
-    # Весь Регион стал известным — планы дорог пересчитываются (трасса к
-    # городку идёт по разведанной земле).
+    # The whole Region has become known — the plans of the roads are recalculated (the route to
+    # the town goes over the scouted land).
     road_manager.bump_map_knowledge()
 
-    # 3. Бывшие Кольцо + Регион становятся новым Кольцом.
+    # 3. The former Ring + Region become the new Ring.
     ring_rows = region_rows
     ring_cols = region_cols
 
-    # 4. Новый Регион: ширина берётся из настраиваемого поля region_width
-    # той эпохи, в которую переходим (data/eras.json). Если поле не задано —
-    # остаётся текущее значение (обратная совместимость со старыми eras.json).
+    # 4. The new Region: the width is taken from the configurable field region_width
+    # of that era, into which we transition (data/eras.json). If the field is not set —
+    # the current value remains (backward compatibility with the old eras.json).
     var next_era_index: int = current_era + 1
     if next_era_index >= 0 and next_era_index < GameData.eras.size():
         var era_data: Dictionary = GameData.eras[next_era_index]
@@ -2905,9 +2902,9 @@ func advance_to_next_era():
     region_rows = ring_rows + region_width * 2
     region_cols = ring_cols + region_width * 2
 
-    # 5. Пересчитываем границы; гексы нового Региона не исследованы и не в влиянии.
-    # Гексы колец чужих городков не трогаем: их исследовали в шаге 1-2 (см.
-    # там комментарий про «мёртвую зону»), сбрасывать их обратно в туман нельзя.
+    # 5. We recalculate the boundaries; the hexes of the new Region are not scouted and not in the influence.
+    # The hexes of the rings of the other towns are not touched: we scouted them in the step 1-2 (see
+    # there the comment about the "dead zone"), we cannot reset them back to the fog.
     _recalculate_bounds()
     for row in range(region_start_row, region_end_row + 1):
         for col in range(region_start_col, region_end_col + 1):
@@ -2921,11 +2918,17 @@ func advance_to_next_era():
                 tile["is_explored"] = false
 
     current_era += 1
-    # Границы Региона выросли: часть ранее туманных гексов теперь входит в
-    # Регион, поэтому кэш заливки/границ колец городков устарел.
+    # The boundaries of the Region have grown: a part of the formerly foggy hexes now enters the
+    # Region, therefore the cache of the fill/boundaries of the rings of the towns has become outdated.
+    # We synchronise the current era in CityData — the restriction
+    # on the learning of the technologies depends on it (only the current and the previous eras).
     map_renderer.invalidate_town_influence_cache()
-    # Синхронизируем текущую эпоху в CityData — от неё зависит ограничение
-    # на изучение технологий (только текущая и предыдущие эпохи).
+# --- THE NATURAL TRANSITION TO THE NEXT ERA ---
+# The Market is the condition of the transition from the first era. After its construction the game
+# is paused and a dialog with a Yes/No choice is shown.
+# In case of a refusal a small button appears in the HUD, opening the same dialog.
+# No timers, no prohibitions and no reminders: the player can play in the current
+# era as long as he wants.
     CityData.current_era_index = current_era
     CityData.emit_signal("city_updated")
     _calc_offsets()
@@ -2933,12 +2936,8 @@ func advance_to_next_era():
     if hud:
         hud.show_message(tr("New era! City borders expanded. Influence ring: %d×%d") % [ring_rows, ring_cols])
 
-# --- ЕСТЕСТВЕННЫЙ ПЕРЕХОД В СЛЕДУЮЩУЮ ЭПОХУ ---
-# Рынок - условие перехода из первой эпохи. После его постройки игра
-# ставится на паузу и показывается диалог с выбором Да/Нет.
-# При отказе в HUD появляется небольшая кнопка, открывающая тот же диалог.
-# Никаких таймеров, запретов и напоминаний: игрок может играть в текущей
-# эпохе столько, сколько захочет.
+    # If the Market has already been built, and the era has not been changed (the player refused and left)
+    # - we show the button in the HUD again.
 func _setup_era_advance_ui():
     era_advance_button = Button.new()
     era_advance_button.text = tr("New era")
@@ -2949,8 +2948,7 @@ func _setup_era_advance_ui():
 
     era_dialog = ConfirmationDialog.new()
     era_dialog.title = tr("New era")
-    era_dialog.dialog_text = "Поздравляем, ваш город достиг следующего уровня развития!
-Перейти в следующую эпоху?"
+    era_dialog.dialog_text = tr("Congratulations, your city has reached the next level of development!\nDo you want to transition to the next era?")
     era_dialog.ok_button_text = tr("Yes")
     era_dialog.cancel_button_text = tr("No")
     era_dialog.process_mode = Node.PROCESS_MODE_WHEN_PAUSED
@@ -2959,8 +2957,7 @@ func _setup_era_advance_ui():
     add_child(era_dialog)
     era_dialog.hide()
 
-    # Если Рынок уже построен, а эпоха не сменена (игрок отказался и вышел)
-    # - снова показываем кнопку в HUD.
+    # The player remains in the current era: we unpause, we leave the button in the HUD.
     if current_era == 0 and _is_market_built():
         era_advance_button.visible = true
 

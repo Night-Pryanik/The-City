@@ -1098,6 +1098,9 @@ msgstr ""
 msgid "Confirm"
 msgstr ""
 
+msgid "Congratulations, your city has reached the next level of development!\nDo you want to transition to the next era?"
+msgstr ""
+
 msgid "Construction"
 msgstr ""
 

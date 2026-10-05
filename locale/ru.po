@@ -1098,6 +1098,9 @@ msgstr "Завершено: %s"
 msgid "Confirm"
 msgstr "Подтверждение"
 
+msgid "Congratulations, your city has reached the next level of development!\nDo you want to transition to the next era?"
+msgstr "Поздравляем, ваш город достиг следующего уровня развития!\nПерейти в следующую эпоху?"
+
 msgid "Construction"
 msgstr "Строительство"
 
