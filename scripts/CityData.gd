@@ -1125,10 +1125,10 @@ func _consume_quality_detail(pid: String, amount: int, priority: String) -> Dict
 # It is used on the production: the quality of the result = the weighted average,
 # качества потреблённого сырья, округлённое до ближайшего уровня.
 # Собирает плоскую разбивку потреблённого сырья по качеству из контейнера
-# крафта: для каждого слота ингредиента проходит по накопленным «входам»
-# (consumed) и складывает в единый словарь {quality: count}.
-# Используется при завершении крафта для расчёта качества результата —
-# прямой аналог consumed_all в старой пакетной логике.
+# of the crafting: for each slot of the ingredients it goes through the accumulated "inputs"
+# (consumed) and sums them into a single dictionary {quality: count}.
+# It is used on the completion of the crafting for the calculation of the quality of the result —
+# a direct analogue of consumed_all in the old batch logic.
 func _collect_container_quality(container: CraftContainer) -> Dictionary:
     var out := {}
     if container == null:
@@ -1157,7 +1157,7 @@ func quality_from_breakdown(consumed: Dictionary) -> String:
     if total <= 0:
         return "common"
     var avg = weighted / float(total)
-    # Округляем до ближайшего уровня качества.
+    # We round to the nearest level of the quality.
     var best_qid = levels[0]
     var best_diff = 1e9
     for qid in levels:
@@ -1173,41 +1173,43 @@ func add_raw_production(raw_id: String, multiplier: float = 1.0, quality: String
     var raw = GameData.raw_resources.get(raw_id, {})
     if raw.has("produces"):
         for pid in raw["produces"]:
-            # produces может быть числом или диапазоном [min, max] — для
-            # детерминированного непрерывного производства берём минимум
-            # диапазона (см. RangeUtils).
+            # produces can be a number or a range [min, max] — for
+            # the deterministic continuous production we take the minimum
+            # of the range (see RangeUtils).
             var amount = ceili(float(RangeUtils.get_min_value(raw["produces"][pid], 1)) * multiplier)
-            # Проверяем, доступен ли этот продукт (по технологии)
+            # We check whether this product is available (by the technology)
             if not _is_product_available(pid):
                 continue
             if amount <= 0:
                 continue
-            # Всегда добавляем в storage и записываем источник (раньше в первом
-            # тике, когда продукта ещё не было в city_storage, источник
-            # вообще не записывался — это и был баг «тултип пустой на новом
-            # производстве»).
+            # We always add to the storage and record the source (previously on the first
+            # tick, when the product was not yet in city_storage, the source
+            # was not recorded at all — that was the bug of the "empty tooltip on a new
+            # production").
             add_to_storage(pid, amount, quality)
             if source_id != "":
                 record_production_source(pid, source_id, amount)
             else:
                 production_rates[pid] += amount
 
-# --- ВРЕМЯ РЕЦЕПТА (time) ---
-# Рецепт слота здания исполняется непрерывно: ингредиенты забираются
-# со склада поштучно с рассчитанной скоростью (required / time ед./сек).
-# Крафт считается завершённым, когда ВСЕ ингредиенты набраны и прошло
-# craft_time секунд. Если сырья не хватает — контейнер «замерзает»
-# (время не копит, ингредиенты не забираются), и крафт автоматически
-# затягивается до появления сырья на складе.
+# --- THE TIME OF THE RECIPE (time) ---
+# The recipe of a slot of a building is executed continuously: the ingredients are taken
+# from the storage one by one at the calculated rate (required / time units/sec).
+# The crafting is counted as completed, when ALL the ingredients have been gathered and craft_time
+# seconds have passed. If there is not enough raw material — the container "freezes"
+# (the time does not accumulate, the ingredients are not taken), and the crafting automatically
+# is extended until the raw material appears in the storage.
+# A CraftContainer is created for each slot of a building (see scripts/craft_container.gd),
+# which stores the state of the filling and the list of the "inputs" with the qualities for
+# the calculation of the quality of the result. The containers are serialized together with
+# city_built_buildings under the key "slot_containers".
 #
-# На каждый слот здания заводится CraftContainer (см. scripts/craft_container.gd),
-# который хранит состояние заполнения и список «входов» с качествами для
-# расчёта качества результата. Контейнеры сериализуются вместе с
-# city_built_buildings под ключом "slot_containers".
+# The step of the simulation is SIMULATION_TICK (1 sec). The fractional remainders per tick
+# accumulate in the container (the sub-unit accumulator), therefore the average rate
+# does not drift (21/5 = 4.2 → we alternate 4 and 5 units).
 #
-# Шаг симуляции — SIMULATION_TICK (1 сек). Дробные остатки за тик
-# копятся в контейнере (sub-unit accumulator), поэтому средняя скорость
-# не дрейфует (21/5 = 4.2 → чередуем 4 и 5 единиц).
+# The time of one crafting of the recipe in seconds. The field time is absent, or <= 0 —
+# the recipe behaves as before: the crafting on every tick of the simulation.
 
 # Время одного крафта рецепта в секундах. Поле time отсутствует или <= 0 —
 # рецепт ведёт себя как раньше: крафт каждый тик симуляции.
@@ -1217,7 +1219,7 @@ func get_craft_time(recipe: Dictionary) -> float:
         return SIMULATION_TICK
     return t
 
-# Возвращает данные рецепта по id (или пустой словарь, если рецепт не найден).
+# Returns the data of the recipe by id (or an empty dictionary, if the recipe is not found).
 func get_craft_by_id(recipe_id: String) -> Dictionary:
     for c in GameData.crafts:
         if c.get("id", "") == recipe_id:
@@ -1236,27 +1238,27 @@ func get_slot_containers(b_index: int) -> Array:
     if not (containers is Array):
         containers = _migrate_slot_containers(b_index, slots)
         bld["slot_containers"] = containers
-    # Подгоняем массив под текущее число слотов.
+    # We fit the array to the current number of the slots.
     while containers.size() < slots.size():
         containers.append(null)
     if containers.size() > slots.size():
         containers.resize(slots.size())
-    # Ленивое восстановление сериализованных контейнеров из сейва:
-    # SaveManager._serialize_buildings пишет плоские dict (JSON-совместимые),
-    # поэтому после загрузки здесь лежат dict, а не объекты. При первом
-    # обращении пересобираем CraftContainer по ТЕКУЩЕМУ рецепту слота;
-    # несовместимость рецепта контейнер разруливает сам
-    # (_restore_from_slot_data мерджит состояние по совпадающим ингредиентам).
-    # Без этого типизированное присваивание в _ensure_slot_container падало бы
-    # на dict после загрузки сейва.
+    # The lazy restoration of the serialized containers from the save:
+    # SaveManager._serialize_buildings writes the flat dicts (JSON-compatible),
+    # therefore after the loading here there are dicts, and not objects. On the first
+    # access we rebuild the CraftContainer by the CURRENT recipe of the slot;
+    # the incompatibility of the recipe is handled by the container itself
+    # (_restore_from_slot_data merges the state by the matching ingredients).
+    # Without this the typed assignment in _ensure_slot_container would fall
+    # on a dict after the loading of the save.
     for i in range(mini(containers.size(), slots.size())):
         var c = containers[i]
         if c == null or c is CraftContainer:
             continue
         var recipe = get_craft_by_id(str(slots[i]))
         if recipe.is_empty():
-            # Рецепт слота не разрешается — слот считается пустым
-            # (та же семантика, что в _ensure_slot_container).
+            # The recipe of the slot is not resolved — the slot is counted as empty
+            # (the same semantics as in _ensure_slot_container).
             containers[i] = null
             continue
         var saved: Dictionary = c if c is Dictionary else {}
@@ -1280,7 +1282,7 @@ func _migrate_slot_containers(b_index: int, slots: Array) -> Array:
         if recipe.is_empty():
             out.append(null)
             continue
-        # Используем сохранённое состояние, если оно соответствует
+        # We use the saved state, if it corresponds
         # текущему рецепту (для будущих сейвов в новом формате).
         var saved = null
         if slot_idx < old_progress.size() and old_progress[slot_idx] is Dictionary:
