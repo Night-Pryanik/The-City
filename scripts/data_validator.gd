@@ -1,110 +1,142 @@
 # data_validator.gd
-# Рантайм-валидатор перекрёстных ссылок в data/*.json.
+# The runtime validator of the cross-references in data/*.json.
 #
-# Запускается ПОСЛЕ загрузки данных и ДО начала игры (см. main_menu.gd),
-# чтобы автор данных узнавал о битых ссылках не из консоли, а из окна с
-# точным указанием проблемной сущности.
+# It is run AFTER the loading of the data and BEFORE the start of the game (see main_menu.gd),
+# so that the data author learns about the broken references not from the console, but from a window with
+# an exact indication of the problematic entity.
 #
-# Проверяются ССЫЛКИ между сущностями (не синтаксис JSON — этим занят
-# tools/validate_json.py). Проблема хранится в двух слоях:
+# The REFERENCES between the entities are checked (and not the JSON syntax — this is what
+# tools/validate_json.py does). A problem is stored in two layers:
 #
-#   1) СТРУКТУРА — от языка не зависит: что не так, где и в каком поле.
-#   2) ТЕКСТ — переводится (см. build_text ниже). Собирается ОТДЕЛЬНО от
-#      проверки именно потому, что язык можно переключить, не прогоняя
-#      проверку заново: localize_problems() пересобирает тексты на новом
-#      языке по той же структуре.
+#   1) the STRUCTURE — does not depend on the language: what is wrong, where and in which field.
 #
 #   {
-#     "kind":        String,  # машинное имя проверки, напр. "produced_in"
-#     "check_title": String,  # заголовок группы проверки для окна
-#     "target_title":String,  # "Building" — вид искомой сущности
-#     "ref_id":      String,  # искомый идентификатор ("x")
-#     "source_kind": String,  # вид сущности-владельца ("recipe")
-#     "source_name": String,  # её название из данных ("Grain Mill")
-#     "source_id":   String,  # её идентификатор ("grind_grain_hand")
-#     "field":       String,  # поле, в котором нашли ссылку
-#     "file":        String,  # файл, в котором объявлен владелец ссылки
-#     "line":        int,     # строка объявления в этом файле (0 — неизвестно)
-#     "headline":    String,  # первая строка сообщения
-#     "where":       String,  # вторая строка: где именно нашли ссылку
-#     "location":    String,  # третья строка: "File: …, line N." ("" — нет)
-#     "message":     String,  # все строки вместе (для логов и тестов)
+#   2) the TEXT — is translated (see build_text below). It is assembled SEPARATELY from
+#      the check exactly because the language can be switched without running the
+#      check again: localize_problems() reassembles the texts in the new
+#      language from the same structure.
+#
 #   }
 #
-# Проверки:
-#   id_charset         — идентификатор вне ASCII (кириллица в id неотличима от латиницы)
-#   id_lookalike       — идентификатор отличается от другого только похожими символами
-#   produced_in        — рецепт ссылается на несуществующее здание
-#   result             — рецепт (result / display_result) даёт несуществующий ресурс
-#   improved_by        — ресурс улучшается несуществующим улучшением
-#   unlock_improvement — продукт открывается несуществующим улучшением
-#   unlock_tech        — здание/улучшение/продукт/рецепт → несуществующая технология
-#   profession         — здание/улучшение → несуществующая профессия
-#   category           — продукт → несуществующая категория
-#   product_source     — продукт не производится НИ картой, НИ рецептом
-#   group_member       — в @-группе несуществующий продукт
-#   resource_group     — рецепт ссылается на несуществующую @-группу
-#   resource           — рецепт требует несуществующий ресурс
-#   consumption_resource— правило потребления → несуществующий продукт
-#   consumption_group   — правило потребления → несуществующая @-группа
-#   prerequisite       — технология требует несуществующую технологию
-#   road_level         — у уровня дороги неверный или повторяющийся номер
-#   road_max_speed     — у уровня дороги неположительная максимальная скорость
-#   road_work_cost     — у уровня дороги отрицательная цена участка
+# The checks:
+#   id_charset         — an identifier outside ASCII (the Cyrillic in an id is indistinguishable from the Latin)
+#   id_lookalike       — an identifier differs from another one only by the lookalike characters
+#   produced_in        — a recipe refers to a non-existent building
+#   result             — a recipe (result / display_result) gives a non-existent resource
+#   improved_by        — a resource is improved by a non-existent improvement
+#   unlock_improvement — a product is unlocked by a non-existent improvement
+#   unlock_tech        — a building/improvement/product/recipe → a non-existent technology
+#   profession         — a building/improvement → a non-existent profession
+#   category           — a product → a non-existent category
+#   product_source     — a product is produced NEITHER by the map, NOR by a recipe
+#   group_member       — a non-existent product in an @-group
+#   resource_group     — a recipe refers to a non-existent @-group
+#   resource           — a recipe requires a non-existent resource
+#   consumption_resource— a consumption rule → a non-existent product
+#   consumption_group   — a consumption rule → a non-existent @-group
+#   prerequisite       — a technology requires a non-existent technology
+#   road_level         — a road level has an incorrect or duplicate number
+#   road_max_speed     — a road level has a non-positive maximum speed
+#   road_work_cost     — a road level has a negative price of a segment
 #
-# Класс НЕ зависит от автозагрузок: проверяемые данные передаются
-# аргументом, поэтому валидатор гоняется headless-тестом на искусственных
-# данных (tests/test_data_validation.gd).
+# A record of a problem:
+#     "kind":        String,  # the machine name of the check, e.g. "produced_in"
+#     "check_title": String,  # the heading of the group of the check for the window
+#     "target_title":String,  # "Building" — the kind of the entity being searched for
+#     "ref_id":      String,  # the searched identifier ("x")
+#     "source_kind": String,  # the kind of the owning entity ("recipe")
+#     "source_name": String,  # its name from the data ("Grain Mill")
+#     "source_id":   String,  # its identifier ("grind_grain_hand")
+#     "field":       String,  # the field in which the reference was found
+#     "file":        String,  # the file in which the owner of the reference is declared
+#     "line":        int,     # the line of the declaration in this file (0 — unknown)
+#     "headline":    String,  # the first line of the message
+#     "where":       String,  # the second line: where exactly the reference was found
+#     "location":    String,  # the third line: "File: …, line N." ("" — none)
+# #
+# The checks:
+#   id_charset         — an identifier outside ASCII (the Cyrillic in an id is indistinguishable from the Latin)
+#   id_lookalike       — an identifier differs from another one only by the lookalike characters
+#   produced_in        — a recipe refers to a non-existent building
+#   result             — a recipe (result / display_result) gives a non-existent resource
+#   improved_by        — a resource is improved by a non-existent improvement
+#   unlock_improvement — a product is unlocked by a non-existent improvement
+#   unlock_tech        — a building/improvement/product/recipe → a non-existent technology
+#   profession         — a building/improvement → a non-existent profession
+#   category           — a product → a non-existent category
+#   product_source     — a product is produced NEITHER by the map, NOR by a recipe
+#   group_member       — a non-existent product in an @-group
+#   resource_group     — a recipe refers to a non-existent @-group
+#   resource           — a recipe requires a non-existent resource
+#   consumption_resource— a consumption rule → a non-existent product
+#   consumption_group   — a consumption rule → a non-existent @-group
+#   prerequisite       — a technology requires a non-existent technology
+#   road_level         — a road level has an incorrect or duplicate number
+#   road_max_speed     — a road level has a non-positive maximum speed
+#   road_work_cost     — a road level has a negative price of a segment
+#     "message":     String,  # all the lines together (for the logs and the tests)
+#
+# The class does NOT depend on the autoloads: the data being checked is passed as
+# an argument, therefore the validator is run by a headless test on artificial
+# data (tests/test_data_validation.gd).
 extends RefCounted
 
-# Служебный маркер produced_in: «рецепт производится в ЛЮБОМ здании».
-# Обрабатывается в CityData.can_craft_in, поэтому это НЕ битая ссылка —
-# пропускаем, иначе валидатор ругался бы на псевдорецепт "empty".
+# The service marker produced_in: "the recipe is produced in ANY building".
+# It is handled in CityData.can_craft_in, therefore this is NOT a broken reference —
+# we skip it, otherwise the validator would complain about the pseudo-recipe "empty".
 const ANY_BUILDING_MARKER := "*"
 
-# --- ЛЕСНАЯ ДЕЛЯНКА: единственный производитель, которого НЕТ в produces ---
+# --- THE FOREST PLOT: the only producer that is NOT in produces ---
 #
-# Продукт «Древесина» не участвует ни в одном produces: её делает лесная
-# делянка на ПУСТОМ лесном гексе, и выход берётся из поля wood_yield
-# ПОКРОВА (data/covers.json), а не из ресурса на гексе:
+# The product "Wood" does not take part in any produces: it is made by the forest
+# plot on an EMPTY forest hex, and the output is taken from the field wood_yield
+# of the COVER (data/covers.json), and not from the resource on the hex:
 #
-#   main_map.gd, тик производства → CityData.add_to_storage("wood", …)
-#   MapHelpers.get_cover_wood_yield(tile) — покров → wood_yield
+#   main_map.gd, the production tick → CityData.add_to_storage("wood", …)
+#   MapHelpers.get_cover_wood_yield(tile) — cover → wood_yield
 #
-# Связь «покров → делянка → продукт» зашита в код, поэтому из данных её
-# не видно, и наивная сверка объявила бы древесину продуктом без
-# источника. Здесь связь восстанавливается ЧИТАТЕЛЬНО: источник есть, если
-# делянка объявлена И хотя бы у одного покрова wood_yield > 0. Если автор
-# уберёт делянку или выход с покровов — валидатор честно скажет, что
-# древесина недостижима (см. тест tests/test_data_validation.gd).
+# The relation "cover → plot → product" is hardcoded, therefore it is not
+# visible from the data, and a naive cross-check would declare the wood a product without
+# a source. Here the relation is restored READABLY: the source exists, if
+# the plot is declared AND at least one cover has wood_yield > 0. If the author
+# removes the plot or the output from the covers — the validator honestly says that
+# the wood is unreachable (see the test tests/test_data_validation.gd).
+#
+# --- THE RULES OF THE IDENTIFIERS ---------------------------------------------
+#
 const LUMBERJACK_PRODUCT := "wood"
 const LUMBERJACK_IMPROVEMENT := "lumberjack_hut"
 const COVER_YIELD_FIELD := "wood_yield"
 
-# --- ПРАВИЛА ИДЕНТИФИКАТОРОВ ---------------------------------------------
+# The identifiers are the keys by which the data is stitched together between the files, and
+# therefore because the author searches for them with their eyes in the editor. Both properties break
+# silently, therefore they are checked separately.
 #
-# Идентификаторы — это ключи, по которым данные сшиваются между файлами, и
-# потому что автор ищет их глазами в редакторе. Оба свойства ломаются
-# молча, поэтому проверяются отдельно.
 #
-# РАЗРЕШЁННЫЙ АЛФАВИТ: латинские буквы a-z, цифры и подчёркивание. Именно
-# этот набор используется во всех 515 идентификаторах data/, поэтому строгое
-# правило не даёт ни одного ложного срабатывания. Всё остальное — пробелы,
-# дефисы, капс, кириллица — ошибка, и каждая из них опасна: автор не видит
-# разницы между «carmine» и «сarmine» (кириллическая с) на глаз.
+# The ALLOWED ALPHABET: the Latin letters a-z, the digits and the underscore. Exactly
+# this set is used in all 515 identifiers of data/, therefore the strict
+# rule does not give a single false positive. Everything else — spaces,
+# hyphens, uppercase, Cyrillic — is an error, and each of them is dangerous: the author does not see
+# the difference between "carmine" and "сarmine" (the Cyrillic с) with their eyes.
+#
+# The characters that are indistinguishable from the Latin ones with the naked eye → their Latin look.
 const IDENT_CHARS := "abcdefghijklmnopqrstuvwxyz0123456789_"
 const IDENT_UPPER := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-# Символы, которые неотличимы от латинских на глаз → их латинский вид.
+# They are needed for the hint in the message: to print the "с" in the text is useless —
+# the author will read it as a "c" and decide that everything is fine. Therefore the message
+# contains the UNICODE CODE (U+0441) and the hint "in the Latin it is a c".
 #
-# Нужны для подсказки в сообщении: напечатать в тексте «с» бесполезно —
-# автор прочитает её как «c» и решит, что всё в порядке. Поэтому в сообщение
-# попадает КОД Unicode (U+0441) и подсказка «на латинице это c».
+# The table is INcomplete and is NOT a mapping of all the lookalike characters: it
+# covers the case that has actually occurred (the Cyrillic in the Russian
+# layout when typing the Latin ids). If the character is not in the table — the hint
+# is simply not output, and this is more honest than guessing the look "with the naked eye".
 #
-# Таблица НЕполная и НЕ является отображением всех похожих символов: она
-# покрывает тот случай, который реально встречался (кириллица в русской
-# раскладке при наборе латинских id). Если символа в таблице нет — подсказка
-# просто не выводится, и это честнее, чем угадывать вид «на глаз».
+# The Unicode blocks in which the error is plausible. The name of the block is NOT
+# stored here: a constant cannot call a translation, and the catalogue builder
+# (tools/i18n_build_po.py) takes the msgid as a literal directly in the call
+# of translate() — it cannot get it from a dictionary. The labels live in
+# _block_label() below, and here only the boundaries of the ranges remain.
 const IDENT_LOOKALIKES := {
     "а": "a", "в": "b", "е": "e", "к": "k", "м": "m", "н": "h",
     "о": "o", "р": "p", "с": "c", "т": "t", "у": "y", "х": "x",
