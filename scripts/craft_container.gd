@@ -1,62 +1,62 @@
 # craft_container.gd
-# Контейнер непрерывного (continuous) крафта для одного слота здания.
+# A container of continuous crafting for one slot of a building.
 #
-# Принцип: НЕ пакетная транзакция по завершении интервала, а постепенное
-# заполнение ингредиентами с заданной скоростью (amount / time ед./сек)
-# и завершение, когда ВСЕ ингредиенты накоплены И прошло craft_time секунд.
+# The principle: NOT a batch transaction on the interval completion, but a gradual
+# filling with the ingredients at a given rate (amount / time units/sec)
+# and the completion when ALL the ingredients have accumulated AND craft_time seconds have passed.
 #
-# При дефиците сырья контейнер «замерзает»: fractional/filled не растут,
-# время не копит — крафт автоматически затягивается до появления сырья.
+# On a shortage of raw materials the container "freezes": fractional/filled do not grow,
+# the time does not accumulate — the craft automatically stretches until the raw materials appear.
 #
-# Структура одного слота ингредиента:
+# The structure of one ingredient slot:
 #   {
-#     "kind": "single" | "group",     # одиночный продукт или @-группа
-#     "pid": "...",                   # id одиночного продукта
-#     "group_key": "...",             # ключ @-группы (например "fruits")
-#     "members": ["..."],             # id членов @-группы
-#     "required": int,                # сколько единиц нужно набрать
-#     "filled": int,                  # уже набрано (целое)
-#     "fractional": float,            # дробный остаток за тик
-#     "consumed": [{ qty: int, quality: String }],  # для качества результата
-#     "consumed_pids": { pid: int },  # накопленный состав потреблённого ПО PID
-#                                     # через все циклы (НЕ сбрасывается в
-#                                     # reset(); для науки — средневзвешенный
-#                                     # special_yield смеси, см. CityData.do_tick)
+#     "kind": "single" | "group",     # a single product or an @-group
+#     "pid": "...",                   # the id of the single product
+#     "group_key": "...",             # the key of the @-group (for example "fruits")
+#     "members": ["..."],             # the ids of the @-group members
+#     "required": int,                # how many units need to be accumulated
+#     "filled": int,                  # already accumulated (an integer)
+#     "fractional": float,            # the fractional remainder per tick
+#     "consumed": [{ qty: int, quality: String }],  # for the quality of the result
+#     "consumed_pids": { pid: int },  # the accumulated composition of what was consumed BY PID
+#                                     # across all the cycles (it is NOT reset in
+#                                     # reset(); for science — the weighted average
+#                                     # special_yield of the mix, see CityData.do_tick)
 #   }
 #
-# Качество результата рассчитывается в момент завершения крафта как
-# взвешенное среднее качеств всех «входов» (consumed) — это прямой аналог
-# текущего поведения quality_from_breakdown().
+# The quality of the result is calculated at the moment of the craft completion as a
+# weighted average of the qualities of all the "inputs" (consumed) — this is a direct analogue
+# of the current behaviour of quality_from_breakdown().
 #
-# Состояние сериализуется через serialize()/deserialize() и сохраняется
-# вместе с city_built_buildings (без отдельного ключа в сейве).
+# The state is serialized via serialize()/deserialize() and saved
+# together with city_built_buildings (without a separate key in the save).
 #
-# Зависимости: CityData (autoload) для списания со склада и групповых
-# определений. Контейнер рассчитан на то, что CityData уже загружен.
+# Dependencies: CityData (autoload) for the write-off from the storage and the group
+# definitions. The container assumes that CityData is already loaded.
 
 class_name CraftContainer
 extends RefCounted
 
 var recipe_id: String = ""
-var craft_time: float = 1.0      # секунд на полный цикл (recipe.time)
-var elapsed: float = 0.0          # секунд с момента последнего reset()
-var ingredient_slots: Array = []  # массив словарей (см. шапку файла)
-# Результат рецепта: { "pid": full_amount, ... }. Кэшируется при создании
-# контейнера, чтобы tick() мог рассчитывать постепенный выпуск без повторного
-# чтения рецепта каждый кадр.
+var craft_time: float = 1.0      # seconds per full cycle (recipe.time)
+var elapsed: float = 0.0          # seconds since the last reset()
+var ingredient_slots: Array = []  # an array of dictionaries (see the header of the file)
+# The result of the recipe: { "pid": full_amount, ... }. It is cached on the creation of
+# the container, so that tick() can compute the gradual output without re-reading
+# the recipe every frame.
 var result_products: Dictionary = {}
-# Sub-unit accumulator для выпуска результата: pid -> float. Хранит дробный
-# остаток «сколько единиц продукта накопилось с прошлого фактического добавления
-# на склад». На тике добавляем per_release = full_amount * SIMULATION_TICK /
-# craft_time; когда накопится >= 1.0, выпускаем целую часть на склад и
-# записываем как потребление/производство. Это согласует UI-метку «[+N≈]»
-# с фактом на складе: 10/10 сек = +1 каждый тик (а не +10 раз в 10 сек).
+# The sub-unit accumulator for the output of the result: pid -> float. It stores the fractional
+# remainder of "how many product units have accumulated since the last actual addition
+# to the storage". On a tick we add per_release = full_amount * SIMULATION_TICK /
+# craft_time; when it accumulates >= 1.0, we output the integer part to the storage and
+# record it as consumption/production. This agrees the UI label "[+N≈]"
+# with the fact in the storage: 10/10 sec = +1 every tick (and not +10 times in 10 sec).
 var release_fractional: Dictionary = {}
 
-# Конструирует контейнер по рецепту. Если передан slot_data — используется
-# как восстановленное состояние (из сейва). Иначе — пустой контейнер.
+# Constructs the container by the recipe. If slot_data is passed — it is used
+# as the restored state (from the save). Otherwise — an empty container.
 #
-# recipe — словарь рецепта из GameData.crafts:
+# recipe — the recipe dictionary from GameData.crafts:
 #   {
 #     "id": "...",
 #     "time": 5.0,
@@ -73,16 +73,16 @@ func _init(recipe: Dictionary = {}, slot_data: Dictionary = {}):
             _restore_from_slot_data(recipe, slot_data)
         _init_release_state(recipe)
     elif not slot_data.is_empty():
-        # Восстановление без рецепта (теоретически; обычно рецепт есть).
+        # Restoration without a recipe (theoretically; usually there is a recipe).
         recipe_id = str(slot_data.get("recipe_id", ""))
         craft_time = float(slot_data.get("craft_time", 1.0))
         elapsed = float(slot_data.get("elapsed", 0.0))
         ingredient_slots = slot_data.get("slots", [])
-        # release_fractional восстанавливается по сохранённому dict.
+        # release_fractional is restored from the saved dict.
         var saved_release = slot_data.get("release_fractional", {})
         release_fractional = saved_release if saved_release is Dictionary else {}
 
-# Инициализирует кэш результата и sub-unit accumulator.
+# Initializes the result cache and the sub-unit accumulator.
 func _init_release_state(recipe: Dictionary):
     var prod: Dictionary = recipe.get("result", {})
     result_products = {}
@@ -94,22 +94,22 @@ func _init_release_state(recipe: Dictionary):
         result_products[pid] = amt
         release_fractional[pid] = 0.0
 
-# --- ТИК СИМУЛЯЦИИ ---
-# Продвигает контейнер на delta секунд. is_active = false — контейнер
-# заморожен (нет горожанина на здании): ничего не забираем и не копим время.
+# --- SIMULATION TICK ---
+# Advances the container by delta seconds. is_active = false — the container
+# is frozen (there is no citizen in the building): we take nothing and do not accumulate time.
 #
-# quality_priority — "best" / "worst" / "random": приоритет качества при
-# заборе со склада. Для @-групп всегда жадно по "best" внутри одного тика.
-# output_multiplier — множитель СКОРОСТИ ВЫПУСКА результата (бонус профессии:
-# 1.0 — без бонуса). Ингредиенты при этом списываются с базовой скоростью,
-# поэтому бонус не «съедает» лишнего сырья.
+# quality_priority — "best" / "worst" / "random": the quality priority when
+# taking from the storage. For @-groups it is always greedy by "best" within a single tick.
+# output_multiplier — the multiplier of the OUTPUT RATE of the result (the profession bonus:
+# 1.0 — no bonus). The ingredients are written off at the base rate meanwhile,
+# therefore the bonus does not "eat" any extra raw materials.
 #
-# Возвращает словарь:
+# Returns a dictionary:
 #   {
-#     "completed": bool,                       # true если контейнер полон И прошло craft_time
-#     "consumed_breakdown": { pid: { quality: count } },  # разбивка по качествам (для расчёта качества результата)
-#     "missing": [String],                     # ключи ингредиентов, которых не хватает (для UI/тултипа)
-#     "releases": [{ "pid": "...", "amount": N, "quality": "..." }]  # что выпустить на склад в этот тик
+#     "completed": bool,                       # true if the container is full AND craft_time has passed
+#     "consumed_breakdown": { pid: { quality: count } },  # the breakdown by quality (for calculating the quality of the result)
+#     "missing": [String],                     # the ingredient keys that are not enough (for the UI/tooltip)
+#     "releases": [{ "pid": "...", "amount": N, "quality": "..." }]  # what to output to the storage on this tick
 #   }
 func tick(delta: float, is_active: bool, quality_priority: String = "best", output_multiplier: float = 1.0) -> Dictionary:
     var result := {
@@ -129,13 +129,13 @@ func tick(delta: float, is_active: bool, quality_priority: String = "best", outp
         if filled_now >= required_total:
             continue
 
-        # Скорость потребления: required / craft_time единиц/сек
+        # The consumption rate: required / craft_time units/sec
         var per_sec := 0.0
         if craft_time > 0.0:
             per_sec = float(required_total) / craft_time
 
-        # Sub-unit accumulator: дробный остаток копится, чтобы средняя
-        # скорость была точной (например, 21/5 = 4.2 → чередуем 4 и 5).
+        # The sub-unit accumulator: the fractional remainder accumulates, so that the average
+        # rate is accurate (for example, 21/5 = 4.2 → we alternate 4 and 5).
         var fractional = float(slot.get("fractional", 0.0))
         var to_take_total = per_sec * delta + fractional
         var to_take_int = int(floor(to_take_total))
@@ -146,16 +146,16 @@ func tick(delta: float, is_active: bool, quality_priority: String = "best", outp
             all_full = false
             continue
 
-        # Пытаемся забрать to_take_int со склада.
+        # We try to take to_take_int from the storage.
         var take_res := _take_from_storage(slot, to_take_int, quality_priority)
         var taken = int(take_res.get("taken", 0))
         var breakdown: Dictionary = take_res.get("breakdown", {})
         var taken_pids: Dictionary = take_res.get("pids", {})
 
-        # Накапливаем состав потреблённого ПО PID. В отличие от slot["consumed"]
-        # (сбрасывается в reset()) эта копия переживает циклы и нужна науке:
-        # средневзвешенный special_yield фактически расходуемой смеси основ
-        # (см. CityData.do_tick, блок «РЕЦЕПТ „НАУКА"»).
+        # We accumulate the composition of what was consumed BY PID. Unlike slot["consumed"]
+        # (which is reset in reset()), this copy survives the cycles and is needed by science:
+        # the weighted average special_yield of the actually consumed mix of raw materials
+        # (see CityData.do_tick, the "SCIENCE RECIPE" block).
         var consumed_pids: Dictionary = slot.get("consumed_pids", {})
         for tp in taken_pids:
             consumed_pids[str(tp)] = int(consumed_pids.get(str(tp), 0)) + int(taken_pids[tp])
@@ -168,7 +168,7 @@ func tick(delta: float, is_active: bool, quality_priority: String = "best", outp
 
         slot["filled"] = filled_now + taken
 
-        # Записываем «входы» для последующего расчёта качества результата.
+        # We record the "inputs" for the subsequent calculation of the quality of the result.
         var consumed_arr: Array = slot.get("consumed", [])
         for qid in breakdown:
             var cnt = int(breakdown[qid])
@@ -177,7 +177,7 @@ func tick(delta: float, is_active: bool, quality_priority: String = "best", outp
             consumed_arr.append({"qty": cnt, "quality": str(qid)})
         slot["consumed"] = consumed_arr
 
-        # Суммируем consumed_breakdown по pid.
+        # We sum the consumed_breakdown by pid.
         for consumed_pid in taken_pids:
             if not result["consumed_breakdown"].has(consumed_pid):
                 result["consumed_breakdown"][consumed_pid] = {}
@@ -191,21 +191,21 @@ func tick(delta: float, is_active: bool, quality_priority: String = "best", outp
             if not result["missing"].has(key):
                 result["missing"].append(key)
 
-    # --- ПОСТЕПЕННЫЙ ВЫПУСК РЕЗУЛЬТАТА ---
-    # Каждый тик контейнер накапливает дробный остаток per_release = full_amount
-    # × delta / craft_time для каждого pid в result_products. Когда
-    # release_fractional[pid] >= 1.0, выпускаем целую часть на склад (с качеством,
-    # рассчитанным из накопленного consumed на текущий момент).
+    # --- GRADUAL OUTPUT OF THE RESULT ---
+    # Every tick the container accumulates the fractional remainder per_release = full_amount
+    # × delta / craft_time for each pid in result_products. When
+    # release_fractional[pid] >= 1.0, we output the integer part to the storage (with a quality
+    # calculated from the consumed accumulated at the current moment).
     #
-    # Качество выпуска пересчитывается каждый тик — оно зависит от того, сколько
-    # сырья уже забрано. Если рецепт работает в полном объёме (все ингредиенты
-    # доступны), качество сходится к финальному взвешенному среднему к концу
-    # цикла. Если в каком-то тике контейнер «замёрз» из-за дефицита,
-    # потребление тоже останавливается, и выпуск временно приостанавливается
-    # (per_release копится, но release_fractional не растёт, потому что мы
-    # выпускаем только когда elapsed растёт — а он растёт всегда при is_active).
+    # The quality of the output is recalculated every tick — it depends on how much
+    # raw material has already been taken. If the recipe works at full volume (all the ingredients
+    # are available), the quality converges to the final weighted average by the end of
+    # the cycle. If on some tick the container has "frozen" due to a shortage,
+    # the consumption also stops, and the output is temporarily suspended
+    # (per_release accumulates, but release_fractional does not grow, because we
+    # output only when elapsed grows — and it always grows when is_active).
     #
-    # При completed добиваем остаток fractional, чтобы выпустить ровно full_amount.
+    # On completed we finish off the fractional remainder, so as to output exactly full_amount.
     if craft_time > 0.0 and is_active and all_full:
         for pid in result_products:
             var full_amount: int = int(result_products[pid])
@@ -224,7 +224,7 @@ func tick(delta: float, is_active: bool, quality_priority: String = "best", outp
                     "quality": release_quality
                 })
 
-    # При completed добиваем остаток fractional (если осталось < 1.0 к концу цикла).
+    # On completed we finish off the fractional remainder (if less than 1.0 is left by the end of the cycle).
     var became_complete := all_full and elapsed >= craft_time
     if became_complete:
         for pid in result_products:
@@ -240,23 +240,23 @@ func tick(delta: float, is_active: bool, quality_priority: String = "best", outp
         result["completed"] = true
     return result
 
-# --- СБРОС КОНТЕЙНЕРА ---
-# Вызывается после успешного крафта или при смене рецепта в слоте.
+# --- RESETTING THE CONTAINER ---
+# Called after a successful craft or on a recipe change in the slot.
 func reset():
     elapsed = 0.0
     for slot in ingredient_slots:
         slot["filled"] = 0
         slot["fractional"] = 0.0
         slot["consumed"] = []
-        # slot["consumed_pids"] НЕ сбрасываем: это накопленный состав
-        # потреблённого по pid через все циклы (нужен науке — средневзвешенный
-        # special_yield смеси основ), см. CityData.do_tick.
+        # slot["consumed_pids"] is NOT reset: it is the accumulated composition
+        # of what was consumed by pid across all the cycles (it is needed by science — the weighted
+        # average special_yield of the mix of raw materials), see CityData.do_tick.
     for pid in release_fractional:
         release_fractional[pid] = 0.0
 
-# Внутренний хелпер: качество результата = взвешенное среднее по всем
-# «входам» контейнера (на момент вызова). Используется для определения
-# качества каждой «порции» выпуска.
+# An internal helper: the quality of the result = the weighted average over all the
+# "inputs" of the container (at the moment of the call). It is used to determine
+# the quality of each "portion" of the output.
 func _compute_quality_from_consumed() -> String:
     var breakdown := {}
     for slot in ingredient_slots:
@@ -270,9 +270,9 @@ func _compute_quality_from_consumed() -> String:
         return "common"
     return _quality_from_breakdown(breakdown)
 
-# Локальная копия CityData.quality_from_breakdown — без обращения к autoload
-# на каждом тике. Семантика 1-в-1: взвешенное среднее качеств с округлением
-# до ближайшего уровня.
+# A local copy of CityData.quality_from_breakdown — without an access to the autoload
+# on every tick. The semantics are 1-to-1: the weighted average of the qualities
+# rounded to the nearest level.
 func _quality_from_breakdown(consumed: Dictionary) -> String:
     var levels: Array = []
     if is_instance_valid(GameData):
@@ -299,10 +299,10 @@ func _quality_from_breakdown(consumed: Dictionary) -> String:
             best_qid = str(qid)
     return best_qid
 
-# --- ПРОГРЕСС ДЛЯ UI (0..1) ---
-# Степень готовности = min(заполненность_ингредиентов, время/craft_time).
-# При дефиците сырья прогресс всё равно растёт, пока копится хотя бы
-# время, — но не превышает 1.0.
+# --- PROGRESS FOR THE UI (0..1) ---
+# The readiness degree = min(the ingredients fill, time/craft_time).
+# With a shortage of raw materials the progress still grows, as long as at least the
+# time accumulates, — but it does not exceed 1.0.
 func completion_ratio() -> float:
     if ingredient_slots.is_empty():
         return 0.0
@@ -319,8 +319,8 @@ func completion_ratio() -> float:
         time_ratio = clampf(elapsed / craft_time, 0.0, 1.0)
     return clampf(minf(min_fill, time_ratio), 0.0, 1.0)
 
-# Текстовое состояние контейнера для UI панели здания:
-#   "8/20 (3.4 сек)"  — заполненность + сколько времени прошло.
+# The text state of the container for the building panel UI:
+#   "8/20 (3.4 sec)"  — the fill + how much time has passed.
 func status_text() -> String:
     if ingredient_slots.is_empty():
         return ""
@@ -329,8 +329,8 @@ func status_text() -> String:
     var required = int(slot0.get("required", 0))
     return tr("%d/%d (%.1f sec)") % [filled, required, elapsed]
 
-# --- СЕРИАЛИЗАЦИЯ ---
-# Формат:
+# --- SERIALIZATION ---
+# The format:
 #   {
 #     "recipe_id": "...",
 #     "craft_time": float,
@@ -347,16 +347,16 @@ func serialize() -> Dictionary:
         "release_fractional": release_fractional.duplicate(true)
     }
 
-# Восстановление состояния из ранее сериализованных данных. При несоответствии
-# рецепта (например, рецепт изменился в JSON) контейнер пересоздаётся с нуля,
-# но с сохранёнными значениями для совместимых ингредиентов.
+# Restoration of the state from the previously serialized data. On a mismatch
+# of the recipe (for example, the recipe has changed in the JSON), the container is recreated from scratch,
+# but with the saved values for the compatible ingredients.
 func _restore_from_slot_data(recipe: Dictionary, slot_data: Dictionary):
     recipe_id = str(recipe.get("id", slot_data.get("recipe_id", "")))
     craft_time = _resolve_craft_time(recipe)
     elapsed = float(slot_data.get("elapsed", 0.0))
     var saved_slots: Array = slot_data.get("slots", [])
     ingredient_slots = _build_slots_from_recipe(recipe)
-    # Мердж сохранённых значений по совпадающим ключам ингредиента.
+    # The merge of the saved values by the matching ingredient keys.
     for i in range(ingredient_slots.size()):
         if i >= saved_slots.size():
             break
@@ -370,20 +370,20 @@ func _restore_from_slot_data(recipe: Dictionary, slot_data: Dictionary):
             fresh["fractional"] = float(saved.get("fractional", 0.0))
             fresh["consumed"] = saved.get("consumed", [])
             fresh["consumed_pids"] = saved.get("consumed_pids", {})
-        # Иначе остаётся свежий пустой слот (рецепт изменился).
-    # release_fractional восстанавливается, если сохранён в актуальном виде.
+        # Otherwise a fresh empty slot remains (the recipe has changed).
+    # release_fractional is restored, if it is saved in the current form.
     var saved_release = slot_data.get("release_fractional", null)
     if saved_release is Dictionary:
-        # Мердж по pid — оставляем только известные result_products.
+        # We merge by pid — we keep only the known result_products.
         for pid in result_products:
             release_fractional[pid] = float(saved_release.get(pid, 0.0))
     else:
-        # Старый сейв (без release_fractional) — инициализируем нулями.
+        # An old save (without release_fractional) — we initialize with zeros.
         for pid in result_products:
             release_fractional[pid] = 0.0
 
-# --- СБОРКА СЛОТОВ ИЗ РЕЦЕПТА ---
-# resources — { "pid_or_@group": amount, ... }. Для @-групп резолвим членов.
+# --- BUILDING THE SLOTS FROM THE RECIPE ---
+# resources — { "pid_or_@group": amount, ... }. For @-groups we resolve the members.
 func _build_slots_from_recipe(recipe: Dictionary) -> Array:
     var out: Array = []
     var resources: Dictionary = recipe.get("resources", {})
@@ -414,21 +414,21 @@ func _build_slots_from_recipe(recipe: Dictionary) -> Array:
     return out
 
 func _resolve_group_members(group_key: String) -> Array:
-    # Резолв @-группы по id из data/product_groups.json. Обратного поиска по
-    # человекочитаемому имени нет намеренно: он молча подставил бы членов
-    # другой группы с похожим названием (в данных @-ключи всегда id).
+    # The resolution of an @-group by the id from data/product_groups.json. The reverse search by
+    # the human-readable name is deliberately absent: it would silently substitute the members
+    # of another group with a similar name (in the data the @-keys are always ids).
     if not is_instance_valid(GameData):
         return []
     return GameData.product_groups.get(group_key, [])
 
-# Забирает amount единиц со склада для слота. Для одиночного — напрямую;
-# для @-группы — жадно по членам с приоритетом "best" внутри тика.
+# Takes amount units from the storage for the slot. For a single one — directly;
+# for an @-group — greedily by the members with the "best" priority within a tick.
 #
-# Возвращает:
+# Returns:
 #   {
-#     "taken": int,                       # фактически забранное количество
-#     "breakdown": { quality: count },    # разбивка по качествам
-#     "pids": { pid: count }              # разбивка по pid (для @-группы — несколько)
+#     "taken": int,                       # the amount actually taken
+#     "breakdown": { quality: count },    # the breakdown by quality
+#     "pids": { pid: count }              # the breakdown by pid (for an @-group — several)
 #   }
 func _take_from_storage(slot: Dictionary, amount: int, priority: String) -> Dictionary:
     var out := {"taken": 0, "breakdown": {}, "pids": {}}
@@ -440,7 +440,7 @@ func _take_from_storage(slot: Dictionary, amount: int, priority: String) -> Dict
         if pid == "":
             return out
         return _take_single(pid, amount, priority)
-    # --- @-группа: жадно по членам с приоритетом "best" ---
+    # --- @-group: greedily by the members with the "best" priority ---
     var members: Array = slot.get("members", [])
     if members.is_empty():
         return out
@@ -452,10 +452,10 @@ func _take_from_storage(slot: Dictionary, amount: int, priority: String) -> Dict
         var avail = int(CityData.city_storage.get(pid, 0))
         if avail <= 0:
             continue
-        # Списываем жадно у этого pid в пределах remaining.
+        # We write off greedily at this pid within the limits of remaining.
         var take = mini(avail, remaining)
         var breakdown = CityData.remove_from_storage(pid, take, priority)
-        # Объединяем breakdown.
+        # We merge the breakdown.
         for qid in breakdown:
             out["breakdown"][qid] = int(out["breakdown"].get(qid, 0)) + int(breakdown[qid])
         out["taken"] = int(out["taken"]) + take
@@ -463,9 +463,9 @@ func _take_from_storage(slot: Dictionary, amount: int, priority: String) -> Dict
         remaining -= take
     return out
 
-# Списание одного продукта с учётом приоритета качества. Делегирует в
-# CityData.remove_from_storage() — он сам корректно обновит city_storage
-# и city_quality_detail и вернёт разбивку по качествам.
+# The write-off of one product taking the quality priority into account. It delegates to
+# CityData.remove_from_storage() — it will correctly update city_storage
+# and city_quality_detail itself and return the breakdown by quality.
 func _take_single(pid: String, amount: int, priority: String) -> Dictionary:
     var avail = int(CityData.city_storage.get(pid, 0))
     if avail <= 0:
@@ -478,14 +478,14 @@ func _take_single(pid: String, amount: int, priority: String) -> Dictionary:
         "pids": {pid: take}
     }
 
-# Упорядочивает членов @-группы по приоритету качества.
-# - "best"  — сначала члены с БОЛЬШИМ количеством ЛУЧШЕГО качества на складе;
-#             при равенстве — член с большим общим запасом.
-# - "worst" — наоборот.
-# - прочее   — порядок как в массиве (без перестановок).
-# Это соглашение с пользователем: «жадно из лучшего качества» при групповом
-# потреблении. Если лучших запасов нет — член всё равно участвует (ниже в
-# порядке), чтобы цикл не зависал в ожидании идеального источника.
+# Orders the members of an @-group by the quality priority.
+# - "best"  — first the members with the LARGER amount of the BEST quality in the storage;
+#             on a tie — the member with the larger total stock.
+# - "worst" — the other way round.
+# - other   — the order as in the array (without reordering).
+# This is the agreement with the user: "greedily from the best quality" on a group
+# consumption. If there are no best stocks — the member still participates (further in
+# the order), so that the cycle does not hang waiting for the ideal source.
 func _order_group_members_by_priority(members: Array, priority: String) -> Array:
     var out: Array = []
     out.append_array(members)
@@ -496,8 +496,8 @@ func _order_group_members_by_priority(members: Array, priority: String) -> Array
     var quality_levels: Array = GameData.get_quality_levels()
     if quality_levels.is_empty():
         return out
-    # Лучшее качество — последнее в порядке levels (GameData отдаёт от худшего
-    # к лучшему, см. комментарий в _consume_quality_detail в CityData).
+    # The best quality is the last one in the order of levels (GameData returns from
+    # the worst to the best, see the comment in _consume_quality_detail in CityData).
     var best_qid: String = str(quality_levels[quality_levels.size() - 1])
     var sign: int = -1 if priority == "best" else 1
     out.sort_custom(func(a, b):
@@ -505,17 +505,17 @@ func _order_group_members_by_priority(members: Array, priority: String) -> Array
         var b_best: int = int(CityData.city_quality_detail.get(b, {}).get(best_qid, 0))
         if a_best != b_best:
             return sign * a_best < sign * b_best
-        # При равенстве «лучших» запасов — сортируем по общему количеству.
+        # On a tie of the "best" stocks — we sort by the total amount.
         var a_total: int = int(CityData.city_storage.get(a, 0))
         var b_total: int = int(CityData.city_storage.get(b, 0))
         return sign * a_total < sign * b_total)
     return out
 
-# --- ВНУТРЕННЕЕ ---
+# --- INTERNAL ---
 func _resolve_craft_time(recipe: Dictionary) -> float:
     var t := float(recipe.get("time", 0.0))
     if t <= 0.0:
-        # Историческое поведение: time=0 → крафт каждый тик (1 сек).
+        # The historical behaviour: time=0 → the craft every tick (1 sec).
         return 1.0
     return t
 
