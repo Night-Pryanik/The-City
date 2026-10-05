@@ -5,27 +5,27 @@ signal assignment_changed()
 
 var assigned_hexes = {}
 
-# Sub-unit accumulator для НЕПРЕРЫВНОГО профессионального потребления,
-# ключ — "row,col". Значение: { "fractional": { dkey: float, ... } } —
-# дробные остатки потребления по каждой записи потребления профессии (dkey —
-# id продукта или "@id_группы"). Раньше здесь лежал пакетный таймер
-# { "elapsed", "interval" }, списывавший amount единиц раз в interval секунд;
-# в continuous-модели каждый тик забираем amount / interval единиц (с
-# дробным остатком для целочисленной точности), см. tick_consumption().
+# The sub-unit accumulator for the CONTINUOUS professional consumption,
+# the key is "row,col". The value: { "fractional": { dkey: float, ... } } -
+# the fractional remains of the consumption by each record of the consumption of a profession (dkey is
+# the id of a product or "@id_of_the_group"). Earlier there was a packet timer
+# { "elapsed", "interval" } here, which wrote off amount units once per interval seconds;
+# in the continuous model every tick takes amount / interval units (with
+# a fractional remains for the integer accuracy), see tick_consumption().
 var consumption_timers: Dictionary = {}
 
-# То же для профессий ГОРОДСКИХ ЗДАНИЙ (поле "profession" в buildings.json):
-# ключ — "b<индекс здания>". Индексы зданий стабильны (сноса нет, апгрейд
-# сохраняет индекс), поэтому ключ не «плывёт». Словарь отдельный: формат
-# ключей "row,col" по-гексовых таймеров и их сериализация не меняются.
-# См. tick_building_consumption().
+# The same for the professions of the URBAN BUILDINGS (the field "profession" in buildings.json):
+# the key is "b<index of the building>". The indices of the buildings are stable (there is no demolition, an upgrade
+# preserves the index), therefore the key does not "drift". A separate dictionary: the format
+# of the keys "row,col" of the per-hex timers and their serialization do not change.
+# See tick_building_consumption().
 var building_consumption_timers: Dictionary = {}
 
-# Таймеры ГОРОДСКОГО потребления псевдо-профессии "all" (все жители города).
-# Ключ — display_key записи потребления ("@fruits" для группы, id продукта
-# для одиночного), значение { "elapsed": float }. Эти таймеры живут отдельно
-# от consumption_timers (те привязаны к гексам "row,col"): потребление "all"
-# не привязано к улучшениям и списывается поголовно по CityData.total_population.
+# The timers of the URBAN consumption of the pseudo-profession "all" (all the residents of the city).
+# The key is display_key of the record of the consumption ("@fruits" for a group, the id of a product
+# for a single one), the value is { "elapsed": float }. These timers live separately
+# from consumption_timers (those are bound to the hexes "row,col"): the consumption of "all"
+# is not bound to the improvements and is written off per capita by CityData.total_population.
 var city_consumption_timers: Dictionary = {}
 
 func find_vacancy() -> Dictionary:
@@ -41,9 +41,9 @@ func find_vacancy() -> Dictionary:
             var improvement = tile.get("improvement")
             if improvement == null or bool(tile.get("decorative", false)):
                 continue
-            # Инфраструктурные улучшения (поле "no_worker" в improvements.json,
-            # например пристань) рабочих не требуют и не должны получать их
-            # при автоназначении свободных жителей.
+# The infrastructure improvements (the field "no_worker" in improvements.json,
+# for example a pier) do not require the workers and must not receive them
+# on the auto-assignment of the free residents.
             if GameData.is_no_worker_improvement(improvement):
                 continue
             if assigned_hexes.has(str(row) + "," + str(col)):
@@ -81,8 +81,8 @@ func assign_worker(row: int = -1, col: int = -1) -> bool:
     if CityData.idle_population <= 0:
         return false
 
-    # Защита от прямых вызовов: инфраструктурные улучшения (no_worker,
-    # например пристань) рабочего не получают ни при каких условиях.
+# The protection from the direct calls: the infrastructure improvements (no_worker,
+# for example a pier) do not get a worker under any conditions.
     var mm = get_parent()
     if mm != null and row >= 0 and row < mm.map_rows and col >= 0 and col < mm.map_cols:
         var target_tile = mm.tile_data[row][col]
@@ -93,12 +93,12 @@ func assign_worker(row: int = -1, col: int = -1) -> bool:
             return false
 
     assigned_hexes[key] = true
-    # Метка профессии ставится АВТОМАТИЧЕСКИ здесь. Игрок не управляет
-    # метками напрямую: профессия определяется улучшением, на которое
-    # назначен рабочий (см. docs.md, «Профессии и потребление»).
-    # Никаких отдельных данных о метке не храним — она производна от
-    # улучшения и автоматически снимается при remove_worker().
-    consumption_timers.erase(key) # свежий старт таймера потребления
+# The mark of a profession is set AUTOMATICALLY here. The player does not manage
+# the marks directly: the profession is determined by the improvement to which
+# a worker is assigned (see docs.md, "The professions and the consumption").
+# We do not store any separate data about the mark - it is derived from the
+# improvement and is automatically removed by remove_worker().
+    consumption_timers.erase(key) # a fresh start of the timer of the consumption
     CityData.idle_population -= 1
     emit_signal("assignment_changed")
     return true
@@ -107,10 +107,10 @@ func remove_worker(row: int, col: int):
     var key = str(row) + "," + str(col)
     if assigned_hexes.has(key):
         assigned_hexes.erase(key)
-        # Метка профессии снимается АВТОМАТИЧЕСКИ вместе со снятием рабочего
-        # (она была производной от улучшения, см. assign_worker).
-        # Сбрасываем таймер потребления, чтобы при повторном назначении
-        # отсчёт начался заново, а не с «остатка» прошлой смены.
+# The mark of a profession is removed AUTOMATICALLY together with the removal of a worker
+# (it was derived from the improvement, see assign_worker).
+# We reset the timer of the consumption, so that on a repeated assignment
+# the countdown starts from scratch, and not from the "remains" of the past shift.
         consumption_timers.erase(key)
         CityData.idle_population += 1
         emit_signal("assignment_changed")
@@ -122,11 +122,11 @@ func has_worker(row: int, col: int) -> bool:
 func get_assigned_count() -> int:
     return assigned_hexes.size()
 
-# Профессия рабочего на гексе (row, col). Возвращает id профессии по улучшению,
-# на которое он назначен, или "", если рабочего нет / улучшение без профессии.
-# Метка производна от улучшения и отдельной строкой «Профессия» в интерфейсе
-# не выводится: используется расчётом потребления и плановой картой вкладки
-# «Ресурсы» (имя профессии — источник расхода).
+# The profession of a worker on the hex (row, col). It returns the id of a profession by the improvement
+# to which he is assigned, or "" if there is no worker / the improvement has no profession.
+# The mark is derived from the improvement and is not displayed by a separate row "Profession" in the interface:
+# it is used by the calculation of the consumption and by the plan map of the tab
+# "Resources" (the name of the profession is the source of the expense).
 func get_profession(row: int, col: int) -> String:
     if not has_worker(row, col):
         return ""
@@ -141,24 +141,24 @@ func get_profession(row: int, col: int) -> String:
         return ""
     return GameData.get_profession_for_improvement(imp)
 
-# Двигает таймер потребления гекса на delta секунд и возвращает итоговый
-# множитель производства. Ядро логики общее со зданиями —
-# _tick_profession_consumption (подробности у него):
-#   * Если у профессии нет потребления — возвращает 1.0 (без бонуса, без
-#     изменений для остальной системы).
-#   * На каждом вызове проверяет, хватает ли на складе ВСЕХ требуемых
-#     продуктов. Пока хватает — множитель = 1.0 + production_bonus
-#     (например, 1.5 при бонусе 0.5). Как только хоть одного не стало —
-#     множитель откатывается к 1.0, улучшение продолжает работать на базе.
-#   * Списание непрерывное: amount / interval единиц в секунду (дробные
-#     остатки копятся в sub-unit аккумуляторе). Для групповых записей
-#     списывается любой подходящий продукт группы — жадно по членам
-#     (приоритет качества «best»). Если ресурса нет — таймер не сбрасывается,
-#     при появлении ресурса списание произойдёт сразу.
-#   * Бонусы одиночных записей профессии складываются, у групповых берётся
-#     лучший доступный (см. _aggregate_production_bonus).
-# Улучшение НИКОГДА не «встаёт»: оно всегда даёт хотя бы базовое
-# производство. Бонус — надбавка за снабжение профессии расходниками.
+# Advances the timer of the consumption of the hex by delta seconds and returns the final
+# multiplier of the production. The core of the logic is common with the buildings -
+# _tick_profession_consumption (the details are in it):
+#   * If the profession has no consumption - it returns 1.0 (no bonus, no
+#     changes for the rest of the system).
+#   * On every call it checks whether there is enough of ALL the required
+#     products in the storage. While there is enough - the multiplier = 1.0 + production_bonus
+#     (for example, 1.5 with a bonus of 0.5). As soon as at least one of them is gone -
+#     the multiplier rolls back to 1.0, the improvement continues to work at the base.
+#   * The write-off is continuous: amount / interval units per second (the fractional
+#     remains accumulate in the sub-unit accumulator). For the group records
+#     any suitable product of the group is written off - greedily by the members
+#     (the priority of the quality "best"). If there is no resource - the timer is not reset,
+#     on the appearance of the resource the write-off happens at once.
+#   * The bonuses of the single records of a profession add up, for the group ones the best
+#     available is taken (see _aggregate_production_bonus).
+# An improvement NEVER "stops": it always gives at least the base
+# production. The bonus is an extra for the supply of the profession with the consumables.
 func tick_consumption(row: int, col: int, delta: float) -> float:
     if not has_worker(row, col):
         return 1.0
@@ -167,47 +167,47 @@ func tick_consumption(row: int, col: int, delta: float) -> float:
         return 1.0
     return _tick_profession_consumption(prof, str(row) + "," + str(col), consumption_timers, delta)
 
-# Профессия горожанина в городском здании (поле "profession" в
-# data/buildings.json). Пустая строка — профессии у здания нет.
+# The profession of a resident in an urban building (the field "profession" in
+# data/buildings.json). An empty string - the building has no profession.
 func get_building_profession(b_index: int) -> String:
     if b_index < 0 or b_index >= CityData.city_built_buildings.size():
         return ""
     var bld_id := str(CityData.city_built_buildings[b_index].get("id", ""))
     return GameData.get_profession_for_building(bld_id)
 
-# Потребление и бонус профессии горожанина в здании: та же механика, что у
-# гекса (tick_consumption), но таймеры живут в отдельном словаре
-# building_consumption_timers, а ключ — "b<индекс здания>". Индексы зданий
-# стабильны (сноса нет, апгрейд сохраняет индекс), поэтому ключ не «плывёт».
-# Вызывается из CityData.do_tick() только для РАБОТАЮЩЕГО здания (есть
-# горожанин и хотя бы один непустой слот): простаивающее здание расходники
-# не тратит.
+# The consumption and the bonus of the profession of a resident in a building: the same mechanic as for a
+# hex (tick_consumption), but the timers live in a separate dictionary
+# building_consumption_timers, and the key is "b<index of the building>". The indices of the buildings
+# are stable (there is no demolition, an upgrade preserves the index), therefore the key does not "drift".
+# It is called from CityData.do_tick() only for a WORKING building (there is a
+# resident and at least one non-empty slot): an idle building does not spend
+# the consumables.
 func tick_building_consumption(b_index: int, delta: float) -> float:
     var prof = get_building_profession(b_index)
     if prof.is_empty():
         return 1.0
     return _tick_profession_consumption(prof, "b" + str(b_index), building_consumption_timers, delta)
 
-# Итоговый множитель производства профессии горожанина в здании БЕЗ расхода и
-# движения таймеров — для планового производства
-# (CityData.get_building_planned_production), чтобы метка «≈» совпадала с
-# фактом. 1.0 — у здания нет профессии либо расходников не хватает.
+# The final multiplier of the production of the profession of a resident in a building WITHOUT the expense and
+# the movement of the timers - for the planned production
+# (CityData.get_building_planned_production), so that the mark "=" coincides with
+# the fact. 1.0 - the building has no profession or there are not enough consumables.
 func get_building_production_bonus(b_index: int) -> float:
     var prof = get_building_profession(b_index)
     if prof.is_empty():
         return 1.0
     return 1.0 + _aggregate_production_bonus(GameData.get_profession_consumption(prof))
 
-# Суммарный production_bonus профессии по доступным расходникам:
-#   * ОДИНОЧНЫЕ записи — каждая доступная добавляет свой бонус (складываются):
-#     перья +25% и чернила +25% → +50%;
-#   * ГРУППОВЫЕ записи — только максимальный из доступных: группа «Лодки»
-#     даёт бонус от лучшего доступного члена группы, а не ото всех сразу.
-# «Доступна» — на складе хватает полной пачки amount (см. _can_consume_full).
-# Запрещённая на внутреннем рынке запись (тумблер «Торговли») бонуса не
-# даёт: без списания нет и «снабжения профессии расходниками», а иначе
-# запрет превращался бы в бесплатный способ держать множитель x1.5
-# постоянно (расхода нет, а бонус горит).
+# The total production_bonus of a profession by the available consumables:
+#   * The SINGLE records - every available one adds its bonus (they add up):
+#     the feathers +25% and the ink +25% -> +50%;
+#   * The GROUP records - only the maximum of the available ones: the group "Boats"
+#     gives the bonus from the best available member of the group, and not from all of them at once.
+# "Available" means that the storage has a full pack of amount (see _can_consume_full).
+# A record forbidden on the inner market (the toggle of the "Trade") gives no bonus:
+# without a write-off there is also no "supply of the profession with the consumables", and otherwise
+# the ban would turn into a free way to keep the multiplier x1.5
+# permanently (there is no expense, and the bonus burns).
 func _aggregate_production_bonus(cons_list: Array) -> float:
     var group_max := 0.0
     var single_sum := 0.0
@@ -225,54 +225,54 @@ func _aggregate_production_bonus(cons_list: Array) -> float:
             single_sum += b
     return group_max + single_sum
 
-# Общее ядро профессионального потребления: двигает sub-unit аккумуляторы
-# переданного словаря таймеров (timers), списывает ресурсы со склада и
-# возвращает множитель производства (1.0 — без бонуса).
-#   * На каждом вызове проверяет, хватает ли на складе ВСЕХ требуемых
-#     продуктов. Пока хватает — множитель = 1.0 + production_bonus
-#     (см. _aggregate_production_bonus). Как только хоть одного не стало —
-#     множитель откатывается к 1.0, объект продолжает работать на базе.
-#   * Per-second скорость потребления = amount / interval: каждый тик
-#     накапливается дробный остаток, целая часть списывается со склада.
-#     Для групповых записей списывается любой подходящий продукт группы:
-#     сначала запас суммируется по всем членам, затем расходуется жадно
-#     (приоритет качества «best»). Если ресурса нет — таймер НЕ сбрасывается;
-#     при появлении ресурса списание произойдёт сразу.
-# Объект НИКОГДА не «встаёт»: он всегда даёт хотя бы базовое производство.
-# Бонус — надбавка за снабжение профессии расходниками.
+# The common core of the professional consumption: it advances the sub-unit accumulators
+# of the passed dictionary of the timers (timers), writes off the resources from the storage and
+# returns the multiplier of the production (1.0 - without a bonus).
+#   * On every call it checks whether there is enough of ALL the required
+#     products in the storage. While there is enough - the multiplier = 1.0 + production_bonus
+#     (see _aggregate_production_bonus). As soon as at least one of them is gone -
+#     the multiplier rolls back to 1.0, the object continues to work at the base.
+#   * The per-second rate of the consumption = amount / interval: on every tick
+#     a fractional remains accumulates, the integer part is written off from the storage.
+#     For the group records any suitable product of the group is written off:
+#     first the stock is summed over all the members, then it is spent greedily
+#     (the priority of the quality "best"). If there is no resource - the timer is NOT reset;
+#     on the appearance of the resource the write-off happens at once.
+# The object NEVER "stops": it always gives at least the base production.
+# The bonus is an extra for the supply of the profession with the consumables.
 func _tick_profession_consumption(prof: String, key: String, timers: Dictionary, delta: float) -> float:
     var cons_list = GameData.get_profession_consumption(prof)
     if cons_list.is_empty():
         return 1.0
 
-    # Идентификатор профессии — источник расхода (см. GameData
-    # .get_source_display_name: подпись резолвится в ui_helpers при отрисовке).
+    # The identifier of the profession is the source of the expense (see GameData
+    # .get_source_display_name: the label is resolved in ui_helpers at the drawing).
     var prof_source = GameData.profession_source_id(prof)
 
-    # --- НЕПРЕРЫВНОЕ ПРОФЕССИОНАЛЬНОЕ ПОТРЕБЛЕНИЕ ---
-    # Вместо пакетного списания раз в `interval` секунд — каждый тик забираем
-    # amount / interval единиц (с sub-unit accumulator). Раньше потребление
-    # было дискретным: при amount=10, interval=10 списание происходило раз в
-    # 10 секунд пачкой 10 штук, из-за чего инвентарь игрока мог «скакать»
-    # (на тике списания −10, всё остальное время −0). В continuous-модели
-    # списание идёт равномерно: −1 каждый тик — склад уменьшается плавно,
-    # производственный бонус включается/выключается плавно при колебаниях
-    # запасов. Это согласуется с производством ресурсов (фермы/шахты/мастерские),
-    # которые тоже переведены на непрерывный выпуск.
+# --- THE CONTINUOUS PROFESSIONAL CONSUMPTION ---
+# Instead of a packet write-off once per `interval` seconds - on every tick we take
+# amount / interval units (with a sub-unit accumulator). Earlier the consumption
+# was discrete: with amount=10, interval=10 the write-off happened once every
+# 10 seconds by a pack of 10 pieces, because of which the inventory of the player could "jump"
+# (on the tick of the write-off -10, all the other time -0). In the continuous model
+# the write-off goes evenly: -1 on every tick - the storage decreases smoothly,
+# the production bonus turns on/off smoothly with the fluctuations
+# of the stocks. This is consistent with the production of the resources (the farms/the mines/the workshops),
+# which are also converted to a continuous output.
     #
-    # can_consume определяется по ПОЛНОЙ пачке amount (как раньше) — бонус
-    # включается только когда хватает ресурса на целый цикл. Если хватает
-    # только частично — списываем сколько есть, бонус НЕ начисляется.
+# can_consume is determined by the FULL pack of amount (as before) - the bonus
+# turns on only when there is enough of the resource for a whole cycle. If there is only
+# a partial amount - we write off what there is, the bonus is NOT accrued.
     if not timers.has(key):
         timers[key] = {"fractional": {}}
 
     var fractional: Dictionary = timers[key].fractional
 
     for entry in cons_list:
-        # Тумблер «Торговли»: запрещённый на внутреннем рынке ресурс не
-        # расходуется вообще. Проверка — ДО накопления дробного остатка,
-        # иначе запрещённая запись копила бы долг и при разрешении списала
-        # разом всё накопленное (см. fractional ниже).
+# The toggle of the "Trade": a resource which is forbidden on the inner market is not
+# spent at all. The check is BEFORE the accumulation of the fractional remains,
+# otherwise a forbidden record would accumulate a debt and on the permission write off
+# at once everything accumulated (see the fractional below).
         var entry_key := _entry_display_key(entry)
         if not CityData.is_market_consumption_enabled(entry_key):
             continue
@@ -281,13 +281,13 @@ func _tick_profession_consumption(prof: String, key: String, timers: Dictionary,
         if amt <= 0 or interval <= 0.0:
             continue
 
-        # Приоритет списания по качеству — настройка игрока с вкладки
-        # «Торговля» (CityData.consumption_priority, дефолт из
-        # data/qualities.json). Раньше здесь был жёсткий "best".
+# The priority of the write-off by the quality is a setting of the player from the tab
+# "Trade" (CityData.consumption_priority, the default from
+# data/qualities.json). Earlier there was a hard "best" here.
         var priority := CityData.get_consumption_priority(entry_key)
 
-        # Per-second скорость потребления = amt / interval. Каждый тик
-        # накапливаем дробный остаток.
+# The per-second rate of the consumption = amt / interval. On every tick
+# we accumulate a fractional remains.
         var per_tick: float = float(amt) / interval * delta
         var frac_key: String = _fractional_key(entry)
         var cur_frac: float = float(fractional.get(frac_key, 0.0)) + per_tick
@@ -300,7 +300,7 @@ func _tick_profession_consumption(prof: String, key: String, timers: Dictionary,
         fractional[frac_key] = cur_frac
 
         if entry.get("is_group", false):
-            # Списание из группы: жадно по членам (best-качество).
+# The write-off from a group: greedily by the members (the best quality).
             var remaining: int = floor_take
             for member_pid in entry.get("group_members", []):
                 if remaining <= 0:
@@ -313,18 +313,18 @@ func _tick_profession_consumption(prof: String, key: String, timers: Dictionary,
                     continue
                 var member_consumed: Dictionary = CityData.remove_from_storage(member_pid, take, priority)
                 CityData.record_consumption_source(member_pid, prof_source, take)
-                # Факт именно ВНУТРЕННЕГО РЫНКА — отдельный счётчик для
-                # карточек вкладки «Торговля» (общий consumption_rates
-                # смешан с производственными входами зданий).
+# The fact of the INNER MARKET exactly - a separate counter for
+# the cards of the tab "Trade" (the general consumption_rates
+# is mixed with the production inputs of the buildings).
                 CityData.record_market_consumption(member_pid, take)
-                # Фактическое потребление на внутреннем рынке даёт доход в казну.
-                # Цена — по качеству КАЖДОЙ списанной единицы: разбивка consumed
-                # приходит из remove_from_storage (см. docs.md, «Казна города и
-                # внутренний рынок»).
+# The actual consumption on the inner market gives an income to the treasury.
+# The price is by the quality of EACH written-off unit: the breakdown of consumed
+# comes from remove_from_storage (see docs.md, "The treasury of the city and the
+# inner market").
                 var member_take_price: int = CityData.get_internal_market_income(member_pid, member_consumed)
                 CityData.add_treasury(member_take_price)
-                # Источник дохода для тултипа «Казна» по тому же ключу,
-                # что и в плановой карте (имя профессии, напр. «Рыбак»).
+# The source of the income for the tooltip "Treasury" by the same key,
+# as in the plan map (the name of a profession, for example "Fisherman").
                 CityData.record_treasury_income(prof_source, member_take_price, str(member_pid))
                 remaining -= take
         else:
@@ -339,20 +339,20 @@ func _tick_profession_consumption(prof: String, key: String, timers: Dictionary,
                 continue
             var single_consumed: Dictionary = CityData.remove_from_storage(pid, take_single, priority)
             CityData.record_consumption_source(pid, prof_source, take_single)
-            # Факт внутреннего рынка (см. выше).
+# The fact of the inner market (see above).
             CityData.record_market_consumption(pid, take_single)
-            # Цена — по качеству каждой списанной единицы (см. выше).
+# The price is by the quality of each written-off unit (see above).
             var single_take_price: int = CityData.get_internal_market_income(pid, single_consumed)
             CityData.add_treasury(single_take_price)
-            # Источник дохода для тултипа «Казна» по тому же ключу,
-            # что и в плановой карте (имя профессии, напр. «Рыбак»).
+# The source of the income for the tooltip "Treasury" by the same key,
+# as in the plan map (the name of a profession, for example "Fisherman").
             CityData.record_treasury_income(prof_source, single_take_price, pid)
 
     timers[key].fractional = fractional
     return 1.0 + _aggregate_production_bonus(cons_list)
 
-# Проверяет, хватает ли ресурса на полный цикл потребления для одной записи.
-# Для групп — суммарно по всем членам группы.
+# Checks whether there is enough of a resource for a full cycle of the consumption for one record.
+# For the groups - in total over all the members of the group.
 func _can_consume_full(entry: Dictionary, amt: int) -> bool:
     if amt <= 0:
         return false
@@ -371,29 +371,29 @@ func _can_consume_full(entry: Dictionary, amt: int) -> bool:
         return false
     return CityData.get_storage_amount(pid) >= amt
 
-# DISPLAY_KEY записи потребления — единый ключ адресации настроек
-# внутреннего рынка (CityData.market_consumption_enabled /
-# consumption_priority) и для строк вкладки «Торговля». У групповых
-# записей это уже готовый "@<группа>", у одиночных — id продукта.
-# Fallback на product_id нужен для защиты от записей без display_key.
+# The DISPLAY_KEY of a record of the consumption is the single addressing key of the settings
+# of the inner market (CityData.market_consumption_enabled /
+# consumption_priority) and of the rows of the tab "Trade". For the group
+# records it is the already ready "@<group>", for the single ones - the id of a product.
+# The fallback to product_id is needed for the protection from the records without a display_key.
 func _entry_display_key(entry: Dictionary) -> String:
     var key := str(entry.get("display_key", ""))
     if key.is_empty():
         key = str(entry.get("product_id", ""))
     return key
 
-# Ключ для fractional-аккумулятора по типу ресурса (одиночный/группа).
-# Один аккумулятор на запись потребления.
+# The key for the fractional accumulator by the type of the resource (a single one/a group).
+# One accumulator per record of the consumption.
 func _fractional_key(entry: Dictionary) -> String:
     if entry.get("is_group", false):
         return "@" + str(entry.get("display_key", ""))
     return str(entry.get("product_id", entry.get("display_key", "")))
 
-# Сериализация таймеров потребления для сохранения.
-# Формат: [{ "row": int, "col": int, "fractional": { dkey: float, ... } }, ...]
-# Дробные остатки накапливаются по dkey (id продукта или @-группа) — после
-# перевода на continuous-модель хранить нечего, кроме них (новые правила
-# amount/interval вычисляются из профессии при загрузке).
+# The serialization of the timers of the consumption for the save.
+# The format: [{ "row": int, "col": int, "fractional": { dkey: float, ... } }, ...]
+# The fractional remains accumulate by dkey (the id of a product or the @-group) - after
+# the switch to the continuous model there is nothing to store except for them (the new rules
+# amount/interval are computed from the profession on the load).
 func serialize_consumption_timers() -> Array:
     var result = []
     for key in consumption_timers.keys():
@@ -419,8 +419,8 @@ func load_consumption_timers(timers: Array):
                     "fractional": frac
                 }
 
-# Сериализация таймеров потребления зданий (см. building_consumption_timers).
-# Формат: [{ "index": int, "fractional": { dkey: float, ... } }, ...]
+# The serialization of the timers of the consumption of the buildings (see building_consumption_timers).
+# The format: [{ "index": int, "fractional": { dkey: float, ... } }, ...]
 func serialize_building_consumption_timers() -> Array:
     var result = []
     for key in building_consumption_timers.keys():
@@ -444,22 +444,22 @@ func load_building_consumption_timers(timers: Array):
                 building_consumption_timers["b" + str(idx)] = {
                     "fractional": frac
                 }
-# --- ГОРОДСКОЕ ПОТРЕБЛЕНИЕ (псевдо-профессия "all", все жители города) ---
-# Профессия "all" (data/professions.json) — вершина иерархии: покрывает ВСЕХ
-# жителей, включая занятых на улучшениях и в зданиях. Её потребление не
-# привязано к гексам, поэтому тикает общим городским таймером, а записи
-# берутся из того же реестра: GameData.get_profession_consumption("all").
+# --- THE URBAN CONSUMPTION (the pseudo-profession "all", all the residents of the city) ---
+# The profession "all" (data/professions.json) is the top of the hierarchy: it covers ALL
+# the residents, including those employed at the improvements and in the buildings. Its consumption is not
+# bound to the hexes, therefore it ticks with a general urban timer, and the records
+# are taken from the same registry: GameData.get_profession_consumption("all").
 #
-# Семантика amount для "all": НА ОДНОГО жителя. Суммарное списание за тик =
-# amount * CityData.total_population. Списание идёт ПО ФАКТУ НАЛИЧИЯ: за
-# попытку списывается min(есть на складе, нужное количество) — ожидания
-# полного покрытия нет. Если на складе меньше нужного, списывается всё, что
-# есть, и таймер сбрасывается; если склад пуст — таймер сохраняется
-# «горячим», и всё, что появится, списывается на ближайшем тике без ожидания
-# полного интервала. Жадное списание из @-группы — как в tick_consumption().
-# production_bonus игнорируется: городское потребление бонусов не даёт.
-# Вызывается из main_map._process в тике симуляции с шагом
-# CityData.SIMULATION_TICK (та же точность, что у по-гексового потребления).
+# The semantics of amount for "all": PER ONE resident. The total write-off per tick =
+# amount * CityData.total_population. The write-off goes BY THE FACT OF THE PRESENCE: per
+# attempt min(what is in the storage, the required amount) is written off - there is no waiting for
+# a full coverage. If the storage has less than required, everything that
+# is there is written off, and the timer is reset; if the storage is empty - the timer is kept
+# "hot", and everything which appears is written off on the nearest tick without waiting for
+# a full interval. The greedy write-off from a @-group is as in tick_consumption().
+# production_bonus is ignored: the urban consumption gives no bonuses.
+# It is called from main_map._process on a tick of the simulation with the step
+# CityData.SIMULATION_TICK (the same accuracy as that of the per-hex consumption).
 func tick_city_consumption(delta: float) -> void:
     var cons_list = GameData.get_profession_consumption("all")
     var all_source = GameData.profession_source_id("all")
@@ -472,9 +472,9 @@ func tick_city_consumption(delta: float) -> void:
         var dkey = str(entry.get("display_key", ""))
         if dkey.is_empty():
             continue
-        # Тумблер «Торговли»: запрещённый ресурс горожане не покупают.
-        # Возврат ДО накопления таймера — иначе запрет копил бы время и
-        # при разрешении списал бы накопившийся объём разом.
+# The toggle of the "Trade": a forbidden resource is not bought by the residents.
+# The return is BEFORE the accumulation of the timer - otherwise the ban would accumulate the time and
+# on the permission it would write off the accumulated amount at once.
         if not CityData.is_market_consumption_enabled(dkey):
             continue
         if not city_consumption_timers.has(dkey):
@@ -484,7 +484,7 @@ func tick_city_consumption(delta: float) -> void:
         if timer.elapsed < iv:
             continue
 
-        # Сколько нужно списать за тик: amount — на одного жителя.
+# How much needs to be written off per tick: amount is per one resident.
         var amt = int(entry.get("amount", 0)) * CityData.total_population
         if amt <= 0:
             timer.elapsed = 0.0
@@ -498,15 +498,15 @@ func tick_city_consumption(delta: float) -> void:
             for pid in members:
                 total += CityData.get_storage_amount(pid)
             if total <= 0:
-                continue # склад пуст — таймер не сбрасываем: спишем сразу при появлении
-            # Жадное списание по членам группы (приоритет качества из
-            # CityData.consumption_priority) ПО ФАКТУ
-            # НАЛИЧИЯ: берём всё, что есть, но не больше нужного. Ждать полного
-            # покрытия (amount * население) не требуется — частичное списание
-            # тоже происходит (и сбрасывает таймер, см. timer.elapsed ниже).
+            continue # the storage is empty - we do not reset the timer: we will write off at once on the appearance
+# The greedy write-off by the members of the group (the priority of the quality from
+# CityData.consumption_priority) BY THE FACT OF
+# THE PRESENCE: we take everything there is, but not more than required. Waiting for a full
+# coverage (amount * the population) is not required - a partial write-off
+# also happens (and resets the timer, see the timer.elapsed below).
             var remaining = amt
-            # Приоритет списания по качеству — настройка вкладки «Торговля»
-            # (CityData.consumption_priority), не жёсткий "best".
+# The priority of the write-off by the quality is a setting of the tab "Trade"
+# (CityData.consumption_priority), and not a hard "best".
             var priority := CityData.get_consumption_priority(dkey)
             for pid in members:
                 if remaining <= 0:
@@ -517,14 +517,14 @@ func tick_city_consumption(delta: float) -> void:
                 var take = min(avail, remaining)
                 var group_consumed: Dictionary = CityData.remove_from_storage(pid, take, priority)
                 CityData.record_consumption_source(pid, all_source, take)
-                # Факт внутреннего рынка для карточки «Торговли».
+# The fact of the inner market for the card of the "Trade".
                 CityData.record_market_consumption(pid, take)
-                # Горожане платят за потреблённый товар из казны (внутренний рынок).
-                # Цена — по качеству каждой списанной единицы.
+# The residents pay for the consumed goods from the treasury (the inner market).
+# The price is by the quality of each written-off unit.
                 var group_take_price: int = CityData.get_internal_market_income(pid, group_consumed)
                 CityData.add_treasury(group_take_price)
-                # Источник дохода для тултипа «Казна» (городское потребление,
-                # имя берётся из data/professions.json → «Все жители»).
+# The source of the income for the tooltip "Treasury" (the urban consumption,
+# the name is taken from data/professions.json -> "All residents").
                 CityData.record_treasury_income(all_source, group_take_price, str(pid))
                 remaining -= take
         else:
@@ -533,24 +533,24 @@ func tick_city_consumption(delta: float) -> void:
                 continue
             var have = CityData.get_storage_amount(pid)
             if have <= 0:
-                continue # склад пуст — таймер не сбрасываем: спишем сразу при появлении
-            # По факту наличия: списываем всё, что есть, но не больше нужного.
+            continue # the storage is empty - we do not reset the timer: we will write off at once on the appearance
+# By the fact of the presence: we write off everything there is, but not more than required.
             var take = min(have, amt)
             var city_consumed: Dictionary = CityData.remove_from_storage(pid, take, CityData.get_consumption_priority(dkey))
             CityData.record_consumption_source(pid, all_source, take)
-            # Факт внутреннего рынка для карточки «Торговли».
+# The fact of the inner market for the card of the "Trade".
             CityData.record_market_consumption(pid, take)
-            # Горожане платят за потреблённый товар из казны (внутренний рынок).
-            # Цена — по качеству каждой списанной единицы.
+# The residents pay for the consumed goods from the treasury (the inner market).
+# The price is by the quality of each written-off unit.
             var city_take_price: int = CityData.get_internal_market_income(pid, city_consumed)
             CityData.add_treasury(city_take_price)
-            # Источник дохода для тултипа «Казна» (городское потребление).
+# The source of the income for the tooltip "Treasury" (the urban consumption).
             CityData.record_treasury_income(all_source, city_take_price, pid)
         timer.elapsed = 0.0
 
-# Сериализация таймеров городского потребления для сохранения.
-# Формат: [{ "resource": String, "elapsed": float }, ...]
-# interval не сохраняем — он вычисляется из данных при загрузке.
+# The serialization of the timers of the urban consumption for the save.
+# The format: [{ "resource": String, "elapsed": float }, ...]
+# We do not save interval - it is computed from the data on the load.
 func serialize_city_consumption_timers() -> Array:
     var result = []
     for dkey in city_consumption_timers.keys():
@@ -587,9 +587,9 @@ func load_assignments(assignments: Array):
             var col = int(item.get("col", -1))
             if row >= 0 and col >= 0:
                 if main_map and row < main_map.map_rows and col < main_map.map_cols:
-                    # "no_worker", на пристань мог быть назначен рабочий.
-                    # Такие назначения недопустимы — отбрасываем их (житель
-                    # вернётся в свободные при пересчёте idle_population).
+# "no_worker", a worker could have been assigned to a pier.
+# Such assignments are inadmissible - we drop them (the resident
+# will return to the free ones at the recalculation of the idle_population).
                     var load_tile = main_map.tile_data[row][col]
                     if load_tile != null and bool(load_tile.get("decorative", false)):
                         continue
@@ -599,16 +599,16 @@ func load_assignments(assignments: Array):
                     assigned_hexes[str(row) + "," + str(col)] = true
     emit_signal("assignment_changed")
 
-# --- ПЛАНОВОЕ ПОТРЕБЛЕНИЕ РЕСУРСОВ ---
-# Для вкладки «Ресурсы»: тултип (блок «Потребление (плановое)») и динамика с
-# маркером «≈». Показывает, сколько ресурса БУДЕТ списано текущими
-# потребителями, независимо от фазы таймеров потребления и наличия на складе.
-# Фактические счётчики (CityData.consumption_rates/sources) живут один
-# production-тик и наполняются только в момент списания — отсюда «слепые
-# окна» у интервального потребления (лодки: 10 шт. раз в 10 сек).
+# --- THE PLANNED CONSUMPTION OF THE RESOURCES ---
+# For the tab "Resources": the tooltip (the block "Consumption (planned)") and the dynamics with a
+# marker "=". It shows how much of the resource WILL be written off by the current
+# consumers, regardless of the phase of the timers of the consumption and the presence in the storage.
+# The actual counters (CityData.consumption_rates/sources) live for one
+# production tick and are filled only at the moment of the write-off - hence the "blind
+# windows" of the interval consumption (the boats: 10 pieces once per 10 seconds).
 
-# Число рабочих по профессиям: prof_id -> count. Один проход по назначенным
-# гексам; профессия производна от улучшения (см. get_profession).
+# The number of the workers by the professions: prof_id -> count. One pass over the assigned
+# hexes; the profession is derived from the improvement (see get_profession).
 func count_workers_by_profession() -> Dictionary:
     var result: Dictionary = {}
     for key in assigned_hexes.keys():
@@ -621,58 +621,58 @@ func count_workers_by_profession() -> Dictionary:
         result[prof] = int(result.get(prof, 0)) + 1
     return result
 
-# Собирает полную карту планового потребления:
-#   product_id -> { "Имя источника" -> { "amount": int, "interval": float,
+# Collects the full map of the planned consumption:
+#   product_id -> { "The name of the source" -> { "amount": int, "interval": float,
 #                  "count": int, "is_group": bool, "group_name": String,
 #                  "is_population": bool } }
-# Источники:
-#   1) профессиональное потребление рабочих на улучшениях и горожан в
-#      зданиях (data/consumption.json и устаревшее products[*].consumption):
-#      amount каждой записи × число рабочих/горожан профессии; для зданий
-#      учитываются только РАБОТАЮЩИЕ (есть горожанин и непустой слот) —
+# The sources:
+#   1) the professional consumption of the workers at the improvements and of the residents in the
+#      buildings (data/consumption.json and the legacy products[*].consumption):
+#      amount of each record × the number of the workers/residents of the profession; for the buildings
+#      only the WORKING ones are taken into account (there is a resident and a non-empty slot) -
 #      CityData.get_townsfolk_professions_count;
-#      при нескольких записях одного источника amount суммируется, а interval
-#      берётся минимальный — ровно так списывает tick_consumption (все записи
-#      списка разом по минимальному интервалу);
-#   2) городское потребление «all»: amount × total_population (is_population);
-#   3) спрос построенных зданий (рецепты слотов,
-#      CityData.get_building_planned_consumption): amount — спрос за один крафт,
-#      interval — время крафта рецепта (`time`), см. CityData.get_craft_time.
-# Для групповых записей план относится к ЛЮБОМУ члену группы; в тултипе такие
-# строки помечаются именем группы (group_name = имя группы из данных).
+#      with several records of one source amount is summed, and interval
+#      is taken as the minimum - exactly as tick_consumption writes off (all the records
+#      of the list at once by the minimum interval);
+#   2) the urban consumption "all": amount × total_population (is_population);
+#   3) the demand of the built buildings (the recipes of the slots,
+#      CityData.get_building_planned_consumption): amount is the demand for one craft,
+#      interval is the time of the recipe (`time`), see CityData.get_craft_time.
+# For the group records the plan refers to ANY member of the group; in the tooltip such
+# rows are marked with the name of the group (group_name = the name of the group from the data).
 func get_planned_consumption_map(include_production_inputs: bool = true) -> Dictionary:
     var result: Dictionary = {}
-    # Профессиональное потребление: по фактическим рабочим на улучшениях.
+# The professional consumption: by the actual workers at the improvements.
     var workers = count_workers_by_profession()
     for prof_id in workers:
         if prof_id == "all":
-            continue # псевдо-профессия не назначается на гексы; обрабатывается ниже
+            continue # the pseudo-profession is not assigned to the hexes; it is processed below
         _record_profession_planned(result, prof_id, int(workers[prof_id]), false)
-    # Профессиональное потребление городских зданий: профессия горожанина
-    # (поле "profession" в data/buildings.json). Учитываются только РАБОТАЮЩИЕ
-    # здания — есть горожанин и хотя бы один непустой слот: расходники
-    # простаивающего здания в план не попадают (см. get_townsfolk_professions_count).
+# The professional consumption of the urban buildings: the profession of a resident
+# (the field "profession" in data/buildings.json). Only the WORKING
+# buildings are taken into account - there is a resident and at least one non-empty slot: the consumables
+# of an idle building do not fall into the plan (see get_townsfolk_professions_count).
     var town_workers = CityData.get_townsfolk_professions_count()
     for prof_id in town_workers:
         if prof_id == "all":
-            continue # псевдо-профессия не назначается на здания; обрабатывается ниже
+            continue # the pseudo-profession is not assigned to the buildings; it is processed below
         _record_profession_planned(result, prof_id, int(town_workers[prof_id]), false)
-    # Городское потребление «Все жители» — всегда (население ≥ 1), поголовно:
-    # count = total_population, а не число назначенных гексов.
+# The urban consumption "All residents" - always (the population >= 1), per capita:
+# count = total_population, and not the number of the assigned hexes.
     if CityData.total_population > 0:
         _record_profession_planned(result, "all", CityData.total_population, true)
     if not include_production_inputs:
         return result
-    # Спрос зданий (рецепты): amount — за один крафт, interval — время рецепта.
+# The demand of the buildings (the recipes): amount is for one craft, interval is the time of the recipe.
     var building_demand = CityData.get_building_planned_consumption()
     for pid in building_demand:
         for source_id in building_demand[pid]:
             var e: Dictionary = building_demand[pid][source_id]
             _record_planned_entry(result, str(pid), str(source_id), int(e.get("amount", 0)), float(e.get("interval", 0.0)), int(e.get("count", 1)), bool(e.get("is_group", false)), str(e.get("group_name", "")), false)
-    # Плановое потребление улучшений на карте (корм пастбищ): amount — за один
-    # цикл производства, interval — production_interval улучшения. Корм
-    # списывается за цикл (см. main_map, блок «ЦИКЛ ПРОИЗВОДСТВА УЛУЧШЕНИЯ»),
-    # поэтому записи попадают в план наравне со спросом зданий.
+# The planned consumption of the improvements on the map (the feed of the pastures): amount is for one
+# cycle of the production, interval is the production_interval of the improvement. The feed
+# is written off per cycle (see main_map, the block "THE PRODUCTION CYCLE OF THE IMPROVEMENT"),
+# therefore the records fall into the plan on a par with the demand of the buildings.
     var improvement_demand = CityData.get_improvement_planned_consumption()
     for pid in improvement_demand:
         for source_id in improvement_demand[pid]:
@@ -680,71 +680,71 @@ func get_planned_consumption_map(include_production_inputs: bool = true) -> Dict
             _record_planned_entry(result, str(pid), str(source_id), int(e.get("amount", 0)), float(e.get("interval", 0.0)), int(e.get("count", 1)), bool(e.get("is_group", false)), str(e.get("group_name", "")), false)
     return result
 
-# Потребление НАСЕЛЕНИЕМ, ключованное DISPLAY_KEY, — источник данных для
-# карточек вкладки «Торговля» (левая колонка).
+# The consumption BY THE POPULATION, keyed by DISPLAY_KEY, is the source of the data for
+# the cards of the tab "Trade" (the left column).
 #
-# Чем отличается от get_planned_consumption_map(false):
-#   * ключ строки — display_key ("feathers" / "@boats"), а не pid. План
-#     разворачивает @-группу на КАЖДОГО члена, записывая в каждого полную
-#     сумму, — для карточки «Фрукты» это дало бы шесть строк по полной
-#     сумме вместо одной;
-#   * группы не разворачиваются: members — список членов, склад и цена
-#     считаются по ним целиком;
-#   * запрещённые тумблером «Торговли» ресурсы НЕ выбрасываются, а
-#     остаются с enabled = false — иначе игрок не смог бы включить их
-#     обратно, увидев, что они пропали из списка.
+# What differs from get_planned_consumption_map(false):
+#   * the key of the row is display_key ("feathers" / "@boats"), and not a pid. The plan
+#     unfolds an @-group on EACH member, writing the full
+#     sum into each - for the card "Fruits" it would give six rows with the full
+#     sum instead of one;
+#   * the groups are not unfolded: members is a list of the members, the storage and the price
+#     are counted over them as a whole;
+#   * the resources forbidden by the toggle of the "Trade" are NOT dropped, but
+#     they remain with enabled = false - otherwise the player could not turn them
+#     back on, seeing that they disappeared from the list.
 #
-# Возвращает:
+# It returns:
 #   display_key -> {
-#     "name": String,          — имя продукта или группы,
+#     "name": String,          - the name of a product or a group,
 #     "is_group": bool,
-#     "members": Array,        — pid'ы: [pid] или члены группы,
-#     "icon": String,          — имя файла иконки ("" — иконки нет),
-#     "enabled": bool,         — разрешено ли потребление на рынке,
-#     "priority": String,      — приоритет списания по качеству,
-#     "sources": { имя профессии -> {
-#         "amount": int,        — СУММА по всем потребителям этой профессии,
-#         "unit_amount": int,   — НОРМА НА ОДНОГО (amount из consumption.json),
+#     "members": Array,        - the pids: [pid] or the members of a group,
+#     "icon": String,          - the name of the file of the icon ("" - there is no icon),
+#     "enabled": bool,         - whether the consumption on the market is allowed,
+#     "priority": String,      - the priority of the write-off by the quality,
+#     "sources": { the name of a profession -> {
+#         "amount": int,        - the SUM over all the consumers of this profession,
+#         "unit_amount": int,   - the NORM PER ONE (amount from consumption.json),
 #         "interval": float, "count": int,
 #         "is_population": bool } },
-#     "consumers_total": int,  — сколько жителей потребляет (см. ниже),
-#     "per_sec": float,       — суммарный плановый расход, ед./сек.
-#     "per_consumer_per_sec": float,   — норма на одного потребителя, ед./сек;
-#     "per_consumer_amount": int,     — amount из consumption.json;
+#     "consumers_total": int,  - how many residents consume it (see below),
+#     "per_sec": float,       - the total planned expense, units/sec.
+#     "per_consumer_per_sec": float,   - the norm per one consumer, units/sec;
+#     "per_consumer_amount": int,     - amount from consumption.json;
 #     "per_consumer_interval": float }
 #
-# consumers_total берётся как max(«Все жители», Σ профессий): псевдо-профессия
-# all покрывает всё население, включая занятых, поэтому простое сложение
-# посчитало бы рыбака дважды (и в «Все жители», и в «Рыбак»).
+# consumers_total is taken as max("All residents", Σ the professions): the pseudo-profession
+# all covers the whole population, including the employed, therefore a simple summation
+# would count the fisherman twice (both in "All residents" and in "Fisherman").
 func get_population_consumption_map() -> Dictionary:
     var result: Dictionary = {}
-    # Профессиональное потребление: рабочие на улучшениях карты.
+# The professional consumption: the workers at the improvements of the map.
     var workers = count_workers_by_profession()
     for prof_id in workers:
         if prof_id == "all":
-            continue # псевдо-профессия не назначается на гексы
+            continue # the pseudo-profession is not assigned to the hexes
         _record_population_row(result, str(prof_id), int(workers[prof_id]), false)
-    # Профессиональное потребление городских зданий (поле "profession").
+# The professional consumption of the urban buildings (the field "profession").
     var town_workers = CityData.get_townsfolk_professions_count()
     for prof_id in town_workers:
         if prof_id == "all":
             continue
         _record_population_row(result, str(prof_id), int(town_workers[prof_id]), false)
-    # Псевдо-профессия "all" — всегда, пока есть население.
+# The pseudo-profession "all" - always, as long as there is a population.
     if CityData.total_population > 0:
         _record_population_row(result, "all", CityData.total_population, true)
-    # Считаем итоги по каждой строке.
+# We count the totals for each row.
     for display_key in result:
         _finalize_population_row(result, display_key)
     return result
 
-# Добавляет/дополняет строку карточки по профессии prof_id с count
-# потребителями. Одна и та же профессия может прийти из двух источников
-# (рабочие на карте и горожане в зданиях) — их количества складываются.
+# Adds/complements a row of the card by the profession prof_id with count
+# consumers. The same profession can come from two sources
+# (the workers on the map and the residents in the buildings) - their amounts add up.
 func _record_population_row(result: Dictionary, prof_id: String, count: int, is_population: bool) -> void:
     if count <= 0:
         return
-    # Ключ источника — идентификатор профессии; подпись резолвит trade_tab.
+# The key of the source is the identifier of the profession; the label is resolved by trade_tab.
     var source_id: String = GameData.profession_source_id(prof_id)
     for entry in GameData.get_profession_consumption(prof_id):
         var amount := int(entry.get("amount", 0)) * count
@@ -765,41 +765,41 @@ func _record_population_row(result: Dictionary, prof_id: String, count: int, is_
                 "sources": {},
             }
         var row: Dictionary = result[display_key]
-        # Строка могла прийти из другой профессии — дополняем состав полей
-        # один раз, без перетирания уже собранных источников.
+# The row could have come from another profession - we complement the composition of the fields
+# once, without overwriting the already collected sources.
         if is_group and (row.get("members", []) as Array).is_empty():
             row["members"] = (entry.get("group_members", []) as Array).duplicate()
         var sources: Dictionary = row["sources"]
         var prev_amount: int = int(sources.get(source_id, {}).get("amount", 0))
         sources[source_id] = {
             "amount": prev_amount + amount,
-            # Норма на ОДНОГО потребителя — ровно то, что объявлено в
-            # data/consumption.json (amount), без умножения на число
-            # потребителей. Именно её показывает карточка «Торговли» в строке
-            # «Расход на 1»: сумма по жителям (10 ед. × 21 = 210) — это уже
-            # «сколько съедает город», путать её с нормой нельзя.
+# The norm PER ONE consumer is exactly what is declared in
+# data/consumption.json (amount), without a multiplication by the number of the
+# consumers. Exactly it is shown by the card of the "Trade" in the row
+# "The expense for 1": the sum over the residents (10 units × 21 = 210) - that is already
+# "how much the city eats", and it must not be confused with the norm.
             "unit_amount": int(entry.get("amount", 0)),
             "interval": float(entry.get("interval", 0)),
             "count": count,
             "is_population": is_population,
         }
 
-# Досчитывает итоги строки карточки: количество потребителей и плановую
-# скорость расхода в секунду. Скорость — amount × SIMULATION_TICK / interval
-# (та же формула, что в плановом потреблении и в тултипах): interval = 0
-# означает «за тик», а тик симуляции равен секунде.
+# Recounts the totals of the row of the card: the number of the consumers and the planned
+# rate of the expense per second. The rate is amount × SIMULATION_TICK / interval
+# (the same formula as in the planned consumption and in the tooltips): interval = 0
+# means "per tick", and a tick of the simulation equals a second.
 func _finalize_population_row(result: Dictionary, display_key: String) -> void:
     var row: Dictionary = result[display_key]
     var sources: Dictionary = row["sources"]
     var population_count := 0
     var professions_count := 0
     var per_sec := 0.0
-    # Норма на одного потребителя. У ресурса бывает несколько покупателей с
-    # РАЗНЫМИ нормами (например, «Все жители» едят фрукты по 10 ед./сек, а
-    # учёный — перья по 10 ед./5 сек). Показываем норму самого массового
-    # покупателя: у карточки одна строка «Расход на 1», и норма «главного»
-    # покупателя — единственное, что не врёт. Нормы остальных видны в
-    # тултипе этой строки (см. trade_tab._on_consumption_hover).
+# The norm per one consumer. A resource can have several buyers with
+# DIFFERENT norms (for example, "All residents" eat the fruits by 10 units/sec, and
+# a scholar - the feathers by 10 units/5 seconds). We show the norm of the most massive
+# buyer: the card has one row "The expense for 1", and the norm of the "main"
+# buyer is the only one which does not lie. The norms of the others are visible in
+# the tooltip of this row (see trade_tab._on_consumption_hover).
     var best_count := -1
     var per_consumer_per_sec := 0.0
     var per_consumer_amount := 0
@@ -817,15 +817,15 @@ func _finalize_population_row(result: Dictionary, display_key: String) -> void:
             per_sec += amount * CityData.SIMULATION_TICK / interval
         else:
             per_sec += amount * CityData.SIMULATION_TICK
-        # Норма источника на одного потребителя: unit_amount — это amount из
-        # data/consumption.json, уже без умножения на count (см.
-        # _record_population_row), поэтому делить больше не на что.
+# The norm of the source per one consumer: unit_amount is the amount from
+# data/consumption.json, already without a multiplication by count (see
+# _record_population_row), therefore there is nothing more to divide by.
         var unit_amount := float(entry.get("unit_amount", 0))
         var unit_per_sec := (unit_amount * CityData.SIMULATION_TICK / interval
             if interval > 0.0 else unit_amount * CityData.SIMULATION_TICK)
-        # При равенстве потребителей побеждает тот, кто жрёт больше в пересчёте
-        # на одного: так при 1 рыбаке и 1 жителе строка не покажет норму
-        # случайного профиля.
+# On an equality of the consumers the one who eats more in the recalculation
+# per one wins: so at 1 fisherman and 1 resident the row does not show the norm
+# of a random profile.
         if count > best_count or (count == best_count and unit_per_sec > per_consumer_per_sec):
             best_count = count
             per_consumer_per_sec = unit_per_sec
@@ -837,41 +837,41 @@ func _finalize_population_row(result: Dictionary, display_key: String) -> void:
     row["per_consumer_amount"] = per_consumer_amount
     row["per_consumer_interval"] = per_consumer_interval
 
-# Плановая скорость ДОХОДА казны по ТИПАМ прибыли — для тултипа «Казна»
-# в HUD карты и в верхней полосе интерфейса города.
-# Аналог «Производство (плановое)» на вкладке «Ресурсы»: равномерный поток,
-# не мигает на тиках без списания. Возвращает иерархическую структуру:
+# The planned rate of the INCOME of the treasury by the TYPES of the profit - for the tooltip "Treasury"
+# in the HUD of the map and in the top bar of the interface of the city.
+# The analogue of "Production (planned)" on the tab "Resources": an even flow,
+# it does not flicker on the ticks without a write-off. It returns a hierarchical structure:
 #   {
-#     "Потребление населения": {              # тип прибыли (top level)
-#       "Все жители": {                       # источник (= имя профессии/горожан)
-#         "fruit":  { coins_per_sec: 2.5, product_name: "Фрукты" },
-#         "salt":   { coins_per_sec: 0.5, product_name: "Соль" }
+#     "The consumption of the population": {              # the type of the profit (top level)
+#       "All residents": {                       # the source (= the name of a profession/residents)
+#         "fruit":  { coins_per_sec: 2.5, product_name: "Fruits" },
+#         "salt":   { coins_per_sec: 0.5, product_name: "Salt" }
 #       },
-#       "Рыбак": {
-#         "reed_boat": { coins_per_sec: 1.2, product_name: "Лодки" }
+#       "Fisherman": {
+#         "reed_boat": { coins_per_sec: 1.2, product_name: "Boats" }
 #       }
 #     }
-#     # будущие типы: "Налоги", "Торговля" — добавляются сюда же отдельной
-#     # функцией, чтобы шкала типов расширялась без правки тултипа.
+#     # the future types: "Taxes", "Trade" - are added here by a separate
+#     # function, so that the scale of the types is extended without a fix of the tooltip.
 #   }
-# Внутри одного «источника» продукты могут повторяться (например, для
-# `@boats` группа раскладывается по членам — каждый член отдельным
-# pid). Тултип сортирует источники и продукты по убыванию скорости.
+# Within one "source" the products can repeat (for example, for
+# `@boats` the group is laid out by the members - each member by a separate
+# pid). The tooltip sorts the sources and the products by the descending rate.
 #
-# Товары без базовой цены (price ≤ 0) исключены: цена внутреннего рынка
-# для них = 0 и в прибыли не участвуют.
+# The goods without a base price (price <= 0) are excluded: the price of the inner market
+# for them = 0 and they do not participate in the profit.
 func get_planned_treasury_income_map() -> Dictionary:
     var result: Dictionary = {}
     _fill_consumption_income(result)
     _fill_tax_income(result)
     return result
 
-# Фактическая скорость дохода казны по источникам и продуктам за последнее
-# окно отображения. Если первое окно еще не завершено, используем его текущий
-# накопитель, чтобы тултип не был пустым сразу после запуска игры.
-# Налоги (тип «Налоги») не зависят от окна: они приходят каждый тик, поэтому
-# добавляются всегда — строка налога не пустует и в первом окне после
-# старта/загрузки (см. _fill_tax_income).
+# The actual rate of the income of the treasury by the sources and the products for the last
+# window of the display. If the first window is not yet finished, we use its current
+# accumulator, so that the tooltip is not empty right after the start of the game.
+# The taxes (the type "Taxes") do not depend on the window: they come every tick, therefore
+# they are always added - the row of the tax does not go empty even in the first window after
+# the start/load (see _fill_tax_income).
 func get_actual_treasury_income_map() -> Dictionary:
     var product_income: Dictionary = CityData.treasury_income_product_snapshot
     var window_sec := CityData.treasury_window_length_sec
@@ -898,16 +898,16 @@ func get_actual_treasury_income_map() -> Dictionary:
     _fill_tax_income(result)
     return result
 
-# Налоги — второй тип дохода казны («Потребление населения» + «Налоги»).
-# Каждый житель платит базовый налог каждый тик, поэтому плановая и
-# фактическая скорость совпадают и считаются ОДНИМ выражением из текущего
-# населения: CityData.get_tax_income_per_tick() (единый источник истины, там
-# же — ставка из data/game_balance.json).
-# Формат записи — «плоский» тип (CityData.TREASURY_FLAT_TYPE_KEY): налог пока
-# один, раскладывать его по источникам/продуктам не на что, поэтому тултип
-# рисует его одной строкой «• Налоги: 2 × 3 чел. = 6 / сек». «label» — правая
-# часть до знака «=» (ставка × число плательщиков), скорость форматирует и
-# дописывает сам рендер (ui_helpers.show_treasury_tooltip).
+# The taxes are the second type of the income of the treasury ("The consumption of the population" + "Taxes").
+# Each resident pays the base tax every tick, therefore the planned and
+# the actual rate coincide and are counted by ONE expression from the current
+# of the population: CityData.get_tax_income_per_tick() (the single source of truth, there
+# is also the rate from data/game_balance.json).
+# The format of the record is a "flat" type (CityData.TREASURY_FLAT_TYPE_KEY): the tax is so far
+# the only one, there is nothing to lay it out by the sources/products, therefore the tooltip
+# draws it by one row "• Taxes: 2 × 3 persons = 6 / sec". "label" is the right
+# part before the sign "=" (the rate × the number of the payers), the rate is formatted and
+# added by the renderer itself (ui_helpers.show_treasury_tooltip).
 func _fill_tax_income(result: Dictionary) -> void:
     var per_tick: int = CityData.get_tax_income_per_tick()
     if per_tick <= 0:
@@ -921,36 +921,36 @@ func _fill_tax_income(result: Dictionary) -> void:
         }
     }
 
-# Доход от потребления на внутреннем рынке: профессиональное потребление
-# рабочих + городское потребление «all». Входы рецептов зданий и улучшений
-# сюда не входят: они расходуются производством, а не продаются населением.
-# Рыночный доход живёт под типом «Потребление населения»; прочие типы
-# («Налоги» — см. _fill_tax_income, «Торговля» и т.п.) добавляются
-# параллельно без правки этой функции.
-# Плановый доход казны от рынка, СВЁРНУТЫЙ ПО КАРТОЧКАМ вкладки «Торговля»:
-# display_key -> { "coins_per_sec": float, "by_source": { профессия: монет/сек } }.
+# The income from the consumption on the inner market: the professional consumption
+# of the workers + the urban consumption "all". The inputs of the recipes of the buildings and the improvements
+# do not belong here: they are spent by the production, and not sold by the population.
+# The market income lives under the type "The consumption of the population"; the other types
+# ("Taxes" - see _fill_tax_income, "Trade" and so on) are added
+# in parallel without a fix of this function.
+# The planned income of the treasury from the market, FOLDED BY THE CARDS of the tab "Trade":
+# display_key -> { "coins_per_sec": float, "by_source": { a profession: coins/sec } }.
 #
-# Ключ — display_key, а не pid, ровно как в get_population_consumption_map: у
-# карточки «Фрукты» шесть членов группы, и суммировать доход по pid значило бы
-# показать шесть строк вместо одной. Записи плана помечены display_key
-# (см. _record_planned_entry), поэтому сворачивание точное.
+# The key is display_key, and not a pid, exactly as in get_population_consumption_map: the
+# card "Fruits" has six members of the group, and summing the income by a pid would mean
+# showing six rows instead of one. The records of the plan are marked by display_key
+# (see _record_planned_entry), therefore the folding is exact.
 #
-# ФОРМУЛА — та же, что у _fill_consumption_income (план «Потребление
-# населения» в тултипе казны): per_sec × цена, где цена — рыночная с
-# поправкой на среднее качество того, что реально лежит на складе. Общая
-# формула вынесена в _planned_market_income_per_pid, чтобы карточка и тултип
-# казны физически не могли разойтись в цифре.
-# Строки планового дохода рынка — ОБЩИЙ источник истины для двух
-# потребителей: строки «Доход» карточек «Торговли» и блока
-# «Потребление населения» в тултипе казны. Возвращает массив:
+# The FORMULA is the same as in _fill_consumption_income (the plan "The consumption of the
+# population" in the tooltip of the treasury): per_sec × the price, where the price is the market one with
+# a correction for the average quality of what really lies in the storage. The general
+# formula is moved out into _planned_market_income_per_pid, so that the card and the tooltip
+# of the treasury physically could not differ in the number.
+# The rows of the planned market income are the COMMON source of truth for the two
+# consumers: the rows "Income" of the cards of the "Trade" and the block
+# "The consumption of the population" in the tooltip of the treasury. It returns an array:
 #   { "pid": String, "source": String, "coins_per_sec": float,
 #     "product_name": String }
 #
-# Формула дохода — per_sec × цена, где цена берётся из
-# _planned_market_income_per_pid (рыночная, с поправкой на среднее качество
-# склада). Формула живёт в одном месте не из любви к красоте: когда копии
-# расходились, карточка показывала 3570 монет/сек, а тултип казны 1260 —
-# и ни один из них не выглядел сломанным.
+# The formula of the income is per_sec × the price, where the price is taken from
+# _planned_market_income_per_pid (the market one, with a correction for the average quality
+# of the storage). The formula lives in one place not out of love for the beauty: when the copies
+# diverged, the card showed 3570 coins/sec, and the tooltip of the treasury 1260 -
+# and neither of them looked broken.
 func _planned_market_income_rows() -> Array:
     var rows: Array = []
     var per_pid := _planned_market_income_per_pid()
@@ -958,9 +958,9 @@ func _planned_market_income_rows() -> Array:
     for pid in per_pid:
         if not planned.has(pid):
             continue
-        # Член группы без остатка и без производства не продаётся: группа —
-        # это «любой подходящий товар», и без фильтра в доход попадали бы
-        # все шесть членов «Фруктов» разом.
+# A member of a group without a remainder and without a production is not sold: a group is
+# "any suitable goods", and without a filter all six members of the "Fruits" would fall into the income at once.
+# all six members of the "Fruits" at once.
         if not bool(per_pid[pid]["available"]):
             continue
         var market_price: float = float(per_pid[pid]["price"])
@@ -969,7 +969,7 @@ func _planned_market_income_rows() -> Array:
             var entry: Dictionary = planned[pid][source_id]
             var amount := float(entry.get("amount", 0))
             var interval := float(entry.get("interval", 0))
-            # Per-second потребление записи (см. ui_helpers._planned_per_sec).
+# The per-second consumption of a record (see ui_helpers._planned_per_sec).
             var per_sec: float
             if interval > 0.0:
                 per_sec = amount * CityData.SIMULATION_TICK / interval
@@ -992,9 +992,9 @@ func get_population_income_map() -> Dictionary:
         var pid := str(row_data["pid"])
         var entry: Dictionary = planned[pid].get(str(row_data["source"]), {})
         var dkey := str(entry.get("display_key", ""))
-        # Пустой display_key — запись не из потребления населения (спрос
-        # зданий, корм улучшений): это производственные входы, они не
-        # продаются городу и в доход рынка не входят.
+# An empty display_key - the record is not from the consumption of the population (the demand
+# of the buildings, the feed of the improvements): these are the production inputs, they are not
+# sold to the city and do not belong to the market income.
         if dkey.is_empty():
             continue
         var coins := float(row_data["coins_per_sec"])
@@ -1007,21 +1007,21 @@ func get_population_income_map() -> Dictionary:
             float(by_source.get(str(row_data["source"]), 0.0)) + coins
     return result
 
-# ФАКТИЧЕСКИЙ доход внутреннего рынка за окно отображения, свёрнутый по
-# карточкам вкладки «Торговля»: display_key -> { "coins_per_sec": float,
-# "by_source": { профессия: монет/сек } }. Формат тот же, что у
-# get_population_income_map, но там ПЛАН, а здесь ФАКТ.
+# The ACTUAL income of the inner market for the window of the display, folded by
+# the cards of the tab "Trade": display_key -> { "coins_per_sec": float,
+# "by_source": { a profession: coins/sec } }. The format is the same as in
+# get_population_income_map, but there it is the PLAN, and here it is the FACT.
 #
-# Источник — те же записи CityData.record_treasury_income(профессия, цена, pid),
-# из которых собираются тултип казны и строка «Казна: N [+X≈]». Поэтому сумма
-# строк «Доход» карточек равна фактической рыночной прибыли казны: разойтись
-# им не по чему. Показывать же нужно именно факт: план (весь спрос × цена) не
-# ограничен складом и для полупустого склада давал фантастические тысячи
-# монет в секунду, которых в казне никогда не было.
+# The source is the same records CityData.record_treasury_income(a profession, a price, a pid),
+# from which the tooltip of the treasury and the row "Treasury: N [+X]" are collected. Therefore the sum
+# of the rows "Income" of the cards is equal to the actual market profit of the treasury: there is
+# nothing by which they could differ. But it is the FACT that must be shown: the plan (the whole demand × the price) is not
+# limited by the storage and for a half-empty storage gave fantastical thousands
+# of coins per second, which never were in the treasury.
 #
-# Ключ вычисляется ТОЧНО так же, как в get_population_income_map (display_key
-# плановой записи той же пары «источник + товар»): у группы это «@<группа>», и
-# доход шести членов «Фруктов» попадает в одну карточку, а не в шесть строк.
+# The key is computed EXACTLY as in get_population_income_map (the display_key
+# of the planned record of the same "source + goods" pair): for a group it is "@<group>", and
+# the income of the six members of the "Fruits" falls into one card, and not into six rows.
 func get_actual_market_income_map() -> Dictionary:
     var result: Dictionary = {}
     var actual: Dictionary = get_actual_treasury_income_map().get(CityData.POPULATION_INCOME_TYPE, {})
@@ -1033,7 +1033,7 @@ func get_actual_market_income_map() -> Dictionary:
         for pid in products:
             var entry: Dictionary = planned.get(str(pid), {}).get(str(source_id), {})
             var dkey := str(entry.get("display_key", ""))
-            # Пустой display_key — доход не от потребления населения (см. выше).
+# An empty display_key - the income is not from the consumption of the population (see above).
             if dkey.is_empty():
                 continue
             var coins := float(products[pid].get("coins_per_sec", 0.0))
@@ -1046,13 +1046,13 @@ func get_actual_market_income_map() -> Dictionary:
                 float(by_source.get(str(source_id), 0.0)) + coins
     return result
 
-# Общая формула планового дохода рынка: pid -> { "price": int, "available": bool }.
-# price — цена внутреннего рынка с поправкой на средний множитель качества
-# склада (CityData.get_stock_quality_price_multiplier): качество будущей сделки
-# неизвестно, а план по обычному качеству занижал бы факт.
-# available — есть ли у товара хоть какой-то запас/производство. Для ГРУППОВОЙ
-# записи член без наличия не продаётся: группа — это «любой подходящий товар»,
-# и без фильтра в доход попадали бы все шесть членов «Фруктов» разом.
+# The general formula of the planned market income: pid -> { "price": int, "available": bool }.
+# price is the price of the inner market with a correction for the average multiplier of the quality
+# of the storage (CityData.get_stock_quality_price_multiplier): the quality of the future deal
+# is unknown, and the plan at the ordinary quality would understate the fact.
+# available is whether the goods have any stock/production at all. For a GROUP
+# record a member without a presence is not sold: a group is "any suitable goods",
+# and without a filter all six members of the "Fruits" would fall into the income at once.
 func _planned_market_income_per_pid() -> Dictionary:
     var result: Dictionary = {}
     var planned_production := CityData.get_planned_production_map()
@@ -1068,7 +1068,7 @@ func _planned_market_income_per_pid() -> Dictionary:
             var entry: Dictionary = planned[pid][source_id]
             if not bool(entry.get("is_group", false)):
                 continue
-            # Член группы без остатка и без производства в доход не идёт.
+# A member of a group without a remainder and without a production does not go into the income.
             if CityData.get_storage_amount(str(pid)) <= 0 \
                     and int(CityData.production_rates.get(pid, 0)) <= 0 \
                     and planned_production.get(pid, {}).is_empty():
@@ -1082,9 +1082,9 @@ func _fill_consumption_income(result: Dictionary) -> void:
     if not result.has(income_type):
         result[income_type] = {}
     var type_dict: Dictionary = result[income_type]
-    # Ровно те же строки, что у строки «Доход» в карточках «Торговли»
-    # (get_population_income_map) — общий хелпер, поэтому расхождение цифр
-    # между карточкой и тултипом невозможно по построению.
+# Exactly the same rows as in the row "Income" of the cards of the "Trade"
+# (get_population_income_map) - a common helper, therefore a divergence of the numbers
+# between the card and the tooltip is impossible by construction.
     for row_data in _planned_market_income_rows():
         var source_id := str(row_data["source"])
         if not type_dict.has(source_id):
@@ -1095,19 +1095,19 @@ func _fill_consumption_income(result: Dictionary) -> void:
             "product_name": str(row_data["product_name"]),
         }
 
-# Записывает в result плановое потребление профессии prof_id при count
-# потребителях. Для псевдо-профессии «all» count = население города и
-# is_population = true (тултип показывает «(N чел.)»).
+# Writes the planned consumption of the profession prof_id with count
+# consumers into the result. For the pseudo-profession "all" count = the population of the city and
+# is_population = true (the tooltip shows "(N persons)").
 func _record_profession_planned(result: Dictionary, prof_id: String, count: int, is_population: bool):
     if count <= 0:
         return
-    # Ключ источника — идентификатор профессии; подпись резолвит ui_helpers.
+# The key of the source is the identifier of the profession; the label is resolved by ui_helpers.
     var source_id: String = GameData.profession_source_id(prof_id)
     for entry in GameData.get_profession_consumption(prof_id):
-        # Запрещённый на внутреннем рынке ресурс в план не попадает: иначе
-        # вкладка «Ресурсы» показывала бы расход, а тултип казны — доход,
-        # которых не будет. Сама карточка «Торговли» запрет показывает
-        # отдельно (см. get_population_consumption_map).
+# A resource forbidden on the inner market does not fall into the plan: otherwise
+# the tab "Resources" would show the expense, and the tooltip of the treasury - the income,
+# which will not be. The card of the "Trade" itself shows the ban
+# separately (see get_population_consumption_map).
         if not CityData.is_market_consumption_enabled(_entry_display_key(entry)):
             continue
         var amount = int(entry.get("amount", 0)) * count
@@ -1122,8 +1122,8 @@ func _record_profession_planned(result: Dictionary, prof_id: String, count: int,
                 continue
             _record_planned_entry(result, str(pid), source_id, amount, interval, count, is_group, group_name, is_population, str(entry.get("display_key", "")))
 
-# Хелпер записи/агрегации планового потребления (см. get_planned_consumption_map).
-# Ключ by_source — идентификатор источника (GameData.get_source_display_name).
+# The helper of the recording/aggregation of the planned consumption (see get_planned_consumption_map).
+# The key by_source is the identifier of the source (GameData.get_source_display_name).
 func _record_planned_entry(result: Dictionary, pid: String, source_id: String, amount: int, interval: float, count: int, is_group: bool, group_name: String, is_population: bool, display_key: String = ""):
     if not result.has(pid):
         result[pid] = {}
@@ -1138,11 +1138,11 @@ func _record_planned_entry(result: Dictionary, pid: String, source_id: String, a
     if str(entry.get("group_name", "")) == "":
         entry["group_name"] = group_name
     entry["is_population"] = bool(entry.get("is_population", false)) or is_population
-    # display_key адресует КАРТОЧКУ, а pid — конкретный товар. Одно и то же
-    # потребление «Фруктов» планом пишется в каждый член группы, и без
-    # display_key нельзя было бы свернуть эти записи обратно в одну строку
-    # карточки (см. get_population_income_map). Пустое значение — запись не
-    # из потребления населения (спрос зданий, корм улучшений), она в
-    # доходе рынка не участвует.
+# display_key addresses the CARD, and pid - a concrete goods. The same
+# consumption of the "Fruits" is written by the plan into each member of the group, and without
+# display_key it would be impossible to fold these records back into one row
+# of the card (see get_population_income_map). An empty value - the record is not
+# from the consumption of the population (the demand of the buildings, the feed of the improvements), it does not
+# participate in the market income.
     if str(entry.get("display_key", "")) == "" and not display_key.is_empty():
         entry["display_key"] = display_key
