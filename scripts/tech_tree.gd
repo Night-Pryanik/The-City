@@ -84,7 +84,7 @@ func _setup_science_tooltip():
     science_tooltip_panel = Panel.new()
     science_tooltip_panel.visible = false
     science_tooltip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-# The default Label mouse_filter IGNORE — the hover over it is not caught.
+    # The default Label mouse_filter IGNORE — the hover over it is not caught.
     # PASS allows accepting mouse_entered/mouse_exited.
     science_tooltip_panel.z_index = 1100
     var style := StyleBoxFlat.new()
@@ -158,7 +158,7 @@ func _rebuild_science_tooltip():
         var bld_total := (fixed + mediums) * bonus
         science_tooltip_vbox.add_child(_make_bullet_row("•", tr("%s: %.1f/sec") % [bld_name, bld_total]))
         if fixed > 0.0:
-# The sub-item: the indent + "◦ text" (as the cost sub-items in the tooltip of a building).
+            # The sub-item: the indent + "◦ text" (as the cost sub-items in the tooltip of a building).
             science_tooltip_vbox.add_child(_make_bullet_sub_row(tr("Building: %.1f/sec") % fixed))
         if mediums > 0.0:
             var names_str := _join_unique_names(bld_entry.get("mediums_names", []))
@@ -197,8 +197,8 @@ func _show_science_tooltip():
     _position_science_tooltip()
 
             # The pure value of additional_yield.science, without the bonuses.
-# tech_tree, because the panel is a child of tech_tree), with a shift, so as not to go beyond
-# the right edge of the viewport.
+            # tech_tree, because the panel is a child of tech_tree), with a shift, so as not to go beyond
+            # the right edge of the viewport.
 func _position_science_tooltip():
     if science_tooltip_panel == null or science_tooltip_vbox == null or science_pool_label == null:
         return
@@ -313,12 +313,12 @@ func _compute_layout() -> Dictionary:
     #
     
     #
-# Example: animal_husbandry opens plow, cheese_making, leatherworking.
+    # Example: animal_husbandry opens plow, cheese_making, leatherworking.
     # If their Y in column 2 turns out to be on average around the Y of animal_husbandry
     # in column 1 — the arrows become short and do not overlap.
     
     #
-# The median is better than the average: the average is sensitive to one far
+    # The median is better than the average: the average is sensitive to one far
     # outlier, and the median is robust. For example, if pottery has 2 children
     # close by and yet 1 far below, the average will pull pottery down, the median — will not.
     var num_cols: int = 0
@@ -344,7 +344,7 @@ func _compute_layout() -> Dictionary:
                 _sort_column_by_barycenter(columns, c, parents_map, false, y_positions)
             for c in range(num_cols - 2, 0, -1):
                 _sort_column_by_barycenter(columns, c, parents_map, true, y_positions)
-# The alternating passes down/up. 8 iterations are enough to converge for 24 nodes;
+        # The alternating passes down/up. 8 iterations are enough to converge for 24 nodes;
         # 4 sometimes leaves noticeable intersections.
         print("[tech_tree] Layout result:")
         for c in range(num_cols):
@@ -387,7 +387,7 @@ func _sort_column_by_barycenter(columns: Dictionary, col: int, parents_map: Dict
     if col_nodes.is_empty():
         return
 
-# child_id -> [parent_id, ...]  (for each technology — its ancestors)
+    # child_id -> [parent_id, ...]  (for each technology — its ancestors)
     # We use it in barycenter: the average Y of the parents gives the "target" Y of the child.
     var barycenters: Dictionary = {}
     for node_id in col_nodes:
@@ -411,7 +411,7 @@ func _sort_column_by_barycenter(columns: Dictionary, col: int, parents_map: Dict
                 if y_positions.has(p_id):
                     related.append(p_id)
         if related.is_empty():
-# We compute the barycenter (in fact, the median) for each node.
+            # We compute the barycenter (in fact, the median) for each node.
             barycenters[node_id] = y_positions.get(node_id, 0.0)
         else:
             # We look for the nodes to the right of col, for which node_id is a parent.
@@ -456,24 +456,24 @@ func _tech_exists(tech_id: String) -> bool:
 
     # The pairs are sorted by the first element (bary), then by the second (id) —
     # because the Array in GDScript is compared element by element.
-#
-# The layout by the dependencies (see _compute_layout) puts the technology into the column
-# max(col[prereq]) + 1. At that time a technology of a later era may get into the same
-# column as the technologies of an earlier era — then by the majority the column is considered
-# earlier, and the group of the later era does not form (there is no separator).
-#
-# The layout by the dependencies (see _compute_layout) puts the technology into the column
-# max(col[prereq]) + 1. At that time a technology of a later era may get into the same
-# column as the technologies of an earlier era — then by the majority the column is considered
-# earlier, and the group of the later era does not form (there is no separator).
-#
-#
-# Here we RELAY OUT the columns so that all the technologies of each era go
-# in an uninterrupted block from left to right in the order of the eras (from GameData.eras). Inside
-# the block of an era the relative order of the columns from the original layout is preserved.
-# This guarantees the appearance of the vertical line-separator between the eras.
-#
-# It returns a new dictionary tech_id -> column.
+    #
+    # The layout by the dependencies (see _compute_layout) puts the technology into the column
+    # max(col[prereq]) + 1. At that time a technology of a later era may get into the same
+    # column as the technologies of an earlier era — then by the majority the column is considered
+    # earlier, and the group of the later era does not form (there is no separator).
+    #
+    # The layout by the dependencies (see _compute_layout) puts the technology into the column
+    # max(col[prereq]) + 1. At that time a technology of a later era may get into the same
+    # column as the technologies of an earlier era — then by the majority the column is considered
+    # earlier, and the group of the later era does not form (there is no separator).
+    #
+    #
+    # Here we RELAY OUT the columns so that all the technologies of each era go
+    # in an uninterrupted block from left to right in the order of the eras (from GameData.eras). Inside
+    # the block of an era the relative order of the columns from the original layout is preserved.
+    # This guarantees the appearance of the vertical line-separator between the eras.
+    #
+    # It returns a new dictionary tech_id -> column.
 func _normalize_era_columns(col_for: Dictionary) -> Dictionary:
     # The ordered list of the ids of the eras (the order from data/eras.json).
     var era_order: Array = []
@@ -532,9 +532,11 @@ func _get_era_name(era_id: String) -> String:
             return era.get("name", era_id)
     return era_id
 
-# Returns the human-readable name of the era by its id (as in technologies_tab.gd).
-# The source is data/eras.json, it is loaded into GameData.eras.
-# If the era is not found — we return the id itself (fallback).
+# Returns the id of the era to which the column column_id belongs.
+# A column can contain the technologies of different eras (rare, but it happens —
+# for example, an ancient technology opening an antique one). Then we take
+# the era which occurs in the column most often. If the column is empty
+# or the eras are not specified — we return "" (there is no group).
 func _column_era(columns: Dictionary, column_id: int) -> String:
     var techs_in_col: Array = columns.get(column_id, [])
     if techs_in_col.is_empty():
@@ -555,16 +557,10 @@ func _column_era(columns: Dictionary, column_id: int) -> String:
             best_count = counts[era_id]
     return best
 
-# Returns the id of the era to which the column column_id belongs.
-# A column can contain the technologies of different eras (rare, but it happens —
-# for example, an ancient technology opening an antique one). Then we take
-# the era which occurs in the column most often. If the column is empty
-# or the eras are not specified — we return "" (there is no group).
-#   {era_id, era_name, col_start, col_end, x_center, x_boundary}
-    var counts: Dictionary = {} # era_id -> the quantity
 #
 # Computes the list of the groups of the eras: the consecutive columns of one era.
 # It returns an array of dictionaries:
+#   {era_id, era_name, col_start, col_end, x_center, x_boundary}
 # all the technologies of each era stand in an uninterrupted block from left to right, therefore
 # the groups of the eras come out clean, and between them a vertical separator is drawn.
 # The layout by the dependencies (barycenter) inside each era is preserved.
@@ -1032,8 +1028,8 @@ func _get_tech_data(tech_id: String) -> Dictionary:
     return {}
 
 func _update_states():
-# " (Name1, Name2)" by the unique names in the order of the first appearance; for
-# an empty list — an empty string.
+    # " (Name1, Name2)" by the unique names in the order of the first appearance; for
+    # an empty list — an empty string.
     var unlocked = CityData.unlocked_technologies
     var current_id: String = CityData.current_research_tech_id
 
@@ -1046,7 +1042,7 @@ func _update_states():
 
         _style_button(btn, is_unlocked, is_current, is_available, tech_id)
 
-# The position: under the label (the global rect of the label minus the global position
+        # The position: under the label (the global rect of the label minus the global position
         var progress: ProgressBar = _find_progress_in_button(btn)
         if progress != null:
             if is_current:
@@ -1371,7 +1367,7 @@ func _find_free_y_between(parent_col: int, child_col: int, target_y: float) -> f
     # The horizontal segment of the arrow, going from the column parent_col to child_col,
     # physically intersects the intermediate columns. So as not to draw over
     # the buttons, it must pass at a Y free from the buttons in all these columns.
-# The horizontal segment of the arrow, going from the column parent_col to child_col,
+    # The horizontal segment of the arrow, going from the column parent_col to child_col,
     # physically intersects the intermediate columns. So as not to draw over
     # the buttons, it must pass at a Y free from the buttons in all these columns.
     var occupied: Array = [] # [y_start, y_end] of the occupied intervals
@@ -1428,11 +1424,11 @@ func _build_arrow_path(parent_right: Vector2, child_left: Vector2, parent_col: i
     #
     
     #
-# For the distant columns (child_col - parent_col > 1) — a path through the free
+    # For the distant columns (child_col - parent_col > 1) — a path through the free
     # Y-corridor: the vertical segments in the gaps between the columns, the horizontal
     # segment at a Y free from the buttons in all the intermediate columns.
     #
-        # There is no free corridor — a fallback to the simple zigzag.
+    # There is no free corridor — a fallback to the simple zigzag.
     if child_col - parent_col <= 1:
         var mid_x: float = (parent_right.x + child_left.x) * 0.5
         return PackedVector2Array([
