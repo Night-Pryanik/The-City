@@ -79,8 +79,8 @@ var last_research_messages: Array = []
 # this is a runtime bypass toggle for the debugging, and not a game state.
 var total_population: int = 1
 var idle_population: int = 1 # свободные жители (не занятые нигде)
-# Название города — выбирается игроком в диалоге при старте новой игры.
-# Пустая строка = имя ещё не задано (на карте тогда не рисуется).
+# The name of the city — it is chosen by the player in the dialog at the start of a new game.
+# An empty string = the name is not set yet (then it is not drawn on the map).
 var city_name: String = ""
 var food_for_new_settler: int = 1000
 var food_per_citizen: int = 10
@@ -1768,30 +1768,30 @@ func _complete_tech_instantly(tech_id: String) -> bool:
     print("Мгновенно изучена (дебаг): ", tech_data.get("name", tech_id))
     return true
 
-# Фактическая скорость науки города (очков/сек) — прямая сумма источников:
-# базовый доход (BASE_SCIENCE_PER_SEC) плюс вклад работающих зданий науки
-# (кэш science_buildings_rate_per_sec, пересчитывается раз в тик в do_tick).
-# Пула науки нет: произведённая наука не копится на складе, а сразу задаёт
-# скорость изучения технологий (см. tick_research_science_continuous и
-# docs.md, «Наука: производство и исследования»).
+# The actual rate of the science of the city (points/sec) — a direct sum of the sources:
+# the base income (BASE_SCIENCE_PER_SEC) plus the contribution of the working science buildings
+# (the cache science_buildings_rate_per_sec, it is recalculated once per tick in do_tick).
+# There is no pool of the science: the produced science is not accumulated in the storage, and it immediately sets
+# the rate of the learning of the technologies (see tick_research_science_continuous and
+# docs.md, "Science: production and research").
 func get_science_rate_per_sec() -> float:
     return BASE_SCIENCE_PER_SEC + science_buildings_rate_per_sec
 
-# Разбивка скорости науки по источникам (см. science_breakdown) — для тултипа
-# на вкладке «Технологии». Кэш заполняется раз в тик в do_tick().
+# The breakdown of the rate of the science by the sources (see science_breakdown) — for the tooltip
+# on the tab "Technologies". The cache is filled in once per tick in do_tick().
 func get_science_breakdown() -> Dictionary:
     return science_breakdown
 
-# Возвращает количество накопленных очков науки по текущему исследованию.
+# Returns the number of the accumulated points of the science for the current research.
 func get_research_science_collected() -> float:
     return research_science_accumulated
 
-# Обновляет прогресс исследования непрерывно — вызывается каждый кадр
-# из _process в main_map.gd. Скорость — прямая сумма всех источников науки
-# (get_science_rate_per_sec: база + работающие здания науки), поэтому
-# прогресс-бар растёт плавно покадрово. Наука НЕ копится: пока исследования
-# нет, начисления не происходит, а выработка зданий «впустую» теряется
-# (пул науки убран, см. docs.md, «Наука: производство и исследования»).
+# Updates the progress of the research continuously — it is called every frame
+# from _process in main_map.gd. The rate is a direct sum of all the sources of the science
+# (get_science_rate_per_sec: the base + the working science buildings), therefore
+# the progress bar grows smoothly frame by frame. The science is NOT accumulated: while there is no research,
+# the crediting does not happen, and the work of the buildings is lost "in vain"
+# (the pool of the science has been removed, see docs.md, "Science: production and research").
 func tick_research_science_continuous(delta: float) -> void:
     if Engine.is_editor_hint():
         return
@@ -1811,12 +1811,12 @@ func _complete_research():
     unlocked_technologies.append(current_research_tech_id)
     var tech_name = get_tech_name(current_research_tech_id)
     emit_signal("research_error", tr("Research complete: ") + tech_name)
-    # Технология может открывать новые виды ресурсов — спавним их на карте.
-    # Сообщения готовим ДО сигнала research_completed, чтобы попап
-    # мог отобразить найденные ресурсы сразу.
+    # The technology can open the new kinds of the resources — we spawn them on the map.
+    # We prepare the messages BEFORE the signal research_completed, so that the popup
+    # can display the found resources at once.
     last_research_messages = spawn_resource_on_tech_research(completed_tech_id)
     emit_signal("research_completed", current_research_tech_id)
-    # После завершения исследования очки науки сбрасываются на ноль.
+    # After the completion of the research the points of the science are reset to zero.
     current_research_tech_id = ""
     current_research_science_cost = 0
     research_progress = 0.0
@@ -1826,9 +1826,9 @@ func _complete_research():
 func is_tech_unlocked(tech_id: String) -> bool:
     return tech_id in unlocked_technologies
 
-# Человекочитаемое название технологии по её id (для сообщений игроку и
-# тултипов). Если технология не найдена — возвращается сам id, чтобы в
-# сообщении не оказалось пустой строки.
+# The human-readable name of the technology by its id (for the messages to the player and
+# the tooltips). If the technology is not found — the id itself is returned, so that in the
+# message there is not an empty string.
 func get_tech_name(tech_id: String) -> String:
     for t in GameData.technologies:
         if t.get("id", "") == tech_id:
@@ -1841,12 +1841,12 @@ func _get_tech_data(tech_id: String):
             return t
     return null
 
-# Проверяет, выполнены ли prerequisites технологии.
-# Формат: [ [A, B], [C] ] => (A И B) ИЛИ C
+# Are the prerequisites of the technology met.
+# The format: [ [A, B], [C] ] => (A AND B) OR C
 func are_prerequisites_met(tech_id: String) -> bool:
-    # Дебаг: при включённом «не учитывать требования» prerequisites не
-    # проверяются вовсе. Изучается только выбранная технология, предшественники
-    # в unlocked_technologies не добавляются (см. _complete_research).
+    # Debug: with "do not observe the requirements" enabled the prerequisites are not
+    # checked at all. Only the selected technology is learned, the predecessors
+    # are not added to unlocked_technologies (see _complete_research).
     if ignore_tech_requirements:
         return true
     var tech_data = _get_tech_data(tech_id)
@@ -1865,7 +1865,7 @@ func are_prerequisites_met(tech_id: String) -> bool:
             return true
     return false
 
-# Возвращает человекочитаемый текст требований технологии.
+# Returns the human-readable text of the requirements of the technology.
 func get_tech_prerequisites_text(tech_id: String) -> String:
     var tech_data = _get_tech_data(tech_id)
     if tech_data == null or not tech_data.has("prerequisites"):
@@ -1880,8 +1880,8 @@ func get_tech_prerequisites_text(tech_id: String) -> String:
         or_parts.append(tr(" and ").join(and_names))
     return tr(" or ").join(or_parts)
 
-# Доступна ли технология для изучения (prerequisites выполнены, не изучена,
-# не в процессе, эпоха не выше текущей).
+# Is the technology available for learning (the prerequisites are met, it is not learned,
+# it is not in progress, the era is not above the current one).
 func is_tech_available(tech_id: String) -> bool:
     if tech_id in unlocked_technologies:
         return false
@@ -1891,27 +1891,27 @@ func is_tech_available(tech_id: String) -> bool:
         return false
     return are_prerequisites_met(tech_id)
 
-# Возвращает список id технологий (в порядке их изучения — от корня до target),
-# которые игроку ещё нужно изучить, чтобы стала доступной tech_id.
-# Уже изученные технологии пропускаются; требования берутся из поля
-# `prerequisites` (группы ИЛИ · элементов И — выбирается группа с наименьшим
-# числом недостающих технологий). Исключаются циклы и дубликаты.
-# Используется для кнопки «Изучить ...» в панели управления спецдействий.
+# Returns the list of the ids of the technologies (in the order of their learning — from the root to the target),
+# which the player still has to learn in order for tech_id to become available.
+# The already learned technologies are skipped; the requirements are taken from the field
+# `prerequisites` (the OR groups · the AND elements — the group with the least
+# number of the missing technologies is chosen). The cycles and the duplicates are excluded.
+# It is used for the button "Learn ..." in the control panel of the special actions.
 func get_tech_study_chain(tech_id: String) -> Array:
     var chain: Array = []
     _collect_tech_chain(tech_id, chain, {})
     return chain
 
-# Максимальное количество «хопов» — технологий, оставшихся до открытия целевой
-# технологии (НЕ считая саму цель), — при котором панель управления показывает
-# кнопки постройки улучшения, заблокированного технологией, и изучения этой
-# технологии. Требование: кнопки видны только если хопов ≤ TECH_HOPS_MAX.
+# The maximum number of "hops" — the technologies that remain until the target
+# technology is unlocked (NOT counting the target itself) — at which the control panel shows
+# the buttons of the construction of the improvement blocked by the technology, and of the
+# learning of this technology. The requirement: the buttons are visible only if the hops are <= TECH_HOPS_MAX.
 const TECH_HOPS_MAX := 2
 
-# Сколько технологий осталось изучить, чтобы открыть tech_id (сама tech_id
-# НЕ считается). Пример для «Каналов» (canals): на старте цепочка = 3
-# («Ирригация», «Горное дело», «Каменная кладка») → 3 хопа; после изучения
-# «Ирригации» → 2 хопа («Горное дело», «Каменная кладка»).
+# How many technologies are left to learn in order to unlock tech_id (tech_id itself is
+# NOT counted). An example for "Canals": at the start the chain = 3
+# ("Irrigation", "Mining", "Stone masonry") → 3 hops; after the learning of
+# "Irrigation" → 2 hops ("Mining", "Stone masonry").
 func get_tech_hops(tech_id: String) -> int:
     return maxi(0, get_tech_study_chain(tech_id).size() - 1)
 
@@ -1921,13 +1921,13 @@ func _collect_tech_chain(tech_id: String, chain: Array, visiting: Dictionary) ->
     var data = _get_tech_data(tech_id)
     if data == null or is_tech_unlocked(tech_id):
         return
-    # Технологии будущих эпох в цепочку не попадают: их нельзя изучать,
-    # пока не совершён переход в соответствующую эпоху.
+    # The technologies of the future eras do not enter the chain: they cannot be learned
+    # until the transition to the corresponding era has been made.
     if not is_tech_era_allowed(tech_id):
         return
     var prereqs: Array = data.get("prerequisites", [])
     if not prereqs.is_empty():
-        # Выбираем группу предусловий с наименьшим числом недостающих технологий.
+        # We choose the group of the preconditions with the least number of the missing technologies.
         var best_reqs: Array = []
         var best_missing := 1 << 30
         for group in prereqs:
@@ -1945,7 +1945,7 @@ func _collect_tech_chain(tech_id: String, chain: Array, visiting: Dictionary) ->
     if tech_id not in chain:
         chain.append(tech_id)
 
-# Открыто ли здание игроку (по полю unlock_tech самого здания).
+# Is the building unlocked for the player (by the unlock_tech field of the building itself).
 func is_building_unlocked(building_id: String) -> bool:
     for b in GameData.buildings:
         if b["id"] == building_id:
@@ -1954,12 +1954,12 @@ func is_building_unlocked(building_id: String) -> bool:
                 return is_tech_unlocked(required_tech)
     return true
 
-# Проверяет дополнительные условия строительства здания из buildings.json.
-# Возвращает словарь {"ok": bool, "reason": String}, чтобы UI и фактический
-# запуск строительства показывали одинаковую причину отказа.
+# Checks the additional conditions of the construction of the building from buildings.json.
+# It returns a dictionary {"ok": bool, "reason": String}, so that the UI and the actual
+# start of the construction show the same reason of the refusal.
 func check_building_additional_req(building_id: String) -> Dictionary:
-    # Дебаг: при включённом «Игнорировать требования строительства» любые
-    # дополнительные условия (additional_req) считаются выполненными.
+    # Debug: with "Ignore building requirements" enabled any
+    # additional condition (additional_req) is considered met.
     if ignore_build_requirements:
         return {"ok": true, "reason": ""}
     var building_data = null
@@ -1991,7 +1991,7 @@ func check_building_additional_req(building_id: String) -> Dictionary:
 
     return {"ok": false, "reason": tr("Unknown construction requirement: %s") % requirement}
 
-# Открыто ли улучшение игроку (по полю unlock_tech самого улучшения).
+# Is the improvement unlocked for the player (by the unlock_tech field of the improvement itself).
 func is_improvement_unlocked(imp_id: String) -> bool:
     if imp_id == null or imp_id == "":
         return true
@@ -2001,28 +2001,32 @@ func is_improvement_unlocked(imp_id: String) -> bool:
         return is_tech_unlocked(required_tech)
     return true
 
-# Возвращает id технологии, открывающей указанное улучшение (для контекстного меню).
+# Returns the id of the technology that unlocks the specified improvement (for the context menu).
 func get_improvement_unlock_tech(imp_id: String) -> String:
     var imp_data = GameData.improvements.get(imp_id, {})
     return imp_data.get("unlock_tech", "")
 
-# Формирует сообщения о ресурсах, раскрываемых изученной технологией.
-# Вызывается после завершения исследования технологии.
+# Assembles the messages about the resources revealed by the learned technology.
+# It is called after the completion of the research of a technology.
 #
-# Новая модель (см. docs.md, «tech_reveal: скрытые ресурсы»):
-#   - Все ресурсы спавнятся на карте с самого старта (map_generator.gd).
-#   - tech_required гейтит постройку улучшения (как и раньше).
-#   - tech_reveal гейтит видимость самого ресурса на карте.
-#   - Эта функция перечисляет ресурсы, у которых tech_reveal == tech_id,
-#     и для каждого формирует сообщение:
-#       * ресурс есть на карте          → "Учёные оценили: найдено <X>."
-#       * ресурса на карте нет          → "Похоже, в вашем регионе <X> отсутствует."
-#   - Размещением на карте функция НЕ занимается: все ресурсы уже там
-#     с момента генерации карты.
+# The new model (see docs.md, "tech_reveal: hidden resources"):
+#   - All the resources spawn on the map from the very start (map_generator.gd).
+#   - tech_required gates the construction of the improvement (as before).
+#   - tech_reveal gates the visibility of the resource itself on the map.
+#   - This function enumerates the resources for which tech_reveal == tech_id,
+#     and for each one assembles a message:
+#       * the resource is on the map          → "The scholars have estimated: <X> has been found."
+#       * the resource is not on the map       → "It seems that <X> is absent in your region."
+#   - The function does NOT deal with the placement on the map: all the resources are already there
+#     from the moment of the generation of the map.
 #
-# Гарантия «1 металл в стартовом Кольце + Регионе» обеспечивается отдельно
-# в main_map._initialize_map через MapHelpers.ensure_minimum_resource.
-# Возвращает массив сообщений для попапа технологии.
+# The guarantee "1 metal in the starting Ring + Region" is provided separately
+# in main_map._initialize_map through MapHelpers.ensure_minimum_resource.
+# It returns an array of the messages for the popup of the technology.
+    # We collect the kinds of the resources REVEALED by this technology (tech_reveal).
+    # If a resource has no tech_reveal — it is visible at once and this function does not
+    # mention it; if tech_reveal is present, but does not coincide with tech_id,
+    # the resource is still hidden and we do not report it either.
 func spawn_resource_on_tech_research(tech_id: String) -> Array:
     var messages = []
     if Engine.is_editor_hint():
@@ -2032,10 +2036,10 @@ func spawn_resource_on_tech_research(tech_id: String) -> Array:
         return messages
     var tile_data = main_map.tile_data
 
-    # Собираем виды ресурсов, РАСКРЫВАЕМЫХ этой технологией (tech_reveal).
-    # Если у ресурса нет tech_reveal — он виден сразу и эта функция его
-    # не упоминает; если tech_reveal есть, но не совпадает с tech_id,
-    # ресурс ещё скрыт и о нём мы тоже не сообщаем.
+    # We collect the kinds of the resources REVEALED by this technology (tech_reveal).
+    # If a resource has no tech_reveal — it is visible at once and this function does not
+    # mention it; if tech_reveal is present, but does not coincide with tech_id,
+    # the resource is still hidden and we do not report it either.
     for res_id in GameData.raw_resources:
         var data = GameData.raw_resources[res_id]
         var reveal_tech: String = data.get("tech_reveal", "")
@@ -2048,7 +2052,7 @@ func spawn_resource_on_tech_research(tech_id: String) -> Array:
             messages.append(tr("It seems your region has no %s.") % res_name)
     return messages
 
-# Проверяет, есть ли на карте хотя бы один гекс с указанным ресурсом.
+# Checks whether there is at least one hex with the specified resource on the map.
 func _is_resource_on_map(tile_data: Array, res_id: String) -> bool:
     for row in tile_data:
         for tile in row:
@@ -2056,8 +2060,8 @@ func _is_resource_on_map(tile_data: Array, res_id: String) -> bool:
                 return true
     return false
 
-# Проверяет, присутствует ли на карте хотя бы один ресурс, РАСКРЫВАЕМЫЙ
-# указанной технологией (tech_reveal == tech_id).
+# Checks whether at least one resource REVEALED is present on the map
+# specified by the technology (tech_reveal == tech_id).
 func _tech_has_resource_on_map(tile_data: Array, tech_id: String) -> bool:
     for row in tile_data:
         for tile in row:
@@ -2069,13 +2073,13 @@ func _tech_has_resource_on_map(tile_data: Array, tech_id: String) -> bool:
                 return true
     return false
 
-# Вызывается при загрузке сохранения: для уже изученных технологий
-# гарантирует, что открытые ими ресурсы корректно отображаются.
-# В новой модели (все ресурсы уже на карте) это, по сути, no-op: если
-# ресурс с tech_reveal == tech_id на карте есть (а он там есть в норме),
-# функция ничего не делает. Если сейв старый и ресурс на карте отсутствует,
-# нового спавна тоже не делаем — старые сохранения с повреждённой картой
-# пользователь чинит сам (или стартует новую партию).
+# It is called on the loading of a save: for the already learned technologies
+# it guarantees that the resources opened by them are displayed correctly.
+# In the new model (all the resources are already on the map) this is essentially a no-op: if
+# the resource with tech_reveal == tech_id is on the map (and normally it is),
+# the function does nothing. If the save is old and the resource is absent from the map,
+# we do not spawn a new one either — the old saves with a damaged map
+# the user fixes himself (or starts a new game).
 func ensure_tech_resources_spawned():
     if Engine.is_editor_hint():
         return
@@ -2084,27 +2088,27 @@ func ensure_tech_resources_spawned():
         return
     var tile_data = main_map.tile_data
     for tech_id in unlocked_technologies:
-        # На карте уже есть ресурс, раскрываемый этой технологией — ок.
+        # There is already a resource on the map, revealed by this technology — ok.
         if _tech_has_resource_on_map(tile_data, tech_id):
             continue
-        # На всякий случай прогоняем функцию (сформирует «отсутствует»
-        # сообщения, но в HUD они не пойдут — мы их тут же отбрасываем).
+        # Just in case we run the function (it will form the "is absent"
+        # messages, but in the HUD they will not go — we discard them right away).
         spawn_resource_on_tech_research(tech_id)
 
-# Проверяет доступность продукта (включая технологии, улучшения и здания).
+# Checks the availability of the product (including the technologies, the improvements and the buildings).
 func _is_product_available(product_id: String) -> bool:
     var product_data = GameData.products.get(product_id, {})
-    # Проверка технологии
+    # The check of the technology
     var required_tech = product_data.get("unlock_tech", "")
     if required_tech != "" and not is_tech_unlocked(required_tech):
         return false
 
-    # Проверка улучшения (на карте)
+    # The check of the improvement (on the map)
     var required_improvement = product_data.get("unlock_improvement", "")
     if required_improvement != "" and not _has_improvement(required_improvement):
         return false
 
-    # Проверка здания (в городе)
+    # The check of the building (in the city)
     var required_building = product_data.get("unlock_building", "")
     if required_building != "" and not _has_building(required_building):
         return false
@@ -2128,25 +2132,24 @@ func _has_building(building_id: String) -> bool:
             return true
     return false
 
-# --- АПГРЕЙД ЗДАНИЙ ---
-# Здание может иметь улучшенную версию: поле "upgrades_into" в buildings.json
-# (например, hand_mill -> animal_mill). Апгрейд — обычная стройка в общем пуле
-# труда (build_manager), но во время неё здание продолжает работать как обычно,
-# а по завершении заменяется на улучшенную версию с переносом настроек
-# (рецепты слотов, приоритет качества; работник остаётся привязан к индексу
-# здания, поэтому состояние «работает/приостановлено» переносится само).
-
-# Возвращает id улучшенной версии здания (поле "upgrades_into") или пустую
-# строку, если у здания нет улучшения.
+# --- THE UPGRADES OF THE BUILDINGS ---
+# A building can have an improved version: the field "upgrades_into" in buildings.json
+# (for example, hand_mill -> animal_mill). The upgrade is an ordinary build in the common pool
+# of the labour (build_manager), but during it the building continues to work as usual,
+# and on the completion it is replaced by the improved version with the transfer of the settings
+# (the recipes of the slots, the priority of the quality; the worker remains bound to the index of the
+# building, therefore the state "working/paused" is transferred by itself).
+# Returns the id of the improved version of the building (the field "upgrades_into") or an empty
+# string, if the building has no improvement.
 func get_building_upgrade_target(building_id: String) -> String:
     for b in GameData.buildings:
         if b.get("id", "") == building_id:
             return String(b.get("upgrades_into", ""))
     return ""
 
-# Возвращает данные идущего апгрейда здания по его индексу в городе
-# (пустой словарь, если апгрейд не идёт). Проксирует запрос в build_manager,
-# где хранятся все активные стройки.
+# Returns the data of the going upgrade of the building by its index in the city
+# (an empty dictionary, if the upgrade is not going). It proxies the request into build_manager,
+# where all the active builds are stored.
 func get_building_upgrade_data(idx: int) -> Dictionary:
     if Engine.is_editor_hint():
         return {}
@@ -2156,10 +2159,10 @@ func get_building_upgrade_data(idx: int) -> Dictionary:
     var bm = main_map.get_node("BuildManager")
     return bm.get_building_upgrade_by_index(idx)
 
-# Можно ли начать апгрейд здания под индексом idx:
-# - у здания есть поле upgrades_into;
-# - улучшенная версия открыта технологией (её unlock_tech изучен);
-# - апгрейд этого здания ещё не идёт.
+# Can the upgrade of the building under the index idx be started:
+# - the building has the field upgrades_into;
+# - the improved version is unlocked by a technology (its unlock_tech is learned);
+# - the upgrade of this building is not going yet.
 func can_upgrade_building(idx: int) -> bool:
     if idx < 0 or idx >= city_built_buildings.size():
         return false
@@ -2175,11 +2178,11 @@ func can_upgrade_building(idx: int) -> bool:
         return false
     return true
 
-# Запускает апгрейд здания под индексом idx в его улучшенную версию.
-# Атомарно списывает additional_cost улучшенной версии и регистрирует стройку
-# апгрейда в build_manager (либо завершает апгрейд мгновенно, если у улучшенной
-# версии work_cost == 0 или включён дебаг-флаг «Игнорировать требования
-# строительства»). Возвращает { "ok": bool, "reason": String } для UI.
+# Starts the upgrade of the building under the index idx into its improved version.
+# It atomically writes off the additional_cost of the improved version and registers the build of the
+# upgrade in build_manager (or completes the upgrade instantly, if the work_cost of the improved
+# version == 0 or the debug flag "Ignore building requirements" is enabled). It returns
+# { "ok": bool, "reason": String } for the UI.
 func start_building_upgrade(idx: int) -> Dictionary:
     if idx < 0 or idx >= city_built_buildings.size():
         return {"ok": false, "reason": tr("Building not found")}
@@ -2196,11 +2199,11 @@ func start_building_upgrade(idx: int) -> Dictionary:
     if upgrade_data == null:
         return {"ok": false, "reason": tr("Improved building version not found")}
 
-    # Улучшенная версия должна быть открыта технологией.
+    # The improved version must be unlocked by a technology.
     if not is_building_unlocked(upgrade_to):
         return {"ok": false, "reason": tr("Research the technology that unlocks \"%s\" first") % upgrade_data.get("name", upgrade_to)}
 
-    # Дополнительные условия улучшенной версии (additional_req).
+    # The additional conditions of the improved version (additional_req).
     var additional_req_check = check_building_additional_req(upgrade_to)
     if not additional_req_check["ok"]:
         return {"ok": false, "reason": additional_req_check["reason"]}
@@ -2210,19 +2213,19 @@ func start_building_upgrade(idx: int) -> Dictionary:
     if bm == null:
         return {"ok": false, "reason": tr("Construction manager unavailable")}
 
-    # Апгрейд этого здания уже идёт — повторный запуск невозможен.
+    # The upgrade of this building is already going — a repeated start is impossible.
     if not bm.get_building_upgrade_by_index(idx).is_empty():
         return {"ok": false, "reason": tr("This building is already being upgraded")}
 
-    # Общий лимит одновременных строек (здания + улучшения + апгрейды) равен
-    # числу жителей. Проверяем ДО списания материалов.
+    # The common limit of the simultaneous builds (buildings + improvements + upgrades) is equal to
+    # the number of the citizens. We check it BEFORE the write-off of the materials.
     var work_cost = upgrade_data.get("work_cost", 0)
     if work_cost > 0 and not ignore_build_requirements:
         if bm.get_total_active_builds() >= total_population:
             return {"ok": false, "reason": tr("You can build or upgrade no more than %d buildings at once (limit = number of citizens)") % total_population}
 
-    # Атомарно списываем additional_cost улучшенной версии (при включённом
-    # дебаг-флаге материалы не проверяются и не списываются).
+    # We atomically write off the additional_cost of the improved version (with the debug
+    # flag enabled the materials are not checked and not written off).
     var cost_check = consume_additional_cost(upgrade_data)
     if not cost_check["ok"]:
         var missing_names = []
@@ -2232,9 +2235,9 @@ func start_building_upgrade(idx: int) -> Dictionary:
 
     var build_key = bm.start_building_upgrade(idx, from_id, upgrade_to)
     if build_key == "":
-        # Мгновенное завершение (work_cost == 0 / дебаг-флаг): сигнал
-        # building_upgrade_completed уже эмитнут, main_map обработает его
-        # и вызовет complete_building_upgrade.
+        # The instant completion (work_cost == 0 / the debug flag): the signal
+        # building_upgrade_completed has already been emitted, main_map will handle it
+        # and call complete_building_upgrade.
         emit_signal("city_updated")
         return {"ok": true, "reason": ""}
 
@@ -2242,10 +2245,10 @@ func start_building_upgrade(idx: int) -> Dictionary:
     emit_signal("city_updated")
     return {"ok": true, "reason": ""}
 
-# Завершает апгрейд: заменяет здание под индексом idx на улучшенную версию
-# с переносом настроек. Вызывается из main_map._on_building_upgrade_completed
-# (сигнал build_manager.building_upgrade_completed) или напрямую при
-# мгновенном апгрейде. Возвращает true при успехе.
+# Completes the upgrade: it replaces the building under the index idx with the improved version
+# with the transfer of the settings. It is called from main_map._on_building_upgrade_completed
+# (the signal build_manager.building_upgrade_completed) or directly on
+# an instant upgrade. It returns true on success.
 func complete_building_upgrade(idx: int, upgrade_to: String) -> bool:
     if idx < 0 or idx >= city_built_buildings.size():
         return false
@@ -2254,11 +2257,11 @@ func complete_building_upgrade(idx: int, upgrade_to: String) -> bool:
     if from_id == "" or get_building_upgrade_target(from_id) != upgrade_to:
         return false
 
-    # Настройки старой версии: выбранные рецепты слотов и приоритет качества.
+    # The settings of the old version: the selected recipes of the slots and the priority of the quality.
     var old_slots: Array = old_bld.get("slots", [])
     var priority: String = old_bld.get("quality_priority", GameData.get_quality_priority_default())
 
-    # Данные улучшенной версии: число слотов и дефолтные рецепты.
+    # The data of the improved version: the number of the slots and the default recipes.
     var new_bdata = null
     for b in GameData.buildings:
         if b.get("id", "") == upgrade_to:
@@ -2270,14 +2273,14 @@ func complete_building_upgrade(idx: int, upgrade_to: String) -> bool:
         slot_count = int(new_bdata.get("production_slots", 1))
         default_recipes = new_bdata.get("default_recipes", [])
 
-    # Перенос рецептов: рецепт, исполняемый и в новой версии, сохраняется;
-    # непригодные (например, ручной помол зерна при апгрейде в мельницу с
-    # животной тягой) заменяются дефолтным рецептом новой версии или «Пусто».
+    # The transfer of the recipes: a recipe which is executable in the new version is preserved;
+    # the unsuitable ones (for example, the manual grinding of the grain on the upgrade to the mill
+    # with the animal traction) are replaced by the default recipe of the new version or by "Empty".
     var new_slots: Array = []
     for i in range(slot_count):
         var selected_id: String = old_slots[i] if i < old_slots.size() else ""
         if selected_id == "" or selected_id == "empty":
-            # Пустой слот остаётся пустым — выбор игрока сохраняется.
+            # An empty slot remains empty — the choice of the player is preserved.
             new_slots.append("empty")
         elif can_craft_in(selected_id, upgrade_to):
             new_slots.append(selected_id)
@@ -2287,8 +2290,8 @@ func complete_building_upgrade(idx: int, upgrade_to: String) -> bool:
             else:
                 new_slots.append("empty")
 
-    # Состояние «работает/приостановлено» переносится само: работник привязан
-    # к индексу здания (townsfolk_manager), а индекс не меняется.
+    # The state "working/paused" is transferred by itself: the worker is bound
+    # to the index of the building (townsfolk_manager), and the index does not change.
     city_built_buildings[idx] = {
         "id": upgrade_to,
         "slots": new_slots,
@@ -2297,7 +2300,7 @@ func complete_building_upgrade(idx: int, upgrade_to: String) -> bool:
     emit_signal("city_updated")
     return true
 
-# Конвертирует старые записи зданий {"id": ..., "recipe": ...} в новый формат {"id": ..., "slots": [...]}.
+# Converts the old records of the buildings {"id": ..., "recipe": ...} into the new format {"id": ..., "slots": [...]}.
 func migrate_old_save_format():
     for bld in city_built_buildings:
         if not bld.has("slots"):
