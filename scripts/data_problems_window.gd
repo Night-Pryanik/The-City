@@ -1,69 +1,72 @@
 # data_problems_window.gd
-# Окно со списком проблем в игровых данных (res://data/*.json).
+# A window with a list of problems in the game data (res://data/*.json).
 #
-# Показывается в главном меню ДО начала партии (см. main_menu.gd), если
-# scripts/data_validator.gd нашёл битые перекрёстные ссылки. Задача окна —
-# показать автору данных не «что-то сломалось в логе», а конкретную
-# проблемную сущность: какого идентификатора не хватает и в каком поле
-# на него сослались.
+# It is shown in the main menu BEFORE the start of a game (see main_menu.gd) if
+# scripts/data_validator.gd has found broken cross-references. The task of the
+# window is to show the data author not "something broke in the log", but a
+# specific problematic entity: which identifier is missing and in which field
+# it was referenced.
 #
-# Содержимое собирается кодом (без .tscn) — по образцу tech_popup.gd:
-# список проблем может быть любым, а верстка однотипная.
+# The contents are assembled by code (without a .tscn) — following the example of
+# tech_popup.gd: the list of problems can be anything, and the layout is uniform.
 #
-# Окно не мешает начать партию: игрок читает список и закрывает его кнопкой
-# или Esc, после чего играется как обычно. Пока окно открыто, оно перехватывает
-# клики по главному меню (корневой Control с MOUSE_FILTER_STOP накрывает
-# экран целиком) — сначала прочитай ошибки, потом жми «Новая игра».
-# Данные окно не патчатся — исправлять нужно файлы в папке data.
+# The window does not prevent starting a game: the player reads the list and closes
+# it with the button or Esc, and then plays as usual. While the window is open, it
+# intercepts clicks on the main menu (the root Control with MOUSE_FILTER_STOP
+# covers the whole screen) — first read the errors, then press "New game".
+# The window does not patch the data — the files in the data folder need to be fixed.
 extends Control
 
-# Константы проверок берём из самого валидатора (preload, а не автозагрузка):
-# он не хранит состояния, а окну нужны только заголовки и порядок блоков.
-# Так заголовок проверки и её позиция в окне не могут разойтись с
-# data_validator.gd — они читаются из одного места.
+# We take the check constants from the validator itself (preload, and not an
+# autoload): it does not keep state, and the window only needs the titles and the
+# order of the blocks. In this way the check title and its position in the window
+# cannot diverge from
+# data_validator.gd — they are read from one place.
 const DataValidator = preload("res://scripts/data_validator.gd")
 
-# Размер панели под четыре-пять проблем — типичный объём, при котором
-# список виден целиком без скролла. Больше — появляется вертикальный
-# скроллбар (он и раньше настроен), меньше — лишняя прокрутка на ровно
-# половине экрана.
+# The panel size for four-five problems — a typical amount at which
+# the list is fully visible without scrolling. More — a vertical
+# scrollbar appears (it was configured before as well), less — unnecessary
+# scrolling over exactly half of the screen.
 const PANEL_MIN_SIZE := Vector2(840, 680)
 const TITLE_COLOR := Color(1.0, 0.55, 0.45)
 const GROUP_COLOR := Color(0.6, 1.0, 0.6)
 const REF_ID_COLOR := Color(1.0, 0.83, 0.47)
 const WHERE_COLOR := Color(0.72, 0.72, 0.72)
-# Путь к файлу с проблемой — свой цвет, чтобы взгляд сразу уходил на него,
-# а не искал его в сплошном сером тексте второй строки.
+# The path to the file with the problem — it has its own colour, so that the eye
+# immediately goes to it, and does not look for it in the solid grey text of the
+# second line.
 const FILE_COLOR := Color(0.55, 0.78, 1.0)
 
-# Заголовок окна и сводка — пересобираются под текущий список проблем.
+# The window title and the summary — they are rebuilt for the current list of problems.
 var summary_label: Label
 var problems_box: VBoxContainer
 
-# Узлы, подписи которых меняются при смене языка. Запоминаем их явно:
-# автоперевод Control покрывает только то, что задано в СЦЕНЕ, а это окно
-# строится кодом, поэтому переподписать их придётся вручную (см.
+# The nodes whose labels change on a language change. We remember them explicitly:
+# the auto-translation of Control covers only what is set in the SCENE, and this window
+# is built by code, therefore they will have to be re-labelled manually (see
 # _on_locale_changed).
 var title_label: Label
 var copy_button: Button
 var ok_button: Button
 
-# Текущий список проблем: нужен кнопке «Скопировать список». Сама отрисовка
-# его не хранит — содержимое лежит в узлах problems_box.
+# The current list of problems: it is needed by the "Copy the list" button. The drawing itself
+# does not store it — the contents live in the problems_box nodes.
 var all_problems: Array = []
 
 
 func _ready():
     process_mode = Node.PROCESS_MODE_ALWAYS
 
-    # Язык можно переключить прямо в главном меню, и окно проблем на экране
-    # в этот момент. Текст в нём собран из данных валидатора на языке
-    # запуска, поэтому без пересборки он остался бы на старом. Сами данные не
-    # трогаем: проверка не перезапускается, пересобираются только формулировки.
+    # The language can be switched right in the main menu, and the problem window is
+    # on the screen at that moment. The text in it is assembled from the validator
+    # data in the language of the launch, therefore without a rebuild it would stay
+    # in the old one. The data itself is not
+    # touched: the check is not restarted, only the wordings are rebuilt.
     LocalizationManager.locale_changed.connect(_on_locale_changed)
 
-    # Затемнение фона — окно читается как отдельный экран, а не как
-    # всплывающая подсказка поверх меню.
+    # Dimming of the background — the window is read as a separate screen, and not as
+    # a popup hint over the menu.
     var dim = ColorRect.new()
     dim.color = Color(0, 0, 0, 0.5)
     dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -99,8 +102,9 @@ func _ready():
     summary_label.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85))
     vbox.add_child(summary_label)
 
-    # Проблем может быть много (одна опечатка в id даёт десятки строк),
-    # поэтому список всегда в ScrollContainer, а кнопки прижаты к низу.
+    # There may be many problems (a single typo in an id gives dozens of lines),
+    # therefore the list is always in a ScrollContainer, and the buttons are pressed
+    # to the bottom.
     var scroll = ScrollContainer.new()
     scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
     scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -129,39 +133,40 @@ func _ready():
     ok_button.pressed.connect(_on_ok_pressed)
     buttons.add_child(ok_button)
 
-    # _ready() вызывается при add_child(), а список проблем приходит
-    # отдельным вызовом — на время между ними окно невидимо.
+    # _ready() is called on add_child(), and the list of problems arrives as
+    # a separate call — the window is invisible in the time between them.
     hide()
 
 
-# Показывает список проблем. problems — массив записей из
-# DataValidator.validate() (см. шапка scripts/data_validator.gd).
+# Shows the list of problems. problems is an array of entries from
+# DataValidator.validate() (see the header of scripts/data_validator.gd).
 func show_problems(problems: Array):
     all_problems = problems
     _build_content(problems)
 
-    # Оверлей растягивается по родителю. Родителем обязан быть корень
-    # окна (get_tree().root), а не Control главного меню: у того якоря
-    # заданы не по краям экрана (см. scenes/main_menu.tscn), и оверлей
-    # накрыл бы только часть экрана.
+    # The overlay stretches to the parent. The parent must be the window
+    # root (get_tree().root), and not the main menu Control: its anchors
+    # are not set to the screen edges (see scenes/main_menu.tscn), and the overlay
+    # would cover only part of the screen.
     #
-    # Именно set_anchors_and_offsets_preset, а не set_anchors_preset:
-    # второй меняет якоря, но сохраняет текущий прямоугольник (подгоняет
-    # отступы), и оверлей оставался бы размером со свою панель. Первый
-    # обнуляет отступы, и PRESET_FULL_RECT растягивает Control по
-    # родителю при любом разрешении и режиме растяжения.
+    # Precisely set_anchors_and_offsets_preset, and not set_anchors_preset:
+    # the second changes the anchors but keeps the current rectangle (it fits
+    # the offsets), and the overlay would remain the size of its panel. The first
+    # zeroes the offsets, and PRESET_FULL_RECT stretches the Control to the
+    # parent at any resolution and stretch mode.
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     show()
     move_to_front()
 
 
-# Пересобирает содержимое окна на новом языке.
+# Rebuilds the window contents in the new language.
 #
-# Два независимых источника текста, и оба зависят от языка:
-#   * формулировки проблем — лежат в самих записях, их пересобирает
-#     DataValidator.localize_problems() (проверка при этом не перезапускается);
-#   * заголовок, сводка и подписи кнопок — наши собственные, их Godot
-#     переводит сам, потому что заданы через tr() на узлах.
+# Two independent sources of text, and both depend on the language:
+#   * the wordings of the problems — they lie in the entries themselves, they are
+    #     rebuilt by DataValidator.localize_problems() (the check itself is not
+    #     restarted);
+#   * the title, the summary and the button labels — our own ones, Godot
+#         translates them itself, because they are set via tr() on the nodes.
 func _on_locale_changed(_locale: String) -> void:
     DataValidator.localize_problems(all_problems)
     _build_content(all_problems)
@@ -175,7 +180,7 @@ func _build_content(problems: Array):
         problems_box.remove_child(child)
         child.queue_free()
 
-    # Сводка: сколько всего и сколько по видам проверок.
+    # The summary: how many in total and how many by check kind.
     var counts := _count_by_kind(problems)
     var summary := tr("Found %d problems. Some recipes, resources and technologies may work incorrectly — check the files in the res://data folder.") % problems.size()
     var details: Array = []
@@ -185,8 +190,8 @@ func _build_content(problems: Array):
         summary += "\n" + "\n".join(details)
     summary_label.text = summary
 
-    # Проблемы идут блоками по виду проверки: заголовок блока объясняет,
-    # ЧТО сломалось, строки под ним — где именно.
+    # The problems go in blocks by check kind: the block header explains
+    # WHAT broke, the rows under it — where exactly.
     var current_kind := ""
     for problem in problems:
         var kind := str(problem.get("kind", ""))
@@ -200,40 +205,41 @@ func _build_content(problems: Array):
         problems_box.add_child(_make_problem_label(problem))
 
 
-# Строка одной проблемы: первая строка — чего не хватает (id подсвечен),
-# вторая — в каком поле на него сослались.
+# The row of one problem: the first line — what is missing (the id is highlighted),
+# the second — in which field it was referenced.
 #
-# RichTextLabel, а не Label: разметка собрана BBCode-строками (жирный,
-# цвета), а у Label тегов нет — игрок увидел бы «[color=#…]» как обычный
-# текст (та же причина, по которой в resources_tab.gd для разбивки по
-# качеству взят RichTextLabel).
+# RichTextLabel, and not Label: the markup is assembled by BBCode strings (bold,
+# colors), and Label has no tags — the player would see "[color=#…]" as ordinary
+# text (the same reason why in resources_tab.gd a RichTextLabel is taken for the
+# breakdown by quality).
 func _make_problem_label(problem: Dictionary) -> RichTextLabel:
     var ref_id := str(problem.get("ref_id", ""))
     var headline := str(problem.get("headline", ""))
-    # Подсвечиваем сам идентификатор, чтобы он читался с одного взгляда.
+    # We highlight the identifier itself, so that it is read at a glance.
     var marked_headline := _highlight_id(headline, ref_id)
 
     var label := RichTextLabel.new()
     label.bbcode_enabled = true
     label.fit_content = true
     label.scroll_active = false
-    # Сообщения длинные и должны переноситься. Ширину здесь задаёт
-    # контейнер (ScrollContainer по ширине панели), поэтому в отличие от
-    # строки в HBoxContainer у resources_tab.gd перенос включать можно:
-    # метка не просит у контейнера «свою» ширину, а берёт готовую.
+    # The messages are long and must wrap. The width here is set by
+    # the container (the ScrollContainer by the panel width), therefore unlike
+    # the row in the HBoxContainer of resources_tab.gd the wrapping can be
+    # enabled: the label does not ask the container for "its own" width, but
+    # takes the ready one.
     label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    # У RichTextLabel своя тема: без явных размеров и цвета текст был бы
-    # мельче и бледнее соседних Label.
+    # RichTextLabel has its own theme: without explicit sizes and colour the text would
+    # be smaller and paler than the neighbouring Labels.
     label.add_theme_font_size_override("normal_font_size",
             problems_box.get_theme_font_size("font_size"))
     label.add_theme_color_override("default_color", Color.WHITE)
-    # Метка не должна мешать тянуть список мышью.
+    # The label must not interfere with dragging the list with the mouse.
     label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-    # Три строки: чего не хватает, где нашли ссылку и в каком файле.
-    # Путь к файлу — то самое, ради чего окно и делается: с ним ошибку
-    # видно и исправляется, не открывая все файлы data/ подряд.
+    # Three lines: what is missing, where the reference was found and in which file.
+    # The file path — that is exactly what the window is for: with it the error
+    # is both visible and fixable without opening all the files in data/ one by one.
     var text := "• [b]%s[/b]\n   [color=#%s]%s[/color]" % [
         marked_headline,
         WHERE_COLOR.to_html(false),
@@ -246,17 +252,18 @@ func _make_problem_label(problem: Dictionary) -> RichTextLabel:
     return label
 
 
-# Подсвечивает идентификатор в тексте проблемы.
+# Highlights the identifier in the problem text.
 #
-# Ищет его как отдельное СЛОВО, а не по кавычкам вокруг. Раньше подстановка
-# искала «%s» вместе с кавычками-ёлочками, и это работало только пока текст
-# был русским: кавычки принадлежат переводу, и в другом языке (или если
-# переводчик их снимет) подсветка просто пропадала бы молча.
+# It searches for it as a separate WORD, and not by the guillemets around it.
+# Previously the substitution searched for "%s" together with the guillemets,
+# and that worked only while the text
+# was Russian: the quotes belong to the translation, and in another language
+# (or if a translator removes them) the highlighting would simply disappear silently.
 #
-# Проверка границ — чтобы «wood» не подсветился внутри «wood_field»: соседние
-# символы не должны быть частью идентификатора. Границы считаются по
-# Unicode-кодам, а не сравнением строк, иначе кириллический «с» прошёл бы
-# мимо проверки.
+# The boundary check — so that "wood" is not highlighted inside "wood_field": the neighbouring
+# characters must not be part of the identifier. The boundaries are computed by
+# Unicode codes, and not by string comparison, otherwise a Cyrillic "s" would slip past
+# the check.
 func _highlight_id(text: String, id: String) -> String:
     if id.is_empty():
         return text
@@ -272,9 +279,9 @@ func _highlight_id(text: String, id: String) -> String:
     return text
 
 
-# Символ, который мог бы быть частью идентификатора: буква (латинская или
-# кириллическая), цифра или подчёркивание. Зеркалит IDENT_CHARS/IDENT_UPPER
-# из data_validator.gd — тот же набор, который валидатор считает допустимым.
+# A character that could be part of an identifier: a letter (Latin or
+    # Cyrillic), a digit or an underscore. It mirrors IDENT_CHARS/IDENT_UPPER
+    # from data_validator.gd — the same set that the validator considers valid.
 func _is_ident_char(ch: String) -> bool:
     if ch.length() != 1:
         return false
@@ -287,8 +294,8 @@ func _is_ident_char(ch: String) -> bool:
 
 
 func _on_copy_pressed():
-    # Список копируется целиком — удобно приложить к задаче или сразу
-    # пойти править JSON.
+    # The list is copied as a whole — it is convenient to attach to a task or to go
+    # fix the JSON right away.
     var lines: Array = []
     for problem in all_problems:
         lines.append(str(problem.get("message", "")))
@@ -296,16 +303,16 @@ func _on_copy_pressed():
 
 
 func _on_ok_pressed():
-    # Окно живёт в корне дерева сцены, а не в главном меню, поэтому само
-    # себя не убирает — закрытие это queue_free(). Иначе после ухода в
-    # партию и возвращения в меню накопилос бы по скрытому оверлею на
-    # каждое посещение.
+    # The window lives in the scene tree root, and not in the main menu, therefore it does
+    # not remove itself — closing it is queue_free(). Otherwise after going
+    # into a game and returning to the menu, a hidden overlay would accumulate
+    # on every visit.
     queue_free()
 
 
 func _input(event):
-    # Esc закрывает окно, но только пока оно видно: скрытый оверлей иначе
-    # перехватил бы Esc у главного меню.
+    # Esc closes the window, but only while it is visible: a hidden overlay would
+    # otherwise intercept Esc from the main menu.
     if not is_visible_in_tree():
         return
     if event.is_action_pressed("ui_cancel"):
@@ -313,15 +320,15 @@ func _input(event):
         get_viewport().set_input_as_handled()
 
 
-# Порядок блоков совпадает с порядком проверок в data_validator.gd,
-# поэтому окно читается сверху вниз в том же порядке, в каком идут данные.
+# The order of the blocks matches the order of the checks in data_validator.gd,
+    # therefore the window is read from top to bottom in the same order as the data goes.
 func _kinds_in_display_order(kinds) -> Array:
     var order: Array = []
     for kind in DataValidator.CHECK_ORDER:
         if kinds.has(kind):
             order.append(kind)
-    # Виды, которых нет в списке порядка (если проверка добавится и туда
-    # не попадёт), показываем в конце, а не теряем.
+    # The kinds that are not in the order list (if a check is added and does not
+    # end up there), we show at the end, and not lose.
     for kind in kinds:
         if not order.has(kind):
             order.append(kind)
