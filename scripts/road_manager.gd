@@ -1,102 +1,102 @@
 # road_manager.gd
 extends Node
 
-# Уровень дороги по умолчанию: тропка. Участки без явного уровня (например,
-# поднятые из старого сейва, где road_level ещё не было) считаются тропками —
-# это самый слабый уровень, то есть безопасное по умолчанию.
+# The default level of a road: a trail. The segments without an explicit level (for example,
+# lifted from an old save, where road_level was not yet there) are considered trails -
+# this is the weakest level, that is a safe default.
 const DEFAULT_ROAD_LEVEL := 1
 
-# Эмитится, когда город впервые соединяется дорогой с городком: сегменты
-# дорожной сети города дотянулись до дорожной сети этого городка. На этом
-# событии в будущем будет открываться торговля (сейчас — только иконка
-# над гексом городка и статус в его окне, см. town_manager.is_trade_available).
+# It is emitted when the city is connected by a road to a town for the first time: the segments
+# of the road network of the city have reached the road network of this town. On this
+# event the trade will be opened in the future (for now - only the icon
+# over the hex of the town and the status in its window, see town_manager.is_trade_available).
 signal town_link_established(row: int, col: int)
 
-# Храним дороги как Set строк в формате "row1,col1|row2,col2" (каноническое направление)
-# Каноническое = с меньшей суммой row+col, или если равны, то с меньшим col
+# We store the roads as a Set of the strings in the format "row1,col1|row2,col2" (the canonical direction)
+# Canonical = with the smaller sum row+col, or if they are equal, then with the smaller col
 #
-# ЗНАЧЕНИЕ — НЕ true, а УРОВЕНЬ участка (int, см. data/roads.json). Изначально
-# здесь был Set, и это работало, пока все дороги были одинаковыми. С появлением
-# уровней значение стало полезной нагрузкой: участок помнит, какого он уровня,
-# и нигде не нужно отдельного списка «какой участок какого уровня» — который
-# разошёлся бы с этим словарём при первом же изменении сети.
-# Уровень по умолчанию — тропка (DEFAULT_ROAD_LEVEL), она же база цены: см.
+# The VALUE is NOT true, but the LEVEL of the segment (an int, see data/roads.json). Initially
+# there was a Set here, and it worked while all the roads were identical. With the appearance of
+# the levels the value became a payload: a segment remembers which level it is,
+# and nowhere is a separate list "which segment of which level" needed - it would
+# diverge from this dictionary at the first change of the network.
+# The default level is a trail (DEFAULT_ROAD_LEVEL), it is also the base of the price: see
 # GameData.get_road_by_level.
 var road_segments: Dictionary = {}
 
-# Список "подключённых" гексов (те, к которым уже есть дорога)
+# The list of the "connected" hexes (those to which a road already exists)
 var connected_hexes: Dictionary = {}
 var city_row: int = 0
 var city_col: int = 0
 
-# Версия дорожной сети города. Растёт при ЛЮБОМ её изменении и по ней
-# сбрасывается кэш планирования дорог (см. _plan_cache): панель управления
-# спрашивает план на КАЖДЫЙ тик, а поиск пути — Дейкстра по всей карте, так
-# что без кэша это была бы тяжёлая работа в игровом цикле.
+# The version of the road network of the city. It grows on ANY change of it and by it
+# the cache of the planning of the roads is reset (see _plan_cache): the control panel
+# asks for the plan on EVERY tick, and the search of the path is a Dijkstra over the whole map, so
+# without a cache this would be a heavy work in the game loop.
 var _network_version: int = 0
-# Версия ЗНАНИЯ карты игроком: сколько раз менялось «что известно» (разведка
-# завершилась, куплен чанк, сменилась эпоха, дебаг-открытие карты). План
-# дороги зависит и от неё — трасса к городку идёт только по разведанной земле,
-# — поэтому версия входит в ключ кэша наравне с версией сети дорог.
+# The version of the KNOWLEDGE of the map by the player: how many times "what is known" changed (a scouting
+# completed, a chunk was bought, the epoch changed, a debug opening of the map). The plan
+# of a road depends on it as well - the route to a town goes only over the scouted land,
+# - therefore the version enters the key of the cache on a par with the version of the network of the roads.
 var _knowledge_version: int = 0
-# Кэш планов: "версия сети:версия знаний:фильтр|row,col" ->
+# The cache of the plans: "the version of the network:the version of the knowledge:filter|row,col" ->
 # { ok, reason, path, segments, is_town }.
 var _plan_cache: Dictionary = {}
 
-# === Сети дорог городков ===
-# У каждого городка своя независимая сеть: от центра городка — к его
-# улучшениям в кольце влияния (их расставляет
-# town_manager._place_decorative_town_improvements). Сети НЕ склеиваются: ни с
-# сетью города игрока, ни друг с другом. За это отвечает
-# town_connected_hexes — у каждого городка свой набор подключённых гексов, и
-# поиск дороги останавливается только на гексе СВОЕЙ сети. Иначе «дороги от
-# городка» стали бы дорогами от города игрока, а все городки ещё и связались бы
-# между собой одной паутиной дорог через него.
+# === The road networks of the towns ===
+# Each town has its own independent network: from the centre of the town - to its
+# improvements in the influence ring (they are placed by
+# town_manager._place_decorative_town_improvements). The networks are NOT merged: neither with
+# the network of the city of the player, nor with each other. This is the responsibility of
+# town_connected_hexes - each town has its own set of the connected hexes, and
+# the search of a road stops only on a hex of ITS OWN network. Otherwise the "roads from
+# a town" would become the roads from the city of the player, and all the towns would also be
+# connected to each other by one web of a road through it.
 #
-# town_road_segments — все сегменты дорог городков в одном плоском словаре
-# (канонический ключ сегмента -> уровень): для отрисовки набор всё равно один,
-# и совпавший с сегментом другого городка сегмент просто рисуется один раз.
-# Автоматические дороги городков всегда тропки (DEFAULT_ROAD_LEVEL): их строит
-# сам городок от своего центра, улучшать их нечем.
-# town_connected_hexes ключуется координатами ЦЕНТРА городка ("row,col"), а не
-# индексом в towns: такой ключ не «поедет», если городки в списке поменяются
-# местами.
+# town_road_segments - all the segments of the roads of the towns in one flat dictionary
+# (the canonical key of a segment -> the level): for the drawing the set is one anyway,
+# and a segment which coincided with a segment of another town is simply drawn once.
+# The automatic roads of the towns are always trails (DEFAULT_ROAD_LEVEL): they are built by
+# the town itself from its centre, there is nothing to improve them.
+# town_connected_hexes is keyed by the coordinates of the CENTRE of the town ("row,col"), and not by
+# the index in towns: such a key will not "shift" if the towns in the list swap
+# places.
 var town_road_segments: Dictionary = {}
 var town_connected_hexes: Dictionary = {}
 
-# === Дороги, которые строит игрок (спецдействие «Построить дорогу») ===
+# === The roads which the player builds (the special action "Build a road") ===
 #
-# Спецдействие build_road (action_type "road") строит участок дорожной СЕТИ
-# ГОРОДА до указанного гекса — от ближайшей уже построенной дороги, тем же
-# поиском, что и build_road_from, но ПОЭТАПНО: очередь участков ведёт
-# main_map._start_road_project_steps, и каждый участок добавляется одним вызовом
-# build_road_step. Сегменты попадают в road_segments, а их гексы — в
-# connected_hexes, то есть новая дорога становится частью сети города и
-# укорочивает все следующие трассы.
+# The special action build_road (action_type "road") builds a segment of the road NETWORK
+# of the CITY up to the specified hex - from the nearest already built road, by the same
+# search as build_road_from, but IN STAGES: the queue of the segments is led by
+# main_map._start_road_project_steps, and each segment is added by one call
+# build_road_step. The segments fall into road_segments, and their hexes - into
+# connected_hexes, that is a new road becomes a part of the network of the city and
+# shortens all the next routes.
 #
-# town_link_segments — подмножество road_segments: те из них, что соединяют
-# город с ДОРОЖНОЙ СЕТЬЮ ГОРОДКА (цель — ближайшая дорога в кольце влияния
-# городка, а не сам его гекс). Хранятся отдельно только ради отрисовки:
-# такая дорога может пройти по неисследованной территории, поэтому рисуется
-# с теми же гейтами тумана, что и дороги городков (map_renderer.
-# is_town_road_segment_visible) — иначе она выдавала бы содержимое тумана.
+# town_link_segments is a subset of road_segments: those which connect the
+# city with the ROAD NETWORK OF A TOWN (the target is the nearest road in the influence ring
+# of the town, and not its hex itself). They are stored separately only for the sake of the drawing:
+# such a road can go through the unexplored territory, therefore it is drawn
+# with the same gates of the fog as the roads of the towns (map_renderer.
+# is_town_road_segment_visible) - otherwise it would give away the contents of the fog.
 var town_link_segments: Dictionary = {}
 
-# Кэш МАРШРУТОВ: "версия сети|row,col|town_row,town_col" -> маршрут
-# (см. find_route_to_city). Панель управления спрашивает маршрут выбранного
-# гекса при каждом обновлении, а поиск — обход всей сети, поэтому без кэша
-# это была бы лишняя работа в игровом цикле. В отличие от _plan_cache ключ не
-# включает версию знаний о карте: маршрут идёт по УЖЕ ПОСТРОЕННЫМ дорогам,
-# а не по местности, поэтому от разведки не зависит.
+# The cache of the ROUTES: "the version of the network|row,col|town_row,town_col" -> a route
+# (see find_route_to_city). The control panel asks for the route of the chosen
+# hex on every update, and the search is a traversal of the whole network, therefore without a cache
+# this would be an extra work in the game loop. Unlike _plan_cache the key does not
+# include the version of the knowledge about the map: the route goes along the ALREADY BUILT roads,
+# and not along the terrain, therefore it does not depend on the scouting.
 var _route_cache: Dictionary = {}
 
-# Инициализация после генерации карты
+# The initialization after the generation of the map
 func initialize(new_city_row: int, new_city_col: int):
     self.city_row = new_city_row
     self.city_col = new_city_col
-    # Полный сброс сетей: initialize() зовётся один раз на старте партии (и для
-    # новой игры, и для загрузки), поэтому состояние всегда начинается с чистого
-    # листа — иначе старые сети протекли бы в новую партию.
+    # A full reset of the networks: initialize() is called once at the start of a party (and both for
+    # a new game, and for a load), therefore the state always starts from a clean
+    # sheet - otherwise the old networks would leak into a new party.
     road_segments.clear()
     connected_hexes.clear()
     clear_town_roads()
@@ -107,49 +107,49 @@ func initialize(new_city_row: int, new_city_col: int):
 
 func rebuild_roads_from_existing(tile_data: Array, region_rows: int, region_cols: int,
         skip_if: Callable = Callable()):
-    # Пересчёт дорог к улучшениям по данным сейва. Сегменты в сейв не пишутся,
-    # поэтому входные данные — сами улучшения на гексах: улучшение есть, значит
-    # дорога к нему была.
+    # The recalculation of the roads to the improvements by the data of the save. The segments are not written into the save,
+    # therefore the input data is the improvements themselves on the hexes: the improvement is there, so
+    # the road to it was.
     #
-    # ИСКЛЮЧЕНИЕ — гексы с road_staged: их дорога построена поэтапным
-    # проектом (см. main_map.start_improvement_road_project), и её состояние
-    # лежит в road_built/road_level на присоединённых гексах плюс в очереди
-    # проектов. Дорога там может быть не достроена или вовсе отменена, и
-    # достраивать её здесь значило бы отдать её бесплатно. Такие гексы
-    # восстанавливает rebuild_player_roads + восстановленный проект — тот же
-    # путь, что и у дороги, построенной спецдействием.
+    # The EXCEPTION - the hexes with road_staged: their road is built by a staged
+    # project (see main_map.start_improvement_road_project), and its state
+    # lies in road_built/road_level on the connected hexes plus in the queue
+    # of the projects. The road there may be not finished or cancelled altogether, and
+    # to finish it here would mean to give it for free. Such hexes
+    # are restored by rebuild_player_roads + the restored project - the same
+    # path as that of a road built by the special action.
     #
-    # skip_if — Callable(row, col) -> bool; его передаёт main_map, потому что
-    # road_manager о флагах гексов знает, а решать по ним должна загрузка.
+    # skip_if is a Callable(row, col) -> bool; it is passed by main_map, because
+    # road_manager knows nothing about the flags of the hexes, and the load should decide by them.
     for row in range(region_rows):
         for col in range(region_cols):
             var tile = tile_data[row][col]
             if skip_if.is_valid() and bool(skip_if.call(row, col)):
                 continue
-            # Декоративные улучшения (tile.decorative) принадлежат ГОРОДКАМ, а
-            # не игроку: их дороги строит сам городок от своего центра
-            # (build_town_road_from). Проверки раньше не было, и при загрузке
-            # сейва сеть дорог ГОРОДА ИГРОКА прирастала дорогами ко всем полям,
-            # лесным делянкам и карьерам всех городков на карте (вызов
-            # rebuild_roads_from_existing идёт до загрузки городков, а в tile_data
-            # сейва улучшения городков лежат вместе с улучшениями игрока).
+            # The decorative improvements (tile.decorative) belong to the TOWNS, and
+            # not to the player: their roads are built by the town itself from its centre
+            # (build_town_road_from). There was no check earlier, and on the load of a
+            # save the road network of the CITY OF THE PLAYER grew with the roads to all the fields,
+            # the forest plots and the quarries of all the towns on the map (the call
+            # rebuild_roads_from_existing goes before the load of the towns, and in the tile_data
+            # of the save the improvements of the towns lie together with the improvements of the player).
             if tile != null and tile.get("improvement", null) != null \
                     and not bool(tile.get("decorative", false)):
                 build_road_from(row, col, tile_data, region_rows, region_cols)
 
-# Прокладывает дорогу от улучшения до ближайшего подключённого гекса
-# в сети ГОРОДА ИГРОКА — ЦЕЛИКОМ, одним вызовом, без очереди шагов.
+# Lays a road from an improvement to the nearest connected hex
+# in the network of the CITY OF THE PLAYER - ENTIRELY, by one call, without a queue of the steps.
 #
-# Для строительства это больше не используется: дорога, которую игрок запускает
-# вместе с улучшением, идёт поэтапным проектом (main_map.
-# start_improvement_road_project) и оплачивается по участкам, как любая дорога.
-# Осталась функция для ВОССТАНОВЛЕНИЯ из сейва и для тестов: там сеть не
-# строится, а пересчитывается по входным данным, поэтому очередь и оплата не
-# нужны — результат должен быть тем же самым.
+# this is the weakest level, that is a safe default.
+# together with the improvement goes by a staged project (main_map.
+# start_improvement_road_project) and is paid by the segments, like any road.
+# The function remained for the RESTORATION from the save and for the tests: there the network is not
+# built, but recalculated by the input data, therefore the queue and the payment are not
+# needed - the result must be the same.
 #
-# road_level — уровень прокладываемой дороги (по умолчанию тропка). На
-# восстановлении его передаёт вызывающий: уровень лежит в tile["road_level"]
-# и без него восстановленная сеть была бы сплошной тропкой.
+# road_level is the level of the road being laid (by default a trail). On
+# the restoration it is passed by the caller: the level lies in tile["road_level"]
+# and without it the restored network would be a continuous trail.
 func build_road_from(
     start_row: int,
     start_col: int,
@@ -167,7 +167,7 @@ func build_road_from(
     if best_path.is_empty():
         return
 
-    # Добавляем все сегменты дороги
+    # We add all the segments of the road
     for i in range(best_path.size() - 1):
         var from_hex = best_path[i]
         var to_hex = best_path[i + 1]
@@ -176,23 +176,23 @@ func build_road_from(
         connected_hexes[_hex_key(to_hex.row, to_hex.col)] = true
     _invalidate_plan_cache()
 
-# Общий для города и городков поиск пути от (start_row, start_col) до
-# ближайшего гекса из `connected`. Возвращает путь (Array of {row, col}) от
-# старта до найденной цели либо пустой массив, если пути нет.
+# A search of a path common for the city and the towns from (start_row, start_col) to
+# the nearest hex from `connected`. It returns the path (an Array of {row, col}) from
+# the start to the found target, or an empty array if there is no path.
 #
-# Правила одинаковые для обеих сетей, поэтому и живут здесь:
-#   - водные улучшения (например, рыбацкие лодки) не прокладывают дорогу по
-#     воде: доступ к водному ресурсу обеспечивает пристань (harbor), стоящая на
-#     берегу, к которой дорога строится штатно как к обычному наземному
-#     улучшению;
-#   - улучшения с флагом no_road дороги не получают (ирригационные каналы —
-#     инфраструктура, к которой дорогу прокладывать не нужно);
-#   - путь обязан состоять из соседних гексов.
+# The rules are the same for both networks, therefore they live here:
+#   - the water improvements (for example, the fishing boats) do not lay a road over the
+#     water: the access to a water resource is provided by a pier (harbor), standing on the
+#     bank, to which a road is built in the standard way as to an ordinary land
+#     improvement;
+#   - the improvements with the flag no_road do not get a road (the irrigation channels are
+#     infrastructure, to which there is no need to lay a road);
+#   - the path must consist of adjacent hexes.
 #
-# Побочных эффектов нет: `connected` НЕ пополняется — это делает вызывающий код,
-# и только для СВОЕЙ сети (у города — connected_hexes, у городка — набор из
-# town_connected_hexes). Благодаря этому сети городков остаются независимыми,
-# см. build_town_road_from.
+# There are no side effects: `connected` is NOT replenished - that is done by the calling code,
+# and only for ITS OWN network (for the city - connected_hexes, for a town - the set from
+# town_connected_hexes). Thanks to this the networks of the towns stay independent,
+# see build_town_road_from.
 func _find_connect_path(
     start_row: int,
     start_col: int,
@@ -219,23 +219,23 @@ func _find_connect_path(
     if best_path.is_empty():
         return []
 
-    # Гарантируем, что путь состоит только из соседних гексов
+    # We guarantee that the path consists only of the adjacent hexes
     if not _validate_path(best_path):
-        printerr("Ошибка: путь содержит несоседние гексы!")
+        printerr("Error: the path contains non-adjacent hexes!")
         return []
     return best_path
 
-# === Дороги городков ===
+# === The roads of the towns ===
 
-# Полный пересчёт дорог городков: для каждого городка строится дорога от его
-# центра к каждому улучшению в его КОЛЬЦЕ ВЛИЯНИЯ. Вызывать надо ПОСЛЕ
-# town_manager._place_decorative_town_improvements — до неё улучшений в кольце
-# ещё нет, и строить будет нечего.
+# A full recalculation of the roads of the towns: for each town a road is built from its
+# centre to each improvement in its INFLUENCE RING. It must be called AFTER
+# town_manager._place_decorative_town_improvements - before it there are no improvements in the ring
+# yet, and there will be nothing to build.
 #
-# В сейв дороги не пишутся — ровно как городские: входные данные (городки и их
-# улучшения) в сейве уже есть, поэтому сеть каждый раз считается заново, и на
-# экране всегда одна и та же картина. Каждый городок получает СВОЮ независимую
-# сеть (см. town_connected_hexes).
+# The roads are not written into the save - exactly as the city ones: the input data (the towns and their
+# improvements) is already in the save, therefore the network is counted from scratch every time, and on
+# the screen there is always one and the same picture. Each town gets its OWN independent
+# network (see town_connected_hexes).
 func rebuild_town_roads(towns: Array, tile_data: Array,
         region_rows: int, region_cols: int) -> void:
     clear_town_roads()
@@ -246,7 +246,7 @@ func rebuild_town_roads(towns: Array, tile_data: Array,
         var town_col := int(town.get("col", -1))
         if town_row < 0 or town_col < 0:
             continue
-        # Центр городка — корень своей сети: к нему стягиваются все дороги.
+        # The centre of a town is the root of its own network: all the roads are drawn to it.
         _town_connected(town_row, town_col)[_hex_key(town_row, town_col)] = true
         for h in town.get("influence_hexes", []):
             var row := int(h.get("row", -1))
@@ -259,13 +259,13 @@ func rebuild_town_roads(towns: Array, tile_data: Array,
             build_town_road_from(town_row, town_col, row, col,
                     tile_data, region_rows, region_cols)
 
-# Прокладывает дорогу от улучшения (start_row, start_col) до сети ЭТОГО
-# городка — полный аналог build_road_from, но в сети городка. Путь ищется
-# только до гексов, подключённых к ЭТОМУ городку, поэтому дорога городка
-# логически не может стать частью дорог города игрока или другого городка.
-# Геометрически трасса может пройти по гексам соседа (путь ищется по всей
-# карте, вода непроходима) — набор сегментов для отрисовки у городов общий,
-# и «общая трасса» просто рисуется один раз.
+# Lays a road from an improvement (start_row, start_col) to the network of THIS
+# town - a full analogue of build_road_from, but in the network of the town. The path is searched
+# only up to the hexes connected to THIS town, therefore the road of a town
+# logically cannot become a part of the roads of the city of the player or of another town.
+# Geometrically the route can go through the hexes of a neighbour (the path is searched over the whole
+# map, the water is impassable) - the set of the segments for the drawing of the towns is common,
+# and a "common route" is simply drawn once.
 func build_town_road_from(
     town_row: int,
     town_col: int,
@@ -291,68 +291,68 @@ func build_town_road_from(
         connected[_hex_key(from_hex.row, from_hex.col)] = true
         connected[_hex_key(to_hex.row, to_hex.col)] = true
 
-# Набор подключённых гексов СЕТИ ГОРОДКА (создаётся на первый запрос).
+# The set of the connected hexes of the NETWORK OF THE TOWN (it is created on the first request).
 func _town_connected(town_row: int, town_col: int) -> Dictionary:
     var key := _hex_key(town_row, town_col)
     if not town_connected_hexes.has(key):
         town_connected_hexes[key] = {}
     return town_connected_hexes[key]
 
-# Сбрасывает все сети дорог городков (старт партии и полный пересчёт).
+# Resets all the networks of the roads of the towns (the start of a party and a full recalculation).
 func clear_town_roads() -> void:
     town_road_segments.clear()
     town_connected_hexes.clear()
     _invalidate_plan_cache()
 
-# Проверяет, соединён ли гекс дорогами с центром ЭТОГО городка.
+# Checks whether a hex is connected by the roads to the centre of THIS town.
 func is_town_connected(town_row: int, town_col: int, row: int, col: int) -> bool:
     var connected = town_connected_hexes.get(_hex_key(town_row, town_col), null)
     if connected == null:
         return false
     return connected.has(_hex_key(row, col))
 
-# Добавляет сегмент дороги городка в каноническом направлении (без дубликатов).
-# Дороги городков — всегда тропки: их строит сам городок от своего центра,
-# и уровень у них не выбирается (см. шапку файла).
+# Adds a segment of a road of a town in the canonical direction (without the duplicates).
+# The roads of the towns are always trails: they are built by the town itself from its centre,
+# and the level is not chosen for them (see the header of the file).
 func _add_town_road_segment(row1: int, col1: int, row2: int, col2: int):
     var key = _get_canonical_road_key(row1, col1, row2, col2)
     town_road_segments[key] = DEFAULT_ROAD_LEVEL
 
-# Все сегменты дорог городков (для отрисовки).
+# All the segments of the roads of the towns (for the drawing).
 func get_all_town_road_segments() -> Dictionary:
     return town_road_segments.duplicate()
 
-# === Дороги, которые строит игрок ===
+# === The roads which the player builds ===
 
-# Сбрасывает кэш планов. Вызывается при ЛЮБОМ изменении сетей (см.
-# _network_version), потому что план зависит от того, что уже подключено.
+# Resets the cache of the plans. It is called on ANY change of the networks (see
+# _network_version), because the plan depends on what is already connected.
 func _invalidate_plan_cache() -> void:
     _network_version += 1
     _plan_cache.clear()
     _route_cache.clear()
 
-# Сообщает менеджеру, что на карте изменилось, что ИЗВЕСТНО игроку: завершилась
-# разведка, куплен чанк, сменилась эпоха, открыта вся карта в дебаге. План
-# дороги игрока строится по разведанной территории, поэтому без этой версии
-# кэш отдавал бы устаревший маршрут (например, «дороги нет» сразу после того,
-# как игрок разведал проход к городку).
-# Вызывается из main_map — там, где меняется is_explored / in_influence.
+# Reports to the manager that on the map what is KNOWN to the player has changed: a scouting
+# completed, a chunk was bought, the epoch changed, the whole map is opened in the debug. The plan
+# of a road of the player is built by the scouted territory, therefore without this version
+# the cache would give an outdated route (for example, "there is no road" right after
+# the player scouted a passage to a town).
+# It is called from main_map - there, where is_explored / in_influence changes.
 func bump_map_knowledge() -> void:
     _knowledge_version += 1
     _plan_cache.clear()
 
-# Подключён ли гекс к сети дорог ГОРОДА (по нему уже проложена дорога —
-# либо он гекс города, либо через него прошла трасса). Это и есть проверка
-# «на этом гексе дороги ещё нет» для кнопки спецдействия.
+# Is a hex connected to the network of the roads of the CITY (a road is already laid through it -
+# either it is the hex of the city, or a route went through it). This is exactly the check
+# "there is no road on this hex yet" for the button of the special action.
 func is_hex_connected(row: int, col: int) -> bool:
     return connected_hexes.has(_hex_key(row, col))
 
-# Соединён ли город с ЭТИМ городком дорогами. Проверка вычисляемая, а не
-# сохранённая: сети города и городка соединились, если хотя бы один гекс
-# сети городка подключён к сети города. Именно этот признак открывает
-# торговлю (см. town_manager.is_trade_available) и рисует иконку над городком.
-# Сохранённый флаг town["road_linked"] — другое: он помнит, что игрок ЭТО
-# делал, и по нему связь восстанавливается из сейва (см. rebuild_player_roads).
+# Is the city connected to THIS town by roads. The check is computed, and not
+# saved: the networks of the city and of the town are connected if at least one hex
+# of the network of the town is connected to the network of the city. Exactly this sign opens
+# the trade (see town_manager.is_trade_available) and draws the icon over the town.
+# The saved flag town["road_linked"] is another thing: it remembers that the player did THIS,
+# and by it the connection is restored from the save (see rebuild_player_roads).
 func is_town_linked_to_city(town_row: int, town_col: int) -> bool:
     var town_net = town_connected_hexes.get(_hex_key(town_row, town_col), null)
     if town_net == null or town_net.is_empty():
@@ -362,10 +362,10 @@ func is_town_linked_to_city(town_row: int, town_col: int) -> bool:
             return true
     return false
 
-# Гексы дорожной сети ГОРОДКА, лежащие в его кольце влияния, — именно они
-# являются целью дороги «город → городок» («до ближайшей дороги в кольце
-# влияния»). Сам гекс городка целью не является: в него дорога не ведётся.
-# Кольцо влияния передаётся снаружи: road_manager о мире ничего не знает.
+# The hexes of the road network of a TOWN which lie in its influence ring - exactly they are
+# the target of the road "town -> town" ("to the nearest road in the influence
+# ring"). The hex of the town itself is not a target: a road is not led into it.
+# The influence ring is passed from outside: road_manager knows nothing about the world.
 func _town_road_targets_in_ring(
     town_row: int, town_col: int, town_influence_hexes: Array) -> Dictionary:
     var targets: Dictionary = {}
@@ -378,27 +378,27 @@ func _town_road_targets_in_ring(
             targets[key] = true
     return targets
 
-# Планирует дорогу от сети ГОРОДА до гекса (row, col) — БЕЗ побочных эффектов
-# (сеть не меняется: это чистый расчёт для превью в панели управления).
+# Plans a road from the network of the CITY to the hex (row, col) - WITHOUT the side effects
+# (the network does not change: it is a pure calculation for the preview in the control panel).
 #
-# Два случая по типу гекса:
-#   - обычный гекс — цель сам гекс, трасса ищется до ближайшего гекса сети
-#     города обычным алгоритмом (_find_connect_path);
-#   - гекс ГОРОДКА — цель ближайшая дорога в КОЛЬЦЕ ВЛИЯНИЯ городка
-#     (см. _town_road_targets_in_ring), то есть соединяются две сети.
+# Two cases by the type of the hex:
+#   - an ordinary hex - the target is the hex itself, the route is searched to the nearest hex of the network
+#     of the city by the ordinary algorithm (_find_connect_path);
+#   - a hex of a TOWN - the target is the nearest road in the INFLUENCE RING of the town
+#     (see _town_road_targets_in_ring), that is two networks are connected.
 #
-# hex_allowed (необязательный Callable) ограничивает трассу известной игроку
-# территорией; его передаёт main_map.get_road_plan (is_hex_known). Признак
-# фильтра входит в ключ кэша: план без фильтра и план с фильтром — разные
-# маршруты, и путать их нельзя.
+# hex_allowed (an optional Callable) limits the route by the territory known to the player
+# to the player; it is passed by main_map.get_road_plan (is_hex_known). The sign of the
+# filter enters the key of the cache: a plan without a filter and a plan with a filter are different
+# routes, and they must not be confused.
 #
-# Возвращает { ok, reason, path, segments, is_town }. segments — число сегментов
-# ВСЕГО пути (path.size() − 1), включая уже построенные. Умножать на цену
-# участка его нельзя: за уже проложенные участки платить не нужно, и фильтрует
-# их main_map._build_road_steps. Цена дороги — это сумма цен её ШАГОВ
-# (main_map.get_road_cost_breakdown), у каждого своя местность и дальность.
-# Результат кэшируется по версиям сети дорог и знаний о карте: панель
-# спрашивает план на каждом тике, а поиск пути — Дейкстра по карте.
+# It returns { ok, reason, path, segments, is_town }. segments is the number of the segments
+# of the WHOLE path (path.size() - 1), including the already built ones. It must not be multiplied by the price
+# of a segment: there is no need to pay for the already laid segments, and they are filtered
+# by main_map._build_road_steps. The price of a road is the sum of the prices of its STEPS
+# (main_map.get_road_cost_breakdown), each has its own terrain and distance.
+# The result is cached by the versions of the network of the roads and the knowledge about the map: the panel
+# asks for the plan on every tick, and the search of the path is a Dijkstra over the map.
 func plan_road_to(
     row: int,
     col: int,
@@ -434,27 +434,27 @@ func _compute_road_plan(
         return _road_plan(false, tr("Hex outside the map"), [], 0, false)
     var is_town := bool(tile.get("has_town", false))
 
-    # --- Гекс ГОРОДКА: соединяем с дорожной сетью городка в его кольце ---
+    # --- A hex of a TOWN: we connect it with the road network of the town in its ring ---
     if is_town:
         if is_town_linked_to_city(row, col):
             return _road_plan(false, tr("The town is already connected by a road"), [], 0, true)
         var targets := _town_road_targets_in_ring(row, col, town_influence_hexes)
         if targets.is_empty():
             return _road_plan(false, tr("The town has no road inside the influence ring"), [], 0, true)
-        # Многоточечный поиск: от всех дорог кольца — к ближайшей дороге города.
-        # Трасса идёт ТОЛЬКО по известной территории (см. hex_allowed): к
-        # городку нельзя даже подойти, не разведав дорогу до него.
+        # A multi-point search: from all the roads of the ring - to the nearest road of the city.
+        # The route goes ONLY over the known territory (see hex_allowed): it is impossible
+        # even to approach a town without scouting the road to it.
         var town_path = _find_path_between(targets, connected_hexes,
                 tile_data, region_rows, region_cols, hex_allowed)
         if town_path.is_empty():
             return _road_plan(false, _town_road_failure_reason(targets, tile_data,
                     region_rows, region_cols, hex_allowed), [], 0, true)
         if not _validate_path(town_path):
-            printerr("Ошибка: путь дороги к городку содержит несоседние гексы!")
+            printerr("Error: the route of a road to a town contains non-adjacent hexes!")
             return _road_plan(false, tr("Could not find a path to the town"), [], 0, true)
         return _road_plan(true, "", town_path, town_path.size() - 1, true)
 
-    # --- Обычный гекс: дорога до него от ближайшей дороги города ---
+    # --- An ordinary hex: a road to it from the nearest road of the city ---
     if is_hex_connected(row, col):
         return _road_plan(false, tr("A road to the hex already exists"), [], 0, false)
     if MapHelpers.is_water_terrain(tile.get("terrain", "plain")):
@@ -465,15 +465,15 @@ func _compute_road_plan(
         return _road_plan(false, tr("There is no land route from the city to this hex"), [], 0, false)
     return _road_plan(true, "", hex_path, hex_path.size() - 1, false)
 
-# Почему не получилось дойти до городка, и что игроку с этим делать. Случая два,
-# и советы должны быть разными:
-#   - сухопутный путь ЕСТЬ, но идёт по неразведанной земле → нужен разведчик;
-#     «городок виден, но подойти не через что»;
-#   - сухопутного пути НЕТ вообще (городок за водой) → разведчики не помогут,
-#     тут нужен другой городок (морская торговля в игре пока не заведена).
-# Второй случай проверяется тем же поиском, но без ограничения по известности.
-# Лишняя работа — один Дейкстра, и только на неудачном плане, а результат плана
-# кэшируется, так что на каждый тик она не повторяется.
+# Why it was not possible to get to the town, and what the player should do about it. There are two
+# cases, and the advices must be different:
+#   - a land path EXISTS, but it goes over the unexplored land -> a scout is needed;
+#     "the town is visible, but there is nothing to approach it by";
+#   - a land path does NOT exist at all (the town is behind the water) -> the scouts will not help,
+#     here another town is needed (the sea trade is not in the game yet).
+# The second case is checked by the same search, but without the restriction by the knownness.
+# The extra work is one Dijkstra, and only on a failed plan, and the result of the plan
+# is cached, so it does not repeat on every tick.
 func _town_road_failure_reason(
         targets: Dictionary,
         tile_data: Array,
@@ -497,10 +497,10 @@ func _road_plan(ok: bool, reason: String, path: Array, segments: int, is_town: b
         "is_town": is_town
     }
 
-# Строит дорогу по плану от plan_road_to: сегменты и подключённые гексы
-# добавляются в СЕТЬ ГОРОДА, поэтому новая дорога сразу укорачивает все
-# следующие трассы. segments_to_build — сколько новых участков оплачено
-# (-1 = вся трасса): см. вызов из main_map._on_build_completed.
+# Builds a road by the plan from plan_road_to: the segments and the connected hexes
+# are added into the NETWORK of the CITY, therefore a new road immediately shortens all
+# the next routes. segments_to_build is how many new segments are paid for
+# (-1 = the whole route): see the call from main_map._on_build_completed.
 func build_road_to(
     row: int,
     col: int,
@@ -518,8 +518,8 @@ func build_road_to(
         return false
     var is_town := bool(plan.get("is_town", false))
     var road_path: Array = plan.get("path", [])
-    # Трасса может быть длиннее оплаченной части: недоплаченные участки
-    # просто не строятся (стройка не завершится, пока труд не собран).
+    # The route can be longer than the paid part: the unpaid segments
+    # are simply not built (the build will not finish until the labour is collected).
     var limit := road_path.size() - 1
     if segments_to_build >= 0:
         limit = mini(limit, segments_to_build)
@@ -533,9 +533,9 @@ func build_road_to(
         connected_hexes[_hex_key(from_hex.row, from_hex.col)] = true
         connected_hexes[_hex_key(to_hex.row, to_hex.col)] = true
         if is_town:
-            # Такая дорога соединяет город с городком — она рисуется с
-            # гейтами тумана (см. town_link_segments), а при полной оплате
-            # трассы эмитится сигнал открытия связи.
+            # Such a road connects the city with a town - it is drawn with
+            # the gates of the fog (see town_link_segments), and on the full payment of
+            # the route the signal of the opening of the connection is emitted.
             town_link_segments[_get_canonical_road_key(
                 from_hex.row, from_hex.col, to_hex.row, to_hex.col)] = true
     _invalidate_plan_cache()
@@ -544,25 +544,25 @@ func build_road_to(
         emit_signal("town_link_established", row, col)
     return true
 
-# Канонический ключ сегмента дороги — тот же формат, что у road_segments
-# ("row1,col1|row2,col2" в каноническом направлении). Открытая обёртка над
-# внутренним _get_canonical_road_key: ключи сегментов нужны не только самому
-# road_manager, но и владельцу поэтапного проекта (main_map собирает из них
-# «призрак» непостроенных участков на карте).
+# The canonical key of a segment of a road is the same format as in road_segments
+# ("row1,col1|row2,col2" in the canonical direction). A thin wrapper over
+# the internal _get_canonical_road_key: the keys of the segments are needed not only by
+# road_manager itself, but also by the owner of a staged project (main_map collects from them
+# the "ghost" of the unbuilt segments on the map).
 func get_road_segment_key(row1: int, col1: int, row2: int, col2: int) -> String:
     return _get_canonical_road_key(row1, col1, row2, col2)
 
-# Строит ОДИН участок поэтапной дороги: сегмент уходит в сеть ГОРОДА, оба
-# его гекса подключаются, кэш планов сбрасывается. Главное отличие от
-# build_road_to, который прокладывает всю трассу одним вызовом, — здесь
-# добавляется ровно один сегмент, потому что очередь шагов проекта
-# (project_manager) разбирается по одному.
+# Builds ONE segment of a staged road: the segment goes into the NETWORK of the CITY, both
+# of its hexes are connected, the cache of the plans is reset. The main difference from
+# build_road_to, which lays the whole route by one call, is that here
+# exactly one segment is added, because the queue of the steps of the project
+# (project_manager) is parsed one by one.
 #
-# is_town — трасса идёт к городку: такой сегмент дополнительно попадает в
-# town_link_segments, чтобы рисоваться с гейтами тумана (см.
-# get_all_town_link_segments). Событие открытия связи при этом НЕ эмитится:
-# оно наступит, когда достроится ПОСЛЕДНИЙ участок, и его эмитит владелец
-# проекта (main_map) — здесь такого знания ещё нет.
+# is_town - the route goes to a town: such a segment additionally falls into
+# town_link_segments, in order to be drawn with the gates of the fog (see
+# get_all_town_link_segments). The event of the opening of the connection is NOT emitted at this point:
+# it will come when the LAST segment is finished, and it is emitted by the owner
+# of the project (main_map) - here there is no such knowledge yet.
 func build_road_step(
     from_row: int,
     from_col: int,
@@ -582,12 +582,12 @@ func build_road_step(
     _invalidate_plan_cache()
     return true
 
-# Новые, ещё НЕ построенные сегменты трассы плана — в том же формате ключей,
-# что и road_segments (см. _get_canonical_road_key), поэтому рендерер рисует их
-# тем же кодом, что и настоящие дороги, но своим стилем. Побочных эффектов нет:
-# план уже посчитан и закэширован, повторный поиск пути не выполняется. Уже
-# существующие участки пропускаются — рисовать их в превью незачем, за них
-# игрок не платит.
+# The new, NOT YET BUILT segments of the route of the plan - in the same format of the keys
+# as road_segments (see _get_canonical_road_key), therefore the renderer draws them
+# by the same code as the real roads, but with its own style. There are no side effects:
+# the plan is already computed and cached, a repeated search of the path is not performed. The already
+# existing segments are skipped - there is no need to draw them in the preview, the player
+# does not pay for them.
 func get_plan_new_segments(plan: Dictionary) -> Dictionary:
     var segments: Dictionary = {}
     if not plan.get("ok", false):
@@ -602,18 +602,18 @@ func get_plan_new_segments(plan: Dictionary) -> Dictionary:
                 from_hex.row, from_hex.col, to_hex.row, to_hex.col)] = true
     return segments
 
-# Восстанавливает дороги, построенные игроком через спецдействие
-# «Построить дорогу». Как и с дорогами к улучшениям, в сейв пишутся не
-# сегменты, а входные данные: на гексе стоит флаг tile["road_built"], а у
-# записи городка — флаг town["road_linked"]; сеть считается заново.
+# Restores the roads built by the player through the special action
+# "Build a road". As with the roads to the improvements, the save does not contain
+# the segments, but the input data: the tile has the flag tile["road_built"], and the
+# record of the town has the flag town["road_linked"]; the network is counted from scratch.
 #
-# Вызывать ПОСЛЕ rebuild_roads_from_existing (сеть города) и
-# rebuild_town_roads (дорожные сети городков — они и есть цель дороги
-# до городка). Для гекса городка цель не сам гекс, а кольцо влияния,
-# поэтому towns нужен здесь: road_manager о нём ничего не знает.
-# hex_allowed — тот же Callable «известна ли территория», что и при обычном
-# планировании (его передаёт main_map): восстановленная дорога обязана идти
-# по разведанной земле ровно так же, как строилась.
+# It must be called AFTER rebuild_roads_from_existing (the network of the city) and
+# rebuild_town_roads (the road networks of the towns - they are the target of the road
+# to the town). For the hex of a town the target is not the hex itself, but the influence ring,
+# therefore towns is needed here: road_manager knows nothing about it.
+# hex_allowed is the same Callable "is the territory known" as in the ordinary
+# planning (it is passed by main_map): a restored road must go
+# over the scouted land exactly as it was built.
 func rebuild_player_roads(
     towns: Array,
     tile_data: Array,
@@ -637,32 +637,32 @@ func rebuild_player_roads(
             build_road_to(row, col, tile_data, region_rows, region_cols, ring, -1,
                     hex_allowed, _tile_road_level(tile))
 
-# Уровень дороги гекса — входные данные для восстановления из сейва (сегменты
+# The level of a road of a hex is the input data for the restoration from the save (the segments
 func _tile_road_level(tile: Dictionary) -> int:
     return int(tile.get("road_level", DEFAULT_ROAD_LEVEL))
 
-# === МАРШРУТ ДО ГОРОДА И СКОРОСТЬ ===
+# === THE ROUTE TO THE CITY AND THE SPEED ===
 
-# Ищет маршрут от гекса (row, col) до гекса города ПО УЖЕ ПОСТРОЕННЫМ дорогам
-# и возвращает его вместе со скоростью.
+# Searches a route from the hex (row, col) to the hex of the city BY THE ALREADY BUILT roads
+# and returns it together with the speed.
 #
-# Отличие от plan_road_to принципиально: там ищется путь по МЕСТНОСТИ (куда
-# можно проложить новую дорогу), здесь — по сети (как реально дойти). Поэтому
-# поиск другой (обход сети, а не Дейкстра по карте) и фильтр известности не
-# нужен: дорога уже стоит там, где её видно.
+# The difference from plan_road_to is fundamental: there a path is searched over the TERRAIN (where
+# a new road can be laid), here - over the network (how to actually get there). Therefore
+# the search is different (a traversal of the network, and not a Dijkstra over the map) and the filter of the knownness is not
+# needed: the road already stands there, where it is visible.
 #
-# town_row/town_col — если исходная точка принадлежит городку, маршрут идёт по
-# сети ЭТОГО городка, потом по участку связи (town_link_segments) и дальше по
-# сети города.
+# town_row/town_col - if the starting point belongs to a town, the route goes over
+# the network of THIS town, then over the segment of the connection (town_link_segments) and further over
+# the network of the city.
 #
-# ПРО avg_speed: это среднее арифметическое max_speed участков — «насколько
-# быстро в среднем едет груз по всему маршруту». Именно среднее, а НЕ минимум
-# по маршруту: маршрут из девяти тележных дорог и одной тропки даёт
-# (9*30 + 1*10)/10 = 28 ед./сек, а не 10. Одна плохая ямка на хайвее не должна
-# внезапно снижать скорость всего хайвея.
+# ABOUT avg_speed: it is the arithmetic mean of max_speed of the segments - "how
+# fast on average the cargo goes over the whole route". Exactly the mean, and NOT the minimum
+# over the route: a route of nine cart roads and one trail gives
+# (9*30 + 1*10)/10 = 28 units/sec, and not 10. One bad pothole on a highway must not
+# suddenly reduce the speed of the whole highway.
 #
-# Отдельной величины «узкое место» (min_speed) здесь намеренно нет: она была
-# введена без запроса и удалена по требованию автора.
+# A separate value of the "bottleneck" (min_speed) is deliberately absent here: it was
+# introduced without a request and was removed at the request of the author.
 func find_route_to_city(
     row: int,
     col: int,
@@ -686,15 +686,15 @@ func _compute_route_to_city(
     var city_key := _hex_key(city_row, city_col)
     var no_route := tr("No road connects this hex to the city")
     if start_key == city_key:
-        # Сам город: маршрут пустой. Скорость 0, а не «бесконечность»:
-        # участков нет, делить на их количество нельзя, а показывать
-        # игроку бесконечную скорость города нечестно — доставка начинается
-        # на подходе к городу, а не на его гексе.
+        # The city itself: the route is empty. The speed is 0, and not an "infinity":
+        # there are no segments, it is impossible to divide by their number, and to show
+        # the player an infinite speed of the city is dishonest - the delivery starts
+        # on the approach to the city, and not on its hex.
         return _route(false, tr("This is the city itself"), [], [], [], 0, 0.0)
 
-    # Сеть, по которой идём: участки города + (для городка) участки его
-    # собственной сети. Сети городков не склеиваются между собой, поэтому
-    # участки чужого городка в маршрут не попадают (см. шапку файла).
+    # The network over which we go: the segments of the city + (for a town) the segments of its
+    # own network. The networks of the towns are not merged with each other, therefore
+    # the segments of a foreign town do not fall into the route (see the header of the file).
     var segments: Dictionary = {}
     for key in road_segments.keys():
         segments[key] = true
@@ -704,7 +704,7 @@ func _compute_route_to_city(
             for key in town_road_segments.keys():
                 segments[key] = true
 
-    # Список смежности: "row,col" -> [{"key": String, "to": "row,col"}].
+    # The adjacency list: "row,col" -> [{"key": String, "to": "row,col"}].
     var adjacency: Dictionary = {}
     for key in segments.keys():
         var ends := _parse_segment_key(key)
@@ -722,8 +722,8 @@ func _compute_route_to_city(
     if not adjacency.has(start_key):
         return _route(false, no_route, [], [], [], 0, 0.0)
 
-    # Обход в ширину: маршрут с наименьшим числом участков. Все участки стоят
-    # одинаково, поэтому взвешивать расстояния не нужно — их и нет.
+    # A traversal in width: a route with the smallest number of the segments. All the segments cost
+    # the same, therefore it is not needed to weigh the distances - and there are none of them.
     var parent: Dictionary = {start_key: null}
     var visited: Dictionary = {start_key: true}
     var queue: Array = [start_key]
@@ -744,14 +744,14 @@ func _compute_route_to_city(
     if not found:
         return _route(false, no_route, [], [], [], 0, 0.0)
 
-    # Восстанавливаем маршрут ОТ УЛУЧШЕНИЯ К ГОРОДУ. Обход шёл в обратную
-    # сторону (от гекса к городу), поэтому восстановленный список разворачиваем
-    # push_front-ом — так path, segments и levels идут в одном порядке.
+    # We restore the route FROM THE IMPROVEMENT TO THE CITY. The traversal went in the reverse
+    # direction (from a hex to the city), therefore the restored list is reversed
+    # by push_front - thus path, segments and levels go in one order.
     #
-    # Инвариант порядка: segments[i] соединяет path[i] и path[i + 1]. От него
-    # зависят и подсветка маршрута на карте, и очередь улучшения (шаги идут
-    # в обратном порядке — от города к цели), поэтому «почти наоборот» здесь
-    # недопустимо.
+    # The invariant of the order: segments[i] connects path[i] and path[i + 1]. Both the
+    # highlighting of the route on the map and the queue of the improvement depend on it (the steps go
+    # in the reverse order - from the city to the target), therefore an "almost the reverse" is
+    # here inadmissible.
     var path: Array = []
     var segment_keys: Array = []
     var levels: Array = []
@@ -787,17 +787,17 @@ func _route(ok: bool, reason: String, path: Array, segments: Array, levels: Arra
         "avg_speed": avg_speed
     }
 
-# Уровень участка по его строковому ключу. Участка в сети города нет — 0 не
-# возвращаем: участок может принадлежать сети городка (town_road_segments), и
-# для маршрута от городка такой участок — обычная тропка.
+# The level of a segment by its string key. There is no segment in the network of the city - we do
+# not return 0: the segment may belong to the network of a town (town_road_segments), and
+# for a route from a town such a segment is an ordinary trail.
 func _segment_level_by_key(key: String) -> int:
     if road_segments.has(key):
         return int(road_segments[key])
     return DEFAULT_ROAD_LEVEL
 
-# Разбирает ключ участка "row1,col1|row2,col2" в [row1, col1, row2, col2].
-# Пустой массив — ключ повреждён; вызывающий его пропускает, потому что
-# нарисовать или тарифицировать такой участок всё равно нельзя.
+# Parses the key of a segment "row1,col1|row2,col2" into [row1, col1, row2, col2].
+# An empty array - the key is broken; the caller skips it, because
+# such a segment cannot be drawn or priced anyway.
 func _parse_segment_key(key: String) -> Array:
     var ends := key.split("|")
     if ends.size() != 2:
@@ -811,60 +811,60 @@ func _parse_segment_key(key: String) -> Array:
         return []
     return [int(a[0]), int(a[1]), int(b[0]), int(b[1])]
 
-# Сегменты дорог, соединяющих город с городками (для отрисовки с гейтами
-# тумана — см. town_link_segments).
+# The segments of the roads connecting the city with the towns (for the drawing with the gates
+# of the fog - see town_link_segments).
 func get_all_town_link_segments() -> Dictionary:
     return town_link_segments.duplicate()
 
-# Ключ гекса "row,col" — единый формат ключей во всех словарях менеджера.
+# The key of a hex "row,col" is a single format of the keys in all the dictionaries of the manager.
 func _hex_key(row: int, col: int) -> String:
     return str(row) + "," + str(col)
 
-# Добавляет сегмент дороги в каноническом направлении (без дубликатов).
-# Уровень передаётся явно: участок помнит свой уровень (см. шапку файла).
+# Adds a segment of a road in the canonical direction (without the duplicates).
+# The level is passed explicitly: a segment remembers its level (see the header of the file).
 func _add_road_segment(row1: int, col1: int, row2: int, col2: int,
         road_level: int = DEFAULT_ROAD_LEVEL):
     var key = _get_canonical_road_key(row1, col1, row2, col2)
     road_segments[key] = road_level
 
-# Уровень дороги на гексе = МАКСИМУМ по примыкающим участкам.
-# 0 — к гексу не примыкает ни один участок, то есть дороги нет.
+# The level of a road on a hex = the MAXIMUM over the adjacent segments.
+# 0 - not a single segment adjoins the hex, that is there is no road.
 #
-# Это ПРОИЗВОДНАЯ величина, а не хранимая. Хранится уровень УЧАСТКА
-# (road_segments: "row,col|row,col" -> level), и он остаётся единственным
-# источником правды: у гекса своего уровня просто нет.
+# This is a DERIVED value, and not a stored one. The level of a SEGMENT is stored
+# (road_segments: "row,col|row,col" -> level), and it remains the single
+# source of truth: a hex simply does not have a level of its own.
 #
-# Именно поэтому правило читается как «у гекса одна дорога», а не как
-# «у всех участков гекса один уровень». Разница существенная: если бы мы
-# хранили уровень гекса и требовали, чтобы все примыкающие участки были
-# его уровня, то повышение одного участка требовало бы поднять все
-# остальные, примыкающие к тому же гексу, а те — все примыкающие к ним,
-# и так далее: уровень расползёлся бы на всю связную сеть дорог. Правило
-# максимума не требует ничего подобного: оранжевая тропка через перекрёсток
-# остаётся тропкой, а показывается лучшая дорога, до гекса доходящая.
+# That is why the rule reads as "a hex has one road", and not as
+# "all the segments of a hex have one level". The difference is significant: if we
+# stored the level of a hex and required all the adjoining segments to be
+# of its level, then the upgrade of one segment would require raising all
+# the others adjoining the same hex, and those - all the ones adjoining them,
+# and so on: the level would spread over the whole connected network of the roads. The rule of the
+# maximum requires nothing of the sort: an orange trail through an intersection
+# remains a trail, and the best road reaching the hex is shown.
 #
-# Участки сетей ГОРОДКОВ здесь не учитываются: их уровень всегда 1, они не
-# принадлежат игроку и не улучшаются.
+# The segments of the networks of the TOWNS are not taken into account here: their level is always 1, they do not
+# belong to the player and are not improved.
 func get_hex_road_level(row: int, col: int) -> int:
     var best := 0
     for neighbor in _get_neighbors(row, col, 999, 999):
-        # 0 — участка нет: считать его дорогой нельзя.
+        # 0 - there is no segment: it cannot be counted as a road.
         best = maxi(best, get_segment_level(row, col,
                 int(neighbor.row), int(neighbor.col)))
     return best
 
-# Уровень участка дороги. Участка нет — 0 (не тропка!): вызывающий должен
-# отличать «участка нет» от «участок-тропка», иначе несуществующий участок
-# молча посчитался бы дорогой с пропускной способностью.
+# The level of a segment of a road. There is no segment - 0 (and not a trail!): the caller must
+# distinguish "there is no segment" from "the segment is a trail", otherwise a non-existent segment
+# would silently be counted as a road with a throughput capacity.
 func get_segment_level(row1: int, col1: int, row2: int, col2: int) -> int:
     var key = _get_canonical_road_key(row1, col1, row2, col2)
     if not road_segments.has(key):
         return 0
     return int(road_segments[key])
 
-# Повышает уровень уже построенного участка (спецдействие «Улучшить дорогу»).
-# Возвращает false, если участка нет или он уже не ниже уровня: улучшать
-# нечего, и пустой шаг проекта был бы шагом без работы.
+# Raises the level of an already built segment (the special action "Improve the road").
+# It returns false if there is no segment or it is already not lower than the level: there is
+# nothing to improve, and an empty step of the project would be a step without work.
 func upgrade_road_segment(row1: int, col1: int, row2: int, col2: int,
         road_level: int) -> bool:
     var key = _get_canonical_road_key(row1, col1, row2, col2)
@@ -873,12 +873,12 @@ func upgrade_road_segment(row1: int, col1: int, row2: int, col2: int,
     if int(road_segments[key]) >= road_level:
         return false
     road_segments[key] = road_level
-    # Сеть изменилась по составу уровней: маршруты и их средняя скорость
-    # теперь другие, кэш маршрутов сбрасываем.
+    # The network has changed by the composition of the levels: the routes and their average speed
+    # are now different, we reset the cache of the routes.
     _invalidate_plan_cache()
     return true
 
-# Получает канонический ключ для пары гексов
+# Gets the canonical key for a pair of hexes
 func _get_canonical_road_key(row1: int, col1: int, row2: int, col2: int) -> String:
     var sum1 = row1 + col1
     var sum2 = row2 + col2
@@ -886,7 +886,7 @@ func _get_canonical_road_key(row1: int, col1: int, row2: int, col2: int) -> Stri
         return "%d,%d|%d,%d" % [row1, col1, row2, col2]
     return "%d,%d|%d,%d" % [row2, col2, row1, col1]
 
-# Валидирует, что все соседние элементы в пути являются соседями
+# Validates that all the adjacent elements of the path are neighbours
 func _validate_path(path: Array) -> bool:
     for i in range(path.size() - 1):
         var curr = path[i]
@@ -895,24 +895,24 @@ func _validate_path(path: Array) -> bool:
             return false
     return true
 
-# Dijkstra с приоритетной очередью для поиска кратчайшего пути
-# от ЛЮБОГО гекса из `sources` до ближайшего гекса из `targets`.
-# Оба множества — словари "row,col" -> true, поэтому один и тот же поиск
-# обслуживает и обычную дорогу (sources = {старт}, targets = connected_hexes
-# города), и соединение с дорожной сетью городка (sources = кольцо влияния,
-# targets = connected_hexes) — см. plan_road_to.
+# A Dijkstra with a priority queue for the search of the shortest path
+# from ANY hex of `sources` to the nearest hex of `targets`.
+# Both sets are the dictionaries "row,col" -> true, therefore one and the same search
+# serves both the ordinary road (sources = {the start}, targets = connected_hexes
+# of the city), and the connection with the road network of a town (sources = the influence ring,
+# targets = connected_hexes) - see plan_road_to.
 #
-# hex_allowed (необязательный) — Callable(row, col) -> bool: какие гексы вообще
-# можно использовать в трассе. Им ограничиваются ТОЛЬКО дороги, которые строит
-# игрок: они идут по известной игроку территории (main_map.is_hex_known —
-# в Кольце Влияния или разведано), потому что взаимодействовать с городком
-# можно только на разведанном гексе, и дорога к нему обязана идти тем же
-# разведанным путём. Автоматические сети (дороги к улучшениям города и
-# городков) фильтр не передают и ведут себя как раньше: улучшения стоят в
-# Кольце Влияния, а городок разведывает окрестности сам.
+# hex_allowed (optional) is a Callable(row, col) -> bool: which hexes at all
+# can be used in the route. It limits ONLY the roads which the
+# player builds: they go over the territory known to the player (main_map.is_hex_known -
+# in the Influence Ring or scouted), because it is possible to interact with a town
+# only on a scouted hex, and the road to it must go by the same
+# by the same scouted path. The automatic networks (the roads to the improvements of the city and
+# of the towns) do not pass the filter and behave as before: the improvements stand in the
+# Influence Ring, and a town scouts the surroundings by itself.
 #
-# Исходный гекс сам по себе целью не считается (как раньше, до обобщения):
-# если источник уже лежит в targets, дорога не строится «сама в себя».
+# The starting hex itself is not counted as a target by itself (as before, before the generalization):
+# if the source already lies in targets, a road is not built "into itself".
 func _find_path_between(
     sources: Dictionary,
     targets: Dictionary,
@@ -925,10 +925,10 @@ func _find_path_between(
     var parent = {}
     var cost_so_far = {}
 
-    # Инициализация: все источники стартуют с нулевой стоимости. Источники,
-    # которым запрещено прохождение (туман войны), отбрасываются: иначе трасса
-    # начиналась бы с гекса, которого игрок не знает, и первый же сегмент уходил
-    # бы в неисследованную землю.
+    # The initialization: all the sources start with a zero cost. The sources
+    # which are forbidden to pass (the fog of war) are dropped: otherwise the route
+    # would start from a hex which the player does not know, and the very first segment would go
+    # into the unexplored land.
     for source_key in sources.keys():
         if hex_allowed.is_valid() \
                 and not bool(hex_allowed.call(
@@ -942,7 +942,7 @@ func _find_path_between(
     var current_key = _cheapest_open_node(cost_so_far, visited)
 
     while true:
-        # Достигли цели — восстанавливаем путь от источника до неё
+        # We have reached the target - we restore the path from the source to it
         if targets.has(current_key) and not sources.has(current_key):
             return _reconstruct_path(current_key, parent)
 
@@ -961,9 +961,9 @@ func _find_path_between(
             var tile = tile_data[n.row][n.col]
             if tile == null or MapHelpers.is_water_terrain(tile.get("terrain", "plain")):
                 continue
-            # Территория, по которой дорога строить нельзя (туман войны):
-            # проверяется ДО подсчёта стоимости, чтобы такие гексы вообще не
-            # попадали в поиск.
+            # The territory over which a road cannot be built (the fog of war):
+            # it is checked BEFORE the calculation of the cost, so that such hexes do not get
+            # into the search at all.
             if hex_allowed.is_valid() and not bool(hex_allowed.call(n.row, n.col)):
                 continue
             var terrain_id = tile.get("terrain", "plain")
@@ -978,14 +978,14 @@ func _find_path_between(
 
         current_key = _cheapest_open_node(cost_so_far, visited)
         if current_key == null:
-            # Путь не найден
+            # The path is not found
             return []
 
-    # Никогда не должны достичь этой точки
+    # It should never reach this point
     return []
 
-# Возвращает ключ ещё не посещённого гекса с минимальной накопленной
-# стоимостью (или null, если таких больше нет).
+# Returns the key of a not yet visited hex with the minimal accumulated
+# cost (or null, if there are no more of them).
 func _cheapest_open_node(cost_so_far: Dictionary, visited: Dictionary):
     var min_cost = INF
     var next_key = null
@@ -995,7 +995,7 @@ func _cheapest_open_node(cost_so_far: Dictionary, visited: Dictionary):
             next_key = key
     return next_key
 
-# Восстанавливает путь от конца к началу
+# Restores the path from the end to the beginning
 func _reconstruct_path(end_key: String, parent: Dictionary) -> Array:
     var path = []
     var current_key = end_key
@@ -1007,7 +1007,7 @@ func _reconstruct_path(end_key: String, parent: Dictionary) -> Array:
     
     return path
 
-# Проверяет, являются ли два гекса соседями
+# Checks whether two hexes are neighbours
 func _are_neighbors(row1: int, col1: int, row2: int, col2: int) -> bool:
     var neighbors = _get_neighbors(row1, col1, 999, 999)
     for n in neighbors:
@@ -1015,12 +1015,12 @@ func _are_neighbors(row1: int, col1: int, row2: int, col2: int) -> bool:
             return true
     return false
 
-# Получение соседей для odd-r гексагональной сетки
+# Getting the neighbours for an odd-r hexagonal grid
 func _get_neighbors(row: int, col: int, max_rows: int, max_cols: int) -> Array:
     var neighbors = []
     var directions = []
     
-    # Для even rows (row % 2 == 0)
+    # For the even rows (row % 2 == 0)
     if row % 2 == 0:
         directions = [
             {"r": 0, "c": - 1}, # W
@@ -1031,7 +1031,7 @@ func _get_neighbors(row: int, col: int, max_rows: int, max_cols: int) -> Array:
             {"r": 1, "c": 0} # SE
         ]
     else:
-        # Для odd rows (row % 2 == 1)
+        # For the odd rows (row % 2 == 1)
         directions = [
             {"r": 0, "c": - 1}, # W
             {"r": 0, "c": 1}, # E
@@ -1048,11 +1048,11 @@ func _get_neighbors(row: int, col: int, max_rows: int, max_cols: int) -> Array:
             neighbors.append({"row": nr, "col": nc})
     return neighbors
 
-# Проверка, есть ли дорога между двумя гексами
+# Checks whether there is a road between two hexes
 func has_road_between(row1: int, col1: int, row2: int, col2: int) -> bool:
     var key = _get_canonical_road_key(row1, col1, row2, col2)
     return road_segments.has(key)
 
-# Получить все сегменты дорог (для отладки)
+# Gets all the segments of the roads (for the debugging)
 func get_all_road_segments() -> Dictionary:
     return road_segments.duplicate()
