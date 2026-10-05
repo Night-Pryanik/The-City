@@ -96,10 +96,10 @@ func refresh() -> void:
     _signature = ""
 
     var data: Dictionary = _collect_data()
-# A full rebuild of the list of the cards: the composition of the resources is determined by the current
-# professions and the population, therefore it changes structurally (a worker
-# has been assigned, a building has been built). It is called on opening the tab and on
-# a divergence of the label of the composition (see update_values).
+    # A full rebuild of the list of the cards: the composition of the resources is determined by the current
+    # professions and the population, therefore it changes structurally (a worker
+    # has been assigned, a building has been built). It is called on opening the tab and on
+    # a divergence of the label of the composition (see update_values).
     var keys: Array = data.keys()
     keys.sort_custom(func(a, b): return str(data[a].get("name", a)) < str(data[b].get("name", b)))
     for key in keys:
@@ -130,13 +130,13 @@ func update_values() -> void:
         if data.has(key):
             _update_card(cards[key], data[key])
 
-# The label is set AFTER the assembly and by the same function as the check in
+    # The label is set AFTER the assembly and by the same function as the check in
     # update_values. Previously refresh() glued the label from the sorted
     # keys, and update_values() compared it with the label in the order of the insertion
     # of the dictionary — the labels never matched, and EVERY TICK the list of the cards
     # was recreated entirely. Together with the cards the open tooltip died
     # and all the numbers flickered.
-# update_values() would count the different labels of one and the same composition.
+    # update_values() would count the different labels of one and the same composition.
 func _signature_of(data: Dictionary) -> String:
     var keys: Array = data.keys()
     keys.sort()
@@ -192,7 +192,7 @@ func _collect_data() -> Dictionary:
     var income_map: Dictionary = {}
     if worker_manager.has_method("get_population_income_map"):
         income_map = worker_manager.get_population_income_map()
-# The plan of the income by the cards — it goes into the tooltip of the row "Income" ("how much
+    # The plan of the income by the cards — it goes into the tooltip of the row "Income" ("how much
     # it would have brought, if the storage had not run out"). Both sources are counted ONCE
     # for everything: the methods inside walk the plan of the consumption, and calling them in
     # a loop over the cards is extra work.
@@ -211,7 +211,7 @@ func _collect_data() -> Dictionary:
         result[key]["actual"] = _collect_actual(result[key].get("members", []), fact_map)
     return result
 
-# The fact of the income — what the market has really brought over the window. Exactly this number
+    # The fact of the income — what the market has really brought over the window. Exactly this number
     # stands in the row "Income" and in the row "Treasury" of the top bar.
 func _collect_stock(members: Array) -> Dictionary:
     var total := 0
@@ -235,7 +235,7 @@ func _collect_actual(members: Array, fact_map: Dictionary) -> float:
         total += float(fact_map.get(str(pid), 0.0))
     return total
 
-# The fact over the display window (CityData.get_market_consumption_per_sec) —
+    # The fact over the display window (CityData.get_market_consumption_per_sec) —
     # a stable value instead of the tick counter, which goes out in
     # reset_counters() and on an interval of 2–5 sec was almost always empty.
 func _format_price(row: Dictionary) -> String:
@@ -320,14 +320,14 @@ func _create_card(display_key: String, row: Dictionary) -> void:
     if texture != null:
         icon.texture = texture
     else:
-# The rate of the consumption per ONE buyer in the original form from
-# data/consumption.json: "10 units/1 sec", "10 units/10 sec". It is not allowed to show
-# the recalculated "210/sec" — that is already the sum over the city, and the player
-# configures the consumption in the data per ONE citizen: exactly these numbers he
-# must see, in order to understand what will happen when the population grows.
+        # The rate of the consumption per ONE buyer in the original form from
+        # data/consumption.json: "10 units/1 sec", "10 units/10 sec". It is not allowed to show
+        # the recalculated "210/sec" — that is already the sum over the city, and the player
+        # configures the consumption in the data per ONE citizen: exactly these numbers he
+        # must see, in order to understand what will happen when the population grows.
         icon.hide()
-# The formatting of the rate: the integer values without a fractional part, the fractional ones — with
-# one digit (the same convention as in ui_helpers._format_rate).
+    # The formatting of the rate: the integer values without a fractional part, the fractional ones — with
+    # one digit (the same convention as in ui_helpers._format_rate).
     # it sees a jug for "Alcohol" and does not understand where it came from.
     if texture != null:
         _set_icon_tooltip(icon, row, display_key)
@@ -416,8 +416,8 @@ func _update_card(ctx: Dictionary, row: Dictionary) -> void:
         _set_text(income, "—")
     else:
         _set_text(income, tr("%s/sec") % _format_rate(float(fact_income.get("coins_per_sec", 0.0))))
-# A light update: only the texts and the states of the buttons change, the nodes
-# of the cards are reused (otherwise the tooltips under the cursor would flicker).
+    # A light update: only the texts and the states of the buttons change, the nodes
+    # of the cards are reused (otherwise the tooltips under the cursor would flicker).
     var card: PanelContainer = ctx["card"]
     card.modulate = Color(1, 1, 1, 1) if enabled else COLOR_DISABLED
     name_label.add_theme_color_override("font_color", COLOR_TITLE if enabled else COLOR_DISABLED)
@@ -445,8 +445,8 @@ func _update_priority_button(button: Button, priority: String) -> void:
         button.text = "🎲"
     else:
         button.text = "★"
-# The label of the composition of the list of the cards. It is assembled from the SORTED keys, and
-# therefore does not depend on the order of the walk of the dictionary: otherwise refresh() and
+    # The label of the composition of the list of the cards. It is assembled from the SORTED keys, and
+    # therefore does not depend on the order of the walk of the dictionary: otherwise refresh() and
     _set_tooltip(button, tr("Consumption priority: %s (click to switch)") \
         % GameData.get_quality_priority_name(priority))
 
@@ -473,7 +473,7 @@ func _set_enabled(display_key: String, enabled: bool) -> void:
         return
     var ctx: Dictionary = cards[display_key]
     _update_toggle(ctx["checkbox"], enabled)
-# The click on the checkbox.
+    # The click on the checkbox.
     var data: Dictionary = _collect_data()
     if data.has(display_key):
         _update_card(ctx, data[display_key])
