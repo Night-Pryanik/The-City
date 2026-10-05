@@ -68,17 +68,15 @@ var current_research_science_cost: int = 0
 var research_progress: float = 0.0
 var research_science_accumulated: float = 0.0
 
-# --- ТЕКУЩАЯ ЭПОХА ---
-# Индекс текущей эпохи в GameData.eras (см. data/eras.json).
-# Источник истины для ограничения «изучать можно только технологии
-# текущей и предыдущих эпох». Синхронизируется с main_map.current_era
-# при переходе эпохи и загрузке сохранения.
+# The messages for the HUD after the completion of a research (about the found resources)
 var current_era_index: int = 0
 
-# Сообщения для HUD после завершения исследования (о найденных ресурсах)
+# --- THE POPULATION ---
 var last_research_messages: Array = []
 
-# --- НАСЕЛЕНИЕ ---
+# The debug toggle: whether the population consumes the food. It is managed from the
+# debug menu (the item "Toggle the consumption of the food"), it is NOT saved to the save —
+# this is a runtime bypass toggle for the debugging, and not a game state.
 var total_population: int = 1
 var idle_population: int = 1 # свободные жители (не занятые нигде)
 # Название города — выбирается игроком в диалоге при старте новой игры.
@@ -86,9 +84,10 @@ var idle_population: int = 1 # свободные жители (не занят�
 var city_name: String = ""
 var food_for_new_settler: int = 1000
 var food_per_citizen: int = 10
-# Дебаг-переключатель: потребляет ли население еду. Управляется из
-# дебаг-меню (пункт «Переключение потребления еды»), НЕ сохраняется в сейв —
-# это рантайм-обходной тумблер для отладки, а не игровое состояние.
+    # The record of the FACT of the write-off on the internal market for the tick. A separate counter
+    # (market_consumption_rates), because the common consumption_rates
+    # is mixed with the production inputs of the buildings. It is written from worker_manager
+    # exactly at those places where the resource leaves the city for money.
 var food_consumption_enabled: bool = true
 # The debug toggle: ignore the requirements of the technologies. When it is on —
 # the research does not check the prerequisites and the restriction by the eras (it is possible to learn
@@ -718,10 +717,8 @@ func cycle_consumption_priority(display_key: String) -> String:
     set_consumption_priority(display_key, new_priority)
     return new_priority
 
-# Запись ФАКТА списания на внутреннем рынке за тик. Отдельный счётчик
-# (market_consumption_rates), потому что общий consumption_rates
-# смешан с производственными входами зданий. Пишется из worker_manager
-# ровно в тех местах, где ресурс уходит городу за деньги.
+    # the quality of the consumed raw material, rounded to the nearest level.
+    # It assembles the flat breakdown of the consumed raw material by the quality from the container
 func record_market_consumption(pid: String, amount: int) -> void:
     if amount <= 0:
         return
@@ -1123,8 +1120,8 @@ func _consume_quality_detail(pid: String, amount: int, priority: String) -> Dict
 # Returns the level of the quality corresponding to the weighted average
 # by the breakdown consumed (a dictionary {quality: count}).
 # It is used on the production: the quality of the result = the weighted average,
-# качества потреблённого сырья, округлённое до ближайшего уровня.
-# Собирает плоскую разбивку потреблённого сырья по качеству из контейнера
+# The time of one crafting of the recipe in seconds. The field time is absent, or <= 0 —
+# the recipe behaves as before: the crafting on every tick of the simulation.
 # of the crafting: for each slot of the ingredients it goes through the accumulated "inputs"
 # (consumed) and sums them into a single dictionary {quality: count}.
 # It is used on the completion of the crafting for the calculation of the quality of the result —
@@ -1211,8 +1208,7 @@ func add_raw_production(raw_id: String, multiplier: float = 1.0, quality: String
 # The time of one crafting of the recipe in seconds. The field time is absent, or <= 0 —
 # the recipe behaves as before: the crafting on every tick of the simulation.
 
-# Время одного крафта рецепта в секундах. Поле time отсутствует или <= 0 —
-# рецепт ведёт себя как раньше: крафт каждый тик симуляции.
+    # we prepare the messages for the popup (analogously to _complete_research).
 func get_craft_time(recipe: Dictionary) -> float:
     var t := float(recipe.get("time", 0.0))
     if t <= 0.0:
@@ -1760,7 +1756,12 @@ func _complete_tech_instantly(tech_id: String) -> bool:
         return false
     unlocked_technologies.append(tech_id)
     # The technology can open the new kinds of the resources — we spawn them on the map and
-    # готовим сообщения для попапа (аналогично _complete_research).
+# The actual rate of the science of the city (points/sec) — a direct sum of the sources:
+# the base income (BASE_SCIENCE_PER_SEC) plus the contribution of the working science buildings
+# (the cache science_buildings_rate_per_sec, it is recalculated once per tick in do_tick).
+# There is no pool of the science: the produced science is not accumulated in the storage, and it immediately sets
+# the rate of the learning of the technologies (see tick_research_science_continuous and
+# docs.md, "Science: production and research").
     last_research_messages = spawn_resource_on_tech_research(tech_id)
     emit_signal("research_completed", tech_id)
     emit_signal("city_updated")
