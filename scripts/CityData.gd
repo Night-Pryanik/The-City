@@ -2312,7 +2312,7 @@ func _slots_from_legacy(bld: Dictionary) -> Array:
     var building_id = bld.get("id", "")
     var slots = _auto_assign_slots(building_id)
     var legacy_recipe = bld.get("recipe", "")
-    # Если в старом сейве был конкретный рецепт — ставим его в первый слот
+    # If in the old save there was a concrete recipe — we put it into the first slot
     if legacy_recipe != "" and legacy_recipe != "empty":
         if slots.size() > 0:
             slots[0] = legacy_recipe
@@ -2320,14 +2320,14 @@ func _slots_from_legacy(bld: Dictionary) -> Array:
             slots.append(legacy_recipe)
     return slots
 
-# Списывает additional_cost здания со склада. Поддерживает обе формы поля
-# (объект и массив пачек с AND-логикой) и групповые ключи (@xxx) — для них
-# списание распределяется по членам группы, как в рецептах.
-# Атомарно: если хотя бы одной пачки не хватает — НИЧЕГО не списывается.
-# Возвращает { "ok": true } при успехе или { "ok": false, "missing": [имена...] }.
+# Writes off the additional_cost of the building from the storage. It supports both forms of the field
+# (an object and an array of batches with the AND logic) and the group keys (@xxx) — for them
+# the write-off is distributed over the members of the group, as in the recipes.
+# Atomically: if at least one batch is not enough — NOTHING is written off.
+# It returns { "ok": true } on success, or { "ok": false, "missing": [the names...] }.
 func consume_additional_cost(bdata: Dictionary) -> Dictionary:
-    # Дебаг: при включённом «Игнорировать требования строительства»
-    # дополнительные материалы не проверяются и не списываются.
+    # Debug: with "Ignore building requirements" enabled
+    # the additional materials are not checked and not written off.
     if ignore_build_requirements:
         return {"ok": true}
     if not bdata.has("additional_cost"):
@@ -2336,8 +2336,8 @@ func consume_additional_cost(bdata: Dictionary) -> Dictionary:
     if bundles.is_empty():
         return {"ok": true}
 
-    # Первый проход: проверяем, что всего хватает, и собираем план списания
-    # [{ "prod_id": amount, ... }, ...] — по плану на каждую пачку.
+    # The first pass: we check that there is enough of everything, and we assemble the plan of the write-off
+    # [{ "prod_id": amount, ... }, ...] — by the plan for each batch.
     var plan: Array = []
     var missing: Array = []
     for bundle in bundles:
@@ -2348,7 +2348,7 @@ func consume_additional_cost(bdata: Dictionary) -> Dictionary:
                 continue
             if GameData.is_group_key(res_id):
                 var group_key = res_id.trim_prefix("@")
-                # Ключ "@"-группы — всегда id из product_groups.json.
+                # The key of the "@"-group is always the id from product_groups.json.
                 var group_products = GameData.product_groups.get(group_key, [])
                 if group_products.is_empty():
                     missing.append(res_id)
@@ -2359,7 +2359,7 @@ func consume_additional_cost(bdata: Dictionary) -> Dictionary:
                 if total_available < required:
                     missing.append(res_id)
                     continue
-                # Собираем сколько откуда брать (жадно по списку группы)
+                # We assemble how much from where to take (greedily by the list of the group)
                 var remaining = required
                 for prod in group_products:
                     var available = city_storage.get(prod, 0)
@@ -2381,8 +2381,8 @@ func consume_additional_cost(bdata: Dictionary) -> Dictionary:
     if not missing.is_empty():
         return {"ok": false, "missing": missing}
 
-    # Второй проход: всё проверено — списываем. Приоритет качества — как
-    # в рецептах (по умолчанию «лучшее»).
+    # The second pass: everything is checked — we write off. The priority of the quality is as
+    # in the recipes (by default "best").
     var priority = GameData.get_quality_priority_default()
     for bundle_plan in plan:
         for prod in bundle_plan:
@@ -2401,7 +2401,7 @@ func request_build(building_id: String) -> bool:
             break
     if not bdata:
         return false
-    # Здание должно быть открыто изученной технологией
+    # The building must be unlocked by a learned technology
     if not is_building_unlocked(building_id):
         print("Здание недоступно: ", bdata.get("name", building_id))
         return false
@@ -2417,7 +2417,7 @@ func request_build(building_id: String) -> bool:
         print("Не хватает ресурсов для постройки ", bdata.get("name", building_id), ": ", cost_check.get("missing", []))
         return false
     var work_cost = bdata.get("work_cost", 0)
-    # Общий лимит одновременных строек (здания + улучшения) равен общему числу жителей.
+    # The common limit of the simultaneous builds (the buildings + the improvements) is equal to the total number of the citizens.
     # При включённом «Игнорировать требования строительства» лимит не применяется —
     # здания строятся мгновенно и не попадают в очередь строек.
     if work_cost > 0 and not ignore_build_requirements:
