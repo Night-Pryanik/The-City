@@ -247,30 +247,29 @@ const BASE_SCIENCE_PER_SEC: float = 1.0
 # складывается в скорость изучения технологий (см. get_science_rate_per_sec,
 # tick_research_science_continuous).
 var science_buildings_rate_per_sec: float = 0.0
-# Кэш разбивки скорости науки по источникам (для тултипа на вкладке
-# «Технологии»). Заполняется раз в тик в do_tick() рядом с
-# science_buildings_rate_per_sec из тех же величин:
+# The cache of the breakdown of the rate of the science by the sources (for the tooltip on the tab
+# "Technologies"). It is filled in once per tick in do_tick() next to
+# science_buildings_rate_per_sec from the same values:
 #   {
 #     "base": 1.0,                  # BASE_SCIENCE_PER_SEC
-#     "buildings": [                # по каждому работающему зданию науки
-#       {
-#         "name": "Скрипторий",
-#         "fixed": 3.0,             # additional_yield.science, БЕЗ бонуса
-#         "mediums": 2.0,           # средневзвешенный special_yield смеси, БЕЗ бонуса
-#         "bonus": 1.25,            # множитель профессии (перья/чернила)
-#         "mediums_names": ["Папирус"],        # что фактически расходуется
-#         "bonus_names": ["Перья"],            # что даёт бонус потребления
+#     "buildings": [                # for each working science building
+#         "name": "Scriptorium",
+#         "fixed": 3.0,             # additional_yield.science, WITHOUT the bonus
+#         "mediums": 2.0,           # the weighted average of the special_yield of the mixture, WITHOUT the bonus
+#         "bonus": 1.25,            # the multiplier of the profession (the feathers/ink)
+#         "mediums_names": ["Papyrus"],        # what is actually consumed
+#         "bonus_names": ["Feathers"],            # what gives the bonus of the consumption
 #       }, ...
 #     ],
 #     "total": 7.5,                 # = get_science_rate_per_sec()
 #   }
-# Итог здания = (fixed + mediums) × bonus — собирается в тултипе.
-# До первого тика — пустой словарь (тултип показывает только базу).
+# The total of a building = (fixed + mediums) × bonus — it is assembled in the tooltip.
+# Before the first tick — an empty dictionary (the tooltip shows only the base).
 var science_breakdown: Dictionary = {}
 
-# --- ТРУД ---
-# Труд = скорость работы города. 1 житель = 1 труд/сек.
-# НЕ накапливается, это скорость, не запас.
+# --- THE LABOUR ---
+# The labour = the rate of the work of the city. 1 citizen = 1 labour/sec.
+# It is NOT accumulated, it is a rate, and not a stock.
 func get_total_labor() -> float:
     return float(total_population) * 1.0
 
@@ -278,12 +277,12 @@ signal city_updated()
 signal research_completed(tech_id: String)
 signal research_error(message: String)
 signal population_changed(new_population: int)
-# Казна изменилась: new_total — текущее целое число монет.
+# The treasury has changed: new_total is the current whole number of the coins.
 signal treasury_changed(new_total: int)
 signal building_construction_started(building_id: String, build_key: String)
 signal building_construction_completed(building_id: String, build_key: String)
-# Апгрейд построенного здания запущен: idx — индекс здания в
-# city_built_buildings, upgrade_to — id улучшенной версии.
+# The upgrade of a built building has been started: idx is the index of the building in
+# city_built_buildings, upgrade_to is the id of the improved version.
 signal building_upgrade_started(idx: int, upgrade_to: String, build_key: String)
 
 func setup():
@@ -305,7 +304,7 @@ func setup():
     domesticated_plants.clear()
     domesticated_resources.clear()
     unlocked_technologies.clear()
-# Растениеводство — всегда открыта при старте игры
+# Crop farming is always available at the start of the game
     unlocked_technologies.append("farming")
     current_research_tech_id = ""
     current_research_science_cost = 0
@@ -317,11 +316,11 @@ func setup():
     last_research_messages = []
     city_name = ""
 
-    # Стартовая казна — из data/game_balance.json (поле initial_treasury).
+    # The starting treasury is from data/game_balance.json (the field initial_treasury).
     treasury = int(GameData.game_balance.get("initial_treasury", 10))
-    # Трекинг доходов/расходов для тултипа «Казна»: разовая транзакция при
-    # старте игры невозможна, но снимки прошлого окна могли остаться от
-    # предыдущей сессии/сейва — очищаем.
+    # The tracking of the incomes/expenses for the tooltip "Treasury": a one-off transaction at the
+    # start of the game is impossible, but the snapshots of the previous window could have remained from
+    # the previous session/save — we clear them.
     treasury_income_accum.clear()
     treasury_income_product_accum.clear()
     treasury_expense_accum.clear()
@@ -331,7 +330,7 @@ func setup():
     treasury_window_length_sec = DEFAULT_TREASURY_WINDOW_SEC
 
     total_population = 1
-    idle_population = 1 # один житель, пока нигде не занят
+    idle_population = 1 # one citizen, while he is busy nowhere
 
     for pid in GameData.products.keys():
         city_storage[pid] = 0
@@ -343,40 +342,40 @@ func setup():
 
     if city_storage.has("meat"):
         city_storage["meat"] = 10
-        # Стартовое мясо — обычного качества.
+        # The starting meat — of the ordinary quality.
         if not city_quality_detail.has("meat"):
             city_quality_detail["meat"] = {}
         city_quality_detail["meat"]["common"] = city_quality_detail["meat"].get("common", 0) + 10
 
 func reset_counters():
-    # Фактические счётчики производства/потребления за тик: используются для
-    # определения голода (_check_population_change) и TopBar'а
-    # (city_ui._update_food_label). Живут ровно один тик симуляции.
+    # The actual counters of the production/consumption for the tick: they are used for
+    # the determination of the famine (_check_population_change) and the TopBar
+    # (city_ui._update_food_label). They live exactly one tick of the simulation.
     production_rates.clear()
     consumption_rates.clear()
-    # Плановые выпуск/потребление улучшений — кэш текущего тика (наполняется
-    # из main_map.gd), живёт ровно один тик симуляции, как и фактические
-    # счётчики.
+    # The planned release/consumption of the improvements is the cache of the current tick (it is filled
+    # from main_map.gd), it lives exactly one tick of the simulation, as well as the actual
+    # counters.
     improvement_planned_production.clear()
     improvement_planned_consumption.clear()
-    # Факт потребления на внутреннем рынке за тик (вкладка «Торговля») —
-    # такой же счётчик на один тик, как два выше.
+    # The fact of the consumption on the internal market for the tick (the tab "Trade") —
+    # such a counter for one tick, as the two above.
     market_consumption_rates.clear()
 
-# --- КАЗНА ГОРОДА ---
-# Добавляет монеты в казну. Казна всегда целое число монет: amount должен быть
-# целым (прибыль внутреннего рынка считается от округлённой цены единицы,
-# см. get_internal_market_price). Эмитит treasury_changed для обновления UI.
+# --- THE TREASURY OF THE CITY ---
+# Adds the coins to the treasury. The treasury is always a whole number of coins: amount must be
+# a whole number (the profit of the internal market is counted from the rounded price of a unit,
+# see get_internal_market_price). It emits treasury_changed for the update of the UI.
 func add_treasury(amount: int) -> void:
     if amount == 0:
         return
     treasury += amount
     emit_signal("treasury_changed", treasury)
 
-# Списывает монеты из казны (оплата разведки, освоения чанка и т.п.).
-# Возвращает false и НИЧЕГО не списывает, если монет не хватает: казна никогда
-# не уходит в минус, а вызывающий сам показывает игроку причину отказа.
-# Неположительная сумма — «бесплатное» действие: считаем его успешным.
+# Writes off the coins from the treasury (the payment of the scouting, of the claiming of a chunk and so on).
+# It returns false and writes off NOTHING, if there are not enough coins: the treasury never
+# goes into the minus, and the caller itself shows the player the reason of the refusal.
+# A non-positive amount is a "free" action: we count it as successful.
 func spend_treasury(amount: int) -> bool:
     if amount <= 0:
         return true
@@ -386,45 +385,45 @@ func spend_treasury(amount: int) -> bool:
     emit_signal("treasury_changed", treasury)
     return true
 
-# --- НАЛОГИ ---
-# Каждый житель платит в казну базовый налог за КАЖДЫЙ тик симуляции
-# (значение — base_tax_per_citizen в data/game_balance.json). Единая точка
-# сбора — collect_taxes(), её вызывает do_tick().
-# В разбивке казны налог пока ОДИН, поэтому он не раскладывается по
-# источникам/продуктам, а рисуется одной строкой под типом TAX_INCOME_TYPE
-# (см. TREASURY_FLAT_TYPE_KEY и ui_helpers.show_treasury_tooltip).
+# --- THE TAXES ---
+# Every citizen pays the base tax into the treasury for EVERY tick of the simulation
+# (the value is base_tax_per_citizen in data/game_balance.json). The single point of
+# the collection is collect_taxes(), it is called by do_tick().
+# In the breakdown of the treasury the tax is still ONE, therefore it is not distributed by the
+# sources/products, but is drawn by one row under the type TAX_INCOME_TYPE
+# (see TREASURY_FLAT_TYPE_KEY and ui_helpers.show_treasury_tooltip).
 #
-# Здесь ВАЖНО: обе константы хранят АНГЛИЙСКИЙ текст, потому что tr() нельзя
-# вызвать в выражении константы. Перевод накладывается в точке отрисовки —
-# ui_helpers оборачивает подпись в tr() (см. show_treasury_tooltip). Так ключи
-# остаются одинаковыми при любом языке, и смена языка не требует пересборки
-# накопителей казны.
+# Here it is IMPORTANT: both constants store the ENGLISH text, because tr() cannot be
+# called in the expression of a constant. The translation is applied at the point of the drawing —
+# ui_helpers wraps the label in tr() (see show_treasury_tooltip). In this way the keys
+# remain the same in any language, and a change of the language does not require a rebuild
+# of the accumulators of the treasury.
 const TAX_INCOME_TYPE: String = "Taxes"
-# Источник налога в ПЛОСКОМ накопителе доходов (treasury_income_accum →
-# treasury_income_snapshot, см. record_treasury_income). Отдельное имя — чтобы
-# сбор налогов не смешивался с рыночным доходом от «Все жители» в плоском
-# накопителе (иерархическая разбивка тултипа плоский снимок не читает).
+# The source of the tax in the FLAT accumulator of the incomes (treasury_income_accum ->
+# treasury_income_snapshot, see record_treasury_income). A separate name — so that
+# the collection of the taxes is not mixed with the market income from "All citizens" in the flat
+# accumulator (the hierarchical breakdown of the tooltip does not read the flat snapshot).
 const TAX_INCOME_SOURCE: String = "Poll tax"
-# Тип верхнего уровня в разбивке казны: доход от внутреннего рынка. По той же
-# причине, что и TAX_INCOME_TYPE, хранит английский текст и переводится в
-# ui_helpers.show_treasury_tooltip. Раньше этот ключ получался вызовом
-# tr("Population consumption") прямо в worker_manager, и он менялся вместе с
-# языком — в середине окна накопления старый и новый ключ не сошлись бы.
+# The top-level type in the breakdown of the treasury: the income from the internal market. For the same
+# reason as TAX_INCOME_TYPE, it stores the English text and is translated in
+# ui_helpers.show_treasury_tooltip. Previously this key was obtained by the call
+# tr("Population consumption") right in worker_manager, and it changed together with the
+# language — in the middle of the accumulation window the old and the new key would not have matched.
 const POPULATION_INCOME_TYPE: String = "Population consumption"
 
-# Базовый налог с одного жителя за один тик симуляции
-# (data/game_balance.json, поле base_tax_per_citizen).
+# The base tax from one citizen for one tick of the simulation
+# (data/game_balance.json, the field base_tax_per_citizen).
 func get_base_tax_per_citizen() -> int:
     return int(GameData.game_balance.get("base_tax_per_citizen", 2))
 
-# Налоговое поступление за один тик симуляции: базовый налог × население.
-# Единый источник истины для сбора (collect_taxes) и для строки «Налоги» в
-# тултипе казны (worker_manager._fill_tax_income).
+# The tax income for one tick of the simulation: the base tax × the population.
+# The single source of truth for the collection (collect_taxes) and for the row "Taxes" in the
+# tooltip of the treasury (worker_manager._fill_tax_income).
 func get_tax_income_per_tick() -> int:
     return get_base_tax_per_citizen() * total_population
 
-# Сбор налогов за тик: каждый житель платит базовый налог в казну.
-# Возвращает фактически собранную сумму (0 — платить некому).
+# The collection of the taxes for the tick: every citizen pays the base tax into the treasury.
+# It returns the actually collected amount (0 — there is no one to pay).
 func collect_taxes() -> int:
     var amount: int = get_tax_income_per_tick()
     if amount <= 0:
@@ -433,23 +432,21 @@ func collect_taxes() -> int:
     record_treasury_income(TAX_INCOME_SOURCE, amount)
     return amount
 
-# --- РАЗБИВКА КАЗНЫ ПО ИСТОЧНИКАМ (для тултипа) ---
-# Источники прибыли/расхода казны собираются в тултип при наведении на
-# «Казна: N» в HUD карты и в верхней полосе интерфейса города
-# (см. show_treasury_tooltip в ui_helpers.gd). Поведение отдельное для двух
-# сторон баланса:
-#
-#   * Прибыль — непрерывный поток от потребления на внутреннем рынке
-#     (worker_manager.get_planned_treasury_income_map): считается из
-#     planned_consumption_map × internal_market_price. Аналог «Производство
-#     (плановое)» на вкладке «Ресурсы» — равномерно и без мельтешения.
-#
-#   * Расходы — событийные транзакции игрока (разведка, освоение чанка, возврат
-#     при отказе стройки). У автоматического расхода в казну нет запланированной
-#     скорости — это разовые суммы по клику, поэтому в тултипе показывается
-#     факт за ПОСЛЕДНЕЕ ОКНО отображения (по умолчанию — 3 секунды), а не
-#     «/сек». Окно сбрасывается раз в `treasury_window_length_sec` рядом с
-#     ресурсной эпохой (см. tick_resource_display), чтобы тултип был стабилен
+# --- THE BREAKDOWN OF THE TREASURY BY THE SOURCES (for the tooltip) ---
+# The sources of the profit/expense of the treasury are assembled in the tooltip on hover over
+# "Treasury: N" in the HUD of the map and in the top bar of the interface of the city
+# (see show_treasury_tooltip in ui_helpers.gd). The behaviour is separate for the two
+# sides of the balance:
+#   * The profit — a continuous flow from the consumption on the internal market
+#     (worker_manager.get_planned_treasury_income_map): it is counted from
+#     planned_consumption_map × internal_market_price. An analogue of "Production
+#     (planned)" on the tab "Resources" — evenly and without flickering.
+#   * The expenses — the event-based transactions of the player (the scouting, the claiming of a chunk, the return
+#     on the refusal of a build). The automatic expense into the treasury has no planned
+#     rate — these are the one-off amounts per click, therefore the tooltip shows
+#     the fact over the LATEST display window (by default 3 seconds), and not
+#     "/sec". The window is reset once per `treasury_window_length_sec` next to
+#     the resource era (see tick_resource_display), so that the tooltip is stable,
 #     и не мигал на каждом тике.
 #
 # Снимки (`treasury_*_snapshot`) хранят данные прошедшего окна, тултип читает
