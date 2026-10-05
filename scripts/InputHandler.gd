@@ -20,12 +20,12 @@ var _hover_start_time: float = 0.0
 var _tooltip_visible: bool = false
 var _tooltip_visible_time: float = 0.0
 var _extended_tooltip_shown: bool = false
-# Период обновления СОДЕРЖИМОГО тултипа без движения мыши. Нужен для
-# динамических данных (заполенность пастбища, производство), которые меняются
-# со временем. Период равен настройке «Интервал обновления данных о ресурсах»
-# (CityData.resource_display_interval, меню «Настройки → Игра») — тултип на
-# карте обновляется тем же ритмом, что и остальные места с ресурсами.
-# Первая отрисовка при смене гекса остаётся мгновенной.
+# The refresh period of the tooltip CONTENT without mouse movement. It is needed for
+# dynamic data (the pasture fill, production), which changes
+# over time. The period equals the "Resource data refresh interval" setting
+# (CityData.resource_display_interval, the "Settings → Game" menu) — the tooltip on the
+# map is refreshed at the same rhythm as the other places with resources.
+# The first drawing on a hex change remains instantaneous.
 var _tooltip_content_refresh_timer: float = 0.0
 var is_dragging: bool = false
 var drag_start_scroll_offset: Vector2 = Vector2.ZERO
@@ -62,17 +62,17 @@ func handle_input(event: InputEvent):
         return
 
     if event is InputEventKey and event.keycode == KEY_ESCAPE and event.pressed:
-        # ESC: если открыт интерфейс городка — закрываем именно его, даже если
-        # на карте выделен гекс или активно превью действия (окно городка
-        # поверх карты).
+        # ESC: if the town interface is open — we close exactly it, even if
+        # a hex is selected on the map or an action preview is active (the town window
+        # is over the map).
         if town_ui.visible:
             town_ui.close_town()
             get_viewport().set_input_as_handled()
             return
-        # ESC: если открыт интерфейс города — закрываем именно его, даже если
-        # на карте выделен гекс или активно превью действия (интерфейс города
-        # поверх карты). Иначе сбрасываем превью действия в панели управления,
-        # затем снимаем выделение гекса, и только потом — обычное поведение ESC.
+        # ESC: if the city interface is open — we close exactly it, even if
+        # a hex is selected on the map or an action preview is active (the city interface
+        # is over the map). Otherwise we reset the action preview in the control panel,
+        # then clear the hex selection, and only then — the usual ESC behaviour.
         if city_ui.visible:
             city_ui.close_city()
             get_viewport().set_input_as_handled()
@@ -86,26 +86,26 @@ func handle_input(event: InputEvent):
             get_viewport().set_input_as_handled()
             return
         _handle_esc()
-        # Помечаем событие обработанным, чтобы оно не распространилось
-        # на _unhandled_input (иначе меню паузы, став видимым, сразу закроется)
+        # We mark the event as handled, so that it does not spread
+        # to _unhandled_input (otherwise the pause menu, having become visible, would close right away)
         get_viewport().set_input_as_handled()
         return
 
     if town_ui.visible or city_ui.visible or pause_menu.visible or (main_map.settings_menu and main_map.settings_menu.visible):
         return
 
-    # Взаимодействие с картой недоступно, когда курсор находится над панелью
-    # управления: клики, перетаскивание, тултипы и скролл не должны проходить
-    # сквозь панель к карте. Клавиатурные события (ESC и т.п.) при этом
-    # продолжают обрабатываться ниже.
-    # Взаимодействие с картой также недоступно, когда курсор находится над
-    # HUD (левый верхний угол): иначе движение мыши через HUD подсвечивает
-    # чанки Региона и всплывают тултипы, а клик по HUD выделяет гекс под ним.
-    # И над «залипшим» тултипом разбивки казны: тултип перекрывает карту, и
-    # сквозь него не должен всплывать тултип гекса, подсвечиваться чанк или
-    # выделяться гекс под ним.
-    # Кнопки HUD при этом продолжают работать: они обрабатываются через GUI-
-    # фазу (pressed / gui_input), независимо от этого обработчика.
+    # Interaction with the map is unavailable when the cursor is over the control
+    # panel: clicks, dragging, tooltips and scrolling must not pass
+    # through the panel to the map. Keyboard events (ESC and so on) meanwhile
+    # continue to be handled below.
+    # Interaction with the map is also unavailable when the cursor is over the
+    # HUD (the top left corner): otherwise the mouse movement across the HUD highlights
+    # the Region chunks and the tooltips pop up, and a click on the HUD selects the hex under it.
+    # And over the "sticky" treasury breakdown tooltip: the tooltip covers the map, and
+    # the hex tooltip should not pop up through it, nor should a chunk be
+    # highlighted or a hex be selected under it.
+    # The HUD buttons meanwhile keep working: they are handled via the GUI
+    # phase (pressed / gui_input), independently of this handler.
     if event is InputEventMouse:
         var over_hud = hud != null and hud.get_global_rect().has_point(event.global_position)
         var over_panel = main_map.control_panel != null \
@@ -113,28 +113,28 @@ func handle_input(event: InputEvent):
         var over_treasury_tooltip = _is_mouse_over_treasury_tooltip(event.global_position)
         if over_panel or over_hud or over_treasury_tooltip:
             _hide_tooltip()
-            # Убираем подсветку чанка Региона, оставшуюся от наведения
-            # до захода курсора на панель/HUD/тултип.
+            # We remove the Region chunk highlight left over from hovering
+            # before the cursor entered the panel/HUD/tooltip.
             expansion_manager.clear_hovered_chunk()
             return
 
-    # Дебаг-меню открыто — блокируем взаимодействие с картой
+    # The debug menu is open — we block the interaction with the map
     if debug_manager and debug_manager.is_open:
-        # В режиме ожидания клика по гексу разрешаем только клики мыши
+        # In the mode of waiting for a click on a hex we allow only the mouse clicks
         if debug_manager.waiting_for_hex:
             if event is InputEventMouseButton:
                 _handle_mouse_button(event)
         return
 
-    # Обработка общих событий мыши
+    # Handling of the common mouse events
     if event is InputEventMouseButton:
         _handle_mouse_button(event)
     elif event is InputEventMouseMotion:
         _handle_mouse_motion(event)
-        # Обновляем подсветку чанка при наведении на гексы вне Кольца Влияния.
-        # Гекс берём через _interactive_hex_at(): до изучения Картографии
-        # гексы тумана войны (вне Региона) недоступны, и выделение
-        # чанка на них не рисуется.
+        # We update the chunk highlight when hovering over the hexes outside the Influence Ring.
+        # The hex is taken via _interactive_hex_at(): before researching Cartography
+        # the fog of war hexes (outside the Region) are unavailable, and the chunk
+        # highlight is not drawn on them.
         var h = _interactive_hex_at(event.global_position.x, event.global_position.y)
         if h != null and not main_map.tile_data[h.row][h.col].get("in_influence", false):
             expansion_manager.update_hovered_chunk(h.row, h.col)
@@ -149,31 +149,31 @@ func handle_process(delta: float):
         _hide_tooltip()
         return
 
-    # Дебаг-меню открыто — блокируем обработку процесса (скролл, тултипы)
+    # The debug menu is open — we block the process handling (scrolling, tooltips)
     if debug_manager and debug_manager.is_open:
         _hide_tooltip()
         return
 
-    # Скрываем тултип и отключаем скролл краями окна, когда курсор находится
-    # над панелью управления (взаимодействие с картой сквозь неё запрещено).
+    # We hide the tooltip and disable the edge scrolling when the cursor is
+    # over the control panel (interaction with the map through it is forbidden).
     if main_map.control_panel \
             and main_map.control_panel.get_global_rect().has_point(main_map.get_global_mouse_position()):
         _hide_tooltip()
         return
 
-    # То же — когда курсор на «залипшем» тултипе разбивки казны: пока он там,
-    # карта не реагирует (сквозь тултип не всплывает тултип гекса и не
-    # подсвечивается чанк, нет и скролла краями окна). _hide_tooltip() гасит
-    # и состояние наведения, поэтому тултип гекса не появится и по задержке.
+    # The same — when the cursor is on the "sticky" treasury breakdown tooltip: while it is there,
+    # the map does not react (the hex tooltip does not pop up through the tooltip and the
+    # chunk is not highlighted, and there is no edge scrolling either). _hide_tooltip() kills
+    # the hover state as well, so the hex tooltip will not appear on the delay either.
     var mouse_pos_ui: Vector2 = main_map.get_global_mouse_position()
     if _is_mouse_over_treasury_tooltip(mouse_pos_ui):
         _hide_tooltip()
-        # Подсветку чанка тоже снимаем: тултип мог «залипнуть» уже под
-        # стоящим на месте курсором (панель у края экрана сдвигается внутрь).
+        # We remove the chunk highlight as well: the tooltip could have "stuck"
+        # under an already stationary cursor (the panel at the screen edge shifts inwards).
         expansion_manager.clear_hovered_chunk()
         return
 
-    # Скролл краями
+    # Edge scrolling
     if not is_dragging and main_map.use_edge_scrolling:
         var mouse_pos = main_map.get_viewport().get_mouse_position()
         var viewport_size = main_map.get_viewport_rect().size
@@ -191,10 +191,10 @@ func handle_process(delta: float):
 
         if scroll != Vector2.ZERO:
             main_map.scroll_offset += scroll
-            # Максимальная дистанция скролла карты — единый источник истины
-            # (main_map.get_max_scroll). Тем же значением ограничивается и
-            # досягаемость гексов: разведку можно отправить только туда,
-            # куда игрок может проскроллить (main_map.get_scout_reach_bounds).
+            # The maximum scroll distance of the map — the single source of truth
+            # (main_map.get_max_scroll). The same value also limits
+            # the reachability of the hexes: the scouting can be sent only where
+            # the player can scroll to (main_map.get_scout_reach_bounds).
             var max_scroll = main_map.get_max_scroll()
             main_map.scroll_offset.x = clamp(main_map.scroll_offset.x, -max_scroll.x, max_scroll.x)
             main_map.scroll_offset.y = clamp(main_map.scroll_offset.y, -max_scroll.y, max_scroll.y)
@@ -202,7 +202,7 @@ func handle_process(delta: float):
             if progress_bar_layer:
                 progress_bar_layer.queue_redraw()
 
-    # Тултип
+    # The tooltip
     if hud.get_global_rect().has_point(main_map.get_global_mouse_position()):
         _hide_tooltip()
     if _hovered_hex != null:
@@ -231,17 +231,17 @@ func handle_process(delta: float):
             tip_pos.x = max(0, tip_pos.x)
             tip_pos.y = max(0, tip_pos.y)
             hex_tooltip.position = tip_pos
-            # Расширенный тултип: свойства гекса (качество, корм, заполненность,
-            # доступ к пресной воде), производство, потребление, уровень дороги.
+            # The extended tooltip: the hex properties (quality, feed, fill,
+            # access to fresh water), production, consumption, road level.
             if _tooltip_visible_time >= extended_tooltip_delay and not _extended_tooltip_shown and main_map.has_method("has_extended_tooltip_info") and main_map.has_method("update_extended_tooltip"):
                 if main_map.has_extended_tooltip_info(_hovered_hex.row, _hovered_hex.col):
                     _extended_tooltip_shown = true
                     main_map.update_extended_tooltip(_hovered_hex.row, _hovered_hex.col)
 
-            # Обновляем содержимое тултипа без движения мыши — только для
-            # «растущих» ресурсов (пастбища с time_to_mature > 0): их заполенность
-            # и эффективный выход меняются со временем. Для остальных гексов
-            # контент статичен, дёргать перерисовку смысла нет.
+            # We update the tooltip contents without mouse movement — only for
+            # the "growing" resources (pastures with time_to_mature > 0): their fill
+            # and effective output change over time. For the other hexes
+            # the content is static, there is no point in triggering a redraw.
             if _is_hovered_tile_growing():
                 _tooltip_content_refresh_timer += delta
                 if _tooltip_content_refresh_timer >= CityData.resource_display_interval:
@@ -269,13 +269,13 @@ func _handle_esc():
         main_map.city_button.disabled = false
         main_map.expansion_button.disabled = false
     elif main_map.settings_menu and main_map.settings_menu.visible:
-        # Закрываем настройки — pause_menu.gd снова покажет меню паузы
+        # We close the settings — pause_menu.gd will show the pause menu again
         main_map.settings_menu.hide()
     else:
         main_map.open_pause_menu()
 
 func _handle_mouse_button(event: InputEventMouseButton):
-    # Дебаг-меню: ожидание клика по гексу для размещения ресурса
+    # The debug menu: waiting for a click on a hex to place a resource
     if debug_manager and debug_manager.waiting_for_hex:
         if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
             var hex = _pixel_to_hex(event.global_position.x, event.global_position.y)
@@ -293,19 +293,19 @@ func _handle_mouse_button(event: InputEventMouseButton):
                 is_dragging = false
                 return
 
-    # Выделение гекса выполняется при ОТПУСКАНИИ ЛКМ, а не при нажатии —
-    # чтобы зажатие и перетаскивание карты не выделяло и не сбрасывало гекс.
-    # При перетаскивании обработка уже прервана выше (return при is_dragging).
+    # The hex selection is performed on the RELEASE of the LMB, and not on the press —
+    # so that pressing and dragging the map does not select and reset the hex.
+    # When dragging, the handling is already interrupted above (a return on is_dragging).
     if event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
         var mouse_pos = event.global_position
         var hex = _interactive_hex_at(mouse_pos.x, mouse_pos.y)
         if hex != null:
-            # ЛКМ выделяет любой ДОСТУПНЫЙ гекс, который видно на экране:
-            # внутри Кольца Влияния — информация/действия, вне Кольца —
-            # разведка или покупка чанка (см. control_panel.
-            # _collect_region_actions). До изучения Картографии гексы тумана
-            # войны недоступны (см. main_map.is_hex_interactive): выделить их
-            # нельзя, разведчиков туда не отправить.
+            # The LMB selects any AVAILABLE hex that is visible on the screen:
+            # inside the Influence Ring — information/actions, outside the Ring —
+            # scouting or buying a chunk (see control_panel.
+            # _collect_region_actions). Before researching Cartography the fog of
+            # war hexes are unavailable (see main_map.is_hex_interactive): they cannot
+            # be selected, and scouts cannot be sent there.
             main_map.select_hex(hex.row, hex.col)
             if main_map.tile_data[hex.row][hex.col].get("in_influence", false) \
                     and hex.row == main_map.city_row and hex.col == main_map.city_col:
@@ -313,9 +313,9 @@ func _handle_mouse_button(event: InputEventMouseButton):
                 if cur_time - main_map.last_city_click_time < 0.5:
                     main_map.open_city()
                 main_map.last_city_click_time = cur_time
-            # Двойной клик по гексу городка — переход в его интерфейс (торговля).
-            # Только для РАСКРЫТОГО гекса: в тумане войны городок виден лишь
-            # намёком (полупрозрачная иконка), и торговля с ним невозможна.
+            # A double click on a town hex — go to its interface (trade).
+            # Only for an OPENED hex: in the fog of war the town is visible only
+            # as a hint (a semi-transparent icon), and trading with it is impossible.
             var click_tile = main_map.tile_data[hex.row][hex.col]
             if click_tile.get("has_town", false) \
                     and (click_tile.get("in_influence", false) or click_tile.get("is_explored", false)):
@@ -324,10 +324,10 @@ func _handle_mouse_button(event: InputEventMouseButton):
                     main_map.open_town_ui(hex.row, hex.col)
                 main_map.last_town_click_time = town_click_time
         else:
-            # Клик ЛКМ по недоступному месту: либо пустота за пределами
-            # карты, либо гекс тумана войны до изучения Картографии.
-            # В последнем случае объясняем игроку, чего не хватает, — иначе
-            # клик «молча» ничего не делает.
+            # An LMB click on an unavailable place: either the emptiness beyond
+            # the edges of the map, or a fog of war hex before researching Cartography.
+            # In the latter case we explain to the player what is missing — otherwise
+            # the click would "silently" do nothing.
             var blocked_hex = _pixel_to_hex(mouse_pos.x, mouse_pos.y)
             if blocked_hex != null and not main_map.is_cartography_researched():
                 main_map.hud.show_message(tr("Scouting beyond the Region requires the technology \"%s\"")
@@ -347,10 +347,10 @@ func _handle_mouse_motion(event: InputEventMouseMotion):
         if is_dragging:
             var delta = mouse_pos - drag_start_mouse
             main_map.scroll_offset = drag_start_scroll_offset + delta
-            # Клэмп скролла — единый источник истины (main_map.get_max_scroll).
-            # Та же формула, что и для скролла краями экрана выше; иначе при
-            # перетаскивании карта упиралась бы в границы Региона и нельзя было
-            # бы проскроллить туман войны для разведки.
+            # The scroll clamp — the single source of truth (main_map.get_max_scroll).
+            # The same formula as for the edge scrolling of the screen above; otherwise on
+            # dragging the map would run into the Region bounds and it would be impossible to
+            # scroll to the fog of war for scouting.
             var max_scroll = main_map.get_max_scroll()
             main_map.scroll_offset.x = clamp(main_map.scroll_offset.x, -max_scroll.x, max_scroll.x)
             main_map.scroll_offset.y = clamp(main_map.scroll_offset.y, -max_scroll.y, max_scroll.y)
@@ -360,20 +360,20 @@ func _handle_mouse_motion(event: InputEventMouseMotion):
             return
 
     var hex = _interactive_hex_at(event.global_position.x, event.global_position.y)
-    # Гекс в тумане войны не участвует в тултипе: местность, ресурсы и
-    # улучшения игроку не известны (см. main_map.is_hex_in_fog). Наведение
-    # обнуляем ДО логики тултипа — тултип не появится даже после задержки.
-    # Подсветка чанка и клик при этом работают: они содержимое гекса не
-    # раскрывают (ниже отдельный вызов _interactive_hex_at).
+    # A hex in the fog of war does not take part in the tooltip: the terrain, resources and
+    # improvements are not known to the player (see main_map.is_hex_in_fog). We reset the hover
+    # BEFORE the tooltip logic — the tooltip will not appear even after the delay.
+    # The chunk highlight and the click work meanwhile: they do not reveal
+    # the contents of the hex (there is a separate _interactive_hex_at call below).
     if hex != null and main_map.is_hex_in_fog(hex.row, hex.col):
         hex = null
     if hex != _hovered_hex:
         _hovered_hex = hex
         _hover_start_time = 0.0
         _extended_tooltip_shown = false
-        # Привязку расширенного блока сбрасываем здесь же: пока она жива,
-        # update_tooltip_text ниже нарисовал бы расширенный блок на новом гексе
-        # без задержки наведения.
+        # We reset the binding of the extended block right here: while it is alive,
+        # update_tooltip_text below would draw the extended block on the new hex
+        # without the hover delay.
         if main_map.has_method("clear_extended_tooltip"):
             main_map.clear_extended_tooltip()
         if _tooltip_visible:
@@ -382,23 +382,23 @@ func _handle_mouse_motion(event: InputEventMouseMotion):
         if hex != null:
             main_map.update_tooltip_text(hex.row, hex.col)
 
-    # Обновляем подсветку чанка при наведении на гексы вне Кольца Влияния.
-    # Прямой queue_redraw() здесь НЕ вызываем: expansion_manager.update_hovered_chunk()
-    # / clear_hovered_chunk() эмитят сигнал chunk_hovered ТОЛЬКО при реальном
-    # изменении чанка, а этот сигнал подключён к main_map._on_chunk_hovered(),
-    # который вызывает map_renderer.queue_redraw(). Так мы убираем лишние
-    # перерисовки всей карты при каждом движении мыши.
+    # We update the chunk highlight when hovering over the hexes outside the Influence Ring.
+    # We do NOT call queue_redraw() directly here: expansion_manager.update_hovered_chunk()
+    # / clear_hovered_chunk() emit the chunk_hovered signal ONLY on a real
+    # chunk change, and that signal is connected to main_map._on_chunk_hovered(),
+    # which calls map_renderer.queue_redraw(). In this way we get rid of the extra
+    # redraws of the whole map on every mouse movement.
     var h = _interactive_hex_at(event.global_position.x, event.global_position.y)
     if h != null and not main_map.tile_data[h.row][h.col].get("in_influence", false):
         expansion_manager.update_hovered_chunk(h.row, h.col)
     else:
         expansion_manager.clear_hovered_chunk()
 
-# Курсор сейчас над показанным («залипшим») тултипом разбивки казны HUD-слоя.
-# Такой тултип перекрывает карту, и карта под ним не должна реагировать на
-# курсор: ни тултип гекса, ни подсветка чанка, ни клики/выделение, ни скролл
-# краями окна. Проверку владеет main_map — здесь только делегирование (с
-# мягкой проверкой has_method: InputHandler работает и со сценами без HUD-слоя).
+# The cursor is now over the shown ("sticky") treasury breakdown tooltip of the HUD layer.
+# Such a tooltip covers the map, and the map under it should not react to the
+# cursor: neither the hex tooltip, nor the chunk highlight, nor clicks/selection, nor the edge
+# scrolling. The check is owned by main_map — here there is only delegation (with
+# a soft has_method check: InputHandler works with scenes without the HUD layer as well).
 func _is_mouse_over_treasury_tooltip(pos: Vector2) -> bool:
     if main_map == null or not main_map.has_method("is_mouse_over_treasury_tooltip"):
         return false
@@ -411,21 +411,21 @@ func _hide_tooltip():
     _tooltip_content_refresh_timer = 0.0
     _hovered_hex = null
     _hover_start_time = 0.0
-    # Как и флаг выше — здесь: тултип скрыт, расширенный блок не показан.
+    # Just as the flag above — here too: the tooltip is hidden, the extended block is not shown.
     if main_map != null and main_map.has_method("clear_extended_tooltip"):
         main_map.clear_extended_tooltip()
     for child in tooltip_products_container.get_children():
         child.queue_free()
 
 func _pixel_to_hex(mx: float, my: float):
-    # Быстрое обратное преобразование координат: вычисляем приблизительный гекс,
-    # затем проверяем его и соседей в небольшом радиусе — вместо итерации по
-    # всей карте. Проверяются гексы ВСЕЙ КАРТЫ: функция отвечает только за
-    # геометрию и не знает игровых правил. Доступность гекса для наведения и
-    # клика проверяется отдельно — см. _interactive_hex_at().
-    # Отдельный предел для всей карты не нужен: скролл ограничен
-    # main_map.get_max_scroll(), поэтому недостижимые гексы физически не могут
-    # оказаться под курсором.
+    # A fast inverse coordinate conversion: we compute an approximate hex,
+    # then check it and its neighbours within a small radius — instead of iterating over
+    # the whole map. The hexes of the WHOLE MAP are checked: the function is responsible only for
+    # the geometry and does not know the game rules. The availability of the hex for hovering and
+    # clicking is checked separately — see _interactive_hex_at().
+    # A separate limit for the whole map is not needed: the scroll is limited
+    # by main_map.get_max_scroll(), therefore the unreachable hexes physically cannot
+    # end up under the cursor.
     var radius = main_map.HEX_RADIUS
     var x_spacing = radius * sqrt(3.0)
     var y_spacing = radius * 1.5
@@ -436,8 +436,8 @@ func _pixel_to_hex(mx: float, my: float):
     var approx_row = int(round(world_y / y_spacing))
     var approx_col = int(round(world_x / x_spacing))
 
-    # Проверяем приблизительный гекс и соседей в радиусе 2
-    # (покрывает смещение нечётных рядов и неточность обратного преобразования).
+    # We check the approximate hex and its neighbours within a radius of 2
+    # (it covers the offset of the odd rows and the inaccuracy of the inverse conversion).
     for row in range(approx_row - 2, approx_row + 3):
         if row < 0 or row >= main_map.map_rows:
             continue
@@ -452,14 +452,14 @@ func _pixel_to_hex(mx: float, my: float):
                 return {"row": row, "col": col}
     return null
 
-# Гекс под курсором, если с ним МОЖНО взаимодействовать: наведение
-# (тултип), подсветка чанка разведки/покупки, выделение кликом ЛКМ.
-# Вне Региона гексы доступны только после изучения технологии
-# «Картография» (туман войны): без неё разведка ограничена Регионом,
-# а гексы тумана войны не реагируют ни на наведение, ни на клик
-# (см. main_map.is_hex_interactive). _pixel_to_hex() остаётся чистой
-# геометрией и используется напрямую там, где правила не нужны
-# (например, дебаг-режим размещения ресурса).
+# The hex under the cursor, if it CAN be interacted with: hovering
+# (the tooltip), the scouting/buying chunk highlight, selection by an LMB click.
+# Outside the Region the hexes are available only after researching the
+# "Cartography" technology (the fog of war): without it the scouting is limited to the Region,
+# and the fog of war hexes react neither to hovering nor to clicking
+# (see main_map.is_hex_interactive). _pixel_to_hex() remains pure
+# geometry and is used directly where the rules are not needed
+# (for example, the debug mode of placing a resource).
 func _interactive_hex_at(mx: float, my: float):
     var hex = _pixel_to_hex(mx, my)
     if hex == null:
