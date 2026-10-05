@@ -41,9 +41,9 @@ func find_vacancy() -> Dictionary:
             var improvement = tile.get("improvement")
             if improvement == null or bool(tile.get("decorative", false)):
                 continue
-# The infrastructure improvements (the field "no_worker" in improvements.json,
-# for example a pier) do not require the workers and must not receive them
-# on the auto-assignment of the free residents.
+            # The infrastructure improvements (the field "no_worker" in improvements.json,
+            # for example a pier) do not require the workers and must not receive them
+            # on the auto-assignment of the free residents.
             if GameData.is_no_worker_improvement(improvement):
                 continue
             if assigned_hexes.has(str(row) + "," + str(col)):
@@ -81,8 +81,8 @@ func assign_worker(row: int = -1, col: int = -1) -> bool:
     if CityData.idle_population <= 0:
         return false
 
-# The protection from the direct calls: the infrastructure improvements (no_worker,
-# for example a pier) do not get a worker under any conditions.
+    # The protection from the direct calls: the infrastructure improvements (no_worker,
+    # for example a pier) do not get a worker under any conditions.
     var mm = get_parent()
     if mm != null and row >= 0 and row < mm.map_rows and col >= 0 and col < mm.map_cols:
         var target_tile = mm.tile_data[row][col]
@@ -93,11 +93,11 @@ func assign_worker(row: int = -1, col: int = -1) -> bool:
             return false
 
     assigned_hexes[key] = true
-# The mark of a profession is set AUTOMATICALLY here. The player does not manage
-# the marks directly: the profession is determined by the improvement to which
-# a worker is assigned (see docs.md, "The professions and the consumption").
-# We do not store any separate data about the mark - it is derived from the
-# improvement and is automatically removed by remove_worker().
+    # The mark of a profession is set AUTOMATICALLY here. The player does not manage
+    # the marks directly: the profession is determined by the improvement to which
+    # a worker is assigned (see docs.md, "The professions and the consumption").
+    # We do not store any separate data about the mark - it is derived from the
+    # improvement and is automatically removed by remove_worker().
     consumption_timers.erase(key) # a fresh start of the timer of the consumption
     CityData.idle_population -= 1
     emit_signal("assignment_changed")
@@ -107,10 +107,10 @@ func remove_worker(row: int, col: int):
     var key = str(row) + "," + str(col)
     if assigned_hexes.has(key):
         assigned_hexes.erase(key)
-# The mark of a profession is removed AUTOMATICALLY together with the removal of a worker
-# (it was derived from the improvement, see assign_worker).
-# We reset the timer of the consumption, so that on a repeated assignment
-# the countdown starts from scratch, and not from the "remains" of the past shift.
+        # The mark of a profession is removed AUTOMATICALLY together with the removal of a worker
+        # (it was derived from the improvement, see assign_worker).
+        # We reset the timer of the consumption, so that on a repeated assignment
+        # the countdown starts from scratch, and not from the "remains" of the past shift.
         consumption_timers.erase(key)
         CityData.idle_population += 1
         emit_signal("assignment_changed")
@@ -249,30 +249,30 @@ func _tick_profession_consumption(prof: String, key: String, timers: Dictionary,
     # .get_source_display_name: the label is resolved in ui_helpers at the drawing).
     var prof_source = GameData.profession_source_id(prof)
 
-# --- THE CONTINUOUS PROFESSIONAL CONSUMPTION ---
-# Instead of a packet write-off once per `interval` seconds - on every tick we take
-# amount / interval units (with a sub-unit accumulator). Earlier the consumption
-# was discrete: with amount=10, interval=10 the write-off happened once every
-# 10 seconds by a pack of 10 pieces, because of which the inventory of the player could "jump"
-# (on the tick of the write-off -10, all the other time -0). In the continuous model
-# the write-off goes evenly: -1 on every tick - the storage decreases smoothly,
-# the production bonus turns on/off smoothly with the fluctuations
-# of the stocks. This is consistent with the production of the resources (the farms/the mines/the workshops),
-# which are also converted to a continuous output.
+    # --- THE CONTINUOUS PROFESSIONAL CONSUMPTION ---
+    # Instead of a packet write-off once per `interval` seconds - on every tick we take
+    # amount / interval units (with a sub-unit accumulator). Earlier the consumption
+    # was discrete: with amount=10, interval=10 the write-off happened once every
+    # 10 seconds by a pack of 10 pieces, because of which the inventory of the player could "jump"
+    # (on the tick of the write-off -10, all the other time -0). In the continuous model
+    # the write-off goes evenly: -1 on every tick - the storage decreases smoothly,
+    # the production bonus turns on/off smoothly with the fluctuations
+    # of the stocks. This is consistent with the production of the resources (the farms/the mines/the workshops),
+    # which are also converted to a continuous output.
     #
-# can_consume is determined by the FULL pack of amount (as before) - the bonus
-# turns on only when there is enough of the resource for a whole cycle. If there is only
-# a partial amount - we write off what there is, the bonus is NOT accrued.
+    # can_consume is determined by the FULL pack of amount (as before) - the bonus
+    # turns on only when there is enough of the resource for a whole cycle. If there is only
+    # a partial amount - we write off what there is, the bonus is NOT accrued.
     if not timers.has(key):
         timers[key] = {"fractional": {}}
 
     var fractional: Dictionary = timers[key].fractional
 
     for entry in cons_list:
-# The toggle of the "Trade": a resource which is forbidden on the inner market is not
-# spent at all. The check is BEFORE the accumulation of the fractional remains,
-# otherwise a forbidden record would accumulate a debt and on the permission write off
-# at once everything accumulated (see the fractional below).
+        # The toggle of the "Trade": a resource which is forbidden on the inner market is not
+        # spent at all. The check is BEFORE the accumulation of the fractional remains,
+        # otherwise a forbidden record would accumulate a debt and on the permission write off
+        # at once everything accumulated (see the fractional below).
         var entry_key := _entry_display_key(entry)
         if not CityData.is_market_consumption_enabled(entry_key):
             continue
@@ -281,13 +281,13 @@ func _tick_profession_consumption(prof: String, key: String, timers: Dictionary,
         if amt <= 0 or interval <= 0.0:
             continue
 
-# The priority of the write-off by the quality is a setting of the player from the tab
-# "Trade" (CityData.consumption_priority, the default from
-# data/qualities.json). Earlier there was a hard "best" here.
+        # The priority of the write-off by the quality is a setting of the player from the tab
+        # "Trade" (CityData.consumption_priority, the default from
+        # data/qualities.json). Earlier there was a hard "best" here.
         var priority := CityData.get_consumption_priority(entry_key)
 
-# The per-second rate of the consumption = amt / interval. On every tick
-# we accumulate a fractional remains.
+        # The per-second rate of the consumption = amt / interval. On every tick
+        # we accumulate a fractional remains.
         var per_tick: float = float(amt) / interval * delta
         var frac_key: String = _fractional_key(entry)
         var cur_frac: float = float(fractional.get(frac_key, 0.0)) + per_tick
@@ -300,7 +300,7 @@ func _tick_profession_consumption(prof: String, key: String, timers: Dictionary,
         fractional[frac_key] = cur_frac
 
         if entry.get("is_group", false):
-# The write-off from a group: greedily by the members (the best quality).
+            # The write-off from a group: greedily by the members (the best quality).
             var remaining: int = floor_take
             for member_pid in entry.get("group_members", []):
                 if remaining <= 0:
@@ -313,18 +313,18 @@ func _tick_profession_consumption(prof: String, key: String, timers: Dictionary,
                     continue
                 var member_consumed: Dictionary = CityData.remove_from_storage(member_pid, take, priority)
                 CityData.record_consumption_source(member_pid, prof_source, take)
-# The fact of the INNER MARKET exactly - a separate counter for
-# the cards of the tab "Trade" (the general consumption_rates
-# is mixed with the production inputs of the buildings).
+                # The fact of the INNER MARKET exactly - a separate counter for
+                # the cards of the tab "Trade" (the general consumption_rates
+                # is mixed with the production inputs of the buildings).
                 CityData.record_market_consumption(member_pid, take)
-# The actual consumption on the inner market gives an income to the treasury.
-# The price is by the quality of EACH written-off unit: the breakdown of consumed
-# comes from remove_from_storage (see docs.md, "The treasury of the city and the
-# inner market").
+                # The actual consumption on the inner market gives an income to the treasury.
+                # The price is by the quality of EACH written-off unit: the breakdown of consumed
+                # comes from remove_from_storage (see docs.md, "The treasury of the city and the
+                # inner market").
                 var member_take_price: int = CityData.get_internal_market_income(member_pid, member_consumed)
                 CityData.add_treasury(member_take_price)
-# The source of the income for the tooltip "Treasury" by the same key,
-# as in the plan map (the name of a profession, for example "Fisherman").
+                # The source of the income for the tooltip "Treasury" by the same key,
+                # as in the plan map (the name of a profession, for example "Fisherman").
                 CityData.record_treasury_income(prof_source, member_take_price, str(member_pid))
                 remaining -= take
         else:
@@ -339,13 +339,13 @@ func _tick_profession_consumption(prof: String, key: String, timers: Dictionary,
                 continue
             var single_consumed: Dictionary = CityData.remove_from_storage(pid, take_single, priority)
             CityData.record_consumption_source(pid, prof_source, take_single)
-# The fact of the inner market (see above).
+            # The fact of the inner market (see above).
             CityData.record_market_consumption(pid, take_single)
-# The price is by the quality of each written-off unit (see above).
+            # The price is by the quality of each written-off unit (see above).
             var single_take_price: int = CityData.get_internal_market_income(pid, single_consumed)
             CityData.add_treasury(single_take_price)
-# The source of the income for the tooltip "Treasury" by the same key,
-# as in the plan map (the name of a profession, for example "Fisherman").
+            # The source of the income for the tooltip "Treasury" by the same key,
+            # as in the plan map (the name of a profession, for example "Fisherman").
             CityData.record_treasury_income(prof_source, single_take_price, pid)
 
     timers[key].fractional = fractional
@@ -472,9 +472,9 @@ func tick_city_consumption(delta: float) -> void:
         var dkey = str(entry.get("display_key", ""))
         if dkey.is_empty():
             continue
-# The toggle of the "Trade": a forbidden resource is not bought by the residents.
-# The return is BEFORE the accumulation of the timer - otherwise the ban would accumulate the time and
-# on the permission it would write off the accumulated amount at once.
+        # The toggle of the "Trade": a forbidden resource is not bought by the residents.
+        # The return is BEFORE the accumulation of the timer - otherwise the ban would accumulate the time and
+        # on the permission it would write off the accumulated amount at once.
         if not CityData.is_market_consumption_enabled(dkey):
             continue
         if not city_consumption_timers.has(dkey):
@@ -484,7 +484,7 @@ func tick_city_consumption(delta: float) -> void:
         if timer.elapsed < iv:
             continue
 
-# How much needs to be written off per tick: amount is per one resident.
+        # How much needs to be written off per tick: amount is per one resident.
         var amt = int(entry.get("amount", 0)) * CityData.total_population
         if amt <= 0:
             timer.elapsed = 0.0
@@ -498,15 +498,15 @@ func tick_city_consumption(delta: float) -> void:
             for pid in members:
                 total += CityData.get_storage_amount(pid)
             if total <= 0:
-            continue # the storage is empty - we do not reset the timer: we will write off at once on the appearance
-# The greedy write-off by the members of the group (the priority of the quality from
-# CityData.consumption_priority) BY THE FACT OF
-# THE PRESENCE: we take everything there is, but not more than required. Waiting for a full
-# coverage (amount * the population) is not required - a partial write-off
-# also happens (and resets the timer, see the timer.elapsed below).
+                continue # the storage is empty - we do not reset the timer: we will write off at once on the appearance
+            # The greedy write-off by the members of the group (the priority of the quality from
+            # CityData.consumption_priority) BY THE FACT OF
+            # THE PRESENCE: we take everything there is, but not more than required. Waiting for a full
+            # coverage (amount * the population) is not required - a partial write-off
+            # also happens (and resets the timer, see the timer.elapsed below).
             var remaining = amt
-# The priority of the write-off by the quality is a setting of the tab "Trade"
-# (CityData.consumption_priority), and not a hard "best".
+            # The priority of the write-off by the quality is a setting of the tab "Trade"
+            # (CityData.consumption_priority), and not a hard "best".
             var priority := CityData.get_consumption_priority(dkey)
             for pid in members:
                 if remaining <= 0:
@@ -517,14 +517,14 @@ func tick_city_consumption(delta: float) -> void:
                 var take = min(avail, remaining)
                 var group_consumed: Dictionary = CityData.remove_from_storage(pid, take, priority)
                 CityData.record_consumption_source(pid, all_source, take)
-# The fact of the inner market for the card of the "Trade".
+                # The fact of the inner market for the card of the "Trade".
                 CityData.record_market_consumption(pid, take)
-# The residents pay for the consumed goods from the treasury (the inner market).
-# The price is by the quality of each written-off unit.
+                # The residents pay for the consumed goods from the treasury (the inner market).
+                # The price is by the quality of each written-off unit.
                 var group_take_price: int = CityData.get_internal_market_income(pid, group_consumed)
                 CityData.add_treasury(group_take_price)
-# The source of the income for the tooltip "Treasury" (the urban consumption,
-# the name is taken from data/professions.json -> "All residents").
+                # The source of the income for the tooltip "Treasury" (the urban consumption,
+                # the name is taken from data/professions.json -> "All residents").
                 CityData.record_treasury_income(all_source, group_take_price, str(pid))
                 remaining -= take
         else:
@@ -533,18 +533,18 @@ func tick_city_consumption(delta: float) -> void:
                 continue
             var have = CityData.get_storage_amount(pid)
             if have <= 0:
-            continue # the storage is empty - we do not reset the timer: we will write off at once on the appearance
-# By the fact of the presence: we write off everything there is, but not more than required.
+                continue # the storage is empty - we do not reset the timer: we will write off at once on the appearance
+            # By the fact of the presence: we write off everything there is, but not more than required.
             var take = min(have, amt)
             var city_consumed: Dictionary = CityData.remove_from_storage(pid, take, CityData.get_consumption_priority(dkey))
             CityData.record_consumption_source(pid, all_source, take)
-# The fact of the inner market for the card of the "Trade".
+            # The fact of the inner market for the card of the "Trade".
             CityData.record_market_consumption(pid, take)
-# The residents pay for the consumed goods from the treasury (the inner market).
-# The price is by the quality of each written-off unit.
+            # The residents pay for the consumed goods from the treasury (the inner market).
+            # The price is by the quality of each written-off unit.
             var city_take_price: int = CityData.get_internal_market_income(pid, city_consumed)
             CityData.add_treasury(city_take_price)
-# The source of the income for the tooltip "Treasury" (the urban consumption).
+            # The source of the income for the tooltip "Treasury" (the urban consumption).
             CityData.record_treasury_income(all_source, city_take_price, pid)
         timer.elapsed = 0.0
 
@@ -587,9 +587,9 @@ func load_assignments(assignments: Array):
             var col = int(item.get("col", -1))
             if row >= 0 and col >= 0:
                 if main_map and row < main_map.map_rows and col < main_map.map_cols:
-# "no_worker", a worker could have been assigned to a pier.
-# Such assignments are inadmissible - we drop them (the resident
-# will return to the free ones at the recalculation of the idle_population).
+                    # "no_worker", a worker could have been assigned to a pier.
+                    # Such assignments are inadmissible - we drop them (the resident
+                    # will return to the free ones at the recalculation of the idle_population).
                     var load_tile = main_map.tile_data[row][col]
                     if load_tile != null and bool(load_tile.get("decorative", false)):
                         continue
@@ -642,37 +642,37 @@ func count_workers_by_profession() -> Dictionary:
 # rows are marked with the name of the group (group_name = the name of the group from the data).
 func get_planned_consumption_map(include_production_inputs: bool = true) -> Dictionary:
     var result: Dictionary = {}
-# The professional consumption: by the actual workers at the improvements.
+    # The professional consumption: by the actual workers at the improvements.
     var workers = count_workers_by_profession()
     for prof_id in workers:
         if prof_id == "all":
             continue # the pseudo-profession is not assigned to the hexes; it is processed below
         _record_profession_planned(result, prof_id, int(workers[prof_id]), false)
-# The professional consumption of the urban buildings: the profession of a resident
-# (the field "profession" in data/buildings.json). Only the WORKING
-# buildings are taken into account - there is a resident and at least one non-empty slot: the consumables
-# of an idle building do not fall into the plan (see get_townsfolk_professions_count).
+    # The professional consumption of the urban buildings: the profession of a resident
+    # (the field "profession" in data/buildings.json). Only the WORKING
+    # buildings are taken into account - there is a resident and at least one non-empty slot: the consumables
+    # of an idle building do not fall into the plan (see get_townsfolk_professions_count).
     var town_workers = CityData.get_townsfolk_professions_count()
     for prof_id in town_workers:
         if prof_id == "all":
             continue # the pseudo-profession is not assigned to the buildings; it is processed below
         _record_profession_planned(result, prof_id, int(town_workers[prof_id]), false)
-# The urban consumption "All residents" - always (the population >= 1), per capita:
-# count = total_population, and not the number of the assigned hexes.
+    # The urban consumption "All residents" - always (the population >= 1), per capita:
+    # count = total_population, and not the number of the assigned hexes.
     if CityData.total_population > 0:
         _record_profession_planned(result, "all", CityData.total_population, true)
     if not include_production_inputs:
         return result
-# The demand of the buildings (the recipes): amount is for one craft, interval is the time of the recipe.
+    # The demand of the buildings (the recipes): amount is for one craft, interval is the time of the recipe.
     var building_demand = CityData.get_building_planned_consumption()
     for pid in building_demand:
         for source_id in building_demand[pid]:
             var e: Dictionary = building_demand[pid][source_id]
             _record_planned_entry(result, str(pid), str(source_id), int(e.get("amount", 0)), float(e.get("interval", 0.0)), int(e.get("count", 1)), bool(e.get("is_group", false)), str(e.get("group_name", "")), false)
-# The planned consumption of the improvements on the map (the feed of the pastures): amount is for one
-# cycle of the production, interval is the production_interval of the improvement. The feed
-# is written off per cycle (see main_map, the block "THE PRODUCTION CYCLE OF THE IMPROVEMENT"),
-# therefore the records fall into the plan on a par with the demand of the buildings.
+    # The planned consumption of the improvements on the map (the feed of the pastures): amount is for one
+    # cycle of the production, interval is the production_interval of the improvement. The feed
+    # is written off per cycle (see main_map, the block "THE PRODUCTION CYCLE OF THE IMPROVEMENT"),
+    # therefore the records fall into the plan on a par with the demand of the buildings.
     var improvement_demand = CityData.get_improvement_planned_consumption()
     for pid in improvement_demand:
         for source_id in improvement_demand[pid]:
@@ -718,22 +718,22 @@ func get_planned_consumption_map(include_production_inputs: bool = true) -> Dict
 # would count the fisherman twice (both in "All residents" and in "Fisherman").
 func get_population_consumption_map() -> Dictionary:
     var result: Dictionary = {}
-# The professional consumption: the workers at the improvements of the map.
+    # The professional consumption: the workers at the improvements of the map.
     var workers = count_workers_by_profession()
     for prof_id in workers:
         if prof_id == "all":
             continue # the pseudo-profession is not assigned to the hexes
         _record_population_row(result, str(prof_id), int(workers[prof_id]), false)
-# The professional consumption of the urban buildings (the field "profession").
+    # The professional consumption of the urban buildings (the field "profession").
     var town_workers = CityData.get_townsfolk_professions_count()
     for prof_id in town_workers:
         if prof_id == "all":
             continue
         _record_population_row(result, str(prof_id), int(town_workers[prof_id]), false)
-# The pseudo-profession "all" - always, as long as there is a population.
+    # The pseudo-profession "all" - always, as long as there is a population.
     if CityData.total_population > 0:
         _record_population_row(result, "all", CityData.total_population, true)
-# We count the totals for each row.
+    # We count the totals for each row.
     for display_key in result:
         _finalize_population_row(result, display_key)
     return result
@@ -744,7 +744,7 @@ func get_population_consumption_map() -> Dictionary:
 func _record_population_row(result: Dictionary, prof_id: String, count: int, is_population: bool) -> void:
     if count <= 0:
         return
-# The key of the source is the identifier of the profession; the label is resolved by trade_tab.
+    # The key of the source is the identifier of the profession; the label is resolved by trade_tab.
     var source_id: String = GameData.profession_source_id(prof_id)
     for entry in GameData.get_profession_consumption(prof_id):
         var amount := int(entry.get("amount", 0)) * count
@@ -765,19 +765,19 @@ func _record_population_row(result: Dictionary, prof_id: String, count: int, is_
                 "sources": {},
             }
         var row: Dictionary = result[display_key]
-# The row could have come from another profession - we complement the composition of the fields
-# once, without overwriting the already collected sources.
+        # The row could have come from another profession - we complement the composition of the fields
+        # once, without overwriting the already collected sources.
         if is_group and (row.get("members", []) as Array).is_empty():
             row["members"] = (entry.get("group_members", []) as Array).duplicate()
         var sources: Dictionary = row["sources"]
         var prev_amount: int = int(sources.get(source_id, {}).get("amount", 0))
         sources[source_id] = {
             "amount": prev_amount + amount,
-# The norm PER ONE consumer is exactly what is declared in
-# data/consumption.json (amount), without a multiplication by the number of the
-# consumers. Exactly it is shown by the card of the "Trade" in the row
-# "The expense for 1": the sum over the residents (10 units × 21 = 210) - that is already
-# "how much the city eats", and it must not be confused with the norm.
+            # The norm PER ONE consumer is exactly what is declared in
+            # data/consumption.json (amount), without a multiplication by the number of the
+            # consumers. Exactly it is shown by the card of the "Trade" in the row
+            # "The expense for 1": the sum over the residents (10 units × 21 = 210) - that is already
+            # "how much the city eats", and it must not be confused with the norm.
             "unit_amount": int(entry.get("amount", 0)),
             "interval": float(entry.get("interval", 0)),
             "count": count,
@@ -794,12 +794,12 @@ func _finalize_population_row(result: Dictionary, display_key: String) -> void:
     var population_count := 0
     var professions_count := 0
     var per_sec := 0.0
-# The norm per one consumer. A resource can have several buyers with
-# DIFFERENT norms (for example, "All residents" eat the fruits by 10 units/sec, and
-# a scholar - the feathers by 10 units/5 seconds). We show the norm of the most massive
-# buyer: the card has one row "The expense for 1", and the norm of the "main"
-# buyer is the only one which does not lie. The norms of the others are visible in
-# the tooltip of this row (see trade_tab._on_consumption_hover).
+    # The norm per one consumer. A resource can have several buyers with
+    # DIFFERENT norms (for example, "All residents" eat the fruits by 10 units/sec, and
+    # a scholar - the feathers by 10 units/5 seconds). We show the norm of the most massive
+    # buyer: the card has one row "The expense for 1", and the norm of the "main"
+    # buyer is the only one which does not lie. The norms of the others are visible in
+    # the tooltip of this row (see trade_tab._on_consumption_hover).
     var best_count := -1
     var per_consumer_per_sec := 0.0
     var per_consumer_amount := 0
@@ -817,15 +817,15 @@ func _finalize_population_row(result: Dictionary, display_key: String) -> void:
             per_sec += amount * CityData.SIMULATION_TICK / interval
         else:
             per_sec += amount * CityData.SIMULATION_TICK
-# The norm of the source per one consumer: unit_amount is the amount from
-# data/consumption.json, already without a multiplication by count (see
-# _record_population_row), therefore there is nothing more to divide by.
+        # The norm of the source per one consumer: unit_amount is the amount from
+        # data/consumption.json, already without a multiplication by count (see
+        # _record_population_row), therefore there is nothing more to divide by.
         var unit_amount := float(entry.get("unit_amount", 0))
         var unit_per_sec := (unit_amount * CityData.SIMULATION_TICK / interval
             if interval > 0.0 else unit_amount * CityData.SIMULATION_TICK)
-# On an equality of the consumers the one who eats more in the recalculation
-# per one wins: so at 1 fisherman and 1 resident the row does not show the norm
-# of a random profile.
+        # On an equality of the consumers the one who eats more in the recalculation
+        # per one wins: so at 1 fisherman and 1 resident the row does not show the norm
+        # of a random profile.
         if count > best_count or (count == best_count and unit_per_sec > per_consumer_per_sec):
             best_count = count
             per_consumer_per_sec = unit_per_sec
@@ -958,9 +958,9 @@ func _planned_market_income_rows() -> Array:
     for pid in per_pid:
         if not planned.has(pid):
             continue
-# A member of a group without a remainder and without a production is not sold: a group is
-# "any suitable goods", and without a filter all six members of the "Fruits" would fall into the income at once.
-# all six members of the "Fruits" at once.
+        # A member of a group without a remainder and without a production is not sold: a group is
+        # "any suitable goods", and without a filter all six members of the "Fruits" would fall into the income at once.
+        # all six members of the "Fruits" at once.
         if not bool(per_pid[pid]["available"]):
             continue
         var market_price: float = float(per_pid[pid]["price"])
@@ -969,7 +969,7 @@ func _planned_market_income_rows() -> Array:
             var entry: Dictionary = planned[pid][source_id]
             var amount := float(entry.get("amount", 0))
             var interval := float(entry.get("interval", 0))
-# The per-second consumption of a record (see ui_helpers._planned_per_sec).
+            # The per-second consumption of a record (see ui_helpers._planned_per_sec).
             var per_sec: float
             if interval > 0.0:
                 per_sec = amount * CityData.SIMULATION_TICK / interval
@@ -992,9 +992,9 @@ func get_population_income_map() -> Dictionary:
         var pid := str(row_data["pid"])
         var entry: Dictionary = planned[pid].get(str(row_data["source"]), {})
         var dkey := str(entry.get("display_key", ""))
-# An empty display_key - the record is not from the consumption of the population (the demand
-# of the buildings, the feed of the improvements): these are the production inputs, they are not
-# sold to the city and do not belong to the market income.
+        # An empty display_key - the record is not from the consumption of the population (the demand
+        # of the buildings, the feed of the improvements): these are the production inputs, they are not
+        # sold to the city and do not belong to the market income.
         if dkey.is_empty():
             continue
         var coins := float(row_data["coins_per_sec"])
@@ -1033,7 +1033,7 @@ func get_actual_market_income_map() -> Dictionary:
         for pid in products:
             var entry: Dictionary = planned.get(str(pid), {}).get(str(source_id), {})
             var dkey := str(entry.get("display_key", ""))
-# An empty display_key - the income is not from the consumption of the population (see above).
+            # An empty display_key - the income is not from the consumption of the population (see above).
             if dkey.is_empty():
                 continue
             var coins := float(products[pid].get("coins_per_sec", 0.0))
@@ -1068,7 +1068,7 @@ func _planned_market_income_per_pid() -> Dictionary:
             var entry: Dictionary = planned[pid][source_id]
             if not bool(entry.get("is_group", false)):
                 continue
-# A member of a group without a remainder and without a production does not go into the income.
+            # A member of a group without a remainder and without a production does not go into the income.
             if CityData.get_storage_amount(str(pid)) <= 0 \
                     and int(CityData.production_rates.get(pid, 0)) <= 0 \
                     and planned_production.get(pid, {}).is_empty():
@@ -1082,9 +1082,9 @@ func _fill_consumption_income(result: Dictionary) -> void:
     if not result.has(income_type):
         result[income_type] = {}
     var type_dict: Dictionary = result[income_type]
-# Exactly the same rows as in the row "Income" of the cards of the "Trade"
-# (get_population_income_map) - a common helper, therefore a divergence of the numbers
-# between the card and the tooltip is impossible by construction.
+    # Exactly the same rows as in the row "Income" of the cards of the "Trade"
+    # (get_population_income_map) - a common helper, therefore a divergence of the numbers
+    # between the card and the tooltip is impossible by construction.
     for row_data in _planned_market_income_rows():
         var source_id := str(row_data["source"])
         if not type_dict.has(source_id):
@@ -1101,13 +1101,13 @@ func _fill_consumption_income(result: Dictionary) -> void:
 func _record_profession_planned(result: Dictionary, prof_id: String, count: int, is_population: bool):
     if count <= 0:
         return
-# The key of the source is the identifier of the profession; the label is resolved by ui_helpers.
+    # The key of the source is the identifier of the profession; the label is resolved by ui_helpers.
     var source_id: String = GameData.profession_source_id(prof_id)
     for entry in GameData.get_profession_consumption(prof_id):
-# A resource forbidden on the inner market does not fall into the plan: otherwise
-# the tab "Resources" would show the expense, and the tooltip of the treasury - the income,
-# which will not be. The card of the "Trade" itself shows the ban
-# separately (see get_population_consumption_map).
+        # A resource forbidden on the inner market does not fall into the plan: otherwise
+        # the tab "Resources" would show the expense, and the tooltip of the treasury - the income,
+        # which will not be. The card of the "Trade" itself shows the ban
+        # separately (see get_population_consumption_map).
         if not CityData.is_market_consumption_enabled(_entry_display_key(entry)):
             continue
         var amount = int(entry.get("amount", 0)) * count
@@ -1138,11 +1138,11 @@ func _record_planned_entry(result: Dictionary, pid: String, source_id: String, a
     if str(entry.get("group_name", "")) == "":
         entry["group_name"] = group_name
     entry["is_population"] = bool(entry.get("is_population", false)) or is_population
-# display_key addresses the CARD, and pid - a concrete goods. The same
-# consumption of the "Fruits" is written by the plan into each member of the group, and without
-# display_key it would be impossible to fold these records back into one row
-# of the card (see get_population_income_map). An empty value - the record is not
-# from the consumption of the population (the demand of the buildings, the feed of the improvements), it does not
-# participate in the market income.
+    # display_key addresses the CARD, and pid - a concrete goods. The same
+    # consumption of the "Fruits" is written by the plan into each member of the group, and without
+    # display_key it would be impossible to fold these records back into one row
+    # of the card (see get_population_income_map). An empty value - the record is not
+    # from the consumption of the population (the demand of the buildings, the feed of the improvements), it does not
+    # participate in the market income.
     if str(entry.get("display_key", "")) == "" and not display_key.is_empty():
         entry["display_key"] = display_key
