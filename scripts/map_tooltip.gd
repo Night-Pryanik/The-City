@@ -316,14 +316,14 @@ func _collect_hex_properties(row: int, col: int, tile_data: Array) -> Array:
     var tile = tile_data[row][col]
     if tile == null:
         return lines
-# The quality of the resource, the expense of the feed, the occupancy of the pasture and the access to fresh
-# water. The ordinary tooltip answers the question "what is on this hex" (the terrain,
-# the resource, the improvement), therefore the properties are shown only in the extended block.
-#
-# The single source of the rows: both the extended block of the tooltip, and the full text of the hex
-# for the left column of the control panel. The rows are returned WITHOUT a leading line
-# break — the caller glues them itself: in the text it is a line break plus a row,
-# and in the container of the tooltip rows each has its own indent.
+    # The quality of the resource, the expense of the feed, the occupancy of the pasture and the access to fresh
+    # water. The ordinary tooltip answers the question "what is on this hex" (the terrain,
+    # the resource, the improvement), therefore the properties are shown only in the extended block.
+    #
+    # The single source of the rows: both the extended block of the tooltip, and the full text of the hex
+    # for the left column of the control panel. The rows are returned WITHOUT a leading line
+    # break — the caller glues them itself: in the text it is a line break plus a row,
+    # and in the container of the tooltip rows each has its own indent.
     var is_revealed = tile.get("in_influence", false) or tile.get("is_explored", false)
     if not is_revealed:
         return lines
@@ -376,13 +376,13 @@ func _collect_hex_properties(row: int, col: int, tile_data: Array) -> Array:
 
 
     # We show the access to fresh water for ALL hexes.
-#
-# Resets the binding of the extended block to the hex. It is called by the owner of the tooltip
-# (InputHandler) on a change of the hex and on the hiding of the tooltip — there, where
-# its own flag "the block is already shown" is reset.
-#
-# Without the reset, the return to the same hex would draw the extended block immediately, bypassing
-# the hover delay: update_tooltip_text would see the old binding.
+    #
+    # Resets the binding of the extended block to the hex. It is called by the owner of the tooltip
+    # (InputHandler) on a change of the hex and on the hiding of the tooltip — there, where
+    # its own flag "the block is already shown" is reset.
+    #
+    # Without the reset, the return to the same hex would draw the extended block immediately, bypassing
+    # the hover delay: update_tooltip_text would see the old binding.
 func clear_extended_tooltip():
     _extended_row = -1
     _extended_col = -1
