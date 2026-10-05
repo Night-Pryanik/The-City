@@ -1,23 +1,23 @@
 # expansion_manager.gd
 extends Node
 
-# Стоимости территории (разведка и освоение) — в МОНЕТАХ из казны города.
-# Базовая цена одного гекса и универсальный модификатор дальности берутся из
-# data/game_balance.json (см. get_scout_cost_per_hex / get_expansion_cost_per_hex
-# и MapHelpers.get_distance_mult), то есть хардкода цен здесь нет.
-# Освоение дополнительно требует ТРУД (см. expansion_cost в terrains.json),
-# который накапливается через стройку в build_manager. Решение по балансу:
-# труд остаётся ПЛОСКИМ и расстоянием НЕ масштабируется — дальше от города
-# дорожает только денежная часть (логистика), а не сама работа.
+# The territory costs (scouting and claiming) — in COINS from the city treasury.
+# The base price of one hex and the universal distance modifier are taken from
+# data/game_balance.json (see get_scout_cost_per_hex / get_expansion_cost_per_hex
+# and MapHelpers.get_distance_mult), that is, there is no hardcoded price here.
+# The claiming additionally requires LABOUR (see expansion_cost in terrains.json),
+# which accumulates through the build in build_manager. The balance decision:
+# the labour remains FLAT and is NOT scaled by distance — further from the city
+# only the money part gets more expensive (logistics), and not the work itself.
 
 var is_expansion_mode = false
 var hexes_bought = 0
-var current_chunk = [] # массив {"row": int, "col": int}
+var current_chunk = [] # an array of {"row": int, "col": int}
 var current_hover_hex = null # {"row": int, "col": int}
 
 signal expansion_mode_changed(active: bool)
 signal territory_expanded(row: int, col: int, cost: int)
-signal chunk_hovered(chunk: Array) # для оповещения рендерера
+signal chunk_hovered(chunk: Array) # to notify the renderer
 
 @onready var main_map = get_parent()
 
@@ -30,83 +30,83 @@ func toggle():
 func is_active() -> bool:
     return is_expansion_mode
 
-# Возвращает стоимость ТРУДА для освоения одного гекса.
-# Базовое значение берётся из expansion_cost террейна (теперь это труд).
-# Множитель за количество купленных гексов убран: труд должен оставаться
-# «умеренным» и не раздуваться с ростом города.
+# Returns the LABOUR cost for claiming one hex.
+# The base value is taken from the expansion_cost of the terrain (it is labour now).
+# The multiplier for the number of bought hexes is removed: the labour should remain
+# "moderate" and should not inflate as the city grows.
 func get_hex_cost(row: int, col: int) -> int:
     var tile = main_map.tile_data[row][col]
     var terrain_id = tile.get("terrain", "plain")
     var base_cost = 2
     if GameData.terrains.has(terrain_id):
         base_cost = GameData.terrains[terrain_id].get("expansion_cost", 2)
-    # Модификаторы технологий (target = "construction_cost", см. data/modifiers.json)
-    # также снижают стоимость освоения территории (труд накапливается через стройку).
+    # The technology modifiers (target = "construction_cost", see data/modifiers.json)
+    # also reduce the cost of claiming the territory (the labour accumulates through the build).
     return int(ceil(float(base_cost) * MapHelpers.get_construction_cost_mult()))
 
-# Базовая цена разведки одного гекса в монетах казны (data/game_balance.json).
+# The base price of scouting one hex in treasury coins (data/game_balance.json).
 func get_scout_cost_per_hex() -> int:
     return int(GameData.game_balance.get("scouting_cost_per_hex", 3))
 
-# Базовая цена освоения одного гекса в монетах казны (data/game_balance.json).
-# Труд считается отдельно — см. get_hex_cost().
+# The base price of claiming one hex in treasury coins (data/game_balance.json).
+# The labour is counted separately — see get_hex_cost().
 func get_expansion_cost_per_hex() -> int:
     return int(GameData.game_balance.get("expansion_cost_per_hex", 5))
 
-# Цена РАЗВЕДКИ одного гекса: база × универсальный модификатор дальности
-# (MapHelpers.get_distance_mult — значение из game_balance.json). По аналогии
-# со строительством улучшений (MapHelpers.get_improvement_work_cost) дальние
-# гексы дороже, но БЕЗ тех-модификаторов: «Колесо» — про перевозку грузов,
-# разведчики же идут пешком или едут на лошадях.
+# The price of SCOUTING one hex: the base × the universal distance modifier
+# (MapHelpers.get_distance_mult — the value from game_balance.json). By analogy
+# with building improvements (MapHelpers.get_improvement_work_cost) the distant
+# hexes are more expensive, but WITHOUT the tech modifiers: "Wheel" is about
+# transporting cargo, while the scouts go on foot or ride horses.
 func get_hex_scout_cost(row: int, col: int) -> int:
     var distance := HexUtils.hex_distance(row, col, main_map.city_row, main_map.city_col)
     return int(ceil(float(get_scout_cost_per_hex()) * MapHelpers.get_distance_mult(distance)))
 
-# Цена ОСВОЕНИЯ одного гекса в монетах: база × универсальный модификатор
-# дальности. Списывается сразу при старте освоения (труд — отдельно, см. get_hex_cost).
+# The price of CLAIMING one hex in coins: the base × the universal distance
+# modifier. It is written off immediately at the start of the claim (the labour — separately, see get_hex_cost).
 func get_hex_money_cost(row: int, col: int) -> int:
     var distance := HexUtils.hex_distance(row, col, main_map.city_row, main_map.city_col)
     return int(ceil(float(get_expansion_cost_per_hex()) * MapHelpers.get_distance_mult(distance)))
 
-# Возвращает чанк (список гексов), который включает стартовый гекс.
-# Чанк однороден по статусу исследования стартового гекса, и от этого
-# статуса зависит его назначение:
-#   - стартовый гекс НЕ исследован → чанк для РАЗВЕДКИ. Границы BFS зависят
-#     от технологии «Картография»:
-#       · Картография изучена → вся область, достижимая скроллом карты
-#         (main_map.get_scout_reach_bounds), кольца влияния чужих городков
-#         ПРОХОДИМЫ (разведчиков разрешено посылать в туман войны и на
-#         территорию городков);
-#       · Картография НЕ изучена → только Регион (main_map.get_region_bounds):
-#         разведчиков можно посылать лишь в неисследованную часть Региона.
-#     Кольцо Влияния игрока пропускается в обоих случаях.
-#   - стартовый гекс исследован → чанк для ПОКУПКИ (освоения). BFS ограничен
-#     Регионом (main_map.is_valid_hex), а гексы in_town_influence пропускаются:
-#     осваивать можно только свою будущую территорию внутри Региона.
-# Если стартовый гекс исследован и лежит в кольце влияния чужого городка или
-# вне Региона — возвращается пустой массив: покупать там нечего, осваивать
-# чужую территорию запрещено. Это согласуется с тем, что build_manager
-# отклоняет строительство на гексах в кольце.
-# Если стартовый гекс НЕ исследован и лежит вне Региона, а Картография ещё не
-# изучена — тоже возвращается пустой массив: до Картографии туман войны
-# недоступен для разведки (иначе чанк из одного стартового гекса дал бы
-# подсветку в тумане и кнопку «Отправить разведчиков»).
-# ВАЖНО: «примыкание к известной территории» (main_map.is_chunk_adjacent_to_known)
-# здесь НЕ проверяется — чанк собирается всегда, чтобы игрок видел подсветку
-# подсветку и неактивную кнопку «Отправить разведчиков» с причиной
-# («Чанк не граничит с исследованной территорией»). Гейт применяют
-# control_panel (enabled/tooltip) и main_map.start_scouting (страховка).
+# Returns the chunk (the list of hexes) that includes the starting hex.
+# The chunk is homogeneous by the exploration status of the starting hex, and
+# this status determines its purpose:
+#   - the starting hex is NOT explored → a chunk for SCOUTING. The BFS bounds depend
+#     on the "Cartography" technology:
+#       · Cartography is researched → the whole area reachable by scrolling the map
+#         (main_map.get_scout_reach_bounds), the influence rings of other towns
+#         are PASSABLE (scouts are allowed to be sent into the fog of war and to the
+#         town territories);
+#       · Cartography is NOT researched → only the Region (main_map.get_region_bounds):
+#         scouts can be sent only to the unexplored part of the Region.
+#     The Influence Ring of the player is skipped in both cases.
+#   - the starting hex is explored → a chunk for BUYING (claiming). The BFS is limited
+#     by the Region (main_map.is_valid_hex), and the in_town_influence hexes are skipped:
+#     only your own future territory inside the Region can be claimed.
+# If the starting hex is explored and lies in the influence ring of another town or
+# outside the Region — an empty array is returned: there is nothing to buy there, and claiming
+# someone else's territory is forbidden. This is consistent with build_manager
+# rejecting the construction on the hexes in the ring.
+# If the starting hex is NOT explored and lies outside the Region, and Cartography is not yet
+# researched — an empty array is returned as well: before Cartography the fog of war
+# is unavailable for scouting (otherwise a chunk of one starting hex would give
+# a highlight in the fog and the "Send scouts" button).
+# IMPORTANT: "adjacency to the known territory" (main_map.is_chunk_adjacent_to_known)
+# is NOT checked here — the chunk is always assembled, so that the player sees the highlight
+# and the inactive "Send scouts" button with the reason
+# ("The chunk does not border the explored territory"). The gate is applied by
+# control_panel (enabled/tooltip) and main_map.start_scouting (a safety net).
 func get_chunk_hexes(start_row: int, start_col: int) -> Array:
     var chunk = []
     var start_tile = main_map.tile_data[start_row][start_col]
     if start_tile == null:
         return chunk
     var start_explored: bool = bool(start_tile.get("is_explored", false))
-    # Покупка возможна только на исследованном гексе внутри Региона и не на
-    # территории чужого городка. Проверки идут ДО BFS: иначе он добавил бы
-    # стартовый гекс в чанк, и панель показала бы «Освоить область» там, где
-    # осваивать нельзя. Для разведки (неисследованный гекс) действует своё
-    # правило: внутри Региона — всегда, вне Региона — только с Картографией.
+    # The purchase is possible only on an explored hex inside the Region and not on
+    # the territory of another town. The checks go BEFORE the BFS: otherwise it would add
+    # the starting hex to the chunk, and the panel would show "Claim the area" there where
+    # claiming is not allowed. For scouting (an unexplored hex) its own
+    # rule applies: inside the Region — always, outside the Region — only with Cartography.
     if start_explored:
         if bool(start_tile.get("in_town_influence", false)):
             return chunk
@@ -119,11 +119,11 @@ func get_chunk_hexes(start_row: int, start_col: int) -> Array:
     var queue = [ {"row": start_row, "col": start_col}]
     var key = str(start_row) + "," + str(start_col)
     visited[key] = true
-    # Границы области, в которой собирается чанк РАЗВЕДКИ:
-    #   Картография изучена  → все гексы, достижимые скроллом карты
-    #                          (границы уже обрезаны по краям карты);
-    #   Картография не изучена → только Регион (неисследованная его часть).
-    # Для чанка ПОКУПКИ ограничение — Регион (проверка через is_valid_hex ниже).
+    # The bounds of the area in which the SCOUTING chunk is assembled:
+    #   Cartography is researched  → all the hexes reachable by scrolling the map
+    #                          (the bounds are already clipped to the map edges);
+    #   Cartography is not researched → only the Region (its unexplored part).
+    # For the BUYING chunk the limit is the Region (the check via is_valid_hex below).
     var scout_reach: Dictionary = {}
     if not start_explored:
         if main_map.is_cartography_researched():
@@ -140,12 +140,12 @@ func get_chunk_hexes(start_row: int, start_col: int) -> Array:
             if visited.has(n_key):
                 continue
             if start_explored:
-                # Покупка (освоение): только Регион.
+                # The purchase (claiming): only the Region.
                 if not main_map.is_valid_hex(n.row, n.col):
                     continue
             else:
-                # Разведка: Регион (без Картографии) либо вся область,
-                # достижимая скроллом карты (с Картографией).
+                # Scouting: the Region (without Cartography) or the whole area
+                # reachable by scrolling the map (with Cartography).
                 if n.row < scout_reach.row_start or n.row > scout_reach.row_end \
                         or n.col < scout_reach.col_start or n.col > scout_reach.col_end:
                     continue
@@ -154,30 +154,30 @@ func get_chunk_hexes(start_row: int, start_col: int) -> Array:
                 continue
             if tile.get("in_influence", false):
                 continue
-            # Гексы в кольце влияния чужого городка НЕ входят в чанк покупки:
-            # пропускаем так же, как in_influence выше. Ring-гексы становятся
-            # «непроходимым барьером» для BFS, и чанк естественно ограничивается
-            # границей кольца (но не «обходит» его с другой стороны, потому что
-            # у BFS лимит 5 и нет обходных путей вокруг целого кольца).
-            # Для РАЗВЕДКИ чужое кольцо проходимо: разведчиков можно послать
-            # и на территорию городка.
+            # The hexes in the influence ring of another town do NOT get into the buying chunk:
+            # we skip them just as in_influence above. The ring hexes become
+            # an "impassable barrier" for the BFS, and the chunk is naturally limited
+            # by the ring boundary (but it does not "go around" it from the other side, because
+            # the BFS has a limit of 5 and there are no bypasses around a whole ring).
+            # For SCOUTING someone else's ring is passable: scouts can be sent
+            # to the town territory as well.
             if start_explored and bool(tile.get("in_town_influence", false)):
                 continue
-            # Исключаем гексы с отличающимся статусом исследования,
-            # чтобы не включать в чанк разведки уже исследованные гексы
+            # We exclude the hexes with a different exploration status,
+            # so as not to include the already explored hexes into the scouting chunk
             if bool(tile.get("is_explored", false)) != start_explored:
                 continue
             visited[n_key] = true
             queue.append(n)
     return chunk
 
-# Возвращает чанк ПОДСВЕТКИ (до 5 гексов) для ИССЛЕДОВАННОГО гекса, у которого
-# нет чанка действий (вне Региона — покупка там невозможна). Строится BFS
-# наружу от гекса под курсором (как чанки разведки/покупки — лимит 5), по
-# разведанным гексам; in_influence и in_town_influence в чанк не входят.
-# Результат сортируется канонически (row, col), поэтому один и тот же набор,
-# построенный от разных гексов участка, даёт идентичный массив — детекция
-# изменений в update_hovered_chunk не считает его новым чанком.
+# Returns the HIGHLIGHT chunk (up to 5 hexes) for an EXPLORED hex that has
+# no action chunk (outside the Region buying is impossible). It is built by a BFS
+# outwards from the hex under the cursor (as the scouting/buying chunks — the limit is 5), over
+# the explored hexes; in_influence and in_town_influence do not get into the chunk.
+# The result is sorted canonically (row, col), therefore the same set,
+# built from different hexes of the area, gives an identical array — the change
+# detection in update_hovered_chunk does not consider it a new chunk.
 func _get_explored_chunk_hexes(start_row: int, start_col: int) -> Array:
     var chunk = []
     if not main_map.is_hex_on_map(start_row, start_col):
@@ -207,26 +207,26 @@ func _get_explored_chunk_hexes(start_row: int, start_col: int) -> Array:
                 continue
             visited[n_key] = true
             queue.append(n)
-    # Канонический порядок: подсветка одного участка не должна зависеть от
-    # того, с какого его гекса начался BFS.
+    # The canonical order: the highlight of one area should not depend on
+    # which of its hexes the BFS started from.
     chunk.sort_custom(func(a, b):
         if a.row != b.row:
             return a.row < b.row
         return a.col < b.col)
     return chunk
 
-# Возвращает гексы, которые надо подсветить при наведении или выделении гекса
-# (row, col) — единая точка правды для рендерера (ФАЗА 2.5 hover и ФАЗА 3.5
-# выделение), чтобы подсветка не расходилась с чанком, с которым работают
-# действия панели:
-#   - гекс в Кольце Влияния → только он сам;
-#   - иначе → чанк разведки/покупки (get_chunk_hexes);
-#   - если чанка нет, а гекс ИССЛЕДОВАН (разведанная область вне Региона —
-#     покупать там нельзя) → чанк подсветки до 5 гексов, построенный наружу
-#     от гекса под курсором (_get_explored_chunk_hexes): наведение и клик не
-#     должны быть «молчаливыми»;
-#   - если чанка нет и гекс в кольце влияния чужого городка (или в тумане без
-#     Картографии) → сам гекс.
+# Returns the hexes that need to be highlighted when hovering or selecting the hex
+# (row, col) — the single source of truth for the renderer (PHASE 2.5 hover and PHASE 3.5
+# selection), so that the highlight does not diverge from the chunk the panel
+# actions work with:
+#   - a hex in the Influence Ring — only it itself;
+#   - otherwise — the scouting/buying chunk (get_chunk_hexes);
+#   - if there is no chunk and the hex is EXPLORED (an explored area outside the Region —
+#     buying there is not allowed) → a highlight chunk of up to 5 hexes, built outwards
+#     from the hex under the cursor (_get_explored_chunk_hexes): hovering and clicking
+#     must not be "silent";
+#   - if there is no chunk and the hex is in the influence ring of another town (or in
+#     the fog without Cartography) → the hex itself.
 func get_highlight_hexes(row: int, col: int) -> Array:
     var single := [{"row": row, "col": col}]
     if not main_map.is_hex_on_map(row, col):
@@ -238,21 +238,21 @@ func get_highlight_hexes(row: int, col: int) -> Array:
         return single
     var chunk = get_chunk_hexes(row, col)
     if chunk.is_empty():
-        # Исследованный гекс вне Региона → чанк подсветки. Гекс в кольце
-        # чужого городка — исключение: там покупка запрещена всегда, и
-        # подсвечиваем только сам гекс (BFS не должен «выходить» из кольца
-        # на соседние разведанные гексы).
+        # An explored hex outside the Region → a highlight chunk. A hex in the ring of
+        # another town is an exception: buying there is always forbidden, and
+        # we highlight only the hex itself (the BFS must not "exit" the ring
+        # onto the neighbouring explored hexes).
         if bool(tile.get("is_explored", false)) \
                 and not bool(tile.get("in_town_influence", false)):
             return _get_explored_chunk_hexes(row, col)
         return single
     return chunk
 
-# Обновляет текущий подсвеченный чанк. Детекция изменений и хранение идут по
-# НАБОРУ ПОДСВЕТКИ (get_highlight_hexes), а не по чанку действий: у
-# исследованных гексов вне Региона чанк действий всегда пуст, и сравнение
-# [] == [] не давало сигнала — подсветка «застывала» на предыдущей позиции
-# курсора при переходе между такими участками.
+# Updates the currently highlighted chunk. The change detection and the storage go by
+# the HIGHLIGHT SET (get_highlight_hexes), and not by the action chunk: for
+# the explored hexes outside the Region the action chunk is always empty, and the comparison
+# [] == [] gave no signal — the highlight "froze" at the previous cursor position
+# when moving between such areas.
 func update_hovered_chunk(row: int, col: int):
     current_hover_hex = {"row": row, "col": col}
     var highlight = get_highlight_hexes(row, col)
@@ -268,38 +268,38 @@ func clear_hovered_chunk():
     current_chunk = []
     emit_signal("chunk_hovered", current_chunk)
 
-# Стоимость ТРУДА всего чанка = сумма труда по гексам.
+# The LABOUR cost of the whole chunk = the sum of the labour over the hexes.
 func get_chunk_cost(chunk: Array) -> int:
     var total = 0
     for hex in chunk:
         total += get_hex_cost(hex.row, hex.col)
     return total
 
-# Цена РАЗВЕДКИ всего чанка в монетах казны = сумма цен по гексам (каждый гекс
-# со своим модификатором дальности от города).
+# The price of SCOUTING the whole chunk in treasury coins = the sum of the prices over
+# the hexes (each hex with its own distance modifier from the city).
 func get_chunk_scout_cost(chunk: Array) -> int:
     var total = 0
     for hex in chunk:
         total += get_hex_scout_cost(hex.row, hex.col)
     return total
 
-# Цена ОСВОЕНИЯ всего чанка в монетах казны = сумма цен по гексам.
-# Труд чанка считается отдельно — get_chunk_cost().
+# The price of CLAIMING the whole chunk in treasury coins = the sum of the prices
+# over the hexes. The labour of the chunk is counted separately — get_chunk_cost().
 func get_chunk_money_cost(chunk: Array) -> int:
     var total = 0
     for hex in chunk:
         total += get_hex_money_cost(hex.row, hex.col)
     return total
 
-# Запускает освоение чанка. Монеты (цена чанка, см. get_chunk_money_cost)
-# списываются сразу из казны, а труд накапливается через стройку в
-# build_manager (прогресс во времени).
+# Starts the claiming of the chunk. The coins (the price of the chunk, see get_chunk_money_cost)
+# are written off from the treasury immediately, and the labour accumulates through the build in
+# build_manager (progress over time).
 func handle_action(chunk: Array, money_cost: int, work_cost: int) -> bool:
-    # --- Защитный повтор: чанк не должен содержать гексов из кольца влияния
-    # чужого городка. get_chunk_hexes этого не допускает, но handle_action —
-    # публичная точка входа: сюда могут приходить чанки из других путей
-    # (например, из теста или из будущего UI). Отказываем молча: логика
-    # «купить нельзя» уже объяснена в control_panel (нет actions).
+    # --- A safety repeat: the chunk must not contain the hexes from the influence ring
+    # of another town. get_chunk_hexes does not allow this, but handle_action is
+    # a public entry point: chunks from other paths
+    # (for example, from a test or from the future UI) can come here. We refuse silently: the logic
+    # "it cannot be bought" is already explained in control_panel (there are no actions).
     for hex in chunk:
         if hex.row < 0 or hex.row >= main_map.map_rows or hex.col < 0 or hex.col >= main_map.map_cols:
             return false
@@ -310,52 +310,52 @@ func handle_action(chunk: Array, money_cost: int, work_cost: int) -> bool:
             main_map.hud.show_message(tr("The chunk overlaps another town's influence ring — purchase impossible"))
             return false
 
-    # --- Проверка и списание монет из казны ---
-    # Дебаг: при включённом «Игнорировать требования строительства» освоение
-    # бесплатное — монеты не проверяются и не списываются (строки расходов
-    # тоже не пишутся, иначе разбивка казны показывала бы несуществующий
-    # расход). Тот же принцип, что у дополнительных материалов зданий.
+    # --- The check and write-off of the coins from the treasury ---
+    # Debug: with "Ignore building requirements" enabled the claiming
+    # is free — the coins are neither checked nor written off (the expense rows
+    # are not written either, otherwise the treasury breakdown would show a non-existent
+    # expense). The same principle as for the additional materials of buildings.
     if not CityData.ignore_build_requirements:
         if not CityData.spend_treasury(money_cost):
             main_map.hud.show_message(tr("Not enough coins in the treasury! Need %d, treasury has %d")
                     % [money_cost, CityData.treasury])
             return false
-        # Источник расхода для тултипа «Казна» (см. show_treasury_tooltip).
-        # Разовые траты на освоение чанка — событийные, в плане их нет, поэтому
-        # разбивка расходов показывает факт за последнее окно отображения.
+        # The expense source for the "Treasury" tooltip (see show_treasury_tooltip).
+        # The one-time costs of claiming a chunk are event-based, they are not in the plan, therefore
+        # the expense breakdown shows the fact for the last display window.
         if money_cost > 0:
             CityData.record_treasury_expense(GameData.SRC_CLAIMING, money_cost)
 
-    # --- Запуск стройки освоения (труд накапливается во времени) ---
+    # --- Starting the claiming build (the labour accumulates over time) ---
     var bm = main_map.build_manager
     if bm and bm.has_method("start_expansion_build"):
         if bm.start_expansion_build(chunk, work_cost, money_cost):
             return true
-        # Стройка не запустилась (например, исчерпан лимит одновременных
-        # строек) — возвращаем монеты, чтобы они не пропали.
+        # The build did not start (for example, the limit of simultaneous
+        # builds is exhausted) — we return the coins, so that they do not disappear.
         CityData.add_treasury(money_cost)
         if money_cost > 0:
-            # Возврат идёт в ТОТ ЖЕ источник расходов «Освоение чанков»
-            # отрицательной записью: record_treasury_expense принимает
-            # signed amount, отрицательное число вычитается из накопленного
-            # расхода по этому источнику. Нетто за окно сходится с фактом
-            # изменения казны (платил Y → получил Y назад → 0 за окно).
-            # Раньше возврат шёл отдельным источником дохода «… (возврат)»,
-            # но при иерархической разбивке казны он не ложится ни в один
-            # тип («Потребление населения» — это не возврат), поэтому
-            # ноттируем внутри расхода.
+            # The refund goes to THE SAME expense source "Claiming chunks"
+            # as a negative record: record_treasury_expense accepts a
+            # signed amount, a negative number is subtracted from the accumulated
+            # expense for this source. The net over the window matches the fact
+            # of the treasury change (paid Y → got Y back → 0 over the window).
+            # Previously the refund went as a separate income source "… (refund)",
+            # but with the hierarchical breakdown of the treasury it does not fit into any
+            # type ("Population consumption" is not a refund), therefore
+            # we note it inside the expense.
             CityData.record_treasury_expense(GameData.SRC_CLAIMING, -money_cost)
         return false
-    # Fallback: если build_manager недоступен — осваиваем мгновенно.
+    # Fallback: if build_manager is unavailable — we claim instantly.
     _complete_expansion(chunk)
     return true
 
-# Обработчик завершения стройки освоения: труд накоплен — присоединяем чанк.
-# Подключён в main_map._ready() на сигнал build_manager.expansion_build_completed.
+# The handler of the completion of the claiming build: the labour is accumulated — we join the chunk.
+# It is connected in main_map._ready() to the signal build_manager.expansion_build_completed.
 func on_expansion_build_completed(chunk: Array):
     _complete_expansion(chunk)
 
-# Завершает освоение чанка: помечает гексы как принадлежащие Кольцу Влияния.
+# Completes the claiming of the chunk: marks the hexes as belonging to the Influence Ring.
 func _complete_expansion(chunk: Array):
     for hex in chunk:
         if hex.row >= 0 and hex.row < main_map.map_rows and hex.col >= 0 and hex.col < main_map.map_cols:
