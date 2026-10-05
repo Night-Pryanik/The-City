@@ -96,6 +96,9 @@ msgstr ""
 msgid " (base %d)"
 msgstr ""
 
+msgid " (breeding reset: %s)"
+msgstr ""
+
 msgid " (group \"%s\")"
 msgstr ""
 
@@ -121,6 +124,9 @@ msgid " (not working)"
 msgstr ""
 
 msgid " (only across scouted territory)"
+msgstr ""
+
+msgid " (replaced: %s)"
 msgstr ""
 
 msgid " (trade unavailable: no road to the town)"
@@ -471,6 +477,9 @@ msgstr ""
 msgid "Actual over the window: %s units/sec — that is what was really bought"
 msgstr ""
 
+msgid "Added 100 food"
+msgstr ""
+
 msgid "Advance requirement met. Click to advance to the next era."
 msgstr ""
 
@@ -817,6 +826,12 @@ msgid "Building Stone"
 msgstr ""
 
 msgid "Building not found"
+msgstr ""
+
+msgid "Building requirements are ignored: everything is executed instantly and for free."
+msgstr ""
+
+msgid "Building requirements are taken into account: the actions take time and resources."
 msgstr ""
 
 msgid "Building: %.1f/sec"
@@ -1260,6 +1275,9 @@ msgstr ""
 msgid "Dates"
 msgstr ""
 
+msgid "Debug menu"
+msgstr ""
+
 msgid "Debug: whole map revealed and inside the Influence Ring (%d×%d)"
 msgstr ""
 
@@ -1462,6 +1480,12 @@ msgid "Food"
 msgstr ""
 
 msgid "Food available: 0"
+msgstr ""
+
+msgid "Food consumption is disabled: the citizens have stopped eating."
+msgstr ""
+
+msgid "Food consumption is enabled: the citizens are eating again."
 msgstr ""
 
 msgid "Food: %d [+%d%s / -%d%s]"
@@ -1759,6 +1783,9 @@ msgid "Leather Clothes"
 msgstr ""
 
 msgid "Leatherworking"
+msgstr ""
+
+msgid "Left-click on a hex to place: %s"
 msgstr ""
 
 msgid "Lentils"
@@ -2121,7 +2148,13 @@ msgstr ""
 msgid "Nothing to upgrade: %s"
 msgstr ""
 
+msgid "OFF"
+msgstr ""
+
 msgid "OK"
+msgstr ""
+
+msgid "ON"
 msgstr ""
 
 msgid "Oasis"
@@ -2547,6 +2580,9 @@ msgstr ""
 msgid "Resource"
 msgstr ""
 
+msgid "Resource %s placed on the hex (%d, %d)"
+msgstr ""
+
 msgid "Resource data refresh interval"
 msgstr ""
 
@@ -2734,6 +2770,9 @@ msgid "Section %d/%d"
 msgstr ""
 
 msgid "Select a hex on the map (LMB) to see information and available actions."
+msgstr ""
+
+msgid "Select a resource:"
 msgstr ""
 
 msgid "Select a technology to research"
@@ -3013,6 +3052,12 @@ msgid "Technology effect"
 msgstr ""
 
 msgid "Technology not found: "
+msgstr ""
+
+msgid "Technology requirements are ignored: all prerequisites and era restrictions are removed."
+msgstr ""
+
+msgid "Technology requirements are taken into account: the prerequisites and eras are accounted for again."
 msgstr ""
 
 msgid "Technology requires a nonexistent technology"
@@ -3444,6 +3489,30 @@ msgstr ""
 msgid "Zebu"
 msgstr ""
 
+msgid "[0] Close (F9)"
+msgstr ""
+
+msgid "[1] Add a resource to the map"
+msgstr ""
+
+msgid "[2] Go to the next era"
+msgstr ""
+
+msgid "[3] Open the whole map"
+msgstr ""
+
+msgid "[4] Toggle food consumption (now: %s)"
+msgstr ""
+
+msgid "[5] Add 100 food"
+msgstr ""
+
+msgid "[6] Ignore technology requirements (now: %s)"
+msgstr ""
+
+msgid "[7] Ignore building requirements (now: %s)"
+msgstr ""
+
 msgid "[center][color=#c9c9c9]Advance requirement:[/color] build "
 msgstr ""
 
@@ -3505,6 +3574,9 @@ msgid "upgradeable"
 msgstr ""
 
 msgid "working"
+msgstr ""
+
+msgid "← Back"
 msgstr ""
 
 msgid "≈ in the \"Treasury\" row — average profit and expenses over the last window, per second"

@@ -96,6 +96,9 @@ msgstr " (+%d%% к производству)"
 msgid " (base %d)"
 msgstr " (база %d)"
 
+msgid " (breeding reset: %s)"
+msgstr " (разведение сброшено: %s)"
+
 msgid " (group \"%s\")"
 msgstr " (группа «%s»)"
 
@@ -122,6 +125,9 @@ msgstr " (не работает)"
 
 msgid " (only across scouted territory)"
 msgstr " (только по разведанной территории)"
+
+msgid " (replaced: %s)"
+msgstr " (заменён: %s)"
 
 msgid " (trade unavailable: no road to the town)"
 msgstr " (торговля недоступна: нет дороги до городка)"
@@ -471,6 +477,9 @@ msgstr "Факт ниже плана: покупатели хотят больш
 msgid "Actual over the window: %s units/sec — that is what was really bought"
 msgstr "Факт за окно: %s ед./сек — столько реально купили"
 
+msgid "Added 100 food"
+msgstr "Добавлено 100 еды"
+
 msgid "Advance requirement met. Click to advance to the next era."
 msgstr "Условие перехода выполнено. Нажмите, чтобы перейти в следующую эпоху."
 
@@ -818,6 +827,12 @@ msgstr "Строительный камень"
 
 msgid "Building not found"
 msgstr "Здание не найдено"
+
+msgid "Building requirements are ignored: everything is executed instantly and for free."
+msgstr "Требования строительства игнорируются: всё выполняется мгновенно и бесплатно."
+
+msgid "Building requirements are taken into account: the actions take time and resources."
+msgstr "Требования строительства учитываются: действия требуют времени и ресурсов."
 
 msgid "Building: %.1f/sec"
 msgstr "Здание: %.1f/сек"
@@ -1260,6 +1275,9 @@ msgstr "Молочные животные"
 msgid "Dates"
 msgstr "Финики"
 
+msgid "Debug menu"
+msgstr "Дебаг-меню"
+
 msgid "Debug: whole map revealed and inside the Influence Ring (%d×%d)"
 msgstr "Дебаг: вся карта открыта и в Кольце Влияния (%d×%d)"
 
@@ -1463,6 +1481,12 @@ msgstr "Еда"
 
 msgid "Food available: 0"
 msgstr "Еды доступно: 0"
+
+msgid "Food consumption is disabled: the citizens have stopped eating."
+msgstr "Потребление еды отключено: жители перестали есть."
+
+msgid "Food consumption is enabled: the citizens are eating again."
+msgstr "Потребление еды включено: жители снова едят."
 
 msgid "Food: %d [+%d%s / -%d%s]"
 msgstr "Еда: %d [+%d%s / -%d%s]"
@@ -1760,6 +1784,9 @@ msgstr "Кожаная одежда"
 
 msgid "Leatherworking"
 msgstr "Кожевенное дело"
+
+msgid "Left-click on a hex to place: %s"
+msgstr "Кликните левой кнопкой по гексу, чтобы разместить: %s"
 
 msgid "Lentils"
 msgstr "Чечевица"
@@ -2121,8 +2148,14 @@ msgstr "Улучшать нечего"
 msgid "Nothing to upgrade: %s"
 msgstr "Улучшать нечего: %s"
 
+msgid "OFF"
+msgstr "выкл"
+
 msgid "OK"
 msgstr "Ок"
+
+msgid "ON"
+msgstr "вкл"
 
 msgid "Oasis"
 msgstr "Оазис"
@@ -2547,6 +2580,9 @@ msgstr "Изучается: ???"
 msgid "Resource"
 msgstr "Ресурс"
 
+msgid "Resource %s placed on the hex (%d, %d)"
+msgstr "Ресурс %s размещён на гексе (%d, %d)"
+
 msgid "Resource data refresh interval"
 msgstr "Интервал обновления данных о ресурсах"
 
@@ -2735,6 +2771,9 @@ msgstr "Участок %d/%d"
 
 msgid "Select a hex on the map (LMB) to see information and available actions."
 msgstr "Выберите гекс на карте (ЛКМ), чтобы увидеть информацию и доступные действия."
+
+msgid "Select a resource:"
+msgstr "Выберите ресурс:"
 
 msgid "Select a technology to research"
 msgstr "Выберите технологию для изучения"
@@ -3014,6 +3053,12 @@ msgstr "Эффект технологии"
 
 msgid "Technology not found: "
 msgstr "Технология не найдена: "
+
+msgid "Technology requirements are ignored: all prerequisites and era restrictions are removed."
+msgstr "Требования технологий игнорируются: все предшественники и ограничения эпох сняты."
+
+msgid "Technology requirements are taken into account: the prerequisites and eras are accounted for again."
+msgstr "Требования технологий учитываются: снова проверяются предшественники и ограничения эпох."
 
 msgid "Technology requires a nonexistent technology"
 msgstr "Технология требует несуществующую технологию"
@@ -3444,6 +3489,30 @@ msgstr "Можно строить не более %d зданий или улу�
 msgid "Zebu"
 msgstr "Зебу"
 
+msgid "[0] Close (F9)"
+msgstr "[0] Закрыть (F9)"
+
+msgid "[1] Add a resource to the map"
+msgstr "[1] Добавить ресурс на карту"
+
+msgid "[2] Go to the next era"
+msgstr "[2] Перейти в следующую эпоху"
+
+msgid "[3] Open the whole map"
+msgstr "[3] Открыть всю карту"
+
+msgid "[4] Toggle food consumption (now: %s)"
+msgstr "[4] Переключить потребление еды (сейчас: %s)"
+
+msgid "[5] Add 100 food"
+msgstr "[5] Добавить 100 еды"
+
+msgid "[6] Ignore technology requirements (now: %s)"
+msgstr "[6] Игнорировать требования технологий (сейчас: %s)"
+
+msgid "[7] Ignore building requirements (now: %s)"
+msgstr "[7] Игнорировать требования строительства (сейчас: %s)"
+
 msgid "[center][color=#c9c9c9]Advance requirement:[/color] build "
 msgstr "[center][color=#c9c9c9]Условие для перехода:[/color] построен "
 
@@ -3506,6 +3575,9 @@ msgstr "можно улучшить"
 
 msgid "working"
 msgstr "работает"
+
+msgid "← Back"
+msgstr "← Назад"
 
 msgid "≈ in the \"Treasury\" row — average profit and expenses over the last window, per second"
 msgstr "≈ в строке «Казна» — средние прибыль и расход за последнее окно, в секунду"

@@ -42,6 +42,9 @@ const TITLE_HEIGHT := 32
 
 func initialize(main_node: Node):
     main_map = main_node
+    # The menu is built in code, so Godot's auto-translation does not reach it:
+    # an open menu is re-labelled on a language change (see _on_locale_changed).
+    LocalizationManager.locale_changed.connect(_on_locale_changed)
     _build_ui()
     hide()
 
@@ -79,7 +82,7 @@ func _build_ui():
     _title_bar.add_theme_stylebox_override("panel", title_style)
 
     _title_label = Label.new()
-    _title_label.text = "Debug menu"
+    _title_label.text = tr("Debug menu")
     _title_label.position = Vector2(8, 6)
     _title_label.add_theme_color_override("font_color", Color.WHITE)
     _title_label.add_theme_font_size_override("font_size", 16)
@@ -115,15 +118,15 @@ func _show_main_menu():
     _status_label.text = ""
     _in_main_menu = true
 
-    var add_resource_btn = _make_button("[1] Add a resource to the map")
+    var add_resource_btn = _make_button(tr("[1] Add a resource to the map"))
     add_resource_btn.pressed.connect(_on_add_resource_pressed)
     _content_vbox.add_child(add_resource_btn)
 
-    var next_era_btn = _make_button("[2] Go to the next era")
+    var next_era_btn = _make_button(tr("[2] Go to the next era"))
     next_era_btn.pressed.connect(_on_next_era_pressed)
     _content_vbox.add_child(next_era_btn)
 
-    var open_map_btn = _make_button("[3] Open the whole map")
+    var open_map_btn = _make_button(tr("[3] Open the whole map"))
     open_map_btn.pressed.connect(_on_open_whole_map_pressed)
     _content_vbox.add_child(open_map_btn)
 
@@ -134,7 +137,7 @@ func _show_main_menu():
     _food_toggle_btn.pressed.connect(_on_toggle_food_consumption_pressed)
     _content_vbox.add_child(_food_toggle_btn)
 
-    var add_food_btn = _make_button("[5] Add 100 food")
+    var add_food_btn = _make_button(tr("[5] Add 100 food"))
     add_food_btn.pressed.connect(_on_add_food_pressed)
     _content_vbox.add_child(add_food_btn)
 
@@ -153,16 +156,16 @@ func _show_main_menu():
     _content_vbox.add_child(_ignore_build_btn)
 
     # A stub for future actions (can be extended)
-    var close_btn = _make_button("[0] Close (F9)")
+    var close_btn = _make_button(tr("[0] Close (F9)"))
     close_btn.pressed.connect(toggle)
     _content_vbox.add_child(close_btn)
 
 func _show_resource_list():
     _clear_content()
-    _status_label.text = "Select a resource:"
+    _status_label.text = tr("Select a resource:")
     _in_main_menu = false
 
-    var back_btn = _make_button("← Back")
+    var back_btn = _make_button(tr("← Back"))
     back_btn.pressed.connect(_show_main_menu)
     _content_vbox.add_child(back_btn)
 
@@ -226,9 +229,9 @@ func _on_toggle_ignore_tech_requirements_pressed():
     # recalculated tree buttons, therefore we emit city_updated to update the UI.
     CityData.ignore_tech_requirements = not CityData.ignore_tech_requirements
 
-    var msg := "Technology requirements are taken into account: the prerequisites and eras are accounted for again."
+    var msg := tr("Technology requirements are taken into account: the prerequisites and eras are accounted for again.")
     if CityData.ignore_tech_requirements:
-        msg = "Technology requirements are ignored: all prerequisites and era restrictions are removed."
+        msg = tr("Technology requirements are ignored: all prerequisites and era restrictions are removed.")
     if main_map.hud and main_map.hud.has_method("show_message"):
         main_map.hud.show_message(msg)
 
@@ -237,10 +240,7 @@ func _on_toggle_ignore_tech_requirements_pressed():
     CityData.emit_signal("city_updated")
 
 func _ignore_tech_label() -> String:
-    var state := "OFF"
-    if CityData.ignore_tech_requirements:
-        state = "ON"
-    return "[6] Ignore technology requirements (now: %s)" % state
+    return tr("[6] Ignore technology requirements (now: %s)") % _on_off(CityData.ignore_tech_requirements)
 
 func _on_toggle_ignore_build_requirements_pressed():
     # We invert the debug flag CityData.ignore_build_requirements: it enables
@@ -255,9 +255,9 @@ func _on_toggle_ignore_build_requirements_pressed():
     # The flag is not saved in the save (see CityData).
     CityData.ignore_build_requirements = not CityData.ignore_build_requirements
 
-    var msg := "Building requirements are taken into account: the actions take time and resources."
+    var msg := tr("Building requirements are taken into account: the actions take time and resources.")
     if CityData.ignore_build_requirements:
-        msg = "Building requirements are ignored: everything is executed instantly and for free."
+        msg = tr("Building requirements are ignored: everything is executed instantly and for free.")
     if main_map.hud and main_map.hud.has_method("show_message"):
         main_map.hud.show_message(msg)
 
@@ -266,10 +266,7 @@ func _on_toggle_ignore_build_requirements_pressed():
     CityData.emit_signal("city_updated")
 
 func _ignore_build_label() -> String:
-    var state := "OFF"
-    if CityData.ignore_build_requirements:
-        state = "ON"
-    return "[7] Ignore building requirements (now: %s)" % state
+    return tr("[7] Ignore building requirements (now: %s)") % _on_off(CityData.ignore_build_requirements)
 
 func _on_add_food_pressed():
     # We add 100 units of food to storage (wheat is a product of the food category,
@@ -277,7 +274,7 @@ func _on_add_food_pressed():
     # helper so that the storage quality breakdown stays consistent.
     CityData.add_to_storage("wheat", 100)
     if main_map.hud and main_map.hud.has_method("show_message"):
-        main_map.hud.show_message("Added 100 food")
+        main_map.hud.show_message(tr("Added 100 food"))
     if main_map.city_ui and main_map.city_ui.visible:
         main_map.city_ui.refresh()
     if main_map.map_renderer:
@@ -289,9 +286,9 @@ func _on_toggle_food_consumption_pressed():
     var now_enabled = not CityData.food_consumption_enabled
     CityData.food_consumption_enabled = now_enabled
 
-    var msg := "Food consumption is disabled: the citizens have stopped eating."
+    var msg := tr("Food consumption is disabled: the citizens have stopped eating.")
     if now_enabled:
-        msg = "Food consumption is enabled: the citizens are eating again."
+        msg = tr("Food consumption is enabled: the citizens are eating again.")
     if main_map.hud and main_map.hud.has_method("show_message"):
         main_map.hud.show_message(msg)
 
@@ -300,19 +297,16 @@ func _on_toggle_food_consumption_pressed():
         _food_toggle_btn.text = _food_toggle_label()
 
 func _food_toggle_label() -> String:
-    var state := "OFF"
-    if CityData.food_consumption_enabled:
-        state = "ON"
-    return "[4] Toggle food consumption (now: %s)" % state
+    return tr("[4] Toggle food consumption (now: %s)") % _on_off(CityData.food_consumption_enabled)
 
 func _on_resource_selected(res_id: String):
     pending_resource_id = res_id
     waiting_for_hex = true
     _clear_content()
     var res_name = GameData.raw_resources.get(res_id, {}).get("name", res_id)
-    _status_label.text = "Left-click on a hex to place: %s" % res_name
+    _status_label.text = tr("Left-click on a hex to place: %s") % res_name
 
-    var cancel_btn = _make_button("Cancel")
+    var cancel_btn = _make_button(tr("Cancel"))
     cancel_btn.pressed.connect(_cancel_waiting)
     _content_vbox.add_child(cancel_btn)
 
@@ -339,13 +333,13 @@ func handle_hex_click(row: int, col: int):
         tile["crop_bred"] = null
 
     var res_name = GameData.raw_resources.get(pending_resource_id, {}).get("name", pending_resource_id)
-    var msg = "Resource %s placed on the hex (%d, %d)" % [res_name, row, col]
+    var msg = tr("Resource %s placed on the hex (%d, %d)") % [res_name, row, col]
     if old_res != null:
         var old_name = GameData.raw_resources.get(old_res, {}).get("name", old_res)
-        msg += " (replaced: %s)" % old_name
+        msg += tr(" (replaced: %s)") % old_name
     if old_crop != null:
         var crop_name = GameData.raw_resources.get(old_crop, {}).get("name", old_crop)
-        msg += " (breeding reset: %s)" % crop_name
+        msg += tr(" (breeding reset: %s)") % crop_name
 
     if main_map.hud and main_map.hud.has_method("show_message"):
         main_map.hud.show_message(msg)
@@ -413,3 +407,22 @@ func _on_title_bar_gui_input(event: InputEvent):
             var viewport_size = get_viewport_rect().size
             _panel.position.x = clamp(_panel.position.x, 0, max(0, viewport_size.x - _panel.size.x))
             _panel.position.y = clamp(_panel.position.y, 0, max(0, viewport_size.y - _panel.size.y))
+
+# The menu is built in code: Godot re-translates only the text set in the
+# scene, so the visible screen is rebuilt on a language change. The rebuild
+# keeps the current place — the submenu or the pending hex click.
+func _on_locale_changed(_locale: String) -> void:
+    if _title_label == null:
+        return
+    _title_label.text = tr("Debug menu")
+    if waiting_for_hex and pending_resource_id != "":
+        _on_resource_selected(pending_resource_id)
+    elif _in_main_menu:
+        _show_main_menu()
+    else:
+        _show_resource_list()
+
+# The state word of a toggle row — the only part of the label that changes
+# when the toggle is pressed.
+func _on_off(value: bool) -> String:
+    return tr("ON") if value else tr("OFF")
