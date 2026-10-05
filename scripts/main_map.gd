@@ -1901,8 +1901,8 @@ func get_road_cost_breakdown(row: int, col: int, road_level: int) -> Dictionary:
     }
 
 # The effect of one segment of the road: the segment goes into the network of the city, both of its hexes
-# становятся подключёнными. Флаг road_built ставится на КАЖДЫЙ присоединённый
-# гекс, а не только на цель проекта: сегменты в сейв не пишутся, и по этим
+# become connected. The flag road_built is set on EVERY connected
+# hex, and not only on the target of the project: the segments are not written to the save, and by these
 # the flags the network is recalculated on loading (road_manager.rebuild_player_roads).
 # In this way a half-built road survives the restart, and does not disappear.
 #
@@ -2660,7 +2660,7 @@ func _on_chunk_hovered(_chunk: Array):
 func _load_map_config():
     var cfg: Dictionary = GameData.map_config
     if cfg.is_empty():
-        # Конфиг не найден — используем значения по умолчанию.
+        # The config is not found — we use the default values.
         map_rows = 200
         map_cols = 200
         start_ring_rows = 7
@@ -2673,7 +2673,7 @@ func _load_map_config():
         start_ring_cols = int(cfg.get("start_ring_cols", 5))
         region_width = int(cfg.get("region_width", 2))
 
-    # Город — всегда в центре всей карты.
+    # The city is always at the centre of the whole map.
     city_row = map_rows / 2
     city_col = map_cols / 2
 
@@ -2819,12 +2819,12 @@ func _restore_start_region_bounds(st: Dictionary) -> void:
 # The whole map at once becomes the Influence Ring: all the hexes are marked
 # as belonging to the Ring and as scouted, the boundaries of the Ring/Region
 # are expanded to the dimensions of the whole map. After that one can build/improve
-# на любом гексе без разведки и покупки территории.
+# on any hex without the scouting and the purchase of the territory.
 func debug_open_whole_map():
     if tile_data.is_empty():
         return
 
-    # Помечаем каждый гекс как часть Кольца Влияния и исследованный.
+    # We mark each hex as a part of the Influence Ring and as scouted.
     for row in range(map_rows):
         for col in range(map_cols):
             var tile = tile_data[row][col]
@@ -2833,11 +2833,11 @@ func debug_open_whole_map():
             tile["in_influence"] = true
             tile["is_explored"] = true
 
-    # Открыта вся карта — известность изменилась, планы дорог пересчитываются.
+    # The whole map is open — the knownness has changed, the plans of the roads are recalculated.
     road_manager.bump_map_knowledge()
 
-    # Расширяем Кольцо и Регион до размеров всей карты — is_in_influence()
-    # и is_valid_hex() будут возвращать true для любых координат.
+    # We expand the Ring and the Region to the dimensions of the whole map — is_in_influence()
+    # and is_valid_hex() will return true for any coordinates.
     ring_rows = map_rows
     ring_cols = map_cols
     region_rows = map_rows
@@ -2850,19 +2850,19 @@ func debug_open_whole_map():
     if hud:
         hud.show_message(tr("Debug: whole map revealed and inside the Influence Ring (%d×%d)") % [map_rows, map_cols])
 
-# --- ПЕРЕХОД В СЛЕДУЮЩУЮ ЭПОХУ ---
-# Инфраструктура расширения мира:
-#   1. Весь текущий (некупленный) Регион моментально и бесплатно исследуется.
-#   2. Весь текущий Регион моментально и бесплатно покупается/присоединяется.
-#   3. Бывшие Кольцо + Регион становятся новым Кольцом Влияния.
-#   4. Вокруг нового Кольца формируется новый Регион той же ширины.
-#   5. Гексы за пределами нового Кольца + Региона по-прежнему скрыты (туман войны).
+# --- THE TRANSITION TO THE NEXT ERA ---
+# The infrastructure of the expansion of the world:
+#   1. The whole current (not bought) Region is scouted instantly and for free.
+#   2. The whole current Region is instantly and for free bought/joined.
+#   3. The former Ring + Region become the new Influence Ring.
+#   4. Around the new Ring a new Region of the same width is formed.
+#   5. The hexes beyond the new Ring + Region are still hidden (the fog of war).
 func advance_to_next_era():
     if tile_data.is_empty():
         return
 
-    # 1-2. Исследуем и присоединяем весь текущий Регион бесплатно.
-    # Гексы в кольце влияния чужого городка НЕ присоединяем: они не должны
+    # 1-2. We scout and join the whole current Region for free.
+    # The hexes in the influence ring of a foreign town are NOT joined: they must not
     # blocks by in_town_influence), nor to buy a chunk (expansion_manager
     # blocks by the same flag) — this is a "dead zone" in the Region near
     # someone else's town.
@@ -2981,7 +2981,7 @@ func _on_era_dialog_confirmed():
     advance_to_next_era()
 
 func _on_era_dialog_declined():
-    # Игрок остаётся в текущей эпохе: снимаем паузу, оставляем кнопку в HUD.
+# The player remains in the current era: we unpause, we leave the button in the HUD.
     get_tree().paused = false
     era_advance_button.visible = (current_era == 0)
 func _load_settings():
@@ -3006,22 +3006,23 @@ func apply_settings():
     input_handler.set_tooltip_delay(tooltip_delay)
     input_handler.set_extended_tooltip_delay(extended_tooltip_delay)
     city_ui.set_building_detail_delay(building_detail_delay)
-    # set_resource_display_interval повышает эпоху при смене значения — сразу
-    # подхватываем её и обновляем HUD-метку казны, чтобы игрок увидел эффект
-    # нового интервала без ожидания ближайшего city_updated.
+    # set_resource_display_interval raises the era on a change of the value — we immediately
+    # pick it up and update the HUD label of the treasury, so that the player sees the effect
+    # of the new interval without waiting for the nearest city_updated.
     CityData.set_resource_display_interval(resource_display_interval)
     _treasury_display_epoch = CityData.resource_display_epoch
     _update_treasury_hud()
 
-# Пересборка интерфейса после смены языка.
+# The rebuild of the interface after a change of the language.
 #
-# LocalizationManager к этому моменту уже перевёл сцены (Godot делает это сам
-# по уведомлению TranslationServer) и ПЕРЕЧИТАЛ данные игры — поэтому здесь
-# достаточно позвать у каждого экрана его refresh(): они строят заново узлы
-# со своим текстом и берут названия из уже переведённых данных.
 #
-# Кнопка исследования и метки HUD собирают текст в коде, поэтому обновляются
-# явно. Панель гекса и городок умеют обновляться и в закрытом виде.
+# LocalizationManager has already translated the scenes by this moment (Godot does it itself
+# on the notification of TranslationServer) and RE-READ the data of the game — therefore here
+# it is enough to call the refresh() of each screen: they rebuild the nodes
+# with their own text and take the names from the already translated data.
+#
+# The research button and the HUD labels assemble the text in the code, therefore they are updated
+# explicitly. The panel of the hex and of the town know how to update even in the closed form.
 func _on_locale_changed(_locale: String) -> void:
     if city_ui:
         city_ui.refresh()
@@ -3044,38 +3045,38 @@ func _update_population_hud():
     if pop_label:
         pop_label.text = tr("Population: %d") % CityData.total_population
 
-# Обновляет метку казны в HUD (ниже блока времени игры). Вызывается
-# из _ready (старт/загрузка), из apply_settings (смена интервала) и из
-# _on_city_data_updated (тиковый путь с проверкой эпохи отображения).
-# Захватывает CityData.treasury в _displayed_treasury — этот же кеш
-# использует тултип разбивки казны (см. _show_treasury_tooltip), чтобы
-# лейбл и тултип показывали одно значение, без «убегания» на 1+ тик.
+# Updates the label of the treasury in the HUD (below the block of the game time). It is called
+# from _ready (the start/loading), from apply_settings (a change of the interval) and from
+# _on_city_data_updated (the tick path with the check of the era of the display).
+# It captures CityData.treasury into _displayed_treasury — this same cache
+# is used by the tooltip of the breakdown of the treasury (see _show_treasury_tooltip), so that
+# the label and the tooltip show one value, without "running ahead" by 1+ ticks.
 func _update_treasury_hud():
     _displayed_treasury = CityData.treasury
     var treasury_label = hud.get_node_or_null("VBoxContainer/TreasuryLabel")
     if treasury_label:
-        # Динамика прибыли/расходов — тот же факт, что и в тултипе разбивки
-        # (CityData.get_treasury_flow_text), но в секунду. Считается на том же
-        # ритме обновления, что и баланс, — цифры не мельтешат каждый тик.
+        # The dynamics of the profit/expense — the same fact as in the tooltip of the breakdown
+        # (CityData.get_treasury_flow_text), but per second. It is counted at the same
+        # rate of the update as the balance, — the numbers do not flicker every tick.
         treasury_label.text = tr("Treasury: %d %s") % [
             _displayed_treasury, CityData.get_treasury_flow_text()
         ]
-        # Панель HUD в сцене фиксированной ширины, а строка растёт вместе с
-        # балансом — пересчитываем ширину под новый текст, иначе длинная строка
-        # вылезет на карту и ховер по «хвосту» перестанет срабатывать.
+        # The panel of the HUD in the scene is of a fixed width, and the row grows together with
+        # balance — we recalculate the width under the new text, otherwise a long row
+        # would crawl out onto the map and the hover on the "tail" would stop working.
         if hud.has_method("refresh_size"):
             hud.refresh_size()
 
-# Создаёт CanvasLayer + Control-хост и инстанциирует ui_helpers для
-# HUD-тултипов (разбивка казны и будущие). Добавляется в дерево один раз в
-# _ready; повторные вызовы — no-op. Вынесено в отдельный метод, чтобы не
-# нагромождать _ready.
+# Creates a CanvasLayer + the Control-host and instantiates ui_helpers for the
+# HUD tooltips (the breakdown of the treasury and the future ones). It is added to the tree once in
+# _ready; the repeated calls are a no-op. It is moved out into a separate method, so as not to
+# overload _ready.
 func _setup_hud_tooltip_layer():
     if _map_ui_helpers != null and is_instance_valid(_map_ui_helpers):
         return
     var layer := CanvasLayer.new()
     layer.name = "HUDTooltipLayer"
-    layer.layer = 100 # поверх HUD (HUD как Panel на main-сцене)
+    layer.layer = 100 # over the HUD (the HUD as a Panel on the main scene)
     add_child(layer)
     var host := Control.new()
     host.name = "HUDTooltipHost"
@@ -3086,10 +3087,10 @@ func _setup_hud_tooltip_layer():
     _map_ui_helpers.setup(host, null)
     layer.add_child(_map_ui_helpers)
 
-# Курсор сейчас над меткой казны HUD — именно и только это запускает
-# ховер-таймер «залипания» тултипа разбивки. Если HUD скрыт (открыт интерфейс
-# города), метка не считается наведённой, даже если её прямоугольник совпал с
-# позицией курсора.
+# The cursor is now over the label of the treasury of the HUD — exactly and only this starts
+# the hover timer of "sticking" the tooltip of the breakdown. If the HUD is hidden (the interface of the
+# city is open), the label is not considered hovered, even if its rectangle coincided with
+# the position of the cursor.
 func _is_treasury_label_hovered(mouse_pos: Vector2) -> bool:
     if not (hud and is_instance_valid(hud)) or not hud.visible:
         return false
@@ -3097,9 +3098,9 @@ func _is_treasury_label_hovered(mouse_pos: Vector2) -> bool:
     return is_instance_valid(treasury_label) \
         and treasury_label.get_global_rect().has_point(mouse_pos)
 
-# Возвращает true, если курсор сейчас над меткой казны или над активным
-# (в т.ч. «залипшим») тултипом разбивки (это нужно, чтобы при переходе
-# курсора с метки на тултип тултип не моргал — leave срабатывает только по
+# Returns true, if the cursor is now over the label of the treasury or over the active
+# (including "stuck") tooltip of the breakdown (this is needed, so that on the transition of the
+# cursor from the label to the tooltip the tooltip does not blink — the leave fires only by
 # grace).
 func _is_treasury_hovered(mouse_pos: Vector2) -> bool:
     if _is_treasury_label_hovered(mouse_pos):
@@ -3111,11 +3112,11 @@ func _is_treasury_hovered(mouse_pos: Vector2) -> bool:
         return true
     return false
 
-# Курсор сейчас над показанным («залипшим») тултипом разбивки казны HUD-слоя.
-# Тултип перекрывает карту, и карта под ним не должна реагировать на курсор:
-# ни тултип гекса, ни подсветка чанка, ни клики/выделение, ни скролл краями
-# (см. InputHandler.handle_input / handle_process). Метка казны здесь не
-# проверяется: она лежит внутри HUD, и её перекрывает проверка «курсор над HUD».
+# The cursor is now over the shown ("stuck") tooltip of the breakdown of the treasury of the HUD layer.
+# The tooltip covers the map, and the map under it must not react to the cursor:
+# neither the tooltip of the hex, nor the highlighting of the chunk, nor the clicks/selection, nor the scrolling by the edges
+# (see InputHandler.handle_input / handle_process). The treasury label is not
+# checked here: it lies inside the HUD, and it is covered by the check "the cursor is over the HUD".
 func is_mouse_over_treasury_tooltip(pos: Vector2) -> bool:
     if not (_map_ui_helpers and is_instance_valid(_map_ui_helpers)):
         return false
@@ -3124,22 +3125,22 @@ func is_mouse_over_treasury_tooltip(pos: Vector2) -> bool:
         return false
     return panel.get_global_rect().has_point(pos)
 
-# Показывает тултип разбивки казны под курсором (HUD-вариант). Данные — из
-# worker_manager (плановый доход по источникам) и CityData (снимок расходов
-# за окно). Аналогичен методу в city_ui.gd (см. _show_treasury_tooltip там).
-# keep_position=true — live-update уже показанного («залипшего») тултипа:
-# панель остаётся на месте. Возвращает true, если тултип в итоге видим
-# (пустая разбивка скрывает панель — «залипания» тогда нет).
+# Shows the tooltip of the breakdown of the treasury under the cursor (the HUD variant). The data is from
+# worker_manager (the planned income by the sources) and CityData (a snapshot of the expenses
+# over the window). It is analogous to the method in city_ui.gd (see _show_treasury_tooltip there).
+# keep_position=true — the live-update of the already shown ("stuck") tooltip:
+# the panel stays in place. It returns true if the tooltip is visible in the end
+# (an empty breakdown hides the panel — then there is no "sticking").
 func _show_treasury_tooltip(mouse_pos: Vector2, keep_position: bool = false) -> bool:
     if not worker_manager:
         return false
     var planned_income: Dictionary = {}
     if worker_manager.has_method("get_actual_treasury_income_map"):
         planned_income = worker_manager.get_actual_treasury_income_map()
-    # Берём _displayed_treasury (кеш лейбла HUD), а не CityData.treasury —
-    # иначе в тултипе будет видно «свежее» значение казны, которое обгоняет
-    # метку HUD на 1+ тиков потребления (см. developer_diary, регресс
-    # «убегает вперёд»).
+    # We take _displayed_treasury (the cache of the label of the HUD), and not CityData.treasury —
+    # otherwise in the tooltip the "fresh" value of the treasury would be visible, which gets ahead of
+    # the label of the HUD by 1+ consumption ticks (see developer_diary, the regression
+    # "runs ahead").
     _map_ui_helpers.show_treasury_tooltip(
         mouse_pos,
         _displayed_treasury,
@@ -3151,19 +3152,19 @@ func _show_treasury_tooltip(mouse_pos: Vector2, keep_position: bool = false) -> 
     var panel = _map_ui_helpers.treasury_tooltip_panel if is_instance_valid(_map_ui_helpers) else null
     return is_instance_valid(panel) and panel.visible
 
-# Тиковый обработчик: обновляет HUD-метку казны с интервалом отображения
-# ресурсов. Аналогично control_panel.on_city_updated и city_ui._refresh_light —
-# всё подчинено одной эпохе (CityData.resource_display_epoch), чтобы все
-# ресурсные места обновлялись одновременно, одним «рывком» раз в интервал.
+# The tick handler: it updates the label of the treasury in the HUD with the display interval of the
+# resources. It is analogous to control_panel.on_city_updated and city_ui._refresh_light —
+# everything is subordinated to one era (CityData.resource_display_epoch), so that all
+# the resource places are updated simultaneously, by one "jerk" per interval.
 func _on_city_data_updated():
     if CityData.resource_display_due(_treasury_display_epoch):
         _treasury_display_epoch = CityData.resource_display_epoch
         _update_treasury_hud()
-        # На смене эпохи обновляем открытый тултип разбивки казны свежими
-        # данными (плановый доход пересчитан, снимок расходов обновлён). Это
-        # «живой» апдейт — игрок видит актуальные цифры, пока курсор на
-        # метке или на тултипе. keep_position=true: «залипшая» панель
-        # остаётся на месте, а не уезжает за курсором.
+        # On a change of the era we update the open tooltip of the breakdown of the treasury with the fresh
+        # data (the planned income is recalculated, the snapshot of the expenses is updated). This is
+        # a "live" update — the player sees the actual numbers while the cursor is on the
+        # label or on the tooltip. keep_position=true: the "stuck" panel
+        # remains in place, and does not run away from the cursor.
         if _map_ui_helpers and is_instance_valid(_map_ui_helpers) \
                 and _map_ui_helpers.treasury_tooltip_panel \
                 and _map_ui_helpers.treasury_tooltip_panel.visible \
@@ -3187,52 +3188,52 @@ func start_scouting(chunk: Array):
     if is_scouting:
         hud.show_message(tr("Scouting already in progress!"))
         return
-    # Пустой чанк — нечего разведывать. Контрольная проверка для публичной
-    # точки входа: иначе казна «списалась» бы на 0 монет, а is_scouting
-    # завис бы на пустом чанке (бар разведки без гексов).
+    # An empty chunk — there is nothing to scout. A control check for the public
+    # entry point: otherwise the treasury would be "written off" for 0 coins, and is_scouting
+    # would hang on an empty chunk (the bar of the scouting without hexes).
     if chunk.is_empty():
         return
-    # Страховочный повтор правила: до изучения Картографии разведка
-    # ограничена неисследованной частью Региона. Чанк приходит из
-    # expansion_manager.get_chunk_hexes (он уже это соблюдает), но
-    # start_scouting — публичная точка входа: сюда чанк может прийти другим
-    # путём, и отправлять разведчиков в туман войны без Картографии нельзя.
+    # A safety repetition of the rule: before the learning of the Cartography the scouting
+    # is limited by the unexplored part of the Region. The chunk comes from
+    # expansion_manager.get_chunk_hexes (it already observes this), but
+    # start_scouting is a public entry point: the chunk can come here by another
+    # way, and sending the scouts into the fog of war without the Cartography is not allowed.
     if not is_cartography_researched():
         for hex in chunk:
             if not is_valid_hex(hex.row, hex.col):
                 hud.show_message(tr("Scouting beyond the Region requires the technology \"%s\"")
                         % get_cartography_tech_name())
                 return
-    # Страховочный повтор правила «разведка только в чанк, примыкающий к
-    # известной территории» (см. is_chunk_adjacent_to_known). UI такую кнопку
-    # не активирует, но отказ обязан быть и здесь — ДО списания монет и запуска
-    # таймера, чтобы цена и фактическое действие не разошлись.
+    # A safety repetition of the rule "the scouting only into a chunk, adjacent to
+    # the known territory" (see is_chunk_adjacent_to_known). The UI does not activate such a button,
+    # but the refusal must be here as well — BEFORE the write-off of the coins and the start of
+    # the timer, so that the price and the actual action do not diverge.
     if not is_chunk_adjacent_to_known(chunk):
         hud.show_message(tr("The chunk does not border explored territory — scout the neighbouring hexes first"))
         return
-    # Цена экспедиции НЕ принимается параметром: единый источник истины —
-    # expansion_manager.get_chunk_scout_cost() (база и модификатор дальности
-    # из data/game_balance.json). Иначе UI и фактическое списание могли бы
-    # разойтись. Оплата — монетами из казны города, сразу.
-    # Дебаг: при включённом «Игнорировать требования строительства» разведка
-    # бесплатна и мгновенна — монеты не списываются, таймер не запускается,
-    # чанк открывается тем же _complete_scouting(), что и при обычном финише.
+    # The price of the expedition is NOT accepted as a parameter: the single source of truth is
+    # expansion_manager.get_chunk_scout_cost() (the base and the modifier of the distance
+    # from data/game_balance.json). Otherwise the UI and the actual write-off could
+    # diverge. The payment is by the coins of the treasury of the city, at once.
+    # Debug: with "Ignore building requirements" enabled the scouting
+    # is free and instant — the coins are not written off, the timer is not started,
+    # the chunk is opened by the same _complete_scouting() as at an ordinary finish.
     var expedition_cost: int = expansion_manager.get_chunk_scout_cost(chunk)
     if not CityData.ignore_build_requirements:
         if not CityData.spend_treasury(expedition_cost):
             hud.show_message(tr("Not enough coins in the treasury! Need %d, treasury has %d")
                     % [expedition_cost, CityData.treasury])
             return
-        # Источник расхода для тултипа «Казна» (см. show_treasury_tooltip).
-        # Разовые траты на разведку — событийные, в плане их нет, поэтому разбивка
-        # расходов показывает факт за последнее окно отображения.
+        # The source of the expense for the tooltip "Treasury" (see show_treasury_tooltip).
+        # The one-off costs of the scouting are event-based, they are not in the plan, therefore the breakdown
+        # of the expenses shows the fact over the last display window.
         if expedition_cost > 0:
             CityData.record_treasury_expense(GameData.SRC_SCOUTING, expedition_cost)
     scouting_chunk = chunk
     scouting_timer = 0.0
     if CityData.ignore_build_requirements:
-        # Мгновенный финиш: is_scouting даже не включаем, иначе на один кадр
-        # мелькнул бы прогресс-бар разведки, которого игрок не успевает увидеть.
+        # The instant finish: we do not even turn on is_scouting, otherwise for one frame
+        # the progress bar of the scouting would flash, which the player does not have time to see.
         _complete_scouting()
         return
     is_scouting = true
@@ -3242,22 +3243,22 @@ func start_scouting(chunk: Array):
 func _complete_scouting():
     for hex in scouting_chunk:
         tile_data[hex.row][hex.col]["is_explored"] = true
-    # Разведка открыла новые гексы — планы дорог могли измениться (трасса к
-    # городку идёт только по разведанной земле), поэтому кэш планов сбрасывается.
+    # The scouting has opened the new hexes — the plans of the roads could have changed (the route to the
+    # town goes only over the scouted land), therefore the cache of the plans is reset.
     road_manager.bump_map_knowledge()
     var info = _get_chunk_info(scouting_chunk)
     hud.show_message(tr("Scouting complete! %s") % info)
     is_scouting = false
     scouting_chunk = []
-    # Разведка снимает туман войны с гексов, значит заливка колец городков
-    # на открывшейся территории должна появиться — кэш рендера пересобираем.
+    # The scouting removes the fog of war from the hexes, therefore the fill of the rings of the towns
+    # on the opened territory must appear — the cache of the renderer is rebuilt.
     map_renderer.invalidate_town_influence_cache()
     map_renderer.queue_redraw()
     _redraw_progress_layer()
 
-# Общая часть диалогов отмены: пауза на время вопроса, локализованная кнопка
-# подтверждения и обязательное снятие паузы, если окно закрыли крестиком
-# (у AcceptDialog нет сигнала canceled).
+# The common part of the dialogs of the cancellation: the pause for the time of the question, the localized button
+# of the confirmation and the obligatory unpause, if the window was closed by the cross
+# (an AcceptDialog has no signal canceled).
 func _show_cancel_dialog(dialog: AcceptDialog, on_confirm: Callable) -> void:
     var was_paused = get_tree().paused
     get_tree().paused = true
@@ -3274,10 +3275,10 @@ func _show_cancel_dialog(dialog: AcceptDialog, on_confirm: Callable) -> void:
             get_tree().paused = false
     )
 
-# Отмена освоения территории с гекса (row, col) — того самого, где рисуется
-# прогресс-бар освоения (первый гекс чанка). Монеты, списанные при старте,
-# возвращаются: они платили за присоединение чанка к Кольцу Влияния, а оно не
-# произошло. Труд пропадает — это и есть цена отказа.
+# The cancellation of the claiming of the territory from the hex (row, col) — exactly that one, where
+# the progress bar of the claiming is drawn (the first hex of the chunk). The coins written off at the start
+# are returned: they paid for the joining of the chunk to the Influence Ring, and it did not
+# happen. The labour is lost — that is the price of the refusal.
 func confirm_cancel_expansion(row: int, col: int):
     if build_manager == null:
         return
@@ -3301,9 +3302,9 @@ func confirm_cancel_expansion(row: int, col: int):
         if build_manager.cancel_expansion_at_hex(row, col):
             _after_cancel_long_action())
 
-# Отмена разведки. Экспедиция в игре одна на всё время (main_map.is_scouting),
-# поэтому кнопка появляется на гексе её чанка, а сам таймер сбрасывается.
-# Как и у освоения: деньги за старт возвращаются, время экспедиции — нет.
+# The cancellation of the scouting. The expedition in the game is one for the whole time (main_map.is_scouting),
+# therefore the button appears on the hex of its chunk, and the timer itself is reset.
+# As with the claiming: the money for the start is returned, the time of the expedition — no.
 func confirm_cancel_scouting(row: int, col: int):
     if not is_scouting or scouting_chunk.is_empty():
         return
@@ -3321,9 +3322,9 @@ func confirm_cancel_scouting(row: int, col: int):
     _show_cancel_dialog(dialog, func():
         cancel_scouting())
 
-# Прерывает разведку: таймер обнуляется, чанк забывается, деньги за старт
-# возвращаются. Туман с чанка НЕ снимается — разведка применяется целиком в
-# _complete_scouting, промежуточного состояния у неё нет.
+# Interrupts the scouting: the timer is zeroed, the chunk is forgotten, the money for the start
+# is returned. The fog is NOT removed from the chunk — the scouting is applied entirely in
+# _complete_scouting, it has no intermediate state.
 func cancel_scouting() -> bool:
     if not is_scouting or scouting_chunk.is_empty():
         return false
@@ -3340,9 +3341,9 @@ func cancel_scouting() -> bool:
     _after_cancel_long_action()
     return true
 
-# Действия после отмены освоения/разведки: у обоих пропадает прогресс-бар, а
-# _process больше не будет перерисовывать слой, если это была последняя
-# активная стройка.
+# The actions after the cancellation of the claiming/scouting: in both of them the progress bar disappears, and
+# _process will no longer redraw the layer, if it was the last
+# active build.
 func _after_cancel_long_action() -> void:
     map_renderer.queue_redraw()
     _redraw_progress_layer()
@@ -3359,32 +3360,32 @@ func _confirm_cancel_build(row: int, col: int):
     var work_done = prog.get("progress", 0.0)
     var work_total = prog.get("work_cost", 0)
 
-    # Создаём диалог подтверждения
+    # We create the confirmation dialog
     var dialog = AcceptDialog.new()
     dialog.title = tr("Cancel construction")
     dialog.dialog_text = tr("Cancel construction of \"%s\"?\n\nSpent work (%.0f/%d) will be lost.") % [imp_name, work_done, work_total]
-    # Локализуем кнопку подтверждения (по умолчанию Godot показывает «OK» —
-    # проект без файлов переводов).
+    # We localize the button of the confirmation (by default Godot shows "OK" —
+    # a project without translation files).
     dialog.get_ok_button().text = tr("Yes")
-    # Ставим игру на паузу, пока открыт диалог подтверждения отмены.
+    # We pause the game while the confirmation dialog of the cancellation is open.
     var was_paused = get_tree().paused
     get_tree().paused = true
-    # Диалог должен принимать ввод, когда дерево приостановлено.
+    # The dialog must accept the input while the tree is paused.
     dialog.process_mode = Node.PROCESS_MODE_ALWAYS
 
     dialog.confirmed.connect(func():
         if not was_paused:
             get_tree().paused = false
         build_manager.cancel_build(row, col)
-        # После отмены стройки прогресс-бар на гексе исчезает — перерисовываем
-        # слой явно, т.к. если это была последняя активная стройка, _process
-        # больше не будет вызывать queue_redraw() для слоя баров.
+        # After the cancellation of the build the progress bar on the hex disappears — we redraw
+        # the layer explicitly, because if it was the last active build, _process
+        # will no longer call queue_redraw() for the layer of the bars.
         _redraw_progress_layer()
     )
     add_child(dialog)
     dialog.popup_centered()
-    # У AcceptDialog нет сигнала canceled: закрытие окна крестиком просто
-    # прячет диалог. Снимаем паузу и в этом случае.
+    # The AcceptDialog has no signal canceled: the closing of the window by the cross simply
+    # hides the dialog. We unpause in this case as well.
     dialog.visibility_changed.connect(func():
         if not dialog.visible and not was_paused:
             get_tree().paused = false
