@@ -621,6 +621,20 @@ func get_stock_quality_price_multiplier(pid: String) -> float:
         return 1.0
     return weighted / float(total)
 
+# The income of the treasury for the actually written off units of the goods, taking
+# the QUALITY of each unit into account. consumed is the breakdown {quality: count}
+# which remove_from_storage() returned: each level is priced separately (see
+# get_internal_market_price), so a mixed storage brings more than count × the price of
+# the ordinary quality. An empty breakdown (there was nothing to write off) — 0.
+func get_internal_market_income(pid: String, consumed: Dictionary) -> int:
+    var income := 0
+    for qid in consumed:
+        var count := int(consumed[qid])
+        if count <= 0:
+            continue
+        income += get_internal_market_price(pid, str(qid)) * count
+    return income
+
 # --- THE RECORDING OF THE FACT FOR THE TICK ---
 # These helpers update the actual counters of the production/consumption for the tick
 # (production_rates / consumption_rates). They are used for the determination of the famine
