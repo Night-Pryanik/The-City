@@ -429,15 +429,15 @@ func _ready():
     # по рабочим worker_manager — прокидываем ссылку в городской UI.
     city_ui.set_worker_manager(worker_manager)
 
-    # Инициализация DebugManager
+    # The initialization of DebugManager
     debug_manager.initialize(self)
 
-    # UI-хелперы для тултипов HUD (разбивка казны, и потенциально будущие
-    # тултипы на элементах HUD). Свой CanvasLayer и Control-хост, чтобы
-    # тултипы лежали поверх HUD и карты; детальный список панелей внутри
-    # ui_helpers.setup() — см. соответствующий скрипт. Передаём null в
-    # message_label: своё сообщение HUD показывает через hud_message.gd,
-    # дублировать канал не нужно.
+# The UI-helpers for the HUD tooltips (the breakdown of the treasury, and potentially the future
+    # tooltips on the elements of the HUD). Its own CanvasLayer and Control-host, so that
+    # the tooltips lie over the HUD and the map; the detailed list of the panels is inside
+    # ui_helpers.setup() — see the corresponding script. We pass null into
+    # message_label: the HUD of the map shows its own message through hud_message.gd,
+    # there is no need to duplicate the channel.
     _setup_hud_tooltip_layer()
 
     _calc_offsets()
@@ -454,31 +454,31 @@ func _ready():
     CityData.research_error.connect(_on_research_error)
     CityData.research_error.connect(hud.show_message)
     CityData.population_changed.connect(_on_population_changed)
-    # Казна в HUD обновляется через тиковый путь (city_updated) с проверкой
-    # эпохи отображения ресурсов — синхронно с остальными ресурсами. Прямой
-    # сигнал treasury_changed здесь не нужен: доход внутреннего рынка меняет
-    # казну каждый тик, и без сдерживания HUD-метка мигала бы каждый тик.
+# The treasury in the HUD is updated via the tick path (city_updated) with the check of
+    # the era of the display of the resources — synchronously with the other resources. The direct
+    # signal treasury_changed is not needed here: the income of the internal market changes
+    # the treasury on every tick, and without throttling the HUD label would flicker every tick.
     CityData.city_updated.connect(_on_city_data_updated)
     city_ui.research_requested.connect(CityData.start_research)
     CityData.research_completed.connect(_on_research_completed)
     expansion_manager.chunk_hovered.connect(_on_chunk_hovered)
     worker_manager.assignment_changed.connect(_on_assignment_changed)
     townsfolk_manager.assignment_changed.connect(_on_townsfolk_assignment_changed)
-    # Панель управления должна реагировать на внешние изменения: назначение
-    # рабочих, завершение/отмена строек, обновление города, изучение технологий,
-    # расширение территории. Иначе она показывала бы устаревшую информацию.
+# The control panel must react to the external changes: the assignment
+    # of the workers, the completion/cancellation of the builds, the update of the city, the learning of the technologies,
+    # the expansion of the territory. Otherwise it would show the outdated information.
     worker_manager.assignment_changed.connect(control_panel.refresh)
     build_manager.build_completed.connect(_on_control_panel_build_changed)
     build_manager.build_cancelled.connect(_on_control_panel_build_changed)
     build_manager.build_paused.connect(_on_control_panel_build_changed)
-    # Тиковое обновление (а не refresh): инфо-колонка с ресурсами и превью
-    # обновляются с интервалом отображения (см. control_panel.on_city_updated).
+# The tick update (and not refresh): the info column with the resources and the preview
+    # are updated with the display interval (see control_panel.on_city_updated).
     CityData.city_updated.connect(control_panel.on_city_updated)
     CityData.research_completed.connect(control_panel.refresh)
 
-    # Смена языка на лету: текст, заданный в сценах, Godot переводит сам, а
-    # всё, что собрано в коде (списки вкладок, панель гекса, HUD), нужно
-    # перестроить. Данные к этому моменту уже перечитаны менеджером языка.
+# The change of the language on the fly: the text set in the scenes is translated by Godot itself, and
+    # everything assembled in the code (the lists of the tabs, the panel of the hex, the HUD) has to be
+    # rebuilt. By this moment the data has already been re-read by the language manager.
     LocalizationManager.locale_changed.connect(_on_locale_changed)
 
     tech_popup = _make_tech_popup()
@@ -502,15 +502,15 @@ func _ready():
     build_manager.build_building_completed.connect(_on_building_build_completed)
     build_manager.building_upgrade_completed.connect(_on_building_upgrade_completed)
     build_manager.expansion_build_completed.connect(expansion_manager.on_expansion_build_completed)
-    # Пошаговые проекты (дорога по гексам): раздачу труда build_manager делает
-    # сам, а эффект каждого достроенного участка применяет main_map.
+# The phased projects (the road by the hexes): the distribution of the labour is done by build_manager itself,
+    # and the effect of each completed segment is applied by main_map.
     build_manager.project_manager = project_manager
     project_manager.step_completed.connect(_on_project_step_completed)
     project_manager.project_completed.connect(_on_project_completed)
     project_manager.project_cancelled.connect(_on_project_cancelled)
     city_button.gui_input.connect(_on_city_button_gui_input)
 
-    # Сигналы от ExpansionManager
+    # The signals from ExpansionManager
     expansion_manager.expansion_mode_changed.connect(_on_expansion_mode_changed)
     expansion_manager.territory_expanded.connect(_on_territory_expanded)
 
@@ -519,32 +519,32 @@ func _ready():
     _setup_research_hud()
     _setup_era_advance_ui()
 
-# Предикат для rebuild_roads_from_existing: этот гекс при восстановлении сети
-# дорог пропускается.
+# The predicate for rebuild_roads_from_existing: this hex is skipped
+# on the restoration of the road network.
 #
-# Причина одна — дорога к улучшению, построенная поэтапным проектом. Её
-# состояние лежит в road_built/road_level на уже присоединённых гексах и в
-# очереди проектов, а пересчёт «по факту улучшения» (rebuild_
-# roads_from_existing) достроил бы остаток бесплатно, а после отмены дороги
-# вернул её целиком. Такие гексы восстанавливает rebuild_player_roads по
-# флагам — ровно тем же путём, что и дорогу, построенную спецдействием
-# «Построить дорогу».
+# The reason is one — the road to an improvement, built by a phased project. Its
+# state lies in road_built/road_level on the already connected hexes and in
+# the queue of the projects, and the recalculation "by the fact of the improvement" (rebuild_
+# roads_from_existing) would finish the rest for free, and after the cancellation of the road
+# would return it entirely. Such hexes are restored by rebuild_player_roads by
+# the flags — exactly the same way as the road built by the special action
+# "Build a road".
 func _skip_improvement_road_restore(row: int, col: int) -> bool:
     if row < 0 or row >= tile_data.size() or col < 0 or col >= tile_data[row].size():
         return false
     var tile = tile_data[row][col]
     return tile != null and bool(tile.get("road_staged", false))
 
-# Строит сети дорог городков: от центра каждого городка — к его улучшениям
-# в кольце влияния, по тем же правилам, что и дороги города игрока (см.
-# road_manager.rebuild_town_roads). Сети городков НЕ связаны с сетью города
-# игрока и друг с другом.
+# Builds the road networks of the towns: from the centre of each town — to its improvements
+# in the influence ring, by the same rules as the roads of the city of the player (see
+# road_manager.rebuild_town_roads). The networks of the towns are NOT connected to the network of
+# the city of the player and to each other.
 #
-# Вызывается из двух мест, и оба — строго после того, как в кольцах стоят
-# улучшения (их расставляет town_manager._place_decorative_town_improvements):
-#   - новая игра: после road_manager.initialize() в _ready;
-#   - загрузка сейва: после восстановления городков и их улучшений.
-# В сейв дороги не сохраняются — сеть пересчитывается, как и городские.
+# It is called from two places, and both — strictly after the improvements stand in the rings
+# (they are placed by town_manager._place_decorative_town_improvements):
+#   - a new game: after road_manager.initialize() in _ready;
+#   - loading a save: after the restoration of the towns and their improvements.
+# The roads are not saved — the network is recalculated, as well as the city ones.
 func _rebuild_town_roads() -> void:
     road_manager.rebuild_town_roads(town_manager.towns, tile_data, map_rows, map_cols)
     # Дороги, построенные игроком через спецдействие «Построить дорогу»
@@ -614,19 +614,19 @@ func _process(delta):
     # Без этого прогресс-бар исследования прыгал скачками.
     if not is_paused:
         CityData.tick_research_science_continuous(delta)
-        # Заполенность пастбищ — то же самое: копится каждый кадр, чтобы
-        # прогресс-бар заполенности двигался плавно, а не скачком раз в тик.
+        # The occupancy of the pastures — the same thing: it accumulates every frame, so that
+        # the progress bar of the occupancy moves smoothly, and not by a jump once per tick.
         _tick_pasture_fill(delta)
 
-    # Двигаем «эпоху» отображения ресурсов: места, где показываются ресурсы
-    # (вкладка «Ресурсы», верхняя полоса, ресурсные тултипы), обновляются с
-    # интервалом из настроек, а не каждым тиком. На паузе дерева _process не
-    # идёт — интервал считается игровым временем (см. CityData).
+    # We advance the "era" of the display of the resources: the places where the resources are shown
+    # (the tab "Resources", the top bar, the resource tooltips) are updated with
+    # the interval from the settings, and not on every tick. On the pause of the tree _process does
+    # not go — the interval is counted in the game time (see CityData).
     CityData.tick_resource_display(delta)
 
-    # Тултип разбивки казны по источникам дохода/расхода: polling + залипание
-    # (логика повторяет city_ui.gd — там то же самое для тултипа над
-    # TopFoodLabel; единый ритм, единая задержка building_detail_delay).
+# The tooltip of the breakdown of the treasury by the sources of income/expense: polling + the sticking
+    # (the logic repeats city_ui.gd — there the same thing for the tooltip over
+    # TopFoodLabel; a single rhythm, a single delay building_detail_delay).
     var mouse_pos_now: Vector2 = get_viewport().get_mouse_position()
     var hovered_treasury := _is_treasury_hovered(mouse_pos_now)
     var hovered_treasury_label := _is_treasury_label_hovered(mouse_pos_now)
@@ -638,9 +638,9 @@ func _process(delta):
                 _treasury_locked = _show_treasury_tooltip(mouse_pos_now)
     else:
         _treasury_hover_timer = 0.0
-        # Курсор ушёл с метки и с тултипа: «залипшую» панель держим ещё
-        # grace-окно (переход курсора на сам тултип не должен моргать), затем
-        # снимаем залипание и скрываем. НЕ return — ниже тик симуляции.
+        # The cursor has left the label and the tooltip: we hold the "stuck" panel for
+        # the grace window (the transition of the cursor onto the tooltip itself must not blink), then
+        # we remove the sticking and hide it. NOT return — below is the tick of the simulation.
         _treasury_hover_leave_timer += delta
         if not _treasury_locked or _treasury_hover_leave_timer >= MAP_TOOLTIP_LEAVE_GRACE:
             _treasury_hover_leave_timer = 0.0
@@ -650,8 +650,8 @@ func _process(delta):
     production_timer += delta
     if production_timer >= CityData.SIMULATION_TICK:
         production_timer -= CityData.SIMULATION_TICK
-        # Пересобираем заново: тик ниже наполнит список актуальными растущими
-        # пастбищами, а покадровое продвижение идёт в _tick_pasture_fill().
+        # We rebuild from scratch: the tick below will fill the list with the actual growing
+        # pastures, and the frame-by-frame advance goes on in _tick_pasture_fill().
         _growing_pastures = {}
         _has_growing_pastures = false
         CityData.reset_counters()
@@ -661,15 +661,15 @@ func _process(delta):
                 if tile.improvement == null or bool(tile.get("decorative", false)) \
                         or not worker_manager.has_worker(row, col):
                     continue
-                # Производство идёт и с природного ресурса (tile.resource), и с
-                # разводимого (tile.crop_bred, см. схему разведения). Если оба
-                # null — гекс нечего производить.
+# The production goes both from the natural resource (tile.resource), and from
+                # the bred one (tile.crop_bred, see the breeding scheme). If both are
+                # null — there is nothing to produce on the hex.
                 var eff_res = MapHelpers.get_effective_resource(tile)
                 if eff_res == "":
-                    # Лесная делянка на пустом лесном гексе: ресурса нет, но
-                    # покров даёт древесину (wood_yield > 0 в covers.json).
-                    # Выход = wood_yield × множители улучшения и профессии.
-                    # Будущие покровы с wood_yield > 0 подхватятся автоматически.
+# A forest plot on an empty forest hex: there is no resource, but
+                    # the cover gives wood (wood_yield > 0 in covers.json).
+                    # The output = wood_yield × the multipliers of the improvement and the profession.
+                    # The future covers with wood_yield > 0 will be picked up automatically.
                     if tile.improvement == "lumberjack_hut":
                         var wood_yield: float = MapHelpers.get_cover_wood_yield(tile)
                         if wood_yield > 0.0:
@@ -678,16 +678,16 @@ func _process(delta):
                             var lj_imp_mult: float = CityData.get_improvement_production_multiplier(
                                 "lumberjack_hut", _is_hex_irrigated(row, col),
                                 tile.get("terrain", ""), "lumberjack_hut")
-                            # Идентификатор улучшения — источник прихода/расхода (подпись
-                            # резолвит ui_helpers по id, см.
+                            # The identifier of the improvement — the source of the income/expense (the label
+                            # is resolved by ui_helpers by the id, see
                             # GameData.get_source_display_name).
                             var lj_source = GameData.improvement_source_id("lumberjack_hut")
-                            # --- НЕПРЕРЫВНОЕ ПРОИЗВОДСТВО ЛЕСНОЙ ДЕЛЯНКИ ---
-                            # Вместо пакетного выпуска раз в production_interval
-                            # каждый тик добавляем на склад (wood_yield ×
-                            # множители) / production_interval единиц. Дробный
-                            # остаток копится в tile.production_fractional_remainder,
-                            # чтобы средняя скорость не дрейфовала.
+# --- THE CONTINUOUS PRODUCTION OF THE FOREST PLOT ---
+                            # Instead of the batch release once per production_interval,
+                            # on every tick we add to the storage (wood_yield ×
+                            # the multipliers) / production_interval units. The fractional
+                            # remainder accumulates in tile.production_fractional_remainder,
+                            # so that the average rate does not drift.
                             var lj_interval := CityData.get_improvement_production_interval("lumberjack_hut")
                             var lj_per_sec: float = 0.0
                             if lj_interval > 0.0:
@@ -698,22 +698,23 @@ func _process(delta):
                             if lj_floor > 0:
                                 CityData.add_to_storage("wood", lj_floor)
                                 CityData.record_production_source("wood", lj_source, lj_floor)
-                            # Плановый выпуск цикла: виден каждый тик, пока
-                            # рабочий на месте (закрывает пробелы между циклами).
+# The planned release of the cycle: it is visible on every tick, while
+                            # the worker is in place (it closes the gaps between the cycles).
                             CityData.record_planned_improvement_production("wood", lj_source,
                                 int(ceil(wood_yield * lj_imp_mult * lj_consumption_mult)), lj_interval)
                     continue
 
-                # Профессиональное потребление: улучшения, у которых через
-                # профессию есть потребление (consumption у продукта), списывают
-                # ресурс по своему интервалу. Таймер двигается ШАГОМ ТИКА
-                # симуляции каждый тик (уход от «один тик, чтобы править
-                # всеми»): точность ±1 сек на интервалах 10+ сек. Вызов
-                # ОБЯЗАТЕЛЬНЫЙ для любого гекса с рабочим — иначе таймер
-                # потребления не двигается и бонус профессии «замирает».
-                # Возвращает итоговый множитель производства: 1.0 без бонуса,
-                # 1.0+bonus пока ресурс есть. Улучшение НЕ встаёт при нехватке —
-                # оно просто работает на базе.
+                # The occupational consumption: the improvements which have a consumption
+                # through a profession (the consumption of the product) write off
+                # the resource by their own interval. The timer advances BY THE STEP OF THE TICK
+                # of the simulation on every tick (a departure from "one tick, to rule
+                # over all"): the accuracy is ±1 sec on the intervals of 10+ sec. The call
+                # is OBLIGATORY for any hex with a worker — otherwise the timer of the
+                # consumption does not advance and the bonus of the profession "freezes".
+                
+# It returns the total multiplier of the production: 1.0 without the bonus,
+                # 1.0+bonus while the resource is there. The improvement does NOT stop on a shortage —
+                # it simply works at the base.
                 var consumption_multiplier: float = worker_manager.tick_consumption(
                     row, col, CityData.SIMULATION_TICK)
 
@@ -721,46 +722,46 @@ func _process(delta):
                 var feed_needed = res_data.get("feed_consumption", 0)
                 var production_multiplier = 1.0
                 if tile.improvement != null:
-                    # Передаём terrain_id и resource_id для модификаторов по
-                    # местности (например, битум на асфальтовом озере x2).
+# We pass terrain_id and resource_id for the modifiers by
+                    # the terrain (for example, the bitumen on the asphalt lake x2).
                     production_multiplier = CityData.get_improvement_production_multiplier(
                         tile.improvement, _is_hex_irrigated(row, col),
                         tile.get("terrain", ""), eff_res)
 
-                # Применяем бонус профессионального потребления (например,
-                # +50% к производству рыбы, пока есть тростниковые лодки).
-                # Множитель приходит из worker_manager.tick_consumption();
-                # он равен 1.0 без бонуса или при нехватке расходников.
+# We apply the bonus of the occupational consumption (for example,
+                # +50% to the production of fish, while there are reed boats).
+                # The multiplier comes from worker_manager.tick_consumption();
+                # it is equal to 1.0 without the bonus or with a shortage of the supplies.
                 production_multiplier *= consumption_multiplier
 
-                # Растущие ресурсы (time_to_mature > 0): пока пастбище заполняется,
-                # выход пропорционален степени заполненности. Само заполнение
-                # продвигается ПОКАДРОВО в _tick_pasture_fill() (плавный бар),
-                # здесь лишь собираем список растущих пастбищ и режем выход.
+# The growing resources (time_to_mature > 0): while the pasture is filling up,
+                # the output is proportional to the degree of the occupancy. The filling itself
+                # is advanced FRAME BY FRAME in _tick_pasture_fill() (a smooth bar),
+                # here we only collect the list of the growing pastures and cut the output.
                 if MapHelpers.is_growing_resource(res_data):
                     if float(tile.get("fill_time", 0.0)) < float(res_data["time_to_mature"]):
-                        # Ключ "row,col" — чтобы дубли не накапливались между тиками.
+                        # The key "row,col" — so that the duplicates do not accumulate between the ticks.
                         _growing_pastures[str(row) + "," + str(col)] = {"row": row, "col": col}
                     production_multiplier *= MapHelpers.get_fill_fraction(tile, res_data)
 
-                # Качество ресурса на гексе передаётся в производство.
+                # The quality of the resource on the hex is passed into the production.
                 var tile_quality = tile.get("quality", "common")
-                # Идентификатор улучшения — источник прихода/расхода в плане
-                # (подпись резолвит ui_helpers, см.
+                # The identifier of the improvement — the source of the income/expense in the plan
+                # (the label is resolved by ui_helpers, see
                 # GameData.get_source_display_name).
                 var improvement_source = GameData.improvement_source_id(str(tile.improvement))
-                # --- НЕПРЕРЫВНОЕ ПРОИЗВОДСТВО УЛУЧШЕНИЯ ---
-                # Вместо пакетного выпуска раз в production_interval каждый
-                # тик добавляем на склад (amount_per_cycle × production_multiplier)
-                # / production_interval единиц продукции. Дробный остаток
-                # копится в tile.production_fractional_remainder, чтобы средняя
-                # скорость не дрейфовала.
+# --- THE CONTINUOUS PRODUCTION OF AN IMPROVEMENT ---
+                # Instead of the batch release once per production_interval, on every
+                # tick we add to the storage (amount_per_cycle × production_multiplier)
+                # / production_interval units of the product. The fractional remainder
+                # accumulates in tile.production_fractional_remainder, so that the average
+                # rate does not drift.
                 #
-                # Корм (feed_consumption) ранее списывался за ЦЕЛЫЙ цикл
-                # (раз в production_interval). В continuous-модели — каждый
-                # тик по чуть-чуть: feed_per_sec = feed_needed / production_interval.
-                # Если корма не хватает — производство режется до 25% в этот
-                # тик (аналог старой логики «нет корма → 0.25×»).
+                # The feed (feed_consumption) was previously written off for a WHOLE cycle
+                # (once per production_interval). In the continuous model — a little
+                # bit on every tick: feed_per_sec = feed_needed / production_interval.
+                # If there is not enough feed, the production is cut to 25% on this
+                # tick (an analogue of the old logic "no feed → 0.25×").
                 var imp_interval := CityData.get_improvement_production_interval(tile.improvement)
                 var produces: Dictionary = res_data.get("produces", {})
                 var feed_per_sec: float = 0.0
@@ -774,9 +775,9 @@ func _process(delta):
                 else:
                     _emit_continuous_production(tile, produces, production_multiplier, imp_interval, tile_quality, improvement_source)
 
-                # Плановые выпуск/потребление цикла: видны КАЖДЫЙ тик, пока
-                # рабочий на месте (закрывают пробелы между циклами на вкладке
-                # «Ресурсы» — те же «слепые окна», что у рецептов зданий).
+# The planned release/consumption of the cycle: they are visible on EVERY tick, while
+                # the worker is in place (they close the gaps between the cycles on the tab
+                # "Resources" — the same "blind windows" as for the recipes of the buildings).
                 for planned_pid in GameData.raw_resources.get(eff_res, {}).get("produces", {}):
                     if not CityData.is_product_available(planned_pid):
                         continue
@@ -790,23 +791,23 @@ func _process(delta):
                     CityData.record_planned_improvement_consumption("feed", improvement_source, feed_needed, imp_interval)
 
         CityData.do_tick()
-        # Городское потребление псевдо-профессии "all" (все жители города,
-        # включая занятых): списывает ресурсы поголовно по total_population
-        # по общему городскому таймеру (см. worker_manager.tick_city_consumption).
-        # Никакого бонуса к производству не даёт — тест инфраструктуры.
+# The consumption of the city of the pseudo-profession "all" (all the citizens of the city,
+        # including the employed ones): it writes off the resources per head by total_population
+        # by the common city timer (see worker_manager.tick_city_consumption).
+        # It gives no bonus to the production — a test of the infrastructure.
         worker_manager.tick_city_consumption(CityData.SIMULATION_TICK)
-        # tick_research_science вызывается каждый кадр ниже (см. _process),
-        # а не привязан к тику симуляции. Это даёт плавный progress-bar.
+# tick_research_science is called every frame below (see _process),
+        # and not bound to the tick of the simulation. This gives a smooth progress bar.
 
     _update_research_progress()
-    # Перерисовываем слой прогресс-баров ТОЛЬКО когда есть что показывать:
-    # идёт исследование, есть активные стройки (включая шаги поэтапных
-    # проектов — их считает has_active_builds) или идёт разведка. В противном
-    # случае слой лёгкий и его _draw() ничего не рисует — нет смысла вызывать
-    # queue_redraw() каждый кадр. Когда строительство/исследование/разведка
-    # завершились/начались, соответствующие обработчики вызывают
-    # _redraw_progress_layer() (см. ниже), чтобы слой гарантированно
-    # обновился и не оставался висеть на 100% или показывать устаревшие бары.
+    # We redraw the layer of the progress bars ONLY when there is something to show:
+    # a research is going, there are active builds (including the steps of the phased
+    # projects — they are counted by has_active_builds) or the scouting is going. Otherwise
+    # the layer is light and its _draw() draws nothing — there is no reason to call
+    # queue_redraw() every frame. When the construction/research/scouting
+    # has finished/started, the corresponding handlers call
+    # _redraw_progress_layer() (see below), so that the layer is guaranteed to be
+    # updated and does not remain hanging at 100% or showing the outdated bars.
     if CityData.current_research_tech_id != "" \
             or build_manager.has_active_builds() \
             or is_scouting \
@@ -829,7 +830,7 @@ func _tick_pasture_fill(delta: float):
         var entry: Dictionary = _growing_pastures[key]
         var row: int = entry["row"]
         var col: int = entry["col"]
-        # Проверяем актуальность: улучшение могли снести, рабочего — снять.
+        # We check the actuality: the improvement may have been demolished, the worker — removed.
         var tile = tile_data[row][col]
         if tile.improvement == null or bool(tile.get("decorative", false)) \
                 or not worker_manager.has_worker(row, col):
@@ -845,23 +846,23 @@ func _tick_pasture_fill(delta: float):
         still_growing[key] = entry
     _growing_pastures = still_growing
     _has_growing_pastures = not still_growing.is_empty()
-    # Перерисовываем пока растёт; финальный кадр — чтобы стереть бар,
-    # когда последнее пастбище заполнилось (иначе бар зависает на экране).
+    # We redraw while it is growing; the final frame — so as to erase the bar,
+    # when the last pasture has filled up (otherwise the bar hangs on the screen).
     if _has_growing_pastures or had_growing:
         progress_bar_layer.queue_redraw()
 
-# --- НЕПРЕРЫВНОЕ ПРОИЗВОДСТВО: HELPERS ---
-# Вынесенные функции для блока «НЕПРЕРЫВНОЕ ПРОИЗВОДСТВО УЛУЧШЕНИЯ» в _process.
-# Эти функции инкапсулируют работу с sub-unit accumulator и списанием корма,
-# чтобы основной цикл производства оставался компактным и читаемым.
+# --- THE CONTINUOUS PRODUCTION: THE HELPERS ---
+# The functions moved out for the block "THE CONTINUOUS PRODUCTION OF AN IMPROVEMENT" in _process.
+# These functions encapsulate the work with the sub-unit accumulator and with the write-off of the feed,
+# so that the main cycle of the production stays compact and readable.
 
-# Списывает корм непрерывно: feed_per_sec единиц/сек. Дробный остаток
-# копится в tile.feed_fractional_remainder. Возвращает, сколько единиц
-# корма удалось списать за тик (0, если на складе нет).
+# Writes off the feed continuously: feed_per_sec units/sec. The fractional remainder
+# accumulates in tile.feed_fractional_remainder. It returns how many units
+# of the feed managed to be written off for the tick (0, if there is nothing in the storage).
 #
-# При нехватке корма: списывается ВСЁ, что есть на складе (в пределах
-# накопленного остатка). Если даже частично не хватило — производство
-# режется до 0.25 в вызывающем коде.
+# On a shortage of the feed: EVERYTHING that is in the storage is written off (within the
+# limits of the accumulated remainder). If even partially it was not enough — the production
+# is cut to 0.25 in the calling code.
 func _consume_feed_continuous(tile: Dictionary, feed_per_sec: float, improvement_source: String) -> int:
     if feed_per_sec <= 0.0:
         return 0
@@ -878,14 +879,14 @@ func _consume_feed_continuous(tile: Dictionary, feed_per_sec: float, improvement
     CityData.record_consumption_source("feed", improvement_source, take)
     return take
 
-# Непрерывное производство улучшения: каждый тик добавляет на склад
-# (amount_per_cycle × production_multiplier) / production_interval единиц
-# продукции. Дробный остаток копится в tile.production_fractional_remainder,
-# чтобы средняя скорость не дрейфовала.
+# The continuous production of an improvement: on every tick it adds to the storage
+# (amount_per_cycle × production_multiplier) / production_interval units
+# of the product. The fractional remainder accumulates in tile.production_fractional_remainder,
+# so that the average rate does not drift.
 #
-# production_multiplier может быть < 1.0 (например, 0.25 при нехватке корма)
-# или > 1.0 (бонус профессии). Нулевые значения пропускаются, чтобы не
-# плодить нулевые записи в источниках.
+# production_multiplier can be < 1.0 (for example, 0.25 on a shortage of the feed)
+# or > 1.0 (the bonus of the profession). The zero values are skipped, so as not to
+# breed the zero records in the sources.
 func _emit_continuous_production(tile: Dictionary, produces: Dictionary, production_multiplier: float, imp_interval: float, tile_quality: String, improvement_source: String) -> void:
     if produces.is_empty() or imp_interval <= 0.0:
         return
@@ -909,16 +910,16 @@ func _initialize_map():
     CityData.city_name = selected_city_name
     map_renderer.load_icons()
 
-    # Устанавливаем стартовые размеры Кольца и Региона из конфигурации.
+    # We set the starting sizes of the Ring and the Region from the configuration.
     ring_rows = start_ring_rows
     ring_cols = start_ring_cols
     region_rows = ring_rows + region_width * 2
     region_cols = ring_cols + region_width * 2
     _recalculate_bounds()
 
-    # Запоминаем стартовые границы (Кольцо + видимое окно). Они нужны для
-    # гарантий спавна ресурсов, чтобы металл и food_plant НЕ появлялись за
-    # пределами изначально видимой области даже после расширения в новой эпохе.
+# We remember the starting boundaries (the Ring + the visible window). They are needed for
+    # the guarantees of the spawn of the resources, so that the metal and food_plant do NOT appear beyond
+    # the initially visible area even after the expansion to a new era.
     start_influence_start_row = influence_start_row
     start_influence_end_row = influence_end_row
     start_influence_start_col = influence_start_col
@@ -928,30 +929,30 @@ func _initialize_map():
     start_region_start_col = region_start_col
     start_region_end_col = region_end_col
 
-    # Генерируем ВСЮ карту мира сразу (рельеф, покров, реки).
+    # We generate the WHOLE map of the world at once (the relief, the cover, the rivers).
     var generator = load("res://scripts/map_generator.gd").new()
-    # Количество центров Вороного для каждого типа местности вычисляется
-    # из конфигурации terrain_config (density + target_cluster),
-    # заданной в data/map_config.json.
+# The number of the Voronoi centres for each terrain type is computed
+    # from the configuration terrain_config (density + target_cluster),
+    # set in data/map_config.json.
     var terrain_counts = generator.make_terrain_counts(map_rows, map_cols)
     tile_data = generator.generate_map(map_rows, map_cols, city_row, city_col, GameData.raw_resources, terrain_counts)
-    print("Карта мира сгенерирована. Гексов: ", map_rows * map_cols)
+    print("The map of the world has been generated. Hexes: ", map_rows * map_cols)
 
-    # Гарантируем, что город находится на разрешённой местности (равнина или холмы)
+    # We guarantee that the city is on a permitted terrain (a plain or the hills)
     _ensure_city_valid_terrain()
 
-    # Помечаем стартовое Кольцо Влияния и сбрасываем исследование.
-    # Флаги ставим для ВСЕЙ карты, т.к. генераторы (place_wild_food и др.)
-    # итерируют по всем гексам и обращаются к "in_influence".
+# We mark the starting Influence Ring and reset the research.
+    # The flags are set for the WHOLE map, because the generators (place_wild_food and so on)
+    # iterate over all the hexes and refer to "in_influence".
     for row in range(map_rows):
         for col in range(map_cols):
             var tile = tile_data[row][col]
             tile["in_influence"] = is_in_influence(row, col)
             tile["is_explored"] = false
 
-    # Собираем гексы уникальной местности (например, содовое озеро).
-    # Они отображаются на карте даже за пределами видимого Региона
-    # (см. map_renderer._draw), поэтому храним их отдельным списком.
+# We collect the hexes of a unique terrain (for example, a soda lake).
+    # They are displayed on the map even beyond the visible Region
+    # (see map_renderer._draw), therefore we store them in a separate list.
     unique_terrain_hexes = []
     for row in range(map_rows):
         for col in range(map_cols):
@@ -960,20 +961,20 @@ func _initialize_map():
             if t_data.get("unique", false):
                 unique_terrain_hexes.append({"row": row, "col": col})
 
-    # Гексы городков и кольца влияния зеркалятся ПОСЛЕ town_manager.generate_towns
-    # ниже (он сам в конце вызывает compute_all_town_influences, см. скрипт town_manager).
-    # Здесь пока ничего не зеркалим: master-копии ещё пустые.
+# The hexes of the towns and of the influence ring are mirrored AFTER town_manager.generate_towns
+    # below (it itself calls compute_all_town_influences at the end, see the script town_manager).
+    # Here we do not mirror anything yet: the master copies are still empty.
 
-    # Дикоросы и гарантированный food_plant спавнятся ТОЛЬКО один раз при
-    # старте новой игры и ТОЛЬКО внутри стартового Кольца Влияния.
-    # Передаём явные границы стартового Кольца, чтобы эти функции никогда
-    # не выходили за его пределы (даже если Кольцо позже расширится).
+# The wild plants and the guaranteed food_plant spawn ONLY once at the
+    # start of a new game and ONLY inside the starting Influence Ring.
+    # We pass the explicit boundaries of the starting Ring, so that these functions never
+    # go beyond its limits (even if the Ring expands later).
     _ensure_food_plant(influence_start_row, influence_end_row, influence_start_col, influence_end_col, city_row, city_col)
     generator.place_wild_food(tile_data,
             influence_start_row, influence_end_row, influence_start_col, influence_end_col,
             city_row, city_col)
 
-    # Ресурсы, которые встречаются в Кольце Влияния, не дублируются в Регионе.
+    # The resources which occur in the Influence Ring are not duplicated in the Region.
     var influence_resource_types = {}
     for row in range(influence_start_row, influence_end_row + 1):
         for col in range(influence_start_col, influence_end_col + 1):
@@ -988,33 +989,33 @@ func _initialize_map():
                 if res != null and influence_resource_types.has(res):
                     tile_data[row][col]["resource"] = null
 
-    # --- Гарантии для стартовой области «Кольцо + Регион» ---
-    # Используем стартовые границы (не текущие), чтобы при будущем
-    # расширении в новую эпоху не срабатывало повторно. Сейчас в игре
-    # единственный металл — железо; при добавлении новых функция выберет
-    # один из них случайно. Аналогично для остальных категорий ниже.
+# --- The guarantees for the starting area "Ring + Region" ---
+    # We use the starting boundaries (and not the current ones), so that on a future
+    # expansion to a new era it does not fire again. At the moment in the game
+    # the only metal is the iron; when adding a new one the function will choose
+    # one of them at random. The same for the other categories below.
     #
-    # Пищевое растение гарантируется отдельно (см. _ensure_food_plant выше)
-    # и остаётся ТОЛЬКО в стартовом Кольце — игрок должен иметь возможность
-    # сразу поставить ферму без разведки/покупки региона.
+# The food plant is guaranteed separately (see _ensure_food_plant above)
+    # and remains ONLY in the starting Ring — the player must have the possibility
+    # to put a farm immediately without the scouting/buying of the region.
     _ensure_minimum_resource({"category": "metals"})
     _ensure_minimum_resource({"category": "animals", "group": "meat_animals"})
     _ensure_minimum_resource({"category": "minerals", "subgroup": "construction_materials"})
 
-    # --- Пост-обработка: гарантируем достаточное количество СВОБОДНЫХ гексов ---
-    # После размещения всех ресурсов у каждого типа местности в Кольце Влияния
-    # должно остаться минимум FREE_TERRAIN_HEXES свободных (resource == null)
-    # гексов. Это исключает софт-лок: если ресурс (например, киноа — только горы)
-    # попал в кольцо, у игрока всегда будет место для дополнительных ферм/пастбищ.
-    # Метод конвертирует ТОЛЬКО свободные гексы и НИКОГДА не уничтожает ресурсы.
+# --- The post-processing: we guarantee a sufficient number of FREE hexes ---
+    # After the placement of all the resources of each terrain type in the Influence Ring
+    # there must remain at least FREE_TERRAIN_HEXES free (resource == null)
+    # hexes. This excludes a soft-lock: if a resource (for example, quinoa — only the mountains)
+    # has got into the ring, the player will always have a place for the additional farms/pastures.
+    # The method converts ONLY the free hexes and NEVER destroys the resources.
     generator.ensure_free_terrain_hexes(tile_data, terrain_counts,
             influence_start_row, influence_end_row, influence_start_col, influence_end_col,
             city_row, city_col)
 
-    # Используем ЛОКАЛЬНЫЙ генератор случайных чисел для выбора иконки ландшафта.
-    # Ни в коем случае нельзя вызывать seed()/randomize() на глобальном RNG внутри
-    # этого цикла — это разрушило бы случайность всех последующих randf()/randi()
-    # (например, при спавне ресурсов после изучения технологий).
+    # We use a LOCAL generator of random numbers for the choice of the icon of the landscape.
+    # Under no circumstances may seed()/randomize() be called on the global RNG inside
+    # this loop — it would destroy the randomness of all the subsequent randf()/randi()
+    # (for example, on the spawn of the resources after the learning of the technologies).
     var t_terrain_icon = Time.get_ticks_msec()
     var icon_rng = RandomNumberGenerator.new()
     for row in range(map_rows):
@@ -1034,27 +1035,27 @@ func _initialize_map():
                 else:
                     tile["terrain_icon"] = ""
 
-    # Генерируем речную систему (главные реки + притоки) по всей карте
-    # и помечаем рёбра реки в данных гексов. Передаём tile_data (для гор/озёр)
-    # и границы стартовой области «Кольцо + Регион» (гарантия пересечения).
+# We generate the river system (the main rivers + the tributaries) over the whole map
+    # and mark the river edges in the data of the hexes. We pass tile_data (for the mountains/lakes)
+    # and the boundaries of the starting area "Ring + Region" (the guarantee of the intersection).
     river_manager.generate_rivers(map_rows, map_cols, HEX_RADIUS, tile_data,
             region_start_row, region_end_row, region_start_col, region_end_col)
     river_manager.mark_river_edges(tile_data, map_rows, map_cols, HEX_RADIUS, river_manager.get_cached_graph())
 
-    # --- Городки (мелкие поселения) ---
-    # Размещаются ПОСЛЕ рек, чтобы river_edges уже были проставлены и
-    # использовались как точки тяготения (приоритет 2). Число и приоритеты
-    # точек тяготения см. в data/map_config.json, раздел "num_towns".
-    # Подробности — в scripts/town_manager.gd.
+# --- The towns (the small settlements) ---
+    # They are placed AFTER the rivers, so that river_edges have already been set and
+    # are used as the points of attraction (priority 2). The number and the priorities
+    # of the points of attraction are in data/map_config.json, the section "num_towns".
+    # The details are in scripts/town_manager.gd.
     #
-    # Передаём две области:
-    #   exclusion_* — стартовая видимая область (Кольцо + стартовый Регион).
-    #     Внутри неё городки НЕ спавнятся, иначе они были бы видны с самого
-    #     начала игры и потеряется смысл «маленьких неизвестных поселений».
-    #   era2_region_* — видимая область 2-й эпохи (Кольцо_2 + Регион_2).
-    #     Это «обязательная зона» для гарантии: хотя бы 1 городок должен
-    #     попасть туда, чтобы при переходе во 2-ю эпоху игрок сразу мог
-    #     кого-то увидеть и начать торговать.
+# We pass two areas:
+    #   exclusion_* — the starting visible area (the Ring + the starting Region).
+    #     Inside it the towns do NOT spawn, otherwise they would be visible from the very
+    #     beginning of the game and the sense of "the small unknown settlements" would be lost.
+    #   era2_region_* — the visible area of the 2nd era (Ring_2 + Region_2).
+    #     This is the "mandatory zone" for the guarantee: at least 1 town must
+    #     get there, so that on the transition to the 2nd era the player can immediately
+    #     see someone and start trading.
     var era2_region_bounds: Dictionary = _compute_era2_region_bounds()
     town_manager.generate_towns(tile_data, map_rows, map_cols, city_row, city_col,
             start_region_start_row, start_region_end_row,
@@ -1062,30 +1063,30 @@ func _initialize_map():
             era2_region_bounds.start_row, era2_region_bounds.end_row,
             era2_region_bounds.start_col, era2_region_bounds.end_col)
 
-    # Зеркала town_hexes / town_influence_hexes строим ТОЛЬКО ПОСЛЕ generate_towns:
-    # town_manager в конце generate_towns вызывает compute_all_town_influences,
-    # и только после этого обе master-копии содержат данные. Раньше зеркало
-    # стояло выше (в районе строки 650), но в том месте town_manager.town_hexes
-    # ещё был пуст — и зеркало молча копировало пустоту. Из-за этого кольца
-    # влияния вообще не отображались на новой игре.
+# The mirrors town_hexes / town_influence_hexes are built ONLY AFTER generate_towns:
+    # town_manager calls compute_all_town_influences at the end of generate_towns,
+    # and only after that both master copies contain the data. Previously the mirror
+    # stood higher (around the line 650), but in that place town_manager.town_hexes
+    # was still empty — and the mirror silently copied the emptiness. Because of this the rings
+    # of influence were not displayed at all on a new game.
     town_hexes = []
     for h in town_manager.town_hexes:
         town_hexes.append({"row": h.row, "col": h.col})
     town_influence_hexes = []
     for h in town_manager.town_influence_hexes:
         town_influence_hexes.append({"row": h.row, "col": h.col})
-    # Полные записи городков — ссылка на master-список менеджера (не снимок):
-    # рендерер читает per-town кольца и цвета, а любые будущие правки в
-    # town_manager сразу отражаются на карте без повторного зеркалирования.
+# The full records of the towns — a reference to the master list of the manager (and not a snapshot):
+    # the renderer reads the per-town rings and the colours, and any future edits in
+    # town_manager are immediately reflected on the map without a repeated mirroring.
     towns = town_manager.towns
 
-    # Финальная гарантия: на гексе города не должно быть ресурса, и террейн
-    # должен быть допустимым (plain или hill). Это safety-net на случай,
-    # если какая-либо функция спавна ресурсов или конвертации террейна
-    # пропустила проверку координат города.
+# The final guarantee: on the hex of the city there should be no resource, and the terrain
+    # must be a permitted one (plain or hill). It is a safety-net for the case,
+    # if some function of the spawn of the resources or of the conversion of the terrain
+    # has missed the check of the coordinates of the city.
     _ensure_city_hex_clean()
-    # Помечаем гекс города флагом is_city — логика воды (MapHelpers) считает
-    # его проводником/источником, когда к городу реально подведена вода.
+    # We mark the hex of the city with the flag is_city — the logic of the water (MapHelpers) counts
+    # it as a conductor/source, when the water is really brought to the city.
     _mark_city_hex()
 
 func _mark_city_hex() -> void:
@@ -1099,14 +1100,14 @@ func _is_hex_irrigated(row: int, col: int) -> bool:
     return MapHelpers.is_hex_irrigated(row, col, tile_data, map_rows, map_cols)
 
 func _ensure_minimum_resource(filter: Dictionary):
-    # Гарантия работает по СТАРТОВЫМ границам «Кольцо + Регион», а не по
-    # текущим (которые могут быть расширены переходом в новую эпоху).
-    # Используется при инициализации карты, чтобы в стартовой области
-    # всегда был хотя бы один ресурс, удовлетворяющий фильтру.
-    # Примеры фильтров:
-    #   { "category": "metals" }                                          — любой металл
-    #   { "category": "animals", "group": "meat_animals" }                — мясное животное
-    #   { "category": "minerals", "subgroup": "construction_materials" }  — стройматериал
+# The guarantee works by the STARTING boundaries "Ring + Region", and not by the
+    # current ones (which can be expanded by a transition to a new era).
+    # It is used on the initialization of the map, so that in the starting area
+    # there is always at least one resource satisfying the filter.
+    # Examples of the filters:
+    #   { "category": "metals" }                                          — any metal
+    #   { "category": "animals", "group": "meat_animals" }                — a meat animal
+    #   { "category": "minerals", "subgroup": "construction_materials" }  — a construction material
     MapHelpers.ensure_minimum_resource(
         tile_data, filter,
         start_influence_start_row, start_influence_end_row,
@@ -1114,29 +1115,29 @@ func _ensure_minimum_resource(filter: Dictionary):
         city_row, city_col
     )
 
-# Гарантирует наличие хотя бы одного ресурса из food_plants в стартовом Кольце.
-# Вызывается ТОЛЬКО один раз при старте новой игры (из _initialize_map).
-# Границы (min_row..max_row, min_col..max_col) — это стартовое Кольцо,
-# поэтому food_plant гарантированно не появляется за его пределами
-# и не пересоздаётся после старта.
+# Guarantees the presence of at least one resource from food_plants in the starting Ring.
+# It is called ONLY once at the start of a new game (from _initialize_map).
+# The boundaries (min_row..max_row, min_col..max_col) are the starting Ring,
+# therefore the food_plant is guaranteed not to appear beyond its limits
+# and is not recreated after the start.
 func _ensure_food_plant(min_row: int, max_row: int, min_col: int, max_col: int, city_row: int = -1, city_col: int = -1):
     MapHelpers.ensure_food_plant(tile_data, min_row, max_row, min_col, max_col, city_row, city_col)
 
-# Финальная safety-проверка: гарантирует, что на гексе города нет ресурса
-# и террейн валиден. Вызывается после всех этапов генерации карты.
+# The final safety-check: it guarantees that on the hex of the city there is no resource
+# and the terrain is valid. It is called after all the stages of the generation of the map.
 func _ensure_city_hex_clean() -> void:
     var city_tile = tile_data[city_row][city_col]
     if city_tile.get("resource", null) != null:
-        print("ВНИМАНИЕ: на гексе города стоял ресурс «", city_tile["resource"], "» — удален.")
+        print("WARNING: a resource was standing on the hex of the city '", city_tile["resource"], "' — it has been removed.")
         city_tile["resource"] = null
     _ensure_city_valid_terrain()
 
-# Ищет на карте уже одомашненный экземпляр ресурса res_id (гекс с этим ресурсом
-# и построенным улучшением — ферма/пастбище) и возвращает его качество.
-# Используется при разведении нового животного/растения на пустом гексе:
-# качество наследуется от уже одомашненного образца
-# ("исключительное порождает исключительное"). Если такого образца нет —
-# возвращает пустую строку, и вызывающий код генерирует качество через roll.
+# Looks on the map for an already domesticated instance of the resource res_id (a hex with this resource
+# and a built improvement — a farm/pasture) and returns its quality.
+# It is used on the breeding of a new animal/plant on an empty hex:
+# the quality is inherited from the already domesticated specimen
+# ("exceptional produces exceptional"). If there is no such specimen —
+# it returns an empty string, and the calling code generates the quality through roll.
 func _find_domesticated_quality(res_id: String) -> String:
     return MapHelpers.find_domesticated_quality(
         res_id, tile_data,
@@ -1157,22 +1158,22 @@ func _calc_offsets():
     offset_y = offsets.y
 
 func update_tooltip_text(row: int, col: int):
-    # Страховка публичной точки входа: для гекса в тумане войны тултип не
-    # наполняется вовсе (основной гейт — в InputHandler._handle_mouse_motion,
-    # где туманный гекс вообще не становится «наведённым»). Иначе после
-    # задержки наведения всплыл бы тултип с содержимым прошлого гекса.
+# The insurance of the public entry point: for a hex in the fog of war the tooltip is not
+    # filled in at all (the main gate is in InputHandler._handle_mouse_motion,
+    # where the foggy hex does not become "hovered" at all). Otherwise after
+    # the hover delay a tooltip with the contents of the previous hex would float up.
     if is_hex_in_fog(row, col):
         return
     map_tooltip.update_tooltip_text(row, col, tile_data, city_row, city_col)
 
-# Возвращает id улучшения, которое можно построить на гексе (row, col),
-# или пустую строку, если постройка невозможна.
+# Returns the id of the improvement which can be built on the hex (row, col),
+# or an empty string, if the construction is impossible.
 func _get_buildable_improvement(row: int, col: int) -> String:
     return MapHelpers.get_buildable_improvement(tile_data[row][col])
 
-# Возвращает true, если для гекса нужно показывать расширенный тултип (свойства
-# гекса, производство, потребление, уровень дороги). Условия перечислены не
-# здесь: их спрашивает тот же сборщик, который строит сам блок, — см.
+# Returns true, if for the hex the extended tooltip has to be shown (the properties of
+# the hex, the production, the consumption, the road level). The conditions are not listed
+# here: they are asked of the same assembler, which builds the block itself, — see
 # MapTooltip.has_extended_tooltip_info.
 func has_extended_tooltip_info(row: int, col: int) -> bool:
     return map_tooltip.has_extended_tooltip_info(row, col, tile_data)
@@ -1180,27 +1181,27 @@ func has_extended_tooltip_info(row: int, col: int) -> bool:
 func update_extended_tooltip(row: int, col: int):
     map_tooltip.update_extended_tooltip(row, col, tile_data, city_row, city_col)
 
-# Сбрасывает привязку расширенного блока тултипа к гексу (см.
-# MapTooltip.clear_extended_tooltip). Вызывается при смене гекса и при скрытии
-# тултипа — иначе возврат на тот же гекс нарисовал бы расширенный блок сразу,
-# минуя задержку наведения.
+# Resets the binding of the extended block of the tooltip to the hex (see
+# MapTooltip.clear_extended_tooltip). It is called on a change of the hex and on the hiding of
+# the tooltip — otherwise the return to the same hex would draw the extended block immediately,
+# bypassing the hover delay.
 func clear_extended_tooltip():
     map_tooltip.clear_extended_tooltip()
 
-# Выбирает иконку ландшафта для гекса (row, col) на основе его террейна.
+# Chooses the icon of the landscape for the hex (row, col) based on its terrain.
 func _assign_terrain_icon(row: int, col: int) -> void:
     tile_data[row][col]["terrain_icon"] = MapHelpers.get_terrain_icon(row, col, tile_data)
 
-# Запрашивает перерисовку слоя прогресс-баров. Вызывается при старте/завершении
-# строительства, исследования и разведки, когда слой может измениться, но
-# _process (_active) больше не будет триггерить перерисовку (например, из-за
-# завершения последней стройки). Иначе последний кадр с заполненным на 100%
-# баром навсегда остался бы на экране.
+# Requests the redrawing of the layer of the progress bars. It is called at the start/completion of
+# the construction, the research and the scouting, when the layer may change, but
+# _process (_active) will no longer trigger the redraw (for example, because of
+# the completion of the last build). Otherwise the last frame with a bar filled to 100%
+# would remain on the screen forever.
 func _redraw_progress_layer():
     if progress_bar_layer:
         progress_bar_layer.queue_redraw()
 
-# Публичная обёртка для перерисовки слоя прогресс-баров (используется
+# The public wrapper for the redrawing of the layer of the progress bars (it is used by
 # панелью управления control_panel.gd после подтверждения постройки).
 func redraw_progress_layer():
     _redraw_progress_layer()
