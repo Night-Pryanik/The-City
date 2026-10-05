@@ -83,7 +83,6 @@ func _run() -> void:
     _test_cascade()
     _test_import_isolated_from_sell()
     _test_determinism()
-    _test_borders()
     _test_group_member()
     _test_base_pool_is_products_only()
     _test_animals_excluded()
@@ -97,14 +96,13 @@ func _run() -> void:
 
 
 # --- Пул для произвольного набора id: base -> замыкание без импорта ---
-# max_gaps = 0 отключает покупки, поэтому видно ЧИСТОЕ производство.
+# Замыкание считается напрямую через _close_pool, минуя каскад импорта.
 func _pool_only(base_ids: Array) -> Dictionary:
-    var pools: Dictionary = _te.build_pools("town_test", base_ids, 0)
     var pool: Dictionary = {}
-    for pid in pools["sell_pool"]:
-        pool[str(pid)] = true
     for pid in base_ids:
         pool[str(pid)] = true
+    var made: Dictionary = {}
+    _te._close_pool(pool, made)
     return pool
 
 
@@ -180,7 +178,7 @@ func _test_cascade() -> void:
     var found_family := false
     var details := ""
     for i in range(60):
-        var pools: Dictionary = _te.build_pools("town_%d" % i, [WOOD], 2)
+        var pools: Dictionary = _te.build_pools("town_%d" % i, [WOOD])
         var sell: Array = pools["sell_pool"]
         var buy: Array = pools["buy_pool"]
         if buy.has(IRON_ORE) and sell.has("iron") and sell.has("iron_tools"):
@@ -197,7 +195,7 @@ func _test_cascade() -> void:
 # 5. ИЗОЛЯЦИЯ. Купленное не продаётся — по требованию дизайна.
 func _test_import_isolated_from_sell() -> void:
     for i in range(40):
-        var pools: Dictionary = _te.build_pools("town_%d" % i, [WOOD, IRON_ORE], 2)
+        var pools: Dictionary = _te.build_pools("town_%d" % i, [WOOD, IRON_ORE])
         var sell: Array = pools["sell_pool"]
         var buy: Array = pools["buy_pool"]
         for pid in buy:
@@ -210,8 +208,8 @@ func _test_import_isolated_from_sell() -> void:
 func _test_determinism() -> void:
     for i in range(10):
         var town_id := "town_det_%d" % i
-        var first: Dictionary = _te.build_pools(town_id, [WOOD, COPPER_ORE, WHEAT], 2)
-        var second: Dictionary = _te.build_pools(town_id, [WOOD, COPPER_ORE, WHEAT], 2)
+        var first: Dictionary = _te.build_pools(town_id, [WOOD, COPPER_ORE, WHEAT])
+        var second: Dictionary = _te.build_pools(town_id, [WOOD, COPPER_ORE, WHEAT])
         _check(first["sell_pool"] == second["sell_pool"],
             "пул продажи городка %s изменился при повторном расчёте" % town_id)
         # Устойчивость — единственное, что проверяем здесь; «купит ли городок хоть
@@ -222,23 +220,6 @@ func _test_determinism() -> void:
             "пул покупки городка %s изменился при повторном расчёте" % town_id)
 
 
-# 7. ГРАНИЦЫ. max_gaps ограничивает число докупаемых типов; одноингредиентные
-# рецепты в импорте не участвуют по построению.
-func _test_borders() -> void:
-    # max_gaps = 0: покупок нет вовсе, сколько бы готовности ни было.
-    var no_buy: Dictionary = _te.build_pools("town_nogap", [WOOD, COPPER_ORE], 0)
-    _check(no_buy["buy_pool"].is_empty(),
-        "при max_import_gaps = 0 городок не должен ничего покупать")
-    # Рецепт с двумя пробелами (1 из 3) при max_gaps = 2 покупку разрешает —
-    # но только если бросок выпал, поэтому утверждаем лишь верхнюю границу:
-    # купленное не может превысить два типа на рецепт.
-    # max_gaps = 1: рецепт с двумя пробелами (1 из 3) покупку уже не запускает —
-    # закупка двух разных товаров ради одного изделия выходит за лимит.
-    var one_gap: Dictionary = _te.build_pools("town_onegap", [WOOD, COPPER_ORE], 1)
-    for pid in one_gap["buy_pool"]:
-        _check(not str(pid).begins_with("@"),
-            "пул покупок не должен содержать групповых ключей, а содержит «%s»" % pid)
-
 # 8. ПРЕДСТАВИТЕЛЬ @-ГРУППЫ. Случайный, но устойчивый и всегда из группы.
 func _test_group_member() -> void:
     var gd = get_root().get_node("GameData")
@@ -248,7 +229,7 @@ func _test_group_member() -> void:
     # должен оказаться ОДИН из членов группы — и никакого ключа "@bronze_alloys".
     var seen_group_pick := false
     for i in range(40):
-        var pools: Dictionary = _te.build_pools("town_grp_%d" % i, [WOOD, COPPER_ORE], 2)
+        var pools: Dictionary = _te.build_pools("town_grp_%d" % i, [WOOD, COPPER_ORE])
         for pid in pools["buy_pool"]:
             _check(not str(pid).begins_with("@"),
                 "в пуле покупок не должно быть группового ключа «%s»" % pid)
@@ -274,7 +255,7 @@ func _tiles_with(resources: Array) -> Array:
 # не выводится компилятором.
 func _sell_pool_of(resources: Array) -> Array:
     var base: Array = _te.collect_base_resources(_tiles_with(resources))
-    var pools: Dictionary = _te.build_pools("town_base_test", base, 0)
+    var pools: Dictionary = _te.build_pools("town_base_test", base)
     return pools["sell_pool"]
 
 # 10. Поля и залежи: в пул идёт ПРОДУКЦИЯ, само сырьё — нет.

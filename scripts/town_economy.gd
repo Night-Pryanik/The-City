@@ -278,16 +278,11 @@ static func _seed_for(town_id: String, recipe_id: String) -> int:
 #
 # town_id   — the town identifier ("town_3"); it is part of the seed of all the rolls.
 # base_ids  — the base pool from collect_base_resources.
-# max_gaps  — how many different ingredients it is allowed to buy in (from
-#             data/game_balance.json, max_import_gaps). A recipe with one
-#             missing item passes, with two — if the roll is lucky, with three —
-#             never: buying three different goods for one product is
-#             out of reach for a town.
 #
 # It returns { "sell_pool": Array, "buy_pool": Array }; both arrays
 # are sorted, so that the same state gives the same result in
 # printing and in the tests.
-static func build_pools(town_id: String, base_ids: Array, max_gaps: int = 2) -> Dictionary:
+static func build_pools(town_id: String, base_ids: Array) -> Dictionary:
     var made: Dictionary = {}
     var imports: Dictionary = {}
     # The base pool — a simple set: id -> true. The duplicates collapse.
@@ -322,8 +317,6 @@ static func build_pools(town_id: String, base_ids: Array, max_gaps: int = 2) -> 
             # available ingredient — neither: buying EVERYTHING at once is meaningless,
             # the town is interested in production, and not in reselling the raw material.
             if missing.is_empty() or missing.size() == ingredients.size():
-                continue
-            if missing.size() > max_gaps:
                 continue
             if not _roll_import(town_id, recipe_id, _readiness_of(craft, pool), rolls):
                 continue
@@ -382,7 +375,6 @@ static func refresh_town(town: Dictionary, tile_data: Array) -> void:
             continue
         tiles.append(tile)
     var base_ids := collect_base_resources(tiles)
-    var pools := build_pools(town_id, base_ids,
-            int(GameData.game_balance.get("max_import_gaps", 2)))
+    var pools := build_pools(town_id, base_ids)
     town["sell_pool"] = pools["sell_pool"]
     town["buy_pool"] = pools["buy_pool"]

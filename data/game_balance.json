@@ -89,16 +89,6 @@
     "distance_cost_modifier_per_hex": 0.25,
     "road_distance_cost_modifier_per_hex": 0.1,
     "scouting_cost_per_hex": 3,
-    "expansion_cost_per_hex": 5,
-    //                                      how many DIFFERENT ingredients a town
-    //                                      may buy in for the sake of a single
-    //                                      recipe
-    //                                      (scripts/town_economy.gd). A recipe
-    //                                      with one missing item always passes,
-    //                                      with two — if the roll is lucky, with
-    //                                      three — never: buying three different
-    //                                      goods for one town product is
-    //                                      out of reach for a town.
-    "max_import_gaps": 2
+    "expansion_cost_per_hex": 5
   }
 }
