@@ -1,17 +1,28 @@
-// Здесь указываются бонусы за наличие на складе города разнообразных ресурсов в составе групп и подгрупп. 
-// Схема следующая: бонус типа bonus_type дается за владение как минимум min_subgroups в составе группы, а также за min_species число видов внутри подгруппы.
-// Оба вида бонусов независимы друг от друга.
-// Например: коровы, пчелы и домашняя птица - все относятся к группе livestock (домашние животные/скот).
-// Если игрок владеет хотя бы двумя (min_subgroups: 2) видами домашних животных из этого списка (например, коровами и домашней птицей), то он получает бонус.
-// Кроме того, если игрок владеет хотя бы двумя (min_species: 2) видами животных, относящимся к подгруппе,
-// к примеру, meat_animals (коровы, зебу и бантенги), то он получает ещё один бонус.
+// Bonuses for keeping a diverse range of resources in the city storage, grouped
+// by groups and subgroups.
+// The scheme is as follows: a bonus of type bonus_type is granted for owning at
+// least min_subgroups within the group, and also for min_species species within
+// the subgroup.
+// The two kinds of bonus are independent of each other.
+// Example: cows, bees and poultry all belong to the group livestock (livestock).
+// If the player owns at least two (min_subgroups: 2) kinds of livestock from this
+// list (for example, cows and poultry), they receive the bonus.
+// In addition, if the player owns at least two (min_species: 2) kinds of animals
+// that belong to a subgroup,
+// for example meat_animals (cows, zebras and bantengs), they receive another bonus.
 //
-// При создании новых групп стоит ориентироваться на те ресурсы, которые могут непосредственно употребляться в пищу,
-// либо улучшать качество жизни людей, либо которые могут применяться при строительстве, либо на предметы роскоши.
-// Например: хорошая идея давать бонус за наличие разнообразия мяса на столе жителей - например, говядина и курятина (оба - группа livestock).
-// Также хорошая идея давать бонус за наличие разнообразия внутри подгруппы - например, мясо кур, уток и гусей (все три - подгруппа poultry).
-// Хорошая идея давать бонус за наличие разнообразия строительного камня - например, мрамор и известняк (оба - подгруппа construction_materials).
-// Но не очень хорошая идея давать бонус за наличие разнообразия минералов - например, строительный камень и драгоценный камень (подгруппы construction_materials и jewelry_minerals).
+// When creating new groups, it is worth focusing on those resources that can be
+// eaten directly, or that improve the quality of life, or that can be used in
+// construction, or that are luxury goods.
+// Example: a good idea is to grant a bonus for a diversity of meat on the
+// citizens' table — for example, beef and chicken (both are in the group
+// livestock). A good idea is also to grant a bonus for a diversity within a
+// subgroup — for example, chicken, duck and goose meat (all three are in the
+// subgroup poultry). A good idea is to grant a bonus for a diversity of
+// construction stone — for example, marble and limestone (both are in the
+// subgroup construction_materials). But it is not a very good idea to grant a
+// bonus for a diversity of minerals — for example, building stone and gemstone
+// (subgroups construction_materials and jewelry_minerals).
 {
   "group_bonuses": [
     {

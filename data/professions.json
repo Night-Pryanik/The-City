@@ -1,62 +1,62 @@
 {
-  // Профессии рабочих: на улучшениях карты и в городских зданиях.
+  // The professions of workers: on map improvements and in city buildings.
   //
-  // Терминология:
-  //   * Профессия — «метка» жителя, занятого на улучшении карты или на
-  //     работе в городском здании. Метка ставится АВТОМАТИЧЕСКИ при
-  //     назначении рабочего/горожанина и снимается при увольнении.
-  //     Игрок не управляет метками вручную — профессия определяется
-  //     объектом, на который назначен житель.
-  //   * Псевдо-профессия "all" («Все жители») — не метка рабочего, а
-  //     счётчик населения (см. запись с "pseudo": true ниже).
+  // Terminology:
+  //   * Profession — the "label" of a citizen busy at a map improvement or at
+  //     work in a city building. The label is set AUTOMATICALLY on
+  //     assignment of a worker/citizen and is removed on dismissal.
+  //     The player does not manage labels manually — the profession is determined
+  //     by the object the citizen is assigned to.
+  //   * The pseudo-profession "all" ("All citizens") — not a worker label but
+  //     a population counter (see the entry with "pseudo": true below).
   //
-  // Связь с объектами:
-  //   * у улучшения (data/improvements.json) может быть поле "profession" —
-  //     id профессии, которая на нём работает;
-  //   * то же поле у городского здания (data/buildings.json) — id профессии
-  //     горожанина, работающего в здании (сейчас: Библиотека и Скрипторий —
-  //     "scientist").
-  //   Если поле отсутствует — профессии у объекта нет. Улучшение, помеченное
-  //   полем "no_worker": true (инфраструктурное, например пристань), рабочих
-  //   не требует вовсе: их нельзя на него назначить.
+  // Relation to objects:
+  //   * an improvement (data/improvements.json) may have a "profession" field —
+  //     the id of the profession that works on it;
+  //   * the same field for a city building (data/buildings.json) — the id of the
+  //     profession of the citizen working in the building (currently: Library and
+  //     Scriptorium — "scientist").
+  //   If the field is absent — the object has no profession. An improvement marked
+  //   with the "no_worker": true field (infrastructure, for example a harbor)
+  //   requires no workers at all: they cannot be assigned to it.
   //
-  // Потребление ресурсов профессией:
-  //   Описывается НЕ здесь, а в данных ресурсов:
-  //   * основной вариант — реестр data/consumption.json, записи вида
-  //     { "resource": "<id>|@<группа>", "profession": ["<id>"], "amount": N,
+  // Resource consumption by a profession:
+  //   It is described NOT here but in the resource data:
+  //   * the main variant — the registry data/consumption.json, entries of the kind
+  //     { "resource": "<id>|@<group>", "profession": ["<id>"], "amount": N,
   //       "interval": S, "production_bonus": B }.
-  //     Ключ "@<группа>" ссылается на группу продуктов из
-  //     data/product_groups.json — потребляется любой подходящий продукт
-  //     из группы (например, "@boats" — «Лодки» для рыбака).
-  //   * устаревший вариант для одиночных случаев — поле "consumption" у
-  //     продукта (data/products/*.json): { "profession": ["<id>"], "amount": N,
+  //     The key "@<group>" refers to a product group from
+  //     data/product_groups.json — any suitable product
+  //     from the group is consumed (for example, "@boats" — "Boats" for a fisherman).
+  //   * the deprecated variant for single cases — the "consumption" field of a
+  //     product (data/products/*.json): { "profession": ["<id>"], "amount": N,
   //     "interval": S, "production_bonus": B }.
-  //   production_bonus — прибавка к множителю производства (1.0 = без бонуса),
-  //   пока требуемое количество ресурса есть на складе. Если ресурса
-  //   не хватает — объект НЕ останавливается, а просто откатывается
-  //   к базовому множителю (без бонуса). Бонусы ОДИНОЧНЫХ записей
-  //   складываются, а среди ГРУППОВЫХ берётся лучший доступный (один).
-  //   См. docs.md, раздел «Профессии и потребление ресурсов».
+  //   production_bonus — an addition to the production multiplier (1.0 = no bonus)
+  //   while the required amount of the resource is in storage. If there is not
+  //   enough of the resource — the object is NOT stopped, it simply rolls back
+  //   to the base multiplier (without the bonus). The bonuses of SINGLE entries
+  //   add up, while among GROUP ones the best available one is taken (just one).
+  //   See docs.md, the section "Professions and resource consumption".
   //
-  // Формат записи:
-  //   id           — уникальный строковый идентификатор (snake_case).
-  //   name         — именительный падеж, ед.ч.: «Фермер», «Шахтёр».
-  //                  Меткой рабочего в интерфейсе НЕ выводится: служит
-  //                  именем источника в блоке планового потребления
-  //                  вкладки «Ресурсы» («Учёный»).
-  //   icon         — имя файла иконки (как у продуктов/улучшений);
-  //                  сейчас нигде не отображается.
-  //   description  — короткое описание для подсказок (опционально).
+  // Entry format:
+  //   id           — a unique string identifier (snake_case).
+  //   name         — singular nominative form: "Farmer", "Miner".
+  //                  It is NOT shown as a worker label in the interface: it serves
+  //                  as the source name in the planned consumption block
+  //                  of the "Resources" tab ("Scientist").
+  //   icon         — the icon file name (as for products/improvements);
+  //                  it is not displayed anywhere at the moment.
+  //   description  — a short description for tooltips (optional).
   "professions": [
-    // ПСЕВДО-ПРОФЕССИЯ — вершина иерархии: покрывает ВСЕХ жителей города —
-    // и свободных, и занятых (в том числе рабочих на улучшениях с другими
-    // профессиями и городских работников в зданиях). Ни одно улучшение не
-    // должно ссылаться на неё (поле "profession" в improvements.json и
-    // buildings.json). Потребление записывается
-    // на неё в data/consumption.json и списывается ПОГОЛОВНО: amount в
-    // правиле — на ОДНОГО жителя, суммарное списание за тик =
-    // amount * total_population. "pseudo" — маркер, что это не метка
-    // рабочего, а счётчик населения.
+    // THE PSEUDO-PROFESSION — the top of the hierarchy: it covers ALL citizens
+    // of the city — both the idle ones and the busy ones (including workers at
+    // improvements with other professions and city workers in buildings). No
+    // improvement may refer to it (the "profession" field in improvements.json
+    // and buildings.json). Consumption is recorded
+    // for it in data/consumption.json and is written off PER CAPITA: the amount in
+    // a rule is PER ONE citizen, the total write-off per tick =
+    // amount * total_population. "pseudo" is the marker that this is not a worker
+    // label but a population counter.
     {
       "id": "all",
       "name": "All Citizens",

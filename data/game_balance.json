@@ -1,79 +1,86 @@
 {
-  // Игровой баланс: числовые константы, вынесенные из кода.
+  // Game balance: numeric constants moved out of the code.
   //
-  // Поля лежат в объекте "game_balance" (верхний ключ файла, как "consumption"
-  // в data/consumption.json или "map_config" в data/map_config.json).
-  // Загружается через data_loader.gd -> GameData.game_balance.
+  // The fields live in the "game_balance" object (the top-level key of the file,
+  // like "consumption" in data/consumption.json or "map_config" in
+  // data/map_config.json). Loaded via data_loader.gd -> GameData.game_balance.
   //
-  // Поля:
-  //   initial_treasury                 — монеты в казне города при старте новой
-  //                                      игры (поле "treasury" в CityData).
-  //   base_tax_per_citizen             — базовый налог: монеты, которые КАЖДЫЙ
-  //                                      житель города платит в казну за один
-  //                                      тик симуляции (SIMULATION_TICK = 1 сек).
-  //                                      Сбор — CityData.collect_taxes() из
-  //                                      CityData.do_tick(); сумма за тик =
-  //                                      base_tax_per_citizen × total_population
-  //                                      (см. docs.md, «Казна города и
-  //                                      внутренний рынок», «Налоги»).
-  //   internal_market_price_multiplier — доля базовой цены товара (price из
-  //                                      data/products/*.json), по которой
-  //                                      внутренний рынок покупает товар у
-  //                                      города. Прибыль казны за единицу = 
+  // Fields:
+  //   initial_treasury                 — the coins in the city treasury at the
+  //                                      start of a new game (the "treasury"
+  //                                      field in CityData).
+  //   base_tax_per_citizen             — the base tax: the coins that EVERY
+  //                                      citizen of the city pays into the
+  //                                      treasury per one simulation tick
+  //                                      (SIMULATION_TICK = 1 sec).
+  //                                      Collection is CityData.collect_taxes()
+  //                                      from CityData.do_tick(); the sum per
+  //                                      tick = base_tax_per_citizen ×
+  //                                      total_population
+  //                                      (see docs.md, "City treasury and
+  //                                      internal market", "Taxes").
+  //   internal_market_price_multiplier — the share of the base price of a good
+  //                                      (price from
+  //                                      data/products/*.json) at which
+  //                                      the internal market buys the good from
+  //                                      the city. The treasury profit per unit =
   //                                      round(price * multiplier );
-  //                                      казна всегда целочисленная.
-  //                                      Прибыль начисляется
-  //                                      только за реально списанные при
-  //                                      потреблении единицы (см. docs.md,
-  //                                      «Казна города и внутренний рынок»).
-  //   distance_cost_modifier_per_hex   — УНИВЕРСАЛЬНЫЙ модификатор дальности:
-  //                                      прибавка к стоимости действия за
-  //                                      каждый гекс расстояния от города
-  //                                      (доля; 0.25 = +25% за гекс).
-  //                                      Применяется к стоимостям ОДНИХ
-  //                                      построек, где игрок сам выбирает
-  //                                      гекс:
-  //                                        · труд строительства улучшений и
-  //                                          спецдействий (MapHelpers.
+  //                                      the treasury is always an integer.
+  //                                      Profit is credited
+  //                                      only for units actually written off on
+  //                                      consumption (see docs.md,
+  //                                      "City treasury and internal market").
+  //   distance_cost_modifier_per_hex   — the UNIVERSAL distance modifier:
+  //                                      an addition to the cost of an action
+  //                                      per each hex of distance from the city
+  //                                      (a share; 0.25 = +25% per hex).
+  //                                      It is applied to the costs of ONLY
+  //                                      those builds where the player picks
+  //                                      the hex themselves:
+  //                                        · the labour for building improvements
+  //                                          and special actions (MapHelpers.
   //                                          get_improvement_work_cost);
-  //                                        · монеты за разведку чанка и
-  //                                          освоение чанка (expansion_manager).
-  //                                      Формула множителя для гекса:
-  //                                      1 + расстояние × значение
-  //                                      (см. MapHelpers.get_distance_mult).
-  //   road_distance_cost_modifier_per_hex — ТО ЖЕ, но для УЧАСТКА дороги,
-  //                                      которую строит игрок. Отдельное
-  //                                      поле сознательно: формула
-  //                                      применяется к каждому участку
-  //                                      трассы, поэтому множитель дальности
-  //                                      множится на длину дороги. При 0.25
-  //                                      участок №20 стоил бы в 6 раз
-  //                                      дороже первого, и дорога к дальнему
-  //                                      городку становилась недоступной.
-  //                                      0.1 даёт читаемый ряд 1.1, 1.2,
+  //                                        · the coins for scouting a chunk and
+  //                                          claiming a chunk (expansion_manager).
+  //                                      The multiplier formula for a hex:
+  //                                      1 + distance × value
+  //                                      (see MapHelpers.get_distance_mult).
+  //   road_distance_cost_modifier_per_hex — THE SAME, but for a road SEGMENT
+  //                                      that the player builds. A separate
+  //                                      field on purpose: the formula
+  //                                      is applied to every segment
+  //                                      of the route, so the distance multiplier
+  //                                      is multiplied by the length of the road.
+  //                                      At 0.25 segment #20 would cost 6 times
+  //                                      more than the first one, and a road to a
+  //                                      distant town would become unaffordable.
+  //                                      0.1 gives a readable series 1.1, 1.2,
   //                                      …, 2.0 (MapHelpers.
-  //                                      get_road_distance_mult). Множитель
-  //                                      местности (work_cost_mult из
-  //                                      terrains.json) и тех-модификаторы
-  //                                      применяются к участку так же, как к
-  //                                      улучшению. Отдельной надбавки за
-  //                                      ДЛИНУ трассы нет: длинная дорога
-  //                                      строится дольше, потому что участков
-  //                                      больше, а не за счёт штрафа.
-  //                                      Тех-модификаторы (например, «Колесо»,
+  //                                      get_road_distance_mult). The terrain
+  //                                      multiplier (work_cost_mult from
+  //                                      terrains.json) and the tech modifiers
+  //                                      are applied to a segment just as they
+  //                                      are to an improvement. There is no
+  //                                      separate surcharge for the LENGTH of a
+  //                                      route: a long road takes longer to
+  //                                      build, because it has more segments,
+  //                                      not because of a penalty.
+  //                                      Tech modifiers (for example "Wheel",
   //                                      target = "improvement_distance_cost")
-  //                                      накладываются сверху и для улучшений,
-  //                                      и для дороги.
-  //   scouting_cost_per_hex            — базовая цена разведки одного гекса в
-  //                                      монетах казны. Цена чанка = сумма цен
-  //                                      гексов, каждая со своим модификатором
-  //                                      дальности (см. docs.md, «Стоимость
-  //                                      разведки (монеты из казны)»).
-  //   expansion_cost_per_hex           — базовая цена освоения одного гекса в
-  //                                      монетах казны (списывается сразу при
-  //                                      старте освоения). Труд считается
-  //                                      ОТДЕЛЬНО и расстоянием НЕ масштабируется:
-  //                                      это expansion_cost террейна в
+  //                                      are layered on top for both improvements
+  //                                      and the road.
+  //   scouting_cost_per_hex            — the base price of scouting one hex in
+  //                                      treasury coins. The price of a chunk =
+  //                                      the sum of the prices of its
+  //                                      hexes, each with its own distance
+  //                                      modifier (see docs.md, "Cost of
+  //                                      scouting (coins from the treasury)").
+  //   expansion_cost_per_hex           — the base price of claiming one hex in
+  //                                      treasury coins (written off immediately
+  //                                      at the start of the claim). The labour
+  //                                      is counted SEPARATELY and is NOT scaled
+  //                                      by distance: that is the expansion_cost
+  //                                      of the terrain in
   //                                      data/terrains.json.
   "game_balance": {
     "initial_treasury": 100,
@@ -83,14 +90,15 @@
     "road_distance_cost_modifier_per_hex": 0.1,
     "scouting_cost_per_hex": 3,
     "expansion_cost_per_hex": 5,
-    //                                      сколько РАЗНЫХ ингредиентов городок
-    //                                      готов докупить ради одного рецепта
-    //                                      (scripts/town_economy.gd). Рецепт с
-    //                                      одним недостающим проходит всегда, с
-    //                                      двумя — если повезло с броском, с
-    //                                      тремя — никогда: закупка трёх разных
-    //                                      товаров ради одного изделия городку
-    //                                      не по карману.
+    //                                      how many DIFFERENT ingredients a town
+    //                                      may buy in for the sake of a single
+    //                                      recipe
+    //                                      (scripts/town_economy.gd). A recipe
+    //                                      with one missing item always passes,
+    //                                      with two — if the roll is lucky, with
+    //                                      three — never: buying three different
+    //                                      goods for one town product is
+    //                                      out of reach for a town.
     "max_import_gaps": 2
   }
 }

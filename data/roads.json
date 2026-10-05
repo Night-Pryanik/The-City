@@ -1,49 +1,55 @@
 {
-  // УРОВНИ ДОРОГ — data/roads.json.
+  // ROAD LEVELS — data/roads.json.
   //
-  // Дорога состоит из УЧАСТКОВ (сегментов между соседними гексами, см.
-  // scripts/road_manager.gd). Каждый участок принадлежит ровно одному уровню,
-  // и уровень задаёт ДВА независимых числа:
+  // A road consists of SEGMENTS (sections between neighbouring hexes, see
+  // scripts/road_manager.gd). Each segment belongs to exactly one level,
+  // and a level defines TWO independent numbers:
   //
-  //   work_cost  — базовая цена ОДНОГО участка этого уровня в труде, до
-  //                множителей (местность, дальность от города, технологии).
-  //                Итог по участку считает MapHelpers.get_road_step_work_cost
-  //                по той же формуле, что и раньше, только база берётся отсюда,
-  //                а не из work_cost спецдействия build_road.
+  //   work_cost  — the base price of ONE segment of this level in labour, before
+  //                multipliers (terrain, distance from the city, technologies).
+  //                The total for a segment is computed by
+  //                MapHelpers.get_road_step_work_cost using the same formula as
+  //                before, only the base is taken from here rather than from the
+  //                work_cost of the special action build_road.
   //
-  //   max_speed  — «максимальная скорость»: сколько единиц ресурса в секунду
-  //                эта дорога способна перевозить. Это НЕ скорость передвижения
-  //                юнитов (юнитов в игре нет), а пропускная способность
-  //                участка: ферма производит 15 ед/сек, но по тропке с
-  //                max_speed = 10 в город повезут не больше 10 ед/сек.
+  //   max_speed  — "maximum speed": how many units of resource per second this
+  //                road can carry. This is NOT the movement speed of units
+  //                (there are no units in the game), but the throughput of the
+  //                segment: a farm produces 15 units/sec, but along a path with
+  //                max_speed = 10 no more than 10 units/sec reach the city.
   //
-  // Поля записи:
-  //   id          — строковый идентификатор (snake_case), как у всех сущностей;
-  //   level       — порядковый номер уровня, 1-based. Уровни идут подряд, без
-  //                 пропусков: level 1 — базовая тропка, дальше по одной
-  //                 технологии на уровень;
-  //   name        — название для игрока (переводится через data_loader,
-  //                 см. DISPLAY_FIELDS);
-  //   description — короткое пояснение, чем уровень лучше предыдущего;
-  //   work_cost   — см. выше. Цена участка одинакова для всех дорог, в том числе
-  //                 для той, что строится вместе с улучшением: она идёт
-  //                 поэтапным проектом и оплачивается по участкам, поэтому
-  //                 обнулять её ради постройки улучшения нельзя;
-  //   max_speed   — см. выше, ед./сек на один участок;
-  //   unlock_tech — id технологии, открывающей уровень. null/"" — уровень
-  //                 доступен с начала игры. Проверяется data_validator.gd
-  //                 (ссылка на несуществующую технологию — ошибка данных);
-  //   color       — RGB 0..255, цвет участка на карте (map_renderer);
-  //   width       — толщина линии участка на карте, в пикселях.
+  // Entry fields:
+  //   id          — string identifier (snake_case), as for all entities;
+  //   level       — ordinal level number, 1-based. The levels go consecutively,
+  //                 without gaps: level 1 is the basic trail, and each further
+  //                 level costs one technology;
+  //   name        — name for the player (translated via data_loader,
+  //                 see DISPLAY_FIELDS);
+  //   description — a short explanation of what makes the level better than the
+  //                 previous one;
+  //   work_cost   — see above. The segment price is the same for all roads,
+  //                 including the one built together with an improvement: it goes
+  //                 through as a staged project and is paid for segment by
+  //                 segment, so it must not be zeroed for the sake of an
+  //                 improvement build;
+  //   max_speed   — see above, units/sec per single segment;
+  //   unlock_tech — id of the technology that unlocks the level. null/"" — the
+  //                 level is available from the start of the game. Checked by
+  //                 data_validator.gd (a reference to a non-existent technology
+  //                 is a data error);
+  //   color       — RGB 0..255, the colour of the segment on the map
+  //                 (map_renderer);
+  //   width       — thickness of the segment line on the map, in pixels.
   //
-  // Уровень участка хранится в СЕТИ ДОРОГ (road_manager.road_segments:
-  // "row,col|row,col" -> level), а не в отдельном списке, иначе пришлось бы
-  // держать две структуры о том же самом и синхронизировать их вручную.
+  // The level of a segment is stored in the ROAD NETWORK
+  // (road_manager.road_segments: "row,col|row,col" -> level), and not in a
+  // separate list, otherwise two structures about the same thing would have to be
+  // kept and synchronised manually.
   //
-  // СЕЙЧАС в игре два уровня — этого достаточно, чтобы проверить сквозной
-  // путь уровня (постройка → маршрут → средняя скорость → улучшение дороги).
-  // Следующие уровни добавляются сюда записями + одной технологией на эпоху;
-  // код менять для этого не нужно.
+  // AT THE MOMENT there are two levels in the game — that is enough to verify the
+  // full path of a level (build → route → average speed → road upgrade).
+  // Further levels are added here as entries + one technology per era; no code
+  // change is needed for that.
   "roads": [
     {
       "id": "trail",

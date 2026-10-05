@@ -19,7 +19,7 @@ func refresh():
     _rebuild_lists()
 
 func update_progress():
-    # Лёгкое обновление: только прогресс исследования и текущая метка.
+    # A light refresh: only the research progress and the current label.
     _refresh_status_labels()
 
 func _refresh_status_labels():
@@ -48,7 +48,7 @@ func _get_era_name(era_id: String) -> String:
     return era_id
 
 func _rebuild_lists():
-    # --- Список доступных/недоступных технологий ---
+    # --- The list of available/unavailable technologies ---
     for child in tech_available_container.get_children():
         child.queue_free()
 
@@ -71,7 +71,7 @@ func _rebuild_lists():
         else:
             var req_str = ""
             if not CityData.is_tech_era_allowed(tech_id):
-                # Эпоха технологии выше текущей — переход в неё ещё не совершён.
+                # The era of the technology is above the current one — the transition to it has not yet happened.
                 req_str = tr(" | Requires advancing to the next era")
             else:
                 var prereq_text = CityData.get_tech_prerequisites_text(tech_id)
@@ -89,7 +89,7 @@ func _rebuild_lists():
 
         tech_available_container.add_child(row)
 
-    # --- Список изученных технологий ---
+    # --- The list of researched technologies ---
     for child in tech_unlocked_container.get_children():
         child.queue_free()
     for tech_id in CityData.unlocked_technologies:

@@ -11,15 +11,17 @@
       "unlock_tech": "wood_processing"
     },
     {
-      // Универсальное действие «Собрать ресурс» для ЛЮБЫХ одноразовых ресурсов
-      // (дикоросы, самородки металлов и т.п.). Применимость определяется НЕ
-      // полем target_resource, а флагом «одноразовости» ресурса на гексе:
-      //   - у ресурса improved_by == null (не разрабатывается улучшением);
-      //   - у ресурса есть непустое produces (есть что собрать);
-      //   - ресурс виден игроку (MapHelpers.is_resource_revealed).
-      // Выход продукции при сборе берётся из поля produces ресурса
-      // (число или [min, max]) — см. main_map.gd, ветка action_type == "forage".
-      // После сбора ресурс исчезает с карты (tile.resource = null).
+      // The universal action "Gather resource" for ANY one-off resources
+      // (foraged food, native metal nuggets, etc.). Applicability is determined
+      // NOT by the target_resource field but by the "one-off" flag of the
+      // resource on the hex:
+      //   - the resource has improved_by == null (it is not extracted by an improvement);
+      //   - the resource has a non-empty produces (there is something to gather);
+      //   - the resource is visible to the player (MapHelpers.is_resource_revealed).
+      // The production output on gathering is taken from the produces field
+      // of the resource (a number or [min, max]) — see main_map.gd, the
+      // action_type == "forage" branch.
+      // After gathering, the resource disappears from the map (tile.resource = null).
       "id": "forage_resource",
       "name": "Forage Resource",
       "action_type": "forage",
@@ -28,10 +30,10 @@
       "work_cost": 5
     },
     {
-      // Снос улучшения. На гексе с разведением (crop_bred) также сбрасывает
-      // crop_bred, чтобы гекс снова стал пустым (см. docs.md, раздел
-      // «Разведение животных и растений (схема crop_bred)»). Природный
-      // tile.resource при сносе НЕ трогается.
+      // Demolishing an improvement. On a hex with breeding (crop_bred) it also
+      // resets crop_bred, so that the hex becomes empty again (see docs.md, the
+      // section "Breeding animals and plants (crop_bred scheme)"). The natural
+      // tile.resource is NOT touched on demolition.
       "id": "demolish_improvement",
       "name": "Demolish Improvement",
       "action_type": "demolish",
@@ -40,9 +42,9 @@
       "work_cost": 5
     },
     {
-      // Осушение болот и маршей: превращает их в равнину (action_type "terrain").
-      // source_terrains — список типов местности, к которым применимо действие.
-      // Стоимость значительная — 3x строительства фермы
+      // Draining swamps and marshes: turns them into a plain (action_type "terrain").
+      // source_terrains — the list of terrain types the action applies to.
+      // The cost is significant — 3x the cost of a farm
       "id": "drain_water",
       "name": "Drain Water",
       "action_type": "terrain",
@@ -53,54 +55,59 @@
       "unlock_tech": "irrigation"
     },
     {
-      // Дорога, которую строит ИГРОК — до указанного гекса (action_type "road").
-      // Отдельный тип действия, потому что это единственное спецдействие,
-      // которое НЕ меняет содержимое гекса, а строит участок дорожной сети
-      // ГОРОДА: от ближайшей уже построенной дороги до целевого гекса
-      // (стандартный алгоритм road_manager.build_road_from — кратчайший путь
-      // по суше до ближайшего подключённого гекса сети города, вода
-      // непроходима).
+      // The road that the PLAYER builds — up to the specified hex (action_type "road").
+      // A separate action type, because this is the only special action
+      // that does NOT change the contents of the hex, but builds a segment of the
+      // CITY's road network: from the nearest already built road to the target hex
+      // (the standard road_manager.build_road_from algorithm — the shortest path
+      // over land to the nearest connected hex of the city network, water
+      // is impassable).
       //
-      // Стоимость work_cost — БАЗА ЗА ОДИН НОВЫЙ УЧАСТОК (гекс) трассы.
-      // Итог — сумма баз по всем новым участкам, НЕ умножение на их число:
-      // у каждого участка своя цена, потому что своя местность и своя
-      // дальность от города. Итоговую цену собирает
-      // main_map.get_road_cost_breakdown (он же — единый источник для превью
-      // и для реального запуска проекта), а цену ОДНОГО участка считает
-      // MapHelpers.get_road_step_work_cost.
+      // The work_cost cost — the BASE FOR ONE NEW SEGMENT (hex) of the route.
+      // The total is the sum of the bases over all new segments, NOT a
+      // multiplication by their number: each segment has its own price, because
+      // it has its own terrain and its own
+      // distance from the city. The total price is assembled by
+      // main_map.get_road_cost_breakdown (which is also the single source for the preview
+      // and for the actual launch of the project), and the price of ONE segment is
+      // computed by MapHelpers.get_road_step_work_cost.
       //
-      // Множители к участку применяются, и в этом принципиальный сдвиг.
-      // Раньше дальность НЕ учитывалась с формулировкой «дальность уже
-      // отражена длиной трассы». Пока дорога была одной покупкой, это было
-      // верно: игрок платил за длину и не видел, что внутри. Теперь каждый
-      // участок — отдельная стройка на отдельном гексе, и участок в 10 гексов
-      // от города стоит столько же, сколько соседний с городом, хотя это
-      // та же работа с тем же грузом в 10 раз дальше.
+      // Multipliers per segment are applied, and that is a fundamental shift.
+      // Previously the distance was NOT taken into account with the wording
+      // "the distance is already reflected in the length of the route". While the
+      // road was a single purchase, that was
+      // true: the player paid for the length and did not see what was inside.
+      // Now each segment is a separate construction on a separate hex, and a
+      // segment 10 hexes
+      // from the city costs the same as the one next to the city, even though it
+      // is the same work with the same load 10 times further away.
       //
-      //   · work_cost_mult (terrains.json) — сложность МЕСТНОСТИ: в горах и
-      //     болотах дороже. Планировщик сам обходит трудную местность, когда
-      //     есть обходной путь, поэтому дорога через горы — это как раз
-      //     случай «обойти нельзя», а не наказание за неудачный маршрут;
-      //   · расстояние от города — свой коэффициент в game_balance.json
-      //     (road_distance_cost_modifier_per_hex), отдельный от улучшений,
-      //     потому что множится на длину трассы;
-      //   · «Колесо» и «Математика» — как и у улучшений.
+      //   · work_cost_mult (terrains.json) — the difficulty of the TERRAIN: in the
+      //     mountains and swamps it is more expensive. The planner itself avoids
+      //     difficult terrain when there is an alternative route, so a road through
+      //     the mountains is exactly the "cannot go around" case, and not a
+      //     punishment for an unlucky route;
+      //   · distance from the city — its own coefficient in game_balance.json
+      //     (road_distance_cost_modifier_per_hex), separate from improvements,
+      //     because it is multiplied by the length of the route;
+      //   · "Wheel" and "Mathematics" — just as for improvements.
       //
-      // БАЗА ЦЕНЫ УЧАСТКА ЖИВЁТ НЕ ЗДЕСЬ, а в data/roads.json (поле
-      // work_cost у записи уровня дороги): участок принадлежит уровню, и
-      // стоимость/скорость уровня — свойства этого уровня, а не этого
-      // действия. Поэтому у build_road поля work_cost больше нет: копия
-      // одного и того же числа в двух файлах разошлась бы при первой же
-      // правке баланса. Цену участка берёт
-      // MapHelpers.get_road_step_work_cost(road_level, …) из GameData.
+      // THE SEGMENT PRICE BASE DOES NOT LIVE HERE but in data/roads.json (the
+      // work_cost field of the road level entry): a segment belongs to a level,
+      // and the cost/speed of a level are properties of that level, not of this
+      // action. That is why build_road has no work_cost field any more: a copy
+      // of the same number in two files would go out of sync at the first balance
+      // edit. The segment price is taken by
+      // MapHelpers.get_road_step_work_cost(road_level, …) from GameData.
       //
-      // Отдельной надбавки за ДЛИНУ трассы нет: длинная дорога строится
-      // дольше потому, что участков больше, а не за счёт штрафа.
+      // There is no separate surcharge for the LENGTH of a route: a long road
+      // takes longer to build because it has more segments, not because of a
+      // penalty.
       //
-      // Тот же тип действия используется и на гексе ГОРОДКА: там цель — не
-      // сам гекс, а ближайшая дорога в КОЛЬЦЕ ВЛИЯНИЯ городка, то есть
-      // дорожная сеть этого городка. Такое соединение открывает торговлю
-      // (см. town_manager.is_trade_available).
+      // The same action type is used on a TOWN hex as well: there the target is
+      // not the hex itself but the nearest road in the INFLUENCE RING of the
+      // town, that is, the road network of that town. Such a connection opens
+      // trade (see town_manager.is_trade_available).
       "id": "build_road",
       "name": "Build Road",
       "action_type": "road",

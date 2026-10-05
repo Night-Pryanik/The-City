@@ -7,18 +7,18 @@ signal new_game_pressed
 var settings_menu_instance: Control = null
 var settings_canvas: CanvasLayer = null
 
-# Диалог подтверждения для необратимых пунктов меню — «Перейти в главное
-# меню» и «Выйти из игры». Один диалог на оба пункта: перед показом
-# подставляются заголовок, текст и действие.
-# Действие хранится в _pending_action, а не подключается к сигналу confirmed
-# заново на каждый запрос: при отмене одноразовое соединение осталось бы
-# висеть и сработало бы при СЛЕДУЮЩЕМ подтверждении (то есть «выход» мог бы
-# сработать вместо «главного меню»).
+# A confirmation dialog for irreversible menu items — "Return to the main
+# menu" and "Exit the game". One dialog for both items: the title, the text
+# and the action are substituted before showing.
+# The action is stored in _pending_action, and not re-connected to the confirmed
+# signal on every request: on cancel a one-shot connection would remain
+# hanging and would fire on the NEXT confirmation (that is, "exit" could
+# fire instead of "main menu").
 var confirm_dialog: ConfirmationDialog = null
 var _pending_action: Callable = Callable()
 
 func _ready():
-    # Меню паузы должно работать, даже когда игра приостановлена
+    # The pause menu must work even when the game is paused
     process_mode = Node.PROCESS_MODE_WHEN_PAUSED
     _make_confirm_dialog()
 
@@ -39,8 +39,8 @@ func _ready():
     else: printerr("LoadButton not found in PauseMenu")
 
     if new_game_btn:
-        # Кнопка в меню паузы всегда действует из запущенной партии:
-        # вместо начала новой игры она возвращает в главное меню.
+        # The button in the pause menu always works from a running game:
+        # instead of starting a new game, it returns to the main menu.
         new_game_btn.text = tr("Return to main menu")
         new_game_btn.pressed.connect(_on_new_game)
     else: printerr("NewGameButton not found in PauseMenu")
@@ -53,22 +53,23 @@ func _ready():
 
 func _make_confirm_dialog():
     confirm_dialog = ConfirmationDialog.new()
-    # Локализуем стандартные кнопки диалога (по умолчанию Godot показывает
-    # английские «OK» / «Cancel» — проект без файлов переводов).
+    # We localize the standard dialog buttons (by default Godot shows
+    # the English "OK" / "Cancel" — a project without translation files).
     confirm_dialog.get_ok_button().text = tr("Yes")
     confirm_dialog.get_cancel_button().text = tr("Cancel")
-    # Пока открыто меню паузы, игра стоит на паузе, поэтому диалог должен
-    # принимать ввод при get_tree().paused == true.
+    # While the pause menu is open, the game is paused, so the dialog must
+    # accept input when get_tree().paused == true.
     confirm_dialog.process_mode = Node.PROCESS_MODE_ALWAYS
     confirm_dialog.confirmed.connect(_on_confirm_accepted)
     confirm_dialog.canceled.connect(_on_confirm_rejected)
     add_child(confirm_dialog)
     confirm_dialog.hide()
 
-# Спрашивает подтверждение перед необратимым действием: подставляет в диалог
-# заголовок и текст, запоминает действие и показывает окно. Пока диалог
-# открыт, остальные пункты меню недоступны (окно перехватывает ввод), а ESC
-# закрывает именно его, а не всё меню паузы (см. _unhandled_input).
+# Asks for confirmation before an irreversible action: substitutes the title
+# and the text into the dialog, remembers the action and shows the window.
+# While the dialog is open, the other menu items are unavailable (the window
+# intercepts the input), and ESC closes exactly it, and not the whole pause
+# menu (see _unhandled_input).
 func _ask_confirmation(title: String, text: String, action: Callable):
     if not confirm_dialog:
         return
@@ -79,28 +80,28 @@ func _ask_confirmation(title: String, text: String, action: Callable):
 
 func _on_confirm_accepted():
     var action = _pending_action
-    # Сбрасываем ДО вызова: действие может уничтожить узел (смена сцены) или
-    # закрыть окно, а подтверждение не должно срабатывать повторно.
+    # We reset BEFORE the call: the action may destroy the node (a scene change) or
+    # close the window, and the confirmation must not fire again.
     _pending_action = Callable()
     if action.is_valid():
         action.call()
 
 func _on_confirm_rejected():
-    # Отмена, крестик и ESC одинаковы: действие просто не выполняется.
+    # Cancel, the cross and ESC are all the same: the action simply is not performed.
     _pending_action = Callable()
 
 func _unhandled_input(event):
-    # Обрабатываем ESC только когда меню паузы открыто (иначе событие
-    # должен получить InputHandler, чтобы открыть меню)
+    # We handle ESC only when the pause menu is open (otherwise the event
+    # must be received by InputHandler in order to open the menu)
     if not visible:
         return
     if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
-        # Открыт диалог подтверждения: ESC закрывает его (canceled), а меню
-        # паузы остаётся на месте вместе с паузой игры.
+        # The confirmation dialog is open: ESC closes it (canceled), and the pause
+        # menu stays in place along with the game pause.
         if confirm_dialog and confirm_dialog.visible:
             return
         if settings_menu_instance and settings_menu_instance.visible:
-            # Закрываем настройки — _on_settings_menu_visibility_changed покажет меню паузы снова
+            # We close the settings — _on_settings_menu_visibility_changed will show the pause menu again
             settings_menu_instance.hide()
         else:
             _close_pause_menu()
@@ -109,8 +110,8 @@ func _set_game_paused(paused: bool):
     get_tree().paused = paused
 
 func _close_pause_menu():
-    # Диалог подтверждения не должен пережить меню (иначе он остался бы
-    # висеть поверх игры, если закрыть меню каким-то иным способом).
+    # The confirmation dialog must not outlive the menu (otherwise it would remain
+    # hanging over the game if the menu is closed in some other way).
     if confirm_dialog:
         confirm_dialog.hide()
         _pending_action = Callable()
@@ -125,13 +126,13 @@ func _on_save():
     _close_pause_menu()
 
 func _on_load():
-    # При загрузке выходим из паузы, чтобы сцена могла перезагрузиться
+    # On load we exit the pause, so that the scene can reload
     _set_game_paused(false)
     emit_signal("load_pressed")
 
 func _on_new_game():
-    # Пункт не создаёт новую партию, а возвращает в главное меню. Переход
-    # необратим (текущая партия теряется), поэтому спрашиваем подтверждение.
+    # The item does not create a new game, but returns to the main menu. The transition
+    # is irreversible (the current game is lost), therefore we ask for confirmation.
     _ask_confirmation(tr("Return to main menu"),
         tr("Really return to the main menu?\nUnsaved progress will be lost."),
         _confirm_new_game)
@@ -141,7 +142,7 @@ func _confirm_new_game():
     emit_signal("new_game_pressed")
 
 func _on_exit():
-    # Выход из игры необратим и несохранённый прогресс пропадает.
+    # Exiting the game is irreversible and the unsaved progress is lost.
     _ask_confirmation(tr("Exit game"),
         tr("Really exit the game?\nUnsaved progress will be lost."),
         _confirm_exit)
@@ -157,14 +158,14 @@ func _on_settings():
         settings_canvas.add_child(settings_menu_instance)
         settings_menu_instance.visibility_changed.connect(_on_settings_menu_visibility_changed)
 
-    # Передаём ссылку на этот экземпляр в main_map.gd
+    # We pass a reference to this instance to main_map.gd
     var main = get_parent()
     main.settings_menu = settings_menu_instance
 
-    hide() # прячем паузу
+    hide() # we hide the pause
     settings_menu_instance.show()
 
 func _on_settings_menu_visibility_changed():
     if settings_menu_instance and not settings_menu_instance.visible:
-        # Меню настроек закрыли – показываем меню паузы снова
+        # The settings menu was closed – we show the pause menu again
         show()

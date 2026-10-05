@@ -44,13 +44,13 @@
       "icon": "soapstone.png"
     },
     {
-      // Продукт «Древесина». Производится в «Лесопилке» (sawmill) из древесины
-      // по рецепту «Распиловка досок» (crafts.json).
-      // Древесина — это сырьё для производства досок, а не строительный материал.
-      // Поэтому она не попадает в группу «Processed Building Materials».
-      // Впрочем, её можно использовать в рецептах крафта вместо досок.
-      // В будущем планируется добавить возможность использовать древесину
-      // вместо досок при строительстве зданий.
+      // The product "Wood". It is produced in the "Sawmill" (sawmill) from
+      // wood by the recipe "Saw Boards" (crafts.json).
+      // Wood is the raw material for producing boards, not a building material.
+      // That is why it is not part of the "Processed Building Materials" group.
+      // Nevertheless, it can be used in craft recipes instead of boards.
+      // In the future it is planned to add the ability to use wood
+      // instead of boards when constructing buildings.
     },
     {
       "id": "bricks", "price": 6,
@@ -68,8 +68,8 @@
       "icon": "processed_building_stone.png"
     },
     {
-      // Продукт «Доски». Производится в «Лесопилке» (sawmill) из древесины
-      // по рецепту «Распиловка досок» (crafts.json).
+      // The product "Boards". It is produced in the "Sawmill" (sawmill)
+      // from wood by the recipe "Saw Boards" (crafts.json).
       "id": "planks", "price": 4,
       "name": "Planks",
       "type": "product",

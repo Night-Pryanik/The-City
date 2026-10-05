@@ -40,10 +40,11 @@ func has_townsfolk(index: int) -> bool:
 func get_assigned_count() -> int:
     return assigned_buildings.size()
 
-# Профессия горожанина, работающего в здании с индексом index (поле
-# "profession" в data/buildings.json). Пусто — у здания нет профессии либо
-# горожанина на нём нет. Метка производна от здания, как у улучшений карты
-# (см. GameData.get_profession_for_building), и отдельно не хранится.
+# The profession of the citizen working in the building with index index (the
+# "profession" field in data/buildings.json). Empty — the building has no
+# profession or there is no citizen on it. The label is derived from the building,
+# as for the map improvements
+# (see GameData.get_profession_for_building), and is not stored separately.
 func get_profession(index: int) -> String:
     if not has_townsfolk(index):
         return ""

@@ -66,11 +66,12 @@ static func hex_vertex(row: int, col: int, vidx: int, radius: float) -> Vector2:
     var verts = hex_vertices(center.x, center.y, radius)
     return verts[vidx]
 
-# Проверяет, выполнены ли дополнительные условия спавна ресурса (spawn_conditions).
-# Формат: [ [ {type, chance}, ... ], ... ] — массив групп, объединённых ИЛИ;
-# внутри каждой группы условия объединены И. Это аналогично prerequisites технологий.
-# Для каждой группы сначала проверяется шанс активации (chance, 0-100):
-# если шанс не выпал — группа не считается выполненной.
+# Checks whether the additional resource spawn conditions (spawn_conditions) are met.
+# Format: [ [ {type, chance}, ... ], ... ] — an array of groups combined with OR;
+# within each group the conditions are combined with AND. This is analogous to the
+# prerequisites of technologies.
+# For each group the activation chance (chance, 0-100) is checked first:
+# if the chance does not come up — the group is not considered met.
 static func spawn_conditions_met(data: Dictionary) -> bool:
     var conditions: Array = data.get("spawn_conditions", [])
     if conditions.is_empty():
@@ -86,9 +87,9 @@ static func spawn_conditions_met(data: Dictionary) -> bool:
             return true
     return false
 
-# Проверяет, подходит ли конкретный гекс (row, col) по геометрическим
-# условиям spawn_conditions ресурса. Логика: массив групп — ИЛИ, внутри — И.
-# Для каждого условия проверяется совместимость гекса.
+# Checks whether a particular hex (row, col) suits the geometric
+# conditions of the resource spawn_conditions. The logic: an array of groups — OR,
+# within them — AND. For each condition the compatibility of the hex is checked.
 static func is_hex_conditions_met(tile_data: Array, row: int, col: int, data: Dictionary) -> bool:
     var conditions: Array = data.get("spawn_conditions", [])
     if conditions.is_empty():
@@ -99,17 +100,17 @@ static func is_hex_conditions_met(tile_data: Array, row: int, col: int, data: Di
             var cond_type = cond.get("type", "")
             var ok = true
             if cond_type == "near_river":
-                # Гекс имеет общее ребро с рекой ⇔ у него есть river_edges.
+                # The hex shares an edge with a river ⇔ it has river_edges.
                 ok = tile_data[row][col].get("river_edges", []).size() > 0
             elif cond_type == "terrain":
-                # Универсальное условие по типу местности: гекс должен иметь
-                # terrain, совпадающий с terrain_id из условия. Используется,
-                # например, ресурсом soda_deposit (см. data/resources/minerals.json),
-                # который спавнится только на гексах содового озера (soda_lake).
+                # The universal condition by terrain type: the hex must have
+                # a terrain matching the terrain_id from the condition. It is used,
+                # for example, by the soda_deposit resource (see data/resources/minerals.json),
+                # which spawns only on the hexes of a soda lake (soda_lake).
                 var required_terrain: String = cond.get("terrain_id", "")
                 ok = required_terrain != "" and tile_data[row][col].get("terrain", "") == required_terrain
             else:
-                # Неизвестное условие — считаем выполненным, чтобы не ломать спавн.
+                # An unknown condition — we consider it met so as not to break the spawn.
                 ok = true
             if not ok:
                 group_met = false

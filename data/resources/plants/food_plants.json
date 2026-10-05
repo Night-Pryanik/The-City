@@ -1,15 +1,15 @@
 {
-  // Улучшение "farm" работает в двух режимах (см. docs.md, раздел
-  // «Разведение животных и растений (схема crop_bred)»):
-  //   1) На гексе уже есть природный ресурс (например, "wheat_field",
-  //      выставленный генератором) — постройка фермы сохраняет
-  //      tile.resource, качество берётся текущее.
-  //   2) Гекс пустой — игрок РАЗВОДИТ одомашненную культуру. id пишется в
-  //      tile.crop_bred, tile.resource остаётся null. Качество наследуется
-  //      от уже одомашненного экземпляра этого растения.
+  // The "farm" improvement works in two modes (see docs.md, the section
+  // "Breeding animals and plants (crop_bred scheme)"):
+  //   1) The hex already has a natural resource (for example, "wheat_field",
+  //      placed by the generator) — building the farm keeps
+  //      tile.resource, and the quality is the current one.
+  //   2) The hex is empty — the player RAISES a domesticated crop. The id is
+  //      written to tile.crop_bred, tile.resource stays null. The quality is
+  //      inherited from an already domesticated specimen of that plant.
   //
-  // Исключение: wild_food (дикоросы) улучшения не требуют
-  // (improved_by == null) и собираются спец-действием «Собрать дикоросы».
+  // Exception: wild_food (foraged food) requires no improvement
+  // (improved_by == null) and is gathered by the "Forage wild food" special action.
   "resources": [
     {
       "id": "wild_food", "price": 1,

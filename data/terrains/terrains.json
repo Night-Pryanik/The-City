@@ -36,10 +36,11 @@
       "expansion_cost": 6,
       "work_cost_mult": 1.0,
       "icons": [ "lake_1.png", "lake_2.png" ],
-      // Прямой источник пресной воды: гекс этого типа (и его соседи)
-      // даёт воде схемы water_access статус "direct" без изучения технологий.
-      // Сейчас флаг также стоит у покрова "oasis" — новые пресноводные
-      // источники достаточно наделить этим полем, код править не нужно.
+      // A direct source of fresh water: a hex of this type (and its neighbours)
+      // gives the water_access scheme the status "direct" without any
+      // technology being researched. The flag is currently also set on the
+      // cover "oasis" — new fresh water sources only need to be given this
+      // field, no code change is required.
       "fresh_water_source": true,
       "cover_chance": { "none": 100 }
     },

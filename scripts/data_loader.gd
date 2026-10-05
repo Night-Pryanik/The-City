@@ -15,39 +15,39 @@ var groups: Array = []
 var eras: Array = []
 var product_groups: Dictionary = {} # id -> products
 var product_group_names: Dictionary = {} # id -> human-readable name
-var product_group_icons: Dictionary = {} # id -> имя файла иконки ("" — не задана)
+var product_group_icons: Dictionary = {} # id -> icon file name ("" — not set)
 var modifiers: Dictionary = {}
-var special_actions: Dictionary = {} # id -> данные спецдействия
-var qualities: Dictionary = {} # данные о степенях качества ресурсов
-var map_config: Dictionary = {} # конфигурация карты мира (data/map_config.json)
-var professions: Dictionary = {} # id -> данные профессии (data/professions.json)
-var consumption_rules: Array = [] # записи потребления из data/consumption.json
-var city_names: Array = [] # варианты названий города (data/city_names.json)
-var game_balance: Dictionary = {} # игровой баланс (data/game_balance.json)
-# Уровни дорог (data/roads.json). roads_by_level — уровень -> данные уровня:
-# участок сети дорог хранит номер уровня, поэтому нужен именно такой индекс.
+var special_actions: Dictionary = {} # id -> special action data
+var qualities: Dictionary = {} # data about resource quality levels
+var map_config: Dictionary = {} # the world map configuration (data/map_config.json)
+var professions: Dictionary = {} # id -> profession data (data/professions.json)
+var consumption_rules: Array = [] # consumption entries from data/consumption.json
+var city_names: Array = [] # city name variants (data/city_names.json)
+var game_balance: Dictionary = {} # the game balance (data/game_balance.json)
+# The road levels (data/roads.json). roads_by_level — level -> level data:
+# a road network segment stores a level number, so exactly such an index is needed.
 var roads: Array = []
 var roads_by_level: Dictionary = {}
 
-# Откуда пришла каждая сущность: "коллекция:id" → { "file": String, "line": int }.
-# Заполняется при чтении файлов (_remember_sources), потому что после слияния
-# файлов в один словарь происхождение уже не восстановить. Нужен рантайм-валидатору
-# (scripts/data_validator.gd), чтобы указывать проблему на конкретный файл и
-# строку. Подробности — в шапке _remember_sources.
+# Where each entity came from: "collection:id" → { "file": String, "line": int }.
+# It is filled in when reading the files (_remember_sources), because after merging
+# the files into one dictionary the origin is no longer recoverable. It is needed by the runtime validator
+# (scripts/data_validator.gd) in order to point at a problem to a specific file and
+# line. The details are in the _remember_sources header.
 var entity_sources: Dictionary = {}
 
-# Поля данных, значение которых видит игрок. В data/*.json лежит английский
-# исходный текст, а перевод накладывается здесь, при чтении файлов: ключом
-# перевода служит сам английский текст. Благодаря этому остальному коду не
-# нужно знать про локализацию — он по-прежнему читает "name"/"description".
+# The data fields whose value the player sees. data/*.json holds the English
+# source text, and the translation is applied here, when reading the files: the translation key
+# is the English text itself. Thanks to this the rest of the code does
+# not need to know about localization — it still reads "name"/"description".
 const DISPLAY_FIELDS := ["name", "description", "flavor"]
 
-# Поля-словари, где подпись для игрока лежит в ЗНАЧЕНИИ, а ключ — служебный
-# идентификатор (см. _localize_display_fields).
+# The dictionary fields where the player label is in the VALUE, and the key is a service
+# identifier (see _localize_display_fields).
 const VALUE_MAP_FIELDS := ["priority_names"]
 
-# Верхнеуровневые ключи, у элементов которых есть "id" — по ним и ищем
-# объявление сущности. Порядок и состав повторяют то, что разбирает load_all_data.
+# The top-level keys whose elements have an "id" — by them we search
+# for the entity declaration. The order and composition repeat what load_all_data parses.
 const SOURCE_COLLECTIONS := [
     "resources",
     "crafts",
@@ -58,10 +58,11 @@ const SOURCE_COLLECTIONS := [
     "professions",
     "product_groups",
     "roads",
-    # Коллекции, на которые не ссылается ни одна проверка битых ссылок, но
-    # чьи идентификаторы проверяет data_validator.gd на алфавит и омоглифы.
-    # Без них проблема «carmine с кириллической с» указала бы на сущность без
-    # файла и строки — а файл и строка здесь и есть главная ценность.
+    # The collections that no broken-reference check refers to, but
+    # whose identifiers data_validator.gd checks for the alphabet and homoglyphs.
+    # Without them the problem "carmine typed with a Cyrillic homoglyph s" would
+    # point at an entity without
+    # a file and a line — and the file and line are exactly the main value here.
     "terrains",
     "covers",
     "eras",
@@ -73,12 +74,12 @@ const SOURCE_COLLECTIONS := [
 func load_all_data():
     var merged_data = _load_all_json_files("res://data")
     if merged_data == null:
-        print("Ошибка: не удалось загрузить данные из папки data.")
+        print("Error: failed to load the data from the data folder.")
         return
 
-    # Перевод накладывается ДО сборки сущностей в словари: дальше все, кто
-    # читает GameData.products[id]["name"], получают уже готовый к показу
-    # текст на текущем языке. Смена языка перечитывает данные заново
+    # The translation is applied BEFORE assembling the entities into dictionaries: further on, everyone who
+    # reads GameData.products[id]["name"] already gets a ready-to-display
+    # text in the current language. A language change re-reads the data from scratch
     # (LocalizationManager.set_locale → GameData.load_all_data).
     _localize_display_fields(merged_data)
 
@@ -110,7 +111,7 @@ func load_all_data():
     groups = merged_data.get("groups", [])
     eras = merged_data.get("eras", [])
 
-    # НОВОЕ: загружаем группы товаров
+    # NEW: we load the product groups
     product_groups = {}
     product_group_names = {}
     product_group_icons = {}
@@ -120,15 +121,15 @@ func load_all_data():
             if not group_id.is_empty():
                 product_groups[group_id] = pg.get("products", [])
                 product_group_names[group_id] = pg.get("name", group_id)
-                # Необязательное поле "icon": своя иконка группы. Пустая строка
-                # — иконка не задана, тогда GameData возьмёт иконку первого
-                # члена с иконкой (см. GameData.get_product_group_icon).
+                # The optional "icon" field: the group's own icon. An empty string
+                # — the icon is not set, then GameData takes the icon of the first
+                # member that has an icon (see GameData.get_product_group_icon).
                 product_group_icons[group_id] = str(pg.get("icon", ""))
 
-    # НОВОЕ: загружаем глобальные модификаторы
+    # NEW: we load the global modifiers
     modifiers = merged_data.get("modifiers", {})
 
-    # НОВОЕ: загружаем спецдействия (вырубка леса, осушение болот и т.п.)
+    # NEW: we load the special actions (logging, draining swamps, etc.)
     special_actions = {}
     for sa in merged_data.get("special_actions", []):
         if sa is Dictionary:
@@ -136,13 +137,13 @@ func load_all_data():
             if not sa_id.is_empty():
                 special_actions[sa_id] = sa
 
-    # Названия городов: в файле это объект { "city_names": [...] }.
+    # City names: in the file this is an object { "city_names": [...] }.
     var cn = merged_data.get("city_names", [])
     if cn is Array:
         city_names = cn
 
-    # НОВОЕ: загружаем уровни дорог (data/roads.json). roads_by_level нужен
-    # участку сети дорог: он хранит номер уровня, а не id.
+    # NEW: we load the road levels (data/roads.json). roads_by_level is needed
+    # by a road network segment: it stores a level number, and not an id.
     roads = []
     roads_by_level = {}
     for road in merged_data.get("roads", []):
@@ -150,10 +151,10 @@ func load_all_data():
             roads.append(road)
             roads_by_level[int(road.get("level", 0))] = road
 
-    # НОВОЕ: загружаем данные о степенях качества ресурсов.
-    # В data/qualities.json ключи лежат на верхнем уровне (quality_levels,
-    # priority_default и т.д.), поэтому собираем их вручную. Дополнительно
-    # поддерживаем вариант с вложенным словарём "qualities".
+    # NEW: we load the data about resource quality levels.
+    # In data/qualities.json the keys are at the top level (quality_levels,
+    # priority_default, etc.), therefore we assemble them manually. Additionally
+    # we support the variant with a nested "qualities" dictionary.
     qualities = {}
     var nested_qualities = merged_data.get("qualities", {})
     if nested_qualities is Dictionary:
@@ -163,19 +164,19 @@ func load_all_data():
         if merged_data.has(key):
             qualities[key] = merged_data[key]
 
-    # НОВОЕ: загружаем конфигурацию карты мира (размеры, стартовое кольцо, регион).
-    # Файл data/map_config.json содержит ключ "map_config" с параметрами:
+    # NEW: we load the world map configuration (dimensions, starting ring, region).
+    # The data/map_config.json file contains the "map_config" key with the parameters:
     # map_rows / map_cols / start_ring_rows / start_ring_cols / region_width.
     map_config = merged_data.get("map_config", {})
 
-    # НОВОЕ: загружаем профессии рабочих на улучшениях (data/professions.json).
-    # Поля профессии:
-    #   id          — строковый идентификатор (snake_case);
-    #   name        — именительный падеж, ед.ч. («Фермер»);
-    #   icon        — имя файла иконки;
-    #   description — короткое описание.
-    # Подробности схемы потребления ресурсов профессией — в docs.md, раздел
-    # «Профессии и потребление».
+    # NEW: we load the professions of workers at improvements (data/professions.json).
+    # The profession fields:
+    #   id          — a string identifier (snake_case);
+    #   name        — singular nominative form ("Farmer");
+    #   icon        — the icon file name;
+    #   description — a short description.
+    # The details of the profession resource consumption scheme — see docs.md, the
+    # section "Professions and consumption".
     professions = {}
     for p in merged_data.get("professions", []):
         if p is Dictionary:
@@ -183,32 +184,32 @@ func load_all_data():
             if not pid.is_empty():
                 professions[pid] = p
 
-    # НОВОЕ: загружаем реестр профессионального потребления
-    # (data/consumption.json). Каждая запись:
-    #   resource          — id продукта ИЛИ "@<id>" группы из product_groups.json;
-    #   profession        — массив id профессий-потребителей;
-    #   amount/interval/production_bonus — параметры тика потребления.
-    # Группы позволяют профессии потреблять любой подходящий продукт из
-    # набора (например, "@boats" — «Лодки»). Подробности — в docs.md,
-    # раздел «Профессии и потребление ресурсов».
+    # NEW: we load the registry of occupational consumption
+    # (data/consumption.json). Each entry:
+    #   resource          — the product id OR the group "@<id>" from product_groups.json;
+    #   profession        — an array of the ids of the consuming professions;
+    #   amount/interval/production_bonus — the parameters of the consumption tick.
+    # The groups allow a profession to consume any suitable product from
+    # the set (for example, "@boats" — "Boats"). The details — see docs.md,
+    # the section "Professions and resource consumption".
     consumption_rules = []
     for cr in merged_data.get("consumption", []):
         if cr is Dictionary and not str(cr.get("resource", "")).is_empty():
             consumption_rules.append(cr)
 
-    # НОВОЕ: загружаем игровой баланс (data/game_balance.json).
-    # Числовые константы игры: стартовая казна города, множитель цены
-    # внутреннего рынка и т.п. Ключ "game_balance" лежит на верхнем уровне.
+    # NEW: we load the game balance (data/game_balance.json).
+    # The numeric constants of the game: the starting city treasury, the internal
+    # market price multiplier, etc. The "game_balance" key is at the top level.
     game_balance = merged_data.get("game_balance", {})
 
 
-# Переводит значения полей, которые видит игрок (DISPLAY_FIELDS), на текущий
-# язык игры. Обход рекурсивный: одна функция покрывает и плоские списки
-# сущностей, и вложенные (technologies[].unlock_effects[].name).
+# Translates the values of the fields the player sees (DISPLAY_FIELDS) into the current
+# game language. The walk is recursive: one function covers both the flat lists
+# of entities and the nested ones (technologies[].unlock_effects[].name).
 #
-# Отдельный случай — qualities.json: там "priority_names" это словарь
-# {код_приоритета: подпись для игрока}, то есть подпись лежит в ЗНАЧЕНИИ, а
-# ключ остаётся служебным. Такие словари перечислены в VALUE_MAP_FIELDS.
+# A separate case — qualities.json: there "priority_names" is a dictionary
+# {priority_code: the player label}, that is, the label is in the VALUE, and the
+# key remains a service one. Such dictionaries are listed in VALUE_MAP_FIELDS.
 func _localize_display_fields(node: Variant) -> void:
     if node is Dictionary:
         for key in node.keys():
@@ -230,7 +231,7 @@ func _load_all_json_files(folder_path: String) -> Dictionary:
     var result = {}
     var dir = DirAccess.open(folder_path)
     if dir == null:
-        print("Ошибка: не удалось открыть папку ", folder_path)
+        print("Error: failed to open the folder ", folder_path)
         return result
 
     dir.list_dir_begin()
@@ -243,14 +244,14 @@ func _load_all_json_files(folder_path: String) -> Dictionary:
             var file_path = folder_path.path_join(file_name)
             var file = FileAccess.open(file_path, FileAccess.READ)
             if file == null:
-                print("Ошибка: не удалось открыть файл ", file_path)
+                print("Error: failed to open the file ", file_path)
             else:
                 var text = file.get_as_text()
-                # Очищаем текст от комментариев
+                # We clean the text of comments
                 var cleaned = _strip_json_comments(text)
                 var data = JSON.parse_string(cleaned)
                 if data == null:
-                    print("Ошибка: не удалось распарсить JSON из ", file_path)
+                    print("Error: failed to parse JSON from ", file_path)
                 else:
                     _remember_sources(file_path, text, data)
                     _merge_dictionaries(result, data)
@@ -258,19 +259,19 @@ func _load_all_json_files(folder_path: String) -> Dictionary:
     dir.list_dir_end()
     return result
 
-# --- ПРОИСХОЖДЕНИЕ СУЩНОСТЕЙ (файл + строка) -------------------------------
+# --- THE ORIGIN OF ENTITIES (file + line) -------------------------------
 #
-# _merge_dictionaries сливает файлы в один словарь и место каждой сущности
-# стирает: после загрузки не сказать, объявлена ли «Пшеница» в
-# data/products/food.json или в data/products/products.json. Рантайм-валидатор
-# (scripts/data_validator.gd) на этом и спотыкается: он умеет назвать проблему
-# («Продукта «sunflower» не существует»), но без файла автору пришлось бы искать
-# опечатку вручную по всем файлам data/.
+# _merge_dictionaries merges the files into one dictionary and erases the place of
+# each entity: after loading it is impossible to say whether "Wheat" is declared in
+# data/products/food.json or in data/products/products.json. The runtime validator
+# (scripts/data_validator.gd) stumbles on this: it can name the problem
+# ("The product 'sunflower' does not exist"), but without the file the author would
+# have to look for the typo manually across all the files in data/.
 #
-# Поэтому параллельно со слиянием записывается индекс: "коллекция:id" → файл и
-# строка объявления. Именно объявления, а не упоминания: id может встретиться
-# в файле и как член группы, и как результат рецепта, и номер строки тогда
-# указал бы не туда.
+# That is why an index is recorded in parallel with the merging: "collection:id" →
+# the file and the declaration line. Exactly the declarations, and not the mentions:
+# an id can occur in a file both as a group member and as a recipe result, and the
+# line number would then point at the wrong place.
 func _remember_sources(file_path: String, raw_text: String, data: Dictionary):
     if not (data is Dictionary):
         return
@@ -291,19 +292,20 @@ func _remember_sources(file_path: String, raw_text: String, data: Dictionary):
     _remember_consumption_sources(file_path, raw_text, data)
 
 
-# Правила потребления (data/consumption.json) идентификатора в себе не имеют:
-# запись объявляется полями resource/profession/amount/interval, а поля "id" в
-# ней нет, поэтому общий проход выше их пропускает. Без отдельного прохода
-# проблема «ресурс не существует» осталась бы без указания файла — а файл и
-# строка здесь и есть главная ценность сообщения.
+# The consumption rules (data/consumption.json) have no identifier of their own:
+# a rule is declared by the resource/profession/amount/interval fields, and there is
+# no "id" field in it, therefore the common pass above skips them. Without a separate
+# pass the "resource does not exist" problem would be left without indicating a file —
+# and the file and
+# line here are exactly the main value of the message.
 #
-# Ключом служит само значение "resource" (с "@" для групп). Так ключ индекса
-# совпадает с тем, что валидатор передаёт как source_id
-# (data_validator._validate_consumption), и обе стороны сходятся.
+# The key is the "resource" value itself (with "@" for groups). In this way the index
+# key matches what the validator passes as source_id
+# (data_validator._validate_consumption), and both sides agree.
 #
-# Совпадение ключа у двух правил с одинаковым ресурром невозможно: реестр это
-# запрещает (GameData.get_profession_consumption отбрасывает дубль по
-# display_key), поэтому перезапись индекса тут не случается.
+# A key collision for two rules with the same resource is impossible: the registry
+# forbids it (GameData.get_profession_consumption discards a duplicate by
+# display_key), therefore an index overwrite does not happen here.
 func _remember_consumption_sources(file_path: String, raw_text: String, data: Dictionary):
     var rules = data.get("consumption", null)
     if not (rules is Array):
@@ -320,38 +322,40 @@ func _remember_consumption_sources(file_path: String, raw_text: String, data: Di
         }
 
 
-# Строка объявления правила потребления — та, где стоит поле "resource" с этим
-# значением.
-#
-# Свой _find_decl_line здесь не годится: он ищет первое вхождение значения в
-# СЫРОМ тексте, комментарии не вырезает, и объявление опережает любой комментарий
-# вида // ... "resource" со значением, о котором автор пишет пояснение. Указание
-# тогда указывает на пояснение, а не на правило, — ровно то, ради чего индекс
-# происхождения и затевался.
+# The declaration line of a consumption rule — the one where the "resource" field
+    # with this value stands.
+    #
+    # Its own _find_decl_line does not work here: it looks for the first occurrence of
+    # the value in the RAW text, does not strip comments, and the declaration is preceded
+    # by any comment of the form // ... "resource" with a value about which the author
+    # writes an explanation. The pointer
+    # then points at the explanation, and not at the rule — exactly what the origin
+    # index was made for.
 func _find_resource_decl_line(raw_text: String, res_key: String) -> int:
     var needle := "\"%s\"" % res_key
     var lines := raw_text.split("\n")
     for i in lines.size():
         var line: String = lines[i]
-        # Имя поля и значение в одной строке — компактная запись
-        # { "resource": "@boats", ... }. Многострочная запись не встречается,
-        # но и в этом случае вернётся 0, а не укажет на чужую строку.
+        # The field name and the value on one line — a compact record
+        # { "resource": "@boats", ... }. A multi-line record does not occur,
+        # but even in that case 0 will be returned, and it will not point at someone else's line.
         if line.contains("\"resource\"") and line.contains(needle):
             return i + 1
     return 0
 
-# Строка, на которой сущность с таким id ОБЪЯВЛЕНА, — или 0, если не нашлась.
-#
-# Ищем в ИСХОДНОМ тексте файла, а не в очищенном от комментариев: _strip_json_comments
-# выбрасывает переносы строк внутри /* … */, поэтому нумерация строк очищенного
-# текста не совпала бы с тем, что автор видит в редакторе (у data/improvements.json
-# шапка-комментарий занимает полэкрана).
-#
-# Сначала ищем строку, где id стоит рядом с "id" (компактная запись
-# { "id": "salt", "price": 6 }) — это и есть объявление. Если такой нет, берём
-# первую строку, где id вообще встречается: у многострочных записей вроде
-# product_groups.json (id в одной строке, "products" — в следующих) это всё
-# равно приводит к строке объявления.
+# The line on which an entity with such an id is DECLARED, — or 0 if it was not found.
+    #
+    # We search in the ORIGINAL text of the file, and not in the one cleaned of
+    # comments: _strip_json_comments
+    # discards the line breaks inside /* … */, therefore the line numbering of the cleaned
+    # text would not match what the author sees in the editor (in data/improvements.json
+    # the comment header takes up half the screen).
+    #
+    # First we search for the line where the id stands next to an "id" (a compact record
+    # { "id": "salt", "price": 6 }) — that is the declaration itself. If there is no such one, we take
+    # the first line where the id occurs at all: for multi-line records like
+    # product_groups.json (id on one line, "products" — on the next ones) it still
+    # leads to the declaration line.
 func _find_decl_line(raw_text: String, id: String) -> int:
     var needle := "\"%s\"" % id
     var lines := raw_text.split("\n")
@@ -412,7 +416,7 @@ func _strip_json_comments(json_string: String) -> String:
         if in_single_line_comment:
             if c == '\n':
                 in_single_line_comment = false
-                result += c # оставляем перенос строки
+                result += c # we keep the line break
             i += 1
             continue
 

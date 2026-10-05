@@ -1,7 +1,9 @@
 {
-// Здесь перечисляются категории, на которые будут разделяться все имеющиеся на складке ресурсы (отображаются на вкладке 'Ресурсы' в городе).
-// Чисто визуальное разделение, не оказывающее влияния на геймплей, с единственным исключением:
-// все ресурсы категории 'food' складываются и учитываются как Еда на складе. */
+// The categories that all resources available in storage are split into
+// (displayed on the 'Resources' tab in the city).
+// This is a purely visual split that does not affect gameplay, with a single
+// exception: all resources of the 'food' category are pooled together and
+// counted as Food in storage. */
   "categories": [
     { "id": "food", "name": "Food" },
     { "id": "fruits", "name": "Fruits" },

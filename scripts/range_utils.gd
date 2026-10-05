@@ -1,28 +1,28 @@
 # range_utils.gd
-# Утилиты для разбора значений формата «число или диапазон [min, max]»
-# из конфигурационных JSON (map_config.json, ресурсы и т.п.).
-# Чисто-утилитный модуль: статические функции, без собственного состояния.
+# Utilities for parsing values of the "a number or a range [min, max]" format
+# from the configuration JSON (map_config.json, resources, etc.).
+# A purely utility module: static functions, without any state of its own.
 #
-# Публичный API:
+# Public API:
 #   - parse_range(value) : Dictionary — { "ok": bool, "min": int, "max": int }
 #
-# Используется:
-#   - scripts/map_generator.gd (_resolve_spawn_count — поле spawn_count ресурсов)
-#   - scripts/sea_manager.gd   (apply_sea — поле sea.sides из map_config.json)
+# Used by:
+#   - scripts/map_generator.gd (_resolve_spawn_count — the spawn_count field of resources)
+#   - scripts/sea_manager.gd   (apply_sea — the sea.sides field from map_config.json)
 @tool
 class_name RangeUtils
 
 
-# Разбирает значение в формате «число» или «массив [min, max]».
+# Parses a value in the "a number" or "an array [min, max]" format.
 #
-# Допустимые входные данные:
-#   * число (int/float)        -> ok=true, min=max=число;
-#   * массив ровно из 2 чисел  -> ok=true, min/max из массива;
-#                                 если max < min — форсированно меняются местами;
-# всё остальное              -> ok=false (вызывающий код решает, какой
-#                                 использовать безопасный дефолт).
+# Acceptable input data:
+#   * a number (int/float)        -> ok=true, min=max=the number;
+#   * an array of exactly 2 numbers -> ok=true, min/max from the array;
+#                                    if max < min — they are forcibly swapped;
+#   anything else                 -> ok=false (the calling code decides which
+#                                    safe default to use).
 #
-# Возвращает словарь:
+# Returns a dictionary:
 #   { "ok": bool, "min": int, "max": int }
 static func parse_range(value: Variant) -> Dictionary:
     var result := {"ok": false, "min": 0, "max": 0}
@@ -38,34 +38,35 @@ static func parse_range(value: Variant) -> Dictionary:
             result["min"] = int(value[0])
             result["max"] = int(value[1])
             if result["max"] < result["min"]:
-                # Диапазон задан в обратном порядке — меняем местами.
+                # The range is given in reverse order — we swap them.
                 var tmp: int = result["min"]
                 result["min"] = result["max"]
                 result["max"] = tmp
     return result
 
-# Возвращает случайное целое для значения формата «число или [min, max]»:
-#   * число N            -> N;
-#   * массив [min, max]  -> randi_range(min, max);
-#   * некорректные данные (не число / не массив из 2 чисел, отрицательные
-#     значения) -> предупреждение в консоль и default_value.
+# Returns a random integer for a value of the "a number or [min, max]" format:
+#   * a number N           -> N;
+#   * an array [min, max]  -> randi_range(min, max);
+#   * invalid data (not a number / not an array of 2 numbers, negative
+#     values) -> a warning to the console and default_value.
 #
-# Используется для полей ресурсов `spawn_count` (сколько экземпляров спавнить
-# на карте) и `produces` (сколько продукции даёт одноразовый ресурс при сборе) —
-# см. scripts/map_generator.gd и scripts/main_map.gd (ветка action_type "forage").
-static func roll_value(value: Variant, context_name: String = "значение", default_value: int = 1) -> int:
+# Used for the `spawn_count` resource fields (how many specimens to spawn
+# on the map) and `produces` (how much output a one-off resource gives when
+# gathered) — see scripts/map_generator.gd and scripts/main_map.gd (the
+# action_type "forage" branch).
+static func roll_value(value: Variant, context_name: String = "value", default_value: int = 1) -> int:
     var parsed: Dictionary = parse_range(value)
     if not parsed.ok or parsed.min < 0 or parsed.max < 0:
-        print("RangeUtils.roll_value: некорректное значение для %s "
-                + "(ожидается число >= 0 или массив [min, max] из чисел >= 0), "
-                + "используется %d." % [context_name, default_value])
+        print("RangeUtils.roll_value: an invalid value for %s "
+                + "(a number >= 0 or an array [min, max] of numbers >= 0 is expected, "
+                + "using %d." % [context_name, default_value])
         return default_value
     return randi_range(parsed.min, parsed.max)
 
-# Возвращает минимальную границу значения формата «число или [min, max]».
-# Нужна для детерминированных расчётов и отображения (тултипы, превью),
-# где нельзя каждый кадр бросать случайное число. При некорректных данных
-# возвращает default_value.
+# Returns the minimum bound of a value of the "a number or [min, max]" format.
+# It is needed for deterministic calculations and display (tooltips, previews),
+# where it is not allowed to roll a random number every frame. With invalid data
+# it returns default_value.
 static func get_min_value(value: Variant, default_value: int = 1) -> int:
     var parsed: Dictionary = parse_range(value)
     if not parsed.ok or parsed.min < 0:

@@ -1,34 +1,34 @@
 {
-  // Конфигурация карты мира.
-  // Размеры гексовой карты (в гексах).
+  // The configuration of the world map.
+  // The dimensions of the hex map (in hexes).
   "map_config": {
-    "map_rows": 60,        // Сколько рядов гексов во всей карте (высота мира)
-    "map_cols": 60,        // Сколько колонок гексов во всей карте (ширина мира)
+    "map_rows": 60,        // How many rows of hexes the whole map has (the world height)
+    "map_cols": 60,        // How many columns of hexes the whole map has (the world width)
 
-    // Стартовое Кольцо Влияния (территория города на момент начала игры).
-    "start_ring_rows": 7,   // Высота стартового кольца в гексах
-    "start_ring_cols": 9,   // Ширина стартового кольца в гексах
+    // The starting Influence Ring (the city territory at the start of the game).
+    "start_ring_rows": 7,   // The height of the starting ring in hexes
+    "start_ring_cols": 9,   // The width of the starting ring in hexes
 
-    // Ширина Региона вокруг Кольца Влияния для ПЕРВОЙ эпохи (в гексах).
-    // Ширина Региона для последующих эпох берётся из data/eras.json
-    // (поле "region_width" у каждой эпохи, читается при переходе эпохи).
-    // Регион — область вокруг кольца, в которой можно ПОКУПАТЬ (осваивать)
-    // чанки. Разведка Регионом не ограничена ТОЛЬКО после изучения технологии
-    // «Картография» (разведчиков можно отправить в любую точку, достижимую
-    // скроллом карты — включая территорию городков и туман войны). До неё
-    // разведка доступна лишь в неисследованной части Региона, а гексы в
-    // тумане войны недоступны для наведения и клика. Неисследованные гексы
-    // за пределами Кольца+Региона не отрисовываются (туман войны).
+    // The width of the Region around the Influence Ring for the FIRST era (in hexes).
+    // The width of the Region for subsequent eras is taken from data/eras.json
+    // (the "region_width" field of each era, read on the era transition).
+    // The Region is the area around the ring in which chunks can be BOUGHT
+    // (claimed). Scouting is not limited to the Region ONLY after the technology
+    // "Cartography" is researched (scouts can be sent to any point reachable
+    // by scrolling the map — including town territory and the fog of war).
+    // Before it, scouting is available only in the unexplored part of the Region,
+    // and hexes in the fog of war are not available for hovering and clicking.
+    // Unexplored hexes beyond Ring+Region are not drawn (fog of war).
     "region_width": 2,
 
-    // --- Конфигурация типов местности для генерации центров Вороного ---
-    // Для каждого типа местности:
-    //   density         — доля центров этого типа (сумма ≈ 1.0). Приоритетна.
-    //   target_cluster  — средний размер кластера в гексах (ограничение сверху:
-    //                     число центров не может быть больше area / target_cluster).
-    //                     Если не задан — ограничение не применяется.
-    // Глобальный target_cluster (ниже) — запасное значение для типов, у которых
-    // не задан свой target_cluster в terrain_config.
+    // --- The configuration of terrain types for generating Voronoi centres ---
+    // For each terrain type:
+    //   density         — the share of centres of that type (sum ≈ 1.0). Optional.
+    //   target_cluster  — the average cluster size in hexes (an upper bound:
+    //                     the number of centres cannot be more than area / target_cluster).
+    //                     If not set — the bound is not applied.
+    // The global target_cluster (below) is a fallback value for the types that
+    // do not have their own target_cluster in terrain_config.
     "target_cluster": 22,
     "terrain_config": {
       "plain":        { "density": 0.30, "target_cluster": 22 },
@@ -40,92 +40,96 @@
       "rocky_desert": { "density": 0.05, "target_cluster": 5 }
     },
 
-  // --- Генерация морей ---
-  // Море НЕ участвует в алгоритме Вороного (не входит в terrain_config).
-  // Оно генерируется как маска ДО Вороного и повторно применяется поверх
-  // результата Вороного, чтобы не быть перезаписанным.
-  // Префикс имени поля говорит, какому режиму оно принадлежит:
-  //   edge_*  — читается только в режиме "edge";
-  //   noise_* — читается только в режиме "noise";
-  //   без префикса — общее для всех режимов.
+  // --- Sea generation ---
+  // The sea does NOT take part in the Voronoi algorithm (it is not in terrain_config).
+  // It is generated as a mask BEFORE Voronoi and is re-applied on top of
+  // the Voronoi result so as not to be overwritten.
+  // The field name prefix tells which mode it belongs to:
+  //   edge_*  — is read only in the "edge" mode;
+  //   noise_* — is read only in the "noise" mode;
+  //   no prefix — common to all modes.
   "sea": {
-    // --- Общие (все режимы) ---
-    "mode": "edge",              // "none" (морей нет) | "edge" (прибрежные полосы с заливами) | "noise" (поле высот)
-    "sides": [1, 2],             // диапазон [min, max] количества сторон света с морем; [0,0] — моря нет
-    "beach": true,               // true: суша, соседняя с морем, становится пляжем (beach)
-    "max_sea_depth": 28,         // предел глубины моря от края карты (в гексах), чтобы море не «съедало» карту
+    // --- Common (all modes) ---
+    "mode": "edge",              // "none" (no sea) | "edge" (coastal strips with bays) | "noise" (elevation field)
+    "sides": [1, 2],             // the range [min, max] of the number of map edges with sea; [0,0] — no sea
+    "beach": true,               // true: land adjacent to the sea becomes a beach (beach)
+    "max_sea_depth": 28,         // the limit of the sea depth from the map edge (in hexes), so that the sea does not "eat" the map
 
-    // --- Только режим "edge" ---
-    "edge_width_min": 0,           // минимальная ширина полосы (в гексах); 0 позволяет берегу прерываться в заливы
-    "edge_width_max": 45,          // максимальная ширина полосы (в гексах)
-    "edge_envelope_strength": 0.5, // заливы: 0 = сплошная полоса от края до края, ~0.7 = залив в центре стороны и суша у краёв, 1 = только пик залива
-    // --- Острова в морях (только режим "edge") ---
-    // Острова — это группы гексов суши, "выращенные" внутри моря. Кол-во
-    // подстраивается под площадь моря: target = sea_area * edge_island_density,
-    // затем разброс randi_range(0, target + 1). В маленьком море (низкая
-    // площадь) это часто даёт 0 островов, в большом — может дать много.
-    // Размер конкретного острова (в гексах) случаен в диапазоне [min, max].
-    "edge_islands_enabled": true,   // включить генерацию островов в морях
-    "edge_island_size": [1, 5],    // диапазон размеров острова в гексах: [минимум, максимум]
-    "edge_island_density": 0.03,  // базовая плотность: target = площадь_моря * density (затем рандом 0..target+1)
-    "edge_island_min_distance": 3,  // минимальная дистанция между островами (в гексах), чтобы они не слипались
-    "edge_island_max_attempts": 60,// макс. попыток найти место для seed-точки (защита от бесконечного цикла)
+    // --- Only the "edge" mode ---
+    "edge_width_min": 0,           // the minimum strip width (in hexes); 0 allows the coast to break into bays
+    "edge_width_max": 45,          // the maximum strip width (in hexes)
+    "edge_envelope_strength": 0.5, // bays: 0 = a solid strip from edge to edge, ~0.7 = a bay in the middle of a side and land at the edges, 1 = only the peak of the bay
+    // --- Islands in the seas (only the "edge" mode) ---
+    // Islands are groups of land hexes "grown" inside the sea. The number
+    // is adjusted to the area of the sea: target = sea_area * edge_island_density,
+    // and then the spread randi_range(0, target + 1). In a small sea (low
+    // area) this often gives 0 islands, in a big one — it may give many.
+    // The size of a particular island (in hexes) is random in the range [min, max].
+    "edge_islands_enabled": true,   // enable island generation in the seas
+    "edge_island_size": [1, 5],    // the range of island sizes in hexes: [minimum, maximum]
+    "edge_island_density": 0.03,  // base density: target = sea_area * density (and then random 0..target+1)
+    "edge_island_min_distance": 3,  // the minimum distance between islands (in hexes), so that they do not stick together
+    "edge_island_max_attempts": 60,// the max attempts to find a place for the seed point (protection against an infinite loop)
 
-    // --- Только режим "noise" ---
-    "noise_sea_level": 0.0,      // порог «суша/море»: elevation <= порога = море
-    "noise_strength": 0.35,      // амплитуда шума высот (рваность берега, острова)
-    "noise_edge_gradient": 1,    // континентальность: 0 = острова везде, 1 = море строго у краёв
-    "noise_city_bump": 0.5,      // «холм» высоты вокруг города: гарантирует стартовый континент
-    "noise_city_bump_radius": 8  // радиус гарантированной суши вокруг города (в гексах)
+    // --- Only the "noise" mode ---
+    "noise_sea_level": 0.0,      // the "land/sea" threshold: elevation <= threshold = sea
+    "noise_strength": 0.35,      // the amplitude of the elevation noise (raggedness of the coast, islands)
+    "noise_edge_gradient": 1,    // continentality: 0 = islands everywhere, 1 = sea strictly at the edges
+    "noise_city_bump": 0.5,      // the elevation "hill" around the city: guarantees the starting continent
+    "noise_city_bump_radius": 8  // the radius of guaranteed land around the city (in hexes)
   },
 
-    // --- Генерация рек ---
-    // Главные реки: исток в горах, устье в озере или море. Не пересекаются друг с другом.
-    // Притоки: исток в горах (или холмах, если гор мало), впадают в главные
-    // реки или в другие притоки (точка слияния).
-    "num_main_rivers": 3,      // Количество главных рек
-    "num_tributaries": 5,      // Количество притоков
-    "min_river_length": 8,     // Минимальная длина главной реки (в точках пути)
-    "min_tributary_length": 4, // Минимальная длина притока (в точках пути)
+    // --- River generation ---
+    // Main rivers: the source in the mountains, the mouth in a lake or the sea.
+    // They do not intersect each other.
+    // Tributaries: the source in the mountains (or hills, if there are few mountains),
+    // flowing into the main rivers or into other tributaries (a confluence point).
+    "num_main_rivers": 3,      // The number of main rivers
+    "num_tributaries": 5,      // The number of tributaries
+    "min_river_length": 8,     // The minimum length of a main river (in path points)
+    "min_tributary_length": 4, // The minimum length of a tributary (in path points)
 
-    // --- Генерация городков (мелких поселений) ---
-    // Городки появляются на старте игры и впоследствии могут использоваться
-    // для торговли. Сейчас функционала нет: на гексе городка запрещено
-    // любое строительство улучшений и спецдействия.
+    // --- Town (small settlement) generation ---
+    // Towns appear at the start of the game and can later be used
+    // for trade. There is no functionality at the moment: on a town hex
+    // building any improvement and any special action is forbidden.
     //
-    // Территория городка (кольцо влияния, радиус 3) НИКОГДА не заходит на
-    // стартовую область игрока — Кольцо Влияния + Регион 1-й эпохи: её гексы
-    // вырезаются из кольца, а её ресурсы не считаются точками притяжения
-    // (см. player_start_area в scripts/town_manager.gd).
+    // The town territory (the influence ring, radius 3) NEVER overlaps
+    // the player's starting area — the Influence Ring + the Region of the 1st era:
+    // its hexes are cut out of the ring, and its resources are not counted as
+    // points of attraction (see player_start_area in scripts/town_manager.gd).
     //
-    // Приоритеты (алгоритм идёт по ним строго сверху вниз, см. подробности
-    // в scripts/town_manager.gd):
-    //   1) multi_resource — у гекса 2+ РАЗНЫХ ресурса в радиусе
-    //      MAX_ATTRACTION_DISTANCE (3 гекса), то есть «кучка ресурсов в
-    //      окрестностях»; ресурс, в радиусе 3 от которого уже стоит городок,
-    //      в подсчёте не участвует (один кластер не тянет два городка);
-    //   2) strategic — стратегический ресурс (resource.strategic == true)
-    //      в радиусе 3 гексов;
-    //   3) river — гекс, по которому течёт река (river_edges непустой);
-    //   4) lake_coast — сухопутный гекс, соседний с озером (terrain == "lake");
-    //   5) sea_coast — морское побережье (terrain == "beach").
-    // Водные приоритеты — строго одиночные гексы: городок у воды ставится
-    // НЕПОСРЕДСТВЕННО на речной гекс / берег озера / пляж, а не «в пределах
-    // 3 гексов от воды».
+    // Priorities (the algorithm goes through them strictly from top to bottom,
+    // see the details in scripts/town_manager.gd):
+    //   1) multi_resource — the hex has 2+ DIFFERENT resources within
+    //      MAX_ATTRACTION_DISTANCE (3 hexes), that is, "a cluster of resources in
+    //      the vicinity"; a resource within a radius of 3 from which a town
+    //      already stands does not participate in the count (one cluster does not
+    //      pull two towns);
+    //   2) strategic — a strategic resource (resource.strategic == true)
+    //      within a radius of 3 hexes;
+    //   3) river — a hex along which a river flows (river_edges is non-empty);
+    //   4) lake_coast — a land hex adjacent to a lake (terrain == "lake");
+    //   5) sea_coast — a sea coast (terrain == "beach").
+    // The water priorities are strictly single hexes: a town by the water is
+    // placed DIRECTLY on a river hex / a lake shore / a beach, and not "within
+    // 3 hexes of the water".
     //
-    // Приоритеты НЕ равнозначны. ШАГ 0: база — первый сверху приоритет, у
-    // которого есть валидный гекс ПО ВСЕЙ карте (полный обход, без обрыва на
-    // N случайных попытках). К следующему приоритету генератор переходит
-    // ТОЛЬКО когда текущий исчерпан на всей карте, поэтому городок не встанет
-    // у озера/моря, пока есть свободное место с кучкой ресурсов.
-    // ШАГИ 1..N: локальное уточнение — в радиусе REFINEMENT_RADIUS (2 гекса)
-    // от текущего гекса ищется гекс, удовлетворяющий ВСЕМ уже заработанным
-    // приоритетам И новому. Не нашли — приоритет пропускается, позиция не
-    // меняется, каскад идёт к следующему приоритету.
-    // Вторичный приоритет (TERRAIN_PREFERENCE в town_manager.gd): после
-    // каскада позиция мягко уточняется по типу местности — равнина/песок →
-    // холмы → пустыни → болота/марши → горы, с сохранением заработанных
-    // приоритетов.
-    "num_towns": 16             // Количество городков на карте
+    // The priorities are NOT equal in value. STEP 0: the base is the topmost
+    // priority that has a valid hex ANYWHERE on the map (a full walk, without
+    // giving up after N random attempts). The generator moves on to the
+    // next priority ONLY when the current one is exhausted across the whole map,
+    // so a town will not settle by a lake/sea while there is a free place with
+    // a cluster of resources.
+    // STEPS 1..N: local refinement — within a radius of REFINEMENT_RADIUS
+    // (2 hexes) from the current hex, a hex is searched for that satisfies ALL
+    // the priorities already earned AND the new one. If none is found — the
+    // priority is skipped, the position does not
+    // change, and the cascade goes to the next priority.
+    // The secondary priority (TERRAIN_PREFERENCE in town_manager.gd): after
+    // the cascade, the position is softly refined by terrain type — plain/sand →
+    // hills → deserts → swamps/marshes → mountains, keeping the earned
+    // priorities.
+    "num_towns": 16             // The number of towns on the map
   }
 }

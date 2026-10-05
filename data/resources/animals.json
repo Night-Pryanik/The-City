@@ -1,14 +1,14 @@
 {
-  // Поле improved_by задаёт ID улучшения, КОТОРОЕ ДОБЫВАЕТ этот природный
-  // ресурс. Если на гексе уже есть этот ресурс, игрок строит улучшение
-  // сверху — tile.resource сохраняется.
+  // The improved_by field sets the ID of the improvement THAT EXTRACTS this
+  // natural resource. If this resource is already on the hex, the player builds
+  // the improvement on top — tile.resource is preserved.
   //
-  // Если же игрок хочет ЗАВЕСТИ этих животных на пустом гексе (где нет
-  // природного ресурса) — он строит то же улучшение через пункт меню
-  // «Построить пастбище (коровы)» и в tile_data пишется
-  // tile.crop_bred = "cows". Природного tile.resource при этом не
-  // появляется. Подробности — в docs.md, раздел «Разведение животных
-  // и растений (схема crop_bred)».
+  // If instead the player wants to RAISE these animals on an empty hex (where
+  // there is no natural resource) — they build the same improvement via the menu
+  // item "Build a pasture (cows)" and tile_data gets
+  // tile.crop_bred = "cows". No natural tile.resource appears
+  // then. Details are in docs.md, the section "Breeding animals
+  // and plants (crop_bred scheme)".
   "resources": [
     {
       "id": "cows", "price": 60,

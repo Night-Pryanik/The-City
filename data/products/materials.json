@@ -129,11 +129,11 @@
       "icon": "papyrus_plant.png"
     },
     {
-      // Сырьевой ресурс «Древесина». Производится лесной делянкой
-      // (improvement_id "lumberjack_hut") на лесном гексе, где нет отдельного
-      // древесного ресурса: выход зависит от густоты покрова (wood_yield в
-      // data/covers.json). Направляется в «Лесопилку» (рецепт «Распиловка
-      // досок» → Доски).
+      // The raw resource "Wood". It is produced by the woodcutter's camp
+      // (improvement_id "lumberjack_hut") on a forest hex that has no separate
+      // wood resource: the yield depends on the density of the cover (wood_yield
+      // in data/covers.json). It is directed to the "Sawmill" (the recipe
+      // "Saw Boards" → Boards).
       "id": "wood", "price": 2,
       "name": "Wood",
       "type": "product",

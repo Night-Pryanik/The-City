@@ -1,19 +1,21 @@
 {
-  // ВАЖНО: улучшения farm / pasture / beehive / vineyard / plantation /
-  // работают в ДВУХ режимах (см. docs.md, раздел
-  // «Разведение животных и растений (схема crop_bred)»):
-  //   1) На гексе УЖЕ есть природный ресурс (поле improved_by указывает
-  //      на это улучшение в data/resources/*.json). Постройка сохраняет
-  //      tile.resource, качество берётся текущее.
-  //   2) Гекс пустой — игрок разводит одомашненный вид. Id животного/
-  //      растения пишется в tile.crop_bred, tile.resource остаётся null.
-  //      Качество наследуется от уже одомашненного экземпляра этого вида.
-  // ПРОИЗВОДСТВО: поле "production_interval" — время в СЕКУНДАХ, за которое
-  // улучшение выдаёт свою продукцию (одной «пачкой», пока на нём есть рабочий).
-  // Отсчёт идёт по тику игровой симуляции SIMULATION_TICK = 1 сек
-  // (CityData.SIMULATION_TICK, шаг в main_map.gd). Корм (feed_consumption)
-  // списывается за цикл производства, а не каждый тик. Инфраструктурные
-  // улучшения (no_worker / без производства) носят поле формально.
+  // IMPORTANT: the farm / pasture / beehive / vineyard / plantation
+  // improvements work in TWO modes (see docs.md, the section
+  // "Breeding animals and plants (crop_bred scheme)"):
+  //   1) The hex ALREADY has a natural resource (the improved_by field points
+  //      to this improvement in data/resources/*.json). The build keeps
+  //      tile.resource, and the quality is the current one.
+  //   2) The hex is empty — the player breeds a domesticated species. The id
+  //      of the animal/plant is written to tile.crop_bred, tile.resource stays
+  //      null. The quality is inherited from an already domesticated specimen
+  //      of that species.
+  // PRODUCTION: the "production_interval" field — the time in SECONDS it takes
+  // for the improvement to output its product (in one "batch", as long as there
+  // is a worker on it). The countdown runs on the game simulation tick
+  // SIMULATION_TICK = 1 sec (CityData.SIMULATION_TICK, the step in main_map.gd).
+  // Feed (feed_consumption) is written off per production cycle, not every tick.
+  // Infrastructure improvements (no_worker / without production) carry the field
+  // formally.
   "improvements": [
     {
       "id": "farm",
@@ -22,14 +24,15 @@
       "color": [ 255, 255, 0 ],
       "work_cost": 8,
       "unlock_tech": "farming",
-      // Профессия рабочего на этом улучшении. Метка ставится/снимается
-      // автоматически в worker_manager.gd при назначении/увольнении.
+      // The profession of the worker on this improvement. The label is set/cleared
+      // automatically in worker_manager.gd on assignment/dismissal.
       "profession": "farmer",
-      // Главный источник еды: еда списывается каждый тик симуляции (1 сек),
-      // поэтому ферма выдаёт урожай каждую секунду.
+      // The main source of food: food is written off every simulation tick
+      // (1 sec), so the farm outputs its crop every second.
       "production_interval": 1,
-      // Проводник пресной воды: после изучения технологии «Орошение» ферма
-      // распространяет пресную воду на соседние гексы (схема water_access: chain).
+      // A conductor of fresh water: after the technology "Irrigation" is
+      // researched, the farm spreads fresh water to neighbouring hexes
+      // (the water_access scheme: chain).
       "conducts_water": true
     },
     {
@@ -40,7 +43,7 @@
       "work_cost": 25,
       "unlock_tech": "animal_husbandry",
       "profession": "herder",
-      // Корм (feed_consumption ресурса) списывается за цикл производства.
+      // Feed (the feed_consumption of a resource) is written off per production cycle.
       "production_interval": 2
     },
     {
@@ -102,8 +105,9 @@
       "unlock_tech": "plantations",
       "profession": "planter",
       "production_interval": 2,
-      // Проводник пресной воды: после изучения технологии «Орошение» плантация
-      // распространяет пресную воду на соседние гексы (схема water_access: chain).
+      // A conductor of fresh water: after the technology "Irrigation" is
+      // researched, the plantation spreads fresh water to neighbouring hexes
+      // (the water_access scheme: chain).
       "conducts_water": true
     },
     {
@@ -136,37 +140,42 @@
       "production_interval": 2
     },
     {
-      // Пристань — «ключ» к водным ресурсам конкретного водоёма. Строится на
-      // ПУСТОМ прибрежном гексе (суша рядом с lake/sea) через панель управления.
-      // После постройки все ресурсы этого водоёма (находятся flood-fill по воде,
-      // см. MapHelpers.has_harbor_access) становятся доступны для эксплуатации:
-      // на них можно строить улучшения с флагом requires_harbor (сейчас —
-      // fishing_boats). Для каждого водоёма нужна СВОЯ пристань. Доступ
-      // вычисляется динамически (BFS по воде), поэтому при сносе пристани
-      // ресурсы водоёма снова становятся недоступными для НОВЫХ построек.
-      // ПРОФЕССИИ И РАБОЧИЕ: обычные улучшения имеют поле "profession" — id
-      // профессии рабочего (см. data/professions.json). Дополнительно поле
-      // "no_worker": true помечает улучшение как ИНФРАСТРУКТУРНОЕ: оно не
-      // требует рабочего для выполнения своих функций (рабочих нельзя
-      // назначать, кнопок «Запустить/Приостановить работу» в панели нет).
+      // The harbor — the "key" to the water resources of a specific body of water.
+      // It is built on an EMPTY coastal hex (land next to lake/sea) via the
+      // control panel. After the build, all resources of that body of water
+      // (found by flood-fill over the water, see MapHelpers.has_harbor_access)
+      // become available for exploitation: improvements with the requires_harbor
+      // flag can be built on them (currently — fishing_boats). Each body of
+      // water needs its OWN harbor. Access is computed dynamically (BFS over
+      // water), so when the harbor is demolished the resources of that body of
+      // water become unavailable for NEW builds once again.
+      // PROFESSIONS AND WORKERS: ordinary improvements have the "profession"
+      // field — the id of the worker's profession (see data/professions.json).
+      // In addition, the "no_worker": true field marks an improvement as
+      // INFRASTRUCTURE: it does not require a worker to perform its functions
+      // (workers cannot be assigned, and there are no "Start/Pause work" buttons
+      // in the panel).
       "id": "harbor",
       "name": "Harbor",
       "icon": "harbor.png",
       "color": [ 139, 90, 43 ],
       "work_cost": 25,
       "unlock_tech": "fishing",
-      // Инфраструктура: открывает водные ресурсы водоёма сама по себе,
-      // рабочий не требуется (см. docs.md, «Профессии и потребление ресурсов»).
+      // Infrastructure: it opens the water resources of the body of water by
+      // itself, no worker is required (see docs.md, "Professions and
+      // resource consumption").
       "no_worker": true,
-      // Маркер: это улучшение открывает водные ресурсы своего водоёма.
+      // Marker: this improvement opens the water resources of its body of water.
       "water_body_harbor": true,
-      // Инфраструктура без производства: поле формальное (единая схема данных).
+      // Infrastructure without production: the field is formal
+      // (a single data scheme).
       "production_interval": 2
     },
     {
-      // Рыбацкие лодки — добывают рыбу. Строить можно ТОЛЬКО на гексах с рыбным
-      // ресурсом, принадлежащих водоёму, на котором есть пристань (см. флаги
-      // water_body_harbor у пристани и has_harbor_access в map_helpers.gd).
+      // Fishing boats — catch fish. They can be built ONLY on hexes with a fish
+      // resource belonging to a body of water that has a harbor (see the
+      // water_body_harbor flag on the harbor and has_harbor_access in
+      // map_helpers.gd).
       "id": "fishing_boats",
       "name": "Fishing Boats",
       "icon": "fishing_boats.png",
@@ -174,18 +183,19 @@
       "work_cost": 15,
       "unlock_tech": "fishing",
       "profession": "fisherman",
-      // Рыба — еда: как и ферма, выдаёт улов каждую секунду (еда списывается
-      // каждый тик симуляции).
+      // Fish is food: just like the farm, it outputs its catch every second
+      // (food is written off every simulation tick).
       "production_interval": 1,
-      // Маркер: для постройки требуется пристань на этом же водоёме.
+      // Marker: a harbor on this same body of water is required for the build.
       "requires_harbor": true,
       "no_road": true
     },
     {
-      // Ирригационный канал: инфраструктурное улучшение-проводник, открытое
-      // технологией «Каналы». Раздаёт пресную воду соседям (conducts_water)
-      // в режиме «по цепочке» (is_canal): цепочка воды идёт через каналы,
-      // как и через фермы/плантации, с ограничением дальности из tech_modifiers.
+      // Irrigation canal: an infrastructure conductor improvement unlocked by
+      // the technology "Canals". It distributes fresh water to neighbours
+      // (conducts_water) in the "by chain" mode (is_canal): the chain of water
+      // goes through canals just as through farms/plantations, with the range
+      // limit from tech_modifiers.
       "id": "irrigation_canal",
       "name": "Irrigation Canal",
       "icon": "irrigation_canal.png",
@@ -195,29 +205,32 @@
       "conducts_water": true,
       "is_canal": true,
       "no_worker": true,
-      // Дорога к каналу НЕ прокладывается: это инфраструктурный элемент,
-      // и тянуть к нему сеть дорог не имеет смысла.
+      // A road to a canal is NOT laid: this is an infrastructure element,
+      // and extending a road network to it makes no sense.
       "no_road": true,
-      // Инфраструктура без производства: поле формальное (единая схема данных).
+      // Infrastructure without production: the field is formal
+      // (a single data scheme).
       "production_interval": 2
     },
     {
-      // Лесная делянка — улучшение лесозаготовки. Работает в ДВУХ режимах
-      // (обе ветки поддерживаются, код править при будущих ресурсах не нужно):
-      //   1) НА ДРЕВЕСНОМ РЕСУРСЕ: если на гексе есть сырьевой ресурс с
-      //      improved_by == "lumberjack_hut" (будущие кедр, дуб, фернамбук,
-      //      кампешевое дерево и т.п.), делянка добывает его как ОБЫЧНОЕ
-      //      улучшение через общий поток (tile.resource + produces) и выдаёт
-      //      специфический продукт этого ресурса (красное дерево, корабельный
-      //      лес, красители и т.д.). Для этого достаточно в data/resources/*.json
-      //      указать improved_by == "lumberjack_hut".
-      //   2) НА ПУСТОМ ЛЕСНОМ ГЕКСЕ: если ресурса нет, а покров даёт древесину
-      //      (wood_yield > 0 в data/covers.json), делянка выдаёт обычную
-      //      «Древесину» из густоты покрова: редколесье — 1, сплошной лес — 2.
-      //      Любой будущий лесной покров с wood_yield > 0 подойдёт без правки кода.
-      //      Строится на пустом СУХОМ гексе (не болото, не марши, не вода).
-      // Реализация: расчёт/зачисление — в main_map.gd (тик производства),
-      // доступность/превью — в control_panel.gd и map_tooltip.gd.
+      // The woodcutter's camp — a logging improvement. It works in TWO modes
+      // (both branches are supported, no code change is needed for future
+      // resources):
+      //   1) ON A WOOD RESOURCE: if the hex has a raw resource with
+      //      improved_by == "lumberjack_hut" (future cedar, oak, tulipwood,
+      //      Paulownia and so on), the camp extracts it as an ORDINARY
+      //      improvement via the common flow (tile.resource + produces) and
+      //      outputs the specific product of that resource (redwood, ship timber,
+      //      dyes, etc.). For that it is enough to set
+      //      improved_by == "lumberjack_hut" in data/resources/*.json.
+      //   2) ON AN EMPTY FOREST HEX: if there is no resource but the cover
+      //      gives timber (wood_yield > 0 in data/covers.json), the camp outputs
+      //      ordinary "Wood" derived from the density of the cover: sparse forest
+      //      — 1, continuous forest — 2. Any future forest cover with
+      //      wood_yield > 0 will fit without a code change.
+      //      It is built on an empty DRY hex (not a swamp, not marsh, not water).
+      // Implementation: calculation/crediting is in main_map.gd (the production
+      // tick), availability/preview is in control_panel.gd and map_tooltip.gd.
       "id": "lumberjack_hut",
       "name": "Woodcutter's Camp",
       "icon": "lumberjack_hut.png",

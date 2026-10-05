@@ -1,12 +1,15 @@
 {
-// Здесь перечисляются группы продуктов, которые можно использовать в рецептах крафта вместо одиночных продуктов
-// Не путать с groups.json: там группы для бонусов, здесь — реестр групп для использования в рецептах и при учете потребления профессиями
+// The product groups that can be used in craft recipes instead of single products
+// Do not confuse this with groups.json: that file holds groups for bonuses,
+// this one is a registry of groups used in recipes and in accounting for
+// consumption by professions
 //
-// Необязательное поле "icon" у группы — имя файла иконки для карточки
-// ресурса на вкладке «Торговля». Если его НЕ указать, берётся иконка
-// ПЕРВОГО члена группы, у которого своя иконка задана (старый порядок).
-// Своя иконка нужна там, где первый член — не представитель группы: у
-// «Алкоголя» это пиво, хотя группа это в первую очередь напитки из зерна.
+// The optional "icon" field of a group — the icon file name for the resource
+// card on the "Trade" tab. If it is NOT specified, the icon of the
+// FIRST member of the group that has its own icon set is taken (the old order).
+// A separate icon is needed where the first member is not representative of
+// the group: for "Alcohol" it is beer, although the group is primarily grain
+// beverages.
   "product_groups": [
     {
       "id": "millable_grains",

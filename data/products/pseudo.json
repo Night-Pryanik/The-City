@@ -1,7 +1,8 @@
 {
   "resources": [
     {
-      // Наука — виртуальный продукт. Не копится на складе, а идёт напрямую в исследования.
+      // Science — a virtual product. It is not stored in the warehouse,
+      // it goes directly into research.
       "id": "science",
       "name": "Science",
       "type": "product",

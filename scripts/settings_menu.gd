@@ -33,7 +33,7 @@ func _ready():
             or not resource_display_interval_value_label \
             or not language_option_button
     if missing_controls:
-        print("Ошибка: не все элементы найдены в сцене настроек!")
+        print("Error: not all elements found in the settings scene!")
         return
 
     hex_borders_checkbox.add_theme_color_override("font_color", Color.WHITE)
@@ -56,10 +56,11 @@ func _ready():
     resource_display_interval_slider.value_changed.connect(_on_resource_display_interval_changed)
     language_option_button.item_selected.connect(_on_language_selected)
 
-# Заголовки вкладок ставятся вручную: Godot берёт их из ИМЁН узлов, а имена
-# узлов не переводятся. Заголовки переводятся здесь вызовами tr() с
-# литералами — иначе их не увидит ни сборщик каталогов, ни генерация .pot
-# в редакторе. Функция вызывается и при открытии окна, и при смене языка.
+# The tab titles are set manually: Godot takes them from the node NAMES, and node
+# names are not translated. The titles are translated here by tr() calls with
+# literals — otherwise neither the catalog builder nor the .pot generation
+# in the editor would see them. The function is called both when opening the
+# window and on a language change.
 func _apply_tab_titles():
     if not tab_container:
         return
@@ -72,8 +73,8 @@ func _apply_tab_titles():
     for i in min(titles.size(), tab_container.get_tab_count()):
         tab_container.set_tab_title(i, titles[i])
 
-# Заполняет выпадающий список языков и ставит в него сохранённый выбор.
-# Значение пункта — код языка; пункт «язык системы» хранится как "system".
+# Fills in the language dropdown and sets the saved choice in it.
+# The value of an item is a language code; the "system language" item is stored as "system".
 func _setup_language_option():
     var languages: Array = LocalizationManager.available_languages()
     var selected := LocalizationManager.get_stored_locale()
@@ -86,15 +87,15 @@ func _setup_language_option():
         language_option_button.add_item(LocalizationManager.get_language_label(code), i)
         language_option_button.set_item_metadata(i, code)
     language_option_button.select(selected_index)
-    # Сигнал подключается в _ready, а select() его не шлёт: при открытии окна
-    # настроек язык заново не выбирается, а просто показывается текущий.
+    # The signal is connected in _ready, and select() does not send it: when the settings
+    # window opens the language is not re-chosen, but simply shown as the current one.
 
 func _on_language_selected(index: int):
     var code := str(language_option_button.get_item_metadata(index))
     if LocalizationManager.set_locale(code):
-        # Подписи вкладок и текст сцен Godot переведёт сам по уведомлению
-        # TranslationServer, а список языков и подпись выбранного пункта
-        # зависят от LocalizationManager — обновляем их вручную.
+        # The tab titles and the scene text are translated by Godot itself on the
+        # TranslationServer notification, while the language list and the label of
+        # the selected item depend on LocalizationManager — we update them manually.
         _apply_tab_titles()
         _setup_language_option()
 
@@ -116,7 +117,7 @@ func load_settings():
         extended_tooltip_delay_slider.value = 1.0
         building_detail_delay_slider.value = 0.5
         resource_display_interval_slider.value = 1.0
-    # Минимальное значение расширенного тултипа не может быть меньше основного
+    # The minimum value of the extended tooltip cannot be less than the main one
     extended_tooltip_delay_slider.min_value = tooltip_delay_slider.value
     _update_tooltip_delay_label()
     _update_extended_tooltip_delay_label()
@@ -124,8 +125,8 @@ func load_settings():
     _update_resource_display_interval_label()
 
 func save_settings():
-    # Перечитываем файл перед записью: язык сюда пишет LocalizationManager,
-    # и без перечитывания его ключ был бы затёрт нашими значениями.
+    # We re-read the file before writing: LocalizationManager writes the language here,
+    # and without re-reading its key would be overwritten by our values.
     config.load("user://settings.cfg")
     config.set_value("interface", "show_hex_borders", hex_borders_checkbox.button_pressed)
     config.set_value("interface", "edge_scrolling", edge_scrolling_checkbox.button_pressed)
@@ -136,7 +137,7 @@ func save_settings():
     config.save("user://settings.cfg")
 
 func _apply_to_game():
-    # Находим главную сцену игры (MainMap) и обновляем её настройки
+    # We find the main game scene (MainMap) and update its settings
     var root = get_tree().root
     var main_map = root.find_child("MainMap", true, false)
     if main_map and main_map.has_method("apply_settings"):
@@ -152,14 +153,14 @@ func _on_edge_scrolling_toggled(_pressed: bool):
 
 func _on_tooltip_delay_changed(_value: float):
     _update_tooltip_delay_label()
-    # Минимальное значение расширенного тултипа не может быть меньше основного
+    # The minimum value of the extended tooltip cannot be less than the main one
     if extended_tooltip_delay_slider.value < tooltip_delay_slider.value:
         extended_tooltip_delay_slider.value = tooltip_delay_slider.value
     save_settings()
     _apply_to_game()
 
 func _on_extended_tooltip_delay_changed(_value: float):
-    # Не позволяем опускаться ниже основного delay
+    # We do not allow it to go below the main delay
     if extended_tooltip_delay_slider.value < tooltip_delay_slider.value:
         extended_tooltip_delay_slider.value = tooltip_delay_slider.value
     _update_extended_tooltip_delay_label()
@@ -189,8 +190,8 @@ func _update_building_detail_delay_label():
     building_detail_delay_value_label.text = tr("%.2f sec") % seconds
 
 func _update_resource_display_interval_label():
-    # Шаг слайдера — 1 секунда, дробных значений не бывает (см. CityData:
-    # тик симуляции = 1 сек, дробный интервал дал бы неравномерный ритм).
+    # The slider step is 1 second, fractional values do not happen (see CityData:
+    # the simulation tick = 1 sec, a fractional interval would give an uneven rhythm).
     var seconds = int(round(resource_display_interval_slider.value))
     resource_display_interval_value_label.text = tr("%d sec") % seconds
 

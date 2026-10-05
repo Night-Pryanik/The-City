@@ -1,36 +1,36 @@
 {
-    // Степени качества ресурсов.
-    // Уровни перечислены от худшего к лучшему.
-    // value — числовой вес для расчёта взвешенного среднего при производстве.
-    // stars — текстовое представление звёздами (для карты и тултипов).
-    // color — ЦВЕТ уровня как массив [R, G, B] в диапазоне 0…255 (та же
-    //               форма записи, что у покрытий, улучшений и ресурсов).
-    //               Красит звёзды в тултипе разбора качества и строки цен по
-    //               качеству в тултипе строки, а в строке списка — проценты
-    //               доли каждого уровня на складе (см. resources_tab.
-    //               _update_quality_label). Палитра «как в ролевых играх»:
-    //               серый (обычное) → зелёный (хорошее) → фиолетовый
-    //               (исключительное, «epic») → золотой (превосходное,
-    //               «legendary»). Серый у обычного уровня не спорит с цифрой
-    //               количества, а остальные три цвета различимы и на тёмном
-    //               фоне тултипа. Поле необязательное: без него уровень
-    //               рисуется мягким светло-серым дефолтом (GameData.
-    //               get_quality_color).
-    // spawn_weight — относительный вес при случайном определении качества
-    //               ресурса при спавне на карте.
-    // price_multiplier — МНОЖИТЕЛЬ цены единицы товара этого качества
-    //               (1.0 = базовая цена без изменения). Именно умножается,
-    //               а не прибавляется: одинаковая прибавка в монетах
-    //               сломала бы шкалу цен (корм за 1 и украшение за 140
-    //               получили бы +30% против +0.2%).
-    //               Значения подобраны так, чтобы соседние уровни давали
-    //               РАЗНЫЕ итоговые цены: при 1.30/1.75/2.30 уровни
-    //               различаются у 265 из 268 товаров (сливаются только
-    //               три товара за 1 монету). Более близкие значения
-    //               (1.15/1.35/1.60) сливались у 43 товаров — качество
-    //               переставало стоить разницы.
-    //               Итоговая цена округляется до ЦЕЛОГО числа монет
-    //               (см. GameData.get_price_breakdown_for_quality).
+    // Resource quality tiers.
+    // Levels are listed from worst to best.
+    // value — the numeric weight used to compute a weighted average in production.
+    // stars — textual representation with stars (for the map and tooltips).
+    // color — the COLOUR of the level as an [R, G, B] array in the range 0…255
+    //         (the same entry format as for covers, improvements and resources).
+    //         It paints the stars in the quality breakdown tooltip and the
+    //         per-quality price lines in the row tooltip, and in the list row —
+    //         the percentages of the share of each level in storage (see
+    //         resources_tab._update_quality_label). The palette is "like in RPGs":
+    //         grey (common) → green (fine) → purple
+    //         (exceptional, "epic") → gold (perfect,
+    //         "legendary"). Grey on the common level does not clash with the
+    //         quantity number, and the other three colours are distinguishable
+    //         even on the dark tooltip background. The field is optional: without
+    //         it the level is drawn with a soft light-grey default (GameData.
+    //         get_quality_color).
+    // spawn_weight — relative weight when a resource quality is determined
+    //               randomly as it spawns on the map.
+    // price_multiplier — the MULTIPLIER of the price of one unit of goods of this
+    //               quality (1.0 = base price, unchanged). It is multiplied,
+    //               not added to: the same addition in coins would
+    //               break the price scale (feed costing 1 and an ornament
+    //               costing 140 would get +30% against +0.2%).
+    //               The values are chosen so that neighbouring levels give
+    //               DIFFERENT final prices: at 1.30/1.75/2.30 the levels
+    //               differ for 265 of 268 goods (only
+    //               three goods costing 1 coin merge). Closer values
+    //               (1.15/1.35/1.60) merged for 43 goods — quality
+    //               stopped being worth the difference.
+    //               The final price is rounded to a WHOLE number of coins
+    //               (see GameData.get_price_breakdown_for_quality).
     "quality_levels": [
         {
             "id": "common",
@@ -69,8 +69,8 @@
             "price_multiplier": 2.3
         }
     ],
-    // Приоритеты выбора сырья для производства (кнопка в панели здания).
-    // best — сначала самое лучшее качество, worst — сначала худшее, random — случайно.
+    // Priorities for choosing raw materials for production (button in the building panel).
+    // best — best quality first, worst — worst quality first, random — at random.
     "priority_default": "best",
     "priority_options": ["best", "worst", "random"],
     "priority_names": {

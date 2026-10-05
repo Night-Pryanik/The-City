@@ -1,7 +1,7 @@
 # progress_bar_layer.gd
-# Отдельный слой для отрисовки прогресс-баров на карте.
-# Выносим их из map_renderer, чтобы перерисовка небольшого слоя баров
-# не тянула за собой перерисовку всей тяжёлой карты (гексы, дороги, реки).
+# A separate layer for drawing progress bars on the map.
+# We take them out of map_renderer so that redrawing a small layer of bars
+# does not drag a redraw of the whole heavy map (hexes, roads, rivers) with it.
 @tool
 extends Node2D
 
@@ -23,12 +23,12 @@ func _draw():
         for col in range(visible.col_start, visible.col_end + 1):
             _draw_progress_bars(row, col)
 
-# Возвращает словарь с границами видимых гексов (инклюзивно),
-# ограниченными областью, достижимой скроллом карты (scout_reach).
-# Используется для viewport culling. Границы шире Региона: стартовый
-# гекс чанка разведки может лежать в тумане войны (за Регионом) — это
-# возможно только после изучения Картографии, — и прогресс-бар разведки
-# должен быть виден и там.
+# Returns a dictionary with the bounds of the visible hexes (inclusive),
+# limited by the area reachable by scrolling the map (scout_reach).
+# It is used for viewport culling. The bounds are wider than the Region: the
+# starting hex of a scouting chunk may lie in the fog of war (beyond the Region) —
+# this is only possible after researching Cartography — and the scouting
+# progress bar must be visible there too.
 func _get_visible_hex_range() -> Dictionary:
     var viewport_size = Vector2(1152, 768)
     if not Engine.is_editor_hint():
@@ -53,9 +53,9 @@ func _get_visible_hex_range() -> Dictionary:
     var row_start = int(floor(world_top / y_spacing)) - margin
     var row_end = int(ceil(world_bottom / y_spacing)) + margin
 
-    # Ограничиваем областью, достижимой скроллом карты: прогресс-бар
-    # разведки должен быть виден и в тумане войны (стартовый гекс чанка
-    # может лежать за Регионом).
+    # Limit by the area reachable by scrolling the map: the scouting
+    # progress bar must be visible in the fog of war as well (the starting hex
+    # of a chunk may lie beyond the Region).
     var reach = main_map.get_scout_reach_bounds()
     col_start = max(col_start, reach.col_start)
     col_end = min(col_end, reach.col_end)
@@ -78,9 +78,9 @@ func _draw_progress_bars(row: int, col: int):
 
     var tile = tile_data[row][col]
 
-    # --- Прогресс-бар заполенности пастбища (time_to_mature) ---
-    # Показывается ТОЛЬКО пока стадо растёт (0% < заполненность < 100%)
-    # и на улучшении есть рабочий. При полном поголовье бар исчезает.
+    # --- The pasture fill progress bar (time_to_mature) ---
+    # It is shown ONLY while the herd is growing (0% < fill < 100%)
+    # and there is a worker on the improvement. At full headcount the bar disappears.
     var eff_res_fill = MapHelpers.get_effective_resource(tile)
     if eff_res_fill != "" and tile.get("improvement", null) != null \
             and main_map.worker_manager.has_worker(row, col):
@@ -96,9 +96,9 @@ func _draw_progress_bars(row: int, col: int):
                 draw_rect(Rect2(pasture_bar_x, pasture_bar_y, pasture_bar_width * fill_frac, pasture_bar_height), Color(0.85, 0.55, 0.35))
                 draw_rect(Rect2(pasture_bar_x, pasture_bar_y, pasture_bar_width, pasture_bar_height), Color.WHITE, false)
 
-    # Прогресс-бар исследования технологии, которая открывает:
-    # 1) сам ресурс (tech_required), либо
-    # 2) улучшение, которым добывается этот ресурс (improved_by → unlock_tech)
+    # The progress bar of the technology research that unlocks:
+    # 1) the resource itself (tech_required), or
+    # 2) the improvement that extracts this resource (improved_by → unlock_tech)
     var research_tech = CityData.current_research_tech_id
     var eff_res_for_bar = MapHelpers.get_effective_resource(tile)
     if research_tech != "" and eff_res_for_bar != "" and _is_resource_revealed(tile):
@@ -107,12 +107,13 @@ func _draw_progress_bars(row: int, col: int):
             var imp_id = GameData.raw_resources.get(eff_res_for_bar, {}).get("improved_by", "")
             if imp_id != null and imp_id != "":
                 var imp_unlock_tech = CityData.get_improvement_unlock_tech(imp_id)
-                # Показываем прогресс-бар, пока изучается ЛЮБОЙ ещё не изученный
-                # шаг цепочки, ведущей к технологии, открывающей улучшение,
-                # которым добывается ресурс. Цепочку считаем по технологии
-                # улучшения (imp_unlock_tech), а не по tech_required ресурса:
-                # например, для кварцевого песка бар появляется и при изучении
-                # «Горного дела», и при изучении «Каменной кладки».
+                # We show the progress bar while ANY not yet researched
+                # step of the chain leading to the technology that unlocks the
+                # improvement which extracts the resource is being researched.
+                # We compute the chain by the technology of the
+                # improvement (imp_unlock_tech), and not by the tech_required of the resource:
+                # for example, for quartz sand the bar appears both when researching
+                # "Mining" and when researching "Masonry".
                 var chain = CityData.get_tech_study_chain(imp_unlock_tech)
                 if research_tech in chain:
                     show_progress = true
@@ -140,35 +141,35 @@ func _draw_progress_bars(row: int, col: int):
             draw_rect(Rect2(bar_x, bar_y, fill_width, bar_height), Color.YELLOW)
             draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color.WHITE, false)
 
-    # --- Прогресс-бар текущего участка поэтапного проекта (дорога по гексам) ---
-    # Рисуется на гексе, который строящийся участок присоединяет к сети. Когда
-    # участок достроен, менеджер проектов переходит к следующему — и бар сам
-    # переезжает на следующий гекс. Общий механизм: подойдёт любому
-    # поэтапному проекту (акведуку и т.п.), а не только дороге.
+    # --- The progress bar of the current stage of a staged project (a road per hex) ---
+    # It is drawn on the hex that the segment under construction connects to the
+    # network. When the segment is finished, the project manager moves on to the next
+    # one — and the bar itself moves to the next hex. The general mechanism: it will
+    # suit any staged project (an aqueduct and so on), and not only a road.
     if main_map.project_manager != null:
         var project_progress = main_map.project_manager.get_step_progress_at(row, col)
         if not project_progress.is_empty():
             var proj_bar_width = RESOURCE_ICON_SIZE
             var proj_bar_height = 6
             var proj_bar_x = center.x - proj_bar_width / 2.0
-            # Ниже бара стройки, чтобы не накладываться на него: у гекса может
-            # одновременно идти и стройка улучшения, и участок дороги.
+            # Below the construction bar, so as not to overlap it: a hex can
+            # have both an improvement being built and a road segment at once.
             var proj_bar_y = center.y + RESOURCE_ICON_SIZE / 2.0 + 16
             draw_rect(Rect2(proj_bar_x, proj_bar_y, proj_bar_width, proj_bar_height), Color(0.2, 0.2, 0.2))
             var p_work_cost = maxf(1.0, float(project_progress.get("work_cost", 1.0)))
             var p_progress = float(project_progress.get("progress", 0.0))
             var proj_fill_width = proj_bar_width * clamp(p_progress / p_work_cost, 0.0, 1.0)
-            # Шаг улучшения в цепочке «дорога → улучшение» красится в жёлтый —
-            # тот же цвет, что и обычная стройка улучшения: игрок должен видеть,
-            # что на гексе строится улучшение, а не участок дороги.
+            # The improvement stage in the "road → improvement" chain is painted yellow —
+            # the same colour as an ordinary improvement build: the player must see
+            # that an improvement is being built on the hex, and not a road segment.
             var proj_color := Color(0.45, 0.75, 1.0)
             if str(project_progress.get("step_type", "")) == "improvement":
                 proj_color = Color(1.0, 0.85, 0.0)
             draw_rect(Rect2(proj_bar_x, proj_bar_y, proj_fill_width, proj_bar_height), proj_color)
             draw_rect(Rect2(proj_bar_x, proj_bar_y, proj_bar_width, proj_bar_height), Color.WHITE, false)
 
-    # --- Прогресс-бар освоения территории (покупка чанка за труд) ---
-    # Показывается на первом гексе чанка, который осваивается.
+    # --- The territory claim progress bar (buying a chunk for labour) ---
+    # It is shown on the first hex of the chunk being claimed.
     var expansion_progress = main_map.build_manager.get_expansion_progress_for_hex(row, col)
     if not expansion_progress.is_empty():
         var bar_width = RESOURCE_ICON_SIZE
@@ -182,7 +183,7 @@ func _draw_progress_bars(row: int, col: int):
         draw_rect(Rect2(bar_x, bar_y, fill_width, bar_height), Color(0.9, 0.6, 0.2))
         draw_rect(Rect2(bar_x, bar_y, bar_width, bar_height), Color.WHITE, false)
 
-    # --- Прогресс-бар разведки чанка ---
+    # --- The chunk scouting progress bar ---
     if main_map.is_scouting and not main_map.scouting_chunk.is_empty():
         var scout_center_hex = main_map.scouting_chunk[0]
         if scout_center_hex.row == row and scout_center_hex.col == col:
@@ -203,10 +204,10 @@ func _is_resource_locked(resource_id: String) -> bool:
         return false
     var res_data = GameData.raw_resources.get(resource_id, {})
     var imp_id = res_data.get("improved_by", "")
-    # У части ресурсов (например, дикоросы foraged_food) improved_by задан
-    # как null — тогда .get() возвращает Nil, а не значение по умолчанию.
+    # For some resources (for example, foraged_food wild plants) improved_by is set
+    # as null — then .get() returns Nil, and not the default value.
     if imp_id == null:
         return false
-    # Ресурс считается заблокированным, если ещё не открыто улучшение, которое
-    # его добывает (improved_by), по его unlock_tech.
+    # A resource is considered locked if the improvement that
+    # extracts it (improved_by) has not yet been unlocked by its unlock_tech.
     return not CityData.is_improvement_unlocked(imp_id)

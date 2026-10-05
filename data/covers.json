@@ -7,11 +7,11 @@
       "color": [ 34, 139, 34 ],
       "alpha": 0.9,
       "move_cost_bonus": 0,
-      // Выход древесины с этого покрова (сколько единиц древесины даёт
-      // лесная делянка тут за тик). Чем гуще лес, тем больше выход.
-      // Лесная делянка строится на любом покрове с wood_yield > 0 —
-      // новые лесные покровы (джунгли, тайга и т.п.) достаточно наделить
-      // этим полем, код править не нужно. Отсутствие поля = выход 0.
+      // Wood yield of this cover (how many units of wood a forest plot here
+      // gives per tick). The denser the forest, the higher the yield.
+      // A forest plot can be built on any cover with wood_yield > 0 —
+      // new forest covers (jungle, taiga, etc.) only need this field,
+      // no code change is required. A missing field = yield of 0.
       "wood_yield": 1,
       "icons": [ "forest_1.png", "forest_2.png", "forest_3.png" ]
     },
@@ -54,12 +54,12 @@
       "color": [ 34, 139, 34 ],
       "alpha": 0.9,
       "move_cost_bonus": 0,
-      // Покров — прямой источник пресной воды: гекс с этим покровом
-      // (и его соседи) даёт воде схемы water_access статус "direct"
-      // без изучения технологий. Аналогичный флаг "fresh_water_source"
-      // задаётся у terrain в terrains.json (сейчас — у "lake"). Новые
-      // пресноводные источники достаточно наделить этим полем, код
-      // править не нужно.
+      // The cover is a direct source of fresh water: a hex with this cover
+      // (and its neighbours) gives the water_access scheme the status "direct"
+      // without any technology being researched. The equivalent flag
+      // "fresh_water_source" is set on terrain in terrains.json (currently —
+      // on "lake"). New fresh water sources only need to be given this field,
+      // no code change is required.
       "fresh_water_source": true,
       "icons": [ "oasis_1.png", "oasis_2.png" ]
     }

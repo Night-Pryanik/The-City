@@ -1,24 +1,24 @@
 # tech_popup.gd
-# Окно, появляющееся после завершения исследования технологии.
-# Показывает название технологии, список добавленных фич (description)
-# и историческую справку (flavor). Кнопки: "Ок" и
-# "Перейти к списку технологий".
+# A window that appears after the completion of a technology research.
+# It shows the technology name, the list of added features (description)
+# and a historical note (flavor). Buttons: "OK" and
+# "Go to the technology list".
 #
-# Окно работает и при get_tree().paused == true (PROCESS_MODE_ALWAYS),
-# чтобы игрок не мог взаимодействовать с картой, пока попап открыт.
+# The window works also when get_tree().paused == true (PROCESS_MODE_ALWAYS),
+# so that the player cannot interact with the map while the popup is open.
 extends Control
 
 var panel: Panel
 var title_label: Label
 var description_label: Label
 var flavor_label: Label
-var techs_btn: Button   # «Перейти к списку технологий» — скрываем, если игрок уже там
-# Подписи, которые не зависят от изученной технологии: держат ссылки, чтобы
-# переставить их на новом языке (см. _apply_static_text).
+var techs_btn: Button   # "Go to the technology list" — hidden if the player is already there
+# The labels that do not depend on the researched technology: they keep references
+# so that we can put them back on the new language (see _apply_static_text).
 var desc_title: Label
 var flavor_title: Label
 var ok_btn: Button
-# Что сейчас показано в окне — нужно, чтобы пересобрать его при смене языка.
+# What is currently shown in the window — needed to rebuild it on a language change.
 var _current_tech_id: String = ""
 var _current_found_resources: Array = []
 
@@ -27,7 +27,7 @@ signal go_to_technologies()
 func _ready():
     process_mode = Node.PROCESS_MODE_ALWAYS
 
-    # Затемнение фона
+    # Dimming of the background
     var dim = ColorRect.new()
     dim.color = Color(0, 0, 0, 0.5)
     dim.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -39,10 +39,10 @@ func _ready():
     add_child(center)
 
     panel = Panel.new()
-    # Размеры — min. Panel вырастет по высоте, если контента много,
-    # но никогда не сожмётся меньше этих значений. Ставим 560×520 вместо
-    # 560×420, чтобы окно по умолчанию было чуть выше и вмещало типичный
-    # длинный flavor-text без скролла.
+    # The dimensions — min. The Panel will grow in height if there is much content,
+    # but it will never shrink below these values. We set 560×520 instead of
+    # 560×420, so that the window by default is a bit taller and fits a typical
+    # long flavor text without scrolling.
     panel.custom_minimum_size = Vector2(560, 520)
     var style = StyleBoxFlat.new()
     style.bg_color = Color(0.13, 0.13, 0.13, 1.0)
@@ -66,11 +66,11 @@ func _ready():
     title_label.add_theme_color_override("font_color", Color(0.6, 1.0, 0.6))
     vbox.add_child(title_label)
 
-    # Длинный текст (description + flavor + resources) заворачиваем в
-    # ScrollContainer с size_flags_vertical = EXPAND_FILL: он займёт всё
-    # свободное место между заголовком и кнопками, а если контента больше,
-    # чем помещается — появится вертикальный скролл внутри. Кнопки при
-    # этом всегда прижаты к низу и не вылазят.
+    # We wrap the long text (description + flavor + resources) in a
+    # ScrollContainer with size_flags_vertical = EXPAND_FILL: it will take all
+    # the free space between the heading and the buttons, and if there is more
+    # content than fits — a vertical scroll will appear inside. The buttons
+    # are always pressed to the bottom and do not get out.
     var scroll = ScrollContainer.new()
     scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
     scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -115,15 +115,15 @@ func _ready():
     buttons.add_child(ok_btn)
 
     var techs_btn_local = Button.new()
-    techs_btn = techs_btn_local  # сохраняем ссылку для условного скрытия
+    techs_btn = techs_btn_local  # we save the reference for the conditional hiding
     techs_btn.custom_minimum_size = Vector2(260, 36)
     techs_btn.pressed.connect(_on_techs_pressed)
     buttons.add_child(techs_btn)
 
     _apply_static_text()
 
-# Подписи окна, не зависящие от технологии. Ставятся один раз при создании и
-# ещё раз при смене языка: узлы, собранные в коде, Godot сам не переводит.
+# The window labels that do not depend on the technology. They are set once on creation and
+# once more on a language change: the nodes built in code are not translated by Godot itself.
 func _apply_static_text():
     if desc_title:
         desc_title.text = tr("What the technology gives:")
@@ -134,8 +134,8 @@ func _apply_static_text():
     if techs_btn:
         techs_btn.text = tr("Go to the technology list")
 
-# Пересобирает окно на новом языке. Вызывается из LocalizationManager
-# (см. main_map._on_locale_changed); на скрытом окне ничего не делает.
+# Rebuilds the window on the new language. Called from LocalizationManager
+# (see main_map._on_locale_changed); it does nothing on a hidden window.
 func refresh() -> void:
     _apply_static_text()
     if visible and not _current_tech_id.is_empty():
@@ -150,7 +150,7 @@ func show_tech(tech_id: String, found_resources: Array = []):
     if tech_data == null:
         return
 
-    # Запоминаем, что показано: по этому окно пересобирается при смене языка.
+    # We remember what is shown: on this basis the window is rebuilt on a language change.
     _current_tech_id = tech_id
     _current_found_resources = found_resources
 
@@ -158,8 +158,8 @@ func show_tech(tech_id: String, found_resources: Array = []):
     description_label.text = tech_data.get("description", tr("No description."))
     flavor_label.text = tech_data.get("flavor", "")
 
-    # Если игрок уже на вкладке Технологии — кнопка «Перейти к списку
-    # технологий» бессмысленна, прячем её.
+    # If the player is already on the Technologies tab — the "Go to the technology
+    # list" button is meaningless, we hide it.
     if techs_btn:
         var main_map = get_tree().root.find_child("MainMap", true, false)
         var already_on_tab: bool = false
@@ -168,7 +168,7 @@ func show_tech(tech_id: String, found_resources: Array = []):
             already_on_tab = true
         techs_btn.visible = not already_on_tab
 
-    # Задаём размер корневого Control = размер viewport, чтобы оверлей покрывал всё
+    # We set the size of the root Control = the size of the viewport, so that the overlay covers everything
     var vp_size = get_viewport_rect().size
     size = vp_size
     position = Vector2.ZERO
@@ -176,7 +176,7 @@ func show_tech(tech_id: String, found_resources: Array = []):
 
 func _on_ok_pressed():
     hide()
-    # Возобновляем игру после закрытия попапа технологии.
+    # We resume the game after closing the technology popup.
     get_tree().paused = false
 
 func _on_techs_pressed():
@@ -184,8 +184,8 @@ func _on_techs_pressed():
     emit_signal("go_to_technologies")
 
 func _input(event):
-    # Обрабатываем ESC только когда попап открыт.
-    # Иначе скрытый попап перехватывает ESC и ломает меню паузы/настройки.
+    # We handle ESC only when the popup is open.
+    # Otherwise a hidden popup intercepts ESC and breaks the pause/settings menu.
     if not is_visible_in_tree():
         return
     if event.is_action_pressed("ui_cancel"):

@@ -1,54 +1,56 @@
 {
-  // Реестр профессионального потребления ресурсов.
+  // A registry of occupational resource consumption.
   //
-  // Здесь описывается, что и как часто расходуют профессии рабочих на
-  // улучшениях карты и в городских зданиях (см. docs.md, раздел
-  // «Профессии и потребление ресурсов»).
-  // Связь «профессия ↔ ресурс» задаётся через поле "profession".
+  // It describes what the worker professions consume on the map improvements
+  // and in the city buildings, and how often (see docs.md, the section
+  // "Professions and resource consumption").
+  // The "profession ↔ resource" link is set via the "profession" field.
   //
-  // Целевой ресурс ("resource") может быть:
-  //   * id одиночного продукта из data/products/*.json — например, "tools";
-  //   * ссылкой на группу продуктов из data/product_groups.json в формате
-  //     "@<id_группы>" — например, "@boats" (группа «Лодки»). В этом случае
-  //     списывается ЛЮБОЙ подходящий продукт из группы: сначала считается
-  //     суммарный запас по всем членам группы, затем список производится
-  //     жадно из имеющихся членов (приоритет качества "best"). Пока сумма
-  //     по группе покрывает "amount" — бонус действует; если нет — бонус
-  //     снимается, улучшение продолжает работать на базовом множителе.
+  // The target resource ("resource") can be:
+  //   * an id of a single product from data/products/*.json — for example, "tools";
+  //   * a reference to a product group from data/product_groups.json in the format
+  //     "@<group_id>" — for example, "@boats" (the "Boats" group). In that case
+  //     ANY suitable product from the group is written off: first the total
+  //     stock across all group members is summed, then the list is drawn
+  //     greedily from the available members (quality priority "best"). While the sum
+  //     over the group covers "amount" — the bonus applies; if not — the bonus
+  //     is removed and the improvement keeps working on the base multiplier.
   //
-  // Формат записи:
-  //   resource          — id продукта или "@id" группы (как в рецептах крафта).
-  //   profession        — массив id профессий, расходующих ресурс
-  //                       (data/professions.json). Один ресурс могут
-  //                       потреблять несколько профессий.
-  //   amount            — сколько единиц списывается за один «тик потребления».
-  //   interval          — период между списаниями в секундах (допустимы дробные).
-  //   production_bonus  — прибавка к множителю производства объекта, пока
-  //                       ресурса хватает на складе. 0.5 = +50% (x1.5).
-  //                       Бонусы ОДИНОЧНЫХ записей складываются между собой,
-  //                       а среди ГРУППОВЫХ берётся лучший доступный (один):
-  //                       группа «Лодки» даёт бонус от лучшего из доступных
-  //                       членов, а не ото всех сразу.
-  //                       Для псевдо-профессии "all" не применяется (0.0):
-  //                       городское потребление никакого бонуса не даёт.
+  // Entry format:
+  //   resource          — the product id or the group "@id" (as in craft recipes).
+  //   profession        — an array of profession ids that consume the resource
+  //                       (data/professions.json). Several professions may
+  //                       consume the same resource.
+  //   amount            — how many units are written off per one "consumption tick".
+  //   interval          — the period between write-offs in seconds (fractions allowed).
+  //   production_bonus  — an addition to the production multiplier of the object
+  //                       while the resource is enough in storage. 0.5 = +50% (x1.5).
+  //                       The bonuses of SINGLE entries add up to each other,
+  //                       while among GROUP ones the best available one is taken (just one):
+  //                       the "Boats" group gives the bonus of the best of the
+  //                       available members, not of all of them at once.
+  //                       It does not apply to the pseudo-profession "all" (0.0):
+  //                       city consumption gives no bonus at all.
   //
-  // Псевдо-профессия "all" (все жители города, вершина иерархии профессий):
-  //   Записи с "profession": ["all"] обрабатываются ОТДЕЛЬНО от по-гексовых:
-  //   списание идёт поголовно по CityData.total_population — amount в правиле
-  //   считается НА ОДНОГО жителя, суммарное списание за тик =
-  //   amount * total_population. Тикает не таймер гекса, а общий городской
-  //   таймер (worker_manager.tick_city_consumption в SIMULATION_TICK-е).
-  //   Списание идёт ПО ФАКТУ НАЛИЧИЯ: за попытку списывается min(есть на
-  //   складе, нужное количество) — ожидания полного покрытия нет. Если на
-  //   складе меньше нужного, списывается всё, что есть (таймер сбрасывается);
-  //   если склад пуст — таймер сохраняется, и всё, что появится, списывается
-  //   сразу на ближайшем тике.
+  // The pseudo-profession "all" (all citizens of the city, the top of the
+  // profession hierarchy):
+  //   Entries with "profession": ["all"] are processed SEPARATELY from the
+  //   per-hex ones: the write-off runs head-count based on CityData.total_population —
+  //   the amount in a rule is counted PER ONE citizen, the total write-off per tick =
+  //   amount * total_population. It is not the hex timer that ticks but the general
+  //   city timer (worker_manager.tick_city_consumption on SIMULATION_TICK).
+  //   The write-off runs ON THE FACT OF AVAILABILITY: per attempt
+  //   min(what is in storage, the required amount) is written off — there is no
+  //   waiting for full coverage. If there is less in
+  //   storage than required, everything there is written off (the timer is reset);
+  //   if storage is empty — the timer is kept, and whatever appears is written off
+  //   right away on the nearest tick.
   //
-  // Дублирование деклараций: если один и тот же ресурс описан и здесь, и в
-  // продукте (data/products/*.json, поле "consumption") для одной профессии,
-  // приоритет у записи из этого файла; повторная запись игнорируется.
-  // Потребление «от ресурса» оставлено для одиночных случаев, когда у
-  // продукта нет аналогов или группу собирать нецелесообразно.
+  // Duplicating declarations: if the same resource is described both here and in
+  // a product (data/products/*.json, the "consumption" field) for one profession,
+  // the entry from this file takes priority; the duplicate entry is ignored.
+  // "Resource-side" consumption is left for the single cases where a product
+  // has no analogue or assembling a group is not reasonable.
   "consumption": [
     {
       "resource": "@boats",
@@ -86,21 +88,21 @@
       "production_bonus": 0.0
     },
     {
-      // Учёный (Библиотека, Скрипторий). Письменные материалы он берёт
-      // рецептом «Наука» ("@writing_mediums", см. data/crafts/pseudo.json),
-      // а перья — СВЕРХ этого: пока перья есть на складе, наука здания
-      // начисляется с бонусом +25% (множитель ×1.25, см. docs.md, «Наука:
-      // производство и исследования»). Расход идёт только у РАБОТАЮЩЕГО
-      // здания (есть горожанин и хотя бы один непустой слот).
+      // The scientist (Library, Scriptorium). It takes writing materials
+      // with the "Science" recipe ("@writing_mediums", see data/crafts/pseudo.json),
+      // and feathers ON TOP of that: while feathers are in storage, the science
+      // of the building is credited with a +25% bonus (multiplier ×1.25, see
+      // docs.md, "Science: production and research"). The expense only applies
+      // to a WORKING building (there is a citizen and at least one non-empty slot).
       "resource": "feathers",
       "profession": [ "scientist" ],
       "amount": 10,
       "interval": 5,
       "production_bonus": 0.25
     }
-    // Чернила (продукт "ink") станут ВТОРОЙ одиночной записью учёного:
-    // бонусы одиночных записей складываются (перья +25% и чернила +25% →
-    // +50%). Раскомментировать, когда продукт появится в data/products/*.json:
+    // Ink (the "ink" product) will become the SECOND single entry of the
+    // scientist: the bonuses of single entries add up (feathers +25% and ink
+    // +25% → +50%). Uncomment when the product appears in data/products/*.json:
     // {
     //   "resource": "ink",
     //   "profession": [ "scientist" ],

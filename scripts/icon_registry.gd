@@ -1,61 +1,61 @@
-# icon_registry.gd (автозагрузка IconRegistry)
+# icon_registry.gd (IconRegistry autoload)
 #
-# ЕДИНСТВЕННЫЙ источник истины по иконкам: индекс имён файлов из res://icons
-# строится ОДИН раз за игру, а не в каждом модуле отдельно.
+# The SINGLE source of truth for icons: an index of file names from res://icons
+# is built ONCE per game, and not separately in every module.
 #
-# ПОЧЕМУ ТАК. Раньше рекурсивный обход res://icons был продублирован в восьми
-# местах (map_renderer, resources_tab, buildings_tab — дважды в одном файле,
-# building_panel, tech_tree, town_ui, trade_tab). Правила индексации при этом
-# расходились: где-то дубль перезаписывал путь, где-то игнорировался, где-то
-# печаталось предупреждение, а где-то нет; и половина индекса — это 288
-# файлов *.import, которые в индексе бесполезны. Хуже всего buildings_tab
-# собирал локальный индекс внутри _show_building_details, то есть обходил 576
-# файлов при каждом наведении на здание.
+# WHY IT IS LIKE THIS. Previously the recursive walk of res://icons was duplicated
+# in eight places (map_renderer, resources_tab, buildings_tab — twice in one file,
+# building_panel, tech_tree, town_ui, trade_tab). The indexing rules meanwhile
+# diverged: somewhere a duplicate overwrote the path, somewhere it was ignored,
+# somewhere a warning was printed, and somewhere not; and half of the index is
+# 288 *.import files, which are useless in the index. Worst of all, buildings_tab
+# built a local index inside _show_building_details, that is, it walked 576
+# files on every hover over a building.
 #
-# @tool обязателен: map_renderer.gd и main_map.gd помечены @tool и обращаются
-# к иконкам из редактора, а автозагрузка без @tool в дерево редактора не
-# попадает — сцена падала бы с «Identifier not found».
+# @tool is mandatory: map_renderer.gd and main_map.gd are marked @tool and access
+# the icons from the editor, and an autoload without @tool does not get
+# into the editor tree — the scene would fall with "Identifier not found".
 @tool
 extends Node
 
-# Корень, в котором ищутся иконки. В данных (data/*.json) хранится только имя
-# файла, поэтому индексируется basename, а не путь.
+# The root in which the icons are searched. The data (data/*.json) stores only the
+# file name, therefore the basename is indexed, and not the path.
 const ROOT := "res://icons"
 
-# Служебные файлы, попадающие в res://icons при обходе, но не являющиеся
-# иконками: *.import лежит рядом с картинкой, *.remap появляется в сборке.
-# Раньше они занимали половину индекса (288 из 576 записей).
+# Service files that get into res://icons during the walk but are not
+# icons: *.import lies next to the picture, *.remap appears in a build.
+# Previously they took up half of the index (288 of 576 entries).
 const SKIP_SUFFIXES := [".import", ".remap"]
 
-# Имя файла (basename) -> полный res://-путь.
+# The file name (basename) -> the full res:// path.
 var paths: Dictionary = {}
-# Имя файла -> загруженная Texture2D. Общий кэш на весь проект: раньше
-# одинаковые словари-кэши текстур жили в шести модулях.
+# The file name -> the loaded Texture2D. A common cache for the whole project:
+# previously identical texture cache dictionaries lived in six modules.
 var _textures: Dictionary = {}
-# Индекс уже построен — защита от повторного обхода (ленивая постройка).
+# The index is already built — protection against a repeated walk (lazy building).
 var _built := false
 
 func _ready() -> void:
     _ensure_built()
 
-# Ленивая постройка: страхует от обращения к реестру раньше _ready
-# (например, из @tool-сцены в редакторе или из headless-теста).
+# Lazy building: guards against an access to the registry before _ready
+# (for example, from an @tool scene in the editor or from a headless test).
 func _ensure_built() -> void:
     if _built:
         return
     build()
 
-# Перестраивает индекс с нуля. Идемпотентен: повторный вызов даёт тот же
-# результат (проверяется тестом). Нужен и для починки, и для теста.
+# Rebuilds the index from scratch. Idempotent: a repeated call gives the same
+# result (checked by a test). It is needed both for repairing and for the test.
 func build() -> void:
     paths.clear()
     var duplicates: Array = []
     _scan_folder(ROOT, duplicates)
     _built = true
     if not duplicates.is_empty():
-        # Одно предупреждение на все дубликаты: раньше каждая из восьми копий
-        # обхода печатала своё, а три из них молчали.
-        push_warning("IconRegistry: дубликаты имён иконок (первый путь оставлен): %s"
+        # A single warning for all duplicates: previously each of the eight copies
+        # of the walk printed its own, and three of them were silent.
+        push_warning("IconRegistry: duplicate icon names (the first path is kept): %s"
             % ", ".join(PackedStringArray(duplicates)))
 
 func _scan_folder(folder_path: String, duplicates: Array) -> void:
@@ -71,16 +71,16 @@ func _scan_folder(folder_path: String, duplicates: Array) -> void:
             var key := _index_key(file_name)
             if not key.is_empty():
                 if paths.has(key):
-                    # Дубль НЕ перезаписывает первый путь: иначе картинка из
-                    # вложенной папки молча подменяла бы ту же, что в корне.
+                    # A duplicate does NOT overwrite the first path: otherwise a picture from
+                    # a nested folder would silently replace the one in the root.
                     duplicates.append(key)
                 else:
                     paths[key] = folder_path.path_join(file_name)
         file_name = dir.get_next()
     dir.list_dir_end()
 
-# Имя, под которым файл попадает в индекс; "" — файл служебный, иконкой не
-# является. В данных хранится только имя файла, поэтому индексируется basename.
+# The name under which a file gets into the index; "" — the file is a service one,
+# it is not an icon. The data stores only the file name, therefore the basename is indexed.
 func _index_key(file_name: String) -> String:
     if file_name.begins_with("."):
         return ""
@@ -89,19 +89,19 @@ func _index_key(file_name: String) -> String:
             return ""
     return file_name
 
-# Есть ли иконка с таким именем файла.
+# Whether there is an icon with such a file name.
 func has(icon_name: String) -> bool:
     return paths.has(icon_name)
 
-# Полный res://-путь иконки; "" если файла нет. Нужен там, где движок ждёт
-# путь, а не текстуру: тег [img=…] в BBCode.
-# Имя НЕ get_path(): у Node этот метод уже занят возвратом NodePath.
+# The full res:// path of the icon; "" if the file does not exist. It is needed
+# where the engine expects a path and not a texture: the [img=…] tag in BBCode.
+# The name is NOT get_path(): for Node this method is already taken by returning NodePath.
 func icon_path(icon_name: String) -> String:
     _ensure_built()
     return paths.get(icon_name, "")
 
-# Текстура иконки с общим кэшем; null если имя пустое или файла нет
-# (тогда иконка просто не ставится).
+# The icon texture with a shared cache; null if the name is empty or the file does
+# not exist (then the icon is simply not set).
 func get_texture(icon_name: String) -> Texture2D:
     if icon_name.is_empty():
         return null
@@ -117,7 +117,7 @@ func get_texture(icon_name: String) -> Texture2D:
     _textures[icon_name] = tex
     return tex
 
-# Сколько иконок в индексе — для теста.
+# How many icons are in the index — for the test.
 func count() -> int:
     _ensure_built()
     return paths.size()

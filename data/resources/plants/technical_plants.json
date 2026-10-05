@@ -77,8 +77,10 @@
       "color": [ 150, 200, 150 ]
     },
     {
-      // Дабы не плодить лишних сущностей, под единой "Агавой" здесь подразумеваются разные виды агавы
-      // (агава американская, агава сизалевая, агава текильная и т.д.), которые в игре объединены в один ресурс.
+      // So as not to multiply needless entities, various agave species are meant
+      // here under the single "Agave"
+      // (American agave, sisal agave, tequila agave, etc.), which in the game
+      // are combined into one resource.
       "id": "agave_field", "price": 4,
       "name": "Agave",
       "type": "raw",

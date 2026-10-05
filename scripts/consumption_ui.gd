@@ -1,37 +1,38 @@
 # consumption_ui.gd
-# Общее представление ПРОФЕССИОНАЛЬНОГО ПОТРЕБЛЕНИЯ (data/consumption.json)
-# в интерфейсе: превращает записи GameData.get_profession_consumption() в
-# готовые строки показа вида «Перья: 2 шт./сек (+25% к производству)».
+# A common view of OCCUPATIONAL CONSUMPTION (data/consumption.json)
+# in the interface: it turns the GameData.get_profession_consumption() entries into
+# ready-made display rows of the kind "Feathers: 2 pcs/sec (+25% to production)".
 #
-# Единая точка правды для всех мест, где игрок видит расход профессии:
-#   * scripts/map_tooltip.gd    — расширенный тултип гекса и левая колонка
-#                                 панели управления (улучшения на карте);
-#   * scripts/buildings_tab.gd  — тултип деталей здания (вкладка «Здания»);
-#   * scripts/building_panel.gd — окно деталей здания.
-# Формат строки раньше жил внутри map_tooltip.gd, из-за чего каждое новое
-# место копипастило бы расчёт скорости и подписи.
+# A single source of truth for all the places where the player sees the expense
+# of a profession:
+#   * scripts/map_tooltip.gd    — the extended hex tooltip and the left column
+#                                 of the control panel (map improvements);
+#   * scripts/buildings_tab.gd  — the building details tooltip (the "Buildings" tab);
+#   * scripts/building_panel.gd — the building details window.
+# The row format used to live inside map_tooltip.gd, which is why each new
+# place would have copy-pasted the rate calculation and the labels.
 #
-# Само потребление не хранится здесь: только профессиональные записи
-# (см. docs.md, раздел «Профессии и потребление ресурсов»). Еда, корм
-# пастбищ и спрос рецептов зданий — это ДРУГОЕ потребление, в этих строках
-# не показывается.
+# The consumption itself is not stored here: only the occupational entries
+# (see docs.md, the section "Professions and resource consumption"). Food, pasture
+# feed and the recipe demand of buildings are DIFFERENT consumption, and it is not
+# shown in these rows.
 #
-# Публичный API:
-#   - format_rate(value)                        : String  — «2» / «0.5»
-#   - build_rows(prof_id, workers := 1)         : Array   — строки показа
-#   - build_rows_for_building(building_id, w := 1) : Array — то же по профессии здания
+# Public API:
+#   - format_rate(value)                        : String  — "2" / "0.5"
+#   - build_rows(prof_id, workers := 1)         : Array   — the display rows
+#   - build_rows_for_building(building_id, w := 1) : Array — the same by the building profession
 class_name ConsumptionUi
 
 
-# Форматирует скорость (ед./сек): целые значения без дробной части,
-# дробные — с одним знаком («1.5»).
+# Formats the rate (units/sec): integer values without a fractional part,
+# fractional ones with a single digit ("1.5").
 static func format_rate(value: float) -> String:
     if value == floor(value):
         return str(int(value))
     return "%.1f" % value
 
 
-# Русская форма числительного: 1 здание / 2 здания / 5 зданий.
+# The Russian form of the numeral: 1 building / 2 buildings / 5 buildings.
 static func _plural(count: int, one: String, few: String, many: String) -> String:
     var mod100 := count % 100
     if mod100 >= 11 and mod100 <= 14:
@@ -44,49 +45,49 @@ static func _plural(count: int, one: String, few: String, many: String) -> Strin
     return many
 
 
-# Собирает строки показа профессионального потребления профессии.
+# Assembles the display rows of the occupational consumption of a profession.
 #
-# workers — сколько РАБОЧИХ объектов делят одну и ту же профессию:
-#   1 (по умолчанию) — одно улучшение на карте или одно здание: скорость
-#     такая же, как в расширенном тултипе гекса;
-#   0 — рабочих объектов нет: скорость остаётся «на один объект», но в
-#     подписи добавляется «(рабочих зданий нет)» — так окно деталей зданий
-#     объясняет, почему при работающих слотах расхода не происходит;
-#   N > 1 — скорость умножается на N, в подписи появляется «(N здания)»
-#     (окно деталей зданий показывает сумму по рабочим постройкам).
+# workers — how many WORKING objects share the same profession:
+#   1 (by default) — one improvement on the map or one building: the rate
+#     is the same as in the extended hex tooltip;
+#   0 — there are no working objects: the rate remains "per one object", but
+#     "(no working buildings)" is added to the label — so that the building details window
+#     explains why there is no expense with working slots;
+#   N > 1 — the rate is multiplied by N, and "(N buildings)" appears in the label
+#     (the building details window shows the total over the working buildings).
 #
-# Каждая строка:
-#   { "display_key": String   — id продукта или "@группа" (ключ для UI),
-#     "name": String,          — имя продукта/группы,
-#     "icon": String,          — имя файла иконки ("" — иконки нет),
-#     "is_group": bool,        — групповая запись (списывается любой член),
-#     "per_sec": float,        — суммарная скорость расхода, ед./сек,
-#     "production_bonus": float, — 0.5 = +50% к производству; 0 = без бонуса,
+# Each row:
+#   { "display_key": String   — the product id or "@group" (the UI key),
+#     "name": String,          — the product/group name,
+#     "icon": String,          — the icon file name ("" — there is no icon),
+#     "is_group": bool,        — a group entry (any member is written off),
+#     "per_sec": float,        — the total rate of expense, units/sec,
+#     "production_bonus": float, — 0.5 = +50% to production; 0 = no bonus,
 #     "workers": int,
-#     "rate_label": String,    — «2 шт./сек (+25% к производству)»,
-#     "label": String }        — «Перья: 2 шт./сек (+25% к производству)»
+#     "rate_label": String,    — "2 pcs/sec (+25% to production)",
+#     "label": String }        — "Feathers: 2 pcs/sec (+25% to production)"
 static func build_rows(prof_id: String, workers: int = 1) -> Array:
     var rows: Array = []
     if prof_id.is_empty():
         return rows
-    # workers = 0 не обнуляет скорость: расход на один объект остаётся виден,
-    # отсутствие рабочих отражается только в подписи.
+    # workers = 0 does not zero the rate: the expense per one object stays visible,
+    # the absence of workers is reflected only in the label.
     var count := maxi(workers, 0)
     var multiplier := float(maxi(count, 1))
     for entry in GameData.get_profession_consumption(prof_id):
         var amount := int(entry.get("amount", 0))
         var interval := float(entry.get("interval", 0.0))
-        # Показ — посекундный: amount записи, делённый на её interval.
-        # interval = 0 означает «за тик», а тик симуляции равен секунде —
-        # делить не на что, скорость равна amount.
+        # The display is per second: the amount of the entry divided by its interval.
+        # interval = 0 means "per tick", and the simulation tick equals a second —
+        # there is nothing to divide by, the rate equals amount.
         var per_sec := float(amount) if interval <= 0.0 else float(amount) / interval
         per_sec *= multiplier
         var bonus := float(entry.get("production_bonus", 0.0))
         rows.append({
             "display_key": str(entry.get("display_key", entry.get("product_id", ""))),
             "name": str(entry.get("product_name", entry.get("product_id", ""))),
-            # Иконку кладёт GameData в обоих случаях: у продукта — своя,
-            # у группы — первая из членов, у которой иконка задана.
+            # GameData puts the icon in both cases: a product has its own,
+            # a group has the first of its members that has an icon set.
             "icon": str(entry.get("icon", "")),
             "is_group": bool(entry.get("is_group", false)),
             "per_sec": per_sec,
@@ -95,37 +96,40 @@ static func build_rows(prof_id: String, workers: int = 1) -> Array:
             "rate_label": _format_rate_label(per_sec, bonus, count),
         })
     for row in rows:
-        # Имя продукта добавляется здесь, а не в _format_rate_label(): места,
-        # где имя рисуется хелпером с иконкой (вкладка «Здания», окно здания),
-        # берут name/display_key и дописывают к строке «rate_label».
+        # The product name is added here, and not in _format_rate_label(): the places
+        # where the name is drawn by the helper with an icon (the "Buildings" tab,
+        # the building window) take name/display_key and append it to the
+        # "rate_label" row.
         row["label"] = "%s: %s" % [row["name"], row["rate_label"]]
     return rows
 
 
-# То же, что build_rows, но профессия берётся из самого здания (поле
-# "profession" в data/buildings.json). У здания без профессии — пустой
-# массив: работают по общей модели слотов, расходников не тратят.
+# The same as build_rows, but the profession is taken from the building itself (the
+# "profession" field in data/buildings.json). For a building without a profession —
+# an empty array: they work by the general slot model and do not spend supplies.
 static func build_rows_for_building(building_id: String, workers: int = 1) -> Array:
     if building_id.is_empty():
         return []
     return build_rows(GameData.get_profession_for_building(building_id), workers)
 
 
-# Часть строки после имени продукта: «2 шт./сек (+25% к производству)».
-# production_bonus выводится, чтобы игрок видел, зачем профессии этот
-# расходник: пока ресурса хватает, производство идёт с бонусом, при нехватке
-# — откатывается к базовому множителю (само производство не встаёт).
+# The part of the row after the product name: "2 pcs/sec (+25% to production)".
+# production_bonus is displayed so that the player sees why a profession needs
+# this supply: while the resource is enough, production goes with a bonus, and when
+# there is not enough — it rolls back to the base multiplier (the production itself
+# does not stop).
 static func _format_rate_label(per_sec: float, bonus: float, workers: int) -> String:
     var text := TranslationServer.translate("%s units/sec") % format_rate(per_sec)
     if workers > 1:
-        # Расход делят несколько рабочих объектов одного типа — показываем
-        # сумму и сколько её даёт (окно деталей зданий).
+        # Several working objects of one type share the expense — we show
+        # the total and how much it gives (the building details window).
         #
-        # Три формы множественного числа различаются КОНТЕКСТОМ, а не разными
-        # английскими словами: по-английски «buildings» одно слово, по-русски
-        # это «здания» (2-4) и «зданий» (5+). В статической функции нельзя
-        # вызвать tr_n(), зато работает TranslationServer.translate() с
-        # контекстом — см. соответствующие записи в каталоге locale/<код>.po.
+        # The three plural forms are distinguished by CONTEXT, and not by different
+        # English words: in English "buildings" is a single word, while Russian
+        # needs "здания" (2-4) and "зданий" (5+) — the exact msgstr values are
+        # listed in the ru catalog. In a static function it is not
+        # possible to call tr_n(), but TranslationServer.translate() with
+        # a context works — see the corresponding entries in the locale/<code>.po catalog.
         text += " (%d %s)" % [workers, _plural(workers,
             TranslationServer.translate("building", "consumption_buildings_one"),
             TranslationServer.translate("buildings", "consumption_buildings_few"),

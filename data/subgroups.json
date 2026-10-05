@@ -1,5 +1,8 @@
-// "Здесь перечисляются подгруппы ресурсов, которые будут учитываться при работе механики бонусов за разнообразие и при перечислении одомашненных видов растений и животных.
-// Не путать с product_groups.json: здесь группы для бонусов, там — реестр групп для использования в рецептах и при учете потребления профессиями
+// The resource subgroups that are counted when the diversity bonus mechanic
+// runs, and when listing domesticated plant and animal species.
+// Do not confuse this with product_groups.json: this file holds groups for
+// bonuses, that one is a registry of groups used in recipes and in accounting
+// for consumption by professions
 {
   "groups": [
     {"id": "meat_animals", "name": "Meat Animals"},

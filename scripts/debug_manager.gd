@@ -1,39 +1,39 @@
 # debug_manager.gd
-# Дебаг-меню: открывается/закрывается по F9.
-# Окно можно перетаскивать за заголовок. Взаимодействие с картой
-# под окном блокируется, пока меню открыто.
+# The debug menu: opened/closed with F9.
+# The window can be dragged by its title. Interaction with the map
+# under the window is blocked while the menu is open.
 extends Control
 
 var main_map: Node
 var is_open: bool = false
 
-# Дебаг-меню открыто и показывает главное меню (не подменю выбора ресурса).
-# Используется, чтобы цифровые хоткеи срабатывали только на пунктах главного
-# меню, не конфликтуя с подэкранами.
+# The debug menu is open and shows the main menu (and not the resource selection submenu).
+# It is used so that the number hotkeys fire only on the main menu items,
+# without conflicting with the sub-screens.
 var _in_main_menu: bool = true
-# Кнопка «Переключение потребления еды» — хранится, чтобы обновлять её
-# текст при смене состояния (иначе список перерисовывается на горячей
-# клавише и кнопка теряется).
+# The "Toggle food consumption" button — it is kept in order to update its
+# text when the state changes (otherwise the list is redrawn on the hotkey
+# and the button is lost).
 var _food_toggle_btn: Button
-# Кнопка «Не учитывать требования технологий» — аналогично, хранится для
-# обновления текста (состояние ВКЛ/ВЫКЛ) без полной перерисовки меню.
+# The "Ignore technology requirements" button — similarly, it is kept for
+# updating the text (the ON/OFF state) without a full redraw of the menu.
 var _ignore_tech_btn: Button
-# Кнопка «Игнорировать требования строительства» — хранится, чтобы обновлять
-# её текст при смене состояния (ВКЛ/ВЫКЛ) без полной перерисовки меню.
+# The "Ignore building requirements" button — it is kept so that we can update
+# its text when the state changes (ON/OFF) without a full redraw of the menu.
 var _ignore_build_btn: Button
 
-# Режим ожидания клика по гексу для размещения ресурса.
+# The mode of waiting for a click on a hex to place a resource.
 var waiting_for_hex: bool = false
 var pending_resource_id: String = ""
 
-# UI-элементы
+# UI elements
 var _panel: Panel
 var _title_bar: Panel
 var _title_label: Label
 var _content_vbox: VBoxContainer
 var _status_label: Label
 
-# Перетаскивание окна за заголовок
+# Dragging the window by its title
 var _dragging: bool = false
 var _drag_offset: Vector2 = Vector2.ZERO
 
@@ -46,12 +46,12 @@ func initialize(main_node: Node):
     hide()
 
 func _build_ui():
-    # Корневой Control занимает весь экран и перехватывает ввод,
-    # блокируя взаимодействие с картой под окном.
+    # The root Control occupies the whole screen and intercepts the input,
+    # blocking interaction with the map under the window.
     set_anchors_preset(Control.PRESET_FULL_RECT)
     mouse_filter = Control.MOUSE_FILTER_STOP
 
-    # Панель окна
+    # The window panel
     _panel = Panel.new()
     _panel.position = Vector2(180, 0)
     _panel.size = WINDOW_SIZE
@@ -67,7 +67,7 @@ func _build_ui():
     style.border_color = Color(0.5, 0.5, 0.5)
     _panel.add_theme_stylebox_override("panel", style)
 
-    # Заголовок (перетаскивание)
+    # The title (dragging)
     _title_bar = Panel.new()
     _title_bar.position = Vector2(0, 0)
     _title_bar.size = Vector2(WINDOW_SIZE.x, TITLE_HEIGHT)
@@ -79,16 +79,16 @@ func _build_ui():
     _title_bar.add_theme_stylebox_override("panel", title_style)
 
     _title_label = Label.new()
-    _title_label.text = "Дебаг-меню"
+    _title_label.text = "Debug menu"
     _title_label.position = Vector2(8, 6)
     _title_label.add_theme_color_override("font_color", Color.WHITE)
     _title_label.add_theme_font_size_override("font_size", 16)
     _title_bar.add_child(_title_label)
 
-    # Перетаскивание окна за заголовок
+    # Dragging the window by its title
     _title_bar.gui_input.connect(_on_title_bar_gui_input)
 
-    # Прокручиваемый контейнер содержимого
+    # The scrollable content container
     var scroll = ScrollContainer.new()
     scroll.position = Vector2(10, TITLE_HEIGHT + 10)
     scroll.size = Vector2(WINDOW_SIZE.x - 20, WINDOW_SIZE.y - TITLE_HEIGHT - 20)
@@ -101,7 +101,7 @@ func _build_ui():
     _content_vbox.mouse_filter = Control.MOUSE_FILTER_STOP
     scroll.add_child(_content_vbox)
 
-    # Статусная строка (подсказки)
+    # The status row (hints)
     _status_label = Label.new()
     _status_label.text = ""
     _status_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.5))
@@ -115,57 +115,59 @@ func _show_main_menu():
     _status_label.text = ""
     _in_main_menu = true
 
-    var add_resource_btn = _make_button("[1] Добавить ресурс на карту")
+    var add_resource_btn = _make_button("[1] Add a resource to the map")
     add_resource_btn.pressed.connect(_on_add_resource_pressed)
     _content_vbox.add_child(add_resource_btn)
 
-    var next_era_btn = _make_button("[2] Перейти в следующую эпоху")
+    var next_era_btn = _make_button("[2] Go to the next era")
     next_era_btn.pressed.connect(_on_next_era_pressed)
     _content_vbox.add_child(next_era_btn)
 
-    var open_map_btn = _make_button("[3] Открыть всю карту")
+    var open_map_btn = _make_button("[3] Open the whole map")
     open_map_btn.pressed.connect(_on_open_whole_map_pressed)
     _content_vbox.add_child(open_map_btn)
 
-    # Переключение потребления еды: 1-й клик — жители перестают есть,
-    # повторный — снова начинают. Текст кнопки отражает текущее состояние.
+    # Toggling food consumption: the 1st click — the citizens stop eating,
+    # a repeated one — they start eating again. The button text reflects the
+    # current state.
     _food_toggle_btn = _make_button(_food_toggle_label())
     _food_toggle_btn.pressed.connect(_on_toggle_food_consumption_pressed)
     _content_vbox.add_child(_food_toggle_btn)
 
-    var add_food_btn = _make_button("[5] Добавить 100 еды")
+    var add_food_btn = _make_button("[5] Add 100 food")
     add_food_btn.pressed.connect(_on_add_food_pressed)
     _content_vbox.add_child(add_food_btn)
 
-    # Переключение учёта требований технологий: включаем — изучение не
-    # проверяет ни prerequisites, ни ограничение по эпохам.
+    # Toggling the accounting of technology requirements: when enabled — the
+    # research checks neither the prerequisites nor the era restriction.
     _ignore_tech_btn = _make_button(_ignore_tech_label())
     _ignore_tech_btn.pressed.connect(_on_toggle_ignore_tech_requirements_pressed)
     _content_vbox.add_child(_ignore_tech_btn)
 
-    # Переключение игнорирования требований строительства: включаем — все
-    # здания в городе и все улучшения на карте строятся мгновенно, для
-    # зданий пропускаются проверки дополнительных материалов и условий.
+    # Toggling the ignoring of building requirements: when enabled — all
+    # buildings in the city and all improvements on the map are built
+    # instantly, and for buildings the checks of additional materials and
+    # conditions are skipped.
     _ignore_build_btn = _make_button(_ignore_build_label())
     _ignore_build_btn.pressed.connect(_on_toggle_ignore_build_requirements_pressed)
     _content_vbox.add_child(_ignore_build_btn)
 
-    # Заглушка для будущих действий (можно расширять)
-    var close_btn = _make_button("[0] Закрыть (F9)")
+    # A stub for future actions (can be extended)
+    var close_btn = _make_button("[0] Close (F9)")
     close_btn.pressed.connect(toggle)
     _content_vbox.add_child(close_btn)
 
 func _show_resource_list():
     _clear_content()
-    _status_label.text = "Выберите ресурс:"
+    _status_label.text = "Select a resource:"
     _in_main_menu = false
 
-    var back_btn = _make_button("← Назад")
+    var back_btn = _make_button("← Back")
     back_btn.pressed.connect(_show_main_menu)
     _content_vbox.add_child(back_btn)
 
-    # Список всех ресурсов из GameData.raw_resources,
-    # отсортированный по алфавиту по отображаемому названию
+    # The list of all resources from GameData.raw_resources,
+    # sorted alphabetically by the display name
     var entries = []
     for res_id in GameData.raw_resources.keys():
         var res_name = GameData.raw_resources[res_id].get("name", res_id)
@@ -180,9 +182,9 @@ func _show_resource_list():
         _content_vbox.add_child(btn)
 
 func _on_next_era_pressed():
-    # Инфраструктура расширения: весь текущий Регион бесплатно исследуется
-    # и присоединяется, бывшее Кольцо+Регион становится новым Кольцом,
-    # вокруг него формируется новый Регион той же ширины.
+    # The expansion infrastructure: the whole current Region is explored
+    # and joined for free, the former Ring+Region becomes the new Ring,
+    # and a new Region of the same width is formed around it.
     if main_map and main_map.has_method("advance_to_next_era"):
         main_map.advance_to_next_era()
 
@@ -193,9 +195,9 @@ func _on_open_whole_map_pressed():
     if main_map and main_map.has_method("debug_open_whole_map"):
         main_map.debug_open_whole_map()
 
-# Вызывается из main_map._input по цифровой горячей клавише 1..9, 0.
-# Срабатывает только на главном меню дебага (не на подэкранах выбора ресурса
-# и не во время ожидания клика по гексу).
+# Called from main_map._input by the number hotkey 1..9, 0.
+# It fires only on the debug main menu (and not on the resource selection
+# sub-screens and not while waiting for a click on a hex).
 func trigger_hotkey(num: int):
     if not is_open or waiting_for_hex or not _in_main_menu:
         return
@@ -218,15 +220,15 @@ func trigger_hotkey(num: int):
             close()
 
 func _on_toggle_ignore_tech_requirements_pressed():
-    # Инвертируем дебаг-флаг CityData.ignore_tech_requirements: он снимает
-    # проверку prerequisites И ограничение по эпохам. Флаг не сохраняется в
-    # сейв (см. CityData). Включённый режим требует доступности пересчитанных
-    # кнопок дерева, поэтому эмитим city_updated для обновления UI.
+    # We invert the debug flag CityData.ignore_tech_requirements: it removes
+    # the check of the prerequisites AND the era restriction. The flag is not saved
+    # in the save (see CityData). The enabled mode requires the availability of the
+    # recalculated tree buttons, therefore we emit city_updated to update the UI.
     CityData.ignore_tech_requirements = not CityData.ignore_tech_requirements
 
-    var msg := "Требования технологий учтены: снова учитываются prerequisites и эпохи."
+    var msg := "Technology requirements are taken into account: the prerequisites and eras are accounted for again."
     if CityData.ignore_tech_requirements:
-        msg = "Требования технологий игнорируются: все prerequisites и ограничения по эпохам сняты."
+        msg = "Technology requirements are ignored: all prerequisites and era restrictions are removed."
     if main_map.hud and main_map.hud.has_method("show_message"):
         main_map.hud.show_message(msg)
 
@@ -235,25 +237,27 @@ func _on_toggle_ignore_tech_requirements_pressed():
     CityData.emit_signal("city_updated")
 
 func _ignore_tech_label() -> String:
-    var state := "ВЫКЛЮЧЕНО"
+    var state := "OFF"
     if CityData.ignore_tech_requirements:
-        state = "ВКЛЮЧЕНО"
-    return "[6] Игнорировать требования технологий (сейчас: %s)" % state
+        state = "ON"
+    return "[6] Ignore technology requirements (now: %s)" % state
 
 func _on_toggle_ignore_build_requirements_pressed():
-    # Инвертируем дебаг-флаг CityData.ignore_build_requirements: он включает
-    # мгновенное и бесплатное выполнение ВСЕХ действий, тратящих время или
-    # ресурсы, — здания и их улучшения, улучшения и спецдействия на карте
-    # (вырубка леса, сбор дикоросов, осушение болот, снос, дорога), разведку
-    # и освоение территории; для зданий дополнительно снимаются проверки
-    # материалов (additional_cost) и условий (additional_req). Технологические
-    # требования (unlock_tech) он не отменяет — это отдельный переключатель.
-    # Флаг не сохраняется в сейв (см. CityData).
+    # We invert the debug flag CityData.ignore_build_requirements: it enables
+    # the instant and free execution of ALL actions that spend time or
+    # resources — buildings and their upgrades, improvements and special
+    # actions on the map (logging, foraging, draining swamps, demolition,
+    # road), scouting
+    # and territory claim; for buildings the checks of
+    # materials (additional_cost) and conditions (additional_req) are also
+    # removed. It does not cancel the technological
+    # requirements (unlock_tech) — that is a separate switch.
+    # The flag is not saved in the save (see CityData).
     CityData.ignore_build_requirements = not CityData.ignore_build_requirements
 
-    var msg := "Требования строительства учитываются: действия идут по времени и за ресурсы."
+    var msg := "Building requirements are taken into account: the actions take time and resources."
     if CityData.ignore_build_requirements:
-        msg = "Требования строительства игнорируются: всё выполняется мгновенно и бесплатно."
+        msg = "Building requirements are ignored: everything is executed instantly and for free."
     if main_map.hud and main_map.hud.has_method("show_message"):
         main_map.hud.show_message(msg)
 
@@ -262,53 +266,53 @@ func _on_toggle_ignore_build_requirements_pressed():
     CityData.emit_signal("city_updated")
 
 func _ignore_build_label() -> String:
-    var state := "ВЫКЛЮЧЕНО"
+    var state := "OFF"
     if CityData.ignore_build_requirements:
-        state = "ВКЛЮЧЕНО"
-    return "[7] Игнорировать требования строительства (сейчас: %s)" % state
+        state = "ON"
+    return "[7] Ignore building requirements (now: %s)" % state
 
 func _on_add_food_pressed():
-    # Добавляем 100 единиц еды на склад (пшеница — продукт категории food,
-    # входит в city_food_pool и учитывается как Еда). Используем публичный
-    # хелпер, чтобы детализация качества склада оставалась консистентной.
+    # We add 100 units of food to storage (wheat is a product of the food category,
+    # it is included in city_food_pool and is counted as Food). We use the public
+    # helper so that the storage quality breakdown stays consistent.
     CityData.add_to_storage("wheat", 100)
     if main_map.hud and main_map.hud.has_method("show_message"):
-        main_map.hud.show_message("Добавлено 100 еды")
+        main_map.hud.show_message("Added 100 food")
     if main_map.city_ui and main_map.city_ui.visible:
         main_map.city_ui.refresh()
     if main_map.map_renderer:
         main_map.map_renderer.queue_redraw()
 
 func _on_toggle_food_consumption_pressed():
-    # Инвертируем флаг потребления еды у населения (CityData.do_tick читает
-    # его перед списанием еды со склада). Сам флаг не сохраняется в сейв.
+    # We invert the flag of food consumption by the population (CityData.do_tick reads
+    # it before writing off food from storage). The flag itself is not saved in the save.
     var now_enabled = not CityData.food_consumption_enabled
     CityData.food_consumption_enabled = now_enabled
 
-    var msg := "Потребление еды выключено: жители перестали есть."
+    var msg := "Food consumption is disabled: the citizens have stopped eating."
     if now_enabled:
-        msg = "Потребление еды включено: жители снова едят."
+        msg = "Food consumption is enabled: the citizens are eating again."
     if main_map.hud and main_map.hud.has_method("show_message"):
         main_map.hud.show_message(msg)
 
-    # Обновляем текст кнопки в живую (без полной перерисовки меню)
+    # We update the button text in place (without a full redraw of the menu)
     if _food_toggle_btn:
         _food_toggle_btn.text = _food_toggle_label()
 
 func _food_toggle_label() -> String:
-    var state := "ВЫКЛЮЧЕНО"
+    var state := "OFF"
     if CityData.food_consumption_enabled:
-        state = "ВКЛЮЧЕНО"
-    return "[4] Переключение потребления еды (сейчас: %s)" % state
+        state = "ON"
+    return "[4] Toggle food consumption (now: %s)" % state
 
 func _on_resource_selected(res_id: String):
     pending_resource_id = res_id
     waiting_for_hex = true
     _clear_content()
     var res_name = GameData.raw_resources.get(res_id, {}).get("name", res_id)
-    _status_label.text = "Кликните ЛКМ по гексу, чтобы разместить: %s" % res_name
+    _status_label.text = "Left-click on a hex to place: %s" % res_name
 
-    var cancel_btn = _make_button("Отмена")
+    var cancel_btn = _make_button("Cancel")
     cancel_btn.pressed.connect(_cancel_waiting)
     _content_vbox.add_child(cancel_btn)
 
@@ -327,28 +331,28 @@ func handle_hex_click(row: int, col: int):
     var old_res = tile.get("resource", null)
     tile["resource"] = pending_resource_id
     tile["quality"] = GameData.roll_quality()
-    # Если на гексе было разводимое животное/растение (crop_bred), оно
-    # конфликтует с новым природным ресурсом — сбрасываем. Иначе под старым
-    # улучшением production-цикл мог бы смешать два разных ресурса.
+    # If there was a breedable animal/plant on the hex (crop_bred), it
+    # conflicts with the new natural resource — we reset it. Otherwise under the old
+    # improvement the production cycle could mix two different resources.
     var old_crop = tile.get("crop_bred", null)
     if old_crop != null:
         tile["crop_bred"] = null
 
     var res_name = GameData.raw_resources.get(pending_resource_id, {}).get("name", pending_resource_id)
-    var msg = "Ресурс %s размещён на гексе (%d, %d)" % [res_name, row, col]
+    var msg = "Resource %s placed on the hex (%d, %d)" % [res_name, row, col]
     if old_res != null:
         var old_name = GameData.raw_resources.get(old_res, {}).get("name", old_res)
-        msg += " (заменён: %s)" % old_name
+        msg += " (replaced: %s)" % old_name
     if old_crop != null:
         var crop_name = GameData.raw_resources.get(old_crop, {}).get("name", old_crop)
-        msg += " (сброшено разведение: %s)" % crop_name
+        msg += " (breeding reset: %s)" % crop_name
 
     if main_map.hud and main_map.hud.has_method("show_message"):
         main_map.hud.show_message(msg)
 
     main_map.map_renderer.queue_redraw()
 
-    # Возврат в главное меню
+    # Return to the main menu
     waiting_for_hex = false
     pending_resource_id = ""
     _show_main_menu()
@@ -382,9 +386,9 @@ func _clear_content():
 func _make_button(text: String) -> Button:
     var btn = Button.new()
     btn.text = text
-    # Текст выравниваем по левому краю и разрешаем перенос по словам, чтобы
-    # длинные надписи не выходили за пределы окна меню (кнопки растянуты
-    # на ширину контейнера, поэтому перенос происходит внутри окна).
+    # We align the text to the left edge and allow word wrapping, so that
+    # long labels do not go beyond the menu window (the buttons are stretched
+    # to the container width, therefore the wrapping happens inside the window).
     btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
     btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     btn.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
@@ -393,7 +397,7 @@ func _make_button(text: String) -> Button:
     btn.mouse_filter = Control.MOUSE_FILTER_STOP
     return btn
 
-# --- Перетаскивание окна за заголовок ---
+# --- Dragging the window by its title ---
 func _on_title_bar_gui_input(event: InputEvent):
     if event is InputEventMouseButton:
         if event.button_index == MOUSE_BUTTON_LEFT:
@@ -405,7 +409,7 @@ func _on_title_bar_gui_input(event: InputEvent):
     elif event is InputEventMouseMotion:
         if _dragging:
             _panel.position = event.global_position + _drag_offset
-            # Ограничиваем окно в пределах экрана
+            # We limit the window within the screen bounds
             var viewport_size = get_viewport_rect().size
             _panel.position.x = clamp(_panel.position.x, 0, max(0, viewport_size.x - _panel.size.x))
             _panel.position.y = clamp(_panel.position.y, 0, max(0, viewport_size.y - _panel.size.y))

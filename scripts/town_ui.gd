@@ -1,21 +1,21 @@
 # town_ui.gd
-# Интерфейс городка (мелкого поселения) — окно торговли.
-# Открывается из панели управления (кнопка действия на гексе городка)
-# или двойным кликом по гексу городка на карте (см. InputHandler).
+# The town (small settlement) interface — the trade window.
+# It is opened from the control panel (the action button on a town hex)
+# or by a double click on the town hex on the map (see InputHandler).
 #
-# Начальный этап: окно с заголовком (название городка) и двумя колонками
-# «Покупка» и «Продажа». Окно не на весь экран — фиксированная раскладка
-# задана прямо в сцене TownUI.tscn, без кода во время рантайма.
+# Initial stage: a window with a heading (the town name) and two columns
+# "Buy" and "Sell". The window is not fullscreen — the fixed layout
+# is set right in the TownUI.tscn scene, without any code at runtime.
 #
-# Списки лежат внутри ScrollContainer (см. BuyScroll/SellScroll в сцене):
-# пул продажи у городка — это десятки строк, и без прокрутки они вылезали
-# за нижний край окна прямо на карту.
+# The lists are inside ScrollContainers (see BuyScroll/SellScroll in the scene):
+# the sell pool of a town is dozens of rows, and without scrolling they spilled
+# past the bottom edge of the window right onto the map.
 extends Control
 
 signal closed()
 
-# Минимальная высота строки списка. Равна высоте иконки (28 px): подпись с
-# переносом строки не должна прижимать иконку и следующую строку.
+# The minimum height of a list row. It equals the icon height (28 px): a label with
+# a line wrap should not squeeze the icon and the next row.
 const ROW_HEIGHT := 28
 
 @onready var window_panel = $WindowPanel
@@ -26,54 +26,55 @@ const ROW_HEIGHT := 28
 @onready var sell_scroll = $WindowPanel/ColumnsHBox/SellColumn/SellScroll
 @onready var buy_list = $WindowPanel/ColumnsHBox/BuyColumn/BuyScroll/BuyList
 @onready var sell_list = $WindowPanel/ColumnsHBox/SellColumn/SellScroll/SellList
-# Иконки ресурсов берутся из общего реестра IconRegistry (автозагрузка):
-# индекс строится один раз за игру, а не в каждом открытии окна.
-# Текущий городок (запись из town_manager.towns). null — окно закрыто.
+# The resource icons are taken from the common IconRegistry registry (autoload):
+# the index is built once per game, and not on every window opening.
+# The current town (an entry from town_manager.towns). null — the window is closed.
 var _town = null
-# Доступна ли торговля с этим городком (town_manager.is_trade_available).
-# Пока сама торговля не реализована, это только строка-статус под названием:
-# окно открывается и без дороги — видно, что у городка есть на продажу и
-# на покупку. Когда появится реальная торговля, этот флаг начнёт решать,
-# можно ли покупать и продавать (см. town_manager.is_trade_available).
+# Whether trade with this town is available (town_manager.is_trade_available).
+# While the trade itself is not implemented, this is only a status row under the name:
+# the window opens even without a road — you can see what the town has for sale and
+# what it wants to buy. When real trade appears, this flag will decide
+# whether buying and selling are possible (see town_manager.is_trade_available).
 var _trade_available := true
 func _ready():
     if close_button:
         close_button.pressed.connect(close_town)
 
-# Открывает окно интерфейса для городка.
-# town — запись городка из town_manager.towns (поля row, col, name, ...).
-# trade_available — доступна ли торговля с ним (по умолчанию true: окно
-# открывается всегда, см. поле _trade_available).
+# Opens the interface window for a town.
+# town — a town entry from town_manager.towns (the row, col, name, ... fields).
+# trade_available — whether trade with it is available (true by default: the window
+# always opens, see the _trade_available field).
 func open_town(town: Dictionary, trade_available: bool = true):
     _town = town
     _trade_available = trade_available
     _refresh()
     show()
 
-# Обновляет содержимое окна по текущему городку.
+# Updates the window contents for the current town.
 func _refresh():
     if _town == null:
         return
     title_label.text = str(_town.get("name", tr("Town")))
     if status_label:
-        # Статус торговли — пока только подпись. Пустая строка при доступной
-        # торговле: «всё в порядке, ничего сообщать не нужно».
+        # The trade status — for now only a label. An empty row when trade is
+        # available: "everything is fine, there is nothing to report".
         status_label.text = "" if _trade_available \
                 else tr("Trade unavailable: there is no road from the city to this town")
         status_label.visible = not status_label.text.is_empty()
     _fill_resource_list(buy_list, _town.get("buy_pool", []), tr("The town buys nothing"))
     _fill_resource_list(sell_list, _town.get("sell_pool", []), tr("No resources in the influence ring"))
 
-# Заполняет колонку одной строкой на каждый ресурс торгового пула.
-# Пул продажи содержит id ресурсов, поэтому имя берём из общего справочника.
+# Fills the column with one row per resource of the trade pool.
+# The sell pool contains resource ids, therefore the name is taken from the
+# common reference.
 #
-# Строки с одинаковым отображаемым именем показываются один раз. Основная
-# защита живёт в данных: пул строится из ПРОДУКЦИИ ресурсов (см.
-# TownEconomy.collect_base_resources), поэтому «две пшеницы» из-за поля и
-# зерна там уже невозможны. Но в данных есть ровно одна пара, где разные id
-# называются одинаково: papyrus_plant (выращивается на papyrus_field) и
-# papyrus (крафтится из него) оба зовутся «Papyrus» — и оба могут попасть в
-# пул одного городка. Игроку дважды показать «Papyrus» нельзя.
+# Rows with the same display name are shown only once. The main
+# protection lives in the data: the pool is built from the PRODUCTION of resources
+# (see TownEconomy.collect_base_resources), therefore "two wheats" due to a field and
+# grain are already impossible there. But in the data there is exactly one pair where different ids
+# are called the same: papyrus_plant (grown on papyrus_field) and
+# papyrus (crafted from it) are both called "Papyrus" — and both can get into
+# the pool of one town. Showing "Papyrus" to the player twice is not allowed.
 func _fill_resource_list(container: VBoxContainer, pool, empty_text: String) -> void:
     if container == null:
         return
@@ -98,9 +99,9 @@ func _fill_resource_list(container: VBoxContainer, pool, empty_text: String) -> 
         shown_names[display_name] = true
         var resource_row := HBoxContainer.new()
         resource_row.add_theme_constant_override("separation", 6)
-        # Строка не должна схлопываться, даже если подпись не влезла в одну
-        # строку и перенеслась: без минимума по высоте строки наезжали друг на
-        # друга (см. autowrap у resource_label ниже).
+        # The row must not collapse, even if the label did not fit into one
+        # line and wrapped: without the row height minimum they overlapped each
+        # other (see autowrap on resource_label below).
         resource_row.custom_minimum_size = Vector2(0, ROW_HEIGHT)
         var icon_name := _get_resource_icon_name(id)
         var icon_tex := IconRegistry.get_texture(icon_name)
@@ -129,19 +130,19 @@ func _get_resource_display_name(resource_id: String) -> String:
     var display_name := str(resource_data.get("name", ""))
     if not display_name.is_empty():
         return display_name
-    # Защита для открытия окна в момент, когда общий загрузчик ещё не успел
-    # заполнить GameData: всё равно показываем не ID, а доступное имя.
+    # A guard for opening the window at the moment when the common loader has not yet
+    # filled GameData: we still show not the ID but the available name.
     var raw_data: Dictionary = GameData.raw_resources.get(resource_id, {})
     if not raw_data.is_empty():
         return str(raw_data.get("name", resource_id))
     var product_data: Dictionary = GameData.products.get(resource_id, {})
     return str(product_data.get("name", resource_id))
 
-# Закрывает окно интерфейса городка. Эмитит closed — main_map вернёт
-# HUD и панель управления (см. main_map._on_town_ui_close).
-# Отображаемые имена строк, которые сейчас показаны в контейнере.
-# Служебный доступ для тестов: проверка «двух одинаковых названий в списке»
-# читает именно то, что видит игрок (см. tests/test_town_economy.gd).
+# Closes the town interface window. It emits closed — main_map will return
+# the HUD and the control panel (see main_map._on_town_ui_close).
+# The display names of the rows that are currently shown in the container.
+# Service access for tests: the "two identical names in the list" check
+# reads exactly what the player sees (see tests/test_town_economy.gd).
 func _visible_row_names(container: VBoxContainer) -> Array:
     var names: Array = []
     if container == null:

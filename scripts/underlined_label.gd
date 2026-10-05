@@ -1,12 +1,12 @@
 # underlined_label.gd
-# Label с подчёркнутой частью текста (например, названием группы продуктов).
-# Используется в ui_helpers.make_resource_entry(), чтобы строки групп выглядели
-# как кликабельные ссылки, хотя на самом деле по ним лишь показывается тултип
-# состава группы. Группа — это НЕ настоящая ссылка и никуда не ведёт.
+# A Label with an underlined part of the text (for example, a product group name).
+# It is used in ui_helpers.make_resource_entry() so that group rows look
+# like clickable links, although in fact they only show a tooltip
+# of the group contents with them. A group is NOT a real link and leads nowhere.
 class_name UnderlinedLabel
 extends Label
 
-# Часть текста, которую нужно подчеркнуть (остаток строки — обычным начертанием).
+# The part of the text to be underlined (the rest of the line — in the normal typeface).
 var underline_text: String = "":
     set(value):
         underline_text = value
@@ -23,11 +23,11 @@ func _draw() -> void:
         underline_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
     if width <= 0.0:
         return
-    # Линия проходит по нижней границе основного начертания шрифта
-    # (верхняя граница спуска — descent), под текстом.
+    # The line runs along the lower bound of the main typeface of the font
+    # (the upper bound of the descent — descent), below the text.
     var y: float = get_size().y - f.get_descent(fs)
     var line_color := get_theme_color("font_color")
     line_color.a = 0.75
-    # Пунктирная линия: штрих и пробел по 2 px (dash=2). Параметр aligned=true
-    # выравнивает фазу так, чтобы линия начиналась со штриха (не с пробела).
+    # A dashed line: a dash and a space of 2 px each (dash=2). The aligned=true
+    # parameter aligns the phase so that the line starts with a dash (and not with a space).
     draw_dashed_line(Vector2(0.0, y + 2), Vector2(width, y + 2), line_color, 1.0, 2.0, true, true)
