@@ -2,66 +2,66 @@
 @tool
 extends Node
 
-# Склад и производство
+# The storage and the production
 var city_storage: Dictionary = {}
-# Детализация склада по качеству: product_id -> { "common": N, "fine": N, ... }
-# Сумма по всем уровням качества всегда равна city_storage[product_id].
+# The breakdown of the storage by quality: product_id -> { "common": N, "fine": N, ... }
+# The sum over all the levels of the quality is always equal to city_storage[product_id].
 var city_quality_detail: Dictionary = {}
-# Фактические счётчики производства/потребления за текущий тик симуляции.
-# Нужны для определения голода (CityData._check_population_change сравнивает
-# суммы по food_pool) и для TopBar'а (city_ui._update_food_label — метка
-# «Еда: N [+Y / -Z]» с фактом за тик, fallback на плановый при нулевом
-# факте). Детализация по источникам (production_sources / consumption_sources)
-# убрана из тултипа вкладки «Ресурсы» (см. коммит 5790016), и сами
-# источники больше не ведутся.
+# The actual counters of the production/consumption for the current tick of the simulation.
+# They are needed to determine the famine (CityData._check_population_change compares
+# the sums over the food_pool) and for the TopBar (city_ui._update_food_label — the label
+# "Food: N [+Y / -Z]" with the fact per tick, a fallback to the planned at a zero
+# fact). The breakdown by the sources (production_sources / consumption_sources)
+# has been removed from the tooltip of the tab "Resources" (see the commit 5790016), and the
+# sources themselves are no longer maintained.
 var production_rates: Dictionary = {}
 var consumption_rates: Dictionary = {}
 var city_food_pool: Dictionary = {}
-# --- ВНУТРЕННИЙ РЫНОК (вкладка «Торговля») ---
-# Ключ состояния во всех трёх словарях ниже — DISPLAY_KEY ресурса: id
-# одиночного продукта ("feathers") или "@группа" ("@boats"). Это ровно тот
-# ключ, который кладёт в запись GameData.get_profession_consumption()
-# (поле display_key), поэтому адресация одинакова и для одиночных
-# ресурсов, и для групп продуктов.
+# --- THE INTERNAL MARKET (the tab "Trade") ---
+# The key of the state in all three dictionaries below is the DISPLAY_KEY of the resource: the id
+# of a single product ("feathers") or an "@group" ("@boats"). This is exactly the
+# key which GameData.get_profession_consumption() puts into the record
+# (the field display_key), therefore the addressing is the same both for the single
+# resources and for the groups of products.
 #
-# market_consumption_enabled — разрешено ли городу покупать этот ресурс на
-# внутреннем рынке (тумблер на карточке «Торговли»). Отсутствие ключа =
-# разрешено (по умолчанию рынок открыт для всего).
+# market_consumption_enabled — whether the city is allowed to buy this resource on the
+# internal market (the toggle on the card of "Trade"). The absence of the key =
+# allowed (by default the market is open for everything).
 var market_consumption_enabled: Dictionary = {}
-# consumption_priority — приоритет списания ПО КАЧЕСТВУ на внутреннем
-# рынке: "best" | "worst" | "random" (data/qualities.json,
-# priority_options). Дефолт — GameData.get_quality_priority_default(),
-# ровно как quality_priority у зданий (см. building_panel).
+# consumption_priority — the priority of the write-off BY QUALITY on the internal
+# market: "best" | "worst" | "random" (data/qualities.json,
+# priority_options). The default — GameData.get_quality_priority_default(),
+# exactly as quality_priority of the buildings (see building_panel).
 var consumption_priority: Dictionary = {}
-# market_consumption_rates — ФАКТИЧЕСКОЕ потребление на внутреннем рынке
-# за текущий тик: product_id -> единиц. Отдельный счётчик, потому что
-# общий consumption_rates смешан со всеми каналами (в т.ч. производственные
-# входы зданий), а карточке «Торговли» нужен именно рынок. Живёт ровно
-# один тик симуляции, очищается в reset_counters() — как остальные rate'ы.
+# market_consumption_rates — the ACTUAL consumption on the internal market
+# for the current tick: product_id -> units. A separate counter, because the
+# common consumption_rates is mixed with all the channels (including the production
+# inputs of the buildings), and the card of "Trade" needs exactly the market. It lives exactly
+# one tick of the simulation, it is cleared in reset_counters() — as the other rates.
 var market_consumption_rates: Dictionary = {}
-# market_consumption_accum / _snapshot — тот же факт, но накопленный за ОКНО
-# отображения, а не за один тик. Тикового счётчика недостаточно: интервал
-# отображения настраивается игроком (1..5 сек), и при чтении раз в 2–5 секунд
-# тиковый счётчик почти всегда уже очищен (reset_counters) — «факт» в карточке
-# либо не появлялся бы вовсе, либо скакал между нулями. Окно даёт стабильную
-# величину, которую видно и на частоте обновления 1 сек.
-# Наполняется в record_market_consumption(), сбрасывается в снимок в
-# rotate_market_consumption_window() (рядом с rotate_treasury_window).
+# market_consumption_accum / _snapshot — the same fact, but accumulated over the DISPLAY
+# window, and not over one tick. The tick counter is not enough: the display
+# interval is configured by the player (1..5 sec), and when it is read once in 2-5 seconds
+# the tick counter has almost always already been cleared (reset_counters) — the "fact" in the card
+# would either not appear at all, or would jump between the zeroes. The window gives a stable
+# value, which is also visible at the refresh rate of 1 sec.
+# It is filled in record_market_consumption(), reset into the snapshot in
+# rotate_market_consumption_window() (next to rotate_treasury_window).
 var market_consumption_accum: Dictionary = {}
 var market_consumption_snapshot: Dictionary = {}
 var city_built_buildings: Array = []
 var domesticated_animals: Array = []
 var domesticated_plants: Array = []
 var domesticated_resources: Array = []
-# Казна города (монеты). Всегда целое число; пополняется за счёт потребления
-# ресурсов на внутреннем рынке (см. add_treasury / get_internal_market_price и
-# docs.md, «Казна города и внутренний рынок»).
+# The treasury of the city (the coins). It is always a whole number; it is replenished by the consumption of the
+# resources on the internal market (see add_treasury / get_internal_market_price and
+# docs.md, "The treasury of the city and the internal market").
 var treasury: int = 0
 
-# Стройка зданий: ключ -> данные
+# The construction of the buildings: the key -> the data
 var building_construction: Dictionary = {}
 
-# Технологии
+# The technologies
 var unlocked_technologies: Array = []
 var current_research_tech_id: String = ""
 var current_research_science_cost: int = 0
@@ -90,62 +90,62 @@ var food_per_citizen: int = 10
 # дебаг-меню (пункт «Переключение потребления еды»), НЕ сохраняется в сейв —
 # это рантайм-обходной тумблер для отладки, а не игровое состояние.
 var food_consumption_enabled: bool = true
-# Дебаг-переключатель: игнорировать требования технологий. Когда включён —
-# изучение не проверяет prerequisites и ограничение по эпохам (можно изучать
-# технологии следующих эпох). Тумблер из дебаг-меню, НЕ сохраняется в сейв.
-# Изучается при этом только выбранная технология — предшественники не
-# добавляются автоматически.
+# The debug toggle: ignore the requirements of the technologies. When it is on —
+# the research does not check the prerequisites and the restriction by the eras (it is possible to learn
+# the technologies of the next eras). The toggle from the debug menu, is NOT saved to the save.
+# Only the selected technology is learned at that time — the predecessors are not
+# are added automatically.
 var ignore_tech_requirements: bool = false
-# Дебаг-переключатель: игнорировать требования строительства. Когда включён —
-# ВСЕ действия, тратящие время или ресурсы, выполняются мгновенно и бесплатно:
-#   * здания в городе и их улучшения ( upgrades) — мгновенно, без очереди
-#     строек и без лимита одновременно строящихся объектов, дополнительные
-#     материалы (additional_cost) не проверяются и не списываются, дополнительные
-#     условия (additional_req) считаются выполненными;
-#   * улучшения и все спецдействия на карте (вырубка леса, сбор дикоросов,
-#     осушение болот, снос улучшения, дорога) — мгновенно;
-#   * разведка чанка — мгновенно и бесплатно (монеты из казны не списываются);
-#   * освоение территории (покупка чанка) — мгновенно и бесплатно.
-# Тумблер из дебаг-меню, НЕ сохраняется в сейв. Технологические требования
-# (unlock_tech) он НЕ отменяет — для этого есть отдельный переключатель
+# The debug toggle: ignore the requirements of the construction. When it is on —
+# ALL the actions which spend time or resources are performed instantly and for free:
+#   * the buildings in the city and their improvements ( upgrades) — instantly, without the queue of
+#     the builds and without the limit of the simultaneously building objects, the additional
+#     materials (additional_cost) are not checked and not written off, the additional
+#     conditions (additional_req) are considered met;
+#   * the improvements and all the special actions on the map (the felling of the forest, the gathering of the wild plants,
+#     the drainage of the marshes, the demolition of an improvement, the road) — instantly;
+#   * the scouting of a chunk — instantly and for free (the coins are not written off from the treasury);
+#   * the claiming of the territory (the purchase of a chunk) — instantly and for free.
+# The toggle from the debug menu, is NOT saved to the save. The technological requirements
+# (unlock_tech) it does NOT cancel — there is a separate toggle for that
 # ignore_tech_requirements.
 var ignore_build_requirements: bool = false
 
-# --- ТИК ИГРОВОЙ СИМУЛЯЦИИ ---
-# Единый шаг всей игровой симуляции: производство улучшений и зданий (крафт
-# слотов), потребление еды населением, профессиональное и городское потребление,
-# корм пастбищ, базовый прирост науки и т.д. — всё тикает раз в SIMULATION_TICK
-# секунд (шаг в main_map._process). Улучшения при этом выпускают продукцию по
-# своему собственному интервалу — полю "production_interval" из
-# data/improvements.json (см. get_improvement_production_interval).
+# --- THE TICK OF THE GAME SIMULATION ---
+# The single step of the whole game simulation: the production of the improvements and the buildings (the crafting
+# of the slots), the consumption of the food by the population, the occupational and the city consumption,
+# the feed of the pastures, the base growth of the science and so on — everything ticks once per SIMULATION_TICK
+# seconds (the step in main_map._process). The improvements release the product by
+# their own interval — the field "production_interval" from
+# data/improvements.json (see get_improvement_production_interval).
 const SIMULATION_TICK: float = 1.0
 
-# --- ИНТЕРВАЛ ОТОБРАЖЕНИЯ РЕСУРСОВ (настройка «Настройки → Игра → Интервал
-# обновления данных о ресурсах»). Симуляция тикает каждую SIMULATION_TICK
-# секунды, а ОТОБРАЖЕНИЕ ресурсов (вкладка «Ресурсы», верхняя полоса города,
-# тултип деталей здания, левая колонка панели управления, тултипы с ресурсами)
-# обновляется не чаще resource_display_interval секунд.
+# --- THE DISPLAY INTERVAL OF THE RESOURCES (the setting "Settings → Game → The interval
+# of the update of the data about the resources"). The simulation ticks every SIMULATION_TICK
+# seconds, and the DISPLAY of the resources (the tab "Resources", the top bar of the city,
+# the tooltip of the details of a building, the left column of the control panel, the tooltips with the resources)
+# is updated no more often than once per resource_display_interval seconds.
 #
-# Механика — «эпоха отображения» (epoch): единый счётчик в autoload, который
-# двигает main_map._process (на паузе дерева _process не идёт — интервал
-# считается игровым временем). Каждое UI-место хранит последнюю увиденную
-# эпоху и обновляется только когда она изменилась (resource_display_due) —
-# так все места обновляются одновременно, одним «рывком» раз в интервал.
-# Обновления по явным действиям игрока (открытие окна, клик по гексу, смена
-# назначений, тумблер еды) эпоху НЕ ждут — они вызываются напрямую и после
-# себя синхронизируют эпоху.
+# The mechanics is the "era of the display" (epoch): a single counter in the autoload, which
+# is advanced by main_map._process (on the pause of the tree _process does not go — the interval
+# is counted in the game time). Every UI place stores the last seen
+# era and is updated only when it has changed (resource_display_due) —
+# in this way all the places are updated simultaneously, by one "jerk" per interval.
+# The updates on the explicit actions of the player (opening a window, a click on a hex, a change
+# of the assignments, the toggle of the food) do NOT wait for the era — they are called directly and after
+# themselves they synchronise the era.
 #
-# Допустимые значения: 1..5 секунд с шагом 1: данные меняются только на
-# тиках в 1 секунду, дробный интервал дал бы лишь неравномерный ритм
-# обновлений (обновления попадали бы в разную фазу тиков) при неизменно
-# корректных целых числах на экране.
+# The acceptable values: 1..5 seconds with a step of 1: the data changes only on
+# the ticks of 1 second, a fractional interval would give only an uneven rhythm of the
+# updates (the updates would fall into a different phase of the ticks) with invariably
+# correct whole numbers on the screen.
 var resource_display_interval: float = 1.0
 var resource_display_epoch: int = 0
 var _resource_display_accum: float = 0.0
 
-# Устанавливает интервал отображения ресурсов (шаг 1, диапазон 1..5 сек).
-# Смена значения сбрасывает накопитель и повышает эпоху — все места
-# обновляются немедленно при ближайшей проверке. То же значение — no-op.
+# Sets the display interval of the resources (step 1, range 1..5 sec).
+# A change of the value resets the accumulator and raises the era — all the places
+# are updated immediately at the nearest check. The same value is a no-op.
 func set_resource_display_interval(value: float) -> void:
     var new_interval := clampf(roundf(value), 1.0, 5.0)
     if is_equal_approx(new_interval, resource_display_interval):
@@ -154,47 +154,47 @@ func set_resource_display_interval(value: float) -> void:
     _resource_display_accum = 0.0
     resource_display_epoch += 1
 
-# Накапливает игровое время и повышает эпоху, когда прошёл интервал.
-# Вызывается из main_map._process каждый кадр.
+# Accumulates the game time and raises the era, when the interval has passed.
+# It is called from main_map._process every frame.
 func tick_resource_display(delta: float) -> void:
     if resource_display_interval <= 0.0:
         return
     _resource_display_accum += delta
     if _resource_display_accum >= resource_display_interval:
-        # fmod удерживает фазу вместо копления бесконечного остатка: интервал
-        # кратен шагу тика (1 сек), дробная часть почти не накапливается.
+        # fmod holds the phase instead of accumulating an endless remainder: the interval
+        # is a multiple of the tick step (1 sec), the fractional part almost does not accumulate.
         _resource_display_accum = fmod(_resource_display_accum, resource_display_interval)
         resource_display_epoch += 1
-        # Окно отображения разбивки казны обновляется своим ритмом
-        # (treasury_window_length_sec, по умолчанию 3 сек — см.
-        # DEFAULT_TREASURY_WINDOW_SEC). Привязка к эпохе ресурсов удобна
-        # для UI (одной галочкой «обновились ресурсы → обновилась разбивка
-        # казны»), но отрезок короче: эпоха тикает раз в
-        # resource_display_interval (1..5 сек), а здесь считаем свои тики
-        # тем же delta, что и ресурсная эпоха (ровный шаг 1 сек не нужен —
-        # точность требует только «плюс-минус секунда»).
+        # The display window of the breakdown of the treasury is updated by its own rhythm
+        # (treasury_window_length_sec, by default 3 sec — see
+        # DEFAULT_TREASURY_WINDOW_SEC). The binding to the era of the resources is convenient
+        # for the UI (with one tick "the resources have updated → the breakdown of the
+        # treasury has updated"), but the segment is shorter: the era ticks once per
+        # resource_display_interval (1..5 sec), and here we count our own ticks
+        # with the same delta as the resource era (an even step of 1 sec is not needed —
+        # the accuracy requires only "plus or minus a second").
         _treasury_window_accum_sec += float(resource_display_interval)
         if _treasury_window_accum_sec >= treasury_window_length_sec:
             rotate_treasury_window()
             _treasury_window_accum_sec = 0.0
-        # Окно факта потребления рынка — по длине ресурсной эпохи (1..5 сек):
-        # карточка «Торговли» обновляется именно тогда, поэтому её «факт» и
-        # должен накапливаться ровно через столько же. Своей длины у него
-        # нет намеренно — любая другая обрекла бы карточку на интервал, а
-        # при интервале 5 сек окно в 3 сек обновлялось бы чаще карточки.
+        # The window of the fact of the consumption of the market — by the length of the resource era (1..5 sec):
+        # the card of "Trade" is updated exactly then, therefore its "fact"
+        # must be accumulated exactly after the same. It has no length of its own
+        # deliberately — any other one would cut the card off for an interval, and
+        # with an interval of 5 sec a window of 3 sec would be updated more often than the card.
         rotate_market_consumption_window()
 
-# Накопитель игрового времени для окна разбивки казны. Только здесь.
+# The accumulator of the game time for the window of the breakdown of the treasury. Only here.
 var _treasury_window_accum_sec: float = 0.0
 
-# True, если место с последней проверки не обновляло отображение ресурсов.
-# Вызывающий после обновления запоминает CityData.resource_display_epoch.
+# True, if the place has not updated the display of the resources since the last check.
+# The caller remembers CityData.resource_display_epoch after the update.
 func resource_display_due(last_epoch: int) -> bool:
     return last_epoch != resource_display_epoch
 
-# --- ЭПОХИ ---
-# Возвращает индекс эпохи технологии в GameData.eras.
-# Если технология не найдена или её era отсутствует в списке эпох — -1.
+# --- THE ERAS ---
+# Returns the index of the era of the technology in GameData.eras.
+# If the technology is not found, or its era is absent from the list of the eras — -1.
 func get_tech_era_index(tech_id: String) -> int:
     var tech_data = _get_tech_data(tech_id)
     if tech_data == null:
@@ -205,44 +205,44 @@ func get_tech_era_index(tech_id: String) -> int:
             return i
     return -1
 
-# Разрешено ли изучать технологию по эпохам: можно только технологии
-# текущей и предыдущих эпох. Технологии следующей эпохи недоступны,
-# даже если все их prerequisites выполнены.
+# Is it allowed to learn the technology by the eras: only the technologies of the
+# current and the previous eras are allowed. The technologies of the next era are inaccessible,
+# even if all their prerequisites are met.
 func is_tech_era_allowed(tech_id: String) -> bool:
-    # Дебаг: при включённом «не учитывать требования» ограничение по эпохам
-    # снимается — можно изучать технологии любой эпохи.
+    # Debug: with "do not observe the requirements" enabled the restriction by the eras
+    # is removed — it is possible to learn the technologies of any era.
     if ignore_tech_requirements:
         return true
     var era_idx := get_tech_era_index(tech_id)
-    # Технология без известной эпохи не блокируется (защита от некорректных данных).
+    # A technology without a known era is not blocked (a protection from incorrect data).
     if era_idx < 0:
         return true
     return era_idx <= current_era_index
 
-# Человекочитаемое имя эпохи по индексу; для некорректного индекса — пустая строка.
+# The human-readable name of the era by the index; for an incorrect index — an empty string.
 func _get_era_name_by_index(index: int) -> String:
     if index < 0 or index >= GameData.eras.size():
         return ""
     return GameData.eras[index].get("name", "")
 
-# Переход в следующую эпоху. Вызывается из main_map.advance_to_next_era().
+# The transition to the next era. It is called from main_map.advance_to_next_era().
 func advance_era() -> void:
     if current_era_index < GameData.eras.size() - 1:
         current_era_index += 1
     emit_signal("city_updated")
 
-# --- НАУКА ---
-# Базовый доход науки города (очков/сек). Город никогда не производит меньше
-# этой скорости, даже без зданий науки — чтобы ранняя игра не блокировалась.
+# --- THE SCIENCE ---
+# The base income of the science of the city (points/sec). The city never produces less than
+# this rate, even without the science buildings — so that the early game is not blocked.
 const BASE_SCIENCE_PER_SEC: float = 1.0
-# Кэш вклада работающих зданий науки в скорость исследований (очков/сек).
-# Пересчитывается с нуля раз в тик симуляции в do_tick(). Формула по зданию:
-#   (additional_yield.science + средневзвешенный special_yield расходуемой
-#    смеси основ) × бонус профессии учёного (перья/чернила, ×1.25).
-# Ни required, ни craft_time рецепта «Наука» в скорость науки НЕ входят:
-# рецепт — лишь «пропуск» (пока сырьё доступно, учёные работают), его вход
-# задаёт только расход топлива. Скорость работы учёных определяется самим
-# special_yield основ (см. docs.md, «Наука: производство и исследования»).
+# The cache of the contribution of the working science buildings to the rate of the research (points/sec).
+# It is recalculated from scratch once per tick of the simulation in do_tick(). The formula per building:
+#   (additional_yield.science + the weighted average of the special_yield of the consumed
+#    mixture of the bases) × the bonus of the profession of the scholar (the feathers/ink, ×1.25).
+# Neither required nor the craft_time of the recipe "Science" are included in the rate of the science:
+# the recipe is only a "pass" (while the raw material is available, the scholars work), its input
+# only sets the expense of the fuel. The rate of the work of the scholars is determined by the
+# special_yield of the bases themselves (see docs.md, "Science: production and research").
 # Пула науки нет — произведённая наука не копится на складе, а напрямую
 # складывается в скорость изучения технологий (см. get_science_rate_per_sec,
 # tick_research_science_continuous).
