@@ -145,24 +145,24 @@ const IDENT_LOOKALIKES := {
     "О": "O", "Р": "P", "С": "C", "Т": "T", "У": "Y", "Х": "X",
 }
 
-# Диапазоны Unicode-блоков, в которых ошибка правдоподобна. Имя блока НЕ
-# хранится здесь: константа не может вызвать перевод, а сборщик каталога
-# (tools/i18n_build_po.py) берёт msgid литералом прямо в вызове
-# translate() — из словаря он его не достанет. Подписи лежат в
-# _block_label() ниже, а здесь остаются только границы диапазонов.
+# The Unicode blocks in which the error is plausible. The name of the block is NOT
+# stored here: a constant cannot call a translation, and the catalogue builder
+# (tools/i18n_build_po.py) takes the msgid as a literal directly in the call
+# of translate() — it cannot get it from a dictionary. The labels live in
+# _block_label() below, and here only the boundaries of the ranges remain.
 const IDENT_BLOCKS := [
     {"from": 0x0400, "to": 0x04FF, "key": "cyrillic"},
     {"from": 0x0370, "to": 0x03FF, "key": "greek"},
     {"from": 0xFF10, "to": 0xFF19, "key": "fullwidth_latin"},
 ]
 
-# Коллекции с идентификаторами: где искать объявления.
+# The collections with identifiers: where to look for the declarations.
 #
-# Единый список для проверок id_charset / id_lookalike: они ортогональны
-# остальным проверкам (тем важно ЗНАЧЕНИЕ ссылок, этим — сам текст id), и
-# держать список в одном месте дешевле, чем добавлять по вызову в каждую из
-# пятнадцати коллекций. Пары «поле GameData → вид сущности для сообщения»:
-# второе нужно, чтобы в тексте проблемы было «Продукта», а не «Ресурса».
+# A single list for the checks id_charset / id_lookalike: they are orthogonal
+# to the other checks (those care about the VALUE of the references, these — about the text of the id itself), and
+# keeping the list in one place is cheaper than adding it per call into each of the
+# fifteen collections. The pairs "the field of GameData → the kind of the entity for the message":
+# the second one is needed so that in the text of the problem it says "Product", and not "Resource".
 const IDENT_COLLECTIONS := [
     {"field": "products", "kind": "product"},
     {"field": "raw_resources", "kind": "product"},
@@ -181,18 +181,18 @@ const IDENT_COLLECTIONS := [
     {"field": "roads", "kind": "road"},
 ]
 
-# Уровни качества лежат не в словаре, а в массиве внутри словаря
-# (data/qualities.json → "quality_levels": [...]), поэтому обрабатываются
-# отдельно: обход коллекций выше проходит по полям GameData и такой вложенный
-# список не увидит.
+# The quality levels lie not in a dictionary, but in an array inside a dictionary
+# (data/qualities.json → "quality_levels": [...]), therefore they are handled
+# separately: the walk of the collections above goes through the fields of GameData and such a nested
+# list will not see it.
 const QUALITY_LEVELS_FIELD := "quality_levels"
 
-# Виды сущностей, встречающихся в тексте проблемы.
+# The kinds of the entities that occur in the text of the problem.
 #
-# Это список для подстановки запасного вида, а не источник подписей: сами
-# подписи живут в entity_forms() ниже. Словарь с названиями стоял бы ровно
-# затем, чтобы их значения не попали в каталог переводов — см. примечание
-# к entity_forms() про то, как их читает сборщик.
+# This is a list for the substitution of the fallback kind, and not a source of the labels: the
+# labels themselves live in entity_forms() below. A dictionary with the names would stand exactly
+# for the reason that its values would not get into the translation catalogue — see the note
+# to entity_forms() about how the builder reads them.
 const ENTITIES := [
     "building", "product", "improvement", "technology", "profession",
     "category", "group", "recipe", "road", "terrain", "cover", "era",
@@ -200,26 +200,26 @@ const ENTITIES := [
 ]
 
 
-# Названия вида сущности в трёх грамматических формах:
-#   title  — родительный падеж («Здания с идентификатором «x» не существует»);
-#   ref    — винительный падеж («Ссылка на это здание присутствует в…»);
-#   source — предложный падеж («…присутствует в рецепте «…»»).
+# The names of the kind of the entity in three grammatical forms:
+#   title  — the genitive case ("There is no building with the identifier "x"");
+#   ref    — the accusative case ("A reference to this building is present in…");
+#   source — the prepositional case ("…is present in the recipe "…"").
 #
-# Английский падежей не знает, поэтому три формы — это три разных msgid
-# («Building», «this building», «building»), а по-русски им соответствуют
-# «Здания», «это здание», «здании». msgctxt при этом не нужен: английские
-# тексты и так разные, а различие уезжает в саму формулировку. Ровно тот же
-# приём, что с множественными числами в consumption_ui.gd.
+# English does not know the cases, therefore the three forms are three different msgids
+# ("Building", "this building", "building"), and in Russian they correspond to
+# "здания", "это здание", "здании". At that time msgctxt is not needed: the English
+# texts are different anyway, and the difference goes into the very wording. Exactly the same
+# trick as with the plural forms in consumption_ui.gd.
 #
-# Подписи перечислены ЯВНО, литералами прямо в вызовах translate(), а не
-# взяты из словаря константы. Это требование сборщика каталога:
-# tools/i18n_build_po.py разбирает код построчно и берёт msgid литералом в
-# этом вызове. Словарь спрятал бы msgid от сканера, и в locale/<код>.po
-# переводов этих подписей просто не оказалось бы — они остались бы
-# английскими при любом языке.
+# The labels are listed EXPLICITLY, as literals directly in the calls of translate(), and not
+# taken from the dictionary of the constant. This is a requirement of the catalogue builder:
+# tools/i18n_build_po.py parses the code line by line and takes the msgid as a literal in
+# this call. A dictionary would hide the msgid from the scanner, and in locale/<code>.po
+# there simply would be no translations of these labels — they would remain
+# English in any language.
 #
-# fallback — вид на случай неизвестного ключа: «product» для искомой
-# сущности, «recipe» для владельца ссылки (см. _add).
+# fallback — the kind for the case of an unknown key: "product" for the searched
+# entity, "recipe" for the owner of the reference (see _add).
 static func entity_forms(kind: String, fallback: String = "product") -> Dictionary:
     if not ENTITIES.has(kind):
         kind = fallback
@@ -281,18 +281,18 @@ static func entity_forms(kind: String, fallback: String = "product") -> Dictiona
                 "ref": TranslationServer.translate("this consumption rule", "validator_entity_ref_consumption_rule"),
                 "source": TranslationServer.translate("consumption rule", "validator_entity_source_consumption_rule")}
         _:
-            # Спецдействие замыкает список: неизвестный вид подставляет
-            # fallback выше, сюда попасть можно только с опечаткой в коде.
+            # A special action closes the list: an unknown kind substitutes
+            # the fallback above, one can only get here with a typo in the code.
             return {"title": TranslationServer.translate("Special action", "validator_entity_title_special_action"),
                 "ref": TranslationServer.translate("this special action", "validator_entity_ref_special_action"),
                 "source": TranslationServer.translate("special action", "validator_entity_source_special_action")}
 
 
-# Заголовок группы проверки для окна проблем. Порядок блоков задаёт
-# CHECK_ORDER, а не этот список.
+# The heading of the group of the check for the window of the problems. The order of the blocks is set by
+# CHECK_ORDER, and not by this list.
 #
-# Как и подписи сущностей, заголовки перечислены литералами прямо в вызовах
-# translate() — иначе сборщик каталога их не увидит (см. entity_forms).
+# As well as the labels of the entities, the headings are listed as literals directly in the calls
+# of translate() — otherwise the catalogue builder will not see them (see entity_forms).
 static func check_title(kind: String) -> String:
     match kind:
         "id_charset":
@@ -334,25 +334,25 @@ static func check_title(kind: String) -> String:
         "road_work_cost":
             return TranslationServer.translate("Road work cost cannot be negative")
         _:
-            # Неизвестный вид проверки: показываем машинное имя — по нему видно,
-            # чего не хватает в CHECK_ORDER, и оно переживает любой язык.
+            # An unknown kind of the check: we show the machine name — by it one can see
+            # what is missing in CHECK_ORDER, and it survives any language.
             return kind
 
-# Индекс происхождения сущностей текущего прогона: "коллекция:id" → файл+строка.
-# Заполняется в validate(), читается в _add(). Пустой, если данные пришли
-# откуда-то без индекса (синтетические данные в тесте) — тогда проблема
-# просто не получает строки с файлом, а не падает.
+# The index of the origin of the entities of the current run: "collection:id" → file+line.
+# It is filled in in validate(), and is read in _add(). It is empty, if the data has come
+# from somewhere without the index (the synthetic data in the test) — then the problem
+# simply does not get the rows with the file, and does not crash.
 var _sources: Dictionary = {}
 
-# Вид сущности-владельца → верхнеуровневая коллекция в data/*.json, в которой
-# она объявлена. Нужна, чтобы найти её файл: ключ индекса происхождения
-# собирается как "<коллекция>:<id>".
+# The kind of the owning entity → the top-level collection in data/*.json, in which
+# it is declared. It is needed in order to find its file: the key of the index of the origin
+# is built as "<collection>:<id>".
 #
-# Владелец «product» — это ресурс, а он лежит в общей коллекции "resources"
-# (сырьё и продукты в одном списке, тип различает поле "type"). Поэтому
-# SOURCE_COLLECTIONS отличается от ENTITIES: там "product" — это СУЩНОСТЬ
-# (объект, на который ссылаются), здесь — вид ВЛАДЕЛЬЦА (объект, который
-# ссылается).
+# The owner "product" is a resource, and it lies in the common collection "resources"
+# (the raw materials and the products in one list, the type is distinguished by the field "type"). Therefore
+# SOURCE_COLLECTIONS differs from ENTITIES: there "product" is an ENTITY
+# (an object being referred to), here — the kind of the OWNER (an object which
+# refers).
 const SOURCE_COLLECTIONS := {
     "recipe": "crafts",
     "building": "buildings",
@@ -361,12 +361,12 @@ const SOURCE_COLLECTIONS := {
     "product": "resources",
     "group": "product_groups",
     "road": "roads",
-    # Правило потребления не объявляет себя полем "id" (см. data_loader
-    # _remember_consumption_sources), поэтому идентификатором записи в индексе
-    # происхождения служит её "resource".
+    # The consumption rule does not declare itself by the field "id" (see data_loader
+    # _remember_consumption_sources), therefore its "resource" serves as the identifier of the record in the index
+    # of the origin.
     "consumption_rule": "consumption",
-    # Виды, нужные только проверкам идентификаторов: они объявляются в
-    # своих коллекциях, но ни одна другая проверка на них не ссылается.
+    # The kinds that are needed only by the checks of the identifiers: they are declared in
+    # their collections, but no other check refers to them.
     "terrain": "terrains",
     "cover": "covers",
     "era": "eras",
@@ -374,7 +374,7 @@ const SOURCE_COLLECTIONS := {
     "special_action": "special_actions",
 }
 
-# Порядок вывода блоков проблем в окне.
+# The order of the output of the blocks of problems in the window.
 const CHECK_ORDER := [
     "id_charset",
     "id_lookalike",
@@ -398,15 +398,15 @@ const CHECK_ORDER := [
 ]
 
 
-# Главная точка входа. gd — любой объект с полями GameData
-# (автозагрузка GameData или отдельный экземпляр в тесте).
-# Возвращает массив записей проблем (см. шапку файла), пустой — если всё чисто.
+# The main entry point. gd is any object with the fields of GameData
+# (the autoload GameData or a separate instance in the test).
+# It returns an array of the records of the problems (see the header of the file), empty — if everything is clean.
 func validate(gd: Object) -> Array:
     var problems: Array = []
-    # Индекс происхождения сущностей (файл + строка объявления) нужен всем
-    # проверкам сразу, а протягивать его через каждую функцию значило бы
-    # добавить лишний параметр в десяток сигнатур. Поэтому он живёт на
-    # экземпляре и заполняется один раз на прогон.
+    # The index of the origin of the entities (the file + the line of the declaration) is needed by all
+    # the checks at once, and passing it through every function would mean
+    # adding an extra parameter to a dozen signatures. Therefore it lives on
+    # the instance and is filled in once per run.
     _sources = _source_index(gd)
 
     var buildings := _index_by_id(gd.buildings)
@@ -419,8 +419,7 @@ func validate(gd: Object) -> Array:
     var raw_resources: Dictionary = gd.raw_resources
     var product_groups: Dictionary = gd.product_groups
     var group_names: Dictionary = gd.product_group_names
-    # Сырьё и продукты в одном пространстве для ссылок на ресурсы:
-    # рецепт вправе требовать и «clay» (сырьё), и «flour» (продукт).
+# These three are already the dictionaries id -> data in GameData (data_loader.gd).
     var all_resources: Dictionary = {}
     all_resources.merge(raw_resources)
     all_resources.merge(products)
@@ -440,19 +439,22 @@ func validate(gd: Object) -> Array:
     return problems
 
 
-# --- ИДЕНТИФИКАТОРЫ: АЛФАВИТ И ОМОГЛИФЫ ----------------------------------
+    # The raw materials and the products in one space for the references to the resources:
+    # a recipe is allowed to require both "clay" (a raw material) and "flour" (a product).
 #
-# Проверяются ТОЛЬКО объявления (поле "id"), не ссылки на них. Это не
-# упрощение, а следствие устройства остальных проверок: если ссылка
-# содержит тот же не-ASCII символ, что и объявление, — проблему найдёт эта
-# проверка; если указывает на латинский идентификатор — её найдёт любая из
-# проверок битых ссылок. Отдельный проход по ссылкам не нашёл бы ни одного
-# нового случая.
+# --- THE IDENTIFIERS: THE ALPHABET AND THE LOOKALIKES ----------------------------------
+#
+# ONLY the declarations are checked (the field "id"), and not the references to them. This is not
+# a simplification, but a consequence of the structure of the other checks: if a reference
+# contains the same non-ASCII character as the declaration, — this check will find
+# the problem; if it points to a Latin identifier — it will be found by any of
+# the checks of the broken references. A separate pass over the references would not find a single
+# new case.
 func _validate_identifiers(gd: Object, problems: Array) -> void:
-    # Все объявленные идентификаторы: id → сведения об объявлении.
-    # Заполняется одним проходом по коллекциям, потому что омоглифы ищутся
-    # ПО ВСЕМ объявлениям сразу: «сarmine» сам по себе — опечатка в одной
-    # строке, а рядом с уже существующим «carmine» — ещё и мёртвый дубль.
+    # All the declared identifiers: id → the details about the declaration.
+    # It is filled in by one pass over the collections, because the lookalikes are searched
+    # over ALL the declarations at once: "сarmine" by itself is a typo in one
+    # line, and next to the already existing "carmine" — also a dead duplicate.
     var declared := {}
 
     for entry in IDENT_COLLECTIONS:
@@ -463,16 +465,16 @@ func _validate_identifiers(gd: Object, problems: Array) -> void:
         if collection is Dictionary:
             for key in collection:
                 var entity = collection[key]
-                # Ключ словаря — тот же id, что и в поле "id". Берём id из
-                # данных, но если поле потерялось — ключ всё равно известен.
+                # The key of the dictionary is the same id as in the field "id". We take the id from
+                # the data, but even if the field has been lost — the key is still known.
                 var id := _as_id(entity.get("id", "")) if entity is Dictionary else ""
                 if id.is_empty():
                     id = str(key)
                 _collect_identifier(declared, problems, field, kind, id,
                         entity if entity is Dictionary else {})
-            # Уровни качества лежат не в словаре, а в массиве ВНУТРИ него
-            # (data/qualities.json → "quality_levels": [...]) — проход по
-            # полям GameData такой вложенный список не увидит.
+            # The quality levels lie not in a dictionary, but in an array INSIDE it
+            # (data/qualities.json → "quality_levels": [...]) — a pass over the
+            # fields of GameData will not see such a nested list.
             _collect_quality_levels(declared, problems, collection)
         elif collection is Array:
             for entity in collection:
@@ -496,7 +498,7 @@ func _collect_quality_levels(declared: Dictionary, problems: Array,
                 "quality_level", _as_id(level.get("id", "")), level)
 
 
-# Запоминает объявление и проверяет его алфавит.
+# Remembers the declaration and checks its alphabet.
 func _collect_identifier(declared: Dictionary, problems: Array, collection: String,
         kind: String, id: String, entity: Dictionary) -> void:
     if id.is_empty():
@@ -505,7 +507,7 @@ func _collect_identifier(declared: Dictionary, problems: Array, collection: Stri
     _check_ident_charset(problems, id, kind, entity)
 
 
-# Позиции символов вне разрешённого алфавита:
+# The positions of the characters outside the allowed alphabet:
 # [{ "pos": int, "char": String, "code": int, "block": String, "lookalike": String }, …]
 #
 # block — ИСХОДНОЕ имя блока (английский msgid), а не готовая подпись:
@@ -527,8 +529,9 @@ func _bad_ident_chars(id: String) -> Array:
     return bad
 
 
-# Ключ блока Unicode, в который попал символ. Пустая строка — блок не
-# перечислен: подписывать наугад нечестнее, чем не подписать вовсе.
+# block is the ORIGINAL name of the block (the English msgid), and not a ready label:
+# it becomes a translation only at the building of the text (build_text), otherwise a change of
+# the language would not reassemble the already built message.
 func _ident_block_name(code: int) -> String:
     for block in IDENT_BLOCKS:
         if code >= int(block["from"]) and code <= int(block["to"]):
@@ -536,12 +539,13 @@ func _ident_block_name(code: int) -> String:
     return ""
 
 
-# Название блока для сообщения: символу с кодом U+XXXX полезно сказать, из
-# какого он блока — это вторая половина ценности подсказки (первая — сам
-# код).
+# The key of the Unicode block in which the character has got. An empty string — the block is not
+# listed: labelling it at random is less honest than not labelling it at all.
+# which block it is from — this is the second half of the value of the hint (the first one is the
+# code itself).
 #
-# msgid литералами прямо в вызовах — по той же причине, что и в
-# entity_forms(): иначе сборщик каталога этих трёх слов не увидит.
+# msgid as literals directly in the calls — for the same reason as in
+# entity_forms(): otherwise the catalogue builder will not see these three words.
 static func _block_label(key: String) -> String:
     match key:
         "cyrillic":
@@ -554,10 +558,10 @@ static func _block_label(key: String) -> String:
             return ""
 
 
-# Одна проблема на идентификатор со ВСЕМИ плохими символами сразу: в «cоal»
-# их два, а чинить нужно одну строку — две строки в окне про одну и ту же
-# правку только раздражают. Список плохих символов уходит в структуру
-# проблемы ("bad_chars"), текст собирает build_text.
+# One problem per identifier with ALL the bad characters at once: in "cоal"
+# there are two of them, and one line has to be fixed — two rows in the window about the same
+# fix only annoy. The list of the bad characters goes into the structure of the
+# problem ("bad_chars"), the text is assembled by build_text.
 func _check_ident_charset(problems: Array, id: String, kind: String,
         entity: Dictionary) -> void:
     var bad := _bad_ident_chars(id)
@@ -568,13 +572,12 @@ func _check_ident_charset(problems: Array, id: String, kind: String,
             _entity_name(entity, id), id, "id", {"bad_chars": bad})
 
 
-# Два идентификатора, различающиеся только похожими символами («carmine» и
-# «сarmine»), — для движка это ДВА разных ресурса. Ссылка на латинский
-# «carmine» проходит любую проверку битых ссылок, потому что он существует,
-# а кириллический лежит мёртвым грузом. Настоящие проверки ссылок такой
-# случай пропускают целиком — поэтому он ловится здесь.
+# Two identifiers differing only by the lookalike characters ("carmine" and
+# "сarmine") — for the engine these are TWO different resources. A reference to the Latin
+# "carmine" passes any check, because it exists, and the Cyrillic one lies dead weight. The real
+# checks of the references skip this case entirely — therefore it is caught here.
 func _check_lookalikes(declared: Dictionary, problems: Array) -> void:
-    # Нормализованный id → ВСЕ объявления, дающие такую форму.
+    # The normalized id → ALL the declarations giving such a form.
     var groups := {}
     for id in declared:
         var key := _ascii_fold(id)
@@ -585,47 +588,44 @@ func _check_lookalikes(declared: Dictionary, problems: Array) -> void:
     for key in groups:
         var members: Array = groups[key]
         if members.size() < 2:
-            # Одиночка. Если это кириллица, её поймал id_charset: сравнивать
-            # не с чем.
+            # A loner. If it is the Cyrillic, id_charset has already caught it: there is
+            # nothing to compare with.
             continue
-        # В группе из двух и больше участников латинское написание есть
-        # обязательно: два РАЗНЫХ чисто латинских id нормализоваться в одну
-        # строку не могут (для латиницы fold — тождественное отображение).
-        # Значит, все «лишние» — те, где fold что-то заменил.
+# A loner. If it is the Cyrillic, id_charset has already caught it: there is
+            # nothing to compare with.
         var latin := ""
         for id in members:
             if _ascii_fold(id) == id:
                 latin = id
                 break
 
-        # Сообщаем по одной проблеме на группу: несколько участников —
-        # это одна и та же опечатка, и перечислять её дважды незачем.
+        # We report one problem per group: several participants are
+        # the same typo, and there is no reason to list it twice.
         for id in members:
             if id == latin:
                 continue
             var info: Dictionary = declared[id]
             var latin_info: Dictionary = declared[latin]
 
-            # Владелец проблемы — испорченное объявление (его и надо удалить),
-            # поэтому в source_id оно, а не латинное написание. Тексты
-            # собирает build_text по этой структуре.
+# In a group of two or more participants the Latin spelling is necessarily present:
+        # two DIFFERENT purely Latin ids cannot normalize into one
+        # string (for the Latin the fold is an identity mapping).
+        # Therefore all the "extra" ones are those where fold has replaced something.
             _push(problems, "id_lookalike", str(latin_info["kind"]), latin,
                     str(info["kind"]), _entity_name(info["entity"], id), id, "id",
                     {"latin": latin})
 
 
-# Приводит символы, неотличимые от латинских, к латинскому виду. Служит
-# ТОЛЬКО для сравнения id между собой, никогда — для правки данных.
+# Brings the characters that are indistinguishable from the Latin ones to the Latin look. It serves
+# ONLY for the comparison of the ids with each other, and never — for the editing of the data.
 func _ascii_fold(id: String) -> String:
     var result := ""
     for ch in id:
         result += str(IDENT_LOOKALIKES.get(ch, ch))
     return result
 #
-# Проверяются ссылка на технологию (общая с остальными сущностями) и сами
-# числа уровня. Числа проверяем потому, что они бьют по геймплею молча:
-# max_speed = 0 даст участок, который не везёт ничего, и это видно только в
-# игре; work_cost с дробью округлится вверх и «съест» копейку без причины.
+# We report one problem per group: several participants are
+        # the same typo, and there is no reason to list it twice.
 func _validate_roads(roads, technologies: Dictionary, problems: Array) -> void:
     if not (roads is Array):
         return
@@ -657,8 +657,8 @@ func _validate_roads(roads, technologies: Dictionary, problems: Array) -> void:
                     "road", rname, road_id, "work_cost")
 
 
-# --- РЕЦЕПТЫ ---------------------------------------------------------------
-# produced_in, result / display_result, ресурсы (в т.ч. @-группы), unlock_tech.
+# --- THE RECIPES ---------------------------------------------------------------
+# produced_in, result / display_result, the resources (including the @-groups), unlock_tech.
 func _validate_crafts(crafts, buildings: Dictionary, technologies: Dictionary,
         all_resources: Dictionary, product_groups: Dictionary, problems: Array) -> void:
     for craft in crafts:
@@ -667,7 +667,9 @@ func _validate_crafts(crafts, buildings: Dictionary, technologies: Dictionary,
         var craft_id := str(craft.get("id", ""))
         var craft_name := _entity_name(craft, craft_id)
 
-        # produced_in → здание. "*" — служебный маркер «в любом здании».
+# The owner of the problem is the corrupted declaration (it is the one that has to be deleted),
+            # therefore it is in the source_id, and not the Latin spelling. The texts
+            # are assembled by build_text from this structure.
         for building_id in _as_string_list(craft.get("produced_in", [])):
             if building_id == ANY_BUILDING_MARKER:
                 continue
@@ -675,14 +677,18 @@ func _validate_crafts(crafts, buildings: Dictionary, technologies: Dictionary,
                 _add(problems, "produced_in", "building", building_id,
                         "recipe", craft_name, craft_id, "produced_in")
 
-        # result (и его отображаемый вариант) → ресурс.
+# Brings the characters that are indistinguishable from the Latin ones to the Latin look. It serves
+# ONLY for the comparison of the ids with each other, and never — for the editing of the data.
         for field in ["result", "display_result"]:
             for product_id in _as_dict(craft.get(field, {})).keys():
                 if not all_resources.has(str(product_id)):
                     _add(problems, "result", "product", str(product_id),
                             "recipe", craft_name, craft_id, field)
 
-        # resources → ресурс или @-группа продуктов.
+# The reference to a technology (common with the other entities) and the level
+# numbers themselves are checked. We check the numbers because they hit the gameplay silently:
+# max_speed = 0 will give a segment that carries nothing, and this is visible only in the
+# game; work_cost with a fraction will be rounded up and will "eat" a coin for no reason.
         for key in _as_dict(craft.get("resources", {})).keys():
             var res_key := str(key)
             if res_key.begins_with("@"):
@@ -693,12 +699,13 @@ func _validate_crafts(crafts, buildings: Dictionary, technologies: Dictionary,
                 _add(problems, "resource", "product", res_key,
                         "recipe", craft_name, craft_id, "resources")
 
-        # unlock_tech → технология.
+# --- THE RECIPES ---------------------------------------------------------------
+# produced_in, result / display_result, the resources (including the @-groups), unlock_tech.
         _check_tech_ref(craft.get("unlock_tech", ""), technologies, problems,
                 "recipe", craft_name, craft_id, "unlock_tech")
 
 
-# --- ЗДАНИЯ ---------------------------------------------------------------
+        # produced_in → a building. "*" is the service marker "in any building".
 # unlock_tech, profession.
 func _validate_buildings(buildings, technologies: Dictionary, professions: Dictionary,
         problems: Array) -> void:
@@ -714,7 +721,7 @@ func _validate_buildings(buildings, technologies: Dictionary, professions: Dicti
                 "building", building_name, building_id, "profession")
 
 
-# --- УЛУЧШЕНИЯ ------------------------------------------------------------
+        # result (and its displayable variant) → a resource.
 # unlock_tech, profession.
 func _validate_improvements(improvements: Dictionary, technologies: Dictionary,
         professions: Dictionary, problems: Array) -> void:
@@ -731,7 +738,7 @@ func _validate_improvements(improvements: Dictionary, technologies: Dictionary,
                 "improvement", imp_name, imp_id, "profession")
 
 
-# --- РЕСУРСЫ (сырьё + продукты) -------------------------------------------
+        # resources → a resource or an @-group of products.
 # improved_by, unlock_improvement, unlock_tech, category.
 func _validate_resources(products: Dictionary, raw_resources: Dictionary,
         categories: Dictionary, technologies: Dictionary, improvements: Dictionary,
@@ -751,13 +758,13 @@ func _validate_resource(res_id, resource, categories: Dictionary, technologies: 
     var rid := str(res_id)
     var rname := _entity_name(resource, rid)
 
-    # improved_by → улучшение (поле сырья: «каким улучшением выращивается»).
+        # unlock_tech → a technology.
     var improved_by := _as_id(resource.get("improved_by", ""))
     if not improved_by.is_empty() and not improvements.has(improved_by):
         _add(problems, "improved_by", "improvement", improved_by,
                 "product", rname, rid, "improved_by")
 
-    # unlock_improvement → улучшение (обратная связь у продукта).
+# --- THE BUILDINGS ---------------------------------------------------------------
     var unlock_improvement := _as_id(resource.get("unlock_improvement", ""))
     if not unlock_improvement.is_empty() and not improvements.has(unlock_improvement):
         _add(problems, "unlock_improvement", "improvement", unlock_improvement,
@@ -766,29 +773,20 @@ func _validate_resource(res_id, resource, categories: Dictionary, technologies: 
     _check_tech_ref(resource.get("unlock_tech", ""), technologies, problems,
             "product", rname, rid, "unlock_tech")
 
-    # category проверяется ТОЛЬКО у продуктов. У сырья поле category занято
-    # другим делом: это фильтр генерации карты со своим набором значений
-    # ("animals", "plants", "metals", "minerals" — см. MapHelpers
-    # .ensure_minimum_resource и комментарии в data/resources/animals.json).
-    # Сверять его с data/categories.json нельзя — там такого набора нет,
-    # и валидатор сыпал бы ложными срабатываниями на каждом животном.
+# --- THE IMPROVEMENTS ------------------------------------------------------------
     var category := _as_id(resource.get("category", ""))
     if is_product and not category.is_empty() and not categories.has(category):
         _add(problems, "category", "category", category,
                 "product", rname, rid, "category")
 
 
-# --- ПРОДУКТЫ БЕЗ ИСТОЧНИКА ----------------------------------------------
+# --- THE RESOURCES (the raw materials + the products) -------------------------------------------
 #
-# Каждый продукт обязан откуда-то появляться: его либо производит улучшение
-# на карте, либо он выходит из рецепта. Продукт без источника недостижим:
-# он не появится на складе ниоткуда, а рецепты, которые его требуют, будут
-# вечно вставать «нет сырья» — и в игре это видно только как пустой склад,
-# без единого слова «почему».
+    # improved_by → an improvement (the field of the raw material: "by which improvement it is grown").
 #
-# Проверяются ТОЛЬКО продукты. Сырьё (gd.raw_resources) по определению
-# берётся с карты генерацией, поэтому у него источник всегда есть; проверка
-# сырья дала бы ложные срабатывания на каждом из 112 ресурсов.
+# ONLY the products are checked. The raw materials (gd.raw_resources) by definition
+# are taken from the map by the generation, therefore their source always exists; the check of
+# the raw materials would give false positives on each of the 112 resources.
 func _validate_product_sources(products: Dictionary, produced_ids: Dictionary,
         problems: Array) -> void:
     for product_id in products:
@@ -801,19 +799,20 @@ func _validate_product_sources(products: Dictionary, produced_ids: Dictionary,
         _add_missing_source(problems, _entity_name(product, pid), pid)
 
 
-# Множество id, которые хоть где-то выпускаются.
+# The set of the ids which are released somewhere at least.
 #
-# Четыре пути появления товара — все четыре нужны, иначе проверка шумит:
-#   result рецепта        — обычный выход крафта;
-#   display_result        — псевдо-выход: реального товара не создаёт, но
-#                          рисуется как результат («Наука», science);
-#   produces у ресурса    — производство улучшением на карте. Ресурс любой
-#                          (сырьё или продукт): механизм один;
-#   additional_yield      — фиксированный выход здания в секунду (наука у
-#                          библиотеки и скриптория), т.е. такой же источник.
+# Four paths of the appearance of a product — all four are needed, otherwise the check is noisy:
+#   result of a recipe        — the ordinary output of the crafting;
+#   display_result            — a pseudo-output: it does not create a real product, but
+#                              is drawn as a result ("Science", science);
+#   produces of a resource    — the production by an improvement on the map. Any resource
+#                              (a raw material or a product): the mechanism is the same one;
+#   additional_yield          — the fixed output of a building per second (the science of
+#                              the library and the scriptorium), i.e. such a same source.
 #
-# Пятый путь — лесная делянка — из produces не виден вовсе и добавляется
-# отдельно (см. константы LUMBERJACK_* в шапке файла).
+#
+# The fifth path — the forest plot — is not visible in produces at all and is added
+# separately (see the constants LUMBERJACK_* in the header of the file).
 func _produced_ids(gd: Object, all_resources: Dictionary) -> Dictionary:
     var produced := {}
 
@@ -843,10 +842,10 @@ func _produced_ids(gd: Object, all_resources: Dictionary) -> Dictionary:
     return produced
 
 
-# Лесная делянка даёт древесину, только если ОБА условия из кода выполнены:
-# улучшение объявлено И у покрова гекса есть выход. Условие не «декларация о
-# намерении», а реальная достижимость: снесённая делянка или обнулённый
-# wood_yield делают древесину недостижимой, и валидатор должен об этом сказать.
+# The forest plot gives the wood only if BOTH conditions from the code are met:
+# the improvement is declared AND the cover of the hex has an output. The condition is not a
+# "declaration of intent", but a real reachability: a demolished plot or a zeroed
+# wood_yield makes the wood unreachable, and the validator must say so.
 func _lumberjack_produces(improvements: Dictionary, covers: Dictionary) -> bool:
     if not improvements.has(LUMBERJACK_IMPROVEMENT):
         return false
@@ -859,9 +858,9 @@ func _lumberjack_produces(improvements: Dictionary, covers: Dictionary) -> bool:
     return false
 
 
-# --- ГРУППЫ ПРОДУКТОВ -----------------------------------------------------
-# Члены @-группы → продукт. Именно эта проверка ловит «@oil_crops» с
-# несуществующими sunflower / rapeseed / peanut.
+# --- THE PRODUCT GROUPS -----------------------------------------------------
+# The members of an @-group → a product. It is exactly this check that catches "@oil_crops" with
+# the non-existent sunflower / rapeseed / peanut.
 func _validate_product_groups(product_groups: Dictionary, group_names: Dictionary,
         products: Dictionary, problems: Array) -> void:
     for group_id in product_groups:
@@ -877,18 +876,18 @@ func _validate_product_groups(product_groups: Dictionary, group_names: Dictionar
                         "group", gname, gid, "products")
 
 
-# --- ПРАВИЛА ПОТРЕБЛЕНИЯ (data/consumption.json) ---------------------------
+# --- THE CONSUMPTION RULES (data/consumption.json) ---------------------------
 #
-# resource → продукт ИЛИ @-группа продуктов; profession → профессия.
+# resource → a product OR an @-group of products; profession → a profession.
 #
-# Проверка зеркалит РЕЗОЛВЕР GameData._build_consumption_entry, а не общие
-# ссылки рецептов: ключ без "@" ищется именно в GameData.products. Потребление
-# берёт товары со склада, а не сырьё с гекса, поэтому «сырьё» здесь не подходит.
+# The check mirrors the RESOLVER GameData._build_consumption_entry, and not the common
+# references of the recipes: a key without "@" is searched exactly in GameData.products. The consumption
+# takes the goods from the storage, and not the raw materials from the hex, therefore "raw material" does not fit here.
 #
-# Самая частая поломка здесь — забытый "@": автор пишет id группы там, где нужен
-# ресурс. До проверки такая запись не роняла ничего: резолвер подставлял
-# products.get(id, {}) и подпись-идентификатор, а списать было нечего, поэтому
-# строка потребления молча висела в интерфейсе и никогда не списывалась.
+# The most frequent breakage here is a forgotten "@": the author writes the id of a group where a
+# resource is needed. Before the check such a record did not break anything: the resolver substituted
+# products.get(id, {}) and a label-identifier, and there was nothing to write off, therefore
+# the consumption row silently hung in the interface and was never written off.
 func _validate_consumption(rules, products: Dictionary, product_groups: Dictionary,
         professions: Dictionary, problems: Array) -> void:
     if not (rules is Array):
@@ -899,8 +898,8 @@ func _validate_consumption(rules, products: Dictionary, product_groups: Dictiona
         var res_key := _as_id(rule.get("resource", ""))
         if res_key.is_empty():
             continue
-        # Идентификатором правила служит его "resource" — им же помечена
-        # строка объявления (см. SOURCE_COLLECTIONS и data_loader).
+        # The "resource" of the rule serves as its identifier — it also marks
+        # the row of the declaration (see SOURCE_COLLECTIONS and data_loader).
         if res_key.begins_with("@"):
             if not product_groups.has(res_key.substr(1)):
                 _add(problems, "consumption_group", "group", res_key,
@@ -909,15 +908,13 @@ func _validate_consumption(rules, products: Dictionary, product_groups: Dictiona
             _add(problems, "consumption_resource", "product", res_key,
                     "consumption_rule", res_key, res_key, "resource")
 
-        # profession → профессия. Вид проверки общий с зданиями и улучшениями:
-        # сообщение «ссылка на несуществующую профессию» одинаково верно здесь.
+        # profession → a profession. The kind of the check is common with the buildings and the improvements:
+        # the message "a reference to a non-existent profession" is equally true here.
         _check_profession_ref(rule.get("profession", []), professions, problems,
                 "consumption_rule", res_key, res_key, "profession")
 
 
-# --- ТЕХНОЛОГИИ -----------------------------------------------------------
-# prerequisites → технология. Формат допускает и плоский список, и список
-# ИЛИ-групп: [[ "a", "b" ], [ "c" ]] — нужно исследовать любую из групп.
+# --- THE TECHNOLOGIES -----------------------------------------------------------
 func _validate_technologies(technologies: Dictionary, problems: Array) -> void:
     for tech_id in technologies:
         var tech = technologies[tech_id]
@@ -931,7 +928,8 @@ func _validate_technologies(technologies: Dictionary, problems: Array) -> void:
                         "technology", tname, tid, "prerequisites")
 
 
-# --- ПРОВЕРКИ ОДНОГО ЗНАЧЕНИЯ --------------------------------------------
+# prerequisites → a technology. The format accepts both a flat list and a list
+# of OR-groups: [[ "a", "b" ], [ "c" ]] — any one of the groups has to be researched.
 
 func _check_tech_ref(value, technologies: Dictionary, problems: Array,
         source_kind: String, source_name: String, source_id: String, field: String) -> void:
@@ -942,8 +940,7 @@ func _check_tech_ref(value, technologies: Dictionary, problems: Array,
             source_kind, source_name, source_id, field)
 
 
-# profession бывает строкой («farmer») и, в некоторых данных, списком —
-# принимаем оба формата.
+# --- THE CHECKS OF A SINGLE VALUE --------------------------------------------
 func _check_profession_ref(value, professions: Dictionary, problems: Array,
         source_kind: String, source_name: String, source_id: String, field: String) -> void:
     for prof_id in _as_string_list(value):
@@ -953,16 +950,13 @@ func _check_profession_ref(value, professions: Dictionary, problems: Array,
                 source_kind, source_name, source_id, field)
 
 
-# --- СБОРКА ЗАПИСИ ПРОБЛЕМЫ ----------------------------------------------
+# --- THE ASSEMBLY OF THE RECORD OF A PROBLEM ----------------------------------------------
 #
-# Здесь и дальше запись делится надвое:
-#   * _add / _add_missing_source / _push — СТРУКТУРА (что, где, в каком поле);
-#   * build_text — ТЕКСТ под текущий язык.
+# profession is sometimes a string ("farmer") and, in some data, a list —
+# we accept both formats.
 #
-# Раньше формулировки жили в _add, и это было связано: смени язык — уже
-# собранные сообщения остались на старом. Теперь текст собирается отдельно и
-# пересобирается функцией localize_problems() (окно вызывает её по сигналу
-# LocalizationManager.locale_changed), а проверка при этом НЕ перезапускается.
+# --- THE ASSEMBLY OF THE RECORD OF A PROBLEM ----------------------------------------------
+#
 
 func _add(problems: Array, kind: String, target: String, ref_id: String,
         source_kind: String, source_name: String, source_id: String, field: String) -> void:
@@ -970,30 +964,38 @@ func _add(problems: Array, kind: String, target: String, ref_id: String,
             source_kind, source_name, source_id, field)
 
 
-# Проблема «продукт есть, а взять его неоткуда».
+# Here and further the record is divided in two:
+#   * _add / _add_missing_source / _push — the STRUCTURE (what, where, in which field);
+#   * build_text — the TEXT in the current language.
 #
-# Владелец проблемы — сам продукт, поэтому его id попадает и в ref_id (чтобы
-# окно подсветило его, как и остальные идентификаторы), и в source_id (чтобы
-# нашлась строка объявления в файле). Поле field пустое: указать нечего — нет
-# поля, в котором стоило бы дописать источник.
+# Previously the wordings lived in _add, and this was connected: change the language — and the already
+# built messages remained on the old one. Now the text is assembled separately and
+# is reassembled by the function localize_problems() (the window calls it on the signal
+# LocalizationManager.locale_changed), and the check itself is NOT restarted.
+#
+# The owner of the problem is the product itself, therefore its id gets into both the ref_id (so that
+# the window highlights it, like the other identifiers) and the source_id (so that
+# the row of the declaration in the file is found). The field field is empty: there is nothing
+# to point at — there is no field in which it would be worth adding the source.
 func _add_missing_source(problems: Array, product_name: String, product_id: String) -> void:
     _push(problems, "product_source", "product", product_id,
             "product", product_name, product_id, "")
 
 
-# Общая часть записи проблемы: словарь полей (см. шапку файла), поиск файла и
-# строки объявления владельца. Вынесена отдельно от _add(), потому что
-# формулировки проблем у разных проверок разные, а формат записи, наоборот,
-# один: от него зависят и data_problems_window.gd, и тест.
+# The problem "the product exists, but there is nowhere to take it from".
 #
-# extra — данные, нужные только тексту конкретной проверки ("bad_chars" у
-# id_charset, "latin" у id_lookalike). Это строительный материал для
-# build_text, а не часть структуры проблемы.
+# the row of the declaration of the owner. It is moved out separately from _add(), because
+# the wordings of the problems of the different checks are different, while the format of the record, on the contrary,
+# is the same one: both data_problems_window.gd and the test depend on it.
+#
+# extra is the data needed only by the text of a particular check ("bad_chars" for
+# id_charset, "latin" for id_lookalike). It is the building material for
+# build_text, and not a part of the structure of the problem.
 func _push(problems: Array, kind: String, target: String, ref_id: String,
         source_kind: String, source_name: String, source_id: String, field: String,
         extra: Dictionary = {}) -> void:
-    # Пустая строка, если происхождение неизвестно (данные без индекса) —
-    # тогда строка с файлом просто ничего не добавляет.
+    # An empty string, if the origin is unknown (the data without the index) —
+    # then the row with the file simply adds nothing.
     var file_path := ""
     var line := 0
     var source_key := "%s:%s" % [str(SOURCE_COLLECTIONS.get(source_kind, "")), source_id]
@@ -1020,30 +1022,30 @@ func _push(problems: Array, kind: String, target: String, ref_id: String,
     problems.append(problem)
 
 
-# Пересобирает текстовые поля problems на ТЕКУЩЕМ языке.
+# Reassembles the text fields of problems in the CURRENT language.
 #
-# Проверка не перезапускается: структура проблемы от языка не зависит, текст
-# выводится из неё. Нужна окну проблем — смена языка в настройках идёт, когда
-# окно уже на экране, и без этого пересборки заголовки и описания остались бы
-# на старом языке.
+# The check is not restarted: the structure of the problem does not depend on the language, the text
+# is output from it. It is needed by the window of the problems — a change of the language in the settings happens when
+# the window is already on the screen, and without this reassembly the headings and the descriptions would remain
+# in the old language.
 static func localize_problems(problems: Array) -> void:
     for problem in problems:
         if problem is Dictionary:
             build_text(problem)
 
 
-# Текст проблемы под текущий язык. Пишет прямо в переданный словарь.
+# The text of the problem in the current language. It writes directly into the passed dictionary.
 #
-# Единая точка, где живут ВСЕ пользовательские формулировки валидатора: их
-# видно списком, и переводчик находит их в каталоге как обычные сообщения.
-# Сами проверки (выше по файлу) не содержат ни одного пользовательского
-# текста — только структуру.
+# The single point where ALL the user-facing wordings of the validator live: they are
+# visible as a list, and the translator finds them in the catalogue as ordinary messages.
+# The checks themselves (higher up in the file) do not contain a single user-facing
+# text — only the structure.
 #
-# Каждый вызов translate() занимает ОДНУ строку и содержит РОВНО один
-# строковый литерал. Это не вкусовое требование, а требование сборщика
-# каталога: tools/i18n_build_po.py разбирает код построчно, и многострочный
-# вызов он не увидит. Второй литерал он принял бы за msgctxt, поэтому
-# склеивать строки внутри вызова тоже нельзя — отсюда длинные строки.
+# Each call of translate() takes ONE line and contains EXACTLY one
+# string literal. This is not a matter of taste, but a requirement of the catalogue
+# builder: tools/i18n_build_po.py parses the code line by line, and a multi-line
+# call it would not see. A second literal it would take for msgctxt, therefore
+# gluing the strings inside the call is also impossible — hence the long strings.
 static func build_text(problem: Dictionary) -> void:
     var kind := str(problem.get("kind", ""))
     var headline := ""
@@ -1061,8 +1063,8 @@ static func build_text(problem: Dictionary) -> void:
             headline = TranslationServer.translate("Product \"%s\" is not produced anywhere.") % str(problem.get("ref_id", ""))
             where = TranslationServer.translate("Source not found: product \"%s\" (%s) appears neither in produces of any map resource, nor in result/display_result of any recipe, nor in additional_yield of any building. Add a data source or remove the product from the file.") % [str(problem.get("source_name", "")), str(problem.get("source_id", ""))]
         _:
-            # Остальные проверки — битая ССЫЛКА: «X с идентификатором … не
-            # существует» + где именно на неё сослались.
+            # The other checks are a broken REFERENCE: "There is no X with the identifier …
+            # exists" + where exactly it was referred to.
             var target_forms := entity_forms(str(problem.get("target", "")))
             var source_forms := entity_forms(str(problem.get("source_kind", "")), "recipe")
             headline = TranslationServer.translate("%s with the identifier \"%s\" does not exist.") % [str(target_forms["title"]), str(problem.get("ref_id", ""))]
@@ -1087,11 +1089,11 @@ static func build_text(problem: Dictionary) -> void:
         " " + location if not location.is_empty() else "")
 
 
-# Список плохих символов идентификатора одной строкой:
-# «position 1: "с" (U+0441, Cyrillic), looks like "c" in Latin;».
+# The list of the bad characters of the identifier on one line:
+# "position 1: "с" (U+0441, Cyrillic), looks like "c" in Latin;".
 #
-# Имя блока переводится здесь, а не в _bad_ident_chars: там оно ещё msgid,
-# и перевод должен применяться в момент сборки текста.
+# The name of the block is translated here, and not in _bad_ident_chars: there it is still msgid,
+# and the translation must be applied at the moment of the building of the text.
 static func _bad_chars_text(bad) -> String:
     var parts: Array = []
     for item in bad:
@@ -1102,8 +1104,8 @@ static func _bad_chars_text(bad) -> String:
         if not block.is_empty():
             part += ", %s" % _block_label(block)
         part += ")"
-        # На латинском этот символ выглядит так же. Без подсказки автор
-        # прочитает «с» как «c» и не поймёт, в чём дело.
+        # In the Latin this character looks the same. Without the hint the author
+        # will read the "с" as a "c" and will not understand what the matter is.
         var lookalike := str(item.get("lookalike", ""))
         if not lookalike.is_empty():
             part += TranslationServer.translate(", looks like \"%s\" in Latin") % lookalike
@@ -1111,19 +1113,19 @@ static func _bad_chars_text(bad) -> String:
     return " ".join(parts)
 
 
-# Владелец ссылки в скобках: «Молот зерна» (grind_grain_hand). Если имени
-# нет — только идентификатор, чтобы строка не выглядела «в  (), поле …».
+# The owner of the reference in the brackets: "Grain Mill" (grind_grain_hand). If there is
+# no name — only the identifier, so that the row does not look like "in  (), the field …".
 static func _quote_owner(source_name: String, source_id: String) -> String:
     if source_name.is_empty() or source_name == source_id:
         return "«%s»" % source_id
     return "«%s» (%s)" % [source_name, source_id]
 
 
-# --- ВСПОМОГАТЕЛЬНОЕ ------------------------------------------------------
+# --- THE HELPERS ------------------------------------------------------------
 
-# Индекс происхождения из объекта с данными. Отсутствие поля не ошибка:
-# валидатор должен работать и на данных без индекса (синтетические данные
-# теста), просто тогда проблемы останутся без указания файла.
+# The index of the origin from an object with the data. The absence of the field is not an error:
+# the validator must work also with the data without the index (the synthetic data
+# of the test), only then the problems will remain without an indication of the file.
 func _source_index(gd: Object) -> Dictionary:
     if gd == null:
         return {}
@@ -1136,20 +1138,20 @@ func _entity_name(data: Dictionary, fallback_id: String) -> String:
     return name if not name.is_empty() else fallback_id
 
 
-# Идентификатор из поля данных.
+# The identifier from the field of the data.
 #
-# Поле может быть ЯВНО пустым: в data/*.json встречается "improved_by": null —
-# это «улучшения нет», а не «ссылка на несуществующее улучшение». Прямой
-# str(null) в GDScript даёт строку «<null>», из-за чего валидатор объявлял бы
-# битой ссылкой каждое пустое поле и сыпал ложные срабатывания. Поэтому
-# null приводится к пустой строке — как и отсутствующее поле.
+# The field can be EXPLICITLY empty: in data/*.json there is "improved_by": null —
+# this is "there is no improvement", and not "a reference to a non-existent improvement". A direct
+# str(null) in GDScript gives the string "<null>", which is why the validator would declare
+# a broken reference by every empty field and would shower false positives. Therefore
+# null is brought to an empty string — as well as an absent field.
 func _as_id(value) -> String:
     if value == null:
         return ""
     return str(value)
 
 
-# Массив записей → словарь id -> запись (для проверок «существует ли»).
+# An array of records → a dictionary id -> record (for the checks "whether it exists").
 func _index_by_id(entries) -> Dictionary:
     var index := {}
     if not (entries is Array):
@@ -1163,8 +1165,8 @@ func _index_by_id(entries) -> Dictionary:
     return index
 
 
-# Приводит поле-ссылку к списку строк: строка → [строка], массив → как есть.
-# Пустые значения молча отбрасываются — незаполненное поле не ошибка.
+# Brings a field-reference to a list of strings: a string → [string], an array → as is.
+# The empty values are silently discarded — an unfilled field is not an error.
 func _as_string_list(value) -> Array:
     var result: Array = []
     if value == null:
@@ -1186,8 +1188,8 @@ func _as_dict(value) -> Dictionary:
     return value if value is Dictionary else {}
 
 
-# prerequisites допускает [[ "a", "b" ], "c"] и [ "a", "b" ] — в обоих
-# случаях нужен плоский список идентификаторов.
+# prerequisites allows [[ "a", "b" ], "c"] and [ "a", "b" ] — in both
+# cases a flat list of the identifiers is needed.
 func _flatten_prerequisites(value) -> Array:
     var result: Array = []
     if value is String:
@@ -1204,8 +1206,8 @@ func _flatten_prerequisites(value) -> Array:
     return result
 
 
-# Сортировка: сначала порядок блоков CHECK_ORDER, внутри — по владельцу
-# ссылки и её id. Без неё список зависел бы от порядка обхода данных.
+# The sorting: first the order of the blocks CHECK_ORDER, inside — by the owner of the
+# reference and its id. Without it the list would depend on the order of the walk of the data.
 func _sort_problems(problems: Array) -> void:
     problems.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
         var ka := str(a.get("kind", ""))
@@ -1220,7 +1222,7 @@ func _sort_problems(problems: Array) -> void:
     )
 
 
-# Сколько проблем по каждому виду проверки — для заголовка окна и тестов.
+# How many problems there are for each kind of the check — for the heading of the window and the tests.
 func count_by_kind(problems: Array) -> Dictionary:
     var counts := {}
     for problem in problems:
