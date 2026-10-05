@@ -6,84 +6,85 @@ const CITY_ICON_SIZE = 130
 const TERRAIN_ICON_SIZE = 130
 const RESOURCE_ICON_SIZE = 75
 const IMPROVEMENT_ICON_SIZE = 35
-# Толщина контура границ кольца влияния городков (в пикселях).
+# The thickness of the outline of the influence rings of the towns (in pixels).
 const TOWN_INFLUENCE_BORDER_WIDTH = 3.0
-# Прозрачность заливки территории городков.
+# The opacity of the fill of the territory of the towns.
 const TOWN_INFLUENCE_FILL_ALPHA = 0.22
-# Стиль дорог — общий для города игрока и городков (различаются только тем,
-# ЧЬИ это дороги, см. _draw_all_roads).
+# The style of the roads is common for the city of the player and the towns (only WHOSE
+# roads they are differs, see _draw_all_roads).
 const ROAD_COLOR = Color(0.55, 0.35, 0.15)
 const ROAD_WIDTH = 6
-# Стиль «призрачной» дороги — непостроенной трассы, которую игрок сейчас смотрит
-# в превью. Главное отличие от настоящей дороги — полупрозрачность: маршрут
-# должен читаться как подсказка, а не как уже проложенная дорога, иначе игрок
-# решит, что дорога уже есть. Рисуется ореол + линия поверх: так маршрут
-# заметен и на светлой местности, и на тёмной.
+# The style of the "ghost" road - the unbuilt route which the player is looking at
+# right now in the preview. The main difference from a real road is the transparency: the route
+# must read as a hint, and not as an already laid road, otherwise the player
+# will decide that the road already exists. A halo + a line is drawn on top: thus the route
+# is noticeable both on the light terrain and on the dark one.
 const ROAD_PREVIEW_COLOR = Color(0.98, 0.86, 0.45, 0.8)
 const ROAD_PREVIEW_WIDTH = 5
 const ROAD_PREVIEW_HALO_COLOR = Color(0.98, 0.86, 0.45, 0.22)
 const ROAD_PREVIEW_HALO_WIDTH = 12
-# Стиль подсветки МАРШРУТА — дороги, по которым груз уже едет к городу.
-# Отличается от призрака превью намеренно: маршрут состоит из СУЩЕСТВУЮЩИХ
-# дорог, и полупрозрачность сказала бы игроку «здесь ничего нет». Поэтому
-# это тонкая линия поверх дороги — она читается как «путь груза», а не как
-# «то, что будет построено». Цианит выбран потому, что жёлтый занят
-# призраком, а зелёный — подсветкой гексов.
+# The style of the highlighting of the ROUTE - the roads along which the cargo is already going to the city.
+# It differs from the ghost of the preview deliberately: the route consists of the EXISTING
+# roads, and the transparency would say to the player "there is nothing here". Therefore
+# this is a thin line on top of the road - it reads as "the path of the cargo", and not as
+# "what will be built". Cyan was chosen because yellow is occupied
+# by the ghost, and green by the highlighting of the hexes.
 const ROUTE_COLOR = Color(0.35, 0.85, 0.95, 0.9)
 const ROUTE_WIDTH = 3
-# Радиус иконок-маркеров, рисуемых поверх гекса: капелька пресной воды у
-# улучшения и значок торговли над соединённым городком. Задано ОДНОЙ
-# константой, чтобы оба маркера гарантированно были одного размера.
+# The radius of the icon markers drawn on top of the hex: a drop of fresh water by
+# an improvement and a trade icon over a connected town. It is set by ONE
+# constant, so that both markers are guaranteed to be of the same size.
 const MARKER_ICON_RADIUS = 6.0
-# Цвет маркеров на гексе (капелька воды и значок торговли).
+# The colour of the markers on the hex (the drop of water and the trade icon).
 const MARKER_ICON_COLOR = Color(0.45, 0.8, 1.0)
 
 var tile_data = []
-# Локальный кэш текстур для отрисовки карты (горячий путь: обращение на
-# каждый гекс каждый кадр). Сами пути и загрузку даёт IconRegistry — своего
-# индекса у рендерера больше нет.
+# A local texture cache for the drawing of the map (a hot path: an access for
+# every hex on every frame). The paths and the loading are given by IconRegistry - it has
+# no index of its own for the renderer any more.
 var icon_textures = {}
 
-# Ссылка на главный узел для доступа к offset_x, offset_y, scroll_offset, build_manager и CityData
+# A reference to the main node for the access to offset_x, offset_y, scroll_offset, build_manager and CityData
 var main_map: Node
 
-# Кэш сглаженных (меандровых) точек рек в МИРОВЫХ координатах (без offset).
-# Сглаживание рек (_generate_natural_river + _chaikin_smooth) — дорогая операция,
-# которая раньше выполнялась каждый кадр при прокрутке карты. Точки рек в мировых
-# координатах не меняются при панорамировании, поэтому пересчёт нужен лишь один раз
-# на реку. При прокрутке к сглаженным мировым точкам достаточно прибавить offset
-# и выполнить клиппинг. Ключ кэша — компактная сериализация координат реки.
+# A cache of the smoothed (meandering) points of the rivers in the WORLD coordinates (without the offset).
+# The smoothing of the rivers (_generate_natural_river + _chaikin_smooth) is an expensive operation,
+# which earlier was performed on every frame when the map was scrolled. The points of the rivers in the world
+# coordinates do not change when panning, therefore the recalculation is needed only once
+# per river. When scrolling it is enough to add the offset to the smoothed world points
+# and perform the clipping. The key of the cache is a compact serialization of the coordinates of the river.
 var _river_smooth_cache: Dictionary = {}
 
-# --- Кэш рендера колец влияния городков (PHASE 1.7 / 1.7.1) ---
-# Кольца городков статичны между спавном/загрузкой/сменой эпохи, но раньше
-# пересчитывались И рисовались каждый кадр: сотни полупрозрачных
-# draw_colored_polygon (по одному на гекс, с тригонометрией на каждый гекс
-# и каждое ребро) + аллокация словарей membership на каждый городок. При
-# пересечении колец общие гексы рисовались по N раз (N = число городков),
-# что дополнительно усиливало прозрачность и повышало нагрузку.
+# --- The render cache of the influence rings of the towns (PHASE 1.7 / 1.7.1) ---
+# The rings of the towns are static between the spawn/load/change of the epoch, but earlier
+# they were recalculated AND drawn on every frame: hundreds of semi-transparent
+# draw_colored_polygon (one per hex, with the trigonometry for each hex
+# and each edge) + the allocation of the dictionaries membership for each town. When
+# the rings intersected, the shared hexes were drawn N times (N = the number of towns),
+# which additionally amplified the transparency and increased the load.
 #
-# Теперь весь рендер-кэш строится один раз и пересобирается только при
-# invalidate_town_influence_cache() либо при изменении видимого Региона
-# (смена эпохи). За кадр остаётся: один draw_texture_rect для заливки и
-# лёгкие кэшированные draw_line для границ.
+#
+# Now the whole render cache is built once and is rebuilt only by
+# invalidate_town_influence_cache() or when the visible Region
+# changes (a change of the epoch). Per frame there remains: one draw_texture_rect for the fill and
+# light cached draw_line for the borders.
 var _town_cache_version: int = 0
 var _town_cache_built_version: int = -1
-# Регионные границы, для которых построен текущий кэш. Если кэш построен
-# до смены эпохи (Регион расширился) — он невалиден и пересобирается.
+# The region borders for which the current cache is built. If the cache is built
+# before a change of the epoch (the Region has expanded) - it is invalid and is rebuilt.
 var _cache_region_start_row: int = -1
 var _cache_region_end_row: int = -1
 var _cache_region_start_col: int = -1
 var _cache_region_end_col: int = -1
-# Уникальные гексы колец ВСЕХ городков (без дублей) в мировых координатах.
-# Каждая запись — { "cx": float, "cy": float } — центр гекса без offset.
+# The unique hexes of the rings of ALL the towns (without duplicates) in the world coordinates.
+# Each record is { "cx": float, "cy": float } - the centre of the hex without the offset.
 var _influence_fill_centers: Array = []
-# Отрезки границ колец в мировых координатах (без offset). Каждая запись —
+# The segments of the borders of the rings in the world coordinates (without the offset). Each record is
 # { "p1": Vector2, "p2": Vector2, "color": Color, "row": int, "col": int }.
 var _influence_border_segments: Array = []
-# Шаг 2: пре-рендер заливки колец в ОДНУ RGBA-текстуру, покрывающую текущий
-# Регион (Кольцо + Регион). Кадровый рендер заливки = один draw_texture_rect
-# вместо сотен полупрозрачных полигонов. Пересоздаётся при инвалидации кэша.
+# Step 2: a pre-render of the fill of the rings into ONE RGBA texture, which covers the current
+# Region (the Ring + the Region). The frame render of the fill = one draw_texture_rect
+# instead of hundreds of semi-transparent polygons. It is recreated on the invalidation of the cache.
 var _influence_fill_texture: ImageTexture = null
 var _influence_texture_origin: Vector2 = Vector2.ZERO
 var _influence_texture_size: Vector2 = Vector2.ZERO
@@ -91,36 +92,36 @@ var _influence_texture_size: Vector2 = Vector2.ZERO
 func initialize(td, main_node):
     tile_data = td
     main_map = main_node
-    # Очищаем кэш рек при инициализации (новая игра / загрузка сохранения),
-    # чтобы не держать устаревшие сглаженные точки от предыдущей карты.
+    # We clear the cache of the rivers on the initialization (a new game / a load of a save),
+    # so as not to keep the outdated smoothed points of the previous map.
     _river_smooth_cache.clear()
-    # Кольца городков могли измениться (новая карта / загрузка сейва):
-    # сбрасываем кэш их рендера — пересоберётся лениво со следующим кадром.
+# The rings of the towns could have changed (a new map / a load of a save):
+# we reset the cache of their render - it will be lazily rebuilt from the next frame.
     invalidate_town_influence_cache()
 
-# Возвращает размер viewport в пикселях. В редакторе get_viewport_rect()
-# недоступен (нет окна игры) — используем запасное значение, как и раньше.
+# Returns the size of the viewport in the pixels. In the editor get_viewport_rect()
+# is unavailable (there is no window of the game) - we use a fallback value, as before.
 func _get_viewport_size() -> Vector2:
     if Engine.is_editor_hint():
         return Vector2(1152, 768)
     return get_viewport_rect().size
 
-# Возвращает словарь с границами видимых гексов (инклюзивно),
-# ограниченными областью, достижимой скроллом карты (scout_reach).
-# Используется для viewport culling: вместо итерации по всей карте
-# рисуем только те гексы, которые пересекают прямоугольник экрана.
+# Returns a dictionary with the borders of the visible hexes (inclusive),
+# limited by the area reachable by the scroll of the map (scout_reach).
+# It is used for the viewport culling: instead of an iteration over the whole map
+# we draw only those hexes which intersect the rectangle of the screen.
 #
-# Область шире Региона — это нужно для двух сценариев:
-#   1. После разведки гексы в тумане войны (вне Региона) должны
-#      отрисовываться как обычные — туман «раскрывается», иначе
-#      разведка не даёт визуального эффекта. За Регионом это возможно
-#      только после изучения Картографии (см. main_map.is_hex_interactive).
-#   2. Прогресс-бар разведки может лежать в тумане (стартовый гекс
-#      чанка не обязан быть в Регионе) — это тоже доступно лишь
-#      после Картографии.
-# `_draw_hex` и `_draw_hex_overlays` сами решают, что рисовать:
-# неисследованные гексы вне Региона — это настоящий туман войны, и
-# для них функция просто выходит раньше времени.
+# The area is wider than the Region - this is needed for the two scenarios:
+#   1. After the scouting, the hexes in the fog of war (outside the Region) must
+#      be drawn as the ordinary ones - the fog "opens up", otherwise
+#      the scouting has no visual effect. Beyond the Region this is possible
+#      only after the study of Cartography (see main_map.is_hex_interactive).
+#   2. The progress bar of the scouting can lie in the fog (the starting hex
+#      of a chunk is not required to be in the Region) - this too is available only
+#      after Cartography.
+# `_draw_hex` and `_draw_hex_overlays` themselves decide what to draw:
+# the unexplored hexes outside the Region are a real fog of war, and
+# for them the function simply returns early.
 func _get_visible_hex_range() -> Dictionary:
     var viewport_size = _get_viewport_size()
 
@@ -131,14 +132,14 @@ func _get_visible_hex_range() -> Dictionary:
     var x_spacing = radius * sqrt(3.0)
     var y_spacing = radius * 1.5
 
-    # Прямоугольник viewport в координатах карты (до offset).
+# The rectangle of the viewport in the map coordinates (before the offset).
     var world_left = - offset_x
     var world_top = - offset_y
     var world_right = world_left + viewport_size.x
     var world_bottom = world_top + viewport_size.y
 
-    # Запас в 2 гекса, чтобы учесть смещение нечётных рядов
-    # и частично видимые гексы на границах экрана.
+# A margin of 2 hexes, to account for the offset of the odd rows
+# and the partially visible hexes at the edges of the screen.
     var margin = 2
 
     var col_start = int(floor(world_left / x_spacing)) - margin
@@ -146,7 +147,7 @@ func _get_visible_hex_range() -> Dictionary:
     var row_start = int(floor(world_top / y_spacing)) - margin
     var row_end = int(ceil(world_bottom / y_spacing)) + margin
 
-    # Ограничиваем областью, достижимой скроллом карты (scout_reach).
+# We limit it by the area reachable by the scroll of the map (scout_reach).
     var reach = main_map.get_scout_reach_bounds()
     col_start = max(col_start, reach.col_start)
     col_end = min(col_end, reach.col_end)
@@ -160,17 +161,16 @@ func _get_visible_hex_range() -> Dictionary:
         "col_end": col_end
     }
 
-# Экранный прямоугольник в ЭКРАННЫХ координатах — единственный источник
-# истины и для viewport culling, и для отсечения рек.
-#
-# Инвариант: всё, что мы отсекаем, уже сдвинуто на offset (см.
-# _build_visible_river_lines), поэтому и прямоугольник должен быть экранным.
-# `-offset_x / -offset_y` здесь означали бы МИРОВУЮ систему координат и
-# отсекли бы всё — именно так реки однажды и пропадали с карты.
+# The screen rectangle in the SCREEN coordinates - the single source
+# of truth both for the viewport culling and for the clipping of the rivers.
+# The invariant: everything that we clip is already shifted by the offset (see
+# _build_visible_river_lines), therefore the rectangle must be the screen one as well.
+# `-offset_x / -offset_y` here would mean the WORLD coordinate system and
+# would clip everything - exactly so the rivers once disappeared from the map.
 func _get_screen_rect() -> Rect2:
     return Rect2(Vector2.ZERO, _get_viewport_size())
 
-# Проверяет, пересекается ли прямоугольник (в экранных координатах) с viewport.
+# Checks whether the rectangle (in the screen coordinates) intersects the viewport.
 func _is_rect_visible(rect: Rect2) -> bool:
     return rect.intersects(_get_screen_rect())
 
@@ -194,21 +194,21 @@ func load_icons():
     for tech in GameData.technologies:
         if tech.has("icon"):
             _cache_icon(tech.icon)
-    # Покров (cover): загружаем его иконки (оверлеи леса и т.п.)
+# The cover: we load its icons (the overlays of the forest and so on).
     for c_id in GameData.covers.keys():
         var c = GameData.covers[c_id]
         if c.has("icons"):
             for icon_name in c.icons:
                 _cache_icon(icon_name)
     _cache_icon("city.png")
-    # Ключ "city" нужен рендереру городков (town_manager.TOWN_ICON_NAME),
-    # чтобы достать ту же текстуру по «полному» имени файла.
+# The key "city" is needed by the renderer of the towns (town_manager.TOWN_ICON_NAME),
+# in order to get the same texture by the "full" name of the file.
     if icon_textures.has("city.png"):
         icon_textures["city"] = icon_textures["city.png"]
     _cache_icon("lock.png")
 
-# Кладёт текстуру иконки в локальный кэш отрисовки. Путь берётся из
-# IconRegistry, поэтому индекс иконок в проекте один.
+# Puts the texture of the icon into the local cache of the drawing. The path is taken from
+# IconRegistry, therefore the index of the icons in the project is one.
 func _cache_icon(icon_name: String):
     if icon_name.is_empty():
         return
@@ -217,79 +217,79 @@ func _cache_icon(icon_name: String):
         icon_textures[icon_name] = tex
 
 func _draw():
-    # Вычисляем видимый диапазон гексов (viewport culling): рисуем только те
-    # гексы, которые пересекают прямоугольник экрана.
+# We compute the visible range of the hexes (the viewport culling): we draw only those
+# hexes which intersect the rectangle of the screen.
     var visible = _get_visible_hex_range()
 
-    # ФАЗА 1: Рисуем все гексы, попавшие на экран в пределах досягаемости
-    # скролла. Гексы Региона — детально, неисследованные гексы за его
-    # пределами (туман войны) не рисуются вовсе (см. _draw_hex). Разведанные
-    # гексы вне Региона рисуются затемнёнными: их можно выделить и отправить
-    # туда разведчиков — но только после изучения Картографии. Совсем за
-    # пределами досягаемости скролла не рисуется ничего (см.
+    # PHASE 1: We draw all the hexes which got on the screen within the reach
+    # of the scroll. The hexes of the Region - in detail, the unexplored hexes beyond
+    # its limits (the fog of war) are not drawn at all (see _draw_hex). The scouted
+    # hexes outside the Region are drawn darkened: they can be selected and scouts
+    # sent there - but only after the study of Cartography. Beyond the
+    # limits of the reach of the scroll nothing is drawn at all (see
     # _get_visible_hex_range).
     for row in range(visible.row_start, visible.row_end + 1):
         for col in range(visible.col_start, visible.col_end + 1):
             _draw_hex(row, col)
 
-    # ПРИМЕЧАНИЕ: гексы вне Региона (туман войны) рисует тот же проход
-    # ФАЗЫ 1 — они затемнены в _draw_hex, а их содержимое (ресурсы,
-    # улучшения, кольца городков) скрыто. Отдельные проходы для уникальной
-    # местности и городков за пределами Региона больше не нужны: их
-    # поведение перенесено в _draw_hex и _draw_hex_overlays (иконка городка
-    # в тумане — полупрозрачная и без имени, и только с эпохи >= 1).
+    # NOTE: the hexes outside the Region (the fog of war) are drawn by the same pass
+    # of PHASE 1 - they are darkened in _draw_hex, and their contents (the resources,
+    # the improvements, the rings of the towns) are hidden. The separate passes for the unique
+    # terrain and the towns beyond the limits of the Region are not needed any more: their
+    # behaviour has been moved into _draw_hex and _draw_hex_overlays (the icon of a town
+    # in the fog is semi-transparent and without a name, and only from the epoch >= 1).
 
-    # ФАЗА 1.7: Кольца влияния городков — полупрозрачная голубая заливка.
-    # Рисуется ПОСЛЕ terrain (фаза 1), но ДО дорог, рек и иконок
-    # (2/2.5/2.75/3) — чтобы заливка подсвечивала местность и не перекрывала
-    # важные детали. По договорённости с пользователем кольца видны ТОЛЬКО
-    # в пределах Региона (см. _get_region_visible_range): за туманом войны они
-    # не рисуются, чтобы не «выдавать» содержимое неисследованной территории,
-    # хотя сам туман войны теперь отрисовывается и доступен для разведки.
+    # PHASE 1.7: The influence rings of the towns - a semi-transparent blue fill.
+    # It is drawn AFTER the terrain (phase 1), but BEFORE the roads, the rivers and the icons
+    # (2/2.5/2.75/3) - so that the fill highlights the terrain and does not cover
+    # the important details. By the agreement with the user the rings are visible ONLY
+    # within the limits of the Region (see _get_region_visible_range): behind the fog of war they
+    # are not drawn, so as not to "give away" the contents of the unexplored territory,
+    # although the fog of war itself is now drawn and is available for the scouting.
     _draw_town_influence(visible)
-    # ФАЗА 1.7.1: границы колец городков — каждая своим цветом. Рисуются
-    # сразу после заливки (поверх неё, поверх terrain), но до дорог/рек/
-    # иконок: контур должен быть виден, не перекрывая содержимое гексов.
+    # PHASE 1.7.1: The borders of the rings of the towns - each with its own colour. They are drawn
+    # right after the fill (over it, over the terrain), but before the roads/rivers/
+    # icons: the outline must be visible, without covering the contents of the hexes.
     _draw_town_influence_borders(visible)
 
-    # ФАЗА 2: Рисуем дороги (ПЕРЕД иконками ресурсов и улучшений) — сети города
-    # игрока и сетей городков (см. _draw_all_roads)
+    # PHASE 2: We draw the roads (BEFORE the icons of the resources and the improvements) - the networks of the city
+    # of the player and the networks of the towns (see _draw_all_roads)
     _draw_all_roads()
 
-    # ФАЗА 2.75: Рисуем реки
+    # PHASE 2.75: We draw the rivers
     _draw_rivers()
 
-    # ФАЗА 2.5: Рисуем подсветку для разведки и покупки (всегда активна,
-    # но до изучения Картографии — только в пределах Региона)
+    # PHASE 2.5: We draw the highlighting for the scouting and the purchase (it is always active,
+    # but before the study of Cartography - only within the limits of the Region)
     _draw_exploration_highlights()
 
-    # ФАЗА 3: Рисуем иконки ресурсов, улучшений и другие оверлеи
+    # PHASE 3: We draw the icons of the resources, the improvements and the other overlays
     for row in range(visible.row_start, visible.row_end + 1):
         for col in range(visible.col_start, visible.col_end + 1):
             _draw_hex_overlays(row, col)
 
-    # ФАЗА 3.5: Рисуем подсветку выбранного гекса (клик ЛКМ, панель управления).
-    # Рамка + лёгкая заливка, чтобы выделенный гекс был хорошо виден поверх
-    # оверлеев, но не перекрывал иконку ресурса/улучшения.
+    # PHASE 3.5: We draw the highlighting of the selected hex (a click with the LMB, the control panel).
+    # A frame + a light fill, so that the selected hex is well visible over
+    # the overlays, but does not cover the icon of the resource/improvement.
     if main_map.control_panel and main_map.control_panel.has_selection():
         var sel = main_map.control_panel.get_selected_hex()
         if sel != null:
-            # Заливка + рамка. Набор гексов считает
-            # expansion_manager.get_highlight_hexes(): гекс в Кольце Влияния —
-            # только он сам; вне Кольца — весь чанк разведки/покупки (тот же
-            # чанк, с которым работают действия панели, см.
-            # control_panel._collect_region_actions); если чанка нет
-            # (исследованный гекс вне Региона или гекс в кольце влияния чужого
-            # городка) — сам гекс, чтобы клик не был «молчаливым». Чанк может
-            # включать гексы в Регионе и в тумане войны рядом.
-            # Цвета — по типу чанка (разведка/освоение × можно/нельзя), см.
-            # _get_highlight_style; стиль считается один раз на весь набор.
+            # The fill + the frame. The set of the hexes is computed by
+            # expansion_manager.get_highlight_hexes(): a hex in the Influence Ring -
+            # only the hex itself; outside the Ring - the whole chunk of the scouting/purchase (the same
+            # chunk with which the actions of the panel work, see
+            # control_panel._collect_region_actions); if there is no chunk
+            # (a scouted hex outside the Region or a hex in the influence ring of a foreign
+            # town) - the hex itself, so that the click is not "silent". The chunk can
+            # include the hexes in the Region and in the fog of war nearby.
+            # The colours are by the type of the chunk (the scouting/the claiming × possible/impossible), see
+            # _get_highlight_style; the style is computed once for the whole set.
             var selected_hexes: Array = main_map.expansion_manager.get_highlight_hexes(sel.row, sel.col)
             var style: Dictionary = _get_highlight_style(selected_hexes, sel.row, sel.col, true)
             for highlight_hex in selected_hexes:
                 _draw_selected_hex_highlight(highlight_hex.row, highlight_hex.col, style)
 
-    # ФАЗА 4: Рисуем город в конце
+    # PHASE 4: We draw the city at the end
     var offset_pos = Vector2(
         main_map.offset_x + main_map.scroll_offset.x,
         main_map.offset_y + main_map.scroll_offset.y
@@ -310,7 +310,7 @@ func _draw():
         )
         draw_colored_polygon(city_vertices, Color.YELLOW)
 
-    # Рисуем прямоугольник с названием города немного выше гекса города
+    # We draw a rectangle with the name of the city a little above the hex of the city
     if not CityData.city_name.is_empty():
         var font = ThemeDB.fallback_font
         if font != null:
@@ -352,10 +352,10 @@ func _draw_hex(row: int, col: int):
     var in_influence = tile.get("in_influence", false)
     var is_explored = tile.get("is_explored", false)
 
-    # Настоящий туман войны: неисследованный гекс за пределами Региона
-    # вообще не рисуем — виден только тёмный фон канваса. После разведки
-    # (`is_explored = true`) гекс снова отрисовывается как обычный: туман
-    # «раскрывается» и разведка даёт визуальный эффект.
+    # A real fog of war: an unexplored hex beyond the limits of the Region
+    # is not drawn at all - only the dark background of the canvas is visible. After the scouting
+    # (`is_explored = true`) the hex is drawn as the ordinary one again: the fog
+    # "opens up" and the scouting has a visual effect.
     if not in_influence and not is_explored and not main_map.is_valid_hex(row, col):
         return
 
@@ -388,7 +388,7 @@ func _draw_hex(row: int, col: int):
             terrain_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
         draw_colored_polygon(vertices, terrain_color)
 
-    # --- Покров (cover): полупрозрачный оверлей поверх terrain ---
+    # --- The cover: a semi-transparent overlay over the terrain ---
     _draw_cover_overlay(row, col, center, vertices)
 
     if not in_influence:
@@ -397,50 +397,53 @@ func _draw_hex(row: int, col: int):
     if main_map.show_hex_borders:
         draw_polyline(closed_vertices, Color.WHITE, 2, true)
 
-# --- Кэш рендера колец влияния городков (PHASE 1.7 / 1.7.1) ---
-# Раньше кольца пересчитывались и рисовались КАЖДЫЙ кадр: на каждый гекс
-# заливки — отдельный draw_colored_polygon с alpha-блендингом и тригонометрией
-# (hex_center + hex_vertices), а на каждое ребро границ — заново аллокация
-# словаря membership, ещё 6×cos/sin и sort_custom(). При 2+ городках рядом
-# кольца дополнительно ДУБЛИРОВАЛИСЬ: общие гексы в плоском списке
-# town_influence_hexes были по одному на каждый городок — заливка наносилась
-# 2-3 раза, что усиливало затемнение пересечений и повышало нагрузку.
+    # --- The render cache of the influence rings of the towns (PHASE 1.7 / 1.7.1) ---
+    # Earlier the rings were recalculated and drawn EVERY frame: for each hex
+    # of the fill - a separate draw_colored_polygon with the alpha blending and the trigonometry
+    # (hex_center + hex_vertices), and for each edge of the borders - a new allocation
+    # of the dictionary membership, plus 6x cos/sin and sort_custom(). With 2+ towns nearby
+    # the rings were additionally DUPLICATED: the shared hexes in the flat list
+    # town_influence_hexes were one per each town - the fill was applied
+    # 2-3 times, which amplified the darkening of the intersections and increased the load.
+    
 #
-# Кольца статичны между спавном/загрузкой/сменой эпохи, поэтому теперь:
-#   Шаг 1 — кэш уникальных центров заливки (без дублей) и мировых отрезков
-#           границ строится один раз в _ensure_town_influence_cache();
-#   Шаг 2 — заливка пре-рендерится в ОДНУ RGBA-текстуру на весь Регион
-#           (см. _build_town_fill_texture), и за кадр рисуется один
-#           draw_texture_rect вместо сотен полупрозрачных полигонов.
-# За кадр остаются: 1 blit заливки + лёгкие draw_line границ без тригонометрии
-# и аллокаций. Пересборка — только по invalidate_town_influence_cache()
-# (инициализация карты / загрузка сейва / смена эпохи) либо при смене Региона.
+/load/change of the epoch, therefore now:
+    #   Step 1 - the cache of the unique fill centres (without duplicates) and the world segments
+    #            of the borders is built once in _ensure_town_influence_cache();
+    #   Step 2 - the fill is pre-rendered into ONE RGBA texture for the whole Region
+    #            (see _build_town_fill_texture), and per frame one
+    #            draw_texture_rect is drawn instead of hundreds of semi-transparent polygons.
+    # Per frame there remain: 1 blit of the fill + light draw_line of the borders without the trigonometry
+    # and the allocations. The rebuild is only by invalidate_town_influence_cache()
+    # (the initialization of the map / the load of a save / a change of the epoch) or when the Region changes.
+    #
+    
 #
-# ЧТО ИМЕННО ВИДИТ ИГРОК (единственное место, где решается видимость колец;
-# сами кольца в данных полные — см. town_manager.compute_all_town_influences):
-#   1. эпоха — в 1-й эпохе (current_era < 1) кольца не рисуются вовсе, как и
-#      сами городки: иначе кольцо, залезающее в Регион, выдало бы чужой
-#      городок с самого начала игры;
-#   2. туман войны — гекс в тумане заливки не получает (is_hex_in_fog).
-#      Обратное тоже верно: разведанный гекс за пределами Региона заливку
-#      ПОЛУЧАЕТ (так работает разведка).
-# Границы текстуры заливки считаются по фактической заливке, а не по Региону
-# (см. _build_town_fill_texture), поэтому гекс никогда не обрезается краем
-# текстуры — «заливка наполовину» невозможна в принципе.
+ (the only place where the visibility of the rings is decided;
+    # the rings themselves in the data are full - see town_manager.compute_all_town_influences):
+    #   1. the epoch - in the 1st epoch (current_era < 1) the rings are not drawn at all, as are
+    #      the towns themselves: otherwise a ring which intrudes into the Region would give away
+    #      a foreign town from the very start of the game;
+    #   2. the fog of war - a hex in the fog does not get the fill (is_hex_in_fog).
+    #      The reverse is also true: a scouted hex beyond the limits of the Region DOES get the fill
+    #      (this is how the scouting works).
+    # The borders of the fill texture are computed by the actual fill, and not by the Region
+    # (see _build_town_fill_texture), therefore a hex is never cut off by the edge of the
+    # texture - a "half fill" is impossible in principle.
+    
 
-# Публичный доступ к кэшу заливки для тестов и отладки: список гексов
-# заливки в виде [{"row": int, "col": int}, ...]. Гексы, отфильтрованные по
-# туману войны, в списке нет вовсе. Пустой список означает, что кэш ещё не
-# собран: вызовите сначала invalidate_town_influence_cache().
+ for the tests and the debugging: the list of the hexes
+    # of the fill in the form [{"row": int, "col": int}, ...]. The hexes filtered out by
+    # the fog of war are not in the list at all. An empty list means that the cache is not
+    # built yet: call invalidate_town_influence_cache() first.
 func get_town_fill_hexes() -> Array:
     var out: Array = []
     for h in _influence_fill_centers:
         out.append({"row": int(h.row), "col": int(h.col)})
     return out
 
-# Публичный доступ к кэшу границ для тестов и отладки: список гексов, по
-# которым проходят отрезки контуров, в том же формате, что и
-# get_town_fill_hexes().
+# A public access to the cache of the borders for the tests and the debugging: the list of the hexes through
+# which the outline segments pass, in the same format as
 func get_town_border_hexes() -> Array:
     var out: Array = []
     for seg in _influence_border_segments:
@@ -448,15 +451,15 @@ func get_town_border_hexes() -> Array:
     return out
 
 func invalidate_town_influence_cache() -> void:
-    # Сбрасываем кэш рендера: пересоберётся лениво на следующем кадре.
-    # Старая ImageTexture освобождается автоматически (ref-count) при
-    # перезаписи ссылки в _build_town_fill_texture().
+# We reset the render cache: it will be lazily rebuilt on the next frame.
+# The old ImageTexture is released automatically (ref-count) on
+# the overwrite of the reference in _build_town_fill_texture().
     _town_cache_version += 1
 
 func _ensure_town_influence_cache(visible: Dictionary) -> void:
     if main_map == null:
         return
-    # Регион расширяется при смене эпохи — кэш под старые границы невалиден.
+# The Region expands on a change of the epoch - the cache for the old borders is invalid.
     var region_changed: bool = _cache_region_start_row != main_map.region_start_row \
             or _cache_region_end_row != main_map.region_end_row \
             or _cache_region_start_col != main_map.region_start_col \
@@ -469,14 +472,14 @@ func _ensure_town_influence_cache(visible: Dictionary) -> void:
     _cache_region_start_col = main_map.region_start_col
     _cache_region_end_col = main_map.region_end_col
 
-    # --- Шаг 1: уникальные гексы заливки + мировые отрезки границ ---
+    # --- Step 1: the unique hexes of the fill + the world segments of the borders ---
     _influence_fill_centers = []
     _influence_border_segments = []
-    # Кольца в данных полные (town_manager больше не клипует их по Региону),
-    # поэтому ЗДЕСЬ решается, что из них видит игрок: в 1-й эпохе (current_era
-    # < 1) чужой городок не показывается вовсе — ровно как его иконка
-    # (см. _draw_hex_overlays), значит не рисуем и кольцо. Иначе кольцо,
-    # залезающее в Регион, «выдавало» бы городка с самого начала игры.
+    # The rings in the data are full (town_manager no longer clips them by the Region),
+    # therefore IT IS DECIDED HERE what of them the player sees: in the 1st epoch (current_era
+    # < 1) a foreign town is not shown at all - exactly as its icon
+    # (see _draw_hex_overlays), therefore we do not draw the ring either. Otherwise a ring
+    # which intrudes into the Region would "give away" the town from the very start of the game.
     if main_map.current_era < 1:
         _build_town_fill_texture()
         return
@@ -485,7 +488,7 @@ func _ensure_town_influence_cache(visible: Dictionary) -> void:
     var towns: Array = main_map.towns
     if towns == null:
         towns = []
-    # Направления соседей для нечёт-r offset-сетки (как HexUtils.get_neighbors_odd_r).
+    # The directions of the neighbours for the odd-r offset grid (like HexUtils.get_neighbors_odd_r).
     var even_dirs := [[0, -1], [0, 1], [-1, -1], [-1, 0], [1, -1], [1, 0]]
     var odd_dirs := [[0, -1], [0, 1], [-1, 0], [-1, 1], [1, 0], [1, 1]]
     for town_entry in towns:
@@ -493,25 +496,25 @@ func _ensure_town_influence_cache(visible: Dictionary) -> void:
         if ring.is_empty():
             continue
         var bc: Array = town_entry.get("border_color", [1.0, 1.0, 1.0, 1.0])
-        # Карта членства "row,col" -> true для быстрой проверки «не в кольце».
+    # The map of the membership "row,col" -> true for a quick check of "not in a ring".
         var members: Dictionary = {}
         for h in ring:
             members["%d,%d" % [int(h.row), int(h.col)]] = true
         for h in ring:
             var row: int = int(h.row)
             var col: int = int(h.col)
-            # Гекс под туманом войны (неизвестен игроку) заливку не получает:
-            # иначе кольцо «выдаёт» присутствие чужого городка. Проверка идёт
-            # именно по туману, а не по Региону: разведанный гекс ЗА пределами
-            # Региона заливку получает (так работает разведка — см. коммит
-            # «заливка не рисуется на гексах в тумане войны»). Обрезать такие
-            # гексы нечем: границы текстуры считаются по самой заливке
-            # (_build_town_fill_texture), поэтому каждый её гекс помещается в
-            # текстуру целиком.
+    # A hex under the fog of war (unknown to the player) does not get the fill:
+    # otherwise the ring would "give away" the presence of a foreign town. The check goes
+    # exactly by the fog, and not by the Region: a scouted hex BEYOND the limits of
+    # the Region does get the fill (this is how the scouting works - see the commit
+    # "the fill is not drawn on the hexes in the fog of war"). There is nothing to clip such
+    # hexes with: the borders of the texture are computed by the fill itself
+    # (_build_town_fill_texture), therefore each of its hexes fits into
+    # the texture entirely.
             if main_map.is_hex_in_fog(row, col):
                 continue
-            # Заливка: гекс рисуем один раз, даже если он в кольцах нескольких
-            # городков (раньше — по N раз с «двойным» затемнением пересечений).
+    # The fill: we draw a hex only once, even if it is in the rings of several
+    # towns (earlier - N times with a "double" darkening of the intersections).
             var key := "%d,%d" % [row, col]
             if not seen.has(key):
                 seen[key] = true
@@ -520,21 +523,21 @@ func _ensure_town_influence_cache(visible: Dictionary) -> void:
                         "row": row, "col": col,
                     "cr": bc[0], "cg": bc[1], "cb": bc[2],
                     "ca": TOWN_INFLUENCE_FILL_ALPHA})
-            # Граница: рёбра между кольцом городка и его окружением.
+    # The border: the edges between the ring of a town and its surroundings.
             var dirs: Array = even_dirs if row % 2 == 0 else odd_dirs
             for d in dirs:
                 var nr := row + int(d[0])
                 var nc := col + int(d[1])
                 if members.has("%d,%d" % [nr, nc]):
                     continue
-                # Соседа за краем карты нет — «правильный» край не рисуем.
+    # There is no neighbour at the edge of the map - we do not draw the "correct" edge.
                 if nr < 0 or nr >= main_map.map_rows or nc < 0 or nc >= main_map.map_cols:
                     continue
-                # Ребро уходит в туман войны — контур там не рисуется.
+    # The edge goes into the fog of war - the outline is not drawn there.
                 if main_map.is_hex_in_fog(nr, nc):
                     continue
-                # Общая кромка: две вершины текущего гекса, ближайшие к центру
-                # соседнего. Для pointy-top гексов это и есть общее ребро.
+    # The common rim: the two vertices of the current hex which are the closest to the centre
+    # of the neighbour. For the pointy-top hexes this is the common edge.
                 var nb_center: Vector2 = HexUtils.hex_center(nr, nc, radius)
                 var dists: Array = []
                 for vi in range(6):
@@ -548,20 +551,21 @@ func _ensure_town_influence_cache(visible: Dictionary) -> void:
                         "cr": bc[0], "cg": bc[1], "cb": bc[2], "ca": bc[3],
                         "row": row, "col": col})
 
-    # --- Шаг 2: пре-рендер заливки в одну текстуру Региона ---
+    # --- Step 2: a pre-render of the fill into one texture of the Region ---
     _build_town_fill_texture()
 
-# Пре-рендер заливки колец влияния в ОДНУ RGBA-текстуру, покрывающую всю
-# область заливки. Текстура строится в «мировых» пикселях
-# (без scroll-offset): при прокрутке кадр лишь прибавляет offset и делает один
-# draw_texture_rect. В Godot-классе Image нет векторных примитивов (только
-# fill/fill_rect/set_pixel), поэтому гексы заполняются построчно через
-# fill_rect по таблице половинных ширин (pointy-top гекс с плоскими боковыми
-# сторонами: левая и правая границы вертикальные).
-#
-# Если область заливки слишком велика для одной текстуры (предел 4096 px) —
-# оставляем _influence_fill_texture = null, и _draw_town_influence рисует
-# заливку кэшированными полигонами (без дублей и тригонометрии за кадр).
+    # A pre-render of the fill of the influence rings into ONE RGBA texture, which covers the whole
+    # area of the fill. The texture is built in the "world" pixels
+    # (without the scroll offset): when scrolling, a frame only adds the offset and does one
+    # draw_texture_rect. The Godot class Image has no vector primitives (only
+    # fill/fill_rect/set_pixel), therefore the hexes are filled row by row through
+    # fill_rect by the table of the half widths (a pointy-top hex with the flat sides
+    # the left and right borders are vertical).
+    #
+    # If the area of the fill is too large for one texture (the limit of 4096 px) -
+    # we leave _influence_fill_texture = null, and _draw_town_influence draws
+    # the fill by the cached polygons (without the duplicates and the trigonometry per frame).
+    
 func _build_town_fill_texture() -> void:
     _influence_fill_texture = null
     if main_map == null or Engine.is_editor_hint():
@@ -569,14 +573,15 @@ func _build_town_fill_texture() -> void:
     if _influence_fill_centers.is_empty():
         return
     var radius: float = main_map.HEX_RADIUS
-    # Границы текстуры считаем ПО ФАКТИЧЕСКОЙ ЗАЛИВКЕ, а не по углам
-    # Региона. На odd-r сетке нечётные ряды сдвинуты на пол-гекса
-    # (HexUtils.hex_center), поэтому углы Региона — не крайние точки карты:
-    # гексы колонок-краёв в чётных рядах вылезают за них на ~0.73 радиуса, и
-    # текстура срезала их краем — заливка выглядела «нарисованной наполовину»
-    # (заметнее слева: там минимум берётся от угла с нечётным рядом). Отсюда
-    # и запас 1 px сверх габаритов гекса — на сглаживание стыков.
-    var half_w: float = radius * sqrt(3.0) * 0.5 # полуширина гекса по X
+# We compute the borders of the texture BY THE ACTUAL FILL, and not by the corners
+    # of the Region.
+# of the Region. On the odd-r grid the odd rows are shifted by a half hex
+# (HexUtils.hex_center), therefore the corners of the Region are not the extreme points of the map:
+# the hexes of the edge columns in the even rows stick out beyond them by ~0.73 of the radius, and
+# the texture was cutting them off with its edge - the fill looked "drawn by half"
+# (more noticeably on the left: there the minimum is taken from a corner with an odd row). Hence
+# also a margin of 1 px beyond the dimensions of a hex - for the smoothing of the joints.
+    var half_w: float = radius * sqrt(3.0) * 0.5 # the half width of the hex by X
     var min_x := INF
     var min_y := INF
     var max_x := -INF
@@ -602,12 +607,12 @@ func _build_town_fill_texture() -> void:
     img.fill(Color(0, 0, 0, 0))
     var half: float = radius * 0.5
     var rmax: int = int(ceil(radius)) + 1
-    # Половинные ширины (px) pointy-top гекса по смещениям dy. +1px на каждую
-    # сторону наружу — закрывает тонкие AA-швы на стыках гексов.
+# The half widths (px) of a pointy-top hex by the offsets dy. +1px on each
+# side outward - it covers the thin AA seams at the joints of the hexes.
     var hw: Dictionary = {}
     for dy in range(-rmax, rmax + 1):
         var ya: float = float(dy)
-        var w: float = radius * sqrt(3.0) * 0.5 # плоская ширина (|y| <= r/2)
+        var w: float = radius * sqrt(3.0) * 0.5 # the flat width (|y| <= r/2)
         if ya > half:
             w = sqrt(3.0) * (radius - ya)
         elif ya < -half:
@@ -633,10 +638,10 @@ func _build_town_fill_texture() -> void:
     _influence_texture_origin = Vector2(min_x, min_y)
     _influence_texture_size = Vector2(float(tex_w), float(tex_h))
 
-# Сужает видимый диапазон гексов до границ Региона (Кольцо + Регион).
-# Нужен для колец влияния городков: туман войны теперь отрисовывается и
-# доступен для разведки, но чужая территория в нём не раскрывается —
-# заливка и границы колец рисуются только внутри Региона.
+# Narrows the visible range of the hexes to the borders of the Region (the Ring + the Region).
+# It is needed for the influence rings of the towns: the fog of war is now drawn and
+# available for the scouting, but a foreign territory is not revealed in it -
+# the fill and the borders of the rings are drawn only inside the Region.
 func _get_region_visible_range(visible: Dictionary) -> Dictionary:
     return {
         "row_start": max(visible.row_start, main_map.region_start_row),
@@ -645,12 +650,12 @@ func _get_region_visible_range(visible: Dictionary) -> Dictionary:
         "col_end": min(visible.col_end, main_map.region_end_col)
     }
 
-# Рисует кольца влияния всех городков (PHASE 1.7). По договорённости — только
-# для гексов внутри РЕГИОНА (см. _get_region_visible_range): за туманом войны
-# кольца не рисуются, чтобы не «выдавать» неисследованную территорию, хотя
-# сам туман теперь отрисовывается и доступен для разведки.
-# Один кадр = один draw_texture_rect (текстура вырезана по Кольцо+Регион).
-# Fallback на полигоны — только в редакторе или при слишком большом Регионе.
+# Draws the influence rings of all the towns (PHASE 1.7). By the agreement - only
+# for the hexes inside the REGION (see _get_region_visible_range): behind the fog of war
+# the rings are not drawn, so as not to "give away" the unexplored territory, although
+# the fog itself is now drawn and is available for the scouting.
+# One frame = one draw_texture_rect (the texture is cut by Ring+Region).
+# The fallback to the polygons - only in the editor or with too large a Region.
 func _draw_town_influence(visible: Dictionary) -> void:
     if main_map == null:
         return
@@ -665,12 +670,12 @@ func _draw_town_influence(visible: Dictionary) -> void:
                 _influence_texture_size.x,
                 _influence_texture_size.y), false, Color(1, 1, 1, 1))
         return
-    # Fallback: отрисовка гексами (редактор / Регион больше 4096px).
+ (the editor / the Region larger than 4096px).
     var region_visible = _get_region_visible_range(visible)
     for h in _influence_fill_centers:
         var row: int = int(h.row)
         var col: int = int(h.col)
-        # Видимость (как раньше): только Кольцо + Регион.
+: only the Ring + the Region.
         if row < region_visible.row_start or row > region_visible.row_end \
                 or col < region_visible.col_start or col > region_visible.col_end:
             continue
@@ -682,27 +687,25 @@ func _draw_town_influence(visible: Dictionary) -> void:
         var fill_color := Color(h.cr, h.cg, h.cb, h.ca)
         draw_colored_polygon(vertices, fill_color)
 
-# Рисует границы колец влияния КАЖДОГО городка своим цветом (PHASE 1.7.1).
-# Рисуется сразу после заливки колец (PHASE 1.7) и до дорог/рек/иконок.
+ of EACH town with its own colour (PHASE 1.7.1).
+    # It is drawn right after the fill of the rings (PHASE 1.7) and before the roads/rivers/icons.
+    # The data are taken from main_map.towns (an array of the records of the towns): each
+    # town has its own personal ring (town["influence_hexes"]) and its own colour of the borders
+    # (town["border_color"], generated on the spawn and saved in the save). The rings
+    # are completely independent - the colours of the neighbouring towns do not affect each other,
+    # therefore a "foreign" territory is visually clearly delimited.
 #
-# Данные берутся из main_map.towns (массив записей городков): у каждого
-# городка своё личное кольцо (town["influence_hexes"]) и свой цвет границ
-# (town["border_color"], сгенерирован на спавне и сохранён в сейв). Кольца
-# полностью независимы — цвета соседних городков не влияют друг на друга,
-# поэтому «чужая» территория визуально чётко разграничена.
+ between the hexes of the ring and the "surroundings"
+    # (a hex which does NOT belong to the ring of this town). The internal edges (between two
+    # hexes of one ring) are not drawn. Beyond the edge of the map the edges are not drawn -
+    # there is no hex-neighbour there, and the ring simply ends.
+    # The segments are computed ONCE in _ensure_town_influence_cache() and are stored in the
+    # world coordinates (without the offset). Per frame - only the translation by the offset,
+    # the viewport check and the draw_line: without the trigonometry and the allocations of the dictionaries.
 #
-# Контур рисуется по общим рёбрам между гексами кольца и «окружением»
-# (гекс, НЕ входящий в кольцо этого городка). Внутренние рёбра (между двумя
-# гексами одного кольца) не рисуются. За краем карты рёбра не рисуются —
-# там нет гекса-соседа, и кольцо просто заканчивается.
-#
-# Отрезки считаются ОДИН раз в _ensure_town_influence_cache() и хранятся в
-# мировых координатах (без offset). За кадр — только трансляция offset'ом,
-# viewport-проверка и draw_line: без тригонометрии и аллокаций словарей.
-#
-# Видимость — та же, что у заливки: только Кольцо + Регион. Клип колец на
-# стартовом Регионе уже применён к данным (в town_manager), так что чужие
-# городки в 1-й эпохе контуры не раскрывают.
+: only the Ring + the Region. The clipping of the rings on
+    # the starting Region is already applied to the data (in town_manager), so the foreign
+    # towns in the 1st epoch do not reveal their outlines.
 func _draw_town_influence_borders(visible: Dictionary) -> void:
     if main_map == null:
         return
@@ -713,13 +716,13 @@ func _draw_town_influence_borders(visible: Dictionary) -> void:
     for seg in _influence_border_segments:
         var row: int = int(seg.row)
         var col: int = int(seg.col)
-        # Видимость (как в заливке): только Кольцо + Регион.
+: only the Ring + the Region.
         if row < region_visible.row_start or row > region_visible.row_end \
                 or col < region_visible.col_start or col > region_visible.col_end:
             continue
         var p1 := Vector2(float(seg.p1x) + offset_x, float(seg.p1y) + offset_y)
         var p2 := Vector2(float(seg.p2x) + offset_x, float(seg.p2y) + offset_y)
-        # Viewport culling сегмента по его bounding-box.
+# The viewport culling of a segment by its bounding box.
         if not _is_rect_visible(Rect2(
                 minf(p1.x, p2.x) - TOWN_INFLUENCE_BORDER_WIDTH,
                 minf(p1.y, p2.y) - TOWN_INFLUENCE_BORDER_WIDTH,
@@ -729,9 +732,9 @@ func _draw_town_influence_borders(visible: Dictionary) -> void:
         var color := Color(seg.cr, seg.cg, seg.cb, seg.ca)
         draw_line(p1, p2, color, TOWN_INFLUENCE_BORDER_WIDTH, true)
 
-# Рисует оверлей покрова (cover) поверх relief.
-# Если у покрова есть иконка — рисуем её (детерминированный выбор по seed),
-# иначе — полупрозрачный цветной полигон (color + alpha).
+    # Draws the overlay of the cover over the relief.
+    # If the cover has an icon - we draw it (a deterministic choice by the seed),
+    # otherwise - a semi-transparent coloured polygon (color + alpha).
 func _draw_cover_overlay(row: int, col: int, center: Vector2, vertices: PackedVector2Array):
     var tile = tile_data[row][col]
     var cover_id = tile.get("cover", "none")
@@ -741,7 +744,7 @@ func _draw_cover_overlay(row: int, col: int, center: Vector2, vertices: PackedVe
     if cover.is_empty():
         return
 
-    # Иконка покрова (если есть) — детерминированный выбор, чтобы не мерцало.
+    # The icon of the cover (if there is one) - a deterministic choice, so that it does not flicker.
     var icon_name = _pick_cover_icon(cover, row, col)
     if icon_name != "" and icon_textures.has(icon_name):
         var tex = icon_textures[icon_name]
@@ -751,16 +754,16 @@ func _draw_cover_overlay(row: int, col: int, center: Vector2, vertices: PackedVe
             TERRAIN_ICON_SIZE,
             TERRAIN_ICON_SIZE
         )
-        # Иконка леса обычно непрозрачная — применяем alpha для полупрозрачности.
+    # The icon of the forest is usually opaque - we apply the alpha for the semi-transparency.
         var alpha = float(cover.get("alpha", 0.45))
         draw_texture_rect(tex, icon_rect, false, Color(1, 1, 1, alpha))
     else:
-        # Фолбек: полупрозрачный цветной полигон.
+    # The fallback: a semi-transparent coloured polygon.
         var c = cover.get("color", [0, 0, 0])
         var alpha = float(cover.get("alpha", 0.45))
         draw_colored_polygon(vertices, Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0, alpha))
 
-# Возвращает имя иконки покрова для гекса (row, col) — детерминированный выбор.
+    # Returns the name of the icon of the cover for the hex (row, col) - a deterministic choice.
 func _pick_cover_icon(cover: Dictionary, row: int, col: int) -> String:
     var icons: Array = cover.get("icons", [])
     if icons.is_empty():
@@ -770,15 +773,15 @@ func _pick_cover_icon(cover: Dictionary, row: int, col: int) -> String:
     var idx = icon_rng.randi() % icons.size()
     return icons[idx]
 
-# Ресурс виден игроку, если выполнены ОБА условия:
-#   1) гекс входит в Кольцо Влияния (территория освоена) или область
-#      была исследована разведкой;
-#   2) у ресурса НЕТ tech_reveal, либо соответствующая технология уже изучена.
-# Иначе ресурс скрыт: иконки нет, в тултипе не упоминается, разведчики
-# его «не видят». Это касается подземных ископаемых вроде железа
-# (tech_reveal = "mining") — пока mining не изучен, руда на карте есть,
-# но игрок о ней не знает.
-# Логика вынесена в MapHelpers, чтобы тултип и рендерер не расходились.
+    # The resource is visible to the player if BOTH conditions are met:
+    #   1) the hex belongs to the Influence Ring (the territory is claimed) or the area
+    #      has been scouted;
+    #   2) the resource has NO tech_reveal, or the corresponding technology is already learned.
+    # Otherwise the resource is hidden: there is no icon, it is not mentioned in the tooltip, the scouts
+    # do not "see" it. This concerns the underground minerals like iron
+    # (tech_reveal = "mining") - while mining is not learned, the ore is on the map,
+    # but the player does not know about it.
+    # The logic is moved out into MapHelpers, so that the tooltip and the renderer do not diverge.
 func _is_resource_revealed(tile: Dictionary) -> bool:
     return MapHelpers.is_resource_revealed(tile)
 
@@ -794,34 +797,34 @@ func _draw_hex_overlays(row: int, col: int):
     if row == main_map.city_row and col == main_map.city_col:
         return
 
-    # Настоящий туман войны: неисследованный гекс за Регионом — никаких
-    # оверлеев (ресурсы, иконки улучшений, городки, конфликты tech_reveal).
-    # `_draw_hex` уже отказался его рисовать; тут тоже выходим, чтобы
-    # случайно не «выдать» содержимое.
+    # A real fog of war: an unexplored hex beyond the Region - no
+    # overlays (the resources, the icons of the improvements, the towns, the conflicts of tech_reveal).
+    # `_draw_hex` has already refused to draw it; here we also return, so as not to
+    # accidentally "give away" the contents.
     if not in_influence and not is_explored and not main_map.is_valid_hex(row, col):
         return
 
-    # Ресурсы Региона вне Кольца Влияния скрыты, пока область не разведана.
-    # (Прогресс-бары ниже отрисовываются независимо от видимости ресурса.)
+    # The resources of the Region outside the Influence Ring are hidden until the area is scouted.
+    # (The progress bars below are drawn regardless of the visibility of the resource.)
     var is_resource_visible = _is_resource_revealed(tile)
 
-    # Рисуем иконку как для природного (tile.resource), так и для разводимого
-    # (tile.crop_bred) ресурса — эффективный ресурс берётся из MapHelpers.
+    # We draw the icon both for the natural (tile.resource) and for the bred
+    # (tile.crop_bred) resource - the effective resource is taken from MapHelpers.
     var eff_res = MapHelpers.get_effective_resource(tile)
-    # Проверяем, заблокирован ли ресурс технологией для улучшения.
-    # Ресурсы с tech_reveal скрыты полностью (is_resource_visible = false).
-    # Замок гейтится технологией УЛУЧШЕНИЯ, которым добывается ресурс
-    # (imp_unlock_tech из improved_by), а НЕ технологией появления ресурса
-    # (tech_required). Например, кварцевый песок добывается каменоломней:
-    # замок держится до «Каменной кладки», хотя ресурс виден раньше. Для
-    # каменных ресурсов (базальт/мрамор/…) этот же замок держится до
-    # «Каменной кладки», а не пропадает после «Горного дела».
+    # We check whether the resource is locked by a technology for the improvement.
+    # The resources with tech_reveal are hidden completely (is_resource_visible = false).
+    # A castle is gated by the technology of the IMPROVEMENT by which the resource is extracted
+    # (imp_unlock_tech from improved_by), and NOT by the technology of the appearance of the resource
+    # (tech_required). For example, the quartz sand is extracted by a quarry:
+    # the castle is held until "Stone Masonry", although the resource is visible earlier. For
+    # the stone resources (basalt/marble/...) this same lock is held until
+    # "Stone Masonry", and does not disappear after "Mining".
     var is_resource_locked_by_tech = false
     if eff_res != "" and is_resource_visible:
         var res_data = GameData.raw_resources.get(eff_res, {})
         var improved_by = res_data.get("improved_by", "")
-        # У части ресурсов (например, дикоросы foraged_food) improved_by задан
-        # как null — тогда .get() возвращает Nil, а не значение по умолчанию.
+    # For a part of the resources (for example, the wild plants foraged_food) improved_by is set
+    # as null - then .get() returns Nil, and not the default value.
         if improved_by == null:
             improved_by = ""
         if improved_by != "" and not CityData.is_improvement_unlocked(improved_by):
@@ -840,9 +843,9 @@ func _draw_hex_overlays(row: int, col: int):
                 var fallback_color = Color(c[0] / 255.0, c[1] / 255.0, c[2] / 255.0)
                 draw_circle(center, RESOURCE_ICON_SIZE / 3.0, fallback_color)
 
-    # Если ресурс виден, но технология для постройки улучшения не изучена —
-    # рисуем иконку замка поверх ресурса. Как только технология изучена,
-    # замок исчезает (is_resource_locked_by_tech становится false).
+    # If the resource is visible, but the technology for the construction of the improvement is not learned -
+# we draw the icon of the castle over the resource. As soon as the technology is learned,
+# the castle disappears (is_resource_locked_by_tech becomes false).
     if is_resource_locked_by_tech and icon_textures.has("lock.png"):
         var lock_tex = icon_textures["lock.png"]
         var lock_size = RESOURCE_ICON_SIZE * 0.6
@@ -854,8 +857,8 @@ func _draw_hex_overlays(row: int, col: int):
         )
         draw_texture_rect(lock_tex, lock_rect, false)
 
-    # Звёздочки качества ресурса — под иконкой, только если ресурс раскрыт
-    # и на этом гексе уже построено улучшение, которое раскрывает качество.
+# The asterisks of the quality of the resource - under the icon, only if the resource is revealed
+# and an improvement which reveals the quality is already built on this hex.
     if eff_res != "" and is_resource_visible and tile.improvement != null:
         _draw_quality_stars(tile, center)
 
@@ -863,25 +866,25 @@ func _draw_hex_overlays(row: int, col: int):
         var has_worker = main_map.worker_manager.has_worker(row, col)
         var imp_data = GameData.improvements.get(tile.improvement, {})
         var imp_icon = imp_data.get("icon", "")
-        # Инфраструктурные улучшения (no_worker, например пристань или канал)
-        # не привязаны к рабочему: рисуем их всегда в полный цвет, без серого
-        # затемнения, даже когда has_worker == false.
+# The infrastructure improvements (no_worker, for example a pier or a canal)
+# are not tied to a worker: we always draw them in the full colour, without the grey
+# darkening, even when has_worker == false.
         var is_infra = GameData.is_no_worker_improvement(tile.improvement)
-        # Декоративные улучшения городков всегда рисуются полноцветными,
-        # хотя рабочего у них намеренно нет.
+# The decorative improvements of the towns are always drawn in the full colour,
+# although they intentionally have no worker.
         var draw_active = has_worker or is_infra or bool(tile.get("decorative", false))
-        # Если на гексе нет ресурса (ни природного, ни разводимого) — улучшение
-        # это единственный «предмет» на гексе (ирригационный канал, лесная
-        # делянка на пустом лесном гексе, декоративные улучшения городков на
-        # пустых гексах). Рисуем его по центру гекса КРУПНО — размером с
-        # иконку ресурса (RESOURCE_ICON_SIZE): фактически оно заменяет собой
-        # отсутствующую иконку ресурса. Если ресурс есть — иконка улучшения
-        # остаётся маленьким маркером (IMPROVEMENT_ICON_SIZE) над верхним
-        # краем, над иконкой ресурса.
+# If there is no resource on the hex (neither natural nor bred) - the improvement
+# is the only "item" on the hex (an irrigation canal, a forest
+# plot on an empty forest hex, the decorative improvements of the towns on
+# empty hexes). We draw it in the centre of the hex LARGE - of the size of
+# the icon of the resource (RESOURCE_ICON_SIZE): in fact it replaces
+# the missing icon of the resource itself. If there is a resource - the icon of the improvement
+# remains a small marker (IMPROVEMENT_ICON_SIZE) above the top
+# edge, above the icon of the resource.
         var imp_icon_size: float = IMPROVEMENT_ICON_SIZE
-        # Радиус заглушки-круга, если текстура иконки не найдена. Для крупной
-        # иконки берём ту же формулу, что и у ресурса (RESOURCE_ICON_SIZE/3),
-        # чтобы выглядела как обычная иконка ресурса-заглушки.
+# The radius of the stub circle, if the texture of the icon is not found. For the large
+# icon we take the same formula as for the resource (RESOURCE_ICON_SIZE/3),
+# so that it looks like an ordinary stub icon of the resource.
         var imp_fallback_radius: float = IMPROVEMENT_ICON_SIZE / 2.5
         var icon_pos = Vector2(center.x, center.y)
         if eff_res != "":
@@ -904,20 +907,20 @@ func _draw_hex_overlays(row: int, col: int):
                     fallback_color = Color(0.5, 0.5, 0.5)
                 draw_circle(icon_pos, imp_fallback_radius, fallback_color)
 
-        # Капелька пресной воды рядом с иконкой улучшения. Показываем для
-        # любого улучшения, у которого есть доступ к воде (direct или chain).
-        # Типы различаются визуально:
-        #   direct — залитая голубая капля (как раньше у ферм);
-        #   chain  — контурная (обводка) приглушённого цвета, вода по цепочке.
+# A drop of fresh water next to the icon of the improvement. We show it for
+# any improvement which has access to the water (direct or chain).
+# The types differ visually:
+#   direct - a filled blue drop (as it was before for the farms);
+#   chain  - a contour (an outline) of a muted colour, the water by the chain.
         if tile.improvement != null:
             var water_access = MapHelpers.get_hex_water_access(row, col, tile_data, main_map.map_rows, main_map.map_cols)
             if water_access != "":
-                # Позиция капельки зависит от размера иконки улучшения:
-                #   маленькая (32) — как раньше, справа от иконки;
-                #   крупная (RESOURCE_ICON_SIZE, гекс без ресурса) — справа
-                #   капелька упирается в грань гекса (полуширина гекса ≈ 47.6px
-                #   при HEX_RADIUS = 55), а снизу мешают прогресс-бары, поэтому
-                #   ставим её по центру НАД иконкой, в верхней части гекса.
+# The position of the drop depends on the size of the icon of the improvement:
+#   small (32) - as before, to the right of the icon;
+#   large (RESOURCE_ICON_SIZE, a hex without a resource) - to the right
+#   the drop rests against the face of the hex (the half width of the hex is ~47.6px
+#   at HEX_RADIUS = 55), and below it the progress bars interfere, therefore
+#   we place it in the centre ABOVE the icon, in the upper part of the hex.
                 var drop_offset := Vector2(imp_icon_size * 0.5 + 6, 0)
                 if imp_icon_size > IMPROVEMENT_ICON_SIZE:
                     drop_offset = Vector2(0, - (imp_icon_size * 0.5 + 6))
@@ -936,27 +939,27 @@ func _draw_hex_overlays(row: int, col: int):
                 if water_access == "direct":
                     draw_polygon(drop_points, [MARKER_ICON_COLOR])
                 else:
-                    # chain: контурная капля приглушённого цвета.
+# chain: a contour drop of a muted colour.
                     var closed_points = PackedVector2Array()
                     closed_points.append_array(drop_points)
                     closed_points.append(drop_points[0])
                     draw_polyline(closed_points, Color(0.5, 0.7, 0.95, 0.9), 1.5)
 
-    # --- Иконка городка ---
-    # Рисуется ПОСЛЕ всех остальных оверлеев (ресурс/улучшение/капля воды),
-    # чтобы быть поверх них — это «главный» объект на гексе, как и сам город
-    # игрока. Размер берётся из town_manager, чтобы при желании легко было
-    # подкрутить. Рисуем только если гекс НЕ гекс города (город — отдельный
-    # случай в ФАЗЕ 4).
+# --- The icon of the town ---
+# It is drawn AFTER all the other overlays (the resource/the improvement/the drop of water),
+# in order to be over them - it is the "main" object on the hex, as is the city
+# of the player itself. The size is taken from town_manager, so that if desired it could easily be
+# to tweak. We draw only if the hex is NOT the hex of a city (a city is a separate
+# case in PHASE 4).
     if tile.get("has_town", false) \
             and not (row == main_map.city_row and col == main_map.city_col) \
             and icon_textures.has(TownManager.TOWN_ICON_NAME):
-        # Раскрыт ли гекс: в Кольце Влияния или разведан разведчиками.
+# Is the hex revealed: in the Influence Ring or scouted by the scouts.
         var town_revealed: bool = in_influence or bool(tile.get("is_explored", false))
-        # Раскрытый городок — полная иконка + имя. Неразведанный (туман войны)
-        # виден лишь намёком: полупрозрачная иконка без имени, а до эпохи
-        # Античности (current_era < 1) не показывается вовсе — как и раньше
-        # в отдельном проходе для городков за пределами Региона.
+# A revealed town - a full icon + a name. An unscouted one (the fog of war)
+# is visible only by a hint: a semi-transparent icon without a name, and before the epoch
+# of the Antiquity (current_era < 1) it is not shown at all - as before
+# in a separate pass for the towns beyond the limits of the Region.
         if town_revealed or main_map.current_era >= 1:
             var town_tex = icon_textures[TownManager.TOWN_ICON_NAME]
             var town_rect = Rect2(
@@ -968,63 +971,62 @@ func _draw_hex_overlays(row: int, col: int):
             if town_revealed:
                 draw_texture_rect(town_tex, town_rect, false)
                 _draw_town_name(row, col, center)
-                # Значок торговли над соединённым с городом городком.
-                # Рисуется только для раскрытого городка (тот же гейт, что и
-                # сама иконка): в тумане войны он выдавал бы то, до чего
-                # игрок ещё не дошёл.
+# The trade badge over a town which is connected to the city.
+# It is drawn only for a revealed town (the same gate as
+# the icon itself): in the fog of war it would give away that which the player
+# has not reached yet.
                 if _is_town_trade_connected(row, col):
-                    # Над иконкой городка, но внутри гекса: подпись названия
-                    # городка вынесена за верхнюю грань гекса, и значок
-                    # наезжал бы на неё.
+# Over the icon of the town, but inside the hex: the label of the name
+# of the town is moved out above the top face of the hex, and the badge
+# would run into it.
                     _draw_trade_link_icon(
                         center + Vector2(0, -(TownManager.TOWN_ICON_SIZE * 0.5 + 8.0)))
             else:
                 draw_texture_rect(town_tex, town_rect, false,
                         Color(1, 1, 1, TownManager.FOG_TOWN_ICON_ALPHA))
 
-    # --- Конфликт «tech_reveal-ресурс vs чужое улучшение» ---
-    # Если на гексе стоит улучшение, а под ним нашли скрытый ресурс (tech_reveal
-    # уже изучен, но ресурс не добывается из-за старого улучшения) — рисуем
-    # красный треугольник с «!». Само улучшение не сносится: его производство
-    # продолжается. Подробности см. в docs.md, «tech_reveal: скрытые ресурсы».
-    # Показываем треугольник ТОЛЬКО когда ресурс уже видим (после tech_reveal),
-    # иначе игрок не понимает, на что ругается значок.
+# --- The conflict "a tech_reveal resource vs. a foreign improvement" ---
+# If an improvement stands on the hex, and under it a hidden resource was found (tech_reveal
+# is already learned, but the resource is not extracted because of the old improvement) - we draw
+# a red triangle with a "!". The improvement itself is not demolished: its production
+# continues. The details are in docs.md, "tech_reveal: the hidden resources".
+# We show the triangle ONLY when the resource is already visible (after tech_reveal),
+# otherwise the player does not understand what the badge is complaining about.
     var conflict = MapHelpers.get_tech_reveal_conflict(tile)
     if not conflict.is_empty() and is_resource_visible:
         _draw_tech_reveal_warning(center)
 
-# Соединён ли город с этим городком дорогами. Единственный источник истины —
-# road_manager: сети города и городка пересеклись (см. is_town_linked_to_city).
+# Is the city connected to this town by roads. The single source of truth is
+# road_manager: the networks of the city and the town have intersected (see is_town_linked_to_city).
 func _is_town_trade_connected(row: int, col: int) -> bool:
     if main_map == null or not main_map.has_node("RoadManager"):
         return false
     var road_manager = main_map.get_node("RoadManager")
     return road_manager.is_town_linked_to_city(row, col)
 
-# Значок торговли над гексом соединённого городка: две изогнутые стрелки,
-# направленные друг к другу. Размер — ровно как у капельки пресной воды
-# (MARKER_ICON_RADIUS, та же константа), рисуется процедурно, как и капелька:
-# отдельная иконка такого размера была бы нечитаема.
-#
-# Ставится над иконкой городка, внутри верхней части гекса: подпись названия
-# городка вынесена за верхнюю грань гекса, и значок наезжал бы на неё.
+# The trade badge over the hex of a connected town: two curved arrows,
+# directed towards each other. The size is exactly the same as that of a drop of fresh water
+# (MARKER_ICON_RADIUS, the same constant), it is drawn procedurally, as is the drop:
+# a separate icon of such a size would be unreadable.
+# It is placed over the icon of the town, inside the upper part of the hex: the label of the name
+# of the town is moved out above the top face of the hex, and the badge would run into it.
 func _draw_trade_link_icon(center: Vector2) -> void:
     var r := MARKER_ICON_RADIUS
     var arc_radius := r * 0.65
     var arc_offset := r * 0.35
     var line_width := maxf(1.0, r * 0.22)
     var color := MARKER_ICON_COLOR
-    # Верхняя дуга: слева направо, наконечник смотрит вниз.
+# The upper arc: from left to right, the arrowhead looks down.
     var top_center := center + Vector2(0, -arc_offset)
     draw_arc(top_center, arc_radius, PI, TAU, 12, color, line_width, true)
     _draw_arrow_head(top_center + Vector2(arc_radius, 0), Vector2(0, 1), color, r)
-    # Нижняя дуга — зеркально: справа налево, наконечник смотрит вверх.
+# The lower arc is mirrored: from right to left, the arrowhead looks up.
     var bottom_center := center + Vector2(0, arc_offset)
     draw_arc(bottom_center, arc_radius, 0, PI, 12, color, line_width, true)
     _draw_arrow_head(bottom_center + Vector2(-arc_radius, 0), Vector2(0, -1), color, r)
 
-# Наконечник стрелки значка торговли: маленький треугольник от точки tip
-# в направлении dir.
+# The arrowhead of the arrow of the trade badge: a small triangle from the point tip
+# in the direction dir.
 func _draw_arrow_head(tip: Vector2, dir: Vector2, color: Color, size: float) -> void:
     var d := dir.normalized()
     var side := Vector2(-d.y, d.x)
@@ -1067,9 +1069,9 @@ func _draw_town_name(row: int, col: int, center: Vector2) -> void:
     draw_string(font, text_pos, town_name, HORIZONTAL_ALIGNMENT_CENTER,
             -1, font_size, Color.WHITE)
 
-# Рисует звёздочки качества ресурса под его иконкой.
-# Только для раскрытых ресурсов после постройки улучшения. Если качество не задано
-# или равно "common" — ничего не рисуем.
+# Draws the asterisks of the quality of the resource under its icon.
+# Only for the revealed resources after the construction of an improvement. If the quality is not set
+# or is equal to "common" - we draw nothing.
 func _draw_quality_stars(tile: Dictionary, center: Vector2):
     var quality = tile.get("quality", "")
     if quality == "" or quality == null or quality == "common":
@@ -1077,13 +1079,13 @@ func _draw_quality_stars(tile: Dictionary, center: Vector2):
     var levels = GameData.get_quality_levels()
     if levels.is_empty():
         return
-    # Определяем индекс качества в списке уровней (от худшего к лучшему).
+# We determine the index of the quality in the list of the levels (from the worst to the best).
     var quality_index = levels.find(quality)
     if quality_index < 0:
         return
-    # Количество «полных» звёзд = индекс + 1 (первый уровень = 1 звезда).
+# The number of the "full" asterisks = the index + 1 (the first level = 1 asterisk).
     var stars_count = quality_index + 1
-    # Максимум звёзд = количество уровней качества.
+# The maximum of the asterisks = the number of the levels of the quality.
     var max_stars = levels.size()
 
     var star_outer = 5.5
@@ -1095,38 +1097,38 @@ func _draw_quality_stars(tile: Dictionary, center: Vector2):
     for i in range(max_stars):
         var star_cx = start_x + i * spacing
         if i < stars_count:
-            # Заполненная звезда — золотисто-жёлтая
+# A filled asterisk is a golden yellow
             _draw_star(star_cx, star_y, star_outer, star_inner, Color(1.0, 0.85, 0.2, 0.9))
         else:
-            # Пустая звезда — серо-белая
+# An empty asterisk is a grey-white
             _draw_star_outline(star_cx, star_y, star_outer, star_inner, Color(0.5, 0.5, 0.5, 0.6))
 
-# Рисует красный треугольник с «!» в правом верхнем углу гекса — индикатор
-# конфликта «tech_reveal-ресурс найден под чужим улучшением». Позиция
-# специально выбрана так, чтобы не перекрывать иконку ресурса по центру
-# и иконку улучшения сверху, но попадать в поле зрения.
-# Сама фигура — залитый красный треугольник + белая обводка + «!»
-# посередине (через draw_string). Без внешних ресурсов и шрифтов.
+# Draws a red triangle with a "!" in the upper right corner of the hex - an indicator
+# of the conflict "a tech_reveal resource is found under a foreign improvement". The position
+# is specially chosen so as not to cover the icon of the resource in the centre
+# and the icon of the improvement at the top, but to fall into the field of view.
+# The figure itself - a filled red triangle + a white outline + a "!"
+# in the middle (through draw_string). Without the external resources and the fonts.
 func _draw_tech_reveal_warning(center: Vector2):
-    # Размеры треугольника в пикселях.
+# The dimensions of the triangle in the pixels.
     var tri_size := 18.0
-    # Центр треугольника — в правом верхнем углу гекса, чуть ближе к центру,
-    # чтобы значок не вылезал за гекс и не терялся на фоне соседних.
+# The centre of the triangle is in the upper right corner of the hex, a bit closer to the centre,
+# so that the badge does not stick out of the hex and is not lost on the background of the neighbours.
     var cx = center.x + main_map.HEX_RADIUS * 0.55
     var cy = center.y - main_map.HEX_RADIUS * 0.55
-    # Вершины равностороннего треугольника, направленного вверх.
+# The vertices of an equilateral triangle directed up.
     var pts = PackedVector2Array()
     pts.append(Vector2(cx, cy - tri_size * 0.6))
     pts.append(Vector2(cx - tri_size * 0.55, cy + tri_size * 0.45))
     pts.append(Vector2(cx + tri_size * 0.55, cy + tri_size * 0.45))
     draw_colored_polygon(pts, Color(0.85, 0.15, 0.15, 0.95))
-    # Белая обводка по тому же контуру.
+# A white outline by the same contour.
     var border = PackedVector2Array()
     border.append_array(pts)
     border.append(pts[0])
     draw_polyline(border, Color.WHITE, 1.5, true)
-    # «!» — рисуем как короткий столбик и точку под ним. Используем
-    # стандартный шрифт через draw_string, чтобы не зависеть от ассетов.
+# The "!" - we draw it as a short column and a dot under it. We use
+# the standard font through draw_string, so as not to depend on the assets.
     var font = ThemeDB.fallback_font
     if font == null:
         return
@@ -1136,27 +1138,27 @@ func _draw_tech_reveal_warning(center: Vector2):
     var text_pos = Vector2(cx - text_size.x / 2.0, cy + text_size.y / 2.0 - 1)
     draw_string(font, text_pos, text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color.WHITE)
 
-# Возвращает стиль подсветки чанка — {"fill": Color, "border": Color,
-# "width": float} — по четырём типам чанков. Две оси кодирования:
-#   - тон кодирует тип действия (два взаимно различных тона — разведка или
-#     освоение); приглушённый (обесцвеченный) тон означает, что действие
-#     недоступно: чанк не примыкает к известной территории либо покупка
-#     невозможна (вне Региона / чужая территория);
-#   - состояние ввода: наведение — тонкая рамка, клик — толстая.
-# anchor_row/anchor_col — гекс, с которого начато выделение (наведение/клик):
-# его статус определяет тип действия (is_explored/in_influence → освоение,
-# иначе → разведка; чанк гомогенен по статусу, поэтому расхождений нет).
-# Доступность считается так же, как в control_panel._collect_region_actions:
-#   - освоение: чанк непуст, гекс не в кольце чужого городка, внутри Региона
-#     и хотя бы один гекс чанка примыкает к in_influence (своя территория —
-#     всегда «доступно»);
-#   - разведка: main_map.is_chunk_adjacent_to_known (примыкание к известному
-#     миру) — тот же гейт, что у кнопки «Отправить разведчиков».
-# Состояние is_scouting (экспедиция уже идёт) не учитывается: это временный
-# режим, а не свойство чанка.
-# ЕДИНСТВЕННОЕ место системы подсветки с конкретными значениями цветов:
-# правьте палитру только здесь — в комментариях кода и документации
-# конкретные цвета намеренно не продублированы, чтобы они не устаревали.
+# Returns the style of the highlighting of the chunk - {"fill": Color, "border": Color,
+# "width": float} - by the four types of the chunks. Two axes of the encoding:
+#   - the tone encodes the type of the action (two mutually different tones - the scouting or
+#     the claiming); a muted (desaturated) tone means that the action
+#     is unavailable: the chunk does not adjoin the known territory or the purchase
+#     is impossible (outside the Region / a foreign territory);
+#   - the state of the input: hovering - a thin frame, a click - a thick one.
+# anchor_row/anchor_col is the hex from which the selection was started (hovering/clicking):
+# its status determines the type of the action (is_explored/in_influence -> the claiming,
+# otherwise -> the scouting; the chunk is homogeneous in status, therefore there are no discrepancies).
+# The availability is counted in the same way as in control_panel._collect_region_actions:
+#   - the claiming: the chunk is non-empty, the hex is not in the ring of a foreign town, inside the Region
+#     and at least one hex of the chunk adjoins in_influence (its own territory is
+#     always "available");
+#   - the scouting: main_map.is_chunk_adjacent_to_known (adjoining the known
+#     world) - the same gate as that of the button "Send the scouts".
+# The state is_scouting (an expedition is already going) is not taken into account: this is a temporary
+# mode, and not a property of the chunk.
+# The ONLY place of the highlighting system with the specific values of the colours:
+# edit the palette only here - in the comments of the code and the documentation
+# the specific colours are deliberately not duplicated, so that they do not become outdated.
 func _get_highlight_style(chunk: Array, anchor_row: int, anchor_col: int, selected: bool) -> Dictionary:
     var tile = null
     if main_map.is_hex_on_map(anchor_row, anchor_col):
@@ -1195,15 +1197,15 @@ func _get_highlight_style(chunk: Array, anchor_row: int, anchor_col: int, select
         return {"fill": Color(0.58, 0.68, 0.75, 0.18), "border": Color(0.5, 0.57, 0.63, 0.8), "width": 3.0}
     return {"fill": Color(0.58, 0.68, 0.75, 0.22), "border": Color(0.5, 0.57, 0.63, 0.85), "width": 2.0}
 
-# Рисует подсветку выбранного гекса: полупрозрачная заливка + яркая рамка.
-# Вызывается как для одиночного гекса в Кольце Влияния, так и для каждого
-# гекса SELECTED чанка (Phase 3.5). Цвета берутся из style — см.
-# _get_highlight_style (четыре типа чанков: разведка/освоение × можно/
-# нельзя). Чанк может выходить за пределы Региона — в этом случае часть его
-# гексов лежит в тумане войны, и подсветка должна быть видна и там (одинаково
-# с Регионом). Видимостью НЕ фильтруем: гексы уже ограничены либо Кольцом
-# Влияния (одиночный вызов), либо `scout_reach_bounds` (вызов из чанка), а
-# вне viewport канвас сам обрежет отрисовку.
+# Draws the highlighting of the selected hex: a semi-transparent fill + a bright frame.
+# It is called both for a single hex in the Influence Ring, and for each
+# hex of a SELECTED chunk (Phase 3.5). The colours are taken from style - see
+# _get_highlight_style (the four types of the chunks: the scouting/the claiming × possible/
+# impossible). The chunk can go beyond the limits of the Region - in this case a part of its
+# hexes lies in the fog of war, and the highlighting must be visible there as well (identically
+# to the Region). We do NOT filter by the visibility: the hexes are already limited either by the Influence
+# Ring (the single call), or by `scout_reach_bounds` (the call from the chunk), and
+# outside the viewport the canvas itself will cut the drawing.
 func _draw_selected_hex_highlight(row: int, col: int, style: Dictionary):
     var center = HexUtils.hex_center(row, col, main_map.HEX_RADIUS)
     center.x += main_map.offset_x + main_map.scroll_offset.x
@@ -1211,16 +1213,16 @@ func _draw_selected_hex_highlight(row: int, col: int, style: Dictionary):
     var vertices = PackedVector2Array()
     vertices.append_array(HexUtils.hex_vertices(center.x, center.y, main_map.HEX_RADIUS))
 
-    # Полупрозрачная заливка (поверх terrain, но под иконками ресурсов/улучшений).
+# A semi-transparent fill (over the terrain, but under the icons of the resources/the improvements).
     draw_colored_polygon(vertices, style.fill)
 
-    # Яркая рамка.
+# A bright frame.
     var closed_vertices = PackedVector2Array()
     closed_vertices.append_array(vertices)
     closed_vertices.append(vertices[0])
     draw_polyline(closed_vertices, style.border, style.width)
 
-# Рисует заполненный (сложную) звезду.
+# Draws a filled (complex) asterisk.
 func _draw_star(cx: float, cy: float, r_outer: float, r_inner: float, color: Color):
     var points = PackedVector2Array()
     for i in range(5):
@@ -1232,7 +1234,7 @@ func _draw_star(cx: float, cy: float, r_outer: float, r_inner: float, color: Col
         points.append(inner)
     draw_colored_polygon(points, color)
 
-# Рисует контур звезды (пустая/незаполненная).
+# Draws a contour of an asterisk (empty/unfilled).
 func _draw_star_outline(cx: float, cy: float, r_outer: float, r_inner: float, color: Color):
     var points = PackedVector2Array()
     for i in range(5):
@@ -1250,29 +1252,29 @@ func _is_resource_locked(resource_id: String) -> bool:
         return false
     var res_data = GameData.raw_resources.get(resource_id, {})
     var imp_id = res_data.get("improved_by", "")
-    # У части ресурсов (например, дикоросы foraged_food) improved_by задан
-    # как null — тогда .get() возвращает Nil, а не значение по умолчанию.
+# For a part of the resources (for example, the wild plants foraged_food) improved_by is set
+# as null - then .get() returns Nil, and not the default value.
     if imp_id == null:
         return false
-    # Ресурс считается заблокированным, если ещё не открыто улучшение, которое
-    # его добывает (improved_by), по его unlock_tech.
+# The resource is considered blocked if the improvement which
+# extracts it (improved_by) is not yet unlocked by its unlock_tech.
     return not CityData.is_improvement_unlocked(imp_id)
 
 func is_resource_locked(resource_id: String) -> bool:
     return _is_resource_locked(resource_id)
 
-# --- «Призрачная» дорога: непостроенная трасса из превью ---
-# Панель управления кладёт сюда НОВЫЕ сегменты плана (road_manager
-# .get_plan_new_segments) на время, пока открыто превью спецдействия
-# «Построить дорогу», и снимает их, как только превью закрыто. Это подсказка,
-# а не дорога: она полупрозрачна и рисуется последним проходом.
+# --- The "ghost" road: the unbuilt route from the preview ---
+# The control panel puts the NEW segments of the plan here (road_manager
+# .get_plan_new_segments) for as long as the preview of the special action
+# "Build a road" is open, and removes them as soon as the preview is closed. This is a hint,
+# and not a road: it is semi-transparent and is drawn by the last pass.
 var _road_preview_segments: Dictionary = {}
-# Подпись набора сегментов. Панель держит превью открытым между тиками, и без
-# сравнения карта перерисовывалась бы на каждом обновлении панели впустую.
+# The label of the set of the segments. The panel keeps the preview open between the ticks, and without
+# a comparison the map would be redrawn in vain on every update of the panel.
 var _road_preview_signature: String = ""
 
-# Показать «призрачную» дорогу (пустой словарь — скрыть). Перерисовка только
-# при реальном изменении маршрута.
+# Show the "ghost" road (an empty dictionary - hide). The redrawing only
+# on a real change of the route.
 func set_road_preview_segments(segments: Dictionary) -> void:
     var keys := segments.keys()
     keys.sort()
@@ -1283,16 +1285,15 @@ func set_road_preview_segments(segments: Dictionary) -> void:
     _road_preview_segments = segments
     queue_redraw()
 
-# «Призрак» идущего проекта: сегменты ЕЩЁ НЕ ПОСТРОЕННЫХ участков очереди.
-# В отличие от превью он живёт не до нажатия «Отменить», а до конца стройки —
-# игрок всё это время видит на карте весь маршрут и понимает, что ещё
-# предстоит. Построенный участок пропадает из набора сам (шаг ушёл из очереди,
-# набор пересобирается на каждом событии проекта), поэтому участок
-# превращается из призрака в настоящую дорогу.
-#
-# Это общий механизм для любых поэтапных проектов: сегменты приходят от
-# project_manager (get_pending_ghost_segments), а стиль отрисовки у road и
-# будущего акведука будет своим — здесь общий для обоих.
+# The "ghost" of a going project: the segments of the queue segments which are NOT YET BUILT.
+# Unlike the preview it lives not until the click of "Cancel", but until the end of the build -
+# the player sees the whole route on the map all this time and understands that there is still
+# something to come. A built segment disappears from the set by itself (the step has left the queue,
+# the set is rebuilt on every event of the project), therefore a segment
+# turns from a ghost into a real road.
+# This is a common mechanism for any phased projects: the segments come from
+# project_manager (get_pending_ghost_segments), and the style of the drawing of the road and of the
+# future aqueduct will be its own - here it is common for both.
 var _project_ghost_segments: Dictionary = {}
 var _project_ghost_signature: String = ""
 
@@ -1306,13 +1307,13 @@ func set_project_ghost_segments(segments: Dictionary) -> void:
     _project_ghost_segments = segments
     queue_redraw()
 
-# Подсветка МАРШРУТА, по которому груз едет от выбранного гекса к городу.
-# Отдельный набор от превью: превью — это «что будет построено», а здесь —
-# «что уже построено и работает сейчас». Панель кладёт сюда сегменты
-# существующего маршрута (road_manager.find_route_to_city) и снимает их при
-# смене выделения. Как и превью, сравнивает подпись набора: панель держит
-# маршрут открытым между тиками, и без сравнения карта перерисовывалась бы
-# впустую.
+# The highlighting of the ROUTE along which the cargo goes from the chosen hex to the city.
+# A separate set from the preview: the preview is "what will be built", and here it is
+# "what is already built and is working right now". The panel puts here the segments
+# of the existing route (road_manager.find_route_to_city) and removes them on
+# a change of the selection. As in the preview, it compares the label of the set: the panel keeps
+# the route open between the ticks, and without a comparison the map would be redrawn
+# in vain.
 var _route_segments: Dictionary = {}
 var _route_signature: String = ""
 
@@ -1334,62 +1335,60 @@ func _draw_all_roads():
 
     var road_manager = main_map.get_node("RoadManager")
 
-    # ФАЗА 2а: дороги ГОРОДА ИГРОКА. Гейтов видимости у них нет и не было:
-    # они всегда лежат на собственной освоенной территории, где тумана войны
-    # не бывает. Исключение — дороги, СВЯЗЫВАЮЩИЕ город с городком (ФАЗА 2в):
-    # их игрок строит по разведанной, но не освоенной земле.
-    #
-    # Дороги рисуются ПО УРОВНЯМ: участки одного уровня получают цвет и толщину
-    # из data/roads.json, поэтому улучшенная дорога видна на карте сразу, без
-    # открытия панели. Раньше все дороги были одного цвета и толщины.
+    # PHASE 2a: the roads of the CITY of the player. They have no visibility gates and never had:
+    # they always lie on their own claimed territory, where there is no fog of war
+    # at all. An exception is the roads CONNECTING the city with a town (PHASE 2c):
+    # the player builds them over the scouted, but not claimed land.
+    # The roads are drawn BY LEVELS: the segments of one level get the colour and the thickness
+    # from data/roads.json, therefore an improved road is visible on the map at once, without
+    # opening the panel. Earlier all the roads were of one colour and one thickness.
     _draw_road_segments_by_level(road_manager.get_all_road_segments(), false)
 
-    # ФАЗА 2б: дороги ГОРОДКОВ — отдельная сеть, но рисуется тем же стилем
-    # (см. road_manager.rebuild_town_roads: сеть каждого городка идёт от его
-    # центра к улучшениям в кольце влияния и не связана с дорогами города).
-    # Видимость — ровно та же, что у заливки колец: см. are_town_roads_visible()
-    # и is_town_road_segment_visible() ниже.
+    # PHASE 2b: the roads of the TOWNS - a separate network, but it is drawn with the same style
+    # (see road_manager.rebuild_town_roads: the network of each town goes from its
+    # centre to the improvements in the influence ring and is not connected with the roads of the city).
+    # The visibility is exactly the same as that of the fill of the rings: see are_town_roads_visible()
+    # and is_town_road_segment_visible() below.
     if are_town_roads_visible():
         _draw_road_segments(road_manager.get_all_town_road_segments(), true)
 
-        # ФАЗА 2в: дороги, соединяющие город с городками (спецдействие
-        # «Построить дорогу», нажатое на гексе городка). Это дороги СЕТИ ГОРОДА,
-        # и по разведанной (но не освоенной) земле — поэтому гейты видимости у
-        # них те же, что у дорог городков. Строго говоря, построить их через
-        # неисследованный гекс нельзя (см. main_map.get_road_plan), так что
-        # гейт тут — страховка на будущее, если правило «только по разведанной
-        # земле» когда-нибудь смягчат.
+    # PHASE 2c: the roads connecting the city with the towns (the special action
+    # "Build a road", clicked on the hex of a town). These are the roads of the NETWORK of the CITY,
+    # and they go over the scouted (but not claimed) land - therefore the visibility gates of
+    # them are the same as those of the roads of the towns. Strictly speaking, it is impossible to build them through
+    # an unexplored hex (see main_map.get_road_plan), so
+    # this gate is an insurance for the future, if the rule "only over the scouted
+    # land" is ever relaxed.
         _draw_road_segments(road_manager.get_all_town_link_segments(), true)
 
-    # ФАЗА 2г: «призрак» идущего проекта — остаток маршрута, который ещё не
-    # построен. Живёт до конца стройки, а не до закрытия панели, и рисуется
-    # тем же стилем и в том же проходе, что и превью (то есть поверх настоящих
-    # дорог, но под реками и иконками). Гейты эры и тумана те же: это подсказка,
-    # а не постройка, и она не должна выдавать неисследованное.
-    #
-    # Идёт ДО превью: превью — то, что игрок рассматривает прямо сейчас, и оно
-    # должно лежать сверху. Одновременно открыты оба набора редко (нужно
-    # подтвердить дорогу и тут же начать новую), но когда это случается, видны
-    # оба маршрута, и активный не должен тонуть в фоне.
+    # PHASE 2d: the "ghost" of a going project - the remainder of the route which is not
+    # built yet. It lives until the end of the build, and not until the closing of the panel, and it is drawn
+    # with the same style and in the same pass as the preview (that is, over the real
+    # roads, but under the rivers and the icons). The gates of the era and of the fog are the same: this is a hint,
+    # and not a construction, and it must not give away the unexplored.
+    # It goes BEFORE the preview: the preview is what the player is looking at right now, and it
+    # must lie on top. Both sets are open simultaneously rarely (one needs to
+    # confirm a road and immediately start a new one), but when it happens, both
+    # routes are visible, and the active one must not drown in the background.
     _draw_project_ghost()
 
-    # ФАЗА 2д: «призрачная» дорога — трасса из открытого превью. Рисуется
-    # последним проходом (поверх дорог и призрака проекта), но до рек,
-    # подсветок и иконок, как и остальные дороги. Гейт эры ей НЕ нужен: это
-    # подсказка, а не постройка, и она показывается в любую эру, как дороги
-    # города. Гейт тумана проверяется на всякий случай — планирование идёт
-    # только по разведанной земле, так что попасть в туман не может, но
-    # возможность «выдать» туман исключена.
+    # PHASE 2e: the "ghost" road - the route from the open preview. It is drawn
+    # by the last pass (over the roads and the ghost of the project), but before the rivers,
+    # the highlightings and the icons, as all the other roads. It does NOT need a gate of the era: this is
+    # a hint, and not a construction, and it is shown in any era, as the roads
+    # of the city. The gate of the fog is checked just in case - the planning goes
+    # only over the scouted land, so it cannot get into the fog, but
+    # the possibility to "give away" the fog is excluded.
     _draw_road_preview()
 
-    # ФАЗА 2е: подсветка МАРШРУТА выбранного гекса к городу. Идёт после всех
-    # дорожных слоёв и поверх них: это тонкая линия поверх уже нарисованных
-    # дорог, и она должна быть видна поверх них. Гейта эры ей не нужно, как и
-    # превью: маршрут идёт по дорогам, которые нарисованы с теми же гейтами.
+    # PHASE 2f: the highlighting of the ROUTE of the chosen hex to the city. It goes after all
+    # the road layers and over them: this is a thin line over the already drawn
+    # roads, and it must be visible over them. It does not need a gate of the era, as does
+    # the preview: the route goes along the roads which are drawn with the same gates.
     _draw_route()
 
-# Подсветка маршрута: его сегменты уже нарисованы как дороги, поэтому здесь
-# рисуется только тонкая линия поверх — по той же геометрии, что и дорога.
+# The highlighting of the route: its segments are already drawn as roads, therefore here
+# only a thin line on top is drawn - by the same geometry as the road.
 func _draw_route() -> void:
     if _route_segments.is_empty():
         return
@@ -1409,9 +1408,9 @@ func _draw_route() -> void:
         return
     _draw_road_segments(visible, false, ROUTE_COLOR, ROUTE_WIDTH)
 
-# «Призрак» незаконченного проекта. Отдельный набор сегментов, а не общий с
-# превью: превью живёт, пока открыта панель, призрак проекта — пока идёт
-# стройка, и появляется он уже ПОСЛЕ подтверждения.
+# The "ghost" of an unfinished project. A separate set of the segments, and not a common one with
+# the preview: the preview lives while the panel is open, the ghost of the project - while the build
+# is going, and it appears already AFTER the confirmation.
 func _draw_project_ghost() -> void:
     if _project_ghost_segments.is_empty():
         return
@@ -1432,40 +1431,40 @@ func _draw_project_ghost() -> void:
     _draw_road_segments(visible, false, ROAD_PREVIEW_HALO_COLOR, ROAD_PREVIEW_HALO_WIDTH)
     _draw_road_segments(visible, false, ROAD_PREVIEW_COLOR, ROAD_PREVIEW_WIDTH)
 
-# Показываются ли дороги городков. Тот же гейт, что у заливки колец влияния
-# (_ensure_town_influence_cache): в 1-й эпохе чужой городок не показывается
-# вовсе, иначе дорога выдала бы его в неисследованной зоне Региона с самого
-# начала игры.
+# Are the roads of the towns shown. The same gate as that of the fill of the influence rings
+# (_ensure_town_influence_cache): in the 1st epoch a foreign town is not shown
+# at all, otherwise the road would give it away in the unexplored zone of the Region from the very
+# beginning of the game.
 func are_town_roads_visible() -> bool:
     if main_map == null:
         return false
     return main_map.current_era >= 1
 
-# Виден ли конкретный сегмент дороги городка. Сегмент не рисуется, если хоть
-# один его конец лежит в тумане войны: иначе дорога «выдавала» бы содержимое
-# неисследованной территории. Разведанный гекс за пределами Региона дорогу
-# показывает (так работает разведка).
+# Is a specific segment of the road of a town visible. A segment is not drawn if at least
+# one of its ends lies in the fog of war: otherwise the road would "give away" the contents
+# of the unexplored territory. A scouted hex beyond the limits of the Region shows the road
+# (this is how the scouting works).
 func is_town_road_segment_visible(row1: int, col1: int, row2: int, col2: int) -> bool:
     if not are_town_roads_visible():
         return false
     return _segment_clear_of_fog(row1, col1, row2, col2)
 
-# Оба конца сегмента вне тумана войны — без проверки эры. Вынесено отдельно,
-# потому что «призрачной» дороге гейт эры не нужен (она не постройка), а гейт
-# тумана нужен.
+# Both ends of the segment are outside the fog of war - without the check of the era. It is moved out separately,
+# because the "ghost" road does not need a gate of the era (it is not a construction), and the gate
+# of the fog is needed.
 func _segment_clear_of_fog(row1: int, col1: int, row2: int, col2: int) -> bool:
     return not (main_map.is_hex_in_fog(row1, col1) or main_map.is_hex_in_fog(row2, col2))
 
-# Рисует дороги, группируя участки ПО УРОВНЮ: цвет и толщина берутся из
-# data/roads.json (поля color/width). Так уровень дороги виден на карте
-# без открытия панели.
+# Draws the roads, grouping the segments BY LEVEL: the colour and the thickness are taken from
+# data/roads.json (the fields color/width). Thus the level of the road is visible on the map
+# without opening the panel.
 #
-# Набор сегментов хранит уровень ЗНАЧЕНИЕМ (см. road_manager.road_segments),
-# поэтому группировка бесплатна — это один проход по словарю.
+# The set of the segments stores the level BY VALUE (see road_manager.road_segments),
+# therefore the grouping is free - it is one pass over the dictionary.
 #
-# hide_in_fog — тот же гейт, что у _draw_road_segments (для дорог городков).
-# Уровень, которого нет в данных, рисуется стилем по умолчанию ROAD_COLOR:
-# это ошибка данных, а не повод молча не рисовать дорогу.
+# hide_in_fog is the same gate as that of _draw_road_segments (for the roads of the towns).
+# A level which is not in the data is drawn with the default style ROAD_COLOR:
+# this is an error of the data, and not a reason to silently not draw the road.
 func _draw_road_segments_by_level(segments: Dictionary, hide_in_fog: bool) -> void:
     if segments.is_empty():
         return
@@ -1490,12 +1489,12 @@ func _draw_road_segments_by_level(segments: Dictionary, hide_in_fog: bool) -> vo
         _draw_road_segments(by_level[level], hide_in_fog, color,
                 int(road.get("width", ROAD_WIDTH)))
 
-# Рисует набор сегментов дорог.
-# hide_in_fog — гейт для сегмента, у которого хотя бы ОДИН конец лежит в тумане
-# войны: такой сегмент не рисуется (он выдавал бы содержимое неисследованной
-# территории). Для дорог города игрока гейт выключен.
-# color / width — стиль: по умолчанию настоящая дорога, для превью передаются
-# свои значения (см. ROAD_PREVIEW_*).
+# Draws a set of the segments of the roads.
+# hide_in_fog is the gate for a segment at least one of whose ends lies in the fog
+# of war: such a segment is not drawn (it would give away the contents of the unexplored
+# territory). For the roads of the city of the player the gate is off.
+# color / width is the style: by default a real road, for the preview its own
+# values are passed (see ROAD_PREVIEW_*).
 func _draw_road_segments(segments: Dictionary, hide_in_fog: bool,
         color: Color = ROAD_COLOR, width: int = ROAD_WIDTH) -> void:
     if segments.is_empty():
@@ -1520,7 +1519,7 @@ func _draw_road_segments(segments: Dictionary, hide_in_fog: bool,
         if hide_in_fog and not is_town_road_segment_visible(row1, col1, row2, col2):
             continue
 
-        # Viewport culling: пропускаем сегменты дорог, которые не пересекают экран.
+# The viewport culling: we skip the road segments which do not intersect the screen.
         var c1 = HexUtils.hex_center(row1, col1, main_map.HEX_RADIUS)
         c1.x += main_map.offset_x + main_map.scroll_offset.x
         c1.y += main_map.offset_y + main_map.scroll_offset.y
@@ -1539,14 +1538,14 @@ func _draw_road_segments(segments: Dictionary, hide_in_fog: bool,
         var points = _generate_natural_road(row1, col1, row2, col2, main_map.HEX_RADIUS)
         draw_polyline(points, color, width, true)
 
-# «Призрачная» дорога: сегменты плана, открытого в превью. Два прохода — широкий
-# полупрозрачный ореол и линия поверх: маршрут читается поверх местности, рек и
-# настоящих дорог.
+# The "ghost" road: the segments of the plan which is open in the preview. Two passes - a wide
+# semi-transparent halo and a line on top: the route reads over the terrain, the rivers and
+# the real roads.
 func _draw_road_preview() -> void:
     if _road_preview_segments.is_empty():
         return
-    # Сегменты, у которых хоть один конец в тумане, не рисуются никогда
-    # (см. комментарий к ФАЗЕ 2г в _draw_all_roads).
+# The segments at least one end of which is in the fog are never drawn
+# (see the comment to PHASE 2d in _draw_all_roads).
     var visible: Dictionary = {}
     for segment_key in _road_preview_segments.keys():
         var parts = str(segment_key).split("|")
@@ -1574,21 +1573,21 @@ func _draw_rivers():
     var offset_y = main_map.offset_y + main_map.scroll_offset.y
     var radius = main_map.HEX_RADIUS
 
-    # Главные реки — толще и темнее.
+# The main rivers are thicker and darker.
     _draw_river_list(river_manager.get_main_rivers(), offset_x, offset_y, radius,
             river_manager.RIVER_SHORE_COLOR, river_manager.RIVER_SHORE_WIDTH,
             river_manager.RIVER_COLOR, river_manager.RIVER_WIDTH,
             river_manager.RIVER_HIGHLIGHT_COLOR, river_manager.RIVER_HIGHLIGHT_WIDTH)
 
-    # Притоки — тоньше и светлее, чтобы визуально отличать от главных рек.
+# The tributaries are thinner and lighter, in order to be visually different from the main rivers.
     _draw_river_list(river_manager.get_tributaries(), offset_x, offset_y, radius,
             river_manager.TRIBUTARY_SHORE_COLOR, river_manager.TRIBUTARY_SHORE_WIDTH,
             river_manager.TRIBUTARY_COLOR, river_manager.TRIBUTARY_WIDTH,
             river_manager.TRIBUTARY_HIGHLIGHT_COLOR, river_manager.TRIBUTARY_HIGHLIGHT_WIDTH)
 
 
-# Рисует список рек с заданным стилем (берег, тело, блик).
-# Вся геометрия и отсечение невидимого — в _build_visible_river_lines.
+# Draws the list of the rivers with the given style (the bank, the body, the highlight).
+# All the geometry and the clipping of the invisible are in _build_visible_river_lines.
 func _draw_river_list(river_list: Array, offset_x: float, offset_y: float, radius: float,
         shore_color: Color, shore_width: float,
         body_color: Color, body_width: float,
@@ -1600,21 +1599,20 @@ func _draw_river_list(river_list: Array, offset_x: float, offset_y: float, radiu
             draw_polyline(line, highlight_color, highlight_width, true)
 
 
-# Геометрия ОДНОЙ реки в ЭКРАННЫХ координатах: viewport culling, сглаживание
-# (с кэшем), сдвиг на offset и отсечение по экрану. Вынесено из
-# _draw_river_list, чтобы результат можно было проверять headless-тестом,
-# не заходя в _draw() (см. tests/test_river_rendering.gd).
-#
-# Реки обрезаются по прямоугольнику экрана: за его пределами они не видны,
-# а внутри (в том числе в тумане войны, который теперь отрисовывается
-# затемнённым) рисуются полностью.
+# The geometry of ONE river in the SCREEN coordinates: the viewport culling, the smoothing
+# (with a cache), the shift by the offset and the clipping by the screen. It is moved out of
+# _draw_river_list, so that the result could be checked by a headless test,
+# without going into _draw() (see tests/test_river_rendering.gd).
+# The rivers are clipped by the rectangle of the screen: beyond its limits they are not visible,
+# and inside it (including in the fog of war, which is now drawn
+# darkened) they are drawn entirely.
 func _build_visible_river_lines(river: Array, offset_x: float, offset_y: float,
         radius: float) -> Array:
     var lines: Array = []
     if river.size() < 2:
         return lines
 
-    # Viewport culling: пропускаем реки, которые не пересекают экран.
+# The viewport culling: we skip the rivers which do not intersect the screen.
     var min_x = INF
     var max_x = - INF
     var min_y = INF
@@ -1635,27 +1633,27 @@ func _build_visible_river_lines(river: Array, offset_x: float, offset_y: float,
     if not _is_rect_visible(river_rect):
         return lines
 
-    # Сглаженные меандровые точки реки в МИРОВЫХ координатах (без offset).
-    # Вычисляем их один раз на реку и кэшируем: сглаживание (_generate_natural_river
-    # + _chaikin_smooth) — дорогая операция, а точки рек не меняются при прокрутке,
-    # поэтому пересчёт каждый кадр избыточен. Ключ кэша — компактная сериализация
-    # исходных точек реки (с уникальным хэшем количества точек).
+# The smoothed meandering points of the river in the WORLD coordinates (without the offset).
+# We compute them once per river and cache them: the smoothing (_generate_natural_river
+# + _chaikin_smooth) is an expensive operation, and the points of the rivers do not change when scrolling,
+# therefore the recalculation on every frame is redundant. The key of the cache is a compact serialization
+# of the initial points of the river (with a unique hash of the number of the points).
     var cache_key = "%d|" % river.size() + _points_to_cache_key(river)
     var smooth_points: PackedVector2Array
     if _river_smooth_cache.has(cache_key):
         smooth_points = _river_smooth_cache[cache_key]
     else:
-        # Строим естественные меандры по полной реке в МИРОВЫХ координатах,
-        # затем при отрисовке к ним добавится offset. Так волны остаются
-        # непрерывными на границе, а за ней река не рисуется (туман войны).
+# We build the natural meanders over the whole river in the WORLD coordinates,
+# and at the drawing the offset is added to them. Thus the waves remain
+# continuous at the border, and behind it the river is not drawn (the fog of war).
         var world_points = PackedVector2Array()
         for pt in river:
             world_points.append(Vector2(pt.x, pt.y))
         smooth_points = _generate_natural_river(world_points, radius)
         _river_smooth_cache[cache_key] = smooth_points
 
-    # Смещаем сглаженные мировые точки на текущий offset (прокрутка/центр) —
-    # с этого момента точки живут в ЭКРАННЫХ координатах.
+# We shift the smoothed world points by the current offset (the scrolling/the centre) -
+# from this moment the points live in the SCREEN coordinates.
     var shifted_points = PackedVector2Array()
     shifted_points.resize(smooth_points.size())
     for i in range(smooth_points.size()):
@@ -1664,14 +1662,14 @@ func _build_visible_river_lines(river: Array, offset_x: float, offset_y: float,
             smooth_points[i].y + offset_y
         )
 
-    # Обрезаем сглаженную линию по прямоугольнику экрана. Прямоугольник —
-    # ЭКРАННЫЙ (_get_screen_rect), как и сами точки: раньше здесь стоял
-    # Rect2(Vector2(-offset_x, -offset_y), ...), то есть МИРОВОЕ окно, и при
-    # центрировании карты (offset_x ~ -2280) реки отсекались целиком — они
-    # оставались в данных (river_edges), но не рисовались. Раньше клип шёл по
-    # Региону (туман войны не отрисовывался вовсе), но теперь гексы в
-    # достижимой скроллом полосе рисуются затемнёнными — реки не должны
-    # обрываться на границе Региона.
+# We clip the smoothed line by the rectangle of the screen. The rectangle is the
+# SCREEN one (_get_screen_rect), as are the points themselves: earlier there was
+# Rect2(Vector2(-offset_x, -offset_y), ...), that is, a WORLD window, and when
+# the map was centred (offset_x ~ -2280) the rivers were clipped entirely - they
+# remained in the data (river_edges), but were not drawn. Earlier the clipping went
+# by the Region (the fog of war was not drawn at all), but now the hexes in
+# the band reachable by the scroll are drawn darkened - the rivers should not
+# break off at the border of the Region.
     var clipped_lines = _clip_river_to_rect(shifted_points, _get_screen_rect())
     for line in clipped_lines:
         if line.size() >= 2:
@@ -1679,8 +1677,8 @@ func _build_visible_river_lines(river: Array, offset_x: float, offset_y: float,
     return lines
 
 
-# Обрезает отрезок (start -> end) по прямоугольнику rect (алгоритм Лиан–Барски).
-# Возвращает [Vector2, Vector2] для видимой части или [] если отрезок вне rect.
+# Clips the segment (start -> end) by the rectangle rect (the Liang-Barsky algorithm).
+# Returns [Vector2, Vector2] for the visible part, or [] if the segment is outside the rect.
 func _clip_segment_to_rect(start: Vector2, end: Vector2, rect: Rect2) -> Array:
     var t0 = 0.0
     var t1 = 1.0
@@ -1712,9 +1710,9 @@ func _clip_segment_to_rect(start: Vector2, end: Vector2, rect: Rect2) -> Array:
     return [start + (end - start) * t0, start + (end - start) * t1]
 
 
-# Обрезает полилинию по прямоугольнику rect. Возвращает массив обрезанных
-# полилиний (каждая — PackedVector2Array), объединяя смежные сегменты в
-# непрерывные линии.
+# Clips a polyline by the rectangle rect. Returns an array of the clipped
+# polylines (each is a PackedVector2Array), combining the adjacent segments into
+# continuous lines.
 func _clip_river_to_rect(points: PackedVector2Array, rect: Rect2) -> Array:
     if points.size() < 2:
         return []
@@ -1842,9 +1840,9 @@ func _generate_natural_river(river_points: PackedVector2Array, radius: float) ->
     if curved_points.size() < 2:
         return river_points
 
-    # Применяем 1-2 итерации сглаживания — достаточно, чтобы убрать острые
-    # углы, но сохранить общую форму и меандрирование. Реализация
-    # вынесена в отдельную функцию ниже.
+# We apply 1-2 iterations of the smoothing - it is enough to remove the sharp
+# corners, but to preserve the general shape and the meandering. The implementation
+# is moved out into a separate function below.
     return _chaikin_smooth(curved_points, 2)
 
 func _draw_exploration_highlights():
@@ -1855,9 +1853,9 @@ func _draw_exploration_highlights():
 
     var visible = _get_visible_hex_range()
 
-    # --- 1. Подсветка исследованных гексов (только в видимой области) ---
-    # Вне видимой области (туман войны) terrain не рисуется рендерером, поэтому
-    # заливка для исследованных гексов там не нужна.
+# --- 1. The highlighting of the scouted hexes (only in the visible area) ---
+# Outside the visible area (the fog of war) the terrain is not drawn by the renderer, therefore
+# a fill for the scouted hexes is not needed there.
     for row in range(visible.row_start, visible.row_end + 1):
         for col in range(visible.col_start, visible.col_end + 1):
             var tile = tile_data[row][col]
@@ -1870,38 +1868,38 @@ func _draw_exploration_highlights():
             center.x += main.offset_x + main.scroll_offset.x
             center.y += main.offset_y + main.scroll_offset.y
             var vertices = HexUtils.hex_vertices(center.x, center.y, main_map.HEX_RADIUS)
-            # Исследован: только заливка — белой рамки здесь нет
-            # намеренно: она сливалась с сеткой гексов и визуально «раздувала»
-            # разведанную область. Рамку рисуют только hover/выделение чанка
-            # (см. _draw_selected_hex_highlight).
+# Scouted: only the fill - there is deliberately no white frame here
+# it merged with the grid of the hexes and visually "inflated"
+# the scouted area. The frame is drawn only by the hover/the selection of the chunk
+# (see _draw_selected_hex_highlight).
             draw_colored_polygon(vertices, Color(0.652, 0.855, 0.652, 0.25))
 
-    # --- 2. Подсветка выделенного чанка (Регион + туман войны) ---
-    # Чанк может включать гексы в тумане войны (разведка) — подсветка рисуется
-    # ДЛЯ КАЖДОГО гекса чанка, без фильтра по видимой области. Иначе в тумане
-    # игрок не видит, какой именно участок сейчас выделен и куда полетят
-    # разведчики. Цвет зависит от типа чанка (разведка/освоение × можно/
-    # нельзя — см. _get_highlight_style): тон действия и его приглушённость.
+# --- 2. The highlighting of the selected chunk (the Region + the fog of war) ---
+# The chunk can include the hexes in the fog of war (the scouting) - the highlighting is drawn
+# FOR EACH hex of the chunk, without a filter by the visible area. Otherwise in the fog
+# the player does not see which exactly the area is selected now and where the
+# scouts will go. The colour depends on the type of the chunk (the scouting/the claiming × possible/
+# impossible - see _get_highlight_style): the tone of the action and its mutedness.
     #
-    # До изучения Картографии подсветка НЕ выходит за пределы Региона: там
-    # разведка недоступна, и подсветка на тёмном канвасе тумана только
-    # путала бы игрока (см. main_map.is_cartography_researched). Чанки,
-    # собранные expansion_manager, это правило уже соблюдают — фильтр ниже
-    # страховочный (например, устаревший current_chunk после загрузки сейва).
+# Before the study of Cartography the highlighting does NOT go beyond the limits of the Region: there
+# the scouting is unavailable, and the highlighting on the dark canvas of the fog would only
+# confuse the player (see main_map.is_cartography_researched). The chunks
+# collected by expansion_manager already comply with this rule - the filter below is
+# an insurance (for example, an outdated current_chunk after the load of a save).
     var chunk: Array = expansion_manager.current_chunk
     var anchor = expansion_manager.current_hover_hex
     if chunk.is_empty():
-        # Чанка под курсором нет (исследованный гекс вне Региона или гекс в
-        # кольце влияния чужого городка): подсвечиваем сам гекс под курсором —
-        # тем же цветом, что и чанк. Иначе наведение было бы «молчаливым», а
-        # клик по такому гексу подсветку уже даёт (см. ФАЗУ 3.5 и
+# There is no chunk under the cursor (a scouted hex outside the Region or a hex in the
+# influence ring of a foreign town): we highlight the hex under the cursor itself -
+# with the same colour as that of the chunk. Otherwise the hovering would be "silent", and a
+# click on such a hex already gives the highlighting (see PHASE 3.5 and
         # expansion_manager.get_highlight_hexes).
         if anchor == null:
             return
         chunk = expansion_manager.get_highlight_hexes(anchor.row, anchor.col)
     if anchor == null:
-        # Устаревший current_chunk без гекса под курсором (страховка):
-        # берём первый гекс чанка как точку отсчёта для классификации.
+# An outdated current_chunk without a hex under the cursor (an insurance):
+# we take the first hex of the chunk as the reference point for the classification.
         anchor = chunk[0]
     var style: Dictionary = _get_highlight_style(chunk, anchor.row, anchor.col, false)
 
@@ -1919,16 +1917,16 @@ func _draw_exploration_highlights():
         closed_verts.append(vertices[0])
         draw_polyline(closed_verts, style.border, style.width)
 
-# Возвращает компактную строку-ключ для кэша сглаженной реки.
-# Сериализует координаты точек реки (мировые, без offset). Используется
-# _draw_river_list для идентификации, какая река уже посчитана и закэширована.
+# Returns a compact string key for the cache of the smoothed river.
+# It serializes the coordinates of the points of the river (the world ones, without the offset). It is used by
+# _draw_river_list for the identification of which river is already computed and cached.
 func _points_to_cache_key(points: Array) -> String:
     var sb := PackedStringArray()
     sb.resize(points.size())
     for i in range(points.size()):
         var p = points[i]
-        # Округляем до 0.1, чтобы ключ был стабилен и компактен — исходные
-        # вершины рек детерминированы, поэтому повторного сглаживания не будет.
+# We round to 0.1, so that the key is stable and compact - the initial
+# vertices of the rivers are deterministic, therefore there will be no re-smoothing.
         sb[i] = "%d_%d" % [roundi(p.x * 10.0), roundi(p.y * 10.0)]
     return "^".join(sb)
 
