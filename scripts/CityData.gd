@@ -310,7 +310,7 @@ func setup():
     domesticated_plants.clear()
     domesticated_resources.clear()
     unlocked_technologies.clear()
-# Crop farming is always available at the start of the game
+    # Crop farming is always available at the start of the game
     unlocked_technologies.append("farming")
     current_research_tech_id = ""
     current_research_science_cost = 0
@@ -834,7 +834,7 @@ func get_building_planned_consumption() -> Dictionary:
             continue
         # The identifier of the building is the source of the demand (it coincides with the source of
         # the actual expense in do_tick, so that in the tooltip it is the same
-# the same subject). The label is resolved in ui_helpers by the id.
+        # the same subject). The label is resolved in ui_helpers by the id.
         var building_source = GameData.building_source_id(str(bld.get("id", "")))
         for recipe_id in slots:
             if recipe_id == "" or recipe_id == "empty":
@@ -1279,7 +1279,7 @@ func _migrate_slot_containers(b_index: int, slots: Array) -> Array:
             out.append(null)
             continue
         # We use the saved state, if it corresponds
-# to the current recipe (for the future saves in the new format).
+        # to the current recipe (for the future saves in the new format).
         var saved = null
         if slot_idx < old_progress.size() and old_progress[slot_idx] is Dictionary:
             saved = old_progress[slot_idx]
@@ -1454,8 +1454,8 @@ func do_tick():
 
             # --- THE RECORDING OF THE EXPENSE FOR THE TICK ---
             # We record the consumption source for the tooltip of the resources and the UI label
-# of the dynamics. In the continuous model the consumption goes on every tick, and this
-# record is the main source of the data for the red label [-N≈].
+            # of the dynamics. In the continuous model the consumption goes on every tick, and this
+            # record is the main source of the data for the red label [-N≈].
             var consumed_breakdown: Dictionary = tick_res.get("consumed_breakdown", {})
             for consumed_pid in consumed_breakdown:
                 var total_consumed := 0
@@ -1756,12 +1756,12 @@ func _complete_tech_instantly(tech_id: String) -> bool:
         return false
     unlocked_technologies.append(tech_id)
     # The technology can open the new kinds of the resources — we spawn them on the map and
-# The actual rate of the science of the city (points/sec) — a direct sum of the sources:
-# the base income (BASE_SCIENCE_PER_SEC) plus the contribution of the working science buildings
-# (the cache science_buildings_rate_per_sec, it is recalculated once per tick in do_tick).
-# There is no pool of the science: the produced science is not accumulated in the storage, and it immediately sets
-# the rate of the learning of the technologies (see tick_research_science_continuous and
-# docs.md, "Science: production and research").
+    # The actual rate of the science of the city (points/sec) — a direct sum of the sources:
+    # the base income (BASE_SCIENCE_PER_SEC) plus the contribution of the working science buildings
+    # (the cache science_buildings_rate_per_sec, it is recalculated once per tick in do_tick).
+    # There is no pool of the science: the produced science is not accumulated in the storage, and it immediately sets
+    # the rate of the learning of the technologies (see tick_research_science_continuous and
+    # docs.md, "Science: production and research").
     last_research_messages = spawn_resource_on_tech_research(tech_id)
     emit_signal("research_completed", tech_id)
     emit_signal("city_updated")
@@ -2006,23 +2006,23 @@ func get_improvement_unlock_tech(imp_id: String) -> String:
     var imp_data = GameData.improvements.get(imp_id, {})
     return imp_data.get("unlock_tech", "")
 
-# Assembles the messages about the resources revealed by the learned technology.
-# It is called after the completion of the research of a technology.
-#
-# The new model (see docs.md, "tech_reveal: hidden resources"):
-#   - All the resources spawn on the map from the very start (map_generator.gd).
-#   - tech_required gates the construction of the improvement (as before).
-#   - tech_reveal gates the visibility of the resource itself on the map.
-#   - This function enumerates the resources for which tech_reveal == tech_id,
-#     and for each one assembles a message:
-#       * the resource is on the map          → "The scholars have estimated: <X> has been found."
-#       * the resource is not on the map       → "It seems that <X> is absent in your region."
-#   - The function does NOT deal with the placement on the map: all the resources are already there
-#     from the moment of the generation of the map.
-#
-# The guarantee "1 metal in the starting Ring + Region" is provided separately
-# in main_map._initialize_map through MapHelpers.ensure_minimum_resource.
-# It returns an array of the messages for the popup of the technology.
+    # Assembles the messages about the resources revealed by the learned technology.
+    # It is called after the completion of the research of a technology.
+    #
+    # The new model (see docs.md, "tech_reveal: hidden resources"):
+    #   - All the resources spawn on the map from the very start (map_generator.gd).
+    #   - tech_required gates the construction of the improvement (as before).
+    #   - tech_reveal gates the visibility of the resource itself on the map.
+    #   - This function enumerates the resources for which tech_reveal == tech_id,
+    #     and for each one assembles a message:
+    #       * the resource is on the map          → "The scholars have estimated: <X> has been found."
+    #       * the resource is not on the map       → "It seems that <X> is absent in your region."
+    #   - The function does NOT deal with the placement on the map: all the resources are already there
+    #     from the moment of the generation of the map.
+    #
+    # The guarantee "1 metal in the starting Ring + Region" is provided separately
+    # in main_map._initialize_map through MapHelpers.ensure_minimum_resource.
+    # It returns an array of the messages for the popup of the technology.
     # We collect the kinds of the resources REVEALED by this technology (tech_reveal).
     # If a resource has no tech_reveal — it is visible at once and this function does not
     # mention it; if tech_reveal is present, but does not coincide with tech_id,
@@ -2436,7 +2436,7 @@ func request_build(building_id: String) -> bool:
         # If the cost is 0 (for example, a hand mill), we build instantly
         city_built_buildings.append({"id": building_id, "slots": _auto_assign_slots(building_id)})
 
-    # We automatically assign a citizen to the new building, if there are free ones
+        # We automatically assign a citizen to the new building, if there are free ones
         var townsfolk_map = get_tree().root.find_child("MainMap", true, false)
         if townsfolk_map and townsfolk_map.has_node("TownsfolkManager"):
             var tm = townsfolk_map.get_node("TownsfolkManager")
@@ -2451,7 +2451,7 @@ func request_build(building_id: String) -> bool:
         var bm = main_map.get_node("BuildManager")
         var build_key = bm.start_building_build(building_id)
         if build_key != "":
-    # We store the build in a separate dictionary, the building will appear in the city only after the completion
+            # We store the build in a separate dictionary, the building will appear in the city only after the completion
             building_construction[build_key] = {
                 "building_id": building_id,
                 "build_key": build_key,
@@ -2470,11 +2470,11 @@ func request_build(building_id: String) -> bool:
     emit_signal("city_updated")
     return true
 
-    # The auto-assignment of the recipes to the slots on the construction of the building:
-    # 1. We take the default_recipes of the building
-    # 2. We assign them to the slots in order, without a repetition
-    # 3. If there are more slots than the recipes — the rest get "empty"
-    # 4. If there are more recipes than the slots — the extra ones simply do not fit
+# The auto-assignment of the recipes to the slots on the construction of the building:
+# 1. We take the default_recipes of the building
+# 2. We assign them to the slots in order, without a repetition
+# 3. If there are more slots than the recipes — the rest get "empty"
+# 4. If there are more recipes than the slots — the extra ones simply do not fit
 func _auto_assign_slots(building_id: String) -> Array:
     var result = []
     var bdata = null
@@ -2618,8 +2618,8 @@ func get_improvement_production_modifiers(imp_id: String, has_fresh_water: bool,
                 tech_name = t["name"]
                 break
 
-    # The universal format: "production_multiplier": { "<imp_id>": 1.05 }
-    # (by analogy with the bonus of the fresh water).
+        # The universal format: "production_multiplier": { "<imp_id>": 1.05 }
+        # (by analogy with the bonus of the fresh water).
         var multipliers = tm.get("production_multiplier", {})
         if multipliers.has(imp_id):
             var m = float(multipliers[imp_id])
@@ -2629,7 +2629,7 @@ func get_improvement_production_modifiers(imp_id: String, has_fresh_water: bool,
                     "multiplier": m
                 })
 
-    # The obsolete format with the field "modifiers" (target == "<imp_id>_production").
+        # The obsolete format with the field "modifiers" (target == "<imp_id>_production").
         for mod in tm.get("modifiers", []):
             var target = mod.get("target", "")
             if target != imp_id + "_production":
