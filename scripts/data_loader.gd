@@ -322,7 +322,7 @@ func _remember_consumption_sources(file_path: String, raw_text: String, data: Di
         }
 
 
-# The declaration line of a consumption rule — the one where the "resource" field
+    # The declaration line of a consumption rule — the one where the "resource" field
     # with this value stands.
     #
     # Its own _find_decl_line does not work here: it looks for the first occurrence of
@@ -343,7 +343,7 @@ func _find_resource_decl_line(raw_text: String, res_key: String) -> int:
             return i + 1
     return 0
 
-# The line on which an entity with such an id is DECLARED, — or 0 if it was not found.
+    # The line on which an entity with such an id is DECLARED, — or 0 if it was not found.
     #
     # We search in the ORIGINAL text of the file, and not in the one cleaned of
     # comments: _strip_json_comments
