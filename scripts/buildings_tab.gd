@@ -20,32 +20,32 @@ var last_built_count: int = -1
 var last_construction_count: int = -1
 var _cached_build_manager = null
 
-# Кнопка выбранного здания и словарь id -> кнопка (для тултипа деталей).
+# The button of the selected building and the dictionary id -> button (for the details tooltip).
 var selected_button: Button = null
-var _hovered_building_id: String = "" # здание под курсором (для тултипа деталей)
+var _hovered_building_id: String = "" # the building under the cursor (for the details tooltip)
 var building_buttons: Dictionary = {}
 var _detail_material_rows: Array = []
 var _detail_requirement_label: Label = null
-# Последняя «эпоха» отображения ресурсов (CityData.resource_display_interval):
-# живое обновление строки «Требуется/на складе» в тултипе деталей здания ждёт
-# наступления эпохи, а не идёт каждым тиком. Первичная сборка тултипа
-# (_show_building_details, по наведению) остаётся мгновенной.
+# The last "era" of the resource display (CityData.resource_display_interval):
+# the live update of the "Required/in storage" row in the building details tooltip waits
+# for the era to come, and does not run every tick. The initial building of the tooltip
+# (_show_building_details, on hover) remains instantaneous.
 var _display_epoch: int = -1
 
 var resume_icon: Texture2D
 var pause_icon: Texture2D
 var info_icon: Texture2D
 
-# Строки строящихся зданий: build_key -> { "row": HBoxContainer, "bar": ProgressBar, "pause_btn": Button }
+# The rows of the buildings under construction: build_key -> { "row": HBoxContainer, "bar": ProgressBar, "pause_btn": Button }
 var construction_rows: Dictionary = {}
 
-# Последняя сигнатура группировки построенных зданий ("id:total|id:total").
-# Апгрейд здания заменяет его id, не меняя общего числа зданий, — по сигнатуре
-# update_built_status понимает, что список надо пересобрать.
+# The last signature of the grouping of the built buildings ("id:total|id:total").
+# A building upgrade replaces its id without changing the total number of buildings, — by the signature
+# update_built_status understands that the list has to be rebuilt.
 var _last_groups_signature: String = ""
 
-# Тултип построенного здания под курсором: кнопка и индекс её группы в списке.
-# Сама панель тултипа живёт в ui_helpers (built_tooltip_panel).
+# The tooltip of the built building under the cursor: the button and the index of its group in the list.
+# The tooltip panel itself lives in ui_helpers (built_tooltip_panel).
 var _hovered_built_btn: Button = null
 var _hovered_built_group_index: int = -1
 
@@ -61,9 +61,9 @@ func setup(list: Node, btn: Button, built_list: Node, food_lbl: Label, helpers: 
 
     set_process(true)
 
-    # Единая радиогрупка для списка доступных построек: клик по одной кнопке
-    # автоматически снимает остальные. allow_unpress=false запрещает «отжать»
-    # уже выбранную кнопку — в любой момент выбрано ровно одно здание.
+    # A single radio group for the list of available builds: clicking one button
+    # automatically unpresses the others. allow_unpress=false forbids "unpressing"
+    # the already selected button — exactly one building is selected at any moment.
     buildings_group = ButtonGroup.new()
     buildings_group.allow_unpress = false
 
@@ -72,8 +72,8 @@ func setup(list: Node, btn: Button, built_list: Node, food_lbl: Label, helpers: 
     build_button.disabled = true
 
 func _process(delta):
-    # Обновляем прогресс-бары строящихся зданий каждый кадр,
-    # чтобы они были плавными (как прогресс-бары улучшений на карте).
+    # We update the progress bars of the buildings under construction every frame,
+    # so that they are smooth (like the progress bars of the improvements on the map).
     if construction_rows.size() > 0:
         _update_construction_rows()
 
@@ -91,8 +91,8 @@ func update_data(data: Dictionary):
     city_storage = data.get("city_storage", {})
     city_food_pool = data.get("city_food_pool", {})
     built_buildings = data.get("built_buildings", [])
-    # Живое обновление строки «Требуется/на складе» в открытом тултипе деталей —
-    # с интервалом отображения ресурсов, а не каждым тиком.
+    # The live update of the "Required/in storage" row in the open details tooltip —
+    # with the resource display interval, and not every tick.
     if CityData.resource_display_due(_display_epoch):
         _display_epoch = CityData.resource_display_epoch
         refresh_building_detail_tooltip()
@@ -105,14 +105,14 @@ func refresh_list():
     selected_button = null
     building_buttons.clear()
     build_button.disabled = true
-    # Скрываем сообщения и тултипы при обновлении списка
+    # We hide the messages and the tooltips when updating the list
     if ui_helpers:
         ui_helpers.set_message("")
         ui_helpers.hide_group_tooltip()
         ui_helpers.hide_building_detail_tooltip()
     food_label.visible = false
     for bld in buildings_data:
-        # Фильтруем здания: показываем только те, что открыты изученными технологиями
+        # We filter the buildings: we show only those unlocked by the researched technologies
         if not CityData.is_building_unlocked(bld["id"]):
             continue
         var item_btn = Button.new()
@@ -125,9 +125,9 @@ func refresh_list():
         item_btn.toggle_mode = true
         item_btn.button_group = buildings_group
         item_btn.tooltip_text = ""
-        # Иконка здания перед названием (файл из buildings.json). Если файла
-        # иконки пока не существует — просто выводим название без иконки;
-        # при появлении файла иконка подхватится автоматически.
+        # The building icon before the name (the file from buildings.json). If the icon file
+        # does not exist yet — we simply output the name without the icon;
+        # when the file appears, the icon will be picked up automatically.
         var building_icon = _get_icon_texture_from_paths(bld.get("icon", ""))
         if building_icon:
             item_btn.icon = building_icon
@@ -140,26 +140,26 @@ func refresh_list():
         building_buttons[bld["id"]] = item_btn
 
 func update_built_status():
-    # Лёгкое обновление: обновляем текст статуса без пересоздания строк.
+    # A light refresh: we update the status text without recreating the rows.
     if built_buildings.size() != last_built_count \
             or _get_active_building_construction_count() != last_construction_count:
         refresh_built()
         return
 
-    # Кнопка «Построить» остаётся активной даже при достижении лимита строек,
-    # чтобы при нажатии можно было показать сообщение о причине отказа.
-    # Блокируется только когда не выбрано здание.
+    # The "Build" button stays active even when the build limit is reached,
+    # so that on a click it could show the message with the reason for the refusal.
+    # It is blocked only when no building is selected.
     if build_button:
         build_button.disabled = (selected_building_id == "")
 
-    # Обновляем прогресс-бары строящихся зданий
+    # We update the progress bars of the buildings under construction
     _update_construction_rows()
 
-    # Группируем здания по id и обновляем текст, цвет и тултип кнопок.
+    # We group the buildings by id and update the text, the colour and the tooltip of the buttons.
     var groups = _group_buildings()
-    # Апгрейд меняет id здания без изменения их общего числа (ручная мельница
-    # заменяется мельницей с животной тягой) — ловим это по сигнатуре
-    # группировки и пересобираем список, иначе останутся устаревшие кнопки.
+    # An upgrade changes the id of a building without changing their total number (a hand mill
+    # is replaced by a mill with animal traction) — we catch this by the signature
+    # of the grouping and rebuild the list, otherwise stale buttons would remain.
     var groups_signature = _groups_signature(groups)
     if groups_signature != _last_groups_signature:
         _last_groups_signature = groups_signature
@@ -183,9 +183,9 @@ func update_built_status():
         item_btn.text = display_name
         _apply_built_status_color(item_btn, status_info["color"])
 
-    # Тултип построенного здания под курсором обновляется живьём: состояния
-    # меняются на тиках (назначение работников, старт/завершение апгрейда),
-    # пока пользователь держит курсор на кнопке и читает список.
+    # The tooltip of the built building under the cursor is updated live: the states
+    # change on the ticks (the assignment of workers, the start/completion of an upgrade),
+    # while the user keeps the cursor on the button and reads the list.
     if _hovered_built_btn != null and is_instance_valid(_hovered_built_btn) \
             and ui_helpers != null and ui_helpers.built_tooltip_panel != null \
             and ui_helpers.built_tooltip_panel.visible:
@@ -195,16 +195,16 @@ func refresh_built():
     for child in built_buildings_list.get_children():
         child.queue_free()
     construction_rows.clear()
-    # Кнопки списка пересоздаются — тултип мог остаться висеть над удалённой
-    # кнопкой (mouse_exited у неё уже не сработает), прячем явно.
+    # The list buttons are recreated — the tooltip could remain hanging over a removed
+    # button (its mouse_exited will no longer fire), so we hide it explicitly.
     _hide_built_tooltip()
     last_built_count = built_buildings.size()
     last_construction_count = _get_active_building_construction_count()
 
-    # Сначала строки строящихся зданий
+    # First the rows of the buildings under construction
     _refresh_construction_rows()
 
-    # Группируем однотипные здания
+    # We group the buildings of the same type
     var groups = _group_buildings()
 
     for group_index in range(groups.size()):
@@ -218,9 +218,9 @@ func refresh_built():
         var display_name = "%s x%d" % [base_name, g["total"]] if g["total"] > 1 else base_name
         var status_info = _get_built_status_info(g["working"], g["idle"], g["total"])
 
-        # Группа однотипных построенных зданий — кнопка-строка в стиле списка
-        # доступных построек. Клик открывает панель деталей здания
-        # (функционал бывшей отдельной кнопки «Дополнительно»).
+        # A group of built buildings of the same type — a button-row in the style of the list
+        # of available builds. A click opens the building details panel
+        # (the functionality of the former separate "More" button).
         var item_btn = Button.new()
         item_btn.text = display_name
         item_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -230,12 +230,12 @@ func refresh_built():
         item_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
         _apply_built_status_color(item_btn, status_info["color"])
 
-        # Тултип с цветными состояниями — собственная панель (обычный
-        # tooltip_text цветов не поддерживает), показывается по наведению.
+        # The tooltip with coloured states — its own panel (the ordinary
+        # tooltip_text does not support colours), it is shown on hover.
         item_btn.mouse_entered.connect(_on_built_btn_hovered.bind(item_btn, group_index))
         item_btn.mouse_exited.connect(_on_built_btn_unhovered)
 
-        # Иконка здания перед названием (как в списке доступных построек).
+        # The building icon before the name (as in the list of available builds).
         var building_icon = _get_icon_texture_from_paths(bdata.get("icon", "")) if bdata else null
         if building_icon:
             item_btn.icon = building_icon
