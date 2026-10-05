@@ -95,8 +95,8 @@ func initialize(td, main_node):
     # We clear the cache of the rivers on the initialization (a new game / a load of a save),
     # so as not to keep the outdated smoothed points of the previous map.
     _river_smooth_cache.clear()
-# The rings of the towns could have changed (a new map / a load of a save):
-# we reset the cache of their render - it will be lazily rebuilt from the next frame.
+    # The rings of the towns could have changed (a new map / a load of a save):
+    # we reset the cache of their render - it will be lazily rebuilt from the next frame.
     invalidate_town_influence_cache()
 
 # Returns the size of the viewport in the pixels. In the editor get_viewport_rect()
@@ -132,14 +132,14 @@ func _get_visible_hex_range() -> Dictionary:
     var x_spacing = radius * sqrt(3.0)
     var y_spacing = radius * 1.5
 
-# The rectangle of the viewport in the map coordinates (before the offset).
+    # The rectangle of the viewport in the map coordinates (before the offset).
     var world_left = - offset_x
     var world_top = - offset_y
     var world_right = world_left + viewport_size.x
     var world_bottom = world_top + viewport_size.y
 
-# A margin of 2 hexes, to account for the offset of the odd rows
-# and the partially visible hexes at the edges of the screen.
+    # A margin of 2 hexes, to account for the offset of the odd rows
+    # and the partially visible hexes at the edges of the screen.
     var margin = 2
 
     var col_start = int(floor(world_left / x_spacing)) - margin
@@ -147,7 +147,7 @@ func _get_visible_hex_range() -> Dictionary:
     var row_start = int(floor(world_top / y_spacing)) - margin
     var row_end = int(ceil(world_bottom / y_spacing)) + margin
 
-# We limit it by the area reachable by the scroll of the map (scout_reach).
+    # We limit it by the area reachable by the scroll of the map (scout_reach).
     var reach = main_map.get_scout_reach_bounds()
     col_start = max(col_start, reach.col_start)
     col_end = min(col_end, reach.col_end)
@@ -194,15 +194,15 @@ func load_icons():
     for tech in GameData.technologies:
         if tech.has("icon"):
             _cache_icon(tech.icon)
-# The cover: we load its icons (the overlays of the forest and so on).
+    # The cover: we load its icons (the overlays of the forest and so on).
     for c_id in GameData.covers.keys():
         var c = GameData.covers[c_id]
         if c.has("icons"):
             for icon_name in c.icons:
                 _cache_icon(icon_name)
     _cache_icon("city.png")
-# The key "city" is needed by the renderer of the towns (town_manager.TOWN_ICON_NAME),
-# in order to get the same texture by the "full" name of the file.
+    # The key "city" is needed by the renderer of the towns (town_manager.TOWN_ICON_NAME),
+    # in order to get the same texture by the "full" name of the file.
     if icon_textures.has("city.png"):
         icon_textures["city"] = icon_textures["city.png"]
     _cache_icon("lock.png")
@@ -217,8 +217,8 @@ func _cache_icon(icon_name: String):
         icon_textures[icon_name] = tex
 
 func _draw():
-# We compute the visible range of the hexes (the viewport culling): we draw only those
-# hexes which intersect the rectangle of the screen.
+    # We compute the visible range of the hexes (the viewport culling): we draw only those
+    # hexes which intersect the rectangle of the screen.
     var visible = _get_visible_hex_range()
 
     # PHASE 1: We draw all the hexes which got on the screen within the reach
@@ -405,9 +405,9 @@ func _draw_hex(row: int, col: int):
     # the rings were additionally DUPLICATED: the shared hexes in the flat list
     # town_influence_hexes were one per each town - the fill was applied
     # 2-3 times, which amplified the darkening of the intersections and increased the load.
-    
-#
-/load/change of the epoch, therefore now:
+
+    #
+    # The rings are static between the spawn/load/a change of the epoch, therefore now:
     #   Step 1 - the cache of the unique fill centres (without duplicates) and the world segments
     #            of the borders is built once in _ensure_town_influence_cache();
     #   Step 2 - the fill is pre-rendered into ONE RGBA texture for the whole Region
@@ -417,9 +417,8 @@ func _draw_hex(row: int, col: int):
     # and the allocations. The rebuild is only by invalidate_town_influence_cache()
     # (the initialization of the map / the load of a save / a change of the epoch) or when the Region changes.
     #
-    
-#
- (the only place where the visibility of the rings is decided;
+    #
+    # WHAT EXACTLY THE PLAYER SEES (the only place where the visibility of the rings is decided;
     # the rings themselves in the data are full - see town_manager.compute_all_town_influences):
     #   1. the epoch - in the 1st epoch (current_era < 1) the rings are not drawn at all, as are
     #      the towns themselves: otherwise a ring which intrudes into the Region would give away
@@ -432,7 +431,7 @@ func _draw_hex(row: int, col: int):
     # texture - a "half fill" is impossible in principle.
     
 
- for the tests and the debugging: the list of the hexes
+    # Public access to the fill cache for the tests and debugging: the list of the hexes
     # of the fill in the form [{"row": int, "col": int}, ...]. The hexes filtered out by
     # the fog of war are not in the list at all. An empty list means that the cache is not
     # built yet: call invalidate_town_influence_cache() first.
@@ -451,15 +450,15 @@ func get_town_border_hexes() -> Array:
     return out
 
 func invalidate_town_influence_cache() -> void:
-# We reset the render cache: it will be lazily rebuilt on the next frame.
-# The old ImageTexture is released automatically (ref-count) on
-# the overwrite of the reference in _build_town_fill_texture().
+    # We reset the render cache: it will be lazily rebuilt on the next frame.
+    # The old ImageTexture is released automatically (ref-count) on
+    # the overwrite of the reference in _build_town_fill_texture().
     _town_cache_version += 1
 
 func _ensure_town_influence_cache(visible: Dictionary) -> void:
     if main_map == null:
         return
-# The Region expands on a change of the epoch - the cache for the old borders is invalid.
+    # The Region expands on a change of the epoch - the cache for the old borders is invalid.
     var region_changed: bool = _cache_region_start_row != main_map.region_start_row \
             or _cache_region_end_row != main_map.region_end_row \
             or _cache_region_start_col != main_map.region_start_col \
@@ -573,14 +572,14 @@ func _build_town_fill_texture() -> void:
     if _influence_fill_centers.is_empty():
         return
     var radius: float = main_map.HEX_RADIUS
-# We compute the borders of the texture BY THE ACTUAL FILL, and not by the corners
+    # We compute the borders of the texture BY THE ACTUAL FILL, and not by the corners
     # of the Region.
-# of the Region. On the odd-r grid the odd rows are shifted by a half hex
-# (HexUtils.hex_center), therefore the corners of the Region are not the extreme points of the map:
-# the hexes of the edge columns in the even rows stick out beyond them by ~0.73 of the radius, and
-# the texture was cutting them off with its edge - the fill looked "drawn by half"
-# (more noticeably on the left: there the minimum is taken from a corner with an odd row). Hence
-# also a margin of 1 px beyond the dimensions of a hex - for the smoothing of the joints.
+    # of the Region. On the odd-r grid the odd rows are shifted by a half hex
+    # (HexUtils.hex_center), therefore the corners of the Region are not the extreme points of the map:
+    # the hexes of the edge columns in the even rows stick out beyond them by ~0.73 of the radius, and
+    # the texture was cutting them off with its edge - the fill looked "drawn by half"
+    # (more noticeably on the left: there the minimum is taken from a corner with an odd row). Hence
+    # also a margin of 1 px beyond the dimensions of a hex - for the smoothing of the joints.
     var half_w: float = radius * sqrt(3.0) * 0.5 # the half width of the hex by X
     var min_x := INF
     var min_y := INF
@@ -607,8 +606,8 @@ func _build_town_fill_texture() -> void:
     img.fill(Color(0, 0, 0, 0))
     var half: float = radius * 0.5
     var rmax: int = int(ceil(radius)) + 1
-# The half widths (px) of a pointy-top hex by the offsets dy. +1px on each
-# side outward - it covers the thin AA seams at the joints of the hexes.
+    # The half widths (px) of a pointy-top hex by the offsets dy. +1px on each
+    # side outward - it covers the thin AA seams at the joints of the hexes.
     var hw: Dictionary = {}
     for dy in range(-rmax, rmax + 1):
         var ya: float = float(dy)
@@ -670,12 +669,12 @@ func _draw_town_influence(visible: Dictionary) -> void:
                 _influence_texture_size.x,
                 _influence_texture_size.y), false, Color(1, 1, 1, 1))
         return
- (the editor / the Region larger than 4096px).
+    # Fallback: the drawing by the hexes (the editor / the Region larger than 4096px).
     var region_visible = _get_region_visible_range(visible)
     for h in _influence_fill_centers:
         var row: int = int(h.row)
         var col: int = int(h.col)
-: only the Ring + the Region.
+        # The visibility (as before): only the Ring + the Region.
         if row < region_visible.row_start or row > region_visible.row_end \
                 or col < region_visible.col_start or col > region_visible.col_end:
             continue
@@ -687,23 +686,23 @@ func _draw_town_influence(visible: Dictionary) -> void:
         var fill_color := Color(h.cr, h.cg, h.cb, h.ca)
         draw_colored_polygon(vertices, fill_color)
 
- of EACH town with its own colour (PHASE 1.7.1).
+    # Draws the borders of the influence rings of EACH town with its own colour (PHASE 1.7.1).
     # It is drawn right after the fill of the rings (PHASE 1.7) and before the roads/rivers/icons.
     # The data are taken from main_map.towns (an array of the records of the towns): each
     # town has its own personal ring (town["influence_hexes"]) and its own colour of the borders
     # (town["border_color"], generated on the spawn and saved in the save). The rings
     # are completely independent - the colours of the neighbouring towns do not affect each other,
     # therefore a "foreign" territory is visually clearly delimited.
-#
- between the hexes of the ring and the "surroundings"
+    #
+    # The outline is drawn by the common edges between the hexes of the ring and the "surroundings"
     # (a hex which does NOT belong to the ring of this town). The internal edges (between two
     # hexes of one ring) are not drawn. Beyond the edge of the map the edges are not drawn -
     # there is no hex-neighbour there, and the ring simply ends.
     # The segments are computed ONCE in _ensure_town_influence_cache() and are stored in the
     # world coordinates (without the offset). Per frame - only the translation by the offset,
     # the viewport check and the draw_line: without the trigonometry and the allocations of the dictionaries.
-#
-: only the Ring + the Region. The clipping of the rings on
+    #
+    # The visibility — the same as that of the fill: only the Ring + the Region. The clipping of the rings on
     # the starting Region is already applied to the data (in town_manager), so the foreign
     # towns in the 1st epoch do not reveal their outlines.
 func _draw_town_influence_borders(visible: Dictionary) -> void:
@@ -716,13 +715,13 @@ func _draw_town_influence_borders(visible: Dictionary) -> void:
     for seg in _influence_border_segments:
         var row: int = int(seg.row)
         var col: int = int(seg.col)
-: only the Ring + the Region.
+        # The visibility (as in the fill): only the Ring + the Region.
         if row < region_visible.row_start or row > region_visible.row_end \
                 or col < region_visible.col_start or col > region_visible.col_end:
             continue
         var p1 := Vector2(float(seg.p1x) + offset_x, float(seg.p1y) + offset_y)
         var p2 := Vector2(float(seg.p2x) + offset_x, float(seg.p2y) + offset_y)
-# The viewport culling of a segment by its bounding box.
+        # The viewport culling of a segment by its bounding box.
         if not _is_rect_visible(Rect2(
                 minf(p1.x, p2.x) - TOWN_INFLUENCE_BORDER_WIDTH,
                 minf(p1.y, p2.y) - TOWN_INFLUENCE_BORDER_WIDTH,
@@ -844,8 +843,8 @@ func _draw_hex_overlays(row: int, col: int):
                 draw_circle(center, RESOURCE_ICON_SIZE / 3.0, fallback_color)
 
     # If the resource is visible, but the technology for the construction of the improvement is not learned -
-# we draw the icon of the castle over the resource. As soon as the technology is learned,
-# the castle disappears (is_resource_locked_by_tech becomes false).
+    # we draw the icon of the castle over the resource. As soon as the technology is learned,
+    # the castle disappears (is_resource_locked_by_tech becomes false).
     if is_resource_locked_by_tech and icon_textures.has("lock.png"):
         var lock_tex = icon_textures["lock.png"]
         var lock_size = RESOURCE_ICON_SIZE * 0.6
@@ -857,8 +856,8 @@ func _draw_hex_overlays(row: int, col: int):
         )
         draw_texture_rect(lock_tex, lock_rect, false)
 
-# The asterisks of the quality of the resource - under the icon, only if the resource is revealed
-# and an improvement which reveals the quality is already built on this hex.
+    # The asterisks of the quality of the resource - under the icon, only if the resource is revealed
+    # and an improvement which reveals the quality is already built on this hex.
     if eff_res != "" and is_resource_visible and tile.improvement != null:
         _draw_quality_stars(tile, center)
 
@@ -866,25 +865,25 @@ func _draw_hex_overlays(row: int, col: int):
         var has_worker = main_map.worker_manager.has_worker(row, col)
         var imp_data = GameData.improvements.get(tile.improvement, {})
         var imp_icon = imp_data.get("icon", "")
-# The infrastructure improvements (no_worker, for example a pier or a canal)
-# are not tied to a worker: we always draw them in the full colour, without the grey
-# darkening, even when has_worker == false.
+        # The infrastructure improvements (no_worker, for example a pier or a canal)
+        # are not tied to a worker: we always draw them in the full colour, without the grey
+        # darkening, even when has_worker == false.
         var is_infra = GameData.is_no_worker_improvement(tile.improvement)
-# The decorative improvements of the towns are always drawn in the full colour,
-# although they intentionally have no worker.
+        # The decorative improvements of the towns are always drawn in the full colour,
+        # although they intentionally have no worker.
         var draw_active = has_worker or is_infra or bool(tile.get("decorative", false))
-# If there is no resource on the hex (neither natural nor bred) - the improvement
-# is the only "item" on the hex (an irrigation canal, a forest
-# plot on an empty forest hex, the decorative improvements of the towns on
-# empty hexes). We draw it in the centre of the hex LARGE - of the size of
-# the icon of the resource (RESOURCE_ICON_SIZE): in fact it replaces
-# the missing icon of the resource itself. If there is a resource - the icon of the improvement
-# remains a small marker (IMPROVEMENT_ICON_SIZE) above the top
-# edge, above the icon of the resource.
+        # If there is no resource on the hex (neither natural nor bred) - the improvement
+        # is the only "item" on the hex (an irrigation canal, a forest
+        # plot on an empty forest hex, the decorative improvements of the towns on
+        # empty hexes). We draw it in the centre of the hex LARGE - of the size of
+        # the icon of the resource (RESOURCE_ICON_SIZE): in fact it replaces
+        # the missing icon of the resource itself. If there is a resource - the icon of the improvement
+        # remains a small marker (IMPROVEMENT_ICON_SIZE) above the top
+        # edge, above the icon of the resource.
         var imp_icon_size: float = IMPROVEMENT_ICON_SIZE
-# The radius of the stub circle, if the texture of the icon is not found. For the large
-# icon we take the same formula as for the resource (RESOURCE_ICON_SIZE/3),
-# so that it looks like an ordinary stub icon of the resource.
+        # The radius of the stub circle, if the texture of the icon is not found. For the large
+        # icon we take the same formula as for the resource (RESOURCE_ICON_SIZE/3),
+        # so that it looks like an ordinary stub icon of the resource.
         var imp_fallback_radius: float = IMPROVEMENT_ICON_SIZE / 2.5
         var icon_pos = Vector2(center.x, center.y)
         if eff_res != "":
@@ -907,20 +906,20 @@ func _draw_hex_overlays(row: int, col: int):
                     fallback_color = Color(0.5, 0.5, 0.5)
                 draw_circle(icon_pos, imp_fallback_radius, fallback_color)
 
-# A drop of fresh water next to the icon of the improvement. We show it for
-# any improvement which has access to the water (direct or chain).
-# The types differ visually:
-#   direct - a filled blue drop (as it was before for the farms);
-#   chain  - a contour (an outline) of a muted colour, the water by the chain.
+        # A drop of fresh water next to the icon of the improvement. We show it for
+        # any improvement which has access to the water (direct or chain).
+        # The types differ visually:
+        #   direct - a filled blue drop (as it was before for the farms);
+        #   chain  - a contour (an outline) of a muted colour, the water by the chain.
         if tile.improvement != null:
             var water_access = MapHelpers.get_hex_water_access(row, col, tile_data, main_map.map_rows, main_map.map_cols)
             if water_access != "":
-# The position of the drop depends on the size of the icon of the improvement:
-#   small (32) - as before, to the right of the icon;
-#   large (RESOURCE_ICON_SIZE, a hex without a resource) - to the right
-#   the drop rests against the face of the hex (the half width of the hex is ~47.6px
-#   at HEX_RADIUS = 55), and below it the progress bars interfere, therefore
-#   we place it in the centre ABOVE the icon, in the upper part of the hex.
+                # The position of the drop depends on the size of the icon of the improvement:
+                #   small (32) - as before, to the right of the icon;
+                #   large (RESOURCE_ICON_SIZE, a hex without a resource) - to the right
+                #   the drop rests against the face of the hex (the half width of the hex is ~47.6px
+                #   at HEX_RADIUS = 55), and below it the progress bars interfere, therefore
+                #   we place it in the centre ABOVE the icon, in the upper part of the hex.
                 var drop_offset := Vector2(imp_icon_size * 0.5 + 6, 0)
                 if imp_icon_size > IMPROVEMENT_ICON_SIZE:
                     drop_offset = Vector2(0, - (imp_icon_size * 0.5 + 6))
@@ -939,27 +938,27 @@ func _draw_hex_overlays(row: int, col: int):
                 if water_access == "direct":
                     draw_polygon(drop_points, [MARKER_ICON_COLOR])
                 else:
-# chain: a contour drop of a muted colour.
+                    # chain: a contour drop of a muted colour.
                     var closed_points = PackedVector2Array()
                     closed_points.append_array(drop_points)
                     closed_points.append(drop_points[0])
                     draw_polyline(closed_points, Color(0.5, 0.7, 0.95, 0.9), 1.5)
 
-# --- The icon of the town ---
-# It is drawn AFTER all the other overlays (the resource/the improvement/the drop of water),
-# in order to be over them - it is the "main" object on the hex, as is the city
-# of the player itself. The size is taken from town_manager, so that if desired it could easily be
-# to tweak. We draw only if the hex is NOT the hex of a city (a city is a separate
-# case in PHASE 4).
+    # --- The icon of the town ---
+    # It is drawn AFTER all the other overlays (the resource/the improvement/the drop of water),
+    # in order to be over them - it is the "main" object on the hex, as is the city
+    # of the player itself. The size is taken from town_manager, so that if desired it could easily be
+    # to tweak. We draw only if the hex is NOT the hex of a city (a city is a separate
+    # case in PHASE 4).
     if tile.get("has_town", false) \
             and not (row == main_map.city_row and col == main_map.city_col) \
             and icon_textures.has(TownManager.TOWN_ICON_NAME):
-# Is the hex revealed: in the Influence Ring or scouted by the scouts.
+        # Is the hex revealed: in the Influence Ring or scouted by the scouts.
         var town_revealed: bool = in_influence or bool(tile.get("is_explored", false))
-# A revealed town - a full icon + a name. An unscouted one (the fog of war)
-# is visible only by a hint: a semi-transparent icon without a name, and before the epoch
-# of the Antiquity (current_era < 1) it is not shown at all - as before
-# in a separate pass for the towns beyond the limits of the Region.
+        # A revealed town - a full icon + a name. An unscouted one (the fog of war)
+        # is visible only by a hint: a semi-transparent icon without a name, and before the epoch
+        # of the Antiquity (current_era < 1) it is not shown at all - as before
+        # in a separate pass for the towns beyond the limits of the Region.
         if town_revealed or main_map.current_era >= 1:
             var town_tex = icon_textures[TownManager.TOWN_ICON_NAME]
             var town_rect = Rect2(
@@ -971,27 +970,27 @@ func _draw_hex_overlays(row: int, col: int):
             if town_revealed:
                 draw_texture_rect(town_tex, town_rect, false)
                 _draw_town_name(row, col, center)
-# The trade badge over a town which is connected to the city.
-# It is drawn only for a revealed town (the same gate as
-# the icon itself): in the fog of war it would give away that which the player
-# has not reached yet.
+                # The trade badge over a town which is connected to the city.
+                # It is drawn only for a revealed town (the same gate as
+                # the icon itself): in the fog of war it would give away that which the player
+                # has not reached yet.
                 if _is_town_trade_connected(row, col):
-# Over the icon of the town, but inside the hex: the label of the name
-# of the town is moved out above the top face of the hex, and the badge
-# would run into it.
+                    # Over the icon of the town, but inside the hex: the label of the name
+                    # of the town is moved out above the top face of the hex, and the badge
+                    # would run into it.
                     _draw_trade_link_icon(
                         center + Vector2(0, -(TownManager.TOWN_ICON_SIZE * 0.5 + 8.0)))
             else:
                 draw_texture_rect(town_tex, town_rect, false,
                         Color(1, 1, 1, TownManager.FOG_TOWN_ICON_ALPHA))
 
-# --- The conflict "a tech_reveal resource vs. a foreign improvement" ---
-# If an improvement stands on the hex, and under it a hidden resource was found (tech_reveal
-# is already learned, but the resource is not extracted because of the old improvement) - we draw
-# a red triangle with a "!". The improvement itself is not demolished: its production
-# continues. The details are in docs.md, "tech_reveal: the hidden resources".
-# We show the triangle ONLY when the resource is already visible (after tech_reveal),
-# otherwise the player does not understand what the badge is complaining about.
+    # --- The conflict "a tech_reveal resource vs. a foreign improvement" ---
+    # If an improvement stands on the hex, and under it a hidden resource was found (tech_reveal
+    # is already learned, but the resource is not extracted because of the old improvement) - we draw
+    # a red triangle with a "!". The improvement itself is not demolished: its production
+    # continues. The details are in docs.md, "tech_reveal: the hidden resources".
+    # We show the triangle ONLY when the resource is already visible (after tech_reveal),
+    # otherwise the player does not understand what the badge is complaining about.
     var conflict = MapHelpers.get_tech_reveal_conflict(tile)
     if not conflict.is_empty() and is_resource_visible:
         _draw_tech_reveal_warning(center)
@@ -1016,11 +1015,11 @@ func _draw_trade_link_icon(center: Vector2) -> void:
     var arc_offset := r * 0.35
     var line_width := maxf(1.0, r * 0.22)
     var color := MARKER_ICON_COLOR
-# The upper arc: from left to right, the arrowhead looks down.
+    # The upper arc: from left to right, the arrowhead looks down.
     var top_center := center + Vector2(0, -arc_offset)
     draw_arc(top_center, arc_radius, PI, TAU, 12, color, line_width, true)
     _draw_arrow_head(top_center + Vector2(arc_radius, 0), Vector2(0, 1), color, r)
-# The lower arc is mirrored: from right to left, the arrowhead looks up.
+    # The lower arc is mirrored: from right to left, the arrowhead looks up.
     var bottom_center := center + Vector2(0, arc_offset)
     draw_arc(bottom_center, arc_radius, 0, PI, 12, color, line_width, true)
     _draw_arrow_head(bottom_center + Vector2(-arc_radius, 0), Vector2(0, -1), color, r)
@@ -1079,13 +1078,13 @@ func _draw_quality_stars(tile: Dictionary, center: Vector2):
     var levels = GameData.get_quality_levels()
     if levels.is_empty():
         return
-# We determine the index of the quality in the list of the levels (from the worst to the best).
+    # We determine the index of the quality in the list of the levels (from the worst to the best).
     var quality_index = levels.find(quality)
     if quality_index < 0:
         return
-# The number of the "full" asterisks = the index + 1 (the first level = 1 asterisk).
+    # The number of the "full" asterisks = the index + 1 (the first level = 1 asterisk).
     var stars_count = quality_index + 1
-# The maximum of the asterisks = the number of the levels of the quality.
+    # The maximum of the asterisks = the number of the levels of the quality.
     var max_stars = levels.size()
 
     var star_outer = 5.5
@@ -1097,10 +1096,10 @@ func _draw_quality_stars(tile: Dictionary, center: Vector2):
     for i in range(max_stars):
         var star_cx = start_x + i * spacing
         if i < stars_count:
-# A filled asterisk is a golden yellow
+            # A filled asterisk is a golden yellow
             _draw_star(star_cx, star_y, star_outer, star_inner, Color(1.0, 0.85, 0.2, 0.9))
         else:
-# An empty asterisk is a grey-white
+            # An empty asterisk is a grey-white
             _draw_star_outline(star_cx, star_y, star_outer, star_inner, Color(0.5, 0.5, 0.5, 0.6))
 
 # Draws a red triangle with a "!" in the upper right corner of the hex - an indicator
@@ -1110,25 +1109,25 @@ func _draw_quality_stars(tile: Dictionary, center: Vector2):
 # The figure itself - a filled red triangle + a white outline + a "!"
 # in the middle (through draw_string). Without the external resources and the fonts.
 func _draw_tech_reveal_warning(center: Vector2):
-# The dimensions of the triangle in the pixels.
+    # The dimensions of the triangle in the pixels.
     var tri_size := 18.0
-# The centre of the triangle is in the upper right corner of the hex, a bit closer to the centre,
-# so that the badge does not stick out of the hex and is not lost on the background of the neighbours.
+    # The centre of the triangle is in the upper right corner of the hex, a bit closer to the centre,
+    # so that the badge does not stick out of the hex and is not lost on the background of the neighbours.
     var cx = center.x + main_map.HEX_RADIUS * 0.55
     var cy = center.y - main_map.HEX_RADIUS * 0.55
-# The vertices of an equilateral triangle directed up.
+    # The vertices of an equilateral triangle directed up.
     var pts = PackedVector2Array()
     pts.append(Vector2(cx, cy - tri_size * 0.6))
     pts.append(Vector2(cx - tri_size * 0.55, cy + tri_size * 0.45))
     pts.append(Vector2(cx + tri_size * 0.55, cy + tri_size * 0.45))
     draw_colored_polygon(pts, Color(0.85, 0.15, 0.15, 0.95))
-# A white outline by the same contour.
+    # A white outline by the same contour.
     var border = PackedVector2Array()
     border.append_array(pts)
     border.append(pts[0])
     draw_polyline(border, Color.WHITE, 1.5, true)
-# The "!" - we draw it as a short column and a dot under it. We use
-# the standard font through draw_string, so as not to depend on the assets.
+    # The "!" - we draw it as a short column and a dot under it. We use
+    # the standard font through draw_string, so as not to depend on the assets.
     var font = ThemeDB.fallback_font
     if font == null:
         return
@@ -1213,10 +1212,10 @@ func _draw_selected_hex_highlight(row: int, col: int, style: Dictionary):
     var vertices = PackedVector2Array()
     vertices.append_array(HexUtils.hex_vertices(center.x, center.y, main_map.HEX_RADIUS))
 
-# A semi-transparent fill (over the terrain, but under the icons of the resources/the improvements).
+    # A semi-transparent fill (over the terrain, but under the icons of the resources/the improvements).
     draw_colored_polygon(vertices, style.fill)
 
-# A bright frame.
+    # A bright frame.
     var closed_vertices = PackedVector2Array()
     closed_vertices.append_array(vertices)
     closed_vertices.append(vertices[0])
@@ -1252,12 +1251,12 @@ func _is_resource_locked(resource_id: String) -> bool:
         return false
     var res_data = GameData.raw_resources.get(resource_id, {})
     var imp_id = res_data.get("improved_by", "")
-# For a part of the resources (for example, the wild plants foraged_food) improved_by is set
-# as null - then .get() returns Nil, and not the default value.
+    # For a part of the resources (for example, the wild plants foraged_food) improved_by is set
+    # as null - then .get() returns Nil, and not the default value.
     if imp_id == null:
         return false
-# The resource is considered blocked if the improvement which
-# extracts it (improved_by) is not yet unlocked by its unlock_tech.
+    # The resource is considered blocked if the improvement which
+    # extracts it (improved_by) is not yet unlocked by its unlock_tech.
     return not CityData.is_improvement_unlocked(imp_id)
 
 func is_resource_locked(resource_id: String) -> bool:
@@ -1519,7 +1518,7 @@ func _draw_road_segments(segments: Dictionary, hide_in_fog: bool,
         if hide_in_fog and not is_town_road_segment_visible(row1, col1, row2, col2):
             continue
 
-# The viewport culling: we skip the road segments which do not intersect the screen.
+        # The viewport culling: we skip the road segments which do not intersect the screen.
         var c1 = HexUtils.hex_center(row1, col1, main_map.HEX_RADIUS)
         c1.x += main_map.offset_x + main_map.scroll_offset.x
         c1.y += main_map.offset_y + main_map.scroll_offset.y
@@ -1544,8 +1543,8 @@ func _draw_road_segments(segments: Dictionary, hide_in_fog: bool,
 func _draw_road_preview() -> void:
     if _road_preview_segments.is_empty():
         return
-# The segments at least one end of which is in the fog are never drawn
-# (see the comment to PHASE 2d in _draw_all_roads).
+    # The segments at least one end of which is in the fog are never drawn
+    # (see the comment to PHASE 2d in _draw_all_roads).
     var visible: Dictionary = {}
     for segment_key in _road_preview_segments.keys():
         var parts = str(segment_key).split("|")
@@ -1573,13 +1572,13 @@ func _draw_rivers():
     var offset_y = main_map.offset_y + main_map.scroll_offset.y
     var radius = main_map.HEX_RADIUS
 
-# The main rivers are thicker and darker.
+    # The main rivers are thicker and darker.
     _draw_river_list(river_manager.get_main_rivers(), offset_x, offset_y, radius,
             river_manager.RIVER_SHORE_COLOR, river_manager.RIVER_SHORE_WIDTH,
             river_manager.RIVER_COLOR, river_manager.RIVER_WIDTH,
             river_manager.RIVER_HIGHLIGHT_COLOR, river_manager.RIVER_HIGHLIGHT_WIDTH)
 
-# The tributaries are thinner and lighter, in order to be visually different from the main rivers.
+    # The tributaries are thinner and lighter, in order to be visually different from the main rivers.
     _draw_river_list(river_manager.get_tributaries(), offset_x, offset_y, radius,
             river_manager.TRIBUTARY_SHORE_COLOR, river_manager.TRIBUTARY_SHORE_WIDTH,
             river_manager.TRIBUTARY_COLOR, river_manager.TRIBUTARY_WIDTH,
@@ -1612,7 +1611,7 @@ func _build_visible_river_lines(river: Array, offset_x: float, offset_y: float,
     if river.size() < 2:
         return lines
 
-# The viewport culling: we skip the rivers which do not intersect the screen.
+    # The viewport culling: we skip the rivers which do not intersect the screen.
     var min_x = INF
     var max_x = - INF
     var min_y = INF
@@ -1633,27 +1632,27 @@ func _build_visible_river_lines(river: Array, offset_x: float, offset_y: float,
     if not _is_rect_visible(river_rect):
         return lines
 
-# The smoothed meandering points of the river in the WORLD coordinates (without the offset).
-# We compute them once per river and cache them: the smoothing (_generate_natural_river
-# + _chaikin_smooth) is an expensive operation, and the points of the rivers do not change when scrolling,
-# therefore the recalculation on every frame is redundant. The key of the cache is a compact serialization
-# of the initial points of the river (with a unique hash of the number of the points).
+    # The smoothed meandering points of the river in the WORLD coordinates (without the offset).
+    # We compute them once per river and cache them: the smoothing (_generate_natural_river
+    # + _chaikin_smooth) is an expensive operation, and the points of the rivers do not change when scrolling,
+    # therefore the recalculation on every frame is redundant. The key of the cache is a compact serialization
+    # of the initial points of the river (with a unique hash of the number of the points).
     var cache_key = "%d|" % river.size() + _points_to_cache_key(river)
     var smooth_points: PackedVector2Array
     if _river_smooth_cache.has(cache_key):
         smooth_points = _river_smooth_cache[cache_key]
     else:
-# We build the natural meanders over the whole river in the WORLD coordinates,
-# and at the drawing the offset is added to them. Thus the waves remain
-# continuous at the border, and behind it the river is not drawn (the fog of war).
+        # We build the natural meanders over the whole river in the WORLD coordinates,
+        # and at the drawing the offset is added to them. Thus the waves remain
+        # continuous at the border, and behind it the river is not drawn (the fog of war).
         var world_points = PackedVector2Array()
         for pt in river:
             world_points.append(Vector2(pt.x, pt.y))
         smooth_points = _generate_natural_river(world_points, radius)
         _river_smooth_cache[cache_key] = smooth_points
 
-# We shift the smoothed world points by the current offset (the scrolling/the centre) -
-# from this moment the points live in the SCREEN coordinates.
+    # We shift the smoothed world points by the current offset (the scrolling/the centre) -
+    # from this moment the points live in the SCREEN coordinates.
     var shifted_points = PackedVector2Array()
     shifted_points.resize(smooth_points.size())
     for i in range(smooth_points.size()):
@@ -1662,14 +1661,14 @@ func _build_visible_river_lines(river: Array, offset_x: float, offset_y: float,
             smooth_points[i].y + offset_y
         )
 
-# We clip the smoothed line by the rectangle of the screen. The rectangle is the
-# SCREEN one (_get_screen_rect), as are the points themselves: earlier there was
-# Rect2(Vector2(-offset_x, -offset_y), ...), that is, a WORLD window, and when
-# the map was centred (offset_x ~ -2280) the rivers were clipped entirely - they
-# remained in the data (river_edges), but were not drawn. Earlier the clipping went
-# by the Region (the fog of war was not drawn at all), but now the hexes in
-# the band reachable by the scroll are drawn darkened - the rivers should not
-# break off at the border of the Region.
+    # We clip the smoothed line by the rectangle of the screen. The rectangle is the
+    # SCREEN one (_get_screen_rect), as are the points themselves: earlier there was
+    # Rect2(Vector2(-offset_x, -offset_y), ...), that is, a WORLD window, and when
+    # the map was centred (offset_x ~ -2280) the rivers were clipped entirely - they
+    # remained in the data (river_edges), but were not drawn. Earlier the clipping went
+    # by the Region (the fog of war was not drawn at all), but now the hexes in
+    # the band reachable by the scroll are drawn darkened - the rivers should not
+    # break off at the border of the Region.
     var clipped_lines = _clip_river_to_rect(shifted_points, _get_screen_rect())
     for line in clipped_lines:
         if line.size() >= 2:
@@ -1840,9 +1839,9 @@ func _generate_natural_river(river_points: PackedVector2Array, radius: float) ->
     if curved_points.size() < 2:
         return river_points
 
-# We apply 1-2 iterations of the smoothing - it is enough to remove the sharp
-# corners, but to preserve the general shape and the meandering. The implementation
-# is moved out into a separate function below.
+    # We apply 1-2 iterations of the smoothing - it is enough to remove the sharp
+    # corners, but to preserve the general shape and the meandering. The implementation
+    # is moved out into a separate function below.
     return _chaikin_smooth(curved_points, 2)
 
 func _draw_exploration_highlights():
@@ -1853,9 +1852,9 @@ func _draw_exploration_highlights():
 
     var visible = _get_visible_hex_range()
 
-# --- 1. The highlighting of the scouted hexes (only in the visible area) ---
-# Outside the visible area (the fog of war) the terrain is not drawn by the renderer, therefore
-# a fill for the scouted hexes is not needed there.
+    # --- 1. The highlighting of the scouted hexes (only in the visible area) ---
+    # Outside the visible area (the fog of war) the terrain is not drawn by the renderer, therefore
+    # a fill for the scouted hexes is not needed there.
     for row in range(visible.row_start, visible.row_end + 1):
         for col in range(visible.col_start, visible.col_end + 1):
             var tile = tile_data[row][col]
@@ -1868,38 +1867,38 @@ func _draw_exploration_highlights():
             center.x += main.offset_x + main.scroll_offset.x
             center.y += main.offset_y + main.scroll_offset.y
             var vertices = HexUtils.hex_vertices(center.x, center.y, main_map.HEX_RADIUS)
-# Scouted: only the fill - there is deliberately no white frame here
-# it merged with the grid of the hexes and visually "inflated"
-# the scouted area. The frame is drawn only by the hover/the selection of the chunk
-# (see _draw_selected_hex_highlight).
+            # Scouted: only the fill - there is deliberately no white frame here
+            # it merged with the grid of the hexes and visually "inflated"
+            # the scouted area. The frame is drawn only by the hover/the selection of the chunk
+            # (see _draw_selected_hex_highlight).
             draw_colored_polygon(vertices, Color(0.652, 0.855, 0.652, 0.25))
 
-# --- 2. The highlighting of the selected chunk (the Region + the fog of war) ---
-# The chunk can include the hexes in the fog of war (the scouting) - the highlighting is drawn
-# FOR EACH hex of the chunk, without a filter by the visible area. Otherwise in the fog
-# the player does not see which exactly the area is selected now and where the
-# scouts will go. The colour depends on the type of the chunk (the scouting/the claiming × possible/
-# impossible - see _get_highlight_style): the tone of the action and its mutedness.
+    # --- 2. The highlighting of the selected chunk (the Region + the fog of war) ---
+    # The chunk can include the hexes in the fog of war (the scouting) - the highlighting is drawn
+    # FOR EACH hex of the chunk, without a filter by the visible area. Otherwise in the fog
+    # the player does not see which exactly the area is selected now and where the
+    # scouts will go. The colour depends on the type of the chunk (the scouting/the claiming × possible/
+    # impossible - see _get_highlight_style): the tone of the action and its mutedness.
     #
-# Before the study of Cartography the highlighting does NOT go beyond the limits of the Region: there
-# the scouting is unavailable, and the highlighting on the dark canvas of the fog would only
-# confuse the player (see main_map.is_cartography_researched). The chunks
-# collected by expansion_manager already comply with this rule - the filter below is
-# an insurance (for example, an outdated current_chunk after the load of a save).
+    # Before the study of Cartography the highlighting does NOT go beyond the limits of the Region: there
+    # the scouting is unavailable, and the highlighting on the dark canvas of the fog would only
+    # confuse the player (see main_map.is_cartography_researched). The chunks
+    # collected by expansion_manager already comply with this rule - the filter below is
+    # an insurance (for example, an outdated current_chunk after the load of a save).
     var chunk: Array = expansion_manager.current_chunk
     var anchor = expansion_manager.current_hover_hex
     if chunk.is_empty():
-# There is no chunk under the cursor (a scouted hex outside the Region or a hex in the
-# influence ring of a foreign town): we highlight the hex under the cursor itself -
-# with the same colour as that of the chunk. Otherwise the hovering would be "silent", and a
-# click on such a hex already gives the highlighting (see PHASE 3.5 and
+        # There is no chunk under the cursor (a scouted hex outside the Region or a hex in the
+        # influence ring of a foreign town): we highlight the hex under the cursor itself -
+        # with the same colour as that of the chunk. Otherwise the hovering would be "silent", and a
+        # click on such a hex already gives the highlighting (see PHASE 3.5 and
         # expansion_manager.get_highlight_hexes).
         if anchor == null:
             return
         chunk = expansion_manager.get_highlight_hexes(anchor.row, anchor.col)
     if anchor == null:
-# An outdated current_chunk without a hex under the cursor (an insurance):
-# we take the first hex of the chunk as the reference point for the classification.
+        # An outdated current_chunk without a hex under the cursor (an insurance):
+        # we take the first hex of the chunk as the reference point for the classification.
         anchor = chunk[0]
     var style: Dictionary = _get_highlight_style(chunk, anchor.row, anchor.col, false)
 
@@ -1925,8 +1924,8 @@ func _points_to_cache_key(points: Array) -> String:
     sb.resize(points.size())
     for i in range(points.size()):
         var p = points[i]
-# We round to 0.1, so that the key is stable and compact - the initial
-# vertices of the rivers are deterministic, therefore there will be no re-smoothing.
+        # We round to 0.1, so that the key is stable and compact - the initial
+        # vertices of the rivers are deterministic, therefore there will be no re-smoothing.
         sb[i] = "%d_%d" % [roundi(p.x * 10.0), roundi(p.y * 10.0)]
     return "^".join(sb)
 
