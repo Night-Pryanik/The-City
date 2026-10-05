@@ -371,7 +371,7 @@ func _restore_from_slot_data(recipe: Dictionary, slot_data: Dictionary):
             fresh["consumed"] = saved.get("consumed", [])
             fresh["consumed_pids"] = saved.get("consumed_pids", {})
         # Otherwise a fresh empty slot remains (the recipe has changed).
-    # release_fractional is restored, if it is saved in the current form.
+        # release_fractional is restored, if it is saved in the current form.
     var saved_release = slot_data.get("release_fractional", null)
     if saved_release is Dictionary:
         # We merge by pid — we keep only the known result_products.
