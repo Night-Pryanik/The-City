@@ -1,55 +1,56 @@
 # river_manager.gd
-# Менеджер рек: генерирует речную систему на карте.
+# The river manager: generates the river system on the map.
 #
-# Схема генерации (речная система):
-#   - Главные реки: исток в горах, устье в озере или море. Не пересекаются друг с другом.
-#   - Притоки: исток в горах (или холмах, если гор мало), впадают в главные
-#     реки или в другие притоки (точка слияния). Притоки не впадают в озёра и моря.
-#   - Гарантируется, что хотя бы одна река проходит через стартовую область
-#     «Кольцо + Регион» (для этого при необходимости генерируется
-#     дополнительная главная река через промежуточную вершину внутри области).
-#   - Реки не проходят по рёбрам озёрных/морских гексов и их соседей (кроме
-#     последнего шага в устье/точку слияния), чтобы река не текла по берегу.
+# The generation scheme (the river system):
+#   - Main rivers: the source in the mountains, the mouth in a lake or the sea. They do not intersect each other.
+#   - Tributaries: the source in the mountains (or hills, if there are few mountains), flowing into the main
+#     rivers or into other tributaries (a confluence point). The tributaries do not flow into the lakes and the seas.
+#   - It is guaranteed that at least one river passes through the starting area
+#     "Ring + Region" (for this, if necessary, an additional main river is generated
+#     through an intermediate vertex inside the area).
+#   - The rivers do not run along the edges of the lake/sea hexes and their neighbours (except
+#     for the last step into the mouth/confluence point), so that the river does not flow along the shore.
 #
-# Количество рек и минимальные длины берутся из data/map_config.json:
+# The number of rivers and the minimum lengths are taken from data/map_config.json:
 #   num_main_rivers, num_tributaries, min_river_length, min_tributary_length.
 #
-# Реки и озера дают бонусы к производству ресурсов улучшениями, имеющими доступ к пресной воде.
+# The rivers and the lakes give production bonuses to the resources by the improvements
+# that have access to fresh water.
 @tool
 extends Node
 
-# --- Константы ---
-const MAX_TURN_ANGLE_DEG := 60.0 # Максимальный угол поворота за один шаг
-const MAX_TURN_ANGLE_SOFT_DEG := 90.0 # Запасной угол при застревании.
-const NUM_RIVER_ATTEMPTS := 40 # Попыток построить одну реку
+# --- Constants ---
+const MAX_TURN_ANGLE_DEG := 60.0 # The maximum turn angle per step
+const MAX_TURN_ANGLE_SOFT_DEG := 90.0 # The fallback angle when getting stuck.
+const NUM_RIVER_ATTEMPTS := 40 # The attempts to build one river
 
-const RIVER_COLOR := Color(26.0 / 255.0, 95.0 / 255.0, 180.0 / 255.0, 0.9) # Тёмно-синее тело реки (#1a5fb4)
-const RIVER_WIDTH := 10.0 # Толщина тела реки
-const RIVER_SHORE_COLOR := Color(98.0 / 255.0, 160.0 / 255.0, 234.0 / 255.0, 0.25) # Лёгкая подкраска берегов
-const RIVER_SHORE_WIDTH := 10.0 # Толщина береговой подложки
-const RIVER_HIGHLIGHT_COLOR := Color(98.0 / 255.0, 160.0 / 255.0, 234.0 / 255.0, 0.95) # Светло-голубой блик (#62a0ea)
-const RIVER_HIGHLIGHT_WIDTH := 6.0 # Толщина блика по воде
+const RIVER_COLOR := Color(26.0 / 255.0, 95.0 / 255.0, 180.0 / 255.0, 0.9) # The dark blue body of the river (#1a5fb4)
+const RIVER_WIDTH := 10.0 # The thickness of the body of the river
+const RIVER_SHORE_COLOR := Color(98.0 / 255.0, 160.0 / 255.0, 234.0 / 255.0, 0.25) # A light tint of the shores
+const RIVER_SHORE_WIDTH := 10.0 # The thickness of the shore underlay
+const RIVER_HIGHLIGHT_COLOR := Color(98.0 / 255.0, 160.0 / 255.0, 234.0 / 255.0, 0.95) # The light blue highlight (#62a0ea)
+const RIVER_HIGHLIGHT_WIDTH := 6.0 # The thickness of the highlight on the water
 
-# Стиль притоков: тоньше и светлее, чтобы визуально отличать от главных рек.
-const TRIBUTARY_COLOR := Color(70.0 / 255.0, 140.0 / 255.0, 210.0 / 255.0, 0.85) # Светло-синее тело притока
-const TRIBUTARY_WIDTH := 6.0 # Толщина тела притока
-const TRIBUTARY_SHORE_COLOR := Color(120.0 / 255.0, 180.0 / 255.0, 240.0 / 255.0, 0.2) # Лёгкая подкраска берегов притока
-const TRIBUTARY_SHORE_WIDTH := 6.0 # Толщина береговой подложки притока
-const TRIBUTARY_HIGHLIGHT_COLOR := Color(130.0 / 255.0, 190.0 / 255.0, 245.0 / 255.0, 0.9) # Светло-голубой блик притока
-const TRIBUTARY_HIGHLIGHT_WIDTH := 4.0 # Толщина блика притока
+# The style of the tributaries: thinner and lighter, so as to be visually distinct from the main rivers.
+const TRIBUTARY_COLOR := Color(70.0 / 255.0, 140.0 / 255.0, 210.0 / 255.0, 0.85) # The light blue body of the tributary
+const TRIBUTARY_WIDTH := 6.0 # The thickness of the body of the tributary
+const TRIBUTARY_SHORE_COLOR := Color(120.0 / 255.0, 180.0 / 255.0, 240.0 / 255.0, 0.2) # A light tint of the shores of the tributary
+const TRIBUTARY_SHORE_WIDTH := 6.0 # The thickness of the shore underlay of the tributary
+const TRIBUTARY_HIGHLIGHT_COLOR := Color(130.0 / 255.0, 190.0 / 255.0, 245.0 / 255.0, 0.9) # The light blue highlight of the tributary
+const TRIBUTARY_HIGHLIGHT_WIDTH := 4.0 # The thickness of the highlight of the tributary
 
-var rivers: Array = [] # Array of Array of Vector2 (world-координаты точек каждой реки)
-var main_rivers: Array = [] # Только главные реки (исток в горах, устье в озере)
-var tributaries: Array = [] # Только притоки (впадают в главные реки или другие притоки)
+var rivers: Array = [] # Array of Array of Vector2 (the world coordinates of the points of each river)
+var main_rivers: Array = [] # Only the main rivers (the source in the mountains, the mouth in a lake)
+var tributaries: Array = [] # Only the tributaries (flowing into the main rivers or other tributaries)
 
-# Последний построенный граф вершин. Используется повторно в mark_river_edges(),
-# чтобы не строить граф (тысячи вершин) дважды за одну генерацию карты.
+# The last built graph of the vertices. It is reused in mark_river_edges(),
+# so as not to build the graph (thousands of vertices) twice per map generation.
 var _cached_graph: Dictionary = {}
 
 
 # -------------------------------------------------------
-# Минимальная бинарная куча (priority queue) для A*.
-# push/pop за O(log n) вместо sort_custom + pop_front за O(n log n) на шаг.
+# A minimal binary heap (priority queue) for A*.
+# push/pop in O(log n) instead of sort_custom + pop_front in O(n log n) per step.
 # -------------------------------------------------------
 class PriorityQueue:
     var _keys: Array = []
@@ -112,10 +113,10 @@ class PriorityQueue:
 
 
 # -------------------------------------------------------
-# Главный метод: генерирует речную систему на карте.
-# tile_data — 2D-массив гексов (для определения гор/озёр/холмов).
-# region_* — границы стартовой области «Кольцо + Регион» (инклюзивные),
-# через которую должна проходить хотя бы одна река.
+# The main method: generates the river system on the map.
+# tile_data — a 2D array of the hexes (to determine the mountains/lakes/hills).
+# region_* — the bounds of the starting area "Ring + Region" (inclusive),
+# through which at least one river must pass.
 # -------------------------------------------------------
 func generate_rivers(rows: int, cols: int, radius: float, tile_data: Array,
         region_start_row: int, region_end_row: int,
@@ -124,52 +125,52 @@ func generate_rivers(rows: int, cols: int, radius: float, tile_data: Array,
     if rows < 3 or cols < 3:
         return
 
-    # Гексы, по которым реки НЕ могут течь (озёра и их соседи, сами болота
-    # и маршевые гексы). Строятся ДО графа, чтобы флаги запрещённых рёбер
-    # были предвычислены в самом графе (проверка O(1) во время A*
-    # вместо O(гексы^2) на соседа).
+    # The hexes along which the rivers CANNOT flow (the lakes and their neighbours, the swamps
+    # themselves and the marsh hexes). They are built BEFORE the graph, so that the flags of the forbidden edges
+    # are precomputed in the graph itself (an O(1) check during A*
+    # instead of O(hexes^2) per neighbour).
     var restricted_hexes = _build_restricted_hexes(tile_data, rows, cols)
 
     var graph = _build_vertex_graph(rows, cols, radius, restricted_hexes)
     _cached_graph = graph
 
-    # Кандидаты на истоки (горы) и устья главных рек (озёра и моря).
+    # The candidates for the sources (the mountains) and the mouths of the main rivers (the lakes and the seas).
     var mountain_vertices = _find_terrain_vertices(graph, tile_data, "mountain")
     var lake_vertices = _find_terrain_vertices(graph, tile_data, "lake")
     var sea_vertices = _find_terrain_vertices(graph, tile_data, "sea")
     var hill_vertices = _find_terrain_vertices(graph, tile_data, "hill")
 
-    # Устья главных рек: озёра + моря. Если нет ни озёр, ни морей — реки не строим.
+    # The mouths of the main rivers: the lakes + the seas. If there are neither lakes nor seas — we do not build the rivers.
     var mouth_vertices: Array = lake_vertices + sea_vertices
     if mountain_vertices.is_empty() or mouth_vertices.is_empty():
-        print("RIVER DEBUG: нет гор или устьев (озёр/морей), выход")
+        print("RIVER DEBUG: there are no mountains or mouths (lakes/seas), exiting")
         return
 
-    # Параметры из конфигурации.
+    # The parameters from the configuration.
     var cfg: Dictionary = GameData.map_config
     var num_main = int(cfg.get("num_main_rivers", 3))
     var num_trib = int(cfg.get("num_tributaries", 5))
     var min_main_len = int(cfg.get("min_river_length", 8))
     var min_trib_len = int(cfg.get("min_tributary_length", 4))
 
-    var used_vertices: Dictionary = {} # Вершины, уже занятые реками
+    var used_vertices: Dictionary = {} # The vertices already occupied by the rivers
     main_rivers = []
 
-    # --- Генерация главных рек (гора -> озеро/море, не пересекаются) ---
-    # _try_generate_main_river возвращает лучший найденный путь (компромисс),
-    # даже если он короче min_river_length. Поэтому принимаем любую непустую
-    # реку: при 40 попытках подавляющее большинство путей всё равно длиннее
-    # min_len, а fallback гарантирует, что мы не получим 0 рек из-за
-    # случайного недобора длины (что и было причиной бага).
+    # --- The generation of the main rivers (mountain -> lake/sea, they do not intersect) ---
+    # _try_generate_main_river returns the best path found (a compromise),
+    # even if it is shorter than min_river_length. Therefore we accept any non-empty
+    # river: with 40 attempts the overwhelming majority of the paths is still longer than
+    # min_len, and the fallback guarantees that we do not get 0 rivers because of
+    # a random shortfall of the length (which was also the cause of the bug).
     for _i in range(num_main):
         var river = _try_generate_main_river(graph, mountain_vertices, mouth_vertices,
                 restricted_hexes, used_vertices, min_main_len)
         if not river.is_empty():
             _mark_used(river, used_vertices)
             main_rivers.append(river)
-    print("RIVER DEBUG: главных рек сгенерировано=", main_rivers.size())
+    print("RIVER DEBUG: main rivers generated=", main_rivers.size())
 
-    # --- Гарантия: хотя бы одна река проходит через стартовую область ---
+    # --- The guarantee: at least one river passes through the starting area ---
     if not _any_river_in_region(main_rivers, graph,
             region_start_row, region_end_row, region_start_col, region_end_col):
         var forced = _try_generate_forced_river(graph, mountain_vertices, mouth_vertices,
@@ -179,7 +180,7 @@ func generate_rivers(rows: int, cols: int, radius: float, tile_data: Array,
             _mark_used(forced, used_vertices)
             main_rivers.append(forced)
 
-    # --- Генерация притоков (гора/холм -> занятая вершина, слияние) ---
+    # --- The generation of the tributaries (mountain/hill -> an occupied vertex, a confluence) ---
     tributaries = []
     for _i in range(num_trib):
         var river = _try_generate_tributary(graph, mountain_vertices, hill_vertices,
@@ -189,12 +190,12 @@ func generate_rivers(rows: int, cols: int, radius: float, tile_data: Array,
             tributaries.append(river)
 
     rivers = main_rivers + tributaries
-    print("RIVER DEBUG: всего рек=", rivers.size())
+    print("RIVER DEBUG: total rivers=", rivers.size())
 
 
 # -------------------------------------------------------
-# Пытается сгенерировать одну главную реку: исток в горах, устье в озере/море.
-# Главные реки не пересекаются: A* идёт с forbidden = used_vertices.
+# Tries to generate one main river: the source in the mountains, the mouth in a lake/sea.
+# The main rivers do not intersect: A* goes with forbidden = used_vertices.
 # -------------------------------------------------------
 func _try_generate_main_river(graph: Dictionary, mountain_vertices: Array,
         mouth_vertices: Array, restricted_hexes: Dictionary,
@@ -211,7 +212,7 @@ func _try_generate_main_river(graph: Dictionary, mountain_vertices: Array,
         return []
 
     var best_path_len := 0
-    var best_path: Array = [] # Лучший найденный путь (компромисс, если ни один не достиг min_len)
+    var best_path: Array = [] # The best path found (a compromise, if none reaches min_len)
     var best_attempt := -1
     for _attempt in range(NUM_RIVER_ATTEMPTS):
         var start = free_mountains[randi() % free_mountains.size()]
@@ -232,9 +233,9 @@ func _try_generate_main_river(graph: Dictionary, mountain_vertices: Array,
 
 
 # -------------------------------------------------------
-# Пытается сгенерировать приток: исток в горах (или холмах, если гор мало),
-# устье — занятая вершина (точка слияния с любой рекой). Притоки не впадают
-# в озёра и моря: их вершины исключаются из merge_keys.
+# Tries to generate a tributary: the source in the mountains (or hills, if there are few mountains),
+# the mouth — an occupied vertex (the confluence point with any river). The tributaries do not flow
+# into the lakes and the seas: their vertices are excluded from merge_keys.
 # -------------------------------------------------------
 func _try_generate_tributary(graph: Dictionary, mountain_vertices: Array,
         hill_vertices: Array, lake_vertices: Array, sea_vertices: Array,
@@ -242,7 +243,7 @@ func _try_generate_tributary(graph: Dictionary, mountain_vertices: Array,
     if used_vertices.is_empty():
         return []
 
-    # Исток: свободные горные вершины; если их мало — добавляем холмистые.
+    # The source: the free mountain vertices; if there are too few — we add the hilly ones.
     var free_sources: Array = []
     for vk in mountain_vertices:
         if not used_vertices.has(vk) and not lake_vertices.has(vk) and not sea_vertices.has(vk) and not _vertex_in_hexes(vk, graph, restricted_hexes):
@@ -254,7 +255,7 @@ func _try_generate_tributary(graph: Dictionary, mountain_vertices: Array,
     if free_sources.is_empty():
         return []
 
-    # Устья: занятые вершины, исключая озёрные и морские (притоки не впадают в них).
+    # The mouths: the occupied vertices, excluding the lake and sea ones (the tributaries do not flow into them).
     var merge_keys: Dictionary = used_vertices.duplicate()
     for vk in lake_vertices:
         merge_keys.erase(vk)
@@ -276,17 +277,17 @@ func _try_generate_tributary(graph: Dictionary, mountain_vertices: Array,
 
 
 # -------------------------------------------------------
-# Принудительно генерирует главную реку, гарантированно проходящую через
-# стартовую область. Выбирает гору с одной стороны области и озеро/море с
-# другой, берёт свободную вершину внутри области как промежуточную точку
-# (waypoint) и строит путь «гора -> waypoint -> озеро/море».
+# Forcefully generates a main river guaranteed to pass through
+# the starting area. It picks a mountain on one side of the area and a lake/sea on
+# the other, takes a free vertex inside the area as an intermediate point
+# (waypoint) and builds the path "mountain -> waypoint -> lake/sea".
 # -------------------------------------------------------
 func _try_generate_forced_river(graph: Dictionary, mountain_vertices: Array,
         mouth_vertices: Array, restricted_hexes: Dictionary,
         used_vertices: Dictionary, min_len: int,
         region_start_row: int, region_end_row: int,
         region_start_col: int, region_end_col: int) -> Array:
-    # Пары сторон: [исток, устье]. Пробуем все комбинации.
+    # The pairs of sides: [source, mouth]. We try all the combinations.
     var side_pairs: Array = [
         ["top", "bottom"], ["bottom", "top"],
         ["left", "right"], ["right", "left"]
@@ -309,7 +310,7 @@ func _try_generate_forced_river(graph: Dictionary, mountain_vertices: Array,
         if free_src.is_empty() or free_dst.is_empty():
             continue
 
-        # Свободные вершины внутри области как промежуточные точки.
+        # Finds the free vertices inside the area as the intermediate points.
         var region_vertices = _vertices_in_region(graph,
                 region_start_row, region_end_row, region_start_col, region_end_col)
         var free_waypoints: Array = []
@@ -336,7 +337,7 @@ func _try_generate_forced_river(graph: Dictionary, mountain_vertices: Array,
             if path2.is_empty():
                 continue
 
-            # Объединяем пути (waypoint не дублируем).
+            # We merge the paths (the waypoint is not duplicated).
             var combined: Array = path1.duplicate()
             for i in range(1, path2.size()):
                 combined.append(path2[i])
@@ -346,7 +347,7 @@ func _try_generate_forced_river(graph: Dictionary, mountain_vertices: Array,
 
 
 # -------------------------------------------------------
-# Находит вершины, у которых хотя бы один гекс имеет заданный рельеф.
+# Finds the vertices at which at least one hex has the given relief.
 # -------------------------------------------------------
 func _find_terrain_vertices(graph: Dictionary, tile_data: Array, terrain_id: String) -> Array:
     var vertex_hexes: Dictionary = graph["hexes"]
@@ -360,15 +361,15 @@ func _find_terrain_vertices(graph: Dictionary, tile_data: Array, terrain_id: Str
 
 
 # -------------------------------------------------------
-# Находит гексы, по которым реки НЕ могут течь:
-#   - озёрные и морские гексы и их соседи (чтобы река не текла по берегу);
-#   - сами гексы болот (swamp) и марш (marsh) — реки не проходят сквозь них.
-# Возвращает словарь с ключами "row_col" -> true.
+# Finds the hexes along which the rivers CANNOT flow:
+#   - the lake and sea hexes and their neighbours (so that the river does not flow along the shore);
+#   - the swamp (swamp) and marsh (marsh) hexes themselves — the rivers do not pass through them.
+# It returns a dictionary with the keys "row_col" -> true.
 # -------------------------------------------------------
 func _build_restricted_hexes(tile_data: Array, rows: int, cols: int) -> Dictionary:
     var result: Dictionary = {}
 
-    # Собираем озёрные и морские гексы.
+    # We collect the lake and sea hexes.
     var water_hexes: Array = []
     for row in range(rows):
         for col in range(cols):
@@ -376,14 +377,14 @@ func _build_restricted_hexes(tile_data: Array, rows: int, cols: int) -> Dictiona
             if terrain_id == "lake" or terrain_id == "sea":
                 water_hexes.append({"row": row, "col": col})
 
-    # Помечаем водные гексы и их соседей.
+    # We mark the water hexes and their neighbours.
     for wh in water_hexes:
         result["%d_%d" % [wh.row, wh.col]] = true
         for n in HexUtils.get_neighbors_odd_r(wh.row, wh.col, rows, cols):
             result["%d_%d" % [n.row, n.col]] = true
 
-    # Сами гексы болот и маршей — реки не проходят сквозь них (их соседей
-    # не помечаем: это было бы слишком ограничивающе).
+    # The swamp and marsh hexes themselves — the rivers do not pass through them (their neighbours
+    # are not marked: that would be too restrictive).
     for row in range(rows):
         for col in range(cols):
             var terrain_id = tile_data[row][col]["terrain"]
@@ -394,7 +395,7 @@ func _build_restricted_hexes(tile_data: Array, rows: int, cols: int) -> Dictiona
 
 
 # -------------------------------------------------------
-# Возвращает true, если вершина принадлежит хотя бы одному гексу из словаря.
+# Returns true if the vertex belongs to at least one hex from the dictionary.
 # -------------------------------------------------------
 func _vertex_in_hexes(vk: String, graph: Dictionary, hexes_dict: Dictionary) -> bool:
     var vertex_hexes: Dictionary = graph["hexes"]
@@ -407,8 +408,8 @@ func _vertex_in_hexes(vk: String, graph: Dictionary, hexes_dict: Dictionary) -> 
 
 
 # -------------------------------------------------------
-# Возвращает true, если ребро (a_key -> b_key) принадлежит хотя бы одному
-# запрещённому гексу (озеро или его сосед).
+# Returns true if the edge (a_key -> b_key) belongs to at least one
+# forbidden hex (a lake or its neighbour).
 # -------------------------------------------------------
 func _edge_in_forbidden_hexes(a_key: String, b_key: String, vertex_hexes: Dictionary, forbidden_hexes: Dictionary) -> bool:
     if forbidden_hexes.is_empty():
@@ -426,8 +427,8 @@ func _edge_in_forbidden_hexes(a_key: String, b_key: String, vertex_hexes: Dictio
 
 
 # -------------------------------------------------------
-# Возвращает вершины из списка, у которых есть гекс на указанной стороне
-# от стартовой области (top/bottom/left/right).
+# Returns the vertices from the list at which there is a hex on the specified side
+# of the starting area (top/bottom/left/right).
 # -------------------------------------------------------
 func _vertices_on_side(vertices: Array, graph: Dictionary, side: String,
         region_start_row: int, region_end_row: int,
@@ -452,7 +453,7 @@ func _vertices_on_side(vertices: Array, graph: Dictionary, side: String,
 
 
 # -------------------------------------------------------
-# Возвращает все вершины, у которых есть гекс внутри стартовой области.
+# Returns all the vertices at which there is a hex inside the starting area.
 # -------------------------------------------------------
 func _vertices_in_region(graph: Dictionary,
         region_start_row: int, region_end_row: int,
@@ -469,7 +470,7 @@ func _vertices_in_region(graph: Dictionary,
 
 
 # -------------------------------------------------------
-# Проверяет, проходит ли хотя бы одна река через стартовую область.
+# Checks whether at least one river passes through the starting area.
 # -------------------------------------------------------
 func _any_river_in_region(rivers_list: Array, graph: Dictionary,
         region_start_row: int, region_end_row: int,
@@ -487,7 +488,7 @@ func _any_river_in_region(rivers_list: Array, graph: Dictionary,
 
 
 # -------------------------------------------------------
-# Помечает все вершины реки как занятые.
+# Marks all the vertices of the river as occupied.
 # -------------------------------------------------------
 func _mark_used(river: Array, used_vertices: Dictionary) -> void:
     for pt in river:
@@ -495,7 +496,7 @@ func _mark_used(river: Array, used_vertices: Dictionary) -> void:
 
 
 # -------------------------------------------------------
-# Преобразует массив ключей вершин в массив world-координат.
+# Converts an array of vertex keys into an array of world coordinates.
 # -------------------------------------------------------
 func _keys_to_positions(path_keys: Array, graph: Dictionary) -> Array:
     var positions: Dictionary = graph["positions"]
@@ -506,12 +507,12 @@ func _keys_to_positions(path_keys: Array, graph: Dictionary) -> Array:
 
 
 # -------------------------------------------------------
-# Строит "граф вершин": узлы = уникальные точки world-координат,
-# ребра = соединения через соседние вершины внутри гексов.
+# Builds the "graph of the vertices": the nodes = the unique points of the world coordinates,
+# the edges = the connections through the neighbouring vertices inside the hexes.
 #
-# Оптимизация: флаг "forb" (ребро принадлежит запрещённому гексу у озера)
-# предвычисляется здесь ОДИН раз для всех рёбер, поэтому A* проверяет
-# запрет за O(1) на соседа вместо перебора гексов обеих вершин.
+# The optimisation: the flag "forb" (the edge belongs to a forbidden hex by a lake)
+# is precomputed here ONCE for all the edges, therefore A* checks
+# the prohibition in O(1) per neighbour instead of iterating over the hexes of both vertices.
 # -------------------------------------------------------
 func _build_vertex_graph(rows: int, cols: int, radius: float, forbidden_hexes: Dictionary = {}) -> Dictionary:
     var vertex_positions: Dictionary = {} # key -> Vector2
@@ -527,19 +528,19 @@ func _build_vertex_graph(rows: int, cols: int, radius: float, forbidden_hexes: D
                     vertex_hexes[key] = []
                 vertex_hexes[key].append({"row": row, "col": col, "vidx": vidx})
 
-    # Граф соседства: для каждой вершины соседями являются
-    # вершины (vidx-1)%6 и (vidx+1)%6 в каждом гексе, содержащем вершину.
-    # Представление — ПАРАЛЛЕЛЬНЫЕ МАССИВЫ (важно для скорости A*):
-    #   neighbors[vkey] = Array of String (ключи соседей)
-    #   forb_mask[vkey] = Array of bool  (true = ребро лежит в гексе у озера)
-    # Это даёт O(1) проверку запрещённого ребра без аллокации словаря на ребро.
+    # The adjacency graph: for each vertex the neighbours are
+    # the vertices (vidx-1)%6 and (vidx+1)%6 in each hex containing the vertex.
+    # The representation — PARALLEL ARRAYS (important for the speed of A*):
+    #   neighbors[vkey] = Array of String (the keys of the neighbours)
+    #   forb_mask[vkey] = Array of bool  (true = the edge lies in a hex by a lake)
+    # This gives an O(1) check of a forbidden edge without allocating a dictionary per edge.
     var neighbors: Dictionary = {}
     var forb_mask: Dictionary = {}
     var forbidden_empty := forbidden_hexes.is_empty()
     for vkey in vertex_positions.keys():
         var nbrs: Array = []
         var forbs: Array = []
-        var nbr_set: Dictionary = {} # дедупликация соседей
+        var nbr_set: Dictionary = {} # the deduplication of the neighbours
         var hex_list = vertex_hexes[vkey]
         for hex_info in hex_list:
             for delta in [-1, 1]:
@@ -562,59 +563,59 @@ func _build_vertex_graph(rows: int, cols: int, radius: float, forbidden_hexes: D
 
 
 # -------------------------------------------------------
-# Округление позиции для создания стабильного ключа вершины
+# The rounding of the position for creating a stable vertex key
 # -------------------------------------------------------
 func _vertex_key(pos: Vector2) -> String:
     return "%d_%d" % [roundi(pos.x * 100.0), roundi(pos.y * 100.0)]
 
 
 # -------------------------------------------------------
-# A* поиск пути между двумя вершинами графа с фильтрацией
-# по углу поворота. Возвращает массив ключей вершин или пустой массив.
+# The A* search of a path between two vertices of the graph with a filtering
+# by the turn angle. It returns an array of the vertex keys or an empty array.
 #
-# forbidden_keys — вершины, занятые другими реками (нельзя проходить,
-# кроме goal_key и merge_keys).
-# forbidden_hexes — гексы у озёр (озеро + соседи). Флаги запрещённых рёбер
-# предвычислены в графе (поле "forb" — параллельный массив bool).
-# Река не может проходить по РЁБРАМ у озёр, кроме последнего шага в устье/
-# точку слияния. Чтобы река могла войти в озеро, разрешается один шаг
-# снаружи в вершину, соседнюю с устьем (approach), после чего путь обязан
-# завершиться в устье.
-# merge_keys — вершины, на которых путь может закончиться (точки слияния).
+# forbidden_keys — the vertices occupied by other rivers (it is not allowed to pass through,
+# except goal_key and merge_keys).
+# forbidden_hexes — the hexes by the lakes (the lake + the neighbours). The flags of the forbidden edges
+# are precomputed in the graph (the "forb" field — a parallel bool array).
+# The river cannot pass along the EDGES by the lakes, except for the last step into the mouth/
+# confluence point. So that the river can enter the lake, one step
+# outside to the vertex neighbouring the mouth (approach) is allowed, after which the path must
+# finish at the mouth.
+# merge_keys — the vertices at which the path can end (the confluence points).
 #
-# Ключевые оптимизации (замена sort_custom + pop_front исходного кода):
-#   - открытый список — бинарная куча (PriorityQueue): push/pop за O(log n);
-#   - in_heap + closed_set: устаревшие записи кучи пропускаются, куча не
-#     разрастается, каждая вершина обрабатывается ровно один раз;
-#   - проверка запрещённых рёбер — O(1) по предвычисленному флагу forb;
-#   - angle_to не требует нормализованных векторов — убраны normalized().
+# The key optimisations (the replacement of sort_custom + pop_front of the original code):
+#   - the open list — a binary heap (PriorityQueue): push/pop in O(log n);
+#   - in_heap + closed_set: the stale entries of the heap are skipped, the heap does not
+#     grow, each vertex is processed exactly once;
+#   - the check of the forbidden edges — O(1) by the precomputed flag forb;
+#   - angle_to does not require normalized vectors — normalized() is removed.
 # -------------------------------------------------------
 func _find_path_astar(start_key: String, goal_key: String, graph: Dictionary, forbidden_keys: Dictionary, max_turn_angle_deg: float, merge_keys: Dictionary = {}, forbidden_hexes: Dictionary = {}) -> Array:
     var vertex_positions: Dictionary = graph["positions"]
     var neighbors_map: Dictionary = graph["neighbors"]
     var forb_mask: Dictionary = graph.get("forb", {})
 
-    # Ограничиваем область поиска bbox-ом вокруг start и goal.
-    # Это ускоряет A* в разы на больших картах, не меняя формат данных рек:
-    # путь по-прежнему строится по вершинам гексов, поэтому mark_river_edges
-    # и весь функционал (бонусы у рек, near_river) работают как раньше.
+    # We limit the search area by the bbox around start and goal.
+    # This speeds up A* many times over on large maps, without changing the data format of the rivers:
+    # the path is still built along the hex vertices, therefore mark_river_edges
+    # and all the functionality (the bonuses at the rivers, near_river) work as before.
     var start_pos = vertex_positions[start_key]
     var goal_pos = vertex_positions[goal_key]
     var min_x = minf(start_pos.x, goal_pos.x)
     var max_x = maxf(start_pos.x, goal_pos.x)
     var min_y = minf(start_pos.y, goal_pos.y)
     var max_y = maxf(start_pos.y, goal_pos.y)
-    # Запас: 25% от суммы сторон bbox, но не меньше фиксированного минимума,
-    # чтобы река могла естественно изгибаться и вливаться в merge-вершины.
+    # The margin: 25% of the sum of the sides of the bbox, but not less than a fixed minimum,
+    # so that the river can bend naturally and flow into the merge vertices.
     var margin = maxf((max_x - min_x + max_y - min_y) * 0.25, 200.0)
     min_x -= margin
     max_x += margin
     min_y -= margin
     max_y += margin
 
-    # Вершины, через которые река может подойти к устью/слиянию:
-    # само устье и его непосредственные соседи. Вход в такую вершину снаружи
-    # разрешён (один шаг), после чего путь обязан завершиться в устье.
+    # The vertices through which the river can approach the mouth/confluence:
+    # the mouth itself and its immediate neighbours. Entering such a vertex from outside
+    # is allowed (one step), after which the path must finish at the mouth.
     var approach_keys: Dictionary = {}
     approach_keys[goal_key] = true
     var goal_nbrs: Array = neighbors_map.get(goal_key, [])
@@ -641,11 +642,11 @@ func _find_path_astar(start_key: String, goal_key: String, graph: Dictionary, fo
 
     while not open_set.is_empty():
         var current = open_set.pop_min()
-        # Ленивое удаление: пропускаем устаревшие записи кучи.
+        # The lazy deletion: we skip the stale entries of the heap.
         if not in_heap.has(current):
             continue
         in_heap.erase(current)
-        # closed_set — каждая вершина обрабатывается ровно один раз.
+        # closed_set — each vertex is processed exactly once.
         if closed_set.has(current):
             continue
         closed_set[current] = true
@@ -658,17 +659,17 @@ func _find_path_astar(start_key: String, goal_key: String, graph: Dictionary, fo
         if came_from.has(current):
             dir = current_pos - vertex_positions[came_from[current]]
         else:
-            # Для стартовой вершины направление к цели
+            # For the starting vertex the direction to the goal
             dir = vertex_positions[goal_key] - current_pos
 
-        # Соседи:
-        # 1) Запрещены вершины, занятые другими реками (кроме устья/слияния).
-        # 2) Запрещены рёбра с флагом forb, КРОМЕ:
-        #    - последнего шага в устье/точку слияния;
-        #    - одного шага снаружи в approach-вершину (чтобы войти в озеро).
-        #    Переход между двумя approach-вершинами запрещён — это предотвращает
-        #    течение реки вдоль берега озера.
-        # Отбрасываем соседей за пределами bbox — это и есть основное ускорение.
+        # The neighbours:
+        # 1) The vertices occupied by other rivers are forbidden (except the mouth/confluence).
+        # 2) The edges with the flag forb are forbidden, EXCEPT:
+        #    - the last step into the mouth/confluence point;
+        #    - one step from outside to the approach vertex (to enter the lake).
+        #    A transition between two approach vertices is forbidden — that prevents
+        #    the river from flowing along the shore of the lake.
+        # We discard the neighbours outside the bbox — that is the main speedup.
         var current_is_approach = approach_keys.has(current)
         var candidates: Array = []
         var current_nbrs: Array = neighbors_map[current]
@@ -679,9 +680,9 @@ func _find_path_astar(start_key: String, goal_key: String, graph: Dictionary, fo
                 continue
             if has_forb and i < current_forbs.size() and current_forbs[i]:
                 if n == goal_key or merge_keys.has(n):
-                    pass # последний шаг в устье/слияние разрешён
+                    pass # the last step into the mouth/confluence is allowed
                 elif approach_keys.has(n) and not current_is_approach:
-                    pass # вход снаружи в approach-вершину разрешён
+                    pass # entering from outside to the approach vertex is allowed
                 else:
                     continue
             var npos = vertex_positions[n]
@@ -689,7 +690,7 @@ func _find_path_astar(start_key: String, goal_key: String, graph: Dictionary, fo
                 continue
             candidates.append(n)
 
-        # Фильтруем по углу
+        # We filter by the angle
         var valid: Array = _filter_by_angle(candidates, current_pos, dir, vertex_positions, max_angle_rad)
         if valid.is_empty():
             valid = _filter_by_angle(candidates, current_pos, dir, vertex_positions, soft_angle_rad)
@@ -721,9 +722,9 @@ func _reconstruct_path(came_from: Dictionary, current: String) -> Array:
 
 
 # -------------------------------------------------------
-# Фильтрует кандидатов по углу поворота относительно dir.
-# max_angle_rad передаётся в радианах (вычисляется один раз в A*).
-# angle_to не требует нормализованных векторов — normalized() не нужен.
+# Filters the candidates by the turn angle relative to dir.
+# max_angle_rad is passed in radians (it is computed once in A*).
+# angle_to does not require normalized vectors — normalized() is not needed.
 # -------------------------------------------------------
 func _filter_by_angle(candidates: Array, current_pos: Vector2, dir: Vector2,
         vertex_positions: Dictionary, max_angle_rad: float) -> Array:
@@ -737,38 +738,38 @@ func _filter_by_angle(candidates: Array, current_pos: Vector2, dir: Vector2,
 
 
 # -------------------------------------------------------
-# Возвращает список рек (массив точек) — для рендеринга и сохранения
+# Returns the list of the rivers (an array of points) — for the rendering and the saving
 # -------------------------------------------------------
 func get_rivers() -> Array:
     return rivers
 
 
 # -------------------------------------------------------
-# Возвращает только главные реки (для разной отрисовки)
+# Returns only the main rivers (for a different drawing)
 # -------------------------------------------------------
 func get_main_rivers() -> Array:
     return main_rivers
 
 
 # -------------------------------------------------------
-# Возвращает только притоки (для разной отрисовки)
+# Returns only the tributaries (for a different drawing)
 # -------------------------------------------------------
 func get_tributaries() -> Array:
     return tributaries
 
 
 # -------------------------------------------------------
-# Возвращает последний построенный граф вершин (для повторного
-# использования в mark_river_edges без повторного построения).
+# Returns the last built graph of the vertices (for a repeated
+# use in mark_river_edges without rebuilding it).
 # -------------------------------------------------------
 func get_cached_graph() -> Dictionary:
     return _cached_graph
 
 
 # -------------------------------------------------------
-# Сериализует реки для сохранения (Vector2 -> [x, y]).
-# Новый формат — словарь { "main": [...], "tributaries": [...] },
-# чтобы при загрузке сохранить различие главных рек и притоков.
+# Serializes the rivers for the save (Vector2 -> [x, y]).
+# The new format is a dictionary { "main": [...], "tributaries": [...] },
+# so that on loading the difference between the main rivers and the tributaries is preserved.
 # -------------------------------------------------------
 func serialize_rivers():
     return {
@@ -778,7 +779,7 @@ func serialize_rivers():
 
 
 # -------------------------------------------------------
-# Вспомогательный метод: сериализует список рек в [x, y]
+# An auxiliary method: serializes the list of the rivers to [x, y]
 # -------------------------------------------------------
 func _serialize_list(river_list: Array) -> Array:
     var result: Array = []
@@ -791,14 +792,14 @@ func _serialize_list(river_list: Array) -> Array:
 
 
 # -------------------------------------------------------
-# Загружает реки из сохранённых данных.
-# Поддерживает оба формата:
-#   - новый: словарь { "main": [...], "tributaries": [...] };
-#   - старый: простой массив массивов (все реки считаются главными).
+# Loads the rivers from the saved data.
+# Both formats are supported:
+#   - the new one: a dictionary { "main": [...], "tributaries": [...] };
+#   - the old one: a simple array of arrays (all the rivers are considered main).
 # -------------------------------------------------------
 func load_rivers(river_data) -> void:
-    # Если нет данных для загрузки — НЕ очищаем, чтобы не стирать
-    # реки, сгенерированные в _initialize_map() для новой игры
+    # If there is no data to load — we do NOT clear, so as not to erase
+    # the rivers generated in _initialize_map() for a new game
     if river_data == null or river_data.is_empty():
         return
 
@@ -806,18 +807,18 @@ func load_rivers(river_data) -> void:
     tributaries = []
 
     if river_data is Dictionary:
-        # Новый формат: словарь с разделением на главные и притоки.
+        # The new format: a dictionary with the separation into main rivers and tributaries.
         main_rivers = _deserialize_list(river_data.get("main", []))
         tributaries = _deserialize_list(river_data.get("tributaries", []))
     else:
-        # Старый формат: простой массив — все реки считаем главными.
+        # The old format: a simple array — we consider all the rivers main.
         main_rivers = _deserialize_list(river_data)
 
     rivers = main_rivers + tributaries
 
 
 # -------------------------------------------------------
-# Вспомогательный метод: десериализует список рек из [x, y]
+# An auxiliary method: deserializes the list of the rivers from [x, y]
 # -------------------------------------------------------
 func _deserialize_list(river_list: Array) -> Array:
     var result: Array = []
@@ -828,10 +829,10 @@ func _deserialize_list(river_list: Array) -> Array:
         result.append(river)
     return result
 
-# Помечает рёбра рек в данных гексов.
-# graph — опциональный готовый граф (из get_cached_graph()); если не передан
-# или пуст — граф строится заново. Это убирает двойное построение графа
-# (тысячи вершин) при генерации новой карты.
+# Marks the edges of the rivers in the hex data.
+# graph — an optional ready graph (from get_cached_graph()); if it is not passed
+# or is empty — the graph is rebuilt. This removes the double building of the graph
+# (thousands of vertices) when generating a new map.
 func mark_river_edges(tile_data: Array, rows: int, cols: int, radius: float, graph: Dictionary = {}) -> void:
     if tile_data == null or tile_data.size() == 0:
         return
@@ -839,7 +840,7 @@ func mark_river_edges(tile_data: Array, rows: int, cols: int, radius: float, gra
     var use_graph = graph if not graph.is_empty() else _build_vertex_graph(rows, cols, radius)
     var vertex_hexes = use_graph["hexes"]
 
-    # Очистим существующие river_edges, если они есть
+    # We clear the existing river_edges, if there are any
     for row in range(rows):
         for col in range(cols):
             var tile = tile_data[row][col]
