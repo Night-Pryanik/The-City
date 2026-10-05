@@ -1,52 +1,52 @@
-# localization_manager.gd (автозагрузка LocalizationManager)
+# localization_manager.gd (LocalizationManager autoload)
 #
-# Держит выбранный язык игры и переключает его в TranslationServer.
+# It holds the selected game language and switches it in TranslationServer.
 #
-# Порядок автозагрузок в project.godot важен: LocalizationManager идёт
-# ПЕРВЫМ, чтобы язык был выбран до того, как GameData прочитает data/*.json
-# и наложит на них перевод. Иначе первый кадр после старта рисует текст
-# предыдущего (или исходного) языка, а нужный появляется только после
-# первой перезагрузки данных.
+# The order of the autoloads in project.godot matters: LocalizationManager goes
+# FIRST, so that the language is chosen before GameData reads data/*.json
+# and applies the translation on top of it. Otherwise the first frame after the
+# start draws the text of the previous (or source) language, and the needed one
+# appears only after the first data reload.
 #
-# Язык исходников — английский: в коде, в сценах и в data/*.json лежит
-# английский текст, и он служит ключом перевода. У каждого целевого языка
-# свой каталог в locale/ (locale/<код>.po); ни один из них не особенный —
-# исходный каталог messages.pot устроен точно так же.
+# The source language is English: the English text lives in the code, in the
+# scenes and in data/*.json, and it serves as the translation key. Each target
+# language has its own catalog in locale/ (locale/<code>.po); none of them is
+# special — the source catalog messages.pot is structured exactly the same way.
 extends Node
 
-# Сигнал «язык сменился». Подписчики перерисовывают то, что строят в коде:
-# текст, заданный прямо в сцене, Godot переводит сам (см. примечание выше
-# про авто-перевод Control), а вот строки, собранные в GDScript, нужно
-# пересобрать вручную.
+# The "language changed" signal. Subscribers redraw what they build in code:
+# the text set directly in the scene is translated by Godot itself (see the note
+# above about the auto-translation of Control), but the strings assembled in
+# GDScript have to be rebuilt manually.
 signal locale_changed(locale: String)
 
 const SETTINGS_PATH := "user://settings.cfg"
 const SETTINGS_SECTION := "interface"
 const SETTINGS_KEY := "locale"
 
-# Английский — язык по умолчанию (язык исходников).
+# English — the default language (the source language).
 const DEFAULT_LOCALE := "en"
 
-# Псевдозначение настройки: брать язык из настроек операционной системы.
-# Именно оно выбирается при самом первом запуске игры.
+# A pseudo setting value: take the language from the operating system settings.
+# It is exactly what is chosen on the very first launch of the game.
 const SYSTEM_LOCALE := "system"
 
-# Языки, доступные в игре. code — ISO 639-1, как его ждёт TranslationServer.
-# Список расширяют здесь: чтобы добавить язык, достаточно дописать строку
-# и положить рядом файл locale/<code>.po, зарегистрированный в project.godot.
+# The languages available in the game. code is ISO 639-1, as TranslationServer
+# expects it. The list is extended here: to add a language, it is enough to add
+# a line and to put the locale/<code>.po file next to it, registered in project.godot.
 const LANGUAGES := [
     {"code": "en", "name": "English"},
     {"code": "ru", "name": "Русский"},
 ]
 
-# Текущий язык игры (код из LANGUAGES, всегда реальный, не SYSTEM_LOCALE).
+# The current game language (a code from LANGUAGES, always a real one, not SYSTEM_LOCALE).
 var current_locale: String = DEFAULT_LOCALE
 
-# Выбран ли в настройках пункт «язык системы» вместо конкретного языка.
+# Whether the "system language" item is chosen in the settings instead of a specific language.
 var follow_system_locale: bool = false
 
-# Последний применённый код — чтобы повторный выбор того же языка не
-# запускал перезагрузку данных и перерисовку интерфейса зря.
+# The last applied code — so that re-selecting the same language does not
+# start a data reload and an interface redraw for nothing.
 var _applied_locale: String = ""
 
 
@@ -54,10 +54,10 @@ func _ready() -> void:
     _init_locale()
 
 
-# Выбор языка при запуске игры: сохранённая настройка, а при её отсутствии
-# (то есть при самом первом запуске) — язык операционной системы, а если он
-# не поддерживается — английский по умолчанию. Выбранное значение сразу
-# записывается в настройки, чтобы следующий запуск был предсказуемым.
+# The language choice at game start: the saved setting, and in its absence
+# (that is, on the very first launch) the operating system language, and if it
+# is not supported — English by default. The chosen value is immediately
+# written to the settings, so that the next launch is predictable.
 func _init_locale() -> void:
     var config := ConfigFile.new()
     var stored: Variant = null
@@ -73,9 +73,9 @@ func _init_locale() -> void:
         follow_system_locale = false
         current_locale = requested
     else:
-        # Неизвестный или удалённый из игры код языка: не падаем, а берём
-        # язык системы и переписываем настройку на следующем запуске.
-        push_warning("Неизвестный язык в настройках: «%s» — берём язык системы." % requested)
+        # An unknown or removed language code: we do not crash, but take
+        # the system language and rewrite the setting on the next launch.
+        push_warning("Unknown language in the settings: \"%s\" — taking the system language." % requested)
         follow_system_locale = true
         current_locale = resolve_system_locale()
 
@@ -83,8 +83,8 @@ func _init_locale() -> void:
     _save_locale_setting(SYSTEM_LOCALE if follow_system_locale else current_locale)
 
 
-# Переводит код языка операционной системы в код языма игры.
-# ru_RU → ru. Если такого языка в игре нет — английский по умолчанию.
+# Translates the operating system language code into a game language code.
+# ru_RU → ru. If the game has no such language — English by default.
 func resolve_system_locale() -> String:
     var short_code := short_language_code(OS.get_locale_language())
     if is_supported(short_code):
@@ -92,14 +92,14 @@ func resolve_system_locale() -> String:
     return DEFAULT_LOCALE
 
 
-# Отрезает страну от кода языка системы: "pt_BR" → "pt", "ru" → "ru".
-# Вынесено отдельной функцией, чтобы правило можно было проверить в тестах
-# без подмены локали операционной системы.
+# Cuts the country off from the system language code: "pt_BR" → "pt", "ru" → "ru".
+# It is put in a separate function, so that the rule can be checked in tests
+# without substituting the operating system locale.
 static func short_language_code(system_code: String) -> String:
     return system_code.to_lower().split("_")[0]
 
 
-# Есть ли такой язык в игре. Пустое и неизвестное — false.
+# Whether such a language is in the game. Empty and unknown — false.
 func is_supported(code: String) -> bool:
     if code.is_empty():
         return false
@@ -109,15 +109,16 @@ func is_supported(code: String) -> bool:
     return false
 
 
-# Язык доступен для выбора, если он есть в LANGUAGES И его перевод реально
-# загружен (иначе игрок выбрал бы язык, который игра всё равно не покажет).
+# A language is available for selection if it is in LANGUAGES AND its translation
+# is actually loaded (otherwise the player would choose a language that the game
+# would not show anyway).
 func is_translation_loaded(code: String) -> bool:
     return TranslationServer.get_loaded_locales().has(code)
 
 
-# Список для выпадающего списка настроек: первым «язык системы», дальше
-# языки, чей перевод загружен. Если системный язык поддерживается, его
-# подставляем и внизу списка — чтобы выбор был виден в обоих режимах.
+# The list for the settings dropdown: the "system language" first, then
+# the languages whose translation is loaded. If the system language is supported, it
+# is also placed at the bottom of the list — so that the choice is visible in both modes.
 func available_languages() -> Array:
     var result: Array = [{"code": SYSTEM_LOCALE, "name": tr("Language of the system")}]
     for lang in LANGUAGES:
@@ -130,8 +131,8 @@ func get_locale() -> String:
     return current_locale
 
 
-# Подпись языка для выпадающего списка: для «языка системы» показываем, что
-# именно выбрала система, — иначе пункт выглядит неопределённым.
+# The language label for the dropdown: for the "system language" we show what
+# exactly the system chose — otherwise the item looks undetermined.
 func get_language_label(code: String) -> String:
     if code == SYSTEM_LOCALE:
         return tr("Language of the system") + " (%s)" % language_display_name(resolve_system_locale())
@@ -141,8 +142,8 @@ func get_language_label(code: String) -> String:
     return code
 
 
-# Имя языка на его собственном языке ("English", "Русский") — так список
-# читается одинаково, что бы игрок ни выбрал раньше.
+# The language name in its own language ("English", "Русский") — so that the list
+# is read the same way, whatever the player has chosen before.
 func language_display_name(code: String) -> String:
     match code:
         "en":
@@ -153,8 +154,8 @@ func language_display_name(code: String) -> String:
             return code
 
 
-# Точка входа из настроек. code — либо код языка, либо SYSTEM_LOCALE.
-# Возвращает false, если такой язык выбрать нельзя.
+# The entry point from the settings. code is either a language code, or SYSTEM_LOCALE.
+# It returns false if such a language cannot be chosen.
 func set_locale(code: String) -> bool:
     var resolved: String
     if code == SYSTEM_LOCALE:
@@ -168,8 +169,8 @@ func set_locale(code: String) -> bool:
     current_locale = resolved
 
     if resolved == _applied_locale:
-        # Язык не изменился: настройку всё равно пишем (игрок мог вернуться
-        # на «язык системы»), но данные и интерфейс не трогаем.
+        # The language has not changed: we still write the setting (the player might have
+        # returned to the "system language"), but we do not touch the data and the interface.
         _save_locale_setting(code)
         return true
 
@@ -181,10 +182,10 @@ func set_locale(code: String) -> bool:
 func _apply_locale(code: String) -> void:
     _applied_locale = code
     TranslationServer.set_locale(code)
-    # Данные игры хранят английский исходный текст и накладывают перевод при
-    # загрузке, поэтому после смены языка их нужно перечитать заново.
-    # Данные уже загружены на момент смены языка из главного меню; при смене
-    # из партии — тоже (CityData.setup вызывает GameData.load_all_data).
+    # The game data stores the English source text and applies the translation on
+    # loading, therefore after a language change it has to be re-read from scratch.
+    # The data is already loaded at the moment of the change from the main menu;
+    # on a change from within a game — as well (CityData.setup calls GameData.load_all_data).
     if GameData.data_loaded:
         GameData.load_all_data()
     locale_changed.emit(code)
@@ -192,15 +193,15 @@ func _apply_locale(code: String) -> void:
 
 func _save_locale_setting(code: String) -> void:
     var config := ConfigFile.new()
-    # Перечитываем файл: настройки пишут ещё и settings_menu.gd, и его
-    # копия в памяти может не знать про только что записанный ключ.
+    # We re-read the file: settings_menu.gd writes the settings too, and its
+    # in-memory copy may not know about the key that was just written.
     config.load(SETTINGS_PATH)
     config.set_value(SETTINGS_SECTION, SETTINGS_KEY, code)
     config.save(SETTINGS_PATH)
 
 
-# Читает сохранённый выбор языка, не применяя его. Нужно настройкам, чтобы
-# показать текущее значение пункта списка при открытии окна.
+# Reads the saved language choice, without applying it. It is needed by the
+# settings in order to show the current value of the item when the window opens.
 func get_stored_locale() -> String:
     var config := ConfigFile.new()
     if config.load(SETTINGS_PATH) != OK:
