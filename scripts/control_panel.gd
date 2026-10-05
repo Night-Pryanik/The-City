@@ -1,34 +1,38 @@
 # control_panel.gd
-# Панель управления гексом в нижней части игровой карты.
+# The control panel of the hex in the bottom part of the game map.
 #
-# Логика:
-#   - Панель видна всегда, но содержимое появляется по клику ЛКМ на гекс.
-#   - Левая (большая) часть — полная информация о гексе (как в расширенном тултипе).
-#   - Правая (меньшая) часть — кнопки действий (постройка улучшений, спец-действия,
-#     управление рабочим, отмена стройки).
-#   - Клик по кнопке действия открывает «превью»: расчёт производства с учётом
-#     всех модификаторов + кнопки «Построить» и «Отменить».
-#   - ESC или клик по другому гексу сбрасывают превью.
-#   - Недоступные действия — серые, с тултипом причины («нужна технология»,
-#     «нет труда», «нужна пристань» и т.п.).
+# The logic:
+#   - The panel is visible always, but the contents appear on a click of the LMB on a hex.
+#   - The left (larger) part is the full information about the hex (as in the extended tooltip).
+#   - The right (smaller) part is the action buttons (the construction of the improvements, the special actions,
+#     the management of the worker, the cancellation of the build).
+#   - A click on an action button opens the "preview": the calculation of the production taking
+#     all the modifiers into account + the buttons "Build" and "Cancel".
+#   - ESC or a click on another hex resets the preview.
+#   - The unavailable actions are greyed out, with a tooltip of the reason ("a technology is needed",
+#     "there is no labour", "a harbor is needed" and so on).
 #
-# Панель реагирует на внешние изменения через сигналы (см. main_map.gd):
+# The panel reacts to the external changes through the signals (see main_map.gd):
+#
+# the id of the special action "Build a road" in data/special_actions.json. The only
+# place, where the panel knows about the road by the name: both the button on the hex of the town, and
+# the special block of the price in the preview.
 #   worker_manager.assignment_changed, build_manager.build_completed/build_cancelled,
 #   CityData.city_updated, CityData.research_completed, expansion_manager.territory_expanded.
 extends Panel
 
-# id спецдействия «Построить дорогу» в data/special_actions.json. Единственное
-# место, где панель знает про дорогу по имени: и кнопку на гексе городка, и
-# особый блок цены в превью.
+# The kind of the action "Improve the road". This is NOT a special action from data/special_actions.json:
+# the improvement does not change the contents of the hex and does not have its own work_cost (the price of a segment
+# is taken from the road level, see roads.json), therefore it lives as a separate
+# kind of the action of the panel, and not as one more record in the common list.
 const ROAD_ACTION_ID := "build_road"
 
-# Тип действия «Улучшить дорогу». Это НЕ спецдействие из data/special_actions.json:
-# улучшение не меняет содержимое гекса и не имеет своей work_cost (цена участка
-# берётся из уровня дороги, см. roads.json), поэтому оно живёт как отдельный
-# тип действия панели, а не как ещё одна запись в общем списке.
+# The references to the nodes (filled in from main_map.gd through initialize()).
 const UPGRADE_ROAD_TYPE := "upgrade_road"
 
-# Ссылки на узлы (заполняются из main_map.gd через initialize()).
+# A click of the LMB on an empty place of the panel (past the buttons and the scrolls) removes
+# the selection of the hex. The buttons and the scrollable areas absorb the clicks themselves,
+# therefore the event reaches here only for the empty background of the panel.
 var main_map: Node
 var map_tooltip: MapTooltip
 var worker_manager: Node
@@ -37,27 +41,25 @@ var build_manager: Node
 func _ready():
     _setup_collapse_button()
 
-# Клик ЛКМ по пустому месту панели (мимо кнопок и скроллов) снимает
-# выделение гекса. Кнопки и прокручиваемые области поглощают клики сами,
-# поэтому сюда событие доходит только для пустого фона панели.
+# --- The collapsing/expanding of the panel ---
 func _gui_input(event: InputEvent):
     if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT \
             and not event.pressed:
         if has_selection():
             main_map.clear_selection()
 
-# --- Сворачивание/разворачивание панели ---
+# The height of the collapsed panel = the height of the toggle button.
 
-# Высота свёрнутой панели = высота кнопки-переключателя.
+# Creates the toggle button in the top right corner of the panel.
+# The button is bound by the anchors to the top right corner, therefore it remains in place
+# on a change of the size of the window/panel.
 const _COLLAPSED_HEIGHT := 28.0
 
 var _toggle_btn: Button
 var _collapsed := false
 var _saved_offset_top := -1.0
 
-# Создаёт кнопку-переключатель в правом верхнем углу панели.
-# Кнопка привязана анкорами к правому верхнему углу, поэтому остаётся на месте
-# при изменении размера окна/панели.
+    # The anchors: the top right corner of the panel with a small indent.
 func _setup_collapse_button():
     _toggle_btn = Button.new()
     _toggle_btn.text = "▼"
@@ -66,7 +68,7 @@ func _setup_collapse_button():
     _toggle_btn.flat = true
     _toggle_btn.custom_minimum_size = Vector2(28, 24)
     _toggle_btn.pressed.connect(_toggle_collapsed)
-    # Анкоры: правый верхний угол панели с небольшим отступом.
+# Switches the panel between the collapsed and the expanded state.
     _toggle_btn.anchor_left = 1.0
     _toggle_btn.anchor_right = 1.0
     _toggle_btn.anchor_top = 0.0
@@ -77,7 +79,7 @@ func _setup_collapse_button():
     _toggle_btn.offset_bottom = 26.0
     add_child(_toggle_btn)
 
-# Переключает панель между свернутым и развернутым состоянием.
+# Switches the panel between the collapsed and the expanded state.
 func _toggle_collapsed():
     _set_collapsed(not _collapsed)
 
@@ -87,11 +89,11 @@ func _set_collapsed(collapsed: bool):
     _collapsed = collapsed
 
     if _collapsed:
-        # Запоминаем текущую высоту и поднимаем верхний край панели так,
-        # чтобы осталась полоска высотой с кнопку.
-        # ВАЖНО: панель растянута по вертикали (anchor_top=0, anchor_bottom=1),
-        # поэтому высота задаётся разницей offset_bottom - offset_top,
-        # а не абсолютными координатами size.y.
+        # We remember the current height and raise the top edge of the panel so,
+        # that a strip of the height of the button remains.
+        # IMPORTANT: the panel is stretched vertically (anchor_top=0, anchor_bottom=1),
+        # therefore the height is set by the difference offset_bottom - offset_top,
+        # and not by the absolute coordinates size.y.
         _saved_offset_top = offset_top
         offset_top = offset_bottom - _COLLAPSED_HEIGHT
         _set_content_visible(false)
@@ -104,47 +106,47 @@ func _set_collapsed(collapsed: bool):
         _toggle_btn.text = "▼"
         _toggle_btn.tooltip_text = tr("Collapse panel")
 
-# Скрывает/показывает содержимое панели (при сворачивании остаётся только кнопка).
+# Hides/shows the contents of the panel (when collapsed only the button remains).
 func _set_content_visible(visible_now: bool):
     for node_path in ["SepInfoPreview", "SepPreviewActions", "PreviewContainer", "InfoVBox", "ActionsVBox"]:
         var child = get_node_or_null(NodePath(node_path))
         if child != null:
             child.visible = visible_now
 
-# Текущее выделение и превью.
+# The current selection and the preview.
 var _selected_hex = null # { "row": int, "col": int }
 var _preview_action = null # { "type": String, "imp_id": String, "target_res_id": String, "label": String }
-# Последняя «эпоха» отображения ресурсов (CityData.resource_display_interval):
-# тиковый путь on_city_updated() перерисовывает инфо-колонку и превью только
-# когда эпоха изменилась; событийный путь (refresh()/_refresh(), клик, действие)
-# обновляется мгновенно и синхронизирует эпоху.
+# The last "era" of the display of the resources (CityData.resource_display_interval):
+# the tick path on_city_updated() redraws the info column and the preview only
+# when the era has changed; the event path (refresh()/_refresh(), a click, an action)
+# is updated instantly and synchronises the era.
 var _display_epoch: int = -1
 
-# Ссылки на дочерние узлы UI.
+# The references to the child UI nodes.
 var _info_label: RichTextLabel
 var _products_container: VBoxContainer
 var _actions_container: FlowContainer
 var _preview_container: VBoxContainer
-# Фиксированная строка заголовка превью (вне области прокрутки): подпись
-# действия + кнопки «Начать»/«Отменить». Находится над PreviewScroll, поэтому
-# всегда видна, даже когда содержимое колонки прокручено.
+# A fixed row of the heading of the preview (outside the scroll area): the label of
+# the action + the buttons "Start"/"Cancel". It is above PreviewScroll, therefore
+# it is always visible, even when the contents of the column are scrolled.
 var _preview_header_container: VBoxContainer
 
-# Снимок состояния кнопок действий, при котором их строили в последний раз.
-# Используется, чтобы НЕ пересоздавать кнопки (и их ОС-тултипы) на каждом
-# игровом тике: CityData.city_updated эмитится раз в SIMULATION_TICK из
-# do_tick(), и без этого _build_actions() каждый тик уничтожал бы кнопки
-# вместе с их тултипами «Нужна технология: ...», «Нет труда: ...» и т.п.
-# (тот же паттерн, что и _last_panel_state в building_panel.gd /
-# _needs_full_refresh в city_ui.gd).
-# Формат: {"row": int, "col": int, "actions": Array}
+# A snapshot of the state of the action buttons at which they were built the last time.
+# It is used, so as NOT to recreate the buttons (and their OS tooltips) on every
+# game tick: CityData.city_updated is emitted once per SIMULATION_TICK from
+# do_tick(), and without this _build_actions() would destroy the buttons
+# together with their tooltips "A technology is needed: ...", "There is no labour: ..." and so on
+# (the same pattern as _last_panel_state in building_panel.gd /
+# _needs_full_refresh in city_ui.gd).
+# The format: {"row": int, "col": int, "actions": Array}
 var _last_actions_snapshot: Dictionary = {}
 
-# Снимок состояния блока превью, при котором его построили в последний раз.
-# Аналогично _last_actions_snapshot: не пересоздаём элементы превью (в т.ч.
-# кнопки «Построить»/«Отменить» вместе с их ОС-тултипами) на каждом игровом
-# тике, если выбор действия не менялся.
-# Формат: {"row": int, "col": int, "type": String, "label": String, "imp_id": String,
+# A snapshot of the state of the preview block at which it was built the last time.
+# Analogously to _last_actions_snapshot: we do not recreate the elements of the preview (incl.
+# the buttons "Build"/"Cancel" together with their OS tooltips) on every game
+# tick, if the choice of the action has not changed.
+# The format: {"row": int, "col": int, "type": String, "label": String, "imp_id": String,
 #          "action_id": String, "target_res_id": Variant, "eff_res": String}
 var _last_preview_snapshot: Dictionary = {}
 
@@ -161,46 +163,46 @@ func initialize(main_node: Node):
     _preview_container = $PreviewContainer/PreviewScroll/PreviewContent
     _preview_header_container = $PreviewContainer/PreviewHeader
 
-    # Панель видна всегда, но содержимое пустое, пока не выбран гекс.
+# The panel is visible always, but the contents are empty until a hex is selected.
     clear_selection()
 
-# Вызывается при клике ЛКМ на гекс (row, col).
+# It is called on a click of the LMB on the hex (row, col).
 func select_hex(row: int, col: int):
     _selected_hex = {"row": row, "col": col}
     _preview_action = null
     _refresh()
 
-# Снимает выделение и очищает панель.
+# Removes the selection and clears the panel.
 func clear_selection():
     _selected_hex = null
     _preview_action = null
     _refresh()
 
-# Сбрасывает только превью действия (ESC или клик по другому гексу).
+# Resets only the preview of the action (ESC or a click on another hex).
 func clear_preview():
     _preview_action = null
     _refresh()
 
-# Возвращает true, если есть активное превью действия.
+# Returns true, if there is an active preview of an action.
 func has_preview() -> bool:
     return _preview_action != null
 
-# Возвращает true, если есть выделенный гекс.
+# Returns true, if there is a selected hex.
 func has_selection() -> bool:
     return _selected_hex != null
 
-# Возвращает выделенный гекс или null.
+# Returns the selected hex or null.
 func get_selected_hex():
     return _selected_hex
 
-# Тиковое обновление (CityData.city_updated, подключается в main_map._ready):
-# левая колонка (местность, «Производит/Потребляет … за тик»), список
-# продукции и превью действия обновляются с интервалом отображения ресурсов
-# (CityData.resource_display_interval) — их числа раньше прыгали каждый тик.
-# Кнопки действий при этом поддерживаются каждый тик, как раньше: их тултипы
-# по дизайну не содержат значений, меняющихся каждый тик (см.
-# комментарий в _build_actions), а снапшот _last_actions_snapshot не даёт
-# пересоздать кнопки без реальных изменений.
+# The tick update (CityData.city_updated, connected in main_map._ready):
+# the left column (the terrain, "Produces/Consumes ... per tick"), the list
+# of the production and the preview of the action are updated with the display interval of the resources
+# (CityData.resource_display_interval) — their numbers used to jump on every tick.
+# The action buttons are at that time maintained on every tick, as before: their tooltips
+# by design do not contain the values changing on every tick (see
+# the comment in _build_actions), and the snapshot _last_actions_snapshot does not allow
+# to recreate the buttons without the real changes.
 func on_city_updated():
     if _selected_hex == null:
         _clear_ui()
@@ -213,18 +215,18 @@ func on_city_updated():
     if CityData.resource_display_due(_display_epoch):
         _refresh()
         return
-    # Интервал ещё не прошёл: поддерживаем только доступность кнопок действий.
+    # The interval has not passed yet: we maintain only the availability of the action buttons.
     var tile = main_map.get_tile_data(row, col)
     if tile == null:
         clear_selection()
         return
     _build_actions(row, col, tile)
 
-# Обновляет панель. Вызывается при внешних изменениях (сигналы) и при
-# выделении/сбросе. Если выделенного гекса больше нет на карте (например,
-# загружен сейв с картой другого размера) — снимаем выделение.
-# Проверка именно по границам КАРТЫ: выделять гексы вне Региона (туман войны,
-# территория городков) теперь можно — там доступна разведка.
+# Updates the panel. It is called on the external changes (the signals) and on
+# the selection/reset. If the selected hex is no longer on the map (for example,
+# a save with a map of a different size has been loaded) — we remove the selection.
+# The check is exactly by the boundaries of the MAP: selecting the hexes outside the Region (the fog of war,
+# the territory of the towns) is now possible — the scouting is available there.
 func refresh():
     if _selected_hex == null:
         _clear_ui()
@@ -237,9 +239,9 @@ func refresh():
     _refresh()
 
 func _refresh():
-    # Событийное обновление (клик по гексу, действие, исследование, освоение):
-    # всё рисуется сразу и синхронизирует эпоху отображения ресурсов — по
-    # интервалу ждёт только тиковое обновление (см. on_city_updated).
+    # The event update (a click on a hex, an action, a research, a claiming):
+    # everything is drawn at once and synchronises the era of the display of the resources — only
+    # the tick update waits for the interval (see on_city_updated).
     _display_epoch = CityData.resource_display_epoch
     if _selected_hex == null:
         _clear_ui()
@@ -251,10 +253,10 @@ func _refresh():
         clear_selection()
         return
 
-    # --- Левая часть: полная информация о гексе ---
-    # Гекс в тумане войны: местность, ресурсы и улучшения игроку не известны —
-    # вместо информации показываем заглушку. Действия справа (разведка)
-    # остаются: они содержимое гекса не раскрывают (см. main_map.is_hex_in_fog).
+# --- The left part: the full information about the hex ---
+# A hex in the fog of war: the terrain, the resources and the improvements are not known to the player —
+# instead of the information we show a stub. The actions on the right (the scouting)
+# remain: they do not disclose the contents of the hex (see main_map.is_hex_in_fog).
     if main_map.is_hex_in_fog(row, col):
         _info_label.text = tr("Area not scouted — information unavailable.\n\nTerrain, resources and improvements become known after scouting.")
         map_tooltip.render_products([], _products_container, true)
@@ -262,33 +264,33 @@ func _refresh():
         var info = map_tooltip.build_hex_info(row, col, main_map.tile_data, main_map.city_row, main_map.city_col)
         _info_label.text = info["text"]
         map_tooltip.render_products(info["products"], _products_container, true)
-        # Маршрут до города показываем ОТДЕЛЬНОЙ строкой в том же блоке: он
-        # относится не к свойствам гекса, а к его связи с городом. Без него
-        # игрок на улучшении не видит ни длины маршрута, ни его скорости, а
-        # именно по ним решается, стоит ли улучшать дорогу.
+# We show the route to the city as a SEPARATE row in the same block: it
+# does not relate to the properties of the hex, but to its connection with the city. Without it
+# the player on an improvement sees neither the length of the route, nor its speed, and
+# it is exactly by them that it is decided whether to improve the road.
         _append_route_info(row, col)
 
-    # --- Правая часть: кнопки действий ---
+# --- The right part: the action buttons ---
     _build_actions(row, col, tile)
 
-    # --- Превью действия (если есть) ---
+# --- The preview of the action (if there is one) ---
     if _preview_action != null:
         _build_preview(row, col, tile)
     else:
-        # Превью нет (смена выделенного гекса, ESC и т.п.) — обязательно
-        # очищаем контейнер, чтобы старое превью не оставалось в панели.
+# There is no preview (a change of the selected hex, ESC and so on) — we must
+# clear the container, so that the old preview does not remain in the panel.
         for child in _preview_container.get_children():
             child.queue_free()
         for child in _preview_header_container.get_children():
             child.queue_free()
-        # Сбрасываем снапшот: следующая открытая превью должна пересоздать
-        # свой блок (даже если opens то же самое действие на том же гексе).
+    # We reset the snapshot: the next opened preview must recreate
+    # its block (even if it opens the same action on the same hex).
         _last_preview_snapshot = {}
-    # Маршрут на карте приводим в соответствие с текущим превью: он появился,
-    # сменился или исчез. Именно здесь, а не в _build_road_preview(), потому
-    # что _build_preview выходит рано по снапшоту — превью того же действия на
-    # том же гексе не перестраивается, и «призрачная» дорога застряла бы на
-    # старом маршруте (например, после разведки пути к городку).
+# We bring the route on the map in line with the current preview: it has appeared,
+# changed or disappeared. Exactly here, and not in _build_road_preview(), because
+# _build_preview exits early by the snapshot — the preview of the same action on
+# of the same hex is not rebuilt, and the "ghost" road would have got stuck on
+# the old route (for example, after the scouting of the path to the town).
     _sync_road_preview_on_map()
 
 func _clear_ui():
@@ -301,29 +303,29 @@ func _clear_ui():
         child.queue_free()
     for child in _preview_header_container.get_children():
         child.queue_free()
-    # Сброс снимка: если контейнер кнопок очищен, но снимок совпадает с
-    # прежним гексом, следующий _build_actions() иначе решил бы, что пересоздавать
-    # ничего не нужно (и кнопки бы не появились).
+    # The reset of the snapshot: if the container of the buttons is cleared, but the snapshot coincides with
+    # the previous hex, the next _build_actions() would otherwise decide that there is nothing
+    # to recreate (and the buttons would not appear).
     _last_actions_snapshot = {}
     _last_preview_snapshot = {}
-    # Прекращаем показ маршрута и призрака: выделение снято, значит и превью нет.
+    # We stop the showing of the route and the ghost: the selection is removed, therefore there is no preview.
     _set_map_road_preview({})
     _set_map_route_display({})
 
-# Строка «Маршрут до города» в левой колонке панели: сколько участков и
-# средняя скорость по маршруту. Показывается только когда маршрут есть; на
-# гексе без дороги строки нет — писать «маршрута нет» на каждом пустом гексе
-# значило бы засорять панель.
+# The row "Route to the city" in the left column of the panel: how many segments and
+# the average speed over the route. It is shown only when the route exists; on
+# a hex without a road there is no row — writing "there is no route" on every empty hex
+# would mean cluttering the panel.
 #
-# Средняя арифметическая по участкам — сознательно, а не минимум по маршруту:
-# девять тележных дорог и одна тропка дают 28 ед./сек, а не 10. Отдельной
-# строки «узкое место» здесь нет (см. road_manager.find_route_to_city).
+# The arithmetic average over the segments — deliberately, and not the minimum over the route:
+# nine cart roads and one trail give 28 units/sec, and not 10. A separate
+# row "the bottleneck" is not here (see road_manager.find_route_to_city).
 func _append_route_info(row: int, col: int) -> void:
     if main_map == null or not main_map.has_method("get_route_to_city"):
         return
-    # Уровень дороги на самом гексе идёт ПЕРЕД строкой маршрута: маршрут
-    # читается как «куда едет груз», и уровень гекса — его начало. На гексе без
-    # дороги уровня нет, но маршрут тоже пустой, так что обе строки пусты.
+# The road level on the hex itself goes BEFORE the row of the route: the route
+# is read as "where the cargo goes", and the level of the hex is its beginning. On a hex without
+# a road there is no level, but the route is empty too, so both rows are empty.
     var road_line: String = map_tooltip.road_level_line(row, col)
     if not road_line.is_empty():
         var road_label := Label.new()
@@ -340,15 +342,15 @@ func _append_route_info(row: int, col: int) -> void:
     route_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
     _products_container.add_child(route_label)
 
-# --- Построение кнопок действий ---
+# --- The building of the action buttons ---
 func _build_actions(row: int, col: int, tile: Dictionary):
-    # Если состояние действий для этого гекса не изменилось с прошлого раза —
-    # не пересоздаём кнопки. Это сохраняет открытые ОС-тултипы (иначе каждый
-    # игровой тик пересоздание кнопок сбрасывало бы наведённый тултип).
-    # ВАЖНО: поэтому в тултипы НЕЛЬЗЯ включать значения, меняющиеся каждый тик
-    # (текущая казна, текущий запас еды и т.п.): тогда тултипы отличаются на
-    # каждом тике, сравнение _actions_equal() не совпадает, кнопки пересоздаются
-    # и тултип сбрасывается. Динамические значения игрок смотрит в HUD.
+# If the state of the actions for this hex has not changed since the last time —
+# we do not recreate the buttons. It preserves the open OS tooltips (otherwise on every
+# game tick the recreation of the buttons would reset the hovered tooltip).
+# IMPORTANT: therefore the values changing on every tick MUST NOT be included in the tooltips
+# (the current treasury, the current stock of the food and so on): then the tooltips differ on
+# every tick, the comparison _actions_equal() does not match, the buttons are recreated
+# and the tooltip is reset. The dynamic values the player looks at in the HUD.
     var actions := _collect_actions(row, col, tile)
     var prev = _last_actions_snapshot
     if prev.get("row", -1) == row and prev.get("col", -1) == col \
@@ -362,11 +364,11 @@ func _build_actions(row: int, col: int, tile: Dictionary):
 
     for action in actions:
         var btn = Button.new()
-        btn.custom_minimum_size = Vector2(40, 40) # маленькая квадратная кнопка
-        # Тултип сохраняется — это единственный способ узнать, что делает кнопка.
+        btn.custom_minimum_size = Vector2(40, 40) # a small square button
+# The tooltip is preserved — it is the only way to know what the button does.
         btn.tooltip_text = action.get("tooltip", "")
         btn.disabled = not action.get("enabled", true)
-        # Иконка действия; если её нет или файл не найден — знак вопроса.
+# The icon of the action; if there is none, or the file is not found — a question mark.
         var tex = _load_action_icon(action.get("icon", ""))
         if tex != null:
             btn.icon = tex
@@ -383,16 +385,16 @@ func _build_actions(row: int, col: int, tile: Dictionary):
         )
         _actions_container.add_child(btn)
 
-# Загружает Texture2D для имени файла иконки действия через общий реестр
-# иконок IconRegistry (тот же, что используют тултип и отрисовка карты).
-# Возвращает null, если имя пустое или файл не найден (тогда кнопка покажет «?»).
+# Loads a Texture2D for the file name of the icon of the action through the common registry
+# of the icons IconRegistry (the same one that the tooltip and the drawing of the map use).
+# It returns null, if the name is empty or the file is not found (then the button will show "?").
 func _load_action_icon(icon_name: String) -> Texture2D:
     if icon_name.is_empty():
         return null
     return IconRegistry.get_texture(icon_name)
 
-# Сравнивает два списка действий (по значимым полям, чтобы у неработающего
-# поля type/imp_id не пересоздавались кнопки вхолостую).
+# Compares two lists of actions (by the significant fields, so that of a non-working
+# the fields type/imp_id did not recreate the buttons in vain).
 func _actions_equal(a: Array, b: Array) -> bool:
     if a.size() != b.size():
         return false
@@ -404,7 +406,7 @@ func _actions_equal(a: Array, b: Array) -> bool:
                 return false
     return true
 
-# Собирает список действий для гекса. Каждый элемент:
+# Assembles the list of the actions for the hex. Each element:
 #   { "type": String, "label": String, "enabled": bool, "tooltip": String,
 #     "imp_id": String, "target_res_id": String, "action_id": String }
 # type: "build_improvement" | "build_breeding" | "special" |
@@ -414,19 +416,19 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
     var actions := []
     var in_influence = tile.get("in_influence", false)
 
-    # На гексе города строить улучшения нельзя — никаких действий.
+# On the hex of the city the improvements cannot be built — there are no actions at all.
     if row == main_map.city_row and col == main_map.city_col:
         return actions
 
-    # На гексе городка (мелкое поселение) нельзя строить улучшения и делать
-    # спецдействия — по дизайну это «чужое» место. Действия здесь два:
-    # переход в интерфейс городка и дорога от города ДО него (цель дороги —
-    # не сам гекс городка, а ближайшая дорога в его кольце влияния, см.
-    # road_manager.plan_road_to). Оба появляются по одиночному клику на гекс
-    # городка; переход в интерфейс доступен также по двойному клику
-    # (InputHandler). Только для РАСКРЫТОГО гекса: неразведанный городок в
-    # тумане войны показывается лишь полупрозрачной иконкой, и взаимодействовать
-    # с ним нельзя — такой гекс обрабатывается как обычный гекс разведки (ниже).
+# On the hex of a town (a small settlement) the improvements cannot be built and the
+# special actions cannot be done — by design it is a "foreign" place. There are two actions here:
+# the transition into the interface of the town and the road from the city TO it (the target of the road is
+# not the hex of the town itself, but the nearest road in its influence ring, see
+# road_manager.plan_road_to). Both appear on a single click on the hex
+# of the town; the transition into the interface is also available on a double click
+# (InputHandler). Only for a REVEALED hex: an unexplored town in
+# the fog of war is shown only by a semi-transparent icon, and interacting
+# with it is impossible — such a hex is handled as an ordinary scouting hex (below).
     if tile.get("has_town", false) \
             and (in_influence or tile.get("is_explored", false)):
         var town_rec = null
@@ -435,9 +437,9 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
         var town_name = ""
         if town_rec != null:
             town_name = str(town_rec.get("name", ""))
-        # Открыть интерфейс можно ВСЕГДА, независимо от дороги: там видно, что
-        # у городка есть на продажу и на покупку. Дорога гейтит только саму
-        # торговлю, и её состояние показывается в тултипе.
+# The interface can be opened ALWAYS, regardless of the road: there one can see that
+# the town has something for sale and for purchase. The road gates only the
+# trade itself, and its state is shown in the tooltip.
         var trade_available := true
         if town_rec != null:
             trade_available = main_map.town_manager.is_trade_available(town_rec)
@@ -449,14 +451,14 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
         if not trade_available:
             town_action_tooltip += tr(" (trade unavailable: no road to the town)")
 
-        # Дорога до городка — то же спецдействие «Построить дорогу», что и на
-        # обычном гексе, но с другим текстом: здесь дорога не доходит до гекса
-        # городка, а соединяет город с дорогами кольца влияния.
+# The road to the town — the same special action "Build a road" as on an
+# ordinary hex, but with a different text: here the road does not reach the hex
+# of the town, but connects the city with the roads of its influence ring.
         if not main_map.road_manager.is_town_linked_to_city(row, col):
-            # Пока идёт поэтапный проект к этому городку, кнопку строительства
-            # не показываем — вместо неё прерывание уже начатой стройки, его
-            # добавит общий помощник ниже. Ищем по ЦЕЛИ (has_project_at), а не
-            # по гексу: здесь интересует именно проект, целящийся в городок.
+# While a phased project to this town is going, we do not show the build button
+# — instead of it, the interruption of the already started build, which the
+# common helper below will add. We search by the TARGET (has_project_at), and not
+# by the hex: here we are interested exactly in the project aiming at the town.
             if not (main_map.project_manager != null \
                     and main_map.project_manager.has_project_at(row, col)):
                 var road_sa: Dictionary = GameData.special_actions.get(ROAD_ACTION_ID, {})
@@ -465,10 +467,10 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
                             tr("Build a road from the city to the town%s — unlocks trade")
                                     % ((" «%s»" % town_name) if town_name != "" else ""))
 
-        # Прерывание нужно и на гексе самого городка, и в его кольце влияния:
-        # дорога к городку заканчивается участком ВНУТРИ кольца, так что без
-        # этого вызова кнопка исчезала бы на последнем шаге дороги. Дубликата
-        # с блоком выше уже нет — тот только прячет кнопку строительства.
+# The interruption is needed both on the hex of the town itself, and in its influence ring:
+# the road to the town ends with a segment INSIDE the ring, so without
+# this call the button would disappear on the last step of the road. The duplicate
+# with the block above is already gone — that one only hides the build button.
         _append_cancel_actions(actions, row, col)
 
         actions.append({
@@ -480,39 +482,39 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
         })
         return actions
 
-    # Гекс вне Кольца Влияния — действия через панель управления:
-    #   неисследованная область (в т.ч. туман войны и территория городков) →
-    #     «Отправить разведчиков»: до изучения Картографии — только в
-    #     неисследованной части Региона (в тумане войны чанк не собирается,
-    #     см. expansion_manager.get_chunk_hexes); после Картографии — везде,
-    #     куда можно проскроллить. В обоих случаях чанк обязан примыкать к
-    #     известной территории (Кольцо Влияния или разведанные гексы) —
-    #     см. main_map.is_chunk_adjacent_to_known;
-    #   исследованная → «Освоить область» (покупка чанка за монеты из казны + труд).
-    #     Покупка возможна только внутри Региона (см. _collect_region_actions).
+# A hex outside the Influence Ring — the actions through the control panel:
+#   the unexplored area (incl. the fog of war and the territory of the towns) →
+#     "Send the scouts": before the learning of the Cartography — only into
+#     the unexplored part of the Region (in the fog of war the chunk is not gathered,
+#     see expansion_manager.get_chunk_hexes); after the Cartography — everywhere,
+#     where one can scroll. In both cases the chunk must border
+#     the known territory (the Influence Ring or the scouted hexes) —
+#     see main_map.is_chunk_adjacent_to_known;
+#   the scouted one → "Claim the area" (the purchase of a chunk for the coins from the treasury + the labour).
+#     The purchase is possible only inside the Region (see _collect_region_actions).
     if not in_influence:
         return _collect_region_actions(row, col)
 
-    # Гекс внутри Кольца Влияния, но в кольце чужого городка — строить
-    # нельзя. Парный check к build_manager.start_build: панель не должна
-    # показывать заведомо невозможные экшены.
+# A hex inside the Influence Ring, but in the ring of a foreign town — it cannot be built
+# on. It is the paired check to build_manager.start_build: the panel should not
+# show the knowingly impossible actions.
     #
-    # ИСКЛЮЧЕНИЕ — прерывание проекта: дорога к городку заканчивается
-    # участком именно в его кольце влияния, и если кольцо «немое», дорогу к
-    # городку нельзя ни достроить, ни прервать.
+# The EXCEPTION — the interruption of a project: the road to the town ends with
+# a segment exactly in its influence ring, and if the ring is "mute", the road to the
+# town can neither be completed nor interrupted.
     if tile.get("in_town_influence", false):
         _append_cancel_actions(actions, row, col)
         return actions
 
-    # Декоративные улучшения городка полностью недоступны игроку:
-    # нельзя запускать, сносить или заменять их через панель.
+# The decorative improvements of the town are completely inaccessible to the player:
+# they cannot be started, demolished or replaced through the panel.
     if bool(tile.get("decorative", false)):
         return actions
-    # --- Улучшение уже построено ---
+# --- AN ALREADY BUILT IMPROVEMENT ---
     if tile.improvement != null:
         var imp_name = GameData.improvements.get(tile.improvement, {}).get("name", tile.improvement)
-        # Инфраструктурные улучшения (no_worker, например пристань) работают
-        # без рабочего — кнопки запуска/паузы для них не показываем вообще.
+# The infrastructure improvements (no_worker, for example a harbor) work
+# without a worker — we do not show the start/pause buttons for them at all.
         if not GameData.is_no_worker_improvement(tile.improvement):
             var has_worker = worker_manager.has_worker(row, col)
             if has_worker:
@@ -532,25 +534,25 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
                     "icon": "building_resume.png"
                 })
 
-        # Спец-действия, применимые к гексу с улучшением (например, снос).
+# The special actions applicable to the hex with an improvement (for example, the demolition).
         _add_special_actions(actions, row, col, tile)
 
-        # Улучшение дороги до этого гекса: доступно, когда дорога уже есть и
-        # её есть куда улучшать. Кнопка появляется на ЛЮБОМ гексе с маршрутом
-        # до города — не только на улучшениях: игрок может улучшить дорогу и
-        # до пустого гекса, если решит, что там будет улучшение.
+# The improvement of the road to this hex: it is available when the road already exists and
+# there is something to improve it to. The button appears on ANY hex with a route
+# to the city — and not only on the improvements: the player can improve the road
+# even up to an empty hex, if he decides that there will be an improvement there.
         _append_upgrade_road_action(actions, row, col)
 
-        # Прерывание стройки и/или проекта. Именно здесь проверка проекта
-        # ТЕРЯЛАСЬ раньше: ветка гекса с улучшением делала return, не доходя
-        # до общего блока отмены. А дорогу к гексу с улучшением построить можно
-        # (кнопка «Построить дорогу» доступна, если улучшение не no_road), то
-        # есть можно было запустить проект и нельзя было его прервать.
+# The interruption of a build and/or a project. It is exactly here that the check of the project
+# was LOST earlier: the branch of the hex with an improvement did a return, without reaching
+# the common block of the cancellation. And the road to a hex with an improvement can be built
+# (the "Build a road" button is available, if the improvement is not no_road), that is,
+# it was possible to start a project and impossible to interrupt it.
         _append_cancel_actions(actions, row, col)
         return actions
 
-    # --- Гекс без улучшения ---
-    # 1. Природный ресурс с improved_by.
+# --- A HEX WITHOUT AN IMPROVEMENT ---
+# 1. A natural resource with improved_by.
     var eff_res = MapHelpers.get_effective_resource(tile)
     if tile.resource != null:
         var raw = GameData.raw_resources.get(tile.resource, {})
@@ -560,54 +562,54 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
             var imp_name = imp_data.get("name", imp_id)
             var enabled = true
             var tooltip = tr("Build %s") % imp_name
-            # Проверка: ресурс скрыт tech_reveal-гейтом. Действие НЕ показываем
-            # вовсе (ни кнопки, ни тултипа): игрок не должен знать, где
-            # находится скрытый ресурс, пока не откроет соответствующую технологию.
+# The check: the resource is hidden by the tech_reveal gate. We do not show the action
+# at all (neither the button nor the tooltip): the player must not know where
+# a hidden resource is, until he learns the corresponding technology.
             if not MapHelpers.is_resource_revealed(tile):
-                # Скрытый ресурс: никаких действий и подсказок на этом гексе.
+# A hidden resource: there are no actions and no hints on this hex.
                 pass
             else:
-                # Кнопки изучения и постройки улучшения, заблокированного
-                # технологией, показываем только если до открывающей технологии
-                # улучшения осталось не более TECH_HOPS_MAX «хопов».
+# The buttons of the learning and of the construction of the improvement blocked by a
+# technology, we show only if there are at most TECH_HOPS_MAX "hops" left
+# to the unlocking technology of the improvement.
                 var imp_unlock_tech = CityData.get_improvement_unlock_tech(imp_id)
                 var imp_tech_blocked = not CityData.is_improvement_unlocked(imp_id)
                 if imp_tech_blocked and CityData.get_tech_hops(imp_unlock_tech) > CityData.TECH_HOPS_MAX:
                     pass
                 else:
-                    # Кнопка «Изучить ...» предлагает СЛЕДУЮЩИЙ не изученный шаг
-                    # технологической цепочки, которая открывает УЛУЧШЕНИЕ, позволяющее
-                    # эксплуатировать этот ресурс. Цепочка строится по технологии
-                    # улучшения (imp_unlock_tech), а НЕ по технологии появления
-                    # самого ресурса (tech_required): видимые ресурсы открыты на
-                    # старте, но добывать их можно только соответствующим
-                    # улучшением. Например, кварцевый песок добывается каменоломней
-                    # (открывается «Каменной кладкой»), хотя сам ресурс становится
-                    # возможным перерабатывать в стекло лишь после изучения «Стеклоделия».
+# The "Learn ..." button offers the NEXT unlearned step of the
+# technological chain, which unlocks an IMPROVEMENT allowing
+# to exploit this resource. The chain is built by the technology of the
+# improvement (imp_unlock_tech), and NOT by the technology of the appearance
+# of the resource itself (tech_required): the visible resources are unlocked at
+# the start, but they can be extracted only by the corresponding
+# improvement. For example, the quartz sand is extracted by a quarry
+# (unlocked by "Stone masonry"), although the resource itself becomes
+# possible to process into glass only after the learning of "Glassmaking".
                     var chain = CityData.get_tech_study_chain(imp_unlock_tech)
                     if not chain.is_empty():
                         actions.append(_make_research_action(chain[0]))
-                    # Тултип кнопки ПОСТРОЙКИ всегда указывает на НЕПОСРЕДСТВЕННОЕ
-                    # требование для этой постройки (а не на текущий шаг цепочки
-                    # изучения). Постройка улучшения гейтится ТОЛЬКО технологией
-                    # самого улучшения (imp_unlock_tech) и прочими условиями
-                    # (пристань, лимит труда). Технология появления ресурса
-                    # (raw.tech_required) на постройку не влияет: раз ресурс уже
-                    # на гексе, его tech_required выполнен. Например, кварцевый
-                    # песок добывается каменоломней (нужна «Каменная кладка»),
-                    # а не «Стеклоделием», позволяющим получать стекло из песка.
+# The tooltip of the CONSTRUCTION button always points to the IMMEDIATE
+# requirement for this construction (and not to the current step of the chain
+# of learning). The construction of an improvement is gated ONLY by the technology
+# of the improvement itself (imp_unlock_tech) and by the other conditions
+# (a harbor, the limit of the labour). The technology of the appearance of the resource
+# (raw.tech_required) does not affect the construction: since the resource is already
+# on the hex, its tech_required is met. For example, the quartz
+# sand is extracted by a quarry ("Stone masonry" is needed),
+# and not by "Glassmaking", which allows getting the glass from the sand.
                     if not CityData.is_improvement_unlocked(imp_id):
                         var tech_name = _get_tech_name(imp_unlock_tech)
                         enabled = false
                         tooltip = tr("%s — requires technology: %s") % [imp_name, tech_name]
-                    # Схема harbor_access: улучшения с requires_harbor (рыбацкие лодки)
-                    # строятся только на водоёме, где есть пристань. BFS по воде от
-                    # этого гекса ищет сушу с water_body_harbor-улучшением.
+# The harbor_access scheme: the improvements with requires_harbor (the fishing boats)
+# are built only on the water body where there is a harbor. The BFS over the water from
+# this hex looks for the land with a water_body_harbor improvement.
                     elif bool(imp_data.get("requires_harbor", false)) \
                             and not MapHelpers.has_harbor_access(main_map.tile_data, row, col, main_map.map_rows, main_map.map_cols):
                         enabled = false
                         tooltip = tr("%s — requires a Dock on the shore of this water body") % imp_name
-                    # Проверка: лимит строек.
+    # The check: the limit of the builds.
                     elif build_manager.get_total_active_builds() >= CityData.total_population:
                         enabled = false
                         tooltip = tr("No work available: construction limit (number of citizens) reached")
@@ -621,7 +623,7 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
                         "icon": GameData.improvements.get(imp_id, {}).get("icon", "")
                     })
 
-    # 2. Пустой гекс: разведение одомашненных животных/растений.
+    # 2. An empty hex: the breeding of the domesticated animals/plants.
     if tile.resource == null:
         var breeding_ids: Array = CityData.domesticated_resources.duplicate()
         var suitable_breeding_improvements: Dictionary = {}
@@ -650,12 +652,12 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
                 "icon": GameData.improvements.get(improvement_id, {}).get("icon", "")
             })
 
-    # 3. Пристань (схема harbor_access): открывает водные ресурсы конкретного
-    #    водоёма. Предлагается на пустом прибрежном гексе (суша с соседом lake/sea,
-    #    не гора). После постройки рыба этого водоёма становится доступной для
-    #    рыбацких лодок (см. has_harbor_access в map_helpers.gd).
-    #    Не хватает технологии — кнопка построения неактивна, а рядом добавляется
-    #    кнопка «Изучить …» (как у канала и лесной делянки).
+    # 3. A harbor (the harbor_access scheme): it opens the water resources of a specific
+    #    water body. It is offered on an empty coastal hex (the land with a neighbour of lake/sea,
+    #    not a mountain). After the construction the fish of this water body becomes available for
+    #    the fishing boats (see has_harbor_access in map_helpers.gd).
+    #    There is not enough technology — the construction button is inactive, and next to it there is added
+#    the "Learn ..." button (as for the channel and the forest plot).
     var harbor_potential_tile = tile.resource == null and tile.get("crop_bred", null) == null \
             and tile.terrain != "mountain" and not MapHelpers.is_water_terrain(tile.terrain) \
             and MapHelpers.is_coastal_hex(main_map.tile_data, row, col, main_map.map_rows, main_map.map_cols)
@@ -664,9 +666,9 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
         var harbor_tech_unlocked = CityData.is_improvement_unlocked("harbor")
         var harbor_unlock_tech = CityData.get_improvement_unlock_tech("harbor")
         var harbor_tooltip = tr("Build %s — unlocks the water resources of this water body") % harbor_name
-        # Кнопки изучения и постройки пристани (заблокированной технологией)
-        # показываем только если до открывающей технологии осталось не более
-        # TECH_HOPS_MAX «хопов» (по аналогии с каналом и лесной делянкой).
+# The buttons of the learning and of the construction of the harbor (blocked by a technology)
+# we show only if there are at most TECH_HOPS_MAX "hops" left to the unlocking
+# technology (by analogy with the channel and the forest plot).
         var show_harbor := false
         if harbor_tech_unlocked:
             show_harbor = true
@@ -690,19 +692,19 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
                 "icon": GameData.improvements.get("harbor", {}).get("icon", "")
             })
 
-    # 4. Ирригационный канал (схема water_access, расширение «Каналы»):
-    #    инфраструктурное улучшение-проводник, раздающее пресную воду соседям.
-    #    Можно строить только на пустом ровном сухом участке (plain/hill/beach
-    #    и любые проходимые не-водные террейны) непосредственно рядом с
-    #    источником пресной воды: река по общему ребру, озеро, ферма/плантация/
-    #    канал с прямым доступом к воде. Полная валидация — в MapHelpers.can_build_canal.
+# 4. An irrigation channel (the water_access scheme, the extension "Canals"):
+#    an infrastructure improvement-conductor, distributing the fresh water to the neighbours.
+#    It can be built only on an empty flat dry plot (plain/hill/beach
+#    and any passable non-water terrain) directly next to
+#    a source of the fresh water: a river by a common edge, a lake, a farm/plantation/
+#    a channel with a direct access to the water. The full validation is in MapHelpers.can_build_canal.
     #
-    #    Кнопка показывается только там, где канал МОЖНО построить при условии
-    #    изучения технологии: подходящая местность + рядом источник воды.
-    #    В пустыне кнопка не появляется — игроку не показывается заведомо
-    #    невозможное действие (по аналогии с каменоломней, которая видна
-    #    только на гексе с её ресурсом). Если не хватает технологии —
-    #    рядом добавляется кнопка «Изучить …».
+#    The button is shown only where the channel CAN be built subject to the condition
+#    of learning the technology: a suitable terrain + a source of the water next to it.
+#    In the desert the button does not appear - the player is not shown a knowingly
+#    impossible action (by analogy with the quarry, which is visible
+#    only on the hex with its resource). If the technology is missing -
+#    the "Learn ..." button is added next to it.
     var canal_potential_tile = tile.resource == null and tile.get("crop_bred", null) == null \
             and tile.improvement == null and not tile.get("has_town", false) \
             and not tile.get("in_town_influence", false) \
@@ -716,9 +718,9 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
         var canal_tech_unlocked = CityData.is_improvement_unlocked("irrigation_canal")
         var canal_unlock_tech = CityData.get_improvement_unlock_tech("irrigation_canal")
         var canal_tooltip = tr("Build %s — extends fresh water further") % canal_name
-        # Кнопки изучения и постройки канала (заблокированного технологией «Каналы»)
-        # показываем только если до открывающей технологии улучшения осталось
-        # не более TECH_HOPS_MAX «хопов».
+# The buttons of the learning and of the construction of the channel (blocked by the technology "Canals")
+# we show only if there are at most
+# TECH_HOPS_MAX "hops" left to the unlocking technology of the improvement.
         var show_canal := false
         if canal_tech_unlocked:
             show_canal = true
@@ -742,10 +744,10 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
                 "icon": canal_icon
             })
             
-    # 4b. Лесная делянка (lumberjack_hut). Строится на пустом СУХОМ гексе
-    #     с лесным покровом (wood_yield > 0 в covers.json), аналогично каналу:
-    #     кнопка видна только там, где делянку МОЖНО построить. Если не хватает
-    #     технологии — рядом добавляется кнопка «Изучить …».
+# 4b. A forest plot (lumberjack_hut). It is built on an empty DRY hex
+#     with a forest cover (wood_yield > 0 in covers.json), analogously to the channel:
+#     the button is visible only where the plot CAN be built. If the technology is
+#     missing - the "Learn ..." button is added next to it.
     if MapHelpers.can_build_lumberjack_hut(tile):
         var lj_name = GameData.improvements.get("lumberjack_hut", {}).get("name", tr("Woodcutter's Camp"))
         var lj_icon = GameData.improvements.get("lumberjack_hut", {}).get("icon", "")
@@ -775,29 +777,29 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
                 "icon": lj_icon
             })
 
-    # 5. Спец-действия (вырубка леса, сбор дикоросов и т.п.).
+# 5. The special actions (the felling of the forest, the gathering of the wild plants and so on).
     _add_special_actions(actions, row, col, tile)
 
-    # 6. Прерывание того, что идёт на этом гексе: обычной стройки и/или
-    # поэтапного проекта. Это ДВЕ независимые вещи (например, к гексу с
-    # фермой идёт дорога, и на нём же можно строить что-то ещё), поэтому при
-    # обоих показываются обе кнопки, а не одна.
+# 6. The interruption of whatever is going on this hex: an ordinary build and/or
+# a phased project. These are TWO independent things (for example, a road goes to the hex
+# with a farm, and something else can be built on it), therefore with
+# both of them both buttons are shown, and not one.
     _append_cancel_actions(actions, row, col)
 
     return actions
 
-# Добавляет кнопки прерывания для всего, что идёт на гексе (row, col).
+# Adds the interruption buttons for everything that is going on the hex (row, col).
 #
-# Единая точка для всех веток _collect_actions. Раньше проверка проекта жила
-# только в двух местах — на пустом гексе и на гексе городка, — и терялась на
-# ранних return: гекс с улучшением и гекс в кольце влияния городка. Дорогу к
-# гексу с улучшением построить можно, но отменить её было нельзя; дорога к
-# городку заканчивается в его кольце влияния, где кнопки тоже не было.
+# The single point for all the branches of _collect_actions. Previously the check of the project lived
+# only in two places - on an empty hex and on the hex of a town, - and it was lost on
+# the early returns: the hex with an improvement and the hex in the influence ring of a town. The road to
+# a hex with an improvement can be built, but it could not be cancelled; the road to the
+# town ends in its influence ring, where there was no button either.
 func _append_cancel_actions(actions: Array, row: int, col: int) -> void:
-    # Обычная стройка: улучшения, спецдействия (осушение, вырубка, сбор,
-    # снос). Имя действия берём из данных стройки, чтобы кнопка называла, что
-    # именно прерывается: «Прервать: Осушение болот», а не «Отменить стройку» —
-    # по кнопке игрок должен понимать, куда он нажал.
+# An ordinary build: the improvements, the special actions (the drainage, the felling, the gathering,
+# the demolition). We take the name of the action from the data of the build, so that the button
+# names what exactly is being interrupted: "Interrupt: Drainage of the marshes", and not "Cancel the
+# build" - by the button the player must understand where he has clicked.
     if build_manager != null and build_manager.is_building(row, col):
         var prog: Dictionary = build_manager.get_progress(row, col)
         var action_name := str(prog.get("imp_name", tr("the construction")))
@@ -809,9 +811,9 @@ func _append_cancel_actions(actions: Array, row: int, col: int) -> void:
             "icon": "cross.svg"
         })
 
-    # Поэтапный проект (дорога). Кнопка появляется на ЛЮБОМ его гексе, а не
-    # только на цели: игрок жмёт туда, где видит стройку, — на прогресс-бар
-    # текущего участка или на участок призрака.
+# A phased project (a road). The button appears on ANY of its hexes, and not
+# only on the target: the player clicks where he sees the build, — on the progress bar of the
+# current segment or on a segment of the ghost.
     if main_map.project_manager == null:
         return
     var project: Dictionary = main_map.project_manager.get_project_at_hex(row, col)
@@ -819,14 +821,14 @@ func _append_cancel_actions(actions: Array, row: int, col: int) -> void:
         return
     actions.append(_make_project_cancel_action(project))
 
-# Кнопка отмены идущего поэтапного проекта.
+# The cancel button of the going phased project.
 #
-# Название берём у проекта («Дорога», «Дорога до городка «X»»), а не пишем
-# родовым «Отменить стройку»: по кнопке должно быть видно, ЧТО прерывается.
-# Число остатка — в кнопке, а не только в диалоге: игрок жмёт с гекса в
-# середине трассы и должен ДО нажатия понимать, что отменяет всю дорогу целиком,
-# а не один участок. Иначе нажатие на середине маршрута выглядит как отмена
-# «вот этого кусочка», а отменяется всё.
+# We take the name from the project ("Road", "Road to the town "X""), and not write
+# the generic "Cancel the build": by the button it must be visible WHAT is being interrupted.
+# The number of the remainder is in the button, and not only in the dialog: the player clicks from a hex in the
+# middle of the route and must understand BEFORE the click that he cancels the whole road,
+# and not one segment. Otherwise the click in the middle of the route looks like a cancellation
+# of "just this piece", while everything is cancelled.
 func _make_project_cancel_action(project: Dictionary) -> Dictionary:
     var steps: Array = project.get("steps", [])
     var done := int(project.get("step_index", 0))
@@ -846,10 +848,10 @@ func _make_project_cancel_action(project: Dictionary) -> Dictionary:
         "icon": "cross.svg"
     }
 
-# Кнопки прерывания для действий ВНЕ Кольца Влияния: разведки и освоения
-# территории. Отдельная от _append_cancel_actions по причине: у них нет
-# улучшения на гексе, и они не идут через build_manager.active_builds, а у
-# разведки к тому же экспедиция одна на всё время (main_map.is_scouting).
+# The interruption buttons for the actions OUTSIDE the Influence Ring: the scouting and the claiming of the
+# territory. It is separate from _append_cancel_actions for a reason: they have no
+# improvement on the hex, and they do not go through build_manager.active_builds, and for
+# the scouting the expedition is one for the whole time (main_map.is_scouting).
 func _append_long_action_cancel(actions: Array, row: int, col: int) -> void:
     if build_manager != null and build_manager.has_method("get_expansion_progress_for_hex"):
         var exp: Dictionary = build_manager.get_expansion_progress_for_hex(row, col)
@@ -873,31 +875,31 @@ func _append_long_action_cancel(actions: Array, row: int, col: int) -> void:
                 "icon": "cross.svg"
             })
 
-# Добавляет спец-действия (special_actions.json), применимые к гексу.
-# Собирает действия для гекса вне Кольца Влияния:
-#   неисследованная область — разведка чанка: до изучения Картографии
-#     только в неисследованной части Региона, после — на всём, что
-#     достижимо скроллом карты (включая туман войны и территорию городков);
-#     и в том, и в другом случае чанк обязан примыкать к известной
-#     территории (Кольцо Влияния или разведанные гексы) — иначе кнопка
-#     разведки показывается неактивной с причиной
-#     (см. main_map.is_chunk_adjacent_to_known);
-#   исследованная область — покупка (освоение), но ТОЛЬКО в пределах Региона.
+# Adds the special actions (special_actions.json) applicable to the hex.
+# Assembles the actions for a hex outside the Influence Ring:
+#   the unexplored area - the scouting of a chunk: before the learning of the Cartography
+#     only in the unexplored part of the Region, after - on everything
+#     reachable by the scrolling of the map (including the fog of war and the territory of the towns);
+#     and in both cases the chunk must border the known
+#     territory (the Influence Ring or the scouted hexes) - otherwise the button
+#     of the scouting is shown inactive with the reason
+#     (see main_map.is_chunk_adjacent_to_known);
+#   the scouted area - the purchase (the claiming), but ONLY within the Region.
 func _collect_region_actions(row: int, col: int) -> Array:
     var actions := []
-    # Прерывание идёт ПЕРЕД всеми ранними return: разведка и освоение —
-    # длительные действия, и кнопка отмены должна появляться на гексе чанка
-    # независимо от того, разведан он уже или нет. Раньше здесь отмены не
-    # было вовсе — экспедицию и освоение можно было только ждать.
+# The interruption goes BEFORE all the early returns: the scouting and the claiming are
+# long actions, and the cancel button must appear on the hex of the chunk
+# regardless of whether it is already scouted or not. Previously there was no
+# cancellation here at all - the expedition and the claiming could only be waited for.
     _append_long_action_cancel(actions, row, col)
     var tile = main_map.get_tile_data(row, col)
     if tile == null:
         return actions
     var chunk = main_map.expansion_manager.get_chunk_hexes(row, col)
     if chunk.is_empty():
-        # Пустой чанк — действий нет, но игрок должен понимать ПОЧЕМУ.
-        # Для исследованного гекса показываем неактивную кнопку освоения
-        # с причиной; для неисследованного пустой чанк не встречается.
+# An empty chunk - there are no actions, but the player must understand WHY.
+# For a scouted hex we show an inactive claiming button
+# with a reason; for an unexplored one an empty chunk does not occur.
         if not bool(tile.get("is_explored", false)):
             return actions
         var reason := ""
@@ -925,19 +927,19 @@ func _collect_region_actions(row: int, col: int) -> Array:
             unexplored_count += 1
 
     if unexplored_count > 0:
-        # Неисследованный чанк: отправить разведчиков. Экспедиция оплачивается
-        # МОНЕТАМИ из казны: цена — сумма по гексам чанка (база
-        # scouting_cost_per_hex и универсальный модификатор дальности
-        # distance_cost_modifier_per_hex из data/game_balance.json, см.
+# An unexplored chunk: send the scouts. The expedition is paid
+# with COINS from the treasury: the price is the sum over the hexes of the chunk (the base
+# scouting_cost_per_hex and the universal modifier of the distance
+# distance_cost_modifier_per_hex from data/game_balance.json, see
         # expansion_manager.get_chunk_scout_cost).
         var cost = main_map.expansion_manager.get_chunk_scout_cost(chunk)
         var scout_time = main_map._get_scouting_time(unexplored_count)
-        # Разведку можно отправить только в чанк, примыкающий к известной
-        # территории (Кольцо Влияния или разведанные гексы) — см.
-        # main_map.is_chunk_adjacent_to_known. Чанк при этом остаётся собранным:
-        # подсветка и неактивная кнопка с причиной объясняют игроку
-        # правило (тот же UX, что у освоения: Область не граничит с вашими
-        # владениями» ниже).
+# The scouting can be sent only into a chunk bordering the known
+# territory (the Influence Ring or the scouted hexes) - see
+# main_map.is_chunk_adjacent_to_known. The chunk remains assembled at that:
+# the highlighting and the inactive button with a reason explain to the player
+# the rule (the same UX as at the claiming: "The area does not border your
+# holdings" below).
         var known_neighbor: bool = main_map.is_chunk_adjacent_to_known(chunk)
         var tooltip: String
         if main_map.is_scouting:
@@ -945,14 +947,14 @@ func _collect_region_actions(row: int, col: int) -> Array:
         elif not known_neighbor:
             tooltip = tr("The area does not border explored territory")
         elif CityData.ignore_build_requirements:
-            # Дебаг: разведка бесплатна и мгновенна. Текст статичный (без
-            # казны и времени), поэтому конвенция _build_actions не нарушается.
+# Debug: the scouting is free and instant. The text is static (without
+# the treasury and the time), therefore the convention of _build_actions is not violated.
             tooltip = tr("Send scouts: instantly and free (debug)")
         else:
-            # ВАЖНО: не включать в тултип значения, меняющиеся КАЖДЫЙ ТИК
-            # (текущую казну, текущий запас еды). _build_actions() сравнивает
-            # тултипы между тиками и пересоздаёт кнопки при любом отличии —
-            # это сбрасывает наведённый тултип. Казну игрок всегда видит в HUD.
+# IMPORTANT: do not include the values changing on EVERY TICK
+# (the current treasury, the current stock of the food) in the tooltip. _build_actions() compares
+# the tooltips between the ticks and recreates the buttons on any difference -
+# it resets the hovered tooltip. The treasury the player always sees in the HUD.
             tooltip = tr("Send scouts: %d coins from the treasury, time [%.0f sec.]") % [cost, scout_time]
         actions.append({
             "type": "scout_chunk",
@@ -965,7 +967,7 @@ func _collect_region_actions(row: int, col: int) -> Array:
         })
         return actions
 
-    # Исследованный чанк: покупка (освоение) за монеты из казны + труд.
+# A scouted chunk: the purchase (the claiming) for the coins from the treasury + the labour.
     var has_neighbor = false
     for hex in chunk:
         for n in HexUtils.get_neighbors_odd_r(hex.row, hex.col, main_map.map_rows, main_map.map_cols):
@@ -981,8 +983,8 @@ func _collect_region_actions(row: int, col: int) -> Array:
     if not has_neighbor:
         buy_tooltip = tr("The area does not border your territory")
     elif CityData.ignore_build_requirements:
-        # Дебаг: освоение бесплатно и мгновенно (см. start_scouting — тот же
-        # принцип в разведке). Текст статичный, как и требует _build_actions.
+# Debug: the claiming is free and instant (see start_scouting - the same
+# principle as in the scouting). The text is static, as _build_actions requires.
         buy_tooltip = tr("Claim the area (%d tiles): instantly and free (debug)") % chunk.size()
     else:
         buy_tooltip = tr("Claim the area (%d tiles): %d coins from the treasury and %d work (%.0f sec.)") % [chunk.size(), money_cost, work_cost, work_cost / max(1.0, labor)]
@@ -1004,9 +1006,9 @@ func _add_special_actions(actions: Array, row: int, col: int, tile: Dictionary):
         var action_type = sa.get("action_type", "terrain")
         var applicable = false
         if action_type == "terrain":
-            # Террейн-действие. source_terrains — список типов местности 
-            # (напр. осушение болота), либо один source_terrain (обратная 
-            # совместимость).
+# A terrain action. source_terrains is a list of the types of the terrain
+# (for example, the drainage of a marsh), or a single source_terrain (the backward
+# compatibility).
             var terrain_list: Array = sa.get("source_terrains", [])
             if terrain_list.is_empty():
                 terrain_list = [sa.get("source_terrain", "")]
@@ -1015,10 +1017,10 @@ func _add_special_actions(actions: Array, row: int, col: int, tile: Dictionary):
             var cover_id = tile.get("cover", "none")
             applicable = cover_id in sa.get("source_cover", []) and tile.improvement == null and tile.resource == null
         elif action_type == "forage":
-            # Универсальное действие «Собрать ресурс» для одноразовых ресурсов
-            # (дикоросы, самородки металлов и т.п.). Одноразовость определяется
-            # флагом самого ресурса: improved_by == null (не разрабатывается
-            # улучшением) и непустой produces (есть что собрать).
+# The universal action "Gather the resource" for the one-off resources
+# (the wild plants, the metal nuggets and so on). The one-off nature is determined
+# by the flag of the resource itself: improved_by == null (it is not developed
+# by an improvement) and a non-empty produces (there is something to gather).
             var harvest_res_id: String = str(tile.get("resource", ""))
             if harvest_res_id != "" and MapHelpers.is_resource_revealed(tile):
                 var harvest_data: Dictionary = GameData.raw_resources.get(harvest_res_id, {})
@@ -1030,20 +1032,20 @@ func _add_special_actions(actions: Array, row: int, col: int, tile: Dictionary):
         elif action_type == "demolish":
             applicable = tile.improvement != null
         elif action_type == "road":
-            # Дорога, которую строит игрок. Кнопка показывается на гексе, к
-            # которому дороги ещё нет. Проверки здесь только дешёвые (панель
-            # пересобирает действия каждый тик): гекс сухой, улучшения с
-            # флагом no_road нет (к ирригационному каналу дорога по дизайну
-            # не строится — см. road_manager._find_connect_path), и гекс ещё
-            # не подключён к сети дорог города.
-            # Длину трассы и цену считает превью — main_map.get_road_plan.
+# The road, which the player builds. The button is shown on the hex to
+# to which there is still no road. The checks here are only the cheap ones (the panel
+# rebuilds the actions on every tick): the hex is dry, there is no improvement with
+# the flag no_road (a road is not built to the irrigation canal by design
+# - see road_manager._find_connect_path), and the hex is not
+# yet connected to the road network of the city.
+# The length of the route and the price are counted by the preview - main_map.get_road_plan.
             applicable = not MapHelpers.is_water_terrain(tile.get("terrain", "plain")) \
                     and not main_map.road_manager.is_hex_connected(row, col)
             if applicable and tile.get("improvement", null) != null:
                 var tile_imp: Dictionary = GameData.improvements.get(tile.improvement, {})
                 applicable = not bool(tile_imp.get("no_road", false))
-            # Дорога к гексу уже строится (поэтапный проект): вторую очередь
-            # на тот же маршрут не создаём, вместо кнопки — отмена проекта.
+# The road to the hex is already being built (a phased project): we do not create a second
+# queue for the same route, instead of the button there is the cancellation of the project.
             if applicable and main_map.project_manager != null \
                     and main_map.project_manager.has_project_at(row, col):
                 applicable = false
@@ -1051,23 +1053,23 @@ func _add_special_actions(actions: Array, row: int, col: int, tile: Dictionary):
             continue
 
         if action_type == "road":
-            # У города: цель — сам гекс. У городка цель другая (кольцо
-            # влияния), там кнопку собирает ветка городка в _collect_actions.
+# At the city: the target is the hex itself. At a town the target is different (the influence
+# ring), there the button is assembled by the branch of the town in _collect_actions.
             _append_special_action(actions, sa_id, sa,
                     tr("Build a road from the city to this hex"))
         else:
             _append_special_action(actions, sa_id, sa)
 
-# Кнопка «Улучшить дорогу» для гекса (row, col).
+# The "Improve the road" button for the hex (row, col).
 #
-# Показывается, только когда улучшать ЕСТЬ ЧТО: до гекса уже есть маршрут до
-# города, и хотя бы один его участок ниже лучшего доступного уровня. Иначе
-# кнопка с недостижимой целью — шум в колонке действий.
+# It is shown only when there IS something to improve: there is already a route to the
+# city up to the hex, and at least one of its segments is below the best available level. Otherwise
+# a button with an unreachable target is a noise in the column of the actions.
 #
-# Улучшается ВЕСЬ маршрут от города до гекса, а не только последний участок:
-# скорость маршрута определяется самым узким участком (см.
-# road_manager.find_route_to_city), поэтому улучшение одного конца ничего не
-# даёт — игрок должен видеть это в тултипе.
+# The WHOLE route from the city to the hex is improved, and not only the last segment:
+# the speed of the route is determined by the narrowest segment (see
+# road_manager.find_route_to_city), therefore the improvement of one end gives
+# nothing - the player must see this in the tooltip.
 func _append_upgrade_road_action(actions: Array, row: int, col: int) -> void:
     if main_map == null or not main_map.has_method("get_route_to_city"):
         return
@@ -1078,12 +1080,12 @@ func _append_upgrade_road_action(actions: Array, row: int, col: int) -> void:
     if levels.is_empty():
         return
     var best_level := GameData.get_max_unlocked_road_level()
-    # Улучшать имеет смысл, пока на маршруте есть хоть ОДИН участок ниже
-    # лучшего уровня — то есть проверяется МИНИМУМ, а не максимум.
-    # С максимумом кнопка пряталась на частично улучшенном маршруте: стоит
-    # улучшить один участок из четырёх, максимум становится равен лучшему
-    # уровню, и кнопка исчезает — хотя три тропки остаются и улучшать есть
-    # что. Раньше это выглядело как «маршрут уже улучшен».
+# It makes sense to improve as long as there is at least ONE segment on the route below
+# the best level - that is, the MINIMUM is checked, and not the maximum.
+# With the maximum the button hid on a partially improved route: once
+# you improve one segment out of the four, the maximum becomes equal to the best
+# level, and the button disappears - although three trails remain and there is
+# something to improve. Previously it looked like "the route is already improved".
     var worst_level := 999
     for level in levels:
         worst_level = mini(worst_level, int(level))
@@ -1099,10 +1101,10 @@ func _append_upgrade_road_action(actions: Array, row: int, col: int) -> void:
         "icon": "road.svg"
     })
 
-# Собирает кнопку спецдействия в колонке действий: учитывает требование
-# технологии и общий лимит строек. tooltip_override (если задан) заменяет
-# название в тултипе — им пользуется дорога, у которой текст зависит от
-# цели (обычный гекс или городок).
+# Assembles the button of a special action into the column of the actions: it takes into account the requirement
+# of the technology and the common limit of the builds. tooltip_override (if it is set) replaces
+# the name in the tooltip - the road uses it, because its text depends on the
+# target (an ordinary hex or a town).
 func _append_special_action(actions: Array, sa_id: String, sa: Dictionary, tooltip_override: String = "") -> void:
     var sa_name = sa.get("name", sa_id)
     var enabled = true
@@ -1111,9 +1113,9 @@ func _append_special_action(actions: Array, sa_id: String, sa: Dictionary, toolt
     if unlock_tech != "" and not CityData.is_tech_unlocked(unlock_tech):
         enabled = false
         tooltip = tr("%s — requires technology: %s") % [sa_name, _get_tech_name(unlock_tech)]
-        # Кнопка изучения СЛЕДУЮЩЕГО не изученного шага технологической
-        # цепочки, необходимой для разблокировки спецдействия (аналог
-        # механики для ресурсов/улучшений, см. _collect_actions).
+# The button of the learning of the NEXT unlearned step of the technological
+# chain necessary to unlock the special action (an analogue of
+# the mechanics for the resources/improvements, see _collect_actions).
         var chain = CityData.get_tech_study_chain(unlock_tech)
         if not chain.is_empty():
             actions.append(_make_research_action(chain[0], sa_name))
@@ -1127,14 +1129,14 @@ func _append_special_action(actions: Array, sa_id: String, sa: Dictionary, toolt
         "enabled": enabled,
         "tooltip": tooltip,
         "action_id": sa_id,
-        # Иконка берётся из special_actions.json (имя файла в icons/).
+# The icon is taken from special_actions.json (the file name in icons/).
         "icon": sa.get("icon", "")
     })
 
-# Формирует действие «Изучить технологию» для колонки действий панели.
-# for_what — причина изучения, подставляется в тултип (название ресурса/
-# улучшения для ресурсов или название спецдействия для действий).
-func _make_research_action(tech_id: String, for_what: String = "ресурса") -> Dictionary:
+# Assembles the action "Learn the technology" for the column of the actions of the panel.
+# for_what is the reason of the learning, it is substituted into the tooltip (the name of the resource/
+# improvement for the resources, or the name of the special action for the actions).
+func _make_research_action(tech_id: String, for_what: String = "the resource") -> Dictionary:
     var tech_name = _get_tech_name(tech_id)
     var tech_cost = 3
     for t in GameData.technologies:
@@ -1150,27 +1152,27 @@ func _make_research_action(tech_id: String, for_what: String = "ресурса")
         "icon": "lock.png"
     }
 
-# --- Обработка нажатия на кнопку действия ---
+# --- The handling of a click on an action button ---
 func _on_action_pressed(action: Dictionary):
     var type = action.get("type", "")
     if type == "info":
         return
     if type == "open_town":
-        # Переход в интерфейс городка (торговля). Сам переход выполняет
-        # main_map.open_town_ui (спрячет HUD и панель управления).
+# The transition into the interface of the town (the trade). The transition itself is done by
+# main_map.open_town_ui (it hides the HUD and the control panel).
         if _selected_hex != null:
             main_map.open_town_ui(_selected_hex.row, _selected_hex.col)
         return
     if type == "scout_chunk":
-        # Разведка чанка: списываем монеты из казны и отправляем разведчиков
-        # (время). Цена считается внутри start_scouting — единый источник истины.
+# The scouting of a chunk: we write off the coins from the treasury and send the scouts
+# (the time). The price is counted inside start_scouting - the single source of truth.
         main_map.start_scouting(action.get("chunk", []))
         main_map.redraw_progress_layer()
         _refresh()
         return
     if type == "buy_chunk":
-        # Покупка (освоение) чанка: монеты из казны сразу, труд накапливается
-        # через стройку.
+# The purchase (the claiming) of a chunk: the coins from the treasury at once, the labour accumulates
+# through the build.
         var ok = main_map.expansion_manager.handle_action(
             action.get("chunk", []), action.get("money_cost", 0), action.get("work_cost", 0))
         if ok:
@@ -1179,7 +1181,7 @@ func _on_action_pressed(action: Dictionary):
                 main_map.city_ui.refresh()
         _refresh()
         return
-    # Действия, которые выполняются сразу (без превью).
+# The actions which are performed at once (without a preview).
     if type == "pause_improvement":
         worker_manager.remove_worker(_selected_hex.row, _selected_hex.col)
         main_map.map_renderer.queue_redraw()
@@ -1195,8 +1197,8 @@ func _on_action_pressed(action: Dictionary):
         main_map.confirm_cancel_build(_selected_hex.row, _selected_hex.col)
         return
     if type == "cancel_project":
-        # Проект передаётся по id, а не ищется по нажатому гексу: кнопка
-        # появляется на ЛЮБОМ гексе трассы, а не только на цели.
+# The project is passed by the id, and not searched by the clicked hex: the button
+# appears on ANY hex of the route, and not only on the target.
         if main_map.project_manager != null:
             main_map.confirm_cancel_project(str(action.get("project_id", "")))
         return
@@ -1209,16 +1211,16 @@ func _on_action_pressed(action: Dictionary):
             main_map.confirm_cancel_scouting(_selected_hex.row, _selected_hex.col)
         return
     if type == "research_tech":
-        # Аналог пункта «Изучить X» в контекстном меню (ПКМ): мгновенный старт
-        # исследования. Ошибки (уже идёт исследование и т.п.) start_research
-        # сообщает сама через сигнал research_error → hud.show_message.
+# An analogue of the item "Learn X" in the context menu (the right click): the instant start
+# of the research. The errors (a research is already going and so on) start_research
+# reports itself through the signal research_error -> hud.show_message.
         CityData.start_research(action.get("tech_id", ""))
         main_map.map_renderer.queue_redraw()
         _refresh()
         return
 
-    # Повторное нажатие на кнопку действия, чьё превью уже открыто,
-    # работает как «отмена» (закрывает превью).
+# A repeated click on the action button whose preview is already open
+# works as a "cancel" (it closes the preview).
     if _preview_action != null \
             and _preview_action.get("type", "") == type \
             and _preview_action.get("imp_id", "") == action.get("imp_id", "") \
@@ -1227,13 +1229,13 @@ func _on_action_pressed(action: Dictionary):
         clear_preview()
         return
 
-    # Действия с превью (постройка улучшения, разведение, спец-действие,
-    # улучшение дороги).
+# The actions with a preview (the construction of an improvement, the breeding, a special action,
+# the improvement of the road).
     #
-    # Для улучшения дороги eff_res НЕ вычисляется: это ресурс гекса, который
-    # к улучшению дороги отношения не имеет. Раньше он подставлялся в превью,
-    # и блок производства рисовал выпуск улучшения, которое игрок и не
-    # собирался строить.
+# For the improvement of the road eff_res is NOT computed: it is the resource of the hex, which
+# has nothing to do with the improvement of the road. Previously it was substituted into the preview,
+# and the block of the production drew the output of an improvement which the player was not
+# going to build at all.
     var eff_res_for_preview = action.get("target_res_id", null)
     if eff_res_for_preview == null or eff_res_for_preview == "":
         if type != UPGRADE_ROAD_TYPE:
@@ -1247,20 +1249,20 @@ func _on_action_pressed(action: Dictionary):
         "label": action.get("label", ""),
         "eff_res": eff_res_for_preview,
         "selected_culture_id": null,
-        # Уровень дороги по умолчанию — лучший доступный. Именно его
-        # предлагает правило «по умолчанию предлагаются самые продвинутые
-        # версии»; любой другой игрок выбирает кнопкой в превью.
+# The default road level is the best available. Exactly it is
+# offered by the rule "by default the most advanced versions are offered"; any other one
+# the player chooses by the button in the preview.
         "road_level": GameData.get_max_unlocked_road_level(),
     }
     _refresh()
 
-# --- Построение предпросмотра действия ---
+# --- The building of the preview of the action ---
 func _build_preview(row: int, col: int, tile: Dictionary):
     var preview = _preview_action
 
-    # Если предпросмор для этого гекса и этого действия уже построен — не
-    # пересоздаём элементы (в т.ч. кнопки «Начать»/«Отменить» с их
-    # ОС-тултипами). Иначе они сбрасывались бы каждый игровой тик.
+# If the preview for this hex and this action is already built - we do
+# not recreate the elements (incl. the "Start"/"Cancel" buttons with their
+# OS tooltips). Otherwise they would be reset on every game tick.
     var snapshot = {
         "row": row,
         "col": col,
@@ -1271,14 +1273,18 @@ func _build_preview(row: int, col: int, tile: Dictionary):
         "target_res_id": preview.get("target_res_id", null),
         "eff_res": preview.get("eff_res", ""),
         "selected_culture_id": preview.get("selected_culture_id", null),
-        # Состояние дебаг-флага входит в снапшот: переключение «Игнорировать
-        # требования строительства» меняет блок превью, и без этого поля он
-        # остался бы старым до перевыбора гекса.
+# The state of the debug flag enters the snapshot: the toggling of "Ignore
+# of the construction" changes the preview block, and without this field it
+# would have remained old until the reselection of a hex.
+# The road level enters the snapshot as well: a change of the level rebuilds
+# the whole preview block (the price, the number of the segments, the label), and without this field
+# the preview would have remained from the previous level - the player would have seen the price
+# of a trail, and built a cart road.
         "ignore_build": CityData.ignore_build_requirements,
-        # Уровень дороги — ТОЖЕ входит в снапшот: смена уровня перестраивает
-        # весь блок превью (цену, число участков, подпись), и без этого поля
-        # превью осталось бы от предыдущего уровня — игрок бы увидел цену
-        # тропки, а построил бы тележную дорогу.
+# The road level enters the snapshot as well: a change of the level rebuilds
+# the whole preview block (the price, the number of the segments, the label), and without this field
+# the preview would have remained from the previous level - the player would have seen the price
+# of a trail, and built a cart road.
         "road_level": int(preview.get("road_level", GameData.get_max_unlocked_road_level())),
     }
     if _preview_equal(_last_preview_snapshot, snapshot):
@@ -1295,9 +1301,9 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     var action_id = preview.get("action_id", "")
     var eff_res = preview.get("eff_res", "")
 
-    # Для ферм/пастбищ эффективный ресурс — выбранная культура (растение/животное),
-    # а не то, что лежит на гексе сейчас: на пустом гексе природного ресурса нет,
-    # и без этого «Будет производить» в превью не показывалось.
+# For the farms/pastures the effective resource is the chosen crop (a plant/animal),
+# and not what lies on the hex at the moment: on an empty hex there is no natural resource,
+# and without this "Will produce" was not shown in the preview.
     if type == "build_breeding":
         var imp_kind_cult = preview.get("imp_id", "")
         var cult_id = preview.get("selected_culture_id", null)
@@ -1307,10 +1313,10 @@ func _build_preview(row: int, col: int, tile: Dictionary):
         if cult_id != null:
             eff_res = cult_id
 
-    # Строка заголовка превью: подпись + кнопки «Начать» и «Отменить» (40×40,
-    # с иконками зелёной галочки / красного косого креста). Строится в
-    # ОТДЕЛЬНОМ контейнере над PreviewScroll — вне прокручиваемой области,
-    # поэтому видна всегда при любом положении скролла.
+# The heading row of the preview: the label + the buttons "Start" and "Cancel" (40x40,
+# with the icons of a green check mark / a red cross mark). It is built in a
+# SEPARATE container above PreviewScroll - outside the scrollable area,
+# therefore it is always visible at any position of the scroll.
     var header = HBoxContainer.new()
     header.add_theme_constant_override("separation", 4)
     var header_label = Label.new()
@@ -1320,7 +1326,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     header_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     header.add_child(header_label)
     var build_btn = Button.new()
-    build_btn.custom_minimum_size = Vector2(40, 40) # маленькая квадратная кнопка
+    build_btn.custom_minimum_size = Vector2(40, 40) # a small square button
     build_btn.tooltip_text = tr("Start")
     build_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
     var check_tex = _load_action_icon("check.svg")
@@ -1351,17 +1357,17 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     header.add_child(cancel_btn)
     _preview_header_container.add_child(header)
 
-    # --- Для разведения: выбор конкретной культуры ---
-    # Блок размещён сразу под заголовком, до расчётов производства и стоимости:
-    # выбранный вид виден первым и не теряется в конце длинного списка.
-    # Если на гексе можно выращивать/разводить несколько одомашненных видов,
-    # даём выбрать, под какую именно культуру строить. Иначе строится
-    # единственная подходящая культура (текущее поведение).
+# --- For the breeding: the choice of a specific crop ---
+# The block is placed right below the heading, before the calculations of the production and the cost:
+# the chosen kind is visible first and is not lost at the end of a long list.
+# If several domesticated kinds can be grown/bred on the hex,
+# we let one choose which crop to build for. Otherwise the only
+# suitable crop is built (the current behaviour).
     if type == "build_breeding":
         var imp_kind = preview.get("imp_id", "")
         var crops := _get_suitable_crops(row, col, imp_kind)
         if crops.size() > 1:
-            # По умолчанию предвыбираем первую культуру из списка.
+# By default we preselect the first crop from the list.
             var selected = preview.get("selected_culture_id", null)
             if selected == null:
                 selected = crops[0].id
@@ -1373,7 +1379,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
             cult_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
             _preview_container.add_child(cult_label)
 
-            # Кнопки культур идут горизонтальным рядом с переносом строк.
+# The buttons of the crops go in a horizontal row with a wrapping of the rows.
             var cult_flow = FlowContainer.new()
             cult_flow.add_theme_constant_override("h_separation", 4)
             cult_flow.add_theme_constant_override("v_separation", 4)
@@ -1381,10 +1387,10 @@ func _build_preview(row: int, col: int, tile: Dictionary):
 
             for cult in crops:
                 var cult_btn = Button.new()
-                cult_btn.custom_minimum_size = Vector2(40, 40) # квадратная кнопка с иконкой
-                # Тултип — название ресурса (иконка без подписи).
+                cult_btn.custom_minimum_size = Vector2(40, 40) # a square button with an icon
+# The tooltip is the name of the resource (an icon without a label).
                 cult_btn.tooltip_text = cult.get("name", cult.id)
-                # Иконка одомашненного вида; если её нет — знак вопроса.
+# The icon of the domesticated kind; if there is none - a question mark.
                 var cult_icon = GameData.raw_resources.get(cult.id, {}).get("icon", "")
                 var cult_tex = _load_action_icon(cult_icon)
                 if cult_tex != null:
@@ -1395,10 +1401,10 @@ func _build_preview(row: int, col: int, tile: Dictionary):
                     cult_btn.text = "?"
                 cult_btn.toggle_mode = true
                 cult_btn.set_pressed_no_signal(cult.id == selected)
-                # Явная рамка у выбранной культуры.
+# An explicit frame around the chosen crop.
                 var pressed_style = StyleBoxFlat.new()
                 pressed_style.set_border_width_all(2)
-                pressed_style.border_color = Color(1.0, 0.85, 0.2) # жёлтая рамка
+                pressed_style.border_color = Color(1.0, 0.85, 0.2) # a yellow frame
                 cult_btn.add_theme_stylebox_override("pressed", pressed_style)
                 cult_btn.add_theme_stylebox_override("hover_pressed", pressed_style)
                 cult_btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
@@ -1408,14 +1414,14 @@ func _build_preview(row: int, col: int, tile: Dictionary):
                 )
                 cult_flow.add_child(cult_btn)
 
-    # Для спец-действий стоимость считается по action_id, а не по imp_id.
+# For the special actions the cost is counted by action_id, and not by imp_id.
     var cost_imp_id = imp_id
     if type == "special":
         cost_imp_id = action_id
 
-    # Лесная делянка на пустом лесном гексе (eff_res == ""): показываем
-    # выход древесины из покрова (wood_yield в covers.json). Будущие покровы
-    # с wood_yield > 0 подхватятся автоматически.
+# A forest plot on an empty forest hex (eff_res == ""): we show
+# the output of the wood from the cover (wood_yield in covers.json). The future covers
+# with wood_yield > 0 will be picked up automatically.
     if type == "build_improvement" and imp_id == "lumberjack_hut" and eff_res == "":
         var lj_yield: float = MapHelpers.get_cover_wood_yield(tile)
         if lj_yield > 0.0:
@@ -1423,7 +1429,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
             var lj_mult = CityData.get_improvement_production_multiplier(
                 "lumberjack_hut", lj_has_water, tile.get("terrain", ""), "lumberjack_hut")
             var lj_amount = ceili(lj_yield * lj_mult)
-            # Показ — посекундный: выпуск цикла, делённый на production_interval.
+# The display is per second: the output of the cycle, divided by production_interval.
             var lj_interval := CityData.get_improvement_production_interval("lumberjack_hut")
             var lj_per_sec: float = float(lj_amount) / lj_interval
             var wood_data = GameData.products.get("wood", {})
@@ -1441,34 +1447,34 @@ func _build_preview(row: int, col: int, tile: Dictionary):
             map_tooltip.render_products(lj_products, lj_box, true)
             _preview_container.add_child(lj_box)
 
-    # Расчёт производства — только для ПОСТРОЙКИ улучшения и разведения.
-    # Типы перечислены явно, а не «всё, кроме спецдействий»: улучшение дороги
-    # тоже не special, и при таком условии оно попадало сюда и рисовало «Будет
-    # производить» на гексе, где улучшение уже стоит. Игрок нажал кнопку
-    # улучшения дороги ради дороги, а блок производства — это «будущее»
-    # улучшения, которого он не строит. Он же вытеснял селектор уровней дорог
-    # вниз и заставлял прокручивать превью.
+# The calculation of the production - only for the CONSTRUCTION of an improvement and the breeding.
+# The types are listed explicitly, and not "everything except the special actions": the improvement of the road
+# is also not special, and under such a condition it landed here and drew "Will
+# produce" on the hex where the improvement already stands. The player clicked the button
+# of the improvement of the road for the road, and the block of the production is a "future"
+# of an improvement which he is not going to build. It also pushed the selector of the road levels
+# down and forced the preview to be scrolled.
     if (type == "build_improvement" or type == "build_breeding") and eff_res != "":
         var res_data = GameData.raw_resources.get(eff_res, {})
         if res_data.has("produces"):
-            # Множитель производства с учётом модификаторов (вода, местность, технологии).
+# The multiplier of the production taking the modifiers into account (the water, the terrain, the technologies).
             var has_water = MapHelpers.is_hex_irrigated(row, col, main_map.tile_data, main_map.map_rows, main_map.map_cols)
             var terrain_id = tile.get("terrain", "")
             var bonus_multiplier = CityData.get_improvement_production_multiplier(imp_id, has_water, terrain_id, eff_res)
             var modifiers = CityData.get_improvement_production_modifiers(imp_id, has_water, terrain_id, eff_res)
-            # Показ — посекундный: выпуск цикла, делённый на production_interval
-            # улучшения (поле в data/improvements.json).
+# The display is per second: the output of the cycle, divided by production_interval
+# of the improvement (the field in data/improvements.json).
             var prod_interval := CityData.get_improvement_production_interval(imp_id)
 
             var products := []
             products.append({"type": "header", "text": tr("Will produce:")})
             for prod_id in res_data["produces"]:
-                # produces может быть числом или диапазоном [min, max] — в
-                # превью показываем детерминированный минимум (см. RangeUtils).
+# produces can be a number or a range [min, max] - in the
+# preview we show the deterministic minimum (see RangeUtils).
                 var base_amount = float(RangeUtils.get_min_value(res_data["produces"][prod_id], 1))
                 var final_amount = ceili(base_amount * bonus_multiplier)
                 var prod_name = GameData.products.get(prod_id, {}).get("name", prod_id)
-                # При активных модификаторах база указывается у каждого продукта.
+# With the active modifiers the base is indicated for each product.
                 if bonus_multiplier != 1.0:
                     var base_str = str(int(base_amount)) if base_amount == floor(base_amount) else "%.1f" % base_amount
                     prod_name = tr("%s (base %s)") % [prod_name, base_str]
@@ -1480,49 +1486,49 @@ func _build_preview(row: int, col: int, tile: Dictionary):
                 products.append({"type": "product", "name": prod_name, "amount": float(final_amount) / prod_interval, "icon_path": icon_path, "suffix": tr(" units/sec")})
             for mod in modifiers:
                 products.append({"type": "label", "text": " %s" % mod.get("label", ""), "color": Color(0.7, 0.9, 0.7)})
-            # Рендерим в ОТДЕЛЬНЫЙ бокс: render_products очищает переданный
-            # контейнер, поэтому нельзя давать ему _preview_container напрямую —
-            # иначе он стирает блок выбора культуры, добавленный выше.
+# We render into a SEPARATE box: render_products cleans the passed
+# container, therefore we must not give it _preview_container directly -
+# otherwise it erases the block of the choice of the crop, added above.
             var products_box = VBoxContainer.new()
             map_tooltip.render_products(products, products_box, true)
             _preview_container.add_child(products_box)
 
-    # Дорога (спецдействие «Построить дорогу») — свой блок вместо общего
-    # разбора «местность/расстояние»: её цена зависит от длины новой
-    # трассы, а эти множители к дороге не применяются.
+# The road (the special action "Build a road") - its own block instead of the common
+# parsing of "terrain/distance": its price depends on the length of the new
+# route, and these multipliers do not apply to the road.
     if type == "special" and _is_road_action(action_id):
         _build_road_level_selector(int(preview.get("road_level", 1)))
         if not _build_road_preview(row, col, action_id):
-            # Трассы нет — подтверждать нечего, кнопка «Начать» блокируется.
+# There is no route - there is nothing to confirm, the "Start" button is blocked.
             build_btn.disabled = true
         return
 
-    # Улучшение дороги — свой блок: участки уже стоят, платится только
-    # разница уровней, и показывается это по той же схеме, что и постройка.
+# The improvement of the road - its own block: the segments already stand, only
+# the difference of the levels is paid, and it is shown by the same scheme as the construction.
     if type == UPGRADE_ROAD_TYPE:
         _build_road_level_selector(int(preview.get("road_level", 1)))
         if not _build_road_upgrade_preview(row, col):
             build_btn.disabled = true
         return
 
-    # Улучшение: дорога к нему строится вместе с ним, поэтому её уровень —
-    # такой же выбор, как у «Построить дорогу». Селектор ставим ДО расчёта
-    # цены: цена ниже включает доплату за дорогу выбранного уровня, и без
-    # кнопки игрок не видел бы, откуда взялась эта сумма.
+# The improvement: the road to it is built together with it, therefore its level is
+# the same choice as for "Build a road". We place the selector BEFORE the calculation of the
+# price: the price below includes the surcharge for the road of the chosen level, and without
+# the button the player would not see where this sum came from.
     if type == "build_improvement" or type == "build_breeding":
         _build_road_level_selector(int(preview.get("road_level", 1)))
 
-    # Стоимость труда: детальный расчёт (база, местность, расстояние).
-    # Расчёт берём из main_map — тот же источник, что и в build_manager, поэтому
-    # превью и старт показывают одну и ту же цену. Дорога к улучшению приходит
-    # оттуда же и отдельными числами: в цену самого улучшения она не входит.
+# The cost of the labour: the detailed calculation (the base, the terrain, the distance).
+# We take the calculation from main_map - the same source as in build_manager, therefore
+# the preview and the start show one and the same price. The road to the improvement comes
+# from there as well and by separate numbers: it is not included in the price of the improvement itself.
     var road_level := int(preview.get("road_level", 1))
     var cost_data = main_map.get_improvement_work_cost(cost_imp_id, row, col, road_level)
-    # Дорога к гексу полагается только УЛУЧШЕНИЮ. Спецдействия (сбор дикоросов,
-    # вырубка леса, осушение, снос улучшения) выполняются обычной стройкой и
-    # дорог не строят вовсе, поэтому main_map отдаёт для них road_applicable =
-    # false. Рисовать им строки про дорогу значило бы обещать игроку постройку,
-    # которой не будет, а «Итого» — сумму с её ценой.
+# The road to the hex is assumed ONLY for the IMPROVEMENT. The special actions (the gathering of the wild plants,
+# the felling of the forest, the drainage, the demolition of an improvement) are performed by an ordinary build and
+# build no roads at all, therefore main_map gives road_applicable =
+# false for them. Drawing the rows about the road for them would mean promising the player a construction
+# which will not happen, and a "Total" - a sum with its price.
     var road_applicable: bool = bool(cost_data.get("road_applicable", false))
     var road_cost := int(cost_data.get("road_cost", 0))
     var road_segments := int(cost_data.get("road_segments", 0))
@@ -1532,21 +1538,21 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     cost_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
     _preview_container.add_child(cost_label)
 
-    # Дорога к улучшению — отдельной строкой, всегда, когда дорога вообще может
-    # строиться: игрок должен видеть, во сколько обойдётся вторая половина
-    # постройки, и понимать, что она не бесплатна (даже базовая тропка). Когда
-    # дорога не нужна — гекс уже подключён, улучшение с флагом no_road,
-    # сухопутного пути нет — вместо нулевой цены пишем, что её не будет:
-    # «0 труда» читалось бы как «даром».
+# The road to the improvement is a separate row, always, when the road can be built
+# at all: the player must see how much the second half of the construction
+# will cost, and understand that it is not free (even the base trail). When
+# the road is not needed - the hex is already connected, the improvement with the flag no_road,
+# there is no land route - instead of a zero price we write that there will not be one:
+# "0 of labour" would be read as "for free".
     if road_applicable:
         var road_hint := Label.new()
         if road_segments > 0:
             road_hint.text = tr(" Road to the city (%s): %d work, %d new sections") % [
                     GameData.get_road_name(road_level), road_cost, road_segments]
         elif bool(cost_data.get("road_pending", false)):
-            # Дорога к гексу уже идёт вторым проектом (улучшение отклонили по
-            # лимиту) — показывать её цену второй раз нельзя, её уже оплачивает
-            # та очередь.
+# The road to the hex is already going as a second project (the improvement was refused due to
+# the limit) - we must not show its price a second time, that queue
+# already pays for it.
             road_hint.text = tr(" Road to the city: already under construction")
         else:
             road_hint.text = tr(" Road to the city: not needed")
@@ -1554,9 +1560,9 @@ func _build_preview(row: int, col: int, tile: Dictionary):
         road_hint.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
         _preview_container.add_child(road_hint)
 
-        # Поэтапность и параллельный старт видны только по подтверждению, а сказать
-        # о них нужно ДО него: иначе игрок ждёт готовую дорогу целиком и не
-        # понимает, почему она появляется по кускам.
+# The phased nature and the parallel start are visible only by the confirmation, and to talk
+# about them it is needed BEFORE it: otherwise the player waits for the finished road as a whole and does not
+# understand why it appears in pieces.
         if road_segments > 0:
             var road_steps_hint := Label.new()
             road_steps_hint.text = tr(" The road is built in sections, in parallel with the improvement")
@@ -1564,7 +1570,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
             road_steps_hint.add_theme_color_override("font_color", Color(0.8, 0.85, 0.95))
             _preview_container.add_child(road_steps_hint)
 
-    # Детализация стоимости (переехала сюда из расширенного тултипа).
+# The details of the cost (it moved here from the extended tooltip).
     var base_label = Label.new()
     base_label.text = tr(" Base: %d work") % cost_data["base_cost"]
     base_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1579,9 +1585,9 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     _preview_container.add_child(terrain_label)
 
     var dist_label = Label.new()
-    # Расчёт множителя расстояния: исходный (1 + гексов × УНИВЕРСАЛЬНЫЙ
-    # модификатор дальности из data/game_balance.json) плюс влияние изученных
-    # технологий (например, «Колесо» -30%).
+# The calculation of the multiplier of the distance: the initial (1 + hexes × the UNIVERSAL
+# modifier of the distance from data/game_balance.json) plus the influence of the learned
+# technologies (for example, "The Wheel" -30%).
     var dist_text: String = tr(" Distance to city: %d hex(es) → base ×%.2f") % [cost_data["distance"], cost_data["distance_mult_base"]]
     if cost_data.has("distance_tech_mult") and cost_data["distance_tech_mult"] != 1.0:
         dist_text += tr(", technology ×%.2f") % cost_data["distance_tech_mult"]
@@ -1600,9 +1606,9 @@ func _build_preview(row: int, col: int, tile: Dictionary):
     const_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
     _preview_container.add_child(const_label)
 
-    # Итог — улучшение ПЛЮС дорога к нему, поэтому строка есть только там, где
-    # дорога действительно строится. Без неё суммировать нечего, и «Итого» был бы
-    # копией цены строчкой выше (для спецдействий — именно так и выходило).
+# The total is the improvement PLUS the road to it, therefore the row is only there where
+# the road really is built. Without it there is nothing to sum, and the "Total" would be
+# a copy of the price of the row above (for the special actions it came out exactly so).
     if road_applicable:
         var total_label = Label.new()
         total_label.text = tr(" Total: %d work") % cost_data["total_cost"]
@@ -1610,14 +1616,14 @@ func _build_preview(row: int, col: int, tile: Dictionary):
         total_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
         _preview_container.add_child(total_label)
 
-    # Дебаг «Игнорировать требования строительства»: цена выше остаётся
-    # расчётом «как было бы без флага», а выполняться действие будет сразу и
-    # бесплатно. Без этой строки игрок видел бы цену и не понимал, почему
-    # прогресс-бар не появляется.
+# The debug "Ignore building requirements": the price above remains
+# the calculation of "how it would be without the flag", and the action will be performed at once and
+# for free. Without this row the player would see a price and not understand why
+# the progress bar does not appear.
     if CityData.ignore_build_requirements:
         _add_instant_hint()
 
-# Жёлтая строка «выполняется мгновенно» для блоков превью.
+# A yellow row "it is performed instantly" for the blocks of the preview.
 func _add_instant_hint() -> void:
     var hint := Label.new()
     hint.text = tr(" Debug: instant and free")
@@ -1625,17 +1631,17 @@ func _add_instant_hint() -> void:
     hint.add_theme_color_override("font_color", Color(0.9, 0.9, 0.5))
     _preview_container.add_child(hint)
 
-# Синхронизирует «призрачную» дорогу и подсветку МАРШРУТА на карте с текущим
-# состоянием панели. Три случая, и порядок важен:
-#   · открыто превью улучшения дороги — рисуем призрак улучшаемых участков
-#     (тот же стиль, что и при постройке, — участки уже стоят, но игрок должен
-#     видеть, какой из них улучшается);
-#   · открыто превью «Построить дорогу» — рисуем новые сегменты плана;
-#   · превью нет — рисуем СУЩЕСТВУЮЩИЙ маршрут выбранного гекса до города.
-# Последнее и есть требование «при нажатии на улучшение показывать маршрут»:
-# без открытого превью игрок видит, по каким именно дорогам едет его груз.
-# Вызывается из _refresh(), поэтому покрывает и ESC, и клик по другому гексу,
-# и подтверждение постройки.
+# Synchronises the "ghost" road and the highlighting of the ROUTE on the map with the current
+# state of the panel. Three cases, and the order matters:
+#   · the preview of the improvement of the road is open — we draw the ghost of the segments being improved
+#     (the same style as during the construction, - the segments already stand, but the player must
+#     see which one of them is being improved);
+#   · the preview "Build a road" is open — we draw the new segments of the plan;
+#   · there is no preview — we draw the EXISTING route of the chosen hex to the city.
+# The last one is exactly the requirement "on a click on an improvement show the route":
+# without an open preview the player sees by which roads exactly his cargo goes.
+# It is called from _refresh(), therefore it covers both ESC, and a click on another hex,
+# and the confirmation of the construction.
 func _sync_road_preview_on_map() -> void:
     if main_map == null or main_map.map_renderer == null or _selected_hex == null:
         _set_map_road_preview({})
@@ -1653,35 +1659,35 @@ func _sync_road_preview_on_map() -> void:
         _set_map_road_preview(_get_upgrade_preview_segments(row, col))
         return
     if preview_type == "build_improvement" or preview_type == "build_breeding":
-        # Превью улучшения: показываем маршрут дороги, которая построится
-        # вместе с ним. Дорога — самостоятельная поэтапная постройка с
-        # отдельной ценой, и без её маршрута строка «Дорога до города: N труда»
-        # выглядела бы завышенной или заниженной наугад. Уже построенные
-        # участки в призрак не попадают — за них платить не нужно.
+# The preview of the improvement: we show the route of the road which will be built
+# together with it. The road is an independent phased construction with
+# a separate price, and without its route the row "Road to the city: N of labour"
+# would look inflated or reduced at random. The already built
+# segments do not enter the ghost - there is no need to pay for them.
         _set_map_road_preview(_get_new_road_segments(row, col))
         return
     if action_id != "":
         var plan: Dictionary = main_map.get_road_plan(row, col)
         if not plan.get("ok", false):
-            # Трассы нет (например, к городку не разведан путь) — показывать
-            # нечего, панель об этом уже сказала строкой с причиной.
+# There is no route (for example, the path to a town is not scouted) - there is
+# nothing to show, the panel has already said this by a row with a reason.
             _set_map_road_preview({})
             return
         _set_map_road_preview(main_map.road_manager.get_plan_new_segments(plan))
         return
     if preview_type != "":
-        # Открыто превью другого действия: маршрут не показываем, чтобы две
-        # подсветки не спорили за карту.
+# The preview of another action is open: we do not show the route, so that the two
+# highlightings do not argue for the map.
         _set_map_road_preview({})
         return
-    # Превью закрыто: призрак снимаем ВСЕГДА (иначе он остался бы висеть
-    # после ESC), и вместо него показываем существующий маршрут гекса.
+# The preview is closed: we ALWAYS remove the ghost (otherwise it would hang
+# after ESC), and instead of it we show the existing route of the hex.
     _set_map_road_preview({})
     _set_map_route_display(_get_route_display_segments(row, col))
 
-# Новые участки дороги к гексу — из плана, тем же способом, что и превью
-# «Построить дорогу». Пусто (не ошибка), когда дорога не нужна: гекс уже
-# подключён, улучшение с флагом no_road или сухопутного пути нет.
+# The new road segments to the hex - from the plan, by the same way as in the preview
+# "Build a road". Empty (and not an error), when the road is not needed: the hex is already
+# connected, the improvement with the flag no_road, or there is no land route.
 func _get_new_road_segments(row: int, col: int) -> Dictionary:
     if main_map == null or not main_map.has_method("get_road_plan"):
         return {}
@@ -1690,9 +1696,9 @@ func _get_new_road_segments(row: int, col: int) -> Dictionary:
         return {}
     return main_map.road_manager.get_plan_new_segments(plan)
 
-# Участки существующего маршрута выбранного гекса — для подсветки на карте.
-# Пусто (не ошибка) у гексов без дороги, у самого города и у гексов вне
-# влияния: там маршрута нет и показывать нечего.
+# The segments of the existing route of the chosen hex - for the highlighting on the map.
+# Empty (and not an error) at the hexes without a road, at the city itself, and at the hexes outside
+# the influence: there is no route and nothing to show.
 func _get_route_display_segments(row: int, col: int) -> Dictionary:
     if not main_map.has_method("get_route_to_city"):
         return {}
@@ -1704,9 +1710,9 @@ func _get_route_display_segments(row: int, col: int) -> Dictionary:
         segments[str(key)] = true
     return segments
 
-# Участки, которые улучшит подтверждённое превью «Улучшить дорогу». Берём
-# те же шаги, из которых потом стартует проект, — иначе подсветка и реальная
-# стройка разошлись бы.
+# The segments which the confirmed preview "Improve the road" will improve. We take
+# the same steps from which the project will then start, - otherwise the highlighting and the real
+# build would diverge.
 func _get_upgrade_preview_segments(row: int, col: int) -> Dictionary:
     var segments: Dictionary = {}
     var road_level := int(_preview_action.get("road_level", 1))
@@ -1722,8 +1728,8 @@ func _set_map_road_preview(segments: Dictionary) -> void:
     if main_map == null or main_map.map_renderer == null:
         return
     main_map.map_renderer.set_road_preview_segments(segments)
-    # Подсветка маршрута и призрак превью не должны гореть одновременно:
-    # это разные смыслы (существующий маршрут vs. то, что будет построено).
+# The highlighting of the route and the ghost of the preview must not burn simultaneously:
+# these are different meanings (the existing route vs. what will be built).
     if not segments.is_empty():
         main_map.map_renderer.set_route_segments({})
 
@@ -1732,25 +1738,25 @@ func _set_map_route_display(segments: Dictionary) -> void:
         return
     main_map.map_renderer.set_route_segments(segments)
 
-# Действие ли это дорога (спецдействие build_road)?
+# Is this action a road (the special action build_road)?
 func _is_road_action(action_id: String) -> bool:
     if action_id != ROAD_ACTION_ID:
         return false
     return str(GameData.special_actions.get(action_id, {}).get("action_type", "")) == "road"
 
-# --- Выбор уровня дороги ---
-# По кнопке на каждый ИССЛЕДОВАННЫЙ уровень, от лучшего к худшему. Общий блок
-# для трёх случаев — «Построить дорогу», постройка улучшения (дорога к нему
-# строится вместе с ним) и «Улучшить дорогу»: правило выбора одно, поэтому и
-# вид один.
+# --- The choice of the road level ---
+# One button per RESEARCHED level, from the best to the worst. A common block
+# for the three cases - "Build a road", the construction of an improvement (the road to it
+# is built together with it) and "Improve the road": the rule of the choice is the same one, and therefore
+# the look is the same as well.
 #
-# Кнопка показывает уровень ПРОСВЕЧЕННЫМ («free» у тропки), иначе игрок не
-# понимает, почему её нажатие ничего не стоит.
+# The button shows the level CLEARLY (the trail has "free"), otherwise the player does not
+# understand why its click costs nothing.
 func _build_road_level_selector(selected_level: int) -> void:
     var levels: Array = GameData.get_unlocked_road_levels()
     if levels.size() <= 1:
-        # Выбирать нечего: доступен только базовый уровень. Молчаливый пропуск
-        # лучше серой кнопки — игрок и так видит единственный вариант в цене.
+# There is nothing to choose: only the base level is available. A silent skip
+# is better than a greyed-out button - the player sees the only option in the price anyway.
         return
 
     var label := Label.new()
@@ -1772,13 +1778,13 @@ func _build_road_level_selector(selected_level: int) -> void:
         var btn := Button.new()
         btn.toggle_mode = true
         btn.set_pressed_no_signal(level == selected_level)
-        # Тултип несёт обе цифры уровня: цену участка и пропускную
-        # способность. Без них кнопка «Cart Road» ничего не объясняет.
+# The tooltip carries both figures of the level: the price of a segment and the throughput
+# capacity. Without them the "Cart Road" button explains nothing.
         btn.tooltip_text = tr("%s: up to %d units/sec per section, base %d work per section") % [level_name, speed, cost]
         var shown_name: String = level_name if cost > 0 \
                 else tr("%s (free)") % level_name
         btn.text = shown_name
-        # Явная рамка у выбранного уровня — по образцу выбора культуры.
+# An explicit frame around the chosen level - after the pattern of the choice of the crop.
         var pressed_style = StyleBoxFlat.new()
         pressed_style.set_border_width_all(2)
         pressed_style.border_color = Color(1.0, 0.85, 0.2)
@@ -1791,18 +1797,18 @@ func _build_road_level_selector(selected_level: int) -> void:
         )
         flow.add_child(btn)
 
-# Выбор уровня дороги в превью. Уровень пишется в _preview_action, и превью
-# перестраивается: снапшот включает road_level (см. _build_preview), поэтому
-# блок не остаётся от прежнего уровня.
+# The choice of the road level in the preview. The level is written into _preview_action, and the preview
+# is rebuilt: the snapshot includes road_level (see _build_preview), therefore
+# the block does not remain from the previous level.
 func _select_preview_road_level(level: int):
     if _preview_action == null:
         return
     _preview_action["road_level"] = level
     _refresh()
 
-# Блок превью для улучшения дороги: какие участки и до какого уровня, и
-# сколько это стоит. Возвращает false, если улучшать нечего — тогда кнопка
-# «Начать» блокируется, и игрок видит причину.
+# The preview block for the improvement of the road: which segments and up to which level, and
+# how much it costs. It returns false if there is nothing to improve - then the
+# "Start" button is blocked, and the player sees the reason.
 func _build_road_upgrade_preview(row: int, col: int) -> bool:
     var road_level := int(_preview_action.get("road_level", 1))
     var breakdown: Dictionary = main_map.get_road_upgrade_breakdown(row, col, road_level)
@@ -1842,9 +1848,9 @@ func _build_road_upgrade_preview(row: int, col: int) -> bool:
         _add_instant_hint()
     return true
 
-# Блок превью для дороги: куда пойдёт трасса, из скольких участков она
-# состоит и сколько это труда. Возвращает false, если трассы нет — тогда
-# кнопка «Начать» блокируется, а игрок видит причину.
+# The preview block for the road: where the route will go, how many segments it
+# consists of, and how much labour it is. It returns false if there is no route - then
+# the "Start" button is blocked, and the player sees the reason.
 func _build_road_preview(row: int, col: int, action_id: String) -> bool:
     var road_level := int(_preview_action.get("road_level", 1))
     var plan: Dictionary = main_map.get_road_plan(row, col)
@@ -1856,8 +1862,8 @@ func _build_road_preview(row: int, col: int, action_id: String) -> bool:
         _preview_container.add_child(warn)
         return false
 
-    # Куда пойдёт дорога. У городка цель — не сам его гекс, а дороги его
-    # кольца влияния (см. road_manager.plan_road_to).
+# Where the road will go. At a town the target is not its hex itself, but the roads of its
+# influence ring (see road_manager.plan_road_to).
     var target_label := Label.new()
     if bool(plan.get("is_town", false)):
         var town = null
@@ -1865,10 +1871,10 @@ func _build_road_preview(row: int, col: int, action_id: String) -> bool:
             town = main_map.town_manager.find_town_at(row, col)
         var town_name := str(town.get("name", tr("the town"))) if town != null else tr("the town")
         target_label.text = tr(" Destination: the nearest road in the town \"%s\" influence ring") % town_name
-        # Маршрут может оказаться длиннее, чем «прямая» дорога: он идёт только
-        # по разведанной территории — ровно тем путём, которым игрок дошёл до
-        # городка. Без этой строки цена в 2–3 раза выше ожидаемой выглядит
-        # ошибкой.
+# The route may turn out to be longer than a "direct" road: it goes only
+# over the scouted territory - exactly by the way the player got to
+# the town. Without this row a price 2-3 times higher than the expected one looks like
+# an error.
         target_label.text += tr(" (only across scouted territory)")
     else:
         target_label.text = tr(" Destination: from the city's nearest road to this hex")
@@ -1876,11 +1882,11 @@ func _build_road_preview(row: int, col: int, action_id: String) -> bool:
     target_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
     _preview_container.add_child(target_label)
 
-    # Цена и шаги — из ЕДИНОГО источника (main_map.get_road_cost_breakdown),
-    # из которого потом стартует проект. Итог здесь равен сумме цен участков
-    # по построению, а не пересчитывается отдельно.
-    # Тип указан явно: main_map в панели не типизирован, а без подсказки
-    # Godot не может вывести тип возврата динамического вызова.
+# The prices and the steps are from the SINGLE source (main_map.get_road_cost_breakdown),
+# from which the project will then start. The total here is equal to the sum of the prices of the segments
+# by construction, and it is not recalculated separately.
+# The type is specified explicitly: main_map in the panel is not typed, and without the hint
+# Godot cannot deduce the type of the return of a dynamic call.
     var breakdown: Dictionary = main_map.get_road_cost_breakdown(row, col, road_level)
     if not breakdown.get("ok", false):
         var warn2 := Label.new()
@@ -1896,9 +1902,9 @@ func _build_road_preview(row: int, col: int, action_id: String) -> bool:
     cost_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
     _preview_container.add_child(cost_label)
 
-    # Цены участков РАЗНЫЕ: у каждого своя местность и своя дальность от
-    # города. Поэтому показываем диапазон, а не одну цифу — иначе игрок видит
-    # на карте участки с очень разными прогресс-барами и не понимает почему.
+# The prices of the segments are DIFFERENT: each has its own terrain and its own distance from
+# the city. Therefore we show a range, and not a single number - otherwise the player sees
+# on the map segments with very different progress bars and does not understand why.
     var min_step := int(breakdown.get("min_step_cost", 0))
     var max_step := int(breakdown.get("max_step_cost", 0))
     var step_text := tr(" Per section: %d work") % min_step
@@ -1917,8 +1923,8 @@ func _build_road_preview(row: int, col: int, action_id: String) -> bool:
     segments_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
     _preview_container.add_child(segments_label)
 
-    # Дальность: тащить материалы до дальних гексов дороже. Диапазон по
-    # трассе, потому что участки идут от сети к цели и удаляются от города.
+# The distance: carrying the materials to the distant hexes is more expensive. A range by the
+# route, because the segments go from the network to the target and get further from the city.
     var min_dist := int(breakdown.get("min_distance", 0))
     var max_dist := int(breakdown.get("max_distance", 0))
     var dist_label := Label.new()
@@ -1933,9 +1939,9 @@ func _build_road_preview(row: int, col: int, action_id: String) -> bool:
     dist_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
     _preview_container.add_child(dist_label)
 
-    # Местности на трассе с множителями: объясняет вторую половину цены.
-    # Без этой строки «почему так дорого» остаётся без ответа, когда трасса
-    # идёт через болото или горы.
+# The terrains on the route with the multipliers: it explains the second half of the price.
+# Without this row "why is it so expensive" remains unanswered, when the route
+# goes through a marsh or the mountains.
     var terrain_ids: Array = breakdown.get("terrains", [])
     if not terrain_ids.is_empty():
         var parts: Array[String] = []
@@ -1948,22 +1954,22 @@ func _build_road_preview(row: int, col: int, action_id: String) -> bool:
         terr_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
         _preview_container.add_child(terr_label)
 
-    # Как именно пойдёт стройка: дорога строится ПО УЧАСТКАМ — по одному гексу,
-    # с прогресс-баром на текущем участке. Без этой строки игрок ждёт готовую
-    # дорогу целиком и не понимает, почему она появляется по кускам.
+# How exactly the construction will go: the road is built BY SEGMENTS - one hex at a time,
+# with a progress bar on the current segment. Without this row the player waits for the finished
+# road as a whole and does not understand, why it appears in pieces.
     var steps_hint := Label.new()
     steps_hint.text = tr(" Will be built in sections: one hex at a time")
     steps_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     steps_hint.add_theme_color_override("font_color", Color(0.8, 0.85, 0.95))
     _preview_container.add_child(steps_hint)
 
-    # Дебаг «Игнорировать требования строительства» — та же строка, что и в
-    # обычном превью: трасса прокладывается целиком и без ожидания.
+# The debug "Ignore building requirements" - the same row as in the
+# ordinary preview: the route is laid entirely and without waiting.
     if CityData.ignore_build_requirements:
         _add_instant_hint()
     return true
 
-# Сравнивает два снапшота блока превью по значимым полям.
+# Compares two snapshots of the preview block by the significant fields.
 func _preview_equal(a: Dictionary, b: Dictionary) -> bool:
     return a.get("row", -1) == b.get("row", -1) \
         and a.get("col", -1) == b.get("col", -1) \
@@ -1977,7 +1983,7 @@ func _preview_equal(a: Dictionary, b: Dictionary) -> bool:
         and int(a.get("road_level", 1)) == int(b.get("road_level", 1)) \
         and a.get("ignore_build", false) == b.get("ignore_build", false)
 
-# Подтверждение постройки из превью.
+# The confirmation of the construction from the preview.
 func _confirm_build():
     if _selected_hex == null or _preview_action == null:
         return
@@ -1993,8 +1999,8 @@ func _confirm_build():
     if type == "build_improvement":
         build_manager.start_build(row, col, imp_id, target_res_id, road_level)
     elif type == "build_breeding":
-        # Строим выбранное улучшение под культуру; если культура не задана или
-        # не подходит, берём первую подходящую.
+# We build the chosen improvement for the crop; if the crop is not set or
+# does not fit, we take the first suitable one.
         var breeding_imp = preview.get("imp_id", "")
         var chosen_animal = preview.get("selected_culture_id", null)
         if not _is_suitable_culture(row, col, chosen_animal, breeding_imp):
@@ -2006,20 +2012,20 @@ func _confirm_build():
     elif type == "special":
         build_manager.start_build(row, col, action_id, null, road_level)
 
-    # После подтверждения сбрасываем превью, но оставляем выделение.
+# After the confirmation we reset the preview, but we keep the selection.
     _preview_action = null
     main_map.map_renderer.queue_redraw()
     main_map.redraw_progress_layer()
     _refresh()
 
-# --- Хелперы ---
-# Название технологии по id — единый источник в CityData (см. get_tech_name).
+# --- The helpers ---
+# The name of the technology by id - the single source in CityData (see get_tech_name).
 func _get_tech_name(tech_id: String) -> String:
     return CityData.get_tech_name(tech_id)
 
-# Возвращает список одомашненных культур, которые можно разводить через
-# указанное улучшение на гексе (row, col).
-# Каждый элемент: { "id": String, "name": String }.
+# Returns the list of the domesticated crops which can be bred through
+# the specified improvement on the hex (row, col).
+# Each element: { "id": String, "name": String }.
 func _get_suitable_crops(row: int, col: int, imp_kind: String) -> Array:
     var tile = main_map.get_tile_data(row, col)
     var ids: Array
@@ -2027,8 +2033,8 @@ func _get_suitable_crops(row: int, col: int, imp_kind: String) -> Array:
     var out := []
     for id in ids:
         var data = GameData.raw_resources.get(id, {})
-        # breedable и биом разведения проверяются единым хелпером; в частности,
-        # он учитывает дополнительные условия поля resource.breeding.
+# breedable and the biome of the breeding are checked by a single helper; in particular,
+# it takes into account the additional conditions of the field resource.breeding.
         if not MapHelpers.can_breed_resource_by(id, imp_kind):
             continue
         if not MapHelpers.can_breed_resource_on_tile(id, tile):
@@ -2036,8 +2042,8 @@ func _get_suitable_crops(row: int, col: int, imp_kind: String) -> Array:
         out.append({"id": id, "name": data.get("name", id)})
     return out
 
-# Возвращает true, если культура (растение/животное) подходит для гекса (row, col)
-# и входит в одомашненные виды, разрешённые указанным улучшением.
+# Returns true, if the crop (a plant/animal) fits the hex (row, col)
+# and is a part of the domesticated kinds allowed by the specified improvement.
 func _is_suitable_culture(row: int, col: int, id, imp_kind: String) -> bool:
     if id == null or id == "":
         return false
@@ -2046,27 +2052,27 @@ func _is_suitable_culture(row: int, col: int, id, imp_kind: String) -> bool:
     if data.is_empty():
         return false
     var ids: Array = CityData.domesticated_resources.duplicate()
-    # breedable: false (напр. рыба) — прямое подтверждение разведения невозможно.
+# breedable: false (for example, the fish) - the direct confirmation of the breeding is impossible.
     if not MapHelpers.can_breed_resource_by(id, imp_kind):
         return false
     if not (id in ids):
         return false
     return MapHelpers.can_breed_resource_on_tile(id, tile)
 
-# Возвращает id первого одомашненного вида, подходящего для гекса, или null.
+# Returns the id of the first domesticated kind that fits the hex, or null.
 func _first_suitable_culture(row: int, col: int, imp_kind: String):
     var crops := _get_suitable_crops(row, col, imp_kind)
     if crops.is_empty():
         return null
     return crops[0].id
 
-# Выбирает культуру в активном превью (ферма/пастбище) и пересобирает блок,
-# чтобы подсветка выбранной кнопки обновилась.
+# Selects the crop in the active preview (a farm/pasture) and rebuilds the block,
+# so that the highlighting of the chosen button is updated.
 func _select_preview_culture(id: String):
     if _preview_action != null:
         _preview_action["selected_culture_id"] = id
-        # Синхронизируем эффективный ресурс, чтобы блок «Будет производить»
-        # в превью пересчитался под новую культуру.
+# We synchronise the effective resource, so that the block "Will produce"
+# in the preview is recalculated under the new crop.
         var t = _preview_action.get("type", "")
         if t == "build_breeding":
             _preview_action["eff_res"] = id
