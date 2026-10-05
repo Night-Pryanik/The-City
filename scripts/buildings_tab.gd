@@ -248,20 +248,20 @@ func refresh_built():
     last_built_count = built_buildings.size()
     _last_groups_signature = _groups_signature(groups)
 
-    # Кнопка «Построить» остаётся активной даже при достижении лимита строек,
-    # чтобы при нажатии можно было показать сообщение о причине отказа.
-    # Блокируется только когда не выбрано здание.
+    # The "Build" button stays active even when the build limit is reached,
+    # so that on a click it could show the message with the reason for the refusal.
+    # It is blocked only when no building is selected.
     if build_button:
         build_button.disabled = (selected_building_id == "")
 
-# Создаёт строки строящихся зданий в панели построенных зданий.
+# Creates the rows of the buildings under construction in the built buildings panel.
 func _refresh_construction_rows():
     var constructions: Dictionary = {}
     for build_key in CityData.building_construction.keys():
         constructions[build_key] = CityData.building_construction[build_key]
 
-    # Апгрейды не добавляют запись в CityData.building_construction: они
-    # живут в том же пуле BuildManager, что и обычные стройки зданий.
+    # The upgrades do not add an entry to CityData.building_construction: they
+    # live in the same BuildManager pool as the ordinary building builds.
     var bm = _get_build_manager()
     if bm:
         for build_key in bm.active_building_builds.keys():
@@ -302,7 +302,7 @@ func _refresh_construction_rows():
         bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
         row.add_child(bar)
 
-        # Кнопка приостановки/возобновления строительства или апгрейда.
+        # The pause/resume button of the construction or the upgrade.
         var pause_btn = Button.new()
         pause_btn.custom_minimum_size = Vector2(28, 28)
         pause_btn.expand_icon = true
@@ -313,7 +313,7 @@ func _refresh_construction_rows():
         pause_btn.pressed.connect(_on_construction_pause_pressed.bind(build_key))
         row.add_child(pause_btn)
 
-        # Кнопка отмены строительства или апгрейда.
+        # The cancel button of the construction or the upgrade.
         var cancel_btn = Button.new()
         cancel_btn.custom_minimum_size = Vector2(28, 28)
         cancel_btn.text = "✕"
@@ -331,7 +331,7 @@ func _refresh_construction_rows():
             "is_upgrade": is_upgrade
         }
 
-# Обновляет прогресс-бары и кнопки строящихся зданий и апгрейдов.
+# Updates the progress bars and the buttons of the buildings and upgrades under construction.
 func _update_construction_rows():
     var bm = _get_build_manager()
     if not bm:
@@ -368,8 +368,8 @@ func _get_active_building_construction_count() -> int:
         return bm.active_building_builds.size()
     return CityData.building_construction.size()
 
-# Возвращает данные о прогресс-баре строящегося здания под курсором.
-# Возвращает пустой словарь, если курсор не над ни одним баром.
+# Returns the data about the progress bar of the building under construction under the cursor.
+# It returns an empty dictionary if the cursor is not over any of the bars.
 func get_hovered_construction_bar(mouse_pos: Vector2) -> Dictionary:
     var bm = _get_build_manager()
     if not bm:
@@ -399,15 +399,15 @@ func get_hovered_construction_bar(mouse_pos: Vector2) -> Dictionary:
             }
     return {}
 
-# Возвращает статус группы построенных зданий: текст и цвет для кнопки.
-# idle — здания, у которых есть работник, но все слоты пустые (простаивают).
-# Цветовая кодировка сохраняется: зелёный = работает, красный = не работает,
-# жёлтый = часть группы работает, оранжевый = простаивает.
+# Returns the status of the group of built buildings: the text and the colour for the button.
+# idle — the buildings that have a worker, but all the slots are empty (they are idle).
+# The colour coding is preserved: green = working, red = not working,
+# yellow = part of the group is working, orange = idle.
 func _get_built_status_info(working: int, idle: int, total: int) -> Dictionary:
     var text = ""
     var color = Color.WHITE
     if idle > 0:
-        # Есть простаивающие здания (работник есть, но все слоты пустые)
+        # There are idle buildings (there is a worker, but all the slots are empty)
         if total > 1:
             if idle == total:
                 text = tr("idle")
@@ -424,13 +424,13 @@ func _get_built_status_info(working: int, idle: int, total: int) -> Dictionary:
         color = Color.GREEN if working > 0 else Color.RED
     return {"text": text, "color": color}
 
-# Заполняет панель тултипа построенного здания: заголовок, маркированный
-# список состояний с цветовой кодировкой, подвал. Контент складывается в
-# ui_helpers.built_tooltip_content; позиционирование — в show_built_tooltip().
+# Fills the tooltip panel of the built building: the heading, the bulleted
+# list of the states with the colour coding, the footer. The content is assembled in
+# ui_helpers.built_tooltip_content; the positioning is in show_built_tooltip().
 func _fill_built_tooltip(group: Dictionary):
     var content: VBoxContainer = ui_helpers.built_tooltip_content
-    # Очищаем предыдущее содержимое (remove_child + queue_free — как в
-    # ui_helpers.show_group_tooltip, чтобы размер пересчитывался корректно).
+    # We clear the previous contents (remove_child + queue_free — as in
+    # ui_helpers.show_group_tooltip, so that the size is recalculated correctly).
     for child in content.get_children():
         content.remove_child(child)
         child.queue_free()
@@ -472,7 +472,7 @@ func _fill_built_tooltip(group: Dictionary):
     footer.mouse_filter = Control.MOUSE_FILTER_IGNORE
     content.add_child(footer)
 
-# Заголовок группы для тултипа: «Ручная мельница x2» / «Ручная мельница».
+# The heading of the group for the tooltip: "Hand mill x2" / "Hand mill".
 func _built_group_title(group: Dictionary) -> String:
     var bdata = null
     for b in buildings_data:
@@ -482,8 +482,8 @@ func _built_group_title(group: Dictionary) -> String:
     var base_name = bdata.get("name", group["id"]) if bdata else group["id"]
     return "%s x%d" % [base_name, group["total"]] if group["total"] > 1 else base_name
 
-# Показывает тултип построенного здания под кнопкой списка (с живым
-# обновлением контента на каждом вызове, пока курсор на кнопке).
+# Shows the tooltip of the built building under the list button (with a live
+# update of the content on every call, while the cursor is on the button).
 func _show_built_tooltip(btn: Button, group_index: int):
     if ui_helpers == null:
         return
@@ -495,33 +495,33 @@ func _show_built_tooltip(btn: Button, group_index: int):
     var btn_rect = btn.get_global_rect()
     ui_helpers.show_built_tooltip(btn_rect.position + Vector2(0, btn_rect.size.y + 4))
 
-# Наведение на кнопку построенного здания: запоминаем её и показываем тултип.
+# Hovering over the button of a built building: we remember it and show the tooltip.
 func _on_built_btn_hovered(btn: Button, group_index: int):
     _hovered_built_btn = btn
     _hovered_built_group_index = group_index
     _show_built_tooltip(btn, group_index)
 
-# Уход курсора с кнопки построенного здания: прячем тултип.
+# The cursor leaves the button of a built building: we hide the tooltip.
 func _on_built_btn_unhovered():
     _hide_built_tooltip()
 
-# Прячет тултип построенного здания и сбрасывает наведённую кнопку.
+# Hides the tooltip of the built building and resets the hovered button.
 func _hide_built_tooltip():
     _hovered_built_btn = null
     _hovered_built_group_index = -1
     if ui_helpers != null:
         ui_helpers.hide_built_tooltip()
 
-# Собирает список состояний группы построенных зданий для тултипа: каждое
-# состояние — тройка [имя, детализация, цвет]. Выводятся только ненулевые.
-#   работает — здания с работником и непустыми слотами (working − idle);
-#     детализация — просто число таких зданий («работает: 1»);
-#   простаивает — с работником, но все слоты пустые (idle);
-#   не работает — без работника (total − working);
-#   можно улучшить — экземпляры, доступные для апгрейда (upgradeable; сам
-#     факт доступности уже включает проверку «цель открыта технологией»).
-# Для одиночного здания (total == 1) детализация-счётчик опускается —
-# «1 из 1» избыточна. Цвета — в палитре кнопок/меток проекта.
+# Assembles the list of the states of the group of built buildings for the tooltip: each
+# state — a triple [name, detail, colour]. Only the non-zero ones are output.
+#   working — the buildings with a worker and non-empty slots (working − idle);
+#     the detail — just the number of such buildings ("Working: 1");
+#   idle — with a worker, but all the slots are empty (idle);
+#   not working — without a worker (total − working);
+#   can upgrade — the instances available for an upgrade (upgradeable; the
+#     fact of availability already includes the check "the target is unlocked by a technology".
+# For a single building (total == 1) the detail-counter is omitted —
+# "1 of 1" is redundant. The colours are from the button/label palette of the project.
 func _get_built_states(group: Dictionary) -> Array:
     var working = int(group.get("working", 0))
     var idle = int(group.get("idle", 0))
@@ -555,19 +555,19 @@ func _get_built_states(group: Dictionary) -> Array:
         states.append([tr("upgradeable"), "%d" % upgradeable, COLOR_UPGRADE])
     return states
 
-# Задаёт цвет текста кнопки во всех состояниях (обычное, наведение, нажатие,
-# фокус), чтобы цветовая кодировка состояния не пропадала при наведении.
+# Sets the text colour of the button in all the states (normal, hover, pressed,
+# focus), so that the colour coding of the state does not disappear on hover.
 func _apply_built_status_color(btn: Button, color: Color):
     btn.add_theme_color_override("font_color", color)
     btn.add_theme_color_override("font_hover_color", color)
     btn.add_theme_color_override("font_pressed_color", color)
     btn.add_theme_color_override("font_focus_color", color)
 
-# Группирует построенные здания по id и считает работающие.
-# idle — здания, у которых есть работник, но все слоты пустые (простаивают).
-# upgradeable — сколько экземпляров группы можно улучшить прямо сейчас
-# (can_upgrade_building проверяет и открытость цели технологией, и что
-# апгрейд этого экземпляра ещё не идёт).
+# Groups the built buildings by id and counts the working ones.
+# idle — the buildings that have a worker, but all the slots are empty (they are idle).
+# upgradeable — how many instances of the group can be upgraded right now
+# (can_upgrade_building checks both that the target is unlocked by a technology and that
+# the upgrade of this instance is not already going).
 func _group_buildings() -> Array:
     var main_map = get_tree().root.find_child("MainMap", true, false)
     var tm = main_map.get_node("TownsfolkManager") if main_map else null
@@ -595,17 +595,17 @@ func _group_buildings() -> Array:
             g["upgradeable"] += 1
     return groups
 
-# Собирает сигнатуру группировки построенных зданий: "id:total|id:total".
-# Используется для отслеживания изменений группировки без изменения общего
-# числа зданий (апгрейд заменяет id здания: hand_mill -> animal_mill).
+# Assembles the signature of the grouping of the built buildings: "id:total|id:total".
+# It is used to track the changes of the grouping without a change of the total
+# number of buildings (an upgrade replaces the building id: hand_mill -> animal_mill).
 func _groups_signature(groups: Array) -> String:
     var parts = []
     for grp in groups:
         parts.append("%s:%d" % [grp.get("id", ""), int(grp.get("total", 0))])
     return "|".join(parts)
 
-# Возвращает текстуру иконки по имени файла (общий реестр IconRegistry).
-# Если файла нет или имя пустое — возвращает null (тогда иконка не ставится).
+# Returns the texture of the icon by the file name (the common IconRegistry registry).
+# If there is no file or the name is empty — it returns null (then the icon is not set).
 func _get_icon_texture_from_paths(icon_file: String) -> Texture2D:
     return IconRegistry.get_texture(icon_file)
 
@@ -650,7 +650,7 @@ func _on_building_list_pressed(building_id: String):
 func get_selected_button() -> Button:
     return selected_button
 
-# --- Тултип деталей по наведению (любая кнопка здания, не только выбранная) ---
+# --- The details tooltip on hover (any building button, not only the selected one) ---
 func _on_building_hovered(building_id: String):
     if _hovered_building_id == building_id:
         return
@@ -665,7 +665,7 @@ func _on_building_unhovered(building_id: String):
         _hovered_building_id = ""
 
 func get_hovered_button() -> Button:
-    # Возвращает кнопку здания под курсором, если она ещё существует.
+    # Returns the button of the building under the cursor, if it still exists.
     if _hovered_building_id == "":
         return null
     var btn = building_buttons.get(_hovered_building_id, null)
@@ -724,7 +724,7 @@ func _show_building_details(bdata: Dictionary):
     var content: VBoxContainer = ui_helpers.detail_tooltip_content
     _detail_material_rows.clear()
     _detail_requirement_label = null
-    # Очищаем предыдущее содержимое тултипа.
+    # We clear the previous contents of the tooltip.
     for child in content.get_children():
         content.remove_child(child)
         child.queue_free()
@@ -733,7 +733,7 @@ func _show_building_details(bdata: Dictionary):
         ui_helpers.hide_building_detail_tooltip()
         return
 
-    # Заголовок — название здания
+    # The heading — the name of the building
     var title = Label.new()
     title.text = bdata["name"]
     title.add_theme_font_size_override("font_size", 18)
@@ -741,21 +741,21 @@ func _show_building_details(bdata: Dictionary):
     title.mouse_filter = Control.MOUSE_FILTER_IGNORE
     content.add_child(title)
 
-    # Описание здания
+    # The description of the building
     var desc = bdata.get("description", "")
     if desc != "":
         var desc_label = Label.new()
         desc_label.text = desc
         desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-        # Фиксированная ширина: без неё min-высота текста с автопереносом
-        # считается при ширине ~0 (огромная), тултип прыгает к верхнему краю
-        # и «падает» к курсору на следующих кадрах раскладки.
+        # The fixed width: without it the min-height of the text with autowrap
+        # is computed at a width of ~0 (huge), the tooltip jumps to the top edge
+        # and "falls" to the cursor on the following frames of the layout.
         desc_label.custom_minimum_size = Vector2(420, 0)
         desc_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
         desc_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         content.add_child(desc_label)
 
-    # Заголовок стоимости
+    # The heading of the cost
     var cost_header = Label.new()
     cost_header.text = tr("Cost:")
     cost_header.add_theme_font_size_override("font_size", 14)
@@ -772,7 +772,7 @@ func _show_building_details(bdata: Dictionary):
     var has_costs := false
     var work_cost = bdata.get("work_cost", 0)
     if work_cost > 0:
-        # Стоимость с учётом модификаторов технологий (target = "construction_cost").
+        # The cost taking the technology modifiers into account (target = "construction_cost").
         var actual_work_cost = int(ceil(float(work_cost) * MapHelpers.get_construction_cost_mult()))
         var labor = CityData.get_total_labor()
         var build_time = actual_work_cost / max(1.0, labor)
@@ -780,7 +780,7 @@ func _show_building_details(bdata: Dictionary):
         has_costs = true
 
     if bdata.has("additional_cost"):
-        # Нужны ресурсы из каждой пачки (AND-логика сохранена на уровне данных)
+        # The resources of each batch are needed (the AND logic is preserved at the data level)
         var bundles = GameData.parse_additional_cost(bdata["additional_cost"])
         var mat_rows = []
         for bundle in bundles:
@@ -846,13 +846,14 @@ func _show_building_details(bdata: Dictionary):
     if not has_costs:
         content.add_child(_make_bullet_row("•", "0"))
 
-    # Профессиональное потребление здания: расходники, которые тратит профессия
-    # горожанина в нём (поле "profession" в data/buildings.json). Показывается
-    # как свойство типа здания — рядом с «Стоимость:» и до «Дополнительного
-    # выхода»: это постоянная часть работы здания, а не разовые затраты на
-    # постройку, поэтому видно и до постройки. Формат строк даёт общий
-    # ConsumptionUi — тот же, что у секции «Потребляет:» в тултипе гекса
-    # и в левой колонке панели управления (см. docs.md).
+    # The occupational consumption of the building: the supplies that the profession
+    # of a citizen in it spends (the "profession" field in data/buildings.json). It is shown
+    # as a property of the building type — next to "Cost:" and before "Additional
+    # output": this is a constant part of the work of the building, and not a one-off
+    # expense on the construction, therefore it is visible even before the build. The format of
+    # the rows is given by the common
+    # ConsumptionUi — the same as in the "Consumes:" section of the hex tooltip
+    # and in the left column of the control panel (see docs.md).
     var cons_rows = ConsumptionUi.build_rows_for_building(bdata.get("id", ""))
     if not cons_rows.is_empty():
         content.add_child(_make_bullet_row("•", tr("Consumes:")))
@@ -865,9 +866,9 @@ func _show_building_details(bdata: Dictionary):
             cons_indent.mouse_filter = Control.MOUSE_FILTER_IGNORE
             cons_row.add_child(cons_indent)
             cons_row.add_child(_make_bullet("◦"))
-            # Имя ресурса рисует общий хелпер (иконка + для @-группы
-            # подчёркнутое имя с составом по наведению), а скорость расхода и
-            # бонус к производству дописываем справа.
+            # The resource name is drawn by the common helper (the icon + for an @-group
+            # the underlined name with the contents on hover), and the rate of the expense and
+            # the production bonus are appended to the right.
             cons_row.add_child(ui_helpers.make_resource_entry(
                 str(cons.get("display_key", "")), products_data))
             var cons_rate_label = Label.new()
@@ -893,7 +894,7 @@ func _show_building_details(bdata: Dictionary):
                 int(additional_yield[yield_id]), "colon"))
             content.add_child(yield_row)
 
-    # Количество слотов производства
+    # The number of production slots
     var slots = bdata.get("production_slots", 0)
     var slots_label = Label.new()
     slots_label.text = tr("Production slots: %d") % int(slots)
@@ -933,16 +934,16 @@ func _on_build_pressed():
             ui_helpers.set_message(additional_req_check["reason"])
         return
     
-    # Проверяем, достаточно ли населения для строительства
+    # We check whether there is enough population for the construction
     if work_cost > 0 and not CityData.ignore_build_requirements and CityData.get_total_labor() <= 0:
         missing_parts.append(tr("at least 1 citizen is needed to build"))
 
-    # Проверка дополнительных материалов (additional_cost) не проводится при
-    # включённом «Игнорировать требования строительства».
+    # The check of the additional materials (additional_cost) is not performed with
+    # "Ignore building requirements" enabled.
     if bdata.has("additional_cost") and not CityData.ignore_build_requirements:
-        # Каждая пачка (или единственный словарь) проверяется отдельно —
-        # для постройки нужны ресурсы из КАЖДОЙ пачки. Групповые ключи
-        # (@xxx) учитываются как «любой продукт из группы» — сумма по членам.
+        # Each batch (or the single dictionary) is checked separately —
+        # for the construction the resources of EACH batch are needed. The group keys
+        # (@xxx) are counted as "any product from the group" — the sum over the members.
         var bundles = GameData.parse_additional_cost(bdata["additional_cost"])
         for bundle in bundles:
             for res_id in bundle:
@@ -958,9 +959,9 @@ func _on_build_pressed():
 
     emit_signal("build_requested", selected_building_id)
     
-    # Если это здание с стоимостью в труде - показываем сообщение о начале
-    # стройки. При включённом «Игнорировать требования строительства» здание
-    # уже построено мгновенно — сообщаем об этом.
+    # If this building has a cost in labour - we show the message about the start of
+    # the build. With "Ignore building requirements" enabled the building
+    # has already been built instantly — we report that.
     if ui_helpers:
         if CityData.ignore_build_requirements:
             ui_helpers.set_message(tr("Built instantly: %s") % bdata.get("name", selected_building_id))
@@ -970,9 +971,9 @@ func _on_build_pressed():
             var build_time = actual_work_cost / max(1.0, labor)
             ui_helpers.set_message(tr("Construction of %s started (%.0f work, %.0f sec)") % [bdata.get("name", selected_building_id), actual_work_cost, build_time])
 
-# Очищает список рецептов
+# Clears the list of recipes
 func _has_active_building_construction() -> bool:
-    # Общий лимит одновременных строек (здания + улучшения) равен числу жителей
+    # The general limit of simultaneous builds (buildings + improvements) equals the number of citizens
     var bm = _get_build_manager()
     if bm:
         return bm.get_total_active_builds() >= CityData.total_population
@@ -1001,16 +1002,16 @@ func _confirm_cancel_construction(build_key: String):
     var dialog = ConfirmationDialog.new()
     dialog.title = tr("Confirm")
     dialog.dialog_text = tr("Cancel the construction? Spent work will be lost.")
-    # Локализуем стандартные кнопки диалога (по умолчанию Godot показывает
-    # английские «OK» / «Cancel» — проект без файлов переводов).
+    # We localize the standard dialog buttons (by default Godot shows
+    # the English "OK" / "Cancel" — a project without translation files).
     dialog.get_ok_button().text = tr("Yes")
     dialog.get_cancel_button().text = tr("Cancel")
     add_child(dialog)
 
-    # Ставим игру на паузу, пока открыт диалог подтверждения отмены.
+    # We pause the game while the cancel confirmation dialog is open.
     var was_paused = get_tree().paused
     get_tree().paused = true
-    # Диалог должен принимать ввод, когда дерево приостановлено.
+    # The dialog must accept the input while the tree is paused.
     dialog.process_mode = Node.PROCESS_MODE_ALWAYS
 
     dialog.popup_centered()
@@ -1019,7 +1020,7 @@ func _confirm_cancel_construction(build_key: String):
             get_tree().paused = false
         _cancel_construction(build_key)
     )
-    # Крестик окна и кнопка «Отмена» тоже снимают паузу.
+    # The cross of the window and the "Cancel" button also unpause.
     dialog.canceled.connect(func():
         if not was_paused:
             get_tree().paused = false
@@ -1035,7 +1036,7 @@ func _cancel_construction(build_key: String):
     CityData.emit_signal("city_updated")
     refresh_built()
 
-# Заполняет список доступных рецептов для выбранного здания
+# Fills the list of the available recipes for the selected building
 func _refresh_recipes_list(bdata: Dictionary):
     if not ui_helpers or bdata.is_empty():
         return
@@ -1044,7 +1045,7 @@ func _refresh_recipes_list(bdata: Dictionary):
     var building_id = bdata.get("id", "")
     var available_recipes = []
 
-    # Собираем рецепты, доступные для этого здания (с учётом технологий)
+    # We collect the recipes available for this building (taking the technologies into account)
     for craft in crafts_data:
         if craft["id"] == "empty":
             continue
@@ -1058,13 +1059,13 @@ func _refresh_recipes_list(bdata: Dictionary):
     if available_recipes.is_empty():
         return
 
-    # Сортируем по имени
+    # We sort by name
     available_recipes.sort_custom(func(a, b):
         return a.get("name", "") < b.get("name", "")
     )
 
-    # Для отображения иконок ресурсов/продуктов нужен словарь products + raw_resources
-    # (сами иконки берёт ui_helpers через общий IconRegistry).
+    # To display the icons of resources/products we need the dictionary products + raw_resources
+    # (the icons themselves are taken by ui_helpers through the common IconRegistry).
     var products_data = {}
     for pid in products:
         products_data[pid] = products[pid]
@@ -1081,22 +1082,22 @@ func _refresh_recipes_list(bdata: Dictionary):
     for craft in available_recipes:
         var craft_name = craft.get("name", craft["id"])
         var craft_resources = craft.get("resources", {})
-        # display_result — UI-подсказка для «нематериальных» выходов (наука и
-        # будущие псевдо-ресурсы): механикой не читается.
+        # display_result — a UI hint for the "non-material" outputs (science and
+        # future pseudo-resources): it is not read by the mechanics.
         var craft_result = craft.get("display_result", craft.get("result", {}))
 
         var row = HBoxContainer.new()
         row.add_theme_constant_override("separation", 4)
         row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-        # Маркер маркированного списка
+        # The marker of a bulleted list
         var bullet = Label.new()
         bullet.text = "•"
         bullet.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
         bullet.mouse_filter = Control.MOUSE_FILTER_IGNORE
         row.add_child(bullet)
 
-        # Название рецепта (прежний формат: "название: ресурсы -> результат")
+        # The name of the recipe (the former format: "name: resources -> result")
         var name_label = Label.new()
         name_label.text = craft_name + ":"
         name_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
@@ -1104,7 +1105,7 @@ func _refresh_recipes_list(bdata: Dictionary):
         name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         row.add_child(name_label)
 
-        # Ресурсы -> результат в одну строку
+        # Resources -> result on one line
         var content_entry = _make_craft_content_local("", craft_resources, craft_result, products_data)
         content_entry.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         content_entry.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1112,7 +1113,7 @@ func _refresh_recipes_list(bdata: Dictionary):
 
         content.add_child(row)
 
-# Строит содержимое строки рецепта: "[иконка] ресурс [xN] + ... -> [иконка] продукт [xN]"
+# Builds the contents of the recipe row: "[icon] resource [xN] + ... -> [icon] product [xN]"
 func _make_craft_content_local(craft_name: String, craft_resources: Dictionary, craft_result: Dictionary, products_data: Dictionary) -> HBoxContainer:
     var content = HBoxContainer.new()
     content.add_theme_constant_override("separation", 4)
