@@ -542,22 +542,22 @@ func _jump_flood_voronoi(rows: int, cols: int, centers: Array) -> Array:
         result.append(row_arr)
     return result
 
-# Возвращает true, если тип местности непроходим (move_cost >= 999).
-# Такие типы (озёра: lake, soda_lake, asphalt_lake, salt_lake) блокируют
-# перемещение города наружу.
+# Returns true if the terrain type is impassable (move_cost >= 999).
+# Such types (the lakes: lake, soda_lake, asphalt_lake, salt_lake) block
+# the movement of the city outwards.
 func _is_impassable_terrain_id(terrain_id: String) -> bool:
     var t: Dictionary = GameData.terrains.get(terrain_id, {})
     return int(t.get("move_cost", 1)) >= 999
 
-# Возвращает true, если гекс (row, col) непроходим.
+# Returns true if the hex (row, col) is impassable.
 func _is_impassable_hex(tile_data: Array, row: int, col: int) -> bool:
     var terrain_id = tile_data[row][col].get("terrain", "plain")
     return _is_impassable_terrain_id(terrain_id)
 
-# Принудительно превращает все гексы в радиусе `radius` вокруг города
-# в равнину (plain) без покрова. Сбрасывает временный флаг _is_marsh.
-# Вызывается ПОСЛЕ размещения уникальных террейнов и ДО генерации покрова
-# и ресурсов, чтобы зона была полностью «чистой».
+# Forcibly turns all the hexes within the radius `radius` around the city
+# into a plain (plain) without a cover. It resets the temporary flag _is_marsh.
+# It is called AFTER the placement of the unique terrains and BEFORE the generation of the cover
+# and the resources, so that the zone is completely "clean".
 func _ensure_plain_zone(tile_data: Array, rows: int, cols: int,
         city_row: int, city_col: int, radius: int) -> void:
     for r in range(rows):
@@ -565,25 +565,25 @@ func _ensure_plain_zone(tile_data: Array, rows: int, cols: int,
             if HexUtils.hex_distance(r, c, city_row, city_col) <= radius:
                 var tile = tile_data[r][c]
                 tile["terrain"] = "plain"
-                # Покров генерируется как у обычной равнины (могут появиться
-                # леса), чтобы безопасный двор не выглядел голым.
+                # The cover is generated as that of an ordinary plain (forests may
+                # appear), so that the safe yard does not look bare.
                 tile["cover"] = _roll_cover("plain")
                 tile["_is_marsh"] = false
                 tile["_is_sea"] = false
                 tile["_is_beach"] = false
 
-# Гарантирует, что у города есть путь к краю карты (к «внешнему миру»).
-# Если город оказался изолирован непроходимым террейном (озером или морем),
-# функция BFS по непроходимым гексам прокладывает кратчайший коридор от
-# достижимой области города к ближайшему внешнему проходимому гексу и
-# превращает этот коридор в равнину. Море — не препятствие для пробивки
-# (как и озеро), а побережье (beach, move_cost: 1) — валидный выход.
-# Повторяется до тех пор, пока город не получит выход к краю карты
-# (или не упрётся в лимит итераций).
+# Guarantees that the city has a path to the edge of the map (to the "outside world").
+# If the city has turned out to be isolated by an impassable terrain (a lake or the sea),
+# the BFS function over the impassable hexes lays the shortest corridor from
+# the reachable area of the city to the nearest outer passable hex and
+# turns this corridor into a plain. The sea is not an obstacle for the breakthrough
+# (as is a lake), and the coast (beach, move_cost: 1) is a valid exit.
+# It repeats until the city gets an exit to the edge of the map
+# (or until it hits the limit of the iterations).
 func _ensure_outward_corridor(tile_data: Array, rows: int, cols: int,
         city_row: int, city_col: int) -> void:
     for _iter in range(10):
-        # 1) Достижимая из города область по проходимым гексам.
+        # 1) The area reachable from the city over the passable hexes.
         var reachable := {}
         var key_city = "%d,%d" % [city_row, city_col]
         reachable[key_city] = true
@@ -599,12 +599,12 @@ func _ensure_outward_corridor(tile_data: Array, rows: int, cols: int,
                 reachable[nk] = true
                 queue.append(n)
 
-        # 2) Если город достиг проходимого края карты — выход есть.
+        # 2) If the city has reached a passable edge of the map — the exit exists.
         if _has_exit_to_edge(reachable, rows, cols):
             return
 
-        # 3) Ищем водный путь от достижимой области к ближайшему внешнему
-        #    проходимому гексу. BFS стартует со всех непроходимых соседей A.
+        # 3) We look for a water way from the reachable area to the nearest outer
+        #    passable hex. The BFS starts from all the impassable neighbours of A.
         var from := {}
         var water_queue: Array = []
         for key in reachable:
@@ -641,12 +641,12 @@ func _ensure_outward_corridor(tile_data: Array, rows: int, cols: int,
                         break
 
         if target_key == "":
-            # Не нашли внешний проходимый гекс (весь мир — вода/острова).
-            # Пробиваем коридор напрямую к краю карты сквозь воду.
+            # We have not found an outer passable hex (the whole world is water/islands).
+            # We lay a corridor directly to the edge of the map through the water.
             if not _punch_corridor_to_edge(tile_data, rows, cols, city_row, city_col, reachable):
                 return
 
-        # 4) Восстанавливаем путь: непроходимые гексы превращаем в равнину.
+        # 4) We restore the path: the impassable hexes are turned into a plain.
         if target_key != "":
             var step = target_key
             while true:
@@ -658,7 +658,7 @@ func _ensure_outward_corridor(tile_data: Array, rows: int, cols: int,
                 _punch_hex(tile_data, prev)
                 step = prev
 
-# Возвращает true, если хоть один гекс достижимой области лежит на краю карты.
+# Returns true if at least one hex of the reachable area is on the edge of the map.
 func _has_exit_to_edge(reachable: Dictionary, rows: int, cols: int) -> bool:
     for r in [0, rows - 1]:
         for c in range(cols):
@@ -670,22 +670,22 @@ func _has_exit_to_edge(reachable: Dictionary, rows: int, cols: int) -> bool:
                 return true
     return false
 
-# Превращает гекс (key "r,c") в равнину без покрова.
-# Используется для пробивки коридора выхода сквозь непроходимые гексы
-# (озёра и моря). Сбрасывает временные флаги _is_marsh и _is_sea.
+# Turns the hex (key "r,c") into a plain without a cover.
+# It is used for laying the exit corridor through the impassable hexes
+# (the lakes and the seas). It resets the temporary flags _is_marsh and _is_sea.
 func _punch_hex(tile_data: Array, key: String) -> void:
     var parts = key.split(",")
     var r = int(parts[0])
     var c = int(parts[1])
     var tile = tile_data[r][c]
     tile["terrain"] = "plain"
-    # Покров генерируется как у обычной равнины для естественного вида.
+    # The cover is generated as that of an ordinary plain for a natural look.
     tile["cover"] = _roll_cover("plain")
     tile["_is_marsh"] = false
     tile["_is_sea"] = false
 
-# Пробивает коридор от достижимой области напрямую к краю карты через
-# непроходимые гексы. Возвращает true, если коридор удалось проложить.
+# Lays a corridor from the reachable area directly to the edge of the map through
+# the impassable hexes. It returns true if the corridor has been laid.
 func _punch_corridor_to_edge(tile_data: Array, rows: int, cols: int,
         city_row: int, city_col: int, reachable: Dictionary) -> bool:
     var from := {}
@@ -722,7 +722,7 @@ func _punch_corridor_to_edge(tile_data: Array, rows: int, cols: int,
             queue.append({"row": n.row, "col": n.col})
     if target_key == "":
         return false
-    # Пробиваем путь от целевой краевой непроходимой клетки обратно к A.
+    # We lay the path from the target edge impassable cell back to A.
     var step = target_key
     while true:
         _punch_hex(tile_data, step)
@@ -732,9 +732,9 @@ func _punch_corridor_to_edge(tile_data: Array, rows: int, cols: int,
         step = prev
     return true
 
-# Выбирает покоры (cover) для гекса с указанным типом местности по весам
-# из terrains.json (cover_chance). Если поле отсутствует или пустое —
-# возвращает "none".
+# Chooses the covers (cover) for a hex with the specified terrain type by the weights
+# from terrains.json (cover_chance). If the field is absent or empty —
+# it returns "none".
 func _roll_cover(terrain_type: String) -> String:
     var t: Dictionary = GameData.terrains.get(terrain_type, {})
     var chances: Dictionary = t.get("cover_chance", {})
@@ -754,10 +754,10 @@ func _roll_cover(terrain_type: String) -> String:
             return cid
     return "none"
 
-# Строит мультиииндекс свободных гексов по (terrain, cover).
-# Ключ: "terrain|cover" -> Array словарей {"row", "col"}.
-# Гексы рядом с городом (abs <= 1) исключаются, чтобы не мешать
-# стартовому строительству (как в исходном _place_resources).
+# Builds a multi-index of the free hexes by (terrain, cover).
+# The key: "terrain|cover" -> Array of dictionaries {"row", "col"}.
+# The hexes near the city (abs <= 1) are excluded, so as not to interfere with
+# the starting construction (as in the original _place_resources).
 func _build_hex_index(tile_data: Array, rows: int, cols: int, city_row: int, city_col: int) -> Dictionary:
     var index: Dictionary = {}
     for r in range(rows):
@@ -775,7 +775,7 @@ func _build_hex_index(tile_data: Array, rows: int, cols: int, city_row: int, cit
             index[key].append({"row": r, "col": c})
     return index
 
-# Удалявляет гекс из мультиииндекса после занятия его ресурсом.
+# Removes a hex from the multi-index after it has been occupied by a resource.
 func _remove_hex_from_index(hex_index: Dictionary, row: int, col: int, terrain_id: String, cover_id: String) -> void:
     var key = "%s|%s" % [terrain_id, cover_id]
     if not hex_index.has(key):
@@ -788,15 +788,15 @@ func _remove_hex_from_index(hex_index: Dictionary, row: int, col: int, terrain_i
     if arr.is_empty():
         hex_index.erase(key)
 
-# Разбирает поле spawn_count ресурса и возвращает количество экземпляров для
-# спавна. Допустимые форматы: число >= 0 или массив [min, max] из чисел >= 0.
-#   * число N          -> всегда N экземпляров (N=0 — не спавнить, N=1 — старое поведение);
-#   * массив [min,max] -> случайное число из диапазона;
-#   * min/max перепутаны -> форсированно меняем местами;
-#   * некорректные данные (не число/не массив из 2 чисел, отрицательные числа)
-#     -> предупреждение и дефолт 1 (старое поведение).
-# Парсинг и валидация вынесены в RangeUtils.roll_value — единая проверка
-# «число или [min, max]» для spawn_count и produces (см. scripts/range_utils.gd).
+# Parses the spawn_count field of a resource and returns the number of specimens to
+# spawn. The acceptable formats: a number >= 0 or an array [min, max] of numbers >= 0.
+#   * a number N          -> always N specimens (N=0 — do not spawn, N=1 — the old behaviour);
+#   * an array [min,max]  -> a random number from the range;
+#   * min/max swapped     -> we forcibly swap them;
+#   * incorrect data (not a number/not an array of 2 numbers, negative numbers)
+#     -> a warning and the default 1 (the old behaviour).
+# The parsing and validation are moved out to RangeUtils.roll_value — a single check
+# of "a number or [min, max]" for spawn_count and produces (see scripts/range_utils.gd).
 func _resolve_spawn_count(data: Dictionary) -> int:
     var res_id: String = str(data.get("id", "?"))
     return RangeUtils.roll_value(data.get("spawn_count", 1),
@@ -805,31 +805,31 @@ func _resolve_spawn_count(data: Dictionary) -> int:
 func _place_resources(tile_data: Array, res_dict: Dictionary, rows: int, cols: int, city_row: int, city_col: int, hex_index: Dictionary):
     if res_dict.size() == 0:
         return
-    # Спавним ВСЕ ресурсы категории на карте, а не 1-3 случайных (как было
-    # раньше). Ресурс размещается на случайном подходящем гексе, если
-    # выполняются:
-    #   * tech_required (если есть) — на старте все уже считаются доступными,
-    #     т.к. это поле гейтит только постройку улучшения, а не появление;
-    #   * spawn_conditions — шанс активации и геометрические условия
-    #     (например, «у реки», «на содовом озере»); если не выпал/не подходит —
-    #     ресурс пропускается;
-    #   * allowed_terrain / allowed_cover — обычные биомные ограничения.
+    # We spawn ALL the resources of the category on the map, and not 1-3 random ones (as it
+    # was before). A resource is placed on a random suitable hex, if
+    # the following hold:
+    #   * tech_required (if there is one) — at the start everything is already considered available,
+    #     because this field gates only the construction of the improvement, and not the appearance;
+    #   * spawn_conditions — the activation chance and the geometric conditions
+    #     (for example, "by a river", "on a soda lake"); if it did not roll out / does not fit —
+    #     the resource is skipped;
+    #   * allowed_terrain / allowed_cover — the ordinary biome restrictions.
+    # If the resource has tech_reveal (the underground minerals) — it appears
+    # on the map IMMEDIATELY, but is hidden from the player until the corresponding technology
+    # is learned.
+    # See docs.md, the section "tech_reveal: hidden resources".
     #
-    # Если у ресурса есть tech_reveal (подземные ископаемые) — он появляется
-    # на карте СРАЗУ, но скрыт от игрока до изучения соответствующей технологии.
-    # См. docs.md, раздел «tech_reveal: скрытые ресурсы».
-    #
-    # Перемешиваем ключи, чтобы порядок размещения был случайным — иначе
-    # первые в словаре всегда занимают лучшие гексы, а последние рискуют
-    # не найти подходящего места.
+    # We shuffle the keys, so that the order of the placement is random — otherwise
+    # the first ones in the dictionary always take the best hexes, and the last ones risk
+    # not finding a suitable place.
     var ids = res_dict.keys()
     ids.shuffle()
     for res_id in ids:
         var data = res_dict[res_id]
         if not HexUtils.spawn_conditions_met(data):
             continue
-        # spawn_count: сколько экземпляров ресурса спавнить (число или [min, max]).
-        # 0 — ресурс не спавнится вовсе.
+        # spawn_count: how many specimens of the resource to spawn (a number or [min, max]).
+        # 0 — the resource is not spawned at all.
         var spawn_total = _resolve_spawn_count(data)
         for i in range(spawn_total):
             var possible = []
@@ -849,11 +849,11 @@ func _place_resources(tile_data: Array, res_dict: Dictionary, rows: int, cols: i
                 _remove_hex_from_index(hex_index, hex.row, hex.col,
                         tile_data[hex.row][hex.col]["terrain"], tile_data[hex.row][hex.col].get("cover", "none"))
 
-# Размещает дикоросы ТОЛЬКО внутри стартового Кольца Влияния.
-# Количество экземпляров берётся из поля spawn_count ресурса (число или
-# [min, max]) — как у всех остальных ресурсов на карте (см.
-# _resolve_spawn_count). Дикоросы собираются спец-действием «Собрать дикоросы»
-# (action_type "forage") и после сбора исчезают с карты.
+# Places the wild plants ONLY inside the starting Influence Ring.
+# The number of specimens is taken from the spawn_count field of the resource (a number or
+# [min, max]) — as for all the other resources on the map (see
+# _resolve_spawn_count). The wild plants are gathered by the special action "Gather the wild plants"
+# (action_type "forage") and disappear from the map after being gathered.
 func place_wild_food(tile_data: Array, min_row: int, max_row: int, min_col: int, max_col: int, city_row: int, city_col: int):
     var wild_id = "wild_food"
     if not GameData.raw_resources.has(wild_id):
@@ -877,17 +877,17 @@ func place_wild_food(tile_data: Array, min_row: int, max_row: int, min_col: int,
         tile_data[hex.row][hex.col]["resource"] = wild_id
         tile_data[hex.row][hex.col]["quality"] = GameData.roll_quality()
 
-# Размещает «одноразовые» (собираемые) ресурсы по всей карте.
-# Одноразовым считается ресурс, у которого improved_by == null (нельзя
-# разрабатывать улучшением) и задан produces (есть что собрать). Такие ресурсы
-# (самородки металлов, дикоросы) спавнятся при старте игры по всей карте и
-# исчезают после сбора спец-действием (см. main_map.gd, ветка
-# action_type == "forage"). Количество экземпляров — из spawn_count, выход
-# продукции — из produces ресурса.
-# Дикоросы (wild_food) в этой функции НЕ участвуют: их размещает отдельная
-# функция place_wild_food строго внутри стартового Кольца Влияния.
-# Параметры размещения стандартные (см. _place_resources): allowed_terrain /
-# allowed_cover и spawn_conditions.
+# Places the "one-off" (gatherable) resources over the whole map.
+# A resource is considered one-off if it has improved_by == null (it cannot be
+# developed by an improvement) and has produces set (there is something to gather). Such resources
+# (the metal nuggets, the wild plants) spawn at the start of the game over the whole map and
+# disappear after being gathered by a special action (see main_map.gd, the branch
+# action_type == "forage"). The number of specimens is from spawn_count, the output
+# of the product is from produces of the resource.
+# The wild plants (wild_food) do NOT take part in this function: they are placed by the separate
+# function place_wild_food strictly inside the starting Influence Ring.
+# The placement parameters are standard (see _place_resources): allowed_terrain /
+# allowed_cover and spawn_conditions.
 func place_one_time_resources(tile_data: Array, raw_res: Dictionary, rows: int, cols: int,
         city_row: int, city_col: int, hex_index: Dictionary):
     var one_time: Dictionary = {}
@@ -910,9 +910,9 @@ func ensure_free_terrain_hexes(tile_data: Array, terrain_counts: Dictionary,
         free_count[terrain_id] = 0
     for r in range(min_row, max_row + 1):
         for c in range(min_col, max_col + 1):
-            # Гекс города и его соседи (3×3) исключаются из подсчёта и
-            # конвертации — террейн города не должен меняться после
-            # _ensure_city_valid_terrain, а соседи нужны для стартового строительства.
+            # The hex of the city and its neighbours (3×3) are excluded from the counting and
+            # the conversion — the terrain of the city must not change after
+            # _ensure_city_valid_terrain, and the neighbours are needed for the starting construction.
             if city_row >= 0 and abs(r - city_row) <= 1 and abs(c - city_col) <= 1:
                 continue
             var tile = tile_data[r][c]
@@ -940,8 +940,8 @@ func _convert_free_terrain_near_cluster(tile_data: Array, terrain_id: String, de
     var visited := {}
     for r in range(min_row, max_row + 1):
         for c in range(min_col, max_col + 1):
-            # Гекс города и его соседи (3×3) не входят в кластер и не
-            # конвертируются — террейн города фиксирован.
+            # The hex of the city and its neighbours (3×3) do not enter the cluster and are not
+            # converted — the terrain of the city is fixed.
             if city_row >= 0 and abs(r - city_row) <= 1 and abs(c - city_col) <= 1:
                 continue
             var tile = tile_data[r][c]
@@ -963,7 +963,7 @@ func _convert_free_terrain_near_cluster(tile_data: Array, terrain_id: String, de
             for n in neighbors:
                 if n.row < min_row or n.row > max_row or n.col < min_col or n.col > max_col:
                     continue
-                # Гекс города и его соседи не посещаются и не становятся кандидатами.
+                # The hex of the city and its neighbours are not visited and do not become candidates.
                 if city_row >= 0 and abs(n.row - city_row) <= 1 and abs(n.col - city_col) <= 1:
                     continue
                 var key = "%d_%d" % [n.row, n.col]
@@ -1002,7 +1002,7 @@ func _convert_free_terrain_near_cluster(tile_data: Array, terrain_id: String, de
     for cand in candidates:
         if converted >= deficit:
             break
-        # Гекс города и его соседи не конвертируются террейном.
+        # The hex of the city and its neighbours are not converted into a terrain.
         if city_row >= 0 and abs(cand.row - city_row) <= 1 and abs(cand.col - city_col) <= 1:
             continue
         var old_terrain = cand.terrain
