@@ -1,119 +1,120 @@
 # town_manager.gd
-# Менеджер городков (мелких поселений). На старте игры генерирует заданное
-# число городков в случайных гексах рядом с точками тяготения, чтобы в
-# дальнейшем их можно было использовать для торговли.
+# The manager of the towns (small settlements). At the start of the game it generates a given
+# number of towns on random hexes near the points of attraction, so that
+# they can be used for the trade later.
 #
-# --- Алгоритм размещения (каскадно-уточняющий, по ТЗ) ---
-# Пять приоритетов (именно в этом порядке, сверху вниз):
-#   1) multi_resource — «кучка ресурсов в окрестностях»: у САМОГО гекса
-#      MIN_RESOURCES_FOR_CLUSTER (2+) РАЗНЫХ ресурса в радиусе
-#      MAX_ATTRACTION_DISTANCE (3 гекса); при этом ресурс, в радиусе 3 от
-#      которого уже стоит городок, в подсчёте не участвует — один и тот же
-#      ресурсный кластер не притягивает несколько городков;
-#   2) strategic — стратегический ресурс (resource.strategic == true) в
-#      радиусе MAX_ATTRACTION_DISTANCE (3 гекса) от гекса городка;
-#   3) river — гекс, по которому течёт река (river_edges непустой);
-#   4) lake_coast — сухопутный гекс, соседний с озером (terrain == "lake");
-#   5) sea_coast — морское побережье (terrain == "beach").
-# Водные приоритеты (река / озеро / море) — строго одиночные гексы: городок
-# у воды встаёт НЕПОСРЕДСТВЕННО на речной гекс / берег озера / пляж у моря,
-# а не «в пределах 3 гексов от воды».
 #
-# ШАГ 0 — БАЗА. Приоритеты перебираются строго сверху вниз, и для каждого
-# ищется валидный гекс ПО ВСЕЙ КАРТЕ (полный обход, без ограничения числа
-# случайных попыток). К следующему приоритету генератор переходит ТОЛЬКО
-# тогда, когда на карте не осталось ни одного подходящего гекса для текущего.
-# Первый приоритет, давший гекс, становится базовым. Поэтому приоритеты НЕ
-# равнозначны: городок не встанет у озера/моря (нижний приоритет), пока на
-# карте есть хоть одно свободное место с кучкой ресурсов (верхний приоритет).
-# Если ни один приоритет не дал ни одного валидного гекса на всей карте —
-# этот городок не размещается, идём к следующему.
+# --- The algorithm of the placement (cascade-refining, per the TZ) ---
+# Five priorities (exactly in this order, from the top down):
+#   1) multi_resource - "a pile of resources in the neighbourhood": the hex ITSELF has
+#      MIN_RESOURCES_FOR_CLUSTER (2+) DIFFERENT resources in the radius of
+#      MAX_ATTRACTION_DISTANCE (3 hexes); moreover, a resource within a radius of 3 from which
+#      a town already stands does not participate in the count - the same
+#      resource cluster does not attract several towns;
+#   2) strategic - a strategic resource (resource.strategic == true) in the
+#      radius of MAX_ATTRACTION_DISTANCE (3 hexes) from the hex of the town;
+#   3) river - a hex along which a river flows (river_edges is non-empty);
+#   4) lake_coast - a land hex adjacent to a lake (terrain == "lake");
+#   5) sea_coast - a sea coast (terrain == "beach").
+# The water priorities (a river / a lake / the sea) are strictly single hexes: a town
+# by the water stands DIRECTLY on the river hex / the bank of the lake / the beach by the sea,
+# and not "within 3 hexes of the water".
 #
-# ШАГИ 1..N — УТОЧНЕНИЕ. Дальше идём по оставшимся приоритетам вниз. На
-# каждом шаге пытаемся УЛУЧШИТЬ позицию: в радиусе REFINEMENT_RADIUS (2 гекса)
-# от текущего гекса ищем гекс, который одновременно удовлетворяет ВСЕМ уже
-# заработанным приоритетам И новому. Нашли — городок переезжает, приоритет
-# добавляется в цепочку. Не нашли — приоритет ПРОПУСКАЕТСЯ, позиция и
-# цепочка не меняются, идём к следующему приоритету (каскад не прерывается).
-# В идеале городок занимает гекс с 2+ ресурсами И стратегическим ресурсом
-# И на реке И на берегу озера/моря — насколько это позволяет радиус уточнения.
+# STEP 0 - THE BASE. The priorities are iterated strictly from the top down, and for each
+# a valid hex is searched over the WHOLE MAP (a full traversal, without a limit of the number of
+# random attempts). The generator moves on to the next priority ONLY
+# when there is not a single suitable hex for the current one left on the map.
+# The first priority which gave a hex becomes the base one. Therefore the priorities are NOT
+# equivalent: a town will not stand by a lake/the sea (a lower priority) while
+# there is a single free place with a pile of resources on the map (an upper priority).
+# If not a single priority gave not a single valid hex on the whole map -
+# this town is not placed, we go to the next one.
 #
-# Проверка «гекс удовлетворяет приоритету» и «гекс удовлетворяет всем
-# заработанным приоритетам И новому» идёт по МАСКАМ приоритетов
-# (PackedByteArray размера rows*cols) — см. блок «Маски приоритетов» ниже.
+# STEPS 1..N - THE REFINEMENT. Then we go down through the remaining priorities. At
+# each step we try to IMPROVE the position: in the radius of REFINEMENT_RADIUS (2 hexes)
+# from the current hex we search a hex which simultaneously satisfies ALL the already
+# earned priorities AND the new one. Found - the town moves, the priority
+# is added to the chain. Not found - the priority is SKIPPED, the position and the
+# chain do not change, we go to the next priority (the cascade is not interrupted).
+# In an ideal case the town occupies a hex with 2+ resources AND a strategic resource
+# AND on a river AND on the bank of a lake/the sea - as far as the radius of the refinement allows.
 #
-# --- Вторичный приоритет: тип местности ---
-# После первичного каскада позиция мягко уточняется по предпочтительности
-# terrain: равнина/песок(пляж) → холмы → болота/марши → горы. Первичные
-# тяготения при этом сохраняются (гекс обязан удовлетворять им всем).
-# Если подходящий terrain не нашёлся рядом — городок остаётся на текущем
-# валидном гексе.
+# The check "a hex satisfies the priority" and "a hex satisfies all the
+# already earned priorities AND the new one" goes by the MASKS of the priorities
+# (a PackedByteArray of the size rows*cols) - see the block "The masks of the priorities" below.
 #
-# --- Ограничения на гекс городка ---
-#   - не вода и не горы/непроходимая местность;
-#   - не гекс с ресурсом (в т.ч. стратегическим): к ресурсам тяготеем, но
-#     встаём рядом (в радиусе MAX_ATTRACTION_DISTANCE), а не на самом ресурсе;
-#   - на прибрежном пляже у моря — можно (приоритет «морское побережье»);
-#   - не гекс города игрока;
-#   - не гекс другого городка и не ближе MIN_DISTANCE_BETWEEN_TOWNS, а
-#     также не внутри чужого кольца влияния (эффективный минимум =
-#     max(MIN_DISTANCE_BETWEEN_TOWNS, influence_radius соседа + 1));
-#   - не внутри стартовой видимой области (Кольцо + стартовый Регион —
-#     иначе городок был бы виден с самого начала игры);
-#   - опционально: гекс должен лежать в заданной «обязательной» области
-#     (используется для гарантии «городок в эре-2»);
-#   - на гексе ещё нет постройки.
+# --- The secondary priority: the type of the terrain ---
+# After the primary cascade the position is softly refined by the preference of the
+# terrain: a plain/sand(beach) -> hills -> a marsh/swamp -> mountains. The primary
+# attractions are preserved at the same time (the hex must satisfy all of them).
+# If a suitable terrain was not found nearby - the town remains on the current
+# valid hex.
 #
-# --- Стартовая область игрока (player_start_area) ---
-# Это тот же прямоугольник «Кольцо + стартовый Регион», но правило жёстче и
-# касается не только ЦЕНТРА городка, а всего кольца влияния:
-#   - ресурсы внутри области не считаются точками притяжения
+# --- The restrictions on the hex of a town ---
+#   - not water and not mountains/an impassable terrain;
+#   - not a hex with a resource (including a strategic one): we are attracted to the resources, but
+#     we stand nearby (in the radius of MAX_ATTRACTION_DISTANCE), and not on the resource itself;
+#   - on a coastal beach by the sea - it is possible (the priority "a sea coast");
+#   - not a hex of the city of the player;
+#   - not a hex of another town and not closer than MIN_DISTANCE_BETWEEN_TOWNS, and
+#     also not inside a foreign influence ring (the effective minimum =
+#     max(MIN_DISTANCE_BETWEEN_TOWNS, influence_radius of the neighbour + 1));
+#   - not inside the starting visible area (the Ring + the starting Region -
+#     otherwise the town would be visible from the very beginning of the game);
+#   - optionally: the hex must lie in the given "mandatory" area
+#     (it is used for the guarantee "a town in era 2");
+#   - there is still no construction on the hex.
+#
+# --- The starting area of the player (player_start_area) ---
+# This is the same rectangle "the Ring + the starting Region", but the rule is stricter and
+# concerns not only the CENTRE of the town, but the whole influence ring:
+#   - the resources inside the area are not counted as the points of attraction
 #     (_build_multi_resource_mask / _build_strategic_mask);
-#   - каждый гекс области вырезается из кольца влияния
-#     (compute_all_town_influences), поэтому территория городка на стартовую
-#     область игрока не заходит НИ при каких обстоятельствах.
+#   - every hex of the area is cut out of the influence ring
+#     (compute_all_town_influences), therefore the territory of a town does not enter the starting
+#     area of the player under ANY circumstances.
+# The rule is the same for all the towns, including the guaranteed town of the 2nd era.
 # Правило одинаковое для всех городков, включая гарантийный городок 2-й эпохи.
-#
-# --- Гарантия «хотя бы 1 городок в области 2-й эпохи» ---
-# После основного прохода проверяем, есть ли хоть один городок в
-# эра-2-видимой области (Кольцо_2 + Регион_2). Если нет — пробуем
-# разместить один дополнительный городок с теми же ограничениями, но
-# «обязательная область» = эра-2-видимая. Исключение стартовой области
-# сохраняется, так что новый городок попадает в новую «полосу» между
+# --- The guarantee "at least 1 town in the area of the 2nd era" ---
+# After the main pass we check whether there is at least one town in
+# the era-2-visible area (the Ring_2 + the Region_2). If not - we try
+# to place one additional town with the same restrictions, but
+# with the "mandatory area" = the era-2-visible one. The exception of the starting area
+# is preserved, so the new town falls into the new "strip" between
+# era 1 and era 2 - that is, it appears for the player exactly on the transition to era 2.
 # эрой-1 и эрой-2 — то есть появится у игрока именно при переходе в эру 2.
-#
-# --- Конфигурация ---
-#   data/map_config.json: "num_towns" — целевое число городков (умеренно 8
+# --- The configuration ---
+#   data/map_config.json: "num_towns" - the target number of towns (moderately 8
+#   for a map of 60x60). If 0 or negative - the towns are not generated.
 #   для карты 60x60). Если 0 или отрицательное — городки не генерируются.
-#
-# --- Сейв/лоад ---
-# Список гексов сохраняется как [[row, col], ...] в SaveManager.saved_data["towns"]
-# и восстанавливается в main_map._ready (после загрузки tile_data).
+# --- Save/load ---
+# The list of the hexes is saved as [[row, col], ...] in SaveManager.saved_data["towns"]
+# and is restored in main_map._ready (after the load of tile_data).
+# In tile_data the hexes are marked with the flag has_town for the renderer and the control panel.
 # В tile_data гексы помечаются флагом has_town для рендерера и панели управления.
 @tool
 class_name TownManager
 extends Node
-
-# Имя файла иконки городка. По ТЗ используем ту же иконку, что у города
-# игрока (icons/city.png), но рисуем меньшего размера.
+# The name of the file of the icon of a town. Per the TZ we use the same icon as the one of the city
+# of the player (icons/city.png), but we draw it of a smaller size.
 const TOWN_ICON_NAME := "city.png"
-# Размер иконки городка в пикселях. Город игрока рисуется 130, городок —
-# мельче, чтобы визуально не конкурировать с городом.
+# The size of the icon of a town in the pixels. The city of the player is drawn 130, a town is
+# smaller, so as not to compete visually with the city.
 const TOWN_ICON_SIZE := 60
-# Прозрачность иконки городка за пределами видимого Региона (туман войны).
-# Игрок должен видеть «что-то есть», но без деталей.
+# The transparency of the icon of a town beyond the visible Region (the fog of war).
+# The player must see "that something is there", but without the details.
 const FOG_TOWN_ICON_ALPHA := 0.55
-# Максимальное расстояние от точки тяготения до гекса городка (в гексах).
+# The maximum distance from the point of attraction to the hex of a town (in the hexes).
 const MAX_ATTRACTION_DISTANCE := 3
-# Минимальное число РАЗНЫХ ресурсов в радиусе MAX_ATTRACTION_DISTANCE от гекса,
-# при котором гекс считается притягательным для приоритета «multi_resource»
-# (2+ разных ресурса = «кучка ресурсов в окрестностях»).
+# The minimum number of DIFFERENT resources in the radius of MAX_ATTRACTION_DISTANCE from a hex,
+# at which the hex is considered attractive for the priority "multi_resource"
+# (2+ different resources = "a pile of resources in the neighbourhood").
 const MIN_RESOURCES_FOR_CLUSTER := 2
-# Вторичный приоритет: уточнение по типам местности (в порядке убывания привлекательности типа местности).
-# Первичные приоритеты (ресурсы / река / озеро / море) остаются ОБЯЗАТЕЛЬНЫМИ;
-# тип местности — мягкое уточнение поверх них: после основного каскада
-# пробуем переехать на гекс с более предпочтительным terrain, не теряя
-# заработанных первичных тяготений.
+# The secondary priority: a refinement by the types of the terrain (in the order of the decreasing attractiveness of the type of the terrain).
+# The primary priorities (the resources / the river / the lake / the sea) remain MANDATORY;
+# the type of the terrain is a soft refinement on top of them: after the main cascade
+# we try to move to a hex with a more preferable terrain, without losing
+# the already earned primary attractions.
 const TERRAIN_PREFERENCE: Array = [
     ["plain", "beach"],
     ["hill"],
@@ -121,97 +122,97 @@ const TERRAIN_PREFERENCE: Array = [
     ["swamp", "marsh"],
     ["sandy_desert", "mountain"],
 ]
-# Радиус поиска при «уточнении» позиции на следующем приоритете (в гексах).
-# Уточнение локальное: гекс ищется в REFINEMENT_RADIUS от текущей позиции и
-# обязан удовлетворять ВСЕМ уже заработанным приоритетам + новому. Приоритет,
-# который в этом радиусе «дотянуть» не удалось, пропускается — позиция не
-# меняется и каскад идёт к следующему приоритету.
+# The radius of the search in the "refinement" of the position by the next priority (in the hexes).
+# The refinement is local: a hex is searched within REFINEMENT_RADIUS of the current position and
+# must satisfy ALL the already earned priorities + the new one. A priority
+# which could not be "pulled through" in this radius is skipped - the position does not
+# change and the cascade goes to the next priority.
 const REFINEMENT_RADIUS := 2
-# Базовая минимальная дистанция между двумя городками (рассредоточение).
-# Фактический минимум в _is_valid_town_hex = МАКСИМУМ из этой константы и
-# (influence_radius соседа + 1): центр нового городка не должен попадать
-# в чужое кольцо влияния.
+# The base minimum distance between two towns (a spread).
+# The actual minimum in _is_valid_town_hex is the MAXIMUM of this constant and
+# (influence_radius of the neighbour + 1): the centre of a new town must not fall
+# into a foreign influence ring.
 const MIN_DISTANCE_BETWEEN_TOWNS := 3
 
-# === Кольцо влияния городка ===
-# Каждый городок имеет «кольцо влияния» — зону вокруг себя, внутри которой
-# игрок не может ничего строить. Это отражает тот факт, что вокруг чужого
-# поселения земля фактически «занята» (поля, выпасы, инфраструктура).
+# === The influence ring of a town ===
+# Each town has an "influence ring" - a zone around itself, inside which
+# the player cannot build anything. This reflects the fact that around a foreign
+# settlement the land is actually "occupied" (fields, pastures, infrastructure).
+# The rules:
+# The rules:
+#   1. The base disk: all the hexes at a distance of 0..INFLUENCE_MAX_RADIUS from the town.
+#   2. The asymmetry: so that the ring does not look like a perfect circle, in one
+#      random "side" (of 6) we drop 1-3 hexes at a distance of 3
+#      (we form a "notch"). The side and the set of the hexes are chosen deterministically
+#      from the coordinates of the town - the same result between the loads.
+#   3. If there is a resource within the radius of INFLUENCE_MAX_RADIUS - the ring IS OBLIGED
+#      to include the hex with the resource AND the shortest path from the town to the resource.
+#      Without this the "notch" of step 2 could surround a resource, leaving it
+#      a tiny "enclave" of the available land in the middle of the forbidden zone.
 #
-# Правила:
-#   1. Базовый диск: все гексы на расстоянии 0..INFLUENCE_MAX_RADIUS от городка.
-#   2. Асимметрия: чтобы кольцо не выглядело идеальным кругом, в одной
-#      случайной «стороне» (из 6) отбрасываем 1-3 гекса на расстоянии 3
-#      (формируем «выемку»). Сторона и набор гексов выбираются детерминированно
-#      от координат городка — одинаковый результат между загрузками.
-#   3. Если в радиусе INFLUENCE_MAX_RADIUS есть ресурс — кольцо ОБЯЗАНО
-#      включать гекс с ресурсом И кратчайший путь от городка до ресурса.
-#      Без этого «выемка» из шага 2 могла бы окружить ресурс, оставив его
-#      крошечным «анклавом» доступной земли посреди запретной зоны.
-#
-# Кольцо пересчитывается из town_hexes при загрузке сейва, поэтому
-# отдельно его в сейв НЕ сохраняем — входные данные (городки и ресурсы)
-# уже там есть.
+# The ring is recalculated from town_hexes on the load of a save, therefore
+# we do NOT save it separately in the save - the input data (the towns and the resources)
+# are already there.
 const INFLUENCE_MAX_RADIUS := 3
-# Шанс того, что выемка на расстоянии 3 действительно «съест» гекс в
-# выбранной стороне. 0.6 — в среднем ~2 гекса выпадают из диска, что
-# даёт заметную, но не агрессивную асимметрию.
+# The chance that the notch at a distance of 3 will really "eat" a hex on the
+# chosen side. 0.6 - on average ~2 hexes fall out of the disk, which
+# gives a noticeable, but not aggressive asymmetry.
 const INFLUENCE_NOTCH_PROBABILITY := 0.6
-# Максимум гексов, которые можно отбросить в выемке на расстоянии 3.
-# 3 — «съедаем» почти целый сектор из 6 гексов на краю.
+# The maximum number of the hexes which can be dropped in the notch at a distance of 3.
+# 3 - we "eat" almost a whole sector of 6 hexes at the edge.
 const INFLUENCE_NOTCH_MAX_DROPS := 3
 
-# ===== Структура данных: список городков =====
-# ЕДИНЫЙ источник истины по городкам — массив записей `towns`. Каждая запись
-# — Dictionary с полными данными:
-#   id                  — уникальный стабильный id ("town_N");
-#   row, col            — координаты гекса-центра;
-#   name                — имя (пока пустое, генератор имён появится позже);
-#   is_era2_guaranteed  — справочная метка «добавлен для гарантии видимости
-#                         в эру-2»;
-#   border_color        — [r, g, b, a] цвет границ кольца (генерируется
-#                         детерминированно на спавне и СОХРАНЯЕТСЯ в сейв);
-#   influence_radius    — радиус кольца влияния (число, а не константа:
-#                         кольцо может расти/сжиматься у разных городков);
-#   influence_hexes     — ЛИЧНОЕ кольцо городка: Array of {row, col};
-#   sell_pool, buy_pool — (будущее) пулы торговли: что городок продаёт и
-#                         что хочет купить.
+# ===== The data structure: the list of the towns =====
+# The SINGLE source of truth about the towns is the array of the records `towns`. Each record
+# is a Dictionary with the full data:
+#   id                  - a unique stable id ("town_N");
+#   row, col            - the coordinates of the hex-centre;
+#   name                - the name (still empty, the generator of the names will appear later);
+#   is_era2_guaranteed  - a reference mark "added for the guarantee of the visibility
+#                         in era 2";
+#   border_color        - [r, g, b, a] the colour of the borders of the ring (generated
+#                         deterministically on the spawn and SAVED in the save);
+#   influence_radius    - the radius of the influence ring (a number, and not a constant:
+#                         the ring can grow/shrink for the different towns);
+#   influence_hexes     - the PERSONAL ring of the town: an Array of {row, col};
+#   sell_pool, buy_pool - the (future) trade pools: what the town sells and
+#                         what it wants to buy.
 #
-# Запись целиком сохраняется в сейв (serialize_towns) и восстанавливается
-# из него (load_towns), поэтому любые будущие поля городка просто добавляются
-# в словарь без изменения форматов других сущностей.
+# The whole record is saved in the save (serialize_towns) and is restored
+# from it (load_towns), therefore any future fields of a town are simply added
+# to the dictionary without a change of the formats of the other entities.
 var towns: Array = []
 var _used_town_names: Dictionary = {}
 
-# Производные списки — плоские зеркала `towns` для обратной совместимости
-# (рендерер и main_map). Напрямую не редактируются, пересобираются из `towns`.
-#   town_hexes            — Array of {row, col};
-#   town_influence_hexes  — плоский список гексов колец ВСЕХ городков.
+# The derived lists - the flat mirrors of `towns` for the backward compatibility
+# (the renderer and main_map). They are not edited directly, they are rebuilt from `towns`.
+#   town_hexes            - an Array of {row, col};
+#   town_influence_hexes  - a flat list of the hexes of the rings of ALL the towns.
 var town_hexes: Array = []
 var town_influence_hexes: Array = []
 
-# Стартовая область игрока: Кольцо Влияния + Регион 1-й эпохи (то самое, что
-# игрок видит и в чём строит с первой секунды игры). Хранится как
-# {"start_row", "end_row", "start_col", "end_col"}; пустой словарь — область не
-# задана (тесты, вызовы без ограничения).
+# The starting area of the player: the Influence Ring + the Region of the 1st era (the very same as
+# what the player sees and builds in from the first second of the game). It is stored as
+# {"start_row", "end_row", "start_col", "end_col"}; an empty dictionary - the area is
+# not set (the tests, the calls without a restriction).
 #
-# Это ДВА ограничения в одном прямоугольнике, и это не совпадение:
-#   1) _is_valid_town_hex не ставит здесь ЦЕНТР городка (иначе чужое поселение
-#      было бы видно с самого начала игры);
-#   2) compute_all_town_influences вырезает из кольца влияния КАЖДЫЙ гекс этой
-#      области — территория городка не должна заходить на землю игрока ни при
-#      каких обстоятельствах.
-# Область заполняется ОДИН раз при генерации (generate_towns) и при загрузке
-# сейва (main_map перед compute_all_town_influences) и больше не меняется.
-# Поэтому клип не «замораживает» кольцо намертво, как это делал клип по
-# растущему Региону: с ростом Региона при смене эпохи вырезанным остаётся
-# ровно то, что и так принадлежит игроку. Для всех городков правило одинаковое,
-# включая гарантийный городок 2-й эпохи.
+# This is TWO restrictions in one rectangle, and it is not a coincidence:
+#   1) _is_valid_town_hex does not put the CENTRE of a town here (otherwise a foreign settlement
+#      would be visible from the very beginning of the game);
+#   2) compute_all_town_influences cuts out of the influence ring EVERY hex of this
+#      area - the territory of a town must not enter the land of the player under
+#      any circumstances.
+# The area is filled ONCE at the generation (generate_towns) and on the load of a
+# save (main_map before compute_all_town_influences) and does not change any more.
+# Therefore the clip does not "freeze" the ring dead, as the clip by
+# the growing Region did: with the growth of the Region on a change of the epoch, exactly that
+# which already belongs to the player remains cut out. The rule is the same for all the towns,
+# including the guaranteed town of the 2nd era.
 var player_start_area: Dictionary = {}
 
 
-# Задаёт стартовую область игрока. Пустой прямоугольник (start > end) и любые
-# отрицательные значения отключают ограничение — так же, как exclusion_* в
+# Sets the starting area of the player. An empty rectangle (start > end) and any
+# negative values disable the restriction - just as exclusion_* in
 # generate_towns.
 func set_player_start_area(start_row: int, end_row: int,
         start_col: int, end_col: int) -> void:
@@ -224,7 +225,7 @@ func set_player_start_area(start_row: int, end_row: int,
     }
 
 
-# Лежит ли гекс (row, col) в стартовой области игрока.
+# Does the hex (row, col) lie in the starting area of the player.
 func _is_in_player_start_area(row: int, col: int) -> bool:
     if player_start_area.is_empty():
         return false
@@ -234,8 +235,8 @@ func _is_in_player_start_area(row: int, col: int) -> bool:
         and col <= int(player_start_area["end_col"])
 
 
-# Создаёт новую запись городка с уникальным именем из city_names.json.
-# Личное кольцо influence_hexes заполняется compute_all_town_influences().
+# Creates a new record of a town with a unique name from city_names.json.
+# The personal ring influence_hexes is filled by compute_all_town_influences().
 func _make_town_record(town_index: int, row: int, col: int,
         is_era2_guaranteed: bool) -> Dictionary:
     return {
@@ -276,20 +277,20 @@ func _take_unique_town_name(preferred_name: String = "") -> String:
     return fallback_name
 
 
-# Детерминированный цвет границ кольца городка по его индексу. Золотой угол
-# (φ-1 ≈ 0.618) даёт равномерный разброс оттенков по кругу — даже соседние
-# по индексу городки выглядят по-разному. Цвет записывается в запись города
-# и сохраняется в сейв, поэтому не «поедет», если городок удалят/переставят.
-# Округляем компоненты: 32-битный Color теряет точность при JSON round-trip,
-# а округлённые до 3 знаков значения сериализуются и восстанавливаются
-# бит-в-бит.
+# The deterministic colour of the borders of a town by its index. The golden angle
+# (phi-1 ~ 0.618) gives an even spread of the hues over the circle - so even the towns neighbouring
+# by index look different. The colour is written into the record of the town
+# and is saved in the save, therefore it will not "shift" if a town is removed/moved.
+# We round the components: a 32-bit Color loses the precision on a JSON round-trip,
+# and the values rounded to 3 decimals are serialized and restored
+# bit-for-bit.
 func _make_border_color(town_index: int) -> Array:
     var hue := fposmod(float(town_index) * 0.618033988749895, 1.0)
     var c := Color.from_hsv(hue, 0.85, 0.95, 1.0)
     return [snappedf(c.r, 0.001), snappedf(c.g, 0.001), snappedf(c.b, 0.001), 1.0]
 
 
-# Пересобирает производный town_hexes из master-списка towns.
+# Rebuilds the derived town_hexes from the master list towns.
 func _rebuild_derived_town_hexes() -> void:
     town_hexes = []
     for t in towns:
@@ -299,27 +300,27 @@ func _rebuild_derived_town_hexes() -> void:
             "is_era2_guaranteed": bool(t.get("is_era2_guaranteed", false)),
         })
 
-# Возвращает запись городка на гексе (row, col) или null, если там нет городка.
-# Используется панелью управления (кнопка перехода в интерфейс городка) и
-# main_map.open_town_ui (двойной клик по гексу городка).
+# Returns the record of a town on the hex (row, col), or null if there is no town there.
+# It is used by the control panel (the button of the transition to the interface of the town) and by
+# main_map.open_town_ui (a double click on the hex of a town).
 func find_town_at(row: int, col: int):
     for t in towns:
         if int(t.get("row", -1)) == row and int(t.get("col", -1)) == col:
             return t
     return null
 
-# === Требование дороги для торговли с городком (ЗАГЛУШКА) ===
+# === The road requirement for the trade with a town (A STUB) ===
 #
-# Торговля с городками ещё не реализована: окно городка (town_ui) только
-# показывает, что у него есть на продажу и на покупку, и открывается ВСЕГДА,
-# как бы дороги ни было. Дорога пока ничего не блокирует — её роль сейчас
-# в том, что игрок видит: городок соединён (иконка над гексом) или нет
-# (подпись в окне городка).
+# The trade with the towns is not implemented yet: the window of a town (town_ui) only
+# shows what it has for sale and for purchase, and opens ALWAYS,
+# no matter what the roads are. The road does not block anything for now - its role is
+# currently that the player sees: whether the town is connected (an icon over the hex) or not
+# (a label in the window of the town).
 #
-# Когда появится настоящая торговля, требование станет настоящим: значение
-# константы меняется на false (торговля без дороги) либо сама функция
-# переписывается под реальные правила. Точка снятия заглушки — ОДНА:
-# эта функция; всё, что спрашивает про торговлю, спрашивает именно её.
+# When the real trade appears, the requirement becomes a real one: the value of
+# the constant changes to false (the trade without a road), or the function itself
+# is rewritten under the real rules. The point of the removal of the stub is ONE:
+# this function; everything that asks about the trade asks exactly it.
 const TOWN_TRADE_REQUIRES_ROAD := true
 
 # Доступна ли торговля с этим городком.
@@ -341,31 +342,31 @@ func _restore_hex_list(entries: Array) -> Array:
 # Генерирует городки. Вызывается из main_map._initialize_map ПОСЛЕ
 # генерации рек (чтобы river_edges уже были проставлены в tile_data).
 #
-# Параметры:
-#   tile_data            — 2D-массив гексов.
-#   rows, cols           — размеры карты.
-#   city_row, city_col   — координаты города игрока.
+# The parameters:
+#   tile_data            - a 2D array of the hexes.
+#   rows, cols           - the dimensions of the map.
+#   city_row, city_col   - the coordinates of the city of the player.
 #
-#   exclusion_start_row/col, exclusion_end_row/col — зона, ВНУТРИ которой
-#                          городки НЕ размещаются. Это стартовая видимая
-#                          область (Кольцо + стартовый Регион): иначе
-#                          городки были бы видны с самого начала.
+#   exclusion_start_row/col, exclusion_end_row/col - the zone INSIDE which
+#                          the towns are NOT placed. This is the starting visible
+#                          area (the Ring + the starting Region): otherwise
+#                          the towns would be visible from the very beginning.
 #
-#   era2_region_start_row/col, era2_region_end_row/col — границы видимой
-#                          области ВТОРОЙ эпохи (Кольцо_2 + Регион_2).
-#                          Используется как «обязательная зона» для
-#                          гарантии «хотя бы 1 городок в эре-2».
+#   era2_region_start_row/col, era2_region_end_row/col - the borders of the visible
+#                          area of the SECOND era (the Ring_2 + the Region_2).
+#                          It is used as the "mandatory zone" for the
+#                          guarantee of "at least 1 town in era 2".
 func generate_towns(tile_data: Array, rows: int, cols: int,
         city_row: int, city_col: int,
         exclusion_start_row: int, exclusion_end_row: int,
         exclusion_start_col: int, exclusion_end_col: int,
         era2_region_start_row: int, era2_region_end_row: int,
         era2_region_start_col: int, era2_region_end_col: int) -> void:
-    # Очищаем предыдущее состояние (на случай повторного вызова) и
-    # снимаем флаг has_town со всех гексов — повторная генерация не должна
-    # «накапливать» старые пометки. Сбрасываем и master-список towns, и
-    # производные зеркала. ПРИМЕЧАНИЕ: используем clear(), а не `=` — так
-    # ссылка main_map.towns на этот массив не рвётся при повторной генерации.
+# We clear the previous state (in case of a repeated call) and
+# remove the flag has_town from all the hexes - a repeated generation must not
+# "accumulate" the old marks. We reset both the master list towns, and the
+# derived mirrors. NOTE: we use clear(), and not `=` - so that
+# the reference main_map.towns to this array is not broken on a repeated generation.
     towns.clear()
     _used_town_names.clear()
     if not CityData.city_name.is_empty():
@@ -373,12 +374,12 @@ func generate_towns(tile_data: Array, rows: int, cols: int,
     town_hexes = []
     town_influence_hexes = []
 
-    # Запоминаем стартовую область игрока: exclusion_* — это ровно она
-    # (Кольцо + стартовый Регион). Область нужна не только для запрета на ЦЕНТР
-    # городка (это делает _is_valid_town_hex), но и для двух вещей при
-    # генерации: ресурсы внутри области не считаются точками притяжения
-    # (см. _build_multi_resource_mask / _build_strategic_mask), а из колец
-    # влияния она вырезается (см. compute_all_town_influences).
+# We remember the starting area of the player: exclusion_* is exactly it
+# (the Ring + the starting Region). The area is needed not only for the ban on the CENTRE of a
+# town (this is done by _is_valid_town_hex), but also for two things during the
+# generation: the resources inside the area are not counted as the points of attraction
+# (see _build_multi_resource_mask / _build_strategic_mask), and it is cut out of the rings
+# of the influence (see compute_all_town_influences).
     set_player_start_area(exclusion_start_row, exclusion_end_row,
             exclusion_start_col, exclusion_end_col)
 
@@ -389,34 +390,34 @@ func generate_towns(tile_data: Array, rows: int, cols: int,
 
     var num_towns: int = int(GameData.map_config.get("num_towns", 8))
     if num_towns <= 0:
-        print("town_manager: num_towns=", num_towns, " — городки не генерируются")
+        print("town_manager: num_towns=", num_towns, " — the towns are not generated")
         return
     if rows < 3 or cols < 3:
-        print("town_manager: карта слишком мала для городков")
+        print("town_manager: the map is too small for the towns")
         return
 
-    # --- Основной проход: размещаем num_towns городков каскадным алгоритмом ---
+# --- The main pass: we place num_towns towns by the cascade algorithm ---
     for _i in range(num_towns):
         var placed = _try_place_one_town(tile_data, rows, cols,
                 city_row, city_col,
                 exclusion_start_row, exclusion_end_row,
                 exclusion_start_col, exclusion_end_col,
-                -1, -1, -1, -1, # без «обязательной зоны» на основном проходе
+                -1, -1, -1, -1, # without a "mandatory zone" on the main pass
                 false)
         if placed.is_empty():
-            print("town_manager: не удалось разместить городок #", towns.size() + 1,
-                    " (нет валидных мест ни в одном приоритете)")
+            print("town_manager: failed to place town #", towns.size() + 1,
+                    " (no valid places in any of the priorities)")
             continue
         var new_town := _make_town_record(towns.size(), placed.row, placed.col, false)
         towns.append(new_town)
         town_hexes.append({"row": placed.row, "col": placed.col})
         tile_data[placed.row][placed.col]["has_town"] = true
 
-    # --- Гарантия «≥1 городок в области 2-й эпохи» ---
-    # Если среди размещённых городков нет ни одного в эра-2-области, делаем
-    # ещё одну попытку — размещаем «гарантийный» городок с «обязательной
-    # зоной» = эра-2-область. Исключение стартовой области сохраняется,
-    # так что городок попадёт в новую полосу, видимую только в эре 2.
+# --- The guarantee ">=1 town in the area of the 2nd era" ---
+# If among the placed towns there is not a single one in the era-2 area, we make
+# one more attempt - we place a "guaranteed" town with the "mandatory
+# zone" = the era-2 area. The exception of the starting area is preserved,
+# so the town falls into the new strip which is visible only in era 2.
     var has_era2_town := false
     for h in town_hexes:
         if h.row >= era2_region_start_row and h.row <= era2_region_end_row \
@@ -432,52 +433,52 @@ func generate_towns(tile_data: Array, rows: int, cols: int,
                 era2_region_start_col, era2_region_end_col,
                 false)
         if not forced.is_empty():
-            # Флаг is_era2_guaranteed — справочная метадата («этот городок
-            # был добавлен специально для гарантии видимости в эре 2»).
-            # В compute_town_influence сейчас не используется: клип на
-            # стартовом Регионе применяется ко ВСЕМ городкам одинаково.
-            # Флаг сохранён в сейве и в записи городка на случай будущих
-            # механик, которым понадобится различать «обычные» и
-            # «гарантийные» городки.
+# The flag is_era2_guaranteed - a reference metadata ("this town
+# was added specially for the guarantee of the visibility in era 2").
+# In compute_town_influence it is not used at the moment: the clip on
+# the starting Region is applied to ALL the towns equally.
+# The flag is saved in the save and in the record of the town in case of the future
+# mechanics which will need to distinguish the "ordinary" and the
+# "guaranteed" towns.
             var forced_town := _make_town_record(towns.size(), forced.row, forced.col, true)
             towns.append(forced_town)
             town_hexes.append({"row": forced.row, "col": forced.col, "is_era2_guaranteed": true})
             tile_data[forced.row][forced.col]["has_town"] = true
-            print("town_manager: гарантия эры-2 — добавлен городок на (",
+            print("town_manager: the era-2 guarantee — a town was added at (",
                     forced.row, ",", forced.col, ")")
         else:
-            print("town_manager: гарантия эры-2 НЕ выполнена — нет валидного ",
-                    "гекса в новой полосе (вероятно, всё вода/непроходимо)")
+            print("town_manager: the era-2 guarantee is NOT fulfilled — there is no valid ",
+                    "hex in the new strip (probably it is all water/impassable)")
 
-    # Кольца влияния строятся ПОСЛЕ размещения всех городков (включая
-    # гарантийный для эры-2), потому что при обходе ресурсов в радиусе 3
-    # от каждого городка нужны финальные позиции И все ресурсы уже на карте.
-    # Границы текущего Региона здесь НЕ нужны: кольцо строится целиком по
-    # радиусу, из него вырезается только стартовая область игрока (которая не
-    # меняется никогда) и кольца соседних городков, а что из кольца видно
-    # игроку — решает рендерер (туман войны + эпоха).
+# The influence rings are built AFTER the placement of all the towns (including
+# the guaranteed one for era 2), because when iterating the resources within a radius of 3
+# from each town the final positions AND all the resources on the map are needed.
+# The borders of the current Region are NOT needed here: the ring is built entirely by
+# the radius, only the starting area of the player is cut out of it (which never
+# changes) and the rings of the neighbouring towns, and what of the ring is visible
+# to the player is decided by the renderer (the fog of war + the epoch).
     compute_all_town_influences(tile_data, rows, cols)
 
-    # После построения колец заполняем их декоративными улучшениями. Они
-    # принадлежат городкам, не требуют рабочих и никогда не участвуют в
-    # производстве игрока (см. tile.decorative). Пищевые поля — единственное
-    # исключение в смысле торговли: засеянная культура попадает в пул продажи
-    # городка, но на склад игрока не идёт.
+# After the building of the rings we fill them with the decorative improvements. They
+# belong to the towns, do not require the workers and never participate in the
+# production of the player (see tile.decorative). The food fields are the only
+# exception in the sense of the trade: the sown crop falls into the pool of the sale
+# of the town, but it does not go to the warehouse of the player.
     _place_decorative_town_improvements(tile_data, rows, cols)
 
-    print("town_manager: всего размещено городков=", town_hexes.size(),
-            " (целевое=", num_towns, ")")
+    print("town_manager: the total number of the placed towns=", town_hexes.size(),
+            " (target=", num_towns, ")")
 
 
-# Пытается разместить один городок каскадно-уточняющим алгоритмом (по ТЗ):
-# ШАГ 0 — база (первый сверху приоритет, у которого на ВСЕЙ карте есть
-# валидный гекс), ШАГИ 1..N — локальное уточнение по нижним приоритетам.
-# Возвращает координаты {row, col} или пустой словарь {}, если на всей карте
-# не нашлось ни одного валидного гекса ни в одном приоритете.
+# Tries to place one town by the cascade-refining algorithm (per the TZ):
+# STEP 0 - the base (the first from the top priority, for which there is a
+# valid hex on the WHOLE map), STEPS 1..N - a local refinement by the lower priorities.
+# Returns the coordinates {row, col}, or an empty dictionary {} if on the whole map
+# not a single valid hex was found in any of the priorities.
 #
-# Параметр require_in_region_* задаёт «обязательную зону» (например,
-# эра-2-область для гарантийного городка): если задан, итоговый гекс
-# должен лежать внутри неё. Если задан как -1 — ограничение отключено.
+# The parameter require_in_region_* sets the "mandatory zone" (for example,
+# the era-2 area for the guaranteed town): if it is set, the final hex
+# must lie inside it. If it is set as -1 - the restriction is disabled.
 func _try_place_one_town(tile_data: Array, rows: int, cols: int,
         city_row: int, city_col: int,
         exclusion_start_row: int, exclusion_end_row: int,
@@ -485,8 +486,8 @@ func _try_place_one_town(tile_data: Array, rows: int, cols: int,
         require_in_region_start_row: int, require_in_region_end_row: int,
         require_in_region_start_col: int, require_in_region_end_col: int,
         ignore_exclusion: bool) -> Dictionary:
-    # Маски всех пяти приоритетов (см. блок «Маски приоритетов» ниже):
-    # mask[row * cols + col] == 1, если гекс удовлетворяет этому приоритету.
+# The masks of all the five priorities (see the block "The masks of the priorities" below):
+# mask[row * cols + col] == 1, if a hex satisfies this priority.
     var tiers: Array = [
         {"name": "multi_resource", "mask": _build_multi_resource_mask(tile_data, rows, cols)},
         {"name": "strategic", "mask": _build_strategic_mask(tile_data, rows, cols)},
@@ -495,12 +496,12 @@ func _try_place_one_town(tile_data: Array, rows: int, cols: int,
         {"name": "sea_coast", "mask": _build_sea_coast_mask(tile_data, rows, cols)},
     ]
 
-    # ШАГ 0: база. Перебираем приоритеты строго сверху вниз и для каждого
-    # ищем валидный гекс ПО ВСЕЙ КАРТЕ (полный обход карты). К следующему
-    # приоритету переходим ТОЛЬКО тогда, когда для текущего на карте не
-    # осталось ни одного подходящего гекса, — поэтому приоритеты не
-    # равнозначны: городок не встанет у озера/моря, пока на карте есть
-    # свободное место с кучкой ресурсов.
+# STEP 0: the base. We iterate the priorities strictly from the top down and for each
+# we search a valid hex over the WHOLE map (a full traversal of the map). We move on to the next
+# priority ONLY when for the current one there is
+# not a single suitable hex left on the map, - therefore the priorities are not
+# equivalent: a town will not stand by a lake/the sea, while there is a
+# free place with a pile of resources on the map.
     var base_tier_idx := -1
     var best: Dictionary = {}
     for i in range(tiers.size()):
@@ -516,15 +517,15 @@ func _try_place_one_town(tile_data: Array, rows: int, cols: int,
             best = hex
             break
     if base_tier_idx == -1:
-        # На всей карте нет ни одного валидного гекса ни в одном приоритете.
+# On the whole map there is not a single valid hex in any of the priorities.
         return {}
 
-    # ШАГИ 1..N: каскадное уточнение. Идём по оставшимся приоритетам вниз.
-    # На каждом шаге ищем в радиусе REFINEMENT_RADIUS от текущего гекса гекс,
-    # который одновременно удовлетворяет ВСЕМ уже заработанным приоритетам
-    # (их маски) И новому. Нашли — городок переезжает, приоритет добавлен в
-    # цепочку. Не нашли — приоритет ПРОПУСКАЕТСЯ, позиция и цепочка не
-    # меняются, идём к следующему: каскад НЕ прерывается на неудаче.
+# STEPS 1..N: the cascade refinement. We go down through the remaining priorities.
+# At each step we search within the radius of REFINEMENT_RADIUS of the current hex a hex
+# which simultaneously satisfies ALL the already earned priorities
+# (their masks) AND the new one. Found - the town moves, the priority is added to the
+# chain. Not found - the priority is SKIPPED, the position and the chain do not
+# change, we go to the next one: the cascade is NOT interrupted by a failure.
     var satisfied_names: Array = [str(tiers[base_tier_idx]["name"])]
     var skipped_names: Array = []
     var required_masks: Array = [tiers[base_tier_idx]["mask"]]
@@ -545,11 +546,11 @@ func _try_place_one_town(tile_data: Array, rows: int, cols: int,
         required_masks.append(new_mask)
         satisfied_names.append(str(tiers[tier_idx]["name"]))
 
-    # --- Вторичный приоритет: уточнение по типам местности ---
-    # Заработанные приоритеты должны сохраниться: ищем гекс с более
-    # предпочтительным terrain, который по-прежнему удовлетворяет ВСЕМ им.
-    # Группы перебираем по порядку предпочтения; если ни одна не подошла —
-    # остаёмся на текущем (валидном) гексе.
+    # --- The secondary priority: a refinement by the types of the terrain ---
+    # The already earned priorities must be preserved: we search a hex with a more
+    # preferable terrain which still satisfies ALL of them.
+    # We iterate the groups in the order of the preference; if not a single one fits -
+    # we stay on the current (valid) hex.
     var cur_terrain: String = tile_data[best.row][best.col].get("terrain", "")
     var terrain_label := ""
     for group in TERRAIN_PREFERENCE:
@@ -570,18 +571,18 @@ func _try_place_one_town(tile_data: Array, rows: int, cols: int,
             terrain_label = str(group[0])
             break
 
-    print("town_manager: городок (", best.row, ",", best.col, ") — приоритеты: ",
+    print("town_manager: town (", best.row, ",", best.col, ") — the priorities: ",
             " + ".join(satisfied_names),
-            "" if skipped_names.is_empty() else ("; пропущено: " + ", ".join(skipped_names)),
+            "" if skipped_names.is_empty() else ("; skipped: " + ", ".join(skipped_names)),
             "" if terrain_label == "" else ("; terrain: " + terrain_label))
     return best
 
 
-# Ищет валидный гекс городка ПО ВСЕЙ КАРТЕ среди гексов, помеченных в mask
-# (маска приоритета). Это первичный поиск («база»), ограничений «рядом с
-# чем-то» у него нет. Из всех подходящих гексов возвращается случайный
-# (резервуарная выборка: память O(1), полный список кандидатов не храним).
-# Возвращает {row, col} или {} если на карте не нашлось ни одного места.
+# Searches a valid hex of a town over the WHOLE map among the hexes marked in mask
+# (the mask of a priority). This is the primary search ("the base"), it has no
+# "near something" restrictions. Of all the suitable hexes a random one is returned
+# (reservoir sampling: the memory of O(1), the full list of the candidates is not stored).
+# Returns {row, col}, or {} if not a single place was found on the map.
 func _find_hex_in_mask(tile_data: Array, rows: int, cols: int, mask: PackedByteArray,
         city_row: int, city_col: int,
         exclusion_start_row: int, exclusion_end_row: int,
@@ -608,9 +609,9 @@ func _find_hex_in_mask(tile_data: Array, rows: int, cols: int, mask: PackedByteA
     return chosen
 
 
-# Проверяет, что гекс (row, col) удовлетворяет ВСЕМ переданным маскам
-# приоритетов (то есть лежит в каждой из них) — это и есть «AND» по
-# заработанным приоритетам + новому.
+# Checks that the hex (row, col) satisfies ALL the passed masks
+# of the priorities (that is, it lies in each of them) - this is the "AND" over the
+# already earned priorities + the new one.
 func _hex_satisfies_all_masks(masks: Array, cols: int, row: int, col: int) -> bool:
     var idx: int = row * cols + col
     for mask in masks:
@@ -619,12 +620,12 @@ func _hex_satisfies_all_masks(masks: Array, cols: int, row: int, col: int) -> bo
     return true
 
 
-# Ищет валидный гекс городка в радиусе max_dist_from_near от near_hex. Это
-# шаг УТОЧНЕНИЯ, поэтому поиск локальный: гекс обязан лежать во ВСЕХ масках
-# из masks (заработанные приоритеты + новый). allowed_terrains — мягкий
-# фильтр по типу местности (пустой список = любой). Из подходящих гексов
-# возвращается случайный (резервуарная выборка). Возвращает {row, col} или {}
-# если ничего не нашлось.
+# Searches a valid hex of a town within the radius max_dist_from_near of near_hex. This is
+# the step of the REFINEMENT, therefore the search is local: the hex must lie in ALL the masks
+# from masks (the already earned priorities + the new one). allowed_terrains is a soft
+# filter by the type of the terrain (an empty list = any). Of the suitable hexes
+# a random one is returned (reservoir sampling). Returns {row, col}, or {}
+# if nothing was found.
 func _find_hex_in_radius_satisfying(tile_data: Array, rows: int, cols: int,
         near_hex: Dictionary, max_dist_from_near: int,
         masks: Array,
@@ -645,10 +646,10 @@ func _find_hex_in_radius_satisfying(tile_data: Array, rows: int, cols: int,
         for c in range(c_min, c_max + 1):
             if HexUtils.hex_distance(r, c, near_hex.row, near_hex.col) > max_dist_from_near:
                 continue
-            # Гекс должен удовлетворять всем заработанным приоритетам И новому.
+# The hex must satisfy all the already earned priorities AND the new one.
             if not _hex_satisfies_all_masks(masks, cols, r, c):
                 continue
-            # Вторичный фильтр по типу местности (пустой список = любой).
+# The secondary filter by the type of the terrain (an empty list = any).
             if not allowed_terrains.is_empty():
                 var terr: String = tile_data[r][c].get("terrain", "")
                 if not allowed_terrains.has(terr):
@@ -666,13 +667,13 @@ func _find_hex_in_radius_satisfying(tile_data: Array, rows: int, cols: int,
     return chosen
 
 
-# Проверяет, подходит ли гекс (row, col) для размещения городка.
-# Аргументы exclude_* — прямоугольник «нельзя ставить» (стартовая область);
-# require_in_region_* — прямоугольник «обязательно должно лежать в» (для
-# гарантии эры-2). Если exclude задан как start>end — пропускается.
-# Аналогично для require_in_region: -1 — ограничение отключено.
-# ignore_exclusion=true пропускает проверку exclude (для аварийных случаев,
-# сейчас не используется, оставлен «на будущее»).
+# Checks whether the hex (row, col) is suitable for the placement of a town.
+# The arguments exclude_* are the rectangle "must not place" (the starting area);
+# require_in_region_* is the rectangle "must lie in" (for
+# the guarantee of era 2). If exclude is set as start>end - it is skipped.
+# Similarly for require_in_region: -1 - the restriction is disabled.
+# ignore_exclusion=true skips the check of exclude (for the emergency cases,
+# it is not used at the moment, it is left "for the future").
 func _is_valid_town_hex(tile_data: Array, row: int, col: int,
         city_row: int, city_col: int,
         exclusion_start_row: int, exclusion_end_row: int,
@@ -688,37 +689,37 @@ func _is_valid_town_hex(tile_data: Array, row: int, col: int,
     if tile == null:
         return false
 
-    # Гекс города игрока — никогда.
+# The hex of the city of the player - never.
     if row == city_row and col == city_col:
         return false
 
     var terrain: String = tile.get("terrain", "plain")
-    # Непроходимые типы местности (море, озёра, содовое/соляное/асфальтовое
-    # озеро) — городок там не поставишь.
+# The impassable types of the terrain (the sea, the lakes, a soda/salt/asphalt
+# lake) - you will not place a town there.
     if _is_impassable_terrain(terrain):
         return false
-    # Пляж разрешён: приоритет «морское побережье» требует ставить городок
-    # НЕПОСРЕДСТВЕННО на прибрежном гексе (terrain == "beach"), а не вглубь.
+# A beach is allowed: the priority "a sea coast" requires placing the town
+# DIRECTLY on the coastal hex (terrain == "beach"), and not inland.
 
-    # Уже есть постройка (от другой системы) — нельзя.
+# There is already a construction (from another system) - not allowed.
     if tile.get("improvement", null) != null:
         return false
-    # Гекс с ресурсом — нельзя: городок не должен занимать ресурс напрямую
-    # (в т.ч. стратегический — к нему тяготеем, но встаём РЯДОМ, в радиусе
-    # MAX_ATTRACTION_DISTANCE, а не на самом гексе). Такой гекс просто не
-    # попадает в набор кандидатов (_find_hex_in_mask /
-    # _find_hex_in_radius_satisfying); если валидных мест не осталось вовсе,
-    # приоритет пропускается (а для базы — переход к следующему приоритету).
+# A hex with a resource - not allowed: a town must not occupy a resource directly
+# (including a strategic one - we are attracted to it, but we stand NEARBY, in the radius of
+# MAX_ATTRACTION_DISTANCE, and not on the hex itself). Such a hex simply does not
+# fall into the set of the candidates (_find_hex_in_mask /
+# _find_hex_in_radius_satisfying); if there are no valid places left at all,
+# the priority is skipped (and for the base - a transition to the next priority).
     var res = tile.get("resource", null)
     if res != null and res != "":
         return false
-    # Уже стоит городок (на всякий случай — флаг мог остаться).
+# A town already stands here (just in case - the flag could have remained).
     if tile.get("has_town", false):
         return false
 
-    # Стартовая область (Кольцо + стартовый Регион) — нельзя. Иначе
-    # городок был бы виден с самого начала, и теряется смысл «маленьких
-    # неизвестных поселений на краю».
+# The starting area (the Ring + the starting Region) - not allowed. Otherwise
+# the town would be visible from the very beginning, and the sense of "the small
+# unknown settlements on the edge" is lost.
     if not ignore_exclusion \
             and exclusion_start_row <= exclusion_end_row \
             and exclusion_start_col <= exclusion_end_col \
@@ -726,19 +727,19 @@ func _is_valid_town_hex(tile_data: Array, row: int, col: int,
             and col >= exclusion_start_col and col <= exclusion_end_col:
         return false
 
-    # Обязательная зона (если задана) — гекс должен лежать внутри неё.
+# The mandatory zone (if it is set) - the hex must lie inside it.
     if require_in_region_start_row >= 0 and require_in_region_end_row >= 0 \
             and require_in_region_start_col >= 0 and require_in_region_end_col >= 0:
         if not (row >= require_in_region_start_row and row <= require_in_region_end_row \
                 and col >= require_in_region_start_col and col <= require_in_region_end_col):
             return false
 
-    # Центр нового городка не должен попадать в чужое кольцо влияния:
-    # минимальная дистанция = радиус влияния соседа + 1. Базовое
-    # рассредоточение MIN_DISTANCE_BETWEEN_TOWNS тоже остаётся в силе —
-    # берём МАКСИМУМ из двух ограничений. Обходим towns (master-список
-    # с influence_radius), а не производное town_hexes: при будущих
-    # механиках роста/сжатия колец правило подстроится автоматически.
+# The centre of a new town must not fall into a foreign influence ring:
+# the minimum distance = the influence radius of the neighbour + 1. The base
+# spread MIN_DISTANCE_BETWEEN_TOWNS also remains in force -
+# we take the MAXIMUM of the two restrictions. We iterate towns (the master list
+# with influence_radius), and not the derived town_hexes: under the future
+# mechanics of the growth/shrinkage of the rings the rule will adjust automatically.
     for t in towns:
         var eff_min: int = maxi(MIN_DISTANCE_BETWEEN_TOWNS,
                 int(t.get("influence_radius", INFLUENCE_MAX_RADIUS)) + 1)
@@ -750,18 +751,18 @@ func _is_valid_town_hex(tile_data: Array, row: int, col: int,
 func _is_impassable_terrain(terrain_id: String) -> bool:
     var t: Dictionary = GameData.terrains.get(terrain_id, {})
     return int(t.get("move_cost", 1)) >= 999
-# Расставляет в кольце городка «заполнители» мира. Такие улучшения нужны
-# только для вида: они не являются стройками игрока, не получают рабочих и
-# не дают ресурсов. Для ресурсов источник улучшения берётся исключительно из
-# improved_by, поэтому добавление новых типов ресурсов не требует правок.
+# Places the "fillers" of the world in the ring of the town. Such improvements are needed
+# only for the appearance: they are not the buildings of the player, they do not receive the workers and
+# they do not give the resources. For the resources the source of the improvement is taken exclusively from
+# improved_by, therefore the addition of the new types of the resources does not require the edits.
 #
-# ИСКЛЮЧЕНИЕ — пищевые поля городка (см. блок с фермами ниже). Если в кольце
-# нет ни одного пищевого растения, декоративные фермы засеваются одомашненными
-# культурами — по своей на каждое поле, — и все они попадают в пул продажи.
-# Производства игроку это не даёт (прод-цикл main_map и worker_manager
-# пропускают tile.decorative) — нужно ровно то, ради чего всё и затевалось:
-# чтобы городок выглядел и торговал как живой, а игрок не думал «как они не
-# голодают?».
+# The EXCEPTION - the food fields of the town (see the block with the farms below). If in the ring
+# there is not a single food plant, the decorative farms are sown with the domesticated
+# crops - by their own one for each field, - and all of them fall into the pool of the sale.
+# This does not give any production to the player (the prod cycle of main_map and worker_manager
+# skip tile.decorative) - it is needed exactly for the sake of which all of this was conceived:
+# so that the town looks and trades as a living one, and the player does not think "how do they not
+# starve?".
 func _place_decorative_town_improvements(tile_data: Array, rows: int, cols: int) -> void:
     for town in towns:
         var candidates: Array = []
@@ -776,15 +777,15 @@ func _place_decorative_town_improvements(tile_data: Array, rows: int, cols: int)
             candidates.append({"row": row, "col": col, "tile": tile})
 
         var has_food_plant := false
-        # Заполнительные фермы — улучшения farm без природного ресурса. Их
-        # городок получает потому, что в кольце нет пищевых растений, и всего
-        # это 1-2 поля. Собираем ВСЕ такие (и голые, и уже засеянные): они —
-        # признак того, что проход по кольцу уже был.
+# The filler farms - the improvements farm without a natural resource. A town
+# gets them because there are no food plants in the ring, and in total
+# it is 1-2 fields. We collect ALL such ones (both bare and already sown): they are
+# a sign that the pass over the ring has already been.
         var filler_farms: Array = []
-        # Голые из них — те, что ещё без культуры. Их засеваем: и только что
-        # поставленные, и оставшиеся от прежних проходов (партия, сохранённая
-        # до появления пищевых полей). Уже засеянные поля сюда не попадают,
-        # поэтому при загрузке сейва городок не пересеивается.
+# The bare ones among them are those which are still without a crop. We sow them: both the
+# just placed ones, and those left from the previous passes (a party saved
+# before the food fields appeared). The already sown fields do not fall here,
+# therefore on the load of a save the town is not re-sown.
         var bare_farms: Array = []
         for candidate in candidates:
             var resource_id = candidate.tile.get("resource", null)
@@ -801,13 +802,13 @@ func _place_decorative_town_improvements(tile_data: Array, rows: int, cols: int)
                     and candidate.tile.get("improvement", null) == null:
                 _set_decorative_improvement(candidate.tile, imp_id)
 
-        # Если продовольственных растений в кольце нет, добавляем 1–2
-        # декоративные фермы на свободных равнинах без покрова.
+# If there are no food plants in the ring, we add 1-2
+# decorative farms on the free plains without a cover.
         if not has_food_plant:
-            # ... но только ОДИН раз за партию. Свои поля уже есть — значит,
-            # проход по кольцу был раньше (например, при загрузке сейва), и
-            # доливать нельзя: иначе каждая перезагрузка добавляла бы ещё две
-            # фермы, и кольцо постепенно зарастало бы ими.
+# ... but only ONCE per party. Its own fields are already there - it means,
+# the pass over the ring was earlier (for example, on the load of a save), and
+# we must not top up: otherwise every reload would add another two
+# farms, and the ring would gradually overgrow with them.
             if filler_farms.is_empty():
                 var farm_candidates: Array = []
                 for candidate in candidates:
@@ -822,15 +823,15 @@ func _place_decorative_town_improvements(tile_data: Array, rows: int, cols: int)
                 for i in range(farm_count):
                     _set_decorative_improvement(farm_candidates[i].tile, "farm")
                     bare_farms.append(farm_candidates[i].tile)
-            # ... и засеваем каждое СВОЕЙ культурой. Голые фермы — витрина без
-            # товара: игрок видит поля, а продавать нечего, и вопрос «как же они
-            # не голодают?» остаётся без ответа. Две разные культуры подряд —
-            # это хозяйство, а не однотипный клин, и у городка сразу два товара
-            # в продаже вместо одного.
+            # ... and we sow each one with ITS OWN crop. The bare farms are a showcase without
+# of the goods: the player sees the fields, and there is nothing to sell, and the question "how do they
+# not starve?" remains unanswered. Two different crops in a row are
+# a household, and not a one-kind wedge, and the town immediately has two goods
+# for sale instead of one.
             for tile in bare_farms:
                 _seed_decorative_field(tile, _pick_town_field_crop(tile))
 
-        # По одному декоративному объекту на лесном покрове и на горе/холме.
+# One decorative object on a forest cover and on a mountain/hill.
         var forest_done := false
         var quarry_done := false
         for candidate in candidates:
@@ -846,15 +847,15 @@ func _place_decorative_town_improvements(tile_data: Array, rows: int, cols: int)
                 _set_decorative_improvement(tile, "quarry")
                 quarry_done = true
 
-    # Торговые пулы пересобираем ПОСЛЕ расстановки улучшений: часть колец
-    # пополнилась полями с культурой (tile.crop_bred), и городок, у которого
-    # больше нет никаких ресурсов, должен получить её в продажу. Раньше пул
-    # собирался раньше этого шага, и поля оставались немыми.
+# We rebuild the trade pools AFTER the placement of the improvements: a part of the rings
+# has been replenished with the fields with a crop (tile.crop_bred), and a town which
+# has no resources left must get it for sale. Earlier the pool
+# was collected before this step, and the fields remained mute.
     #
-    # Пересчёт учитывает не только ресурсы гексов, но и то, что городок
-    # способен произвести сам (scripts/town_economy.gd), поэтому здесь он
-    # обязателен даже там, где улучшений не ставилось: пулы покупки тоже
-    # считаются от полного кольца.
+# The recalculation takes into account not only the resources of the hexes, but also what the town
+# is able to produce itself (scripts/town_economy.gd), therefore here it is
+# mandatory even where the improvements were not placed: the buy pools too
+# are counted from the whole ring.
     _refresh_sell_pools(tile_data)
 
 
@@ -867,14 +868,14 @@ func _set_decorative_improvement(tile: Dictionary, imp_id: String) -> void:
     tile["feed_fractional_remainder"] = 0.0
 
 
-# Выбирает случайную пищевую культуру, которую можно развести на гексе
-# городка. Берём ТОЛЬКО группу "food_plants": дикорсы (wild_food, группа
-# "wild") сюда не попадают — на ферме их не вырастишь, они собираются
-# спец-действием, и «городок, который жуёт дикорсы», не отвечает на вопрос
-# игрока про голод. Разводимость проверяем ровно тем же правилом, что и при
-# постройке фермы игроком (MapHelpers.can_breed_resource_on_tile), поэтому
-# культура всегда подходит своему гексу, а новых полей в JSON править не
-# придётся. Пустая строка — не подошёл ни один вид.
+# Selects a random food crop which can be bred on the hex
+# of the town. We take ONLY the group "food_plants": the wild plants (wild_food, the group
+# "wild") do not fall here - they cannot be grown on a farm, they are gathered
+# by a special action, and a "town which chews the wild plants" does not answer the question
+# of the player about the hunger. The breedability is checked by exactly the same rule as at
+# the construction of a farm by the player (MapHelpers.can_breed_resource_on_tile), therefore
+# the crop always fits its hex, and the new fields in JSON will not have to be
+# edited. An empty string - not a single kind fitted.
 func _pick_town_field_crop(tile: Dictionary) -> String:
     var options: Array = []
     for res_id in GameData.raw_resources:
@@ -888,19 +889,19 @@ func _pick_town_field_crop(tile: Dictionary) -> String:
     return str(options[randi() % options.size()])
 
 
-# Засевает декоративную ферму городка одомашненной пищевой культурой.
-# Культура подбирается на КАЖДОЕ поле отдельно (_pick_town_field_crop), так
-# что два поля городка — это два разных товара, а не однотипный клин.
+# Sows a decorative farm of the town with a domesticated food crop.
+# The crop is chosen for EACH field separately (_pick_town_field_crop), so
+# that two fields of a town are two different goods, and not a one-kind wedge.
 #
-# Именно crop_bred, а не resource: ферма на пустом гексе — это разведение
-# (схема crop_bred), а не природная залежь. Благодаря этому:
-#   - на гексе честно видно «своё поле», а не найденную залежь;
-#   - культура попадает в пул продажи городка (refresh_sell_pools читает
-#     эффективный ресурс — природный ИЛИ разводимый);
-#   - логика «природных» ресурсов (отладка, покупка чанков, инструменты по
-#     месторождениям) остаётся непричастной к полям чужого городка.
-# Качество — как при разведении игроком: своё у каждого поля. Уже засеянное
-# поле не пересеиваем.
+# It is specifically crop_bred, and not resource: a farm on an empty hex is a breeding
+# (the scheme crop_bred), and not a natural deposit. Thanks to this:
+#   - on the hex one honestly sees "its own field", and not a found deposit;
+#   - the crop falls into the pool of the sale of the town (refresh_sell_pools reads
+#     the effective resource - the natural OR the bred one);
+#   - the logic of the "natural" resources (the debugging, the purchase of the chunks, the tools by
+#     the deposits) stays uninvolved with the fields of a foreign town.
+# The quality is as at the breeding by the player: its own for each field. The already sown
+# field is not re-sown.
 func _seed_decorative_field(tile: Dictionary, crop_id: String) -> void:
     if tile == null or crop_id == "":
         return
@@ -913,13 +914,13 @@ func _seed_decorative_field(tile: Dictionary, crop_id: String) -> void:
         tile["quality"] = GameData.roll_quality()
 
 
-# --- Маски приоритетов ---
-# Маска — PackedByteArray длины rows*cols: mask[row * cols + col] == 1, если
-# гекс удовлетворяет приоритету. Маски заменяют списки «точек тяготения»:
-# шаг уточнения («гекс удовлетворяет И всем заработанным приоритетам, И
-# новому») становится AND по маскам за O(1) на гекс, а обязательный при
-# переходе к следующему приоритету обход ВСЕЙ карты — одним линейным
-# проходом, без пересчёта расстояний до точек тяготения.
+# --- The masks of the priorities ---
+# A mask is a PackedByteArray of the length rows*cols: mask[row * cols + col] == 1, if
+# a hex satisfies the priority. The masks replace the lists of the "points of attraction":
+# the step of the refinement ("a hex satisfies AND all the already earned priorities, AND
+# the new one") becomes an AND over the masks at O(1) per hex, and the obligatory
+# transition to the next priority - a traversal of the WHOLE map - becomes one linear
+# pass, without a recalculation of the distances to the points of attraction.
 
 func _new_tier_mask(rows: int, cols: int) -> PackedByteArray:
     var mask := PackedByteArray()
@@ -928,7 +929,7 @@ func _new_tier_mask(rows: int, cols: int) -> PackedByteArray:
     return mask
 
 
-# Помечает в маске все гексы в радиусе radius от (center_row, center_col).
+# Marks in the mask all the hexes within the radius radius from (center_row, center_col).
 func _mark_mask_disk(mask: PackedByteArray, rows: int, cols: int,
         center_row: int, center_col: int, radius: int) -> void:
     for r in range(maxi(0, center_row - radius), mini(rows - 1, center_row + radius) + 1):
@@ -937,12 +938,12 @@ func _mark_mask_disk(mask: PackedByteArray, rows: int, cols: int,
                 mask[r * cols + c] = 1
 
 
-# Маска «занятых» ресурсов: все гексы в радиусе MAX_ATTRACTION_DISTANCE от
-# уже размещённых городков. Ресурс внутри такой зоны считается занятым и не
-# притягивает следующий городок — иначе один и тот же клочок земли с
-# ресурсами тянул бы несколько поселений. towns пополняется по мере
-# размещения, поэтому фильтр работает автоматически для каждого следующего
-# городка (включая гарантийный городок эры-2).
+# The mask of the "claimed" resources: all the hexes within the radius MAX_ATTRACTION_DISTANCE from
+# the already placed towns. A resource inside such a zone is considered claimed and does not
+# attract the next town - otherwise the same patch of land with
+# the resources would pull several settlements. towns is replenished as the
+# placement proceeds, therefore the filter works automatically for each next
+# town (including the guaranteed town of era 2).
 func _build_claimed_resource_mask(rows: int, cols: int) -> PackedByteArray:
     var mask: PackedByteArray = _new_tier_mask(rows, cols)
     for t in towns:
@@ -950,13 +951,13 @@ func _build_claimed_resource_mask(rows: int, cols: int) -> PackedByteArray:
     return mask
 
 
-# Приоритет 1: «кучка ресурсов в окрестностях» — у САМОГО гекса
-# MIN_RESOURCES_FOR_CLUSTER (2+) РАЗНЫХ ресурса в радиусе
-# MAX_ATTRACTION_DISTANCE. Не учитываются:
-#   - занятые городками ресурсы (см. _build_claimed_resource_mask);
-#   - ресурсы в СТАРТОВОЙ ОБЛАСТИ ИГРОКА — она уже его, притягивать к ней
-#     городок бессмысленно: кольцо всё равно не сможет ею воспользоваться
-#     (см. вырезание стартовой области в compute_all_town_influences).
+# Priority 1: "a pile of resources in the neighbourhood" - the hex ITSELF has
+# MIN_RESOURCES_FOR_CLUSTER (2+) DIFFERENT resources in the radius of
+# MAX_ATTRACTION_DISTANCE. Are not taken into account:
+#   - the resources claimed by the towns (see _build_claimed_resource_mask);
+#   - the resources in the STARTING AREA OF THE PLAYER - it is already his, to attract a town
+#     to it is meaningless: the ring will not be able to use it anyway
+#     (see the cut out of the starting area in compute_all_town_influences).
 func _build_multi_resource_mask(tile_data: Array, rows: int, cols: int) -> PackedByteArray:
     var mask: PackedByteArray = _new_tier_mask(rows, cols)
     var claimed: PackedByteArray = _build_claimed_resource_mask(rows, cols)
@@ -982,10 +983,10 @@ func _build_multi_resource_mask(tile_data: Array, rows: int, cols: int) -> Packe
     return mask
 
 
-# Приоритет 2: стратегический ресурс (resource.strategic == true) в радиусе
-# MAX_ATTRACTION_DISTANCE от гекса городка. Не учитываются занятые городками
-# ресурсы (см. _build_claimed_resource_mask) и ресурсы в стартовой области
-# игрока (см. пояснение в _build_multi_resource_mask).
+# Priority 2: a strategic resource (resource.strategic == true) in the radius of
+# MAX_ATTRACTION_DISTANCE from the hex of the town. The resources claimed by the towns
+# are not taken into account (see _build_claimed_resource_mask) and the resources in the starting area
+# of the player (see the explanation in _build_multi_resource_mask).
 func _build_strategic_mask(tile_data: Array, rows: int, cols: int) -> PackedByteArray:
     var mask: PackedByteArray = _new_tier_mask(rows, cols)
     var claimed: PackedByteArray = _build_claimed_resource_mask(rows, cols)
@@ -1005,9 +1006,9 @@ func _build_strategic_mask(tile_data: Array, rows: int, cols: int) -> PackedByte
     return mask
 
 
-# Приоритет 3: гексы, через которые текут реки (river_edges непустой).
-# Водные приоритеты — строго одиночные гексы (без «радиуса тяготения»):
-# городок у воды встаёт НЕПОСРЕДСТВЕННО на речном гексе / берегу / пляже.
+# Priority 3: the hexes through which the rivers flow (river_edges is non-empty).
+# The water priorities are strictly single hexes (without a "radius of attraction"):
+# a town by the water stands DIRECTLY on the river hex / the bank / the beach.
 func _build_river_mask(tile_data: Array, rows: int, cols: int) -> PackedByteArray:
     var mask: PackedByteArray = _new_tier_mask(rows, cols)
     for r in range(rows):
@@ -1018,8 +1019,8 @@ func _build_river_mask(tile_data: Array, rows: int, cols: int) -> PackedByteArra
     return mask
 
 
-# Приоритет 4: морское побережье. Пляжные гексы — это суша рядом с морем
-# (см. SeaManager._apply_beach), ровно то, что нам нужно.
+# Priority 4: the sea coast. The beach hexes are the land next to the sea
+# (see SeaManager._apply_beach), exactly what we need.
 func _build_sea_coast_mask(tile_data: Array, rows: int, cols: int) -> PackedByteArray:
     var mask: PackedByteArray = _new_tier_mask(rows, cols)
     for r in range(rows):
@@ -1029,8 +1030,8 @@ func _build_sea_coast_mask(tile_data: Array, rows: int, cols: int) -> PackedByte
     return mask
 
 
-# Приоритет 5: побережье озёр. Озёра окружены сушей, и нам нужны именно
-# сухопутные гексы, соседние с озером.
+# Priority 5: the coast of the lakes. The lakes are surrounded by land, and we need exactly
+# the land hexes which are adjacent to a lake.
 func _build_lake_coast_mask(tile_data: Array, rows: int, cols: int) -> PackedByteArray:
     var mask: PackedByteArray = _new_tier_mask(rows, cols)
     for r in range(rows):
@@ -1049,13 +1050,13 @@ func _build_lake_coast_mask(tile_data: Array, rows: int, cols: int) -> PackedByt
     return mask
 
 
-# --- Сейв/лоад ---
-# Городки сериализуются как массив словарей — по одной записи towns на
-# городок. Так в сейв попадают ВСЕ данные городка: id, имя, цвет границ,
-# радиус и личное кольцо влияния, пулы торговли. Словарь сохраняется в JSON
-# напрямую (для цвета используем массив [r,g,b,a]).
-# Благодаря полной записи будущие поля городка добавляются в serialize/load
-# симметрично, без изменения форматов других сущностей.
+# --- Save/load ---
+# The towns are serialized as an array of dictionaries - one record of towns per
+# town. Thus ALL the data of a town goes into the save: id, name, colour of the borders,
+# the radius and the personal ring of the influence, the trade pools. The dictionary is saved in JSON
+# directly (for the colour we use an array [r,g,b,a]).
+# Thanks to the full record the future fields of a town are added to serialize/load
+# symmetrically, without a change of the formats of the other entities.
 
 func serialize_towns() -> Array:
     var result: Array = []
@@ -1074,21 +1075,21 @@ func serialize_towns() -> Array:
             "influence_hexes": hexes,
             "sell_pool": t.get("sell_pool", []),
             "buy_pool": t.get("buy_pool", []),
-            # road_linked — игрок построил дорогу от города до этого городка.
-            # Как и с остальными дорогами, сегменты в сейв не пишутся: по этому
-            # флагу связь пересчитывается при загрузке (main_map._rebuild_town_roads
-            # -> road_manager.rebuild_player_roads), а доступность торговли
-            # читается из него же (is_trade_available).
+# road_linked - the player has built a road from the city to this town.
+# As with the other roads, the segments are not written into the save: by this
+# flag the connection is recalculated on the load (main_map._rebuild_town_roads
+# -> road_manager.rebuild_player_roads), and the availability of the trade
+# is read from it as well (is_trade_available).
             "road_linked": bool(t.get("road_linked", false)),
         })
     return result
 
 
-# Восстанавливает towns из сейва. Понимает два формата:
-#   - НОВЫЙ: словарь записи города (id, имя, радиус, личное кольцо, цвет…);
-#     личное кольцо пересчитается в compute_all_town_influences().
-# Если данных нет / массив пуст (новая игра) — towns не трогаем (обычно уже
-# заполнен generate_towns, вызванным из _initialize_map).
+# Restores towns from the save. Understands two formats:
+#   - NEW: a dictionary of the record of a town (id, name, radius, personal ring, colour...);
+#     the personal ring will be recalculated in compute_all_town_influences().
+# If there is no data / the array is empty (a new game) - we do not touch towns (usually it is already
+# filled by generate_towns, called from _initialize_map).
 func load_towns(data) -> void:
     if data == null:
         return
@@ -1105,7 +1106,7 @@ func load_towns(data) -> void:
     town_influence_hexes = []
     for entry in data:
         if entry is Dictionary:
-            # Новый формат: полная запись городка.
+# The new format: the full record of a town.
             var t := {
                 "id": str(entry.get("id", "")),
                 "row": int(entry.get("row", 0)),
@@ -1114,72 +1115,72 @@ func load_towns(data) -> void:
                 "is_era2_guaranteed": bool(entry.get("is_era2_guaranteed", false)),
                 "border_color": entry.get("border_color", [1.0, 1.0, 1.0, 1.0]),
                 "influence_radius": int(entry.get("influence_radius", INFLUENCE_MAX_RADIUS)),
-                # Личное кольцо из сейва — источник истины для загружаемой
-                # партии (кольцо могло быть изменено механиками).
+# The personal ring from the save is the source of truth for the loaded
+# party (the ring could have been changed by the mechanics).
                 "influence_hexes": _restore_hex_list(entry.get("influence_hexes", [])),
                 "sell_pool": entry.get("sell_pool", []),
                 "buy_pool": entry.get("buy_pool", []),
-                # road_linked — дорога от города до городка (см. serialize_towns).
+# road_linked is a road from the city to the town (see serialize_towns).
                 "road_linked": bool(entry.get("road_linked", false)),
             }
             towns.append(t)
         elif entry is Array and entry.size() >= 2:
-            # Кольца нет — вычислится в compute_all_town_influences.
+# There is no ring - it will be computed in compute_all_town_influences.
             var is_era2_guaranteed: bool = entry.size() >= 3 and bool(entry[2])
             var t := _make_town_record(towns.size(), int(entry[0]), int(entry[1]),
                     is_era2_guaranteed)
             towns.append(t)
         else:
-            printerr("town_manager: пропущена битая запись городка в сейве: ", entry)
+            printerr("town_manager: a broken record of a town in the save is skipped: ", entry)
     _rebuild_derived_town_hexes()
-    print("town_manager: из сейва восстановлено городков=", towns.size())
+    print("town_manager: the number of the towns restored from the save=", towns.size())
 
 
-# === Кольцо влияния городка ===
+# === The influence ring of a town ===
 
-# Вычисляет кольцо влияния для ВСЕХ размещённых городков. Заполняет
-# town_influence_hexes (плоское зеркало) и ЛИЧНОЕ кольцо каждого городка
-# (town["influence_hexes"]). Вызывается:
-#   - из generate_towns после размещения всех городков (включая гарантийный
-#     для эры-2) — старт новой игры;
-#   - из main_map при загрузке сейва — кольца восстанавливаются.
+# Computes the influence ring for ALL the placed towns. It fills
+# town_influence_hexes (the flat mirror) and the PERSONAL ring of each town
+# (town["influence_hexes"]). It is called:
+#   - from generate_towns after the placement of all the towns (including the guaranteed
+#     one for era 2) - the start of a new game;
+#   - from main_map on the load of a save - the rings are restored.
 #
 # The composition of the ring is ALWAYS recalculated from the radius of the town record
 # (influence_radius) — it is the single source of its size.
 # The flag in_town_influence is set on the tiles.
 #
-# Кольца разных городков НЕ пересекаются. Городки обрабатываются в порядке
-# массива towns (порядок размещения; для сейва — порядок записей): гекс, уже
-# вошедший в кольцо более раннего городка, исключается из кольца текущего —
-# принцип «кто первый встал, того и тапки». У «опоздавшего» городка остаётся
-# кольцо, срезанное со стороны соседа. Обрезанный состав кольца сохраняется
-# в запись городка (и в сейв), поэтому повторный пересчёт идемпотентен.
+# The rings of the different towns do NOT intersect. The towns are processed in the order
+# of the array towns (the order of the placement; for a save - the order of the records): a hex which has
+# already fallen into the ring of an earlier town is excluded from the ring of the current one -
+# the principle of "whoever stood first, has the priority". The "latecomer" town keeps
+# a ring which is cut on the side of the neighbour. The cut composition of the ring is saved
+# into the record of the town (and into the save), therefore a repeated recalculation is idempotent.
 #
-# ВЫРЕЗКА ПО СТАРТОВОЙ ОБЛАСТИ ИГРОКА (player_start_area = Кольцо + Регион 1-й
-# эпохи). Правило жёсткое: территория городка не заходит на стартовую
-# область НИ при каких обстоятельствах, для всех городков без исключения
-# (включая гарантийный городок 2-й эпохи). Вырезанные гексы не получают флаг
-# in_town_influence, не попадают в influence_hexes, в пул продажи и в
-# декоративные улучшения — то есть игрок на своей изначальной земле может
-# строить, улучшать ресурсы и покупать чанки без оглядки на городков.
+# THE CUT OUT BY THE STARTING AREA OF THE PLAYER (player_start_area = the Ring + the Region of the 1st
+# era). The rule is strict: the territory of a town does not enter the starting
+# area under ANY circumstances, for all the towns without an exception
+# (including the guaranteed town of the 2nd era). The cut out hexes do not get the flag
+# in_town_influence, do not fall into influence_hexes, into the pool of the sale, and into
+# the decorative improvements - that is, the player on his own initial land can
+# build, improve the resources and buy the chunks without looking back at the towns.
 #
-# ВАЖНО: кольцо НЕ клипуется по ТЕКУЩЕМУ Региону. Раньше гексы кольца,
-# попадавшие в Регион, выбрасывались — чтобы чужой городок не «выдавал» себя в
-# неисследованной зоне 1-й эпохи. Но такая нарезка МОРОЗИЛА кольцо на границах
-# 1-й эпохи навсегда: с ростом Региона (смена эпохи) заливка городка оставалась
-# огрызком — рисовалась лишь часть кольца, попавшая в НОВЫЙ Регион, а срезанная
-# часть не возвращалась (измеренные потери — до 18% гексов заливки, городок у
-# левой границы Региона терял 5 гексов из 18). Теперь кольцо хранится целиком
-# (минус стартовая область игрока, которая не меняется никогда, и минус кольца
-# соседних городков), а видимость решает рендерер: заливка и контур рисуются
-# только на гексах вне тумана (main_map.is_hex_in_fog) и не раньше эры
-# Античности — ровно там же, где и сам городок (см.
+# IMPORTANT: the ring is NOT clipped by the CURRENT Region. Earlier the hexes of the ring
+# which fell into the Region were thrown out - so that a foreign town would not "give away"
+# itself in the unexplored zone of the 1st era. But such a cut FROZE the ring at the borders
+# of the 1st era forever: with the growth of the Region (a change of the epoch) the fill of the town remained
+# a scrap - only the part of the ring which fell into the NEW Region was drawn, and the cut
+# part did not return (the measured losses are up to 18% of the hexes of the fill, a town at
+# the left border of the Region lost 5 hexes out of 18). Now the ring is stored entirely
+# (minus the starting area of the player, which never changes, and minus the rings
+# of the neighbouring towns), and the visibility is decided by the renderer: the fill and the outline are drawn
+# only on the hexes outside the fog (main_map.is_hex_in_fog) and not before the era
+# of the Antiquity - exactly there where the town itself is (see
 # map_renderer._ensure_town_influence_cache).
 func compute_all_town_influences(tile_data: Array, map_rows: int, map_cols: int) -> void:
-    # Перед пересчётом снимаем старые флаги in_town_influence со ВСЕХ гексов —
-    # иначе при изменении состава городков (например, удалении/добавлении)
-    # старые пометки останутся на гексах, которые больше не входят ни в одно
-    # кольцо. Флаг has_town НЕ трогаем — он управляется в generate_towns.
+    # Before the recalculation we remove the old flags in_town_influence from ALL the hexes -
+    # otherwise on a change of the composition of the towns (for example, a deletion/an addition)
+    # the old marks will remain on the hexes which no longer belong to any
+    # ring. The flag has_town is NOT touched - it is managed in generate_towns.
     for r in range(map_rows):
         for c in range(map_cols):
             if tile_data[r] != null and c < tile_data[r].size() \
@@ -1187,35 +1188,35 @@ func compute_all_town_influences(tile_data: Array, map_rows: int, map_cols: int)
                 tile_data[r][c]["in_town_influence"] = false
 
     town_influence_hexes = []
-    # Счётчик срезанных по стартовой области игрока гексов — только для печати
-    # в конце (диагностика «городок у края Региона потерял полкольца»).
+    # The counter of the hexes cut out by the starting area of the player - only for the printing
+    # at the end (the diagnostics of "a town at the edge of the Region lost half a ring").
     var clipped_by_player := 0
-    # Таблица «заявленных» гексов: ключ "r,c" -> true. Городки обходятся в
-    # порядке массива towns (порядок размещения; для сейва — порядок записей),
-    # поэтому гекс, впервые заявленный одним городком, не может попасть в
-    # кольцо другого. Это принцип «кто первый встал, того и тапки»: кольца
-    # НИКОГДА не пересекаются, а у более позднего городка кольцо просто
-    # срезается со стороны соседа.
+# The table of the "claimed" hexes: the key "r,c" -> true. The towns are iterated in
+# the order of the array towns (the order of the placement; for a save - the order of the records),
+# therefore a hex which is claimed for the first time by one town cannot fall into
+# the ring of another. This is the principle of "whoever stood first, has the priority": the rings
+# NEVER intersect, and the ring of a later town is simply
+# cut on the side of the neighbour.
     var claimed: Dictionary = {}
     for t in towns:
-        # Кольцо всегда считается заново по радиусу этого городка (см. выше):
-        # сохранённый в сейве состав может быть срезан по стартовому Региону.
+# The ring is always recomputed by the radius of this town from scratch (see above):
+# the composition saved in the save may be cut by the starting Region.
         var ring: Array = compute_town_influence(tile_data, map_rows, map_cols,
                 int(t.row), int(t.col), t,
                 int(t.get("influence_radius", INFLUENCE_MAX_RADIUS)))
-        # Клип личного кольца, в порядке значимости:
-        #   1) СТАРТОВАЯ ОБЛАСТЬ ИГРОКА (Кольцо + Регион 1-й эпохи) — гексы
-        #      выбрасываются ВСЕГДА и для ВСЕХ городков, включая гарантийный
-        #      городок 2-й эпохи. Там игрок строит, покупает и разведывает
-        #      изначально, поэтому чужая территория там означала бы
-        #      «мёртвую зону» посреди своей земли (и невозможность улучшить
-        #      ресурс, который по сюжету уже свой). Проверка идёт ДО таблицы
-        #      claimed: игрок сильнее любого соседа-городка.
-        #   2) гексы, уже заявленные более ранним городком, — отбрасываем и НЕ
-        #      записываем в кольцо этого городка. Заливка и границы (рендерер
-        #      строит их по influence_hexes) у разных городков поэтому
-        #      гарантированно не пересекаются. Обрезанное кольцо попадает в
-        #      запись городка и затем в сейв (serialize_towns).
+# The clip of the personal ring, in the order of significance:
+#   1) THE STARTING AREA OF THE PLAYER (the Ring + the Region of the 1st era) - the hexes
+#      are thrown out ALWAYS and for ALL the towns, including the guaranteed
+#      town of the 2nd era. There the player builds, buys and scouts
+#      initially, therefore a foreign territory there would mean
+#      a "dead zone" in the middle of his own land (and the impossibility to improve
+#      a resource which by the story is already his). The check goes BEFORE the table
+#      claimed: the player is stronger than any neighbouring town.
+#   2) the hexes which are already claimed by an earlier town, - we drop them and do NOT
+#      write them into the ring of this town. The fill and the borders (the renderer
+#      builds them by influence_hexes) therefore at the different towns
+#      are guaranteed not to intersect. The cut ring falls into
+#      the record of the town and then into the save (serialize_towns).
         var clipped: Array = []
         for rh in ring:
             var hex_row := int(rh.row)
@@ -1228,8 +1229,8 @@ func compute_all_town_influences(tile_data: Array, map_rows: int, map_cols: int)
                 continue
             claimed[key] = true
             clipped.append(rh)
-            # Проставляем флаг на тайле — build_manager и валидаторы читают
-            # его напрямую, без поиска по списку.
+# We set the flag on the tile - build_manager and the validators read
+# it directly, without a search over the list.
             if hex_row >= 0 and hex_row < map_rows \
                     and hex_col >= 0 and hex_col < map_cols \
                     and tile_data[hex_row] != null and hex_col < tile_data[hex_row].size() \
@@ -1237,69 +1238,69 @@ func compute_all_town_influences(tile_data: Array, map_rows: int, map_cols: int)
                 tile_data[hex_row][hex_col]["in_town_influence"] = true
             town_influence_hexes.append(rh)
         t["influence_hexes"] = clipped
-    # Торговые пулы городка (продажа + покупка) пересобираются после клипа колец,
-    # чтобы соседние городки не получили ресурс, оставшийся в кольце другого
-    # города. Расчёт самого замыкания производства и импорта — в
-    # scripts/town_economy.gd (чистые функции по данным рецептов).
+# The trade pools of a town (the sale + the purchase) are rebuilt after the clip of the rings,
+# so that the neighbouring towns do not get a resource which remained in the ring of another
+# town. The calculation of the closure of the production and of the import is in
+# scripts/town_economy.gd (the pure functions over the data of the recipes).
     _refresh_sell_pools(tile_data)
-    print("town_manager: всего гексов в кольцах влияния=", town_influence_hexes.size(),
-            " (городков=", towns.size(), ")")
+    print("town_manager: the total number of the hexes in the rings of the influence=",
+            town_influence_hexes.size(), " (the towns=", towns.size(), ")")
     if clipped_by_player > 0:
-        print("town_manager: вырезано по стартовой области игрока гексов колец=",
-                clipped_by_player, " (кольца городков у края Региона подрезаны)")
+        print("town_manager: the number of the hexes of the rings cut out by the starting area of the player=",
+                clipped_by_player, " (the rings of the towns at the edge of the Region are cut)")
 
-# Пересобирает торговые пулы КАЖДОГО городка: что он продаёт (sell_pool) и
-# что готов купить (buy_pool).
+# Rebuilds the trade pools of EACH town: what it sells (sell_pool) and
+# what it is ready to buy (buy_pool).
 #
-# Источник — его личное кольцо влияния, но сам расчёт живёт в
-# scripts/town_economy.gd: там замыкание производства по рецептам (городок
-# продаёт не только то, что лежит на гексах, но и то, что способен слепить)
-# и каскадный импорт с броском вероятности.
+# The source is its personal ring of the influence, but the calculation itself lives in
+# scripts/town_economy.gd: there is the closure of the production by the recipes (a town
+# sells not only what lies on the hexes, but also what it is able to make)
+# and the cascade import with a throw of the probability.
 #
-# Один и тот же тип ресурса в нескольких гексах отображается одной строкой:
-# торговый пул содержит перечень доступных ТИПОВ ресурсов, а не каждое
-# месторождение отдельно. Порядок обхода кольца стабилен и совпадает с
-# порядком гексов в сохранённом кольце.
+# The same type of a resource in several hexes is displayed by one line:
+# the trade pool contains a list of the available TYPES of the resources, and not each
+# deposit separately. The order of the traversal of the ring is stable and coincides with
+# with the order of the hexes in the saved ring.
 #
-# Учитываются ОБА вида ресурса на гексе: природный (tile.resource) и
-# разводимый (tile.crop_bred — например, культура на пищевом поле городка).
-# Второй вклад даёт в пул ровно то, ради чего поле и засевается: городок без
-# других ресурсов получает что продавать и не выглядит вымершим.
+# BOTH kinds of the resources on a hex are taken into account: the natural one (tile.resource) and
+# the bred one (tile.crop_bred - for example, the crop on a food field of a town).
+# The second contribution gives to the pool exactly that for which the field is sown: a town without
+# the other resources gets something to sell and does not look extinct.
 #
-# Бросок вероятности детерминирован (см. шапку town_economy.gd), поэтому
-# повторный вызов — а при загрузке сейва он происходит дважды — даёт те же
-# пулы, и «что городок покупает» не прыгает от сохранения к сохранению.
+# The throw of the probability is deterministic (see the header of town_economy.gd), therefore
+# a repeated call - and on the load of a save it happens twice - gives the same
+# pools, and "what the town buys" does not jump from a save to a save.
 func _refresh_sell_pools(tile_data: Array) -> void:
     TownEconomy.refresh_all_towns(towns, tile_data)
-# Вычисляет кольцо влияния для ОДНОГО городка. Возвращает Array of
-# {row, col} — список гексов в кольце. Подробности алгоритма (база,
-# асимметрия, пути до ресурсов) — в комментарии к INFLUENCE_MAX_RADIUS.
+# Computes the influence ring for ONE town. It returns an Array of
+# {row, col} - a list of the hexes in the ring. The details of the algorithm (the base,
+# the asymmetry, the paths to the resources) are in the comment to INFLUENCE_MAX_RADIUS.
 #
-# Параметры:
-#   tile_data — 2D-массив гексов. Нужен для проверки tile.resource (шаг 3).
-#   map_rows, map_cols — размеры карты (для обхода соседей в path-функции).
-#   town_row, town_col — координаты городка, вокруг которого строится кольцо.
-#   town_dict — запись города (словарь) из towns. Параметр оставлен для
-#     будущих механик, которым понадобится различать городки.
-#   radius — радиус кольца для ЭТОГО городка (per-town). По умолчанию
-#     INFLUENCE_MAX_RADIUS; будущие механики роста/сжатия кольца передают
-#     сюда радиус из записи города.
+# The parameters:
+#   tile_data - a 2D array of the hexes. It is needed for the check of tile.resource (step 3).
+#   map_rows, map_cols - the dimensions of the map (for the traversal of the neighbours in the path function).
+#   town_row, town_col - the coordinates of the town around which the ring is built.
+#   town_dict - the record of the town (a dictionary) from towns. The parameter is left for
+#     the future mechanics which will need to distinguish the towns.
+#   radius - the radius of the ring for THIS town (per-town). By default
+#     INFLUENCE_MAX_RADIUS; the future mechanics of the growth/shrinkage of the ring pass
+#     here the radius from the record of the town.
 #
-# Кольцо строится ЦЕЛИКОМ по радиусу (без клипа по Региону): что из него
-# видно игроку, решает рендерер. Вырезание по стартовой области игрока и по
-# кольцам соседних городков делает вызывающая сторона —
+# The ring is built ENTIRELY by the radius (without a clip by the Region): what of it
+# is visible to the player is decided by the renderer. The cut out by the starting area of the player and by
+# the rings of the neighbouring towns is done by the calling side -
 # compute_all_town_influences.
 func compute_town_influence(tile_data: Array, map_rows: int, map_cols: int,
         town_row: int, town_col: int, town_dict: Dictionary = {},
         radius: int = INFLUENCE_MAX_RADIUS) -> Array:
-    var ring: Dictionary = {} # ключ "r,c" -> true для быстрой проверки членства
+    var ring: Dictionary = {} # the key "r,c" -> true for a quick check of the membership
     var rng := RandomNumberGenerator.new()
-    # Стабильный seed: каждая комбинация (row, col) даёт уникальный,
-    # но воспроизводимый между сессиями сид. Простые простые числа — чтобы
-    # соседние по карте городки получали максимально разные выемки.
+# A stable seed: each combination (row, col) gives a unique,
+# but reproducible between the sessions seed. Simple prime numbers - so that
+# the towns neighbouring on the map get the maximally different notches.
     rng.seed = town_row * 1009 + town_col * 7919
 
-    # --- Шаг 1: базовый диск (расстояние 0..radius) ---
+# --- Step 1: the base disk (the distance 0..radius) ---
     var r_min: int = maxi(0, town_row - radius)
     var r_max: int = mini(map_rows - 1, town_row + radius)
     var c_min: int = maxi(0, town_col - radius)
@@ -1309,9 +1310,9 @@ func compute_town_influence(tile_data: Array, map_rows: int, map_cols: int,
             if HexUtils.hex_distance(r, c, town_row, town_col) <= radius:
                 ring["%d,%d" % [r, c]] = true
 
-    # --- Шаг 2: асимметрия — отбрасываем 1-3 гекса на расстоянии 3
-    # в одной «стороне» (из 6). Сторона выбирается случайно, но
-    # детерминированно от seed.
+# --- Step 2: the asymmetry - we drop 1-3 hexes at a distance of 3
+# in one "side" (of 6). The side is chosen randomly, but
+# deterministically from the seed.
     var notch_side: int = rng.randi_range(0, 5)
     var outer_dropped: int = 0
     for r in range(r_min, r_max + 1):
@@ -1331,11 +1332,11 @@ func compute_town_influence(tile_data: Array, map_rows: int, map_cols: int,
         if outer_dropped >= INFLUENCE_NOTCH_MAX_DROPS:
             break
 
-    # --- Шаг 3: для каждого ресурса в радиусе radius
-    # добавляем гекс с ресурсом и кратчайший путь от городка.
-    # Защита от «анклавов»: если выемка из шага 2 окружила ресурс, игрок
-    # мог бы получить маленький «островок» доступной земли посреди
-    # запретной зоны. Путь «пришивает» ресурс обратно к кольцу.
+# --- Step 3: for each resource within the radius radius
+# we add the hex with the resource and the shortest path from the town.
+# The protection from the "enclaves": if the notch of step 2 surrounded a resource, the player
+# could get a small "island" of the available land in the middle of
+# the forbidden zone. The path "sews" the resource back to the ring.
     for r in range(r_min, r_max + 1):
         for c in range(c_min, c_max + 1):
             if HexUtils.hex_distance(r, c, town_row, town_col) > radius:
@@ -1346,18 +1347,18 @@ func compute_town_influence(tile_data: Array, map_rows: int, map_cols: int,
             var res = tile.get("resource", null)
             if res == null or res == "":
                 continue
-            # crop_bred НЕ учитываем: одомашненный ресурс появляется ПОСЛЕ
-            # того, как игрок построил ферму/пастбище, и в этой точке кольцо
-            # уже давно вычислено. Учитываем только «природные» ресурсы.
+# We do NOT take crop_bred into account: a domesticated resource appears AFTER
+# of how the player built a farm/pasture, and at this point the ring
+# has long been computed. We take into account only the "natural" resources.
             var path: Array = _path_between(town_row, town_col, r, c, map_rows, map_cols)
             for ph in path:
                 ring["%d,%d" % [ph.row, ph.col]] = true
 
-    # --- Конвертация словаря в Array of {row, col} ---
-    # Клипа по Региону здесь НЕТ намеренно (см. шапку функции): кольцо хранится
-    # целиком, иначе с ростом Региона заливка городка навсегда оставалась бы
-    # огрызком — рисовалась бы только та часть кольца, что попала в Регион
-    # ПОСЛЕ смены эпохи.
+# --- The conversion of a dictionary into an Array of {row, col} ---
+# There is NO clip by the Region here deliberately (see the header of the function): the ring is stored
+# entirely, otherwise with the growth of the Region the fill of the town would remain
+# a scrap forever - only the part of the ring which fell into the Region
+# AFTER the change of the epoch would be drawn.
     var result: Array = []
     for key in ring.keys():
         var parts: PackedStringArray = key.split(",")
@@ -1365,40 +1366,40 @@ func compute_town_influence(tile_data: Array, map_rows: int, map_cols: int,
     return result
 
 
-# Возвращает «сторону» (0..5) гекса (r, c) относительно центра (tr, tc).
-# Используется для группировки гексов вокруг городка в 6 секторов по 60°,
-# чтобы асимметричная выемка из compute_town_influence «съедала» гексы
-# в ОДНОМ направлении, а не вразброс.
+# Returns the "side" (0..5) of a hex (r, c) relative to the centre (tr, tc).
+# It is used for the grouping of the hexes around a town into 6 sectors of 60 degrees,
+# so that the asymmetric notch of compute_town_influence "eats" the hexes
+# in ONE direction, and not scattered.
 #
-# Стороны нумеруются по часовой стрелке от «востока» (0=E, 1=SE, 2=S,
-# 3=W, 4=NW, 5=NE). Соседние стороны различаются на 60°, что совпадает
-# с углами между соседями гекса — поэтому гексы одного сектора лежат
-# «примерно» в одном направлении от центра.
+# The sides are numbered clockwise from the "east" (0=E, 1=SE, 2=S,
+# 3=W, 4=NW, 5=NE). The neighbouring sides differ by 60 degrees, which coincides
+# with the angles between the neighbours of a hex - therefore the hexes of one sector lie
+# "approximately" in one direction from the centre.
 func _hex_side(tr: int, tc: int, r: int, c: int) -> int:
     var tr_pos: Vector2 = HexUtils.hex_center(tr, tc, 1.0)
     var h_pos: Vector2 = HexUtils.hex_center(r, c, 1.0)
-    # atan2 в Godot: Y растёт вниз, поэтому стандартные «математические» углы
-    # отсчитываются ПРОТИВ часовой стрелки от востока. Это нас устраивает —
-    # нам важен не знак поворота, а разбиение плоскости на 6 равных секторов.
+# atan2 in Godot: Y grows downwards, therefore the standard "mathematical" angles
+# are counted COUNTERCLOCKWISE from the east. This suits us -
+# what matters to us is not the sign of the turn, but the division of the plane into 6 equal sectors.
     var angle_rad: float = atan2(h_pos.y - tr_pos.y, h_pos.x - tr_pos.x)
     var angle_deg: float = rad_to_deg(angle_rad)
     if angle_deg < 0.0:
         angle_deg += 360.0
-    # +30° сдвигает границы секторов так, что «восток» (angle ≈ 0)
-    # попадает ровно в центр сектора 0, а не на его границу.
+# +30 degrees shifts the borders of the sectors so that the "east" (angle ~ 0)
+# falls exactly into the centre of the sector 0, and not onto its border.
     return int((angle_deg + 30.0) / 60.0) % 6
 
 
-# Возвращает кратчайший «жадный» путь от (fr, fc) к (tr, tc) через
-# шестиугольных соседей, ВКЛЮЧАЯ обе конечные точки.
+# Returns the shortest "greedy" path from (fr, fc) to (tr, tc) through
+# the hexagonal neighbours, INCLUDING both end points.
 #
-# Алгоритм: на каждом шаге выбираем соседа с минимальным hex_distance
-# до цели (тай-брейк — порядок из get_neighbors_odd_r, т.е. детерминирован).
-# Это даёт ОДИН ИЗ кратчайших путей; его длина == hex_distance + 1,
-# что для расстояний ≤ 3 (радиус нашего кольца) не выходит за пределы
-# диска. Если карта маленькая и путь «упирается» в край, get_neighbors_odd_r
-# вернёт меньше 6 соседей и цикл остановится (safety на 16 шагов —
-# страховка от вырожденного случая, в нормальной ситуации не срабатывает).
+# The algorithm: at each step we choose the neighbour with the minimal hex_distance
+# to the goal (the tie-break is the order from get_neighbors_odd_r, i.e. deterministic).
+# This gives ONE OF the shortest paths; its length == hex_distance + 1,
+# which for the distances <= 3 (the radius of our ring) does not go beyond
+# the disk. If the map is small and the path "bottoms out" at the edge, get_neighbors_odd_r
+# will return less than 6 neighbours and the loop will stop (a safety of 16 steps -
+# an insurance from the degenerate case, in a normal situation it does not fire).
 func _path_between(fr: int, fc: int, tr: int, tc: int,
         map_rows: int, map_cols: int) -> Array:
     var path: Array = [ {"row": fr, "col": fc}]
