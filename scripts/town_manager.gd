@@ -358,11 +358,11 @@ func generate_towns(tile_data: Array, rows: int, cols: int,
         exclusion_start_col: int, exclusion_end_col: int,
         era2_region_start_row: int, era2_region_end_row: int,
         era2_region_start_col: int, era2_region_end_col: int) -> void:
-# We clear the previous state (in case of a repeated call) and
-# remove the flag has_town from all the hexes - a repeated generation must not
-# "accumulate" the old marks. We reset both the master list towns, and the
-# derived mirrors. NOTE: we use clear(), and not `=` - so that
-# the reference main_map.towns to this array is not broken on a repeated generation.
+    # We clear the previous state (in case of a repeated call) and
+    # remove the flag has_town from all the hexes - a repeated generation must not
+    # "accumulate" the old marks. We reset both the master list towns, and the
+    # derived mirrors. NOTE: we use clear(), and not `=` - so that
+    # the reference main_map.towns to this array is not broken on a repeated generation.
     towns.clear()
     _used_town_names.clear()
     if not CityData.city_name.is_empty():
@@ -370,12 +370,12 @@ func generate_towns(tile_data: Array, rows: int, cols: int,
     town_hexes = []
     town_influence_hexes = []
 
-# We remember the starting area of the player: exclusion_* is exactly it
-# (the Ring + the starting Region). The area is needed not only for the ban on the CENTRE of a
-# town (this is done by _is_valid_town_hex), but also for two things during the
-# generation: the resources inside the area are not counted as the points of attraction
-# (see _build_multi_resource_mask / _build_strategic_mask), and it is cut out of the rings
-# of the influence (see compute_all_town_influences).
+    # We remember the starting area of the player: exclusion_* is exactly it
+    # (the Ring + the starting Region). The area is needed not only for the ban on the CENTRE of a
+    # town (this is done by _is_valid_town_hex), but also for two things during the
+    # generation: the resources inside the area are not counted as the points of attraction
+    # (see _build_multi_resource_mask / _build_strategic_mask), and it is cut out of the rings
+    # of the influence (see compute_all_town_influences).
     set_player_start_area(exclusion_start_row, exclusion_end_row,
             exclusion_start_col, exclusion_end_col)
 
@@ -392,7 +392,7 @@ func generate_towns(tile_data: Array, rows: int, cols: int,
         print("town_manager: the map is too small for the towns")
         return
 
-# --- The main pass: we place num_towns towns by the cascade algorithm ---
+    # --- The main pass: we place num_towns towns by the cascade algorithm ---
     for _i in range(num_towns):
         var placed = _try_place_one_town(tile_data, rows, cols,
                 city_row, city_col,
@@ -409,11 +409,11 @@ func generate_towns(tile_data: Array, rows: int, cols: int,
         town_hexes.append({"row": placed.row, "col": placed.col})
         tile_data[placed.row][placed.col]["has_town"] = true
 
-# --- The guarantee ">=1 town in the area of the 2nd era" ---
-# If among the placed towns there is not a single one in the era-2 area, we make
-# one more attempt - we place a "guaranteed" town with the "mandatory
-# zone" = the era-2 area. The exception of the starting area is preserved,
-# so the town falls into the new strip which is visible only in era 2.
+    # --- The guarantee ">=1 town in the area of the 2nd era" ---
+    # If among the placed towns there is not a single one in the era-2 area, we make
+    # one more attempt - we place a "guaranteed" town with the "mandatory
+    # zone" = the era-2 area. The exception of the starting area is preserved,
+    # so the town falls into the new strip which is visible only in era 2.
     var has_era2_town := false
     for h in town_hexes:
         if h.row >= era2_region_start_row and h.row <= era2_region_end_row \
@@ -429,13 +429,13 @@ func generate_towns(tile_data: Array, rows: int, cols: int,
                 era2_region_start_col, era2_region_end_col,
                 false)
         if not forced.is_empty():
-# The flag is_era2_guaranteed - a reference metadata ("this town
-# was added specially for the guarantee of the visibility in era 2").
-# In compute_town_influence it is not used at the moment: the clip on
-# the starting Region is applied to ALL the towns equally.
-# The flag is saved in the save and in the record of the town in case of the future
-# mechanics which will need to distinguish the "ordinary" and the
-# "guaranteed" towns.
+            # The flag is_era2_guaranteed - a reference metadata ("this town
+            # was added specially for the guarantee of the visibility in era 2").
+            # In compute_town_influence it is not used at the moment: the clip on
+            # the starting Region is applied to ALL the towns equally.
+            # The flag is saved in the save and in the record of the town in case of the future
+            # mechanics which will need to distinguish the "ordinary" and the
+            # "guaranteed" towns.
             var forced_town := _make_town_record(towns.size(), forced.row, forced.col, true)
             towns.append(forced_town)
             town_hexes.append({"row": forced.row, "col": forced.col, "is_era2_guaranteed": true})
@@ -446,20 +446,20 @@ func generate_towns(tile_data: Array, rows: int, cols: int,
             print("town_manager: the era-2 guarantee is NOT fulfilled — there is no valid ",
                     "hex in the new strip (probably it is all water/impassable)")
 
-# The influence rings are built AFTER the placement of all the towns (including
-# the guaranteed one for era 2), because when iterating the resources within a radius of 3
-# from each town the final positions AND all the resources on the map are needed.
-# The borders of the current Region are NOT needed here: the ring is built entirely by
-# the radius, only the starting area of the player is cut out of it (which never
-# changes) and the rings of the neighbouring towns, and what of the ring is visible
-# to the player is decided by the renderer (the fog of war + the epoch).
+    # The influence rings are built AFTER the placement of all the towns (including
+    # the guaranteed one for era 2), because when iterating the resources within a radius of 3
+    # from each town the final positions AND all the resources on the map are needed.
+    # The borders of the current Region are NOT needed here: the ring is built entirely by
+    # the radius, only the starting area of the player is cut out of it (which never
+    # changes) and the rings of the neighbouring towns, and what of the ring is visible
+    # to the player is decided by the renderer (the fog of war + the epoch).
     compute_all_town_influences(tile_data, rows, cols)
 
-# After the building of the rings we fill them with the decorative improvements. They
-# belong to the towns, do not require the workers and never participate in the
-# production of the player (see tile.decorative). The food fields are the only
-# exception in the sense of the trade: the sown crop falls into the pool of the sale
-# of the town, but it does not go to the warehouse of the player.
+    # After the building of the rings we fill them with the decorative improvements. They
+    # belong to the towns, do not require the workers and never participate in the
+    # production of the player (see tile.decorative). The food fields are the only
+    # exception in the sense of the trade: the sown crop falls into the pool of the sale
+    # of the town, but it does not go to the warehouse of the player.
     _place_decorative_town_improvements(tile_data, rows, cols)
 
     print("town_manager: the total number of the placed towns=", town_hexes.size(),
@@ -482,8 +482,8 @@ func _try_place_one_town(tile_data: Array, rows: int, cols: int,
         require_in_region_start_row: int, require_in_region_end_row: int,
         require_in_region_start_col: int, require_in_region_end_col: int,
         ignore_exclusion: bool) -> Dictionary:
-# The masks of all the five priorities (see the block "The masks of the priorities" below):
-# mask[row * cols + col] == 1, if a hex satisfies this priority.
+    # The masks of all the five priorities (see the block "The masks of the priorities" below):
+    # mask[row * cols + col] == 1, if a hex satisfies this priority.
     var tiers: Array = [
         {"name": "multi_resource", "mask": _build_multi_resource_mask(tile_data, rows, cols)},
         {"name": "strategic", "mask": _build_strategic_mask(tile_data, rows, cols)},
@@ -492,12 +492,12 @@ func _try_place_one_town(tile_data: Array, rows: int, cols: int,
         {"name": "sea_coast", "mask": _build_sea_coast_mask(tile_data, rows, cols)},
     ]
 
-# STEP 0: the base. We iterate the priorities strictly from the top down and for each
-# we search a valid hex over the WHOLE map (a full traversal of the map). We move on to the next
-# priority ONLY when for the current one there is
-# not a single suitable hex left on the map, - therefore the priorities are not
-# equivalent: a town will not stand by a lake/the sea, while there is a
-# free place with a pile of resources on the map.
+    # STEP 0: the base. We iterate the priorities strictly from the top down and for each
+    # we search a valid hex over the WHOLE map (a full traversal of the map). We move on to the next
+    # priority ONLY when for the current one there is
+    # not a single suitable hex left on the map, - therefore the priorities are not
+    # equivalent: a town will not stand by a lake/the sea, while there is a
+    # free place with a pile of resources on the map.
     var base_tier_idx := -1
     var best: Dictionary = {}
     for i in range(tiers.size()):
@@ -513,15 +513,15 @@ func _try_place_one_town(tile_data: Array, rows: int, cols: int,
             best = hex
             break
     if base_tier_idx == -1:
-# On the whole map there is not a single valid hex in any of the priorities.
+        # On the whole map there is not a single valid hex in any of the priorities.
         return {}
 
-# STEPS 1..N: the cascade refinement. We go down through the remaining priorities.
-# At each step we search within the radius of REFINEMENT_RADIUS of the current hex a hex
-# which simultaneously satisfies ALL the already earned priorities
-# (their masks) AND the new one. Found - the town moves, the priority is added to the
-# chain. Not found - the priority is SKIPPED, the position and the chain do not
-# change, we go to the next one: the cascade is NOT interrupted by a failure.
+    # STEPS 1..N: the cascade refinement. We go down through the remaining priorities.
+    # At each step we search within the radius of REFINEMENT_RADIUS of the current hex a hex
+    # which simultaneously satisfies ALL the already earned priorities
+    # (their masks) AND the new one. Found - the town moves, the priority is added to the
+    # chain. Not found - the priority is SKIPPED, the position and the chain do not
+    # change, we go to the next one: the cascade is NOT interrupted by a failure.
     var satisfied_names: Array = [str(tiers[base_tier_idx]["name"])]
     var skipped_names: Array = []
     var required_masks: Array = [tiers[base_tier_idx]["mask"]]
@@ -642,10 +642,10 @@ func _find_hex_in_radius_satisfying(tile_data: Array, rows: int, cols: int,
         for c in range(c_min, c_max + 1):
             if HexUtils.hex_distance(r, c, near_hex.row, near_hex.col) > max_dist_from_near:
                 continue
-# The hex must satisfy all the already earned priorities AND the new one.
+            # The hex must satisfy all the already earned priorities AND the new one.
             if not _hex_satisfies_all_masks(masks, cols, r, c):
                 continue
-# The secondary filter by the type of the terrain (an empty list = any).
+            # The secondary filter by the type of the terrain (an empty list = any).
             if not allowed_terrains.is_empty():
                 var terr: String = tile_data[r][c].get("terrain", "")
                 if not allowed_terrains.has(terr):
@@ -685,37 +685,37 @@ func _is_valid_town_hex(tile_data: Array, row: int, col: int,
     if tile == null:
         return false
 
-# The hex of the city of the player - never.
+    # The hex of the city of the player - never.
     if row == city_row and col == city_col:
         return false
 
     var terrain: String = tile.get("terrain", "plain")
-# The impassable types of the terrain (the sea, the lakes, a soda/salt/asphalt
-# lake) - you will not place a town there.
+    # The impassable types of the terrain (the sea, the lakes, a soda/salt/asphalt
+    # lake) - you will not place a town there.
     if _is_impassable_terrain(terrain):
         return false
 # A beach is allowed: the priority "a sea coast" requires placing the town
 # DIRECTLY on the coastal hex (terrain == "beach"), and not inland.
 
-# There is already a construction (from another system) - not allowed.
+    # There is already a construction (from another system) - not allowed.
     if tile.get("improvement", null) != null:
         return false
-# A hex with a resource - not allowed: a town must not occupy a resource directly
-# (including a strategic one - we are attracted to it, but we stand NEARBY, in the radius of
-# MAX_ATTRACTION_DISTANCE, and not on the hex itself). Such a hex simply does not
-# fall into the set of the candidates (_find_hex_in_mask /
-# _find_hex_in_radius_satisfying); if there are no valid places left at all,
-# the priority is skipped (and for the base - a transition to the next priority).
+    # A hex with a resource - not allowed: a town must not occupy a resource directly
+    # (including a strategic one - we are attracted to it, but we stand NEARBY, in the radius of
+    # MAX_ATTRACTION_DISTANCE, and not on the hex itself). Such a hex simply does not
+    # fall into the set of the candidates (_find_hex_in_mask /
+    # _find_hex_in_radius_satisfying); if there are no valid places left at all,
+    # the priority is skipped (and for the base - a transition to the next priority).
     var res = tile.get("resource", null)
     if res != null and res != "":
         return false
-# A town already stands here (just in case - the flag could have remained).
+    # A town already stands here (just in case - the flag could have remained).
     if tile.get("has_town", false):
         return false
 
-# The starting area (the Ring + the starting Region) - not allowed. Otherwise
-# the town would be visible from the very beginning, and the sense of "the small
-# unknown settlements on the edge" is lost.
+    # The starting area (the Ring + the starting Region) - not allowed. Otherwise
+    # the town would be visible from the very beginning, and the sense of "the small
+    # unknown settlements on the edge" is lost.
     if not ignore_exclusion \
             and exclusion_start_row <= exclusion_end_row \
             and exclusion_start_col <= exclusion_end_col \
@@ -723,19 +723,19 @@ func _is_valid_town_hex(tile_data: Array, row: int, col: int,
             and col >= exclusion_start_col and col <= exclusion_end_col:
         return false
 
-# The mandatory zone (if it is set) - the hex must lie inside it.
+    # The mandatory zone (if it is set) - the hex must lie inside it.
     if require_in_region_start_row >= 0 and require_in_region_end_row >= 0 \
             and require_in_region_start_col >= 0 and require_in_region_end_col >= 0:
         if not (row >= require_in_region_start_row and row <= require_in_region_end_row \
                 and col >= require_in_region_start_col and col <= require_in_region_end_col):
             return false
 
-# The centre of a new town must not fall into a foreign influence ring:
-# the minimum distance = the influence radius of the neighbour + 1. The base
-# spread MIN_DISTANCE_BETWEEN_TOWNS also remains in force -
-# we take the MAXIMUM of the two restrictions. We iterate towns (the master list
-# with influence_radius), and not the derived town_hexes: under the future
-# mechanics of the growth/shrinkage of the rings the rule will adjust automatically.
+    # The centre of a new town must not fall into a foreign influence ring:
+    # the minimum distance = the influence radius of the neighbour + 1. The base
+    # spread MIN_DISTANCE_BETWEEN_TOWNS also remains in force -
+    # we take the MAXIMUM of the two restrictions. We iterate towns (the master list
+    # with influence_radius), and not the derived town_hexes: under the future
+    # mechanics of the growth/shrinkage of the rings the rule will adjust automatically.
     for t in towns:
         var eff_min: int = maxi(MIN_DISTANCE_BETWEEN_TOWNS,
                 int(t.get("influence_radius", INFLUENCE_MAX_RADIUS)) + 1)
@@ -773,15 +773,15 @@ func _place_decorative_town_improvements(tile_data: Array, rows: int, cols: int)
             candidates.append({"row": row, "col": col, "tile": tile})
 
         var has_food_plant := false
-# The filler farms - the improvements farm without a natural resource. A town
-# gets them because there are no food plants in the ring, and in total
-# it is 1-2 fields. We collect ALL such ones (both bare and already sown): they are
-# a sign that the pass over the ring has already been.
+        # The filler farms - the improvements farm without a natural resource. A town
+        # gets them because there are no food plants in the ring, and in total
+        # it is 1-2 fields. We collect ALL such ones (both bare and already sown): they are
+        # a sign that the pass over the ring has already been.
         var filler_farms: Array = []
-# The bare ones among them are those which are still without a crop. We sow them: both the
-# just placed ones, and those left from the previous passes (a party saved
-# before the food fields appeared). The already sown fields do not fall here,
-# therefore on the load of a save the town is not re-sown.
+        # The bare ones among them are those which are still without a crop. We sow them: both the
+        # just placed ones, and those left from the previous passes (a party saved
+        # before the food fields appeared). The already sown fields do not fall here,
+        # therefore on the load of a save the town is not re-sown.
         var bare_farms: Array = []
         for candidate in candidates:
             var resource_id = candidate.tile.get("resource", null)
@@ -798,13 +798,13 @@ func _place_decorative_town_improvements(tile_data: Array, rows: int, cols: int)
                     and candidate.tile.get("improvement", null) == null:
                 _set_decorative_improvement(candidate.tile, imp_id)
 
-# If there are no food plants in the ring, we add 1-2
-# decorative farms on the free plains without a cover.
+        # If there are no food plants in the ring, we add 1-2
+        # decorative farms on the free plains without a cover.
         if not has_food_plant:
-# ... but only ONCE per party. Its own fields are already there - it means,
-# the pass over the ring was earlier (for example, on the load of a save), and
-# we must not top up: otherwise every reload would add another two
-# farms, and the ring would gradually overgrow with them.
+            # ... but only ONCE per party. Its own fields are already there - it means,
+            # the pass over the ring was earlier (for example, on the load of a save), and
+            # we must not top up: otherwise every reload would add another two
+            # farms, and the ring would gradually overgrow with them.
             if filler_farms.is_empty():
                 var farm_candidates: Array = []
                 for candidate in candidates:
@@ -820,14 +820,14 @@ func _place_decorative_town_improvements(tile_data: Array, rows: int, cols: int)
                     _set_decorative_improvement(farm_candidates[i].tile, "farm")
                     bare_farms.append(farm_candidates[i].tile)
             # ... and we sow each one with ITS OWN crop. The bare farms are a showcase without
-# of the goods: the player sees the fields, and there is nothing to sell, and the question "how do they
-# not starve?" remains unanswered. Two different crops in a row are
-# a household, and not a one-kind wedge, and the town immediately has two goods
-# for sale instead of one.
+            # of the goods: the player sees the fields, and there is nothing to sell, and the question "how do they
+            # not starve?" remains unanswered. Two different crops in a row are
+            # a household, and not a one-kind wedge, and the town immediately has two goods
+            # for sale instead of one.
             for tile in bare_farms:
                 _seed_decorative_field(tile, _pick_town_field_crop(tile))
 
-# One decorative object on a forest cover and on a mountain/hill.
+        # One decorative object on a forest cover and on a mountain/hill.
         var forest_done := false
         var quarry_done := false
         for candidate in candidates:
@@ -843,15 +843,15 @@ func _place_decorative_town_improvements(tile_data: Array, rows: int, cols: int)
                 _set_decorative_improvement(tile, "quarry")
                 quarry_done = true
 
-# We rebuild the trade pools AFTER the placement of the improvements: a part of the rings
-# has been replenished with the fields with a crop (tile.crop_bred), and a town which
-# has no resources left must get it for sale. Earlier the pool
-# was collected before this step, and the fields remained mute.
+    # We rebuild the trade pools AFTER the placement of the improvements: a part of the rings
+    # has been replenished with the fields with a crop (tile.crop_bred), and a town which
+    # has no resources left must get it for sale. Earlier the pool
+    # was collected before this step, and the fields remained mute.
     #
-# The recalculation takes into account not only the resources of the hexes, but also what the town
-# is able to produce itself (scripts/town_economy.gd), therefore here it is
-# mandatory even where the improvements were not placed: the buy pools too
-# are counted from the whole ring.
+    # The recalculation takes into account not only the resources of the hexes, but also what the town
+    # is able to produce itself (scripts/town_economy.gd), therefore here it is
+    # mandatory even where the improvements were not placed: the buy pools too
+    # are counted from the whole ring.
     _refresh_sell_pools(tile_data)
 
 
@@ -1071,11 +1071,11 @@ func serialize_towns() -> Array:
             "influence_hexes": hexes,
             "sell_pool": t.get("sell_pool", []),
             "buy_pool": t.get("buy_pool", []),
-# road_linked - the player has built a road from the city to this town.
-# As with the other roads, the segments are not written into the save: by this
-# flag the connection is recalculated on the load (main_map._rebuild_town_roads
-# -> road_manager.rebuild_player_roads), and the availability of the trade
-# is read from it as well (is_trade_available).
+            # road_linked - the player has built a road from the city to this town.
+            # As with the other roads, the segments are not written into the save: by this
+            # flag the connection is recalculated on the load (main_map._rebuild_town_roads
+            # -> road_manager.rebuild_player_roads), and the availability of the trade
+            # is read from it as well (is_trade_available).
             "road_linked": bool(t.get("road_linked", false)),
         })
     return result
@@ -1102,7 +1102,7 @@ func load_towns(data) -> void:
     town_influence_hexes = []
     for entry in data:
         if entry is Dictionary:
-# The new format: the full record of a town.
+            # The new format: the full record of a town.
             var t := {
                 "id": str(entry.get("id", "")),
                 "row": int(entry.get("row", 0)),
@@ -1111,17 +1111,17 @@ func load_towns(data) -> void:
                 "is_era2_guaranteed": bool(entry.get("is_era2_guaranteed", false)),
                 "border_color": entry.get("border_color", [1.0, 1.0, 1.0, 1.0]),
                 "influence_radius": int(entry.get("influence_radius", INFLUENCE_MAX_RADIUS)),
-# The personal ring from the save is the source of truth for the loaded
-# party (the ring could have been changed by the mechanics).
+                # The personal ring from the save is the source of truth for the loaded
+                # party (the ring could have been changed by the mechanics).
                 "influence_hexes": _restore_hex_list(entry.get("influence_hexes", [])),
                 "sell_pool": entry.get("sell_pool", []),
                 "buy_pool": entry.get("buy_pool", []),
-# road_linked is a road from the city to the town (see serialize_towns).
+                # road_linked is a road from the city to the town (see serialize_towns).
                 "road_linked": bool(entry.get("road_linked", false)),
             }
             towns.append(t)
         elif entry is Array and entry.size() >= 2:
-# There is no ring - it will be computed in compute_all_town_influences.
+            # There is no ring - it will be computed in compute_all_town_influences.
             var is_era2_guaranteed: bool = entry.size() >= 3 and bool(entry[2])
             var t := _make_town_record(towns.size(), int(entry[0]), int(entry[1]),
                     is_era2_guaranteed)
@@ -1187,32 +1187,32 @@ func compute_all_town_influences(tile_data: Array, map_rows: int, map_cols: int)
     # The counter of the hexes cut out by the starting area of the player - only for the printing
     # at the end (the diagnostics of "a town at the edge of the Region lost half a ring").
     var clipped_by_player := 0
-# The table of the "claimed" hexes: the key "r,c" -> true. The towns are iterated in
-# the order of the array towns (the order of the placement; for a save - the order of the records),
-# therefore a hex which is claimed for the first time by one town cannot fall into
-# the ring of another. This is the principle of "whoever stood first, has the priority": the rings
-# NEVER intersect, and the ring of a later town is simply
-# cut on the side of the neighbour.
+    # The table of the "claimed" hexes: the key "r,c" -> true. The towns are iterated in
+    # the order of the array towns (the order of the placement; for a save - the order of the records),
+    # therefore a hex which is claimed for the first time by one town cannot fall into
+    # the ring of another. This is the principle of "whoever stood first, has the priority": the rings
+    # NEVER intersect, and the ring of a later town is simply
+    # cut on the side of the neighbour.
     var claimed: Dictionary = {}
     for t in towns:
-# The ring is always recomputed by the radius of this town from scratch (see above):
-# the composition saved in the save may be cut by the starting Region.
+        # The ring is always recomputed by the radius of this town from scratch (see above):
+        # the composition saved in the save may be cut by the starting Region.
         var ring: Array = compute_town_influence(tile_data, map_rows, map_cols,
                 int(t.row), int(t.col), t,
                 int(t.get("influence_radius", INFLUENCE_MAX_RADIUS)))
-# The clip of the personal ring, in the order of significance:
-#   1) THE STARTING AREA OF THE PLAYER (the Ring + the Region of the 1st era) - the hexes
-#      are thrown out ALWAYS and for ALL the towns, including the guaranteed
-#      town of the 2nd era. There the player builds, buys and scouts
-#      initially, therefore a foreign territory there would mean
-#      a "dead zone" in the middle of his own land (and the impossibility to improve
-#      a resource which by the story is already his). The check goes BEFORE the table
-#      claimed: the player is stronger than any neighbouring town.
-#   2) the hexes which are already claimed by an earlier town, - we drop them and do NOT
-#      write them into the ring of this town. The fill and the borders (the renderer
-#      builds them by influence_hexes) therefore at the different towns
-#      are guaranteed not to intersect. The cut ring falls into
-#      the record of the town and then into the save (serialize_towns).
+        # The clip of the personal ring, in the order of significance:
+        #   1) THE STARTING AREA OF THE PLAYER (the Ring + the Region of the 1st era) - the hexes
+        #      are thrown out ALWAYS and for ALL the towns, including the guaranteed
+        #      town of the 2nd era. There the player builds, buys and scouts
+        #      initially, therefore a foreign territory there would mean
+        #      a "dead zone" in the middle of his own land (and the impossibility to improve
+        #      a resource which by the story is already his). The check goes BEFORE the table
+        #      claimed: the player is stronger than any neighbouring town.
+        #   2) the hexes which are already claimed by an earlier town, - we drop them and do NOT
+        #      write them into the ring of this town. The fill and the borders (the renderer
+        #      builds them by influence_hexes) therefore at the different towns
+        #      are guaranteed not to intersect. The cut ring falls into
+        #      the record of the town and then into the save (serialize_towns).
         var clipped: Array = []
         for rh in ring:
             var hex_row := int(rh.row)
@@ -1225,8 +1225,8 @@ func compute_all_town_influences(tile_data: Array, map_rows: int, map_cols: int)
                 continue
             claimed[key] = true
             clipped.append(rh)
-# We set the flag on the tile - build_manager and the validators read
-# it directly, without a search over the list.
+            # We set the flag on the tile - build_manager and the validators read
+            # it directly, without a search over the list.
             if hex_row >= 0 and hex_row < map_rows \
                     and hex_col >= 0 and hex_col < map_cols \
                     and tile_data[hex_row] != null and hex_col < tile_data[hex_row].size() \
@@ -1234,10 +1234,10 @@ func compute_all_town_influences(tile_data: Array, map_rows: int, map_cols: int)
                 tile_data[hex_row][hex_col]["in_town_influence"] = true
             town_influence_hexes.append(rh)
         t["influence_hexes"] = clipped
-# The trade pools of a town (the sale + the purchase) are rebuilt after the clip of the rings,
-# so that the neighbouring towns do not get a resource which remained in the ring of another
-# town. The calculation of the closure of the production and of the import is in
-# scripts/town_economy.gd (the pure functions over the data of the recipes).
+    # The trade pools of a town (the sale + the purchase) are rebuilt after the clip of the rings,
+    # so that the neighbouring towns do not get a resource which remained in the ring of another
+    # town. The calculation of the closure of the production and of the import is in
+    # scripts/town_economy.gd (the pure functions over the data of the recipes).
     _refresh_sell_pools(tile_data)
     print("town_manager: the total number of the hexes in the rings of the influence=",
             town_influence_hexes.size(), " (the towns=", towns.size(), ")")
@@ -1291,12 +1291,12 @@ func compute_town_influence(tile_data: Array, map_rows: int, map_cols: int,
         radius: int = INFLUENCE_MAX_RADIUS) -> Array:
     var ring: Dictionary = {} # the key "r,c" -> true for a quick check of the membership
     var rng := RandomNumberGenerator.new()
-# A stable seed: each combination (row, col) gives a unique,
-# but reproducible between the sessions seed. Simple prime numbers - so that
-# the towns neighbouring on the map get the maximally different notches.
+    # A stable seed: each combination (row, col) gives a unique,
+    # but reproducible between the sessions seed. Simple prime numbers - so that
+    # the towns neighbouring on the map get the maximally different notches.
     rng.seed = town_row * 1009 + town_col * 7919
 
-# --- Step 1: the base disk (the distance 0..radius) ---
+    # --- Step 1: the base disk (the distance 0..radius) ---
     var r_min: int = maxi(0, town_row - radius)
     var r_max: int = mini(map_rows - 1, town_row + radius)
     var c_min: int = maxi(0, town_col - radius)
@@ -1306,9 +1306,9 @@ func compute_town_influence(tile_data: Array, map_rows: int, map_cols: int,
             if HexUtils.hex_distance(r, c, town_row, town_col) <= radius:
                 ring["%d,%d" % [r, c]] = true
 
-# --- Step 2: the asymmetry - we drop 1-3 hexes at a distance of 3
-# in one "side" (of 6). The side is chosen randomly, but
-# deterministically from the seed.
+    # --- Step 2: the asymmetry - we drop 1-3 hexes at a distance of 3
+    # in one "side" (of 6). The side is chosen randomly, but
+    # deterministically from the seed.
     var notch_side: int = rng.randi_range(0, 5)
     var outer_dropped: int = 0
     for r in range(r_min, r_max + 1):
@@ -1328,11 +1328,11 @@ func compute_town_influence(tile_data: Array, map_rows: int, map_cols: int,
         if outer_dropped >= INFLUENCE_NOTCH_MAX_DROPS:
             break
 
-# --- Step 3: for each resource within the radius radius
-# we add the hex with the resource and the shortest path from the town.
-# The protection from the "enclaves": if the notch of step 2 surrounded a resource, the player
-# could get a small "island" of the available land in the middle of
-# the forbidden zone. The path "sews" the resource back to the ring.
+    # --- Step 3: for each resource within the radius radius
+    # we add the hex with the resource and the shortest path from the town.
+    # The protection from the "enclaves": if the notch of step 2 surrounded a resource, the player
+    # could get a small "island" of the available land in the middle of
+    # the forbidden zone. The path "sews" the resource back to the ring.
     for r in range(r_min, r_max + 1):
         for c in range(c_min, c_max + 1):
             if HexUtils.hex_distance(r, c, town_row, town_col) > radius:
@@ -1343,18 +1343,18 @@ func compute_town_influence(tile_data: Array, map_rows: int, map_cols: int,
             var res = tile.get("resource", null)
             if res == null or res == "":
                 continue
-# We do NOT take crop_bred into account: a domesticated resource appears AFTER
-# of how the player built a farm/pasture, and at this point the ring
-# has long been computed. We take into account only the "natural" resources.
+            # We do NOT take crop_bred into account: a domesticated resource appears AFTER
+            # of how the player built a farm/pasture, and at this point the ring
+            # has long been computed. We take into account only the "natural" resources.
             var path: Array = _path_between(town_row, town_col, r, c, map_rows, map_cols)
             for ph in path:
                 ring["%d,%d" % [ph.row, ph.col]] = true
 
-# --- The conversion of a dictionary into an Array of {row, col} ---
-# There is NO clip by the Region here deliberately (see the header of the function): the ring is stored
-# entirely, otherwise with the growth of the Region the fill of the town would remain
-# a scrap forever - only the part of the ring which fell into the Region
-# AFTER the change of the epoch would be drawn.
+    # --- The conversion of a dictionary into an Array of {row, col} ---
+    # There is NO clip by the Region here deliberately (see the header of the function): the ring is stored
+    # entirely, otherwise with the growth of the Region the fill of the town would remain
+    # a scrap forever - only the part of the ring which fell into the Region
+    # AFTER the change of the epoch would be drawn.
     var result: Array = []
     for key in ring.keys():
         var parts: PackedStringArray = key.split(",")
@@ -1374,15 +1374,15 @@ func compute_town_influence(tile_data: Array, map_rows: int, map_cols: int,
 func _hex_side(tr: int, tc: int, r: int, c: int) -> int:
     var tr_pos: Vector2 = HexUtils.hex_center(tr, tc, 1.0)
     var h_pos: Vector2 = HexUtils.hex_center(r, c, 1.0)
-# atan2 in Godot: Y grows downwards, therefore the standard "mathematical" angles
-# are counted COUNTERCLOCKWISE from the east. This suits us -
-# what matters to us is not the sign of the turn, but the division of the plane into 6 equal sectors.
+    # atan2 in Godot: Y grows downwards, therefore the standard "mathematical" angles
+    # are counted COUNTERCLOCKWISE from the east. This suits us -
+    # what matters to us is not the sign of the turn, but the division of the plane into 6 equal sectors.
     var angle_rad: float = atan2(h_pos.y - tr_pos.y, h_pos.x - tr_pos.x)
     var angle_deg: float = rad_to_deg(angle_rad)
     if angle_deg < 0.0:
         angle_deg += 360.0
-# +30 degrees shifts the borders of the sectors so that the "east" (angle ~ 0)
-# falls exactly into the centre of the sector 0, and not onto its border.
+    # +30 degrees shifts the borders of the sectors so that the "east" (angle ~ 0)
+    # falls exactly into the centre of the sector 0, and not onto its border.
     return int((angle_deg + 30.0) / 60.0) % 6
 
 
