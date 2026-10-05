@@ -243,8 +243,15 @@ const BASE_SCIENCE_PER_SEC: float = 1.0
 # the recipe is only a "pass" (while the raw material is available, the scholars work), its input
 # only sets the expense of the fuel. The rate of the work of the scholars is determined by the
 # special_yield of the bases themselves (see docs.md, "Science: production and research").
-# Пула науки нет — произведённая наука не копится на складе, а напрямую
-# складывается в скорость изучения технологий (см. get_science_rate_per_sec,
+# There is no pool of science — the produced science is not accumulated in the storage, but directly
+# is added to the rate of the learning of the technologies (see get_science_rate_per_sec,
+# of the display window, and the tooltip of the breakdown (see rotate_treasury_window above):
+# the sum accumulated over the window is divided by the length of the window. Both numbers are the FACT by the
+# same points where add_treasury/spend_treasury is called; there are no planned maps here
+# and none are needed: the treasury has no planned rate of the expenses (the expenses are the event-based
+# spendings of the player), and the income is written into the flat accumulator next to the replenishment anyway.
+# This is the same data that the tooltip reads, — the rows in the HUD and in the city cannot
+# diverge from the breakdown.
 # tick_research_science_continuous).
 var science_buildings_rate_per_sec: float = 0.0
 # The cache of the breakdown of the rate of the science by the sources (for the tooltip on the tab
@@ -447,12 +454,12 @@ func collect_taxes() -> int:
 #     the fact over the LATEST display window (by default 3 seconds), and not
 #     "/sec". The window is reset once per `treasury_window_length_sec` next to
 #     the resource era (see tick_resource_display), so that the tooltip is stable,
-#     и не мигал на каждом тике.
+# and it did not flicker on every tick.
 #
-# Снимки (`treasury_*_snapshot`) хранят данные прошедшего окна, тултип читает
-# их. Текущий тик (после очередной смены эпохи) — в `treasury_*_accum`, эти
-# счётчики наполняются из record_treasury_income/_expense и сбрасываются в
-# снимок при rotate_treasury_window().
+# The snapshots (`treasury_*_snapshot`) store the data of the past window, the tooltip reads
+# them. The current tick (after the next change of the era) is in `treasury_*_accum`, these
+# counters are filled from record_treasury_income/_expense and are reset into
+# the snapshot in rotate_treasury_window().
 var treasury_income_accum: Dictionary = {}
 var treasury_income_product_accum: Dictionary = {}
 var treasury_expense_accum: Dictionary = {}
@@ -461,21 +468,21 @@ var treasury_income_product_snapshot: Dictionary = {}
 var treasury_expense_snapshot: Dictionary = {}
 var treasury_window_length_sec: float = 3.0
 
-# Маркер «ПЛОСКОГО» типа дохода в разбивке казны. Обычный тип раскрывается
-# тремя уровнями (тип → источник → продукт), а тип, у которого под этим ключом
-# лежит { "rate": float, "label": String }, тултип рисует ОДНОЙ строкой:
-#   • Налоги: 2 × 3 чел. = 6 / сек
-# Нужен для доходов без товарной разбивки — сейчас это налоги (налог один,
-# делить его по источникам/продуктам не на что). Саму скорость дописывает
-# рендер (ui_helpers.show_treasury_tooltip), «label» — правая часть до «=».
+# The marker of the "FLAT" type of income in the breakdown of the treasury. An ordinary type is expanded
+# by three levels (the type → the source → the product), and a type under whose key there is
+# { "rate": float, "label": String }, the tooltip draws by ONE row:
+#   • Taxes: 2 × 3 people = 6 / sec
+# It is needed for the incomes without a goods breakdown — at the moment these are the taxes (the tax is one,
+# there is nothing to divide it into the sources/products). The rate itself is appended by
+# the renderer (ui_helpers.show_treasury_tooltip), the "label" is the right part before the "=".
 const TREASURY_FLAT_TYPE_KEY: String = "@flat"
 
-# Записывает доход казны по источнику (накапливается в текущем окне). Вызов
-# рядом с add_treasury в местах фактического пополнения казны (см. callers).
-# source_id — идентификатор источника, а не его подпись: "@prof:fisherman",
-# "@bld:bakery" (см. GameData.get_source_display_name). Ключ накопителя не
-# должен зависеть от языка — LocalizationManager.set_locale перечитывает данные,
-# но накопители не сбрасывает, и переведённый ключ разошёлся бы со старым.
+# Records the income of the treasury by the source (it is accumulated in the current window). The calls
+# are next to add_treasury in the places of the actual replenishment of the treasury (see callers).
+# source_id is the identifier of the source, and not its label: "@prof:fisherman",
+# "@bld:bakery" (see GameData.get_source_display_name). The key of the accumulator must not
+# depend on the language — LocalizationManager.set_locale re-reads the data,
+# but does not reset the accumulators, and the translated key would diverge from the old one.
 func record_treasury_income(source_id: String, amount: int, product_id: String = "") -> void:
     if amount == 0 or source_id.is_empty():
         return
@@ -486,29 +493,29 @@ func record_treasury_income(source_id: String, amount: int, product_id: String =
         var source_products: Dictionary = treasury_income_product_accum[source_id]
         source_products[product_id] = int(source_products.get(product_id, 0)) + amount
 
-# Записывает расход казны по источнику (накапливается в текущем окне).
-# Вызов рядом со spend_treasury в местах фактического списания. signed amount:
-#   amount > 0 — gross расход (трата);
-#   amount < 0 — возврат (refund) в ТОТ ЖЕ источник: ноттируется в накопленную
-#                 сумму по этому источнику (отрицательная запись вычитается).
-#                 См. expansion_manager.handle_action для примера: gross +
-#                 refund в одной паре даёт net-расход в снапшоте.
-#   amount == 0 — no-op (отбрасывается).
-# Возврат ноттируется внутри источника потому, что возврат не вписывается
-# ни в один тип дохода из иерархической разбивки (там только «Потребление
-# населения» и будущие «Налоги»/«Торговля»). Если в снапшоте источник
-# оказался с нетто <= 0 (только возвраты без компенсирующей траты), тултип
-# его не показывает — для игрока это эквивалентно отсутствию расхода.
+# Records the expense of the treasury by the source (it is accumulated in the current window).
+# The calls are next to spend_treasury in the places of the actual write-off. The signed amount:
+#   amount > 0 — the gross expense (the spending);
+#   amount < 0 — the return (refund) into THE SAME source: it is recorded into the accumulated
+#                 amount of this source (a negative record is subtracted).
+#                 See expansion_manager.handle_action as an example: the gross +
+#                 refund in one pair gives the net expense in the snapshot.
+#   amount == 0 — a no-op (it is discarded).
+# The return is recorded inside the source, because a return does not fit into
+# any type of income of the hierarchical breakdown (there is only the "Consumption of
+# the population" and the future "Taxes"/"Trade"). If in the snapshot the source
+# has turned out to have net <= 0 (only the returns without a compensating spending), the tooltip
+# does not show it — for the player this is equivalent to the absence of the expense.
 func record_treasury_expense(source_id: String, amount: int) -> void:
     if amount == 0 or source_id.is_empty():
         return
     treasury_expense_accum[source_id] = int(treasury_expense_accum.get(source_id, 0)) + amount
 
-# Сбрасывает текущее окно в «прошлое» и обнуляет аккумуляторы. Вызывается раз
-# в `treasury_window_length_sec` рядом со сменой эпохи отображения ресурсов
-# (см. tick_resource_display). Тултип всегда читает snapshot — данные прошлого
-# полного окна; так новые накопления текущего окна не «прыгают» на каждом тике
-# при обновлении.
+# Resets the current window into the "past" and zeroes the accumulators. It is called once
+# per `treasury_window_length_sec` next to the change of the era of the display of the resources
+# (see tick_resource_display). The tooltip always reads the snapshot — the data of the past
+# complete window; in this way the new accumulations of the current window do not "jump" on every tick
+# of the update.
 func rotate_treasury_window() -> void:
     treasury_income_snapshot = treasury_income_accum.duplicate()
     treasury_income_product_snapshot = treasury_income_product_accum.duplicate(true)
@@ -517,26 +524,18 @@ func rotate_treasury_window() -> void:
     treasury_income_product_accum.clear()
     treasury_expense_accum.clear()
 
-# Длительность окна в секундах. По умолчанию 3 сек — короче минимально возможного
-# интервала отображения ресурсов (1 сек), но достаточно для захвата разовых
-# транзакций разведки/освоения без размывания факта.
+# The duration of the window in seconds. By default 3 sec — shorter than the minimum possible
+# interval of the display of the resources (1 sec), but sufficient to capture the one-off
+# transactions of the scouting/claiming without smearing the fact.
 const DEFAULT_TREASURY_WINDOW_SEC: float = 3.0
 
-# --- ДИНАМИКА КАЗНЫ ДЛЯ СТРОКИ «Казна: N [+X / -Y]» (HUD карты и верхняя
-# полоса города) ---
-# Фактические скорости прибыли и расхода в МОНЕТАХ/СЕКУНДУ по данным того же
-# окна отображения, что и тултип разбивки (см. rotate_treasury_window выше):
-# сумма, накопленная за окно, делится на длину окна. Обе цифры — ФАКТ по тем
-# же точкам, где вызывается add_treasury/spend_treasury; плановых карт здесь
-# нет и не нужно: у казны нет плановой скорости расходов (расходы — событийные
-# траты игрока), а доход и так пишется в плоский накопитель рядом с пополнением.
-# Это те же данные, что читает тултип, — строки в HUD и в городе не могут
-# разойтись с разбивкой.
-#
-# Пока первое окно не завершилось, снимки пусты — берём текущие накопители
-# (ровно как worker_manager.get_actual_treasury_income_map). Иначе первые
-# секунды после старта/загрузки строка показывала бы «+0 / -0» при идущем
-# доходе.
+# --- THE DYNAMICS OF THE TREASURY FOR THE ROW "Treasury: N [+X / -Y]" (the HUD of the map and the top
+# bar of the city) ---
+# The actual rates of the profit and the expense in COINS/SECOND by the data of the same
+# Until the first window has finished, the snapshots are empty — we take the current accumulators
+# (exactly as worker_manager.get_actual_treasury_income_map). Otherwise in the first
+# seconds after the start/loading the row would show "+0 / -0" with a going
+# income.
 func get_treasury_flow_per_sec() -> Dictionary:
     var income_map: Dictionary = treasury_income_snapshot
     if income_map.is_empty():
@@ -550,9 +549,9 @@ func get_treasury_flow_per_sec() -> Dictionary:
     var income := 0.0
     for source_id in income_map:
         income += float(int(income_map[source_id]))
-    # Расход — только положительные нетто по источнику: возврат при отказе
-    # освоения ноттируется минусом в том же источнике, и для игрока это равно
-    # «расхода не было» (то же правило, что в рендере тултипа разбивки).
+    # The expense — only the positive net by the source: the return on the refusal
+    # of the claiming is recorded as a minus in the same source, and for the player it is equal to
+    # "there was no expense" (the same rule as in the renderer of the breakdown tooltip).
     var expense := 0.0
     for source_id in expense_map:
         var amount := int(expense_map[source_id])
@@ -563,9 +562,9 @@ func get_treasury_flow_per_sec() -> Dictionary:
         "expense": expense / window_sec,
     }
 
-# Текст динамики для строки «Казна»: «[+123≈ / -456≈]». Обе цифры — факт за
-# последнее окно, пересчитанный в секунду, поэтому помечены «≈»: тот же
-# маркер, что на вкладке «Ресурсы» и в подвале тултипа казны.
+# The text of the dynamics for the row "Treasury": "[+123≈ / -456≈]". Both numbers are the fact over the
+# last window, recalculated per second, therefore they are marked with "≈": the same
+# marker as on the tab "Resources" and in the footer of the tooltip of the treasury.
 func get_treasury_flow_text() -> String:
     var flow: Dictionary = get_treasury_flow_per_sec()
     return "[+%s≈ / -%s≈]" % [
@@ -573,23 +572,28 @@ func get_treasury_flow_text() -> String:
         _format_treasury_rate(float(flow.get("expense", 0.0))),
     ]
 
-# Формат скорости — как ui_helpers._format_rate: целое без дробной части,
-# иначе одна десятая (0.3 монеты/сек не округляем до нуля).
+# The format of the rate is as ui_helpers._format_rate: a whole number without the fractional part,
+# otherwise one decimal (we do not round 0.3 coins/sec to zero).
 func _format_treasury_rate(value: float) -> String:
     if is_equal_approx(value, round(value)):
         return str(int(round(value)))
     return "%.1f" % value
 
-# Возвращает цену, по которой внутренний рынок покупает у города единицу
-# товара pid (в монетах казны). Это доля базовой цены товара (price из
-# data/products/*.json), заданная множителем internal_market_price_multiplier
-# в data/game_balance.json, с округлением
-# до ближайшего целого. Для товаров без цены возвращает 0.
+# Returns the price at which the internal market buys a unit of the goods pid from the city
+# (in the coins of the treasury). It is a share of the base price of the goods (price from
+# data/products/*.json), set by the multiplier internal_market_price_multiplier
+# in data/game_balance.json, with the rounding
+# to the nearest whole number. It returns 0 for the goods without a price.
 #
-# quality_id — уровень качества СПИСЫВАЕМОЙ единицы (""/"common" — обычное):
-# цена умножается на множитель качества (data/qualities.json,
-# price_multiplier) и снова округляется до целого, поэтому монеты всегда
-# целые, а хороший товар внутренний рынок покупает дороже.
+# quality_id is the level of the quality of the unit being WRITTEN OFF (""/"common" — the ordinary one):
+# the price is multiplied by the multiplier of the quality (data/qualities.json,
+# price_multiplier) and is rounded to a whole number again, therefore the coins are always
+# whole, and the internal market buys a good goods more expensively.
+# The income of the treasury for the actually written off units of the goods taking the QUALITY of each
+# unit into account. consumed is the breakdown {quality: count} which
+# remove_from_storage() returned: the price is counted by each level separately, therefore
+# a mixed storage brings more than count × the price of the ordinary quality.
+# An empty breakdown (there was nothing to write off) — the income is 0.
 func get_internal_market_price(pid: String, quality_id: String = "") -> int:
     var prod = GameData.products.get(pid, {})
     var base_price = float(prod.get("price", 0))
@@ -599,25 +603,11 @@ func get_internal_market_price(pid: String, quality_id: String = "") -> int:
     var market_base := int(round(base_price * mult))
     return int(round(float(market_base) * GameData.get_quality_price_multiplier(quality_id)))
 
-# Доход казны за фактически списанные единицы товара с учётом КАЧЕСТВА каждой
-# единицы. consumed — разбивка {quality: count}, которую вернул
-# remove_from_storage(): цена считается по каждому уровню отдельно, поэтому
-# смешанный склад приносит больше, чем count × цена обычного качества.
-# Пустая разбивка (списывать было нечего) — доход 0.
-func get_internal_market_income(pid: String, consumed: Dictionary) -> int:
-    var income := 0
-    for qid in consumed:
-        var count := int(consumed[qid])
-        if count <= 0:
-            continue
-        income += get_internal_market_price(pid, str(qid)) * count
-    return income
-
-# Средний множитель цены по качеству, взвешенный по разбивке склада
-# (city_quality_detail). Нужен там, где качество будущей сделки неизвестно —
-# прежде всего для ПЛАНОВОГО дохода казны в тултипе: план по обычному
-# качеству систематически занижал бы факт, если на складе есть хороший товар.
-# Без разбивки (старый сейв, пустой склад) — 1.0.
+# The average multiplier of the price by the quality, weighted by the breakdown of the storage
+# (city_quality_detail). It is needed where the quality of the future deal is unknown —
+# above all for the PLANNED income of the treasury in the tooltip: the plan by the ordinary
+# quality would systematically underestimate the fact, if there is a good goods in the storage.
+# Without a breakdown (an old save, an empty storage) — 1.0.
 func get_stock_quality_price_multiplier(pid: String) -> float:
     var detail: Dictionary = city_quality_detail.get(pid, {})
     var total := 0
@@ -632,66 +622,66 @@ func get_stock_quality_price_multiplier(pid: String) -> float:
         return 1.0
     return weighted / float(total)
 
-# --- ЗАПИСЬ ФАКТА ЗА ТИК ---
-# Эти хелперы обновляют фактические счётчики производства/потребления за тик
-# (production_rates / consumption_rates). Используются для определения голода
-# (_check_population_change) и TopBar'а (city_ui._update_food_label).
-# Детализация по источникам (production_sources / consumption_sources) раньше
-# показывалась в тултипе вкладки «Ресурсы», но после коммита 5790016
-# тултип отображает только плановое производство/потребление, поэтому
-# детализация больше не ведётся — остались только суммарные rate'ы.
+# --- THE RECORDING OF THE FACT FOR THE TICK ---
+# These helpers update the actual counters of the production/consumption for the tick
+# (production_rates / consumption_rates). They are used for the determination of the famine
+# (_check_population_change) and the TopBar (city_ui._update_food_label).
+# The breakdown by the sources (production_sources / consumption_sources) used to be
+# shown in the tooltip of the tab "Resources", but after the commit 5790016
+# the tooltip displays only the planned production/consumption, therefore
+# the breakdown is no longer maintained — only the total rates remained.
 #
-# Параметр source_id сохранён в сигнатуре для совместимости с вызывающими
-# (main_map.gd, worker_manager.gd); он никуда не записывается.
+# The parameter source_id is kept in the signature for compatibility with the callers
+# (main_map.gd, worker_manager.gd); it is not written anywhere.
 
-# Публичный хелпер записи ФАКТА производства за тик. Используется из
-# main_map.gd и do_tick().
-#   source_id — идентификатор источника (см. GameData.get_source_display_name:
-#   "@prof:fisherman", "@bld:bakery", "@imp:farm", "@pop_food"). Это ключ
-#   накопителя, а не подпись: подпись резолвится в ui_helpers при отрисовке.
+# The public helper of the recording of the FACT of the production for the tick. It is used from
+# main_map.gd and do_tick().
+#   source_id is the identifier of the source (see GameData.get_source_display_name:
+#   "@prof:fisherman", "@bld:bakery", "@imp:farm", "@pop_food"). It is the key
+#   of the accumulator, and not a label: the label is resolved in ui_helpers at the drawing.
 func record_production_source(pid: String, _source_id: String, amount: int):
     production_rates[pid] = production_rates.get(pid, 0) + amount
 
-# Публичный хелпер записи ФАКТА потребления за тик. Используется из
-# main_map.gd, worker_manager.gd и do_tick(). source_id — идентификатор
-# источника (см. GameData.get_source_display_name), не подпись.
+# The public helper of the recording of the FACT of the consumption for the tick. It is used from
+# main_map.gd, worker_manager.gd and do_tick(). source_id is the identifier
+# of the source (see GameData.get_source_display_name), and not a label.
 func record_consumption_source(pid: String, _source_id: String, amount: int):
     consumption_rates[pid] = consumption_rates.get(pid, 0) + amount
 
-# --- ВНУТРЕННИЙ РЫНОК: РАЗРЕШЕНИЕ И ПРИОРИТЕТ СПИСАНИЯ ---
-# Весь раздел работает с DISPLAY_KEY (см. описание словарей выше):
-# id одиночного продукта либо "@группа". Пустой ключ — no-op: он не может
-# ничего адресовать, и молча проглоченный клик по несуществующей строке
-# был бы хуже явного игнора.
+# --- THE INTERNAL MARKET: THE RESOLUTION AND THE PRIORITY OF THE WRITE-OFF ---
+# The whole section works with the DISPLAY_KEY (see the description of the dictionaries above):
+# the id of a single product, or an "@group". An empty key is a no-op: it cannot
+# address anything, and a silently swallowed click on a non-existent row
+# would be worse than an explicit ignore.
 
-# Разрешено ли потребление ресурса на внутреннем рынке. Нет ключа —
-# разрешено (рынок открыт по умолчанию).
+# Is the consumption of the resource on the internal market allowed. The absence of the key —
+# allowed (the market is open by default).
 func is_market_consumption_enabled(display_key: String) -> bool:
     if display_key.is_empty():
         return true
     return bool(market_consumption_enabled.get(display_key, true))
 
-# Разрешает/запрещает потребление. Запрет означает полное отсутствие
-# списания: worker_manager не списывает ресурс со склада, не платит в
-# казну и не даёт бонус производства по этой записи (см.
+# Allows/forbids the consumption. The forbidding means a complete absence of
+# the write-off: worker_manager does not write off the resource from the storage, does not pay into the
+# treasury and does not give the bonus of the production by this record (see
 # worker_manager._aggregate_production_bonus).
 func set_market_consumption_enabled(display_key: String, value: bool) -> void:
     if display_key.is_empty():
         return
     market_consumption_enabled[display_key] = value
 
-# Переключатель тумблера «Торговли». Возвращает новое состояние, чтобы
-# вызывающая сторона (карточка) сразу обновила обе кнопки-варианта.
+# The switch of the toggle of "Trade". It returns the new state, so that
+# the calling side (the card) immediately updates both variant-buttons.
 func toggle_market_consumption_enabled(display_key: String) -> bool:
     var new_value := not is_market_consumption_enabled(display_key)
     set_market_consumption_enabled(display_key, new_value)
     return new_value
 
-# Приоритет списания по качеству. Нет ключа — дефолт из данных
-# (data/qualities.json, priority_default). Значение, которого нет в списке
-# опций (испорченный сейв, правило переименовали), тоже читается как
-# дефолт: проверка живёт и при чтении, и при записи, иначе сломанный сейв
-# молча сломал бы списание.
+# The priority of the write-off by quality. The absence of the key — the default from the data
+# (data/qualities.json, priority_default). A value which is not in the list
+# of the options (a corrupted save, the rule was renamed) is also read as the
+# default: the check lives both on the reading and on the writing, otherwise a corrupted save
+# would silently break the write-off.
 func get_consumption_priority(display_key: String) -> String:
     if display_key.is_empty():
         return GameData.get_quality_priority_default()
@@ -700,9 +690,9 @@ func get_consumption_priority(display_key: String) -> String:
         return GameData.get_quality_priority_default()
     return stored
 
-# Назначает приоритет. Неизвестное значение молча заменяется дефолтом:
-# так испорченный сейв не ломает списание, а приводит к «лучшее
-# качество» — безопасному поведению по умолчанию.
+# Assigns the priority. An unknown value is silently replaced with the default:
+# in this way a corrupted save does not break the write-off, and leads to the "best
+# quality" — the safe default behaviour.
 func set_consumption_priority(display_key: String, priority: String) -> void:
     if display_key.is_empty():
         return
@@ -710,10 +700,10 @@ func set_consumption_priority(display_key: String, priority: String) -> void:
         priority = GameData.get_quality_priority_default()
     consumption_priority[display_key] = priority
 
-# Циклически переключает приоритет (best → worst → random → best) и
-# возвращает новое значение. Порядок и набор — из data/qualities.json
-# (get_quality_priority_options), тот же цикл, что у кнопки приоритета
-# качества здания (см. building_panel._on_quality_priority_pressed).
+# Cyclically switches the priority (best → worst → random → best) and
+# returns the new value. The order and the set are from data/qualities.json
+# (get_quality_priority_options), the same cycle as at the button of the priority of the
+# quality of a building (see building_panel._on_quality_priority_pressed).
 func cycle_consumption_priority(display_key: String) -> String:
     var options: Array = GameData.get_quality_priority_options()
     if options.is_empty():
@@ -721,8 +711,8 @@ func cycle_consumption_priority(display_key: String) -> String:
     var current := get_consumption_priority(display_key)
     var idx: int = options.find(current)
     if idx < 0:
-        # Текущее значение не из списка (старый сейв) — начинаем цикл
-        # с первого варианта, а не с непредсказуемой позиции -1.
+        # The current value is not from the list (an old save) — we start the cycle
+        # from the first variant, and not from the unpredictable position -1.
         idx = 0
     var new_priority := str(options[(idx + 1) % options.size()])
     set_consumption_priority(display_key, new_priority)
