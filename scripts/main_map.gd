@@ -1202,28 +1202,28 @@ func _redraw_progress_layer():
         progress_bar_layer.queue_redraw()
 
 # The public wrapper for the redrawing of the layer of the progress bars (it is used by
-# панелью управления control_panel.gd после подтверждения постройки).
+# by the control panel control_panel.gd after the confirmation of the construction).
 func redraw_progress_layer():
     _redraw_progress_layer()
 
-# Выделяет гекс (row, col) по клику ЛКМ: подсвечивает его на карте и
-# показывает информацию/действия в панели управления.
+# Selects the hex (row, col) on a click of the LMB: it highlights it on the map and
+# shows the information/actions in the control panel.
 func select_hex(row: int, col: int):
     control_panel.select_hex(row, col)
     map_renderer.queue_redraw()
 
-# Снимает выделение с гекса и очищает панель управления.
+# Removes the selection from the hex and clears the control panel.
 func clear_selection():
     control_panel.clear_selection()
     map_renderer.queue_redraw()
 
-# Обработчик завершения/отмены/паузы стройки: обновляет панель управления,
-# чтобы она не показывала устаревшее состояние (например, кнопку «Построить»
-# на гексе, где стройка уже завершилась).
+# The handler of the completion/cancellation/pause of a build: it updates the control panel,
+# so that it does not show the outdated state (for example, the "Build" button
+# on the hex where the build has already finished).
 func _on_control_panel_build_changed(_a = null, _b = null, _c = null, _d = null):
     control_panel.refresh()
 
-# Публичная обёртка над _confirm_cancel_build для панели управления.
+# The public wrapper over _confirm_cancel_build for the control panel.
 func confirm_cancel_build(row: int, col: int):
     _confirm_cancel_build(row, col)
 
@@ -1231,11 +1231,15 @@ func confirm_cancel_build(row: int, col: int):
 # дороги. Диалог подтверждения тот же, что и у обычной стройки: отмена
 # необратима, а уже проложенные участки дороги остаются на карте.
 # Отмена поэтапного проекта. Вызывается с ЛЮБОГО его гекса, поэтому проект
-# передаётся по project_id, а не ищется по координатам: гекс, с которого
-# нажали, может быть серединой трассы, а не целью.
+# is passed by project_id, and not searched by the coordinates: the hex on which
+# the player clicked may be the middle of the route, and not the target.
 #
-# Диалог подтверждения тот же, что и у обычной стройки: отмена необратима,
-# а уже проложенные участки дороги остаются на карте.
+# The cancellation of a phased project to the hex (row, col) — for example, an unfinished
+# road. The confirmation dialog is the same as for an ordinary build: the cancellation
+# is irreversible, and the already laid segments of the road remain on the map.
+# The cancellation of a phased project. It is called from ANY of its hexes, therefore the project
+# is passed by project_id, and not searched by the coordinates: the hex on which
+# the player clicked may be the middle of the route, and not the target.
 func confirm_cancel_project(project_id: String):
     if project_manager == null or project_id == "":
         return
@@ -1251,9 +1255,8 @@ func confirm_cancel_project(project_id: String):
     dialog.title = tr("Cancel construction")
     var text := tr("Cancel \"%s\"?\n\n") % title
     if left > 0:
-        # Труд берём из ТЕКУЩЕГО шага проекта, а не из get_step_progress_at по
-        # нажатому гексу: там возвращается пустой словарь, если игрок нажал не
-        # на гекс прогресс-бара, и потерянный труд вышел бы нулём.
+# The confirmation dialog is the same as for an ordinary build: the cancellation is irreversible,
+# and the already laid segments of the road remain on the map.
         var progress := 0.0
         var step_cost := 0.0
         if done < steps.size():
@@ -1281,8 +1284,9 @@ func confirm_cancel_project(project_id: String):
     )
     add_child(dialog)
     dialog.popup_centered()
-    # У AcceptDialog нет сигнала canceled: закрытие окна крестиком просто
-    # прячет диалог. Снимаем паузу и в этом случае.
+# We take the labour from the CURRENT step of the project, and not from get_step_progress_at by
+        # the clicked hex: there an empty dictionary is returned, if the player did not click
+        # on the hex of the progress bar, and the lost labour would come out as zero.
     dialog.visibility_changed.connect(func():
         if not dialog.visible and not was_paused:
             get_tree().paused = false
@@ -1291,27 +1295,29 @@ func confirm_cancel_project(project_id: String):
 func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = null):
     var tile = tile_data[row][col]
 
-    # Спец-действие (вырубка леса, сбор дикоросов, снос улучшений и т.п.)
+    # The AcceptDialog has no signal canceled: the closing of the window by the cross simply
+    # hides the dialog. We unpause in this case as well.
     if GameData.special_actions.has(imp_id):
         var sa = GameData.special_actions[imp_id]
         var action_type = sa.get("action_type", "terrain")
-        # Освобождаем рабочего, если он был назначен
+# A special action (the felling of the forest, the gathering of the wild plants, the demolition of the improvements and so on)
         if worker_manager.has_worker(row, col):
             worker_manager.remove_worker(row, col)
 
         if action_type == "cover":
-            # Вырубка леса: меняем только покров (cover), terrain/resource не трогаем.
+        # We free the worker, if it has been assigned
             var result_cover = sa.get("result_cover", "none")
             tile.cover = result_cover
         elif action_type == "forage":
-            # Сбор одноразового ресурса (дикоросы, самородки и т.п.):
-            # убираем ресурс с гекса и добавляем урожай на склад.
-            # Качество собранного урожая = качество ресурса на гексе.
-            # Выход продукции берётся из поля produces РЕСУРСА (число или
-            # [min, max]) — разбор/валидацию выполняет RangeUtils.roll_value.
-            # Safety-guard: собирать можно только одноразовые ресурсы
-            # (improved_by == null). Если действие каким-то образом попало
-            # на обычный ресурс — ничего не выдаём (ресурс остаётся на месте).
+            # The felling of the forest: we change only the cover (cover), terrain/resource is not touched.
+# The gathering of a one-off resource (the wild plants, the metal nuggets and so on):
+            # we remove the resource from the hex and add the harvest to the storage.
+            # The quality of the gathered harvest = the quality of the resource on the hex.
+            # The output of the product is taken from the produces field of the RESOURCE (a number or
+            # [min, max]) — the parsing/validation is done by RangeUtils.roll_value.
+            # The safety-guard: only the one-off resources can be gathered
+            # (improved_by == null). If the action somehow got onto
+            # an ordinary resource — we give nothing (the resource remains in place).
             var harvest_res_id: String = str(tile.get("resource", ""))
             var harvest_data: Dictionary = {}
             if harvest_res_id != "" and GameData.raw_resources.has(harvest_res_id):
@@ -1326,46 +1332,46 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
                         continue
                     CityData.add_to_storage(prod_id, amount, forage_quality)
                     hud.show_message(tr("Collected %d %s!") % [amount, GameData.products.get(prod_id, {}).get("name", prod_id)])
-                # Ресурс исчезает с карты после сбора.
+# The resource disappears from the map after the gathering.
                 tile.resource = null
         elif action_type == "demolish":
-            # Снос улучшения: убираем улучшение. Природный tile.resource
-            # остаётся (если он был), а tile.crop_bred сбрасывается —
-            # разведение живёт ровно столько, сколько стоит улучшение.
-            # Иначе после сноса прод-цикл начал бы «производить» ресурс,
-            # для которого больше нет улучшения.
+            # The demolition of an improvement: we remove the improvement. The natural tile.resource
+            # remains (if it was), and tile.crop_bred is reset —
+            # the breeding lives exactly as long as the improvement costs.
+            # Otherwise after the demolition the production cycle would start to "produce" a resource,
+            # for which there is no improvement any more.
             tile.improvement = null
             tile.crop_bred = null
-            # Стадо при сносе исчезает — накопленная заполенность сбрасывается.
+            # The herd disappears on the demolition — the accumulated occupancy is reset.
             tile["fill_time"] = 0.0
-            # Дробный остаток производственного цикла снесённого улучшения — тоже.
+            # The fractional remainder of the production cycle of the demolished improvement — as well.
             tile["production_fractional_remainder"] = 0.0
             tile["feed_fractional_remainder"] = 0.0
         elif action_type == "road":
-            # Дорога — поэтапный проект (project_manager), а не обычная стройка
-            # на этом гексе: её участки добавляются в сеть по одному, пока
-            # project_manager не доведёт очередь до конца. Сюда выполнение
-            # попасть не может — старт дороги перехватывается в
-            # build_manager.start_build и уходит в start_road_project.
-            # Ветка оставлена как «ничего не делать»: если дорога каким-то
-            # образом дошла до обычной стройки (старый сейв), завершение
-            # просто не трогает карту, а не чинит что попало.
+# The road is a phased project (project_manager), and not an ordinary build
+            # on this hex: its segments are added to the network one by one, until
+            # project_manager brings the queue to the end. It cannot get here — the start
+            # of the road is intercepted in
+            # build_manager.start_build and goes into start_road_project.
+            # The branch is left as "do nothing": if the road somehow
+            # has got to an ordinary build, the completion
+            # simply does not touch the map, and does not fix whatever it is.
             build_manager.remove_build(row, col)
             return
         else:
-            # Террейн-действие (напр. осушение): сбрасываем ресурсы и
-            # улучшение, очищаем покров и crop_bred, чтобы гекс стал
-            # чистой равниной (без болотного покрова).
+# The terrain action (for example, the drainage): we reset the resources and
+            # the improvement, clear the cover and crop_bred, so that the hex becomes
+            # a clean plain (without the marsh cover).
             tile.resource = null
             tile.improvement = null
             tile.crop_bred = null
             tile.cover = "none"
             tile["fill_time"] = 0.0
-            # Дробный остаток производственного цикла убранного улучшения — тоже.
+            # The fractional remainder of the production cycle of the removed improvement — as well.
             tile["production_fractional_remainder"] = 0.0
             tile["feed_fractional_remainder"] = 0.0
 
-        # Меняем тип местности только если result_terrain задан и не равен "dont_change".
+        # We change the terrain type only if result_terrain is set and is not equal to "dont_change".
         var result_terrain = sa.get("result_terrain", "")
         if result_terrain != "" and result_terrain != "dont_change":
             tile.terrain = result_terrain
@@ -1376,55 +1382,54 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
         _redraw_progress_layer()
         return
 
-    # Улучшение — единственное, что осталось после ветки спецдействий. Саму
-    # постройку применяет _apply_improvement: тот же код нужен последнему шагу
-    # проекта «дорога → улучшение», где записи стройки в build_manager нет
-    # вовсе (улучшение лежит в очереди проекта, а не в active_builds).
+# The improvement is the only thing that has remained after the branch of the special actions. The
+    # construction itself is applied by _apply_improvement: the same code is needed by the last step of
+    # the project "road → improvement", where the record of the build in build_manager does not
+    # exist at all (the improvement lies in the queue of the project, and not in active_builds).
     build_manager.remove_build(row, col)
     _apply_improvement(row, col, imp_id, target_res_id)
 
 
-# Ставит улучшение на гекс (row, col): сама постройка, разведение, рабочий и
-# перерисовка. Вынесено из _on_build_completed, потому что то же самое делает
-# шаг поэтапного проекта (см. _on_project_step_completed) — правило «улучшение
-# появилось» не должно существовать в двух видах.
+# Places the improvement on the hex (row, col): the construction itself, the breeding, the worker and
+# the redrawing. It is moved out of _on_build_completed, because the same is done by
+# the step of a phased project (see _on_project_step_completed) — the rule "the improvement
+# has appeared" must not exist in two forms.
 #
-# Дорогу здесь НЕ строим: к этому моменту её участки уже пройдены очередью (или
-# дорога не нужна вовсе). Строить её здесь означало бы вернуть старую схему
-# «дорога целиком и бесплатно».
+# We do NOT build the road here: by this moment its segments have already been passed by the queue (or
+# the road is not needed at all). Building it here would mean returning the old scheme
+# "the road as a whole and for free".
 func _apply_improvement(row: int, col: int, imp_id: String, target_res_id = null) -> void:
     var tile = tile_data[row][col]
     tile.improvement = imp_id
     tile["fill_time"] = 0.0
-    # Производственный цикл нового улучшения стартует с нуля.
+    # The production cycle of the new improvement starts from zero.
     tile["production_fractional_remainder"] = 0.0
     tile["feed_fractional_remainder"] = 0.0
     if target_res_id != null:
-        # Два сценария:
-        # 1) На гексе УЖЕ был природный ресурс (tile.resource != null) — мы
-        #    ставим улучшение, чтобы его добывать. tile.resource сохраняется,
-        #    crop_bred остаётся null. Качество — текущее качество ресурса.
-        # 2) Гекс был пустой (tile.resource == null) — это разведение. Пишем
-        #    id разводимого животного/растения в tile.crop_bred, а tile.resource
-        #    НЕ трогаем (остаётся null). Качество наследуется от уже
-        #    одомашненного экземпляра этого же ресурса, иначе бросаем roll.
+# Two scenarios:
+        # 1) There was ALREADY a natural resource on the hex (tile.resource != null) — we
+        #    place the improvement in order to extract it. tile.resource is preserved,
+        #    crop_bred remains null. The quality is the current quality of the resource.
+        # 2) The hex was empty (tile.resource == null) — this is the breeding. We write
+        #    the id of the bred animal/plant into tile.crop_bred, and tile.resource
+        #    is NOT touched (it remains null). The quality is inherited from the already
+        #    domesticated instance of this same resource, otherwise we throw a roll.
         var was_existing_resource = tile.resource != null
         if was_existing_resource:
             tile.resource = target_res_id
-            # Качество ресурса определяется так:
-            # - Если на гексе УЖЕ был ресурс (улучшение существующего) — сохраняем
-            #   его качество. Иначе любая постройка фермы/шахты сбрасывала бы
-            #   quality на "common", потому что в JSON ресурсов нет поля quality.
+# The quality of the resource is determined like this:
+            # - If there was ALREADY a resource on the hex (an improvement of the existing one) — we preserve
+            #   its quality. Otherwise any construction of a farm/mine would reset
+            #   quality to "common", because there is no quality field in the JSON of the resources.
             var existing_q = tile.get("quality", "")
             if existing_q == "" or existing_q == null:
                 tile["quality"] = GameData.roll_quality()
         else:
-            # Разведение на пустом гексе: id ресурса живёт в crop_bred.
-            tile.crop_bred = target_res_id
-            # - Если это разведение НОВОГО животного/растения (гекс был пустой) —
-            #   ищем на карте уже одомашненный экземпляр этого ресурса и
-            #   наследуем его качество ("исключительное порождает исключительное").
-            #   Если такого ещё нет — генерируем случайно.
+# The breeding on an empty hex: the id of the resource lives in crop_bred.
+            # - If this is the breeding of a NEW animal/plant (the hex was empty) —
+            #   we look on the map for the already domesticated instance of this resource and
+            #   inherit its quality ("exceptional produces exceptional").
+            #   If there is none yet — we generate it at random.
             var inherited_quality = _find_domesticated_quality(target_res_id)
             if inherited_quality != "" and inherited_quality != null:
                 tile["quality"] = inherited_quality
@@ -1437,31 +1442,31 @@ func _apply_improvement(row: int, col: int, imp_id: String, target_res_id = null
     map_renderer.queue_redraw()
     _redraw_progress_layer()
 
-# === Поэтапное строительство дороги (спецдействие build_road) ===
+# === THE PHASED CONSTRUCTION OF THE ROAD (the special action build_road) ===
 #
-# Дорога — проект из отдельных участков, а не одна стройка на всю трассу:
-# игрок подтверждает маршрут, он целиком встаёт в очередь (project_manager) и
-# достраивается по одному гексу. «Призрак» маршрута остаётся на карте до
-# конца, а построенные участки исчезают из него и становятся настоящей
-# дорогой.
+# The road is a project of separate segments, and not one build over the whole route:
+# the player confirms the route, it entirely enters the queue (project_manager) and
+# is completed one hex at a time. The "ghost" of the route remains on the map until
+# of the end, and the built segments disappear from it and become a real
+# road.
 #
-# Раньше здесь была одна стройка на всю длину трассы и частичная оплата:
-# игрок мог оплатить часть маршрута, а дорога достраивалась добиранием
-# остатка. С поэтапностью это исчезло — за каждый участок платит отдельный
-# шаг, и недоплаченный участок просто не начинается.
+# Previously there was one build over the whole length of the route and a partial payment:
+# the player could pay for a part of the route, and the road was completed by adding
+# the rest. With the phased approach this has disappeared — for each segment a separate
+# step pays, and the unpaid segment simply does not start.
 
-# Спецдействие «Построить дорогу» на гексе (row, col). Вызывается из
-# build_manager.start_build, поэтому возвращает bool в его смысле.
+# The special action "Build a road" on the hex (row, col). It is called from
+# build_manager.start_build, therefore it returns a bool in its sense.
 #
-# Здесь — только разбор отказа для игрока (нет трассы, не исследован уровень,
-# исчерпан лимит строек). Сама постройка живёт в общей функции
-# _start_road_project_steps, которую использует и дорога к улучшению: правила
-# у них одни и те же по построению, а не по договорённости.
+# Here there is only the parsing of the refusal for the player (there is no route, the level is not scouted,
+# the limit of the builds is exhausted). The construction itself lives in the common function
+# _start_road_project_steps, which is also used by the road to an improvement: the rules of
+# them are the same by construction, and not by agreement.
 func start_road_project(row: int, col: int, road_level: int) -> bool:
-    # Трасса может исчезнуть между нажатием кнопки и подтверждением (например,
-    # игрок успел построить другую дорогу) — тогда просто сообщаем причину.
-    # Шаги и цену берём из get_road_cost_breakdown — того же источника, что и
-    # превью, поэтому старт не может взять другую цену, чем показали.
+    # The route may disappear between the click of the button and the confirmation (for example,
+    # the player managed to build another road) — then we simply report the reason.
+    # The steps and the price are taken from get_road_cost_breakdown — the same source as
+    # the preview, therefore the start cannot take a different price than what was shown.
     var breakdown: Dictionary = get_road_cost_breakdown(row, col, road_level)
     if not breakdown.get("ok", false):
         hud.show_message(tr("Failed to build the road: %s") % breakdown.get("reason", tr("no path")))
@@ -1469,17 +1474,17 @@ func start_road_project(row: int, col: int, road_level: int) -> bool:
     var plan := get_road_plan(row, col)
     var is_town := bool(plan.get("is_town", false))
 
-    # Уровень проверяем ЗДЕСЬ, а не в панели: панель — это отображение, а
-    # единственное место, где решается, можно ли вообще что-то построить.
-    # Само правило «уровень открыт своей технологией» живёт в данных и в
-    # GameData.is_road_level_unlocked, здесь мы лишь отказываемся строить
-    # неисследованный уровень.
+    # We check the level HERE, and not in the panel: the panel is a display, and
+    # the only place where it is decided whether anything can be built at all.
+    # The rule itself "the level is unlocked by its own technology" lives in the data and in
+    # GameData.is_road_level_unlocked, here we only refuse to build
+    # an unscouted level.
     if not GameData.is_road_level_unlocked(road_level):
         hud.show_message(tr("Road level %d requires a technology") % road_level)
         return false
 
-    # Общий лимит одновременных строек равен числу жителей. Дорога занимает
-    # один слот, а не по числу гексов: одновременно строится один участок.
+    # The common limit of the simultaneous builds is equal to the number of the citizens. The road takes
+    # one slot, and not one per hex: one segment is built at the same time.
     if not CityData.ignore_build_requirements \
             and build_manager.get_total_active_builds() >= CityData.total_population:
         hud.show_message(tr("You can build or upgrade no more than %d buildings at once (limit = number of citizens)")
@@ -1495,23 +1500,23 @@ func start_road_project(row: int, col: int, road_level: int) -> bool:
     return _start_road_project_steps(row, col, breakdown.get("steps", []),
             int(breakdown.get("cost", 0)), is_town, title, {})
 
-# ЦЕПОЧКА «ДОРОГА → УЛУЧШЕНИЕ» на гексе (row, col).
+# THE CHAIN ROAD-TO-IMPROVEMENT on the hex (row, col).
 #
-# Запускается из build_manager.start_build, когда улучшению полагается дорога.
-# Это ОДИН поэтапный проект и ОДИН слот: сначала идут участки дороги, последним
-# шагом — сама постройка улучшения. Последовательность здесь не украшение:
-# материалы на дальний гекс везут по дороге, и «строить улучшение, пока дороги
-# ещё нет» означало бы возить его рабочего и стройматериалы по бездорожью.
+# It is started from build_manager.start_build, when the improvement is due a road.
+# This is ONE phased project and ONE slot: first go the segments of the road, the last
+# step — the construction of the improvement itself. The sequence here is not a decoration:
+# the materials to the distant hex are carried by the road, and building the improvement while the road
+# is not there yet would mean carrying its worker and the construction materials off the roads.
 #
-# Уровень дороги игрок выбрал в превью постройки улучшения; imp_id и
-# target_res_id нужны последнему шагу (target_res_id — разведение: id животного
-# или растения, которое надо посадить на гекс).
+# The level of the road the player has chosen in the preview of the construction of the improvement; imp_id and
+# target_res_id are needed by the last step (target_res_id — the breeding: the id of the animal
+# or the plant which has to be planted on the hex).
 #
-# Отказ здесь означает «улучшение строится обычным способом»: если дорога не
-# нужна (гекс уже подключён, улучшение с флагом no_road, сухопутного пути нет),
-# вызывающий код не передаст сюда управление, и улучшение встанет обычной
-# стройкой. Ошибки уровня и лимита, наоборот, показываются теми же строками, что
-# и у остальных построек.
+# A refusal here means the improvement is built in an ordinary way: if the road is not
+# needed (the hex is already connected, the improvement with the flag no_road, there is no
+# land route), the calling code will not pass the control here, and the improvement will stand as an ordinary
+# build. The errors of the level and the limit, on the contrary, are shown by the same rows as
+# the other builds.
 func start_improvement_road_project(row: int, col: int, imp_id: String, imp_name: String,
         target_res_id, road_level: int) -> bool:
     if project_manager == null or road_level <= 0:
@@ -1521,8 +1526,8 @@ func start_improvement_road_project(row: int, col: int, imp_id: String, imp_name
     if not GameData.is_road_level_unlocked(road_level):
         hud.show_message(tr("Road level %d requires a technology") % road_level)
         return false
-    # Дорога к гексу уже строится: второй проект означал бы вторую оплату за
-    # одну и ту же трассу.
+    # The road to the hex is already being built: a second project would mean a second payment for
+    # one and the same route.
     if project_manager.has_project_at(row, col):
         return false
     var breakdown: Dictionary = get_road_cost_breakdown(row, col, road_level)
@@ -1537,10 +1542,10 @@ func start_improvement_road_project(row: int, col: int, imp_id: String, imp_name
                 % CityData.total_population)
         return false
 
-    # Последний шаг цепочки — сама постройка улучшения. Свой цены у него нет:
-    # это ровно MapHelpers.get_improvement_work_cost, тот же расчёт, что берёт
-    # превью. Сегментов-призраков у шага нет: дорога к этому моменту уже стоит,
-    # и рисовать на её месте что-либо было бы враньём.
+    # The last step of the chain — the construction of the improvement itself. It has no price of its own:
+    # it is exactly MapHelpers.get_improvement_work_cost, the same calculation that the
+    # preview takes. The ghost segments of the step are absent: the road by this moment already stands,
+    # and drawing anything in its place would be a lie.
     var improvement_cost := int(MapHelpers.get_improvement_work_cost(
             imp_id, row, col, tile_data, city_row, city_col).get("cost", 0))
     steps.append({
@@ -1549,9 +1554,9 @@ func start_improvement_road_project(row: int, col: int, imp_id: String, imp_name
         "hex": {"row": row, "col": col},
         "ghost": {},
         "data": {
-            # step_type различает шаг улучшения в обработчике и в цвете
-            # прогресс-бара: жёлтый был цветом стройки улучшения, синим —
-            # участка дороги.
+            # step_type distinguishes the improvement step in the handler and in the colour of
+            # the progress bar: yellow was the colour of the build of an improvement, blue —
+            # of a segment of the road.
             "step_type": "improvement",
             "improvement": imp_id,
             "imp_name": imp_name,
@@ -1567,8 +1572,8 @@ func start_improvement_road_project(row: int, col: int, imp_id: String, imp_name
     # проектом. Пока флага нет, пересчёт сети «по факту улучшения»
     # (road_manager.rebuild_roads_from_existing) счёл бы гекс готовым и
     # достроил бы остаток трассы бесплатно. Ставим флаг ДО старта и убираем,
-    # если проект всё-таки не запустился, — иначе гекс навсегда остался бы
-    # «улучшением без дороги» в данных сейва.
+    # if the project has not started after all, — otherwise the hex would remain forever
+    # an "improvement without a road" in the data of the save.
     tile_data[row][col]["road_staged"] = true
     if not _start_road_project_steps(row, col, steps, total_cost, false, title,
             {"improvement": imp_name, "improvement_id": imp_id}):
@@ -1576,26 +1581,26 @@ func start_improvement_road_project(row: int, col: int, imp_id: String, imp_name
         return false
     return true
 
-# Общая часть запуска дороги: шаги и цена уже посчитаны, осталось поставить
-# очередь в project_manager. Через неё идут оба входа — дорога по спецдействию
-# и дорога к улучшению, — поэтому правила постройки у них совпадают по
-# построению: одна очередь шагов, одна формула цены участка
-# (MapHelpers.get_road_step_work_cost), один обработчик шага
+# The common part of the start of the road: the steps and the price are already counted, it remains to put
+# the queue in project_manager. Both entries go through it — the road by the special action
+# and the road to an improvement, — therefore the rules of the construction of them coincide by
+# construction: one queue of the steps, one formula of the price of a segment
+# (MapHelpers.get_road_step_work_cost), one handler of the step
 # (_on_project_step_completed).
 func _start_road_project_steps(row: int, col: int, steps: Array, cost: int,
         is_town: bool, title: String, extra_meta: Dictionary) -> bool:
     if steps.is_empty():
         return false
 
-    # Бесплатная дорога не может ждать: шаг без работы в очереди проекта —
-    # это шаг, который не закончится сам по себе и вечно держит слот. Для
-    # такой дороги сразу проходим все шаги: платить нечего, ждать нечего.
+    # A free road cannot wait: a step without the work in the queue of the project is
+    # a step which will not finish by itself and will hold the slot forever. For
+    # such a road we immediately pass all the steps: there is nothing to pay, nothing to wait for.
     if cost <= 0:
         return _finish_free_road_project(row, col, steps, is_town)
 
-    # Цель кладём в meta: событие project_completed приходит уже ПОСЛЕ того,
-    # как проект выброшен из менеджера, и больше негде взять гекс, который
-    # нужно пометить входными данными для сейва.
+    # We put the target in meta: the event project_completed comes already AFTER
+    # the project has been thrown out of the manager, and there is nowhere else to take the hex which
+    # has to be marked with the input data for the save.
     var meta := {
         "mode": "build",
         "is_town": is_town,
@@ -1607,19 +1612,19 @@ func _start_road_project_steps(row: int, col: int, steps: Array, cost: int,
     if project_id == "":
         return false
     hud.show_message(tr("%s: %d sections, built one at a time") % [title, steps.size()])
-    # Призрак маршрута появляется сразу после подтверждения и живёт до конца
-    # стройки: с этого момента панель закрывается, а игрок всё равно должен
-    # видеть на карте весь проект и понимать, сколько ещё предстоит.
+    # The ghost of the route appears immediately after the confirmation and lives until the end of
+    # the build: from this moment the panel is closed, and the player must nevertheless
+    # see the whole project on the map and understand how much is still left.
     _refresh_project_ghost()
     map_renderer.queue_redraw()
     _redraw_progress_layer()
     return true
 
-# Бесплатная дорога строится целиком и сразу: платить за неё нечего, поэтому
-# ждать в очереди проекта незачем. Эффекты шагов применяются те же и в том же
-# порядке (от сети к цели), что и у обычного проекта, — общая функция эффекта
-# шага (_on_project_step_completed) вызывается из обоих путей, чтобы правило
-# «участок появился — гекс подключён» не существовало в двух видах.
+# A free road is built entirely and at once: there is nothing to pay for it, therefore
+# there is no reason to wait in the queue of the project. The effects of the steps are the same and in the same
+# order (from the network to the target), as in an ordinary project, — the common function of the effect of the
+# step (_on_project_step_completed) is called from both paths, so that the rule
+# "a segment has appeared — the hex is connected" does not exist in two forms.
 func _finish_free_road_project(row: int, col: int, steps: Array,
         is_town: bool) -> bool:
     for step in steps:
@@ -1630,15 +1635,15 @@ func _finish_free_road_project(row: int, col: int, steps: Array,
     control_panel.refresh()
     return true
 
-# Улучшение уже построенной дороги от города до гекса (row, col).
+# The improvement of the already built road from the city to the hex (row, col).
 #
-# Отличие от постройки новой дороги: участки УЖЕ ЕСТЬ, поэтому шаг проекта не
-# добавляет сегмент, а повышает его уровень (road_manager.upgrade_road_segment).
-# Сама очередь и «призрак» — те же, что у постройки: игрок видит маршрут до
-# цели и понимает, сколько участков ещё предстоит улучшить.
+# The difference from the building of a new road: the segments ALREADY EXIST, therefore the step of the project does not
+# add a segment, but raises its level (road_manager.upgrade_road_segment).
+# The queue itself and the "ghost" — the same as for the building: the player sees the route to
+# the target and understands how many segments are still to be improved.
 #
-# Шаги идут ОТ ГОРОДА к цели, как при постройке: так прогресс-бар едет в ту же
-# сторону, что и призрак, и игрок видит, где дорога уже улучшена.
+# The steps go FROM THE CITY to the target, as during the construction: in this way the progress bar travels in the same
+# direction as the ghost, and the player sees where the road has already been improved.
 func start_road_upgrade_project(row: int, col: int, road_level: int) -> bool:
     if not GameData.is_road_level_unlocked(road_level):
         hud.show_message(tr("Road level %d requires a technology") % road_level)
@@ -1671,11 +1676,11 @@ func start_road_upgrade_project(row: int, col: int, road_level: int) -> bool:
     _redraw_progress_layer()
     return true
 
-# Цена и шаги улучшения дороги до гекса (row, col) до уровня road_level.
-# ЕДИНЫЙ источник для превью и для реального запуска — как у новой дороги.
+# The price and the steps of the improvement of the road to the hex (row, col) up to the level road_level.
+# The SINGLE source for the preview and for the real start — as for a new road.
 #
-# Улучшаются только те участки маршрута, которые ниже целевого уровня: участок
-# более высокого уровня оставляем как есть (понижать дорогу нельзя).
+# Only those segments of the route which are below the target level are improved: a segment
+# of a higher level is left as is (a road cannot be lowered).
 func get_road_upgrade_breakdown(row: int, col: int, road_level: int) -> Dictionary:
     var route: Dictionary = get_route_to_city(row, col)
     if not route.get("ok", false):
@@ -1684,8 +1689,8 @@ func get_road_upgrade_breakdown(row: int, col: int, road_level: int) -> Dictiona
     var levels: Array = route.get("levels", [])
     var steps: Array = []
     var total := 0
-    # Шаги от ГОРОДА к цели: путь маршрута идёт от гекса к городу, поэтому
-    # индексы идут в обратном порядке.
+    # The steps FROM THE CITY to the target: the path of the route goes from the hex to the city, therefore
+    # the indices go in the reverse order.
     for i in range(segments.size() - 1, -1, -1):
         var seg_key: String = str(segments[i])
         if int(levels[i]) >= road_level:
@@ -1720,7 +1725,7 @@ func get_road_upgrade_breakdown(row: int, col: int, road_level: int) -> Dictiona
             "price": price,
             "hex": {"row": far_row, "col": far_col},
             # Призрак улучшения — тот же участок: он уже нарисован дорогой,
-            # и подсветка показывает, какой именно участок улучшается.
+            # and the highlighting shows which exactly segment is being improved.
             "ghost": {seg_key: true},
             "data": {
                 "from": {"row": from_row, "col": from_col},
@@ -1735,9 +1740,9 @@ func get_road_upgrade_breakdown(row: int, col: int, road_level: int) -> Dictiona
     return {"ok": true, "reason": "", "cost": total, "steps": steps,
             "segments": steps.size(), "road_level": road_level}
 
-# Разбирает ключ участка "row1,col1|row2,col2" в [row1, col1, row2, col2].
-# Пустой массив — ключ повреждён; такой участок пропускаем: улучшать и
-# тарифицировать его всё равно нельзя.
+# Parses the key of a segment "row1,col1|row2,col2" into [row1, col1, row2, col2].
+# An empty array — the key is damaged; we skip such a segment: improving and
+# charging for it is impossible anyway.
 func _split_segment_key(key: String) -> Array:
     var ends := key.split("|")
     if ends.size() != 2:
@@ -1751,10 +1756,10 @@ func _split_segment_key(key: String) -> Array:
         return []
     return [int(a[0]), int(a[1]), int(b[0]), int(b[1])]
 
-# Публичная обёртка над поиском маршрута: нужна панели управления (блок
-# «Маршрут до города») и рендереру (подсветка маршрута на карте). Гекс городка
-# маршрутизируется по СВОЕЙ сети дорог, поэтому городок передаётся менеджеру
-# отдельно (см. road_manager.find_route_to_city).
+# The public wrapper over the search of the route: it is needed by the control panel (the block
+# "Route to the city") and by the renderer (the highlighting of the route on the map). The hex of the town
+# is routed by ITS OWN road network, therefore the town is passed to the manager
+# separately (see road_manager.find_route_to_city).
 func get_route_to_city(row: int, col: int) -> Dictionary:
     var town = find_town_at(row, col)
     if town != null:
@@ -1762,34 +1767,34 @@ func get_route_to_city(row: int, col: int) -> Dictionary:
                 int(town.get("row", -1)), int(town.get("col", -1)))
     return road_manager.find_route_to_city(row, col)
 
-# Превращает план дороги в очередь шагов — по одному на новый участок.
+# Turns the plan of the road into the queue of the steps — one per new segment.
 #
-# Это ЕДИНСТВЕННЫЙ источник цены дороги. И превью в панели, и реальный старт
-# проекта берут шаги отсюда, поэтому «сколько показали» и «сколько берут» не
-# могут разойтись. Раньше цена считалась отдельно в трёх местах, и превью
-# показывало цену ВСЕХ сегментов пути (plan.segments = path.size() − 1),
-# тогда как шаги фильтровали уже построенные: на маршруте, идущем по
-# частично построенной дороге, игрок видел завышенную цену.
+# This is the SINGLE source of the price of the road. Both the preview in the panel, and the real start of the
+# project take the steps from here, therefore "how much was shown" and "how much is taken" cannot
+# diverge. Previously the price was counted separately in three places, and the preview
+# showed the price of ALL the segments of the path (plan.segments = path.size() − 1),
+# whereas the steps already filtered the built ones: on a route going along
+# a partially built road, the player saw an inflated price.
 #
-# Порядок шагов — ОТ СЕТИ К ЦЕЛИ, хотя plan_road_to возвращает путь от цели
-# к городу (так его строит поиск). Это не косметика: у каждого шага два гекса,
-# и строить от сети значит, что участок всегда присоединяется к уже готовой
-# дороге, а не повисает в воздухе до конца стройки. По той же причине
-# прогресс-бар едет от города к цели, а призрак «съедается» с города.
+# The order of the steps is FROM THE NETWORK TO THE TARGET, although plan_road_to returns the path from the target
+# to the city (that is how the search builds it). This is not cosmetics: each step has two hexes,
+# and building from the network means that the segment is always connected to the already finished
+# road, and does not hang in the air until the end of the build. For the same reason
+# the progress bar travels from the city to the target, and the ghost is "eaten" from the city.
 #
-# Цена шага (MapHelpers.get_road_step_work_cost) зависит от гекса to_hex:
-# местность, дальность от города, технологии. Отдельной надбавки за длину
-# трассы нет — длинная дорога дольше строится потому, что участков больше.
+# The price of the step (MapHelpers.get_road_step_work_cost) depends on the hex to_hex:
+# the terrain, the distance from the city, the technologies. There is no separate surcharge for the length of
+# the route — a long road takes longer to build because there are more segments.
 func _build_road_steps(plan: Dictionary, road_level: int) -> Array:
     var road_path: Array = plan.get("path", [])
     var is_town := bool(plan.get("is_town", false))
     if road_path.size() < 2:
         return []
 
-    # Только НОВЫЕ участки: уже проложенные платить не нужно (их шага в
-    # очереди не будет, и в призраке они тоже не появятся). Путь идёт от
-    # цели к городу, поэтому новые участки разворачиваем — шаг за шагом от
-    # сети.
+    # Only the NEW segments: the already laid ones do not need to be paid for (there will be
+    # no step for them in the queue, and they will not appear in the ghost either). The path goes from
+    # the target to the city, therefore we reverse the new segments — step by step from
+    # the network.
     var pairs: Array = []
     for i in range(road_path.size() - 2, -1, -1):
         var from_hex: Dictionary = road_path[i + 1]
@@ -1816,8 +1821,8 @@ func _build_road_steps(plan: Dictionary, road_level: int) -> Array:
         var to_hex: Dictionary = pair["to"]
         var t_row := int(to_hex["row"])
         var t_col := int(to_hex["col"])
-        # Местность гекса to: именно его шаг присоединяет к сети, и по нему
-        # уже считается цена. Гекс from в сети уже, за него заплатили раньше.
+        # The terrain of the hex to: it is exactly its step that connects it to the network, and the price
+        # is already counted by it. The hex from is already in the network, it has been paid for earlier.
         var terrain_id := "plain"
         if t_row >= 0 and t_row < tile_data.size() and t_col >= 0 \
                 and t_col < tile_data[t_row].size() and tile_data[t_row][t_col] != null:
@@ -1827,30 +1832,30 @@ func _build_road_steps(plan: Dictionary, road_level: int) -> Array:
         steps.append({
             "label": tr("Section %d/%d") % [i + 1, pairs.size()],
             "work_cost": int(price.get("cost", 0)),
-            # Детали расчёта — для тултипа на прогресс-баре и для превью.
+            # The details of the calculation — for the tooltip on the progress bar and for the preview.
             "price": price,
-            # Прогресс-бар рисуется на гексе, который шаг присоединяет к сети.
+            # The progress bar is drawn on the hex which the step connects to the network.
             "hex": {"row": t_row, "col": t_col},
             "ghost": pair["ghost"],
             "data": {
                 "from": pair["from"],
                 "to": pair["to"],
                 "is_town": is_town,
-                # Уровень участка едет в шаге, а не берётся в обработчике
-                # завершения: там уже нет выбранного игроком уровня, есть
-                # только сигнал «шаг готов».
+                # The level of the segment travels in the step, and is not taken in the handler of
+                # the completion: there the level chosen by the player is already gone, there is
+                # only the signal "the step is ready".
                 "road_level": road_level,
             },
         })
     return steps
 
-# Цена дороги и её шаги для превью в панели управления. Возвращает
-# {ok, reason, cost, steps}, где cost — ТОЧНАЯ сумма цен шагов.
+# The price of the road and its steps for the preview in the control panel. It returns
+# {ok, reason, cost, steps}, where cost is the EXACT sum of the prices of the steps.
 #
-# Инвариант «сумма шагов = цена в превью» выполняется по построению: каждый
-# шаг округляется вверх отдельно, и итог просто складывается. Раньше цена
-# бралась как ceil(base × segments), а последний шаг «добирал остаток» — с
-# разными ценами шагов такая схема дала бы переплату или недобор.
+# The invariant "the sum of the steps = the price in the preview" holds by construction: each
+# step is rounded up separately, and the total is simply summed up. Previously the price
+# was taken as ceil(base × segments), and the last step "made up the remainder" — with
+# the different prices of the steps such a scheme would give an overpayment or a shortfall.
 func get_road_cost_breakdown(row: int, col: int, road_level: int) -> Dictionary:
     var plan := get_road_plan(row, col)
     if not plan.get("ok", false):
@@ -1861,9 +1866,9 @@ func get_road_cost_breakdown(row: int, col: int, road_level: int) -> Dictionary:
         return {"ok": false, "reason": tr("No new sections on this route"),
                 "cost": 0, "steps": []}
     var total := 0
-    # Минимумы стартуют с -1, а НЕ с INF: mini()/maxi() понижают тип до int, и
-    # INF превращается в INT64_MIN, на котором минимум «залипает» навсегда
-    # (проявлялось как расстояние -9223372036854775808 в превью).
+    # The minimums start from -1, and NOT from INF: mini()/maxi() lower the type to int, and
+    # INF becomes INT64_MIN, on which the minimum "sticks" forever
+    # (it showed up as the distance -9223372036854775808 in the preview).
     var min_cost := -1
     var max_cost := 0
     var min_dist := -1
@@ -1895,7 +1900,7 @@ func get_road_cost_breakdown(row: int, col: int, road_level: int) -> Dictionary:
         "terrains": terrains.keys(),
     }
 
-# Эффект одного участка дороги: сегмент уходит в сеть города, оба его гекса
+# The effect of one segment of the road: the segment goes into the network of the city, both of its hexes
 # становятся подключёнными. Флаг road_built ставится на КАЖДЫЙ присоединённый
 # гекс, а не только на цель проекта: сегменты в сейв не пишутся, и по этим
 # флагам сеть пересчитывается при загрузке (road_manager.rebuild_player_roads).
