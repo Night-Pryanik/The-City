@@ -1,0 +1,12 @@
+{
+  "resources": [
+    {
+      "id": "green_vitriol",
+      "price": 10,
+      "name": "Green Vitriol",
+      "type": "product",
+      "category": "chemicals",
+      "icon": "green_vitriol.png"
+    }
+  ]
+}

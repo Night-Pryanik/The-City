@@ -263,6 +263,36 @@
       "time": 5.0,
       "unlock_tech": "masonry",
       "description": "Cuts stone into plates, bowls, and cups."
+    },
+    {
+      "id": "ink_from_green_vitriol_galls",
+      "name": "Ink",
+      "produced_in": [ "dyer_house" ],
+      "resources": { "green_vitriol": 10, "galls": 20 },
+      "result": { "ink": 10 },
+      "time": 5.0,
+      "unlock_tech": "alchemy",
+      "description": "Makes ink from green vitriol and galls."
+    },
+    {
+      "id": "ink_from_iron_galls_vinegar",
+      "name": "Ink",
+      "produced_in": [ "dyer_house" ],
+      "resources": [ [ { "iron": 10 }, { "meteorite_iron": 10 } ], { "galls": 20 }, { "vinegar": 20 } ],
+      "result": { "ink": 10 },
+      "time": 5.0,
+      "unlock_tech": "dyeing",
+      "description": "Makes ink from iron, galls, and vinegar."
+    },
+    {
+      "id": "writing_set",
+      "name": "Writing Set",
+      "produced_in": [ "carpenter_workshop" ],
+      "resources": { "@writing_instruments": 10, "ink": 10 },
+      "result": { "writing_set": 10 },
+      "time": 5.0,
+      "unlock_tech": "writing",
+      "description": "Makes a writing set from writing instruments and ink."
     }
   ]
 }

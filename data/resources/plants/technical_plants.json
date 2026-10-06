@@ -210,7 +210,7 @@
       "tech_required": "dyeing",
       "allowed_terrain": [ "plain" ],
       "allowed_cover": [ "none" ],
-      "improved_by": "plantation",
+      "improved_by": "lumberjack_hut",
       "produces": { "campeche_wood": 10 },
       "icon": "campeche_tree.png",
       "color": [ 200, 255, 200 ]
@@ -243,6 +243,21 @@
       "tech_required": "plantations",
       "produces": { "cactus_fruit": 10, "cochineal": 10 },
       "icon": "opuntia.png",
+      "color": [ 200, 255, 200 ]
+    },
+    {
+      "id": "oak_tree", "price": 10,
+      "name": "Oak Tree",
+      "type": "raw",
+      "category": "technical_plants",
+      "group": "technical_plants",
+      "subgroup": "dye_plants",
+      "tech_required": "dyeing",
+      "allowed_terrain": [ "plain", "hill", "mountain" ],
+      "allowed_cover": [ "forest", "sparse_forest" ],
+      "improved_by": "lumberjack_hut",
+      "produces": { "galls": 10 },
+      "icon": "oak_tree.png",
       "color": [ 200, 255, 200 ]
     }
   ]

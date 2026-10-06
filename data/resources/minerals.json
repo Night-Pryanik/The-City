@@ -366,6 +366,23 @@
       "produces": { "porphyry": 10 },
       "icon": "porphyry.png",
       "color": [ 150, 0, 0 ]
+    },
+    {
+      "id": "pyrite_deposit",
+      "price": 10,
+      "name": "Pyrite",
+      "type": "raw",
+      "category": "minerals",
+      "group": "minerals",
+      "subgroup": "",
+      "strategic": true,
+      "tech_required": "mining",
+      "allowed_terrain": [ "plain", "hill", "rocky_desert" ],
+      "allowed_cover": [ "none", "sparse_forest", "forest" ],
+      "improved_by": "quarry",
+      "produces": { "pyrite": 10 },
+      "icon": "pyrite.png",
+      "color": [ 200, 200, 0 ]
     }
   ]
 }

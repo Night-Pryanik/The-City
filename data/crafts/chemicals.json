@@ -1,0 +1,14 @@
+{
+  "crafts": [
+    {
+      "id": "green_vitriol",
+      "name": "Green Vitriol",
+      "produced_in": [ "alchemist_house" ],
+      "resources": [ { "pyrite": 20 }, [ { "iron": 10 }, { "meteorite_iron": 10 } ] ],
+      "result": { "green_vitriol": 10 },
+      "time": 10.0,
+      "unlock_tech": "alchemy",
+      "description": "Makes a green vitriol from pyrite and iron."
+    }
+  ]
+}

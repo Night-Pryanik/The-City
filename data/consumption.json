@@ -77,7 +77,7 @@
       "resource": "@tableware",
       "profession": [ "all" ],
       "amount": 10,
-      "interval": 1,
+      "interval": 10,
       "production_bonus": 0.0
     },
     {
@@ -88,27 +88,11 @@
       "production_bonus": 0.0
     },
     {
-      // The scientist (Library, Scriptorium). It takes writing materials
-      // with the "Science" recipe ("@writing_mediums", see data/crafts/pseudo.json),
-      // and feathers ON TOP of that: while feathers are in storage, the science
-      // of the building is credited with a +25% bonus (multiplier ×1.25, see
-      // docs.md, "Science: production and research"). The expense only applies
-      // to a WORKING building (there is a citizen and at least one non-empty slot).
-      "resource": "feathers",
+      "resource": "writing_set",
       "profession": [ "scientist" ],
       "amount": 10,
-      "interval": 5,
+      "interval": 10,
       "production_bonus": 0.25
     }
-    // Ink (the "ink" product) will become the SECOND single entry of the
-    // scientist: the bonuses of single entries add up (feathers +25% and ink
-    // +25% → +50%). Uncomment when the product appears in data/products/*.json:
-    // {
-    //   "resource": "ink",
-    //   "profession": [ "scientist" ],
-    //   "amount": 1,
-    //   "interval": 10,
-    //   "production_bonus": 0.25
-    // }
   ]
 }

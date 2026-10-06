@@ -1990,6 +1990,10 @@ msgid "Building Materials"
 msgstr ""
 
 msgctxt "categories.name"
+msgid "Chemicals"
+msgstr ""
+
+msgctxt "categories.name"
 msgid "Clothes"
 msgstr ""
 
@@ -2047,6 +2051,10 @@ msgstr ""
 
 msgctxt "categories.name"
 msgid "Weapons"
+msgstr ""
+
+msgctxt "categories.name"
+msgid "Writing Materials"
 msgstr ""
 
 msgctxt "consumption_buildings_few"
@@ -2194,7 +2202,23 @@ msgid "Makes a dye (woad) from woad leaves."
 msgstr ""
 
 msgctxt "crafts.description"
+msgid "Makes a green vitriol from pyrite and iron."
+msgstr ""
+
+msgctxt "crafts.description"
 msgid "Makes a set of tools for craftsmen."
+msgstr ""
+
+msgctxt "crafts.description"
+msgid "Makes a writing set from writing instruments and ink."
+msgstr ""
+
+msgctxt "crafts.description"
+msgid "Makes ink from green vitriol and galls."
+msgstr ""
+
+msgctxt "crafts.description"
+msgid "Makes ink from iron, galls, and vinegar."
 msgstr ""
 
 msgctxt "crafts.description"
@@ -2502,11 +2526,19 @@ msgid "Grape Wine"
 msgstr ""
 
 msgctxt "crafts.name"
+msgid "Green Vitriol"
+msgstr ""
+
+msgctxt "crafts.name"
 msgid "Henna"
 msgstr ""
 
 msgctxt "crafts.name"
 msgid "Indigo"
+msgstr ""
+
+msgctxt "crafts.name"
+msgid "Ink"
 msgstr ""
 
 msgctxt "crafts.name"
@@ -2689,6 +2721,10 @@ msgctxt "crafts.name"
 msgid "Wool Clothes"
 msgstr ""
 
+msgctxt "crafts.name"
+msgid "Writing Set"
+msgstr ""
+
 msgctxt "eras.name"
 msgid "Ancient"
 msgstr ""
@@ -2734,6 +2770,10 @@ msgid "Dairy Animals"
 msgstr ""
 
 msgctxt "groups.name"
+msgid "Dye Minerals"
+msgstr ""
+
+msgctxt "groups.name"
 msgid "Fish"
 msgstr ""
 
@@ -2743,6 +2783,10 @@ msgstr ""
 
 msgctxt "groups.name"
 msgid "Fur Animals"
+msgstr ""
+
+msgctxt "groups.name"
+msgid "Jewelry Minerals"
 msgstr ""
 
 msgctxt "groups.name"
@@ -2943,6 +2987,10 @@ msgstr ""
 
 msgctxt "product_groups.name"
 msgid "Textile Crops"
+msgstr ""
+
+msgctxt "product_groups.name"
+msgid "Writing Instruments"
 msgstr ""
 
 msgctxt "product_groups.name"
@@ -3382,6 +3430,10 @@ msgid "Fruit Wine"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Galls"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Geese"
 msgstr ""
 
@@ -3422,6 +3474,10 @@ msgid "Grapes"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Green Vitriol"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Guineafowl"
 msgstr ""
 
@@ -3455,6 +3511,10 @@ msgstr ""
 
 msgctxt "resources.name"
 msgid "Indigofera Leaves"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Ink"
 msgstr ""
 
 msgctxt "resources.name"
@@ -3590,6 +3650,10 @@ msgid "Nephrite Jewelry"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Oak Tree"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Oats"
 msgstr ""
 
@@ -3671,6 +3735,10 @@ msgstr ""
 
 msgctxt "resources.name"
 msgid "Purple"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Pyrite"
 msgstr ""
 
 msgctxt "resources.name"
@@ -3907,6 +3975,10 @@ msgstr ""
 
 msgctxt "resources.name"
 msgid "Wool Clothes"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Writing Set"
 msgstr ""
 
 msgctxt "resources.name"

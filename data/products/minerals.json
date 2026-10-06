@@ -40,6 +40,7 @@
       "type": "product",
       "category": "minerals",
       "icon": "porphyry.png"
-    }
+    },
+    { "id": "pyrite", "price": 10, "name": "Pyrite", "type": "product", "category": "minerals", "icon": "pyrite.png" }
   ]
 }

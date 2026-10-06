@@ -1990,6 +1990,10 @@ msgid "Building Materials"
 msgstr "Стройматериалы"
 
 msgctxt "categories.name"
+msgid "Chemicals"
+msgstr "Химикаты"
+
+msgctxt "categories.name"
 msgid "Clothes"
 msgstr "Одежда"
 
@@ -2048,6 +2052,10 @@ msgstr "Инструменты"
 msgctxt "categories.name"
 msgid "Weapons"
 msgstr "Оружие"
+
+msgctxt "categories.name"
+msgid "Writing Materials"
+msgstr "Письменные принадлежности"
 
 msgctxt "consumption_buildings_few"
 msgid "buildings"
@@ -2194,8 +2202,24 @@ msgid "Makes a dye (woad) from woad leaves."
 msgstr "Создает краситель (вайду) из листьев вайды"
 
 msgctxt "crafts.description"
+msgid "Makes a green vitriol from pyrite and iron."
+msgstr "Создаёт железный купорос из пирита и железа"
+
+msgctxt "crafts.description"
 msgid "Makes a set of tools for craftsmen."
 msgstr "Создаёт набор инструментов для ремесленников"
+
+msgctxt "crafts.description"
+msgid "Makes a writing set from writing instruments and ink."
+msgstr "Создаёт письменный набор из писчих инструментов и чернил"
+
+msgctxt "crafts.description"
+msgid "Makes ink from green vitriol and galls."
+msgstr "Создаёт чернила из железного купороса и галлов"
+
+msgctxt "crafts.description"
+msgid "Makes ink from iron, galls, and vinegar."
+msgstr "Создаёт чернила из железа, галлов и уксуса"
 
 msgctxt "crafts.description"
 msgid "Makes iron out of ore."
@@ -2502,12 +2526,20 @@ msgid "Grape Wine"
 msgstr "Виноградное вино"
 
 msgctxt "crafts.name"
+msgid "Green Vitriol"
+msgstr "Железный купорос"
+
+msgctxt "crafts.name"
 msgid "Henna"
 msgstr "Хна"
 
 msgctxt "crafts.name"
 msgid "Indigo"
 msgstr "Индиго"
+
+msgctxt "crafts.name"
+msgid "Ink"
+msgstr "Чернила"
 
 msgctxt "crafts.name"
 msgid "Iron"
@@ -2689,6 +2721,10 @@ msgctxt "crafts.name"
 msgid "Wool Clothes"
 msgstr "Шерстяная одежда"
 
+msgctxt "crafts.name"
+msgid "Writing Set"
+msgstr "Письменный набор"
+
 msgctxt "eras.name"
 msgid "Ancient"
 msgstr "Древняя"
@@ -2734,6 +2770,10 @@ msgid "Dairy Animals"
 msgstr "Молочные животные"
 
 msgctxt "groups.name"
+msgid "Dye Minerals"
+msgstr "Минералы-красители"
+
+msgctxt "groups.name"
 msgid "Fish"
 msgstr "Рыба"
 
@@ -2744,6 +2784,10 @@ msgstr "Фрукты"
 msgctxt "groups.name"
 msgid "Fur Animals"
 msgstr "Пушные животные"
+
+msgctxt "groups.name"
+msgid "Jewelry Minerals"
+msgstr "Ювелирные минералы"
 
 msgctxt "groups.name"
 msgid "Meat Animals"
@@ -2944,6 +2988,10 @@ msgstr "Камни для посуды"
 msgctxt "product_groups.name"
 msgid "Textile Crops"
 msgstr "Текстильные культуры"
+
+msgctxt "product_groups.name"
+msgid "Writing Instruments"
+msgstr "Писчие инструменты"
 
 msgctxt "product_groups.name"
 msgid "Writing Materials"
@@ -3382,6 +3430,10 @@ msgid "Fruit Wine"
 msgstr "Фруктовое вино"
 
 msgctxt "resources.name"
+msgid "Galls"
+msgstr "Галлы"
+
+msgctxt "resources.name"
 msgid "Geese"
 msgstr "Гуси"
 
@@ -3422,6 +3474,10 @@ msgid "Grapes"
 msgstr "Виноград"
 
 msgctxt "resources.name"
+msgid "Green Vitriol"
+msgstr "Железный купорос"
+
+msgctxt "resources.name"
 msgid "Guineafowl"
 msgstr "Цесарки"
 
@@ -3456,6 +3512,10 @@ msgstr "Индигофера"
 msgctxt "resources.name"
 msgid "Indigofera Leaves"
 msgstr "Листья индигоферы"
+
+msgctxt "resources.name"
+msgid "Ink"
+msgstr "Чернила"
 
 msgctxt "resources.name"
 msgid "Iron"
@@ -3590,6 +3650,10 @@ msgid "Nephrite Jewelry"
 msgstr "Украшения из нефрита"
 
 msgctxt "resources.name"
+msgid "Oak Tree"
+msgstr "Дуб"
+
+msgctxt "resources.name"
 msgid "Oats"
 msgstr "Овёс"
 
@@ -3672,6 +3736,10 @@ msgstr "Пульке"
 msgctxt "resources.name"
 msgid "Purple"
 msgstr "Пурпур"
+
+msgctxt "resources.name"
+msgid "Pyrite"
+msgstr "Пирит"
 
 msgctxt "resources.name"
 msgid "Quartz Sand"
@@ -3910,6 +3978,10 @@ msgid "Wool Clothes"
 msgstr "Шерстяная одежда"
 
 msgctxt "resources.name"
+msgid "Writing Set"
+msgstr "Письменный набор"
+
+msgctxt "resources.name"
 msgid "Yak"
 msgstr "Яки"
 
@@ -3923,7 +3995,7 @@ msgstr "Зебу"
 
 msgctxt "roads.description"
 msgid "A leveled road for carts. Three times the load of a trail."
-msgstr "Ровная дорога для телег. Втрое больше, чем везёт тропка."
+msgstr "Ровная дорога для телег. Позволяет перевозить втрое больше, чем тропка."
 
 msgctxt "roads.description"
 msgid "A simple footpath worn into the ground. Cheap, but it carries very little."

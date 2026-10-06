@@ -22,6 +22,8 @@
     {"id": "spices", "name": "Spices"},
     {"id": "fruits", "name": "Fruits"},
     {"id": "construction_materials", "name": "Construction Materials"},
+    {"id": "dye_minerals", "name": "Dye Minerals"},
+    {"id": "jewelry_minerals", "name": "Jewelry Minerals"},
     {"id": "other", "name": "Other"}
   ]
 }

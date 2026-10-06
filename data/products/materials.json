@@ -234,7 +234,7 @@
       "name": "Indigofera Leaves",
       "type": "product",
       "category": "material",
-      "unlock_tech": "plantations",
+      "unlock_tech": "dyeing",
       "icon": "indigofera_leaves.png"
     },
     {
@@ -242,7 +242,7 @@
       "name": "Lawsonia Leaves",
       "type": "product",
       "category": "material",
-      "unlock_tech": "plantations",
+      "unlock_tech": "dyeing",
       "icon": "lawsonia_leaves.png"
     },
     {
@@ -250,7 +250,7 @@
       "name": "Madder Root",
       "type": "product",
       "category": "material",
-      "unlock_tech": "plantations",
+      "unlock_tech": "dyeing",
       "icon": "marena_roots.png"
     },
     {
@@ -258,7 +258,7 @@
       "name": "Woad Leaves",
       "type": "product",
       "category": "material",
-      "unlock_tech": "plantations",
+      "unlock_tech": "dyeing",
       "icon": "woad_leaves.png"
     },
     {
@@ -266,7 +266,7 @@
       "name": "Campeche Wood",
       "type": "product",
       "category": "material",
-      "unlock_tech": "plantations",
+      "unlock_tech": "dyeing",
       "icon": "campeche_wood.png"
     },
     {
@@ -274,7 +274,7 @@
       "name": "Safflower Leaves",
       "type": "product",
       "category": "material",
-      "unlock_tech": "plantations",
+      "unlock_tech": "dyeing",
       "icon": "safflower_leaves.png"
     },
     {
@@ -282,8 +282,16 @@
       "name": "Cochineal",
       "type": "product",
       "category": "material",
-      "unlock_tech": "plantations",
+      "unlock_tech": "dyeing",
       "icon": "cochineal.png"
+    },
+    {
+      "id": "galls", "price": 10,
+      "name": "Galls",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "dyeing",
+      "icon": "galls.png"
     }
   ]
 }

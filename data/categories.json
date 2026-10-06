@@ -21,6 +21,8 @@
     { "id": "tools", "name": "Tools" },
     { "id": "weapons", "name": "Weapons" },
     { "id": "equipment", "name": "Equipment" },
+    { "id": "chemicals", "name": "Chemicals" },
+    { "id": "writing_materials", "name": "Writing Materials" },
     { "id": "other", "name": "Other" }
   ]
 }
