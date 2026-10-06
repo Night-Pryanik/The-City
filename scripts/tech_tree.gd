@@ -151,7 +151,10 @@ func _rebuild_science_tooltip():
 
     science_tooltip_vbox.add_child(_make_bullet_row("•", tr("Base: %.1f/sec") % base))
     for bld_entry in bd.get("buildings", []):
-        var bld_name: String = str(bld_entry.get("name", tr("Building")))
+        # name is the source identifier ("@bld:library"), the label is resolved at the drawing.
+        var bld_name: String = GameData.get_source_display_name(str(bld_entry.get("name", "")))
+        if bld_name.is_empty():
+            bld_name = tr("Building")
         var fixed: float = float(bld_entry.get("fixed", 0.0))
         var mediums: float = float(bld_entry.get("mediums", 0.0))
         var bonus: float = float(bld_entry.get("bonus", 1.0))
