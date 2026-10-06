@@ -964,17 +964,21 @@ func _add_unlock_item(result: Array, seen: Dictionary, icon_name: String, tip: S
     result.append({"icon": icon_name, "tip": tip})
 
 func _adjust_fonts() -> void:
-    # We select the largest font_size at which the name fits
-    # into 2 lines inside the button. We start it deferred, so that the layout is ready.
-    # We increase from the bottom up: we start from 10, try 11, 12, 13, 14.
+    # We select the largest font_size at which the name fits into 2 lines inside
+    # the button. Deferred, so that the layout is ready. The size is measured
+    # analytically through TextServer for all labels at once, without changing
+    # font_size per iteration — so the whole pass costs a single frame, not
+    # (sizes x technologies) frames.
     if _fonts_adjusted:
         return
     if not is_inside_tree():
         return
-    # We wait for one frame, so that the layout of the Labels is computed.
     await get_tree().process_frame
     if not is_inside_tree():
         return
+    var font := get_theme_font("font", "Label")
+    if font == null:
+        font = ThemeDB.fallback_font
     for tech_id in _tech_nodes:
         var entry = _tech_nodes[tech_id]
         if not is_instance_valid(entry):
@@ -985,25 +989,28 @@ func _adjust_fonts() -> void:
         var label: Label = _find_label_in_button(btn)
         if label == null or not is_instance_valid(label):
             continue
+        # The usable text width is the label width minus the autowrap padding.
+        var text_width: float = maxf(label.size.x - 2.0, 1.0)
         var picked := 10
         for fs in [10, 11, 12, 13, 14]:
-            if not is_instance_valid(label):
-                return
-            label.add_theme_font_size_override("font_size", fs)
-            # We wait for one more frame, so that the Label recalculates get_line_count().
-            await get_tree().process_frame
-            if not is_inside_tree():
-                return
-            if not is_instance_valid(label):
-                return
-            if label.get_line_count() <= 2:
+            var lines: int = _wrapped_line_count(font, fs, label.text, text_width)
+            if lines <= 2:
                 picked = fs
             else:
-                # This size already does not fit — we roll back to the previous one.
+                # This size already does not fit — stop: sizes grow from smaller to larger.
                 break
-        if is_instance_valid(label):
-            label.add_theme_font_size_override("font_size", picked)
+        label.add_theme_font_size_override("font_size", picked)
     _fonts_adjusted = true
+
+func _wrapped_line_count(font: Font, font_size: int, text: String, width: float) -> int:
+    # Mirrors the word-smart autowrap of the Label. TextParagraph measures the
+    # wrap analytically, without touching the label — this is what keeps the
+    # whole font-selection pass to a single frame. (Font.get_wrap_width is not
+    # available in this Godot version.)
+    var paragraph := TextParagraph.new()
+    paragraph.add_string(text, font, font_size, "", "")
+    paragraph.width = width
+    return paragraph.get_line_count()
 
 func _find_label_in_button(btn: Button) -> Label:
     # In Godot 4 the Button has a built-in label (btn.get_label_control() in 4.4+,
