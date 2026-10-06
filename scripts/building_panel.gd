@@ -237,8 +237,7 @@ func _refresh():
     # The width of the section takes part in fitting the width of the panel below.
     var consumption_width := _fill_consumption_section(tm, indices)
 
-    var all_item_texts = []
-    var max_item_icons = 0
+    var max_popup_content_width = 0.0
     var max_slot_row_width = 0.0
     var popups = []
     var new_popup_map = {}
@@ -351,7 +350,6 @@ func _refresh():
             select_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
             select_btn.add_theme_constant_override("icon_max_width", 24)
             select_btn.clip_text = true
-            _update_slot_button(select_btn, current)
 
             var popup_key = "%d:%d" % [b_index, i]
             var popup = null
@@ -362,11 +360,6 @@ func _refresh():
                 for child in popup.get_children():
                     popup.remove_child(child)
                     child.free()
-                var fill_data = _fill_popup_content(popup, b_index, i, available, select_btn)
-                for t in fill_data["item_texts"]:
-                    all_item_texts.append(t)
-                if int(fill_data["max_icons"]) > max_item_icons:
-                    max_item_icons = int(fill_data["max_icons"])
             else:
                 # A custom popup with the list of the recipes (it supports several
                 # result icons)
@@ -382,12 +375,13 @@ func _refresh():
                 popup.set_meta("popup_key", popup_key)
                 add_child(popup)
                 popup.hide()
-                # We fill the content of the popup and get the data for the calculation of the width
-                var fill_data = _fill_popup_content(popup, b_index, i, available, select_btn)
-                for t in fill_data["item_texts"]:
-                    all_item_texts.append(t)
-                if int(fill_data["max_icons"]) > max_item_icons:
-                    max_item_icons = int(fill_data["max_icons"])
+            # The content is filled after the popup is in the tree: the project
+            # theme (project.godot: theme/custom) applies its font to controls
+            # only in the tree, and the widths measured out of the tree
+            # underestimate long recipe rows.
+            var fill_data = _fill_popup_content(popup, b_index, i, available, select_btn)
+            if float(fill_data["max_content_width"]) > max_popup_content_width:
+                max_popup_content_width = float(fill_data["max_content_width"])
             popups.append(popup)
             popups_list.append(popup)
             new_popup_map[popup_key] = popup
@@ -421,29 +415,31 @@ func _refresh():
                 craft_bar.mouse_exited.connect(_on_craft_bar_mouse_exited)
                 row.add_child(craft_bar)
                 _slot_progress_bars["%d:%d" % [b_index, i]] = craft_bar
+            # The button content is filled when the row is already in the tree:
+            # the project theme (project.godot: theme/custom) applies its font
+            # to controls only in the tree, and an out-of-tree measurement
+            # underestimates the width of long recipe names.
+            slots_container.add_child(row)
+            _update_slot_button(select_btn, current)
             var slot_row_width = slot_label.get_combined_minimum_size().x + 8.0
             slot_row_width += select_btn.get_combined_minimum_size().x
             if craft_time > CityData.SIMULATION_TICK:
                 slot_row_width += 8.0 + 70.0
             max_slot_row_width = maxf(max_slot_row_width, slot_row_width)
-            slots_container.add_child(row)
 
-    # We widen the panel dynamically, if the text of the items does not fit
-    var max_text_width = 0
-    var font = get_theme_default_font()
-    var font_size = get_theme_default_font_size()
-    for t in all_item_texts:
-        var w = font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
-        if w > max_text_width:
-            max_text_width = w
-    # We take into account both the items of the popup and the actual width of the
-    # row of the slot, including the progress bar to the right of the recipe button.
-    var popup_content_width = max_text_width + max_item_icons * 24 + 40 + 70 + 40
-    var needed_width = maxf(popup_content_width, max_slot_row_width + 40 + 16)
+    # The base width of the panel: the actual width of the slot rows (they grow
+    # with the recipe button, which is sized from the real content in
+    # _update_slot_button), plus a margin for the paddings of the header and the
+    # "Consumes:" section.
+    var needed_width = maxf(max_slot_row_width + 40 + 16, 460.0)
     # The "Consumes:" section is one more row of content: its label would
     # otherwise stick out past the edge of the panel, which is calculated from
     # the slots and the popups alone.
     needed_width = maxf(needed_width, consumption_width + 40 + 16)
+    # The widest recipe row of the popups (measured from the real content at
+    # fill time): the popups must fit it already when the panel opens, and not
+    # only after a recipe is selected in the slot.
+    needed_width = maxf(needed_width, max_popup_content_width + 70 + 40 + 16)
     # We do not let the panel go beyond the limits of the viewport
     var max_panel_width = get_viewport_rect().size.x - 40
     if needed_width > max_panel_width:
@@ -565,10 +561,11 @@ func _clear_consumption_section():
     consumption_box.visible = false
 
 # Fills the content of the popup with the list of the available recipes.
-# Returns a dictionary with the texts of the items and the maximum number of
-# icons (it is needed for the calculation of the width of the panel in _refresh()).
+# Returns the real minimum width of the widest recipe row — it participates in
+# fitting the width of the panel in _refresh(), so that the recipe rows fit
+# already when the panel opens, and not only after a recipe is selected.
 func _fill_popup_content(popup, b_index: int, slot_idx: int, available: Array, button) -> Dictionary:
-    var result = {"item_texts": [], "max_icons": 0}
+    var result = {"max_content_width": 0.0}
 
     var popup_vbox = VBoxContainer.new()
     popup_vbox.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -592,31 +589,6 @@ func _fill_popup_content(popup, b_index: int, slot_idx: int, available: Array, b
                 # the mechanics.
                 craft_result = c.get("display_result", c.get("result", {}))
                 break
-        # We build the text of the item for the calculation of the width
-        var item_text = ""
-        if not craft_resources.is_empty():
-            var res_names = []
-            for or_group in GameData.craft_alternatives({"resources": craft_resources}):
-                if or_group.is_empty():
-                    continue
-                var variant_names = []
-                for variant in or_group:
-                    variant_names.append(GameData.format_resource_name(str(variant.get("key", ""))))
-                res_names.append(" / ".join(variant_names))
-            item_text = ", ".join(res_names)
-        if not craft_result.is_empty():
-            var result_names = []
-            for prod_id in craft_result:
-                var pdata = products.get(prod_id, {})
-                result_names.append(pdata.get("name", prod_id))
-            if item_text != "":
-                item_text += " -> "
-            item_text += ", ".join(result_names)
-        result["item_texts"].append(item_text)
-        var icon_count = craft_resources.size() + craft_result.size()
-        if icon_count > int(result["max_icons"]):
-            result["max_icons"] = icon_count
-
         # An item of the list — a Button with the content and a built-in highlight on hover
         var item_btn = Button.new()
         item_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -638,8 +610,15 @@ func _fill_popup_content(popup, b_index: int, slot_idx: int, available: Array, b
         content.offset_left = 8
         content.offset_right = -8
         item_btn.add_child(content)
+        # The width is measured after the item is added to the tree: the project
+        # theme (project.godot: theme/custom) applies its font to controls only
+        # in the tree, and an out-of-tree measurement underestimates the width
+        # of long recipe rows (icons + names + "xN" amounts).
         item_btn.pressed.connect(_on_craft_item_selected.bind(b_index, slot_idx, craft_id, popup, button))
         popup_vbox.add_child(item_btn)
+        var content_min_width = content.get_combined_minimum_size().x + 16.0
+        if content_min_width > float(result["max_content_width"]):
+            result["max_content_width"] = content_min_width
 
     return result
 
