@@ -369,12 +369,6 @@ msgstr "%s: до %d ед./сек на участок, база %d труда з�
 msgid "+%d%% (Fresh water access)"
 msgstr "+%d%% (Доступ к пресной воде)"
 
-msgid "+30% to resource production on plantations."
-msgstr "+30% к производству ресурсов на плантациях."
-
-msgid "+50% to resource production on farms."
-msgstr "+50% к производству ресурсов на фермах."
-
 msgid ", forest"
 msgstr ", лес"
 
@@ -386,9 +380,6 @@ msgstr ", на латинице «%s»"
 
 msgid ", technology ×%.2f"
 msgstr ", технологии ×%.2f"
-
-msgid "-10% to the work cost of construction."
-msgstr "-10% к затратам труда на строительство."
 
 msgid ". Already built sections (%d) will remain"
 msgstr ". Уже построенные участки (%d) останутся"
@@ -411,48 +402,6 @@ msgstr "1,00 сек"
 msgid "1250 (Middle Ages)"
 msgstr "1250 (Средневековье)"
 
-msgid "A building where alchemists run all kinds of chemical reactions."
-msgstr "Здание, алхимики проводят различные химические реакции."
-
-msgid "A building where dyes are extracted from all sorts of organic and inorganic materials."
-msgstr "Здание, где из различных органических и неорганических материалов добываются красители."
-
-msgid "A building where jewelry is made from all sorts of materials."
-msgstr "Здание, где из различных материалов изготавливаются ювелирные изделия."
-
-msgid "A building where scribes copy, rewrite and translate documents. Produces science."
-msgstr "Здание, где писцы копировали, переписывали и переводили документы. Производит науку."
-
-msgid "A city building for trade. Building it unlocks the transition to the Antiquity era."
-msgstr "Городское здание торговли. Его постройка открывает возможность перехода в эпоху Античности."
-
-msgid "A collection of written works, where scholars produce science."
-msgstr "Собрание письменных трудов, где учёные производят Науку."
-
-msgid "A leveled road for carts. Three times the load of a trail."
-msgstr "Ровная дорога для телег. Втрое больше, чем везёт тропка."
-
-msgid "A long shed for twisting ropes and cables."
-msgstr "Длинное помещение для свивания канатов и тросов."
-
-msgid "A loom for weaving cloth out of yarn."
-msgstr "Ткацкий станок для производства тканей из нитей."
-
-msgid "A mill that uses draft animals to turn the millstones."
-msgstr "Мельница, использующая тягловых животных для вращения жерновов."
-
-msgid "A mill that uses water to set the millstones in motion."
-msgstr "Мельница, использующая воду для приведения в движение жернова."
-
-msgid "A plow yoked to oxen made it possible to work heavy soils and raised yields."
-msgstr "Плуг, запряжённый волами, позволил обрабатывать тяжёлые почвы и поднял урожайность."
-
-msgid "A protoscience of attempts to turn base metals into gold."
-msgstr "Протонаука о попытках превращения неблагородных металлов в золото."
-
-msgid "A pseudo-profession that covers the whole population of the city, including employed citizens."
-msgstr "Псевдо-профессия: охватывает всё население города, включая занятых жителей."
-
 msgid "A range is shown because the goods in the group have different base prices."
 msgstr "Диапазон — потому что у товаров группы разные базовые цены."
 
@@ -461,9 +410,6 @@ msgstr "Ссылка на %s присутствует в %s %s, поле %s."
 
 msgid "A road to the hex already exists"
 msgstr "К гексу уже проложена дорога"
-
-msgid "A simple footpath worn into the ground. Cheap, but it carries very little."
-msgstr "Простая тропа, протоптанная в земле. Дёшево, но мало что везёт."
 
 msgid "A technology is being researched"
 msgstr "Изучается технология"
@@ -483,140 +429,11 @@ msgstr "Добавлено 100 еды"
 msgid "Advance requirement met. Click to advance to the next era."
 msgstr "Условие перехода выполнено. Нажмите, чтобы перейти в следующую эпоху."
 
-msgid "Agave"
-msgstr "Агава"
-
-msgid "Alabaster"
-msgstr "Алебастр"
-
-msgid "Alchemist's House"
-msgstr "Дом алхимика"
-
-msgid "Alchemy"
-msgstr "Алхимия"
-
-msgid "Alcohol"
-msgstr "Алкоголь"
-
-msgid "All Citizens"
-msgstr "Все жители"
-
 msgid "Allow consumption on the domestic market"
 msgstr "Разрешить потребление на внутреннем рынке"
 
-msgid "Allows scouts to explore areas in the fog of war."
-msgstr "Даёт возможность разведчикам исследовать области в тумане войны."
-
-msgid "Allows you to build a dock and fishing boats."
-msgstr "Даёт возможность строить пристань и рыбацкие лодки."
-
-msgid "Allows you to build canals to bring water to remote areas."
-msgstr "Позволяет строить каналы для обеспечения водой отдаленных областей."
-
-msgid "Allows you to build farms."
-msgstr "Позволяет строить фермы."
-
-msgid "Allows you to build forest plots (logging) and the carpenter's workshop (timber → planks)."
-msgstr "Даёт возможность строить лесную делянку (добыча древесины) и плотницкую мастерскую (древесина → доски)."
-
-msgid "Allows you to build libraries."
-msgstr "Дает возможность строить библиотеки."
-
-msgid "Allows you to build mines."
-msgstr "Даёт возможность строить шахты."
-
-msgid "Allows you to build pastures."
-msgstr "Даёт возможность строить пастбища."
-
-msgid "Allows you to build scriptoriums."
-msgstr "Даёт возможность строить скриптории."
-
-msgid "Allows you to build the Market city building."
-msgstr "Даёт возможность строить городское здание Рынок."
-
-msgid "Allows you to build the alchemist's house."
-msgstr "Даёт возможность строить дом алхимика."
-
-msgid "Allows you to build the apiary."
-msgstr "Даёт возможность строить пасеку."
-
-msgid "Allows you to build the brewer's house. Unlocks recipes for brewing beer, pulque and sake."
-msgstr "Даёт возможность строить дом варщика. Открывает рецепты варки пива, пульке и саке."
-
-msgid "Allows you to build the clay pit and the pottery workshop."
-msgstr "Даёт возможность строить глиняную яму и гончарную мастерскую."
-
-msgid "Allows you to build the dairy: raw milk → cheese."
-msgstr "Даёт возможность строить сыроварню: сырое молоко → сыр."
-
-msgid "Allows you to build the glassmaker's house: sand and soda → glass."
-msgstr "Даёт возможность строить дом стеклодела: песок и сода → стекло."
-
-msgid "Allows you to build the hand oil press: seeds, fruits and other parts of oil crops → vegetable oil."
-msgstr "Даёт возможность строить ручную маслодавку: семена, плоды и прочие части масличных культур → растительное масло."
-
-msgid "Allows you to build the lime kilns: limestone → lime."
-msgstr "Даёт возможность строить печи для обжига известняка: известняк → известь."
-
-msgid "Allows you to build the paper workshop.\nAllows you to produce paper from mulberry, hemp and ramie with the help of lime."
-msgstr "Даёт возможность строить бумажную мастерскую.\nПозволяет производить бумагу из тутовника, конопли и рами с использованием извести."
-
-msgid "Allows you to build the quarry and the mason's workshop."
-msgstr "Даёт возможность строить каменоломню и каменотёсную мастерскую."
-
-msgid "Allows you to build the quarry for soda extraction."
-msgstr "Даёт возможность строить строить карьер для добычи соды."
-
-msgid "Allows you to build the ropemaker's house: fibers → ropes."
-msgstr "Даёт возможность строить дом канатчика: волокна → верёвки."
-
-msgid "Allows you to build the silkmaker's house: cocoons → silk."
-msgstr "Даёт возможность строить дом шелкопряда: коконы → шёлк."
-
-msgid "Allows you to build the smelter and smelt metal out of ore."
-msgstr "Даёт возможность строить плавильную печь и плавить металл из руды."
-
-msgid "Allows you to build the soapmaker's house: vegetable oil and soda → soap."
-msgstr "Даёт возможность строить дом мыловара: растительное масло и сода → мыло."
-
-msgid "Allows you to build the tanner's house: hides → leather."
-msgstr "Даёт возможность строить дом кожевника: шкуры → кожа."
-
-msgid "Allows you to build the tar pit and the tar distillery: bitumen → tar."
-msgstr "Даёт возможность строить смоляную яму, а также смолокурню: битум → смола."
-
-msgid "Allows you to build the vineyard."
-msgstr "Даёт возможность строить виноградник."
-
-msgid "Allows you to build the weaver's house: various materials → clothes."
-msgstr "Даёт возможность строить дом ткача: различные материалы → одежда."
-
-msgid "Allows you to build the winemaker's house: grapes → wine."
-msgstr "Даёт возможность строить дом винодела: виноград → вино."
-
-msgid "Allows you to extract various dyes from organic and inorganic materials."
-msgstr "Позволяет добывать различные красители из органических и неорганических материалов."
-
-msgid "Alpacas"
-msgstr "Альпаки"
-
 msgid "Already built sections (%d) will stay on the map."
 msgstr "Уже построенные участки (%d) останутся на карте."
-
-msgid "Amaranth"
-msgstr "Амарант"
-
-msgid "Ancient"
-msgstr "Древняя"
-
-msgid "Ancient civilizations could count, but only now has knowledge moved from simple recipes to strict proofs. Geometry and abstract calculation let people not just watch the world but compute it: from the shape of a wheel's teeth to the motion of the stars."
-msgstr "Древние цивилизации умели считать, но именно сейчас знания перешли от простых рецептов к строгим доказательствам. Геометрия и абстрактные вычисления позволили не просто наблюдать за миром, а рассчитывать его: от формы зубьев колеса до движения звёзд."
-
-msgid "Animal Husbandry"
-msgstr "Животноводство"
-
-msgid "Animal Mill"
-msgstr "Мельница с животной тягой"
 
 msgid "Another town stands here"
 msgstr "Здесь стоит чужой городок"
@@ -624,44 +441,17 @@ msgstr "Здесь стоит чужой городок"
 msgid "Another town stands here — cannot build"
 msgstr "Здесь стоит чужой городок — нельзя строить"
 
-msgid "Antimony"
-msgstr "Сурьма"
-
-msgid "Antimony Ore"
-msgstr "Сурьмяная руда"
-
-msgid "Antiquity"
-msgstr "Античность"
-
-msgid "Apiary"
-msgstr "Пасека"
-
 msgid "Area not scouted — information unavailable.\n\nTerrain, resources and improvements become known after scouting."
 msgstr "Область не разведана — информация недоступна.\n\nМестность, ресурсы и улучшения станут известны после разведки."
 
-msgid "Aromatic Plants"
-msgstr "Парфюмерные растения"
-
-msgid "Arsenic"
-msgstr "Мышьяк"
-
-msgid "Arsenic Ore"
-msgstr "Мышьяковая руда"
-
 msgid "As long as the group has no goods in storage there is nothing to buy — no income."
 msgstr "Пока на складе нет товара этой группы, покупать нечего — дохода не будет."
-
-msgid "Asphalt Lake"
-msgstr "Асфальтовое озеро"
 
 msgid "Assign a worker to the improvement"
 msgstr "Назначить рабочего на улучшение"
 
 msgid "Audio"
 msgstr "Аудио"
-
-msgid "Auxiliary Crops"
-msgstr "Вспомогательные культуры"
 
 msgid "Available buildings:"
 msgstr "Доступные постройки:"
@@ -675,113 +465,8 @@ msgstr "Доступный труд: %.0f/сек (%d жителей)"
 msgid "Back"
 msgstr "Назад"
 
-msgid "Bakery"
-msgstr "Пекарня"
-
-msgid "Bakes bread from flour, the staple of the city diet."
-msgstr "Печёт хлеб из муки — основу рациона города."
-
-msgid "Banteng"
-msgstr "Бантенги"
-
-msgid "Barley"
-msgstr "Ячмень"
-
-msgid "Basalt"
-msgstr "Базальт"
-
 msgid "Base: %.1f/sec"
 msgstr "База: %.1f/сек"
-
-msgid "Beach"
-msgstr "Пляж"
-
-msgid "Beans"
-msgstr "Фасоль"
-
-msgid "Beekeeper"
-msgstr "Пчеловод"
-
-msgid "Beekeeping"
-msgstr "Пчеловодство"
-
-msgid "Beer"
-msgstr "Пиво"
-
-msgid "Bees"
-msgstr "Пчёлы"
-
-msgid "Best quality"
-msgstr "Лучшее качество"
-
-msgid "Bison"
-msgstr "Бизоны"
-
-msgid "Bitumen"
-msgstr "Битум"
-
-msgid "Bitumen Extraction"
-msgstr "Добыча битума"
-
-msgid "Bitumen became an important material for waterproofing, and for making glue and fuel."
-msgstr "Битум стал важным материалом для водонепроницаемого покрытия, а также для производства клея и топлива."
-
-msgid "Blacksmith"
-msgstr "Кузнец"
-
-msgid "Blacksmiths forge metal tools and goods here."
-msgstr "Кузнецы куют здесь металлические инструменты и изделия."
-
-msgid "Bloomery"
-msgstr "Сыродутная печь"
-
-msgid "Boats"
-msgstr "Лодки"
-
-msgid "Bread"
-msgstr "Хлеб"
-
-msgid "Brewer's House"
-msgstr "Дом варщика"
-
-msgid "Brews beer from grain."
-msgstr "Варит пиво из зерновых культур"
-
-msgid "Brews mead from honey."
-msgstr "Варит медовый напиток из мёда"
-
-msgid "Brews pulque from agave."
-msgstr "Варит пульке из агавы"
-
-msgid "Brews sake from rice."
-msgstr "Варит саке из риса"
-
-msgid "Brews various low-alcohol drinks by fermentation."
-msgstr "Варка различных слабоалкогольных напитков путём ферментации."
-
-msgid "Bricks"
-msgstr "Кирпичи"
-
-msgid "Bronze"
-msgstr "Бронза"
-
-msgid "Bronze Alloys"
-msgstr "Бронзовые сплавы"
-
-msgid "Bronze Jewelry"
-msgstr "Бронзовые украшения"
-
-msgid "Bronze Tools"
-msgstr "Бронзовые инструменты"
-
-msgid "Bronze Weapons"
-msgstr "Бронзовое оружие"
-
-msgid "Buckwheat"
-msgstr "Гречиха"
-
-msgid "Buffalo"
-msgstr "Буйволы"
 
 msgid "Build"
 msgstr "Построить"
@@ -801,9 +486,6 @@ msgstr "Построить %s — заготавливает древесину 
 msgid "Build %s — unlocks the water resources of this water body"
 msgstr "Построить %s — откроет водные ресурсы этого водоёма"
 
-msgid "Build Road"
-msgstr "Построить дорогу"
-
 msgid "Build a road from the city to the town%s — unlocks trade"
 msgstr "Построить дорогу от города до городка%s — откроет торговлю"
 
@@ -818,12 +500,6 @@ msgstr "Здание"
 
 msgid "Building %d%s"
 msgstr "Здание %d%s"
-
-msgid "Building Materials"
-msgstr "Стройматериалы"
-
-msgid "Building Stone"
-msgstr "Строительный камень"
 
 msgid "Building not found"
 msgstr "Здание не найдено"
@@ -846,9 +522,6 @@ msgstr "Зданий: %d"
 msgid "Buildings: 0"
 msgstr "Зданий: 0"
 
-msgid "Builds a boat from reeds."
-msgstr "Создает лодку из тростника"
-
 msgid "Built buildings"
 msgstr "Построенные здания"
 
@@ -857,21 +530,6 @@ msgstr "Построено мгновенно: %s"
 
 msgid "Built: %s"
 msgstr "Построено: %s"
-
-msgid "Burning limestone in kilns made lime possible, a key building material and an ingredient for making cement."
-msgstr "Обжиг известняка в печах позволил получать известь, важный строительный материал и компонент для производства цемента."
-
-msgid "Burns limestone into lime."
-msgstr "Обжигает известняк в известь"
-
-msgid "Burns wood in a sealed kiln to produce charcoal."
-msgstr "Обжиг древесины в закрытой печи для получения древесного угля."
-
-msgid "Burns wood into charcoal."
-msgstr "Обжигает древесину в древесный уголь."
-
-msgid "Butchers livestock for meat, hides and bones to feed the city's crafts."
-msgstr "Разделка скота: мясо, шкуры и кости для городских ремёсел."
 
 msgid "Buyers of the resource:"
 msgstr "Покупают ресурс:"
@@ -884,30 +542,6 @@ msgstr "Покупка"
 
 msgid "By buyers (actual):"
 msgstr "По покупателям (факт):"
-
-msgid "By mixing fat with lye, people got soap, the first step toward hygiene and medicine."
-msgstr "Смешивая жир со щёлоком, люди получали мыло — первый шаг к гигиене и медицине."
-
-msgid "Calendar"
-msgstr "Календарь"
-
-msgid "Camels"
-msgstr "Верблюды"
-
-msgid "Campeche"
-msgstr "Кампеш"
-
-msgid "Campeche Tree"
-msgstr "Кампешевое дерево"
-
-msgid "Campeche Wood"
-msgstr "Древесина кампешевого дерева"
-
-msgid "Canals"
-msgstr "Каналы"
-
-msgid "Canals let people manage water flows, improving irrigation and opening new routes for trade."
-msgstr "Каналы позволили людям управлять водными потоками, улучшая ирригацию и создавая новые пути для торговли."
 
 msgid "Cancel"
 msgstr "Отмена"
@@ -933,9 +567,6 @@ msgstr "Отменить стройку? Потраченный труд сго�
 msgid "Cancel upgrade"
 msgstr "Отменить апгрейд"
 
-msgid "Canihua"
-msgstr "Каньива"
-
 msgid "Cannot build a road"
 msgstr "Дорогу построить нельзя"
 
@@ -960,65 +591,8 @@ msgstr "Нельзя строить на воде"
 msgid "Cannot claim: another town's territory"
 msgstr "Освоить нельзя: территория чужого городка"
 
-msgid "Carmine"
-msgstr "Кармин"
-
-msgid "Carpenter's Workshop"
-msgstr "Плотницкая мастерская"
-
-msgid "Cart Road"
-msgstr "Тележная дорога"
-
-msgid "Carthamin"
-msgstr "Картамин"
-
-msgid "Cartography"
-msgstr "Картография"
-
-msgid "Cassava"
-msgstr "Кассава"
-
-msgid "Cattle"
-msgstr "Коровы"
-
-msgid "Ceramics"
-msgstr "Гончарное дело"
-
-msgid "Chamomile"
-msgstr "Ромашки"
-
-msgid "Charcoal"
-msgstr "Древесный уголь"
-
-msgid "Charcoal Burner"
-msgstr "Углежог"
-
-msgid "Charcoal Kiln"
-msgstr "Печь для обжига древесного угля"
-
-msgid "Cheese"
-msgstr "Сыр"
-
-msgid "Cheese Making"
-msgstr "Сыроварение"
-
-msgid "Cheese kept milk for months, becoming an important winter supply."
-msgstr "Сыр позволял сохранять молоко на долгие месяцы, становясь важным запасом на зиму."
-
-msgid "Chickens"
-msgstr "Куры"
-
-msgid "Chickpeas"
-msgstr "Нут"
-
 msgid "Choose a city name"
 msgstr "Выберите название города"
-
-msgid "Cinnabar"
-msgstr "Киноварь"
-
-msgid "Cinnabar (Ore)"
-msgstr "Киноварь (руда)"
 
 msgid "City"
 msgstr "Город"
@@ -1056,56 +630,20 @@ msgstr "Освоение чанков"
 msgid "Claiming land started (%d work)"
 msgstr "Освоение территории начато (%d труда)"
 
-msgid "Classical"
-msgstr "Классическая"
-
-msgid "Clay"
-msgstr "Глина"
-
-msgid "Clay Pit"
-msgstr "Глиняная яма"
-
-msgid "Clay Tablets"
-msgstr "Глиняные таблички"
-
-msgid "Clay tablets became the first carrier of information, letting people pass knowledge across the centuries."
-msgstr "Глиняные таблички стали первым носителем информации, позволив людям передавать знания через века."
-
-msgid "Clear Forest"
-msgstr "Вырубка леса"
-
 msgid "Click — building control panel"
 msgstr "Клик — панель управления зданием"
 
 msgid "Close"
 msgstr "Закрыть"
 
-msgid "Cloth Clothes"
-msgstr "Тканевая одежда"
-
-msgid "Clothes"
-msgstr "Одежда"
-
 msgid "Coal"
 msgstr "Уголь"
-
-msgid "Cochineal"
-msgstr "Кошениль"
-
-msgid "Coffee"
-msgstr "Кофе"
-
-msgid "Coffee Beans"
-msgstr "Кофейные зёрна"
 
 msgid "Collapse panel"
 msgstr "Свернуть панель"
 
 msgid "Collected %d %s!"
 msgstr "Собрано %d %s!"
-
-msgid "Common"
-msgstr "Обычное"
 
 msgid "Completed: %s"
 msgstr "Завершено: %s"
@@ -1118,9 +656,6 @@ msgstr "Поздравляем, ваш город достиг следующе�
 
 msgid "Construction"
 msgstr "Строительство"
-
-msgid "Construction Materials"
-msgstr "Строительные материалы"
 
 msgid "Construction cancelled"
 msgstr "Строительство отменено"
@@ -1161,9 +696,6 @@ msgstr "Строительство:"
 msgid "Construction: %d work, %.0f sec.\n"
 msgstr "Строительство: %d труда, %.0f сек.\n"
 
-msgid "Construction: -10% labor cost"
-msgstr "Строительство: -10% к затратам труда"
-
 msgid "Consumes:"
 msgstr "Потребляет:"
 
@@ -1191,41 +723,8 @@ msgstr "Правило потребления ссылается на несущ
 msgid "Consumption rule references a nonexistent product"
 msgstr "Правило потребления ссылается на несуществующий продукт"
 
-msgid "Contemporary"
-msgstr "Новейшее время"
-
-msgid "Copies and studies texts in the library and scriptorium, adding to the city's science."
-msgstr "Переписывает и исследует тексты в библиотеке и скриптории, пополняя пул науки."
-
-msgid "Copper"
-msgstr "Медь"
-
-msgid "Copper (from copper ore)"
-msgstr "Медь (из медной руды)"
-
-msgid "Copper (from malachite)"
-msgstr "Медь (из малахита)"
-
-msgid "Copper Jewelry"
-msgstr "Медные украшения"
-
-msgid "Copper Nugget"
-msgstr "Медный самородок"
-
-msgid "Copper Ore"
-msgstr "Медная руда"
-
-msgid "Copper Tools"
-msgstr "Медные инструменты"
-
-msgid "Copper Weapons"
-msgstr "Медное оружие"
-
 msgid "Copy the list"
 msgstr "Скопировать список"
-
-msgid "Corn"
-msgstr "Кукуруза"
 
 msgid "Cost:"
 msgstr "Стоимость:"
@@ -1233,65 +732,23 @@ msgstr "Стоимость:"
 msgid "Cost: %d work"
 msgstr "Стоимость: %d труда"
 
-msgid "Cotton"
-msgstr "Хлопок"
-
 msgid "Could not find a path to the town"
 msgstr "Не удалось найти путь до городка"
-
-msgid "Cowpea"
-msgstr "Вигна"
 
 msgid "Crafting \"%s\": %s"
 msgstr "Крафт «%s»: %s"
 
-msgid "Creates clay pots for storage."
-msgstr "Создаёт глиняную посуду для хранения"
-
-msgid "Creates clay tablets for writing."
-msgstr "Создаёт глиняные таблички для записей"
-
-msgid "Cultivates the vineyard and gathers the harvest."
-msgstr "Возделывает виноградник, собирает урожай."
-
 msgid "Culture:"
 msgstr "Культура:"
 
-msgid "Cuts stone into plates, bowls, and cups."
-msgstr "Вырезает из камня тарелки, миски и чашки."
-
-msgid "Cuttlefish"
-msgstr "Каракатица"
-
 msgid "Cyrillic"
 msgstr "кириллица"
-
-msgid "Dairy"
-msgstr "Сыроварня"
-
-msgid "Dairy Animals"
-msgstr "Молочные животные"
-
-msgid "Dates"
-msgstr "Финики"
 
 msgid "Debug menu"
 msgstr "Дебаг-меню"
 
 msgid "Debug: whole map revealed and inside the Influence Ring (%d×%d)"
 msgstr "Дебаг: вся карта открыта и в Кольце Влияния (%d×%d)"
-
-msgid "Deer"
-msgstr "Олени"
-
-msgid "Demolish Improvement"
-msgstr "Снести улучшение"
-
-msgid "Digs and sorts clay for firing."
-msgstr "Копает и сортирует глину для обжига."
-
-msgid "Digs ore and minerals out of the ground."
-msgstr "Добывает руду и минералы под землёй."
 
 msgid "Disallowed characters in an identifier"
 msgstr "Недопустимые символы в идентификаторе"
@@ -1302,59 +759,8 @@ msgstr "Разнообразие: %d подгрупп"
 msgid "Domestic trade"
 msgstr "Внутренняя торговля"
 
-msgid "Draft Animals"
-msgstr "Тягловые животные"
-
-msgid "Draft animals let people harness animal strength for heavy work, greatly raising output and efficiency in farming and construction."
-msgstr "Тягловые животные позволили людям использовать силу животных для выполнения тяжелой работы, что значительно увеличило производительность и эффективность в сельском хозяйстве и строительстве."
-
-msgid "Drain Water"
-msgstr "Осушение болот"
-
-msgid "Dries and cures various goods."
-msgstr "Сушка и завяливание различных продуктов."
-
-msgid "Dries and roasts coffee beans."
-msgstr "Сушит и обжаривает кофейные зерна"
-
-msgid "Dries, rolls, withers and ferments tea leaves."
-msgstr "Сушит, скручивает, вялит и ферментирует чайные листья"
-
-msgid "Drinks"
-msgstr "Напитки"
-
-msgid "Dryer's House"
-msgstr "Дом сушильщика"
-
-msgid "Ducks"
-msgstr "Утки"
-
-msgid "Dyeing"
-msgstr "Красильное дело"
-
-msgid "Dyeing cloth and pottery with various dyes is one of the oldest crafts."
-msgstr "Окрашивание тканей и посуды с помощью различных красителей - древнейшее ремесло."
-
-msgid "Dyer's House"
-msgstr "Дом красильщика"
-
-msgid "Dyes"
-msgstr "Красители"
-
-msgid "Eggs"
-msgstr "Яйца"
-
-msgid "Empty"
-msgstr "Пусто"
-
-msgid "Equipment"
-msgstr "Оборудование"
-
 msgid "Errors in the game data"
 msgstr "Ошибки в игровых данных"
-
-msgid "Exceptional"
-msgstr "Исключительное"
 
 msgid "Exit game"
 msgstr "Выйти из игры"
@@ -1380,47 +786,14 @@ msgstr "Дополнительные материалы:"
 msgid "Extra output:"
 msgstr "Дополнительный выход:"
 
-msgid "Extracts soda from natural deposits."
-msgstr "Добывает соду из природных отложений."
-
-msgid "Extracts stone from open quarries."
-msgstr "Добывает камень в открытых карьерах."
-
 msgid "Failed to build the road"
 msgstr "Дорогу построить не удалось"
 
 msgid "Failed to build the road: %s"
 msgstr "Дорогу построить не удалось: %s"
 
-msgid "Farm"
-msgstr "Ферма"
-
-msgid "Farmer"
-msgstr "Фермер"
-
-msgid "Farming"
-msgstr "Растениеводство"
-
-msgid "Farms: +50% production"
-msgstr "Фермы: +50% к производству"
-
-msgid "Feathers"
-msgstr "Перья"
-
 msgid "Feed consumption: %d per cycle"
 msgstr "Потребляет корма: %d за цикл"
-
-msgid "Fells trees in forest plots and hauls in the timber."
-msgstr "Рубит деревья на лесной делянке и заготавливает древесину."
-
-msgid "Fermentation"
-msgstr "Ферментация"
-
-msgid "Fermentation let people turn grain and fruit into alcohol, drunk in rituals and in daily life."
-msgstr "Ферментация позволила людям превращать зерно и фрукты в алкогольные напитки, которые использовались в ритуалах и повседневной жизни."
-
-msgid "Figs"
-msgstr "Инжир"
 
 msgid "File: %s"
 msgstr "Файл: %s"
@@ -1430,54 +803,6 @@ msgstr "Заполненность: %d%% (полное через %.0f сек)"
 
 msgid "Fill time: %.0f sec"
 msgstr "Время заполнения: %.0f сек"
-
-msgid "Fine"
-msgstr "Хорошее"
-
-msgid "Fired clay became humanity's first artificial material, letting people store grain and water."
-msgstr "Обожжённая глина стала первым искусственным материалом человечества, позволив хранить зерно и воду."
-
-msgid "Fires clay into building bricks."
-msgstr "Обжигает глину в строительные кирпичи"
-
-msgid "Fish"
-msgstr "Рыба"
-
-msgid "Fisherman"
-msgstr "Рыбак"
-
-msgid "Fishes from boats on any water body with a dock."
-msgstr "Ловит рыбу с лодок на водоёмах с пристанью."
-
-msgid "Fishing"
-msgstr "Рыболовство"
-
-msgid "Fishing Boats"
-msgstr "Рыбацкие лодки"
-
-msgid "Fishing is one of humanity's oldest trades, and the first way to take food from the water."
-msgstr "Рыболовство — одно из древнейших занятий человека, которое позволило получать пищу из воды."
-
-msgid "Flax"
-msgstr "Лён"
-
-msgid "Flour"
-msgstr "Мука"
-
-msgid "Flour (by hand)"
-msgstr "Мука (вручную)"
-
-msgid "Flour (with a water wheel)"
-msgstr "Мука (с помощью водяного колеса)"
-
-msgid "Flour (with draft animals)"
-msgstr "Мука (с помощью тягловых животных)"
-
-msgid "Fodder"
-msgstr "Корм"
-
-msgid "Food"
-msgstr "Еда"
 
 msgid "Food available: 0"
 msgstr "Еды доступно: 0"
@@ -1494,26 +819,8 @@ msgstr "Еда: %d [+%d%s / -%d%s]"
 msgid "Food: 0"
 msgstr "Еда: 0"
 
-msgid "For centuries potters watched sand and alkali turn in their kilns into a shining crust of glass. Then one day someone had the idea of doing it on purpose. Glassmaking became more than an accident: it became a deliberate craft. The new material changed the world: beads, amulets, and later tableware and windows. Transparency became a symbol of enlightenment."
-msgstr "Веками гончары наблюдали, как песок и щелочь в их печах превращаются в блестящую стеклянную корку. Однажды кому-то пришло в голову сделать это намеренно. Стеклоделие стало не просто случайностью, а осознанным ремеслом. Новый материал изменил мир: бусы, амулеты, а позже — посуда и окна. Прозрачность стала символом просвещения."
-
-msgid "Forage Resource"
-msgstr "Собрать ресурс"
-
-msgid "Foraged Food"
-msgstr "Дикоросы"
-
 msgid "Foreign trade"
 msgstr "Внешняя торговля"
-
-msgid "Forest"
-msgstr "Лес"
-
-msgid "Forge"
-msgstr "Кузница"
-
-msgid "Forges tools, weapons and ornaments from metal."
-msgstr "Кует инструменты, оружие и украшения из металла."
 
 msgid "Found %d problems. Some recipes, resources and technologies may work incorrectly — check the files in the res://data folder."
 msgstr "Найдено проблем: %d. Часть рецептов, ресурсов и технологий может работать некорректно — проверьте файлы в папке res://data."
@@ -1524,29 +831,8 @@ msgstr "Доступ к пресной воде: прямой"
 msgid "Fresh water access: via chain"
 msgstr "Доступ к пресной воде: по цепочке"
 
-msgid "Fresh water passes through in a chain (up to 3 tiles)"
-msgstr "Передача пресной воды по цепочке (до 3 гексов)"
-
-msgid "Fresh water passes through in a chain (up to 4 tiles)"
-msgstr "Передача пресной воды по цепочке (до 4 гексов)"
-
-msgid "Freshwater Lake"
-msgstr "Пресноводное озеро"
-
-msgid "Fruit Wine"
-msgstr "Фруктовое вино"
-
-msgid "Fruits"
-msgstr "Фрукты"
-
 msgid "Fullwidth Latin"
 msgstr "полноширинная латинская"
-
-msgid "Fur Animals"
-msgstr "Пушные животные"
-
-msgid "Fuses glass and blows glassware."
-msgstr "Варка стекла и выдувание стеклянных изделий."
 
 msgid "Game"
 msgstr "Игра"
@@ -1554,86 +840,17 @@ msgstr "Игра"
 msgid "Game saved."
 msgstr "Игра сохранена."
 
-msgid "Gathers and boils down natural tar."
-msgstr "Собирает и выпаривает природную смолу."
-
-msgid "Geese"
-msgstr "Гуси"
-
-msgid "Glass Jewelry"
-msgstr "Стеклянные украшения"
-
-msgid "Glassmaker"
-msgstr "Стеклодел"
-
-msgid "Glassmaker's House"
-msgstr "Дом стеклодела"
-
-msgid "Glassmaking"
-msgstr "Стеклоделие"
-
-msgid "Glassware"
-msgstr "Стеклянная посуда"
-
 msgid "Go to the technology list"
 msgstr "Перейти к списку технологий"
-
-msgid "Goats"
-msgstr "Козы"
-
-msgid "Gold"
-msgstr "Золото"
-
-msgid "Gold Jewelry"
-msgstr "Золотые украшения"
-
-msgid "Gold Nugget"
-msgstr "Золотой самородок"
-
-msgid "Gold Ore"
-msgstr "Золотая руда"
-
-msgid "Granite"
-msgstr "Гранит"
-
-msgid "Grape Wine"
-msgstr "Виноградное вино"
-
-msgid "Grapes"
-msgstr "Виноград"
 
 msgid "Greek"
 msgstr "греческая"
 
-msgid "Grows technical and spice crops."
-msgstr "Возделывает технические и пряные культуры."
-
-msgid "Guineafowl"
-msgstr "Цесарки"
-
-msgid "Hand Mill"
-msgstr "Ручная мельница"
-
-msgid "Hand Oil Press"
-msgstr "Ручная маслодавка"
-
-msgid "Handles every step of making tar and tarring materials."
-msgstr "Осуществление всех операций по производству смолы и смолению материалов."
-
 msgid "Harbor"
 msgstr "Пристань"
 
-msgid "Hemp"
-msgstr "Конопля"
-
-msgid "Henna"
-msgstr "Хна"
-
 msgid "Herd: full (100%)"
 msgstr "Поголовье: полное (100%)"
-
-msgid "Herder"
-msgstr "Скотовод"
 
 msgid "Hex does not exist"
 msgstr "Гекс не существует"
@@ -1650,23 +867,8 @@ msgstr "Гекс вне Кольца Влияния"
 msgid "Hex outside the map"
 msgstr "Гекс вне карты"
 
-msgid "Hide"
-msgstr "Шкура"
-
-msgid "Hills"
-msgstr "Холмы"
-
 msgid "Historical background:"
 msgstr "Историческая справка:"
-
-msgid "Honey"
-msgstr "Мёд"
-
-msgid "Horses"
-msgstr "Лошади"
-
-msgid "Household Items"
-msgstr "Предметы быта"
 
 msgid "Icon of group \"%s\" taken from goods \"%s\""
 msgstr "Иконка группы «%s» взята у товара «%s»"
@@ -1695,23 +897,11 @@ msgstr "Улучшение: "
 msgid "Improvement: %d work"
 msgstr "Улучшение: %d труда"
 
-msgid "In scriptoriums scribes copied, translated, rewrote and recensioned texts on administration, the worship of the gods, magic and the curing of disease."
-msgstr "В скрипториях писцы копировали, переводили, переписывали и перекомпилировали тексты, связанные с управлением, культом божеств, магией и лечением болезней."
-
 msgid "Income to the treasury over %s sec: %s coins/sec"
 msgstr "Доход в казну за %s сек: %s монет/сек"
 
 msgid "Income:"
 msgstr "Доход:"
-
-msgid "Indigo"
-msgstr "Индиго"
-
-msgid "Indigofera"
-msgstr "Индигофера"
-
-msgid "Indigofera Leaves"
-msgstr "Листья индигоферы"
 
 msgid "Inside another town's influence ring"
 msgstr "В кольце влияния чужого городка"
@@ -1719,41 +909,11 @@ msgstr "В кольце влияния чужого городка"
 msgid "Interface"
 msgstr "Интерфейс"
 
-msgid "Iron"
-msgstr "Железо"
-
-msgid "Iron Jewelry"
-msgstr "Железные украшения"
-
-msgid "Iron Ore"
-msgstr "Железная руда"
-
-msgid "Iron Processing"
-msgstr "Обработка железа"
-
-msgid "Iron Tools"
-msgstr "Железные инструменты"
-
-msgid "Iron Weapons"
-msgstr "Железное оружие"
-
-msgid "Irrigation"
-msgstr "Ирригация"
-
 msgid "Irrigation Canal"
 msgstr "Ирригационный канал"
 
 msgid "It seems your region has no %s."
 msgstr "Похоже, в вашем регионе %s отсутствует."
-
-msgid "Jeweler's House"
-msgstr "Дом ювелира"
-
-msgid "Jewelry"
-msgstr "Ювелирное дело"
-
-msgid "Jute"
-msgstr "Джут"
 
 msgid "Language"
 msgstr "Язык"
@@ -1764,188 +924,11 @@ msgstr "Язык интерфейса и игровых данных. Пункт
 msgid "Language of the system"
 msgstr "Язык системы"
 
-msgid "Lawsonia"
-msgstr "Лавсония"
-
-msgid "Lawsonia Leaves"
-msgstr "Листья лавсонии"
-
-msgid "Lazurite"
-msgstr "Лазурит"
-
-msgid "Lazurite Jewelry"
-msgstr "Украшения из ляпис-лазури"
-
-msgid "Leather"
-msgstr "Кожа"
-
-msgid "Leather Clothes"
-msgstr "Кожаная одежда"
-
-msgid "Leatherworking"
-msgstr "Кожевенное дело"
-
 msgid "Left-click on a hex to place: %s"
 msgstr "Кликните левой кнопкой по гексу, чтобы разместить: %s"
 
-msgid "Lentils"
-msgstr "Чечевица"
-
-msgid "Library"
-msgstr "Библиотека"
-
-msgid "Lime"
-msgstr "Известь"
-
-msgid "Lime Kilns"
-msgstr "Печи для обжига извести"
-
-msgid "Limestone"
-msgstr "Известняк"
-
-msgid "Limestone Burning"
-msgstr "Обжиг известняка"
-
-msgid "Llamas"
-msgstr "Ламы"
-
 msgid "Load game"
 msgstr "Загрузить игру"
-
-msgid "Locals boast that the white crust along the shores of this lake has unusual properties — it foams and helps to wash clothes clean."
-msgstr "Местные жители хвастаются, что белый налёт по берегам этого озера обладает необычными свойствами — он пенится и помогает отстирывать одежду."
-
-msgid "Lumberjack"
-msgstr "Лесоруб"
-
-msgid "Luxury"
-msgstr "Роскошь"
-
-msgid "Maca"
-msgstr "Мака"
-
-msgid "Madder"
-msgstr "Марена"
-
-msgid "Madder Root"
-msgstr "Корень марены"
-
-msgid "Makes a batch of weapons to defend the city."
-msgstr "Создаёт партию оружия для защиты города"
-
-msgid "Makes a bronze alloy from copper/antimony/arsenic and tin."
-msgstr "Создаёт бронзовый сплав из меди/сурьмы/мышьяка и олова"
-
-msgid "Makes a dye (campeche) from campeche wood."
-msgstr "Создает краситель (кампеш) из древесины кампешевого дерева"
-
-msgid "Makes a dye (carmine) from cochineal."
-msgstr "Создает краситель (кармин) из кошенили"
-
-msgid "Makes a dye (carthamin) from safflower leaves."
-msgstr "Создает краситель (картамин) из листьев сафлора"
-
-msgid "Makes a dye (cinnabar) from ore."
-msgstr "Создает краситель (киноварь) из руды"
-
-msgid "Makes a dye (henna) from henna leaves."
-msgstr "Создает краситель (хну) из листьев лавсонии"
-
-msgid "Makes a dye (indigo) from indigo plant leaves."
-msgstr "Создает краситель (индиго) из листьев индигоферы"
-
-msgid "Makes a dye (madder) from madder roots."
-msgstr "Создает краситель (крапп) из корней марены"
-
-msgid "Makes a dye (malachite) from ore."
-msgstr "Создает краситель (малахит) из руды"
-
-msgid "Makes a dye (ochre) from iron ore."
-msgstr "Создает краситель (охру) из железной руды"
-
-msgid "Makes a dye (purple) from murex shells."
-msgstr "Создает краситель (пурпур) из мурексов"
-
-msgid "Makes a dye (sepia) from cuttlefish."
-msgstr "Создает краситель (сепию) из каракатиц"
-
-msgid "Makes a dye (ultramarine) from ore."
-msgstr "Создает краситель (ультрамарин) из руды"
-
-msgid "Makes a dye (woad) from woad leaves."
-msgstr "Создает краситель (вайду) из листьев вайды"
-
-msgid "Makes a set of tools for craftsmen."
-msgstr "Создаёт набор инструментов для ремесленников"
-
-msgid "Makes clay pots, bricks and tablets on the potter's wheel."
-msgstr "Изготовление глиняной посуды, кирпичей и табличек на гончарном круге."
-
-msgid "Makes iron out of ore."
-msgstr "Изготавливает железо из руды"
-
-msgid "Makes jewelry out of bronze."
-msgstr "Создаёт украшения из бронзы"
-
-msgid "Makes jewelry out of copper."
-msgstr "Создаёт украшения из меди"
-
-msgid "Makes jewelry out of gold."
-msgstr "Создаёт украшения из золота"
-
-msgid "Makes jewelry out of iron."
-msgstr "Создаёт украшения из железа"
-
-msgid "Makes jewelry out of lazurite."
-msgstr "Создаёт украшения из ляпис-лазури"
-
-msgid "Makes jewelry out of malachite."
-msgstr "Создаёт украшения из малахита"
-
-msgid "Makes jewelry out of nephrite."
-msgstr "Изготовление украшений из нефрита"
-
-msgid "Makes jewelry out of porphyry."
-msgstr "Изготовление украшений из порфира"
-
-msgid "Makes jewelry out of silver."
-msgstr "Создаёт украшения из серебра"
-
-msgid "Makes lime from limestone."
-msgstr "Производство извести из известняка."
-
-msgid "Makes paper from various plant fibers."
-msgstr "Создает бумагу из различных растительных волокон"
-
-msgid "Makes paper."
-msgstr "Изготовление бумаги."
-
-msgid "Makes soap from vegetable oil and soda."
-msgstr "Производство мыла из растительного масла и соды."
-
-msgid "Makes vinegar from alcohol."
-msgstr "Варит уксус из алкоголя"
-
-msgid "Makes wine from fruit."
-msgstr "Варит вино из фруктов"
-
-msgid "Makes wine from grapes."
-msgstr "Варит вино из винограда"
-
-msgid "Makes wooden tablets with a hollow filled with wax."
-msgstr "Создает деревянные таблички с углублением, в которое залит воск"
-
-msgid "Malachite"
-msgstr "Малахит"
-
-msgid "Malachite (Ore)"
-msgstr "Малахит (руда)"
-
-msgid "Malachite Jewelry"
-msgstr "Украшения из малахита"
-
-msgid "Managing water flows became the key to claiming new lands: irrigation did more than water the fields, it drained waterlogged ground and turned marshes into fertile plains."
-msgstr "Управление водными потоками стало ключом к освоению новых земель: ирригация позволяла не только поливать поля, но и осушать переувлажнённые участки, превращая болота в плодородные равнины."
 
 msgid "Map actions"
 msgstr "Действия на карте"
@@ -1959,116 +942,14 @@ msgstr "Перемещение карты у краёв окна"
 msgid "Map tooltip delay"
 msgstr "Задержка появления всплывающей подсказки на карте"
 
-msgid "Marble"
-msgstr "Мрамор"
-
-msgid "Market"
-msgstr "Рынок"
-
 msgid "Market ("
 msgstr "Рынок ("
-
-msgid "Marsh"
-msgstr "Марши"
-
-msgid "Mason's Workshop"
-msgstr "Мастерская каменотёса"
-
-msgid "Masonry"
-msgstr "Каменная кладка"
-
-msgid "Mastering metals revolutionized the crafts: copper tools were tougher than stone."
-msgstr "Освоение металлов произвело революцию в ремёслах: медные орудия были прочнее каменных."
-
-msgid "Materials"
-msgstr "Материалы"
-
-msgid "Mathematics"
-msgstr "Математика"
-
-msgid "Mead"
-msgstr "Медовый напиток"
-
-msgid "Mead Making"
-msgstr "Медоварение"
-
-msgid "Mead is the oldest alcohol, brewed from honey and water."
-msgstr "Медовый напиток — древнейший алкогольный напиток, который варили из мёда и воды."
-
-msgid "Meat"
-msgstr "Мясо"
-
-msgid "Meat Animals"
-msgstr "Мясные животные"
-
-msgid "Medicinal Plants"
-msgstr "Лекарственные растения"
-
-msgid "Medieval"
-msgstr "Средневековье"
 
 msgid "Menu"
 msgstr "Меню"
 
-msgid "Metallurgy"
-msgstr "Металлургия"
-
-msgid "Metals"
-msgstr "Металлы"
-
-msgid "Meteorite Iron"
-msgstr "Метеоритное железо"
-
-msgid "Millable Grains"
-msgstr "Зерновые культуры"
-
-msgid "Millet"
-msgstr "Просо"
-
-msgid "Mine"
-msgstr "Шахта"
-
-msgid "Miner"
-msgstr "Шахтёр"
-
-msgid "Minerals"
-msgstr "Минералы"
-
-msgid "Mining"
-msgstr "Горное дело"
-
 msgid "Missing: "
 msgstr "Не хватает: "
-
-msgid "Modern"
-msgstr "Новое время"
-
-msgid "Money"
-msgstr "Деньги"
-
-msgid "Mountains"
-msgstr "Горы"
-
-msgid "Mulberries"
-msgstr "Шелковица"
-
-msgid "Mulberry Bark"
-msgstr "Кора тутовника"
-
-msgid "Mulberry Tree"
-msgstr "Тутовое дерево"
-
-msgid "Murex"
-msgstr "Мурекс"
-
-msgid "Native Metals"
-msgstr "Самородные металлы"
-
-msgid "Nephrite"
-msgstr "Нефрит"
-
-msgid "Nephrite Jewelry"
-msgstr "Украшения из нефрита"
 
 msgid "New era"
 msgstr "Новая эпоха"
@@ -2133,9 +1014,6 @@ msgstr "Нет труда: лимит строек (число жителей) �
 msgid "Nobody consumes anything yet"
 msgstr "Пока никто ничего не потребляет"
 
-msgid "None"
-msgstr "Нет"
-
 msgid "Nonexistent product in a goods group"
 msgstr "В группе продуктов несуществующий продукт"
 
@@ -2156,30 +1034,6 @@ msgstr "Ок"
 
 msgid "ON"
 msgstr "вкл"
-
-msgid "Oasis"
-msgstr "Оазис"
-
-msgid "Oats"
-msgstr "Овёс"
-
-msgid "Oca"
-msgstr "Ока"
-
-msgid "Ochre"
-msgstr "Охра"
-
-msgid "Oil Crops"
-msgstr "Масличные культуры"
-
-msgid "Oil Making"
-msgstr "Маслоделие"
-
-msgid "Oil Plants"
-msgstr "Масличные растения"
-
-msgid "Olives"
-msgstr "Оливки"
 
 msgid "Once built, %s will produce:"
 msgstr "При постройке %s будет производить:"
@@ -2202,45 +1056,6 @@ msgstr "Перейти в интерфейс городка «%s»"
 msgid "Open town"
 msgstr "Открыть городок"
 
-msgid "Ornamental Plants"
-msgstr "Декоративные растения"
-
-msgid "Ostriches"
-msgstr "Страусы"
-
-msgid "Other"
-msgstr "Прочее"
-
-msgid "Other Seafood"
-msgstr "Прочие водные животные"
-
-msgid "Paper"
-msgstr "Бумага"
-
-msgid "Paper Fibers"
-msgstr "Волокна для бумаги"
-
-msgid "Paper Workshop"
-msgstr "Бумажная мастерская"
-
-msgid "Papyrus"
-msgstr "Папирус"
-
-msgid "Papyrus Workshop"
-msgstr "Мастерская по производству папируса"
-
-msgid "Parchment"
-msgstr "Пергамент"
-
-msgid "Parchment Workshop"
-msgstr "Пергаментная мастерская"
-
-msgid "Parchment became an important carrier of information in the ancient world."
-msgstr "Пергамент стал важным носителем информации в древнем мире."
-
-msgid "Pasture"
-msgstr "Пастбище"
-
 msgid "Pause"
 msgstr "Приостановить"
 
@@ -2259,68 +1074,11 @@ msgstr "Приостановить апгрейд"
 msgid "Paused"
 msgstr "Приостановлено"
 
-msgid "Peas"
-msgstr "Горох"
-
-msgid "People have tracked the turning of the seasons since the earliest times, but only now has the calendar become a standard tool of management: precise planning of sowing, pruning and harvest let plantations reach their full potential."
-msgstr "Хотя люди отслеживали смену сезонов с древнейших времён, именно сейчас календарь стал стандартизированным инструментом управления: точное планирование посева, обрезки и сбора урожая позволило плантациям раскрыть свой полный потенциал."
-
-msgid "People learned to alloy copper with tin to make bronze, a hard metal for tools and weapons. Bronze became a key material for crafts and warfare."
-msgstr "Люди научились сплавлять медь с оловом, получая бронзу — прочный металл для орудий и оружия. Бронза стала важным материалом для ремёсел и военного дела."
-
-msgid "People learned to draw stone and ore from the depths of the earth, opening a new era in tools."
-msgstr "Люди научились добывать камень и руду из недр земли, открыв новую эру в развитии орудий труда."
-
-msgid "People learned to find and use native metals, which occur in nature in pure form, with no need to smelt them out of ore."
-msgstr "Люди научились находить и использовать самородные металлы, которые встречаются в природе в чистом виде, без необходимости их выплавки из руды."
-
-msgid "People learned to tame bees for honey and wax, the only natural sweeteners and the stuff of candles."
-msgstr "Люди научились приручать пчёл, получая мёд и воск — единственные природные подсластители и материал для свечей."
-
-msgid "People noticed that the white crust on the shores of salt lakes cleanses and bleaches wonderfully. So began the extraction of soda, a valuable mineral without which neither glassmaking nor soapmaking is possible."
-msgstr "Люди заметили, что белый налёт на берегах солёных озёр отлично отстирывает и отбеливает. Так началась добыча соды — ценного минерала, без которого не обойтись ни в стеклоделии, ни в мыловарении."
-
-msgid "Perfect"
-msgstr "Превосходное"
-
-msgid "Pigeons"
-msgstr "Голуби"
-
-msgid "Pigs"
-msgstr "Свиньи"
-
-msgid "Plain"
-msgstr "Равнина"
-
 msgid "Plan: demand %s units/sec × price %s = %s coins/sec"
 msgstr "План: спрос %s ед./сек × цена %s = %s монет/сек"
 
-msgid "Planks"
-msgstr "Доски"
-
-msgid "Plantation"
-msgstr "Плантация"
-
-msgid "Plantations"
-msgstr "Плантации"
-
-msgid "Plantations made it possible to grow olives and citrus in bulk, providing valuable goods and oils."
-msgstr "Плантации позволили выращивать оливки и цитрусовые в больших количествах, обеспечивая людей ценными продуктами и маслами."
-
-msgid "Plantations: +30% production"
-msgstr "Плантации: +30% к производству"
-
-msgid "Planter"
-msgstr "Плантатор"
-
-msgid "Plow"
-msgstr "Плуг"
-
 msgid "Poll tax"
 msgstr "Подушный налог"
-
-msgid "Pomegranates"
-msgstr "Гранаты"
 
 msgid "Population consumption"
 msgstr "Потребление населения"
@@ -2340,33 +1098,6 @@ msgstr "Население: 1"
 msgid "Population: 50"
 msgstr "Население: 50"
 
-msgid "Porphyry"
-msgstr "Порфир"
-
-msgid "Porphyry Jewelry"
-msgstr "Украшения из порфира"
-
-msgid "Potato"
-msgstr "Картофель"
-
-msgid "Potter"
-msgstr "Гончар"
-
-msgid "Pottery"
-msgstr "Глиняная посуда"
-
-msgid "Pottery Workshop"
-msgstr "Гончарная мастерская"
-
-msgid "Poultry"
-msgstr "Домашняя птица"
-
-msgid "Presses oil from the seeds and fruits of oil crops."
-msgstr "Выжимает масло из семян и плодов масличных культур"
-
-msgid "Presses vegetable oil out of oil crops."
-msgstr "Отжим растительного масла из масличных культур."
-
 msgid "Price = base price of the goods ×%.2f (market) × quality multiplier"
 msgstr "Цена = базовая цена товара ×%.2f (рынок) × множитель качества"
 
@@ -2378,33 +1109,6 @@ msgstr "Цена:"
 
 msgid "Price: "
 msgstr "Цена: "
-
-msgid "Prickly Pear"
-msgstr "Опунция"
-
-msgid "Processed Building Materials"
-msgstr "Обработанные стройматериалы"
-
-msgid "Processed Building Stone"
-msgstr "Обработанный строительный камень"
-
-msgid "Produces papyrus and other goods from papyrus stems."
-msgstr "Производство папируса и других товаров из стеблей папируса."
-
-msgid "Produces parchment from animal hides by liming them."
-msgstr "Производит пергамент из шкур животных с помощью золения их в извести"
-
-msgid "Produces parchment."
-msgstr "Производство пергамента."
-
-msgid "Produces silk cloth."
-msgstr "Производство шёлковой ткани."
-
-msgid "Produces smoked fish."
-msgstr "Производство копчёной рыбы."
-
-msgid "Produces wine from grapes or fruit."
-msgstr "Производство вина из винограда или фруктов."
 
 msgid "Produces:"
 msgstr "Производит:"
@@ -2430,12 +1134,6 @@ msgstr "Слотов производства: %d"
 msgid "Profit (actual, average): %s / sec"
 msgstr "Прибыль (фактическая, средняя): %s / сек"
 
-msgid "Pulque"
-msgstr "Пульке"
-
-msgid "Purple"
-msgstr "Пурпур"
-
 msgid "Quality priority: %s (click to switch)"
 msgstr "Приоритет качества: %s (нажмите чтобы переключить)"
 
@@ -2445,38 +1143,8 @@ msgstr "Приоритет качества: используйте лучшее
 msgid "Quality: %s (%s)"
 msgstr "Качество: %s (%s)"
 
-msgid "Quarry"
-msgstr "Каменоломня"
-
-msgid "Quarryman"
-msgstr "Каменотёс"
-
-msgid "Quartz Sand"
-msgstr "Кварцевый песок"
-
-msgid "Quinoa"
-msgstr "Киноа"
-
 msgid "Quit"
 msgstr "Выйти"
-
-msgid "Rabbits"
-msgstr "Кролики"
-
-msgid "Ramie"
-msgstr "Рами"
-
-msgid "Random"
-msgstr "Случайно"
-
-msgid "Raw Fish"
-msgstr "Сырая рыба"
-
-msgid "Raw Meat"
-msgstr "Сырое мясо"
-
-msgid "Raw Milk"
-msgstr "Сырое молоко"
 
 msgid "Really exit the game?\nUnsaved progress will be lost."
 msgstr "Действительно выйти из игры?\nНесохранённый прогресс будет потерян."
@@ -2502,23 +1170,8 @@ msgstr "Рецепт ссылается на несуществующий рес
 msgid "Recipe yields a nonexistent resource"
 msgstr "Рецепт даёт несуществующий ресурс"
 
-msgid "Reduces the effect of distance from the city on labor cost when building improvements by 30%"
-msgstr "Снижает вклад расстояния от города в стоимость труда при строительстве улучшений на 30%"
-
 msgid "Reduces the effect of distance from the city on the work cost of building improvements by 30%."
 msgstr "Снижает вклад расстояния от города в стоимость труда при строительстве улучшений на 30%."
-
-msgid "Reduces the effect of distance from the city on the work cost of building improvements by 30%.\nUnlocks the Cart Road (road level 2): up to 30 units/sec per section instead of 10."
-msgstr "Снижает вклад расстояния от города в стоимость труда при строительстве улучшений на 30%.\nОткрывает тележную дорогу (уровень дороги 2): до 30 ед./сек на участок вместо 10."
-
-msgid "Reed Boat"
-msgstr "Тростниковая лодка"
-
-msgid "Reed Boats"
-msgstr "Тростниковые лодки"
-
-msgid "Reeds"
-msgstr "Тростник"
 
 msgid "Reference to a nonexistent category"
 msgstr "Ссылка на несуществующую категорию"
@@ -2531,9 +1184,6 @@ msgstr "Ссылка на несуществующую технологию"
 
 msgid "Remove the worker from the improvement"
 msgstr "Снять рабочего с улучшения"
-
-msgid "Renaissance"
-msgstr "Возрождение"
 
 msgid "Requirement:"
 msgstr "Условие:"
@@ -2607,9 +1257,6 @@ msgstr "Вернуться в игру"
 msgid "Return to main menu"
 msgstr "Перейти в главное меню"
 
-msgid "Rice"
-msgstr "Рис"
-
 msgid "Road"
 msgstr "Дорога"
 
@@ -2646,83 +1293,14 @@ msgstr "Дорога: %s"
 msgid "Roads cannot be built over water"
 msgstr "По воде дорога не строится"
 
-msgid "Rocky Desert"
-msgstr "Каменистая пустыня"
-
-msgid "Rope Fibers"
-msgstr "Волокна для канатов"
-
-msgid "Rope Making"
-msgstr "Канатное дело"
-
-msgid "Ropemaker's House"
-msgstr "Дом канатчика"
-
-msgid "Ropes and Cables"
-msgstr "Верёвки и канаты"
-
-msgid "Ropes became an important material for building, sailing and farming, letting people bind, haul and hoist loads."
-msgstr "Верёвки стали важным материалом для строительства, мореплавания и сельского хозяйства, позволяя связывать, тянуть и поднимать грузы."
-
-msgid "Rose Madder"
-msgstr "Крапп"
-
-msgid "Roses"
-msgstr "Розы"
-
-msgid "Rye"
-msgstr "Рожь"
-
-msgid "Safflower"
-msgstr "Сафлор"
-
-msgid "Safflower Leaves"
-msgstr "Листья сафлора"
-
-msgid "Sake"
-msgstr "Саке"
-
-msgid "Salt"
-msgstr "Соль"
-
-msgid "Salt Extraction"
-msgstr "Добыча соли"
-
-msgid "Salt Lake"
-msgstr "Соленое озеро"
-
-msgid "Salt Pond"
-msgstr "Соляный пруд"
-
-msgid "Salt became an important product for preserving food."
-msgstr "Соль стала важным продуктом для сохранения пищи."
-
-msgid "Sandstone"
-msgstr "Песчаник"
-
-msgid "Sandy Desert"
-msgstr "Песчаная пустыня"
-
 msgid "Save game"
 msgstr "Сохранить игру"
-
-msgid "Saws timber into planks for construction and crafts."
-msgstr "Распиливает древесину на доски для строительства и ремёсел."
-
-msgid "Saws timber into planks for construction."
-msgstr "Распиливает древесину на доски для строительства"
-
-msgid "Scholar"
-msgstr "Учёный"
 
 msgid "Scholarly materials: %.1f/sec%s"
 msgstr "Писчие материалы: %.1f/сек%s"
 
 msgid "Scholars estimate: your region may contain %s."
 msgstr "Учёные оценили: в вашем регионе можно найти %s."
-
-msgid "Science"
-msgstr "Наука"
 
 msgid "Science: %.1f/sec"
 msgstr "Наука: %.1f/сек"
@@ -2754,18 +1332,6 @@ msgstr "Разведка завершена! %s"
 msgid "Scouts sent... (%d coins paid from the treasury)"
 msgstr "Разведчики отправлены... (оплачено %d монет из казны)"
 
-msgid "Scribes and scholars turn written material into knowledge that speeds up technology research."
-msgstr "Переписчики и учёные превращают письменные материалы в знания, ускоряющие исследования технологий"
-
-msgid "Scriptorium"
-msgstr "Скрипторий"
-
-msgid "Scriptoriums"
-msgstr "Скриптории"
-
-msgid "Sea"
-msgstr "Море"
-
 msgid "Section %d/%d"
 msgstr "Участок %d/%d"
 
@@ -2790,170 +1356,26 @@ msgstr "Отправить разведчиков: %d монет из казны
 msgid "Send scouts: instantly and free (debug)"
 msgstr "Отправить разведчиков: мгновенно и бесплатно (дебаг)"
 
-msgid "Sepia"
-msgstr "Сепия"
-
-msgid "Sericulture"
-msgstr "Шёлководство"
-
-msgid "Sesame"
-msgstr "Кунжут"
-
 msgid "Settings"
 msgstr "Настройки"
-
-msgid "Sews clothes out of leather."
-msgstr "Шьёт одежду из кожи"
-
-msgid "Shapes rough stone into a form fit for building."
-msgstr "Обрабатывает дикий камень в форму, пригодную для строительства"
-
-msgid "Sheep"
-msgstr "Овцы"
 
 msgid "Show borders between tiles"
 msgstr "Показывать границы между клетками"
 
-msgid "Silk"
-msgstr "Шёлк"
-
-msgid "Silk Clothes"
-msgstr "Шёлковая одежда"
-
-msgid "Silk Cocoon"
-msgstr "Кокон тутового шелкопряда"
-
-msgid "Silk became a valuable material for clothing and trade, opening new possibilities for crafts and the economy."
-msgstr "Шёлк стал ценным материалом для одежды и торговли, открывая новые возможности для ремесел и экономики."
-
-msgid "Silkmaker's House"
-msgstr "Дом шелкопряда"
-
-msgid "Silver"
-msgstr "Серебро"
-
-msgid "Silver Jewelry"
-msgstr "Серебряные украшения"
-
-msgid "Silver Nugget"
-msgstr "Серебряный самородок"
-
-msgid "Silver Ore"
-msgstr "Серебряная руда"
-
-msgid "Sisal"
-msgstr "Сизаль"
-
-msgid "Slaughterhouse"
-msgstr "Бойня"
-
 msgid "Slot %d:"
 msgstr "Слот %d:"
-
-msgid "Smelter"
-msgstr "Плавильня"
-
-msgid "Smelter Worker"
-msgstr "Плавильщик"
-
-msgid "Smelts antimony ore into pure antimony."
-msgstr "Плавит сурьмяную руду в чистую сурьму"
-
-msgid "Smelts arsenic ore into pure arsenic."
-msgstr "Плавит мышьяковую руду в чистый мышьяк"
-
-msgid "Smelts copper ore into pure copper."
-msgstr "Плавит медную руду в чистую медь"
-
-msgid "Smelts gold ore into pure gold."
-msgstr "Плавит золотую руду в чистое золото"
-
-msgid "Smelts iron ore into metal for the forge."
-msgstr "Плавит железную руду в металл, который затем используется кузнецами."
-
-msgid "Smelts malachite ore into pure copper."
-msgstr "Плавит малахитовую руду в чистую медь"
-
-msgid "Smelts metal ores into metal for the forge."
-msgstr "Плавит различные металлические руды в металл, который затем используется кузнецами."
-
-msgid "Smelts ore into pure metals."
-msgstr "Плавит руду в чистые металлы."
-
-msgid "Smelts silver ore into pure silver."
-msgstr "Плавит серебряную руду в чистое серебро"
-
-msgid "Smelts tin ore into pure tin."
-msgstr "Плавит оловянную руду в чистое олово"
-
-msgid "Smoked Fish"
-msgstr "Копченая рыба"
-
-msgid "Smokehouse"
-msgstr "Коптильня"
-
-msgid "Smokes fish for long storage."
-msgstr "Коптит рыбу для длительного хранения"
-
-msgid "Soaks ropes in tar to make them waterproof."
-msgstr "Пропитывает верёвки смолой для водонепроницаемости"
-
-msgid "Soap"
-msgstr "Мыло"
-
-msgid "Soap Making"
-msgstr "Мыловарение"
-
-msgid "Soapmaker's House"
-msgstr "Дом мыловара"
-
-msgid "Soapstone"
-msgstr "Стеатит"
-
-msgid "Soda"
-msgstr "Сода"
-
-msgid "Soda Extraction"
-msgstr "Добыча соды"
-
-msgid "Soda Extractor"
-msgstr "Содовщик"
-
-msgid "Soda Lake"
-msgstr "Содовое озеро"
-
-msgid "Soda Quarry"
-msgstr "Содовый карьер"
-
-msgid "Sorghum"
-msgstr "Сорго"
 
 msgid "Source not found: product \"%s\" (%s) appears neither in produces of any map resource, nor in result/display_result of any recipe, nor in additional_yield of any building. Add a data source or remove the product from the file."
 msgstr "Источник не найден: продукт «%s» (%s) не встречается ни в produces ни одного ресурса карты, ни в result/display_result ни одного рецепта, ни в additional_yield ни одного здания. Добавьте источник данных или удалите продукт из файла."
 
-msgid "Soybean"
-msgstr "Соя"
-
-msgid "Sparse Forest"
-msgstr "Редколесье"
-
-msgid "Specialized farming: growing cash crops. Allows you to build plantations."
-msgstr "Специализированное земледелие: выращивание товарных культур. Даёт возможность строить плантации."
-
 msgid "Spent work (%.0f/%d) will be lost."
 msgstr "Потраченный труд (%.0f/%d) будет потерян."
-
-msgid "Spices"
-msgstr "Пряности"
 
 msgid "Start"
 msgstr "Начать"
 
 msgid "Start operation (%s)"
 msgstr "Запустить работу (%s)"
-
-msgid "Stone Tableware"
-msgstr "Каменная посуда"
 
 msgid "Stop \"%s\""
 msgstr "Прервать «%s»"
@@ -2985,62 +1407,11 @@ msgstr "Предложить другое название"
 msgid "Supplies, dynamics and resource tooltips update at this interval (from 1 to 5 seconds). Simulation calculations run as usual, once per second."
 msgstr "Запасы, динамика и тултипы с ресурсами обновляются с этим интервалом (от 1 до 5 секунд). Расчёты симуляции идут как обычно, раз в секунду."
 
-msgid "Swamp"
-msgstr "Болото"
-
-msgid "Tableware"
-msgstr "Посуда"
-
-msgid "Tableware Stones"
-msgstr "Камни для посуды"
-
 msgid "Tamed resources:"
 msgstr "Одомашненные ресурсы:"
 
-msgid "Taming animals gave people a steady source of meat, milk and hides."
-msgstr "Одомашнивание животных дало людям постоянный источник мяса, молока и шкур."
-
-msgid "Tanner's House"
-msgstr "Дом кожевника"
-
-msgid "Tanning gave people a tough, flexible material for clothing, footwear and gear."
-msgstr "Выделка кожи дала людям прочный и гибкий материал для одежды, обуви и снаряжения."
-
-msgid "Tans hides and sews leather goods."
-msgstr "Выделка шкур и пошив кожаных изделий."
-
-msgid "Tar"
-msgstr "Смола"
-
-msgid "Tar Burner"
-msgstr "Смолокур"
-
-msgid "Tar Distillery"
-msgstr "Смолокурня"
-
-msgid "Tar Pit"
-msgstr "Смоляная яма"
-
-msgid "Taro"
-msgstr "Таро"
-
-msgid "Tarred Ropes"
-msgstr "Просмоленные верёвки"
-
 msgid "Taxes"
 msgstr "Налоги"
-
-msgid "Tea"
-msgstr "Чай"
-
-msgid "Tea Leaves"
-msgstr "Чайные листья"
-
-msgid "Technical Crops"
-msgstr "Технические культуры"
-
-msgid "Technical Plants"
-msgstr "Технические растения"
 
 msgid "Technologies"
 msgstr "Технологии"
@@ -3066,15 +1437,6 @@ msgstr "Технология требует несуществующую тех�
 msgid "Technology researched: %s"
 msgstr "Технология изучена: %s"
 
-msgid "Teff"
-msgstr "Теф"
-
-msgid "Tends the herd and keeps count of the livestock."
-msgstr "Присматривает за стадом, следит за поголовьем."
-
-msgid "Tends the hives and harvests honey."
-msgstr "Следит за ульями, собирает мёд."
-
 msgid "Terrain: %s"
 msgstr "Местность: %s"
 
@@ -3087,23 +1449,11 @@ msgstr "Территория расширена! (затрачено %d труд
 msgid "Territory of the city %s"
 msgstr "Территория города %s"
 
-msgid "Textile Crops"
-msgstr "Текстильные культуры"
-
-msgid "Textile Plants"
-msgstr "Текстильные растения"
-
 msgid "The area does not border explored territory"
 msgstr "Область не граничит с исследованной территорией"
 
 msgid "The area does not border your territory"
 msgstr "Область не граничит с вашими владениями"
-
-msgid "The art of exploring the land and drawing maps of it."
-msgstr "Наука об исследовании местности и рисовании карт."
-
-msgid "The bed of this drying lake is covered in a thick layer of white powder. Locals say it makes food taste better, keeps it from spoiling longer, and heals wounds."
-msgstr "Дно этого пересыхающего озера покрыто толстым слоем белого порошка. Местные жители говорят, что он делает еду вкуснее, помогает дольше сохранять пищу от порчи и лечит раны."
 
 msgid "The chunk does not border explored territory — scout the neighbouring hexes first"
 msgstr "Чанк не граничит с исследованной территорией — сначала разведайте соседние гексы"
@@ -3114,27 +1464,6 @@ msgstr "Чанк пересекается с кольцом влияния чу�
 msgid "The city needs access to fresh water"
 msgstr "Нужен доступ города к пресной воде"
 
-msgid "The first farmers noticed that seeds thrown into the ground grew again. Thus began the age of settled life."
-msgstr "Первые земледельцы заметили, что брошенные в землю семена дают новые всходы. Так началась эпоха оседлой жизни."
-
-msgid "The grape is one of the oldest crops, from which people learned to make wine, a drink for feasts and rituals."
-msgstr "Виноград — древнейшая культура, из которой люди научились делать вино, важный напиток для праздников и ритуалов."
-
-msgid "The idea of value and exchange led to money, the basis of trade and city growth."
-msgstr "Понятие стоимости и обмена привело к появлению денег — основы торговли и роста городов."
-
-msgid "The loom turned wool and flax into cloth, from which clothes were sewn."
-msgstr "Ткацкий станок превратил шерсть и лён в ткань, из которой шили одежду."
-
-msgid "The simplest millstone, grinding grain into flour by hand."
-msgstr "Простейший жёрнов для ручного помола зерна в муку."
-
-msgid "The skill of laying stone made it possible to build sturdy buildings that outlived centuries."
-msgstr "Умение класть камень позволило строить прочные здания, которые переживали века."
-
-msgid "The surface of this lake has hardened into a black glossy crust. Locals say it clings to your feet and smells of pitch."
-msgstr "Поверхность этого озера застыла в чёрную блестящую корку. Местные жители говорят, что она липнет к ногам и пахнет смолой."
-
 msgid "The town buys nothing"
 msgstr "Городок ничего не покупает"
 
@@ -3143,12 +1472,6 @@ msgstr "У городка нет дороги в кольце влияния"
 
 msgid "The town is already connected by a road"
 msgstr "Городок уже соединён дорогой"
-
-msgid "The water wheel became an important source of power in the ancient world, automating the processing of grain and other materials."
-msgstr "Водяное колесо стало важным источником энергии в древнем мире, позволяя автоматизировать процессы обработки зерна и других материалов."
-
-msgid "The wheel is one of humanity's greatest inventions, and it changed trade and war."
-msgstr "Колесо — одно из величайших изобретений человечества, изменившее торговлю и войну."
 
 msgid "There is no difference in spelling, but for the game these are DIFFERENT identifiers: everything that references \"%s\" will not reach \"%s\" and vice versa. Note that a reference to \"%s\" does NOT break anything — it is declared and looks correct, so the regular broken-reference checks did not see this typo either. Keep one identifier and rename the other in all files."
 msgstr "Различия в написании нет, но для игры это РАЗНЫЕ идентификаторы: всё, что ссылается на «%s», не попадёт в «%s» и наоборот. При этом ссылка на «%s» ссылки НЕ ломает — он объявлен и выглядит правильно, поэтому обычные проверки битых ссылок эту опечатку и не видели. Оставьте один идентификатор и переименуйте второй во всех файлах."
@@ -3177,26 +1500,11 @@ msgstr "Здесь — кольцо влияния чужого городка, 
 msgid "This is the city itself"
 msgstr "Это сам город"
 
-msgid "This revolutionary invention made it possible to create an affordable, practical material for writing."
-msgstr "Революционное изобретение позволило создать доступный и практичный материал для письма."
-
-msgid "This slot produces nothing."
-msgstr "Слот не производит ничего"
-
 msgid "Tile borders"
 msgstr "Границы клеток"
 
-msgid "Tin"
-msgstr "Олово"
-
-msgid "Tin Ore"
-msgstr "Оловянная руда"
-
 msgid "Toggle using this product as food"
 msgstr "Вкл/выкл использование этого продукта как еды"
-
-msgid "Tools"
-msgstr "Инструменты"
 
 msgid "Tooltip delay (building details, treasury breakdown)"
 msgstr "Задержка появления всплывающих подсказок (детали здания, разбивка казны)"
@@ -3216,9 +1524,6 @@ msgstr "Торговля"
 msgid "Trade unavailable: there is no road from the city to this town"
 msgstr "Торговля недоступна: от города нет дороги до этого городка"
 
-msgid "Trail"
-msgstr "Тропка"
-
 msgid "Treasury: %d"
 msgstr "Казна: %d"
 
@@ -3227,48 +1532,6 @@ msgstr "Казна: %d %s"
 
 msgid "Treasury: 0"
 msgstr "Казна: 0"
-
-msgid "Tuff"
-msgstr "Туф"
-
-msgid "Tulips"
-msgstr "Тюльпаны"
-
-msgid "Turkeys"
-msgstr "Индейки"
-
-msgid "Turns bitumen into tar."
-msgstr "Превращает битум в смолу"
-
-msgid "Turns hides into tough leather."
-msgstr "Превращает шкуры в прочную кожу"
-
-msgid "Turns milk into cheese, a good that keeps for a long time."
-msgstr "Перерабатывает молоко в сыр — продукт, который долго хранится."
-
-msgid "Turns oil and soda into soap."
-msgstr "Превращает масло и соду в мыло"
-
-msgid "Turns papyrus stems into papyrus."
-msgstr "Превращает стебли папируса в папирус"
-
-msgid "Turns sand and soda into glass jewelry."
-msgstr "Превращает песок и соду в стеклянные украшения"
-
-msgid "Turns sand and soda into glass."
-msgstr "Превращает песок и соду в стекло."
-
-msgid "Turns sand and soda into glassware."
-msgstr "Превращает песок и соду в стеклянную посуду"
-
-msgid "Turns silkworm cocoons into silk."
-msgstr "Превращает коконы тутового шелкопряда в шёлк"
-
-msgid "Twists ropes and cables from fibers."
-msgstr "Свивает верёвки и канаты из волокон"
-
-msgid "Ultramarine"
-msgstr "Ультрамарин"
 
 msgid "Under construction"
 msgstr "Строится"
@@ -3279,44 +1542,8 @@ msgstr "Недостроенных участков: %d. Потраченный 
 msgid "Unknown construction requirement: %s"
 msgstr "Неизвестное условие строительства: %s"
 
-msgid "Unlocks parchment and allows you to create written material."
-msgstr "Открывает пергамент и позволяет создавать письменные материалы."
-
-msgid "Unlocks recipes for brewing mead."
-msgstr "Открывает рецепты варки медового напитка."
-
-msgid "Unlocks recipes for bronze and bronze goods."
-msgstr "Открывает рецепты изготовления бронзы и бронзовых изделий."
-
-msgid "Unlocks recipes for iron and iron goods.\nUnlocks the bloomery."
-msgstr "Открывает рецепты изготовления железа и железных изделий.\nОткрывает сыродутную печь."
-
-msgid "Unlocks recipes for making jewelry out of metals."
-msgstr "Открывает рецепты изготовления ювелирных изделий из металлов."
-
-msgid "Unlocks salt extraction in salt deposits (on the surface of salt lakes and in salt mines) and the salt pond."
-msgstr "Открывает возможность добычи соли в соляных месторождениях (на поверхности соляных озёр и в соляных шахтах) и соляном пруду."
-
 msgid "Unlocks the Cart Road (road level 2): 30 units/sec per section."
 msgstr "Открывает тележную дорогу (уровень дороги 2): 30 ед./сек на участок."
-
-msgid "Unlocks the ability to find and gather native metals."
-msgstr "Открывает возможность находить и собирать самородные металлы."
-
-msgid "Unlocks the ability to find and gather native metals.\nUnlocks metal ores (gold, silver, copper) and metalloids (antimony and arsenic).\nAllows you to build the forge."
-msgstr "Открывает возможность находить и собирать самородные металлы.\nОткрывает руды металлов (золото, серебро, медь) и металлоидов (сурьма и мышьяк).\nДаёт возможность строить кузницу."
-
-msgid "Unlocks the ability to grow water-loving crops: rice and taro."
-msgstr "Открывает возможность возделывать влаголюбивые культуры: рис и таро."
-
-msgid "Unlocks the ability to grow water-loving crops: rice and taro.\nAllows farms and plantations to pass fresh water along a chain (up to 3 hexes).\nAllows you to drain marshes."
-msgstr "Открывает возможность возделывать влаголюбивые культуры: рис и таро.\nПозволяет фермам и плантациям передавать пресную воду по цепочке (до 3 гексов).\nПозволяет осушать болота."
-
-msgid "Unlocks the use of draft animals to turn millstones."
-msgstr "Открывает использование тягловых животных для вращения мельничных жерновов."
-
-msgid "Unlocks the use of the water wheel to set millstones in motion."
-msgstr "Открывает использование водяного колеса для приведения в движение мельничных жерновов."
 
 msgid "Upgrade"
 msgstr "Улучшение"
@@ -3345,107 +1572,20 @@ msgstr "Улучшение дороги до города: %d участков"
 msgid "Upgrading to \"%s\""
 msgstr "Идёт улучшение до «%s»"
 
-msgid "Vegetable Oil"
-msgstr "Растительное масло"
-
-msgid "Vegetable oil became an important food and a source of light."
-msgstr "Растительное масло стало важным продуктом питания и основой для освещения."
-
 msgid "Video"
 msgstr "Видео"
-
-msgid "Vinedresser"
-msgstr "Виноградарь"
-
-msgid "Vinegar"
-msgstr "Уксус"
-
-msgid "Vineyard"
-msgstr "Виноградник"
-
-msgid "Water Mill"
-msgstr "Водяная мельница"
-
-msgid "Water Wheel"
-msgstr "Водяное колесо"
-
-msgid "Wax"
-msgstr "Воск"
-
-msgid "Wax Tablets"
-msgstr "Восковые таблички"
-
-msgid "Weapons"
-msgstr "Оружие"
-
-msgid "Weaver's House"
-msgstr "Дом ткача"
-
-msgid "Weaves clothes out of cloth."
-msgstr "Ткёт одежду из ткани"
-
-msgid "Weaves clothes out of silk."
-msgstr "Ткёт одежду из шёлка"
-
-msgid "Weaves clothes out of wool."
-msgstr "Ткёт одежду из шерсти"
-
-msgid "Weaving"
-msgstr "Ткачество"
 
 msgid "What the technology gives:"
 msgstr "Что даёт технология:"
 
-msgid "Wheat"
-msgstr "Пшеница"
-
-msgid "Wheel"
-msgstr "Колесо"
-
 msgid "Will produce:"
 msgstr "Будет производить:"
-
-msgid "Wine"
-msgstr "Вино"
-
-msgid "Wine was made from grapes: it was a drink for feasts and rituals, and it also kept the perishable grapes from spoiling."
-msgstr "Вино делали из винограда — оно было важным напитком для праздников и ритуалов, а также помогало сохранить скоропортящиещиеся сорта винограда от порчи."
-
-msgid "Winegrowing"
-msgstr "Виноградарство"
-
-msgid "Winemaker's House"
-msgstr "Дом винодела"
-
-msgid "Winemaking"
-msgstr "Виноделие"
-
-msgid "Woad"
-msgstr "Вайда"
-
-msgid "Woad Leaves"
-msgstr "Листья вайды"
 
 msgid "Wood"
 msgstr "Древесина"
 
-msgid "Wood Processing"
-msgstr "Обработка дерева"
-
-msgid "Wood is the oldest building material, and with the first axes people learned to fell trees and saw the trunks into planks."
-msgstr "Дерево — древнейший строительный материал, и с первыми топорами люди научились валить лес и распиливать стволы на доски."
-
 msgid "Woodcutter's Camp"
 msgstr "Лесная делянка"
-
-msgid "Wool"
-msgstr "Шерсть"
-
-msgid "Wool Animals"
-msgstr "Шерстяные животные"
-
-msgid "Wool Clothes"
-msgstr "Шерстяная одежда"
 
 msgid "Work: %d"
 msgstr "Труд: %d"
@@ -3453,41 +1593,14 @@ msgstr "Труд: %d"
 msgid "Work: %d (%.0f sec)"
 msgstr "Труд: %d (%.0f сек)"
 
-msgid "Working precious stones and metals turned the craft into art."
-msgstr "Обработка драгоценных камней и металлов превратила ремесло в искусство."
-
-msgid "Works stone into hewn blocks and stone goods for construction."
-msgstr "Обработка камня: тесаные блоки и каменные изделия для строительства."
-
-msgid "Works the fields and tends the crops."
-msgstr "Возделывает поля, ухаживает за посевами."
-
-msgid "Worst quality"
-msgstr "Худшее качество"
-
-msgid "Writing"
-msgstr "Письменность"
-
-msgid "Writing Materials"
-msgstr "Писчие материалы"
-
 msgid "X"
 msgstr "X"
-
-msgid "Yak"
-msgstr "Яки"
-
-msgid "Yam"
-msgstr "Ямс"
 
 msgid "Yes"
 msgstr "Да"
 
 msgid "You can build or upgrade no more than %d buildings at once (limit = number of citizens)"
 msgstr "Можно строить не более %d зданий или улучшений одновременно (лимит = число жителей)"
-
-msgid "Zebu"
-msgstr "Зебу"
 
 msgid "[0] Close (F9)"
 msgstr "[0] Закрыть (F9)"
@@ -3588,6 +1701,354 @@ msgstr "≈ в динамике — плановое значение в пер�
 msgid "★"
 msgstr "★"
 
+msgctxt "buildings.description"
+msgid "A building where alchemists run all kinds of chemical reactions."
+msgstr "Здание, алхимики проводят различные химические реакции."
+
+msgctxt "buildings.description"
+msgid "A building where dyes are extracted from all sorts of organic and inorganic materials."
+msgstr "Здание, где из различных органических и неорганических материалов добываются красители."
+
+msgctxt "buildings.description"
+msgid "A building where jewelry is made from all sorts of materials."
+msgstr "Здание, где из различных материалов изготавливаются ювелирные изделия."
+
+msgctxt "buildings.description"
+msgid "A building where scribes copy, rewrite and translate documents. Produces science."
+msgstr "Здание, где писцы копировали, переписывали и переводили документы. Производит науку."
+
+msgctxt "buildings.description"
+msgid "A city building for trade. Building it unlocks the transition to the Antiquity era."
+msgstr "Городское здание торговли. Его постройка открывает возможность перехода в эпоху Античности."
+
+msgctxt "buildings.description"
+msgid "A collection of written works, where scholars produce science."
+msgstr "Собрание письменных трудов, где учёные производят Науку."
+
+msgctxt "buildings.description"
+msgid "A long shed for twisting ropes and cables."
+msgstr "Длинное помещение для свивания канатов и тросов."
+
+msgctxt "buildings.description"
+msgid "A loom for weaving cloth out of yarn."
+msgstr "Ткацкий станок для производства тканей из нитей."
+
+msgctxt "buildings.description"
+msgid "A mill that uses draft animals to turn the millstones."
+msgstr "Мельница, использующая тягловых животных для вращения жерновов."
+
+msgctxt "buildings.description"
+msgid "A mill that uses water to set the millstones in motion."
+msgstr "Мельница, использующая воду для приведения в движение жернова."
+
+msgctxt "buildings.description"
+msgid "Bakes bread from flour, the staple of the city diet."
+msgstr "Печёт хлеб из муки — основу рациона города."
+
+msgctxt "buildings.description"
+msgid "Blacksmiths forge metal tools and goods here."
+msgstr "Кузнецы куют здесь металлические инструменты и изделия."
+
+msgctxt "buildings.description"
+msgid "Brews various low-alcohol drinks by fermentation."
+msgstr "Варка различных слабоалкогольных напитков путём ферментации."
+
+msgctxt "buildings.description"
+msgid "Burns wood in a sealed kiln to produce charcoal."
+msgstr "Обжиг древесины в закрытой печи для получения древесного угля."
+
+msgctxt "buildings.description"
+msgid "Butchers livestock for meat, hides and bones to feed the city's crafts."
+msgstr "Разделка скота: мясо, шкуры и кости для городских ремёсел."
+
+msgctxt "buildings.description"
+msgid "Dries and cures various goods."
+msgstr "Сушка и завяливание различных продуктов."
+
+msgctxt "buildings.description"
+msgid "Fuses glass and blows glassware."
+msgstr "Варка стекла и выдувание стеклянных изделий."
+
+msgctxt "buildings.description"
+msgid "Handles every step of making tar and tarring materials."
+msgstr "Осуществление всех операций по производству смолы и смолению материалов."
+
+msgctxt "buildings.description"
+msgid "Makes clay pots, bricks and tablets on the potter's wheel."
+msgstr "Изготовление глиняной посуды, кирпичей и табличек на гончарном круге."
+
+msgctxt "buildings.description"
+msgid "Makes lime from limestone."
+msgstr "Производство извести из известняка."
+
+msgctxt "buildings.description"
+msgid "Makes paper."
+msgstr "Изготовление бумаги."
+
+msgctxt "buildings.description"
+msgid "Makes soap from vegetable oil and soda."
+msgstr "Производство мыла из растительного масла и соды."
+
+msgctxt "buildings.description"
+msgid "Presses vegetable oil out of oil crops."
+msgstr "Отжим растительного масла из масличных культур."
+
+msgctxt "buildings.description"
+msgid "Produces papyrus and other goods from papyrus stems."
+msgstr "Производство папируса и других товаров из стеблей папируса."
+
+msgctxt "buildings.description"
+msgid "Produces parchment."
+msgstr "Производство пергамента."
+
+msgctxt "buildings.description"
+msgid "Produces silk cloth."
+msgstr "Производство шёлковой ткани."
+
+msgctxt "buildings.description"
+msgid "Produces smoked fish."
+msgstr "Производство копчёной рыбы."
+
+msgctxt "buildings.description"
+msgid "Produces wine from grapes or fruit."
+msgstr "Производство вина из винограда или фруктов."
+
+msgctxt "buildings.description"
+msgid "Saws timber into planks for construction and crafts."
+msgstr "Распиливает древесину на доски для строительства и ремёсел."
+
+msgctxt "buildings.description"
+msgid "Smelts iron ore into metal for the forge."
+msgstr "Плавит железную руду в металл, который затем используется кузнецами."
+
+msgctxt "buildings.description"
+msgid "Smelts metal ores into metal for the forge."
+msgstr "Плавит различные металлические руды в металл, который затем используется кузнецами."
+
+msgctxt "buildings.description"
+msgid "Tans hides and sews leather goods."
+msgstr "Выделка шкур и пошив кожаных изделий."
+
+msgctxt "buildings.description"
+msgid "The simplest millstone, grinding grain into flour by hand."
+msgstr "Простейший жёрнов для ручного помола зерна в муку."
+
+msgctxt "buildings.description"
+msgid "Turns milk into cheese, a good that keeps for a long time."
+msgstr "Перерабатывает молоко в сыр — продукт, который долго хранится."
+
+msgctxt "buildings.description"
+msgid "Works stone into hewn blocks and stone goods for construction."
+msgstr "Обработка камня: тесаные блоки и каменные изделия для строительства."
+
+msgctxt "buildings.name"
+msgid "Alchemist's House"
+msgstr "Дом алхимика"
+
+msgctxt "buildings.name"
+msgid "Animal Mill"
+msgstr "Мельница с животной тягой"
+
+msgctxt "buildings.name"
+msgid "Bakery"
+msgstr "Пекарня"
+
+msgctxt "buildings.name"
+msgid "Bloomery"
+msgstr "Сыродутная печь"
+
+msgctxt "buildings.name"
+msgid "Brewer's House"
+msgstr "Дом варщика"
+
+msgctxt "buildings.name"
+msgid "Carpenter's Workshop"
+msgstr "Плотницкая мастерская"
+
+msgctxt "buildings.name"
+msgid "Charcoal Kiln"
+msgstr "Печь для обжига древесного угля"
+
+msgctxt "buildings.name"
+msgid "Dairy"
+msgstr "Сыроварня"
+
+msgctxt "buildings.name"
+msgid "Dryer's House"
+msgstr "Дом сушильщика"
+
+msgctxt "buildings.name"
+msgid "Dyer's House"
+msgstr "Дом красильщика"
+
+msgctxt "buildings.name"
+msgid "Forge"
+msgstr "Кузница"
+
+msgctxt "buildings.name"
+msgid "Glassmaker's House"
+msgstr "Дом стеклодела"
+
+msgctxt "buildings.name"
+msgid "Hand Mill"
+msgstr "Ручная мельница"
+
+msgctxt "buildings.name"
+msgid "Hand Oil Press"
+msgstr "Ручная маслодавка"
+
+msgctxt "buildings.name"
+msgid "Jeweler's House"
+msgstr "Дом ювелира"
+
+msgctxt "buildings.name"
+msgid "Library"
+msgstr "Библиотека"
+
+msgctxt "buildings.name"
+msgid "Lime Kilns"
+msgstr "Печи для обжига извести"
+
+msgctxt "buildings.name"
+msgid "Market"
+msgstr "Рынок"
+
+msgctxt "buildings.name"
+msgid "Mason's Workshop"
+msgstr "Мастерская каменотёса"
+
+msgctxt "buildings.name"
+msgid "Paper Workshop"
+msgstr "Бумажная мастерская"
+
+msgctxt "buildings.name"
+msgid "Papyrus Workshop"
+msgstr "Мастерская по производству папируса"
+
+msgctxt "buildings.name"
+msgid "Parchment Workshop"
+msgstr "Пергаментная мастерская"
+
+msgctxt "buildings.name"
+msgid "Pottery Workshop"
+msgstr "Гончарная мастерская"
+
+msgctxt "buildings.name"
+msgid "Ropemaker's House"
+msgstr "Дом канатчика"
+
+msgctxt "buildings.name"
+msgid "Scriptorium"
+msgstr "Скрипторий"
+
+msgctxt "buildings.name"
+msgid "Silkmaker's House"
+msgstr "Дом шелкопряда"
+
+msgctxt "buildings.name"
+msgid "Slaughterhouse"
+msgstr "Бойня"
+
+msgctxt "buildings.name"
+msgid "Smelter"
+msgstr "Плавильня"
+
+msgctxt "buildings.name"
+msgid "Smokehouse"
+msgstr "Коптильня"
+
+msgctxt "buildings.name"
+msgid "Soapmaker's House"
+msgstr "Дом мыловара"
+
+msgctxt "buildings.name"
+msgid "Tanner's House"
+msgstr "Дом кожевника"
+
+msgctxt "buildings.name"
+msgid "Tar Distillery"
+msgstr "Смолокурня"
+
+msgctxt "buildings.name"
+msgid "Water Mill"
+msgstr "Водяная мельница"
+
+msgctxt "buildings.name"
+msgid "Weaver's House"
+msgstr "Дом ткача"
+
+msgctxt "buildings.name"
+msgid "Winemaker's House"
+msgstr "Дом винодела"
+
+msgctxt "categories.name"
+msgid "Auxiliary Crops"
+msgstr "Вспомогательные культуры"
+
+msgctxt "categories.name"
+msgid "Building Materials"
+msgstr "Стройматериалы"
+
+msgctxt "categories.name"
+msgid "Clothes"
+msgstr "Одежда"
+
+msgctxt "categories.name"
+msgid "Drinks"
+msgstr "Напитки"
+
+msgctxt "categories.name"
+msgid "Equipment"
+msgstr "Оборудование"
+
+msgctxt "categories.name"
+msgid "Food"
+msgstr "Еда"
+
+msgctxt "categories.name"
+msgid "Fruits"
+msgstr "Фрукты"
+
+msgctxt "categories.name"
+msgid "Household Items"
+msgstr "Предметы быта"
+
+msgctxt "categories.name"
+msgid "Luxury"
+msgstr "Роскошь"
+
+msgctxt "categories.name"
+msgid "Materials"
+msgstr "Материалы"
+
+msgctxt "categories.name"
+msgid "Metals"
+msgstr "Металлы"
+
+msgctxt "categories.name"
+msgid "Minerals"
+msgstr "Минералы"
+
+msgctxt "categories.name"
+msgid "Other"
+msgstr "Прочее"
+
+msgctxt "categories.name"
+msgid "Spices"
+msgstr "Пряности"
+
+msgctxt "categories.name"
+msgid "Technical Crops"
+msgstr "Технические культуры"
+
+msgctxt "categories.name"
+msgid "Tools"
+msgstr "Инструменты"
+
+msgctxt "categories.name"
+msgid "Weapons"
+msgstr "Оружие"
+
 msgctxt "consumption_buildings_few"
 msgid "buildings"
 msgstr "здания"
@@ -3599,6 +2060,2526 @@ msgstr "зданий"
 msgctxt "consumption_buildings_one"
 msgid "building"
 msgstr "здание"
+
+msgctxt "covers.name"
+msgid "Forest"
+msgstr "Лес"
+
+msgctxt "covers.name"
+msgid "None"
+msgstr "Нет"
+
+msgctxt "covers.name"
+msgid "Oasis"
+msgstr "Оазис"
+
+msgctxt "covers.name"
+msgid "Reeds"
+msgstr "Тростник"
+
+msgctxt "covers.name"
+msgid "Sparse Forest"
+msgstr "Редколесье"
+
+msgctxt "crafts.description"
+msgid "Brews beer from grain."
+msgstr "Варит пиво из зерновых культур"
+
+msgctxt "crafts.description"
+msgid "Brews mead from honey."
+msgstr "Варит медовый напиток из мёда"
+
+msgctxt "crafts.description"
+msgid "Brews pulque from agave."
+msgstr "Варит пульке из агавы"
+
+msgctxt "crafts.description"
+msgid "Brews sake from rice."
+msgstr "Варит саке из риса"
+
+msgctxt "crafts.description"
+msgid "Builds a boat from reeds."
+msgstr "Создает лодку из тростника"
+
+msgctxt "crafts.description"
+msgid "Burns limestone into lime."
+msgstr "Обжигает известняк в известь"
+
+msgctxt "crafts.description"
+msgid "Burns wood into charcoal."
+msgstr "Обжигает древесину в древесный уголь."
+
+msgctxt "crafts.description"
+msgid "Creates clay pots for storage."
+msgstr "Создаёт глиняную посуду для хранения"
+
+msgctxt "crafts.description"
+msgid "Creates clay tablets for writing."
+msgstr "Создаёт глиняные таблички для записей"
+
+msgctxt "crafts.description"
+msgid "Cuts stone into plates, bowls, and cups."
+msgstr "Вырезает из камня тарелки, миски и чашки."
+
+msgctxt "crafts.description"
+msgid "Dries and roasts coffee beans."
+msgstr "Сушит и обжаривает кофейные зерна"
+
+msgctxt "crafts.description"
+msgid "Dries, rolls, withers and ferments tea leaves."
+msgstr "Сушит, скручивает, вялит и ферментирует чайные листья"
+
+msgctxt "crafts.description"
+msgid "Fires clay into building bricks."
+msgstr "Обжигает глину в строительные кирпичи"
+
+msgctxt "crafts.description"
+msgid "Makes a batch of weapons to defend the city."
+msgstr "Создаёт партию оружия для защиты города"
+
+msgctxt "crafts.description"
+msgid "Makes a bronze alloy from copper/antimony/arsenic and tin."
+msgstr "Создаёт бронзовый сплав из меди/сурьмы/мышьяка и олова"
+
+msgctxt "crafts.description"
+msgid "Makes a dye (campeche) from campeche wood."
+msgstr "Создает краситель (кампеш) из древесины кампешевого дерева"
+
+msgctxt "crafts.description"
+msgid "Makes a dye (carmine) from cochineal."
+msgstr "Создает краситель (кармин) из кошенили"
+
+msgctxt "crafts.description"
+msgid "Makes a dye (carthamin) from safflower leaves."
+msgstr "Создает краситель (картамин) из листьев сафлора"
+
+msgctxt "crafts.description"
+msgid "Makes a dye (cinnabar) from ore."
+msgstr "Создает краситель (киноварь) из руды"
+
+msgctxt "crafts.description"
+msgid "Makes a dye (henna) from henna leaves."
+msgstr "Создает краситель (хну) из листьев лавсонии"
+
+msgctxt "crafts.description"
+msgid "Makes a dye (indigo) from indigo plant leaves."
+msgstr "Создает краситель (индиго) из листьев индигоферы"
+
+msgctxt "crafts.description"
+msgid "Makes a dye (madder) from madder roots."
+msgstr "Создает краситель (крапп) из корней марены"
+
+msgctxt "crafts.description"
+msgid "Makes a dye (malachite) from ore."
+msgstr "Создает краситель (малахит) из руды"
+
+msgctxt "crafts.description"
+msgid "Makes a dye (ochre) from iron ore."
+msgstr "Создает краситель (охру) из железной руды"
+
+msgctxt "crafts.description"
+msgid "Makes a dye (purple) from murex shells."
+msgstr "Создает краситель (пурпур) из мурексов"
+
+msgctxt "crafts.description"
+msgid "Makes a dye (sepia) from cuttlefish."
+msgstr "Создает краситель (сепию) из каракатиц"
+
+msgctxt "crafts.description"
+msgid "Makes a dye (ultramarine) from ore."
+msgstr "Создает краситель (ультрамарин) из руды"
+
+msgctxt "crafts.description"
+msgid "Makes a dye (woad) from woad leaves."
+msgstr "Создает краситель (вайду) из листьев вайды"
+
+msgctxt "crafts.description"
+msgid "Makes a set of tools for craftsmen."
+msgstr "Создаёт набор инструментов для ремесленников"
+
+msgctxt "crafts.description"
+msgid "Makes iron out of ore."
+msgstr "Изготавливает железо из руды"
+
+msgctxt "crafts.description"
+msgid "Makes jewelry out of bronze."
+msgstr "Создаёт украшения из бронзы"
+
+msgctxt "crafts.description"
+msgid "Makes jewelry out of copper."
+msgstr "Создаёт украшения из меди"
+
+msgctxt "crafts.description"
+msgid "Makes jewelry out of gold."
+msgstr "Создаёт украшения из золота"
+
+msgctxt "crafts.description"
+msgid "Makes jewelry out of iron."
+msgstr "Создаёт украшения из железа"
+
+msgctxt "crafts.description"
+msgid "Makes jewelry out of lazurite."
+msgstr "Создаёт украшения из ляпис-лазури"
+
+msgctxt "crafts.description"
+msgid "Makes jewelry out of malachite."
+msgstr "Создаёт украшения из малахита"
+
+msgctxt "crafts.description"
+msgid "Makes jewelry out of nephrite."
+msgstr "Изготовление украшений из нефрита"
+
+msgctxt "crafts.description"
+msgid "Makes jewelry out of porphyry."
+msgstr "Изготовление украшений из порфира"
+
+msgctxt "crafts.description"
+msgid "Makes jewelry out of silver."
+msgstr "Создаёт украшения из серебра"
+
+msgctxt "crafts.description"
+msgid "Makes paper from various plant fibers."
+msgstr "Создает бумагу из различных растительных волокон"
+
+msgctxt "crafts.description"
+msgid "Makes vinegar from alcohol."
+msgstr "Варит уксус из алкоголя"
+
+msgctxt "crafts.description"
+msgid "Makes wine from fruit."
+msgstr "Варит вино из фруктов"
+
+msgctxt "crafts.description"
+msgid "Makes wine from grapes."
+msgstr "Варит вино из винограда"
+
+msgctxt "crafts.description"
+msgid "Makes wooden tablets with a hollow filled with wax."
+msgstr "Создает деревянные таблички с углублением, в которое залит воск"
+
+msgctxt "crafts.description"
+msgid "Presses oil from the seeds and fruits of oil crops."
+msgstr "Выжимает масло из семян и плодов масличных культур"
+
+msgctxt "crafts.description"
+msgid "Produces parchment from animal hides by liming them."
+msgstr "Производит пергамент из шкур животных с помощью золения их в извести"
+
+msgctxt "crafts.description"
+msgid "Saws timber into planks for construction."
+msgstr "Распиливает древесину на доски для строительства"
+
+msgctxt "crafts.description"
+msgid "Scribes and scholars turn written material into knowledge that speeds up technology research."
+msgstr "Переписчики и учёные превращают письменные материалы в знания, ускоряющие исследования технологий"
+
+msgctxt "crafts.description"
+msgid "Sews clothes out of leather."
+msgstr "Шьёт одежду из кожи"
+
+msgctxt "crafts.description"
+msgid "Shapes rough stone into a form fit for building."
+msgstr "Обрабатывает дикий камень в форму, пригодную для строительства"
+
+msgctxt "crafts.description"
+msgid "Smelts antimony ore into pure antimony."
+msgstr "Плавит сурьмяную руду в чистую сурьму"
+
+msgctxt "crafts.description"
+msgid "Smelts arsenic ore into pure arsenic."
+msgstr "Плавит мышьяковую руду в чистый мышьяк"
+
+msgctxt "crafts.description"
+msgid "Smelts copper ore into pure copper."
+msgstr "Плавит медную руду в чистую медь"
+
+msgctxt "crafts.description"
+msgid "Smelts gold ore into pure gold."
+msgstr "Плавит золотую руду в чистое золото"
+
+msgctxt "crafts.description"
+msgid "Smelts malachite ore into pure copper."
+msgstr "Плавит малахитовую руду в чистую медь"
+
+msgctxt "crafts.description"
+msgid "Smelts silver ore into pure silver."
+msgstr "Плавит серебряную руду в чистое серебро"
+
+msgctxt "crafts.description"
+msgid "Smelts tin ore into pure tin."
+msgstr "Плавит оловянную руду в чистое олово"
+
+msgctxt "crafts.description"
+msgid "Smokes fish for long storage."
+msgstr "Коптит рыбу для длительного хранения"
+
+msgctxt "crafts.description"
+msgid "Soaks ropes in tar to make them waterproof."
+msgstr "Пропитывает верёвки смолой для водонепроницаемости"
+
+msgctxt "crafts.description"
+msgid "This slot produces nothing."
+msgstr "Слот не производит ничего"
+
+msgctxt "crafts.description"
+msgid "Turns bitumen into tar."
+msgstr "Превращает битум в смолу"
+
+msgctxt "crafts.description"
+msgid "Turns hides into tough leather."
+msgstr "Превращает шкуры в прочную кожу"
+
+msgctxt "crafts.description"
+msgid "Turns oil and soda into soap."
+msgstr "Превращает масло и соду в мыло"
+
+msgctxt "crafts.description"
+msgid "Turns papyrus stems into papyrus."
+msgstr "Превращает стебли папируса в папирус"
+
+msgctxt "crafts.description"
+msgid "Turns sand and soda into glass jewelry."
+msgstr "Превращает песок и соду в стеклянные украшения"
+
+msgctxt "crafts.description"
+msgid "Turns sand and soda into glassware."
+msgstr "Превращает песок и соду в стеклянную посуду"
+
+msgctxt "crafts.description"
+msgid "Turns silkworm cocoons into silk."
+msgstr "Превращает коконы тутового шелкопряда в шёлк"
+
+msgctxt "crafts.description"
+msgid "Twists ropes and cables from fibers."
+msgstr "Свивает верёвки и канаты из волокон"
+
+msgctxt "crafts.description"
+msgid "Weaves clothes out of cloth."
+msgstr "Ткёт одежду из ткани"
+
+msgctxt "crafts.description"
+msgid "Weaves clothes out of silk."
+msgstr "Ткёт одежду из шёлка"
+
+msgctxt "crafts.description"
+msgid "Weaves clothes out of wool."
+msgstr "Ткёт одежду из шерсти"
+
+msgctxt "crafts.name"
+msgid "Antimony"
+msgstr "Сурьма"
+
+msgctxt "crafts.name"
+msgid "Arsenic"
+msgstr "Мышьяк"
+
+msgctxt "crafts.name"
+msgid "Beer"
+msgstr "Пиво"
+
+msgctxt "crafts.name"
+msgid "Bread"
+msgstr "Хлеб"
+
+msgctxt "crafts.name"
+msgid "Bricks"
+msgstr "Кирпичи"
+
+msgctxt "crafts.name"
+msgid "Bronze"
+msgstr "Бронза"
+
+msgctxt "crafts.name"
+msgid "Bronze Jewelry"
+msgstr "Бронзовые украшения"
+
+msgctxt "crafts.name"
+msgid "Bronze Tools"
+msgstr "Бронзовые инструменты"
+
+msgctxt "crafts.name"
+msgid "Bronze Weapons"
+msgstr "Бронзовое оружие"
+
+msgctxt "crafts.name"
+msgid "Building Stone"
+msgstr "Строительный камень"
+
+msgctxt "crafts.name"
+msgid "Campeche"
+msgstr "Кампеш"
+
+msgctxt "crafts.name"
+msgid "Carmine"
+msgstr "Кармин"
+
+msgctxt "crafts.name"
+msgid "Carthamin"
+msgstr "Картамин"
+
+msgctxt "crafts.name"
+msgid "Charcoal"
+msgstr "Древесный уголь"
+
+msgctxt "crafts.name"
+msgid "Cheese"
+msgstr "Сыр"
+
+msgctxt "crafts.name"
+msgid "Cinnabar"
+msgstr "Киноварь"
+
+msgctxt "crafts.name"
+msgid "Clay Tablets"
+msgstr "Глиняные таблички"
+
+msgctxt "crafts.name"
+msgid "Cloth Clothes"
+msgstr "Тканевая одежда"
+
+msgctxt "crafts.name"
+msgid "Coffee"
+msgstr "Кофе"
+
+msgctxt "crafts.name"
+msgid "Copper (from copper ore)"
+msgstr "Медь (из медной руды)"
+
+msgctxt "crafts.name"
+msgid "Copper (from malachite)"
+msgstr "Медь (из малахита)"
+
+msgctxt "crafts.name"
+msgid "Copper Jewelry"
+msgstr "Медные украшения"
+
+msgctxt "crafts.name"
+msgid "Copper Tools"
+msgstr "Медные инструменты"
+
+msgctxt "crafts.name"
+msgid "Copper Weapons"
+msgstr "Медное оружие"
+
+msgctxt "crafts.name"
+msgid "Empty"
+msgstr "Пусто"
+
+msgctxt "crafts.name"
+msgid "Flour (by hand)"
+msgstr "Мука (вручную)"
+
+msgctxt "crafts.name"
+msgid "Flour (with a water wheel)"
+msgstr "Мука (с помощью водяного колеса)"
+
+msgctxt "crafts.name"
+msgid "Flour (with draft animals)"
+msgstr "Мука (с помощью тягловых животных)"
+
+msgctxt "crafts.name"
+msgid "Fruit Wine"
+msgstr "Фруктовое вино"
+
+msgctxt "crafts.name"
+msgid "Glass Jewelry"
+msgstr "Стеклянные украшения"
+
+msgctxt "crafts.name"
+msgid "Glassware"
+msgstr "Стеклянная посуда"
+
+msgctxt "crafts.name"
+msgid "Gold"
+msgstr "Золото"
+
+msgctxt "crafts.name"
+msgid "Gold Jewelry"
+msgstr "Золотые украшения"
+
+msgctxt "crafts.name"
+msgid "Grape Wine"
+msgstr "Виноградное вино"
+
+msgctxt "crafts.name"
+msgid "Henna"
+msgstr "Хна"
+
+msgctxt "crafts.name"
+msgid "Indigo"
+msgstr "Индиго"
+
+msgctxt "crafts.name"
+msgid "Iron"
+msgstr "Железо"
+
+msgctxt "crafts.name"
+msgid "Iron Jewelry"
+msgstr "Железные украшения"
+
+msgctxt "crafts.name"
+msgid "Iron Tools"
+msgstr "Железные инструменты"
+
+msgctxt "crafts.name"
+msgid "Iron Weapons"
+msgstr "Железное оружие"
+
+msgctxt "crafts.name"
+msgid "Lazurite Jewelry"
+msgstr "Украшения из ляпис-лазури"
+
+msgctxt "crafts.name"
+msgid "Leather"
+msgstr "Кожа"
+
+msgctxt "crafts.name"
+msgid "Leather Clothes"
+msgstr "Кожаная одежда"
+
+msgctxt "crafts.name"
+msgid "Lime"
+msgstr "Известь"
+
+msgctxt "crafts.name"
+msgid "Malachite"
+msgstr "Малахит"
+
+msgctxt "crafts.name"
+msgid "Malachite Jewelry"
+msgstr "Украшения из малахита"
+
+msgctxt "crafts.name"
+msgid "Mead"
+msgstr "Медовый напиток"
+
+msgctxt "crafts.name"
+msgid "Meat"
+msgstr "Мясо"
+
+msgctxt "crafts.name"
+msgid "Nephrite Jewelry"
+msgstr "Украшения из нефрита"
+
+msgctxt "crafts.name"
+msgid "Ochre"
+msgstr "Охра"
+
+msgctxt "crafts.name"
+msgid "Paper"
+msgstr "Бумага"
+
+msgctxt "crafts.name"
+msgid "Papyrus"
+msgstr "Папирус"
+
+msgctxt "crafts.name"
+msgid "Parchment"
+msgstr "Пергамент"
+
+msgctxt "crafts.name"
+msgid "Planks"
+msgstr "Доски"
+
+msgctxt "crafts.name"
+msgid "Porphyry Jewelry"
+msgstr "Украшения из порфира"
+
+msgctxt "crafts.name"
+msgid "Pottery"
+msgstr "Глиняная посуда"
+
+msgctxt "crafts.name"
+msgid "Pulque"
+msgstr "Пульке"
+
+msgctxt "crafts.name"
+msgid "Purple"
+msgstr "Пурпур"
+
+msgctxt "crafts.name"
+msgid "Reed Boats"
+msgstr "Тростниковые лодки"
+
+msgctxt "crafts.name"
+msgid "Ropes and Cables"
+msgstr "Верёвки и канаты"
+
+msgctxt "crafts.name"
+msgid "Rose Madder"
+msgstr "Крапп"
+
+msgctxt "crafts.name"
+msgid "Sake"
+msgstr "Саке"
+
+msgctxt "crafts.name"
+msgid "Science"
+msgstr "Наука"
+
+msgctxt "crafts.name"
+msgid "Sepia"
+msgstr "Сепия"
+
+msgctxt "crafts.name"
+msgid "Silk"
+msgstr "Шёлк"
+
+msgctxt "crafts.name"
+msgid "Silk Clothes"
+msgstr "Шёлковая одежда"
+
+msgctxt "crafts.name"
+msgid "Silver"
+msgstr "Серебро"
+
+msgctxt "crafts.name"
+msgid "Silver Jewelry"
+msgstr "Серебряные украшения"
+
+msgctxt "crafts.name"
+msgid "Smoked Fish"
+msgstr "Копченая рыба"
+
+msgctxt "crafts.name"
+msgid "Soap"
+msgstr "Мыло"
+
+msgctxt "crafts.name"
+msgid "Stone Tableware"
+msgstr "Каменная посуда"
+
+msgctxt "crafts.name"
+msgid "Tar"
+msgstr "Смола"
+
+msgctxt "crafts.name"
+msgid "Tarred Ropes"
+msgstr "Просмоленные верёвки"
+
+msgctxt "crafts.name"
+msgid "Tea"
+msgstr "Чай"
+
+msgctxt "crafts.name"
+msgid "Tin"
+msgstr "Олово"
+
+msgctxt "crafts.name"
+msgid "Ultramarine"
+msgstr "Ультрамарин"
+
+msgctxt "crafts.name"
+msgid "Vegetable Oil"
+msgstr "Растительное масло"
+
+msgctxt "crafts.name"
+msgid "Vinegar"
+msgstr "Уксус"
+
+msgctxt "crafts.name"
+msgid "Wax Tablets"
+msgstr "Восковые таблички"
+
+msgctxt "crafts.name"
+msgid "Woad"
+msgstr "Вайда"
+
+msgctxt "crafts.name"
+msgid "Wool Clothes"
+msgstr "Шерстяная одежда"
+
+msgctxt "eras.name"
+msgid "Ancient"
+msgstr "Древняя"
+
+msgctxt "eras.name"
+msgid "Antiquity"
+msgstr "Античность"
+
+msgctxt "eras.name"
+msgid "Classical"
+msgstr "Классическая"
+
+msgctxt "eras.name"
+msgid "Contemporary"
+msgstr "Новейшее время"
+
+msgctxt "eras.name"
+msgid "Medieval"
+msgstr "Средневековье"
+
+msgctxt "eras.name"
+msgid "Modern"
+msgstr "Новое время"
+
+msgctxt "eras.name"
+msgid "Renaissance"
+msgstr "Возрождение"
+
+msgctxt "groups.name"
+msgid "Aromatic Plants"
+msgstr "Парфюмерные растения"
+
+msgctxt "groups.name"
+msgid "Bees"
+msgstr "Пчёлы"
+
+msgctxt "groups.name"
+msgid "Construction Materials"
+msgstr "Строительные материалы"
+
+msgctxt "groups.name"
+msgid "Dairy Animals"
+msgstr "Молочные животные"
+
+msgctxt "groups.name"
+msgid "Fish"
+msgstr "Рыба"
+
+msgctxt "groups.name"
+msgid "Fruits"
+msgstr "Фрукты"
+
+msgctxt "groups.name"
+msgid "Fur Animals"
+msgstr "Пушные животные"
+
+msgctxt "groups.name"
+msgid "Meat Animals"
+msgstr "Мясные животные"
+
+msgctxt "groups.name"
+msgid "Medicinal Plants"
+msgstr "Лекарственные растения"
+
+msgctxt "groups.name"
+msgid "Oil Plants"
+msgstr "Масличные растения"
+
+msgctxt "groups.name"
+msgid "Ornamental Plants"
+msgstr "Декоративные растения"
+
+msgctxt "groups.name"
+msgid "Other"
+msgstr "Прочее"
+
+msgctxt "groups.name"
+msgid "Other Seafood"
+msgstr "Прочие водные животные"
+
+msgctxt "groups.name"
+msgid "Poultry"
+msgstr "Домашняя птица"
+
+msgctxt "groups.name"
+msgid "Spices"
+msgstr "Пряности"
+
+msgctxt "groups.name"
+msgid "Technical Plants"
+msgstr "Технические растения"
+
+msgctxt "groups.name"
+msgid "Textile Plants"
+msgstr "Текстильные растения"
+
+msgctxt "groups.name"
+msgid "Wool Animals"
+msgstr "Шерстяные животные"
+
+msgctxt "improvements.name"
+msgid "Apiary"
+msgstr "Пасека"
+
+msgctxt "improvements.name"
+msgid "Clay Pit"
+msgstr "Глиняная яма"
+
+msgctxt "improvements.name"
+msgid "Farm"
+msgstr "Ферма"
+
+msgctxt "improvements.name"
+msgid "Fishing Boats"
+msgstr "Рыбацкие лодки"
+
+msgctxt "improvements.name"
+msgid "Harbor"
+msgstr "Пристань"
+
+msgctxt "improvements.name"
+msgid "Irrigation Canal"
+msgstr "Ирригационный канал"
+
+msgctxt "improvements.name"
+msgid "Mine"
+msgstr "Шахта"
+
+msgctxt "improvements.name"
+msgid "Pasture"
+msgstr "Пастбище"
+
+msgctxt "improvements.name"
+msgid "Plantation"
+msgstr "Плантация"
+
+msgctxt "improvements.name"
+msgid "Quarry"
+msgstr "Каменоломня"
+
+msgctxt "improvements.name"
+msgid "Salt Pond"
+msgstr "Соляный пруд"
+
+msgctxt "improvements.name"
+msgid "Soda Quarry"
+msgstr "Содовый карьер"
+
+msgctxt "improvements.name"
+msgid "Tar Pit"
+msgstr "Смоляная яма"
+
+msgctxt "improvements.name"
+msgid "Vineyard"
+msgstr "Виноградник"
+
+msgctxt "improvements.name"
+msgid "Woodcutter's Camp"
+msgstr "Лесная делянка"
+
+msgctxt "modifiers.tech_modifiers.name"
+msgid "Construction: -10% labor cost"
+msgstr "Строительство: -10% к затратам труда"
+
+msgctxt "modifiers.tech_modifiers.name"
+msgid "Farms: +50% production"
+msgstr "Фермы: +50% к производству"
+
+msgctxt "modifiers.tech_modifiers.name"
+msgid "Fresh water passes through in a chain (up to 3 tiles)"
+msgstr "Передача пресной воды по цепочке (до 3 гексов)"
+
+msgctxt "modifiers.tech_modifiers.name"
+msgid "Fresh water passes through in a chain (up to 4 tiles)"
+msgstr "Передача пресной воды по цепочке (до 4 гексов)"
+
+msgctxt "modifiers.tech_modifiers.name"
+msgid "Plantations: +30% production"
+msgstr "Плантации: +30% к производству"
+
+msgctxt "modifiers.tech_modifiers.name"
+msgid "Reduces the effect of distance from the city on labor cost when building improvements by 30%"
+msgstr "Снижает вклад расстояния от города в стоимость труда при строительстве улучшений на 30%"
+
+msgctxt "priority_names"
+msgid "Best quality"
+msgstr "Лучшее качество"
+
+msgctxt "priority_names"
+msgid "Random"
+msgstr "Случайно"
+
+msgctxt "priority_names"
+msgid "Worst quality"
+msgstr "Худшее качество"
+
+msgctxt "product_groups.name"
+msgid "Alcohol"
+msgstr "Алкоголь"
+
+msgctxt "product_groups.name"
+msgid "Boats"
+msgstr "Лодки"
+
+msgctxt "product_groups.name"
+msgid "Bronze Alloys"
+msgstr "Бронзовые сплавы"
+
+msgctxt "product_groups.name"
+msgid "Building Stone"
+msgstr "Строительный камень"
+
+msgctxt "product_groups.name"
+msgid "Dyes"
+msgstr "Красители"
+
+msgctxt "product_groups.name"
+msgid "Fruits"
+msgstr "Фрукты"
+
+msgctxt "product_groups.name"
+msgid "Jewelry"
+msgstr "Украшения"
+
+msgctxt "product_groups.name"
+msgid "Millable Grains"
+msgstr "Зерновые культуры"
+
+msgctxt "product_groups.name"
+msgid "Oil Crops"
+msgstr "Масличные культуры"
+
+msgctxt "product_groups.name"
+msgid "Paper Fibers"
+msgstr "Волокна для бумаги"
+
+msgctxt "product_groups.name"
+msgid "Processed Building Materials"
+msgstr "Обработанные стройматериалы"
+
+msgctxt "product_groups.name"
+msgid "Rope Fibers"
+msgstr "Волокна для канатов"
+
+msgctxt "product_groups.name"
+msgid "Tableware"
+msgstr "Посуда"
+
+msgctxt "product_groups.name"
+msgid "Tableware Stones"
+msgstr "Камни для посуды"
+
+msgctxt "product_groups.name"
+msgid "Textile Crops"
+msgstr "Текстильные культуры"
+
+msgctxt "product_groups.name"
+msgid "Writing Materials"
+msgstr "Писчие материалы"
+
+msgctxt "professions.description"
+msgid "A pseudo-profession that covers the whole population of the city, including employed citizens."
+msgstr "Псевдо-профессия: охватывает всё население города, включая занятых жителей."
+
+msgctxt "professions.description"
+msgid "Burns wood into charcoal."
+msgstr "Обжигает древесину в древесный уголь."
+
+msgctxt "professions.description"
+msgid "Copies and studies texts in the library and scriptorium, adding to the city's science."
+msgstr "Переписывает и исследует тексты в библиотеке и скриптории, пополняя пул науки."
+
+msgctxt "professions.description"
+msgid "Cultivates the vineyard and gathers the harvest."
+msgstr "Возделывает виноградник, собирает урожай."
+
+msgctxt "professions.description"
+msgid "Digs and sorts clay for firing."
+msgstr "Копает и сортирует глину для обжига."
+
+msgctxt "professions.description"
+msgid "Digs ore and minerals out of the ground."
+msgstr "Добывает руду и минералы под землёй."
+
+msgctxt "professions.description"
+msgid "Extracts soda from natural deposits."
+msgstr "Добывает соду из природных отложений."
+
+msgctxt "professions.description"
+msgid "Extracts stone from open quarries."
+msgstr "Добывает камень в открытых карьерах."
+
+msgctxt "professions.description"
+msgid "Fells trees in forest plots and hauls in the timber."
+msgstr "Рубит деревья на лесной делянке и заготавливает древесину."
+
+msgctxt "professions.description"
+msgid "Fishes from boats on any water body with a dock."
+msgstr "Ловит рыбу с лодок на водоёмах с пристанью."
+
+msgctxt "professions.description"
+msgid "Forges tools, weapons and ornaments from metal."
+msgstr "Кует инструменты, оружие и украшения из металла."
+
+msgctxt "professions.description"
+msgid "Gathers and boils down natural tar."
+msgstr "Собирает и выпаривает природную смолу."
+
+msgctxt "professions.description"
+msgid "Grows technical and spice crops."
+msgstr "Возделывает технические и пряные культуры."
+
+msgctxt "professions.description"
+msgid "Smelts ore into pure metals."
+msgstr "Плавит руду в чистые металлы."
+
+msgctxt "professions.description"
+msgid "Tends the herd and keeps count of the livestock."
+msgstr "Присматривает за стадом, следит за поголовьем."
+
+msgctxt "professions.description"
+msgid "Tends the hives and harvests honey."
+msgstr "Следит за ульями, собирает мёд."
+
+msgctxt "professions.description"
+msgid "Turns sand and soda into glass."
+msgstr "Превращает песок и соду в стекло."
+
+msgctxt "professions.description"
+msgid "Works the fields and tends the crops."
+msgstr "Возделывает поля, ухаживает за посевами."
+
+msgctxt "professions.name"
+msgid "All Citizens"
+msgstr "Все жители"
+
+msgctxt "professions.name"
+msgid "Beekeeper"
+msgstr "Пчеловод"
+
+msgctxt "professions.name"
+msgid "Blacksmith"
+msgstr "Кузнец"
+
+msgctxt "professions.name"
+msgid "Charcoal Burner"
+msgstr "Углежог"
+
+msgctxt "professions.name"
+msgid "Farmer"
+msgstr "Фермер"
+
+msgctxt "professions.name"
+msgid "Fisherman"
+msgstr "Рыбак"
+
+msgctxt "professions.name"
+msgid "Glassmaker"
+msgstr "Стеклодел"
+
+msgctxt "professions.name"
+msgid "Herder"
+msgstr "Скотовод"
+
+msgctxt "professions.name"
+msgid "Lumberjack"
+msgstr "Лесоруб"
+
+msgctxt "professions.name"
+msgid "Miner"
+msgstr "Шахтёр"
+
+msgctxt "professions.name"
+msgid "Planter"
+msgstr "Плантатор"
+
+msgctxt "professions.name"
+msgid "Potter"
+msgstr "Гончар"
+
+msgctxt "professions.name"
+msgid "Quarryman"
+msgstr "Каменотёс"
+
+msgctxt "professions.name"
+msgid "Scholar"
+msgstr "Учёный"
+
+msgctxt "professions.name"
+msgid "Smelter Worker"
+msgstr "Плавильщик"
+
+msgctxt "professions.name"
+msgid "Soda Extractor"
+msgstr "Содовщик"
+
+msgctxt "professions.name"
+msgid "Tar Burner"
+msgstr "Смолокур"
+
+msgctxt "professions.name"
+msgid "Vinedresser"
+msgstr "Виноградарь"
+
+msgctxt "quality_levels.name"
+msgid "Common"
+msgstr "Обычное"
+
+msgctxt "quality_levels.name"
+msgid "Exceptional"
+msgstr "Исключительное"
+
+msgctxt "quality_levels.name"
+msgid "Fine"
+msgstr "Хорошее"
+
+msgctxt "quality_levels.name"
+msgid "Perfect"
+msgstr "Превосходное"
+
+msgctxt "resources.name"
+msgid "Agave"
+msgstr "Агава"
+
+msgctxt "resources.name"
+msgid "Alabaster"
+msgstr "Алебастр"
+
+msgctxt "resources.name"
+msgid "Alpacas"
+msgstr "Альпаки"
+
+msgctxt "resources.name"
+msgid "Amaranth"
+msgstr "Амарант"
+
+msgctxt "resources.name"
+msgid "Antimony"
+msgstr "Сурьма"
+
+msgctxt "resources.name"
+msgid "Antimony Ore"
+msgstr "Сурьмяная руда"
+
+msgctxt "resources.name"
+msgid "Arsenic"
+msgstr "Мышьяк"
+
+msgctxt "resources.name"
+msgid "Arsenic Ore"
+msgstr "Мышьяковая руда"
+
+msgctxt "resources.name"
+msgid "Banteng"
+msgstr "Бантенги"
+
+msgctxt "resources.name"
+msgid "Barley"
+msgstr "Ячмень"
+
+msgctxt "resources.name"
+msgid "Basalt"
+msgstr "Базальт"
+
+msgctxt "resources.name"
+msgid "Beans"
+msgstr "Фасоль"
+
+msgctxt "resources.name"
+msgid "Beer"
+msgstr "Пиво"
+
+msgctxt "resources.name"
+msgid "Bees"
+msgstr "Пчёлы"
+
+msgctxt "resources.name"
+msgid "Bison"
+msgstr "Бизоны"
+
+msgctxt "resources.name"
+msgid "Bitumen"
+msgstr "Битум"
+
+msgctxt "resources.name"
+msgid "Bread"
+msgstr "Хлеб"
+
+msgctxt "resources.name"
+msgid "Bricks"
+msgstr "Кирпичи"
+
+msgctxt "resources.name"
+msgid "Bronze"
+msgstr "Бронза"
+
+msgctxt "resources.name"
+msgid "Bronze Jewelry"
+msgstr "Бронзовые украшения"
+
+msgctxt "resources.name"
+msgid "Bronze Tools"
+msgstr "Бронзовые инструменты"
+
+msgctxt "resources.name"
+msgid "Bronze Weapons"
+msgstr "Бронзовое оружие"
+
+msgctxt "resources.name"
+msgid "Buckwheat"
+msgstr "Гречиха"
+
+msgctxt "resources.name"
+msgid "Buffalo"
+msgstr "Буйволы"
+
+msgctxt "resources.name"
+msgid "Camels"
+msgstr "Верблюды"
+
+msgctxt "resources.name"
+msgid "Campeche"
+msgstr "Кампеш"
+
+msgctxt "resources.name"
+msgid "Campeche Tree"
+msgstr "Кампешевое дерево"
+
+msgctxt "resources.name"
+msgid "Campeche Wood"
+msgstr "Древесина кампешевого дерева"
+
+msgctxt "resources.name"
+msgid "Canihua"
+msgstr "Каньива"
+
+msgctxt "resources.name"
+msgid "Carmine"
+msgstr "Кармин"
+
+msgctxt "resources.name"
+msgid "Carthamin"
+msgstr "Картамин"
+
+msgctxt "resources.name"
+msgid "Cassava"
+msgstr "Кассава"
+
+msgctxt "resources.name"
+msgid "Cattle"
+msgstr "Коровы"
+
+msgctxt "resources.name"
+msgid "Chamomile"
+msgstr "Ромашки"
+
+msgctxt "resources.name"
+msgid "Charcoal"
+msgstr "Древесный уголь"
+
+msgctxt "resources.name"
+msgid "Cheese"
+msgstr "Сыр"
+
+msgctxt "resources.name"
+msgid "Chickens"
+msgstr "Куры"
+
+msgctxt "resources.name"
+msgid "Chickpeas"
+msgstr "Нут"
+
+msgctxt "resources.name"
+msgid "Cinnabar"
+msgstr "Киноварь"
+
+msgctxt "resources.name"
+msgid "Cinnabar (Ore)"
+msgstr "Киноварь (руда)"
+
+msgctxt "resources.name"
+msgid "Clay"
+msgstr "Глина"
+
+msgctxt "resources.name"
+msgid "Clay Tablets"
+msgstr "Глиняные таблички"
+
+msgctxt "resources.name"
+msgid "Cloth Clothes"
+msgstr "Тканевая одежда"
+
+msgctxt "resources.name"
+msgid "Cochineal"
+msgstr "Кошениль"
+
+msgctxt "resources.name"
+msgid "Coffee"
+msgstr "Кофе"
+
+msgctxt "resources.name"
+msgid "Coffee Beans"
+msgstr "Кофейные зёрна"
+
+msgctxt "resources.name"
+msgid "Copper"
+msgstr "Медь"
+
+msgctxt "resources.name"
+msgid "Copper Jewelry"
+msgstr "Медные украшения"
+
+msgctxt "resources.name"
+msgid "Copper Nugget"
+msgstr "Медный самородок"
+
+msgctxt "resources.name"
+msgid "Copper Ore"
+msgstr "Медная руда"
+
+msgctxt "resources.name"
+msgid "Copper Tools"
+msgstr "Медные инструменты"
+
+msgctxt "resources.name"
+msgid "Copper Weapons"
+msgstr "Медное оружие"
+
+msgctxt "resources.name"
+msgid "Corn"
+msgstr "Кукуруза"
+
+msgctxt "resources.name"
+msgid "Cotton"
+msgstr "Хлопок"
+
+msgctxt "resources.name"
+msgid "Cowpea"
+msgstr "Вигна"
+
+msgctxt "resources.name"
+msgid "Cuttlefish"
+msgstr "Каракатица"
+
+msgctxt "resources.name"
+msgid "Dates"
+msgstr "Финики"
+
+msgctxt "resources.name"
+msgid "Deer"
+msgstr "Олени"
+
+msgctxt "resources.name"
+msgid "Ducks"
+msgstr "Утки"
+
+msgctxt "resources.name"
+msgid "Eggs"
+msgstr "Яйца"
+
+msgctxt "resources.name"
+msgid "Feathers"
+msgstr "Перья"
+
+msgctxt "resources.name"
+msgid "Figs"
+msgstr "Инжир"
+
+msgctxt "resources.name"
+msgid "Fish"
+msgstr "Рыба"
+
+msgctxt "resources.name"
+msgid "Flax"
+msgstr "Лён"
+
+msgctxt "resources.name"
+msgid "Flour"
+msgstr "Мука"
+
+msgctxt "resources.name"
+msgid "Fodder"
+msgstr "Корм"
+
+msgctxt "resources.name"
+msgid "Foraged Food"
+msgstr "Дикоросы"
+
+msgctxt "resources.name"
+msgid "Fruit Wine"
+msgstr "Фруктовое вино"
+
+msgctxt "resources.name"
+msgid "Geese"
+msgstr "Гуси"
+
+msgctxt "resources.name"
+msgid "Glass Jewelry"
+msgstr "Стеклянные украшения"
+
+msgctxt "resources.name"
+msgid "Glassware"
+msgstr "Стеклянная посуда"
+
+msgctxt "resources.name"
+msgid "Goats"
+msgstr "Козы"
+
+msgctxt "resources.name"
+msgid "Gold"
+msgstr "Золото"
+
+msgctxt "resources.name"
+msgid "Gold Jewelry"
+msgstr "Золотые украшения"
+
+msgctxt "resources.name"
+msgid "Gold Nugget"
+msgstr "Золотой самородок"
+
+msgctxt "resources.name"
+msgid "Gold Ore"
+msgstr "Золотая руда"
+
+msgctxt "resources.name"
+msgid "Granite"
+msgstr "Гранит"
+
+msgctxt "resources.name"
+msgid "Grapes"
+msgstr "Виноград"
+
+msgctxt "resources.name"
+msgid "Guineafowl"
+msgstr "Цесарки"
+
+msgctxt "resources.name"
+msgid "Hemp"
+msgstr "Конопля"
+
+msgctxt "resources.name"
+msgid "Henna"
+msgstr "Хна"
+
+msgctxt "resources.name"
+msgid "Hide"
+msgstr "Шкура"
+
+msgctxt "resources.name"
+msgid "Honey"
+msgstr "Мёд"
+
+msgctxt "resources.name"
+msgid "Horses"
+msgstr "Лошади"
+
+msgctxt "resources.name"
+msgid "Indigo"
+msgstr "Индиго"
+
+msgctxt "resources.name"
+msgid "Indigofera"
+msgstr "Индигофера"
+
+msgctxt "resources.name"
+msgid "Indigofera Leaves"
+msgstr "Листья индигоферы"
+
+msgctxt "resources.name"
+msgid "Iron"
+msgstr "Железо"
+
+msgctxt "resources.name"
+msgid "Iron Jewelry"
+msgstr "Железные украшения"
+
+msgctxt "resources.name"
+msgid "Iron Ore"
+msgstr "Железная руда"
+
+msgctxt "resources.name"
+msgid "Iron Tools"
+msgstr "Железные инструменты"
+
+msgctxt "resources.name"
+msgid "Iron Weapons"
+msgstr "Железное оружие"
+
+msgctxt "resources.name"
+msgid "Jute"
+msgstr "Джут"
+
+msgctxt "resources.name"
+msgid "Lawsonia"
+msgstr "Лавсония"
+
+msgctxt "resources.name"
+msgid "Lawsonia Leaves"
+msgstr "Листья лавсонии"
+
+msgctxt "resources.name"
+msgid "Lazurite"
+msgstr "Лазурит"
+
+msgctxt "resources.name"
+msgid "Lazurite Jewelry"
+msgstr "Украшения из ляпис-лазури"
+
+msgctxt "resources.name"
+msgid "Leather"
+msgstr "Кожа"
+
+msgctxt "resources.name"
+msgid "Leather Clothes"
+msgstr "Кожаная одежда"
+
+msgctxt "resources.name"
+msgid "Lentils"
+msgstr "Чечевица"
+
+msgctxt "resources.name"
+msgid "Lime"
+msgstr "Известь"
+
+msgctxt "resources.name"
+msgid "Limestone"
+msgstr "Известняк"
+
+msgctxt "resources.name"
+msgid "Llamas"
+msgstr "Ламы"
+
+msgctxt "resources.name"
+msgid "Maca"
+msgstr "Мака"
+
+msgctxt "resources.name"
+msgid "Madder"
+msgstr "Марена"
+
+msgctxt "resources.name"
+msgid "Madder Root"
+msgstr "Корень марены"
+
+msgctxt "resources.name"
+msgid "Malachite"
+msgstr "Малахит"
+
+msgctxt "resources.name"
+msgid "Malachite (Ore)"
+msgstr "Малахит (руда)"
+
+msgctxt "resources.name"
+msgid "Malachite Jewelry"
+msgstr "Украшения из малахита"
+
+msgctxt "resources.name"
+msgid "Marble"
+msgstr "Мрамор"
+
+msgctxt "resources.name"
+msgid "Mead"
+msgstr "Медовый напиток"
+
+msgctxt "resources.name"
+msgid "Meat"
+msgstr "Мясо"
+
+msgctxt "resources.name"
+msgid "Meteorite Iron"
+msgstr "Метеоритное железо"
+
+msgctxt "resources.name"
+msgid "Millet"
+msgstr "Просо"
+
+msgctxt "resources.name"
+msgid "Mulberries"
+msgstr "Шелковица"
+
+msgctxt "resources.name"
+msgid "Mulberry Bark"
+msgstr "Кора тутовника"
+
+msgctxt "resources.name"
+msgid "Mulberry Tree"
+msgstr "Тутовое дерево"
+
+msgctxt "resources.name"
+msgid "Murex"
+msgstr "Мурекс"
+
+msgctxt "resources.name"
+msgid "Nephrite"
+msgstr "Нефрит"
+
+msgctxt "resources.name"
+msgid "Nephrite Jewelry"
+msgstr "Украшения из нефрита"
+
+msgctxt "resources.name"
+msgid "Oats"
+msgstr "Овёс"
+
+msgctxt "resources.name"
+msgid "Oca"
+msgstr "Ока"
+
+msgctxt "resources.name"
+msgid "Ochre"
+msgstr "Охра"
+
+msgctxt "resources.name"
+msgid "Olives"
+msgstr "Оливки"
+
+msgctxt "resources.name"
+msgid "Ostriches"
+msgstr "Страусы"
+
+msgctxt "resources.name"
+msgid "Paper"
+msgstr "Бумага"
+
+msgctxt "resources.name"
+msgid "Papyrus"
+msgstr "Папирус"
+
+msgctxt "resources.name"
+msgid "Parchment"
+msgstr "Пергамент"
+
+msgctxt "resources.name"
+msgid "Peas"
+msgstr "Горох"
+
+msgctxt "resources.name"
+msgid "Pigeons"
+msgstr "Голуби"
+
+msgctxt "resources.name"
+msgid "Pigs"
+msgstr "Свиньи"
+
+msgctxt "resources.name"
+msgid "Planks"
+msgstr "Доски"
+
+msgctxt "resources.name"
+msgid "Pomegranates"
+msgstr "Гранаты"
+
+msgctxt "resources.name"
+msgid "Porphyry"
+msgstr "Порфир"
+
+msgctxt "resources.name"
+msgid "Porphyry Jewelry"
+msgstr "Украшения из порфира"
+
+msgctxt "resources.name"
+msgid "Potato"
+msgstr "Картофель"
+
+msgctxt "resources.name"
+msgid "Pottery"
+msgstr "Глиняная посуда"
+
+msgctxt "resources.name"
+msgid "Prickly Pear"
+msgstr "Опунция"
+
+msgctxt "resources.name"
+msgid "Processed Building Stone"
+msgstr "Обработанный строительный камень"
+
+msgctxt "resources.name"
+msgid "Pulque"
+msgstr "Пульке"
+
+msgctxt "resources.name"
+msgid "Purple"
+msgstr "Пурпур"
+
+msgctxt "resources.name"
+msgid "Quartz Sand"
+msgstr "Кварцевый песок"
+
+msgctxt "resources.name"
+msgid "Quinoa"
+msgstr "Киноа"
+
+msgctxt "resources.name"
+msgid "Rabbits"
+msgstr "Кролики"
+
+msgctxt "resources.name"
+msgid "Ramie"
+msgstr "Рами"
+
+msgctxt "resources.name"
+msgid "Raw Fish"
+msgstr "Сырая рыба"
+
+msgctxt "resources.name"
+msgid "Raw Meat"
+msgstr "Сырое мясо"
+
+msgctxt "resources.name"
+msgid "Raw Milk"
+msgstr "Сырое молоко"
+
+msgctxt "resources.name"
+msgid "Reed Boat"
+msgstr "Тростниковая лодка"
+
+msgctxt "resources.name"
+msgid "Rice"
+msgstr "Рис"
+
+msgctxt "resources.name"
+msgid "Ropes and Cables"
+msgstr "Верёвки и канаты"
+
+msgctxt "resources.name"
+msgid "Rose Madder"
+msgstr "Крапп"
+
+msgctxt "resources.name"
+msgid "Roses"
+msgstr "Розы"
+
+msgctxt "resources.name"
+msgid "Rye"
+msgstr "Рожь"
+
+msgctxt "resources.name"
+msgid "Safflower"
+msgstr "Сафлор"
+
+msgctxt "resources.name"
+msgid "Safflower Leaves"
+msgstr "Листья сафлора"
+
+msgctxt "resources.name"
+msgid "Sake"
+msgstr "Саке"
+
+msgctxt "resources.name"
+msgid "Salt"
+msgstr "Соль"
+
+msgctxt "resources.name"
+msgid "Sandstone"
+msgstr "Песчаник"
+
+msgctxt "resources.name"
+msgid "Science"
+msgstr "Наука"
+
+msgctxt "resources.name"
+msgid "Sepia"
+msgstr "Сепия"
+
+msgctxt "resources.name"
+msgid "Sesame"
+msgstr "Кунжут"
+
+msgctxt "resources.name"
+msgid "Sheep"
+msgstr "Овцы"
+
+msgctxt "resources.name"
+msgid "Silk"
+msgstr "Шёлк"
+
+msgctxt "resources.name"
+msgid "Silk Clothes"
+msgstr "Шёлковая одежда"
+
+msgctxt "resources.name"
+msgid "Silk Cocoon"
+msgstr "Кокон тутового шелкопряда"
+
+msgctxt "resources.name"
+msgid "Silver"
+msgstr "Серебро"
+
+msgctxt "resources.name"
+msgid "Silver Jewelry"
+msgstr "Серебряные украшения"
+
+msgctxt "resources.name"
+msgid "Silver Nugget"
+msgstr "Серебряный самородок"
+
+msgctxt "resources.name"
+msgid "Silver Ore"
+msgstr "Серебряная руда"
+
+msgctxt "resources.name"
+msgid "Sisal"
+msgstr "Сизаль"
+
+msgctxt "resources.name"
+msgid "Soap"
+msgstr "Мыло"
+
+msgctxt "resources.name"
+msgid "Soapstone"
+msgstr "Стеатит"
+
+msgctxt "resources.name"
+msgid "Soda"
+msgstr "Сода"
+
+msgctxt "resources.name"
+msgid "Sorghum"
+msgstr "Сорго"
+
+msgctxt "resources.name"
+msgid "Soybean"
+msgstr "Соя"
+
+msgctxt "resources.name"
+msgid "Stone Tableware"
+msgstr "Каменная посуда"
+
+msgctxt "resources.name"
+msgid "Tar"
+msgstr "Смола"
+
+msgctxt "resources.name"
+msgid "Taro"
+msgstr "Таро"
+
+msgctxt "resources.name"
+msgid "Tarred Ropes"
+msgstr "Просмоленные верёвки"
+
+msgctxt "resources.name"
+msgid "Tea"
+msgstr "Чай"
+
+msgctxt "resources.name"
+msgid "Tea Leaves"
+msgstr "Чайные листья"
+
+msgctxt "resources.name"
+msgid "Teff"
+msgstr "Теф"
+
+msgctxt "resources.name"
+msgid "Tin"
+msgstr "Олово"
+
+msgctxt "resources.name"
+msgid "Tin Ore"
+msgstr "Оловянная руда"
+
+msgctxt "resources.name"
+msgid "Tuff"
+msgstr "Туф"
+
+msgctxt "resources.name"
+msgid "Tulips"
+msgstr "Тюльпаны"
+
+msgctxt "resources.name"
+msgid "Turkeys"
+msgstr "Индейки"
+
+msgctxt "resources.name"
+msgid "Ultramarine"
+msgstr "Ультрамарин"
+
+msgctxt "resources.name"
+msgid "Vegetable Oil"
+msgstr "Растительное масло"
+
+msgctxt "resources.name"
+msgid "Vinegar"
+msgstr "Уксус"
+
+msgctxt "resources.name"
+msgid "Wax"
+msgstr "Воск"
+
+msgctxt "resources.name"
+msgid "Wax Tablets"
+msgstr "Восковые таблички"
+
+msgctxt "resources.name"
+msgid "Wheat"
+msgstr "Пшеница"
+
+msgctxt "resources.name"
+msgid "Wine"
+msgstr "Вино"
+
+msgctxt "resources.name"
+msgid "Woad"
+msgstr "Вайда"
+
+msgctxt "resources.name"
+msgid "Woad Leaves"
+msgstr "Листья вайды"
+
+msgctxt "resources.name"
+msgid "Wood"
+msgstr "Древесина"
+
+msgctxt "resources.name"
+msgid "Wool"
+msgstr "Шерсть"
+
+msgctxt "resources.name"
+msgid "Wool Clothes"
+msgstr "Шерстяная одежда"
+
+msgctxt "resources.name"
+msgid "Yak"
+msgstr "Яки"
+
+msgctxt "resources.name"
+msgid "Yam"
+msgstr "Ямс"
+
+msgctxt "resources.name"
+msgid "Zebu"
+msgstr "Зебу"
+
+msgctxt "roads.description"
+msgid "A leveled road for carts. Three times the load of a trail."
+msgstr "Ровная дорога для телег. Втрое больше, чем везёт тропка."
+
+msgctxt "roads.description"
+msgid "A simple footpath worn into the ground. Cheap, but it carries very little."
+msgstr "Простая тропа, протоптанная в земле. Дёшево, но мало что везёт."
+
+msgctxt "roads.name"
+msgid "Cart Road"
+msgstr "Тележная дорога"
+
+msgctxt "roads.name"
+msgid "Trail"
+msgstr "Тропка"
+
+msgctxt "special_actions.name"
+msgid "Build Road"
+msgstr "Построить дорогу"
+
+msgctxt "special_actions.name"
+msgid "Clear Forest"
+msgstr "Вырубка леса"
+
+msgctxt "special_actions.name"
+msgid "Demolish Improvement"
+msgstr "Снести улучшение"
+
+msgctxt "special_actions.name"
+msgid "Drain Water"
+msgstr "Осушение болот"
+
+msgctxt "special_actions.name"
+msgid "Forage Resource"
+msgstr "Собрать ресурс"
+
+msgctxt "technologies.description"
+msgid "+30% to resource production on plantations."
+msgstr "+30% к производству ресурсов на плантациях."
+
+msgctxt "technologies.description"
+msgid "+50% to resource production on farms."
+msgstr "+50% к производству ресурсов на фермах."
+
+msgctxt "technologies.description"
+msgid "-10% to the work cost of construction."
+msgstr "-10% к затратам труда на строительство."
+
+msgctxt "technologies.description"
+msgid "Allows scouts to explore areas in the fog of war."
+msgstr "Даёт возможность разведчикам исследовать области в тумане войны."
+
+msgctxt "technologies.description"
+msgid "Allows you to build a dock and fishing boats."
+msgstr "Даёт возможность строить пристань и рыбацкие лодки."
+
+msgctxt "technologies.description"
+msgid "Allows you to build canals to bring water to remote areas."
+msgstr "Позволяет строить каналы для обеспечения водой отдаленных областей."
+
+msgctxt "technologies.description"
+msgid "Allows you to build farms."
+msgstr "Позволяет строить фермы."
+
+msgctxt "technologies.description"
+msgid "Allows you to build forest plots (logging) and the carpenter's workshop (timber → planks)."
+msgstr "Даёт возможность строить лесную делянку (добыча древесины) и плотницкую мастерскую (древесина → доски)."
+
+msgctxt "technologies.description"
+msgid "Allows you to build libraries."
+msgstr "Дает возможность строить библиотеки."
+
+msgctxt "technologies.description"
+msgid "Allows you to build mines."
+msgstr "Даёт возможность строить шахты."
+
+msgctxt "technologies.description"
+msgid "Allows you to build pastures."
+msgstr "Даёт возможность строить пастбища."
+
+msgctxt "technologies.description"
+msgid "Allows you to build scriptoriums."
+msgstr "Даёт возможность строить скриптории."
+
+msgctxt "technologies.description"
+msgid "Allows you to build the Market city building."
+msgstr "Даёт возможность строить городское здание Рынок."
+
+msgctxt "technologies.description"
+msgid "Allows you to build the alchemist's house."
+msgstr "Даёт возможность строить дом алхимика."
+
+msgctxt "technologies.description"
+msgid "Allows you to build the apiary."
+msgstr "Даёт возможность строить пасеку."
+
+msgctxt "technologies.description"
+msgid "Allows you to build the brewer's house. Unlocks recipes for brewing beer, pulque and sake."
+msgstr "Даёт возможность строить дом варщика. Открывает рецепты варки пива, пульке и саке."
+
+msgctxt "technologies.description"
+msgid "Allows you to build the clay pit and the pottery workshop."
+msgstr "Даёт возможность строить глиняную яму и гончарную мастерскую."
+
+msgctxt "technologies.description"
+msgid "Allows you to build the dairy: raw milk → cheese."
+msgstr "Даёт возможность строить сыроварню: сырое молоко → сыр."
+
+msgctxt "technologies.description"
+msgid "Allows you to build the glassmaker's house: sand and soda → glass."
+msgstr "Даёт возможность строить дом стеклодела: песок и сода → стекло."
+
+msgctxt "technologies.description"
+msgid "Allows you to build the hand oil press: seeds, fruits and other parts of oil crops → vegetable oil."
+msgstr "Даёт возможность строить ручную маслодавку: семена, плоды и прочие части масличных культур → растительное масло."
+
+msgctxt "technologies.description"
+msgid "Allows you to build the lime kilns: limestone → lime."
+msgstr "Даёт возможность строить печи для обжига известняка: известняк → известь."
+
+msgctxt "technologies.description"
+msgid "Allows you to build the paper workshop.\nAllows you to produce paper from mulberry, hemp and ramie with the help of lime."
+msgstr "Даёт возможность строить бумажную мастерскую.\nПозволяет производить бумагу из тутовника, конопли и рами с использованием извести."
+
+msgctxt "technologies.description"
+msgid "Allows you to build the quarry and the mason's workshop."
+msgstr "Даёт возможность строить каменоломню и каменотёсную мастерскую."
+
+msgctxt "technologies.description"
+msgid "Allows you to build the quarry for soda extraction."
+msgstr "Даёт возможность строить строить карьер для добычи соды."
+
+msgctxt "technologies.description"
+msgid "Allows you to build the ropemaker's house: fibers → ropes."
+msgstr "Даёт возможность строить дом канатчика: волокна → верёвки."
+
+msgctxt "technologies.description"
+msgid "Allows you to build the silkmaker's house: cocoons → silk."
+msgstr "Даёт возможность строить дом шелкопряда: коконы → шёлк."
+
+msgctxt "technologies.description"
+msgid "Allows you to build the smelter and smelt metal out of ore."
+msgstr "Даёт возможность строить плавильную печь и плавить металл из руды."
+
+msgctxt "technologies.description"
+msgid "Allows you to build the soapmaker's house: vegetable oil and soda → soap."
+msgstr "Даёт возможность строить дом мыловара: растительное масло и сода → мыло."
+
+msgctxt "technologies.description"
+msgid "Allows you to build the tanner's house: hides → leather."
+msgstr "Даёт возможность строить дом кожевника: шкуры → кожа."
+
+msgctxt "technologies.description"
+msgid "Allows you to build the tar pit and the tar distillery: bitumen → tar."
+msgstr "Даёт возможность строить смоляную яму, а также смолокурню: битум → смола."
+
+msgctxt "technologies.description"
+msgid "Allows you to build the vineyard."
+msgstr "Даёт возможность строить виноградник."
+
+msgctxt "technologies.description"
+msgid "Allows you to build the weaver's house: various materials → clothes."
+msgstr "Даёт возможность строить дом ткача: различные материалы → одежда."
+
+msgctxt "technologies.description"
+msgid "Allows you to build the winemaker's house: grapes → wine."
+msgstr "Даёт возможность строить дом винодела: виноград → вино."
+
+msgctxt "technologies.description"
+msgid "Allows you to extract various dyes from organic and inorganic materials."
+msgstr "Позволяет добывать различные красители из органических и неорганических материалов."
+
+msgctxt "technologies.description"
+msgid "Reduces the effect of distance from the city on the work cost of building improvements by 30%.\nUnlocks the Cart Road (road level 2): up to 30 units/sec per section instead of 10."
+msgstr "Снижает вклад расстояния от города в стоимость труда при строительстве улучшений на 30%.\nОткрывает тележную дорогу (уровень дороги 2): до 30 ед./сек на участок вместо 10."
+
+msgctxt "technologies.description"
+msgid "Specialized farming: growing cash crops. Allows you to build plantations."
+msgstr "Специализированное земледелие: выращивание товарных культур. Даёт возможность строить плантации."
+
+msgctxt "technologies.description"
+msgid "Unlocks parchment and allows you to create written material."
+msgstr "Открывает пергамент и позволяет создавать письменные материалы."
+
+msgctxt "technologies.description"
+msgid "Unlocks recipes for brewing mead."
+msgstr "Открывает рецепты варки медового напитка."
+
+msgctxt "technologies.description"
+msgid "Unlocks recipes for bronze and bronze goods."
+msgstr "Открывает рецепты изготовления бронзы и бронзовых изделий."
+
+msgctxt "technologies.description"
+msgid "Unlocks recipes for iron and iron goods.\nUnlocks the bloomery."
+msgstr "Открывает рецепты изготовления железа и железных изделий.\nОткрывает сыродутную печь."
+
+msgctxt "technologies.description"
+msgid "Unlocks recipes for making jewelry out of metals."
+msgstr "Открывает рецепты изготовления ювелирных изделий из металлов."
+
+msgctxt "technologies.description"
+msgid "Unlocks salt extraction in salt deposits (on the surface of salt lakes and in salt mines) and the salt pond."
+msgstr "Открывает возможность добычи соли в соляных месторождениях (на поверхности соляных озёр и в соляных шахтах) и соляном пруду."
+
+msgctxt "technologies.description"
+msgid "Unlocks the ability to find and gather native metals.\nUnlocks metal ores (gold, silver, copper) and metalloids (antimony and arsenic).\nAllows you to build the forge."
+msgstr "Открывает возможность находить и собирать самородные металлы.\nОткрывает руды металлов (золото, серебро, медь) и металлоидов (сурьма и мышьяк).\nДаёт возможность строить кузницу."
+
+msgctxt "technologies.description"
+msgid "Unlocks the ability to grow water-loving crops: rice and taro.\nAllows farms and plantations to pass fresh water along a chain (up to 3 hexes).\nAllows you to drain marshes."
+msgstr "Открывает возможность возделывать влаголюбивые культуры: рис и таро.\nПозволяет фермам и плантациям передавать пресную воду по цепочке (до 3 гексов).\nПозволяет осушать болота."
+
+msgctxt "technologies.description"
+msgid "Unlocks the use of draft animals to turn millstones."
+msgstr "Открывает использование тягловых животных для вращения мельничных жерновов."
+
+msgctxt "technologies.description"
+msgid "Unlocks the use of the water wheel to set millstones in motion."
+msgstr "Открывает использование водяного колеса для приведения в движение мельничных жерновов."
+
+msgctxt "technologies.flavor"
+msgid "A plow yoked to oxen made it possible to work heavy soils and raised yields."
+msgstr "Плуг, запряжённый волами, позволил обрабатывать тяжёлые почвы и поднял урожайность."
+
+msgctxt "technologies.flavor"
+msgid "A protoscience of attempts to turn base metals into gold."
+msgstr "Протонаука о попытках превращения неблагородных металлов в золото."
+
+msgctxt "technologies.flavor"
+msgid "Ancient civilizations could count, but only now has knowledge moved from simple recipes to strict proofs. Geometry and abstract calculation let people not just watch the world but compute it: from the shape of a wheel's teeth to the motion of the stars."
+msgstr "Древние цивилизации умели считать, но именно сейчас знания перешли от простых рецептов к строгим доказательствам. Геометрия и абстрактные вычисления позволили не просто наблюдать за миром, а рассчитывать его: от формы зубьев колеса до движения звёзд."
+
+msgctxt "technologies.flavor"
+msgid "Bitumen became an important material for waterproofing, and for making glue and fuel."
+msgstr "Битум стал важным материалом для водонепроницаемого покрытия, а также для производства клея и топлива."
+
+msgctxt "technologies.flavor"
+msgid "Burning limestone in kilns made lime possible, a key building material and an ingredient for making cement."
+msgstr "Обжиг известняка в печах позволил получать известь, важный строительный материал и компонент для производства цемента."
+
+msgctxt "technologies.flavor"
+msgid "By mixing fat with lye, people got soap, the first step toward hygiene and medicine."
+msgstr "Смешивая жир со щёлоком, люди получали мыло — первый шаг к гигиене и медицине."
+
+msgctxt "technologies.flavor"
+msgid "Canals let people manage water flows, improving irrigation and opening new routes for trade."
+msgstr "Каналы позволили людям управлять водными потоками, улучшая ирригацию и создавая новые пути для торговли."
+
+msgctxt "technologies.flavor"
+msgid "Cheese kept milk for months, becoming an important winter supply."
+msgstr "Сыр позволял сохранять молоко на долгие месяцы, становясь важным запасом на зиму."
+
+msgctxt "technologies.flavor"
+msgid "Clay tablets became the first carrier of information, letting people pass knowledge across the centuries."
+msgstr "Глиняные таблички стали первым носителем информации, позволив людям передавать знания через века."
+
+msgctxt "technologies.flavor"
+msgid "Draft animals let people harness animal strength for heavy work, greatly raising output and efficiency in farming and construction."
+msgstr "Тягловые животные позволили людям использовать силу животных для выполнения тяжелой работы, что значительно увеличило производительность и эффективность в сельском хозяйстве и строительстве."
+
+msgctxt "technologies.flavor"
+msgid "Dyeing cloth and pottery with various dyes is one of the oldest crafts."
+msgstr "Окрашивание тканей и посуды с помощью различных красителей - древнейшее ремесло."
+
+msgctxt "technologies.flavor"
+msgid "Fermentation let people turn grain and fruit into alcohol, drunk in rituals and in daily life."
+msgstr "Ферментация позволила людям превращать зерно и фрукты в алкогольные напитки, которые использовались в ритуалах и повседневной жизни."
+
+msgctxt "technologies.flavor"
+msgid "Fired clay became humanity's first artificial material, letting people store grain and water."
+msgstr "Обожжённая глина стала первым искусственным материалом человечества, позволив хранить зерно и воду."
+
+msgctxt "technologies.flavor"
+msgid "Fishing is one of humanity's oldest trades, and the first way to take food from the water."
+msgstr "Рыболовство — одно из древнейших занятий человека, которое позволило получать пищу из воды."
+
+msgctxt "technologies.flavor"
+msgid "For centuries potters watched sand and alkali turn in their kilns into a shining crust of glass. Then one day someone had the idea of doing it on purpose. Glassmaking became more than an accident: it became a deliberate craft. The new material changed the world: beads, amulets, and later tableware and windows. Transparency became a symbol of enlightenment."
+msgstr "Веками гончары наблюдали, как песок и щелочь в их печах превращаются в блестящую стеклянную корку. Однажды кому-то пришло в голову сделать это намеренно. Стеклоделие стало не просто случайностью, а осознанным ремеслом. Новый материал изменил мир: бусы, амулеты, а позже — посуда и окна. Прозрачность стала символом просвещения."
+
+msgctxt "technologies.flavor"
+msgid "In scriptoriums scribes copied, translated, rewrote and recensioned texts on administration, the worship of the gods, magic and the curing of disease."
+msgstr "В скрипториях писцы копировали, переводили, переписывали и перекомпилировали тексты, связанные с управлением, культом божеств, магией и лечением болезней."
+
+msgctxt "technologies.flavor"
+msgid "Managing water flows became the key to claiming new lands: irrigation did more than water the fields, it drained waterlogged ground and turned marshes into fertile plains."
+msgstr "Управление водными потоками стало ключом к освоению новых земель: ирригация позволяла не только поливать поля, но и осушать переувлажнённые участки, превращая болота в плодородные равнины."
+
+msgctxt "technologies.flavor"
+msgid "Mastering metals revolutionized the crafts: copper tools were tougher than stone."
+msgstr "Освоение металлов произвело революцию в ремёслах: медные орудия были прочнее каменных."
+
+msgctxt "technologies.flavor"
+msgid "Mead is the oldest alcohol, brewed from honey and water."
+msgstr "Медовый напиток — древнейший алкогольный напиток, который варили из мёда и воды."
+
+msgctxt "technologies.flavor"
+msgid "Parchment became an important carrier of information in the ancient world."
+msgstr "Пергамент стал важным носителем информации в древнем мире."
+
+msgctxt "technologies.flavor"
+msgid "People have tracked the turning of the seasons since the earliest times, but only now has the calendar become a standard tool of management: precise planning of sowing, pruning and harvest let plantations reach their full potential."
+msgstr "Хотя люди отслеживали смену сезонов с древнейших времён, именно сейчас календарь стал стандартизированным инструментом управления: точное планирование посева, обрезки и сбора урожая позволило плантациям раскрыть свой полный потенциал."
+
+msgctxt "technologies.flavor"
+msgid "People learned to alloy copper with tin to make bronze, a hard metal for tools and weapons. Bronze became a key material for crafts and warfare."
+msgstr "Люди научились сплавлять медь с оловом, получая бронзу — прочный металл для орудий и оружия. Бронза стала важным материалом для ремёсел и военного дела."
+
+msgctxt "technologies.flavor"
+msgid "People learned to draw stone and ore from the depths of the earth, opening a new era in tools."
+msgstr "Люди научились добывать камень и руду из недр земли, открыв новую эру в развитии орудий труда."
+
+msgctxt "technologies.flavor"
+msgid "People learned to find and use native metals, which occur in nature in pure form, with no need to smelt them out of ore."
+msgstr "Люди научились находить и использовать самородные металлы, которые встречаются в природе в чистом виде, без необходимости их выплавки из руды."
+
+msgctxt "technologies.flavor"
+msgid "People learned to tame bees for honey and wax, the only natural sweeteners and the stuff of candles."
+msgstr "Люди научились приручать пчёл, получая мёд и воск — единственные природные подсластители и материал для свечей."
+
+msgctxt "technologies.flavor"
+msgid "People noticed that the white crust on the shores of salt lakes cleanses and bleaches wonderfully. So began the extraction of soda, a valuable mineral without which neither glassmaking nor soapmaking is possible."
+msgstr "Люди заметили, что белый налёт на берегах солёных озёр отлично отстирывает и отбеливает. Так началась добыча соды — ценного минерала, без которого не обойтись ни в стеклоделии, ни в мыловарении."
+
+msgctxt "technologies.flavor"
+msgid "Plantations made it possible to grow olives and citrus in bulk, providing valuable goods and oils."
+msgstr "Плантации позволили выращивать оливки и цитрусовые в больших количествах, обеспечивая людей ценными продуктами и маслами."
+
+msgctxt "technologies.flavor"
+msgid "Ropes became an important material for building, sailing and farming, letting people bind, haul and hoist loads."
+msgstr "Верёвки стали важным материалом для строительства, мореплавания и сельского хозяйства, позволяя связывать, тянуть и поднимать грузы."
+
+msgctxt "technologies.flavor"
+msgid "Salt became an important product for preserving food."
+msgstr "Соль стала важным продуктом для сохранения пищи."
+
+msgctxt "technologies.flavor"
+msgid "Silk became a valuable material for clothing and trade, opening new possibilities for crafts and the economy."
+msgstr "Шёлк стал ценным материалом для одежды и торговли, открывая новые возможности для ремесел и экономики."
+
+msgctxt "technologies.flavor"
+msgid "Taming animals gave people a steady source of meat, milk and hides."
+msgstr "Одомашнивание животных дало людям постоянный источник мяса, молока и шкур."
+
+msgctxt "technologies.flavor"
+msgid "Tanning gave people a tough, flexible material for clothing, footwear and gear."
+msgstr "Выделка кожи дала людям прочный и гибкий материал для одежды, обуви и снаряжения."
+
+msgctxt "technologies.flavor"
+msgid "The art of exploring the land and drawing maps of it."
+msgstr "Наука об исследовании местности и рисовании карт."
+
+msgctxt "technologies.flavor"
+msgid "The first farmers noticed that seeds thrown into the ground grew again. Thus began the age of settled life."
+msgstr "Первые земледельцы заметили, что брошенные в землю семена дают новые всходы. Так началась эпоха оседлой жизни."
+
+msgctxt "technologies.flavor"
+msgid "The grape is one of the oldest crops, from which people learned to make wine, a drink for feasts and rituals."
+msgstr "Виноград — древнейшая культура, из которой люди научились делать вино, важный напиток для праздников и ритуалов."
+
+msgctxt "technologies.flavor"
+msgid "The idea of value and exchange led to money, the basis of trade and city growth."
+msgstr "Понятие стоимости и обмена привело к появлению денег — основы торговли и роста городов."
+
+msgctxt "technologies.flavor"
+msgid "The loom turned wool and flax into cloth, from which clothes were sewn."
+msgstr "Ткацкий станок превратил шерсть и лён в ткань, из которой шили одежду."
+
+msgctxt "technologies.flavor"
+msgid "The skill of laying stone made it possible to build sturdy buildings that outlived centuries."
+msgstr "Умение класть камень позволило строить прочные здания, которые переживали века."
+
+msgctxt "technologies.flavor"
+msgid "The water wheel became an important source of power in the ancient world, automating the processing of grain and other materials."
+msgstr "Водяное колесо стало важным источником энергии в древнем мире, позволяя автоматизировать процессы обработки зерна и других материалов."
+
+msgctxt "technologies.flavor"
+msgid "The wheel is one of humanity's greatest inventions, and it changed trade and war."
+msgstr "Колесо — одно из величайших изобретений человечества, изменившее торговлю и войну."
+
+msgctxt "technologies.flavor"
+msgid "This revolutionary invention made it possible to create an affordable, practical material for writing."
+msgstr "Революционное изобретение позволило создать доступный и практичный материал для письма."
+
+msgctxt "technologies.flavor"
+msgid "Vegetable oil became an important food and a source of light."
+msgstr "Растительное масло стало важным продуктом питания и основой для освещения."
+
+msgctxt "technologies.flavor"
+msgid "Wine was made from grapes: it was a drink for feasts and rituals, and it also kept the perishable grapes from spoiling."
+msgstr "Вино делали из винограда — оно было важным напитком для праздников и ритуалов, а также помогало сохранить скоропортящиещиеся сорта винограда от порчи."
+
+msgctxt "technologies.flavor"
+msgid "Wood is the oldest building material, and with the first axes people learned to fell trees and saw the trunks into planks."
+msgstr "Дерево — древнейший строительный материал, и с первыми топорами люди научились валить лес и распиливать стволы на доски."
+
+msgctxt "technologies.flavor"
+msgid "Working precious stones and metals turned the craft into art."
+msgstr "Обработка драгоценных камней и металлов превратила ремесло в искусство."
+
+msgctxt "technologies.name"
+msgid "Alchemy"
+msgstr "Алхимия"
+
+msgctxt "technologies.name"
+msgid "Animal Husbandry"
+msgstr "Животноводство"
+
+msgctxt "technologies.name"
+msgid "Beekeeping"
+msgstr "Пчеловодство"
+
+msgctxt "technologies.name"
+msgid "Bitumen Extraction"
+msgstr "Добыча битума"
+
+msgctxt "technologies.name"
+msgid "Bronze"
+msgstr "Бронза"
+
+msgctxt "technologies.name"
+msgid "Calendar"
+msgstr "Календарь"
+
+msgctxt "technologies.name"
+msgid "Canals"
+msgstr "Каналы"
+
+msgctxt "technologies.name"
+msgid "Cartography"
+msgstr "Картография"
+
+msgctxt "technologies.name"
+msgid "Ceramics"
+msgstr "Гончарное дело"
+
+msgctxt "technologies.name"
+msgid "Cheese Making"
+msgstr "Сыроварение"
+
+msgctxt "technologies.name"
+msgid "Draft Animals"
+msgstr "Тягловые животные"
+
+msgctxt "technologies.name"
+msgid "Dyeing"
+msgstr "Красильное дело"
+
+msgctxt "technologies.name"
+msgid "Farming"
+msgstr "Растениеводство"
+
+msgctxt "technologies.name"
+msgid "Fermentation"
+msgstr "Ферментация"
+
+msgctxt "technologies.name"
+msgid "Fishing"
+msgstr "Рыболовство"
+
+msgctxt "technologies.name"
+msgid "Glassmaking"
+msgstr "Стеклоделие"
+
+msgctxt "technologies.name"
+msgid "Iron Processing"
+msgstr "Обработка железа"
+
+msgctxt "technologies.name"
+msgid "Irrigation"
+msgstr "Ирригация"
+
+msgctxt "technologies.name"
+msgid "Jewelry"
+msgstr "Ювелирное дело"
+
+msgctxt "technologies.name"
+msgid "Leatherworking"
+msgstr "Кожевенное дело"
+
+msgctxt "technologies.name"
+msgid "Limestone Burning"
+msgstr "Обжиг известняка"
+
+msgctxt "technologies.name"
+msgid "Masonry"
+msgstr "Каменная кладка"
+
+msgctxt "technologies.name"
+msgid "Mathematics"
+msgstr "Математика"
+
+msgctxt "technologies.name"
+msgid "Mead Making"
+msgstr "Медоварение"
+
+msgctxt "technologies.name"
+msgid "Metallurgy"
+msgstr "Металлургия"
+
+msgctxt "technologies.name"
+msgid "Mining"
+msgstr "Горное дело"
+
+msgctxt "technologies.name"
+msgid "Money"
+msgstr "Деньги"
+
+msgctxt "technologies.name"
+msgid "Native Metals"
+msgstr "Самородные металлы"
+
+msgctxt "technologies.name"
+msgid "Oil Making"
+msgstr "Маслоделие"
+
+msgctxt "technologies.name"
+msgid "Paper"
+msgstr "Бумага"
+
+msgctxt "technologies.name"
+msgid "Parchment"
+msgstr "Пергамент"
+
+msgctxt "technologies.name"
+msgid "Plantations"
+msgstr "Плантации"
+
+msgctxt "technologies.name"
+msgid "Plow"
+msgstr "Плуг"
+
+msgctxt "technologies.name"
+msgid "Rope Making"
+msgstr "Канатное дело"
+
+msgctxt "technologies.name"
+msgid "Salt Extraction"
+msgstr "Добыча соли"
+
+msgctxt "technologies.name"
+msgid "Scriptoriums"
+msgstr "Скриптории"
+
+msgctxt "technologies.name"
+msgid "Sericulture"
+msgstr "Шёлководство"
+
+msgctxt "technologies.name"
+msgid "Soap Making"
+msgstr "Мыловарение"
+
+msgctxt "technologies.name"
+msgid "Soda Extraction"
+msgstr "Добыча соды"
+
+msgctxt "technologies.name"
+msgid "Water Wheel"
+msgstr "Водяное колесо"
+
+msgctxt "technologies.name"
+msgid "Weaving"
+msgstr "Ткачество"
+
+msgctxt "technologies.name"
+msgid "Wheel"
+msgstr "Колесо"
+
+msgctxt "technologies.name"
+msgid "Winegrowing"
+msgstr "Виноградарство"
+
+msgctxt "technologies.name"
+msgid "Winemaking"
+msgstr "Виноделие"
+
+msgctxt "technologies.name"
+msgid "Wood Processing"
+msgstr "Обработка дерева"
+
+msgctxt "technologies.name"
+msgid "Writing"
+msgstr "Письменность"
+
+msgctxt "technologies.unlock_effects.name"
+msgid "Allows scouts to explore areas in the fog of war."
+msgstr "Даёт возможность разведчикам исследовать области в тумане войны."
+
+msgctxt "technologies.unlock_effects.name"
+msgid "Unlocks the ability to find and gather native metals."
+msgstr "Открывает возможность находить и собирать самородные металлы."
+
+msgctxt "technologies.unlock_effects.name"
+msgid "Unlocks the ability to grow water-loving crops: rice and taro."
+msgstr "Открывает возможность возделывать влаголюбивые культуры: рис и таро."
+
+msgctxt "terrains.description"
+msgid "Locals boast that the white crust along the shores of this lake has unusual properties — it foams and helps to wash clothes clean."
+msgstr "Местные жители хвастаются, что белый налёт по берегам этого озера обладает необычными свойствами — он пенится и помогает отстирывать одежду."
+
+msgctxt "terrains.description"
+msgid "The bed of this drying lake is covered in a thick layer of white powder. Locals say it makes food taste better, keeps it from spoiling longer, and heals wounds."
+msgstr "Дно этого пересыхающего озера покрыто толстым слоем белого порошка. Местные жители говорят, что он делает еду вкуснее, помогает дольше сохранять пищу от порчи и лечит раны."
+
+msgctxt "terrains.description"
+msgid "The surface of this lake has hardened into a black glossy crust. Locals say it clings to your feet and smells of pitch."
+msgstr "Поверхность этого озера застыла в чёрную блестящую корку. Местные жители говорят, что она липнет к ногам и пахнет смолой."
+
+msgctxt "terrains.name"
+msgid "Asphalt Lake"
+msgstr "Асфальтовое озеро"
+
+msgctxt "terrains.name"
+msgid "Beach"
+msgstr "Пляж"
+
+msgctxt "terrains.name"
+msgid "Freshwater Lake"
+msgstr "Пресноводное озеро"
+
+msgctxt "terrains.name"
+msgid "Hills"
+msgstr "Холмы"
+
+msgctxt "terrains.name"
+msgid "Marsh"
+msgstr "Марши"
+
+msgctxt "terrains.name"
+msgid "Mountains"
+msgstr "Горы"
+
+msgctxt "terrains.name"
+msgid "Plain"
+msgstr "Равнина"
+
+msgctxt "terrains.name"
+msgid "Rocky Desert"
+msgstr "Каменистая пустыня"
+
+msgctxt "terrains.name"
+msgid "Salt Lake"
+msgstr "Соленое озеро"
+
+msgctxt "terrains.name"
+msgid "Sandy Desert"
+msgstr "Песчаная пустыня"
+
+msgctxt "terrains.name"
+msgid "Sea"
+msgstr "Море"
+
+msgctxt "terrains.name"
+msgid "Soda Lake"
+msgstr "Содовое озеро"
+
+msgctxt "terrains.name"
+msgid "Swamp"
+msgstr "Болото"
 
 msgctxt "validator_entity_ref_building"
 msgid "this building"

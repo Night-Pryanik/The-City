@@ -207,24 +207,34 @@ func load_all_data():
 # game language. The walk is recursive: one function covers both the flat lists
 # of entities and the nested ones (technologies[].unlock_effects[].name).
 #
+# The translation key is a pair (english text, context): the context is the path of the
+# JSON keys from the file root to the field ("technologies.name" for the technology
+# names, "product_groups.name" for the product groups). Objects of different types
+# share the same display text ("Jewelry" in both technologies and product groups),
+# but they must be translated independently. The context is built by exactly the
+# same rule as tools/i18n_build_po.py (scan_data): the two implementations
+# are required to produce the same keys, or the game would look up keys missing
+# from the catalog (this is caught by the smoke test: tools/i18n_smoke.gd).
+#
 # A separate case — qualities.json: there "priority_names" is a dictionary
 # {priority_code: the player label}, that is, the label is in the VALUE, and the
 # key remains a service one. Such dictionaries are listed in VALUE_MAP_FIELDS.
-func _localize_display_fields(node: Variant) -> void:
+func _localize_display_fields(node: Variant, context: String = "") -> void:
     if node is Dictionary:
         for key in node.keys():
             var value: Variant = node[key]
+            var key_context = key if context == "" else context + "." + key
             if DISPLAY_FIELDS.has(key) and value is String:
-                node[key] = tr(str(value))
+                node[key] = tr(str(value), key_context)
             elif VALUE_MAP_FIELDS.has(key) and value is Dictionary:
                 for option_key in value.keys():
                     if value[option_key] is String:
-                        value[option_key] = tr(str(value[option_key]))
+                        value[option_key] = tr(str(value[option_key]), key_context)
             else:
-                _localize_display_fields(value)
+                _localize_display_fields(value, key_context)
     elif node is Array:
         for item in node:
-            _localize_display_fields(item)
+            _localize_display_fields(item, context)
 
 
 func _load_all_json_files(folder_path: String) -> Dictionary:
