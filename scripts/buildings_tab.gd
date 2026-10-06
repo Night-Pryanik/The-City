@@ -1114,7 +1114,9 @@ func _refresh_recipes_list(bdata: Dictionary):
         content.add_child(row)
 
 # Builds the contents of the recipe row: "[icon] resource [xN] + ... -> [icon] product [xN]"
-func _make_craft_content_local(craft_name: String, craft_resources: Dictionary, craft_result: Dictionary, products_data: Dictionary) -> HBoxContainer:
+# craft_resources may be a Dictionary (the classical form) or an Array (the
+# alternative ingredients): both are normalized by GameData.craft_alternatives().
+func _make_craft_content_local(craft_name: String, craft_resources, craft_result: Dictionary, products_data: Dictionary) -> HBoxContainer:
     var content = HBoxContainer.new()
     content.add_theme_constant_override("separation", 4)
     content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1122,7 +1124,9 @@ func _make_craft_content_local(craft_name: String, craft_resources: Dictionary, 
 
     if not craft_resources.is_empty():
         var first = true
-        for res_id in craft_resources:
+        for or_group in GameData.craft_alternatives({"resources": craft_resources}):
+            if or_group.is_empty():
+                continue
             if not first:
                 var sep = Label.new()
                 sep.text = "+"
@@ -1131,15 +1135,25 @@ func _make_craft_content_local(craft_name: String, craft_resources: Dictionary, 
                 content.add_child(sep)
             first = false
 
-            content.add_child(ui_helpers.make_resource_entry(res_id, products_data))
+            var first_variant = true
+            for variant in or_group:
+                if not first_variant:
+                    var or_sep = Label.new()
+                    or_sep.text = "/"
+                    or_sep.add_theme_color_override("font_color", Color(0.85, 0.75, 0.4))
+                    or_sep.mouse_filter = Control.MOUSE_FILTER_IGNORE
+                    content.add_child(or_sep)
+                first_variant = false
 
-            var amount = craft_resources[res_id]
-            if amount >= 1:
-                var amount_label = Label.new()
-                amount_label.text = "x%d" % amount
-                amount_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
-                amount_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-                content.add_child(amount_label)
+                content.add_child(ui_helpers.make_resource_entry(str(variant.get("key", "")), products_data))
+
+                var amount = int(variant.get("amount", 0))
+                if amount >= 1:
+                    var amount_label = Label.new()
+                    amount_label.text = "x%d" % amount
+                    amount_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+                    amount_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+                    content.add_child(amount_label)
 
     if not craft_resources.is_empty() and not craft_result.is_empty():
         var arrow = Label.new()

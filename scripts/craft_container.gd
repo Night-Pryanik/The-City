@@ -10,10 +10,13 @@
 #
 # The structure of one ingredient slot:
 #   {
-#     "kind": "single" | "group",     # a single product or an @-group
+#     "kind": "single" | "group" | "alternatives",
+#         # a single product, an @-group, or an OR-group of the variants
+#         # (see the alternative ingredients in the header of GameData.gd)
 #     "pid": "...",                   # the id of the single product
 #     "group_key": "...",             # the key of the @-group (for example "fruits")
 #     "members": ["..."],             # the ids of the @-group members
+#     "variants": [ { key, amount } ],# the variants of the OR-group (kind "alternatives")
 #     "required": int,                # how many units need to be accumulated
 #     "filled": int,                  # already accumulated (an integer)
 #     "fractional": float,            # the fractional remainder per tick
@@ -362,6 +365,8 @@ func _restore_from_slot_data(recipe: Dictionary, slot_data: Dictionary):
             break
         var fresh: Dictionary = ingredient_slots[i]
         var saved: Dictionary = saved_slots[i]
+        # An alternatives slot has no single pid/group key, so it is matched by
+        # the kind and the required amount (see _slot_display_key for the kind).
         if str(saved.get("kind", "")) == str(fresh.get("kind", "")) \
                 and str(saved.get("pid", "")) == str(fresh.get("pid", "")) \
                 and str(saved.get("group_key", "")) == str(fresh.get("group_key", "")) \
@@ -383,35 +388,51 @@ func _restore_from_slot_data(recipe: Dictionary, slot_data: Dictionary):
             release_fractional[pid] = 0.0
 
 # --- BUILDING THE SLOTS FROM THE RECIPE ---
-# resources — { "pid_or_@group": amount, ... }. For @-groups we resolve the members.
+# The resources are normalized through GameData.craft_alternatives(): an array of OR-groups
+# of the variants { key, amount }. A group with one variant is a usual single/group slot;
+# a group with several variants — the kind "alternatives": ANY variant listed is enough
+# (see the alternative ingredients in the header of GameData.gd).
 func _build_slots_from_recipe(recipe: Dictionary) -> Array:
     var out: Array = []
-    var resources: Dictionary = recipe.get("resources", {})
-    for res_key in resources.keys():
-        var amt = int(resources[res_key])
-        if amt <= 0:
+    for or_group in GameData.craft_alternatives(recipe):
+        if or_group.is_empty():
+            continue
+        var required := int(or_group[0].get("amount", 0))
+        if required <= 0:
             continue
         var slot := {
             "kind": "single",
             "pid": "",
             "group_key": "",
             "members": [],
-            "required": amt,
+            "variants": [],
+            "required": required,
             "filled": 0,
             "fractional": 0.0,
             "consumed": [],
             "consumed_pids": {}
         }
-        if str(res_key).begins_with("@"):
-            var group_key = str(res_key).trim_prefix("@")
-            var members = _resolve_group_members(group_key)
-            slot["kind"] = "group"
-            slot["group_key"] = group_key
-            slot["members"] = members
+        if or_group.size() == 1:
+            _apply_variant_to_slot(slot, or_group[0])
         else:
-            slot["pid"] = str(res_key)
+            slot["kind"] = "alternatives"
+            slot["variants"] = or_group
         out.append(slot)
     return out
+
+# Fills the slot by one variant of the ingredient: a single product or an @-group
+# (the members are resolved by the id from data/product_groups.json).
+func _apply_variant_to_slot(slot: Dictionary, variant: Dictionary):
+    var key := str(variant.get("key", ""))
+    slot["required"] = int(variant.get("amount", slot.get("required", 0)))
+    if key.begins_with("@"):
+        var group_key = key.trim_prefix("@")
+        slot["kind"] = "group"
+        slot["group_key"] = group_key
+        slot["members"] = _resolve_group_members(group_key)
+    else:
+        slot["kind"] = "single"
+        slot["pid"] = key
 
 func _resolve_group_members(group_key: String) -> Array:
     # The resolution of an @-group by the id from data/product_groups.json. The reverse search by
@@ -435,13 +456,39 @@ func _take_from_storage(slot: Dictionary, amount: int, priority: String) -> Dict
     if amount <= 0:
         return out
     var kind = str(slot.get("kind", "single"))
+    if kind == "alternatives":
+        # OR-group: the variants are consumed GREEDILY in the order of the list
+        # (the data author decides what is preferable). Mixing is possible when
+        # the first variant has less than the tick asks: the remainder is taken
+        # from the next variant, so a partial stock is never wasted.
+        var remaining = amount
+        for variant in slot.get("variants", []):
+            if remaining <= 0:
+                break
+            if _available_of_key(str(variant.get("key", ""))) <= 0:
+                continue
+            var take_res := _take_by_variant(slot, variant, remaining, priority, false)
+            var taken := int(take_res.get("taken", 0))
+            if taken <= 0:
+                continue
+            for qid in take_res.get("breakdown", {}):
+                out["breakdown"][qid] = int(out["breakdown"].get(qid, 0)) + int(take_res["breakdown"][qid])
+            out["taken"] = int(out["taken"]) + taken
+            for pid in take_res.get("pids", {}):
+                out["pids"][pid] = int(out["pids"].get(pid, 0)) + int(take_res["pids"][pid])
+            remaining -= taken
+        return out
     if kind == "single":
         var pid = str(slot.get("pid", ""))
         if pid == "":
             return out
         return _take_single(pid, amount, priority)
     # --- @-group: greedily by the members with the "best" priority ---
-    var members: Array = slot.get("members", [])
+    return _take_group(slot.get("members", []), amount, priority)
+
+# Greedily takes the amount by the members of the @-group in the given order.
+func _take_group(members: Array, amount: int, priority: String) -> Dictionary:
+    var out := {"taken": 0, "breakdown": {}, "pids": {}}
     if members.is_empty():
         return out
     var remaining = amount
@@ -477,6 +524,25 @@ func _take_single(pid: String, amount: int, priority: String) -> Dictionary:
         "breakdown": breakdown,
         "pids": {pid: take}
     }
+
+# Takes the amount of the variant of the ingredient: a single product directly,
+# an @-group greedily by the members.
+func _take_by_variant(slot: Dictionary, variant: Dictionary, amount: int,
+        priority: String, dry_run: bool) -> Dictionary:
+    var key := str(variant.get("key", ""))
+    if key.begins_with("@"):
+        var members: Array = _resolve_group_members(key.substr(1))
+        return _take_group(members, amount, priority)
+    return _take_single(key, amount, priority)
+
+# How many units of the key (a product or an @-group) are there in the storage.
+func _available_of_key(key: String) -> int:
+    if key.begins_with("@"):
+        var total := 0
+        for member in _resolve_group_members(key.substr(1)):
+            total += int(CityData.city_storage.get(str(member), 0))
+        return total
+    return int(CityData.city_storage.get(key, 0))
 
 # Orders the members of an @-group by the quality priority.
 # - "best"  — first the members with the LARGER amount of the BEST quality in the storage;
@@ -520,6 +586,15 @@ func _resolve_craft_time(recipe: Dictionary) -> float:
     return t
 
 func _slot_display_key(slot: Dictionary) -> String:
-    if str(slot.get("kind", "")) == "group":
+    var kind := str(slot.get("kind", ""))
+    if kind == "group":
         return "@" + str(slot.get("group_key", ""))
+    if kind == "alternatives":
+        # The readable key of the OR-group: all the variants separated by "|".
+        # It is used only for the report of the shortage — the identity of the
+        # variants is not required from it.
+        var parts: Array = []
+        for variant in slot.get("variants", []):
+            parts.append(str(variant.get("key", "")))
+        return "|".join(parts)
     return str(slot.get("pid", ""))

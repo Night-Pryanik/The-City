@@ -596,8 +596,13 @@ func _fill_popup_content(popup, b_index: int, slot_idx: int, available: Array, b
         var item_text = ""
         if not craft_resources.is_empty():
             var res_names = []
-            for res_id in craft_resources:
-                res_names.append(GameData.format_resource_name(res_id))
+            for or_group in GameData.craft_alternatives({"resources": craft_resources}):
+                if or_group.is_empty():
+                    continue
+                var variant_names = []
+                for variant in or_group:
+                    variant_names.append(GameData.format_resource_name(str(variant.get("key", ""))))
+                res_names.append(" / ".join(variant_names))
             item_text = ", ".join(res_names)
         if not craft_result.is_empty():
             var result_names = []
@@ -1075,7 +1080,10 @@ func _on_craft_item_selected(b_index: int, slot_idx: int, craft_id: String, popu
 # For the group resources (@...) it is a label with a tooltip.
 # If the resources and the result are empty (the recipe "Empty"), we show the name
 # of the recipe.
-func _make_craft_content(craft_name: String, craft_resources: Dictionary, craft_result: Dictionary) -> HBoxContainer:
+# Builds the contents of the recipe row. craft_resources may be a Dictionary
+# (the classical form) or an Array (the alternative ingredients): both are
+# normalized by GameData.craft_alternatives().
+func _make_craft_content(craft_name: String, craft_resources, craft_result: Dictionary) -> HBoxContainer:
     var content = HBoxContainer.new()
     content.add_theme_constant_override("separation", 6)
     content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1090,9 +1098,14 @@ func _make_craft_content(craft_name: String, craft_resources: Dictionary, craft_
         content.add_child(empty_label)
         return content
 
-    # The required resources
+    # The required resources in the normalized form: an array of OR-groups (see
+    # the alternative ingredients in GameData). A group with one variant is drawn
+    # as an ordinary ingredient; with several — the variants are separated by "/"
+    # ("any of the listed is enough").
     var first_res = true
-    for res_id in craft_resources:
+    for or_group in GameData.craft_alternatives({"resources": craft_resources}):
+        if or_group.is_empty():
+            continue
         if not first_res:
             var sep_label = Label.new()
             sep_label.text = "+"
@@ -1101,17 +1114,27 @@ func _make_craft_content(craft_name: String, craft_resources: Dictionary, craft_
             content.add_child(sep_label)
         first_res = false
 
-        # A group resource — a label with a tooltip (through the single helper).
-        # We use MOUSE_FILTER_PASS, so that the hover shows the tooltip and the
-        # click passes through to the parent button (the recipe selection).
-        content.add_child(ui_helpers.make_resource_entry(res_id, _get_all_resources()))
-        var amount = craft_resources[res_id]
-        if amount >= 1:
-            var amount_label = Label.new()
-            amount_label.text = "x%d" % amount
-            amount_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
-            amount_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-            content.add_child(amount_label)
+        var first_variant = true
+        for variant in or_group:
+            if not first_variant:
+                var or_label = Label.new()
+                or_label.text = "/"
+                or_label.add_theme_color_override("font_color", Color(0.85, 0.75, 0.4))
+                or_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+                content.add_child(or_label)
+            first_variant = false
+
+            # A group resource — a label with a tooltip (through the single helper).
+            # We use MOUSE_FILTER_PASS, so that the hover shows the tooltip and the
+            # click passes through to the parent button (the recipe selection).
+            content.add_child(ui_helpers.make_resource_entry(str(variant.get("key", "")), _get_all_resources()))
+            var amount = int(variant.get("amount", 0))
+            if amount >= 1:
+                var amount_label = Label.new()
+                amount_label.text = "x%d" % amount
+                amount_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+                amount_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+                content.add_child(amount_label)
 
     # The arrow
     if not craft_resources.is_empty() and not craft_result.is_empty():

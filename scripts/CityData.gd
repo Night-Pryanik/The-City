@@ -858,23 +858,30 @@ func get_building_planned_consumption() -> Dictionary:
                 continue
             # The time of the crafting of the slot is the unit of measurement of the planned demand.
             var craft_time := get_craft_time(recipe)
-            var resources: Dictionary = recipe.get("resources", {})
-            for res in resources:
-                var amount_needed = int(resources[res])
+            # The ingredients in the normalized form: an array of OR-groups (see
+            # the alternative ingredients in GameData). Each OR-group is one demand
+            # term: for a single variant it is an ordinary demand, for several —
+            # the demand is shown for every variant ("any of these is enough").
+            for or_group in GameData.craft_alternatives(recipe):
+                if or_group.is_empty():
+                    continue
+                var amount_needed := int(or_group[0].get("amount", 0))
                 if amount_needed <= 0:
                     continue
-                if res.begins_with("@"):
-                    # A group resource: the demand refers to any member of the group.
-                    # The key of the "@"-group is always the id from product_groups.json.
-                    var group_key = res.trim_prefix("@")
-                    var group_products = GameData.product_groups.get(group_key, [])
-                    if group_products.is_empty():
-                        continue
-                    var group_name = GameData.get_product_group_name(res)
-                    for prod in group_products:
-                        _record_planned_demand(result, prod, building_source, amount_needed, true, group_name, craft_time)
-                else:
-                    _record_planned_demand(result, res, building_source, amount_needed, false, "", craft_time)
+                for variant in or_group:
+                    var res: String = str(variant.get("key", ""))
+                    if res.begins_with("@"):
+                        # A group resource: the demand refers to any member of the group.
+                        # The key of the "@"-group is always the id from product_groups.json.
+                        var group_key = res.trim_prefix("@")
+                        var group_products = GameData.product_groups.get(group_key, [])
+                        if group_products.is_empty():
+                            continue
+                        var group_name = GameData.get_product_group_name(res)
+                        for prod in group_products:
+                            _record_planned_demand(result, prod, building_source, amount_needed, true, group_name, craft_time)
+                    else:
+                        _record_planned_demand(result, res, building_source, amount_needed, false, "", craft_time)
     return result
 
 # The helper of the recording of the demand of a building for a resource (see get_building_planned_consumption).

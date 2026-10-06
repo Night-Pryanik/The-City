@@ -44,7 +44,7 @@
       "id": "iron_jewelry",
       "name": "Iron Jewelry",
       "produced_in": [ "jeweler_house" ],
-      "resources": { "iron": 10, "charcoal": 20 },
+      "resources": [ [ { "iron": 20 }, { "meteorite_iron": 20 } ], { "charcoal": 20 } ],
       "result": { "iron_jewelry": 10 },
       "time": 15,
       "unlock_tech": "iron_processing",

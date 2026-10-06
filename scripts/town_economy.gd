@@ -158,15 +158,41 @@ static func collect_base_resources(tiles: Array) -> Array:
 # on a consumption write-off). It also makes a recipe like "bread from
 # @millable_grains" doable if there is at least one wheat.
 static func is_available(key: String, pool: Dictionary) -> bool:
-    if pool.has(key):
-        return true
-    if not key.begins_with("@"):
-        return false
-    var members: Array = GameData.product_groups.get(key.substr(1), [])
-    for member in members:
-        if pool.has(str(member)):
-            return true
-    return false
+    return GameData.is_key_available(key, pool)
+
+# Whether the recipe is fully assembled by the pool: EVERY OR-group of the
+# ingredients must have at least one available variant (see the alternative
+# ingredients in GameData.gd). A recipe without the ingredients is trivially closed.
+static func is_recipe_ready(craft: Dictionary, pool: Dictionary) -> bool:
+    var alternatives: Array = GameData.craft_alternatives(craft)
+    for or_group in alternatives:
+        var ready := false
+        for variant in or_group:
+            if is_available(str(variant.get("key", "")), pool):
+                ready = true
+                break
+        if not ready:
+            return false
+    return true
+
+# The readable ingredient keys of the recipe for the "missing" lists of the import
+# cascade: for every OR-group the FIRST not yet closed variant is chosen — it is
+# exactly the one the town will "buy".
+static func _missing_representatives(craft: Dictionary, pool: Dictionary) -> Array:
+    var missing: Array = []
+    for or_group in GameData.craft_alternatives(craft):
+        var closed := false
+        var first_open := ""
+        for variant in or_group:
+            var key := str(variant.get("key", ""))
+            if is_available(key, pool):
+                closed = true
+                break
+            if first_open.is_empty():
+                first_open = key
+        if not closed and not first_open.is_empty():
+            missing.append(first_open)
+    return missing
 
 # --- Closure ---
 
@@ -190,13 +216,7 @@ static func _close_pool(pool: Dictionary, made: Dictionary) -> void:
             # to add for them to the pool, and their ingredients do not describe a production.
             if result.is_empty():
                 continue
-            var ingredients: Dictionary = craft.get("resources", {})
-            var ready := true
-            for key in ingredients:
-                if not is_available(str(key), pool):
-                    ready = false
-                    break
-            if not ready:
+            if not is_recipe_ready(craft, pool):
                 continue
             for pid in result:
                 var produced := str(pid)
@@ -226,14 +246,16 @@ static func readiness_percent(recipe_id: String, pool: Dictionary) -> int:
     return 0
 
 static func _readiness_of(craft: Dictionary, pool: Dictionary) -> int:
-    var ingredients: Dictionary = craft.get("resources", {})
-    var total := ingredients.size()
+    var alternatives: Array = GameData.craft_alternatives(craft)
+    var total := alternatives.size()
     if total == 0:
         return 0
     var available := 0
-    for key in ingredients:
-        if is_available(str(key), pool):
-            available += 1
+    for or_group in alternatives:
+        for variant in or_group:
+            if is_available(str(variant.get("key", "")), pool):
+                available += 1
+                break
     return roundi(float(available) * 100.0 / float(total))
 
 # The roll is made ONCE per recipe (the result is remembered in rolls) — "the town
@@ -304,19 +326,16 @@ static func build_pools(town_id: String, base_ids: Array) -> Dictionary:
             var recipe_id := str(craft.get("id", ""))
             if recipe_id.is_empty():
                 continue
-            var ingredients: Dictionary = craft.get("resources", {})
             # A recipe without ingredients and a pseudo-recipe without a result in the purchase
             # do not participate: there is nothing to buy or nothing to produce.
-            if ingredients.is_empty() or craft.get("result", {}).is_empty():
+            var alternatives: Array = GameData.craft_alternatives(craft)
+            if alternatives.is_empty() or craft.get("result", {}).is_empty():
                 continue
-            var missing: Array = []
-            for key in ingredients:
-                if not is_available(str(key), pool):
-                    missing.append(str(key))
+            var missing: Array = _missing_representatives(craft, pool)
             # A fully closed recipe is not a candidate. A recipe without a single
             # available ingredient — neither: buying EVERYTHING at once is meaningless,
             # the town is interested in production, and not in reselling the raw material.
-            if missing.is_empty() or missing.size() == ingredients.size():
+            if missing.is_empty() or missing.size() == alternatives.size():
                 continue
             if not _roll_import(town_id, recipe_id, _readiness_of(craft, pool), rolls):
                 continue

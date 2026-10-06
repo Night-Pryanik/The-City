@@ -344,6 +344,10 @@ static func check_title(kind: String) -> String:
 # simply does not get the rows with the file, and does not crash.
 var _sources: Dictionary = {}
 
+# The data object of the current run: it is needed by gd_craft_alternatives to normalize
+# the alternative ingredients. It is set in validate().
+var _game_data = null
+
 # The kind of the owning entity → the top-level collection in data/*.json, in which
 # it is declared. It is needed in order to find its file: the key of the index of the origin
 # is built as "<collection>:<id>".
@@ -408,6 +412,7 @@ func validate(gd: Object) -> Array:
     # adding an extra parameter to a dozen signatures. Therefore it lives on
     # the instance and is filled in once per run.
     _sources = _source_index(gd)
+    _game_data = gd
 
     var buildings := _index_by_id(gd.buildings)
     var technologies := _index_by_id(gd.technologies)
@@ -689,8 +694,13 @@ func _validate_crafts(crafts, buildings: Dictionary, technologies: Dictionary,
         # numbers themselves are checked. We check the numbers because they hit the gameplay silently:
         # max_speed = 0 will give a segment that carries nothing, and this is visible only in the
         # game; work_cost with a fraction will be rounded up and will "eat" a coin for no reason.
-        for key in _as_dict(craft.get("resources", {})).keys():
-            var res_key := str(key)
+        # The resources in both admissible forms: the classical object { key: amount }
+        # and the array of OR-groups (the alternative ingredients, see GameData.gd).
+        # Every variant of every OR-group is checked the same way as a classical key.
+        for variant in _craft_resource_variants(craft):
+            var res_key := str(variant.get("key", ""))
+            if res_key.is_empty():
+                continue
             if res_key.begins_with("@"):
                 if not product_groups.has(res_key.substr(1)):
                     _add(problems, "resource_group", "group", res_key,
@@ -1186,6 +1196,37 @@ func _as_string_list(value) -> Array:
 
 func _as_dict(value) -> Dictionary:
     return value if value is Dictionary else {}
+
+
+# All the ingredient variants of a recipe as the normalized OR-groups (see GameData,
+# the alternative ingredients). Everything that cannot be normalized (a bare string
+# without an amount, a foreign type) turns into an EMPTY variant — the check of the
+# broken references must be silent on it: it is a data format error, and the game will
+# skip such a variant anyway.
+func _craft_resource_variants(craft: Dictionary) -> Array:
+    var out: Array = []
+    for or_group in gd_craft_alternatives(craft):
+        for variant in or_group:
+            out.append(variant)
+    return out
+
+# A wrapper over GameData.craft_alternatives for the synthetic data of the test: there
+# the "GameData" is an arbitrary Node with the fields, and the method may be absent.
+# In that case the recipe is treated as a classical dictionary, without the alternatives.
+func gd_craft_alternatives(craft: Dictionary) -> Array:
+    var game_data = _game_data
+    if game_data != null and game_data.has_method("craft_alternatives"):
+        return game_data.craft_alternatives(craft)
+    var raw = craft.get("resources", null)
+    if not (raw is Dictionary):
+        return []
+    var out: Array = []
+    for key in raw.keys():
+        var amount := int(raw[key])
+        if amount <= 0:
+            continue
+        out.append([{"key": str(key), "amount": amount}])
+    return out
 
 
 # prerequisites allows [[ "a", "b" ], "c"] and [ "a", "b" ] — in both

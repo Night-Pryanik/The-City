@@ -310,6 +310,111 @@ func parse_additional_cost(raw) -> Array:
         return result
     return result
 
+# --- ALTERNATIVE INGREDIENTS IN RECIPES ---
+#
+# The "resources" field of a recipe (data/crafts/*.json) allows a variant of the
+# ingredient slot by analogy with the prerequisites of the technologies and the
+# additional spawn conditions of the resources:
+#
+#   1) an object (the classical form):       { "iron": 20, "coal": 10 }
+#   2) an array of terms:                    [ {"iron": 20}, {"coal": 10} ]
+#   3) a term as an array of objects (OR):   [ [ {"iron": 20}, {"meteorite_iron": 20} ], {"coal": 10} ]
+#
+# A term is ALWAYS a dictionary (one key) or an array of dictionaries. An array of
+# dictionaries within one term means OR: ANY of the listed variants is enough.
+# The terms of the outer level (the element of the array) are joined by AND —
+# all of them are needed simultaneously. The keys of the dictionaries are allowed the
+# same as in the classical form: a product, a raw material, or an @-group.
+#
+# The normalized form is ALWAYS an array of OR-groups: [ [ {"iron": 20} ], [ {"coal": 10} ] ] —
+# the terms with one alternative remain one-element arrays, therefore the consumer
+# does not need to distinguish the forms. An empty array (a recipe without the
+# ingredients) is returned as an empty array.
+#
+# parse_craft_resources() — the normalizer itself; craft_alternatives() — a convenience
+# wrapper for the places where the OR-logic has to be applied manually (the container of
+# the craft, the planned demand, the trade pools of the towns).
+#
+# The amounts within an OR-group are deliberately NOT required to be equal: the chosen
+# variant is consumed in full, and which one — is decided by the availability in the storage.
+# Within a tick the variants are consumed greedily in the order of the list: if the
+# first variant has less than the tick asks, the remainder is taken from the next one,
+# so a partial stock is never wasted.
+#
+# The normalization is deliberately in GameData and not in CraftContainer: besides the
+# container the alternatives are read by the planned demand, the trade pools of the
+# towns and the UI of the recipes — a single source of the form guarantees that they all
+# understand the data identically.
+
+# Brings the "resources" field of a recipe to the normalized form: an array of OR-groups.
+# See the comment above the function for the admissible forms.
+func parse_craft_resources(raw) -> Array:
+    var out: Array = []
+    if raw is Dictionary:
+        # The classical form: every key is an independent term.
+        for res_key in raw.keys():
+            var amount := int(raw[res_key])
+            if amount <= 0:
+                continue
+            out.append([_ingredient_variant(str(res_key), amount)])
+        return out
+    if not (raw is Array):
+        return out
+    for term in raw:
+        var variants: Array = []
+        if term is Dictionary:
+            variants = _ingredient_variants_of_dict(term)
+        elif term is Array:
+            # A term as an array: an explicit OR of the dictionaries.
+            # (A bare string in a term is unusable: it has no amount of its own;
+            # it is shown by the validator as a data format problem and is
+            # silently skipped here.)
+            for variant in term:
+                if variant is Dictionary:
+                    variants.append_array(_ingredient_variants_of_dict(variant))
+                    # A bare string has no amount of its own — we show it in the
+                    # validator window (see data_validator, kind "resource"), and
+                    # here we skip: a variant without the amount is unusable.
+                    pass
+        if variants.is_empty():
+            continue
+        out.append(variants)
+    return out
+
+# One dictionary of the term → an array of single-key variants (usually one element).
+# The empty/non-positive amounts are discarded: they are not an ingredient.
+func _ingredient_variants_of_dict(dict_term: Dictionary) -> Array:
+    var variants: Array = []
+    for res_key in dict_term.keys():
+        var amount := int(dict_term[res_key])
+        if amount <= 0:
+            continue
+        variants.append(_ingredient_variant(str(res_key), amount))
+    return variants
+
+# A single variant of the ingredient: { "key": "pid|@group", "amount": N }.
+func _ingredient_variant(key: String, amount: int) -> Dictionary:
+    return { "key": key, "amount": amount }
+
+# The alternatives of the ingredients of the recipe (the normalized form).
+# A convenience wrapper over parse_craft_resources for the consumers of the logic.
+func craft_alternatives(recipe: Dictionary) -> Array:
+    return parse_craft_resources(recipe.get("resources", null))
+
+# Is the ingredient key available in the pool set (Dictionary of the id → true)?
+# The mirror of TownEconomy.is_available — in GameData, so that the normalization of the
+# alternatives does not depend on the trade module. The group key is available, if at least
+# ONE member is in the pool (the same semantics as in get_storage_amount).
+func is_key_available(key: String, pool: Dictionary) -> bool:
+    if pool.has(key):
+        return true
+    if not is_group_key(key):
+        return false
+    for member in product_groups.get(key.substr(1), []):
+        if pool.has(str(member)):
+            return true
+    return false
+
 # How many units of the resource/group are there in the storage?
 # For an ordinary key (for example, "flour") it returns storage.get(key, 0).
 # For a group key (for example, "@millable_grains") — the sum over all the members
