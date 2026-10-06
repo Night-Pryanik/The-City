@@ -137,7 +137,8 @@ func generate_rivers(rows: int, cols: int, radius: float, tile_data: Array,
     # The candidates for the sources (the mountains) and the mouths of the main rivers (the lakes and the seas).
     var mountain_vertices = _find_terrain_vertices(graph, tile_data, "mountain")
     var lake_vertices = _find_terrain_vertices(graph, tile_data, "lake")
-    var sea_vertices = _find_terrain_vertices(graph, tile_data, "sea")
+    var sea_vertices = _find_terrain_vertices(graph, tile_data, "sea") \
+            + _find_terrain_vertices(graph, tile_data, "shallow_sea")
     var hill_vertices = _find_terrain_vertices(graph, tile_data, "hill")
 
     # The mouths of the main rivers: the lakes + the seas. If there are neither lakes nor seas — we do not build the rivers.
@@ -374,7 +375,7 @@ func _build_restricted_hexes(tile_data: Array, rows: int, cols: int) -> Dictiona
     for row in range(rows):
         for col in range(cols):
             var terrain_id = tile_data[row][col]["terrain"]
-            if terrain_id == "lake" or terrain_id == "sea":
+            if terrain_id == "lake" or terrain_id == "sea" or terrain_id == "shallow_sea":
                 water_hexes.append({"row": row, "col": col})
 
     # We mark the water hexes and their neighbours.

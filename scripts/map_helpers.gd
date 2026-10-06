@@ -914,6 +914,7 @@ static func ensure_city_valid_terrain(
         city_tile["terrain"] = "plain"
         city_tile["cover"] = "none"
         city_tile["_is_sea"] = false
+        city_tile["_is_shallow_sea"] = false
         city_tile["_is_beach"] = false
         city_tile["_is_marsh"] = false
 
@@ -1241,16 +1242,19 @@ static func _as_string_list(value) -> Array:
 ## The water resources (the fresh water and the marine fish) are available for the
 ## exploitation ONLY after the improvement "Harbour" (harbor, see
 ## improvements.json, the flag water_body_harbor) is built on a coastal hex of a
-## particular body of water. Each body of water (a connected area of the water of
-## one type — a lake or the sea) requires ITS OWN harbour: the access is calculated
-## by a flood-fill (BFS) over the water from the hex of the resource.
+## particular body of water. Each connected lake or sea requires ITS OWN harbour:
+## the access is calculated by a flood-fill (BFS) over the water from the hex of
+## the resource.
 
 # The types of the terrain that are considered water for the scheme harbor_access.
-const WATER_TERRAINS := ["lake", "sea"]
+const WATER_TERRAINS := ["lake", "sea", "shallow_sea"]
 
-## Whether a type of the terrain is a water one (a lake/the sea).
+## Whether a type of the terrain is a water one (a lake or either sea depth).
 static func is_water_terrain(terrain_id: String) -> bool:
     return terrain_id in WATER_TERRAINS
+
+static func _water_body_type(terrain_id: String) -> String:
+    return "sea" if terrain_id == "shallow_sea" else terrain_id
 
 ## Whether the hex (row, col) has a neighbour that is water (a lake/the sea). The
 ## hex itself can be any: checking the type of the hex is the concern of the calling
@@ -1285,6 +1289,7 @@ static func has_harbor_access(tile_data: Array, row: int, col: int, map_rows: in
     # We work only from the water hexes (the fish lies on a lake/the sea).
     if not is_water_terrain(terrain_id):
         return false
+    var body_type := _water_body_type(terrain_id)
 
     var visited := {}
     var queue := [ {"row": row, "col": col}]
@@ -1299,9 +1304,7 @@ static func has_harbor_access(tile_data: Array, row: int, col: int, map_rows: in
             if nt == null:
                 continue
             if is_water_terrain(nt.get("terrain", "")):
-                # The same body of water continues — we go further only if the type
-                # matches (we do not flow from a lake into the sea).
-                if nt.get("terrain", "") == terrain_id:
+                if _water_body_type(nt.get("terrain", "")) == body_type:
                     visited[key] = true
                     queue.push_back(n)
                 continue

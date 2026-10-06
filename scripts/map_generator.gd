@@ -570,6 +570,7 @@ func _ensure_plain_zone(tile_data: Array, rows: int, cols: int,
                 tile["cover"] = _roll_cover("plain")
                 tile["_is_marsh"] = false
                 tile["_is_sea"] = false
+                tile["_is_shallow_sea"] = false
                 tile["_is_beach"] = false
 
 # Guarantees that the city has a path to the edge of the map (to the "outside world").
@@ -683,6 +684,7 @@ func _punch_hex(tile_data: Array, key: String) -> void:
     tile["cover"] = _roll_cover("plain")
     tile["_is_marsh"] = false
     tile["_is_sea"] = false
+    tile["_is_shallow_sea"] = false
 
 # Lays a corridor from the reachable area directly to the edge of the map through
 # the impassable hexes. It returns true if the corridor has been laid.

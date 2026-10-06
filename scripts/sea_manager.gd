@@ -15,6 +15,7 @@
 #
 # It uses temporary flags on the hexes:
 #   - tile._is_sea    : bool — the hex is part of the sea mask
+#   - tile._is_shallow_sea : bool — the hex belongs to the coastal shallows
 #   - tile._is_beach  : bool — the hex has been turned into a beach (beach)
 #   - tile._is_marsh  : bool — the hex has been turned into a marsh (marsh) [shared with the lakes]
 #
@@ -63,6 +64,7 @@ static func apply_sea(tile_data: Array, rows: int, cols: int, city_row: int, cit
         return sea_mask
 
     var max_sea_depth: int = int(cfg.get("max_sea_depth", 8))
+    var coast_max_depth: int = maxi(1, int(cfg.get("coast_max_depth", 5)))
     var beach_enabled: bool = cfg.get("beach", true)
 
     # sides — the range [min, max] of the number of randomly chosen map edges
@@ -96,11 +98,15 @@ static func apply_sea(tile_data: Array, rows: int, cols: int, city_row: int, cit
         if bool(cfg.get("edge_islands_enabled", true)):
             _apply_sea_islands(sea_mask, rows, cols, cfg, city_row, city_col)
 
+    var shallow_mask := _build_shallow_sea_mask(sea_mask, rows, cols, coast_max_depth)
+
     # We mark the sea hexes with the temporary flag _is_sea.
     for r in range(rows):
         for c in range(cols):
             if sea_mask[r][c]:
                 tile_data[r][c]["_is_sea"] = true
+                if shallow_mask[r][c]:
+                    tile_data[r][c]["_is_shallow_sea"] = true
 
     # The beach: land adjacent to the sea becomes a beach (beach).
     if beach_enabled:
@@ -118,11 +124,63 @@ static func reapply_sea_mask(tile_data: Array) -> void:
         for col in range(data_row.size()):
             var tile = data_row[col]
             if tile.get("_is_sea", false):
-                tile["terrain"] = "sea"
+                tile["terrain"] = "shallow_sea" if tile.get("_is_shallow_sea", false) else "sea"
                 tile["cover"] = "none"
             elif tile.get("_is_beach", false):
                 tile["terrain"] = "beach"
                 tile["cover"] = "none"
+
+
+static func _build_shallow_sea_mask(sea_mask: Array, rows: int, cols: int, max_depth: int) -> Array:
+    var shallow_mask: Array = []
+    for r in range(rows):
+        var row_arr: Array = []
+        row_arr.resize(cols)
+        row_arr.fill(false)
+        shallow_mask.append(row_arr)
+
+    var coast_noise := FastNoiseLite.new()
+    coast_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
+    coast_noise.seed = randi()
+    coast_noise.frequency = 0.08
+
+    for r in range(rows):
+        for c in range(cols):
+            if not sea_mask[r][c]:
+                continue
+            var is_coast := false
+            for neighbor in HexUtils.get_neighbors_odd_r(r, c, rows, cols):
+                if not sea_mask[neighbor.row][neighbor.col]:
+                    is_coast = true
+                    break
+            if not is_coast:
+                continue
+
+            var noise_value := 0.5 + 0.5 * coast_noise.get_noise_2d(float(r), float(c))
+            var local_depth := 1 + int(round(noise_value * float(max_depth - 1)))
+            var queue: Array = [ {"row": r, "col": c, "depth": 1}]
+            var visited := {"%d,%d" % [r, c]: true}
+            var queue_index := 0
+            while queue_index < queue.size():
+                var current: Dictionary = queue[queue_index]
+                queue_index += 1
+                shallow_mask[current.row][current.col] = true
+                if current.depth >= local_depth:
+                    continue
+                for neighbor in HexUtils.get_neighbors_odd_r(current.row, current.col, rows, cols):
+                    if not sea_mask[neighbor.row][neighbor.col]:
+                        continue
+                    var key := "%d,%d" % [neighbor.row, neighbor.col]
+                    if visited.has(key):
+                        continue
+                    visited[key] = true
+                    queue.append({
+                        "row": neighbor.row,
+                        "col": neighbor.col,
+                        "depth": current.depth + 1
+                    })
+
+    return shallow_mask
 
 
 # Variant A: elevation = the gradient from the edge + noise + city_bump; land = elevation > sea_level.
@@ -517,7 +575,7 @@ static func apply_sea_coast_marshes(tile_data: Array, rows: int, cols: int) -> v
     var sea_hexes: Array = []
     for r in range(rows):
         for c in range(cols):
-            if tile_data[r][c].get("terrain", "plain") == "sea":
+            if tile_data[r][c].get("terrain", "plain") in ["sea", "shallow_sea"]:
                 sea_hexes.append({"row": r, "col": c})
 
     # For the seas: the marshes are formed ONLY on the coast (the beach beach), and not on

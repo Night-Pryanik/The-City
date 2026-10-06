@@ -75,6 +75,16 @@
       "cover_chance": { "none": 100 }
     },
     {
+      "id": "shallow_sea",
+      "name": "Shallow Sea",
+      "color": [ 55, 120, 165 ],
+      "move_cost": 999,
+      "expansion_cost": 0,
+      "work_cost_mult": 1.0,
+      "icons": [ "sea_1.png", "sea_2.png", "sea_3.png" ],
+      "cover_chance": { "none": 100 }
+    },
+    {
       "id": "beach",
       "name": "Beach",
       "color": [ 220, 200, 140 ],

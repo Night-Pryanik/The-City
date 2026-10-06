@@ -4646,6 +4646,10 @@ msgid "Sea"
 msgstr ""
 
 msgctxt "terrains.name"
+msgid "Shallow Sea"
+msgstr ""
+
+msgctxt "terrains.name"
 msgid "Soda Lake"
 msgstr ""
 

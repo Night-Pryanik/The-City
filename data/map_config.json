@@ -54,6 +54,9 @@
     "sides": [1, 2],             // the range [min, max] of the number of map edges with sea; [0,0] — no sea
     "beach": true,               // true: land adjacent to the sea becomes a beach (beach)
     "max_sea_depth": 28,         // the limit of the sea depth from the map edge (in hexes), so that the sea does not "eat" the map
+    // Maximum shallow-water depth from each coast; the local depth varies smoothly.
+    // Values below 1 are treated as 1.
+    "coast_max_depth": 3,
 
     // --- Only the "edge" mode ---
     "edge_width_min": 0,           // the minimum strip width (in hexes); 0 allows the coast to break into bays
