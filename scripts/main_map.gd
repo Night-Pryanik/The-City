@@ -1005,7 +1005,6 @@ func _initialize_map():
     # and remains ONLY in the starting Ring — the player must have the possibility
     # to put a farm immediately without the scouting/buying of the region.
     _ensure_minimum_resource({"category": "metals"})
-    _ensure_minimum_resource({"category": "animals", "group": "meat_animals"})
     _ensure_minimum_resource({"category": "minerals", "subgroup": "construction_materials"})
 
     # --- The post-processing: we guarantee a sufficient number of FREE hexes ---
