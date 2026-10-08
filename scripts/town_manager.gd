@@ -91,6 +91,10 @@
 @tool
 class_name TownManager
 extends Node
+
+# Emitted on every change of a town treasury, so that an open town window shows
+# the balance immediately during a trade deal instead of waiting for a tick.
+signal town_treasury_changed(town_id: String, treasury: int)
 # The name of the file of the icon of a town. Per the TZ we use the same icon as the one of the city
 # of the player (icons/city.png), but we draw it of a smaller size.
 const TOWN_ICON_NAME := "city.png"
@@ -178,7 +182,10 @@ const INFLUENCE_NOTCH_MAX_DROPS := 3
 #                         the ring can grow/shrink for the different towns);
 #   influence_hexes     - the PERSONAL ring of the town: an Array of {row, col};
 #   sell_pool, buy_pool - the (future) trade pools: what the town sells and
-#                         what it wants to buy.
+#                         what it wants to buy;
+#   treasury            - the coins of the town (an integer). The starting value is
+#                         town_initial_treasury from data/game_balance.json; it is
+#                         changed only via add_town_treasury / spend_town_treasury.
 #
 # The whole record is saved in the save (serialize_towns) and is restored
 # from it (load_towns), therefore any future fields of a town are simply added
@@ -252,7 +259,41 @@ func _make_town_record(town_index: int, row: int, col: int,
         "influence_hexes": [],
         "sell_pool": [],
         "buy_pool": [],
+        "treasury": get_town_initial_treasury(),
     }
+
+
+# The starting treasury of a town (data/game_balance.json, town_initial_treasury).
+static func get_town_initial_treasury() -> int:
+    return int(GameData.game_balance.get("town_initial_treasury", 1000))
+
+
+func get_town_treasury(town: Dictionary) -> int:
+    return int(town.get("treasury", 0))
+
+
+# Credits coins to a town treasury (for example, the town sold goods to the city).
+func add_town_treasury(town: Dictionary, amount: int) -> void:
+    if amount <= 0:
+        return
+    town["treasury"] = get_town_treasury(town) + amount
+    emit_signal("town_treasury_changed", str(town.get("id", "")), int(town["treasury"]))
+
+
+# Writes coins off a town treasury (for example, the town bought goods from the city).
+# A town cannot go into debt: if the coins are not enough, nothing is written off
+# and false is returned.
+func spend_town_treasury(town: Dictionary, amount: int) -> bool:
+    if amount < 0:
+        return false
+    var current := get_town_treasury(town)
+    if current < amount:
+        return false
+    if amount == 0:
+        return true
+    town["treasury"] = current - amount
+    emit_signal("town_treasury_changed", str(town.get("id", "")), int(town["treasury"]))
+    return true
 
 
 func _take_unique_town_name(preferred_name: String = "") -> String:
@@ -1225,6 +1266,7 @@ func serialize_towns() -> Array:
             "influence_hexes": hexes,
             "sell_pool": t.get("sell_pool", []),
             "buy_pool": t.get("buy_pool", []),
+            "treasury": get_town_treasury(t),
             # road_linked - the player has built a road from the city to this town.
             # As with the other roads, the segments are not written into the save: by this
             # flag the connection is recalculated on the load (main_map._rebuild_town_roads
@@ -1270,6 +1312,8 @@ func load_towns(data) -> void:
                 "influence_hexes": _restore_hex_list(entry.get("influence_hexes", [])),
                 "sell_pool": entry.get("sell_pool", []),
                 "buy_pool": entry.get("buy_pool", []),
+                # Saves without a town treasury get the starting value, as in a new game.
+                "treasury": int(entry.get("treasury", get_town_initial_treasury())),
                 # road_linked is a road from the city to the town (see serialize_towns).
                 "road_linked": bool(entry.get("road_linked", false)),
             }

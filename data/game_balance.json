@@ -9,6 +9,13 @@
   //   initial_treasury                 — the coins in the city treasury at the
   //                                      start of a new game (the "treasury"
   //                                      field in CityData).
+  //   town_initial_treasury            — the coins in the treasury of EVERY
+  //                                      town at the moment it is generated.
+  //                                      The town treasury lives in the town
+  //                                      record ("treasury") and changes only
+  //                                      through TownManager.add_town_treasury /
+  //                                      spend_town_treasury, which notify the
+  //                                      town window (town_treasury_changed).
   //   base_tax_per_citizen             — the base tax: the coins that EVERY
   //                                      citizen of the city pays into the
   //                                      treasury per one simulation tick
@@ -84,6 +91,7 @@
   //                                      data/terrains.json.
   "game_balance": {
     "initial_treasury": 100,
+    "town_initial_treasury": 1000,
     "base_tax_per_citizen": 2,
     "internal_market_price_multiplier": 1.0,
     "distance_cost_modifier_per_hex": 0.25,

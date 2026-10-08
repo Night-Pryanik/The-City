@@ -454,6 +454,7 @@ func _ready():
 
     city_ui.closed.connect(_on_city_ui_close)
     town_ui.closed.connect(_on_town_ui_close)
+    town_manager.town_treasury_changed.connect(town_ui.on_town_treasury_changed)
     city_button.pressed.connect(_on_city_button_pressed)
     expansion_button.pressed.connect(_on_expansion_button_pressed)
     city_ui.build_requested.connect(CityData.request_build)

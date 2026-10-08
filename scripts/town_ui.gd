@@ -21,6 +21,7 @@ const ROW_HEIGHT := 28
 @onready var window_panel = $WindowPanel
 @onready var title_label = $WindowPanel/TitleLabel
 @onready var status_label = $WindowPanel/StatusLabel
+@onready var treasury_label = $WindowPanel/TreasuryLabel
 @onready var close_button = $WindowPanel/CloseButton
 @onready var buy_scroll = $WindowPanel/ColumnsHBox/BuyColumn/BuyScroll
 @onready var sell_scroll = $WindowPanel/ColumnsHBox/SellColumn/SellScroll
@@ -55,6 +56,7 @@ func _refresh():
     if _town == null:
         return
     title_label.text = str(_town.get("name", tr("Town")))
+    _update_treasury_label()
     if status_label:
         # The trade status — for now only a label. An empty row when trade is
         # available: "everything is fine, there is nothing to report".
@@ -63,6 +65,20 @@ func _refresh():
         status_label.visible = not status_label.text.is_empty()
     _fill_resource_list(buy_list, _town.get("buy_pool", []), tr("The town buys nothing"))
     _fill_resource_list(sell_list, _town.get("sell_pool", []), tr("No resources in the influence ring"))
+
+func _update_treasury_label() -> void:
+    if treasury_label == null or _town == null:
+        return
+    treasury_label.text = tr("Treasury: %d") % int(_town.get("treasury", 0))
+
+# Connected to TownManager.town_treasury_changed. Only the treasury label is
+# updated: rebuilding the resource lists on every deal would reset their scrolling.
+func on_town_treasury_changed(town_id: String, _treasury: int) -> void:
+    if _town == null or not visible:
+        return
+    if str(_town.get("id", "")) != town_id:
+        return
+    _update_treasury_label()
 
 # Fills the column with one row per resource of the trade pool.
 # The sell pool contains resource ids, therefore the name is taken from the

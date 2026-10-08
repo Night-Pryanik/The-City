@@ -32,6 +32,9 @@
 #      с одинаковым названием (papyrus_plant и papyrus оба «Papyrus»).
 #  14. ОКНО. Списки лежат в ScrollContainer: длинный пул прокручивается, а не
 #      вылезает за нижний край окна на карту.
+#  15. КАЗНА. Новый городок получает town_initial_treasury из game_balance.json,
+#      окно показывает казну и обновляет её сразу по сигналу сделки; уйти в
+#      минус городок не может.
 extends SceneTree
 
 # Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
@@ -90,6 +93,7 @@ func _run() -> void:
     _test_duplicate_names_hidden()
     await _test_live_map()
     await _test_town_ui_window()
+    await _test_town_treasury()
 
     print("test_town_economy: ", "ПРОВАЛЕН" if _failed else "все проверки пройдены")
     quit(2 if _failed else 0)
@@ -368,6 +372,50 @@ func _test_town_ui_window() -> void:
     _check(ui.sell_scroll.scroll_vertical > 0,
         "ScrollContainer должен прокручиваться по вертикали (позиция: %d)" % ui.sell_scroll.scroll_vertical)
     ui.queue_free()
+
+
+# 15. Казна городка: стартовое значение, сделки, окно в реальном времени, сейв.
+func _test_town_treasury() -> void:
+    var gd = get_root().get_node("GameData")
+    var expected := int(gd.game_balance.get("town_initial_treasury", -1))
+    _check(expected == 1000,
+        "town_initial_treasury в game_balance.json: ожидалось 1000, получено %d" % expected)
+
+    var tm = load("res://scripts/town_manager.gd").new()
+    get_root().add_child(tm)
+    var town: Dictionary = tm._make_town_record(0, 5, 5, false)
+    _check(int(town.get("treasury", -1)) == expected,
+        "новый городок должен получить стартовую казну (получено %s)" % str(town.get("treasury")))
+
+    var ui = load("res://scenes/TownUI.tscn").instantiate()
+    get_root().add_child(ui)
+    await process_frame
+    tm.town_treasury_changed.connect(ui.on_town_treasury_changed)
+    ui.open_town(town, true)
+    _check(ui.treasury_label.text.contains(str(expected)),
+        "окно должно показывать казну городка (текст: %s)" % ui.treasury_label.text)
+
+    tm.add_town_treasury(town, 150)
+    _check(ui.treasury_label.text.contains(str(expected + 150)),
+        "после поступления казна в окне должна обновиться сразу (текст: %s)" % ui.treasury_label.text)
+    _check(tm.spend_town_treasury(town, 50), "списание в пределах казны должно пройти")
+    _check(ui.treasury_label.text.contains(str(expected + 100)),
+        "после списания казна в окне должна обновиться сразу (текст: %s)" % ui.treasury_label.text)
+    _check(not tm.spend_town_treasury(town, expected * 10), "городок не может уйти в минус")
+    _check(tm.get_town_treasury(town) == expected + 100, "неудачное списание не меняет казну")
+
+    tm.towns.append(town)
+    var saved: Array = tm.serialize_towns()
+    tm.load_towns(saved)
+    _check(tm.get_town_treasury(tm.towns[0]) == expected + 100, "казна городка должна переживать сейв")
+    var legacy: Dictionary = saved[0].duplicate()
+    legacy.erase("treasury")
+    tm.load_towns([legacy])
+    _check(tm.get_town_treasury(tm.towns[0]) == expected,
+        "сейв без казны городка должен получить стартовое значение")
+
+    ui.queue_free()
+    tm.queue_free()
 
 
 # 9. ЖИВАЯ КАРТА. Пулы считаются для реальных городков, и повторный пересчёт
