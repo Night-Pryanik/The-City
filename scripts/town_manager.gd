@@ -281,6 +281,38 @@ var reachable_hexes: PackedByteArray = []
 var _reachable_rows := 0
 var _reachable_cols := 0
 
+# ===== The caches of the priority masks of the town placement =====
+# The placement of a town iterates the priorities (multi_resource, strategic, river,
+# lake_coast, sea_coast) and the previous implementation rebuilt ALL five masks on EVERY
+# _try_place_one_town call - that is, once per town, over the WHOLE map. On a 60x60 map
+# the multi_resource mask alone (~176k hex_distance calls) cost ~2.8 s of the ~3.1 s of
+# the placement. The three water masks and the base of the two resource masks depend only
+# on the terrain/cover/rivers of the map (they do not change during the placement), and
+# the towns claim resources only in a small disk around themselves. So we build the
+# immutable parts ONCE per generate_towns and then update the resource masks incrementally
+# (only the hexes whose neighbourhood gained/lost a claimed resource).
+#
+# _tier_masks["river"/"lake_coast"/"sea_coast"] - built once, never change.
+# _resource_radius  - per-hex Dictionary { resource_id -> count } of the resources within
+#                     MAX_ATTRACTION_DISTANCE, EXCLUDING the starting area of the player.
+#                     A town claims a resource hex -> the count of that resource is
+#                     decremented in every hex whose radius contains it (see
+#                     _claim_resource_hex_for_masks).
+# _strategic_count - per-hex COUNTER of the strategic resources within
+#                    MAX_ATTRACTION_DISTANCE (excluding the starting area of the player),
+#                    kept incremental for the same reason as _resource_radius.
+# _mask_rows/_mask_cols - the dimensions the caches were built for.
+var _tier_masks: Dictionary = {}
+var _resource_radius: Array = []
+var _strategic_count: Array = []
+var _mask_rows := 0
+var _mask_cols := 0
+# true while the caches above describe the CURRENT map and may be reused across
+# consecutive _try_place_one_town calls. generate_towns sets it under its placement loop
+# (and keeps the resource tables up to date incrementally); a direct call outside that loop
+# (the tests, the debug tools) sees false and rebuilds the caches for its own map.
+var _mask_cache_valid := false
+
 
 # Builds the map of the land reachability from (start_row, start_col): a BFS over the hexes
 # which can be walked through, with water and impassable terrains as the walls. The result is
@@ -699,6 +731,12 @@ func generate_towns(tile_data: Array, rows: int, cols: int,
     _set_reachable(_build_reachable_mask(tile_data, rows, cols, city_row, city_col),
             rows, cols)
 
+    # The immutable part of the priority masks (the water masks + the resource
+    # neighbourhood tables) is built ONCE here, after player_start_area is set: the
+    # resource masks exclude the starting area of the player, and they only change
+    # incrementally while the towns are placed (see _claim_disk_resources).
+    _build_tier_mask_caches(tile_data, rows, cols)
+
     for r in range(rows):
         for c in range(cols):
             if tile_data[r][c] != null:
@@ -707,9 +745,11 @@ func generate_towns(tile_data: Array, rows: int, cols: int,
     var num_towns: int = int(GameData.map_config.get("num_towns", 8))
     if num_towns <= 0:
         print("town_manager: num_towns=", num_towns, " — the towns are not generated")
+        _mask_cache_valid = false
         return
     if rows < 3 or cols < 3:
         print("town_manager: the map is too small for the towns")
+        _mask_cache_valid = false
         return
 
     # --- The main pass: we place num_towns towns by the cascade algorithm ---
@@ -728,6 +768,9 @@ func generate_towns(tile_data: Array, rows: int, cols: int,
         towns.append(new_town)
         town_hexes.append({"row": placed.row, "col": placed.col})
         tile_data[placed.row][placed.col]["has_town"] = true
+        # The newly placed town claims the resources in its radius: they stop attracting
+        # the next town. The update is incremental (see _build_tier_mask_caches).
+        _claim_disk_resources(tile_data, rows, cols, placed.row, placed.col)
 
     # --- The guarantee ">=1 town in the area of the 2nd era" ---
     # If among the placed towns there is not a single one in the era-2 area, we make
@@ -760,6 +803,7 @@ func generate_towns(tile_data: Array, rows: int, cols: int,
             towns.append(forced_town)
             town_hexes.append({"row": forced.row, "col": forced.col, "is_era2_guaranteed": true})
             tile_data[forced.row][forced.col]["has_town"] = true
+            _claim_disk_resources(tile_data, rows, cols, forced.row, forced.col)
             print("town_manager: the era-2 guarantee — a town was added at (",
                     forced.row, ",", forced.col, ")")
         else:
@@ -784,6 +828,9 @@ func generate_towns(tile_data: Array, rows: int, cols: int,
 
     print("town_manager: the total number of the placed towns=", town_hexes.size(),
             " (target=", num_towns, ")")
+    # The caches described the map during the placement only: a later direct call (a debug
+    # tool, a test) must not reuse them for another map.
+    _mask_cache_valid = false
 
 
 # Tries to place one town by the cascade-refining algorithm (per the TZ):
@@ -802,14 +849,23 @@ func _try_place_one_town(tile_data: Array, rows: int, cols: int,
         require_in_region_start_row: int, require_in_region_end_row: int,
         require_in_region_start_col: int, require_in_region_end_col: int,
         ignore_exclusion: bool) -> Dictionary:
+    # The caches of the priority masks must describe the map we are working with. Inside
+    # generate_towns they are built once and kept up to date across the placements; a direct
+    # call (the tests, the debug tools) finds them stale and rebuilds them for this map.
+    if not _mask_cache_valid or _mask_rows != rows or _mask_cols != cols:
+        _build_tier_mask_caches(tile_data, rows, cols)
+        _mask_cache_valid = false
     # The masks of all the five priorities (see the block "The masks of the priorities" below):
     # mask[row * cols + col] == 1, if a hex satisfies this priority.
+    # The water masks come from the cache built once in generate_towns (they do not change
+    # during the placement); the two resource masks are read from the incrementally updated
+    # neighbourhood tables (see _build_tier_mask_caches).
     var tiers: Array = [
         {"name": "multi_resource", "mask": _build_multi_resource_mask(tile_data, rows, cols)},
         {"name": "strategic", "mask": _build_strategic_mask(tile_data, rows, cols)},
-        {"name": "river", "mask": _build_river_mask(tile_data, rows, cols)},
-        {"name": "lake_coast", "mask": _build_lake_coast_mask(tile_data, rows, cols)},
-        {"name": "sea_coast", "mask": _build_sea_coast_mask(tile_data, rows, cols)},
+        {"name": "river", "mask": _tier_masks["river"]},
+        {"name": "lake_coast", "mask": _tier_masks["lake_coast"]},
+        {"name": "sea_coast", "mask": _tier_masks["sea_coast"]},
     ]
 
     # STEP 0: the base. We iterate the priorities strictly from the top down and for each
@@ -1402,80 +1458,149 @@ func _new_tier_mask(rows: int, cols: int) -> PackedByteArray:
     return mask
 
 
-# Marks in the mask all the hexes within the radius radius from (center_row, center_col).
-func _mark_mask_disk(mask: PackedByteArray, rows: int, cols: int,
-        center_row: int, center_col: int, radius: int) -> void:
-    for r in range(maxi(0, center_row - radius), mini(rows - 1, center_row + radius) + 1):
-        for c in range(maxi(0, center_col - radius), mini(cols - 1, center_col + radius) + 1):
-            if HexUtils.hex_distance(r, c, center_row, center_col) <= radius:
-                mask[r * cols + c] = 1
+# -------------------------------------------------------
+# The caches of the priority masks (see the header of _tier_masks).
+# -------------------------------------------------------
+
+# Builds the immutable part of the masks ONCE per generate_towns: the three water masks
+# (they depend only on the terrain/cover/rivers) and the per-hex resource neighbourhood
+# tables (multi_resource: the count of the DISTINCT resources within MAX_ATTRACTION_DISTANCE,
+# excluding the starting area of the player; strategic: how many strategic resources are
+# within the same radius). The resource tables are then kept up to date incrementally by
+# _claim_resource_hex_for_masks as the towns are placed.
+func _build_tier_mask_caches(tile_data: Array, rows: int, cols: int) -> void:
+    _mask_rows = rows
+    _mask_cols = cols
+    _mask_cache_valid = true
+    _tier_masks = {
+        "river": _build_river_mask(tile_data, rows, cols),
+        "lake_coast": _build_lake_coast_mask(tile_data, rows, cols),
+        "sea_coast": _build_sea_coast_mask(tile_data, rows, cols),
+    }
+
+    # The resource-neighbourhood tables. Instead of scanning the 7x7 window of every hex
+    # (rows*cols*49 hex_distance calls), we stamp the influence of each RESOURCE hex into
+    # its radius: the resources are sparse, therefore this is far cheaper.
+    _resource_radius = []
+    _resource_radius.resize(rows * cols)
+    for i in range(rows * cols):
+        _resource_radius[i] = null
+    _strategic_count = []
+    _strategic_count.resize(rows * cols)
+    _strategic_count.fill(0)
+
+    for r in range(rows):
+        for c in range(cols):
+            var tile = tile_data[r][c]
+            if tile == null:
+                continue
+            var res = tile.get("resource", null)
+            if res == null or res == "":
+                continue
+            if _is_in_player_start_area(r, c):
+                continue
+            var res_id := str(res)
+            var is_strategic: bool = bool(GameData.raw_resources.get(res_id, {}).get("strategic", false))
+            for nr in range(maxi(0, r - MAX_ATTRACTION_DISTANCE),
+                    mini(rows - 1, r + MAX_ATTRACTION_DISTANCE) + 1):
+                for nc in range(maxi(0, c - MAX_ATTRACTION_DISTANCE),
+                        mini(cols - 1, c + MAX_ATTRACTION_DISTANCE) + 1):
+                    if HexUtils.hex_distance(r, c, nr, nc) > MAX_ATTRACTION_DISTANCE:
+                        continue
+                    var idx: int = nr * cols + nc
+                    var counts = _resource_radius[idx]
+                    if counts == null:
+                        counts = {}
+                        _resource_radius[idx] = counts
+                    counts[res_id] = int(counts.get(res_id, 0)) + 1
+                    if is_strategic:
+                        _strategic_count[idx] = int(_strategic_count[idx]) + 1
 
 
-# The mask of the "claimed" resources: all the hexes within the radius MAX_ATTRACTION_DISTANCE from
-# the already placed towns. A resource inside such a zone is considered claimed and does not
-# attract the next town - otherwise the same patch of land with
-# the resources would pull several settlements. towns is replenished as the
-# placement proceeds, therefore the filter works automatically for each next
-# town (including the guaranteed town of era 2).
-func _build_claimed_resource_mask(rows: int, cols: int) -> PackedByteArray:
-    var mask: PackedByteArray = _new_tier_mask(rows, cols)
-    for t in towns:
-        _mark_mask_disk(mask, rows, cols, int(t.row), int(t.col), MAX_ATTRACTION_DISTANCE)
-    return mask
+# Removes a resource hex from the neighbourhood tables when a town claims it: every hex
+# within MAX_ATTRACTION_DISTANCE of the claimed resource loses one unit of that resource
+# (and one unit of the strategic counter, if the resource is strategic). This is the
+# incremental equivalent of the previous "rebuild the claimed mask and rescan everything".
+func _claim_resource_hex_for_masks(tile_data: Array, res_row: int, res_col: int) -> void:
+    var tile = tile_data[res_row][res_col]
+    if tile == null:
+        return
+    var res = tile.get("resource", null)
+    if res == null or res == "":
+        return
+    var res_id := str(res)
+    var is_strategic: bool = bool(GameData.raw_resources.get(res_id, {}).get("strategic", false))
+    var rows := _mask_rows
+    var cols := _mask_cols
+    for nr in range(maxi(0, res_row - MAX_ATTRACTION_DISTANCE),
+            mini(rows - 1, res_row + MAX_ATTRACTION_DISTANCE) + 1):
+        for nc in range(maxi(0, res_col - MAX_ATTRACTION_DISTANCE),
+                mini(cols - 1, res_col + MAX_ATTRACTION_DISTANCE) + 1):
+            if HexUtils.hex_distance(res_row, res_col, nr, nc) > MAX_ATTRACTION_DISTANCE:
+                continue
+            var idx: int = nr * cols + nc
+            var counts = _resource_radius[idx]
+            if counts != null and counts.has(res_id):
+                var left: int = int(counts[res_id]) - 1
+                if left <= 0:
+                    counts.erase(res_id)
+                else:
+                    counts[res_id] = left
+            if is_strategic and int(_strategic_count[idx]) > 0:
+                _strategic_count[idx] = int(_strategic_count[idx]) - 1
+
+
+# Marks a claimed disk around a newly placed town: every resource hex inside the disk is
+# removed from the neighbourhood tables. This is the incremental replacement for rebuilding
+# _build_claimed_resource_mask from the whole towns list on every placement.
+func _claim_disk_resources(tile_data: Array, rows: int, cols: int, center_row: int, center_col: int) -> void:
+    for r in range(maxi(0, center_row - MAX_ATTRACTION_DISTANCE),
+            mini(rows - 1, center_row + MAX_ATTRACTION_DISTANCE) + 1):
+        for c in range(maxi(0, center_col - MAX_ATTRACTION_DISTANCE),
+                mini(cols - 1, center_col + MAX_ATTRACTION_DISTANCE) + 1):
+            if HexUtils.hex_distance(r, c, center_row, center_col) > MAX_ATTRACTION_DISTANCE:
+                continue
+            _claim_resource_hex_for_masks(tile_data, r, c)
 
 
 # Priority 1: "a pile of resources in the neighbourhood" - the hex ITSELF has
 # MIN_RESOURCES_FOR_CLUSTER (2+) DIFFERENT resources in the radius of
 # MAX_ATTRACTION_DISTANCE. Are not taken into account:
-#   - the resources claimed by the towns (see _build_claimed_resource_mask);
+#   - the resources claimed by the towns (see _claim_disk_resources);
 #   - the resources in the STARTING AREA OF THE PLAYER - it is already his, to attract a town
 #     to it is meaningless: the ring will not be able to use it anyway
 #     (see the cut out of the starting area in compute_all_town_influences).
+#
+# The per-hex tables were prepared once by _build_tier_mask_caches and are kept up to date
+# incrementally, so here we only read the distinct-resource count of every hex.
+#
+# The builder is self-sufficient: if the cache does not describe (rows, cols) - for example
+# when it is called directly, outside generate_towns - it is rebuilt first.
 func _build_multi_resource_mask(tile_data: Array, rows: int, cols: int) -> PackedByteArray:
+    if not _mask_cache_valid or _mask_rows != rows or _mask_cols != cols:
+        _build_tier_mask_caches(tile_data, rows, cols)
+        _mask_cache_valid = false
     var mask: PackedByteArray = _new_tier_mask(rows, cols)
-    var claimed: PackedByteArray = _build_claimed_resource_mask(rows, cols)
     for r in range(rows):
         for c in range(cols):
-            var distinct := {}
-            for res_r in range(maxi(0, r - MAX_ATTRACTION_DISTANCE),
-                    mini(rows, r + MAX_ATTRACTION_DISTANCE + 1)):
-                for res_c in range(maxi(0, c - MAX_ATTRACTION_DISTANCE),
-                        mini(cols, c + MAX_ATTRACTION_DISTANCE + 1)):
-                    if HexUtils.hex_distance(r, c, res_r, res_c) > MAX_ATTRACTION_DISTANCE:
-                        continue
-                    if claimed[res_r * cols + res_c] == 1:
-                        continue
-                    if _is_in_player_start_area(res_r, res_c):
-                        continue
-                    var res = tile_data[res_r][res_c].get("resource", null)
-                    if res == null or res == "":
-                        continue
-                    distinct[res] = true
-            if distinct.size() >= MIN_RESOURCES_FOR_CLUSTER:
+            var counts = _resource_radius[r * cols + c]
+            if counts != null and counts.size() >= MIN_RESOURCES_FOR_CLUSTER:
                 mask[r * cols + c] = 1
     return mask
 
 
 # Priority 2: a strategic resource (resource.strategic == true) in the radius of
 # MAX_ATTRACTION_DISTANCE from the hex of the town. The resources claimed by the towns
-# are not taken into account (see _build_claimed_resource_mask) and the resources in the starting area
+# are not taken into account (see _claim_disk_resources) and the resources in the starting area
 # of the player (see the explanation in _build_multi_resource_mask).
 func _build_strategic_mask(tile_data: Array, rows: int, cols: int) -> PackedByteArray:
+    if not _mask_cache_valid or _mask_rows != rows or _mask_cols != cols:
+        _build_tier_mask_caches(tile_data, rows, cols)
+        _mask_cache_valid = false
     var mask: PackedByteArray = _new_tier_mask(rows, cols)
-    var claimed: PackedByteArray = _build_claimed_resource_mask(rows, cols)
-    for r in range(rows):
-        for c in range(cols):
-            if claimed[r * cols + c] == 1:
-                continue
-            if _is_in_player_start_area(r, c):
-                continue
-            var res = tile_data[r][c].get("resource", null)
-            if res == null or res == "":
-                continue
-            var res_data: Dictionary = GameData.raw_resources.get(res, {})
-            if not bool(res_data.get("strategic", false)):
-                continue
-            _mark_mask_disk(mask, rows, cols, r, c, MAX_ATTRACTION_DISTANCE)
+    for i in range(rows * cols):
+        if int(_strategic_count[i]) > 0:
+            mask[i] = 1
     return mask
 
 

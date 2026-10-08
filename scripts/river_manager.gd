@@ -215,9 +215,21 @@ func _try_generate_main_river(graph: Dictionary, mountain_vertices: Array,
     var best_path_len := 0
     var best_path: Array = [] # The best path found (a compromise, if none reaches min_len)
     var best_attempt := -1
+    # The pairs (start -> goal) already searched in THIS call. The inputs of the search
+    # (graph/used_vertices/restricted_hexes) do not change between the attempts of one
+    # _try_generate_main_river, so a pair that failed once fails identically again: a
+    # repeated pair is skipped instead of re-running the same A*. The RNG is still drawn
+    # for every attempt, so the stream and the outcome are unchanged - only the redundant
+    # A* runs disappear (the repeated failures are exactly what burned tens of attempts
+    # per river).
+    var tried_pairs: Dictionary = {}
     for _attempt in range(NUM_RIVER_ATTEMPTS):
         var start = free_mountains[randi() % free_mountains.size()]
         var goal = free_mouths[randi() % free_mouths.size()]
+        var pair_key: String = start + "|" + goal
+        if tried_pairs.has(pair_key):
+            continue
+        tried_pairs[pair_key] = true
         var path = _find_path_astar(start, goal, graph, used_vertices, MAX_TURN_ANGLE_DEG, {}, restricted_hexes)
         if path.is_empty():
             path = _find_path_astar(start, goal, graph, used_vertices, MAX_TURN_ANGLE_SOFT_DEG, {}, restricted_hexes)
