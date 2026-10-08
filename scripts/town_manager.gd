@@ -20,6 +20,18 @@
 # by the water stands DIRECTLY on the river hex / the bank of the lake / the beach by the sea,
 # and not "within 3 hexes of the water".
 #
+# --- The hard prerequisite: the land reachability from the city ---
+# A town is placed ONLY on a hex which is reachable from the hex of the city of the player
+# by land - without crossing water or an impassable terrain. This is not a "priority"
+# of attractiveness, but a PREREQUISITE: an unreachable town cannot be connected with
+# the city by a road (roads do not go over water - see MapHelpers.is_water_terrain), and
+# without a road there is no trade (TownManager.is_trade_available requires road_linked).
+# Therefore a hex on an island in the middle of the sea is NOT a valid place for a town,
+# no matter how attractive its resources are.
+# The reachable set is computed once per generate_towns (the city does not move during
+# the generation) and is checked in _is_valid_town_hex; an empty mask = the check is
+# disabled (the tests and the calls without a "starting point").
+#
 # STEP 0 - THE BASE. The priorities are iterated strictly from the top down, and for each
 # a valid hex is searched over the WHOLE MAP (a full traversal, without a limit of the number of
 # random attempts). The generator moves on to the next priority ONLY
@@ -52,6 +64,8 @@
 #
 # --- The restrictions on the hex of a town ---
 #   - not water and not mountains/an impassable terrain;
+#   - reachable from the hex of the city by land (see "the land reachability" above):
+#     a town across water would never get a road, therefore it is not placed there;
 #   - not a hex with a resource (including a strategic one): we are attracted to the resources, but
 #     we stand nearby (in the radius of MAX_ATTRACTION_DISTANCE), and not on the resource itself;
 #   - on a coastal beach by the sea - it is possible (the priority "a sea coast");
@@ -254,6 +268,89 @@ var town_influence_hexes: Array = []
 # which already belongs to the player remains cut out. The rule is the same for all the towns,
 # including the guaranteed town of the 2nd era.
 var player_start_area: Dictionary = {}
+
+# The land reachability from the city of the player: reachable_hexes[row * cols + col] == 1,
+# if the hex can be reached from the hex of the city without crossing water or an impassable
+# terrain. It is computed once per generate_towns (the city does not move) and works as a
+# hard prerequisite for the place of a town: a town on an island in the middle of the sea
+# could never be connected with the city by a road, and without a road there is no trade.
+# An empty array = the check is disabled (the tests and the calls without a "starting point").
+var reachable_hexes: PackedByteArray = []
+# The dimensions of the map for which reachable_hexes was built. Kept next to the mask,
+# so that a repeated generation on a map of another size does not return a stale mask.
+var _reachable_rows := 0
+var _reachable_cols := 0
+
+
+# Builds the map of the land reachability from (start_row, start_col): a BFS over the hexes
+# which can be walked through, with water and impassable terrains as the walls. The result is
+# a PackedByteArray of the size rows*cols (1 = reachable), so that the check in
+# _is_valid_town_hex is O(1), and the flood fill itself is done once for the whole generation.
+func _build_reachable_mask(tile_data: Array, rows: int, cols: int,
+        start_row: int, start_col: int) -> PackedByteArray:
+    var reachable := PackedByteArray()
+    reachable.resize(rows * cols)
+    reachable.fill(0)
+    if rows <= 0 or cols <= 0:
+        return reachable
+    if start_row < 0 or start_row >= rows or start_col < 0 or start_col >= cols:
+        return reachable
+    var start_tile = tile_data[start_row][start_col]
+    if start_tile == null or not _is_land_passable(start_tile):
+        return reachable
+
+    reachable[start_row * cols + start_col] = 1
+    var queue: Array = [Vector2i(start_row, start_col)]
+    var head := 0
+    while head < queue.size():
+        var cur: Vector2i = queue[head]
+        head += 1
+        for n in HexUtils.get_neighbors_odd_r(cur.x, cur.y, rows, cols):
+            var idx: int = int(n.row) * cols + int(n.col)
+            if reachable[idx] == 1:
+                continue
+            var tile = tile_data[n.row][n.col]
+            if tile == null or not _is_land_passable(tile):
+                continue
+            reachable[idx] = 1
+            queue.append(Vector2i(int(n.row), int(n.col)))
+    return reachable
+
+
+# A hex over which a road can physically pass: not water and not an impassable terrain.
+# A town on such a hex can be connected with the city by a road; a town beyond water cannot.
+func _is_land_passable(tile) -> bool:
+    if tile == null:
+        return false
+    var terrain: String = str(tile.get("terrain", "plain"))
+    if MapHelpers.is_water_terrain(terrain):
+        return false
+    return not _is_impassable_terrain(terrain)
+
+
+# Is the hex reachable from the city by land. An empty reachable_hexes = the check is
+# disabled (the tests and the calls without a "starting point").
+func _is_reachable_hex(row: int, col: int) -> bool:
+    if reachable_hexes.is_empty():
+        return true
+    if row < 0 or row >= _reachable_rows or col < 0 or col >= _reachable_cols:
+        return false
+    return reachable_hexes[row * _reachable_cols + col] == 1
+
+
+# Sets the map of the land reachability for the current generation. An empty mask
+# (the city stands on water/an impassable hex, or the map is empty) disables the check:
+# "not a single hex is reachable" is indistinguishable from "the check is off", but the
+# first situation means that the towns cannot trade with such a city anyway.
+func _set_reachable(reachable: PackedByteArray, rows: int, cols: int) -> void:
+    if reachable.is_empty():
+        reachable_hexes = []
+        _reachable_rows = 0
+        _reachable_cols = 0
+        return
+    reachable_hexes = reachable
+    _reachable_rows = rows
+    _reachable_cols = cols
 
 
 # Sets the starting area of the player. An empty rectangle (start > end) and any
@@ -596,6 +693,12 @@ func generate_towns(tile_data: Array, rows: int, cols: int,
     set_player_start_area(exclusion_start_row, exclusion_end_row,
             exclusion_start_col, exclusion_end_col)
 
+    # The hard prerequisite of the whole generation: the towns are placed only on the land
+    # reachable from the city by a road. The city does not move, and the terrain does not
+    # change during the generation, so the flood fill is done once for all the towns.
+    _set_reachable(_build_reachable_mask(tile_data, rows, cols, city_row, city_col),
+            rows, cols)
+
     for r in range(rows):
         for c in range(cols):
             if tile_data[r][c] != null:
@@ -887,6 +990,9 @@ func _find_hex_in_radius_satisfying(tile_data: Array, rows: int, cols: int,
 # Similarly for require_in_region: -1 - the restriction is disabled.
 # ignore_exclusion=true skips the check of exclude (for the emergency cases,
 # it is not used at the moment, it is left "for the future").
+#
+# The land reachability from the city (reachable_hexes) is a HARD prerequisite and is NOT
+# bypassed by ignore_exclusion: an unreachable town cannot be connected with the city by a road.
 func _is_valid_town_hex(tile_data: Array, row: int, col: int,
         city_row: int, city_col: int,
         exclusion_start_row: int, exclusion_end_row: int,
@@ -913,6 +1019,12 @@ func _is_valid_town_hex(tile_data: Array, row: int, col: int,
         return false
 # A beach is allowed: the priority "a sea coast" requires placing the town
 # DIRECTLY on the coastal hex (terrain == "beach"), and not inland.
+
+    # The hard prerequisite: the hex must be reachable from the city by land. An island
+    # in the middle of the sea is attractive, but a road cannot be laid to it, and without
+    # a road there is no trade; therefore such a hex is not a valid place for a town at all.
+    if not _is_reachable_hex(row, col):
+        return false
 
     # There is already a construction (from another system) - not allowed.
     if tile.get("improvement", null) != null:
