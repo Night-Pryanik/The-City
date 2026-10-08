@@ -55,6 +55,21 @@ var main_map: Node
 # and perform the clipping. The key of the cache is a compact serialization of the coordinates of the river.
 var _river_smooth_cache: Dictionary = {}
 
+# The per-frame geometry of the rivers: the clipped screen-space polylines of every river that
+# intersects the cached rectangle, keyed by _river_index. The key of validity is the offset the
+# geometry was built for; within main_map.MAP_CACHE_MARGIN of it the entries are reused as they
+# are (only _river_frame_offset moves), so panning does not re-clip anything.
+var _river_frame_cache: Dictionary = {}
+var _river_frame_cache_offset: Vector2 = Vector2.ZERO
+# The current world -> screen offset, added at the drawing of the river polylines.
+var _river_frame_offset: Vector2 = Vector2.ZERO
+# Set by queue_redraw_for_scroll and consumed once per frame: the caches are re-checked lazily,
+# so that several scroll steps within one frame do not rebuild them several times.
+var _scroll_since_cache := false
+# Counts the actual rebuilds of the geometry of the rivers. If the pan cache works, a continuous
+# scroll of many frames must give far fewer rebuilds than frames - the test relies on it.
+var _river_frame_rebuilds: int = 0
+
 # --- The render cache of the influence rings of the towns (PHASE 1.7 / 1.7.1) ---
 # The rings of the towns are static between the spawn/load/change of the epoch, but earlier
 # they were recalculated AND drawn on every frame: hundreds of semi-transparent
@@ -70,6 +85,9 @@ var _river_smooth_cache: Dictionary = {}
 # light cached draw_line for the borders.
 var _town_cache_version: int = 0
 var _town_cache_built_version: int = -1
+# The world -> screen offset the fill texture of the rings was built for. It is reused while the
+# map is scrolled within main_map.MAP_CACHE_MARGIN of it.
+var _cache_built_offset: Vector2 = Vector2(INF, INF)
 # The region borders for which the current cache is built. If the cache is built
 # before a change of the epoch (the Region has expanded) - it is invalid and is rebuilt.
 var _cache_region_start_row: int = -1
@@ -95,6 +113,8 @@ func initialize(td, main_node):
     # We clear the cache of the rivers on the initialization (a new game / a load of a save),
     # so as not to keep the outdated smoothed points of the previous map.
     _river_smooth_cache.clear()
+    _river_frame_cache.clear()
+    _invalidate_screen_caches()
     # The rings of the towns could have changed (a new map / a load of a save):
     # we reset the cache of their render - it will be lazily rebuilt from the next frame.
     invalidate_town_influence_cache()
@@ -164,7 +184,7 @@ func _get_visible_hex_range() -> Dictionary:
 # The screen rectangle in the SCREEN coordinates - the single source
 # of truth both for the viewport culling and for the clipping of the rivers.
 # The invariant: everything that we clip is already shifted by the offset (see
-# _build_visible_river_lines), therefore the rectangle must be the screen one as well.
+# _collect_river_segments), therefore the rectangle must be the screen one as well.
 # `-offset_x / -offset_y` here would mean the WORLD coordinate system and
 # would clip everything - exactly so the rivers once disappeared from the map.
 func _get_screen_rect() -> Rect2:
@@ -455,6 +475,9 @@ func invalidate_town_influence_cache() -> void:
     # The old ImageTexture is released automatically (ref-count) on
     # the overwrite of the reference in _build_town_fill_texture().
     _town_cache_version += 1
+    # The records of the built offset are dropped as well: they are written by the builder, and
+    # with them stale the rebuild would keep reusing a screen-sized cache of the old offset.
+    _cache_built_offset = Vector2(INF, INF)
 
 func _ensure_town_influence_cache(visible: Dictionary) -> void:
     if main_map == null:
@@ -464,13 +487,30 @@ func _ensure_town_influence_cache(visible: Dictionary) -> void:
             or _cache_region_end_row != main_map.region_end_row \
             or _cache_region_start_col != main_map.region_start_col \
             or _cache_region_end_col != main_map.region_end_col
-    if _town_cache_built_version == _town_cache_version and not region_changed:
+    # The fill of the rings is drawn in the screen coordinates (see _draw_town_influence), so the
+    # pre-rendered texture is tied to the offset it was built for. It is reused while the map is
+    # scrolled within the cached margin, otherwise the segments of the borders would lag behind
+    # the fill - therefore a drift past that bound rebuilds the cache too.
+    var offset = Vector2(
+        main_map.offset_x + main_map.scroll_offset.x,
+        main_map.offset_y + main_map.scroll_offset.y
+    )
+    var offset_drifted := true
+    if not is_inf(_cache_built_offset.x):
+        offset_drifted = maxf(absf(offset.x - _cache_built_offset.x),
+                absf(offset.y - _cache_built_offset.y)) > main_map.MAP_CACHE_MARGIN
+    if _town_cache_built_version == _town_cache_version and not region_changed and not offset_drifted:
         return
     _town_cache_built_version = _town_cache_version
     _cache_region_start_row = main_map.region_start_row
     _cache_region_end_row = main_map.region_end_row
     _cache_region_start_col = main_map.region_start_col
     _cache_region_end_col = main_map.region_end_col
+    # The reference offset is remembered AFTER the expensive build below, because the build
+    # itself goes through _draw_rivers -> _build_river_frame_cache, which needs a valid
+    # _cache_built_offset to decide whether the river geometry can be reused. Writing it here
+    # would make _flush_scroll_cache_invalidation see "no drift" and skip the invalidation of
+    # the rivers, so their cache would never be dropped after a long pan.
 
     # --- Step 1: the unique hexes of the fill + the world segments of the borders ---
     _influence_fill_centers = []
@@ -671,6 +711,7 @@ func _draw_town_influence(visible: Dictionary) -> void:
                 _influence_texture_origin.y + offset_y,
                 _influence_texture_size.x,
                 _influence_texture_size.y), false, Color(1, 1, 1, 1))
+        _cache_built_offset = Vector2(offset_x, offset_y)
         return
     # Fallback: the drawing by the hexes (the editor / the Region larger than 4096px).
     var region_visible = _get_region_visible_range(visible)
@@ -688,6 +729,7 @@ func _draw_town_influence(visible: Dictionary) -> void:
         var vertices = HexUtils.hex_vertices(cx, cy, radius)
         var fill_color := Color(h.cr, h.cg, h.cb, h.ca)
         draw_colored_polygon(vertices, fill_color)
+    _cache_built_offset = Vector2(offset_x, offset_y)
 
     # Draws the borders of the influence rings of EACH town with its own colour (PHASE 1.7.1).
     # It is drawn right after the fill of the rings (PHASE 1.7) and before the roads/rivers/icons.
@@ -1570,113 +1612,241 @@ func _draw_rivers():
         return
     if not main_map.has_node("RiverManager"):
         return
+    _flush_scroll_cache_invalidation()
     var river_manager = main_map.get_node("RiverManager")
-    var offset_x = main_map.offset_x + main_map.scroll_offset.x
-    var offset_y = main_map.offset_y + main_map.scroll_offset.y
     var radius = main_map.HEX_RADIUS
+    _build_river_frame_cache(radius)
 
     # The main rivers are thicker and darker.
-    _draw_river_list(river_manager.get_main_rivers(), offset_x, offset_y, radius,
+    _draw_river_list(river_manager.get_main_rivers(),
             river_manager.RIVER_SHORE_COLOR, river_manager.RIVER_SHORE_WIDTH,
             river_manager.RIVER_COLOR, river_manager.RIVER_WIDTH,
             river_manager.RIVER_HIGHLIGHT_COLOR, river_manager.RIVER_HIGHLIGHT_WIDTH)
 
     # The tributaries are thinner and lighter, in order to be visually different from the main rivers.
-    _draw_river_list(river_manager.get_tributaries(), offset_x, offset_y, radius,
+    _draw_river_list(river_manager.get_tributaries(),
             river_manager.TRIBUTARY_SHORE_COLOR, river_manager.TRIBUTARY_SHORE_WIDTH,
             river_manager.TRIBUTARY_COLOR, river_manager.TRIBUTARY_WIDTH,
             river_manager.TRIBUTARY_HIGHLIGHT_COLOR, river_manager.TRIBUTARY_HIGHLIGHT_WIDTH)
 
 
 # Draws the list of the rivers with the given style (the bank, the body, the highlight).
-# All the geometry and the clipping of the invisible are in _build_visible_river_lines.
-func _draw_river_list(river_list: Array, offset_x: float, offset_y: float, radius: float,
+# All the geometry and the clipping of the invisible are in _build_river_frame_cache.
+func _draw_river_list(river_list: Array,
         shore_color: Color, shore_width: float,
         body_color: Color, body_width: float,
         highlight_color: Color, highlight_width: float):
+    # The rivers are drawn in segments, not as whole polylines: only the runs that actually
+    # intersect the screen are shifted by the offset and handed to draw_polyline. The geometry
+    # cached for the screen plus the pan margin contains far more points than the screen shows
+    # (a lightly meandering river has ~50 points per hex), and shifting those per frame costs
+    # more than the drawing itself.
+    var screen: Rect2 = _get_screen_rect()
+    var offset: Vector2 = _river_frame_offset
     for river in river_list:
-        for line in _build_visible_river_lines(river, offset_x, offset_y, radius):
-            draw_polyline(line, shore_color, shore_width, true)
-            draw_polyline(line, body_color, body_width, true)
-            draw_polyline(line, highlight_color, highlight_width, true)
+        var entry = _river_frame_cache.get(_river_index(river))
+        if entry == null:
+            continue
+        for seg in entry["segments"]:
+            if not seg["rect"].intersects(screen):
+                continue
+            var run: PackedVector2Array = seg["points"]
+            var out := PackedVector2Array()
+            out.resize(run.size())
+            for i in range(run.size()):
+                out[i] = run[i] + offset
+            draw_polyline(out, shore_color, shore_width, true)
+            draw_polyline(out, body_color, body_width, true)
+            draw_polyline(out, highlight_color, highlight_width, true)
 
 
-# The geometry of ONE river in the SCREEN coordinates: the viewport culling, the smoothing
-# (with a cache), the shift by the offset and the clipping by the screen. It is moved out of
-# _draw_river_list, so that the result could be checked by a headless test,
-# without going into _draw() (see tests/test_river_rendering.gd).
-# The rivers are clipped by the rectangle of the screen: beyond its limits they are not visible,
-# and inside it (including in the fog of war, which is now drawn
-# darkened) they are drawn entirely.
-func _build_visible_river_lines(river: Array, offset_x: float, offset_y: float,
-        radius: float) -> Array:
-    var lines: Array = []
-    if river.size() < 2:
-        return lines
+# The identity of a river inside _river_frame_cache: a river is a plain Array, and arrays are
+# compared by value, so a long river would be hashed on every lookup. The index inside the
+# manager's list is stable and cheap.
+func _river_index(river: Array) -> int:
+    return river.size() * 1000003 + absi(_points_hash(river))
 
-    # The viewport culling: we skip the rivers which do not intersect the screen.
-    var min_x = INF
-    var max_x = - INF
-    var min_y = INF
-    var max_y = - INF
-    for pt in river:
-        var px = pt.x + offset_x
-        var py = pt.y + offset_y
-        min_x = min(min_x, px)
-        max_x = max(max_x, px)
-        min_y = min(min_y, py)
-        max_y = max(max_y, py)
-    var river_rect = Rect2(
-        min_x - radius,
-        min_y - radius,
-        (max_x - min_x) + radius * 2,
-        (max_y - min_y) + radius * 2
+
+func _points_hash(river: Array) -> int:
+    if river.is_empty():
+        return 0
+    var p: Vector2 = river[0]
+    return roundi(p.x * 10.0) * 31 + roundi(p.y * 10.0)
+
+
+# Rebuilds the per-frame geometry of the rivers: the viewport culling, the smoothing (cached),
+# the clipping by the screen rectangle and the grouping of the visible points by the style.
+# The caches are keyed by the current offset and are reused while the map is scrolled by no more
+# than the cached margin - that is what removes the per-frame cost of the pan.
+func _build_river_frame_cache(radius: float) -> void:
+    var offset_x = main_map.offset_x + main_map.scroll_offset.x
+    var offset_y = main_map.offset_y + main_map.scroll_offset.y
+    _river_frame_offset = Vector2(offset_x, offset_y)
+    var river_manager = main_map.get_node("RiverManager")
+    var all_rivers: Array = river_manager.get_main_rivers() + river_manager.get_tributaries()
+
+    if not _river_frame_cache.is_empty():
+        var cached_offset: Vector2 = _river_frame_cache_offset
+        var drift = absf(offset_x - cached_offset.x)
+        drift = maxf(drift, absf(offset_y - cached_offset.y))
+        if drift <= main_map.MAP_CACHE_MARGIN:
+            # A new river (or a changed path) invalidates the cache: the list of the rivers is
+            # the cache key, and on a loaded save it differs from the generated one.
+            #
+            # The check must NOT demand an entry for every river: _collect_river_segments stores
+            # only the rivers intersecting the cached rectangle, so having just a few of them is
+            # the normal state, and the old "cache size == river count" test therefore failed on
+            # EVERY frame and destroyed the whole point of the cache. Instead we require that
+            # every river present in the cache still exists in the current list.
+            var fresh := true
+            var rivers_by_index := {}
+            for river in all_rivers:
+                rivers_by_index[_river_index(river)] = true
+            for key in _river_frame_cache.keys():
+                if not rivers_by_index.has(key):
+                    fresh = false
+                    break
+            if fresh:
+                return
+
+    _river_frame_cache.clear()
+    _river_frame_cache_offset = Vector2(offset_x, offset_y)
+    _river_frame_rebuilds += 1
+
+    # The world -> screen offset of the cached geometry is the current one; the margin around the
+    # screen makes the cache valid for the same pan distance in any direction.
+    var screen_rect = Rect2(
+        Vector2(-main_map.MAP_CACHE_MARGIN, -main_map.MAP_CACHE_MARGIN),
+        _get_viewport_size() + Vector2(main_map.MAP_CACHE_MARGIN, main_map.MAP_CACHE_MARGIN) * 2.0
     )
-    if not _is_rect_visible(river_rect):
-        return lines
 
-    # The smoothed meandering points of the river in the WORLD coordinates (without the offset).
-    # We compute them once per river and cache them: the smoothing (_generate_natural_river
-    # + _chaikin_smooth) is an expensive operation, and the points of the rivers do not change when scrolling,
-    # therefore the recalculation on every frame is redundant. The key of the cache is a compact serialization
-    # of the initial points of the river (with a unique hash of the number of the points).
+    for river in all_rivers:
+        if river.size() < 2:
+            continue
+        # The viewport culling: a river entirely outside the cached rectangle cannot appear
+        # on the screen within the margin, therefore it costs nothing at the drawing.
+        var min_x = INF
+        var max_x = - INF
+        var min_y = INF
+        var max_y = - INF
+        for pt in river:
+            var px = pt.x + offset_x
+            var py = pt.y + offset_y
+            min_x = minf(min_x, px)
+            max_x = maxf(max_x, px)
+            min_y = minf(min_y, py)
+            max_y = maxf(max_y, py)
+        var river_rect = Rect2(
+            min_x - radius,
+            min_y - radius,
+            (max_x - min_x) + radius * 2.0,
+            (max_y - min_y) + radius * 2.0
+        )
+        if not river_rect.intersects(screen_rect):
+            continue
+
+        _river_frame_cache[_river_index(river)] = {
+            "segments": _collect_river_segments(river, offset_x, offset_y, radius)
+        }
+
+
+# The visible runs of ONE river in the WORLD coordinates, together with the screen-space bounds
+# of each run. The smoothed meanders are cached per river in the world coordinates, so a pan
+# within the cached margin does not rebuild them.
+func _collect_river_segments(river: Array, offset_x: float, offset_y: float,
+        radius: float) -> Array:
+    var segments: Array = []
     var cache_key = "%d|" % river.size() + _points_to_cache_key(river)
     var smooth_points: PackedVector2Array
     if _river_smooth_cache.has(cache_key):
         smooth_points = _river_smooth_cache[cache_key]
     else:
-        # We build the natural meanders over the whole river in the WORLD coordinates,
-        # and at the drawing the offset is added to them. Thus the waves remain
-        # continuous at the border, and behind it the river is not drawn (the fog of war).
         var world_points = PackedVector2Array()
         for pt in river:
             world_points.append(Vector2(pt.x, pt.y))
         smooth_points = _generate_natural_river(world_points, radius)
         _river_smooth_cache[cache_key] = smooth_points
 
-    # We shift the smoothed world points by the current offset (the scrolling/the centre) -
-    # from this moment the points live in the SCREEN coordinates.
-    var shifted_points = PackedVector2Array()
-    shifted_points.resize(smooth_points.size())
-    for i in range(smooth_points.size()):
-        shifted_points[i] = Vector2(
-            smooth_points[i].x + offset_x,
-            smooth_points[i].y + offset_y
-        )
-
-    # We clip the smoothed line by the rectangle of the screen. The rectangle is the
-    # SCREEN one (_get_screen_rect), as are the points themselves: earlier there was
-    # Rect2(Vector2(-offset_x, -offset_y), ...), that is, a WORLD window, and when
-    # the map was centred (offset_x ~ -2280) the rivers were clipped entirely - they
-    # remained in the data (river_edges), but were not drawn. Earlier the clipping went
-    # by the Region (the fog of war was not drawn at all), but now the hexes in
-    # the band reachable by the scroll are drawn darkened - the rivers should not
-    # break off at the border of the Region.
-    var clipped_lines = _clip_river_to_rect(shifted_points, _get_screen_rect())
+    # The points are in the world coordinates and the clipping happens in the screen ones: the
+    # cache rectangle translated by the negated offset covers exactly the world points whose
+    # screen position falls inside the cached rectangle.
+    var clipped_lines = _clip_river_to_rect(
+        river_points_with_offset(smooth_points, offset_x, offset_y),
+        _get_cache_rect()
+    )
     for line in clipped_lines:
-        if line.size() >= 2:
-            lines.append(line)
-    return lines
+        if line.size() < 2:
+            continue
+        # Back to the world coordinates, so that the drawing only has to add the current offset.
+        var world := PackedVector2Array()
+        world.resize(line.size())
+        var min_x = INF
+        var max_x = - INF
+        var min_y = INF
+        var max_y = - INF
+        for i in range(line.size()):
+            world[i] = line[i] - Vector2(offset_x, offset_y)
+            min_x = minf(min_x, line[i].x)
+            max_x = maxf(max_x, line[i].x)
+            min_y = minf(min_y, line[i].y)
+            max_y = maxf(max_y, line[i].y)
+        var width = (max_x - min_x) + 2.0 * radius
+        var height = (max_y - min_y) + 2.0 * radius
+        segments.append({
+            "points": world,
+            "rect": Rect2(min_x - radius, min_y - radius, width, height)
+        })
+    return segments
+
+
+# The rectangle of the cached river geometry: the screen grown by the pan margin on each side.
+func _get_cache_rect() -> Rect2:
+    return Rect2(
+        Vector2(-main_map.MAP_CACHE_MARGIN, -main_map.MAP_CACHE_MARGIN),
+        _get_viewport_size() + Vector2(main_map.MAP_CACHE_MARGIN, main_map.MAP_CACHE_MARGIN) * 2.0
+    )
+
+
+func river_points_with_offset(points: PackedVector2Array, dx: float, dy: float) -> PackedVector2Array:
+    var shifted := PackedVector2Array()
+    shifted.resize(points.size())
+    for i in range(points.size()):
+        shifted[i] = Vector2(points[i].x + dx, points[i].y + dy)
+    return shifted
+
+
+# Called by the input handler after every change of the scroll offset. The screen-sized caches of
+# the map (the influence rings of the towns, the river geometry) are built for a concrete offset;
+# they stay valid while the map is scrolled by no more than the cached margin. The redraw itself
+# must still be requested, so this only records that the staleness has to be re-checked.
+func queue_redraw_for_scroll() -> void:
+    _scroll_since_cache = true
+    queue_redraw()
+
+
+# Re-checks the validity of the caches at the beginning of a frame: once the pan has left the
+# cached margin, the screen-sized caches are rebuilt for the new offset.
+func _flush_scroll_cache_invalidation() -> void:
+    if not _scroll_since_cache:
+        return
+    _scroll_since_cache = false
+    var offset = Vector2(
+        main_map.offset_x + main_map.scroll_offset.x,
+        main_map.offset_y + main_map.scroll_offset.y
+    )
+    if is_inf(_cache_built_offset.x):
+        return
+    var drift = maxf(absf(offset.x - _cache_built_offset.x),
+            absf(offset.y - _cache_built_offset.y))
+    if drift > main_map.MAP_CACHE_MARGIN:
+        _invalidate_screen_caches()
+
+
+# Drops the screen-sized caches of the map, so that they are rebuilt for the current offset
+# on the next frame.
+func _invalidate_screen_caches() -> void:
+    _river_frame_cache.clear()
+    invalidate_town_influence_cache()
 
 
 # Clips the segment (start -> end) by the rectangle rect (the Liang-Barsky algorithm).
@@ -1782,7 +1952,11 @@ func _generate_natural_river(river_points: PackedVector2Array, radius: float) ->
     if river_points.size() < 2:
         return river_points
 
-    var sample_step = max(radius * 0.22, 8.0)
+    # The sample step sets the point count of the meanders, and that count is what the frame
+    # pays for: every point is shifted by the scroll offset and handed to draw_polyline. The
+    # wave period is 2*PI/frequency ~= 7 * sample_step, so a step larger than a quarter of the
+    # wavelength stops improving the shape (the Chaikin pass below rounds what is left).
+    var sample_step = max(radius * 0.35, 14.0)
     var amplitude = max(radius * 0.16, 7.0)
     var frequency = 0.9 / max(sample_step, 1.0)
     var phase = 0.45 + float(river_points.size()) * 0.12

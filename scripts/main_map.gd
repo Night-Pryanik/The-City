@@ -128,6 +128,12 @@ var is_scouting: bool = false
 var settings_config = ConfigFile.new()
 var show_hex_borders = true
 var use_edge_scrolling = true
+# The margin (in pixels) of the pre-render of the screen-sized layers of the map. The layers
+# that are cached by the renderer as a screen-sized texture (the influence rings of the towns)
+# are rendered into a rectangle larger than the viewport by this margin on each side. While the
+# scroll stays within the margin, the texture is reused as is and only its position in the world
+# changes - therefore a pan does not rebuild the cache every frame.
+const MAP_CACHE_MARGIN := 512.0
 var tooltip_delay: float = 0.5
 var extended_tooltip_delay: float = 1.0
 var building_detail_delay: float = 0.5

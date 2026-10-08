@@ -199,6 +199,7 @@ func handle_process(delta: float):
             main_map.scroll_offset.x = clamp(main_map.scroll_offset.x, -max_scroll.x, max_scroll.x)
             main_map.scroll_offset.y = clamp(main_map.scroll_offset.y, -max_scroll.y, max_scroll.y)
             map_renderer.queue_redraw()
+            map_renderer.queue_redraw_for_scroll()
             if progress_bar_layer:
                 progress_bar_layer.queue_redraw()
 
@@ -355,6 +356,7 @@ func _handle_mouse_motion(event: InputEventMouseMotion):
             main_map.scroll_offset.x = clamp(main_map.scroll_offset.x, -max_scroll.x, max_scroll.x)
             main_map.scroll_offset.y = clamp(main_map.scroll_offset.y, -max_scroll.y, max_scroll.y)
             map_renderer.queue_redraw()
+            map_renderer.queue_redraw_for_scroll()
             if progress_bar_layer:
                 progress_bar_layer.queue_redraw()
             return
