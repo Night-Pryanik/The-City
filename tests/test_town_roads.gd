@@ -33,6 +33,7 @@ var _tm = null
 var _rm = null
 var _gdata = null
 var _hex_utils = null
+var _map_helpers = null
 
 func _initialize() -> void:
     WATCHDOG.arm(self)
@@ -47,6 +48,7 @@ func _run() -> void:
     get_root().get_node("SaveManager").new_game()
     _gdata = get_root().get_node("GameData")
     _hex_utils = load("res://scripts/HexUtils.gd")
+    _map_helpers = load("res://scripts/map_helpers.gd")
 
     _tm = load("res://scripts/town_manager.gd").new()
     get_root().add_child(_tm)
@@ -536,7 +538,10 @@ func _free_ring_hex(town: Dictionary, tile_data: Array, min_dist: int,
 func _is_water(tile) -> bool:
     if tile == null:
         return false
-    return str(tile.get("terrain", "")) in ["lake", "sea"]
+    # The water test lives in MapHelpers (WATER_TERRAINS: lake, sea, shallow_sea).
+    # The shallows are water for the road logic too: a road is not built over them,
+    # exactly as over the deep sea.
+    return _map_helpers.is_water_terrain(str(tile.get("terrain", "")))
 
 # Есть ли путь ПО СУШЕ между двумя гексами (вода непроходима). Это независимая
 # проверка правила «дорога строится всегда, когда физически можно дойти», а не

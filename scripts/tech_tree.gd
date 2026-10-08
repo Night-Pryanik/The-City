@@ -71,7 +71,7 @@ func setup(parent: Control, current_lbl: Label, science_lbl: Label = null):
 # --- The tooltip of the breakdown of the science ("Science: X/sec") ---
 # A panel in the style of the other tooltips of the project (mouse_filter IGNORE — it does not interfere with
 # the input): it is shown on hover over the label of the rate of the science and displays
-# what the final number consists of (the base + the buildings + the schools + the feathers bonus).
+# what the final number consists of (the base + the buildings + the schools + the consumables bonus).
 func _setup_science_tooltip():
     if science_pool_label == null:
         return

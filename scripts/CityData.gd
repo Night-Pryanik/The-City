@@ -237,7 +237,7 @@ const BASE_SCIENCE_PER_SEC: float = 1.0
 # The cache of the contribution of the working science buildings to the rate of the research (points/sec).
 # It is recalculated from scratch once per tick of the simulation in do_tick(). The formula per building:
 #   (additional_yield.science + the weighted average of the special_yield of the consumed
-#    mixture of the bases) × the bonus of the profession of the scholar (the feathers/ink, ×1.25).
+#    mixture of the bases) × the bonus of the profession of the scholar (the writing set, ×1.25).
 # Neither required nor the craft_time of the recipe "Science" are included in the rate of the science:
 # the recipe is only a "pass" (while the raw material is available, the scholars work), its input
 # only sets the expense of the fuel. The rate of the work of the scholars is determined by the
@@ -262,9 +262,9 @@ var science_buildings_rate_per_sec: float = 0.0
 #         "name": "Scriptorium",
 #         "fixed": 3.0,             # additional_yield.science, WITHOUT the bonus
 #         "mediums": 2.0,           # the weighted average of the special_yield of the mixture, WITHOUT the bonus
-#         "bonus": 1.25,            # the multiplier of the profession (the feathers/ink)
+#         "bonus": 1.25,            # the multiplier of the profession (the writing set)
 #         "mediums_names": ["Papyrus"],        # what is actually consumed
-#         "bonus_names": ["Feathers"],            # what gives the bonus of the consumption
+#         "bonus_names": ["Writing Set"],            # what gives the bonus of the consumption
 #       }, ...
 #     ],
 #     "total": 7.5,                 # = get_science_rate_per_sec()
@@ -1479,7 +1479,7 @@ func do_tick():
             #     parchment +3, silk +3, paper +5). While there is no composition —
             #     the contribution of the bases is 0.
             #   * all of this is multiplied by the bonus of the profession of the scholar
-            #     (the feathers/ink): (fixed + mediums) × prof_multiplier.
+            #     (the writing set): (fixed + mediums) × prof_multiplier.
             if recipe_id == "science":
                 var missing: Array = tick_res.get("missing", [])
                 var building_fixed := float(GameData.get_building_additional_yield(bld.get("id", "")).get("science", 0))

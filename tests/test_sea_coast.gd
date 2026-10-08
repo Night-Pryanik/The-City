@@ -1,7 +1,15 @@
 extends SceneTree
 
 const WATCHDOG = preload("res://tests/watchdog.gd")
-const MAP_GENERATOR = preload("res://scripts/map_generator.gd")
+
+# Autoloads and the helper modules are taken through load(): in the --script mode
+# the names GameData, SeaManager, HexUtils and MapHelpers are not guaranteed to
+# be in the global cache at compile time of this file (the same reason the other
+# tests load HexUtils/MapHelpers by path).
+var _gdata = null
+var _sea = null
+var _hu = null
+var _mh = null
 
 func _initialize() -> void:
     WATCHDOG.arm(self)
@@ -11,6 +19,10 @@ func _run() -> void:
     var state := {"failed": false}
     await process_frame
     get_root().get_node("SaveManager").new_game()
+    _gdata = get_root().get_node("GameData")
+    _sea = load("res://scripts/sea_manager.gd")
+    _hu = load("res://scripts/HexUtils.gd")
+    _mh = load("res://scripts/map_helpers.gd")
 
     _test_local_coast_width(state)
     _test_islands_do_not_add_shallows(state)
@@ -28,7 +40,7 @@ func _test_local_coast_width(state: Dictionary) -> void:
     var rows := 40
     var cols := 40
     var max_depth := 5
-    var previous_sea: Dictionary = GameData.map_config.get("sea", {}).duplicate(true)
+    var previous_sea: Dictionary = _gdata.map_config.get("sea", {}).duplicate(true)
     var test_sea := previous_sea.duplicate(true)
     test_sea["mode"] = "edge"
     test_sea["sides"] = [1, 1]
@@ -38,14 +50,14 @@ func _test_local_coast_width(state: Dictionary) -> void:
     test_sea["edge_width_max"] = 18
     test_sea["edge_envelope_strength"] = 0.0
     test_sea["edge_islands_enabled"] = false
-    GameData.map_config["sea"] = test_sea
+    _gdata.map_config["sea"] = test_sea
     seed(31415)
     var tile_data := _make_tile_data(rows, cols)
-    var sea_mask: Array = SeaManager.apply_sea(tile_data, rows, cols, 20, 20)
+    var sea_mask: Array = _sea.apply_sea(tile_data, rows, cols, 20, 20)
     for row in range(rows):
         for col in range(cols):
             tile_data[row][col]["terrain"] = "plain"
-    SeaManager.reapply_sea_mask(tile_data)
+    _sea.reapply_sea_mask(tile_data)
 
     var shallow_mask := _make_mask(rows, cols)
     for row in range(rows):
@@ -81,7 +93,7 @@ func _test_local_coast_width(state: Dictionary) -> void:
         check(absi(widths[index] - widths[index - 1]) <= 2,
             "neighboring coast sections should not have abrupt depth changes", state)
     check(not shallow_mask[20][20], "deep sea should remain beyond the shallow belt", state)
-    GameData.map_config["sea"] = previous_sea
+    _gdata.map_config["sea"] = previous_sea
 
 func _test_harbor_connectivity(state: Dictionary) -> void:
     var rows := 7
@@ -95,7 +107,7 @@ func _test_harbor_connectivity(state: Dictionary) -> void:
 
     var start := {"row": 3, "col": 3}
     tile_data[start.row][start.col]["terrain"] = "shallow_sea"
-    var start_neighbors := HexUtils.get_neighbors_odd_r(start.row, start.col, rows, cols)
+    var start_neighbors: Array = _hu.get_neighbors_odd_r(start.row, start.col, rows, cols)
     var adjacent_keys := {}
     for neighbor in start_neighbors:
         adjacent_keys["%d,%d" % [neighbor.row, neighbor.col]] = true
@@ -103,7 +115,7 @@ func _test_harbor_connectivity(state: Dictionary) -> void:
     var deep_hex: Dictionary = {}
     var harbor_hex: Dictionary = {}
     for candidate in start_neighbors:
-        for land in HexUtils.get_neighbors_odd_r(candidate.row, candidate.col, rows, cols):
+        for land in _hu.get_neighbors_odd_r(candidate.row, candidate.col, rows, cols):
             var key := "%d,%d" % [land.row, land.col]
             if land.row == start.row and land.col == start.col:
                 continue
@@ -120,15 +132,15 @@ func _test_harbor_connectivity(state: Dictionary) -> void:
         return
     tile_data[deep_hex.row][deep_hex.col]["terrain"] = "sea"
     tile_data[harbor_hex.row][harbor_hex.col]["improvement"] = "test_water_harbor"
-    GameData.improvements["test_water_harbor"] = {"water_body_harbor": true}
-    check(MapHelpers.has_harbor_access(tile_data, start.row, start.col, rows, cols),
+    _gdata.improvements["test_water_harbor"] = {"water_body_harbor": true}
+    check(_mh.has_harbor_access(tile_data, start.row, start.col, rows, cols),
         "a shallow-water resource should reach a harbor through deep sea", state)
-    GameData.improvements.erase("test_water_harbor")
+    _gdata.improvements.erase("test_water_harbor")
 
 func _test_islands_do_not_add_shallows(state: Dictionary) -> void:
     var rows := 40
     var cols := 40
-    var previous_sea: Dictionary = GameData.map_config.get("sea", {}).duplicate(true)
+    var previous_sea: Dictionary = _gdata.map_config.get("sea", {}).duplicate(true)
     var test_sea := previous_sea.duplicate(true)
     test_sea["mode"] = "edge"
     test_sea["sides"] = [1, 1]
@@ -143,17 +155,17 @@ func _test_islands_do_not_add_shallows(state: Dictionary) -> void:
     test_sea["edge_island_max_attempts"] = 1000
 
     test_sea["edge_islands_enabled"] = false
-    GameData.map_config["sea"] = test_sea
+    _gdata.map_config["sea"] = test_sea
     seed(987654)
     var mainland_only_tiles := _make_tile_data(rows, cols)
-    SeaManager.apply_sea(mainland_only_tiles, rows, cols, 20, 20)
+    _sea.apply_sea(mainland_only_tiles, rows, cols, 20, 20)
 
     test_sea["edge_islands_enabled"] = true
-    GameData.map_config["sea"] = test_sea
+    _gdata.map_config["sea"] = test_sea
     seed(987654)
     var island_tiles := _make_tile_data(rows, cols)
-    SeaManager.apply_sea(island_tiles, rows, cols, 20, 20)
-    GameData.map_config["sea"] = previous_sea
+    _sea.apply_sea(island_tiles, rows, cols, 20, 20)
+    _gdata.map_config["sea"] = previous_sea
 
     var island_hexes := 0
     for row in range(rows):
@@ -168,7 +180,7 @@ func _test_islands_do_not_add_shallows(state: Dictionary) -> void:
     check(island_hexes > 0, "the test setup should generate at least one island", state)
 
 func _test_generated_sea_and_resources(state: Dictionary) -> void:
-    var previous_sea: Dictionary = GameData.map_config.get("sea", {}).duplicate(true)
+    var previous_sea: Dictionary = _gdata.map_config.get("sea", {}).duplicate(true)
     var test_sea := previous_sea.duplicate(true)
     test_sea["mode"] = "edge"
     test_sea["sides"] = [1, 1]
@@ -179,19 +191,19 @@ func _test_generated_sea_and_resources(state: Dictionary) -> void:
     test_sea["edge_width_max"] = 18
     test_sea["edge_envelope_strength"] = 0.0
     test_sea["edge_islands_enabled"] = false
-    GameData.map_config["sea"] = test_sea
+    _gdata.map_config["sea"] = test_sea
 
     seed(20261006)
     var rows := 40
     var cols := 40
     var city_row := rows >> 1
     var city_col := cols >> 1
-    var generator = MAP_GENERATOR.new()
+    var generator = load("res://scripts/map_generator.gd").new()
     var tile_data: Array = generator.generate_map(
         rows, cols, city_row, city_col,
-        GameData.raw_resources,
+        _gdata.raw_resources,
         generator.make_terrain_counts(rows, cols))
-    GameData.map_config["sea"] = previous_sea
+    _gdata.map_config["sea"] = previous_sea
 
     var sea_mask := _make_mask(rows, cols)
     var shallow_count := 0
@@ -206,7 +218,7 @@ func _test_generated_sea_and_resources(state: Dictionary) -> void:
                 shallow_count += 1
             elif tile.get("terrain", "") == "sea":
                 deep_count += 1
-            var resource_id: String = tile.get("resource", "")
+            var resource_id := str(tile.get("resource", ""))
             if resource_id in marine_ids:
                 found_resources[resource_id] = true
                 check(tile.get("terrain", "") == "shallow_sea",
@@ -223,7 +235,7 @@ func _test_generated_sea_and_resources(state: Dictionary) -> void:
     for resource_id in marine_ids:
         check(found_resources.has(resource_id),
             "%s should spawn on the generated shallow-water belt" % resource_id, state)
-        var resource_data: Dictionary = GameData.raw_resources.get(resource_id, {})
+        var resource_data: Dictionary = _gdata.raw_resources.get(resource_id, {})
         check(resource_data.get("allowed_terrain", []) == ["shallow_sea"],
             "%s should allow shallow sea only" % resource_id, state)
 
@@ -283,7 +295,7 @@ func _coast_depths(sea_mask: Array, rows: int, cols: int) -> Array:
         for col in range(cols):
             if not sea_mask[row][col]:
                 continue
-            for neighbor in HexUtils.get_neighbors_odd_r(row, col, rows, cols):
+            for neighbor in _hu.get_neighbors_odd_r(row, col, rows, cols):
                 if sea_mask[neighbor.row][neighbor.col]:
                     continue
                 distances[row][col] = 1
@@ -294,7 +306,7 @@ func _coast_depths(sea_mask: Array, rows: int, cols: int) -> Array:
     while queue_index < queue.size():
         var current: Dictionary = queue[queue_index]
         queue_index += 1
-        for neighbor in HexUtils.get_neighbors_odd_r(current.row, current.col, rows, cols):
+        for neighbor in _hu.get_neighbors_odd_r(current.row, current.col, rows, cols):
             if not sea_mask[neighbor.row][neighbor.col]:
                 continue
             if distances[neighbor.row][neighbor.col] >= 0:
