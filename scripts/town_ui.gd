@@ -37,6 +37,13 @@ var _town = null
 # what it wants to buy. When real trade appears, this flag will decide
 # whether buying and selling are possible (see town_manager.is_trade_available).
 var _trade_available := true
+# Whether the window is open on a town at all. main_map checks it before asking
+# for a refresh of the quantities on every town tick.
+var has_town: bool = false
+# The rows of the sale column that are currently on the screen, by the product id:
+# display name -> the label of the quantity. They are refreshed in place on every
+# town tick, because rebuilding the whole column would reset its scrolling.
+var _sell_quantity_labels: Dictionary = {}
 func _ready():
     if close_button:
         close_button.pressed.connect(close_town)
@@ -48,6 +55,7 @@ func _ready():
 func open_town(town: Dictionary, trade_available: bool = true):
     _town = town
     _trade_available = trade_available
+    has_town = true
     _refresh()
     show()
 
@@ -64,7 +72,36 @@ func _refresh():
                 else tr("Trade unavailable: there is no road from the city to this town")
         status_label.visible = not status_label.text.is_empty()
     _fill_resource_list(buy_list, _town.get("buy_pool", []), tr("The town buys nothing"))
-    _fill_resource_list(sell_list, _town.get("sell_pool", []), tr("No resources in the influence ring"))
+    _fill_resource_list(sell_list, _town.get("sell_pool", []),
+            tr("No resources in the influence ring"), true)
+
+# Refreshes ONLY the numbers of the stock in the sale column, without touching the
+# rows themselves. It is called on every town tick while the window is open: the
+# warehouse of the town grows several times a second, and a full rebuild would throw
+# away the scroll position of the list and the highlight of the cursor.
+func refresh_storage():
+    if _town == null or not visible:
+        return
+    for display_name in _sell_quantity_labels:
+        var label: Label = _sell_quantity_labels[display_name]
+        if is_instance_valid(label):
+            label.text = _format_stock(_stock_of(display_name))
+    _update_treasury_label()
+
+# The units of a good that the town has on the stock. The rows are keyed by the
+# display name (two different ids are sometimes called the same, see
+# _fill_resource_list), therefore the whole warehouse is summed for the name: the
+# player sees one row "Papyrus" and one number, and the number is all he has.
+func _stock_of(display_name: String) -> int:
+    var total := 0
+    var storage: Dictionary = _town.get("storage", {})
+    for pid in storage:
+        if _get_resource_display_name(str(pid)) == display_name:
+            total += int(storage[pid])
+    return total
+
+func _format_stock(amount: int) -> String:
+    return tr("%d units") % amount
 
 func _update_treasury_label() -> void:
     if treasury_label == null or _town == null:
@@ -80,6 +117,16 @@ func on_town_treasury_changed(town_id: String, _treasury: int) -> void:
         return
     _update_treasury_label()
 
+# Connected to TownManager.town_storage_changed: the trade deals write the units
+# off the warehouse and put them into it, and the sale column must show the result
+# immediately instead of on the next tick.
+func on_town_storage_changed(town_id: String) -> void:
+    if _town == null or not visible:
+        return
+    if str(_town.get("id", "")) != town_id:
+        return
+    refresh_storage()
+
 # Fills the column with one row per resource of the trade pool.
 # The sell pool contains resource ids, therefore the name is taken from the
 # common reference.
@@ -91,9 +138,16 @@ func on_town_treasury_changed(town_id: String, _treasury: int) -> void:
 # are called the same: papyrus_plant (grown on papyrus_field) and
 # papyrus (crafted from it) are both called "Papyrus" — and both can get into
 # the pool of one town. Showing "Papyrus" to the player twice is not allowed.
-func _fill_resource_list(container: VBoxContainer, pool, empty_text: String) -> void:
+#
+# with_stock — whether to append the units on the stock of the town to the row.
+# It is only the sale column: the town buys the goods it lacks, and there is
+# nothing of its own to count.
+func _fill_resource_list(container: VBoxContainer, pool, empty_text: String,
+        with_stock: bool = false) -> void:
     if container == null:
         return
+    if with_stock:
+        _sell_quantity_labels.clear()
     for child in container.get_children():
         child.queue_free()
     if pool == null or pool.is_empty():
@@ -135,6 +189,15 @@ func _fill_resource_list(container: VBoxContainer, pool, empty_text: String) -> 
         resource_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
         resource_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         resource_row.add_child(resource_label)
+
+        if with_stock:
+            var stock_label := Label.new()
+            stock_label.text = _format_stock(_stock_of(display_name))
+            stock_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+            stock_label.modulate = Color(0.8, 0.8, 0.8)
+            resource_row.add_child(stock_label)
+            _sell_quantity_labels[display_name] = stock_label
+
         container.add_child(resource_row)
 
 func _get_resource_icon_name(resource_id: String) -> String:
@@ -175,5 +238,6 @@ func close_town():
     if not visible:
         return
     _town = null
+    has_town = false
     hide()
     emit_signal("closed")

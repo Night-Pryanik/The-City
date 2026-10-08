@@ -276,6 +276,9 @@ msgstr ""
 msgid "%d sec"
 msgstr ""
 
+msgid "%d units"
+msgstr ""
+
 msgid "%d units/%.1f sec"
 msgstr ""
 

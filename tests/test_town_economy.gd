@@ -35,6 +35,20 @@
 #  15. КАЗНА. Новый городок получает town_initial_treasury из game_balance.json,
 #      окно показывает казну и обновляет её сразу по сигналу сделки; уйти в
 #      минус городок не может.
+#  16. СКЛАД. У каждого товара пула продажи есть запас 100..500 (town_storage_
+#      initial_min/max), и он переживает повторный пересчёт пулов — проданное не
+#      возвращается назад при перезагрузке сейва.
+#  17. ПРОИЗВОДСТВО. Тик городка добавляет выход рецепта (10 шелка -> 10 шелка),
+#      а городок не знает дефицита: тик набивает склад, даже когда ресурсов,
+#      из которых делают, физически нет.
+#  18. ЛИМИТ СКЛАДА. town_storage_limit на товар, а не на склад целиком: городок
+#      на пределе по одному товару продолжает копить остальные.
+#  19. ПРОИЗВОДСТВО ПОСЛЕ РАЗВЕДКИ. Неразведанный городок не производит, иначе к
+#      моменту встречи с игроком его склад уже стоял бы полным.
+#  20. СДЕЛКА. Продажа списывает единицы со склада, покупка кладёт; за пределами
+#      запаса сделка не проходит, склад не уходит в минус.
+#  21. ОКНО. В колонке продажи видно число единиц на складе, и оно обновляется
+#      по сигналу без пересборки списка.
 extends SceneTree
 
 # Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
@@ -94,6 +108,12 @@ func _run() -> void:
     await _test_live_map()
     await _test_town_ui_window()
     await _test_town_treasury()
+    _test_storage_seeded()
+    _test_production_plan()
+    _test_storage_limit()
+    await _test_production_after_scouting()
+    await _test_trade_moves_goods()
+    await _test_window_shows_stock()
 
     print("test_town_economy: ", "ПРОВАЛЕН" if _failed else "все проверки пройдены")
     quit(2 if _failed else 0)
@@ -106,7 +126,7 @@ func _pool_only(base_ids: Array) -> Dictionary:
     for pid in base_ids:
         pool[str(pid)] = true
     var made: Dictionary = {}
-    _te._close_pool(pool, made)
+    _te._close_pool(pool, made, {})
     return pool
 
 
@@ -453,4 +473,310 @@ func _test_live_map() -> void:
             "у городка %s пул продажи изменился при повторном пересчёте" % key)
         _check(first[key][1] == town.get("buy_pool", []),
             "у городка %s пул покупки изменился при повторном пересчёте" % key)
+
+    # --- СКЛАД НА ЖИВОЙ КАРТЕ ---
+    # У каждого городка есть склад, покрывающий весь пул продажи, и он не пустой:
+    # иначе игрок увидел бы в окне товары без единой единицы.
+    for town in towns:
+        var key := str(town.get("id", ""))
+        var storage: Dictionary = town.get("storage", {})
+        var sell: Array = town.get("sell_pool", [])
+        _check(not storage.is_empty(),
+            "у городка %s пустой склад — в окне нечего продавать" % key)
+        for pid in sell:
+            _check(storage.has(str(pid)),
+                "у городка %s на складе нет товара «%s» из пула продажи"
+                    % [key, pid])
+        # Покупное на склад не кладётся: купленное — это сырьё, а не товар.
+        for pid in town.get("buy_pool", []):
+            _check(not storage.has(str(pid)),
+                "у городка %s купленное «%s» попало на склад" % [key, pid])
+        # Склад повторяет пул продажи один в один: в нём нет ничего лишнего и не
+        # хватает ничего. Пул считается ДВАжды на новой игре, и между проходами
+        # кольцо получает декоративные поля, поэтому товар может перестать быть
+        # продажным уже после того, как попал на склад.
+        var on_stock: Array = []
+        for pid in storage.keys():
+            on_stock.append(str(pid))
+        on_stock.sort()
+        var sell_sorted: Array = sell.duplicate()
+        sell_sorted.sort()
+        _check(on_stock == sell_sorted,
+            "склад городка %s должен совпадать с пулом продажи: на складе %s, в пуле %s"
+                % [key, str(on_stock), str(sell_sorted)])
+        # И склад заполнен НИЖЕ лимита: незакрытый городок не должен стоять
+        # полным уже на старте игры (см. тест 19 про разведку).
+        var limit: int = _te.get_storage_limit()
+        for pid in storage:
+            _check(int(storage[pid]) <= limit,
+                "у городка %s товар «%s» на складе выше лимита (%d > %d)"
+                    % [key, pid, int(storage[pid]), limit])
     main_map.queue_free()
+
+
+# 16. СТАРТОВЫЙ ЗАПАС. У каждого товара пула продажи есть запас в границах из
+# game_balance.json, и повторный пересчёт пулов (как при загрузке сейва) его НЕ
+# трогает: иначе проданные единицы возвращались бы назад на каждой загрузке.
+func _test_storage_seeded() -> void:
+    var gd = get_root().get_node("GameData")
+    var low := int(gd.game_balance.get("town_storage_initial_min", -1))
+    var high := int(gd.game_balance.get("town_storage_initial_max", -1))
+    _check(low == 100,
+        "town_storage_initial_min в game_balance.json: ожидалось 100, получено %d" % low)
+    _check(high == 500,
+        "town_storage_initial_max в game_balance.json: ожидалось 500, получено %d" % high)
+
+    var storage: Dictionary = _te.build_initial_storage("town_0", [WOOD, PLANKS, WHEAT])
+    _check(storage.size() == 3,
+        "стартовый склад должен покрывать все три товара (получено %d)" % storage.size())
+    for pid in storage:
+        var amount := int(storage[pid])
+        _check(amount >= low and amount <= high,
+            "стартовый запас «%s» = %d, вне границ [%d, %d]" % [pid, amount, low, high])
+
+    # Детерминизм: тот же городок и тот же товар дают тот же запас. Пулы
+    # считаются дважды на новой игре и при каждой загрузке, поэтому случайное
+    # значение здесь означало бы скачущий склад.
+    var again: Dictionary = _te.build_initial_storage("town_0", [WOOD, PLANKS, WHEAT])
+    _check(again == storage, "стартовый запас должен быть детерминированным")
+
+    # Разные городки отличаются: у соседей по карте не должно быть одинакового
+    # склада «под копирку».
+    var differs := false
+    for i in range(30):
+        var other: Dictionary = _te.build_initial_storage("town_%d" % i,
+                [WOOD, PLANKS, WHEAT])
+        if other.get(WOOD, -1) != storage.get(WOOD, -2):
+            differs = true
+            break
+    _check(differs, "у разных городков запас одного товара должен различаться")
+
+
+# 17. ПРОИЗВОДСТВО ПО РЕЦЕПТУ. Тик городка кладёт на склад ровно выход рецепта.
+# Проверяем на САМИХ данных рецептов, чтобы тест не разъехался с ними при правке
+# баланса: сколько рецепт обещает, столько и должно приходить за тик.
+func _test_production_plan() -> void:
+    var gd = get_root().get_node("GameData")
+    var base: Array = _te.collect_base_resources(_tiles_with([WOOD]))
+    var pools: Dictionary = _te.build_pools("town_prod", base)
+    var production: Dictionary = pools["production"]
+    _check(not production.is_empty(),
+        "из дерева городок что-то производит — план производства не пуст")
+    var checked := 0
+    for pid in production:
+        var id := str(pid)
+        # Ищем рецепт с таким результатом и сверяем выход.
+        for craft in gd.crafts:
+            var result: Dictionary = craft.get("result", {})
+            if not result.has(id):
+                continue
+            _check(int(production[id]) == int(result[id]),
+                "выход рецепта «%s» по «%s»: план=%d, рецепт=%d"
+                    % [str(craft.get("id", "")), id, int(production[id]), int(result[id])])
+            checked += 1
+            break
+        # Импорт на склад не попадает.
+        _check(not pools["buy_pool"].has(id),
+            "купленное «%s» не должно попадать в план производства" % id)
+    _check(checked > 0,
+        "тест должен сверить хотя бы один товар с рецептом (сверено: %d)" % checked)
+
+    # Городок НЕ знает дефицита. План производства не зависит от наличия сырья:
+    # ингредиенты виртуальны, поэтому деревянный городок выдаёт уголь и доски, не
+    # имея ни угля, ни досок на складе. Проверяем это напрямую: за один тик
+    # склад пополняется тем же, что и на следующий, без всякого расхода сырья.
+    var storage: Dictionary = _te.build_initial_storage("town_prod",
+            _te.build_pools("town_prod", base)["sell_pool"])
+    var plan: Dictionary = pools["production"]
+    var before: Dictionary = storage.duplicate()
+    _te.store_production(storage, plan, _te.get_storage_limit())
+    var grew := false
+    for pid in plan:
+        if int(storage[pid]) > int(before[pid]):
+            grew = true
+    _check(grew, "тик производства должен пополнять склад")
+    # Сырьё, из которого делают, на складе не тратится: городок ничего не расходует.
+    for pid in plan:
+        _check(int(storage.get(pid, 0)) == int(before[pid]) + int(plan[pid]),
+            "склад «%s» должен вырасти ровно на выход рецепта" % pid)
+        break
+
+
+# 18. ЛИМИТ СКЛАДА. Лимит действует НА ТОВАР, а не на склад целиком: городок,
+#     упёршийся в предел по одному товару, продолжает копить остальные.
+func _test_storage_limit() -> void:
+    var limit: int = _te.get_storage_limit()
+    _check(limit == 1000,
+        "town_storage_limit в game_balance.json: ожидалось 1000, получено %d" % limit)
+
+    var storage: Dictionary = {WOOD: limit, PLANKS: 10}
+    var plan: Dictionary = {WOOD: 50, PLANKS: 5, CHARCOAL: 7}
+    _te.store_production(storage, plan, limit)
+    _check(int(storage[WOOD]) == limit,
+        "товар на пределе не должен превысить лимит (получено %d)" % int(storage[WOOD]))
+    _check(int(storage[PLANKS]) == 15,
+        "соседний товар должен продолжать копиться при пределе по другому")
+    _check(int(storage[CHARCOAL]) == 7,
+        "новый товар должен появиться на складе")
+
+    # Переполнение с нуля: старт ниже лимита, а тик кладёт больше, чем осталось.
+    var small := {WOOD: limit - 10}
+    _te.store_production(small, {WOOD: 999}, limit)
+    _check(int(small[WOOD]) == limit, "переполнение должно обрезаться по лимиту")
+    # Нулевая и отрицательная выработка не должны ничего добавлять.
+    var zero := {WOOD: 5}
+    _te.store_production(zero, {WOOD: 0, PLANKS: -3}, limit)
+    _check(int(zero[WOOD]) == 5, "нулевая выработка не должна менять склад")
+    _check(not zero.has(PLANKS), "отрицательная выработка не должна создавать товар")
+
+
+# Синтетическая карта, где заданный гекс (row, col) несёт флаги flags, а
+# остальные пустые. Её размер подбирается под гекс городка: town_manager смотрит
+# по координатам самого городка, а не по первому гексу.
+func _map_with_tile(row: int, col: int, flags: Dictionary) -> Array:
+    var tile_data: Array = []
+    for r in range(row + 1):
+        var line: Array = []
+        for c in range(col + 1):
+            line.append(flags.duplicate() if r == row and c == col else {})
+        tile_data.append(line)
+    return tile_data
+
+
+# 19. ПРОИЗВОДСТВО НАЧИНАЕТСЯ ТОЛЬКО ПОСЛЕ РАЗВЕДКИ. Неразведанный городок молчит,
+# иначе к моменту встречи с игроком его склад уже стоял бы полным.
+func _test_production_after_scouting() -> void:
+    var gd = get_root().get_node("GameData")
+    var city_data = get_root().get_node("CityData")
+    # Тик городка — в town_tick_ticks раз длиннее тика города. Проверяем и сам
+    # множитель из game_balance.json, и итоговую длительность.
+    _check(int(gd.game_balance.get("town_tick_ticks", -1)) == 4,
+        "town_tick_ticks в game_balance.json: ожидалось 4, получено %d"
+            % int(gd.game_balance.get("town_tick_ticks", -1)))
+    var tm = load("res://scripts/town_manager.gd").new()
+    get_root().add_child(tm)
+    var town_tick: float = tm.get_town_tick_seconds()
+    _check(is_equal_approx(town_tick,
+            float(city_data.SIMULATION_TICK) * 4.0),
+        "тик городка должен быть в 4 раза длиннее тика города (получено %.2f, тик города %.2f)"
+            % [town_tick, float(city_data.SIMULATION_TICK)])
+    var town: Dictionary = tm._make_town_record(0, 5, 5, false)
+    town["sell_pool"] = [WOOD]
+    town["production"] = {WOOD: 10}
+    town["storage"] = {WOOD: 100}
+    tm.towns.append(town)
+
+    # Гекс в неизвестном мире: флагов нет — городок не производит.
+    var unknown := _map_with_tile(5, 5, {"is_explored": false, "in_influence": false})
+    tm.tick_towns(unknown)
+    _check(tm.get_town_goods(town, WOOD) == 100,
+        "неразведанный городок не должен производить (склад=%d)"
+            % tm.get_town_goods(town, WOOD))
+    _check(not bool(town.get("production_started", false)),
+        "флаг начала производства не должен выставляться до разведки")
+
+    # Разведка открыла гекс — производство пошло.
+    unknown[5][5]["is_explored"] = true
+    tm.tick_towns(unknown)
+    _check(tm.get_town_goods(town, WOOD) == 110,
+        "после разведки городок должен производить (склад=%d)"
+            % tm.get_town_goods(town, WOOD))
+    _check(bool(town.get("production_started", false)),
+        "флаг начала производства должен выставиться при разведке")
+
+    # Второй путь разведки — гекс внутри известной территории, без is_explored.
+    var town2: Dictionary = tm._make_town_record(1, 1, 1, false)
+    town2["sell_pool"] = [WOOD]
+    town2["production"] = {WOOD: 10}
+    town2["storage"] = {WOOD: 100}
+    tm.towns.append(town2)
+    var known := _map_with_tile(1, 1, {"in_influence": true, "is_explored": false})
+    tm.tick_towns(known)
+    _check(tm.get_town_goods(town2, WOOD) == 110,
+        "гекс в известной территории тоже запускает производство (склад=%d)"
+            % tm.get_town_goods(town2, WOOD))
+    tm.queue_free()
+
+
+# 20. СДЕЛКА. Продажа списывает единицы со склада, покупка кладёт их туда. За
+# пределами запаса сделка не проходит — городок не продаёт то, чего у него нет.
+func _test_trade_moves_goods() -> void:
+    var tm = load("res://scripts/town_manager.gd").new()
+    get_root().add_child(tm)
+    var town: Dictionary = tm._make_town_record(0, 5, 5, false)
+    town["storage"] = {WOOD: 200}
+    tm.towns.append(town)
+
+    _check(tm.get_town_goods(town, WOOD) == 200, "стартовый запас должен читаться из склада")
+    _check(tm.take_town_goods(town, WOOD, 50), "продажа 50 единиц должна пройти")
+    _check(tm.get_town_goods(town, WOOD) == 150,
+        "после продажи на складе должно остаться 150 (получено %d)"
+            % tm.get_town_goods(town, WOOD))
+    _check(not tm.take_town_goods(town, WOOD, 500),
+        "городок не может продать больше, чем есть на складе")
+    _check(tm.get_town_goods(town, WOOD) == 150,
+        "неудачная продажа не должна менять склад")
+
+    _check(tm.add_town_goods(town, PLANKS, 30) == 30, "покупка 30 единиц должна пройти")
+    _check(tm.get_town_goods(town, PLANKS) == 30, "после покупки товар должен лежать на складе")
+
+    # Покупка в уже полный склад принимает только то, что влезло.
+    var limit: int = _te.get_storage_limit()
+    var full: Dictionary = tm._make_town_record(2, 6, 6, false)
+    full["storage"] = {WOOD: limit}
+    tm.towns.append(full)
+    _check(tm.add_town_goods(full, WOOD, 100) == 0,
+        "в полный склад ничего не должно влезать")
+    _check(tm.add_town_goods(full, PLANKS, 25) == 25,
+        "в другой товар влезать должно — лимит на товар, а не на склад")
+
+    # Сейв: склад и флаг разведки переживают round-trip.
+    var saved: Array = tm.serialize_towns()
+    tm.load_towns(saved)
+    var loaded: Dictionary = tm.towns[0]
+    _check(tm.get_town_goods(loaded, WOOD) == 150,
+        "склад должен переживать сейв (получено %d)" % tm.get_town_goods(loaded, WOOD))
+    tm.queue_free()
+
+
+# 21. ОКНО ПОКАЗЫВАЕТ СКЛАД. В колонке продажи видно число единиц, и оно
+# обновляется по сигналу сделки без пересборки списка.
+func _test_window_shows_stock() -> void:
+    var ui = load("res://scenes/TownUI.tscn").instantiate()
+    get_root().add_child(ui)
+    await process_frame
+    var tm = load("res://scripts/town_manager.gd").new()
+    get_root().add_child(tm)
+    var town: Dictionary = tm._make_town_record(0, 5, 5, false)
+    town["sell_pool"] = [WOOD, PLANKS]
+    town["buy_pool"] = [IRON_ORE]
+    town["storage"] = {WOOD: 321, PLANKS: 7}
+    tm.towns.append(town)
+    tm.town_storage_changed.connect(ui.on_town_storage_changed)
+
+    ui.open_town(town, true)
+    var labels: Dictionary = ui._sell_quantity_labels
+    _check(labels.size() == 2,
+        "в колонке продажи должно быть по числу на каждый товар (получено %d)" % labels.size())
+    # Строки ключуются отображаемым именем, а оно переводится: берём его из самого
+    # окна, иначе проверка зависела бы от языка тестового прогона.
+    var wood_name: String = ui._get_resource_display_name(WOOD)
+    var wood_label: Label = labels.get(wood_name, null)
+    _check(wood_label != null and wood_label.text.contains("321"),
+        "окно должно показывать число единиц товара на складе")
+
+    # Сделка меняет склад — надпись обновляется сразу, а список не пересобирается
+    # (иначе прокрутка сбрасывалась бы на каждой сделке).
+    var rows_before: Array = ui.sell_list.get_children()
+    tm.take_town_goods(town, WOOD, 21)
+    _check(ui._sell_quantity_labels.get(wood_name, null).text.contains("300"),
+        "после продажи число в окне должно обновиться сразу")
+    _check(ui.sell_list.get_children() == rows_before,
+        "обновление чисел не должно пересобирать список")
+
+    # Тик городка тоже обновляет окно — отдельный путь refresh_storage().
+    ui.refresh_storage()
+    _check(ui._sell_quantity_labels.get(wood_name, null).text.contains("300"),
+        "refresh_storage должен читать актуальный склад")
+    ui.queue_free()
+    tm.queue_free()

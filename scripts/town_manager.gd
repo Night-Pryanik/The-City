@@ -95,6 +95,10 @@ extends Node
 # Emitted on every change of a town treasury, so that an open town window shows
 # the balance immediately during a trade deal instead of waiting for a tick.
 signal town_treasury_changed(town_id: String, treasury: int)
+# Emitted when the warehouse of a town changes outside of the common tick — the
+# trade deals write units off it and put them into it. The window of the town reads
+# the signal and refreshes the quantities in the sale column.
+signal town_storage_changed(town_id: String)
 # The name of the file of the icon of a town. Per the TZ we use the same icon as the one of the city
 # of the player (icons/city.png), but we draw it of a smaller size.
 const TOWN_ICON_NAME := "city.png"
@@ -186,6 +190,20 @@ const INFLUENCE_NOTCH_MAX_DROPS := 3
 #   treasury            - the coins of the town (an integer). The starting value is
 #                         town_initial_treasury from data/game_balance.json; it is
 #                         changed only via add_town_treasury / spend_town_treasury.
+#   storage             - THE WAREHOUSE of the town: product id -> units currently on
+#                         the stock (the numbers behind the sell_pool). Filled in by
+#                         TownEconomy.refresh_town and changed only via
+#                         add_town_goods / take_town_goods, so that the trade deals
+#                         and the simulation tick write through one place.
+#   production          - the per-tick rate of the warehouse: product id -> units per
+#                         tick of a town. It is recomputed from the ring together with
+#                         the pools (TownEconomy.refresh_town) and is derived data:
+#                         it is not restored from the save.
+#   production_started  - whether the town has already started to produce (see
+#                         _is_town_production_started). Until the player has seen the
+#                         hex of the town, the warehouse does not fill on its own:
+#                         otherwise it would already stand at the limit by the time
+#                         the player comes to the town.
 #
 # The whole record is saved in the save (serialize_towns) and is restored
 # from it (load_towns), therefore any future fields of a town are simply added
@@ -260,6 +278,8 @@ func _make_town_record(town_index: int, row: int, col: int,
         "sell_pool": [],
         "buy_pool": [],
         "treasury": get_town_initial_treasury(),
+        "storage": {},
+        "production_started": false,
     }
 
 
@@ -294,6 +314,109 @@ func spend_town_treasury(town: Dictionary, amount: int) -> bool:
     town["treasury"] = current - amount
     emit_signal("town_treasury_changed", str(town.get("id", "")), int(town["treasury"]))
     return true
+
+
+# --- THE WAREHOUSE OF A TOWN ---
+
+# How many units of a product the town has on the stock.
+func get_town_goods(town: Dictionary, product_id: String) -> int:
+    return int(town.get("storage", {}).get(product_id, 0))
+
+
+# Puts units of a product onto the warehouse of a town (for example, the city has
+# sold goods to it). The stock never exceeds the capacity of one product
+# (town_storage_limit): the units that did not fit are discarded, and a deal that asks
+# for more than the free space can physically store reports how much was accepted.
+#
+# It returns the number of the units actually stored.
+func add_town_goods(town: Dictionary, product_id: String, amount: int) -> int:
+    if product_id.is_empty() or amount <= 0:
+        return 0
+    var limit := TownEconomy.get_storage_limit()
+    var storage: Dictionary = town.get("storage", {})
+    var current := int(storage.get(product_id, 0))
+    var stored := mini(amount, maxi(0, limit - current))
+    if stored <= 0:
+        return 0
+    storage[product_id] = current + stored
+    town["storage"] = storage
+    emit_signal("town_storage_changed", str(town.get("id", "")))
+    return stored
+
+
+# Writes units of a product off the warehouse of a town (for example, the town has
+# sold goods to the city). A town cannot sell what it does not have: if the stock is
+# not enough, nothing is written off and false is returned.
+func take_town_goods(town: Dictionary, product_id: String, amount: int) -> bool:
+    if product_id.is_empty() or amount < 0:
+        return false
+    var storage: Dictionary = town.get("storage", {})
+    var current := int(storage.get(product_id, 0))
+    if current < amount:
+        return false
+    if amount == 0:
+        return true
+    storage[product_id] = current - amount
+    town["storage"] = storage
+    emit_signal("town_storage_changed", str(town.get("id", "")))
+    return true
+
+
+# The duration of ONE tick of the simulation of the towns: town_tick_ticks common
+# ticks from data/game_balance.json (4 by default), so a town accumulates its
+# production four times slower than the city does.
+static func get_town_tick_seconds() -> float:
+    var ticks := int(GameData.game_balance.get("town_tick_ticks", 4))
+    return CityData.SIMULATION_TICK * float(maxi(1, ticks))
+
+
+# Has the town already started to produce. A town fills its warehouse from the
+# moment the player has seen its hex: an unrevealed town would accumulate for the
+# whole game unseen and stand at the limit by the time the player arrives.
+#
+# "Seen" is the same condition under which the town is drawn on the map (see
+# map_renderer): the hex is either in the known territory of the player, or it has
+# been scouted. It is latched into the record, so that a town which has been
+# discovered once keeps producing even if the flags of the hex change.
+func _is_town_production_started(town: Dictionary, tile_data: Array) -> bool:
+    if bool(town.get("production_started", false)):
+        return true
+    var row := int(town.get("row", -1))
+    var col := int(town.get("col", -1))
+    if row < 0 or col < 0 or row >= tile_data.size() or tile_data[row] == null:
+        return false
+    if col >= tile_data[row].size():
+        return false
+    var tile = tile_data[row][col]
+    if tile == null:
+        return false
+    if not (bool(tile.get("in_influence", false)) or bool(tile.get("is_explored", false))):
+        return false
+    town["production_started"] = true
+    return true
+
+
+# ONE tick of the simulation of ALL the towns: every town that has been discovered
+# adds its per-tick rate to its warehouse, up to the capacity per product.
+#
+# The notification of the window is deliberately NOT emitted here. The towns produce
+# every few seconds and most of them are not open, and the signal is emitted for
+# every changed town on every tick; the window of a town reads the warehouse of its
+# own record on opening and on a trade deal, and the sale column is refreshed by
+# town_storage_changed.
+func tick_towns(tile_data: Array) -> void:
+    if towns.is_empty():
+        return
+    var limit := TownEconomy.get_storage_limit()
+    for town in towns:
+        if not _is_town_production_started(town, tile_data):
+            continue
+        var production: Dictionary = town.get("production", {})
+        if production.is_empty():
+            continue
+        var storage: Dictionary = town.get("storage", {})
+        TownEconomy.store_production(storage, production, limit)
+        town["storage"] = storage
 
 
 func _take_unique_town_name(preferred_name: String = "") -> String:
@@ -1267,6 +1390,12 @@ func serialize_towns() -> Array:
             "sell_pool": t.get("sell_pool", []),
             "buy_pool": t.get("buy_pool", []),
             "treasury": get_town_treasury(t),
+            # The warehouse of the town. The per-tick rate ("production") is NOT
+            # written into the save: it is derived from the ring of the town and is
+            # recalculated on the load by compute_all_town_influences ->
+            # _refresh_sell_pools, so it cannot go stale against the pools.
+            "storage": t.get("storage", {}),
+            "production_started": bool(t.get("production_started", false)),
             # road_linked - the player has built a road from the city to this town.
             # As with the other roads, the segments are not written into the save: by this
             # flag the connection is recalculated on the load (main_map._rebuild_town_roads
@@ -1314,6 +1443,9 @@ func load_towns(data) -> void:
                 "buy_pool": entry.get("buy_pool", []),
                 # Saves without a town treasury get the starting value, as in a new game.
                 "treasury": int(entry.get("treasury", get_town_initial_treasury())),
+                # The warehouse and the flag of the production (see serialize_towns).
+                "storage": entry.get("storage", {}),
+                "production_started": bool(entry.get("production_started", false)),
                 # road_linked is a road from the city to the town (see serialize_towns).
                 "road_linked": bool(entry.get("road_linked", false)),
             }

@@ -109,6 +109,10 @@ var last_city_click_time = 0.0
 # The last moment of the click on the hex of a town (for the detection of a double click).
 var last_town_click_time = 0.0
 var production_timer = 0.0
+# The accumulator of the tick of the simulation of the towns. The towns run on
+# their own, slower clock (TownManager.get_town_tick_seconds — town_tick_ticks
+# common ticks), therefore the timer is separate from production_timer.
+var town_timer = 0.0
 var scouting_timer: float = 0.0
 # Whether there are pastures which are being filled right now (0% < fill < 100%).
 # It is used as the condition of the redrawing of the layer of the progress bars: while the herd is growing,
@@ -452,6 +456,7 @@ func _ready():
     city_ui.closed.connect(_on_city_ui_close)
     town_ui.closed.connect(_on_town_ui_close)
     town_manager.town_treasury_changed.connect(town_ui.on_town_treasury_changed)
+    town_manager.town_storage_changed.connect(town_ui.on_town_storage_changed)
     city_button.pressed.connect(_on_city_button_pressed)
     expansion_button.pressed.connect(_on_expansion_button_pressed)
     city_ui.build_requested.connect(CityData.request_build)
@@ -650,6 +655,22 @@ func _process(delta):
             _treasury_hover_leave_timer = 0.0
             _treasury_locked = false
             _map_ui_helpers.hide_treasury_tooltip()
+
+    # The tick of the simulation of the towns: every discovered town adds its per-tick
+    # rate to its warehouse. It runs on its OWN clock, several times slower than the
+    # one of the city (town_tick_ticks × CityData.SIMULATION_TICK), therefore the
+    # accumulator lives here, outside the block of the city tick below, and not inside
+    # it — the town would otherwise only tick while the city happens to tick.
+    var town_tick := TownManager.get_town_tick_seconds()
+    town_timer += delta
+    if town_timer >= town_tick:
+        town_timer -= town_tick
+        town_manager.tick_towns(tile_data)
+        # The open window shows the stock of the sale column. It is refreshed HERE
+        # and not from town_storage_changed, because the tick writes units off every
+        # town on the map at once, and only one of them can be on screen.
+        if town_ui.visible and town_ui.has_town:
+            town_ui.refresh_storage()
 
     production_timer += delta
     if production_timer >= CityData.SIMULATION_TICK:

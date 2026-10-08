@@ -150,6 +150,119 @@ static func collect_base_resources(tiles: Array) -> Array:
             result.append(produced)
     return result
 
+
+# --- The warehouse (the storage of a town) ---
+#
+# The trade pools answer the question "what CAN the town trade", and the warehouse
+# answers "how MUCH of it does the town have right now". The pools stay a set of
+# product ids, and the warehouse is the quantity behind each of them.
+#
+# A town never goes into deficit: if it has decided to make something, it makes it,
+# regardless of how many towns gather or import it. Therefore the production plan of
+# a town is a flat per-tick rate and not a real factory: the ingredients are not
+# consumed, and nothing is ever "out of stock" — only the limit of the warehouse
+# (town_storage_limit) stops the accumulation.
+
+# The per-tick rate of the raw materials of the ring: product id -> units per ONE town
+# tick. The source is the produces field of the resources — the very same source as the
+# base pool (collect_base_resources), so the warehouse fills with exactly what the
+# town is able to trade.
+#
+# The minimum of a range ([min, max] -> min) is taken, the same deterministic
+# convention as the production of the city (CityData.add_raw_production): a roll here
+# would refill the warehouse differently on every recalculation of the pools and on
+# every load of the save.
+#
+# A resource that produces nothing tradable (a one-off find of wild_food, a resource
+# with an empty produces) gives nothing here: its id may still appear in the pool as
+# itself (collect_base_resources keeps it as "something meaningful to the town"), but
+# the warehouse has no rate for it and the stock stays at its starting value.
+static func collect_base_yields(tiles: Array) -> Dictionary:
+    var yields: Dictionary = {}
+    var seen: Dictionary = {}
+    for entry in tiles:
+        var tile: Dictionary = entry if entry is Dictionary else {}
+        if tile.is_empty():
+            continue
+        var resource_id := MapHelpers.get_effective_resource(tile).strip_edges()
+        if resource_id.is_empty() or resource_id == "<null>" or seen.has(resource_id):
+            continue
+        seen[resource_id] = true
+        var data: Dictionary = GameData.raw_resources.get(resource_id, {})
+        if data.is_empty():
+            continue
+        var produces: Dictionary = data.get("produces", {})
+        if produces.is_empty():
+            continue
+        if is_one_time(resource_id) \
+                and str(data.get("category", "")) != ONE_TIME_YIELD_CATEGORY:
+            continue
+        for pid in produces:
+            var produced := str(pid)
+            if produced.is_empty():
+                continue
+            var amount := RangeUtils.get_min_value(produces[pid], 0)
+            if amount <= 0:
+                continue
+            yields[produced] = yields.get(produced, 0) + amount
+    return yields
+
+
+# The capacity of the warehouse of one town, in units PER product id
+# (town_storage_limit in data/game_balance.json).
+static func get_storage_limit() -> int:
+    return int(GameData.game_balance.get("town_storage_limit", 1000))
+
+
+# The starting stock of ONE product of ONE town: a stable integer in
+# [town_storage_initial_min, town_storage_initial_max] from data/game_balance.json.
+#
+# The value is derived from (the town id, the product id) through _seed_for, and not
+# from the global RNG: the pools are recalculated twice on a new game and on every
+# load of a save (see the determinism note in the header), and a roll would give the
+# warehouse a different starting stock each time. Two towns differ, and the same town
+# is always the same.
+static func get_initial_stock(town_id: String, product_id: String) -> int:
+    var low := int(GameData.game_balance.get("town_storage_initial_min", 100))
+    var high := int(GameData.game_balance.get("town_storage_initial_max", 500))
+    if high < low:
+        high = low
+    if high == low:
+        return maxi(0, low)
+    var rng := RandomNumberGenerator.new()
+    rng.seed = _seed_for(town_id, "stock:" + product_id)
+    return rng.randi_range(low, high)
+
+
+# The starting warehouse of a town: every product of its sell_pool gets a stock of
+# its own within the configured bounds.
+static func build_initial_storage(town_id: String, sell_ids: Array) -> Dictionary:
+    var storage: Dictionary = {}
+    for pid in sell_ids:
+        var id := str(pid)
+        if id.is_empty() or id == "<null>":
+            continue
+        storage[id] = get_initial_stock(town_id, id)
+    return storage
+
+
+# Adds the production of ONE town tick to the warehouse, product by product.
+#
+# The limit is per product: a town at the cap on one good keeps accumulating all its
+# others. The units that did not fit are simply discarded — the town keeps making
+# them, and they are stored again as soon as some of the stock is sold.
+#
+# storage    — the warehouse of the town (it is edited in place);
+# production — product id -> units per tick;
+# limit      — the capacity per product (town_storage_limit).
+static func store_production(storage: Dictionary, production: Dictionary, limit: int) -> void:
+    for pid in production:
+        var id := str(pid)
+        var amount := int(production[pid])
+        if id.is_empty() or amount <= 0:
+            continue
+        storage[id] = mini(int(storage.get(id, 0)) + amount, limit)
+
 # --- CHECKING THE AVAILABILITY OF AN INGREDIENT ---
 
 # Whether the ingredient key is available for the pool pool.
@@ -198,14 +311,19 @@ static func _missing_representatives(craft: Dictionary, pool: Dictionary) -> Arr
 
 # Recursively supplements pool with everything that can be made from what is already known.
 #
-# made — a Dictionary set: the ids PRODUCED by crafting are put here (in
-# contrast to the base pool, which also includes the natural resources).
+# made       — a Dictionary set: the ids PRODUCED by crafting are put here (in
+#              contrast to the base pool, which also includes the natural resources).
+# production — the PER-TICK rate of the warehouse: the amount of the result of the
+#              recipe, because the town actually produces it (see the warehouse
+#              section above). It is filled here, at the same moment the product
+#              enters the pool, so that the rate and the membership of the pool
+#              cannot disagree.
 #
 # The fixpoint is safe: the pool only grows, and the set of possible ids is finite,
 # therefore the cycle completes. A safety pass counter — in case
 # of a cycle due to an error in the data: it is better to stop with an incomplete pool than
 # to hang at the start of the game.
-static func _close_pool(pool: Dictionary, made: Dictionary) -> void:
+static func _close_pool(pool: Dictionary, made: Dictionary, production: Dictionary) -> void:
     var guard := 0
     while guard < 1000:
         guard += 1
@@ -224,6 +342,10 @@ static func _close_pool(pool: Dictionary, made: Dictionary) -> void:
                     continue
                 pool[produced] = true
                 made[produced] = true
+                # The recipe is executed once per town tick, therefore its full
+                # output lands in the warehouse on that tick (10 silk per tick
+                # for a recipe of "silk: 10").
+                production[produced] = maxi(0, int(result[pid]))
                 grew = true
         if not grew:
             return
@@ -301,12 +423,17 @@ static func _seed_for(town_id: String, recipe_id: String) -> int:
 # town_id   — the town identifier ("town_3"); it is part of the seed of all the rolls.
 # base_ids  — the base pool from collect_base_resources.
 #
-# It returns { "sell_pool": Array, "buy_pool": Array }; both arrays
-# are sorted, so that the same state gives the same result in
-# printing and in the tests.
+# It returns { "sell_pool": Array, "buy_pool": Array, "production": Dictionary };
+# both arrays are sorted, so that the same state gives the same result in
+# printing and in the tests. "production" is the per-tick rate of the CRAFTED goods
+# (product id -> units per town tick), and it holds only the ids of the sell_pool:
+# the town stores what it trades, and the imported raw material is an input, not a
+# stock. The yield of the raw materials of the ring is added by refresh_town, which
+# alone has the hexes.
 static func build_pools(town_id: String, base_ids: Array) -> Dictionary:
     var made: Dictionary = {}
     var imports: Dictionary = {}
+    var production: Dictionary = {}
     # The base pool — a simple set: id -> true. The duplicates collapse.
     var pool: Dictionary = {}
     for base_id in base_ids:
@@ -314,7 +441,7 @@ static func build_pools(town_id: String, base_ids: Array) -> Dictionary:
         if id.is_empty():
             continue
         pool[id] = true
-    _close_pool(pool, made)
+    _close_pool(pool, made, production)
 
     # The import cascade: round by round, while a new import opens something.
     var rolls: Dictionary = {}
@@ -355,7 +482,7 @@ static func build_pools(town_id: String, base_ids: Array) -> Dictionary:
             break
         for id in bought:
             pool[id] = true
-        _close_pool(pool, made)
+        _close_pool(pool, made, production)
 
     # The sale pool: the base resources + everything produced, MINUS the imported.
     # The import does not get here on purpose (the header of the file, point 5). The subset
@@ -370,7 +497,13 @@ static func build_pools(town_id: String, base_ids: Array) -> Dictionary:
     sell_ids.sort()
     var buy_ids: Array = imports.keys()
     buy_ids.sort()
-    return {"sell_pool": sell_ids, "buy_pool": buy_ids}
+    # The rate of the warehouse keeps only the goods on sale: an imported raw
+    # material is consumed by the town, and it is never put on the stock.
+    var sell_production: Dictionary = {}
+    for id in production:
+        if sell.has(id):
+            sell_production[id] = production[id]
+    return {"sell_pool": sell_ids, "buy_pool": buy_ids, "production": sell_production}
 
 # --- Recalculation by the influence rings ---
 
@@ -397,3 +530,41 @@ static func refresh_town(town: Dictionary, tile_data: Array) -> void:
     var pools := build_pools(town_id, base_ids)
     town["sell_pool"] = pools["sell_pool"]
     town["buy_pool"] = pools["buy_pool"]
+
+    # The per-tick rate of the warehouse: what the hexes of the ring yield PLUS what
+    # the recipes of the closure produce. A product that the ring already yields is
+    # not produced by any recipe as well (the closure skips the ids that are already
+    # in the pool), therefore the two parts never fight over one product id.
+    var production: Dictionary = pools["production"]
+    var base_yields := collect_base_yields(tiles)
+    for pid in base_yields:
+        var id := str(pid)
+        if not production.has(id):
+            production[id] = base_yields[pid]
+    town["production"] = production
+
+    # The warehouse holds exactly the goods of the sell pool.
+    #
+    # A product that has just entered the pool gets a starting stock, and a product
+    # that is no longer for sale is dropped. The pruning is not cosmetic: the pools
+    # are recalculated twice on a new game, and the ring gains its decorative fields
+    # in between, so a product seeded on the first pass can turn into an import on the
+    # second. Without the pruning it would sit on the warehouse forever as goods the
+    # town neither gathered nor made.
+    #
+    # The stock of a product that stays in the pool is kept: the recalculation happens
+    # twice on a new game and on every load of a save, and the units a town has sold
+    # must not come back on every reload.
+    var storage: Dictionary = town.get("storage", {})
+    var for_sale: Dictionary = {}
+    for pid in pools["sell_pool"]:
+        var id := str(pid)
+        if id.is_empty():
+            continue
+        for_sale[id] = true
+        if not storage.has(id):
+            storage[id] = get_initial_stock(town_id, id)
+    for id in storage.keys():
+        if not for_sale.has(id):
+            storage.erase(id)
+    town["storage"] = storage

@@ -276,6 +276,9 @@ msgstr "работает %d из %d, простаивает %d"
 msgid "%d sec"
 msgstr "%d сек"
 
+msgid "%d units"
+msgstr "%d ед."
+
 msgid "%d units/%.1f sec"
 msgstr "%d ед./%.1f сек"
 

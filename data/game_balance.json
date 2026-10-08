@@ -89,6 +89,34 @@
   //                                      by distance: that is the expansion_cost
   //                                      of the terrain in
   //                                      data/terrains.json.
+  //   town_storage_limit               — the CAPACITY of the warehouse of one town,
+  //                                      in units PER product id. The limit is per
+  //                                      good, and not the total of the warehouse:
+  //                                      one town can hold 1000 wheat AND 1000
+  //                                      silk at the same time. A product that has
+  //                                      reached the limit simply stops taking more
+  //                                      units (the overflow is discarded, the
+  //                                      production itself is not lost forever —
+  //                                      it resumes being stored as soon as the
+  //                                      units are sold).
+  //                                      Applied by
+  //                                      TownEconomy.store_production.
+  //   town_storage_initial_min /
+  //   town_storage_initial_max         — the bounds of the STARTING stock of one
+  //                                      product in the warehouse of one town: a
+  //                                      town is generated with a random integer in
+  //                                      [min, max] units of EVERY product of its
+  //                                      sell_pool. The value is derived from
+  //                                      (the town id, the product id), and not
+  //                                      from the global RNG: it must be the same
+  //                                      on every recalculation of the pools.
+  //   town_tick_ticks                  — how many ticks of the common simulation
+  //                                      are in ONE tick of the simulation of a
+  //                                      town. 4 means that a town accumulates
+  //                                      its production 4 times slower than the
+  //                                      city does (TownManager.TOWN_TICK_SECONDS
+  //                                      = town_tick_ticks ×
+  //                                      CityData.SIMULATION_TICK).
   "game_balance": {
     "initial_treasury": 100,
     "town_initial_treasury": 1000,
@@ -97,6 +125,10 @@
     "distance_cost_modifier_per_hex": 0.25,
     "road_distance_cost_modifier_per_hex": 0.1,
     "scouting_cost_per_hex": 3,
-    "expansion_cost_per_hex": 5
+    "expansion_cost_per_hex": 5,
+    "town_storage_limit": 1000,
+    "town_storage_initial_min": 100,
+    "town_storage_initial_max": 500,
+    "town_tick_ticks": 4
   }
 }

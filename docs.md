@@ -1367,6 +1367,45 @@ improvements of the tiles with `decorative: true`.
 
 Казна меняется только через `TownManager.add_town_treasury(town, amount)` и `TownManager.spend_town_treasury(town, amount)`. Списание сверх остатка не проходит (возвращает `false`): в долг городок не уходит. Обе функции испускают `town_treasury_changed(town_id, treasury)`; `main_map` подключает его к `town_ui.on_town_treasury_changed`, поэтому метка «Казна» в правом верхнем углу окна городка (`TreasuryLabel` в `TownUI.tscn`) обновляется сразу при сделке, без ожидания тика и без перестройки списков товаров (прокрутка не сбрасывается).
 
+### The warehouse of a town (English)
+
+The trade pools answer **what** a town can trade; the warehouse answers **how much of it is on hand right now**. Before this, a town listed dozens of goods and the player had no way to tell a hill of grain from a single egg — every entry read the same. Now the sell column shows a number next to every good, and that number grows while the town works.
+
+Everything a town "gathers" on the map and "produces" in its buildings is virtual, and it all lands in the warehouse.
+
+**The data.** Three fields in `data/game_balance.json` drive the whole subsystem:
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `town_storage_limit` | 1000 | Capacity of the warehouse **per product id**. One town can hold 1000 wheat *and* 1000 silk at once. |
+| `town_storage_initial_min` / `town_storage_initial_max` | 100 / 500 | Bounds of the starting stock of every product of the sell pool. |
+| `town_tick_ticks` | 4 | How many common ticks make one town tick — a town fills its stock four times slower than the city produces. |
+
+**Where the numbers come from.** The per-tick rate of a town (`production`, in the town record) is the sum of two parts, both read from data:
+
+- the **yield of the ring** — the `produces` field of the resources on its hexes, exactly the same source as the base pool (`TownEconomy.collect_base_yields`). A range `[min, max]` takes its minimum, the same deterministic convention as the city's own production (`CityData.add_raw_production`): a roll here would refill the warehouse differently on every load of a save;
+- the **output of the recipes** — filled inside `_close_pool()` at the very moment a product enters the pool, so the rate and the pool can never disagree. A recipe reading `result: {"silk": 10}` adds **10 silk per town tick**.
+
+A product the ring already yields is not produced by a recipe as well: the closure skips ids that are already in the pool, so the two parts never fight over one product id.
+
+**A town never runs short.** If it decided to make something, it makes it — no matter how many towns gather or import it. Nothing is consumed and nothing can be "out of stock"; only the limit stops the accumulation. The ingredients are virtual, so tracking them would only invent scarcity the design does not want.
+
+**Production starts when the player sees the town.** Until then the town holds its starting stock and nothing grows. The reason is timing: a town fills its warehouse in a few minutes, and one that had been producing since the world was generated would already be pinned at the limit by the time the player arrived — the trade would be dead on arrival. The gate is the same condition under which the town is drawn on the map (the hex is in the player's known territory, or it has been scouted), and it latches into `production_started`, so a town discovered once keeps producing.
+
+**The tick.** `main_map._process` accumulates its own `town_timer` and calls `TownManager.tick_towns()` every `town_tick_ticks × CityData.SIMULATION_TICK` seconds — a separate, slower clock from `production_timer`, which drives the city. The tick deliberately does **not** emit a signal per town: it writes units off every town on the map several times a second. Instead the open window is refreshed in place (`TownUI.refresh_storage`), which rewrites the numbers without rebuilding the rows and so keeps the scroll position.
+
+**Trade deals.** The warehouse changes only through `TownManager.add_town_goods(town, id, amount)` and `take_town_goods(town, id, amount)`, which emit `town_storage_changed(town_id)`. Selling more than the town has fails and writes nothing off — a town cannot sell what it does not have. Buying into a full product returns how many units actually fitted. These are the seam the real trade will use; the trade itself is still a stub (`is_trade_available`).
+
+**Determinism.** The starting stock of a product is derived from `(the town id, the product id)` and not from the global RNG — the pools are recalculated twice on a new game and on every load of a save, and a roll would give the warehouse a different stock each time. Two towns differ; the same town is always the same.
+
+**Determinism across saves.** The warehouse mirrors the sell pool exactly: a product that has *just* entered the pool gets a starting stock, and a product that is no longer for sale is dropped. The pruning is not cosmetic — the pools are recalculated twice on a new game, and the ring gains its decorative fields in between, so a product seeded on the first pass can turn into an import on the second and would otherwise sit on the warehouse forever as goods the town neither gathered nor made. A product that *stays* in the pool keeps its stock, so sold units do not come back on every reload.
+
+**Implementation points:** `scripts/town_economy.gd` — `get_storage_limit()`, `get_initial_stock()`, `build_initial_storage()`, `collect_base_yields()`, `store_production()` and the `production` output of `build_pools()` / `refresh_town()`; `scripts/town_manager.gd` — the `storage` and `production_started` fields, `get_town_goods()` / `add_town_goods()` / `take_town_goods()`, `get_town_tick_seconds()`, `_is_town_production_started()` and `tick_towns()`; `scripts/main_map.gd` — the `town_timer` and the call in `_process`; `scripts/town_ui.gd` — the quantity label in the sell column and `refresh_storage()`.
+
+**Save format:** `storage` and `production_started` are written by `serialize_towns()` and read by `load_towns()`. The per-tick `production` rate is deliberately **not** saved — it is derived from the ring and recalculated on load, so it cannot go stale against the pools.
+
+**Tests:** `tests/test_town_economy.gd` (headless) — the starting stock stays within the configured bounds, is deterministic, and differs between towns; the plan matches the recipe output read from `GameData.crafts` itself and never contains an imported good; production grows the warehouse by exactly the recipe output and consumes nothing; the limit is enforced per product, not per warehouse; an unscouted town does not produce and a scouted one does, by both paths (`is_explored` and `in_influence`); deals move units in both directions, fail beyond the stock and do not go negative; the save round-trip preserves the warehouse; and on a live map every town has a non-empty warehouse covering its whole sell pool, with no imported goods on it.
+
 ### Дороги от городков к их улучшениям
 
 У каждого городка есть **своя сеть дорог**: от гекса самого городка — к его улучшениям в кольце влияния (`tile.improvement`, расставлены `town_manager._place_decorative_town_improvements` как декоративные: фермы, лесная делянка, карьер, пристань, улучшения по ресурсам). Правила ровно те же, что у города игрока: кратчайший путь по суше от улучшения до **уже подключённого** гекса сети, вода непроходима, `no_road` (рыбацкие лодки, ирригационные каналы) дороги не получают.
