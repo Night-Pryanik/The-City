@@ -244,6 +244,7 @@ text = "Domestic trade"
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
 
 [node name="InternalList" type="VBoxContainer" parent="ContentPanel/TradePanel/Split/InternalPanel/InternalScroll" unique_id=1900000205]
 layout_mode = 2

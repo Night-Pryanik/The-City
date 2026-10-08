@@ -1539,6 +1539,9 @@ msgstr "Казна: %d %s"
 msgid "Treasury: 0"
 msgstr "Казна: 0"
 
+msgid "Unavailable goods"
+msgstr "Недоступные товары"
+
 msgid "Under construction"
 msgstr "Строится"
 

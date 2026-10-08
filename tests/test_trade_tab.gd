@@ -390,8 +390,15 @@ func _run() -> void:
         var list = city_ui.get_node_or_null(
             "ContentPanel/TradePanel/Split/InternalPanel/InternalScroll/InternalList")
         check(list != null, "нет списка карточек внутренней торговли", state)
-        if list != null and list.get_child_count() > 0:
-            var card = list.get_child(0)
+        # Доступные карточки лежат первыми, но при пустом складе их может не быть вовсе —
+        # тогда первым ребёнком списка окажется тумблер свёртки. Карточку ищем явно.
+        var card: Node = null
+        if list != null:
+            for child in list.get_children():
+                if child is PanelContainer:
+                    card = child
+                    break
+        if card != null:
             # Тумблер ОДИН: вариант с двумя кнопками (прямоугольник +
             # CheckBox) убран, в карточке остался только CheckBox.
             check(card.get_node_or_null("Layout/Header/TradeToggleRect") == null,
@@ -402,6 +409,7 @@ func _run() -> void:
                 "в карточке нет кнопки приоритета", state)
             check(card.get_node_or_null("Layout/IncomeRow/IncomeValue") != null,
                 "в карточке нет строки дохода", state)
+        if list != null and card != null:
             var tab = city_ui.trade_tab
             if tab != null and not tab.cards.is_empty():
                 var key: String = str(tab.cards.keys()[0])
@@ -473,11 +481,25 @@ func _run() -> void:
                 var list2 = city_ui.get_node_or_null(
                     "ContentPanel/TradePanel/Split/InternalPanel/InternalScroll/InternalList")
                 if list2 != null and list2.get_child_count() > 0:
+                    # Регрессия на переиспользование карточек проверяется добавлением
+                    # запаса УЖЕ доступному ресурсу: его доступность при этом не меняется,
+                    # поэтому состав колонки пересобираться не должен. Недоступному ресурсу
+                    # добавлять запас нельзя — он станет доступным и карточка законно
+                    # переедет из свёртки в рабочий список (это проверяется отдельно ниже),
+                    # и тогда регрессия про переиспользование перестала бы что-либо проверять.
+                    # Сначала выводим целевые ресурсы в доступные (запас уже есть),
+                    # затем измеряем идентичность узлов.
+                    for m in all_members:
+                        city.add_to_storage(str(m), 1, "common")
+                    tab.update_values()
+                    await process_frame
                     var ids_before: Array = []
                     for node in list2.get_children():
                         ids_before.append(node.get_instance_id())
-                    # Меняем данные так, чтобы значения карточек обновились.
-                    city.add_to_storage(str(all_members[0]), 777, "common")
+                    # Меняем данные так, чтобы значения карточек обновились, но доступность
+                    # ни одной карточки не переключилась.
+                    for m in all_members:
+                        city.add_to_storage(str(m), 1, "common")
                     tab.update_values()
                     tab.update_values()
                     var ids_after: Array = []
@@ -520,6 +542,133 @@ func _run() -> void:
                         check(ghost_income.text == expected_income,
                             "строка «Доход» обязана показывать факт «%s», получено «%s»"
                             % [expected_income, ghost_income.text], state)
+
+    # ---- 9. Недоступные ресурсы спрятаны под раскрывающийся список ----
+    # Город может получить ресурс, только если он добывается/производится или уже
+    # лежит на складе. Остальные карточки не должны засорять рабочую колонку:
+    # они уезжают под тумблер «Недоступные товары».
+    var wm2 = load("res://scripts/worker_manager.gd").new()
+    city.total_population = 3
+    city.city_storage.clear()
+    city.city_quality_detail.clear()
+    # Ресурс без запаса и без производства недоступен.
+    var bare_row := {"members": ["__no_such_product__"]}
+    check(wm2.is_resource_obtainable(bare_row) == false,
+        "ресурс без запаса и без производства должен быть недоступен", state)
+    # Ресурс с запасом доступен.
+    city.add_to_storage("pottery", 5, "common")
+    check(wm2.is_resource_obtainable({"members": ["pottery"]}) == true,
+        "ресурс со складом должен быть доступен", state)
+    # Группа доступна, если доступен хотя бы один член.
+    check(wm2.is_resource_obtainable({"members": ["__no_such_product__", "pottery"]}) == true,
+        "группа доступна при доступности хотя бы одного члена", state)
+    check(wm2.is_resource_obtainable({"members": ["__a__", "__b__"]}) == false,
+        "группа из недоступных членов недоступна", state)
+    # Карта рынка несёт поле available для каждой строки.
+    var live_map: Dictionary = wm2.get_population_consumption_map()
+    var all_have_flag := not live_map.is_empty()
+    for dkey in live_map:
+        if not live_map[dkey].has("available"):
+            all_have_flag = false
+            break
+    check(all_have_flag, "каждая строка карты рынка должна нести поле available", state)
+    wm2.free()
+
+    var main_map3 = load("res://scenes/MainMap.tscn").instantiate()
+    get_root().add_child(main_map3)
+    await process_frame
+    await process_frame
+    var city_ui3 = main_map3.get_node_or_null("CityUI")
+    if city_ui3 != null:
+        city_ui3.refresh()
+        city_ui3._switch_tab("trade")
+        await process_frame
+        var tab3 = city_ui3.trade_tab
+        var ilist = city_ui3.get_node_or_null(
+            "ContentPanel/TradePanel/Split/InternalPanel/InternalScroll/InternalList")
+        check(ilist != null, "нет списка карточек внутренней торговли", state)
+        if ilist != null and tab3 != null:
+            # Опустошаем склад: всё, что город не производит, станет недоступным.
+            city.city_storage.clear()
+            city.city_quality_detail.clear()
+            tab3.refresh()
+            check(tab3.unavailable_header != null,
+                "при наличии недоступных ресурсов должен быть тумблер свёртки", state)
+            check(tab3.unavailable_list != null,
+                "при наличии недоступных ресурсов должен быть контейнер свёртки", state)
+            if tab3.unavailable_header != null and tab3.unavailable_list != null:
+                # Свёрнуто по умолчанию: карточки недоступного не видны.
+                check(not tab3.unavailable_open,
+                    "по умолчанию свёртка недоступного должна быть закрыта", state)
+                check(not tab3.unavailable_list.visible,
+                    "по умолчанию контейнер недоступного должен быть скрыт", state)
+                check(tab3.unavailable_list.get_child_count() > 0,
+                    "под свёрткой должны лежать карточки недоступных ресурсов", state)
+                # В рабочем списке недоступных карточек быть не должно.
+                var working_cards := 0
+                for child in ilist.get_children():
+                    if child is PanelContainer:
+                        working_cards += 1
+                check(working_cards == tab3.cards.size() - tab3.unavailable_list.get_child_count(),
+                    "рабочий список должен содержать только доступные карточки", state)
+                # Тумблер раскрывает и прячет контейнер.
+                tab3.unavailable_header.button_pressed = true
+                tab3.unavailable_header.toggled.emit(true)
+                check(tab3.unavailable_list.visible,
+                    "тумблер должен раскрывать недоступные ресурсы", state)
+                tab3.unavailable_header.button_pressed = false
+                tab3.unavailable_header.toggled.emit(false)
+                check(not tab3.unavailable_list.visible,
+                    "повторный клик должен прятать недоступные ресурсы", state)
+                # Раскрытое состояние переживает пересборку списка.
+                tab3.unavailable_header.button_pressed = true
+                tab3.unavailable_header.toggled.emit(true)
+                tab3.refresh()
+                check(tab3.unavailable_open and tab3.unavailable_list.visible,
+                    "раскрытое состояние должно переживать пересборку списка", state)
+            # Ресурс, у которого появился запас, переезжает из свёртки в рабочий список.
+            var hidden_key := ""
+            if tab3.unavailable_list != null and tab3.unavailable_list.get_child_count() > 0:
+                for dkey in tab3.cards:
+                    if tab3.cards[dkey]["card"].get_parent() == tab3.unavailable_list:
+                        hidden_key = str(dkey)
+                        break
+            if hidden_key != "":
+                var hidden_members: Array = tab3._collect_data().get(hidden_key, {}).get("members", [])
+                if not hidden_members.is_empty():
+                    city.add_to_storage(str(hidden_members[0]), 10, "common")
+                    tab3.update_values()
+                    var now_row: Dictionary = tab3._collect_data().get(hidden_key, {})
+                    check(bool(now_row.get("available", false)),
+                        "ресурс с появившимся запасом должен стать доступным", state)
+            # Ширина колонки не должна «дышать» при появлении вертикального скроллбара.
+            # ScrollContainer по умолчанию (SCROLL_MODE_AUTO) отдаёт контенту ширину
+            # минус скроллбар, поэтому при раскрытии свёртки карточки становятся уже,
+            # а при закрытии — снова шире. Режим SHOW_ALWAYS резервирует место под
+            # скроллбар постоянно, и ширина карточки не зависит от переполнения.
+            var scroll = city_ui3.get_node_or_null(
+                "ContentPanel/TradePanel/Split/InternalPanel/InternalScroll")
+            check(scroll != null and scroll.vertical_scroll_mode == ScrollContainer.SCROLL_MODE_SHOW_ALWAYS,
+                "у списка должен быть постоянно зарезервирован вертикальный скроллбар (SHOW_ALWAYS)", state)
+            if scroll != null and ilist != null and tab3 != null and tab3.cards.size() > 0:
+                var first_card = tab3.cards[tab3.cards.keys()[0]]["card"]
+                # Высокая область — список влезает, скроллбар не нужен.
+                scroll.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+                scroll.custom_minimum_size = Vector2(0, 4000)
+                for _i in range(6):
+                    await process_frame
+                var width_tall: float = first_card.size.x
+                # Низкая область — список переполняет, скроллбар нужен.
+                scroll.custom_minimum_size = Vector2(0, 150)
+                scroll.size.y = 150
+                for _i in range(6):
+                    await process_frame
+                var width_short: float = first_card.size.x
+                check(is_equal_approx(width_tall, width_short),
+                    "ширина карточек не должна меняться от появления скроллбара: %.1f → %.1f"
+                        % [width_tall, width_short], state)
+    main_map3.queue_free()
+
     # Уборка состояния, чтобы тест не влиял на следующие прогоны.
     city.total_population = 1
     city.city_storage.clear()

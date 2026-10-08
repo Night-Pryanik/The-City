@@ -1539,6 +1539,9 @@ msgstr ""
 msgid "Treasury: 0"
 msgstr ""
 
+msgid "Unavailable goods"
+msgstr ""
+
 msgid "Under construction"
 msgstr ""
 

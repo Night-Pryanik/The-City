@@ -9,9 +9,24 @@
 # the citizens + the pseudo-profession "All citizens", the key of the row is display_key.
 #
 #
+# The rows are split in two by the availability flag of the row (worker_manager.
+# is_resource_obtainable): the resources the city can obtain right now (mined, produced or
+# already in storage) form the working list, the rest go under a disclosure
+# (unavailable_header / unavailable_list). A resource the city cannot get at all would only
+# add visual noise to the column; the disclosure keeps the possibilities visible on demand.
+# The disclosure is created only when there is something to hide.
+#
+# The vertical scrollbar of the list is reserved permanently (InternalScroll in the scene
+# has vertical_scroll_mode = SHOW_ALWAYS): with SCROLL_MODE_AUTO the ScrollContainer hands
+# the content the width minus the scrollbar, so unfolding the disclosure made the cards
+# narrower by the width of the bar and folding them made them wider again.
+#
+#
 # The LAYOUT of the card lives in the scene res://scenes/TradeResourceCard.tscn, and not
 # in the code: the script instantiates it and substitutes only the values. In this way any
-# element of the card can be moved with the mouse in the scene editor.
+# element of the card can be moved with the mouse in the scene editor. The disclosure
+# (the toggle and the container) is not part of the card scene: it belongs to the column
+# and is built in the code.
 #
 #
 # The UPDATE is subordinated to the resource display interval from the settings
@@ -60,6 +75,15 @@ var _quality_key: String = ""
 # The active tooltip of the breakdown of the quality — for the update in real time.
 var _hovered_tip: Control = null
 
+# The rows the city cannot obtain right now are hidden under a disclosure: a toggle button
+# and a container of the cards, created on the fly (they are not part of the card scene,
+# because the disclosure belongs to the column, not to a single card). The state of the
+# disclosure is kept between the rebuilds of the list, so that a click on the toggle does not
+# reset when the composition of the cards changes.
+var unavailable_header: Button = null
+var unavailable_list: VBoxContainer = null
+var unavailable_open: bool = false
+
 # The node with a tooltip the cursor is currently over: we do not touch its text
 # (see _apply_tooltip). A separate field, and not a check of the node: a Control in
 # Godot 4 has no is_hovered() method, and the hover is most honestly tracked
@@ -94,22 +118,27 @@ func refresh() -> void:
     _quality_key = ""
     _hovered_tip = null
     _signature = ""
+    unavailable_header = null
+    unavailable_list = null
 
     var data: Dictionary = _collect_data()
-    # A full rebuild of the list of the cards: the composition of the resources is determined by the current
-    # professions and the population, therefore it changes structurally (a worker
-    # has been assigned, a building has been built). It is called on opening the tab and on
-    # a divergence of the label of the composition (see update_values).
-    var keys: Array = data.keys()
-    keys.sort_custom(func(a, b): return str(data[a].get("name", a)) < str(data[b].get("name", b)))
-    for key in keys:
-        _create_card(str(key), data[key])
-    # The label is set AFTER the assembly and by the same function as the check in
-    # update_values. Previously refresh() glued the label from the sorted
-    # keys, and update_values() compared it with the label in the order of the insertion
-    # of the dictionary — the labels never matched, and EVERY TICK the list of the cards
-    # was recreated entirely. Together with the cards the open tooltip died
-    # and all the numbers flickered.
+    # The rows are split in two: the resources the city can obtain right now (they form the
+    # working list) and the resources it cannot obtain (they go under the disclosure).
+    # A resource that is neither in storage nor produced is beyond the reach of the city,
+    # and its card would only add visual noise: see worker_manager.is_resource_obtainable.
+    var available: Dictionary = {}
+    var unavailable: Dictionary = {}
+    for key in data:
+        if bool(data[key].get("available", true)):
+            available[key] = data[key]
+        else:
+            unavailable[key] = data[key]
+    for key in available:
+        _create_card(str(key), available[key], internal_list)
+    # The disclosure is created only when there is something to hide: an empty toggle over
+    # an empty container is the same noise the disclosure is meant to remove.
+    if not unavailable.is_empty():
+        _create_unavailable_section(unavailable)
     _signature = _signature_of(data)
     if internal_list.get_child_count() == 0:
         var empty := Label.new()
@@ -117,7 +146,60 @@ func refresh() -> void:
         empty.add_theme_color_override("font_color", COLOR_CAPTION)
         internal_list.add_child(empty)
 
-# The sorting by the name — the list is readable and predictable between the ticks.
+# The disclosure of the resources the city cannot obtain right now. The toggle button and the
+# container of the cards are built here (and not in the card scene): they belong to the column.
+# The cards inside are created by the same _create_card — they are full cards with a tooltip,
+# a priority button and a toggle, so a resource that becomes obtainable is not a special case.
+func _create_unavailable_section(rows: Dictionary) -> void:
+    unavailable_header = Button.new()
+    unavailable_header.toggle_mode = true
+    unavailable_header.alignment = HORIZONTAL_ALIGNMENT_LEFT
+    unavailable_header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    unavailable_header.button_pressed = unavailable_open
+    unavailable_header.toggled.connect(_on_unavailable_toggled)
+    internal_list.add_child(unavailable_header)
+
+    unavailable_list = VBoxContainer.new()
+    unavailable_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    unavailable_list.add_theme_constant_override("separation", 6)
+    # The collapsed state is also the initial one: the container is hidden from the start,
+    # so that the column is never drawn with the hidden rows visible for one frame.
+    unavailable_list.visible = unavailable_open
+    internal_list.add_child(unavailable_list)
+
+    var keys: Array = rows.keys()
+    keys.sort_custom(func(a, b): return str(rows[a].get("name", a)) < str(rows[b].get("name", b)))
+    for key in keys:
+        _create_card(str(key), rows[key], unavailable_list)
+    _update_unavailable_header(keys.size())
+
+# The toggle of the disclosure: the cards are already built and live inside the container,
+# therefore the click only flips the visibility and the caption (adding/removing the cards
+# would break the identity of the nodes and the tooltips under the cursor).
+func _on_unavailable_toggled(pressed: bool) -> void:
+    unavailable_open = pressed
+    if unavailable_list != null and is_instance_valid(unavailable_list):
+        unavailable_list.visible = pressed
+    _update_unavailable_header(cards_count_in(unavailable_list))
+
+# The caption of the toggle carries the arrow and the number of the hidden rows: the arrow
+# shows the state of the disclosure, the number — how many rows are hidden behind it
+# (the player sees that there is something to open without opening it).
+func _update_unavailable_header(count: int) -> void:
+    if unavailable_header == null or not is_instance_valid(unavailable_header):
+        return
+    var arrow := "▾" if unavailable_open else "▸"
+    unavailable_header.text = "%s %s (%d)" % [arrow, tr("Unavailable goods"), count]
+
+# The number of the cards in the container of the disclosure.
+func cards_count_in(list: Node) -> int:
+    if list == null or not is_instance_valid(list):
+        return 0
+    return list.get_child_count()
+
+# A light update of the values of the existing cards: if the composition has changed
+# (including the transition of a row between available and unavailable), a full rebuild is
+# done by refresh(); otherwise only the texts of the already built cards are refreshed.
 func update_values() -> void:
     if internal_list == null or not is_instance_valid(internal_list):
         return
@@ -130,17 +212,23 @@ func update_values() -> void:
         if data.has(key):
             _update_card(cards[key], data[key])
 
-    # The label is set AFTER the assembly and by the same function as the check in
-    # update_values. Previously refresh() glued the label from the sorted
-    # keys, and update_values() compared it with the label in the order of the insertion
-    # of the dictionary — the labels never matched, and EVERY TICK the list of the cards
-    # was recreated entirely. Together with the cards the open tooltip died
-    # and all the numbers flickered.
-    # update_values() would count the different labels of one and the same composition.
+# The label of the composition of the list, used to tell "the set of the rows has not changed"
+# from "the rows moved between the working list and the disclosure". It is glued from the
+# SORTED keys, therefore it does not depend on the order of the walk of the dictionary:
+# otherwise refresh() and update_values() would count different labels of one and the same
+# composition and rebuild the cards on every tick.
 func _signature_of(data: Dictionary) -> String:
+    # The availability is part of the signature: a row that becomes obtainable (or stops
+    # being) moves between the working list and the disclosure, i.e. the layout changes even
+    # though the SET of the keys is the same. Without the marker update_values() would not
+    # notice the transition, and the card would stay in the wrong column.
     var keys: Array = data.keys()
     keys.sort()
-    return ";".join(PackedStringArray(keys))
+    var parts: Array = []
+    for key in keys:
+        var marker := "1" if bool(data[key].get("available", true)) else "0"
+        parts.append("%s=%s" % [str(key), marker])
+    return ";".join(PackedStringArray(parts))
 
 # Assigns the text to the Label, only if it CHANGES. The side effect
 # of assigning the same text every time is an extra redrawing,
@@ -297,9 +385,9 @@ func _format_rate(value: float) -> String:
 # (GameData.format_quality_share_text). The star-marker is painted with the same
 # accent colour (ui_helpers.QUALITY_MARKER_COLOR): the white marker was read
 # as "a quality level", although it is only the sign "there is a breakdown".
-func _create_card(display_key: String, row: Dictionary) -> void:
+func _create_card(display_key: String, row: Dictionary, list: Node) -> void:
     var card: PanelContainer = CARD_SCENE.instantiate()
-    internal_list.add_child(card)
+    list.add_child(card)
     var ctx := {
         "key": display_key,
         "card": card,

@@ -711,7 +711,9 @@ func get_planned_consumption_map(include_production_inputs: bool = true) -> Dict
 #     "per_sec": float,       - the total planned expense, units/sec.
 #     "per_consumer_per_sec": float,   - the norm per one consumer, units/sec;
 #     "per_consumer_amount": int,     - amount from consumption.json;
-#     "per_consumer_interval": float }
+#     "per_consumer_interval": float,
+#     "available": bool }     - whether the city can obtain it at all (see
+#                             is_resource_obtainable)
 #
 # consumers_total is taken as max("All residents", Σ the professions): the pseudo-profession
 # all covers the whole population, including the employed, therefore a simple summation
@@ -736,7 +738,34 @@ func get_population_consumption_map() -> Dictionary:
     # We count the totals for each row.
     for display_key in result:
         _finalize_population_row(result, display_key)
+    # Whether the city can obtain the resource at all: produced, extracted or imported.
+    # The tab "Trade" hides the rows that are unavailable right now under a disclosure,
+    # so that the working list is not mixed with the resources the city cannot get.
+    for display_key in result:
+        result[display_key]["available"] = is_resource_obtainable(result[display_key])
     return result
+
+# Whether the city can obtain a resource or a group right now: it is already in the
+# storage, it is produced (an actual or a planned output of a building/improvement) or
+# it will be imported. A group is obtainable when at least one of its members is: the
+# members are interchangeable.
+#
+# The only source of truth about the resources the city gets is the current production plan
+# (CityData.get_planned_production_map) plus whatever already lies in the storage. A resource
+# that is neither stored nor produced is beyond the reach of the city: no improvement extracts
+# it, no recipe makes it, and the external trade that could import it is not implemented yet.
+func is_resource_obtainable(row: Dictionary) -> bool:
+    var members: Array = row.get("members", [])
+    if members.is_empty():
+        return true
+    var planned: Dictionary = CityData.get_planned_production_map()
+    for pid in members:
+        var member := str(pid)
+        if CityData.get_storage_amount(member) > 0:
+            return true
+        if planned.has(member):
+            return true
+    return false
 
 # Adds/complements a row of the card by the profession prof_id with count
 # consumers. The same profession can come from two sources
