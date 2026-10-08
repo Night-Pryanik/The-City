@@ -254,6 +254,15 @@ godot --headless --path . res://tests/water_access_test.tscn
 4. Пристань не добывает ресурсы сама по себе — она только ключ доступа.
 5. **Пристань — инфраструктурное улучшение:** она помечена полем `no_worker: true` в `improvements.json` и **не требует рабочего** — открывает водные ресурсы сразу после постройки. Назначить на неё жителя нельзя, и в панели управления для неё нет кнопок «Запустить/Приостановить работу».
 
+### A town's decorative harbour is not the key
+
+The towns place their own harbours on their coasts (see *Town harbours*). Such a
+harbour is the scenery of a foreign settlement: `has_harbor_access` skips a
+`water_body_harbor` improvement standing on a tile with `decorative: true`. A body
+of water is opened only by the harbour of the player — otherwise a coastal town
+would give the whole sea away for free, and rule 3 would contradict the dock the
+player sees on the map.
+
 ### Морское мелководье
 
 При генерации моря вдоль каждой границы моря с сушей, в том числе вокруг островов, создаётся полоса `shallow_sea`. Её локальная ширина плавно меняется от 1 гекса до `sea.coast_max_depth` включительно; по умолчанию максимум равен 5. За полосой остаётся глубокое море `sea`. Все морские ресурсы размещаются только на `shallow_sea`, но оба морских terrain-типа составляют один водоём для доступа от пристани и генерации устьев рек.
@@ -1286,6 +1295,34 @@ godot --headless --path . res://tests/water_access_test.tscn
 > В пул продажи попадает **продукция** культуры, а не сама культура: `wheat_field` даёт `wheat` и `feed`, поэтому в окне городка видно «Пшеницу», но не «Пшеничное поле». То же правило, что и для любого другого сырья (см. «Замыкание производства городка и импорт», шаг 1).
 
 **Точки реализации:** `scripts/town_manager.gd` — `_place_decorative_town_improvements()` (детекция пищевого растения, сбор заполнительных и голых ферм, посев), `_pick_town_field_crop()` (случайный выбор разводимого вида), `_seed_decorative_field()` (посев с проверкой разводимости и качеством), `_refresh_sell_pools()` (эффективный ресурс вместо природного). Тест: `tests/test_town_food_fields.gd` (headless) — городок без пищевых ресурсов получает засеянные поля, и **продукция** этих полей (`wheat`, `feed`) попадает в пул продажи, а сами поля — нет; дикорсы пищей не считаются и в пул не идут; культура подбирается на каждое поле отдельно; повторный проход не пересеивает поля и не добавляет новых; городок со своим пищевым растением не меняется; без мест под ферму городок остаётся без еды; культуры разных городков различаются; голые фермы старой партии дозасеваются; на живой карте `MainMap` не остаётся ни одной голой фермы.
+### Town harbours
+
+A town whose ring contains a **marine resource** (a resource standing on a sea hex:
+`sea_fish`, `murex`, `cuttlefish`) gets a harbour on the coast of that body of water
+(`town_manager._place_town_sea_harbors`). The boats themselves are stood on the
+resource hex by the common `improved_by` pass — the harbour is their mooring, so the
+rule is "a catch in the ring — a dock on the shore", and not "a sea in the ring".
+
+| Decision | Why |
+| --- | --- |
+| The trigger is a **marine resource in the ring**, not the sea itself | A ring over a sea without fish has nothing to catch, so there is nothing to moor: a decorative dock on such a coast would be a lie about the economy of the town |
+| **One harbour per connected sea body** holding such a resource | The same rule as for the player (one body = one harbour): a single dock already serves the whole body, and a row of them along the same shore reads as spam |
+| The hex must be **free**: no resource, no improvement, no bred culture, and it must be the land of the RING adjacent to that very body (not a mountain, not an impassable terrain) | The town does not build over what is already there; a coast occupied by a resource or by an earlier improvement leaves the town without a harbour instead of displacing anything |
+| The **closest** such hex to the centre of the town wins, the ties are broken by the coordinates | The road to the harbour is as short as possible, and the same save always produces the same map |
+| The pass runs **before** the farms, the forest plot and the quarry passes | They would otherwise be able to take the only free coastal hex of the ring |
+| It is **idempotent**: a body to which this town already has a harbour in the ring is skipped | The pass runs on every load of a save, and a reload must not add a second dock to the same shore |
+| The harbour is **decorative** (`decorative: true`): no worker, no production, it cannot be modified through the panel, and `MapHelpers.has_harbor_access` ignores it | A body of water of the player is opened only by the harbour of the player: a foreign settlement must not give the sea away for free, otherwise the UI gate contradicts the dock visible on the map |
+
+A lake is never a reason for a harbour: a freshwater fish is a separate body of
+water, and only the sea (`sea`, `shallow_sea`) counts — see `SEA_TERRAINS`.
+
+**Implementation points:** `scripts/town_manager.gd` — `SEA_TERRAINS`,
+`_is_sea_terrain()`, `_sea_body_id()` (a flood-fill of a sea body, cached for the
+whole pass), `_is_better_harbor_hex()`, `_place_town_sea_harbors()` (called from
+`_place_decorative_town_improvements()` right after the ring candidates are
+collected); `scripts/map_helpers.gd` — `has_harbor_access()` skips the harbour
+improvements of the tiles with `decorative: true`.
+
 ### Замыкание производства городка и импорт
 
 Городок торгует не только тем, что лежит на его гексах. Он **производит**: пул продажи — это замыкание производства по рецептам из `data/crafts/*.json`, а часть недостающего он готов докупить. Расчёт целиком в `scripts/town_economy.gd` (чистые статические функции по данным — от карты не зависит), вызывается из `town_manager._refresh_sell_pools()`.
@@ -1338,7 +1375,7 @@ godot --headless --path . res://tests/water_access_test.tscn
 
 ### Дороги от городков к их улучшениям
 
-У каждого городка есть **своя сеть дорог**: от гекса самого городка — к его улучшениям в кольце влияния (`tile.improvement`, расставлены `town_manager._place_decorative_town_improvements` как декоративные: фермы, лесная делянка, карьер, улучшения по ресурсам). Правила ровно те же, что у города игрока: кратчайший путь по суше от улучшения до **уже подключённого** гекса сети, вода непроходима, `no_road` (рыбацкие лодки, ирригационные каналы) дороги не получают.
+У каждого городка есть **своя сеть дорог**: от гекса самого городка — к его улучшениям в кольце влияния (`tile.improvement`, расставлены `town_manager._place_decorative_town_improvements` как декоративные: фермы, лесная делянка, карьер, пристань, улучшения по ресурсам). Правила ровно те же, что у города игрока: кратчайший путь по суше от улучшения до **уже подключённого** гекса сети, вода непроходима, `no_road` (рыбацкие лодки, ирригационные каналы) дороги не получают.
 
 | Решение | Почему |
 | --- | --- |

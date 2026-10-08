@@ -130,6 +130,12 @@ const REFINEMENT_RADIUS := 2
 # into a foreign influence ring.
 const MIN_DISTANCE_BETWEEN_TOWNS := 3
 
+# The terrains of the sea. A resource standing on one of them is a marine resource,
+# and only such a resource makes the town build a harbour (see
+# _place_town_sea_harbors): a lake with its own fish is a separate body of water
+# and is not a reason for a harbour.
+const SEA_TERRAINS := ["sea", "shallow_sea"]
+
 # === The influence ring of a town ===
 # Each town has an "influence ring" - a zone around itself, inside which
 # the player cannot build anything. This reflects the fact that around a foreign
@@ -747,10 +753,154 @@ func _is_valid_town_hex(tile_data: Array, row: int, col: int,
 func _is_impassable_terrain(terrain_id: String) -> bool:
     var t: Dictionary = GameData.terrains.get(terrain_id, {})
     return int(t.get("move_cost", 1)) >= 999
+
+
+func _is_sea_terrain(terrain_id: String) -> bool:
+    return terrain_id in SEA_TERRAINS
+
+# The id of the sea body the hex (row, col) belongs to: the smallest cell index of
+# the connected area of sea/shallow_sea. A single id lets us tell "these two coastal
+# hexes stand on the same water" without comparing the sets of the hexes, and the
+# flood-fill itself is remembered in body_cache (a cell -> id entry per sea hex), so
+# a sea is watered through once per pass over the map and not once per town.
+func _sea_body_id(tile_data: Array, rows: int, cols: int, row: int, col: int,
+        body_cache: Dictionary) -> int:
+    if row < 0 or row >= rows or col < 0 or col >= cols:
+        return -1
+    var first = tile_data[row][col]
+    if first == null or not _is_sea_terrain(str(first.get("terrain", ""))):
+        return -1
+    var start_key := row * cols + col
+    if body_cache.has(start_key):
+        return int(body_cache[start_key])
+
+    var cells: Array = [Vector2i(row, col)]
+    var visited: Dictionary = {}
+    visited[start_key] = true
+    var body_id := start_key
+    var head := 0
+    while head < cells.size():
+        var cur: Vector2i = cells[head]
+        head += 1
+        body_id = mini(body_id, cur.x * cols + cur.y)
+        for n in HexUtils.get_neighbors_odd_r(cur.x, cur.y, rows, cols):
+            var key: int = n.row * cols + n.col
+            if visited.has(key):
+                continue
+            var nt = tile_data[n.row][n.col]
+            if nt == null or not _is_sea_terrain(str(nt.get("terrain", ""))):
+                continue
+            visited[key] = true
+            cells.append(Vector2i(n.row, n.col))
+    for cell in cells:
+        body_cache[cell.x * cols + cell.y] = body_id
+    return body_id
+
+
+# The closer hex to the centre of the town wins; the ties are broken by the
+# coordinates, so that the same save always gives the same harbour.
+func _is_better_harbor_hex(row: int, col: int, dist: int, best_hex: Dictionary) -> bool:
+    if dist != int(best_hex.get("dist", -1)):
+        return dist < int(best_hex.get("dist", -1))
+    if row != int(best_hex.get("row", -1)):
+        return row < int(best_hex.get("row", -1))
+    return col < int(best_hex.get("col", -1))
+
+
+# --- The harbours of the towns ---
+#
+# A town whose ring contains a marine resource (a resource on a sea hex) gets one
+# harbour per connected sea body holding such a resource: the boats are stood on the
+# resource itself by the improved_by pass, and the harbour is the mooring of the
+# body of water they work. A ring with a sea but without marine resources gets
+# nothing: there is nothing to catch, so there is nothing to moor.
+#
+# The harbour stands on a FREE coastal hex of the RING: no resource, no improvement,
+# no bred culture, the land (not a mountain, not an impassable terrain) adjacent to
+# that very body of water. A coast occupied by a resource or by an earlier
+# improvement is not a place for the harbour - such a town simply stays without one.
+#
+# The pass is idempotent: a body which already has a harbour of THIS town in the ring
+# is skipped, so the load of a save does not add a second one.
+func _place_town_sea_harbors(tile_data: Array, rows: int, cols: int, town: Dictionary,
+        candidates: Array, body_cache: Dictionary) -> void:
+    if not GameData.improvements.has("harbor"):
+        return
+
+    # The bodies of water which hold a marine resource of the ring.
+    var wanted: Dictionary = {}
+    for h in town.get("influence_hexes", []):
+        var row := int(h.get("row", -1))
+        var col := int(h.get("col", -1))
+        if row < 0 or row >= rows or col < 0 or col >= cols:
+            continue
+        var tile = tile_data[row][col]
+        if tile == null or tile.get("resource", null) == null:
+            continue
+        if not _is_sea_terrain(str(tile.get("terrain", ""))):
+            continue
+        var body_id := _sea_body_id(tile_data, rows, cols, row, col, body_cache)
+        if body_id >= 0:
+            wanted[body_id] = true
+    if wanted.is_empty():
+        return
+
+    # The bodies which this town has already moored at.
+    for h in town.get("influence_hexes", []):
+        var row := int(h.get("row", -1))
+        var col := int(h.get("col", -1))
+        if row < 0 or row >= rows or col < 0 or col >= cols:
+            continue
+        var tile = tile_data[row][col]
+        if tile == null or str(tile.get("improvement", "")) != "harbor":
+            continue
+        for n in HexUtils.get_neighbors_odd_r(row, col, rows, cols):
+            var nt = tile_data[n.row][n.col]
+            if nt == null or not _is_sea_terrain(str(nt.get("terrain", ""))):
+                continue
+            wanted.erase(_sea_body_id(tile_data, rows, cols, n.row, n.col, body_cache))
+    if wanted.is_empty():
+        return
+
+    # The best free coastal hex of the ring for every body still waiting for a harbour.
+    var best: Dictionary = {}
+    var town_row := int(town.get("row", -1))
+    var town_col := int(town.get("col", -1))
+    for candidate in candidates:
+        var tile: Dictionary = candidate.tile
+        if tile.get("improvement", null) != null or tile.get("resource", null) != null \
+                or tile.get("crop_bred", null) != null:
+            continue
+        var terrain_id := str(tile.get("terrain", ""))
+        if terrain_id == "mountain" or _is_sea_terrain(terrain_id) \
+                or _is_impassable_terrain(terrain_id):
+            continue
+        var dist := HexUtils.hex_distance(candidate.row, candidate.col, town_row, town_col)
+        for n in HexUtils.get_neighbors_odd_r(candidate.row, candidate.col, rows, cols):
+            var nt = tile_data[n.row][n.col]
+            if nt == null or not _is_sea_terrain(str(nt.get("terrain", ""))):
+                continue
+            var body_id := _sea_body_id(tile_data, rows, cols, n.row, n.col, body_cache)
+            if not wanted.has(body_id):
+                continue
+            var prev = best.get(body_id, null)
+            if prev == null or _is_better_harbor_hex(candidate.row, candidate.col, dist, prev):
+                best[body_id] = {"row": candidate.row, "col": candidate.col,
+                        "tile": tile, "dist": dist}
+
+    for body_id in best:
+        _set_decorative_improvement(best[body_id].tile, "harbor")
+
+
 # Places the "fillers" of the world in the ring of the town. Such improvements are needed
 # only for the appearance: they are not the buildings of the player, they do not receive the workers and
 # they do not give the resources. For the resources the source of the improvement is taken exclusively from
 # improved_by, therefore the addition of the new types of the resources does not require the edits.
+#
+# The harbours are the one exception from "any free hex will do": they need a coastal
+# hex of the sea which holds the marine resources of the ring (see
+# _place_town_sea_harbors), therefore they are placed BEFORE the passes below - a
+# filler farm must not be able to take the only free hex of the coast.
 #
 # The EXCEPTION - the food fields of the town (see the block with the farms below). If in the ring
 # there is not a single food plant, the decorative farms are sown with the domesticated
@@ -760,6 +910,8 @@ func _is_impassable_terrain(terrain_id: String) -> bool:
 # so that the town looks and trades as a living one, and the player does not think "how do they not
 # starve?".
 func _place_decorative_town_improvements(tile_data: Array, rows: int, cols: int) -> void:
+    # The sea bodies are flood-filled once for the whole pass, see _sea_body_id.
+    var sea_body_cache: Dictionary = {}
     for town in towns:
         var candidates: Array = []
         for h in town.get("influence_hexes", []):
@@ -771,6 +923,8 @@ func _place_decorative_town_improvements(tile_data: Array, rows: int, cols: int)
             if tile == null or bool(tile.get("has_town", false)):
                 continue
             candidates.append({"row": row, "col": col, "tile": tile})
+
+        _place_town_sea_harbors(tile_data, rows, cols, town, candidates, sea_body_cache)
 
         var has_food_plant := false
         # The filler farms - the improvements farm without a natural resource. A town

@@ -1277,6 +1277,9 @@ static func is_coastal_hex(tile_data: Array, row: int, col: int, map_rows: int, 
 ## different bodies of water). If among the neighbours of any visited water hex
 ## there is a land with a harbour improvement (water_body_harbor == true in
 ## improvements.json) — the path exists, the resource is available.
+## The decorative harbours of the towns are NOT such a key: they are the scenery of
+## a foreign settlement, and a body of water is opened only by the harbour built
+## by the player.
 ## It is calculated dynamically, without a cache: the demolition of a harbour closes
 ## the access at once, no invalidation of the state is required.
 static func has_harbor_access(tile_data: Array, row: int, col: int, map_rows: int, map_cols: int) -> bool:
@@ -1312,6 +1315,7 @@ static func has_harbor_access(tile_data: Array, row: int, col: int, map_rows: in
             var imp_id = nt.get("improvement", null)
             if imp_id != null and imp_id != "":
                 var imp_data: Dictionary = GameData.improvements.get(imp_id, {})
-                if bool(imp_data.get("water_body_harbor", false)):
+                if bool(imp_data.get("water_body_harbor", false)) \
+                        and not bool(nt.get("decorative", false)):
                     return true
     return false
