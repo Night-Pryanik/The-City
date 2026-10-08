@@ -198,9 +198,36 @@ func load_all_data():
             consumption_rules.append(cr)
 
     # NEW: we load the game balance (data/game_balance.json).
-    # The numeric constants of the game: the starting city treasury, the internal
-    # market price multiplier, etc. The "game_balance" key is at the top level.
-    game_balance = merged_data.get("game_balance", {})
+    # The numeric constants of the game. The "game_balance" key is at the top level,
+    # and it is grouped into named blocks (city, expansion, towns) so that the file
+    # stays readable as it grows. The blocks are a layout of the FILE only:
+    # the constants are flattened back into one flat dictionary here, because every
+    # reader addresses a key by name (game_balance.get("base_tax_per_citizen")), not
+    # through its block. See _flatten_balance_blocks.
+    game_balance = _flatten_balance_blocks(merged_data.get("game_balance", {}))
+
+
+# Flattens the named blocks of the game balance into one flat dictionary.
+#
+# A block is a nested dictionary of constants. One level is enough — the blocks group
+# the fields by the system that owns them, they do not nest further — so a plain
+# one-level flatten keeps the lookup simple: any key of any block becomes a top-level
+# key. The names must therefore stay unique across the whole file, which the blocks
+# guarantee by construction.
+#
+# A non-dictionary value is a constant that was not grouped; it is carried over as
+# is, so a field may live either inside a block or at the top level while the file is
+# being reorganised.
+func _flatten_balance_blocks(blocks: Dictionary) -> Dictionary:
+    var flat: Dictionary = {}
+    for key in blocks.keys():
+        var value: Variant = blocks[key]
+        if value is Dictionary:
+            for field in value.keys():
+                flat[field] = value[field]
+        else:
+            flat[key] = value
+    return flat
 
 
 # Translates the values of the fields the player sees (DISPLAY_FIELDS) into the current

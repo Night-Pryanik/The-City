@@ -205,7 +205,18 @@ const INFLUENCE_NOTCH_MAX_DROPS := 3
 #   production          - the per-tick rate of the warehouse: product id -> units per
 #                         tick of a town. It is recomputed from the ring together with
 #                         the pools (TownEconomy.refresh_town) and is derived data:
-#                         it is not restored from the save.
+#                         it is not restored from the save. It is the PRODUCTION PLAN
+#                         (what the town is capable of making); the warehouse itself
+#                         is moved by the daily trade (see below).
+#   trade_signs         - the direction of the LAST trade of every product of the
+#                         warehouse: product id -> (+1 buy / -1 sell / 0 none). It is
+#                         the inertia input of the trade model (TownEconomy.tick_trade)
+#                         and, unlike "production", it is REAL WORLD STATE: it must
+#                         survive a save, otherwise a reload would flip the direction
+#                         of the next trade.
+#   trade_counter       - how many trade ticks this town has made. It seeds the town's
+#                         trade RNG together with the town id, so a reload replays the
+#                         same sequence rather than reshuffling the warehouse.
 #   production_started  - whether the town has already started to produce (see
 #                         _is_town_production_started). Until the player has seen the
 #                         hex of the town, the warehouse does not fill on its own:
@@ -286,6 +297,11 @@ func _make_town_record(town_index: int, row: int, col: int,
         "buy_pool": [],
         "treasury": get_town_initial_treasury(),
         "storage": {},
+        # The trade state: the last direction of every product (for inertia) and how
+        # many trade ticks the town has made (for the RNG stream). Both are saved
+        # with the record — see the field notes above the towns array.
+        "trade_signs": {},
+        "trade_counter": 0,
         "production_started": false,
     }
 
@@ -419,13 +435,15 @@ func _is_town_production_started(town: Dictionary, tile_data: Array) -> bool:
 
 
 # ONE tick of the simulation of ALL the towns: every town that has been discovered
-# adds its per-tick rate to its warehouse, up to the capacity per product.
+# makes one TRADE per product of its warehouse — the stock goes both up and down,
+# like a real market (TownEconomy.tick_trade). A sale never takes more than the
+# warehouse holds, so the stock cannot go negative or past the cap.
 #
-# The notification of the window is deliberately NOT emitted here. The towns produce
+# The notification of the window is deliberately NOT emitted here. The towns trade
 # every few seconds and most of them are not open, and the signal is emitted for
 # every changed town on every tick; the window of a town reads the warehouse of its
 # own record on opening and on a trade deal, and the sale column is refreshed by
-# town_storage_changed.
+# the caller (main_map) through town_ui.refresh_storage().
 func tick_towns(tile_data: Array) -> void:
     if towns.is_empty():
         return
@@ -433,12 +451,19 @@ func tick_towns(tile_data: Array) -> void:
     for town in towns:
         if not _is_town_production_started(town, tile_data):
             continue
-        var production: Dictionary = town.get("production", {})
-        if production.is_empty():
-            continue
         var storage: Dictionary = town.get("storage", {})
-        TownEconomy.store_production(storage, production, limit)
+        if storage.is_empty():
+            continue
+        # The trade state is part of the record: the signs for the inertia and the
+        # counter for the RNG stream. They are read, passed to the model and written
+        # straight back, so a save taken at any moment resumes the same sequence.
+        var signs: Dictionary = town.get("trade_signs", {})
+        var counter := int(town.get("trade_counter", 0))
+        counter = TownEconomy.tick_trade(storage, signs, counter,
+                str(town.get("id", "")), limit)
         town["storage"] = storage
+        town["trade_signs"] = signs
+        town["trade_counter"] = counter
 
 
 func _take_unique_town_name(preferred_name: String = "") -> String:
@@ -1417,6 +1442,12 @@ func serialize_towns() -> Array:
             # recalculated on the load by compute_all_town_influences ->
             # _refresh_sell_pools, so it cannot go stale against the pools.
             "storage": t.get("storage", {}),
+            # The trade state — REAL WORLD STATE, not derived: the last direction of
+            # every product (the inertia input) and the town's trade counter (the RNG
+            # stream). They must survive the save, otherwise a reload would flip the
+            # next trade and reshuffle the warehouse.
+            "trade_signs": t.get("trade_signs", {}),
+            "trade_counter": int(t.get("trade_counter", 0)),
             "production_started": bool(t.get("production_started", false)),
             # road_linked - the player has built a road from the city to this town.
             # As with the other roads, the segments are not written into the save: by this
@@ -1467,6 +1498,11 @@ func load_towns(data) -> void:
                 "treasury": int(entry.get("treasury", get_town_initial_treasury())),
                 # The warehouse and the flag of the production (see serialize_towns).
                 "storage": entry.get("storage", {}),
+                # The trade state: the last direction of every product (the inertia
+                # input) and the town's trade counter (the RNG stream). See
+                # serialize_towns.
+                "trade_signs": entry.get("trade_signs", {}),
+                "trade_counter": int(entry.get("trade_counter", 0)),
                 "production_started": bool(entry.get("production_started", false)),
                 # road_linked is a road from the city to the town (see serialize_towns).
                 "road_linked": bool(entry.get("road_linked", false)),

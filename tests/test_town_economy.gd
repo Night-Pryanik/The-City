@@ -38,13 +38,12 @@
 #  16. СКЛАД. У каждого товара пула продажи есть запас 100..500 (town_storage_
 #      initial_min/max), и он переживает повторный пересчёт пулов — проданное не
 #      возвращается назад при перезагрузке сейва.
-#  17. ПРОИЗВОДСТВО. Тик городка добавляет выход рецепта (10 шелка -> 10 шелка),
-#      а городок не знает дефицита: тик набивает склад, даже когда ресурсов,
-#      из которых делают, физически нет.
+#  17. ПЛАН ПРОИЗВОДСТВА. План производства (production) выводится из рецептов
+#      (10 шелка -> 10 шелка); склад двигает дневная торговля (тесты 23+).
 #  18. ЛИМИТ СКЛАДА. town_storage_limit на товар, а не на склад целиком: городок
-#      на пределе по одному товару продолжает копить остальные.
-#  19. ПРОИЗВОДСТВО ПОСЛЕ РАЗВЕДКИ. Неразведанный городок не производит, иначе к
-#      моменту встречи с игроком его склад уже стоял бы полным.
+#      на пределе по одному товару продолжает торговать остальными.
+#  19. ТОРГОВЛЯ ПОСЛЕ РАЗВЕДКИ. Неразведанный городок не торгует, иначе к
+#      моменту встречи с игроком его склад уже ушёл бы от стартового запаса.
 #  20. СДЕЛКА. Продажа списывает единицы со склада, покупка кладёт; за пределами
 #      запаса сделка не проходит, склад не уходит в минус.
 #  21. ОКНО. В колонке продажи видно число единиц на складе, и оно обновляется
@@ -53,6 +52,16 @@
 #      качество среди гексов кольца (а не первое найденное), крафт — стандартное
 #      средневзвешенное по ингредиентам; в окне — только звёзды в цвете уровня,
 #      без разбивки и процентов, с тултипом-подписью уровня.
+#  23. КОМФОРТ. Уровень запаса, к которому тянется торговля, ВЫВОДИТСЯ как
+#      середина town_storage_initial_min/max (300), отдельного поля нет.
+#  24. ДВУСТОРОННОСТЬ. Склад ходит И вверх, И вниз: за 400 тиков есть и покупки,
+#      и продажи, и склад не застывает на стартовом запасе.
+#  25. ГРАНИЦЫ. Склад не уходит в минус и не превышает лимит: на пустом складе
+#      направление вынужденно покупающее, на полном — продающее.
+#  26. ИНЕРЦИЯ. Направление повторяется, поэтому подъёмы и падения идут сериями
+#      длиной 3+ сделки, а не чередуются каждый день.
+#  27. СЕЙВ ТОРГОВЛИ. Направление последней сделки и счётчик тиков — состояние
+#      мира: после round-trip следующий тик идёт ровно тем же путём.
 extends SceneTree
 
 # Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
@@ -117,6 +126,10 @@ func _run() -> void:
     _test_production_plan()
     _test_storage_limit()
     await _test_production_after_scouting()
+    _test_trade_comfort_from_data()
+    _test_trade_moves_both_ways()
+    _test_trade_bounds_and_no_negative()
+    _test_trade_inertia_and_runs()
     await _test_trade_moves_goods()
     await _test_window_shows_stock()
 
@@ -705,9 +718,9 @@ func _test_storage_seeded() -> void:
     _check(differs, "у разных городков запас одного товара должен различаться")
 
 
-# 17. ПРОИЗВОДСТВО ПО РЕЦЕПТУ. Тик городка кладёт на склад ровно выход рецепта.
-# Проверяем на САМИХ данных рецептов, чтобы тест не разъехался с ними при правке
-# баланса: сколько рецепт обещает, столько и должно приходить за тик.
+# 17. ПЛАН ПРОИЗВОДСТВА ПО РЕЦЕПТУ. План производства (production) выводится
+# из рецептов: сколько рецепт обещает, столько и записано в план. Но план больше НЕ
+# двигает склад напрямую — склад двигает дневная ТОРГОВЛЯ (тест 23).
 func _test_production_plan() -> void:
     var gd = get_root().get_node("GameData")
     var base: Array = _te.collect_base_resources(_tiles_with([WOOD]))
@@ -734,53 +747,32 @@ func _test_production_plan() -> void:
     _check(checked > 0,
         "тест должен сверить хотя бы один товар с рецептом (сверено: %d)" % checked)
 
-    # Городок НЕ знает дефицита. План производства не зависит от наличия сырья:
-    # ингредиенты виртуальны, поэтому деревянный городок выдаёт уголь и доски, не
-    # имея ни угля, ни досок на складе. Проверяем это напрямую: за один тик
-    # склад пополняется тем же, что и на следующий, без всякого расхода сырья.
-    var storage: Dictionary = _te.build_initial_storage("town_prod",
-            _te.build_pools("town_prod", base)["sell_pool"])
-    var plan: Dictionary = pools["production"]
-    var before: Dictionary = storage.duplicate()
-    _te.store_production(storage, plan, _te.get_storage_limit())
-    var grew := false
-    for pid in plan:
-        if int(storage[pid]) > int(before[pid]):
-            grew = true
-    _check(grew, "тик производства должен пополнять склад")
-    # Сырьё, из которого делают, на складе не тратится: городок ничего не расходует.
-    for pid in plan:
-        _check(int(storage.get(pid, 0)) == int(before[pid]) + int(plan[pid]),
-            "склад «%s» должен вырасти ровно на выход рецепта" % pid)
-        break
-
 
 # 18. ЛИМИТ СКЛАДА. Лимит действует НА ТОВАР, а не на склад целиком: городок,
-#     упёршийся в предел по одному товару, продолжает копить остальные.
+#     упёршийся в предел по одному товару, продолжает торговать остальными.
 func _test_storage_limit() -> void:
     var limit: int = _te.get_storage_limit()
     _check(limit == 1000,
         "town_storage_limit в game_balance.json: ожидалось 1000, получено %d" % limit)
 
-    var storage: Dictionary = {WOOD: limit, PLANKS: 10}
-    var plan: Dictionary = {WOOD: 50, PLANKS: 5, CHARCOAL: 7}
-    _te.store_production(storage, plan, limit)
-    _check(int(storage[WOOD]) == limit,
-        "товар на пределе не должен превысить лимит (получено %d)" % int(storage[WOOD]))
-    _check(int(storage[PLANKS]) == 15,
-        "соседний товар должен продолжать копиться при пределе по другому")
-    _check(int(storage[CHARCOAL]) == 7,
-        "новый товар должен появиться на складе")
-
-    # Переполнение с нуля: старт ниже лимита, а тик кладёт больше, чем осталось.
-    var small := {WOOD: limit - 10}
-    _te.store_production(small, {WOOD: 999}, limit)
-    _check(int(small[WOOD]) == limit, "переполнение должно обрезаться по лимиту")
-    # Нулевая и отрицательная выработка не должны ничего добавлять.
-    var zero := {WOOD: 5}
-    _te.store_production(zero, {WOOD: 0, PLANKS: -3}, limit)
-    _check(int(zero[WOOD]) == 5, "нулевая выработка не должна менять склад")
-    _check(not zero.has(PLANKS), "отрицательная выработка не должна создавать товар")
+    # Товар на пределе и его сосед: длинный прогон торговли не должен выпустить
+    # ни один из них за лимит, но сосед обязан двигаться — предел по одному товару
+    # не замораживает остальные.
+    var storage: Dictionary = {WOOD: limit, PLANKS: 10, CHARCOAL: 7}
+    var signs: Dictionary = {}
+    var counter := 0
+    var planks_moved := false
+    for _i in range(200):
+        counter = _te.tick_trade(storage, signs, counter, "town_limit", limit)
+        _check(int(storage[WOOD]) <= limit and int(storage[WOOD]) >= 0,
+            "товар на пределе не должен выйти за лимит (получено %d)" % int(storage[WOOD]))
+        if int(storage[PLANKS]) != 10:
+            planks_moved = true
+    _check(planks_moved,
+        "соседний товар должен продолжать торговаться при пределе по другому")
+    for pid in storage:
+        _check(int(storage[pid]) >= 0 and int(storage[pid]) <= limit,
+            "«%s» вышел за границы [0, %d]: %d" % [str(pid), limit, int(storage[pid])])
 
 
 # Синтетическая карта, где заданный гекс (row, col) несёт флаги flags, а
@@ -796,8 +788,8 @@ func _map_with_tile(row: int, col: int, flags: Dictionary) -> Array:
     return tile_data
 
 
-# 19. ПРОИЗВОДСТВО НАЧИНАЕТСЯ ТОЛЬКО ПОСЛЕ РАЗВЕДКИ. Неразведанный городок молчит,
-# иначе к моменту встречи с игроком его склад уже стоял бы полным.
+# 19. ТОРГОВЛЯ НАЧИНАЕТСЯ ТОЛЬКО ПОСЛЕ РАЗВЕДКИ. Неразведанный городок не торгует,
+# иначе к моменту встречи с игроком его склад уже ушёл бы от стартового запаса.
 func _test_production_after_scouting() -> void:
     var gd = get_root().get_node("GameData")
     var city_data = get_root().get_node("CityData")
@@ -819,23 +811,31 @@ func _test_production_after_scouting() -> void:
     town["storage"] = {WOOD: 100}
     tm.towns.append(town)
 
-    # Гекс в неизвестном мире: флагов нет — городок не производит.
+    # Гекс в неизвестном мире: флагов нет — городок не торгует.
     var unknown := _map_with_tile(5, 5, {"is_explored": false, "in_influence": false})
     tm.tick_towns(unknown)
     _check(tm.get_town_goods(town, WOOD) == 100,
-        "неразведанный городок не должен производить (склад=%d)"
+        "неразведанный городок не должен торговать (склад=%d)"
             % tm.get_town_goods(town, WOOD))
     _check(not bool(town.get("production_started", false)),
         "флаг начала производства не должен выставляться до разведки")
+    _check(int(town.get("trade_counter", -1)) == 0,
+        "неразведанный городок не должен крутить счётчик торговли")
 
-    # Разведка открыла гекс — производство пошло.
+    # Разведка открыла гекс — торговля пошла. Склад сдвинулся в ЛЮБУЮ сторону, но
+    # ровно на одну сделку: не «+10 по плану», а рыночный лот 3..15 (или опт).
     unknown[5][5]["is_explored"] = true
     tm.tick_towns(unknown)
-    _check(tm.get_town_goods(town, WOOD) == 110,
-        "после разведки городок должен производить (склад=%d)"
-            % tm.get_town_goods(town, WOOD))
+    var after: int = tm.get_town_goods(town, WOOD)
+    _check(after != 100,
+        "после разведки городок должен торговать (склад остался %d)" % after)
+    var moved: int = absi(after - 100)
+    _check(moved >= int(_te.get_trade_min()),
+        "сделка не может быть меньше минимума (сдвиг %d)" % moved)
     _check(bool(town.get("production_started", false)),
         "флаг начала производства должен выставиться при разведке")
+    _check(int(town.get("trade_counter", -1)) == 1,
+        "разведанный городок должен продвинуть счётчик торговли")
 
     # Второй путь разведки — гекс внутри известной территории, без is_explored.
     var town2: Dictionary = tm._make_town_record(1, 1, 1, false)
@@ -845,9 +845,145 @@ func _test_production_after_scouting() -> void:
     tm.towns.append(town2)
     var known := _map_with_tile(1, 1, {"in_influence": true, "is_explored": false})
     tm.tick_towns(known)
-    _check(tm.get_town_goods(town2, WOOD) == 110,
-        "гекс в известной территории тоже запускает производство (склад=%d)"
+    _check(tm.get_town_goods(town2, WOOD) != 100,
+        "гекс в известной территории тоже запускает торговлю (склад=%d)"
             % tm.get_town_goods(town2, WOOD))
+    tm.queue_free()
+
+
+# 23. УРОВЕНЬ КОМФОРТА ВЫВОДИТСЯ ИЗ ДАННЫХ. Это середина диапазона стартового
+# запаса: городок рождается где-то в [town_storage_initial_min, max], значит
+# ровно этот диапазон и есть «здоровый запас» для игры. Отдельного поля нет
+# намеренно — иначе число разъехалось бы с диапазоном при правке баланса.
+func _test_trade_comfort_from_data() -> void:
+    var gd = get_root().get_node("GameData")
+    var low := float(gd.game_balance.get("town_storage_initial_min", 100))
+    var high := float(gd.game_balance.get("town_storage_initial_max", 500))
+    var expected := (low + high) * 0.5
+    _check(is_equal_approx(_te.get_trade_comfort(), expected),
+        "комфорт должен быть серединой диапазона стартового запаса: ожидалось %.1f, получено %.1f"
+            % [expected, _te.get_trade_comfort()])
+    # На текущих данных это ровно 300.
+    _check(is_equal_approx(_te.get_trade_comfort(), 300.0),
+        "на текущем game_balance.json комфорт должен быть 300 (получено %.1f)"
+            % _te.get_trade_comfort())
+
+
+# 24. ТОРГОВЛЯ ХОДИТ В ОБЕ СТОРОНЫ. Ключевое требование: цифры на складе то
+# прибавляются, то убавляются, как в реальной торговле, — а не монотонно растут
+# до потолка. Прогоняем длинный ряд тиков и проверяем, что были И покупки, И
+# продажи, и что склад не «прилип» к стартовому запасу.
+func _test_trade_moves_both_ways() -> void:
+    var tm = load("res://scripts/town_manager.gd").new()
+    get_root().add_child(tm)
+    var town: Dictionary = tm._make_town_record(0, 5, 5, false)
+    town["storage"] = {WOOD: 300}
+    # Счётчик торговли нужен: неразведанный/безгексовый городок не торгует, поэтому
+    # дёргаем модель напрямую через TownEconomy.tick_trade.
+    var ups := 0
+    var downs := 0
+    var limit: int = _te.get_storage_limit()
+    var signs: Dictionary = {}
+    var counter := 0
+    var previous := 300
+    for _i in range(400):
+        counter = _te.tick_trade(town["storage"], signs, counter, "town_moves", limit)
+        var now: int = int(town["storage"][WOOD])
+        if now > previous:
+            ups += 1
+        elif now < previous:
+            downs += 1
+        previous = now
+    _check(ups > 0 and downs > 0,
+        "за 400 тиков торговли должны быть и покупки, и продажи (вверх=%d, вниз=%d)"
+            % [ups, downs])
+    # Обе стороны должны быть существенными, а не одна случайная сделка: рынок
+    # обязан двигаться туда-сюда, а не ползти в одну сторону.
+    _check(ups >= 40 and downs >= 40,
+        "торговля должна быть двусторонней по существу (вверх=%d, вниз=%d)" % [ups, downs])
+    # Склад не должен стоять на месте весь прогон.
+    _check(int(town["storage"][WOOD]) != 300,
+        "склад не должен застыть на стартовом запасе")
+    tm.queue_free()
+
+
+# 25. ГРАНИЦЫ. Склад никогда не уходит в минус и не превышает лимит, даже если
+# гнать торговлю на пустом и на полном складе.
+func _test_trade_bounds_and_no_negative() -> void:
+    var limit: int = _te.get_storage_limit()
+    # Пустой склад: продавать нечего — направление вынужденно покупающее, склад
+    # растёт, а не падает ниже нуля.
+    var empty_rng := RandomNumberGenerator.new()
+    empty_rng.seed = 1
+    var empty: Dictionary = _te.trade_once(0, limit, -1, empty_rng)
+    _check(int(empty["stock"]) >= 0,
+        "пустой склад не может уйти в минус (склад=%d)" % int(empty["stock"]))
+    _check(int(empty["sign"]) >= 0,
+        "на пустом складе городок не может продавать (знак=%d)" % int(empty["sign"]))
+    # Полный склад: покупать некуда — направление вынужденно продающее, лимит не
+    # превышается.
+    var full_rng := RandomNumberGenerator.new()
+    full_rng.seed = 1
+    var full: Dictionary = _te.trade_once(limit, limit, 1, full_rng)
+    _check(int(full["stock"]) <= limit,
+        "полный склад не должен превысить лимит (склад=%d)" % int(full["stock"]))
+    _check(int(full["sign"]) <= 0,
+        "на полном складе городок не может покупать (знак=%d)" % int(full["sign"]))
+
+    # Длинный прогон от края до края: ни одного выхода за [0, limit] и ни одного
+    # отрицательного остатка.
+    var tm = load("res://scripts/town_manager.gd").new()
+    get_root().add_child(tm)
+    for start in [0, 1, 5, limit - 1, limit]:
+        var town: Dictionary = tm._make_town_record(0, 5, 5, false)
+        town["storage"] = {WOOD: int(start)}
+        var signs: Dictionary = {}
+        var counter := 0
+        for _i in range(300):
+            counter = _te.tick_trade(town["storage"], signs, counter,
+                    "town_bounds_%d" % start, limit)
+            var now: int = int(town["storage"][WOOD])
+            _check(now >= 0 and now <= limit,
+                "склад вышел за границы [0, %d]: %d (старт %d)" % [limit, now, int(start)])
+    tm.queue_free()
+
+
+# 26. ИНЕРЦИЯ И СЕРИИ. Направление повторяется, поэтому подъёмы и падения идут
+# короткими сериями, а не чередуются каждый день. Проверяем, что серии реально
+# длиннее одной сделки — именно это и просил дизайн («могут наблюдаться длинные
+# серии из подъёмов или падений»).
+func _test_trade_inertia_and_runs() -> void:
+    var limit: int = _te.get_storage_limit()
+    var tm = load("res://scripts/town_manager.gd").new()
+    get_root().add_child(tm)
+    var town: Dictionary = tm._make_town_record(0, 5, 5, false)
+    town["storage"] = {WOOD: 300}
+    var signs: Dictionary = {}
+    var counter := 0
+    var previous := 300
+    var run_length := 0
+    var run_direction := 0
+    var max_run := 0
+    var long_runs := 0
+    for _i in range(400):
+        counter = _te.tick_trade(town["storage"], signs, counter, "town_runs", limit)
+        var now: int = int(town["storage"][WOOD])
+        var direction := signi(now - previous)
+        if direction != 0 and direction == run_direction:
+            run_length += 1
+        else:
+            run_direction = direction
+            run_length = 1 if direction != 0 else 0
+        max_run = maxi(max_run, run_length)
+        if run_length >= 3:
+            long_runs += 1
+        previous = now
+    _check(max_run >= 3,
+        "инерция должна давать серии хотя бы из 3 сделок подряд (макс серия %d)" % max_run)
+    _check(long_runs > 0,
+        "должны встречаться серии подъёмов/падений длиной 3+ (найдено %d)" % long_runs)
+    # Направление последней сделки сохранено в state — оно и есть вход инерции.
+    _check(signs.has(WOOD), "направление последней сделки должно храниться в состоянии")
     tm.queue_free()
 
 
@@ -889,6 +1025,56 @@ func _test_trade_moves_goods() -> void:
     var loaded: Dictionary = tm.towns[0]
     _check(tm.get_town_goods(loaded, WOOD) == 150,
         "склад должен переживать сейв (получено %d)" % tm.get_town_goods(loaded, WOOD))
+
+    # 27. СОСТОЯНИЕ ТОРГОВЛИ ПЕРЕЖИВАЕТ СЕЙВ. Направление последней сделки и
+    # счётчик тиков — это СОСТОЯНИЕ МИРА, а не выводимые данные (в отличие от
+    # "production", который пересчитывается из кольца). Если их не сохранить, то
+    # при загрузке сделка «перевернётся», а склад перетасуется. Здесь проверяем
+    # ровно это: после round-trip следующий тик обязан пойти ТЕМ ЖЕ путём.
+    var trade_town: Dictionary = tm._make_town_record(7, 9, 9, false)
+    trade_town["storage"] = {WOOD: 300, PLANKS: 300}
+    tm.towns.append(trade_town)
+    var limit2: int = _te.get_storage_limit()
+    # Прокручиваем несколько тиков, чтобы состояние перестало быть тривиальным.
+    for _i in range(5):
+        var signs: Dictionary = trade_town.get("trade_signs", {})
+        var counter := int(trade_town.get("trade_counter", 0))
+        counter = _te.tick_trade(trade_town["storage"], signs, counter,
+                str(trade_town.get("id", "")), limit2)
+        trade_town["trade_signs"] = signs
+        trade_town["trade_counter"] = counter
+    _check(int(trade_town["trade_counter"]) == 5,
+        "счётчик торговли должен продвинуться на 5 тиков")
+    _check(not trade_town["trade_signs"].is_empty(),
+        "направления последних сделок должны быть записаны в состояние")
+
+    var round_trip: Array = tm.serialize_towns()
+    tm.load_towns(round_trip)
+    var reloaded: Dictionary = {}
+    for t in tm.towns:
+        if str(t.get("id", "")) == str(trade_town.get("id", "")):
+            reloaded = t
+            break
+    _check(not reloaded.is_empty(), "городок со состоянием торговли должен пережить сейв")
+    _check(int(reloaded.get("trade_counter", -1)) == 5,
+        "счётчик торговли должен переживать сейв (получено %s)"
+            % str(reloaded.get("trade_counter")))
+    _check(reloaded.get("trade_signs", {}) == trade_town["trade_signs"],
+        "направления сделок должны переживать сейв")
+    # И главное: следующий тик после загрузки повторяет тот, что был бы без неё.
+    var expected_signs: Dictionary = trade_town["trade_signs"].duplicate()
+    var expected_counter := int(trade_town["trade_counter"])
+    var expected_storage: Dictionary = trade_town["storage"].duplicate()
+    _te.tick_trade(expected_storage, expected_signs, expected_counter,
+            str(trade_town.get("id", "")), limit2)
+    var loaded_signs: Dictionary = reloaded["trade_signs"]
+    var loaded_counter := int(reloaded["trade_counter"])
+    _te.tick_trade(reloaded["storage"], loaded_signs, loaded_counter,
+            str(reloaded.get("id", "")), limit2)
+    _check(reloaded["storage"][WOOD] == expected_storage[WOOD]
+            and reloaded["storage"][PLANKS] == expected_storage[PLANKS],
+        "следующий тик после загрузки должен повторить тот же путь (получено %s, ожидалось %s)"
+            % [str(reloaded["storage"]), str(expected_storage)])
     tm.queue_free()
 
 

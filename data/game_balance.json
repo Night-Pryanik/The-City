@@ -1,134 +1,172 @@
 {
   // Game balance: numeric constants moved out of the code.
   //
-  // The fields live in the "game_balance" object (the top-level key of the file,
+  // The constants live in the "game_balance" object (the top-level key of the file,
   // like "consumption" in data/consumption.json or "map_config" in
   // data/map_config.json). Loaded via data_loader.gd -> GameData.game_balance.
   //
-  // Fields:
-  //   initial_treasury                 — the coins in the city treasury at the
-  //                                      start of a new game (the "treasury"
-  //                                      field in CityData).
-  //   town_initial_treasury            — the coins in the treasury of EVERY
-  //                                      town at the moment it is generated.
-  //                                      The town treasury lives in the town
-  //                                      record ("treasury") and changes only
-  //                                      through TownManager.add_town_treasury /
-  //                                      spend_town_treasury, which notify the
-  //                                      town window (town_treasury_changed).
-  //   base_tax_per_citizen             — the base tax: the coins that EVERY
-  //                                      citizen of the city pays into the
-  //                                      treasury per one simulation tick
-  //                                      (SIMULATION_TICK = 1 sec).
-  //                                      Collection is CityData.collect_taxes()
-  //                                      from CityData.do_tick(); the sum per
-  //                                      tick = base_tax_per_citizen ×
-  //                                      total_population
-  //                                      (see docs.md, "City treasury and
-  //                                      internal market", "Taxes").
-  //   internal_market_price_multiplier — the share of the base price of a good
-  //                                      (price from
-  //                                      data/products/*.json) at which
-  //                                      the internal market buys the good from
-  //                                      the city. The treasury profit per unit =
-  //                                      round(price * multiplier );
-  //                                      the treasury is always an integer.
-  //                                      Profit is credited
-  //                                      only for units actually written off on
-  //                                      consumption (see docs.md,
-  //                                      "City treasury and internal market").
-  //   distance_cost_modifier_per_hex   — the UNIVERSAL distance modifier:
-  //                                      an addition to the cost of an action
-  //                                      per each hex of distance from the city
-  //                                      (a share; 0.25 = +25% per hex).
-  //                                      It is applied to the costs of ONLY
-  //                                      those builds where the player picks
-  //                                      the hex themselves:
-  //                                        · the labour for building improvements
-  //                                          and special actions (MapHelpers.
-  //                                          get_improvement_work_cost);
-  //                                        · the coins for scouting a chunk and
-  //                                          claiming a chunk (expansion_manager).
-  //                                      The multiplier formula for a hex:
-  //                                      1 + distance × value
-  //                                      (see MapHelpers.get_distance_mult).
-  //   road_distance_cost_modifier_per_hex — THE SAME, but for a road SEGMENT
-  //                                      that the player builds. A separate
-  //                                      field on purpose: the formula
-  //                                      is applied to every segment
-  //                                      of the route, so the distance multiplier
-  //                                      is multiplied by the length of the road.
-  //                                      At 0.25 segment #20 would cost 6 times
-  //                                      more than the first one, and a road to a
-  //                                      distant town would become unaffordable.
-  //                                      0.1 gives a readable series 1.1, 1.2,
-  //                                      …, 2.0 (MapHelpers.
-  //                                      get_road_distance_mult). The terrain
-  //                                      multiplier (work_cost_mult from
-  //                                      terrains.json) and the tech modifiers
-  //                                      are applied to a segment just as they
-  //                                      are to an improvement. There is no
-  //                                      separate surcharge for the LENGTH of a
-  //                                      route: a long road takes longer to
-  //                                      build, because it has more segments,
-  //                                      not because of a penalty.
-  //                                      Tech modifiers (for example "Wheel",
-  //                                      target = "improvement_distance_cost")
-  //                                      are layered on top for both improvements
-  //                                      and the road.
-  //   scouting_cost_per_hex            — the base price of scouting one hex in
-  //                                      treasury coins. The price of a chunk =
-  //                                      the sum of the prices of its
-  //                                      hexes, each with its own distance
-  //                                      modifier (see docs.md, "Cost of
-  //                                      scouting (coins from the treasury)").
-  //   expansion_cost_per_hex           — the base price of claiming one hex in
-  //                                      treasury coins (written off immediately
-  //                                      at the start of the claim). The labour
-  //                                      is counted SEPARATELY and is NOT scaled
-  //                                      by distance: that is the expansion_cost
-  //                                      of the terrain in
-  //                                      data/terrains.json.
-  //   town_storage_limit               — the CAPACITY of the warehouse of one town,
-  //                                      in units PER product id. The limit is per
-  //                                      good, and not the total of the warehouse:
-  //                                      one town can hold 1000 wheat AND 1000
-  //                                      silk at the same time. A product that has
-  //                                      reached the limit simply stops taking more
-  //                                      units (the overflow is discarded, the
-  //                                      production itself is not lost forever —
-  //                                      it resumes being stored as soon as the
-  //                                      units are sold).
-  //                                      Applied by
-  //                                      TownEconomy.store_production.
-  //   town_storage_initial_min /
-  //   town_storage_initial_max         — the bounds of the STARTING stock of one
-  //                                      product in the warehouse of one town: a
-  //                                      town is generated with a random integer in
-  //                                      [min, max] units of EVERY product of its
-  //                                      sell_pool. The value is derived from
-  //                                      (the town id, the product id), and not
-  //                                      from the global RNG: it must be the same
-  //                                      on every recalculation of the pools.
-  //   town_tick_ticks                  — how many ticks of the common simulation
-  //                                      are in ONE tick of the simulation of a
-  //                                      town. 4 means that a town accumulates
-  //                                      its production 4 times slower than the
-  //                                      city does (TownManager.TOWN_TICK_SECONDS
-  //                                      = town_tick_ticks ×
-  //                                      CityData.SIMULATION_TICK).
+  // The object is grouped into blocks by the system that owns the constants:
+  //   city       — the treasury of the player's city and its internal market;
+  //   expansion  — the costs of extending the city's territory on the map;
+  //   towns      — the economy of the towns (their treasury, warehouse and trade).
+  //
+  // The blocks are a layout of THIS FILE only. On load they are flattened into one
+  // flat dictionary, so every constant is read by its own name
+  // (GameData.game_balance.get("base_tax_per_citizen")) — a constant is addressed
+  // directly, never through its block. The names are therefore unique across the
+  // whole file. See data_loader._flatten_balance_blocks.
   "game_balance": {
-    "initial_treasury": 100,
-    "town_initial_treasury": 1000,
-    "base_tax_per_citizen": 2,
-    "internal_market_price_multiplier": 1.0,
-    "distance_cost_modifier_per_hex": 0.25,
-    "road_distance_cost_modifier_per_hex": 0.1,
-    "scouting_cost_per_hex": 3,
-    "expansion_cost_per_hex": 5,
-    "town_storage_limit": 1000,
-    "town_storage_initial_min": 100,
-    "town_storage_initial_max": 500,
-    "town_tick_ticks": 4
+    // --- CITY: the treasury and the internal market of the player's city ---
+    "city": {
+      // initial_treasury — the coins in the city treasury at the start of a new game
+      //                    (the "treasury" field in CityData).
+      "initial_treasury": 100,
+
+      // base_tax_per_citizen — the base tax: the coins that EVERY citizen of the city
+      //                        pays into the treasury per one simulation tick
+      //                        (SIMULATION_TICK = 1 sec). Collection is
+      //                        CityData.collect_taxes() from CityData.do_tick();
+      //                        the sum per tick = base_tax_per_citizen ×
+      //                        total_population (see docs.md, "City treasury and
+      //                        internal market", "Taxes").
+      "base_tax_per_citizen": 2,
+
+      // internal_market_price_multiplier — the share of the base price of a good
+      //                        (price from data/products/*.json) at which the internal
+      //                        market buys the good from the city. The treasury profit
+      //                        per unit = round(price * multiplier); the treasury is
+      //                        always an integer. Profit is credited only for units
+      //                        actually written off on consumption (see docs.md,
+      //                        "City treasury and internal market").
+      "internal_market_price_multiplier": 1.0
+    },
+
+    // --- EXPANSION: the cost of extending the city's territory over the map ---
+    "expansion": {
+      // distance_cost_modifier_per_hex — the UNIVERSAL distance modifier: an addition
+      //                        to the cost of an action per each hex of distance from
+      //                        the city (a share; 0.25 = +25% per hex). It is applied
+      //                        to the costs of ONLY those builds where the player
+      //                        picks the hex themselves:
+      //                          · the labour for building improvements and special
+      //                            actions (MapHelpers.get_improvement_work_cost);
+      //                          · the coins for scouting a chunk and claiming a
+      //                            chunk (expansion_manager).
+      //                        The multiplier formula for a hex: 1 + distance × value
+      //                        (see MapHelpers.get_distance_mult).
+      "distance_cost_modifier_per_hex": 0.25,
+
+      // road_distance_cost_modifier_per_hex — THE SAME, but for a road SEGMENT that
+      //                        the player builds. A separate field on purpose: the
+      //                        formula is applied to every segment of the route, so
+      //                        the distance multiplier is multiplied by the length of
+      //                        the road. At 0.25 segment #20 would cost 6 times more
+      //                        than the first one, and a road to a distant town would
+      //                        become unaffordable. 0.1 gives a readable series 1.1,
+      //                        1.2, …, 2.0 (MapHelpers.get_road_distance_mult). The
+      //                        terrain multiplier (work_cost_mult from terrains.json)
+      //                        and the tech modifiers are applied to a segment just as
+      //                        they are to an improvement. There is no separate
+      //                        surcharge for the LENGTH of a route: a long road takes
+      //                        longer to build, because it has more segments, not
+      //                        because of a penalty. Tech modifiers (for example
+      //                        "Wheel", target = "improvement_distance_cost") are
+      //                        layered on top for both improvements and the road.
+      "road_distance_cost_modifier_per_hex": 0.1,
+
+      // scouting_cost_per_hex — the base price of scouting one hex in treasury coins.
+      //                        The price of a chunk = the sum of the prices of its
+      //                        hexes, each with its own distance modifier (see docs.md,
+      //                        "Cost of scouting (coins from the treasury)").
+      "scouting_cost_per_hex": 3,
+
+      // expansion_cost_per_hex — the base price of claiming one hex in treasury coins
+      //                        (written off immediately at the start of the claim).
+      //                        The labour is counted SEPARATELY and is NOT scaled by
+      //                        distance: that is the expansion_cost of the terrain in
+      //                        data/terrains.json.
+      "expansion_cost_per_hex": 5
+    },
+
+    // --- TOWNS: the treasury, the warehouse and the daily trade of a town ---
+    //
+    // A town is a small settlement on the map, not the player's city. It lives on
+    // its own, slower clock (town_tick_ticks), and every town tick it makes one
+    // trade per product of its warehouse — it either BUYS (the stock grows) or
+    // SELLS (the stock shrinks). The trade is TownEconomy.tick_trade.
+    "towns": {
+      // town_initial_treasury — the coins in the treasury of EVERY town at the moment
+      //                    it is generated. The town treasury lives in the town record
+      //                    ("treasury") and changes only through
+      //                    TownManager.add_town_treasury / spend_town_treasury, which
+      //                    notify the town window (town_treasury_changed).
+      "town_initial_treasury": 1000,
+
+      // town_tick_ticks — how many ticks of the common simulation are in ONE tick of
+      //                    the simulation of a town. 4 means that a town trades 4 times
+      //                    slower than the city ticks (TownManager.get_town_tick_seconds
+      //                    = town_tick_ticks × CityData.SIMULATION_TICK).
+      "town_tick_ticks": 4,
+
+      // town_storage_limit — the CAPACITY of the warehouse of one town, in units PER
+      //                    product id. The limit is per good, and not the total of the
+      //                    warehouse: one town can hold 1000 wheat AND 1000 silk at
+      //                    the same time. A product that has reached the limit stops
+      //                    taking more units (the overflow is discarded and resumes
+      //                    being stored as soon as the units are sold).
+      "town_storage_limit": 1000,
+
+      // town_storage_initial_min / town_storage_initial_max — the bounds of the
+      //                    STARTING stock of one product in the warehouse of one town:
+      //                    a town is generated with a random integer in [min, max]
+      //                    units of EVERY product of its sell_pool. The value is
+      //                    derived from (the town id, the product id), and not from
+      //                    the global RNG, because it must be the same on every
+      //                    recalculation of the pools. The range defines what "a
+      //                    healthy reserve" means for a town: its midpoint is the
+      //                    COMFORT level the trade pulls the stock back toward
+      //                    (TownEconomy.get_trade_comfort), so there is no separate
+      //                    constant for it.
+      "town_storage_initial_min": 100,
+      "town_storage_initial_max": 500,
+
+      // The size of a day's trade is what moves the number in the town window; the
+      // whole point is that it moves BOTH ways, like a real market. A town is its own
+      // little market: it trades in small lots and is not bound by the game-wide "10"
+      // floor that recipes and player purchases use (all amounts in data/crafts and
+      // data/consumption are at least 10, but a town lot of 3..6 is normal — the
+      // player reads the STOCK, he never measures a town trade against a recipe).
+
+      // town_trade_min / town_trade_max — the bounds of an ORDINARY trade: a flat draw
+      //                    from [min, max] units. This is the town's day-to-day
+      //                    movement; it is NOT the comfort level that anchors the
+      //                    direction of the trade (see town_storage_initial_min).
+      "town_trade_min": 3,
+      "town_trade_max": 15,
+
+      // town_trade_bulk_chance — the chance that a day's trade is a BULK trade (a
+      //                    caravan) rather than an ordinary one. On such a day the
+      //                    drawn lot is multiplied by a factor from
+      //                    [town_trade_bulk_min, town_trade_bulk_max]: the heavy tail
+      //                    that occasionally fills or drains the warehouse, and what
+      //                    makes the curve look alive.
+      // town_trade_bulk_min / town_trade_bulk_max — the bounds of that multiplier.
+      "town_trade_bulk_chance": 0.06,
+      "town_trade_bulk_min": 3,
+      "town_trade_bulk_max": 8,
+
+      // town_trade_inertia — how strongly the direction of the last trade repeats.
+      //                    Without it the sign would flip every day and the stock
+      //                    would look like pure noise; with it, rises and falls come in
+      //                    short runs.
+      "town_trade_inertia": 0.65,
+
+      // town_trade_bias_strength — how strongly a shortage tilts the town toward
+      //                    BUYING and a full warehouse toward SELLING. This is the
+      //                    anchor that keeps the stock around the comfort level:
+      //                    without any bias the stock is a pure random walk and half
+      //                    the towns end up pinned at zero or at the cap forever.
+      "town_trade_bias_strength": 0.6
+    }
   }
 }

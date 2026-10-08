@@ -163,10 +163,17 @@ static func collect_base_resources(tiles: Array) -> Array:
 # product ids, and the warehouse is the quantity behind each of them.
 #
 # A town never goes into deficit: if it has decided to make something, it makes it,
-# regardless of how many towns gather or import it. Therefore the production plan of
-# a town is a flat per-tick rate and not a real factory: the ingredients are not
-# consumed, and nothing is ever "out of stock" — only the limit of the warehouse
-# (town_storage_limit) stops the accumulation.
+# regardless of how many towns gather or import it. Therefore the INGREDIENTS of a
+# recipe are never consumed and nothing is ever "out of stock" — the town's own
+# production is not a real factory.
+#
+# The stock moves by daily TRADE: every town tick the town makes ONE trade per
+# product — a purchase or a sale — and the size of that trade is drawn from a
+# heavy-tailed distribution: an ordinary lot of a few units most days, occasionally a
+# bulk caravan that strongly fills or drains the warehouse. That is what makes the
+# number in the window go BOTH ways, like a real market, instead of climbing to the
+# cap and stopping. The logic is tick_trade; the constants are town_trade_* in
+# data/game_balance.json.
 
 # The per-tick rate of the raw materials of the ring: product id -> units per ONE town
 # tick. The source is the produces field of the resources — the very same source as the
@@ -308,22 +315,174 @@ static func build_initial_storage(town_id: String, sell_ids: Array) -> Dictionar
     return storage
 
 
-# Adds the production of ONE town tick to the warehouse, product by product.
+# --- The daily trade of a town ---
 #
-# The limit is per product: a town at the cap on one good keeps accumulating all its
-# others. The units that did not fit are simply discarded — the town keeps making
-# them, and they are stored again as soon as some of the stock is sold.
+# Every town tick the town makes ONE TRADE per product — a purchase (the stock grows)
+# or a sale (the stock shrinks) — so the stock moves both ways, like a real market.
 #
-# storage    — the warehouse of the town (it is edited in place);
-# production — product id -> units per tick;
-# limit      — the capacity per product (town_storage_limit).
-static func store_production(storage: Dictionary, production: Dictionary, limit: int) -> void:
-    for pid in production:
+# The DESIGN intent (agreed with the design owner):
+#   * the player does not audit the income/expense curve. He walks into a town,
+#     sees from the window that trade is happening, and looks at the STOCK and its
+#     quantity to decide what to buy. So the curve only has to look alive and the
+#     stock has to move at a believable rate;
+#   * ordinary trades are small and predictable (the same few units most days);
+#   * occasionally a BULK trade (a caravan) multiplies the lot several times over,
+#     which is what visibly fills or drains the warehouse;
+#   * the town is its OWN market and is NOT bound by the game-wide "10" floor the
+#     recipes use — a lot of 3..6 units is normal for a town.
+#
+# Everything here is derived from the town record so that it is stable across a
+# save: the RNG is seeded from (the town id, the trade counter), the counter is
+# stored in the record, and the last direction is stored in the record too. A
+# reload therefore replays the same sequence rather than reshuffling the warehouse.
+
+# The stock the town treats as a healthy reserve — the level its buying/selling
+# bias pulls it back toward, and the level at which buying and selling are equally
+# likely.
+#
+# It is DERIVED, not a constant of its own: it is the midpoint of the range a town
+# is born with (town_storage_initial_min .. town_storage_initial_max, 100..500 by
+# default -> 300). The reasoning is that the range a town is GENERATED at is, by
+# definition, what "a healthy reserve" means for this game, so the town drifts back
+# toward the level it was born at rather than toward some invented number.
+static func get_trade_comfort() -> float:
+    var low := float(GameData.game_balance.get("town_storage_initial_min", 100))
+    var high := float(GameData.game_balance.get("town_storage_initial_max", 500))
+    if high < low:
+        high = low
+    return (low + high) * 0.5
+
+
+# The bounds of an ORDINARY trade, in units. Floored at 0 so broken data cannot
+# produce a negative lot.
+static func get_trade_min() -> float:
+    return maxf(0.0, float(GameData.game_balance.get("town_trade_min", 3)))
+
+
+static func get_trade_max() -> float:
+    var low := get_trade_min()
+    var high := float(GameData.game_balance.get("town_trade_max", 15))
+    return maxf(low, high)
+
+
+# The size of ONE trade, in units. An ordinary lot is a flat draw from
+# [min, max]; on a bulk day the SAME lot is multiplied by a factor from
+# [town_trade_bulk_min, town_trade_bulk_max]. Multiplying the drawn lot (rather
+# than drawing the bulk lot independently) is what keeps the two regimes tied
+# together: a bulk trade is "the same day's trade, but a caravan".
+static func roll_trade_size(rng: RandomNumberGenerator) -> float:
+    var size := rng.randf_range(get_trade_min(), get_trade_max())
+    var bulk_chance := clampf(
+            float(GameData.game_balance.get("town_trade_bulk_chance", 0.06)), 0.0, 1.0)
+    if rng.randf() < bulk_chance:
+        var bulk_low := maxf(1.0, float(GameData.game_balance.get("town_trade_bulk_min", 3)))
+        var bulk_high := maxf(bulk_low, float(GameData.game_balance.get("town_trade_bulk_max", 8)))
+        size *= rng.randf_range(bulk_low, bulk_high)
+    return size
+
+
+# The next day's direction (+1 buy, -1 sell), given the current stock and the last
+# direction. Two forces shape it:
+#   * a shortage tilts the town toward buying, a full warehouse toward selling —
+#     without this the stock is a PURE RANDOM WALK and, over a long game, half the
+#     towns end up pinned at zero or at the cap for good;
+#   * inertia repeats yesterday's direction, so rises and falls come in short runs
+#     instead of alternating every single day.
+static func roll_trade_sign(stock: float, last_sign: int,
+        rng: RandomNumberGenerator) -> int:
+    var comfort := get_trade_comfort()
+    var fill := 0.5
+    if comfort > 0.0:
+        fill = clampf(stock / (comfort * 2.0), 0.0, 1.0)
+    var bias := float(GameData.game_balance.get("town_trade_bias_strength", 0.6))
+    # At fill = 0.5 (the comfort level) buying and selling are equally likely; the
+    # empty warehouse pushes buy_chance up, the full one pushes it down.
+    var buy_chance := clampf(0.5 + (0.5 - fill) * bias, 0.05, 0.95)
+    var inertia := clampf(float(GameData.game_balance.get("town_trade_inertia", 0.65)),
+            0.0, 1.0)
+    if last_sign != 0 and rng.randf() < inertia:
+        return last_sign
+    return 1 if rng.randf() < buy_chance else -1
+
+
+# ONE trade of ONE product of ONE town.
+#
+# It returns { "stock", "delta", "sign", "traded" }: the new stock (an integer,
+# clamped to [0, limit]), the real movement, the direction of the day and the size
+# of the lot. "sign" 0 means the day was a no-op, which can only happen at the cap —
+# a forced sale is always possible while there is stock.
+#
+# stock / limit — the warehouse cell to move; the function does NOT write anything
+#   (the caller owns the dictionary), it only computes;
+# last_sign — the direction of the previous day, for inertia;
+# rng       — the town's stream (seeded and advanced by the caller, see tick_trade).
+#
+# A sale can never take more than the warehouse holds: the lot is reduced to what is
+# actually there, so the stock never goes negative and the player never sees a
+# number that contradicts the log. A reduced lot below the ordinary minimum is FINE
+# — the town's own floor is its 3..15 range, and clearing out the last few units is
+# a normal end-of-day sale.
+static func trade_once(stock: int, limit: int, last_sign: int,
+        rng: RandomNumberGenerator) -> Dictionary:
+    var current := clampi(stock, 0, limit)
+    # An empty shelf has nothing to sell and a full one has no room to buy, so at the
+    # edges the direction is forced instead of rolled. That keeps the rng stream free
+    # of draws the warehouse could not honour, so the run lengths reflect trades that
+    # actually happened.
+    var sign := 0
+    if current <= 0:
+        sign = 1
+    elif current >= limit:
+        sign = -1
+    else:
+        sign = roll_trade_sign(float(current), last_sign, rng)
+    if sign > 0:
+        # A purchase cannot make the warehouse exceed the cap: the town only buys
+        # what fits. At the cap there is nothing to buy.
+        var room := limit - current
+        if room <= 0:
+            return {"stock": current, "delta": 0, "sign": 0, "traded": 0.0}
+        var bought := minf(roll_trade_size(rng), float(room))
+        var new_stock := current + int(round(bought))
+        return {"stock": new_stock, "delta": new_stock - current,
+                "sign": 1, "traded": bought}
+    # A sale: never more than there is. An empty warehouse has nothing to sell.
+    if current <= 0:
+        return {"stock": 0, "delta": 0, "sign": 0, "traded": 0.0}
+    var sold := minf(roll_trade_size(rng), float(current))
+    var after := current - int(round(sold))
+    return {"stock": after, "delta": after - current, "sign": -1, "traded": sold}
+
+
+# ONE trade tick of the whole warehouse of a town: every product on the shelf is
+# traded once, each with its own lot and its own direction.
+#
+# The per-product state lives in the record under "trade_signs" (product id -> last
+# direction) and "trade_counter" (how many ticks this town has traded). Both are
+# SAVED with the town — unlike "production", which is recomputed from the ring — so
+# that a reload replays the same sequence instead of reshuffling the warehouse.
+#
+# The stream: each tick builds a RandomNumberGenerator seeded from
+# (the town id, the counter). It is NOT one long-lived generator, because a
+# generator's position cannot be reconstructed from a seed alone after a reload —
+# but (town, N) reproduces tick N exactly, so the trade is stable across a save and
+# still advances from tick to tick.
+#
+# It returns the town's trade counter, so the caller can store it back.
+static func tick_trade(storage: Dictionary, signs: Dictionary, counter: int,
+        town_id: String, limit: int) -> int:
+    var rng := RandomNumberGenerator.new()
+    rng.seed = _seed_for(town_id, "trade:%d" % counter)
+    for pid in storage.keys():
         var id := str(pid)
-        var amount := int(production[pid])
-        if id.is_empty() or amount <= 0:
+        if id.is_empty() or id == "<null>":
             continue
-        storage[id] = mini(int(storage.get(id, 0)) + amount, limit)
+        var last_sign := int(signs.get(id, 0))
+        var result := trade_once(int(storage[id]), limit, last_sign, rng)
+        storage[id] = int(result["stock"])
+        signs[id] = int(result["sign"])
+    return counter + 1
+
 
 # --- CHECKING THE AVAILABILITY OF AN INGREDIENT ---
 
@@ -731,3 +890,13 @@ static func refresh_town(town: Dictionary, tile_data: Array) -> void:
         if not for_sale.has(id):
             storage.erase(id)
     town["storage"] = storage
+
+    # The trade state is pruned in step with the warehouse: the sign of a product
+    # that is no longer for sale must go with it, otherwise a product that returns
+    # to the pool later would inherit a stale direction. The counter is kept as is —
+    # it is the town's stream position, not a per-product value.
+    var signs: Dictionary = town.get("trade_signs", {})
+    for id in signs.keys():
+        if not for_sale.has(str(id)):
+            signs.erase(id)
+    town["trade_signs"] = signs
