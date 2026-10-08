@@ -52,14 +52,19 @@ func _run() -> void:
     _tm = load("res://scripts/town_manager.gd").new()
     get_root().add_child(_tm)
 
-    _test_island_is_never_chosen(state)
-    _test_generate_towns_all_on_mainland(state)
-    _test_control_joined_island_is_valid(state)
-    _test_era2_guarantee_town_is_reachable(state)
+    if WATCHDOG.wants_case("island_is_never_chosen"):
+        _test_island_is_never_chosen(state)
+    if WATCHDOG.wants_case("generate_towns_all_on_mainland"):
+        _test_generate_towns_all_on_mainland(state)
+    if WATCHDOG.wants_case("control_joined_island_is_valid"):
+        _test_control_joined_island_is_valid(state)
+    if WATCHDOG.wants_case("era2_guarantee_town_is_reachable"):
+        _test_era2_guarantee_town_is_reachable(state)
 
     get_root().remove_child(_tm)
     _tm.free()
 
+    WATCHDOG.report_skipped()
     if state["failed"]:
         print("TOWN REACHABILITY TEST FAILED")
         quit(1)

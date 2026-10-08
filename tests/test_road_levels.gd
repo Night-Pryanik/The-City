@@ -73,18 +73,25 @@ func _run() -> void:
     _rm = load("res://scripts/road_manager.gd").new()
     get_root().add_child(_rm)
 
-    _test_road_data(state)
-    _test_unlock_by_wheel(state)
-    _test_segment_level(state)
-    _test_route_and_speeds(state)
-    _test_upgrade(state)
+    if WATCHDOG.wants_case("road_data"):
+        _test_road_data(state)
+    if WATCHDOG.wants_case("unlock_by_wheel"):
+        _test_unlock_by_wheel(state)
+    if WATCHDOG.wants_case("segment_level"):
+        _test_segment_level(state)
+    if WATCHDOG.wants_case("route_and_speeds"):
+        _test_route_and_speeds(state)
+    if WATCHDOG.wants_case("upgrade"):
+        _test_upgrade(state)
 
     get_root().remove_child(_rm)
     _rm.free()
     _rm = null
 
-    await _test_live_scene(state)
+    if WATCHDOG.wants_case("live_scene"):
+        await _test_live_scene(state)
 
+    WATCHDOG.report_skipped()
     if state["failed"]:
         print("ROAD LEVELS TEST FAILED")
         quit(1)
@@ -479,9 +486,12 @@ func _test_live_scene(state: Dictionary) -> void:
                 > main_map.get_road_cost_breakdown(r2, c2, 1).get("cost", 0),
                 "трасса тележной дороги должна стоить дороже тропки", state)
 
-    await _test_road_level_in_hex_info(main_map, state)
-    await _test_extended_tooltip_survives_refresh(main_map, state)
-    await _test_upgrade_button_on_partial_route(main_map, state)
+    if WATCHDOG.wants_case("road_level_in_hex_info"):
+        await _test_road_level_in_hex_info(main_map, state)
+    if WATCHDOG.wants_case("extended_tooltip_survives_refresh"):
+        await _test_extended_tooltip_survives_refresh(main_map, state)
+    if WATCHDOG.wants_case("upgrade_button_on_partial_route"):
+        await _test_upgrade_button_on_partial_route(main_map, state)
 
     if main_map != null and is_instance_valid(main_map):
         get_root().remove_child(main_map)

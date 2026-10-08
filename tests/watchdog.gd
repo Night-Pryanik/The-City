@@ -67,3 +67,72 @@ static func _label(tree: SceneTree) -> String:
     if script == null or script.resource_path == "":
         return "без имени"
     return script.resource_path.get_file().get_basename()
+
+# --- Выбор отдельных кейсов -------------------------------------------------
+#
+# Тест из 25 кейсов гоняется целиком ради одного — это главная статья расходов
+# при правке одной механики. Фильтр приходит штатным способом Godot: после
+# разделителя `--` аргументы движок не разбирает и отдаёт приложению.
+#
+#     godot --headless --path . --script res://tests/test_town_economy.gd \
+#         -- --case=readiness --case=trade_comfort_from_data
+#
+# Живёт здесь, а не в каждом тесте, по той же причине, что и сторож: это общий
+# помощник, который уже preload'ится всеми тестами (в --script-режиме class_name
+# может быть ещё не в кеше, поэтому preload по пути надёжнее).
+const CASE_PREFIX := "--case="
+
+static func requested_cases() -> PackedStringArray:
+    var wanted := PackedStringArray()
+    for arg in OS.get_cmdline_user_args():
+        if arg.begins_with(CASE_PREFIX):
+            var value := arg.substr(CASE_PREFIX.length()).strip_edges()
+            if value != "":
+                wanted.append(value)
+    return wanted
+
+# Выполнять ли кейс с таким именем. Без фильтра — все.
+#
+# Сравнение по подстроке без учёта регистра: имена кейсов длинные
+# (`trade_comfort_from_data`), и набирать их целиком каждый раз незачем, а
+# тестов, где одна подстрока накрыла бы два разных кейса, в проекте нет.
+static func wants(name: String) -> bool:
+    var wanted := requested_cases()
+    if wanted.is_empty():
+        return true
+    for filter in wanted:
+        if name.to_lower().contains(filter.to_lower()):
+            return true
+    return false
+
+# Обёртка над вызовом кейса.
+#
+# Возвращает false, если кейс отфильтрован, и true, если его надо выполнить.
+# Вызывающий пишет так:
+#
+#     if WATCHDOG.wants_case("readiness"):
+#         _test_readiness()
+#     if WATCHDOG.wants_case("live_map"):
+#         await _test_live_map()
+#
+# Именно «сначала спросить, потом вызвать напрямую», а не «передать кейс
+# замыканием»: вызов корутины через Callable.call() движок обрывает с
+# «Trying to call an async function without await», а `await callable.call()`
+# движок принимает как обычное значение (await на не-сигнале просто
+# разворачивается), из-за чего корутина не выполняется до конца. Прямой вызов
+# в теле теста — единственная форма, которая работает и для обычных кейсов,
+# и для корутин.
+static func wants_case(name: String) -> bool:
+    if wants(name):
+        return true
+    _skipped.append(name)
+    return false
+
+static var _skipped := PackedStringArray()
+
+# Печатается тестом перед вердиктом. Пропущенные кейсы надо видеть: иначе
+# отфильтрованный прогон неотличим от полного по одной лишь строке «тест OK».
+static func report_skipped() -> void:
+    if _skipped.is_empty():
+        return
+    print("SKIPPED (--case): ", ", ".join(_skipped))

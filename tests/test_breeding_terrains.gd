@@ -25,12 +25,18 @@ func _run() -> void:
     var city = get_root().get_node("CityData")
     var map_helpers = load("res://scripts/map_helpers.gd")
 
-    _test_base_locations(map_helpers, state)
-    _test_oasis_resources(map_helpers, gdata, state)
-    _test_animal_locations(map_helpers, state)
-    _test_negative_and_invalid_cases(map_helpers, gdata, state)
-    _test_buildable_improvement(map_helpers, city, state)
+    if WATCHDOG.wants_case("base_locations"):
+        _test_base_locations(map_helpers, state)
+    if WATCHDOG.wants_case("oasis_resources"):
+        _test_oasis_resources(map_helpers, gdata, state)
+    if WATCHDOG.wants_case("animal_locations"):
+        _test_animal_locations(map_helpers, state)
+    if WATCHDOG.wants_case("negative_and_invalid_cases"):
+        _test_negative_and_invalid_cases(map_helpers, gdata, state)
+    if WATCHDOG.wants_case("buildable_improvement"):
+        _test_buildable_improvement(map_helpers, city, state)
 
+    WATCHDOG.report_skipped()
     if state["failed"]:
         print("BREEDING TERRAINS TEST FAILED")
         quit(1)

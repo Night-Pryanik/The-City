@@ -76,10 +76,14 @@ func _run() -> void:
         _finish(main_map, state)
         return
 
-    _test_ui_rows(state, building_id)
-    _test_details_tooltip(state, city_ui, building_id)
-    _test_building_panel(state, city_ui, building_id)
-    _test_actual_consumption(state, building_id)
+    if WATCHDOG.wants_case("ui_rows"):
+        _test_ui_rows(state, building_id)
+    if WATCHDOG.wants_case("details_tooltip"):
+        _test_details_tooltip(state, city_ui, building_id)
+    if WATCHDOG.wants_case("building_panel"):
+        _test_building_panel(state, city_ui, building_id)
+    if WATCHDOG.wants_case("actual_consumption"):
+        _test_actual_consumption(state, building_id)
 
     _finish(main_map, state)
 
@@ -515,6 +519,7 @@ func _finish(main_map, state: Dictionary) -> void:
     if main_map != null and is_instance_valid(main_map):
         get_root().remove_child(main_map)
         main_map.free()
+    WATCHDOG.report_skipped()
     if state["failed"]:
         print("BUILDING CONSUMPTION TEST FAILED")
         quit(1)

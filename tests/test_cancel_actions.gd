@@ -20,7 +20,14 @@
 extends SceneTree
 
 const WATCHDOG = preload("res://tests/watchdog.gd")
-const ROAD_ACTION_ID := "build_road"
+
+# The road level is passed to start_road_project, not the action id. Tests use
+# the same derivation as the game (build_manager picks the highest unlocked
+# level when the player does not choose one), so a balance change in the road
+# levels does not silently turn this into a different scenario.
+func _road_level() -> int:
+    var game_data = get_root().get_node("GameData")
+    return game_data.get_max_unlocked_road_level()
 
 var _gdata = null
 var _cdata = null
@@ -41,13 +48,18 @@ func _run() -> void:
     get_root().add_child(main_map)
     for _i in range(4):
         await process_frame
-    await _test_project_cancel_anywhere(state, main_map)
-    _test_special_action_label(state, main_map)
-    _test_expansion_and_scouting(state, main_map)
+    if WATCHDOG.wants_case("project_cancel_anywhere"):
+        await _test_project_cancel_anywhere(state, main_map)
+    if WATCHDOG.wants_case("special_action_label"):
+        _test_special_action_label(state, main_map)
+    if WATCHDOG.wants_case("expansion_and_scouting"):
+        _test_expansion_and_scouting(state, main_map)
     # ПОСЛЕДНИМ: подготовка разведывает всю карту, а освоению и разведке
     # нужны неразведанные гексы.
-    await _test_town_hex(state, main_map, main_map.control_panel)
+    if WATCHDOG.wants_case("town_hex"):
+        await _test_town_hex(state, main_map, main_map.control_panel)
 
+    WATCHDOG.report_skipped()
     if state["failed"]:
         print("CANCEL ACTIONS TEST FAILED")
         quit(1)
@@ -70,7 +82,7 @@ func _test_project_cancel_anywhere(state: Dictionary, main_map) -> void:
     var plan: Dictionary = main_map.get_road_plan(row, col)
     check(int(plan.get("segments", 0)) >= 3,
             "маршрут должен быть длиной хотя бы 3 участка", state)
-    check(main_map.start_road_project(row, col, ROAD_ACTION_ID),
+    check(main_map.start_road_project(row, col, _road_level()),
             "дорогу должно быть можно запустить", state)
 
     var pm = main_map.project_manager
@@ -187,7 +199,7 @@ func _test_special_action_label(state: Dictionary, main_map) -> void:
     if not target.is_empty():
         var row := int(target.row)
         var col := int(target.col)
-        main_map.start_road_project(row, col, ROAD_ACTION_ID)
+        main_map.start_road_project(row, col, _road_level())
         var project: Dictionary = main_map.project_manager.get_project_at(row, col)
         var steps: Array = project.get("steps", [])
         if not steps.is_empty():
@@ -478,7 +490,7 @@ func _test_town_hex(state: Dictionary, main_map, panel) -> void:
         return
     var row := int(town.row)
     var col := int(town.col)
-    var start: bool = main_map.start_road_project(row, col, ROAD_ACTION_ID)
+    var start: bool = main_map.start_road_project(row, col, _road_level())
     check(start, "дорогу к городку должно быть можно запустить", state)
     var acts: Array = _actions(panel, main_map, row, col)
     _check_no_duplicates(acts, state, "гексе чужого городка")

@@ -107,32 +107,59 @@ func _run() -> void:
     # кеше (тот же аргумент, что у MapHelpers в других тестах).
     _te = load("res://scripts/town_economy.gd")
 
-    _test_closure()
-    _test_group_closes_with_one_member()
-    _test_readiness()
-    _test_cascade()
-    _test_import_isolated_from_sell()
-    _test_determinism()
-    _test_group_member()
-    _test_base_pool_is_products_only()
-    _test_animals_excluded()
-    _test_one_time_resources()
-    _test_duplicate_names_hidden()
-    await _test_live_map()
-    await _test_town_ui_window()
-    await _test_town_quality()
-    await _test_town_treasury()
-    _test_storage_seeded()
-    _test_production_plan()
-    _test_storage_limit()
-    await _test_production_after_scouting()
-    _test_trade_comfort_from_data()
-    _test_trade_moves_both_ways()
-    _test_trade_bounds_and_no_negative()
-    _test_trade_inertia_and_runs()
-    await _test_trade_moves_goods()
-    await _test_window_shows_stock()
+    # Кейсы можно выбрать по имени: -- --case=readiness. См. watchdog.gd.
+    if WATCHDOG.wants_case("closure"):
+        _test_closure()
+    if WATCHDOG.wants_case("group_closes_with_one_member"):
+        _test_group_closes_with_one_member()
+    if WATCHDOG.wants_case("readiness"):
+        _test_readiness()
+    if WATCHDOG.wants_case("cascade"):
+        _test_cascade()
+    if WATCHDOG.wants_case("import_isolated_from_sell"):
+        _test_import_isolated_from_sell()
+    if WATCHDOG.wants_case("determinism"):
+        _test_determinism()
+    if WATCHDOG.wants_case("group_member"):
+        _test_group_member()
+    if WATCHDOG.wants_case("base_pool_is_products_only"):
+        _test_base_pool_is_products_only()
+    if WATCHDOG.wants_case("animals_excluded"):
+        _test_animals_excluded()
+    if WATCHDOG.wants_case("one_time_resources"):
+        _test_one_time_resources()
+    if WATCHDOG.wants_case("duplicate_names_hidden"):
+        await _test_duplicate_names_hidden()
+    if WATCHDOG.wants_case("live_map"):
+        await _test_live_map()
+    if WATCHDOG.wants_case("town_ui_window"):
+        await _test_town_ui_window()
+    if WATCHDOG.wants_case("town_quality"):
+        await _test_town_quality()
+    if WATCHDOG.wants_case("town_treasury"):
+        await _test_town_treasury()
+    if WATCHDOG.wants_case("storage_seeded"):
+        _test_storage_seeded()
+    if WATCHDOG.wants_case("production_plan"):
+        _test_production_plan()
+    if WATCHDOG.wants_case("storage_limit"):
+        _test_storage_limit()
+    if WATCHDOG.wants_case("production_after_scouting"):
+        _test_production_after_scouting()
+    if WATCHDOG.wants_case("trade_comfort_from_data"):
+        _test_trade_comfort_from_data()
+    if WATCHDOG.wants_case("trade_moves_both_ways"):
+        _test_trade_moves_both_ways()
+    if WATCHDOG.wants_case("trade_bounds_and_no_negative"):
+        _test_trade_bounds_and_no_negative()
+    if WATCHDOG.wants_case("trade_inertia_and_runs"):
+        _test_trade_inertia_and_runs()
+    if WATCHDOG.wants_case("trade_moves_goods"):
+        _test_trade_moves_goods()
+    if WATCHDOG.wants_case("window_shows_stock"):
+        await _test_window_shows_stock()
 
+    WATCHDOG.report_skipped()
     print("test_town_economy: ", "ПРОВАЛЕН" if _failed else "все проверки пройдены")
     quit(2 if _failed else 0)
 

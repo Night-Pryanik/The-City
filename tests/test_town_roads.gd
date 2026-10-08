@@ -55,10 +55,14 @@ func _run() -> void:
     _rm = load("res://scripts/road_manager.gd").new()
     get_root().add_child(_rm)
 
-    _test_every_town_improvement_has_road(state)
-    _test_networks_are_separate(state)
-    _test_decorative_improvements_not_in_player_network(state)
-    _test_water_improvement_has_no_road(state)
+    if WATCHDOG.wants_case("every_town_improvement_has_road"):
+        _test_every_town_improvement_has_road(state)
+    if WATCHDOG.wants_case("networks_are_separate"):
+        _test_networks_are_separate(state)
+    if WATCHDOG.wants_case("decorative_improvements_not_in_player_network"):
+        _test_decorative_improvements_not_in_player_network(state)
+    if WATCHDOG.wants_case("water_improvement_has_no_road"):
+        _test_water_improvement_has_no_road(state)
 
     # Живая сцена проверяется последней и отдельно освобождается: MainMap
     # создаёт собственные TownManager/RoadManager, и держать рядом вторые
@@ -70,8 +74,10 @@ func _run() -> void:
     _tm = null
     _rm = null
 
-    await _test_live_scene(state)
+    if WATCHDOG.wants_case("live_scene"):
+        await _test_live_scene(state)
 
+    WATCHDOG.report_skipped()
     if state["failed"]:
         print("TOWN ROADS TEST FAILED")
         quit(1)

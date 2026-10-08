@@ -27,6 +27,14 @@ func _initialize() -> void:
     WATCHDOG.arm(self)
     _run()
 
+# The road level is what start_road_project takes as its third argument (the
+# action id is not). The level is derived the way the game derives it when the
+# player has not picked one, so a road-level balance change does not silently
+# turn this into a different scenario.
+func _road_level() -> int:
+    var game_data = get_root().get_node("GameData")
+    return game_data.get_max_unlocked_road_level()
+
 func _run() -> void:
     var state = {"failed": false}
 
@@ -39,18 +47,25 @@ func _run() -> void:
     _pm = load("res://scripts/project_manager.gd").new()
     get_root().add_child(_pm)
 
-    _test_one_step_at_a_time(state)
-    _test_ghost_shrinks(state)
-    _test_other_project_kind(state)
-    _test_cancel(state)
-    _test_save_restore(state)
+    if WATCHDOG.wants_case("one_step_at_a_time"):
+        _test_one_step_at_a_time(state)
+    if WATCHDOG.wants_case("ghost_shrinks"):
+        _test_ghost_shrinks(state)
+    if WATCHDOG.wants_case("other_project_kind"):
+        _test_other_project_kind(state)
+    if WATCHDOG.wants_case("cancel"):
+        _test_cancel(state)
+    if WATCHDOG.wants_case("save_restore"):
+        _test_save_restore(state)
 
     get_root().remove_child(_pm)
     _pm.free()
     _pm = null
 
-    await _test_live_road(state)
+    if WATCHDOG.wants_case("live_road"):
+        await _test_live_road(state)
 
+    WATCHDOG.report_skipped()
     if state["failed"]:
         print("STAGED PROJECTS TEST FAILED")
         quit(1)
@@ -303,7 +318,7 @@ func _test_live_road(state: Dictionary) -> void:
 
     var previous_flag: bool = bool(_cdata.ignore_build_requirements)
     _cdata.ignore_build_requirements = false
-    check(main_map.start_road_project(row, col, "build_road"),
+    check(main_map.start_road_project(row, col, _road_level()),
             "дорогу на живой сцене должно быть можно запустить", state)
     var project: Dictionary = pm.get_project_at(row, col)
     var step_count: int = project.get("steps", []).size()

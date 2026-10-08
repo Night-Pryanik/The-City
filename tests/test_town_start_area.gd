@@ -61,11 +61,16 @@ func _run() -> void:
     _tm = load("res://scripts/town_manager.gd").new()
     get_root().add_child(_tm)
 
-    _test_player_resources_are_not_attraction(state)
-    _test_player_strategic_is_not_attraction(state)
-    _test_ring_is_clipped_by_player_area(state)
-    _test_loaded_towns_are_clipped(state)
-    _test_generate_towns_remembers_player_area(state)
+    if WATCHDOG.wants_case("player_resources_are_not_attraction"):
+        _test_player_resources_are_not_attraction(state)
+    if WATCHDOG.wants_case("player_strategic_is_not_attraction"):
+        _test_player_strategic_is_not_attraction(state)
+    if WATCHDOG.wants_case("ring_is_clipped_by_player_area"):
+        _test_ring_is_clipped_by_player_area(state)
+    if WATCHDOG.wants_case("loaded_towns_are_clipped"):
+        _test_loaded_towns_are_clipped(state)
+    if WATCHDOG.wants_case("generate_towns_remembers_player_area"):
+        _test_generate_towns_remembers_player_area(state)
 
     # Живая сцена — последней и отдельно: MainMap создаёт собственный
     # TownManager, держать рядом второй экземпляр незачем.
@@ -73,8 +78,10 @@ func _run() -> void:
     _tm.free()
     _tm = null
 
-    await _test_live_scene(state)
+    if WATCHDOG.wants_case("live_scene"):
+        await _test_live_scene(state)
 
+    WATCHDOG.report_skipped()
     if state["failed"]:
         print("TOWN START AREA TEST FAILED")
         quit(1)

@@ -73,14 +73,22 @@ func _run() -> void:
     _tm = load("res://scripts/town_manager.gd").new()
     get_root().add_child(_tm)
 
-    _test_town_without_food_gets_field(state)
-    _test_wild_food_is_not_a_field(state)
-    _test_reload_keeps_the_same_crop(state)
-    _test_crop_is_picked_per_field(state)
-    _test_town_with_own_food_plant_unchanged(state)
-    _test_town_without_plain_stays_foodless(state)
-    _test_crops_vary_between_towns(state)
-    _test_old_save_bare_farms_get_seeded(state)
+    if WATCHDOG.wants_case("town_without_food_gets_field"):
+        _test_town_without_food_gets_field(state)
+    if WATCHDOG.wants_case("wild_food_is_not_a_field"):
+        _test_wild_food_is_not_a_field(state)
+    if WATCHDOG.wants_case("reload_keeps_the_same_crop"):
+        _test_reload_keeps_the_same_crop(state)
+    if WATCHDOG.wants_case("crop_is_picked_per_field"):
+        _test_crop_is_picked_per_field(state)
+    if WATCHDOG.wants_case("town_with_own_food_plant_unchanged"):
+        _test_town_with_own_food_plant_unchanged(state)
+    if WATCHDOG.wants_case("town_without_plain_stays_foodless"):
+        _test_town_without_plain_stays_foodless(state)
+    if WATCHDOG.wants_case("crops_vary_between_towns"):
+        _test_crops_vary_between_towns(state)
+    if WATCHDOG.wants_case("old_save_bare_farms_get_seeded"):
+        _test_old_save_bare_farms_get_seeded(state)
 
     # Живая сцена — последней и отдельно: MainMap создаёт собственный
     # TownManager, держать рядом второй экземпляр незачем.
@@ -88,8 +96,10 @@ func _run() -> void:
     _tm.free()
     _tm = null
 
-    await _test_live_scene(state)
+    if WATCHDOG.wants_case("live_scene"):
+        await _test_live_scene(state)
 
+    WATCHDOG.report_skipped()
     if state["failed"]:
         print("TOWN FOOD FIELDS TEST FAILED")
         quit(1)

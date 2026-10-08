@@ -24,11 +24,16 @@ func _run() -> void:
     _hu = load("res://scripts/HexUtils.gd")
     _mh = load("res://scripts/map_helpers.gd")
 
-    _test_local_coast_width(state)
-    _test_islands_do_not_add_shallows(state)
-    _test_harbor_connectivity(state)
-    _test_generated_sea_and_resources(state)
+    if WATCHDOG.wants_case("local_coast_width"):
+        _test_local_coast_width(state)
+    if WATCHDOG.wants_case("islands_do_not_add_shallows"):
+        _test_islands_do_not_add_shallows(state)
+    if WATCHDOG.wants_case("harbor_connectivity"):
+        _test_harbor_connectivity(state)
+    if WATCHDOG.wants_case("generated_sea_and_resources"):
+        _test_generated_sea_and_resources(state)
 
+    WATCHDOG.report_skipped()
     if state["failed"]:
         print("SEA COAST TEST FAILED")
         quit(1)

@@ -74,13 +74,20 @@ func _run() -> void:
     _tm = load("res://scripts/town_manager.gd").new()
     get_root().add_child(_tm)
 
-    _test_cost_per_hex(state)
-    _test_plan_and_build_hex(state)
-    _test_impossible_targets(state)
-    _test_town_road_needs_known_territory(state)
-    _test_ghost_segments(state)
-    _test_town_link(state)
-    _test_restore_from_save_flags(state)
+    if WATCHDOG.wants_case("cost_per_hex"):
+        _test_cost_per_hex(state)
+    if WATCHDOG.wants_case("plan_and_build_hex"):
+        _test_plan_and_build_hex(state)
+    if WATCHDOG.wants_case("impossible_targets"):
+        _test_impossible_targets(state)
+    if WATCHDOG.wants_case("town_road_needs_known_territory"):
+        _test_town_road_needs_known_territory(state)
+    if WATCHDOG.wants_case("ghost_segments"):
+        _test_ghost_segments(state)
+    if WATCHDOG.wants_case("town_link"):
+        _test_town_link(state)
+    if WATCHDOG.wants_case("restore_from_save_flags"):
+        _test_restore_from_save_flags(state)
 
     # Живая сцена проверяется последней и отдельно освобождается: MainMap
     # создаёт собственные TownManager/RoadManager.
@@ -91,8 +98,10 @@ func _run() -> void:
     _tm = null
     _rm = null
 
-    await _test_live_scene(state)
+    if WATCHDOG.wants_case("live_scene"):
+        await _test_live_scene(state)
 
+    WATCHDOG.report_skipped()
     if state["failed"]:
         print("ROAD BUILDING TEST FAILED")
         quit(1)

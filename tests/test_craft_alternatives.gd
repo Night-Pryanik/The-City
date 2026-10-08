@@ -34,11 +34,16 @@ func _run() -> void:
     gd.load_all_data()
     var city = get_root().get_node("CityData")
 
-    _test_normalization(gd, state)
-    _test_container_consumes_one_variant(gd, city, state)
-    _test_recipe_completes_on_alternative(city, state)
-    _test_town_economy_or_group(state)
+    if WATCHDOG.wants_case("normalization"):
+        _test_normalization(gd, state)
+    if WATCHDOG.wants_case("container_consumes_one_variant"):
+        _test_container_consumes_one_variant(gd, city, state)
+    if WATCHDOG.wants_case("recipe_completes_on_alternative"):
+        _test_recipe_completes_on_alternative(city, state)
+    if WATCHDOG.wants_case("town_economy_or_group"):
+        _test_town_economy_or_group(state)
 
+    WATCHDOG.report_skipped()
     if state["failed"]:
         print("CRAFT ALTERNATIVES TEST FAILED")
         quit(1)

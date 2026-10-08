@@ -65,12 +65,18 @@ func _run() -> void:
     check(not city.ignore_build_requirements,
             "переключатель по умолчанию должен быть выключен", state)
 
-    _test_scouting(main_map, em, city, state)
-    _test_expansion(main_map, em, bm, city, state)
-    _test_forage(main_map, bm, city, state)
-    _test_drain(main_map, bm, city, state)
-    _test_build_limit_gate(main_map, bm, cp, city, gdata, state)
-    _test_inflight_expansion(main_map, em, bm, city, state)
+    if WATCHDOG.wants_case("scouting"):
+        _test_scouting(main_map, em, city, state)
+    if WATCHDOG.wants_case("expansion"):
+        _test_expansion(main_map, em, bm, city, state)
+    if WATCHDOG.wants_case("forage"):
+        _test_forage(main_map, bm, city, state)
+    if WATCHDOG.wants_case("drain"):
+        _test_drain(main_map, bm, city, state)
+    if WATCHDOG.wants_case("build_limit_gate"):
+        _test_build_limit_gate(main_map, bm, cp, city, gdata, state)
+    if WATCHDOG.wants_case("inflight_expansion"):
+        _test_inflight_expansion(main_map, em, bm, city, state)
 
     _finish(main_map, state)
 
@@ -468,6 +474,7 @@ func _finish(main_map, state: Dictionary) -> void:
     if main_map != null and is_instance_valid(main_map):
         get_root().remove_child(main_map)
         main_map.free()
+    WATCHDOG.report_skipped()
     if state["failed"]:
         print("IGNORE BUILD REQUIREMENTS TEST FAILED")
         quit(1)

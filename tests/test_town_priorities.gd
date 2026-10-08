@@ -54,17 +54,25 @@ func _run() -> void:
     _tm = load("res://scripts/town_manager.gd").new()
     get_root().add_child(_tm)
 
-    _test_resources_beat_water(state)
-    _test_primary_exhausted_falls_through(state)
-    _test_full_map_scan_finds_only_valid_hex(state)
-    _test_and_chain_reaches_ideal(state)
-    _test_skipped_tier_does_not_break_cascade(state)
-    _test_empty_map_places_nothing(state)
-    _test_generate_towns_places_all(state)
+    if WATCHDOG.wants_case("resources_beat_water"):
+        _test_resources_beat_water(state)
+    if WATCHDOG.wants_case("primary_exhausted_falls_through"):
+        _test_primary_exhausted_falls_through(state)
+    if WATCHDOG.wants_case("full_map_scan_finds_only_valid_hex"):
+        _test_full_map_scan_finds_only_valid_hex(state)
+    if WATCHDOG.wants_case("and_chain_reaches_ideal"):
+        _test_and_chain_reaches_ideal(state)
+    if WATCHDOG.wants_case("skipped_tier_does_not_break_cascade"):
+        _test_skipped_tier_does_not_break_cascade(state)
+    if WATCHDOG.wants_case("empty_map_places_nothing"):
+        _test_empty_map_places_nothing(state)
+    if WATCHDOG.wants_case("generate_towns_places_all"):
+        _test_generate_towns_places_all(state)
 
     get_root().remove_child(_tm)
     _tm.free()
 
+    WATCHDOG.report_skipped()
     if state["failed"]:
         print("TOWN PRIORITIES TEST FAILED")
         quit(1)

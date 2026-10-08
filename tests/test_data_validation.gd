@@ -40,12 +40,18 @@ func _initialize():
     WATCHDOG.arm(self)
     var state = {"failed": false}
 
-    _test_detector(state)
-    _test_no_false_positives_on_synthetic(state)
-    _test_lumberjack_depends_on_data(state)
-    _test_real_data(state)
-    _test_localization(state)
+    if WATCHDOG.wants_case("detector"):
+        _test_detector(state)
+    if WATCHDOG.wants_case("no_false_positives_on_synthetic"):
+        _test_no_false_positives_on_synthetic(state)
+    if WATCHDOG.wants_case("lumberjack_depends_on_data"):
+        _test_lumberjack_depends_on_data(state)
+    if WATCHDOG.wants_case("real_data"):
+        _test_real_data(state)
+    if WATCHDOG.wants_case("localization"):
+        _test_localization(state)
 
+    WATCHDOG.report_skipped()
     if state["failed"]:
         print("VALIDATION TEST FAILED")
         quit(1)

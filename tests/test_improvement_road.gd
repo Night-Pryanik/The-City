@@ -49,16 +49,22 @@ func _run() -> void:
     await process_frame
     await process_frame
 
-    _test_chain(main_map, state)
-    _test_single_slot(main_map, state)
-    _test_instant_debug_flag(main_map, state)
-    _test_preview(main_map, state)
-    _test_save_restore(main_map, state)
+    if WATCHDOG.wants_case("chain"):
+        _test_chain(main_map, state)
+    if WATCHDOG.wants_case("single_slot"):
+        _test_single_slot(main_map, state)
+    if WATCHDOG.wants_case("instant_debug_flag"):
+        _test_instant_debug_flag(main_map, state)
+    if WATCHDOG.wants_case("preview"):
+        _test_preview(main_map, state)
+    if WATCHDOG.wants_case("save_restore"):
+        _test_save_restore(main_map, state)
 
     if main_map != null and is_instance_valid(main_map):
         get_root().remove_child(main_map)
         main_map.free()
 
+    WATCHDOG.report_skipped()
     if state["failed"]:
         print("IMPROVEMENT ROAD TEST FAILED")
         quit(1)
