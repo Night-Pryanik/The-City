@@ -1,5 +1,9 @@
 # Comment Guidelines for AI Agents
 
+## No Save Migration
+
+The game does not maintain backward compatibility with old save files. When adding new mechanics or modifying existing ones, **do not write save migration code**. When a saved data format changes, old saves are simply considered invalid.
+
 ## Purpose
 
 Comments in this project should explain the **current state of the project**, not its development history.
