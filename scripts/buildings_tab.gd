@@ -1079,6 +1079,12 @@ func _refresh_recipes_list(bdata: Dictionary):
     header.mouse_filter = Control.MOUSE_FILTER_IGNORE
     content.add_child(header)
 
+    # The name column is sized to the longest recipe name of the building, so that
+    # the icons of the ingredients and of the products form a single vertical line
+    # across all recipe rows.
+    var name_column_width = 0.0
+    var name_labels: Array[Label] = []
+
     for craft in available_recipes:
         var craft_name = craft.get("name", craft["id"])
         var craft_resources = craft.get("resources", {})
@@ -1101,9 +1107,11 @@ func _refresh_recipes_list(bdata: Dictionary):
         var name_label = Label.new()
         name_label.text = craft_name + ":"
         name_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
-        name_label.custom_minimum_size = Vector2(130, 0)
         name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         row.add_child(name_label)
+
+        name_column_width = maxf(name_column_width, _measure_label_width(name_label))
+        name_labels.append(name_label)
 
         # Resources -> result on one line
         var content_entry = _make_craft_content_local("", craft_resources, craft_result, products_data)
@@ -1112,6 +1120,19 @@ func _refresh_recipes_list(bdata: Dictionary):
         row.add_child(content_entry)
 
         content.add_child(row)
+
+    # The width is applied after the whole list is scanned: only then is the
+    # longest name of the building known.
+    for label in name_labels:
+        label.custom_minimum_size.x = name_column_width
+
+# Returns the width of the label text in pixels for the font/size it will be drawn with.
+func _measure_label_width(label: Label) -> float:
+    var font = label.get_theme_font("font")
+    if font == null:
+        font = ThemeDB.fallback_font
+    var font_size = label.get_theme_font_size("font_size")
+    return font.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 
 # Builds the contents of the recipe row: "[icon] resource [xN] + ... -> [icon] product [xN]"
 # craft_resources may be a Dictionary (the classical form) or an Array (the
