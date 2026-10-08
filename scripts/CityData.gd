@@ -1253,7 +1253,7 @@ func get_slot_containers(b_index: int) -> Array:
     var slots: Array = bld.get("slots", [])
     var containers = bld.get("slot_containers", null)
     if not (containers is Array):
-        containers = _migrate_slot_containers(b_index, slots)
+        containers = []
         bld["slot_containers"] = containers
     # We fit the array to the current number of the slots.
     while containers.size() < slots.size():
@@ -1270,7 +1270,7 @@ func get_slot_containers(b_index: int) -> Array:
     # on a dict after the loading of the save.
     for i in range(mini(containers.size(), slots.size())):
         var c = containers[i]
-        if c == null or c is CraftContainer:
+        if c is CraftContainer:
             continue
         var recipe = get_craft_by_id(str(slots[i]))
         if recipe.is_empty():
@@ -1278,36 +1278,12 @@ func get_slot_containers(b_index: int) -> Array:
             # (the same semantics as in _ensure_slot_container).
             containers[i] = null
             continue
+        # A null entry for a slot with a recipe becomes a fresh container: the
+        # slot-containers array is sized lazily, so a missing entry means the
+        # container has never existed yet.
         var saved: Dictionary = c if c is Dictionary else {}
         containers[i] = CraftContainer.new(recipe, saved)
     return containers
-
-# Internal: creates the array of CraftContainer from the obsolete slot_progress,
-# or from scratch. The progress of the obsolete timer is not carried over — those
-# were just seconds, and not the occupancy of the container; a correct conversion
-# is impossible without a loss of meaning, so the slot starts crafting anew.
-func _migrate_slot_containers(b_index: int, slots: Array) -> Array:
-    var out: Array = []
-    var bld: Dictionary = city_built_buildings[b_index]
-    var old_progress = bld.get("slot_progress", [])
-    for slot_idx in range(slots.size()):
-        var recipe_id = str(slots[slot_idx])
-        if recipe_id == "" or recipe_id == "empty":
-            out.append(null)
-            continue
-        var recipe = get_craft_by_id(recipe_id)
-        if recipe.is_empty():
-            out.append(null)
-            continue
-        # We use the saved state, if it corresponds
-        # to the current recipe (for the future saves in the new format).
-        var saved = null
-        if slot_idx < old_progress.size() and old_progress[slot_idx] is Dictionary:
-            saved = old_progress[slot_idx]
-        out.append(CraftContainer.new(recipe, saved if saved != null else {}))
-    # We clear the obsolete key, so as not to carry it in the saves.
-    bld.erase("slot_progress")
-    return out
 
 # The container of a particular slot or null, if the slot is empty / the recipe is not found.
 func get_slot_container(b_index: int, slot_idx: int) -> CraftContainer:
@@ -2320,26 +2296,6 @@ func complete_building_upgrade(idx: int, upgrade_to: String) -> bool:
     }
     emit_signal("city_updated")
     return true
-
-# Converts the old records of the buildings {"id": ..., "recipe": ...} into the new format {"id": ..., "slots": [...]}.
-func migrate_old_save_format():
-    for bld in city_built_buildings:
-        if not bld.has("slots"):
-            bld["slots"] = _slots_from_legacy(bld)
-            bld.erase("recipe")
-
-# The slots of a building from the obsolete "recipe" field.
-func _slots_from_legacy(bld: Dictionary) -> Array:
-    var building_id = bld.get("id", "")
-    var slots = _auto_assign_slots(building_id)
-    var legacy_recipe = bld.get("recipe", "")
-    # If in the old save there was a concrete recipe — we put it into the first slot
-    if legacy_recipe != "" and legacy_recipe != "empty":
-        if slots.size() > 0:
-            slots[0] = legacy_recipe
-        else:
-            slots.append(legacy_recipe)
-    return slots
 
 # Writes off the additional_cost of the building from the storage. It supports both forms of the field
 # (an object and an array of batches with the AND logic) and the group keys (@xxx) — for them

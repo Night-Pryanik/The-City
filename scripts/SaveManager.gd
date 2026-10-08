@@ -125,7 +125,6 @@ func apply_loaded_data():
         if GameData.products[pid].get("category") == "food":
             CityData.city_food_pool[pid] = true
 
-    CityData.migrate_old_save_format()
     CityData.domesticated_animals = saved_data.get("domesticated_animals", [])
     CityData.domesticated_plants = saved_data.get("domesticated_plants", [])
     CityData.domesticated_resources = saved_data.get("domesticated_resources", [])

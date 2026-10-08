@@ -248,9 +248,6 @@ func _ready():
                         # The forest is a cover (cover) over the terrain.
                         var saved_terrain = saved.get("terrain", "plain")
                         var saved_cover = saved.get("cover", "none")
-                        if saved_terrain == "forest":
-                            saved_terrain = "plain"
-                            saved_cover = "forest"
                         tile["terrain"] = saved_terrain
                         tile["cover"] = saved_cover
                         tile["resource"] = saved.get("resource")

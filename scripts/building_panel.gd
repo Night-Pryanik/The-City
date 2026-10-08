@@ -186,8 +186,6 @@ func open(building_id_arg: String, data: Dictionary):
     show()
 
 func _refresh():
-    CityData.migrate_old_save_format()
-
     # We collect the indices of the built buildings with the required id
     var indices = []
     for idx in range(CityData.city_built_buildings.size()):
