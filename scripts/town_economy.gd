@@ -71,6 +71,11 @@ const INCLUDE_RESOURCE_YIELD := true
 # gather it every time, and such a product in the trade would be a fiction.
 const ONE_TIME_YIELD_CATEGORY := "metals"
 
+# The level a product falls back to when the map carries no usable quality (a
+# broken save, a resource without a rolled level). It is the lowest level of the
+# scale in data/qualities.json and the one the rest of the game treats as neutral.
+const DEFAULT_QUALITY := "common"
+
 # Whether the resource is one-off — that is, does it disappear from the hex after being gathered.
 # The sign is exactly the same as the rest of the game uses for the special action
 # "Gather resource" (control_panel.gd, main_map.gd): improved_by == null
@@ -208,6 +213,63 @@ static func collect_base_yields(tiles: Array) -> Dictionary:
     return yields
 
 
+# The quality of every product the ring yields: product id -> quality id.
+#
+# The rule is deliberately simpler than in the city: a town warehouse never holds
+# MIXED quality. Every product carries exactly one level. When the ring holds the
+# same product at several levels (common cows and exceptional cows), the level of
+# the warehouse is the HIGHEST one: the town sells its best goods, and the lesser
+# ones are simply not what it is known for. This is the same "the best raw material
+# wins" reading the design doc gives for breeding ("exceptional cows bear exceptional
+# calves"), only applied across the whole ring instead of a single hex.
+#
+# The town is a virtual economy of a handful of hexes; a breakdown by quality would
+# be a fiction there, and the player only ever sees stars.
+#
+# The tile quality is rolled once when the resource is spawned (map_generator) or
+# bred (main_map), so the level is stable across a save.
+static func collect_base_qualities(tiles: Array) -> Dictionary:
+    var qualities: Dictionary = {}
+    for entry in tiles:
+        var tile: Dictionary = entry if entry is Dictionary else {}
+        if tile.is_empty():
+            continue
+        var resource_id := MapHelpers.get_effective_resource(tile).strip_edges()
+        if resource_id.is_empty() or resource_id == "<null>":
+            continue
+        var data: Dictionary = GameData.raw_resources.get(resource_id, {})
+        if data.is_empty():
+            continue
+        var produces: Dictionary = data.get("produces", {})
+        if produces.is_empty():
+            continue
+        if is_one_time(resource_id) \
+                and str(data.get("category", "")) != ONE_TIME_YIELD_CATEGORY:
+            continue
+        # A resource without a rolled quality (a broken save) yields the ordinary
+        # level: the stars must never point at a level that is not in the scale.
+        var quality := str(tile.get("quality", ""))
+        if quality.is_empty() or quality == "<null>":
+            quality = DEFAULT_QUALITY
+        for pid in produces:
+            var produced := str(pid)
+            if produced.is_empty():
+                continue
+            # The best level among all the hexes of the ring wins, whatever the
+            # order of the walk is.
+            if qualities.has(produced) and not is_better_quality(quality, str(qualities[produced])):
+                continue
+            qualities[produced] = quality
+    return qualities
+
+
+# Whether the quality level a is BETTER than the level b (a higher value in the
+# scale of data/qualities.json). A level neither is in the scale counts as the
+# ordinary one, so broken data cannot win by accident.
+static func is_better_quality(a: String, b: String) -> bool:
+    return GameData.get_quality_value(a) > GameData.get_quality_value(b)
+
+
 # The capacity of the warehouse of one town, in units PER product id
 # (town_storage_limit in data/game_balance.json).
 static func get_storage_limit() -> int:
@@ -323,7 +385,8 @@ static func _missing_representatives(craft: Dictionary, pool: Dictionary) -> Arr
 # therefore the cycle completes. A safety pass counter — in case
 # of a cycle due to an error in the data: it is better to stop with an incomplete pool than
 # to hang at the start of the game.
-static func _close_pool(pool: Dictionary, made: Dictionary, production: Dictionary) -> void:
+static func _close_pool(pool: Dictionary, made: Dictionary, production: Dictionary,
+        qualities: Dictionary = {}) -> void:
     var guard := 0
     while guard < 1000:
         guard += 1
@@ -336,6 +399,9 @@ static func _close_pool(pool: Dictionary, made: Dictionary, production: Dictiona
                 continue
             if not is_recipe_ready(craft, pool):
                 continue
+            # The quality of the result is the standard craft rule of the city
+            # (a weighted average of the ingredients), see craft_result_quality.
+            var result_quality := craft_result_quality(craft, pool, qualities)
             for pid in result:
                 var produced := str(pid)
                 if pool.has(produced):
@@ -346,9 +412,76 @@ static func _close_pool(pool: Dictionary, made: Dictionary, production: Dictiona
                 # output lands in the warehouse on that tick (10 silk per tick
                 # for a recipe of "silk: 10").
                 production[produced] = maxi(0, int(result[pid]))
+                qualities[produced] = result_quality
                 grew = true
         if not grew:
             return
+
+
+# The quality of the result of a recipe by the standard craft rule — the same one
+# the city applies to its buildings (CityData.quality_from_breakdown): every
+# ingredient contributes its quality weight (data/qualities.json, value), the
+# average is rounded to the nearest level.
+#
+# The town keeps no breakdown: an ingredient of a town is present at exactly one
+# level, so here the "breakdown" is one unit per ingredient — the weighting by
+# counts degenerates, and the rule reads as "the average level of the ingredients".
+# The quantities from data/crafts are still not read (the town economy is virtual,
+# see the header), therefore one ingredient one vote is the honest reading.
+#
+# An ingredient whose quality is unknown (a broken registry, a pseudo-resource)
+# counts as the ordinary level, so the stars never point outside the scale.
+static func craft_result_quality(craft: Dictionary, pool: Dictionary,
+        qualities: Dictionary) -> String:
+    var total := 0
+    var weighted := 0.0
+    for or_group in GameData.craft_alternatives(craft):
+        var picked := ""
+        for variant in or_group:
+            var key := str(variant.get("key", ""))
+            if not is_available(key, pool):
+                continue
+            picked = key
+            break
+        if picked.is_empty():
+            continue
+        var qid := _ingredient_quality(picked, pool, qualities)
+        total += 1
+        weighted += float(GameData.get_quality_value(qid))
+    if total <= 0:
+        return DEFAULT_QUALITY
+    return _round_quality_to_level(weighted / float(total))
+
+
+# The quality of one ingredient of the pool. An "@" group is resolved to the first
+# member present in the pool (deterministic: the closure itself treats the group
+# that way, see is_available).
+static func _ingredient_quality(key: String, pool: Dictionary,
+        qualities: Dictionary) -> String:
+    if key.begins_with("@"):
+        for member in GameData.product_groups.get(key.substr(1), []):
+            var m := str(member)
+            if pool.has(m):
+                return str(qualities.get(m, DEFAULT_QUALITY))
+        return DEFAULT_QUALITY
+    return str(qualities.get(key, DEFAULT_QUALITY))
+
+
+# Rounds an average quality value to the nearest level of the scale.
+# The mirror of CityData.quality_from_breakdown, kept here so that the town
+# economy stays a pure static module without the state of the city.
+static func _round_quality_to_level(avg: float) -> String:
+    var levels: Array = GameData.get_quality_levels()
+    if levels.is_empty():
+        return DEFAULT_QUALITY
+    var best_qid: String = str(levels[0])
+    var best_diff := 1e9
+    for qid in levels:
+        var diff := absf(float(GameData.get_quality_value(str(qid))) - avg)
+        if diff < best_diff:
+            best_diff = diff
+            best_qid = str(qid)
+    return best_qid
 
 # --- Readiness and the roll ---
 
@@ -423,25 +556,36 @@ static func _seed_for(town_id: String, recipe_id: String) -> int:
 # town_id   — the town identifier ("town_3"); it is part of the seed of all the rolls.
 # base_ids  — the base pool from collect_base_resources.
 #
-# It returns { "sell_pool": Array, "buy_pool": Array, "production": Dictionary };
-# both arrays are sorted, so that the same state gives the same result in
-# printing and in the tests. "production" is the per-tick rate of the CRAFTED goods
-# (product id -> units per town tick), and it holds only the ids of the sell_pool:
-# the town stores what it trades, and the imported raw material is an input, not a
-# stock. The yield of the raw materials of the ring is added by refresh_town, which
-# alone has the hexes.
-static func build_pools(town_id: String, base_ids: Array) -> Dictionary:
+# It returns { "sell_pool": Array, "buy_pool": Array, "production": Dictionary,
+# "quality": Dictionary }; both arrays are sorted, so that the same state gives the
+# same result in printing and in the tests. "production" is the per-tick rate of the
+# CRAFTED goods (product id -> units per town tick), and it holds only the ids of
+# the sell_pool: the town stores what it trades, and the imported raw material is an
+# input, not a stock. "quality" is the single level of every traded product
+# (product id -> quality id): the ring yields carry the quality of the map hex,
+# the crafted goods the weighted average of their ingredients. The yield of the raw
+# materials of the ring is added by refresh_town, which alone has the hexes.
+static func build_pools(town_id: String, base_ids: Array,
+        base_qualities: Dictionary = {}) -> Dictionary:
     var made: Dictionary = {}
     var imports: Dictionary = {}
     var production: Dictionary = {}
     # The base pool — a simple set: id -> true. The duplicates collapse.
     var pool: Dictionary = {}
+    # The base qualities are seeded first: the closure reads them to compute the
+    # quality of the crafted goods (craft_result_quality).
+    var qualities: Dictionary = {}
+    for pid in base_qualities:
+        var qid := str(base_qualities[pid])
+        if qid.is_empty():
+            qid = DEFAULT_QUALITY
+        qualities[str(pid)] = qid
     for base_id in base_ids:
         var id := str(base_id)
         if id.is_empty():
             continue
         pool[id] = true
-    _close_pool(pool, made, production)
+    _close_pool(pool, made, production, qualities)
 
     # The import cascade: round by round, while a new import opens something.
     var rolls: Dictionary = {}
@@ -482,7 +626,7 @@ static func build_pools(town_id: String, base_ids: Array) -> Dictionary:
             break
         for id in bought:
             pool[id] = true
-        _close_pool(pool, made, production)
+        _close_pool(pool, made, production, qualities)
 
     # The sale pool: the base resources + everything produced, MINUS the imported.
     # The import does not get here on purpose (the header of the file, point 5). The subset
@@ -500,10 +644,15 @@ static func build_pools(town_id: String, base_ids: Array) -> Dictionary:
     # The rate of the warehouse keeps only the goods on sale: an imported raw
     # material is consumed by the town, and it is never put on the stock.
     var sell_production: Dictionary = {}
+    var sell_quality: Dictionary = {}
     for id in production:
         if sell.has(id):
             sell_production[id] = production[id]
-    return {"sell_pool": sell_ids, "buy_pool": buy_ids, "production": sell_production}
+            sell_quality[id] = str(qualities.get(id, DEFAULT_QUALITY))
+    return {
+        "sell_pool": sell_ids, "buy_pool": buy_ids,
+        "production": sell_production, "quality": sell_quality,
+    }
 
 # --- Recalculation by the influence rings ---
 
@@ -527,7 +676,8 @@ static func refresh_town(town: Dictionary, tile_data: Array) -> void:
             continue
         tiles.append(tile)
     var base_ids := collect_base_resources(tiles)
-    var pools := build_pools(town_id, base_ids)
+    var base_qualities := collect_base_qualities(tiles)
+    var pools := build_pools(town_id, base_ids, base_qualities)
     town["sell_pool"] = pools["sell_pool"]
     town["buy_pool"] = pools["buy_pool"]
 
@@ -542,6 +692,19 @@ static func refresh_town(town: Dictionary, tile_data: Array) -> void:
         if not production.has(id):
             production[id] = base_yields[pid]
     town["production"] = production
+
+    # The single quality level of every traded product. The pool guarantees that
+    # every id of the sell pool is covered: the raw materials come from the ring
+    # (base_qualities), and the crafted goods were given a level by the closure.
+    # A product that somehow slipped through (a resource without a quality) falls
+    # back to the ordinary level rather than leaving the row without stars.
+    var quality: Dictionary = pools["quality"]
+    for pid in pools["sell_pool"]:
+        var id := str(pid)
+        if quality.has(id):
+            continue
+        quality[id] = str(base_qualities.get(id, DEFAULT_QUALITY))
+    town["quality"] = quality
 
     # The warehouse holds exactly the goods of the sell pool.
     #

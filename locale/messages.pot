@@ -1143,6 +1143,9 @@ msgstr ""
 msgid "Quality priority: use best/worst"
 msgstr ""
 
+msgid "Quality: %s"
+msgstr ""
+
 msgid "Quality: %s (%s)"
 msgstr ""
 

@@ -49,6 +49,10 @@
 #      запаса сделка не проходит, склад не уходит в минус.
 #  21. ОКНО. В колонке продажи видно число единиц на складе, и оно обновляется
 #      по сигналу без пересборки списка.
+#  22. КАЧЕСТВО. У товара склада ровно один уровень: сырьё берёт НАИВЫСШЕЕ
+#      качество среди гексов кольца (а не первое найденное), крафт — стандартное
+#      средневзвешенное по ингредиентам; в окне — только звёзды в цвете уровня,
+#      без разбивки и процентов, с тултипом-подписью уровня.
 extends SceneTree
 
 # Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
@@ -107,6 +111,7 @@ func _run() -> void:
     _test_duplicate_names_hidden()
     await _test_live_map()
     await _test_town_ui_window()
+    await _test_town_quality()
     await _test_town_treasury()
     _test_storage_seeded()
     _test_production_plan()
@@ -332,6 +337,130 @@ func _test_one_time_resources() -> void:
     _check(not _te.is_one_time("wheat_field"), "поле с improved_by не одноразовое")
 
 
+# 22. КАЧЕСТВО. У каждого товара склада ровно ОДИН уровень: у сырья — качество
+# ресурса на гексе, у крафта — стандартное правило города (средневзвешенное по
+# уровням ингредиентов, см. CityData.quality_from_breakdown). Смешанного
+# качества в городке не бывает вовсе.
+func _test_town_quality() -> void:
+    var gd = get_root().get_node("GameData")
+    var levels: Array = gd.get_quality_levels()
+    _check(levels.size() == 4, "шкала качества должна быть из 4 ступеней")
+
+    # Сырьё берёт качество гекса. Два гекса одного сырья разного качества не
+    # усредняются: уровень склада задаёт НАИВЫСШЕЕ качество среди найденных.
+    var tiles: Array = [
+        {"resource": "wheat_field", "quality": "exceptional"},
+        {"resource": "basalt_deposit", "quality": "fine"},
+    ]
+    var base: Dictionary = _te.collect_base_qualities(tiles)
+    _check(str(base.get("wheat", "")) == "exceptional",
+        "пшеница должна унаследовать качество поля (получено «%s»)" % str(base.get("wheat", "")))
+    _check(str(base.get("feed", "")) == "exceptional",
+        "корм с того же поля должен иметь то же качество")
+    _check(str(base.get("basalt", "")) == "fine",
+        "камень должен получить качество залежи")
+
+    # Наивысшее побеждает, порядок обхода не важен. Корова обычного и корова
+    # исключительного качества в одном кольце дают мясо/кожу/молоко
+    # ИСКЛЮЧИТЕЛЬНОГО уровня.
+    var highs: Dictionary = _te.collect_base_qualities([
+        {"resource": "cows", "quality": "common"},
+        {"resource": "cows", "quality": "exceptional"},
+    ])
+    _check(str(highs.get("raw_meat", "")) == "exceptional",
+        "при смеси обычной и исключительной коровы побеждает исключительная (получено «%s»)"
+            % str(highs.get("raw_meat", "")))
+    _check(str(highs.get("hide", "")) == "exceptional",
+        "побочные продукты коровы (кожа) тоже должны быть исключительными")
+    _check(str(highs.get("raw_milk", "")) == "exceptional",
+        "побочные продукты коровы (молоко) тоже должны быть исключительными")
+    # Обратный порядок — тот же результат (наивысшее, а не «первое встреченное»).
+    var highs_rev: Dictionary = _te.collect_base_qualities([
+        {"resource": "cows", "quality": "exceptional"},
+        {"resource": "cows", "quality": "common"},
+    ])
+    _check(str(highs_rev.get("raw_meat", "")) == "exceptional",
+        "наивысшее качество не должно зависеть от порядка обхода кольца")
+    # Идеальное качество перебивает исключительное.
+    var best: Dictionary = _te.collect_base_qualities([
+        {"resource": "cows", "quality": "common"},
+        {"resource": "cows", "quality": "exceptional"},
+        {"resource": "cows", "quality": "perfect"},
+    ])
+    _check(str(best.get("raw_meat", "")) == "perfect",
+        "идеальное качество должно перебивать исключительное (получено «%s»)"
+            % str(best.get("raw_meat", "")))
+
+    # Ресурс без прокатанного качества (битый сейв) — обычный уровень, а не пустая строка.
+    var broken: Dictionary = _te.collect_base_qualities([{"resource": "wheat_field"}])
+    _check(str(broken.get("wheat", "")) == "common",
+        "ресурс без качества должен падать на обычный уровень")
+
+    # Крафт: средневзвешенное ингредиентов. wood (perfect=4) + copper_ore
+    # (common=1) -> среднее 2.5 -> округление к ближайшему уровню (fine=2,
+    # diff=0.5 против exceptional=3, diff=0.5 — ничья, побеждает первый в шкале).
+    var crafted: String = _te.craft_result_quality(
+        {"id": "copper", "resources": {"wood": 1, "copper_ore": 1}},
+        {"wood": true, "copper_ore": true},
+        {"wood": "perfect", "copper_ore": "common"})
+    _check(crafted == "fine" or crafted == "exceptional",
+        "крафт из perfect+common должен дать средний уровень (получено «%s»)" % crafted)
+
+    # Оба ингредиента исключительные -> результат исключительный.
+    var same: String = _te.craft_result_quality(
+        {"id": "copper", "resources": {"wood": 1, "copper_ore": 1}},
+        {"wood": true, "copper_ore": true},
+        {"wood": "exceptional", "copper_ore": "exceptional"})
+    _check(same == "exceptional",
+        "одинаковые уровни ингредиентов дают тот же уровень (получено «%s»)" % same)
+
+    # Окно показывает звёзды в цвете уровня, без разбивки и процентов.
+    var ui = load("res://scenes/TownUI.tscn").instantiate()
+    get_root().add_child(ui)
+    await process_frame
+    var tm = load("res://scripts/town_manager.gd").new()
+    get_root().add_child(tm)
+    var town: Dictionary = tm._make_town_record(0, 5, 5, false)
+    town["sell_pool"] = [WOOD, PLANKS]
+    town["buy_pool"] = []
+    town["storage"] = {WOOD: 120, PLANKS: 40}
+    town["quality"] = {WOOD: "perfect", PLANKS: "fine"}
+    tm.towns.append(town)
+
+    ui.open_town(town, true)
+    var quality_labels: Dictionary = ui._sell_quality_labels
+    _check(quality_labels.size() == 2,
+        "у каждой строки продажи должна быть метка качества (получено %d)" % quality_labels.size())
+    var wood_name: String = ui._get_resource_display_name(WOOD)
+    var wood_stars: Label = quality_labels.get(wood_name, null)
+    _check(wood_stars != null, "строка товара должна иметь метку звёзд")
+    if wood_stars != null:
+        _check(wood_stars.text == gd.get_quality_stars("perfect"),
+            "звёзды строки должны быть уровнем товара (получено «%s»)" % wood_stars.text)
+        _check(not wood_stars.text.contains("%") and not wood_stars.text.contains("("),
+            "в метке качества не должно быть разбивки и процентов, только звёзды")
+        _check(wood_stars.get_theme_color("font_color") == gd.get_quality_color("perfect"),
+            "звёзды должны быть покрашены в цвет своего уровня")
+        # Тултип поясняет, какой это уровень качества.
+        _check(not wood_stars.tooltip_text.is_empty(),
+            "у звёзд должен быть тултип с пояснением уровня")
+        _check(wood_stars.tooltip_text.contains(gd.get_quality_name("perfect")),
+            "тултип должен называть уровень качества (получено «%s»)" % wood_stars.tooltip_text)
+        _check(wood_stars.mouse_filter == Control.MOUSE_FILTER_STOP,
+            "метка звёзд должна ловить мышь, иначе тултип не покажется")
+    # Второй товар — свой уровень и свой тултип.
+    var planks_name: String = ui._get_resource_display_name(PLANKS)
+    var planks_stars: Label = quality_labels.get(planks_name, null)
+    _check(planks_stars != null, "у второй строки тоже должна быть метка звёзд")
+    if planks_stars != null:
+        _check(planks_stars.text == gd.get_quality_stars("fine"),
+            "звёзды второй строки должны быть её уровнем (получено «%s»)" % planks_stars.text)
+        _check(planks_stars.tooltip_text.contains(gd.get_quality_name("fine")),
+            "тултип второй строки должен называть её уровень (получено «%s»)" % planks_stars.tooltip_text)
+    ui.queue_free()
+    tm.queue_free()
+
+
 # 13. Два разных id с одинаковым именем — одна строка в окне.
 # Основная защита от дублей живёт в данных (сырьё не попадает в пул), но в
 # data/products есть ровно одна пара разных id с одинаковым названием:
@@ -511,6 +640,30 @@ func _test_live_map() -> void:
             _check(int(storage[pid]) <= limit,
                 "у городка %s товар «%s» на складе выше лимита (%d > %d)"
                     % [key, pid, int(storage[pid]), limit])
+
+    # --- КАЧЕСТВО НА ЖИВОЙ КАРТЕ ---
+    # У каждого товара склада ровно один уровень качества, и он из шкалы
+    # data/qualities.json. Ни одной строки без звёзд в окне быть не должно.
+    var gd = get_root().get_node("GameData")
+    var levels: Array = gd.get_quality_levels()
+    for town in towns:
+        var key := str(town.get("id", ""))
+        var quality: Dictionary = town.get("quality", {})
+        _check(not quality.is_empty(),
+            "у городка %s нет качества товаров склада" % key)
+        for pid in town.get("sell_pool", []):
+            var qid := str(quality.get(str(pid), ""))
+            _check(levels.has(qid),
+                "у городка %s товар «%s» без уровня качества (получено «%s»)"
+                    % [key, pid, qid])
+        # Смешанного качества в городке не бывает: качество хранится одним
+        # уровнем на товар, а не разбивкой, поэтому лишние ключи — ошибка.
+        for pid in quality.keys():
+            _check(levels.has(str(quality[pid])),
+                "у городка %s товар «%s» с уровнем вне шкалы" % [key, pid])
+        for pid in quality.keys():
+            _check(town.get("sell_pool", []).has(str(pid)),
+                "у городка %s качество есть у не продажного «%s»" % [key, pid])
     main_map.queue_free()
 
 

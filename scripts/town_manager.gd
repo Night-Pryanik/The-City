@@ -195,6 +195,13 @@ const INFLUENCE_NOTCH_MAX_DROPS := 3
 #                         TownEconomy.refresh_town and changed only via
 #                         add_town_goods / take_town_goods, so that the trade deals
 #                         and the simulation tick write through one place.
+#   quality             - the quality level of every product of the warehouse:
+#                         product id -> quality id. A town NEVER holds mixed quality:
+#                         the whole stock of a product carries exactly one level,
+#                         taken from the resource on the map (the ring yields) or
+#                         computed by the standard craft rule (the crafted goods).
+#                         Filled in together with the pools (TownEconomy.refresh_town)
+#                         and derived data: it is not restored from the save.
 #   production          - the per-tick rate of the warehouse: product id -> units per
 #                         tick of a town. It is recomputed from the ring together with
 #                         the pools (TownEconomy.refresh_town) and is derived data:
@@ -323,10 +330,25 @@ func get_town_goods(town: Dictionary, product_id: String) -> int:
     return int(town.get("storage", {}).get(product_id, 0))
 
 
+# The quality level of a product in the warehouse of a town.
+# A town never holds mixed quality, so a product has exactly one level; an unknown
+# product falls back to the ordinary level, so the window never shows a row without
+# stars (see the quality field of the town record).
+static func get_town_goods_quality(town: Dictionary, product_id: String) -> String:
+    var quality: Dictionary = town.get("quality", {})
+    return str(quality.get(product_id, TownEconomy.DEFAULT_QUALITY))
+
+
 # Puts units of a product onto the warehouse of a town (for example, the city has
 # sold goods to it). The stock never exceeds the capacity of one product
 # (town_storage_limit): the units that did not fit are discarded, and a deal that asks
 # for more than the free space can physically store reports how much was accepted.
+#
+# The quality of the product is NOT taken from the deal: a town holds exactly one
+# level of a product, that of the resource on the map (see the quality field of the
+# town record), and a bought unit joins that level. The trade deals that would put
+# goods into a town are not wired yet — when they are, they must not introduce a
+# second level, or the "no mixed quality" rule breaks.
 #
 # It returns the number of the units actually stored.
 func add_town_goods(town: Dictionary, product_id: String, amount: int) -> int:

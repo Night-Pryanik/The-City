@@ -1143,6 +1143,9 @@ msgstr "Приоритет качества: %s (нажмите чтобы пе�
 msgid "Quality priority: use best/worst"
 msgstr "Приоритет качества: используйте лучшее/худшее"
 
+msgid "Quality: %s"
+msgstr "Качество: %s"
+
 msgid "Quality: %s (%s)"
 msgstr "Качество: %s (%s)"
 

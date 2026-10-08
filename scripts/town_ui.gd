@@ -10,6 +10,11 @@
 # The lists are inside ScrollContainers (see BuyScroll/SellScroll in the scene):
 # the sell pool of a town is dozens of rows, and without scrolling they spilled
 # past the bottom edge of the window right onto the map.
+#
+# Every row of the sale column carries the stock of the town and its quality: the
+# stars of the level in its own colour (data/qualities.json). A town never holds
+# mixed quality, so there is nothing to break down and nothing to show in
+# percentages — the stars ARE the quality of the row (see town_economy).
 extends Control
 
 signal closed()
@@ -44,6 +49,12 @@ var has_town: bool = false
 # display name -> the label of the quantity. They are refreshed in place on every
 # town tick, because rebuilding the whole column would reset its scrolling.
 var _sell_quantity_labels: Dictionary = {}
+# As above, but for the quality of the row: display name -> the Label with the
+# stars. The stars of a town never change while the row is on the screen (unlike
+# the city, a town holds exactly one quality of a product, see town_economy), but
+# the refresh goes through the same place so that the two labels of a row cannot
+# drift apart.
+var _sell_quality_labels: Dictionary = {}
 func _ready():
     if close_button:
         close_button.pressed.connect(close_town)
@@ -86,6 +97,10 @@ func refresh_storage():
         var label: Label = _sell_quantity_labels[display_name]
         if is_instance_valid(label):
             label.text = _format_stock(_stock_of(display_name))
+    for display_name in _sell_quality_labels:
+        var quality_label: Label = _sell_quality_labels[display_name]
+        if is_instance_valid(quality_label):
+            _apply_row_quality(quality_label, str(display_name))
     _update_treasury_label()
 
 # The units of a good that the town has on the stock. The rows are keyed by the
@@ -99,6 +114,31 @@ func _stock_of(display_name: String) -> int:
         if _get_resource_display_name(str(pid)) == display_name:
             total += int(storage[pid])
     return total
+
+# The quality id of the product behind a row. A town holds one quality of a product,
+# and the row is keyed by the display name, so the first id behind the name wins —
+# exactly the same rule as _stock_of uses to sum the quantities.
+func _quality_of(display_name: String) -> String:
+    var storage: Dictionary = _town.get("storage", {})
+    for pid in storage:
+        if _get_resource_display_name(str(pid)) == display_name:
+            return TownManager.get_town_goods_quality(_town, str(pid))
+    return TownEconomy.DEFAULT_QUALITY
+
+# Paints the stars of a row in the colour of their level and writes the text.
+# The stars are the WHOLE story of the quality of a town row: there is no breakdown
+# and no percentages, because a town never holds mixed quality (see town_economy).
+# The colour comes from data/qualities.json, the same palette the city uses.
+#
+# The stars carry a small tooltip with the name of the level: a row of a town has no
+# room for the word next to the number, and a player who does not know the palette
+# by heart can read what the colour means without leaving the window.
+func _apply_row_quality(quality_label: Label, display_name: String) -> void:
+    var quality_id := _quality_of(display_name)
+    quality_label.text = GameData.get_quality_stars(quality_id)
+    quality_label.add_theme_color_override("font_color",
+            GameData.get_quality_color(quality_id))
+    quality_label.tooltip_text = tr("Quality: %s") % GameData.get_quality_name(quality_id)
 
 func _format_stock(amount: int) -> String:
     return tr("%d units") % amount
@@ -148,6 +188,7 @@ func _fill_resource_list(container: VBoxContainer, pool, empty_text: String,
         return
     if with_stock:
         _sell_quantity_labels.clear()
+        _sell_quality_labels.clear()
     for child in container.get_children():
         child.queue_free()
     if pool == null or pool.is_empty():
@@ -191,6 +232,16 @@ func _fill_resource_list(container: VBoxContainer, pool, empty_text: String,
         resource_row.add_child(resource_label)
 
         if with_stock:
+            # The quality of the goods comes BEFORE the quantity: the stars read as
+            # a property of the product ("what it is"), and the number as its amount.
+            # The label takes the mouse (unlike the plain labels of the row), because
+            # it carries the tooltip with the name of its level.
+            var quality_label := Label.new()
+            quality_label.mouse_filter = Control.MOUSE_FILTER_STOP
+            _apply_row_quality(quality_label, display_name)
+            resource_row.add_child(quality_label)
+            _sell_quality_labels[display_name] = quality_label
+
             var stock_label := Label.new()
             stock_label.text = _format_stock(_stock_of(display_name))
             stock_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
