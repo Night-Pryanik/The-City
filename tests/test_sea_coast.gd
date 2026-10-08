@@ -13,6 +13,7 @@ func _run() -> void:
     get_root().get_node("SaveManager").new_game()
 
     _test_local_coast_width(state)
+    _test_islands_do_not_add_shallows(state)
     _test_harbor_connectivity(state)
     _test_generated_sea_and_resources(state)
 
@@ -123,6 +124,48 @@ func _test_harbor_connectivity(state: Dictionary) -> void:
     check(MapHelpers.has_harbor_access(tile_data, start.row, start.col, rows, cols),
         "a shallow-water resource should reach a harbor through deep sea", state)
     GameData.improvements.erase("test_water_harbor")
+
+func _test_islands_do_not_add_shallows(state: Dictionary) -> void:
+    var rows := 40
+    var cols := 40
+    var previous_sea: Dictionary = GameData.map_config.get("sea", {}).duplicate(true)
+    var test_sea := previous_sea.duplicate(true)
+    test_sea["mode"] = "edge"
+    test_sea["sides"] = [1, 1]
+    test_sea["max_sea_depth"] = 20
+    test_sea["coast_max_depth"] = 5
+    test_sea["edge_width_min"] = 18
+    test_sea["edge_width_max"] = 18
+    test_sea["edge_envelope_strength"] = 0.0
+    test_sea["edge_island_size"] = [1, 1]
+    test_sea["edge_island_density"] = 0.2
+    test_sea["edge_island_min_distance"] = 0
+    test_sea["edge_island_max_attempts"] = 1000
+
+    test_sea["edge_islands_enabled"] = false
+    GameData.map_config["sea"] = test_sea
+    seed(987654)
+    var mainland_only_tiles := _make_tile_data(rows, cols)
+    SeaManager.apply_sea(mainland_only_tiles, rows, cols, 20, 20)
+
+    test_sea["edge_islands_enabled"] = true
+    GameData.map_config["sea"] = test_sea
+    seed(987654)
+    var island_tiles := _make_tile_data(rows, cols)
+    SeaManager.apply_sea(island_tiles, rows, cols, 20, 20)
+    GameData.map_config["sea"] = previous_sea
+
+    var island_hexes := 0
+    for row in range(rows):
+        for col in range(cols):
+            var mainland_tile: Dictionary = mainland_only_tiles[row][col]
+            var island_tile: Dictionary = island_tiles[row][col]
+            if mainland_tile.get("_is_sea", false) and not island_tile.get("_is_sea", false):
+                island_hexes += 1
+            if island_tile.get("_is_shallow_sea", false):
+                check(mainland_tile.get("_is_shallow_sea", false),
+                    "island generation must not add shallow-water hexes", state)
+    check(island_hexes > 0, "the test setup should generate at least one island", state)
 
 func _test_generated_sea_and_resources(state: Dictionary) -> void:
     var previous_sea: Dictionary = GameData.map_config.get("sea", {}).duplicate(true)

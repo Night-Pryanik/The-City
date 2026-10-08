@@ -92,13 +92,15 @@ static func apply_sea(tile_data: Array, rows: int, cols: int, city_row: int, cit
         _apply_sea_noise(sea_mask, rows, cols, city_row, city_col, cfg, max_sea_depth, sides)
     elif mode == "edge":
         _apply_sea_edge(sea_mask, rows, cols, cfg, max_sea_depth, sides)
+
+    var shallow_mask := _build_shallow_sea_mask(sea_mask, rows, cols, coast_max_depth)
+
+    if mode == "edge":
         # Islands in the seas — only for the "edge" mode. They are placed BEFORE the _is_sea
         # marking and BEFORE _apply_beach, so that the beach later correctly outlines the new
         # islands (as well as any other land next to the sea).
         if bool(cfg.get("edge_islands_enabled", true)):
             _apply_sea_islands(sea_mask, rows, cols, cfg, city_row, city_col)
-
-    var shallow_mask := _build_shallow_sea_mask(sea_mask, rows, cols, coast_max_depth)
 
     # We mark the sea hexes with the temporary flag _is_sea.
     for r in range(rows):
