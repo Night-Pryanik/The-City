@@ -32,6 +32,10 @@
 #   9. РЕФРЕШ И РАСШИРЕННЫЙ БЛОК. Периодическое обновление содержимого (оно
 #      идёт только по «растущим» ресурсам, то есть по пастбищам) не стирает
 #      строку уровня дороги: расширенный блок живёт дольше одного вызова.
+#  10. КНОПКА НА ПУСТОМ ГЕКСЕ. «Улучшить дорогу» есть и на гексе БЕЗ
+#      улучшения: кнопку определяет маршрут до города, а не наличие
+#      улучшения. Раньше вызов стоял в ветке гекса с улучшением и на пустом
+#      гексе пропадал — игрок не понимал критерий.
 extends SceneTree
 
 # Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
@@ -492,6 +496,8 @@ func _test_live_scene(state: Dictionary) -> void:
         await _test_extended_tooltip_survives_refresh(main_map, state)
     if WATCHDOG.wants_case("upgrade_button_on_partial_route"):
         await _test_upgrade_button_on_partial_route(main_map, state)
+    if WATCHDOG.wants_case("upgrade_button_on_empty_hex"):
+        await _test_upgrade_button_on_empty_hex(main_map, state)
 
     if main_map != null and is_instance_valid(main_map):
         get_root().remove_child(main_map)
@@ -820,6 +826,49 @@ func _find_growing_resource_id() -> String:
             continue
         return str(id)
     return ""
+
+
+# -------------------------------------------------------
+# 10. Кнопка «Улучшить дорогу» на гексе БЕЗ улучшения
+# -------------------------------------------------------
+#
+# Регрессия: вызов _append_upgrade_road_action стоял внутри ветки
+# `if tile.improvement != null`, которая заканчивалась `return`, — и на пустом
+# гексе с дорогой кнопки не было, хотя маршрут до города есть и он весь из
+# тропок. Игрок видел кнопку на соседнем гексе с улучшением и не понимал
+# критерий: «почему тут есть, а тут нет».
+func _test_upgrade_button_on_empty_hex(main_map, state: Dictionary) -> void:
+    var panel = main_map.control_panel
+    var rm = main_map.road_manager
+
+    # Без исследованного второго уровня улучшать некуда — кнопки нет нигде,
+    # и проверять нечего.
+    if _gdata.get_max_unlocked_road_level() <= 1:
+        return
+
+    # _find_hex_in_influence пропускает гексы с улучшением: он и нужен —
+    # проверяем именно гекс БЕЗ улучшения.
+    var spot := _find_hex_in_influence(main_map)
+    check(not spot.is_empty(),
+            "для проверки нужен свободный гекс в влиянии с достижимым планом дороги",
+            state)
+    if spot.is_empty():
+        return
+    var row := int(spot.row)
+    var col := int(spot.col)
+    check(main_map.tile_data[row][col].get("improvement", null) == null,
+            "гекс для проверки обязан быть без улучшения", state)
+
+    # Дорога-тропка: маршрут из тропок, а уровень 2 открыт.
+    rm.build_road_from(row, col, main_map.tile_data, main_map.map_rows, main_map.map_cols)
+    var route: Dictionary = main_map.get_route_to_city(row, col)
+    check(route.get("ok", false), "к пустому гексу с дорогой должен быть маршрут", state)
+    if not route.get("ok", false):
+        return
+
+    var actions: Array = panel._collect_actions(row, col, main_map.tile_data[row][col])
+    check(_has_action(actions, panel.UPGRADE_ROAD_TYPE),
+            "на пустом гексе с дорогой должна быть кнопка «Улучшить дорогу»", state)
 
 
 # -------------------------------------------------------

@@ -537,10 +537,9 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
         # The special actions applicable to the hex with an improvement (for example, the demolition).
         _add_special_actions(actions, row, col, tile)
 
-        # The improvement of the road to this hex: it is available when the road already exists and
-        # there is something to improve it to. The button appears on ANY hex with a route
-        # to the city — and not only on the improvements: the player can improve the road
-        # even up to an empty hex, if he decides that there will be an improvement there.
+        # The improvement of the road to this hex. The same call stands on the hex WITHOUT an
+        # improvement (see below): the road can be improved on ANY hex with a route to the city,
+        # not only on the hexes with an improvement. See _append_upgrade_road_action.
         _append_upgrade_road_action(actions, row, col)
 
         # The interruption of a build and/or a project. It is exactly here that the check of the project
@@ -780,7 +779,12 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
     # 5. The special actions (the felling of the forest, the gathering of the wild plants and so on).
     _add_special_actions(actions, row, col, tile)
 
-    # 6. The interruption of whatever is going on this hex: an ordinary build and/or
+    # 6. The improvement of the road to this hex. It is offered here, on the hex WITHOUT an
+    # improvement, exactly as on the hex with one: the player can improve the road up to any hex
+    # that already has a route to the city. See _append_upgrade_road_action.
+    _append_upgrade_road_action(actions, row, col)
+
+    # 7. The interruption of whatever is going on this hex: an ordinary build and/or
     # a phased project. These are TWO independent things (for example, a road goes to the hex
     # with a farm, and something else can be built on it), therefore with
     # both of them both buttons are shown, and not one.
