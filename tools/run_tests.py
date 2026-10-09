@@ -121,6 +121,7 @@ DEFAULT_TIMEOUT_SECONDS = 180.0
 SLOW = {
     "test_road_building",
     "test_road_levels",
+    "test_road_capacity",
     "test_town_roads",
     "test_improvement_road",
     "test_town_start_area",

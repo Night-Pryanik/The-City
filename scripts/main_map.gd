@@ -688,9 +688,20 @@ func _process(delta):
         for row in range(region_start_row, region_end_row + 1):
             for col in range(region_start_col, region_end_col + 1):
                 var tile = tile_data[row][col]
-                if tile.improvement == null or bool(tile.get("decorative", false)) \
-                        or not worker_manager.has_worker(row, col):
+                if tile.improvement == null:
                     continue
+                if bool(tile.get("decorative", false)) or not worker_manager.has_worker(row, col):
+                    # A decorative or a paused improvement transports nothing: there is no
+                    # road-capacity problem to warn about.
+                    tile["road_capacity_short"] = false
+                    continue
+                # The road to the city caps the throughput (see the clamp in the production
+                # below). The warning triangle over the improvement is driven by the SAME check
+                # as the red "(route X units/sec)" note in the tooltip and the panel, so the
+                # badge and the note cannot disagree.
+                tile["road_capacity_short"] = not map_tooltip.road_capacity_shortfall(
+                        row, col, tile_data).is_empty()
+                var route_avg_speed := _route_avg_speed(row, col)
                 # The production goes both from the natural resource (tile.resource), and from
                 # the bred one (tile.crop_bred, see the breeding scheme). If both are
                 # null — there is nothing to produce on the hex.
@@ -722,6 +733,10 @@ func _process(delta):
                             var lj_per_sec: float = 0.0
                             if lj_interval > 0.0:
                                 lj_per_sec = (wood_yield * lj_imp_mult * lj_consumption_mult) / lj_interval
+                            # The road to the city caps the throughput: only what the route's
+                            # average speed allows arrives, the excess is lost.
+                            if route_avg_speed >= 0.0 and lj_per_sec > route_avg_speed:
+                                lj_per_sec = route_avg_speed
                             var lj_remainder: float = float(tile.get("production_fractional_remainder", 0.0)) + lj_per_sec * CityData.SIMULATION_TICK
                             var lj_floor: int = int(floor(lj_remainder))
                             tile["production_fractional_remainder"] = lj_remainder - float(lj_floor)
@@ -801,9 +816,9 @@ func _process(delta):
                 if feed_needed > 0:
                     var feed_consumed: int = _consume_feed_continuous(tile, feed_per_sec, improvement_source)
                     var actual_mult: float = production_multiplier if feed_consumed >= feed_per_sec * CityData.SIMULATION_TICK else 0.25
-                    _emit_continuous_production(tile, produces, actual_mult, imp_interval, tile_quality, improvement_source)
+                    _emit_continuous_production(tile, produces, actual_mult, imp_interval, tile_quality, improvement_source, route_avg_speed)
                 else:
-                    _emit_continuous_production(tile, produces, production_multiplier, imp_interval, tile_quality, improvement_source)
+                    _emit_continuous_production(tile, produces, production_multiplier, imp_interval, tile_quality, improvement_source, route_avg_speed)
 
                 # The planned release/consumption of the cycle: they are visible on EVERY tick, while
                 # the worker is in place (they close the gaps between the cycles on the tab
@@ -917,7 +932,13 @@ func _consume_feed_continuous(tile: Dictionary, feed_per_sec: float, improvement
 # production_multiplier can be < 1.0 (for example, 0.25 on a shortage of the feed)
 # or > 1.0 (the bonus of the profession). The zero values are skipped, so as not to
 # breed the zero records in the sources.
-func _emit_continuous_production(tile: Dictionary, produces: Dictionary, production_multiplier: float, imp_interval: float, tile_quality: String, improvement_source: String) -> void:
+#
+# route_avg_speed is the average speed of the route to the city, or -1.0 when there is no
+# route. It is the throughput of the road in units/sec: each product is capped by it, and the
+# excess above the cap is LOST (the road simply cannot carry more). The products of one
+# improvement are capped independently, because the improvement may output different products
+# at different rates.
+func _emit_continuous_production(tile: Dictionary, produces: Dictionary, production_multiplier: float, imp_interval: float, tile_quality: String, improvement_source: String, route_avg_speed: float = -1.0) -> void:
     if produces.is_empty() or imp_interval <= 0.0:
         return
     var tick := float(CityData.SIMULATION_TICK)
@@ -926,6 +947,8 @@ func _emit_continuous_production(tile: Dictionary, produces: Dictionary, product
             continue
         var per_cycle_amt := float(RangeUtils.get_min_value(produces[pid], 1))
         var per_sec_amt: float = per_cycle_amt * production_multiplier / imp_interval
+        if route_avg_speed >= 0.0 and per_sec_amt > route_avg_speed:
+            per_sec_amt = route_avg_speed
         var remainder: float = float(tile.get("production_fractional_remainder", 0.0)) + per_sec_amt * tick
         var floor_amount: int = int(floor(remainder))
         tile["production_fractional_remainder"] = remainder - float(floor_amount)
@@ -1795,6 +1818,15 @@ func get_route_to_city(row: int, col: int) -> Dictionary:
         return road_manager.find_route_to_city(row, col,
                 int(town.get("row", -1)), int(town.get("col", -1)))
     return road_manager.find_route_to_city(row, col)
+
+# The average speed of the route from the hex to the city, or -1.0 when there is no route.
+# -1.0 (and not 0.0) marks "no route": the road does not limit the transport then, and the
+# caller must tell the two cases apart (a road with a zero speed does not exist).
+func _route_avg_speed(row: int, col: int) -> float:
+    var route: Dictionary = get_route_to_city(row, col)
+    if not route.get("ok", false):
+        return -1.0
+    return float(route.get("avg_speed", 0.0))
 
 # Turns the plan of the road into the queue of the steps — one per new segment.
 #

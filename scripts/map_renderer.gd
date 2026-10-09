@@ -956,8 +956,9 @@ func _draw_hex_overlays(row: int, col: int):
         # The types differ visually:
         #   direct - a filled blue drop (as it was before for the farms);
         #   chain  - a contour (an outline) of a muted colour, the water by the chain.
+        var water_access := ""
         if tile.improvement != null:
-            var water_access = MapHelpers.get_hex_water_access(row, col, tile_data, main_map.map_rows, main_map.map_cols)
+            water_access = MapHelpers.get_hex_water_access(row, col, tile_data, main_map.map_rows, main_map.map_cols)
             if water_access != "":
                 # The position of the drop depends on the size of the icon of the improvement:
                 #   small (32) - as before, to the right of the icon;
@@ -988,6 +989,12 @@ func _draw_hex_overlays(row: int, col: int):
                     closed_points.append_array(drop_points)
                     closed_points.append(drop_points[0])
                     draw_polyline(closed_points, Color(0.5, 0.7, 0.95, 0.9), 1.5)
+
+        # The road to the city cannot carry everything the improvement produces: the excess is
+        # lost. The warning sits next to the droplet (or where it would be), so the player reads
+        # the two marks together. The flag is set by main_map during the production tick.
+        if bool(tile.get("road_capacity_short", false)):
+            _draw_road_capacity_warning(icon_pos, imp_icon_size)
 
     # --- The icon of the town ---
     # It is drawn AFTER all the other overlays (the resource/the improvement/the drop of water),
@@ -1151,20 +1158,33 @@ func _draw_quality_stars(tile: Dictionary, center: Vector2):
 # of the conflict "a tech_reveal resource is found under a foreign improvement". The position
 # is specially chosen so as not to cover the icon of the resource in the centre
 # and the icon of the improvement at the top, but to fall into the field of view.
-# The figure itself - a filled red triangle + a white outline + a "!"
-# in the middle (through draw_string). Without the external resources and the fonts.
 func _draw_tech_reveal_warning(center: Vector2):
-    # The dimensions of the triangle in the pixels.
-    var tri_size := 18.0
     # The centre of the triangle is in the upper right corner of the hex, a bit closer to the centre,
     # so that the badge does not stick out of the hex and is not lost on the background of the neighbours.
-    var cx = center.x + main_map.HEX_RADIUS * 0.55
-    var cy = center.y - main_map.HEX_RADIUS * 0.55
+    _draw_warning_triangle(
+            Vector2(center.x + main_map.HEX_RADIUS * 0.55,
+                    center.y - main_map.HEX_RADIUS * 0.55),
+            18.0)
+
+# A small "!" triangle over an improvement whose road cannot carry everything it produces:
+# the excess is lost on the way to the city. It is placed to the right of the droplet (or of
+# where the droplet would be), so the two marks are read together.
+func _draw_road_capacity_warning(icon_pos: Vector2, imp_icon_size: float) -> void:
+    var drop_offset := Vector2(imp_icon_size * 0.5 + 6, 0)
+    if imp_icon_size > IMPROVEMENT_ICON_SIZE:
+        drop_offset = Vector2(0, -(imp_icon_size * 0.5 + 6))
+    var pos := icon_pos + drop_offset + Vector2(MARKER_ICON_RADIUS * 2.0 + 4.0, 0)
+    _draw_warning_triangle(pos, 13.0)
+
+# A filled red triangle with a white outline and a "!" in the middle. It is shared by the
+# tech_reveal conflict and by the road-capacity warning, so both badges look the same and
+# cannot drift apart. Without external resources and fonts (draw_string on the fallback font).
+func _draw_warning_triangle(pos: Vector2, tri_size: float) -> void:
     # The vertices of an equilateral triangle directed up.
     var pts = PackedVector2Array()
-    pts.append(Vector2(cx, cy - tri_size * 0.6))
-    pts.append(Vector2(cx - tri_size * 0.55, cy + tri_size * 0.45))
-    pts.append(Vector2(cx + tri_size * 0.55, cy + tri_size * 0.45))
+    pts.append(Vector2(pos.x, pos.y - tri_size * 0.6))
+    pts.append(Vector2(pos.x - tri_size * 0.55, pos.y + tri_size * 0.45))
+    pts.append(Vector2(pos.x + tri_size * 0.55, pos.y + tri_size * 0.45))
     draw_colored_polygon(pts, Color(0.85, 0.15, 0.15, 0.95))
     # A white outline by the same contour.
     var border = PackedVector2Array()
@@ -1176,10 +1196,10 @@ func _draw_tech_reveal_warning(center: Vector2):
     var font = ThemeDB.fallback_font
     if font == null:
         return
-    var font_size := 13
+    var font_size := int(round(tri_size * 0.72))
     var text := "!"
     var text_size = font.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size)
-    var text_pos = Vector2(cx - text_size.x / 2.0, cy + text_size.y / 2.0 - 1)
+    var text_pos = Vector2(pos.x - text_size.x / 2.0, pos.y + text_size.y / 2.0 - 1)
     draw_string(font, text_pos, text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color.WHITE)
 
 # Returns the style of the highlighting of the chunk - {"fill": Color, "border": Color,

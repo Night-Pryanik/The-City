@@ -19,6 +19,18 @@ var _last_products_key := ""
 var _extended_row: int = -1
 var _extended_col: int = -1
 
+# The colour of the road-capacity note in the "Produces:" rows. The note explains that the
+# route, not the improvement, is the limit, so it is set apart from the name and the number.
+const ROUTE_SHORTFALL_COLOR := Color(0.95, 0.35, 0.35)
+
+# The road icon that replaces the word "route" in the road-capacity note. The full note
+# ("(route 10 units/sec)") was long: in the narrow left column of the panel the row ran past
+# its edge. The icon is compact and reads the same in every language, so the word does not
+# need a translation any more. It is the same icon as the "build road" special action.
+const ROAD_ICON_NAME := "road.svg"
+# The size of that icon in the rows. It matches the height of the row text.
+const ROUTE_ICON_SIZE := 14.0
+
 # The formatting of the rate (pcs/sec, units/sec) lives in the common helpers:
 # ConsumptionUi.format_rate — for the rows of the occupational consumption.
 # There is no own formatter here any more: it used to live exactly in this
@@ -123,6 +135,116 @@ func _format_resource_label_for_text(res_id: String, res_name: String) -> String
     return "[img=18]%s[/img] %s" % [icon_path, res_name]
 
 
+# --- The road capacity: what the route to the city can carry ---
+
+# The average speed of the route from the hex to the city, or -1.0 when there is no route.
+# The route speed is the throughput of the road in units/sec (see
+# road_manager.find_route_to_city): it is the number of units that can be carried along the
+# whole route per second.
+func _route_avg_speed(row: int, col: int) -> float:
+    var main_map = _map_renderer.main_map if _map_renderer != null else null
+    if main_map == null or not main_map.has_method("get_route_to_city"):
+        return -1.0
+    var route: Dictionary = main_map.get_route_to_city(row, col)
+    if not route.get("ok", false):
+        return -1.0
+    return float(route.get("avg_speed", 0.0))
+
+
+# The per-product production rate (units/sec) of the BUILT improvement on the hex, together
+# with its base amount: { prod_id: {"rate": float, "base": float} }. Empty for an empty hex,
+# an improvement without a worker, or an improvement that produces nothing.
+#
+# This is the single source of these numbers: the rows of the "Produces:" block, the red
+# "(route X units/sec)" note and the warning triangle over the improvement all take the rate
+# from here, so they cannot disagree with each other.
+func production_rates(row: int, col: int, tile_data: Array) -> Dictionary:
+    var rates: Dictionary = {}
+    var tile = tile_data[row][col]
+    if tile == null or tile.improvement == null:
+        return rates
+    if not _worker_manager.has_worker(row, col):
+        return rates
+    var eff_res = MapHelpers.get_effective_resource(tile)
+    # A hidden resource (tech_reveal is not learned): as if there were none.
+    if eff_res != "" and not MapHelpers.is_resource_revealed(tile):
+        eff_res = ""
+    var has_water: bool = MapHelpers.is_hex_irrigated(
+            row, col, tile_data, tile_data.size(), tile_data[0].size())
+    if eff_res == "":
+        # A forest plot: the wood from the cover (wood_yield in covers.json).
+        if tile.improvement != "lumberjack_hut":
+            return rates
+        var lj_yield: float = MapHelpers.get_cover_wood_yield(tile)
+        if lj_yield <= 0.0:
+            return rates
+        var lj_interval := CityData.get_improvement_production_interval("lumberjack_hut")
+        if lj_interval <= 0.0:
+            return rates
+        var lj_mult: float = CityData.get_improvement_production_multiplier(
+            "lumberjack_hut", has_water, tile.get("terrain", ""), "lumberjack_hut")
+        rates["wood"] = {"rate": float(ceili(lj_yield * lj_mult)) / lj_interval, "base": lj_yield}
+        return rates
+    var res_data = GameData.raw_resources.get(eff_res, {})
+    # The one-off resources (improved_by == null) have no continuous production: they are
+    # gathered by a special action, and there is no rate to cap.
+    if not res_data.has("produces") or res_data.get("improved_by", null) == null:
+        return rates
+    var prod_interval := CityData.get_improvement_production_interval(tile.improvement)
+    if prod_interval <= 0.0:
+        return rates
+    var bonus_multiplier: float = CityData.get_improvement_production_multiplier(
+        tile.improvement, has_water, tile.get("terrain", ""), eff_res)
+    var fill_frac: float = MapHelpers.get_fill_fraction(tile, res_data)
+    for prod_id in res_data["produces"]:
+        if not CityData.is_product_available(prod_id):
+            continue
+        var base_amount := float(RangeUtils.get_min_value(res_data["produces"][prod_id], 1))
+        var final_amount := ceili(base_amount * bonus_multiplier * fill_frac)
+        rates[str(prod_id)] = {"rate": float(final_amount) / prod_interval, "base": base_amount}
+    return rates
+
+
+# The products of the improvement on the hex whose production rate exceeds the route's average
+# speed: { prod_id: {"rate": float, "avg_speed": float} }. Empty when there is no route, no
+# producing improvement, or every product fits within the route's throughput.
+#
+# The route speed is ONE number for the whole route, but an improvement may output several
+# products, so each product is compared with it separately: the wheat may fit while the fodder
+# does not. That is why the result is keyed by product, and not a single flag.
+func road_capacity_shortfall(row: int, col: int, tile_data: Array) -> Dictionary:
+    var result: Dictionary = {}
+    var avg_speed := _route_avg_speed(row, col)
+    if avg_speed < 0.0:
+        return result
+    var rates := production_rates(row, col, tile_data)
+    for prod_id in rates:
+        var rate: float = float(rates[prod_id].get("rate", 0.0))
+        if rate > avg_speed + 0.0001:
+            result[str(prod_id)] = {"rate": rate, "avg_speed": avg_speed}
+    return result
+
+
+# Adds the red route note to a product row when the route cannot carry this product in full.
+# The product's own rate stays in the row; the note names the route's throughput — the number
+# that is actually delivered. The word "route" is not spelled out: the row carries the road
+# icon instead (see ROAD_ICON_NAME), which keeps the note short.
+func _append_route_shortfall(item: Dictionary, prod_id: String, shortfall: Dictionary) -> void:
+    if not shortfall.has(prod_id):
+        return
+    item["route_icon_path"] = IconRegistry.icon_path(ROAD_ICON_NAME)
+    item["route_text"] = " %s %s" % [_format_speed(
+            float(shortfall[prod_id].get("avg_speed", 0.0))),
+            TranslationServer.translate("units/sec")]
+    item["route_color"] = ROUTE_SHORTFALL_COLOR
+
+
+# Formats a speed for the rows: whole numbers without the decimal part (10, not 10.0), the
+# rest with one decimal (13.3) — the same rule as the amount of a product.
+func _format_speed(value: float) -> String:
+    return str(int(value)) if value == floor(value) else "%.1f" % value
+
+
 # --- The common rendering of the list of products ---
 # products — an array of dictionaries:
 #   { "type": "header",  "text": String }
@@ -173,6 +295,41 @@ func render_products(products: Array, container: Node, wrap: bool = false):
             var item_color: Color = item.get("color", Color.WHITE)
             label_item.add_theme_color_override("font_color", item_color)
             hbox.add_child(label_item)
+            # The road-capacity note: "(" + the road icon + " 10 units/sec)". The word "route" is
+            # replaced by the icon (see ROAD_ICON_NAME): the spelled-out note was long, and in
+            # the narrow left column of the panel the row ran past its edge. The icon reads the
+            # same in every language. The note lives in its own tight row (separation 0), so its
+            # parts stay together and take as little width as possible.
+            var route_text := str(item.get("route_text", ""))
+            if route_text != "":
+                var route_color: Color = item.get("route_color", ROUTE_SHORTFALL_COLOR)
+                var note_box = HBoxContainer.new()
+                note_box.add_theme_constant_override("separation", 0)
+                var route_open = Label.new()
+                route_open.text = "("
+                route_open.add_theme_color_override("font_color", route_color)
+                note_box.add_child(route_open)
+                var route_icon_path := str(item.get("route_icon_path", ""))
+                if route_icon_path != "":
+                    var route_icon = TextureRect.new()
+                    route_icon.texture = load(route_icon_path)
+                    route_icon.custom_minimum_size = Vector2(ROUTE_ICON_SIZE, ROUTE_ICON_SIZE)
+                    route_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+                    route_icon.stretch_mode = TextureRect.STRETCH_SCALE
+                    route_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+                    # The icon takes the colour of the note: the whole note reads as one red
+                    # "the route is the limit" mark.
+                    route_icon.modulate = route_color
+                    note_box.add_child(route_icon)
+                var route_label = Label.new()
+                route_label.text = route_text
+                route_label.add_theme_color_override("font_color", route_color)
+                note_box.add_child(route_label)
+                var route_close = Label.new()
+                route_close.text = ")"
+                route_close.add_theme_color_override("font_color", route_color)
+                note_box.add_child(route_close)
+                hbox.add_child(note_box)
             container.add_child(hbox)
         else:
             var label = Label.new()
@@ -527,6 +684,12 @@ func _build_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_c
 func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array:
     var result = []
     var tile = tile_data[row][col]
+    # The road to the city caps the output: the products whose rate exceeds the route's
+    # average speed get a red note in their row (see road_capacity_shortfall). It is computed
+    # once per hex, and only for a built improvement with a worker — nothing else produces.
+    var shortfall: Dictionary = {}
+    if tile.improvement != null and _worker_manager.has_worker(row, col):
+        shortfall = road_capacity_shortfall(row, col, tile_data)
     var eff_res = MapHelpers.get_effective_resource(tile)
     # A hidden resource (tech_reveal is not learned): we do not show the production —
     # otherwise the hint "Once built, X will give…" would disclose its presence.
@@ -567,7 +730,9 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
                 var lj_base_str = str(int(lj_yield)) if lj_yield == floor(lj_yield) else "%.1f" % lj_yield
                 lj_label = tr("%s (base %s)") % [lj_label, lj_base_str]
             result.append({"type": "header", "text": tr("Produces:")})
-            result.append({"type": "product", "name": lj_label, "amount": lj_per_sec2, "icon_path": lj_icon_path2, "suffix": " " + TranslationServer.translate("units/sec")})
+            var lj_item := {"type": "product", "name": lj_label, "amount": lj_per_sec2, "icon_path": lj_icon_path2, "suffix": " " + TranslationServer.translate("units/sec")}
+            _append_route_shortfall(lj_item, "wood", shortfall)
+            result.append(lj_item)
         return result
     var res_data = GameData.raw_resources.get(eff_res, {})
     if not res_data.has("produces"):
@@ -632,7 +797,9 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
             var icon_name = prod_data["icon"]
             icon_path = IconRegistry.icon_path(icon_name)
         # The display is per second: the output of the cycle, divided by production_interval.
-        result.append({"type": "product", "name": prod_name, "amount": float(final_amount) / prod_interval, "icon_path": icon_path, "suffix": " " + TranslationServer.translate("units/sec")})
+        var item := {"type": "product", "name": prod_name, "amount": float(final_amount) / prod_interval, "icon_path": icon_path, "suffix": " " + TranslationServer.translate("units/sec")}
+        _append_route_shortfall(item, str(prod_id), shortfall)
+        result.append(item)
 
     for mod in modifiers:
         result.append({"type": "label", "text": " %s" % mod.get("label", ""), "color": Color(0.7, 0.9, 0.7)})
