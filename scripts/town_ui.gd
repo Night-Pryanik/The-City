@@ -11,6 +11,10 @@
 # the sell pool of a town is dozens of rows, and without scrolling they spilled
 # past the bottom edge of the window right onto the map.
 #
+# Both columns are grouped by the resource category, exactly like the "Resources"
+# tab of the city (see _fill_resource_list): a grey "--- Category ---" header, then
+# the rows of that category.
+#
 # Every row of the sale column carries the stock of the town and its quality: the
 # stars of the level in its own colour (data/qualities.json). A town never holds
 # mixed quality, so there is nothing to break down and nothing to show in
@@ -167,7 +171,12 @@ func on_town_storage_changed(town_id: String) -> void:
         return
     refresh_storage()
 
-# Fills the column with one row per resource of the trade pool.
+# Fills the column with one row per resource of the trade pool, grouped by category.
+# The grouping mirrors the "Resources" tab of the city (resources_tab.gd): a grey
+# "--- Category ---" header, then the rows of that category underneath. The order of
+# the categories follows GameData.categories (data/categories.json); a category that
+# is not in the reference is appended at the end under its raw id, so no row is lost.
+#
 # The sell pool contains resource ids, therefore the name is taken from the
 # common reference.
 #
@@ -197,6 +206,10 @@ func _fill_resource_list(container: VBoxContainer, pool, empty_text: String,
         empty_label.modulate = Color(0.65, 0.65, 0.65)
         container.add_child(empty_label)
         return
+    # One entry per display name, grouped by the category of the id behind it. The
+    # first id behind a name wins (see the note above), and it also decides the
+    # category the row lands in.
+    var grouped: Dictionary = {}
     var shown_names: Dictionary = {}
     for resource_id in pool:
         if resource_id == null:
@@ -208,48 +221,96 @@ func _fill_resource_list(container: VBoxContainer, pool, empty_text: String,
         if shown_names.has(display_name):
             continue
         shown_names[display_name] = true
-        var resource_row := HBoxContainer.new()
-        resource_row.add_theme_constant_override("separation", 6)
-        # The row must not collapse, even if the label did not fit into one
-        # line and wrapped: without the row height minimum they overlapped each
-        # other (see autowrap on resource_label below).
-        resource_row.custom_minimum_size = Vector2(0, ROW_HEIGHT)
-        var icon_name := _get_resource_icon_name(id)
-        var icon_tex := IconRegistry.get_texture(icon_name)
-        if icon_tex != null:
-            var resource_icon := TextureRect.new()
-            resource_icon.texture = icon_tex
-            resource_icon.custom_minimum_size = Vector2(28, 28)
-            resource_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-            resource_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-            resource_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-            resource_row.add_child(resource_icon)
+        var category := _get_resource_category(id)
+        if not grouped.has(category):
+            grouped[category] = []
+        grouped[category].append({"id": id, "name": display_name})
+    for category_id in _ordered_categories(grouped):
+        var items: Array = grouped[category_id]
+        if items.is_empty():
+            continue
+        var category_label := Label.new()
+        category_label.text = "--- %s ---" % _get_category_name(category_id)
+        category_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+        container.add_child(category_label)
+        for item in items:
+            container.add_child(_build_resource_row(item["id"], item["name"], with_stock))
 
-        var resource_label := Label.new()
-        resource_label.text = display_name
-        resource_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-        resource_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-        resource_row.add_child(resource_label)
+# Builds one row of a trade column: the icon, the name and — for the sale column —
+# the quality stars and the units on the stock of the town.
+func _build_resource_row(resource_id: String, display_name: String,
+        with_stock: bool) -> HBoxContainer:
+    var resource_row := HBoxContainer.new()
+    resource_row.add_theme_constant_override("separation", 6)
+    # The row must not collapse, even if the label did not fit into one
+    # line and wrapped: without the row height minimum they overlapped each
+    # other (see autowrap on resource_label below).
+    resource_row.custom_minimum_size = Vector2(0, ROW_HEIGHT)
+    var icon_name := _get_resource_icon_name(resource_id)
+    var icon_tex := IconRegistry.get_texture(icon_name)
+    if icon_tex != null:
+        var resource_icon := TextureRect.new()
+        resource_icon.texture = icon_tex
+        resource_icon.custom_minimum_size = Vector2(28, 28)
+        resource_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+        resource_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+        resource_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        resource_row.add_child(resource_icon)
 
-        if with_stock:
-            # The quality of the goods comes BEFORE the quantity: the stars read as
-            # a property of the product ("what it is"), and the number as its amount.
-            # The label takes the mouse (unlike the plain labels of the row), because
-            # it carries the tooltip with the name of its level.
-            var quality_label := Label.new()
-            quality_label.mouse_filter = Control.MOUSE_FILTER_STOP
-            _apply_row_quality(quality_label, display_name)
-            resource_row.add_child(quality_label)
-            _sell_quality_labels[display_name] = quality_label
+    var resource_label := Label.new()
+    resource_label.text = display_name
+    resource_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    resource_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    resource_row.add_child(resource_label)
 
-            var stock_label := Label.new()
-            stock_label.text = _format_stock(_stock_of(display_name))
-            stock_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-            stock_label.modulate = Color(0.8, 0.8, 0.8)
-            resource_row.add_child(stock_label)
-            _sell_quantity_labels[display_name] = stock_label
+    if with_stock:
+        # The quality of the goods comes BEFORE the quantity: the stars read as
+        # a property of the product ("what it is"), and the number as its amount.
+        # The label takes the mouse (unlike the plain labels of the row), because
+        # it carries the tooltip with the name of its level.
+        var quality_label := Label.new()
+        quality_label.mouse_filter = Control.MOUSE_FILTER_STOP
+        _apply_row_quality(quality_label, display_name)
+        resource_row.add_child(quality_label)
+        _sell_quality_labels[display_name] = quality_label
 
-        container.add_child(resource_row)
+        var stock_label := Label.new()
+        stock_label.text = _format_stock(_stock_of(display_name))
+        stock_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+        stock_label.modulate = Color(0.8, 0.8, 0.8)
+        resource_row.add_child(stock_label)
+        _sell_quantity_labels[display_name] = stock_label
+    return resource_row
+
+# The category of a trade-pool resource — the same field the "Resources" tab groups
+# by. A town pool may hold a raw resource id as itself (a resource with no
+# production), so the lookup goes through the common reference, which covers both the
+# raw resources and the products. An id without a category falls back to "other".
+func _get_resource_category(resource_id: String) -> String:
+    var category := str(GameData.get_resource_data(resource_id).get("category", ""))
+    return category if not category.is_empty() else "other"
+
+# The display name of a category id from data/categories.json. An id that is not in
+# the reference (for example the raw "animals" or "plants" of a hex resource) is shown
+# as is.
+func _get_category_name(category_id: String) -> String:
+    for entry in GameData.categories:
+        if str(entry.get("id", "")) == category_id:
+            return str(entry.get("name", category_id))
+    return category_id
+
+# The category ids of the groups, ordered by data/categories.json; a group that is
+# not in the reference is appended in the order it was encountered.
+func _ordered_categories(grouped: Dictionary) -> Array:
+    var ordered: Array = []
+    for entry in GameData.categories:
+        var category_id := str(entry.get("id", ""))
+        if grouped.has(category_id):
+            ordered.append(category_id)
+    for category_id in grouped.keys():
+        if not ordered.has(category_id):
+            ordered.append(category_id)
+    return ordered
 
 func _get_resource_icon_name(resource_id: String) -> String:
     var resource_data := GameData.get_resource_data(resource_id)

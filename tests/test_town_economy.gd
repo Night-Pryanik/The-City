@@ -62,6 +62,9 @@
 #      длиной 3+ сделки, а не чередуются каждый день.
 #  27. СЕЙВ ТОРГОВЛИ. Направление последней сделки и счётчик тиков — состояние
 #      мира: после round-trip следующий тик идёт ровно тем же путём.
+#  28. КАТЕГОРИИ В ОКНЕ. Товары в пулах покупки и продажи разбиты по категориям,
+#      как на вкладке «Ресурсы» интерфейса города: серый заголовок
+#      "--- Категория ---", под ним — строки только этой категории.
 extends SceneTree
 
 # Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
@@ -158,6 +161,8 @@ func _run() -> void:
         _test_trade_moves_goods()
     if WATCHDOG.wants_case("window_shows_stock"):
         await _test_window_shows_stock()
+    if WATCHDOG.wants_case("town_ui_categories"):
+        await _test_town_ui_categories()
 
     WATCHDOG.report_skipped()
     print("test_town_economy: ", "ПРОВАЛЕН" if _failed else "все проверки пройдены")
@@ -1146,3 +1151,76 @@ func _test_window_shows_stock() -> void:
         "refresh_storage должен читать актуальный склад")
     ui.queue_free()
     tm.queue_free()
+
+
+# 28. КАТЕГОРИИ В ОКНЕ. Товары в пулах покупки и продажи разбиты по категориям,
+# как на вкладке «Ресурсы» интерфейса города: серый заголовок "--- Категория ---",
+# под ним — строки только этой категории.
+func _test_town_ui_categories() -> void:
+    var gd = get_root().get_node("GameData")
+    # По одному товару из КАЖДОЙ категории — иначе разбиение нечего проверять.
+    var pool: Array = []
+    var used_cat: Dictionary = {}
+    var used_name: Dictionary = {}
+    for pid in gd.products.keys():
+        var id := str(pid)
+        var name := str(gd.get_resource_data(id).get("name", id))
+        if used_name.has(name):
+            continue
+        var cat := str(gd.get_resource_data(id).get("category", "other"))
+        if used_cat.has(cat):
+            continue
+        used_cat[cat] = true
+        used_name[name] = true
+        pool.append(id)
+        if pool.size() >= 4:
+            break
+    _check(pool.size() >= 3,
+        "тест должен собрать товары из нескольких категорий (получено %d)" % pool.size())
+
+    var ui = load("res://scenes/TownUI.tscn").instantiate()
+    get_root().add_child(ui)
+    await process_frame
+    ui.open_town({"name": "T", "sell_pool": pool, "buy_pool": pool}, true)
+    await process_frame
+    _assert_pool_grouped(ui.sell_list, ui, pool)
+    _assert_pool_grouped(ui.buy_list, ui, pool)
+    ui.queue_free()
+
+
+# Проверяет, что строки контейнера сгруппированы по категориям: каждая строка
+# идёт под заголовком "--- Категория ---" СВОЕГО товара, а заголовков ровно
+# столько, сколько различных категорий в пуле.
+func _assert_pool_grouped(container, ui, pool: Array) -> void:
+    var expected: Dictionary = {}   # отображаемое имя -> ожидаемый текст заголовка
+    var categories: Dictionary = {}
+    for pid in pool:
+        var id := str(pid)
+        var name: String = ui._get_resource_display_name(id)
+        var cat: String = ui._get_resource_category(id)
+        expected[name] = "--- %s ---" % ui._get_category_name(cat)
+        categories[cat] = true
+
+    var current_header := ""
+    var header_count := 0
+    var row_count := 0
+    for child in container.get_children():
+        if child is Label:
+            current_header = child.text
+            header_count += 1
+        elif child is HBoxContainer:
+            var row_name := ""
+            for node in child.get_children():
+                if node is Label:
+                    row_name = node.text
+                    break
+            row_count += 1
+            _check(current_header == str(expected.get(row_name, "<нет>")),
+                "строка «%s» должна идти под заголовком своей категории (сейчас «%s»)"
+                    % [row_name, current_header])
+    _check(header_count == categories.size(),
+        "заголовков должно быть по числу различных категорий пула (%d, получено %d)"
+            % [categories.size(), header_count])
+    _check(row_count == expected.size(),
+        "строк должно быть по числу товаров пула (%d, получено %d)"
+            % [expected.size(), row_count])
