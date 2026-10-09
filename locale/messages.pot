@@ -306,9 +306,6 @@ msgstr ""
 msgid "%s (base %d): %s"
 msgstr ""
 
-msgid "%s (base %s)"
-msgstr ""
-
 msgid "%s (free)"
 msgstr ""
 

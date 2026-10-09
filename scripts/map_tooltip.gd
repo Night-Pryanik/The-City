@@ -695,6 +695,11 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
     # otherwise the hint "Once built, X will give…" would disclose its presence.
     if eff_res != "" and not MapHelpers.is_resource_revealed(tile):
         eff_res = ""
+    # The rows show the PER-SECOND rate only: the player receives a continuous stream, not
+    # batches — main_map._emit_continuous_production adds produces × multiplier /
+    # production_interval to the storage on every tick. The per-cycle amount from the resource
+    # data is an internal detail (it never reaches the player as a discrete sum), so the "base"
+    # suffix would only invite a comparison with a number the player never sees.
     if eff_res == "":
         # A forest plot: the production of wood from the cover (wood_yield in
         # covers.json). We show it both for a built plot with a worker, and
@@ -711,7 +716,9 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
             if wood_data0.has("icon"):
                 lj_icon_path0 = IconRegistry.icon_path(wood_data0["icon"])
             result.append({"type": "header", "text": tr("Once built, %s will produce:") % lj_name})
-            result.append({"type": "product", "name": wood_data0.get("name", tr("Wood")), "amount": lj_per_sec0, "icon_path": lj_icon_path0, "suffix": " " + TranslationServer.translate("units/sec")})
+            result.append({"type": "product", "name": wood_data0.get("name", tr("Wood")),
+                    "amount": lj_per_sec0, "icon_path": lj_icon_path0,
+                    "suffix": " " + TranslationServer.translate("units/sec")})
         elif tile.improvement == "lumberjack_hut" and lj_yield > 0.0 \
                 and _worker_manager.has_worker(row, col) \
                 and CityData.is_product_available("wood"):
@@ -726,9 +733,6 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
             if wood_data2.has("icon"):
                 lj_icon_path2 = IconRegistry.icon_path(wood_data2["icon"])
             var lj_label = wood_data2.get("name", tr("Wood"))
-            if lj_mult2 != 1.0:
-                var lj_base_str = str(int(lj_yield)) if lj_yield == floor(lj_yield) else "%.1f" % lj_yield
-                lj_label = tr("%s (base %s)") % [lj_label, lj_base_str]
             result.append({"type": "header", "text": tr("Produces:")})
             var lj_item := {"type": "product", "name": lj_label, "amount": lj_per_sec2, "icon_path": lj_icon_path2, "suffix": " " + TranslationServer.translate("units/sec")}
             _append_route_shortfall(lj_item, "wood", shortfall)
@@ -776,7 +780,12 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
 
     # The growing resources: while the pasture is filling up, the actual output
     # is proportional to the degree of the occupancy of the herd.
-    var fill_frac = MapHelpers.get_fill_fraction(tile, res_data)
+    #
+    # The "once built" hint (no improvement on the hex yet) describes the POTENTIAL output: the
+    # herd starts filling only after the improvement is built, so the current fraction would
+    # always be zero and the row would show no rate at all. The fill reduces the rate of a
+    # working improvement, not of a planned one.
+    var fill_frac = 1.0 if tile.improvement == null else MapHelpers.get_fill_fraction(tile, res_data)
 
     var base_amount = 0.0
     var final_amount = 0
@@ -786,11 +795,6 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
         base_amount = float(RangeUtils.get_min_value(available_products[prod_id], 1))
         final_amount = ceili(base_amount * bonus_multiplier * fill_frac)
         var prod_name = GameData.products.get(prod_id, {}).get("name", prod_id)
-        # With the active modifiers we show the base for each product
-        # (for different products it is its own, one common row "Base" was misleading).
-        if bonus_multiplier != 1.0 or fill_frac != 1.0:
-            var base_str = str(int(base_amount)) if base_amount == floor(base_amount) else "%.1f" % base_amount
-            prod_name = tr("%s (base %s)") % [prod_name, base_str]
         var icon_path = ""
         var prod_data = GameData.products.get(prod_id, {})
         if prod_data.has("icon"):

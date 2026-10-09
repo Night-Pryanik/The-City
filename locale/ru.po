@@ -306,9 +306,6 @@ msgstr "%s (база %d):"
 msgid "%s (base %d): %s"
 msgstr "%s (база %d): %s"
 
-msgid "%s (base %s)"
-msgstr "%s (база %s)"
-
 msgid "%s (free)"
 msgstr "%s (бесплатно)"
 

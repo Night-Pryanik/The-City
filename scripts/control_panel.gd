@@ -1442,10 +1442,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
                 wood_icon_path = IconRegistry.icon_path(wood_data["icon"])
             var lj_products := []
             lj_products.append({"type": "header", "text": tr("Will produce:")})
-            var lj_base_str = str(int(lj_yield)) if lj_yield == floor(lj_yield) else "%.1f" % lj_yield
             var wood_label = wood_data.get("name", tr("Wood"))
-            if lj_mult != 1.0:
-                wood_label = tr("%s (base %s)") % [wood_label, lj_base_str]
             lj_products.append({"type": "product", "name": wood_label, "amount": lj_per_sec, "icon_path": wood_icon_path, "suffix": " " + TranslationServer.translate("units/sec")})
             var lj_box = VBoxContainer.new()
             map_tooltip.render_products(lj_products, lj_box, true)
@@ -1478,10 +1475,6 @@ func _build_preview(row: int, col: int, tile: Dictionary):
                 var base_amount = float(RangeUtils.get_min_value(res_data["produces"][prod_id], 1))
                 var final_amount = ceili(base_amount * bonus_multiplier)
                 var prod_name = GameData.products.get(prod_id, {}).get("name", prod_id)
-                # With the active modifiers the base is indicated for each product.
-                if bonus_multiplier != 1.0:
-                    var base_str = str(int(base_amount)) if base_amount == floor(base_amount) else "%.1f" % base_amount
-                    prod_name = tr("%s (base %s)") % [prod_name, base_str]
                 var icon_path = ""
                 var prod_data = GameData.products.get(prod_id, {})
                 if prod_data.has("icon"):
