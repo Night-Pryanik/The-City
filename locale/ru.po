@@ -165,6 +165,9 @@ msgstr " Куда: от ближайшей дороги города до это
 msgid " Destination: the nearest road in the town \"%s\" influence ring"
 msgstr " Куда: ближайшая дорога в кольце влияния городка «%s»"
 
+msgid " Destination: to the town \"%s\" itself, at the chosen level"
+msgstr " Куда: до самого городка «%s», на выбранном уровне"
+
 msgid " Distance to city: %d hex(es)"
 msgstr " Расстояние до города: %d гекс(а)"
 

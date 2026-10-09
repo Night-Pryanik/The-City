@@ -14,13 +14,18 @@
 #      города идёт цепочка сегментов (проверка формы сети, а не флага).
 #   3. Дорога не строится там, где её быть не может: вода, уже подключённый
 #      гекс, гекс, отрезанный водой от города.
-#   4. Дорога до ГОРОДКА идёт не в гекс городка, а к ближайшей дороге в его
-#      кольце влияния; после постройки сети города и городка пересеклись
+#   4. Дорога до ГОРОДКА идёт ДО САМОГО ГОРОДКА (в его центр) и на выбранном
+#      уровне, а не до ближайшей дороги в кольце влияния, где шоссе упиралось бы
+#      в тропку городка; после постройки сети города и городка пересеклись
 #      (is_town_linked_to_city), а сегменты связи помечены отдельно.
 #   4a. Дорога, которую строит игрок, идёт ТОЛЬКО по известной территории
 #      (в Кольце Влияния или разведано): разведанный городок без разведанного
 #      пути к нему недостижим, причина зовёт разведчиков, а после разведки
 #      коридора дорога появляется. Автоматические сети дорог фильтр не получают.
+#   4b. Уровень дороги доходит ДО ГОРОДКА: каждый участок трассы (включая
+#      входящий в кольцо) — выбранного уровня, и на гексе городка уровень тоже
+#      выбранный. Раньше трасса обрывалась на дороге кольца, и последний
+#      участок был тропкой городка.
 #   5. Восстановление из сейва: флаг road_built на гексе и road_linked в
 #      записи городка возвращают и дорогу, и связь (rebuild_player_roads),
 #      а сериализация их записывает.
@@ -86,6 +91,8 @@ func _run() -> void:
         _test_ghost_segments(state)
     if WATCHDOG.wants_case("town_link"):
         _test_town_link(state)
+    if WATCHDOG.wants_case("town_road_level"):
+        _test_town_road_level(state)
     if WATCHDOG.wants_case("restore_from_save_flags"):
         _test_restore_from_save_flags(state)
 
@@ -343,12 +350,11 @@ func _test_impossible_targets(state: Dictionary) -> void:
 func _test_town_road_needs_known_territory(state: Dictionary) -> void:
     var tile_data := _make_map()
     _rm.initialize(CITY_ROW, CITY_COL)
-    var town := _setup_town(tile_data)
-    var ring: Array = town["influence_hexes"]
+    _setup_town(tile_data)
 
     # Без ограничения по известности трасса есть — это «старые» правила.
     var open_plan: Dictionary = _rm.plan_road_to(TOWN_ROW, TOWN_COL,
-            tile_data, ROWS, COLS, ring)
+            tile_data, ROWS, COLS)
     check(open_plan.get("ok", false),
             "без ограничения по известности дорога до городка строится", state)
 
@@ -358,7 +364,7 @@ func _test_town_road_needs_known_territory(state: Dictionary) -> void:
     # неразведанных гексов между городом и городком.
     _set_corridor_known(tile_data, false)
     var filtered: Dictionary = _rm.plan_road_to(TOWN_ROW, TOWN_COL,
-            tile_data, ROWS, COLS, ring, _known_hex_filter(tile_data))
+            tile_data, ROWS, COLS, _known_hex_filter(tile_data))
     check(not filtered.get("ok", true),
             "через неразведанную территорию дорога к городку строиться не должна", state)
     # Причина — ПЕРЕВОДИМАЯ строка интерфейса, поэтому сверяем её с тем же
@@ -376,11 +382,11 @@ func _test_town_road_needs_known_territory(state: Dictionary) -> void:
     _set_corridor_known(tile_data, true)
     _rm.bump_map_knowledge()
     var after_scouting: Dictionary = _rm.plan_road_to(TOWN_ROW, TOWN_COL,
-            tile_data, ROWS, COLS, ring, _known_hex_filter(tile_data))
+            tile_data, ROWS, COLS, _known_hex_filter(tile_data))
     check(after_scouting.get("ok", false),
             "после разведки прохода дорога к городку должна появиться: %s"
                     % after_scouting.get("reason", ""), state)
-    check(_rm.build_road_to(TOWN_ROW, TOWN_COL, tile_data, ROWS, COLS, ring, -1,
+    check(_rm.build_road_to(TOWN_ROW, TOWN_COL, tile_data, ROWS, COLS, -1,
             _known_hex_filter(tile_data)),
             "дорога по разведанному пути строится", state)
     check(_rm.is_town_linked_to_city(TOWN_ROW, TOWN_COL),
@@ -510,25 +516,24 @@ func _test_town_link(state: Dictionary) -> void:
     check(not _rm.is_town_linked_to_city(TOWN_ROW, TOWN_COL),
             "изначально городок с городом не соединён", state)
 
-    var ring: Array = town["influence_hexes"]
-    var plan: Dictionary = _rm.plan_road_to(TOWN_ROW, TOWN_COL, tile_data, ROWS, COLS, ring)
+    var plan: Dictionary = _rm.plan_road_to(TOWN_ROW, TOWN_COL, tile_data, ROWS, COLS)
     check(plan.get("ok", false), "до городка должна достраиваться дорога: %s"
             % plan.get("reason", ""), state)
     check(bool(plan.get("is_town", false)), "план дороги до городка помечен как городковый", state)
     check(int(plan.get("segments", 0)) > 0, "у дороги до городка есть новые участки", state)
 
-    # Ключевое правило: трасса начинается на дороге в КОЛЬЦЕ ВЛИЯНИЯ городка,
-    # а не в самом гексе городка, и заканчивается на дороге сети ГОРОДА.
+    # Ключевое правило: трасса идёт ДО САМОГО ГОРОДКА (в его центр), а не
+    # обрывается на ближайшей дороге кольца влияния, и заканчивается на дороге
+    # сети ГОРОДА. Иначе выбранный уровень не дошёл бы до городка, и шоссе
+    # превращалось бы в тропку на границе кольца.
     var road_path: Array = plan.get("path", [])
     check(road_path.size() >= 2, "в плане должен быть путь хотя бы из двух гексов", state)
     if road_path.size() >= 2:
         var town_side: Dictionary = road_path[0]
         var city_side: Dictionary = road_path[road_path.size() - 1]
-        check(_rm.is_town_connected(TOWN_ROW, TOWN_COL, town_side.row, town_side.col),
-                "трасса должна начинаться на дороге городка (%d,%d)"
-                        % [town_side.row, town_side.col], state)
-        check(_is_in_ring(town_side, ring),
-                "начало трассы должно лежать в кольце влияния городка", state)
+        check(town_side.row == TOWN_ROW and town_side.col == TOWN_COL,
+                "трасса должна начинаться в ЦЕНТРЕ городка (%d,%d), получено (%d,%d)"
+                        % [TOWN_ROW, TOWN_COL, town_side.row, town_side.col], state)
         check(_rm.is_hex_connected(city_side.row, city_side.col),
                 "трасса должна заканчиваться на дороге сети города (%d,%d)"
                         % [city_side.row, city_side.col], state)
@@ -536,7 +541,7 @@ func _test_town_link(state: Dictionary) -> void:
     var linked := {"hit": false}
     _rm.town_link_established.connect(func(_r, _c):
         linked["hit"] = int(_r) == TOWN_ROW and int(_c) == TOWN_COL)
-    check(_rm.build_road_to(TOWN_ROW, TOWN_COL, tile_data, ROWS, COLS, ring),
+    check(_rm.build_road_to(TOWN_ROW, TOWN_COL, tile_data, ROWS, COLS),
             "дорога до городка должна построиться", state)
     check(bool(linked.get("hit", false)),
             "после постройки связи должен прийти сигнал town_link_established", state)
@@ -555,7 +560,7 @@ func _test_town_link(state: Dictionary) -> void:
                 "сегмент связи не должен проходить по воде: %s" % key, state)
 
     # Соединённый городок второй раз дороги не получает.
-    check(not _rm.plan_road_to(TOWN_ROW, TOWN_COL, tile_data, ROWS, COLS, ring).get("ok", true),
+    check(not _rm.plan_road_to(TOWN_ROW, TOWN_COL, tile_data, ROWS, COLS).get("ok", true),
             "к соединённому городку дорогу повторно строить не нужно", state)
 
     # --- Гейт торговли: одна функция, общая для UI и будущей механики ---
@@ -566,6 +571,65 @@ func _test_town_link(state: Dictionary) -> void:
             "с дорогой торговля с городком доступна", state)
 
 # -------------------------------------------------------
+# 4b. Дорога до городка доходит на ВЫБРАННОМ уровне до самого городка
+# -------------------------------------------------------
+
+# Требование: выбранный в превью уровень обязан дойти до городка, а не
+# обрываться на ближайшей дороге кольца влияния, где шоссе упиралось бы в
+# собственную тропку городка. Проверяем на синтетике: строим дорогу до городка
+# уровнем выше тропки и убеждаемся, что КАЖДЫЙ участок трассы (включая тот,
+# что входит в кольцо и ведёт к центру) — этого уровня, а на гексе городка
+# уровень дороги равен выбранному. До правки последний участок был бы тропкой
+# городка (уровень 1).
+func _test_town_road_level(state: Dictionary) -> void:
+    var tile_data := _make_map()
+    _rm.initialize(CITY_ROW, CITY_COL)
+    _setup_town(tile_data)
+
+    var level := _highest_road_level()
+    check(level > 1,
+            "в roads.json должен быть уровень выше тропки, иначе проверять нечего", state)
+    if level <= 1:
+        return
+
+    var plan: Dictionary = _rm.plan_road_to(TOWN_ROW, TOWN_COL, tile_data, ROWS, COLS)
+    check(plan.get("ok", false), "для проверки уровня нужна успешная трасса: %s"
+            % plan.get("reason", ""), state)
+    if not plan.get("ok", false):
+        return
+
+    check(_rm.build_road_to(TOWN_ROW, TOWN_COL, tile_data, ROWS, COLS, -1,
+            Callable(), level),
+            "дорога до городка должна построиться на выбранном уровне", state)
+
+    var road_path: Array = plan.get("path", [])
+    for i in range(road_path.size() - 1):
+        var a: Dictionary = road_path[i]
+        var b: Dictionary = road_path[i + 1]
+        check(_rm.get_segment_level(a.row, a.col, b.row, b.col) == level,
+                "участок (%d,%d)-(%d,%d) дороги до городка должен быть уровня %d"
+                        % [a.row, a.col, b.row, b.col, level], state)
+
+    # Уровень дороги на гексе — максимум по примыкающим участкам обеих сетей:
+    # на гексе городка рядом и участок игрока (выбранного уровня), и участок
+    # сети городка (тропка). Максимум обязан быть выбранным уровнем — иначе
+    # шоссе визуально и по маршруту превращалось бы в тропку у самого городка.
+    var hex_level: int = _rm.get_hex_road_level(TOWN_ROW, TOWN_COL)
+    check(hex_level == level,
+            "у гекса городка уровень дороги должен быть %d (выбранный), получено %d"
+                    % [level, hex_level], state)
+
+# Наибольший уровень дороги в данных. Нужен там, где проверке нужен уровень,
+# ОТЛИЧНЫЙ от уровня дорог городка (тропка, 1): разблокировка по технологиям в
+# headless-прогоне не гарантирована, а планирование и постройка уровень не
+# проверяют.
+func _highest_road_level() -> int:
+    var level := 0
+    for l in _gdata.get_road_levels():
+        level = maxi(level, int(l))
+    return level
+
+# -------------------------------------------------------
 # 5. Восстановление дорог по флагам сейва
 # -------------------------------------------------------
 
@@ -574,14 +638,13 @@ func _test_restore_from_save_flags(state: Dictionary) -> void:
     _rm.initialize(CITY_ROW, CITY_COL)
     var town := _setup_town(tile_data)
     _tm.towns = [town]
-    var ring: Array = town["influence_hexes"]
 
     # Строим дорогу до обычного гекса и до городка и ставим флаги — ровно то,
     # что делает main_map._mark_road_built.
     var plain := {"row": CITY_ROW - 4, "col": CITY_COL}
     _rm.build_road_to(plain.row, plain.col, tile_data, ROWS, COLS)
     tile_data[plain.row][plain.col]["road_built"] = true
-    _rm.build_road_to(TOWN_ROW, TOWN_COL, tile_data, ROWS, COLS, ring)
+    _rm.build_road_to(TOWN_ROW, TOWN_COL, tile_data, ROWS, COLS)
     tile_data[TOWN_ROW][TOWN_COL]["road_built"] = true
     town["road_linked"] = true
     check(_rm.is_town_linked_to_city(TOWN_ROW, TOWN_COL), "подготовка: городок соединён", state)
@@ -607,7 +670,7 @@ func _test_restore_from_save_flags(state: Dictionary) -> void:
     _rm.rebuild_town_roads([town], tile_data, ROWS, COLS)
     check(not _rm.is_town_linked_to_city(TOWN_ROW, TOWN_COL),
             "дороги, построенные игроком, не восстанавливаются сами по улучшениям", state)
-    _rm.rebuild_player_roads([town], tile_data, ROWS, COLS)
+    _rm.rebuild_player_roads(tile_data, ROWS, COLS)
     check(_rm.is_hex_connected(plain.row, plain.col),
             "дорога до обычного гекса должна восстановиться по флагу road_built", state)
     check(_rm.is_town_linked_to_city(TOWN_ROW, TOWN_COL),
@@ -864,8 +927,7 @@ func _test_town_road_cycle(main_map, bm, panel, town, state: Dictionary) -> void
     # известности (его не делает сам игровой код, но для выбора сценария он
     # годится: никаких побочных эффектов у plan_road_to нет).
     var open_plan: Dictionary = rm.plan_road_to(t_row, t_col, main_map.tile_data,
-            main_map.map_rows, main_map.map_cols,
-            main_map.get_town_influence_hexes(t_row, t_col))
+            main_map.map_rows, main_map.map_cols)
     if not open_plan.get("ok", false):
         print("ПРОПУЩЕНО: выбранный городок не связан с городом сушей")
         return
@@ -1016,13 +1078,6 @@ func _collect_text(node: Node) -> String:
             text += str((child as Label).text) + "\n"
         text += _collect_text(child)
     return text
-
-func _is_in_ring(hex: Dictionary, ring: Array) -> bool:
-    for h in ring:
-        if int(h.get("row", -1)) == int(hex.get("row", -2)) \
-                and int(h.get("col", -1)) == int(hex.get("col", -2)):
-            return true
-    return false
 
 # Есть ли в списке действий панели действие типа type с id action_id.
 func _has_action(actions: Array, type: String, action_id: String) -> bool:

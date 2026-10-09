@@ -104,9 +104,10 @@
       // takes longer to build because it has more segments, not because of a
       // penalty.
       //
-      // The same action type is used on a TOWN hex as well: there the target is
-      // not the hex itself but the nearest road in the INFLUENCE RING of the
-      // town, that is, the road network of that town. Such a connection opens
+      // The same action type is used on a TOWN hex as well: there the road goes
+      // all the way to the town CENTRE at the level chosen by the player, so that
+      // the chosen quality reaches the town instead of dropping to the town's own
+      // trail at the boundary of its influence ring. Such a connection opens
       // trade (see town_manager.is_trade_available).
       "id": "build_road",
       "name": "Build Road",

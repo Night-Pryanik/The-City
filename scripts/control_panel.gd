@@ -422,8 +422,8 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
 
     # On the hex of a town (a small settlement) the improvements cannot be built and the
     # special actions cannot be done — by design it is a "foreign" place. There are two actions here:
-    # the transition into the interface of the town and the road from the city TO it (the target of the road is
-    # not the hex of the town itself, but the nearest road in its influence ring, see
+    # the transition into the interface of the town and the road from the city TO it (the road
+    # reaches the town centre at the chosen level, see
     # road_manager.plan_road_to). Both appear on a single click on the hex
     # of the town; the transition into the interface is also available on a double click
     # (InputHandler). Only for a REVEALED hex: an unexplored town in
@@ -452,8 +452,8 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
             town_action_tooltip += tr(" (trade unavailable: no road to the town)")
 
         # The road to the town — the same special action "Build a road" as on an
-        # ordinary hex, but with a different text: here the road does not reach the hex
-        # of the town, but connects the city with the roads of its influence ring.
+        # ordinary hex, but with a different text: the road connects the city with the
+        # town, reaching its centre at the level chosen in the preview.
         if not main_map.road_manager.is_town_linked_to_city(row, col):
             # While a phased project to this town is going, we do not show the build button
             # — instead of it, the interruption of the already started build, which the
@@ -468,8 +468,8 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
                                     % ((" «%s»" % town_name) if town_name != "" else ""))
 
         # The interruption is needed both on the hex of the town itself, and in its influence ring:
-        # the road to the town ends with a segment INSIDE the ring, so without
-        # this call the button would disappear on the last step of the road. The duplicate
+        # the road to the town runs through the ring up to its centre, so without
+        # this call the button would disappear on the last steps of the road. The duplicate
         # with the block above is already gone — that one only hides the build button.
         _append_cancel_actions(actions, row, col)
 
@@ -499,8 +499,8 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
     # on. It is the paired check to build_manager.start_build: the panel should not
     # show the knowingly impossible actions.
     #
-    # The EXCEPTION — the interruption of a project: the road to the town ends with
-    # a segment exactly in its influence ring, and if the ring is "mute", the road to the
+    # The EXCEPTION — the interruption of a project: the road to the town runs through
+    # its influence ring up to the centre, and if the ring is "mute", the road to the
     # town can neither be completed nor interrupted.
     if tile.get("in_town_influence", false):
         _append_cancel_actions(actions, row, col)
@@ -794,7 +794,7 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
 # only in two places - on an empty hex and on the hex of a town, - and it was lost on
 # the early returns: the hex with an improvement and the hex in the influence ring of a town. The road to
 # a hex with an improvement can be built, but it could not be cancelled; the road to the
-# town ends in its influence ring, where there was no button either.
+# town runs through its influence ring, where there was no button either.
 func _append_cancel_actions(actions: Array, row: int, col: int) -> void:
     # An ordinary build: the improvements, the special actions (the drainage, the felling, the gathering,
     # the demolition). We take the name of the action from the data of the build, so that the button
@@ -1862,15 +1862,15 @@ func _build_road_preview(row: int, col: int, action_id: String) -> bool:
         _preview_container.add_child(warn)
         return false
 
-    # Where the road will go. At a town the target is not its hex itself, but the roads of its
-    # influence ring (see road_manager.plan_road_to).
+    # Where the road will go. At a town the road reaches the town centre at the chosen level
+    # (see road_manager.plan_road_to).
     var target_label := Label.new()
     if bool(plan.get("is_town", false)):
         var town = null
         if main_map.town_manager != null:
             town = main_map.town_manager.find_town_at(row, col)
         var town_name := str(town.get("name", tr("the town"))) if town != null else tr("the town")
-        target_label.text = tr(" Destination: the nearest road in the town \"%s\" influence ring") % town_name
+        target_label.text = tr(" Destination: to the town \"%s\" itself, at the chosen level") % town_name
         # The route may turn out to be longer than a "direct" road: it goes only
         # over the scouted territory - exactly by the way the player got to
         # the town. Without this row a price 2-3 times higher than the expected one looks like

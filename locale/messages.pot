@@ -165,6 +165,9 @@ msgstr ""
 msgid " Destination: the nearest road in the town \"%s\" influence ring"
 msgstr ""
 
+msgid " Destination: to the town \"%s\" itself, at the chosen level"
+msgstr ""
+
 msgid " Distance to city: %d hex(es)"
 msgstr ""
 

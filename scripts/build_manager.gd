@@ -154,8 +154,8 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null,
 
     # The road (the build_road special action) is the only action applicable
     # on the hex of another town: it does not build an improvement on its hex, but
-    # connects the road network of the CITY with the road network of the town in its influence
-    # ring (see road_manager.plan_road_to). Therefore the prohibitions "there is someone else's
+    # connects the road network of the CITY with the town (the road reaches its centre
+    # at the chosen level, see road_manager.plan_road_to). Therefore the prohibitions "there is someone else's
     # town here" and "there is an influence ring here" do not concern it. It still
     # does not touch the decorative improvements.
     var is_road_action := imp_id != "" \

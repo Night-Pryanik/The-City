@@ -1379,22 +1379,37 @@ func _draw_all_roads():
 
     var road_manager = main_map.get_node("RoadManager")
 
+    var city_segments: Dictionary = road_manager.get_all_road_segments()
+    var link_segments: Dictionary = road_manager.get_all_town_link_segments()
+
     # PHASE 2a: the roads of the CITY of the player. They have no visibility gates and never had:
     # they always lie on their own claimed territory, where there is no fog of war
     # at all. An exception is the roads CONNECTING the city with a town (PHASE 2c):
-    # the player builds them over the scouted, but not claimed land.
+    # the player builds them over the scouted, but not claimed land, therefore here they
+    # are skipped and drawn only in PHASE 2c, where the fog gate applies.
     # The roads are drawn BY LEVELS: the segments of one level get the colour and the thickness
     # from data/roads.json, therefore an improved road is visible on the map at once, without
     # opening the panel. Earlier all the roads were of one colour and one thickness.
-    _draw_road_segments_by_level(road_manager.get_all_road_segments(), false)
+    var plain_city: Dictionary = {}
+    for key in city_segments.keys():
+        if not link_segments.has(key):
+            plain_city[key] = city_segments[key]
+    _draw_road_segments_by_level(plain_city, false)
 
     # PHASE 2b: the roads of the TOWNS - a separate network, but it is drawn with the same style
     # (see road_manager.rebuild_town_roads: the network of each town goes from its
     # centre to the improvements in the influence ring and is not connected with the roads of the city).
     # The visibility is exactly the same as that of the fill of the rings: see are_town_roads_visible()
     # and is_town_road_segment_visible() below.
+    # The segments already covered by the player's network are skipped: where the player's road
+    # to the town runs along the town's own trail, the road of the CHOSEN level is drawn
+    # (PHASE 2a/2c), and the town's trail must not be drawn over the highway.
     if are_town_roads_visible():
-        _draw_road_segments(road_manager.get_all_town_road_segments(), true)
+        var town_only: Dictionary = {}
+        for key in road_manager.get_all_town_road_segments().keys():
+            if not city_segments.has(key):
+                town_only[key] = true
+        _draw_road_segments(town_only, true)
 
     # PHASE 2c: the roads connecting the city with the towns (the special action
     # "Build a road", clicked on the hex of a town). These are the roads of the NETWORK of the CITY,
@@ -1403,7 +1418,12 @@ func _draw_all_roads():
     # an unexplored hex (see main_map.get_road_plan), so
     # this gate is an insurance for the future, if the rule "only over the scouted
     # land" is ever relaxed.
-        _draw_road_segments(road_manager.get_all_town_link_segments(), true)
+    # The level is taken from the network of the city: town_link_segments stores only the flag
+    # "this segment leads to a town", the level lives in road_segments.
+    var link_levels: Dictionary = {}
+    for key in link_segments.keys():
+        link_levels[key] = int(city_segments.get(key, road_manager.DEFAULT_ROAD_LEVEL))
+    _draw_road_segments_by_level(link_levels, true)
 
     # PHASE 2d: the "ghost" of a going project - the remainder of the route which is not
     # built yet. It lives until the end of the build, and not until the closing of the panel, and it is drawn

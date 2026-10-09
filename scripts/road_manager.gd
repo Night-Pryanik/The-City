@@ -57,7 +57,10 @@ var _plan_cache: Dictionary = {}
 # (the canonical key of a segment -> the level): for the drawing the set is one anyway,
 # and a segment which coincided with a segment of another town is simply drawn once.
 # The automatic roads of the towns are always trails (DEFAULT_ROAD_LEVEL): they are built by
-# the town itself from its centre, there is nothing to improve them.
+# the town itself from its centre, and the town network itself is never improved. When the
+# player's road to a town runs along such a trail, the player's own segment (of the chosen
+# level) lies in road_segments on the same key - the route and the display take the level from
+# the city network then (see _segment_level_by_key and get_hex_road_level).
 # town_connected_hexes is keyed by the coordinates of the CENTRE of the town ("row,col"), and not by
 # the index in towns: such a key will not "shift" if the towns in the list swap
 # places.
@@ -74,10 +77,9 @@ var town_connected_hexes: Dictionary = {}
 # connected_hexes, that is a new road becomes a part of the network of the city and
 # shortens all the next routes.
 #
-# town_link_segments is a subset of road_segments: those which connect the
-# city with the ROAD NETWORK OF A TOWN (the target is the nearest road in the influence ring
-# of the town, and not its hex itself). They are stored separately only for the sake of the drawing:
-# such a road can go through the unexplored territory, therefore it is drawn
+# town_link_segments is a subset of road_segments: those which lead to a TOWN
+# (the target is the town centre itself, see plan_road_to). They are stored separately only
+# for the sake of the drawing: such a road can go through the unexplored territory, therefore it is drawn
 # with the same gates of the fog as the roads of the towns (map_renderer.
 # is_town_road_segment_visible) - otherwise it would give away the contents of the fog.
 var town_link_segments: Dictionary = {}
@@ -362,30 +364,15 @@ func is_town_linked_to_city(town_row: int, town_col: int) -> bool:
             return true
     return false
 
-# The hexes of the road network of a TOWN which lie in its influence ring - exactly they are
-# the target of the road "town -> town" ("to the nearest road in the influence
-# ring"). The hex of the town itself is not a target: a road is not led into it.
-# The influence ring is passed from outside: road_manager knows nothing about the world.
-func _town_road_targets_in_ring(
-    town_row: int, town_col: int, town_influence_hexes: Array) -> Dictionary:
-    var targets: Dictionary = {}
-    var town_net = town_connected_hexes.get(_hex_key(town_row, town_col), null)
-    if town_net == null:
-        return targets
-    for h in town_influence_hexes:
-        var key := _hex_key(int(h.get("row", -1)), int(h.get("col", -1)))
-        if town_net.has(key):
-            targets[key] = true
-    return targets
-
 # Plans a road from the network of the CITY to the hex (row, col) - WITHOUT the side effects
 # (the network does not change: it is a pure calculation for the preview in the control panel).
 #
 # Two cases by the type of the hex:
 #   - an ordinary hex - the target is the hex itself, the route is searched to the nearest hex of the network
 #     of the city by the ordinary algorithm (_find_connect_path);
-#   - a hex of a TOWN - the target is the nearest road in the INFLUENCE RING of the town
-#     (see _town_road_targets_in_ring), that is two networks are connected.
+#   - a hex of a TOWN - the target is the town CENTRE (the hex itself). The player chooses
+#     the road level, and that level must reach the town, not stop at the nearest road of the
+#     influence ring and drop to the town's own trail from there.
 #
 # hex_allowed (an optional Callable) limits the route by the territory known to the player
 # to the player; it is passed by main_map.get_road_plan (is_hex_known). The sign of the
@@ -405,7 +392,6 @@ func plan_road_to(
     tile_data: Array,
     region_rows: int,
     region_cols: int,
-    town_influence_hexes: Array = [],
     hex_allowed: Callable = Callable()
 ) -> Dictionary:
     var cache_key := "%d:%d:%d|%s" % [
@@ -414,7 +400,7 @@ func plan_road_to(
     if _plan_cache.has(cache_key):
         return _plan_cache[cache_key]
     var plan := _compute_road_plan(
-        row, col, tile_data, region_rows, region_cols, town_influence_hexes, hex_allowed)
+        row, col, tile_data, region_rows, region_cols, hex_allowed)
     _plan_cache[cache_key] = plan
     return plan
 
@@ -424,7 +410,6 @@ func _compute_road_plan(
     tile_data: Array,
     region_rows: int,
     region_cols: int,
-    town_influence_hexes: Array,
     hex_allowed: Callable
 ) -> Dictionary:
     if row < 0 or row >= tile_data.size() or col < 0 or col >= tile_data[row].size():
@@ -434,20 +419,20 @@ func _compute_road_plan(
         return _road_plan(false, tr("Hex outside the map"), [], 0, false)
     var is_town := bool(tile.get("has_town", false))
 
-    # --- A hex of a TOWN: we connect it with the road network of the town in its ring ---
+    # --- A hex of a TOWN: the road goes all the way to the town itself ---
     if is_town:
         if is_town_linked_to_city(row, col):
             return _road_plan(false, tr("The town is already connected by a road"), [], 0, true)
-        var targets := _town_road_targets_in_ring(row, col, town_influence_hexes)
-        if targets.is_empty():
-            return _road_plan(false, tr("The town has no road inside the influence ring"), [], 0, true)
-        # A multi-point search: from all the roads of the ring - to the nearest road of the city.
+        # The target is the town CENTRE, and not the nearest road of its influence ring:
+        # the level chosen by the player must reach the town itself instead of dropping to
+        # the town's own trail at the ring boundary (see the class header of the file).
         # The route goes ONLY over the known territory (see hex_allowed): it is impossible
         # even to approach a town without scouting the road to it.
-        var town_path = _find_path_between(targets, connected_hexes,
+        var town_target := {_hex_key(row, col): true}
+        var town_path = _find_path_between(town_target, connected_hexes,
                 tile_data, region_rows, region_cols, hex_allowed)
         if town_path.is_empty():
-            return _road_plan(false, _town_road_failure_reason(targets, tile_data,
+            return _road_plan(false, _town_road_failure_reason(town_target, tile_data,
                     region_rows, region_cols, hex_allowed), [], 0, true)
         if not _validate_path(town_path):
             printerr("Error: the route of a road to a town contains non-adjacent hexes!")
@@ -507,13 +492,11 @@ func build_road_to(
     tile_data: Array,
     region_rows: int,
     region_cols: int,
-    town_influence_hexes: Array = [],
     segments_to_build: int = -1,
     hex_allowed: Callable = Callable(),
     road_level: int = DEFAULT_ROAD_LEVEL
 ) -> bool:
-    var plan := plan_road_to(row, col, tile_data, region_rows, region_cols,
-            town_influence_hexes, hex_allowed)
+    var plan := plan_road_to(row, col, tile_data, region_rows, region_cols, hex_allowed)
     if not plan.get("ok", false):
         return false
     var is_town := bool(plan.get("is_town", false))
@@ -608,33 +591,24 @@ func get_plan_new_segments(plan: Dictionary) -> Dictionary:
 # record of the town has the flag town["road_linked"]; the network is counted from scratch.
 #
 # It must be called AFTER rebuild_roads_from_existing (the network of the city) and
-# rebuild_town_roads (the road networks of the towns - they are the target of the road
-# to the town). For the hex of a town the target is not the hex itself, but the influence ring,
-# therefore towns is needed here: road_manager knows nothing about it.
+# rebuild_town_roads (the road networks of the towns). A hex of a town is a target
+# like any other: the road to a town reaches its centre (see plan_road_to), therefore
+# towns is not needed here - road_manager knows nothing about it.
 # hex_allowed is the same Callable "is the territory known" as in the ordinary
 # planning (it is passed by main_map): a restored road must go
 # over the scouted land exactly as it was built.
 func rebuild_player_roads(
-    towns: Array,
     tile_data: Array,
     region_rows: int,
     region_cols: int,
     hex_allowed: Callable = Callable()
 ) -> void:
-    var ring_by_town: Dictionary = {}
-    for town in towns:
-        var t_row := int(town.get("row", -1))
-        var t_col := int(town.get("col", -1))
-        if t_row < 0 or t_col < 0:
-            continue
-        ring_by_town[_hex_key(t_row, t_col)] = town.get("influence_hexes", [])
     for row in range(region_rows):
         for col in range(region_cols):
             var tile = tile_data[row][col]
             if tile == null or not bool(tile.get("road_built", false)):
                 continue
-            var ring: Array = ring_by_town.get(_hex_key(row, col), [])
-            build_road_to(row, col, tile_data, region_rows, region_cols, ring, -1,
+            build_road_to(row, col, tile_data, region_rows, region_cols, -1,
                     hex_allowed, _tile_road_level(tile))
 
 # The level of a road of a hex is the input data for the restoration from the save (the segments
@@ -920,7 +894,7 @@ func _validate_path(path: Array) -> bool:
 # from ANY hex of `sources` to the nearest hex of `targets`.
 # Both sets are the dictionaries "row,col" -> true, therefore one and the same search
 # serves both the ordinary road (sources = {the start}, targets = connected_hexes
-# of the city), and the connection with the road network of a town (sources = the influence ring,
+# of the city), and the road to a town (sources = {the town centre},
 # targets = connected_hexes) - see plan_road_to.
 #
 # hex_allowed (optional) is a Callable(row, col) -> bool: which hexes at all

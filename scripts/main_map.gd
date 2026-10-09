@@ -563,11 +563,10 @@ func _skip_improvement_road_restore(row: int, col: int) -> bool:
 func _rebuild_town_roads() -> void:
     road_manager.rebuild_town_roads(town_manager.towns, tile_data, map_rows, map_cols)
     # The roads built by the player through the special action "Build a road"
-    # (including the connections with the towns) are restored last:
-    # their target is the road network of the city and the road networks of the towns, both must
-    # already exist. The input data (the flags road_built / road_linked) lie
-    # in the save, the segments are counted anew — as for all the other roads.
-    road_manager.rebuild_player_roads(town_manager.towns, tile_data, map_rows, map_cols,
+    # (including the connections with the towns) are restored last: their target is the
+    # road network of the city, which must already exist. The input data (the flags
+    # road_built / road_linked) lie in the save, the segments are counted anew — as for all the other roads.
+    road_manager.rebuild_player_roads(tile_data, map_rows, map_cols,
             _road_hex_allowed())
 
 func _input(event):
@@ -2027,8 +2026,8 @@ func _refresh_project_ghost() -> void:
 
 # Marks the target of the road as built — this is the input data for the restoration of the
 # road from the save (the segments are not written to the save, see road_manager).
-# An ordinary hex gets the flag on the hex itself, a town — on the hex (so that
-# rebuild_player_roads finds its influence ring) and in the record of the town (by it
+# An ordinary hex gets the flag on the hex itself; a town gets it on the hex (the road
+# reaches the town centre, so the flag lies there) and in the record of the town (by it
 # the availability of the trade is read, see town_manager.is_trade_available).
 func _mark_road_built(row: int, col: int, plan: Dictionary,
         show_message: bool = true) -> void:
@@ -2469,8 +2468,7 @@ func get_road_cost_for_improvement(row: int, col: int, road_level: int) -> int:
 
 # The plan of the road from the network of the city to the hex (row, col) — the same object that
 # road_manager.plan_road_to returns. It is needed by the control panel (the preview of
-# the price) and by main_map.get_improvement_work_cost. The influence ring of the town
-# is substituted here: road_manager knows nothing about the towns.
+# the price) and by main_map.get_improvement_work_cost.
 #
 # hex_allowed = is_hex_known — the road which the player builds goes ONLY over the
 # known territory (the Influence Ring or scouted). In the first place this
@@ -2480,23 +2478,13 @@ func get_road_cost_for_improvement(row: int, col: int, road_level: int) -> int:
 # ._find_path_between).
 func get_road_plan(row: int, col: int) -> Dictionary:
     return road_manager.plan_road_to(row, col, tile_data, map_rows, map_cols,
-            get_town_influence_hexes(row, col), _road_hex_allowed())
+            _road_hex_allowed())
 
 # The predicate "a road of the player can be built on this hex". A separate function,
 # so that all the calls (planning, construction, restoration from the save) look up
 # by one and the same reference to the method, and not a Callable created anew every time.
 func _road_hex_allowed() -> Callable:
     return Callable(self, "is_hex_known")
-
-# The influence ring of the town on the hex (row, col) or an empty array, if there is no town on the hex
-# hex has no town.
-func get_town_influence_hexes(row: int, col: int) -> Array:
-    if town_manager == null:
-        return []
-    var town = town_manager.find_town_at(row, col)
-    if town == null:
-        return []
-    return town.get("influence_hexes", [])
 
 func _on_city_button_gui_input(event: InputEvent):
     if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
