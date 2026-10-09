@@ -888,7 +888,12 @@ func _find_hex_without_road(main_map) -> Dictionary:
             var tile = main_map.tile_data[row][col]
             if tile == null or _hex_is_busy(main_map, row, col, tile):
                 continue
-            if main_map.road_manager.is_hex_connected(row, col):
+            # Уровень гекса, а не is_hex_connected: у гекса может не быть дороги
+            # города, но через него может проходить дорога ГОРОДКА (её трасса
+            # ищется по всей карте и может выйти за кольцо). Строка уровня
+            # теперь описывает и её, поэтому «гекс без дороги» — это ровно
+            # get_hex_road_level == 0.
+            if main_map.road_manager.get_hex_road_level(row, col) > 0:
                 continue
             return {"row": row, "col": col}
     return {}

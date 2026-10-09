@@ -827,12 +827,21 @@ func _add_road_segment(row1: int, col1: int, row2: int, col2: int,
     var key = _get_canonical_road_key(row1, col1, row2, col2)
     road_segments[key] = road_level
 
-# The level of a road on a hex = the MAXIMUM over the adjacent segments.
-# 0 - not a single segment adjoins the hex, that is there is no road.
+# The level of a road on a hex = the MAXIMUM over the adjacent segments of ALL the networks:
+# the city of the player and the towns. 0 - not a single segment adjoins the hex, that is
+# there is no road.
 #
 # This is a DERIVED value, and not a stored one. The level of a SEGMENT is stored
-# (road_segments: "row,col|row,col" -> level), and it remains the single
+# (road_segments / town_road_segments: "row,col|row,col" -> level), and it remains the single
 # source of truth: a hex simply does not have a level of its own.
+#
+# The roads of the TOWNS are counted on a par with the roads of the city: they are drawn on the map
+# (map_renderer._draw_all_roads), and the row must describe what the player sees on the hex.
+# Without them a hex with a drawn town road, but without a player road, gives an empty row - and the
+# criterion ("whose road is this") is invisible to the player, who sees a road and reads nothing
+# about it. The level of the roads of the towns is always a trail (see _add_town_road_segment) and
+# the player cannot improve them, but the row answers the question "what is drawn on this hex",
+# and not "what can be done here".
 #
 # That is why the rule reads as "a hex has one road", and not as
 # "all the segments of a hex have one level". The difference is significant: if we
@@ -842,16 +851,28 @@ func _add_road_segment(row1: int, col1: int, row2: int, col2: int,
 # and so on: the level would spread over the whole connected network of the roads. The rule of the
 # maximum requires nothing of the sort: an orange trail through an intersection
 # remains a trail, and the best road reaching the hex is shown.
-#
-# The segments of the networks of the TOWNS are not taken into account here: their level is always 1, they do not
-# belong to the player and are not improved.
 func get_hex_road_level(row: int, col: int) -> int:
     var best := 0
     for neighbor in _get_neighbors(row, col, 999, 999):
         # 0 - there is no segment: it cannot be counted as a road.
-        best = maxi(best, get_segment_level(row, col,
+        best = maxi(best, _any_segment_level(row, col,
                 int(neighbor.row), int(neighbor.col)))
     return best
+
+# The level of a segment in ANY network: the city of the player or a town. 0 - the segment
+# does not exist.
+#
+# It differs from get_segment_level, which sees ONLY the network of the city and answers 0 for
+# a town segment. The route search needs exactly that (see _segment_level_by_key): the roads of
+# the towns do not belong to the player. The display of the level on a hex needs both networks:
+# the roads of the towns are drawn on the map.
+func _any_segment_level(row1: int, col1: int, row2: int, col2: int) -> int:
+    var key = _get_canonical_road_key(row1, col1, row2, col2)
+    if road_segments.has(key):
+        return int(road_segments[key])
+    if town_road_segments.has(key):
+        return int(town_road_segments[key])
+    return 0
 
 # The level of a segment of a road. There is no segment - 0 (and not a trail!): the caller must
 # distinguish "there is no segment" from "the segment is a trail", otherwise a non-existent segment

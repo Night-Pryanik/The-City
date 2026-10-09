@@ -23,6 +23,9 @@
 #      городка есть путь по суше; плюс гейты видимости — эра 0 не видно,
 #      с эры Античности видно, сегмент с концом в тумане скрыт, разведка его
 #      открывает (те же гейты, что у заливки колец).
+#   6. Уровень дороги на гексе (get_hex_road_level) учитывает и сеть городка:
+#      на гексе с дорогой городка (и без дороги игрока) он равен 1, а не 0 —
+#      строка «Дорога: …» в тултипе описывает то, что нарисовано на карте.
 extends SceneTree
 
 # Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
@@ -63,6 +66,8 @@ func _run() -> void:
         _test_decorative_improvements_not_in_player_network(state)
     if WATCHDOG.wants_case("water_improvement_has_no_road"):
         _test_water_improvement_has_no_road(state)
+    if WATCHDOG.wants_case("town_road_level_on_hex"):
+        _test_town_road_level_on_hex(state)
 
     # Живая сцена проверяется последней и отдельно освобождается: MainMap
     # создаёт собственные TownManager/RoadManager, и держать рядом вторые
@@ -455,6 +460,58 @@ func _test_live_scene(state: Dictionary) -> void:
     if main_map != null and is_instance_valid(main_map):
         get_root().remove_child(main_map)
         main_map.free()
+
+# -------------------------------------------------------
+# 6. Уровень дороги на гексе учитывает и сети городков
+# -------------------------------------------------------
+#
+# Дороги городков нарисованы на карте (map_renderer._draw_all_roads), поэтому
+# строка «Дорога: …» в расширенном тултипе и в левой колонке панели обязана
+# их описывать: иначе на гексе видна дорога, а тултип о ней молчит. Раньше
+# get_hex_road_level смотрел только в сеть ГОРОДА игрока, и на гексе с дорогой
+# городка (и без дороги игрока) строка молча пропадала — при том, что сам
+# маршрут (find_route_to_city) участки городка тропкой уже считал.
+func _test_town_road_level_on_hex(state: Dictionary) -> void:
+    var rows := 40
+    var cols := 40
+    var city_row := 20
+    var city_col := 20
+    var tile_data := _make_town_map(rows, cols, city_row, city_col, 5)
+    _place_town_improvements(tile_data, rows, cols)
+    _rm.initialize(city_row, city_col)
+    _rm.rebuild_town_roads(_tm.towns, tile_data, rows, cols)
+
+    var town_segments: Dictionary = _rm.get_all_town_road_segments()
+    check(not town_segments.is_empty(),
+            "на карте с улучшениями городков должна быть сеть дорог", state)
+    if town_segments.is_empty():
+        return
+
+    var city_segments: Dictionary = _rm.get_all_road_segments()
+    var checked_hexes := 0
+    for seg in town_segments.keys():
+        var s := _parse_segment(seg)
+        for end in [[s[0], s[1]], [s[2], s[3]]]:
+            var row := int(end[0])
+            var col := int(end[1])
+            # Гекс города игрока пропускаем: у него своя сеть.
+            if row == city_row and col == city_col:
+                continue
+            # Сети изолированы (см. _test_networks_are_separate), поэтому у этих
+            # гексов дороги ГОРОДА нет — уровень приходит только от городка.
+            # Без этой проверки тест не доказывал бы ничего: на гексе с дорогой
+            # игрока он проходил бы и до правки.
+            check(_segments_touching(city_segments, row, col).is_empty(),
+                    "у гекса (%d,%d) не должно быть дороги города — иначе проверка не о том"
+                            % [row, col], state)
+            var level: int = _rm.get_hex_road_level(row, col)
+            check(level == 1,
+                    "на гексе (%d,%d) с дорогой городка уровень должен быть тропкой (1), получено %d"
+                            % [row, col, level], state)
+            checked_hexes += 1
+    check(checked_hexes > 0,
+            "должен найтись хотя бы один гекс вне города с дорогой городка", state)
+
 
 # -------------------------------------------------------
 # Хелперы разбора сегментов
