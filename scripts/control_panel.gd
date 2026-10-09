@@ -1442,7 +1442,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
             var wood_label = wood_data.get("name", tr("Wood"))
             if lj_mult != 1.0:
                 wood_label = tr("%s (base %s)") % [wood_label, lj_base_str]
-            lj_products.append({"type": "product", "name": wood_label, "amount": lj_per_sec, "icon_path": wood_icon_path, "suffix": tr(" units/sec")})
+            lj_products.append({"type": "product", "name": wood_label, "amount": lj_per_sec, "icon_path": wood_icon_path, "suffix": " " + TranslationServer.translate("units/sec")})
             var lj_box = VBoxContainer.new()
             map_tooltip.render_products(lj_products, lj_box, true)
             _preview_container.add_child(lj_box)
@@ -1483,7 +1483,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
                 if prod_data.has("icon"):
                     var icon_name = prod_data["icon"]
                     icon_path = IconRegistry.icon_path(icon_name)
-                products.append({"type": "product", "name": prod_name, "amount": float(final_amount) / prod_interval, "icon_path": icon_path, "suffix": tr(" units/sec")})
+                products.append({"type": "product", "name": prod_name, "amount": float(final_amount) / prod_interval, "icon_path": icon_path, "suffix": " " + TranslationServer.translate("units/sec")})
             for mod in modifiers:
                 products.append({"type": "label", "text": " %s" % mod.get("label", ""), "color": Color(0.7, 0.9, 0.7)})
             # We render into a SEPARATE box: render_products cleans the passed

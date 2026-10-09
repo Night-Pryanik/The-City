@@ -231,9 +231,6 @@ msgstr ""
 msgid " or "
 msgstr ""
 
-msgid " units/sec"
-msgstr ""
-
 msgid " x%d"
 msgstr ""
 
@@ -319,9 +316,6 @@ msgid "%s [%s] (science: %d)"
 msgstr ""
 
 msgid "%s [%s] (science: %d)%s"
-msgstr ""
-
-msgid "%s units/sec"
 msgstr ""
 
 msgid "%s with the identifier \"%s\" does not exist."
@@ -442,6 +436,9 @@ msgid "Another town stands here"
 msgstr ""
 
 msgid "Another town stands here — cannot build"
+msgstr ""
+
+msgid "Any product from the group"
 msgstr ""
 
 msgid "Area not scouted — information unavailable.\n\nTerrain, resources and improvements become known after scouting."
@@ -697,6 +694,12 @@ msgid "Construction:"
 msgstr ""
 
 msgid "Construction: %d work, %.0f sec.\n"
+msgstr ""
+
+msgid "Consumed as part of the group \"%s\""
+msgstr ""
+
+msgid "Consumed by: %s"
 msgstr ""
 
 msgid "Consumes:"
@@ -1687,6 +1690,9 @@ msgid "the route is already at this level"
 msgstr ""
 
 msgid "the town"
+msgstr ""
+
+msgid "units/sec"
 msgstr ""
 
 msgid "upgrade"

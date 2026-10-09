@@ -821,6 +821,106 @@ func _build_consumption_entry(res_key: String, rule: Dictionary) -> Dictionary:
         entry["icon"] = products.get(res_key, {}).get("icon", "")
     return entry
 
+# Returns the consumption records that CONSUME the given resource — the reverse of
+# get_profession_consumption.
+#
+# The argument may be either form of the address of a resource:
+#   * the id of a product ("reed_boat") — the form a row of a recipe or of a cost
+#     names the resource by;
+#   * "@<group_id>" ("@boats") — the group reference itself.
+# A rule of the registry that names a group consumes ANY member of it, so a product
+# query also matches the group rules whose group contains the product. This is what
+# makes the marking visible in the recipes: a recipe lists concrete products, while
+# the rule that spends them most often speaks about the group.
+#
+# A group query matches only the rules that name the group itself. Its members are
+# deliberately NOT expanded into their own rules: the question "can this row be spent
+# by somebody" is answered for the row the player sees, and a group row stands for
+# the group, not for every product that happens to share a rule with it.
+#
+# Every row:
+#   { "profession_id": String, "profession_name": String, — who consumes it
+#     "amount": int, "interval": float,                — the norm per one consumer
+#     "production_bonus": float,
+#     "via_group": String }                             — "@<group_id>" when the
+#                                                         resource is consumed as a
+#                                                         member of a group, else ""
+# The pseudo-profession "all" is a legitimate consumer here: it is what the player
+# sees as "the whole city" (the name is taken from professions.json).
+func get_consumption_consumers(res_key: String) -> Array:
+    var result: Array = []
+    if res_key.is_empty():
+        return result
+
+    # The addresses a query stands for: the key itself, plus, for a single product,
+    # every group that contains it.
+    var queries: Array = [res_key]
+    var via_group := {}
+    if not is_group_key(res_key):
+        for group_id in product_groups:
+            var members: Array = product_groups[group_id]
+            if not members.has(res_key):
+                continue
+            var group_key := "@%s" % str(group_id)
+            queries.append(group_key)
+            via_group[group_key] = group_key
+
+    # The pairs already listed. The resource is consumed by the same profession only
+    # once: the rule of the registry wins over the legacy record of the resource, and
+    # among the equal ones the own rule wins over the group one (the concrete case is
+    # more informative than the general one).
+    var covered := {}
+    for query in queries:
+        for rule in consumption_rules:
+            if not (rule is Dictionary):
+                continue
+            if str(rule.get("resource", "")) != query:
+                continue
+            var amount := int(rule.get("amount", 0))
+            if amount <= 0:
+                continue
+            var interval := float(rule.get("interval", 0))
+            var bonus := float(rule.get("production_bonus", 0.0))
+            for prof_id in rule.get("profession", []):
+                var pair := str(prof_id)
+                if covered.has(pair):
+                    continue
+                covered[pair] = true
+                result.append({
+                    "profession_id": pair,
+                    "profession_name": get_profession_name(pair),
+                    "amount": amount,
+                    "interval": interval,
+                    "production_bonus": bonus,
+                    "via_group": str(via_group.get(query, ""))
+                })
+
+    # The legacy records "from the resource": a product carries its own consumption
+    # inline. A single product has no group rule of its own, so it is queried for the
+    # product key only.
+    if products.has(res_key):
+        var prod: Dictionary = products[res_key]
+        if prod.has("consumption"):
+            var cons: Dictionary = prod["consumption"]
+            var amount2 := int(cons.get("amount", 0))
+            var interval2 := float(cons.get("interval", 0))
+            var bonus2 := float(cons.get("production_bonus", 0.0))
+            if amount2 > 0:
+                for prof_id in cons.get("profession", []):
+                    var pair2 := str(prof_id)
+                    if covered.has(pair2):
+                        continue
+                    covered[pair2] = true
+                    result.append({
+                        "profession_id": pair2,
+                        "profession_name": get_profession_name(pair2),
+                        "amount": amount2,
+                        "interval": interval2,
+                        "production_bonus": bonus2,
+                        "via_group": ""
+                    })
+    return result
+
 # Returns the array of the consumption records for a profession. The sources (in the order of
 # priority):
 #   1) the registry data/consumption.json — the records of the kind

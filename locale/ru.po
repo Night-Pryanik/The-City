@@ -231,9 +231,6 @@ msgstr " и "
 msgid " or "
 msgstr " или "
 
-msgid " units/sec"
-msgstr " ед./сек"
-
 msgid " x%d"
 msgstr " х%d"
 
@@ -320,9 +317,6 @@ msgstr "%s [%s] (наука: %d)"
 
 msgid "%s [%s] (science: %d)%s"
 msgstr "%s [%s] (наука: %d)%s"
-
-msgid "%s units/sec"
-msgstr "%s шт./сек"
 
 msgid "%s with the identifier \"%s\" does not exist."
 msgstr "%s с идентификатором «%s» не существует."
@@ -443,6 +437,9 @@ msgstr "Здесь стоит чужой городок"
 
 msgid "Another town stands here — cannot build"
 msgstr "Здесь стоит чужой городок — нельзя строить"
+
+msgid "Any product from the group"
+msgstr "Любой товар из группы"
 
 msgid "Area not scouted — information unavailable.\n\nTerrain, resources and improvements become known after scouting."
 msgstr "Область не разведана — информация недоступна.\n\nМестность, ресурсы и улучшения станут известны после разведки."
@@ -698,6 +695,12 @@ msgstr "Строительство:"
 
 msgid "Construction: %d work, %.0f sec.\n"
 msgstr "Строительство: %d труда, %.0f сек.\n"
+
+msgid "Consumed as part of the group \"%s\""
+msgstr "Потребляется в составе группы «%s»"
+
+msgid "Consumed by: %s"
+msgstr "Потребляется: %s"
 
 msgid "Consumes:"
 msgstr "Потребляет:"
@@ -1688,6 +1691,9 @@ msgstr "маршрут уже этого уровня"
 
 msgid "the town"
 msgstr "городка"
+
+msgid "units/sec"
+msgstr "ед./сек"
 
 msgid "upgrade"
 msgstr "апгрейд"

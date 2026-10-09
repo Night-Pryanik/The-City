@@ -3,14 +3,19 @@
 #
 # Проверяется:
 #   1. ConsumptionUi.build_rows_for_building(): строки расхода профессии здания —
-#      состав строк, скорость «шт./сек», бонус, умножение на число РАБОЧИХ зданий,
+#      состав строк, скорость «ед./сек», бонус, умножение на число РАБОЧИХ зданий,
 #      случай без рабочих зданий и здание без профессии (пустой список).
 #   2. Тултип деталей здания (вкладка «Здания»): секция «Потребляет:» со
 #      скоростью расхода — показывается до постройки, как «Стоимость».
-#   3. Окно деталей здания: сумма по двум рабочим постройкам, затем пометка
+#   3. Пометка расхода: обратный индекс GameData.get_consumption_consumers()
+#      находит потребителей ресурса в обе стороны (в том числе когда правило
+#      адресует @-группу, а строка называет конкретный товар), ресурс в СТРОКЕ
+#      РЕЦЕПТА подчёркнут пунктиром, а строка секции «Потребляет:» пометки не
+#      получает — её норма и бонус уже напечатаны в ней самой.
+#   4. Окно деталей здания: сумма по двум рабочим постройкам, затем пометка
 #      «(рабочих зданий нет)», когда слоты здания пусты (здание простаивает и
 #      расходники не тратит).
-#   4. ФАКТИЧЕСКОЕ потребление: рабочее здание с профессией и ресурсом на складе
+#   5. ФАКТИЧЕСКОЕ потребление: рабочее здание с профессией и ресурсом на складе
 #      списывает ровно amount за interval; при пустом складе расхода нет, а
 #      множитель производства падает к базовому (1.0); простаивающее здание
 #      (нет горожанина либо все слоты пусты) не тратит ресурс.
@@ -80,6 +85,10 @@ func _run() -> void:
         _test_ui_rows(state, building_id)
     if WATCHDOG.wants_case("details_tooltip"):
         _test_details_tooltip(state, city_ui, building_id)
+    if WATCHDOG.wants_case("consumption_marker"):
+        _test_consumption_marker(state, city_ui, building_id)
+    if WATCHDOG.wants_case("recipe_result_marker"):
+        _test_recipe_result_marker(state, city_ui, building_id)
     if WATCHDOG.wants_case("building_panel"):
         _test_building_panel(state, city_ui, building_id)
     if WATCHDOG.wants_case("actual_consumption"):
@@ -126,7 +135,7 @@ func _test_ui_rows(state: Dictionary, building_id: String) -> void:
             "имя расходника «%s» должно браться из данных (получено: «%s»)"
                 % [expected_name, str(row.get("name", ""))], state)
         check(is_equal_approx(float(row.get("per_sec", 0.0)), expected_per_sec),
-            "скорость «%s»: amount/interval = %s шт./сек (получено: %s)"
+            "скорость «%s»: amount/interval = %s ед./сек (получено: %s)"
                 % [key, str(expected_per_sec), str(row.get("per_sec", 0.0))], state)
         check(is_equal_approx(float(row.get("production_bonus", 0.0)), expected_bonus),
             "бонус «%s» должен совпасть с данными (получено: %s)"
@@ -208,8 +217,8 @@ func _test_details_tooltip(state: Dictionary, city_ui, building_id: String) -> v
     # Скорость и бонус в тултипе берём из данных, а не хардкодим.
     var entry: Dictionary = entries[0]
     var expected_per_sec := _base_per_sec(entry)
-    check(_has_text(tip_texts, "%s шт./сек" % _consumption_ui.format_rate(expected_per_sec)),
-        "в тултипе деталей есть скорость расхода «%s шт./сек» (получено: %s)"
+    check(_has_text(tip_texts, "%s ед./сек" % _consumption_ui.format_rate(expected_per_sec)),
+        "в тултипе деталей есть скорость расхода «%s ед./сек» (получено: %s)"
             % [_consumption_ui.format_rate(expected_per_sec), str(tip_texts)], state)
     var bonus := float(entry.get("production_bonus", 0.0))
     if bonus > 0.0:
@@ -231,7 +240,236 @@ func _test_details_tooltip(state: Dictionary, city_ui, building_id: String) -> v
 
 
 # -------------------------------------------------------
-# 3. Окно деталей здания: сумма по рабочим зданиям
+# 3. Пометка расхода в тултипе деталей здания
+# -------------------------------------------------------
+
+# Инварианты:
+#   * обратный индекс GameData.get_consumption_consumers(display_key) находит ту
+#     запись, которая адресует этот же ресурс с другой стороны;
+#   * строка секции «Потребляет:» пометки НЕ получает — норма и бонус уже
+#     напечатаны в ней самой, и тултип дублировал бы строку (пометка живёт в
+#     строках рецептов, кейс recipe_result_marker);
+#   * тултип потребителей (ui_helpers.show_consumption_tooltip) перечисляет
+#     потребителей по именам профессий.
+# Ожидания выводятся из тех же данных, а не из конкретных цифр баланса.
+func _test_consumption_marker(state: Dictionary, city_ui, building_id: String) -> void:
+    var prof := str(_gdata.get_profession_for_building(building_id))
+    var entries: Array = _gdata.get_profession_consumption(prof)
+    if entries.is_empty():
+        return
+
+    var btab = city_ui.buildings_tab
+    var building = null
+    for b in btab.buildings_data:
+        if b.get("id", "") == building_id:
+            building = b
+            break
+    if building == null:
+        return
+
+    btab._show_building_details(building)
+    var content = city_ui.ui_helpers.detail_tooltip_content
+
+    # 1. Каждая запись расхода адресуется обратным индексом в обе стороны.
+    var checked_any := false
+    for entry in entries:
+        var key := str(entry.get("display_key", entry.get("product_id", "")))
+        if key.is_empty():
+            continue
+        var consumers: Array = _gdata.get_consumption_consumers(key)
+        check(not consumers.is_empty(),
+            "обратный индекс должен найти потребителей ресурса «%s»" % key, state)
+        for consumer in consumers:
+            if str(consumer.get("profession_id", "")) == prof:
+                checked_any = true
+        # Норма и бонус потребителя совпадают с записью профессии (данные те же).
+        check(int(consumers[0].get("amount", 0)) == int(entry.get("amount", 0)),
+            "норма потребителя должна совпасть с записью профессии «%s»" % key, state)
+        # 2. В секции «Потребляет:» пометки НЕТ: строка уже проговаривает норму и
+        #    бонус, и тултип потребителей дублировал бы то же самое. Пометка живёт
+        #    там, где нормы не видно, — в строках рецептов (кейс
+        #    recipe_result_marker).
+        var marked: Label = _find_underlined_label(content, str(entry.get("product_name", "")))
+        check(marked == null,
+            "строка секции «Потребляет:» («%s») не должна получать пометку потребителей: "
+                % key + "норма и бонус уже напечатаны в самой строке", state)
+        # 3. Сам тултип потребителей при этом работает: его показывает строка рецепта.
+        city_ui.ui_helpers.show_consumption_tooltip(Vector2(10, 10), key, btab.products)
+        var tip_texts := _collect_texts(city_ui.ui_helpers.consumption_tooltip_content)
+        check(_has_text(tip_texts, str(consumers[0].get("profession_name", ""))),
+            "тултип потребителей «%s» должен назвать «%s» (получено: %s)"
+                % [key, str(consumers[0].get("profession_name", "")), str(tip_texts)], state)
+        check(_has_text(tip_texts, "ед./сек"),
+            "тултип потребителей «%s» должен показать скорость расхода (получено: %s)"
+                % [key, str(tip_texts)], state)
+        city_ui.ui_helpers.hide_consumption_tooltip()
+
+    check(checked_any, "среди потребителей должен найтись профиль здания", state)
+
+    # 4. Ресурс без профессии-потребителя пометки не получает.
+    var plain: Array = _gdata.get_consumption_consumers("__no_such_resource__")
+    check(plain.is_empty(),
+        "у несуществующего ресурса потребителей быть не должно", state)
+
+    _test_group_membership(state, city_ui)
+
+
+# Строка рецепта называет КОНКРЕТНЫЙ продукт, а правило потребления чаще всего
+# говорит о группе. Проверяем, что обратный индекс проходит по составу групп: без
+# этого пометка не появлялась бы там, где игрок её и ждёт (например, «Тростниковые
+# лодки» в рецепте мастерской папируса — правило адресует группу «@boats»).
+# Ожидания выводятся из данных: группа и её состав берутся из product_groups, а не
+# из конкретного идентификатора.
+func _test_group_membership(state: Dictionary, city_ui) -> void:
+    var found_member := false
+    for group_id in _gdata.product_groups:
+        var group_key := "@%s" % str(group_id)
+        var group_rules: Array = _gdata.get_consumption_consumers(group_key)
+        if group_rules.is_empty():
+            continue
+        # Группа сама потребляется, но её члены не адресуются собственными правилами:
+        # каждый член обязан найти ровно тех же потребителей через состав группы.
+        var member := ""
+        for candidate in _gdata.product_groups[group_id]:
+            var candidate_rules: Array = _gdata.get_consumption_consumers(str(candidate))
+            if candidate_rules.is_empty():
+                continue
+            member = str(candidate)
+            found_member = true
+            var expected := str(group_rules[0].get("profession_id", ""))
+            var got := str(candidate_rules[0].get("profession_id", ""))
+            check(got == expected,
+                "член группы «%s» обязан найти потребителя «%s», получено «%s»"
+                    % [member, expected, got], state)
+            check(str(candidate_rules[0].get("via_group", "")) == group_key,
+                "потребитель члена «%s» обязан быть помечен как групповой (%s)"
+                    % [member, group_key], state)
+            check(int(candidate_rules[0].get("amount", 0)) == int(group_rules[0].get("amount", 0)),
+                "норма расхода члена «%s» должна совпасть с нормой группы" % member, state)
+            break
+
+        # Правило группы адресует только группу: на запрос по @-ключу via_group пуст.
+        for rule in group_rules:
+            check(str(rule.get("via_group", "")).is_empty(),
+                "запрос по самому @-ключу не должен помечать себя групповым (%s)" % group_key,
+                state)
+        break
+
+    check(found_member,
+        "должна найтись группа с потреблением, чей член находится обратным индексом", state)
+
+    # Родительский случай: продукт, не входящий ни в одну потребляемую группу и не
+    # имеющий собственного правила, остаётся без пометки — «абсолютно любой ресурс»
+    # не должен подчёркиваться.
+    var lonely := ""
+    for prod_id in _gdata.products:
+        if not _gdata.get_consumption_consumers(str(prod_id)).is_empty():
+            continue
+        var in_consumed_group := false
+        for group_id in _gdata.product_groups:
+            if _gdata.product_groups[group_id].has(str(prod_id)) \
+                    and not _gdata.get_consumption_consumers("@%s" % str(group_id)).is_empty():
+                in_consumed_group = true
+                break
+        if in_consumed_group:
+            continue
+        lonely = str(prod_id)
+        break
+    if not lonely.is_empty():
+        var entry = city_ui.ui_helpers.make_resource_entry(lonely, city_ui.buildings_tab.products,
+            -1, "x", 20, true)
+        check(_find_underlined_label(entry, _gdata.format_resource_name(lonely)) == null,
+            "ресурс «%s» без потребителя не должен получать подчёркивание" % lonely, state)
+        entry.free()
+
+
+# Регрессия на исходную жалобу: в зафиксированном тултипе деталей здания строка
+# РЕЗУЛЬТАТА рецепта (у рецепта мастерской папируса это «Тростниковые лодки»)
+# должна быть помечена, если продукт потребляется — в том числе когда правило
+# адресует группу, а не сам продукт. Раньше строка рецепта вообще не запрашивала
+# потребителей, поэтому пометки не было ни при каких данных.
+func _test_recipe_result_marker(state: Dictionary, city_ui, building_id: String) -> void:
+    var btab = city_ui.buildings_tab
+    var content = city_ui.ui_helpers.detail_tooltip_content
+
+    # Здание с рецептом, чей результат кто-то потребляет. Рецепты адресуются так же,
+    # как их собирает сама вкладка (crafts_data + CityData.can_craft_in), поэтому
+    # тест не разойдётся с фильтрацией доступных рецептов. Ни один идентификатор
+    # здесь не захардкожен.
+    var tested := false
+    for building in btab.buildings_data:
+        var b_id = str(building.get("id", ""))
+        var expected_prod := ""
+        var expected_craft: Dictionary = {}
+        for craft in btab.crafts_data:
+            if str(craft.get("id", "")) == "empty":
+                continue
+            if not _cdata.can_craft_in(str(craft.get("id", "")), b_id):
+                continue
+            var result = craft.get("display_result", craft.get("result", {}))
+            for prod_id in result:
+                if not _gdata.get_consumption_consumers(str(prod_id)).is_empty():
+                    expected_prod = str(prod_id)
+                    expected_craft = craft
+                    break
+            if not expected_prod.is_empty():
+                break
+        if expected_prod.is_empty():
+            continue
+
+        # Рецепт попадает в список только при открытой технологии, поэтому её надо
+        # открыть — иначе секция «Доступные рецепты» не построится и проверять
+        # будет нечего. Открываем ровно ту, которую требует сам рецепт.
+        var unlock_tech := str(expected_craft.get("unlock_tech", ""))
+        if not unlock_tech.is_empty() and not _cdata.is_tech_unlocked(unlock_tech):
+            _cdata.unlocked_technologies.append(unlock_tech)
+
+        btab._show_building_details(building)
+        var marked = _find_underlined_label(content, _gdata.format_resource_name(expected_prod))
+        check(marked != null,
+            "результат рецепта «%s» здания «%s» обязан быть помечен подчёркиванием"
+                % [expected_prod, b_id], state)
+        if marked == null:
+            continue
+        tested = true
+        check(marked.dot_style,
+            "подчёркивание результата рецепта «%s» должно быть пунктирным" % expected_prod, state)
+
+        # И наведение на него раскрывает потребителей.
+        city_ui.ui_helpers.show_consumption_tooltip(Vector2(10, 10), expected_prod, btab.products)
+        var tip_texts := _collect_texts(city_ui.ui_helpers.consumption_tooltip_content)
+        var consumers: Array = _gdata.get_consumption_consumers(expected_prod)
+        check(_has_text(tip_texts, str(consumers[0].get("profession_name", ""))),
+            "тултип результата рецепта «%s» должен назвать потребителя (получено: %s)"
+                % [expected_prod, str(tip_texts)], state)
+        # Продукт потребляется как член группы — игроку это сообщается.
+        if not str(consumers[0].get("via_group", "")).is_empty():
+            var group_name: String = _gdata.format_resource_name(str(consumers[0]["via_group"]))
+            check(_has_text(tip_texts, group_name),
+                "тултип «%s» должен назвать группу «%s» (получено: %s)"
+                    % [expected_prod, group_name, str(tip_texts)], state)
+        city_ui.ui_helpers.hide_consumption_tooltip()
+        break
+
+    check(tested,
+        "должно найтись здание с рецептом, результат которого кто-то потребляет", state)
+
+
+# Ищет среди узлов подписанную подчёркнутую метку (underlined_label.gd) с данным
+# текстом имени. Возвращает узел или null.
+func _find_underlined_label(node: Node, resource_name: String):
+    for child in node.get_children():
+        if child is Label and child.get("underline_text") != null \
+                and (child as Label).text.begins_with(resource_name):
+            return child
+        var found = _find_underlined_label(child, resource_name)
+        if found != null:
+            return found
+    return null
+
+
+# -------------------------------------------------------
+# 4. Окно деталей здания: сумма по рабочим зданиям
 # -------------------------------------------------------
 
 func _test_building_panel(state: Dictionary, city_ui, building_id: String) -> void:
@@ -263,7 +501,7 @@ func _test_building_panel(state: Dictionary, city_ui, building_id: String) -> vo
     var entry: Dictionary = entries[0]
     var base_per_sec := _base_per_sec(entry)
     var panel_texts := _collect_texts(panel.consumption_box)
-    check(_has_text(panel_texts, "%s шт./сек" % _consumption_ui.format_rate(base_per_sec * 2.0)),
+    check(_has_text(panel_texts, "%s ед./сек" % _consumption_ui.format_rate(base_per_sec * 2.0)),
         "окно здания показывает сумму по двум рабочим (получено: %s)" % str(panel_texts), state)
     var bonus := float(entry.get("production_bonus", 0.0))
     if bonus > 0.0:
@@ -274,7 +512,7 @@ func _test_building_panel(state: Dictionary, city_ui, building_id: String) -> vo
     _cdata.city_built_buildings[1]["slots"] = ["empty"]
     panel._refresh()
     var idle_texts := _collect_texts(panel.consumption_box)
-    check(_has_text(idle_texts, "%s шт./сек" % _consumption_ui.format_rate(base_per_sec)),
+    check(_has_text(idle_texts, "%s ед./сек" % _consumption_ui.format_rate(base_per_sec)),
         "при простаивающем здании скорость — одно здание (получено: %s)" % str(idle_texts), state)
     check(not _has_text(idle_texts, "(2 здания)"),
         "простаивающее здание не попадает в сумму (получено: %s)" % str(idle_texts), state)
@@ -297,7 +535,7 @@ func _test_building_panel(state: Dictionary, city_ui, building_id: String) -> vo
 
 
 # -------------------------------------------------------
-# 4. ФАКТИЧЕСКОЕ потребление зданием
+# 5. ФАКТИЧЕСКОЕ потребление зданием
 # -------------------------------------------------------
 
 # Механика: CityData.do_tick() для каждого РАБОЧЕГО здания (есть горожанин и
@@ -472,7 +710,7 @@ func _default_slot_for_building(building_id: String) -> String:
     return "empty"
 
 
-# Скорость потребления записи без множителя: amount / interval (шт./сек).
+# Скорость потребления записи без множителя: amount / interval (ед./сек).
 func _base_per_sec(entry: Dictionary) -> float:
     var amount := int(entry.get("amount", 0))
     var interval := float(entry.get("interval", 0.0))

@@ -10,6 +10,13 @@ var build_tooltip_label: Label
 var group_tooltip_panel: Panel
 var group_tooltip_content: VBoxContainer
 
+# The tooltip "who consumes this resource" of a row marked with a consumption
+# underline. A panel of its own, and not a reuse of group_tooltip_panel: for a
+# group resource the composition of the group and the list of the consumers are
+# two different facts, and a row can need both at once.
+var consumption_tooltip_panel: Panel
+var consumption_tooltip_content: VBoxContainer
+
 var progress_tooltip_panel: Panel
 var progress_tooltip_label: Label
 
@@ -120,6 +127,23 @@ func setup(main_ui: Control, message_lbl: Label):
     group_tooltip_panel.add_child(group_tooltip_content)
 
     group_tooltip_panel.add_theme_stylebox_override("panel", _make_tooltip_style())
+
+    # The tooltip "who consumes the resource" of the rows drawn with the
+    # consumption underline (see make_resource_entry). It lives on the same layer
+    # as the group tooltip: the two of them never describe the same fact at once,
+    # and a higher z_index would only cover the details tooltip of a building.
+    consumption_tooltip_panel = Panel.new()
+    consumption_tooltip_panel.visible = false
+    consumption_tooltip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    consumption_tooltip_panel.z_index = 1100
+    main_ui.add_child(consumption_tooltip_panel)
+
+    consumption_tooltip_content = VBoxContainer.new()
+    consumption_tooltip_content.add_theme_constant_override("separation", 4)
+    consumption_tooltip_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    consumption_tooltip_panel.add_child(consumption_tooltip_content)
+
+    consumption_tooltip_panel.add_theme_stylebox_override("panel", _make_tooltip_style())
 
     # The tooltip for the progress bars of the buildings under construction
     progress_tooltip_panel = Panel.new()
@@ -383,6 +407,104 @@ func show_group_tooltip(mouse_pos: Vector2, group_key: String, products_data: Di
 func hide_group_tooltip():
     group_tooltip_panel.hide()
 
+# Shows the tooltip "who consumes this resource": the consumers of a resource that
+# is marked with the consumption underline in make_resource_entry.
+# The rows come from GameData.get_consumption_consumers — the reverse index of
+# data/consumption.json (plus the legacy products[*].consumption), therefore the
+# list cannot diverge from the mechanics: it is the same data that the write-off
+# uses.
+#
+# The structure: the header with the name of the resource (and, for a group, the
+# composition on the row below — a group reference stays readable without leaving
+# the row), then one row per consumer:
+#   "• All citizens: 10 ед./сек (no bonus)"
+#   "• Fisherman: 1 ед./сек (+50% to production)"
+# The rate is per one worker/citizen and is given by the same format as in the row
+# of the expense of a profession (ConsumptionUi.format_rate_with_unit), so that the
+# two places cannot show a different number for one and the same rule.
+func show_consumption_tooltip(mouse_pos: Vector2, res_key: String, products_data: Dictionary):
+    if consumption_tooltip_panel == null:
+        return
+    # We clear the previous content (remove_child + queue_free — as in
+    # show_group_tooltip, so that the size is recalculated correctly).
+    for child in consumption_tooltip_content.get_children():
+        consumption_tooltip_content.remove_child(child)
+        child.queue_free()
+
+    var consumers: Array = GameData.get_consumption_consumers(res_key)
+
+    var title = Label.new()
+    title.text = tr("Consumed by: %s") % GameData.format_resource_name(res_key)
+    title.add_theme_font_size_override("font_size", 16)
+    title.add_theme_color_override("font_color", Color.WHITE)
+    title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    consumption_tooltip_content.add_child(title)
+
+    # A group reference: the consumption refers to any member of the group, and the
+    # player is told as much before reading the consumers — just as the row
+    # "(group \"Fruits\")" does in show_flow_tooltip.
+    if GameData.is_group_key(res_key):
+        var note = Label.new()
+        note.text = tr("Any product from the group")
+        note.add_theme_font_size_override("font_size", 13)
+        note.add_theme_color_override("font_color", Color(0.65, 0.65, 0.65))
+        note.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        consumption_tooltip_content.add_child(note)
+
+    # The resource is named after one of its groups the rule speaks about: the row is
+    # a concrete product, and without this line the player would not connect the
+    # consumers below with the rule that spends the product.
+    var groups_seen := {}
+    for consumer in consumers:
+        var via := str(consumer.get("via_group", ""))
+        if via.is_empty() or groups_seen.has(via):
+            continue
+        groups_seen[via] = true
+        var group_note = Label.new()
+        group_note.text = tr("Consumed as part of the group \"%s\"") % GameData.format_resource_name(via)
+        group_note.add_theme_font_size_override("font_size", 13)
+        group_note.add_theme_color_override("font_color", Color(0.65, 0.65, 0.65))
+        group_note.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        consumption_tooltip_content.add_child(group_note)
+
+    for consumer in consumers:
+        var amount := int(consumer.get("amount", 0))
+        var interval := float(consumer.get("interval", 0))
+        var bonus := float(consumer.get("production_bonus", 0.0))
+        # The rate per one consumer: the same formula as in ConsumptionUi
+        # (amount / interval; interval = 0 means "per tick", and a tick equals a
+        # second).
+        var per_sec := float(amount) if interval <= 0.0 else float(amount) / interval
+        var row_text := "%s: %s" % [
+            str(consumer.get("profession_name", "")),
+            ConsumptionUi.format_rate_with_unit(per_sec)
+        ]
+        if bonus > 0.0:
+            row_text += tr(" (+%d%% to production)") % int(round(bonus * 100.0))
+        consumption_tooltip_content.add_child(
+            _make_bullet_row("•", row_text, Color(0.9, 0.9, 0.9)))
+
+    consumption_tooltip_content.reset_size()
+    var content_min_size = consumption_tooltip_content.get_minimum_size()
+    consumption_tooltip_panel.size = content_min_size + Vector2(12, 12)
+
+    # We position the tooltip next to the cursor and shift it inside the screen if
+    # the cursor is close to the right or the bottom edge.
+    var viewport_size = get_viewport().get_visible_rect().size
+    var pos = mouse_pos + Vector2(15, 15)
+    if pos.x + consumption_tooltip_panel.size.x > viewport_size.x:
+        pos.x = mouse_pos.x - consumption_tooltip_panel.size.x - 15
+    if pos.y + consumption_tooltip_panel.size.y > viewport_size.y:
+        pos.y = mouse_pos.y - consumption_tooltip_panel.size.y - 15
+    pos.x = max(0, min(pos.x, viewport_size.x - consumption_tooltip_panel.size.x))
+    pos.y = max(0, min(pos.y, viewport_size.y - consumption_tooltip_panel.size.y))
+    consumption_tooltip_panel.position = pos
+    consumption_tooltip_panel.show()
+
+func hide_consumption_tooltip():
+    if consumption_tooltip_panel != null:
+        consumption_tooltip_panel.hide()
+
 # Builds the row "icon + name" for a resource/product of a recipe or of a
 # construction cost. For the group keys (@...) it automatically attaches a
 # tooltip with the composition of the group (it reveals which products are part
@@ -393,12 +515,19 @@ func hide_group_tooltip():
 #   amount        — if > 0, the amount is added after the name.
 #   amount_style  — "x" → "Name xN", "colon" → "Name: N", otherwise no amount.
 #   icon_size     — the size of the icon in pixels.
+#   show_consumers — mark the row when the resource is consumed by a profession
+#                   (an entry of data/consumption.json or of the legacy
+#                   products[*].consumption): the name is underlined with a finer
+#                   line and a tooltip lists the consumers. The flag is opt-in,
+#                   because in most places the row is a cost or an ingredient,
+#                   and there the consumption of a profession is not what the
+#                   player reads the row for.
 # The icons are taken from the IconRegistry — the icon registry of the project is
 # a shared one (autoload); before, the dictionary with the paths had to be passed
 # here as an argument from every module, and eight different modules were building
 # a copy of it.
 # Returns an HBoxContainer, which can be added to the containers of the lists.
-func make_resource_entry(res_id: String, products_data: Dictionary, amount: int = -1, amount_style: String = "x", icon_size: int = 20) -> HBoxContainer:
+func make_resource_entry(res_id: String, products_data: Dictionary, amount: int = -1, amount_style: String = "x", icon_size: int = 20, show_consumers: bool = false) -> HBoxContainer:
     var entry = HBoxContainer.new()
     entry.add_theme_constant_override("separation", 4)
     entry.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -417,7 +546,15 @@ func make_resource_entry(res_id: String, products_data: Dictionary, amount: int 
             icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
             entry.add_child(icon_rect)
 
-    if GameData.is_group_key(res_id):
+    # Whether a profession spends this resource. It is asked for a single product
+    # ("feathers") and for a group ("@boats") alike — the display_key is the key of
+    # both the registry and the group reference.
+    var consumers: Array = []
+    if show_consumers:
+        consumers = GameData.get_consumption_consumers(res_id)
+    var is_group := GameData.is_group_key(res_id)
+
+    if is_group:
         # A group resource — we format it as a "link": an underlined name (in a
         # light blue colour), in order to attract the attention of the player to
         # the row.
@@ -440,10 +577,19 @@ func make_resource_entry(res_id: String, products_data: Dictionary, amount: int 
         var link_label = load("res://scripts/underlined_label.gd").new()
         link_label.text = "%s%s" % [group_name, amount_text]
         link_label.underline_text = group_name
+        if not consumers.is_empty():
+            # The group IS consumed: the finer underline marks the expense, and if
+            # the group is built from several resources the product group is split
+            # only for the chosen member — no single member is marked here.
+            link_label.dot_style = true
         link_label.mouse_filter = Control.MOUSE_FILTER_PASS
-        link_label.mouse_entered.connect(_on_resource_group_hover.bind(
-            link_label, res_id, products_data))
-        link_label.mouse_exited.connect(_on_resource_group_exit)
+        if not consumers.is_empty():
+            link_label.mouse_entered.connect(_on_resource_consumption_hover.bind(
+                link_label, res_id, products_data))
+        else:
+            link_label.mouse_entered.connect(_on_resource_group_hover.bind(
+                link_label, res_id, products_data))
+        link_label.mouse_exited.connect(_on_resource_entry_exit)
         entry.add_child(link_label)
         return entry
 
@@ -454,9 +600,23 @@ func make_resource_entry(res_id: String, products_data: Dictionary, amount: int 
         else:
             text = "%s x%d" % [text, amount]
 
-    var label = Label.new()
-    label.text = text
-    entry.add_child(label)
+    if consumers.is_empty():
+        var label = Label.new()
+        label.text = text
+        entry.add_child(label)
+        return entry
+
+    # A single resource spent by a profession: the same underline, but finer than
+    # the one of a group reference, and the consumers are shown on hover.
+    var consumed_label = load("res://scripts/underlined_label.gd").new()
+    consumed_label.text = text
+    consumed_label.underline_text = GameData.format_resource_name(res_id)
+    consumed_label.dot_style = true
+    consumed_label.mouse_filter = Control.MOUSE_FILTER_PASS
+    consumed_label.mouse_entered.connect(_on_resource_consumption_hover.bind(
+        consumed_label, res_id, products_data))
+    consumed_label.mouse_exited.connect(_on_resource_entry_exit)
+    entry.add_child(consumed_label)
     return entry
 
 # Shows the tooltip with the composition of the group on hovering the row of a
@@ -464,9 +624,15 @@ func make_resource_entry(res_id: String, products_data: Dictionary, amount: int 
 func _on_resource_group_hover(control: Control, res_id: String, products_data: Dictionary):
     show_group_tooltip(get_viewport().get_mouse_position(), res_id, products_data)
 
-# Hides the tooltip of the composition of the group when the cursor is moved away
-func _on_resource_group_exit():
+# Shows the tooltip with the consumers of the resource on hovering a row marked
+# with the consumption underline.
+func _on_resource_consumption_hover(control: Control, res_id: String, products_data: Dictionary):
+    show_consumption_tooltip(get_viewport().get_mouse_position(), res_id, products_data)
+
+# Hides the hover tooltips of a resource row when the cursor is moved away
+func _on_resource_entry_exit():
     hide_group_tooltip()
+    hide_consumption_tooltip()
 
 func show_progress_tooltip(mouse_pos: Vector2):
     progress_tooltip_panel.position = mouse_pos + Vector2(15, 15)

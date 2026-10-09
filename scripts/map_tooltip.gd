@@ -548,7 +548,7 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
             if wood_data0.has("icon"):
                 lj_icon_path0 = IconRegistry.icon_path(wood_data0["icon"])
             result.append({"type": "header", "text": tr("Once built, %s will produce:") % lj_name})
-            result.append({"type": "product", "name": wood_data0.get("name", tr("Wood")), "amount": lj_per_sec0, "icon_path": lj_icon_path0, "suffix": tr(" units/sec")})
+            result.append({"type": "product", "name": wood_data0.get("name", tr("Wood")), "amount": lj_per_sec0, "icon_path": lj_icon_path0, "suffix": " " + TranslationServer.translate("units/sec")})
         elif tile.improvement == "lumberjack_hut" and lj_yield > 0.0 \
                 and _worker_manager.has_worker(row, col) \
                 and CityData.is_product_available("wood"):
@@ -567,7 +567,7 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
                 var lj_base_str = str(int(lj_yield)) if lj_yield == floor(lj_yield) else "%.1f" % lj_yield
                 lj_label = tr("%s (base %s)") % [lj_label, lj_base_str]
             result.append({"type": "header", "text": tr("Produces:")})
-            result.append({"type": "product", "name": lj_label, "amount": lj_per_sec2, "icon_path": lj_icon_path2, "suffix": tr(" units/sec")})
+            result.append({"type": "product", "name": lj_label, "amount": lj_per_sec2, "icon_path": lj_icon_path2, "suffix": " " + TranslationServer.translate("units/sec")})
         return result
     var res_data = GameData.raw_resources.get(eff_res, {})
     if not res_data.has("produces"):
@@ -632,7 +632,7 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
             var icon_name = prod_data["icon"]
             icon_path = IconRegistry.icon_path(icon_name)
         # The display is per second: the output of the cycle, divided by production_interval.
-        result.append({"type": "product", "name": prod_name, "amount": float(final_amount) / prod_interval, "icon_path": icon_path, "suffix": tr(" units/sec")})
+        result.append({"type": "product", "name": prod_name, "amount": float(final_amount) / prod_interval, "icon_path": icon_path, "suffix": " " + TranslationServer.translate("units/sec")})
 
     for mod in modifiers:
         result.append({"type": "label", "text": " %s" % mod.get("label", ""), "color": Color(0.7, 0.9, 0.7)})

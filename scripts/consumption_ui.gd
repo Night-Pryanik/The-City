@@ -1,7 +1,7 @@
 # consumption_ui.gd
 # A common view of OCCUPATIONAL CONSUMPTION (data/consumption.json)
 # in the interface: it turns the GameData.get_profession_consumption() entries into
-# ready-made display rows of the kind "Feathers: 2 pcs/sec (+25% to production)".
+# ready-made display rows of the kind "Feathers: 2 ед./сек (+25% to production)".
 #
 # A single source of truth for all the places where the player sees the expense
 # of a profession:
@@ -30,6 +30,16 @@ static func format_rate(value: float) -> String:
     if value == floor(value):
         return str(int(value))
     return "%.1f" % value
+
+
+# The rate together with the unit of measure: "2 ед./сек". The unit is a single
+# msgid of its own ("units/sec"), and not a part of a sentence with the number
+# baked in: the number is already formatted by format_rate, and a translator needs
+# the unit, not a dozen phrases that each repeat it. This is the only place where the
+# unit is attached to the rate — the callers format the value and the unit through
+# here, so the two can never drift apart.
+static func format_rate_with_unit(value: float) -> String:
+    return "%s %s" % [format_rate(value), TranslationServer.translate("units/sec")]
 
 
 # The Russian form of the numeral: 1 building / 2 buildings / 5 buildings.
@@ -64,8 +74,8 @@ static func _plural(count: int, one: String, few: String, many: String) -> Strin
 #     "per_sec": float,        — the total rate of expense, units/sec,
 #     "production_bonus": float, — 0.5 = +50% to production; 0 = no bonus,
 #     "workers": int,
-#     "rate_label": String,    — "2 pcs/sec (+25% to production)",
-#     "label": String }        — "Feathers: 2 pcs/sec (+25% to production)"
+#     "rate_label": String,    — "2 ед./сек (+25% to production)",
+#     "label": String }        — "Feathers: 2 ед./сек (+25% to production)"
 static func build_rows(prof_id: String, workers: int = 1) -> Array:
     var rows: Array = []
     if prof_id.is_empty():
@@ -113,13 +123,13 @@ static func build_rows_for_building(building_id: String, workers: int = 1) -> Ar
     return build_rows(GameData.get_profession_for_building(building_id), workers)
 
 
-# The part of the row after the product name: "2 pcs/sec (+25% to production)".
+# The part of the row after the product name: "2 ед./сек (+25% to production)".
 # production_bonus is displayed so that the player sees why a profession needs
 # this supply: while the resource is enough, production goes with a bonus, and when
 # there is not enough — it rolls back to the base multiplier (the production itself
 # does not stop).
 static func _format_rate_label(per_sec: float, bonus: float, workers: int) -> String:
-    var text := TranslationServer.translate("%s units/sec") % format_rate(per_sec)
+    var text := format_rate_with_unit(per_sec)
     if workers > 1:
         # Several working objects of one type share the expense — we show
         # the total and how much it gives (the building details window).

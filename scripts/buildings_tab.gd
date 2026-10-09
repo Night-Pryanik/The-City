@@ -801,7 +801,7 @@ func _show_building_details(bdata: Dictionary):
                 row.add_child(indent)
                 row.add_child(sub_bullet)
                 var resource_entry = ui_helpers.make_resource_entry(
-                    entry[0], products_data)
+                    entry[0], products_data, -1, "x", 20, true)
                 row.add_child(resource_entry)
                 var amount_label = Label.new()
                 amount_label.text = "%d/%d" % [required_amount, available_amount]
@@ -869,6 +869,10 @@ func _show_building_details(bdata: Dictionary):
             # The resource name is drawn by the common helper (the icon + for an @-group
             # the underlined name with the contents on hover), and the rate of the expense and
             # the production bonus are appended to the right.
+            # The consumer tooltip is NOT enabled here: the row already spells out the
+            # rate and the bonus of this very expense, so a tooltip would only repeat
+            # the line the player is looking at. The marking belongs where the rate is
+            # not shown — in the rows of the recipes.
             cons_row.add_child(ui_helpers.make_resource_entry(
                 str(cons.get("display_key", "")), products_data))
             var cons_rate_label = Label.new()
@@ -1166,7 +1170,8 @@ func _make_craft_content_local(craft_name: String, craft_resources, craft_result
                     content.add_child(or_sep)
                 first_variant = false
 
-                content.add_child(ui_helpers.make_resource_entry(str(variant.get("key", "")), products_data))
+                content.add_child(ui_helpers.make_resource_entry(
+                    str(variant.get("key", "")), products_data, -1, "x", 20, true))
 
                 var amount = int(variant.get("amount", 0))
                 if amount >= 1:
@@ -1194,7 +1199,7 @@ func _make_craft_content_local(craft_name: String, craft_resources, craft_result
                 content.add_child(sep)
             first = false
 
-            content.add_child(ui_helpers.make_resource_entry(prod_id, products_data))
+            content.add_child(ui_helpers.make_resource_entry(prod_id, products_data, -1, "x", 20, true))
 
             var amount = craft_result[prod_id]
             if amount >= 1:
