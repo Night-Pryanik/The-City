@@ -277,10 +277,7 @@ func refresh():
         var items = grouped[cat_id]
         if items.is_empty():
             continue
-        var cat_label = Label.new()
-        cat_label.text = "--- " + cat_info["name"] + " ---"
-        cat_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
-        resources_list.add_child(cat_label)
+        resources_list.add_child(UiHelpers.build_category_header(cat_info["name"]))
 
         for prod_id in items:
             var amount = city_storage[prod_id]

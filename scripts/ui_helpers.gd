@@ -72,6 +72,47 @@ const PRICE_TEXT_COLOR := Color(1.0, 0.507, 0.0, 1.0)
 # colours between the tabs is visible at once.
 const QUALITY_MARKER_COLOR := Color(0.3, 1.0, 0.918)
 
+# The colours of the name of a category header and of the side lines around it. The
+# header is shared formatting of the resource lists (the "Resources" tab of the city
+# and the trade window of a town), so it lives here next to the other shared colours.
+const CATEGORY_HEADER_NAME_COLOR := Color(0.8, 0.8, 0.8)
+const CATEGORY_HEADER_LINE_COLOR := Color(0.55, 0.55, 0.55)
+
+# The markers of a category header and of its name label. The header is a composite
+# row (a line, the name, a line), so its parts cannot be told apart by the node type;
+# these markers are the contract for reading the layout back (see the tests).
+const META_CATEGORY_HEADER := "category_header"
+const META_CATEGORY_NAME := "category_name"
+
+# The header of a category group in a resource list: a solid line, the name centred,
+# a line again. The lines are stretched nodes that reach both edges of the column at
+# any width — unlike a run of dashes, and the default font has no box-drawing U+2500
+# to build a continuous line out of.
+static func build_category_header(category_name: String) -> HBoxContainer:
+    var header := HBoxContainer.new()
+    header.add_theme_constant_override("separation", 6)
+    header.set_meta(META_CATEGORY_HEADER, true)
+    header.add_child(_make_category_line())
+    var name_label := Label.new()
+    name_label.text = category_name
+    name_label.add_theme_color_override("font_color", CATEGORY_HEADER_NAME_COLOR)
+    name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    name_label.set_meta(META_CATEGORY_NAME, true)
+    header.add_child(name_label)
+    header.add_child(_make_category_line())
+    return header
+
+# One side of a category header. A rectangle, not a glyph: a stretched node is the
+# only thing that can touch the column edge exactly at any width.
+static func _make_category_line() -> ColorRect:
+    var line := ColorRect.new()
+    line.color = CATEGORY_HEADER_LINE_COLOR
+    line.custom_minimum_size = Vector2(0, 1)
+    line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    line.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    return line
+
 var message_label: Label
 # The common style of the background for all the tooltips: a fully opaque dark
 # background with a light frame of 1px.

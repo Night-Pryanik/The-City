@@ -12,14 +12,19 @@
 # past the bottom edge of the window right onto the map.
 #
 # Both columns are grouped by the resource category, exactly like the "Resources"
-# tab of the city (see _fill_resource_list): a grey "--- Category ---" header, then
-# the rows of that category.
+# tab of the city (see _fill_resource_list): a header of a solid line, the category
+# name centred in its column, then a line again; the rows of that category follow.
 #
 # Every row of the sale column carries the stock of the town and its quality: the
 # stars of the level in its own colour (data/qualities.json). A town never holds
 # mixed quality, so there is nothing to break down and nothing to show in
 # percentages — the stars ARE the quality of the row (see town_economy).
 extends Control
+
+# The shared UI helpers: the category header of a resource list (a line, the name, a
+# line) is built there, so the town window and the "Resources" tab of the city cannot
+# drift apart. Only the static members are used — no instance is needed.
+const UiHelpers = preload("res://scripts/ui_helpers.gd")
 
 signal closed()
 
@@ -172,10 +177,11 @@ func on_town_storage_changed(town_id: String) -> void:
     refresh_storage()
 
 # Fills the column with one row per resource of the trade pool, grouped by category.
-# The grouping mirrors the "Resources" tab of the city (resources_tab.gd): a grey
-# "--- Category ---" header, then the rows of that category underneath. The order of
-# the categories follows GameData.categories (data/categories.json); a category that
-# is not in the reference is appended at the end under its raw id, so no row is lost.
+# The grouping mirrors the "Resources" tab of the city (resources_tab.gd): the header
+# of a category is a solid line, the name centred in the column, then a line again,
+# and the rows of that category follow. The order of the categories follows
+# GameData.categories (data/categories.json); a category that is not in the reference
+# is appended at the end under its raw id, so no row is lost.
 #
 # The sell pool contains resource ids, therefore the name is taken from the
 # common reference.
@@ -229,10 +235,7 @@ func _fill_resource_list(container: VBoxContainer, pool, empty_text: String,
         var items: Array = grouped[category_id]
         if items.is_empty():
             continue
-        var category_label := Label.new()
-        category_label.text = "--- %s ---" % _get_category_name(category_id)
-        category_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
-        container.add_child(category_label)
+        container.add_child(UiHelpers.build_category_header(_get_category_name(category_id)))
         for item in items:
             container.add_child(_build_resource_row(item["id"], item["name"], with_stock))
 
@@ -336,15 +339,52 @@ func _get_resource_display_name(resource_id: String) -> String:
 # reads exactly what the player sees (see tests/test_town_economy.gd).
 func _visible_row_names(container: VBoxContainer) -> Array:
     var names: Array = []
-    if container == null:
-        return names
-    for child in container.get_children():
-        if child is HBoxContainer:
-            for node in child.get_children():
-                if node is Label:
-                    names.append(node.text)
-                    break
+    for entry in _visible_list_entries(container):
+        if entry["kind"] == "row":
+            names.append(entry["text"])
     return names
+
+# The column exactly as the player reads it: a sequence of entries, each
+# {"kind": "header"|"row", "text": String}; a header also carries "lined" — whether
+# its name is flanked by a line on both sides. Service access for tests, so a test
+# does not have to know the composite structure of a header.
+func _visible_list_entries(container: VBoxContainer) -> Array:
+    var entries: Array = []
+    if container == null:
+        return entries
+    for child in container.get_children():
+        if child.has_meta(UiHelpers.META_CATEGORY_HEADER):
+            entries.append({
+                "kind": "header",
+                "text": _category_header_text(child),
+                "lined": _category_header_line_count(child) == 2,
+            })
+        elif child is HBoxContainer:
+            entries.append({"kind": "row", "text": _resource_row_name(child)})
+    return entries
+
+# The name of a category header — the label marked as the name, not a side line.
+func _category_header_text(header: Node) -> String:
+    for part in header.get_children():
+        if part.has_meta(UiHelpers.META_CATEGORY_NAME):
+            return part.text
+    return ""
+
+# How many side lines a category header carries (0, 1 or 2).
+func _category_header_line_count(header: Node) -> int:
+    var count := 0
+    for part in header.get_children():
+        if part is ColorRect:
+            count += 1
+    return count
+
+# The display name of a resource row: its first label (a row starts with the icon,
+# then the name; the stars and the stock follow).
+func _resource_row_name(row: Node) -> String:
+    for node in row.get_children():
+        if node is Label:
+            return node.text
+    return ""
 
 func close_town():
     if not visible:

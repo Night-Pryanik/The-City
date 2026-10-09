@@ -63,8 +63,8 @@
 #  27. СЕЙВ ТОРГОВЛИ. Направление последней сделки и счётчик тиков — состояние
 #      мира: после round-trip следующий тик идёт ровно тем же путём.
 #  28. КАТЕГОРИИ В ОКНЕ. Товары в пулах покупки и продажи разбиты по категориям,
-#      как на вкладке «Ресурсы» интерфейса города: серый заголовок
-#      "--- Категория ---", под ним — строки только этой категории.
+#      как на вкладке «Ресурсы» интерфейса города: заголовок категории — сплошная
+#      линия, название по центру, линия; под ним — строки только этой категории.
 extends SceneTree
 
 # Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
@@ -1154,8 +1154,8 @@ func _test_window_shows_stock() -> void:
 
 
 # 28. КАТЕГОРИИ В ОКНЕ. Товары в пулах покупки и продажи разбиты по категориям,
-# как на вкладке «Ресурсы» интерфейса города: серый заголовок "--- Категория ---",
-# под ним — строки только этой категории.
+# как на вкладке «Ресурсы» интерфейса города: заголовок категории — сплошная линия,
+# название по центру, линия; под ним — строки только этой категории.
 func _test_town_ui_categories() -> void:
     var gd = get_root().get_node("GameData")
     # По одному товару из КАЖДОЙ категории — иначе разбиение нечего проверять.
@@ -1189,31 +1189,29 @@ func _test_town_ui_categories() -> void:
 
 
 # Проверяет, что строки контейнера сгруппированы по категориям: каждая строка
-# идёт под заголовком "--- Категория ---" СВОЕГО товара, а заголовков ровно
-# столько, сколько различных категорий в пуле.
+# идёт под заголовком СВОЕЙ категории, у заголовка есть линии слева и справа, а
+# заголовков ровно столько, сколько различных категорий в пуле.
 func _assert_pool_grouped(container, ui, pool: Array) -> void:
-    var expected: Dictionary = {}   # отображаемое имя -> ожидаемый текст заголовка
+    var expected: Dictionary = {}   # отображаемое имя -> ожидаемое название категории
     var categories: Dictionary = {}
     for pid in pool:
         var id := str(pid)
         var name: String = ui._get_resource_display_name(id)
         var cat: String = ui._get_resource_category(id)
-        expected[name] = "--- %s ---" % ui._get_category_name(cat)
+        expected[name] = ui._get_category_name(cat)
         categories[cat] = true
 
     var current_header := ""
     var header_count := 0
     var row_count := 0
-    for child in container.get_children():
-        if child is Label:
-            current_header = child.text
+    for entry in ui._visible_list_entries(container):
+        if entry["kind"] == "header":
+            current_header = str(entry["text"])
             header_count += 1
-        elif child is HBoxContainer:
-            var row_name := ""
-            for node in child.get_children():
-                if node is Label:
-                    row_name = node.text
-                    break
+            _check(bool(entry.get("lined", false)),
+                "у названия категории «%s» должны быть линии слева и справа" % current_header)
+        else:
+            var row_name := str(entry["text"])
             row_count += 1
             _check(current_header == str(expected.get(row_name, "<нет>")),
                 "строка «%s» должна идти под заголовком своей категории (сейчас «%s»)"
