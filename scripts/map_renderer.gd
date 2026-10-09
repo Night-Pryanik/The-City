@@ -38,6 +38,11 @@ const MARKER_ICON_RADIUS = 6.0
 # The colour of the markers on the hex (the drop of water and the trade icon).
 const MARKER_ICON_COLOR = Color(0.45, 0.8, 1.0)
 
+# The row/col deltas of the odd-r neighbours (the same grid as HexUtils.get_neighbors_odd_r),
+# inlined so that the fog test of a river point does not allocate a dictionary per neighbour.
+const RIVER_HEX_EVEN_NEIGHBORS := [[0, -1], [0, 1], [-1, -1], [-1, 0], [1, -1], [1, 0]]
+const RIVER_HEX_ODD_NEIGHBORS := [[0, -1], [0, 1], [-1, 0], [-1, 1], [1, 0], [1, 1]]
+
 var tile_data = []
 # A local texture cache for the drawing of the map (a hot path: an access for
 # every hex on every frame). The paths and the loading are given by IconRegistry - it has
@@ -55,10 +60,11 @@ var main_map: Node
 # and perform the clipping. The key of the cache is a compact serialization of the coordinates of the river.
 var _river_smooth_cache: Dictionary = {}
 
-# The per-frame geometry of the rivers: the clipped screen-space polylines of every river that
-# intersects the cached rectangle, keyed by _river_index. The key of validity is the offset the
-# geometry was built for; within main_map.MAP_CACHE_MARGIN of it the entries are reused as they
-# are (only _river_frame_offset moves), so panning does not re-clip anything.
+# The per-frame geometry of the rivers: the polylines of every river that intersects the cached
+# rectangle, clipped by the screen and by the fog of war, keyed by _river_index. The key of
+# validity is the offset the geometry was built for; within main_map.MAP_CACHE_MARGIN of it the
+# entries are reused as they are (only _river_frame_offset moves), so panning does not re-clip
+# anything. A change of the fog of war drops the cache (see invalidate_town_influence_cache).
 var _river_frame_cache: Dictionary = {}
 var _river_frame_cache_offset: Vector2 = Vector2.ZERO
 # The current world -> screen offset, added at the drawing of the river polylines.
@@ -478,6 +484,11 @@ func invalidate_town_influence_cache() -> void:
     # The records of the built offset are dropped as well: they are written by the builder, and
     # with them stale the rebuild would keep reusing a screen-sized cache of the old offset.
     _cache_built_offset = Vector2(INF, INF)
+    # The river geometry is clipped by the fog of war (see _collect_river_segments), so a change
+    # of the fog makes it stale too. This is the single hook of the fog changes (the scouting,
+    # the claiming, the transition to the next era, the debug reveal), therefore the river cache
+    # is dropped here instead of at every call site.
+    _river_frame_cache.clear()
 
 func _ensure_town_influence_cache(visible: Dictionary) -> void:
     if main_map == null:
@@ -1715,7 +1726,8 @@ func _points_hash(river: Array) -> int:
 
 
 # Rebuilds the per-frame geometry of the rivers: the viewport culling, the smoothing (cached),
-# the clipping by the screen rectangle and the grouping of the visible points by the style.
+# the clipping by the screen rectangle and by the fog of war, and the grouping of the visible
+# points by the style.
 # The caches are keyed by the current offset and are reused while the map is scrolled by no more
 # than the cached margin - that is what removes the per-frame cost of the pan.
 func _build_river_frame_cache(radius: float) -> void:
@@ -1817,26 +1829,121 @@ func _collect_river_segments(river: Array, offset_x: float, offset_y: float,
     for line in clipped_lines:
         if line.size() < 2:
             continue
-        # Back to the world coordinates, so that the drawing only has to add the current offset.
-        var world := PackedVector2Array()
-        world.resize(line.size())
-        var min_x = INF
-        var max_x = - INF
-        var min_y = INF
-        var max_y = - INF
+        # Back to the world coordinates: the fog of war is a property of the map, so the split
+        # by it must not depend on the current offset (the smoothed points are cached in the
+        # world coordinates as well).
+        var world_line := PackedVector2Array()
+        world_line.resize(line.size())
         for i in range(line.size()):
-            world[i] = line[i] - Vector2(offset_x, offset_y)
-            min_x = minf(min_x, line[i].x)
-            max_x = maxf(max_x, line[i].x)
-            min_y = minf(min_y, line[i].y)
-            max_y = maxf(max_y, line[i].y)
-        var width = (max_x - min_x) + 2.0 * radius
-        var height = (max_y - min_y) + 2.0 * radius
-        segments.append({
-            "points": world,
-            "rect": Rect2(min_x - radius, min_y - radius, width, height)
-        })
+            world_line[i] = line[i] - Vector2(offset_x, offset_y)
+        # The runs hidden by the fog of war are dropped: the terrain of an unexplored hex is not
+        # drawn at all (see _draw_hex), so a river drawn there would float over the black void.
+        # The split happens after the rectangle clipping, so the fog of war is tested only for
+        # the points that are actually on the screen.
+        for run in _split_line_by_fog(world_line, radius):
+            var min_x = INF
+            var max_x = - INF
+            var min_y = INF
+            var max_y = - INF
+            for pt in run:
+                var sx = pt.x + offset_x
+                var sy = pt.y + offset_y
+                min_x = minf(min_x, sx)
+                max_x = maxf(max_x, sx)
+                min_y = minf(min_y, sy)
+                max_y = maxf(max_y, sy)
+            var width = (max_x - min_x) + 2.0 * radius
+            var height = (max_y - min_y) + 2.0 * radius
+            segments.append({
+                "points": run,
+                "rect": Rect2(min_x - radius, min_y - radius, width, height)
+            })
     return segments
+
+
+# The runs of a world-space polyline that lie over the explored (drawn) part of the map. A run
+# shorter than two points cannot be drawn and is dropped.
+func _split_line_by_fog(points: PackedVector2Array, radius: float) -> Array:
+    var runs: Array = []
+    var current := PackedVector2Array()
+    for pt in points:
+        if _is_river_point_visible(pt, radius):
+            current.append(pt)
+        else:
+            if current.size() >= 2:
+                runs.append(current)
+            current = PackedVector2Array()
+    if current.size() >= 2:
+        runs.append(current)
+    return runs
+
+
+# Whether a point of a river is over the explored part of the map. A river flows along the sides
+# of the hexes, therefore it is visible exactly where it touches a drawn hex: the point is
+# visible if any of the three hexes nearest to it is not in the fog of war. The two nearest hexes
+# share the side under the point; the third one covers a point near a vertex, where three hexes
+# meet. A point surrounded by fog has all three nearest hexes fogged and is dropped, so the river
+# breaks off at the border of the explored area. Testing the three nearest hexes (rather than
+# just the one whose centre is closest) also keeps a river running exactly along the border
+# continuous instead of dashing: a side shared by an explored and an unexplored hex stays visible.
+func _is_river_point_visible(pos: Vector2, radius: float) -> bool:
+    var base := _nearest_hex(pos, radius)
+    # The common case: the nearest hex is explored, so the point is deep inside the known area
+    # and no neighbour has to be examined.
+    if main_map.is_hex_on_map(base.x, base.y) and not main_map.is_hex_in_fog(base.x, base.y):
+        return true
+    var rows := PackedInt32Array([base.x])
+    var cols := PackedInt32Array([base.y])
+    var dists := PackedFloat32Array([HexUtils.hex_center(base.x, base.y, radius).distance_squared_to(pos)])
+    var deltas: Array = RIVER_HEX_ODD_NEIGHBORS if base.x % 2 != 0 else RIVER_HEX_EVEN_NEIGHBORS
+    for d in deltas:
+        var r: int = base.x + int(d[0])
+        var c: int = base.y + int(d[1])
+        rows.append(r)
+        cols.append(c)
+        dists.append(HexUtils.hex_center(r, c, radius).distance_squared_to(pos))
+    # The three nearest of the seven (the rest cannot be among them).
+    for _pick in range(3):
+        var best_i := -1
+        var best_d := INF
+        for i in range(dists.size()):
+            if dists[i] < best_d:
+                best_d = dists[i]
+                best_i = i
+        if best_i == -1:
+            break
+        # A hex outside the map is not drawn either, so it must not make the point visible.
+        # is_hex_in_fog alone would return false there (the fog is only defined on the map).
+        var r: int = rows[best_i]
+        var c: int = cols[best_i]
+        if main_map.is_hex_on_map(r, c) and not main_map.is_hex_in_fog(r, c):
+            return true
+        dists[best_i] = INF
+    return false
+
+
+# The hex whose centre is the closest to the world point. The grid is pointy-top odd-r
+# (see HexUtils.hex_center): the row is estimated from y, the column from x with the half-hex
+# shift of the odd rows, and the estimate is refined over the 3x3 neighbourhood (the closest
+# hex is always adjacent to the estimate).
+func _nearest_hex(pos: Vector2, radius: float) -> Vector2i:
+    var x_spacing := radius * sqrt(3.0)
+    var y_spacing := radius * 1.5
+    var row_est := roundi(pos.y / y_spacing)
+    var best := Vector2i(row_est, 0)
+    var best_dist := INF
+    for dr in range(-1, 2):
+        var row := row_est + dr
+        # The same parity rule as HexUtils.hex_center (an odd row is shifted by a half hex).
+        var row_shift := x_spacing * 0.5 if row % 2 == 1 else 0.0
+        var col_est := roundi((pos.x - row_shift) / x_spacing)
+        for dc in range(-1, 2):
+            var col := col_est + dc
+            var d := HexUtils.hex_center(row, col, radius).distance_squared_to(pos)
+            if d < best_dist:
+                best_dist = d
+                best = Vector2i(row, col)
+    return best
 
 
 # The rectangle of the cached river geometry: the screen grown by the pan margin on each side.
@@ -1885,7 +1992,8 @@ func _flush_scroll_cache_invalidation() -> void:
 # Drops the screen-sized caches of the map, so that they are rebuilt for the current offset
 # on the next frame.
 func _invalidate_screen_caches() -> void:
-    _river_frame_cache.clear()
+    # The river geometry is clipped by the fog of war as well (see _collect_river_segments),
+    # therefore it is tied to the same screen-sized caches and dropped by the same call.
     invalidate_town_influence_cache()
 
 
