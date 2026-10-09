@@ -83,6 +83,8 @@ func _run() -> void:
         _test_cost_per_hex(state)
     if WATCHDOG.wants_case("plan_and_build_hex"):
         _test_plan_and_build_hex(state)
+    if WATCHDOG.wants_case("merge_adjacent_roads"):
+        _test_merge_adjacent_roads(state)
     if WATCHDOG.wants_case("impossible_targets"):
         _test_impossible_targets(state)
     if WATCHDOG.wants_case("town_road_needs_known_territory"):
@@ -308,6 +310,67 @@ func _test_plan_and_build_hex(state: Dictionary) -> void:
             "к гексу с дорогой повторно строить нечего", state)
     check(_rm.get_all_road_segments().size() == segments.size(),
             "повторное планирование не должно добавлять сегменты", state)
+
+# -------------------------------------------------------
+# 2b. Новая дорога, подошедшая ВПЛОТНУЮ к своей же сети, сливается с ней
+# -------------------------------------------------------
+
+# Игрок не может закрыть такой разрыв руками: кнопка «Построить дорогу»
+# появляется только на гексе БЕЗ дороги, а у обоих гексов разрыва дорога уже
+# есть. Раньше трасса подключалась к ПЕРВОМУ достигнутому гексу сети и сегмент
+# до второго соседнего гекса сети не появлялась вовсе — так на скриншоте
+# виноградник с дорогой и дорога на юго-восток от него не соединялись.
+#
+# Синтетика: ветка города city -> R -> P. Гекс Q соседствует и с R, и с P, но
+# короче одной из этих связей быть не может — поиск пути приходит к ЛЮБОМУ из
+# двух (у обоих цена входа 1, выбирает порядок обхода), и ровно один сегмент
+# остаётся непостроенным. После правки построены ОБА.
+func _test_merge_adjacent_roads(state: Dictionary) -> void:
+    var tile_data := _make_map()
+    _rm.initialize(CITY_ROW, CITY_COL)
+
+    # Город (CITY_ROW, CITY_COL) даже, поэтому: E = (0,+1), NE = (-1,0).
+    var r_hex := {"row": CITY_ROW, "col": CITY_COL + 1}      # сосед города на восток
+    var p_hex := {"row": CITY_ROW, "col": CITY_COL + 2}      # сосед R на восток
+    # Q — сосед И R, И P (у R и P общий сосед по диагонали):
+    #   (CITY_ROW, CITY_COL+1) -> NE -> (CITY_ROW-1, CITY_COL+1);
+    #   (CITY_ROW, CITY_COL+2) -> NW -> (CITY_ROW-1, CITY_COL+1).
+    var q_hex := {"row": CITY_ROW - 1, "col": CITY_COL + 1}
+
+    # Ветка города: city -> R -> P. Оба гекса подключены, но ещё НЕ соседи друг
+    # с другом — разрыв оставлен нарочно.
+    check(_rm.build_road_to(r_hex.row, r_hex.col, tile_data, ROWS, COLS),
+            "подготовка: дорога до R строится", state)
+    check(_rm.build_road_to(p_hex.row, p_hex.col, tile_data, ROWS, COLS),
+            "подготовка: дорога до P строится", state)
+    check(_rm.has_road_between(CITY_ROW, CITY_COL, r_hex.row, r_hex.col),
+            "подготовка: город соединён с R", state)
+    check(_rm.has_road_between(r_hex.row, r_hex.col, p_hex.row, p_hex.col),
+            "подготовка: R соединён с P", state)
+    check(not _rm.is_hex_connected(q_hex.row, q_hex.col),
+            "подготовка: Q ещё не подключён", state)
+
+    # Строим дорогу до Q. Она подходит вплотную к ДВУМ гексам сети сразу.
+    check(_rm.build_road_to(q_hex.row, q_hex.col, tile_data, ROWS, COLS),
+            "дорога до Q должна построиться", state)
+    check(_rm.is_hex_connected(q_hex.row, q_hex.col),
+            "после постройки Q должен быть подключён к сети города", state)
+
+    # ОБА соседних сегмента обязаны появиться: иначе остался бы разрыв, который
+    # игроку нечем закрыть.
+    check(_rm.has_road_between(q_hex.row, q_hex.col, r_hex.row, r_hex.col),
+            "новый гекс должен слиться с соседним гексом R той же сети", state)
+    check(_rm.has_road_between(q_hex.row, q_hex.col, p_hex.row, p_hex.col),
+            "новый гекс должен слиться и со вторым соседним гексом P той же сети", state)
+
+    # Сегмент слияния идёт по суше и на уровне только что проложенной дороги
+    # (build_road_to по умолчанию кладёт тропку, уровень 1).
+    for key in _rm.get_all_road_segments().keys():
+        var s := _parse_segment(key)
+        check(not _is_water(tile_data[s[0]][s[1]]) and not _is_water(tile_data[s[2]][s[3]]),
+                "сегмент слияния не должен проходить по воде: %s" % key, state)
+    check(_rm.get_segment_level(q_hex.row, q_hex.col, p_hex.row, p_hex.col) == 1,
+            "сегмент слияния должен быть уровня проложенной дороги (тропка)", state)
 
 # -------------------------------------------------------
 # 3. Дорога не строится там, где её быть не может

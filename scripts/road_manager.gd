@@ -176,6 +176,8 @@ func build_road_from(
         _add_road_segment(from_hex.row, from_hex.col, to_hex.row, to_hex.col, road_level)
         connected_hexes[_hex_key(from_hex.row, from_hex.col)] = true
         connected_hexes[_hex_key(to_hex.row, to_hex.col)] = true
+    for hex in best_path:
+        _join_adjacent_connected(hex.row, hex.col, road_level, connected_hexes, false)
     _invalidate_plan_cache()
 
 # A search of a path common for the city and the towns from (start_row, start_col) to
@@ -292,6 +294,8 @@ func build_town_road_from(
         _add_town_road_segment(from_hex.row, from_hex.col, to_hex.row, to_hex.col)
         connected[_hex_key(from_hex.row, from_hex.col)] = true
         connected[_hex_key(to_hex.row, to_hex.col)] = true
+    for hex in best_path:
+        _join_adjacent_connected(hex.row, hex.col, DEFAULT_ROAD_LEVEL, connected, true)
 
 # The set of the connected hexes of the NETWORK OF THE TOWN (it is created on the first request).
 func _town_connected(town_row: int, town_col: int) -> Dictionary:
@@ -509,6 +513,7 @@ func build_road_to(
     if limit <= 0:
         return false
 
+    var built_hexes: Array = []
     for i in range(mini(road_path.size() - 1, limit)):
         var from_hex = road_path[i]
         var to_hex = road_path[i + 1]
@@ -521,6 +526,10 @@ func build_road_to(
             # the route the signal of the opening of the connection is emitted.
             town_link_segments[_get_canonical_road_key(
                 from_hex.row, from_hex.col, to_hex.row, to_hex.col)] = true
+        built_hexes.append(from_hex)
+        built_hexes.append(to_hex)
+    for hex in built_hexes:
+        _join_adjacent_connected(hex.row, hex.col, road_level, connected_hexes, false)
     _invalidate_plan_cache()
 
     if is_town and limit >= road_path.size() - 1:
@@ -559,6 +568,8 @@ func build_road_step(
     _add_road_segment(from_row, from_col, to_row, to_col, road_level)
     connected_hexes[_hex_key(from_row, from_col)] = true
     connected_hexes[_hex_key(to_row, to_col)] = true
+    _join_adjacent_connected(from_row, from_col, road_level, connected_hexes, false)
+    _join_adjacent_connected(to_row, to_col, road_level, connected_hexes, false)
     if is_town:
         town_link_segments[_get_canonical_road_key(
                 from_row, from_col, to_row, to_col)] = true
@@ -800,6 +811,31 @@ func _add_road_segment(row1: int, col1: int, row2: int, col2: int,
         road_level: int = DEFAULT_ROAD_LEVEL):
     var key = _get_canonical_road_key(row1, col1, row2, col2)
     road_segments[key] = road_level
+
+# A road which has come up next to an existing road of the SAME network merges with it.
+#
+# Without this a road built along an existing one leaves both of them on neighbouring hexes
+# without a segment between them. The player cannot close such a gap by hand: "Build a road"
+# works only on a hex without a road (control_panel), and both hexes of the gap already have one.
+# For the player this reads as "two roads meet and do not connect".
+#
+# The joining segment is laid at the level of the road which has just been built: the road
+# continues to the neighbouring hex at its own level.
+func _join_adjacent_connected(row: int, col: int, road_level: int,
+        connected: Dictionary, is_town: bool) -> void:
+    if not connected.has(_hex_key(row, col)):
+        return
+    for neighbor in _get_neighbors(row, col, 999, 999):
+        var nk := _hex_key(int(neighbor.row), int(neighbor.col))
+        if not connected.has(nk):
+            continue
+        var key := _get_canonical_road_key(row, col, int(neighbor.row), int(neighbor.col))
+        if (town_road_segments if is_town else road_segments).has(key):
+            continue
+        if is_town:
+            _add_town_road_segment(row, col, int(neighbor.row), int(neighbor.col))
+        else:
+            _add_road_segment(row, col, int(neighbor.row), int(neighbor.col), road_level)
 
 # The level of a road on a hex = the MAXIMUM over the adjacent segments of ALL the networks:
 # the city of the player and the towns. 0 - not a single segment adjoins the hex, that is
