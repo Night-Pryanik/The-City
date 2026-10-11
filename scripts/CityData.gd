@@ -338,6 +338,14 @@ func setup():
     total_population = 1
     idle_population = 1 # one citizen, while he is busy nowhere
 
+    # The food balance constants are persisted per save (SaveManager) and therefore
+    # leak across a "load save -> main menu -> new game" in the same session: a value
+    # from the loaded save survives into the new game. We return them to the balance
+    # defaults here, just like the starting treasury, so a new game always starts from
+    # the current balance. A loaded save still overrides them via apply_loaded_data.
+    food_per_citizen = int(GameData.game_balance.get("food_per_citizen", 10))
+    food_for_new_settler = int(GameData.game_balance.get("food_for_new_settler", 1000))
+
     for pid in GameData.products.keys():
         city_storage[pid] = 0
         city_quality_detail[pid] = {}

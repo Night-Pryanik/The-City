@@ -38,7 +38,21 @@
       //                        always an integer. Profit is credited only for units
       //                        actually written off on consumption (see docs.md,
       //                        "City treasury and internal market").
-      "internal_market_price_multiplier": 1.0
+      "internal_market_price_multiplier": 1.0,
+
+      // food_per_citizen — the food (the staple ration) that ONE eating citizen
+      //                        writes off per simulation tick (SIMULATION_TICK = 1 sec)
+      //                        from the food pool. The founder (the first citizen) does
+      //                        not eat, so the city demand = (total_population - 1) ×
+      //                        food_per_citizen. It is a balance constant that is
+      //                        reset to this default in CityData.setup() on a new game;
+      //                        a loaded save overrides it (SaveManager.apply_loaded_data).
+      "food_per_citizen": 10,
+
+      // food_for_new_settler — the food paid once for the birth of a new citizen.
+      //                        Balance constant reset to this default in CityData.setup()
+      //                        on a new game; a loaded save overrides it.
+      "food_for_new_settler": 1000
     },
 
     // --- EXPANSION: the cost of extending the city's territory over the map ---
