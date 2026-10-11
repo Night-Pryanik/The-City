@@ -2341,3 +2341,41 @@ lose a resident while the plan carries an output, and a city with no producer at
 lose exactly one. Validation by mutation: without the two fixes the test fails on "got 320" and
 on "must not starve". Reproduced end-to-end on a live map as well: a farm with no road survives, a
 farm behind a road used to drop the population from 2 to 1 on the tick the warehouse was emptied.
+
+
+## The byproduct that starved the staple: the route flow is per product (October 11, 2026)
+
+**Context.** The report: three lentil farms stand within a second of the city, the top bar reads
+"Food: 0 [+40≈ / -15≈]", and the population sits at 3 and never grows. The food arithmetic looked
+positive, so the growth threshold (1000 banked) was not the whole story.
+
+**Root cause — the byproduct flooded the route.** A food plant outputs a STAPLE AND A BYPRODUCT on
+the same hex (`data/resources/plants/food_plants.json`: `produces: { lentils: 10, feed: 60 }`).
+Both entered ONE route queue, and `delivery_manager._ship_route` shipped them from a single shared
+FIFO at the route's `avg_speed` (a trail = 10 units/sec) — the TOTAL of the route, not per product.
+The 60/sec of fodder therefore occupied ~86% of the pipe and the 10/sec of food was almost never at
+the head of the queue. The city received almost no food: the pool stayed at 0, the fodder piled up
+(30 210 in the report), and the population froze at 3 — no growth (nothing banked) and no famine
+either, because `_check_population_change` falls back to the PLANNED output (40 > 20). The top bar's
+"+40≈" was that same planned number, never what arrived.
+
+**What was done.** The route's flow rate is now the throughput of EVERY product it carries.
+`delivery_manager._ship_route` grants each product waiting on the route its own budget for the step
+(`ship_accum` became a per-product dictionary), and `_dispatch` walks the queue taking each
+product's share — the order stays FIFO WITHIN a product. This is the per-product reading the
+overload marker already made (`map_tooltip.road_capacity_shortfall`, which compares each product
+against the route speed separately), so the marker, the triangle and the delivery now agree; the
+old shared FIFO contradicted them.
+
+**Rejected.** (1) Rebalancing the data instead (lowering the farms' fodder output): the fodder is a
+legitimate routed product — a pasture eats `feed` from the city storage — and ANY dominant byproduct
+would starve its staple the same way. (2) Making the top bar and the famine read the delivered rate
+without touching delivery: that would kill residents for a road problem the player can fix by
+upgrading, and it would leave the surplus arriving nowhere.
+
+**Test.** `tests/test_delivery_logistics.gd`, case `multi_product_share`: a staple (10/step) and a
+byproduct (60/step) on one route with a flow of 10 — the staple must keep arriving at its own rate
+(100 over 10 steps) while the byproduct queues. Validation by mutation: with the shared FIFO the
+staple receives 10 instead of 100. Reproduced end-to-end on a live map: three lentil farms behind
+trails gave food 0 / fodder 5 115 / population stuck at 3 before, and food climbing ~+10/sec with
+the population 3 → 4 after.

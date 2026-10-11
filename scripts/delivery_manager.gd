@@ -21,12 +21,16 @@
 # surplus of a fast improvement (it used to be clamped and lost) — the surplus simply
 # waits in the queue and is delivered later.
 #
-# THE FLOW IS PER ROUTE, NOT PER BATCH, AND NOT SHARED BETWEEN ROUTES. All the loads
-# of one route share its single flow rate (FIFO, so no purchase can jump the queue),
-# while two different routes do not compete: the road network is not a physical
-# system, there is no congestion and no splitting of the throughput of a segment. Three
-# farms on three 30-units/sec routes deliver up to 90 units/sec in total even if the
-# routes share a segment.
+# THE FLOW IS PER ROUTE AND PER PRODUCT, AND IS NOT SHARED BETWEEN ROUTES. A route's
+# flow rate applies to EACH product it carries separately, so a hex that outputs both a
+# staple and a bulk byproduct cannot let the byproduct starve the staple: the byproduct
+# queues while the staple keeps arriving. This is the same per-product comparison the
+# tooltip makes (map_tooltip.road_capacity_shortfall), so the red road note and the
+# delivery agree. Within ONE product the order is FIFO, so no purchase can jump the
+# queue. Two different routes do not compete: the road network is not a physical system,
+# there is no congestion and no splitting of the throughput of a segment. Three farms on
+# three 30-units/sec routes deliver up to 90 units/sec in total even if the routes share
+# a segment.
 #
 # PERFORMANCE. There is no timer and no update loop per batch. main_map calls advance()
 # once per frame (only the arrivals walk the routes) and ship() once per simulation
@@ -56,9 +60,11 @@ var _main_map = null
 #   in_transit  — the loads already on the road: {product, quality, amount (int),
 #                 source, remaining (sec)}. The remaining time is a countdown, not an
 #                 absolute timestamp, so the save does not depend on a clock;
-#   ship_accum  — the fractional credit of the shipping, in units. It carries the
-#                 sub-unit remainder between the steps, so the average flow does not
-#                 drift for a fractional flow rate (for example, 28.3 units/sec).
+#   ship_accum  — the per-product fractional credit of the shipping, in units:
+#                 {product: float}. It carries the sub-unit remainder between the steps,
+#                 so the average flow does not drift for a fractional flow rate (for
+#                 example, 28.3 units/sec). One credit per product on purpose: the flow
+#                 rate is the throughput of EVERY product, not of the route as a whole.
 var _routes: Dictionary = {}
 
 
@@ -97,11 +103,11 @@ func advance(delta: float) -> void:
 
 
 # One shipping step for every route: each route ships up to flow_rate × SHIP_STEP units
-# from the head of its queue, FIFO. main_map calls it once per simulation tick, right
-# after the production of that tick and BEFORE the interface reads the queue (see
-# main_map._process). So the goods of the current tick are already on the road when the
-# panel and the tooltip refresh: the "waiting to ship" row shows the real backlog of a
-# slow road, and never the fresh production of the second that has just passed.
+# of EVERY product it is waiting on, FIFO within a product. main_map calls it once per
+# simulation tick, right after the production of that tick and BEFORE the interface reads
+# the queue (see main_map._process). So the goods of the current tick are already on the
+# road when the panel and the tooltip refresh: the "waiting to ship" row shows the real
+# backlog of a slow road, and never the fresh production of the second that has just passed.
 func ship() -> void:
     var empty_keys: Array = []
     for key in _routes.keys():
@@ -210,32 +216,44 @@ func _advance_arrivals(delta: float) -> void:
 
 
 func _ship_route(route: Dictionary, flow_rate: float, transit_delay: float) -> void:
-    route["ship_accum"] = float(route["ship_accum"]) + flow_rate * SHIP_STEP
-    var to_ship := int(floor(float(route["ship_accum"])))
-    if to_ship > 0 and not route["pending"].is_empty():
-        var shipped := _dispatch(route, to_ship, transit_delay)
-        route["ship_accum"] = float(route["ship_accum"]) - float(shipped)
+    var credits: Dictionary = route["ship_accum"]
+    # Every product waiting on this route gets its own full budget for the step: the
+    # flow rate is the throughput PER PRODUCT, so a product cannot spend another's.
+    var waiting: Dictionary = {}
+    for entry in route["pending"]:
+        waiting[str(entry["product"])] = true
+    for product in waiting:
+        credits[product] = float(credits.get(product, 0.0)) + flow_rate * SHIP_STEP
+    _dispatch(route, credits, transit_delay)
     # Only the sub-unit remainder carries over to the next step: the flow is a rate, not
-    # a reservoir, so a route that shipped less than it could (or had nothing to ship)
+    # a reservoir, so a product that shipped less than it could (or had nothing to ship)
     # must not bank the spare throughput and dump it in a burst later.
-    route["ship_accum"] = fmod(float(route["ship_accum"]), 1.0)
+    for product in credits.keys():
+        credits[product] = fmod(float(credits[product]), 1.0)
 
 
-# Moves up to max_units from the head of the queue onto the road. It returns how many
-# units actually went, which may be less than max_units when the queue is shorter.
-func _dispatch(route: Dictionary, max_units: int, transit_delay: float) -> int:
-    var shipped := 0
+# Moves each product's share of the queue onto the road, walking the queue in order. The
+# budget of a product is its own credit (see _ship_route), so within a product the queue
+# stays FIFO while a bulk byproduct can no longer delay the staple behind it.
+func _dispatch(route: Dictionary, credits: Dictionary, transit_delay: float) -> void:
     var pending: Array = route["pending"]
-    while shipped < max_units and not pending.is_empty():
-        var head: Dictionary = pending[0]
-        var take: int = mini(int(head["amount"]), max_units - shipped)
+    var i := 0
+    while i < pending.size():
+        var head: Dictionary = pending[i]
+        var product := str(head["product"])
+        var budget := int(floor(float(credits.get(product, 0.0))))
+        if budget <= 0:
+            i += 1
+            continue
+        var take: int = mini(int(head["amount"]), budget)
         head["amount"] = int(head["amount"]) - take
-        shipped += take
-        _add_in_transit(route, str(head["product"]), str(head["quality"]),
-                take, str(head["source"]), transit_delay)
+        credits[product] = float(credits[product]) - float(take)
+        _add_in_transit(route, product, str(head["quality"]), take,
+                str(head["source"]), transit_delay)
         if int(head["amount"]) <= 0:
-            pending.remove_at(0)
-    return shipped
+            pending.remove_at(i)
+        # A partially shipped head keeps its place (still at i); its budget is spent, so
+        # the next iteration moves past it.
 
 
 # Adds a shipped load to the road. Loads created in the same shipping step share the
@@ -297,7 +315,7 @@ func _get_or_create_route(row: int, col: int) -> Dictionary:
             "col": col,
             "pending": [],
             "in_transit": [],
-            "ship_accum": 0.0,
+            "ship_accum": {},
         }
     return _routes[key]
 
@@ -365,12 +383,15 @@ func serialize() -> Dictionary:
                 "source": str(entry["source"]),
                 "remaining": float(entry["remaining"]),
             })
+        var credits: Dictionary = {}
+        for product in route["ship_accum"]:
+            credits[str(product)] = float(route["ship_accum"][product])
         out[key] = {
             "row": int(route["row"]),
             "col": int(route["col"]),
             "pending": pending,
             "in_transit": transit,
-            "ship_accum": float(route["ship_accum"]),
+            "ship_accum": credits,
         }
     return out
 
@@ -392,7 +413,12 @@ func deserialize(data) -> void:
         if row < 0 or col < 0:
             continue
         var route := _get_or_create_route(row, col)
-        route["ship_accum"] = float(entry.get("ship_accum", 0.0))
+        var credits: Dictionary = {}
+        var saved_credits = entry.get("ship_accum", {})
+        if saved_credits is Dictionary:
+            for product in saved_credits:
+                credits[str(product)] = float(saved_credits[product])
+        route["ship_accum"] = credits
         for pending_entry in entry.get("pending", []):
             if not (pending_entry is Dictionary):
                 continue

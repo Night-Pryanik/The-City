@@ -3,9 +3,11 @@
 #
 # The two characteristics of a route are independent: length sets the delivery
 # delay (length × transit_time_per_hex), while segment levels set the flow rate
-# (average max_speed). Throughput is capped FOR EACH ROUTE SEPARATELY and is
-# shared among all batches of one route; different routes do not compete.
-# Surplus of own production is not lost, but waits to be shipped.
+# (average max_speed). Throughput is capped FOR EACH ROUTE SEPARATELY and PER
+# PRODUCT: within one product the batches share the limit, but one product never
+# spends another's, so a bulk byproduct cannot starve the staple shipped beside
+# it. Different routes do not compete. Surplus of own production is not lost, but
+# waits to be shipped.
 #
 # Cases (filter --case=<substring>):
 #   delay              — before the delay elapses no goods arrive, after it they do;
@@ -13,6 +15,7 @@
 #   batch_size         — a large batch takes longer to deliver than a small one;
 #   shared_route       — several batches on one route share its limit;
 #   repeat_purchases   — repeat purchases do not bypass the cap;
+#   multi_product_share— a byproduct on the same route must not starve the staple;
 #   simultaneous       — batches can be in transit at the same time;
 #   independent_routes — different routes are independent;
 #   no_loss            — neither duplicates nor losses;
@@ -67,6 +70,8 @@ func _run() -> void:
         _test_shared_route(state)
     if WATCHDOG.wants_case("repeat_purchases"):
         _test_repeat_purchases(state)
+    if WATCHDOG.wants_case("multi_product_share"):
+        _test_multi_product_share(state)
     if WATCHDOG.wants_case("simultaneous"):
         _test_simultaneous(state)
     if WATCHDOG.wants_case("independent_routes"):
@@ -236,6 +241,47 @@ func _test_repeat_purchases(state: Dictionary) -> void:
     check(float(worst) <= flow + 0.001,
             "repeat purchases must not bypass the limit %.1f (arrival peak %d)"
                     % [flow, worst], state)
+    dm.free()
+
+
+# -------------------------------------------------------
+# 5b. A byproduct on the same route must not starve the staple
+# -------------------------------------------------------
+
+# Regression: a food plant outputs BOTH a staple crop and a bulk byproduct on the same
+# hex (data/resources/plants/food_plants.json: `produces: { lentils: 10, feed: 60 }`).
+# Both enter one route, and the route's flow rate is the throughput of EVERY product, so
+# the byproduct must queue while the staple keeps arriving in full. Before the fix the
+# two shared one FIFO and the 60/sec byproduct occupied ~86% of it: the staple was
+# starved, the city's food stayed at 0 and the population could never grow.
+func _test_multi_product_share(state: Dictionary) -> void:
+    var pair := _new_manager()
+    var dm = pair[0]
+    var fake: FakeMap = pair[1]
+    _reset_storage("clay")
+    _reset_storage("wheat")
+    var flow := 10.0
+    fake.set_route(5, 5, 1, flow)
+
+    var staple_per_step := 10
+    var byproduct_per_step := 60
+    var staple_at_mid := 0
+    for i in range(20):
+        dm.create_cargo(5, 5, "clay", "common", staple_per_step, "@imp:farm")
+        dm.create_cargo(5, 5, "wheat", "common", byproduct_per_step, "@imp:farm")
+        _step(dm)
+        if i == 9:
+            staple_at_mid = _delivered("clay")
+
+    var staple_last_10 := _delivered("clay") - staple_at_mid
+    check(staple_last_10 == staple_per_step * 10,
+            "the staple must keep arriving at its own rate beside the byproduct (received %d, expected %d)"
+                    % [staple_last_10, staple_per_step * 10], state)
+    check(_delivered("wheat") > 0,
+            "the byproduct must still arrive within its own limit (received %d)"
+                    % _delivered("wheat"), state)
+    check(int(dm.get_route_status(5, 5).get("pending", 0)) > 0,
+            "the byproduct's surplus must wait in the queue, not be lost", state)
     dm.free()
 
 

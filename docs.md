@@ -1626,7 +1626,7 @@ The "improvement → city" route is described by **two independent quantities**,
 
 **The surplus is no longer lost.** The former behaviour ("an amount equal to the average speed reaches the city, and the rest disappears") has been removed. Now a product that did not fit into the flow **queues on the route**, is sent at the flow's speed, travels for the delivery time, and only then is credited to the city's storage. Production, recipes, labour and balance have not changed — what changed is the fate of the surplus: it **waits** rather than vanishing.
 
-**The limit is per route, not per batch and not per product.** Each route has one shared limit and one queue (FIFO): the batches of one improvement leave in order. **Different routes do not compete** — even if they physically share a road section: three routes of 30 units/sec give 90 units/sec in total. There is no full simulation of "vehicles" and flow priorities: what is modelled is flow and delay, not transport vehicles.
+**The limit is per route and per product, and not per batch.** A route's flow rate is the throughput of EACH product it carries, so the batches of one product leave in order (FIFO) while a bulk byproduct cannot delay a staple shipped beside it — the byproduct queues. This is the same per-product reading the overload marker uses (`map_tooltip.road_capacity_shortfall`), so the marker and the delivery agree. **Different routes do not compete** — even if they physically share a road section: three routes of 30 units/sec give 90 units/sec in total. There is no full simulation of "vehicles" and flow priorities: what is modelled is flow and delay, not transport vehicles.
 
 Batches **do not artificially wait for each other**: a new batch is not obliged to wait for the previous one to arrive — both can be en route at the same time if the flow allows.
 
@@ -1653,7 +1653,7 @@ Without a route (`find_route_to_city` returned `ok = false` — for example, a w
 | The two parameters are separated: delay and flow | These are different questions — "when will it arrive" and "how much per second will leave". A single shared quantity answered neither |
 | `transit_time_per_hex` lives in `game_balance.json`, not in the code | The author sets the pace of logistics in one place; the coefficient is not scattered across formulas |
 | The surplus **waits in a queue** rather than being lost | The player must not lose already produced goods because of a narrow road: the road sets the pace, it does not destroy the product |
-| The limit is **per route**, not per product and not per batch | A route has one physical throughput; splitting it among products would mean inventing a rule the road does not have |
+| The limit is **per route and per product**, not per batch | The road's throughput applies to every product the hex ships; within one product the queue is FIFO. One shared queue would let a hex's bulk byproduct starve the staple produced beside it — the reason the food stopped reaching the city while the fodder piled up |
 | **Different routes do not compete** | A route is an independent thread; a shared road section must not silently cut off a neighbour |
 | Batches **do not wait for each other** | Between an improvement and the city there is no "single cart": cargo travels as a flow, and two batches can be en route at the same time |
 | No simulation of transport vehicles | The model is flow and delay, not units: the requirement "no full simulation of vehicles" is met without losing the meaning |
