@@ -1,26 +1,29 @@
-# Headless-тест отрисовки рек (map_renderer, ФАЗА 2.75):
+# Headless test for river rendering (map_renderer, PHASE 2.75):
 #   godot --headless --path . --script res://tests/test_river_rendering.gd
 #
-# Регрессия, которую ловит тест: точки реки сдвигаются на offset и с этого
-# момента живут в ЭКРАННЫХ координатах, а отсекались они по прямоугольнику
-# Rect2(Vector2(-offset_x, -offset_y), ...), то есть по МИРОВОМУ окну. При
-# центрировании карты (offset_x ~ -2280) окно уезжало далеко за экран, и
-# _clip_river_to_rect возвращал [] для каждой реки — реки оставались в данных
-# (river_edges, доступ к пресной воде), но не рисовались.
+# The regression this test catches: river points get shifted by offset and from
+# that moment live in SCREEN coordinates, but they were clipped against the
+# rectangle Rect2(Vector2(-offset_x, -offset_y), ...), that is, against the
+# WORLD window. When the map is centered (offset_x ~ -2280) the window drifted
+# far off screen, and _clip_river_to_rect returned [] for every river — the
+# rivers stayed in the data (river_edges, access to fresh water) but were not
+# drawn.
 #
-# Проверяется на живых данных реальной сцены MainMap (новая игра):
-#   1. Данные рек целы: есть главные реки/притоки и гексы с river_edges.
-#   2. Экранный прямоугольник начинается в нуле экранных координат — он и
-#      должен быть в той же системе, что и сдвинутые точки.
-#   3. На живой карте хотя бы одна река реально даёт непустые линии, и все
-#      их точки лежат внутри экрана (обрезка по экрану, а не выбрасывание).
-#   4. Прокрутка карты (scroll_offset) не «убивает» отрисовку: та же река
-#      остаётся видимой.
-#   5. Река целиком за экраном не рисуется (отсечение по-прежнему работает).
+# Checked against live data of the real MainMap scene (new game):
+#   1. River data is intact: there are main rivers/tributaries and hexes with
+#      river_edges.
+#   2. The screen rectangle starts at zero screen coordinates — it must be in
+#      the same system as the shifted points.
+#   3. On the live map at least one river actually yields non-empty lines, and
+#      all their points lie inside the screen (clipping to the screen, not
+#      discarding).
+#   4. Scrolling the map (scroll_offset) does not "kill" rendering: the same
+#      river stays visible.
+#   5. A river entirely off screen is not drawn (culling still works).
 extends SceneTree
 
-# Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
-# молчание. Подробности — в tests/watchdog.gd.
+# Hang watchdog: without it a broken _run() coroutine looks like eternal
+# silence from the outside. Details — in tests/watchdog.gd.
 const WATCHDOG = preload("res://tests/watchdog.gd")
 
 func _initialize() -> void:
@@ -40,13 +43,13 @@ func _run() -> void:
     var river_manager = main_map.get_node("RiverManager")
     var radius: float = main_map.HEX_RADIUS
 
-    # --- 1. Данные рек на месте (иначе проверки отрисовки бессмысленны) ---
+    # --- 1. River data is in place (otherwise the rendering checks are meaningless) ---
     var main_rivers: Array = river_manager.get_main_rivers()
     var tributaries: Array = river_manager.get_tributaries()
     check(not main_rivers.is_empty(),
-        "на живой карте должен быть хотя бы один главный поток", state)
+        "the live map must have at least one main stream", state)
     check(not main_rivers.is_empty() or not tributaries.is_empty(),
-        "на живой карте должны быть реки", state)
+        "the live map must have rivers", state)
 
     var edge_hexes: int = 0
     for row in range(main_map.map_rows):
@@ -55,20 +58,20 @@ func _run() -> void:
             if tile != null and not tile.get("river_edges", []).is_empty():
                 edge_hexes += 1
     check(edge_hexes > 0,
-        "реки должны оставлять river_edges в гексах (косвенный признак воды)", state)
+        "rivers must leave river_edges in hexes (an indirect sign of water)", state)
 
-    # --- 2. Экранный прямоугольник — в экранных координатах ---
+    # --- 2. The screen rectangle — in screen coordinates ---
     var screen_rect: Rect2 = r._get_screen_rect()
     check(screen_rect.position == Vector2.ZERO,
-        "экранный прямоугольник должен начинаться в нуле экранных координат", state)
+        "the screen rectangle must start at zero screen coordinates", state)
     check(screen_rect.size.x > 0.0 and screen_rect.size.y > 0.0,
-        "размер экрана должен быть положительным (получено %s)" % str(screen_rect.size),
+        "the screen size must be positive (got %s)" % str(screen_rect.size),
         state)
 
-    # --- 3. Хотя бы одна река видна и обрезана по экрану ---
-    # Экранный прямоугольник задан с запасом main_map.MAP_CACHE_MARGIN (как и кэш
-    # отрисовки), поэтому цикл идёт по пробам сдвига, пока карта не встанет так,
-    # что реки попадут в кадр.
+    # --- 3. At least one river is visible and clipped to the screen ---
+    # The screen rectangle is padded by main_map.MAP_CACHE_MARGIN (as is the
+    # render cache), so the loop iterates over scroll probes until the map is
+    # positioned so that rivers fall into the frame.
     var all_rivers: Array = main_rivers + tributaries
     var visible_rivers: int = 0
     var outside: Array = []
@@ -87,14 +90,15 @@ func _run() -> void:
             visible_rivers = visible_in_probe
             outside = outside_in_probe
     check(visible_rivers > 0,
-        "хотя бы одна река должна пересекать экран (полилиний: %d)" % visible_rivers, state)
+        "at least one river must cross the screen (polylines: %d)" % visible_rivers, state)
     check(outside.is_empty(),
-        "точки отрисованной реки не должны выходить за экран (нарушителей: %s)"
+        "points of a drawn river must not go off screen (violators: %s)"
             % str(outside), state)
 
-    # --- 4. Прокрутка не ломает отрисовку ---
-    # Штатный способ прокрутки в игре — ПКМ по кнопке города (центрирует
-    # город); берём тот же сдвиг, что и main_map._on_city_button_gui_input.
+    # --- 4. Scrolling does not break rendering ---
+    # The standard way of scrolling in the game is right-clicking a city button
+    # (centers the city); we take the same shift as
+    # main_map._on_city_button_gui_input.
     var scroll = - (HexUtils.hex_center(main_map.city_row, main_map.city_col, radius)
         + Vector2(main_map.offset_x, main_map.offset_y) - r._get_viewport_size() / 2.0)
     var visible_after_scroll: int = 0
@@ -102,32 +106,34 @@ func _run() -> void:
         if not _lines(r, river, main_map, scroll).is_empty():
             visible_after_scroll += 1
     check(visible_after_scroll > 0,
-        "после прокрутки реки должны оставаться видимыми (полилиний: %d)"
+        "after scrolling the rivers must stay visible (polylines: %d)"
             % visible_after_scroll, state)
 
-    # --- 5. Отсечение по-прежнему работает ---
-    # Река целиком за экраном (в мировых координатах далеко за правым краем)
-    # не должна давать ни одной линии.
+    # --- 5. Culling still works ---
+    # A river entirely off screen (in world coordinates far beyond the right
+    # edge) must not yield a single line.
     var far_river: Array = []
     var far_x: float = screen_rect.size.x - main_map.offset_x + 5000.0
     for i in range(6):
         far_river.append(Vector2(far_x + i * 100.0, 500.0 + i * 40.0))
     check(_lines(r, far_river, main_map).is_empty(),
-        "река целиком за экраном не должна рисоваться", state)
+        "a river entirely off screen must not be drawn", state)
 
-    # --- 6. Кэш геометрии не пересобирается на каждом кадре прокрутки ---
-    # Пересборка кэша (сглаживание + обрезка) — самая дорогая часть отрисовки рек:
-    # раньше она шла КАЖДЫЙ кадр прокрутки. Теперь геометрия живёт до тех пор, пока
-    # карта не уедет от запомненного сдвига дальше, чем на MAP_CACHE_MARGIN.
-    # Считаем настоящие пересборки по счётчику рендерера и сравниваем с числом
-    # кадров: пересборок должно быть МНОГОКРАТНО меньше.
+    # --- 6. The geometry cache is not rebuilt on every scroll frame ---
+    # Rebuilding the cache (smoothing + clipping) is the most expensive part of
+    # river rendering: it used to run on EVERY scroll frame. Now the geometry
+    # lives until the map moves away from the remembered shift by more than
+    # MAP_CACHE_MARGIN. We count the real rebuilds via the renderer counter and
+    # compare with the number of frames: there must be MANY TIMES fewer
+    # rebuilds.
     main_map.scroll_offset = Vector2.ZERO
     r.queue_redraw_for_scroll()
     r._flush_scroll_cache_invalidation()
-    r._build_river_frame_cache(radius)          # строим кэш для нулевого сдвига
+    r._build_river_frame_cache(radius)          # build the cache for zero shift
     var rebuilds_before: int = r._river_frame_rebuilds
-    # Шаг заведомо меньше запаса, кадров хватает на несколько запасов прокрутки:
-    # без кэша пересборка была бы на КАЖДОМ кадре (= steps).
+    # The step is deliberately smaller than the margin, the frames suffice for
+    # several margins of scrolling: without the cache there would be a rebuild
+    # on EVERY frame (= steps).
     var steps: int = 20
     var step_px: float = main_map.MAP_CACHE_MARGIN / 3.0
     for i in range(1, steps + 1):
@@ -137,20 +143,21 @@ func _run() -> void:
         r._build_river_frame_cache(radius)
     var rebuilds: int = r._river_frame_rebuilds - rebuilds_before
     check(rebuilds < steps,
-        "кэш геометрии рек не должен пересобираться на каждом кадре прокрутки (пересборок %d за %d кадров)"
+        "the river geometry cache must not be rebuilt on every scroll frame (rebuilds %d over %d frames)"
             % [rebuilds, steps], state)
-    # Прокрутка на несколько запасов вперёд обязана пересобирать кэш (иначе на новом
-    # месте реки рисовались бы по старому, уже уехавшему прямоугольнику обрезки).
+    # Scrolling several margins forward must rebuild the cache (otherwise at the
+    # new position rivers would be drawn using the old, already departed
+    # clipping rectangle).
     var before_far: int = r._river_frame_rebuilds
     main_map.scroll_offset = Vector2(main_map.MAP_CACHE_MARGIN * 4.0, 0.0)
     r.queue_redraw_for_scroll()
     r._flush_scroll_cache_invalidation()
     r._build_river_frame_cache(radius)
     check(r._river_frame_rebuilds > before_far,
-        "прокрутка за пределы запаса должна пересобирать геометрию рек", state)
+        "scrolling beyond the margin must rebuild the river geometry", state)
 
-    # --- 7. Точки кэша — мировые, сдвиг применяется на отрисовке ---
-    # Иначе прокрутка внутри запаса показывала бы реку не там, где она есть.
+    # --- 7. The cache points are world-space, the shift is applied at draw time ---
+    # Otherwise scrolling within the margin would show the river not where it is.
     r._river_frame_cache.clear()
     main_map.scroll_offset = Vector2.ZERO
     r.queue_redraw_for_scroll()
@@ -158,7 +165,7 @@ func _run() -> void:
     r._build_river_frame_cache(radius)
     var cache_offset_zero = r._river_frame_cache_offset
     check(cache_offset_zero.x == main_map.offset_x and cache_offset_zero.y == main_map.offset_y,
-        "кэш должен запоминать сдвиг, для которого построен (получено %s, ожидался %s)"
+        "the cache must remember the shift it was built for (got %s, expected %s)"
             % [str(cache_offset_zero), str(Vector2(main_map.offset_x, main_map.offset_y))],
         state)
 
@@ -172,9 +179,10 @@ func _run() -> void:
         print("RIVER RENDERING TEST OK")
         quit(0)
 
-# Пробные сдвиги карты: центрируем камеру на середине каждой реки. Кэш отрисовки
-# покрывает экран с запасом MAP_CACHE_MARGIN, а вне него реки рисуются только
-# после пересборки — пробы дают гарантию, что хотя бы одна река попадёт в кадр.
+# Probe map shifts: center the camera on the middle of each river. The render
+# cache covers the screen with a MAP_CACHE_MARGIN pad, and outside it rivers are
+# drawn only after a rebuild — the probes guarantee that at least one river
+# falls into the frame.
 func _candidate_scrolls(main_map, rivers: Array) -> Array:
     var out: Array = [Vector2.ZERO]
     for river in rivers:
@@ -185,9 +193,9 @@ func _candidate_scrolls(main_map, rivers: Array) -> Array:
             - main_map.map_renderer._get_viewport_size() / 2.0))
     return out
 
-# Полилинии экрана для одной реки — ровно тот путь, который использует
-# отрисовка (_draw_river_list -> _build_river_frame_cache. Результат приводится к
-# экранным координатам того же сдвига, что и в тесте.
+# Screen polylines for one river — exactly the path used by rendering
+# (_draw_river_list -> _build_river_frame_cache. The result is reduced to the
+# screen coordinates of the same shift as in the test.
 func _lines(r, river: Array, main_map, extra_scroll: Vector2 = Vector2.ZERO) -> Array:
     var offset_x: float = main_map.offset_x + main_map.scroll_offset.x + extra_scroll.x
     var offset_y: float = main_map.offset_y + main_map.scroll_offset.y + extra_scroll.y
@@ -202,11 +210,11 @@ func _lines(r, river: Array, main_map, extra_scroll: Vector2 = Vector2.ZERO) -> 
         out.append(shifted)
     return out
 
-# Точки полилиний, вышедшие за пределы кэша отрисовки. Готовые линии реки
-# обрезаны прямоугольником экрана С ЗАПАСОМ main_map.MAP_CACHE_MARGIN (кэш
-# экранного размера), поэтому проверяется он, а не чистый экран. Допуск — ширина
-# рисуемой линии: она рисуется с обводкой и мысленно чуть выходит за
-# отсечённый прямоугольник.
+# Polyline points that went beyond the render cache. The finished river lines
+# are clipped by the screen rectangle WITH a PAD of main_map.MAP_CACHE_MARGIN
+# (cache of screen size), so that is what is checked, not the bare screen. The
+# tolerance is the width of the drawn line: it is drawn with an outline and
+# mentally goes slightly beyond the clipped rectangle.
 func _points_outside(lines: Array, screen_rect: Rect2, cache_margin: float) -> Array:
     var margin: float = 16.0 + cache_margin
     var grown := Rect2(

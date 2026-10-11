@@ -1,14 +1,14 @@
-# Headless-тест дополнительных мест разведения (`breeding`):
+# Headless test for additional breeding locations (`breeding`):
 #   godot --headless --path . --script res://tests/test_breeding_terrains.gd
 #
-# Проверяет реальные JSON-данные и общий MapHelpers.can_breed_resource_on_tile:
-# базовые места сохраняются, группы breeding работают по И/ИЛИ-семантике,
-# ошибочные комбинации не проходят, breedable=false имеет приоритет, а
-# get_buildable_improvement предлагает улучшение на дополнительном биоме.
+# Checks the real JSON data and the shared MapHelpers.can_breed_resource_on_tile:
+# base locations are preserved, breeding groups work with AND/OR semantics,
+# invalid combinations do not pass, breedable=false takes priority, and
+# get_buildable_improvement offers an improvement on an additional biome.
 extends SceneTree
 
-# Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
-# молчание. Подробности — в tests/watchdog.gd.
+# Hang watchdog: without it, an interrupted _run() coroutine looks from the
+# outside like eternal silence. Details are in tests/watchdog.gd.
 const WATCHDOG = preload("res://tests/watchdog.gd")
 
 func _initialize() -> void:
@@ -18,7 +18,7 @@ func _initialize() -> void:
 func _run() -> void:
     var state = {"failed": false}
 
-    # new_game() загружает все реальные data/*.json и сбрасывает CityData.
+    # new_game() loads all the real data/*.json and resets CityData.
     var save_manager = get_root().get_node("SaveManager")
     save_manager.new_game()
     var gdata = get_root().get_node("GameData")
@@ -46,43 +46,43 @@ func _run() -> void:
 
 func _test_base_locations(map_helpers, state: Dictionary) -> void:
     check(map_helpers.can_breed_resource_on_tile("grapes_plant", _tile("plain", "none")),
-            "grapes_plant должен по-прежнему разводиться на равнине без покрова", state)
+            "grapes_plant must still breed on plains without cover", state)
     check(map_helpers.can_breed_resource_on_tile("cows", _tile("plain", "sparse_forest")),
-            "cows должны по-прежнему разводиться на равнине с редколесьем", state)
+            "cows must still breed on plains with sparse forest", state)
     check(not map_helpers.can_breed_resource_on_tile("grapes_plant", _tile("plain", "forest")),
-            "grapes_plant не должен разводиться на не разрешённом покрове", state)
+            "grapes_plant must not breed on a disallowed cover", state)
 
 func _test_oasis_resources(map_helpers, gdata, state: Dictionary) -> void:
     var oasis_resource_ids := [
-        # Фрукты.
+        # Fruits.
         "grapes_plant", "olives_plant", "fig_plant",
-        # Пищевые растения.
+        # Food plants.
         "wheat_field", "barley_field", "rice_field", "corn_field", "millet_field",
         "sorghum_field", "amaranth_field", "bean_field", "cowpea_field",
         "lentil_field", "chickpea_field"
     ]
     for res_id in oasis_resource_ids:
         var data: Dictionary = gdata.raw_resources.get(res_id, {})
-        check(not data.is_empty(), "ресурс %s должен существовать в данных" % res_id, state)
-        check(data.has("breeding"), "ресурс %s должен иметь поле breeding" % res_id, state)
+        check(not data.is_empty(), "resource %s must exist in the data" % res_id, state)
+        check(data.has("breeding"), "resource %s must have a breeding field" % res_id, state)
         check(map_helpers.can_breed_resource_on_tile(res_id, _tile("sandy_desert", "oasis")),
-                "%s должен разводиться в оазисе песчаной пустыни" % res_id, state)
+                "%s must breed in a sandy desert oasis" % res_id, state)
         check(map_helpers.can_breed_resource_on_tile(res_id, _tile("rocky_desert", "oasis")),
-                "%s должен разводиться в оазисе каменистой пустыни" % res_id, state)
+                "%s must breed in a rocky desert oasis" % res_id, state)
         check(not map_helpers.can_breed_resource_on_tile(res_id, _tile("sandy_desert", "none")),
-                "%s не должен автоматически разводиться на голой песчаной пустыне" % res_id, state)
+                "%s must not automatically breed on bare sandy desert" % res_id, state)
 
 func _test_negative_and_invalid_cases(map_helpers, gdata, state: Dictionary) -> void:
     check(not map_helpers.can_breed_resource_on_tile("grapes_plant", _tile("plain", "oasis")),
-            "grapes_plant не должен разводиться на равнине с оазисным покровом", state)
+            "grapes_plant must not breed on plains with oasis cover", state)
     check(not map_helpers.can_breed_resource_on_tile("sheep", _tile("sandy_desert", "none")),
-            "овцы не должны разводиться на голой песчаной пустыне", state)
+            "sheep must not breed on bare sandy desert", state)
     check(not map_helpers.can_breed_resource_on_tile("buffalo", _tile("swamp", "none")),
-            "буйволы не должны автоматически разводиться на болоте без тростника", state)
+            "buffalo must not automatically breed on marsh without reeds", state)
     check(not map_helpers.can_breed_resource_on_tile("freshwater_fish", _tile("lake", "none")),
-            "рыба с breedable=false не должна разводиться даже в подходящем водном биоме", state)
+            "fish with breedable=false must not breed even in a suitable water biome", state)
 
-    # Проверяем строгую обработку повреждённых/неизвестных условий.
+    # Check the strict handling of malformed/unknown conditions.
     var invalid_id := "__test_invalid_breeding_resource"
     var valid_data := {
         "id": invalid_id,
@@ -94,36 +94,36 @@ func _test_negative_and_invalid_cases(map_helpers, gdata, state: Dictionary) -> 
     }
     gdata.raw_resources[invalid_id] = valid_data
     check(map_helpers.can_breed_resource_on_tile(invalid_id, _tile("mountain", "forest")),
-            "условие только по terrain должно работать", state)
+            "a terrain-only condition must work", state)
     check(not map_helpers.can_breed_resource_on_tile(invalid_id, _tile("plain", "none")),
-            "пустое базовое место не должно случайно разрешаться", state)
+            "an empty base location must not be accidentally allowed", state)
 
     var array_data := valid_data.duplicate(true)
     array_data["breeding"] = [ [ { "terrain": [ "mountain", "hill" ] },
                                  { "cover": [ "forest", "none" ] } ] ]
     gdata.raw_resources[invalid_id] = array_data
     check(map_helpers.can_breed_resource_on_tile(invalid_id, _tile("mountain", "forest")),
-            "массивы terrain и cover должны поддерживаться одновременно", state)
+            "terrain and cover arrays must be supported at the same time", state)
     check(map_helpers.can_breed_resource_on_tile(invalid_id, _tile("hill", "none")),
-            "второй вариант массивов terrain и cover должен совпадать", state)
+            "the second variant of terrain and cover arrays must match", state)
 
     var invalid_type := valid_data.duplicate(true)
     invalid_type["breeding"] = [ [ { "terrain": 123 } ] ]
     gdata.raw_resources[invalid_id] = invalid_type
     check(not map_helpers.can_breed_resource_on_tile(invalid_id, _tile("mountain", "none")),
-            "числовое значение условия breeding не должно совпадать", state)
+            "a numeric value in a breeding condition must not match", state)
 
     var invalid_empty := valid_data.duplicate(true)
     invalid_empty["breeding"] = [ [] ]
     gdata.raw_resources[invalid_id] = invalid_empty
     check(not map_helpers.can_breed_resource_on_tile(invalid_id, _tile("mountain", "none")),
-            "пустая группа breeding не должна разрешать разведение", state)
+            "an empty breeding group must not allow breeding", state)
 
     var invalid_unknown := valid_data.duplicate(true)
     invalid_unknown["breeding"] = [ [ { "unknown": "value" } ] ]
     gdata.raw_resources[invalid_id] = invalid_unknown
     check(not map_helpers.can_breed_resource_on_tile(invalid_id, _tile("mountain", "none")),
-            "неизвестный ключ breeding не должен разрешать разведение", state)
+            "an unknown breeding key must not allow breeding", state)
     gdata.raw_resources.erase(invalid_id)
 
 func _test_buildable_improvement(map_helpers, city, state: Dictionary) -> void:
@@ -136,11 +136,11 @@ func _test_buildable_improvement(map_helpers, city, state: Dictionary) -> void:
     var plain_tile := _tile("plain", "none")
     var wrong_tile := _tile("sandy_desert", "none")
     check(map_helpers.get_buildable_improvement(oasis_tile) == "vineyard",
-            "на оазисе должен предлагаться виноградник для разведения винограда", state)
+            "a vineyard must be offered on the oasis for breeding grapes", state)
     check(map_helpers.get_buildable_improvement(plain_tile) == "vineyard",
-            "на равнине должно сохраняться обычное предложение виноградника", state)
+            "the usual vineyard offer must be preserved on plains", state)
     check(map_helpers.get_buildable_improvement(wrong_tile) == "",
-            "на неподходящем биоме не должно предлагаться улучшение", state)
+            "no improvement must be offered on an unsuitable biome", state)
 
     city.domesticated_resources = old_domesticated
     city.unlocked_technologies = old_unlocked
@@ -161,31 +161,30 @@ func check(condition: bool, message: String, state: Dictionary) -> void:
         state["failed"] = true
 
 func _test_animal_locations(map_helpers, state: Dictionary) -> void:
-    # Горы — дополнительное место для овец и коз.
+    # Mountains are an additional location for sheep and goats.
     check(map_helpers.can_breed_resource_on_tile("sheep", _tile("mountain", "none")),
-            "овцы должны разводиться в горах", state)
+            "sheep must breed in the mountains", state)
     check(map_helpers.can_breed_resource_on_tile("goats", _tile("mountain", "forest")),
-            "козы должны разводиться в горах", state)
+            "goats must breed in the mountains", state)
 
-    # Оазисы — дополнительные места для овец, коз и пчёл.
+    # Oases are additional locations for sheep, goats and bees.
     check(map_helpers.can_breed_resource_on_tile("sheep", _tile("sandy_desert", "oasis")),
-            "овцы должны разводиться в оазисе", state)
+            "sheep must breed in the oasis", state)
     check(map_helpers.can_breed_resource_on_tile("goats", _tile("rocky_desert", "oasis")),
-            "козы должны разводиться в оазисе", state)
+            "goats must breed in the oasis", state)
     check(map_helpers.can_breed_resource_on_tile("bee", _tile("sandy_desert", "oasis")),
-            "пчёлы должны разводиться в оазисе", state)
+            "bees must breed in the oasis", state)
 
-    # Пустынная и болотная дополнительные группы.
+    # Desert and marsh additional groups.
     check(map_helpers.can_breed_resource_on_tile("ostrich", _tile("sandy_desert", "none")),
-            "страусы должны разводиться на песчаной пустыне", state)
+            "ostriches must breed on sandy desert", state)
     check(map_helpers.can_breed_resource_on_tile("buffalo", _tile("swamp", "reeds")),
-            "буйволы должны разводиться в болоте с тростником", state)
+            "buffalo must breed in marsh with reeds", state)
     check(map_helpers.can_breed_resource_on_tile("duck", _tile("marsh", "reeds")),
-            "утки должны разводиться на марше с тростником", state)
+            "ducks must breed on marsh with reeds", state)
     check(map_helpers.can_breed_resource_on_tile("goose", _tile("swamp", "reeds")),
-            "гуси должны разводиться в болоте с тростником", state)
+            "geese must breed in marsh with reeds", state)
     check(map_helpers.can_breed_resource_on_tile("goose", _tile("swamp", "none")),
-            "массив cover должен разрешать гусям болото без тростника", state)
+            "the cover array must allow geese marsh without reeds", state)
     check(map_helpers.can_breed_resource_on_tile("goose", _tile("marsh", "none")),
-            "массив cover должен разрешать гусям марш без тростника", state)
-
+            "the cover array must allow geese marsh without reeds", state)

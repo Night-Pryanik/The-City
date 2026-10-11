@@ -1,8 +1,8 @@
 # Headless test of the RECIPE ALIGNMENT in the building detail tooltip:
 #   godot --headless --path . --script res://tests/test_recipe_alignment.gd
 #
-# A building may have several recipes with names of different length ("Pапирус"
-# and "Тростниковые лодки" in the screenshot). The tooltip must lay them out so
+# A building may have several recipes with names of different length ("Papyrus"
+# and "Reed Boats" in the screenshot). The tooltip must lay them out so
 # that the name column is as wide as the longest recipe name, and the icons of
 # the ingredients of every recipe start at the same X — one vertical line.
 #

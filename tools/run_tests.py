@@ -70,10 +70,10 @@ LOG_DIR = PROJECT_ROOT / "tools" / "test_logs"
 USER_DATA_RELATIVE = Path("Godot") / "app_userdata" / "The City"
 
 # A test that prints no verdict line and is not in MARKERLESS is treated as
-# broken, not as passing. Tests that end with their own wording of success:
-MARKERLESS = {
-    "test_town_economy",  # prints "все проверки пройдены"
-}
+# broken, not as passing. Every test currently prints a standard "<NAME> TEST OK"
+# line, so the set is empty; it is kept as the single place to list a test that
+# ends with its own wording of success instead.
+MARKERLESS: set[str] = set()
 
 # This test verifies the pause menu's exit confirmation, which terminates the
 # process itself. A clean exit code therefore proves nothing -- if the final
@@ -102,10 +102,8 @@ ENGINE_ERROR = re.compile(
     re.MULTILINE,
 )
 
-# "X TEST OK", "TEST OK: ...", "VALIDATION TEST OK", "все проверки пройдены"
-VERDICT_OK = re.compile(
-    r"TEST OK|.\bOK:\s|ПРОВЕРКИ ПРОЙДЕНЫ|все проверки пройдены", re.IGNORECASE
-)
+# "X TEST OK", "TEST OK: ...", "VALIDATION TEST OK"
+VERDICT_OK = re.compile(r"TEST OK|.\bOK:\s", re.IGNORECASE)
 # These must never appear on a passing run.
 VERDICT_BAD = re.compile(r"TEST FAILED|ASSERT FAILED|WATCHDOG .*HUNG", re.IGNORECASE)
 

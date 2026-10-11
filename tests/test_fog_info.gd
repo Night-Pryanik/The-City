@@ -1,20 +1,21 @@
-# Headless-тест правила «Гекс в тумане войны не выдаёт информацию»:
+# Headless test for the rule "a hex in the fog of war gives away no information":
 #   godot --headless --path . --script res://tests/test_fog_info.gd
 #
-# Проверяется на живых данных реальной сцены MainMap (новая игра):
-#   1. main_map.is_hex_in_fog(): гекс города и разведанные гексы — не туман;
-#      неисследованный гекс Региона — не туман (Регион виден на карте, там
-#      известна местность, а ресурсы открывает разведка); неисследованный гекс
-#      вне Региона — туман, и «Картография» сама по себе его не снимает.
-#   2. Левая колонка панели управления для туманного гекса показывает заглушку
-#      «Гекс не разведан» и НЕ показывает местность; после разведки информация
-#      появляется.
-#   3. main_map.update_tooltip_text() для туманного гекса ничего не пишет
-#      (страховка публичной точки входа; основной гейт — в InputHandler).
+# Checked against the live data of the real MainMap scene (a new game):
+#   1. main_map.is_hex_in_fog(): the city hex and the scouted hexes are not fog;
+#      an unexplored hex of the Region is not fog (the Region is visible on the
+#      map, its terrain is known, and scouting reveals the resources); an
+#      unexplored hex outside the Region is fog, and "Cartography" alone does not
+#      lift it.
+#   2. The left column of the control panel for a fog hex shows the placeholder
+#      "Area not scouted" and does NOT show the terrain; after scouting the
+#      information appears.
+#   3. main_map.update_tooltip_text() writes nothing for a fog hex (a safety net
+#      for the public entry point; the main gate is in InputHandler).
 extends SceneTree
 
-# Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
-# молчание. Подробности — в tests/watchdog.gd.
+# Hang watchdog: without it a broken _run() coroutine looks like an eternal
+# silence from the outside. Details — in tests/watchdog.gd.
 const WATCHDOG = preload("res://tests/watchdog.gd")
 
 func _initialize():
@@ -32,67 +33,69 @@ func _run() -> void:
     await process_frame
 
     var cp = main_map.control_panel
-    # Автозагрузки (GameData/CityData) в режиме --script недоступны на этапе
-    # компиляции этого файла — берём их через дерево сцены в рантайме.
+    # The autoloads (GameData/CityData) are not available at the compile time of
+    # this file in --script mode — they are read through the scene tree at runtime.
     var game_data = get_root().get_node("GameData")
 
-    # --- 1. Предикат тумана ---
+    # --- 1. The fog predicate ---
     check(not main_map.is_hex_in_fog(main_map.city_row, main_map.city_col),
-        "гекс города не может быть в тумане войны", state)
+        "the city hex cannot be in the fog of war", state)
 
     var region_hex = _find_hex(main_map, true)
-    check(region_hex != null, "не найден неисследованный гекс Региона", state)
+    check(region_hex != null, "no unexplored hex of the Region was found", state)
     if region_hex != null:
         check(not main_map.is_hex_in_fog(region_hex.row, region_hex.col),
-            "неисследованный гекс Региона — не туман войны (Регион виден на карте)", state)
+            "an unexplored hex of the Region is not fog of war (the Region is visible on the map)", state)
 
     var fog_hex = _find_hex(main_map, false)
-    check(fog_hex != null, "не найден гекс тумана войны", state)
+    check(fog_hex != null, "no fog-of-war hex was found", state)
     if fog_hex == null:
         _finish(main_map, state)
         return
 
     check(main_map.is_hex_in_fog(fog_hex.row, fog_hex.col),
-        "неисследованный гекс вне Региона должен быть туманом войны", state)
+        "an unexplored hex outside the Region must be fog of war", state)
     city.unlocked_technologies.append("cartography")
     check(main_map.is_hex_in_fog(fog_hex.row, fog_hex.col),
-        "«Картография» не должна снимать туман с гекса — его открывает разведка", state)
+        "\"Cartography\" must not lift the fog from a hex — scouting reveals it", state)
 
-    # --- 2. Левая колонка панели: заглушка вместо информации ---
+    # --- 2. The left column of the panel: a placeholder instead of information ---
     main_map.select_hex(fog_hex.row, fog_hex.col)
     cp._refresh()
     var info_text: String = cp._info_label.text
-    check(info_text.contains("не разведан"),
-        "в левой колонке панели для туманного гекса должна быть заглушка (получено: %s)"
+    check(info_text.contains("not scouted"),
+        "the left column of the panel must show a placeholder for a fog hex (got: %s)"
             % info_text, state)
     var tile: Dictionary = main_map.tile_data[fog_hex.row][fog_hex.col]
     var terrain_name: String = game_data.terrains.get(tile.terrain, {}).get("name", tile.terrain)
     check(not info_text.contains(terrain_name),
-        "заглушка не должна раскрывать тип местности (%s)" % terrain_name, state)
-    check(not info_text.contains("Местность:"),
-        "заглушка не должна содержать строку «Местность:»", state)
+        "the placeholder must not reveal the terrain type (%s)" % terrain_name, state)
+    check(not info_text.contains("Terrain:"),
+        "the placeholder must not contain the \"Terrain:\" line", state)
 
-    # Разведываем гекс — информация появляется.
+    # Scout the hex — the information appears.
     main_map.tile_data[fog_hex.row][fog_hex.col]["is_explored"] = true
     check(not main_map.is_hex_in_fog(fog_hex.row, fog_hex.col),
-        "разведанный гекс не может быть в тумане войны", state)
+        "a scouted hex cannot be in the fog of war", state)
     main_map.select_hex(fog_hex.row, fog_hex.col)
     cp._refresh()
     var revealed_text: String = cp._info_label.text
-    check(revealed_text.contains("Местность:"),
-        "после разведки левая колонка должна показывать местность", state)
+    check(revealed_text.contains("Terrain:"),
+        "after scouting the left column must show the terrain", state)
 
-    # --- 3. Страховка update_tooltip_text: для тумана ничего не пишет ---
+    # --- 3. The update_tooltip_text safety net: it writes nothing for fog ---
     main_map.tile_data[fog_hex.row][fog_hex.col]["is_explored"] = false
     var tooltip_label = main_map.tooltip_text_label
-    tooltip_label.text = "ПРОБА"
+    tooltip_label.text = "SENTINEL"
     main_map.update_tooltip_text(fog_hex.row, fog_hex.col)
-    check(tooltip_label.text == "ПРОБА",
-        "update_tooltip_text() не должен менять содержимое тултипа для туманного гекса", state)
+    check(tooltip_label.text == "SENTINEL",
+        "update_tooltip_text() must not change the tooltip content for a fog hex", state)
 
-    _finish(main_map, state)# Первый неисследованный гекс: в Регионе (in_region = true) или в тумане войны
-# (in_region = false). Кольца влияния чужих городков пропускаем, чтобы взять
-# «обычный» гекс.
+    _finish(main_map, state)
+
+# The first unexplored hex: in the Region (in_region = true) or in the fog of war
+# (in_region = false). The influence rings of foreign towns are skipped, to take
+# an "ordinary" hex.
 func _find_hex(main_map, in_region: bool):
     for row in range(main_map.map_rows):
         for col in range(main_map.map_cols):

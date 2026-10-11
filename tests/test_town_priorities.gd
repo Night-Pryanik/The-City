@@ -1,33 +1,32 @@
-# Headless-тест каскадно-уточняющего размещения городков
+# Headless test of the cascading-refinement town placement
 # (scripts/town_manager.gd).
 #   godot --headless --path . --script res://tests/test_town_priorities.gd
 #
-# Проверки (на синтетических картах — детерминированно, без случайной карты):
-#   1. База = ВЫСШИЙ приоритет, у которого есть валидный гекс НА ВСЕЙ КАРТЕ:
-#      пока на карте есть свободное место с 2+ ресурсами в окрестностях,
-#      городок не встанет у воды (река / озеро / море — нижние приоритеты).
-#   2. Переход к следующему приоритету — ТОЛЬКО когда текущий исчерпан на всей
-#      карте (все ресурсные окрестности в стартовой запретной зоне → база-река).
-#   3. Поиск базы идёт ПО ВСЕЙ КАРТЕ: единственный валидный гекс, затерянный
-#      среди тысяч гексов-кандидатов, обязан быть найден (раньше перебор
-#      обрывался на 50 случайных попытках и городок мог вообще не поставиться).
-#   4. Каскадное уточнение: городок переезжает в пределах REFINEMENT_RADIUS,
-#      «добирая» нижние приоритеты — вплоть до идеала «2+ ресурса И
-#      стратегический ресурс И река И берег озера И морской пляж».
-#   5. Неудача на одном приоритете не прерывает каскад: «стратегию» не нашли —
-#      реку всё равно пробуем и зарабатываем.
-#   6. Пустая карта (нет ни ресурсов, ни рек, ни озёр, ни пляжей) → городок
-#      не размещается (пустой словарь).
-#   7. generate_towns(): на синтетической карте с избытком ресурсов ставятся
-#      ВСЕ num_towns городков, и каждый реально удовлетворяет базовому
-#      приоритету (2+ разных ресурса в радиусе MAX_ATTRACTION_DISTANCE).
+# Checks (on synthetic maps — deterministically, without a random map):
+#   1. The base = the HIGHEST priority that has a valid hex ON THE WHOLE MAP:
+#      while the map has a free spot with 2+ resources in the vicinity,
+#      the town will not settle by water (river / lake / sea — lower priorities).
+#   2. Moving to the next priority — ONLY when the current one is exhausted on the whole
+#      map (all resource vicinities in the starting forbidden zone → river base).
+#   3. The base search runs OVER THE WHOLE MAP: the single valid hex, lost
+#      among thousands of candidate hexes, must be found.
+#   4. Cascading refinement: the town relocates within REFINEMENT_RADIUS,
+#      "picking up" lower priorities — up to the ideal "2+ resources AND
+#      a strategic resource AND a river AND a lake shore AND a sea beach".
+#   5. A failure on one priority does not break the cascade: "strategic" not found —
+#      we still try the river and earn it.
+#   6. An empty map (no resources, no rivers, no lakes, no beaches) → the town
+#      is not placed (empty dictionary).
+#   7. generate_towns(): on a synthetic map with an excess of resources,
+#      ALL num_towns towns are placed, and each one actually satisfies the base
+#      priority (2+ different resources within MAX_ATTRACTION_DISTANCE).
 extends SceneTree
 
-# Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
-# молчание. Подробности — в tests/watchdog.gd.
+# Hang watchdog: without it, a broken _run() coroutine looks from the outside like an
+# eternal silence. Details are in tests/watchdog.gd.
 const WATCHDOG = preload("res://tests/watchdog.gd")
 
-# Дублируем константу town_manager.gd — тест проверяет поведение независимо.
+# Duplicate the town_manager.gd constant — the test verifies the behavior independently.
 const MAX_ATTRACTION_DISTANCE := 3
 
 var _tm = null
@@ -41,14 +40,14 @@ func _initialize():
 func _run() -> void:
     var state = {"failed": false}
 
-    # Автозагрузки берём через дерево сцены: в режиме --script имена
-    # GameData/CityData недоступны на этапе компиляции этого файла.
-    # new_game() заодно грузит все данные (ресурсы, terrain, city_names).
+    # Autoloads are taken through the scene tree: in --script mode the names
+    # GameData/CityData are unavailable at the compilation stage of this file.
+    # new_game() also loads all the data (resources, terrain, city_names).
     var save_manager = get_root().get_node("SaveManager")
     save_manager.new_game()
     _gdata = get_root().get_node("GameData")
-    # Глобальный класс тоже берём через load(): в --script-режиме имя
-    # HexUtils не гарантировано на этапе компиляции теста.
+    # The global class is also taken through load(): in --script mode the name
+    # HexUtils is not guaranteed at the compilation stage of the test.
     _hex_utils = load("res://scripts/HexUtils.gd")
 
     _tm = load("res://scripts/town_manager.gd").new()
@@ -82,10 +81,10 @@ func _run() -> void:
 
 
 # -------------------------------------------------------
-# Карта и вызовы алгоритма
+# Map and algorithm calls
 # -------------------------------------------------------
 
-# Пустая карта: все гексы — равнина без ресурсов, рек, улучшений и городков.
+# Empty map: all hexes are plain with no resources, rivers, improvements or towns.
 func _make_map(rows: int, cols: int) -> Array:
     var tile_data := []
     for r in range(rows):
@@ -113,8 +112,8 @@ func _make_map(rows: int, cols: int) -> Array:
     return tile_data
 
 
-# Прямой вызов «попробовать поставить один городок» (как в основном проходе
-# generate_towns: без «обязательной» области).
+# Direct call of "try to place one town" (as in the main pass of
+# generate_towns: without the "required" area).
 func _try_place(tile_data: Array, rows: int, cols: int, city_row: int, city_col: int,
         exclusion_start_row: int = -1, exclusion_end_row: int = -1,
         exclusion_start_col: int = -1, exclusion_end_col: int = -1,
@@ -128,11 +127,11 @@ func _try_place(tile_data: Array, rows: int, cols: int, city_row: int, city_col:
             false)
 
 
-# Заливает карту «ковром» ресурсов (включая стратегический, если
-# include_strategic): тогда маска приоритета «2+ ресурса в окрестностях»
-# покрывает ВСЮ карту, а единственными валидными гексами остаются те, что
-# пропущены в skip (у них нет своего ресурса, поэтому они не отбраковываются
-# как «гексы-ресурсы»).
+# Fills the map with a "carpet" of resources (including a strategic one if
+# include_strategic): then the priority mask "2+ resources in the vicinity"
+# covers the WHOLE map, and the only valid hexes left are the ones
+# skipped in skip (they have no resource of their own, so they are not rejected
+# as "resource hexes").
 func _fill_resource_carpet(tile_data: Array, skip: Array, include_strategic: bool = true) -> void:
     for r in range(tile_data.size()):
         for c in range(tile_data[r].size()):
@@ -147,7 +146,7 @@ func _fill_resource_carpet(tile_data: Array, skip: Array, include_strategic: boo
             tile_data[r][c]["resource"] = res
 
 
-# Делает всю карту указанной местностью, кроме гексов из skip.
+# Makes the whole map the given terrain, except for the hexes in skip.
 func _fill_terrain(tile_data: Array, terrain: String, skip: Array) -> void:
     for r in range(tile_data.size()):
         for c in range(tile_data[r].size()):
@@ -157,7 +156,7 @@ func _fill_terrain(tile_data: Array, terrain: String, skip: Array) -> void:
 
 
 # -------------------------------------------------------
-# Проверки условий приоритетов (считаются независимо от town_manager)
+# Priority condition checks (computed independently of town_manager)
 # -------------------------------------------------------
 
 func _hexes_in_radius(tile_data: Array, row: int, col: int) -> Array:
@@ -173,7 +172,7 @@ func _hexes_in_radius(tile_data: Array, row: int, col: int) -> Array:
     return result
 
 
-# Число РАЗНЫХ ресурсов в радиусе MAX_ATTRACTION_DISTANCE от гекса.
+# Number of DISTINCT resources within MAX_ATTRACTION_DISTANCE of the hex.
 func _distinct_resources_near(tile_data: Array, row: int, col: int) -> int:
     var distinct := {}
     for p in _hexes_in_radius(tile_data, row, col):
@@ -183,7 +182,7 @@ func _distinct_resources_near(tile_data: Array, row: int, col: int) -> int:
     return distinct.size()
 
 
-# Есть ли стратегический ресурс в радиусе MAX_ATTRACTION_DISTANCE от гекса.
+# Whether there is a strategic resource within MAX_ATTRACTION_DISTANCE of the hex.
 func _has_strategic_near(tile_data: Array, row: int, col: int) -> bool:
     for p in _hexes_in_radius(tile_data, row, col):
         var res = tile_data[p.x][p.y].get("resource", null)
@@ -217,15 +216,15 @@ func check(cond: bool, msg: String, state: Dictionary):
 
 
 # -------------------------------------------------------
-# 1. Ресурсные окрестности перебивают воду (база — верхний приоритет)
+# 1. Resource vicinities beat water (base — top priority)
 # -------------------------------------------------------
 func _test_resources_beat_water(state: Dictionary) -> void:
     var rows := 30
     var cols := 30
     var tile_data := _make_map(rows, cols)
-    # Кучка ресурсов (2 разных) — верхний приоритет. Вода (река, озеро, пляж) —
-    # нижние приоритеты, но заметно дальше. Если бы база выбиралась «по
-    # удобству», городок мог бы встать на воде.
+    # A cluster of resources (2 different) — top priority. Water (river, lake, beach) —
+    # lower priorities, but noticeably farther away. If the base were chosen "by
+    # convenience", the town could settle on water.
     tile_data[5][5]["resource"] = "cows"
     tile_data[6][6]["resource"] = "sheep"
     tile_data[25][10]["river_edges"] = [0]
@@ -234,80 +233,80 @@ func _test_resources_beat_water(state: Dictionary) -> void:
 
     var placed = _try_place(tile_data, rows, cols, 0, 0)
     check(not placed.is_empty(),
-            "городок должен быть размещён: есть ресурсные окрестности", state)
+            "the town must be placed: there are resource vicinities", state)
     if placed.is_empty():
         return
     var r: int = placed.row
     var c: int = placed.col
     check(_distinct_resources_near(tile_data, r, c) >= 2,
-            ("база обязана быть ресурсной: ожидалось 2+ разных ресурса в радиусе %d, " +
-                    "получено %d в (%d,%d)")
+            ("the base must be a resource one: expected 2+ different resources within %d, " +
+                    "got %d at (%d,%d)")
                     % [MAX_ATTRACTION_DISTANCE, _distinct_resources_near(tile_data, r, c), r, c],
             state)
     check(tile_data[r][c].get("terrain", "") != "beach",
-            "городок не должен встать на морском пляже, пока есть ресурсные места", state)
+            "the town must not settle on a sea beach while there are resource spots", state)
     check(not _has_river(tile_data, r, c),
-            "городок не должен встать на речном гексе, пока есть ресурсные места", state)
+            "the town must not settle on a river hex while there are resource spots", state)
     check(not _has_lake_neighbor(tile_data, r, c),
-            "городок не должен встать на берегу озера, пока есть ресурсные места", state)
+            "the town must not settle on a lake shore while there are resource spots", state)
 
 
 # -------------------------------------------------------
-# 2. Приоритет исчерпан на ВСЕЙ карте → переход к следующему
+# 2. Priority exhausted on the WHOLE map → move to the next one
 # -------------------------------------------------------
 func _test_primary_exhausted_falls_through(state: Dictionary) -> void:
     var rows := 30
     var cols := 30
     var tile_data := _make_map(rows, cols)
-    # Ресурсы (в т.ч. стратегический) — только в верхней половине карты, которую
-    # целиком накрывает стартовая запретная зона: ресурсные приоритеты
-    # исчерпаны на ВСЕЙ карте, и только тогда генератор обязан спуститься ниже.
+    # Resources (including a strategic one) — only in the upper half of the map, which
+    # the starting forbidden zone covers entirely: the resource priorities
+    # are exhausted on the WHOLE map, and only then must the generator go lower.
     tile_data[5][5]["resource"] = "cows"
     tile_data[6][6]["resource"] = "sheep"
     tile_data[7][7]["resource"] = "copper_deposit"
-    # Ниже запретной зоны — единственный речной гекс.
+    # Below the forbidden zone — the only river hex.
     tile_data[25][10]["river_edges"] = [0]
 
     var placed = _try_place(tile_data, rows, cols, 0, 0, 0, 19, 0, cols - 1)
     check(not placed.is_empty(),
-            "городок обязан перейти к следующему приоритету, а не потеряться", state)
+            "the town must move to the next priority, not get lost", state)
     if placed.is_empty():
         return
     check(placed.row == 25 and placed.col == 10,
-            "ожидалась база «река» на (25,10), получено (%d,%d)" % [placed.row, placed.col], state)
+            "expected the \"river\" base at (25,10), got (%d,%d)" % [placed.row, placed.col], state)
     check(_has_river(tile_data, placed.row, placed.col),
-            "база обязана быть речным гексом", state)
+            "the base must be a river hex", state)
     check(_distinct_resources_near(tile_data, placed.row, placed.col) == 0,
-            "ресурсов рядом с базой быть не должно — они все в запретной зоне", state)
+            "there must be no resources near the base — they are all in the forbidden zone", state)
     check(not _has_strategic_near(tile_data, placed.row, placed.col),
-            "стратегического ресурса рядом с базой быть не должно", state)
+            "there must be no strategic resource near the base", state)
 
 
 # -------------------------------------------------------
-# 3. Поиск базы — ПО ВСЕЙ КАРТЕ (без обрыва на N случайных попытках)
+# 3. Base search — OVER THE WHOLE MAP (without cutting off after N random attempts)
 # -------------------------------------------------------
 func _test_full_map_scan_finds_only_valid_hex(state: Dictionary) -> void:
     var rows := 40
     var cols := 40
     var tile_data := _make_map(rows, cols)
-    # Ресурсный «ковёр» по всей карте: маска верхнего приоритета покрывает ВСЮ
-    # карту, а валидным остаётся единственный гекс (35,35) — в нём нет своего
-    # ресурса, поэтому он не отбраковывается как «гекс-ресурс».
+    # A resource "carpet" over the whole map: the top-priority mask covers the WHOLE
+    # map, and the only valid hex left is (35,35) — it has no resource
+    # of its own, so it is not rejected as a "resource hex".
     _fill_resource_carpet(tile_data, [Vector2i(35, 35)])
 
     var placed = _try_place(tile_data, rows, cols, 0, 0)
     check(not placed.is_empty(),
-            "единственный валидный гекс на карте обязан быть найден (обход всей карты)", state)
+            "the single valid hex on the map must be found (full-map scan)", state)
     if placed.is_empty():
         return
     check(placed.row == 35 and placed.col == 35,
-            "ожидался (35,35), получено (%d,%d)" % [placed.row, placed.col], state)
+            "expected (35,35), got (%d,%d)" % [placed.row, placed.col], state)
     check(_distinct_resources_near(tile_data, placed.row, placed.col) >= 2,
-            "найденный гекс обязан удовлетворять верхнему приоритету", state)
+            "the found hex must satisfy the top priority", state)
 
 
 # -------------------------------------------------------
-# 4. Каскадное уточнение добирает ВСЮ цепочку приоритетов
+# 4. Cascading refinement picks up the WHOLE priority chain
 # -------------------------------------------------------
 func _test_and_chain_reaches_ideal(state: Dictionary) -> void:
     var rows := 40
@@ -317,46 +316,46 @@ func _test_and_chain_reaches_ideal(state: Dictionary) -> void:
     var base_c := 20
     var hero_r := 20
     var hero_c := 21
-    # Вся карта — озеро (непроходимо), кроме двух валидных гексов:
-    #   base — «просто ресурсный» гекс;
-    #   hero — идеал: 2+ ресурса И стратегический ресурс И река И берег озера
-    #          И морской пляж. Он в 1 гексе от base, то есть внутри радиуса
-    #          уточнения REFINEMENT_RADIUS.
+    # The whole map is a lake (impassable), except for two valid hexes:
+    #   base — a "merely resource" hex;
+    #   hero — the ideal: 2+ resources AND a strategic resource AND a river AND a lake shore
+    #          AND a sea beach. It is 1 hex from base, i.e. within the refinement
+    #          radius REFINEMENT_RADIUS.
     _fill_terrain(tile_data, "lake", [Vector2i(base_r, base_c), Vector2i(hero_r, hero_c)])
     _fill_resource_carpet(tile_data, [Vector2i(base_r, base_c), Vector2i(hero_r, hero_c)])
     tile_data[hero_r][hero_c]["terrain"] = "beach"
     tile_data[hero_r][hero_c]["river_edges"] = [0]
 
     check(_distinct_resources_near(tile_data, hero_r, hero_c) >= 2,
-            "идеальный гекс обязан иметь 2+ ресурса в окрестностях", state)
+            "the ideal hex must have 2+ resources in the vicinity", state)
     check(_has_strategic_near(tile_data, hero_r, hero_c),
-            "идеальный гекс обязан иметь стратегический ресурс в окрестностях", state)
+            "the ideal hex must have a strategic resource in the vicinity", state)
     check(_has_lake_neighbor(tile_data, hero_r, hero_c),
-            "идеальный гекс обязан быть на берегу озера", state)
+            "the ideal hex must be on a lake shore", state)
 
-    # База выбирается случайно из двух валидных гексов, поэтому прогоняем
-    # несколько раз — проверяются оба пути (база уже идеальна и переезд к идеалу).
+    # The base is chosen randomly from the two valid hexes, so we run it
+    # several times — both paths are checked (the base is already ideal and a move to the ideal).
     for _i in range(25):
         var placed = _try_place(tile_data, rows, cols, 0, 0)
         if placed.is_empty():
-            check(false, "городок должен быть размещён (на карте есть валидные гексы)", state)
+            check(false, "the town must be placed (the map has valid hexes)", state)
             return
         check(placed.row == hero_r and placed.col == hero_c,
-                "каскад обязан добрать всю цепочку: ожидался (%d,%d), получено (%d,%d)"
+                "the cascade must pick up the whole chain: expected (%d,%d), got (%d,%d)"
                         % [hero_r, hero_c, placed.row, placed.col],
                 state)
         check(_distinct_resources_near(tile_data, placed.row, placed.col) >= 2,
-                "финальный гекс обязан иметь 2+ ресурса в окрестностях", state)
+                "the final hex must have 2+ resources in the vicinity", state)
         check(_has_strategic_near(tile_data, placed.row, placed.col),
-                "финальный гекс обязан иметь стратегический ресурс в окрестностях", state)
+                "the final hex must have a strategic resource in the vicinity", state)
         check(_has_river(tile_data, placed.row, placed.col),
-                "финальный гекс обязан стоять на реке", state)
+                "the final hex must stand on a river", state)
         check(tile_data[placed.row][placed.col].get("terrain", "") == "beach",
-                "финальный гекс обязан быть на морском берегу", state)
+                "the final hex must be on a sea shore", state)
 
 
 # -------------------------------------------------------
-# 5. Провал приоритета не прерывает каскад
+# 5. A priority failure does not break the cascade
 # -------------------------------------------------------
 func _test_skipped_tier_does_not_break_cascade(state: Dictionary) -> void:
     var rows := 36
@@ -366,10 +365,10 @@ func _test_skipped_tier_does_not_break_cascade(state: Dictionary) -> void:
     var base_c := 18
     var river_r := 18
     var river_c := 19
-    # Вся карта — озеро, кроме base и речного гекса рядом. «Ковёр» — только из
-    # НЕстратегических ресурсов, а единственный стратегический ресурс лежит в
-    # дальнем углу среди непроходимой воды: маска стратегического приоритета
-    # непустая, но достижимого валидного гекса у неё нет.
+    # The whole map is a lake, except for base and a river hex nearby. The "carpet" is only of
+    # NON-strategic resources, and the only strategic resource lies in
+    # the far corner among impassable water: the strategic-priority mask
+    # is non-empty, but it has no reachable valid hex.
     _fill_terrain(tile_data, "lake", [Vector2i(base_r, base_c), Vector2i(river_r, river_c)])
     _fill_resource_carpet(tile_data, [Vector2i(base_r, base_c), Vector2i(river_r, river_c)], false)
     tile_data[2][2]["resource"] = "copper_deposit"
@@ -378,23 +377,23 @@ func _test_skipped_tier_does_not_break_cascade(state: Dictionary) -> void:
     for _i in range(25):
         var placed = _try_place(tile_data, rows, cols, 0, 0)
         if placed.is_empty():
-            check(false, "городок должен быть размещён обязательно", state)
+            check(false, "the town must be placed without fail", state)
             return
         check(placed.row == river_r and placed.col == river_c,
-                ("каскад обязан продолжиться после пропуска приоритета: " +
-                        "ожидался (%d,%d), получено (%d,%d)")
+                ("the cascade must continue after skipping a priority: " +
+                        "expected (%d,%d), got (%d,%d)")
                         % [river_r, river_c, placed.row, placed.col],
                 state)
         check(_has_river(tile_data, placed.row, placed.col),
-                "заработанный приоритет «река» обязан сохраниться", state)
+                "the earned \"river\" priority must be preserved", state)
         check(_distinct_resources_near(tile_data, placed.row, placed.col) >= 2,
-                "базовый приоритет «2+ ресурса» обязан сохраниться", state)
+                "the base priority \"2+ resources\" must be preserved", state)
         check(not _has_strategic_near(tile_data, placed.row, placed.col),
-                "пропущенный стратегический приоритет не должен появиться", state)
+                "the skipped strategic priority must not appear", state)
 
 
 # -------------------------------------------------------
-# 6. Пустая карта → городок не размещается
+# 6. Empty map → the town is not placed
 # -------------------------------------------------------
 func _test_empty_map_places_nothing(state: Dictionary) -> void:
     var rows := 20
@@ -402,18 +401,18 @@ func _test_empty_map_places_nothing(state: Dictionary) -> void:
     var tile_data := _make_map(rows, cols)
     var placed = _try_place(tile_data, rows, cols, 0, 0)
     check(placed.is_empty(),
-            "на карте без ресурсов, рек, озёр и пляжей городок ставить негде", state)
+            "on a map without resources, rivers, lakes and beaches there is nowhere to place a town", state)
 
 
 # -------------------------------------------------------
-# 7. generate_towns(): все городки поставлены, база у каждого ресурсная
+# 7. generate_towns(): all towns are placed, each one's base is a resource base
 # -------------------------------------------------------
 func _test_generate_towns_places_all(state: Dictionary) -> void:
     var rows := 40
     var cols := 40
     var tile_data := _make_map(rows, cols)
-    # Свободные от ресурсов гексы — каждый второй по обеим осям: вокруг каждого
-    # есть 2+ разных ресурса, а дистанций хватает на рассредоточение городков.
+    # Resource-free hexes — every second one along both axes: around each of them
+    # there are 2+ different resources, and the distances are enough to spread the towns out.
     var free_hexes := []
     for r in range(rows):
         for c in range(cols):
@@ -425,15 +424,15 @@ func _test_generate_towns_places_all(state: Dictionary) -> void:
     var saved_num_towns = map_config.get("num_towns", 8)
     map_config["num_towns"] = 5
     _tm.generate_towns(tile_data, rows, cols, 20, 20,
-            0, 0, 0, 0,                # стартовая запретная зона (гекс города)
-            0, rows - 1, 0, cols - 1)  # «эра-2» = вся карта: лишний городок не нужен
+            0, 0, 0, 0,                # starting forbidden zone (the city hex)
+            0, rows - 1, 0, cols - 1)  # "era-2" = the whole map: no extra town needed
     map_config["num_towns"] = saved_num_towns
 
     check(_tm.town_hexes.size() == 5,
-            "ожидалось 5 городков, размещено %d" % _tm.town_hexes.size(), state)
+            "expected 5 towns, placed %d" % _tm.town_hexes.size(), state)
     for h in _tm.town_hexes:
         check(_distinct_resources_near(tile_data, h.row, h.col) >= 2,
-                "городок (%d,%d) обязан иметь 2+ ресурса в окрестностях"
+                "town (%d,%d) must have 2+ resources in the vicinity"
                         % [h.row, h.col],
                 state)
     for i in range(_tm.town_hexes.size()):
@@ -441,7 +440,6 @@ func _test_generate_towns_places_all(state: Dictionary) -> void:
             var a: Dictionary = _tm.town_hexes[i]
             var b: Dictionary = _tm.town_hexes[j]
             check(_hex_utils.hex_distance(a.row, a.col, b.row, b.col) >= 3,
-                    "городки (%d,%d) и (%d,%d) стоят слишком близко"
+                    "towns (%d,%d) and (%d,%d) are too close"
                             % [a.row, a.col, b.row, b.col],
                     state)
-

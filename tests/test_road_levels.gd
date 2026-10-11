@@ -1,45 +1,44 @@
-# Headless-тест уровней дорог и маршрутов (data/roads.json, road_manager,
+# Headless test of road levels and routes (data/roads.json, road_manager,
 # main_map, control_panel, map_renderer).
 #   godot --headless --path . --script res://tests/test_road_levels.gd
 #
-# Проверки:
-#   1. ДАННЫЕ. Уровни идут подряд с 1, у каждого положительная
-#      «максимальная скорость», уровень 1 бесплатен. «Колесо» открывает
-#      ровно уровень 2, и у него max_speed = 30 (требование дизайна).
-#   2. РАЗБЛОКИРОВКА. Без «Колеса» доступен только уровень 1; после
-#      исследования — уровень 2, и он становится предлагаемым по умолчанию.
-#   3. УРОВЕНЬ В СЕТИ. Построенный участок помнит свой уровень; соседний
-#      участок от этого не меняется, а несуществующий даёт 0, а не тропку.
-#   4. МАРШРУТ И СКОРОСТЬ. От улучшения до города находится маршрут по
-#      дорогам; средняя скорость = среднее max_speed участков, минимальная =
-#      самое узкое место. На смешанном маршруте обе величины считаются
-#      по-разному — это ловит ошибку «взять минимум вместо среднего».
-#   5. УЛУЧШЕНИЕ ДОРОГИ. Участок улучшается, но не понижается и не
-#      улучшается повторно до того же уровня.
-#   6. ЖИВАЯ СЦЕНА. На улучшении с дорогой есть кнопка «Улучшить дорогу»
-#      и строка маршрута; клик подсвечивает маршрут на карте; превью
-#      показывает призрак улучшаемых участков; уровень влияет на цену.
-#   7. УРОВЕНЬ ДОРОГИ НА ГЕКСЕ. Правило «уровень гекса = максимум по
-#      примыкающим участкам»: на перекрёстке из двух тропок и одной тележной
-#      дороги гекс показывает тележную дорогу, а тропки остаются тропками.
-#      Строка с уровнем показывается в расширенном тултипе и в левой колонке
-#      панели управления; в обычном тултипе её нет.
-#   8. КНОПКА УЛУЧШЕНИЯ. Остаётся на частично улучшенном маршруте: улучшен
-#      один участок из нескольких — кнопка обязана быть, пока есть тропки.
-#      Превью улучшения дороги не содержит блока производства: игрок нажал
-#      кнопку ради дороги, и «Будет производить» к улучшению дороги
-#      отношения не имеет (а блок вытеснял выбор уровня вниз).
-#   9. РЕФРЕШ И РАСШИРЕННЫЙ БЛОК. Периодическое обновление содержимого (оно
-#      идёт только по «растущим» ресурсам, то есть по пастбищам) не стирает
-#      строку уровня дороги: расширенный блок живёт дольше одного вызова.
-#  10. КНОПКА НА ПУСТОМ ГЕКСЕ. «Улучшить дорогу» есть и на гексе БЕЗ
-#      улучшения: кнопку определяет маршрут до города, а не наличие
-#      улучшения. Раньше вызов стоял в ветке гекса с улучшением и на пустом
-#      гексе пропадал — игрок не понимал критерий.
+# Checks:
+#   1. DATA. The levels go consecutively from 1, each has a positive
+#      "maximum speed", level 1 is free. The "Wheel" unlocks
+#      exactly level 2, and its max_speed = 30 (a design requirement).
+#   2. UNLOCK. Without the "Wheel" only level 1 is available; after
+#      the research — level 2, and it becomes the suggested default.
+#   3. LEVEL IN THE NETWORK. A built segment remembers its level; the neighbouring
+#      segment does not change because of it, and a non-existent one gives 0, not a trail.
+#   4. ROUTE AND SPEED. From an improvement to the city a route along the
+#      roads is found; the average speed = the average max_speed of the segments, the minimum =
+#      the narrowest spot. On a mixed route both values are counted
+#      differently — this catches the error "take the minimum instead of the average".
+#   5. ROAD UPGRADE. A segment is upgraded, but is not downgraded and is not
+#      upgraded again to the same level.
+#   6. LIVE SCENE. On an improvement with a road there is an "Upgrade road" button
+#      and a route row; a click highlights the route on the map; the preview
+#      shows a ghost of the segments being upgraded; the level affects the price.
+#   7. ROAD LEVEL ON A HEX. The rule "the hex level = the maximum over the
+#      adjacent segments": at a crossroad of two trails and one cart
+#      road the hex shows the cart road, and the trails stay trails.
+#      The level row is shown in the extended tooltip and in the left column
+#      of the control panel; it is absent from the ordinary tooltip.
+#   8. UPGRADE BUTTON. It remains on a partially upgraded route: one
+#      segment out of several is upgraded — the button must be there while trails remain.
+#      The road upgrade preview does not contain the production block: the player pressed
+#      the button for the road's sake, and "Will produce" has no
+#      relation to the road upgrade (and the block pushed the level selection down).
+#   9. REFRESH AND THE EXTENDED BLOCK. The periodic refresh of the content (it
+#      runs only for "growing" resources, that is, for pastures) does not wipe
+#      the road level row: the extended block lives longer than one call.
+#  10. BUTTON ON AN EMPTY HEX. "Upgrade road" is also present on a hex WITHOUT
+#      an improvement: the button is determined by the route to the city, not by the presence of
+#      an improvement.
 extends SceneTree
 
-# Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
-# молчание. Подробности — в tests/watchdog.gd.
+# Hang watchdog: without it a break of the _run() coroutine looks like eternal
+# silence from the outside. Details — in tests/watchdog.gd.
 const WATCHDOG = preload("res://tests/watchdog.gd")
 
 const ROAD_ACTION_ID := "build_road"
@@ -53,9 +52,8 @@ var _rm = null
 var _gdata = null
 var _cdata = null
 var _mh = null
-# HexUtils грузим через load(): имя класса в режиме --script на этапе
-# компиляции ещё не в кеше (та же причина, по которой MapHelpers тоже
-# берётся через load()).
+# We load HexUtils via load(): the class name in --script mode is not yet in the
+# compilation cache (the same reason MapHelpers is also taken via load()).
 var _hu = null
 
 func _initialize() -> void:
@@ -65,9 +63,9 @@ func _initialize() -> void:
 func _run() -> void:
     var state = {"failed": false}
 
-    # Автолоады берём узлами дерева сцены: в режиме --script имена GameData и
-    # CityData на этапе компиляции этого файла ещё недоступны.
-    # new_game() заодно грузит все данные, включая roads.json.
+    # We take the autoloads as scene-tree nodes: in --script mode the names GameData and
+    # CityData are not yet available at the compilation stage of this file.
+    # new_game() also loads all the data, including roads.json.
     get_root().get_node("SaveManager").new_game()
     _gdata = get_root().get_node("GameData")
     _cdata = get_root().get_node("CityData")
@@ -105,7 +103,7 @@ func _run() -> void:
 
 
 # -------------------------------------------------------
-# Синтетическая карта: равнина без ресурсов, рек и улучшений
+# Synthetic map: a plain without resources, rivers and improvements
 # -------------------------------------------------------
 
 func _make_map() -> Array:
@@ -124,9 +122,9 @@ func _make_map() -> Array:
         tile_data.append(row)
     return tile_data
 
-# Разблокировать технологию, открывающую уровень (сейчас это «Колесо»).
-# Поле unlock_tech бывает null, поэтому null пропускаем явно: `null or ""`
-# в GDScript не даёт пустую строку.
+# Unlock the technology that opens the level (currently the "Wheel").
+# The unlock_tech field can be null, so we skip null explicitly: `null or ""`
+# in GDScript does not give an empty string.
 func _unlock_level(level: int) -> void:
     var raw = _gdata.get_road_by_level(level).get("unlock_tech", null)
     if not (raw is String) or str(raw).is_empty():
@@ -135,128 +133,126 @@ func _unlock_level(level: int) -> void:
         _cdata.unlocked_technologies.append(str(raw))
 
 # -------------------------------------------------------
-# 1. Данные уровней
+# 1. Level data
 # -------------------------------------------------------
 
 func _test_road_data(state: Dictionary) -> void:
     check(_gdata.get_road_levels().size() >= 2,
-            "в roads.json должно быть минимум два уровня дороги", state)
+            "roads.json must have at least two road levels", state)
 
-    # Уровни идут подряд с 1: участок хранит номер уровня, и пропуск означал
-    # бы, что часть номеров не соответствует ни одной записи.
+    # The levels go consecutively from 1: a segment stores the level number, and a gap
+    # would mean that some numbers correspond to no entry.
     var levels: Array = _gdata.get_road_levels()
     for i in range(levels.size()):
         check(int(levels[i]) == i + 1,
-                "уровни дороги должны идти подряд с 1 (ожидался %d, получен %d)"
+                "road levels must go consecutively from 1 (expected %d, got %d)"
                         % [i + 1, int(levels[i])], state)
 
     for level in levels:
         check(_gdata.get_road_max_speed(int(level)) > 0,
-                "у уровня %d должна быть положительная максимальная скорость" % int(level),
+                "level %d must have a positive maximum speed" % int(level),
                 state)
 
-    # Тропка платная: дорога, строящаяся вместе с улучшением, стоит ровно
-    # столько же, сколько такая же дорога, построенная отдельно. Раньше здесь
-    # стояла проверка на 0 — из-за неё постройка улучшения на дальнем гексе
-    # была бесплатной и неоплачиваемой, а дорога к нему не строилась поэтапно.
+    # The trail is paid: a road built together with an improvement costs exactly
+    # the same as the same road built separately.
     check(_gdata.get_road_work_cost(1) > 0,
-            "уровень 1 (тропка) должен быть платным", state)
+            "level 1 (the trail) must be paid", state)
     check(_gdata.get_road_max_speed(1) > 0,
-            "у тропки всё равно должна быть положительная скорость", state)
+            "the trail must still have a positive speed", state)
 
 
 # -------------------------------------------------------
-# 2. «Колесо» открывает второй уровень со скоростью 30
+# 2. The "Wheel" unlocks the second level with a speed of 30
 # -------------------------------------------------------
 
 func _test_unlock_by_wheel(state: Dictionary) -> void:
     var level2: Dictionary = _gdata.get_road_by_level(2)
-    check(not level2.is_empty(), "в roads.json должен быть уровень 2", state)
+    check(not level2.is_empty(), "roads.json must have level 2", state)
     check(str(level2.get("unlock_tech", "")) == "wheel",
-            "уровень 2 должен открываться технологией «Колесо» (wheel)", state)
-    # Значение из дизайна задания: тропка везёт 10 ед./сек, тележная дорога — 30.
+            "level 2 must be unlocked by the \"Wheel\" technology (wheel)", state)
+    # A value from the design: a trail carries 10 units/sec, a cart road — 30.
     check(_gdata.get_road_max_speed(2) == 30,
-            "максимальная скорость уровня 2 должна быть 30 ед./сек (получено %d)"
+            "the maximum speed of level 2 must be 30 units/sec (got %d)"
                     % _gdata.get_road_max_speed(2), state)
 
     check(_cdata.is_tech_unlocked("wheel") == false,
-            "в начале партии «Колесо» не должно быть изучено", state)
-    check(_gdata.is_road_level_unlocked(1), "тропка доступна без технологий", state)
+            "at the start of the game the \"Wheel\" must not be researched", state)
+    check(_gdata.is_road_level_unlocked(1), "the trail is available without technologies", state)
     check(not _gdata.is_road_level_unlocked(2),
-            "второй уровень недоступен до «Колеса»", state)
+            "the second level is unavailable before the \"Wheel\"", state)
     check(_gdata.get_unlocked_road_levels() == [1],
-            "до «Колеса» доступна только тропка", state)
-    # По умолчанию предлагается ЛУЧШИЙ доступный уровень.
+            "before the \"Wheel\" only the trail is available", state)
+    # By default the BEST available level is offered.
     check(_gdata.get_max_unlocked_road_level() == 1,
-            "до «Колеса» по умолчанию предлагается тропка", state)
+            "before the \"Wheel\" the trail is offered by default", state)
 
     _unlock_level(2)
     check(_gdata.is_road_level_unlocked(2),
-            "после «Колеса» второй уровень должен быть доступен", state)
+            "after the \"Wheel\" the second level must be available", state)
     check(_gdata.get_max_unlocked_road_level() == 2,
-            "после «Колеса» по умолчанию предлагается второй уровень", state)
-    # Тропка остаётся доступной: игрок может выбрать любой предыдущий уровень.
+            "after the \"Wheel\" the second level is offered by default", state)
+    # The trail stays available: the player can choose any previous level.
     check(_gdata.is_road_level_unlocked(1),
-            "после «Колеса» тропка должна остаться доступной", state)
+            "after the \"Wheel\" the trail must stay available", state)
 
 
 # -------------------------------------------------------
-# 3. Участок помнит свой уровень
+# 3. A segment remembers its level
 # -------------------------------------------------------
 
 func _test_segment_level(state: Dictionary) -> void:
     var tile_data := _make_map()
     _rm.initialize(CITY_ROW, CITY_COL)
 
-    # Тропка от города: уровень по умолчанию — 1.
+    # A trail from the city: the default level is 1.
     _rm.build_road_step(CITY_ROW, CITY_COL, CITY_ROW + 1, CITY_COL)
     check(_rm.get_segment_level(CITY_ROW, CITY_COL, CITY_ROW + 1, CITY_COL) == 1,
-            "участок без явного уровня должен быть тропкой", state)
+            "a segment without an explicit level must be a trail", state)
 
-    # Тележная дорога тем же вызовом, но с уровнем.
+    # A cart road with the same call, but with a level.
     _rm.build_road_step(CITY_ROW + 1, CITY_COL, CITY_ROW + 2, CITY_COL, false, 2)
     check(_rm.get_segment_level(CITY_ROW + 1, CITY_COL, CITY_ROW + 2, CITY_COL) == 2,
-            "участок должен помнить выбранный уровень", state)
-    # Соседний участок не должен меняться: уровень принадлежит участку,
-    # а не «дороге вообще».
+            "a segment must remember the chosen level", state)
+    # The neighbouring segment must not change: the level belongs to the segment,
+    # not to "the road in general".
     check(_rm.get_segment_level(CITY_ROW, CITY_COL, CITY_ROW + 1, CITY_COL) == 1,
-            "уровень соседнего участка не должен меняться", state)
-    # Участка нет — 0, а не тропка: иначе несуществующий участок считался бы
-    # дорогой с пропускной способностью.
+            "the level of the neighbouring segment must not change", state)
+    # There is no segment — 0, not a trail: otherwise a non-existent segment would count as a
+    # road with throughput.
     check(_rm.get_segment_level(CITY_ROW, CITY_COL, CITY_ROW + 9, CITY_COL) == 0,
-            "несуществующий участок должен давать уровень 0", state)
+            "a non-existent segment must give level 0", state)
 
-    # Автоматическая дорога к улучшению — тропка. Проверяем ВСЕ её участки,
-    # а не один конкретный: планировщик идёт по Дейкстре и может выбрать
-    # обходной путь, и тогда «первый участок к городу» — не тот, что рядом
-    # с гексом по прямой.
+    # The automatic road to an improvement is a trail. We check ALL its segments,
+    # not one particular one: the planner walks by Dijkstra and may choose a
+    # detour, and then "the first segment to the city" is not the one next to
+    # the hex in a straight line.
     _rm.initialize(CITY_ROW, CITY_COL)
     tile_data[CITY_ROW + 3][CITY_COL]["improvement"] = "farm"
     _rm.build_road_from(CITY_ROW + 3, CITY_COL, tile_data, ROWS, COLS)
     var trail_segments: Dictionary = _rm.get_all_road_segments()
-    check(not trail_segments.is_empty(), "к улучшению должна быть проложена дорога", state)
+    check(not trail_segments.is_empty(), "a road must be laid to the improvement", state)
     for key in trail_segments.keys():
         check(int(trail_segments[key]) == 1,
-                "дорога к улучшению по умолчанию должна быть тропкой: %s" % key, state)
+                "the road to the improvement must be a trail by default: %s" % key, state)
 
-    # Явно выбранный уровень доходит до сети.
+    # An explicitly chosen level reaches the network.
     _rm.initialize(CITY_ROW, CITY_COL)
     _rm.build_road_from(CITY_ROW + 4, CITY_COL, tile_data, ROWS, COLS, 2)
     var cart_segments: Dictionary = _rm.get_all_road_segments()
-    check(not cart_segments.is_empty(), "к улучшению должна быть проложена дорога", state)
+    check(not cart_segments.is_empty(), "a road must be laid to the improvement", state)
     for key in cart_segments.keys():
         check(int(cart_segments[key]) == 2,
-                "выбранный уровень дороги к улучшению должен попасть в сеть: %s" % key,
+                "the chosen road level for the improvement must reach the network: %s" % key,
                 state)
 
 
 # -------------------------------------------------------
-# 4. Маршрут и скорость
+# 4. Route and speed
 # -------------------------------------------------------
 
 func _test_route_and_speeds(state: Dictionary) -> void:
     _rm.initialize(CITY_ROW, CITY_COL)
-    # Маршрут длиной 4 участка: город -> 1 -> 2 -> 3 -> 4.
+    # A route of 4 segments: city -> 1 -> 2 -> 3 -> 4.
     _rm.build_road_step(CITY_ROW, CITY_COL, CITY_ROW + 1, CITY_COL)
     _rm.build_road_step(CITY_ROW + 1, CITY_COL, CITY_ROW + 2, CITY_COL)
     _rm.build_road_step(CITY_ROW + 2, CITY_COL, CITY_ROW + 3, CITY_COL)
@@ -264,38 +260,38 @@ func _test_route_and_speeds(state: Dictionary) -> void:
 
     var route: Dictionary = _rm.find_route_to_city(CITY_ROW + 4, CITY_COL)
     check(route.get("ok", false),
-            "маршрут от улучшения до города должен находиться", state)
+            "a route from the improvement to the city must be found", state)
     check(int(route.get("length", 0)) == 4,
-            "маршрут должен состоять из 4 участков (получено %d)"
+            "the route must consist of 4 segments (got %d)"
                     % int(route.get("length", 0)), state)
     check(route.get("path", []).size() == 5,
-            "маршрут из 4 участков содержит 5 гексов", state)
+            "a route of 4 segments contains 5 hexes", state)
 
-    # Сплошная тропка: средняя равна скорости тропки.
+    # A solid trail: the average equals the speed of the trail.
     var trail_speed: int = _gdata.get_road_max_speed(1)
     var cart_speed: int = _gdata.get_road_max_speed(2)
     check(absf(float(route.get("avg_speed", 0.0)) - float(trail_speed)) < 0.01,
-            "на маршруте из одной тропки средняя скорость равна скорости тропки",
+            "on a route of a single trail the average speed equals the speed of the trail",
             state)
     check(not route.has("min_speed"),
-            "маршрут не должен содержать «узкое место»: скорость маршрута — средняя",
+            "the route must not contain a \"bottleneck\": the route speed is the average",
             state)
 
-    # Смешанный маршрут: три тропки и одна тележная дорога. Среднее выше
-    # скорости тропки — плохая ямка не должна ронять скорость всего хайвея.
+    # A mixed route: three trails and one cart road. The average is higher than
+    # the trail's speed — a single bad pothole must not drag down the speed of the whole highway.
     _rm.upgrade_road_segment(CITY_ROW + 3, CITY_COL, CITY_ROW + 4, CITY_COL, 2)
     var mixed: Dictionary = _rm.find_route_to_city(CITY_ROW + 4, CITY_COL)
     var expected_avg := (3.0 * float(trail_speed) + float(cart_speed)) / 4.0
     check(absf(float(mixed.get("avg_speed", 0.0)) - expected_avg) < 0.01,
-            "средняя скорость = среднее max_speed по участкам (ожидалось %.2f, получено %.2f)"
+            "average speed = the average max_speed over the segments (expected %.2f, got %.2f)"
                     % [expected_avg, float(mixed.get("avg_speed", 0.0))], state)
     check(float(mixed.get("avg_speed", 0.0)) > float(trail_speed),
-            "одна тележная дорога должна поднимать среднюю, а не понижать её до минимума",
+            "one cart road must raise the average, not lower it to the minimum",
             state)
 
-    # Ключевой пример автора: девять тележных дорог и одна тропка = 28 ед./сек,
-    # а не 10. Отдельный экземпляр менеджера — иначе длинный маршрут перебил бы
-    # сеть, на которой проверяются уровни и порядок сегментов выше.
+    # The author's key example: nine cart roads and one trail = 28 units/sec,
+    # not 10. A separate instance of the manager — otherwise the long route would overwrite the
+    # network on which the levels and the order of the segments above are checked.
     var rm2 = load("res://scripts/road_manager.gd").new()
     get_root().add_child(rm2)
     rm2.initialize(CITY_ROW, CITY_COL)
@@ -304,18 +300,18 @@ func _test_route_and_speeds(state: Dictionary) -> void:
                 false, 2)
     var long_route: Dictionary = rm2.find_route_to_city(CITY_ROW + 10, CITY_COL)
     check(long_route.get("ok", false),
-            "маршрут длиной 10 участков должен находиться", state)
+            "a route of 10 segments must be found", state)
     check(int(long_route.get("length", 0)) == 10,
-            "маршрут должен состоять из 10 участков (получено %d)"
+            "the route must consist of 10 segments (got %d)"
                     % int(long_route.get("length", 0)), state)
     check(absf(float(long_route.get("avg_speed", 0.0)) - 30.0) < 0.01,
-            "десять тележных дорог дают среднюю 30 ед./сек", state)
+            "ten cart roads give an average of 30 units/sec", state)
 
-    # Одна тропка на десяти участках: (9*30 + 1*10)/10 = 28.
+    # One trail over ten segments: (9*30 + 1*10)/10 = 28.
     #
-    # Конфигурация строится сразу, а не понижением уровня: upgrade_road_segment
-    # умеет только ПОВЫШАТЬ (участок не ниже уровня — false), поэтому собрать
-    # смешанный маршрут понижением нельзя в принципе.
+    # The configuration is built at once, not by lowering the level: upgrade_road_segment
+    # can only RAISE (a segment is not below the level — false), so building a
+    # mixed route by lowering is impossible in principle.
     var rm3 = load("res://scripts/road_manager.gd").new()
     get_root().add_child(rm3)
     rm3.initialize(CITY_ROW, CITY_COL)
@@ -325,67 +321,67 @@ func _test_route_and_speeds(state: Dictionary) -> void:
     rm3.build_road_step(CITY_ROW + 9, CITY_COL, CITY_ROW + 10, CITY_COL, false, 1)
     var mixed_long: Dictionary = rm3.find_route_to_city(CITY_ROW + 10, CITY_COL)
     check(int(mixed_long.get("length", 0)) == 10,
-            "смешанный маршрут должен состоять из 10 участков", state)
+            "the mixed route must consist of 10 segments", state)
     check(absf(float(mixed_long.get("avg_speed", 0.0)) - 28.0) < 0.01,
-            "девять тележных дорог и одна тропка = (9*30 + 1*10)/10 = 28 ед./сек"
-                    + " (получено %.2f)" % float(mixed_long.get("avg_speed", 0.0)), state)
-    # Главное: это НЕ 10 ед./сек. Одна плохая ямка не роняет весь хайвей.
+            "nine cart roads and one trail = (9*30 + 1*10)/10 = 28 units/sec"
+                    + " (got %.2f)" % float(mixed_long.get("avg_speed", 0.0)), state)
+    # The main point: this is NOT 10 units/sec. One bad pothole does not drag down the whole highway.
     check(float(mixed_long.get("avg_speed", 0.0)) > 25.0,
-            "одна тропка не должна ронять маршрут до её скорости 10 ед./сек", state)
+            "one trail must not drag the route down to its speed of 10 units/sec", state)
     get_root().remove_child(rm2)
     rm2.free()
     get_root().remove_child(rm3)
     rm3.free()
 
-    # Уровни маршрута идут в том же порядке, что и участки: от улучшения к
-    # городу. Улучшен был участок, примыкающий к улучшению, — он первый.
+    # The levels of the route go in the same order as the segments: from the improvement to
+    # the city. The segment adjacent to the improvement was upgraded — it is first.
     var levels: Array = mixed.get("levels", [])
-    check(levels.size() == 4, "у маршрута должен быть уровень каждого участка", state)
+    check(levels.size() == 4, "the route must have the level of every segment", state)
     check(int(levels[0]) == 2 and int(levels[3]) == 1,
-            "уровни маршрута должны идти от улучшения к городу", state)
+            "the route levels must go from the improvement to the city", state)
 
-    # Скорость пересчитывается после улучшения участка: маршрут — это
-    # производная от сети, и кэш обязан сбрасываться вместе с ней.
-    # Две тележные дороги и две тропки: (2*30 + 2*10)/4 = 20.
+    # The speed is recomputed after a segment is upgraded: the route is a
+    # derivative of the network, and the cache must be reset together with it.
+    # Two cart roads and two trails: (2*30 + 2*10)/4 = 20.
     _rm.upgrade_road_segment(CITY_ROW + 2, CITY_COL, CITY_ROW + 3, CITY_COL, 2)
     var mixed2: Dictionary = _rm.find_route_to_city(CITY_ROW + 4, CITY_COL)
     check(absf(float(mixed2.get("avg_speed", 0.0)) - 20.0) < 0.01,
-            "после улучшения средняя пересчиталась: (2*30 + 2*10)/4 = 20 ед./сек"
-                    + " (получено %.2f)" % float(mixed2.get("avg_speed", 0.0)), state)
+            "after the upgrade the average was recomputed: (2*30 + 2*10)/4 = 20 units/sec"
+                    + " (got %.2f)" % float(mixed2.get("avg_speed", 0.0)), state)
 
-    # Гекса без дороги маршрута не имеет; сам город маршрутом не считается.
+    # A hex without a road has no route; the city itself does not count as a route.
     check(not _rm.find_route_to_city(CITY_ROW, CITY_COL - 3).get("ok", true),
-            "у гекса без дороги маршрута до города быть не должно", state)
+            "a hex without a road must not have a route to the city", state)
     check(not _rm.find_route_to_city(CITY_ROW, CITY_COL).get("ok", true),
-            "сам город не должен считаться гексом с маршрутом", state)
+            "the city itself must not count as a hex with a route", state)
 
 
 # -------------------------------------------------------
-# 5. Улучшение дороги
+# 5. Road upgrade
 # -------------------------------------------------------
 
 func _test_upgrade(state: Dictionary) -> void:
     _rm.initialize(CITY_ROW, CITY_COL)
     _rm.build_road_step(CITY_ROW, CITY_COL, CITY_ROW + 1, CITY_COL)
 
-    # Улучшить несуществующий участок нельзя — вернётся false, и шага без
-    # работы в проекте не будет.
+    # An upgrade of a non-existent segment is impossible — it returns false, and there will be no
+    # step without work in the project.
     check(not _rm.upgrade_road_segment(CITY_ROW, CITY_COL, CITY_ROW + 5, CITY_COL, 2),
-            "улучшение несуществующего участка должно возвращать false", state)
+            "upgrading a non-existent segment must return false", state)
     check(_rm.upgrade_road_segment(CITY_ROW, CITY_COL, CITY_ROW + 1, CITY_COL, 2),
-            "участок должен улучшаться", state)
+            "a segment must be upgradeable", state)
     check(_rm.get_segment_level(CITY_ROW, CITY_COL, CITY_ROW + 1, CITY_COL) == 2,
-            "после улучшения уровень участка должен быть 2", state)
-    # Повторное улучшение до того же уровня — пустая работа.
+            "after the upgrade the segment level must be 2", state)
+    # A repeated upgrade to the same level is empty work.
     check(not _rm.upgrade_road_segment(CITY_ROW, CITY_COL, CITY_ROW + 1, CITY_COL, 2),
-            "повторное улучшение до того же уровня должно возвращать false", state)
-    # Понижать уровень нельзя: участок не должен деградировать по нажатию.
+            "a repeated upgrade to the same level must return false", state)
+    # The level must not be lowered: a segment must not degrade on a click.
     check(not _rm.upgrade_road_segment(CITY_ROW, CITY_COL, CITY_ROW + 1, CITY_COL, 1),
-            "уровень участка не должен понижаться", state)
+            "the segment level must not be lowered", state)
 
 
 # -------------------------------------------------------
-# 6. Живая сцена: кнопка, строка маршрута, подсветка, выбор уровня
+# 6. Live scene: button, route row, highlighting, level selection
 # -------------------------------------------------------
 
 func _test_live_scene(state: Dictionary) -> void:
@@ -398,15 +394,15 @@ func _test_live_scene(state: Dictionary) -> void:
     var panel = main_map.control_panel
     var rm = main_map.road_manager
 
-    # Исследуем «Колесо»: без него кнопки улучшения дороги из тропки нет.
+    # We research the "Wheel": without it there is no road upgrade button from a trail.
     if "wheel" not in _cdata.unlocked_technologies:
         _cdata.unlocked_technologies.append("wheel")
     check(_gdata.get_max_unlocked_road_level() == 2,
-            "после «Колеса» по умолчанию должен предлагаться второй уровень", state)
+            "after the \"Wheel\" the second level must be offered by default", state)
 
-    # Ставим улучшение на гексе в влиянии: к нему прокладывается дорога.
+    # We place an improvement on a hex in the influence: a road is laid to it.
     var spot := _find_hex_in_influence(main_map)
-    check(not spot.is_empty(), "на живой карте должен найтись гекс в влиянии", state)
+    check(not spot.is_empty(), "a hex in the influence must be found on the live map", state)
     if spot.is_empty():
         return
     var row := int(spot.row)
@@ -414,81 +410,81 @@ func _test_live_scene(state: Dictionary) -> void:
     main_map.tile_data[row][col]["improvement"] = "farm"
     rm.build_road_from(row, col, main_map.tile_data, main_map.map_rows, main_map.map_cols)
 
-    # Маршрут есть, и он состоит из одних тропок.
+    # A route exists, and it consists of trails only.
     var route: Dictionary = main_map.get_route_to_city(row, col)
-    check(route.get("ok", false), "у улучшения с дорогой должен быть маршрут", state)
+    check(route.get("ok", false), "an improvement with a road must have a route", state)
     check(int(route.get("length", 0)) >= 1,
-            "маршрут должен состоять хотя бы из одного участка", state)
+            "the route must consist of at least one segment", state)
     check(absf(float(route.get("avg_speed", 0.0)) - float(_gdata.get_road_max_speed(1))) < 0.01,
-            "изначально маршрут идёт по одним тропкам, и средняя равна их скорости",
+            "initially the route goes along trails only, and the average equals their speed",
             state)
 
-    # Клик по улучшению: в панели есть строка маршрута, на карте — подсветка
-    # существующих участков маршрута.
+    # A click on the improvement: the panel has a route row, and the map highlights
+    # the existing segments of the route.
     panel.select_hex(row, col)
-    check(_collect_text(panel).contains("Маршрут до города"),
-            "в панели должна быть строка маршрута до города", state)
+    check(_collect_text(panel).contains("Route to the city"),
+            "the panel must have a route row to the city", state)
 
     var route_segments: Dictionary = main_map.map_renderer._route_segments
     check(not route_segments.is_empty(),
-            "после клика маршрут должен подсвечиваться на карте", state)
+            "after the click the route must be highlighted on the map", state)
     check(route_segments.size() == int(route.get("length", 0)),
-            "подсветка должна содержать все участки маршрута", state)
+            "the highlighting must contain all the segments of the route", state)
 
-    # Кнопка «Улучшить дорогу» есть: маршрут из тропок, а уровень 2 открыт.
+    # The "Upgrade road" button is present: the route is of trails, and level 2 is unlocked.
     var actions: Array = panel._collect_actions(row, col, main_map.tile_data[row][col])
     check(_has_action(actions, panel.UPGRADE_ROAD_TYPE),
-            "на улучшении с дорогой должна быть кнопка «Улучшить дорогу»", state)
+            "an improvement with a road must have an \"Upgrade road\" button", state)
 
-    # Превью улучшения: призрак улучшаемых участков и цена.
+    # The improvement preview: a ghost of the segments being upgraded and the price.
     panel._preview_action = {"type": panel.UPGRADE_ROAD_TYPE, "imp_id": "",
-            "target_res_id": null, "action_id": "", "label": "Улучшить дорогу",
+            "target_res_id": null, "action_id": "", "label": "Upgrade road",
             "eff_res": "", "selected_culture_id": null, "road_level": 2}
     panel._refresh()
-    check(_collect_text(panel._preview_container).contains("Стоимость"),
-            "в превью улучшения должна показываться стоимость", state)
+    check(_collect_text(panel._preview_container).contains("Cost"),
+            "the improvement preview must show the cost", state)
     check(main_map.map_renderer._road_preview_segments.size() == int(route.get("length", 0)),
-            "призрак превью улучшения должен покрывать все участки маршрута", state)
+            "the preview ghost of the improvement must cover all the segments of the route", state)
 
     var breakdown: Dictionary = main_map.get_road_upgrade_breakdown(row, col, 2)
-    check(breakdown.get("ok", false), "разбор улучшения должен быть доступен", state)
+    check(breakdown.get("ok", false), "the improvement breakdown must be available", state)
     check(int(breakdown.get("cost", 0)) > 0,
-            "улучшение до платного уровня должно что-то стоить", state)
+            "an upgrade to a paid level must cost something", state)
     check(int(breakdown.get("segments", 0)) == int(route.get("length", 0)),
-            "улучшаться должны все участки маршрута", state)
+            "all the segments of the route must be upgraded", state)
 
-    # Улучшаем маршрут: уровни участков вырастают, узкое место поднимается.
+    # We upgrade the route: the segment levels grow, the bottleneck rises.
     check(main_map.start_road_upgrade_project(row, col, 2),
-            "улучшение дороги должно запускаться", state)
+            "the road upgrade must start", state)
     var project = main_map.project_manager.get_project_at(row, col)
-    check(not project.is_empty(), "улучшение должно стать поэтапным проектом", state)
+    check(not project.is_empty(), "the upgrade must become a staged project", state)
     await _finish_build(main_map, state)
     for key in rm.get_all_road_segments().keys():
         check(int(rm.road_segments[key]) == 2,
-                "все участки маршрута должны стать второго уровня", state)
+                "all the segments of the route must become level 2", state)
     var after: Dictionary = main_map.get_route_to_city(row, col)
     check(absf(float(after.get("avg_speed", 0.0)) - float(_gdata.get_road_max_speed(2))) < 0.01,
-            "после улучшения средняя маршрута должна вырасти до скорости тележной дороги",
+            "after the upgrade the route average must grow to the cart road's speed",
             state)
 
-    # Повторное улучшение до того же уровня предлагать нечего.
+    # A repeated upgrade to the same level has nothing to offer.
     check(not _has_action(panel._collect_actions(row, col, main_map.tile_data[row][col]),
             panel.UPGRADE_ROAD_TYPE),
-            "после улучшения кнопка «Улучшить дорогу» должна исчезнуть", state)
+            "after the upgrade the \"Upgrade road\" button must disappear", state)
     check(not main_map.get_road_upgrade_breakdown(row, col, 2).get("ok", true),
-            "улучшать маршрут до его текущего уровня нечего", state)
+            "there is nothing to upgrade the route to its current level", state)
 
-    # Уровень влияет на цену новой дороги: тропка дешевле тележной, но обе
-    # стоят труда — включая ту, что строится вместе с улучшением.
+    # The level affects the price of a new road: a trail is cheaper than a cart road, but both
+    # cost work — including the one built together with an improvement.
     var road_target := _find_hex_without_road(main_map)
     if not road_target.is_empty():
         var r2 := int(road_target.row)
         var c2 := int(road_target.col)
         check(main_map.get_road_cost_breakdown(r2, c2, 1).get("cost", 0) > 0,
-                "трасса тропки должна стоить труда", state)
+                "a trail route must cost work", state)
         check(main_map.get_road_cost_breakdown(r2, c2, 2).get("cost", 0)
                 > main_map.get_road_cost_breakdown(r2, c2, 1).get("cost", 0),
-                "трасса тележной дороги должна стоить дороже тропки", state)
+                "a cart road route must cost more than a trail", state)
 
     if WATCHDOG.wants_case("road_level_in_hex_info"):
         await _test_road_level_in_hex_info(main_map, state)
@@ -505,129 +501,130 @@ func _test_live_scene(state: Dictionary) -> void:
 
 
 # -------------------------------------------------------
-# 7. Уровень дороги в тултипе и в левой колонке панели
+# 7. Road level in the tooltip and in the left column of the panel
 # -------------------------------------------------------
 #
-# Обе точки берут ОДИН И ТОТ ЖЕ текст гекса (MapTooltip._build_text), поэтому
-# проверяется и текст тултипа, и то, что из него собирается левая колонка.
+# Both points take THE SAME hex text (MapTooltip._build_text), therefore
+# both the tooltip text and what the left column assembles from it are checked.
 func _test_road_level_in_hex_info(main_map, state: Dictionary) -> void:
     var rm = main_map.road_manager
-    # Тип не указываем: в режиме --script имя класса MapTooltip на этапе
-    # компиляции ещё не в кеше (та же причина, по которой в тестах не
-    # упоминаются MapHelpers и GameData напрямую).
+    # We do not specify the type: in --script mode the class name MapTooltip is not yet in the
+    # compilation cache (the same reason the tests do not mention
+    # MapHelpers and GameData directly).
     var tooltip = main_map.map_tooltip
     var panel = main_map.control_panel
 
-    # Гекс в влиянии, на который пока дороги нет: строки уровня быть не должно.
+    # A hex in the influence on which there is no road yet: the level row must be absent.
     var empty_hex := _find_hex_without_road(main_map)
-    check(not empty_hex.is_empty(), "для проверки нужен гекс без дороги", state)
+    check(not empty_hex.is_empty(), "a hex without a road is needed for the check", state)
     if not empty_hex.is_empty():
         var e_row := int(empty_hex.row)
         var e_col := int(empty_hex.col)
         var empty_text: String = tooltip._build_text(e_row, e_col,
                 main_map.tile_data, main_map.city_row, main_map.city_col)
-        check(not empty_text.contains("Дорога"),
-                "на гексе без дороги строки уровня быть не должно", state)
+        check(not empty_text.contains("Road"),
+                "a hex without a road must not have the level row", state)
 
-    # Гекс с тропкой: строка есть, и расширенный тултип на нём показывается.
-    # Берём гекс БЕЗ дороги (а не первый свободный): к этому моменту тест уже
-    # настроил сеть, и первый свободный гекс мог оказаться подключённым к
-    # улучшенной дороге из предыдущих шагов — тогда проверялось бы не то.
+    # A hex with a trail: the row is present, and the extended tooltip is shown on it.
+    # We take a hex WITHOUT a road (and not the first free one): by this moment the test has already
+    # set up the network, and the first free hex could have turned out connected to
+    # an upgraded road from the previous steps — then the wrong thing would be checked.
     var spot := _find_hex_without_road(main_map)
-    check(not spot.is_empty(), "для проверки нужен гекс без дороги", state)
+    check(not spot.is_empty(), "a hex without a road is needed for the check", state)
     if spot.is_empty():
         return
     var row := int(spot.row)
     var col := int(spot.col)
-    # build_road_from, а не build_road_step: он реально ПРОКЛАДЫВАЕТ путь до
-    # сети, а build_road_step только помечает один участок — между городом и
-    # гексом может быть несколько гексов, и участка «город → гекс» может не
-    # существовать вовсе.
+    # build_road_from, not build_road_step: it really LAYS a path to
+    # the network, while build_road_step only marks one segment — between the city and
+    # the hex there may be several hexes, and the segment "city → hex" may not
+    # exist at all.
     rm.build_road_from(row, col, main_map.tile_data, main_map.map_rows, main_map.map_cols)
     check(rm.get_hex_road_level(row, col) == 1,
-            "дорога к гексу по умолчанию — тропка", state)
+            "the road to the hex is a trail by default", state)
     check(tooltip.has_extended_tooltip_info(row, col, main_map.tile_data),
-            "на гексе с дорогой расширенный тултип должен показываться", state)
+            "on a hex with a road the extended tooltip must be shown", state)
 
-    # Расширенный тултип: строка уровня добавляется ДО ранних выходов
-    # update_extended_tooltip, поэтому проверяем её на гексе без улучшения.
+    # The extended tooltip: the level row is added BEFORE the early exits of
+    # update_extended_tooltip, so we check it on a hex without an improvement.
     tooltip.update_extended_tooltip(row, col, main_map.tile_data,
             main_map.city_row, main_map.city_col)
     var extended_text := _collect_text(tooltip._tooltip_products_container)
-    check(extended_text.contains("Дорога: Тропка (уровень 1, до 10 ед./сек на участок)"),
-            "в расширенном тултипе должен быть уровень дороги (получено: %s)" % extended_text,
+    check(extended_text.contains("Road: %s (level 1, up to 10 units/sec per section)"
+            % _gdata.get_road_name(1)),
+            "the extended tooltip must have the road level (got: %s)" % extended_text,
             state)
 
-    # Обычный тултип уровня дороги НЕ показывает: уровень — не свойство гекса,
-    # а его связи с городом, и для этого есть расширенный блок и левая колонка.
+    # The ordinary tooltip does NOT show the road level: the level is not a property of the hex,
+    # but of its connection to the city, and for that there is the extended block and the left column.
     var text: String = tooltip._build_text(row, col, main_map.tile_data,
             main_map.city_row, main_map.city_col)
-    check(not text.contains("Дорога"),
-            "в обычном тултипе строки уровня дороги быть не должно (получено: %s)" % text,
+    check(not text.contains("Road"),
+            "the ordinary tooltip must not have the road level row (got: %s)" % text,
             state)
 
-    # Перекрёсток из двух тропок и одной тележной дороги — ровно тот случай,
-# ради которого введено правило «уровень гекса = максимум»: гекс показывает
-# тележную дорогу (уровень 2), как он и выглядит на карте, хотя две тропки
-# через него проходят и остаются тропками.
+    # A crossroad of two trails and one cart road — exactly the case
+# for which the rule "the hex level = the maximum" was introduced: the hex shows
+# the cart road (level 2), as it also looks on the map, although two trails
+# pass through it and stay trails.
     #
-    # Схема (см. _test_crossroad_* ниже): гекс соединён с городом тропкой,
-    # к нему же примыкают ещё два соседа — с тропкой и с тележной дорогой.
+    # The scheme (see _test_crossroad_* below): the hex is connected to the city by a trail,
+    # and two more neighbours adjoin it — with a trail and with a cart road.
     var edge1 := _hex_in_direction(main_map, row, col)
     if not edge1.is_empty():
-        # Сосед с тропкой: строим участок уровня 1.
+        # A neighbour with a trail: we build a level-1 segment.
         rm.build_road_step(row, col, int(edge1.row), int(edge1.col))
         var edge2 := _hex_in_direction(main_map, row, col, int(edge1.row), int(edge1.col))
         if not edge2.is_empty():
-            # Сосед с тележной дорогой: тот же участок строится тропкой и
-            # улучшается — так проверяется, что уровень гекса берётся по
-            # максимуму, а не по «первому попавшемуся» участку.
+            # A neighbour with a cart road: the same segment is built as a trail and
+            # upgraded — this checks that the hex level is taken by the
+            # maximum, not by the "first encountered" segment.
             if rm.build_road_step(row, col, int(edge2.row), int(edge2.col)):
                 rm.upgrade_road_segment(row, col, int(edge2.row), int(edge2.col), 2)
                 check(rm.get_hex_road_level(row, col) == 2,
-                        "на перекрёстке 2 тропки + тележная дорога уровень гекса должен быть 2",
+                        "at a crossroad of 2 trails + a cart road the hex level must be 2",
                         state)
-                # Тропки при этом остаются тропками: уровень гекса —
-                # производная величина, а не распорка «поднять всё сразу».
+                # The trails stay trails: the hex level is a
+                # derived value, not a strut to "raise everything at once".
                 check(rm.get_segment_level(row, col, int(edge1.row), int(edge1.col)) == 1,
-                        "участок-тропка через перекрёсток должен остаться тропкой",
+                        "a trail segment through the crossroad must stay a trail",
                         state)
                 var mixed_text: String = tooltip.road_level_line(row, col)
-                check(mixed_text.contains("уровень 2") and mixed_text.contains("Тележная дорога"),
-                        "строка уровня на перекрёстке должна называть тележную дорогу (получено: %s)"
+                check(mixed_text.contains("level 2") and mixed_text.contains(_gdata.get_road_name(2)),
+                        "the level row at the crossroad must name the cart road (got: %s)"
                                 % mixed_text, state)
 
-    # Левая колонка панели собирается из того же текста — строка обязана быть
-    # и там, а не только в тултипе под курсором.
+    # The left column of the panel is assembled from the same text — the row must be
+    # there too, and not only in the tooltip under the cursor.
     panel.select_hex(row, col)
-    check(_collect_text(panel).contains("уровень"),
-            "в левой колонке панели должен быть показан уровень дороги", state)
+    check(_collect_text(panel).contains("level"),
+            "the left column of the panel must show the road level", state)
 
-    # Превью улучшения дороги НЕ содержит блока производства: игрок нажал
-    # кнопку улучшения дороги ради дороги, а «Будет производить» относится
-    # к улучшению, которое он не строит. Блок к тому же вытеснял селектор
-    # уровней дорог вниз и заставлял прокручивать превью.
+    # The road upgrade preview does NOT contain the production block: the player pressed
+    # the road upgrade button for the road's sake, and "Will produce" refers
+    # to an improvement he is not building. The block also pushed the road
+    # level selector down and made the preview scroll.
     if _gdata.get_max_unlocked_road_level() <= 1:
         return
     panel._preview_action = {"type": panel.UPGRADE_ROAD_TYPE, "imp_id": "",
-            "target_res_id": null, "action_id": "", "label": "Улучшить дорогу",
+            "target_res_id": null, "action_id": "", "label": "Upgrade road",
             "eff_res": "", "selected_culture_id": null, "road_level": 2}
     panel._refresh()
     var upgrade_preview_text := _collect_text(panel._preview_container)
-    check(not upgrade_preview_text.contains("Будет производить"),
-            "в превью улучшения дороги не должно быть блока производства (получено: %s)"
+    check(not upgrade_preview_text.contains("Will produce"),
+            "the road upgrade preview must not have the production block (got: %s)"
                     % upgrade_preview_text, state)
-    check(upgrade_preview_text.contains("Уровень дороги:"),
-            "в превью улучшения дороги должен быть выбор уровня (получено: %s)"
+    check(upgrade_preview_text.contains("Road level:"),
+            "the road upgrade preview must have a level selection (got: %s)"
                     % upgrade_preview_text, state)
-    check(upgrade_preview_text.contains("Стоимость"),
-            "в превью улучшения дороги должна быть цена (получено: %s)"
+    check(upgrade_preview_text.contains("Cost"),
+            "the road upgrade preview must have a price (got: %s)"
                     % upgrade_preview_text, state)
 
 
-# Первый свободный гекс в Кольце Влияния на расстоянии не меньше min_dist
-# от города. Нужен там, где важна ДЛИНА маршрута: маршрут из одного участка
-# нельзя частично улучшить, и проверка «кнопка осталась» на нём бессмысленна.
+# The first free hex in the Ring of Influence at a distance of at least min_dist
+# from the city. Needed where the LENGTH of the route matters: a route of one segment
+# cannot be partially upgraded, and the check "the button stayed" on it is meaningless.
 func _find_hex_far_from_city(main_map, min_dist: int) -> Dictionary:
     for row in range(main_map.influence_start_row, main_map.influence_end_row + 1):
         for col in range(main_map.influence_start_col, main_map.influence_end_col + 1):
@@ -643,9 +640,9 @@ func _find_hex_far_from_city(main_map, min_dist: int) -> Dictionary:
             return {"row": row, "col": col}
     return {}
 
-# Свободный сосед гекса (row, col) в указанном направлении — для построения
-# схемы перекрёстка. exclude уже использованного соседа нельзя: иначе второй
-# участок может лечь на уже построенный, и build_road_step вернёт false.
+# A free neighbour of the hex (row, col) in the given direction — for building
+# the crossroad scheme. We cannot exclude an already used neighbour: otherwise the second
+# segment may land on an already built one, and build_road_step will return false.
 func _hex_in_direction(main_map, row: int, col: int,
         exclude_row: int = -1, exclude_col: int = -1) -> Dictionary:
     var main_map_ref = main_map
@@ -673,20 +670,19 @@ func _hex_in_direction(main_map, row: int, col: int,
 
 
 # -------------------------------------------------------
-# 8. Кнопка «Улучшить дорогу» на частично улучшенном маршруте
+# 8. The "Upgrade road" button on a partially upgraded route
 # -------------------------------------------------------
 #
-# Регрессия: кнопка проверяла МАКСИМУМ уровней маршрута, и стоило улучшить
-# ОДИН участок из четырёх, как максимум становился равен лучшему уровню и
-# кнопка исчезала — хотя три тропки оставались. Для игрока это выглядело как
-# «маршрут уже улучшен», и дотянуть дорогу было нечем.
+# The button must stay while there are trails on the route: one segment out of
+# four is upgraded, the rest stay trails — and the button must remain, because
+# the route is not yet fully upgraded.
 func _test_upgrade_button_on_partial_route(main_map, state: Dictionary) -> void:
     var panel = main_map.control_panel
     var rm = main_map.road_manager
 
     var spot := _find_hex_far_from_city(main_map, 4)
     check(not spot.is_empty(),
-            "для проверки нужен гекс в удалении от города (маршрут из нескольких участков)",
+            "a hex far from the city is needed for the check (a route of several segments)",
             state)
     if spot.is_empty():
         return
@@ -695,21 +691,21 @@ func _test_upgrade_button_on_partial_route(main_map, state: Dictionary) -> void:
     main_map.tile_data[row][col]["improvement"] = "farm"
     rm.build_road_from(row, col, main_map.tile_data, main_map.map_rows, main_map.map_cols)
     if _gdata.get_max_unlocked_road_level() <= 1:
-        # «Колесо» не изучено: улучшать некуда, кнопки нет — и это правильно.
+        # The "Wheel" is not researched: there is nothing to upgrade, there is no button — and that is correct.
         check(not _has_action(panel._collect_actions(row, col, main_map.tile_data[row][col]),
                 panel.UPGRADE_ROAD_TYPE),
-                "без исследованной технологии кнопки улучшения быть не должно", state)
+                "without a researched technology there must be no upgrade button", state)
         return
     check(_has_action(panel._collect_actions(row, col, main_map.tile_data[row][col]),
             panel.UPGRADE_ROAD_TYPE),
-            "на маршруте из тропок кнопка улучшения должна быть", state)
+            "on a route of trails the upgrade button must be present", state)
 
-    # Улучшаем ОДИН участок маршрута — не весь. Остальные участки остаются
-    # тропками, и кнопка обязана остаться: маршрут ещё не доведён до конца.
+    # We upgrade ONE segment of the route — not all of it. The remaining segments stay
+    # trails, and the button must remain: the route is not yet upgraded to the end.
     var route: Dictionary = main_map.get_route_to_city(row, col)
     var segments: Array = route.get("segments", [])
     check(segments.size() >= 2,
-            "для проверки нужен маршрут хотя бы из двух участков (получено %d)"
+            "a route of at least two segments is needed for the check (got %d)"
                     % segments.size(), state)
     if segments.size() < 2:
         return
@@ -718,7 +714,7 @@ func _test_upgrade_button_on_partial_route(main_map, state: Dictionary) -> void:
     var a := parts[0].split(",")
     var b := parts[1].split(",")
     check(rm.upgrade_road_segment(int(a[0]), int(a[1]), int(b[0]), int(b[1]), 2),
-            "один участок маршрута должен улучшаться", state)
+            "one segment of the route must be upgradeable", state)
 
     var after: Dictionary = main_map.get_route_to_city(row, col)
     var still_trails := 0
@@ -726,39 +722,39 @@ func _test_upgrade_button_on_partial_route(main_map, state: Dictionary) -> void:
         if int(level) < _gdata.get_max_unlocked_road_level():
             still_trails += 1
     check(still_trails > 0,
-            "после улучшения одного участка маршрут не должен стать целиком лучшим", state)
+            "after upgrading one segment the route must not become entirely the best", state)
     check(_has_action(panel._collect_actions(row, col, main_map.tile_data[row][col]),
             panel.UPGRADE_ROAD_TYPE),
-            "на частично улучшенном маршруте кнопка улучшения обязана остаться", state)
+            "on a partially upgraded route the upgrade button must remain", state)
 
 
 # -------------------------------------------------------
-# 9. Рефреш содержимого не стирает расширенный блок
+# 9. A content refresh does not wipe the extended block
 # -------------------------------------------------------
 #
-# Регрессия: на гексе с пастбищем строка «Дорога: …» в расширенном тултипе
-# жила ровно один тик. Расширенный блок рисуется один раз за наведение, но
-# InputHandler с интервалом resource_display_interval зовёт update_tooltip_text
-# для «растущих» ресурсов (time_to_mature > 0 — то есть только для пастбищ), а
-# тот пересобирает контейнер с нуля и заменяет блок базовым списком. Строка
-# исчезала и до ухода курсора не возвращалась. Фермы и лесные делянки не
-# задеты: у них time_to_mature нет, рефреш не вызывается.
+# The "Road: …" row in the extended tooltip must survive the periodic refresh of
+# the content. The extended block is drawn once per hover, but the
+# InputHandler at the resource_display_interval calls update_tooltip_text
+# for "growing" resources (time_to_mature > 0 — that is, only for pastures), and
+# it rebuilds the container from scratch and replaces the block with the basic list. The row must
+# not disappear before the cursor leaves. Farms and forest plots are not
+# affected: they have no time_to_mature, so the refresh is not called.
 func _test_extended_tooltip_survives_refresh(main_map, state: Dictionary) -> void:
     var rm = main_map.road_manager
-    # Тип не указываем — как в _test_road_level_in_hex_info: имя класса
-    # MapTooltip на этапе компиляции этого файла ещё не в кеше.
+    # We do not specify the type — as in _test_road_level_in_hex_info: the class name
+    # MapTooltip is not yet in the compilation cache of this file.
     var tooltip = main_map.map_tooltip
 
     var res_id := _find_growing_resource_id()
     check(not res_id.is_empty(),
-            "в данных нужен растущий ресурс (time_to_mature > 0) для проверки рефреша",
+            "the data needs a growing resource (time_to_mature > 0) for the refresh check",
             state)
     if res_id.is_empty():
         return
 
     var spot := _find_hex_in_influence(main_map)
     check(not spot.is_empty(),
-            "для проверки рефреша нужен гекс в влиянии", state)
+            "a hex in the influence is needed for the refresh check", state)
     if spot.is_empty():
         return
     var row := int(spot.row)
@@ -768,53 +764,53 @@ func _test_extended_tooltip_survives_refresh(main_map, state: Dictionary) -> voi
     tile["resource"] = res_id
     rm.build_road_from(row, col, main_map.tile_data, main_map.map_rows, main_map.map_cols)
     check(not tooltip.road_level_line(row, col).is_empty(),
-            "к гексу с пастбищем должна быть проложена дорога", state)
+            "a road must be laid to the hex with a pasture", state)
 
-    # Наведение: сначала базовый тултип, затем по задержке — расширенный блок.
+    # Hover: first the basic tooltip, then, after a delay, the extended block.
     main_map.update_tooltip_text(row, col)
     check(tooltip.has_extended_tooltip_info(row, col, main_map.tile_data),
-            "на гексе с дорогой расширенный тултип должен показываться", state)
+            "on a hex with a road the extended tooltip must be shown", state)
     main_map.update_extended_tooltip(row, col)
     var extended_text := _collect_text(tooltip._tooltip_products_container)
-    check(extended_text.contains("Дорога:"),
-            "расширенный тултип должен содержать строку уровня дороги (получено: %s)"
+    check(extended_text.contains("Road:"),
+            "the extended tooltip must contain the road level row (got: %s)"
                     % extended_text, state)
 
-    # Рефреш. Меняем fill_time, чтобы текст заполненности действительно изменился:
-    # иначе сработал бы ранний выход «ничего не изменилось», контейнер бы не
-    # трогали — и проверка прошла бы, ничего не проверяя. Именно изменившийся
-    # текст и запускает рефреш в игре.
+    # Refresh. We change fill_time so that the fullness text really changes:
+    # otherwise the early exit "nothing changed" would trigger, the container would not be
+    # touched — and the check would pass without checking anything. It is the changed
+    # text that triggers the refresh in the game.
     var ttm: float = float(_gdata.raw_resources.get(res_id, {}).get("time_to_mature", 60.0))
     tile["fill_time"] = ttm * 0.5
     main_map.update_tooltip_text(row, col)
     var after_refresh := _collect_text(tooltip._tooltip_products_container)
-    check(after_refresh.contains("Дорога:"),
-            "после рефреша содержимого строка уровня дороги обязана остаться (получено: %s)"
+    check(after_refresh.contains("Road:"),
+            "after the content refresh the road level row must remain (got: %s)"
                     % after_refresh, state)
-    # Ровно один раз: строка не должна ни задваиваться, ни теряться.
-    check(_count_occurrences(after_refresh, "Дорога:") == 1,
-            "строка уровня дороги должна быть ровно одна (получено: %s)" % after_refresh, state)
+    # Exactly once: the row must neither be doubled nor be lost.
+    check(_count_occurrences(after_refresh, "Road:") == 1,
+            "the road level row must be exactly one (got: %s)" % after_refresh, state)
 
-    # Второй тик подряд — на пастбище рефреш ходит каждый интервал, а не раз.
+    # A second tick in a row — on a pasture the refresh runs every interval, not once.
     tile["fill_time"] = ttm * 0.75
     main_map.update_tooltip_text(row, col)
     var after_second := _collect_text(tooltip._tooltip_products_container)
-    check(after_second.contains("Дорога:"),
-            "после второго рефреша строка уровня дороги обязана остаться (получено: %s)"
+    check(after_second.contains("Road:"),
+            "after the second refresh the road level row must remain (got: %s)"
                     % after_second, state)
 
-    # После сброса привязки (смена гекса / скрытие тултипа) расширенный блок
-    # больше не рисуется: базовый тултип уровня дороги по-прежнему не показывает.
+    # After the binding is reset (a hex change / the tooltip is hidden) the extended block
+    # is no longer drawn: the basic tooltip still does not show the road level.
     main_map.clear_extended_tooltip()
     main_map.update_tooltip_text(row, col)
     var after_clear := _collect_text(tooltip._tooltip_products_container)
-    check(not after_clear.contains("Дорога:"),
-            "после сброса расширенного блока строка уровня дороги быть не должна (получено: %s)"
+    check(not after_clear.contains("Road:"),
+            "after the extended block is reset the road level row must be absent (got: %s)"
                     % after_clear, state)
 
-# Id ресурса с time_to_mature > 0 (растущий — рефрешится на пастбищах).
-# Берём из данных, а не хардкодим «cows»: проверка должна пережить переименование
-# или замену ресурса в animals.json.
+# The resource id with time_to_mature > 0 (growing — it is refreshed on pastures).
+# We take it from the data, and do not hardcode "cows": the check must survive a rename
+# or a replacement of the resource in animals.json.
 func _find_growing_resource_id() -> String:
     for id in _gdata.raw_resources.keys():
         var data: Dictionary = _gdata.raw_resources.get(id, {})
@@ -829,55 +825,52 @@ func _find_growing_resource_id() -> String:
 
 
 # -------------------------------------------------------
-# 10. Кнопка «Улучшить дорогу» на гексе БЕЗ улучшения
+# 10. The "Upgrade road" button on a hex WITHOUT an improvement
 # -------------------------------------------------------
 #
-# Регрессия: вызов _append_upgrade_road_action стоял внутри ветки
-# `if tile.improvement != null`, которая заканчивалась `return`, — и на пустом
-# гексе с дорогой кнопки не было, хотя маршрут до города есть и он весь из
-# тропок. Игрок видел кнопку на соседнем гексе с улучшением и не понимал
-# критерий: «почему тут есть, а тут нет».
+# The button must be present on a hex with a road even without an improvement:
+# the criterion is the route to the city, which consists of trails.
 func _test_upgrade_button_on_empty_hex(main_map, state: Dictionary) -> void:
     var panel = main_map.control_panel
     var rm = main_map.road_manager
 
-    # Без исследованного второго уровня улучшать некуда — кнопки нет нигде,
-    # и проверять нечего.
+    # Without a researched second level there is nothing to upgrade — there is no button
+    # anywhere, and there is nothing to check.
     if _gdata.get_max_unlocked_road_level() <= 1:
         return
 
-    # _find_hex_in_influence пропускает гексы с улучшением: он и нужен —
-    # проверяем именно гекс БЕЗ улучшения.
+    # _find_hex_in_influence skips hexes with an improvement: that is exactly what we need —
+    # we check a hex WITHOUT an improvement.
     var spot := _find_hex_in_influence(main_map)
     check(not spot.is_empty(),
-            "для проверки нужен свободный гекс в влиянии с достижимым планом дороги",
+            "a free hex in the influence with a reachable road plan is needed for the check",
             state)
     if spot.is_empty():
         return
     var row := int(spot.row)
     var col := int(spot.col)
     check(main_map.tile_data[row][col].get("improvement", null) == null,
-            "гекс для проверки обязан быть без улучшения", state)
+            "the hex for the check must be without an improvement", state)
 
-    # Дорога-тропка: маршрут из тропок, а уровень 2 открыт.
+    # A trail road: the route is of trails, and level 2 is unlocked.
     rm.build_road_from(row, col, main_map.tile_data, main_map.map_rows, main_map.map_cols)
     var route: Dictionary = main_map.get_route_to_city(row, col)
-    check(route.get("ok", false), "к пустому гексу с дорогой должен быть маршрут", state)
+    check(route.get("ok", false), "an empty hex with a road must have a route", state)
     if not route.get("ok", false):
         return
 
     var actions: Array = panel._collect_actions(row, col, main_map.tile_data[row][col])
     check(_has_action(actions, panel.UPGRADE_ROAD_TYPE),
-            "на пустом гексе с дорогой должна быть кнопка «Улучшить дорогу»", state)
+            "an empty hex with a road must have an \"Upgrade road\" button", state)
 
 
 # -------------------------------------------------------
-# Хелперы
+# Helpers
 # -------------------------------------------------------
 
-# Сколько раз подстрока встречается в тексте — для проверки, что строка не
-# задваивалась. Строки тултипа склеены по "\n", поэтому обычного contains()
-# (проверка «есть ли хоть раз») для этого недостаточно.
+# How many times the substring occurs in the text — to check that the row is not
+# doubled. The tooltip strings are joined by "\n", so a plain contains()
+# (the check "is it there at least once") is not enough for this.
 func _count_occurrences(text: String, sub: String) -> int:
     if sub.is_empty():
         return 0
@@ -906,14 +899,14 @@ func _collect_text(node: Node) -> String:
         parts.append(_collect_text(child))
     return "\n".join(parts)
 
-# Первый свободный гекс в Кольце Влияния: сухой, известный, без улучшения,
-# городка и дороги — И с дорогой, до которой реально можно дойти.
+# The first free hex in the Ring of Influence: dry, known, without an improvement,
+# a town and a road — AND with a road that can really be reached.
 #
-# Проверка плана обязательна: вызывающие потом строят к гексу дорогу, а на части
-# случайно сгенерированных карт свободный гекс оказывается отрезан рекой, и
-# дорога к нему не строится. Тогда проверка падала бы из-за карты, а не из-за
-# правила. Если подходящего гекса нет вовсе — возвращаем пусто, и вызывающий
-# честно сообщает, что сценарий пропущен.
+# The plan check is mandatory: the callers then build a road to the hex, and on some
+# randomly generated maps the free hex turns out cut off by a river, and
+# the road to it is not built. Then the check would fail because of the map, and not because of the
+# rule. If there is no suitable hex at all — we return empty, and the caller
+# honestly reports that the scenario is skipped.
 func _find_hex_in_influence(main_map) -> Dictionary:
     for row in range(main_map.influence_start_row, main_map.influence_end_row + 1):
         for col in range(main_map.influence_start_col, main_map.influence_end_col + 1):
@@ -928,26 +921,26 @@ func _find_hex_in_influence(main_map) -> Dictionary:
             return {"row": row, "col": col}
     return {}
 
-# Гекс в Кольце Влияния без дороги — цель спецдействия «Построить дорогу».
-# Улучшений тут может быть сколько угодно: клетка с улучшением дорогу уже
-# получила автоматически.
+# A hex in the Ring of Influence without a road — the target of the special action "Build road".
+# There may be any number of improvements here: a tile with an improvement has already
+# received a road automatically.
 func _find_hex_without_road(main_map) -> Dictionary:
     for row in range(main_map.influence_start_row, main_map.influence_end_row + 1):
         for col in range(main_map.influence_start_col, main_map.influence_end_col + 1):
             var tile = main_map.tile_data[row][col]
             if tile == null or _hex_is_busy(main_map, row, col, tile):
                 continue
-            # Уровень гекса, а не is_hex_connected: у гекса может не быть дороги
-            # города, но через него может проходить дорога ГОРОДКА (её трасса
-            # ищется по всей карте и может выйти за кольцо). Строка уровня
-            # теперь описывает и её, поэтому «гекс без дороги» — это ровно
+            # The level of the hex, and not is_hex_connected: a hex may not have a city
+            # road, but a TOWN road may pass through it (its route
+            # is searched over the whole map and may go outside the ring). The level row
+            # now describes it too, therefore "a hex without a road" is exactly
             # get_hex_road_level == 0.
             if main_map.road_manager.get_hex_road_level(row, col) > 0:
                 continue
             return {"row": row, "col": col}
     return {}
 
-# Общие «гекс не годится» проверки: городок, чужая территория, туман, вода.
+# Common "the hex does not fit" checks: a town, someone else's territory, fog, water.
 func _hex_is_busy(main_map, row: int, col: int, tile: Dictionary) -> bool:
     if tile.get("has_town", false) or tile.get("decorative", false):
         return true
@@ -957,7 +950,7 @@ func _hex_is_busy(main_map, row: int, col: int, tile: Dictionary) -> bool:
         return true
     return _mh.is_water_terrain(tile.get("terrain", "plain"))
 
-# Прогоняет труд до конца, чтобы проект завершился.
+# Runs the work to completion so that the project finishes.
 func _finish_build(main_map, state: Dictionary) -> void:
     var bm = main_map.build_manager
     var labor: float = maxf(1.0, float(_cdata.get_total_labor()))
@@ -965,7 +958,7 @@ func _finish_build(main_map, state: Dictionary) -> void:
         bm._process(labor * 2.0)
         if main_map.project_manager.projects.is_empty():
             return
-    check(false, "проект улучшения дороги не завершился за отведённое число кадров", state)
+    check(false, "the road upgrade project did not finish within the allotted number of frames", state)
 
 func check(condition: bool, message: String, state: Dictionary) -> void:
     if condition:

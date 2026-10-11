@@ -1,26 +1,26 @@
-# Headless-тест: заливка колец городков покрывает кольцо ЦЕЛИКОМ.
+# Headless test: the fill of town rings covers the ring ENTIRELY.
 #   godot --headless --path . --script res://tests/test_town_fill_region.gd
 #
-# Регресс на дефект, из-за которого заливка выглядела «нарисованной наполовину»
-# (особенно у левой границы Региона): кольца городков клипались по СТАРТОВОМУ
-# Региону при генерации, и с ростом Региона (смена эпохи) заливка навсегда
-# оставалась огрызком — рисовалась только та часть кольца, что попала в новый
-# Регион (измеренные потери — до 18% гексов заливки).
+# Regression test for a defect that made the fill look "drawn halfway"
+# (especially at the left border of the Region): town rings were clipped by the START
+# Region during generation, and as the Region grew (era change) the fill was forever
+# left as a stub — only the part of the ring that fell into the new
+# Region was drawn (measured loss — up to 18% of the fill hexes).
 #
-# Проверяется на живых данных реальной сцены MainMap (новая игра):
-#   1. В данных кольцо равно кольцу по радиусу, из которого вырезаны ровно
-#      две вещи: стартовая область игрока (Кольцо + Регион 1-й эпохи —
-#      территория городка туда не заходит НИ при каких обстоятельствах) и
-#      гексы, занятые более ранним городком. Флаг in_town_influence выставлен
-#      ровно на гексах колец и НИКОГДА — на гексах стартовой области.
-#   2. В 1-й эпохе заливки нет вообще — кольца не выдают чужой городок.
-#   3. После смены эпохи заливка равна «кольцо минус туман»: потерь нет.
-#   4. Гекс заливки не лежит в тумане, а его полный bbox — внутри текстуры
-#      заливки (текстура не может обрезать гекс пополам).
+# Checked on live data of the real MainMap scene (new game):
+#   1. In the data the ring equals the ring by radius from which exactly
+#      two things are cut: the player's start area (Ring + Region of the 1st era —
+#      town territory never extends there under ANY circumstances) and
+#      hexes occupied by an earlier town. The in_town_influence flag is set
+#      exactly on the hexes of rings and NEVER — on the hexes of the start area.
+#   2. In the 1st era there is no fill at all — rings do not reveal another town.
+#   3. After the era change the fill equals "ring minus fog": there is no loss.
+#   4. A fill hex does not lie in the fog, and its full bbox is inside the fill
+#      texture (the texture cannot cut a hex in half).
 extends SceneTree
 
-# Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
-# молчание. Подробности — в tests/watchdog.gd.
+# Hang watchdog: without it a broken _run() coroutine looks from outside like eternal
+# silence. Details are in tests/watchdog.gd.
 const WATCHDOG = preload("res://tests/watchdog.gd")
 
 func _initialize() -> void:
@@ -39,13 +39,13 @@ func _run() -> void:
     var tm = main_map.town_manager
     var r = main_map.map_renderer
 
-    # --- 1: кольца в данных = кольцо по радиусу минус вырезанное ---
-    # Допустимые отличия от «кольца по радиусу» — ровно два:
-    #   а) вырезка стартовой области игрока (Кольцо + Регион 1-й эпохи):
-    #      территория городка на неё не заходит никогда;
-    #   б) межгородской клип «кто первый встал, того и тапки»: гекс, уже
-    #      занятый более ранним городком, из кольца выбрасывается.
-    # Любое другое расхождение — дефект.
+    # --- 1: rings in the data = ring by radius minus what is cut ---
+    # There are exactly two permissible differences from the "ring by radius":
+    #   a) cutting of the player's start area (Ring + Region of the 1st era):
+    #      town territory never extends onto it;
+    #   b) inter-town clipping "first come, first served": a hex already
+    #      occupied by an earlier town is thrown out of the ring.
+    # Any other discrepancy is a defect.
     var ring_keys: Dictionary = {}
     var claimed: Dictionary = {}
     var player_area := _player_start_keys(main_map)
@@ -58,7 +58,7 @@ func _run() -> void:
                 expected.erase(k)
         var stored := _key_set(t.get("influence_hexes", []))
         check(expected == stored,
-            "кольцо городка (%d,%d) должно совпадать с кольцом по радиусу минус стартовая область игрока минус занятые соседями гексы; нет в данных: %s, лишние: %s"
+            "the ring of town (%d,%d) must match the ring by radius minus the player's start area minus the hexes occupied by neighbours; missing in data: %s, extra: %s"
                 % [int(t.row), int(t.col), str(_keys_only_in(expected, stored)),
                     str(_keys_only_in(stored, expected))], state)
         for k in stored.keys():
@@ -72,13 +72,13 @@ func _run() -> void:
                     and not ring_keys.has("%d,%d" % [row, col]):
                 stray.append([row, col])
     check(stray.is_empty(),
-        "флаг in_town_influence стоит только на гексах колец (лишних: %s)" % str(stray), state)
+        "the in_town_influence flag is set only on the hexes of rings (extra: %s)" % str(stray), state)
 
-    # Гексы стартовой области игрока — его собственные: ни флага кольца, ни
-    # улучшений городков на них быть не должно (иначе ресурс в Кольце Влияния
-    # оказывается недоступен: build_manager блокирует по in_town_influence).
+    # The hexes of the player's start area are his own: neither the ring flag nor
+    # town improvements should be on them (otherwise a resource in the Ring of Influence
+    # becomes unavailable: build_manager blocks by in_town_influence).
     check(not player_area.is_empty(),
-        "на живой карте стартовая область игрока должна быть непустой", state)
+        "on a live map the player's start area must be non-empty", state)
     var intruders: Array = []
     for k in player_area.keys():
         var parts: PackedStringArray = k.split(",")
@@ -90,17 +90,17 @@ func _run() -> void:
                 or bool(tile.get("decorative", false)):
             intruders.append([int(parts[0]), int(parts[1])])
     check(intruders.is_empty(),
-        "на стартовой области игрока не должно быть городков и их территорий (нарушителей: %s)"
+        "there must be no towns and their territories on the player's start area (violators: %s)"
             % str(intruders), state)
 
-    # --- 2: в 1-й эпохе заливки нет ---
+    # --- 2: in the 1st era there is no fill ---
     r.invalidate_town_influence_cache()
     _rebuild(r)
     check(r.get_town_fill_hexes().is_empty(),
-        "в 1-й эпохе кольца не должны рисоваться (иначе виден чужой городок), гексов: %d"
+        "in the 1st era rings must not be drawn (otherwise another town is visible), hexes: %d"
             % r.get_town_fill_hexes().size(), state)
 
-    # --- 3: после смены эпохи заливка = кольцо минус туман, потерь нет ---
+    # --- 3: after the era change the fill = ring minus fog, there is no loss ---
     var before := _key_set(r.get_town_fill_hexes())
     main_map.advance_to_next_era()
     await process_frame
@@ -117,29 +117,29 @@ func _run() -> void:
             if not main_map.is_hex_in_fog(int(h.row), int(h.col)):
                 should_be["%d,%d" % [int(h.row), int(h.col)]] = true
     check(not should_be.is_empty(),
-        "после смены эпохи заливка должна появиться (проверяем на живой карте)", state)
+        "after the era change the fill must appear (checked on a live map)", state)
     check(_keys_only_in(should_be, after).is_empty(),
-        "после смены эпохи потеряна часть заливки (не нарисованы: %s)"
+        "after the era change part of the fill is lost (not drawn: %s)"
             % str(_keys_only_in(should_be, after)), state)
     check(_keys_only_in(after, should_be).is_empty(),
-        "после смены эпохи нарисована лишняя заливка (лишние: %s)"
+        "after the era change extra fill is drawn (extra: %s)"
             % str(_keys_only_in(after, should_be)), state)
     check(after.size() >= before.size(),
-        "заливка не должна терять гексы при смене эпохи (было %d, стало %d)"
+        "the fill must not lose hexes on an era change (was %d, now %d)"
             % [before.size(), after.size()], state)
 
-    # --- 4: заливка целиком помещается в текстуру (её не режет край) ---
-    # Заливка может выходить за пределы Региона — на разведанных гексах за ним
-    # (так работает разведка), — поэтому проверяем не Регион, а покрытие
-    # текстурой: именно её край давал «заливку наполовину».
+    # --- 4: the fill fits entirely into the texture (its edge does not cut it) ---
+    # The fill may extend beyond the Region — onto scouted hexes beyond it
+    # (that is how scouting works), — so we check not the Region but the coverage
+    # by the texture: it was its edge that gave the "half fill".
     var fog_left: Array = []
     for h in r.get_town_fill_hexes():
         if main_map.is_hex_in_fog(int(h.row), int(h.col)):
             fog_left.append([int(h.row), int(h.col)])
     check(fog_left.is_empty(),
-        "гексы заливки не должны лежать в тумане войны (нарушителей: %s)" % str(fog_left), state)
+        "fill hexes must not lie in the fog of war (violators: %s)" % str(fog_left), state)
     check(r._influence_fill_texture != null,
-        "текстура заливки должна быть построена (иначе рисуется fallback)", state)
+        "the fill texture must be built (otherwise a fallback is drawn)", state)
     if r._influence_fill_texture != null:
         _check_texture_covers_hexes(main_map, r, state)
 
@@ -153,18 +153,18 @@ func _run() -> void:
         print("TOWN FILL REGION TEST OK")
         quit(0)
 
-# Кольцо городка по его радиусу — эталон «как должно быть» (town_manager
-# строит кольца ровно так; вырезка стартовой области и клип по соседям делаются
-# при разборе результата, а не внутри compute_town_influence).
+# A town ring by its radius — the reference "how it should be" (town_manager
+# builds rings exactly like this; cutting of the start area and clipping by neighbours are done
+# when parsing the result, not inside compute_town_influence).
 func _full_ring(main_map, tm, t) -> Array:
     return tm.compute_town_influence(
             main_map.tile_data, main_map.map_rows, main_map.map_cols,
             int(t.row), int(t.col), t,
             int(t.get("influence_radius", 3)))
 
-# Множество ключей "row,col" стартовой области игрока (Кольцо + Регион 1-й
-# эпохи). Из неё территория городков вырезается всегда — это и есть инвариант,
-# который проверяет тест.
+# The set of "row,col" keys of the player's start area (Ring + Region of the 1st
+# era). Town territory is always cut from it — this is the invariant
+# that the test checks.
 func _player_start_keys(main_map) -> Dictionary:
     var out: Dictionary = {}
     for row in range(main_map.start_region_start_row, main_map.start_region_end_row + 1):
@@ -174,12 +174,12 @@ func _player_start_keys(main_map) -> Dictionary:
             out["%d,%d" % [row, col]] = true
     return out
 
-# Текстура должна покрывать гекс заливки ЦЕЛИКОМ: гекс, обрезанный её край,
-# — это и есть «заливка наполовину». Проверяем, что текстура содержит точный
-# габарит гекса (радиус по вертикали, 0.866 радиуса по горизонтали) с допуском
-# в 0.01 px на погрешность float. Запас в 1 px, который _build_town_fill_texture
-# даёт сверх габарита, на сглаживание стыков, в допуск не входит: он не
-# обязателен. Настоящий обрез — это десятки пикселей.
+# The texture must cover a fill hex ENTIRELY: a hex cut by its edge
+# — that is the "half fill". We check that the texture contains the exact
+# bounding box of the hex (radius vertically, 0.866 of the radius horizontally) with a tolerance
+# of 0.01 px for float error. The 1 px margin that _build_town_fill_texture
+# gives beyond the bounding box, for smoothing the joints, is not part of the tolerance: it is not
+# mandatory. A real cut is tens of pixels.
 func _check_texture_covers_hexes(main_map, r, state: Dictionary) -> void:
     var radius: float = main_map.HEX_RADIUS
     var half_w: float = radius * sqrt(3.0) * 0.5
@@ -193,9 +193,9 @@ func _check_texture_covers_hexes(main_map, r, state: Dictionary) -> void:
                 or c.y + radius + tol > r._influence_texture_origin.y + r._influence_texture_size.y:
             cut.append([int(h.row), int(h.col)])
     check(cut.is_empty(),
-        "текстура заливки не должна обрезать гекс пополам (обрезанных: %s)" % str(cut), state)
+        "the fill texture must not cut a hex in half (cut: %s)" % str(cut), state)
 
-# Принудительно пересобирает кэш рендера (как это делает кадр отрисовки).
+# Forcefully rebuilds the render cache (as the draw frame does).
 func _rebuild(r) -> void:
     r._ensure_town_influence_cache(r._get_visible_hex_range())
 
@@ -205,7 +205,7 @@ func _key_set(hexes: Array) -> Dictionary:
         out["%d,%d" % [int(h.row), int(h.col)]] = true
     return out
 
-# Ключи, которые есть только в a.
+# Keys that exist only in a.
 func _keys_only_in(a: Dictionary, b: Dictionary) -> Array:
     var out: Array = []
     for k in a.keys():

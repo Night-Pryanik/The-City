@@ -1,53 +1,53 @@
-# Headless-тест отображения качества: цена, цвет и доля уровня
+# Headless test of quality display: price, colour and level share
 # (data/qualities.json: price_multiplier, color).
 #   godot --headless --path . --script res://tests/test_quality_price.gd
 #
-# Качество влияет на цену множителем: цена единицы = база × price_multiplier
-# уровня, с округлением до целого числа монет. Проверки:
+# Quality affects the price with a multiplier: unit price = base × price_multiplier
+# of the level, rounded to a whole number of coins. Checks:
 #
-#  1. Поля price_multiplier и color: множитель есть у всех уровней и растёт
-#     по шкале качества (у обычного 1.0, у неизвестного уровня тоже 1.0 —
-#     мягкий дефолт); цвет задан у всех уровней массивом [R, G, B] 0…255,
-#     у уровней разный, get_quality_color отдаёт цвет из данных, а для
-#     неизвестного уровня — светло-серый дефолт.
-#  2. Доля уровня на складе: get_quality_share_percent считает процент от
-#     ОБЩЕГО количества (а не долю лучшего уровня от остальных);
-#     format_quality_share_text собирает «(33%/67%)» — по одному проценту на
-#     присутствующий уровень, от худшего к лучшему, каждый в своём цвете
-#     (BBCode). Пустая разбивка — пустая строка.
-#  3. Разбивка цены целочисленная и сходится с множителем на ВСЕХ товарах
-#     реестра, у которых есть цена: total == round(base × multiplier) и
-#     total >= base (качество не удешевляет товар).
-#  4. Формат строки цены уровня — «★★ = x1.30 = 5»: множитель с двумя
-#     знаками после x, итог целый, строка собирается для ЛЮБОГО уровня шкалы,
-#     включая обычное («★ = x1.00 = 4»). Строка склеивается из звёзд уровня и
-#     хвоста « = x1.30 = 5» (format_quality_price_tail), потому что тултип
-#     красит их разными цветами. Контрольный пример (товар с базовой ценой 4)
-#     сверяется с точной строкой. У товара без цены (science), без id и у
-#     несуществующего уровня строки нет.
-#  5. Внутренний рынок: цена единицы растёт с качеством, а доход за
-#     смешанный склад считается ПО КАЧЕСТВУ каждой списанной единицы
-#     (10 обычных + 5 хороших НЕ равно 15 × цена обычного), пустая
-#     разбивка — доход 0.
-#  6. Средний множитель по складу (для планового дохода) — взвешенный по
-#     разбивке city_quality_detail; без разбивки — 1.0.
-#  7. Рендер тултипа качества (show_quality_tooltip): заголовок
-#     «Уровни качества ресурса: N», строки уровней «★★ Хорошее: 5 (30%)» с
-#     количеством и долей, звёзды в цвете уровня. Цен в нём нет вовсе:
-#     полный список цен живёт в тултипе строки.
-#  8. Тултип СТРОКИ на вкладке «Ресурсы» (show_flow_tooltip): под базовой
-#     строкой «Цена: N» (золотой) идёт лестница «★★ = x1.30 = 5» по ВСЕМ
-#     уровням, которые РЕАЛЬНО лежат на складе (разбивка
-#     city_quality_detail), от худшего к лучшему. Строка лестницы ДВУХЦВЕТНАЯ:
-#     звёзды — в цвете своего уровня (data/qualities.json), расчёт цены —
-#     золотым (ui_helpers.PRICE_TEXT_COLOR); обе части совпадают с
-#     format_quality_price_scale_rows и не схлопнуты по ширине. Уровней,
-#     которых на складе нет (в т.ч. при пустой разбивке), строк нет — как и
-#     у товара без цены.
+#  1. Fields price_multiplier and color: the multiplier exists for every level and grows
+#     along the quality scale (1.0 for common, and 1.0 for an unknown level too —
+#     a soft default); colour is set for every level as an array [R, G, B] 0…255,
+#     differs between levels, get_quality_color returns the colour from the data, and for
+#     an unknown level — a light-grey default.
+#  2. Level share in storage: get_quality_share_percent computes the percentage of the
+#     TOTAL amount (not the share of the best level against the rest);
+#     format_quality_share_text builds "(33%/67%)" — one percentage per
+#     present level, from worst to best, each in its own colour
+#     (BBCode). An empty breakdown — an empty string.
+#  3. The price breakdown is integral and matches the multiplier on ALL goods
+#     in the registry that have a price: total == round(base × multiplier) and
+#     total >= base (quality does not make goods cheaper).
+#  4. Level price line format — "★★ = x1.30 = 5": the multiplier with two
+#     digits after x, the total integral, the line is built for ANY level of the scale,
+#     including common ("★ = x1.00 = 4"). The line is glued from the level stars and
+#     the tail " = x1.30 = 5" (format_quality_price_tail), because the tooltip
+#     colours them differently. The reference example (goods with base price 4)
+#     is compared against the exact line. For goods without a price (science), without id and for
+#     a nonexistent level there is no line.
+#  5. Domestic market: the unit price grows with quality, and the income for
+#     a mixed storage is computed BY THE QUALITY of each written-off unit
+#     (10 common + 5 fine is NOT equal to 15 × the common price), an empty
+#     breakdown — income 0.
+#  6. Average multiplier over storage (for planned income) — weighted by
+#     the city_quality_detail breakdown; without a breakdown — 1.0.
+#  7. Quality tooltip render (show_quality_tooltip): the header
+#     "Resource quality levels: N", level rows "★★ Fine: 5 (30%)" with
+#     the count and share, the stars in the level colour. There are no prices in it at all:
+#     the full price list lives in the row tooltip.
+#  8. ROW tooltip on the "Resources" tab (show_flow_tooltip): under the base
+#     line "Price: N" (gold) comes the ladder "★★ = x1.30 = 5" over ALL
+#     levels that ACTUALLY sit in storage (the
+#     city_quality_detail breakdown), from worst to best. The ladder line is TWO-COLOURED:
+#     the stars — in their level colour (data/qualities.json), the price calculation —
+#     gold (ui_helpers.PRICE_TEXT_COLOR); both parts match
+#     format_quality_price_scale_rows and are not collapsed by width. For levels
+#     that are not in storage (incl. with an empty breakdown), there are no lines — as
+#     for goods without a price.
 extends SceneTree
 
-# Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
-# молчание. Подробности — в tests/watchdog.gd.
+# Hang watchdog: without it a broken _run() coroutine looks like eternal
+# silence from the outside. Details — in tests/watchdog.gd.
 const WATCHDOG = preload("res://tests/watchdog.gd")
 
 var _failed := false
@@ -57,92 +57,92 @@ func _initialize():
     _run()
 
 func _run() -> void:
-    # Автозагрузки берём через дерево сцены: в режиме --script имена
-    # GameData/CityData недоступны на этапе компиляции этого файла.
-    # new_game() поднимает GameData.load_all_data() и CityData.setup().
+    # Autoloads are taken through the scene tree: in --script mode the names
+    # GameData/CityData are unavailable at the compilation stage of this file.
+    # new_game() brings up GameData.load_all_data() and CityData.setup().
     var save_manager = get_root().get_node("SaveManager")
     save_manager.new_game()
     var gd = get_root().get_node("GameData")
     var city = get_root().get_node("CityData")
 
     var levels: Array = gd.get_quality_levels()
-    check(levels.size() == 4, "ожидалось 4 уровня качества, получено %d" % levels.size())
+    check(levels.size() == 4, "expected 4 quality levels, got %d" % levels.size())
 
-    # --- 1. Поле price_multiplier: есть у всех, растёт по шкале ---
+    # --- 1. Field price_multiplier: exists for all, grows along the scale ---
     var prev_mult := 0.0
     for qid in levels:
         var qd: Dictionary = gd.get_quality_data(qid)
         check(qd.has("price_multiplier"),
-            "у уровня «%s» нет поля price_multiplier" % qid)
+            "level \"%s\" has no price_multiplier field" % qid)
         var m := float(qd.get("price_multiplier", 0.0))
         check(m > prev_mult,
-            "множитель уровня «%s» (%.2f) должен быть больше предыдущего (%.2f)"
+            "the multiplier of level \"%s\" (%.2f) must be greater than the previous one (%.2f)"
             % [qid, m, prev_mult])
         prev_mult = m
     check(is_equal_approx(gd.get_quality_price_multiplier("common"), 1.0),
-        "у обычного качества множитель должен быть 1.0")
+        "the common quality multiplier must be 1.0")
     check(is_equal_approx(gd.get_quality_price_multiplier("no_such_quality"), 1.0),
-        "для неизвестного уровня множитель должен быть 1.0 (мягкий дефолт)")
+        "for an unknown level the multiplier must be 1.0 (soft default)")
 
-    # Поле color: у всех уровней задан массивом [R, G, B] в диапазоне
-    # 0…255 (та же форма, что у покрытий/улучшений/ресурсов), цвета уровней
-    # попарно разные — иначе строки разбивки и тултипы не отличить друг от
-    # друга, — а get_quality_color отдаёт ровно цвет из данных.
+    # Field color: set for all levels as an array [R, G, B] in the range
+    # 0…255 (the same shape as for tiles/improvements/resources), the level colours
+    # are pairwise different — otherwise breakdown lines and tooltips could not be told
+    # apart, — and get_quality_color returns exactly the colour from the data.
     var seen_colors := {}
     for qid in levels:
         var qd_color = gd.get_quality_data(qid).get("color", null)
         check(qd_color is Array and qd_color.size() == 3,
-            "у уровня «%s» нет поля color в виде массива [R, G, B]: %s" % [qid, str(qd_color)])
+            "level \"%s\" has no color field as an array [R, G, B]: %s" % [qid, str(qd_color)])
         if not (qd_color is Array and qd_color.size() == 3):
             continue
         for comp in qd_color:
             check(float(comp) >= 0.0 and float(comp) <= 255.0,
-                "компонента цвета уровня «%s» вне диапазона 0…255: %s" % [qid, str(comp)])
+                "the colour component of level \"%s\" is out of the 0…255 range: %s" % [qid, str(comp)])
         var hex: String = gd.get_quality_color(qid).to_html(false)
         check(hex == "%02x%02x%02x" % [int(qd_color[0]), int(qd_color[1]), int(qd_color[2])],
-            "get_quality_color должен отдавать цвет из данных уровня «%s»: %s вместо %02x%02x%02x"
+            "get_quality_color must return the colour from the data of level \"%s\": %s instead of %02x%02x%02x"
             % [qid, hex, int(qd_color[0]), int(qd_color[1]), int(qd_color[2])])
         check(not seen_colors.has(hex),
-            "цвет уровня «%s» совпал с цветом уровня «%s» (%s) — уровни должны различаться цветом"
+            "the colour of level \"%s\" matched the colour of level \"%s\" (%s) — levels must differ in colour"
             % [qid, str(seen_colors.get(hex, "")), hex])
         seen_colors[hex] = qid
-    # Мягкий дефолт для уровня без поля color: неизвестный id и пустая строка
-    # рисуются светло-серым (продублировано GameData.QUALITY_COLOR_FALLBACK).
+    # Soft default for a level without a color field: an unknown id and an empty string
+    # are drawn light-grey (duplicated in GameData.QUALITY_COLOR_FALLBACK).
     check(gd.get_quality_color("no_such_quality") == Color(0.8, 0.8, 0.8),
-        "для неизвестного уровня цвет должен быть светло-серым дефолтом")
+        "for an unknown level the colour must be the light-grey default")
     check(gd.get_quality_color("") == Color(0.8, 0.8, 0.8),
-        "для пустого id уровня цвет должен быть светло-серым дефолтом")
+        "for an empty level id the colour must be the light-grey default")
 
-    # --- 2. Доля уровня на складе: проценты и строка разбивки ---
-    # Проценты считаются от ОБЩЕГО количества товара: разбивка 30/10/60 даёт
-    # 30/10/60 процентов, а не «доли от лучшего уровня» (тогда получилось бы
-    # 100/33/200 — именно это и показывала строка списка до переделки).
+    # --- 2. Level share in storage: percentages and the breakdown string ---
+    # Percentages are computed from the TOTAL amount of goods: a 30/10/60 breakdown gives
+    # 30/10/60 percent, not "shares of the best level" (that would give
+    # 100/33/200 — which is exactly what the list row showed before the rework).
     var share_breakdown := {"common": 30, "fine": 10, "perfect": 60}
     check(gd.get_quality_share_percent(30, share_breakdown) == 30,
-        "доля обычного уровня (30 из 100) должна быть 30 процентов")
+        "the common level share (30 out of 100) must be 30 percent")
     check(gd.get_quality_share_percent(10, share_breakdown) == 10,
-        "доля хорошего уровня (10 из 100) должна быть 10 процентов")
+        "the fine level share (10 out of 100) must be 10 percent")
     check(gd.get_quality_share_percent(60, share_breakdown) == 60,
-        "доля превосходного уровня (60 из 100) должна быть 60 процентов")
+        "the perfect level share (60 out of 100) must be 60 percent")
     check(gd.get_quality_share_percent(5, {}) == 0,
-        "на пустой разбивке доля должна быть 0")
+        "on an empty breakdown the share must be 0")
     check(gd.get_quality_share_percent(0, {"common": 0}) == 0,
-        "на нулевой разбивке доля должна быть 0")
-    # Сумма долей — около 100%: проценты округляются по отдельности, и
-    # «допиливать» их до ровных 100% было бы враньём о дробных долях.
+        "on a zero breakdown the share must be 0")
+    # The sum of shares is about 100%: the percentages are rounded separately, and
+    # "trimming" them to an even 100% would be a lie about fractional shares.
     var share_sum := 0
     for qid in share_breakdown:
         share_sum += gd.get_quality_share_percent(int(share_breakdown[qid]), share_breakdown)
     check(abs(share_sum - 100) <= 1,
-        "сумма долей по разбивке должна быть около 100%%, получено %d" % share_sum)
+        "the sum of shares over the breakdown must be about 100%%, got %d" % share_sum)
 
-    # Строка разбивки для строки списка: по одному проценту на присутствующий
-    # уровень, от худшего к лучшему, каждый обёрнут в BBCode-цвет своего
-    # уровня: «(30%/10%/60%)» с «[color=#a0a0a0]30%[/color]» и так далее.
-    # Сверяем строкой целиком — так проверяются сразу и порядок уровней, и их
-    # проценты, и цвета. Регулярное выражение здесь не используется намеренно:
-    # шаблон с '#' внутри (это тег цвета BBCode) в этой сборке Godot ведёт себя
-    # неочевидно, а точное сравнение проверяет строго.
+    # Breakdown string for the list row: one percentage per present
+    # level, from worst to best, each wrapped in the BBCode colour of its
+    # level: "(30%/10%/60%)" with "[color=#a0a0a0]30%[/color]" and so on.
+    # We compare the whole string — this checks at once both the level order and their
+    # percentages and colours. A regular expression is deliberately not used here:
+    # a pattern with '#' inside (this is a BBCode colour tag) behaves
+    # non-obviously in this Godot build, and an exact comparison checks strictly.
     var share_order := ["common", "fine", "perfect"]
     var share_parts: Array = []
     for qid in share_order:
@@ -151,23 +151,23 @@ func _run() -> void:
             gd.get_quality_share_percent(int(share_breakdown[qid]), share_breakdown)])
     var share_text: String = gd.format_quality_share_text(share_breakdown)
     check(share_text == "(%s)" % "/".join(share_parts),
-        "строка разбивки должна быть «(%s)», получено «%s»"
+        "the breakdown string must be \"(%s)\", got \"%s\""
         % ["/".join(share_parts), share_text])
-    # Уровня, которого на складе нет (исключительное), в строке быть не должно.
+    # A level that is not in storage (exceptional) must not be in the string.
     check(not share_text.contains(gd.get_quality_color("exceptional").to_html(false)),
-        "уровня, которого нет на складе (исключительное), в строке разбивки быть не должно: «%s»"
+        "a level that is not in storage (exceptional) must not be in the breakdown string: \"%s\""
         % share_text)
-    # Только обычное качество на складе — «(100%)»; пустая и нулевая разбивка —
-    # пустая строка (метка списка по ней прячется).
+    # Only common quality in storage — "(100%)"; an empty and a zero breakdown —
+    # an empty string (the list label hides on it).
     var single_share: String = gd.format_quality_share_text({"common": 40})
     check(single_share.contains("100%"),
-        "разбивка только из обычного качества должна дать «(100%%)»: «%s»" % single_share)
+        "a breakdown of common quality only must give \"(100%%)\": \"%s\"" % single_share)
     check(gd.format_quality_share_text({}).is_empty(),
-        "на пустой разбивке строка разбивки должна быть пустой")
+        "on an empty breakdown the breakdown string must be empty")
     check(gd.format_quality_share_text({"fine": 0}).is_empty(),
-        "на разбивке из нулей строка разбивки должна быть пустой")
+        "on a breakdown of zeros the breakdown string must be empty")
 
-    # --- 3. Разбивка цены целочисленная и сходится на всех товарах ---
+    # --- 3. The price breakdown is integral and matches on all goods ---
     var checked_prices := 0
     for pid in gd.products:
         if gd.get_base_price(pid) <= 0.0:
@@ -179,129 +179,129 @@ func _run() -> void:
             var total := int(d["total"])
             var mult := float(d["multiplier"])
             check(total == int(round(float(base) * mult)),
-                "итоговая цена %s/%s не равна round(база × множитель)" % [pid, qid])
-            # Неокруглённый хелпер и разбивка для тултипа должны сходиться
-            # после округления — иначе тултип показывал бы одну цену, а
-            # внутренний рынок платил бы по другой.
+                "the total price %s/%s is not equal to round(base × multiplier)" % [pid, qid])
+            # The unrounded helper and the tooltip breakdown must match
+            # after rounding — otherwise the tooltip would show one price and the
+            # domestic market would pay at another.
             check(int(round(gd.get_price_for_quality(pid, qid))) == total,
-                "get_price_for_quality расходится с разбивкой цены (%s/%s)" % [pid, qid])
+                "get_price_for_quality diverges from the price breakdown (%s/%s)" % [pid, qid])
             check(total >= base,
-                "качество не должно удешевлять товар (%s/%s: %d < %d)" % [pid, qid, total, base])
+                "quality must not make goods cheaper (%s/%s: %d < %d)" % [pid, qid, total, base])
             if qid == "common":
                 check(total == base,
-                    "у обычного качества итог должен совпадать с базой (%s)" % pid)
+                    "for common quality the total must match the base (%s)" % pid)
     check(checked_prices > 100,
-        "проверено слишком мало товаров с ценой: %d" % checked_prices)
+        "too few goods with a price checked: %d" % checked_prices)
 
 
-    # --- 4. Формат строки цены уровня ---
-    # Формат: «★ = x1.00 = 4» / «★★ = x1.30 = 5» — звёзды уровня, множитель с
-    # двумя знаками после x и целый итог. Строится для ЛЮБОГО уровня шкалы,
-    # включая самый низкий: раньше он отбрасывался, и у склада, где лежит
-    # только обычное качество, лестницы не было вовсе.
+    # --- 4. Level price line format ---
+    # Format: "★ = x1.00 = 4" / "★★ = x1.30 = 5" — the level stars, the multiplier with
+    # two digits after x and an integral total. Built for ANY level of the scale,
+    # including the lowest: it used to be dropped, and a storage holding
+    # only common quality had no ladder at all.
     var line_re := RegEx.new()
     var err := line_re.compile("^★+ = x[0-9]+\\.[0-9]{2} = [0-9]+$")
-    check(err == OK, "не скомпилировалась проверка формата строки: %d" % err)
-    # Контрольный товар с базовой ценой 4 (в данных таких много).
+    check(err == OK, "the line format check did not compile: %d" % err)
+    # Reference goods with base price 4 (there are many such in the data).
     var sample_id := ""
     for pid in gd.products:
         if is_equal_approx(gd.get_base_price(pid), 4.0):
             sample_id = pid
             break
-    check(sample_id != "", "в реестре нет товара с базовой ценой 4")
+    check(sample_id != "", "there is no goods with base price 4 in the registry")
     for qid in levels:
         var line: String = gd.format_quality_price_line(sample_id, qid)
         var d: Dictionary = gd.get_price_breakdown_for_quality(sample_id, qid)
         check(line_re.search(line) != null,
-            "строка цены не по формату «★★ = x1.30 = 5»: «%s»" % line)
+            "the price line does not match the format \"★★ = x1.30 = 5\": \"%s\"" % line)
         check(line.begins_with(gd.get_quality_stars(qid) + " = "),
-            "строка должна начинаться со звёзд уровня: «%s»" % line)
+            "the line must begin with the level stars: \"%s\"" % line)
         check(line.contains("= x%s =" % "%.2f" % float(d["multiplier"])),
-            "в строке должен быть множитель уровня: «%s»" % line)
+            "the line must contain the level multiplier: \"%s\"" % line)
         check(line.ends_with("= %d" % int(d["total"])),
-            "в строке должен быть итог round(база × множитель): «%s»" % line)
-        # Нижний уровень шкалы — не исключение: множитель 1.0 тоже показываем.
-        check(line != "", "у уровня «%s» строка цены не должна быть пустой" % qid)
-    # Хвост строки — всё, КРОМЕ звёзд (« = x1.30 = 5»): именно его тултип строки
-    # красит золотым, а звёзды — в цвет уровня. Формат хвоста проверяется
-    # отдельно, и строка целиком обязана собираться из звёзд и хвоста без
-    # единого разночтения — иначе покрашенные части разъедутся с текстом.
+            "the line must contain the total round(base × multiplier): \"%s\"" % line)
+        # The lowest level of the scale is no exception: the 1.0 multiplier is shown too.
+        check(line != "", "for level \"%s\" the price line must not be empty" % qid)
+    # The line tail is everything EXCEPT the stars (" = x1.30 = 5"): it is what the row tooltip
+    # colours gold, and the stars — in the level colour. The tail format is checked
+    # separately, and the whole line must be assembled from the stars and the tail without
+    # a single discrepancy — otherwise the coloured parts would drift from the text.
     var tail_re := RegEx.new()
     var tail_err := tail_re.compile("^ = x[0-9]+\\.[0-9]{2} = [0-9]+$")
-    check(tail_err == OK, "не скомпилировалась проверка формата хвоста: %d" % tail_err)
+    check(tail_err == OK, "the tail format check did not compile: %d" % tail_err)
     for qid in levels:
         var tail: String = gd.format_quality_price_tail(sample_id, qid)
         var q_line: String = gd.format_quality_price_line(sample_id, qid)
         check(tail_re.search(tail) != null,
-            "хвост строки цены не по формату « = x1.30 = 5»: «%s»" % tail)
+            "the price line tail does not match the format \" = x1.30 = 5\": \"%s\"" % tail)
         check(q_line == gd.get_quality_stars(qid) + tail,
-            "строка должна собираться из звёзд и хвоста: «%s» вместо «%s%s»"
+            "the line must be assembled from the stars and the tail: \"%s\" instead of \"%s%s\""
             % [q_line, gd.get_quality_stars(qid), tail])
     check(gd.format_quality_price_tail(sample_id, "fine") == " = x1.30 = 5",
-        "контрольный пример хвоста хорошего уровня: «%s»"
+        "reference example of the fine level tail: \"%s\""
         % gd.format_quality_price_tail(sample_id, "fine"))
     check(gd.format_quality_price_tail(sample_id, "exceptional") == " = x1.75 = 7",
-        "контрольный пример хвоста исключительного уровня (4 × 1.75 = 7): «%s»"
+        "reference example of the exceptional level tail (4 × 1.75 = 7): \"%s\""
         % gd.format_quality_price_tail(sample_id, "exceptional"))
     check(gd.format_quality_price_tail("science", "perfect") == "",
-        "у товара без цены хвост не показывается")
+        "for goods without a price the tail is not shown")
     check(gd.format_quality_price_tail(sample_id, "no_such_quality") == "",
-        "у несуществующего уровня хвост не показывается")
-    # Точные контрольные примеры: цена 4, обычное/хорошее/превосходное.
+        "for a nonexistent level the tail is not shown")
+    # Exact reference examples: price 4, common/fine/perfect.
     check(gd.format_quality_price_line(sample_id, "common") == "★ = x1.00 = 4",
-        "контрольный пример обычного уровня: ожидалось «★ = x1.00 = 4», получено «%s»"
+        "reference example of the common level: expected \"★ = x1.00 = 4\", got \"%s\""
         % gd.format_quality_price_line(sample_id, "common"))
     check(gd.format_quality_price_line(sample_id, "fine") == "★★ = x1.30 = 5",
-        "контрольный пример хорошего уровня: ожидалось «★★ = x1.30 = 5», получено «%s»"
+        "reference example of the fine level: expected \"★★ = x1.30 = 5\", got \"%s\""
         % gd.format_quality_price_line(sample_id, "fine"))
     check(gd.format_quality_price_line(sample_id, "perfect") == "★★★★ = x2.30 = 9",
-        "контрольный пример превосходного уровня: ожидалось «★★★★ = x2.30 = 9», получено «%s»"
+        "reference example of the perfect level: expected \"★★★★ = x2.30 = 9\", got \"%s\""
         % gd.format_quality_price_line(sample_id, "perfect"))
-    # Товар без цены (псевдоресурс science) строки не даёт.
+    # Goods without a price (the science pseudo-resource) gives no line.
     check(gd.format_quality_price_line("science", "perfect") == "",
-        "у товара без цены строка цены не показывается")
+        "for goods without a price the price line is not shown")
     check(gd.format_quality_price_line("", "fine") == "",
-        "без id товара строка цены не показывается")
-    # Уровня нет в шкале — показывать нечего: без звёзд строку не собрать.
+        "without a goods id the price line is not shown")
+    # The level is not in the scale — nothing to show: the line cannot be built without stars.
     check(gd.format_quality_price_line(sample_id, "no_such_quality") == "",
-        "у несуществующего уровня строка цены не показывается")
+        "for a nonexistent level the price line is not shown")
     check(gd.format_quality_price_line(sample_id, "") == "",
-        "у пустого уровня строка цены не показывается")
+        "for an empty level the price line is not shown")
 
-    # --- 5. Внутренний рынок: цена и доход по качеству ---
+    # --- 5. Domestic market: price and income by quality ---
     var base_market: int = city.get_internal_market_price(sample_id)
-    check(base_market > 0, "у контрольного товара должна быть рыночная цена")
+    check(base_market > 0, "the reference goods must have a market price")
     check(city.get_internal_market_price(sample_id, "common") == base_market,
-        "обычное качество не должно менять цену внутреннего рынка")
+        "common quality must not change the domestic market price")
     var fine_market: int = city.get_internal_market_price(sample_id, "fine")
     var perfect_market: int = city.get_internal_market_price(sample_id, "perfect")
     check(fine_market == int(round(float(base_market) * gd.get_quality_price_multiplier("fine"))),
-        "цена хорошего качества не равна round(базовая рыночная × множитель)")
+        "the fine quality price is not equal to round(base market × multiplier)")
     check(perfect_market > fine_market and fine_market > base_market,
-        "цена внутреннего рынка должна расти с качеством (%d / %d / %d)"
+        "the domestic market price must grow with quality (%d / %d / %d)"
         % [base_market, fine_market, perfect_market])
     var mixed_income: int = city.get_internal_market_income(
         sample_id, {"common": 10, "fine": 5})
     check(mixed_income == 10 * base_market + 5 * fine_market,
-        "доход за смешанный склад должен считаться по качеству каждой единицы: %d" % mixed_income)
+        "the income for a mixed storage must be computed by the quality of each unit: %d" % mixed_income)
     check(mixed_income > 15 * base_market,
-        "смешанный склад должен приносить больше, чем 15 единиц обычного качества")
+        "a mixed storage must yield more than 15 units of common quality")
     check(city.get_internal_market_income(sample_id, {}) == 0,
-        "пустая разбивка списанного — доход 0")
+        "an empty breakdown of written-off — income 0")
 
-    # --- 6. Средний множитель по складу (для планового дохода) ---
+    # --- 6. Average multiplier over storage (for planned income) ---
     city.city_quality_detail[sample_id] = {"common": 10, "fine": 5}
     var expected_avg := (10.0 + 5.0 * float(gd.get_quality_price_multiplier("fine"))) / 15.0
     check(is_equal_approx(city.get_stock_quality_price_multiplier(sample_id), expected_avg),
-        "средний множитель по складу должен быть взвешен по разбивке")
+        "the average multiplier over storage must be weighted by the breakdown")
     city.city_quality_detail[sample_id] = {}
     check(is_equal_approx(city.get_stock_quality_price_multiplier(sample_id), 1.0),
-        "без разбивки по качеству средний множитель должен быть 1.0")
+        "without a quality breakdown the average multiplier must be 1.0")
 
-    # --- 7. Рендер тултипа качества ---
+    # --- 7. Quality tooltip render ---
     await _check_quality_tooltip_render(gd)
 
-    # --- 8. Рендер тултипа строки вкладки «Ресурсы» ---
+    # --- 8. Render of the row tooltip on the "Resources" tab ---
     await _check_flow_tooltip_price_render(gd, sample_id)
 
     if _failed:
@@ -311,10 +311,10 @@ func _run() -> void:
         print("QUALITY PRICE TEST OK")
         quit(0)
 
-# Проверяет тултип разбора качества (show_quality_tooltip): заголовок
-# «Уровни качества ресурса: N», строки уровней «★★ Хорошее: 5 (29%)» с
-# количеством и долей, звёзды в цвете уровня — и ни одной строки цены:
-# полный список цен живёт в тултипе строки (см. _check_flow_tooltip_price_render).
+# Checks the quality breakdown tooltip (show_quality_tooltip): the header
+# "Resource quality levels: N", the level rows "★★ Fine: 5 (29%)" with
+# the count and share, the stars in the level colour — and not a single price line:
+# the full price list lives in the row tooltip (see _check_flow_tooltip_price_render).
 func _check_quality_tooltip_render(gd) -> void:
     var holder := Control.new()
     get_root().add_child(holder)
@@ -325,7 +325,7 @@ func _check_quality_tooltip_render(gd) -> void:
     await process_frame
 
     var breakdown := {"common": 10, "fine": 5, "perfect": 2}
-    ui.show_quality_tooltip(Vector2(50, 50), "Товар", breakdown)
+    ui.show_quality_tooltip(Vector2(50, 50), "Goods", breakdown)
     await process_frame
 
     var header_text := ""
@@ -333,9 +333,9 @@ func _check_quality_tooltip_render(gd) -> void:
     var star_colors: Array = []
     var header_labels := 0
     for child in ui.quality_tooltip_vbox.get_children():
-        # Строка уровня качества — HBoxContainer: первый потомок звёзды,
-        # второй «Имя: N (P%)». Кроме заголовка Label-строк в тултипе быть
-        # не должно: раньше под каждым уровнем рисовалась «  Цена: …».
+        # A quality level row is an HBoxContainer: the first child is the stars,
+        # the second "Name: N (P%)". Apart from the header there must be no Label
+        # rows in the tooltip: each level used to draw "  Price: …" under it.
         if child is HBoxContainer:
             var stars_label := child.get_child(0) as Label
             var name_label := child.get_child(1) as Label
@@ -344,17 +344,17 @@ func _check_quality_tooltip_render(gd) -> void:
         elif child is Label:
             header_text = str((child as Label).text)
             header_labels += 1
-    check(header_text == "Уровни качества ресурса: Товар",
-        "заголовок тултипа качества должен быть «Уровни качества ресурса: Товар», получено «%s»"
+    check(header_text == "Resource quality levels: Goods",
+        "the quality tooltip header must be \"Resource quality levels: Goods\", got \"%s\""
         % header_text)
     check(header_labels == 1,
-        "в тултипе качества должен быть только заголовок (Label-строк: %d) — цен в нём нет"
+        "the quality tooltip must have only the header (Label rows: %d) — there are no prices in it"
         % header_labels)
     check(level_texts.size() == 3,
-        "тултип должен показать 3 строки качества, показано %d" % level_texts.size())
+        "the tooltip must show 3 quality rows, shown %d" % level_texts.size())
 
-    # Строки уровней — от худшего к лучшему: количество и доля от общего
-    # количества товара (10 + 5 + 2 = 17 → 59% / 29% / 12%).
+    # The level rows go from worst to best: the count and share of the total
+    # amount of goods (10 + 5 + 2 = 17 → 59% / 29% / 12%).
     var expected_order := ["common", "fine", "perfect"]
     for i in range(mini(level_texts.size(), expected_order.size())):
         var qid: String = expected_order[i]
@@ -363,111 +363,111 @@ func _check_quality_tooltip_render(gd) -> void:
             gd.get_quality_name(qid), count,
             gd.get_quality_share_percent(count, breakdown)]
         check(str(level_texts[i]) == expected_text,
-            "строка уровня №%d должна быть «%s», получено «%s»"
+            "level row #%d must be \"%s\", got \"%s\""
             % [i, expected_text, str(level_texts[i])])
-        # Звёзды строки покрашены в цвет уровня (data/qualities.json, color).
+        # The row stars are coloured in the level colour (data/qualities.json, color).
         check(star_colors[i] == gd.get_quality_color(qid),
-            "звёзды уровня «%s» должны быть в его цвете: %s вместо %s"
+            "the stars of level \"%s\" must be in its colour: %s instead of %s"
             % [qid, str(star_colors[i]), str(gd.get_quality_color(qid))])
-    # Сумма показанных долей — около 100%: доли берутся от общего количества,
-    # а не от лучшего уровня (тогда вышло бы 100% / 29% / 12% + «превосходных
-    # больше, чем всех остальных»).
+    # The sum of the shown shares is about 100%: the shares are taken from the total amount,
+    # not from the best level (that would give 100% / 29% / 12% + "more perfect
+    # than all the rest").
     var pct_sum := 0
     for qid in breakdown:
         pct_sum += gd.get_quality_share_percent(int(breakdown[qid]), breakdown)
     check(abs(pct_sum - 100) <= 1,
-        "сумма долей в тултипе должна быть около 100%%, получено %d" % pct_sum)
+        "the sum of shares in the tooltip must be about 100%%, got %d" % pct_sum)
 
-    # Пустая разбивка — остаётся только заголовок: строк уровней нет.
-    ui.show_quality_tooltip(Vector2(50, 50), "Товар", {})
+    # An empty breakdown — only the header remains: there are no level rows.
+    ui.show_quality_tooltip(Vector2(50, 50), "Goods", {})
     await process_frame
     var rows_empty := 0
     for child in ui.quality_tooltip_vbox.get_children():
         if child is HBoxContainer:
             rows_empty += 1
     check(rows_empty == 0,
-        "при пустой разбивке строк уровней быть не должно, показано %d" % rows_empty)
+        "with an empty breakdown there must be no level rows, shown %d" % rows_empty)
 
     holder.queue_free()
 
-# Проверяет лестницу цен по качеству в тултипе СТРОКИ вкладки «Ресурсы»
-# (ui_helpers.show_flow_tooltip): под базовой «Цена: N» идёт строка на каждый
-# уровень, который РЕАЛЬНО лежит на складе (разбивка city_quality_detail), в
-# формате «★★ = x1.30 = 5» и в цвете своего уровня. Уровней, которых на
-# складе нет, строк быть не должно — показывать цену несуществующего на
-# складе товара незачем.
+# Checks the quality price ladder in the ROW tooltip of the "Resources" tab
+# (ui_helpers.show_flow_tooltip): under the base "Price: N" comes a line for every
+# level that ACTUALLY sits in storage (the city_quality_detail breakdown), in
+# the format "★★ = x1.30 = 5" and in its own level colour. For levels that are not
+# in storage there must be no lines — there is no point showing the price of goods
+# that are not in storage.
 func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
-    # Формат строки лестницы — тот же, что у format_quality_price_line.
+    # The ladder line format is the same as format_quality_price_line.
     var line_re := RegEx.new()
     var err := line_re.compile("^★+ = x[0-9]+\\.[0-9]{2} = [0-9]+$")
-    check(err == OK, "не скомпилировалась проверка формата строки: %d" % err)
+    check(err == OK, "the line format check did not compile: %d" % err)
 
-    # Пустая разбивка (старый сейв или товар без качества) — ни одной строки.
+    # An empty breakdown (an old save or goods without quality) — not a single line.
     check(gd.format_quality_price_scale_rows(sample_id, {}).is_empty(),
-        "при пустой разбивке строк цен по качеству быть не должно")
+        "with an empty breakdown there must be no quality price lines")
     check(gd.format_quality_price_scale_rows(sample_id).is_empty(),
-        "без разбивки (аргумент по умолчанию) строк быть не должно")
+        "without a breakdown (the default argument) there must be no lines")
 
-    # Только обычное качество на складе: строка ЕСТЬ («★ = x1.00 = 4»). Раньше
-    # нижний уровень шкалы отбрасывался, и у такого склада блока не было.
+    # Only common quality in storage: the line IS there ("★ = x1.00 = 4"). It used
+    # to be that the lowest level of the scale was dropped, and such a storage had no block.
     var common_only: Array = gd.format_quality_price_scale_rows(sample_id, {"common": 40})
     check(common_only.size() == 1
             and str((common_only[0] as Dictionary)["qid"]) == "common",
-        "при одном лишь обычном качестве должна быть ровно одна строка уровня common: %s"
+        "with common quality only there must be exactly one common level row: %s"
         % str(common_only))
 
-    # Все три уровня на складе: показаны РОВНО они, исключительного (которого
-    # на складе нет) — нет. Порядок — от худшего к лучшему.
+    # All three levels in storage: EXACTLY they are shown, the exceptional one (which
+    # is not in storage) — not. The order is from worst to best.
     var breakdown := {"common": 40, "fine": 12, "perfect": 3}
     var rows: Array = gd.format_quality_price_scale_rows(sample_id, breakdown)
     check(rows.size() == 3,
-        "строк должно быть 3 (common, fine, perfect), показано %d: %s"
+        "there must be 3 rows (common, fine, perfect), shown %d: %s"
         % [rows.size(), str(rows)])
     var expected_order := ["common", "fine", "perfect"]
     for i in range(mini(rows.size(), expected_order.size())):
         var qid: String = expected_order[i]
         var row: Dictionary = rows[i]
         check(str(row["qid"]) == qid,
-            "строка №%d должна быть уровня «%s», показано «%s»" % [i, qid, str(row["qid"])])
-        # Строка совпадает с тем, что даёт format_quality_price_line: блок
-        # собран той же функцией, поэтому сверяем посимвольно.
+            "row #%d must be of level \"%s\", shown \"%s\"" % [i, qid, str(row["qid"])])
+        # The line matches what format_quality_price_line gives: the block is
+        # assembled by the same function, so we compare character by character.
         check(str(row["text"]) == gd.format_quality_price_line(sample_id, qid),
-            "строка №%d не совпала с расчётной: «%s» вместо «%s»"
+            "row #%d did not match the computed one: \"%s\" instead of \"%s\""
             % [i, str(row["text"]), gd.format_quality_price_line(sample_id, qid)])
         check(line_re.search(str(row["text"])) != null,
-            "строка №%d не по формату лестницы «★★ = x1.30 = 5»: «%s»" % [i, str(row["text"])])
-        # Части строки отдаются ОТДЕЛЬНО: тултип красит звёзды в цвет уровня, а
-        # хвост расчёта — золотым, и обе части обязаны в точности сходиться с
-        # готовой строкой (иначе подсвеченное не совпадёт с текстом).
+            "row #%d does not match the ladder format \"★★ = x1.30 = 5\": \"%s\"" % [i, str(row["text"])])
+        # The line parts are returned SEPARATELY: the tooltip colours the stars in the level colour and
+        # the calculation tail — gold, and both parts must match the
+        # ready line exactly (otherwise the highlighted part would not match the text).
         check(str(row["stars"]) == gd.get_quality_stars(qid),
-            "звёзды строки №%d должны быть звёздами уровня «%s»: «%s» вместо «%s»"
+            "the stars of row #%d must be the stars of level \"%s\": \"%s\" instead of \"%s\""
             % [i, qid, str(row["stars"]), gd.get_quality_stars(qid)])
         check(str(row["tail"]) == gd.format_quality_price_tail(sample_id, qid),
-            "хвост строки №%d не совпал с расчётным: «%s» вместо «%s»"
+            "the tail of row #%d did not match the computed one: \"%s\" instead of \"%s\""
             % [i, str(row["tail"]), gd.format_quality_price_tail(sample_id, qid)])
         check(str(row["text"]) == str(row["stars"]) + str(row["tail"]),
-            "строка №%d должна склеиваться из звёзд и хвоста: «%s»" % [i, str(row["text"])])
-    # Исключительного (★★★) на складе нет. Проверять по подстроке звёзд
-    # нельзя: «★★★» входит в «★★★★», поэтому сверяем id уровня в строке.
+            "row #%d must be glued from the stars and the tail: \"%s\"" % [i, str(row["text"])])
+    # The exceptional one (★★★) is not in storage. Checking by the stars substring is
+    # not allowed: "★★★" is contained in "★★★★", so we compare the level id in the row.
     var has_exceptional := false
     for row in rows:
         if str((row as Dictionary)["qid"]) == "exceptional":
             has_exceptional = true
     check(not has_exceptional,
-        "строки уровня, которого нет на складе (исключительное), быть не должно: %s" % str(rows))
-    # Множители уровней различаются — иначе сравнение строк не значимо.
+        "there must be no row of a level that is not in storage (exceptional): %s" % str(rows))
+    # The level multipliers differ — otherwise comparing lines would be meaningless.
     var perfect_d: Dictionary = gd.get_price_breakdown_for_quality(sample_id, "perfect")
     check(perfect_d["multiplier"] != gd.get_quality_price_multiplier("fine"),
-        "множители уровней должны различаться — иначе проверка строк не значима")
+        "the level multipliers must differ — otherwise the line check is meaningless")
 
-    # Количество нулевое — уровень считается отсутствующим (такое возможно при
-    # рассинхроне разбивки и запаса в старом сейве).
+    # The count is zero — the level is considered absent (this is possible with
+    # a desync between the breakdown and the supply in an old save).
     check(gd.format_quality_price_scale_rows(sample_id, {"fine": 0}).is_empty(),
-        "при count == 0 строка показываться не должна")
+        "with count == 0 the line must not be shown")
 
-    # Рендер: строки лестницы подставляются в тултип строки с отступом 2
-    # пробела; звёзды в них — в цвете своего уровня, а расчёт цены — золотым.
-    # Товар без разбивки и без цены не даёт ни одной строки.
+    # Render: the ladder rows are inserted into the row tooltip with a 2-space
+    # indent; the stars in them — in their level colour, and the price calculation — gold.
+    # Goods without a breakdown and without a price give not a single row.
     var holder := Control.new()
     get_root().add_child(holder)
     var ui = load("res://scripts/ui_helpers.gd").new()
@@ -476,7 +476,7 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
     await process_frame
     await process_frame
 
-    ui.show_flow_tooltip(Vector2(50, 50), "Товар", {}, sample_id, {}, {}, breakdown)
+    ui.show_flow_tooltip(Vector2(50, 50), "Goods", {}, sample_id, {}, {}, breakdown)
     await process_frame
 
     var base_line := ""
@@ -485,11 +485,11 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
     for child in ui.flow_tooltip_vbox.get_children():
         if child is Label:
             var label := child as Label
-            if label.text.begins_with("Цена: "):
+            if label.text.begins_with("Price: "):
                 base_line = label.text
         elif child is HBoxContainer and child.get_child_count() == 2:
-            # Строка лестницы — HBox из двух Label: звёзды в цвете уровня и
-            # золотой хвост расчёта цены.
+            # A ladder row is an HBox of two Labels: the stars in the level colour and
+            # the gold tail of the price calculation.
             var stars_label := child.get_child(0) as Label
             var tail_label := child.get_child(1) as Label
             if stars_label == null or tail_label == null:
@@ -506,69 +506,69 @@ func _check_flow_tooltip_price_render(gd, sample_id: String) -> void:
                 "color": tail_label.get_theme_color("font_color"),
                 "width": tail_label.size.x,
             })
-    check(base_line == "Цена: %d" % int(round(gd.get_price(sample_id))),
-        "в тултипе строки должна быть базовая цена, получено «%s»" % base_line)
+    check(base_line == "Price: %d" % int(round(gd.get_price(sample_id))),
+        "the row tooltip must contain the base price, got \"%s\"" % base_line)
     check(scale_stars.size() == 3,
-        "в тултипе строки должно быть 3 строки (только уровни со склада), показано %d: %s"
+        "the row tooltip must have 3 rows (only levels from storage), shown %d: %s"
         % [scale_stars.size(), str(scale_stars)])
-    # Порядок строк и их текст — как у format_quality_price_scale_rows. Звёзды
-    # покрашены в цвет СВОЕГО уровня (data/qualities.json), а сам расчёт цены —
-    # золотым (ui_helpers.PRICE_TEXT_COLOR).
+    # The row order and their text are as in format_quality_price_scale_rows. The stars
+    # are coloured in THEIR OWN level colour (data/qualities.json), and the price calculation itself —
+    # gold (ui_helpers.PRICE_TEXT_COLOR).
     for i in range(mini(scale_stars.size(), rows.size())):
         var qid: String = expected_order[i]
         var row: Dictionary = rows[i]
         var stars_cell: Dictionary = scale_stars[i]
         var tail_cell: Dictionary = scale_tails[i]
         check(str(stars_cell["text"]) == "  " + str(row["stars"]),
-            "звёзды строки №%d не совпали с расчётными: «%s» вместо «%s»"
+            "the stars of row #%d did not match the computed ones: \"%s\" instead of \"%s\""
             % [i, str(stars_cell["text"]), "  " + str(row["stars"])])
         check(str(tail_cell["text"]) == str(row["tail"]),
-            "расчёт цены строки №%d не совпал с расчётным: «%s» вместо «%s»"
+            "the price calculation of row #%d did not match the computed one: \"%s\" instead of \"%s\""
             % [i, str(tail_cell["text"]), str(row["tail"])])
         check(stars_cell["color"] == gd.get_quality_color(qid),
-            "звёзды строки №%d («%s») должны быть в цвете уровня «%s»: %s вместо %s"
+            "the stars of row #%d (\"%s\") must be in the colour of level \"%s\": %s instead of %s"
             % [i, str(stars_cell["text"]), qid, str(stars_cell["color"]),
                 str(gd.get_quality_color(qid))])
         check(tail_cell["color"] == ui.PRICE_TEXT_COLOR,
-            "расчёт цены строки №%d («%s») должен быть золотым: %s вместо %s"
+            "the price calculation of row #%d (\"%s\") must be gold: %s instead of %s"
             % [i, str(tail_cell["text"]), str(tail_cell["color"]), str(ui.PRICE_TEXT_COLOR)])
-        # Ни одна часть строки не схлопнулась по ширине.
+        # No part of the line has collapsed in width.
         check(float(stars_cell["width"]) > 5.0 and float(tail_cell["width"]) > 20.0,
-            "строка №%d схлопнулась по ширине (звёзды %s px, расчёт %s px)"
+            "row #%d collapsed in width (stars %s px, calculation %s px)"
             % [i, str(stars_cell["width"]), str(tail_cell["width"])])
-    # Цвет звёзд и золотой расчёт различаются хотя бы там, где это видно глазом:
-    # иначе «звёзды в цвете уровня» ничего бы не значило.
+    # The star colour and the gold calculation differ at least where it is visible to the eye:
+    # otherwise "stars in the level colour" would mean nothing.
     var fine_stars: Dictionary = scale_stars[1] if scale_stars.size() > 1 else {}
     check(fine_stars.get("color", Color.BLACK) != ui.PRICE_TEXT_COLOR,
-        "звёзды уровня не должны совпадать по цвету с золотым расчётом цены")
-    # Панель тултипа не схлопнулась: её ширина считается по минимальному размеру
-    # содержимого, поэтому узкая панель = узкие строки внутри.
+        "the level stars must not match in colour the gold price calculation")
+    # The tooltip panel has not collapsed: its width is computed from the minimum size
+    # of the content, so a narrow panel = narrow rows inside.
     check(ui.flow_tooltip_panel.size.x > 100.0,
-        "панель тултипа строки схлопнулась по ширине: %s" % str(ui.flow_tooltip_panel.size))
+        "the row tooltip panel collapsed in width: %s" % str(ui.flow_tooltip_panel.size))
 
-    # Пустая разбивка: блока цен по качеству нет вовсе.
-    ui.show_flow_tooltip(Vector2(50, 50), "Товар", {}, sample_id, {}, {}, {})
+    # An empty breakdown: there is no quality price block at all.
+    ui.show_flow_tooltip(Vector2(50, 50), "Goods", {}, sample_id, {}, {}, {})
     await process_frame
     check(_count_scale_lines(ui) == 0,
-        "при пустой разбивке в тултипе не должно быть строк по качеству")
+        "with an empty breakdown there must be no quality rows in the tooltip")
 
-    # Товар без цены (science): строк нет даже с непустой разбивкой.
-    ui.show_flow_tooltip(Vector2(50, 50), "Наука", {}, "science", {}, {},
+    # Goods without a price (science): there are no rows even with a non-empty breakdown.
+    ui.show_flow_tooltip(Vector2(50, 50), "Science", {}, "science", {}, {},
         {"common": 10, "perfect": 2})
     await process_frame
     check(_count_scale_lines(ui) == 0,
-        "у товара без цены строк по качеству быть не должно")
+        "for goods without a price there must be no quality rows")
 
     holder.queue_free()
 
-# Считает строки лестницы цен по качеству в тултипе строки. Отступ 2 пробела
-# отличает их от базовой «Цена: N», у которой отступа нет.
+# Counts the quality price ladder rows in the row tooltip. The 2-space indent
+# distinguishes them from the base "Price: N", which has no indent.
 func _count_scale_lines(ui) -> int:
     var result := 0
     for child in ui.flow_tooltip_vbox.get_children():
-        # Строка лестницы — HBox из двух Label, первый из них «  ★…» (второй —
-        # золотой хвост расчёта). Отступ 2 пробела отличает лестницу от
-        # базовой «Цена: N», у которой отступа нет.
+        # A ladder row is an HBox of two Labels, the first of them "  ★…" (the second —
+        # the gold calculation tail). The 2-space indent distinguishes the ladder from
+        # the base "Price: N", which has no indent.
         if not (child is HBoxContainer) or child.get_child_count() != 2:
             continue
         var stars_label := child.get_child(0) as Label

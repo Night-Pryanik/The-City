@@ -1,22 +1,22 @@
-# Headless-тест показа производства в расширенном тултипе:
+# Headless test of the production display in the extended tooltip:
 #   godot --headless --path . --script res://tests/test_production_display.gd
 #
-# Правило, которое проверяется: строка продукции показывает ТОЛЬКО скорость в
-# секунду, без базы за цикл. Игрок получает непрерывный поток (main_map
-# добавляет на склад produces × множитель / production_interval каждый тик), а не
-# пачки раз в интервал, поэтому значение из данных, приведённое к секунде, и есть
-# то, что игрок реально получает. База за цикл — внутренняя величина, которую
-# игрок никогда не видит отдельной суммой.
+# The rule being checked: the production row shows ONLY the rate per second,
+# without the per-cycle base. The player receives a continuous flow (main_map
+# adds produces × multiplier / production_interval to storage every tick), not
+# batches once per interval, so the value from the data, converted to a per-second
+# rate, is exactly what the player actually receives. The per-cycle base is an
+# internal quantity that the player never sees as a separate sum.
 #
-# Проверки:
-#   1. НЕРАСТУЩИЙ РЕСУРС С ИНТЕРВАЛОМ != 1. Скорость равна base/interval
-#      (известняк: 10 за цикл при интервале 2 сек → 5 ед./сек), а не значению
-#      из данных; базы в строке нет.
-#   2. РАСТУЩИЙ РЕСУРС БЕЗ УЛУЧШЕНИЯ. Подсказка «при постройке» показывает
-#      ПОЛНУЮ скорость (base/interval), а не 0: поголовье начинает наполняться
-#      только после постройки, поэтому нулевая доля не должна гасить подсказку.
-#   3. ЕДИНЫЙ ФОРМАТ. У обоих ресурсов строка одной структуры — имя и скорость,
-#      без базы.
+# Checks:
+#   1. NON-GROWING RESOURCE WITH INTERVAL != 1. The rate equals base/interval
+#      (limestone: 10 per cycle at an interval of 2 sec → 5 units/sec), not the
+#      value from the data; the row has no base.
+#   2. GROWING RESOURCE WITHOUT IMPROVEMENT. The "once built" hint shows the
+#      FULL rate (base/interval), not 0: the herd only starts filling after
+#      construction, so a zero fraction must not suppress the hint.
+#   3. SINGLE FORMAT. Both resources have a row of the same structure — name and
+#      rate, without the base.
 extends SceneTree
 
 const WATCHDOG = preload("res://tests/watchdog.gd")
@@ -30,8 +30,8 @@ func _initialize() -> void:
 func _run() -> void:
     var state = {"failed": false}
     get_root().get_node("SaveManager").new_game()
-    # Автолоады берём узлами дерева: в режиме --script имена GameData/CityData
-    # на этапе компиляции этого файла ещё недоступны.
+    # Autoloads are taken as tree nodes: in --script mode the names GameData/CityData
+    # are not yet available at the compile stage of this file.
     _gdata = get_root().get_node("GameData")
 
     var main_map = load("res://scenes/MainMap.tscn").instantiate()
@@ -41,7 +41,7 @@ func _run() -> void:
 
     var tooltip = main_map.map_tooltip
     var spot := _find_free_hex(main_map)
-    check(not spot.is_empty(), "нужен свободный гекс для проверки", state)
+    check(not spot.is_empty(), "a free hex is needed for the check", state)
     if spot.is_empty():
         _finish(main_map, state)
         return
@@ -50,19 +50,19 @@ func _run() -> void:
     var tile: Dictionary = main_map.tile_data[row][col]
     tile["quality"] = "common"
 
-    # Интервалы берём из данных, а не хардкодим: проверка должна пережить
-    # изменение баланса. Условие задачи — интервал больше 1 сек, иначе база и
-    # скорость совпадают и различать их нечем.
+    # Intervals are taken from the data rather than hardcoded: the check must
+    # survive a balance change. The task condition is an interval greater than 1 sec,
+    # otherwise the base and the rate coincide and there is no way to distinguish them.
     var quarry_interval: float = _production_interval("quarry")
     var pasture_interval: float = _production_interval("pasture")
     check(quarry_interval > 1.0,
-            "для проверки интервал карьера должен быть больше 1 сек (получено %.1f)"
+            "for the check the quarry interval must be greater than 1 sec (got %.1f)"
                     % quarry_interval, state)
     check(pasture_interval > 1.0,
-            "для проверки интервал пастбища должен быть больше 1 сек (получено %.1f)"
+            "for the check the pasture interval must be greater than 1 sec (got %.1f)"
                     % pasture_interval, state)
 
-    # --- 1. Не растущий ресурс (карьер, интервал 2 сек) ---
+    # --- 1. Non-growing resource (quarry, interval 2 sec) ---
     _gdata.raw_resources["test_stone"] = {
         "id": "test_stone", "name": "Test Stone", "type": "raw",
         "improved_by": "quarry", "produces": {"limestone": 10},
@@ -70,17 +70,17 @@ func _run() -> void:
     tile["resource"] = "test_stone"
     tile["improvement"] = null
     var stone_item := _product_item(tooltip, row, col, main_map, "limestone")
-    check(not stone_item.is_empty(), "строка известняка должна быть в блоке производства", state)
+    check(not stone_item.is_empty(), "the limestone row must be in the production block", state)
     if not stone_item.is_empty():
         var stone_rate: float = 10.0 / quarry_interval
         check(absf(float(stone_item.get("amount", 0.0)) - stone_rate) < 0.001,
-                "скорость известняка = база/интервал = %.1f ед./сек (получено %.1f)"
+                "limestone rate = base/interval = %.1f units/sec (got %.1f)"
                         % [stone_rate, float(stone_item.get("amount", 0.0))], state)
         check(not _has_base_label(str(stone_item.get("name", ""))),
-                "в строке известняка базы быть не должно (получено: %s)"
+                "the limestone row must not have a base (got: %s)"
                         % stone_item.get("name", ""), state)
 
-    # --- 2. Растущий ресурс без улучшения: подсказка = полная скорость ---
+    # --- 2. Growing resource without improvement: hint = full rate ---
     _gdata.raw_resources["test_herd"] = {
         "id": "test_herd", "name": "Test Herd", "type": "raw",
         "improved_by": "pasture", "produces": {"raw_meat": 20},
@@ -90,32 +90,32 @@ func _run() -> void:
     tile["improvement"] = null
     tile["fill_time"] = 0.0
     var herd_item := _product_item(tooltip, row, col, main_map, "raw_meat")
-    check(not herd_item.is_empty(), "строка мяса должна быть в подсказке производства", state)
+    check(not herd_item.is_empty(), "the meat row must be in the production tooltip", state)
     if not herd_item.is_empty():
         var herd_rate: float = 20.0 / pasture_interval
         check(float(herd_item.get("amount", 0.0)) > 0.0,
-                "подсказка «при постройке» должна показывать полную скорость, а не 0 (получено %.1f)"
+                "the \"once built\" hint must show the full rate, not 0 (got %.1f)"
                         % float(herd_item.get("amount", 0.0)), state)
         check(absf(float(herd_item.get("amount", 0.0)) - herd_rate) < 0.001,
-                "скорость мяса = база/интервал = %.1f ед./сек (получено %.1f)"
+                "meat rate = base/interval = %.1f units/sec (got %.1f)"
                         % [herd_rate, float(herd_item.get("amount", 0.0))], state)
         check(not _has_base_label(str(herd_item.get("name", ""))),
-                "в строке мяса базы быть не должно (получено: %s)"
+                "the meat row must not have a base (got: %s)"
                         % herd_item.get("name", ""), state)
 
-    # --- 3. Единый формат: ни у одного ресурса базы нет ---
+    # --- 3. Single format: neither resource has a base ---
     if not stone_item.is_empty() and not herd_item.is_empty():
         check(not _has_base_label(str(stone_item.get("name", "")))
                 and not _has_base_label(str(herd_item.get("name", ""))),
-                "оба ресурса должны показывать строку одного формата — без базы", state)
+                "both resources must show a row of the same format — without a base", state)
 
     _finish(main_map, state)
 
 func _production_interval(imp_id: String) -> float:
     return float(_gdata.improvements.get(imp_id, {}).get("production_interval", 0.0))
 
-# Строка продукта prod_id из блока «Производит:» / «При постройке … будет
-# производить:» для гекса (row, col). Пустой словарь — строки нет.
+# The product row prod_id from the "Produces:" / "Once built ... will
+# produce:" block for the hex (row, col). An empty dictionary means no row.
 func _product_item(tooltip, row: int, col: int, main_map, prod_id: String) -> Dictionary:
     var label := str(_gdata.products.get(prod_id, {}).get("name", prod_id))
     var products: Array = tooltip._collect_extended_production(row, col, main_map.tile_data)
@@ -126,10 +126,9 @@ func _product_item(tooltip, row: int, col: int, main_map, prod_id: String) -> Di
             return item
     return {}
 
-# В имени строки осталась подпись базы. Проверяем и русский перевод, и английский
-# msgid: тест не должен зависеть от активной локали.
+# The row name still contains the base label.
 func _has_base_label(item_name: String) -> bool:
-    return item_name.contains("база ") or item_name.contains("base ")
+    return item_name.contains("base ")
 
 func _find_free_hex(main_map) -> Dictionary:
     for r in range(main_map.influence_start_row, main_map.influence_end_row + 1):

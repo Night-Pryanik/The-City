@@ -1,25 +1,25 @@
-# Headless-тест «залипания» тултипа разбивки казны:
+# Headless test of the "pin" behaviour of the treasury breakdown tooltip:
 #   godot --headless --path . --script res://tests/test_treasury_tooltip_pin.gd
 #
-# Тултип разбивки казны (HUD карты и верхняя полоса CityUI) использует один и
-# тот же ui_helpers.show_treasury_tooltip. Поведение при наведении — как у
-# тултипа деталей здания: после задержки панель фиксируется на месте, и курсор
-# можно перевести на сам тултип. Технически это живёт на паре «показ при
-# залипании без keep_position» + «live-update на смене ресурсной эпохи с
-# keep_position=true»: вторая перерисовка не должна сдвигать панель.
+# The treasury breakdown tooltip (the map HUD and the top bar of CityUI) uses one
+# and the same ui_helpers.show_treasury_tooltip. The hover behaviour is the same as
+# for the building details tooltip: after a delay the panel locks in place, and the
+# cursor can be moved onto the tooltip itself. Technically this rests on the pair
+# "show while pinned without keep_position" + "live-update on a resource-era change
+# with keep_position=true": the second redraw must not move the panel.
 #
-# Проверяем:
-#   1) первичный показ — панель у курсора (+15, +15);
-#   2) keep_position=true при другом положении курсора — панель НЕ двигается,
-#      но содержимое обновляется;
-#   3) без keep_position панель снова следует за курсором;
-#   4) keep_position=true на скрытой панели «якорем» не работает — обычный
-#      показ у курсора (иначе тултип «выпрыгивал» бы в старом месте);
-#   5) пустая разбивка панель скрывает (залипать нечему).
+# We check:
+#   1) the first show — the panel is at the cursor (+15, +15);
+#   2) keep_position=true with the cursor at a different position — the panel does
+#      NOT move, but the content updates;
+#   3) without keep_position the panel follows the cursor again;
+#   4) keep_position=true on a hidden panel does not work as an "anchor" — the usual
+#      show at the cursor (otherwise the tooltip would "jump" to the old place);
+#   5) an empty breakdown hides the panel (there is nothing to pin).
 extends SceneTree
 
-# Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
-# молчание. Подробности — в tests/watchdog.gd.
+# Hang watchdog: without it a break in the _run() coroutine looks like eternal
+# silence from the outside. Details — in tests/watchdog.gd.
 const WATCHDOG = preload("res://tests/watchdog.gd")
 
 var _failed := false
@@ -42,61 +42,61 @@ func _run() -> void:
     var panel: Panel = ui.treasury_tooltip_panel
     var vbox: VBoxContainer = ui.treasury_tooltip_vbox
 
-    # --- 1. Первичная отрисовка: панель появляется у курсора ---
+    # --- 1. The first draw: the panel appears at the cursor ---
     ui.show_treasury_tooltip(Vector2(100, 100), 42, _income_one_source(), {}, 3.0)
     await process_frame
     await process_frame
-    check(panel.visible, "1: тултип виден после первичной отрисовки")
+    check(panel.visible, "1: the tooltip is visible after the first draw")
     check(panel.position == Vector2(115, 115),
-        "1: панель у курсора (+15, +15), факт %s" % str(panel.position))
+        "1: the panel is at the cursor (+15, +15), actual %s" % str(panel.position))
     var locked_pos: Vector2 = panel.position
     var rows_before: int = vbox.get_child_count()
 
-    # --- 2. Live-update «залипшего» тултипа: панель стоит на месте ---
+    # --- 2. Live-update of the "pinned" tooltip: the panel stays in place ---
     ui.show_treasury_tooltip(Vector2(300, 250), 42, _income_two_sources(), {}, 3.0, true)
     await process_frame
     await process_frame
-    check(panel.visible, "2: тултип виден после live-update")
+    check(panel.visible, "2: the tooltip is visible after live-update")
     check(panel.position == locked_pos,
-        "2: keep_position сохраняет место панели (%s → %s)"
+        "2: keep_position preserves the panel position (%s → %s)"
             % [str(locked_pos), str(panel.position)])
     check(vbox.get_child_count() > rows_before,
-        "2: содержимое обновилось (строк %d → %d)"
+        "2: the content updated (rows %d → %d)"
             % [rows_before, vbox.get_child_count()])
 
-    # --- 3. Обычный показ (без keep_position) идёт за курсором ---
+    # --- 3. The usual show (without keep_position) follows the cursor ---
     ui.show_treasury_tooltip(Vector2(200, 200), 42, _income_one_source(), {}, 3.0)
     await process_frame
     check(panel.position == Vector2(215, 215),
-        "3: без keep_position панель следует за курсором, факт %s" % str(panel.position))
+        "3: without keep_position the panel follows the cursor, actual %s" % str(panel.position))
 
-    # --- 4. keep_position на скрытой панели: якоря нет ---
+    # --- 4. keep_position on a hidden panel: there is no anchor ---
     ui.hide_treasury_tooltip()
     await process_frame
-    check(not panel.visible, "4: тултип скрыт")
+    check(not panel.visible, "4: the tooltip is hidden")
     ui.show_treasury_tooltip(Vector2(250, 220), 42, _income_one_source(), {}, 3.0, true)
     await process_frame
-    check(panel.visible, "4: тултип показан заново")
+    check(panel.visible, "4: the tooltip is shown again")
     check(panel.position == Vector2(265, 235),
-        "4: без видимой панели keep_position не «якорит», факт %s" % str(panel.position))
+        "4: without a visible panel keep_position does not \"anchor\", actual %s" % str(panel.position))
 
-    # --- 5. Пустая разбивка: панель скрывается ---
+    # --- 5. Empty breakdown: the panel is hidden ---
     ui.show_treasury_tooltip(Vector2(250, 220), 0, {}, {}, 3.0, true)
     await process_frame
-    check(not panel.visible, "5: пустая разбивка скрывает панель")
-    check(vbox.get_child_count() == 0, "5: содержимое пустой разбивки очищено")
+    check(not panel.visible, "5: an empty breakdown hides the panel")
+    check(vbox.get_child_count() == 0, "5: the content of the empty breakdown is cleared")
 
-    # --- 6. Расходы без дохода: панель показывается и тоже залипает ---
-    ui.show_treasury_tooltip(Vector2(120, 140), 7, {}, {"Разведка": 12}, 3.0)
+    # --- 6. Expenses without income: the panel is shown and also pins ---
+    ui.show_treasury_tooltip(Vector2(120, 140), 7, {}, {"Scouting": 12}, 3.0)
     await process_frame
-    check(panel.visible, "6: тултип только с расходами виден")
+    check(panel.visible, "6: the tooltip with expenses only is visible")
     check(panel.position == Vector2(135, 155),
-        "6: панель у курсора, факт %s" % str(panel.position))
+        "6: the panel is at the cursor, actual %s" % str(panel.position))
     var exp_pos: Vector2 = panel.position
-    ui.show_treasury_tooltip(Vector2(600, 400), 7, {}, {"Разведка": 12}, 3.0, true)
+    ui.show_treasury_tooltip(Vector2(600, 400), 7, {}, {"Scouting": 12}, 3.0, true)
     await process_frame
     check(panel.position == exp_pos,
-        "6: расходный тултип тоже держит место (%s → %s)"
+        "6: the expense tooltip also holds its position (%s → %s)"
             % [str(exp_pos), str(panel.position)])
 
     if _failed:
@@ -106,16 +106,16 @@ func _run() -> void:
         print("TREASURY TOOLTIP PIN TEST OK")
         quit(0)
 
-# Карта дохода в формате worker_manager.get_actual_treasury_income_map():
-# тип → источник → продукт → { coins_per_sec, product_name }.
-# Ключи — ИДЕНТИФИКАТОРЫ (CityData.POPULATION_INCOME_TYPE и
-# GameData.profession_source_id), а не подписи: подпись резолвится в рендере
+# The income map in the format worker_manager.get_actual_treasury_income_map():
+# type → source → product → { coins_per_sec, product_name }.
+# The keys are IDENTIFIERS (CityData.POPULATION_INCOME_TYPE and
+# GameData.profession_source_id), not labels: the label is resolved in the render
 # (ui_helpers.show_treasury_tooltip → GameData.get_source_display_name).
 func _income_one_source() -> Dictionary:
     return {
         _income_type_key(): {
             _source_key("all"): {
-                "fish": {"coins_per_sec": 3.0, "product_name": "Рыба"}
+                "fish": {"coins_per_sec": 3.0, "product_name": "Fish"}
             }
         }
     }
@@ -123,7 +123,7 @@ func _income_one_source() -> Dictionary:
 func _income_two_sources() -> Dictionary:
     var income: Dictionary = _income_one_source()
     income[_income_type_key()][_source_key("fisherman")] = {
-        "fish": {"coins_per_sec": 2.0, "product_name": "Рыба"}
+        "fish": {"coins_per_sec": 2.0, "product_name": "Fish"}
     }
     return income
 

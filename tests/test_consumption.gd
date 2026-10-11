@@ -1,11 +1,11 @@
-# Временный smoke-тест системы потребления (headless):
+# Temporary smoke test for the consumption system (headless):
 #   godot --headless --path . --script res://tests/test_consumption.gd
-# Проверяет: загрузку data/consumption.json, резолвинг группы "@boats",
-# дедупликацию и жадное списание из группы. После проверки файл можно удалить.
+# Checks: loading of data/consumption.json, resolution of the "@boats" group,
+# deduplication and greedy deduction from the group. After checking, the file can be deleted.
 extends SceneTree
 
-# Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
-# молчание. Подробности — в tests/watchdog.gd.
+# Hang watchdog: without it, a broken _run() coroutine looks like eternal
+# silence from the outside. See tests/watchdog.gd for details.
 const WATCHDOG = preload("res://tests/watchdog.gd")
 
 func _initialize():
@@ -15,81 +15,81 @@ func _initialize():
     var gd = load("res://scripts/GameData.gd").new()
     gd.load_all_data()
 
-    # 1) Реестр загружен и каждое правило из data/consumption.json разбирается.
-    #    Конкретное число правил НЕ хардкодится: реестр пополняется данными
-    #    (например, правило «перья учёного»), и само число не должно ронять
-    #    тест. Проверяются инварианты: реестр непуст, у каждого правила есть
-    #    ресурс, список профессий и положительные amount/interval, а ресурс
-    #    резолвится — одиночный продукт либо @-группа из product_groups.json.
-    check(not gd.consumption_rules.is_empty(), "реестр consumption не загрузился", state)
+    # 1) The registry is loaded and every rule from data/consumption.json is parsed.
+    #    The exact number of rules is NOT hardcoded: the registry is extended with data
+    #    (for example, the "scholar's feathers" rule), and the number itself must not break
+    #    the test. Invariants are checked: the registry is non-empty, every rule has a
+    #    resource, a profession list and positive amount/interval, and the resource
+    #    resolves — a single product or a @-group from product_groups.json.
+    check(not gd.consumption_rules.is_empty(), "consumption registry was not loaded", state)
     for rule in gd.consumption_rules:
         var res_key := str(rule.get("resource", ""))
-        check(not res_key.is_empty(), "правило consumption без поля resource: %s" % str(rule), state)
-        check(not rule.get("profession", []).is_empty(), "правило %s без поля profession" % res_key, state)
-        check(int(rule.get("amount", 0)) > 0, "у правила %s amount <= 0" % res_key, state)
-        check(float(rule.get("interval", 0.0)) > 0.0, "у правила %s interval <= 0" % res_key, state)
+        check(not res_key.is_empty(), "consumption rule without a resource field: %s" % str(rule), state)
+        check(not rule.get("profession", []).is_empty(), "rule %s without a profession field" % res_key, state)
+        check(int(rule.get("amount", 0)) > 0, "rule %s has amount <= 0" % res_key, state)
+        check(float(rule.get("interval", 0.0)) > 0.0, "rule %s has interval <= 0" % res_key, state)
         if res_key.begins_with("@"):
             check(not gd.product_groups.get(res_key.substr(1), []).is_empty(),
-                "группа %s из consumption.json не найдена в product_groups.json" % res_key, state)
+                "group %s from consumption.json not found in product_groups.json" % res_key, state)
         else:
-            check(gd.products.has(res_key), "продукт %s из consumption.json не найден в products" % res_key, state)
+            check(gd.products.has(res_key), "product %s from consumption.json not found in products" % res_key, state)
 
-    # 2) Потребление рыбака — групповая запись "@boats"
+    # 2) Fisherman's consumption — a group entry "@boats"
     var cons = gd.get_profession_consumption("fisherman")
-    check(cons.size() == 1, "ожидалась 1 запись для fisherman, получено: %d" % cons.size(), state)
+    check(cons.size() == 1, "expected 1 entry for fisherman, got: %d" % cons.size(), state)
     if cons.size() == 1:
         var e = cons[0]
-        check(e.get("is_group", false) == true, "запись не групповая", state)
+        check(e.get("is_group", false) == true, "entry is not a group", state)
         check(e.get("display_key", "") == "@boats", "display_key != @boats", state)
-        # Имя группы сверяем с САМИМ реестром product_group_names, а не с
-        # русским словом: подпись переводится при загрузке данных
-        # (data_loader._localize_display_fields), и в этом headless-прогоне
-        # она одинаково может прийти русской или английской — зависит от
-        # языка в настройках. Проверяем то, что важно: подпись взята из
-        # данных, а не сложена из идентификатора.
+        # The group name is compared against the product_group_names registry itself, not
+        # against the Russian word: the label is translated when data is loaded
+        # (data_loader._localize_display_fields), and in this headless run
+        # it may equally come back Russian or English — depending on
+        # the language in the settings. We check what matters: the label is taken from
+        # the data, not assembled from the identifier.
         var boats_name: String = str(gd.product_group_names.get("boats", ""))
-        check(not boats_name.is_empty(), "у группы boats должно быть имя", state)
-        check(boats_name != "boats", "имя группы не должно совпадать с её id", state)
+        check(not boats_name.is_empty(), "the boats group must have a name", state)
+        check(boats_name != "boats", "the group name must not match its id", state)
         check(e.get("product_name", "") == boats_name,
-            "имя @boats взято не из реестра: %s" % str(e.get("product_name", "")), state)
-        # Состав группы — тоже вопрос данных: автор вправе её дополнять,
-        # поэтому сверяем с product_groups, а каждый член проверяем как
-        # существующий продукт — иначе группа с «призрачным» id тихо прошла бы.
+            "the @boats name was not taken from the registry: %s" % str(e.get("product_name", "")), state)
+        # The group composition is also a matter of data: the author may extend it,
+        # so we compare against product_groups, and check each member as
+        # an existing product — otherwise a group with a "ghost" id would pass silently.
         var boats_members: Array = gd.product_groups.get("boats", [])
-        check(not boats_members.is_empty(), "группа boats не должна быть пустой", state)
+        check(not boats_members.is_empty(), "the boats group must not be empty", state)
         check(e.get("group_members", []) == boats_members,
-            "члены @boats взяты не из реестра: %s" % str(e.get("group_members", [])), state)
+            "the @boats members were not taken from the registry: %s" % str(e.get("group_members", [])), state)
         for member_id in boats_members:
             check(gd.products.has(str(member_id)),
-                "член @boats «%s» должен быть продуктом" % member_id, state)
-        check(e.get("icon", "") == "reed_boat.png", "иконка группы неверна", state)
-        # amount/interval — балансные числа из data/consumption.json, поэтому
-        # сверяем их с САМИМ правилом реестра, а не с константой в тесте. Так
-        # тест по-прежнему ловит потерю/подмену полей при разборе записи, но
-        # не ломается при правке баланса.
+                "the @boats member \"%s\" must be a product" % member_id, state)
+        check(e.get("icon", "") == "reed_boat.png", "the group icon is wrong", state)
+        # amount/interval are balance numbers from data/consumption.json, so
+        # we compare them against the registry rule itself, not against a constant in the test. That way
+        # the test still catches loss/substitution of fields when parsing an entry, but
+        # does not break when the balance is edited.
         var rule_boats := _rule_for(gd.consumption_rules, "@boats", "fisherman")
-        check(not rule_boats.is_empty(), "в реестре нет правила @boats для fisherman", state)
+        check(not rule_boats.is_empty(), "no @boats rule for fisherman in the registry", state)
         if not rule_boats.is_empty():
             check(int(e.get("amount", -1)) == int(rule_boats.get("amount", -2)),
-                "amount @boats потерян при разборе правила: %s" % str(e.get("amount", null)), state)
+                "@boats amount lost when parsing the rule: %s" % str(e.get("amount", null)), state)
             check(abs(float(e.get("interval", -1.0)) - float(rule_boats.get("interval", -2.0))) < 0.01,
-                "interval @boats потерян при разборе правила: %s" % str(e.get("interval", null)), state)
+                "@boats interval lost when parsing the rule: %s" % str(e.get("interval", null)), state)
 
-    # 3) Дубликаты: после перевода лодки на реестр продукт не должен
-    #    дублироваться (у reed_boat больше нет поля consumption)
+    # 3) Duplicates: after moving the boat to the registry, the product must not
+    #    be duplicated (reed_boat no longer has a consumption field)
     check(gd.products.get("reed_boat", {}).has("consumption") == false,
-        "у reed_boat не должно быть поля consumption", state)
+        "reed_boat must not have a consumption field", state)
 
-    # 4) Сводка потребления
+    # 4) Consumption summary
     var summary = gd.get_profession_consumption_summary("fisherman")
-    check(summary.has("@boats"), "в сводке нет @boats", state)
+    check(summary.has("@boats"), "@boats is missing from the summary", state)
 
-    # 5) Жадное списание из группы (логика как в tick_consumption)
+    # 5) Greedy deduction from the group (logic as in tick_consumption)
     var cd = load("res://scripts/CityData.gd").new()
     cd.city_storage = {"reed_boat": 0}
     cd.city_quality_detail = {}
     cd.add_to_storage("reed_boat", 1, "common")
-    # Из группы boats (только reed_boat) списываем amount=1
+    # From the boats group (only reed_boat) we deduct amount=1
     var members = ["reed_boat"]
     var remaining = 1
     for pid in members:
@@ -101,67 +101,67 @@ func _initialize():
         var take = min(avail, remaining)
         cd.remove_from_storage(pid, take, "best")
         remaining -= take
-    check(remaining == 0, "списание из группы не произошло", state)
-    check(cd.get_storage_amount("reed_boat") == 0, "склад не обнулился", state)
+    check(remaining == 0, "deduction from the group did not happen", state)
+    check(cd.get_storage_amount("reed_boat") == 0, "storage was not zeroed", state)
 
-    # 6) Недоступность: группа не найдена -> запись пропускается
+    # 6) Unavailability: group not found -> the entry is skipped
     var bad = gd._build_consumption_entry("@nonexistent_group", {"amount": 1})
-    check(bad.is_empty(), "несуществующая группа должна пропускаться", state)
+    check(bad.is_empty(), "a non-existent group must be skipped", state)
 
-    # 7) Псевдо-профессия "all" (все жители города): групповая запись "@fruits"
-    check(gd.professions.has("all"), "в professions.json нет псевдо-профессии all", state)
-    check(gd.professions.get("all", {}).get("pseudo", false) == true, "all не помечена pseudo", state)
+    # 7) Pseudo-profession "all" (all city citizens): a group entry "@fruits"
+    check(gd.professions.has("all"), "professions.json has no pseudo-profession all", state)
+    check(gd.professions.get("all", {}).get("pseudo", false) == true, "all is not marked pseudo", state)
     var cons_all = gd.get_profession_consumption("all")
-    # Сколько записей у «Все жители» — вопрос ДАННЫХ, а не константа теста:
-    # в реестре их несколько (@fruits и @alcohol), и добавление новой группы
-    # не должно ронять тест. Раньше здесь стояло size() == 1, из-за чего
-    # тест падал после добавления второй записи, хотя разбор был верен.
+    # How many entries "All Citizens" has is a matter of DATA, not a test constant:
+    # the registry has several (@fruits and @alcohol), and adding a new group
+    # must not break the test. The check is >= 1 rather than size() == 1, so that
+    # a second entry does not fail the test even though the parsing is correct.
     check(cons_all.size() >= 1,
-        "у псевдо-профессии all должен быть хотя бы один ресурс, получено: %d" % cons_all.size(), state)
-    # Проверяем КОНКРЕТНУЮ группу @fruits внутри списка, а не первый элемент:
-    # порядок записей не задан и менялся вместе с балансом.
+        "the all pseudo-profession must have at least one resource, got: %d" % cons_all.size(), state)
+    # We check the SPECIFIC @fruits group inside the list, not the first element:
+    # the order of entries is not defined and changes with the balance.
     var ea: Dictionary = {}
     for entry in cons_all:
         if str(entry.get("display_key", "")) == "@fruits":
             ea = entry
             break
-    check(not ea.is_empty(), "в потреблении «Все жителей» нет записи @fruits", state)
+    check(not ea.is_empty(), "the \"All Citizens\" consumption has no @fruits entry", state)
     if not ea.is_empty():
-        check(ea.get("is_group", false) == true, "запись all не групповая", state)
+        check(ea.get("is_group", false) == true, "the all entry is not a group", state)
         check(ea.get("display_key", "") == "@fruits", "display_key != @fruits", state)
-        # Как и выше: имя группы — из реестра, а не зашитое в тест слово.
+        # As above: the group name comes from the registry, not a word hardcoded in the test.
         var fruits_name: String = str(gd.product_group_names.get("fruits", ""))
-        check(not fruits_name.is_empty(), "у группы fruits должно быть имя", state)
+        check(not fruits_name.is_empty(), "the fruits group must have a name", state)
         check(ea.get("product_name", "") == fruits_name,
-            "имя @fruits взято не из реестра: %s" % str(ea.get("product_name", "")), state)
-        # Состав группы — вопрос ДАННЫХ (автор пополняет её фруктами), так
-        # что сверяем его с product_groups.json. Содержательный инвариант
-        # рядом: grapes и olives остаются в группе — на них построена проверка
-        # городского потребления ниже, без них списывать нечего.
+            "the @fruits name was not taken from the registry: %s" % str(ea.get("product_name", "")), state)
+        # The group composition is a matter of DATA (the author extends it with fruits), so
+        # we compare it against product_groups.json. A meaningful invariant
+        # follows: grapes and olives remain in the group — the city consumption check
+        # below is built on them, and without them there is nothing to deduct.
         var fruits_members: Array = gd.product_groups.get("fruits", [])
         check(ea.get("group_members", []) == fruits_members,
-            "члены @fruits взяты не из реестра: %s" % str(ea.get("group_members", [])), state)
+            "the @fruits members were not taken from the registry: %s" % str(ea.get("group_members", [])), state)
         for required_id in ["grapes", "olives"]:
             check(required_id in fruits_members,
-                "в группе @fruits должен остаться %s" % required_id, state)
-        # Как и выше — amount/interval сверяем с самим правилом реестра.
+                "@fruits must still contain %s" % required_id, state)
+        # As above — amount/interval are compared against the registry rule itself.
         var rule_all := _rule_for(gd.consumption_rules, "@fruits", "all")
-        check(not rule_all.is_empty(), "в реестре нет правила @fruits для all", state)
+        check(not rule_all.is_empty(), "no @fruits rule for all in the registry", state)
         if not rule_all.is_empty():
             check(int(ea.get("amount", -1)) == int(rule_all.get("amount", -2)),
-                "amount all потерян при разборе правила: %s" % str(ea.get("amount", null)), state)
+                "all amount lost when parsing the rule: %s" % str(ea.get("amount", null)), state)
             check(abs(float(ea.get("interval", -1.0)) - float(rule_all.get("interval", -2.0))) < 0.01,
-                "interval all потерян при разборе правила: %s" % str(ea.get("interval", null)), state)
+                "all interval lost when parsing the rule: %s" % str(ea.get("interval", null)), state)
 
-    # 8) Городское потребление "all": списание ПОГОЛОВНО (amount * население)
-    #    ПО ФАКТУ НАЛИЧИЯ, без ожидания полного покрытия. Жадное заполнение из
-    #    членов группы. Имена автозагрузок (CityData/GameData)
-    #    в этом скрипте использовать нельзя — он компилируется ДО их регистрации,
-    #    поэтому берём синглтоны через дерево сцены.
-    var city = get_root().get_node("CityData") # относительный путь: absolute из --script-режима запрещён
+    # 8) City consumption "all": deduction is PER CAPITA (amount * population)
+    #    ON ACTUAL AVAILABILITY, without waiting for full coverage. Greedy filling from
+    #    the group members. Autoload names (CityData/GameData)
+    #    cannot be used in this script — it is compiled BEFORE they are registered,
+    #    so we take the singletons through the scene tree.
+    var city = get_root().get_node("CityData") # relative path: absolute is forbidden in --script mode
     var gdata = get_root().get_node("GameData")
-    # Автозагрузка GameData данные не грузила — отдаём ей уже загруженные
-    # реестры (test gd.load_all_data() грузил их в отдельный экземпляр).
+    # The GameData autoload did not load the data — we hand it the already loaded
+    # registries (test gd.load_all_data() loaded them into a separate instance).
     gdata.consumption_rules = gd.consumption_rules
     gdata.product_groups = gd.product_groups
     gdata.product_group_names = gd.product_group_names
@@ -169,46 +169,46 @@ func _initialize():
     gdata.professions = gd.professions
     gdata.game_balance = gd.game_balance
     var wm = load("res://scripts/worker_manager.gd").new()
-    city.total_population = 3 # население прежнее; десятикратно вырос amount
-    # 3 жителя * 10 фруктов = 30 за попытку. На складе 40 (20 винограда +
-    # 20 оливок): списывается ровно 30, жадно из членов группы.
+    city.total_population = 3 # same population; amount grew tenfold
+    # 3 citizens * 10 fruits = 30 per attempt. Storage has 40 (20 grapes +
+    # 20 olives): exactly 30 is deducted, greedily from the group members.
     city.add_to_storage("grapes", 20, "common")
     city.add_to_storage("olives", 20, "common")
-    # Ожидаемый доход казны за единицу: round(price * множитель из game_balance).
+    # Expected treasury income per unit: round(price * multiplier from game_balance).
     var market_mult := float(gdata.game_balance.get("internal_market_price_multiplier", 0.25))
     var coin_g := int(round(float(gdata.products.get("grapes", {}).get("price", 0)) * market_mult))
     var coin_o := int(round(float(gdata.products.get("olives", {}).get("price", 0)) * market_mult))
     wm.tick_city_consumption(10.0)
-    check(city.get_storage_amount("grapes") == 0, "виноград не списан городским потреблением", state)
-    check(city.get_storage_amount("olives") == 10, "оливки списаны неверно (ожидается остаток 10)", state)
-    check(city.treasury == 20 * coin_g + 10 * coin_o, "доход казны за списание неверен: %d" % city.treasury, state)
-    # Частичное списание по факту наличия: остаток 10 < 30 — списывается всё,
-    # таймер сбрасывается (не ждём накопления до полных 30).
+    check(city.get_storage_amount("grapes") == 0, "grapes were not deducted by city consumption", state)
+    check(city.get_storage_amount("olives") == 10, "olives deducted incorrectly (expected remainder 10)", state)
+    check(city.treasury == 20 * coin_g + 10 * coin_o, "treasury income for the deduction is wrong: %d" % city.treasury, state)
+    # Partial deduction based on availability: remainder 10 < 30 — everything is deducted,
+    # the timer resets (we do not wait to accumulate the full 30).
     wm.tick_city_consumption(10.0)
-    check(city.get_storage_amount("olives") == 0, "частичное списание не сработало (ожидается 0 оливок)", state)
-    check(city.treasury == 20 * coin_g + 20 * coin_o, "доход казны за частичное списание неверен: %d" % city.treasury, state)
-    # Пустой склад: списания нет (таймер сохраняется).
+    check(city.get_storage_amount("olives") == 0, "partial deduction did not work (expected 0 olives)", state)
+    check(city.treasury == 20 * coin_g + 20 * coin_o, "treasury income for the partial deduction is wrong: %d" % city.treasury, state)
+    # Empty storage: no deduction (the timer is preserved).
     wm.tick_city_consumption(10.0)
-    check(city.treasury == 20 * coin_g + 20 * coin_o, "на пустом складе списания/дохода быть не должно", state)
-    # Появился 1 фрукт — списывается тут же, без ожидания полного интервала.
+    check(city.treasury == 20 * coin_g + 20 * coin_o, "there must be no deduction/income on empty storage", state)
+    # 1 fruit appeared — it is deducted immediately, without waiting for the full interval.
     city.add_to_storage("olives", 1, "common")
     wm.tick_city_consumption(10.0)
-    check(city.get_storage_amount("olives") == 0, "появившийся фрукт не списан сразу", state)
-    check(city.treasury == 20 * coin_g + 20 * coin_o + coin_o, "доход казны за 1 фрукт неверен: %d" % city.treasury, state)
-    # Таймер сериализуется/восстанавливается. Ищем @fruits среди таймеров, а
-    # не требуем ровно один: у «Все жителей» несколько ресурсов (@fruits и
-    # @alcohol), и по каждому свой таймер. Проверка «таймеров ровно один»
-    # ломалась от добавления любой новой группы в реестр.
+    check(city.get_storage_amount("olives") == 0, "the newly appeared fruit was not deducted immediately", state)
+    check(city.treasury == 20 * coin_g + 20 * coin_o + coin_o, "treasury income for 1 fruit is wrong: %d" % city.treasury, state)
+    # The timer is serialized/restored. We look for @fruits among the timers rather
+    # than requiring exactly one: "All Citizens" has several resources (@fruits and
+    # @alcohol), each with its own timer. A "exactly one timer" check
+    # would break when any new group is added to the registry.
     var ser = wm.serialize_city_consumption_timers()
     var has_fruits_timer := false
     for item in ser:
         if str(item.get("resource", "")) == "@fruits":
             has_fruits_timer = true
             break
-    check(has_fruits_timer, "таймер all не сериализуется: %s" % str(ser), state)
+    check(has_fruits_timer, "the all timer is not serialized: %s" % str(ser), state)
     var wm2 = load("res://scripts/worker_manager.gd").new()
     wm2.load_city_consumption_timers(ser)
-    check(wm2.city_consumption_timers.has("@fruits"), "таймер all не восстанавливается", state)
+    check(wm2.city_consumption_timers.has("@fruits"), "the all timer is not restored", state)
     wm.free()
     wm2.free()
 
@@ -219,9 +219,9 @@ func _initialize():
         print("SMOKE TEST OK")
         quit(0)
 
-# Первое правило реестра consumption.json для пары (ресурс, профессия).
-# Нужно, чтобы сверять балансные amount/interval с источником данных, а не
-# с константой внутри теста: баланс в json меняется, тест — нет.
+# The first consumption.json registry rule for a (resource, profession) pair.
+# Needed to compare balance amount/interval against the data source, not
+# against a constant inside the test: the balance in json changes, the test does not.
 func _rule_for(rules: Array, res_key: String, prof_id: String) -> Dictionary:
     for r in rules:
         if str(r.get("resource", "")) == res_key and (prof_id in r.get("profession", [])):
@@ -233,4 +233,3 @@ func check(cond: bool, msg: String, state: Dictionary):
         push_error("ASSERT: " + msg)
         print("ASSERT FAILED: ", msg)
         state["failed"] = true
-

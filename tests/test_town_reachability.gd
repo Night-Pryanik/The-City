@@ -266,9 +266,9 @@ func _test_island_is_never_chosen(state: Dictionary) -> void:
     tile_data[hero_r][hero_c + 2]["resource"] = "copper_deposit"
 
     check(not _land_path_exists(tile_data, rows, cols, city_row, city_col, hero_r, hero_c),
-            "по условиям теста до острова НЕ должно быть наземного пути", state)
+            "by the test conditions there must be NO land path to the island", state)
     check(_distinct_resources_near(tile_data, hero_r, hero_c) >= 2,
-            "островной гекс-герой обязан быть привлекательным (2+ ресурса в окрестностях)",
+            "the island hero hex must be attractive (2+ resources in the neighbourhood)",
             state)
 
     # We run the algorithm many times: the base is chosen at random, so a single run could
@@ -279,18 +279,18 @@ func _test_island_is_never_chosen(state: Dictionary) -> void:
         tile_data[hero_r][hero_c]["has_town"] = false
         var placed = _try_place(tile_data, rows, cols, city_row, city_col)
         check(not placed.is_empty(),
-                "городок обязан быть размещён на материке", state)
+                "the town must be placed on the mainland", state)
         if placed.is_empty():
             return
         check(not (placed.row >= island_r0 and placed.row <= island_r1
                         and placed.col >= island_c0 and placed.col <= island_c1),
-                ("городок НЕ должен вставать на острове: получено (%d,%d), " +
-                        "остров = строки %d..%d, столбцы %d..%d")
+                ("the town must NOT be placed on the island: got (%d,%d), " +
+                        "island = rows %d..%d, cols %d..%d")
                         % [placed.row, placed.col, island_r0, island_r1, island_c0, island_c1],
                 state)
         check(_land_path_exists(tile_data, rows, cols, city_row, city_col,
                         placed.row, placed.col),
-                "место городка (%d,%d) обязано быть достижимо по суше от города (%d,%d)"
+                "the town location (%d,%d) must be reachable by land from the city (%d,%d)"
                         % [placed.row, placed.col, city_row, city_col], state)
 
 
@@ -338,13 +338,13 @@ func _test_generate_towns_all_on_mainland(state: Dictionary) -> void:
     map_config["num_towns"] = saved_num_towns
 
     check(_tm.town_hexes.size() == 6,
-            "ожидалось 6 городков, размещено %d" % _tm.town_hexes.size(), state)
+            "expected 6 towns, placed %d" % _tm.town_hexes.size(), state)
     for h in _tm.town_hexes:
         check(_land_path_exists(tile_data, rows, cols, city_row, city_col, h.row, h.col),
-                "городок (%d,%d) обязан быть достижим по суше от города" % [h.row, h.col], state)
+                "the town (%d,%d) must be reachable by land from the city" % [h.row, h.col], state)
         check(not (h.row >= island_r0 and h.row <= island_r1
                         and h.col >= island_c0 and h.col <= island_c1),
-                "городок (%d,%d) не должен стоять на острове" % [h.row, h.col], state)
+                "the town (%d,%d) must not stand on the island" % [h.row, h.col], state)
 
 
 # -------------------------------------------------------
@@ -386,19 +386,19 @@ func _test_control_joined_island_is_valid(state: Dictionary) -> void:
             if not is_perimeter:
                 continue
             check(_land_path_exists(tile_data, rows, cols, city_row, city_col, r, c),
-                    "в контрольной карте (без моря) гекс (%d,%d) обязан быть достижим"
+                    "in the control map (without the sea) the hex (%d,%d) must be reachable"
                             % [r, c], state)
             check(_distinct_resources_near(tile_data, r, c) >= 2,
-                    "в контрольной карте гекс (%d,%d) обязан быть привлекательным" % [r, c],
+                    "in the control map the hex (%d,%d) must be attractive" % [r, c],
                     state)
 
     var placed = _try_place(tile_data, rows, cols, city_row, city_col)
-    check(not placed.is_empty(), "в контрольной карте городок обязан быть размещён", state)
+    check(not placed.is_empty(), "in the control map the town must be placed", state)
     if placed.is_empty():
         return
     check(_land_path_exists(tile_data, rows, cols, city_row, city_col,
                     placed.row, placed.col),
-            "в контрольной карте место городка (%d,%d) обязано быть достижимо по суше"
+            "in the control map the town location (%d,%d) must be reachable by land"
                     % [placed.row, placed.col], state)
 
 
@@ -413,16 +413,16 @@ func _test_era2_guarantee_town_is_reachable(state: Dictionary) -> void:
     await process_frame
 
     var towns: Array = main_map.towns
-    check(towns.size() > 0, "на живой карте должны быть городки", state)
+    check(towns.size() > 0, "the live map must have towns", state)
     for town in towns:
         var tr := int(town.get("row", -1))
         var tc := int(town.get("col", -1))
         var tile = main_map.tile_data[tr][tc]
         check(not _is_water(tile),
-                "городок (%d,%d) не должен стоять на воде" % [tr, tc], state)
+                "the town (%d,%d) must not stand on water" % [tr, tc], state)
         check(_land_path_exists(main_map.tile_data, main_map.map_rows, main_map.map_cols,
                         main_map.city_row, main_map.city_col, tr, tc),
-                "городок (%d,%d) обязан быть достижим по суше от города игрока (%d,%d)"
+                "the town (%d,%d) must be reachable by land from the player's city (%d,%d)"
                         % [tr, tc, main_map.city_row, main_map.city_col], state)
 
     if main_map != null and is_instance_valid(main_map):

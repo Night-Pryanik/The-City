@@ -1,29 +1,30 @@
-# Headless-тест дороги, которая строится ВМЕСТЕ с улучшением.
+# Headless test for the road that is built TOGETHER with an improvement.
 #   godot --headless --path . --script res://tests/test_improvement_road.gd
 #
-# Проверки (живая сцена MainMap):
-#   1. ЦЕПОЧКА. Подтверждение постройки улучшения запускает ОДИН поэтапный
-#      проект и занимает ОДИН слот: сначала идут участки дороги, последним
-#      шагом — сама постройка улучшения.
-#   2. ПОЭТАПНОСТЬ И ЦЕНА. Участки дороги и улучшение оплачиваются каждый
-#      отдельно, цена дороги не входит в цену улучшения (иначе труд списывался
-#      бы дважды). Базовый уровень 1 (тропка) тоже платный.
-#   3. ОДИН СЛОТ. Улучшение с дорогой помещается в лимит в одну постройку, и
-#      гекс с идущей цепочкой нельзя занять второй постройкой.
-#   4. ПРЕВЬЮ. Показывает и цену улучшения, и цену дороги (с её уровнем и
-#      числом новых участков), и итог.
-#   5. СЕЙВ. Пересчёт дорог по факту улучшения (rebuild_roads_from_existing)
-#      пропускает гексы с road_staged — иначе недостроенную или отменённую
-#      дорогу он достроил бы бесплатно.
+# Checks (live MainMap scene):
+#   1. CHAIN. Confirming construction of an improvement starts ONE staged
+#      project and occupies ONE slot: first the road segments go, the last
+#      step is the construction of the improvement itself.
+#   2. STAGING AND COST. The road segments and the improvement are each paid
+#      for separately; the road cost is not part of the improvement cost
+#      (otherwise labor would be charged twice). Base level 1 (trail) is paid
+#      too.
+#   3. ONE SLOT. An improvement with a road fits within the one-construction
+#      limit, and a hex with a running chain cannot be taken by a second
+#      construction.
+#   4. PREVIEW. Shows both the improvement cost and the road cost (with its
+#      level and the number of new segments), and the total.
+#   5. SAVE. Recalculating roads after an improvement (rebuild_roads_from_existing)
+#      skips hexes with road_staged — otherwise it would finish an unfinished or
+#      canceled road for free.
 extends SceneTree
 
-# Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как
-# вечное молчание. Подробности — в tests/watchdog.gd.
+# Watchdog: without it a break in the _run() coroutine looks like eternal
+# silence from the outside. Details in tests/watchdog.gd.
 const WATCHDOG = preload("res://tests/watchdog.gd")
 
-# Уровень дороги для всех проверок: базовая тропка. Именно она раньше была
-# бесплатной, поэтому проверять надо на ней — платный уровень 2 и так
-# тарифицируется, и на нём ошибка не проявилась бы.
+# Road level for all checks: the base trail. It used to be free, so the check
+# must use it — paid level 2 is charged anyway, and the bug would not show on it.
 const TRAIL_LEVEL := 1
 
 var _cdata = null
@@ -36,9 +37,9 @@ func _initialize() -> void:
 func _run() -> void:
     var state = {"failed": false}
 
-    # Автолоады берём узлами дерева сцены: в режиме --script имена GameData и
-    # CityData на этапе компиляции этого файла ещё недоступны. new_game()
-    # заодно грузит все данные, включая roads.json.
+    # Autoloads are taken as scene-tree nodes: in --script mode the names
+    # GameData and CityData are not yet available when this file is compiled.
+    # new_game() also loads all data, including roads.json.
     get_root().get_node("SaveManager").new_game()
     _gdata = get_root().get_node("GameData")
     _cdata = get_root().get_node("CityData")
@@ -72,24 +73,24 @@ func _run() -> void:
         print("IMPROVEMENT ROAD TEST OK")
         quit(0)
 # -------------------------------------------------------
-# 1, 2. Цепочка «дорога → улучшение»: порядок, поэтапность, раздельные цены
+# 1, 2. The "road → improvement" chain: order, staging, separate costs
 # -------------------------------------------------------
 
 func _test_chain(main_map, state: Dictionary) -> void:
     var bm = main_map.build_manager
     var pm = main_map.project_manager
     var rm = main_map.road_manager
-    # Запас слотов не нужен: вся цепочка занимает ровно один слот, поэтому
-    # проверка идёт при лимите в один житель, как в новой партии.
+    # No spare slots are needed: the whole chain occupies exactly one slot, so
+    # the check runs with a limit of one citizen, as in a new game.
     var spot := _find_hex_with_road_plan(main_map)
     check(not spot.is_empty(),
-            "для проверки нужен гекс в влиянии, до которого тянется трасса", state)
+            "the check needs a hex under influence that a route reaches", state)
     if spot.is_empty():
         return
     var row := int(spot.row)
     var col := int(spot.col)
     var imp_id := _pick_improvement()
-    check(not imp_id.is_empty(), "в данных должно быть улучшение без no_road", state)
+    check(not imp_id.is_empty(), "the data must contain an improvement without no_road", state)
     if imp_id.is_empty():
         return
 
@@ -98,90 +99,93 @@ func _test_chain(main_map, state: Dictionary) -> void:
     var road_cost := int(main_map.get_road_cost_breakdown(
             row, col, TRAIL_LEVEL).get("cost", 0))
 
-    # Тропка не бесплатна: раньше дорога к улучшению не тарифицировалась вовсе,
-    # и постройка улучшения на дальнем гексе была «бесплатной с дорогой».
+    # The trail is not free: the road to an improvement used to be not charged
+    # at all, and building an improvement on a distant hex was "free with a road".
     check(road_cost > 0,
-            "дорога к улучшению должна стоить труда даже на базовом уровне", state)
+            "the road to an improvement must cost labor even at the base level", state)
     check(main_map.get_road_cost_for_improvement(row, col, TRAIL_LEVEL) == road_cost,
-            "цена дороги к улучшению должна совпадать с превью дороги", state)
+            "the road cost to an improvement must match the road preview", state)
 
-    # Цена улучшения и цена дороги — разные числа.
+    # The improvement cost and the road cost are different numbers.
     var cost_data: Dictionary = main_map.get_improvement_work_cost(
             imp_id, row, col, TRAIL_LEVEL)
     var imp_cost := int(cost_data.get("cost", 0))
     var cost_road := int(cost_data.get("road_cost", 0))
     var total := int(cost_data.get("total_cost", 0))
-    check(imp_cost > 0, "у улучшения должна быть своя цена", state)
+    check(imp_cost > 0, "the improvement must have its own cost", state)
     check(cost_road == road_cost,
-            "road_cost улучшения должен совпадать с ценой дороги", state)
+            "the improvement's road_cost must match the road cost", state)
     check(total == imp_cost + cost_road,
-            "итог должен быть суммой улучшения и дороги", state)
+            "the total must be the sum of the improvement and the road", state)
     check(int(cost_data.get("road_segments", 0)) == plan_segments,
-            "улучшение должно знать, сколько участков добавит дорога", state)
+            "the improvement must know how many segments the road will add", state)
 
-    # Одно подтверждение — одна цепочка и РОВНО один слот. Отдельной записи
-    # стройки улучшения в build_manager быть не должно: улучшение стоит в
-    # очереди проекта последним шагом, а не идёт параллельно дороге.
+    # One confirmation — one chain and EXACTLY one slot. There must be no
+    # separate construction entry for the improvement in build_manager: the
+    # improvement sits in the project queue as the last step, not in parallel
+    # with the road.
     check(bm.start_build(row, col, imp_id, null, TRAIL_LEVEL),
-            "стройку улучшения должно быть можно запустить", state)
+            "the improvement construction must be startable", state)
     check(not bm.is_building(row, col),
-            "улучшение не должно быть отдельной стройкой — оно в очереди проекта",
+            "the improvement must not be a separate construction — it is in the project queue",
             state)
     var project: Dictionary = pm.get_project_at(row, col)
     check(not project.is_empty(),
-            "дорога к улучшению должна идти поэтапным проектом", state)
+            "the road to an improvement must run as a staged project", state)
     var steps: Array = project.get("steps", [])
     check(steps.size() == plan_segments + 1,
-            "в очереди должно быть участков дороги ПЛЮС шаг улучшения: %d и %d"
+            "the queue must contain the road segments PLUS the improvement step: %d and %d"
                     % [steps.size(), plan_segments + 1], state)
     check(bm.get_total_active_builds() == 1,
-            "цепочка должна занимать ровно один слот (получено: %d)"
+            "the chain must occupy exactly one slot (got: %d)"
                     % bm.get_total_active_builds(), state)
 
-    # Последний шаг — улучшение, и его цена равна цене улучшения из превью.
+    # The last step is the improvement, and its cost equals the improvement cost from the preview.
     var last_step: Dictionary = steps[steps.size() - 1]
     var last_data: Dictionary = last_step.get("data", {})
     check(str(last_data.get("step_type", "")) == "improvement",
-            "последним шагом цепочки должен идти улучшение", state)
+            "the improvement must be the last step of the chain", state)
     check(str(last_data.get("improvement", "")) == imp_id,
-            "шаг улучшения должен нести id улучшения", state)
+            "the improvement step must carry the improvement id", state)
     check(int(last_step.get("work_cost", 0)) == imp_cost,
-            "шаг улучшения должен стоить ровно цену улучшения: %d и %d"
+            "the improvement step must cost exactly the improvement cost: %d and %d"
                     % [int(last_step.get("work_cost", 0)), imp_cost], state)
     var step_sum := 0
     for step in steps:
         step_sum += int(step.get("work_cost", 0))
     check(step_sum == total,
-            "сумма шагов цепочки должна совпадать с итогом превью: %d и %d"
+            "the sum of the chain steps must match the preview total: %d and %d"
                     % [step_sum, total], state)
 
-    # Гекс ещё без дороги и без улучшения: дорога впереди, по участкам.
+    # The hex has no road and no improvement yet: the road is ahead, segment by segment.
     check(not rm.is_hex_connected(row, col),
-            "гекс не должен получить дорогу мгновенно", state)
+            "the hex must not get the road instantly", state)
     check(main_map.tile_data[row][col].get("improvement", null) == null,
-            "улучшение не должно появиться раньше дороги", state)
+            "the improvement must not appear before the road", state)
     check(bool(main_map.tile_data[row][col].get("road_staged", false)),
-            "на гексе должен стоять флаг road_staged (входные данные для сейва)", state)
+            "the hex must have the road_staged flag (input data for the save)", state)
 
-    # Один кадр труда — ровно один участок дороги, и улучшение ещё не начато:
-    # дорога и постройка идут ПОСЛЕДОВАТЕЛЬНО. Ставку берём ту же, что раздаёт
-    # build_manager: доля одного из всех активных строек, а не весь труд города.
+    # One frame of labor — exactly one road segment, and the improvement has not
+    # started yet: the road and the construction run SEQUENTIALLY. We take the
+    # same rate that build_manager hands out: the share of one of all active
+    # constructions, not the whole city's labor.
     var step_cost := float(steps[0].get("work_cost", 1.0))
     var labor: float = maxf(0.001, _cdata.get_total_labor())
     var labor_per_build: float = labor / maxf(1.0, float(bm.get_total_active_builds()))
     bm._process(step_cost * 1.5 / labor_per_build)
     check(rm.get_all_road_segments().size() == 1,
-            "за один кадр должен достроиться ровно один участок дороги", state)
+            "exactly one road segment must be completed per frame", state)
     check(main_map.tile_data[row][col].get("improvement", null) == null,
-            "пока дорога строится, улучшение не ставится", state)
-    # Бар на гексе улучшения принадлежит участку дороги, а не постройке: пока
-    # дорога впереди, текущий шаг — участок.
+            "while the road is being built, the improvement is not placed", state)
+    # The bar on the improvement hex belongs to the road segment, not to the
+    # construction: while the road is ahead, the current step is a segment.
     check(str(pm.get_step_progress_at(row, col).get("step_type", "")) != "improvement",
-            "на гексе улучшения бар должен принадлежать участку дороги", state)
+            "on the improvement hex the bar must belong to the road segment", state)
 
-    # Добиваем очередь: после последнего участка должен отработать шаг улучшения.
-    # Ставку под текущий шаг, а не под первый участок: цена улучшения может быть
-    # больше цены участка, и кадр, рассчитанный на участок, не закрыл бы шаг.
+    # Finish off the queue: after the last segment the improvement step must run.
+    # The rate is for the current step, not for the first segment: the improvement
+    # cost may be greater than the segment cost, and a frame sized for a segment
+    # would not close the step.
     var guard := 0
     while not pm.get_project_at(row, col).is_empty() and guard < 400:
         var cur: Dictionary = pm.get_project_at(row, col)
@@ -192,25 +196,25 @@ func _test_chain(main_map, state: Dictionary) -> void:
             cur_cost = maxf(1.0, float((cur_steps[idx] as Dictionary).get("work_cost", 1.0)))
         bm._process(cur_cost * 2.0 / labor_per_build)
         guard += 1
-    check(guard < 400, "очередь должна достраиваться за разумное число кадров", state)
+    check(guard < 400, "the queue must finish within a reasonable number of frames", state)
     check(rm.is_hex_connected(row, col),
-            "после достройки очереди гекс должен получить дорогу", state)
+            "after the queue finishes the hex must get the road", state)
     check(str(main_map.tile_data[row][col].get("improvement", "")) == imp_id,
-            "после дороги должно достроиться и улучшение", state)
+            "after the road the improvement must be built too", state)
     check(pm.get_project_at(row, col).is_empty(),
-            "после улучшения очередь должна быть пуста", state)
+            "after the improvement the queue must be empty", state)
     check(bool(main_map.tile_data[row][col].get("road_built", false)),
-            "на целевом гексе должен стоять флаг road_built", state)
+            "the target hex must have the road_built flag", state)
 
 # -------------------------------------------------------
-# 3. Цепочка помещается в один слот, а занятый гекс не переиспользуется
+# 3. The chain fits in one slot, and an occupied hex is not reused
 # -------------------------------------------------------
 
 func _test_single_slot(main_map, state: Dictionary) -> void:
     var bm = main_map.build_manager
     var pm = main_map.project_manager
     var spot := _find_hex_with_road_plan(main_map)
-    check(not spot.is_empty(), "для проверки лимита нужен гекс без дороги", state)
+    check(not spot.is_empty(), "the limit check needs a hex without a road", state)
     if spot.is_empty():
         return
     var row := int(spot.row)
@@ -219,39 +223,39 @@ func _test_single_slot(main_map, state: Dictionary) -> void:
     if imp_id.is_empty():
         return
 
-    # Лимит в одну постройку — как в новой партии (один житель). Раньше цепочка
-    # «улучшение + дорога» занимала ДВА слота и в такое ограничение не
-    # помещалась: приходилось приоритет отдавать дороге и отказывать
-    # улучшению. Теперь очередь одна, и одного слота хватает на всё.
+    # Limit of one construction — as in a new game (one citizen). The
+    # "improvement + road" chain used to occupy TWO slots and did not fit such
+    # a limit: priority had to go to the road and the improvement had to be
+    # refused. Now there is one queue, and one slot is enough for everything.
     var previous_population := int(_cdata.total_population)
     _cdata.total_population = 1
     var started: bool = bm.start_build(row, col, imp_id, null, TRAIL_LEVEL)
 
-    check(started, "улучшение с дорогой должно помещаться в один слот", state)
+    check(started, "an improvement with a road must fit in one slot", state)
     check(bm.get_total_active_builds() == 1,
-            "цепочка должна занять единственный слот (получено: %d)"
+            "the chain must take the only slot (got: %d)"
                     % bm.get_total_active_builds(), state)
     check(not pm.get_project_at(row, col).is_empty(),
-            "на гексе должна идти цепочка дороги с улучшением", state)
+            "the hex must run a road chain with an improvement", state)
 
-    # Гекс, занятый цепочкой, нельзя занять повторно: улучшение в очереди не
-    # лежит в active_builds, и без этой проверки на гексе стартовала бы вторая
-    # постройка.
+    # A hex occupied by the chain cannot be taken again: the queued improvement
+    # is not in active_builds, and without this check a second construction would
+    # start on the hex.
     check(not bm.start_build(row, col, imp_id, null, TRAIL_LEVEL),
-            "на гексе с идущей цепочкой вторая постройка не должна запускаться", state)
+            "a second construction must not start on a hex with a running chain", state)
 
     pm.cancel_project_at(row, col)
     _cdata.total_population = previous_population
 
 # -------------------------------------------------------
-# 4. Дебаг-флаг «мгновенно» разбирает всю цепочку целиком
+# 4. The "instant" debug flag resolves the whole chain at once
 # -------------------------------------------------------
 
 func _test_instant_debug_flag(main_map, state: Dictionary) -> void:
     var bm = main_map.build_manager
     var rm = main_map.road_manager
     var spot := _find_hex_with_road_plan(main_map)
-    check(not spot.is_empty(), "для проверки флага нужен гекс без дороги", state)
+    check(not spot.is_empty(), "the flag check needs a hex without a road", state)
     if spot.is_empty():
         return
     var row := int(spot.row)
@@ -263,24 +267,24 @@ func _test_instant_debug_flag(main_map, state: Dictionary) -> void:
     var previous := bool(_cdata.ignore_build_requirements)
     _cdata.ignore_build_requirements = true
     check(bm.start_build(row, col, imp_id, null, TRAIL_LEVEL),
-            "с флагом цепочка должна запускаться", state)
-    # Один кадр раздачи труда: receive_labor(instant) разбирает очередь целиком,
-    # поэтому и дорога, и улучшение должны появиться сразу.
+            "with the flag the chain must start", state)
+    # One frame of labor distribution: receive_labor(instant) resolves the whole
+    # queue, so both the road and the improvement must appear at once.
     bm._process(0.1)
     check(rm.is_hex_connected(row, col),
-            "с флагом дорога должна быть проложена сразу", state)
+            "with the flag the road must be laid at once", state)
     check(str(main_map.tile_data[row][col].get("improvement", "")) == imp_id,
-            "с флагом улучшение должно быть построено сразу", state)
+            "with the flag the improvement must be built at once", state)
     _cdata.ignore_build_requirements = previous
 
 # -------------------------------------------------------
-# 5. Превью показывает обе цены
+# 5. The preview shows both costs
 # -------------------------------------------------------
 
 func _test_preview(main_map, state: Dictionary) -> void:
     var panel = main_map.control_panel
     var spot := _find_hex_with_road_plan(main_map)
-    check(not spot.is_empty(), "для превью нужен гекс без дороги", state)
+    check(not spot.is_empty(), "the preview needs a hex without a road", state)
     if spot.is_empty():
         return
     var row := int(spot.row)
@@ -296,7 +300,7 @@ func _test_preview(main_map, state: Dictionary) -> void:
     var total := int(cost_data.get("total_cost", 0))
     var segments := int(cost_data.get("road_segments", 0))
     check(road_cost > 0 and segments > 0,
-            "превью должно считать дорогу к улучшению", state)
+            "the preview must count the road to the improvement", state)
     if road_cost <= 0:
         return
 
@@ -309,74 +313,76 @@ func _test_preview(main_map, state: Dictionary) -> void:
     panel._refresh()
     var text: String = _collect_text(panel._preview_container)
     check(text.contains(str(imp_cost)),
-            "в превью должна быть цена улучшения (%d)" % imp_cost, state)
+            "the preview must show the improvement cost (%d)" % imp_cost, state)
     check(text.contains(str(road_cost)),
-            "в превью должна быть цена дороги (%d)" % road_cost, state)
+            "the preview must show the road cost (%d)" % road_cost, state)
     check(text.contains(str(total)),
-            "в превью должен быть итог цены улучшения и дороги (%d)" % total, state)
+            "the preview must show the total of the improvement and road costs (%d)" % total, state)
     check(text.contains(str(segments)),
-            "в превью должно быть число новых участков дороги (%d)" % segments, state)
-    # Название уровня приходит из данных и переводится, поэтому ищется в любом
-    # языке: строка дороги обязана называть уровень, по которому посчитана.
+            "the preview must show the number of new road segments (%d)" % segments, state)
+    # The level name comes from the data and is translated, so it is searched in
+    # any language: the road line must name the level it was calculated for.
     check(text.contains(str(_gdata.get_road_name(TRAIL_LEVEL))),
-            "строка дороги должна называть выбранный уровень дороги", state)
+            "the road line must name the selected road level", state)
     panel.clear_preview()
 
 # -------------------------------------------------------
-# 5. Восстановление: гекс с road_staged не достраивается бесплатно
+# 5. Restore: a hex with road_staged is not finished for free
 # -------------------------------------------------------
 
 func _test_save_restore(main_map, state: Dictionary) -> void:
     var rm = main_map.road_manager
     var spot := _find_hex_with_road_plan(main_map)
-    check(not spot.is_empty(), "для проверки сейва нужен гекс без дороги", state)
+    check(not spot.is_empty(), "the save check needs a hex without a road", state)
     if spot.is_empty():
         return
     var row := int(spot.row)
     var col := int(spot.col)
     var tile: Dictionary = main_map.tile_data[row][col]
     check(not rm.is_hex_connected(row, col),
-            "исходный гекс должен быть без дороги", state)
+            "the source hex must be without a road", state)
 
     tile["improvement"] = "farm"
     tile["road_staged"] = true
     check(bool(main_map._skip_improvement_road_restore(row, col)),
-            "гекс с road_staged обязан пропускаться при пересчёте сети", state)
+            "a hex with road_staged must be skipped when recalculating the network", state)
     rm.rebuild_roads_from_existing(main_map.tile_data, main_map.map_rows,
             main_map.map_cols, Callable(main_map, "_skip_improvement_road_restore"))
     check(not rm.is_hex_connected(row, col),
-            "пересчёт не должен достраивать поэтапную дорогу бесплатно", state)
+            "the recalculation must not finish a staged road for free", state)
 
-    # Старый сейв: флага нет — дорога восстанавливается, как раньше.
+    # Old save: no flag — the road is restored as before.
     tile["road_staged"] = false
     check(not bool(main_map._skip_improvement_road_restore(row, col)),
-            "гекс без road_staged пересчитывается как раньше", state)
+            "a hex without road_staged is recalculated as before", state)
     rm.rebuild_roads_from_existing(main_map.tile_data, main_map.map_rows,
             main_map.map_cols, Callable(main_map, "_skip_improvement_road_restore"))
     check(rm.is_hex_connected(row, col),
-            "улучшение старого сейва должно снова получить дорогу", state)
+            "the improvement of an old save must get its road again", state)
     tile["improvement"] = null
 
 # -------------------------------------------------------
-# Хелперы
+# Helpers
 # -------------------------------------------------------
 
-# Первое улучшение, которому полагается дорога: с no_road (ирригационный
-# канал, лодки) дороги нет по правилам, такой id для проверки не годится.
+# The first improvement that is entitled to a road: with no_road (irrigation
+# canal, boats) there is no road by the rules, so such an id is not suitable for
+# the check.
 func _pick_improvement() -> String:
     for id in _gdata.improvements.keys():
         if not bool(_gdata.improvements[id].get("no_road", false)):
             return str(id)
     return ""
 
-# Гекс Кольца Влияния, к которому тянется трасса: так ищем гекс, который ещё
-# можно занять и к которому действительно есть дорога.
+# A hex of the Influence Ring that a route reaches: this is how we look for a
+# hex that can still be taken and to which a road really exists.
 #
-# Сначала ищем гекс с трассой в 2+ участка (на нём видно, что цепочка идёт
-# по участкам), а если такого на карте нет — берём любой гекс с хотя бы одним
-# участком. Требовать два участка нельзя: кольцо влияния на части карт не
-# достигает города дальше чем на гекс, и проверка падала бы не из-за правила,
-# а из-за случайно сгенерированной карты.
+# First we look for a hex with a route of 2+ segments (on it you can see that
+# the chain runs segment by segment), and if there is none on the map we take
+# any hex with at least one segment. We cannot require two segments: on part of
+# the maps the influence ring does not reach the city farther than one hex, and
+# the check would fail not because of the rule but because of a randomly
+# generated map.
 func _find_hex_with_road_plan(main_map) -> Dictionary:
     var rm = main_map.road_manager
     var mh = load("res://scripts/map_helpers.gd")

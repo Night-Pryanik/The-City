@@ -1,85 +1,96 @@
-# Headless-тест торговой экономики городка (замыкание производства + каскадный
-# импорт): scripts/town_economy.gd
+# Headless test of the town trade economy (production closure + cascade
+# import): scripts/town_economy.gd
 #   godot --headless --path . --script res://tests/test_town_economy.gd
 #
-# Проверяется ровно то, что задумано механикой:
-#   1. ЗАМЫКАНИЕ. Ресурс, который не лежит на гексе, но выводится рецептом из
-#      лежащего, попадает в пул продажи; дальше по цепочке (wood -> charcoal ->
-#      iron). Рецепт, для которого сырья нет, в пул не попадает.
-#   2. @-ГРУППА. Закрывается ОДНИМ членом из многих.
-#   3. ГОТОВНОСТЬ = доля закрытых ингредиентов, количество НЕ учитывается.
-#      Синтетика на 1/2, 1/3, 2/3 даёт ровно 50, 33, 67.
-#   4. КАСКАД. Импорт открывает семейство товаров: купил руду — появился металл,
-#      из металла — изделия. Число проходов не фиксировано.
-#   5. ИЗОЛЯЦИЯ. Импортированное не продаётся — даже если само крафтовое.
-#   6. ДЕТЕРМИНИРОВАННОСТЬ. Два вызова подряд дают одинаковые пулы: главный
-#      регресс-тест, потому что при загрузке сейва пулы считаются дважды, и
-#      «прыгающий» buy_pool ломал бы партию при каждом чтении сохранения.
-#   7. ГРАНИЦЫ. Одноингредиентный рецепт не даёт ни импорта, ни замыкания при
-#      нуле доступных; рецепт с двумя пробелами из трёх импортируется (1/3),
-#      рецепт с бо́льшим числом пробелов — нет.
-#   8. ПРЕДСТАВИТЕЛЬ ГРУППЫ. Случайный, но стабильный между вызовами и всегда
-#      из состава группы.
-#   9. ЖИВАЯ КАРТА. Пулы непустые, а повторный пересчёт ничего не меняет.
-#  10. БАЗОВЫЙ ПУЛ = ПРОДУКЦИЯ. Само сырьё (поле, залежь, животное) в пул не
-#      попадает — городок продаёт урожай, а не «поле пшеницы». Это убирает двоих
-#      подряд «Wheat» в окне (wheat_field даёт wheat — они назывались одинаково).
-#  11. ЖИВОТНЫЕ. Сами звери не товар; товар — мясо, кожа, молоко, улов.
-#  12. ОДНОРАЗОВЫЕ. Дикорсы (wild_food) не дают ничего: их нельзя собирать
-#      бесконечно, значит и продавать нечего. Самородки — наоборот, дают руду:
-#      медь нужна кузнецу и добывается без ограничений.
-#  13. ДУБЛИ ИМЁН. В окне одна строка на имя, даже если в пуле два разных id
-#      с одинаковым названием (papyrus_plant и papyrus оба «Papyrus»).
-#  14. ОКНО. Списки лежат в ScrollContainer: длинный пул прокручивается, а не
-#      вылезает за нижний край окна на карту.
-#  15. КАЗНА. Новый городок получает town_initial_treasury из game_balance.json,
-#      окно показывает казну и обновляет её сразу по сигналу сделки; уйти в
-#      минус городок не может.
-#  16. СКЛАД. У каждого товара пула продажи есть запас 100..500 (town_storage_
-#      initial_min/max), и он переживает повторный пересчёт пулов — проданное не
-#      возвращается назад при перезагрузке сейва.
-#  17. ПЛАН ПРОИЗВОДСТВА. План производства (production) выводится из рецептов
-#      (10 шелка -> 10 шелка); склад двигает дневная торговля (тесты 23+).
-#  18. ЛИМИТ СКЛАДА. town_storage_limit на товар, а не на склад целиком: городок
-#      на пределе по одному товару продолжает торговать остальными.
-#  19. ТОРГОВЛЯ ПОСЛЕ РАЗВЕДКИ. Неразведанный городок не торгует, иначе к
-#      моменту встречи с игроком его склад уже ушёл бы от стартового запаса.
-#  20. СДЕЛКА. Продажа списывает единицы со склада, покупка кладёт; за пределами
-#      запаса сделка не проходит, склад не уходит в минус.
-#  21. ОКНО. В колонке продажи видно число единиц на складе, и оно обновляется
-#      по сигналу без пересборки списка.
-#  22. КАЧЕСТВО. У товара склада ровно один уровень: сырьё берёт НАИВЫСШЕЕ
-#      качество среди гексов кольца (а не первое найденное), крафт — стандартное
-#      средневзвешенное по ингредиентам; в окне — только звёзды в цвете уровня,
-#      без разбивки и процентов, с тултипом-подписью уровня.
-#  23. КОМФОРТ. Уровень запаса, к которому тянется торговля, ВЫВОДИТСЯ как
-#      середина town_storage_initial_min/max (300), отдельного поля нет.
-#  24. ДВУСТОРОННОСТЬ. Склад ходит И вверх, И вниз: за 400 тиков есть и покупки,
-#      и продажи, и склад не застывает на стартовом запасе.
-#  25. ГРАНИЦЫ. Склад не уходит в минус и не превышает лимит: на пустом складе
-#      направление вынужденно покупающее, на полном — продающее.
-#  26. ИНЕРЦИЯ. Направление повторяется, поэтому подъёмы и падения идут сериями
-#      длиной 3+ сделки, а не чередуются каждый день.
-#  27. СЕЙВ ТОРГОВЛИ. Направление последней сделки и счётчик тиков — состояние
-#      мира: после round-trip следующий тик идёт ровно тем же путём.
-#  28. КАТЕГОРИИ В ОКНЕ. Товары в пулах покупки и продажи разбиты по категориям,
-#      как на вкладке «Ресурсы» интерфейса города: заголовок категории — сплошная
-#      линия, название по центру, линия; под ним — строки только этой категории.
+# Exactly what the mechanic intends is checked:
+#   1. CLOSURE. A resource that is not on the hex but is produced by a recipe
+#      from one that is, lands in the sell pool; then further down the chain
+#      (wood -> charcoal -> iron). A recipe whose raw material is missing does
+#      not land in the pool.
+#   2. @-GROUP. It closes with ONE member out of many.
+#   3. READINESS = the share of closed ingredients, the amount is NOT counted.
+#      Synthetics at 1/2, 1/3, 2/3 give exactly 50, 33, 67.
+#   4. CASCADE. Import opens up a family of goods: bought ore — metal appeared,
+#      from metal — wares. The number of passes is not fixed.
+#   5. ISOLATION. Imported goods are not sold — even if they are crafted.
+#   6. DETERMINISM. Two consecutive calls give identical pools: the main
+#      regression test, because on save load the pools are computed twice, and
+#      a "jumping" buy_pool would break the batch on every save read.
+#   7. BOUNDARIES. A single-ingredient recipe gives neither import nor closure
+#      at zero available; a recipe with two gaps out of three is imported (1/3),
+#      a recipe with more gaps is not.
+#   8. GROUP REPRESENTATIVE. Random, but stable between calls and always
+#      from the group's membership.
+#   9. LIVE MAP. The pools are non-empty, and a recomputation changes nothing.
+#  10. BASE POOL = PRODUCTS. The raw material itself (field, deposit, animal)
+#      does not land in the pool — the town sells the harvest, not a "wheat
+#      field". This removes two consecutive "Wheat" in the window (wheat_field
+#      gives wheat — they were named the same).
+#  11. ANIMALS. The animals themselves are not goods; the goods are meat,
+#      hide, milk, catch.
+#  12. ONE-TIME. Wild food (wild_food) gives nothing: it cannot be gathered
+#      endlessly, so there is nothing to sell. Nuggets — on the contrary, give
+#      ore: copper is needed by the smith and is mined without limit.
+#  13. DUPLICATE NAMES. In the window there is one row per name, even if the
+#      pool has two different ids with the same name (papyrus_plant and
+#      papyrus both "Papyrus").
+#  14. WINDOW. The lists live in a ScrollContainer: a long pool scrolls instead
+#      of spilling over the window's bottom edge onto the map.
+#  15. TREASURY. A new town receives town_initial_treasury from
+#      game_balance.json, the window shows the treasury and updates it
+#      immediately on the trade signal; the town cannot go negative.
+#  16. STORAGE. Every good of the sell pool has a supply of 100..500
+#      (town_storage_initial_min/max), and it survives a pool recomputation —
+#      sold goods do not come back on save reload.
+#  17. PRODUCTION PLAN. The production plan (production) is derived from the
+#      recipes (10 silk -> 10 silk); the storage is moved by daily trade
+#      (tests 23+).
+#  18. STORAGE LIMIT. town_storage_limit is per good, not for the whole
+#      storage: a town at the limit on one good keeps trading the others.
+#  19. TRADE AFTER SCOUTING. An unscouted town does not trade, otherwise by the
+#      time it meets the player its storage would have drifted from the
+#      starting supply.
+#  20. DEAL. A sale debits units from the storage, a purchase adds them;
+#      outside the supply the deal does not go through, the storage does not go
+#      negative.
+#  21. WINDOW. The sell column shows the number of units in storage, and it
+#      updates on the signal without rebuilding the list.
+#  22. QUALITY. A storage good has exactly one level: raw material takes the
+#      HIGHEST quality among the ring's hexes (not the first found), crafting —
+#      the standard weighted average over the ingredients; in the window — only
+#      stars in the level's color, without breakdown and percentages, with a
+#      tooltip naming the level.
+#  23. COMFORT. The supply level that trade gravitates to is DERIVED as the
+#      middle of town_storage_initial_min/max (300), there is no separate field.
+#  24. TWO-WAY. The storage moves BOTH up AND down: over 400 ticks there are
+#      both purchases and sales, and the storage does not freeze at the starting
+#      supply.
+#  25. BOUNDARIES. The storage does not go negative and does not exceed the
+#      limit: on an empty storage the direction is forcedly buying, on a full
+#      one — selling.
+#  26. INERTIA. The direction repeats, so rises and falls come in runs of 3+
+#      deals, instead of alternating every day.
+#  27. TRADE SAVE. The last deal's direction and the tick counter are world
+#      state: after a round-trip the next tick goes exactly the same way.
+#  28. CATEGORIES IN THE WINDOW. The goods in the buy and sell pools are split
+#      by category, as on the city interface's "Resources" tab: the category
+#      header is a solid line, the name centered, the line; below it — rows of
+#      only that category.
 extends SceneTree
 
-# Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
-# молчание. Подробности — в tests/watchdog.gd.
+# Watchdog against hangs: without it, a broken _run() coroutine looks like
+# eternal silence from the outside. Details — in tests/watchdog.gd.
 const WATCHDOG = preload("res://tests/watchdog.gd")
 
-# Эталонные id из data/: рецепты берутся из GameData.crafts, поэтому проверки
-# сверяются с САМИМ реестром, а не с захардкоженными ожиданиями.
-const WOOD := "wood"          # сырьё -> charcoal -> planks
+# Reference ids from data/: recipes are taken from GameData.crafts, so the
+# checks compare against the REGISTRY itself, not hardcoded expectations.
+const WOOD := "wood"          # raw material -> charcoal -> planks
 const CHARCOAL := "charcoal"
 const PLANKS := "planks"
-const WHEAT := "wheat"        # член @millable_grains
+const WHEAT := "wheat"        # member of @millable_grains
 const COPPER_ORE := "copper_ore"
 const IRON_ORE := "iron_ore"
-const TIN := "tin"            # член @bronze_alloys (bronze_alloys: tin/antimony/arsenic)
+const TIN := "tin"            # member of @bronze_alloys (bronze_alloys: tin/antimony/arsenic)
 
 var _te = null
 var _failed := false
@@ -98,19 +109,19 @@ func _check(cond: bool, msg: String) -> void:
 
 
 func _run() -> void:
-    # Автозагрузки берём через дерево сцены: в режиме --script имена
-    # GameData/CityData недоступны на этапе компиляции этого файла.
-    # new_game() заодно грузит все данные (рецепты, группы, ресурсы).
+    # Autoloads are fetched through the scene tree: in --script mode the names
+    # GameData/CityData are unavailable at compile time of this file.
+    # new_game() also loads all the data (recipes, groups, resources).
     get_root().get_node("SaveManager").new_game()
     var gd = get_root().get_node("GameData")
-    _check(not gd.crafts.is_empty(), "реестр рецептов не загрузился")
+    _check(not gd.crafts.is_empty(), "recipe registry did not load")
     _check(gd.product_groups.has("bronze_alloys"),
-        "группа bronze_alloys не загрузилась")
-    # Модуль тоже через load(): class_name в --script-режиме может быть ещё не в
-    # кеше (тот же аргумент, что у MapHelpers в других тестах).
+        "group bronze_alloys did not load")
+    # The module is also loaded via load(): class_name may not be in the cache
+    # yet in --script mode (the same argument as MapHelpers in other tests).
     _te = load("res://scripts/town_economy.gd")
 
-    # Кейсы можно выбрать по имени: -- --case=readiness. См. watchdog.gd.
+    # Cases can be selected by name: -- --case=readiness. See watchdog.gd.
     if WATCHDOG.wants_case("closure"):
         _test_closure()
     if WATCHDOG.wants_case("group_closes_with_one_member"):
@@ -165,12 +176,15 @@ func _run() -> void:
         await _test_town_ui_categories()
 
     WATCHDOG.report_skipped()
-    print("test_town_economy: ", "ПРОВАЛЕН" if _failed else "все проверки пройдены")
+    if _failed:
+        print("TOWN ECONOMY TEST FAILED")
+    else:
+        print("TOWN ECONOMY TEST OK")
     quit(2 if _failed else 0)
 
 
-# --- Пул для произвольного набора id: base -> замыкание без импорта ---
-# Замыкание считается напрямую через _close_pool, минуя каскад импорта.
+# --- Pool for an arbitrary set of ids: base -> closure without import ---
+# The closure is computed directly through _close_pool, bypassing the import cascade.
 func _pool_only(base_ids: Array) -> Dictionary:
     var pool: Dictionary = {}
     for pid in base_ids:
@@ -180,74 +194,76 @@ func _pool_only(base_ids: Array) -> Dictionary:
     return pool
 
 
-# 1. Замыкание: wood -> charcoal -> planks. Замыкание рекурсивно, а не на один
-# шаг: charcoal появляется только после wood, planks — только после charcoal.
+# 1. Closure: wood -> charcoal -> planks. The closure is recursive, not one
+# step: charcoal appears only after wood, planks — only after charcoal.
 func _test_closure() -> void:
     var pool := _pool_only([WOOD])
     _check(pool.has(CHARCOAL),
-        "из wood должен получаться charcoal — замыкание не сработало")
+        "charcoal must come from wood — the closure did not fire")
     _check(pool.has(PLANKS),
-        "из charcoal должен получаться planks — цепочка замыкания не рекурсивна")
-    # Дерево даёт уголь, поэтому с медной рудой медь выплавится: замыкание
-    # должно связать ВСЮ цепочку, а не только первый шаг.
+        "planks must come from charcoal — the closure chain is not recursive")
+    # Wood gives charcoal, so with copper ore copper will be smelted: the
+    # closure must link the WHOLE chain, not just the first step.
     var with_ore := _pool_only([WOOD, COPPER_ORE])
-    _check(with_ore.has(CHARCOAL), "из wood должен получаться charcoal и при наличии руды")
+    _check(with_ore.has(CHARCOAL), "charcoal must come from wood even with ore present")
     _check(with_ore.has("copper"),
-        "wood + copper_ore обязаны давать copper через уголь — цепочка не сошлась")
-    # А вот без дерева (нет угля) медь не варится даже при наличии руды.
+        "wood + copper_ore must give copper via charcoal — the chain did not close")
+    # But without wood (no charcoal) copper is not smelted even with ore present.
     _check(not _pool_only([COPPER_ORE]).has("copper"),
-        "без угля медную руду городок не выплатит")
+        "without charcoal the town will not smelt copper ore")
     _check(_pool_only([WOOD, IRON_ORE]).has("iron"),
-        "wood + iron_ore обязаны давать iron через уголь")
+        "wood + iron_ore must give iron via charcoal")
 
 
-# 2. @-группа закрывается ОДНИМ членом: пшеница в @millable_grains, значит
-# рецепт муки закрыт, хотя в группе девять зерновых.
+# 2. An @-group closes with ONE member: wheat is in @millable_grains, so the
+# flour recipe is closed, even though the group has nine grains.
 func _test_group_closes_with_one_member() -> void:
     var gd = get_root().get_node("GameData")
     var millable: Array = gd.product_groups.get("millable_grains", [])
-    _check(millable.has(WHEAT), "пшеница должна входить в @millable_grains")
+    _check(millable.has(WHEAT), "wheat must belong to @millable_grains")
     var pool := _pool_only([WHEAT])
-    _check(pool.has("flour"), "одна пшеница из группы должна давать flour")
-    _check(pool.has("bread"), "из flour должен получаться bread")
+    _check(pool.has("flour"), "a single wheat from the group must give flour")
+    _check(pool.has("bread"), "bread must come from flour")
 
 
-# 3. Готовность = доля закрытых, количество не читается.
+# 3. Readiness = the share of closed ingredients, the amount is not read.
 func _test_readiness() -> void:
     var pool := _pool_only([WOOD, COPPER_ORE])
-    # bronze: copper + @bronze_alloys + charcoal. Закрыты copper и charcoal
-    # (угол из дерева), не хватает сплава => 2 из 3.
+    # bronze: copper + @bronze_alloys + charcoal. copper and charcoal are
+    # closed (charcoal from wood), the alloy is missing => 2 of 3.
     _check(_te.readiness_percent("bronze", pool) == 67,
-        "готовность bronze (2 из 3) должна быть 67, получено %d"
+        "bronze readiness (2 of 3) must be 67, got %d"
             % _te.readiness_percent("bronze", pool))
-    # bronze_tools: bronze + charcoal. Закрыт только уголь => 1 из 2.
+    # bronze_tools: bronze + charcoal. Only charcoal is closed => 1 of 2.
     _check(_te.readiness_percent("bronze_tools", pool) == 50,
-        "готовность bronze_tools (1 из 2) должна быть 50, получено %d"
+        "bronze_tools readiness (1 of 2) must be 50, got %d"
             % _te.readiness_percent("bronze_tools", pool))
-    # Рецепт, у которого не закрыт ни один ингредиент: 0.
+    # A recipe with no closed ingredient: 0.
     var empty := _pool_only([PLANKS])
     _check(_te.readiness_percent("gold", empty) == 0,
-        "у рецепта без единого доступного ингредиента готовность 0")
-    # Количество НЕ влияет: рецепт с двумя ингредиентами даёт 50 независимо от
-    # того, просит он 10 или 100 единиц. Сверяем с САМИМИ данными рецепта,
-    # чтобы тест не разъехался с ними при правке баланса.
+        "a recipe with no available ingredient has readiness 0")
+    # The amount does NOT matter: a recipe with two ingredients gives 50
+    # regardless of whether it asks for 10 or 100 units. We compare against the
+    # recipe's OWN data so the test does not drift from it when the balance is
+    # tweaked.
     var gd = get_root().get_node("GameData")
     for craft in gd.crafts:
         if str(craft.get("id", "")) != "iron":
             continue
         var ingredients: Dictionary = craft.get("resources", {})
         _check(ingredients.size() == 2,
-            "iron должен оставаться рецептом из двух ингредиентов")
+            "iron must remain a two-ingredient recipe")
         var only_ore := _pool_only([IRON_ORE])
         _check(_te.readiness_percent("iron", only_ore) == 50,
-            "готовность не должна зависеть от количества (iron_ore -> 50)")
+            "readiness must not depend on the amount (iron_ore -> 50)")
 
-# 4. КАСКАД. Импорт должен открывать целые семейства, а не один товар. На гексе
-# ТОЛЬКО дерево: угля (из дерева) есть, а железной руды нет — значит рецепт «iron»
-# закрыт ровно наполовину и может выиграть бросок. Купив руду, городок получает
-# металл, а из металла — изделия. Число проходов не фиксировано, поэтому
-# проверяем результат, а не количество итераций. Разные id городка дают разные
-# броски, поэтому перебираем их: так каскад встретится гарантированно.
+# 4. CASCADE. Import must open whole families, not a single good. On the hex
+# ONLY wood: charcoal (from wood) is there, but iron ore is not — so the "iron"
+# recipe is closed exactly halfway and can win a roll. Having bought the ore,
+# the town gets metal, and from metal — wares. The number of passes is not
+# fixed, so we check the result, not the iteration count. Different town ids
+# give different rolls, so we iterate over them: this way the cascade is
+# guaranteed to be met.
 func _test_cascade() -> void:
     var found_family := false
     var details := ""
@@ -256,17 +272,17 @@ func _test_cascade() -> void:
         var sell: Array = pools["sell_pool"]
         var buy: Array = pools["buy_pool"]
         if buy.has(IRON_ORE) and sell.has("iron") and sell.has("iron_tools"):
-            # Семейство раскрылось: купленную руду городок переработал, из
-            # металла слепил изделия, и изделия уже в продаже.
+            # The family opened up: the town processed the bought ore, from the
+            # metal it made wares, and the wares are already on sale.
             found_family = true
             break
-        details = "городок %d: покупает %s, продаёт %s" % [i, str(buy), str(sell)]
+        details = "town %d: buys %s, sells %s" % [i, str(buy), str(sell)]
     _check(found_family,
-        "каскад импорта не раскрыл семейство железа ни для одного городка (%s)"
+        "the import cascade did not open the iron family for any town (%s)"
             % details)
 
 
-# 5. ИЗОЛЯЦИЯ. Купленное не продаётся — по требованию дизайна.
+# 5. ISOLATION. Bought goods are not sold — by design requirement.
 func _test_import_isolated_from_sell() -> void:
     for i in range(40):
         var pools: Dictionary = _te.build_pools("town_%d" % i, [WOOD, IRON_ORE])
@@ -274,192 +290,195 @@ func _test_import_isolated_from_sell() -> void:
         var buy: Array = pools["buy_pool"]
         for pid in buy:
             _check(not sell.has(pid),
-                "импортированный товар «%s» не должен попадать в пул продажи" % pid)
+                "imported good \"%s\" must not land in the sell pool" % pid)
 
 
-# 6. ДЕТЕРМИНИРОВАННОСТЬ (главный регресс-тест). При загрузке сейва пулы
-# считаются дважды, поэтому повторный вызов обязан дать ТО ЖЕ самое.
+# 6. DETERMINISM (the main regression test). On save load the pools are
+# computed twice, so a repeated call must give the SAME thing.
 func _test_determinism() -> void:
     for i in range(10):
         var town_id := "town_det_%d" % i
         var first: Dictionary = _te.build_pools(town_id, [WOOD, COPPER_ORE, WHEAT])
         var second: Dictionary = _te.build_pools(town_id, [WOOD, COPPER_ORE, WHEAT])
         _check(first["sell_pool"] == second["sell_pool"],
-            "пул продажи городка %s изменился при повторном расчёте" % town_id)
-        # Устойчивость — единственное, что проверяем здесь; «купит ли городок хоть
-        # что-то» зависит от бросков и по определению не гарантирована ни для
-        # одного конкретного городка (см. тест каскада, где ради этого
-        # перебираются десятки id).
+            "the sell pool of town %s changed on recomputation" % town_id)
+        # Stability is the only thing checked here; "will the town buy anything
+        # at all" depends on rolls and by definition is not guaranteed for any
+        # particular town (see the cascade test, which iterates dozens of ids
+        # for that reason).
         _check(first["buy_pool"] == second["buy_pool"],
-            "пул покупки городка %s изменился при повторном расчёте" % town_id)
+            "the buy pool of town %s changed on recomputation" % town_id)
 
 
-# 8. ПРЕДСТАВИТЕЛЬ @-ГРУППЫ. Случайный, но устойчивый и всегда из группы.
+# 8. @-GROUP REPRESENTATIVE. Random, but stable and always from the group.
 func _test_group_member() -> void:
     var gd = get_root().get_node("GameData")
     var members: Array = gd.product_groups.get("bronze_alloys", [])
-    # bronze просит @bronze_alloys: в пуле есть copper (руда) и charcoal (дерево),
-    # не хватает именно сплава. Если городок решил импортировать, в покупке
-    # должен оказаться ОДИН из членов группы — и никакого ключа "@bronze_alloys".
+    # bronze asks for @bronze_alloys: the pool has copper (ore) and charcoal
+    # (wood), it is precisely the alloy that is missing. If the town decided to
+    # import, the purchase must contain ONE of the group members — and no
+    # "@bronze_alloys" key.
     var seen_group_pick := false
     for i in range(40):
         var pools: Dictionary = _te.build_pools("town_grp_%d" % i, [WOOD, COPPER_ORE])
         for pid in pools["buy_pool"]:
             _check(not str(pid).begins_with("@"),
-                "в пуле покупок не должно быть группового ключа «%s»" % pid)
+                "there must be no group key \"%s\" in the buy pool" % pid)
             if members.has(str(pid)):
                 seen_group_pick = true
     _check(seen_group_pick,
-        "ни один городок не выбрал представителя @bronze_alloys — "
-        + "проверьте разворот группы в импорте")
+        "no town picked a representative of @bronze_alloys — "
+        + "check the group expansion in import")
 
 
-# --- Базовый пул: только продукция, а не сырьё ---
+# --- Base pool: products only, not raw resources ---
 
-# Синтетические гексы с одним ресурсом каждый (collect_base_resources читает
-# ключ resource, а при пустом — crop_bred).
+# Synthetic hexes with one resource each (collect_base_resources reads the
+# resource key, and on empty — crop_bred).
 func _tiles_with(resources: Array) -> Array:
     var tiles: Array = []
     for res_id in resources:
         tiles.append({"resource": str(res_id)})
     return tiles
 
-# Пул продажи из гексов с заданными ресурсами (без импорта: 0 gaps).
-# Типы аннотированы явно: _te загружен через load(), и без них вывод функции
-# не выводится компилятором.
+# The sell pool from hexes with the given resources (without import: 0 gaps).
+# The types are annotated explicitly: _te is loaded via load(), and without
+# them the function's output is not inferred by the compiler.
 func _sell_pool_of(resources: Array) -> Array:
     var base: Array = _te.collect_base_resources(_tiles_with(resources))
     var pools: Dictionary = _te.build_pools("town_base_test", base)
     return pools["sell_pool"]
 
-# 10. Поля и залежи: в пул идёт ПРОДУКЦИЯ, само сырьё — нет.
-# Именно это убирает двоих подряд «Wheat»: wheat_field даёт wheat, и оба
-# назывались «Wheat», хотя это разные вещи — посев и зерно.
+# 10. Fields and deposits: the PRODUCTS go into the pool, the raw material
+# itself does not. This is exactly what removes two consecutive "Wheat":
+# wheat_field gives wheat, and both were named "Wheat", though they are
+# different things — a sowing and a grain.
 func _test_base_pool_is_products_only() -> void:
     var pool := _sell_pool_of(["wheat_field", "basalt_deposit"])
     _check(not pool.has("wheat_field"),
-        "само поле wheat_field не должно попадать в пул продажи: городок продаёт пшеницу, а не пшеничное поле")
+        "the field wheat_field itself must not land in the sell pool: the town sells wheat, not a wheat field")
     _check(not pool.has("basalt_deposit"),
-        "сама залежь basalt_deposit не должна попадать в пул продажи: городок продаёт камень, а не месторождение")
-    _check(pool.has(WHEAT), "продукция поля (wheat) обязана быть в пуле продажи")
-    _check(pool.has("basalt"), "продукция залежи (basalt) обязана быть в пуле продажи")
-    # Регресс на исходный симптом: никакого ресурса из data/resources/** в пуле.
+        "the deposit basalt_deposit itself must not land in the sell pool: the town sells stone, not the deposit")
+    _check(pool.has(WHEAT), "the field's product (wheat) must be in the sell pool")
+    _check(pool.has("basalt"), "the deposit's product (basalt) must be in the sell pool")
+    # Regression for the original symptom: no resource from data/resources/** in the pool.
     var gd = get_root().get_node("GameData")
     var raw_leaked: Array = []
     for res_id in pool:
         if gd.raw_resources.has(str(res_id)):
             raw_leaked.append(str(res_id))
     _check(raw_leaked.is_empty(),
-        "в пуле продажи не должно быть ни одного сырья из data/resources (найдено: %s)" % str(raw_leaked))
+        "there must be no raw resource from data/resources in the sell pool (found: %s)" % str(raw_leaked))
 
-# 11. Животные: в пуле мясо/кожа/молоко/улов, но не сами звери.
+# 11. Animals: the pool has meat/hide/milk/catch, but not the animals themselves.
 func _test_animals_excluded() -> void:
     var pool := _sell_pool_of(["cows", "ostrich", "freshwater_fish"])
     for animal in ["cows", "ostrich", "freshwater_fish"]:
         _check(not pool.has(animal),
-            "животное «%s» не товар: городок не должен продавать его как таковое" % animal)
-    _check(pool.has("raw_meat"), "от коров должно идти мясо (raw_meat)")
-    _check(pool.has("hide"), "от коров должно идти сырое мясо и кожа (hide)")
-    _check(pool.has("raw_milk"), "от коров должно идти молоко (raw_milk)")
-    _check(pool.has("eggs"), "от страусов должны идти яйца (eggs)")
-    _check(pool.has("raw_fish"), "от рыбы должен идти улов (raw_fish), а не сама рыба")
+            "the animal \"%s\" is not a good: the town must not sell it as such" % animal)
+    _check(pool.has("raw_meat"), "cows must yield meat (raw_meat)")
+    _check(pool.has("hide"), "cows must yield raw meat and hide (hide)")
+    _check(pool.has("raw_milk"), "cows must yield milk (raw_milk)")
+    _check(pool.has("eggs"), "ostriches must yield eggs (eggs)")
+    _check(pool.has("raw_fish"), "fish must yield a catch (raw_fish), not the fish itself")
 
-# 12. Одноразовые ресурсы: improved_by == null.
+# 12. One-time resources: improved_by == null.
 func _test_one_time_resources() -> void:
-    # Дикорсы собираются один раз -> торговать нечем.
+    # Wild food is gathered once -> there is nothing to trade.
     var wild := _sell_pool_of(["wild_food"])
-    _check(not wild.has("wild_food"), "дикорсы не должны продаваться как таковые")
+    _check(not wild.has("wild_food"), "wild food must not be sold as such")
     _check(not wild.has("foraged_food"),
-        "собранная с дикорсов пища не должна быть товаром: её нельзя добывать повторно")
-    # Самородки — тоже одноразовые, но это РУДА, а не находка: меди нужна
-    # кузнецу, и добывается она без ограничений.
+        "food gathered from wild food must not be a good: it cannot be gathered again")
+    # Nuggets are also one-time, but they are ORE, not a find: copper is needed
+    # by the smith, and it is mined without limit.
     var nugget := _sell_pool_of(["copper_nugget"])
-    _check(not nugget.has("copper_nugget"), "сам самородок не товар, а находка на гексе")
-    _check(nugget.has("copper"), "продукция самородка (copper) обязана быть в пуле: медь нужна кузнецу")
-    # Признак is_one_time совпадает с игровым (control_panel/main_map).
-    _check(_te.is_one_time("wild_food"), "wild_food должен опознаваться как одноразовый")
-    _check(_te.is_one_time("copper_nugget"), "copper_nugget должен опознаваться как одноразовый")
-    _check(not _te.is_one_time("wheat_field"), "поле с improved_by не одноразовое")
+    _check(not nugget.has("copper_nugget"), "the nugget itself is not a good, but a find on the hex")
+    _check(nugget.has("copper"), "the nugget's product (copper) must be in the pool: copper is needed by the smith")
+    # The is_one_time flag matches the game one (control_panel/main_map).
+    _check(_te.is_one_time("wild_food"), "wild_food must be recognized as one-time")
+    _check(_te.is_one_time("copper_nugget"), "copper_nugget must be recognized as one-time")
+    _check(not _te.is_one_time("wheat_field"), "a field with improved_by is not one-time")
 
 
-# 22. КАЧЕСТВО. У каждого товара склада ровно ОДИН уровень: у сырья — качество
-# ресурса на гексе, у крафта — стандартное правило города (средневзвешенное по
-# уровням ингредиентов, см. CityData.quality_from_breakdown). Смешанного
-# качества в городке не бывает вовсе.
+# 22. QUALITY. Every storage good has exactly ONE level: for raw material — the
+# resource's quality on the hex, for crafting — the city's standard rule
+# (weighted average over the ingredient levels, see CityData.quality_from_breakdown).
+# Mixed quality does not occur in a town at all.
 func _test_town_quality() -> void:
     var gd = get_root().get_node("GameData")
     var levels: Array = gd.get_quality_levels()
-    _check(levels.size() == 4, "шкала качества должна быть из 4 ступеней")
+    _check(levels.size() == 4, "the quality scale must have 4 steps")
 
-    # Сырьё берёт качество гекса. Два гекса одного сырья разного качества не
-    # усредняются: уровень склада задаёт НАИВЫСШЕЕ качество среди найденных.
+    # Raw material takes the hex's quality. Two hexes of the same raw material
+    # of different quality are not averaged: the storage level is set by the
+    # HIGHEST quality among those found.
     var tiles: Array = [
         {"resource": "wheat_field", "quality": "exceptional"},
         {"resource": "basalt_deposit", "quality": "fine"},
     ]
     var base: Dictionary = _te.collect_base_qualities(tiles)
     _check(str(base.get("wheat", "")) == "exceptional",
-        "пшеница должна унаследовать качество поля (получено «%s»)" % str(base.get("wheat", "")))
+        "wheat must inherit the field's quality (got \"%s\")" % str(base.get("wheat", "")))
     _check(str(base.get("feed", "")) == "exceptional",
-        "корм с того же поля должен иметь то же качество")
+        "feed from the same field must have the same quality")
     _check(str(base.get("basalt", "")) == "fine",
-        "камень должен получить качество залежи")
+        "stone must get the deposit's quality")
 
-    # Наивысшее побеждает, порядок обхода не важен. Корова обычного и корова
-    # исключительного качества в одном кольце дают мясо/кожу/молоко
-    # ИСКЛЮЧИТЕЛЬНОГО уровня.
+    # The highest wins, the traversal order does not matter. A common cow and
+    # an exceptional cow in the same ring give meat/hide/milk of the
+    # EXCEPTIONAL level.
     var highs: Dictionary = _te.collect_base_qualities([
         {"resource": "cows", "quality": "common"},
         {"resource": "cows", "quality": "exceptional"},
     ])
     _check(str(highs.get("raw_meat", "")) == "exceptional",
-        "при смеси обычной и исключительной коровы побеждает исключительная (получено «%s»)"
+        "with a mix of a common and an exceptional cow, the exceptional wins (got \"%s\")"
             % str(highs.get("raw_meat", "")))
     _check(str(highs.get("hide", "")) == "exceptional",
-        "побочные продукты коровы (кожа) тоже должны быть исключительными")
+        "the cow's by-products (hide) must also be exceptional")
     _check(str(highs.get("raw_milk", "")) == "exceptional",
-        "побочные продукты коровы (молоко) тоже должны быть исключительными")
-    # Обратный порядок — тот же результат (наивысшее, а не «первое встреченное»).
+        "the cow's by-products (milk) must also be exceptional")
+    # The reverse order — the same result (the highest, not the "first encountered").
     var highs_rev: Dictionary = _te.collect_base_qualities([
         {"resource": "cows", "quality": "exceptional"},
         {"resource": "cows", "quality": "common"},
     ])
     _check(str(highs_rev.get("raw_meat", "")) == "exceptional",
-        "наивысшее качество не должно зависеть от порядка обхода кольца")
-    # Идеальное качество перебивает исключительное.
+        "the highest quality must not depend on the ring traversal order")
+    # Perfect quality beats exceptional.
     var best: Dictionary = _te.collect_base_qualities([
         {"resource": "cows", "quality": "common"},
         {"resource": "cows", "quality": "exceptional"},
         {"resource": "cows", "quality": "perfect"},
     ])
     _check(str(best.get("raw_meat", "")) == "perfect",
-        "идеальное качество должно перебивать исключительное (получено «%s»)"
+        "perfect quality must beat exceptional (got \"%s\")"
             % str(best.get("raw_meat", "")))
 
-    # Ресурс без прокатанного качества (битый сейв) — обычный уровень, а не пустая строка.
+    # A resource without a rolled quality (broken save) — the common level, not an empty string.
     var broken: Dictionary = _te.collect_base_qualities([{"resource": "wheat_field"}])
     _check(str(broken.get("wheat", "")) == "common",
-        "ресурс без качества должен падать на обычный уровень")
+        "a resource without quality must fall back to the common level")
 
-    # Крафт: средневзвешенное ингредиентов. wood (perfect=4) + copper_ore
-    # (common=1) -> среднее 2.5 -> округление к ближайшему уровню (fine=2,
-    # diff=0.5 против exceptional=3, diff=0.5 — ничья, побеждает первый в шкале).
+    # Craft: the weighted average of the ingredients. wood (perfect=4) + copper_ore
+    # (common=1) -> average 2.5 -> rounded to the nearest level (fine=2,
+    # diff=0.5 vs exceptional=3, diff=0.5 — a tie, the first in the scale wins).
     var crafted: String = _te.craft_result_quality(
         {"id": "copper", "resources": {"wood": 1, "copper_ore": 1}},
         {"wood": true, "copper_ore": true},
         {"wood": "perfect", "copper_ore": "common"})
     _check(crafted == "fine" or crafted == "exceptional",
-        "крафт из perfect+common должен дать средний уровень (получено «%s»)" % crafted)
+        "crafting from perfect+common must give a middle level (got \"%s\")" % crafted)
 
-    # Оба ингредиента исключительные -> результат исключительный.
+    # Both ingredients exceptional -> the result is exceptional.
     var same: String = _te.craft_result_quality(
         {"id": "copper", "resources": {"wood": 1, "copper_ore": 1}},
         {"wood": true, "copper_ore": true},
         {"wood": "exceptional", "copper_ore": "exceptional"})
     _check(same == "exceptional",
-        "одинаковые уровни ингредиентов дают тот же уровень (получено «%s»)" % same)
+        "equal ingredient levels give the same level (got \"%s\")" % same)
 
-    # Окно показывает звёзды в цвете уровня, без разбивки и процентов.
+    # The window shows stars in the level's color, without breakdown and percentages.
     var ui = load("res://scenes/TownUI.tscn").instantiate()
     get_root().add_child(ui)
     await process_frame
@@ -475,76 +494,76 @@ func _test_town_quality() -> void:
     ui.open_town(town, true)
     var quality_labels: Dictionary = ui._sell_quality_labels
     _check(quality_labels.size() == 2,
-        "у каждой строки продажи должна быть метка качества (получено %d)" % quality_labels.size())
+        "every sell row must have a quality label (got %d)" % quality_labels.size())
     var wood_name: String = ui._get_resource_display_name(WOOD)
     var wood_stars: Label = quality_labels.get(wood_name, null)
-    _check(wood_stars != null, "строка товара должна иметь метку звёзд")
+    _check(wood_stars != null, "a good's row must have a star label")
     if wood_stars != null:
         _check(wood_stars.text == gd.get_quality_stars("perfect"),
-            "звёзды строки должны быть уровнем товара (получено «%s»)" % wood_stars.text)
+            "the row's stars must be the good's level (got \"%s\")" % wood_stars.text)
         _check(not wood_stars.text.contains("%") and not wood_stars.text.contains("("),
-            "в метке качества не должно быть разбивки и процентов, только звёзды")
+            "the quality label must have no breakdown or percentages, only stars")
         _check(wood_stars.get_theme_color("font_color") == gd.get_quality_color("perfect"),
-            "звёзды должны быть покрашены в цвет своего уровня")
-        # Тултип поясняет, какой это уровень качества.
+            "the stars must be colored in their level's color")
+        # The tooltip explains which quality level it is.
         _check(not wood_stars.tooltip_text.is_empty(),
-            "у звёзд должен быть тултип с пояснением уровня")
+            "the stars must have a tooltip explaining the level")
         _check(wood_stars.tooltip_text.contains(gd.get_quality_name("perfect")),
-            "тултип должен называть уровень качества (получено «%s»)" % wood_stars.tooltip_text)
+            "the tooltip must name the quality level (got \"%s\")" % wood_stars.tooltip_text)
         _check(wood_stars.mouse_filter == Control.MOUSE_FILTER_STOP,
-            "метка звёзд должна ловить мышь, иначе тултип не покажется")
-    # Второй товар — свой уровень и свой тултип.
+            "the star label must catch the mouse, otherwise the tooltip will not show")
+    # The second good — its own level and its own tooltip.
     var planks_name: String = ui._get_resource_display_name(PLANKS)
     var planks_stars: Label = quality_labels.get(planks_name, null)
-    _check(planks_stars != null, "у второй строки тоже должна быть метка звёзд")
+    _check(planks_stars != null, "the second row must also have a star label")
     if planks_stars != null:
         _check(planks_stars.text == gd.get_quality_stars("fine"),
-            "звёзды второй строки должны быть её уровнем (получено «%s»)" % planks_stars.text)
+            "the second row's stars must be its level (got \"%s\")" % planks_stars.text)
         _check(planks_stars.tooltip_text.contains(gd.get_quality_name("fine")),
-            "тултип второй строки должен называть её уровень (получено «%s»)" % planks_stars.tooltip_text)
+            "the second row's tooltip must name its level (got \"%s\")" % planks_stars.tooltip_text)
     ui.queue_free()
     tm.queue_free()
 
 
-# 13. Два разных id с одинаковым именем — одна строка в окне.
-# Основная защита от дублей живёт в данных (сырьё не попадает в пул), но в
-# data/products есть ровно одна пара разных id с одинаковым названием:
-# papyrus_plant (урожай) и papyrus (крафт) оба зовутся «Papyrus», и оба могут
-# оказаться в пуле одного городка.
+# 13. Two different ids with the same name — one row in the window.
+# The main protection against duplicates lives in the data (raw material does
+# not land in the pool), but data/products has exactly one pair of different
+# ids with the same name: papyrus_plant (crop) and papyrus (craft) are both
+# called "Papyrus", and both can end up in one town's pool.
 func _test_duplicate_names_hidden() -> void:
     var gd = get_root().get_node("GameData")
     var papyrus_plant: Dictionary = gd.products.get("papyrus_plant", {})
     var papyrus: Dictionary = gd.products.get("papyrus", {})
     _check(not papyrus_plant.is_empty() and not papyrus.is_empty(),
-        "тест опирается на пару papyrus_plant/papyrus в data/products — она должна существовать")
+        "the test relies on the papyrus_plant/papyrus pair in data/products — it must exist")
     _check(str(papyrus_plant.get("name", "")) == str(papyrus.get("name", "")),
-        "papyrus_plant и papyrus должны называться одинаково, иначе тест бессмысленен")
+        "papyrus_plant and papyrus must be named the same, otherwise the test is meaningless")
     var ui = load("res://scenes/TownUI.tscn").instantiate()
     get_root().add_child(ui)
-    # Кадр нужен ради @onready: без него ссылки на узлы ещё не заполнены.
+    # The frame is needed for @onready: without it the node references are not filled yet.
     await process_frame
     ui.open_town({"name": "T", "sell_pool": ["papyrus_plant", "papyrus"], "buy_pool": []}, true)
     var names: Array = ui._visible_row_names(ui.sell_list)
     _check(names.size() == 1,
-        "два товара с одинаковым именем должны дать одну строку (получено %d: %s)"
+        "two goods with the same name must give one row (got %d: %s)"
             % [names.size(), str(names)])
     ui.queue_free()
 
-# 14. Окно: списки прокручиваются и ничего не рисуют поверх карты.
+# 14. Window: the lists scroll and draw nothing over the map.
 func _test_town_ui_window() -> void:
     var ui = load("res://scenes/TownUI.tscn").instantiate()
     get_root().add_child(ui)
     await process_frame
     _check(ui.buy_scroll is ScrollContainer,
-        "список покупки должен лежать в ScrollContainer, иначе длинный список вылезет на карту")
+        "the buy list must live in a ScrollContainer, otherwise a long list will spill onto the map")
     _check(ui.sell_scroll is ScrollContainer,
-        "список продажи должен лежать в ScrollContainer, иначе длинный список вылезет на карту")
-    _check(ui.buy_list.get_parent() == ui.buy_scroll, "BuyList должен быть ребёнком BuyScroll")
-    _check(ui.sell_list.get_parent() == ui.sell_scroll, "SellList должен быть ребёнком SellScroll")
+        "the sell list must live in a ScrollContainer, otherwise a long list will spill onto the map")
+    _check(ui.buy_list.get_parent() == ui.buy_scroll, "BuyList must be a child of BuyScroll")
+    _check(ui.sell_list.get_parent() == ui.sell_scroll, "SellList must be a child of SellScroll")
     _check(ui.window_panel.clip_contents,
-        "WindowPanel должен обрезать содержимое: без этого длинный список рисуется поверх карты")
+        "WindowPanel must clip its contents: otherwise a long list is drawn over the map")
 
-    # Длинный пул: строк заведомо больше, чем влезает в окно.
+    # A long pool: there are far more rows than fit in the window.
     var gd = get_root().get_node("GameData")
     var long_pool: Array = []
     for pid in gd.products.keys():
@@ -553,33 +572,33 @@ func _test_town_ui_window() -> void:
     await process_frame
     await process_frame
     _check(ui.sell_list.get_child_count() > 10,
-        "тест должен наполнить список десятками строк (строк: %d)" % ui.sell_list.get_child_count())
-    # Ключевое: содержимое выше окна — значит, прокрутка действительно нужна.
+        "the test must fill the list with dozens of rows (rows: %d)" % ui.sell_list.get_child_count())
+    # The key point: the content is taller than the window — so scrolling is really needed.
     var content_height: float = ui.sell_list.size.y
     var window_height: float = ui.window_panel.size.y
     _check(content_height > window_height,
-        "контент должен быть выше окна, иначе прокрутка нечего крутить (контент %d, окно %d)"
+        "the content must be taller than the window, otherwise there is nothing to scroll (content %d, window %d)"
             % [int(content_height), int(window_height)])
-    # И прокрутка реально прокручивает: смещаем и ждём кадра.
+    # And the scroll really scrolls: we shift it and wait for a frame.
     ui.sell_scroll.scroll_vertical = int(content_height)
     await process_frame
     _check(ui.sell_scroll.scroll_vertical > 0,
-        "ScrollContainer должен прокручиваться по вертикали (позиция: %d)" % ui.sell_scroll.scroll_vertical)
+        "the ScrollContainer must scroll vertically (position: %d)" % ui.sell_scroll.scroll_vertical)
     ui.queue_free()
 
 
-# 15. Казна городка: стартовое значение, сделки, окно в реальном времени, сейв.
+# 15. Town treasury: starting value, deals, the window in real time, save.
 func _test_town_treasury() -> void:
     var gd = get_root().get_node("GameData")
     var expected := int(gd.game_balance.get("town_initial_treasury", -1))
     _check(expected == 1000,
-        "town_initial_treasury в game_balance.json: ожидалось 1000, получено %d" % expected)
+        "town_initial_treasury in game_balance.json: expected 1000, got %d" % expected)
 
     var tm = load("res://scripts/town_manager.gd").new()
     get_root().add_child(tm)
     var town: Dictionary = tm._make_town_record(0, 5, 5, false)
     _check(int(town.get("treasury", -1)) == expected,
-        "новый городок должен получить стартовую казну (получено %s)" % str(town.get("treasury")))
+        "a new town must receive the starting treasury (got %s)" % str(town.get("treasury")))
 
     var ui = load("res://scenes/TownUI.tscn").instantiate()
     get_root().add_child(ui)
@@ -587,33 +606,33 @@ func _test_town_treasury() -> void:
     tm.town_treasury_changed.connect(ui.on_town_treasury_changed)
     ui.open_town(town, true)
     _check(ui.treasury_label.text.contains(str(expected)),
-        "окно должно показывать казну городка (текст: %s)" % ui.treasury_label.text)
+        "the window must show the town's treasury (text: %s)" % ui.treasury_label.text)
 
     tm.add_town_treasury(town, 150)
     _check(ui.treasury_label.text.contains(str(expected + 150)),
-        "после поступления казна в окне должна обновиться сразу (текст: %s)" % ui.treasury_label.text)
-    _check(tm.spend_town_treasury(town, 50), "списание в пределах казны должно пройти")
+        "after income the treasury in the window must update immediately (text: %s)" % ui.treasury_label.text)
+    _check(tm.spend_town_treasury(town, 50), "a debit within the treasury must go through")
     _check(ui.treasury_label.text.contains(str(expected + 100)),
-        "после списания казна в окне должна обновиться сразу (текст: %s)" % ui.treasury_label.text)
-    _check(not tm.spend_town_treasury(town, expected * 10), "городок не может уйти в минус")
-    _check(tm.get_town_treasury(town) == expected + 100, "неудачное списание не меняет казну")
+        "after the debit the treasury in the window must update immediately (text: %s)" % ui.treasury_label.text)
+    _check(not tm.spend_town_treasury(town, expected * 10), "the town cannot go negative")
+    _check(tm.get_town_treasury(town) == expected + 100, "a failed debit does not change the treasury")
 
     tm.towns.append(town)
     var saved: Array = tm.serialize_towns()
     tm.load_towns(saved)
-    _check(tm.get_town_treasury(tm.towns[0]) == expected + 100, "казна городка должна переживать сейв")
+    _check(tm.get_town_treasury(tm.towns[0]) == expected + 100, "the town treasury must survive a save")
     var legacy: Dictionary = saved[0].duplicate()
     legacy.erase("treasury")
     tm.load_towns([legacy])
     _check(tm.get_town_treasury(tm.towns[0]) == expected,
-        "сейв без казны городка должен получить стартовое значение")
+        "a save without a town treasury must receive the starting value")
 
     ui.queue_free()
     tm.queue_free()
 
 
-# 9. ЖИВАЯ КАРТА. Пулы считаются для реальных городков, и повторный пересчёт
-# (как при загрузке сейва) ничего не меняет.
+# 9. LIVE MAP. The pools are computed for real towns, and a recomputation
+# (as on save load) changes nothing.
 func _test_live_map() -> void:
     var main_map = load("res://scenes/MainMap.tscn").instantiate()
     get_root().add_child(main_map)
@@ -621,54 +640,55 @@ func _test_live_map() -> void:
     await process_frame
     var tm = main_map.get_node_or_null("TownManager")
     if tm == null:
-        print("SKIP: живая карта не создала TownManager")
+        print("SKIP: the live map did not create a TownManager")
         return
     var towns: Array = tm.towns
-    _check(not towns.is_empty(), "на живой карте должны быть городки")
+    _check(not towns.is_empty(), "the live map must have towns")
     var first: Dictionary = {}
     for town in towns:
         var sell: Array = town.get("sell_pool", [])
         _check(not sell.is_empty(),
-            "пул продажи городка %s пуст — городок нечего продавать"
+            "the sell pool of town %s is empty — the town has nothing to sell"
                 % str(town.get("id", "")))
-        # Импорт не должен просочиться в продажу.
+        # Import must not leak into the sale.
         for pid in town.get("buy_pool", []):
             _check(not sell.has(pid),
-                "у городка %s купленное «%s» попало в продажу"
+                "in town %s the bought good \"%s\" landed in the sale"
                     % [str(town.get("id", "")), pid])
         first[str(town.get("id", ""))] = [sell.duplicate(), town.get("buy_pool", []).duplicate()]
-    # Повторный пересчёт — ровно то, что делает игра при загрузке сейва.
+    # A recomputation — exactly what the game does on save load.
     tm._refresh_sell_pools(main_map.tile_data)
     for town in towns:
         var key := str(town.get("id", ""))
         if not first.has(key):
             continue
         _check(first[key][0] == town.get("sell_pool", []),
-            "у городка %s пул продажи изменился при повторном пересчёте" % key)
+            "in town %s the sell pool changed on recomputation" % key)
         _check(first[key][1] == town.get("buy_pool", []),
-            "у городка %s пул покупки изменился при повторном пересчёте" % key)
+            "in town %s the buy pool changed on recomputation" % key)
 
-    # --- СКЛАД НА ЖИВОЙ КАРТЕ ---
-    # У каждого городка есть склад, покрывающий весь пул продажи, и он не пустой:
-    # иначе игрок увидел бы в окне товары без единой единицы.
+    # --- STORAGE ON THE LIVE MAP ---
+    # Every town has a storage covering the whole sell pool, and it is not
+    # empty: otherwise the player would see goods in the window with not a
+    # single unit.
     for town in towns:
         var key := str(town.get("id", ""))
         var storage: Dictionary = town.get("storage", {})
         var sell: Array = town.get("sell_pool", [])
         _check(not storage.is_empty(),
-            "у городка %s пустой склад — в окне нечего продавать" % key)
+            "town %s has an empty storage — nothing to sell in the window" % key)
         for pid in sell:
             _check(storage.has(str(pid)),
-                "у городка %s на складе нет товара «%s» из пула продажи"
+                "in town %s the storage lacks the good \"%s\" from the sell pool"
                     % [key, pid])
-        # Покупное на склад не кладётся: купленное — это сырьё, а не товар.
+        # Bought goods are not put into storage: what is bought is raw material, not a good.
         for pid in town.get("buy_pool", []):
             _check(not storage.has(str(pid)),
-                "у городка %s купленное «%s» попало на склад" % [key, pid])
-        # Склад повторяет пул продажи один в один: в нём нет ничего лишнего и не
-        # хватает ничего. Пул считается ДВАжды на новой игре, и между проходами
-        # кольцо получает декоративные поля, поэтому товар может перестать быть
-        # продажным уже после того, как попал на склад.
+                "in town %s the bought good \"%s\" landed in storage" % [key, pid])
+        # The storage mirrors the sell pool one-to-one: it has nothing extra and
+        # nothing missing. The pool is computed TWICE on a new game, and between
+        # the passes the ring gets decorative fields, so a good may stop being
+        # sellable after it has already landed in storage.
         var on_stock: Array = []
         for pid in storage.keys():
             on_stock.append(str(pid))
@@ -676,70 +696,70 @@ func _test_live_map() -> void:
         var sell_sorted: Array = sell.duplicate()
         sell_sorted.sort()
         _check(on_stock == sell_sorted,
-            "склад городка %s должен совпадать с пулом продажи: на складе %s, в пуле %s"
+            "the storage of town %s must match the sell pool: in storage %s, in the pool %s"
                 % [key, str(on_stock), str(sell_sorted)])
-        # И склад заполнен НИЖЕ лимита: незакрытый городок не должен стоять
-        # полным уже на старте игры (см. тест 19 про разведку).
+        # And the storage is filled BELOW the limit: an unscouted town must not
+        # stand full already at the start of the game (see test 19 on scouting).
         var limit: int = _te.get_storage_limit()
         for pid in storage:
             _check(int(storage[pid]) <= limit,
-                "у городка %s товар «%s» на складе выше лимита (%d > %d)"
+                "in town %s the good \"%s\" in storage is above the limit (%d > %d)"
                     % [key, pid, int(storage[pid]), limit])
 
-    # --- КАЧЕСТВО НА ЖИВОЙ КАРТЕ ---
-    # У каждого товара склада ровно один уровень качества, и он из шкалы
-    # data/qualities.json. Ни одной строки без звёзд в окне быть не должно.
+    # --- QUALITY ON THE LIVE MAP ---
+    # Every storage good has exactly one quality level, and it is from the
+    # data/qualities.json scale. There must be no row without stars in the window.
     var gd = get_root().get_node("GameData")
     var levels: Array = gd.get_quality_levels()
     for town in towns:
         var key := str(town.get("id", ""))
         var quality: Dictionary = town.get("quality", {})
         _check(not quality.is_empty(),
-            "у городка %s нет качества товаров склада" % key)
+            "town %s has no quality for its storage goods" % key)
         for pid in town.get("sell_pool", []):
             var qid := str(quality.get(str(pid), ""))
             _check(levels.has(qid),
-                "у городка %s товар «%s» без уровня качества (получено «%s»)"
+                "in town %s the good \"%s\" has no quality level (got \"%s\")"
                     % [key, pid, qid])
-        # Смешанного качества в городке не бывает: качество хранится одним
-        # уровнем на товар, а не разбивкой, поэтому лишние ключи — ошибка.
+        # Mixed quality does not occur in a town: quality is stored as one
+        # level per good, not a breakdown, so extra keys are an error.
         for pid in quality.keys():
             _check(levels.has(str(quality[pid])),
-                "у городка %s товар «%s» с уровнем вне шкалы" % [key, pid])
+                "in town %s the good \"%s\" has a level outside the scale" % [key, pid])
         for pid in quality.keys():
             _check(town.get("sell_pool", []).has(str(pid)),
-                "у городка %s качество есть у не продажного «%s»" % [key, pid])
+                "in town %s quality is set for the non-sellable \"%s\"" % [key, pid])
     main_map.queue_free()
 
 
-# 16. СТАРТОВЫЙ ЗАПАС. У каждого товара пула продажи есть запас в границах из
-# game_balance.json, и повторный пересчёт пулов (как при загрузке сейва) его НЕ
-# трогает: иначе проданные единицы возвращались бы назад на каждой загрузке.
+# 16. STARTING SUPPLY. Every good of the sell pool has a supply within the
+# bounds from game_balance.json, and a pool recomputation (as on save load)
+# does NOT touch it: otherwise sold units would come back on every load.
 func _test_storage_seeded() -> void:
     var gd = get_root().get_node("GameData")
     var low := int(gd.game_balance.get("town_storage_initial_min", -1))
     var high := int(gd.game_balance.get("town_storage_initial_max", -1))
     _check(low == 100,
-        "town_storage_initial_min в game_balance.json: ожидалось 100, получено %d" % low)
+        "town_storage_initial_min in game_balance.json: expected 100, got %d" % low)
     _check(high == 500,
-        "town_storage_initial_max в game_balance.json: ожидалось 500, получено %d" % high)
+        "town_storage_initial_max in game_balance.json: expected 500, got %d" % high)
 
     var storage: Dictionary = _te.build_initial_storage("town_0", [WOOD, PLANKS, WHEAT])
     _check(storage.size() == 3,
-        "стартовый склад должен покрывать все три товара (получено %d)" % storage.size())
+        "the starting storage must cover all three goods (got %d)" % storage.size())
     for pid in storage:
         var amount := int(storage[pid])
         _check(amount >= low and amount <= high,
-            "стартовый запас «%s» = %d, вне границ [%d, %d]" % [pid, amount, low, high])
+            "the starting supply \"%s\" = %d, outside the bounds [%d, %d]" % [pid, amount, low, high])
 
-    # Детерминизм: тот же городок и тот же товар дают тот же запас. Пулы
-    # считаются дважды на новой игре и при каждой загрузке, поэтому случайное
-    # значение здесь означало бы скачущий склад.
+    # Determinism: the same town and the same good give the same supply. The
+    # pools are computed twice on a new game and on every load, so a random
+    # value here would mean a jumping storage.
     var again: Dictionary = _te.build_initial_storage("town_0", [WOOD, PLANKS, WHEAT])
-    _check(again == storage, "стартовый запас должен быть детерминированным")
+    _check(again == storage, "the starting supply must be deterministic")
 
-    # Разные городки отличаются: у соседей по карте не должно быть одинакового
-    # склада «под копирку».
+    # Different towns differ: neighbors on the map must not have an identical
+    # "carbon-copy" storage.
     var differs := false
     for i in range(30):
         var other: Dictionary = _te.build_initial_storage("town_%d" % i,
@@ -747,49 +767,50 @@ func _test_storage_seeded() -> void:
         if other.get(WOOD, -1) != storage.get(WOOD, -2):
             differs = true
             break
-    _check(differs, "у разных городков запас одного товара должен различаться")
+    _check(differs, "different towns must have different supplies of the same good")
 
 
-# 17. ПЛАН ПРОИЗВОДСТВА ПО РЕЦЕПТУ. План производства (production) выводится
-# из рецептов: сколько рецепт обещает, столько и записано в план. Но план больше НЕ
-# двигает склад напрямую — склад двигает дневная ТОРГОВЛЯ (тест 23).
+# 17. PRODUCTION PLAN BY RECIPE. The production plan (production) is derived
+# from the recipes: as much as a recipe promises, that much is written into the
+# plan. But the plan NO LONGER moves the storage directly — the storage is
+# moved by daily TRADE (test 23).
 func _test_production_plan() -> void:
     var gd = get_root().get_node("GameData")
     var base: Array = _te.collect_base_resources(_tiles_with([WOOD]))
     var pools: Dictionary = _te.build_pools("town_prod", base)
     var production: Dictionary = pools["production"]
     _check(not production.is_empty(),
-        "из дерева городок что-то производит — план производства не пуст")
+        "from wood the town produces something — the production plan is not empty")
     var checked := 0
     for pid in production:
         var id := str(pid)
-        # Ищем рецепт с таким результатом и сверяем выход.
+        # We look for a recipe with such a result and compare the output.
         for craft in gd.crafts:
             var result: Dictionary = craft.get("result", {})
             if not result.has(id):
                 continue
             _check(int(production[id]) == int(result[id]),
-                "выход рецепта «%s» по «%s»: план=%d, рецепт=%d"
+                "recipe \"%s\" output for \"%s\": plan=%d, recipe=%d"
                     % [str(craft.get("id", "")), id, int(production[id]), int(result[id])])
             checked += 1
             break
-        # Импорт на склад не попадает.
+        # Import does not land in storage.
         _check(not pools["buy_pool"].has(id),
-            "купленное «%s» не должно попадать в план производства" % id)
+            "the bought good \"%s\" must not land in the production plan" % id)
     _check(checked > 0,
-        "тест должен сверить хотя бы один товар с рецептом (сверено: %d)" % checked)
+        "the test must compare at least one good against a recipe (compared: %d)" % checked)
 
 
-# 18. ЛИМИТ СКЛАДА. Лимит действует НА ТОВАР, а не на склад целиком: городок,
-#     упёршийся в предел по одному товару, продолжает торговать остальными.
+# 18. STORAGE LIMIT. The limit applies PER GOOD, not to the whole storage: a
+#     town that has hit the ceiling on one good keeps trading the others.
 func _test_storage_limit() -> void:
     var limit: int = _te.get_storage_limit()
     _check(limit == 1000,
-        "town_storage_limit в game_balance.json: ожидалось 1000, получено %d" % limit)
+        "town_storage_limit in game_balance.json: expected 1000, got %d" % limit)
 
-    # Товар на пределе и его сосед: длинный прогон торговли не должен выпустить
-    # ни один из них за лимит, но сосед обязан двигаться — предел по одному товару
-    # не замораживает остальные.
+    # A good at the ceiling and its neighbor: a long trade run must not let
+    # either of them past the limit, but the neighbor must move — the ceiling on
+    # one good does not freeze the others.
     var storage: Dictionary = {WOOD: limit, PLANKS: 10, CHARCOAL: 7}
     var signs: Dictionary = {}
     var counter := 0
@@ -797,19 +818,19 @@ func _test_storage_limit() -> void:
     for _i in range(200):
         counter = _te.tick_trade(storage, signs, counter, "town_limit", limit)
         _check(int(storage[WOOD]) <= limit and int(storage[WOOD]) >= 0,
-            "товар на пределе не должен выйти за лимит (получено %d)" % int(storage[WOOD]))
+            "a good at the ceiling must not go past the limit (got %d)" % int(storage[WOOD]))
         if int(storage[PLANKS]) != 10:
             planks_moved = true
     _check(planks_moved,
-        "соседний товар должен продолжать торговаться при пределе по другому")
+        "the neighboring good must keep trading while another is at the ceiling")
     for pid in storage:
         _check(int(storage[pid]) >= 0 and int(storage[pid]) <= limit,
-            "«%s» вышел за границы [0, %d]: %d" % [str(pid), limit, int(storage[pid])])
+            "\"%s\" went outside the bounds [0, %d]: %d" % [str(pid), limit, int(storage[pid])])
 
 
-# Синтетическая карта, где заданный гекс (row, col) несёт флаги flags, а
-# остальные пустые. Её размер подбирается под гекс городка: town_manager смотрит
-# по координатам самого городка, а не по первому гексу.
+# A synthetic map where the given hex (row, col) carries the flags, and the
+# rest are empty. Its size is fitted to the town's hex: town_manager looks at
+# the town's own coordinates, not at the first hex.
 func _map_with_tile(row: int, col: int, flags: Dictionary) -> Array:
     var tile_data: Array = []
     for r in range(row + 1):
@@ -820,22 +841,23 @@ func _map_with_tile(row: int, col: int, flags: Dictionary) -> Array:
     return tile_data
 
 
-# 19. ТОРГОВЛЯ НАЧИНАЕТСЯ ТОЛЬКО ПОСЛЕ РАЗВЕДКИ. Неразведанный городок не торгует,
-# иначе к моменту встречи с игроком его склад уже ушёл бы от стартового запаса.
+# 19. TRADE STARTS ONLY AFTER SCOUTING. An unscouted town does not trade,
+# otherwise by the time it meets the player its storage would have drifted
+# from the starting supply.
 func _test_production_after_scouting() -> void:
     var gd = get_root().get_node("GameData")
     var city_data = get_root().get_node("CityData")
-    # Тик городка — в town_tick_ticks раз длиннее тика города. Проверяем и сам
-    # множитель из game_balance.json, и итоговую длительность.
+    # A town tick is town_tick_ticks times longer than the city tick. We check
+    # both the multiplier from game_balance.json and the resulting duration.
     _check(int(gd.game_balance.get("town_tick_ticks", -1)) == 4,
-        "town_tick_ticks в game_balance.json: ожидалось 4, получено %d"
+        "town_tick_ticks in game_balance.json: expected 4, got %d"
             % int(gd.game_balance.get("town_tick_ticks", -1)))
     var tm = load("res://scripts/town_manager.gd").new()
     get_root().add_child(tm)
     var town_tick: float = tm.get_town_tick_seconds()
     _check(is_equal_approx(town_tick,
             float(city_data.SIMULATION_TICK) * 4.0),
-        "тик городка должен быть в 4 раза длиннее тика города (получено %.2f, тик города %.2f)"
+        "the town tick must be 4 times longer than the city tick (got %.2f, city tick %.2f)"
             % [town_tick, float(city_data.SIMULATION_TICK)])
     var town: Dictionary = tm._make_town_record(0, 5, 5, false)
     town["sell_pool"] = [WOOD]
@@ -843,33 +865,34 @@ func _test_production_after_scouting() -> void:
     town["storage"] = {WOOD: 100}
     tm.towns.append(town)
 
-    # Гекс в неизвестном мире: флагов нет — городок не торгует.
+    # A hex in an unknown world: no flags — the town does not trade.
     var unknown := _map_with_tile(5, 5, {"is_explored": false, "in_influence": false})
     tm.tick_towns(unknown)
     _check(tm.get_town_goods(town, WOOD) == 100,
-        "неразведанный городок не должен торговать (склад=%d)"
+        "an unscouted town must not trade (storage=%d)"
             % tm.get_town_goods(town, WOOD))
     _check(not bool(town.get("production_started", false)),
-        "флаг начала производства не должен выставляться до разведки")
+        "the production-start flag must not be set before scouting")
     _check(int(town.get("trade_counter", -1)) == 0,
-        "неразведанный городок не должен крутить счётчик торговли")
+        "an unscouted town must not advance the trade counter")
 
-    # Разведка открыла гекс — торговля пошла. Склад сдвинулся в ЛЮБУЮ сторону, но
-    # ровно на одну сделку: не «+10 по плану», а рыночный лот 3..15 (или опт).
+    # Scouting revealed the hex — trade began. The storage shifted in EITHER
+    # direction, but by exactly one deal: not "+10 by the plan", but a market
+    # lot of 3..15 (or wholesale).
     unknown[5][5]["is_explored"] = true
     tm.tick_towns(unknown)
     var after: int = tm.get_town_goods(town, WOOD)
     _check(after != 100,
-        "после разведки городок должен торговать (склад остался %d)" % after)
+        "after scouting the town must trade (storage remained %d)" % after)
     var moved: int = absi(after - 100)
     _check(moved >= int(_te.get_trade_min()),
-        "сделка не может быть меньше минимума (сдвиг %d)" % moved)
+        "a deal cannot be smaller than the minimum (shift %d)" % moved)
     _check(bool(town.get("production_started", false)),
-        "флаг начала производства должен выставиться при разведке")
+        "the production-start flag must be set on scouting")
     _check(int(town.get("trade_counter", -1)) == 1,
-        "разведанный городок должен продвинуть счётчик торговли")
+        "a scouted town must advance the trade counter")
 
-    # Второй путь разведки — гекс внутри известной территории, без is_explored.
+    # The second scouting path — a hex inside known territory, without is_explored.
     var town2: Dictionary = tm._make_town_record(1, 1, 1, false)
     town2["sell_pool"] = [WOOD]
     town2["production"] = {WOOD: 10}
@@ -878,40 +901,41 @@ func _test_production_after_scouting() -> void:
     var known := _map_with_tile(1, 1, {"in_influence": true, "is_explored": false})
     tm.tick_towns(known)
     _check(tm.get_town_goods(town2, WOOD) != 100,
-        "гекс в известной территории тоже запускает торговлю (склад=%d)"
+        "a hex in known territory also starts trade (storage=%d)"
             % tm.get_town_goods(town2, WOOD))
     tm.queue_free()
 
 
-# 23. УРОВЕНЬ КОМФОРТА ВЫВОДИТСЯ ИЗ ДАННЫХ. Это середина диапазона стартового
-# запаса: городок рождается где-то в [town_storage_initial_min, max], значит
-# ровно этот диапазон и есть «здоровый запас» для игры. Отдельного поля нет
-# намеренно — иначе число разъехалось бы с диапазоном при правке баланса.
+# 23. COMFORT LEVEL IS DERIVED FROM DATA. It is the middle of the starting
+# supply range: a town is born somewhere in
+# [town_storage_initial_min, max], so exactly this range is the "healthy supply"
+# for the game. There is deliberately no separate field — otherwise the number
+# would drift from the range when the balance is tweaked.
 func _test_trade_comfort_from_data() -> void:
     var gd = get_root().get_node("GameData")
     var low := float(gd.game_balance.get("town_storage_initial_min", 100))
     var high := float(gd.game_balance.get("town_storage_initial_max", 500))
     var expected := (low + high) * 0.5
     _check(is_equal_approx(_te.get_trade_comfort(), expected),
-        "комфорт должен быть серединой диапазона стартового запаса: ожидалось %.1f, получено %.1f"
+        "comfort must be the middle of the starting supply range: expected %.1f, got %.1f"
             % [expected, _te.get_trade_comfort()])
-    # На текущих данных это ровно 300.
+    # On the current data this is exactly 300.
     _check(is_equal_approx(_te.get_trade_comfort(), 300.0),
-        "на текущем game_balance.json комфорт должен быть 300 (получено %.1f)"
+        "with the current game_balance.json comfort must be 300 (got %.1f)"
             % _te.get_trade_comfort())
 
 
-# 24. ТОРГОВЛЯ ХОДИТ В ОБЕ СТОРОНЫ. Ключевое требование: цифры на складе то
-# прибавляются, то убавляются, как в реальной торговле, — а не монотонно растут
-# до потолка. Прогоняем длинный ряд тиков и проверяем, что были И покупки, И
-# продажи, и что склад не «прилип» к стартовому запасу.
+# 24. TRADE MOVES BOTH WAYS. The key requirement: the numbers in storage either
+# grow or shrink, like in real trade — not monotonically rise to the ceiling.
+# We run a long series of ticks and check that there were BOTH purchases AND
+# sales, and that the storage did not "stick" to the starting supply.
 func _test_trade_moves_both_ways() -> void:
     var tm = load("res://scripts/town_manager.gd").new()
     get_root().add_child(tm)
     var town: Dictionary = tm._make_town_record(0, 5, 5, false)
     town["storage"] = {WOOD: 300}
-    # Счётчик торговли нужен: неразведанный/безгексовый городок не торгует, поэтому
-    # дёргаем модель напрямую через TownEconomy.tick_trade.
+    # The trade counter is needed: an unscouted/hexless town does not trade, so
+    # we drive the model directly through TownEconomy.tick_trade.
     var ups := 0
     var downs := 0
     var limit: int = _te.get_storage_limit()
@@ -927,43 +951,43 @@ func _test_trade_moves_both_ways() -> void:
             downs += 1
         previous = now
     _check(ups > 0 and downs > 0,
-        "за 400 тиков торговли должны быть и покупки, и продажи (вверх=%d, вниз=%d)"
+        "over 400 trade ticks there must be both purchases and sales (up=%d, down=%d)"
             % [ups, downs])
-    # Обе стороны должны быть существенными, а не одна случайная сделка: рынок
-    # обязан двигаться туда-сюда, а не ползти в одну сторону.
+    # Both sides must be substantial, not one random deal: the market must move
+    # back and forth, not crawl in one direction.
     _check(ups >= 40 and downs >= 40,
-        "торговля должна быть двусторонней по существу (вверх=%d, вниз=%d)" % [ups, downs])
-    # Склад не должен стоять на месте весь прогон.
+        "trade must be substantially two-way (up=%d, down=%d)" % [ups, downs])
+    # The storage must not stay put for the whole run.
     _check(int(town["storage"][WOOD]) != 300,
-        "склад не должен застыть на стартовом запасе")
+        "the storage must not freeze at the starting supply")
     tm.queue_free()
 
 
-# 25. ГРАНИЦЫ. Склад никогда не уходит в минус и не превышает лимит, даже если
-# гнать торговлю на пустом и на полном складе.
+# 25. BOUNDARIES. The storage never goes negative and never exceeds the limit,
+# even if trade is driven on an empty and on a full storage.
 func _test_trade_bounds_and_no_negative() -> void:
     var limit: int = _te.get_storage_limit()
-    # Пустой склад: продавать нечего — направление вынужденно покупающее, склад
-    # растёт, а не падает ниже нуля.
+    # Empty storage: there is nothing to sell — the direction is forcedly
+    # buying, the storage grows instead of falling below zero.
     var empty_rng := RandomNumberGenerator.new()
     empty_rng.seed = 1
     var empty: Dictionary = _te.trade_once(0, limit, -1, empty_rng)
     _check(int(empty["stock"]) >= 0,
-        "пустой склад не может уйти в минус (склад=%d)" % int(empty["stock"]))
+        "an empty storage cannot go negative (storage=%d)" % int(empty["stock"]))
     _check(int(empty["sign"]) >= 0,
-        "на пустом складе городок не может продавать (знак=%d)" % int(empty["sign"]))
-    # Полный склад: покупать некуда — направление вынужденно продающее, лимит не
-    # превышается.
+        "on an empty storage the town cannot sell (sign=%d)" % int(empty["sign"]))
+    # Full storage: there is nowhere to buy — the direction is forcedly selling,
+    # the limit is not exceeded.
     var full_rng := RandomNumberGenerator.new()
     full_rng.seed = 1
     var full: Dictionary = _te.trade_once(limit, limit, 1, full_rng)
     _check(int(full["stock"]) <= limit,
-        "полный склад не должен превысить лимит (склад=%d)" % int(full["stock"]))
+        "a full storage must not exceed the limit (storage=%d)" % int(full["stock"]))
     _check(int(full["sign"]) <= 0,
-        "на полном складе городок не может покупать (знак=%d)" % int(full["sign"]))
+        "on a full storage the town cannot buy (sign=%d)" % int(full["sign"]))
 
-    # Длинный прогон от края до края: ни одного выхода за [0, limit] и ни одного
-    # отрицательного остатка.
+    # A long run from edge to edge: not a single excursion outside [0, limit]
+    # and not a single negative remainder.
     var tm = load("res://scripts/town_manager.gd").new()
     get_root().add_child(tm)
     for start in [0, 1, 5, limit - 1, limit]:
@@ -976,14 +1000,14 @@ func _test_trade_bounds_and_no_negative() -> void:
                     "town_bounds_%d" % start, limit)
             var now: int = int(town["storage"][WOOD])
             _check(now >= 0 and now <= limit,
-                "склад вышел за границы [0, %d]: %d (старт %d)" % [limit, now, int(start)])
+                "the storage went outside the bounds [0, %d]: %d (start %d)" % [limit, now, int(start)])
     tm.queue_free()
 
 
-# 26. ИНЕРЦИЯ И СЕРИИ. Направление повторяется, поэтому подъёмы и падения идут
-# короткими сериями, а не чередуются каждый день. Проверяем, что серии реально
-# длиннее одной сделки — именно это и просил дизайн («могут наблюдаться длинные
-# серии из подъёмов или падений»).
+# 26. INERTIA AND RUNS. The direction repeats, so rises and falls come in short
+# runs, instead of alternating every day. We check that runs are really longer
+# than one deal — this is exactly what the design asked for ("long runs of rises
+# or falls may be observed").
 func _test_trade_inertia_and_runs() -> void:
     var limit: int = _te.get_storage_limit()
     var tm = load("res://scripts/town_manager.gd").new()
@@ -1011,16 +1035,17 @@ func _test_trade_inertia_and_runs() -> void:
             long_runs += 1
         previous = now
     _check(max_run >= 3,
-        "инерция должна давать серии хотя бы из 3 сделок подряд (макс серия %d)" % max_run)
+        "inertia must produce runs of at least 3 consecutive deals (max run %d)" % max_run)
     _check(long_runs > 0,
-        "должны встречаться серии подъёмов/падений длиной 3+ (найдено %d)" % long_runs)
-    # Направление последней сделки сохранено в state — оно и есть вход инерции.
-    _check(signs.has(WOOD), "направление последней сделки должно храниться в состоянии")
+        "runs of rises/falls of length 3+ must occur (found %d)" % long_runs)
+    # The last deal's direction is stored in state — it is the input of inertia.
+    _check(signs.has(WOOD), "the last deal's direction must be stored in state")
     tm.queue_free()
 
 
-# 20. СДЕЛКА. Продажа списывает единицы со склада, покупка кладёт их туда. За
-# пределами запаса сделка не проходит — городок не продаёт то, чего у него нет.
+# 20. DEAL. A sale debits units from the storage, a purchase puts them there.
+# Outside the supply the deal does not go through — the town does not sell what
+# it does not have.
 func _test_trade_moves_goods() -> void:
     var tm = load("res://scripts/town_manager.gd").new()
     get_root().add_child(tm)
@@ -1028,46 +1053,46 @@ func _test_trade_moves_goods() -> void:
     town["storage"] = {WOOD: 200}
     tm.towns.append(town)
 
-    _check(tm.get_town_goods(town, WOOD) == 200, "стартовый запас должен читаться из склада")
-    _check(tm.take_town_goods(town, WOOD, 50), "продажа 50 единиц должна пройти")
+    _check(tm.get_town_goods(town, WOOD) == 200, "the starting supply must be read from the storage")
+    _check(tm.take_town_goods(town, WOOD, 50), "selling 50 units must go through")
     _check(tm.get_town_goods(town, WOOD) == 150,
-        "после продажи на складе должно остаться 150 (получено %d)"
+        "after the sale 150 must remain in storage (got %d)"
             % tm.get_town_goods(town, WOOD))
     _check(not tm.take_town_goods(town, WOOD, 500),
-        "городок не может продать больше, чем есть на складе")
+        "the town cannot sell more than it has in storage")
     _check(tm.get_town_goods(town, WOOD) == 150,
-        "неудачная продажа не должна менять склад")
+        "a failed sale must not change the storage")
 
-    _check(tm.add_town_goods(town, PLANKS, 30) == 30, "покупка 30 единиц должна пройти")
-    _check(tm.get_town_goods(town, PLANKS) == 30, "после покупки товар должен лежать на складе")
+    _check(tm.add_town_goods(town, PLANKS, 30) == 30, "buying 30 units must go through")
+    _check(tm.get_town_goods(town, PLANKS) == 30, "after the purchase the good must be in storage")
 
-    # Покупка в уже полный склад принимает только то, что влезло.
+    # A purchase into an already full storage accepts only what fits.
     var limit: int = _te.get_storage_limit()
     var full: Dictionary = tm._make_town_record(2, 6, 6, false)
     full["storage"] = {WOOD: limit}
     tm.towns.append(full)
     _check(tm.add_town_goods(full, WOOD, 100) == 0,
-        "в полный склад ничего не должно влезать")
+        "nothing must fit into a full storage")
     _check(tm.add_town_goods(full, PLANKS, 25) == 25,
-        "в другой товар влезать должно — лимит на товар, а не на склад")
+        "it must fit into another good — the limit is per good, not per storage")
 
-    # Сейв: склад и флаг разведки переживают round-trip.
+    # Save: the storage and the scouting flag survive a round-trip.
     var saved: Array = tm.serialize_towns()
     tm.load_towns(saved)
     var loaded: Dictionary = tm.towns[0]
     _check(tm.get_town_goods(loaded, WOOD) == 150,
-        "склад должен переживать сейв (получено %d)" % tm.get_town_goods(loaded, WOOD))
+        "the storage must survive a save (got %d)" % tm.get_town_goods(loaded, WOOD))
 
-    # 27. СОСТОЯНИЕ ТОРГОВЛИ ПЕРЕЖИВАЕТ СЕЙВ. Направление последней сделки и
-    # счётчик тиков — это СОСТОЯНИЕ МИРА, а не выводимые данные (в отличие от
-    # "production", который пересчитывается из кольца). Если их не сохранить, то
-    # при загрузке сделка «перевернётся», а склад перетасуется. Здесь проверяем
-    # ровно это: после round-trip следующий тик обязан пойти ТЕМ ЖЕ путём.
+    # 27. TRADE STATE SURVIVES A SAVE. The last deal's direction and the tick
+    # counter are WORLD STATE, not derived data (unlike "production", which is
+    # recomputed from the ring). If they are not saved, then on load the deal
+    # "flips" and the storage is shuffled. Here we check exactly that: after a
+    # round-trip the next tick must go the SAME way.
     var trade_town: Dictionary = tm._make_town_record(7, 9, 9, false)
     trade_town["storage"] = {WOOD: 300, PLANKS: 300}
     tm.towns.append(trade_town)
     var limit2: int = _te.get_storage_limit()
-    # Прокручиваем несколько тиков, чтобы состояние перестало быть тривиальным.
+    # We run a few ticks so the state stops being trivial.
     for _i in range(5):
         var signs: Dictionary = trade_town.get("trade_signs", {})
         var counter := int(trade_town.get("trade_counter", 0))
@@ -1076,9 +1101,9 @@ func _test_trade_moves_goods() -> void:
         trade_town["trade_signs"] = signs
         trade_town["trade_counter"] = counter
     _check(int(trade_town["trade_counter"]) == 5,
-        "счётчик торговли должен продвинуться на 5 тиков")
+        "the trade counter must advance by 5 ticks")
     _check(not trade_town["trade_signs"].is_empty(),
-        "направления последних сделок должны быть записаны в состояние")
+        "the last deals' directions must be recorded in state")
 
     var round_trip: Array = tm.serialize_towns()
     tm.load_towns(round_trip)
@@ -1087,13 +1112,13 @@ func _test_trade_moves_goods() -> void:
         if str(t.get("id", "")) == str(trade_town.get("id", "")):
             reloaded = t
             break
-    _check(not reloaded.is_empty(), "городок со состоянием торговли должен пережить сейв")
+    _check(not reloaded.is_empty(), "the town with trade state must survive a save")
     _check(int(reloaded.get("trade_counter", -1)) == 5,
-        "счётчик торговли должен переживать сейв (получено %s)"
+        "the trade counter must survive a save (got %s)"
             % str(reloaded.get("trade_counter")))
     _check(reloaded.get("trade_signs", {}) == trade_town["trade_signs"],
-        "направления сделок должны переживать сейв")
-    # И главное: следующий тик после загрузки повторяет тот, что был бы без неё.
+        "the deals' directions must survive a save")
+    # And most importantly: the next tick after loading repeats the one that would have been without it.
     var expected_signs: Dictionary = trade_town["trade_signs"].duplicate()
     var expected_counter := int(trade_town["trade_counter"])
     var expected_storage: Dictionary = trade_town["storage"].duplicate()
@@ -1105,13 +1130,13 @@ func _test_trade_moves_goods() -> void:
             str(reloaded.get("id", "")), limit2)
     _check(reloaded["storage"][WOOD] == expected_storage[WOOD]
             and reloaded["storage"][PLANKS] == expected_storage[PLANKS],
-        "следующий тик после загрузки должен повторить тот же путь (получено %s, ожидалось %s)"
+        "the next tick after loading must repeat the same path (got %s, expected %s)"
             % [str(reloaded["storage"]), str(expected_storage)])
     tm.queue_free()
 
 
-# 21. ОКНО ПОКАЗЫВАЕТ СКЛАД. В колонке продажи видно число единиц, и оно
-# обновляется по сигналу сделки без пересборки списка.
+# 21. THE WINDOW SHOWS THE STORAGE. The sell column shows the number of units,
+# and it updates on the trade signal without rebuilding the list.
 func _test_window_shows_stock() -> void:
     var ui = load("res://scenes/TownUI.tscn").instantiate()
     get_root().add_child(ui)
@@ -1128,37 +1153,38 @@ func _test_window_shows_stock() -> void:
     ui.open_town(town, true)
     var labels: Dictionary = ui._sell_quantity_labels
     _check(labels.size() == 2,
-        "в колонке продажи должно быть по числу на каждый товар (получено %d)" % labels.size())
-    # Строки ключуются отображаемым именем, а оно переводится: берём его из самого
-    # окна, иначе проверка зависела бы от языка тестового прогона.
+        "the sell column must have a number for each good (got %d)" % labels.size())
+    # The rows are keyed by display name, and it is translated: we take it from
+    # the window itself, otherwise the check would depend on the test run's language.
     var wood_name: String = ui._get_resource_display_name(WOOD)
     var wood_label: Label = labels.get(wood_name, null)
     _check(wood_label != null and wood_label.text.contains("321"),
-        "окно должно показывать число единиц товара на складе")
+        "the window must show the number of units of the good in storage")
 
-    # Сделка меняет склад — надпись обновляется сразу, а список не пересобирается
-    # (иначе прокрутка сбрасывалась бы на каждой сделке).
+    # A deal changes the storage — the label updates immediately, and the list
+    # is not rebuilt (otherwise the scroll would reset on every deal).
     var rows_before: Array = ui.sell_list.get_children()
     tm.take_town_goods(town, WOOD, 21)
     _check(ui._sell_quantity_labels.get(wood_name, null).text.contains("300"),
-        "после продажи число в окне должно обновиться сразу")
+        "after the sale the number in the window must update immediately")
     _check(ui.sell_list.get_children() == rows_before,
-        "обновление чисел не должно пересобирать список")
+        "updating the numbers must not rebuild the list")
 
-    # Тик городка тоже обновляет окно — отдельный путь refresh_storage().
+    # A town tick also updates the window — a separate path refresh_storage().
     ui.refresh_storage()
     _check(ui._sell_quantity_labels.get(wood_name, null).text.contains("300"),
-        "refresh_storage должен читать актуальный склад")
+        "refresh_storage must read the current storage")
     ui.queue_free()
     tm.queue_free()
 
 
-# 28. КАТЕГОРИИ В ОКНЕ. Товары в пулах покупки и продажи разбиты по категориям,
-# как на вкладке «Ресурсы» интерфейса города: заголовок категории — сплошная линия,
-# название по центру, линия; под ним — строки только этой категории.
+# 28. CATEGORIES IN THE WINDOW. The goods in the buy and sell pools are split
+# by category, as on the city interface's "Resources" tab: the category header
+# is a solid line, the name centered, the line; below it — rows of only that
+# category.
 func _test_town_ui_categories() -> void:
     var gd = get_root().get_node("GameData")
-    # По одному товару из КАЖДОЙ категории — иначе разбиение нечего проверять.
+    # One good from EACH category — otherwise there is nothing to check the split with.
     var pool: Array = []
     var used_cat: Dictionary = {}
     var used_name: Dictionary = {}
@@ -1176,7 +1202,7 @@ func _test_town_ui_categories() -> void:
         if pool.size() >= 4:
             break
     _check(pool.size() >= 3,
-        "тест должен собрать товары из нескольких категорий (получено %d)" % pool.size())
+        "the test must collect goods from several categories (got %d)" % pool.size())
 
     var ui = load("res://scenes/TownUI.tscn").instantiate()
     get_root().add_child(ui)
@@ -1188,11 +1214,12 @@ func _test_town_ui_categories() -> void:
     ui.queue_free()
 
 
-# Проверяет, что строки контейнера сгруппированы по категориям: каждая строка
-# идёт под заголовком СВОЕЙ категории, у заголовка есть линии слева и справа, а
-# заголовков ровно столько, сколько различных категорий в пуле.
+# Checks that the container's rows are grouped by category: each row goes
+# under the header of ITS OWN category, the header has lines on the left and
+# right, and there are exactly as many headers as there are distinct categories
+# in the pool.
 func _assert_pool_grouped(container, ui, pool: Array) -> void:
-    var expected: Dictionary = {}   # отображаемое имя -> ожидаемое название категории
+    var expected: Dictionary = {}   # display name -> expected category name
     var categories: Dictionary = {}
     for pid in pool:
         var id := str(pid)
@@ -1209,16 +1236,16 @@ func _assert_pool_grouped(container, ui, pool: Array) -> void:
             current_header = str(entry["text"])
             header_count += 1
             _check(bool(entry.get("lined", false)),
-                "у названия категории «%s» должны быть линии слева и справа" % current_header)
+                "the category name \"%s\" must have lines on the left and right" % current_header)
         else:
             var row_name := str(entry["text"])
             row_count += 1
-            _check(current_header == str(expected.get(row_name, "<нет>")),
-                "строка «%s» должна идти под заголовком своей категории (сейчас «%s»)"
+            _check(current_header == str(expected.get(row_name, "<none>")),
+                "the row \"%s\" must go under the header of its own category (currently \"%s\")"
                     % [row_name, current_header])
     _check(header_count == categories.size(),
-        "заголовков должно быть по числу различных категорий пула (%d, получено %d)"
+        "there must be as many headers as distinct categories in the pool (%d, got %d)"
             % [categories.size(), header_count])
     _check(row_count == expected.size(),
-        "строк должно быть по числу товаров пула (%d, получено %d)"
+        "there must be as many rows as goods in the pool (%d, got %d)"
             % [expected.size(), row_count])

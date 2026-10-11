@@ -1,40 +1,40 @@
-# Headless-тест подтверждений в меню паузы:
+# Headless test of confirmations in the pause menu:
 #   godot --headless --path . --script res://tests/test_pause_menu_confirm.gd
 #
-# Пункты «Перейти в главное меню» и «Выйти из игры» необратимы: первый
-# выбрасывает текущую партию, второй закрывает игру. Раньше они выполнялись
-# сразу, одним кликом.
+# The "Return to the main menu" and "Exit the game" items are irreversible: the first
+# discards the current game, the second closes the game. Previously they were performed
+# immediately, with a single click.
 #
-# Проверяем (живое меню паузы, res://scenes/pause_menu.tscn, игра на паузе —
-# ровно как в партии):
-#   1) клик по «Перейти в главное меню» ОТКРЫВАЕТ диалог: главное меню не
-#      вызвано, партия не потеряна, меню паузы на месте, игра на паузе;
-#   2) «Отмена» (а также ESC) закрывает диалог, ничего не выполняя;
-#   3) ESC при открытом диалоге не закрывает само меню паузы и не снимает
-#      паузу игры (иначе игрок одним нажатием терял бы и меню, и паузу);
-#   4) «Да» выполняет действие: сигнал new_game_pressed уходит и игра
-#      разблокируется;
-#   5) отменённое действие не «протухает»: после отмены первого пункта
-#      подтверждение второго НЕ вызывает выход из игры (проверяется тем, что
-#      процесс доживает до конца теста);
-#   6) клик по «Выйти из игры» открывает свой диалог; «Да» в нём завершает
-#      процесс — последняя строка теста, дальше завершать его нельзя.
+# We check (a live pause menu, res://scenes/pause_menu.tscn, the game paused —
+# exactly as in a game):
+#   1) clicking "Return to the main menu" OPENS the dialog: the main menu is not
+#      invoked, the game is not lost, the pause menu is still there, the game is paused;
+#   2) "Cancel" (and ESC as well) closes the dialog without performing anything;
+#   3) ESC with the dialog open does not close the pause menu itself and does not
+#      unpause the game (otherwise the player would lose both the menu and the pause with one press);
+#   4) "Yes" performs the action: the new_game_pressed signal is emitted and the game
+#      is unblocked;
+#   5) a cancelled action does not "go stale": after cancelling the first item,
+#      confirming the second does NOT cause the game to exit (this is checked by the fact
+#      that the process survives to the end of the test);
+#   6) clicking "Exit the game" opens its own dialog; "Yes" in it terminates the
+#      process — the last line of the test, it must not be terminated after that.
 #
-# ПРО ВЕРДИКТ ПРОГОНА. Тест сам завершает процесс (пункт 6), поэтому `quit(0)`
-# в конце недостижим, и код возврата сам по себе НИЧЕГО не доказывает: если
-# «Да» вышел бы слишком рано, процесс просто исчез бы, не напечатав последнюю
-# строку, — а код остался бы 0, и прогон выглядел бы зелёным. Поэтому точка
-# прохождения помечается файлом SENTINEL, и прогон засчитывается только
-# вместе с ним (метку удаляет вызывающий перед запуском).
+# ABOUT THE RUN VERDICT. The test terminates the process itself (item 6), so `quit(0)`
+# at the end is unreachable, and the return code alone proves NOTHING: if
+# "Yes" exited too early, the process would simply disappear without printing the last
+# line — and the code would stay 0, and the run would look green. Therefore the
+# passing point is marked with a SENTINEL file, and the run is counted only
+# together with it (the caller removes the marker before starting).
 extends SceneTree
 
-# Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как
-# вечное молчание. Подробности — в tests/watchdog.gd. Предел здесь короче
-# обычного: последняя проверка ДОЛЖна сама завершить процесс, и если выход
-# не сработал, короткий таймер превращает зависание в понятную ошибку.
+# Hang watchdog: without it, an interrupted _run() coroutine looks from the outside like
+# eternal silence. Details — in tests/watchdog.gd. The limit here is shorter than
+# usual: the last check MUST terminate the process itself, and if the exit
+# did not work, a short timer turns the hang into a clear error.
 const WATCHDOG = preload("res://tests/watchdog.gd")
 
-# Метка «тест дошёл до последней строки». Обоснование — в шапке файла.
+# The marker "the test reached the last line". The rationale is in the file header.
 const SENTINEL := "user://test_pause_menu_confirm.done"
 
 var _failed := false
@@ -53,7 +53,7 @@ func _run() -> void:
     await process_frame
 
     pause_menu.new_game_pressed.connect(func() -> void: _new_game_pressed += 1)
-    # Меню паузы открывается только вместе с паузой игры (main_map.open_pause_menu).
+    # The pause menu opens only together with pausing the game (main_map.open_pause_menu).
     paused = true
     pause_menu.show()
     await process_frame
@@ -61,48 +61,48 @@ func _run() -> void:
     var new_game_btn: Button = pause_menu.find_child("NewGameButton", true, false)
     var exit_btn: Button = pause_menu.find_child("ExitButton", true, false)
     var dialog: ConfirmationDialog = pause_menu.confirm_dialog
-    check(new_game_btn != null and exit_btn != null, "0: кнопки меню паузы на месте")
-    check(dialog != null, "0: диалог подтверждения создан вместе с меню")
+    check(new_game_btn != null and exit_btn != null, "0: the pause menu buttons are present")
+    check(dialog != null, "0: the confirmation dialog is created together with the menu")
 
-    # --- 1. Клик по «Перейти в главное меню» спрашивает подтверждение ---
+    # --- 1. Clicking "Return to the main menu" asks for confirmation ---
     new_game_btn.pressed.emit()
     await process_frame
-    check(dialog.visible, "1: открыт диалог подтверждения")
+    check(dialog.visible, "1: the confirmation dialog is open")
     check(pause_menu.visible and paused,
-        "1: меню паузы на месте и игра на паузе")
+        "1: the pause menu is present and the game is paused")
     check(_new_game_pressed == 0,
-        "1: сигнал перехода в главное меню НЕ отправлен без подтверждения")
+        "1: the return-to-main-menu signal is NOT sent without confirmation")
 
-    # --- 2. «Отмена» ничего не выполняет ---
+    # --- 2. "Cancel" performs nothing ---
     dialog.get_cancel_button().pressed.emit()
     await process_frame
-    check(not dialog.visible, "2: «Отмена» закрыла диалог")
-    check(pause_menu.visible and paused, "2: меню паузы осталось, игра на паузе")
-    check(_new_game_pressed == 0, "2: отмена не выполнила действие")
+    check(not dialog.visible, "2: \"Cancel\" closed the dialog")
+    check(pause_menu.visible and paused, "2: the pause menu remained, the game is paused")
+    check(_new_game_pressed == 0, "2: the cancel did not perform the action")
 
-    # --- 3. ESC при открытом диалоге не закрывает меню паузы ---
+    # --- 3. ESC with the dialog open does not close the pause menu ---
     new_game_btn.pressed.emit()
     await process_frame
     pause_menu._unhandled_input(_esc_event())
     await process_frame
-    check(dialog.visible, "3: ESC не закрыл диалог подтверждения")
+    check(dialog.visible, "3: ESC did not close the confirmation dialog")
     check(pause_menu.visible and paused,
-        "3: ESC не закрыл меню паузы и не снял паузу игры")
+        "3: ESC did not close the pause menu and did not unpause the game")
     dialog.get_cancel_button().pressed.emit()
     await process_frame
-    check(not dialog.visible, "3: диалог закрыт кнопкой «Отмена»")
+    check(not dialog.visible, "3: the dialog was closed by the \"Cancel\" button")
 
-    # --- 4. «Да» выполняет действие ---
+    # --- 4. "Yes" performs the action ---
     new_game_btn.pressed.emit()
     await process_frame
     dialog.get_ok_button().pressed.emit()
     await process_frame
     check(_new_game_pressed == 1,
-        "4: «Да» отправило сигнал new_game_pressed (получено %d)" % _new_game_pressed)
-    check(not paused, "4: игра разблокирована для смены сцены")
+        "4: \"Yes\" sent the new_game_pressed signal (received %d)" % _new_game_pressed)
+    check(not paused, "4: the game is unblocked for the scene change")
 
-    # --- 5. Отменённое действие не «протухает»: следующее подтверждение
-    #        не должно вызвать выход из игры (иначе процесс умер бы здесь) ---
+    # --- 5. A cancelled action does not "go stale": the next confirmation
+    #        must not cause the game to exit (otherwise the process would die here) ---
     new_game_btn.pressed.emit()
     await process_frame
     dialog.get_cancel_button().pressed.emit()
@@ -112,37 +112,37 @@ func _run() -> void:
     dialog.get_ok_button().pressed.emit()
     await process_frame
     check(_new_game_pressed == 2,
-        "5: второе подтверждение выполнило только «главное меню» (сигналов %d)"
+        "5: the second confirmation performed only \"main menu\" (signals %d)"
             % _new_game_pressed)
     check(not paused,
-        "5: подтверждённый переход разблокировал игру для смены сцены")
+        "5: the confirmed transition unblocked the game for the scene change")
 
-    # Тест не connected к new_game_pressed сцену, поэтому партия осталась на
-    # месте: возвращаем дерево в состояние живой игры с открытым меню паузы.
+    # The test did not connect the scene to new_game_pressed, so the game stayed in
+    # place: we return the tree to the state of a live game with the pause menu open.
     paused = true
 
-    # --- 6. «Выйти из игры» спрашивает подтверждение и по «Да» завершает игру ---
+    # --- 6. "Exit the game" asks for confirmation and on "Yes" terminates the game ---
     exit_btn.pressed.emit()
     await process_frame
-    check(dialog.visible, "6: открыт диалог подтверждения выхода")
-    check(dialog.dialog_text.contains("выйти") or dialog.dialog_text.contains("Несохранённый"),
-        "6: текст диалога предупреждает о выходе и потере прогресса («%s»)"
+    check(dialog.visible, "6: the exit confirmation dialog is open")
+    check(dialog.dialog_text.contains("exit") or dialog.dialog_text.contains("Unsaved"),
+        "6: the dialog text warns about exiting and losing progress (\"%s\")"
             % dialog.dialog_text)
     dialog.get_cancel_button().pressed.emit()
     await process_frame
     check(not dialog.visible and pause_menu.visible and paused,
-        "6: «Отмена» оставила игру в меню паузы, на паузе")
+        "6: \"Cancel\" left the game in the pause menu, paused")
 
     if _failed:
         print("PAUSE MENU CONFIRM TEST FAILED")
         quit(1)
         return
 
-    # Последний шаг: подтверждение выхода обязано само завершить процесс.
-    # Если _confirm_exit не вызвался, процесс не закончится и его снимет
-    # сторож с кодом 2 — тест всё равно станет «красным», только медленнее.
-    # Метку ставим ДО последнего нажатия: её наличие доказывает, что тест
-    # дошёл до конца, а не умер на полпути (см. шапку файла).
+    # The last step: the exit confirmation must terminate the process itself.
+    # If _confirm_exit was not called, the process will not end and the
+    # watchdog will take it down with code 2 — the test will still turn "red", only slower.
+    # We set the marker BEFORE the last press: its presence proves that the test
+    # reached the end and did not die halfway (see the file header).
     var marker := FileAccess.open(SENTINEL, FileAccess.WRITE)
     if marker != null:
         marker.store_string("reached-final-step\n")

@@ -1,23 +1,26 @@
-# Headless-тест универсальной системы ПОЭТАПНОГО строительства
-# (scripts/project_manager.gd) и того, как дорога на ней построена.
+# Headless test of the universal STAGED construction system
+# (scripts/project_manager.gd) and of how the road is built on it.
 #   godot --headless --path . --script res://tests/test_staged_projects.gd
 #
-# Проверки (менеджер в одиночку + живая сцена MainMap):
-#   1. Проект разбирается по ОДНОМУ шагу за раз: сколько бы труда ни подали,
-#      за кадр достраивается ровно один участок, следующий начинается, а бар
-#      переезжает на его гекс.
-#   2. Призрак = сегменты ещё не построенных шагов, и он уменьшается на один
-#      участок с каждым достроенным шагом.
-#   3. Менеджер НЕ знает, что такое дорога: тот же механизм проходит проект
-#      другого вида (в тесте — «акведук») без единой правки кода менеджера.
-#   4. Отмена: построенное остаётся, непостроенное исчезает из призрака.
-#   5. Сейв/загрузка: очередь и позиция сохраняются, счётчик не пересекается.
-#   6. Живая сцена: за один кадр добавляется ровно один сегмент, дорога идёт
-#      от сети к цели, флаг road_built ставится на каждом подключённом гексе.
+# Checks (the manager alone + the live MainMap scene):
+#   1. A project is processed ONE step at a time: no matter how much labor is
+#      supplied, exactly one segment is completed per frame, the next one
+#      starts, and the bar moves to its hex.
+#   2. The ghost = the segments of the not-yet-built steps, and it shrinks by
+#      one segment with every completed step.
+#   3. The manager does NOT know what a road is: the same mechanism runs a
+#      project of another kind (an "aqueduct" in the test) without a single
+#      change to the manager's code.
+#   4. Cancel: what is built stays, what is not built disappears from the ghost.
+#   5. Save/load: the queue and the position are preserved, the counter does not
+#      overlap.
+#   6. Live scene: exactly one segment is added per frame, the road goes from
+#      the network to the target, and the road_built flag is set on every
+#      connected hex.
 extends SceneTree
 
-# Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как
-# вечное молчание. Подробности — в tests/watchdog.gd.
+# A hang watchdog: without it, a broken _run() coroutine looks like eternal
+# silence from the outside. Details are in tests/watchdog.gd.
 const WATCHDOG = preload("res://tests/watchdog.gd")
 
 var _pm = null
@@ -38,9 +41,9 @@ func _road_level() -> int:
 func _run() -> void:
     var state = {"failed": false}
 
-    # Автолоады берём узлами дерева сцены: в режиме --script имена GameData и
-    # CityData на этапе компиляции этого файла ещё недоступны. new_game()
-    # заодно грузит все данные.
+    # We take the autoloads as scene-tree nodes: in --script mode the names
+    # GameData and CityData are not yet available at the compile stage of this
+    # file. new_game() also loads all the data.
     get_root().get_node("SaveManager").new_game()
     _cdata = get_root().get_node("CityData")
 
@@ -74,14 +77,14 @@ func _run() -> void:
         quit(0)
 
 # -------------------------------------------------------
-# Хелперы
+# Helpers
 # -------------------------------------------------------
 
-# Собирает шаг очереди: гекс (row, col) — где рисуется прогресс-бар и над каким
-# сегментом призрака этот шаг «отвечает».
+# Builds a queue step: the hex (row, col) is where the progress bar is drawn and
+# which ghost segment this step "answers for".
 func _make_step(row: int, col: int, work_cost: float, seg: String) -> Dictionary:
     return {
-        "label": "Участок %d,%d" % [row, col],
+        "label": "Segment %d,%d" % [row, col],
         "work_cost": work_cost,
         "hex": {"row": row, "col": col},
         "ghost": {seg: true},
@@ -96,7 +99,7 @@ func check(cond: bool, message: String, state: Dictionary) -> void:
 
 
 # -------------------------------------------------------
-# 1. По одному шагу за раз
+# 1. One step at a time
 # -------------------------------------------------------
 
 func _test_one_step_at_a_time(state: Dictionary) -> void:
@@ -112,91 +115,94 @@ func _test_one_step_at_a_time(state: Dictionary) -> void:
     _pm.step_started.connect(func(_id, _kind, step):
         started.append(step.get("label", "")))
 
-    var pid: String = _pm.start_project("demo", "Демо", 1, 4, steps)
-    check(pid != "", "проект должен запуститься", state)
+    var pid: String = _pm.start_project("demo", "Demo", 1, 4, steps)
+    check(pid != "", "the project should start", state)
     check(_pm.get_active_step_count() == 1,
-            "активный проект занимает ровно один слот в пуле труда", state)
-    check(started.size() == 1 and str(started[0]) == "Участок 1,1",
-            "первый шаг должен стартовать сразу", state)
+            "an active project occupies exactly one slot in the labor pool", state)
+    check(started.size() == 1 and str(started[0]) == "Segment 1,1",
+            "the first step should start immediately", state)
 
-    # Подаём труд ЗНАЧИТЕЛЬНО больше стоимости шага: за один вызов всё равно
-    # должен достроиться РОВНО ОДИН участок, а не вся очередь.
+    # We supply labor SIGNIFICANTLY greater than the step's cost: in one call
+    # EXACTLY ONE segment should still be completed, not the whole queue.
     _pm.receive_labor(10000.0, 1.0)
     check(completed.size() == 1,
-            "за один кадр достраивается ровно один участок, а не вся очередь", state)
-    check(str(completed[0]) == "Участок 1,1",
-            "достроен должен быть именно текущий, первый участок", state)
-    check(started.size() == 2 and str(started[1]) == "Участок 1,2",
-            "после первого участка должен начаться второй", state)
+            "exactly one segment is completed per frame, not the whole queue", state)
+    check(str(completed[0]) == "Segment 1,1",
+            "it must be exactly the current, first segment that is completed", state)
+    check(started.size() == 2 and str(started[1]) == "Segment 1,2",
+            "after the first segment the second one should start", state)
 
-    # Прогресс-бар переехал на гекс второго участка, и на первом его больше нет.
+    # The progress bar has moved to the second segment's hex, and is no longer
+    # on the first one.
     check(_pm.get_step_progress_at(1, 1).is_empty(),
-            "на гексе достроенного участка прогресс-бара быть уже не должно", state)
+            "there should be no progress bar on the hex of a completed segment", state)
     var bar: Dictionary = _pm.get_step_progress_at(1, 2)
-    check(not bar.is_empty(), "на гексе второго участка должен быть прогресс-бар", state)
+    check(not bar.is_empty(), "there should be a progress bar on the hex of the second segment", state)
     check(int(bar.get("step_index", -1)) == 1,
-            "прогресс-бар должен соответствовать второму шагу", state)
+            "the progress bar should correspond to the second step", state)
     check(int(bar.get("steps_left", 0)) == 2,
-            "в прогрессе должно оставаться два участка", state)
+            "two segments should remain in the progress", state)
 
-    # Труд копится, а не тратится: половины шага недостаточно для завершения.
+    # Labor accumulates rather than being spent: half a step is not enough to
+    # complete it.
     _pm.receive_labor(3.0, 1.0)
-    check(completed.size() == 1, "недобранный шаг не должен достраиваться", state)
+    check(completed.size() == 1, "an unfinished step should not be completed", state)
     var bar_after: Dictionary = _pm.get_step_progress_at(1, 2)
     check(float(bar_after.get("progress", 0.0)) > 0.0,
-            "прогресс текущего шага должен копиться", state)
+            "the progress of the current step should accumulate", state)
 
-    # Добор до конца: шаг достраивается, и так до последнего.
+    # Topping up to the end: the step is completed, and so on until the last one.
     for _i in range(3):
         _pm.receive_labor(1000.0, 1.0)
-    check(completed.size() == 3, "все три участка должны быть достроены", state)
+    check(completed.size() == 3, "all three segments should be completed", state)
     check(_pm.get_active_step_count() == 0,
-            "после последнего шага проект больше не занимает слот", state)
+            "after the last step the project no longer occupies a slot", state)
     check(_pm.get_project(pid).is_empty(),
-            "завершённый проект должен исчезнуть из очереди", state)
+            "a finished project should disappear from the queue", state)
     check(_pm.get_step_progress_at(1, 2).is_empty(),
-            "после завершения прогресс-бар исчезает", state)
+            "after completion the progress bar disappears", state)
 
 # -------------------------------------------------------
-# 2. Призрак уменьшается на каждый достроенный участок
+# 2. The ghost shrinks with every completed segment
 # -------------------------------------------------------
 
 func _test_ghost_shrinks(state: Dictionary) -> void:
     check(_pm.get_pending_ghost_segments().is_empty(),
-            "завершённые проекты не оставляют призрака", state)
+            "finished projects leave no ghost", state)
     var steps := [
         _make_step(2, 1, 5.0, "2,1|2,2"),
         _make_step(2, 2, 5.0, "2,2|2,3"),
     ]
-    var pid: String = _pm.start_project("demo", "Призрак", 2, 3, steps)
+    var pid: String = _pm.start_project("demo", "Ghost", 2, 3, steps)
     var ghost: Dictionary = _pm.get_pending_ghost_segments()
     check(ghost.size() == 2,
-            "призрак нового проекта равен числу непостроенных участков", state)
+            "the ghost of a new project equals the number of unbuilt segments", state)
     check(ghost.has("2,1|2,2") and ghost.has("2,2|2,3"),
-            "призрак содержит сегменты обоих участков", state)
+            "the ghost contains the segments of both", state)
 
     _pm.receive_labor(1000.0, 1.0)
     ghost = _pm.get_pending_ghost_segments()
     check(ghost.size() == 1,
-            "после достройки участка призрак должен уменьшиться на один", state)
+            "after completing a segment the ghost should shrink by one", state)
     check(not ghost.has("2,1|2,2"),
-            "построенный участок должен исчезнуть из призрака", state)
+            "a built segment should disappear from the ghost", state)
     check(ghost.has("2,2|2,3"),
-            "непостроенный участок должен остаться в призраке", state)
+            "an unbuilt segment should remain in the ghost", state)
 
     _pm.receive_labor(1000.0, 1.0)
     check(_pm.get_pending_ghost_segments().is_empty(),
-            "после конца проекта призрак должен исчезнуть совсем", state)
+            "after the project ends the ghost should disappear entirely", state)
     _pm.cancel_project(pid)
 
 
 # -------------------------------------------------------
-# 3. Универсальность: тот же менеджер — другой вид проекта
+# 3. Universality: the same manager — another kind of project
 # -------------------------------------------------------
 
 func _test_other_project_kind(state: Dictionary) -> void:
-    # Тот же менеджер, тот же порядок вызовов — но проект другого вида. Если бы
-    # менеджер был написан под дорогу, шаг «акведука» не доехал бы.
+    # The same manager, the same order of calls — but a project of another kind.
+    # If the manager had been written for a road, the "aqueduct" step would not
+    # have gone through.
     var aqueduct_steps := [
         _make_step(5, 5, 20.0, "5,5|5,6"),
         _make_step(5, 6, 20.0, "5,6|5,7"),
@@ -205,19 +211,19 @@ func _test_other_project_kind(state: Dictionary) -> void:
     _pm.step_completed.connect(func(_id, kind, _step):
         if kind == "aqueduct":
             done.append(kind))
-    var pid: String = _pm.start_project("aqueduct", "Акведук от горы", 5, 7,
+    var pid: String = _pm.start_project("aqueduct", "Aqueduct from the mountain", 5, 7,
             aqueduct_steps)
-    check(pid != "", "проект другого вида должен запускаться тем же способом", state)
+    check(pid != "", "a project of another kind should start the same way", state)
     check(str(_pm.get_step_progress_at(5, 5).get("kind", "")) == "aqueduct",
-            "прогресс-бар должен знать вид проекта", state)
+            "the progress bar should know the kind of project", state)
     _pm.receive_labor(1000.0, 1.0)
     check(done.size() == 1,
-            "шаг другого вида проекта так же достраивается по одному", state)
+            "a step of another kind of project is likewise completed one at a time", state)
     _pm.receive_labor(1000.0, 1.0)
-    check(_pm.get_active_step_count() == 0, "проект другого вида тоже завершается", state)
+    check(_pm.get_active_step_count() == 0, "a project of another kind finishes too", state)
 
 # -------------------------------------------------------
-# 4. Отмена: построенное остаётся, непостроенное — нет
+# 4. Cancel: what is built stays, what is not built does not
 # -------------------------------------------------------
 
 func _test_cancel(state: Dictionary) -> void:
@@ -226,25 +232,25 @@ func _test_cancel(state: Dictionary) -> void:
         _make_step(7, 2, 5.0, "7,2|7,3"),
         _make_step(7, 3, 5.0, "7,3|7,4"),
     ]
-    var pid: String = _pm.start_project("demo", "К отмене", 7, 4, steps)
+    var pid: String = _pm.start_project("demo", "To cancel", 7, 4, steps)
     _pm.receive_labor(1000.0, 1.0)
     check(_pm.get_pending_ghost_segments().size() == 2,
-            "перед отменой в призраке два участка", state)
+            "before the cancel there are two segments in the ghost", state)
 
     var cancelled := {"hit": 0}
     _pm.project_cancelled.connect(func(_id, _kind, _meta):
         cancelled["hit"] = int(cancelled["hit"]) + 1)
-    check(_pm.cancel_project(pid), "отмена активного проекта должна сработать", state)
-    check(int(cancelled["hit"]) == 1, "отмена должна эмитить project_cancelled", state)
-    check(_pm.get_project(pid).is_empty(), "отменённый проект исчезает из очереди", state)
+    check(_pm.cancel_project(pid), "cancelling an active project should work", state)
+    check(int(cancelled["hit"]) == 1, "cancelling should emit project_cancelled", state)
+    check(_pm.get_project(pid).is_empty(), "a cancelled project disappears from the queue", state)
     check(_pm.get_active_step_count() == 0,
-            "отменённый проект больше не занимает слот в пуле труда", state)
+            "a cancelled project no longer occupies a slot in the labor pool", state)
     check(_pm.get_pending_ghost_segments().is_empty(),
-            "после отмены непостроенные участки исчезают из призрака", state)
-    check(not _pm.cancel_project(pid), "повторная отмена ничего не делает", state)
+            "after a cancel the unbuilt segments disappear from the ghost", state)
+    check(not _pm.cancel_project(pid), "a repeated cancel does nothing", state)
 
 # -------------------------------------------------------
-# 5. Сохранение и загрузка очереди
+# 5. Saving and loading the queue
 # -------------------------------------------------------
 
 func _test_save_restore(state: Dictionary) -> void:
@@ -253,36 +259,36 @@ func _test_save_restore(state: Dictionary) -> void:
         _make_step(9, 2, 5.0, "9,2|9,3"),
         _make_step(9, 3, 5.0, "9,3|9,4"),
     ]
-    var pid: String = _pm.start_project("demo", "В сейв", 9, 4, steps)
+    var pid: String = _pm.start_project("demo", "To save", 9, 4, steps)
     _pm.receive_labor(1000.0, 1.0)
     var saved: Dictionary = _pm.serialize_projects()
-    check(saved.has(pid), "в сейв должна попасть очередь проекта", state)
+    check(saved.has(pid), "the project's queue should get into the save", state)
     check(int(saved[pid].get("step_index", -1)) == 1,
-            "в сейв пишется позиция очереди: первый участок уже построен", state)
+            "the queue position is written to the save: the first segment is already built", state)
 
     _pm.cancel_project(pid)
     _pm.restore_projects(saved)
     var restored: Dictionary = _pm.get_project(pid)
-    check(not restored.is_empty(), "проект должен восстановиться из сейва", state)
+    check(not restored.is_empty(), "the project should be restored from the save", state)
     check(int(restored.get("step_index", -1)) == 1,
-            "после загрузки очередь продолжается с того же места", state)
+            "after loading the queue continues from the same place", state)
     check(_pm.get_pending_ghost_segments().size() == 2,
-            "после загрузки в призраке только недостроенные участки", state)
+            "after loading only the unbuilt segments are in the ghost", state)
     check(not _pm.get_step_progress_at(9, 2).is_empty(),
-            "после загрузки прогресс-бар стоит на текущем шаге", state)
+            "after loading the progress bar sits on the current step", state)
     check(_pm.get_step_progress_at(9, 1).is_empty(),
-            "на достроенном до загрузки участке бара быть не должно", state)
+            "there should be no bar on the segment built before the load", state)
 
-    # Новый проект после загрузки не должен получить занятый ключ.
-    var next_id: String = _pm.start_project("demo", "После загрузки", 9, 6, [
+    # A new project after loading should not get an occupied key.
+    var next_id: String = _pm.start_project("demo", "After loading", 9, 6, [
         _make_step(9, 6, 5.0, "9,6|9,7")])
-    check(next_id != pid, "новый проект после загрузки получает свободный ключ", state)
+    check(next_id != pid, "a new project after loading gets a free key", state)
     _pm.restore_projects({})
     check(_pm.get_active_step_count() == 0,
-            "восстановление пустого сейва очищает очередь", state)
+            "restoring an empty save clears the queue", state)
 
 # -------------------------------------------------------
-# 6. Живая сцена: дорога строится по одному гексу
+# 6. Live scene: the road is built one hex at a time
 # -------------------------------------------------------
 
 func _test_live_road(state: Dictionary) -> void:
@@ -294,16 +300,16 @@ func _test_live_road(state: Dictionary) -> void:
 
     var rm = main_map.road_manager
     var pm = main_map.project_manager
-    # Ручной разбор кадров вместо автоматического: иначе между стартом дороги
-    # и проверками движок успеет прогнать несколько кадров сам, и «за один кадр
-    # достроился один участок» нельзя будет проверить вовсе.
+    # Manual frame stepping instead of automatic: otherwise the engine will run
+    # several frames by itself between the start of the road and the checks, and
+    # "one segment was completed in one frame" could not be checked at all.
     main_map.build_manager.set_process(false)
 
-    # Гекс Кольца Влияния, до которого реально можно дотянуть дорогу длиной
-    # больше одного участка (иначе проверять поэтапность не на чем).
+    # A hex of the Influence Ring to which a road longer than one segment can
+    # actually be extended (otherwise there is nothing to check the staging on).
     var target := _find_hex_without_road(main_map)
     check(not target.is_empty(),
-            "на живой карте должен найтись гекс без дороги в 2+ участка", state)
+            "on the live map there should be a hex without a road 2+ segments away", state)
     if target.is_empty():
         get_root().remove_child(main_map)
         main_map.free()
@@ -312,44 +318,45 @@ func _test_live_road(state: Dictionary) -> void:
     var col := int(target.col)
 
     var plan: Dictionary = main_map.get_road_plan(row, col)
-    check(plan.get("ok", false), "до выбранного гекса должна быть трасса: %s"
+    check(plan.get("ok", false), "there should be a route to the selected hex: %s"
             % plan.get("reason", ""), state)
     var total_segments := int(plan.get("segments", 0))
 
     var previous_flag: bool = bool(_cdata.ignore_build_requirements)
     _cdata.ignore_build_requirements = false
     check(main_map.start_road_project(row, col, _road_level()),
-            "дорогу на живой сцене должно быть можно запустить", state)
+            "the road should be startable on the live scene", state)
     var project: Dictionary = pm.get_project_at(row, col)
     var step_count: int = project.get("steps", []).size()
     check(step_count == total_segments,
-            "в очереди должно быть столько же шагов, сколько новых участков: %d и %d"
+            "the queue should have as many steps as there are new segments: %d and %d"
                     % [step_count, total_segments], state)
     check(pm.get_pending_ghost_segments().size() == step_count,
-            "призрак проекта равен всей очереди", state)
+            "the project's ghost equals the whole queue", state)
 
-    # Один кадр раздачи труда — и РОВНО ОДИН сегмент дороги. Дельта подбирается
-    # под цену шага: в headless население = 1 житель, то есть труд идёт со
-    # скоростью 1 единица в секунду, а участок дороги стоит 3. Подаём с запасом
-    # на ОДИН участок, но заведомо меньше двух — иначе «по одному гексу» и не
-    # проверить.
+    # One frame of labor distribution — and EXACTLY ONE road segment. The delta
+    # is picked to match the step's price: in headless the population = 1
+    # citizen, so labor comes at a speed of 1 unit per second, and a road
+    # segment costs 3. We supply with a margin for ONE segment, but certainly
+    # less than two — otherwise "one hex at a time" could not be checked.
     var first_cost: float = float(project.get("steps", [{}])[0].get("work_cost", 1.0))
     var labor_per_build: float = maxf(0.001, _cdata.get_total_labor())
     var delta: float = first_cost * 1.5 / labor_per_build
     main_map.build_manager._process(delta)
     var built: Dictionary = rm.get_all_road_segments()
     check(built.size() == 1,
-            "за один кадр должен достроиться ровно один участок дороги", state)
+            "exactly one road segment should be completed per frame", state)
     var ghost_after: Dictionary = pm.get_pending_ghost_segments()
     check(ghost_after.size() == step_count - 1,
-            "после достройки участка призрак должен уменьшиться на один", state)
+            "after completing a segment the ghost should shrink by one", state)
     check(int(pm.get_project_at(row, col).get("step_index", -1)) == 1,
-            "очередь должна сдвинуться на второй участок", state)
+            "the queue should move to the second segment", state)
 
-    # Флаг road_built ставится на гекс, который участок ПРИСОЕДИНЯЕТ к сети:
-    # по этим флагам сеть восстанавливается из сейва, поэтому полупостроенная
-    # дорога не теряется. Первый шаг соединяет уже дорожный гекс города (у
-    # него флага нет — там дорога от улучшения), поэтому помечен ровно один.
+    # The road_built flag is set on the hex that the segment JOINS to the
+    # network: the network is restored from the save by these flags, so a
+    # half-built road is not lost. The first step connects a hex of the city
+    # that already has a road (it has no flag — the road there comes from an
+    # improvement), so exactly one is marked.
     var flagged := 0
     for key in built.keys():
         for endpoint in str(key).split("|"):
@@ -358,32 +365,32 @@ func _test_live_road(state: Dictionary) -> void:
                     and bool(main_map.tile_data[int(xy[0])][int(xy[1])].get("road_built", false)):
                 flagged += 1
     check(flagged == 1,
-            "гекс, присоединённый участком, должен быть помечен road_built", state)
+            "the hex joined by the segment should be marked road_built", state)
     var first_step: Dictionary = project.get("steps", [{}])[0]
     var joined: Dictionary = first_step.get("data", {}).get("to", {})
     check(bool(main_map.tile_data[int(joined.get("row", 0))][int(joined.get("col", 0))]
             .get("road_built", false)),
-            "road_built должен стоять на гексе, к которому пришла дорога", state)
+            "road_built should be set on the hex the road has reached", state)
 
-    # Добиваем остаток по одному участку за кадр.
+    # Finish the remainder one segment per frame.
     for _i in range(step_count + 2):
         if not pm.has_active_projects():
             break
         main_map.build_manager._process(delta)
     check(rm.is_hex_connected(row, col),
-            "после достройки всей очереди гекс должен получить дорогу", state)
+            "after the whole queue is built the hex should get a road", state)
     check(bool(main_map.tile_data[row][col].get("road_built", false)),
-            "на целевом гексе должен стоять флаг road_built", state)
+            "the road_built flag should be set on the target hex", state)
     check(pm.get_pending_ghost_segments().is_empty(),
-            "после завершения проекта призрак должен исчезнуть", state)
+            "after the project finishes the ghost should disappear", state)
     check(main_map.map_renderer._project_ghost_segments.is_empty(),
-            "рендерер тоже должен снять призрак проекта", state)
+            "the renderer should also remove the project's ghost", state)
 
     _cdata.ignore_build_requirements = previous_flag
     get_root().remove_child(main_map)
     main_map.free()
 
-# Гекс Кольца Влияния без дороги, до которого тянется маршрут в 2+ участка.
+# A hex of the Influence Ring without a road that a route of 2+ segments reaches.
 func _find_hex_without_road(main_map) -> Dictionary:
     var rm = main_map.road_manager
     var mh = load("res://scripts/map_helpers.gd")

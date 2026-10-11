@@ -1,35 +1,36 @@
-# Headless-тест дорог городков (scripts/road_manager.gd, scripts/main_map.gd).
+# Headless test for town roads (scripts/road_manager.gd, scripts/main_map.gd).
 #   godot --headless --path . --script res://tests/test_town_roads.gd
 #
-# Проверки (на синтетических картах — детерминированно, без случайной карты):
-#   1. У каждого городка дорога проложена к КАЖДОМУ его улучшению: гекс
-#      улучшения оказывается в его сети (is_town_connected), и до центра
-#      городка от него действительно идёт цепочка сегментов (BFS по
-#      town_road_segments — проверка формы сети, а не только флага).
-#   2. Сети городков изолированы: в сети города игрока подключён только его
-#      гекс и нет ни одного сегмента (все улучшения на карте — городковые),
-#      ни один сегмент городка не попадает в набор дорог города, а центры
-#      городков — корни своих сетей. Логическая изоляция держится на том, что
-#      поиск дороги останавливается только на гексах СВОЕГО городка.
-#   3. Декоративные (городковые) улучшения НЕ попадают в сеть города игрока
-#      при пересчёте из сейва: rebuild_roads_from_existing вызывается ДО
-#      загрузки городков, а в tile_data улучшения лежат общие. Без этой
-#      проверки дороги города разрастались бы к полям и лесным делянкам ВСЕХ
-#      городков на карте.
-#   4. Водное улучшение (рыбацкие лодки на озере) дороги не получает — так же,
-#      как у города игрока.
-#   5. На живой сцене MainMap (новая игра) проверяется ПРАВИЛО, а не исход:
-#      улучшение соединено дорогой тогда и только тогда, когда до центра
-#      городка есть путь по суше; плюс гейты видимости — эра 0 не видно,
-#      с эры Античности видно, сегмент с концом в тумане скрыт, разведка его
-#      открывает (те же гейты, что у заливки колец).
-#   6. Уровень дороги на гексе (get_hex_road_level) учитывает и сеть городка:
-#      на гексе с дорогой городка (и без дороги игрока) он равен 1, а не 0 —
-#      строка «Дорога: …» в тултипе описывает то, что нарисовано на карте.
+# Checks (on synthetic maps — deterministic, without a random map):
+#   1. Every town has a road laid to EACH of its improvements: the hex of
+#      the improvement ends up in its network (is_town_connected), and a
+#      chain of segments really runs from it to the town center (BFS over
+#      town_road_segments — a check of the network's shape, not just a flag).
+#   2. Town networks are isolated: the player's city network contains only its
+#      hex and not a single segment (all improvements on the map are town ones),
+#      no town segment ends up in the city's road set, and the town centers
+#      are the roots of their own networks. The logical isolation rests on the
+#      fact that the road search stops only at hexes of its OWN town.
+#   3. Decorative (town) improvements do NOT end up in the player's city
+#      network when rebuilding from a save: rebuild_roads_from_existing is
+#      called BEFORE the towns are loaded, and the improvements sit together in
+#      tile_data. Without this check the city's roads would grow towards the
+#      fields and forest plots of ALL towns on the map.
+#   4. A water improvement (fishing boats on a lake) gets no road — just like
+#      the player's city.
+#   5. On the live MainMap scene (new game) the RULE is checked, not the
+#      outcome: an improvement is connected by a road if and only if there is a
+#      land path to the town center; plus visibility gates — era 0 not visible,
+#      from the Antiquity era visible, a segment with an end in the fog is
+#      hidden, scouting reveals it (the same gates as for ring fill).
+#   6. The road level on a hex (get_hex_road_level) also accounts for the town
+#      network: on a hex with a town road (and without a player road) it is 1,
+#      not 0 — the "Road: …" line in the tooltip describes what is drawn on
+#      the map.
 extends SceneTree
 
-# Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
-# молчание. Подробности — в tests/watchdog.gd.
+# Hang watchdog: without it a break in the _run() coroutine looks from the
+# outside like eternal silence. Details — in tests/watchdog.gd.
 const WATCHDOG = preload("res://tests/watchdog.gd")
 
 var _tm = null
@@ -45,9 +46,9 @@ func _initialize() -> void:
 func _run() -> void:
     var state = {"failed": false}
 
-    # Автозагрузки берём через дерево сцены: в режиме --script имена
-    # GameData/CityData недоступны на этапе компиляции этого файла.
-    # new_game() заодно грузит все данные (улучшения, ресурсы, city_names).
+    # Autoloads are taken via the scene tree: in --script mode the names
+    # GameData/CityData are unavailable at the compile stage of this file.
+    # new_game() also loads all the data (improvements, resources, city_names).
     get_root().get_node("SaveManager").new_game()
     _gdata = get_root().get_node("GameData")
     _hex_utils = load("res://scripts/HexUtils.gd")
@@ -69,9 +70,9 @@ func _run() -> void:
     if WATCHDOG.wants_case("town_road_level_on_hex"):
         _test_town_road_level_on_hex(state)
 
-    # Живая сцена проверяется последней и отдельно освобождается: MainMap
-    # создаёт собственные TownManager/RoadManager, и держать рядом вторые
-    # экземпляры незачем.
+    # The live scene is checked last and freed separately: MainMap
+    # creates its own TownManager/RoadManager, and there is no reason to
+    # keep second instances around.
     get_root().remove_child(_tm)
     _tm.free()
     get_root().remove_child(_rm)
@@ -92,10 +93,10 @@ func _run() -> void:
 
 
 # -------------------------------------------------------
-# Карта и расстановка (детерминированная синтетика)
+# Map and placement (deterministic synthetic)
 # -------------------------------------------------------
 
-# Пустая карта: все гексы — равнина без ресурсов, рек, улучшений и городков.
+# Empty map: all hexes are plain with no resources, rivers, improvements or towns.
 func _make_map(rows: int, cols: int) -> Array:
     var tile_data := []
     for r in range(rows):
@@ -122,10 +123,10 @@ func _make_map(rows: int, cols: int) -> Array:
         tile_data.append(row)
     return tile_data
 
-# Заливает карту «ковром» ресурсов, кроме гексов из skip: тогда ВСЕ гексы
-# удовлетворяют верхнему приоритету «2+ разных ресурса в окрестностях», а
-# городки встают на оставшиеся свободные гексы. Ровно тот приём, что и в
-# test_town_priorities.
+# Fills the map with a "carpet" of resources, except for the hexes in skip:
+# then ALL hexes satisfy the top priority "2+ different resources in the
+# surroundings", and the towns land on the remaining free hexes. Exactly the
+# same trick as in test_town_priorities.
 func _fill_resource_carpet(tile_data: Array, skip: Array) -> void:
     for r in range(tile_data.size()):
         for c in range(tile_data[r].size()):
@@ -133,13 +134,13 @@ func _fill_resource_carpet(tile_data: Array, skip: Array) -> void:
                 continue
             tile_data[r][c]["resource"] = "sheep" if (r + c) % 2 == 0 else "cows"
 
-# Ставит num_towns городков на свежей карте и возвращает её.
+# Places num_towns towns on a fresh map and returns it.
 func _make_town_map(rows: int, cols: int, city_row: int, city_col: int,
         num_towns: int) -> Array:
     var tile_data := _make_map(rows, cols)
-    # Свободные от ресурсов гексы — каждый второй по обеим осям: у каждого
-    # есть 2+ РАЗНЫХ ресурса в окрестностях, а дистанций хватает на
-    # рассредоточение городков.
+    # Hexes free of resources — every other one along both axes: each has
+    # 2+ DIFFERENT resources in the surroundings, and the distances suffice
+    # for spreading the towns out.
     var free_hexes := []
     for r in range(rows):
         for c in range(cols):
@@ -150,26 +151,26 @@ func _make_town_map(rows: int, cols: int, city_row: int, city_col: int,
     var map_config: Dictionary = _gdata.map_config
     var saved_num_towns = map_config.get("num_towns", 8)
     map_config["num_towns"] = num_towns
-    # Запретная зона вокруг города — 3 гекса в каждую сторону, а не сам гекс
-    # города. В настоящей игре городки исключены из стартовой области
-    # (Кольцо + Регион), поэтому кольцо влияния городка (радиус 3) никогда не
-    # накрывает гекс города. С одним лишь гексом города этого не получалось:
-    # городок в 4 гексах от города ставился, и его кольцо доходило до гекса
-    # города — тогда проверки про сеть города имитировали ситуацию, которой в
-    # игре не бывает.
+    # The forbidden zone around the city is 3 hexes in each direction, not the
+    # city hex itself. In the real game the towns are excluded from the starting
+    # area (Ring + Region), so a town's influence ring (radius 3) never
+    # covers the city hex. With only the city hex this was not achieved:
+    # a town 4 hexes from the city was placed, and its ring reached the city
+    # hex — then the checks about the city network imitated a situation that
+    # does not occur in the game.
     _tm.generate_towns(tile_data, rows, cols, city_row, city_col,
             city_row - 3, city_row + 3, city_col - 3, city_col + 3,
-            0, rows - 1, 0, cols - 1)                # «эра-2» = вся карта
+            0, rows - 1, 0, cols - 1)                # "era-2" = the whole map
     map_config["num_towns"] = saved_num_towns
     return tile_data
 
-# Ставит улучшения в кольца городков — так же, как это делает сама игра
-# (town_manager._place_decorative_town_improvements вызывается в самом конце
-# generate_towns, а при загрузке сейва — отдельно в main_map).
+# Places improvements in the town rings — just as the game itself does
+# (town_manager._place_decorative_town_improvements is called at the very end
+# of generate_towns, and separately in main_map when loading a save).
 func _place_town_improvements(tile_data: Array, rows: int, cols: int) -> void:
     _tm._place_decorative_town_improvements(tile_data, rows, cols)
 
-# Гексы кольца городка, на которых стоит улучшение.
+# Ring hexes of a town that have an improvement on them.
 func _town_improvement_hexes(town: Dictionary, tile_data: Array) -> Array:
     var result: Array = []
     for h in town.get("influence_hexes", []):
@@ -185,7 +186,7 @@ func _town_improvement_hexes(town: Dictionary, tile_data: Array) -> Array:
     return result
 
 # -------------------------------------------------------
-# 1. К каждому улучшению городка проложена дорога от самого городка
+# 1. A road is laid from the town itself to each of its improvements
 # -------------------------------------------------------
 func _test_every_town_improvement_has_road(state: Dictionary) -> void:
     var rows := 40
@@ -194,17 +195,17 @@ func _test_every_town_improvement_has_road(state: Dictionary) -> void:
     var city_col := 20
     var tile_data := _make_town_map(rows, cols, city_row, city_col, 5)
     check(_tm.towns.size() == 5,
-            "ожидалось 5 городков, размещено %d" % _tm.towns.size(), state)
+            "expected 5 towns, placed %d" % _tm.towns.size(), state)
     _place_town_improvements(tile_data, rows, cols)
 
     var improvements_total := 0
     for town in _tm.towns:
         improvements_total += _town_improvement_hexes(town, tile_data).size()
     check(improvements_total > 0,
-            "на карте должно быть хотя бы одно улучшение городка (иначе проверять нечего)",
+            "the map must have at least one town improvement (otherwise there is nothing to check)",
             state)
 
-    # Сеть города игрока (гекс города) + сети городков.
+    # The player's city network (the city hex) + the town networks.
     _rm.initialize(city_row, city_col)
     _rm.rebuild_town_roads(_tm.towns, tile_data, rows, cols)
 
@@ -214,21 +215,21 @@ func _test_every_town_improvement_has_road(state: Dictionary) -> void:
         var town_col := int(town.get("col", -1))
         for imp in _town_improvement_hexes(town, tile_data):
             check(_rm.is_town_connected(town_row, town_col, imp.row, imp.col),
-                    "улучшение (%d,%d) городка (%d,%d) должно быть соединено с ним дорогой"
+                    "improvement (%d,%d) of town (%d,%d) must be connected to it by a road"
                             % [imp.row, imp.col, town_row, town_col], state)
             check(_has_segment_chain(town_segments, imp.row, imp.col, town_row, town_col),
-                    "от улучшения (%d,%d) не идёт цепочка сегментов к городку (%d,%d)"
+                    "no chain of segments runs from improvement (%d,%d) to town (%d,%d)"
                             % [imp.row, imp.col, town_row, town_col], state)
-            # Дорога по воде не строится: ни один конец сегмента у водного гекса
-            # не может быть водным.
+            # A road is not built over water: neither end of a segment at a
+            # water hex may be water.
             for seg in _segments_touching(town_segments, imp.row, imp.col):
                 check(not _is_water(tile_data[seg[0]][seg[1]])
                         and not _is_water(tile_data[seg[2]][seg[3]]),
-                        "сегмент дороги городка идёт по воде: (%d,%d)-(%d,%d)"
+                        "a town road segment runs over water: (%d,%d)-(%d,%d)"
                                 % [seg[0], seg[1], seg[2], seg[3]], state)
 
 # -------------------------------------------------------
-# 2. Сети городков изолированы от сети города и друг от друга
+# 2. Town networks are isolated from the city network and from each other
 # -------------------------------------------------------
 func _test_networks_are_separate(state: Dictionary) -> void:
     var rows := 40
@@ -240,52 +241,52 @@ func _test_networks_are_separate(state: Dictionary) -> void:
     _rm.initialize(city_row, city_col)
     _rm.rebuild_town_roads(_tm.towns, tile_data, rows, cols)
 
-    # Сеть города игрока: подключён только гекс города, сегментов нет — все
-    # улучшения на этой карте принадлежат городкам.
+    # The player's city network: only the city hex is connected, there are no
+    # segments — all improvements on this map belong to the towns.
     check(_rm.connected_hexes.size() == 1
             and _rm.connected_hexes.has("%d,%d" % [city_row, city_col]),
-            "в сети города игрока должен быть только его гекс, а набралось гексов: %d"
+            "the player's city network must contain only its hex, but the hex count reached: %d"
                     % _rm.connected_hexes.size(), state)
     check(_rm.get_all_road_segments().is_empty(),
-            "дороги города игрока не должны строиться к улучшениям городков", state)
+            "the player's city roads must not be built to town improvements", state)
 
-    # Сегменты городков живут в СВОЕМ наборе: ни один из них не попадает в
-    # сегменты города игрока. Заметим: геометрически дорога городка МОЖЕТ
-    # пройти рядом с городом (дорога — физическая, путь ищется по всей карте,
-    # как у города игрока), но логически она не присоединена к сети города:
-    # connected_hexes города остался в одном гексе, а поиск дороги городка
-    # останавливается только на гексах СВОЕГО городка. Поэтому проверяем
-    # разделение наборов, а не «не касается гекса города».
+    # Town segments live in their OWN set: none of them ends up in the
+    # player's city segments. Note: geometrically a town road MAY
+    # pass near the city (the road is physical, the path is searched across the whole map,
+    # as for the player's city), but logically it is not joined to the city network:
+    # the city's connected_hexes stayed at a single hex, and the town's road search
+    # stops only at hexes of its OWN town. That is why we check the
+    # separation of the sets, not "does not touch the city hex".
     var town_segments: Dictionary = _rm.get_all_town_road_segments()
     check(not town_segments.is_empty(),
-            "на карте с улучшениями городков должна строиться сеть дорог", state)
+            "a road network must be built on a map with town improvements", state)
     for seg in town_segments.keys():
         check(not _rm.get_all_road_segments().has(seg),
-                "сегмент дороги городка не должен попасть в набор дорог города: %s" % seg,
+                "a town road segment must not end up in the city's road set: %s" % seg,
                 state)
 
-    # У каждого городка свой корень сети и свои улучшения, к которым дорога
-    # строится ОТ СВОЕГО центра.
+    # Every town has its own network root and its own improvements, to which
+    # a road is built FROM ITS OWN center.
     #
-    # Чего здесь сознательно нет: проверки «улучшение чужого городка не должно
-    # попасть в сеть соседнего». Дорога — физическая: путь ищется по всей
-    # карте, и трасса одного городка вполне может ПРОЙТИ через гекс с полем
-    # соседа (гекс на трассе, как и гекс с постройкой на трассе города игрока,
-    # просто соединён дорогой). Запрещать такое нельзя: кольцо может быть
-    # срезано соседним городком, и тогда единственный обходной путь — мимо его
-    # гексов. Логическая изоляция гарантирована и проверяется выше: поиск
-    # останавливается только на гексах СВОЕГО городка, а чужой городок
-    # подключается к своей сети только из своего центра.
+    # What is deliberately absent here: a check that "an improvement of a
+    # foreign town must not end up in a neighbor's network". The road is physical: the path is searched across the whole
+    # map, and one town's route may well PASS through a hex with a neighbor's
+    # field (a hex on the route, like a hex with a building on the player's city route,
+    # is simply connected by a road). Forbidding that is impossible: the ring may be
+    # cut off by a neighboring town, and then the only detour is past its
+    # hexes. The logical isolation is guaranteed and is checked above: the search
+    # stops only at hexes of its OWN town, and a foreign town
+    # connects to its own network only from its own center.
     for town in _tm.towns:
         var town_row := int(town.get("row", -1))
         var town_col := int(town.get("col", -1))
         check(_rm.is_town_connected(town_row, town_col, town_row, town_col),
-                "центр городка (%d,%d) должен быть корнем своей сети дорог"
+                "the town center (%d,%d) must be the root of its road network"
                         % [town_row, town_col], state)
 
 # -------------------------------------------------------
-# 3. Декоративные улучшения не попадают в сеть города игрока
-#    (регресс: пересчёт из сейва идёт ДО загрузки городков)
+# 3. Decorative improvements do not end up in the player's city network
+#    (regression: the rebuild from a save runs BEFORE the towns are loaded)
 # -------------------------------------------------------
 func _test_decorative_improvements_not_in_player_network(state: Dictionary) -> void:
     var rows := 40
@@ -295,37 +296,37 @@ func _test_decorative_improvements_not_in_player_network(state: Dictionary) -> v
     var tile_data := _make_town_map(rows, cols, city_row, city_col, 5)
     _place_town_improvements(tile_data, rows, cols)
 
-    # Улучшение ИГРОКА рядом с городом: в сеть города оно попасть обязательно —
-    # иначе проверка «городковые не попадают» прошла бы на пустой сети. Гекс
-    # берётся тот, где улучшений ещё нет и который не принадлежит кольцу
-    # городка: иначе нашлось бы совпадение с улучшением городка, и проверка
-    # «городковые не попадают в сеть города» падала бы на нём самом.
+    # A PLAYER improvement near the city: it must get into the city network —
+    # otherwise the "town ones do not end up" check would pass on an empty network. The hex
+    # is taken where there are no improvements yet and which does not belong to a
+    # town's ring: otherwise there would be a match with a town improvement, and the check
+    # "town ones do not end up in the city network" would fail on it itself.
     var player_hex := _free_hex_near_city(city_row, city_col, rows, cols, tile_data)
     check(not player_hex.is_empty(),
-            "рядом с городом должен найтись свободный гекс под улучшение игрока", state)
+            "a free hex for a player improvement must be found near the city", state)
     if player_hex.is_empty():
         return
     tile_data[player_hex.row][player_hex.col]["improvement"] = "farm"
     tile_data[player_hex.row][player_hex.col]["decorative"] = false
 
-    # Ровно то, что делает main_map при загрузке сейва: городки в этот момент
-    # ещё не загружены, все улучшения лежат в общем tile_data.
+    # Exactly what main_map does when loading a save: the towns are not loaded
+    # yet at that moment, all improvements sit together in tile_data.
     _rm.initialize(city_row, city_col)
     _rm.rebuild_roads_from_existing(tile_data, rows, cols)
 
     check(_rm.connected_hexes.has("%d,%d" % [int(player_hex.row), int(player_hex.col)]),
-            "улучшение игрока должно быть подключено к сети города", state)
+            "the player's improvement must be connected to the city network", state)
     for town in _tm.towns:
         for imp in _town_improvement_hexes(town, tile_data):
             check(not _rm.connected_hexes.has("%d,%d" % [imp.row, imp.col]),
-                    "улучшение городка (%d,%d) не должно попадать в сеть города игрока"
+                    "town improvement (%d,%d) must not end up in the player's city network"
                             % [imp.row, imp.col], state)
             check(not _has_segment_touching(_rm.get_all_road_segments(), imp.row, imp.col),
-                    "дороги города игрока не должны доходить до улучшения городка (%d,%d)"
+                    "the player's city roads must not reach the town improvement (%d,%d)"
                             % [imp.row, imp.col], state)
 
 # -------------------------------------------------------
-# 4. Водное улучшение дороги не получает (как у города игрока)
+# 4. A water improvement gets no road (just like the player's city)
 # -------------------------------------------------------
 func _test_water_improvement_has_no_road(state: Dictionary) -> void:
     var rows := 40
@@ -335,8 +336,8 @@ func _test_water_improvement_has_no_road(state: Dictionary) -> void:
     var tile_data := _make_town_map(rows, cols, city_row, city_col, 5)
     _place_town_improvements(tile_data, rows, cols)
 
-    # Озеро с рыбацкими лодками и наземное улучшение в кольце первого
-    # городка: первое не должно получить дорогу, второе (контроль) — должно.
+    # A lake with fishing boats and a land improvement in the ring of the first
+    # town: the first must not get a road, the second (control) must.
     var town: Dictionary = _tm.towns[0]
     var town_row := int(town.get("row", -1))
     var town_col := int(town.get("col", -1))
@@ -344,7 +345,7 @@ func _test_water_improvement_has_no_road(state: Dictionary) -> void:
     var land_hex = _free_ring_hex(town, tile_data, 1,
             ["%d,%d" % [int(water_hex.row), int(water_hex.col)]] if water_hex != null else [])
     check(water_hex != null and land_hex != null,
-            "в кольце городка должны найтись свободные гексы под воду и под сушу", state)
+            "free hexes for water and for land must be found in the town ring", state)
     if water_hex == null or land_hex == null:
         return
     tile_data[water_hex.row][water_hex.col]["terrain"] = "lake"
@@ -357,14 +358,14 @@ func _test_water_improvement_has_no_road(state: Dictionary) -> void:
     _rm.rebuild_town_roads(_tm.towns, tile_data, rows, cols)
 
     check(not _rm.is_town_connected(town_row, town_col, water_hex.row, water_hex.col),
-            "рыбацкие лодки на озере не должны получать дорогу (вода)", state)
+            "fishing boats on a lake must not get a road (water)", state)
     check(_rm.is_town_connected(town_row, town_col, land_hex.row, land_hex.col),
-            "наземное улучшение в кольце городка обязано получить дорогу (контроль)",
+            "a land improvement in the town ring must get a road (control)",
             state)
 
 # -------------------------------------------------------
-# 5. Живая сцена MainMap: сети построены, видны с эры Античности
-#    и не заходят в туман войны
+# 5. Live MainMap scene: networks are built, visible from the Antiquity era
+#    and do not enter the fog of war
 # -------------------------------------------------------
 func _test_live_scene(state: Dictionary) -> void:
     var main_map = load("res://scenes/MainMap.tscn").instantiate()
@@ -377,12 +378,12 @@ func _test_live_scene(state: Dictionary) -> void:
     var r = main_map.map_renderer
     var towns: Array = main_map.towns
 
-    # Правило, а не исход: дорога есть тогда и только тогда, когда от гекса
-    # улучшения до центра городка есть путь ПО СУШЕ. На живой (случайной) карте
-    # улучшения стоят и на водных гексах кольца (рыбные озёра), и на гексах,
-    # отрезанных водой от городка, — такие дороги не получают, и это правильно
-    # (вода непроходима, ровно как у города игрока). Проверять «у всех есть
-    # дорога» здесь нельзя: половина таких гексов — вода.
+    # The rule, not the outcome: a road exists if and only if there is a LAND
+    # path from the improvement hex to the town center. On the live (random) map
+    # improvements stand both on water hexes of the ring (fish lakes) and on hexes
+    # cut off from the town by water — such ones get no road, and that is correct
+    # (water is impassable, exactly as for the player's city). Checking "everyone has
+    # a road" is not possible here: half of such hexes are water.
     var improvements_total := 0
     var improvements_with_road := 0
     for town in towns:
@@ -398,63 +399,63 @@ func _test_live_scene(state: Dictionary) -> void:
             if actual:
                 improvements_with_road += 1
             check(actual == expected,
-                    "улучшение (%d,%d) городка (%d,%d): дорога %s, а ожидалась %s (вода: %s)"
+                    "improvement (%d,%d) of town (%d,%d): road %s, but expected %s (water: %s)"
                             % [imp.row, imp.col, town_row, town_col,
-                                "есть" if actual else "нет",
-                                "есть" if expected else "нет",
-                                "да" if _is_water(tile) else "нет"], state)
+                                "yes" if actual else "no",
+                                "yes" if expected else "no",
+                                "yes" if _is_water(tile) else "no"], state)
     check(improvements_total > 0,
-            "на живой карте у городков должны быть улучшения", state)
+            "on the live map the towns must have improvements", state)
     check(improvements_with_road > 0,
-            "на живой карте хотя бы часть улучшений городков должна получить дорогу",
+            "on the live map at least some of the town improvements must get a road",
             state)
 
-    # --- Гейт эпохи: в 1-й эпохе дороги городков не рисуются ---
+    # --- Era gate: in the 1st era town roads are not drawn ---
     check(main_map.current_era < 1,
-            "тест начинается в 1-й эпохе, а эпоха=%d" % main_map.current_era, state)
+            "the test starts in the 1st era, but era=%d" % main_map.current_era, state)
     check(not r.are_town_roads_visible(),
-            "в 1-й эпохе дороги городков не должны быть видны", state)
+            "in the 1st era town roads must not be visible", state)
     main_map.advance_to_next_era()
     await process_frame
     check(r.are_town_roads_visible(),
-            "с эры Античности дороги городков должны быть видны", state)
+            "from the Antiquity era town roads must be visible", state)
 
-    # --- Гейт тумана: проверяется ПРАВИЛО на всех сегментах сразу, а не
-    # «хоть один туманный найдётся, хоть один видимый найдётся»: на случайной
-    # карте любой из двух может не встретиться (городки стоят вне Региона), и
-    # такая проверка была бы флакующей. ---
+    # --- Fog gate: the RULE is checked on all segments at once, not
+    # "at least one foggy one will be found, at least one visible one will be found": on a random
+    # map either of the two may not occur (the towns stand outside the Region), and
+    # such a check would be flaky. ---
     var checked_segments := 0
     for seg in rm.get_all_town_road_segments().keys():
         var s := _parse_segment(seg)
         var expected: bool = not main_map.is_hex_in_fog(s[0], s[1]) \
                 and not main_map.is_hex_in_fog(s[2], s[3])
         check(r.is_town_road_segment_visible(s[0], s[1], s[2], s[3]) == expected,
-                "видимость сегмента дороги городка не совпала с правилом тумана: %s" % seg,
+                "the visibility of a town road segment did not match the fog rule: %s" % seg,
                 state)
         checked_segments += 1
     check(checked_segments > 0,
-            "на живой карте должны быть сегменты дорог городков", state)
+            "the live map must have town road segments", state)
 
-    # Разведка открывает дорогу так же, как заливку кольца: изученный гекс
-    # перестаёт быть туманом, и сегмент с ним становится видимым; гекс, вернувшийся
-    # в туман, снова прячет дорогу.
+    # Scouting reveals the road just as it reveals the ring fill: an explored hex
+    # stops being fog, and a segment with it becomes visible; a hex that has returned
+    # to fog hides the road again.
     var fog_pair: Array = _fog_segment(main_map, rm)
     if not fog_pair.is_empty():
         var p := _parse_segment(fog_pair[0])
         check(not r.is_town_road_segment_visible(p[0], p[1], p[2], p[3]),
-                "сегмент дороги городка с концом в тумане войны не должен рисоваться: %s"
+                "a town road segment with an end in the fog of war must not be drawn: %s"
                         % fog_pair[0], state)
         var t1 = main_map.tile_data[p[0]][p[1]]
         var t2 = main_map.tile_data[p[2]][p[3]]
         t1["is_explored"] = true
         t2["is_explored"] = true
         check(r.is_town_road_segment_visible(p[0], p[1], p[2], p[3]),
-                "после разведки сегмент дороги городка должен стать видимым: %s"
+                "after scouting a town road segment must become visible: %s"
                         % fog_pair[0], state)
         t1["is_explored"] = false
         t2["is_explored"] = false
         check(not r.is_town_road_segment_visible(p[0], p[1], p[2], p[3]),
-                "вернувшийся в туман сегмент дороги городка снова скрывается: %s"
+                "a town road segment that has returned to fog is hidden again: %s"
                         % fog_pair[0], state)
 
     if main_map != null and is_instance_valid(main_map):
@@ -462,15 +463,15 @@ func _test_live_scene(state: Dictionary) -> void:
         main_map.free()
 
 # -------------------------------------------------------
-# 6. Уровень дороги на гексе учитывает и сети городков
+# 6. The road level on a hex also accounts for the town networks
 # -------------------------------------------------------
 #
-# Дороги городков нарисованы на карте (map_renderer._draw_all_roads), поэтому
-# строка «Дорога: …» в расширенном тултипе и в левой колонке панели обязана
-# их описывать: иначе на гексе видна дорога, а тултип о ней молчит. Раньше
-# get_hex_road_level смотрел только в сеть ГОРОДА игрока, и на гексе с дорогой
-# городка (и без дороги игрока) строка молча пропадала — при том, что сам
-# маршрут (find_route_to_city) участки городка тропкой уже считал.
+# Town roads are drawn on the map (map_renderer._draw_all_roads), so the
+# "Road: …" line in the extended tooltip and in the left column of the panel must
+# describe them: otherwise a road is visible on the hex while the tooltip stays silent about it. Previously
+# get_hex_road_level looked only into the PLAYER's city network, and on a hex with a town
+# road (and without a player road) the line silently disappeared — even though the
+# route itself (find_route_to_city) already counted the town sections as a trail.
 func _test_town_road_level_on_hex(state: Dictionary) -> void:
     var rows := 40
     var cols := 40
@@ -483,7 +484,7 @@ func _test_town_road_level_on_hex(state: Dictionary) -> void:
 
     var town_segments: Dictionary = _rm.get_all_town_road_segments()
     check(not town_segments.is_empty(),
-            "на карте с улучшениями городков должна быть сеть дорог", state)
+            "a road network must exist on a map with town improvements", state)
     if town_segments.is_empty():
         return
 
@@ -494,27 +495,27 @@ func _test_town_road_level_on_hex(state: Dictionary) -> void:
         for end in [[s[0], s[1]], [s[2], s[3]]]:
             var row := int(end[0])
             var col := int(end[1])
-            # Гекс города игрока пропускаем: у него своя сеть.
+            # Skip the player's city hex: it has its own network.
             if row == city_row and col == city_col:
                 continue
-            # Сети изолированы (см. _test_networks_are_separate), поэтому у этих
-            # гексов дороги ГОРОДА нет — уровень приходит только от городка.
-            # Без этой проверки тест не доказывал бы ничего: на гексе с дорогой
-            # игрока он проходил бы и до правки.
+            # The networks are isolated (see _test_networks_are_separate), so these
+            # hexes have no CITY road — the level comes only from the town.
+            # Without this check the test would prove nothing: it would also pass on
+            # a hex with a player road.
             check(_segments_touching(city_segments, row, col).is_empty(),
-                    "у гекса (%d,%d) не должно быть дороги города — иначе проверка не о том"
+                    "hex (%d,%d) must not have a city road — otherwise the check is about the wrong thing"
                             % [row, col], state)
             var level: int = _rm.get_hex_road_level(row, col)
             check(level == 1,
-                    "на гексе (%d,%d) с дорогой городка уровень должен быть тропкой (1), получено %d"
+                    "on hex (%d,%d) with a town road the level must be a trail (1), got %d"
                             % [row, col, level], state)
             checked_hexes += 1
     check(checked_hexes > 0,
-            "должен найтись хотя бы один гекс вне города с дорогой городка", state)
+            "at least one hex outside the city with a town road must be found", state)
 
 
 # -------------------------------------------------------
-# Хелперы разбора сегментов
+# Segment parsing helpers
 # -------------------------------------------------------
 
 # "r1,c1|r2,c2" -> [r1, c1, r2, c2]
@@ -528,7 +529,7 @@ func _parse_segment(key: String) -> Array:
         return [-1, -1, -1, -1]
     return [int(a[0]), int(a[1]), int(b[0]), int(b[1])]
 
-# Все сегменты, у которых хоть один конец — указанный гекс.
+# All segments that have the given hex at either end.
 func _segments_touching(segments: Dictionary, row: int, col: int) -> Array:
     var result: Array = []
     for key in segments.keys():
@@ -540,9 +541,9 @@ func _segments_touching(segments: Dictionary, row: int, col: int) -> Array:
 func _has_segment_touching(segments: Dictionary, row: int, col: int) -> bool:
     return not _segments_touching(segments, row, col).is_empty()
 
-# Есть ли в наборе сегментов цепочка от (from_row, from_col) до
-# (to_row, to_col). Это проверка ФОРМЫ сети, а не только флага is_town_connected:
-# BFS по сегментам в обе стороны (дорога двусторонняя).
+# Whether the segment set contains a chain from (from_row, from_col) to
+# (to_row, to_col). This checks the SHAPE of the network, not just the is_town_connected flag:
+# BFS over the segments in both directions (a road is two-way).
 func _has_segment_chain(segments: Dictionary, from_row: int, from_col: int,
         to_row: int, to_col: int) -> bool:
     var visited := {"%d,%d" % [from_row, from_col]: true}
@@ -561,9 +562,9 @@ func _has_segment_chain(segments: Dictionary, from_row: int, from_col: int,
             queue.append({"row": int(other[0]), "col": int(other[1])})
     return false
 
-# Свободный гекс-сосед города: без улучшений и вне колец городков. Нужен под
-# улучшение ИГРОКА, чтобы проверка «городковые улучшения не попадают в сеть
-# города» не накрывала гекс, который сам является улучшением городка.
+# A free neighbor hex of the city: without improvements and outside the town rings. Needed for
+# a PLAYER improvement so that the check "town improvements do not end up in the city
+# network" does not cover a hex that is itself a town improvement.
 func _free_hex_near_city(city_row: int, city_col: int, rows: int, cols: int,
         tile_data: Array) -> Dictionary:
     for n in _hex_utils.get_neighbors_odd_r(city_row, city_col, rows, cols):
@@ -577,10 +578,10 @@ func _free_hex_near_city(city_row: int, city_col: int, rows: int, cols: int,
         return {"row": int(n.row), "col": int(n.col)}
     return {}
 
-# Свободный гекс кольца городка на расстоянии не меньше min_dist от центра
-# (на самом центре стоит сам городок, его улучшением он не считается).
-# exclude — уже занятые гексы ["row,col", ...]: нужны, когда из кольца нужно
-# взять несколько РАЗНЫХ гексов под разные улучшения.
+# A free ring hex of a town at a distance of at least min_dist from the center
+# (the town itself stands at the very center, so it does not count as its improvement).
+# exclude — already occupied hexes ["row,col", ...]: needed when several DIFFERENT
+# hexes must be taken from the ring for different improvements.
 func _free_ring_hex(town: Dictionary, tile_data: Array, min_dist: int,
         exclude: Array = []):
     for h in town.get("influence_hexes", []):
@@ -606,9 +607,9 @@ func _is_water(tile) -> bool:
     # exactly as over the deep sea.
     return _map_helpers.is_water_terrain(str(tile.get("terrain", "")))
 
-# Есть ли путь ПО СУШЕ между двумя гексами (вода непроходима). Это независимая
-# проверка правила «дорога строится всегда, когда физически можно дойти», а не
-# обращение к road_manager: так тест не повторяет сам себя.
+# Whether there is a LAND path between two hexes (water is impassable). This is an independent
+# check of the rule "a road is built whenever it is physically reachable", not
+# a call into road_manager: this way the test does not repeat itself.
 func _land_path_exists(tile_data: Array, rows: int, cols: int,
         from_row: int, from_col: int, to_row: int, to_col: int) -> bool:
     var visited := {"%d,%d" % [from_row, from_col]: true}
@@ -633,7 +634,7 @@ func check(cond: bool, msg: String, state: Dictionary):
         print("ASSERT FAILED: ", msg)
         state["failed"] = true
 
-# Сегмент дороги городка, у которого хотя бы один конец в тумане войны.
+# A town road segment that has at least one end in the fog of war.
 func _fog_segment(main_map, rm) -> Array:
     for seg in rm.get_all_town_road_segments().keys():
         var s := _parse_segment(seg)

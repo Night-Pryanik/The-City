@@ -1,21 +1,21 @@
-# Headless-тест живого обновления расширенного тултипа гекса:
+# Headless test of the live refresh of the hex extended tooltip:
 #   godot --headless --path . --script res://tests/test_tooltip_live_refresh.gd
 #
-# Правило, которое проверяется: расширенный тултип обязан обновляться БЕЗ движения
-# мыши, пока на гексе есть то, что меняется со временем. Раньше периодический
-# рефреш шёл только по растущим ресурсам (пастбищам), а строки доставки, добавленные
-# в расширенный блок, обновления не получали — состояние доставки замирало на
-# моменте появления тултипа. Решение «обновлять ли» принимает ЕДИНСТВЕННАЯ точка —
-# map_tooltip.has_live_content (растущий ресурс ИЛИ груз на маршруте).
+# The rule under test: the extended tooltip must refresh WITHOUT mouse
+# movement while the hex holds something that changes over time. Previously the periodic
+# refresh ran only for growing resources (pastures), while the delivery lines added
+# to the extended block received no updates — the delivery state froze at
+# the moment the tooltip appeared. The "whether to refresh" decision is made by a SINGLE point —
+# map_tooltip.has_live_content (a growing resource OR cargo on the route).
 #
-# Проверки:
-#   1. ГЕКС БЕЗ ГРУЗА. Товара нет, ресурс не растущий → гекс не «живой», рефреша нет.
-#   2. ГЕКС С ГРУЗОМ. Как только груз встал на маршрут, гекс становится «живым» —
-#      ровно этого не хватало, и из-за этого тултип замирал (дефект).
-#   3. ОБНОВЛЕНИЕ МЕНЯЕТ КАРТИНКУ. После шага доставки часть груза уходит в путь,
-#      и повторный показ блока даёт другую картинку: к «ожидает отправки» добавляется
-#      строка «в пути». Это и есть «актуальное состояние», которого не было.
-#   4. ГРУЗ УШЁЛ. Когда маршрут пуст, гекс снова статичен — обновление прекращается.
+# Checks:
+#   1. HEX WITHOUT CARGO. No goods, the resource is not growing → the hex is not "live", there is no refresh.
+#   2. HEX WITH CARGO. As soon as cargo is put on the route, the hex becomes "live" —
+#      exactly this was missing, and because of it the tooltip froze (the defect).
+#   3. THE REFRESH CHANGES THE PICTURE. After a delivery step part of the cargo goes on its way,
+#      and showing the block again gives a different picture: to "waiting to ship" is added
+#      the "in transit" line. This is the "current state" that was missing.
+#   4. CARGO IS GONE. When the route is empty, the hex is static again — the refresh stops.
 extends SceneTree
 
 const WATCHDOG = preload("res://tests/watchdog.gd")
@@ -30,8 +30,8 @@ func _initialize() -> void:
 func _run() -> void:
     var state = {"failed": false}
 
-    # Автолоады берём узлами дерева: в режиме --script имена GameData и CityData
-    # на этапе компиляции этого файла ещё недоступны.
+    # Autoloads are taken as tree nodes: in --script mode the names GameData and CityData
+    # are not yet available at the compilation stage of this file.
     get_root().get_node("SaveManager").new_game()
     _gdata = get_root().get_node("GameData")
     _mh = load("res://scripts/map_helpers.gd")
@@ -58,9 +58,9 @@ func _test_live_refresh(state: Dictionary) -> void:
     var tooltip = main_map.map_tooltip
     var dm = main_map.delivery_manager
 
-    # Синтетический НЕрастущий ресурс: у него нет time_to_mature, поэтому «живым»
-    # гекс делает именно груз на маршруте, а не наполнение пастбища. Так проверка
-    # не зависит от того, куда попал гекс, и от реальных бонусов за воду.
+    # A synthetic NON-growing resource: it has no time_to_mature, so what makes the hex
+    # "live" is exactly the cargo on the route, not the filling of the pasture. This way the check
+    # does not depend on where the hex landed or on the real water bonuses.
     _gdata.raw_resources["test_grain"] = {
         "id": "test_grain", "name": "Test Grain", "type": "raw",
         "improved_by": "farm", "produces": {"wheat": 10},
@@ -68,7 +68,7 @@ func _test_live_refresh(state: Dictionary) -> void:
 
     var spot := _find_hex_in_influence(main_map)
     check(not spot.is_empty(),
-            "на живой карте должен найтись свободный гекс в влиянии с планом дороги", state)
+            "a free hex in influence with a road plan must be found on the live map", state)
     if spot.is_empty():
         _free(main_map)
         return
@@ -80,36 +80,36 @@ func _test_live_refresh(state: Dictionary) -> void:
     rm.build_road_from(row, col, main_map.tile_data, main_map.map_rows, main_map.map_cols)
 
     var route: Dictionary = main_map.get_route_to_city(row, col)
-    check(route.get("ok", false), "у улучшения с дорогой должен быть маршрут", state)
+    check(route.get("ok", false), "an improvement with a road must have a route", state)
     if not route.get("ok", false):
         _free(main_map)
         return
 
-    # --- 1. Гекс без груза и без растущего ресурса — статичен. ---
+    # --- 1. A hex without cargo and without a growing resource is static. ---
     dm.clear()
-    check(not dm.has_cargo(row, col), "маршрут должен быть пуст перед проверкой", state)
+    check(not dm.has_cargo(row, col), "the route must be empty before the check", state)
     check(not main_map.has_live_content(row, col),
-            "гекс без груза и без растущего ресурса не должен считаться «живым»", state)
+            "a hex without cargo and without a growing resource must not count as \"live\"", state)
 
-    # --- 2. Груз встал на маршрут — гекс обязан стать «живым». ---
+    # --- 2. Cargo is put on the route — the hex must become "live". ---
     var queued: bool = dm.create_cargo(row, col, "wheat", "common", 20, "test_source")
-    check(queued, "груз должен встать на маршрут", state)
-    check(dm.has_cargo(row, col), "на маршруте должен появиться груз", state)
+    check(queued, "the cargo must be put on the route", state)
+    check(dm.has_cargo(row, col), "cargo must appear on the route", state)
     check(main_map.has_live_content(row, col),
-            "гекс с грузом на маршруте обязан считаться «живым» (иначе тултип замирает)", state)
+            "a hex with cargo on the route must count as \"live\" (otherwise the tooltip freezes)", state)
 
-    # Тултип показан: расширенный блок привязан к гексу (как после задержки наведения).
+    # The tooltip is shown: the extended block is bound to the hex (as after a hover delay).
     main_map.update_extended_tooltip(row, col)
     var lines_shown: Array = tooltip.delivery_lines(row, col)
     check(lines_shown.size() == 2,
-            "сразу после постановки груза ожидается 2 строки (заголовок + ожидание), получено %d"
+            "right after the cargo is put on the route 2 lines are expected (header + waiting), got %d"
                     % lines_shown.size(), state)
     var shown_before := _collect_text(tooltip._tooltip_products_container)
 
-    # --- 3. Шаг доставки меняет состояние — и блок обязан это показать. ---
+    # --- 3. A delivery step changes the state — and the block must show it. ---
     var status_before: Dictionary = dm.get_route_status(row, col)
     check(int(status_before.get("pending", 0)) == 20,
-            "весь груз должен ждать отправки (получено %d)"
+            "all the cargo must be waiting to ship (got %d)"
                     % int(status_before.get("pending", 0)), state)
 
     dm.advance(1.0)
@@ -117,36 +117,36 @@ func _test_live_refresh(state: Dictionary) -> void:
 
     var status_after: Dictionary = dm.get_route_status(row, col)
     check(int(status_after.get("pending", 0)) < 20 and int(status_after.get("in_transit", 0)) > 0,
-            "после шага доставки груз должен частично уйти в путь (pending=%d, in_transit=%d)"
+            "after the delivery step the cargo must partially go on its way (pending=%d, in_transit=%d)"
                     % [int(status_after.get("pending", 0)), int(status_after.get("in_transit", 0))],
             state)
 
-    # Это ровно тот путь, которым пользуется InputHandler на периодическом рефреше.
+    # This is exactly the path used by InputHandler on the periodic refresh.
     main_map.update_tooltip_text(row, col)
     var lines_after: Array = tooltip.delivery_lines(row, col)
     check(lines_after.size() == 3,
-            "после отправки должна добавиться строка «в пути» (ожидается 3 строки, получено %d)"
+            "after shipping the \"in transit\" line must be added (3 lines expected, got %d)"
                     % lines_after.size(), state)
     var shown_after := _collect_text(tooltip._tooltip_products_container)
     check(shown_after != shown_before,
-            "показанный блок обязан измениться после шага доставки — иначе тултип замер на появлении",
+            "the shown block must change after the delivery step — otherwise the tooltip froze at appearance",
             state)
 
-    # --- 4. Груз убран — гекс снова статичен, рефреш прекращается. ---
+    # --- 4. Cargo is removed — the hex is static again, the refresh stops. ---
     dm.clear()
-    check(not dm.has_cargo(row, col), "после очистки маршрут должен быть пуст", state)
+    check(not dm.has_cargo(row, col), "after clearing the route must be empty", state)
     check(not main_map.has_live_content(row, col),
-            "после доставки всего груза гекс снова статичен — обновление прекращается", state)
+            "after all the cargo is delivered the hex is static again — the refresh stops", state)
 
     _free(main_map)
 
 
 # -------------------------------------------------------
-# Хелперы
+# Helpers
 # -------------------------------------------------------
 
-# Первый свободный гекс в Кольце Влияния: сухой, известный, без улучшения,
-# городка и дороги, БЕЗ доступа к пресной воде — И с достижимым планом дороги.
+# The first free hex in the Influence Ring: dry, known, without an improvement,
+# town or road, WITHOUT access to fresh water — AND with a reachable road plan.
 func _find_hex_in_influence(main_map) -> Dictionary:
     for row in range(main_map.influence_start_row, main_map.influence_end_row + 1):
         for col in range(main_map.influence_start_col, main_map.influence_end_col + 1):

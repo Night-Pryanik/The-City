@@ -1,23 +1,23 @@
-# Headless-тест обрезки рек по туману войны (map_renderer, ФАЗА 2.75):
+# Headless test for clipping rivers by the fog of war (map_renderer, PHASE 2.75):
 #   godot --headless --path . --script res://tests/test_river_fog.gd
 #
-# Регрессия, которую ловит тест: реки рисовались сквозь туман войны. Гекс
-# в тумане не отрисовывается вовсе (см. _draw_hex), поэтому река на нём
-# висела в чёрной пустоте. Река должна обрываться по границе разведанной
-# области.
+# Regression the test catches: rivers were drawn through the fog of war. A hex
+# in the fog is not drawn at all (see _draw_hex), so a river on it
+# hung in black emptiness. A river must break at the border of the explored
+# area.
 #
-# Проверяется на живой карте MainMap (новая игра):
-#   1. Обрезка реально срабатывает: у хотя бы одной реки туман выбрасывает
-#      часть сглаженных точек (иначе проверки ниже бессмысленны).
-#   2. Все выжившие точки лежат над разведанной территорией. Проверка —
-#      НЕЗАВИСИМАЯ от локального оценщика _nearest_hex: ближайший гекс
-#      ищется полным перебором карты.
-#   3. Точка в разведанной области видима, точка вдали от неё (в тумане) —
-#      нет.
+# Checked on the live MainMap (new game):
+#   1. The clipping really triggers: for at least one river the fog discards
+#      part of the smoothed points (otherwise the checks below are meaningless).
+#   2. All surviving points lie over explored territory. The check is
+#      INDEPENDENT of the local estimator _nearest_hex: the nearest hex
+#      is found by a full scan of the map.
+#   3. A point in explored territory is visible, a point far from it (in the fog)
+#      is not.
 extends SceneTree
 
-# Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
-# молчание. Подробности — в tests/watchdog.gd.
+# Hang watchdog: without it a broken _run() coroutine looks from the outside like
+# eternal silence. Details in tests/watchdog.gd.
 const WATCHDOG = preload("res://tests/watchdog.gd")
 
 func _initialize() -> void:
@@ -38,7 +38,7 @@ func _run() -> void:
     var radius: float = main_map.HEX_RADIUS
     var all_rivers: Array = river_manager.get_main_rivers() + river_manager.get_tributaries()
 
-    # --- 1. Туман реально выбрасывает точки хотя бы у одной реки ---
+    # --- 1. The fog really discards points for at least one river ---
     var dropped_total: int = 0
     var kept_total: int = 0
     for river in all_rivers:
@@ -55,11 +55,11 @@ func _run() -> void:
         dropped_total += smooth.size() - kept
         kept_total += kept
     check(dropped_total > 0,
-        "туман войны должен выбрасывать часть точек рек (выброшено %d)" % dropped_total, state)
+        "the fog of war must discard part of the river points (discarded %d)" % dropped_total, state)
     check(kept_total > 0,
-        "часть рек должна оставаться видимой (оставлено %d)" % kept_total, state)
+        "part of the rivers must remain visible (kept %d)" % kept_total, state)
 
-    # --- 2. Выжившие точки — над разведанной территорией (независимая проверка) ---
+    # --- 2. Surviving points lie over explored territory (independent check) ---
     var sample_step: int = max(1, kept_total / 200)
     var checked: int = 0
     var violations: Array = []
@@ -80,18 +80,18 @@ func _run() -> void:
                 checked += 1
                 if not _over_explored(main_map, pt, radius):
                     violations.append(pt)
-    check(checked > 0, "должно быть проверено хотя бы несколько точек", state)
+    check(checked > 0, "at least a few points must be checked", state)
     check(violations.is_empty(),
-        "выжившие точки рек не должны лежать в тумане войны (нарушителей: %d из %d)"
+        "surviving river points must not lie in the fog of war (violations: %d of %d)"
             % [violations.size(), checked], state)
 
-    # --- 3. Точка в разведанной области видима, точка в глубине тумана — нет ---
+    # --- 3. A point in the explored area is visible, a point deep in the fog is not ---
     var city_center: Vector2 = HexUtils.hex_center(main_map.city_row, main_map.city_col, radius)
     check(r._is_river_point_visible(city_center, radius),
-        "точка в центре карты (в Регионе) должна быть видима", state)
+        "a point at the map center (in the Region) must be visible", state)
 
-    # Гекс в глубине тумана: сам в тумане и все соседи тоже (иначе точка на его
-    # грани законно считалась бы видимой — река течёт по граням гексов).
+    # A hex deep in the fog: itself in the fog and all its neighbours too (otherwise a point on its
+    # edge would legitimately count as visible — a river flows along hex edges).
     var deep_fog: Vector2i = Vector2i(-1, -1)
     for row in range(main_map.map_rows):
         for col in range(main_map.map_cols):
@@ -107,11 +107,11 @@ func _run() -> void:
                 break
         if deep_fog.x >= 0:
             break
-    check(deep_fog.x >= 0, "на карте должен найтись гекс в глубине тумана", state)
+    check(deep_fog.x >= 0, "the map must contain a hex deep in the fog", state)
     if deep_fog.x >= 0:
         var fog_center: Vector2 = HexUtils.hex_center(deep_fog.x, deep_fog.y, radius)
         check(not r._is_river_point_visible(fog_center, radius),
-            "точка в глубине тумана должна быть скрыта", state)
+            "a point deep in the fog must be hidden", state)
 
     if main_map != null and is_instance_valid(main_map):
         get_root().remove_child(main_map)
@@ -123,10 +123,10 @@ func _run() -> void:
         print("RIVER FOG TEST OK")
         quit(0)
 
-# Независимая проверка «точка над разведанной территорией»: ближайший гекс
-# ищется ПОЛНЫМ перебором карты (а не локальным _nearest_hex рендерера),
-# затем проверяются сам гекс и его соседи — река течёт по граням гексов,
-# поэтому видима, если касается хотя бы одного нарисованного гекса.
+# Independent check "a point over explored territory": the nearest hex
+# is found by a FULL scan of the map (not the renderer's local _nearest_hex),
+# then the hex itself and its neighbours are checked — a river flows along hex
+# edges, so it is visible if it touches at least one drawn hex.
 func _over_explored(main_map, pos: Vector2, radius: float) -> bool:
     var best_row: int = -1
     var best_col: int = -1

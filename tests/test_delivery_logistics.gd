@@ -1,32 +1,33 @@
-# Headless-тест логистики доставки товаров (scripts/delivery_manager.gd).
+# Headless test of goods delivery logistics (scripts/delivery_manager.gd).
 #   godot --headless --path . --script res://tests/test_delivery_logistics.gd
 #
-# Две характеристики маршрута независимы: длина задаёт задержку доставки
-# (длина × transit_time_per_hex), а уровни участков — интенсивность потока
-# (средняя max_speed). Пропускная способность ограничивается ДЛЯ КАЖДОГО МАРШРУТА
-# ОТДЕЛЬНО и делится между всеми партиями одного маршрута; разные маршруты не
-# конкурируют. Излишек собственного производства не теряется, а ждёт отправки.
+# The two characteristics of a route are independent: length sets the delivery
+# delay (length × transit_time_per_hex), while segment levels set the flow rate
+# (average max_speed). Throughput is capped FOR EACH ROUTE SEPARATELY and is
+# shared among all batches of one route; different routes do not compete.
+# Surplus of own production is not lost, but waits to be shipped.
 #
-# Кейсы (фильтр --case=<подстрока>):
-#   delay              — до истечения задержки товар не поступает, после — поступает;
-#   flow_cap           — поступление не превышает интенсивность маршрута;
-#   batch_size         — крупная партия доставляется дольше мелкой;
-#   shared_route       — несколько партий на одном маршруте делят его лимит;
-#   repeat_purchases   — повторные покупки не обходят ограничение;
-#   simultaneous       — партии могут быть в пути одновременно;
-#   independent_routes — разные маршруты независимы;
-#   no_loss            — ни дублей, ни потерь;
-#   save_load          — сохранение и загрузка очереди и груза в пути;
-#   time_scale         — нулевая дельта не двигает доставку, крупная — двигает;
-#   road_upgrade       — более быстрый маршрут отгружает быстрее;
-#   length_scales_delay— более длинный маршрут доставляет дольше;
-#   balance_driven     — коэффициент задержки берётся из game_balance;
-#   production_queue   — производство улучшения уходит в очередь, а не на склад;
-#   queue_only_backlog — очередь «ожидает отправки» показывает только реальный затор.
+# Cases (filter --case=<substring>):
+#   delay              — before the delay elapses no goods arrive, after it they do;
+#   flow_cap           — arrival does not exceed the route's flow rate;
+#   batch_size         — a large batch takes longer to deliver than a small one;
+#   shared_route       — several batches on one route share its limit;
+#   repeat_purchases   — repeat purchases do not bypass the cap;
+#   simultaneous       — batches can be in transit at the same time;
+#   independent_routes — different routes are independent;
+#   no_loss            — neither duplicates nor losses;
+#   save_load          — saving and loading of the queue and goods in transit;
+#   time_scale         — a zero delta does not advance delivery, a large one does;
+#   road_upgrade       — a faster route ships faster;
+#   length_scales_delay— a longer route takes longer to deliver;
+#   balance_driven     — the delay coefficient comes from game_balance;
+#   production_queue   — improvement production goes to the queue, not to storage;
+#   queue_only_backlog — the "awaiting shipment" queue shows only the real backlog.
 #
-# Тесты не фиксируют балансные числа (10/30, 0.2): параметры маршрута задаются
-# явно, а ожидания выводятся из них и из SHIP_STEP самого менеджера, поэтому
-# правка data/game_balance.json и data/roads.json не ломает эти проверки.
+# The tests do not hard-code balance numbers (10/30, 0.2): route parameters are
+# set explicitly, and expectations are derived from them and from the manager's
+# own SHIP_STEP, so editing data/game_balance.json and data/roads.json does not
+# break these checks.
 extends SceneTree
 
 const WATCHDOG = preload("res://tests/watchdog.gd")
@@ -34,8 +35,9 @@ const WATCHDOG = preload("res://tests/watchdog.gd")
 var _gdata = null
 var _cdata = null
 
-# Заглушка карты: маршрут по ключу "row,col" -> {ok, length, avg_speed}. Позволяет
-# гонять менеджер без сцены, дорог и генерации карты — быстро и детерминированно.
+# Map stub: a route keyed by "row,col" -> {ok, length, avg_speed}. Lets the
+# manager be exercised without a scene, roads or map generation — fast and
+# deterministic.
 class FakeMap:
     var routes: Dictionary = {}
     func set_route(row: int, col: int, length: int, avg_speed: float) -> void:
@@ -96,7 +98,7 @@ func _run() -> void:
 
 
 # -------------------------------------------------------
-# 1. Задержка: до истечения — пусто, после — приходит
+# 1. Delay: before it elapses — empty, after it — arrives
 # -------------------------------------------------------
 
 func _test_delay(state: Dictionary) -> void:
@@ -106,35 +108,35 @@ func _test_delay(state: Dictionary) -> void:
     _reset_storage("clay")
     fake.set_route(5, 5, 10, 10.0)
     check(dm.create_cargo(5, 5, "clay", "common", 5, "@imp:farm"),
-            "груз с маршрутом должен приниматься в очередь", state)
+            "cargo with a route must be accepted into the queue", state)
 
-    # Первый шаг отгружает груз (он на дороге), но на склад он не попадает.
+    # The first step ships the cargo (it is on the road), but it does not reach storage.
     _step(dm)
     check(_delivered("clay") == 0,
-            "товар не должен поступать до окончания задержки (получено %d)"
+            "goods must not arrive before the delay elapses (received %d)"
                     % _delivered("clay"), state)
 
-    # Груз отгружен на предыдущем шаге. Прокручиваем чуть меньше задержки после
-    # отправки — на складе по-прежнему пусто.
+    # The cargo was shipped on the previous step. We advance slightly less than the
+    # delay after shipment — storage is still empty.
     var delay: float = 10.0 * dm.get_transit_time_per_hex()
     _advance(dm, delay - dm.SHIP_STEP)
     check(_delivered("clay") == 0,
-            "товар не должен поступать до окончания задержки (получено %d)"
+            "goods must not arrive before the delay elapses (received %d)"
                     % _delivered("clay"), state)
 
-    # Остаток задержки — и весь груз на складе.
+    # The rest of the delay — and all the cargo is in storage.
     _advance(dm, dm.SHIP_STEP + 0.001)
     check(_delivered("clay") == 5,
-            "после задержки весь груз должен прийти (получено %d)" % _delivered("clay"), state)
+            "after the delay all the cargo must arrive (received %d)" % _delivered("clay"), state)
 
-    # Нет маршрута — груз не принимается (некуда везти).
+    # No route — the cargo is not accepted (nowhere to carry it).
     check(not dm.create_cargo(1, 1, "clay", "common", 5, "@imp:farm"),
-            "без маршрута груз не должен приниматься", state)
+            "without a route the cargo must not be accepted", state)
     dm.free()
 
 
 # -------------------------------------------------------
-# 2. Поступление не превышает интенсивность маршрута
+# 2. Arrival does not exceed the route's flow rate
 # -------------------------------------------------------
 
 func _test_flow_cap(state: Dictionary) -> void:
@@ -156,32 +158,32 @@ func _test_flow_cap(state: Dictionary) -> void:
         prev = now
         steps += 1
     check(_delivered("clay") == 25,
-            "вся партия должна дойти (получено %d)" % _delivered("clay"), state)
+            "the whole batch must arrive (received %d)" % _delivered("clay"), state)
     check(float(worst) <= flow + 0.001,
-            "поступление за шаг не должно превышать интенсивность маршрута %.1f (получено %d)"
+            "arrival per step must not exceed the route's flow rate %.1f (received %d)"
                     % [flow, worst], state)
     dm.free()
 
 
 # -------------------------------------------------------
-# 3. Крупная партия доставляется дольше мелкой
+# 3. A large batch takes longer to deliver than a small one
 # -------------------------------------------------------
 
 func _test_batch_size(state: Dictionary) -> void:
     var pair := _new_manager()
     var dm = pair[0]
     var fake: FakeMap = pair[1]
-    # Одинаковый маршрут, разный размер партии: крупная едет дольше.
+    # Same route, different batch size: a large one takes longer.
     var small := _time_to_deliver(fake, 10, 10, 10.0)
     var big := _time_to_deliver(fake, 100, 10, 10.0)
     check(small > 0.0 and big > small,
-            "крупная партия должна доставляться дольше мелкой (%.1f против %.1f)" % [big, small],
+            "a large batch must take longer to deliver than a small one (%.1f vs %.1f)" % [big, small],
             state)
     dm.free()
 
 
 # -------------------------------------------------------
-# 4-5. Общий лимит маршрута: партии и повторные покупки
+# 4-5. Shared route limit: batches and repeat purchases
 # -------------------------------------------------------
 
 func _test_shared_route(state: Dictionary) -> void:
@@ -191,7 +193,7 @@ func _test_shared_route(state: Dictionary) -> void:
     _reset_storage("clay")
     var flow := 10.0
     fake.set_route(5, 5, 3, flow)
-    # Две партии на одном маршруте, вторая оформлена через секунду после первой.
+    # Two batches on one route, the second created a second after the first.
     dm.create_cargo(5, 5, "clay", "common", 100, "@imp:farm")
     _step(dm)
     dm.create_cargo(5, 5, "clay", "common", 100, "@imp:farm")
@@ -206,9 +208,9 @@ func _test_shared_route(state: Dictionary) -> void:
         prev = now
         steps += 1
     check(_delivered("clay") == 200,
-            "обе партии должны дойти целиком (получено %d)" % _delivered("clay"), state)
+            "both batches must arrive in full (received %d)" % _delivered("clay"), state)
     check(float(worst) <= flow + 0.001,
-            "партии одного маршрута делят его лимит %.1f (пик поступления %d)"
+            "batches of one route share its limit %.1f (arrival peak %d)"
                     % [flow, worst], state)
     dm.free()
 
@@ -220,7 +222,7 @@ func _test_repeat_purchases(state: Dictionary) -> void:
     _reset_storage("clay")
     var flow := 8.0
     fake.set_route(5, 5, 3, flow)
-    # Много мелких партий подряд: ни одна не должна обойти общий лимит маршрута.
+    # Many small batches in a row: none must bypass the route's shared limit.
     var created := 0
     var prev := 0
     var worst := 0
@@ -232,13 +234,13 @@ func _test_repeat_purchases(state: Dictionary) -> void:
         worst = maxi(worst, now - prev)
         prev = now
     check(float(worst) <= flow + 0.001,
-            "повторные покупки не должны обходить лимит %.1f (пик поступления %d)"
+            "repeat purchases must not bypass the limit %.1f (arrival peak %d)"
                     % [flow, worst], state)
     dm.free()
 
 
 # -------------------------------------------------------
-# 6. Партии могут быть в пути одновременно
+# 6. Batches can be in transit at the same time
 # -------------------------------------------------------
 
 func _test_simultaneous(state: Dictionary) -> void:
@@ -247,22 +249,22 @@ func _test_simultaneous(state: Dictionary) -> void:
     var fake: FakeMap = pair[1]
     _reset_storage("clay")
     _reset_storage("wheat")
-    # Маршрут подлиннее: задержка больше шага, поэтому первая партия ещё на дороге,
-    # когда отправляется вторая.
+    # A longer route: the delay exceeds a step, so the first batch is still on the
+    # road when the second is shipped.
     fake.set_route(5, 5, 20, 10.0)
     dm.create_cargo(5, 5, "clay", "common", 5, "@imp:farm")
     _step(dm)
-    # Вторая партия другого товара оформлена, пока первая ещё на дороге.
+    # A second batch of another goods is created while the first is still on the road.
     dm.create_cargo(5, 5, "wheat", "common", 5, "@imp:farm")
     _step(dm)
     var products := _in_transit_products(dm, 5, 5)
     check(products.has("clay") and products.has("wheat"),
-            "обе партии должны быть в пути одновременно (в пути: %s)" % str(products), state)
+            "both batches must be in transit at the same time (in transit: %s)" % str(products), state)
     dm.free()
 
 
 # -------------------------------------------------------
-# 7. Разные маршруты независимы
+# 7. Different routes are independent
 # -------------------------------------------------------
 
 func _test_independent_routes(state: Dictionary) -> void:
@@ -278,19 +280,19 @@ func _test_independent_routes(state: Dictionary) -> void:
     for i in range(5):
         _step(dm)
     check(_delivered("wheat") > _delivered("clay"),
-            "быстрый маршрут должен обгонять медленный (%d против %d)"
+            "a fast route must outpace a slow one (%d vs %d)"
                     % [_delivered("wheat"), _delivered("clay")], state)
     check(_delivered("clay") <= 10 * 5,
-            "медленный маршрут не должен получать больше своего лимита (получено %d)"
+            "a slow route must not receive more than its limit (received %d)"
                     % _delivered("clay"), state)
     check(_delivered("wheat") <= 30 * 5,
-            "быстрый маршрут не должен получать больше своего лимита (получено %d)"
+            "a fast route must not receive more than its limit (received %d)"
                     % _delivered("wheat"), state)
     dm.free()
 
 
 # -------------------------------------------------------
-# 9. Ни дублей, ни потерь
+# 9. Neither duplicates nor losses
 # -------------------------------------------------------
 
 func _test_no_loss(state: Dictionary) -> void:
@@ -307,17 +309,17 @@ func _test_no_loss(state: Dictionary) -> void:
         peak = maxi(peak, _delivered("clay"))
         steps += 1
     check(_delivered("clay") == 100,
-            "ровно 100 единиц должны дойти, без потерь (получено %d)" % _delivered("clay"), state)
+            "exactly 100 units must arrive, without losses (received %d)" % _delivered("clay"), state)
     check(peak <= 100,
-            "дублей быть не должно: на складе не больше созданного (пик %d)" % peak, state)
+            "there must be no duplicates: storage holds no more than was created (peak %d)" % peak, state)
     check(int(dm.get_route_status(5, 5).get("pending", 0)) == 0
             and int(dm.get_route_status(5, 5).get("in_transit", 0)) == 0,
-            "после доставки маршрут должен опустеть", state)
+            "after delivery the route must become empty", state)
     dm.free()
 
 
 # -------------------------------------------------------
-# 10. Сохранение и загрузка очереди и груза в пути
+# 10. Saving and loading of the queue and goods in transit
 # -------------------------------------------------------
 
 func _test_save_load(state: Dictionary) -> void:
@@ -338,26 +340,26 @@ func _test_save_load(state: Dictionary) -> void:
     dm2.deserialize(data)
     var after: Dictionary = dm2.get_route_status(5, 5)
     check(int(after.get("pending", 0)) == int(before.get("pending", 0)),
-            "очередь ожидания должна пережить загрузку (%d -> %d)"
+            "the waiting queue must survive loading (%d -> %d)"
                     % [int(before.get("pending", 0)), int(after.get("pending", 0))], state)
     check(int(after.get("in_transit", 0)) == int(before.get("in_transit", 0)),
-            "груз в пути должен пережить загрузку (%d -> %d)"
+            "goods in transit must survive loading (%d -> %d)"
                     % [int(before.get("in_transit", 0)), int(after.get("in_transit", 0))], state)
 
-    # После загрузки груз доезжает до конца — ровно 100, без дублей и потерь.
+    # After loading the cargo reaches the end — exactly 100, without duplicates or losses.
     var steps := 0
     while _delivered("clay") < 100 and steps < 500:
         _step(dm2)
         steps += 1
     check(_delivered("clay") == 100,
-            "после загрузки весь груз должен дойти без дублей и потерь (получено %d)"
+            "after loading all the cargo must arrive without duplicates or losses (received %d)"
                     % _delivered("clay"), state)
     dm.free()
     dm2.free()
 
 
 # -------------------------------------------------------
-# 10. Пауза и масштаб времени
+# 10. Pause and time scale
 # -------------------------------------------------------
 
 func _test_time_scale(state: Dictionary) -> void:
@@ -368,22 +370,22 @@ func _test_time_scale(state: Dictionary) -> void:
     fake.set_route(5, 5, 3, 10.0)
     dm.create_cargo(5, 5, "clay", "common", 5, "@imp:farm")
 
-    # Нулевая дельта (пауза) ничего не двигает.
+    # A zero delta (pause) advances nothing.
     dm.advance(0.0)
     check(_delivered("clay") == 0,
-            "нулевая дельта не должна двигать доставку (получено %d)" % _delivered("clay"), state)
+            "a zero delta must not advance delivery (received %d)" % _delivered("clay"), state)
 
-    # Отгружаем и доставляем одним крупным шагом — время идёт, доставка идёт.
+    # Ship and deliver in one large step — time passes, delivery advances.
     _step(dm)
     var delay: float = 3.0 * dm.get_transit_time_per_hex()
     dm.advance(delay + 0.001)
     check(_delivered("clay") == 5,
-            "крупная дельта должна продвинуть доставку (получено %d)" % _delivered("clay"), state)
+            "a large delta must advance delivery (received %d)" % _delivered("clay"), state)
     dm.free()
 
 
 # -------------------------------------------------------
-# 11. Улучшение дороги ускоряет отгрузку
+# 11. A road upgrade speeds up shipment
 # -------------------------------------------------------
 
 func _test_road_upgrade(state: Dictionary) -> void:
@@ -396,7 +398,7 @@ func _test_road_upgrade(state: Dictionary) -> void:
     _step(dm)
     var pending_slow := int(dm.get_route_status(5, 5).get("pending", 0))
 
-    # Улучшаем маршрут: та же длина, выше интенсивность потока.
+    # Upgrade the route: same length, higher flow rate.
     fake.set_route(5, 5, 3, 30.0)
     _step(dm)
     var pending_fast := int(dm.get_route_status(5, 5).get("pending", 0))
@@ -404,13 +406,13 @@ func _test_road_upgrade(state: Dictionary) -> void:
     var shipped_slow := 100 - pending_slow
     var shipped_fast := pending_slow - pending_fast
     check(shipped_fast > shipped_slow,
-            "после улучшения дороги за шаг должно отгружаться больше (%d против %d)"
+            "after a road upgrade more must be shipped per step (%d vs %d)"
                     % [shipped_fast, shipped_slow], state)
     dm.free()
 
 
 # -------------------------------------------------------
-# 12. Длина маршрута задаёт задержку (независимо от коэффициента)
+# 12. Route length sets the delay (independently of the coefficient)
 # -------------------------------------------------------
 
 func _test_length_scales_delay(state: Dictionary) -> void:
@@ -418,17 +420,17 @@ func _test_length_scales_delay(state: Dictionary) -> void:
     var dm = pair[0]
     var fake: FakeMap = pair[1]
     _reset_storage("clay")
-    # Одинаковый груз и поток, разная длина: длинный маршрут доставляет дольше.
+    # Same cargo and flow, different length: a long route takes longer to deliver.
     var short_time := _time_to_deliver(fake, 5, 3, 10.0)
     var long_time := _time_to_deliver(fake, 5, 30, 10.0)
     check(long_time > short_time,
-            "более длинный маршрут должен доставлять дольше (%.1f против %.1f)"
+            "a longer route must take longer to deliver (%.1f vs %.1f)"
                     % [long_time, short_time], state)
     dm.free()
 
 
 # -------------------------------------------------------
-# 12. Коэффициент задержки централизован в данных
+# 12. The delay coefficient is centralized in the data
 # -------------------------------------------------------
 
 func _test_balance_driven(state: Dictionary) -> void:
@@ -436,18 +438,18 @@ func _test_balance_driven(state: Dictionary) -> void:
     var dm = pair[0]
     var fake: FakeMap = pair[1]
     var value: float = dm.get_transit_time_per_hex()
-    check(value > 0.0, "коэффициент задержки должен быть положительным (получено %.3f)" % value, state)
+    check(value > 0.0, "the delay coefficient must be positive (received %.3f)" % value, state)
 
-    # Значение берётся из game_balance: подмена в данных меняет задержку маршрута.
+    # The value comes from game_balance: substituting it in the data changes the route's delay.
     _gdata.game_balance["transit_time_per_hex"] = value * 2.0
     check(absf(dm.get_transit_time_per_hex() - value * 2.0) < 0.0001,
-            "коэффициент должен читаться из game_balance", state)
+            "the coefficient must be read from game_balance", state)
     _gdata.game_balance["transit_time_per_hex"] = value
     dm.free()
 
 
 # -------------------------------------------------------
-# 3-4 (живая сцена). Производство уходит в очередь, а не на склад
+# 3-4 (live scene). Production goes to the queue, not to storage
 # -------------------------------------------------------
 
 func _test_production_queue(state: Dictionary) -> void:
@@ -457,16 +459,17 @@ func _test_production_queue(state: Dictionary) -> void:
     await process_frame
     await process_frame
 
-    # Синтетический ресурс с управляемой скоростью: 15 единиц в секунду через
-    # ферму (интервал 1). Продукт clay — всегда доступен и городом не потребляется,
-    # поэтому склад не «худеет» от do_tick и баланс сходится точно.
+    # A synthetic resource with a controlled rate: 15 units per second through a
+    # farm (interval 1). The clay product is always available and is not consumed
+    # by the city, so storage does not "shrink" from do_tick and the balance
+    # converges exactly.
     _gdata.raw_resources["test_clay"] = {
         "id": "test_clay", "name": "Test Clay", "type": "raw",
         "improved_by": "farm", "produces": {"clay": 15},
     }
 
     var spot := _find_hex_in_influence(main_map)
-    check(not spot.is_empty(), "на живой карте должен найтись свободный гекс в влиянии", state)
+    check(not spot.is_empty(), "a free hex in the influence must be found on the live map", state)
     if spot.is_empty():
         _free(main_map)
         return
@@ -478,44 +481,45 @@ func _test_production_queue(state: Dictionary) -> void:
     main_map.road_manager.build_road_from(row, col, main_map.tile_data,
             main_map.map_rows, main_map.map_cols)
     check(main_map.road_manager.get_hex_road_level(row, col) == 1,
-            "к улучшению должна быть проложена дорога", state)
+            "a road must be built to the improvement", state)
 
     _cdata.idle_population = maxi(_cdata.idle_population, 5)
     check(main_map.worker_manager.assign_worker(row, col),
-            "на улучшение должен встать работник", state)
+            "a worker must be assigned to the improvement", state)
     _cdata.city_storage["clay"] = 0
     main_map.delivery_manager.clear()
 
-    # Один тик производства: товар уходит в очередь доставки, а не на склад.
+    # One production tick: goods go to the delivery queue, not to storage.
     main_map._process(1.0)
     var status: Dictionary = main_map.delivery_manager.get_route_status(row, col)
     var queued := int(status.get("pending", 0)) + int(status.get("in_transit", 0))
     check(int(_cdata.city_storage.get("clay", 0)) == 0,
-            "товар с маршрутом не должен появляться на складе мгновенно (получено %d)"
+            "goods with a route must not appear in storage instantly (received %d)"
                     % int(_cdata.city_storage.get("clay", 0)), state)
     check(queued == 15,
-            "все 15 произведённых единиц должны встать в очередь (получено %d)" % queued, state)
+            "all 15 produced units must enter the queue (received %d)" % queued, state)
 
-    # Останавливаем производство и даём логистике довезти груз до конца.
+    # Stop production and let the logistics carry the cargo to the end.
     main_map.worker_manager.remove_worker(row, col)
     for i in range(40):
         _step(main_map.delivery_manager)
     check(int(_cdata.city_storage.get("clay", 0)) == 15,
-            "весь произведённый товар должен дойти до склада (получено %d)"
+            "all produced goods must reach storage (received %d)"
                     % int(_cdata.city_storage.get("clay", 0)), state)
 
     _free(main_map)
 
 
 # -------------------------------------------------------
-# 5. Очередь «ожидает отправки» показывает только реальный затор
+# 5. The "awaiting shipment" queue shows only the real backlog
 # -------------------------------------------------------
 
-# Регрессия: панель управления читает очередь ВНУТРИ тика (do_tick испускает
-# city_updated), поэтому отгрузка тика обязана произойти ДО этого чтения. Иначе
-# свежая продукция секунды висит как «ожидает отправки» даже на дороге, которая
-# везёт всё. Здесь проверяются оба конца: при потоке не ниже производства очередь
-# пуста, при производстве выше потока очередь — реальный затор.
+# Regression: the control panel reads the queue INSIDE the tick (do_tick emits
+# city_updated), so the tick's shipment must happen BEFORE that read. Otherwise
+# a second's fresh production hangs as "awaiting shipment" even on a road that
+# carries everything. Both ends are checked here: when the flow is not below
+# production the queue is empty, when production is above the flow the queue is a
+# real backlog.
 func _test_queue_only_backlog(state: Dictionary) -> void:
     var main_map = load("res://scenes/MainMap.tscn").instantiate()
     get_root().add_child(main_map)
@@ -523,15 +527,15 @@ func _test_queue_only_backlog(state: Dictionary) -> void:
     await process_frame
     await process_frame
 
-    # Синтетический ресурс с малой скоростью (1 ед./сек через ферму): заведомо
-    # ниже потока любой дороги, поэтому очередь не должна появляться вовсе.
+    # A synthetic resource with a low rate (1 unit/sec through a farm): certainly
+    # below the flow of any road, so no queue must appear at all.
     _gdata.raw_resources["test_clay"] = {
         "id": "test_clay", "name": "Test Clay", "type": "raw",
         "improved_by": "farm", "produces": {"clay": 1},
     }
 
     var spot := _find_hex_in_influence(main_map)
-    check(not spot.is_empty(), "на живой карте должен найтись свободный гекс в влиянии", state)
+    check(not spot.is_empty(), "a free hex in the influence must be found on the live map", state)
     if spot.is_empty():
         _free(main_map)
         return
@@ -543,7 +547,7 @@ func _test_queue_only_backlog(state: Dictionary) -> void:
     main_map.road_manager.build_road_from(row, col, main_map.tile_data,
             main_map.map_rows, main_map.map_cols)
     check(main_map.road_manager.get_hex_road_level(row, col) == 1,
-            "к улучшению должна быть проложена дорога", state)
+            "a road must be built to the improvement", state)
 
     _cdata.idle_population = maxi(_cdata.idle_population, 5)
     main_map.worker_manager.assign_worker(row, col)
@@ -551,19 +555,20 @@ func _test_queue_only_backlog(state: Dictionary) -> void:
     main_map.delivery_manager.clear()
 
     var flow := float(main_map.get_route_to_city(row, col).get("avg_speed", 0.0))
-    check(flow > 1.0, "маршрут должен нести хотя бы 1 ед./сек (получено %.1f)" % flow, state)
+    check(flow > 1.0, "the route must carry at least 1 unit/sec (received %.1f)" % flow, state)
 
-    # Ключевой момент: панель и тултип читают очередь ВНУТРИ тика — на сигнал
-    # city_updated, который do_tick испускает ПОСЛЕ производства. Поэтому снимок
-    # очереди берётся здесь же, в обработчике сигнала, а не после _process: иначе
-    # тест увидел бы уже отгруженное состояние и не поймал бы порядок.
+    # Key point: the panel and tooltip read the queue INSIDE the tick — on the
+    # city_updated signal, which do_tick emits AFTER production. Therefore the queue
+    # snapshot is taken right here, in the signal handler, and not after _process:
+    # otherwise the test would see the already-shipped state and would not catch the
+    # order.
     var capture := {"pending": -1}
     var capture_pending := func():
         var st: Dictionary = main_map.delivery_manager.get_route_status(row, col)
         capture["pending"] = int(st.get("pending", 0))
     _cdata.city_updated.connect(capture_pending)
 
-    # Один тик: произведено не больше потока — очереди быть не должно.
+    # One tick: production is not more than the flow — there must be no queue.
     main_map._process(1.0)
     _cdata.city_updated.disconnect(capture_pending)
 
@@ -571,28 +576,28 @@ func _test_queue_only_backlog(state: Dictionary) -> void:
     var produced := int(_cdata.city_storage.get("clay", 0)) \
             + int(status.get("pending", 0)) + int(status.get("in_transit", 0))
     check(float(produced) <= flow,
-            "тестовый тик должен произвести не больше потока %.1f (произведено %d)"
+            "the test tick must produce no more than the flow %.1f (produced %d)"
                     % [flow, produced], state)
     check(int(capture["pending"]) == 0,
-            "очередь, которую читает интерфейс на тике, должна быть пуста при потоке %.1f (получено %d)"
+            "the queue the UI reads on the tick must be empty at flow %.1f (received %d)"
                     % [flow, int(capture["pending"])], state)
 
-    # Резко поднимаем производство выше потока: теперь очередь — реальный затор.
+    # Sharply raise production above the flow: now the queue is a real backlog.
     _gdata.raw_resources["test_clay"]["produces"]["clay"] = int(flow) * 20 + 100
     main_map._process(1.0)
     status = main_map.delivery_manager.get_route_status(row, col)
     check(int(status.get("pending", 0)) > 0,
-            "при производстве выше потока очередь должна расти (получено %d)"
+            "when production is above the flow the queue must grow (received %d)"
                     % int(status.get("pending", 0)), state)
 
     _free(main_map)
 
 
 # -------------------------------------------------------
-# Хелперы
+# Helpers
 # -------------------------------------------------------
 
-# Новый менеджер логистики на свежей заглушке карты: [менеджер, заглушка].
+# A new delivery manager on a fresh map stub: [manager, stub].
 func _new_manager() -> Array:
     var fake := FakeMap.new()
     var dm = load("res://scripts/delivery_manager.gd").new()
@@ -600,16 +605,16 @@ func _new_manager() -> Array:
     return [dm, fake]
 
 
-# Один шаг игрового времени: приёмка (кадровая) + одна отгрузка (тиковая) — тот же
-# порядок, что и в main_map._process. Отгрузка вызывается ПОСЛЕ приёмки, как и в игре.
+# One step of game time: intake (per-frame) + one shipment (per-tick) — the same
+# order as in main_map._process. Shipment is called AFTER intake, as in the game.
 func _step(dm) -> void:
     dm.advance(dm.SHIP_STEP)
     dm.ship()
 
 
-# Время (в секундах игрового времени) до полной доставки amount единиц по маршруту
-# с заданной длиной и интенсивностью. Гоняет СВОЙ менеджер, чтобы остаток
-# аккумулятора предыдущего кейса не сдвигал отсчёт.
+# Time (in seconds of game time) until the full delivery of amount units along a
+# route with the given length and flow rate. Runs ITS OWN manager so that the
+# leftover accumulator of the previous case does not shift the count.
 func _time_to_deliver(fake: FakeMap, amount: int, length: int, flow: float) -> float:
     var dm = load("res://scripts/delivery_manager.gd").new()
     dm.initialize(fake)
@@ -626,8 +631,9 @@ func _time_to_deliver(fake: FakeMap, amount: int, length: int, flow: float) -> f
     return elapsed
 
 
-# Прокрутка только приёмки на seconds игрового времени шагами по SHIP_STEP:
-# отгрузка НЕ вызывается — так проверяется, что груз доезжает сам по отсчёту времени.
+# Advance only the intake by seconds of game time in steps of SHIP_STEP:
+# shipment is NOT called — this checks that the cargo arrives on its own by the
+# time count.
 func _advance(dm, seconds: float) -> void:
     var left := seconds
     while left > 0.0001:
@@ -655,9 +661,9 @@ func _reset_storage(pid: String) -> void:
     _cdata.city_quality_detail[pid] = {}
 
 
-# Первый свободный гекс в Кольце Влияния: сухой, известный, без улучшения,
-# городка и дороги, без доступа к пресной воде (иначе множитель производства
-# сдвинется) — И с достижимым планом дороги.
+# The first free hex in the Ring of Influence: dry, known, without an improvement,
+# town or road, without access to fresh water (otherwise the production multiplier
+# would shift) — AND with a reachable road plan.
 func _find_hex_in_influence(main_map) -> Dictionary:
     var mh = load("res://scripts/map_helpers.gd")
     for row in range(main_map.influence_start_row, main_map.influence_end_row + 1):

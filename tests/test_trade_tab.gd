@@ -1,33 +1,33 @@
-# Тест вкладки «Торговля»: внутренний рынок, карточки ресурсов, тумблеры
-# разрешения потребления и приоритет списания по качеству.
+# Test of the "Trade" tab: the internal market, the resource cards, the toggles
+# of the consumption permission and the priority of the write-off by quality.
 #   godot --headless --path . --script res://tests/test_trade_tab.gd
 #
-# Балансные числа (amount/interval, цены, состав групп) сверяются с САМИМИ
-# данными, а не с константами теста: баланс в json меняется, тест — нет.
-# Проверки:
+# The balance numbers (amount/interval, prices, the composition of the groups) are verified against the DATA
+# themselves, and not against the constants of the test: the balance in the json changes, the test does not.
+# Checks:
 #
-#  1. CityData-состояние рынка: по умолчанию всё разрешено, приоритет —
-#     дефолт из data/qualities.json; toggle переключает, неизвестный
-#     приоритет из сейва откатывается к дефолтному, пустой ключ — no-op.
-#  2. Цикл приоритета: best → worst → random → best, набор и порядок — из
-#     данных (quality_priority_options).
-#  3. Приоритет РЕАЛЬНО меняет списание: смешанный склад (обычное +
-#     превосходное) под "best" съедает превосходное первым, под "worst" —
-#     обычное.
-#  4. Запрет (тумблер) реально останавливает: городское потребление не
-#     списывает склад и не платит в казну; план источник не содержит; бонус
-#     производства снят; карточка остаётся в карте с enabled = false.
-#  5. get_population_consumption_map: ключ строки — display_key, группа НЕ
-#     разворачивается, consumers_total = max(«Все жители», Σ профессий).
-#  6. Факт счётчика рынка наполняется при списании и очищается в
-#     reset_counters (живёт ровно один тик).
-#  7. SaveManager: настройки рынка переживают сохранение; в старом сейве без
-#     полей всё разрешено.
-#  8. Живая сцена CityUI.tscn: колонки построены по сцене, карточки
-#     создаются, обе кнопки-тумблера показывают одно состояние.
+#  1. The CityData state of the market: by default everything is allowed, the priority is the
+#     default from data/qualities.json; the toggle switches it, an unknown
+#     priority from the save rolls back to the default, an empty key is a no-op.
+#  2. The priority cycle: best → worst → random → best, the set and the order come from
+#     the data (quality_priority_options).
+#  3. The priority REALLY changes the write-off: a mixed storage (ordinary +
+#     perfect) under "best" eats the perfect first, under "worst" —
+#     the ordinary.
+#  4. The prohibition (the toggle) really stops it: the city consumption does not
+#     write off the storage and does not pay into the treasury; the plan has no source; the production
+#     bonus is removed; the card stays in the map with enabled = false.
+#  5. get_population_consumption_map: the row key is display_key, the group is NOT
+#     expanded, consumers_total = max("All Citizens", Σ professions).
+#  6. The fact of the market counter is filled on the write-off and cleared in
+#     reset_counters (lives exactly one tick).
+#  7. SaveManager: the market settings survive saving; in an old save without the
+#     fields everything is allowed.
+#  8. The live scene CityUI.tscn: the columns are built from the scene, the cards
+#     are created, both toggle buttons show the same state.
 extends SceneTree
 
-# Сторож зависаний — см. tests/watchdog.gd.
+# The hang watchdog — see tests/watchdog.gd.
 const WATCHDOG = preload("res://tests/watchdog.gd")
 
 func _initialize():
@@ -42,88 +42,88 @@ func _run() -> void:
     save_manager.new_game()
     city.treasury = 0
     city.total_population = 3
-    # Псевдо-профессия "all" ест @fruits (10 ед. на жителя раз в секунду).
+    # The pseudo-profession "all" eats @fruits (10 units per citizen once a second).
     var all_key := _all_key(gdata)
     var all_members: Array = _all_members(gdata, all_key)
-    check(not all_members.is_empty(), "у псевдо-профессии all нет ресурса для проверки", state)
+    check(not all_members.is_empty(), "the pseudo-profession all has no resource for the check", state)
 
-    # ---- 1. Состояние рынка по умолчанию ----
+    # ---- 1. The state of the market by default ----
     check(city.is_market_consumption_enabled(all_key),
-        "по умолчанию потребление должно быть разрешено", state)
+        "by default the consumption must be allowed", state)
     var default_priority: String = gdata.get_quality_priority_default()
     check(city.get_consumption_priority(all_key) == default_priority,
-        "приоритет по умолчанию должен совпадать с qualities.json", state)
+        "the default priority must match qualities.json", state)
     check(city.toggle_market_consumption_enabled(all_key) == false,
-        "toggle должен выключить потребление", state)
+        "the toggle must switch the consumption off", state)
     check(not city.is_market_consumption_enabled(all_key),
-        "после toggle потребление должно быть запрещено", state)
+        "after the toggle the consumption must be forbidden", state)
     check(city.toggle_market_consumption_enabled(all_key) == true,
-        "второй toggle должен включить потребление обратно", state)
-    # Неизвестный приоритет (испорченный сейв) откатывается к дефолту.
-    city.consumption_priority[all_key] = "какая-то дичь"
+        "the second toggle must switch the consumption back on", state)
+    # An unknown priority (a corrupted save) rolls back to the default.
+    city.consumption_priority[all_key] = "some nonsense"
     check(city.get_consumption_priority(all_key) == default_priority,
-        "неизвестный приоритет должен откатываться к дефолтному", state)
-    # Пустой ключ — no-op (нечего адресовать).
+        "an unknown priority must roll back to the default", state)
+    # An empty key is a no-op (nothing to address).
     city.set_market_consumption_enabled("", false)
     check(city.is_market_consumption_enabled(""),
-        "пустой ключ должен игнорироваться", state)
+        "an empty key must be ignored", state)
 
-    # ---- 2. Цикл приоритета ----
+    # ---- 2. The priority cycle ----
     var options: Array = gdata.get_quality_priority_options()
-    check(options.size() >= 2, "нужно минимум два варианта приоритета в данных", state)
+    check(options.size() >= 2, "at least two priority options are needed in the data", state)
     if options.size() >= 2:
         city.consumption_priority[all_key] = str(options[0])
         check(city.cycle_consumption_priority(all_key) == str(options[1]),
-            "цикл приоритета должен идти по порядку данных: %s" % str(options), state)
-        # Цикл кольцевой: пройдя весь список, возвращаемся к первому.
-        # Уже стоим на options[1], осталось сделать size-2 перехода.
+            "the priority cycle must follow the order of the data: %s" % str(options), state)
+        # The cycle is circular: having passed the whole list, we return to the first.
+        # We are already on options[1], there are size-2 transitions left.
         for i in range(1, options.size() - 1):
             city.cycle_consumption_priority(all_key)
         city.cycle_consumption_priority(all_key)
         check(city.get_consumption_priority(all_key) == str(options[0]),
-            "цикл приоритета должен замыкаться на первый вариант: %s" % str(options), state)
-        # Неизвестное текущее значение стартует цикл с первого варианта.
-        city.consumption_priority[all_key] = "мусор"
+            "the priority cycle must close on the first option: %s" % str(options), state)
+        # An unknown current value starts the cycle from the first option.
+        city.consumption_priority[all_key] = "garbage"
         check(city.cycle_consumption_priority(all_key) == str(options[1]),
-            "при неизвестном текущем значении цикл берёт следующий вариант", state)
+            "with an unknown current value the cycle takes the next option", state)
         city.consumption_priority.erase(all_key)
 
-    # ---- 3. Приоритет реально меняет порядок списания ----
-    # Смешанный склад: 10 обычных + 10 превосходных, списать 10.
+    # ---- 3. The priority really changes the order of the write-off ----
+    # A mixed storage: 10 ordinary + 10 perfect, write off 10.
     var first_member := str(all_members[0])
     _check_priority_order(city, first_member, "best", "perfect", state)
     _check_priority_order(city, first_member, "worst", "common", state)
 
-    # ---- 4. Запрет реально останавливает городское потребление ----
+    # ---- 4. The prohibition really stops the city consumption ----
     var wm = load("res://scripts/worker_manager.gd").new()
     city.total_population = 3
     city.treasury = 0
     for m in all_members:
         city.add_to_storage(str(m), 100, "common")
-    # Разрешено — списывается и платит казна.
+    # Allowed — it is written off and the treasury is paid.
     wm.tick_city_consumption(1.0)
     var spent_enabled := _total_storage(city, all_members)
-    check(spent_enabled > 0, "при разрешённом потреблении списание должно идти", state)
-    check(city.treasury > 0, "при разрешённом потреблении казна должна получать доход", state)
+    check(spent_enabled > 0, "with the consumption allowed the write-off must happen", state)
+    check(city.treasury > 0, "with the consumption allowed the treasury must receive income", state)
     check(int(city.market_consumption_rates.get(first_member, 0)) > 0,
-        "факт рынка должен накапливаться при списании", state)
-    # Запрещаем — и повторяем тик.
+        "the market fact must accumulate on the write-off", state)
+    # We forbid it — and repeat the tick.
     city.set_market_consumption_enabled(all_key, false)
     var stock_before := _total_storage(city, all_members)
     var treasury_before: int = city.treasury
     wm.tick_city_consumption(1.0)
     check(_total_storage(city, all_members) == stock_before,
-        "при запрете склад не должен списываться", state)
+        "with the prohibition the storage must not be written off", state)
     check(city.treasury == treasury_before,
-        "при запрете доход в казну не должен идти", state)
-    # Запрет виден в плане: у членов запрещённой группы источника нет.
-    # Проверяем именно членов этой группы: у псевдо-профессии «Все жители»
-    # может быть несколько записей (@fruits и @alcohol), и запрет @fruits
-    # не должен выбрасывать из плана @alcohol.
+        "with the prohibition the income to the treasury must not go", state)
+    # The prohibition is visible in the plan: the members of the forbidden group have no source.
+    # We check exactly the members of this group: the pseudo-profession "All Citizens"
+    # may have several records (@fruits and @alcohol), and forbidding @fruits
+    # must not throw @alcohol out of the plan.
     var plan: Dictionary = wm.get_planned_consumption_map(false)
     var plan_leak := ""
-    # Ключ источника — идентификатор профессии (GameData.get_source_display_name),
-    # а не её подпись: подписи зависят от языка, а план от него не зависит.
+    # The source key is the profession identifier (GameData.get_source_display_name),
+    # and not its label: the labels depend on the language, and the plan does not depend on it.
     var all_source_id: String = gdata.profession_source_id("all")
     for m in all_members:
         var member := str(m)
@@ -131,22 +131,22 @@ func _run() -> void:
             plan_leak = member
             break
     check(plan_leak == "",
-        "запрещённый ресурс не должен попадать в план потребления (найден %s)" % plan_leak, state)
-    # Карточка остаётся в карте рынка, но с enabled = false.
+        "a forbidden resource must not get into the consumption plan (found %s)" % plan_leak, state)
+    # The card stays in the market map, but with enabled = false.
     var pop_map: Dictionary = wm.get_population_consumption_map()
     check(pop_map.has(all_key),
-        "запрещённый ресурс должен оставаться в карте рынка (иначе его не включить)", state)
+        "a forbidden resource must stay in the market map (otherwise it cannot be enabled)", state)
     if pop_map.has(all_key):
         check(pop_map[all_key].get("enabled", true) == false,
-            "в карте рынка запрещённый ресурс помечен enabled = false", state)
-    # Возвращаем разрешение — расход пошёл снова.
+            "in the market map a forbidden resource is marked enabled = false", state)
+    # We return the permission — the expense has started again.
     city.set_market_consumption_enabled(all_key, true)
     wm.tick_city_consumption(1.0)
     check(_total_storage(city, all_members) < stock_before,
-        "после разрешения списание должно возобновиться", state)
+        "after the permission the write-off must resume", state)
 
-    # ---- 4b. Запрет снимает бонус производства ----
-    # Берём запись рыбака (@boats): у неё production_bonus +50%.
+    # ---- 4b. The prohibition removes the production bonus ----
+    # We take the record of the fisherman (@boats): it has production_bonus +50%.
     var boats_key := "@boats"
     if gdata.product_groups.has("boats"):
         for m in gdata.product_groups["boats"]:
@@ -156,28 +156,28 @@ func _run() -> void:
         for e in cons_list:
             bonus_on += wm._aggregate_production_bonus([e])
         check(bonus_on > 0.0,
-            "с расходниками на складе бонус производства должен начисляться", state)
+            "with the consumables in storage the production bonus must be credited", state)
         city.set_market_consumption_enabled(boats_key, false)
         var bonus_off := 0.0
         for e in cons_list:
             bonus_off += wm._aggregate_production_bonus([e])
         check(bonus_off == 0.0,
-            "при запрете потребления бонус производства должен быть снят", state)
+            "with the consumption forbidden the production bonus must be removed", state)
         city.set_market_consumption_enabled(boats_key, true)
 
-    # ---- 5. Форма карты рынка ----
-    check(pop_map.has(all_key), "карта рынка должна содержать ресурс псевдо-профессии all", state)
+    # ---- 5. The shape of the market map ----
+    check(pop_map.has(all_key), "the market map must contain the resource of the pseudo-profession all", state)
     if pop_map.has(all_key):
         var row: Dictionary = pop_map[all_key]
         check(row.get("is_group", false) == true,
-            "ресурс псевдо-профессии all — группа, is_group должен быть true", state)
+            "the resource of the pseudo-profession all is a group, is_group must be true", state)
         check((row.get("members", []) as Array).size() == all_members.size(),
-            "группа не должна разворачиваться: members = все члены", state)
+            "the group must not be expanded: members = all the members", state)
         check(int(row.get("consumers_total", 0)) == 3,
-            "consumers_total для «Все жители» должен равняться населению: %d" % int(row.get("consumers_total", 0)), state)
-        # Скорость: amount на жителя / interval, умноженная на население.
-        # Считаем ТОЛЬКО по записям этой карточки: у псевдо-профессии all их
-        # несколько (@fruits и @alcohol), а скорость строки — её собственная.
+            "consumers_total for \"All Citizens\" must equal the population: %d" % int(row.get("consumers_total", 0)), state)
+        # The speed: amount per citizen / interval, multiplied by the population.
+        # We count ONLY by the records of this card: the pseudo-profession all has
+        # several of them (@fruits and @alcohol), and the speed of a row is its own.
         var expected := 0.0
         for e in gdata.get_profession_consumption("all"):
             if str(e.get("display_key", "")) != all_key:
@@ -186,23 +186,23 @@ func _run() -> void:
             var iv := float(e.get("interval", 0))
             expected += (amount * 3.0 * city.SIMULATION_TICK / iv) if iv > 0.0 else amount * 3.0 * city.SIMULATION_TICK
         check(absf(float(row.get("per_sec", -1.0)) - expected) < 0.01,
-            "per_sec карточки неверен: ожидалось %.2f, получено %.2f" % [expected, float(row.get("per_sec", 0.0))], state)
-    # Ключ карты — display_key, а не pid: у рыбака это "@boats", а не pid.
-    # Назначаем рыбака на улучшение, чтобы профессия появилась в карте.
+            "the per_sec of the card is wrong: expected %.2f, got %.2f" % [expected, float(row.get("per_sec", 0.0))], state)
+    # The map key is display_key, and not pid: for the fisherman it is "@boats", and not the pid.
+    # We assign the fisherman to an improvement so that the profession appears in the map.
     var pop_map2: Dictionary = wm.get_population_consumption_map()
     var has_group_row := pop_map2.has("@boats")
     check(has_group_row or not pop_map2.has("reed_boat"),
-        "строки карточек должны ключеваться display_key, а не pid", state)
-    # Рыбак входит и в «Все жители»: consumers_total = max(3, 1) = 3.
+        "the rows of the cards must be keyed by display_key, and not by pid", state)
+    # The fisherman is also part of "All Citizens": consumers_total = max(3, 1) = 3.
     if has_group_row:
         var boats_row: Dictionary = pop_map2["@boats"]
         check(int(boats_row.get("consumers_total", 0)) == 1,
-            "потребителей у @boats должен быть один рыбак: %d" % int(boats_row.get("consumers_total", 0)), state)
+            "@boats must have one fisherman as a consumer: %d" % int(boats_row.get("consumers_total", 0)), state)
 
-    # ---- 6. Норма на одного потребителя (строка «Расход на 1») ----
-    # Карточка показывает норму ОДНОГО жителя из data/consumption.json, а не
-    # сумму по городу: при населении 3 сумма была бы втрое больше, и игрок
-    # не видел бы своих собственных чисел из данных.
+    # ---- 6. The norm per consumer (the "Consumption per 1" row) ----
+    # The card shows the norm of ONE citizen from data/consumption.json, and not
+    # the sum over the city: with a population of 3 the sum would be three times bigger, and the player
+    # would not see his own numbers from the data.
     if pop_map.has(all_key):
         var unit_row: Dictionary = pop_map[all_key]
         var json_amount := 0
@@ -214,32 +214,32 @@ func _run() -> void:
             json_interval = float(e.get("interval", 0))
             break
         check(int(unit_row.get("per_consumer_amount", -1)) == json_amount,
-            "норма на одного должна совпадать с amount из consumption.json: ожидалось %d, получено %d"
+            "the norm per consumer must match the amount from consumption.json: expected %d, got %d"
                 % [json_amount, int(unit_row.get("per_consumer_amount", 0))], state)
         check(is_equal_approx(float(unit_row.get("per_consumer_interval", -1.0)), json_interval),
-            "интервал нормы должен совпадать с consumption.json", state)
+            "the interval of the norm must match consumption.json", state)
         var expected_unit_per_sec: float = (json_amount * city.SIMULATION_TICK / json_interval
             if json_interval > 0.0 else json_amount * city.SIMULATION_TICK)
         check(absf(float(unit_row.get("per_consumer_per_sec", -1.0)) - expected_unit_per_sec) < 0.01,
-            "per_consumer_per_sec должен быть нормой на одного, а не суммой: ожидалось %.2f, получено %.2f"
+            "per_consumer_per_sec must be the norm per consumer, and not the sum: expected %.2f, got %.2f"
                 % [expected_unit_per_sec, float(unit_row.get("per_consumer_per_sec", 0.0))], state)
         check(float(unit_row.get("per_consumer_per_sec", 0.0))
                 < float(unit_row.get("per_sec", 0.0)),
-            "норма на одного должна быть меньше суммы по городу", state)
-        # В источнике тоже сохранена норма (amount без умножения на count).
+            "the norm per consumer must be less than the sum over the city", state)
+        # The norm is also stored in the source (amount without multiplication by count).
         var src_all: Dictionary = (unit_row.get("sources", {}) as Dictionary).get(
         gdata.profession_source_id("all"), {})
         check(int(src_all.get("unit_amount", -1)) == json_amount,
-            "unit_amount в источнике должен быть amount из consumption.json", state)
+            "unit_amount in the source must be the amount from consumption.json", state)
         check(int(src_all.get("amount", 0)) == json_amount * int(city.total_population),
-            "amount в источнике должен быть суммой по всем жителям", state)
+            "amount in the source must be the sum over all the citizens", state)
 
-    # ---- 7. Доход по карточкам: план и факт ----
-    # План (спрос × цена) обязан сходиться с планом «Потребление населения»
-    # в тултипе казны — оба берут одну формулу (_planned_market_income_per_pid).
+    # ---- 7. The income by the cards: the plan and the fact ----
+    # The plan (demand × price) must agree with the plan "Population consumption"
+    # in the treasury tooltip — both take the same formula (_planned_market_income_per_pid).
     var income_map: Dictionary = wm.get_population_income_map()
     check(not income_map.is_empty(),
-        "план дохода по карточкам не должен быть пустым при живом населении", state)
+        "the plan of the income by the cards must not be empty with a live population", state)
     var treasury_plan: Dictionary = wm.get_planned_treasury_income_map()
     var treasury_consumption: Dictionary = treasury_plan.get(city.POPULATION_INCOME_TYPE, {})
     var total_card_income := 0.0
@@ -250,39 +250,39 @@ func _run() -> void:
         for pid in treasury_consumption[source_id]:
             total_treasury_market += float(treasury_consumption[source_id][pid].get("coins_per_sec", 0.0))
     check(absf(total_card_income - total_treasury_market) < 0.01,
-        "сумма плана дохода карточек (%.2f) должна совпадать с планом тултипа казны (%.2f)"
+        "the sum of the plan of the income of the cards (%.2f) must match the plan of the treasury tooltip (%.2f)"
             % [total_card_income, total_treasury_market], state)
-    # Ключи дохода — display_key, а не pid членов группы.
+    # The income keys are display_key, and not the pid of the members of the group.
     var income_group_key := ""
     for dkey in income_map:
         if str(dkey).begins_with("@"):
             income_group_key = str(dkey)
             break
     check(not income_group_key.is_empty(),
-        "доход группового ресурса должен приходить под ключом @группа", state)
-    # Сверка факта требует чистой базы: обнуляем окно казны и делаем
-    # ровно одно списание ЭТИМ экземпляром worker_manager. Иначе в казне
-    # может лежать доход от источников, которых нет в плане этого
-    # экземпляра (например, от живого worker_manager сцены), и суммы
-    # разойдутся не из-за карточек.
+        "the income of a group resource must come under the key @group", state)
+    # Verifying the fact requires a clean base: we zero the treasury window and make
+    # exactly one write-off by THIS instance of worker_manager. Otherwise the treasury
+    # may contain income from sources that are not in the plan of this
+    # instance (for example, from the live worker_manager of the scene), and the sums
+    # would diverge not because of the cards.
     city.treasury_income_accum.clear()
     city.treasury_income_product_accum.clear()
     city.treasury_income_snapshot.clear()
     city.treasury_income_product_snapshot.clear()
     wm.tick_city_consumption(1.0)
     city.rotate_treasury_window()
-    # ФАКТ дохода в карточках — то, что рынок реально принёс. Он обязан
-    # сходиться с блоком «Потребление населения» тултипа казны: это тот же
-    # факт, из которого берётся и строка «Казна: N [+X≈]» в верхней полосе.
-    # Регрессия: строка «Доход» показывала ПЛАН (спрос × цена), из-за чего у
-    # «Фруктов» выходило 2730 монет/сек при десяти единицах на складе, и цифра
-    # в карточке не сходилась с казной.
+    # The FACT of the income in the cards is what the market has really brought. It must
+    # agree with the "Population consumption" block of the treasury tooltip: it is the same
+    # fact from which the row "Treasury: N [+X≈]" in the top bar is also taken.
+    # Regression: the row "Income" showed the PLAN (demand × price), because of which
+    # "Fruits" gave 2730 coins/sec with ten units in storage, and the figure
+    # in the card did not agree with the treasury.
     var actual_map: Dictionary = wm.get_actual_market_income_map()
     var treasury_actual: Dictionary = wm.get_actual_treasury_income_map()
-    # Ключ блока в карте — КОНСТАНТА CityData.POPULATION_INCOME_TYPE (английская),
-    # а в подпись её переводит рендер. Искать по русскому названию значит не
-    # найти ключ НИКОГДА: проверка проходила только когда обе суммы случайно
-    # оказывались нулевыми, и падала, как только рынок что-то приносил.
+    # The key of the block in the map is the CONSTANT CityData.POPULATION_INCOME_TYPE (English),
+    # and the render translates it into the label. Searching by the Russian name means never
+    # finding the key: the check passed only when both sums happened to be zero, and fell
+    # as soon as the market brought something.
     var actual_consumption: Dictionary = treasury_actual.get(
             city.POPULATION_INCOME_TYPE, {})
     var total_card_actual := 0.0
@@ -293,105 +293,105 @@ func _run() -> void:
         for pid in actual_consumption[source_name]:
             total_treasury_actual += float(actual_consumption[source_name][pid].get("coins_per_sec", 0.0))
     check(absf(total_card_actual - total_treasury_actual) < 0.01,
-        "сумма факта дохода карточек (%.2f) должна совпадать с фактом тултипа казны (%.2f)"
+        "the sum of the fact of the income of the cards (%.2f) must match the fact of the treasury tooltip (%.2f)"
             % [total_card_actual, total_treasury_actual], state)
-    # Разбивка факта по покупателям обязана быть у карточек, у которых есть
-    # факт, и ни у кого не может быть отрицательной скорости.
+    # The breakdown of the fact by buyers must be present in the cards that have a
+    # fact, and no one may have a negative speed.
     var actual_group_key := ""
     for dkey in actual_map:
         var arow: Dictionary = actual_map[dkey]
         check(float(arow.get("coins_per_sec", 0.0)) >= 0.0,
-            "факт дохода не может быть отрицательным", state)
+            "the fact of the income cannot be negative", state)
         if str(dkey).begins_with("@") and not (arow.get("by_source", {}) as Dictionary).is_empty():
             actual_group_key = str(dkey)
     check(not actual_group_key.is_empty(),
-        "факт группового ресурса должен приходить под ключом @группа с разбивкой по покупателям", state)
+        "the fact of a group resource must come under the key @group with a breakdown by buyers", state)
 
-    # ---- 8. Окно факта потребления ----
-    # Тиковый счётчик живёт один тик, а карточке нужен факт, переживающий
-    # интервал отображения из настроек (1..5 сек).
+    # ---- 8. The window of the consumption fact ----
+    # The tick counter lives one tick, and the card needs a fact that survives the
+    # display interval from the settings (1..5 sec).
     check(city.market_consumption_rates.size() > 0,
-        "факт рынка должен быть наполнен после списания", state)
+        "the market fact must be filled after the write-off", state)
     city.reset_counters()
     check(city.market_consumption_rates.is_empty(),
-        "reset_counters должен очищать тиковый факт рынка", state)
+        "reset_counters must clear the tick fact of the market", state)
     check(not city.market_consumption_accum.is_empty(),
-        "окно факта рынка должно переживать reset_counters", state)
+        "the window of the market fact must survive reset_counters", state)
     city.rotate_market_consumption_window()
     check(not city.market_consumption_snapshot.is_empty(),
-        "после ротации снимок окна не должен быть пустым", state)
+        "after the rotation the snapshot of the window must not be empty", state)
     check(city.market_consumption_accum.is_empty(),
-        "ротация должна обнулять накопитель окна", state)
+        "the rotation must zero the accumulator of the window", state)
     var per_sec_window: Dictionary = city.get_market_consumption_per_sec()
     check(not per_sec_window.is_empty(),
-        "окно должно давать факт в ед./сек для карточек", state)
+        "the window must give the fact in units/sec for the cards", state)
     var first_window_pid: String = str(per_sec_window.keys()[0])
     var expected_window: float = float(city.market_consumption_snapshot[first_window_pid]) \
         / city.resource_display_interval
     check(absf(float(per_sec_window[first_window_pid]) - expected_window) < 0.01,
-        "факт в ед./сек должен быть суммой окна, делённой на интервал отображения", state)
+        "the fact in units/sec must be the sum of the window divided by the display interval", state)
 
-    # ---- 7. Сохранение настроек ----
+    # ---- 7. Saving the settings ----
     city.set_market_consumption_enabled(all_key, false)
     city.set_consumption_priority(all_key, "worst")
     var market_before: Dictionary = city.market_consumption_enabled.duplicate()
     var priority_before: Dictionary = city.consumption_priority.duplicate()
-    # Старый сейв без полей рынка — всё должно быть разрешено.
+    # An old save without the market fields — everything must be allowed.
     save_manager.saved_data = {"city_food_pool": {}}
     save_manager.apply_loaded_data()
     check(city.is_market_consumption_enabled(all_key),
-        "в старом сейве без полей рынка потребление должно быть разрешено", state)
-    # Возврат сохранённых значений.
+        "in an old save without the market fields the consumption must be allowed", state)
+    # Restoration of the saved values.
     save_manager.saved_data = {
         "market_consumption_enabled": market_before,
         "consumption_priority": priority_before,
     }
     save_manager.apply_loaded_data()
     check(not city.is_market_consumption_enabled(all_key),
-        "настройка запрета должна переживать сохранение", state)
+        "the prohibition setting must survive saving", state)
     check(city.get_consumption_priority(all_key) == "worst",
-        "приоритет должен переживать сохранение", state)
+        "the priority must survive saving", state)
     city.market_consumption_enabled.clear()
     city.consumption_priority.clear()
 
-    # ---- 8. Живая сцена CityUI ----
+    # ---- 8. The live scene CityUI ----
     var main_map = load("res://scenes/MainMap.tscn").instantiate()
     get_root().add_child(main_map)
     await process_frame
     await process_frame
     var city_ui = main_map.get_node_or_null("CityUI")
-    check(city_ui != null, "CityUI не найдена в MainMap", state)
+    check(city_ui != null, "CityUI not found in MainMap", state)
     if city_ui != null:
-        # Колонки вкладки «Торговля» — из сцены, обе на месте.
+        # The columns of the "Trade" tab — from the scene, both in place.
         var internal_panel = city_ui.get_node_or_null("ContentPanel/TradePanel/Split/InternalPanel")
         var external_panel = city_ui.get_node_or_null("ContentPanel/TradePanel/Split/ExternalPanel")
         check(internal_panel != null,
-            "в сцене нет левой колонки «Внутренняя торговля»", state)
+            "the scene has no left column \"Domestic trade\"", state)
         check(external_panel != null,
-            "в сцене нет правой колонки «Внешняя торговля»", state)
+            "the scene has no right column \"Foreign trade\"", state)
         if external_panel != null:
             var ext_title: Label = external_panel.get_node_or_null("TitleLabel")
-            # Заголовок колонки. Движок НЕ переводит text, заданный прямо в
-            # сцене (проверено зондом: Label остаётся «Foreign trade» при любом
-            # языке), поэтому сверяем с исходной строкой сцены и с её
-            # переводом — требовать именно русский текст значит запрещать
-            # игре работать на английском.
+            # The title of the column. The engine does NOT translate the text set directly in
+            # the scene (checked with a probe: the Label stays "Foreign trade" in any
+            # language), therefore we compare with the source string of the scene and with its
+            # translation — demanding exactly the Russian text means forbidding the
+            # game to work in English.
             var ext_source := "Foreign trade"
             check(ext_title != null and ext_title.text in [ext_source, tr(ext_source)],
-                "у внешней торговли должен быть заголовок: %s"
-                        % (ext_title.text if ext_title != null else "узла нет"), state)
-            # Внешняя торговля — заглушка: кроме заголовка ничего нет.
+                "the foreign trade must have a title: %s"
+                        % (ext_title.text if ext_title != null else "no node"), state)
+            # The foreign trade is a stub: apart from the title there is nothing.
             check(external_panel.get_child_count() == 1,
-                "колонка внешней торговли пока должна содержать только заголовок", state)
-        # Открываем вкладку и смотрим карточки.
+                "the foreign trade column must for now contain only the title", state)
+        # We open the tab and look at the cards.
         city_ui.refresh()
         city_ui._switch_tab("trade")
         await process_frame
         var list = city_ui.get_node_or_null(
             "ContentPanel/TradePanel/Split/InternalPanel/InternalScroll/InternalList")
-        check(list != null, "нет списка карточек внутренней торговли", state)
-        # Доступные карточки лежат первыми, но при пустом складе их может не быть вовсе —
-        # тогда первым ребёнком списка окажется тумблер свёртки. Карточку ищем явно.
+        check(list != null, "there is no list of the cards of the internal trade", state)
+        # The available cards lie first, but with an empty storage there may be none at all —
+        # then the first child of the list is the collapse toggle. We look for the card explicitly.
         var card: Node = null
         if list != null:
             for child in list.get_children():
@@ -399,16 +399,16 @@ func _run() -> void:
                     card = child
                     break
         if card != null:
-            # Тумблер ОДИН: вариант с двумя кнопками (прямоугольник +
-            # CheckBox) убран, в карточке остался только CheckBox.
+            # The toggle is ONE: the variant with two buttons (a rectangle +
+            # a CheckBox) has been removed, and only the CheckBox remains in the card.
             check(card.get_node_or_null("Layout/Header/TradeToggleRect") == null,
-                "в карточке не должно быть кнопки-прямоугольника", state)
+                "the card must not have a rectangle button", state)
             check(card.get_node_or_null("Layout/Header/TradeCheckBox") != null,
-                "в карточке нет чекбокса", state)
+                "the card has no checkbox", state)
             check(card.get_node_or_null("Layout/Header/PriorityButton") != null,
-                "в карточке нет кнопки приоритета", state)
+                "the card has no priority button", state)
             check(card.get_node_or_null("Layout/IncomeRow/IncomeValue") != null,
-                "в карточке нет строки дохода", state)
+                "the card has no income row", state)
         if list != null and card != null:
             var tab = city_ui.trade_tab
             if tab != null and not tab.cards.is_empty():
@@ -417,78 +417,78 @@ func _run() -> void:
                 var box: CheckBox = ctx["checkbox"]
                 var before: bool = city.is_market_consumption_enabled(key)
                 check(box.button_pressed == before,
-                    "чекбокс должен показывать состояние рынка", state)
-                # Клик по чекбоксу переключает состояние рынка.
+                    "the checkbox must show the state of the market", state)
+                # A click on the checkbox switches the state of the market.
                 box.button_pressed = not before
                 box.toggled.emit(box.button_pressed)
                 check(city.is_market_consumption_enabled(key) != before,
-                    "клик по чекбоксу должен менять состояние рынка", state)
-                # После правки чекбокс показывает новое состояние.
+                    "a click on the checkbox must change the state of the market", state)
+                # After the edit the checkbox shows the new state.
                 tab.update_values()
                 check(box.button_pressed == city.is_market_consumption_enabled(key),
-                    "чекбокс должен совпадать с состоянием рынка после обновления", state)
-                # Запрещённый ресурс показывает «—» в расходе и доходе.
+                    "the checkbox must match the state of the market after the update", state)
+                # A forbidden resource shows "—" in the expenses and the income.
                 city.set_market_consumption_enabled(key, false)
                 tab.update_values()
                 var consumption: Label = ctx["consumption"]
                 var income: Label = ctx["income"]
                 check(consumption.text == "—" and income.text == "—",
-                    "у запрещённого ресурса расход и доход должны быть «—», получено «%s» / «%s»"
+                    "a forbidden resource must show \"—\" in the expenses and the income, got \"%s\" / \"%s\""
                         % [consumption.text, income.text], state)
                 city.set_market_consumption_enabled(key, true)
                 tab.update_values()
-                # Кнопка приоритета циклит настройку.
+                # The priority button cycles the setting.
                 var priority_was: String = city.get_consumption_priority(key)
                 tab._on_priority_pressed(key)
                 check(city.get_consumption_priority(key) != priority_was,
-                    "кнопка приоритета должна менять приоритет потребления", state)
-                # Узлы с тултипами ОБЯЗАНЫ ловить мышь. У Label по умолчанию
-                # mouse_filter = IGNORE: наведение на узел не приходит, и штатный
-                # тултип не показывается НИКОГДА. Так пропала половина подсказок
-                # карточки: цена, покупатели, расход и доход.
+                    "the priority button must change the consumption priority", state)
+                # The nodes with tooltips MUST catch the mouse. A Label by default has
+                # mouse_filter = IGNORE: the hover does not reach the node, and the standard
+                # tooltip is shown NEVER. In this way half of the hints of the
+                # card were lost: the price, the buyers, the expenses and the income.
                 for node_key in ["price", "consumers", "consumption", "income"]:
                     var tip_node: Control = ctx[node_key]
                     check(tip_node.mouse_filter != Control.MOUSE_FILTER_IGNORE,
-                        "узел «%s» должен ловить мышь (mouse_filter != IGNORE), иначе тултип не покажется"
+                        "the node \"%s\" must catch the mouse (mouse_filter != IGNORE), otherwise the tooltip will not show"
                         % node_key, state)
-                # Тултипы заполняются при обновлении карточки и переживают его:
-                # присваивание tooltip_text снимает показанное окно, поэтому
-                # неизменный текст не переприсваивается.
+                # The tooltips are filled on the update of the card and survive it:
+                # assigning tooltip_text removes the shown window, therefore
+                # the unchanged text is not reassigned.
                 tab.update_values()
                 var consumers_tip: String = (ctx["consumers"] as Label).tooltip_text
                 tab.update_values()
                 tab.update_values()
                 check((ctx["consumers"] as Label).tooltip_text == consumers_tip,
-                    "тултип покупателей должен пережить обновление значений", state)
+                    "the buyers tooltip must survive the update of the values", state)
                 check(consumers_tip.contains(":"),
-                    "тултип покупателей должен перечислять покупателей, получено «%s»"
+                    "the buyers tooltip must list the buyers, got \"%s\""
                         % consumers_tip, state)
-                check((ctx["price"] as Label).tooltip_text.contains("Цена"),
-                    "тултип цены должен объяснять расчёт цены, получено «%s»"
+                check((ctx["price"] as Label).tooltip_text.contains("Price"),
+                    "the price tooltip must explain the price calculation, got \"%s\""
                     % (ctx["price"] as Label).tooltip_text, state)
-                check((ctx["consumption"] as Label).tooltip_text.contains("Расход"),
-                    "тултип расхода должен перечислять нормы покупателей, получено «%s»"
+                check((ctx["consumption"] as Label).tooltip_text.contains("Expenses"),
+                    "the expenses tooltip must list the buyers' norms, got \"%s\""
                     % (ctx["consumption"] as Label).tooltip_text, state)
-                check((ctx["income"] as Label).tooltip_text.contains("Доход"),
-                    "тултип дохода должен разбирать сумму, получено «%s»"
+                check((ctx["income"] as Label).tooltip_text.contains("Income"),
+                    "the income tooltip must break down the sum, got \"%s\""
                     % (ctx["income"] as Label).tooltip_text, state)
-                # ГЛАВНАЯ регрессия: смена ЗНАЧЕНИЙ не должна пересоздавать
-                # карточки. Раньше refresh() склеивал подпись состава из
-                # отсортированных ключей, а update_values() сравнивал её с
-                # подписью в порядке вставки словаря — подписи не совпадали
-                # НИКОГДА, и весь список пересобирался каждый тик. Отсюда были
-                # и мигание чисел, и исчезающие тултипы.
+                # The MAIN regression: changing the VALUES must not recreate
+                # the cards. Previously refresh() glued the composition label from
+                # the sorted keys, and update_values() compared it with the
+                # label in the order of insertion of the dictionary — the labels never
+                # matched, and the whole list was rebuilt every tick. Hence there were
+                # both the flickering of the numbers and the disappearing tooltips.
                 var list2 = city_ui.get_node_or_null(
                     "ContentPanel/TradePanel/Split/InternalPanel/InternalScroll/InternalList")
                 if list2 != null and list2.get_child_count() > 0:
-                    # Регрессия на переиспользование карточек проверяется добавлением
-                    # запаса УЖЕ доступному ресурсу: его доступность при этом не меняется,
-                    # поэтому состав колонки пересобираться не должен. Недоступному ресурсу
-                    # добавлять запас нельзя — он станет доступным и карточка законно
-                    # переедет из свёртки в рабочий список (это проверяется отдельно ниже),
-                    # и тогда регрессия про переиспользование перестала бы что-либо проверять.
-                    # Сначала выводим целевые ресурсы в доступные (запас уже есть),
-                    # затем измеряем идентичность узлов.
+                    # The regression on the reuse of the cards is checked by adding
+                    # a supply to an ALREADY available resource: its availability does not change,
+                    # therefore the composition of the column must not be rebuilt. Adding a supply
+                    # to an unavailable resource is not allowed — it would become available and the card would legitimately
+                    # move from the collapse into the working list (this is checked separately below),
+                    # and then the regression about the reuse would stop checking anything.
+                    # First we bring the target resources into the available ones (the supply is already there),
+                    # then we measure the identity of the nodes.
                     for m in all_members:
                         city.add_to_storage(str(m), 1, "common")
                     tab.update_values()
@@ -496,8 +496,8 @@ func _run() -> void:
                     var ids_before: Array = []
                     for node in list2.get_children():
                         ids_before.append(node.get_instance_id())
-                    # Меняем данные так, чтобы значения карточек обновились, но доступность
-                    # ни одной карточки не переключилась.
+                    # We change the data so that the values of the cards update, but the availability
+                    # of none of the cards switches.
                     for m in all_members:
                         city.add_to_storage(str(m), 1, "common")
                     tab.update_values()
@@ -506,14 +506,14 @@ func _run() -> void:
                     for node in list2.get_children():
                         ids_after.append(node.get_instance_id())
                     check(ids_before == ids_after,
-                        "карточки должны переиспользоваться при смене значений, а не пересоздаваться", state)
+                        "the cards must be reused when the values change, and not recreated", state)
                     check(tab._signature_of(tab._collect_data()) == tab._signature,
-                        "подпись состава должна совпадать с фактическим набором карточек", state)
-                    # Регрессия «доход-фантом». На складе 1 единица превосходного
-                    # качества, а план (весь спрос города × цена лучшего качества) в
-                    # разы больше того, что рынок способен выручить. Раньше строка
-                    # «Доход» показывала именно план — 2730 монет/сек, которых в
-                    # казне не было и быть не могло.
+                        "the composition signature must match the actual set of the cards", state)
+                    # The "phantom income" regression. The storage holds 1 unit of perfect
+                    # quality, while the plan (the whole demand of the city × the price of the best quality) is
+                    # many times more than what the market is able to earn. Previously the row
+                    # "Income" showed exactly the plan — 2730 coins/sec, which were not
+                    # in the treasury and could not be.
                     if tab.cards.has(all_key):
                         for m in all_members:
                             city.city_storage.erase(str(m))
@@ -525,8 +525,8 @@ func _run() -> void:
                         city.treasury_income_product_accum.clear()
                         city.treasury_income_snapshot.clear()
                         city.treasury_income_product_snapshot.clear()
-                        # План читаем ДО списания: единственная единица уходит в кассу,
-                        # склад пустеет, и план честно обнуляется.
+                        # We read the plan BEFORE the write-off: the single unit goes to the cash desk,
+                        # the storage empties, and the plan is honestly zeroed.
                         var plan_value := float(wm.get_population_income_map()
                             .get(all_key, {}).get("coins_per_sec", 0.0))
                         wm.tick_city_consumption(1.0)
@@ -534,44 +534,44 @@ func _run() -> void:
                         var fact_value := float(wm.get_actual_market_income_map()
                             .get(all_key, {}).get("coins_per_sec", 0.0))
                         check(plan_value > fact_value * 10.0,
-                            "сценарий обязан воспроизводить расхождение: план (%.1f) должен быть кратно больше факта (%.1f)"
+                            "the scenario must reproduce the discrepancy: the plan (%.1f) must be many times greater than the fact (%.1f)"
                             % [plan_value, fact_value], state)
                         tab.update_values()
                         var ghost_income: Label = tab.cards[all_key]["income"]
-                        var expected_income := "%s/сек" % tab._format_rate(fact_value)
+                        var expected_income := "%s/sec" % tab._format_rate(fact_value)
                         check(ghost_income.text == expected_income,
-                            "строка «Доход» обязана показывать факт «%s», получено «%s»"
+                            "the \"Income\" row must show the fact \"%s\", got \"%s\""
                             % [expected_income, ghost_income.text], state)
 
-    # ---- 9. Недоступные ресурсы спрятаны под раскрывающийся список ----
-    # Город может получить ресурс, только если он добывается/производится или уже
-    # лежит на складе. Остальные карточки не должны засорять рабочую колонку:
-    # они уезжают под тумблер «Недоступные товары».
+    # ---- 9. The unavailable resources are hidden under a collapsible list ----
+    # The city can obtain a resource only if it is extracted/produced or already
+    # lies in storage. The remaining cards must not clutter the working column:
+    # they move under the "Unavailable goods" toggle.
     var wm2 = load("res://scripts/worker_manager.gd").new()
     city.total_population = 3
     city.city_storage.clear()
     city.city_quality_detail.clear()
-    # Ресурс без запаса и без производства недоступен.
+    # A resource without a supply and without production is unavailable.
     var bare_row := {"members": ["__no_such_product__"]}
     check(wm2.is_resource_obtainable(bare_row) == false,
-        "ресурс без запаса и без производства должен быть недоступен", state)
-    # Ресурс с запасом доступен.
+        "a resource without a supply and without production must be unavailable", state)
+    # A resource with a supply is available.
     city.add_to_storage("pottery", 5, "common")
     check(wm2.is_resource_obtainable({"members": ["pottery"]}) == true,
-        "ресурс со складом должен быть доступен", state)
-    # Группа доступна, если доступен хотя бы один член.
+        "a resource with a storage must be available", state)
+    # A group is available if at least one member is available.
     check(wm2.is_resource_obtainable({"members": ["__no_such_product__", "pottery"]}) == true,
-        "группа доступна при доступности хотя бы одного члена", state)
+        "a group is available when at least one member is available", state)
     check(wm2.is_resource_obtainable({"members": ["__a__", "__b__"]}) == false,
-        "группа из недоступных членов недоступна", state)
-    # Карта рынка несёт поле available для каждой строки.
+        "a group of unavailable members is unavailable", state)
+    # The market map carries an available field for every row.
     var live_map: Dictionary = wm2.get_population_consumption_map()
     var all_have_flag := not live_map.is_empty()
     for dkey in live_map:
         if not live_map[dkey].has("available"):
             all_have_flag = false
             break
-    check(all_have_flag, "каждая строка карты рынка должна нести поле available", state)
+    check(all_have_flag, "every row of the market map must carry an available field", state)
     wm2.free()
 
     var main_map3 = load("res://scenes/MainMap.tscn").instantiate()
@@ -586,47 +586,47 @@ func _run() -> void:
         var tab3 = city_ui3.trade_tab
         var ilist = city_ui3.get_node_or_null(
             "ContentPanel/TradePanel/Split/InternalPanel/InternalScroll/InternalList")
-        check(ilist != null, "нет списка карточек внутренней торговли", state)
+        check(ilist != null, "there is no list of the cards of the internal trade", state)
         if ilist != null and tab3 != null:
-            # Опустошаем склад: всё, что город не производит, станет недоступным.
+            # We empty the storage: everything the city does not produce will become unavailable.
             city.city_storage.clear()
             city.city_quality_detail.clear()
             tab3.refresh()
             check(tab3.unavailable_header != null,
-                "при наличии недоступных ресурсов должен быть тумблер свёртки", state)
+                "when unavailable resources are present there must be a collapse toggle", state)
             check(tab3.unavailable_list != null,
-                "при наличии недоступных ресурсов должен быть контейнер свёртки", state)
+                "when unavailable resources are present there must be a collapse container", state)
             if tab3.unavailable_header != null and tab3.unavailable_list != null:
-                # Свёрнуто по умолчанию: карточки недоступного не видны.
+                # Collapsed by default: the cards of the unavailable are not visible.
                 check(not tab3.unavailable_open,
-                    "по умолчанию свёртка недоступного должна быть закрыта", state)
+                    "by default the collapse of the unavailable must be closed", state)
                 check(not tab3.unavailable_list.visible,
-                    "по умолчанию контейнер недоступного должен быть скрыт", state)
+                    "by default the container of the unavailable must be hidden", state)
                 check(tab3.unavailable_list.get_child_count() > 0,
-                    "под свёрткой должны лежать карточки недоступных ресурсов", state)
-                # В рабочем списке недоступных карточек быть не должно.
+                    "under the collapse there must lie the cards of the unavailable resources", state)
+                # In the working list there must be no unavailable cards.
                 var working_cards := 0
                 for child in ilist.get_children():
                     if child is PanelContainer:
                         working_cards += 1
                 check(working_cards == tab3.cards.size() - tab3.unavailable_list.get_child_count(),
-                    "рабочий список должен содержать только доступные карточки", state)
-                # Тумблер раскрывает и прячет контейнер.
+                    "the working list must contain only the available cards", state)
+                # The toggle opens and hides the container.
                 tab3.unavailable_header.button_pressed = true
                 tab3.unavailable_header.toggled.emit(true)
                 check(tab3.unavailable_list.visible,
-                    "тумблер должен раскрывать недоступные ресурсы", state)
+                    "the toggle must open the unavailable resources", state)
                 tab3.unavailable_header.button_pressed = false
                 tab3.unavailable_header.toggled.emit(false)
                 check(not tab3.unavailable_list.visible,
-                    "повторный клик должен прятать недоступные ресурсы", state)
-                # Раскрытое состояние переживает пересборку списка.
+                    "a repeated click must hide the unavailable resources", state)
+                # The open state survives the rebuild of the list.
                 tab3.unavailable_header.button_pressed = true
                 tab3.unavailable_header.toggled.emit(true)
                 tab3.refresh()
                 check(tab3.unavailable_open and tab3.unavailable_list.visible,
-                    "раскрытое состояние должно переживать пересборку списка", state)
-            # Ресурс, у которого появился запас, переезжает из свёртки в рабочий список.
+                    "the open state must survive the rebuild of the list", state)
+            # A resource that has gained a supply moves from the collapse into the working list.
             var hidden_key := ""
             if tab3.unavailable_list != null and tab3.unavailable_list.get_child_count() > 0:
                 for dkey in tab3.cards:
@@ -640,36 +640,36 @@ func _run() -> void:
                     tab3.update_values()
                     var now_row: Dictionary = tab3._collect_data().get(hidden_key, {})
                     check(bool(now_row.get("available", false)),
-                        "ресурс с появившимся запасом должен стать доступным", state)
-            # Ширина колонки не должна «дышать» при появлении вертикального скроллбара.
-            # ScrollContainer по умолчанию (SCROLL_MODE_AUTO) отдаёт контенту ширину
-            # минус скроллбар, поэтому при раскрытии свёртки карточки становятся уже,
-            # а при закрытии — снова шире. Режим SHOW_ALWAYS резервирует место под
-            # скроллбар постоянно, и ширина карточки не зависит от переполнения.
+                        "a resource that has gained a supply must become available", state)
+            # The width of the column must not "breathe" when a vertical scrollbar appears.
+            # A ScrollContainer by default (SCROLL_MODE_AUTO) gives the content the width
+            # minus the scrollbar, therefore when the collapse opens the cards become narrower,
+            # and when it closes — wider again. The mode SHOW_ALWAYS reserves space for the
+            # scrollbar permanently, and the width of the card does not depend on the overflow.
             var scroll = city_ui3.get_node_or_null(
                 "ContentPanel/TradePanel/Split/InternalPanel/InternalScroll")
             check(scroll != null and scroll.vertical_scroll_mode == ScrollContainer.SCROLL_MODE_SHOW_ALWAYS,
-                "у списка должен быть постоянно зарезервирован вертикальный скроллбар (SHOW_ALWAYS)", state)
+                "the list must have a permanently reserved vertical scrollbar (SHOW_ALWAYS)", state)
             if scroll != null and ilist != null and tab3 != null and tab3.cards.size() > 0:
                 var first_card = tab3.cards[tab3.cards.keys()[0]]["card"]
-                # Высокая область — список влезает, скроллбар не нужен.
+                # A tall area — the list fits, the scrollbar is not needed.
                 scroll.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
                 scroll.custom_minimum_size = Vector2(0, 4000)
                 for _i in range(6):
                     await process_frame
                 var width_tall: float = first_card.size.x
-                # Низкая область — список переполняет, скроллбар нужен.
+                # A short area — the list overflows, the scrollbar is needed.
                 scroll.custom_minimum_size = Vector2(0, 150)
                 scroll.size.y = 150
                 for _i in range(6):
                     await process_frame
                 var width_short: float = first_card.size.x
                 check(is_equal_approx(width_tall, width_short),
-                    "ширина карточек не должна меняться от появления скроллбара: %.1f → %.1f"
+                    "the width of the cards must not change from the appearance of the scrollbar: %.1f → %.1f"
                         % [width_tall, width_short], state)
     main_map3.queue_free()
 
-    # Уборка состояния, чтобы тест не влиял на следующие прогоны.
+    # Cleanup of the state so that the test does not affect the following runs.
     city.total_population = 1
     city.city_storage.clear()
     city.city_quality_detail.clear()
@@ -686,8 +686,8 @@ func _run() -> void:
         print("TRADE TAB TEST OK")
         quit(0)
 
-# Проверяет, что приоритет реально определяет, КАКОЕ качество съедается
-# первым: кладём 10 обычных + 10 превосходных и списываем 10.
+# Checks that the priority really determines WHICH quality is eaten
+# first: we put 10 ordinary + 10 perfect and write off 10.
 func _check_priority_order(city, pid: String, priority: String, expected_first: String, state: Dictionary) -> void:
     city.city_storage.clear()
     city.city_quality_detail.clear()
@@ -697,17 +697,17 @@ func _check_priority_order(city, pid: String, priority: String, expected_first: 
     city.remove_from_storage(pid, 10, city.get_consumption_priority(pid))
     var detail: Dictionary = city.get_quality_breakdown(pid)
     check(int(detail.get(expected_first, 0)) == 0,
-        "приоритет «%s» должен был съесть качество «%s» первым" % [priority, expected_first], state)
+        "the priority \"%s\" must have eaten the quality \"%s\" first" % [priority, expected_first], state)
     city.consumption_priority.erase(pid)
 
-# Сумма запаса по членам группы.
+# The sum of the supply over the members of the group.
 func _total_storage(city, members: Array) -> int:
     var total := 0
     for m in members:
         total += city.get_storage_amount(str(m))
     return total
 
-# display_key ресурса псевдо-профессии "all" (берём из данных, а не хардкодим).
+# display_key of the resource of the pseudo-profession "all" (we take it from the data, and do not hardcode it).
 func _all_key(gdata) -> String:
     for e in gdata.get_profession_consumption("all"):
         var key := str(e.get("display_key", ""))
@@ -715,7 +715,7 @@ func _all_key(gdata) -> String:
             return key
     return ""
 
-# Члены группы ресурса псевдо-профессии "all".
+# The members of the resource group of the pseudo-profession "all".
 func _all_members(gdata, key: String) -> Array:
     if key.begins_with("@"):
         return gdata.product_groups.get(key.trim_prefix("@"), [])

@@ -1,22 +1,23 @@
-# Headless-тест ПРЕРЫВАНИЯ длительных действий на карте.
+# Headless test of INTERRUPTION of long-running actions on the map.
 #   godot --headless --path . --script res://tests/test_cancel_actions.gd
 #
-# Проверки (живая сцена MainMap):
-#   1. Кнопка прерывания проекта появляется на ЛЮБОМ его гексе, а не только на
-#      цели: на гексе текущего шага (где прогресс-бар), на гексе в середине
-#      трассы и на цели. Это был исходный баг: кнопка жила только на цели,
-#      а игрок жмёт туда, где видит стройку.
-#   2. Кнопка появляется на гексе С УЛУЧШЕНИЕМ, к которому идёт дорога
-#      (ранний return в _collect_actions терял проверку проекта), и в кольце
-#      влияния городка, где заканчивается дорога к нему.
-#   3. Кнопка называет действие: «Прервать: <название>», а не родовое
-#      «Отменить стройку». Осушение и вырубка спецдействиями тоже.
-#   4. На гексе, где идёт и обычная стройка, и проект, показываются ОБЕ
-#      кнопки: это разные вещи, и обе честны.
-#   5. Прерывание проекта с любого его гекса отменяет ИМЕННО его, и по
-#      project_id, а не по координатам гекса.
-#   6. Освоение территории и разведка тоже прерываются, а уже оплаченные
-#      монеты возвращаются в казну, а потерянный труд — нет.
+# Checks (live MainMap scene):
+#   1. The project interrupt button appears on ANY of its hexes, not only on
+#      the target: on the hex of the current step (where the progress bar is),
+#      on the hex in the middle of the route and on the target. This was the
+#      original bug: the button lived only on the target, while the player
+#      clicks where he sees the construction.
+#   2. The button appears on a hex WITH AN IMPROVEMENT to which a road is
+#      being built (an early return in _collect_actions lost the project check),
+#      and in the influence ring of a town, where the road to it ends.
+#   3. The button names the action: "Stop: <name>", and not the generic
+#      "Cancel the construction". Drainage and felling as special actions too.
+#   4. On a hex where both an ordinary construction and a project are going on,
+#      BOTH buttons are shown: they are different things, and both are honest.
+#   5. Interrupting a project from any of its hexes cancels EXACTLY it, and by
+#      project_id, not by the hex coordinates.
+#   6. Claiming land and scouting are also interrupted, and the already paid
+#      coins are refunded to the treasury, but the lost work is not.
 extends SceneTree
 
 const WATCHDOG = preload("res://tests/watchdog.gd")
@@ -54,8 +55,8 @@ func _run() -> void:
         _test_special_action_label(state, main_map)
     if WATCHDOG.wants_case("expansion_and_scouting"):
         _test_expansion_and_scouting(state, main_map)
-    # ПОСЛЕДНИМ: подготовка разведывает всю карту, а освоению и разведке
-    # нужны неразведанные гексы.
+    # LAST: the preparation explores the whole map, while claiming and scouting
+    # need unexplored hexes.
     if WATCHDOG.wants_case("town_hex"):
         await _test_town_hex(state, main_map, main_map.control_panel)
 
@@ -68,37 +69,37 @@ func _run() -> void:
         quit(0)
 
 # -------------------------------------------------------
-# 1, 2, 4, 5. Прерывание проекта
+# 1, 2, 4, 5. Interrupting a project
 # -------------------------------------------------------
 
 func _test_project_cancel_anywhere(state: Dictionary, main_map) -> void:
     var panel = main_map.control_panel
     var target := _find_hex_without_road(main_map)
-    check(not target.is_empty(), "должен найтись гекс без дороги в 3+ участка", state)
+    check(not target.is_empty(), "a hex without a road of 3+ sections must be found", state)
     if target.is_empty():
         return
     var row := int(target.row)
     var col := int(target.col)
     var plan: Dictionary = main_map.get_road_plan(row, col)
     check(int(plan.get("segments", 0)) >= 3,
-            "маршрут должен быть длиной хотя бы 3 участка", state)
+            "the route must be at least 3 sections long", state)
     check(main_map.start_road_project(row, col, _road_level()),
-            "дорогу должно быть можно запустить", state)
+            "the road must be startable", state)
 
     var pm = main_map.project_manager
     var project: Dictionary = pm.get_project_at(row, col)
     var steps: Array = project.get("steps", [])
-    check(steps.size() >= 3, "в очереди должно быть не меньше трёх шагов", state)
+    check(steps.size() >= 3, "the queue must contain at least three steps", state)
 
-    # ПРОГРЕСС-БАР стоит на гексе ТЕКУЩЕГО шага — туда игрок и тыкает.
+    # The PROGRESS BAR sits on the hex of the CURRENT step — that is where the player clicks.
     var cur: Dictionary = steps[0].get("hex", {})
     var cur_row := int(cur.get("row", -1))
     var cur_col := int(cur.get("col", -1))
     var a_cur: Array = _actions(panel, main_map, cur_row, cur_col)
     check(_find(a_cur, "cancel_project") >= 0,
-            "на гексе текущего шага (прогресс-бар) должна быть кнопка прерывания", state)
+            "the hex of the current step (the progress bar) must have an interrupt button", state)
 
-    # СЕРЕДИНА трассы — участок призрака, который игрок тоже видит на карте.
+    # The MIDDLE of the route — a ghost section that the player also sees on the map.
     var mid: Dictionary = steps[0].get("data", {}).get("to", {})
     var mid_row := int(mid.get("row", -1))
     var mid_col := int(mid.get("col", -1))
@@ -108,51 +109,51 @@ func _test_project_cancel_anywhere(state: Dictionary, main_map) -> void:
         mid_col = int(mid.get("col", -1))
     var a_mid: Array = _actions(panel, main_map, mid_row, mid_col)
     check(_find(a_mid, "cancel_project") >= 0,
-            "на гексе в середине трассы тоже должна быть кнопка прерывания", state)
+            "the hex in the middle of the route must also have an interrupt button", state)
 
-    # ЦЕЛЬ — гекс, на котором кнопка была и раньше (регрессия не должна сломать).
+    # The TARGET — the hex where the button already existed before (the regression must not break it).
     var a_goal: Array = _actions(panel, main_map, row, col)
-    _check_no_duplicates(a_cur, state, "гексе текущего шага")
-    _check_no_duplicates(a_mid, state, "гексе середины трассы")
-    _check_no_duplicates(a_goal, state, "гексе цели")
+    _check_no_duplicates(a_cur, state, "the hex of the current step")
+    _check_no_duplicates(a_mid, state, "the hex of the middle of the route")
+    _check_no_duplicates(a_goal, state, "the target hex")
     check(_find(a_goal, "cancel_project") >= 0,
-            "на гексе цели должна быть кнопка прерывания", state)
+            "the target hex must have an interrupt button", state)
 
-    # Кнопка называет действие и предупреждает, что прерывается ВСЯ дорога.
+    # The button names the action and warns that the WHOLE road is interrupted.
     var gi := _find(a_goal, "cancel_project")
     var goal_label := str(a_goal[gi].get("label", ""))
     var goal_tip := str(a_goal[gi].get("tooltip", ""))
-    check(goal_label.begins_with("Прерват"),
-            "кнопка прерывания должна называться «Прерват...», а не «Отменить стройку»: %s" % goal_label, state)
-    check(goal_label.contains("Дорога"),
-            "в названии кнопки должно быть видно, ЧТО прерывается: %s" % goal_label, state)
-    check(goal_tip.contains("недостроенных участков"),
-            "тултип должен заранее называть число недостроенных участков", state)
-    # project_id обязан нести сам проект, иначе нажатие с середины трассы
-    # найдёт не тот проект (или ничего).
+    check(goal_label.begins_with("Stop"),
+            "the interrupt button must be named \"Stop...\", not \"Cancel the construction\": %s" % goal_label, state)
+    check(goal_label.contains("Road"),
+            "the button name must show WHAT is being interrupted: %s" % goal_label, state)
+    check(goal_tip.contains("unfinished sections"),
+            "the tooltip must state the number of unfinished sections in advance", state)
+    # project_id must carry the project itself, otherwise a click from the middle of the
+    # route will find the wrong project (or nothing).
     check(str(a_goal[gi].get("project_id", "")) == str(project.get("id", "")),
-            "кнопка должна нести project_id того же проекта", state)
+            "the button must carry the project_id of the same project", state)
 
-    # Прерывание С СЕРЕДИНЫ трассы отменяет весь проект.
+    # Interrupting FROM THE MIDDLE of the route cancels the whole project.
     check(pm.cancel_project_at_hex(mid_row, mid_col),
-            "проект должен отменяться с гекса в середине трассы", state)
+            "the project must be cancellable from a hex in the middle of the route", state)
     check(pm.has_active_projects() == false,
-            "после прерывания проект должен исчезнуть из очереди", state)
+            "after the interruption the project must disappear from the queue", state)
     check(_find(_actions(panel, main_map, row, col), "cancel_project") < 0,
-            "после прерывания кнопка на цели должна исчезнуть", state)
+            "after the interruption the button on the target must disappear", state)
 
-    # Повторный запуск — чтобы убедиться, что кнопки не осталось в панели.
+    # Re-running — to make sure the button is no longer in the panel.
     main_map.build_manager.remove_build(row, col)
     main_map.project_manager.restore_projects({})
 
 # -------------------------------------------------------
-# 3, 4. Обычная стройка и спецдействия: кнопка называет действие
+# 3, 4. Ordinary construction and special actions: the button names the action
 # -------------------------------------------------------
 
 func _test_special_action_label(state: Dictionary, main_map) -> void:
     var panel = main_map.control_panel
     var bm = main_map.build_manager
-    # Улучшение: кнопка называет именно его.
+    # Improvement: the button names exactly it.
     var spot := _find_hex_with_improvement(main_map)
     if not spot.is_empty():
         var row := int(spot.row)
@@ -160,18 +161,18 @@ func _test_special_action_label(state: Dictionary, main_map) -> void:
         var imp_id := str(spot.imp_id)
         bm.remove_build(row, col)
         bm.start_build(row, col, imp_id, null)
-        check(bm.is_building(row, col), "обычная стройка должна запуститься", state)
+        check(bm.is_building(row, col), "the ordinary construction must start", state)
         var acts: Array = _actions(panel, main_map, row, col)
         var i := _find(acts, "cancel_build")
-        check(i >= 0, "на гексе идущей стройки должна быть кнопка прерывания", state)
+        check(i >= 0, "the hex of an ongoing construction must have an interrupt button", state)
         if i >= 0:
-            check(str(acts[i].get("label", "")).begins_with("Прерват"),
-                    "кнопка должна называться «Прерват...»: %s" % str(acts[i].get("label", "")), state)
-            check(not str(acts[i].get("label", "")).contains("Отменить стройку"),
-                    "родовое «Отменить стройку» должно быть заменено названием действия", state)
+            check(str(acts[i].get("label", "")).begins_with("Stop"),
+                    "the button must be named \"Stop...\": %s" % str(acts[i].get("label", "")), state)
+            check(not str(acts[i].get("label", "")).contains("Cancel the construction"),
+                    "the generic \"Cancel the construction\" must be replaced by the action name", state)
         bm.cancel_build(row, col)
 
-    # Спецдействие (осушение болота / вырубка леса): называет спецдействие.
+    # Special action (draining a marsh / felling a forest): names the special action.
     var sa := _find_hex_with_special_action(main_map)
     var action_id := ""
     if not sa.is_empty():
@@ -181,20 +182,20 @@ func _test_special_action_label(state: Dictionary, main_map) -> void:
         var sa_name := str(_gdata.special_actions.get(action_id, {}).get("name", ""))
         bm.remove_build(row, col)
         bm.start_build(row, col, action_id, null)
-        check(bm.is_building(row, col), "спецдействие должно запуститься как стройка", state)
+        check(bm.is_building(row, col), "the special action must start as a construction", state)
         var acts: Array = _actions(panel, main_map, row, col)
         var i := _find(acts, "cancel_build")
-        check(i >= 0, "на гексе идущего спецдействия должна быть кнопка прерывания", state)
+        check(i >= 0, "the hex of an ongoing special action must have an interrupt button", state)
         if i >= 0:
             check(str(acts[i].get("label", "")).contains(sa_name),
-                    "кнопка спецдействия должна называть его («%s»), а не что-то общее: %s"
+                    "the special action button must name it (\"%s\"), and not something generic: %s"
                             % [sa_name, str(acts[i].get("label", ""))], state)
         bm.cancel_build(row, col)
 
-    # Обе кнопки сразу, если на гексе идёт и стройка, и проект.
-    # Запись стройки кладём в active_builds напрямую: гекс участка дороги не
-    # обязан быть пригодным для спецдействия, а состояние «стройка и проект на
-    # одном гексе» нужно именно такое.
+    # Both buttons at once if a construction and a project are both going on the hex.
+    # We put the construction record directly into active_builds: a road section hex does
+    # not have to be suitable for a special action, and the state "construction and project
+    # on one hex" must be exactly that.
     var target := _find_hex_without_road(main_map)
     if not target.is_empty():
         var row := int(target.row)
@@ -208,21 +209,21 @@ func _test_special_action_label(state: Dictionary, main_map) -> void:
             var hcol := int(h.get("col", -1))
             bm.active_builds[str(hrow) + "," + str(hcol)] = {
                 "progress": 1.0, "work_cost": 10, "imp_id": "demo",
-                "target_res_id": null, "imp_name": "Демонстрация",
+                "target_res_id": null, "imp_name": "Demonstration",
                 "row": hrow, "col": hcol, "status": "active", "allocated_labor": 1.0,
             }
             var both: Array = _actions(panel, main_map, hrow, hcol)
             check(_find(both, "cancel_project") >= 0 and _find(both, "cancel_build") >= 0,
-                    "на гексе, где идёт и стройка, и проект, показываются ОБЕ кнопки (типы: %d и %d)"
+                    "on a hex where both a construction and a project are going on, BOTH buttons are shown (types: %d and %d)"
                             % [_find(both, "cancel_project"), _find(both, "cancel_build")], state)
             check(_find(_actions(panel, main_map, row, col), "cancel_project") >= 0,
-                    "кнопка прерывания проекта остаётся и на цели", state)
-            _check_no_duplicates(both, state, "гексе, где идёт и стройка, и проект")
+                    "the project interrupt button remains on the target as well", state)
+            _check_no_duplicates(both, state, "the hex where both a construction and a project are going on")
             bm.remove_build(hrow, hcol)
         main_map.project_manager.restore_projects({})
 
 # -------------------------------------------------------
-# 6. Освоение и разведка: прерываются, монеты возвращаются
+# 6. Claiming and scouting: they are interrupted, the coins are refunded
 # -------------------------------------------------------
 
 func _test_expansion_and_scouting(state: Dictionary, main_map) -> void:
@@ -232,55 +233,55 @@ func _test_expansion_and_scouting(state: Dictionary, main_map) -> void:
     _cdata.treasury = 500
     main_map.build_manager.set_process(false)
 
-    # --- Освоение ---
+    # --- Claiming ---
     var chunk := _prepare_expandable_chunk(main_map)
     if chunk.is_empty():
-        check(false, "должен найтись осваиваемый чанк у Кольца Влияния", state)
+        check(false, "a claimable chunk near the Influence Ring must be found", state)
     else:
         var money: int = em.get_chunk_money_cost(chunk)
         var work: int = em.get_chunk_cost(chunk)
         var ok: bool = em.handle_action(chunk, money, work)
-        check(ok, "освоение чанка должно запускаться", state)
+        check(ok, "the claiming of the chunk must start", state)
         var first = chunk[0]
         var exp_data: Dictionary = main_map.build_manager.get_expansion_progress_for_hex(
                 int(first.row), int(first.col))
-        check(not exp_data.is_empty(), "на первом гексе чанка должен идти прогресс-бар освоения", state)
+        check(not exp_data.is_empty(), "the first hex of the chunk must show a claiming progress bar", state)
         check(int(exp_data.get("money_cost", 0)) == money,
-                "в записи освоения должна храниться цена для возврата при отмене", state)
+                "the claiming record must store the price for the refund on cancellation", state)
         var acts: Array = _actions(panel, main_map, int(first.row), int(first.col))
         check(_find(acts, "cancel_expansion") >= 0,
-                "на гексе осваиваемого чанка должна быть кнопка «Прервать: Освоение области»", state)
+                "the hex of the chunk being claimed must have a \"Stop: Claiming land\" button", state)
         var before := int(_cdata.treasury)
         check(main_map.build_manager.cancel_expansion_at_hex(int(first.row), int(first.col)),
-                "освоение должно прерываться", state)
+                "the claiming must be interrupted", state)
         check(main_map.build_manager.get_expansion_progress_for_hex(
                 int(first.row), int(first.col)).is_empty(),
-                "после прерывания прогресс-бар освоения должен исчезнуть", state)
+                "after the interruption the claiming progress bar must disappear", state)
         check(int(_cdata.treasury) == before + money,
-                "оплаченные за освоение монеты должны вернуться в казну: было %d, стало %d, ждали %d"
+                "the coins paid for claiming must be refunded to the treasury: was %d, became %d, expected %d"
                         % [before, int(_cdata.treasury), before + money], state)
-        # Чанк не должен присоединиться к Кольцу Влияния.
+        # The chunk must not join the Influence Ring.
         check(not bool(main_map.tile_data[int(first.row)][int(first.col)].get("in_influence", false)),
-                "прерванное освоение не должно присоединять чанк к Кольцу Влияния", state)
+                "an interrupted claiming must not join the chunk to the Influence Ring", state)
 
-    # --- Разведка ---
+    # --- Scouting ---
     _cdata.treasury = 500
     var scout_chunk := _find_scoutable_chunk(main_map)
-    check(not scout_chunk.is_empty(), "должен найтись неразведанный чанк для разведки", state)
+    check(not scout_chunk.is_empty(), "an unexplored chunk for scouting must be found", state)
     if not scout_chunk.is_empty():
         var cost: int = em.get_chunk_scout_cost(scout_chunk)
         main_map.start_scouting(scout_chunk)
-        check(main_map.is_scouting, "разведка должна запуститься", state)
+        check(main_map.is_scouting, "the scouting must start", state)
         var sfirst = scout_chunk[0]
         var sacts: Array = _actions(panel, main_map, int(sfirst.row), int(sfirst.col))
         check(_find(sacts, "cancel_scouting") >= 0,
-                "на гексе разведываемого чанка должна быть кнопка «Прервать: Разведка»", state)
+                "the hex of the chunk being scouted must have a \"Stop: Scouting\" button", state)
         var before := int(_cdata.treasury)
-        check(main_map.cancel_scouting(), "разведка должна отменяться", state)
+        check(main_map.cancel_scouting(), "the scouting must be cancellable", state)
         check(not main_map.is_scouting and main_map.scouting_chunk.is_empty(),
-                "после отмены разведки таймер должен быть сброшен", state)
+                "after cancelling the scouting the timer must be reset", state)
         check(int(_cdata.treasury) == before + cost,
-                "оплаченные за разведку монеты должны вернуться в казну: было %d, стало %d, ждали %d"
+                "the coins paid for scouting must be refunded to the treasury: was %d, became %d, expected %d"
                         % [before, int(_cdata.treasury), before + cost], state)
         var any_explored := false
         for h in scout_chunk:
@@ -288,10 +289,10 @@ func _test_expansion_and_scouting(state: Dictionary, main_map) -> void:
                 any_explored = true
                 break
         check(not any_explored,
-                "прерванная разведка не должна разведать ни одного гекса", state)
+                "an interrupted scouting must not explore a single hex", state)
 
 # -------------------------------------------------------
-# Хелперы
+# Helpers
 # -------------------------------------------------------
 
 func _actions(panel, main_map, row: int, col: int) -> Array:
@@ -300,14 +301,14 @@ func _actions(panel, main_map, row: int, col: int) -> Array:
         return []
     return panel._collect_actions(row, col, tile)
 
-# Кнопка прерывания не должна появляться в списке дважды. Раньше кнопка проекта
-# на гексе городка добавлялась дважды: отдельно (спецслучай «дорога к
-# городку») и общим помощником. Дубликат не бросается в глаза, но игрок
-# видит две одинаковые кнопки и не понимает, в чём разница.
+# The interrupt button must not appear in the list twice. Previously the project
+# button on a town hex was added twice: separately (a special case "road to the
+# town") and by a shared helper. A duplicate is not obvious, but the player
+# sees two identical buttons and does not understand the difference.
 #
-# Проверяются ТОЛЬКО кнопки прерывания: обычные действия дублируются
-# закономерно (на гексе может быть и осушение, и вырубка — это две
-# кнопки «special», и несколько «research_tech» подряд).
+# ONLY the interrupt buttons are checked: ordinary actions are duplicated
+# legitimately (a hex may have both drainage and felling — these are two
+# "special" buttons, and several "research_tech" in a row).
 func _check_no_duplicates(actions: Array, state: Dictionary, where: String) -> void:
     var seen := {}
     var dups := []
@@ -318,10 +319,10 @@ func _check_no_duplicates(actions: Array, state: Dictionary, where: String) -> v
         if seen.has(t):
             dups.append(t)
         seen[t] = true
-    check(dups.is_empty(), "на %s кнопка прерывания продублирована: %s"
+    check(dups.is_empty(), "the interrupt button is duplicated on %s: %s"
             % [where, str(dups)], state)
 
-# Индекс первого действия нужного типа, -1 если такого нет.
+# The index of the first action of the wanted type, -1 if there is none.
 func _find(actions: Array, type: String) -> int:
     for i in range(actions.size()):
         if str(actions[i].get("type", "")) == type:
@@ -355,8 +356,8 @@ func _find_hex_without_road(main_map) -> Dictionary:
             return {"row": row, "col": col}
     return {}
 
-# Гекс с улучшением, к которому ещё не подведена дорога: именно к нему
-# строится дорога, и именно тут проверяется прерывание проекта.
+# A hex with an improvement to which no road has been built yet: the road is built
+# to exactly it, and this is where the project interruption is checked.
 func _find_hex_with_improvement(main_map) -> Dictionary:
     var rm = main_map.road_manager
     for row in range(main_map.region_start_row, main_map.region_end_row + 1):
@@ -377,13 +378,14 @@ func _find_hex_with_improvement(main_map) -> Dictionary:
                 continue
             return {"row": row, "col": col, "imp_id": imp_id}
     return {}
-# Подготовка осваиваемого чанка: разведать его и вернуть.
+# Preparation of a claimable chunk: explore it and return it.
 #
-# НАЧАЛЬНОЕ СОСТОЯНИЕ важно: в новой игре разведано только Кольцо Влияния, за
-# его пределами не разведано НИ ОДНОГО гекса, поэтому осваивать нечего и кнопки
-# «Освоить область» не предлагается. Тест сам разведывает чанк рядом с городом -
-# это обычная последовательность игрока (сначала разведка, потом освоение), и
-# только после неё появляется объект для проверки отмены.
+# The INITIAL STATE matters: in a new game only the Influence Ring is explored,
+# beyond its borders NOT A SINGLE hex is explored, so there is nothing to claim
+# and the button "Claim the area" is not offered. The test itself explores a
+# chunk next to the city - this is the ordinary sequence of the player (first
+# scouting, then claiming), and only after it does an object for checking the
+# cancellation appear.
 func _prepare_expandable_chunk(main_map) -> Array:
     var em = main_map.expansion_manager
     var ci := int(main_map.city_row)
@@ -394,8 +396,8 @@ func _prepare_expandable_chunk(main_map) -> Array:
                 var tile = main_map.get_tile_data(row, col)
                 if tile == null or bool(tile.get("in_influence", false)):
                     continue
-                # Разведываем все гексы чанка: после этого get_chunk_hexes для
-                # этого гекса отдаёт осваиваемую область.
+                # We explore all hexes of the chunk: after that get_chunk_hexes
+                # for this hex returns the claimable area.
                 for h in em.get_chunk_hexes(row, col):
                     var t2 = main_map.get_tile_data(int(h.row), int(h.col))
                     if t2 != null:
@@ -416,8 +418,8 @@ func _prepare_expandable_chunk(main_map) -> Array:
                     return chunk
     return []
 
-# Гекс, к которому применимо спецдействие из special_actions.json
-# (осушение болота, вырубка леса и т.п.).
+# A hex to which a special action from special_actions.json applies
+# (draining a marsh, felling a forest, etc.).
 func _find_hex_with_special_action(main_map) -> Dictionary:
     for action_id in _gdata.special_actions:
         var sa: Dictionary = _gdata.special_actions[action_id]
@@ -432,7 +434,7 @@ func _find_hex_with_special_action(main_map) -> Dictionary:
                 var tile = main_map.get_tile_data(row, col)
                 if tile == null or not bool(tile.get("in_influence", false)):
                     continue
-                # Гексы городка и его кольца влияния build_manager не даёт трогать.
+                # build_manager does not allow touching the hexes of a town and its influence ring.
                 if bool(tile.get("has_town", false)) or bool(tile.get("in_town_influence", false)):
                         continue
                 if bool(tile.get("decorative", false)):
@@ -446,8 +448,8 @@ func _find_hex_with_special_action(main_map) -> Dictionary:
                     return {"row": row, "col": col, "action_id": action_id}
     return {}
 
-# Неразведанный чанк, примыкающий к известной территории (иначе разведка
-# не запускается гейтом main_map.is_chunk_adjacent_to_known).
+# An unexplored chunk adjacent to known territory (otherwise the scouting
+# does not start because of the gate main_map.is_chunk_adjacent_to_known).
 func _find_scoutable_chunk(main_map) -> Array:
     var em = main_map.expansion_manager
     for row in range(main_map.region_start_row, main_map.region_end_row + 1):
@@ -471,13 +473,14 @@ func _find_scoutable_chunk(main_map) -> Array:
             return chunk
     return []
 
-# Гекс ЧУЖОГО ГОРОДКА: там кнопка «Построить дорогу от города» заменяется на
-# прерывание, если дорога к нему уже идёт. Отдельно проверяем, что прерывание
-# не продублировалось: раньше оно добавлялось и спецслучаем, и общим помощником.
+# A hex of ANOTHER TOWN: there the button "Build a road from the city" is
+# replaced by an interruption if a road to it is already going on. We separately
+# check that the interruption was not duplicated: previously it was added both
+# by a special case and by a shared helper.
 func _test_town_hex(state: Dictionary, main_map, panel) -> void:
-    # Разведываем карту: без этого до городка нет сухопутного пути, и
-    # start_road_project честно откажет. Это обычная подготовка игрока —
-    # сначала разведка, потом дорога.
+    # We explore the map: without this there is no land route to the town, and
+    # start_road_project will honestly refuse. This is the ordinary preparation
+    # of the player — first scouting, then the road.
     for row in range(main_map.map_rows):
         for col in range(main_map.map_cols):
             var t = main_map.get_tile_data(row, col)
@@ -485,24 +488,24 @@ func _test_town_hex(state: Dictionary, main_map, panel) -> void:
                 t["is_explored"] = true
     main_map.road_manager.bump_map_knowledge()
     var town := _find_town_hex(main_map)
-    check(not town.is_empty(), "должен найтись гекс чужого городка", state)
+    check(not town.is_empty(), "a hex of another town must be found", state)
     if town.is_empty():
         return
     var row := int(town.row)
     var col := int(town.col)
     var start: bool = main_map.start_road_project(row, col, _road_level())
-    check(start, "дорогу к городку должно быть можно запустить", state)
+    check(start, "the road to the town must be startable", state)
     var acts: Array = _actions(panel, main_map, row, col)
-    _check_no_duplicates(acts, state, "гексе чужого городка")
+    _check_no_duplicates(acts, state, "the hex of another town")
     check(_find(acts, "cancel_project") >= 0,
-            "на гексе чужого городка должна быть кнопка прерывания дороги к нему", state)
+            "the hex of another town must have a button to interrupt the road to it", state)
     main_map.project_manager.restore_projects({})
 
-# Первый гекс чужого городка на карте.
+# The first hex of another town on the map.
 func _find_town_hex(main_map) -> Dictionary:
-    # Городки стоят по всей карте, в том числе ЗА пределами Региона, поэтому
-    # перебираем всю карту, а не только Регион. Гекс САМОГО города игрока
-    # пропускаем: там другой набор действий.
+    # Towns stand all over the map, including BEYOND the borders of the Region,
+    # so we iterate over the whole map, not only the Region. We skip the hex of
+    # the player's own city: it has a different set of actions.
     for row in range(main_map.map_rows):
         for col in range(main_map.map_cols):
             if row == int(main_map.city_row) and col == int(main_map.city_col):

@@ -1,33 +1,34 @@
-# Headless-тест правила «Чанк разведки должен граничить с известной территорией»:
+# Headless test for the rule "A scouting chunk must border known territory":
 #   godot --headless --path . --script res://tests/test_scouting_frontier.gd
 #
-# Тест поднимает РЕАЛЬНУЮ сцену MainMap (новая игра на настоящей карте) и
-# проверяет правило на живых данных:
+# The test boots the REAL MainMap scene (a new game on the real map) and
+# verifies the rule against live data:
 #
-#   1. Положительный случай: неисследованный гекс Региона у границы Кольца
-#      Влияния → чанк непустой, примыкает к известной территории, кнопка
-#      «Отправить разведчиков» активна, start_scouting() тратит монеты и
-#      запускает разведку.
-#   2. Инвариант по всей карте (до Картографии — по Региону, после — и по
-#      туману войны): активность кнопки разведки РАВНА примыканию чанка к
-#      известной территории, а тултип недоступного чанка объясняет причину.
-#   3. Отрицательный случай: чанк в тумане войны, оторванный от известного
-#      мира (таких на карте тысячи) → кнопка неактивна с причиной,
-#      start_scouting() не запускается и монеты НЕ списывает.
-#   4. Динамика границы: стоит пометить соседний гекс разведанным — тот же
-#      чанк становится доступен и разведка запускается (граница «ползёт»).
-#   5. Страховка публичной точки входа: пустой чанк разведку не запускает и
-#      монеты не тратит.
+#   1. Positive case: an unexplored Region hex at the border of the Ring of
+#      Influence → the chunk is non-empty, borders known territory, the
+#      "Send scouts" button is enabled, start_scouting() spends coins and
+#      starts scouting.
+#   2. Invariant across the whole map (before Cartography — over the Region,
+#      after — also over the fog of war): the scouting button's enabled state
+#      EQUALS whether the chunk borders known territory, and the tooltip of an
+#      unavailable chunk explains the reason.
+#   3. Negative case: a chunk in the fog of war, detached from the known
+#      world (there are thousands of them on the map) → the button is disabled
+#      with a reason, start_scouting() does not start and does NOT spend coins.
+#   4. Frontier dynamics: mark a neighbouring hex as explored — the same
+#      chunk becomes available and scouting starts (the border "creeps").
+#   5. Public entry point safety net: an empty chunk does not start scouting
+#      and does not spend coins.
 #
-# Известная территория = Кольцо Влияния (in_influence) ИЛИ разведанные гексы
-# (is_explored) — см. main_map.is_hex_known / is_chunk_adjacent_to_known.
+# Known territory = the Ring of Influence (in_influence) OR explored hexes
+# (is_explored) — see main_map.is_hex_known / is_chunk_adjacent_to_known.
 extends SceneTree
 
-# Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
-# молчание. Подробности — в tests/watchdog.gd.
+# Hang watchdog: without it, an interrupted _run() coroutine looks like eternal
+# silence from the outside. Details are in tests/watchdog.gd.
 const WATCHDOG = preload("res://tests/watchdog.gd")
 
-const FRONTIER_TOOLTIP := "Область не граничит с исследованной территорией"
+const FRONTIER_TOOLTIP := "The area does not border explored territory"
 
 func _initialize():
     WATCHDOG.arm(self)
@@ -36,10 +37,10 @@ func _initialize():
 func _run() -> void:
     var state = {"failed": false}
 
-    # Автозагрузки берём через дерево сцены: в режиме --script имена
-    # GameData/CityData недоступны на этапе компиляции этого файла.
-    # new_game() грузит данные игры и сбрасывает состояние города —
-    # Картография на старте не изучена.
+    # Autoloads are fetched through the scene tree: in --script mode the names
+    # GameData/CityData are unavailable at this file's compile time.
+    # new_game() loads the game data and resets the city state —
+    # Cartography is not researched at the start.
     var save_manager = get_root().get_node("SaveManager")
     save_manager.new_game()
     var city = get_root().get_node("CityData")
@@ -53,131 +54,133 @@ func _run() -> void:
     var cp = main_map.control_panel
 
     check(main_map.tile_data.size() == main_map.map_rows,
-            "карта не инициализирована (tile_data пуст)", state)
+            "the map is not initialized (tile_data is empty)", state)
     check(not main_map.is_cartography_researched(),
-            "на старте новой игры Картография не должна быть изучена", state)
+            "Cartography must not be researched at the start of a new game", state)
     check(not main_map.is_chunk_adjacent_to_known([]),
-            "пустой чанк не может граничить с известной территорией", state)
+            "an empty chunk cannot border known territory", state)
 
-    # ============ 1. Разведка у границы Кольца Влияния ============
+    # ============ 1. Scouting at the border of the Ring of Influence ============
     var front_hex = _find_region_hex_near_known(main_map)
-    check(front_hex != null, "не найден неисследованный гекс Региона у границы Кольца", state)
+    check(front_hex != null, "no unexplored Region hex found at the border of the Ring", state)
     if front_hex == null:
         _finish(main_map, state)
         return
 
     var front_chunk: Array = em.get_chunk_hexes(front_hex.row, front_hex.col)
-    check(front_chunk.size() > 0, "чанк разведки у границы Кольца не должен быть пустым", state)
+    check(front_chunk.size() > 0, "the scouting chunk at the border of the Ring must not be empty", state)
     check(main_map.is_chunk_adjacent_to_known(front_chunk),
-            "чанк у границы Кольца обязан примыкать к известной территории", state)
+            "the chunk at the border of the Ring must border known territory", state)
 
     var front_action = _find_action(cp._collect_actions(front_hex.row, front_hex.col,
             main_map.tile_data[front_hex.row][front_hex.col]), "scout_chunk")
-    check(front_action != null, "у гекса у границы Кольца должна быть кнопка разведки", state)
+    check(front_action != null, "the hex at the border of the Ring must have a scouting button", state)
     if front_action != null:
         check(front_action.get("enabled", false),
-                "кнопка разведки у границы Кольца должна быть активна", state)
+                "the scouting button at the border of the Ring must be enabled", state)
 
     city.add_treasury(em.get_chunk_scout_cost(front_chunk))
     var front_treasury_before: int = city.treasury
     var front_cost: int = em.get_chunk_scout_cost(front_chunk)
     main_map.start_scouting(front_chunk)
-    check(main_map.is_scouting, "разведка чанка у границы Кольца должна запускаться", state)
+    check(main_map.is_scouting, "scouting of the chunk at the border of the Ring must start", state)
     check(city.treasury == front_treasury_before - front_cost,
-            "за разведку должно списаться ровно цена чанка (%d): было %d, стало %d"
+            "scouting must charge exactly the chunk cost (%d): was %d, now %d"
                     % [front_cost, front_treasury_before, city.treasury], state)
-    # Имитируем завершение экспедиции: гексы чанка становятся разведанными,
-    # граница известного мира сдвигается вперёд.
+    # Simulate the completion of the expedition: the chunk's hexes become
+    # explored, the border of the known world moves forward.
     _mark_explored(main_map, front_chunk)
     main_map.is_scouting = false
     main_map.scouting_chunk = []
 
-    # ============ 2. Инвариант по всей карте ДО Картографии ============
-    check(not main_map.is_scouting, "перед проверкой инварианта разведка должна быть завершена", state)
+    # ============ 2. Invariant across the whole map BEFORE Cartography ============
+    check(not main_map.is_scouting, "scouting must be finished before checking the invariant", state)
     var stats_before: Dictionary = _check_frontier_invariant(main_map, state)
     check(int(stats_before["available"]) > 0,
-            "до Картографии должен существовать хотя бы один доступный чанк разведки в Регионе", state)
-    print("FRONTIER STATS (до Картографии): ", stats_before)
+            "before Cartography there must be at least one available scouting chunk in the Region", state)
+    print("FRONTIER STATS (before Cartography): ", stats_before)
 
-    # ============ 3. Отрицательный случай: оторванный чанк в тумане ============
+    # ============ 3. Negative case: a detached chunk in the fog ============
     city.unlocked_technologies.append("cartography")
     check(main_map.is_cartography_researched(),
-            "is_cartography_researched() должен стать true после изучения технологии", state)
+            "is_cartography_researched() must become true after researching the technology", state)
 
     var stats_after: Dictionary = _check_frontier_invariant(main_map, state)
     check(int(stats_after["detached"]) > 0,
-            "в тумане войны должны существовать чанки, оторванные от известного мира", state)
-    print("FRONTIER STATS (с Картографией): ", stats_after)
+            "there must be chunks detached from the known world in the fog of war", state)
+    print("FRONTIER STATS (with Cartography): ", stats_after)
 
     var fog_hex = _find_detached_fog_hex(main_map, em)
-    check(fog_hex != null, "не найден оторванный от известного мира гекс тумана войны", state)
+    check(fog_hex != null, "no fog-of-war hex detached from the known world found", state)
     if fog_hex == null:
         _finish(main_map, state)
         return
 
     var fog_chunk: Array = em.get_chunk_hexes(fog_hex.row, fog_hex.col)
     check(fog_chunk.size() > 0,
-            "чанк в тумане войны должен собираться — подсветка остаётся видимой", state)
+            "the chunk in the fog of war must be gathered — the highlight stays visible", state)
     check(not main_map.is_chunk_adjacent_to_known(fog_chunk),
-            "оторванный чанк не должен примыкать к известной территории", state)
+            "a detached chunk must not border known territory", state)
 
     var fog_action = _find_action(cp._collect_actions(fog_hex.row, fog_hex.col,
             main_map.tile_data[fog_hex.row][fog_hex.col]), "scout_chunk")
-    check(fog_action != null, "кнопка разведки должна быть и у недоступного чанка (с причиной)", state)
+    check(fog_action != null, "an unavailable chunk must also have a scouting button (with a reason)", state)
     if fog_action != null:
         check(not fog_action.get("enabled", true),
-                "кнопка разведки оторванного чанка должна быть неактивна", state)
+                "the scouting button of a detached chunk must be disabled", state)
         check(str(fog_action.get("tooltip", "")) == FRONTIER_TOOLTIP,
-                "тултип оторванного чанка должен объяснять причину (получено: «%s»)"
+                "the tooltip of a detached chunk must explain the reason (got: \"%s\")"
                         % str(fog_action.get("tooltip", "")), state)
 
     var fog_treasury_saved: int = city.treasury
     main_map.start_scouting(fog_chunk)
     check(not main_map.is_scouting,
-            "start_scouting() не должен запускаться для оторванного чанка", state)
+            "start_scouting() must not start for a detached chunk", state)
     check(city.treasury == fog_treasury_saved,
-            "за отказ монеты списываться НЕ должны: было %d, стало %d"
+            "coins must NOT be charged on refusal: was %d, now %d"
                     % [fog_treasury_saved, city.treasury], state)
 
-    # ============ 4. Динамика границы известного мира ============
+    # ============ 4. Dynamics of the border of the known world ============
     var frontier_hex = _first_neighbor(main_map, fog_hex.row, fog_hex.col)
-    check(frontier_hex != null, "у гекса тумана должен быть хотя бы один сосед на карте", state)
+    check(frontier_hex != null, "a fog hex must have at least one neighbour on the map", state)
     if frontier_hex != null:
-        # Помечаем соседний гекс разведанным: граница известного мира доходит
-        # до чанка, и он обязан стать доступным без перезапуска чего-либо.
+        # Mark a neighbouring hex as explored: the border of the known world
+        # reaches the chunk, and it must become available without restarting
+        # anything.
         main_map.tile_data[frontier_hex.row][frontier_hex.col]["is_explored"] = true
         check(main_map.is_chunk_adjacent_to_known(fog_chunk),
-                "после разведки соседнего гекса чанк обязан стать доступным", state)
+                "after exploring a neighbouring hex the chunk must become available", state)
         var fog_action_after = _find_action(cp._collect_actions(fog_hex.row, fog_hex.col,
                 main_map.tile_data[fog_hex.row][fog_hex.col]), "scout_chunk")
-        check(fog_action_after != null, "кнопка разведки должна остаться у доступного чанка", state)
+        check(fog_action_after != null, "the scouting button must remain on an available chunk", state)
         if fog_action_after != null:
             check(fog_action_after.get("enabled", false),
-                    "после появления разведанного соседа кнопка разведки должна стать активной", state)
+                    "after an explored neighbour appears the scouting button must become enabled", state)
 
         var fog_cost: int = em.get_chunk_scout_cost(fog_chunk)
         city.add_treasury(fog_cost)
         var fog_treasury_before: int = city.treasury
         main_map.start_scouting(fog_chunk)
         check(main_map.is_scouting,
-                "после появления разведанного соседа разведка должна запускаться", state)
+                "after an explored neighbour appears scouting must start", state)
         check(city.treasury == fog_treasury_before - fog_cost,
-                "за разведку приграничного чанка должно списаться ровно цена чанка (%d)" % fog_cost, state)
+                "scouting a frontier chunk must charge exactly the chunk cost (%d)" % fog_cost, state)
         main_map.is_scouting = false
         main_map.scouting_chunk = []
 
-    # ============ 5. Страховка: пустой чанк ============
+    # ============ 5. Safety net: an empty chunk ============
     var empty_treasury_saved: int = city.treasury
     main_map.start_scouting([])
-    check(not main_map.is_scouting, "пустой чанк разведку не запускает", state)
-    check(city.treasury == empty_treasury_saved, "пустой чанк монеты не тратит", state)
+    check(not main_map.is_scouting, "an empty chunk does not start scouting", state)
+    check(city.treasury == empty_treasury_saved, "an empty chunk does not spend coins", state)
 
     _finish(main_map, state)
 
-# Проверяет инвариант правила по всей карте: для каждого неисследованного гекса
-# активность кнопки разведки равна примыканию его чанка к известной территории,
-# а недоступный чанк объясняет причину в тултипе. Возвращает счётчики для
-# диагностики (сколько чанков доступно / оторвано / не собирается вовсе).
+# Verifies the rule's invariant across the whole map: for every unexplored hex
+# the scouting button's enabled state equals whether its chunk borders known
+# territory, and an unavailable chunk explains the reason in the tooltip.
+# Returns counters for diagnostics (how many chunks are available / detached /
+# not gathered at all).
 func _check_frontier_invariant(main_map, state: Dictionary) -> Dictionary:
     var cp = main_map.control_panel
     var em = main_map.expansion_manager
@@ -202,16 +205,16 @@ func _check_frontier_invariant(main_map, state: Dictionary) -> Dictionary:
             if action == null:
                 continue
             check(bool(action.get("enabled", false)) == adjacent,
-                    "(%d,%d): активность кнопки разведки должна совпадать с примыканием чанка (примыкает=%s)"
+                    "(%d,%d): the scouting button's enabled state must match whether the chunk borders (borders=%s)"
                             % [row, col, str(adjacent)], state)
             if not adjacent:
                 check(str(action.get("tooltip", "")) == FRONTIER_TOOLTIP,
-                        "(%d,%d): тултип недоступного чанка должен объяснять причину (получено: «%s»)"
+                        "(%d,%d): the tooltip of an unavailable chunk must explain the reason (got: \"%s\")"
                                 % [row, col, str(action.get("tooltip", ""))], state)
     return {"available": available, "detached": detached, "empty_chunks": empty_chunks}
 
-# Первый неисследованный гекс Региона, у которого есть известный сосед
-# (граница известного мира проходит рядом).
+# The first unexplored Region hex that has a known neighbour
+# (the border of the known world passes nearby).
 func _find_region_hex_near_known(main_map):
     for row in range(main_map.map_rows):
         for col in range(main_map.map_cols):
@@ -224,7 +227,7 @@ func _find_region_hex_near_known(main_map):
                 return {"row": row, "col": col}
     return null
 
-# Первый гекс тумана войны, чей чанк не примыкает к известной территории.
+# The first fog-of-war hex whose chunk does not border known territory.
 func _find_detached_fog_hex(main_map, em):
     for row in range(main_map.map_rows):
         for col in range(main_map.map_cols):

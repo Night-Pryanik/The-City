@@ -1,47 +1,48 @@
-# Headless-тест: территория городков НИКОГДА не заходит на стартовую область
-# игрока (Кольцо Влияния + Регион 1-й эпохи).
+# Headless test: town territory NEVER intrudes onto the player's start area
+# (Ring of Influence + 1st era Region).
 #   godot --headless --path . --script res://tests/test_town_start_area.gd
 #
-# Инвариант проверяется с двух сторон:
-#   А. Генерация — ресурсы игрока не являются точками притяжения. Раньше городок
-#      вставал ради ресурсов стартовой области, а его кольцо (радиус 3) заходило
-#      на землю игрока: ресурс в Кольце Влияния помечался in_town_influence,
-#      build_manager блокировал его улучшение, а городок ставил там свою
-#      декоративную постройку.
-#   Б. Кольца — каждый гекс стартовой области вырезается из кольца влияния, у
-#      всех городков без исключения (включая гарантийный городок 2-й эпохи).
-#      Вырезанные гексы не получают флаг in_town_influence, не попадают в пул
-#      продажи и под декоративные улучшения.
+# The invariant is checked from two sides:
+#   A. Generation — the player's resources are not attraction points. Previously a
+#      town was placed for the resources of the start area, and its ring (radius 3)
+#      intruded onto the player's land: a resource in the Ring of Influence was
+#      marked in_town_influence, build_manager blocked its improvement, and the
+#      town placed its decorative construction there.
+#   B. Rings — every hex of the start area is clipped from the influence ring, for
+#      all towns without exception (including the guaranteed 2nd-era town).
+#      Clipped hexes do not get the in_town_influence flag, do not enter the sell
+#      pool or decorative improvements.
 #
-# Проверки (на синтетических картах — детерминированно):
-#   1. Ресурсы, лежащие ТОЛЬКО в стартовой области, не дают гексу базового
-#      приоритета «2+ ресурса в окрестностях»; те же ресурсы, положенные рядом
-#      с гексом, но ВНЕ области, — дают (правило не «выключает» маску целиком).
-#   2. Стратегический ресурс игрока не притягивает городков: маска «strategic»
-#      не выходит за пределы стартовой области.
-#   3. Кольцо городка у самой границы области вырезается; ресурс игрока рядом с
-#      городком не попадает в пул продажи и под декоративные улучшения.
-#   4. Городки, восстановленные из сейва (load_towns), вырезаются так же —
-#      старые партии не должны загружаться с городками на земле игрока.
-#   5. generate_towns() запоминает переданную exclusion-зону как стартовую
-#      область игрока, и ни один городок на ней не стоит.
-#   6. Живая сцена MainMap (новая игра): в стартовой области нет ни гексов
-#      колец, ни городков, ни декоративных улучшений; после смены эпохи в
-#      присвоенной игроку территории не остаётся «мёртвых зон»
+# Checks (on synthetic maps — deterministically):
+#   1. Resources lying ONLY in the start area do not give a hex the base
+#      priority "2+ resources in the vicinity"; the same resources placed next
+#      to the hex but OUTSIDE the area do give it (the rule does not switch the
+#      mask off entirely).
+#   2. The player's strategic resource does not attract towns: the "strategic"
+#      mask does not go beyond the start area.
+#   3. A town ring right at the area border is clipped; the player's resource
+#      next to the town does not enter the sell pool or decorative improvements.
+#   4. Towns restored from a save (load_towns) are clipped the same way —
+#      old games must not load with towns on the player's land.
+#   5. generate_towns() remembers the passed exclusion zone as the player's start
+#      area, and no town stands on it.
+#   6. Live MainMap scene (new game): the start area has neither ring hexes,
+#      nor towns, nor decorative improvements; after advancing the era, in the
+#      territory assigned to the player no "dead zones" remain
 #      (in_influence ∩ in_town_influence = ∅).
 extends SceneTree
 
-# Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
-# молчание. Подробности — в tests/watchdog.gd.
+# Hang watchdog: without it a broken _run() coroutine looks like eternal silence
+# from the outside. See tests/watchdog.gd for details.
 const WATCHDOG = preload("res://tests/watchdog.gd")
 
-# Идентификаторы из data/resources: два разных обычных ресурса для приоритета
-# «2+ разных ресурса» и один стратегический (metals.json, strategic: true).
+# Identifiers from data/resources: two different ordinary resources for the
+# "2+ different resources" priority and one strategic (metals.json, strategic: true).
 const RES_A := "sheep"
 const RES_B := "cows"
 const RES_STRATEGIC := "hematite_deposit"
 
-# Стартовая область игрока на синтетических картах: центральный квадрат 6x6.
+# The player's start area on synthetic maps: the central 6x6 square.
 const AREA_R0 := 9
 const AREA_R1 := 14
 const AREA_C0 := 9
@@ -72,8 +73,8 @@ func _run() -> void:
     if WATCHDOG.wants_case("generate_towns_remembers_player_area"):
         _test_generate_towns_remembers_player_area(state)
 
-    # Живая сцена — последней и отдельно: MainMap создаёт собственный
-    # TownManager, держать рядом второй экземпляр незачем.
+    # Live scene — last and separately: MainMap creates its own TownManager,
+    # there is no need to keep a second instance around.
     get_root().remove_child(_tm)
     _tm.free()
     _tm = null
@@ -91,10 +92,10 @@ func _run() -> void:
 
 
 # -------------------------------------------------------
-# Синтетические карты
+# Synthetic maps
 # -------------------------------------------------------
 
-# Пустая карта: все гексы — равнина без ресурсов, рек, улучшений и городков.
+# Empty map: all hexes are plain with no resources, rivers, improvements or towns.
 func _make_map(rows: int, cols: int) -> Array:
     var tile_data := []
     for r in range(rows):
@@ -121,20 +122,20 @@ func _make_map(rows: int, cols: int) -> Array:
     return tile_data
 
 
-# Кладёт два чередующихся вида ресурсов в стартовую область игрока.
+# Places two alternating resource types in the player's start area.
 func _fill_player_area_with_resources(tile_data: Array) -> void:
     for r in range(AREA_R0, AREA_R1 + 1):
         for c in range(AREA_C0, AREA_C1 + 1):
             tile_data[r][c]["resource"] = RES_A if (r + c) % 2 == 0 else RES_B
 
 
-# Лежит ли гекс в синтетической стартовой области игрока.
+# Whether the hex lies in the synthetic player start area.
 func _in_player_area(row: int, col: int) -> bool:
     return row >= AREA_R0 and row <= AREA_R1 and col >= AREA_C0 and col <= AREA_C1
 
-# Продукция ресурса (sheep -> raw_meat/raw_milk/wool). В пуле продажи городка
-# лежит именно она, а не сам ресурс (см. TownEconomy.collect_base_resources),
-# поэтому проверки утечек смотрят сюда.
+# Resource output (sheep -> raw_meat/raw_milk/wool). It is exactly this that
+# lies in a town's sell pool, not the resource itself (see
+# TownEconomy.collect_base_resources), so the leak checks look here.
 func _produces(resource_id: String) -> Array:
     var ids: Array = []
     var data: Dictionary = _gdata.raw_resources.get(resource_id, {})
@@ -143,15 +144,15 @@ func _produces(resource_id: String) -> Array:
     return ids
 
 
-# То же для произвольных границ — нужна в проверке generate_towns, где
-# стартовая область задаётся вызовом, а не константами карты.
+# Same for arbitrary borders — needed in the generate_towns check, where the
+# start area is set by the call, not by the map constants.
 func _in_area(row: int, col: int,
         r0: int, r1: int, c0: int, c1: int) -> bool:
     return row >= r0 and row <= r1 and col >= c0 and col <= c1
 
 
 # -------------------------------------------------------
-# 1. Ресурсы игрока не считаются точками притяжения
+# 1. The player's resources are not counted as attraction points
 # -------------------------------------------------------
 func _test_player_resources_are_not_attraction(state: Dictionary) -> void:
     var rows := 24
@@ -160,27 +161,27 @@ func _test_player_resources_are_not_attraction(state: Dictionary) -> void:
     _tm.set_player_start_area(AREA_R0, AREA_R1, AREA_C0, AREA_C1)
     _fill_player_area_with_resources(tile_data)
 
-    # Пробный гекс — сразу снаружи стартовой области (строка 9, колонка 15).
-    # Все ресурсы в его окрестностях (радиус 3) лежат ВНУТРИ области игрока:
-    # два разных вида, то есть без нового правила он получил бы базовый
-    # приоритет «2+ разных ресурса в окрестностях».
+    # Probe hex — just outside the start area (row 9, column 15). All resources
+    # in its vicinity (radius 3) lie INSIDE the player's area: two different
+    # types, i.e. without the new rule it would get the base priority
+    # "2+ different resources in the vicinity".
     var probe := Vector2i(AREA_R0, AREA_C1 + 1)
     var mask: PackedByteArray = _tm._build_multi_resource_mask(tile_data, rows, cols)
     check(mask[probe.x * cols + probe.y] == 0,
-        "ресурсы стартовой области игрока не должны давать базовый приоритет городку (гекс %s попал в маску multi_resource)" % str(probe), state)
+        "player start area resources must not give a town base priority (hex %s landed in the multi_resource mask)" % str(probe), state)
 
-    # Контроль: те же два вида, положенные СНАРУЖИ области, в окрестностях
-    # пробного гекса, — приоритет выдают. Значит правило отсекает именно
-    # территорию игрока, а не ломает саму маску.
+    # Control: the same two types placed OUTSIDE the area, in the vicinity of
+    # the probe hex, do give priority. So the rule cuts off exactly the player's
+    # territory and does not break the mask itself.
     tile_data[probe.x][probe.y + 2]["resource"] = RES_A
     tile_data[probe.x + 1][probe.y + 2]["resource"] = RES_B
     mask = _tm._build_multi_resource_mask(tile_data, rows, cols)
     check(mask[probe.x * cols + probe.y] == 1,
-        "ресурсы ВНЕ стартовой области должны по-прежнему притягивать городка (гекс %s не попал в маску multi_resource)" % str(probe), state)
+        "resources OUTSIDE the start area must still attract a town (hex %s did not land in the multi_resource mask)" % str(probe), state)
 
 
 # -------------------------------------------------------
-# 2. Стратегический ресурс игрока не притягивает городков
+# 2. The player's strategic resource does not attract towns
 # -------------------------------------------------------
 func _test_player_strategic_is_not_attraction(state: Dictionary) -> void:
     var rows := 24
@@ -198,32 +199,33 @@ func _test_player_strategic_is_not_attraction(state: Dictionary) -> void:
             if not _in_player_area(r, c):
                 outside.append([r, c])
     check(outside.is_empty(),
-        "стратегический ресурс игрока не должен притягивать городков за пределы стартовой области (нарушителей: %s)" % str(outside), state)
+        "the player's strategic resource must not attract towns beyond the start area (violators: %s)" % str(outside), state)
 
-    # Контроль: стратегический ресурс СНАРУЖИ области работает как раньше.
+    # Control: a strategic resource OUTSIDE the area works as before.
     var probe := Vector2i(AREA_R0, AREA_C1 + 1)
     tile_data[probe.x][probe.y + 1]["resource"] = RES_STRATEGIC
     mask = _tm._build_strategic_mask(tile_data, rows, cols)
     check(mask[probe.x * cols + probe.y] == 1,
-        "стратегический ресурс вне стартовой области должен притягивать городка (гекс %s не попал в маску strategic)" % str(probe), state)
+        "a strategic resource outside the start area must attract a town (hex %s did not land in the strategic mask)" % str(probe), state)
 
 
 # -------------------------------------------------------
-# 3. Кольцо вырезается по стартовой области (включая городок эры-2)
+# 3. The ring is clipped by the start area (including the era-2 town)
 # -------------------------------------------------------
 func _test_ring_is_clipped_by_player_area(state: Dictionary) -> void:
     var rows := 24
     var cols := 24
     var tile_data := _make_map(rows, cols)
     _tm.set_player_start_area(AREA_R0, AREA_R1, AREA_C0, AREA_C1)
-    # Ресурс ИГРОКА в зоне кольца, но внутри стартовой области (гекс (12,14) —
-    # ровно в 3 гексах от городка (12,17)): раньше он попадал и в кольцо, и в
-    # пул продажи, и под декоративное улучшение, становясь недоступным игроку.
+    # The PLAYER's resource in the ring zone but inside the start area (hex
+    # (12,14) — exactly 3 hexes from the town (12,17)): previously it entered
+    # both the ring and the sell pool and the decorative improvement, becoming
+    # unavailable to the player.
     tile_data[12][AREA_C1]["resource"] = RES_A
 
-    # Два городка у самой границы: обычный и «гарантийный» для 2-й эпохи.
-    # Правило обязано быть одинаковым — иначе гарантийный городок снова
-    # окажется залезшим на стартовую территорию игрока.
+    # Two towns right at the border: an ordinary one and a "guaranteed" one for
+    # the 2nd era. The rule must be the same — otherwise the guaranteed town
+    # would again end up intruding onto the player's start territory.
     var town: Dictionary = _tm._make_town_record(0, 12, AREA_C1 + 3, false)
     var era2_town: Dictionary = _tm._make_town_record(1, 18, 12, true)
     _tm.towns.append(town)
@@ -234,51 +236,52 @@ func _test_ring_is_clipped_by_player_area(state: Dictionary) -> void:
     _tm.compute_all_town_influences(tile_data, rows, cols)
 
     check(_tm.towns.size() == 2,
-        "в тесте должно быть 2 городка (обычный и гарантийный эры-2)", state)
+        "the test must have 2 towns (ordinary and era-2 guaranteed)", state)
     for t in _tm.towns:
         var leaked: Array = []
         for h in t.get("influence_hexes", []):
             if _in_player_area(int(h.row), int(h.col)):
                 leaked.append([int(h.row), int(h.col)])
         check(leaked.is_empty(),
-            "кольцо городка (%d,%d) не должно содержать гексов стартовой области игрока (затерено: %s, is_era2_guaranteed=%s)"
+            "town ring (%d,%d) must not contain hexes of the player start area (clipped: %s, is_era2_guaranteed=%s)"
                 % [int(t.row), int(t.col), str(leaked), str(bool(t.get("is_era2_guaranteed", false)))], state)
-        # Кольцо не вырождается в пустоту: центр и ближайшие гексы остаются.
+        # The ring does not degenerate into emptiness: the center and nearest
+        # hexes remain.
         var keeps_center := false
         for h in t.get("influence_hexes", []):
             if int(h.row) == int(t.row) and int(h.col) == int(t.col):
                 keeps_center = true
                 break
         check(keeps_center,
-            "после вырезки кольцо городка (%d,%d) должно сохранить хотя бы свой центр" % [int(t.row), int(t.col)], state)
+            "after clipping, the town ring (%d,%d) must keep at least its center" % [int(t.row), int(t.col)], state)
 
-    # Флаг in_town_influence на гексах игрока не выставлен.
+    # The in_town_influence flag is not set on the player's hexes.
     var flagged: Array = []
     for r in range(AREA_R0, AREA_R1 + 1):
         for c in range(AREA_C0, AREA_C1 + 1):
             if bool(tile_data[r][c].get("in_town_influence", false)):
                 flagged.append([r, c])
     check(flagged.is_empty(),
-        "на стартовой области игрока не должно быть флага in_town_influence (нарушителей: %s)" % str(flagged), state)
+        "the player start area must not have the in_town_influence flag (violators: %s)" % str(flagged), state)
 
-    # Продукция ресурса игрока не попала в пул продажи городка.
-    # Проверяется именно ПРОДУКЦИЯ (wool/raw_meat/raw_milk овцы), а не сам
-    # «sheep»: в пуле продажи лежит урожай и товары, а не животные (см.
-    # TownEconomy.collect_base_resources), поэтому «sheep в пуле» не может
-    # случиться в принципе и проверка была бы вечно зелёной.
+    # The player's resource output did not enter the town's sell pool.
+    # It is exactly the OUTPUT (a sheep's wool/raw_meat/raw_milk) that is
+    # checked, not "sheep" itself: the sell pool holds crops and goods, not
+    # animals (see TownEconomy.collect_base_resources), so "sheep in the pool"
+    # cannot happen in principle and the check would be forever green.
     var player_products := _produces(RES_A)
     check(not player_products.is_empty(),
-        "у ресурса «%s» должна быть продукция, иначе проверка утечки бессмысленна" % RES_A, state)
+        "resource \"%s\" must have output, otherwise the leak check is meaningless" % RES_A, state)
     var sold_player_output: Array = []
     for t in _tm.towns:
         for res_id in t.get("sell_pool", []):
             if player_products.has(str(res_id)):
                 sold_player_output.append([int(t.row), int(t.col), str(res_id)])
     check(sold_player_output.is_empty(),
-        "городок не должен продавать продукцию ресурсов, лежащих в стартовой области игрока (утечки: %s)"
+        "a town must not sell the output of resources lying in the player start area (leaks: %s)"
             % str(sold_player_output), state)
 
-    # Декоративные улучшения не строятся на земле игрока.
+    # Decorative improvements are not built on the player's land.
     _tm._place_decorative_town_improvements(tile_data, rows, cols)
     var built_on_player_area: Array = []
     for r in range(AREA_R0, AREA_R1 + 1):
@@ -286,37 +289,36 @@ func _test_ring_is_clipped_by_player_area(state: Dictionary) -> void:
             if tile_data[r][c].get("improvement", null) != null:
                 built_on_player_area.append([r, c])
     check(built_on_player_area.is_empty(),
-        "городок не должен ставить улучшения на стартовой области игрока (гексы: %s)" % str(built_on_player_area), state)
+        "a town must not place improvements on the player start area (hexes: %s)" % str(built_on_player_area), state)
 
 
 
 
 # -------------------------------------------------------
-# 4. Загруженные из сейва городки вырезаются так же
+# 4. Towns loaded from a save are clipped the same way
 # -------------------------------------------------------
-# Ровно тот путь, который делает main_map при загрузке партии: городки
-# восстанавливаются из записей сейва (load_towns), границы стартовой области
-# игрока приходят из map_state (set_player_start_area), и только после этого
-# кольца пересчитываются. Старая партия не должна загрузиться с городками,
-# залезающими на землю игрока.
+# Exactly the path main_map takes when loading a game: towns are restored from
+# save records (load_towns), the player start area borders come from map_state
+# (set_player_start_area), and only after that the rings are recomputed. An old
+# game must not load with towns intruding onto the player's land.
 func _test_loaded_towns_are_clipped(state: Dictionary) -> void:
     var rows := 24
     var cols := 24
     var tile_data := _make_map(rows, cols)
-    # Формат сейва [[row, col], ...] — кольца в нём нет, оно строится заново.
+    # Save format [[row, col], ...] — it has no ring, it is rebuilt.
     _tm.load_towns([[12, AREA_C1 + 3], [18, 12]])
     _tm.set_player_start_area(AREA_R0, AREA_R1, AREA_C0, AREA_C1)
     _tm.compute_all_town_influences(tile_data, rows, cols)
 
     check(_tm.towns.size() == 2,
-        "из сейва должны восстановиться оба городка, получено %d" % _tm.towns.size(), state)
+        "both towns must be restored from the save, got %d" % _tm.towns.size(), state)
     for t in _tm.towns:
         var leaked: Array = []
         for h in t.get("influence_hexes", []):
             if _in_player_area(int(h.row), int(h.col)):
                 leaked.append([int(h.row), int(h.col)])
         check(leaked.is_empty(),
-            "загруженный городок (%d,%d) не должен залезать кольцом на стартовую область игрока (гексы: %s)"
+            "a loaded town (%d,%d) must not intrude with its ring onto the player start area (hexes: %s)"
                 % [int(t.row), int(t.col), str(leaked)], state)
     var flagged := 0
     for r in range(AREA_R0, AREA_R1 + 1):
@@ -324,18 +326,18 @@ func _test_loaded_towns_are_clipped(state: Dictionary) -> void:
             if bool(tile_data[r][c].get("in_town_influence", false)):
                 flagged += 1
     check(flagged == 0,
-        "после загрузки на стартовой области игрока не должно остаться флага in_town_influence (гексов: %d)" % flagged, state)
+        "after loading, the player start area must not keep the in_town_influence flag (hexes: %d)" % flagged, state)
 
 
 # -------------------------------------------------------
-# 5. generate_towns() запоминает стартовую область
+# 5. generate_towns() remembers the start area
 # -------------------------------------------------------
 func _test_generate_towns_remembers_player_area(state: Dictionary) -> void:
     var rows := 40
     var cols := 40
     var tile_data := _make_map(rows, cols)
-    # Ресурсный ковёр, кроме свободных гексов — как в test_town_priorities:
-    # тогда верхний приоритет доступен везде и городки расставляются.
+    # Resource carpet, except for free hexes — as in test_town_priorities: then
+    # the top priority is available everywhere and towns get placed.
     for r in range(rows):
         for c in range(cols):
             if r % 2 == 0 and c % 2 == 0:
@@ -345,7 +347,7 @@ func _test_generate_towns_remembers_player_area(state: Dictionary) -> void:
     var map_config: Dictionary = _gdata.map_config
     var saved_num_towns = map_config.get("num_towns", 8)
     map_config["num_towns"] = 4
-    # Стартовая область — центральные 13x13 гексов, «эра-2» — вся карта.
+    # The start area is the central 13x13 hexes, "era-2" is the whole map.
     _tm.generate_towns(tile_data, rows, cols, 20, 20,
             14, 26, 14, 26,
             0, rows - 1, 0, cols - 1)
@@ -353,22 +355,22 @@ func _test_generate_towns_remembers_player_area(state: Dictionary) -> void:
 
     check(_tm.player_start_area == {
             "start_row": 14, "end_row": 26, "start_col": 14, "end_col": 26},
-        "generate_towns должен запомнить exclusion-зону как стартовую область игрока, получено: %s" % str(_tm.player_start_area), state)
+        "generate_towns must remember the exclusion zone as the player start area, got: %s" % str(_tm.player_start_area), state)
     check(_tm.towns.size() > 0,
-        "на этой карте городки должны расставиться (иначе проверять нечего)", state)
+        "on this map towns must get placed (otherwise there is nothing to check)", state)
     for t in _tm.towns:
         check(not _in_area(int(t.row), int(t.col), 14, 26, 14, 26),
-            "центр городка не должен стоять в стартовой области игрока (%d,%d)" % [int(t.row), int(t.col)], state)
+            "a town center must not stand in the player start area (%d,%d)" % [int(t.row), int(t.col)], state)
         for h in t.get("influence_hexes", []):
             if _in_area(int(h.row), int(h.col), 14, 26, 14, 26):
                 check(false,
-                    "кольцо городка (%d,%d) заходит на стартовую область игрока в (%d,%d)"
+                    "a town ring (%d,%d) intrudes onto the player start area at (%d,%d)"
                         % [int(t.row), int(t.col), int(h.row), int(h.col)], state)
                 break
 
 
 # -------------------------------------------------------
-# 6. Живая сцена MainMap (новая игра)
+# 6. Live MainMap scene (new game)
 # -------------------------------------------------------
 func _test_live_scene(state: Dictionary) -> void:
     get_root().get_node("SaveManager").new_game()
@@ -379,7 +381,7 @@ func _test_live_scene(state: Dictionary) -> void:
     await process_frame
 
     var tile_data = main_map.tile_data
-    # 1. На стартовой области игрока нет ни колец, ни городков, ни их улучшений.
+    # 1. The player start area has neither rings, nor towns, nor their improvements.
     var intruders: Array = []
     for row in range(main_map.start_region_start_row, main_map.start_region_end_row + 1):
         for col in range(main_map.start_region_start_col, main_map.start_region_end_col + 1):
@@ -391,20 +393,21 @@ func _test_live_scene(state: Dictionary) -> void:
                     or bool(tile.get("decorative", false)):
                 intruders.append([row, col])
     check(intruders.is_empty(),
-        "на живой карте стартовая область игрока свободна от городков и их территорий (нарушителей: %s)" % str(intruders), state)
+        "on the live map the player start area is free of towns and their territories (violators: %s)" % str(intruders), state)
 
-    # 2. Ни одно личное кольцо (в т.ч. гарантийного городка эры-2) не содержит
-    #    гексов стартовой области.
+    # 2. No individual ring (including that of the era-2 guaranteed town)
+    #    contains hexes of the start area.
     var ring_leaks: Array = []
     for t in main_map.towns:
         for h in t.get("influence_hexes", []):
             if _in_main_map_start_area(main_map, int(h.row), int(h.col)):
                 ring_leaks.append([int(t.row), int(t.col), int(h.row), int(h.col)])
     check(ring_leaks.is_empty(),
-        "кольца городков не должны содержать гексов стартовой области игрока (нарушителей: %s)" % str(ring_leaks), state)
+        "town rings must not contain hexes of the player start area (violators: %s)" % str(ring_leaks), state)
 
-    # 3. После смены эпохи присвоенная игроку территория не содержит «мёртвых
-    #    зон»: присвоенный гекс не может одновременно принадлежать городку.
+    # 3. After advancing the era, the territory assigned to the player does not
+    #    contain "dead zones": an assigned hex cannot belong to a town at the
+    #    same time.
     main_map.advance_to_next_era()
     await process_frame
     var dead_zones: Array = []
@@ -417,7 +420,7 @@ func _test_live_scene(state: Dictionary) -> void:
                     and bool(tile.get("in_town_influence", false)):
                 dead_zones.append([row, col])
     check(dead_zones.is_empty(),
-        "после смены эпохи в Кольце Влияния игрока не должно остаться гексов городков (мертвых зон: %s)" % str(dead_zones), state)
+        "after advancing the era the player's Ring of Influence must not keep town hexes (dead zones: %s)" % str(dead_zones), state)
 
     if main_map != null and is_instance_valid(main_map):
         get_root().remove_child(main_map)
@@ -436,5 +439,4 @@ func check(cond: bool, msg: String, state: Dictionary):
         push_error("ASSERT: " + msg)
         print("ASSERT FAILED: " + msg)
         state["failed"] = true
-
 

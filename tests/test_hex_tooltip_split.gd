@@ -1,34 +1,35 @@
-# Headless-тест разделения тултипа гекса на базовый и расширенный:
+# Headless test for splitting the hex tooltip into a basic and an extended one:
 #   godot --headless --path . --script res://tests/test_hex_tooltip_split.gd
 #
-# Правило, которое проверяется: обычный тултип отвечает на вопрос «что на этом
-# гексе» (местность, ресурс, улучшение), а свойства гекса — качество, расход
-# корма, заполненность пастбища, доступ к пресной воде — и всё производство
-# живут в расширенном блоке, который появляется по задержке наведения. Левая
-# колонка панели управления показывает всё сразу и потому свойства сохраняет.
+# The rule under test: the ordinary tooltip answers the question "what is on this
+# hex" (terrain, resource, improvement), while the hex properties — quality, feed
+# consumption, pasture occupancy, fresh water access — and all the production
+# live in the extended block, which appears after a hover delay. The left
+# column of the control panel shows everything at once and therefore keeps the
+# properties.
 #
-# Проверки:
-#   1. БАЗОВЫЙ ТУЛТИП. Есть местность, ресурс и улучшение; ни одного свойства.
-#   2. ЛЕВАЯ КОЛОНКА ПАНЕЛИ. Те же свойства на месте — иначе правка обнулила бы
-#      панель управления.
-#   3. РАСШИРЕННЫЙ БЛОК. Те же свойства есть в нём, и в нём НЕТ удалённого
-#      базового блока «При постройке ... будет давать».
-#   4. ПРОВЕРКА «ПОКАЗЫВАТЬ ЛИ» совпадает с непустотой блока.
-#   5. РЕФРЕШ. Периодическое обновление содержимого (оно идёт по пастбищам) не
-#      стирает уже показанный расширенный блок и не дописывает свойства в базу.
+# Checks:
+#   1. BASIC TOOLTIP. There is a terrain, a resource and an improvement; not a single property.
+#   2. LEFT PANEL COLUMN. The same properties are in place — otherwise the change would have
+#      emptied the control panel.
+#   3. EXTENDED BLOCK. The same properties are in it, and it does NOT contain the deleted
+#      base block "Once built ... will produce".
+#   4. The "whether to show" CHECK matches the non-emptiness of the block.
+#   5. REFRESH. The periodic refresh of the contents (it runs over the pastures) does not
+#      wipe the already shown extended block and does not append the properties to the basic one.
 extends SceneTree
 
-# Сторож зависаний: без него обрыв корутины _run() выглядит снаружи как вечное
-# молчание. Подробности — в tests/watchdog.gd.
+# Hang watchdog: without it a break in the _run() coroutine looks like eternal
+# silence from the outside. Details are in tests/watchdog.gd.
 const WATCHDOG = preload("res://tests/watchdog.gd")
 
-# Признаки строк-свойств в русском каталоге. Проверяем по переводу, а не по
-# английскому msgid: тест проверяет то, что видит игрок.
-const PROPERTY_MARKERS := ["Качество:", "Доступ к пресной воде", "Потребляет корма",
-        "Заполненность", "Время заполнения", "Поголовье"]
-# Заполненность пастбища: какая именно строка выйдет, зависит от наличия
-# рабочего (стало полным / текущий процент / время до полного).
-const FILL_MARKERS := ["Заполненность", "Время заполнения", "Поголовье"]
+# Markers of the property lines in the English source text. The test checks what
+# the player sees.
+const PROPERTY_MARKERS := ["Quality:", "Fresh water access", "Feed consumption",
+        "Fill level", "Fill time", "Herd"]
+# The pasture occupancy: which exact line appears depends on whether a worker is
+# present (full / current percentage / time to full).
+const FILL_MARKERS := ["Fill level", "Fill time", "Herd"]
 
 var _gdata = null
 var _mh = null
@@ -46,14 +47,14 @@ func _run() -> void:
     await process_frame
     await process_frame
 
-    # Автозагрузки (GameData/MapHelpers) в режиме --script недоступны на этапе
-    # компиляции этого файла — берём их через дерево сцены и load().
+    # The autoloads (GameData/MapHelpers) are unavailable at the compile stage of
+    # this file in --script mode — we fetch them through the scene tree and load().
     _gdata = get_root().get_node("GameData")
     _mh = load("res://scripts/map_helpers.gd")
 
     var res_id := _find_pasture_resource_id()
     check(not res_id.is_empty(),
-            "в данных нужен ресурс с кормом и постепенным наполнением (пастбище)",
+            "the data needs a resource with feed and gradual filling (a pasture)",
             state)
     if res_id.is_empty():
         _finish(main_map, state)
@@ -61,25 +62,25 @@ func _run() -> void:
     var res_data: Dictionary = _gdata.raw_resources.get(res_id, {})
     var quality_id := _pick_quality_id()
 
-    # Гекс в Кольце Влияния: свойства показываются только на освоенной земле.
-    # Сначала ищем гекс С водой: иначе строка воды не появилась бы, и проверять
-    # её было бы нечем.
+    # A hex in the Ring of Influence: the properties are shown only on claimed land.
+    # First we look for a hex WITH water: otherwise the water line would not appear, and
+    # there would be nothing to check it with.
     var spot := _find_hex_in_influence(main_map, true)
     var has_water := not spot.is_empty()
     if spot.is_empty():
-        # На этой карте гекса с водой в кольце нет: берём любой и честно
-        # строку воды не проверяем.
+        # On this map there is no hex with water in the ring: we take any hex and honestly
+        # do not check the water line.
         spot = _find_hex_in_influence(main_map)
-    check(not spot.is_empty(), "для проверки нужен гекс в Кольце Влияния", state)
+    check(not spot.is_empty(), "a hex in the Ring of Influence is needed for the check", state)
     if spot.is_empty():
         _finish(main_map, state)
         return
     var row := int(spot.row)
     var col := int(spot.col)
 
-    # Сценарий задаём явно, а не ждём случайную карту: у гекса появляются
-    # улучшение, ресурс и качество — то есть ровно тот случай, где раньше
-    # базовый тултип разрастался до семи строк.
+    # We set up the scenario explicitly instead of waiting for a random map: the hex gets
+    # an improvement, a resource and a quality — that is, exactly the case where the
+    # basic tooltip used to grow to seven lines.
     var tile: Dictionary = main_map.tile_data[row][col]
     tile["improvement"] = str(res_data.get("improved_by", "pasture"))
     tile["resource"] = res_id
@@ -88,88 +89,88 @@ func _run() -> void:
 
     var tooltip = main_map.map_tooltip
 
-    # --- 1. Базовый тултип: только местность, ресурс, улучшение ---
+    # --- 1. Basic tooltip: only terrain, resource, improvement ---
     main_map.update_tooltip_text(row, col)
     var tip_text: String = str(main_map.tooltip_text_label.text)
-    check(tip_text.contains("Местность:") and tip_text.contains("Ресурс:")
-            and tip_text.contains("Улучшение:"),
-            "базовый тултип должен содержать местность, ресурс и улучшение (получено: %s)"
+    check(tip_text.contains("Terrain:") and tip_text.contains("Resource:")
+            and tip_text.contains("Improvement:"),
+            "the basic tooltip must contain terrain, resource and improvement (got: %s)"
                     % tip_text, state)
-    _check_no_properties(tip_text, "базовом тултипе", state)
+    _check_no_properties(tip_text, "basic tooltip", state)
 
-    # --- 2. Левая колонка панели управления: всё сразу ---
+    # --- 2. Left column of the control panel: everything at once ---
     var panel_info: Dictionary = tooltip.build_hex_info(row, col, main_map.tile_data,
             main_map.city_row, main_map.city_col)
     var panel_text: String = str(panel_info.get("text", ""))
-    check(panel_text.contains("Качество:"),
-            "в левой колонке панели качество ресурса должно остаться (получено: %s)"
+    check(panel_text.contains("Quality:"),
+            "the resource quality must remain in the left column of the panel (got: %s)"
                     % panel_text, state)
-    check(panel_text.contains("Потребляет корма"),
-            "в левой колонке панели расход корма должен остаться (получено: %s)"
+    check(panel_text.contains("Feed consumption"),
+            "the feed consumption must remain in the left column of the panel (got: %s)"
                     % panel_text, state)
     check(_has_any(panel_text, FILL_MARKERS),
-            "в левой колонке панели должна быть заполненность пастбища (получено: %s)"
+            "the left column of the panel must have the pasture occupancy (got: %s)"
                     % panel_text, state)
 
-    # --- 3. Расширенный блок: свойства переехали в него ---
+    # --- 3. Extended block: the properties moved into it ---
     var rows: Array = tooltip._collect_extended_block(row, col, main_map.tile_data)
     var ext_text := _rows_text(rows)
-    check(ext_text.contains("Качество:"),
-            "в расширенном блоке должно быть качество ресурса (получено: %s)" % ext_text,
+    check(ext_text.contains("Quality:"),
+            "the extended block must have the resource quality (got: %s)" % ext_text,
             state)
-    check(ext_text.contains("Потребляет корма"),
-            "в расширенном блоке должен быть расход корма (получено: %s)" % ext_text,
+    check(ext_text.contains("Feed consumption"),
+            "the extended block must have the feed consumption (got: %s)" % ext_text,
             state)
     check(_has_any(ext_text, FILL_MARKERS),
-            "в расширенном блоке должна быть заполненность пастбища (получено: %s)"
+            "the extended block must have the pasture occupancy (got: %s)"
                     % ext_text, state)
     if has_water:
-        check(ext_text.contains("Доступ к пресной воде"),
-                "в расширенном блоке должен быть доступ к пресной воде (получено: %s)"
+        check(ext_text.contains("Fresh water access"),
+                "the extended block must have the fresh water access (got: %s)"
                         % ext_text, state)
     else:
-        print("NOTE: на гексе нет доступа к пресной воде — строка воды не проверялась")
-    # Базовый блок производства удалён: перенос, а не копипаст.
-    check(not ext_text.contains("будет давать"),
-            "удалённый базовый блок «будет давать» не должен вернуться (получено: %s)"
+        print("NOTE: the hex has no fresh water access — the water line was not checked")
+    # The base production block is deleted: a move, not a copy-paste.
+    check(not ext_text.contains("will produce"),
+            "the deleted base block \"will produce\" must not return (got: %s)"
                     % ext_text, state)
 
-    # --- 4. Проверка «показывать ли» совпадает с непустотой блока ---
+    # --- 4. The "whether to show" check matches the non-emptiness of the block ---
     check(tooltip.has_extended_tooltip_info(row, col, main_map.tile_data) == (not rows.is_empty()),
-            "has_extended_tooltip_info должен совпадать с непустотой расширенного блока",
+            "has_extended_tooltip_info must match the non-emptiness of the extended block",
             state)
 
-    # --- 5. Рефреш не стирает расширенный блок ---
+    # --- 5. The refresh does not wipe the extended block ---
     main_map.update_extended_tooltip(row, col)
     var shown := _collect_text(tooltip._tooltip_products_container)
-    check(shown.contains("Качество:"),
-            "после показа расширенный блок должен содержать качество (получено: %s)"
+    check(shown.contains("Quality:"),
+            "after being shown, the extended block must contain the quality (got: %s)"
                     % shown, state)
-    # Меняем качество: строка меняется, ключ содержимого меняется, контейнер
-    # перерисовывается — ровно тот путь, который идёт по пастбищам в игре.
-    # Без реального изменения сработал бы ранний выход «ничего не изменилось»,
-    # и проверка прошла бы, ничего не проверив.
+    # We change the quality: the line changes, the content key changes, the container
+    # redraws — exactly the path that runs over the pastures in the game.
+    # Without a real change, the early exit "nothing changed" would trigger,
+    # and the check would pass without checking anything.
     tile["quality"] = _next_quality_id(quality_id)
     main_map.update_tooltip_text(row, col)
     var after_refresh := _collect_text(tooltip._tooltip_products_container)
-    check(after_refresh.contains("Качество:"),
-            "после рефреша расширенный блок обязан остаться (получено: %s)" % after_refresh,
+    check(after_refresh.contains("Quality:"),
+            "after the refresh the extended block must remain (got: %s)" % after_refresh,
             state)
-    check(_count_occurrences(after_refresh, "Качество:") == 1,
-            "строка качества должна быть ровно одна (получено: %s)" % after_refresh, state)
+    check(_count_occurrences(after_refresh, "Quality:") == 1,
+            "there must be exactly one quality line (got: %s)" % after_refresh, state)
     _check_no_properties(str(main_map.tooltip_text_label.text),
-            "базовом тултипе после рефреша", state)
+            "basic tooltip after the refresh", state)
 
-    # Сброс привязки (смена гекса / скрытие тултипа) — блока больше нет.
+    # Resetting the binding (changing the hex / hiding the tooltip) — the block is gone.
     main_map.clear_extended_tooltip()
     main_map.update_tooltip_text(row, col)
-    check(not _collect_text(tooltip._tooltip_products_container).contains("Качество:"),
-            "после сброса расширенного блока строки свойств быть не должно", state)
+    check(not _collect_text(tooltip._tooltip_products_container).contains("Quality:"),
+            "after resetting the extended block there must be no property line", state)
 
     _finish(main_map, state)
 
-# Ресурс, у которого есть И корм, И постепенное наполнение, И улучшение.
-# Берём из данных, а не хардкодим «cows»: проверка должна пережить переименование.
+# A resource that has BOTH feed, AND gradual filling, AND an improvement.
+# We take it from the data instead of hardcoding "cows": the check must survive a rename.
 func _find_pasture_resource_id() -> String:
     for id in _gdata.raw_resources.keys():
         var data: Dictionary = _gdata.raw_resources.get(id, {})
@@ -181,7 +182,7 @@ func _find_pasture_resource_id() -> String:
             continue
         if int(data.get("feed_consumption", 0)) <= 0:
             continue
-        # Скрытый за технологией ресурс не годится: игрок его не видит.
+        # A resource hidden behind a technology is not suitable: the player does not see it.
         if str(data.get("tech_reveal", "")) != "":
             continue
         return str(id)
@@ -200,8 +201,8 @@ func _next_quality_id(current: String) -> String:
             return str(levels[(i + levels.size() - 1) % levels.size()])
     return str(levels[0])
 
-# Первый свободный гекс в Кольце Влияния: сухой, известный, без улучшения,
-# городка и чужой территории.
+# The first free hex in the Ring of Influence: dry, known, without an improvement,
+# a town or someone else's territory.
 func _find_hex_in_influence(main_map, prefer_water: bool = false) -> Dictionary:
     for row in range(main_map.influence_start_row, main_map.influence_end_row + 1):
         for col in range(main_map.influence_start_col, main_map.influence_end_col + 1):
@@ -248,7 +249,7 @@ func _collect_text(node: Node) -> String:
 func _check_no_properties(text: String, where: String, state: Dictionary) -> void:
     for marker in PROPERTY_MARKERS:
         check(not text.contains(marker),
-                "в %s не должно быть строки-свойства «%s» (получено: %s)"
+                "in the %s there must be no property line \"%s\" (got: %s)"
                         % [where, marker, text], state)
 
 func _has_any(text: String, markers: Array) -> bool:
