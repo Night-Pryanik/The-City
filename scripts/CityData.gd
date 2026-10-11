@@ -1593,6 +1593,26 @@ func do_tick():
     _check_population_change()
     emit_signal("city_updated")
 
+# The planned food output per second, summed over the food pool: the same reduction the top bar
+# applies to the planned maps (city_ui._planned_food_per_sec). The records of the improvements
+# carry an interval of 0 ("per tick", the tick being SIMULATION_TICK = 1 sec), while the recipes
+# of the buildings carry their own craft time.
+func _planned_food_production_per_sec() -> int:
+    var planned := get_planned_production_map()
+    var total := 0.0
+    for pid in city_food_pool:
+        if not city_food_pool[pid]:
+            continue
+        for source_id in planned.get(pid, {}):
+            var entry: Dictionary = planned[pid][source_id]
+            var amount = float(entry.get("amount", 0))
+            var interval = float(entry.get("interval", 0))
+            if interval > 0.0:
+                total += amount * SIMULATION_TICK / interval
+            else:
+                total += amount
+    return int(round(total))
+
 func _check_population_change():
     var available_food = 0
     for pid in city_food_pool:
@@ -1606,6 +1626,17 @@ func _check_population_change():
         if city_food_pool[pid]:
             total_prod += production_rates.get(pid, 0)
             total_cons += consumption_rates.get(pid, 0)
+
+    # The production delivered along a road is credited to production_rates on ARRIVAL
+    # (delivery_manager._deliver), and the arrivals of the whole window are cleared by
+    # reset_counters() before this runs. The actual counter therefore shows zero for a
+    # city that feeds itself through a road, and the famine below would kill a citizen on
+    # the very tick the warehouse is emptied — even though the city is producing food.
+    # The planned output is recorded for every working improvement on every tick, so it is
+    # the reliable per-second rate here; the top bar uses the same fallback for the same
+    # reason (city_ui._update_food_label), which keeps the label and the famine in agreement.
+    if total_prod <= 0:
+        total_prod = _planned_food_production_per_sec()
 
     var main_map = get_tree().root.find_child("MainMap", true, false)
 

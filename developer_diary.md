@@ -2295,3 +2295,49 @@ rejected option (2) — "show the data number (10) as the speed" — because 10 
 what actually arrived at storage. The resolution here is the other half of that choice:
 the data is changed so that 10 IS what arrives, and then showing 10 is correct.
 
+
+## The food dynamics of the population: the pool ration counted once, and the famine that killed the newborn (October 11, 2026)
+
+**Context.** With two citizens the top bar read "Food: 0 [+10≈ / -320≈]", and the second
+citizen died on the tick its birth emptied the warehouse. The number is not a deficit: the
+population eats `(population - 1) × food_per_citizen = 10` units per second, and the city
+produces enough. Two separate defects sat behind the report.
+
+**Defect 1 — the display multiplied the ration by the number of the foods.** The plan of the
+consumption writes the population ration under EVERY product of the food pool, because the pool
+is shared: any of the products can satisfy the demand, and each row of the tab shows the full
+amount — the same convention the `@`-groups follow. `city_ui._planned_food_per_sec` then summed
+the plan over the whole pool, so the ration was counted once per food: 32 foods × 10 = 320.
+
+**Defect 2 — the famine could not see the food delivered along a road.** The goods of a
+road-connected improvement are credited to `production_rates` on ARRIVAL
+(`delivery_manager._deliver`), and `advance()` runs per frame BEFORE the tick block. The tick
+then calls `reset_counters()`, which clears the counter — so by the time
+`_check_population_change()` runs, the whole window of arrivals is already gone and the city
+reads as one that produces no food at all. With the warehouse emptied by the birth, the
+population eats the last of it (`total_cons = 10`), the check sees `total_prod = 0` and kills a
+resident. A city fed through a road starves while it is feeding itself.
+
+**What was done.** The ration entry is now flagged in the plan (`is_population`, the flag already
+existed) and `_planned_food_per_sec` counts it ONCE — any product of the pool can satisfy it, so
+summing it per product is meaningless. The famine falls back to the planned output
+(`CityData._planned_food_production_per_sec`, the same reduction over the planned maps) whenever
+the actual production of the tick is zero. The fallback is not a new idea: the top bar already
+does exactly this for its own reason (the cyclic consumption and the "blind windows" between the
+ticks), and reusing it makes the LABEL and the FATE of the citizen agree — the player can no
+longer see a positive dynamics and lose a resident to it.
+
+**Rejected.** (1) Recording the production of a road-connected improvement at the moment it is
+produced instead of at the arrival — `_deliver` deliberately attributes the source at the arrival,
+because that is when the goods reach the city, and the treasury breakdown reads the same records.
+(2) Moving `reset_counters()` to the end of the tick block, so the arrivals of the window survive
+to the check — that empties the planned caches between the ticks, and the tab "Resources" reads
+them outside the tick. (3) Not writing the ration into every food product at all — the per-row
+display would lose the source that explains the expense of the pool.
+
+**Test.** `tests/test_food_population_dynamics.gd`: the planned expense of the pool must equal the
+single ration (not the ration per food), a city whose production was wiped by the reset must not
+lose a resident while the plan carries an output, and a city with no producer at all must still
+lose exactly one. Validation by mutation: without the two fixes the test fails on "got 320" and
+on "must not starve". Reproduced end-to-end on a live map as well: a farm with no road survives, a
+farm behind a road used to drop the population from 2 to 1 on the tick the warehouse was emptied.

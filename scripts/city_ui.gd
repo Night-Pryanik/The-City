@@ -507,13 +507,24 @@ func _show_treasury_tooltip(mouse_pos: Vector2, keep_position: bool = false) -> 
 # The total per-second rate of the entries of the plan (production or consumption)
 # by the products from the food pool. The format of the maps — product_id -> { source -> { amount,
 # interval, ... } }; interval = 0 — "per tick" (tick = SIMULATION_TICK = 1 sec).
+#
+# The demand of the population is a SINGLE city-wide expense, but the plan stores it under
+# EVERY product of the food pool (see resources_tab._update_planned_consumption_map): the pool
+# is shared, so any of its products can satisfy the demand, and each row shows the full amount.
+# Summing it per product would therefore multiply the demand by the number of the products
+# (32 foods × 10 units = 320 for a two-citizen city). It is counted once.
 func _planned_food_per_sec(map: Dictionary, pool: Dictionary) -> int:
     var total := 0.0
+    var population_counted := false
     for pid in pool:
         if not pool[pid]:
             continue
         for source_id in map.get(pid, {}):
             var entry: Dictionary = map[pid][source_id]
+            if bool(entry.get("is_population", false)):
+                if population_counted:
+                    continue
+                population_counted = true
             var amount = float(entry.get("amount", 0))
             var interval = float(entry.get("interval", 0))
             if interval > 0.0:
