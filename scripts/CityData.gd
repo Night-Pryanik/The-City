@@ -1656,11 +1656,18 @@ func _check_population_change():
     elif available_food == 0 and total_cons > total_prod and total_population > 1:
         total_population -= 1
 
-        # We remove one citizen from the work (first the citizen, then the worker).
-        # The deceased does NOT pass into the category of the free, therefore after the removal
-        # from the work we compensate the increase of idle_population.
+        # The free residents are taken first: an unemployed citizen costs the city nothing,
+        # so the working population (the residents of the city buildings and the workers on
+        # the map improvements) is spared while at least one free resident remains. Only when
+        # nobody is free does the famine reach the workplaces — the buildings before the hexes.
         var removed = false
-        if main_map and main_map.has_node("TownsfolkManager"):
+        if idle_population > 0:
+            idle_population -= 1
+            removed = true
+
+        # The deceased does NOT pass into the category of the free, therefore the removal
+        # from the work is compensated by the increase of idle_population.
+        if not removed and main_map and main_map.has_node("TownsfolkManager"):
             var tm = main_map.get_node("TownsfolkManager")
             for i in range(city_built_buildings.size()):
                 if tm.has_townsfolk(i):
@@ -1678,10 +1685,6 @@ func _check_population_change():
                     idle_population -= 1 # the deceased does not become free
                     removed = true
                     break
-
-        # If the citizen was free (did not work), we simply decrease idle_population
-        if not removed and idle_population > 0:
-            idle_population -= 1
 
         # We correct idle_population, so that it does not exceed total_population
         if idle_population > total_population:
