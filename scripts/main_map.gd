@@ -1538,6 +1538,7 @@ func _apply_improvement(row: int, col: int, imp_id: String, target_res_id = null
                 tile["quality"] = GameData.roll_quality()
         else:
             # The breeding on an empty hex: the id of the resource lives in crop_bred.
+            tile.crop_bred = target_res_id
             # - If this is the breeding of a NEW animal/plant (the hex was empty) —
             #   we look on the map for the already domesticated instance of this resource and
             #   inherit its quality ("exceptional produces exceptional").
