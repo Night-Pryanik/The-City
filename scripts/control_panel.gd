@@ -596,7 +596,7 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
                     # possible to process into glass only after the learning of "Glassmaking".
                     var chain = CityData.get_tech_study_chain(imp_unlock_tech)
                     if not chain.is_empty():
-                        actions.append(_make_research_action(chain[0]))
+                        actions.append(_make_research_action(chain[0], imp_name))
                     # The tooltip of the CONSTRUCTION button always points to the IMMEDIATE
                     # requirement for this construction (and not to the current step of the chain
                     # of learning). The construction of an improvement is gated ONLY by the technology
@@ -1147,9 +1147,9 @@ func _append_special_action(actions: Array, sa_id: String, sa: Dictionary, toolt
     })
 
 # Assembles the action "Learn the technology" for the column of the actions of the panel.
-# for_what is the reason of the learning, it is substituted into the tooltip (the name of the resource/
-# improvement for the resources, or the name of the special action for the actions).
-func _make_research_action(tech_id: String, for_what: String = "the resource") -> Dictionary:
+# for_what is the name of what the technology unlocks (an improvement or a special action); it is
+# substituted into the tooltip and must be a display name, not a raw id.
+func _make_research_action(tech_id: String, for_what: String) -> Dictionary:
     var tech_name = _get_tech_name(tech_id)
     var tech_cost = 3
     for t in GameData.technologies:
