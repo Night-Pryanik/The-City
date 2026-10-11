@@ -239,26 +239,21 @@ func handle_process(delta: float):
                     _extended_tooltip_shown = true
                     main_map.update_extended_tooltip(_hovered_hex.row, _hovered_hex.col)
 
-            # We update the tooltip contents without mouse movement — only for
-            # the "growing" resources (pastures with time_to_mature > 0): their fill
-            # and effective output change over time. For the other hexes
-            # the content is static, there is no point in triggering a redraw.
-            if _is_hovered_tile_growing():
+            # We update the tooltip contents without mouse movement — but only on the hexes
+            # whose content changes over time: the "growing" resources (pastures) and the
+            # DELIVERY (the queue and the goods on the road change every tick; without the
+            # refresh the tooltip would freeze at the state it had when it appeared). On the
+            # other hexes the content is static, there is no point in triggering a redraw.
+            # The decision is owned by map_tooltip.has_live_content — one place for both
+            # reasons, so the refresh cannot fall out of sync with what actually changes.
+            if main_map.has_method("has_live_content") \
+                    and main_map.has_live_content(_hovered_hex.row, _hovered_hex.col):
                 _tooltip_content_refresh_timer += delta
                 if _tooltip_content_refresh_timer >= CityData.resource_display_interval:
                     _tooltip_content_refresh_timer = 0.0
                     main_map.update_tooltip_text(_hovered_hex.row, _hovered_hex.col)
     else:
         _hide_tooltip()
-
-func _is_hovered_tile_growing() -> bool:
-    if _hovered_hex == null:
-        return false
-    var tile = main_map.tile_data[_hovered_hex.row][_hovered_hex.col]
-    var eff_res = MapHelpers.get_effective_resource(tile)
-    if eff_res == "" or tile.get("improvement", null) == null:
-        return false
-    return MapHelpers.is_growing_resource(GameData.raw_resources.get(eff_res, {}))
 
 func _handle_esc():
     if town_ui.visible:

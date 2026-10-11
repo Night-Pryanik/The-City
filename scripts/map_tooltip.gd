@@ -212,6 +212,9 @@ func production_rates(row: int, col: int, tile_data: Array) -> Dictionary:
 # The route speed is ONE number for the whole route, but an improvement may output several
 # products, so each product is compared with it separately: the wheat may fit while the fodder
 # does not. That is why the result is keyed by product, and not a single flag.
+#
+# A shortfall does not mean the goods are lost: the surplus waits on the route and arrives
+# later (see delivery_manager.gd). The note marks the road as the bottleneck of the delivery.
 func road_capacity_shortfall(row: int, col: int, tile_data: Array) -> Dictionary:
     var result: Dictionary = {}
     var avg_speed := _route_avg_speed(row, col)
@@ -227,8 +230,9 @@ func road_capacity_shortfall(row: int, col: int, tile_data: Array) -> Dictionary
 
 # Adds the red route note to a product row when the route cannot carry this product in full.
 # The product's own rate stays in the row; the note names the route's throughput — the number
-# that is actually delivered. The word "route" is not spelled out: the row carries the road
-# icon instead (see ROAD_ICON_NAME), which keeps the note short.
+# that actually reaches the city, with the surplus queued behind it. The word "route" is not
+# spelled out: the row carries the road icon instead (see ROAD_ICON_NAME), which keeps the
+# note short.
 func _append_route_shortfall(item: Dictionary, prod_id: String, shortfall: Dictionary) -> void:
     if not shortfall.has(prod_id):
         return
@@ -243,6 +247,43 @@ func _append_route_shortfall(item: Dictionary, prod_id: String, shortfall: Dicti
 # rest with one decimal (13.3) — the same rule as the amount of a product.
 func _format_speed(value: float) -> String:
     return str(int(value)) if value == floor(value) else "%.1f" % value
+
+
+# --- The delivery: what is waiting and what is on the road ---
+
+# The delivery rows for the hex: the units waiting to be shipped and the units already
+# on the road, with the time until the current cargo arrives. They are shown only when
+# the route actually holds cargo: an idle route is already described by the "Route to
+# the city" row, and a second empty block would only add noise.
+#
+# The rows are plain label items, so the same list is used by the extended tooltip and
+# by the left column of the panel (see control_panel._append_route_info) and the two
+# cannot drift apart.
+func delivery_lines(row: int, col: int) -> Array:
+    var lines: Array = []
+    var main_map = _map_renderer.main_map if _map_renderer != null else null
+    if main_map == null:
+        return lines
+    var dm = main_map.delivery_manager
+    if dm == null:
+        return lines
+    var status: Dictionary = dm.get_route_status(row, col)
+    var pending := int(status.get("pending", 0))
+    var in_transit := int(status.get("in_transit", 0))
+    if pending <= 0 and in_transit <= 0:
+        return lines
+    lines.append({"type": "label", "text": tr("Delivery:"), "color": Color(0.8, 0.8, 0.8)})
+    if pending > 0:
+        # The queue is exactly what the route cannot carry fast enough: it is the
+        # visible sign of the road being the bottleneck, hence the warm colour.
+        lines.append({"type": "label", "text": tr("  Waiting to ship: %d units") % pending,
+                "color": Color(0.95, 0.75, 0.35)})
+    if in_transit > 0:
+        lines.append({"type": "label",
+                "text": tr("  In transit: %d units (arriving within %s sec)")
+                        % [in_transit, _format_speed(float(status.get("eta", 0.0)))],
+                "color": Color(0.7, 0.9, 0.7)})
+    return lines
 
 
 # --- The common rendering of the list of products ---
@@ -401,6 +442,52 @@ func has_extended_tooltip_info(row: int, col: int, tile_data: Array) -> bool:
     return not _collect_extended_block(row, col, tile_data).is_empty()
 
 
+# Answers whether the content of the tooltip on this hex changes over time and therefore
+# must be rebuilt while the mouse stays on the hex (the periodic refresh in InputHandler
+# without mouse movement). Two things change on their own: the "growing" resources (a
+# pasture fills up, its effective output grows) and the DELIVERY (the queue, the units on
+# the road and the time of arrival change every tick). On a static hex the periodic redraw
+# would only rebuild the container in vain — it is skipped.
+#
+# It is the SINGLE source of the decision — the same way has_extended_tooltip_info owns
+# "whether to show the block". The list of reasons and the block itself are written
+# separately and would sooner or later diverge; here the refresh cannot fall out of sync
+# with what actually changes on the screen.
+#
+# The function is PURE: the caller (InputHandler) needs it every frame, so it must not
+# touch the labels.
+func has_live_content(row: int, col: int, tile_data: Array) -> bool:
+    if _hex_has_delivery_cargo(row, col):
+        return true
+    return _hex_is_growing(row, col, tile_data)
+
+
+# The route of the hex holds cargo: something is waiting to be shipped or is already on the
+# road. Both numbers, and the time of arrival, change while the cargo moves — without the
+# periodic refresh the tooltip would freeze at the state it had when it appeared.
+func _hex_has_delivery_cargo(row: int, col: int) -> bool:
+    var main_map = _map_renderer.main_map if _map_renderer != null else null
+    if main_map == null:
+        return false
+    var dm = main_map.delivery_manager
+    return dm != null and dm.has_cargo(row, col)
+
+
+# A "growing" resource (a pasture with time_to_mature > 0): its occupancy and effective
+# output change over time. Moved here from InputHandler, so that both reasons for a periodic
+# refresh live in one place.
+func _hex_is_growing(row: int, col: int, tile_data: Array) -> bool:
+    if row < 0 or col < 0 or row >= tile_data.size() or col >= tile_data[0].size():
+        return false
+    var tile = tile_data[row][col]
+    if tile == null or tile.get("improvement", null) == null:
+        return false
+    var eff_res = MapHelpers.get_effective_resource(tile)
+    if eff_res == "":
+        return false
+    return MapHelpers.is_growing_resource(GameData.raw_resources.get(eff_res, {}))
+
+
 func update_extended_tooltip(row: int, col: int, tile_data: Array, city_row: int, city_col: int):
     # We remember the hex: from this moment the repeated call of update_tooltip_text
     # (the refresh of the occupancy of the pasture) will redraw EXACTLY the extended block.
@@ -432,6 +519,12 @@ func _collect_extended_block(row: int, col: int, tile_data: Array) -> Array:
     if not road_line.is_empty():
         extra_products.append({"type": "label", "text": tr("Road: %s") % road_line,
                 "color": Color(0.7, 0.9, 0.7)})
+
+    # The delivery rows sit right after the road level: both describe the connection of
+    # the hex with the city, and the queue is the first thing a player looks for when
+    # the goods do not arrive. They are added before the early exits below, so a hex
+    # with cargo shows its queue even when it produces nothing to list.
+    extra_products.append_array(delivery_lines(row, col))
 
     # The properties of the hex: the quality of the resource, the expense of the feed, the occupancy of the pasture,
     # the access to fresh water. They were moved here from the basic tooltip, where only

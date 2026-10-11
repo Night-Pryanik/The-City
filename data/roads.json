@@ -16,7 +16,9 @@
   //                road can carry. This is NOT the movement speed of units
   //                (there are no units in the game), but the throughput of the
   //                segment: a farm produces 15 units/sec, but along a path with
-  //                max_speed = 10 no more than 10 units/sec reach the city.
+  //                max_speed = 10 the city receives 10 units/sec, and the surplus
+  //                waits on the route and is delivered later (see
+  //                scripts/delivery_manager.gd). Nothing is lost.
   //
   // Entry fields:
   //   id          — string identifier (snake_case), as for all entities;

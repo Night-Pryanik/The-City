@@ -81,7 +81,13 @@ msgstr ""
 msgid "\nResource: unknown (send scouts)"
 msgstr ""
 
+msgid "  In transit: %d units (arriving within %s sec)"
+msgstr ""
+
 msgid "  Subgroup: "
+msgstr ""
+
+msgid "  Waiting to ship: %d units"
 msgstr ""
 
 msgid "  ◦ %s (%s / sec):"
@@ -754,6 +760,9 @@ msgid "Debug menu"
 msgstr ""
 
 msgid "Debug: whole map revealed and inside the Influence Ring (%d×%d)"
+msgstr ""
+
+msgid "Delivery:"
 msgstr ""
 
 msgid "Disallowed characters in an identifier"

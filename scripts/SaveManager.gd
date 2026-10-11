@@ -65,6 +65,10 @@ func save_game():
         "building_construction": CityData.building_construction,
         "rivers": main_map.river_manager.serialize_rivers(),
         "towns": main_map.town_manager.serialize_towns(),
+        # The cargo on the road and in the shipping queues (see delivery_manager.gd).
+        # The flow and the delay are not saved: they belong to the road and are
+        # recomputed from the restored network, so a save never freezes a stale route.
+        "delivery": main_map.delivery_manager.serialize() if main_map.delivery_manager else {},
         "map_state": main_map.get_map_state(),
         "city_name": CityData.city_name
     }

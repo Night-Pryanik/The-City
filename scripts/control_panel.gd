@@ -341,6 +341,15 @@ func _append_route_info(row: int, col: int) -> void:
     route_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     route_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7))
     _products_container.add_child(route_label)
+    # The delivery queue: what is waiting to be shipped and what is already on the road.
+    # It comes from the same source as the tooltip block (see map_tooltip.delivery_lines),
+    # so the panel and the hovered tooltip cannot disagree.
+    for item in map_tooltip.delivery_lines(row, col):
+        var delivery_label := Label.new()
+        delivery_label.text = str(item.get("text", ""))
+        delivery_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        delivery_label.add_theme_color_override("font_color", item.get("color", Color(0.8, 0.8, 0.8)))
+        _products_container.add_child(delivery_label)
 
 # --- The building of the action buttons ---
 func _build_actions(row: int, col: int, tile: Dictionary):

@@ -102,6 +102,27 @@
       "expansion_cost_per_hex": 5
     },
 
+    // --- LOGISTICS: how the road carries the goods to the city ---
+    //
+    // Every route (from an improvement, or from a town once its purchases exist)
+    // has TWO independent characteristics, and they come from different places:
+    //   · the FLOW RATE (units/sec) — the throughput of the route. It is the average
+    //     max_speed of the segments (data/roads.json), computed by
+    //     road_manager.find_route_to_city; it is NOT stored here;
+    //   · the TRANSIT DELAY (sec) — how long a shipped load travels before it starts
+    //     arriving. It is the length of the route in hexes × transit_time_per_hex,
+    //     and this coefficient is the single knob for it.
+    // The two are independent: a longer route is slower, but a better road is not
+    // automatically shorter.
+    "logistics": {
+      // transit_time_per_hex — the seconds a load spends on the road per one hex of
+      //                        the route. The transit delay of a route =
+      //                        (the number of its segments, see route.length) × this
+      //                        value. 0.2 gives 2 seconds for a 10-hex route.
+      //                        Read by DeliveryManager.get_transit_time_per_hex().
+      "transit_time_per_hex": 0.2
+    },
+
     // --- TOWNS: the treasury, the warehouse and the daily trade of a town ---
     //
     // A town is a small settlement on the map, not the player's city. It lives on

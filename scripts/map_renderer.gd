@@ -76,6 +76,11 @@ var _scroll_since_cache := false
 # scroll of many frames must give far fewer rebuilds than frames - the test relies on it.
 var _river_frame_rebuilds: int = 0
 
+# Counts the actual repaints of the map. The map is redrawn on demand, so a state change
+# that is not followed by queue_redraw() stays on the screen until the next mouse move;
+# the test of the road-capacity warning relies on this counter.
+var draw_calls: int = 0
+
 # --- The render cache of the influence rings of the towns (PHASE 1.7 / 1.7.1) ---
 # The rings of the towns are static between the spawn/load/change of the epoch, but earlier
 # they were recalculated AND drawn on every frame: hundreds of semi-transparent
@@ -243,6 +248,7 @@ func _cache_icon(icon_name: String):
         icon_textures[icon_name] = tex
 
 func _draw():
+    draw_calls += 1
     # We compute the visible range of the hexes (the viewport culling): we draw only those
     # hexes which intersect the rectangle of the screen.
     var visible = _get_visible_hex_range()
@@ -1001,9 +1007,10 @@ func _draw_hex_overlays(row: int, col: int):
                     closed_points.append(drop_points[0])
                     draw_polyline(closed_points, Color(0.5, 0.7, 0.95, 0.9), 1.5)
 
-        # The road to the city cannot carry everything the improvement produces: the excess is
-        # lost. The warning sits next to the droplet (or where it would be), so the player reads
-        # the two marks together. The flag is set by main_map during the production tick.
+        # The road to the city cannot carry everything the improvement produces, so the
+        # surplus queues on the route and arrives later. The warning sits next to the
+        # droplet (or where it would be), so the player reads the two marks together.
+        # The flag is set by main_map during the production tick.
         if bool(tile.get("road_capacity_short", false)):
             _draw_road_capacity_warning(icon_pos, imp_icon_size)
 
@@ -1178,8 +1185,8 @@ func _draw_tech_reveal_warning(center: Vector2):
             18.0)
 
 # A small "!" triangle over an improvement whose road cannot carry everything it produces:
-# the excess is lost on the way to the city. It is placed to the right of the droplet (or of
-# where the droplet would be), so the two marks are read together.
+# the surplus queues on the route and arrives later. It is placed to the right of the
+# droplet (or of where the droplet would be), so the two marks are read together.
 func _draw_road_capacity_warning(icon_pos: Vector2, imp_icon_size: float) -> void:
     var drop_offset := Vector2(imp_icon_size * 0.5 + 6, 0)
     if imp_icon_size > IMPROVEMENT_ICON_SIZE:

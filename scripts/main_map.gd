@@ -63,6 +63,11 @@ var debug_whole_map_revealed: bool = false
 
 const SCOUTING_TIME_PER_HEX: float = 3.0
 
+# The logistics of the goods on their way to the city (see delivery_manager.gd). It is
+# created in code rather than placed in the scene: it has no visual part, and a scene
+# node would only have to be kept in sync with the script for no gain.
+const DELIVERY_MANAGER_SCRIPT := preload("res://scripts/delivery_manager.gd")
+
 # The technology that opens the scouting beyond the Region (the fog of war and
 # the territory of the towns). Before it is learned the scouts can be sent only
 # into the unexplored part of the Region, and the hexes outside the Region are inaccessible for
@@ -205,6 +210,9 @@ const MAP_TOOLTIP_LEAVE_GRACE: float = 0.35
 @onready var debug_manager = $DebugManager
 @onready var control_panel = $ControlPanel
 var map_tooltip: MapTooltip
+# The logistics of the goods on the way to the city (see delivery_manager.gd). Created
+# in _ready, before any production can be queued.
+var delivery_manager: Node = null
 
 var tech_popup: Control
 var research_hbox: HBoxContainer
@@ -233,6 +241,14 @@ func _ready():
         return
 
     _load_map_config()
+
+    # The logistics is created before the world is built: the load path restores its
+    # cargo right after the roads and the towns are in place, and the production tick
+    # needs it on the very first tick.
+    delivery_manager = DELIVERY_MANAGER_SCRIPT.new()
+    delivery_manager.name = "DeliveryManager"
+    add_child(delivery_manager)
+    delivery_manager.initialize(self)
 
     if SaveManager.is_loaded:
         GameData.load_all_data()
@@ -402,6 +418,11 @@ func _ready():
         town_influence_hexes = []
         for h in town_manager.town_influence_hexes:
             town_influence_hexes.append({"row": h.row, "col": h.col})
+
+        # The cargo that was on the road and in the queues at the moment of the save.
+        # It is restored after the roads and the towns: a route is recomputed from the
+        # road network, and the towns take part in the route of a town source.
+        delivery_manager.deserialize(SaveManager.saved_data.get("delivery", {}))
 
         SaveManager.is_loaded = false
         SaveManager.saved_data.clear()
@@ -677,6 +698,15 @@ func _process(delta):
         if town_ui.visible and town_ui.has_town:
             town_ui.refresh_storage()
 
+    # The arrivals of the logistics advance on every frame, not on the simulation tick:
+    # they are a game-time countdown, so the transit delay must not be rounded to whole
+    # seconds. They go BEFORE the tick below, so that the goods shipped by the tick are
+    # not advanced on the very frame they leave (the tick ships AFTER this call). The
+    # shipping itself runs once per tick, inside the block below. When the game is
+    # paused, _process is not called at all and the cargo simply waits.
+    if delivery_manager != null:
+        delivery_manager.advance(delta)
+
     production_timer += delta
     if production_timer >= CityData.SIMULATION_TICK:
         production_timer -= CityData.SIMULATION_TICK
@@ -685,6 +715,11 @@ func _process(delta):
         _growing_pastures = {}
         _has_growing_pastures = false
         CityData.reset_counters()
+        # The warning triangle over an improvement is drawn from tile.road_capacity_short.
+        # The map redraws on demand (see InputHandler), so a flag that flips here must ask
+        # for a redraw itself: otherwise an upgraded road would leave the triangle on the
+        # screen until the next mouse move.
+        var capacity_flag_changed := false
         for row in range(region_start_row, region_end_row + 1):
             for col in range(region_start_col, region_end_col + 1):
                 var tile = tile_data[row][col]
@@ -693,14 +728,21 @@ func _process(delta):
                 if bool(tile.get("decorative", false)) or not worker_manager.has_worker(row, col):
                     # A decorative or a paused improvement transports nothing: there is no
                     # road-capacity problem to warn about.
-                    tile["road_capacity_short"] = false
+                    if bool(tile.get("road_capacity_short", false)):
+                        tile["road_capacity_short"] = false
+                        capacity_flag_changed = true
                     continue
-                # The road to the city caps the throughput (see the clamp in the production
-                # below). The warning triangle over the improvement is driven by the SAME check
-                # as the red "(route X units/sec)" note in the tooltip and the panel, so the
-                # badge and the note cannot disagree.
-                tile["road_capacity_short"] = not map_tooltip.road_capacity_shortfall(
+                # The road to the city limits the throughput: the surplus of a fast
+                # improvement queues on the route instead of being destroyed (see the
+                # delivery in _deliver_production). The warning triangle over the
+                # improvement is driven by the SAME check as the red "(route X
+                # units/sec)" note in the tooltip and the panel, so the badge and the
+                # note cannot disagree.
+                var capacity_short := not map_tooltip.road_capacity_shortfall(
                         row, col, tile_data).is_empty()
+                if bool(tile.get("road_capacity_short", false)) != capacity_short:
+                    capacity_flag_changed = true
+                tile["road_capacity_short"] = capacity_short
                 var route_avg_speed := _route_avg_speed(row, col)
                 # The production goes both from the natural resource (tile.resource), and from
                 # the bred one (tile.crop_bred, see the breeding scheme). If both are
@@ -733,16 +775,12 @@ func _process(delta):
                             var lj_per_sec: float = 0.0
                             if lj_interval > 0.0:
                                 lj_per_sec = (wood_yield * lj_imp_mult * lj_consumption_mult) / lj_interval
-                            # The road to the city caps the throughput: only what the route's
-                            # average speed allows arrives, the excess is lost.
-                            if route_avg_speed >= 0.0 and lj_per_sec > route_avg_speed:
-                                lj_per_sec = route_avg_speed
                             var lj_remainder: float = float(tile.get("production_fractional_remainder", 0.0)) + lj_per_sec * CityData.SIMULATION_TICK
                             var lj_floor: int = int(floor(lj_remainder))
                             tile["production_fractional_remainder"] = lj_remainder - float(lj_floor)
                             if lj_floor > 0:
-                                CityData.add_to_storage("wood", lj_floor)
-                                CityData.record_production_source("wood", lj_source, lj_floor)
+                                _deliver_production(row, col, "wood", lj_floor, "common",
+                                        lj_source, route_avg_speed)
                             # The planned release of the cycle: it is visible on every tick, while
                             # the worker is in place (it closes the gaps between the cycles).
                             CityData.record_planned_improvement_production("wood", lj_source,
@@ -816,9 +854,9 @@ func _process(delta):
                 if feed_needed > 0:
                     var feed_consumed: int = _consume_feed_continuous(tile, feed_per_sec, improvement_source)
                     var actual_mult: float = production_multiplier if feed_consumed >= feed_per_sec * CityData.SIMULATION_TICK else 0.25
-                    _emit_continuous_production(tile, produces, actual_mult, imp_interval, tile_quality, improvement_source, route_avg_speed)
+                    _emit_continuous_production(tile, produces, actual_mult, imp_interval, tile_quality, improvement_source, row, col, route_avg_speed)
                 else:
-                    _emit_continuous_production(tile, produces, production_multiplier, imp_interval, tile_quality, improvement_source, route_avg_speed)
+                    _emit_continuous_production(tile, produces, production_multiplier, imp_interval, tile_quality, improvement_source, row, col, route_avg_speed)
 
                 # The planned release/consumption of the cycle: they are visible on EVERY tick, while
                 # the worker is in place (they close the gaps between the cycles on the tab
@@ -835,6 +873,14 @@ func _process(delta):
                 if feed_needed > 0:
                     CityData.record_planned_improvement_consumption("feed", improvement_source, feed_needed, imp_interval)
 
+        if delivery_manager != null:
+            # The goods produced in this tick are shipped BEFORE the interface reads the
+            # queue: do_tick emits city_updated below, and the panel and the tooltip
+            # rebuild the delivery rows from it. Shipping afterwards would show the fresh
+            # production as "waiting to ship" even on a road that carries everything.
+            delivery_manager.ship()
+        if capacity_flag_changed:
+            map_renderer.queue_redraw()
         CityData.do_tick()
         # The consumption of the city of the pseudo-profession "all" (all the citizens of the city,
         # including the employed ones): it writes off the resources per head by total_population
@@ -924,7 +970,7 @@ func _consume_feed_continuous(tile: Dictionary, feed_per_sec: float, improvement
     CityData.record_consumption_source("feed", improvement_source, take)
     return take
 
-# The continuous production of an improvement: on every tick it adds to the storage
+# The continuous production of an improvement: on every tick it produces
 # (amount_per_cycle × production_multiplier) / production_interval units
 # of the product. The fractional remainder accumulates in tile.production_fractional_remainder,
 # so that the average rate does not drift.
@@ -933,12 +979,12 @@ func _consume_feed_continuous(tile: Dictionary, feed_per_sec: float, improvement
 # or > 1.0 (the bonus of the profession). The zero values are skipped, so as not to
 # breed the zero records in the sources.
 #
-# route_avg_speed is the average speed of the route to the city, or -1.0 when there is no
-# route. It is the throughput of the road in units/sec: each product is capped by it, and the
-# excess above the cap is LOST (the road simply cannot carry more). The products of one
-# improvement are capped independently, because the improvement may output different products
-# at different rates.
-func _emit_continuous_production(tile: Dictionary, produces: Dictionary, production_multiplier: float, imp_interval: float, tile_quality: String, improvement_source: String, route_avg_speed: float = -1.0) -> void:
+# The produced units are handed to _deliver_production: with a road they go through the
+# route (queue → road → storage, see delivery_manager.gd), and without one they reach
+# the storage at once. The road therefore limits the DELIVERY, not the production: a
+# fast improvement keeps producing, and the surplus waits in the queue instead of being
+# destroyed by a slow road.
+func _emit_continuous_production(tile: Dictionary, produces: Dictionary, production_multiplier: float, imp_interval: float, tile_quality: String, improvement_source: String, row: int, col: int, route_avg_speed: float = -1.0) -> void:
     if produces.is_empty() or imp_interval <= 0.0:
         return
     var tick := float(CityData.SIMULATION_TICK)
@@ -947,14 +993,32 @@ func _emit_continuous_production(tile: Dictionary, produces: Dictionary, product
             continue
         var per_cycle_amt := float(RangeUtils.get_min_value(produces[pid], 1))
         var per_sec_amt: float = per_cycle_amt * production_multiplier / imp_interval
-        if route_avg_speed >= 0.0 and per_sec_amt > route_avg_speed:
-            per_sec_amt = route_avg_speed
         var remainder: float = float(tile.get("production_fractional_remainder", 0.0)) + per_sec_amt * tick
         var floor_amount: int = int(floor(remainder))
         tile["production_fractional_remainder"] = remainder - float(floor_amount)
         if floor_amount > 0:
-            CityData.add_to_storage(pid, floor_amount, tile_quality)
-            CityData.record_production_source(pid, improvement_source, floor_amount)
+            _deliver_production(row, col, pid, floor_amount, tile_quality,
+                    improvement_source, route_avg_speed)
+
+# Hands a unit of production to the city: through the route when the hex has one, and
+# straight into the storage when it does not.
+#
+# A road that does not exist cannot limit anything: the water improvements behind a
+# harbour (no_road) have no land route at all, and they must keep producing. That is
+# why the absence of a route (route_avg_speed < 0) means "deliver at once", not
+# "deliver nothing".
+#
+# The amounts are whole units: the caller keeps the sub-unit remainder of the
+# production, so the delivery never has to deal with fractions.
+func _deliver_production(row: int, col: int, product: String, amount: int,
+        quality: String, source: String, route_avg_speed: float) -> void:
+    if amount <= 0:
+        return
+    if route_avg_speed >= 0.0 and delivery_manager != null \
+            and delivery_manager.create_cargo(row, col, product, quality, amount, source):
+        return
+    CityData.add_to_storage(product, amount, quality)
+    CityData.record_production_source(product, source, amount)
 
 func _initialize_map():
     GameData.load_all_data()
@@ -1229,6 +1293,12 @@ func _get_buildable_improvement(row: int, col: int) -> String:
 # MapTooltip.has_extended_tooltip_info.
 func has_extended_tooltip_info(row: int, col: int) -> bool:
     return map_tooltip.has_extended_tooltip_info(row, col, tile_data)
+
+# Whether the tooltip on this hex must be refreshed while the mouse stays on it: the content
+# changes over time (a growing resource or the delivery — see MapTooltip.has_live_content).
+# The decision lives in MapTooltip, so the refresh and the block cannot drift apart.
+func has_live_content(row: int, col: int) -> bool:
+    return map_tooltip.has_live_content(row, col, tile_data)
 
 func update_extended_tooltip(row: int, col: int):
     map_tooltip.update_extended_tooltip(row, col, tile_data, city_row, city_col)

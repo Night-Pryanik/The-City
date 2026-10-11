@@ -81,8 +81,14 @@ msgstr "\nРесурс: %s"
 msgid "\nResource: unknown (send scouts)"
 msgstr "\nРесурс: неизвестно (проведите разведку)"
 
+msgid "  In transit: %d units (arriving within %s sec)"
+msgstr "  В пути: %d ед. (прибудет в течение %s сек)"
+
 msgid "  Subgroup: "
 msgstr "  Подгруппа: "
+
+msgid "  Waiting to ship: %d units"
+msgstr "  Ожидает отправки: %d ед."
 
 msgid "  ◦ %s (%s / sec):"
 msgstr "  ◦ %s (%s / сек):"
@@ -755,6 +761,9 @@ msgstr "Дебаг-меню"
 
 msgid "Debug: whole map revealed and inside the Influence Ring (%d×%d)"
 msgstr "Дебаг: вся карта открыта и в Кольце Влияния (%d×%d)"
+
+msgid "Delivery:"
+msgstr "Доставка:"
 
 msgid "Disallowed characters in an identifier"
 msgstr "Недопустимые символы в идентификаторе"

@@ -1,21 +1,21 @@
 # Headless-тест пропускной способности дороги: маршрут до города ограничивает,
-# сколько ресурсов улучшения доезжает до склада (road_manager.find_route_to_city,
-# main_map._emit_continuous_production, map_tooltip, map_renderer).
+# как быстро ресурсы улучшения доезжают до склада (road_manager.find_route_to_city,
+# main_map._emit_continuous_production, delivery_manager, map_tooltip, map_renderer).
 #   godot --headless --path . --script res://tests/test_road_capacity.gd
 #
 # Проверки:
-#   1. КЛАМП. _emit_continuous_production не пускает на склад больше средней
-#      скорости маршрута; излишек теряется. Производительность, равная скорости
-#      маршрута, проходит целиком; без маршрута (avg_speed < 0) ограничения нет.
-#   2. ПО РЕСУРСАМ. У одного улучшения разные продукты ограничиваются
-#      НЕЗАВИСИМО: при скорости маршрута 10 ед./сек продукт 10 ед./сек проходит,
-#      а продукт 20 ед./сек — нет. Это тот случай, ради которого пометка
+#   1. ПО РЕСУРСАМ. У одного улучшения разные продукты сравниваются со скоростью
+#      маршрута НЕЗАВИСИМО: при скорости маршрута 10 ед./сек продукт 10 ед./сек
+#      проходит, а продукт 20 ед./сек — нет. Это тот случай, ради которого пометка
 #      выводится отдельно для каждого продукта.
-#   3. ФЛАГ И ТУЛТИП. У улучшения с перегрузкой маршрута tile.road_capacity_short
+#   2. ФЛАГ И ТУЛТИП. У улучшения с перегрузкой маршрута tile.road_capacity_short
 #      выставлен, а расширенный тултип и левая колонка панели показывают красную
-#      пометку «(маршрут X ед./сек)» только у перегруженного продукта.
-#   4. УЛУЧШЕНИЕ ДОРОГИ СНИМАЕТ ПЕРЕГРУЗКУ. После подъёма всего маршрута до
+#      пометку только у перегруженного продукта.
+#   3. УЛУЧШЕНИЕ ДОРОГИ СНИМАЕТ ПЕРЕГРУЗКУ. После подъёма всего маршрута до
 #      уровня 2 (30 ед./сек) пометка исчезает и флаг сбрасывается.
+#   4. ТОВАР НЕ ТЕРЯЕТСЯ. Производство с маршрутом больше не появляется на складе
+#      мгновенно и не срезается: оно встаёт в очередь доставки целиком (полная
+#      механика очереди — в tests/test_delivery_logistics.gd).
 extends SceneTree
 
 const WATCHDOG = preload("res://tests/watchdog.gd")
@@ -52,46 +52,7 @@ func _run() -> void:
 
 
 # -------------------------------------------------------
-# 1. Кламп: скорость маршрута ограничивает выпуск
-# -------------------------------------------------------
-
-func _test_clamp(main_map, state: Dictionary) -> void:
-    # 15 пшеницы и 5 клея в секунду по маршруту 10 ед./сек: пшеница обрезается до
-    # 10, клей проходит целиком. Клей выбран потому, что он всегда доступен
-    # (нет unlock_tech) — тест не зависит от изученных технологий.
-    _cdata.city_storage["wheat"] = 0
-    _cdata.city_storage["clay"] = 0
-    var tile := {"production_fractional_remainder": 0.0}
-    main_map._emit_continuous_production(tile, {"wheat": 15, "clay": 5}, 1.0, 1.0,
-            "common", "test_source", 10.0)
-    check(int(_cdata.city_storage.get("wheat", 0)) == 10,
-            "по маршруту 10 ед./сек должно доехать 10 пшеницы из 15 (получено %d)"
-                    % int(_cdata.city_storage.get("wheat", 0)), state)
-    check(int(_cdata.city_storage.get("clay", 0)) == 5,
-            "клей 5 ед./сек проходит по маршруту 10 ед./сек целиком (получено %d)"
-                    % int(_cdata.city_storage.get("clay", 0)), state)
-
-    # Равенство — не перегрузка: производительность, равная скорости маршрута,
-    # доходит до города в полном объёме.
-    _cdata.city_storage["wheat"] = 0
-    var tile2 := {"production_fractional_remainder": 0.0}
-    main_map._emit_continuous_production(tile2, {"wheat": 10}, 1.0, 1.0,
-            "common", "test_source", 10.0)
-    check(int(_cdata.city_storage.get("wheat", 0)) == 10,
-            "производительность, равная скорости маршрута, должна доходить целиком", state)
-
-    # Нет маршрута (avg_speed < 0) — ограничения нет: дорога ничего не везёт,
-    # и ограничивать нечем.
-    _cdata.city_storage["wheat"] = 0
-    var tile3 := {"production_fractional_remainder": 0.0}
-    main_map._emit_continuous_production(tile3, {"wheat": 15}, 1.0, 1.0,
-            "common", "test_source", -1.0)
-    check(int(_cdata.city_storage.get("wheat", 0)) == 15,
-            "без маршрута ограничения быть не должно: все 15 пшеницы доходят", state)
-
-
-# -------------------------------------------------------
-# 2-4. Живая сцена: по ресурсам, флаг, тултип, улучшение дороги
+# 1-4. Живая сцена: по ресурсам, флаг, тултип, улучшение дороги
 # -------------------------------------------------------
 
 func _test_live_scene(state: Dictionary) -> void:
@@ -100,9 +61,6 @@ func _test_live_scene(state: Dictionary) -> void:
     await process_frame
     await process_frame
     await process_frame
-
-    if WATCHDOG.wants_case("clamp"):
-        _test_clamp(main_map, state)
 
     var rm = main_map.road_manager
     var wm = main_map.worker_manager
@@ -219,17 +177,57 @@ func _test_live_scene(state: Dictionary) -> void:
             "после улучшения дороги перегрузки быть не должно (получено %s)"
                     % str(short_after.keys()), state)
 
+    # Смена флага обязана запросить перерисовку карты: карта рисуется по требованию,
+    # и без запроса треугольник «!» висел бы на экране до движения мыши. Краевое
+    # автопрокручивание выключаем — с ним карта перерисовывается каждый кадр, и
+    # счётчик отрисовок ничего не доказывал бы.
+    main_map.use_edge_scrolling = false
+    # Дренаж отложенных перерисовок от прошлых действий (выделение гекса и т.п.):
+    # счётчик должен считать только перерисовку от смены флага.
+    await process_frame
+    await process_frame
+
+    # Тик, на котором дорога уже улучшена, сбрасывает флаг — и обязан запросить перерисовку.
+    var draws_before: int = main_map.map_renderer.draw_calls
     _run_production_tick(main_map)
+    await process_frame
     check(not bool(tile.get("road_capacity_short", false)),
             "после улучшения дороги флаг перегрузки должен сбрасываться", state)
+    check(main_map.map_renderer.draw_calls > draws_before,
+            "сброс флага перегрузки должен запросить перерисовку карты", state)
 
-    # И сам выпуск больше не обрезается: 20 клея в секунду доходят целиком.
+    # Контроль: тик без смены флага карту не перерисовывает — иначе проверка выше
+    # ничего не доказывала бы (карта могла перерисовываться сама по себе).
+    var draws_steady: int = main_map.map_renderer.draw_calls
+    _run_production_tick(main_map)
+    await process_frame
+    check(main_map.map_renderer.draw_calls == draws_steady,
+            "тик без смены флага перегрузки не должен перерисовывать карту", state)
+
+    # Выпуск больше не срезается и не пропадает: с маршрутом товар встаёт в
+    # очередь доставки ЦЕЛИКОМ, а не появляется на складе мгновенно.
+    # Очередь чистим: тики производства выше уже что-то в неё положили.
+    main_map.delivery_manager.clear()
     _cdata.city_storage["clay"] = 0
-    var full_tile := {"production_fractional_remainder": 0.0}
-    main_map._emit_continuous_production(full_tile, {"clay": 20}, 1.0, 1.0,
-            "common", "test_source", float(after.get("avg_speed", 0.0)))
+    var queued_tile := {"production_fractional_remainder": 0.0}
+    main_map._emit_continuous_production(queued_tile, {"clay": 20}, 1.0, 1.0,
+            "common", "test_source", row, col, float(after.get("avg_speed", 0.0)))
+    var queued_status: Dictionary = main_map.delivery_manager.get_route_status(row, col)
+    var queued_total := int(queued_status.get("pending", 0)) + int(queued_status.get("in_transit", 0))
+    check(int(_cdata.city_storage.get("clay", 0)) == 0,
+            "товар с маршрутом не должен появляться на складе мгновенно (получено %d)"
+                    % int(_cdata.city_storage.get("clay", 0)), state)
+    check(queued_total == 20,
+            "все 20 клея должны встать в очередь доставки без потерь (получено %d)"
+                    % queued_total, state)
+
+    # Без маршрута (avg_speed < 0) ограничивать нечем: товар идёт на склад сразу.
+    _cdata.city_storage["clay"] = 0
+    var no_route_tile := {"production_fractional_remainder": 0.0}
+    main_map._emit_continuous_production(no_route_tile, {"clay": 20}, 1.0, 1.0,
+            "common", "test_source", row, col, -1.0)
     check(int(_cdata.city_storage.get("clay", 0)) == 20,
-            "после улучшения дороги все 20 клея доходят до города (получено %d)"
+            "без маршрута все 20 клея должны дойти до склада сразу (получено %d)"
                     % int(_cdata.city_storage.get("clay", 0)), state)
 
     _free(main_map)
