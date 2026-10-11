@@ -669,9 +669,9 @@ func get_planned_consumption_map(include_production_inputs: bool = true) -> Dict
         for source_id in building_demand[pid]:
             var e: Dictionary = building_demand[pid][source_id]
             _record_planned_entry(result, str(pid), str(source_id), int(e.get("amount", 0)), float(e.get("interval", 0.0)), int(e.get("count", 1)), bool(e.get("is_group", false)), str(e.get("group_name", "")), false)
-    # The planned consumption of the improvements on the map (the feed of the pastures): amount is for one
-    # cycle of the production, interval is the production_interval of the improvement. The feed
-    # is written off per cycle (see main_map, the block "THE PRODUCTION CYCLE OF THE IMPROVEMENT"),
+    # The planned consumption of the improvements on the map (the feed of the pastures): amount
+    # is the per-second feed rate, interval is 0. The feed is written off continuously
+    # (see main_map, the block "THE CONTINUOUS PRODUCTION OF AN IMPROVEMENT"),
     # therefore the records fall into the plan on a par with the demand of the buildings.
     var improvement_demand = CityData.get_improvement_planned_consumption()
     for pid in improvement_demand:

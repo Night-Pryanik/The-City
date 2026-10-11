@@ -178,20 +178,14 @@ func production_rates(row: int, col: int, tile_data: Array) -> Dictionary:
         var lj_yield: float = MapHelpers.get_cover_wood_yield(tile)
         if lj_yield <= 0.0:
             return rates
-        var lj_interval := CityData.get_improvement_production_interval("lumberjack_hut")
-        if lj_interval <= 0.0:
-            return rates
         var lj_mult: float = CityData.get_improvement_production_multiplier(
             "lumberjack_hut", has_water, tile.get("terrain", ""), "lumberjack_hut")
-        rates["wood"] = {"rate": float(ceili(lj_yield * lj_mult)) / lj_interval, "base": lj_yield}
+        rates["wood"] = {"rate": float(ceili(lj_yield * lj_mult)), "base": lj_yield}
         return rates
     var res_data = GameData.raw_resources.get(eff_res, {})
     # The one-off resources (improved_by == null) have no continuous production: they are
     # gathered by a special action, and there is no rate to cap.
     if not res_data.has("produces") or res_data.get("improved_by", null) == null:
-        return rates
-    var prod_interval := CityData.get_improvement_production_interval(tile.improvement)
-    if prod_interval <= 0.0:
         return rates
     var bonus_multiplier: float = CityData.get_improvement_production_multiplier(
         tile.improvement, has_water, tile.get("terrain", ""), eff_res)
@@ -201,7 +195,7 @@ func production_rates(row: int, col: int, tile_data: Array) -> Dictionary:
             continue
         var base_amount := float(RangeUtils.get_min_value(res_data["produces"][prod_id], 1))
         var final_amount := ceili(base_amount * bonus_multiplier * fill_frac)
-        rates[str(prod_id)] = {"rate": float(final_amount) / prod_interval, "base": base_amount}
+        rates[str(prod_id)] = {"rate": float(final_amount), "base": base_amount}
     return rates
 
 
@@ -788,11 +782,9 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
     # otherwise the hint "Once built, X will give…" would disclose its presence.
     if eff_res != "" and not MapHelpers.is_resource_revealed(tile):
         eff_res = ""
-    # The rows show the PER-SECOND rate only: the player receives a continuous stream, not
-    # batches — main_map._emit_continuous_production adds produces × multiplier /
-    # production_interval to the storage on every tick. The per-cycle amount from the resource
-    # data is an internal detail (it never reaches the player as a discrete sum), so the "base"
-    # suffix would only invite a comparison with a number the player never sees.
+    # The rows show the PER-SECOND rate: the player receives a continuous stream —
+    # main_map._emit_continuous_production adds produces × multiplier × SIMULATION_TICK
+    # to the storage on every tick, so the "produces" from the resource data IS the rate.
     if eff_res == "":
         # A forest plot: the production of wood from the cover (wood_yield in
         # covers.json). We show it both for a built plot with a worker, and
@@ -802,8 +794,7 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
         if lj_yield > 0.0 and tile.improvement == null \
                 and CityData.is_product_available("wood"):
             var lj_name = GameData.improvements.get("lumberjack_hut", {}).get("name", "lumberjack_hut")
-            var lj_interval0 := CityData.get_improvement_production_interval("lumberjack_hut")
-            var lj_per_sec0: float = float(int(ceil(lj_yield))) / lj_interval0
+            var lj_per_sec0: float = float(int(ceil(lj_yield)))
             var wood_data0 = GameData.products.get("wood", {})
             var lj_icon_path0 = ""
             if wood_data0.has("icon"):
@@ -819,8 +810,7 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
                 "lumberjack_hut",
                 MapHelpers.is_hex_irrigated(row, col, tile_data, tile_data.size(), tile_data[0].size()),
                 tile.get("terrain", ""), "lumberjack_hut")
-            var lj_interval2 := CityData.get_improvement_production_interval("lumberjack_hut")
-            var lj_per_sec2: float = float(ceili(lj_yield * lj_mult2)) / lj_interval2
+            var lj_per_sec2: float = float(ceili(lj_yield * lj_mult2))
             var wood_data2 = GameData.products.get("wood", {})
             var lj_icon_path2 = ""
             if wood_data2.has("icon"):
@@ -839,22 +829,15 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
     # a continuous production: they are gathered by the special action action_type "forage",
     # after which the resource disappears from the map. In the extended summary ("Produces:…")
     # there is nothing to show for them, and the value of produces there is a "number or [min, max]"
-    # (the output per one gathering), and not the base output per cycle of the improvement.
+    # (the output per one gathering), and not the base output of the improvement.
     if res_data.get("improved_by", null) == null:
         return result
 
     var modifiers := []
     var bonus_multiplier = 1.0
-    # The interval of the production cycle: for a built improvement it is its own
-    # production_interval, for the hint "once built" — the interval of the future
-    # improvement (improved_by of the resource).
-    var prod_interval: float = 1.0
     if tile.improvement != null and _worker_manager.has_worker(row, col):
         modifiers = CityData.get_improvement_production_modifiers(tile.improvement, MapHelpers.is_hex_irrigated(row, col, tile_data, tile_data.size(), tile_data[0].size()), tile.get("terrain", ""), eff_res)
         bonus_multiplier = CityData.get_improvement_production_multiplier(tile.improvement, MapHelpers.is_hex_irrigated(row, col, tile_data, tile_data.size(), tile_data[0].size()), tile.get("terrain", ""), eff_res)
-        prod_interval = CityData.get_improvement_production_interval(tile.improvement)
-    elif tile.improvement == null:
-        prod_interval = CityData.get_improvement_production_interval(str(res_data.get("improved_by", "")))
 
     var available_products := {}
     for prod_id in res_data["produces"]:
@@ -893,8 +876,8 @@ func _collect_extended_production(row: int, col: int, tile_data: Array) -> Array
         if prod_data.has("icon"):
             var icon_name = prod_data["icon"]
             icon_path = IconRegistry.icon_path(icon_name)
-        # The display is per second: the output of the cycle, divided by production_interval.
-        var item := {"type": "product", "name": prod_name, "amount": float(final_amount) / prod_interval, "icon_path": icon_path, "suffix": " " + TranslationServer.translate("units/sec")}
+        # The display is per second: produces is already a rate.
+        var item := {"type": "product", "name": prod_name, "amount": float(final_amount), "icon_path": icon_path, "suffix": " " + TranslationServer.translate("units/sec")}
         _append_route_shortfall(item, str(prod_id), shortfall)
         result.append(item)
 

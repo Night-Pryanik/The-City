@@ -114,9 +114,9 @@ var ignore_build_requirements: bool = false
 # The single step of the whole game simulation: the production of the improvements and the buildings (the crafting
 # of the slots), the consumption of the food by the population, the occupational and the city consumption,
 # the feed of the pastures, the base growth of the science and so on — everything ticks once per SIMULATION_TICK
-# seconds (the step in main_map._process). The improvements release the product by
-# their own interval — the field "production_interval" from
-# data/improvements.json (see get_improvement_production_interval).
+# seconds (the step in main_map._process). The improvements output the "produces" of their
+# resource as a continuous per-second rate, so one tick advances the output by
+# produces × SIMULATION_TICK.
 const SIMULATION_TICK: float = 1.0
 
 # --- THE DISPLAY INTERVAL OF THE RESOURCES (the setting "Settings → Game → The interval
@@ -980,8 +980,8 @@ func _record_planned_supply(result: Dictionary, pid: String, source_id: String, 
     entry["interval"] = minf(float(entry.get("interval", interval)), interval)
 
 # The entry point of the planned production: the recipes of the buildings (interval = time of the recipe,
-# 0 is "per tick") + the improvements on the map (interval = production_interval of the improvement,
-# see get_improvement_production_interval). The plan is needed, because in
+# 0 is "per tick") + the improvements on the map (no interval — they output a per-second rate).
+# The plan is needed, because in
 # the continuous model (see main_map._emit_continuous_production and CraftContainer)
 # the output goes on every tick a little bit, and the label of the dynamics `[+N≈]` shows
 # the average per_sec — that is enough for the UI of the tab "Resources". The records
@@ -1004,40 +1004,30 @@ func get_planned_production_map() -> Dictionary:
 
 # --- THE PLANNED PRODUCTION OF THE IMPROVEMENTS ON THE MAP ---
 # The cache of the planned output of the improvements for the current tick of the simulation:
-#   product_id -> { "The name of the improvement" -> { "amount": N, "interval": float, "count": M } }
-#   amount   is the total output of the improvement per ONE cycle (over all the hexes);
-#   interval is production_interval of the improvement, in seconds;
+#   product_id -> { "The name of the improvement" -> { "amount": N, "interval": 0.0, "count": M } }
+#   amount   is the total output of the improvement per second (over all the hexes);
+#   interval is always 0 — an improvement outputs a continuous per-second rate;
 #   count    is how many hexes with this improvement are working (for the "xN" in the tooltip).
 # It is filled from main_map.gd on every tick, it is cleared in reset_counters()
 # together with the actual counters. The save is not affected — the plan is always
 # computed from the current data.
 var improvement_planned_production: Dictionary = {}
 
-# The time of one production cycle of the improvement imp_id in seconds — the field
-# "production_interval" from data/improvements.json. The field is absent, or <= 0 —
-# the improvement releases the product on every tick of the simulation (the old data).
-func get_improvement_production_interval(imp_id: String) -> float:
-    var interval: float = float(GameData.improvements.get(imp_id, {}).get("production_interval", 0.0))
-    if interval <= 0.0:
-        return SIMULATION_TICK
-    return interval
-
-# The record of the planned output of the improvement per one cycle (it is called from main_map.gd
+# The record of the planned output of the improvement (it is called from main_map.gd
 # for each working improvement on each tick of the simulation).
-func record_planned_improvement_production(pid: String, source_id: String, amount: int, interval: float):
-    _record_cycle_entry(improvement_planned_production, pid, source_id, amount, interval)
+func record_planned_improvement_production(pid: String, source_id: String, amount: int):
+    _record_cycle_entry(improvement_planned_production, pid, source_id, amount)
 
 # --- THE PLANNED CONSUMPTION OF THE IMPROVEMENTS ON THE MAP (the feed of the pastures) ---
 # The feed (the feed_consumption of the resource) is written off continuously (see
-# main_map._consume_feed_continuous), and in the plan the average expense per
-# the production cycle is given — for the UI of the tab "Resources" (mirrored to the planned
-# output). It is filled from main_map.gd on every tick, it is cleared in
-# reset_counters().
+# main_map._consume_feed_continuous) at a per-second rate — for the UI of the tab
+# "Resources" (mirrored to the planned output). It is filled from main_map.gd on
+# every tick, it is cleared in reset_counters().
 var improvement_planned_consumption: Dictionary = {}
 
-# The record of the planned consumption of the improvement per one cycle (it is called from main_map.gd).
-func record_planned_improvement_consumption(pid: String, source_id: String, amount: int, interval: float):
-    _record_cycle_entry(improvement_planned_consumption, pid, source_id, amount, interval)
+# The record of the planned consumption of the improvement (it is called from main_map.gd).
+func record_planned_improvement_consumption(pid: String, source_id: String, amount: int):
+    _record_cycle_entry(improvement_planned_consumption, pid, source_id, amount)
 
 # The cache of the planned consumption of the improvements for the merge in the tab "Resources"
 # (worker_manager.get_planned_consumption_map knows only about the professions,
@@ -1045,20 +1035,20 @@ func record_planned_improvement_consumption(pid: String, source_id: String, amou
 func get_improvement_planned_consumption() -> Dictionary:
     return improvement_planned_consumption
 
-# The common helper of the recording of a cyclic record (the output or the consumption of an improvement):
-# amount is summed up, count is the number of the hexes-sources, interval is the minimum.
-func _record_cycle_entry(cache: Dictionary, pid: String, source_id: String, amount: int, interval: float):
+# The common helper of the recording of an improvement's record (the output or the consumption):
+# amount is summed up, count is the number of the hexes-sources. The interval is always 0 —
+# an improvement outputs/consumes a continuous per-second rate (0 means "per tick" for the UI).
+func _record_cycle_entry(cache: Dictionary, pid: String, source_id: String, amount: int):
     if pid.is_empty() or amount <= 0:
         return
     if not cache.has(pid):
         cache[pid] = {}
     var by_source: Dictionary = cache[pid]
     if not by_source.has(source_id):
-        by_source[source_id] = {"amount": 0, "count": 0, "interval": interval}
+        by_source[source_id] = {"amount": 0, "count": 0, "interval": 0.0}
     var entry: Dictionary = by_source[source_id]
     entry["amount"] = int(entry.get("amount", 0)) + amount
     entry["count"] = int(entry.get("count", 0)) + 1
-    entry["interval"] = minf(float(entry.get("interval", interval)), interval)
 
 # Returns the human-readable name of the building by its id (or the id itself, if the building
 # is not found in the registry). The single place of the knowledge about it is GameData.

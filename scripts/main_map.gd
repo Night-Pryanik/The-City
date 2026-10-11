@@ -766,25 +766,22 @@ func _process(delta):
                             # GameData.get_source_display_name).
                             var lj_source = GameData.improvement_source_id("lumberjack_hut")
                             # --- THE CONTINUOUS PRODUCTION OF THE FOREST PLOT ---
-                            # Instead of the batch release once per production_interval,
-                            # on every tick we add to the storage (wood_yield ×
-                            # the multipliers) / production_interval units. The fractional
-                            # remainder accumulates in tile.production_fractional_remainder,
-                            # so that the average rate does not drift.
-                            var lj_interval := CityData.get_improvement_production_interval("lumberjack_hut")
-                            var lj_per_sec: float = 0.0
-                            if lj_interval > 0.0:
-                                lj_per_sec = (wood_yield * lj_imp_mult * lj_consumption_mult) / lj_interval
+                            # The wood yield of the cover is a per-second rate: on every tick
+                            # we add (wood_yield × the multipliers) × SIMULATION_TICK units
+                            # to the storage. The fractional remainder accumulates in
+                            # tile.production_fractional_remainder, so that the average rate
+                            # does not drift.
+                            var lj_per_sec: float = wood_yield * lj_imp_mult * lj_consumption_mult
                             var lj_remainder: float = float(tile.get("production_fractional_remainder", 0.0)) + lj_per_sec * CityData.SIMULATION_TICK
                             var lj_floor: int = int(floor(lj_remainder))
                             tile["production_fractional_remainder"] = lj_remainder - float(lj_floor)
                             if lj_floor > 0:
                                 _deliver_production(row, col, "wood", lj_floor, "common",
                                         lj_source, route_avg_speed)
-                            # The planned release of the cycle: it is visible on every tick, while
-                            # the worker is in place (it closes the gaps between the cycles).
+                            # The planned output: it is visible on every tick, while the worker
+                            # is in place.
                             CityData.record_planned_improvement_production("wood", lj_source,
-                                int(ceil(wood_yield * lj_imp_mult * lj_consumption_mult)), lj_interval)
+                                int(ceil(wood_yield * lj_imp_mult * lj_consumption_mult)))
                     continue
 
                 # The occupational consumption: the improvements which have a consumption
@@ -834,32 +831,26 @@ func _process(delta):
                 # GameData.get_source_display_name).
                 var improvement_source = GameData.improvement_source_id(str(tile.improvement))
                 # --- THE CONTINUOUS PRODUCTION OF AN IMPROVEMENT ---
-                # Instead of the batch release once per production_interval, on every
-                # tick we add to the storage (amount_per_cycle × production_multiplier)
-                # / production_interval units of the product. The fractional remainder
-                # accumulates in tile.production_fractional_remainder, so that the average
-                # rate does not drift.
+                # The "produces" of the resource is a per-second rate: on every tick we
+                # add (produces × production_multiplier) × SIMULATION_TICK units of the
+                # product to the storage. The fractional remainder accumulates in
+                # tile.production_fractional_remainder, so that the average rate does not drift.
                 #
-                # The feed (feed_consumption) was previously written off for a WHOLE cycle
-                # (once per production_interval). In the continuous model — a little
-                # bit on every tick: feed_per_sec = feed_needed / production_interval.
-                # If there is not enough feed, the production is cut to 25% on this
-                # tick (an analogue of the old logic "no feed → 0.25×").
-                var imp_interval := CityData.get_improvement_production_interval(tile.improvement)
+                # The feed (feed_consumption) is written off at the same per-second rate:
+                # feed_per_sec = feed_needed. If there is not enough feed, the production
+                # is cut to 25% on this tick.
                 var produces: Dictionary = res_data.get("produces", {})
-                var feed_per_sec: float = 0.0
-                if feed_needed > 0 and imp_interval > 0.0:
-                    feed_per_sec = float(feed_needed) / imp_interval
+                var feed_per_sec: float = float(feed_needed)
 
                 if feed_needed > 0:
                     var feed_consumed: int = _consume_feed_continuous(tile, feed_per_sec, improvement_source)
                     var actual_mult: float = production_multiplier if feed_consumed >= feed_per_sec * CityData.SIMULATION_TICK else 0.25
-                    _emit_continuous_production(tile, produces, actual_mult, imp_interval, tile_quality, improvement_source, row, col, route_avg_speed)
+                    _emit_continuous_production(tile, produces, actual_mult, tile_quality, improvement_source, row, col, route_avg_speed)
                 else:
-                    _emit_continuous_production(tile, produces, production_multiplier, imp_interval, tile_quality, improvement_source, row, col, route_avg_speed)
+                    _emit_continuous_production(tile, produces, production_multiplier, tile_quality, improvement_source, row, col, route_avg_speed)
 
-                # The planned release/consumption of the cycle: they are visible on EVERY tick, while
-                # the worker is in place (they close the gaps between the cycles on the tab
+                # The planned output/consumption: they are visible on EVERY tick, while
+                # the worker is in place (they close the gaps between the ticks on the tab
                 # "Resources" — the same "blind windows" as for the recipes of the buildings).
                 for planned_pid in GameData.raw_resources.get(eff_res, {}).get("produces", {}):
                     if not CityData.is_product_available(planned_pid):
@@ -869,9 +860,9 @@ func _process(delta):
                         planned_amount = int(ceil(float(RangeUtils.get_min_value(res_data["produces"][planned_pid], 1)) * 0.25))
                     else:
                         planned_amount = int(ceil(float(RangeUtils.get_min_value(res_data["produces"][planned_pid], 1)) * production_multiplier))
-                    CityData.record_planned_improvement_production(planned_pid, improvement_source, planned_amount, imp_interval)
+                    CityData.record_planned_improvement_production(planned_pid, improvement_source, planned_amount)
                 if feed_needed > 0:
-                    CityData.record_planned_improvement_consumption("feed", improvement_source, feed_needed, imp_interval)
+                    CityData.record_planned_improvement_consumption("feed", improvement_source, feed_needed)
 
         if delivery_manager != null:
             # The goods produced in this tick are shipped BEFORE the interface reads the
@@ -971,8 +962,8 @@ func _consume_feed_continuous(tile: Dictionary, feed_per_sec: float, improvement
     return take
 
 # The continuous production of an improvement: on every tick it produces
-# (amount_per_cycle × production_multiplier) / production_interval units
-# of the product. The fractional remainder accumulates in tile.production_fractional_remainder,
+# produces × production_multiplier × SIMULATION_TICK units of the product.
+# The fractional remainder accumulates in tile.production_fractional_remainder,
 # so that the average rate does not drift.
 #
 # production_multiplier can be < 1.0 (for example, 0.25 on a shortage of the feed)
@@ -984,15 +975,14 @@ func _consume_feed_continuous(tile: Dictionary, feed_per_sec: float, improvement
 # the storage at once. The road therefore limits the DELIVERY, not the production: a
 # fast improvement keeps producing, and the surplus waits in the queue instead of being
 # destroyed by a slow road.
-func _emit_continuous_production(tile: Dictionary, produces: Dictionary, production_multiplier: float, imp_interval: float, tile_quality: String, improvement_source: String, row: int, col: int, route_avg_speed: float = -1.0) -> void:
-    if produces.is_empty() or imp_interval <= 0.0:
+func _emit_continuous_production(tile: Dictionary, produces: Dictionary, production_multiplier: float, tile_quality: String, improvement_source: String, row: int, col: int, route_avg_speed: float = -1.0) -> void:
+    if produces.is_empty():
         return
     var tick := float(CityData.SIMULATION_TICK)
     for pid in produces:
         if not CityData._is_product_available(pid):
             continue
-        var per_cycle_amt := float(RangeUtils.get_min_value(produces[pid], 1))
-        var per_sec_amt: float = per_cycle_amt * production_multiplier / imp_interval
+        var per_sec_amt := float(RangeUtils.get_min_value(produces[pid], 1)) * production_multiplier
         var remainder: float = float(tile.get("production_fractional_remainder", 0.0)) + per_sec_amt * tick
         var floor_amount: int = int(floor(remainder))
         tile["production_fractional_remainder"] = remainder - float(floor_amount)

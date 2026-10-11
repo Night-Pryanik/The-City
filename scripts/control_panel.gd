@@ -1442,9 +1442,8 @@ func _build_preview(row: int, col: int, tile: Dictionary):
             var lj_mult = CityData.get_improvement_production_multiplier(
                 "lumberjack_hut", lj_has_water, tile.get("terrain", ""), "lumberjack_hut")
             var lj_amount = ceili(lj_yield * lj_mult)
-            # The display is per second: the output of the cycle, divided by production_interval.
-            var lj_interval := CityData.get_improvement_production_interval("lumberjack_hut")
-            var lj_per_sec: float = float(lj_amount) / lj_interval
+            # The display is per second: the wood yield of the cover is already a rate.
+            var lj_per_sec: float = float(lj_amount)
             var wood_data = GameData.products.get("wood", {})
             var wood_icon_path = ""
             if wood_data.has("icon"):
@@ -1472,9 +1471,6 @@ func _build_preview(row: int, col: int, tile: Dictionary):
             var terrain_id = tile.get("terrain", "")
             var bonus_multiplier = CityData.get_improvement_production_multiplier(imp_id, has_water, terrain_id, eff_res)
             var modifiers = CityData.get_improvement_production_modifiers(imp_id, has_water, terrain_id, eff_res)
-            # The display is per second: the output of the cycle, divided by production_interval
-            # of the improvement (the field in data/improvements.json).
-            var prod_interval := CityData.get_improvement_production_interval(imp_id)
 
             var products := []
             products.append({"type": "header", "text": tr("Will produce:")})
@@ -1489,7 +1485,7 @@ func _build_preview(row: int, col: int, tile: Dictionary):
                 if prod_data.has("icon"):
                     var icon_name = prod_data["icon"]
                     icon_path = IconRegistry.icon_path(icon_name)
-                products.append({"type": "product", "name": prod_name, "amount": float(final_amount) / prod_interval, "icon_path": icon_path, "suffix": " " + TranslationServer.translate("units/sec")})
+                products.append({"type": "product", "name": prod_name, "amount": float(final_amount), "icon_path": icon_path, "suffix": " " + TranslationServer.translate("units/sec")})
             for mod in modifiers:
                 products.append({"type": "label", "text": " %s" % mod.get("label", ""), "color": Color(0.7, 0.9, 0.7)})
             # We render into a SEPARATE box: render_products cleans the passed

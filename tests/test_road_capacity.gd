@@ -210,7 +210,7 @@ func _test_live_scene(state: Dictionary) -> void:
     main_map.delivery_manager.clear()
     _cdata.city_storage["clay"] = 0
     var queued_tile := {"production_fractional_remainder": 0.0}
-    main_map._emit_continuous_production(queued_tile, {"clay": 20}, 1.0, 1.0,
+    main_map._emit_continuous_production(queued_tile, {"clay": 20}, 1.0,
             "common", "test_source", row, col, float(after.get("avg_speed", 0.0)))
     var queued_status: Dictionary = main_map.delivery_manager.get_route_status(row, col)
     var queued_total := int(queued_status.get("pending", 0)) + int(queued_status.get("in_transit", 0))
@@ -224,7 +224,7 @@ func _test_live_scene(state: Dictionary) -> void:
     # Without a route (avg_speed < 0) there is nothing to limit with: the products go to the storage at once.
     _cdata.city_storage["clay"] = 0
     var no_route_tile := {"production_fractional_remainder": 0.0}
-    main_map._emit_continuous_production(no_route_tile, {"clay": 20}, 1.0, 1.0,
+    main_map._emit_continuous_production(no_route_tile, {"clay": 20}, 1.0,
             "common", "test_source", row, col, -1.0)
     check(int(_cdata.city_storage.get("clay", 0)) == 20,
             "without a route all 20 clay must reach the storage at once (got %d)"

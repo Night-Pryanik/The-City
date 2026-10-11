@@ -414,11 +414,10 @@ func _update_food_label():
             total_prod += prod_rates.get(pid, 0)
             total_cons += cons_rates.get(pid, 0)
 
-    # The cyclic productions/consumptions (the improvements with production_interval,
-    # the professions with an interval) issue/write off the food in "batches", therefore in a tick
-    # without an event the fact equals 0. So that the label does not flicker "+0", with a zero fact
-    # we show the average rate from the planned maps (as the "≈" dynamics on
-    # the "Resources" tab).
+    # The cyclic consumptions (the professions with an interval) write off the food in
+    # "batches", therefore in a tick without an event the fact equals 0. So that the label
+    # does not flicker "+0", with a zero fact we show the average rate from the planned
+    # maps (as the "≈" dynamics on the "Resources" tab).
     var prod_mark := ""
     var cons_mark := ""
     if total_prod <= 0:

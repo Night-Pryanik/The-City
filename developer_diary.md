@@ -2263,3 +2263,35 @@ otherwise the map is redrawn every frame): a tick with a flag change must redraw
 the map, a tick without a change — must not. Validation by mutation: without `queue_redraw()` the test fails.
 Intake in the logistics tests now goes through `_step` = `advance` + `ship` (the same
 order as in `_process`).
+
+## `produces` is the rate: `production_interval` removed (October 11, 2026)
+
+**Context.** Every improvement carried a `production_interval` (the field in
+`data/improvements.json`): the time in seconds of one production cycle, mostly 2, for
+the tar pit and the soda quarry — 3. The actual speed was `produces / production_interval`:
+limestone with `produces: { "limestone": 10 }` on a quarry (interval 2) gave 5 units/sec,
+not 10. The player sees only the per-second speed, so the field was an implementation
+detail — but it also silently halved (or thirded) every number written in the data.
+
+**Decision.** The field is gone. `produces` is now the rate itself: units per second.
+Limestone gives 10 units/sec. The feed of the pastures is bound to the same mechanic and
+changes with it: `feed_consumption` is now the feed rate per second too (the code no
+longer divides it by the interval). Because the output and the feed were divided by the
+same interval, their RATIO is unchanged — what changes is only the absolute throughput
+(everything is now `interval` times faster than the player used to get).
+
+**What we deliberately do not do.** We do not keep the field "for the future" as a
+formal stub on the infrastructure improvements (a harbor, a canal): a field that nothing
+reads is a trap for the next session. We do not rebalance `produces` to preserve the old
+per-second speed — the whole point is that the data number is the speed. We do not touch
+the `interval` of the professions and of the building recipes (`data/consumption.json`,
+`time` in `data/crafts/*.json`): those are a different, still-alive mechanic; only the
+improvement cycle is removed. In the planned-production maps an improvement record now
+carries `interval = 0`, which the UI already reads as "per tick" (tick = 1 sec = per
+second), so the plan shows the rate directly.
+
+**Note on the old entry.** "Production lines: speed per second only" (October 9, 2026)
+rejected option (2) — "show the data number (10) as the speed" — because 10 did not match
+what actually arrived at storage. The resolution here is the other half of that choice:
+the data is changed so that 10 IS what arrives, and then showing 10 is correct.
+

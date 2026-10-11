@@ -1,19 +1,17 @@
 # Headless test of the production display in the extended tooltip:
 #   godot --headless --path . --script res://tests/test_production_display.gd
 #
-# The rule being checked: the production row shows ONLY the rate per second,
-# without the per-cycle base. The player receives a continuous flow (main_map
-# adds produces × multiplier / production_interval to storage every tick), not
-# batches once per interval, so the value from the data, converted to a per-second
-# rate, is exactly what the player actually receives. The per-cycle base is an
-# internal quantity that the player never sees as a separate sum.
+# The rule being checked: the production row shows the rate per second, which IS the
+# resource's "produces" value. The player receives a continuous flow (main_map adds
+# produces × multiplier × SIMULATION_TICK to storage every tick), so the number from
+# the data is exactly what the player actually receives per second. There is no
+# "per cycle" base and no production interval to divide by.
 #
 # Checks:
-#   1. NON-GROWING RESOURCE WITH INTERVAL != 1. The rate equals base/interval
-#      (limestone: 10 per cycle at an interval of 2 sec → 5 units/sec), not the
-#      value from the data; the row has no base.
+#   1. NON-GROWING RESOURCE. The rate equals the resource's produces value
+#      (limestone: 10 → 10 units/sec), and the row has no base.
 #   2. GROWING RESOURCE WITHOUT IMPROVEMENT. The "once built" hint shows the
-#      FULL rate (base/interval), not 0: the herd only starts filling after
+#      FULL rate (the produces value), not 0: the herd only starts filling after
 #      construction, so a zero fraction must not suppress the hint.
 #   3. SINGLE FORMAT. Both resources have a row of the same structure — name and
 #      rate, without the base.
@@ -50,19 +48,7 @@ func _run() -> void:
     var tile: Dictionary = main_map.tile_data[row][col]
     tile["quality"] = "common"
 
-    # Intervals are taken from the data rather than hardcoded: the check must
-    # survive a balance change. The task condition is an interval greater than 1 sec,
-    # otherwise the base and the rate coincide and there is no way to distinguish them.
-    var quarry_interval: float = _production_interval("quarry")
-    var pasture_interval: float = _production_interval("pasture")
-    check(quarry_interval > 1.0,
-            "for the check the quarry interval must be greater than 1 sec (got %.1f)"
-                    % quarry_interval, state)
-    check(pasture_interval > 1.0,
-            "for the check the pasture interval must be greater than 1 sec (got %.1f)"
-                    % pasture_interval, state)
-
-    # --- 1. Non-growing resource (quarry, interval 2 sec) ---
+    # --- 1. Non-growing resource: the rate is the produces value ---
     _gdata.raw_resources["test_stone"] = {
         "id": "test_stone", "name": "Test Stone", "type": "raw",
         "improved_by": "quarry", "produces": {"limestone": 10},
@@ -72,10 +58,9 @@ func _run() -> void:
     var stone_item := _product_item(tooltip, row, col, main_map, "limestone")
     check(not stone_item.is_empty(), "the limestone row must be in the production block", state)
     if not stone_item.is_empty():
-        var stone_rate: float = 10.0 / quarry_interval
-        check(absf(float(stone_item.get("amount", 0.0)) - stone_rate) < 0.001,
-                "limestone rate = base/interval = %.1f units/sec (got %.1f)"
-                        % [stone_rate, float(stone_item.get("amount", 0.0))], state)
+        check(absf(float(stone_item.get("amount", 0.0)) - 10.0) < 0.001,
+                "limestone rate = produces = 10 units/sec (got %.1f)"
+                        % float(stone_item.get("amount", 0.0)), state)
         check(not _has_base_label(str(stone_item.get("name", ""))),
                 "the limestone row must not have a base (got: %s)"
                         % stone_item.get("name", ""), state)
@@ -92,13 +77,12 @@ func _run() -> void:
     var herd_item := _product_item(tooltip, row, col, main_map, "raw_meat")
     check(not herd_item.is_empty(), "the meat row must be in the production tooltip", state)
     if not herd_item.is_empty():
-        var herd_rate: float = 20.0 / pasture_interval
         check(float(herd_item.get("amount", 0.0)) > 0.0,
                 "the \"once built\" hint must show the full rate, not 0 (got %.1f)"
                         % float(herd_item.get("amount", 0.0)), state)
-        check(absf(float(herd_item.get("amount", 0.0)) - herd_rate) < 0.001,
-                "meat rate = base/interval = %.1f units/sec (got %.1f)"
-                        % [herd_rate, float(herd_item.get("amount", 0.0))], state)
+        check(absf(float(herd_item.get("amount", 0.0)) - 20.0) < 0.001,
+                "meat rate = produces = 20 units/sec (got %.1f)"
+                        % float(herd_item.get("amount", 0.0)), state)
         check(not _has_base_label(str(herd_item.get("name", ""))),
                 "the meat row must not have a base (got: %s)"
                         % herd_item.get("name", ""), state)
@@ -110,9 +94,6 @@ func _run() -> void:
                 "both resources must show a row of the same format — without a base", state)
 
     _finish(main_map, state)
-
-func _production_interval(imp_id: String) -> float:
-    return float(_gdata.improvements.get(imp_id, {}).get("production_interval", 0.0))
 
 # The product row prod_id from the "Produces:" / "Once built ... will
 # produce:" block for the hex (row, col). An empty dictionary means no row.

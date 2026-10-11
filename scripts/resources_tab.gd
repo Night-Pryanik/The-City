@@ -43,7 +43,7 @@ var worker_manager: Node = null
 # It is recalculated on every update_data()/refresh() (once per tick with the city open).
 var planned_consumption_map: Dictionary = {}
 # The cache of the map of the planned production (the recipes of the buildings with a citizen + the improvements
-# on the map with their production_interval): product_id ->
+# on the map): product_id ->
 # { "Source name" -> { "amount": N, "interval": S, "count": M } }.
 # It is recalculated in the same place.
 var planned_production_map: Dictionary = {}
@@ -588,7 +588,7 @@ func _format_cons_label(prod_id: String) -> String:
 # ("[+10") (the simulation tick = SIMULATION_TICK = 1 sec, the fact per tick IS the
 # output per second); otherwise, if there is a planned production, — the average output
 # recalculated PER SECOND with the "≈" sign: the recipes of the buildings are executed once per `time`
-# seconds (see CityData.get_craft_time), the improvements — once per production_interval,
+# seconds (see CityData.get_craft_time), the improvements output a per-second rate,
 # therefore amount × SIMULATION_TICK / interval (an entry without an interval — "per
 # tick", interval = 0 → amount).
 func _format_prod_label(prod_id: String) -> String:

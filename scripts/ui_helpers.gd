@@ -908,9 +908,9 @@ func _format_rate(value: float) -> String:
 
 # The average rate of the record per second: amount × SIMULATION_TICK / interval
 # for the cyclic records (the recipes of the buildings with their own time, the
-# professions, "all the residents", the improvements with production_interval);
-# interval = 0 — "per tick", and a tick of the simulation equals SIMULATION_TICK
-# sec, therefore it is amount × SIMULATION_TICK.
+# professions, "all the residents"); interval = 0 — "per tick" (the improvements),
+# and a tick of the simulation equals SIMULATION_TICK sec, therefore it is
+# amount × SIMULATION_TICK.
 func _planned_per_sec(amount: float, interval: float) -> float:
     if interval > 0.0:
         return amount * CityData.SIMULATION_TICK / interval

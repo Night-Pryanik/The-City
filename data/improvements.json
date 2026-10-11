@@ -9,13 +9,12 @@
   //      of the animal/plant is written to tile.crop_bred, tile.resource stays
   //      null. The quality is inherited from an already domesticated specimen
   //      of that species.
-  // PRODUCTION: the "production_interval" field — the time in SECONDS it takes
-  // for the improvement to output its product (in one "batch", as long as there
-  // is a worker on it). The countdown runs on the game simulation tick
-  // SIMULATION_TICK = 1 sec (CityData.SIMULATION_TICK, the step in main_map.gd).
-  // Feed (feed_consumption) is written off per production cycle, not every tick.
-  // Infrastructure improvements (no_worker / without production) carry the field
-  // formally.
+  // PRODUCTION: an improvement with a worker outputs the "produces" of its
+  // resource (or the wood yield of the cover) as a continuous stream — the
+  // value from the data is a rate of units per second. The simulation tick is
+  // SIMULATION_TICK = 1 sec (CityData.SIMULATION_TICK, the step in main_map.gd),
+  // so a produces of 10 means 10 units every second. Feed (feed_consumption)
+  // is written off at the same continuous per-second rate.
   "improvements": [
     {
       "id": "farm",
@@ -27,9 +26,6 @@
       // The profession of the worker on this improvement. The label is set/cleared
       // automatically in worker_manager.gd on assignment/dismissal.
       "profession": "farmer",
-      // The main source of food: food is written off every simulation tick
-      // (1 sec), so the farm outputs its crop every second.
-      "production_interval": 1,
       // A conductor of fresh water: after the technology "Irrigation" is
       // researched, the farm spreads fresh water to neighbouring hexes
       // (the water_access scheme: chain).
@@ -42,9 +38,7 @@
       "color": [ 34, 139, 34 ],
       "work_cost": 25,
       "unlock_tech": "animal_husbandry",
-      "profession": "herder",
-      // Feed (the feed_consumption of a resource) is written off per production cycle.
-      "production_interval": 2
+      "profession": "herder"
     },
     {
       "id": "mine",
@@ -53,8 +47,7 @@
       "color": [ 105, 105, 105 ],
       "work_cost": 30,
       "unlock_tech": "mining",
-      "profession": "miner",
-      "production_interval": 2
+      "profession": "miner"
     },
     {
       "id": "quarry",
@@ -63,8 +56,7 @@
       "color": [ 139, 137, 137 ],
       "work_cost": 20,
       "unlock_tech": "masonry",
-      "profession": "quarryman",
-      "production_interval": 2
+      "profession": "quarryman"
     },
     {
       "id": "beehive",
@@ -73,8 +65,7 @@
       "color": [ 255, 215, 0 ],
       "work_cost": 12,
       "unlock_tech": "beekeeping",
-      "profession": "beekeeper",
-      "production_interval": 2
+      "profession": "beekeeper"
     },
     {
       "id": "vineyard",
@@ -83,8 +74,7 @@
       "color": [ 128, 0, 0 ],
       "work_cost": 35,
       "unlock_tech": "winegrowing",
-      "profession": "vinedresser",
-      "production_interval": 2
+      "profession": "vinedresser"
     },
     {
       "id": "clay_pit",
@@ -93,8 +83,7 @@
       "color": [ 210, 180, 140 ],
       "work_cost": 22,
       "unlock_tech": "pottery",
-      "profession": "potter",
-      "production_interval": 2
+      "profession": "potter"
     },
     {
       "id": "plantation",
@@ -104,7 +93,6 @@
       "work_cost": 28,
       "unlock_tech": "plantations",
       "profession": "planter",
-      "production_interval": 2,
       // A conductor of fresh water: after the technology "Irrigation" is
       // researched, the plantation spreads fresh water to neighbouring hexes
       // (the water_access scheme: chain).
@@ -117,8 +105,7 @@
       "color": [ 139, 69, 19 ],
       "work_cost": 30,
       "unlock_tech": "bitumen_extraction",
-      "profession": "tar_collector",
-      "production_interval": 3
+      "profession": "tar_collector"
     },
     {
       "id": "soda_quarry",
@@ -127,8 +114,7 @@
       "color": [ 200, 220, 255 ],
       "work_cost": 30,
       "unlock_tech": "soda_extraction",
-      "profession": "soda_extractor",
-      "production_interval": 3
+      "profession": "soda_extractor"
     },
     {
       "id": "salt_pond",
@@ -136,8 +122,7 @@
       "icon": "salt_pond.png",
       "color": [ 255, 255, 200 ],
       "work_cost": 30,
-      "unlock_tech": "salt_extraction",
-      "production_interval": 2
+      "unlock_tech": "salt_extraction"
     },
     {
       // The harbor — the "key" to the water resources of a specific body of water.
@@ -166,10 +151,7 @@
       // resource consumption").
       "no_worker": true,
       // Marker: this improvement opens the water resources of its body of water.
-      "water_body_harbor": true,
-      // Infrastructure without production: the field is formal
-      // (a single data scheme).
-      "production_interval": 2
+      "water_body_harbor": true
     },
     {
       // Fishing boats — catch fish. They can be built ONLY on hexes with a fish
@@ -183,9 +165,6 @@
       "work_cost": 15,
       "unlock_tech": "fishing",
       "profession": "fisherman",
-      // Fish is food: just like the farm, it outputs its catch every second
-      // (food is written off every simulation tick).
-      "production_interval": 1,
       // Marker: a harbor on this same body of water is required for the build.
       "requires_harbor": true,
       "no_road": true
@@ -207,10 +186,7 @@
       "no_worker": true,
       // A road to a canal is NOT laid: this is an infrastructure element,
       // and extending a road network to it makes no sense.
-      "no_road": true,
-      // Infrastructure without production: the field is formal
-      // (a single data scheme).
-      "production_interval": 2
+      "no_road": true
     },
     {
       // The woodcutter's camp — a logging improvement. It works in TWO modes
@@ -237,8 +213,7 @@
       "color": [ 101, 67, 33 ],
       "work_cost": 18,
       "unlock_tech": "wood_processing",
-      "profession": "lumberjack",
-      "production_interval": 2
+      "profession": "lumberjack"
     }
   ]
 }

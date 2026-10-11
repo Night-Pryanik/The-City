@@ -1766,22 +1766,19 @@ The hover tooltip for a hex has two levels: the ordinary (immediately) and the e
 
 **Test.** `tests/test_hex_tooltip_split.gd` — the separation of the basic and extended block, the completeness of the panel's left-column text, the match between "whether to show" and the block's non-emptiness, and a refresh that does not erase the extended block. Live delivery update — `tests/test_tooltip_live_refresh.gd` (see "Delivery updates in real time").
 
-#### Production lines: only the speed per second
+#### Production lines: the speed per second
 
-The product line in the extended tooltip, in the panel's left column and in the build preview shows a **single** number — the speed per second. There is no "per cycle" base in the line. The source of the lines is one: `map_tooltip._collect_extended_production` (tooltip and panel) and `control_panel._build_preview` (preview) keep the same format.
+The product line in the extended tooltip, in the panel's left column and in the build preview shows a **single** number — the speed per second. The source of the lines is one: `map_tooltip._collect_extended_production` (tooltip and panel) and `control_panel._build_preview` (preview) keep the same format.
 
 | Concept | Where it lives | Does the player see it |
 | --- | --- | --- |
-| Output per cycle | the resource's `produces` (`data/resources/*.json`) | No — an internal quantity |
-| Cycle interval | the improvement's `production_interval` (`data/improvements.json`) | No — it only sets the average speed |
-| Speed | `produces / production_interval`, units/sec | Yes — the single number of the line |
+| Speed | the resource's `produces` (`data/resources/*.json`), units/sec | Yes — the single number of the line |
 
-**Why there is no base.** The player receives a **continuous flow**, not batches: `main_map._emit_continuous_production` on every tick (`SIMULATION_TICK = 1 sec`) adds `produces × multiplier / production_interval` units to storage. Limestone with `produces: { "limestone": 10 }` and a quarry interval of 2 sec gives exactly **5 units every second** — the player never sees a separate sum of "10 every 2 seconds". So `production_interval` is an implementation detail, and it need not be exposed to the interface.
+**`produces` is the rate.** The player receives a **continuous flow**: `main_map._emit_continuous_production` on every tick (`SIMULATION_TICK = 1 sec`) adds `produces × multiplier × SIMULATION_TICK` units to storage. Limestone with `produces: { "limestone": 10 }` gives exactly **10 units every second**. There is no separate "output per cycle" quantity and no cycle interval in the data: the number in `produces` is the number the player gets per second.
 
 | Decision | Why |
 | --- | --- |
-| A value **reduced to one second** is shown, not the number from the data | The player manages a flow per second: the road's throughput, the profession's expenses and the "Resources" tab are all compared with this speed — everything in "units/sec" |
-| The "per cycle" base is **not shown** | It never reaches the player as a separate sum; the label would invite a comparison with a number the player does not see and would require explaining the division by the interval |
+| The speed equals `produces` directly | The player manages a flow per second: the road's throughput, the profession's expenses and the "Resources" tab are all compared with this speed — everything in "units/sec" |
 | The "when built" hint shows the **full** speed | The livestock only starts to fill up after construction, so on a hex without an improvement the fill fraction is 0. The hint describes the future and takes the potential output, while a working improvement takes the current fraction |
 
 Test: `tests/test_production_display.gd`.
@@ -2223,7 +2220,7 @@ The actual counters (`CityData.consumption_rates` / `consumption_sources`) live 
 - `• Charcoal Kiln: 4 units/sec.` — the demand of built buildings with an assigned citizen by the recipes of their slots: the recipe is executed once every `time` seconds (the `time` field in `data/crafts/*.json`, see the subsection "Recipe time (`time`)"), so the demand is shown as "units/sec" (amount × slots / `time`); the demand is shown also when the ingredients are currently short in the storage — it is a need, not a fact;
 - group entries apply to ANY member of the group and are marked with its name: `• Fisherman (group "Boats"): 1 units/sec.`.
 
-**Production (planned)** — the section right below the "Production (current)" block (above both consumption blocks): what WILL be produced by the current producers — the recipes of buildings with a citizen (`CityData.get_planned_production_map()` → `get_building_planned_production()`): `• Charcoal Kiln: +2 units/sec.` (with several slots — `xN`; a recipe without a `time` field gives "units/sec", since SIMULATION_TICK = 1 sec). It is shown also when there is no actual production for the tick — for example, the kiln did not have enough wood. The production of improvements on the map **is included** in the planned production: improvements yield their output cyclically (once every `production_interval` seconds), so their planned rate = `output amount / production_interval` units/sec (for example, a farm: 5 wheat / 1 sec = 5 units/sec; a pasture: 3 feed / 2 sec = 1.5 units/sec). "Production (current)" for improvements shows the actual output over the last SIMULATION_TICK (= 1 sec, which coincides with the plan on average), while "Production (planned)" shows the average rate of the cycle.
+**Production (planned)** — the section right below the "Production (current)" block (above both consumption blocks): what WILL be produced by the current producers — the recipes of buildings with a citizen (`CityData.get_planned_production_map()` → `get_building_planned_production()`): `• Charcoal Kiln: +2 units/sec.` (with several slots — `xN`; a recipe without a `time` field gives "units/sec", since SIMULATION_TICK = 1 sec). It is shown also when there is no actual production for the tick — for example, the kiln did not have enough wood. The production of improvements on the map **is included** in the planned production: improvements output a continuous per-second rate, so their planned rate = `produces` units/sec (for example, a farm: 5 wheat units/sec; a pasture: 3 feed units/sec). "Production (current)" for improvements shows the actual output over the last SIMULATION_TICK (= 1 sec), which coincides with the plan.
 
 **Dynamics** (the red marker of the resource row) — a variant of "actual + plan": if there is a debit for the tick, the actual one is shown (`-10]`); if there was no debit for the tick but a plan exists — the plan reduced to the tick, with the "≈" marker: `-2≈]` for boats (`10 × SIMULATION_TICK / 10`, i.e. `10 × 1 / 10`), `-8≈]` for the charcoal kiln (`20 units/5 sec` → `20 × SIMULATION_TICK / 5` = `20 × 1 / 5` = 4; on the debit tick — the actual `-20]`). The sum is computed over the sources: `amount × SIMULATION_TICK / interval` for interval entries (the demand of buildings carries `interval = time` of the recipe) and `amount` as is for "per tick"; the result is `max(1, round)`. For fruits (interval = tick = 1 sec) the plan coincides with the actual. The explanation of "≈" is shown in the tooltip.
 
