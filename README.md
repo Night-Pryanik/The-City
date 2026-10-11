@@ -1,345 +1,345 @@
 # The City
 
-> Экономический симулятор развития одного города через исторические эпохи.
+> An economic simulator of a single city's development through historical eras.
 
-**The City** — игра о том, как небольшое поселение постепенно превращается в сложный город, развивая производство, технологии и инфраструктуру на процедурно генерируемой гексагональной карте.
+**The City** is a game about how a small settlement gradually turns into a complex city, developing production, technology and infrastructure on a procedurally generated hexagonal map.
 
-Здесь нет армии из тысяч юнитов, ручного управления каждым жителем или необходимости строить каждый дом по клеткам.
+There is no army of thousands of units, no manual control over every citizen, and no need to build every house tile by tile.
 
-Главный герой — **город**.
+The main character is the **city**.
 
 ---
 
-## 🎮 О проекте
+## 🎮 About the project
 
-The City сочетает элементы:
+The City combines elements of:
 
-- экономического симулятора;
+- an economic simulator;
 - resource management;
-- мягкого 4X;
-- исторического city-builder;
-- процедурной генерации мира.
+- a soft 4X;
+- a historical city-builder;
+- procedural world generation.
 
-Игрок исследует окружающую территорию, получает доступ к новым ресурсам, строит производственные здания, развивает технологии и постепенно расширяет область влияния города.
+The player explores the surrounding territory, gains access to new resources, builds production buildings, develops technologies and gradually expands the city's area of influence.
 
-При этом большая часть экономики работает автоматически. Игрок в основном принимает решения **что развивать**, а не занимается постоянным микроменеджментом.
-
----
-
-## 🌍 Мир
-
-Каждая новая игра начинается с процедурно созданной карты.
-
-Карта состоит из гексагонов и содержит:
-
-- различные типы местности;
-- леса и другие типы растительного покрова;
-- реки, озёра, болота и моря;
-- обычные и редкие ресурсы;
-- одноразовые природные находки;
-- территории города и городков;
-- туман войны.
-
-Ресурсы могут быть доступны визуально ещё до их использования. Некоторые из них требуют соответствующей технологии для добычи или обработки.
-
-Другие ресурсы, например подземные месторождения металлов, могут оставаться скрытыми до развития соответствующей технологии.
+At the same time, most of the economy runs automatically. The player mostly makes decisions about **what to develop**, rather than doing constant micromanagement.
 
 ---
 
-## 🏙️ Город
+## 🌍 The world
 
-Город является центральным элементом игры.
+Every new game starts with a procedurally created map.
 
-Внутри города находятся производственные здания, которые образуют цепочки переработки ресурсов:
+The map consists of hexagons and contains:
+
+- various terrain types;
+- forests and other types of vegetation cover;
+- rivers, lakes, marshes and seas;
+- common and rare resources;
+- one-time natural finds;
+- territories of the city and towns;
+- fog of war.
+
+Resources may be visible before they can be used. Some of them require the corresponding technology to extract or process.
+
+Other resources, such as underground metal deposits, may remain hidden until the corresponding technology is developed.
+
+---
+
+## 🏙️ The city
+
+The city is the central element of the game.
+
+Inside the city there are production buildings that form resource processing chains:
 
 ~~~text
-природный ресурс
+natural resource
        ↓
-   улучшение
+   improvement
        ↓
-     сырьё
+     raw resource
        ↓
-производственное здание
+production building
        ↓
-переработанный ресурс
+processed resource
        ↓
-следующее производство
+next production
 ~~~
 
-Здания имеют производственные слоты и рецепты.
+Buildings have production slots and recipes.
 
-По мере развития города здания можно улучшать, получая более совершенные версии с дополнительными возможностями.
+As the city develops, buildings can be upgraded, yielding more advanced versions with additional capabilities.
 
-Например:
+For example:
 
 ~~~text
-Ручная мельница
+Hand mill
       ↓
-Мельница с животной тягой
+Animal-driven mill
       ↓
 ...
 ~~~
 
-Апгрейд здания является обычной строительной задачей и использует тот же общий механизм труда, что и строительство.
+Upgrading a building is an ordinary construction task and uses the same shared labour mechanism as construction.
 
 ---
 
-## 👥 Население и труд
+## 👥 Population and labour
 
-Жители города не являются отдельными персонажами, которыми нужно управлять вручную.
+The city's residents are not individual characters that have to be controlled manually.
 
-Они представляют собой доступную рабочую силу.
+They represent the available workforce.
 
-Каждое активное действие производства или строительства требует рабочего времени.
+Every active production or construction action requires work time.
 
-Количество одновременно выполняемых действий ограничено населением города:
+The number of simultaneous actions is limited by the city's population:
 
-> один житель может участвовать максимум в одном действии одновременно.
+> one resident can take part in at most one action at a time.
 
-Если активных задач меньше, чем жителей, оставшиеся жители свободны.
+If there are fewer active tasks than residents, the remaining residents are free.
 
-Если задач становится больше, чем доступной рабочей силы, они выполняются медленнее.
+If there are more tasks than available workforce, they are completed more slowly.
 
-Труд не является ресурсом, который можно накопить на складе.
+Labour is not a resource that can be stored in a warehouse.
 
 ---
 
-## 🔬 Технологии
+## 🔬 Technologies
 
-Технологии открывают новые возможности для города:
+Technologies unlock new opportunities for the city:
 
-- здания;
-- улучшения территории;
-- ресурсы;
-- способы производства;
-- новые игровые механики;
-- бонусы производства;
-- новые этапы развития.
+- buildings;
+- terrain improvements;
+- resources;
+- production methods;
+- new game mechanics;
+- production bonuses;
+- new stages of development.
 
-Технологическое дерево состоит из эпох и цепочек зависимостей.
+The technology tree consists of eras and dependency chains.
 
-Некоторые технологии имеют несколько обязательных предшественников.
+Some technologies have several mandatory predecessors.
 
-Например, развитие письменных материалов постепенно приводит от ранних носителей информации к более совершенным:
+For example, the development of writing materials gradually leads from early information carriers to more advanced ones:
 
 ~~~text
-Глиняные таблички
+Clay tablets
        ↓
-    Папирус
+    Papyrus
        ↓
-Восковые таблички
+Wax tablets
        ↓
-   Пергамент
+   Parchment
        ↓
-     Шёлк
+     Silk
        ↓
-     Бумага
+     Paper
 ~~~
 
-Это не обязательно линейная цепочка: различные технологии и ресурсы могут существовать параллельно.
+This is not necessarily a linear chain: different technologies and resources can exist in parallel.
 
 ---
 
-## ⛏️ Ресурсы
+## ⛏️ Resources
 
-Экономика The City строится вокруг взаимосвязанных цепочек ресурсов.
+The City's economy is built around interconnected resource chains.
 
-Одно сырьё может иметь несколько применений.
+A single raw material can have several uses.
 
-Например, малахит может использоваться сразу в нескольких направлениях:
+For example, malachite can be used in several directions at once:
 
 ~~~text
-                    ┌→ пигмент
-Малахит ────────────┼→ украшения
-                    └→ медь
+                    ┌→ pigment
+Malachite ──────────┼→ jewellery
+                    └→ copper
 ~~~
 
-Такой подход создаёт реальные экономические решения:
+This approach creates real economic decisions:
 
-> использовать редкий ресурс сейчас или сохранить его для более ценного производства?
+> use a rare resource now, or save it for more valuable production?
 
-В игре также существуют одноразовые природные ресурсы — аналог механики дикоросов.
+The game also has one-time natural resources — an analogue of the foraging mechanic.
 
-Например:
+For example:
 
-- дикие растения;
-- самородная медь;
-- самородное золото;
-- самородное серебро;
-- метеоритное железо.
+- wild plants;
+- native copper;
+- native gold;
+- native silver;
+- meteoritic iron.
 
-После сбора такие находки исчезают.
+After being gathered, such finds disappear.
 
 ---
 
-## ⚒️ Металлургия
+## ⚒️ Metallurgy
 
-Металлы образуют отдельную производственную ветку.
+Metals form a separate production branch.
 
-Ранние технологии позволяют использовать самородные металлы и метеоритное железо.
+Early technologies allow the use of native metals and meteoritic iron.
 
-Следующий этап — полноценная металлургия:
+The next stage is full-fledged metallurgy:
 
 ~~~text
-Рудное месторождение
+Ore deposit
         ↓
-   Плавильная печь
+   Smelting furnace
         ↓
-       металл
+       metal
         ↓
-      кузница
+      forge
         ↓
-     изделие
+     product
 ~~~
 
-Это позволяет разделить две принципиально разные операции:
+This allows two fundamentally different operations to be separated:
 
-**плавка** — получение металла из руды;
+**smelting** — obtaining metal from ore;
 
-**кузнечное производство** — обработка металла и изготовление изделий.
+**forge production** — processing metal and making products.
 
-В дальнейшем эта система развивается в отдельные ветки железа, бронзы, драгоценных металлов и других материалов.
-
----
-
-## 🎨 Производство и качество
-
-The City использует data-driven подход.
-
-Ресурсы, здания, технологии, рецепты и типы местности описываются данными, а не жёстко зашитой логикой отдельных объектов.
-
-Это позволяет создавать сложные производственные цепочки без необходимости переписывать код для каждого нового ресурса.
-
-В игре также развивается система качества ресурсов и продукции.
+Subsequently, this system develops into separate branches of iron, bronze, precious metals and other materials.
 
 ---
 
-## ✨ Процедурные продукты
+## 🎨 Production and quality
 
-Одна из планируемых систем проекта — процедурно генерируемые результаты производства.
+The City uses a data-driven approach.
 
-Вместо создания отдельного рецепта для каждой комбинации ингредиентов рецепт определяет базовый продукт, а дополнительные ингредиенты модифицируют его.
+Resources, buildings, technologies, recipes and terrain types are described by data, rather than by hard-coded logic for individual objects.
 
-Например:
+This makes it possible to create complex production chains without rewriting code for every new resource.
+
+The game also develops a system of resource and product quality.
+
+---
+
+## ✨ Procedural products
+
+One of the project's planned systems is procedurally generated production results.
+
+Instead of creating a separate recipe for every combination of ingredients, a recipe defines a base product, and additional ingredients modify it.
+
+For example:
 
 ~~~text
-Шерстяная одежда
+Woollen clothing
         +
-      индиго
+      indigo
         +
-   меховая отделка
+   fur trim
         ↓
-«Шерстяная одежда, окрашенная индиго,
-с меховой отделкой»
+"Woollen clothing dyed with indigo,
+with fur trim"
 ~~~
 
-Аналогично ювелирное изделие сможет получить несколько дополнительных материалов:
+Similarly, a piece of jewellery will be able to receive several additional materials:
 
 ~~~text
-Золотое украшение
+Gold ornament
        +
-     оникс
+     onyx
        +
-     агат
+     agate
        ↓
-Золотое украшение с ониксом и агатом
+Gold ornament with onyx and agate
 ~~~
 
-Это позволяет создавать большое количество вариантов продукции без комбинаторного взрыва количества рецептов и отдельных предметов.
+This makes it possible to create a large number of product variants without a combinatorial explosion in the number of recipes and individual items.
 
 ---
 
-## 🗺️ Расширение территории
+## 🗺️ Territory expansion
 
-Город начинает с ограниченной областью влияния.
+The city starts with a limited area of influence.
 
-По мере развития он получает возможность расширять своё влияние и исследовать окружающий регион.
+As it develops, it gains the ability to expand its influence and explore the surrounding region.
 
-Разведчиков можно отправить в любую точку карты, до которой можно прокрутить экран, — в том числе на территорию городков и в неисследованный туман войны. Но только после изучения технологии **«Картография»**: до неё разведка ограничена неисследованной частью Региона, а гексы в тумане войны недоступны для наведения и клика. Освоение (покупка) новых гексов при этом остаётся возможным только внутри Региона — полосы вокруг Кольца Влияния.
+Scouts can be sent to any point on the map that the screen can be scrolled to — including the territory of towns and the unexplored fog of war. But only after researching the **Cartography** technology: before that, scouting is limited to the unexplored part of the Region, and hexes in the fog of war cannot be hovered over or clicked. Claiming (buying) new hexes, however, remains possible only within the Region — the strips around the Ring of Influence.
 
-И разведка, и освоение работают **только от границы известного мира**: чанк должен граничить с Кольцом Влияния или уже разведанными гексами. Разведчики не перепрыгивают через неисследованную землю — граница известного мира расширяется вперёд чанк за чанком, а «карманы» в тумане войны разведать нельзя. У непримыкающего чанка кнопка действия серая и объясняет причину. Гекс в тумане войны не выдаёт информацию: ни тултип при наведении, ни левая колонка панели не показывают местность и ресурсы, пока гекс не разведан.
+Both scouting and claiming work **only from the border of the known world**: a chunk must border the Ring of Influence or already explored hexes. Scouts do not jump over unexplored land — the border of the known world expands forward chunk by chunk, and "pockets" in the fog of war cannot be scouted. For a chunk that does not adjoin, the action button is greyed out and explains the reason. A hex in the fog of war reveals no information: neither the tooltip on hover nor the left column of the panel shows terrain and resources until the hex is explored.
 
-Разведка и освоение оплачиваются **монетами из казны города**: цена считается по гексам чанка и растёт с расстоянием от города (базовые значения — в `data/game_balance.json`, см. docs.md, «Стоимость разведки (монеты из казны)»). Освоение дополнительно требует труда: он накапливается во времени, как при строительстве.
+Scouting and claiming are paid for with **coins from the city treasury**: the price is calculated per hex of the chunk and grows with distance from the city (base values are in `data/game_balance.json`, see docs.md, "Cost of scouting (coins from the treasury)"). Claiming additionally requires labour: it accumulates over time, as in construction.
 
-Исследование и освоение территории позволяют обнаруживать новые ресурсы и возможности.
+Exploring and claiming territory make it possible to discover new resources and opportunities.
 
-При переходе на следующий этап развития расширение области влияния происходит скачком, открывая новый масштаб развития города.
-
----
-
-## 🏘️ Городки
-
-Помимо главного города, на карте могут существовать небольшие поселения — **городки**.
-
-Они имеют:
-
-- собственные названия;
-- собственную территорию влияния;
-- отдельное визуальное оформление границы;
-- цветовую маркировку территории.
-
-Названия городов и городков процедурно выбираются из большого набора вымышленных топонимов.
-
-При этом мир намеренно не привязан к одной исторической культуре.
-
-Можно встретить:
-
-- условно североевропейские названия;
-- месопотамские;
-- египетские;
-- индийские;
-- китайские;
-- японские;
-- африканские;
-- ближневосточные;
-- южноамериканские;
-- полинезийские;
-
-а также намеренные культурные гибриды.
-
-Это часть художественного замысла мира.
+When advancing to the next stage of development, the area of influence expands in a jump, opening a new scale of city development.
 
 ---
 
-## 🧠 Дизайн-принципы
+## 🏘️ Towns
 
-The City придерживается нескольких важных принципов.
+Besides the main city, the map may contain small settlements — **towns**.
+
+They have:
+
+- their own names;
+- their own area of influence;
+- a separate visual border design;
+- colour-coded territory.
+
+The names of cities and towns are procedurally chosen from a large set of invented toponyms.
+
+The world is deliberately not tied to a single historical culture.
+
+You can encounter:
+
+- conventionally Northern European names;
+- Mesopotamian;
+- Egyptian;
+- Indian;
+- Chinese;
+- Japanese;
+- African;
+- Middle Eastern;
+- South American;
+- Polynesian;
+
+as well as deliberate cultural hybrids.
+
+This is part of the world's artistic design.
+
+---
+
+## 🧠 Design principles
+
+The City follows several important principles.
 
 ### 95/5
 
-Около 95% экономики должно работать автоматически.
+About 95% of the economy should run automatically.
 
-Игрок вмешивается там, где действительно требуется решение.
+The player intervenes where a decision is genuinely required.
 
-### Город — главный герой
+### The city is the main character
 
-Жители — это прежде всего рабочая сила.
+Residents are first and foremost workforce.
 
-Игра не пытается превратить каждого жителя в отдельного симулируемого NPC.
+The game does not try to turn every resident into a separately simulated NPC.
 
 ### Data-driven
 
-Ресурсы, здания, рецепты, технологии и другие элементы игры должны по возможности задаваться данными.
+Resources, buildings, recipes, technologies and other game elements should be defined by data wherever possible.
 
-Это упрощает развитие проекта и открывает возможность модификаций.
+This simplifies the project's development and opens up the possibility of mods.
 
-### Минимум микроменеджмента
+### Minimum micromanagement
 
-Игрок должен управлять экономикой города, а не постоянно нажимать кнопки для поддержания её работы.
+The player should manage the city's economy, not constantly press buttons to keep it running.
 
-### Экономика важнее количества контента
+### Economy matters more than the amount of content
 
-Новый ресурс или здание должны создавать интересную связь с уже существующей экономикой, а не просто увеличивать список предметов.
+A new resource or building should create an interesting connection with the existing economy, rather than simply lengthening the list of items.
 
 ---
 
-## 🛠️ Технологии
+## 🛠️ Technologies
 
-Проект разрабатывается на **Godot**.
+The project is developed in **Godot**.
 
-Основные данные игры хранятся в JSON.
+The main game data is stored in JSON.
 
-Примерная структура:
+Approximate structure:
 
 ~~~text
 data/
@@ -361,92 +361,92 @@ city_ui/
 └── ...
 ~~~
 
-Конкретная структура проекта продолжает развиваться вместе с разработкой.
+The exact project structure continues to evolve with development.
 
 ---
 
-## 🚧 Состояние проекта
+## 🚧 Project status
 
-The City находится в активной разработке.
+The City is in active development.
 
-Уже реализуются и тестируются:
+Already implemented and being tested:
 
-- процедурная гексагональная карта;
-- город и городки;
-- территория влияния;
-- туман войны;
-- ресурсы и месторождения;
-- улучшения территории;
-- производство;
-- рабочая сила;
-- строительство;
-- улучшение зданий;
-- производственные слоты;
-- технологии;
-- несколько исторических эпох;
-- дороги с уровнями и маршрутами от улучшений до города;
-- одноразовые природные ресурсы;
-- самородные металлы;
-- металлургическая цепочка;
-- письменные материалы;
-- бумага;
-- красители;
-- ювелирное производство;
-- названия городов и городков.
+- procedural hexagonal map;
+- the city and towns;
+- area of influence;
+- fog of war;
+- resources and deposits;
+- terrain improvements;
+- production;
+- workforce;
+- construction;
+- building upgrades;
+- production slots;
+- technologies;
+- several historical eras;
+- roads with levels and routes from improvements to the city;
+- one-time natural resources;
+- native metals;
+- the metallurgy chain;
+- writing materials;
+- paper;
+- dyes;
+- jewellery production;
+- names of cities and towns.
 
-Многие системы находятся в стадии активной балансировки и полировки.
-
----
-
-## 🧪 Тестирование
-
-Проект находится на стадии активного тестирования.
-
-Особое внимание уделяется:
-
-- экономическому балансу;
-- производственным цепочкам;
-- понятности интерфейса;
-- прогрессии технологий;
-- процедурной генерации;
-- поведению экономики на разных картах;
-- отсутствию тупиковых ресурсных цепочек;
-- производительности больших карт.
+Many systems are in the stage of active balancing and polishing.
 
 ---
 
-## 📌 Философия разработки
+## 🧪 Testing
 
-The City не пытается быть максимально реалистичной исторической реконструкцией.
+The project is at the stage of active testing.
 
-История используется как источник:
+Particular attention is paid to:
 
-- технологий;
-- материалов;
-- производственных процессов;
-- культурных образов;
-- идей для экономики.
-
-Но конечная цель — создать самостоятельную игровую систему.
-
-Если историческая деталь делает экономику интереснее — она может появиться в игре.
-
-Если она только добавляет микроменеджмент или создаёт бесполезный ресурс — от неё можно отказаться.
+- economic balance;
+- production chains;
+- UI clarity;
+- technology progression;
+- procedural generation;
+- how the economy behaves on different maps;
+- the absence of dead-end resource chains;
+- performance on large maps.
 
 ---
 
-## 📖 Документация
+## 📌 Development philosophy
 
-Основные принципы и текущее устройство проекта описаны в:
+The City does not try to be a maximally realistic historical reconstruction.
+
+History is used as a source of:
+
+- technologies;
+- materials;
+- production processes;
+- cultural images;
+- ideas for the economy.
+
+But the ultimate goal is to create a self-contained game system.
+
+If a historical detail makes the economy more interesting, it may appear in the game.
+
+If it only adds micromanagement or creates a useless resource, it can be dropped.
+
+---
+
+## 📖 Documentation
+
+The main principles and the current structure of the project are described in:
 
 `design_doc.md`
 
-При изменении ключевых игровых систем документация должна обновляться вместе с кодом.
+When key game systems change, the documentation must be updated together with the code.
 
 ---
 
-## 📜 Лицензия
+## 📜 License
 
-Проект находится в разработке.
+The project is in development.
 
-Информация о лицензии будет добавлена отдельно.
+License information will be added separately.

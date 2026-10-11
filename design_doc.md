@@ -1,270 +1,270 @@
-# The City — Дизайн-документ
+# The City — Design document
 
-**Версия:** 2026-08-21  
-**Репозиторий:** https://github.com/Night-Pryanik/The-City  
-**Движок:** Godot (GDScript)  
-**Назначение документа:** каноническое описание игры для продолжения разработки (в т.ч. новым ассистентом) без чтения всей истории чатов. Код и JSON в репозитории — источник правды по реализации; этот файл — источник правды по *замыслу*.
-
----
-
-## 1. Высокая концепция
-
-**The City** — экономико-ресурсный симулятор развития **одного города** на гексовой карте на протяжении нескольких исторических эпох.
-
-Игрок не микроуправляет отдельными жителями и не рисует уличную сеть в духе Cities: Skylines. **Город — главный герой:** он добывает, перерабатывает, исследует, расширяется и торгует. Жители — «винтики» (работники/слоты), а не персонажи.
-
-### Фантазия
-
-> Вырастить город, который *помнит*, кем был: от первых ферм до узнаваемого производителя (сыр, стекло, фарфор…), на ландшафте с реками, озёрами, морями и уникальными типами местности.
-
-### Жанровые ориентиры
-
-- Ближе к: **Anno** (цепочки), мягкий **4X по карте** (экспансия, технологии), resource-economy sim.  
-- Дальше от: классический street-level city-builder (C:S), боевой 4X, RPG.
-
-Старые заметки автора (2014–2019) описывали более «градостроительный» вариант (дороги, жильё, транспорт, налоги). Текущий курс **сознательно** смещён к экономике и ландшафту. Элементы градостроя допустимы только если усиливают эту фантазию, а не требуют второй игры поверх первой.
+**Version:** 2026-08-21  
+**Repository:** https://github.com/Night-Pryanik/The-City  
+**Engine:** Godot (GDScript)  
+**Purpose of the document:** a canonical description of the game for continuing development (including by a new assistant) without reading the whole chat history. The code and JSON in the repository are the source of truth for the implementation; this file is the source of truth for the *intent*.
 
 ---
 
-## 2. Принципы дизайна (обязательные)
+## 1. High concept
 
-1. **95% / 5%** — большую часть времени система работает сама (автозаполнение слотов, разумные дефолты). Ручная настройка — редкая и по желанию.
-2. **Единообразие правил** важнее «исторического вайба» в спорных местах (видимость ресурсов, пресная вода vs море и т.д.).
-3. **Data-driven** — ресурсы, здания, технологии, террейны, рецепты в JSON; моддинг — цель архитектуры.
-4. **Город, не житель** — формулы от масштаба города/зданий, не от счастья каждого NPC.
-5. **Труд не копится на складе** — считается в момент действия (строительство, исследование): стоимость ÷ производство труда/сек → время.
-6. **Реализм желателен, баланс важнее** — «искусственные» множители допустимы, если игрок их читает; предпочтительны правдоподобные ограничения (корм, переработка, время заполнения пастбища).
-7. **Ранняя игра не должна быть симулятором ожидания** — нужны занятия без огромных трат (разведка, дикоросы и т.п.).
+**The City** is an economic-resource simulator of the development of **a single city** on a hex map across several historical eras.
 
----
+The player does not micromanage individual residents and does not draw a street grid in the spirit of Cities: Skylines. **The city is the main character:** it extracts, processes, researches, expands and trades. Residents are "cogs" (workers/slots), not characters.
 
-## 3. Карта и мир
+### Fantasy
 
-### 3.1. Топология
+> Grow a city that *remembers* what it used to be: from the first farms to a recognisable producer (cheese, glass, porcelain…), on a landscape with rivers, lakes, seas and unique terrain types.
 
-- Сетка: **odd-r** гексы.
-- При старте генерируется **вся** карта сразу (сейчас типично 60×60; целевой задел до ~200×200 с оптимизацией).
-- **Кольцо влияния** — зона, где можно строить улучшения. Старт: задаётся в `map_config` (`start_ring_rows/cols`, порядка 7×9).
-- **Регион** — полоса шириной `region_width` (обычно 2) вокруг Кольца: только здесь можно ПОКУПАТЬ чанки за ресурс (монеты из казны + труд — по актуальной экономике, см. docs.md, «Освоение территории: «труд + монеты»»).
-- **Туман войны** — всё за Кольцом+Регионом. Отображается сплошной серой заливкой. После изучения технологии **«Картография»** разведку можно отправить в любую точку, достижимую скроллом, — включая территорию городков; до неё разведка ограничена неисследованной частью Региона (гексы тумана не реагируют на наведение и клик). И разведка, и покупка чанков требуют, чтобы чанк **граничил с известной территорией** (Кольцо Влияния или разведанные гексы): разведчики не перепрыгивают через неисследованную землю, граница известного мира расширяется вперёд чанк за чанком. Покупка чанков по-прежнему ограничена Регионом. Гекс в тумане войны не выдаёт информацию: тултип и панель показывают только заглушку, пока гекс не разведан.
-- При **переходе эпохи**: некупленный Регион может отдаваться бесплатно; Кольцо расширяется; снаружи формируется новый Регион (логика эпох — в развитии).
+### Genre references
 
-### 3.2. Слои местности
+- Closer to: **Anno** (chains), a soft **map-level 4X** (expansion, technologies), a resource-economy sim.  
+- Further from: a classic street-level city-builder (C:S), a combat 4X, an RPG.
 
-1. **Рельеф (terrain):** plain, hill, mountain, lake, swamp, marsh, sea, beach (+ unique: soda_lake, asphalt_lake, …).
-2. **Покров (cover):** none, forest, sparse_forest, reeds, swamp_forest, … — отдельный слой; лес не отдельный «тип местности», а надстройка над рельефом.
-
-- **Болото (swamp)** — в Вороном (`terrain_config`).  
-- **Марши (marsh)** — только пост-обработка у воды (озёр и морей); не центры Вороного.  
-- **Море (sea)** — **не** Вороной: маска до/поверх Вороного.  
-- **Пляж (beach)** — суша у моря, связанная с краем карты.
-
-### 3.3. Генерация рельефа
-
-- Базовый рельеф суши: **Вороной + JFA**, плотности и `target_cluster` **по типам** в `map_config.terrain_config`.
-- `target_cluster` — средний размер пятна; меньше → мельче кластеры.
-- Гарантии у города:
-  - `CENTER_EXCLUSION_RADIUS` — непроходимые центры (озеро/море) не ставятся близко;
-  - `PLAIN_ZONE_RADIUS` / `_ensure_plain_zone` — двор равнин;
-  - `_ensure_outward_corridor` — если город отрезан водой, пробивается коридор.
-
-### 3.4. Море
-
-- Конфиг: блок `sea` в `map_config`.
-- Режимы: `none` | `edge` | `noise`.
-- Замысел игрока: море **в основном за краем карты**; на карте — **небольшая бухта/язычок**, а не сплошная полоса всего края, но при желании игрок может настроить генерацию моря по своему вкусу.
-- Параметры вроде `sides`, `edge_width_*`, `edge_envelope_strength`, `max_sea_depth` управляют формой; целевой UX — «нашли выход к морю», а не «вся восточная граница — океан».
-- `move_cost` у sea/lake высокий (непроходимость для сухопутной логики).
-- **Пресная вода / орошение** — от озёр, рек, каналов, ферм-проводников; **не** от моря.
-
-### 3.5. Реки
-
-- По **рёбрам/вершинам** гексов (не заливка центра гекса).
-- Главные: исток в горах (иначе холмы) → устье в **озере или море**.
-- Притоки впадают в главные/другие притоки.
-- Не текут сквозь болота/марши.
-- Отрисовка: меандры, кэш точек; производительность критична на больших картах.
-
-### 3.6. Уникальные местности
-
-- `unique: true` в данных террейна; `place_unique_terrains` кладёт **один** кластер на карту (размер из `cluster_size`).
-- Примеры: содовое озеро, асфальтовое озеро — бонус к добыче связанного ресурса (`terrain_modifiers`).
+The author's old notes (2014–2019) described a more "urban-planning" variant (roads, housing, transport, taxes). The current direction is **deliberately** shifted towards the economy and the landscape. Urban-planning elements are acceptable only if they reinforce this fantasy rather than requiring a second game on top of the first.
 
 ---
 
-## 4. Ресурсы
+## 2. Design principles (mandatory)
 
-### 4.1. Спавн
+1. **95% / 5%** — most of the time the system runs itself (auto-filling slots, sensible defaults). Manual configuration is rare and optional.
+2. **Uniformity of rules** matters more than "historical vibe" in contested places (resource visibility, fresh water vs sea, etc.).
+3. **Data-driven** — resources, buildings, technologies, terrains, recipes in JSON; modding is an architectural goal.
+4. **City, not resident** — formulas depend on the scale of the city/buildings, not on the happiness of each NPC.
+5. **Labour does not pile up in a warehouse** — it is computed at the moment of an action (construction, research): cost ÷ labour production per second → time.
+6. **Realism is desirable, balance matters more** — "artificial" multipliers are acceptable if the player can read them; plausible constraints are preferable (feed, processing, time to fill a pasture).
+7. **The early game must not be a waiting simulator** — it needs activities that do not cost much (scouting, foraging, etc.).
 
-- **Почти все ресурсы спавнятся при старте** на подходящих гексах.
-- Исключение по смыслу ранней игры: гарантированные стартовые пищевые растения в зоне старта.
-- Гарантии в стартовой зоне (Кольцо+Регион): пища (растение), стройматериал/минерал, металл (не виден сразу по старта, открывается после изучения технологии) (см. `ensure_minimum_resource`).
+---
 
-### 4.2. Видимость и добыча
+## 3. Map and world
 
-Два независимых поля:
+### 3.1. Topology
 
-| Поле | Смысл |
+- Grid: **odd-r** hexes.
+- At start the **entire** map is generated at once (currently typically 60×60; the target headroom is up to ~200×200 with optimisation).
+- **Ring of Influence** — the zone where improvements can be built. Start: set in `map_config` (`start_ring_rows/cols`, roughly 7×9).
+- **Region** — a strip of width `region_width` (usually 2) around the Ring: only here can chunks be BOUGHT for a resource (coins from the treasury + labour — per the current economy, see docs.md, "Claiming territory: labour + coins").
+- **Fog of war** — everything beyond the Ring+Region. Displayed as a solid grey fill. After researching the **Cartography** technology, scouting can be sent to any point reachable by scrolling — including the territory of towns; before that, scouting is limited to the unexplored part of the Region (fog hexes do not respond to hover and click). Both scouting and buying chunks require the chunk to **border known territory** (the Ring of Influence or explored hexes): scouts do not jump over unexplored land, the border of the known world expands forward chunk by chunk. Buying chunks is still limited to the Region. A hex in the fog of war reveals no information: the tooltip and panel show only a placeholder until the hex is explored.
+- On an **era transition**: the unbought Region may be given away for free; the Ring expands; a new Region forms outside it (era logic is in development).
+
+### 3.2. Terrain layers
+
+1. **Terrain (relief):** plain, hill, mountain, lake, swamp, marsh, sea, beach (+ unique: soda_lake, asphalt_lake, …).
+2. **Cover:** none, forest, sparse_forest, reeds, swamp_forest, … — a separate layer; forest is not a separate "terrain type" but an overlay on top of the relief.
+
+- **Swamp (swamp)** — part of the Voronoi (`terrain_config`).  
+- **Marsh (marsh)** — post-processing only near water (lakes and seas); not Voronoi centres.  
+- **Sea (sea)** — **not** Voronoi: a mask before/over the Voronoi.  
+- **Beach (beach)** — land by the sea, tied to the map edge.
+
+### 3.3. Relief generation
+
+- Base land relief: **Voronoi + JFA**, densities and `target_cluster` **per type** in `map_config.terrain_config`.
+- `target_cluster` — the average size of a patch; smaller → finer clusters.
+- Guarantees around the city:
+  - `CENTER_EXCLUSION_RADIUS` — impassable centres (lake/sea) are not placed nearby;
+  - `PLAIN_ZONE_RADIUS` / `_ensure_plain_zone` — a plain yard;
+  - `_ensure_outward_corridor` — if the city is cut off by water, a corridor is cut through.
+
+### 3.4. Sea
+
+- Config: the `sea` block in `map_config`.
+- Modes: `none` | `edge` | `noise`.
+- The player's intent: the sea is **mostly beyond the map edge**; on the map there is a **small bay/tongue**, not a solid strip along the entire edge, but if desired the player can configure sea generation to their own taste.
+- Parameters such as `sides`, `edge_width_*`, `edge_envelope_strength`, `max_sea_depth` control the shape; the target UX is "we found an outlet to the sea", not "the entire eastern border is ocean".
+- `move_cost` for sea/lake is high (impassable for land-based logic).
+- **Fresh water / irrigation** — from lakes, rivers, canals, conduit farms; **not** from the sea.
+
+### 3.5. Rivers
+
+- Along the **edges/vertices** of hexes (not filling the centre of a hex).
+- Main rivers: source in the mountains (otherwise hills) → mouth into a **lake or sea**.
+- Tributaries flow into main rivers/other tributaries.
+- Do not flow through swamps/marshes.
+- Rendering: meanders, point cache; performance is critical on large maps.
+
+### 3.6. Unique terrains
+
+- `unique: true` in the terrain data; `place_unique_terrains` places **one** cluster on the map (size from `cluster_size`).
+- Examples: soda lake, asphalt lake — a bonus to the extraction of the associated resource (`terrain_modifiers`).
+
+---
+
+## 4. Resources
+
+### 4.1. Spawn
+
+- **Almost all resources spawn at start** on suitable hexes.
+- The exception, in the spirit of the early game: guaranteed starting food plants in the starting zone.
+- Guarantees in the starting zone (Ring+Region): food (plant), construction material/mineral, metal (not visible at start, unlocked after researching the technology) (see `ensure_minimum_resource`).
+
+### 4.2. Visibility and extraction
+
+Two independent fields:
+
+| Field | Meaning |
 |------|--------|
-| **`tech_required`** | Нужна технология, чтобы **строить улучшение** / эксплуатировать |
-| **`tech_reveal`** | Ресурс **становится виден на карте** только после изучения соответствующей технологии (глубинные металлы и т.п.) |
+| **`tech_required`** | A technology is needed to **build an improvement** / operate it |
+| **`tech_reveal`** | The resource **becomes visible on the map** only after the corresponding technology is researched (deep metals, etc.) |
 
-- «Поверхностные» ресурсы видны после разведки/в купленной зоне, но могут быть закрыты замком до `tech_required`.
-- `tech_reveal`: даже в купленной зоне скрыты, пока не изучена соответствующая tech; при раскрытии — сообщение; если на гексе уже другое улучшение — UI: восклицательный знак, тултип «обнаружено / снесите / постройте».
-- Разведка по скрытому железу может честно писать «ресурсов нет» — разведчики не опознали руду.
+- "Surface" resources are visible after scouting / in a bought zone, but may be locked until `tech_required`.
+- `tech_reveal`: even in a bought zone they stay hidden until the corresponding tech is researched; on reveal — a message; if the hex already has another improvement — the UI shows an exclamation mark, tooltip "discovered / demolish / build".
+- Scouting over hidden iron may honestly report "no resources" — the scouts did not recognise the ore.
 
-### 4.3. Одомашнивание
+### 4.3. Domestication
 
-- Ресурс на карте = «в окрестностях водятся дикие X».
-- Первое улучшение (ферма/пастбище) **одомашнивает** вид → дальше тот же тип улучшения можно ставить на подходящих гексах без повторного «дикого» тайла.
-- Разведение на пустом гексе должно прописывать в данные гекса поле `crop_bred` (актуальная схема — в коде).
-- Разведение животных/растений наследует качество: "исключительные коровы дают исключительных телят".
+- A resource on the map = "wild X are found in the area".
+- The first improvement (farm/pasture) **domesticates** the species → afterwards the same improvement type can be placed on suitable hexes without a repeated "wild" tile.
+- Breeding on an empty hex must record a `crop_bred` field in the hex data (the current schema is in the code).
+- Breeding animals/plants inherits quality: "exceptional cows produce exceptional calves".
 
-### 4.4. Качество (принято к реализации)
+### 4.4. Quality (accepted for implementation)
 
-- Уровни: **обычное → хорошее → исключительное → превосходное** (4 ступени).
-- Качество есть у сырья и наследуется продуктами (с усреднением, если смешанный склад): "из исключительной муки получается исключительный хлеб".
-- Склад хранит разбивку по качеству; тултипы / вкладка Торговля показывают детали.
-- **Городки — упрощённые правила:** на их складах не бывает смешанного качества, у каждого товара ровно один уровень, взятый из ресурса на карте. При «производстве» действует стандартное правило результата крафта (средневзвешенное), как у города игрока. В окне городка уровень показан просто звёздами и их цветом, без разбивки и процентов.
-- Автовыбор сырья: по умолчанию приоритет более качественному; опционально тонкая настройка на здание (дорогое / дешёвое / случайно).
-- **Не** вводилась отдельная «система сортов парусины из разных материалов (лен, джут)» как микроменеджмент партий — вместо этого качество сырья.
-
----
-
-## 5. Производство и город
-
-### 5.1. Улучшения на карте vs здания в городе
-
-- **Улучшения** на гексах: фермы, пастбища, шахты, смоляные ямы… — в основном сырьё (и ограничения по террейну/покрову).
-- **Здания в городе**: переработка, слоты производства, рецепты (бойня, сыроварня, кузница…).
-- Один работник (слот) на улучшение/здание — базовая модель занятости.
-- Слоты производства: список зданий → слоты → что производят; выключение слота/здания без микроменеджмента каждого жителя.
-
-### 5.2. Еда и рост
-
-- Исторически еда была «валютой» на всё — это **смягчается / уходит**: еда в первую очередь для населения и роста; разведка и освоение территории — через **монеты казны** (+ время и труд), строительство и наука — через **труд** и **науку** соответственно.
-- Рост населения: порог еды на нового жителя (возможна прогрессия «каждый следующий дороже»).
-- Пастбища: сырое мясо/молоко → переработка в городе; **корм** с ферм; без корма сильный штраф к выходу; заполнение поголовья со временем (задумано).
-
-### 5.3. Труд
-
-- Город производит труд как функцию масштаба (население/развитость), не накопительный склад «молотков».
-- Время действия = f(стоимость в данных, текущая скорость труда, модификаторы вроде сытости, Колеса).
-- **Колесо:** −30% к влиянию расстояния от города на стоимость труда при постройке улучшений.
-
-### 5.4. Торговля и специализации (дизайн, частично впереди)
-
-- Внутренний/внешний рынок, цены, импорт для цепочек.
-- **Репутация / «известен X»** от объёмов → мягкий бонус.
-- **Челленджи** (в т.ч. динамические по продукту/качеству): выполнить → бренд «товар (Имягорода)», ветка специализации, уникальные здания.
-- Мета-ачивка на «выполнить челлендж перепродажей импорта» — сознательно допустима как остроумный обход.
-- Статические ачивки: «Однолюб», «Не хочу ждать» (скупить Регион до смены эпохи) и т.д.
+- Levels: **common → good → exceptional → superb** (4 steps).
+- Quality exists on raw materials and is inherited by products (with averaging if the warehouse is mixed): "exceptional flour makes exceptional bread".
+- The warehouse stores a breakdown by quality; tooltips / the Trade tab show the details.
+- **Towns use simplified rules:** their warehouses never hold mixed quality, each good has exactly one level, taken from the resource on the map. During "production" the standard craft-result rule applies (weighted average), as for the player's city. In the town window the level is shown simply as stars and their colour, without a breakdown or percentages.
+- Auto-selection of raw materials: by default priority is given to higher quality; optionally fine-tuning per building (expensive / cheap / random).
+- A separate "system of canvas grades from different materials (linen, jute)" was **not** introduced as batch micromanagement — instead, raw-material quality.
 
 ---
 
-## 6. Технологии и эпохи
+## 5. Production and the city
 
-### 6.1. Технологии
+### 5.1. Map improvements vs city buildings
 
-- Дерево (UI: корень, связи; подсветка путей к родителям).
-- Открывают: здания, улучшения, механики, иногда reveal ресурсов, бонусы.
-- Разбивка по эпохам (задумано): в каждой эпохе можно открывать технологии только этой эпохи. Пока игрок не перейдет из Древней в Античную, технологии Античной не будут доступны.
+- **Improvements** on hexes: farms, pastures, mines, tar pits… — mostly raw materials (and restrictions by terrain/cover).
+- **City buildings**: processing, production slots, recipes (butchery, cheese dairy, forge…).
+- One worker (slot) per improvement/building — the base employment model.
+- Production slots: a list of buildings → slots → what they produce; switching a slot/building off without micromanaging every resident.
 
-### 6.2. Эпохи
+### 5.2. Food and growth
 
-- План: несколько крупных эпох (либо 3 (крупные, тщательно проработанные), либо 7 — **не зафиксировано окончательно**).
-- Переход по целям (еда / другие метрики в будущем).
-- При переходе: расширение территории, новые возможности; старые здания могут сохраняться, менять функцию или устаревать (замысел «город через века»).
+- Historically food was the "currency" for everything — this is being **softened / phased out**: food is primarily for the population and growth; scouting and claiming territory go through **treasury coins** (+ time and labour), construction and science through **labour** and **science** respectively.
+- Population growth: a food threshold per new resident (a progression where "each next one is more expensive" is possible).
+- Pastures: raw meat/milk → processing in the city; **feed** from farms; without feed a strong penalty to output; livestock filling over time (planned).
 
-**Открытый вопрос:** полный проход до современности vs фокус на древности–ранней современности с глубокими цепочками. Резервный вариант — ограниченный хронологический размах.
+### 5.3. Labour
+
+- The city produces labour as a function of scale (population/development), not as an accumulating warehouse of "hammers".
+- Action time = f(cost in the data, current labour speed, modifiers such as satiety, the Wheel).
+- **The Wheel:** −30% to the influence of distance from the city on the labour cost when building improvements.
+
+### 5.4. Trade and specialisations (design, partly ahead)
+
+- Domestic/foreign market, prices, imports for chains.
+- **Reputation / "known for X"** from volumes → a soft bonus.
+- **Challenges** (including dynamic ones by product/quality): complete one → the brand "good (CityName)", a specialisation branch, unique buildings.
+- A meta-achievement for "completing a challenge by reselling an import" is deliberately allowed as a clever workaround.
+- Static achievements: "Monogamist", "I don't want to wait" (buy out the Region before an era change), etc.
 
 ---
 
-## 7. Ранняя игра
+## 6. Technologies and eras
 
-Проблема: «поставил ферму — смотри на счётчик».
+### 6.1. Technologies
 
-Принятые/желательные занятия:
+- A tree (UI: root, links; highlighting of paths to parents).
+- They unlock: buildings, improvements, mechanics, sometimes resource reveals, bonuses.
+- Split by eras (planned): in each era only the technologies of that era can be unlocked. Until the player advances from the Ancient era to the Antiquity era, Antiquity technologies are not available.
 
-1. **Разведка Региона** — стоимость (монеты казны, растут с расстоянием от города) + время, прогресс на чанке; открывает ландшафт и видимые ресурсы.
-2. **Сбор дикоросов** — разово на ограниченном числе гексов, небольшой бонус еды, не кликер на всю карту.
-3. Позже: покупка чанков, пастбища, переработка, технологии.
+### 6.2. Eras
 
-Режим «Развитие» изначально блокировал обычную карту; обсуждалось совместить стройку в Кольце и разведку в Регионе на одной карте и освободить режим для других механик.
+- Plan: several major eras (either 3 (major, carefully crafted), or 7 — **not yet finalised**).
+- Transition by goals (food / other metrics in the future).
+- On transition: territory expansion, new opportunities; old buildings may be preserved, change function, or become obsolete (the "city through the ages" intent).
+
+**Open question:** a full run through to modern times vs a focus on antiquity–early modernity with deep chains. The fallback option is a limited chronological span.
+
+---
+
+## 7. Early game
+
+The problem: "you placed a farm — now you watch a counter".
+
+Accepted/desirable activities:
+
+1. **Scouting the Region** — cost (treasury coins, growing with distance from the city) + time, progress per chunk; reveals the landscape and visible resources.
+2. **Gathering wild plants** — one-off on a limited number of hexes, a small food bonus, not a map-wide clicker.
+3. Later: buying chunks, pastures, processing, technologies.
+
+The "Development" mode originally blocked the normal map; there was discussion of combining construction in the Ring and scouting in the Region on one map and freeing the mode up for other mechanics.
 
 ---
 
 ## 8. UI / UX
 
-- Тултипы: местность, ресурс, улучшение, качество, орошение, время стройки.
-- Замок на ресурсе, закрытом tech.
-- Вкладка зданий: не пустая панель — описание, рецепты **до** постройки (критично).
-- Дерево технологий с подсветкой зависимостей.
-- Правило: информация для решения (что строить / что учить) должна быть доступна **до** траты хода/ресурса.
+- Tooltips: terrain, resource, improvement, quality, irrigation, construction time.
+- A lock on a resource closed by tech.
+- The buildings tab: not an empty panel — a description, recipes **before** construction (critical).
+- A technology tree with dependency highlighting.
+- Rule: information for a decision (what to build / what to research) must be available **before** spending a turn/resource.
 
 ---
 
-## 9. Технические якоря для ассистента
+## 9. Technical anchors for the assistant
 
-| Область | Где смотреть |
+| Area | Where to look |
 |---------|----------------|
-| Конфиг карты | `data/map_config.json` |
-| Террейны | `data/terrains/` |
-| Генерация карты | `scripts/map_generator.gd` (и связанные) |
-| Реки | river manager / generator / renderer |
-| Ресурсы, tech fields | JSON ресурсов + логика спавна |
-| Город, UI | `city_ui/`, менеджеры города |
-| Документация в коде | комментарии в генераторе, `docs` если есть |
+| Map config | `data/map_config.json` |
+| Terrains | `data/terrains/` |
+| Map generation | `scripts/map_generator.gd` (and related) |
+| Rivers | river manager / generator / renderer |
+| Resources, tech fields | resource JSON + spawn logic |
+| City, UI | `city_ui/`, city managers |
+| Documentation in code | comments in the generator, `docs` if present |
 
-Ассистент **может и должен** читать GitHub/raw-файлы. Не имитировать чтение.
+The assistant **can and should** read GitHub/raw files. Do not simulate reading.
 
-Интернет и репозиторий — основной способ синхронизации состояния проекта между чатами.
-
----
-
-## 10. Известные проблемы и открытые решения
-
-### Известные / периодические
-
-- Производительность генерации/отрисовки на больших картах (реки, скролл в поздних эпохах).
-- Крупные пятна террейна при высоких `target_cluster` / слиянии центров.
-- Пустая ранняя игра, если мало занятий параллельно накоплению.
-
-### Открытые дизайн-решения
-
-1. Финальное число и содержание **эпох**.    
-2. Граница **градостроя** (дороги как логистика — да; уличный C:S — нет, пока ядро экономическое).  
-3. Полная торговля, челленджи, бренды — дизайн в целом согласован, реализация по мере готовности базы.  
+The internet and the repository are the primary way of synchronising the project state between chats.
 
 ---
 
-## 11. Чего игра *не* делает (намеренно, на сейчас)
+## 10. Known problems and open decisions
 
-- Посимвольный combat / армии.  
-- Микроменеджмент каждого жителя.  
-- Накопление труда на складе «пока игрок на кухне».  
-- Обязательный street-level city builder.  
-- Система качества через ручные батчи и сортировку партий на складе.
+### Known / recurring
 
----
+- Performance of generation/rendering on large maps (rivers, scrolling in late eras).
+- Large terrain patches at high `target_cluster` / merging of centres.
+- An empty early game if there are few activities alongside accumulation.
 
-## 12. Краткая история смещения фокуса
+### Open design decisions
 
-Авторские заметки 2014–2019: сильнее упор на строительство облика города, дороги, жильё, муниципальные здания, квесты, общественный транспорт.  
-Текущая разработка (2026): ресурсная экономика на гексах, цепочки, технологии, ландшафт, эпохи как рамка.  
-**Связующая нить:** один город через долгое время; почти всё из старых заметок *можно* добавить, но не ценой размытия ядра. Приоритет — то, что усиливает «город-хозяйство на карте».
+1. The final number and content of **eras**.    
+2. The boundary of **urban planning** (roads as logistics — yes; street-level C:S — no, while the core is economic).  
+3. Full trade, challenges, brands — the design is broadly agreed, implementation as the base becomes ready.  
 
 ---
 
-## 13. Инструкция для «нового» ассистента
+## 11. What the game does *not* do (deliberately, for now)
 
-1. Прочитать этот документ.  
-2. Сверить свежие коммиты и ключевые JSON/скрипты в репозитории.  
-3. Не предлагать ломать принципы §2 без явного запроса автора.  
-4. Код писать/править только когда автор за компьютером и просит; с телефона — дизайн и спецификации.  
-5. При сомнении в реализации — смотреть код, не додумывать по имени файла.  
-6. Язык общения с автором — **русский**.
+- Character-by-character combat / armies.  
+- Micromanagement of every resident.  
+- Accumulation of labour in a warehouse "while the player is in the kitchen".  
+- A mandatory street-level city builder.  
+- A quality system via manual batches and sorting lots in the warehouse.
 
 ---
 
-*Конец дизайн-документа.*
+## 12. Brief history of the shift in focus
+
+The author's notes of 2014–2019: a stronger emphasis on shaping the city's appearance, roads, housing, municipal buildings, quests, public transport.  
+Current development (2026): a resource economy on hexes, chains, technologies, landscape, eras as a frame.  
+**The connecting thread:** one city over a long time; almost everything from the old notes *can* be added, but not at the cost of blurring the core. The priority is what reinforces the "city-economy on a map".
+
+---
+
+## 13. Instructions for a "new" assistant
+
+1. Read this document.  
+2. Check the latest commits and the key JSON/scripts in the repository.  
+3. Do not propose breaking the principles of §2 without an explicit request from the author.  
+4. Write/edit code only when the author is at the computer and asks; from a phone — design and specifications.  
+5. When unsure about the implementation — look at the code, do not guess from a file name.  
+6. The language of communication with the author is **Russian**.
+
+---
+
+*End of the design document.*

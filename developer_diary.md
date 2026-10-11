@@ -1,2259 +1,2265 @@
-# Дневник разработки The City
+# The City Development Diary
 
-## Как вести этот дневник (для ИИ-ассистентов)
+## How to keep this diary (for AI assistants)
 
-Этот файл — **память о принципиальных решениях**, а не журнал коммитов и не баг-трекер.
-Отвечает на один вопрос: *почему игра устроена так, а не иначе*. Читается он через
-месяцы, когда кода перед глазами уже нет, — поэтому записи пишутся как объяснение,
-а не как отчёт.
+This file is a **record of principled decisions**, not a commit log and not a bug tracker.
+It answers one question: *why the game is built this way and not otherwise*. It is read
+months later, when the code is no longer in front of you — so entries are written as an explanation,
+not as a report.
 
-### Когда писать сюда НЕ надо
+### When you should NOT write here
 
-Дневник **не обязателен** после:
+The diary is **not required** after:
 
-- опечатки, переименования, форматирования, комментария или docstring;
-- мелкого фикса («молчаливый клик», «подсветка едет», «панель вылезает за панель»);
-- подгонки константы, числа баланса, цвета, задержки, тайминга;
-- рефакторинга, не меняющего поведение;
-- «починил / почистил / добавил текст в UI / перенёс тест / передвинул якорь».
+- a typo, a rename, formatting, a comment or a docstring;
+- a minor fix ("silent click", "the highlight drifts", "a panel sticks out past another panel");
+- tweaking a constant, a balance number, a color, a delay, a timing;
+- a refactor that does not change behavior;
+- "fixed / cleaned up / added text to the UI / moved a test / moved an anchor".
 
-Всё это уже рассказано в `git log` и в сообщениях коммитов. Дублировать его сюда —
-значит через месяц читать устаревшую копию коммита. **После исправления опечатки
-запись здесь не нужна.**
+All of this is already told by `git log` and by commit messages. Duplicating it here
+means reading a stale copy of a commit a month later. **After fixing a typo,
+an entry here is not needed.**
 
-### Когда писать надо
+### When you should write
 
-- Решение, смысл которого **не читается из кода**: почему «так» — правильно,
-  а «иначе» работает, но неправильно.
-- **Отвергнутый вариант — вместе с причиной.** Отсутствие кода не объясняет, почему
-  чего-то сознательно нет; без записи это решение будет пересматриваться заново.
-- **Инвариант** («так делать нельзя») — чтобы следующая сессия не сломала его,
-  не зная, что он зачем.
-- **Дорого оплаченная ловушка или соглашение**, на которое уже наступали.
-- **Смена рамки**: что теперь считается источником истины, а что из него выводится.
+- A decision whose meaning **cannot be read from the code**: why "this way" is right,
+  while "the other way" works, but is wrong.
+- **A rejected option — together with the reason.** The absence of code does not explain why
+  something is deliberately missing; without an entry, this decision will be revisited from scratch.
+- **An invariant** ("this must not be done") — so that the next session does not break it,
+  not knowing what it is for.
+- **An expensive trap or convention** that has already been stepped on.
+- **A change of frame**: what is now considered the source of truth, and what is derived from it.
 
-### Формат записи
+### Entry format
 
-Заголовок `## <что решили> (дата)`, дальше короткими блоками: **контекст/проблема →
-решение → что сознательно не делаем**.
+Heading `## <what was decided> (date)`, then in short blocks: **context/problem →
+decision → what we deliberately do not do**.
 
-Не писать: перечень изменённых файлов и функций, номера тестов, «Проверка: 22 теста
-— OK», «сверено через `git stash` на чистом HEAD». Это не журнал. Если запись
-читается как «исправил X» — она не сюда. Если из записи можно выкинуть половину
-и ничего не потерять — выкинь.
+Do not write: a list of changed files and functions, test numbers, "Check: 22 tests
+— OK", "verified via `git stash` on a clean HEAD". This is not a log. If an entry
+reads like "fixed X" — it does not belong here. If you can throw away half of an entry
+and lose nothing — throw it away.
 
-### Что дневником не является
+### What this diary is not
 
-Список реализованного, план задач, бэклог, отчёт о прогоне тестов. Состояние проекта
-живёт в `docs.md` и `README.md`, история — в `git log`. Сюда это не дублируется.
+A list of what is implemented, a task plan, a backlog, a test-run report. The state of the project
+lives in `docs.md` and `README.md`, the history — in `git log`. None of it is duplicated here.
 
 ---
 
-## Контекст по автору
+## Context about the author
 
-- Автор — геймдизайнер и тестировщик, программист-самоучка: основной опыт — C++ и
-  доработка чужого кода, в Godot/GDScript пришёл с Python, осваивает по ходу.
-- Стиль работы: подробное ТЗ → ассистент реализует → автор тестирует и правит.
-  Сессии-всплески по коду плюс длинные мозговые штурмы по дизайну.
-- Сильные стороны: геймдизайнерское мышление, прагматизм («сначала база, потом
-  полировка»), уважение к игроку.
-- Ограничение: только бесплатные тарифы → квота токенов на 5-часовой период, после
-  которой сессия обрывается. Отсюда главная боль: после обрыва квоты автор остаётся
-  с кодом, в котором мало понимает.
-- Следствие для ассистента: изменения должны быть объяснимы без живого собеседника.
-  Поэтому причины решений — здесь и в `docs.md`, а не в переписке.
+- The author is a game designer and tester, a self-taught programmer: his main experience is C++ and
+  modifying other people's code; he came to Godot/GDScript from Python and is learning as he goes.
+- Working style: a detailed spec → the assistant implements → the author tests and fixes.
+  Bursts of coding sessions plus long design brainstorms.
+- Strengths: game-design thinking, pragmatism ("first the base, then
+  the polish"), respect for the player.
+- Constraint: only free tiers → a token quota per 5-hour period, after
+  which the session is cut off. Hence the main pain: after the quota runs out, the author is left
+  with code he barely understands.
+- Consequence for the assistant: changes must be explainable without a live interlocutor.
+  That is why the reasons for decisions live here and in `docs.md`, not in the chat.
 
-## Что это за игра
+## What kind of game this is
 
-- Жанр: градостроительный + экономический симулятор. По духу — урезанная Civilization:
-  один город и окрестности, без дипломатии, войн и юнитов.
-- Сеттинг: от неолита до современности, 7 эпох.
-- Стек: Godot Engine 4.7 (Forward+), GDScript.
+- Genre: city-building + economic simulator. In spirit — a trimmed-down Civilization:
+  one city and its surroundings, without diplomacy, wars and units.
+- Setting: from the Neolithic to the present day, 7 eras.
+- Stack: Godot Engine 4.7 (Forward+), GDScript.
 
-## Экономика: валюты и их декомпозиция
+## Economy: currencies and their decomposition
 
-Ключевое решение: **«еда как валюта» создаёт софт-локи**, когда производство =
-потребление, а склад пуст: строить нечем, а «перебросить людей на еду» выглядит
-искусственно. Отсюда валюты разделены по смыслу, а не названы одним словом:
+Key decision: **"food as currency" creates soft-locks**, when production =
+consumption and the warehouse is empty: there is nothing to build with, and "shift people to food" looks
+artificial. Hence the currencies are divided by meaning, rather than named with a single word:
 
-| Валюта | Что означает | Правило |
+| Currency | What it means | Rule |
 |---|---|---|
-| Еда | жизнь и экспансия | кормит население; опциональные стоки — разведка, покупка чанков, снос |
-| Труд | темп работы города | **скорость, а не запас** — не накапливается |
-| Наука | исследования | `science_cost` очков науки; базовый доход ≥ 1 очко за тик |
-| Монеты | торговля | появляются со 2-й эпохи; живут в казне города |
+| Food | life and expansion | feeds the population; optional sinks — scouting, buying chunks, demolition |
+| Labor | the pace of the city's work | **a rate, not a supply** — it does not accumulate |
+| Science | research | `science_cost` science points; base income ≥ 1 point per tick |
+| Coins | trade | appear from the 2nd era; live in the city's treasury |
 
-**Труд.**
-- 1 житель → 1 труд/сек (базовая скорость). Время стройки = `work_cost` / труд в секунду.
-- Труд не копится: «пришёл с кухни — у меня 500 труда» быть не может. Стоимость —
-  константа из JSON, **время** считается, а не копится.
-- `work_cost = 0` → мгновенная постройка (ручная мельница).
-- Ориентиры: первая ферма строится 6–8 секунд → 8 труд. Дальше логарифмически:
-  улучшения на карте 8–60, городские здания 50–350, технологии 120–2000+.
+**Labor.**
+- 1 citizen → 1 labor/sec (base rate). Construction time = `work_cost` / labor per second.
+- Labor does not pile up: "I came from the kitchen — I have 500 labor" cannot happen. The cost is
+  a constant from JSON, the **time** is computed, not accumulated.
+- `work_cost = 0` → instant construction (hand mill).
+- Benchmarks: the first farm builds in 6–8 seconds → 8 labor. Then logarithmically:
+  map improvements 8–60, city buildings 50–350, technologies 120–2000+.
 
-**Параллельные стройки (вариант B).** Если игрок запустил несколько строек,
-**rate делится между ними поровну**: каждая получает `total_rate / N`, время каждой
-растёт, но суммарный объём работы в единицу времени равен размеру города. Это самый
-честный и реалистичный вариант. Потолок «одна стройка на 5 жителей» сознательно
-не вводим — пусть масштабируется естественно.
-- Тикать прогресс каждый кадр: `progress_per_second = labor_per_second / active_builds.size()`.
-  Добавил/убрал стройку — rate остальных меняется сам, ничего пересчитывать руками
-  не надо. **НЕ использовать `create_timer().timeout`** — он фиксированный.
-- UI: в контекстном меню «Время: 15 сек (с учётом 1 текущей постройки)», значок ⏳
-  при наличии других активных строек, в HUD — список строек с прогресс-барами.
-- Здания в городе — не более одной стройки одновременно (ограничение интерфейса:
-  здания — текстовый список). Улучшения на карте — без лимита.
-- Отмена стройки: потраченный труд сгорает, здание не появляется, материалы
-  возвращаются, rate остальных вырастает. Satisfaction = 0 → все стройки встают.
-  Город не работает — это честно.
+**Parallel constructions (option B).** If the player has started several constructions,
+**the rate is divided equally among them**: each one gets `total_rate / N`, the time of each
+grows, but the total amount of work per unit of time equals the size of the city. This is the most
+fair and realistic option. The cap "one construction per 5 citizens" we deliberately
+do not introduce — let it scale naturally.
+- Tick progress every frame: `progress_per_second = labor_per_second / active_builds.size()`.
+  Added/removed a construction — the rate of the others changes on its own, nothing has to be recomputed by hand.
+  **Do NOT use `create_timer().timeout`** — it is fixed.
+- UI: in the context menu "Time: 15 sec (accounting for 1 current construction)", a ⏳ icon
+  when there are other active constructions, in the HUD — a list of constructions with progress bars.
+- Buildings in the city — no more than one construction at a time (a UI limitation:
+  buildings are a text list). Map improvements — no limit.
+- Canceling a construction: the spent labor is burned, the building does not appear, materials
+  are returned, the rate of the others grows. Satisfaction = 0 → all constructions stall.
+  The city is not working — that is fair.
 
-**Сытость — двухфакторная, не stock-only.** Механика «100 еды → рождение → 0 на
-складе» создаёт ложные спайки, на которые метрика только по запасу даёт ложную
-тревогу.
+**Satiety is two-factor, not stock-only.** The mechanic "100 food → birth → 0 in
+the warehouse" creates false spikes, to which a stock-only metric gives a false
+alarm.
 
 ```
-trend = min(production / max(consumption, 0.01), 1.0)  # тянем производство к потреблению
-stock_factor = clamp(stock / (population * BUFFER), 0.0, 1.0)  # есть ли буфер
+trend = min(production / max(consumption, 0.01), 1.0)  # pull production toward consumption
+stock_factor = clamp(stock / (population * BUFFER), 0.0, 1.0)  # is there a buffer
 satiety = trend * 0.7 + stock_factor * 0.3
 ```
 
-Производство труда = население × satisfaction × 1 труд/сек/житель.
+Labor production = population × satisfaction × 1 labor/sec/citizen.
 
-**Разведка и освоение — за монеты из казны, не за еду.** Цены вынесены в
-`data/game_balance.json`; труд освоения расстоянием **не** масштабируется: освоение —
-это прямой труд, а дальность влияет на деньги.
-- **Множитель расстояния — один универсальный** на все зависящие от расстояния
-  стоимости, а не по отдельному полю на улучшения, спецдействия и разведку. Иначе
-  каждое новое расстояние-зависимое действие будет плодить поле, и их значения
-  разъедутся.
-- Цена считается в одном месте, внутри точки списания, а не в UI: иначе отображение
-  и списание разойдутся.
-- Казна не уходит в минус; при отказе (например, упёрлись в лимит одновременных
-  строек) деньги возвращаются. Раньше при таком отказе пропадала еда.
-- `initial_treasury` и стоимости тюнятся в JSON без правки кода.
+**Scouting and claiming are paid with coins from the treasury, not with food.** Prices are moved out to
+`data/game_balance.json`; the labor of claiming is **not** scaled by distance: claiming is
+direct labor, while distance affects money.
+- **The distance multiplier is a single universal one** for all distance-dependent
+  costs, rather than a separate field for improvements, special actions and scouting. Otherwise
+  every new distance-dependent action would spawn a field, and their values
+  would drift apart.
+- The price is computed in one place, inside the charge point, not in the UI: otherwise the display
+  and the charge would diverge.
+- The treasury does not go negative; on a refusal (for example, hitting the limit of simultaneous
+  constructions) the money is returned. Previously, food would disappear on such a refusal.
+- `initial_treasury` and the costs are tuned in JSON without editing code.
 
-**Чего не делаем:** паводки и загрязнение — противоречат «уважению к игроку».
+**What we do not do:** floods and pollution — they contradict "respect for the player".
 
-## Ключевые дизайн-паттерны
+## Key design patterns
 
-1. **Напряжение «купить сейчас vs дождаться эпохи».** Тратить еду сейчас на нужный
-   чанк или копить и при смене эпохи получить весь Регион даром. Оба варианта валидны —
-   в этом и смысл.
-2. **Скрытие информации до исследования.** Игрок не знает, что внутри неразведанного
-   гекса. Стоимость разведки превращает это в решение: тратить на информацию или гадать.
-3. **Автозаполнение вакансий с возможностью ручного управления.** 95% времени игрок
-   не трогает, 5% — лезет тонко настраивать. Не наоборот.
-4. **Одомашнивание как стратегический запас.** Не «на каждом подходящем гексе строй
-   ферму», а «нашёл диких коров — одомашнил — теперь они твои, ПОКА есть хотя бы одна
-   живая особь». Потерял последнюю — вид пропал, нужна новая разведка или импорт.
-   Создаёт напряжение «резать или разводить». Требует, чтобы животные были
-   **счётным ресурсом**, а не виртуальным присутствием на гексе: иначе границу «0 =
-   потеряли» не посчитать.
-5. **Челленджи «ADD not REMOVE».** Челлендж не убирает опции, а добавляет новую ветку
-   развития. Иначе игрок быстро скатывается к 1–2 доступным вариантам. Примеры:
-   «Веган» → ветка «Травник», «Однолюб» → «Селекционер», «Не хочу ждать» →
-   «Колонизатор», «Всё равно будет моим» → «Дипломат».
-6. **Уважение к игроку.** Никаких «фиксированных бонусов от дизайнера». Выбор всегда
-   за игроком, осмысленный и с последствиями.
+1. **The tension of "buy now vs wait for the era".** Spend food now on the needed
+   chunk or save up and get the whole Region for free on an era change. Both options are valid —
+   that is the whole point.
+2. **Hiding information until research.** The player does not know what is inside an unexplored
+   hex. The cost of scouting turns this into a decision: spend on information or guess.
+3. **Auto-filling vacancies with the option of manual control.** 95% of the time the player
+   leaves it alone, 5% — digs in to fine-tune. Not the other way around.
+4. **Domestication as a strategic reserve.** Not "build a farm on every suitable
+   hex", but "found wild cows — domesticated them — now they are yours AS LONG AS at least one
+   living specimen remains". Lost the last one — the species is gone, you need new scouting or import.
+   Creates the tension of "slaughter or breed". It requires animals to be
+   a **countable resource**, not a virtual presence on a hex: otherwise the boundary "0 =
+   lost" cannot be counted.
+5. **"ADD not REMOVE" challenges.** A challenge does not remove options, it adds a new
+   development branch. Otherwise the player quickly slides down to 1–2 available options. Examples:
+   "Vegan" → the "Herbalist" branch, "Monogamist" → "Breeder", "I don't want to wait" →
+   "Colonizer", "It will be mine anyway" → "Diplomat".
+6. **Respect for the player.** No "fixed bonuses from the designer". The choice is always
+   the player's, meaningful and with consequences.
 
-## Технологии и ресурсы
+## Technologies and resources
 
-**Одно правило: ресурс появляется на карте только после изучения технологии его
-использования.** На старте открыта неявная технология «Растениеводство» (`farming`).
-Прогресс-бары технологий по ресурсам на карте убраны: технология не «собирается
-с карты».
+**One rule: a resource appears on the map only after researching the technology for its
+use.** At the start, an implicit technology "Farming" (`farming`) is unlocked.
+Technology progress bars for map resources are removed: a technology is not "assembled
+from the map".
 
-**Спавн.** На карту попадают **все** ресурсы, для которых выполняются биомные
-ограничения и `spawn_conditions`. Раньше действовал случайный отбор «1–3 из категории» —
-он удалён: из-за него игрок получал ресурс, которого в мире просто нет, и цепочка
-обрывалась. Исключение-гарантия: если в стартовой области (Кольцо + Регион) нет ни
-одного металла, добавляется ровно один; при появлении новых металлов ограничение
-остаётся «1 случайный id», не все сразу.
-- Спавн только на пустых гексах — не ломать существующие цепочки.
-- Уже разведанный гекс сразу показывает новый ресурс.
-- Ресурсы с `tech_reveal` (подземные ископаемые) спавнятся как обычные, но скрыты от
-  игрока до изучения технологии.
-- В Кольце ресурсы видны сразу, в Регионе — после разведки.
-- Если ресурс не заспавнился вовсе — игроку нужны альтернативы: другие металлы,
-  импорт, заменяющие ресурсы. Это и есть роль торговли.
+**Spawning.** **All** resources are placed on the map for which the biome
+constraints and `spawn_conditions` are satisfied. Previously a random selection "1–3 per category" was in effect —
+it has been removed: because of it the player received a resource that simply does not exist in the world, and the chain
+broke. The exception-guarantee: if the starting area (Ring + Region) has no
+metal at all, exactly one is added; when new metals appear, the constraint
+remains "1 random id", not all at once.
+- Spawning only on empty hexes — do not break existing chains.
+- An already-scouted hex immediately shows the new resource.
+- Resources with `tech_reveal` (underground minerals) spawn like ordinary ones, but are hidden from
+  the player until the technology is researched.
+- In the Ring resources are visible immediately, in the Region — after scouting.
+- If a resource did not spawn at all — the player needs alternatives: other metals,
+  import, substituting resources. This is precisely the role of trade.
 
-**Формат дерева — pull-модель** `prerequisites`: `[["A"], ["B","C"]]` = A ИЛИ (B И C).
-Пустой массив = доступно сразу. Связи хранятся у зависимой технологии, а не у
-открывающей: `unlock_tech` на контенте (здания, улучшения, рецепты) — отдельная
-механика открытия контента, недоступное просто фильтруется из UI.
+**Tree format — a pull model** `prerequisites`: `[["A"], ["B","C"]]` = A OR (B AND C).
+An empty array = available immediately. Links are stored on the dependent technology, not on the
+unlocking one: `unlock_tech` on content (buildings, improvements, recipes) is a separate
+mechanic for unlocking content; unavailable content is simply filtered out of the UI.
 
-**Дерево — лес, а не дерево.** Широкий параллельный хаб плюс короткие цепочки;
-зависимости естественные (цепочки переработки и историческая преемственность);
-здание доступно, если открыта его входная цепочка. Базовые пищевые растения — сразу,
-технические и экзотические — за технологиями. Визуализация горизонтальная, корень
-слева, время течёт вправо, эпоха = вертикальная колонка.
+**The tree is a forest, not a tree.** A broad parallel hub plus short chains;
+dependencies are natural (processing chains and historical continuity);
+a building is available if its input chain is unlocked. Basic food plants — immediately,
+technical and exotic ones — behind technologies. The visualization is horizontal, the root
+on the left, time flows to the right, an era = a vertical column.
 
-**Заглушки — нормальны.** Пока единственный игрок — автор, пустышки полезны:
-это видимый список дел.
+**Stubs are normal.** While the only player is the author, empty stubs are useful:
+they are a visible to-do list.
 
-**Попап после исследования** показывает название, `description`, `flavor` и найденные
-ресурсы, ставит игру на паузу и работает при паузе (`PROCESS_MODE_ALWAYS`).
+**The popup after research** shows the name, `description`, `flavor` and the found
+resources, pauses the game and works while paused (`PROCESS_MODE_ALWAYS`).
 
-**Группировка однотипных зданий:** «Название xN» и статус «(работает: M из N)» с
-цветовой индикацией; панель деталей показывает все здания типа с кнопками
-паузы/запуска для каждого.
+**Grouping of identical buildings:** "Name xN" and the status "(working: M of N)" with
+a color indication; the details panel shows all buildings of the type with buttons
+for pausing/starting each one.
 
-## Три реестра классификации ресурсов (НЕ ПУТАТЬ)
+## Three registries for classifying resources (DO NOT CONFUSE)
 
-- **categories.json** — визуальные ящики вкладки «Ресурсы». Единственная механика:
-  категория `food` складывается в пул Еды. Всё остальное (например, `fruits`) в пул
-  не попадает.
-- **groups.json** — группы для бонусов за разнообразие и перечисления одомашненных
-  видов (КРС, зерновые, textile, oil_crops...).
-- **product_groups.json** — группы взаимозаменяемого сырья **только** для рецептов
-  (`@millable_grains`, `@oil_crops`). Не имеют отношения к бонусам и UI.
+- **categories.json** — the visual boxes of the "Resources" tab. The only mechanic:
+  the `food` category folds into the Food pool. Everything else (for example, `fruits`) does not go
+  into the pool.
+- **groups.json** — groups for diversity bonuses and enumeration of domesticated
+  species (cattle, grains, textile, oil_crops...).
+- **product_groups.json** — groups of interchangeable raw resources **only** for recipes
+  (`@millable_grains`, `@oil_crops`). They have nothing to do with bonuses or the UI.
 
-Правило: категория = «что это», group = «с кем в родстве для бонусов»,
-product_group = «чем заменяется в крафте». Один продукт может входить в разные
-реестры независимо (лён: textile в groups + oil_crops в product_groups).
+Rule: a category = "what it is", a group = "what it is related to for bonuses",
+a product_group = "what it is replaced by in crafting". One product can belong to different
+registries independently (flax: textile in groups + oil_crops in product_groups).
 
-## Бонусы за разнообразие: трёхъярусная схема
+## Diversity bonuses: a three-tier scheme
 
-**Терминология.** Группа (верхний уровень: мясные животные, пищевые растения,
-минералы — поле `group`) → подгруппа (средний уровень: КРС, зерновые, textile — поле
-`subgroup`) → вид (конкретный ресурс). Естественный бонус группы вытекает из того,
-что она производит: минералы → карьеры/шахты, пищевые растения → фермы,
-продуктивные животные → мёд/счастье, декоративные и лекарственные → счастье/здоровье.
+**Terminology.** Group (top level: meat animals, food plants,
+minerals — the `group` field) → subgroup (middle level: cattle, grains, textile — the
+`subgroup` field) → species (a specific resource). A group's natural bonus follows from what
+it produces: minerals → quarries/mines, food plants → farms,
+productive animals → honey/happiness, decorative and medicinal ones → happiness/health.
 
-**Три яруса наград.**
-1. Доступ к группе (есть хотя бы одна подгруппа) → базовый бонус.
-2. 3+ подгрупп внутри группы → бонус растёт.
-3. 3+ видов внутри подгруппы → дополнительный бонус этой подгруппе.
+**Three tiers of rewards.**
+1. Access to a group (at least one subgroup present) → a base bonus.
+2. 3+ subgroups within a group → the bonus grows.
+3. 3+ species within a subgroup → an additional bonus to that subgroup.
 
-Награждаются оба измерения: **ширина** (подгруппы) и **глубина** (виды). Пороги и
-значения лежат в `bonuses.json`; UI только рендерит то, что там есть — новые группы
-и пороги добавляются без правки UI.
+Both dimensions are rewarded: **width** (subgroups) and **depth** (species). Thresholds and
+values live in `bonuses.json`; the UI only renders what is there — new groups
+and thresholds are added without editing the UI.
 
-**Правило доступа (что считается «есть»).** Вид засчитан, если он одомашнен
-(животные/растения) или на карте работает производящее его улучшение. **Импорт
-засчитывается, пока активен маршрут** — это вторая роль торговли, и она не
-останавливается на выключенной дороге.
+**Access rule (what counts as "present").** A species is counted if it is domesticated
+(animals/plants) or if a map improvement producing it is working. **Import
+counts as long as the route is active** — this is the second role of trade, and it does not
+stop at a disabled road.
 
-**Визуализация: три принципа.**
-1. Послойные строки с подытогами, а не одна формула в строку.
-2. Иконки видов вместо названий, где возможно (иконки есть на все ресурсы).
-3. Подсказка следующего порога («ещё одна подгруппа → +4»): окно становится списком
-целей, а не справочником.
+**Visualization: three principles.**
+1. Layered rows with subtotals, not a single formula in a row.
+2. Species icons instead of names, where possible (there are icons for all resources).
+3. A hint of the next threshold ("one more subgroup → +4"): the window becomes a list
+of goals, not a reference book.
 
-Серые неоткрытые группы телеграфируют будущее («после Горного дела») и связывают
-бонусы с технологиями и торговлей. Карточка собирается из данных и иконок обычными
-примитивами (VBox/HBox, Label, TextureRect, ColorRect для пипсов) — без кастомной
-отрисовки.
+Grey undiscovered groups telegraph the future ("after Mining") and tie
+bonuses to technologies and trade. The card is assembled from data and icons with ordinary
+primitives (VBox/HBox, Label, TextureRect, ColorRect for the pips) — without custom
+drawing.
 
-## Качество продукции: что было отвергнуто
+## Product quality: what was rejected
 
-Хотелось симулировать историческое качество товаров (льняная парусина лучше джутовой)
-так, чтобы качество влияло на цену продажи. Рассмотренные и отвергнутые подходы:
+We wanted to simulate the historical quality of goods (linen canvas is better than jute)
+so that quality would affect the sale price. Approaches considered and rejected:
 
-1. **Числовое поле `quality` в ресурсах/продуктах** — непрозрачно: цена-лотерея из-за
-   автопотребления из `@`-групп, и не решает маршрутизацию.
-2. **Ярусные рецепты** (fine/coarse) — удвоение продуктов; не покрывает качество
-   *через процесс* (вино: выдержка, бочки, условия — сырьё одно).
-3. **Батчи** (раздельное хранение сортов) — микроменеджмент: списки, слияние, UI выбора
-   сорта, маршрутизация.
-4. **Среднее качество по складу** — стирает сорт; рынок не видит разницы; сложность
-   без пользы.
-5. **«Репутация города»** (бонус к цене всей линейки за доступ к хорошему сырью) —
-   надуманный flavor: купцы не платят за товар А дороже только потому, что товар Б
-   в городе хороший.
+1. **A numeric `quality` field in resources/goods** — opaque: the price becomes a lottery due to
+   auto-consumption from `@`-groups, and it does not solve routing.
+2. **Tiered recipes** (fine/coarse) — a doubling of goods; does not cover quality
+   *through the process* (wine: aging, barrels, conditions — the raw resource is the same).
+3. **Batches** (separate storage of varieties) — micromanagement: lists, merging, a variety-selection UI,
+   routing.
+4. **Average quality over the warehouse** — erases the variety; the market sees no difference; complexity
+   with no benefit.
+5. **"City reputation"** (a price bonus to the whole line for access to good raw resources) —
+   contrived flavor: merchants do not pay more for goods A just because goods B
+   are good in the city.
 
-**Итог.** Качество **не** симулируется как рыночная механика. Цена — статичное базовое
-значение по id продукта (× модификатор поселения в торговле). «Премиум» выражается
-разными продуктовыми линейками (fabric_clothes / wool_clothes / leather_clothes),
-а не сортами одного продукта. Исторические факты живут во flavor-текстах и в экономике
-входов: редкое сырьё → дорогой товар.
+**Bottom line.** Quality is **not** simulated as a market mechanic. The price is a static base
+value by product id (× a settlement modifier in trade). "Premium" is expressed by
+different product lines (fabric_clothes / wool_clothes / leather_clothes),
+not by varieties of a single product. Historical facts live in flavor texts and in the economy
+of inputs: a rare raw resource → an expensive good.
 
-**Единственная допустимая ниша качества.** Качество месторождения (шанс
-«обычный/редкий/исключительный» при спавне) — только как валюта престижных
-челленджей (поле `min_quality` в специализации продукта). На базовую экономику не
-влияет, маршрутизации от игрока не требует.
+**The only permissible niche for quality.** Deposit quality (the chance of
+"common/rare/exceptional" at spawn) — only as a currency of prestigious
+challenges (the `min_quality` field in a product's specialization). It does not
+affect the base economy, and requires no routing from the player.
 
-**Контрпример-ограничитель.** Вино показывает, что качество часто живёт в процессе,
-а не в сырье. Поэтому «сырьевая» схема качества не может стать общей — и этот
-пример держит в узде все будущие попытки вернуться к ней.
+**A limiting counterexample.** Wine shows that quality often lives in the process,
+not in the raw resource. Therefore a "raw-resource" quality scheme cannot become general — and this
+example keeps in check all future attempts to return to it.
 
-## Качество месторождения влияет на цену: множитель, а не прибавка
+## Deposit quality affects price: a multiplier, not an addition
 
-Первая версия формата строки была **аддитивной** («Цена: 4 + 1 (★★) = 5»), и значения
-1.15/1.35/1.6 подбирались «мягко», чтобы не сломать баланс. Это оказалось ошибочным
-сразу по двум причинам:
+The first version of the line format was **additive** ("Price: 4 + 1 (★★) = 5"), and the values
+1.15/1.35/1.6 were chosen "softly" so as not to break the balance. This turned out to be wrong
+for two reasons at once:
 
-- одинаковая прибавка в монетах разным ценам ломает шкалу — корм за 1 получил бы
-  +100%, украшение за 140 +0,7%;
-- и, что важнее, при округлении до целых монет **соседние уровни схлопывались в одну
-  цену**: `4 × 1.15` и `4 × 1.35` оба давали 5, то есть качество переставало стоить
-  разницы.
+- the same addition in coins to different prices breaks the scale — feed at 1 would get
+  +100%, a decoration at 140 +0.7%;
+- and, more importantly, when rounding to whole coins **adjacent levels collapsed into one
+  price**: `4 × 1.15` and `4 × 1.35` both gave 5, that is, quality stopped being worth
+  the difference.
 
-Замер по всем 268 ценам из `data/`: на 1.15/1.35/1.6 уровни различаются только у 225
-товаров (43 слились), на 1.25/1.60/2.00 — у 254, на 1.30/1.75/2.30 — у 265 (сливаются
-только три товара за 1 монету). **Выбрано последнее: 1.0 / 1.3 / 1.75 / 2.3**,
-ожидаемый доход казны +26,8% при весах спавна 50/30/15/5.
+A measurement across all 268 prices from `data/`: at 1.15/1.35/1.6 the levels differ only for 225
+goods (43 merged), at 1.25/1.60/2.00 — for 254, at 1.30/1.75/2.30 — for 265 (only
+three goods at 1 coin merge). **The last one was chosen: 1.0 / 1.3 / 1.75 / 2.3**,
+an expected treasury income of +26.8% with spawn weights 50/30/15/5.
 
-Следствия, которые стоит удерживать:
-- база округляется до целого **один раз**, итог = `round(base × множитель)` — иначе
-  тултип и казна посчитают разные цены;
-- множитель должен быть **виден в тексте строки отдельным слагаемым**, а не спрятан
-  в итог: игрок должен видеть, из чего сложилась цена;
-- поле называется так, чтобы по имени было видно, что оно **умножается**;
-- мягкий дефолт 1.0 для неизвестного уровня — старые данные и сейвы не ломаются.
+Consequences worth keeping in mind:
+- the base is rounded to a whole number **once**, the result = `round(base × multiplier)` — otherwise
+  the tooltip and the treasury would compute different prices;
+- the multiplier must be **visible in the line text as a separate term**, not hidden
+  in the result: the player must see what the price is made of;
+- the field is named so that its name shows that it **multiplies**;
+- a soft default of 1.0 for an unknown level — old data and saves do not break.
 
-## Репутация, челленджи и специализация города (запланировано)
+## Reputation, challenges and city specialization (planned)
 
-**Ядро: продукт несёт свою специализацию.** Единственный источник истины — блок
-`specialization` внутри продукта. Никакого общего `challenges.json`: челлендж
-создаётся на лету при достижении порога мягкой репутации, параметры читаются из
-блока, награды — оттуда же. Моддеру достаточно добавить блок своему продукту.
-Наградами могут быть бренд-продукт, здание, перк и специализационная ветка развития;
-ветки живут в отдельном маленьком реестре, блок лишь ссылается на id.
+**Core: a product carries its own specialization.** The single source of truth is the block
+`specialization` inside the product. No shared `challenges.json`: a challenge
+is created on the fly when the soft-reputation threshold is reached, the parameters are read from
+the block, the rewards — from there too. A modder only needs to add a block to their product.
+The rewards can be a brand product, a building, a perk and a specialization development branch;
+the branches live in a separate small registry, the block merely references an id.
 
-**Три яруса.**
-1. *Мягкая репутация* (автоматически) — скрытые кумулятивные счётчики произведённого и
-   проданного по каждому продукту, сохраняются в сейве. Ретроактивность прогресса
-   бесплатна. При достижении порога: статус «Известен своим сыром», небольшой бонус
-   к цене, попап-поздравление — эмоциональная награда-сюрприз.
-2. *Челлендж* (осознанный) — активируется автоматически после мягкой репутации;
-   список челленджей и наград виден заранее. Условие: продать N единиц товара,
-   опционально с `min_quality` — тогда качество месторождений работает как валюта
-   престижа, а без системы качества поле просто игнорируется.
-3. *Престижная специализация* — бренд-продукт, здание, перк, ветка развития.
+**Three tiers.**
+1. *Soft reputation* (automatic) — hidden cumulative counters of what was produced and
+   sold for each product, saved to the save file. Retroactivity of progress
+   is free. When the threshold is reached: the status "Known for its cheese", a small
+   price bonus, a congratulation popup — an emotional surprise reward.
+2. *Challenge* (deliberate) — activates automatically after soft reputation;
+   the list of challenges and rewards is visible in advance. The condition: sell N units of a good,
+   optionally with `min_quality` — then deposit quality works as a currency
+   of prestige, and without a quality system the field is simply ignored.
+3. *Prestige specialization* — a brand product, a building, a perk, a development branch.
 
-**Слава требует свидетелей.** Оба яруса по умолчанию считаются по триггеру `sell`,
-а не `produce`: город, съевший весь сыр сам, не известен сыром. Для ранних продуктов
-допустим `trigger: produce`. Следствие: с sell-триггером специализация естественно
-становится мид-гейм фичей, потому что торговля появляется со 2-й эпохи.
+**Fame requires witnesses.** Both tiers are by default counted on the `sell` trigger,
+not `produce`: a city that ate all its cheese itself is not known for cheese. For early products
+`trigger: produce` is acceptable. Consequence: with a sell trigger, specialization naturally
+becomes a mid-game feature, because trade appears from the 2nd era.
 
-**Бренд = место продажи (историческая достоверность).** Миру всё равно, где произведён
-товар, — он знает, где купил: дамасская сталь производилась в Индии (вутц), но
-продавалась через Дамаск; «венецианское стекло» — с Мурано; «португальские специи» — из
-Индии и Индонезии; голландские тюльпаны — из Османской империи. Поэтому перепродажа
-импортного товара тоже создаёт славу, и это не эксплойт, а историческая правда.
+**Brand = place of sale (historical accuracy).** The world does not care where a
+good was produced — it knows where it was bought: Damascus steel was produced in India (wootz), but
+sold through Damascus; "Venetian glass" — from Murano; "Portuguese spices" — from
+India and Indonesia; Dutch tulips — from the Ottoman Empire. That is why reselling
+imported goods also creates fame, and this is not an exploit, but historical truth.
 
-**Мета-челлендж за изобретательность.** Челлендж, выполненный «не так, как
-задумывалось» (продать 100 исключительного сыра, не произведя ни единицы —
-перепродажей импорта), **награждается**, а не наказывается: скрытый мета-челлендж,
-титул/перк в духе «Торговый хаб». ADD not REMOVE даже на уровне правил.
+**A meta-challenge for ingenuity.** A challenge completed "not the way it was
+intended" (sell 100 exceptional cheese without producing a single unit —
+by reselling imports), is **rewarded**, not punished: a hidden meta-challenge,
+a title/perk in the spirit of "Trading hub". ADD not REMOVE even at the level of the rules.
 
-**Лимит активных специализаций 1–2** (растёт с населением) — иначе «славится всем»
-= не славится ничем. Стандартные ветки (аграрная, промышленная) открываются от порогов
-населения, специализационные — от челленджей; город выбирает из видимых.
+**A limit of 1–2 active specializations** (grows with population) — otherwise "famous for everything"
+= famous for nothing. Standard branches (agrarian, industrial) unlock from population
+thresholds, specialization ones — from challenges; the city chooses from the visible ones.
 
-## Торговля с поселениями
+## Trade with settlements
 
-- **Только со 2-й эпохи (Античность).** В 1-й эпохе — только внутренняя экономика, без
-  соседей. Переход в Античность сам по себе награда: весь неразведанный Регион
-  бесплатно + новая валюта (монеты).
-- Поселения спавнятся с привязкой к биомам (горы, побережье, лес). У каждого свои
-  `buys` и `sells`.
-- Прокладка маршрута = покупка коридора чанков до поселения; после замыкания коридора
-  дорога прокладывается автоматически.
-- Поселения развиваются и замирают от торговли — это мид-гейм.
-- Эпоха 1: бартер/виртуальная торговля, не реализуется как механика. Поздние эпохи:
-  заморская торговля абстрактно, без дорог через океан (юнитов в игре нет).
-- Торговля — важный фолбэк на случай «нужный ресурс не заспавнился в регионе».
+- **Only from the 2nd era (Antiquity).** In the 1st era — only the domestic economy, without
+  neighbors. Advancing to Antiquity is itself a reward: the whole unexplored Region
+  for free + a new currency (coins).
+- Settlements spawn tied to biomes (mountains, coast, forest). Each has its own
+  `buys` and `sells`.
+- Laying a route = buying a corridor of chunks up to the settlement; after the corridor is closed
+  the road is laid automatically.
+- Settlements grow and stagnate from trade — this is mid-game.
+- Era 1: barter/virtual trade, not implemented as a mechanic. Later eras:
+  overseas trade abstractly, without roads across the ocean (there are no units in the game).
+- Trade is an important fallback in case "the needed resource did not spawn in the region".
 
-## Вкладка «Торговля»: внутренний рынок
+## The "Trade" tab: the domestic market
 
-- **Две колонки.** Слева внутренняя торговля (работает), справа внешняя — пока
-  только заголовок. Колонки и карточки живут в сценах (`CityUI.tscn`,
-  `TradeResourceCard.tscn`), а не в коде: разметку можно двигать мышкой в
-  редакторе, скрипт только подставляет значения.
-- **Карточка = ресурс или группа.** Ключ строки — `display_key` (id продукта
-  или `@группа`), а не pid: так адресация одинакова для одиночных ресурсов и
-  групп. Из-за этого плановое потребление не переиспользуется — оно
-  разворачивает группу на каждого члена, что верно для тултипа, но дало бы
-  шесть строк «Фрукты» вместо одной. У вкладки своя карта
+- **Two columns.** On the left domestic trade (working), on the right external — for now
+  only a heading. The columns and cards live in scenes (`CityUI.tscn`,
+  `TradeResourceCard.tscn`), not in code: the layout can be moved with the mouse in
+  the editor, the script only fills in values.
+- **A card = a resource or a group.** The row key is `display_key` (a product id
+  or `@group`), not a pid: this way the addressing is the same for single resources and
+  groups. Because of this, planned consumption is not reused — it
+  expands a group into each member, which is correct for a tooltip, but would give
+  six "Fruits" rows instead of one. The tab has its own map
   (`get_population_consumption_map`).
-- **Запрет потребления — настоящая механика.** Списание и доход в казну
-  прекращаются, запись выпадает из плана, бонус производства снимается.
-  Без снятия бонуса запрет был бы бесплатным способом держать множитель
-  производства вечно: расхода нет, а бонус горит. Производственные входы
-  рецептов зданий запрет не трогает — он про внутренний рынок.
-- **Запрещённый ресурс остаётся в списке** (приглушённый). Иначе его нельзя
-  было бы включить обратно: игрок увидел бы, что ресурс исчез, и не понял бы
-  почему.
-- **Проверка запрета — до накопления таймера/остатка.** Иначе запрещённая
-  запись копила бы долг, и при разрешении город списал бы всё разом.
-- **Приоритет списания по качеству** вынесен из кода в настройку игрока
-  (раньше был жёсткий `"best"`). Тот же цикл best → worst → random, что у
-  кнопки качества здания.
-- **Две кнопки одного тумблера** (прямоугольник как у еды и CheckBox) —
-  намеренно: это два варианта одного переключателя, чтобы выбрать вид. **Позже
-  заменено на один `CheckBox`** (см. следующий раздел).
+- **Banning consumption is a real mechanic.** The charge and the income to the treasury
+  stop, the entry drops out of the plan, the production bonus is removed.
+  Without removing the bonus, the ban would be a free way to keep the production
+  multiplier forever: there is no expense, but the bonus burns. The production inputs
+  of building recipes the ban does not touch — it is about the domestic market.
+- **A banned resource stays in the list** (dimmed). Otherwise it could not
+  be turned back on: the player would see that the resource disappeared and would not understand
+  why.
+- **The ban check is before the timer/remainder accumulates.** Otherwise a banned
+  entry would accumulate a debt, and on unbanning the city would charge it all at once.
+- **The charge priority by quality** is moved out of the code into a player setting
+  (previously it was a hardcoded `"best"`). The same cycle best → worst → random as the
+  building quality button.
+- **Two buttons of one toggle** (a rectangle like the food one and a CheckBox) —
+  deliberately: these are two variants of one switch, to choose the look. **Later
+  replaced by a single `CheckBox`** (see the next section).
 
-## Вкладка «Торговля»: что чинили после первого показа
+## The "Trade" tab: what was fixed after the first showing
 
-Игрок посмотрел на готовые карточки и нашёл девять шероховатостей. Четыре из них
-оказались не косметикой, а настоящими дефектами, и три тянули за собой
-переделку архитектуры.
+The player looked at the finished cards and found nine rough spots. Four of them
+turned out to be not cosmetics but real defects, and three dragged a rework of
+the architecture along with them.
 
-- **Карточки пересоздавались КАЖДЫЙ ТИК.** `refresh()` склеивал подпись состава из
-  отсортированных ключей, а `update_values()` сравнивал её с подписью в порядке
-  вставки словаря. Подписи не совпадали никогда → список карточек пересобирался
-  целиком на каждом тике. Отсюда и «мигание», и пропадающие тултипы, и лишняя
-  работа по инстанцированию сцены. Теперь подпись строится одной функцией
-  `_signature_of` (ключи всегда сортированы) и совпадает по построению.
-- **Любое присваивание `tooltip_text` убивает открытый тултип** — даже если
-  строка не изменилась. Отсюда правило `_set_tooltip`: присваивать только при
-  реальном изменении. Плюс карточки переведены с тикового обновления на эпоху
-  отображения ресурсов (1..5 сек из настроек), как вкладка «Ресурсы».
-- **Два тултипа на разбивке по качеству.** На метке стоял штатный
-  `tooltip_text`, и одновременно показывался кастомный разбор качества. Штатный
-  убран — он дублировал и пушил на экране второе окно.
-- **Факт потребления нельзя было читать раз в N секунд.** Счётчик
-  `market_consumption_rates` живёт ровно один тик и гаснет в `reset_counters()`,
-  поэтому при интервале отображения 2–5 сек он всегда оказывался пустым. Добавлено
-  окно `market_consumption_accum/_snapshot` по образцу кассового окна; оно
-  ротируется в `tick_resource_display`.
-- **Расход и доход.** Показана норма на ОДНОГО покупателя прямо из
-  `data/consumption.json` (`10 ед./1 сек`), а не сумма по городу (`210/сек`):
-  игрок настраивает потребление на одного жителя и должен видеть свои числа.
-  Добавлена строка «Доход» — сколько монет в секунду приносит ресурс.
-- **Две копии формулы дохода разъехались, и тест это поймал:** карточка
-  показывала 3570 монет/сек, тултип казны — 1260, и ни одна из цифр не выглядела
-  сломанной. Формула вынесена в один хелпер `_planned_market_income_rows`.
-- **Иконки групп** брались из первого члена с иконкой (у «Алкоголя» — кувшин
-  пива). Добавлено необязательное поле `"icon"` у группы в
-  `data/product_groups.json` + тултип на иконке, объясняющий источник.
-- **Цвет звезды качества** дублировался в двух файлах. Константа
-  `QUALITY_MARKER_COLOR` переехала в `ui_helpers.gd` рядом с
-  `PRICE_TEXT_COLOR`: обе — элементы оформления, общие для вкладок.
+- **The cards were recreated EVERY TICK.** `refresh()` glued the composition
+  signature together from sorted keys, while `update_values()` compared it
+  against the signature in the dictionary's insertion order. The signatures never
+  matched → the card list was reassembled in full on every tick. Hence the
+  "flickering", the disappearing tooltips, and the extra work of instancing the
+  scene. Now the signature is built by a single function `_signature_of` (keys
+  are always sorted) and matches by construction.
+- **Any assignment to `tooltip_text` kills an open tooltip** — even if the
+  string has not changed. Hence the rule `_set_tooltip`: assign only on an actual
+  change. On top of that, the cards were switched from tick-based updating to the
+  resource display period (1..5 sec from the settings), like the "Resources" tab.
+- **Two tooltips on the quality breakdown.** The label had the standard
+  `tooltip_text`, and at the same time a custom quality breakdown was shown. The
+  standard one was removed — it duplicated and pushed a second window on screen.
+- **The consumption fact could not be read once every N seconds.** The counter
+  `market_consumption_rates` lives for exactly one tick and is cleared in
+  `reset_counters()`, so with a display interval of 2–5 sec it always came up
+  empty. A window `market_consumption_accum/_snapshot` was added following the
+  model of the cash window; it is rotated in `tick_resource_display`.
+- **Expenses and income.** The norm per SINGLE buyer is shown straight from
+  `data/consumption.json` (`10 units/1 sec`), not the city-wide total (`210/sec`):
+  the player configures consumption per one citizen and should see their own
+  numbers. An "Income" row was added — how many coins per second the resource
+  brings in.
+- **Two copies of the income formula diverged, and the test caught it:** the card
+  showed 3570 coins/sec, the treasury tooltip showed 1260, and neither number
+  looked broken. The formula was extracted into a single helper
+  `_planned_market_income_rows`.
+- **Group icons** were taken from the first member with an icon (for "Alcohol" — a
+  jug of beer). An optional field `"icon"` was added for a group in
+  `data/product_groups.json` + a tooltip on the icon explaining the source.
+- **The quality star color** was duplicated in two files. The constant
+  `QUALITY_MARKER_COLOR` moved into `ui_helpers.gd` next to
+  `PRICE_TEXT_COLOR`: both are presentation elements shared by the tabs.
 
-### Продолжение: тултипы не показывались вообще, а «Доход» врал
+### Follow-up: tooltips did not show at all, and "Income" lied
 
-**Тултипы.** Игрок сообщил: не показываются ни расчёт цены, ни состав покупателей,
-ни разбивка дохода. Причина оказалась не в логике, а в движке: **у `Label` в
-Godot 4 `mouse_filter = IGNORE`**, поэтому сигнал `mouse_entered` на такой узел не
-приходит НИКОГДА (проверено пробой на Godot 4.7: `Label.new().mouse_filter == 2`).
-Схема «навели → собрали текст → присвоили `tooltip_text`» не могла сработать ни
-разу. `RichTextLabel` метки качества имел `STOP`, поэтому свой тултип работал — и
-именно это сбивало с толку: часть подсказок есть, часть нет.
+**Tooltips.** The player reported: neither the price calculation, nor the
+composition of buyers, nor the income breakdown is shown. The cause turned out
+not to be in the logic but in the engine: **in Godot 4 a `Label` has
+`mouse_filter = IGNORE`**, so the `mouse_entered` signal NEVER arrives at such a
+node (verified by a probe on Godot 4.7: `Label.new().mouse_filter == 2`).
+The scheme "hover → assemble the text → assign `tooltip_text`" could not have
+worked even once. The `RichTextLabel` of the quality label had `STOP`, so its own
+tooltip worked — and that is exactly what was confusing: some hints are there,
+some are not.
 
-Чинится в двух местах: `mouse_filter = 0` у четырёх узлов в сцене + текст
-кладётся **заранее**, в `_update_card`. Второе оказалось даже полезнее: тултип
-собирается из тех же данных того же окна, что и сами числа карточки, и не может
-описать другой момент времени. Отслеживание наведения осталось только ради
-`_hovered_tip` — узел под курсором не трогаем, потому что присваивание
-`tooltip_text` снимает уже показанное окно. Отдельная тонкость: метода
-`is_hovered()` у `Control` в Godot 4 **нет**, наведение приходится ловить
-сигналами (первая попытка с `is_hovered()` упала с «Nonexistent function»).
+It is fixed in two places: `mouse_filter = 0` on four nodes in the scene + the
+text is placed **ahead of time**, in `_update_card`. The second turned out to be
+even more useful: the tooltip is assembled from the same data of the same window
+as the card's own numbers, and cannot describe a different moment in time.
+Hover tracking remained only for the sake of `_hovered_tip` — we do not touch the
+node under the cursor, because assigning `tooltip_text` dismisses the already
+shown window. A separate subtlety: in Godot 4 a `Control` **has no**
+`is_hovered()` method, so hovering has to be caught via
+signals (the first attempt with `is_hovered()` failed with "Nonexistent function").
 
-**Доход.** Второе сообщение: у «Фруктов» `Доход: 2730/сек`, а в верхней полосе
-`Казна: 94364 [+161≈]`. Обе цифры были посчитаны по своим правилам, и обе
-выглядели неповреждёнными:
+**Income.** Second report: for "Fruits" `Income: 2730/sec`, while the top bar
+shows `Treasury: 94364 [+161≈]`. Both numbers were computed by their own rules,
+and both looked intact:
 
-- **План** (`_planned_market_income_rows`: весь спрос × цена) складом не
-  ограничен. 21 житель × 10 ед./сек × 13 монет = 2730, хотя на складе лежало
-  10 единиц. Плюс у группы весь спрос приписывается тому единственному члену,
-  у которого что-то есть, — и по цене лучшего качества.
-- **Факт** в верхней полосе — то, что реально продано за окно.
+- **The plan** (`_planned_market_income_rows`: all demand × price) is not
+  limited by storage. 21 citizens × 10 units/sec × 13 coins = 2730, even though
+  only 10 units lay in storage. On top of that, for a group all demand is
+  attributed to the single member that has anything — and at the price of the best quality.
+- **The fact** in the top bar is what was actually sold over the window.
 
-Строка «Доход» теперь показывает **факт** (`worker_manager.get_actual_market_income_map`,
-свёртка `record_treasury_income` по `display_key` — ровно те записи, из которых
-живут тултип казны и «Казна: N [+X≈]»), а план уехал в тултип строки с
-пояснением, почему факт ниже. Сумма строк «Доход» теперь равна рыночной прибыли
-казны по построению, и тест это сверяет.
+The "Income" row now shows the **fact** (`worker_manager.get_actual_market_income_map`,
+a fold of `record_treasury_income` by `display_key` — exactly those records from which
+the treasury tooltip and "Treasury: N [+X≈]" live), while the plan moved into the row's tooltip with an
+explanation of why the fact is lower. The sum of the "Income" rows now equals the market profit
+of the treasury by construction, and the test verifies this.
 
-**Урок про тест-сценарий.** Регрессия «доход-фантом» сначала падала: план
-оказывался нулевым, потому что к моменту проверки единственная единица на
-складе уже была **продана**, план честно обнулился, и условие «план кратно
-больше факта» не выполнялось. План надо читать **до** списания — порядок
-операций в сценарии оказался частью самого сценария. Хороший знак: тест упал
-не из-за кода, а из-за неверно поставленного эксперимента.
+**A lesson about the test scenario.** The "phantom income" regression failed at
+first: the plan came out zero, because by the time of the check the only unit in
+storage had already been **sold**, the plan honestly zeroed out, and the condition "the plan is several times
+greater than the fact" was not met. The plan must be read **before** the write-off — the order
+of operations in the scenario turned out to be part of the scenario itself. A good sign: the test failed
+not because of the code but because of a wrongly set-up experiment.
 
-**Урок про инструмент.** Половину времени ушло на правку файлов, а не на
-код: `tests/test_trade_tab.gd` записан в CRLF, `scripts/trade_tab.gd` — в LF,
-и редактор молча отказывался находить текст, который там был. Плюс `is_hovered()`.
-Оба раза виноват не Godot, а предположение «а как это тут устроено» без
-проверки: сначала два байта на `\r\n` из `[System.IO.File]::ReadAllBytes`, потом
-проба на `mouse_filter` — и оба вопроса закрылись сразу.
+**A lesson about the tool.** Half the time went into editing files rather than
+code: `tests/test_trade_tab.gd` is written in CRLF, `scripts/trade_tab.gd` in LF,
+and the editor silently refused to find the text that was there. Plus `is_hovered()`.
+Both times the culprit was not Godot but the assumption "how is this set up here" without
+checking: first two bytes for `\r\n` from `[System.IO.File]::ReadAllBytes`, then
+a probe on `mouse_filter` — and both questions were closed at once.
 
-**Общий урок:** «простое несоответствие» (подпись против порядка словаря, копия
-формулы, разные окна обновления) обошлось дороже, чем сама новая
-функциональность. Такие места стоит закрывать сравнением с источником истины, а не
-двумя правками в голове.
+**The general lesson:** a "simple mismatch" (signature versus dictionary order, a copy
+of a formula, different update windows) cost more than the new
+functionality itself. Such places are worth closing off with a comparison against the source of truth, rather than
+with two edits in one's head.
 
-**Попутно.** `tests/test_consumption.gd` был красным ДО этих правок: он требовал
-ровно одну запись потребления у псевдо-профессии «Все жители», а в реестре их
-две (`@fruits` и `@alcohol`), и ещё ровно один таймер. Константы, зависящие от
-числа записей в данных, заменены на поиск нужной записи: баланс меняется —
-тест не должен падать.
-
----
-
-## Забытый «@»: ошибка данных, пойманная тестом
-
-**Симптом.** `tests/test_consumption.gd` красный, единственное падение:
-«продукт jewelry из consumption.json не найден в products».
-
-**Причина — не локализация, хотя к ней всё и вело.** В `data/consumption.json`
-записано `"resource": "jewelry"`, но продукта с таким id нет: `jewelry` — это
-**группа** продуктов (`data/product_groups.json`), а группа обязана писаться с
-`@`. Соседние записи того же коммита (`@tableware`, `@fruits`, `@boats`)
-написаны правильно — пропущен был один символ.
-
-**Почему автор туда полез.** id `jewelry` принадлежит **и технологии**
-(`data/technologies/ancient.json`, `name: "Jewelry"`), **и группе продуктов**
-(`name: "Jewelry"`), причём английские подписи совпадают дословно, а
-`locale/ru.po` отдаёт для обоих одно «Ювелирное дело». Это ровно тот случай,
-что описан выше, в разделе про «совпадения имён сливают субъекты»: там у
-`smelter` тексты хотя бы различались, здесь — нет. В интерфейсе технологию и
-группу не различить, и в реестр попало **имя, которое автор видел**, а не id
-с `@`.
-
-**Урок про тихую поломку.** Эта ошибка ничего не ломала в игре. Резолвер
-`_build_consumption_entry` для ключа без `@` не проверяет существование продукта
-и подставляет `products.get(id, {})` — правило получало подпись-идентификатор с
-пустой иконкой. Строка потребления висела во вкладке «Ресурсы» и **никогда не
-списывала ничего**: ни ошибки, ни казны, ни жалобы игрока. Поймать её мог только
-тест, сверяющий данные с источником истины.
-
-**Что сделано.**
-
-1. Данные: `"jewelry"` → `"@jewelry"`.
-2. Резолвер `_build_consumption_entry` теперь печатает предупреление и
-   пропускает запись — как это уже сделано для несуществующей группы. Молчание
-   кончилось.
-3. **Новая проверка валидатора** `consumption_resource` / `consumption_group`,
-   чтобы автор правил данные по подсказке с файлом и строкой, а не по тесту.
-   Проверка **зеркалит резолвер**: ключ без `@` ищется в `products`, а не в
-   `all_resources` — потребление берёт товары со склада, а не сырьё с гекса, и
-   сверка с сырьём дала бы ложные срабатывания на каждом продукте.
-4. Группа `jewelry` дополнена медными и стеклянными украшениями — **в конец**:
-   порядок членов задаёт жадное списание и источник иконки группы (берётся у
-   первого члена с иконкой).
-
-**Тонкость, которую стоило увидеть только после.** Правило потребления не имеет
-поля `id`, поэтому общий индекс происхождения его пропускает — понадобился
-отдельный проход, ключуемый по `resource`. И строку объявления нельзя искать
-общим `_find_decl_line`: он ищет первое вхождение значения в сыром тексте и не
-вырезает комментарии, поэтому указание указывало на **пояснение автора** рядом с
-правилом, а не на само правило (в моём же комментарии — строка 84 вместо 86).
-Тест этого не поймал: комментарий тоже содержит `"jewelry"`. Отсюда
-`_find_resource_decl_line`, ищущий строку, где поле `"resource"` стоит рядом со
-значением.
-
-**Общий урок:** «тест красный из-за локализации» — почти всегда неправда.
-Падение надо дочитать до конца сообщения: здесь оно указывало на данные, а
-локализация была лишь причиной, по которой автор написал именно так. И вторая
-половина: ошибка данных, которая **молча ничего не делает** (запись без
-потребления), опаснее той, что падает, — её нашёл только тест.
+**Incidentally.** `tests/test_consumption.gd` was red BEFORE these edits: it required
+exactly one consumption entry for the pseudo-profession "All Citizens", but the registry has
+two (`@fruits` and `@alcohol`), and exactly one timer as well. Constants depending on
+the number of entries in the data were replaced with a lookup of the needed entry: the balance changes —
+the test should not fail.
 
 ---
 
-## Карта: генерация через JSON-пресеты
+## The forgotten "@": a data error caught by a test
 
-**Идея:** моддер настраивает генерацию карты через JSON, не программируя. Код —
-единый генератор, который читает пресет; пресет задаёт форму (rectangle, ring, circle,
-two_circles, archipelago, coastal_strip, river_valley), биомы и веса, размеры кластеров,
-гарантированные ресурсы, минимальные расстояния. Строки, начинающиеся с `$`, вычисляются
-как выражение Godot через встроенный sandbox-класс `Expression` — безопасно и без своего
-парсера.
+**Symptom.** `tests/test_consumption.gd` is red, the only failure:
+"product jewelry from consumption.json not found in products".
 
-- **Что моддер МОЖЕТ:** форму, биомы, веса, размеры кластеров, ресурсы, расстояния,
+**The cause is not localization, though everything pointed to it.** In `data/consumption.json`
+there is `"resource": "jewelry"`, but there is no product with such an id: `jewelry` is a
+**group** of goods (`data/product_groups.json`), and a group must be written with
+`@`. Neighboring entries of the same commit (`@tableware`, `@fruits`, `@boats`)
+are written correctly — one character had been missed.
+
+**Why the author went there.** The id `jewelry` belongs **both to a technology**
+(`data/technologies/ancient.json`, `name: "Jewelry"`) **and to a goods group**
+(`name: "Jewelry"`), and the English labels match word for word, while
+`locale/ru.po` gives the same "Jewelry" for both. This is exactly the case
+described above, in the section about "name coincidences merge subjects": there the
+texts for `smelter` at least differed, here they do not. In the interface a technology and a
+group cannot be told apart, and what ended up in the registry was **the name the author saw**, not the id
+with `@`.
+
+**A lesson about the silent breakage.** This error broke nothing in the game. The resolver
+`_build_consumption_entry` for a key without `@` does not check the existence of the product
+and substitutes `products.get(id, {})` — the rule got an identifier-label with an
+empty icon. The consumption row hung in the "Resources" tab and **never
+wrote off anything**: no error, no treasury, no complaint from the player. Only a test
+comparing the data against the source of truth could catch it.
+
+**What was done.**
+
+1. Data: `"jewelry"` → `"@jewelry"`.
+2. The resolver `_build_consumption_entry` now prints a warning and
+   skips the entry — as is already done for a nonexistent group. The silence
+   is over.
+3. **A new validator check** `consumption_resource` / `consumption_group`,
+   so that the author fixes the data by a hint with the file and line, rather than by the test.
+   The check **mirrors the resolver**: a key without `@` is looked up in `products`, not in
+   `all_resources` — consumption takes goods from storage, not raw resources from a hex, and
+   a comparison against raw resources would produce false positives on every product.
+4. The `jewelry` group was extended with copper and glass ornaments — **at the end**:
+   the order of members sets the greedy write-off and the source of the group's icon (taken from
+   the first member with an icon).
+
+**A subtlety worth seeing only afterwards.** A consumption rule has no
+`id` field, so the general origin index skips it — a
+separate pass keyed by `resource` was needed. And the declaration line cannot be searched
+with the general `_find_decl_line`: it searches for the first occurrence of the value in the raw text and does not
+cut out comments, so the pointer pointed at the **author's explanation** next to
+the rule rather than at the rule itself (in my own comment — line 84 instead of 86).
+The test did not catch this: the comment also contains `"jewelry"`. Hence
+`_find_resource_decl_line`, which looks for the line where the `"resource"` field sits next to
+the value.
+
+**The general lesson:** "the test is red because of localization" is almost always untrue.
+The failure must be read to the end of the message: here it pointed at the data, and
+localization was merely the reason the author wrote it that way. And the second
+half: a data error that **silently does nothing** (an entry without
+consumption) is more dangerous than one that crashes — only the test found it.
+
+---
+
+## Map: generation via JSON presets
+
+**The idea:** a modder configures map generation via JSON, without programming. The code is
+a single generator that reads a preset; the preset defines the shape (rectangle, ring, circle,
+two_circles, archipelago, coastal_strip, river_valley), biomes and weights, cluster sizes,
+guaranteed resources, minimum distances. Strings beginning with `$` are evaluated
+as a Godot expression through the built-in sandbox class `Expression` — safely and without a parser
+of our own.
+
+- **What a modder CAN do:** shape, biomes, weights, cluster sizes, resources, distances,
   computed values.
-- **Чего моддер НЕ МОЖЕТ:** писать алгоритмы, ходить в файлы и сеть, ломать механики.
+- **What a modder CANNOT do:** write algorithms, reach into files and the network, break mechanics.
 
-**Приём против «одиноких гор»:** кластеры `mountain: [2, 3]` плюс требование
-`min_same_biome_neighbors` у специальных биомов. Одинокая гора физически не может
-получиться — не «unlikely», а невозможно. Дефект генерации задан параметрами, а не
-починкой кода.
+**A technique against "lone mountains":** clusters `mountain: [2, 3]` plus the requirement
+`min_same_biome_neighbors` for special biomes. A lone mountain physically cannot
+occur — not "unlikely" but impossible. The generation defect is set by parameters, not
+by fixing the code.
 
-**Рекомендация:** параметры эпох и прочие настраиваемые величины выносить в JSON,
-чтобы тюнинг не был правкой кода.
+**Recommendation:** move era parameters and other tunable quantities into JSON,
+so that tuning is not a code edit.
 
-## Режим «Развитие» — оверлей, а не гейт разрешений
+## The "Expansion" mode — an overlay, not a permission gate
 
-**Проблема.** Гейтинг (режим выключал обычные взаимодействия) даже автора регулярно
-ставил в ловушку «почему ничего не нажимается», а индикация режима слабела при
-полностью купленном Регионе: подсветок нет → режим неотличим от обычной карты.
+**The problem.** The gating (the mode disabled ordinary interactions) regularly put
+even the author into the trap of "why is nothing clickable", and the mode's indication weakened with a
+fully purchased Region: no highlights → the mode is indistinguishable from the ordinary map.
 
-**Решение.**
-1. **Гейтинг убран.** Строительство в Кольце и разведка/покупка в Регионе сосуществуют
-   на обычной карте через контекстное меню (свой гекс → построить улучшение;
-   неисследованный чанк → разведать; исследованный → купить). Защита от мискликов —
-   само меню с ценой, отдельный режим-предохранитель не нужен.
-2. **«Развитие» = чистый оверлей-планировщик**, а не переключатель разрешений:
-   подсветки чанков (неисследованные / исследованные некупленные / купленные),
-   hover-превью цели действия, в будущем — коридоры к поселениям, каналы, дороги.
-3. Кнопка «Развитие» — с нажатым состоянием (гигиена тумблеров).
-4. Режим ничего не блокирует, поэтому вопрос «как понять, что я в режиме» неострый:
-   оверлей виден, пока полезен.
+**The solution.**
+1. **The gating is removed.** Construction in the Ring and scouting/purchase in the Region coexist
+   on the ordinary map through the context menu (own hex → build an improvement;
+   unscouted chunk → scout; scouted → buy). Protection from misclicks is
+   the menu itself with the price, a separate safety mode is not needed.
+2. **"Expansion" = a pure overlay-planner**, not a permissions toggle:
+   chunk highlights (unscouted / scouted unclaimed / claimed),
+   a hover preview of the action's target, and in the future — corridors to settlements, canals, roads.
+3. The "Expansion" button has a pressed state (toggle hygiene).
+4. The mode blocks nothing, so the question "how do I know I'm in the mode" is not pressing:
+   the overlay is visible as long as it is useful.
 
-**Отвергнуто:** постоянные контуры границ чанков — зоны подсветки и есть чанки,
-контуры избыточны.
+**Rejected:** permanent outlines of chunk borders — the highlight zones are the chunks,
+the outlines are redundant.
 
-## Разведка, туман и граница территории
+## Scouting, fog and the territory border
 
-**Разведка вне Региона — только после технологии «Картография».** До неё за пределы
-Региона нельзя: ни подсветки чанка, ни клика, ни кнопки разведчиков. Поле
-`unlock_effects` у технологии при этом **рабочее**, а не отобразительное: «Картография»
-обещает разведку в тумане, и код обязан это читать. Гейт ставится в нескольких точках
-(хит-тест гекса, сбор чанка, отрисовка подсветки, старт разведки) — потому что каждая
-из них была отдельным путём утечки.
+**Scouting outside the Region — only after the "Cartography" technology.** Before it, one cannot go
+beyond the Region: neither a chunk highlight, nor a click, nor a scouts button. The
+technology's `unlock_effects` field is **functional** here, not display-only: "Cartography"
+promises scouting in the fog, and the code is obliged to read this. The gate is placed at several points
+(hex hit-test, chunk assembly, highlight rendering, scouting start) — because each
+of them was a separate leak path.
 
-**Разведка — только в чанки, примыкающие к известной территории.** Иначе разведчики
-перепрыгивают через туман и вскрывают «карманы» вдали от границы known мира.
-- «Известная территория» = Кольцо Влияния (`in_influence`) **ИЛИ** разведанный гекс.
-  Только `is_explored` взять нельзя: весь мир, включая Кольцо, стартует
-  `is_explored = false` — получился бы софт-лок на старте новой игры и в старых сейвах.
-  Кольца влияния чужих городков в «известную территорию» не входят.
-- Проверяется **чанк**, а не кликнутый гекс: чанк из 5 гексов, дотянувшийся до границы
-  known мира, разрешён, даже если клик был на гекс на шаг глубже.
-- Смысл правила важен не сам по себе: «разведка в пределах скролла» больше не значит
-  «куда угодно» — дальние чанки недоступны, пока не разведан путь к ним.
+**Scouting — only into chunks adjacent to known territory.** Otherwise scouts
+leap across the fog and expose "pockets" far from the border of the known world.
+- "Known territory" = the Ring of Influence (`in_influence`) **OR** a scouted hex.
+  One cannot take only `is_explored`: the whole world, including the Ring, starts with
+  `is_explored = false` — there would be a soft-lock at the start of a new game and in old saves.
+  The influence rings of foreign towns are not part of "known territory".
+- It is the **chunk** that is checked, not the clicked hex: a chunk of 5 hexes that reached
+  the border of the known world is allowed, even if the click was on a hex one step deeper.
+- The meaning of the rule matters not on its own: "scouting within the scroll" no longer means
+  "anywhere" — distant chunks are unreachable until the path to them is scouted.
 
-**Освоение по-прежнему ограничено Регионом** — даже с «Картографией». Покупка вне
-Региона невозможна; кнопка показывает причину, а не исчезает молча.
+**Claiming is still limited to the Region** — even with "Cartography". Purchase outside the
+Region is impossible; the button shows the reason instead of silently disappearing.
 
-**Граница тумана — принципиальная договоренность.** Туман — это то, что **за**
-Кольцом и Регионами. Неисследованные гексы Региона туманом НЕ считаются: они видны на
-карте (затемнённые) и их тултип честно пишет «Местность: … / Ресурс: неизвестно
-(проведите разведку)». За Кольцом+Регионом не нарисовано ничего, кроме тёмного
-канваса — поэтому и информации быть не должно. Если решим скрыть местность и в
-неисследованном Регионе, меняется одна проверка в предикате тумана, а не десяток мест.
+**The fog border is a matter of principle.** The fog is what lies **beyond**
+the Ring and the Regions. Unscouted hexes of the Region are NOT considered fog: they are visible on
+the map (darkened) and their tooltip honestly says "Terrain: … / Resource: unknown
+(send scouts)". Beyond the Ring+Region nothing is drawn except a dark
+canvas — and therefore there should be no information either. If we decide to hide the terrain also in an
+unscouted Region, a single check in the fog predicate changes, not a dozen places.
 
-Туманный гекс не становится «наведённым» (тултипа нет вообще), колонка панели
-показывает заглушку «информация недоступна», но действия (разведка) остаются. Клик по
-заблокированному туману не «молчит», а объясняет, что нужна «Картография».
+A foggy hex does not become "hovered" (there is no tooltip at all), the panel column
+shows the stub "information unavailable", but the actions (scouting) remain. A click on
+blocked fog does not "stay silent" but explains that "Cartography" is needed.
 
-**Подсветка не бывает «молчаливой».** Набор подсветки всегда совпадает с тем, к чему
-применимы действия панели. Если у гекса нет чанка действий (исследованный гекс вне
-Региона, гекс в кольце чужого городка), подсвечивается сам гекс. Клик и наведение
-работают одинаково.
+**A highlight is never "silent".** The set of highlights always coincides with what the
+panel's actions apply to. If a hex has no action chunk (a scouted hex outside the
+Region, a hex in the ring of a foreign town), the hex itself is highlighted. Click and hover
+work the same way.
 
-**Приоритет отказа важнее самого отказа.** Разведка, упёршаяся в неисследованный
-коридор, должна звать разведчиков, а не сообщать «нельзя». Иначе игрок закрывает
-несуществующую проблему и не понимает, что решение в его руках.
+**The priority of refusal matters more than the refusal itself.** Scouting that has run into an unscouted
+corridor should call for scouts, not report "not allowed". Otherwise the player closes a
+nonexistent problem and does not understand that the solution is in their hands.
 
-## Размещение городков: строгий каскад приоритетов
+## Town placement: a strict cascade of priorities
 
-Приоритеты городков обрабатываются **строго каскадно**: чтобы перейти к следующему
-приоритету, генератор обязан пройтись по ВСЕЙ карте и убедиться, что для текущего
-подходящих гексов не осталось. Недопустимо, чтобы городок встал на берегу озера
-(3-й приоритет), когда на карте полно мест с кучкой ресурсов (1-й приоритет).
+Town priorities are processed **strictly cascade-wise**: to move on to the next
+priority, the generator must go over the WHOLE map and make sure that no suitable
+hexes remain for the current one. It is unacceptable for a town to settle on a lake shore
+(3rd priority) when the map is full of places with a cluster of resources (1st priority).
 
-Плюс **каскадное уточнение**: найдя место для верхнего приоритета, пытаемся улучшить
-его, «добирая» нижние (2+ ресурсов → ещё и стратегический → ещё и река → ещё и
-озеро/море). Если приоритет дотянуть не удалось — **пропускаем его** и идём к
-следующему: каскад при этом не прерывается.
+Plus a **cascade refinement**: having found a place for a higher priority, we try to improve
+it by "topping up" the lower ones (2+ resources → also strategic → also a river → also a
+lake/sea). If a priority could not be reached — **we skip it** and go to the
+next: the cascade is not interrupted by this.
 
-- Ресурсы, уже занятые стоящими городками, ресурсным приоритетом не считаются: один
-  кластер не должен тянуть два городка.
-- Поиск места — полный обход карты, а не N случайных опорных точек: единственный
-  валидный гекс среди тысяч кандидатов обязан находиться, иначе приоритет ложно
-  объявляется исчерпанным.
-- Приоритет считается от гекса **городка**, а не от промежуточного якоря: иначе
-  «2+ ресурса рядом» превращается в требование, которое ни о чём не говорит.
+- Resources already occupied by standing towns are not counted as a resource priority: one
+  cluster should not pull two towns.
+- The search for a place is a full traversal of the map, not N random anchor points: the single
+  valid hex among thousands of candidates must be found, otherwise the priority is falsely
+  declared exhausted.
+- The priority is counted from the **town's** hex, not from an intermediate anchor: otherwise
+  "2+ resources nearby" turns into a requirement that says nothing.
 
-## Дороги
+## Roads
 
-- **Дорога — спецдействие `"road"`, а не улучшение.** Она единственная не меняет
-  содержимое гекса, а строит участок сети города. Отсюда отдельная ветка в трёх местах,
-  где разбираются типы действий: применимость, расчёт цены, выполнение.
-- **Цена — за гекс, линейно по длине трассы, и БЕЗ множителя расстояния.** Дальность
-  уже отражена длиной трассы; с множителем дорога к дальнему городку дорожала бы
-  дважды. Ориентир — 3 труда за гекс: гекс дороги простая работа (ферма 8, вырубка
-  леса 22), но линейный рост делает дорогу в 10 гексов (30 труда) равной полутора
-  фермам. Дальний городок должен быть ощутимым, но достижимым вложением.
-- **Цена считается в одном месте** — в превью и в реальной стройке берут одно и то же
-  значение. `work_cost = 0` у дороги означает **не** «мгновенную постройку», а
-  «трассы нет»: без отдельной проверки стройка завершилась бы мгновенно, игрок получил
-  бы ноль дорог и не понял бы почему.
-- **Планирование отделено от постройки.** Расчёт маршрута ничего не пишет в сеть, им
-  питаются и превью, и цена. План кэшируется по версии сети **и версии знания карты**:
-  трасса зависит и от того, что игрок уже разведал, иначе панель показывала бы «дороги
-  нет» даже после того, как проход открыт.
-- **Трасса, которую строит игрок, идёт только по разведанной земле.** Иначе игрок
-  «строит» дорогу, которую потом нельзя увидеть и нельзя объяснить: она выдала бы
-  неисследованные территории. Автоматические сети дорог (к улучшениям города и
-  городков) этот фильтр не получают — у них своих правил нет.
-- **Причина отказа формулируется игроку.** «Путь есть, но не разведан — зовите
-  разведчиков» и «сухопутного пути вообще нет, городок за водой» — это разные ситуации
-  с разными решениями. Первая формулировка неверно отбивает игрока от задачи, которую
-  он может решить.
-- **Сеть своя у каждого городка.** Поиск пути останавливается на гексе СВОЕЙ сети,
-  поэтому дороги городков не могут стать частью дорог города игрока. Ключ сети —
-  координаты **центра** городка, а не индекс в списке: индекс «поедет», если городки
-  переставятся местами.
-- **Связь хранится в двух слоях, и это не дублирование.** Вычисляемый признак «сейчас
-  соединены» рисует значок и не требует хранения. Сохранённый факт «игрок это построил»
-  нужен, чтобы пересобрать связь после загрузки (сегменты дорог в сейв не пишутся) и
-  чтобы ответить на вопрос про торговлю. Это разные вопросы: «соединены ли мы сейчас»
-  и «строил ли игрок это».
-- **Дорога к городку идёт не в гекс городка, а к ближайшей дороге в его кольце влияния**
-  — так и было сказано в задаче. Сегменты новой дороги уходят в сеть **города**: две
-  сети становятся одной дорогой. Кольцо и сам городок в сети не участвуют.
-- **Торговля с городком гейтится дорогой, а доступ в интерфейс — нет.** Разведанный
-  городок можно открыть всегда: там видно, что у него есть на покупку и продажу.
-  Требование дороги живёт в одной заглушке-функции рядом с константой, которую однажды
-  снимет настоящая торговля.
-- **В сейв сеть дорог не пишется.** Входные данные (городки и улучшения) в сейве уже
-  есть, сеть считается заново на старте партии и при загрузке.
+- **A road is a special action `"road"`, not an improvement.** It is the only one that does not change
+  the contents of a hex but builds a segment of the city's network. Hence a separate branch in three places
+  where action types are handled: applicability, price calculation, execution.
+- **The price is per hex, linear along the length of the route, and WITHOUT a distance multiplier.** The
+  distance is already reflected by the length of the route; with a multiplier, a road to a distant town would get
+  more expensive twice. The benchmark is 3 labor per hex: a hex of road is simple work (a farm is 8, clearing
+  forest is 22), but the linear growth makes a 10-hex road (30 labor) equal to one and a
+  half farms. A distant town should be a tangible but reachable investment.
+- **The price is calculated in one place** — the preview and the actual construction take the same
+  value. `work_cost = 0` for a road means **not** "instant construction" but
+  "there is no route": without a separate check the construction would finish instantly, the player would get
+  zero roads and would not understand why.
+- **Planning is separated from construction.** The route calculation writes nothing into the network;
+  both the preview and the price are fed by it. The plan is cached by the version of the network **and the
+  version of map knowledge**: the route also depends on what the player has already scouted, otherwise the
+  panel would show "no road" even after the passage is open.
+- **The route that the player builds goes only over scouted land.** Otherwise the player
+  "builds" a road that later cannot be seen or explained: it would have exposed
+  unscouted territories. Automatic road networks (to the improvements of the city and
+  towns) do not get this filter — they have no rules of their own.
+- **The reason for refusal is phrased for the player.** "A route exists but it is not scouted — send
+  scouts" and "there is no land route at all, the town is across water" are different situations
+  with different solutions. The first phrasing wrongly turns the player away from a task that
+  they can solve.
+- **Each town has its own network.** Pathfinding stops at a hex of its OWN network,
+  so the roads of towns cannot become part of the roads of the player's city. The key of a
+  network is the coordinates of the town's **center**, not an index in a list: the index would "drift" if the towns
+  were rearranged.
+- **The connection is stored in two layers, and this is not duplication.** The computed flag "currently
+  connected" draws an icon and does not require storage. The saved fact "the player built this"
+  is needed to reassemble the connection after loading (road segments are not written to the save) and
+  to answer the question about trade. These are different questions: "are we connected now"
+  and "did the player build this".
+- **The road to a town goes not to the town's hex but to the nearest road in its influence ring**
+  — that is how it was stated in the task. The segments of the new road go into the **city's**
+  network: two networks become one road. The ring and the town itself do not participate in the network.
+- **Trade with a town is gated by a road, but access to the interface is not.** A scouted
+  town can always be opened: there you can see what it has to buy and sell.
+  The road requirement lives in a single stub function next to a constant that real trade will one day
+  remove.
+- **The road network is not written to the save.** The input data (towns and improvements) is already
+  in the save, the network is recomputed at the start of a game and on load.
 
-## Дебаг-инструменты
+## Debug tools
 
-**Принципы дебаг-меню.** Тонкий UI поверх существующих API (не свои обходные
-присвоения), отдельная сцена по хоткею, в релизных сборках — гейт через
-`OS.has_feature("debug")`, все изменения идут через обычные сигналы, чтобы UI не
-рассинхронизировался. Факт «я читерил» в сейв не пишется.
+**Principles of the debug menu.** A thin UI on top of existing APIs (not one's own workaround
+assignments), a separate scene on a hotkey, in release builds — a gate via
+`OS.has_feature("debug")`, all changes go through ordinary signals so that the UI does not get
+out of sync. The fact "I cheated" is not written to the save.
 
-**Переключатель «Игнорировать требования строительства» снимает требования, но не
-геометрию.** Требования — это технологии (вырубка леса, осушение), «Картография»,
-примыкание чанка к известной территории, деньги, труд. Геометрия действия (куда
-вообще можно провести трассу, какой чанк разведать) остаётся: «мгновенно построить»
-дорогу, до которой не дойти, значит построить её как попало. Смешивать их в один
-тумблер нельзя — получится два переключателя с пересекающейся зоной действия и
-непонятно, какой из них что отключил.
+**The "Ignore building requirements" toggle removes the requirements but not
+the geometry.** The requirements are technologies (clear forest, drainage), "Cartography",
+the adjacency of a chunk to known territory, money, labor. The geometry of an action (where a
+route can even be laid, which chunk to scout) remains: to "instantly build"
+a road that cannot be reached means to build it haphazardly. They must not be mixed into one
+toggle — you would get two toggles with overlapping scopes and
+no way to tell which of them disabled what.
 
-## Визуальные конвенции
+## Visual conventions
 
-**Подсветка гексов различает тип действия и доступность по палитре, а не по тексту.**
-Тон кодирует действие (разведка / освоение — два взаимно различных тона),
-приглушённость тона — что действие недоступно, толщина рамки — наведение или клик.
-Прилегающие к известной территории чанки сохраняют прежние цвета, чтобы не менять
-привычную картину.
+**Hex highlighting distinguishes the action type and availability by palette, not by text.**
+The hue encodes the action (scouting / claiming — two mutually distinct hues),
+the muting of the hue — that the action is unavailable, the thickness of the frame — hover or click.
+Chunks adjacent to known territory keep their former colors, so as not to change
+the familiar picture.
 
-**Палитра живёт ровно в одном месте** (в функции, выбирающей стиль подсветки).
-Конкретные цвета не дублируются нигде: ни в комментариях кода, ни в `docs.md`, ни в
-этом дневнике. Иначе любая правка палитры оставляет устаревшие ссылки в десяти местах.
-Поведение описывается семантикой, а не литералами. Проверять палитру тестом, который
-зашивает конкретные цвета, тоже нельзя — он сломается при любой правке и не даёт
-полезных проверок; читаемость проверяется визуально в игре.
+**The palette lives in exactly one place** (in the function that chooses the highlight style).
+The concrete colors are not duplicated anywhere: neither in code comments, nor in `docs.md`, nor in
+this diary. Otherwise any edit of the palette leaves outdated references in ten places.
+Behavior is described by semantics, not by literals. Testing the palette with a test that
+hardcodes the concrete colors is also not allowed — it would break on any edit and provides no
+useful checks; readability is checked visually in the game.
 
-Тон недоступного освоения специально выбирается далёким от серо-коричневой гаммы
-местности: приглушённый «как раньше» тон сливался с горами и холмами, и игрок не
-видел, что действие есть, но недоступно.
+The hue of unavailable claiming is deliberately chosen to be far from the grey-brown
+gamut of the terrain: the muted "as before" hue blended with the mountains and hills, and the player did not
+see that the action exists but is unavailable.
 
-## Конвенции интерфейса
+## Interface conventions
 
-- **Отделение тиков от событий.** Ресурсы и цифры обновляются по интервалу (настраивается
-  1–5 с, шаг 1 — данные меняются только на секундных тиках, дробный шаг дал бы лишь
-  неравномерный ритм). Событийные вещи обновляются **мгновенно**: стоимости из JSON,
-  хинты труда и лимитов, население, казна, наука, структурные изменения панелей.
-  Интервал игровой, а не системный — на паузе он не идёт.
-- **Тултип не должен содержать значения, меняющиеся каждый тик** (например, текущую
-  казну). Панель действий не пересоздаёт кнопки, пока список не изменился, — именно этим
-  сохраняется наведённый тултип; значение, меняющееся каждый тик, ломает это свойство.
-- **Зависающий тултип должен «залипать»:** при удержании курсора панель фиксируется,
-  и курсор можно перевести на саму панель. Живое обновление содержимого не должно
-  переставлять панель, иначе тултип «убегает» от курсора и догнать его нельзя.
-- **Числа в интерфейсе округляются явно и одинаково** везде: целое без дробной части,
-  иначе одна десятая монеты/сек округляется в ноль. Тултип и казна обязаны считать
-  одну и ту же цену — иначе они будут показывать разные числа для одного и того же
-  товара.
-- **Панель, которая не помещается в свой контейнер, — баг, а не мелочь.** Ховер,
-  завязанный на прямоугольник узла, не увидит «хвост» текста за пределами старой панели.
+- **Separation of ticks from events.** Resources and numbers update on an interval (configurable
+  1–5 sec, step 1 — the data changes only on one-second ticks, a fractional step would give only an
+  uneven rhythm). Event-driven things update **instantly**: costs from JSON,
+  hints about labor and limits, population, treasury, science, structural changes of panels.
+  The interval is game time, not system time — it does not run while paused.
+- **A tooltip must not contain values that change every tick** (for example, the current
+  treasury). The action panel does not recreate the buttons while the list has not changed — this is exactly what
+  preserves the hovered tooltip; a value that changes every tick breaks this property.
+- **A hovering tooltip must "stick":** while the cursor is held, the panel is pinned,
+  and the cursor can be moved onto the panel itself. Live updating of the content must not
+  reposition the panel, otherwise the tooltip "runs away" from the cursor and cannot be caught.
+- **Numbers in the interface are rounded explicitly and identically** everywhere: an integer without a fractional part,
+  otherwise one tenth of a coin/sec rounds to zero. The tooltip and the treasury are obliged to compute
+  the same price — otherwise they would show different numbers for the same
+  goods.
+- **A panel that does not fit in its container is a bug, not a trifle.** A hover
+  tied to the node's rectangle will not see the "tail" of the text beyond the old panel.
 
-## Правила работы с ИИ-ассистентами (эмпирика процесса)
+## Rules for working with AI assistants (process empirics)
 
-1. **Процедурная математика и генерация (реки, дороги, геометрические алгоритмы) — только
-   чистым листом:** стереть старый код, дать полную спецификацию, получить новую
-   реализацию. Не пытаться чинить чужой алгоритм по частям — он сохранит противоречивую
-   ментальную модель, и латающий обход будет повторяться снова и снова.
-2. **Всё остальное (data-driven механики, UI, JSON-контент) — инкрементальные правки
-   работают нормально.**
-3. **Спецификация пишется literalist-proof:** инварианты («каждый сегмент полилинии = одно
-   ребро гекса»), запреты («путь не идёт через центры гексов»), критерии приёмки
-   («сегмент длиннее ребра = баг»). Джинн-буквалист исполняет слова, а не намерение.
-4. **Реализация расходна, спецификация — актив.** `design_doc.md` хранит накопленные
-   ограничения; следующие сессии кормятся ими.
+1. **Procedural math and generation (rivers, roads, geometric algorithms) — clean sheet only:**
+   erase the old code, give a full specification, get a new implementation. Do not try to fix
+   someone else's algorithm piecemeal — it will retain a contradictory mental model, and the
+   patching workaround will repeat again and again.
+2. **Everything else (data-driven mechanics, UI, JSON content) — incremental edits
+   work fine.**
+3. **The specification is written literalist-proof:** invariants ("every segment of the polyline = one
+   hex edge"), prohibitions ("the path does not go through hex centers"), acceptance criteria
+   ("a segment longer than an edge = a bug"). A literalist genie executes the words, not the intent.
+4. **Implementation is expendable, the specification is an asset.** `design_doc.md` stores the accumulated
+   constraints; subsequent sessions are fed by them.
 
-## Дисциплина тестов
+## Test discipline
 
-- **Ошибка времени выполнения внутри корутины обрывает её молча** — до `quit()`
-  управление не доходит, и процесс живёт вечно. Это ловушка для всех headless-тестов,
-  а не для конкретного файла. Отсюда общий сторож на весь прогон, а не копипаст по
-  файлам.
-- **Сторож — общий помощник, а не копипаст.** Один вход, метка с именем теста из
-  `resource_path`, ненулевой код выхода при таймауте. Штатное завершение снимает
-  сторож флагом: забытый `quit()` тоже ловится, ведь такой тест сам по себе «зависший».
-  Предел времени — с запасом на медленную машину, но не на «ждать вечно»; свой предел
-  можно передать явно.
-- **Файл общего помощника не должен называться `test_*.gd`**: прогон «все тесты из
-  папки» иначе попытается запустить его как main-loop-скрипт и упадёт с непонятной
-  ошибкой.
-- **Регрессия, которая падает сама по себе (дрейф данных), — не следствие правки.**
-  Прежде чем винить текущую работу, откатить её и проверить на чистом HEAD. Иначе
-  в дневнике и в голове остаётся ложный след.
-- **Проверка мутацией вместо веры на слово.** «Зелёный» тест, который ни разу не
-  выполнялся, выглядит так же, как работающий. Временная замена функции на заглушку
-  должна валить ровно те проверки, которые она защищает.
-- **Проверяй на живой случайной карте не «у всех есть», а правило целиком.** Улучшения
-  стоят и на водных гексах кольца, и на отрезанных водой — утверждение «у каждого есть
-  дорога» было бы попросту неверным. Настоящий инвариант: дорога есть тогда и только
-  тогда, когда до городка есть путь по суше.
-- **Не подгоняй случайную карту под проверку.** Если честный сценарий не может
-  развернуться (городок на острове), честно пропусти его и напиши об этом, вместо того
-  чтобы подгонять входные данные.
-- **Ошибки движка (`SCRIPT ERROR`, `Parse Error`) в тестах лови так же строго, как
-  провалы ассертов.** Проверки функций проходят, пока интеграционные тесты печатают
-  ошибку в stderr, которую прогон с фильтром по `FAIL` не показывает.
-- **При запуске через `--script` нельзя ссылаться на классы по `class_name`:**
-  при загрузке скрипта теста глобальные имена могут быть ещё не в кеше, и падает
-  компиляция зависимого файла, а дальше ошибка выглядит как «виноват» совсем другой
-  модуль. Обходись `load()` и вызовом статических методов через переменную.
-- **Отступы - только пробелами.** 
+- **A runtime error inside a coroutine cuts it off silently** — control never reaches
+  `quit()`, and the process lives forever. This is a trap for all headless tests,
+  not for a particular file. Hence a shared watchdog for the whole run, rather than copy-paste per
+  file.
+- **The watchdog is a shared helper, not copy-paste.** One entry point, a marker with the test's name from
+  `resource_path`, a nonzero exit code on timeout. A normal completion cancels the
+  watchdog with a flag: a forgotten `quit()` is caught too, since such a test is "hung" by itself.
+  The time limit has a margin for a slow machine, but not for "wait forever"; a custom limit
+  can be passed explicitly.
+- **The shared helper file must not be named `test_*.gd`**: otherwise the "all tests from the
+  folder" run will try to launch it as a main-loop script and fail with an incomprehensible
+  error.
+- **A regression that fails on its own (data drift) is not a consequence of the edit.**
+  Before blaming the current work, roll it back and check on a clean HEAD. Otherwise
+  a false trail remains in the diary and in one's head.
+- **Verification by mutation instead of taking one's word for it.** A "green" test that has
+  never once run looks the same as a working one. Temporarily replacing a function with a stub
+  must fail exactly the checks it protects.
+- **On a live random map, check not "everyone has it" but the rule as a whole.** Improvements
+  stand both on water hexes of the ring and on ones cut off by water — the statement "everyone has
+  a road" would simply be false. The real invariant: a road exists if and only
+  if there is a land route to the town.
+- **Do not tailor the random map to the check.** If an honest scenario cannot
+  unfold (a town on an island), honestly skip it and write about it, instead of
+  tailoring the input data.
+- **Catch engine errors (`SCRIPT ERROR`, `Parse Error`) in tests just as strictly as
+  assertion failures.** Function checks pass while integration tests print an
+  error to stderr, which a run filtered by `FAIL` does not show.
+- **When running via `--script`, one must not reference classes by `class_name`:**
+  when the test script is loaded, the global names may not yet be in the cache, and the
+  compilation of a dependent file fails, and then the error looks like a completely different
+  module is "to blame". Get by with `load()` and calling static methods through a variable.
+- **Indentation - spaces only.** 
 
-## Реки
+## Rivers
 
-**Река — граничная сущность, а не тайл-тип в центре гекса.** Причины:
-- не съедает клетки на маленьких картах (11×9);
-- вариативное число обводнённых соседей (2–4), а не фиксированные 6;
-- бонус от пресной воды через соседство получается естественно;
-- гекс и так перегружен (ресурс, улучшение, дорога, ландшафт).
+**A river is a boundary entity, not a tile type in the center of a hex.** Reasons:
+- it does not eat up tiles on small maps (11×9);
+- a variable number of watered neighbors (2–4) rather than a fixed 6;
+- the fresh-water bonus via adjacency comes out naturally;
+- the hex is already overloaded (resource, improvement, road, landscape).
 
-Исторический контекст: в Civ 1 (1991) реки были тайлами, в Civ 2–6 — границами, в
-Civ 7 снова тайлами (по ним плавают юниты). В The City юнитов нет, поэтому границы.
+Historical context: in Civ 1 (1991) rivers were tiles, in Civ 2–6 they were boundaries, in
+Civ 7 tiles again (units sail along them). The City has no units, hence boundaries.
 
-**Трёхуровневая система воды:**
+**Three-level water system:**
 
-| Уровень | Что | Для кого | Масштаб |
+| Level | What | For whom | Scale |
 |---|---|---|---|
-| Река | естественный источник | фермы, мельницы | гексы вокруг |
-| Канал | искусственное продолжение | фермы, мельницы | +3 гекса от источника |
-| Акведук | грандиозный проект, питьевая вода | город, население | отложено |
+| River | natural source | farms, mills | hexes around |
+| Canal | artificial continuation | farms, mills | +3 hexes from the source |
+| Aqueduct | grand project, drinking water | city, population | deferred |
 
-**Орошение.** Бинарный бонус к производству фермы +50% при наличии воды. Бонус
-**не стекуется** (река + канал не дают +100%). Орошение работает, **пока цепочка цела**:
-разорвалась — бонус теряется. Фермы сами проводят воду и являются частью цепочки.
-Канал — отдельное лёгкое улучшение (6–8 труда, дешевле фермы). Дальность воды:
-максимум 3 гекса от источника (реки или канала).
+**Irrigation.** A binary +50% production bonus for a farm when water is present. The bonus
+**does not stack** (river + canal do not give +100%). Irrigation works **as long as the chain is intact**:
+it breaks — the bonus is lost. Farms carry water themselves and are part of the chain.
+A canal is a separate light improvement (6–8 work, cheaper than a farm). Water range:
+a maximum of 3 hexes from the source (river or canal).
 
-**Мельница на карте:** требует воду (река ИЛИ канал), зерно сама не перерабатывает,
-даёт пассивный +5% к скорости всех мельниц в городе.
+**Mill on the map:** requires water (a river OR a canal), does not process grain itself,
+gives a passive +5% to the speed of all mills in the city.
 
-**Алгоритм генерации.** Река входит в случайной точке на случайной границе Региона;
-первые 2 шага — случайное направление, но не наружу (внутрь карты); далее каждый шаг —
-случайное допустимое направление: прямо (0°) или мягкий поворот (±60°), разворот
-(180°) запрещён, средний поворот (120°) изредка. Река не может выйти, пока не прошла
-минимум 4 гекса. Выход — через любую границу Региона. Параметры — в JSON
+**Generation algorithm.** A river enters at a random point on a random border of the Region;
+the first 2 steps are a random direction, but not outward (into the map); thereafter each step is
+a random allowed direction: straight (0°) or a soft turn (±60°), a reversal
+(180°) is forbidden, a medium turn (120°) occasionally. A river cannot exit until it has passed
+a minimum of 4 hexes. The exit is through any border of the Region. The parameters are in JSON
 (`count`, `min_length`, `guaranteed`).
 
-**Модель данных.** Каждый гекс хранит, какие из его 6 рёбер речные. Гекс орошён, если
-хотя бы одно его ребро речное или оно соседствует с каналом.
+**Data model.** Each hex stores which of its 6 edges are river. A hex is irrigated if
+at least one of its edges is river or it is adjacent to a canal.
 
-**Визуализация v1** — трёхслойная линия плюс волновые маркеры, без AI-картинок:
-тёмно-синяя широкая линия (тело реки), светло-голубая тонкая (блик на воде), символы
-волн через каждые 2–3 гекса. Бонус — лёгкая подкраска берегов.
-Критерий приёмки: альфа-тестер сразу говорит «это река», а не «это граница или дорога».
+**Visualization v1** — a three-layer line plus wave markers, without AI images:
+a dark-blue wide line (the river body), a light-blue thin one (a highlight on the water), wave
+symbols every 2–3 hexes. The bonus is a light tint on the banks.
+Acceptance criterion: an alpha tester immediately says "this is a river", not "this is a border or a road".
 
-## Рёки: финальная архитектура (реализовано)
+## Rivers: final architecture (implemented)
 
-Дополняет предыдущий раздел: алгоритм v1 из спеки реализован через отдельный менеджер.
+Supplements the previous section: the v1 algorithm from the spec is implemented through a separate manager.
 
-- **RiverManager — единственный хозяин рек:** генерация, сериализация, `river_edges`.
-  Генератор карт реки не генерирует, рендерер только рисует.
-- **Данные — граф вершин** (узлы = вершины гексов, рёбра графа = рёбра гексов) плюс
-  A* с ограничением угла поворота. Путь строго через смежные вершины, поэтому срезка
-  невозможна конструктивно: в графе просто нет рёбер «через гекс».
-- 1–2 реки на карту, гарантия от границы до границы, минимальная длина 8 вершин.
-  Реки могут сливаться, но не пересекаться и не идти по себе.
-- `mark_river_edges` выводит `river_edges` тайлов из полилинии; орошение и подкраска
-  берегов читают их же — единый источник истины.
-- Сохранение: массив массивов точек, несколько рек переживают сохранение без склейки.
-- **Визуал отделён от данных:** меандрирование внутри ребра и сглаживание живут только
-  в рендерере.
+- **RiverManager — the sole owner of rivers:** generation, serialization, `river_edges`.
+  The map generator does not generate rivers, the renderer only draws.
+- **The data is a vertex graph** (nodes = hex vertices, graph edges = hex edges) plus
+  A* with a turn-angle constraint. The path goes strictly through adjacent vertices, so cutting across
+  is impossible by construction: the graph simply has no "through-hex" edges.
+- 1–2 rivers per map, guaranteed from border to border, minimum length 8 vertices.
+  Rivers may merge, but not intersect and not run along themselves.
+- `mark_river_edges` derives the tiles' `river_edges` from the polyline; irrigation and bank
+  tinting read the same thing — a single source of truth.
+- Saving: an array of arrays of points, several rivers survive saving without being glued together.
+- **Visuals are separated from data:** meandering within an edge and smoothing live only
+  in the renderer.
 
-### Урок процесса
+### Process lesson
 
-Патч-сессия пяти ассистентов не смогла убрать срезки: ассистенты латали обход по границе,
-сохраняя противоречивую ментальную модель. Сессия с чистого листа сменила представление
-данных (граф вершин) — и инвариант стал **структурным**, а не проверяемым.
-См. «Правила работы с ИИ-ассистентами» выше.
-
----
-
-## Поэтапное строительство вынесено в общую систему проектов (2026-09-29)
-
-**Контекст.** Дорога строилась одним заданием: игрок подтверждал маршрут, платил за
-всю длину и через несколько секунд получал её целиком. Стоило длинной трассе —
-и игрок смотрел на пустую землю, не понимая, из чего складывается его покупка
-и сколько ещё ждать. Второй по дороге случай: акведук от горы к городу в
-обсуждениях уже стоял, и он требует ровно того же — «очереди участков с общей
-оплатой», — но повторять всю машинерию дороги второй раз нельзя.
-
-**Решение.** Очередь шагов вынесена в отдельный `project_manager.gd`, о котором
-не знает ни одна дорожная сущность. Проект — это упорядоченные шаги, каждый
-шаг достраивается отдельно; что означает шаг, решает владелец через
-`step_completed`. Дорога стала первым пользователем, акведук будет вторым, и
-ни тот, ни другой не потребуют правок в менеджере.
-
-**Почему ставку труда раздаёт `build_manager`, а не менеджер проектов.** Инвариант
-«суммарный объём работы в единицу времени равен размеру города» живёт ровно в
-одном месте — в `_process` `build_manager`. Если бы проект придумывал свою
-ставку, город получал бы работу «поверх» общей и строил бы быстрее самого себя.
-Поэтому менеджер проектов объявляет, сколько шагов идёт (один слот на
-проект, а не по числу гексов), и получает готовую поделённую ставку. Обмен
-сознательно узкий: два метода, ни одного знания о дорогах.
-
-**Почему участки идут от сети к цели, хотя план возвращает путь наоборот.**
-`plan_road_to` отдаёт путь от цели к городу — так его строит поиск. Разворачивать
-его пришлось по существу, а не ради симметрии: у каждого шага два гекса, и если
-строить от цели, участок всё время висит в воздухе, пока до города не дойдёт
-очередь. От сети — он каждый раз присоединяется к уже готовой дороге. Побочные
-следствия те же, и они приятные: прогресс-бар едет от города к цели, а призрак
-маршрута «съедается» с города, то есть незастроенное всегда видно позади, а не
-впереди.
-
-**Что исчезло и почему это не жалко.** Прежняя частичная оплата (оплатил часть
-трассы — стройка осталась активной с остатком, игрок доплачивал и доплачивал)
-исчезла вместе с одной большой задачей. При поэтапности она не только не
-нужна, но и противоречит: недоплаченный участок просто не начинается. Оплата
-стала честнее и понятнее — за каждый участок отдельный шаг, а последний шаг
-добирает остаток округления, чтобы сумма шагов совпала с ценой в превью до
-единицы труда.
-
-**Кнопка прерывания должна быть там, куда игрок ткнёт.** Отдельная история,
-из которой выросло общее правило. Кнопка отмены дороги жила на гексе **цели**
-(`get_project_at()` — поиск по координатам цели). Но игрок не выбирает гекс
-цели: он видит прогресс-бар на текущем участке и жёлтый призрак на всём
-остальном маршруте, и жмёт туда, куда смотрит. Кнопка спряталась на дальнем
-конце трассы, а чаще всего её не было видно вообще — и прервать построенную на
-половину дорогу было нечем. Отсюда разделение на два вопроса: «есть ли проект
-**к этому** гексу» (прячет кнопку «Построить дорогу») и «занимает ли проект
-**этот** гекс» (даёт кнопку прерывания).
-
-Дальше выяснилось, что ранние `return` в `_collect_actions()` глушили кнопку
-там, где дорогу построить можно: на гексе с улучшением и в кольце влияния
-городка. Второй случай особенно неприятен — дорога к городку заканчивается
-участком **внутри** его кольца влияния, то есть на последнем шаге кнопка
-исчезала сама собой. Плюс `elif` на обычную стройку: на гексе дороги, к
-которому идёт проект, можно строить ещё что-то, и одна кнопка молча
-съедала другую.
-
-Собрал всё в `_append_cancel_actions()`, который вызывается из всех веток, и
-заодно переименовал кнопки: `Прервать: Осушение болот` честнее, чем
-`Отменить стройку`, — по кнопке видно, что именно прерывается. Нажатие на
-середине маршрута отменяет **весь** проект, и это сказано прямо в диалоге:
-иначе игрок жмёт «отменить вот этот кусочек» и получает отмену всей дороги.
-
-**Освоение и разведка.** У них отмены не было вовсе — а действия они идут
-дольше всего. Здесь вылез вопрос, который в дороге не стоял: деньги за них
-списываются **сразу**, при отправке, а не по завершении. Долго колебался:
-возвращать или нет. Решил **возвращать** — деньги платили за результат (чанк в
-Кольце Влияния, исследованные гексы), а результата не будет. Цена отказа —
-вложенный труд и время, и это уже ощутимо. Тем более что ровно так же уже
-поступал `expansion_manager.handle_action()`, когда стройка освоения не могла
-стартовать: деньги уходили обратно, чтобы цена не пропала. Правило получилось
-одно и его легко объяснить игроку: **отмена возвращает деньги, но не труд**.
-
-Осталось придумать, как отменить разведку, если экспедиция в игре одна. Кнопка
-появляется на гексе её чанка, а отмена обнуляет таймер и возвращает цену.
-Открытых гексов при этом не добавляется: разведка применяется целиком в
-`_complete_scouting()`, промежуточного состояния у неё нет и изобретать его
-ради отмены незачем.
-**Отмена не откатывает дорогу.** Уже проложенные участки остаются, исчезает
-только призрак недостроенного. Это совпадает с отменой обычной стройки
-улучшения и с тем, что игрок уже видел на карте: отменять нужно «хвост»
-проекта, а не перематывать результат.
-
-**Сохранение.** Сегменты дорог, как и все дороги, в сейв не пишутся. Поэтому
-флаг `road_built` ставится на **каждом** гексе, присоединённом участком, а не
-только на цели проекта: иначе полупостроенная дорога после перезапуска
-потеряла бы весь построенный хвост и поехала заново от города. Сама очередь
-лежит в сейве отдельно (`active_projects`) и продолжает достраиваться.
-
-**Инвариант, который нельзя нарушать:** призрак проекта и превью маршрута —
-разные наборы сегментов с разным временем жизни. Превью живёт, пока открыта
-панель; призрак живёт до конца стройки. Объединять их «ради меньшего кода»
-нельзя — тогда после подтверждения маршрут исчезнет с карты, и это будет
-выглядеть как баг, хотя код будет правильным.
+A patch session with five assistants could not remove the cut-offs: the assistants patched the boundary traversal,
+keeping a contradictory mental model. A session from a clean slate changed the data
+representation (a vertex graph) — and the invariant became **structural** rather than checkable.
+See "Rules for working with AI assistants" above.
 
 ---
 
-## Множители местности и дальности применены к участкам дороги (2026-09-29)
+## Staged construction moved into the shared project system (2026-09-29)
 
-**Контекст.** Множитель дальности к дороге не применялся с явным обоснованием
-в данных: «дальность уже отражена длиной трассы, иначе дорожала бы дважды».
-Пока дорога была одной покупкой, это было верно — игрок платил `3 × длина` и
-не видел, что внутри. Поэтапное строительство это рассуждение отменило: участок
-стал отдельной постройкой на отдельном гексе, и участок в десяти гексах от
-города стал стоить ровно столько же, сколько соседний. Та же работа, тот же
-груз, в десять раз дальше. Расхождение перестало быть спрятанным.
+**Context.** A road was built as a single task: the player confirmed the route, paid for
+the whole length, and a few seconds later received it in full. It cost a long span —
+and the player looked at empty ground, not understanding what their purchase consisted of
+and how much longer to wait. The second case along the road: an aqueduct from a mountain to the city was
+already under discussion, and it requires exactly the same thing — "a queue of sections with shared
+payment" — but the whole machinery of the road cannot be repeated a second time.
 
-**Решение.** Цена участка — `база × work_cost_mult(местность) ×
-(1 + расстояние × коэффициент) × тех-множители`. Множитель местности — тот же
-`work_cost_mult`, что у улучшений: «сложность строительства» не зависит от
-того, что строят, а копия таблицы в коде дороги через месяц разошлась бы с
-данными.
+**Solution.** The queue of steps was moved into a separate `project_manager.gd`, which
+no road entity knows about. A project is ordered steps, each
+step is built separately; what a step means is decided by the owner through
+`step_completed`. The road became the first user, the aqueduct will be the second, and
+neither of them will require changes in the manager.
 
-**Почему свой коэффициент дальности, а не общий 0.25.** Общий множитель
-применяется к одной постройке, где игрок сам выбирает гекс. Здесь формула
-применяется к каждому участку, то есть множится на длину трассы: при 0.25
-участок №20 стоит в шесть раз дороже первого, и сеть упирается в стену —
-до дальнего городка не дойти никогда. Отдельное поле в `game_balance.json`,
-значение 0.1, даёт читаемый ряд 1.1, 1.2, …, 2.0. Это сознательное
-исключение из правила «одно значение на все», и оно заслуживает пометки в
-данных, а не молчания: иначе следующая сессия увидит два разных поля с
-одинаковым именем и решит, что одно из них — опечатка.
+**Why `build_manager` hands out the labor rate, and not the project manager.** The invariant
+"the total amount of work per unit of time equals the size of the city" lives in
+exactly one place — in `_process` of `build_manager`. If a project invented its own
+rate, the city would receive work "on top of" the shared amount and would build faster than itself.
+Therefore the project manager declares how many steps are running (one slot per
+project, not per number of hexes), and receives a ready, divided rate. The exchange
+is deliberately narrow: two methods, not a single piece of knowledge about roads.
 
-**Почему местность берётся по гексу `to`, а не как `max(from, to)`.** В очереди
-каждый внутренний гекс трассы встречается дважды: как `to` одного шага и как
-`from` следующего. При `max` болото в середине трассы оплачивалось бы дважды —
-за один и тот же гекс. При `to` каждый гекс тарифицируется ровно один раз, и
-это верно по существу: `from` уже в сети, за него заплатили, когда дорога дошла.
+**Why sections go from the network to the target, although the plan returns the path the other way.**
+`plan_road_to` returns the path from the target to the city — that is how the search builds it. Reversing
+it was necessary in substance, not for symmetry: each step has two hexes, and if
+you build from the target, the section hangs in the air the whole time until the queue reaches
+the city. From the network — it joins an already-finished road each time. The side
+effects are the same, and they are pleasant: the progress bar moves from the city to the target, and the route's
+ghost is "eaten away" from the city, that is, what is not yet built is always visible behind, not
+ahead.
 
-**Надбавки за длину трассы нет и не будет.** Здесь стоит зафиксировать саму
-формулировку, потому что её легко перепутать с первыми двумя множителями.
-«Сложные и длинные дороги долго строятся» — это две независимые причины:
-длинная дорога дольше строится потому, что участков больше, а не потому что за
-«длину» берут штраф. Представление итоговой стоимости в виде «трасса ×2.8»
-вводит в заблуждение и выглядит наказанием за длину, которого в коде нет.
-Считать надо по участкам.
+**What disappeared, and why it is not a loss.** The former partial payment (you paid for part
+of the span — construction stayed active with a remainder, the player paid and paid)
+disappeared along with one big task. With staging it is not only
+unnecessary, but contradictory: an underpaid section simply does not begin. Payment
+became more honest and clearer — a separate step for each section, and the last step
+picks up the rounding remainder so that the sum of the steps matches the price in the preview to
+the unit of work.
 
-**Побочно закрыт дефект, который не был виден по отдельности.** Цена превью
-считалась как `base × plan.segments`, а `plan.segments` — это `path.size() − 1`,
-то есть все сегменты пути, **включая уже построенные**, тогда как шаги их
-фильтровали. На маршруте, идущем по частично построенной дороге, превью
-показывало больше, чем списывали. Теперь шаги с их ценами — единый источник
-(`main_map._build_road_steps`), и превью, и запуск берут один и тот же массив:
-расхождение исключено конструктивно, а не проверкой. Схема «последний шаг
-добирает остаток округления» при этом исчезла — с разными ценами шагов она
-давала бы переплату или недобор, а сумма теперь точна по построению.
+**The interrupt button must be where the player taps.** A separate story,
+out of which a general rule grew. The road cancel button lived on the **target** hex
+(`get_project_at()` — a search by target coordinates). But the player does not select the target
+hex: they see a progress bar on the current section and a yellow ghost along the whole
+rest of the route, and presses where they are looking. The button hid at the far
+end of the span, and most often it was not visible at all — and there was nothing to interrupt a
+half-built road with. Hence the split into two questions: "is there a project
+**at this** hex" (hides the "Build Road" button) and "does the project occupy
+**this** hex" (gives the interrupt button).
 
-**Инвариант, который нельзя нарушать:** множитель дальности улучшений и у
-участков дороги — разные поля с общей формулой, и «универсальность» здесь
-означает формулу, а не число. Тех-множитель вклада расстояния («Колесо»)
-обязан быть **одной** функцией на оба случая: он снижает дальность, и если
-быть только у улучшений, то колесо удешевляло бы строительство, но не дорогу —
-при том что дорога и есть про колесо.
----
+Then it turned out that early `return`s in `_collect_actions()` muted the button
+where a road could be built: on a hex with an improvement and in a town's influence
+ring. The second case is especially unpleasant — a road to a town ends
+with a section **inside** its influence ring, that is, on the last step the button
+disappeared by itself. Plus the `elif` for ordinary construction: on a road hex that
+a project is heading toward, one can build something else, and one button silently
+swallowed the other.
 
-## Иконки живут в одном реестре (2026-10-01)
+I gathered everything into `_append_cancel_actions()`, which is called from all branches, and
+along the way renamed the buttons: `Stop: Drain Water` is more honest than
+`Cancel construction` — from the button you can see exactly what is being interrupted. Pressing in
+the middle of the route cancels the **whole** project, and this is stated directly in the dialog:
+otherwise the player presses "cancel just this little piece" and gets the whole road cancelled.
 
-**Контекст.** Имя файла иконки в `data/*.json` — это только имя (`wheat.png`),
-а не путь. Поэтому каждый потребитель, которому нужна картинка, должен был
-превратить имя в путь — и рекурсивным обходом `res://icons` это делали
-**восемь модулей**: `map_renderer`, `resources_tab`, `buildings_tab` (дважды в
-одном файле), `building_panel`, `tech_tree`, `town_ui`, `trade_tab`. Обход
-проходил по 576 файлам, и три из них параллельно держали локальные словари
-текстур поверх `load()`, который Godot и так кэширует.
+**Claiming and scouting.** They had no cancellation at all — and their actions take
+the longest. Here a question surfaced that did not arise with the road: the money for them
+is deducted **immediately**, on dispatch, not on completion. I hesitated for a long time:
+to refund or not. I decided to **refund** — the money was paid for a result (a chunk in
+the Influence Ring, the scouted hexes), and there will be no result. The price of refusal is
+the work invested and the time, and that is already tangible. All the more so since
+`expansion_manager.handle_action()` already did exactly the same thing when a claiming construction could
+not start: the money went back so that the price would not be lost. The rule came out
+single and easy to explain to the player: **cancellation refunds the money, but not the work**.
 
-**Почему это нельзя чинить «почисткой каждого модуля».** Правила индексации
-у восьми копий разошлись: у половины дубль имени перезаписывал путь, у
-остальных игнорировался, предупреждение печатали трое. Дубликатов имён в
-`icons/` сейчас нет, поэтому расхождение пока безвредно — оно ждёт того
-момента, когда автор положит `wheat.png` ещё и в подпапку. Это ловушка с
-отложенным взрывом: выглядит работает, а сломается на новой иконке и в
-самом непонятном месте. Половина индекса (288 записей из 576) — это файлы
-`*.import`, которые не иконки вовсе.
+What remained was to figure out how to cancel scouting if there is only one expedition in the game. The button
+appears on the hex of its chunk, and the cancellation resets the timer and refunds the price.
+No hexes are revealed in the process: scouting is applied in full in
+`_complete_scouting()`, it has no intermediate state, and there is no reason to invent
+one for the sake of cancellation.
+**Cancellation does not roll back the road.** Already-laid sections remain, only
+the ghost of the unfinished one disappears. This matches the cancellation of ordinary
+improvement construction and what the player has already seen on the map: what needs to be cancelled is the "tail"
+of the project, not to rewind the result.
 
-Отдельная находка того же рефакторинга: `buildings_tab._build_icon_index_local`
-вызывался **внутри `_show_building_details`**, то есть обход 576 файлов
-происходил при каждом наведении на здание.
+**Saving.** Road segments, like all roads, are not written to the save. Therefore
+the `road_built` flag is set on **every** hex joined by a section, not
+only on the project target: otherwise a half-built road after a restart
+would lose the entire built tail and start again from the city. The queue
+itself lies in the save separately (`active_projects`) and continues to be built.
 
-**Решение.** `scripts/icon_registry.gd` — автозагрузка `IconRegistry`, которая
-строит индекс один раз за игру (лениво, при первом обращении) и отдаёт
-`has()` / `icon_path()` / `get_texture()`. Инвариант: нужен путь или текстура —
-спроси реестр; свой обход `res://icons` в новом коде не пишем. Тест
-`tests/test_icon_registry.gd` сверяет индекс с самой файловой системой, а не с
-константами, — иначе он устареет первым же перекладыванием картинок.
-
-**Что сознательно не делаем.**
-
-- *Манифест, генерируемый при импорте (EditorPlugin).* Автоматически отслеживал
-  бы новые иконки, но это целый подсистемный инструмент ради шестисот файлов.
-  Реестр строится за пару миллисекунд, один раз.
-- *`class_name IconRegistry` со статическими полями вместо автозагрузки.*
-  Экономит строку в `project.godot`, но в проекте уже есть прямой запрет на
-  опору на `class_name` в headless-режиме (`ui_helpers.gd`: при запуске через
-  `--script` глобальные имена классов могут быть ещё не в кеше). Автозагрузка
-  работает везде одинаково.
-- *Требовать наличие иконки для каждой ссылки в данных.* В `data/*.json` есть
-  ~144 ссылки на ещё не нарисованные иконки (будущие товары, профессии) — это
-  нормальный способ дописывать данные заранее. Тест печатает их число как
-  справку, но не падает.
-- *Разом перевести хардкод путей* (`city_ui._setup_tab_bar_icons`,
-  `main_menu`) на реестр. Четыре статические иконки — не дублирование индекса;
-  их вынос добавил бы зависимость без выигрыша.
-
-**Ловушка, на которую уже наступали дважды.** `get_path()` как имя метода
-невозможно: `Node.get_path()` возвращает `NodePath` и перекрывает его, а
-движок трактует перекрытие как ошибку компиляции (warning-as-error). Метод
-назван `icon_path()`. Второе: в `map_renderer` локальный `icon_textures`
-оставлен **намеренно** — это горячий путь `_draw`, обращение на каждый гекс
-каждый кадр, и лезть в автозагрузку из `draw` рано. Реестр его только
-наполняет.
+**An invariant that must not be violated:** the project ghost and the route preview are
+different sets of segments with different lifetimes. The preview lives as long as
+the panel is open; the ghost lives until the end of construction. They must not be merged "for the sake of less code"
+— then after confirmation the route would disappear from the map, and this would
+look like a bug, even though the code would be correct.
 
 ---
 
-## Уровни дорог, маршрут и «максимальная скорость» (2026-10-01)
+## Terrain and distance multipliers applied to road sections (2026-09-29)
 
-**Контекст.** Дорога была единой сущностью без качеств: `road_manager` хранил
-набор сегментов (`ключ -> true`), у всех был один цвет и одна толщина, а цена
-участка жила в `special_actions.json` как `work_cost: 10`. Запрос: у дороги
-появились уровни с «максимальной скоростью» — не скоростью юнитов, а
-пропускной способностью (сколько единиц ресурса в секунду участок везёт),
-маршрут от улучшения до города со средней скоростью, кнопка «Улучшить
-дорогу» с призраком и выбор уровня.
+**Context.** The distance multiplier was not applied to the road, with an explicit justification
+in the data: "the distance is already reflected by the length of the span, otherwise it would get more expensive twice."
+While the road was a single purchase, this was true — the player paid `3 × length` and
+did not see what was inside. Staged construction cancelled this reasoning: a section
+became a separate construction on a separate hex, and a section ten hexes from
+the city began to cost exactly as much as a neighboring one. The same work, the same
+load, ten times farther. The discrepancy stopped being hidden.
 
-**Решение.** Уровень — запись в новом `data/roads.json` (`level`, `name`,
-`work_cost`, `max_speed`, `unlock_tech`, `color`, `width`), а участок сети
-хранит **номер уровня значением**: `road_segments: "row,col|row,col" -> level`.
-Первый уровень — бесплатная тропка (10 ед./сек), «Колесо» открывает второй —
-тележную дорогу (30 ед./сек). Ограничение задачи: только древняя эпоха и два
-уровня, чтобы проверить сквозной путь; остальные уровни добавляются данными.
+**Solution.** The price of a section is `base × work_cost_mult(terrain) ×
+(1 + distance × coefficient) × tech multipliers`. The terrain multiplier is the same
+`work_cost_mult` as for improvements: "construction difficulty" does not depend on
+what is being built, and a copy of the table in the road's code would diverge from
+the data within a month.
 
-**Почему уровень — значение словаря, а не отдельный список.** Словарь сегментов
-уже перечисляет все участки. Второй список «какой участок какого уровня»
-разошёлся бы с ним при первом же изменении сети, и рассинхронизация выглядела
-бы не как ошибка данных, а как «призрачная» дорога не того уровня. Значение
-словаря для этого годится идеально: `.has()`, `.size()`, итерация по ключам
-работают как раньше, а уровень едет вместе с участком.
+**Why its own distance coefficient, and not the shared 0.25.** The shared multiplier
+is applied to a single construction, where the player chooses the hex themselves. Here the formula
+is applied to each section, that is, it is multiplied by the length of the span: at 0.25
+section No. 20 costs six times more than the first, and the network hits a wall —
+you would never reach a distant town. A separate field in `game_balance.json`,
+value 0.1, gives a readable series 1.1, 1.2, …, 2.0. This is a deliberate
+exception to the rule "one value for everything", and it deserves a note in
+the data rather than silence: otherwise the next session will see two different fields with
+the same name and decide that one of them is a typo.
 
-**Почему `work_cost` уехал из спецдействия.** Уровень — свойство участка, а
-цена участка — свойство уровня. Копия одного числа в двух файлах разошлась бы
-при первой правке баланса, причём тихо: «Построить дорогу» показывало бы цену
-тропки при выбранной тележной дороге, и ошибку увидел бы только игрок.
+**Why terrain is taken by the `to` hex, and not as `max(from, to)`.** In the queue
+each interior hex of the span occurs twice: as the `to` of one step and as
+the `from` of the next. With `max`, a marsh in the middle of the span would be paid for twice —
+for the same hex. With `to`, each hex is charged exactly once, and
+this is correct in substance: `from` is already in the network, it was paid for when the road reached it.
 
-**Три следствия, которые пришлось починить, а не обойти.**
+**There is no and will be no surcharge for span length.** Here it is worth fixing
+the very wording, because it is easy to confuse with the first two multipliers.
+"Complicated and long roads take a long time to build" — these are two independent reasons:
+a long road takes longer to build because there are more sections, not because
+a penalty is charged for "length". Presenting the final cost as "span ×2.8"
+is misleading and looks like a punishment for length that does not exist in the code.
+One must count by sections.
 
-- `maxi(1, cost)` в `get_road_step_work_cost` превращал бесплатный уровень в
-  платный. Потолок снизу был поставлен не из логики, а потому, что база всегда
-  была положительной (10 из спецдействия). С нулевой базой он стал неверным, и
-  бесплатная постройка улучшения перестала быть бесплатной.
-- Проверка «дорогу построить нельзя» стояла на `work_cost <= 0` — то есть на
-  цене, которую использовали как признак «трассы нет». С бесплатной тропкой
-  нулевая цена стала законным состоянием, и дорога объявлялась бы
-  невозможной. Признак перенесён на `!ok` у плана, где он и должен быть.
-- Шаг поэтапного проекта с нулевой ценой не копит труд и не завершается сам:
-  он держал бы слот стройки вечно. Бесплатная дорога теперь проходится целиком
-  сразу, тем же обработчиком шага.
+**A defect that was not visible in isolation has been incidentally closed.** The preview price
+was calculated as `base × plan.segments`, and `plan.segments` is `path.size() − 1`,
+that is, all segments of the path, **including the already-built ones**, whereas the steps
+filtered them out. On a route running along a partially built road, the preview
+showed more than was deducted. Now the steps with their prices are the single source
+(`main_map._build_road_steps`), and both the preview and the launch take the same array:
+the discrepancy is excluded by construction, not by a check. The scheme "the last step
+picks up the rounding remainder" also disappeared — with different step prices it
+would give overpayment or shortfall, and the sum is now exact by construction.
 
-**Почему маршрут — это отдельный поиск, а не план.** `plan_road_to` ищет, куда
-дорогу ещё можно проложить: Дейкстра по местности, с фильтром разведки.
-`find_route_to_city` ищет, как реально дойти: обход построенной сети в ширину,
-без фильтра известности. Смешивать их нельзя — это разные вопросы, и код,
-который «просто переиспользует планировщик», через месяц выдаст маршрут по
-местности для дороги, которой нет.
+**An invariant that must not be violated:** the distance multiplier of improvements and
+of road sections are different fields with a shared formula, and "universality" here
+means a formula, not a number. The tech multiplier for the distance contribution ("Wheel")
+is obliged to be **one** function for both cases: it reduces distance, and if
+it were only on improvements, the wheel would cheapen construction but not the road —
+even though the road is precisely about the wheel.
+---
 
-**Почему показываются и средняя скорость, и минимум.** Запрос был про среднюю.
-Одной средней мало: на маршруте из трёх тропок и одной тележной дороги среднее
-равно 15, а груз всё равно упирается в 10. «Средняя 15» звучит как «всё
-хорошо» и приводит к улучшению не того участка. Минимум — это и есть узкое
-место, ради устранения которого маршрут и улучшают. Средняя остаётся, потому
-что отвечает на другой вопрос — «насколько быстро в среднем едет груз».
+## Icons live in a single registry (2026-10-01)
 
-**Улучшается весь маршрут, а не участок рядом с улучшением.** Скорость
-маршрута определяется самым узким звеном цепочки, поэтому улучшение одного
-конца не даёт ничего. Кнопка поэтому и не «улучшить здесь», а «улучшить
-дорогу отсюда до города», и её тултип прямо называет текущее узкое место.
+**Context.** An icon file name in `data/*.json` is just a name (`wheat.png`),
+not a path. Therefore every consumer that needs the picture had to
+turn the name into a path — and **eight modules** did this by recursively
+walking `res://icons`: `map_renderer`, `resources_tab`, `buildings_tab` (twice in
+one file), `building_panel`, `tech_tree`, `town_ui`, `trade_tab`. The walk
+went over 576 files, and three of them simultaneously kept local texture
+dictionaries on top of `load()`, which Godot already caches anyway.
 
-**Ловушка GDScript, на которую ушло время.** `str(value or "")` при `value ==
-null` даёт строку `"<null>"`, а не пустую. Наивная проверка `is_empty()`
-проходила, и в список исследованных технологий попадало `"<null>"` — цикл
-разблокировки молча ломался, а «Колесо» так и не открывалось. В `roads.json`
-поле `unlock_tech` у тропки именно `null`, так что случай не умозрительный.
-Чтение вынесено в `GameData._road_unlock_tech` с проверкой типа.
+**Why this cannot be fixed "by cleaning up each module".** The indexing
+rules of the eight copies diverged: in half of them a duplicate name overwrote the path, in
+the rest it was ignored, and three printed a warning. There are currently no duplicate names in
+`icons/`, so the divergence is harmless for now — it is waiting for the
+moment when the author puts `wheat.png` into a subfolder as well. This is a
+delayed-fuse trap: it looks like it works, but it will break on a new icon and in
+the most incomprehensible place. Half of the index (288 of 576 entries) is
+`*.import` files, which are not icons at all.
 
-**Инвариант, который нельзя нарушать:** `segments[i]` маршрута соединяет
-`path[i]` и `path[i + 1]`. От него зависят и подсветка маршрута, и очередь
-улучшения (шаги идут в обратном порядке — от города к цели). «Почти наоборот»
-здесь недопустимо, и проверка порядка уровней в `test_road_levels.gd` — не
-украшение, а охрана этого инварианта.
+A separate find of the same refactoring: `buildings_tab._build_icon_index_local`
+was called **inside `_show_building_details`**, that is, the 576-file walk
+happened on every hover over a building.
 
-**Чего сознательно нет.** Поток ресурсов не ограничивается: `avg_speed` считается и
-показывается, но производство по-прежнему идёт прямо на склад. Ограничение
-потребления по пропускной способности — отдельная механика со своей очередью и
-правилами; делать её заодно с уровнями означало бы менять экономику вслепую, без
-проверяемой основы.
+**Solution.** `scripts/icon_registry.gd` — an autoload `IconRegistry` that
+builds the index once per game (lazily, on first access) and provides
+`has()` / `icon_path()` / `get_texture()`. Invariant: need a path or a texture —
+ask the registry; we do not write our own walk of `res://icons` in new code. The test
+`tests/test_icon_registry.gd` verifies the index against the file system itself, not against
+constants — otherwise it would become stale with the very first reshuffling of pictures.
 
-**Позже: уровень дороги на гексе (2026-10-01).** Дописано по итогам первого
-прохода: игрок не видел, какого уровня дорога приходит к его гексу. Строка
-выводится в расширенном тултипе и в левой колонке панели управления.
+**What we deliberately do not do.**
 
-Три вещи, которые здесь неочевидны.
+- *A manifest generated at import time (EditorPlugin).* It would track new icons
+  automatically, but it is a whole subsystem tool for the sake of six hundred files.
+  The registry builds in a couple of milliseconds, once.
+- *`class_name IconRegistry` with static fields instead of an autoload.*
+  It saves a line in `project.godot`, but the project already has a direct prohibition against
+  relying on `class_name` in headless mode (`ui_helpers.gd`: when launched via
+  `--script`, global class names may not yet be in the cache). The autoload
+  works the same everywhere.
+- *Requiring an icon to exist for every reference in the data.* In `data/*.json` there are
+  ~144 references to icons that have not been drawn yet (future goods, professions) — this
+  is a normal way to write data ahead of time. The test prints their count as
+  a reference, but does not fail.
+- *Converting the hardcoded paths* (`city_ui._setup_tab_bar_icons`,
+  `main_menu`) to the registry all at once. Four static icons are not a duplication of the index;
+  moving them out would add a dependency without a gain.
 
-**Уровень гекса ≠ уровень из данных гекса.** У гекса несколько примыкающих
-участков, и на стыке уровни разные: игрок улучшает маршрут до своего улучшения,
-а ответвление к соседнему гексу остаётся тропкой. `tile["road_level"]` описывает
-только участок, которым гекс **подключили** к сети, и на стыке показывал бы
-ровно половину того, что на самом деле вокруг гекса. Поэтому уровни собираются
-из сети — `road_manager.get_hex_road_levels`, а данные гекса не читаются.
-
-И выбрать «один правильный» уровень нельзя: на стыке их два, и оба верны.
-Поэтому перечисляются все, а не «главный».
-
-**Обычный тултип не показывает уровень.** Первая версия добавила строку в
-`_build_text`, и она автоматически попала и в обычный тултип, и в левую колонку
-панели — обе точки строятся из этого текста. Вышло не то: обычный тултип
-отвечает на вопрос «что на этом гексе» (местность, ресурс, улучшение), а
-уровень дороги — это его связь с городом. Смешивать два разных вопроса в
-одном блоке не стоит, поэтому строка переехала в два адресных места.
-
-**Ловушка, на которую ушло время.** `update_extended_tooltip` вызывал
-`render_products` дважды: сначала для новой строки, потом для расширенного
-производства. `render_products` чистит контейнер, и второй вызов стирал
-первый. На гексе без улучшения второй вызов не происходил, всё работало — а на
-гексе с дорогой И природным ресурсом строка исчезала молча. Теперь строки
-копятся в массиве и рендерятся одним вызовом в конце. Ловушка опасна именно
-тем, что выглядит как «иногда работает»: на тестовой карте без ресурсов на
-гексах под дорогой баг не воспроизводился.
-
-Ещё одна мелочь того же рода: `has_extended_tooltip_info` отвечает только
-«показывать ли», и добавлять в неё рендер нельзя — иначе проверка, которую
-вызывает обработчик наведения, получила бы побочный эффект и начала бы рисовать
-тултип дважды.
+**A trap we have already stepped on twice.** `get_path()` as a method name
+is impossible: `Node.get_path()` returns a `NodePath` and overrides it, and
+the engine treats the override as a compilation error (warning-as-error). The method
+is named `icon_path()`. Second: in `map_renderer` the local `icon_textures`
+is left **deliberately** — this is the hot path of `_draw`, an access on every hex
+every frame, and reaching into an autoload from `draw` is premature. The registry only
+fills it.
 
 ---
 
-## Уровень дороги на гексе = максимум (2026-10-01)
+## Road levels, route and "maximum speed" (2026-10-01)
 
-**Контекст.** Первая версия показывала на гексе список уровней примыкающих
-участков: на перекрёстке из двух тропок и одной тележной дороги выходило
-«Тропка (уровень 1), Тележная дорога (уровень 2)». Формально верно, но
-противоречит тому, что игрок видит на карте: гекс нарисован одной дорогой.
-Автор задачи предложил правило: **уровень дороги на гексе = максимум по
-примыкающим участкам** — на таком перекрёстке гекс тележный.
+**Context.** A road was a single entity without qualities: `road_manager` stored
+a set of segments (`key -> true`), all of them had one color and one width, and the price
+of a section lived in `special_actions.json` as `work_cost: 10`. The request: the road
+gained levels with a "maximum speed" — not the speed of units, but
+throughput (how many units of resource per second a section carries),
+a route from an improvement to the city with an average speed, an "Upgrade
+road" button with a ghost and a level choice.
 
-**Почему максимум, а не минимум.** Максимум совпадает с картинкой: участки
-рисуются по своему уровню, и лучший из них определяет, как гекс выглядит.
-Минимум дал бы «гекс-тропку» с тележной дорогой посередине — то же
-противоречие, только наоборот.
+**Solution.** A level is an entry in the new `data/roads.json` (`level`, `name`,
+`work_cost`, `max_speed`, `unlock_tech`, `color`, `width`), and a network section
+stores **the level number as its value**: `road_segments: "row,col|row,col" -> level`.
+The first level is a free trail (10 units/sec), "Wheel" unlocks the second —
+a cart road (30 units/sec). The task constraint: only the ancient era and two
+levels, to test the end-to-end path; the remaining levels are added with data.
 
-**Моё возражение о каскаде было неверным.** Я предположил, что правило
-означает «у всех участков гекса один уровень», и из этого вывел, что улучшение
-одного участка расползётся на всю сеть. Но хранить уровень гекса и требовать
-его от всех участков — это **другое, более сильное** требование, которого
-автор не выдвигал. При хранении уровня только у участков (как сделано) правило
-максимума ничего не требует: тропка через перекрёсток остаётся тропкой, а
-показывается лучшая дорога, до гекса доходящая.
+**Why a level is a dictionary value, and not a separate list.** The segment dictionary
+already enumerates all sections. A second list of "which section is of which level"
+would diverge from it with the very first change to the network, and the desynchronization would look
+not like a data error, but like a "ghost" road of the wrong level. A dictionary
+value is perfectly suited for this: `.has()`, `.size()`, iteration over keys
+work as before, and the level travels together with the section.
 
-Это стоит записать, потому что ошибка была не в коде, а в подстановке: я
-приписал автору требование, которого он не делал, и построил на нём целый
-аргумент. Стоило сначала перечитать его слова буквально — «максимальный уровень
-дорог, ПРИХОДЯЩИХ с примыкающих гексов» — и сразу стало видно, что речь о
-чтении, а не о хранении.
+**Why `work_cost` moved out of the special action.** A level is a property of a section, and
+the price of a section is a property of the level. A copy of one number in two files would diverge
+at the first balance edit, and quietly at that: "Build Road" would show the price
+of a trail while a cart road was selected, and only the player would see the error.
 
-**Три понятия, которые теперь различаются явно.** Уровень участка (факт
-постройки, источник правды), уровень гекса (производная величина для показа) и
-`tile["road_level"]` (входные данные сейва: уровень участка, которым гекс
-подключили). Первая версия подписала последнее как «уровень дороги на гексе»,
-и это приглашало путаницу. Теперь расхождение видно в самом коде.
+**Three consequences that had to be fixed rather than worked around.**
 
-**Найденный попутно баг: кнопка «Улучшить дорогу».** Условие появления
-проверяло МАКСИМУМ уровней маршрута против лучшего доступного уровня. Стоило
-улучшить один участок из четырёх — максимум становился равен лучшему уровню, и
-кнопка исчезала, хотя три тропки оставались. Для игрока это выглядело как
-«маршрут уже улучшен», и дотянуть дорогу было нечем: класс ошибок «неполное
-состояние выглядит как завершённое». Правильно проверять МИНИМУМ — кнопка не
-нужна, только когда маршрут целиком на лучшем уровне.
+- `maxi(1, cost)` in `get_road_step_work_cost` turned a free level into
+  a paid one. The lower bound was set not from logic, but because the base was always
+  positive (10 from the special action). With a zero base it became incorrect, and
+  free improvement construction stopped being free.
+- The check "a road cannot be built" was on `work_cost <= 0` — that is, on
+  the price, which was used as a sign of "there is no span". With a free trail,
+  a zero price became a legitimate state, and the road would be declared
+  impossible. The sign was moved to `!ok` on the plan, where it should be.
+- A staged project step with a zero price does not accumulate work and does not complete by itself:
+  it would hold the construction slot forever. A free road is now traversed in full
+  at once, by the same step handler.
 
-Починка нашлась не чтением кода, а постановкой вопроса «а что должно происходить
-на частично улучшенном маршруте». Формально код был непротиворечив: он сравнивал
-максимум с максимумом. Противоречие было между кодом и ожиданием игрока.
+**Why the route is a separate search, and not a plan.** `plan_road_to` searches for where
+a road can still be laid: Dijkstra over the terrain, with a scouting filter.
+`find_route_to_city` searches for how to actually get there: a breadth-first traversal of the built network,
+without the knowledge filter. They must not be mixed — these are different questions, and code
+that "just reuses the planner" would, within a month, produce a route over
+the terrain for a road that does not exist.
 
----
+**Why both the average speed and the minimum are shown.** The request was about the average.
+The average alone is not enough: on a route of three trails and one cart road, the average
+equals 15, and the cargo still hits the 10. "Average 15" sounds like "all
+is well" and leads to upgrading the wrong section. The minimum is precisely the
+bottleneck, for the sake of eliminating which the route is upgraded. The average remains because
+it answers a different question — "how fast on average does the cargo travel".
 
-## Превью улучшения дороги тащило блок производства (2026-10-01)
+**The whole route is upgraded, not the section next to the improvement.** The
+speed of a route is determined by the narrowest link of the chain, so upgrading one
+end gives nothing. That is why the button is not "upgrade here" but "upgrade
+the road from here to the city", and its tooltip directly names the current bottleneck.
 
-**Контекст.** Игрок нажимает на гексе с построенным улучшением кнопку «Улучшить
-дорогу» и видит в превью «Будет производить: …» — как будто он собирается
-строить это улучшение. Плюс блок вытеснял выбор уровня дорог вниз, и до него
-приходилось доскроллить.
+**A GDScript trap that cost time.** `str(value or "")` with `value ==
+null` yields the string `"<null>"`, not an empty one. A naive `is_empty()`
+check passed, and `"<null>"` got into the list of researched technologies — the
+unlock cycle silently broke, and "Wheel" never unlocked. In `roads.json`,
+the `unlock_tech` field of the trail is exactly `null`, so the case is not hypothetical.
+The reading was moved into `GameData._road_unlock_tech` with a type check.
 
-**Причина.** Блок производства в `_build_preview` был открыт условием
-`type != "special"`. Оно отсекало только спецдействия. Улучшение дороги имеет
-собственный тип `upgrade_road` — то есть тоже «не special», и условие проходило.
-Вдобавок `_on_action_pressed` подставлял в превью `eff_res` — эффективный ресурс
-гекса, то есть на гексе с улучшением это был ресурс самого улучшения, откуда и
-взялся выпуск.
+**An invariant that must not be violated:** `segments[i]` of the route connects
+`path[i]` and `path[i + 1]`. Both the route highlighting and the upgrade queue
+depend on it (the steps go in reverse order — from the city to the target). "Almost the other way
+around" is unacceptable here, and the check of the order of levels in `test_road_levels.gd` is not
+a decoration, but the guard of this invariant.
 
-**Решение.** Условие заменено на белый список: производство показывается только
-при `build_improvement` и `build_breeding` — то есть ровно там, где игрок
-действительно что-то строит. Для `upgrade_road` `eff_res` больше не вычисляется:
-ресурс гекса к улучшению дороги отношения не имеет.
+**What is deliberately absent.** The flow of resources is not limited: `avg_speed` is calculated and
+shown, but production still goes straight to storage. Limiting
+consumption by throughput is a separate mechanic with its own queue and
+rules; doing it along with levels would mean changing the economy blindly, without
+a verifiable foundation.
 
-**Почему белый список, а не «всё, кроме».** «Всё, кроме X» — это условие,
-которое молча распространяет блок на каждый новый тип действия: автор добавил
-тип действия, не заметил условие, и получил лишний блок в чужом превью. Белый
-список падает явно: новый тип не попадёт в блок производства, пока его туда
-явно не добавят. Ошибки «по умолчанию» в UI стоят дороже, чем лишняя строка в
-коде.
+**Later: the road level on a hex (2026-10-01).** Added based on the results of the first
+pass: the player did not see what level the road arriving at their hex was. The line
+is output in the extended tooltip and in the left column of the control panel.
 
-**Побочный эффект, который важнее самого бага.** Блок производства был не
-просто лишним — он был про действие, которого игрок не совершал. Улучшение
-уже стоит, и его выпуск виден в левой колонке панели и в тултипе гекса. Повтор
-этого в превью другого действия учит игрока, что превью показывает «будущее»
-везде, где оно нарисовано, — и он перестаёт доверять тому, что видит. Правило
-для будущих блоков: превью рассказывает о том действии, которое подтверждается
-кнопкой «Начать», и ни о каком другом.
----
+Three things here are non-obvious.
 
-## Рефреш тултипа стирал строку уровня дороги (2026-10-01)
+**The level of a hex ≠ the level from the hex's data.** A hex has several adjoining
+sections, and at a junction the levels are different: the player upgrades the route to their improvement,
+while the branch to a neighboring hex remains a trail. `tile["road_level"]` describes
+only the section by which the hex was **connected** to the network, and at a junction it would show
+exactly half of what is actually around the hex. Therefore the levels are collected
+from the network — `road_manager.get_hex_road_levels`, and the hex's data is not read.
 
-**Контекст.** На гексе с построенным пастбищем строка «Дорога: Тропка (уровень 1,
-…)» в расширенном тултипе появлялась и через секунду исчезала — до ухода курсора
-не возвращалась. Ресурсы без улучшения, фермы, виноградники и лесные делянки
-работали корректно.
+And one cannot choose "the one correct" level: at a junction there are two of them, and both are correct.
+Therefore all of them are listed, not "the main one".
 
-**Причина.** Базовый и расширенный блоки тултипа живут в одном контейнере
-`_tooltip_products_container`, а `render_products` чистит его перед отрисовкой.
-Расширенный блок рисуется **один раз за наведение** (`InputHandler`: флаг
-`_extended_tooltip_shown`). Но для «растущих» ресурсов обработчик вызывает
-`update_tooltip_text` каждый `resource_display_interval`, а тот пересобирает
-контейнер с нуля и подставляет базовый список — строка дороги исчезала.
+**The ordinary tooltip does not show the level.** The first version added the line to
+`_build_text`, and it automatically made it into both the ordinary tooltip and the left column
+of the panel — both points are built from this text. The result was wrong: the ordinary tooltip
+answers the question "what is on this hex" (terrain, resource, improvement), whereas
+the road level is its connection to the city. Two different questions should not be mixed in
+one block, so the line moved to two dedicated places.
 
-Почему только пастбища: этот рефреш идёт по `_is_hovered_tile_growing()` —
-улучшение построено **и** у ресурса `time_to_mature > 0`. Такое поле есть только у
-животных, то есть ровно у пастбищ. У ферм и лесных делянок рефреша нет вовсе.
-Отдельно совпало и «на один тик»: задержка показа расширенного блока (1 сек) и
-период рефреша (1 сек) почти равны.
+**A trap that cost time.** `update_extended_tooltip` called
+`render_products` twice: first for the new line, then for the extended
+production. `render_products` clears the container, and the second call wiped out
+the first. On a hex without an improvement the second call did not happen, everything worked — but on
+a hex with a road AND a natural resource the line disappeared silently. Now the lines
+accumulate in an array and are rendered with a single call at the end. The trap is dangerous precisely
+because it looks like "sometimes it works": on the test map, without resources on
+the hexes under the road, the bug did not reproduce.
 
-**Решение.** `MapTooltip` запоминает гекс, для которого блок показан
-(`_extended_row` / `_extended_col`), и `update_tooltip_text` в этом случае
-подставляет набор строк расширенного блока вместо базового. Сбор строк вынесен в
-`_collect_extended_block`, которую зовут и показ блока, и его перерисовка, — иначе
-два списка разъехались бы. Привязка сбрасывается в `InputHandler` при смене гекса
-и при скрытии тултипа (`clear_extended_tooltip`) — там же, где сбрасывается его
-собственный флаг. Заодно `_render_extra_products` обновляет `_last_products_key`:
-раньше ключ оставался от базового набора, и оптимизация «ничего не изменилось»
-сравнивала не то, что реально нарисовано.
-
-**Почему инвариант в `MapTooltip`, а не заплатка в `InputHandler`.** Можно было
-дописать в обработчике `if _extended_tooltip_shown: update_extended_tooltip(...)`.
-Диф меньше, но инвариант остался бы нарушенным внутри `MapTooltip`: любой
-следующий вызов `update_tooltip_text` снова стёр бы блок, и баг вернулся бы
-тихо. Смысл правки — «периодический рефреш не имеет права стирать уже показанный
-блок», а это свойство самого тултипа, а не вызывающего кода.
-
-**Почему тест проверяет содержимое контейнера, а не только вызовы.** Регрессия
-выглядит безобидно ровно до того момента, пока в тесте не меняется
-`fill_time`. Если текст заполненности не изменился, срабатывает ранний выход
-«ничего не изменилось», контейнер не трогают — и проверка проходит, ничего не
-проверив. Тест двигает заполненность между вызовами (это и есть причина рефреша
-в игре), делает **два** тика подряд и считает вхождения строки: она обязана
-остаться и не задвоиться. Отдельно проверяется, что после `clear_extended_tooltip`
-строка исчезает, — иначе починка тихо оставила бы блок висеть после смены гекса.
-
-**Что пригодилось.** Ограничение «рефреш только по растущим ресурсам» объяснило
-репорт за одну минуту: игрок перечислил, где работает, а где нет, и это точно
-совпало с `time_to_mature > 0`. Такие симптомы — не «не работает», а «работает не
-везде», и карта совпадений обычно указывает на условие, а не на код.
+Another small thing of the same kind: `has_extended_tooltip_info` answers only
+"whether to show", and one must not add rendering to it — otherwise the check that
+the hover handler calls would get a side effect and would start drawing
+the tooltip twice.
 
 ---
 
-## Тултип гекса разделён на базовый и расширенный (2026-10-02)
+## Road level on a hex = the maximum (2026-10-01)
 
-**Контекст.** Игрок попросил: из обычного тултипа гекса вынести всё, кроме типа
-местности, ресурса и улучшения. На гексе с пастбищем тултип вырастал до шести-
-восьми строк, и большая часть из них — свойства, которые меняются во времени
-(заполненность, выпуск) или нужны далеко не всегда (доступ к пресной воде).
+**Context.** The first version showed on a hex a list of the levels of the adjoining
+segments: at an intersection of two trails and one cart road it produced
+“Trail (level 1), Cart Road (level 2)”. Formally correct, but
+it contradicts what the player sees on the map: the hex is drawn as a single road.
+The author of the task proposed a rule: **the road level on a hex = the maximum over
+the adjoining segments** — at such an intersection the hex is a cart road.
 
-**Что именно переехало и куда.** Новая функция `MapTooltip._collect_hex_properties`
-собирает свойства гекса — качество ресурса, расход корма, заполненность пастбища,
-доступ к пресной воде — и используется двумя адресатами: расширенным блоком тултипа
-(`_collect_extended_block`) и полным текстом левой колонки панели управления
-(`_build_text` с `basic_only = false`). Обычный тултип зовёт `_build_text` с
-`basic_only = true` и показывает только местность, ресурс и улучшение.
+**Why the maximum and not the minimum.** The maximum matches the picture: segments
+are drawn according to their own level, and the best of them determines how the hex looks.
+The minimum would give a “trail hex” with a cart road in the middle — the same
+contradiction, only reversed.
 
-**Почему не удалил эти строки совсем.** Панель управления показывает всё сразу, без
-задержки наведения, и `_build_text` у неё общий с тултипом. Если бы я просто вырезал
-строки из функции, панель потеряла бы половину информации о гексе. Отсюда флаг
-`basic_only` и единая функция свойств: перенос, а не копипаст.
+**My objection about the cascade was wrong.** I assumed that the rule
+meant “all segments of the hex have a single level”, and from that I deduced that upgrading
+one segment would spread across the whole network. But storing the hex's level and requiring
+it of all segments is a **different, stronger** requirement, which
+the author did not put forward. When the level is stored only on segments (as is done), the
+maximum rule requires nothing: a trail through an intersection stays a trail, and
+the best road reaching the hex is what gets displayed.
 
-**Базовый блок производства удалён целиком.** У тултипа был свой набор строк
-`_collect_production` с заголовком «Once built, %s will give:». Он дублировал то, что
-расширенный блок и так показывает — но с бонусами и модификаторами. Оставил бы две
-правды об одном и том же выпуске с разными числами, поэтому удалил функцию.
+This is worth writing down, because the mistake was not in the code but in the substitution: I
+attributed to the author a requirement he had not made, and built on it an entire
+argument. I should have first reread his words literally — “the maximum level
+of the roads COMING from the adjoining hexes” — and it immediately became clear that this was about
+reading, not about storing.
 
-**`has_extended_tooltip_info` переписан на «блок непуст».** Раньше функция
-перечисляла условия сама: бонус производства, дорога, профессиональное потребление.
-После переноса таких условий стало больше, и список начал бы расходиться со
-списком строк: блок либо не покажется, либо покажется пустым. Теперь проверка
-спрашивает у того же сборщика, который строит блок. Побочный эффект в сборщике при
-этом недопустим — её зовёт `handle_process` каждый кадр, пока блок не показан (об
-этом дневник предупреждал и раньше), поэтому удалил и мёртвый фильтр строк
-`tr("Construction:")`, который зачем-то правил подпись.
+**Three concepts that are now distinguished explicitly.** The segment level (the fact
+of construction, the source of truth), the hex level (a derived value for display) and
+`tile["road_level"]` (the save's input data: the level of the segment by which the hex
+was connected). The first version labelled the latter as “the road level on the hex”,
+and that invited confusion. Now the discrepancy is visible in the code itself.
 
-**Что пригодилось.** Три вещи: (1) правило «проверка и содержимое спрашивают одно и
-то же» окупилось сразу — иначе первый же новый пункт в списке условий дал бы тихую
-поломку; (2) тест сначала пришлось довести до «падает на чистом HEAD», иначе он
-защищал бы от пустого места: первая версия молча проходила, потому что проверяла
-только новый код; (3) отступы в проекте — пробелы, а не табы (`.editorconfig`),
-и наивная «перекодировка» отступов в патче ломала файл целиком.
----
+**A bug found along the way: the “Upgrade road” button.** The condition for its appearance
+checked the MAXIMUM of the route's levels against the best available level. One had only
+to upgrade one segment out of four — the maximum became equal to the best level, and
+the button disappeared, even though three trails remained. To the player this looked like
+“the route is already upgraded”, and there was no way to bring the road up to par: a class of error where “an incomplete
+state looks like a finished one”. The correct thing to check is the MINIMUM — the button is not
+needed only when the route is entirely at the best level.
 
-## Самостоятельно введённое «узкое место» — удалено (2026-10-01)
-
-**Контекст.** Автор, разбираясь с уровнями дорог, заметил: «я смотрю, ты
-самостоятельно ввёл такую сущность, как пропускная способность с `min_speed`,
-хотя я не просил об этом». И тут же сформулировал ожидание: у маршрута должна
-быть **средняя** скорость по всему маршруту — девять тележных дорог и одна
-тропка дают `(9*30 + 1*10)/10` = 28, а не 10. Одна небольшая ямка на хайвее не
-должна внезапно снижать скорость всего хайвея.
-
-**Что было не так на самом деле.** Средняя (`avg_speed`) уже была и уже была
-средней арифметической — формула совпадала с ожиданием автора ровно. А вот
-`min_speed` («узкое место») я действительно ввёл сам, без заказа, и выставил его
-как ведущую величину: он попал в строку маршрута в скобках, в тултип кнопки
-«Улучшить дорогу» и в превью улучшения. Плюс отстоял его в `docs.md` отдельным
-абзацем: «среднее отвечает на вопрос “как быстро едет груз”, минимум — “где он
-вязнет”; улучшать надо узкое место, а не среднее». То есть спор с автором был
-зафиксирован в документации как позиция.
-
-**Почему мой аргумент был неправилен.** Рассуждение шло от модели очереди:
-груз всё равно должен пройти через самый узкий участок, поэтому поток упирается в
-минимум. Модель сама по себе непротиворечива, но она описывала другую игру. Автор
-хотел, чтобы плохой участок снижал скорость маршрута **пропорционально своей
-доле**, а не обрушивал её: девять хороших участков и один плохой — это почти
-хороший маршрут. Модель очереди и модель «среднего по маршруту» отвечают на
-разные вопросы, и подставив первую вместо второй, я сдвинул баланс в сторону
-«улучшай всё понемногу» и сделал тропку на хайвее катастрофой.
-
-**Решение.** `min_speed` убран полностью: из словаря маршрута, из трёх мест
-интерфейса, из тестов и из документации. Осталась только средняя. Ни одного
-обращения к `min_speed` в логике не было — доступность кнопки «Улучшить дорогу»
-считается по минимальному уровню участков (`worst_level`), а не по минимальной
-скорости, — поэтому снятие величины ничего не сломало.
-
-**Побочная находка.** В превью улучшения строка «Узкое место: 10 → 30 ед./сек,
-среднее 30 ед./сек» была попросту неверна: третьим числом туда подставлялось
-`ceil(max_speed новой дороги)`, то есть скорость нового участка по участку, а не
-среднее по маршруту. Улучшить 3 участка из 10 — истинное среднее 16, а подпись
-сообщала 30. Это отдельная ошибка, которую удаление строки закрыло. Правило на
-будущее: число в подписи «среднее» должно считаться из маршрута; подставить
-характеристику одного участка и подписать её «средним» — типичный подвох.
-
-**Что пригодилось.** Тест на пример автора — девять тележных дорог и одна
-тропка, ровно 28 — теперь есть в `test_road_levels.gd`. Оказалось полезно не
-само число, а способ построения: конфигурацию пришлось собрать сразу, потому
-что `upgrade_road_segment` умеет только повышать уровень и понизить участок
-невозможно. Тест на «среднее выше скорости худшего участка» проверяет именно ту
-свойство, которое автор описал словами про ямку на хайвее, — то есть фиксирует
-не пример, а правило.
-
-**Общий вывод.** Скорость маршрута придумывать не следовало: автор описал её
-одним предложением с формулой, и это описание полностью покрывало вопрос. Домысливание «более реалистичной» величины стоило лишней сущности в API, трёх строк в интерфейсе и абзаца в документации, который защищал неверный выбор. Реалистичность здесь не аргумент: если автор задал правило, спорные улучшения надо приносить как вопрос, а не как решённую правку.
+The fix was found not by reading the code but by posing the question “what should happen
+on a partially upgraded route”. Formally the code was consistent: it compared
+the maximum with the maximum. The contradiction was between the code and the player's expectation.
 
 ---
 
-## Территория городка никогда не заходит на стартовую область игрока (2026-10-02)
+## The road upgrade preview dragged along the production block (2026-10-01)
 
-**Контекст.** Автор показал два скриншота: сразу после старта игры ресурс (кунжут)
-внутри Кольца Влияния игрока оказывался помеченным как территория городка
-Мервабад, а городок ставил там свою декоративную «Плантацию»; после перехода во
-вторую эпоху та же территория оказывалась уже внутри присвоенной игроку земли.
-Формулировка была жёсткой: «ни при каких обстоятельствах», и с уточнением, что
-правило должно быть одинаковым и для гарантийного городка 2-й эпохи.
+**Context.** On a hex with a built improvement the player clicks the “Upgrade
+road” button and sees “Will produce: …” in the preview — as if he were about
+to build this improvement. On top of that, the block pushed the road-level selection downwards, and one had
+to scroll down to it.
 
-**Что было не так.** Кольцо влияния городка (`compute_town_influence`) строится по
-радиусу 3 и хранится целиком. Запрет на стартовую область был ровно один — на
-**центр** городка (`_is_valid_town_hex`, прямоугольник `exclusion_*`). Кольцо же
-радиуса 3, поставленное в один гекс за границей этого прямоугольника, спокойно
-заходило внутрь на 2–3 гекса. Два следствия: ресурс в Кольце Влияния получал флаг
-`in_town_influence`, `build_manager` блокировал его улучшение, а
-`_place_decorative_town_improvements` ставила на нём постройку городка. Второй
-скриншот — прямое продолжение: при смене эпохи Кольцо игрока становится ровно
-стартовым Регионом, поэтому «залезшие» гексы оказывались присвоены игроку
-(`in_influence`) и одновременно чужими (`in_town_influence`) — нельзя ни строить,
-ни купить чанк. Сверх того притягивающая роль была обратной: ресурсы игрока
-участвовали в построении масок приоритетов, то есть сами тянули городка к границе.
+**Cause.** The production block in `_build_preview` was opened by the condition
+`type != "special"`. That cut off only special actions. The road upgrade has
+its own type `upgrade_road` — that is, also “not special”, and so the condition passed.
+In addition, `_on_action_pressed` substituted `eff_res` into the preview — the effective resource
+of the hex, that is, on a hex with an improvement it was the resource of the improvement itself, which is where
+the output came from.
 
-**Решение.** Стартовая область (Кольцо + Регион 1-й эпохи) стала сущностью, а не
-параметром одного вызова: `town_manager.player_start_area`. Из неё вырезается
-каждый гекс кольца — для всех городков, включая гарантийный эры‑2, и проверка
-вырезки идёт **до** межгородского клипа («кто первый встал» не должен отнимать
-гексы у игрока). Ресурсы внутри области выпадают из масок `multi_resource` и
-`strategic`. Границы лежат в `map_state`, поэтому правило работает и при загрузке
-сейва, а не только на генерации.
+**Solution.** The condition was replaced with a whitelist: production is shown only
+for `build_improvement` and `build_breeding` — that is, exactly where the player
+is really building something. For `upgrade_road`, `eff_res` is no longer computed:
+the hex's resource has nothing to do with a road upgrade.
 
-**Что сознательно не делаем.** Не отодвигаем городков на `радиус + 1` от границы
-области. Тогда кольца никогда не пришлось бы вырезать и они оставались бы ровными
-кругами, но распределение городков по карте сдвинулось бы (а у края Региона их
-просто стало бы меньше), и автору пришлось бы выбирать между «красивым кольцом» и
-«честной расстановкой». Он выбрал вырезание — это дешевле и не трогает баланс
-размещения. Плата известна и осознанна: у городка прямо у границы области кольцо
-становится огрызком (на живой карте — до 10 гексов из ~18). Если когда-нибудь это
-станет выглядеть плохо, менять надо не вырезку, а минимальную дистанцию до
-области.
+**Why a whitelist and not “everything except”.** “Everything except X” is a condition
+that silently extends the block to every new action type: the author added
+an action type, did not notice the condition, and got a spurious block in someone else's preview. A
+whitelist fails explicitly: a new type will not get into the production block until it is
+explicitly added there. “Default” errors in the UI cost more than an extra line of
+code.
 
-**Почему это не повторяет старый баг с обрезкой по Региону.** Клип по Региону
-(он был и его убрали) замораживал кольцо на границах 1-й эпохи: Регион растёт,
-а срезанная часть уже не возвращалась — заливка навсегда оставалась огрызком.
-Здесь область вырезания **неподвижна**: она задаётся один раз и не меняется всю
-партию, поэтому срезанным остаётся ровно то, что игроку и так принадлежит. Отличие
-не в «вырезать или нет», а в том, что именно вырезается — вот это и надо
-проверять в коде и в тесте.
+**A side effect that matters more than the bug itself.** The production block was not
+merely superfluous — it was about an action the player was not performing. The improvement
+already stands, and its output is visible in the left column of the panel and in the hex tooltip. Repeating
+this in the preview of another action teaches the player that the preview shows the “future”
+wherever it is drawn — and he stops trusting what he sees. A rule
+for future blocks: the preview tells about the action that is confirmed by
+the “Start” button, and about no other.
+---
 
-**Сохранение и загрузка.** Границы области лежат в `map_state` четырьмя полями
-`start_region_*` и восстанавливаются в `_apply_saved_map_state()` ДО пересчёта
-колец. Пересчитать их из `start_ring_*` и `region_width` нельзя: `region_width` в
-сейве уже хранит значение НЫНЕШНЕЙ эпохи, и для партии, доигравшей до третьей
-эпохи, такой пересчёт дал бы область больше настоящей — вырезалось бы лишнее.
-В сейвах, созданных до этого изменения, полей нет; там границы приблизительно
-восстанавливаются от стартового кольца и текущей ширины региона (для партии,
-начавшейся в 1-й эпохе, это точное значение). Точные исторические границы
-таким сейвам не вернуть — только переигрывать.
+## The tooltip refresh erased the road-level line (2026-10-01)
 
-**Что пригодилось.** Новый тест сначала был написан «по счастливой картине» и
-молча проходил — он проверял только свой собственный синтетический сценарий.
-Настоящую ценность дала привычка сначала сломать правило (`_is_in_player_start_area`
-возвращала `false`) и убедиться, что тесты падают: сразу вылезли все следствия,
-включая «мёртвую зону» после смены эпохи, — то есть тест защищает от всего бага
-целиком, а не от одной его половины. Второй приём того же рода: отдельная
-проверка сейв-пути (`load_towns` → `set_player_start_area` → пересчёт), потому
-что первая версия теста подставляла городков прямо в массив и этим отличалась от
-реальной загрузки.
+**Context.** On a hex with a built pasture the line “Road: Trail (level 1,
+…)” in the extended tooltip appeared and a second later disappeared — and did not return until the cursor
+moved away. Resources without an improvement, farms, vineyards and woodcutter's camps
+worked correctly.
+
+**Cause.** The base and the extended tooltip blocks live in the same container
+`_tooltip_products_container`, and `render_products` clears it before drawing.
+The extended block is drawn **once per hover** (`InputHandler`: the flag
+`_extended_tooltip_shown`). But for “growing” resources the handler calls
+`update_tooltip_text` every `resource_display_interval`, and that rebuilds
+the container from scratch and substitutes the base list — the road line disappeared.
+
+Why only pastures: this refresh runs on `_is_hovered_tile_growing()` —
+an improvement is built **and** the resource has `time_to_mature > 0`. Such a field exists only for
+animals, that is, exactly for pastures. Farms and woodcutter's camps have no refresh at all.
+Separately, the “off by one tick” also lined up: the delay for showing the extended block (1 sec) and
+the refresh period (1 sec) are almost equal.
+
+**Solution.** `MapTooltip` remembers the hex for which the block is shown
+(`_extended_row` / `_extended_col`), and `update_tooltip_text` in that case
+substitutes the extended block's set of lines instead of the base one. The line collection was moved into
+`_collect_extended_block`, which is called both by the display of the block and by its redraw — otherwise
+the two lists would have drifted apart. The binding is reset in `InputHandler` when the hex changes
+and when the tooltip is hidden (`clear_extended_tooltip`) — the same place where its
+own flag is reset. Along the way `_render_extra_products` updates `_last_products_key`:
+previously the key stayed from the base set, and the “nothing has changed” optimisation
+compared the wrong thing against what was actually drawn.
+
+**Why the invariant belongs in `MapTooltip` and not a patch in `InputHandler`.** One could
+have added `if _extended_tooltip_shown: update_extended_tooltip(...)` to the handler.
+The diff would be smaller, but the invariant would remain broken inside `MapTooltip`: any
+subsequent call to `update_tooltip_text` would erase the block again, and the bug would return
+quietly. The point of the fix is “a periodic refresh has no right to erase an already shown
+block”, and that is a property of the tooltip itself, not of the calling code.
+
+**Why the test checks the contents of the container and not just the calls.** The regression
+looks harmless exactly until in the test there changes
+`fill_time`. If the fill text has not changed, the early exit triggers
+“nothing has changed”, the container is left untouched — and the check passes without having
+checked anything. The test moves the fill level between calls (which is precisely the cause of the refresh
+in the game), performs **two** ticks in a row and counts the occurrences of the line: it must
+remain and must not be duplicated. Separately it is checked that after `clear_extended_tooltip`
+the line disappears — otherwise the fix would have quietly left the block hanging after the hex changes.
+
+**What came in handy.** The constraint “refresh only for growing resources” explained
+the report within a minute: the player listed where it worked and where it did not, and that exactly
+matched `time_to_mature > 0`. Symptoms like these are not “it is broken” but “it works not
+everywhere”, and the map of matches usually points to a condition, not to the code.
 
 ---
-## Дорога к улучшению — это цепочка «дорога, потом улучшение» (2026-10-02)
 
-**Контекст.** Сначала автор попросил, чтобы дороги, строящиеся автоматически при постройке
-улучшения, шли по тем же правилам, что и обычные дороги (поэтапно и небесплатно, даже базовая
-тропка), чтобы в превью были видны обе цены и чтобы улучшение с дорогой стартовали
-параллельно, с приоритетом дороги при нехватке строек. Затем уточнил: пусть улучшение
-добавляется В ОЧЕРЕДЬ поэтапной постройки дороги — сначала дорога, потом сразу улучшение.
+## The hex tooltip split into a base and an extended one (2026-10-02)
 
-**Что было не так на самом деле.** Три расхождения, и все три были следствием одного
-решения — «дорога к улучшению это побочный эффект готового улучшения».
-`main_map._on_build_completed()` вызывал `road_manager.build_road_from()`, то есть
-прокладывал **всю** трассу одним вызовом, минуя `project_manager`; цену дороги при этом
-подмешивали в цену улучшения (`get_improvement_work_cost` складывал `road_cost` в
-`cost`), а `get_road_cost_for_improvement()` первым делом возвращал `0` для уровня ≤ 1.
-Итог: улучшение на дальнем гексе стоило как улучшение, дорога появлялась вся сразу и
-бесплатно, а в превью строка дороги рисовалась только при `road_cost > 0` — то есть
-для базовой тропки (а это почти всегда) её не было видно вообще. Отдельно: из-за
-`road_level` в записи стройки уровень дороги терялся при загрузке сейва
-(`restore_builds` его не читал), а `rebuild_roads_from_existing` пересобирал такую
-дорогу с уровнем по умолчанию — **тележная дорога к ферме деградировала до тропки**.
+**Context.** The player asked: move out of the ordinary hex tooltip everything except the
+terrain type, the resource and the improvement. On a hex with a pasture the tooltip grew to six or
+eight lines, and most of them were properties that change over time
+(fill level, output) or are needed far from always (access to fresh water).
 
-**Промежуточная версия, которую пришлось переделать.** Сначала было сделано ровно то, что
-просил первый запрос: улучшение — обычная стройка в `active_builds`, дорога — отдельный
-проект, оба стартуют одновременно, а при нехватке слотов дорога занимает слот и
-улучшение отклоняется. Работало, но **было неудобно по существу**: цепочка занимала
-**два** слота, а в новой партии житель один, то есть улучшение с дорогой нельзя было
-начать вообще — приходилось строить дорогу, потом возвращаться и строить улучшение.
-Приоритет дороги в этой схеме был не правилом игры, а попыткой обойти нехватку слотов.
+**What exactly moved and where to.** The new function `MapTooltip._collect_hex_properties`
+collects the hex's properties — resource quality, feed consumption, pasture fill level,
+access to fresh water — and is used by two destinations: the extended tooltip block
+(`_collect_extended_block`) and the full text of the left column of the control panel
+(`_build_text` with `basic_only = false`). The ordinary tooltip calls `_build_text` with
+`basic_only = true` and shows only the terrain, the resource and the improvement.
 
-**Решение.** Улучшение с дорогой — **один поэтапный проект и один слот**: сначала
-участки дороги, последним шагом сама постройка (`data.step_type = "improvement"`, с id
-улучшения и разводимым ресурсом). Шаг применяет общий с обычной стройкой
-`main_map._apply_improvement()`, вынесенный из `_on_build_completed`, поэтому правило
-«улучшение появилось» не существует в двух видах. Старт идёт через общий с дорогой по
-спецдействию `_start_road_project_steps()`: одна очередь, одна формула цены участка, один
-обработчик. Цены разведены — `cost` (улучшение), `road_cost`/`road_segments` (дорога),
-`total_cost` (сумма), и сумма шагов очереди равна итогу превью, так что труд списывается
-один раз. Улучшения, к которым дорога не нужна, цепочку не трогают и остаются
-обычной стройкой — ради них переписывать путь постройки всех улучшений игры незачем.
+**Why I did not delete these lines entirely.** The control panel shows everything at once, without
+a hover delay, and its `_build_text` is shared with the tooltip. If I had simply cut
+the lines out of the function, the panel would have lost half of the information about the hex. Hence the flag
+`basic_only` and a single properties function: a move, not copy-paste.
 
-**Главный подводный камень — «занятый гекс».** Улучшения, ждущего в очереди, нет в
-`active_builds`, поэтому проверка «на гексе уже строится» его не видит, и на гексе можно
-было запустить вторую постройку, а та и другая поделили бы гекс (и «победила» бы та, что
-позже достроилась). Лечится дополнительной проверкой `project_manager.has_project_at` в
-`build_manager.start_build`. Проверено тестом.
+**The base production block was deleted entirely.** The tooltip had its own set of lines
+`_collect_production` with the header “Once built, %s will give:”. It duplicated what
+the extended block already shows — but with bonuses and modifiers. It would have left two
+truths about the same output with different numbers, so I deleted the function.
 
-**Почему отдельный флаг `road_staged`.** Сеть дорог в сейв не пишется, она
-пересчитывается. Для дороги игрока входные данные — `road_built`/`road_level` на
-присоединённых гексах плюс очередь проекта. Но `rebuild_roads_from_existing()` по
-прежнему строит дорогу к **каждому** улучшению, потому что раньше улучшение
-гарантировало дорогу. С поэтапной дорогой это значило бы, что недоплаченный остаток
-после перезагрузки достраивается бесплатно, а отменённая дорога возвращается целиком.
-Флаг `road_staged` на гексе улучшения говорит «эту дорогу ведёт проект», и такой гекс
-пересчёт пропускает — он восстанавливается ровно тем же путём, что и дорога игрока.
-Старые сейвы поля не содержат, и для них поведение прежнее: улучшение ⇒ дорога.
-Побочный эффект решения — починился баг с деградацией уровня: дорога к улучшению
-теперь восстанавливается по своему `road_level`, а не по умолчанию.
+**`has_extended_tooltip_info` was rewritten as “the block is non-empty”.** Previously the function
+enumerated the conditions itself: production bonus, road, professional consumption.
+After the move there were more such conditions, and the list would have started to diverge from
+the list of lines: the block would either not show at all or show up empty. Now the check
+asks the same collector that builds the block. A side effect in the collector is not
+permissible in that case — it is called by `handle_process` every frame while the block is not shown (the
+diary warned about this before too), so I also removed the dead line filter
+`tr("Construction:")`, which for some reason was editing the caption.
 
-**Что сознательно не делаем.** Отмена улучшения не отменяет его дорогу: у дороги
-своя кнопка прерывания, а уже оплаченные участки по общему правилу остаются. Второй
-проект к тому же гексу не создаётся (`has_project_at`), иначе игрок заплатил бы за одну
-трассу дважды.
+**What came in handy.** Three things: (1) the rule “the check and the content ask the same
+thing” paid off immediately — otherwise the very first new item in the list of conditions would have produced a silent
+breakage; (2) the test first had to be brought to “fails on a clean HEAD”, otherwise it
+would have protected against nothing: the first version passed silently because it checked
+only the new code; (3) indentation in the project is spaces, not tabs (`.editorconfig`),
+and a naive “re-encoding” of the indentation in the patch broke the file entirely.
+---
 
-**Тест.** `tests/test_improvement_road.gd` — порядок шагов (последним идёт улучшение, и до
-его дороги на гексе нет), один слот при лимите в одну постройку, запрет второй постройки на
-занятом гексе, раздельные цены, обе суммы в превью и пропуск `road_staged` при
-восстановлении. Первая версия теста молча проходила мимо сути: она считала ставку по
-**всему** труду города, а `build_manager` делит труд между всеми активными стройками —
-ставка вдвое меньше, и «ровно один участок за кадр» не выполнялось. Вторая версия теста
-была написана под параллельный вариант и после смены решения проверяла несуществующее
-поведение (улучшение в `active_builds`) — тест правится вместе с правилом, и это стоит
-держать в голове: проверки против старой схемы выглядят правдоподобно. Урок тот же, что и в
-прошлых записях: проверка должна повторять механику, а не только проверять результат.
-## Спецдействию не показывают дорогу, которой не будет (2026-10-02)
+## A self-introduced “bottleneck” — removed (2026-10-01)
 
-**Контекст.** Автор заметил: в колонке предпросмотра панели управления расчёт
-стоимости постройки дороги показывается и для спецдействий (например, сбора
-дикоросов), хотя при выполнении этих действий никаких дорог не строится.
+**Context.** While sorting out road levels, the author noticed: “I see you
+have introduced, on your own, such an entity as throughput with `min_speed`,
+though I did not ask for it.” And he immediately formulated his expectation: a route should
+have an **average** speed over the whole route — nine cart roads and one
+trail give `(9*30 + 1*10)/10` = 28, not 10. One small pothole on a highway should not
+suddenly lower the speed of the whole highway.
 
-**Что было не так.** `main_map.get_improvement_work_cost()` дописывал разбор дороги
-(`get_road_cost_breakdown_for_improvement`) в результат безусловно — для любого id,
-который не оказался самой дорогой. Но дорога полагается не всему: `build_manager
-.start_build` явно отсекает спецдействия (`if not is_special_action ...` перед
-`start_improvement_road_project`), то есть сбор дикоросов, вырубка леса, осушение и
-снос улучшения идут обычной стройкой на гексе, а `_on_build_completed` их выполняет,
-не касаясь сети дорог. Панель же смотрела только на числа (`road_segments > 0`) и
-рисовала строку «Дорога до города (уровень): M труда, новых участков: K», подсказку о
-поэтапной дороге и «Итого», в который эта дорога входила. Итог: превью сбора дикоросов
-обещало трассу, которую никто не строит, а «Итого» был больше цены самого действия.
+**What was actually wrong.** The average (`avg_speed`) already existed and was already
+the arithmetic mean — the formula matched the author's expectation exactly. But
+`min_speed` (the “bottleneck”) I had indeed introduced myself, without being asked, and put it
+forward as the leading value: it made its way into the route line in parentheses, into the tooltip of the
+“Upgrade road” button and into the upgrade preview. On top of that I defended it in `docs.md` with a separate
+paragraph: “the average answers the question ‘how fast the cargo moves’, the minimum answers ‘where it
+gets stuck’; it is the bottleneck that must be improved, not the average.” That is, the disagreement with the author was
+recorded in the documentation as a position.
 
-**Решение.** Разбор дороги переехал под проверку `GameData.special_actions.has()`:
-для спецдействий возвращаются `road_applicable = false`, `road_cost = 0`,
-`road_segments = 0`, `road_pending = false`, `total_cost = cost`. Панель рисует блок
-дороги и строку «Итого» по `road_applicable`, а не по наличию чисел, — то есть решение
-«строится ли здесь дорога» принимает источник цены, а не отображение. «Итого» убрана
-вместе с дорогой сознательно: без второй суммы она была бы копией цены строчкой выше.
+**Why my argument was wrong.** The reasoning came from a queue model:
+the cargo must pass through the narrowest segment anyway, so the flow is limited by
+the minimum. The model is consistent in itself, but it described a different game. The author
+wanted a bad segment to lower the route's speed **in proportion to its
+share**, rather than bring it down: nine good segments and one bad one is almost
+a good route. The queue model and the “average over the route” model answer
+different questions, and by substituting the first for the second I shifted the balance towards
+“improve everything a little at a time” and made a trail on a highway a catastrophe.
 
-**Почему флаг, а не проверка типа действия прямо в панели.** Тип (`build_improvement`
-/ `special`) панели известен, но дорога — не свойство типа: она зависит от того,
-строится ли улучшение цепочкой. Проверка «это спецдействие?» в панели стала бы
-вторым местом, где живёт правило, и разошлась бы с `build_manager`, если спецдействию
-когда-нибудь решат проложить дорогу. Флаг — это тот же приём, что и
-`road_pending`: неизвестность выражается в данных расчёта, а не в догадке на экране.
+**Solution.** `min_speed` was removed entirely: from the route dictionary, from three places
+in the interface, from the tests and from the documentation. Only the average remained. Not a single
+reference to `min_speed` existed in the logic — the availability of the “Upgrade road” button
+is computed from the minimum segment level (`worst_level`), not from the minimum
+speed — so removing the value broke nothing.
 
-**Что намеренно не тронули.** Цена самих спецдействий
-(`MapHelpers.get_improvement_work_cost`), их выполнение (`_on_build_completed`) и блок
-превью дороги (`type == "special"` + `_is_road_action`) — там дорога действительно
-строится. Селектор уровней дороги в превью, как и раньше, ставится только для
-улучшений и разведения.
+**A side discovery.** In the upgrade preview the line “Bottleneck: 10 → 30 units/sec,
+average 30 units/sec” was simply incorrect: the third number was being substituted
+`ceil(max_speed of the new road)`, that is, the per-segment speed of the new segment, not
+the average over the route. Upgrading 3 segments out of 10 gives a true average of 16, while the caption
+reported 30. That is a separate error, which removing the line closed. A rule for
+the future: the number in the “average” caption must be computed from the route; substituting
+the characteristic of a single segment and labelling it “average” is a typical trap.
 
-**Тест.** Не писался — автор просил обойтись без новых тестов. Ручная проверка: превью
-«Собрать дикоросы» на гексе с дикоросами — строк про дорогу и «Итого» быть не должно,
-остаться должны цена действия, база, местность, дальность и тех-множитель; превью
-улучшения на дальнем гексе — обе суммы на месте.
+**What came in handy.** The test for the author's example — nine cart roads and one
+trail, exactly 28 — is now in `test_road_levels.gd`. What turned out to be useful was not
+the number itself but the way it was constructed: the configuration had to be assembled all at once, because
+`upgrade_road_segment` can only raise the level and lowering a segment
+is impossible. The test for “the average is higher than the speed of the worst segment” checks precisely that
+property which the author described in words about the pothole on the highway — that is, it pins down
+a rule, not an example.
 
-## Городок продаёт урожай, а не поле, на котором он растёт (2026-10-05)
+**Overall conclusion.** The route's speed should not have been invented: the author described it
+in a single sentence with a formula, and that description covered the question completely. Inventing a “more realistic” value cost an extra entity in the API, three lines in the interface and a paragraph in the documentation that defended the wrong choice. Realism is not an argument here: if the author has set a rule, contentious improvements should be brought as a question, not as a completed change.
 
-**Контекст.** Автор прислал скриншот окна городка и спросил, почему там две «Пшеницы»
-и две «Рыбы» подряд. Также пожаловался, что длинный список вылезает за нижний край окна
-прямо на карту.
+---
 
-**Что было не так.** `collect_base_resources()` клала в базовый пул **и сам id ресурса
-на гексе, и его `produces`**. Отсюда всё: `wheat_field` (посев, имя «Wheat») и его урожай
-`wheat` (зерно, тоже «Wheat») оказывались в одном списке двумя строками; `freshwater_fish`
-и `sea_fish` — оба «Fish»; а «Страусы» и «Коровы» вообще выглядели как товар, хотя городок
-не продаёт зверей, он их разводит. Плюс `BuyList`/`SellList` были голыми `VBoxContainer`
-в окне 600×440 — без обрезки и без прокрутки, поэтому десятки строк физически выходили
-за панель.
+## A town's territory never intrudes on the player's starting area (2026-10-02)
 
-**Решение.** Правило переехало из данных в одно место: **в пул продажи попадает только
-продукция** ресурса, а сам ресурс — поле, залежь, животное — не товар. Раньше это читалось
-как «список исключений» (убрать поля, убрать животных, отдельно подумать про одноразовые),
-и каждое исключение надо было не забыть. Теперь оно одно и покрывает всё сразу:
-`wheat_field` → `wheat` + `feed`, `cows` → `raw_meat` + `hide` + `raw_milk`, `cows` в пуле
-не бывает в принципе, поэтому и проверять его не надо.
+**Context.** The author showed two screenshots: right after the start of the game a resource (sesame)
+inside the player's Influence Ring turned out to be marked as the territory of the town of
+Mervabad, and the town placed its decorative “Plantation” there; after advancing to the
+second era the same territory turned out to be already inside the land assigned to the player.
+The wording was firm: “under no circumstances”, with the clarification that
+the rule must also be the same for the guaranteed 2nd-era town.
 
-Одноразовые ресурсы (`improved_by == null`) разошлись по двум разным ответам, и это не
-случайность, а разница в природе вещи. `wild_food` — находка: собрал — и больше нет, так
-что ни он, ни `foraged_food` в торговле не появляются. `copper_nugget` и прочие самородки —
-тоже одноразовые, но это руда, а не находка: меди нужна кузнецу и добывается без
-ограничений, поэтому продукция в пул идёт. Признак вынесен в `is_one_time()` и совпадает
-с игровым (тем же, что у спецдействия «Собрать ресурс»), а различает их категория `metals`.
-Отдельно стоит, что у `wild_food` категория `plants`, а не `metals`, — отсекать пришлось по
-категории, а не по группе `wild`.
+**What was wrong.** A town's influence ring (`compute_town_influence`) is built with a
+radius of 3 and stored in full. The prohibition on the starting area was exactly one — on the
+**centre** of the town (`_is_valid_town_hex`, the `exclusion_*` rectangle). But a ring
+of radius 3, placed one hex beyond the border of that rectangle, quietly
+intruded 2–3 hexes inside. Two consequences: a resource inside the Influence Ring received the flag
+`in_town_influence`, `build_manager` blocked its improvement, and
+`_place_decorative_town_improvements` placed a town building on it. The second
+screenshot is a direct continuation: when the era changes, the player's Ring becomes exactly
+the starting Region, so the “intruding” hexes turned out to be assigned to the player
+(`in_influence`) and at the same time foreign (`in_town_influence`) — one could neither build
+nor buy a chunk. On top of that, the attracting role was reversed: the player's resources
+took part in building the priority masks, that is, they themselves pulled the town towards the border.
 
-В интерфейсе списки легли в `ScrollContainer` (по образцу `InternalScroll` в `CityUI`),
-окно выросло с 600×440 до 768×600 и получило `clip_contents`. Дедуп по имени в
-`_fill_resource_list()` оставлен, но теперь это страховка, а не основная защита: в
-`data/products` есть ровно одна пара разных id с одинаковым названием —
-`papyrus_plant` (урожай) и `papyrus` (крафт) оба «Papyrus», и оба правда могут оказаться в
-пуле одного городка.
+**Solution.** The starting area (the Ring + the 1st-era Region) became an entity rather than
+a parameter of a single call: `town_manager.player_start_area`. Every hex of a ring
+is cut out of it — for all towns, including the guaranteed era‑2 one, and the
+cut-out check runs **before** the inter-town clip (“first come, first served” must not take
+hexes away from the player). Resources inside the area drop out of the `multi_resource` and
+`strategic` masks. The boundaries live in `map_state`, so the rule also works when a save is
+loaded, not only at generation.
 
-**Почему это безопасно для замыкания.** Правило казалось рискованным: вдруг какой-нибудь
-рецепт ест сырьё. Проверил по данным — ни один id из `data/resources/**` не встречается
-ингредиентом ни одного рецепта из `data/crafts/**`. Рецепты оперируют только продуктами
-(`hide`, `raw_meat`, `wheat`, `copper_ore`), а все `produces` у всех 112 ресурсов указывают
-строго на продукты. То есть цепочки не рвутся, а пул просто перестаёт показывать то, чего
-в нём быть не должно.
+**What we deliberately do not do.** We do not push the towns back to `radius + 1` from the border
+of the area. Then the rings would never have to be cut out and they would stay as even
+circles, but the distribution of towns across the map would shift (and near the edge of the Region there
+would simply be fewer of them), and the author would have to choose between a “beautiful ring” and an
+“honest placement”. He chose cutting out — it is cheaper and does not touch the
+placement balance. The price is known and deliberate: for a town right at the border of the area the ring
+becomes a stub (on a live map, up to 10 hexes out of ~18). If ever this
+starts to look bad, what needs changing is not the cut-out but the minimum distance to
+the area.
 
-**Что пришлось переписать в тестах, и почему это важнее самих правок.** Четыре проверки в
-`test_town_food_fields.gd` и одна в `test_town_start_area.gd` искали в пуле **сам ресурс**,
-и после правки стали бессмысленными: `sell_pool.has("sheep")` не может быть истинным
-никогда, то есть проверка зеленеет навсегда и перестаёт что-либо охранять. Переписал их на
-продукцию (`wool`/`raw_meat`/`raw_milk` у овцы, `wheat`/`feed` у пшеницы). Отдельно
-`_res_group(res_id) == "food_plants"` стал вакуумной проверкой: она ищет группу в
-`raw_resources`, а в пуле теперь лежат продукты, которых там нет вовсе — проверка проходила
-всегда, ничего не проверяя. Заменил на категорию товара из `data/products`.
+**Why this does not repeat the old bug with the Region-based clipping.** The Region clip
+(it existed and was removed) froze the ring at the borders of the 1st era: the Region grows,
+but the clipped-off part never came back — the fill remained a stub forever.
+Here the cut-out area is **fixed**: it is set once and does not change for the whole
+game, so exactly what already belongs to the player is what stays cut off. The
+difference is not in “to cut out or not” but in what exactly is cut out — and that is what must
+be checked in the code and in the test.
 
-**Урок.** Проверка «X не должно попасть в пул» после изменения правила часто остаётся
-зелёной не потому, что всё хорошо, а потому, что X уже не может туда попасть. Зелёный тест
-после правки данных стоит перечитывать глазами: он мог перестать что-либо утверждать.
+**Saving and loading.** The boundaries of the area live in `map_state` as four fields
+`start_region_*` and are restored in `_apply_saved_map_state()` BEFORE the
+rings are recomputed. They cannot be recomputed from `start_ring_*` and `region_width`: `region_width` in
+the save already stores the value of the CURRENT era, and for a game played through to the third
+era such a recomputation would give an area larger than the real one — too much would be cut out.
+In saves created before this change the fields do not exist; there the boundaries are approximately
+restored from the starting ring and the current region width (for a game
+started in the 1st era this is the exact value). Those saves cannot have their exact historical boundaries
+restored — only replayed.
 
-**Тест.** `tests/test_town_economy.gd` — 5 новых кейсов: базовый пул содержит только
-продукцию (включая регресс «ни одного id из `data/resources/**`»), животные исключены,
-одноразовые (`wild_food` пуст, самородок даёт руду) и `is_one_time()`; два id с одинаковым
-именем дают одну строку окна; списки лежат в `ScrollContainer`, `clip_contents` включён,
-контент выше окна и прокрутка реально прокручивает. `test_town_food_fields.gd` и
-`test_town_start_area.gd` переписаны на продукцию.
+**What came in handy.** The new test was at first written “to a happy picture” and
+passed silently — it checked only its own synthetic scenario.
+Real value came from the habit of first breaking the rule (`_is_in_player_start_area`
+returned `false`) and making sure the tests fail: all the consequences immediately came out,
+including the “dead zone” after the era change — that is, the test protects against the whole bug,
+not just one half of it. A second technique of the same kind: a separate
+check of the save path (`load_towns` → `set_player_start_area` → recomputation), because
+the first version of the test inserted towns directly into the array and in that way differed from
+a real load.
 
-## Левая колонка «Торговли» показывает только то, что город реально может получить (8 октября 2026)
+---
+## The road to an improvement is a chain of “road first, then improvement” (2026-10-02)
 
-**Проблема.** `consumption.json` описывает ПОТЕНЦИАЛЬНЫЙ спрос профессий: пастбище
-захотят лодки, горожане — фрукты, алкоголь, посуду, украшения. Но пока у города нет ни
-запаса, ни производства, эти строки — чистый шум: игрок открывает вкладку и видит
-список ресурсов, которых у него нет и взять негде. Строка в списке читается как
-«город этим торгует», а на деле это «когда-нибудь, если появится».
+**Context.** At first the author asked that roads built automatically when an
+improvement is constructed follow the same rules as ordinary roads (in stages and not for free, even the basic
+trail), that both prices be visible in the preview, and that the improvement and the road start
+in parallel, with the road having priority when construction slots are scarce. Then he clarified: let the improvement
+be added TO THE QUEUE of the staged road construction — the road first, then the improvement straight after.
 
-**Решение.** Левая колонка делится по признаку «город реально может это получить»:
-доступные ресурсы — обычные карточки, недоступные — под раскрывающимся списком
-(тумблер со стрелкой и числом скрытых строк). Свёртка по умолчанию закрыта, состояние
-раскрытия переживает пересборку. Тумблер создаётся только когда есть что прятать —
-пустая свёртка над пустым контейнером была бы тем же шумом, от которого уходим.
+**What was actually wrong.** Three discrepancies, and all three were a consequence of a single
+decision — “the road to an improvement is a side effect of the finished improvement”.
+`main_map._on_build_completed()` called `road_manager.build_road_from()`, that is, it
+laid the **whole** route with a single call, bypassing `project_manager`; the price of the road was
+mixed into the price of the improvement (`get_improvement_work_cost` added `road_cost` into
+`cost`), and `get_road_cost_for_improvement()` returned `0` first thing for level ≤ 1.
+The result: an improvement on a distant hex cost as an improvement, the road appeared all at once and
+for free, and in the preview the road line was drawn only when `road_cost > 0` — that is,
+for the basic trail (which is almost always) it was not visible at all. Separately: because of
+`road_level` in the construction record, the road level was lost when a save was loaded
+(`restore_builds` did not read it), and `rebuild_roads_from_existing` rebuilt such
+a road with the default level — **a cart road to a farm degraded to a trail**.
 
-**Где граница доступности.** Признак — `is_resource_obtainable`: ресурс получаем, если
-хотя бы один его член лежит на складе или входит в план производства
-(`get_planned_production_map` — рецепты с горожанином и работающие улучшения). Группа
-доступна при доступности любого члена: члены взаимозаменяемы, группа — это «любой
-подходящий товар». **Не** считаем доступным то, что «теоретически может появиться»:
-растительность подходящего биома, изученная технология, существующий рецепт без
-исполнителя. Такой ресурс недоступен ровно потому, что у города нет ни единицы и
-никто его не делает, — а именно этот случай и создавал шум.
+**An intermediate version that had to be redone.** At first exactly what
+the first request asked for was done: the improvement is an ordinary construction in `active_builds`, the road is a separate
+project, both start simultaneously, and when slots are scarce the road takes a slot and
+the improvement is rejected. It worked, but **was inconvenient in essence**: the chain occupied
+**two** slots, and in a new game there is one citizen, so an improvement with a road could not be
+started at all — one had to build the road, then come back and build the improvement.
+The priority of the road in this scheme was not a rule of the game but an attempt to get around the shortage of slots.
 
-**Почему не список исключений.** Первый порыв — вычитать из `consumption.json` записи
-для профессий, которых в городе нет. Это работает до первого рабочего: наняли рыбака —
-и лодки всплывают, хотя их негде взять. Доступность — свойство конкретной пары
-«ресурс × текущее состояние города», а не профессии, поэтому она и считается по
-текущему складу и плану производства, а не по данным.
+**Solution.** An improvement with a road is **one staged project and one slot**: first
+the road segments, the last step being the construction itself (`data.step_type = "improvement"`, with the improvement's
+id and a separate resource). The step applies `main_map._apply_improvement()`,
+shared with ordinary construction and extracted from `_on_build_completed`, so the rule
+“the improvement has appeared” does not exist in two forms. The start goes through `_start_road_project_steps()`,
+shared with a road, by special action: one queue, one formula for the segment price, one
+handler. The prices are separated — `cost` (improvement), `road_cost`/`road_segments` (road),
+`total_cost` (the sum), and the sum of the queue's steps equals the preview's total, so the labour is deducted
+once. Improvements that do not need a road do not touch the chain and remain
+an ordinary construction — there is no reason to rewrite the construction path of all the game's improvements for their sake.
 
-**Инвариант.** Доступность входит в подпись состава колонки (`_signature_of` помечает
-каждый ключ `=1`/`=0`). Без пометки ресурс, став недоступным или доступным,
-не пересобрал бы раскладку: набор ключей-то тот же, а карточка должна переехать между
-рабочим списком и свёрткой. Следующая сессия, добавляя поле в строку карты рынка, должна
-помнить: всё, что влияет на положение карточки в колонке, обязано попадать в подпись.
+**The main pitfall — the “occupied hex”.** An improvement waiting in the queue is not in
+`active_builds`, so the check “something is already being built on the hex” does not see it, and on the hex one could
+launch a second construction, and the two would share the hex (and the one that
+finished later would “win”). This is cured by an additional check of `project_manager.has_project_at` in
+`build_manager.start_build`. Verified by a test.
 
-**Что сознательно не делаем.** Не прячем недоступные ресурсы совсем — игрок должен
-видеть возможности (какие есть группы, что вообще бывает в спросе), поэтому и свёртка,
-а не вырезание. Не считаем импорт: внешняя торговля не реализована. Когда появится,
-импорт даст строке запас/производство и подпадёт под то же правило без изменений.
+**Why a separate `road_staged` flag.** The road network is not written to the save, it
+is recomputed. For the player's road the input data is `road_built`/`road_level` on
+the connected hexes plus the project queue. But `rebuild_roads_from_existing()` still
+builds a road to **every** improvement, because previously an improvement
+guaranteed a road. With a staged road this would mean that the unpaid remainder
+after a reload gets completed for free, and a cancelled road comes back in full.
+The `road_staged` flag on the improvement's hex says “this road is managed by a project”, and the recomputation
+skips such a hex — it is restored in exactly the same way as the player's road.
+Old saves do not contain the field, and for them the behaviour is as before: improvement ⇒ road.
+A side effect of the solution — the bug with the level degradation was fixed: the road to an improvement
+is now restored according to its own `road_level`, not by default.
 
-## Единый прогон тестов: `tools/run_tests.py` (8 октября 2026)
+**What we deliberately do not do.** Cancelling an improvement does not cancel its road: the road
+has its own interrupt button, and already paid-for segments remain by the general rule. A second
+project to the same hex is not created (`has_project_at`), otherwise the player would pay for one
+route twice.
 
-**Что решено.** Тесты остаются независимыми `SceneTree`-скриптами в своих процессах —
-это их главное достоинство (падение одного не роняет остальные). Вместо фреймворка
-(GUT/gdUnit потребовал бы переписать все 39 тестов) добавлен тонкий лаунчер поверх уже
-существующей схемы: он собирает прогон в одном месте и применяет к каждому тесту
-одинаковые правила вердикта.
+**Test.** `tests/test_improvement_road.gd` — the order of the steps (the improvement comes last, and before
+its road there is none on the hex), one slot when the limit is one construction, the prohibition of a second construction on
+an occupied hex, separate prices, both sums in the preview, and the skipping of `road_staged` during
+restoration. The first version of the test silently missed the point: it computed the rate from
+the **whole** labour of the city, while `build_manager` divides the labour among all active constructions —
+the rate is half as much, and “exactly one segment per frame” was not satisfied. The second version of the test
+was written for the parallel variant and after the decision changed it was checking non-existent
+behaviour (the improvement in `active_builds`) — the test is fixed together with the rule, and that is worth
+keeping in mind: checks against the old scheme look plausible. The lesson is the same as in
+the previous entries: a check must replicate the mechanics, not just verify the result.
+## A special action is not shown a road that will never be built (2026-10-02)
 
-**Правила вердикта — это и есть смысл лаунчера.** Главное: `SCRIPT ERROR` / `Parse Error`
-в stderr — провал **независимо от кода возврата**. Дневник уже фиксировал этот случай
-словами («ошибки движка в тестах лови так же строго, как провалы ассертов»), но на
-практике прогон был ручным: `grep FAIL` по stdout. Лаунчер закрывает дыру механически.
-Дополнительно: код 0 без строки вердикта — тоже провал (пустой прогон не бывает зелёным),
-а у `test_pause_menu_confirm` вердикт берётся по метке `user://…done`, потому что этот
-тест убивает свой процесс и его код возврата ничего не доказывает.
+**Context.** The author noticed: in the preview column of the control panel the
+road construction cost is shown for special actions too (for example, foraging
+wild plants), although no roads are built when these actions are performed.
 
-**Валидация правил сделана мутацией, а не на веру.** В `test_fog_info` внесена ошибка
-парсинга (ассерты при этом проходят, код возврата 0) — лаунчер её поймал. Из
-`test_icon_registry` убрана строка вердикта — пойман «молчаливый прогон». В
-`test_pause_menu_confirm` добавлен ранний `quit(0)` до метки — пойман по отсутствию
-метки. Все три мутации откачены, дерево чистое.
+**What was wrong.** `main_map.get_improvement_work_cost()` appended the road breakdown
+(`get_road_cost_breakdown_for_improvement`) to the result unconditionally — for any id
+that did not turn out to be the most expensive. But a road is not owed to everything: `build_manager`
+`.start_build` explicitly excludes special actions (`if not is_special_action ...` before
+`start_improvement_road_project`), that is, foraging wild plants, clear forest, drainage and
+demolishing an improvement go as ordinary construction on a hex, and `_on_build_completed` performs them,
+without touching the road network. The panel, however, looked only at the numbers (`road_segments > 0`) and
+drew the row "Road to the city (level): M work, K new sections", the hint about the
+staged road and "Total", which this road was part of. The result: the wild-plant foraging preview
+promised a route that nobody builds, and the "Total" was larger than the price of the action itself.
 
-**Изоляция.** `APPDATA` подменяется на песочницу для каждого процесса. Это обязательно
-для параллельного прогона: два теста реально пишут в пользовательский каталог
-(`settings.cfg` в `test_resource_display_interval`, метка в `test_pause_menu_confirm`),
-а `--user-data-dir` и `--isolated` в Godot 4.7 на `--script`-запусках игнорируются —
-проверено. Метка удаляется перед запуском, иначе файл от прошлого прогона дал бы `PASS`.
+**Solution.** The road breakdown moved under the check `GameData.special_actions.has()`:
+for special actions it returns `road_applicable = false`, `road_cost = 0`,
+`road_segments = 0`, `road_pending = false`, `total_cost = cost`. The panel draws the road block
+and the "Total" row based on `road_applicable`, not on the presence of numbers — that is, the decision
+"is a road built here" is made by the source of the price, not by the display. The "Total" was removed
+together with the road deliberately: without the second sum it would have been a copy of the price one row above.
 
-**Побочный результат — два протухших теста.** Прогон сразу нашёл то, ради чего делался:
-`test_cancel_actions` и `test_staged_projects` печатали «TEST OK» и выходили с кодом 0,
-а в stderr лежал `SCRIPT ERROR: Invalid type in function 'start_road_project' … Cannot
-convert argument 3 from String to int`. Тесты передавали `ROAD_ACTION_ID := "build_road"`
-туда, где давно ожидается `road_level: int` (подпись сменилась вместе с уровнями дорог).
-Починено обе стороны: третий аргумент теперь берётся как
-`GameData.get_max_unlocked_road_level()` — той же производной, которой пользуется
-`build_manager`, поэтому правка баланса уровней не превратит тест в другой сценарий.
+**Why a flag, and not a check of the action type right in the panel.** The type (`build_improvement`
+/ `special`) is known to the panel, but the road is not a property of the type: it depends on whether
+the improvement is built as a chain. The check "is this a special action?" in the panel would become
+a second place where the rule lives, and would diverge from `build_manager` if a special action
+were ever decided to have a road laid to it. The flag is the same technique as
+`road_pending`: uncertainty is expressed in the calculation data, not in a guess on the screen.
 
-**Цена и выигрыш.** 39 тестов, 6 воркеров — около минуты на полный прогон против примерно
-шести минут последовательного. Наборы разделены: «быстрый» (19 тестов, без генерации
-карты и долгих экономических прогонов) и `--all`. Классификация — константы в самом
-скрипте; тест, не попавший ни в один список, всё равно выполняется по `--all` и печатается
-как `fast`, поэтому новый тест не может молча выпасть из набора.
+**What was deliberately left untouched.** The price of the special actions themselves
+(`MapHelpers.get_improvement_work_cost`), their execution (`_on_build_completed`) and the block
+of the road preview (`type == "special"` + `_is_road_action`) — there a road really
+is built. The road level selector in the preview, as before, is set only for
+improvements and breeding.
 
-**Отвергнуто.** Запускать все тесты внутри одного процесса Godot — тогда падение одного
-убивает прогон и теряется изоляция, ради которой схема и построена. Логи по каждому тесту
-и сводка прогона — в `tools/test_logs/` (вне индекса).
+**Test.** None was written — the author asked to do without new tests. Manual check: the preview
+"Collect wild plants" on a hex with wild plants — there must be no road rows and no "Total",
+what must remain is the action price, base, terrain, distance and the tech multiplier; the preview
+of an improvement on a distant hex — both sums are in place.
 
-## Пометка «ресурс кем-то потребляется» в тултипе деталей здания (8 октября 2026)
+## A town sells the harvest, not the field it grows on (2026-10-05)
 
-**Задача.** В зафиксированном тултипе деталей здания на вкладке «Здания» ресурс, который
-входит в запись `data/consumption.json`, нужно подчеркнуть пунктиром (по аналогии с
-разбивкой `@`-групп) и по наведению показать, кто его потребляет.
+**Context.** The author sent a screenshot of the town window and asked why there are two "Wheat"
+and two "Fish" in a row. He also complained that the long list spills past the bottom edge of the window
+right onto the map.
 
-**Обратный индекс, а не обход профессий.** Добавлен `GameData.get_consumption_consumers(display_key)` —
-это разворот того же реестра: адресация тем же `display_key`, которым `get_profession_consumption`
-пополняет запись (id продукта либо `@<группа>`). Альтернатива — перебрать `professions` и позвать
-`get_profession_consumption` для каждой — дала бы другой порядок строк, другой набор (запись
-`"profession": []` не нашлась бы) и стоила бы дороже; главное, она читала бы данные «с другой
-стороны», и расхождение с механикой списания было бы вопросом времени. Один и тот же ключ в обе
-стороны исключает это по построению. Устаревшие записи `products[*].consumption` учитываются,
-но проигрывают реестру по той же паре «профессия+ресурс» — та же приоритетность, что и в
+**What was wrong.** `collect_base_resources()` put into the base pool **both the resource id
+on the hex and its `produces`**. Everything follows from that: `wheat_field` (a sowing, named "Wheat") and its harvest
+`wheat` (grain, also "Wheat") ended up in the same list as two rows; `freshwater_fish`
+and `sea_fish` — both "Fish"; and "Ostriches" and "Cows" generally looked like goods, although a town
+does not sell animals, it breeds them. On top of that, `BuyList`/`SellList` were bare `VBoxContainer`s
+in a 600×440 window — without clipping and without scrolling, so dozens of rows physically ran
+past the panel.
+
+**Solution.** The rule moved from the data into one place: **only the produce of a resource
+goes into the sale pool**, while the resource itself — a field, a deposit, an animal — is not goods. Previously this read
+as a "list of exceptions" (remove fields, remove animals, think separately about one-off ones),
+and each exception had to be remembered. Now there is one rule and it covers everything at once:
+`wheat_field` → `wheat` + `feed`, `cows` → `raw_meat` + `hide` + `raw_milk`, `cows` is never
+in the pool at all, so there is no need to check for it either.
+
+One-off resources (`improved_by == null`) split into two different answers, and this is not
+an accident but a difference in the nature of the thing. `wild_food` is a find: you gather it — and it is gone, so
+neither it nor `foraged_food` appears in trade. `copper_nugget` and other nuggets are
+also one-off, but this is ore, not a find: copper is needed by the blacksmith and is mined without
+restriction, so its produce goes into the pool. The trait is extracted into `is_one_time()` and matches
+the in-game one (the same as for the "Collect resource" special action), while the `metals` category distinguishes them.
+It is worth noting separately that `wild_food` has the category `plants`, not `metals` — the cutoff had to be by
+category, not by the `wild` group.
+
+In the interface, the lists went into a `ScrollContainer` (following the example of `InternalScroll` in `CityUI`),
+the window grew from 600×440 to 768×600 and got `clip_contents`. The dedup by name in
+`_fill_resource_list()` is kept, but now it is insurance rather than the main protection: in
+`data/products` there is exactly one pair of different ids with the same name —
+`papyrus_plant` (harvest) and `papyrus` (craft), both "Papyrus", and both really can end up in
+the pool of one town.
+
+**Why this is safe for the chain.** The rule seemed risky: what if some
+recipe eats a raw resource. I checked the data — not a single id from `data/resources/**` appears
+as an ingredient of any recipe from `data/crafts/**`. Recipes operate only on produce
+(`hide`, `raw_meat`, `wheat`, `copper_ore`), and all `produces` of all 112 resources point
+strictly to produce. So the chains do not break, and the pool simply stops showing what
+should not be in it.
+
+**What had to be rewritten in the tests, and why this is more important than the edits themselves.** Four checks in
+`test_town_food_fields.gd` and one in `test_town_start_area.gd` looked in the pool for **the resource itself**,
+and after the edit they became meaningless: `sell_pool.has("sheep")` can never be true,
+that is, the check stays green forever and stops guarding anything. I rewrote them to check
+produce (`wool`/`raw_meat`/`raw_milk` for a sheep, `wheat`/`feed` for wheat). Separately,
+`_res_group(res_id) == "food_plants"` became a vacuous check: it looks for a group in
+`raw_resources`, but the pool now holds produce, which is not there at all — the check passed
+always without checking anything. I replaced it with the goods category from `data/products`.
+
+**Lesson.** The check "X must not get into the pool" after a rule change often stays
+green not because everything is fine, but because X can no longer get there. A green test
+after a data edit is worth re-reading with your eyes: it may have stopped asserting anything.
+
+**Test.** `tests/test_town_economy.gd` — 5 new cases: the base pool contains only
+produce (including the regression "not a single id from `data/resources/**`"), animals are excluded,
+one-off resources (`wild_food` is empty, a nugget yields ore) and `is_one_time()`; two ids with the same
+name give one window row; the lists are in a `ScrollContainer`, `clip_contents` is enabled,
+the content is taller than the window and scrolling really scrolls. `test_town_food_fields.gd` and
+`test_town_start_area.gd` are rewritten to check produce.
+
+## The left column of "Trade" shows only what the city can really obtain (October 8, 2026)
+
+**Problem.** `consumption.json` describes the POTENTIAL demand of professions: a pasture
+will want boats, citizens — fruit, alcohol, dishes, jewelry. But as long as the city has neither
+a supply nor production, these rows are pure noise: the player opens the tab and sees
+a list of resources he does not have and cannot get anywhere. A row in the list reads as
+"the city trades in this", while in fact it is "someday, if it appears".
+
+**Solution.** The left column is split by the trait "the city can really obtain this":
+available resources are ordinary cards, unavailable ones are under an expandable list
+(a toggle with an arrow and the number of hidden rows). The fold is closed by default, the state
+of expansion survives a rebuild. The toggle is created only when there is something to hide —
+an empty fold over an empty container would be the same noise we are moving away from.
+
+**Where the boundary of availability is.** The trait is `is_resource_obtainable`: a resource is obtainable if
+at least one of its members is in storage or is part of the production plan
+(`get_planned_production_map` — recipes with a citizen and working improvements). A group
+is available when any member is available: members are interchangeable, a group is "any
+suitable goods". We do **not** count as available what "theoretically could appear":
+vegetation of a suitable biome, a researched technology, an existing recipe without
+an executor. Such a resource is unavailable precisely because the city has not a single unit and
+nobody makes it — and it is exactly this case that created the noise.
+
+**Why not a list of exceptions.** The first impulse is to subtract from `consumption.json` the entries
+for professions that the city does not have. This works until the first worker: hire a fisherman —
+and boats surface, although there is nowhere to get them. Availability is a property of a specific pair
+"resource × current state of the city", not of a profession, which is why it is computed from
+the current storage and production plan, and not from the data.
+
+**Invariant.** Availability is part of the signature of the column's composition (`_signature_of` marks
+each key `=1`/`=0`). Without the mark, a resource that became unavailable or available
+would not rebuild the layout: the set of keys is the same, but the card must move between
+the working list and the fold. The next session, adding a field to the market card row, must
+remember: everything that affects the position of a card in the column must go into the signature.
+
+**What we deliberately do not do.** We do not hide unavailable resources entirely — the player must
+see the possibilities (what groups exist, what generally appears in demand), which is why it is a fold,
+and not a cut-out. We do not count imports: foreign trade is not implemented. When it appears,
+import will give a row a supply/production and will fall under the same rule without changes.
+
+## A single test run: `tools/run_tests.py` (October 8, 2026)
+
+**What was decided.** The tests remain independent `SceneTree` scripts in their own processes —
+this is their main virtue (one failing does not bring down the others). Instead of a framework
+(GUT/gdUnit would have required rewriting all 39 tests), a thin launcher was added on top of the
+already existing scheme: it assembles the run in one place and applies to each test
+the same verdict rules.
+
+**The verdict rules are the whole point of the launcher.** The main one: `SCRIPT ERROR` / `Parse Error`
+in stderr is a failure **regardless of the return code**. The diary has already recorded this case
+in words ("catch engine errors in tests just as strictly as assertion failures"), but in
+practice the run was manual: `grep FAIL` over stdout. The launcher closes the hole mechanically.
+Additionally: code 0 without a verdict line is also a failure (an empty run is never green),
+and for `test_pause_menu_confirm` the verdict is taken from the `user://…done` marker, because this
+test kills its own process and its return code proves nothing.
+
+**The rules were validated by mutation, not on faith.** A parse error was introduced
+into `test_fog_info` (the assertions pass, the return code is 0) — the launcher caught it.
+The verdict line was removed from `test_icon_registry` — a "silent run" was caught.
+An early `quit(0)` before the marker was added to `test_pause_menu_confirm` — caught by the absence
+of the marker. All three mutations were reverted, the tree is clean.
+
+**Isolation.** `APPDATA` is substituted with a sandbox for each process. This is mandatory
+for a parallel run: two tests really write into the user directory
+(`settings.cfg` in `test_resource_display_interval`, the marker in `test_pause_menu_confirm`),
+and `--user-data-dir` and `--isolated` in Godot 4.7 are ignored on `--script` launches —
+verified. The marker is deleted before the launch, otherwise a file from a previous run would give `PASS`.
+
+**A side result — two stale tests.** The run immediately found what it was made for:
+`test_cancel_actions` and `test_staged_projects` printed "TEST OK" and exited with code 0,
+while in stderr there lay `SCRIPT ERROR: Invalid type in function 'start_road_project' … Cannot
+convert argument 3 from String to int`. The tests passed `ROAD_ACTION_ID := "build_road"`
+where a `road_level: int` has long been expected (the signature changed together with road levels).
+Both sides were fixed: the third argument is now taken as
+`GameData.get_max_unlocked_road_level()` — the same derivative that
+`build_manager` uses, so a balance edit of the levels will not turn the test into a different scenario.
+
+**Cost and gain.** 39 tests, 6 workers — about a minute for a full run versus roughly
+six minutes sequentially. The sets are separated: "fast" (19 tests, without
+map generation and long economic runs) and `--all`. The classification is constants in the
+script itself; a test that falls into neither list is still executed by `--all` and printed
+as `fast`, so a new test cannot silently drop out of the set.
+
+**Rejected.** Running all tests inside a single Godot process — then one failure
+kills the run and the isolation for which the scheme was built is lost. Logs for each test
+and the run summary are in `tools/test_logs/` (outside the index).
+
+## The "resource consumed by someone" marker in the building details tooltip (October 8, 2026)
+
+**Task.** In the pinned building details tooltip on the "Buildings" tab, a resource that
+is part of an entry in `data/consumption.json` must be underlined with a dotted line (by analogy with
+the breakdown of `@`-groups) and, on hover, show who consumes it.
+
+**A reverse index, not a walk over professions.** `GameData.get_consumption_consumers(display_key)` was added —
+it is the inverse of the same registry: addressed by the same `display_key` with which `get_profession_consumption`
+fills in the entry (a product id or `@<group>`). The alternative — iterate over `professions` and call
+`get_profession_consumption` for each — would give a different row order, a different set (the entry
+`"profession": []` would not be found) and would cost more; most importantly, it would read the data "from the other
+side", and a divergence from the write-off mechanic would be a matter of time. The same key in both
+directions rules this out by construction. Legacy entries `products[*].consumption` are taken into account,
+but lose to the registry by the same "profession+resource" pair — the same priority as in
 `get_profession_consumption`.
 
-**Два разных подчёркивания.** `underlined_label.gd` получил `dot_style`: ссылка на группу
-рисуется штрихом 2 px, пометка расхода — 1 px. Это не украшательство: `@`-группа и «ресурс
-кем-то потребляется» — разные факты, и в одной строке они могут встретиться (группа «Алкоголь»
-в секции «Потребляет:» — и ссылка на состав, и пометка расхода). Одинаковая линия заставила бы
-игрока гадать, что означает черта под именем.
+**Two different underlines.** `underlined_label.gd` got `dot_style`: a link to a group
+is drawn with a 2 px dash, the consumption marker — 1 px. This is not decoration: an `@`-group and "resource
+consumed by someone" are different facts, and in one row they can meet (the "Alcohol" group
+in the "Consumes:" section — both a link to the composition and a consumption marker). The same line would make
+the player guess what the dash under the name means.
 
-**Тултип потребителей — свой панель.** `ui_helpers.show_consumption_tooltip` рисуется в
-`consumption_tooltip_panel`, а не в `group_tooltip_panel`. Переиспользование выглядело дешевле,
-но тогда у `@`-группы пришлось бы выбирать: показать состав или показать потребителей, — а
-игроку нужны оба. Скорость форматируется тем же `ConsumptionUi.format_rate`, что и строки
-расхода профессии: числа в двух местах физически не могут разойтись.
+**The consumers tooltip is its own panel.** `ui_helpers.show_consumption_tooltip` is drawn in
+`consumption_tooltip_panel`, not in `group_tooltip_panel`. Reuse looked cheaper,
+but then for an `@`-group one would have to choose: show the composition or show the consumers — and
+the player needs both. The rate is formatted with the same `ConsumptionUi.format_rate` as the
+profession's consumption rows: the numbers in the two places physically cannot diverge.
 
-**Пометка opt-in (`show_consumers`), а не поведение по умолчанию.** `make_resource_entry`
-зовут все вкладки, и в большинстве мест строка читается как «затрата» или «ингредиент»
-(рецепты, стоимость постройки, окно апгрейда). Пометка расхода там была бы шумом, поэтому
-её включают строки рецептов тултипа деталей здания: у рецепта ресурс назван без нормы, и
-подчёркивание с тултипом добавляют то, чего в строке не видно. В остальных экранах (стоимость
-постройки, окно апгрейда, вкладка «Ресурсы») ресурс остаётся неподчёркнутым.
+**The marker is opt-in (`show_consumers`), not default behavior.** `make_resource_entry`
+is called by all tabs, and in most places the row reads as an "expense" or an "ingredient"
+(recipes, construction cost, the upgrade window). The consumption marker there would be noise, so
+it is enabled by the recipe rows of the building details tooltip: in a recipe a resource is named without a norm, and
+the underline with the tooltip add what is not visible in the row. On the other screens (construction
+cost, the upgrade window, the "Resources" tab) the resource remains un-underlined.
 
-**Строка теста.** В `tests/test_building_consumption_ui.gd` добавлен кейс `consumption_marker`
-(включается через `--case=`, как и остальные). Ассерты выведены из данных: пометка ищется по
-имени ресурса из `get_profession_consumption`, наличие потребителей — через обратный индекс,
-скорость в тултипе проверяется по ОБОИМ вариантам строки единиц («ед./сек» / «units/sec»):
-сборка `units/sec` как отдельного `msgid` остаётся непереведённой в headless-прогоне, и
-хардкод одного варианта уронил бы тест на верных данных — так и случилось на первой итерации.
+**Test line.** In `tests/test_building_consumption_ui.gd` a case `consumption_marker` was added
+(enabled via `--case=`, like the others). The assertions are derived from the data: the marker is searched for by
+the resource name from `get_profession_consumption`, the presence of consumers — through the reverse index,
+the rate in the tooltip is checked against BOTH variants of the unit string ("ед./сек" / "units/sec"):
+the build's `units/sec` as a separate `msgid` stays untranslated in the headless run, and
+hardcoding one variant would fail the test on correct data — which is what happened on the first iteration.
 
-## Уровень дороги на гексе учитывает и дороги городков (9 октября 2026)
+## The road level on a hex also accounts for town roads (October 9, 2026)
 
-**Симптом.** При наведении на гексы в кольце влияния городка строка «Дорога: …»
-в расширенном тултипе и в левой колонке панели появлялась через раз: на одном
-гексе уровень есть, на соседнем — нет. Критерий («чья это дорога») игроку не
-виден: на обоих гексах дорога нарисована.
+**Symptom.** When hovering over hexes in a town's influence ring, the row "Road: …"
+in the extended tooltip and in the left column of the panel appeared intermittently: on one
+hex the level is there, on the neighboring one — not. The criterion ("whose road is this") is not
+visible to the player: a road is drawn on both hexes.
 
-**Причина.** `road_manager.get_hex_road_level` считал максимум только по
-участкам сети ГОРОДА игрока (`road_segments`) и намеренно игнорировал сеть
-городка (`town_road_segments`, см. docs.md, «Уровень дороги на гексе»). Но
-дороги городков рисуются на карте (`map_renderer._draw_all_roads`, фаза 2b), а
-трасса дороги к улучшению городка (например, к каменоломне) состоит из участков
-городка. Итог: гекс с нарисованной дорогой городка и без дороги игрока давал
-пустую строку — а соседний гекс, к которому уже дошла дорога игрока, показывал
-«Тележная дорога (уровень 2)». Отсюда «иногда отображается, иногда нет».
+**Cause.** `road_manager.get_hex_road_level` computed the maximum only over
+the segments of the PLAYER city's network (`road_segments`) and deliberately ignored the
+town network (`town_road_segments`, see docs.md, "Road level on a hex"). But
+town roads are drawn on the map (`map_renderer._draw_all_roads`, phase 2b), and
+the route of a road to a town improvement (for example, to a quarry) consists of town
+segments. The result: a hex with a drawn town road and without a player road gave
+an empty row — while the neighboring hex, which the player's road had already reached, showed
+"Cart Road (level 2)". Hence "sometimes it shows, sometimes it does not".
 
-**Решение — считать участки ОБЕИХ сетей.** Дорога городка нарисована, значит
-строка обязана её описывать: тултип отвечает на вопрос «что нарисовано на
-гексе», а не «что игрок может здесь изменить». Это ровно тот же принцип, по
-которому раньше был выбран МАКСИМУМ по примыкающим участкам («максимум совпадает
-с тем, как гекс выглядит на карте»). Прежняя формулировка решения («участки
-городков не учитываются, их уровень всегда 1 и игрок их не улучшает») защищала
-от шума, но создавала худший шум: молчание о видимой дороге.
+**Solution — count the segments of BOTH networks.** A town road is drawn, so
+the row must describe it: the tooltip answers the question "what is drawn on
+the hex", not "what the player can change here". This is exactly the same principle by
+which the MAXIMUM over adjacent segments was chosen earlier ("the maximum matches
+how the hex looks on the map"). The previous formulation of the decision ("town
+segments are not counted, their level is always 1 and the player does not upgrade them") protected
+against noise, but created a worse noise: silence about a visible road.
 
-**Почему это не ломает остальное.** `get_hex_road_level` — чисто отображательная
-величина (docs.md: «только для показа»), других потребителей у неё нет. Маршрут
-(`find_route_to_city`) и раньше считал участки городка тропкой
-(`_segment_level_by_key`), кнопка «Улучшить дорогу» идёт от маршрута
-(`get_route_to_city`), а не от уровня гекса, поэтому в кольце чужого городка она
-не появляется. Добавлен отдельный `_any_segment_level`, а `get_segment_level`
-оставлен как был: он видит только сеть города, и это нужно поиску маршрута.
+**Why this does not break the rest.** `get_hex_road_level` is a purely display
+quantity (docs.md: "for display only"), it has no other consumers. The route
+(`find_route_to_city`) already counted town segments as a trail
+(`_segment_level_by_key`), the "Upgrade road" button comes from the route
+(`get_route_to_city`), not from the hex level, so in the ring of a foreign town it
+does not appear. A separate `_any_segment_level` was added, and `get_segment_level`
+was left as it was: it sees only the city network, and that is needed for route finding.
 
-**Тест.** `tests/test_town_roads.gd`, кейс `town_road_level_on_hex`: на
-синтетической карте с городками проверяется, что у гекса вне города с дорогой
-городка (и БЕЗ дороги игрока — это проверяется отдельно, иначе тест проходил бы и
-до правки) `get_hex_road_level == 1`. Валидация мутацией: с возвратом
-`get_hex_road_level` к старому поведению кейс падает («получено 0»). Плюс
-`test_road_levels._find_hex_without_road` теперь ищет гекс с
-`get_hex_road_level == 0`, а не только `not is_hex_connected`: трасса городка
-может выйти за кольцо, и «гекс без дороги» должен означать «без дороги вообще».
+**Test.** `tests/test_town_roads.gd`, case `town_road_level_on_hex`: on
+a synthetic map with towns it checks that for a hex outside the city with a town
+road (and WITHOUT a player road — this is checked separately, otherwise the test would pass
+before the edit too) `get_hex_road_level == 1`. Validation by mutation: with
+`get_hex_road_level` reverted to the old behavior the case fails ("got 0"). Plus
+`test_road_levels._find_hex_without_road` now looks for a hex with
+`get_hex_road_level == 0`, not only `not is_hex_connected`: a town route
+can go outside the ring, and "a hex without a road" must mean "without a road at all".
 
 
-## Дорога до городка идёт до самого городка на выбранном уровне (9 октября 2026)
+## A road to a town goes all the way to the town itself at the chosen level (October 9, 2026)
 
-**Симптом.** Игрок строит высокоскоростное шоссе до городка, выбирает в превью
-уровень (тележную дорогу), но у границы кольца влияния шоссе «превращается в
-тропку»: последние гексы до городка нарисованы тропкой, а маршрут до городка
-теряет в средней скорости.
+**Symptom.** The player builds a high-speed highway to a town, selects
+a level (a cart road) in the preview, but at the border of the influence ring the highway "turns into
+a trail": the last hexes to the town are drawn as a trail, and the route to the town
+loses in average speed.
 
-**Причина.** Целью дороги к городку была **ближайшая дорога в кольце влияния**
-(`road_manager._town_road_targets_in_ring`): трасса искалась многоточечным
-Дейкстрой от всех дорог кольца к сети города и обрывалась на первой из них.
-Выбранный уровень получали только НОВЫЕ участки (от сети города до кольца), а
-последний отрезок «кольцо → центр» оставался собственной тропкой городка
-(уровень 1, `town_road_segments`). Игрок видел и платил за шоссе, а до городка
-доходила тропка.
+**Cause.** The target of the road to the town was **the nearest road in the influence ring**
+(`road_manager._town_road_targets_in_ring`): the route was searched with multi-point
+Dijkstra from all roads of the ring to the city network and broke off at the first of them.
+Only NEW segments received the chosen level (from the city network to the ring), while
+the last stretch "ring → center" remained the town's own trail
+(level 1, `town_road_segments`). The player saw and paid for a highway, but a
+trail reached the town.
 
-**Решение — цель дороги к городку это сам городок (его центр).** В
-`_compute_road_plan` для гекса городка источником трассы стал центр городка
-(раньше — все дороги кольца), а не «ближайшая дорога в кольце». Все сегменты
-трассы, включая последний (входящий в кольцо и ведущий к центру), получают
-уровень, выбранный игроком, и уходят в сеть ГОРОДА. `_town_road_targets_in_ring`
-удалён; параметр `town_influence_hexes` вычищен из `plan_road_to` / `build_road_to`
-и из `main_map.get_road_plan` / `rebuild_player_roads` (и вместе с ним
-`main_map.get_town_influence_hexes`) — он больше ни на что не влиял.
+**Solution — the target of the road to the town is the town itself (its center).** In
+`_compute_road_plan`, for a town hex the source of the route became the town center
+(previously — all roads of the ring), and not "the nearest road in the ring". All segments
+of the route, including the last one (entering the ring and leading to the center), receive
+the level chosen by the player and go into the CITY network. `_town_road_targets_in_ring`
+was deleted; the parameter `town_influence_hexes` was cleaned out of `plan_road_to` / `build_road_to`
+and out of `main_map.get_road_plan` / `rebuild_player_roads` (and along with it
+`main_map.get_town_influence_hexes`) — it no longer influenced anything.
 
-**Почему это не ломает сети.** Там, где трасса игрока проходит поверх тропки
-городка, участок лежит в `road_segments` (уровень игрока) и одновременно в
-`town_road_segments` (тропка). Это не конфликт: маршрут и строка уровня берут
-уровень из сети города (`_segment_level_by_key` предпочитает `road_segments`,
-`get_hex_road_level` — максимум по обеим сетям). Связь по-прежнему вычисляется
-пересечением сетей (`is_town_linked_to_city`): центр городка принадлежит обеим.
-Сеть городка остаётся своей — её другие ветки (к улучшениям) не трогаются.
+**Why this does not break the networks.** Where the player's route passes over a
+town trail, the segment lies in `road_segments` (the player's level) and at the same time in
+`town_road_segments` (the trail). This is not a conflict: the route and the level row take
+the level from the city network (`_segment_level_by_key` prefers `road_segments`,
+`get_hex_road_level` — the maximum over both networks). The link is still computed
+by the intersection of the networks (`is_town_linked_to_city`): the town center belongs to both.
+The town network remains its own — its other branches (to improvements) are untouched.
 
-**Отрисовка.** Две правки в `map_renderer._draw_all_roads`. Первая: участки сети
-городка, уже накрытые сетью игрока, не рисуются (раньше тропка городка ложилась
-поверх шоссе). Вторая: сегменты связи с городком рисуются ПО УРОВНЮ из сети
-города (раньше — дефолтным стилем поверх дороги уровня), а из фазы 2a они
-исключены и рисуются только в фазе 2c с гейтом тумана — так задумано в
-комментарии к фазам, но код до этого рисовал их дважды, один раз без гейта.
+**Rendering.** Two edits in `map_renderer._draw_all_roads`. First: segments of the
+town network already covered by the player network are not drawn (previously the town trail lay
+on top of the highway). Second: the link segments to the town are drawn BY LEVEL from the city
+network (previously — with the default style on top of the level road), and they are
+excluded from phase 2a and drawn only in phase 2c with the fog gate — that is how it is intended in
+the comment on the phases, but the code had drawn them twice before this, once without the gate.
 
-**Тест.** `test_road_building.gd`: `_test_town_link` теперь проверяет, что
-`road_path[0]` — ЦЕНТР городка (а не гекс кольца), и что трасса кончается на
-сети города; новый кейс `town_road_level` строит дорогу до городка уровнем выше
-тропки и проверяет, что КАЖДЫЙ участок трассы — этого уровня, а
-`get_hex_road_level(центр)` равен выбранному. Валидация мутацией: с целью
-`(row+1, col)` (дорога обрывается на соседнем гексе) кейс падает «получено 1».
-Полный прогон — 39/39 PASS.
+**Test.** `test_road_building.gd`: `_test_town_link` now checks that
+`road_path[0]` is the CENTER of the town (and not a hex of the ring), and that the route ends on
+the city network; the new case `town_road_level` builds a road to the town at a level above
+the trail and checks that EVERY segment of the route is of this level, and that
+`get_hex_road_level(center)` equals the chosen one. Validation by mutation: with the target
+`(row+1, col)` (the road breaks off on the neighboring hex) the case fails "got 1".
+Full run — 39/39 PASS.
 
-**Отвергнуто.** Оставить цель на кольце и «поднимать» участки сети городка до
-уровня игрока: тогда уровень жил бы в сети городка, которую игрок по дизайну не
-улучшает, и `town_road_segments` перестал бы быть «всегда тропкой» — пришлось бы
-заводить второй источник уровня для одной и той же дороги.
+**Rejected.** Keeping the target on the ring and "raising" the segments of the town network to
+the player's level: then the level would live in the town network, which the player by design does not
+upgrade, and `town_road_segments` would stop being "always a trail" — one would have
+to introduce a second source of the level for the same road.
 
-## Две дороги, встретившиеся на соседних гексах, соединяются сами (9 октября 2026)
+## Two roads that meet on neighboring hexes connect themselves (October 9, 2026)
 
-**Симптом.** На скриншоте игрока: в центре виноградник с дорогой, на юго-востоке
-от него — другая дорога. Гексы соседние, дороги смотрят друг на друга, но
-соединить их нечем — «при таких условиях дороги должны соединяться
-автоматически». Ручной способ закрыть разрыв отсутствует: кнопка «Построить
-дорогу» показывается только на гексе, где дороги ЕЩЁ НЕТ (`control_panel`), а у
-обоих гексов разрыва дорога уже есть.
+**Symptom.** In the player's screenshot: in the center a vineyard with a road, to the southeast
+of it — another road. The hexes are neighbors, the roads look at each other, but
+there is nothing to connect them with — "under such conditions the roads should connect
+automatically". There is no manual way to close the gap: the "Build
+road" button is shown only on a hex where there is NO road YET (`control_panel`), and
+both hexes of the gap already have a road.
 
-**Причина.** Трасса подключалась к ПЕРВОМУ достигнутому гексу своей сети и
-больше ничего не делала. Если две ветки сети приходили на СОСЕДНИЕ гексы, сегмент
-между этими соседями не появлялся никогда: `_find_connect_path` возвращал путь до
-одного гекса сети, а про второй соседний гекс сети «не знал». Диагностика на
-живой карте это подтвердила: в сети города было 17 подключённых гексов и 6 пар
-соседей, между которыми сегмента нет (например, `29,27 -- 30,27`,
-`30,31 -- 31,30`, `31,27 -- 32,28`); тот же класс разрывов нашёлся и в сетях
-городков.
+**Cause.** The route connected to the FIRST reached hex of its network and
+did nothing more. If two branches of the network came to NEIGHBORING hexes, the segment
+between these neighbors never appeared: `_find_connect_path` returned a path to
+one hex of the network, and "did not know" about the second neighboring hex of the network. Diagnostics on
+a live map confirmed this: the city network had 17 connected hexes and 6 pairs
+of neighbors between which there is no segment (for example, `29,27 -- 30,27`,
+`30,31 -- 31,30`, `31,27 -- 32,28`); the same class of gaps was found in town
+networks too.
 
-**Решение — новый гекс сети сливается со всеми соседними гексами той же сети.**
-Появился `road_manager._join_adjacent_connected(row, col, road_level, connected,
-is_town)`: он перебирает соседей только что подключённого гекса, и если сосед уже
-в сети, а сегмента между ними нет — достраивает его. Сегмент слияния кладётся на
-уровне ТОЛЬКО ЧТО проложенной дороги (дорога «продолжается» на соседний гекс на
-своём уровне). Хелпер вызывается из всех четырёх мест, где гексы попадают в сеть:
-`build_road_from` и `build_town_road_from` (восстановление из сейва) — по каждому
-гексу пути, `build_road_to` — по обоим концам каждого уложенного сегмента,
-`build_road_step` (поэтапный проект) — по обоим концам шага. Для городков
-(`is_town = true`) сегмент уходит в `_add_town_road_segment` и остаётся в сети
-городка — сети города и городков по-прежнему независимы.
+**Solution — a new hex of the network merges with all neighboring hexes of the same network.**
+`road_manager._join_adjacent_connected(row, col, road_level, connected,
+is_town)` appeared: it iterates over the neighbors of the just-connected hex, and if the neighbor is already
+in the network and there is no segment between them — it builds it. The merge segment is laid at
+the level of the JUST laid road (the road "continues" onto the neighboring hex at
+its own level). The helper is called from all four places where hexes enter the network:
+`build_road_from` and `build_town_road_from` (restore from save) — for each
+hex of the path, `build_road_to` — for both ends of each laid segment,
+`build_road_step` (a staged project) — for both ends of the step. For towns
+(`is_town = true`) the segment goes into `_add_town_road_segment` and remains in the
+town network — the city and town networks are still independent.
 
-**Почему это правильно, а не «латание».** Разрыв — следствие того, что поиск пути
-останавливается на первом гексе сети, хотя сеть — это множество гексов, а не один
-«вход». Слияние соседей приводит форму сети в согласованное состояние:
-подключённый гекс и его подключённый сосед обязаны быть соединены сегментом. Это
-инвариант, а не частный случай — диагностика после правки даёт
+**Why this is right, and not "patching".** The gap is a consequence of the fact that pathfinding
+stops at the first hex of the network, although the network is a set of hexes, not a single
+"entrance". Merging neighbors brings the shape of the network into a consistent state:
+a connected hex and its connected neighbor must be joined by a segment. This is
+an invariant, not a special case — the diagnostics after the edit give
 `city network: connected hexes = 17, missing segments between neighbours = 0`.
 
-**Тест.** Новый кейс `merge_adjacent_roads` в `tests/test_road_building.gd`:
-синтетика `city -> R -> P`, а гекс `Q` соседствует сразу И с `R`, И с `P` (у `R`
-и `P` общий диагональный сосед). Короче одной из двух связей быть не может, поэтому
-поиск пути приходит к любому из двух, и до правки ровно один сегмент оставался
-непостроенным. Кейс проверяет, что после постройки дороги до `Q` существуют ОБА
-сегмента (`Q-R` и `Q-P`) и что сегмент слияния — уровня проложенной дороги.
-Валидация мутацией: с заглушённым `_join_adjacent_connected` кейс падает на
-«новый гекс должен слиться и со вторым соседним гексом P той же сети».
-Полный прогон — 39/39 PASS (был 38 + новый кейс).
+**Test.** The new case `merge_adjacent_roads` in `tests/test_road_building.gd`:
+synthetic `city -> R -> P`, and the hex `Q` is adjacent to BOTH `R` AND `P` (`R`
+and `P` have a common diagonal neighbor). It cannot be shorter than one of the two links, so
+pathfinding reaches either of the two, and before the edit exactly one segment remained
+unbuilt. The case checks that after building a road to `Q` BOTH segments exist
+(`Q-R` and `Q-P`) and that the merge segment is of the level of the laid road.
+Validation by mutation: with `_join_adjacent_connected` stubbed out the case fails on
+"a new hex must merge with the second neighboring hex P of the same network as well".
+Full run — 39/39 PASS (it was 38 + the new case).
 
-**Отвергнуто.** Чинить в `_find_connect_path`, добавляя в цели все соседние с
-сетью гексы: тогда путь заканчивался бы на случайном соседе, а не на «входе» в
-сеть, и цена трассы (число сегментов) зависела бы от порядка обхода. Слияние
-постфактум дешевле и не трогает планирование.
+**Rejected.** Fixing it in `_find_connect_path` by adding all hexes adjacent to
+the network to the targets: then the path would end on a random neighbor, not on the "entrance" to
+the network, and the cost of the route (the number of segments) would depend on the traversal order. Merging
+after the fact is cheaper and does not touch planning.
 
-## Пропускная способность дороги ограничивает вывоз (9 октября 2026)
+## Road throughput limits hauling out (October 9, 2026)
 
-**Что сделано.** У дорог были уровни с заявленной максимальной скоростью, но
-поток ресурсов по ним ничем не ограничивался. Теперь
-`main_map._emit_continuous_production` сверяет производительность каждого
-продукта со средней скоростью маршрута до города и срезает её до этой скорости:
-всё, что не влезает, теряется. Средняя скорость берётся из
-`road_manager.find_route_to_city().avg_speed` — это среднее арифметическое
-максимальных скоростей сегментов, а не минимум: дорога из череды тропок и
-трактов имеет право быть чуть быстрее сплошной тропки.
+**What was done.** Roads had levels with a stated maximum speed, but
+the flow of resources along them was limited by nothing. Now
+`main_map._emit_continuous_production` compares the output of each
+product against the average speed of the route to the city and trims it down to that speed:
+everything that does not fit is lost. The average speed comes from
+`road_manager.find_route_to_city().avg_speed` — it is the arithmetic mean
+of the segments' maximum speeds, not the minimum: a road made of a string of trails and
+highways has the right to be a little faster than a solid trail.
 
-**Ограничиваем каждый продукт отдельно, а не поровну.** Первая мысль — делить
-пропускную способность между продуктами улучшения — отвергнута. `avg_speed` —
-это поток по каждому ресурсу, а не общий бюджет: две машины, везущие разное, не
-обязаны делить полосу. Поэтому каждый продукт сравнивается со скоростью
-независимо, и у улучшения может быть так, что пшеница проходит, а корм — нет.
-Это же требование диктует и интерфейс (см. ниже).
+**We limit each product separately, not equally.** The first idea — to divide
+the throughput between the products of an improvement — was rejected. `avg_speed` is
+the flow for each resource, not a shared budget: two carts carrying different things are not
+obliged to share a lane. Therefore each product is compared against the speed
+independently, and an improvement may have wheat getting through while feed does not.
+The same requirement dictates the interface (see below).
 
-**Один источник правды для скоростей.** Скорость производства продукта нужна в
-двух местах — в тике симуляции (срезать) и в интерфейсе (показать). Чтобы
-формула множителей не разъехалась, в `map_tooltip.production_rates` заведён
-единый расчёт `{prod_id: {rate, base}}` (интервал улучшения × множители × доля
-заполнения × полив), и им пользуются и `_collect_extended_production`, и
+**One source of truth for speeds.** A product's production speed is needed in
+two places — in the simulation tick (to trim) and in the interface (to display). So that
+the multiplier formula does not drift apart, in `map_tooltip.production_rates` there is a
+single calculation `{prod_id: {rate, base}}` (improvement interval × multipliers × fill
+fraction × irrigation), and it is used by both `_collect_extended_production` and
 `main_map._emit_continuous_production`.
 
-**Индикация.** Над улучшением рисуется красный треугольник с «!» — правее
-капельки воды, если та есть (`map_renderer._draw_road_capacity_warning`; общий
-примитив `_draw_warning_triangle` теперь делят и предупреждение о технологии).
-Флаг `tile.road_capacity_short` пересчитывается каждый тик симуляции, поэтому
-после загрузки сейва он сам приходит в согласованное состояние — рендер ничего
-не пересчитывает по кадрам.
+**Indication.** A red triangle with a "!" is drawn above the improvement — to the right of
+the water droplet, if there is one (`map_renderer._draw_road_capacity_warning`; the shared
+primitive `_draw_warning_triangle` is now also shared by the technology warning).
+The `tile.road_capacity_short` flag is recomputed every simulation tick, so
+after loading a save it comes into a consistent state on its own — the renderer
+recomputes nothing per frame.
 
-**Тултип и панель.** В блоке «Производит:» у каждого проблемного ресурса рядом с
-суммой появляется красная пометка ` (маршрут X ед./сек)`. Локализовано через
-новый msgid `" (route %s units/sec)"`; ключ кладётся в item как `route_text` /
-`route_color`, а `render_products` выводит вторым `Label` в той же строке.
+**Tooltip and panel.** In the "Produces:" block, each problem resource, next to its
+total, gets a red note ` (route X units/sec)`. It is localized through
+the new msgid `" (route %s units/sec)"`; the key is put into the item as `route_text` /
+`route_color`, and `render_products` outputs it as a second `Label` on the same row.
 
-**Тест.** Новый кейс `tests/test_road_capacity.gd` (SLOW): чистая проверка среза
-(15 пшеницы + 5 глины при маршруте 10 → 10 и 5; маршрут `-1` → без среза) и
-живая сцена — синтетический ресурс с `{wheat: 10, clay: 20}`, дорога 1 уровня:
-глина помечена нехваткой, пшеница нет; после апгрейда всех сегментов до уровня 2
-(`avg 30`) пометка снимается и 20 глины проходят целиком. Полный прогон —
-40/40 PASS (был 39 + новый кейс).
+**Test.** A new case `tests/test_road_capacity.gd` (SLOW): a pure check of the trimming
+(15 wheat + 5 clay with a route of 10 → 10 and 5; route `-1` → no trimming) and
+a live scene — a synthetic resource with `{wheat: 10, clay: 20}`, a level 1 road:
+clay is flagged as short, wheat is not; after upgrading all segments to level 2
+(`avg 30`) the flag is cleared and the 20 clay goes through in full. Full run —
+40/40 PASS (was 39 + the new case).
 
-**Отвергнуто.** (1) Делить `avg_speed` между продуктами — см. выше. (2) Считать
-флаг нехватки в рендере каждый кадр — дорого и дублирует формулу производства;
-считаем в тике. (3) Блокировать производство при отсутствии маршрута: у
-`harbor`/`fishing_boats` `no_road = true`, наземного маршрута нет, и `ok = false`
-означает «не ограничиваем», а не «запрещаем».
+**Rejected.** (1) Dividing `avg_speed` between products — see above. (2) Computing
+the shortfall flag in the renderer every frame — expensive and duplicates the production formula;
+we compute it in the tick. (3) Blocking production when there is no route:
+`harbor`/`fishing_boats` have `no_road = true`, there is no land route, and `ok = false`
+means "we do not limit", not "we forbid".
 
-**Побочная находка.** `feed` у фермы выдаёт 120 ед./сек — это упирается в потолок
-тропки сразу, как только корм открыт (технология животноводства + пастбище). По
-новой механике это ожидаемо, но баланс этого выхода — вопрос к автору, а не к
-коду.
+**Side finding.** The farm's `feed` yields 120 units/sec — that hits the ceiling
+of the trail immediately, as soon as feed is unlocked (animal husbandry technology + pasture). Under
+the new mechanic this is expected, but the balance of that output is a question for the author, not for
+the code.
 
-## Реки обрезаются по туману войны, а не по прямоугольнику Региона (9 октября 2026)
+## Rivers are clipped by the fog of war, not by the Region rectangle (October 9, 2026)
 
-**Проблема.** Реки рисовались поверх тумана войны: гекс в тумане не
-отрисовывается вовсе (см. `_draw_hex`), а линия реки шла сквозь него и висела в
-чёрной пустоте.
+**Problem.** Rivers were drawn on top of the fog of war: a hex in the fog is not
+drawn at all (see `_draw_hex`), while the river line ran through it and hung in
+the black void.
 
-**Решение.** Точка реки видима, если хотя бы один из **трёх ближайших** к ней
-гексов не в тумане. Река течёт по граням гексов, поэтому два ближайших гекса
-делят грань под точкой, а третий покрывает точку у вершины, где сходятся три
-гекса. Точка, окружённая туманом, скрыта — река обрывается по границе разведанной
-области.
+**Solution.** A river point is visible if at least one of the **three nearest**
+hexes to it is not in the fog. A river flows along the edges of hexes, so the two nearest hexes
+share the edge beneath the point, and the third covers the point at a vertex where three
+hexes meet. A point surrounded by fog is hidden — the river breaks off at the border of the scouted
+area.
 
-**Почему три ближайших гекса, а не один ближайший.** Проверка только ближайшего
-гекса даёт пунктир: меандр колеблет точку вокруг грани, ближайший центр
-оказывается то с одной стороны, то с другой, и река, идущая ровно по границе
-разведанной области, рвётся на штрихи. Три ближайших гекса покрывают обе стороны
-грани, поэтому такая река остаётся сплошной, а обрезка всё равно происходит ровно
-на границе: точка внутри тумана окружена туманом со всех трёх ближайших гексов.
-Гекс вне карты видимым не считается — `is_hex_in_fog` вне карты возвращает
-`false`, поэтому в проверке есть явный `is_hex_on_map`.
+**Why the three nearest hexes, and not one nearest.** Checking only the nearest
+hex produces a dashed line: the meander wobbles the point around the edge, the nearest center
+ends up sometimes on one side and sometimes on the other, and a river running exactly along the border
+of the scouted area breaks into dashes. The three nearest hexes cover both sides
+of the edge, so such a river stays solid, while the clipping still happens exactly
+at the border: a point inside the fog is surrounded by fog from all three nearest hexes.
+A hex outside the map is not counted as visible — `is_hex_in_fog` outside the map returns
+`false`, so the check includes an explicit `is_hex_on_map`.
 
-**Сознательно не делаем.** Не возвращаем обрезку по прямоугольнику «Кольцо +
-Регион» (она была до появления разведки): теперь видимая область — не
-прямоугольник, а объединение Кольца, Региона и разведанных гексов, поэтому
-прямоугольник срезал бы разведанные области и оставлял туман внутри. Не обрезаем
-и по одному лишь ближайшему гексу — см. выше.
+**Deliberately not doing.** We are not bringing back clipping by the "Ring +
+Region" rectangle (it existed before scouting appeared): now the visible area is not
+a rectangle but the union of the Ring, the Region and the scouted hexes, so
+the rectangle would clip away scouted areas and leave fog inside. Nor do we clip
+by the nearest hex alone — see above.
 
-**Инвариант.** Туман влияет на обрезку рек, поэтому его изменение (разведка,
-покупка территории, смена эпохи, debug-раскрытие карты) обязано сбрасывать кэш
-геометрии рек; единая точка входа — `invalidate_town_influence_cache()`.
+**Invariant.** Fog affects river clipping, so any change to it (scouting,
+buying territory, changing era, debug map reveal) must reset the cache
+of river geometry; the single entry point is `invalidate_town_influence_cache()`.
 
-## Строки производства: только скорость в секунду (9 октября 2026)
+## Production lines: speed per second only (October 9, 2026)
 
-**Проблема.** Расширенный тултип по-разному показывал, сколько даст улучшение
-на ресурсе. Рыба: «Сырая рыба: 10 ед./сек». Овцы: «Сырое мясо (база 20)» — без
-скорости. Известняк: «Известняк: 5 ед./сек», хотя в данных
-`produces: { "limestone": 10 }`. То же у нефрита, стеатита, лавсонии и вайды.
+**Problem.** The extended tooltip displayed differently how much an improvement
+would give on a resource. Fish: "Raw fish: 10 units/sec". Sheep: "Raw meat (base 20)" — without
+a speed. Limestone: "Limestone: 5 units/sec", even though the data says
+`produces: { "limestone": 10 }`. The same for nephrite, soapstone, lawsonia and woad.
 
-**Причина — две независимые.** (1) Формат строки зависел от того, активен ли
-модификатор или неполно ли поголовье: базу показывали только тогда. Рыба
-(`time_to_mature` нет) шла как скорость, овцы (растущий ресурс) — как база.
-(2) Число из данных — выход за ОДИН цикл производства, а не за секунду:
-скорость = `produces / production_interval`. У карьера и шахты интервал 2 сек,
-поэтому 10 за цикл = 5 ед./сек; у рыбацких лодок интервал 1 сек, поэтому 10 за
-цикл = 10 ед./сек.
+**The cause — two independent ones.** (1) The format of the line depended on whether
+a modifier was active or whether the livestock was incomplete: the base was shown only then. Fish
+(no `time_to_mature`) went as a speed, sheep (a growing resource) — as a base.
+(2) The number from the data is the output per ONE production cycle, not per second:
+speed = `produces / production_interval`. A quarry and a mine have an interval of 2 sec,
+so 10 per cycle = 5 units/sec; fishing boats have an interval of 1 sec, so 10 per
+cycle = 10 units/sec.
 
-**Что именно получает игрок.** Проверено в коде и эмпирически
-(`tools/diag_production_rate.gd`): производство НЕПРЕРЫВНОЕ.
-`main_map._emit_continuous_production` на каждом тике (`SIMULATION_TICK = 1 сек`)
-добавляет на склад `produces × множитель / production_interval` единиц. Известняк
-даёт ровно 5 единиц КАЖДУЮ секунду (5, 10, 15, 20, 25 после каждого тика), а не
-10 раз в 2 секунды. Пачки длиной `production_interval` игрок не видит никогда.
+**What exactly the player gets.** Verified in the code and empirically
+(`tools/diag_production_rate.gd`): production is CONTINUOUS.
+`main_map._emit_continuous_production` on every tick (`SIMULATION_TICK = 1 sec`)
+adds `produces × multiplier / production_interval` units to storage. Limestone
+gives exactly 5 units EVERY second (5, 10, 15, 20, 25 after each tick), not
+10 every 2 seconds. The player never sees batches of `production_interval` length.
 
-**Решение.** Строка показывает только скорость в секунду: `«Имя: M ед./сек»`.
-База «за цикл» убрана — она не приходит игроку отдельной суммой, а подпись лишь
-провоцировала сверку с числом, которого игрок не видит. Правка в
-`map_tooltip._collect_extended_production` (тултип и левая колонка панели) и в
-`control_panel._build_preview` (превью постройки) — формат один. Осиротевший
-msgid `"%s (base %s)"` удалён из `locale/messages.pot` и `locale/ru.po`, `.mo`
-пересобран.
+**Solution.** The line shows only the speed per second: `"Name: M units/sec"`.
+The "per cycle" base is removed — it does not reach the player as a separate sum, and the label merely
+provoked a comparison with a number the player does not see. The fix is in
+`map_tooltip._collect_extended_production` (the tooltip and the left column of the panel) and in
+`control_panel._build_preview` (the construction preview) — one format. The orphaned
+msgid `"%s (base %s)"` was removed from `locale/messages.pot` and `locale/ru.po`, the `.mo`
+was rebuilt.
 
-**Подсказка «при постройке».** У гекса без улучшения `tile.fill_time` равен 0
-(поголовье наполняется только после постройки), поэтому доля заполнения была 0
-и гасила скорость: у овец строка шла вообще без числа. Подсказка описывает
-будущее и потому берёт потенциальный выход (`fill_frac = 1.0`), а рабочее
-улучшение по-прежнему показывает текущую долю.
+**The "when built" hint.** On a hex without an improvement `tile.fill_time` is 0
+(livestock is filled only after construction), so the fill fraction was 0
+and damped the speed: for sheep the line had no number at all. The hint describes
+the future and therefore takes the potential output (`fill_frac = 1.0`), while a working
+improvement still shows the current fraction.
 
-**Тест.** Новый кейс `tests/test_production_display.gd`: у ресурса с интервалом
-≠ 1 скорость = база/интервал (5, а не 10) и базы в строке нет; у растущего
-ресурса без улучшения подсказка показывает полную скорость, а не 0. Валидация
-мутацией: возврат нулевой доли заполнения роняет кейс. Полный прогон — 42/42
-PASS (был 41 + новый кейс).
+**Test.** A new case `tests/test_production_display.gd`: for a resource with an interval
+≠ 1 the speed = base/interval (5, not 10) and there is no base in the line; for a growing
+resource without an improvement the hint shows the full speed, not 0. Validation
+by mutation: restoring the zero fill fraction fails the case. Full run — 42/42
+PASS (was 41 + the new case).
 
-**Отвергнуто.** (1) Показывать базу за цикл рядом со скоростью: сначала так и
-сделали, но игрок получает непрерывный поток, и «база 10» рядом с «5 ед./сек»
-только запутывала — деление на интервал пришлось бы объяснять. (2) Показывать
-число из данных (10) как скорость: не совпало бы с тем, что реально приходит на
-склад. (3) Показывать «10 раз в 2 секунды»: пачек в игре нет, `production_interval`
-игрок не наблюдает.
+**Rejected.** (1) Showing the per-cycle base next to the speed: that is what we
+did at first, but the player receives a continuous flow, and "base 10" next to "5 units/sec"
+only confused things — the division by the interval would have had to be explained. (2) Showing
+the number from the data (10) as the speed: it would not have matched what actually arrives at
+storage. (3) Showing "10 every 2 seconds": there are no batches in the game, `production_interval`
+the player never observes.
 
-## Логистика: излишек ждёт в очереди, а не теряется (9 октября 2026)
+## Logistics: the surplus waits in a queue instead of being lost (October 9, 2026)
 
-**Что было не так.** Предыдущая версия (`## Пропускная способность дороги
-ограничивает вывоз`) сверяла скорость продукта со средней скоростью маршрута и
-**срезала** лишнее: всё, что не влезало в поток, исчезало. Игрок терял уже
-произведённый товар из-за узкой дороги — дорога должна задавать **темп**, а не
-уничтожать продукт.
+**What was wrong.** The previous version (`## Road throughput
+limits hauling out`) compared the product's speed against the route's average speed and
+**trimmed** the excess: everything that did not fit into the flow disappeared. The player lost
+already-produced goods because of a narrow road — a road should set the **pace**, not
+destroy the product.
 
-**Что сделано.** Маршрут теперь описывают **две независимые величины**, и они не
-смешиваются:
+**What was done.** A route is now described by **two independent quantities**, and they are not
+mixed:
 
-- **время доставки** (transit delay) = `длина маршрута × transit_time_per_hex`;
-- **пропускная способность** (flow rate) = средняя скорость маршрута `avg_speed`.
+- **delivery time** (transit delay) = `route length × transit_time_per_hex`;
+- **throughput** (flow rate) = the route's average speed `avg_speed`.
 
-`transit_time_per_hex` — **единая точка настройки** (`data/game_balance.json`,
-блок `logistics`, старт `0.2` сек/гекс); и движок, и интерфейс читают его через
-`DeliveryManager.get_transit_time_per_hex()`. Длина уже есть в
-`find_route_to_city(...).length`, поэтому задержка — производная, а не параметр
-данных.
+`transit_time_per_hex` is the **single tuning point** (`data/game_balance.json`, the
+`logistics` block, starting at `0.2` sec/hex); both the engine and the interface read it through
+`DeliveryManager.get_transit_time_per_hex()`. The length is already available in
+`find_route_to_city(...).length`, so the delay is derived, not a data
+parameter.
 
-Излишек больше **не теряется**: продукт встаёт в очередь на маршруте, уходит со
-скоростью потока, едет время доставки и только потом зачисляется на склад.
-Производство, рецепты, труд и баланс не менялись — изменилась судьба излишка.
+The surplus is **no longer lost**: the product joins a queue on the route, leaves at the
+flow rate, travels for the delivery time, and only then is credited to storage.
+Production, recipes, labor and balance did not change — the fate of the surplus did.
 
-**Ограничение — на маршрут.** У каждого маршрута один общий лимит и одна очередь
-(FIFO): партии одного улучшения уходят по порядку. **Разные маршруты не
-конкурируют** даже на общем участке дороги: три маршрута по 30 ед./сек дают 90
-суммарно. Полной симуляции «машин» нет — моделируется поток и задержка. Партии не
-ждут друг друга искусственно: две могут быть в пути одновременно.
+**The limit is per route.** Each route has one shared limit and one queue
+(FIFO): batches from one improvement leave in order. **Different routes do not
+compete** even on a shared road segment: three routes of 30 units/sec give 90
+in total. There is no full simulation of "carts" — a flow and a delay are modeled. Batches do not
+artificially wait for each other: two can be on the road at the same time.
 
-**Движок — `scripts/delivery_manager.gd`.** Один узел на `MainMap`, обновляется
-раз в кадр (`update(delta)`): приёмка — по кадрам (у груза обратный отсчёт, а не
-абсолютное время, поэтому сейв не зависит от часов), отправка — шагами
-`SHIP_STEP = 1 сек`. Никаких таймеров на партию: всё состояние логистики в одном
-месте. Публичная точка входа — `create_cargo(row, col, product, quality, amount,
-source)`; `get_route_status(...)` отдаёт интерфейсу `{has_route, flow_rate,
-transit_delay, pending, in_transit, eta}`. Если маршрут исчез (дорогу снесли или
-отрезали), `_flush_route` выдаёт незавершённый груз на склад — товар не зависает
-в несуществующем маршруте. `main_map._emit_continuous_production` получил
-параметры `row, col, route_avg_speed` и передаёт выпуск в `_deliver_production`:
-есть маршрут — `create_cargo`, нет — сразу на склад (без дороги ограничивать
-нечем). `SaveManager` сериализует состояние логистики ключом `delivery`.
+**The engine — `scripts/delivery_manager.gd`.** One node on `MainMap`, updated
+once per frame (`update(delta)`): intake is per frame (cargo counts down rather than using an
+absolute time, so the save does not depend on the clock), while shipping is in steps of
+`SHIP_STEP = 1 sec`. No timers per batch: the whole logistics state is in one
+place. The public entry point is `create_cargo(row, col, product, quality, amount,
+source)`; `get_route_status(...)` gives the interface `{has_route, flow_rate,
+transit_delay, pending, in_transit, eta}`. If the route disappears (the road was demolished or
+cut off), `_flush_route` releases the unfinished cargo to storage — goods do not get stuck
+in a nonexistent route. `main_map._emit_continuous_production` received
+the parameters `row, col, route_avg_speed` and passes the output to `_deliver_production`:
+if there is a route — `create_cargo`, if not — straight to storage (without a road there is nothing
+to limit). `SaveManager` serializes the logistics state under the key `delivery`.
 
-**Закупки у городков — движок и API, без интерфейса.** Покупка не
-«материализуется» мгновенно: количество и оплата фиксируются, затем груз едет тем
-же `create_cargo` и приходит по тем же правилам. Лимит — на весь маршрут, а не на
-отдельную покупку. Интерфейс закупок — на будущее.
+**Purchases from towns — engine and API, no interface.** A purchase does not
+"materialize" instantly: the quantity and payment are fixed, then the cargo travels via the
+same `create_cargo` and arrives under the same rules. The limit is for the whole route, not for
+an individual purchase. The purchasing interface is for the future.
 
-**Интерфейс — минимальный.** `map_tooltip.delivery_lines(row, col)` даёт строки
-«Доставка: ожидает отправки N ед.» / «в пути N ед. (прибудет в течение X сек)» в
-расширенном тултипе и левой колонке панели. Красная пометка `(🚧 X ед./сек)` и
-треугольник над улучшением остались — они показывают **ограничение** маршрута.
-Движущихся караванов нет.
+**The interface — minimal.** `map_tooltip.delivery_lines(row, col)` gives the lines
+"Delivery: waiting to ship N units" / "in transit N units (arriving within X sec)" in
+the extended tooltip and the left column of the panel. The red note `(🚧 X units/sec)` and
+the triangle above the improvement remain — they show the **limit** of the route.
+There are no moving caravans.
 
-**Тест.** Новый кейс `tests/test_delivery_logistics.gd` (SLOW): задержка =
-длина × коэффициент; поток ограничивает отправку; размер партии не влияет на
-темп; партии одного маршрута делят один лимит (FIFO); разные маршруты не
-конкурируют; две партии в пути одновременно; ничего не теряется и не дублируется;
-сейв/загрузка; масштаб времени; апгрейд дороги; длина масштабирует задержку;
-коэффициент берётся из баланса. Старый кейс `test_road_capacity.gd` переписан:
-вместо «срез, излишек теряется» проверяется, что весь объём стоит в очереди и
-доезжает. Полный прогон — см. `tools/run_tests.py`.
+**Test.** A new case `tests/test_delivery_logistics.gd` (SLOW): delay =
+length × coefficient; the flow limits shipping; the batch size does not affect
+the pace; batches of one route share one limit (FIFO); different routes do not
+compete; two batches on the road at once; nothing is lost or duplicated;
+save/load; time scale; road upgrade; length scales the delay;
+the coefficient comes from the balance. The old case `test_road_capacity.gd` was rewritten:
+instead of "trim, the surplus is lost" it checks that the whole volume sits in the queue and
+arrives. Full run — see `tools/run_tests.py`.
 
-**Отвергнуто.** (1) Оставить срез и «терять» излишек — прямо противоречит
-требованию не терять товар. (2) Делить лимит между продуктами или партиями —
-у дороги одна физическая пропускная способность. (3) Общая конкуренция маршрутов
-за участок — маршрут независимая нитка, сосед не должен молча урезать. (4)
-Симулировать транспортные средства — требование «никакой полной симуляции машин».
-(5) Таймер на каждую партию — дорого и усложняет сейв.
+**Rejected.** (1) Keeping the trimming and "losing" the surplus — directly contradicts
+the requirement not to lose goods. (2) Dividing the limit between products or batches —
+a road has one physical throughput. (3) Shared competition of routes
+for a segment — a route is an independent thread, a neighbor must not silently cut it down. (4)
+Simulating vehicles — the requirement is "no full simulation of carts".
+(5) A timer per batch — expensive and complicates the save.
 
-**Про `.mo`.** `project.godot` грузит `res://locale/ru.po` напрямую (Godot читает
-`.po` сам), `locale/ru.mo` в загрузке не участвует — проверено удалением файла:
-русский по-прежнему работает. `.mo` остаётся собранным артефактом для
-совместимости/инструментов и пересобирается `tools/i18n_compile_mo.py` (без
-внешних зависимостей), но игру он не затрагивает.
+**About `.mo`.** `project.godot` loads `res://locale/ru.po` directly (Godot reads
+`.po` itself), `locale/ru.mo` does not take part in loading — verified by deleting the file:
+Russian still works. The `.mo` remains a compiled artifact for
+compatibility/tools and is rebuilt by `tools/i18n_compile_mo.py` (with no
+external dependencies), but it does not affect the game.
 
-## Доставка в тултипе обновляется в реальном времени (10 октября 2026)
+## Delivery in the tooltip updates in real time (October 10, 2026)
 
-**Симптом (со слов автора).** Расширенный тултип на карте не обновляется в
-реальном времени: состояние доставки в нём замирает на моменте появления тултипа.
-Очередь и груз в пути должны меняться, а строка не двигается.
+**Symptom (in the author's words).** The extended tooltip on the map does not update in
+real time: the delivery state in it freezes at the moment the tooltip appears.
+The queue and the cargo in transit should change, but the line does not move.
 
-**Причина.** Периодический рефреш содержимого без движения мыши в `InputHandler`
-шёл **только по растущим ресурсам**: `_is_hovered_tile_growing()` проверял
-`time_to_mature > 0` у ресурса гекса. Строки доставки при этом были добавлены в
-расширенный блок (`_collect_extended_block` → `delivery_lines`), но условие
-рефреша про них не знало: у доставки `time_to_mature` нет, значит гекс с грузом
-считался статичным и `update_tooltip_text` для него не вызывался. Классический
-расход: строки и условие «когда перерисовывать» жили в двух местах и разъехались.
+**Cause.** The periodic refresh of content without mouse movement in `InputHandler`
+went **only by growing resources**: `_is_hovered_tile_growing()` checked
+`time_to_mature > 0` on the hex's resource. The delivery lines had been added to
+the extended block (`_collect_extended_block` → `delivery_lines`), but the refresh
+condition did not know about them: delivery has no `time_to_mature`, so a hex with cargo
+was considered static and `update_tooltip_text` was not called for it. A classic
+expense: the lines and the "when to redraw" condition lived in two places and drifted apart.
 
-**Исправление.** Решение «обновлять ли содержимое» сведено в **одну чистую точку**
-`MapTooltip.has_live_content(row, col, tile_data)`: она возвращает `true`, если
-гекс растущий **или** на его маршруте есть груз (`delivery_manager.has_cargo`).
-`InputHandler` больше не держит свою копию условия — он спрашивает `main_map.
-has_live_content(...)` и обновляет тултип раз в `CityData.resource_display_interval`.
-Логика растущего ресурса переехала из `InputHandler` в `map_tooltip` (обе причины
-теперь рядом; мёртвая `_is_hovered_tile_growing` удалена).
+**Fix.** The decision "whether to update the content" was consolidated into **one pure point**
+`MapTooltip.has_live_content(row, col, tile_data)`: it returns `true` if
+the hex is growing **or** there is cargo on its route (`delivery_manager.has_cargo`).
+`InputHandler` no longer keeps its own copy of the condition — it asks `main_map.
+has_live_content(...)` and updates the tooltip once per `CityData.resource_display_interval`.
+The growing-resource logic moved from `InputHandler` into `map_tooltip` (both causes
+are now next to each other; the dead `_is_hovered_tile_growing` was removed).
 
-**Почему период тот же, что у остального UI.** Данные меняются на тиках 1 сек, а
-интервал отображения (1..5 сек, настройка) намеренно общий для всего интерфейса:
-все места обновляются «одним рывком» за эпоху. Отдельный период у доставки развёл
-бы тултип и левую колонку панели (`control_panel.on_city_updated` → `_refresh` →
-`_append_route_info` → `delivery_lines`) по фазе — они показывают одни и те же
-строки и не должны расходиться.
+**Why the period is the same as the rest of the UI.** The data changes on 1 sec ticks, and
+the display interval (1..5 sec, a setting) is deliberately shared across the whole interface:
+all places update "in one jerk" per era. A separate period for delivery would
+phase-shift the tooltip and the left column of the panel (`control_panel.on_city_updated` → `_refresh` →
+`_append_route_info` → `delivery_lines`) — they show the same
+lines and must not diverge.
 
-**Тест.** Новый `tests/test_tooltip_live_refresh.gd` (SLOW): гекс без груза и без
-растущего ресурса статичен; с грузом — «живой»; шаг доставки меняет показанный
-блок (2 строки → 3, появляется «в пути»); после вывоза гекс снова статичен.
-Валидация мутацией: если убрать доставку из `has_live_content`, кейс «гекс с
-грузом обязан считаться живым» падает — тест действительно сторожит дефект.
+**Test.** A new `tests/test_tooltip_live_refresh.gd` (SLOW): a hex without cargo and without
+a growing resource is static; with cargo — "live"; a delivery step changes the displayed
+block (2 lines → 3, "in transit" appears); after the haul-out the hex is static again.
+Validation by mutation: if delivery is removed from `has_live_content`, the case "a hex with
+cargo must be considered live" fails — the test really does guard the defect.
 
-**Отвергнуто.** (1) Оставить условие в `InputHandler` и дописать туда же проверку
-груза — тогда причина рефреша снова жила бы в двух файлах, а тест не мог бы
-дёрнуть решение без живой сцены с наведением. (2) Свой, более частый период для
-доставки — рассинхрон с панелью и с эпохой отображения. (3) Обновлять тултип
-каждый кадр — лишние пересборки контейнера; гвардия «только при реальном
-изменении» спасает от лишней отрисовки, но не от лишней сборки строк.
+**Rejected.** (1) Keeping the condition in `InputHandler` and also adding the cargo check
+there — then the refresh cause would again live in two files, and the test could not
+exercise the decision without a live scene with hovering. (2) Its own, more frequent period for
+delivery — a desync with the panel and with the display era. (3) Updating the tooltip
+every frame — extra container rebuilds; the guard "only on a real
+change" saves us from extra drawing, but not from extra row assembly.
 
-## Логистика: очередь без ложного затора и снятый треугольник (11 октября 2026)
+## Logistics: a queue without a false jam and a cleared triangle (October 11, 2026)
 
-**Что было не так.** Два симптома из игры. (1) Панель управления вечно показывала
-строку «ожидает отправки», даже когда дорога везла всё производство без затора.
-(2) Треугольник «!» перегрузки не исчезал сразу после постройки улучшенной
-дороги — приходилось шевельнуть мышью.
+**What was wrong.** Two symptoms from the game. (1) The control panel forever showed
+the "waiting to ship" line, even when the road was carrying the whole production without a jam.
+(2) The overload "!" triangle did not disappear right after building an improved
+road — you had to jiggle the mouse.
 
-**Причина (1).** Панель читает очередь внутри тика: `main_map._process` крутит
-производство, затем `CityData.do_tick()` испускает `city_updated`, и
-`control_panel.on_city_updated` → `delivery_lines` берёт `pending`. А отгрузка шла
-в `delivery_manager.update(delta)` ПОСЛЕ тика. То есть панель всегда читала
-очередь в момент «продукция уже добавлена, но ещё не отгружена» — и на дороге,
-которая везёт всё, видела ту самую свежую продукцию секунды как «ожидает
-отправки». Задержка (транзит) и поток были тут ни при чём — дефект был во
-**времени чтения**, а не в формуле.
+**Cause (1).** The panel reads the queue inside the tick: `main_map._process` runs
+production, then `CityData.do_tick()` emits `city_updated`, and
+`control_panel.on_city_updated` → `delivery_lines` takes `pending`. But shipping happened
+in `delivery_manager.update(delta)` AFTER the tick. That is, the panel always read the queue
+at the moment "production has already been added, but not yet shipped" — and on a road that
+carries everything, it saw that very fresh production of the second as "waiting to ship".
+The delay (transit) and the flow had nothing to do with it — the defect was in the **timing
+of the read**, not in the formula.
 
-**Причина (2).** `tile.road_capacity_short` пересчитывается на тике производства,
-и после улучшения дороги он сбрасывается на ближайшем тике. Но карта рисуется **по
-требованию**: `map_renderer._draw` идёт только после `queue_redraw()`, а его
-дёргают ввод (мышь/прокрутка) и явные действия. Тик флаг сбрасывал, но перерисовку
-не просил — и треугольник висел на экране до ближайшего движения мыши.
+**Cause (2).** `tile.road_capacity_short` is recomputed on the production tick,
+and after a road upgrade it is reset on the nearest tick. But the map is drawn **on
+demand**: `map_renderer._draw` runs only after `queue_redraw()`, and that
+is triggered by input (mouse/scroll) and explicit actions. The tick reset the flag but did not request
+a redraw — and the triangle hung on the screen until the nearest mouse movement.
 
-**Что сделано.** Приёмка и отгрузка разделены: `delivery_manager.advance(delta)` —
-каждый кадр (обратный отсчёт транзита), `delivery_manager.ship()` — один шаг на тик,
-и вызывается он **сразу после производства тика и до `do_tick()`**. Теперь интерфейс
-читает уже отгруженное состояние: очередь показывает только реальный затор.
-Внутри `_ship_route` остаток аккумулятора теперь усекается до дробной части
-(`fmod`), а не до 1.0: маршрут не «копит» неиспользованный поток и не выплёскивает
-его позже. Для второго дефекта тик запоминает, менялся ли флаг перегрузки, и если
-да — сам зовёт `map_renderer.queue_redraw()`.
+**What was done.** Intake and shipping are separated: `delivery_manager.advance(delta)` —
+every frame (the transit countdown), `delivery_manager.ship()` — one step per tick,
+and it is called **right after the tick's production and before `do_tick()`**. Now the interface
+reads the already-shipped state: the queue shows only a real jam.
+Inside `_ship_route`, the accumulator's remainder is now truncated to the fractional part
+(`fmod`), not to 1.0: a route does not "accumulate" unused flow and does not splash
+it out later. For the second defect, the tick remembers whether the overload flag changed, and if
+it did — it calls `map_renderer.queue_redraw()` itself.
 
-**Отвергнуто.** (1) Переставить `update` так, чтобы панель читала после отгрузки —
-панель читает внутри тика (`do_tick`), а производство всегда идёт до `do_tick`;
-единственный способ — отгружать между ними. (2) Свой таймер отгрузки, независимый
-от тика — снова рассинхрон с интерфейсом. (3) Просто перерисовывать карту каждый
-кадр — отказ от «рисования по требованию» и лишняя нагрузка ради одного значка.
+**Rejected.** (1) Reordering `update` so that the panel reads after shipping —
+the panel reads inside the tick (`do_tick`), and production always runs before `do_tick`;
+the only way is to ship between them. (2) Its own shipping timer, independent
+of the tick — again a desync with the interface. (3) Simply redrawing the map every
+frame — abandoning "draw on demand" and adding extra load for the sake of one icon.
 
-**Тест.** `tests/test_delivery_logistics.gd`, новый кейс `queue_only_backlog`:
-при производстве не выше потока очередь, которую читает интерфейс на сигнале
-`city_updated`, обязана быть пуста; при производстве выше потока — расти. Снимок
-берётся ИМЕННО в обработчике сигнала — иначе тест увидел бы уже отгруженное
-состояние. Валидация мутацией: перенос `ship()` за `do_tick()` роняет кейс
-(«получено 1»). `tests/test_road_capacity.gd` дополнен проверкой перерисовки через
-счётчик отрисовок `map_renderer.draw_calls` (краевое автопрокручивание выключено,
-иначе карта перерисовывается каждый кадр): тик со сменой флага обязан перерисовать
-карту, тик без смены — нет. Валидация мутацией: без `queue_redraw()` тест падает.
-Приёмка в тестах логистики теперь идёт через `_step` = `advance` + `ship` (тот же
-порядок, что и в `_process`).
+**Test.** `tests/test_delivery_logistics.gd`, a new case `queue_only_backlog`:
+when production is not above the flow, the queue that the interface reads on the
+`city_updated` signal must be empty; when production is above the flow — it must grow. The snapshot
+is taken EXACTLY in the signal handler — otherwise the test would see the already-shipped
+state. Validation by mutation: moving `ship()` after `do_tick()` fails the case
+("got 1"). `tests/test_road_capacity.gd` was extended with a redraw check via
+the draw counter `map_renderer.draw_calls` (edge auto-scroll is disabled,
+otherwise the map is redrawn every frame): a tick with a flag change must redraw
+the map, a tick without a change — must not. Validation by mutation: without `queue_redraw()` the test fails.
+Intake in the logistics tests now goes through `_step` = `advance` + `ship` (the same
+order as in `_process`).
