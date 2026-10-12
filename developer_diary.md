@@ -2827,3 +2827,30 @@ re-shows the HUD and the control panel of the hex; `open_town_ui` then hides the
 on any other opening of the town window. Opening before closing would leave the hex panel on top of the
 town window. The column still knows nothing about the town window — it emits one signal, and the map
 decides what "go to the town" means; the coupling stays on the map side, where the camera already lives.
+
+## The result of a trade deal is reported by the HUD (October 12, 2026)
+
+**Decision: the trade panel assembles an order and says nothing about its outcome.**
+`town_ui` used to keep a `PanelNote` label under the amount row, and
+`main_map._on_town_trade_order` wrote the reply of `town_trade_manager.submit_order` into it — a refusal
+in red, a confirmation in gold — while a failure was *also* copied into the HUD. The note is gone: the
+handler reports every reply in the HUD, and only there.
+
+**Why the panel was the wrong place.** The trade settings panel is a transient control that opens inline
+under one row and is rebuilt on every town tick and on every new selection. A message written into it is
+therefore fragile by construction: it is destroyed by a refresh, it disappears with a different row, and it
+competes for attention with the controls the player is about to use again. The HUD, by contrast, is always
+on screen while the town window is open (see `open_town_ui`), which is exactly the property the message
+needs. Announcing a deal in two places at once — the note and the HUD — was also a way of guaranteeing
+that the two would eventually disagree.
+
+**What was removed rather than kept as a fallback.** The `set_order_result()` entry point went with the
+label, so there is now exactly one channel for the outcome and no dead API to keep in sync. A torn
+standing contract already reported itself through `notice` → `_on_town_trade_notice` → `hud.show_message`;
+a settled deal, a signed contract and a refusal now take the same road.
+
+**Cost.** The outcome is no longer anchored to the row it belongs to: a player who has looked away for
+three seconds (the HUD message duration) sees only that *something* happened, not which row it was. That
+was accepted — the panel stays open over its row after confirm, so the row itself is still the visual
+anchor of the last order, and the trade panel remains the place where the player acts, not where they are
+informed.

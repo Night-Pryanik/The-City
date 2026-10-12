@@ -2480,16 +2480,16 @@ func _on_town_ui_close():
 # exact shape.
 #
 # This handler is the router: the mechanics live in town_trade_manager, and their
-# answer goes back into the trade panel of the window. A failure is also shown in
-# the HUD, so that it is not missed if the panel has been closed in the meantime.
+# answer is reported by the HUD. The trade panel of the window stays open over its
+# row and says nothing about the outcome: the HUD is visible whether the window, the
+# city interface or nothing at all is open, so a deal and a contract are announced in
+# one place only.
 func _on_town_trade_order(order: Dictionary) -> void:
     if town_trade_manager == null:
         return
     var result: Dictionary = town_trade_manager.submit_order(order)
-    var ok := bool(result.get("ok", false))
     var message := str(result.get("message", ""))
-    town_ui.set_order_result(ok, message)
-    if not ok:
+    if not message.is_empty():
         hud.show_message(message)
 
 # A standing contract with a town was torn (the treasury could not pay it, or the

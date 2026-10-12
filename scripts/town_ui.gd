@@ -37,8 +37,8 @@
 # order (the goods, the amount, the "permanent" flag) and hands it over by the
 # signal trade_order_submitted. The mechanics that spend the treasury and move the
 # goods live behind that signal (main_map._on_town_trade_order ->
-# town_trade_manager), and their answer comes back into the panel by
-# set_order_result.
+# town_trade_manager), and their answer is reported by the HUD, which stays visible
+# while the window is open (see hud_message.gd).
 extends Control
 
 # The shared UI helpers: the category header of a resource list (a line, the name, a
@@ -178,7 +178,6 @@ var _permanent_check: CheckBox = null
 var _warning_badge: Control = null
 var _confirm_button: Button = null
 var _total_label: Label = null
-var _panel_note: Label = null
 
 # Guards the text_changed handler from re-entering when the field is sanitized
 # programmatically (a programmatic assignment does not emit the signal, but the
@@ -637,7 +636,6 @@ func _free_trade_panel() -> void:
     _warning_badge = null
     _confirm_button = null
     _total_label = null
-    _panel_note = null
 
 # Applies the state stylebox to one row: the selected state wins over the hover, so
 # the selected row stays highlighted while the cursor is elsewhere.
@@ -806,13 +804,6 @@ func _build_trade_panel() -> PanelContainer:
     cancel_button.pressed.connect(_on_cancel_pressed)
     buttons_row.add_child(cancel_button)
     vbox.add_child(buttons_row)
-
-    _panel_note = Label.new()
-    _panel_note.name = "PanelNote"
-    _panel_note.visible = false
-    _panel_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    _panel_note.add_theme_color_override("font_color", Color(0.75, 0.75, 0.75))
-    vbox.add_child(_panel_note)
 
     return panel
 
@@ -1102,7 +1093,8 @@ func _format_speed(value: float) -> String:
 
 # Assembles the order and hands it over. The unit price is the same number the
 # total of the panel is made of, so the treasury is charged exactly the sum the
-# player saw. The result of the order comes back through set_order_result.
+# player saw. The panel claims nothing about the outcome: the reply of the mechanics
+# is reported by the HUD (see main_map._on_town_trade_order).
 func _on_confirm_pressed() -> void:
     var amount := _current_amount()
     if amount <= 0:
@@ -1121,21 +1113,6 @@ func _on_confirm_pressed() -> void:
         "unit_price": _unit_price(_selected_id, _selected_side),
     }
     emit_signal("trade_order_submitted", _last_order)
-
-# The answer of the trade mechanics to the last order (main_map routes it here
-# after town_trade_manager.submit_order). The panel stays open over its row: the
-# player reads what happened to the order he has just confirmed — the goods are on
-# the road, or the reason the deal did not go through. The colour follows the
-# outcome: a failure is red, a success is neutral.
-func set_order_result(ok: bool, message: String) -> void:
-    if _panel_note == null or not is_instance_valid(_panel_note):
-        return
-    _panel_note.text = message
-    _panel_note.visible = not message.is_empty()
-    if message.is_empty():
-        return
-    _panel_note.add_theme_color_override("font_color",
-            COLOR_INCOME if ok else COLOR_EXPENSE)
 
 func _on_cancel_pressed() -> void:
     _clear_selection()

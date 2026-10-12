@@ -88,8 +88,9 @@ func clear() -> void:
 
 
 # Processes one order from the town window. It returns {"ok": bool, "message":
-# String}: the message is written into the trade panel by the window (see
-# town_ui.set_order_result) and, on a failure, shown in the HUD by the map.
+# String}: the map reports the message in the HUD, both for a settled deal and for a
+# refusal (see main_map._on_town_trade_order). The window itself claims nothing about
+# the outcome of the order it has handed over.
 #
 # The order is the dictionary assembled by town_ui._on_confirm_pressed:
 #   town_id, town_name, row, col, side ("buy"/"sell"), product_id, product_name,

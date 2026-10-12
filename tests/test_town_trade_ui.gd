@@ -21,8 +21,8 @@
 #      the throughput of the route to the city, and its tooltip names the shortfall.
 #   6. ORDER. Confirm assembles the order (the town, the side, the goods, the amount,
 #      the "permanent" flag and the unit price of the row) and hands it over by the
-#      signal; the window itself claims nothing about the outcome — the answer of
-#      the mechanics comes back through set_order_result.
+#      signal; the window itself claims nothing about the outcome — the panel carries
+#      no message of its own, the reply of the mechanics is reported by the HUD.
 #   7. NO TRADE. Without a road to the town the window still opens and the pools are
 #      still listed, but the rows are inert — dimmed and not wired — and NO trade
 #      settings panel can be opened: neither by a click nor by a direct call.
@@ -433,22 +433,13 @@ func _test_order(town: Dictionary) -> void:
     _check(_ui._last_order == _captured_order,
         "the window must keep the last order it assembled")
     # The window itself makes no claim about the outcome: it hands the order over and
-    # stays open, and the mechanics write their answer into the note (see
-    # set_order_result). No mechanics are wired in this test, so the note stays empty.
-    _check(_ui._panel_note != null and not _ui._panel_note.visible
-            and _ui._panel_note.text.is_empty(),
-        "the panel must not report anything until the mechanics answer")
-    # The answer of the mechanics lands in the same note, and a failure is red.
-    _ui.set_order_result(true, "Purchased 25 units of Wood from Testville.")
-    _check(_ui._panel_note.visible
-            and _ui._panel_note.text == "Purchased 25 units of Wood from Testville.",
-        "set_order_result must write the message into the note (got \"%s\")"
-            % _ui._panel_note.text)
-    _ui.set_order_result(false, "Testville does not have that many units.")
-    _check(_ui._panel_note.visible
-            and _ui._panel_note.get_theme_color("font_color") == _ui.COLOR_EXPENSE,
-        "a failed order must be reported in the colour of an expense (got %s)"
-            % str(_ui._panel_note.get_theme_color("font_color")))
+    # stays open. The reply of the mechanics is reported by the HUD (see
+    # main_map._on_town_trade_order), so the panel carries no message of its own.
+    _check(_ui._trade_panel != null
+            and _ui._trade_panel.find_child("PanelNote", true, false) == null,
+        "the trade panel must carry no message of its own — the outcome goes to the HUD")
+    _check(not _ui.has_method("set_order_result"),
+        "the window must not accept a trade result to display")
 
 func _capture_order(order: Dictionary) -> void:
     _captured_order = order
