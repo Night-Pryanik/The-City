@@ -22,6 +22,17 @@
 #   6. ORDER. Confirm assembles the order (the town, the side, the goods, the amount,
 #      the "permanent" flag) and hands it over by the signal; the trade itself is not
 #      implemented, so nothing is spent.
+#   7. NO TRADE. Without a road to the town the window still opens and the pools are
+#      still listed, but the rows are inert — dimmed and not wired — and NO trade
+#      settings panel can be opened: neither by a click nor by a direct call.
+#   8. PRICE. Every row shows the price of ONE unit in coins: the market price with the
+#      quality multiplier of the level the row shows (the sale column, where the stars
+#      name that level) or the plain market price (the purchase column, where the
+#      quality of what the city will deliver is not known).
+#   9. TOTAL. The panel shows the sum of the order in the free space left of the
+#      confirm/cancel buttons, and it follows the amount in REAL TIME — the field and
+#      the "+"/"−" buttons both go through the same update. A sale column totals as a
+#      cost (the city pays), a purchase column as an income (the city is paid).
 #
 # The test opens the window on its own (no map), and stubs the route with an inner
 # class instead of generating a whole map: the window only asks the map for
@@ -47,6 +58,10 @@ class StubMap extends Node:
 var _failed := false
 var _ui = null
 var _captured_order: Dictionary = {}
+# The data reference. Taken through the tree and not by the autoload name: with
+# --script the test is compiled BEFORE the autoloads are registered (the same note as
+# in test_icon_registry.gd).
+var _gdata = null
 
 func _initialize() -> void:
     WATCHDOG.arm(self)
@@ -68,6 +83,15 @@ func _run() -> void:
 
     var town := _make_town()
 
+    # The prices are read from the common data, so the reference must be alive. Nothing
+    # loads the data in a --script run (the game does it from the main menu / the map,
+    # and the watchdog only RELOADS it once it is loaded), so the test loads it itself.
+    _gdata = get_root().get_node_or_null("GameData")
+    _check(_gdata != null, "the GameData autoload must be registered")
+    if _gdata != null and not _gdata.data_loaded:
+        _gdata.load_all_data()
+    _check(_gdata != null and _gdata.data_loaded, "the game data must be loaded")
+
     if WATCHDOG.wants_case("centered"):
         _test_centered()
     if WATCHDOG.wants_case("rows"):
@@ -80,6 +104,12 @@ func _run() -> void:
         await _test_warning(town)
     if WATCHDOG.wants_case("order"):
         await _test_order(town)
+    if WATCHDOG.wants_case("no_trade"):
+        await _test_no_trade(town)
+    if WATCHDOG.wants_case("price"):
+        await _test_price(town)
+    if WATCHDOG.wants_case("total"):
+        await _test_total(town)
 
     _finish()
 
@@ -407,6 +437,196 @@ func _capture_order(order: Dictionary) -> void:
     _captured_order = order
 
 # -------------------------------------------------------
+# 7. No road — no trade settings
+# -------------------------------------------------------
+
+func _test_no_trade(town: Dictionary) -> void:
+    _ui.open_town(town, false)
+    await process_frame
+
+    # The window itself opens and the pools stay readable: without a road the player
+    # still sees what the town has and what it lacks.
+    var rows := _rows_of(_ui.sell_list)
+    _check(rows.size() == 2, "the rows must be listed even without a road (got %d)" % rows.size())
+    _check(not _ui._can_trade(), "_can_trade must report the trade as unavailable")
+    if rows.is_empty():
+        return
+
+    var row: Control = rows[0]
+    _check(row.modulate == _ui.ROW_DISABLED_MODULATE,
+        "a row of a town without a road must be dimmed (got %s)" % str(row.modulate))
+
+    # Not wired at all: the hover does not highlight the row.
+    var normal: Color = row.get_theme_stylebox("panel").bg_color
+    row.mouse_entered.emit()
+    _check(row.get_theme_stylebox("panel").bg_color == normal,
+        "a row of a town without a road must not react to hover")
+    row.mouse_exited.emit()
+
+    # And a click opens nothing at all.
+    _click(row)
+    await process_frame
+    _check(_ui._selected_key.is_empty(),
+        "a click must not select a row when the trade is unavailable (got \"%s\")"
+            % _ui._selected_key)
+    _check(_ui._trade_panel == null, "no trade panel may be opened without a road")
+
+    # The guard is a second lock: even a direct call cannot open the panel.
+    _ui._open_trade_panel(10)
+    _check(_ui._trade_panel == null, "_open_trade_panel must be a no-op without a road")
+    _ui._toggle_selection("sell", WOOD, "Wood")
+    _check(_ui._selected_key.is_empty(),
+        "_toggle_selection must be a no-op without a road (got \"%s\")" % _ui._selected_key)
+
+    # With the road the very same town becomes interactive.
+    _ui.open_town(town, true)
+    await process_frame
+    _check(_ui._can_trade(), "_can_trade must report the trade as available")
+    var live: Control = _rows_of(_ui.sell_list)[0]
+    _check(live.modulate == Color(1, 1, 1, 1),
+        "a row of a town with a road must not be dimmed (got %s)" % str(live.modulate))
+    _click(live)
+    await process_frame
+    _check(_ui._trade_panel != null, "with a road a click must open the trade panel")
+
+# -------------------------------------------------------
+# 8. The price of one unit in the rows
+# -------------------------------------------------------
+
+func _test_price(town: Dictionary) -> void:
+    _ui.open_town(town, true)
+    await process_frame
+
+    var quality: Dictionary = town.get("quality", {})
+    var market := float(_gdata.get_price(WOOD))
+    var expected_sell := int(round(
+            market * _gdata.get_quality_price_multiplier(str(quality.get(WOOD, "")))))
+    var expected_buy := int(round(market))
+
+    # The sale column: the town holds the goods, the row shows their stars, and the
+    # price carries the multiplier of exactly that level.
+    var row: Control = _rows_of(_ui.sell_list)[0]
+    var price_label := _find_price_label(row)
+    _check(price_label != null, "a row of the sale column must carry the price of a unit")
+    if price_label == null:
+        return
+    _check(price_label.text == str(expected_sell),
+        "the sale row must show the market price with the quality of the town (got \"%s\", expected \"%d\")"
+            % [price_label.text, expected_sell])
+    _check(price_label.tooltip_text.contains(str(expected_sell)),
+        "the price must explain itself in a tooltip (got \"%s\")" % price_label.tooltip_text)
+    _check(price_label.mouse_filter == Control.MOUSE_FILTER_STOP,
+        "the price must keep catching the mouse for its own tooltip")
+
+    # The price is not a dead zone: hovering it highlights the row, like the stars.
+    var normal: Color = row.get_theme_stylebox("panel").bg_color
+    price_label.mouse_entered.emit()
+    _check(row.get_theme_stylebox("panel").bg_color != normal,
+        "hovering the price must highlight the row as well")
+    price_label.mouse_exited.emit()
+    _check(row.get_theme_stylebox("panel").bg_color == normal,
+        "leaving the price must return the normal background")
+
+    # A row of the purchase column has no stars, and the quality of what the city will
+    # deliver is not known at the row: the plain market price.
+    var buy_row: Control = _rows_of(_ui.buy_list)[0]
+    var buy_price := _find_price_label(buy_row)
+    _check(buy_price != null, "a row of the purchase column must carry the price as well")
+    if buy_price != null:
+        _check(buy_price.text == str(expected_buy),
+            "the purchase row must show the plain market price (got \"%s\", expected \"%d\")"
+                % [buy_price.text, expected_buy])
+    _check(expected_sell >= expected_buy,
+        "a better quality must not make a unit cheaper (quality %d, market %d)"
+            % [expected_sell, expected_buy])
+
+# -------------------------------------------------------
+# 9. The live total of the order
+# -------------------------------------------------------
+
+func _test_total(town: Dictionary) -> void:
+    _ui.open_town(town, true)
+    await process_frame
+
+    var quality: Dictionary = town.get("quality", {})
+    var market := float(_gdata.get_price(WOOD))
+    var sell_price := int(round(
+            market * _gdata.get_quality_price_multiplier(str(quality.get(WOOD, "")))))
+    var buy_price := int(round(market))
+
+    # --- The sale column: the town sells, so the city pays ---
+    _click(_rows_of(_ui.sell_list)[0])
+    await process_frame
+    _check(_ui._total_label != null and is_instance_valid(_ui._total_label),
+        "the panel must show the total of the order")
+    if _ui._total_label == null:
+        return
+
+    # It lives in the free space LEFT of the confirm/cancel buttons.
+    var buttons_row: Node = _ui._confirm_button.get_parent()
+    var cancel_btn: Button = _ui._trade_panel.find_child("CancelButton", true, false)
+    _check(_ui._total_label.get_parent() == buttons_row,
+        "the total must share the row with the confirm/cancel buttons")
+    _check(buttons_row.get_child(0) == _ui._total_label,
+        "the total must be the first control of that row, left of the buttons")
+    _check(cancel_btn != null and cancel_btn.get_parent() == buttons_row,
+        "the cancel button must share the row with the total")
+    _check(_ui._total_label.size_flags_horizontal == Control.SIZE_EXPAND_FILL,
+        "the total must take the free space, which is what pushes the buttons right")
+
+    _ui._set_amount(25)
+    _check(_ui._total_label.text == "Cost: %d" % (25 * sell_price),
+        "the sale column must total as a cost (got \"%s\", expected \"Cost: %d\")"
+            % [_ui._total_label.text, 25 * sell_price])
+
+    # Real time: the "+"/"−" buttons and the field go through the same update.
+    _ui._add_amount(10)
+    _check(_ui._total_label.text == "Cost: %d" % (35 * sell_price),
+        "the total must follow the \"+\" button (got \"%s\")" % _ui._total_label.text)
+    _ui._add_amount(-100)
+    _check(_ui._total_label.text == "Cost: %d" % sell_price,
+        "the total must follow the \"−\" button (got \"%s\")" % _ui._total_label.text)
+    _type("7")
+    _check(_ui._total_label.text == "Cost: %d" % (7 * sell_price),
+        "the total must follow the typing (got \"%s\")" % _ui._total_label.text)
+    _type("")
+    _check(_ui._total_label.text == "Cost: 0",
+        "an empty amount must total 0 (got \"%s\")" % _ui._total_label.text)
+
+    # --- Permanent contract: the total is shown per second ---
+    _ui._set_amount(25)
+    var permanent_check: CheckBox = _ui._trade_panel.find_child("PermanentCheck", true, false)
+    _check(permanent_check != null, "the panel must have the Permanent checkbox")
+    if permanent_check != null:
+        permanent_check.button_pressed = true
+        await process_frame
+        _check(_ui._total_label.text == "Cost: %d/sec" % (25 * sell_price),
+            "permanent sale must show cost per second (got \"%s\")"
+                % _ui._total_label.text)
+        permanent_check.button_pressed = false
+        await process_frame
+        _check(_ui._total_label.text == "Cost: %d" % (25 * sell_price),
+            "disabling permanent must revert to plain cost (got \"%s\")"
+                % _ui._total_label.text)
+
+    # --- The purchase column: the town buys, so the city is paid ---
+    _click(_rows_of(_ui.buy_list)[0])
+    await process_frame
+    _ui._set_amount(4)
+    _check(_ui._total_label.text == "Income: %d" % (4 * buy_price),
+        "the purchase column must total as an income (got \"%s\", expected \"Income: %d\")"
+            % [_ui._total_label.text, 4 * buy_price])
+
+    # A new row selection resets the permanent flag, so the total is plain again.
+    var buy_permanent: CheckBox = _ui._trade_panel.find_child("PermanentCheck", true, false)
+    if buy_permanent != null:
+        buy_permanent.button_pressed = true
+        await process_frame
+        _check(_ui._total_label.text == "Income: %d/sec" % (4 * buy_price),
+            "permanent purchase must show income per second (got \"%s\")"
+                % _ui._total_label.text)
+
+# -------------------------------------------------------
 # Helpers
 # -------------------------------------------------------
 
@@ -431,6 +651,11 @@ func _click(row: Control) -> void:
 func _type(raw: String) -> void:
     _ui._amount_edit.text = raw
     _ui._on_amount_text_changed(raw)
+
+# The price label of a row: the named label inside the content of the row (the row is a
+# PanelContainer, so the label lives in its inner box).
+func _find_price_label(row: Control) -> Label:
+    return row.find_child("PriceLabel", true, false) as Label
 
 # The first Label of the subtree whose text is exactly `text` (null if there is none).
 func _find_label(root: Node, text: String) -> Label:

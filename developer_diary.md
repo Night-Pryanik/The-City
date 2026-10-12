@@ -2603,3 +2603,90 @@ and a tooltip; and a `_check_visible_frame` helper asserts a border on all four 
 luminance above 0.4 (a light frame against the dark panel) on the two buttons, the checkbox and the
 amount field. Full suite: 24/24 fast, plus `test_town_economy`, `test_road_building`,
 `test_town_roads`, `test_town_priorities`.
+
+## The town trade: the road gates the settings, and the money is on the screen (October 12, 2026)
+
+**Context.** Three more findings after the second showing of the town window: (1) the trade settings
+panel must not open at all while the trade with the town is unavailable (no road); (2) a resource row
+must show the price of ONE unit, to the right of the name; (3) the panel must show the sum of the
+order in the free space left of the confirm/cancel buttons, and that sum must follow the amount in
+real time. All three live in `scripts/town_ui.gd` (plus one comment in `main_map`); the scene was not
+touched.
+
+**1. The road gates the settings, not the window.** `_can_trade()` is now the single question, and
+three places ask it. `_build_resource_row` does not wire an inert row at all — no hover, no click —
+and dims it (`ROW_DISABLED_MODULATE`, 0.62), so the pool is still READ but reads as information, the
+same "the discovery opens the town, the road opens the trade" line the "Foreign trade" column already
+follows. `_toggle_selection` and `_open_trade_panel` check the flag again: the rows are simply not
+wired, but a guard in the two entry points means no caller (a test, a future button, a scripted
+refresh) can open the settings of a town without a road. The status row under the name still explains
+why. `main_map.open_town_ui`'s comment said the availability is passed "by the status, and not by a
+blocking" — that is now the opposite of the truth and was rewritten.
+
+**2. The price of a unit.** `_unit_price(resource_id, side)` = `GameData.get_price_for_quality(...)`:
+the current market price (base × the dynamic market multipliers — the same number the "Trade" tab
+works with) times the quality multiplier of the level the row shows. The `side` argument is what
+decides whether there IS a quality: the SALE column holds the goods the town itself has and its stars
+name that level, so the price carries exactly that multiplier; the PURCHASE column is about the goods
+the town LACKS — the quality of what the city will deliver is not known at the row and the row has no
+stars — so the plain market price is shown (`_town_quality_of` returns "" and the multiplier is 1.0).
+The first version of the function keyed the quality off the id alone and would have applied the town's
+quality to a purchase row as well, which is exactly the "the price and the stars of one row cannot
+tell different stories" rule broken. The label is gold (`UiHelpers.PRICE_TEXT_COLOR`, shared with the
+"Trade" tab), fixed-width (`PRICE_COLUMN_WIDTH`) so the prices line up in a column, and it keeps a
+tooltip — a bare number does not say it is the price of a single unit.
+
+**3. The live total.** The panel's button row got a `TotalLabel` that EXPANDS: that is what pushes the
+two icon buttons to the right edge (the old `ALIGNMENT_END` became redundant). The text is
+recomputed in `_update_total_label`, called from `_update_amount_feedback` — and both the field and the
+`+`/`−` buttons already go through that, so the sum follows the typing and the buttons with no extra
+plumbing. The direction is read from the side: the sale column is what the TOWN sells, so the city
+PAYS (`Cost: %d`, red); the purchase column is what the town buys, so the city IS PAID (`Income: %d`,
+gold) — the same pair of colours `external_trade_tab` paints its deal rows with.
+
+**The price is live, so the total is too.** The market multipliers move, so the price of a row is
+rewritten in place on every town tick — `refresh_storage` (which already refreshed the stock and the
+stars) now also walks `_price_labels` and re-runs `_update_total_label` for the open order. The new
+map is keyed by the row key and holds `{label, id, side}`, and it is cleared once per rebuild in
+`_refresh`, NOT per column: both columns have prices, and `_fill_resource_list` runs twice (buy, then
+sell), so clearing inside it would have wiped the purchase prices.
+
+**Localization.** Three new msgids: `Cost: %d` → "Стоимость: %d", `Income: %d` → "Доход: %d",
+`Price per unit: %d coins` → "Цена за единицу: %d монет" (the wording follows the existing "Cost:",
+"Income:" and "%d монет" entries). `i18n_check_po.py`: 0 untranslated, 0 Cyrillic, 0 duplicates.
+
+**Test.** `tests/test_town_trade_ui.gd` gained three cases. `no_trade`: the rows are listed but dimmed
+and do not react to hover, a click selects nothing and opens nothing, and a DIRECT call to
+`_open_trade_panel` / `_toggle_selection` is a no-op; the same town opened with a road becomes
+interactive again. `price`: the sale row shows the market price with the town's quality multiplier,
+the purchase row the plain market price, the tooltip names the number, and hovering the price
+highlights the row. `total`: the label sits first in the row with the buttons and expands, and the
+text follows `_set_amount`, the `+`/`−` buttons and the typing (`Cost: …` for the sale column,
+`Income: …` for the purchase one, `Cost: 0` for an empty field). The test also loads the game data
+itself (`_gdata.load_all_data()` when `data_loaded` is false) — in a `--script` run nothing loads it,
+the watchdog only RELOADS it once it is loaded. Full suite: 48/48 (`--all`).
+
+## The standing contract shows its cost per second (October 12, 2026)
+
+**Context.** The user asked: when the "Permanent" checkbox is on, the total of the order must be
+shown per second — `Cost: X/sec` or `Income: X/sec` — because a standing contract charges or pays
+every tick. The amount field already shows the number of units per tick, so the total must match
+that rhythm.
+
+**Implementation.** `_update_total_label` now branches on the state of the checkbox: when it is
+pressed, the format string carries `/sec` (`Cost: %d/sec` / `Income: %d/sec`). The checkbox is
+wired to `_on_permanent_toggled`, which stores the state in `_panel_permanent` and rewrites the
+total immediately — so the label switches the moment the box is checked or unchecked.
+
+`_panel_permanent` is also restored when the panel is rebuilt on a `_refresh` (a town tick or an
+era change): without this, the flag would be lost every second while the window stays open. A new
+resource selection resets it to `false` — each fresh row starts with a one-time deal, which is the
+safer default.
+
+**Localization.** Two new msgids: `Cost: %d/sec` → "Стоимость: %d/сек", `Income: %d/sec` →
+"Доход: %d/сек". `i18n_check_po.py` → 0 untranslated.
+
+**Test.** `tests/test_town_trade_ui.gd`, case `total`, was extended: toggling the checkbox to
+permanent appends `/sec` to the total; toggling back reverts to the plain format; switching to
+the buy column and toggling there shows `Income: …/sec`. Full suite: 24/24 fast, plus the four
+slow town tests, all PASS.

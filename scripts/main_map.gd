@@ -2379,8 +2379,10 @@ func _on_city_ui_close():
 #
 # The access to the interface does NOT depend on the road: a scouted town can
 # always be opened — there one can see what it has for sale and for purchase.
-# The road gates only the trade (see town_manager.is_trade_available), and
-# its availability is passed into the window by the status, and not by a blocking.
+# The road gates only the trade (see town_manager.is_trade_available), and the window
+# passes that availability on to its rows: without a road they are inert and the trade
+# settings panel cannot be opened at all (town_ui._can_trade), while the status row
+# under the name of the town says why.
 func open_town_ui(row: int, col: int):
     var town = find_town_at(row, col)
     if town == null:

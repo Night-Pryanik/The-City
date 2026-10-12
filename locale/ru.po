@@ -771,8 +771,14 @@ msgstr "Скопировать список"
 msgid "Cost:"
 msgstr "Стоимость:"
 
+msgid "Cost: %d"
+msgstr "Стоимость: %d"
+
 msgid "Cost: %d work"
 msgstr "Стоимость: %d труда"
+
+msgid "Cost: %d/sec"
+msgstr "Стоимость: %d/сек"
 
 msgid "Could not find a path to the town"
 msgstr "Не удалось найти путь до городка"
@@ -953,6 +959,12 @@ msgstr "Доход в казну за %s сек: %s монет/сек"
 
 msgid "Income:"
 msgstr "Доход:"
+
+msgid "Income: %d"
+msgstr "Доход: %d"
+
+msgid "Income: %d/sec"
+msgstr "Доход: %d/сек"
 
 msgid "Inside another town's influence ring"
 msgstr "В кольце влияния чужого городка"
@@ -1163,6 +1175,9 @@ msgstr "Население: 50"
 
 msgid "Price = base price of the goods ×%.2f (market) × quality multiplier"
 msgstr "Цена = базовая цена товара ×%.2f (рынок) × множитель качества"
+
+msgid "Price per unit: %d coins"
+msgstr "Цена за единицу: %d монет"
 
 msgid "Price per unit: having it in storage does not change it. Storage affects income (the \"Income\" row)."
 msgstr "Цена за единицу: наличие на складе её не меняет. Склад влияет на доход (строка «Доход»)."

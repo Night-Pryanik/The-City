@@ -21,12 +21,17 @@
 # settings of the resource right under itself (see _open_trade_panel). The highlight
 # is a stylebox on the row's PanelContainer — a transparent normal, a light hover and
 # a stronger "selected" state — so the row reacts like a button without turning every
-# label of the row into a button.
+# label of the row into a button. The interaction is only wired when the trade with the
+# town is available at all: without a road the rows are pure information (see
+# _can_trade).
 #
 # Every row of the sale column carries the stock of the town and its quality: the
 # stars of the level in its own colour (data/qualities.json). A town never holds
 # mixed quality, so there is nothing to break down and nothing to show in
 # percentages — the stars ARE the quality of the row (see town_economy).
+#
+# Every row, of either column, carries the price of ONE unit of the goods (in coins),
+# to the right of the name — see _unit_price.
 #
 # The trade settings panel is the FOUNDATION of the town trade, not the trade
 # itself: it assembles the order (the goods, the amount, the "permanent" flag) and
@@ -77,6 +82,24 @@ const ROW_NORMAL_COLOR := Color(1, 1, 1, 0)
 const ROW_HOVER_COLOR := Color(1, 1, 1, 0.10)
 const ROW_SELECTED_COLOR := Color(0.30, 0.55, 0.85, 0.35)
 
+# The dimming of a row of a town whose trade is not available (there is no road to it):
+# the pool is still shown — the player reads what the town has and what it lacks — but
+# the row is inert, and the dimming is what says so before the click (see
+# _build_resource_row).
+const ROW_DISABLED_MODULATE := Color(0.62, 0.62, 0.62, 1.0)
+
+# The width of the price column of a row. Fixed, so that the prices of the rows line up
+# in one column instead of every row placing its number by the length of its own name.
+const PRICE_COLUMN_WIDTH := 44
+
+# The colours of the money. The price of one unit is the same gold the "Trade" tab
+# already paints its prices with (UiHelpers.PRICE_TEXT_COLOR). The total of an order is
+# red when the city PAYS and gold when the city IS PAID — the same pair the deal rows of
+# the "Foreign trade" column use (external_trade_tab.COLOR_EXPENSE / COLOR_INCOME), so a
+# purchase and a sale are read the same way in both windows.
+const COLOR_EXPENSE := Color(0.9, 0.3, 0.3, 1)
+const COLOR_INCOME := Color(1.0, 0.807, 0.2, 1)
+
 # The markers that let the layout be read back: a row of a trade column and the key
 # of the resource behind it (the tests and the trade panel both use them).
 const META_RESOURCE_ROW := "town_resource_row"
@@ -95,11 +118,12 @@ const META_ROW_NAME := "town_row_name"
 
 # The current town (an entry from town_manager.towns). null — the window is closed.
 var _town = null
-# Whether trade with this town is available (town_manager.is_trade_available).
-# While the trade itself is not implemented, this is only a status row under the name:
-# the window opens even without a road — you can see what the town has for sale and
-# what it wants to buy. When real trade appears, this flag will decide
-# whether buying and selling are possible (see town_manager.is_trade_available).
+# Whether trade with this town is available (town_manager.is_trade_available — there is
+# a road from the city to it). The window opens either way: without a road the player
+# still sees what the town has for sale and what it wants to buy, and the status row
+# under the name says why there is no trade. What the flag DOES gate is the trade
+# settings: with no road the rows are inert (dimmed, not wired) and no trade panel can
+# be opened — see _can_trade, _build_resource_row, _toggle_selection.
 var _trade_available := true
 # Whether the window is open on a town at all. main_map checks it before asking
 # for a refresh of the quantities on every town tick.
@@ -115,6 +139,13 @@ var _sell_quantity_labels: Dictionary = {}
 # the refresh goes through the same place so that the two labels of a row cannot
 # drift apart.
 var _sell_quality_labels: Dictionary = {}
+# The price labels of the rows that are currently on the screen, by the row key:
+#   row_key -> { "label": Label, "id": String, "side": String }
+# Both columns have prices, so the map is NOT cleared per column — it is cleared once
+# per rebuild, in _refresh (unlike the two maps above, which only the sale column uses).
+# The market price of a product moves with the dynamic multipliers, and the number is
+# refreshed in place on every town tick together with the stock (see refresh_storage).
+var _price_labels: Dictionary = {}
 
 # The map (MainMap), set by main_map.set_map. The window asks it for the route to the
 # city to know the throughput the route can carry (see _route_capacity). null in a
@@ -143,12 +174,19 @@ var _amount_edit: LineEdit = null
 var _permanent_check: CheckBox = null
 var _warning_badge: Control = null
 var _confirm_button: Button = null
+var _total_label: Label = null
 var _panel_note: Label = null
 
 # Guards the text_changed handler from re-entering when the field is sanitized
 # programmatically (a programmatic assignment does not emit the signal, but the
 # guard keeps the handler safe to call from a test as well).
 var _suppress_edit := false
+
+# The last state of the "Permanent" checkbox of the open panel. It is restored when
+# the panel is rebuilt on a refresh (the town tick or an era change), so the player
+# does not lose the flag while the window stays open. A new resource selection resets
+# it to false.
+var _panel_permanent := false
 
 # The last order the window assembled. It is kept for the tests and as the handover
 # point to the future trade mechanics.
@@ -209,6 +247,7 @@ func _refresh():
                 else tr("Trade unavailable: there is no road from the city to this town")
         status_label.visible = not status_label.text.is_empty()
     _row_nodes.clear()
+    _price_labels.clear()
     _fill_resource_list(buy_list, _town.get("buy_pool", []), tr("The town buys nothing"),
             SIDE_BUY, false)
     _fill_resource_list(sell_list, _town.get("sell_pool", []),
@@ -220,10 +259,12 @@ func _refresh():
         _open_trade_panel(keep_amount)
         _refresh_row_styles()
 
-# Refreshes ONLY the numbers of the stock in the sale column, without touching the
-# rows themselves. It is called on every town tick while the window is open: the
-# warehouse of the town grows several times a second, and a full rebuild would throw
-# away the scroll position of the list and the highlight of the cursor.
+# Refreshes ONLY the live numbers of the rows — the stock and the stars of the sale
+# column and the price of every row of both columns — without touching the rows
+# themselves. It is called on every town tick while the window is open: the warehouse of
+# the town grows several times a second and the market price moves with the dynamic
+# multipliers, and a full rebuild would throw away the scroll position of the list and
+# the highlight of the cursor.
 func refresh_storage():
     if _town == null or not visible:
         return
@@ -235,7 +276,16 @@ func refresh_storage():
         var quality_label: Label = _sell_quality_labels[display_name]
         if is_instance_valid(quality_label):
             _apply_row_quality(quality_label, str(display_name))
+    for key in _price_labels:
+        var entry: Dictionary = _price_labels[key]
+        var price_label = entry.get("label", null)
+        if price_label is Label and is_instance_valid(price_label):
+            _apply_row_price(price_label, str(entry.get("id", "")), str(entry.get("side", "")))
     _update_treasury_label()
+    # The total of an open order is the amount times the price of a unit, so it has to
+    # follow the price as well — otherwise the sum would go stale under the player.
+    if _trade_panel != null and is_instance_valid(_trade_panel):
+        _update_total_label(_current_amount())
 
 # The units of a good that the town has on the stock. The rows are keyed by the
 # display name (two different ids are sometimes called the same, see
@@ -259,6 +309,42 @@ func _quality_of(display_name: String) -> String:
             return TownManager.get_town_goods_quality(_town, str(pid))
     return TownEconomy.DEFAULT_QUALITY
 
+# Whether the trade with the current town is available at all: there must be a road
+# from the city to it (town_manager.is_trade_available). The WINDOW opens either way —
+# without a road the player still sees what the town has for sale and what it wants to
+# buy — but the trade SETTINGS do not: the rows are inert and no panel opens
+# (see _build_resource_row and _toggle_selection).
+func _can_trade() -> bool:
+    return _trade_available
+
+# The price of ONE unit of a row, in whole coins: the current market price of the
+# product (GameData.get_price — the base price with the dynamic market multipliers, the
+# same number the "Trade" tab of the city works with), multiplied by the quality
+# multiplier of the level the row shows.
+#
+# side — the column, and it decides whether there is a quality at all. The SALE column
+# holds the goods the town itself has, and the stars of the row name their level, so the
+# price carries the multiplier of exactly that level: the price and the stars of a row
+# cannot tell different stories. The PURCHASE column is about the goods the town LACKS —
+# the quality of what the city will deliver is not known at the row (and the row has no
+# stars), so the plain market price is shown there.
+func _unit_price(resource_id: String, side: String) -> int:
+    var quality_id := _town_quality_of(resource_id) if side == SIDE_SELL else ""
+    return int(round(GameData.get_price_for_quality(resource_id, quality_id)))
+
+# The quality level the town holds of a product, or "" when it does not hold it at all.
+# An empty id is a meaningful answer for _unit_price: the multiplier of an unknown level
+# is 1.0 (see GameData.get_quality_price_multiplier), which is exactly the plain market
+# price of a row of the purchase column.
+func _town_quality_of(resource_id: String) -> String:
+    if _town == null:
+        return ""
+    var quality: Dictionary = _town.get("quality", {})
+    var quality_id := str(quality.get(resource_id, ""))
+    if quality_id.is_empty() or quality_id == "<null>":
+        return ""
+    return quality_id
+
 # Paints the stars of a row in the colour of their level and writes the text.
 # The stars are the WHOLE story of the quality of a town row: there is no breakdown
 # and no percentages, because a town never holds mixed quality (see town_economy).
@@ -273,6 +359,14 @@ func _apply_row_quality(quality_label: Label, display_name: String) -> void:
     quality_label.add_theme_color_override("font_color",
             GameData.get_quality_color(quality_id))
     quality_label.tooltip_text = tr("Quality: %s") % GameData.get_quality_name(quality_id)
+
+# Writes the price of one unit into the label of a row, together with its tooltip. The
+# bare number does not say what it is, and a row has no room for the words "price per
+# unit" next to it — so the words live in the tooltip.
+func _apply_row_price(price_label: Label, resource_id: String, side: String) -> void:
+    var price := _unit_price(resource_id, side)
+    price_label.text = str(price)
+    price_label.tooltip_text = tr("Price per unit: %d coins") % price
 
 func _format_stock(amount: int) -> String:
     return tr("%d units") % amount
@@ -371,14 +465,18 @@ func _fill_resource_list(container: VBoxContainer, pool, empty_text: String,
             container.add_child(_build_resource_row(
                     item["id"], item["name"], side, with_stock))
 
-# Builds one interactive row of a trade column: the icon, the name and — for the sale
-# column — the quality stars and the units on the stock of the town.
+# Builds one row of a trade column: the icon, the name, the price of one unit and —
+# for the sale column — the quality stars and the units on the stock of the town.
 #
 # The row is a PanelContainer with a stylebox background that carries the three
 # states of the row (normal, hover, selected). The children of the row ignore the
-# mouse EXCEPT the quality stars, which keep their own tooltip; both the row and the
-# stars are wired to the same hover and click handlers, so the whole row reacts as
-# one control and the stars are not a dead zone.
+# mouse EXCEPT the quality stars and the price, which keep their own tooltips; the row
+# and those two labels are wired to the same hover and click handlers, so the whole row
+# reacts as one control and neither of them is a dead zone.
+#
+# Without a road the trade is unavailable: the row is still built (the player reads the
+# pool), but it is dimmed and NOT wired at all — it is pure information, and no trade
+# panel can be opened from it (see _can_trade, _toggle_selection).
 func _build_resource_row(resource_id: String, display_name: String,
         side: String, with_stock: bool) -> PanelContainer:
     var row := PanelContainer.new()
@@ -413,6 +511,20 @@ func _build_resource_row(resource_id: String, display_name: String,
     resource_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
     content.add_child(resource_label)
 
+    # The price of ONE unit of the goods, right after the name: the number the player
+    # compares the rows by. It keeps its own tooltip (the bare number does not say that
+    # it is the price of a single unit) and is wired to the row, exactly like the
+    # quality stars — otherwise it would be a dead zone in the middle of the row.
+    var price_label := Label.new()
+    price_label.name = "PriceLabel"
+    price_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+    price_label.custom_minimum_size = Vector2(PRICE_COLUMN_WIDTH, 0)
+    price_label.add_theme_color_override("font_color", UiHelpers.PRICE_TEXT_COLOR)
+    price_label.mouse_filter = Control.MOUSE_FILTER_STOP
+    _apply_row_price(price_label, resource_id, side)
+    content.add_child(price_label)
+    _price_labels[row_key] = {"label": price_label, "id": resource_id, "side": side}
+
     var quality_label: Label = null
     if with_stock:
         # The quality of the goods comes BEFORE the quantity: the stars read as
@@ -434,22 +546,33 @@ func _build_resource_row(resource_id: String, display_name: String,
         content.add_child(stock_label)
         _sell_quantity_labels[display_name] = stock_label
 
-    _wire_row_interaction(row, quality_label, side, resource_id, display_name)
+    # No road — no trade: the row stays on the screen as information, but it is dimmed
+    # and not wired at all, so it neither highlights nor opens the trade panel. The
+    # status row above the columns says why (see _refresh).
+    if not _can_trade():
+        row.modulate = ROW_DISABLED_MODULATE
+        _row_nodes[row_key] = row
+        return row
+
+    _wire_row_interaction(row, [price_label, quality_label], side, resource_id, display_name)
     _row_nodes[row_key] = row
     return row
 
-# Connects the row and its interactive child (the quality stars) to the common
-# hover/click handlers. The row is the argument of both, so an enter of the stars
-# after the exit of the row does not clear the highlight of the same row.
-func _wire_row_interaction(row: Control, quality_label: Label,
+# Connects the row and its interactive children (the price and the quality stars) to
+# the common hover/click handlers. The row is the argument of both handlers, so an
+# enter of a child after the exit of the row does not clear the highlight of the same
+# row.
+func _wire_row_interaction(row: Control, children: Array,
         side: String, resource_id: String, display_name: String) -> void:
     row.mouse_entered.connect(_on_row_hover.bind(row, true))
     row.mouse_exited.connect(_on_row_hover.bind(row, false))
     row.gui_input.connect(_on_row_gui_input.bind(side, resource_id, display_name))
-    if quality_label != null:
-        quality_label.mouse_entered.connect(_on_row_hover.bind(row, true))
-        quality_label.mouse_exited.connect(_on_row_hover.bind(row, false))
-        quality_label.gui_input.connect(_on_row_gui_input.bind(side, resource_id, display_name))
+    for child in children:
+        if child == null or not is_instance_valid(child):
+            continue
+        child.mouse_entered.connect(_on_row_hover.bind(row, true))
+        child.mouse_exited.connect(_on_row_hover.bind(row, false))
+        child.gui_input.connect(_on_row_gui_input.bind(side, resource_id, display_name))
 
 func _on_row_hover(row: Control, hovered: bool) -> void:
     if row == null or not is_instance_valid(row):
@@ -469,7 +592,14 @@ func _on_row_gui_input(event: InputEvent, side: String,
 # A click on a row selects the resource and opens its trade panel under the row; a
 # repeated click on the selected row closes the panel. Only one resource is selected
 # at a time, so selecting in one column closes the panel of the other.
+#
+# Without a road the trade is unavailable and nothing happens at all: the rows of such
+# a town are not even wired to this handler (see _build_resource_row), and the guard
+# here is the second lock — no caller can open the trade settings of a town the trade
+# is not available with.
 func _toggle_selection(side: String, resource_id: String, display_name: String) -> void:
+    if not _can_trade():
+        return
     var key := "%s:%s" % [side, resource_id]
     if _selected_key == key:
         _clear_selection()
@@ -479,6 +609,7 @@ func _toggle_selection(side: String, resource_id: String, display_name: String) 
     _selected_id = resource_id
     _selected_name = display_name
     _hovered_row = null
+    _panel_permanent = false
     _open_trade_panel(STEP_DEFAULT)
     _refresh_row_styles()
 
@@ -502,6 +633,7 @@ func _free_trade_panel() -> void:
     _permanent_check = null
     _warning_badge = null
     _confirm_button = null
+    _total_label = null
     _panel_note = null
 
 # Applies the state stylebox to one row: the selected state wins over the hover, so
@@ -537,7 +669,12 @@ func _make_row_style(color: Color) -> StyleBoxFlat:
 #
 # amount — the amount to show in the field (the previous one when the panel is rebuilt
 # on a refresh, the default step when a row is opened).
+#
+# The panel is the trade settings of a town, so it does not exist without a trade: with
+# no road to the town the call is a no-op (see _can_trade).
 func _open_trade_panel(amount: int) -> void:
+    if not _can_trade():
+        return
     _free_trade_panel()
     var row: Control = _row_nodes.get(_selected_key, null)
     if row == null or not is_instance_valid(row):
@@ -631,6 +768,8 @@ func _build_trade_panel() -> PanelContainer:
     _permanent_check.text = ""
     _permanent_check.tooltip_text = tr("Turn a one-time deal into a standing contract")
     _style_check_box(_permanent_check)
+    _permanent_check.button_pressed = _panel_permanent
+    _permanent_check.toggled.connect(_on_permanent_toggled)
     permanent_row.add_child(_permanent_check)
 
     var permanent_label := Label.new()
@@ -644,10 +783,17 @@ func _build_trade_panel() -> PanelContainer:
 
     vbox.add_child(permanent_row)
 
-    # Confirm / cancel: square icon-only buttons, right-aligned.
+    # Confirm / cancel: square icon-only buttons, right-aligned. The free space left of
+    # them is taken by the total of the order — the label expands, which is what pushes
+    # the two buttons to the right edge (see _update_total_label).
     var buttons_row := HBoxContainer.new()
     buttons_row.add_theme_constant_override("separation", 6)
-    buttons_row.alignment = BoxContainer.ALIGNMENT_END
+    _total_label = Label.new()
+    _total_label.name = "TotalLabel"
+    _total_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    _total_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    _total_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    buttons_row.add_child(_total_label)
     _confirm_button = _make_icon_button(
             "ConfirmButton", "check.svg", "✓", tr("Confirm"))
     _confirm_button.pressed.connect(_on_confirm_pressed)
@@ -796,6 +942,12 @@ func _on_permanent_label_input(event: InputEvent) -> void:
     if _permanent_check != null and is_instance_valid(_permanent_check):
         _permanent_check.button_pressed = not _permanent_check.button_pressed
 
+# The checkbox changed its state: the total must be rewritten — in the permanent
+# mode the amount is shown per second ("/sec").
+func _on_permanent_toggled(pressed: bool) -> void:
+    _panel_permanent = pressed
+    _update_total_label(_current_amount())
+
 # --- The amount field ---
 
 # The step of the "+"/"−" buttons by the modifiers held at the moment of the click:
@@ -876,6 +1028,35 @@ func _update_amount_feedback() -> void:
     if _confirm_button != null and is_instance_valid(_confirm_button):
         _confirm_button.disabled = amount <= 0
     _update_warning_badge(amount)
+    _update_total_label(amount)
+
+# The sum of the order, in the free space left of the confirm/cancel buttons. It is
+# recomputed on EVERY change of the amount — the field and the "+"/"−" buttons both go
+# through _update_amount_feedback — so the number follows the typing in real time and
+# the player sees what the deal costs (or brings) before he confirms it.
+#
+# The direction is read from the side. The sale column holds the goods the TOWN sells,
+# so the city PAYS for them (red); the buy column holds the goods the town wants, so the
+# city IS PAID for them (gold). The amount and the price of a unit are whole numbers, so
+# the total is a whole number of coins — exactly what the treasury will move.
+func _update_total_label(amount: int) -> void:
+    if _total_label == null or not is_instance_valid(_total_label):
+        return
+    var total := amount * _unit_price(_selected_id, _selected_side)
+    var permanent := _permanent_check != null and is_instance_valid(_permanent_check) \
+            and _permanent_check.button_pressed
+    if _selected_side == SIDE_SELL:
+        if permanent:
+            _total_label.text = tr("Cost: %d/sec") % total
+        else:
+            _total_label.text = tr("Cost: %d") % total
+        _total_label.add_theme_color_override("font_color", COLOR_EXPENSE)
+    else:
+        if permanent:
+            _total_label.text = tr("Income: %d/sec") % total
+        else:
+            _total_label.text = tr("Income: %d") % total
+        _total_label.add_theme_color_override("font_color", COLOR_INCOME)
 
 # The warning triangle is shown when the entered amount is larger than the route can
 # carry: the surplus is not lost, it queues on the road and arrives later (see

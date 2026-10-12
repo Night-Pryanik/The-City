@@ -771,7 +771,13 @@ msgstr ""
 msgid "Cost:"
 msgstr ""
 
+msgid "Cost: %d"
+msgstr ""
+
 msgid "Cost: %d work"
+msgstr ""
+
+msgid "Cost: %d/sec"
 msgstr ""
 
 msgid "Could not find a path to the town"
@@ -952,6 +958,12 @@ msgid "Income to the treasury over %s sec: %s coins/sec"
 msgstr ""
 
 msgid "Income:"
+msgstr ""
+
+msgid "Income: %d"
+msgstr ""
+
+msgid "Income: %d/sec"
 msgstr ""
 
 msgid "Inside another town's influence ring"
@@ -1162,6 +1174,9 @@ msgid "Population: 50"
 msgstr ""
 
 msgid "Price = base price of the goods ×%.2f (market) × quality multiplier"
+msgstr ""
+
+msgid "Price per unit: %d coins"
 msgstr ""
 
 msgid "Price per unit: having it in storage does not change it. Storage affects income (the \"Income\" row)."
