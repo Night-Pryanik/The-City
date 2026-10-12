@@ -261,6 +261,81 @@ theme_override_constants/separation = 4
 layout_mode = 2
 text = "Foreign trade"
 
+[node name="SectionsBar" type="HBoxContainer" parent="ContentPanel/TradePanel/Split/ExternalPanel" unique_id=1900000210]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="DealsButton" type="Button" parent="ContentPanel/TradePanel/Split/ExternalPanel/SectionsBar" unique_id=1900000211]
+custom_minimum_size = Vector2(36, 34)
+layout_mode = 2
+tooltip_text = "Trade deals"
+
+[node name="PartnersButton" type="Button" parent="ContentPanel/TradePanel/Split/ExternalPanel/SectionsBar" unique_id=1900000212]
+custom_minimum_size = Vector2(36, 34)
+layout_mode = 2
+tooltip_text = "Trade partners"
+
+[node name="DealsSection" type="VBoxContainer" parent="ContentPanel/TradePanel/Split/ExternalPanel" unique_id=1900000213]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="SortBar" type="HBoxContainer" parent="ContentPanel/TradePanel/Split/ExternalPanel/DealsSection" unique_id=1900000214]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="NameSortButton" type="Button" parent="ContentPanel/TradePanel/Split/ExternalPanel/DealsSection/SortBar" unique_id=1900000215]
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+
+[node name="PriceSortButton" type="Button" parent="ContentPanel/TradePanel/Split/ExternalPanel/DealsSection/SortBar" unique_id=1900000216]
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+
+[node name="TypeSortButton" type="Button" parent="ContentPanel/TradePanel/Split/ExternalPanel/DealsSection/SortBar" unique_id=1900000217]
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+
+[node name="DealsScroll" type="ScrollContainer" parent="ContentPanel/TradePanel/Split/ExternalPanel/DealsSection" unique_id=1900000218]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
+
+[node name="DealsList" type="VBoxContainer" parent="ContentPanel/TradePanel/Split/ExternalPanel/DealsSection/DealsScroll" unique_id=1900000219]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="PartnersSection" type="VBoxContainer" parent="ContentPanel/TradePanel/Split/ExternalPanel" unique_id=1900000220]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="SortBar" type="HBoxContainer" parent="ContentPanel/TradePanel/Split/ExternalPanel/PartnersSection" unique_id=1900000221]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="NameSortButton" type="Button" parent="ContentPanel/TradePanel/Split/ExternalPanel/PartnersSection/SortBar" unique_id=1900000222]
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+
+[node name="DistanceSortButton" type="Button" parent="ContentPanel/TradePanel/Split/ExternalPanel/PartnersSection/SortBar" unique_id=1900000223]
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+
+[node name="PartnersScroll" type="ScrollContainer" parent="ContentPanel/TradePanel/Split/ExternalPanel/PartnersSection" unique_id=1900000224]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
+
+[node name="PartnersList" type="VBoxContainer" parent="ContentPanel/TradePanel/Split/ExternalPanel/PartnersSection/PartnersScroll" unique_id=1900000225]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
 [node name="TechnologiesPanel" type="Panel" parent="ContentPanel" unique_id=1065922502]
 layout_mode = 1
 anchors_preset = 15

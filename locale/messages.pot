@@ -453,6 +453,9 @@ msgstr ""
 msgid "As long as the group has no goods in storage there is nothing to buy — no income."
 msgstr ""
 
+msgid "Ascending"
+msgstr ""
+
 msgid "Assign a worker to the improvement"
 msgstr ""
 
@@ -549,6 +552,21 @@ msgstr ""
 msgid "By buyers (actual):"
 msgstr ""
 
+msgid "By deal type"
+msgstr ""
+
+msgid "By distance to the town"
+msgstr ""
+
+msgid "By resource name"
+msgstr ""
+
+msgid "By resource price"
+msgstr ""
+
+msgid "By town name"
+msgstr ""
+
 msgid "Cancel"
 msgstr ""
 
@@ -637,6 +655,9 @@ msgid "Claiming land started (%d work)"
 msgstr ""
 
 msgid "Click — building control panel"
+msgstr ""
+
+msgid "Click: sort the list; a repeated click reverses the order"
 msgstr ""
 
 msgid "Close"
@@ -765,6 +786,9 @@ msgstr ""
 msgid "Delivery:"
 msgstr ""
 
+msgid "Descending"
+msgstr ""
+
 msgid "Disallowed characters in an identifier"
 msgstr ""
 
@@ -856,6 +880,9 @@ msgid "Game saved."
 msgstr ""
 
 msgid "Go to the technology list"
+msgstr ""
+
+msgid "Go to the town"
 msgstr ""
 
 msgid "Greek"
@@ -1020,6 +1047,12 @@ msgstr ""
 msgid "No technology is being researched. Click to select a technology"
 msgstr ""
 
+msgid "No towns discovered yet"
+msgstr ""
+
+msgid "No trade deals yet"
+msgstr ""
+
 msgid "No water access within the chain's reach (irrigation/canals: 3/4 hops from a river/lake)"
 msgstr ""
 
@@ -1147,6 +1180,9 @@ msgid "Production slots: %d"
 msgstr ""
 
 msgid "Profit (actual, average): %s / sec"
+msgstr ""
+
+msgid "Purchase"
 msgstr ""
 
 msgid "Quality priority: %s (click to switch)"
@@ -1309,6 +1345,9 @@ msgid "Road: %s"
 msgstr ""
 
 msgid "Roads cannot be built over water"
+msgstr ""
+
+msgid "Sale"
 msgstr ""
 
 msgid "Save game"
@@ -1537,6 +1576,12 @@ msgid "Town %d"
 msgstr ""
 
 msgid "Trade"
+msgstr ""
+
+msgid "Trade deals"
+msgstr ""
+
+msgid "Trade partners"
 msgstr ""
 
 msgid "Trade unavailable: there is no road from the city to this town"

@@ -1,6 +1,10 @@
 # city_ui.gd
 extends Control
 
+# The shared UI helpers. The static members (the highlight of the active button of a toggle
+# group) are used directly; the instance is created in _ready.
+const UiHelpers = preload("res://scripts/ui_helpers.gd")
+
 # The tabs (panels)
 @onready var resources_panel = $ContentPanel/ResourcesPanel
 @onready var buildings_panel = $ContentPanel/BuildingsPanel
@@ -44,6 +48,12 @@ var resources_tab: Node
 var buildings_tab: Node
 var tech_tree: Control
 var trade_tab: Node
+# The right column of the tab "Trade" — the foreign trade with the towns
+# (see external_trade_tab.gd).
+var external_trade_tab: Node
+# The map itself: the foreign trade column reads the towns discovered by the player
+# from it (see set_map).
+var main_map: Node = null
 
 var data_cache: Dictionary = {}
 
@@ -83,6 +93,9 @@ const BUILDING_DETAIL_LEAVE_GRACE: float = 0.35
 signal build_requested(building_id: String)
 signal research_requested(tech_id: String)
 signal closed()
+# The "Trade partners" column asked to show a town on the map: the city interface is closed
+# and the map is centered on the town (main_map._on_town_focus_requested).
+signal town_focus_requested(row: int, col: int)
 
 var building_panel
 
@@ -105,9 +118,17 @@ func set_worker_manager(wm: Node):
     if trade_tab != null:
         trade_tab.set_worker_manager(wm)
 
+# The reference to the map, passed from main_map (as worker_manager): the "Trade" tab needs it
+# for the external column — the list of the towns discovered by the player, their distance from
+# the city and the jump to a town (see external_trade_tab.gd).
+func set_map(map_node: Node):
+    main_map = map_node
+    if external_trade_tab != null:
+        external_trade_tab.set_map(map_node)
+
 func _ready():
     # We load the modules
-    ui_helpers = load("res://scripts/ui_helpers.gd").new()
+    ui_helpers = UiHelpers.new()
     ui_helpers.setup(self, message_label)
     add_child(ui_helpers)
 
@@ -157,6 +178,14 @@ func _ready():
         ui_helpers
     )
     add_child(trade_tab)
+
+    # The right column of the same tab — the foreign trade: the sections "Trade deals" and
+    # "Trade partners" with their own sorting.
+    external_trade_tab = load("res://scripts/external_trade_tab.gd").new()
+    external_trade_tab.setup($ContentPanel/TradePanel/Split/ExternalPanel, ui_helpers)
+    external_trade_tab.set_map(main_map)
+    external_trade_tab.town_focus_requested.connect(_on_town_focus_requested)
+    add_child(external_trade_tab)
 
     # The signals of the buttons
     for btn in [resources_tab_button, buildings_tab_button, trade_tab_button, technologies_tab_button]:
@@ -290,6 +319,9 @@ func _refresh_light(force_resources := false):
         # is active.
         if active_tab == "trade":
             trade_tab.update_values()
+            # The external column lives on the same interval: the towns discovered since the last
+            # update appear in the list of the partners without a reopening of the tab.
+            external_trade_tab.update_values()
         # On a change of the resource era we update the open tooltip of the treasury breakdown
         # with the fresh data (the planned income is recalculated, the snapshot of the expenses
         # is updated, see CityData.tick_resource_display → rotate_treasury_window).
@@ -341,6 +373,7 @@ func _refresh_all():
     buildings_tab.refresh_built()
     tech_tree.refresh()
     trade_tab.refresh()
+    external_trade_tab.refresh()
     _update_food_label()
 
 func _switch_tab(tab_id: String):
@@ -368,8 +401,10 @@ func _switch_tab(tab_id: String):
         tech_tree.refresh()
     elif tab_id == "trade":
         # The composition of the cards depends on the assignments and the population, therefore on
-        # opening the tab the list is rebuilt entirely.
+        # opening the tab the list is rebuilt entirely. The same for the external column: the list
+        # of the towns discovered by the player changes with the scouting of the map.
         trade_tab.refresh()
+        external_trade_tab.refresh()
 
     ui_helpers.set_message("")
     _highlight_active_tab_button()
@@ -384,20 +419,15 @@ func _on_tab_button_pressed(btn: Button):
 func _on_close_pressed():
     _close_ui()
 
-func _highlight_active_tab_button():
-    var active_style = StyleBoxFlat.new()
-    active_style.bg_color = Color(0.784, 0.784, 0.784, 1.0)
-    var inactive_style = StyleBoxFlat.new()
-    inactive_style.bg_color = Color(0.471, 0.471, 0.471, 0.3)
+func _on_town_focus_requested(row: int, col: int):
+    # The column asked to show a town on the map. The interface is closed by the owner of the
+    # city window (main_map): it is there that the HUD, the panel of the hex and the map itself
+    # live, and it is there that the centering happens.
+    emit_signal("town_focus_requested", row, col)
 
+func _highlight_active_tab_button():
     for tab in tab_buttons:
-        var btn: Button = tab["button"]
-        if tab["id"] == active_tab:
-            btn.add_theme_stylebox_override("normal", active_style)
-            btn.add_theme_color_override("font_color", Color.BLACK)
-        else:
-            btn.add_theme_stylebox_override("normal", inactive_style)
-            btn.add_theme_color_override("font_color", Color.WHITE)
+        UiHelpers.highlight_toggle_button(tab["button"], tab["id"] == active_tab)
 
 func _update_food_label():
     var pool = resources_tab.get_food_pool()

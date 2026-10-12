@@ -462,6 +462,9 @@ func _ready():
     # The planned consumption on the tab "Resources" (the tooltip and the dynamics "≈") is counted
     # by the workers worker_manager — we pass the reference into the UI of the city.
     city_ui.set_worker_manager(worker_manager)
+    # The external column of the tab "Trade" reads the towns discovered by the player and their
+    # distance from the city from the map (see get_trade_partners).
+    city_ui.set_map(self)
 
     # The initialization of DebugManager
     debug_manager.initialize(self)
@@ -481,6 +484,9 @@ func _ready():
     _update_treasury_hud()
 
     city_ui.closed.connect(_on_city_ui_close)
+    # The "Trade partners" column asked to show a town: the city window is closed and the map is
+    # centered on the town (see _on_town_focus_requested).
+    city_ui.town_focus_requested.connect(_on_town_focus_requested)
     town_ui.closed.connect(_on_town_ui_close)
     town_manager.town_treasury_changed.connect(town_ui.on_town_treasury_changed)
     town_manager.town_storage_changed.connect(town_ui.on_town_storage_changed)
@@ -2386,6 +2392,29 @@ func find_town_at(row: int, col: int):
         return null
     return town_manager.find_town_at(row, col)
 
+# The rows of the "Trade partners" column of the city interface: every town the player has
+# discovered (its hex lies in the known territory or has been scouted, see
+# town_manager.is_town_discovered), with the distance from the city in hexes and the state of
+# the road link. A town without a road is NOT hidden: the road gates the trade itself
+# (town_manager.is_trade_available), while the column shows what the player has already found.
+func get_trade_partners() -> Array:
+    var result: Array = []
+    if town_manager == null:
+        return result
+    for town in town_manager.get_discovered_towns(tile_data):
+        var row := int(town.get("row", -1))
+        var col := int(town.get("col", -1))
+        result.append({
+            "id": str(town.get("id", "")),
+            "name": str(town.get("name", "")),
+            "row": row,
+            "col": col,
+            "color": town.get("border_color", []),
+            "distance": HexUtils.hex_distance(city_row, city_col, row, col),
+            "trade_available": town_manager.is_trade_available(town),
+        })
+    return result
+
 func _on_town_ui_close():
     town_ui.hide()
     hud.show()
@@ -2581,8 +2610,29 @@ func _road_hex_allowed() -> Callable:
 
 func _on_city_button_gui_input(event: InputEvent):
     if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
-        scroll_offset = - (HexUtils.hex_center(city_row, city_col, HEX_RADIUS) + Vector2(offset_x, offset_y) - get_viewport_rect().size / 2.0)
-        map_renderer.queue_redraw()
+        center_on_hex(city_row, city_col)
+
+# Centers the map on a hex. The clamp by get_max_scroll is the same as in the edge scrolling
+# (InputHandler): without it a hex at the border of the Region would ask for a scroll the map
+# cannot make, and the hex would stay off screen.
+func center_on_hex(row: int, col: int) -> void:
+    var max_scroll = get_max_scroll()
+    scroll_offset = - (HexUtils.hex_center(row, col, HEX_RADIUS) + Vector2(offset_x, offset_y)
+            - get_viewport_rect().size / 2.0)
+    scroll_offset.x = clamp(scroll_offset.x, -max_scroll.x, max_scroll.x)
+    scroll_offset.y = clamp(scroll_offset.y, -max_scroll.y, max_scroll.y)
+    map_renderer.queue_redraw()
+    map_renderer.queue_redraw_for_scroll()
+    if progress_bar_layer:
+        progress_bar_layer.queue_redraw()
+
+# The jump from the "Trade partners" column of the city interface: the city window is closed and
+# the map is centered on the town. The closing goes through the ordinary path
+# (city_ui.close_city), so the HUD, the panel of the hex and the tooltips return exactly as on
+# the "X" button.
+func _on_town_focus_requested(row: int, col: int) -> void:
+    city_ui.close_city()
+    center_on_hex(row, col)
 
 func _on_expansion_button_pressed():
     # The "Development" button no longer has any functionality

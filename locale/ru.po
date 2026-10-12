@@ -453,6 +453,9 @@ msgstr "Область не разведана — информация недо
 msgid "As long as the group has no goods in storage there is nothing to buy — no income."
 msgstr "Пока на складе нет товара этой группы, покупать нечего — дохода не будет."
 
+msgid "Ascending"
+msgstr "По возрастанию"
+
 msgid "Assign a worker to the improvement"
 msgstr "Назначить рабочего на улучшение"
 
@@ -549,6 +552,21 @@ msgstr "Покупка"
 msgid "By buyers (actual):"
 msgstr "По покупателям (факт):"
 
+msgid "By deal type"
+msgstr "По типу сделки"
+
+msgid "By distance to the town"
+msgstr "По дальности до городка"
+
+msgid "By resource name"
+msgstr "По названию ресурса"
+
+msgid "By resource price"
+msgstr "По стоимости ресурса"
+
+msgid "By town name"
+msgstr "По названию городка"
+
 msgid "Cancel"
 msgstr "Отмена"
 
@@ -638,6 +656,9 @@ msgstr "Освоение территории начато (%d труда)"
 
 msgid "Click — building control panel"
 msgstr "Клик — панель управления зданием"
+
+msgid "Click: sort the list; a repeated click reverses the order"
+msgstr "Нажмите чтобы отсортировать список; повторное нажатие меняет порядок"
 
 msgid "Close"
 msgstr "Закрыть"
@@ -765,6 +786,9 @@ msgstr "Дебаг: вся карта открыта и в Кольце Влия
 msgid "Delivery:"
 msgstr "Доставка:"
 
+msgid "Descending"
+msgstr "По убыванию"
+
 msgid "Disallowed characters in an identifier"
 msgstr "Недопустимые символы в идентификаторе"
 
@@ -857,6 +881,9 @@ msgstr "Игра сохранена."
 
 msgid "Go to the technology list"
 msgstr "Перейти к списку технологий"
+
+msgid "Go to the town"
+msgstr "Перейти к городку"
 
 msgid "Greek"
 msgstr "греческая"
@@ -1020,6 +1047,12 @@ msgstr "Нет разведанного пути от города до горо
 msgid "No technology is being researched. Click to select a technology"
 msgstr "Никакая технология не изучается. Нажмите, чтобы выбрать технологию"
 
+msgid "No towns discovered yet"
+msgstr "Разведанных городков пока нет"
+
+msgid "No trade deals yet"
+msgstr "Торговых сделок пока нет"
+
 msgid "No water access within the chain's reach (irrigation/canals: 3/4 hops from a river/lake)"
 msgstr "Нет доступа к воде в зоне досягаемости цепочки (irrigation/canals: 3/4 хопа от реки/озера)"
 
@@ -1148,6 +1181,9 @@ msgstr "Слотов производства: %d"
 
 msgid "Profit (actual, average): %s / sec"
 msgstr "Прибыль (фактическая, средняя): %s / сек"
+
+msgid "Purchase"
+msgstr "Покупка"
 
 msgid "Quality priority: %s (click to switch)"
 msgstr "Приоритет качества: %s (нажмите чтобы переключить)"
@@ -1310,6 +1346,9 @@ msgstr "Дорога: %s"
 
 msgid "Roads cannot be built over water"
 msgstr "По воде дорога не строится"
+
+msgid "Sale"
+msgstr "Продажа"
 
 msgid "Save game"
 msgstr "Сохранить игру"
@@ -1538,6 +1577,12 @@ msgstr "Городок %d"
 
 msgid "Trade"
 msgstr "Торговля"
+
+msgid "Trade deals"
+msgstr "Торговые сделки"
+
+msgid "Trade partners"
+msgstr "Торговые партнёры"
 
 msgid "Trade unavailable: there is no road from the city to this town"
 msgstr "Торговля недоступна: от города нет дороги до этого городка"

@@ -380,9 +380,7 @@ func _run() -> void:
             check(ext_title != null and ext_title.text in [ext_source, tr(ext_source)],
                 "the foreign trade must have a title: %s"
                         % (ext_title.text if ext_title != null else "no node"), state)
-            # The foreign trade is a stub: apart from the title there is nothing.
-            check(external_panel.get_child_count() == 1,
-                "the foreign trade column must for now contain only the title", state)
+            _check_external_trade(city_ui, main_map, state)
         # We open the tab and look at the cards.
         city_ui.refresh()
         city_ui._switch_tab("trade")
@@ -720,6 +718,339 @@ func _all_members(gdata, key: String) -> Array:
     if key.begins_with("@"):
         return gdata.product_groups.get(key.trim_prefix("@"), [])
     return [key] if not key.is_empty() else []
+
+# The right column of the tab "Trade" (the foreign trade): the pair of the section buttons, the
+# sorting of both sections and the list of the towns discovered by the player.
+func _check_external_trade(city_ui, main_map, state: Dictionary) -> void:
+    var panel = city_ui.get_node_or_null("ContentPanel/TradePanel/Split/ExternalPanel")
+    check(panel != null, "the scene has no right column \"Foreign trade\"", state)
+    if panel == null:
+        return
+    var tab = city_ui.external_trade_tab
+    check(tab != null, "the right column of \"Trade\" has no script", state)
+    if tab == null:
+        return
+    # The tooltips and the highlighting of the buttons are assembled in the code, and the column
+    # fills them on a refresh (the same path as on opening the tab).
+    city_ui.refresh()
+
+    # ---- The pair of the section buttons ----
+    var deals_button: Button = panel.get_node_or_null("SectionsBar/DealsButton")
+    var partners_button: Button = panel.get_node_or_null("SectionsBar/PartnersButton")
+    check(deals_button != null and partners_button != null,
+        "the foreign trade must have two section buttons", state)
+    if deals_button == null or partners_button == null:
+        return
+    # The tooltips are compared with the source string of the scene and with its translation: the
+    # engine does not translate the text set in the scene itself (see the check of the title).
+    check(deals_button.tooltip_text in ["Trade deals", tr("Trade deals")],
+        "the button of the deals must carry a tooltip, got \"%s\"" % deals_button.tooltip_text, state)
+    check(partners_button.tooltip_text in ["Trade partners", tr("Trade partners")],
+        "the button of the partners must carry a tooltip, got \"%s\"" % partners_button.tooltip_text, state)
+    check(deals_button.icon != null and partners_button.icon != null,
+        "both section buttons must carry an icon", state)
+    check(deals_button.custom_minimum_size.x >= 28.0 and deals_button.custom_minimum_size.y >= 28.0,
+        "the section buttons must be small square buttons", state)
+
+    var deals_section = panel.get_node_or_null("DealsSection")
+    var partners_section = panel.get_node_or_null("PartnersSection")
+    check(deals_section != null and partners_section != null,
+        "the foreign trade must have both sections", state)
+    if deals_section == null or partners_section == null:
+        return
+    # The sections are switched by the buttons and are never shown together.
+    check(deals_section.visible and not partners_section.visible,
+        "the section \"Trade deals\" must be open by default", state)
+    partners_button.pressed.emit()
+    check(partners_section.visible and not deals_section.visible,
+        "the button must switch to the section \"Trade partners\"", state)
+    deals_button.pressed.emit()
+    check(deals_section.visible and not partners_section.visible,
+        "the button must switch back to the section \"Trade deals\"", state)
+
+    # The width of the rows must not "breathe" when the vertical scrollbar appears — the same
+    # reason as at the column of the domestic trade (see the SHOW_ALWAYS check below).
+    for scroll_name in ["DealsSection/DealsScroll", "PartnersSection/PartnersScroll"]:
+        var scroll = panel.get_node_or_null(scroll_name)
+        check(scroll != null and scroll.vertical_scroll_mode == ScrollContainer.SCROLL_MODE_SHOW_ALWAYS,
+            "the list \"%s\" must have a permanently reserved vertical scrollbar" % scroll_name, state)
+
+    # ---- The sorting of the deals ----
+    # The sort buttons of the section: one per key, with an icon and a tooltip.
+    var deals_sort_bar = panel.get_node_or_null("DealsSection/SortBar")
+    check(deals_sort_bar != null and deals_sort_bar.get_child_count() == 3,
+        "the section \"Trade deals\" must have three sort buttons", state)
+    var partners_sort_bar = panel.get_node_or_null("PartnersSection/SortBar")
+    check(partners_sort_bar != null and partners_sort_bar.get_child_count() == 2,
+        "the section \"Trade partners\" must have two sort buttons", state)
+    for bar in [deals_sort_bar, partners_sort_bar]:
+        if bar == null:
+            continue
+        for button in bar.get_children():
+            check(button is Button and button.icon != null and not button.tooltip_text.is_empty(),
+                "every sort button must carry an icon and a tooltip: \"%s\" has icon=%s, tooltip=\"%s\""
+                    % [button.name, str(button.icon != null), button.tooltip_text], state)
+    # The state of the sorting: a click on another key switches the section to it in the
+    # ascending order, a repeated click on the same key reverses the order.
+    tab.partners_sort_key = tab.SORT_NAME
+    tab.partners_descending = false
+    tab._on_partners_sort_pressed(tab.SORT_DISTANCE)
+    check(tab.partners_sort_key == tab.SORT_DISTANCE and not tab.partners_descending,
+        "a click on another key must switch the sorting to it", state)
+    tab._on_partners_sort_pressed(tab.SORT_DISTANCE)
+    check(tab.partners_descending, "a repeated click must reverse the order", state)
+    tab.partners_sort_key = tab.SORT_NAME
+    tab.partners_descending = false
+
+    # The trade with the towns is not implemented yet: the source of the section is empty and
+    # the section shows the empty state. The sorting is checked on the rows of the documented
+    # shape of a deal (see external_trade_tab._collect_deals).
+    var deals: Array = [
+        {"town_id": "town_1", "town_name": "Roma", "product_id": "beer", "name": "Beer",
+            "icon": "", "type": "buy", "price": 30},
+        {"town_id": "town_2", "town_name": "Ostia", "product_id": "ale", "name": "Ale",
+            "icon": "", "type": "buy", "price": 10},
+        {"town_id": "town_3", "town_name": "Capua", "product_id": "mead", "name": "Mead",
+            "icon": "", "type": "sell", "price": 10},
+        {"town_id": "town_4", "town_name": "Neapolis", "product_id": "wine", "name": "Wine",
+            "icon": "", "type": "buy", "price": 20},
+    ]
+    # The expected orders are built from the data of the rows themselves, and not from the
+    # constants of the test: the keys of the sorting are exactly the fields of a deal.
+    tab.deals_sort_key = tab.SORT_NAME
+    tab.deals_descending = false
+    check(_deal_names(tab._sorted_deals(deals)) == ["Ale", "Beer", "Mead", "Wine"],
+        "the deals must be sorted by the name of the goods", state)
+    tab.deals_descending = true
+    check(_deal_names(tab._sorted_deals(deals)) == ["Wine", "Mead", "Beer", "Ale"],
+        "the reversed sorting must turn the list around", state)
+    # The price: the two goods of the same price keep the alphabetical order of the names — the
+    # tie-breaker, without which the rows would swap places between the refreshes.
+    tab.deals_sort_key = tab.SORT_PRICE
+    tab.deals_descending = false
+    check(_deal_names(tab._sorted_deals(deals)) == ["Ale", "Mead", "Wine", "Beer"],
+        "the deals must be sorted by the price, and the equal prices — by the name", state)
+    tab.deals_descending = true
+    check(_deal_names(tab._sorted_deals(deals)) == ["Beer", "Wine", "Ale", "Mead"],
+        "the reversed sorting by the price must start with the most expensive", state)
+    # The type: the purchases first, and then the sales. The order of the types does not depend on
+    # their names — the names are translated.
+    tab.deals_sort_key = tab.SORT_TYPE
+    tab.deals_descending = false
+    check(_deal_names(tab._sorted_deals(deals)) == ["Ale", "Beer", "Wine", "Mead"],
+        "the purchases must come before the sales", state)
+    tab.deals_descending = true
+    check(_deal_names(tab._sorted_deals(deals)) == ["Mead", "Ale", "Beer", "Wine"],
+        "the reversed sorting by the type must start with the sales", state)
+
+    # The rows of the section: the empty source gives the empty state, the deals give one row each.
+    tab.deals_sort_key = tab.SORT_NAME
+    tab.deals_descending = false
+    tab._deals_signature = ""
+    tab._refresh_deals()
+    var deals_list = panel.get_node_or_null("DealsSection/DealsScroll/DealsList")
+    check(deals_list != null, "the section \"Trade deals\" has no list", state)
+    if deals_list != null:
+        check(deals_list.get_child_count() == 1 and deals_list.get_child(0) is Label,
+            "with no deals the section must show the empty state", state)
+        tab._fill_deals(tab._sorted_deals(deals))
+        check(deals_list.get_child_count() == deals.size(),
+            "every deal must get a row: %d of %d" % [deals_list.get_child_count(), deals.size()], state)
+        var first_row: Node = deals_list.get_child(0)
+        var texts := _row_texts(first_row)
+        check(texts.has("Ale") and texts.has(tab._deal_type_name("buy")) and texts.has("10"),
+            "the row of a deal must show the goods, the type and the price, got %s" % str(texts), state)
+        # The column returns to its own state: the synthetic rows were shown only for the check.
+        tab._deals_signature = ""
+        tab._refresh_deals()
+        check(deals_list.get_child_count() == 1 and deals_list.get_child(0) is Label,
+            "the section must come back to the empty state", state)
+
+    # ---- The list of the towns discovered by the player ----
+    var partners_list = panel.get_node_or_null("PartnersSection/PartnersScroll/PartnersList")
+    check(partners_list != null, "the section \"Trade partners\" has no list", state)
+    var towns: Array = main_map.town_manager.towns
+    check(towns.size() >= 3, "the live map must have towns for the check", state)
+    if partners_list == null or towns.size() < 3:
+        return
+    # On a fresh map the towns stand outside of the starting area, therefore none of them is
+    # discovered yet — the list must be empty.
+    for town in towns:
+        main_map.tile_data[int(town["row"])][int(town["col"])]["is_explored"] = false
+        main_map.tile_data[int(town["row"])][int(town["col"])]["in_influence"] = false
+    tab._partners_signature = ""
+    tab.refresh()
+    check(_partner_row_names(partners_list).is_empty(),
+        "an undiscovered town must not get into the list of the partners", state)
+    check(partners_list.get_child_count() == 1 and partners_list.get_child(0) is Label,
+        "with no discovered towns the section must show the empty state", state)
+    # We open three towns: they must appear in the list, and only they.
+    var opened: Array = []
+    for i in range(3):
+        var town = towns[i]
+        main_map.tile_data[int(town["row"])][int(town["col"])]["is_explored"] = true
+        opened.append(str(town.get("name", "")))
+    tab._partners_signature = ""
+    tab.refresh()
+    var shown := _partner_row_names(partners_list)
+    check(shown.size() == 3, "every discovered town must get a row: %s" % str(shown), state)
+    var expected_names := opened.duplicate()
+    expected_names.sort()
+    check(shown == expected_names,
+        "by default the towns must be sorted by the name: expected %s, got %s"
+            % [str(expected_names), str(shown)], state)
+    # The distance of a row is the distance from the city, and the sorting by it must really
+    # reorder the list.
+    var partners: Array = main_map.get_trade_partners()
+    check(partners.size() == 3, "the map must give the discovered towns: %d" % partners.size(), state)
+    var distance_by_name: Dictionary = {}
+    for partner in partners:
+        var expected_distance := HexUtils.hex_distance(main_map.city_row, main_map.city_col,
+                int(partner["row"]), int(partner["col"]))
+        check(int(partner["distance"]) == expected_distance,
+            "the distance of the town \"%s\" must be the distance from the city" % partner["name"], state)
+        distance_by_name[str(partner["name"])] = int(partner["distance"])
+    tab.partners_sort_key = tab.SORT_DISTANCE
+    tab.partners_descending = false
+    tab._partners_signature = ""
+    tab._refresh_partners()
+    var by_distance := _partner_row_names(partners_list)
+    check(by_distance.size() == 3 and distance_by_name[by_distance[0]] <= distance_by_name[by_distance[1]]
+            and distance_by_name[by_distance[1]] <= distance_by_name[by_distance[2]],
+        "the towns must be sorted by the distance: %s" % str(by_distance), state)
+    tab.partners_descending = true
+    tab._partners_signature = ""
+    tab._refresh_partners()
+    by_distance = _partner_row_names(partners_list)
+    check(by_distance.size() == 3 and distance_by_name[by_distance[0]] >= distance_by_name[by_distance[2]],
+        "the reversed sorting by the distance must start with the farthest town: %s" % str(by_distance), state)
+
+    # The rows carry the button of the jump to the town and the marker of a missing road.
+    var first_partner_row: Node = null
+    for child in partners_list.get_children():
+        if child is HBoxContainer:
+            first_partner_row = child
+            break
+    check(first_partner_row != null, "a discovered town must get a row", state)
+    if first_partner_row == null:
+        return
+    var goto_button: Button = null
+    var road_marker: TextureRect = null
+    for node in first_partner_row.get_children():
+        if node is Button:
+            goto_button = node
+        elif node is TextureRect:
+            road_marker = node
+    check(goto_button != null, "every row of a partner must have the button of the jump to the town", state)
+    if goto_button != null:
+        check(goto_button.tooltip_text == tr("Go to the town"),
+            "the button of the jump must carry a tooltip, got \"%s\"" % goto_button.tooltip_text, state)
+    # The marker of the missing road: the trade with a town is gated by the road, and the row must
+    # say it — but the town itself must stay in the list.
+    var without_road := 0
+    for partner in partners:
+        if not bool(partner["trade_available"]):
+            without_road += 1
+    var rows_with_marker := 0
+    for child in partners_list.get_children():
+        if child is HBoxContainer and _has_road_marker(child):
+            rows_with_marker += 1
+    check(rows_with_marker == without_road,
+        "the marker of the missing road must stand in exactly the rows without a road: %d of %d"
+            % [rows_with_marker, without_road], state)
+
+    # ---- The jump to a town ----
+    # The centering itself: a hex of the Region must land in the middle of the screen. The scroll
+    # of the map is limited (main_map.get_max_scroll — the same limit the edge scrolling and the
+    # scouting obey), therefore a hex far outside of the Region cannot be centered; a town the
+    # player has discovered is always inside the reachable area, and the jump brings it on screen.
+    var middle_row := int((main_map.region_start_row + main_map.region_end_row) / 2)
+    var middle_col := int((main_map.region_start_col + main_map.region_end_col) / 2)
+    main_map.center_on_hex(middle_row, middle_col)
+    var hex_center: Vector2 = HexUtils.hex_center(middle_row, middle_col, main_map.HEX_RADIUS) \
+            + Vector2(main_map.offset_x, main_map.offset_y) + main_map.scroll_offset
+    var screen_center: Vector2 = main_map.get_viewport_rect().size / 2.0
+    check(hex_center.distance_to(screen_center) < 2.0,
+        "the map must be centered on the hex: the hex is at %s, the center of the screen at %s"
+            % [str(hex_center), str(screen_center)], state)
+    # The button asks the map for the jump, and the map closes the city window and centers itself.
+    var jump_requests: Array = []
+    city_ui.town_focus_requested.connect(func(row, col): jump_requests.append([row, col]))
+    # The target is the first row of the list — with the sorting by the distance in the descending
+    # order it is the farthest town, so the jump has to move the map noticeably.
+    var first_name: String = str(_partner_row_names(partners_list)[0])
+    var target: Dictionary = {}
+    for partner in partners:
+        if str(partner["name"]) == first_name:
+            target = partner
+            break
+    if goto_button != null and not target.is_empty():
+        # The starting point of the check is the map centered on the city: from there the town is
+        # not in the middle of the screen, and the jump must bring it closer to it.
+        main_map.center_on_hex(main_map.city_row, main_map.city_col)
+        var scroll_before: Vector2 = main_map.scroll_offset
+        var town_before := _town_screen_pos(main_map, int(target["row"]), int(target["col"]))
+        city_ui.show()
+        goto_button.pressed.emit()
+        check(jump_requests.size() == 1 and jump_requests[0] == [int(target["row"]), int(target["col"])],
+            "the button must ask for the jump to its own town: %s" % str(jump_requests), state)
+        check(not city_ui.visible, "the jump must close the interface of the city", state)
+        check(main_map.scroll_offset != scroll_before,
+            "the jump must move the map: the scroll stayed at %s" % str(scroll_before), state)
+        var town_after := _town_screen_pos(main_map, int(target["row"]), int(target["col"]))
+        check((town_after - screen_center).length() <= (town_before - screen_center).length(),
+            "the jump must bring the town closer to the middle of the screen: %s → %s (the center is %s)"
+                % [str(town_before), str(town_after), str(screen_center)], state)
+
+    # The column comes back to its own state: the rows of the check must not stay in the list.
+    tab.partners_sort_key = tab.SORT_NAME
+    tab.partners_descending = false
+    tab._partners_signature = ""
+    tab.refresh()
+
+# Where a hex lands on the screen with the current scroll of the map: the same arithmetic the
+# renderer uses (world + offset + scroll).
+func _town_screen_pos(main_map, row: int, col: int) -> Vector2:
+    return HexUtils.hex_center(row, col, main_map.HEX_RADIUS) \
+            + Vector2(main_map.offset_x, main_map.offset_y) + main_map.scroll_offset
+
+# The names of the goods of the rows, in the order in which they are shown.
+func _deal_names(deals: Array) -> Array:
+    var names: Array = []
+    for deal in deals:
+        names.append(str(deal.get("name", "")))
+    return names
+
+# The names of the towns in the rows of the list of the partners, in the order in which they are shown.
+func _partner_row_names(list: Node) -> Array:
+    var names: Array = []
+    if list == null:
+        return names
+    for child in list.get_children():
+        if child is HBoxContainer:
+            names.append(_first_label_text(child))
+    return names
+
+# Whether the row carries the marker of a missing road.
+func _has_road_marker(row: Node) -> bool:
+    for node in row.get_children():
+        if node is TextureRect:
+            return true
+    return false
+
+func _first_label_text(row: Node) -> String:
+    for node in row.get_children():
+        if node is Label:
+            return node.text
+    return ""
+
+# The texts of all the labels of a row — what the player reads in it.
+func _row_texts(row: Node) -> Array:
+    var texts: Array = []
+    for node in row.get_children():
+        if node is Label:
+            texts.append(node.text)
+    return texts
 
 func check(condition: bool, message: String, state: Dictionary) -> void:
     if condition:

@@ -537,17 +537,11 @@ static func get_town_tick_seconds() -> float:
     return CityData.SIMULATION_TICK * float(maxi(1, ticks))
 
 
-# Has the town already started to produce. A town fills its warehouse from the
-# moment the player has seen its hex: an unrevealed town would accumulate for the
-# whole game unseen and stand at the limit by the time the player arrives.
-#
-# "Seen" is the same condition under which the town is drawn on the map (see
-# map_renderer): the hex is either in the known territory of the player, or it has
-# been scouted. It is latched into the record, so that a town which has been
-# discovered once keeps producing even if the flags of the hex change.
-func _is_town_production_started(town: Dictionary, tile_data: Array) -> bool:
-    if bool(town.get("production_started", false)):
-        return true
+# Has the player seen the town: its hex lies in the known territory or has been scouted. It is
+# the same condition under which the town is drawn on the map (see map_renderer), and it is the
+# condition the trade with the town is gated by — the road gates the trade itself
+# (is_trade_available), not the knowledge of the town.
+func is_town_discovered(town: Dictionary, tile_data: Array) -> bool:
     var row := int(town.get("row", -1))
     var col := int(town.get("col", -1))
     if row < 0 or col < 0 or row >= tile_data.size() or tile_data[row] == null:
@@ -557,7 +551,29 @@ func _is_town_production_started(town: Dictionary, tile_data: Array) -> bool:
     var tile = tile_data[row][col]
     if tile == null:
         return false
-    if not (bool(tile.get("in_influence", false)) or bool(tile.get("is_explored", false))):
+    return bool(tile.get("in_influence", false)) or bool(tile.get("is_explored", false))
+
+
+# The towns the player has discovered (see is_town_discovered). The order is not defined: the
+# columns that show the list sort it themselves.
+func get_discovered_towns(tile_data: Array) -> Array:
+    var result: Array = []
+    for town in towns:
+        if is_town_discovered(town, tile_data):
+            result.append(town)
+    return result
+
+
+# Has the town already started to produce. A town fills its warehouse from the
+# moment the player has seen its hex: an unrevealed town would accumulate for the
+# whole game unseen and stand at the limit by the time the player arrives.
+#
+# The flag is latched into the record, so that a town which has been discovered once
+# keeps producing even if the flags of the hex change.
+func _is_town_production_started(town: Dictionary, tile_data: Array) -> bool:
+    if bool(town.get("production_started", false)):
+        return true
+    if not is_town_discovered(town, tile_data):
         return false
     town["production_started"] = true
     return true

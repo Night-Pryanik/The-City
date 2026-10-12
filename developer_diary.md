@@ -2379,3 +2379,93 @@ byproduct (60/step) on one route with a flow of 10 — the staple must keep arri
 staple receives 10 instead of 100. Reproduced end-to-end on a live map: three lentil farms behind
 trails gave food 0 / fodder 5 115 / population stuck at 3 before, and food climbing ~+10/sec with
 the population 3 → 4 after.
+
+
+## The "Foreign trade" column: two sections, sorting, and the discovered towns (October 12, 2026)
+
+**Context.** The right column of the "Trade" tab had been a heading and nothing else since the
+column split. The request: give it two section buttons in a horizontal row (small, square, with an
+icon and a tooltip, like the city tab-switch buttons) — "Trade deals" and "Trade partners"; sort
+the deals by resource name, by price and by type (purchase/sale); sort the partners by town name
+and by distance; fill the partner section with the towns the player has discovered (the towns open
+for trade), each with a small button that closes the city interface and centers the map on the
+town. The trade itself is not implemented, so the deals section is prepared, not populated.
+
+**What was done.** The column lives in a new `scripts/external_trade_tab.gd`, the markup in
+`scenes/CityUI.tscn` under `ContentPanel/TradePanel/Split/ExternalPanel` (the node name is kept —
+the tests and `city_ui` refer to it).
+
+The two sections switch by **panel visibility** (`DealsSection` / `PartnersSection`), not by a
+`TabContainer`: the manual pattern of `city_ui._switch_tab` keeps the column a plain `VBoxContainer`
+chain and lets the switch buttons sit in the header instead of a tab strip. Both list scrolls are
+`vertical_scroll_mode = SHOW_ALWAYS` — the same anti-"breathing" fix as in the domestic column, so a
+row's width does not depend on whether the scrollbar is currently needed. The section buttons
+(36×34) and the sort buttons (28×28) carry an icon and a tooltip; the active section/key is
+highlighted with a light-grey stylebox and a black font.
+
+The highlight was **extracted** into `ui_helpers.highlight_toggle_button(button, active)`: it had
+been local to `city_ui._highlight_active_tab_button`, and the column would have been its third
+copy. The city tabs now call the same helper.
+
+**The deals are a documented stub.** `_collect_deals()` returns an empty array on purpose, with the
+row shape it will produce written next to it in a comment (`town_id, town_name, product_id, name,
+icon, type, price`); `_build_deal_row` already renders the full row (icon, name, town, type — the
+purchase in the expense colour, the sale in the income colour — and the price), and an empty source
+shows "No trade deals yet". When the trade appears, only the body of `_collect_deals` changes: the
+sorting, the rows and the empty state already read from it. The type order is the constant
+`buy = 0, sell = 1` rather than a comparison of the translated names — the order must not change
+with the language. Every sort is stable by name as a secondary key.
+
+**The partners are the discovered towns.** `main_map.get_trade_partners()` reads
+`town_manager.get_discovered_towns(tile_data)`; a town is discovered when its tile is
+`in_influence` or `is_explored` — the same rule the town production and the town rendering already
+used, so `is_town_discovered` was extracted from `_is_town_production_started` and both call it. A
+row is a border-colour swatch, the town name, the distance in hexes (`HexUtils.hex_distance`) and
+the goto button.
+
+A town **without a road stays in the list**, with a dimmed `road.svg` marker and the tooltip "Trade
+unavailable: there is no road from the city to this town". The discovery opens the town, the road
+opens the trade (`is_trade_available`) — hiding a discovered town over a missing road would leave
+the player without an explanation of why the trade is not there.
+
+**The goto button and the camera.** The button emits `town_focus_requested(row, col)`; the chain is
+`external_trade_tab` → `city_ui` (re-emits) → `main_map._on_town_focus_requested`, which closes the
+city and centers the map. The column knows nothing about the camera and the map knows nothing about
+the list. `main_map.center_on_hex(row, col)` is the extracted scrolling formula (the
+`scroll_offset` computation, clamped by `get_max_scroll()`, plus the redraw of the renderer, the
+scroll layer and the progress bar) — it replaced the inline right-click branch of
+`_on_city_button_gui_input`, so the right-click centering and the goto button cannot drift apart.
+
+**Updates** are signature-based, as in the domestic column: `_deals_signature_of` includes the sort
+key, the direction and every field of a row; `_partners_signature_of` is deliberately reduced to
+the town id and the road state, because the name and the distance of a discovered town cannot
+change. A rebuild therefore happens only on a real change of composition, and an open tooltip and
+the scroll position survive. The tooltips and labels (including those of the sort and switch
+buttons) are refreshed in `refresh()`, which also makes them follow a language change —
+`city_ui.refresh()` runs on `_on_locale_changed` — so the column needs no
+`NOTIFICATION_TRANSLATION_CHANGED` handling of its own.
+
+**Icons.** Five flat 32×32 SVGs were added to `icons/` (`sort_name`, `sort_price`, `sort_type`,
+`sort_distance`, `goto`): the repository had only 64×64 painterly game icons, and the sort bar
+needs small flat glyphs. They go through the `IconRegistry` like every other icon; the import and
+the rendering were verified on this project before relying on them.
+
+**Rejected.** (1) A `TabContainer` for the two sections: it would break the column's
+`VBoxContainer` chain and put the switch buttons in a tab strip rather than in the header.
+(2) Hiding the towns without a road: the road gates the trade, not the discovery, and the list is
+exactly what the section promises — "the towns the player has discovered". (3) Sorting the deal
+type by the translated names: the order would flip with the language. (4) Rebuilding the partner
+list on every era tick: the signature check keeps an open tooltip and the scroll alive.
+
+**Test.** `tests/test_trade_tab.gd::_check_external_trade` on a live `MainMap.tscn`: the section
+buttons (icon, tooltip, ≥28 px), the exclusive switch, both scrolls `SHOW_ALWAYS`; the sort bars
+(3 deals / 2 partners) with icons and tooltips after `refresh()`; the click semantics (a new key →
+ascending, a repeated click → descending); the deals sorting through `tab._sorted_deals(...)` on a
+synthetic array (price asc `Ale, Mead, Wine, Beer`; type asc — purchases first: `Ale, Beer, Wine,
+Mead`); the empty source → the empty state, and `_fill_deals` → one row per deal; the partners: the
+undiscovered towns cleared → an empty list, then three opened towns → exactly three rows sorted by
+name, with `get_trade_partners()` matching `HexUtils.hex_distance`; the distance sorting asc/desc
+through the rendered rows; the number of road markers equal to the number of towns without
+`trade_available`; `center_on_hex` on the centre of a Region within 2 px of the screen centre; and
+the goto button: exactly one request with that town's row/col, `city_ui` closed, `scroll_offset`
+changed and the town closer to the centre. Full suite: 47/47.

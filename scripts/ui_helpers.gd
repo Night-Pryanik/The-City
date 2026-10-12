@@ -84,6 +84,21 @@ const CATEGORY_HEADER_LINE_COLOR := Color(0.55, 0.55, 0.55)
 const META_CATEGORY_HEADER := "category_header"
 const META_CATEGORY_NAME := "category_name"
 
+# The highlight of the active button of a toggle group. The groups of the interface that
+# switch a view (the tab bar of the city, the sections of the foreign trade) must look alike,
+# so both of them take the colours from here: the divergence of two copies of these two
+# numbers is visible at once.
+const TOGGLE_ACTIVE_COLOR := Color(0.784, 0.784, 0.784, 1.0)
+const TOGGLE_INACTIVE_COLOR := Color(0.471, 0.471, 0.471, 0.3)
+
+static func highlight_toggle_button(button: Button, active: bool) -> void:
+    if button == null or not is_instance_valid(button):
+        return
+    var style := StyleBoxFlat.new()
+    style.bg_color = TOGGLE_ACTIVE_COLOR if active else TOGGLE_INACTIVE_COLOR
+    button.add_theme_stylebox_override("normal", style)
+    button.add_theme_color_override("font_color", Color.BLACK if active else Color.WHITE)
+
 # The header of a category group in a resource list: a solid line, the name centred,
 # a line again. The lines are stretched nodes that reach both edges of the column at
 # any width — unlike a run of dashes, and the default font has no box-drawing U+2500

@@ -1,6 +1,6 @@
 # trade_tab.gd
 # The tab "Trade". On the left — the INTERNAL trade, on the right — the EXTERNAL
-# (a stub column, the external trade itself is not implemented yet).
+# one, which lives in its own script (external_trade_tab.gd).
 #
 #
 # The left column: one card per resource or group of resources, which
