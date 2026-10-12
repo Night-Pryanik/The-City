@@ -2666,6 +2666,23 @@ text follows `_set_amount`, the `+`/`−` buttons and the typing (`Cost: …` fo
 itself (`_gdata.load_all_data()` when `data_loaded` is false) — in a `--script` run nothing loads it,
 the watchdog only RELOADS it once it is loaded. Full suite: 48/48 (`--all`).
 
+## The HUD stays visible while the town window is open (October 12, 2026)
+
+**Context.** The user asked to keep the HUD on screen when the town interface is open: the player
+must see the treasury amount while trading. All HUD buttons must be inactive.
+
+**Implementation.** `main_map.gd`:
+- `_process` now computes `hud_blocked := is_paused or town_ui.visible` and disables
+  `research_button`, `city_button` and `expansion_button` when it is true. The HUD itself is NOT
+  hidden — its labels (population, year, treasury) stay readable.
+- `open_town_ui` no longer calls `hud.hide()`; `_on_town_ui_close` no longer calls `hud.show()`.
+  The control panel is still hidden/shown as before.
+- The HUD is drawn AFTER the town window in the scene tree (`MainMap.tscn`), so it renders on top
+  and is never covered by the town panel.
+
+**Test.** Fast suite 24/24 PASS; town tests (`town_economy`, `road_building`, `town_roads`,
+`town_priorities`, `town_trade_ui`) PASS.
+
 ## The standing contract shows its cost per second (October 12, 2026)
 
 **Context.** The user asked: when the "Permanent" checkbox is on, the total of the order must be

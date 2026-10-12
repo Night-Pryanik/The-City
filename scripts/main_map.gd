@@ -646,14 +646,17 @@ func _process(delta):
     if Engine.is_editor_hint():
         return
 
-    # We block the buttons of the HUD, if the game is paused.
-    var is_paused = get_tree().paused
+    # We block the buttons of the HUD while the game is paused or the town window is
+    # open: the player must see the treasury, but must not accidentally leave the town
+    # interface by pressing a HUD button.
+    var is_paused: bool = get_tree().paused
+    var hud_blocked: bool = is_paused or town_ui.visible
     if research_button:
-        research_button.disabled = is_paused
+        research_button.disabled = hud_blocked
     if city_button:
-        city_button.disabled = is_paused
+        city_button.disabled = hud_blocked
     if expansion_button:
-        expansion_button.disabled = is_paused
+        expansion_button.disabled = hud_blocked
 
     # The science accumulates every frame, and is not bound to the tick of the simulation.
     # Without this the progress bar of the research jumped by jerks.
@@ -2388,8 +2391,9 @@ func open_town_ui(row: int, col: int):
     if town == null:
         return
     town_ui.open_town(town, town_manager.is_trade_available(town))
-    hud.hide()
-    # The control panel of the hex is not needed while the interface of the town is open.
+    # The HUD stays visible so the player can see the treasury while trading, but its
+    # buttons are disabled (see _process). The control panel of the hex is not needed
+    # while the interface of the town is open.
     control_panel.hide()
 
 # Returns the record of the town on the hex (row, col) or null.
@@ -2423,7 +2427,8 @@ func get_trade_partners() -> Array:
 
 func _on_town_ui_close():
     town_ui.hide()
-    hud.show()
+    # The HUD buttons are re-enabled automatically (see _process): the flag
+    # `town_ui.visible` becomes false, so `hud_blocked` clears on the next frame.
     # We return the control panel of the hex on the exit from the interface of the town.
     control_panel.show()
 
