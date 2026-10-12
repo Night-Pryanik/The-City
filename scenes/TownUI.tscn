@@ -17,10 +17,8 @@ script = ExtResource("1_twnui")
 
 [node name="WindowPanel" type="Panel" parent="." unique_id=3000000002]
 layout_mode = 0
-offset_left = 192.0
-offset_top = 84.0
-offset_right = 960.0
-offset_bottom = 684.0
+offset_right = 768.0
+offset_bottom = 600.0
 clip_contents = true
 theme_override_styles/panel = SubResource("StyleBoxFlat_window")
 

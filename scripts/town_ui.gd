@@ -3,22 +3,35 @@
 # It is opened from the control panel (the action button on a town hex)
 # or by a double click on the town hex on the map (see InputHandler).
 #
-# Initial stage: a window with a heading (the town name) and two columns
-# "Buy" and "Sell". The window is not fullscreen — the fixed layout
-# is set right in the TownUI.tscn scene, without any code at runtime.
+# The window is centered in the viewport in code (see _center_window): the town
+# interface is a child of the map (a Node2D), and a Control under a non-Control
+# anchors against a zero-sized rect, so anchor-based centering would place the panel
+# at minus half its size — off-screen. The panel is therefore positioned from the
+# viewport size, and re-centered when the viewport changes.
 #
-# The lists are inside ScrollContainers (see BuyScroll/SellScroll in the scene):
-# the sell pool of a town is dozens of rows, and without scrolling they spilled
-# past the bottom edge of the window right onto the map.
+# Two columns "Buying" and "Selling". The lists are inside ScrollContainers
+# (BuyScroll/SellScroll): the sell pool of a town is dozens of rows, and without
+# scrolling they spilled past the bottom edge of the window right onto the map.
 #
 # Both columns are grouped by the resource category, exactly like the "Resources"
 # tab of the city (see _fill_resource_list): a header of a solid line, the category
 # name centred in its column, then a line again; the rows of that category follow.
 #
+# A row is INTERACTIVE: it highlights on hover and, on a click, opens the trade
+# settings of the resource right under itself (see _open_trade_panel). The highlight
+# is a stylebox on the row's PanelContainer — a transparent normal, a light hover and
+# a stronger "selected" state — so the row reacts like a button without turning every
+# label of the row into a button.
+#
 # Every row of the sale column carries the stock of the town and its quality: the
 # stars of the level in its own colour (data/qualities.json). A town never holds
 # mixed quality, so there is nothing to break down and nothing to show in
 # percentages — the stars ARE the quality of the row (see town_economy).
+#
+# The trade settings panel is the FOUNDATION of the town trade, not the trade
+# itself: it assembles the order (the goods, the amount, the "permanent" flag) and
+# hands it over by the signal trade_order_submitted. The mechanics that will spend
+# the treasury and move the goods live behind that signal (see main_map).
 extends Control
 
 # The shared UI helpers: the category header of a resource list (a line, the name, a
@@ -26,11 +39,49 @@ extends Control
 # drift apart. Only the static members are used — no instance is needed.
 const UiHelpers = preload("res://scripts/ui_helpers.gd")
 
+# The red "!" triangle of the route-capacity warning. It is drawn by its own Control
+# (see the script), so the window does not need an icon asset for it.
+const WarningBadge = preload("res://scripts/warning_badge.gd")
+
 signal closed()
+
+# The foundation of the town trade: the window has assembled a buy/sell order and
+# hands it to the map. The trade itself is not implemented yet, so the map only
+# receives the order (see main_map._on_town_trade_order) — this signal is the single
+# place the mechanics will be attached to.
+signal trade_order_submitted(order: Dictionary)
+
+# The two sides of the trade. The value is part of the order and of the row key, so
+# it must stay stable.
+const SIDE_BUY := "buy"
+const SIDE_SELL := "sell"
 
 # The minimum height of a list row. It equals the icon height (28 px): a label with
 # a line wrap should not squeeze the icon and the next row.
 const ROW_HEIGHT := 28
+
+# The amount step of the "+"/"−" buttons: tens by default, units with Ctrl held,
+# hundreds with Shift held. The values are shown in the button tooltips.
+const STEP_DEFAULT := 10
+const STEP_FINE := 1
+const STEP_COARSE := 100
+
+# The digit cap of the amount field: a number longer than the town warehouse is
+# meaningless, and the cap keeps a paste of a whole paragraph out of the field.
+const MAX_AMOUNT_LENGTH := 7
+
+# The background of a row in its three states. The normal one is fully transparent:
+# a column of dozens of rows must not look like a wall of boxes, the background
+# appears only on hover and on the selected row.
+const ROW_NORMAL_COLOR := Color(1, 1, 1, 0)
+const ROW_HOVER_COLOR := Color(1, 1, 1, 0.10)
+const ROW_SELECTED_COLOR := Color(0.30, 0.55, 0.85, 0.35)
+
+# The markers that let the layout be read back: a row of a trade column and the key
+# of the resource behind it (the tests and the trade panel both use them).
+const META_RESOURCE_ROW := "town_resource_row"
+const META_ROW_KEY := "town_row_key"
+const META_ROW_NAME := "town_row_name"
 
 @onready var window_panel = $WindowPanel
 @onready var title_label = $WindowPanel/TitleLabel
@@ -41,8 +92,7 @@ const ROW_HEIGHT := 28
 @onready var sell_scroll = $WindowPanel/ColumnsHBox/SellColumn/SellScroll
 @onready var buy_list = $WindowPanel/ColumnsHBox/BuyColumn/BuyScroll/BuyList
 @onready var sell_list = $WindowPanel/ColumnsHBox/SellColumn/SellScroll/SellList
-# The resource icons are taken from the common IconRegistry registry (autoload):
-# the index is built once per game, and not on every window opening.
+
 # The current town (an entry from town_manager.towns). null — the window is closed.
 var _town = null
 # Whether trade with this town is available (town_manager.is_trade_available).
@@ -54,6 +104,7 @@ var _trade_available := true
 # Whether the window is open on a town at all. main_map checks it before asking
 # for a refresh of the quantities on every town tick.
 var has_town: bool = false
+
 # The rows of the sale column that are currently on the screen, by the product id:
 # display name -> the label of the quantity. They are refreshed in place on every
 # town tick, because rebuilding the whole column would reset its scrolling.
@@ -64,9 +115,71 @@ var _sell_quantity_labels: Dictionary = {}
 # the refresh goes through the same place so that the two labels of a row cannot
 # drift apart.
 var _sell_quality_labels: Dictionary = {}
+
+# The map (MainMap), set by main_map.set_map. The window asks it for the route to the
+# city to know the throughput the route can carry (see _route_capacity). null in a
+# test that opens the window on its own — the capacity is then taken as zero.
+var _map = null
+
+# The rows that are currently on the screen, by the row key ("buy:grain"). The trade
+# panel is inserted right after its row, and the highlight is applied through these
+# references, so a rebuild only has to refresh the map.
+var _row_nodes: Dictionary = {}
+# The row the cursor is over. Only one row is hovered at a time; the field is needed
+# because the signals of a row and of its labels (the quality stars) arrive as
+# separate enter/exit pairs and must not fight over the same row.
+var _hovered_row: Control = null
+
+# The resource whose trade settings are open: the row key, the side, the product id
+# and its display name. An empty key means no panel is open.
+var _selected_key := ""
+var _selected_side := ""
+var _selected_id := ""
+var _selected_name := ""
+
+# The trade settings panel and its controls (null while it is closed).
+var _trade_panel: Control = null
+var _amount_edit: LineEdit = null
+var _permanent_check: CheckBox = null
+var _warning_badge: Control = null
+var _confirm_button: Button = null
+var _panel_note: Label = null
+
+# Guards the text_changed handler from re-entering when the field is sanitized
+# programmatically (a programmatic assignment does not emit the signal, but the
+# guard keeps the handler safe to call from a test as well).
+var _suppress_edit := false
+
+# The last order the window assembled. It is kept for the tests and as the handover
+# point to the future trade mechanics.
+var _last_order: Dictionary = {}
+
+
 func _ready():
     if close_button:
         close_button.pressed.connect(close_town)
+    _center_window()
+    var viewport := get_viewport()
+    if viewport != null and not viewport.size_changed.is_connected(_center_window):
+        viewport.size_changed.connect(_center_window)
+
+# Centers the window panel in the viewport. The interface of a town lives on the map
+# (MainMap is a Node2D), and a Control under a non-Control is anchored to a zero-sized
+# rect — the usual anchors cannot center it. The panel is therefore placed from the
+# viewport size; the position is clamped to zero so that on a viewport smaller than
+# the window at least its top-left corner stays reachable.
+func _center_window() -> void:
+    if window_panel == null:
+        return
+    var viewport_size: Vector2 = get_viewport_rect().size
+    var panel_size: Vector2 = window_panel.size
+    var centered: Vector2 = ((viewport_size - panel_size) * 0.5).floor()
+    window_panel.position = Vector2(maxf(centered.x, 0.0), maxf(centered.y, 0.0))
+
+# The reference to the map: the window reads the route to the city from it to compare
+# the entered amount with the throughput of the route.
+func set_map(map_node) -> void:
+    _map = map_node
 
 # Opens the interface window for a town.
 # town — a town entry from town_manager.towns (the row, col, name, ... fields).
@@ -76,7 +189,11 @@ func open_town(town: Dictionary, trade_available: bool = true):
     _town = town
     _trade_available = trade_available
     has_town = true
+    # A new town starts with no resource selected: the panel of the previous town must
+    # not stay open over the rows of another town.
+    _clear_selection()
     _refresh()
+    _center_window()
     show()
 
 # Updates the window contents for the current town.
@@ -91,9 +208,17 @@ func _refresh():
         status_label.text = "" if _trade_available \
                 else tr("Trade unavailable: there is no road from the city to this town")
         status_label.visible = not status_label.text.is_empty()
-    _fill_resource_list(buy_list, _town.get("buy_pool", []), tr("The town buys nothing"))
+    _row_nodes.clear()
+    _fill_resource_list(buy_list, _town.get("buy_pool", []), tr("The town buys nothing"),
+            SIDE_BUY, false)
     _fill_resource_list(sell_list, _town.get("sell_pool", []),
-            tr("No resources in the influence ring"), true)
+            tr("No resources in the influence ring"), SIDE_SELL, true)
+    # The lists were rebuilt from scratch, so the open trade panel (if any) and the
+    # highlight of its row have to be put back on top of the fresh rows.
+    if not _selected_key.is_empty():
+        var keep_amount := _current_amount()
+        _open_trade_panel(keep_amount)
+        _refresh_row_styles()
 
 # Refreshes ONLY the numbers of the stock in the sale column, without touching the
 # rows themselves. It is called on every town tick while the window is open: the
@@ -194,17 +319,23 @@ func on_town_storage_changed(town_id: String) -> void:
 # papyrus (crafted from it) are both called "Papyrus" — and both can get into
 # the pool of one town. Showing "Papyrus" to the player twice is not allowed.
 #
+# side — which column this is (SIDE_BUY/SIDE_SELL): it goes into the row key and into
+# the order the trade panel assembles.
 # with_stock — whether to append the units on the stock of the town to the row.
 # It is only the sale column: the town buys the goods it lacks, and there is
 # nothing of its own to count.
 func _fill_resource_list(container: VBoxContainer, pool, empty_text: String,
-        with_stock: bool = false) -> void:
+        side: String, with_stock: bool = false) -> void:
     if container == null:
         return
     if with_stock:
         _sell_quantity_labels.clear()
         _sell_quality_labels.clear()
+    # The old rows are detached before the free so that the container holds exactly
+    # the fresh rows already in the same frame (queue_free alone would keep the old
+    # ones as children until the end of the frame).
     for child in container.get_children():
+        container.remove_child(child)
         child.queue_free()
     if pool == null or pool.is_empty():
         var empty_label := Label.new()
@@ -237,18 +368,33 @@ func _fill_resource_list(container: VBoxContainer, pool, empty_text: String,
             continue
         container.add_child(UiHelpers.build_category_header(_get_category_name(category_id)))
         for item in items:
-            container.add_child(_build_resource_row(item["id"], item["name"], with_stock))
+            container.add_child(_build_resource_row(
+                    item["id"], item["name"], side, with_stock))
 
-# Builds one row of a trade column: the icon, the name and — for the sale column —
-# the quality stars and the units on the stock of the town.
+# Builds one interactive row of a trade column: the icon, the name and — for the sale
+# column — the quality stars and the units on the stock of the town.
+#
+# The row is a PanelContainer with a stylebox background that carries the three
+# states of the row (normal, hover, selected). The children of the row ignore the
+# mouse EXCEPT the quality stars, which keep their own tooltip; both the row and the
+# stars are wired to the same hover and click handlers, so the whole row reacts as
+# one control and the stars are not a dead zone.
 func _build_resource_row(resource_id: String, display_name: String,
-        with_stock: bool) -> HBoxContainer:
-    var resource_row := HBoxContainer.new()
-    resource_row.add_theme_constant_override("separation", 6)
-    # The row must not collapse, even if the label did not fit into one
-    # line and wrapped: without the row height minimum they overlapped each
-    # other (see autowrap on resource_label below).
-    resource_row.custom_minimum_size = Vector2(0, ROW_HEIGHT)
+        side: String, with_stock: bool) -> PanelContainer:
+    var row := PanelContainer.new()
+    row.mouse_filter = Control.MOUSE_FILTER_STOP
+    row.custom_minimum_size = Vector2(0, ROW_HEIGHT)
+    var row_key := "%s:%s" % [side, resource_id]
+    row.set_meta(META_RESOURCE_ROW, true)
+    row.set_meta(META_ROW_KEY, row_key)
+    row.set_meta(META_ROW_NAME, display_name)
+    row.add_theme_stylebox_override("panel", _make_row_style(ROW_NORMAL_COLOR))
+
+    var content := HBoxContainer.new()
+    content.add_theme_constant_override("separation", 6)
+    content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    row.add_child(content)
+
     var icon_name := _get_resource_icon_name(resource_id)
     var icon_tex := IconRegistry.get_texture(icon_name)
     if icon_tex != null:
@@ -258,32 +404,546 @@ func _build_resource_row(resource_id: String, display_name: String,
         resource_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
         resource_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
         resource_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-        resource_row.add_child(resource_icon)
+        content.add_child(resource_icon)
 
     var resource_label := Label.new()
     resource_label.text = display_name
     resource_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     resource_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    resource_row.add_child(resource_label)
+    resource_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    content.add_child(resource_label)
 
+    var quality_label: Label = null
     if with_stock:
         # The quality of the goods comes BEFORE the quantity: the stars read as
         # a property of the product ("what it is"), and the number as its amount.
         # The label takes the mouse (unlike the plain labels of the row), because
-        # it carries the tooltip with the name of its level.
-        var quality_label := Label.new()
+        # it carries the tooltip with the name of its level; the row wires it to its
+        # own hover/click so that hovering the stars still highlights the row.
+        quality_label = Label.new()
         quality_label.mouse_filter = Control.MOUSE_FILTER_STOP
         _apply_row_quality(quality_label, display_name)
-        resource_row.add_child(quality_label)
+        content.add_child(quality_label)
         _sell_quality_labels[display_name] = quality_label
 
         var stock_label := Label.new()
         stock_label.text = _format_stock(_stock_of(display_name))
         stock_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
         stock_label.modulate = Color(0.8, 0.8, 0.8)
-        resource_row.add_child(stock_label)
+        stock_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        content.add_child(stock_label)
         _sell_quantity_labels[display_name] = stock_label
-    return resource_row
+
+    _wire_row_interaction(row, quality_label, side, resource_id, display_name)
+    _row_nodes[row_key] = row
+    return row
+
+# Connects the row and its interactive child (the quality stars) to the common
+# hover/click handlers. The row is the argument of both, so an enter of the stars
+# after the exit of the row does not clear the highlight of the same row.
+func _wire_row_interaction(row: Control, quality_label: Label,
+        side: String, resource_id: String, display_name: String) -> void:
+    row.mouse_entered.connect(_on_row_hover.bind(row, true))
+    row.mouse_exited.connect(_on_row_hover.bind(row, false))
+    row.gui_input.connect(_on_row_gui_input.bind(side, resource_id, display_name))
+    if quality_label != null:
+        quality_label.mouse_entered.connect(_on_row_hover.bind(row, true))
+        quality_label.mouse_exited.connect(_on_row_hover.bind(row, false))
+        quality_label.gui_input.connect(_on_row_gui_input.bind(side, resource_id, display_name))
+
+func _on_row_hover(row: Control, hovered: bool) -> void:
+    if row == null or not is_instance_valid(row):
+        return
+    if hovered:
+        _hovered_row = row
+    elif _hovered_row == row:
+        _hovered_row = null
+    _apply_row_style(row)
+
+func _on_row_gui_input(event: InputEvent, side: String,
+        resource_id: String, display_name: String) -> void:
+    if event is InputEventMouseButton and event.pressed \
+            and event.button_index == MOUSE_BUTTON_LEFT:
+        _toggle_selection(side, resource_id, display_name)
+
+# A click on a row selects the resource and opens its trade panel under the row; a
+# repeated click on the selected row closes the panel. Only one resource is selected
+# at a time, so selecting in one column closes the panel of the other.
+func _toggle_selection(side: String, resource_id: String, display_name: String) -> void:
+    var key := "%s:%s" % [side, resource_id]
+    if _selected_key == key:
+        _clear_selection()
+        return
+    _selected_key = key
+    _selected_side = side
+    _selected_id = resource_id
+    _selected_name = display_name
+    _hovered_row = null
+    _open_trade_panel(STEP_DEFAULT)
+    _refresh_row_styles()
+
+func _clear_selection() -> void:
+    _selected_key = ""
+    _selected_side = ""
+    _selected_id = ""
+    _selected_name = ""
+    _hovered_row = null
+    _free_trade_panel()
+    _refresh_row_styles()
+
+func _free_trade_panel() -> void:
+    if _trade_panel != null and is_instance_valid(_trade_panel):
+        var parent := _trade_panel.get_parent()
+        if parent != null:
+            parent.remove_child(_trade_panel)
+        _trade_panel.queue_free()
+    _trade_panel = null
+    _amount_edit = null
+    _permanent_check = null
+    _warning_badge = null
+    _confirm_button = null
+    _panel_note = null
+
+# Applies the state stylebox to one row: the selected state wins over the hover, so
+# the selected row stays highlighted while the cursor is elsewhere.
+func _apply_row_style(row: Control) -> void:
+    if row == null or not is_instance_valid(row):
+        return
+    var color := ROW_NORMAL_COLOR
+    if str(row.get_meta(META_ROW_KEY, "")) == _selected_key:
+        color = ROW_SELECTED_COLOR
+    elif row == _hovered_row:
+        color = ROW_HOVER_COLOR
+    row.add_theme_stylebox_override("panel", _make_row_style(color))
+
+func _refresh_row_styles() -> void:
+    for key in _row_nodes:
+        _apply_row_style(_row_nodes[key])
+
+func _make_row_style(color: Color) -> StyleBoxFlat:
+    var style := StyleBoxFlat.new()
+    style.bg_color = color
+    style.content_margin_left = 4.0
+    style.content_margin_right = 4.0
+    style.content_margin_top = 0.0
+    style.content_margin_bottom = 0.0
+    return style
+
+# --- The trade settings panel ---
+
+# Builds the panel for the selected resource and inserts it right under its row. The
+# panel is the FOUNDATION of the trade: it validates the amount, shows the route
+# warning and hands the assembled order over by the signal.
+#
+# amount — the amount to show in the field (the previous one when the panel is rebuilt
+# on a refresh, the default step when a row is opened).
+func _open_trade_panel(amount: int) -> void:
+    _free_trade_panel()
+    var row: Control = _row_nodes.get(_selected_key, null)
+    if row == null or not is_instance_valid(row):
+        return
+    var container := row.get_parent()
+    if container == null:
+        return
+    _trade_panel = _build_trade_panel()
+    container.add_child(_trade_panel)
+    container.move_child(_trade_panel, row.get_index() + 1)
+    _set_amount(amount if amount > 0 else STEP_DEFAULT)
+    _update_amount_feedback()
+    var scroll := _scroll_for_side(_selected_side)
+    if scroll != null:
+        scroll.ensure_control_visible(_trade_panel)
+
+func _scroll_for_side(side: String) -> ScrollContainer:
+    return sell_scroll if side == SIDE_SELL else buy_scroll
+
+# Builds the panel that sits under the selected row: the amount field with its
+# "+"/"−" buttons and the route warning, the "Permanent" checkbox and the pair of
+# the confirm/cancel buttons.
+#
+# There is deliberately NO heading row of the kind "Selling: Wood": the row the panel
+# hangs under is highlighted, so the resource and the side are already read from it,
+# and the heading only repeated the highlighted row and took a line off the panel.
+#
+# The confirm/cancel buttons are small square buttons with the icons of a check mark
+# and a cross and no text at all — the same look as the buttons of the preview panel
+# of the control panel (control_panel._show_preview_header); the words "Confirm" and
+# "Cancel" live in their tooltips.
+func _build_trade_panel() -> PanelContainer:
+    var panel := PanelContainer.new()
+    panel.add_theme_stylebox_override("panel", _make_panel_style())
+
+    var vbox := VBoxContainer.new()
+    vbox.add_theme_constant_override("separation", 6)
+    panel.add_child(vbox)
+
+    var amount_row := HBoxContainer.new()
+    amount_row.add_theme_constant_override("separation", 6)
+    var amount_caption := Label.new()
+    amount_caption.text = tr("Amount:")
+    amount_caption.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    amount_row.add_child(amount_caption)
+
+    var minus_button := Button.new()
+    minus_button.name = "MinusButton"
+    minus_button.text = "−"
+    minus_button.custom_minimum_size = Vector2(32, 0)
+    minus_button.tooltip_text = tr("−%d (Ctrl: −1, Shift: −100)") % STEP_DEFAULT
+    _style_panel_button(minus_button)
+    minus_button.pressed.connect(_on_minus_pressed)
+    amount_row.add_child(minus_button)
+
+    _amount_edit = LineEdit.new()
+    _amount_edit.name = "AmountEdit"
+    _amount_edit.custom_minimum_size = Vector2(90, 0)
+    _amount_edit.max_length = MAX_AMOUNT_LENGTH
+    _amount_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
+    _amount_edit.tooltip_text = tr("Only whole positive numbers are accepted")
+    _style_amount_field(_amount_edit)
+    _amount_edit.text_changed.connect(_on_amount_text_changed)
+    amount_row.add_child(_amount_edit)
+
+    var plus_button := Button.new()
+    plus_button.name = "PlusButton"
+    plus_button.text = "+"
+    plus_button.custom_minimum_size = Vector2(32, 0)
+    plus_button.tooltip_text = tr("+%d (Ctrl: +1, Shift: +100)") % STEP_DEFAULT
+    _style_panel_button(plus_button)
+    plus_button.pressed.connect(_on_plus_pressed)
+    amount_row.add_child(plus_button)
+
+    _warning_badge = WarningBadge.new()
+    _warning_badge.name = "WarningBadge"
+    _warning_badge.visible = false
+    amount_row.add_child(_warning_badge)
+
+    vbox.add_child(amount_row)
+
+    # The "Permanent" checkbox. The explanation of the contract belongs to the BOX
+    # and not to the whole row: a CheckBox with a text shows its tooltip over the box
+    # AND over the caption, so the box is left textless (it carries the tooltip) and
+    # the caption becomes a Label of its own. The caption stays clickable — a click on
+    # the word toggles the box as well — but it deliberately carries no tooltip.
+    var permanent_row := HBoxContainer.new()
+    permanent_row.add_theme_constant_override("separation", 4)
+    _permanent_check = CheckBox.new()
+    _permanent_check.name = "PermanentCheck"
+    _permanent_check.text = ""
+    _permanent_check.tooltip_text = tr("Turn a one-time deal into a standing contract")
+    _style_check_box(_permanent_check)
+    permanent_row.add_child(_permanent_check)
+
+    var permanent_label := Label.new()
+    permanent_label.name = "PermanentLabel"
+    permanent_label.text = tr("Permanent")
+    permanent_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    permanent_label.mouse_filter = Control.MOUSE_FILTER_STOP
+    permanent_label.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+    permanent_label.gui_input.connect(_on_permanent_label_input)
+    permanent_row.add_child(permanent_label)
+
+    vbox.add_child(permanent_row)
+
+    # Confirm / cancel: square icon-only buttons, right-aligned.
+    var buttons_row := HBoxContainer.new()
+    buttons_row.add_theme_constant_override("separation", 6)
+    buttons_row.alignment = BoxContainer.ALIGNMENT_END
+    _confirm_button = _make_icon_button(
+            "ConfirmButton", "check.svg", "✓", tr("Confirm"))
+    _confirm_button.pressed.connect(_on_confirm_pressed)
+    buttons_row.add_child(_confirm_button)
+    var cancel_button := _make_icon_button(
+            "CancelButton", "cross.svg", "✕", tr("Cancel"))
+    cancel_button.pressed.connect(_on_cancel_pressed)
+    buttons_row.add_child(cancel_button)
+    vbox.add_child(buttons_row)
+
+    _panel_note = Label.new()
+    _panel_note.name = "PanelNote"
+    _panel_note.visible = false
+    _panel_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    _panel_note.add_theme_color_override("font_color", Color(0.75, 0.75, 0.75))
+    vbox.add_child(_panel_note)
+
+    return panel
+
+func _make_panel_style() -> StyleBoxFlat:
+    var style := StyleBoxFlat.new()
+    style.bg_color = Color(0.11, 0.11, 0.11, 0.96)
+    style.border_width_left = 1
+    style.border_width_top = 1
+    style.border_width_right = 1
+    style.border_width_bottom = 1
+    style.border_color = Color(0.45, 0.45, 0.45, 1)
+    style.content_margin_left = 8.0
+    style.content_margin_right = 8.0
+    style.content_margin_top = 6.0
+    style.content_margin_bottom = 6.0
+    return style
+
+# --- The frames of the controls of the panel ---
+#
+# The panel and the window behind it are dark (0.11), and the default theme draws a
+# button and a checkbox in a dark grey with a barely visible frame: on the dark
+# background they read as "dark on dark" and the player cannot see where a button
+# ends and the panel begins. Every control of the panel therefore gets an explicit
+# stylebox with a LIGHT frame, so that it is visible without hovering it.
+const CONTROL_BG_COLOR := Color(0.20, 0.20, 0.22, 1.0)
+const CONTROL_BG_HOVER_COLOR := Color(0.30, 0.30, 0.34, 1.0)
+const CONTROL_BG_PRESSED_COLOR := Color(0.13, 0.13, 0.15, 1.0)
+const CONTROL_BG_DISABLED_COLOR := Color(0.15, 0.15, 0.15, 1.0)
+const CONTROL_BORDER_COLOR := Color(0.62, 0.62, 0.66, 1.0)
+const CONTROL_BORDER_DISABLED_COLOR := Color(0.33, 0.33, 0.33, 1.0)
+
+# One stylebox of a control: the same light frame in every state, only the fill and
+# the frame colour differ.
+func _make_control_style(bg: Color, border: Color) -> StyleBoxFlat:
+    var style := StyleBoxFlat.new()
+    style.bg_color = bg
+    style.border_width_left = 1
+    style.border_width_top = 1
+    style.border_width_right = 1
+    style.border_width_bottom = 1
+    style.border_color = border
+    style.corner_radius_top_left = 3
+    style.corner_radius_top_right = 3
+    style.corner_radius_bottom_left = 3
+    style.corner_radius_bottom_right = 3
+    style.content_margin_left = 4.0
+    style.content_margin_right = 4.0
+    style.content_margin_top = 2.0
+    style.content_margin_bottom = 2.0
+    return style
+
+# The frame of a Button of the panel ("+", "−", confirm, cancel). A disabled button
+# (the confirm one without a positive amount) gets a dimmed frame, so that "cannot be
+# pressed" is visible and not only felt.
+#
+# The focus state reuses the NORMAL fill: Godot draws exactly one stylebox per state
+# (disabled > pressed > hover > focus > normal), so an empty focus box would leave the
+# button frameless, and the hover fill would leave it looking hovered after a click
+# until the focus moves away.
+func _style_panel_button(button: Button) -> void:
+    button.add_theme_stylebox_override("normal",
+            _make_control_style(CONTROL_BG_COLOR, CONTROL_BORDER_COLOR))
+    button.add_theme_stylebox_override("hover",
+            _make_control_style(CONTROL_BG_HOVER_COLOR, CONTROL_BORDER_COLOR))
+    button.add_theme_stylebox_override("pressed",
+            _make_control_style(CONTROL_BG_PRESSED_COLOR, CONTROL_BORDER_COLOR))
+    button.add_theme_stylebox_override("focus",
+            _make_control_style(CONTROL_BG_COLOR, CONTROL_BORDER_COLOR))
+    button.add_theme_stylebox_override("disabled",
+            _make_control_style(CONTROL_BG_DISABLED_COLOR, CONTROL_BORDER_DISABLED_COLOR))
+    button.add_theme_color_override("font_color", Color(0.92, 0.92, 0.92))
+    button.add_theme_color_override("font_disabled_color", Color(0.5, 0.5, 0.5))
+
+# The frame of the "Permanent" checkbox. The stylebox of a CheckBox covers the whole
+# control, and the box itself is drawn by the theme icon — so the frame goes around
+# the box (the caption is a separate Label, see _build_trade_panel).
+func _style_check_box(check: CheckBox) -> void:
+    check.add_theme_stylebox_override("normal",
+            _make_control_style(CONTROL_BG_COLOR, CONTROL_BORDER_COLOR))
+    check.add_theme_stylebox_override("hover",
+            _make_control_style(CONTROL_BG_HOVER_COLOR, CONTROL_BORDER_COLOR))
+    check.add_theme_stylebox_override("pressed",
+            _make_control_style(CONTROL_BG_PRESSED_COLOR, CONTROL_BORDER_COLOR))
+    check.add_theme_stylebox_override("focus",
+            _make_control_style(CONTROL_BG_COLOR, CONTROL_BORDER_COLOR))
+    check.add_theme_stylebox_override("disabled",
+            _make_control_style(CONTROL_BG_DISABLED_COLOR, CONTROL_BORDER_DISABLED_COLOR))
+
+# The frame of the amount field: the same light border as the buttons have. The field
+# stands between them in one row, and without the frame it would read as a hole in
+# the panel.
+func _style_amount_field(field: LineEdit) -> void:
+    field.add_theme_stylebox_override("normal",
+            _make_control_style(CONTROL_BG_PRESSED_COLOR, CONTROL_BORDER_COLOR))
+    field.add_theme_stylebox_override("focus",
+            _make_control_style(CONTROL_BG_PRESSED_COLOR, CONTROL_BORDER_COLOR))
+    field.add_theme_color_override("font_color", Color(0.95, 0.95, 0.95))
+    field.add_theme_color_override("caret_color", Color(0.95, 0.95, 0.95))
+
+# A small square button with an icon and no text — the look of the "Start"/"Cancel"
+# buttons of the preview panel (control_panel._show_preview_header). The icon comes
+# from the common registry; if the file is missing, the button falls back to a glyph
+# so that it is never blank.
+func _make_icon_button(button_name: String, icon_name: String, fallback_text: String,
+        tooltip: String) -> Button:
+    var button := Button.new()
+    button.name = button_name
+    button.custom_minimum_size = Vector2(36, 36)
+    button.tooltip_text = tooltip
+    button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    var tex := IconRegistry.get_texture(icon_name)
+    if tex != null:
+        button.icon = tex
+        button.expand_icon = true
+        button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    else:
+        button.text = fallback_text
+    _style_panel_button(button)
+    return button
+
+# A click on the caption of the "Permanent" checkbox toggles it, exactly as a click on
+# the box would. The caption carries no tooltip of its own (see _build_trade_panel):
+# the explanation of the contract is shown over the box only.
+func _on_permanent_label_input(event: InputEvent) -> void:
+    if not (event is InputEventMouseButton):
+        return
+    var mouse := event as InputEventMouseButton
+    if mouse.button_index != MOUSE_BUTTON_LEFT or not mouse.pressed:
+        return
+    if _permanent_check != null and is_instance_valid(_permanent_check):
+        _permanent_check.button_pressed = not _permanent_check.button_pressed
+
+# --- The amount field ---
+
+# The step of the "+"/"−" buttons by the modifiers held at the moment of the click:
+# units with Ctrl, hundreds with Shift, tens otherwise (the default). Ctrl wins when
+# both are held, so a click always has one well-defined step.
+func _amount_step(ctrl: bool, shift: bool) -> int:
+    if ctrl:
+        return STEP_FINE
+    if shift:
+        return STEP_COARSE
+    return STEP_DEFAULT
+
+func _step_from_modifiers() -> int:
+    return _amount_step(Input.is_key_pressed(KEY_CTRL), Input.is_key_pressed(KEY_SHIFT))
+
+func _on_plus_pressed() -> void:
+    _add_amount(_step_from_modifiers())
+
+func _on_minus_pressed() -> void:
+    _add_amount(-_step_from_modifiers())
+
+# Changes the amount by delta and writes the result back into the field. The amount
+# never falls below 1 when there is something to decrease: an empty field is allowed
+# while typing, but "−" is not meant to produce a zero order.
+func _add_amount(delta: int) -> void:
+    var current := _current_amount()
+    if current <= 0:
+        if delta < 0:
+            return
+        _set_amount(delta)
+        return
+    _set_amount(maxi(1, current + delta))
+
+func _set_amount(amount: int) -> void:
+    if _amount_edit == null or not is_instance_valid(_amount_edit):
+        return
+    _suppress_edit = true
+    _amount_edit.text = str(amount)
+    _amount_edit.caret_column = _amount_edit.text.length()
+    _suppress_edit = false
+    _update_amount_feedback()
+
+func _current_amount() -> int:
+    if _amount_edit == null or not is_instance_valid(_amount_edit):
+        return 0
+    var text := _amount_edit.text.strip_edges()
+    if text.is_empty() or not text.is_valid_int():
+        return 0
+    return int(text)
+
+# The amount field accepts whole positive numbers only. Everything that is not a
+# digit is dropped right in the handler (so a paste is filtered too), and the leading
+# zeros are removed so that the field never shows "007" or a lone "0".
+func _on_amount_text_changed(new_text: String) -> void:
+    if _suppress_edit:
+        return
+    var clean := _sanitize_amount(new_text)
+    if clean != new_text and _amount_edit != null and is_instance_valid(_amount_edit):
+        _suppress_edit = true
+        _amount_edit.text = clean
+        _amount_edit.caret_column = clean.length()
+        _suppress_edit = false
+    _update_amount_feedback()
+
+func _sanitize_amount(text: String) -> String:
+    var digits := ""
+    for i in range(text.length()):
+        var ch := text[i]
+        if ch >= "0" and ch <= "9":
+            digits += ch
+    return digits.lstrip("0")
+
+# Re-evaluates the whole panel after the amount changed: the confirm button is
+# enabled only for a valid (positive) amount, and the route warning follows the
+# amount against the throughput of the route.
+func _update_amount_feedback() -> void:
+    var amount := _current_amount()
+    if _confirm_button != null and is_instance_valid(_confirm_button):
+        _confirm_button.disabled = amount <= 0
+    _update_warning_badge(amount)
+
+# The warning triangle is shown when the entered amount is larger than the route can
+# carry: the surplus is not lost, it queues on the road and arrives later (see
+# delivery_manager.gd), but the player must know the road is the bottleneck.
+func _update_warning_badge(amount: int) -> void:
+    if _warning_badge == null or not is_instance_valid(_warning_badge):
+        return
+    var capacity := _route_capacity()
+    var over := _exceeds_capacity(amount, capacity)
+    _warning_badge.visible = over
+    if over:
+        _warning_badge.tooltip_text = tr("The amount %d exceeds the route throughput (%s units/sec). The surplus will queue on the road and arrive later.") % [amount, _format_speed(capacity)]
+
+# Whether the amount is larger than what the route can carry. The rule is a pure
+# function so that it can be checked without a map.
+func _exceeds_capacity(amount: int, capacity: float) -> bool:
+    return amount > 0 and float(amount) > capacity
+
+# The throughput of the route from the town to the city, in units/sec — the average
+# speed of its segments (see road_manager.find_route_to_city). A town without a road
+# has no route and therefore no throughput: it is taken as zero, so any amount warns
+# about the shortfall (the status row already says the trade is unavailable).
+func _route_capacity() -> float:
+    if _map == null or not is_instance_valid(_map) or _town == null:
+        return 0.0
+    if not _map.has_method("get_route_to_city"):
+        return 0.0
+    var route: Dictionary = _map.get_route_to_city(
+            int(_town.get("row", -1)), int(_town.get("col", -1)))
+    if not bool(route.get("ok", false)):
+        return 0.0
+    return float(route.get("avg_speed", 0.0))
+
+func _format_speed(value: float) -> String:
+    if is_equal_approx(value, roundf(value)):
+        return str(int(roundf(value)))
+    return "%.1f" % value
+
+# --- Confirm / cancel ---
+
+# Assembles the order and hands it over. The trade itself is not implemented yet, so
+# the panel only reports that the order was not placed; the shape of the order is the
+# contract the future mechanics will read.
+func _on_confirm_pressed() -> void:
+    var amount := _current_amount()
+    if amount <= 0:
+        return
+    _last_order = {
+        "town_id": str(_town.get("id", "")),
+        "town_name": str(_town.get("name", "")),
+        "row": int(_town.get("row", -1)),
+        "col": int(_town.get("col", -1)),
+        "side": _selected_side,
+        "product_id": _selected_id,
+        "product_name": _selected_name,
+        "amount": amount,
+        "permanent": _permanent_check != null and _permanent_check.button_pressed,
+        "route_capacity": _route_capacity(),
+    }
+    emit_signal("trade_order_submitted", _last_order)
+    if _panel_note != null and is_instance_valid(_panel_note):
+        _panel_note.text = tr("Trade with the towns is not implemented yet — the order was not placed.")
+        _panel_note.visible = true
+
+func _on_cancel_pressed() -> void:
+    _clear_selection()
+
+# --- The categories ---
 
 # The category of a trade-pool resource — the same field the "Resources" tab groups
 # by. A town pool may hold a raw resource id as itself (a resource with no
@@ -332,8 +992,8 @@ func _get_resource_display_name(resource_id: String) -> String:
     var product_data: Dictionary = GameData.products.get(resource_id, {})
     return str(product_data.get("name", resource_id))
 
-# Closes the town interface window. It emits closed — main_map will return
-# the HUD and the control panel (see main_map._on_town_ui_close).
+# --- Service access for tests ---
+
 # The display names of the rows that are currently shown in the container.
 # Service access for tests: the "two identical names in the list" check
 # reads exactly what the player sees (see tests/test_town_economy.gd).
@@ -347,7 +1007,7 @@ func _visible_row_names(container: VBoxContainer) -> Array:
 # The column exactly as the player reads it: a sequence of entries, each
 # {"kind": "header"|"row", "text": String}; a header also carries "lined" — whether
 # its name is flanked by a line on both sides. Service access for tests, so a test
-# does not have to know the composite structure of a header.
+# does not have to know the composite structure of a header or of a row.
 func _visible_list_entries(container: VBoxContainer) -> Array:
     var entries: Array = []
     if container == null:
@@ -359,8 +1019,8 @@ func _visible_list_entries(container: VBoxContainer) -> Array:
                 "text": _category_header_text(child),
                 "lined": _category_header_line_count(child) == 2,
             })
-        elif child is HBoxContainer:
-            entries.append({"kind": "row", "text": _resource_row_name(child)})
+        elif child.has_meta(META_RESOURCE_ROW):
+            entries.append({"kind": "row", "text": str(child.get_meta(META_ROW_NAME, ""))})
     return entries
 
 # The name of a category header — the label marked as the name, not a side line.
@@ -378,17 +1038,15 @@ func _category_header_line_count(header: Node) -> int:
             count += 1
     return count
 
-# The display name of a resource row: its first label (a row starts with the icon,
-# then the name; the stars and the stock follow).
+# The display name of a resource row. The row keeps its name in its metadata (the
+# name label is a descendant of the row's content box, not a direct child).
 func _resource_row_name(row: Node) -> String:
-    for node in row.get_children():
-        if node is Label:
-            return node.text
-    return ""
+    return str(row.get_meta(META_ROW_NAME, ""))
 
 func close_town():
     if not visible:
         return
+    _clear_selection()
     _town = null
     has_town = false
     hide()

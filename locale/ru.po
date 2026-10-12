@@ -348,6 +348,9 @@ msgstr "%s: участков %d, строится по одному"
 msgid "%s: %d units every %s per person × %d = %d per cycle"
 msgstr "%s: %d ед. раз в %s на человека × %d = %d за цикл"
 
+msgid "%s: %s"
+msgstr "%s: %s"
+
 msgid "%s: %s / sec"
 msgstr "%s: %s / сек"
 
@@ -368,6 +371,9 @@ msgstr "%s: до %d ед./сек на участок"
 
 msgid "%s: up to %d units/sec per section, base %d work per section"
 msgstr "%s: до %d ед./сек на участок, база %d труда за участок"
+
+msgid "+%d (Ctrl: +1, Shift: +100)"
+msgstr "+%d (Ctrl: +1, Shift: +100)"
 
 msgid "+%d%% (Fresh water access)"
 msgstr "+%d%% (Доступ к пресной воде)"
@@ -437,6 +443,9 @@ msgstr "Разрешить потребление на внутреннем ры
 
 msgid "Already built sections (%d) will stay on the map."
 msgstr "Уже построенные участки (%d) останутся на карте."
+
+msgid "Amount:"
+msgstr "Количество:"
 
 msgid "Another town stands here"
 msgstr "Здесь стоит чужой городок"
@@ -1092,6 +1101,9 @@ msgstr "Разрешены только латинские буквы a-z, ци�
 msgid "Only areas within the Region can be claimed"
 msgstr "Осваивать можно только области в Регионе"
 
+msgid "Only whole positive numbers are accepted"
+msgstr "Принимаются только целые положительные числа"
+
 msgid "Open %s"
 msgstr "Открыть %s"
 
@@ -1121,6 +1133,9 @@ msgstr "Приостановить апгрейд"
 
 msgid "Paused"
 msgstr "Приостановлено"
+
+msgid "Permanent"
+msgstr "Постоянно"
 
 msgid "Plan: demand %s units/sec × price %s = %s coins/sec"
 msgstr "План: спрос %s ед./сек × цена %s = %s монет/сек"
@@ -1506,6 +1521,9 @@ msgstr "Территория расширена! (затрачено %d труд
 msgid "Territory of the city %s"
 msgstr "Территория города %s"
 
+msgid "The amount %d exceeds the route throughput (%s units/sec). The surplus will queue on the road and arrive later."
+msgstr "Количество %d превышает пропускную способность маршрута (%s ед./сек). Излишек встанет в очередь на дороге и придёт позже."
+
 msgid "The area does not border explored territory"
 msgstr "Область не граничит с исследованной территорией"
 
@@ -1587,6 +1605,9 @@ msgstr "Торговые партнёры"
 msgid "Trade unavailable: there is no road from the city to this town"
 msgstr "Торговля недоступна: от города нет дороги до этого городка"
 
+msgid "Trade with the towns is not implemented yet — the order was not placed."
+msgstr "Торговля с городками ещё не реализована — заказ не размещён."
+
 msgid "Treasury: %d"
 msgstr "Казна: %d"
 
@@ -1595,6 +1616,9 @@ msgstr "Казна: %d %s"
 
 msgid "Treasury: 0"
 msgstr "Казна: 0"
+
+msgid "Turn a one-time deal into a standing contract"
+msgstr "Превращает разовую сделку в долговременный контракт"
 
 msgid "Unavailable goods"
 msgstr "Недоступные товары"
@@ -1760,6 +1784,9 @@ msgstr "работает"
 
 msgid "← Back"
 msgstr "← Назад"
+
+msgid "−%d (Ctrl: −1, Shift: −100)"
+msgstr "−%d (Ctrl: −1, Shift: −100)"
 
 msgid "≈ in the \"Treasury\" row — average profit and expenses over the last window, per second"
 msgstr "≈ в строке «Казна» — средние прибыль и расход за последнее окно, в секунду"

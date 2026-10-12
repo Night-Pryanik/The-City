@@ -2469,3 +2469,137 @@ through the rendered rows; the number of road markers equal to the number of tow
 `trade_available`; `center_on_hex` on the centre of a Region within 2 px of the screen centre; and
 the goto button: exactly one request with that town's row/col, `city_ui` closed, `scroll_offset`
 changed and the town closer to the centre. Full suite: 47/47.
+
+## The town window: centering, interactive rows, and the trade settings foundation (October 12, 2026)
+
+**Context.** The town window (`scenes/TownUI.tscn`, `scripts/town_ui.gd`) showed two static
+resource columns and nothing else. The request: center the window; make the buy/sell rows
+interactive (hover + click highlight); add the trade parameters — a manual amount field, "±"
+buttons (tens by default, units with Ctrl, hundreds with Shift, the rule in the button tooltips), a
+"Permanent" checkbox (off by default, a one-time deal → a standing contract), a warning triangle
+when the amount exceeds the throughput of the route from the town to the city (with the shortfall
+in its tooltip), whole-positive-integer input only, and confirm/cancel. The trade itself is still
+not implemented: only its foundation.
+
+**Where the trade settings live (the design question).** Two options were on the table: a separate
+small floating window over the map, or an inline mini-panel inserted into the column under the
+selected row. The **inline panel** was chosen. The town window is about comparing many rows (what is
+cheap here, what the town lacks), so a second floating window would cover the very list the player
+is deciding from and would need its own z-order and centering. The inline panel keeps the context:
+the selected row stays highlighted, its stock and stars stay visible above the settings, and the
+rest of the column scrolls as before. Only one panel is open at a time; a click on another row
+moves it, a repeated click closes it.
+
+**Centering (done in code, not with anchors).** The first attempt anchored the panel to the centre
+of a full-rect root `Control` — and the window flew off the top-left corner of the screen. The
+reason: the town interface is a child of `MainMap`, which is a **`Node2D`**, and a `Control` whose
+parent is not a `Control` anchors against `parent_canvas_item->get_anchorable_rect()`, which for a
+`Node2D` is a **zero-sized rect**. The centre anchor therefore resolved to (0,0) and the panel landed
+at minus half its size, i.e. off-screen. (This is also why every panel of `CityUI` is positioned by
+absolute offsets: anchors are useless in this hierarchy.) So the window is centered in
+`town_ui._center_window()` from `get_viewport_rect().size`, clamped to zero so the top-left corner
+stays reachable on a viewport smaller than the window; it runs in `_ready`, on `open_town` and on
+`Viewport.size_changed`. The `WindowPanel` keeps `clip_contents`, so a long list still cannot spill
+onto the map.
+
+**Interactive rows.** A row is now a `PanelContainer` with a stylebox that carries three states —
+transparent normal, light hover, a stronger blue "selected" — instead of a bare `HBoxContainer`. The
+row and the quality-stars label are wired to the same hover/click handlers (the stars keep their own
+tooltip and `MOUSE_FILTER_STOP`, as `test_town_economy` requires), so hovering the stars highlights
+the row too and they are not a dead zone. The name of a row is stored in its metadata
+(`town_resource_row`, `town_row_key`, `town_row_name`), which is how the trade panel finds its row
+and how the test reads the column back.
+
+**The amount field and the steps.** The field is a `LineEdit` whose `text_changed` handler keeps
+digits only and strips the leading zeros (so a paste is filtered as well and the field never shows
+"007" or a lone "0"); the length is capped. The "±" buttons change the amount by 10 by default, by 1
+with Ctrl and by 100 with Shift — the step is a pure `_amount_step(ctrl, shift)` (Ctrl wins when both
+are held), the modifiers are read at the click, and the whole rule is written in the button
+tooltips. The amount never falls below 1, and confirm is disabled while the field is empty.
+
+**The route-capacity warning.** A new `scripts/warning_badge.gd` draws the same red "!" triangle the
+map already draws over an over-producing improvement
+(`map_renderer._draw_warning_triangle`) — with the engine fallback font and no icon asset, so the
+warning looks the same on the map and in the window. The window reads the throughput from
+`main_map.get_route_to_city(town_row, town_col)` → `avg_speed` (the same number `control_panel`
+shows as "average N units/sec"). The badge appears when the amount is strictly above it; a town
+without a road has no route, the capacity is taken as zero, and any amount warns (the status row
+already explains the missing road).
+
+**The foundation, not the trade.** Confirm assembles an order — `town_id`, `town_name`, `row`,
+`col`, `side` ("buy"/"sell"), `product_id`, `product_name`, `amount`, `permanent`,
+`route_capacity` — and hands it over by the new signal `trade_order_submitted`. `main_map` connects
+it to `_on_town_trade_order`, a documented no-op stub that is the single place the real mechanics
+will be attached to (the same pattern as `town_manager.is_trade_available` and
+`external_trade_tab._collect_deals`). Nothing is spent or moved; the panel reports that the trade is
+not implemented yet.
+
+**Localization.** The new strings were added to the catalog with the project's own toolchain
+(`python tools/i18n_build_po.py`, then the Russian msgstrs, then `python tools/i18n_compile_mo.py`):
+`locale/ru.po` has 0 untranslated entries and `tools/i18n_check_po.py` reports the catalog in order.
+
+**Rejected.** (1) A separate floating settings window: it would cover the list being compared.
+(2) Turning the whole row into a `Button`: the quality stars must keep their own tooltip, and a
+`Button` child would have swallowed the hover of the stars (a dead zone). (3) A drawn-from-scratch
+warning glyph or a `⚠` label: the map already has a triangle, and reusing its shape keeps the two
+readings identical without a new asset. (4) Computing the route capacity in the window from the road
+data: `get_route_to_city` is the single source the rest of the UI already uses.
+
+**Test.** `tests/test_town_trade_ui.gd` (fast, no map generation — the route is stubbed with an
+inner class): the window centered within 1 px and fitting the viewport; the rows are mouse-catching
+and marked, hover changes and restores the background, hovering the stars highlights the row, a
+click selects it (the selected background) and opens the panel exactly at `row index + 1`, a
+repeated click closes it; the panel's field/buttons/checkbox (Permanent off by default)/tooltips;
+the input sanitizer (letters, signs, fractions, leading zeros), the steps 10/1/100 (Ctrl wins), the
+amount floor at 1 and the disabled confirm; the capacity rule (`_exceeds_capacity` — strictly
+above) and the badge visibility and tooltip across no-route / within / at-limit / above; and the
+assembled order's fields plus the "not implemented" note. Full suite: 24/24 fast, plus
+`test_town_economy`, `test_road_building`, `test_town_roads`, `test_town_priorities`.
+
+## The town trade panel: four corrections after the first showing (October 12, 2026)
+
+**Context.** The first version of the trade panel was shown and four things were wrong at once. All
+four are in `scripts/town_ui.gd`, in `_build_trade_panel()` and its new helpers; the scene was not
+touched.
+
+**1. The heading "Selling: Wood" is gone.** The panel sits directly under the row it belongs to, and
+that row is highlighted, so the side and the name were already read from it. The heading only
+repeated the highlighted row and took a line off a panel that is already five controls tall.
+`_side_label()` had no other caller and was removed with it.
+
+**2. "Dark on dark" controls.** The window and the panel are dark (`0.11`), and the default theme
+draws a `Button`/`CheckBox` in a dark grey with a frame of almost the same value — the controls read
+as dark blobs and the player cannot see where a button ends and the panel begins. Every control of
+the panel now gets an explicit `StyleBoxFlat` with a **light** frame: `CONTROL_BG_COLOR` (0.20) /
+`CONTROL_BORDER_COLOR` (0.62) for the normal state, a lighter fill on hover, a darker one pressed,
+and a dimmed frame when disabled (so "confirm cannot be pressed" is visible and not only felt). The
+amount field is styled with the same frame — it stands in the same row between two buttons and
+without a frame it would read as a hole in the panel. The three helpers (`_style_panel_button`,
+`_style_check_box`, `_style_amount_field`) all go through one `_make_control_style(bg, border)`, so
+the four states of the four controls cannot drift apart.
+
+**3. The contract tooltip is scoped to the box.** A `CheckBox` with a `text` shows its
+`tooltip_text` over the box AND over the caption, and the caption was most of the row. The box is
+therefore left **textless** (it is the only thing carrying the tooltip) and the caption became a
+`Label` of its own, named `PermanentLabel`. The caption stays clickable — `gui_input` toggles the box
+— but it deliberately carries no tooltip of its own, and no ancestor of it does either, so Godot's
+tooltip lookup (which walks up the parents when the hovered control has none) finds nothing.
+
+**4. Confirm/cancel are square icon buttons.** They are 36×36 `Button`s with `icon` =
+`IconRegistry.get_texture("check.svg" / "cross.svg")`, `expand_icon` and a centred icon, and **no
+text at all** — the same look as the "Start"/"Cancel" pair of the preview panel
+(`control_panel._show_preview_header`). The words "Confirm"/"Cancel" moved into the tooltips. As in
+the control panel, a missing icon file falls back to a glyph ("✓"/"✕") so the button is never blank.
+The row is right-aligned (`BoxContainer.ALIGNMENT_END`).
+
+**Localization.** No new msgids: every string reused an existing catalog entry ("Confirm", "Cancel",
+"Permanent", "Amount:", the checkbox tooltip). Rebuilding the catalogs produced a byte-identical
+`ru.po`/`ru.mo` (`tools/i18n_check_po.py`: 0 untranslated, 0 Cyrillic, 0 duplicates).
+
+**Test.** `tests/test_town_trade_ui.gd`, case `panel`, was extended: no heading label of the kind
+`"<side>: <name>"` anywhere in the panel; the checkbox is textless and carries the tooltip while a
+`PermanentLabel` exists with an empty tooltip; both icon buttons are square, textless, carry an icon
+and a tooltip; and a `_check_visible_frame` helper asserts a border on all four sides with a
+luminance above 0.4 (a light frame against the dark panel) on the two buttons, the checkbox and the
+amount field. Full suite: 24/24 fast, plus `test_town_economy`, `test_road_building`,
+`test_town_roads`, `test_town_priorities`.

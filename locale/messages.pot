@@ -348,6 +348,9 @@ msgstr ""
 msgid "%s: %d units every %s per person × %d = %d per cycle"
 msgstr ""
 
+msgid "%s: %s"
+msgstr ""
+
 msgid "%s: %s / sec"
 msgstr ""
 
@@ -367,6 +370,9 @@ msgid "%s: up to %d units/sec per section"
 msgstr ""
 
 msgid "%s: up to %d units/sec per section, base %d work per section"
+msgstr ""
+
+msgid "+%d (Ctrl: +1, Shift: +100)"
 msgstr ""
 
 msgid "+%d%% (Fresh water access)"
@@ -436,6 +442,9 @@ msgid "Allow consumption on the domestic market"
 msgstr ""
 
 msgid "Already built sections (%d) will stay on the map."
+msgstr ""
+
+msgid "Amount:"
 msgstr ""
 
 msgid "Another town stands here"
@@ -1092,6 +1101,9 @@ msgstr ""
 msgid "Only areas within the Region can be claimed"
 msgstr ""
 
+msgid "Only whole positive numbers are accepted"
+msgstr ""
+
 msgid "Open %s"
 msgstr ""
 
@@ -1120,6 +1132,9 @@ msgid "Pause upgrade"
 msgstr ""
 
 msgid "Paused"
+msgstr ""
+
+msgid "Permanent"
 msgstr ""
 
 msgid "Plan: demand %s units/sec × price %s = %s coins/sec"
@@ -1506,6 +1521,9 @@ msgstr ""
 msgid "Territory of the city %s"
 msgstr ""
 
+msgid "The amount %d exceeds the route throughput (%s units/sec). The surplus will queue on the road and arrive later."
+msgstr ""
+
 msgid "The area does not border explored territory"
 msgstr ""
 
@@ -1587,6 +1605,9 @@ msgstr ""
 msgid "Trade unavailable: there is no road from the city to this town"
 msgstr ""
 
+msgid "Trade with the towns is not implemented yet — the order was not placed."
+msgstr ""
+
 msgid "Treasury: %d"
 msgstr ""
 
@@ -1594,6 +1615,9 @@ msgid "Treasury: %d %s"
 msgstr ""
 
 msgid "Treasury: 0"
+msgstr ""
+
+msgid "Turn a one-time deal into a standing contract"
 msgstr ""
 
 msgid "Unavailable goods"
@@ -1759,6 +1783,9 @@ msgid "working"
 msgstr ""
 
 msgid "← Back"
+msgstr ""
+
+msgid "−%d (Ctrl: −1, Shift: −100)"
 msgstr ""
 
 msgid "≈ in the \"Treasury\" row — average profit and expenses over the last window, per second"

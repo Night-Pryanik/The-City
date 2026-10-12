@@ -488,6 +488,10 @@ func _ready():
     # centered on the town (see _on_town_focus_requested).
     city_ui.town_focus_requested.connect(_on_town_focus_requested)
     town_ui.closed.connect(_on_town_ui_close)
+    # The window reads the route to the city from the map to compare the entered
+    # amount with the throughput of the route (see town_ui._route_capacity).
+    town_ui.set_map(self)
+    town_ui.trade_order_submitted.connect(_on_town_trade_order)
     town_manager.town_treasury_changed.connect(town_ui.on_town_treasury_changed)
     town_manager.town_storage_changed.connect(town_ui.on_town_storage_changed)
     city_button.pressed.connect(_on_city_button_pressed)
@@ -2420,6 +2424,15 @@ func _on_town_ui_close():
     hud.show()
     # We return the control panel of the hex on the exit from the interface of the town.
     control_panel.show()
+
+# The town window assembled a buy/sell order and handed it over (town_ui.
+# trade_order_submitted). The town trade itself is NOT implemented yet: this handler
+# is the single extension point where it will live. The order it receives is a
+# dictionary with town_id, row, col, side ("buy"/"sell"), product_id, product_name,
+# amount, permanent (bool) and route_capacity (units/sec) — see town_ui.
+# _on_confirm_pressed for the exact shape.
+func _on_town_trade_order(_order: Dictionary) -> void:
+    pass
 
 func _on_research_error(message: String):
     if city_ui.visible:
