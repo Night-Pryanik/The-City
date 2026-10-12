@@ -381,7 +381,7 @@ msgstr ""
 msgid "%s: up to %d units/sec per section, base %d work per section"
 msgstr ""
 
-msgid "+%d (Ctrl: +1, Shift: +100)"
+msgid "+%d (Ctrl: +10, Shift: +100)"
 msgstr ""
 
 msgid "+%d%% (Fresh water access)"
@@ -1851,7 +1851,7 @@ msgstr ""
 msgid "← Back"
 msgstr ""
 
-msgid "−%d (Ctrl: −1, Shift: −100)"
+msgid "−%d (Ctrl: −10, Shift: −100)"
 msgstr ""
 
 msgid "≈ in the \"Treasury\" row — average profit and expenses over the last window, per second"

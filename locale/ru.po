@@ -381,8 +381,8 @@ msgstr "%s: до %d ед./сек на участок"
 msgid "%s: up to %d units/sec per section, base %d work per section"
 msgstr "%s: до %d ед./сек на участок, база %d труда за участок"
 
-msgid "+%d (Ctrl: +1, Shift: +100)"
-msgstr "+%d (Ctrl: +1, Shift: +100)"
+msgid "+%d (Ctrl: +10, Shift: +100)"
+msgstr "+%d (Ctrl: +10, Shift: +100)"
 
 msgid "+%d%% (Fresh water access)"
 msgstr "+%d%% (Доступ к пресной воде)"
@@ -1851,8 +1851,8 @@ msgstr "×%d"
 msgid "← Back"
 msgstr "← Назад"
 
-msgid "−%d (Ctrl: −1, Shift: −100)"
-msgstr "−%d (Ctrl: −1, Shift: −100)"
+msgid "−%d (Ctrl: −10, Shift: −100)"
+msgstr "−%d (Ctrl: −10, Shift: −100)"
 
 msgid "≈ in the \"Treasury\" row — average profit and expenses over the last window, per second"
 msgstr "≈ в строке «Казна» — средние прибыль и расход за последнее окно, в секунду"

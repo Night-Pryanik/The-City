@@ -329,10 +329,10 @@ func _test_amount(town: Dictionary) -> void:
         "the amount field must have a digit cap")
 
     # The steps by the modifiers.
-    _check(_ui._amount_step(false, false) == 10, "the default step must be 10")
-    _check(_ui._amount_step(true, false) == 1, "Ctrl must switch the step to 1")
+    _check(_ui._amount_step(false, false) == 1, "the default step must be 1")
+    _check(_ui._amount_step(true, false) == 10, "Ctrl must switch the step to 10")
     _check(_ui._amount_step(false, true) == 100, "Shift must switch the step to 100")
-    _check(_ui._amount_step(true, true) == 1, "Ctrl must win when both modifiers are held")
+    _check(_ui._amount_step(true, true) == 10, "Ctrl must win when both modifiers are held")
 
     # "+"/"−" change the amount; it never falls below 1.
     _ui._set_amount(10)

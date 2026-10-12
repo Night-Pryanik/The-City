@@ -2854,3 +2854,21 @@ three seconds (the HUD message duration) sees only that *something* happened, no
 was accepted — the panel stays open over its row after confirm, so the row itself is still the visual
 anchor of the last order, and the trade panel remains the place where the player acts, not where they are
 informed.
+
+## The amount buttons: the fine step became the default (October 12, 2026)
+
+**Decision: a plain click moves the amount by one unit, Ctrl gives tens, Shift gives hundreds.**
+The rule was the other way round — tens by default, units with Ctrl, hundreds with Shift — which
+meant that the most common correction, nudging an amount by one or two units, always cost a held
+modifier. The panel now follows the usual convention: the unmodified click is the fine one, and the
+modifiers make it coarser.
+
+**The starting amount was cut loose from the step.** The panel used to open on the same constant that
+the buttons stepped by, so making the default step 1 would have opened every panel at 1. The two
+numbers answer different questions — how much an order is worth at a glance, and how far a click
+moves it — so they are now separate constants (`DEFAULT_AMOUNT` = 10, `STEP_UNITS` = 1). The step
+constants were renamed to say what they mean (`STEP_UNITS` / `STEP_TENS` / `STEP_HUNDREDS`) rather
+than how fine they are, because "fine" no longer identifies one of them.
+
+**Cost.** Three clicks now do the work of one when the player wants hundreds. Shift keeps that cheap,
+and the tooltips state the whole rule, so the change is discoverable without a manual.

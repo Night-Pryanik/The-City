@@ -68,11 +68,16 @@ const SIDE_SELL := "sell"
 # a line wrap should not squeeze the icon and the next row.
 const ROW_HEIGHT := 28
 
-# The amount step of the "+"/"−" buttons: tens by default, units with Ctrl held,
+# The amount step of the "+"/"−" buttons: units by default, tens with Ctrl held,
 # hundreds with Shift held. The values are shown in the button tooltips.
-const STEP_DEFAULT := 10
-const STEP_FINE := 1
-const STEP_COARSE := 100
+const STEP_UNITS := 1
+const STEP_TENS := 10
+const STEP_HUNDREDS := 100
+
+# The amount a freshly opened trade panel starts with. It is independent of the
+# button step: the panel opens on a round number even though a plain click moves
+# the amount by one unit.
+const DEFAULT_AMOUNT := 10
 
 # The digit cap of the amount field: a number longer than the town warehouse is
 # meaningless, and the cap keeps a paste of a whole paragraph out of the field.
@@ -612,7 +617,7 @@ func _toggle_selection(side: String, resource_id: String, display_name: String) 
     _selected_name = display_name
     _hovered_row = null
     _panel_permanent = false
-    _open_trade_panel(STEP_DEFAULT)
+    _open_trade_panel(DEFAULT_AMOUNT)
     _refresh_row_styles()
 
 func _clear_selection() -> void:
@@ -686,7 +691,7 @@ func _open_trade_panel(amount: int) -> void:
     _trade_panel = _build_trade_panel()
     container.add_child(_trade_panel)
     container.move_child(_trade_panel, row.get_index() + 1)
-    _set_amount(amount if amount > 0 else STEP_DEFAULT)
+    _set_amount(amount if amount > 0 else DEFAULT_AMOUNT)
     _update_amount_feedback()
     var scroll := _scroll_for_side(_selected_side)
     if scroll != null:
@@ -726,7 +731,7 @@ func _build_trade_panel() -> PanelContainer:
     minus_button.name = "MinusButton"
     minus_button.text = "−"
     minus_button.custom_minimum_size = Vector2(32, 0)
-    minus_button.tooltip_text = tr("−%d (Ctrl: −1, Shift: −100)") % STEP_DEFAULT
+    minus_button.tooltip_text = tr("−%d (Ctrl: −10, Shift: −100)") % STEP_UNITS
     _style_panel_button(minus_button)
     minus_button.pressed.connect(_on_minus_pressed)
     amount_row.add_child(minus_button)
@@ -745,7 +750,7 @@ func _build_trade_panel() -> PanelContainer:
     plus_button.name = "PlusButton"
     plus_button.text = "+"
     plus_button.custom_minimum_size = Vector2(32, 0)
-    plus_button.tooltip_text = tr("+%d (Ctrl: +1, Shift: +100)") % STEP_DEFAULT
+    plus_button.tooltip_text = tr("+%d (Ctrl: +10, Shift: +100)") % STEP_UNITS
     _style_panel_button(plus_button)
     plus_button.pressed.connect(_on_plus_pressed)
     amount_row.add_child(plus_button)
@@ -945,14 +950,14 @@ func _on_permanent_toggled(pressed: bool) -> void:
 # --- The amount field ---
 
 # The step of the "+"/"−" buttons by the modifiers held at the moment of the click:
-# units with Ctrl, hundreds with Shift, tens otherwise (the default). Ctrl wins when
-# both are held, so a click always has one well-defined step.
+# units by default, tens with Ctrl, hundreds with Shift. Ctrl wins when both are
+# held, so a click always has one well-defined step.
 func _amount_step(ctrl: bool, shift: bool) -> int:
     if ctrl:
-        return STEP_FINE
+        return STEP_TENS
     if shift:
-        return STEP_COARSE
-    return STEP_DEFAULT
+        return STEP_HUNDREDS
+    return STEP_UNITS
 
 func _step_from_modifiers() -> int:
     return _amount_step(Input.is_key_pressed(KEY_CTRL), Input.is_key_pressed(KEY_SHIFT))
