@@ -68,6 +68,10 @@ const SCOUTING_TIME_PER_HEX: float = 3.0
 # node would only have to be kept in sync with the script for no gain.
 const DELIVERY_MANAGER_SCRIPT := preload("res://scripts/delivery_manager.gd")
 
+# The trade of the city with the towns (see town_trade_manager.gd). Created in code
+# for the same reason as the logistics: no visual part, no scene node.
+const TOWN_TRADE_MANAGER_SCRIPT := preload("res://scripts/town_trade_manager.gd")
+
 # The technology that opens the scouting beyond the Region (the fog of war and
 # the territory of the towns). Before it is learned the scouts can be sent only
 # into the unexplored part of the Region, and the hexes outside the Region are inaccessible for
@@ -214,6 +218,10 @@ var map_tooltip: MapTooltip
 # in _ready, before any production can be queued.
 var delivery_manager: Node = null
 
+# The trade with the towns: the orders of the town window, the standing contracts
+# and their payments (see town_trade_manager.gd).
+var town_trade_manager: Node = null
+
 var tech_popup: Control
 var research_hbox: HBoxContainer
 var research_button: Button
@@ -249,6 +257,14 @@ func _ready():
     delivery_manager.name = "DeliveryManager"
     add_child(delivery_manager)
     delivery_manager.initialize(self)
+
+    # The trade with the towns needs the towns (the warehouse, the treasury) and the
+    # logistics (the road from a town to the city), so it is initialized right after
+    # both exist.
+    town_trade_manager = TOWN_TRADE_MANAGER_SCRIPT.new()
+    town_trade_manager.name = "TownTradeManager"
+    add_child(town_trade_manager)
+    town_trade_manager.initialize(town_manager, delivery_manager)
 
     if SaveManager.is_loaded:
         GameData.load_all_data()
@@ -424,6 +440,11 @@ func _ready():
         # road network, and the towns take part in the route of a town source.
         delivery_manager.deserialize(SaveManager.saved_data.get("delivery", {}))
 
+        # The standing contracts with the towns. They are restored after the towns:
+        # a contract finds its town by the id and reads the position and the name of
+        # the town from the restored record.
+        town_trade_manager.deserialize(SaveManager.saved_data.get("town_contracts", []))
+
         SaveManager.is_loaded = false
         SaveManager.saved_data.clear()
         map_renderer.initialize(tile_data, self)
@@ -492,6 +513,9 @@ func _ready():
     # amount with the throughput of the route (see town_ui._route_capacity).
     town_ui.set_map(self)
     town_ui.trade_order_submitted.connect(_on_town_trade_order)
+    # A standing contract that could not be paid or fulfilled is torn automatically
+    # (see town_trade_manager.tick_contracts): the player learns about it from the HUD.
+    town_trade_manager.notice.connect(_on_town_trade_notice)
     town_manager.town_treasury_changed.connect(town_ui.on_town_treasury_changed)
     town_manager.town_storage_changed.connect(town_ui.on_town_storage_changed)
     city_button.pressed.connect(_on_city_button_pressed)
@@ -877,6 +901,13 @@ func _process(delta):
                 if feed_needed > 0:
                     CityData.record_planned_improvement_consumption("feed", improvement_source, feed_needed)
 
+        # The standing contracts with the towns are paid and fulfilled on the city
+        # tick (see town_trade_manager.tick_contracts), BEFORE the shipping: the
+        # goods of a contract of this tick share the road with the production of
+        # this tick, and a contract that cannot be paid is torn before it is
+        # charged.
+        if town_trade_manager != null:
+            town_trade_manager.tick_contracts()
         if delivery_manager != null:
             # The goods produced in this tick are shipped BEFORE the interface reads the
             # queue: do_tick emits city_updated below, and the panel and the tooltip
@@ -2425,6 +2456,15 @@ func get_trade_partners() -> Array:
         })
     return result
 
+# The rows of the "Trade deals" column of the city interface: the standing
+# contracts with the towns (see town_trade_manager). A one-time purchase is not a
+# deal — it is settled at once and leaves nothing to list, so the column shows only
+# the contracts that are paid every tick.
+func get_town_contracts() -> Array:
+    if town_trade_manager == null:
+        return []
+    return town_trade_manager.get_contracts()
+
 func _on_town_ui_close():
     town_ui.hide()
     # The HUD buttons are re-enabled automatically (see _process): the flag
@@ -2433,13 +2473,31 @@ func _on_town_ui_close():
     control_panel.show()
 
 # The town window assembled a buy/sell order and handed it over (town_ui.
-# trade_order_submitted). The town trade itself is NOT implemented yet: this handler
-# is the single extension point where it will live. The order it receives is a
-# dictionary with town_id, row, col, side ("buy"/"sell"), product_id, product_name,
-# amount, permanent (bool) and route_capacity (units/sec) — see town_ui.
-# _on_confirm_pressed for the exact shape.
-func _on_town_trade_order(_order: Dictionary) -> void:
-    pass
+# trade_order_submitted). The order is a dictionary with town_id, town_name, row,
+# col, side ("buy"/"sell"), product_id, product_name, amount, permanent (bool),
+# route_capacity (units/sec) and unit_price (coins per unit, the number the row
+# and the total of the panel showed) — see town_ui._on_confirm_pressed for the
+# exact shape.
+#
+# This handler is the router: the mechanics live in town_trade_manager, and their
+# answer goes back into the trade panel of the window. A failure is also shown in
+# the HUD, so that it is not missed if the panel has been closed in the meantime.
+func _on_town_trade_order(order: Dictionary) -> void:
+    if town_trade_manager == null:
+        return
+    var result: Dictionary = town_trade_manager.submit_order(order)
+    var ok := bool(result.get("ok", false))
+    var message := str(result.get("message", ""))
+    town_ui.set_order_result(ok, message)
+    if not ok:
+        hud.show_message(message)
+
+# A standing contract with a town was torn (the treasury could not pay it, or the
+# town ran out of the goods). The HUD is the channel that works whether the town
+# window, the city interface or nothing at all is open.
+func _on_town_trade_notice(message: String) -> void:
+    if not message.is_empty():
+        hud.show_message(message)
 
 func _on_research_error(message: String):
     if city_ui.visible:

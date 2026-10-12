@@ -33,10 +33,12 @@
 # Every row, of either column, carries the price of ONE unit of the goods (in coins),
 # to the right of the name — see _unit_price.
 #
-# The trade settings panel is the FOUNDATION of the town trade, not the trade
-# itself: it assembles the order (the goods, the amount, the "permanent" flag) and
-# hands it over by the signal trade_order_submitted. The mechanics that will spend
-# the treasury and move the goods live behind that signal (see main_map).
+# The trade settings panel is the FOUNDATION of the trade: it assembles the
+# order (the goods, the amount, the "permanent" flag) and hands it over by the
+# signal trade_order_submitted. The mechanics that spend the treasury and move the
+# goods live behind that signal (main_map._on_town_trade_order ->
+# town_trade_manager), and their answer comes back into the panel by
+# set_order_result.
 extends Control
 
 # The shared UI helpers: the category header of a resource list (a line, the name, a
@@ -51,9 +53,10 @@ const WarningBadge = preload("res://scripts/warning_badge.gd")
 signal closed()
 
 # The foundation of the town trade: the window has assembled a buy/sell order and
-# hands it to the map. The trade itself is not implemented yet, so the map only
-# receives the order (see main_map._on_town_trade_order) — this signal is the single
-# place the mechanics will be attached to.
+# hands it to the map. The order carries the unit price the panel showed (the same
+# number the total of the order is made of), so that the charge of the treasury and
+# the sum the player saw cannot diverge. The mechanics behind the signal live in
+# main_map._on_town_trade_order -> town_trade_manager.submit_order.
 signal trade_order_submitted(order: Dictionary)
 
 # The two sides of the trade. The value is part of the order and of the row key, so
@@ -1097,9 +1100,9 @@ func _format_speed(value: float) -> String:
 
 # --- Confirm / cancel ---
 
-# Assembles the order and hands it over. The trade itself is not implemented yet, so
-# the panel only reports that the order was not placed; the shape of the order is the
-# contract the future mechanics will read.
+# Assembles the order and hands it over. The unit price is the same number the
+# total of the panel is made of, so the treasury is charged exactly the sum the
+# player saw. The result of the order comes back through set_order_result.
 func _on_confirm_pressed() -> void:
     var amount := _current_amount()
     if amount <= 0:
@@ -1115,11 +1118,24 @@ func _on_confirm_pressed() -> void:
         "amount": amount,
         "permanent": _permanent_check != null and _permanent_check.button_pressed,
         "route_capacity": _route_capacity(),
+        "unit_price": _unit_price(_selected_id, _selected_side),
     }
     emit_signal("trade_order_submitted", _last_order)
-    if _panel_note != null and is_instance_valid(_panel_note):
-        _panel_note.text = tr("Trade with the towns is not implemented yet — the order was not placed.")
-        _panel_note.visible = true
+
+# The answer of the trade mechanics to the last order (main_map routes it here
+# after town_trade_manager.submit_order). The panel stays open over its row: the
+# player reads what happened to the order he has just confirmed — the goods are on
+# the road, or the reason the deal did not go through. The colour follows the
+# outcome: a failure is red, a success is neutral.
+func set_order_result(ok: bool, message: String) -> void:
+    if _panel_note == null or not is_instance_valid(_panel_note):
+        return
+    _panel_note.text = message
+    _panel_note.visible = not message.is_empty()
+    if message.is_empty():
+        return
+    _panel_note.add_theme_color_override("font_color",
+            COLOR_INCOME if ok else COLOR_EXPENSE)
 
 func _on_cancel_pressed() -> void:
     _clear_selection()

@@ -285,6 +285,9 @@ msgstr "%d сек"
 msgid "%d units"
 msgstr "%d ед."
 
+msgid "%d units per second"
+msgstr "%d ед. в секунду"
+
 msgid "%d units/%.1f sec"
 msgstr "%d ед./%.1f сек"
 
@@ -323,6 +326,12 @@ msgstr "%s [%s] (наука: %d)"
 
 msgid "%s [%s] (science: %d)%s"
 msgstr "%s [%s] (наука: %d)%s"
+
+msgid "%s does not have %d units for a standing contract."
+msgstr "У %s нет %d ед. для долгосрочного контракта."
+
+msgid "%s does not have that many units."
+msgstr "У %s нет такого количества."
 
 msgid "%s with the identifier \"%s\" does not exist."
 msgstr "%s с идентификатором «%s» не существует."
@@ -765,6 +774,21 @@ msgstr "Правило потребления ссылается на несущ
 msgid "Consumption rule references a nonexistent product"
 msgstr "Правило потребления ссылается на несуществующий продукт"
 
+msgid "Contract signed: %d units of %s per second from %s."
+msgstr "Контракт заключён: %d ед. %s в секунду из городка %s."
+
+msgid "Contract terminated: %s ran out of %s."
+msgstr "Контракт расторгнут: в городке %s закончился товар %s."
+
+msgid "Contract terminated: a broken record."
+msgstr "Контракт расторгнут: повреждённая запись."
+
+msgid "Contract terminated: the town is gone."
+msgstr "Контракт расторгнут: городка больше нет."
+
+msgid "Contract terminated: the treasury cannot pay %d per second for %s from %s."
+msgstr "Контракт расторгнут: казна не может платить %d в секунду за %s из городка %s."
+
 msgid "Copy the list"
 msgstr "Скопировать список"
 
@@ -800,6 +824,9 @@ msgstr "Дебаг: вся карта открыта и в Кольце Влия
 
 msgid "Delivery:"
 msgstr "Доставка:"
+
+msgid "Delivery: %s"
+msgstr "Доставка: %s"
 
 msgid "Descending"
 msgstr "По убыванию"
@@ -1086,6 +1113,9 @@ msgstr "Пока никто ничего не потребляет"
 msgid "Nonexistent product in a goods group"
 msgstr "В группе продуктов несуществующий продукт"
 
+msgid "Not enough coins for the contract: %d per second."
+msgstr "Недостаточно монет для контракта: %d в секунду."
+
 msgid "Not enough coins in the treasury! Need %d, treasury has %d"
 msgstr "Недостаточно монет в казне! Нужно %d, в казне %d"
 
@@ -1214,6 +1244,9 @@ msgstr "Прибыль (фактическая, средняя): %s / сек"
 
 msgid "Purchase"
 msgstr "Покупка"
+
+msgid "Purchased %d units of %s from %s."
+msgstr "Куплено %d ед. %s в городке %s."
 
 msgid "Quality priority: %s (click to switch)"
 msgstr "Приоритет качества: %s (нажмите чтобы переключить)"
@@ -1434,6 +1467,9 @@ msgstr "Выберите технологию для изучения"
 msgid "Selling"
 msgstr "Продажа"
 
+msgid "Selling goods to the towns is not implemented yet — the order was not placed."
+msgstr "Продажа товаров городкам ещё не реализована — заказ не размещён."
+
 msgid "Send scouts"
 msgstr "Отправить разведчиков"
 
@@ -1539,6 +1575,9 @@ msgstr "Территория города %s"
 msgid "The amount %d exceeds the route throughput (%s units/sec). The surplus will queue on the road and arrive later."
 msgstr "Количество %d превышает пропускную способность маршрута (%s ед./сек). Излишек встанет в очередь на дороге и придёт позже."
 
+msgid "The amount must be a positive whole number"
+msgstr "Количество должно быть положительным целым числом"
+
 msgid "The area does not border explored territory"
 msgstr "Область не граничит с исследованной территорией"
 
@@ -1554,6 +1593,9 @@ msgstr "Чанк пересекается с кольцом влияния чу�
 msgid "The city needs access to fresh water"
 msgstr "Нужен доступ города к пресной воде"
 
+msgid "The time the goods spend on the road from the town to the city"
+msgstr "Время, которое товар проводит на дороге от городка до города"
+
 msgid "The town buys nothing"
 msgstr "Городок ничего не покупает"
 
@@ -1562,6 +1604,9 @@ msgstr "У городка нет дороги в кольце влияния"
 
 msgid "The town is already connected by a road"
 msgstr "Городок уже соединён дорогой"
+
+msgid "The town is not on the map anymore"
+msgstr "Городка больше нет на карте"
 
 msgid "There is no difference in spelling, but for the game these are DIFFERENT identifiers: everything that references \"%s\" will not reach \"%s\" and vice versa. Note that a reference to \"%s\" does NOT break anything — it is declared and looks correct, so the regular broken-reference checks did not see this typo either. Keep one identifier and rename the other in all files."
 msgstr "Различия в написании нет, но для игры это РАЗНЫЕ идентификаторы: всё, что ссылается на «%s», не попадёт в «%s» и наоборот. При этом ссылка на «%s» ссылки НЕ ломает — он объявлен и выглядит правильно, поэтому обычные проверки битых ссылок эту опечатку и не видели. Оставьте один идентификатор и переименуйте второй во всех файлах."
@@ -1622,6 +1667,9 @@ msgstr "Торговля недоступна: от города нет доро
 
 msgid "Trade with the towns is not implemented yet — the order was not placed."
 msgstr "Торговля с городками ещё не реализована — заказ не размещён."
+
+msgid "Trade with towns"
+msgstr "Торговля с городками"
 
 msgid "Treasury: %d"
 msgstr "Казна: %d"
@@ -1796,6 +1844,9 @@ msgstr "можно улучшить"
 
 msgid "working"
 msgstr "работает"
+
+msgid "×%d"
+msgstr "×%d"
 
 msgid "← Back"
 msgstr "← Назад"

@@ -802,18 +802,23 @@ func _check_external_trade(city_ui, main_map, state: Dictionary) -> void:
     tab.partners_sort_key = tab.SORT_NAME
     tab.partners_descending = false
 
-    # The trade with the towns is not implemented yet: the source of the section is empty and
-    # the section shows the empty state. The sorting is checked on the rows of the documented
-    # shape of a deal (see external_trade_tab._collect_deals).
+    # The rows of the section are the standing contracts with the towns (see
+    # external_trade_tab._collect_deals): the goods and the volume, the town, the type,
+    # the payment per second and the delivery time. The shape of a deal is the one
+    # town_trade_manager.get_contracts produces.
     var deals: Array = [
         {"town_id": "town_1", "town_name": "Roma", "product_id": "beer", "name": "Beer",
-            "icon": "", "type": "buy", "price": 30},
+            "icon": "", "type": "buy", "price": 30, "amount": 10, "cost": 300,
+            "delivery_time": 6.4},
         {"town_id": "town_2", "town_name": "Ostia", "product_id": "ale", "name": "Ale",
-            "icon": "", "type": "buy", "price": 10},
+            "icon": "", "type": "buy", "price": 10, "amount": 10, "cost": 100,
+            "delivery_time": 6.4},
         {"town_id": "town_3", "town_name": "Capua", "product_id": "mead", "name": "Mead",
-            "icon": "", "type": "sell", "price": 10},
+            "icon": "", "type": "sell", "price": 10, "amount": 10, "cost": 100,
+            "delivery_time": 6.4},
         {"town_id": "town_4", "town_name": "Neapolis", "product_id": "wine", "name": "Wine",
-            "icon": "", "type": "buy", "price": 20},
+            "icon": "", "type": "buy", "price": 20, "amount": 10, "cost": 200,
+            "delivery_time": 6.4},
     ]
     # The expected orders are built from the data of the rows themselves, and not from the
     # constants of the test: the keys of the sorting are exactly the fields of a deal.
@@ -858,8 +863,11 @@ func _check_external_trade(city_ui, main_map, state: Dictionary) -> void:
             "every deal must get a row: %d of %d" % [deals_list.get_child_count(), deals.size()], state)
         var first_row: Node = deals_list.get_child(0)
         var texts := _row_texts(first_row)
-        check(texts.has("Ale") and texts.has(tab._deal_type_name("buy")) and texts.has("10"),
-            "the row of a deal must show the goods, the type and the price, got %s" % str(texts), state)
+        check(texts.has("Ale") and texts.has("Ostia")
+                and texts.has(tab._deal_type_name("buy")) and texts.has("\u00d710")
+                and texts.has("Cost: 100/sec") and texts.has("Delivery: 6.40 sec"),
+            "the row of a deal must show the goods, the volume, the town, the type, the "
+                + "payment and the delivery time, got %s" % str(texts), state)
         # The column returns to its own state: the synthetic rows were shown only for the check.
         tab._deals_signature = ""
         tab._refresh_deals()

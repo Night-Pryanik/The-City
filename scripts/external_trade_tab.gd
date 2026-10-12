@@ -6,9 +6,10 @@
 # small square buttons with icons and tooltips — the same look as the tab bar of the city.
 # Every section has its own sorting, and the state of one section does not touch the other.
 #
-# The trade with the towns is NOT implemented yet, therefore the section "Trade deals" collects
-# no rows and shows the empty state. Its sorting is nevertheless real: it works on the row shape
-# documented in _collect_deals, so the day the trade appears only that source has to be filled in.
+# The section "Trade deals" lists the STANDING CONTRACTS with the towns: what the city
+# buys from which town every tick, for how much and how long the goods are on the road
+# (see town_trade_manager.get_contracts, which main_map forwards). A one-time purchase
+# is settled at once and leaves nothing to list.
 #
 # The section "Trade partners" is filled with the towns the player has discovered: a town is
 # known when its hex lies in the known territory or has been scouted — the same condition under
@@ -276,10 +277,9 @@ func _partner_sort_value(partner: Dictionary) -> Variant:
 
 # --- THE SECTION "TRADE DEALS" ---
 
-# The deals with the towns — the source of the section. The trade with the towns is NOT
-# implemented yet, therefore the list is empty and the section shows the empty state; the
-# sorting above it is real and works on the shape below, so the day the trade appears this
-# method is the only thing to fill in.
+# The standing contracts with the towns — the source of the section. Every deal is
+# a purchase: the city buys from the town (see town_trade_manager), so the type of
+# every row is "buy" and the row is painted as an expense.
 #
 # The shape of a row (the contract of _build_deal_row):
 #
@@ -289,9 +289,15 @@ func _partner_sort_value(partner: Dictionary) -> Variant:
 #   name        the display name of the goods — the row shows it
 #   icon        the file name of the icon of the goods (see IconRegistry)
 #   type        "buy" — the city buys the goods from the town, "sell" — the city sells them
-#   price       coins per unit
+#   price       coins per unit (frozen at the signing of the contract)
+#   amount      the units the town owes per second
+#   cost        coins the treasury pays per second (the payment of the contract)
+#   delivery_time  the transit delay of the route from the town (sec)
 func _collect_deals() -> Array:
-    return []
+    if main_map == null or not is_instance_valid(main_map) \
+            or not main_map.has_method("get_town_contracts"):
+        return []
+    return main_map.get_town_contracts()
 
 # The signature of the deals list: everything a row shows plus the sorting in force. Any change
 # rebuilds the rows — the rows of this section have no in-place update, and a rebuild is exactly
@@ -299,9 +305,11 @@ func _collect_deals() -> Array:
 func _deals_signature_of(deals: Array) -> String:
     var parts: Array = [deals_sort_key, "1" if deals_descending else "0"]
     for deal in deals:
-        parts.append("%s|%s|%s|%s|%d" % [
+        parts.append("%s|%s|%s|%s|%d|%d|%d|%.2f" % [
             str(deal.get("product_id", "")), str(deal.get("town_id", "")),
-            str(deal.get("type", "")), str(deal.get("name", "")), int(deal.get("price", 0))])
+            str(deal.get("type", "")), str(deal.get("name", "")), int(deal.get("price", 0)),
+            int(deal.get("amount", 0)), int(deal.get("cost", 0)),
+            float(deal.get("delivery_time", 0.0))])
     return ";".join(PackedStringArray(parts))
 
 func _refresh_deals() -> void:
@@ -318,9 +326,10 @@ func _fill_deals(deals: Array) -> void:
         rows.append(_build_deal_row(deal))
     _fill_list(deals_list, rows, tr("No trade deals yet"))
 
-# One row of the section: the goods, the town the deal is made with, the type of the deal and the
-# price. The type is painted in the colours of the interface (a purchase spends the treasury, a
-# sale fills it), so the row is read at a glance.
+# One row of the section: the goods and the volume of the contract, the town the deal is made
+# with, the type of the deal, the payment of the contract and the delivery time. The type is
+# painted in the colours of the interface (a purchase spends the treasury, a sale fills it),
+# and so is the payment, so the row is read at a glance.
 func _build_deal_row(deal: Dictionary) -> HBoxContainer:
     var row := HBoxContainer.new()
     row.add_theme_constant_override("separation", 6)
@@ -342,6 +351,18 @@ func _build_deal_row(deal: Dictionary) -> HBoxContainer:
     name_label.mouse_filter = Control.MOUSE_FILTER_STOP
     row.add_child(name_label)
 
+    # The volume of the contract: the units the town owes per second. The row shows
+    # the compact "×N", and the word "per second" lives in the tooltip — the rhythm
+    # of the payment is stated by the cost label next to it.
+    if deal.has("amount"):
+        var amount_label := Label.new()
+        amount_label.text = tr("×%d") % int(deal.get("amount", 0))
+        amount_label.add_theme_color_override("font_color", COLOR_CAPTION)
+        amount_label.custom_minimum_size = Vector2(34, 0)
+        amount_label.mouse_filter = Control.MOUSE_FILTER_STOP
+        amount_label.tooltip_text = tr("%d units per second") % int(deal.get("amount", 0))
+        row.add_child(amount_label)
+
     var town_label := Label.new()
     town_label.text = str(deal.get("town_name", ""))
     town_label.add_theme_color_override("font_color", COLOR_CAPTION)
@@ -355,14 +376,45 @@ func _build_deal_row(deal: Dictionary) -> HBoxContainer:
     type_label.mouse_filter = Control.MOUSE_FILTER_STOP
     row.add_child(type_label)
 
-    var price_label := Label.new()
-    price_label.text = str(int(deal.get("price", 0)))
-    price_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-    price_label.custom_minimum_size = Vector2(44, 0)
-    price_label.add_theme_color_override("font_color", COLOR_PRICE)
-    price_label.mouse_filter = Control.MOUSE_FILTER_STOP
-    row.add_child(price_label)
+    if deal.has("cost"):
+        # The payment of the contract: what the treasury spends every second on it.
+        var cost_label := Label.new()
+        cost_label.text = tr("Cost: %d/sec") % int(deal.get("cost", 0))
+        cost_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+        cost_label.custom_minimum_size = Vector2(92, 0)
+        cost_label.add_theme_color_override("font_color", COLOR_EXPENSE)
+        cost_label.mouse_filter = Control.MOUSE_FILTER_STOP
+        row.add_child(cost_label)
+    else:
+        var price_label := Label.new()
+        price_label.text = str(int(deal.get("price", 0)))
+        price_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+        price_label.custom_minimum_size = Vector2(44, 0)
+        price_label.add_theme_color_override("font_color", COLOR_PRICE)
+        price_label.mouse_filter = Control.MOUSE_FILTER_STOP
+        row.add_child(price_label)
+
+    # The delivery time: the transit delay of the route from the town to the city —
+    # how long the goods of one tick spend on the road.
+    if deal.has("delivery_time"):
+        var delivery_label := Label.new()
+        delivery_label.text = tr("Delivery: %s") % _format_delay(float(deal.get("delivery_time", 0.0)))
+        delivery_label.add_theme_color_override("font_color", COLOR_CAPTION)
+        delivery_label.mouse_filter = Control.MOUSE_FILTER_STOP
+        delivery_label.tooltip_text = tr("The time the goods spend on the road from the town to the city")
+        row.add_child(delivery_label)
     return row
+
+# The delivery time of a deal: whole seconds when the delay is a whole number and
+# two decimals otherwise (the delay is length × transit_time_per_hex, so fractions
+# are the norm). Both formats reuse the msgids the rest of the interface already
+# shows times with.
+func _format_delay(seconds: float) -> String:
+    if seconds <= 0.0:
+        return tr("%d sec") % 0
+    if is_equal_approx(seconds, roundf(seconds)):
+        return tr("%d sec") % int(roundf(seconds))
+    return tr("%.2f sec") % seconds
 
 func _deal_type_name(deal_type: String) -> String:
     return tr("Sale") if deal_type == DEAL_TYPE_SELL else tr("Purchase")

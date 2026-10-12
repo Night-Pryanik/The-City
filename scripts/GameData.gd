@@ -732,6 +732,7 @@ func get_building_display_name(building_id: String) -> String:
 #   "@bld:<id>"  — a city building;
 #   "@imp:<id>"  — an improvement on a hex;
 #   "@pop_food"  — the feeding of the population (there is no separate entity in the data);
+#   "@town_trade" — the purchases from the towns (the treasury pays, see town_trade_manager).
 #   "@scouting" / "@claim" — the one-off treasury costs (scouting, claiming a chunk).
 # The service sources store the English text in the key, like TAX_INCOME_TYPE:
 # tr() cannot be called in a constant expression, the translation is applied by the resolver.
@@ -739,6 +740,7 @@ const SRC_PREFIX_PROFESSION := "@prof:"
 const SRC_PREFIX_BUILDING := "@bld:"
 const SRC_PREFIX_IMPROVEMENT := "@imp:"
 const SRC_POP_FOOD := "@pop_food"
+const SRC_TOWN_TRADE := "@town_trade"
 const SRC_SCOUTING := "@scouting"
 const SRC_CLAIMING := "@claim"
 
@@ -761,6 +763,8 @@ func get_source_display_name(source_id: String) -> String:
         return ""
     if source_id == SRC_POP_FOOD:
         return tr("Population food")
+    if source_id == SRC_TOWN_TRADE:
+        return tr("Trade with towns")
     if source_id == SRC_SCOUTING:
         return tr("Scouting")
     if source_id == SRC_CLAIMING:

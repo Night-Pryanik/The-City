@@ -2707,3 +2707,103 @@ safer default.
 permanent appends `/sec` to the total; toggling back reverts to the plain format; switching to
 the buy column and toggling there shows `Income: …/sec`. Full suite: 24/24 fast, plus the four
 slow town tests, all PASS.
+
+## The town trade: a term sheet, not a market subscription (October 12, 2026)
+
+**Context.** The town window had been "*prepared for trade*" for two sessions: rows, a trade panel, the
+order assembled and handed over by a signal to a documented no-op. The task was the first real stage —
+the city buys from a town, once or on a standing contract — and the design question that arrived with it
+was not "how to move the numbers" but **what a contract is**.
+
+**Decision: the unit price is frozen at signing.** The row of the trade panel shows the live market price
+times the quality multiplier, and that number travels inside the order. The contract stores it and charges
+`amount × unit_price` every tick, forever, without ever re-reading the market.
+
+The alternative — a live subscription that re-prices every tick — is tempting, because the market
+multipliers already move on their own. It was rejected for one reason: the "Trade deals" section of the
+"Trade" tab shows the **cost** of a contract as a number, and the HUD shows the money actually leaving the
+treasury. With a live price those two numbers would drift apart within a few seconds, every era tick, with
+nothing on screen to explain it — the player would read it as a bug. With a frozen price the row is a term
+sheet: the deal the player signed is the deal that runs, and a town that raises its price cannot make an
+old contract more expensive.
+
+**Decision: a contract is not a debt.** Every tick, before anything is charged, the town is re-found by id,
+the stock is re-read and the treasury is re-counted. If the town is gone, has run out of the good, or the
+city cannot pay — the contract is **torn**, the failed tick is settled by nobody, and the player is told
+why in the HUD. There is no arrears bookkeeping anywhere in the project, deliberately: the alternative
+would be a negative balance on the city with a penalty rate, an interest model and a recovery order — a
+credit subsystem the design does not want, to make a deal the player cannot be forced into. Neither side
+can be forced, so nothing is owed.
+
+**Decision: the goods take the ordinary road.** A purchase does not "materialise" at the warehouse: the
+coins move first, then the units are queued on the route from the town through the same
+`create_cargo` the production of an improvement uses. The road limits a deal exactly like it limits
+production, and that is the point — a 60-per-second contract over a 30-per-second trail queues, and the
+"!" triangle of the trade panel already warned the player about it before confirming. The contract tick
+runs inside the simulation block **before** `ship()`, so one tick of a deal ships on the same step as the
+production of the same tick. There is no separate clock for trade.
+
+The one exception is a route that does not exist at all — then the goods land at once, because a road that
+is not there cannot limit anything. That is the same fallback `_deliver_production` uses for an improvement
+on a hex without a road; the "no limit" rule does not care who the goods belong to.
+
+**What we deliberately do not do.** The city **selling** to a town is not implemented, and the order of
+that side returns an explicit message instead of doing nothing silently. Silently dropping a sale would
+leave the player clicking a confirm button that does nothing — worse than a sentence that names what is
+missing. The seam is the `side == "sell"` branch of one function, and the second stage attaches there.
+
+A town does not spend what it earns: the coins simply accumulate in its treasury. A town has no purchases
+of its own yet, so "money in, money never out" is honest today and needs no ledger — when the city starts
+selling, the town's spends get their own bookkeeping, in the same place.
+
+A one-time purchase leaves nothing to list. The "Trade deals" section shows the standing contracts and
+only them: a one-time deal is over the moment it is confirmed, and a row that disappears by itself on the
+next tick would read as a rendering bug. The delivery time of a row is read from the **live** route
+(`get_route_status`), so a road that got longer or faster changes the number on a contract that is already
+running — the one field of a deal that is deliberately not frozen, because it is not a term of the deal,
+only the distance the goods currently travel.
+
+## The dynamics of the row reads the plan, so a contract must enter the plan (October 12, 2026)
+
+**Context.** The town trade was working: a contract charged the treasury, wrote the goods off the town and
+queued them on the road. The player reported that the bought good still showed `+0` in the dynamics of the
+tab "Resources" — the storage was growing, the label denied it. Nothing was broken in the delivery: the
+goods really arrived.
+
+**The cause is a convention, not a bug in the trade.** The green label of a resource row
+(`resources_tab._format_prod_label`) reads **`CityData.get_planned_production_map()` only**. The actual
+per-tick `production_rates` is deliberately not part of that label — it is what the famine check and the
+top bar read. The plan is assembled from three per-second caches, and the town contracts were in none of
+them: a contract was a *fact* of the delivery and never a *promise* of the city, so the row had nothing to
+show.
+
+**Decision: a standing contract is a promise, so it goes into the plan.**
+`CityData.town_planned_production` (`record_planned_town_production`, source `SRC_TOWN_TRADE`) is merged
+into the plan by the same rule as the improvements (`_merge_planned_cache`), with `interval = 0` — a
+contract is a continuous per-second rate, exactly like a working improvement, and the label reads it as
+`[+N≈`.
+
+The obvious alternative was to make the label fall back to the actual `production_rates` when the plan is
+empty. It was rejected because the two numbers have different lifetimes: `production_rates` is cleared by
+`reset_counters()` on every tick, while the arrivals are credited by `delivery_manager.advance()` on
+arbitrary **frames**. A road that delivers every tick would therefore still show `+0` on most redraws and
+`+2N` on the others, depending on where the display interval happened to fall — a jitter with no meaning.
+The plan is the number that does not flicker, and the "≈" marker already tells the player that it is a
+promise and not a fact. Making the label read the fact would have deleted the distinction the whole tab is
+built on.
+
+**The record is written after the teardown sweep.** `tick_contracts()` tears a contract that cannot be paid
+or fulfilled *before* it records the plan, so a dead contract never promises goods the city will not
+receive. The cache lives exactly one tick (`reset_counters()`, `setup()`), the same lifetime as the plan of
+the improvements, so a contract that is gone simply stops being counted on the next tick.
+
+**A one-time purchase stays out of the plan.** It is a single delivery, not a rate: writing it into a
+per-second map would either show a phantom inflow for one tick or, worse, be read as a rate and promise the
+same delivery every second. The row of a one-time purchase shows its goods through the storage, which is
+what actually grew.
+
+**What this does not do.** The plan does not make the row appear from nothing: `refresh()` walks
+`city_storage`, so a good that the city has never held still needs its first arrival to get a row. That is
+the pre-existing rule for improvements as well, and it is honest — the plan of a row the player has never
+seen would be a row appearing out of nowhere. For the reported case the good was already in storage; only
+its dynamics was missing.

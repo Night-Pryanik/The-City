@@ -69,6 +69,10 @@ func save_game():
         # The flow and the delay are not saved: they belong to the road and are
         # recomputed from the restored network, so a save never freezes a stale route.
         "delivery": main_map.delivery_manager.serialize() if main_map.delivery_manager else {},
+        # The standing contracts with the towns (see town_trade_manager.gd): what the
+        # city buys from which town every tick and for how much. The route of a deal
+        # is not saved — it is recomputed from the road network like the cargo.
+        "town_contracts": main_map.town_trade_manager.serialize() if main_map.town_trade_manager else [],
         "map_state": main_map.get_map_state(),
         "city_name": CityData.city_name
     }

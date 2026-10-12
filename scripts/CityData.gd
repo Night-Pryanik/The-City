@@ -305,6 +305,7 @@ func setup():
     city_built_buildings.clear()
     improvement_planned_production.clear()
     improvement_planned_consumption.clear()
+    town_planned_production.clear()
     building_construction.clear()
     domesticated_animals.clear()
     domesticated_plants.clear()
@@ -372,6 +373,9 @@ func reset_counters():
     # counters.
     improvement_planned_production.clear()
     improvement_planned_consumption.clear()
+    # The planned delivery of the standing contracts with the towns lives exactly one tick as
+    # well: it is filled from town_trade_manager.tick_contracts(), which runs after this reset.
+    town_planned_production.clear()
     # The fact of the consumption on the internal market for the tick (the tab "Trade") —
     # such a counter for one tick, as the two above.
     market_consumption_rates.clear()
@@ -980,27 +984,37 @@ func _record_planned_supply(result: Dictionary, pid: String, source_id: String, 
     entry["interval"] = minf(float(entry.get("interval", interval)), interval)
 
 # The entry point of the planned production: the recipes of the buildings (interval = time of the recipe,
-# 0 is "per tick") + the improvements on the map (no interval — they output a per-second rate).
+# 0 is "per tick") + the improvements on the map (no interval — they output a per-second rate) +
+# the standing contracts with the towns (a per-second rate as well).
 # The plan is needed, because in
 # the continuous model (see main_map._emit_continuous_production and CraftContainer)
 # the output goes on every tick a little bit, and the label of the dynamics `[+N≈]` shows
 # the average per_sec — that is enough for the UI of the tab "Resources". The records
-# are filled from main_map.gd on every tick of the simulation.
+# are filled from main_map.gd (the improvements) and town_trade_manager.gd (the contracts)
+# on every tick of the simulation.
 func get_planned_production_map() -> Dictionary:
     var result := get_building_planned_production()
-    for pid in improvement_planned_production:
+    _merge_planned_cache(result, improvement_planned_production)
+    _merge_planned_cache(result, town_planned_production)
+    return result
+
+# Merges one cache of the per-second records (product -> source -> entry) into the plan,
+# summing the amounts and the counts and keeping the smallest interval. Every per-second
+# cache (the improvements, the town contracts) is merged by this one rule, so a new kind
+# of a per-second source only has to add its cache to get_planned_production_map().
+func _merge_planned_cache(result: Dictionary, cache: Dictionary) -> void:
+    for pid in cache:
         if not result.has(pid):
             result[pid] = {}
         var by_source: Dictionary = result[pid]
-        for source_id in improvement_planned_production[pid]:
-            var src: Dictionary = improvement_planned_production[pid][source_id]
+        for source_id in cache[pid]:
+            var src: Dictionary = cache[pid][source_id]
             if not by_source.has(source_id):
                 by_source[source_id] = {"amount": 0, "count": 0, "interval": float(src.get("interval", 0.0))}
             var entry: Dictionary = by_source[source_id]
             entry["amount"] = int(entry.get("amount", 0)) + int(src.get("amount", 0))
             entry["count"] = int(entry.get("count", 0)) + int(src.get("count", 1))
             entry["interval"] = minf(float(entry.get("interval", 0.0)), float(src.get("interval", 0.0)))
-    return result
 
 # --- THE PLANNED PRODUCTION OF THE IMPROVEMENTS ON THE MAP ---
 # The cache of the planned output of the improvements for the current tick of the simulation:
@@ -1017,6 +1031,30 @@ var improvement_planned_production: Dictionary = {}
 # for each working improvement on each tick of the simulation).
 func record_planned_improvement_production(pid: String, source_id: String, amount: int):
     _record_cycle_entry(improvement_planned_production, pid, source_id, amount)
+
+# --- THE PLANNED DELIVERY OF THE TOWN CONTRACTS ---
+# The standing contracts with the towns (see town_trade_manager) deliver a fixed amount of
+# a good every second, exactly like a working improvement. They are therefore part of the
+# PLAN of the city, and not only of its actual dynamics: the green label of the tab
+# "Resources" reads the planned production only (resources_tab._format_prod_label), so a
+# contract that is not written here would show "[+0" — the goods would arrive and the
+# storage would grow, while the dynamics insisted that nothing is coming.
+#
+#   product_id -> { source_id -> { "amount": N, "interval": 0.0, "count": M } }
+#   amount   is the total per second over all the contracts of the product;
+#   count    is the number of the contracts behind the amount (for the "xN" of the tooltip).
+# The source is GameData.SRC_TOWN_TRADE ("Trade with towns"), one row per product: the
+# per-town detail is what the "Trade deals" section of the "Trade" tab is for.
+#
+# It is filled from town_trade_manager.tick_contracts() on every tick of the simulation,
+# cleared in reset_counters() together with the actual counters — the same lifetime as the
+# plan of the improvements.
+var town_planned_production: Dictionary = {}
+
+# The record of the planned delivery of one town contract (it is called from
+# town_trade_manager for each live contract on each tick of the simulation).
+func record_planned_town_production(pid: String, source_id: String, amount: int):
+    _record_cycle_entry(town_planned_production, pid, source_id, amount)
 
 # --- THE PLANNED CONSUMPTION OF THE IMPROVEMENTS ON THE MAP (the feed of the pastures) ---
 # The feed (the feed_consumption of the resource) is written off continuously (see

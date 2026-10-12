@@ -285,6 +285,9 @@ msgstr ""
 msgid "%d units"
 msgstr ""
 
+msgid "%d units per second"
+msgstr ""
+
 msgid "%d units/%.1f sec"
 msgstr ""
 
@@ -322,6 +325,12 @@ msgid "%s [%s] (science: %d)"
 msgstr ""
 
 msgid "%s [%s] (science: %d)%s"
+msgstr ""
+
+msgid "%s does not have %d units for a standing contract."
+msgstr ""
+
+msgid "%s does not have that many units."
 msgstr ""
 
 msgid "%s with the identifier \"%s\" does not exist."
@@ -765,6 +774,21 @@ msgstr ""
 msgid "Consumption rule references a nonexistent product"
 msgstr ""
 
+msgid "Contract signed: %d units of %s per second from %s."
+msgstr ""
+
+msgid "Contract terminated: %s ran out of %s."
+msgstr ""
+
+msgid "Contract terminated: a broken record."
+msgstr ""
+
+msgid "Contract terminated: the town is gone."
+msgstr ""
+
+msgid "Contract terminated: the treasury cannot pay %d per second for %s from %s."
+msgstr ""
+
 msgid "Copy the list"
 msgstr ""
 
@@ -799,6 +823,9 @@ msgid "Debug: whole map revealed and inside the Influence Ring (%d×%d)"
 msgstr ""
 
 msgid "Delivery:"
+msgstr ""
+
+msgid "Delivery: %s"
 msgstr ""
 
 msgid "Descending"
@@ -1086,6 +1113,9 @@ msgstr ""
 msgid "Nonexistent product in a goods group"
 msgstr ""
 
+msgid "Not enough coins for the contract: %d per second."
+msgstr ""
+
 msgid "Not enough coins in the treasury! Need %d, treasury has %d"
 msgstr ""
 
@@ -1213,6 +1243,9 @@ msgid "Profit (actual, average): %s / sec"
 msgstr ""
 
 msgid "Purchase"
+msgstr ""
+
+msgid "Purchased %d units of %s from %s."
 msgstr ""
 
 msgid "Quality priority: %s (click to switch)"
@@ -1434,6 +1467,9 @@ msgstr ""
 msgid "Selling"
 msgstr ""
 
+msgid "Selling goods to the towns is not implemented yet — the order was not placed."
+msgstr ""
+
 msgid "Send scouts"
 msgstr ""
 
@@ -1539,6 +1575,9 @@ msgstr ""
 msgid "The amount %d exceeds the route throughput (%s units/sec). The surplus will queue on the road and arrive later."
 msgstr ""
 
+msgid "The amount must be a positive whole number"
+msgstr ""
+
 msgid "The area does not border explored territory"
 msgstr ""
 
@@ -1554,6 +1593,9 @@ msgstr ""
 msgid "The city needs access to fresh water"
 msgstr ""
 
+msgid "The time the goods spend on the road from the town to the city"
+msgstr ""
+
 msgid "The town buys nothing"
 msgstr ""
 
@@ -1561,6 +1603,9 @@ msgid "The town has no road inside the influence ring"
 msgstr ""
 
 msgid "The town is already connected by a road"
+msgstr ""
+
+msgid "The town is not on the map anymore"
 msgstr ""
 
 msgid "There is no difference in spelling, but for the game these are DIFFERENT identifiers: everything that references \"%s\" will not reach \"%s\" and vice versa. Note that a reference to \"%s\" does NOT break anything — it is declared and looks correct, so the regular broken-reference checks did not see this typo either. Keep one identifier and rename the other in all files."
@@ -1621,6 +1666,9 @@ msgid "Trade unavailable: there is no road from the city to this town"
 msgstr ""
 
 msgid "Trade with the towns is not implemented yet — the order was not placed."
+msgstr ""
+
+msgid "Trade with towns"
 msgstr ""
 
 msgid "Treasury: %d"
@@ -1795,6 +1843,9 @@ msgid "upgradeable"
 msgstr ""
 
 msgid "working"
+msgstr ""
+
+msgid "×%d"
 msgstr ""
 
 msgid "← Back"

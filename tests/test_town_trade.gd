@@ -1,0 +1,630 @@
+# Headless test of the trade of the city with the towns (scripts/town_trade_manager.gd).
+#   godot --headless --path . --script res://tests/test_town_trade.gd
+#
+# The mechanics behind the order of the town window — the one-time purchase and the
+# standing contract. Checked:
+#
+#   buy_once          — the coins move from the treasury of the city into the treasury
+#                       of the town, the units are written off the warehouse of the
+#                       town, the goods travel by the road (the transit delay) and
+#                       reach the city storage with the quality of the town;
+#   refusals          — beyond the stock, without the coins, a wrong side or a zero
+#                       amount change nothing at all;
+#   price_recompute   — an order that carries no price is charged the price of the row;
+#   contract_ticks    — a standing contract charges and delivers every tick;
+#   plan              — a live contract enters the PLAN of the tick (the green dynamics of
+#                       the tab "Resources" reads the plan), a one-time purchase does not,
+#                       and a torn contract leaves the plan;
+#   contract_breaks   — a contract the treasury cannot pay, a town that ran out of the
+#                       goods or a town that is gone is torn automatically, and the
+#                       failed tick is not charged;
+#   no_route          — without a road the goods are credited to the storage at once;
+#   road_capacity     — the flow rate of the route throttles a large purchase;
+#   save_load         — the contracts survive a save round-trip and keep charging;
+#   deals             — the row shape the "Trade deals" section reads.
+#
+# The map is a stub (a route keyed by "row,col"), the towns are a TownManager with one
+# synthetic record, the logistics is a REAL delivery_manager over the stub — the trade
+# needs no scene.
+extends SceneTree
+
+# The hang watchdog: without it a broken _run() coroutine looks like eternal silence.
+const WATCHDOG = preload("res://tests/watchdog.gd")
+
+# Real product id: the price and the icon are read from the common reference, so the
+# expectations follow the data and not the constants of the test.
+const WOOD := "wood"
+
+# A stub of the map: the logistics read the route from it.
+class FakeMap:
+	var routes: Dictionary = {}
+	func set_route(row: int, col: int, length: int, avg_speed: float) -> void:
+		routes["%d,%d" % [row, col]] = {"ok": true, "length": length, "avg_speed": avg_speed}
+	func get_route_to_city(row: int, col: int) -> Dictionary:
+		return routes.get("%d,%d" % [row, col], {"ok": false})
+
+var _cdata = null
+var _gdata = null
+var _tm = null
+var _dm = null
+var _trade = null
+
+func _initialize() -> void:
+	WATCHDOG.arm(self)
+	_run()
+
+func _run() -> void:
+	var state := {"failed": false}
+	get_root().get_node("SaveManager").new_game()
+	_cdata = get_root().get_node("CityData")
+	_gdata = get_root().get_node("GameData")
+
+	if WATCHDOG.wants_case("buy_once"):
+		_test_buy_once(state)
+	if WATCHDOG.wants_case("refusals"):
+		_test_refusals(state)
+	if WATCHDOG.wants_case("price_recompute"):
+		_test_price_recompute(state)
+	if WATCHDOG.wants_case("contract_ticks"):
+		_test_contract_ticks(state)
+	if WATCHDOG.wants_case("plan"):
+		_test_plan(state)
+	if WATCHDOG.wants_case("contract_breaks"):
+		_test_contract_breaks(state)
+	if WATCHDOG.wants_case("no_route"):
+		_test_no_route(state)
+	if WATCHDOG.wants_case("road_capacity"):
+		_test_road_capacity(state)
+	if WATCHDOG.wants_case("save_load"):
+		_test_save_load(state)
+	if WATCHDOG.wants_case("deals"):
+		_test_deals(state)
+
+	_free_rig()
+	WATCHDOG.report_skipped()
+	if state["failed"]:
+		print("TOWN TRADE TEST FAILED")
+		quit(1)
+	else:
+		print("TOWN TRADE TEST OK")
+		quit(0)
+
+# -------------------------------------------------------
+# 1. A one-time purchase
+# -------------------------------------------------------
+
+func _test_buy_once(state: Dictionary) -> void:
+	var town := _rig(10.0, 10)
+	var price := _unit_price()
+	var amount := 10
+	var total := amount * price
+	var result = _trade.submit_order(_order(amount, false, price))
+	check(bool(result.get("ok", false)),
+			"a purchase with enough coins and stock must succeed: %s"
+					% str(result.get("message", "")), state)
+	check(not str(result.get("message", "")).is_empty(),
+			"the answer of the trade must explain itself to the player", state)
+	check(_cdata.treasury == 1000 - total,
+			"the city must pay %d coins (treasury %d)" % [total, _cdata.treasury], state)
+	check(_tm.get_town_treasury(town) == 500 + total,
+			"the town must be paid %d coins (treasury %d)"
+					% [total, _tm.get_town_treasury(town)], state)
+	check(_tm.get_town_goods(town, WOOD) == 90,
+			"the stock of the town must fall by %d (got %d)"
+					% [amount, _tm.get_town_goods(town, WOOD)], state)
+	check(_delivered(WOOD) == 0,
+			"the goods must travel by the road, not appear in the storage at once", state)
+	check(int(_cdata.treasury_expense_accum.get(_gdata.SRC_TOWN_TRADE, 0)) == total,
+			"the payment must be visible in the breakdown of the treasury", state)
+
+	# The delivery: nothing before the transit delay of the route, everything after it.
+	var delay := 10.0 * float(_dm.get_transit_time_per_hex())
+	_dm.ship()
+	_advance(_dm, delay - 1.0)
+	check(_delivered(WOOD) == 0,
+			"the goods must not arrive before the transit delay (got %d)"
+					% _delivered(WOOD), state)
+	_advance(_dm, 2.0)
+	check(_delivered(WOOD) == amount,
+			"after the transit delay the goods must arrive (got %d)"
+					% _delivered(WOOD), state)
+	check(int(_cdata.city_quality_detail.get(WOOD, {}).get("fine", 0)) == amount,
+			"the delivered goods keep the quality of the town (%s)"
+					% str(_cdata.city_quality_detail.get(WOOD, {})), state)
+
+# -------------------------------------------------------
+# 2. The refusals
+# -------------------------------------------------------
+
+func _test_refusals(state: Dictionary) -> void:
+	var price := _unit_price()
+
+	# More than the town has: nothing moves.
+	var town := _rig(10.0, 10)
+	var result = _trade.submit_order(_order(200, false, price))
+	check(not bool(result.get("ok", false)),
+			"a purchase beyond the stock of the town must not succeed", state)
+	check(_cdata.treasury == 1000 and _tm.get_town_treasury(town) == 500
+					and _tm.get_town_goods(town, WOOD) == 100 and _delivered(WOOD) == 0,
+			"a refused purchase must change nothing", state)
+
+	# Fewer coins than the purchase costs.
+	var short := price * 10 - 1
+	_cdata.treasury = short
+	result = _trade.submit_order(_order(10, false, price))
+	check(not bool(result.get("ok", false)),
+			"a purchase the treasury cannot pay must not succeed", state)
+	check(_cdata.treasury == short,
+			"a refused purchase must not write the coins off (treasury %d)"
+					% _cdata.treasury, state)
+	check(_tm.get_town_goods(town, WOOD) == 100,
+			"a refused purchase must not touch the warehouse of the town", state)
+
+	# The city sells to a town: that direction is not implemented yet.
+	var selling := _order(10, false, price)
+	selling["side"] = "buy"
+	result = _trade.submit_order(selling)
+	check(not bool(result.get("ok", false)),
+			"selling to a town is not implemented yet", state)
+	check(not str(result.get("message", "")).is_empty(),
+			"the refusal must explain itself", state)
+
+	# A zero amount is not an order.
+	result = _trade.submit_order(_order(0, false, price))
+	check(not bool(result.get("ok", false)),
+			"a zero amount must not be an order", state)
+
+# -------------------------------------------------------
+# 3. The price of an order that carries none
+# -------------------------------------------------------
+
+func _test_price_recompute(state: Dictionary) -> void:
+	_rig(10.0, 10)
+	var price := _unit_price()
+	var result = _trade.submit_order(_order(10, false, 0))
+	check(bool(result.get("ok", false)),
+			"an order without the price must succeed (%s)" % str(result.get("message", "")), state)
+	check(_cdata.treasury == 1000 - 10 * price,
+			"an order without the price is charged the price of the row (%d, treasury %d)"
+					% [10 * price, _cdata.treasury], state)
+
+# -------------------------------------------------------
+# 4. A standing contract: every tick
+# -------------------------------------------------------
+
+func _test_contract_ticks(state: Dictionary) -> void:
+	var town := _rig(10.0, 10)
+	var price := _unit_price()
+	var amount := 5
+	var cost := amount * price
+	var result = _trade.submit_order(_order(amount, true, price))
+	check(bool(result.get("ok", false)),
+			"a contract with enough coins and stock must be signed: %s"
+					% str(result.get("message", "")), state)
+	check(_trade._contracts.size() == 1,
+			"the contract must be recorded (%d)" % _trade._contracts.size(), state)
+	check(_cdata.treasury == 1000,
+			"signing a contract must not charge anything yet (treasury %d)"
+					% _cdata.treasury, state)
+
+	# The first tick: the payment, the write-off, the queue.
+	_trade.tick_contracts()
+	check(_cdata.treasury == 1000 - cost,
+			"the tick of the contract must charge %d (treasury %d)"
+					% [cost, _cdata.treasury], state)
+	check(_tm.get_town_treasury(town) == 500 + cost,
+			"the town must be paid every tick (treasury %d)"
+					% _tm.get_town_treasury(town), state)
+	check(_tm.get_town_goods(town, WOOD) == 95,
+			"the town must give the goods every tick (got %d)"
+					% _tm.get_town_goods(town, WOOD), state)
+
+	# The goods of the tick travel by the road and arrive.
+	var delay := 10.0 * float(_dm.get_transit_time_per_hex())
+	_dm.ship()
+	_advance(_dm, delay + 1.0)
+	check(_delivered(WOOD) == amount,
+			"the goods of the tick must arrive after the transit delay (got %d)"
+					% _delivered(WOOD), state)
+
+	# The second tick repeats the deal exactly.
+	_trade.tick_contracts()
+	check(_cdata.treasury == 1000 - 2 * cost,
+			"the second tick must charge again (treasury %d)" % _cdata.treasury, state)
+	check(_tm.get_town_goods(town, WOOD) == 90,
+			"the second tick must write the goods off again (got %d)"
+					% _tm.get_town_goods(town, WOOD), state)
+	_dm.ship()
+	_advance(_dm, delay + 1.0)
+	check(_delivered(WOOD) == 2 * amount,
+			"the goods of the second tick must arrive as well (got %d)"
+					% _delivered(WOOD), state)
+
+# -------------------------------------------------------
+# 4b. The plan of the tick: the contracts feed the dynamics
+# -------------------------------------------------------
+
+func _test_plan(state: Dictionary) -> void:
+	var town := _rig(10.0, 10)
+	var price := _unit_price()
+	var amount := 5
+	var source := str(_gdata.SRC_TOWN_TRADE)
+
+	# A one-time purchase is not a per-second flow: it must not promise anything in the
+	# plan (the goods of the deal are a single delivery, not a rate).
+	check(bool(_trade.submit_order(_order(amount, false, price)).get("ok", false)),
+			"the one-time purchase must go through", state)
+	_cdata.reset_counters()
+	check(_planned_amount(WOOD, source) == 0,
+			"a one-time purchase must not appear in the plan of the tick (got %d)"
+					% _planned_amount(WOOD, source), state)
+
+	# A standing contract is a per-second inflow, exactly like a working improvement:
+	# the plan of the tick must carry it, otherwise the row of the tab "Resources"
+	# reads "[+0" while the goods keep arriving (the green label reads the plan only).
+	check(bool(_trade.submit_order(_order(amount, true, price)).get("ok", false)),
+			"the contract must be signed", state)
+	_cdata.reset_counters()
+	_trade.tick_contracts()
+	check(_planned_amount(WOOD, source) == amount,
+			"the tick of the contract must enter the plan with %d per second (got %d)"
+					% [amount, _planned_amount(WOOD, source)], state)
+	var entry := _planned_entry(WOOD, source)
+	check(is_equal_approx(float(entry.get("interval", -1.0)), 0.0),
+			"a contract is a continuous per-second rate, so its interval must be 0 (got %s)"
+					% str(entry.get("interval", -1.0)), state)
+	check(int(entry.get("count", 0)) == 1,
+			"the plan must count the contract behind the amount (got %d)"
+					% int(entry.get("count", 0)), state)
+
+	# The user-visible effect: the green dynamics of the row of the tab "Resources"
+	# (resources_tab._format_prod_label) must read a positive rate and not "[+0".
+	var tab = load("res://scripts/resources_tab.gd").new()
+	tab.planned_production_map = _cdata.get_planned_production_map()
+	var label_text: String = tab._format_prod_label(WOOD)
+	check(label_text == "[+%d≈" % amount,
+			"the row of the goods must show a positive dynamics \"[+%d≈\" (got \"%s\")"
+					% [amount, label_text], state)
+	check(tab._is_displayable(WOOD),
+			"a product with a live contract must stay visible in the list", state)
+	tab.free()
+
+	# The plan is a RATE, not a running total: the arrival of the goods must not inflate it.
+	var delay := 10.0 * float(_dm.get_transit_time_per_hex())
+	_dm.ship()
+	_advance(_dm, delay + 1.0)
+	check(_delivered(WOOD) > 0,
+			"the goods of the contract must arrive", state)
+	check(_planned_amount(WOOD, source) == amount,
+			"the arrival must not change the planned rate (got %d)"
+					% _planned_amount(WOOD, source), state)
+
+	# The plan lives exactly one tick: the reset of the next tick clears it.
+	_cdata.reset_counters()
+	check(_planned_amount(WOOD, source) == 0,
+			"the reset of the tick must clear the plan (got %d)"
+					% _planned_amount(WOOD, source), state)
+
+	# A contract that is torn promises nothing: the teardown happens before the record.
+	_cdata.reset_counters()
+	_trade.tick_contracts()
+	check(_planned_amount(WOOD, source) == amount,
+			"the live contract must be back in the plan (got %d)"
+					% _planned_amount(WOOD, source), state)
+	_tm.take_town_goods(town, WOOD, _tm.get_town_goods(town, WOOD))
+	_cdata.reset_counters()
+	_trade.tick_contracts()
+	check(_trade._contracts.is_empty(),
+			"the town without the goods must lose the contract", state)
+	check(_planned_amount(WOOD, source) == 0,
+			"a torn contract must not stay in the plan (got %d)"
+					% _planned_amount(WOOD, source), state)
+
+# -------------------------------------------------------
+# 5. A contract that cannot be paid or fulfilled is torn
+# -------------------------------------------------------
+
+func _test_contract_breaks(state: Dictionary) -> void:
+	var price := _unit_price()
+	var amount := 5
+	var cost := amount * price
+
+	# The treasury cannot pay the tick.
+	var town := _rig(10.0, 10)
+	check(bool(_trade.submit_order(_order(amount, true, price)).get("ok", false)),
+			"the contract must be signed", state)
+	_cdata.treasury = cost - 1
+	var notices: Array = []
+	_trade.notice.connect(func(message: String) -> void:
+			notices.append(message))
+	_trade.tick_contracts()
+	check(_trade._contracts.is_empty(),
+			"a contract the treasury cannot pay must be torn", state)
+	check(_cdata.treasury == cost - 1,
+			"a torn contract must not charge the failed tick (treasury %d)"
+					% _cdata.treasury, state)
+	check(_tm.get_town_goods(town, WOOD) == 100,
+			"a torn contract must not take the goods", state)
+	check(notices.size() == 1 and not str(notices[0]).is_empty(),
+			"the player must be told why the contract was torn (%s)" % str(notices), state)
+
+	# The town ran out of the goods.
+	_rig(10.0, 10)
+	check(bool(_trade.submit_order(_order(amount, true, price)).get("ok", false)),
+			"the contract must be signed", state)
+	town = _tm.towns[0]
+	town["storage"][WOOD] = amount - 2
+	_trade.tick_contracts()
+	check(_trade._contracts.is_empty(),
+			"a contract the town cannot fulfil must be torn", state)
+	check(_cdata.treasury == 1000,
+			"a torn contract must not charge the failed tick (treasury %d)"
+					% _cdata.treasury, state)
+	check(_tm.get_town_goods(town, WOOD) == amount - 2,
+			"a torn contract must not take the goods the town does not have (got %d)"
+					% _tm.get_town_goods(town, WOOD), state)
+
+	# The town is gone: a record the map no longer has.
+	_rig(10.0, 10)
+	check(bool(_trade.submit_order(_order(amount, true, price)).get("ok", false)),
+			"the contract must be signed", state)
+	_tm.towns.clear()
+	_trade.tick_contracts()
+	check(_trade._contracts.is_empty(),
+			"a contract without a town must be torn", state)
+
+# -------------------------------------------------------
+# 6. No road: the goods arrive at once
+# -------------------------------------------------------
+
+func _test_no_route(state: Dictionary) -> void:
+	var town := _rig(0.0, 0)
+	var price := _unit_price()
+	var amount := 10
+	var total := amount * price
+	var result = _trade.submit_order(_order(amount, false, price))
+	check(bool(result.get("ok", false)),
+			"a purchase without a road must still succeed: %s"
+					% str(result.get("message", "")), state)
+	check(_delivered(WOOD) == amount,
+			"without a road the goods are credited to the storage at once (got %d)"
+					% _delivered(WOOD), state)
+	check(_cdata.treasury == 1000 - total and _tm.get_town_treasury(town) == 500 + total,
+			"the coins must move even without a road", state)
+	check(_tm.get_town_goods(town, WOOD) == 90,
+			"the warehouse of the town must be written off even without a road", state)
+
+# -------------------------------------------------------
+# 7. The road throttles a large purchase
+# -------------------------------------------------------
+
+func _test_road_capacity(state: Dictionary) -> void:
+	_rig(4.0, 5)
+	var amount := 20
+	var result = _trade.submit_order(_order(amount, false, _unit_price()))
+	check(bool(result.get("ok", false)),
+			"the purchase must succeed (%s)" % str(result.get("message", "")), state)
+	var status: Dictionary = _dm.get_route_status(5, 5)
+	check(int(status.get("pending", 0)) == amount,
+			"the whole purchase must wait in the queue of the route (got %d)"
+					% int(status.get("pending", 0)), state)
+
+	# One shipping step moves only the flow rate of the route.
+	_dm.ship()
+	status = _dm.get_route_status(5, 5)
+	check(int(status.get("in_transit", 0)) == 4 and int(status.get("pending", 0)) == 16,
+			"one step must ship the flow rate of the route (in transit %d, waiting %d)"
+					% [int(status.get("in_transit", 0)), int(status.get("pending", 0))], state)
+	var delay := 5.0 * float(_dm.get_transit_time_per_hex())
+	_advance(_dm, delay + 0.5)
+	check(_delivered(WOOD) == 4,
+			"only the shipped units may arrive (got %d)" % _delivered(WOOD), state)
+
+	# The rest arrives over the following steps: the road throttles, it does not lose.
+	for i in range(10):
+		_dm.ship()
+		_advance(_dm, delay + 0.5)
+	check(_delivered(WOOD) == amount,
+			"the whole purchase must be delivered over the following steps (got %d)"
+					% _delivered(WOOD), state)
+
+# -------------------------------------------------------
+# 8. The save round-trip
+# -------------------------------------------------------
+
+func _test_save_load(state: Dictionary) -> void:
+	var town := _rig(10.0, 10)
+	var price := _unit_price()
+	var amount := 5
+	check(bool(_trade.submit_order(_order(amount, true, price)).get("ok", false)),
+			"the contract must be signed", state)
+	var saved: Array = _trade.serialize()
+	check(saved.size() == 1,
+			"the save must carry the contract (%d)" % saved.size(), state)
+
+	# The round-trip: the same deal, with the same terms.
+	var trade2 = load("res://scripts/town_trade_manager.gd").new()
+	trade2.initialize(_tm, _dm)
+	trade2.deserialize(saved)
+	check(trade2._contracts.size() == 1,
+			"the contract must be restored (%d)" % trade2._contracts.size(), state)
+	var contract: Dictionary = trade2._contracts[0]
+	check(str(contract.get("product_id", "")) == WOOD
+					and int(contract.get("amount", 0)) == amount
+					and int(contract.get("unit_price", 0)) == price
+					and int(contract.get("cost_per_tick", 0)) == amount * price,
+			"the terms of the contract must survive the save: %s" % str(contract), state)
+	check(str(contract.get("town_id", "")) == "town_test"
+					and str(contract.get("town_name", "")) == "Testville"
+					and int(contract.get("row", 0)) == 5 and int(contract.get("col", 0)) == 5,
+			"the town of the contract must survive the save", state)
+
+	# The restored contract keeps charging from the next tick.
+	trade2.tick_contracts()
+	check(_cdata.treasury == 1000 - amount * price,
+			"the restored contract must charge on its tick (treasury %d)"
+					% _cdata.treasury, state)
+	check(_tm.get_town_goods(town, WOOD) == 95,
+			"the restored contract must deliver on its tick (got %d)"
+					% _tm.get_town_goods(town, WOOD), state)
+
+	# A broken record is dropped, and a new contract gets a fresh id.
+	trade2.deserialize([{"town_id": "town_test"}])
+	check(trade2._contracts.is_empty(),
+			"a record without goods must be dropped", state)
+	trade2.deserialize(saved)
+	check(bool(trade2.submit_order(_order(amount, true, price)).get("ok", false)),
+			"a second contract must be signable", state)
+	check(trade2._contracts.size() == 2
+					and str(trade2._contracts[0].get("id", "")) != str(trade2._contracts[1].get("id", "")),
+			"a new contract must not reuse the id of a restored one (%s)"
+					% str([str(trade2._contracts[0].get("id", "")),
+							str(trade2._contracts[1].get("id", ""))]), state)
+	trade2.free()
+
+# -------------------------------------------------------
+# 9. The row shape of the "Trade deals" section
+# -------------------------------------------------------
+
+func _test_deals(state: Dictionary) -> void:
+	_rig(10.0, 10)
+	var price := _unit_price()
+	var amount := 5
+	check(bool(_trade.submit_order(_order(amount, true, price)).get("ok", false)),
+			"the contract must be signed", state)
+	var deals: Array = _trade.get_contracts()
+	check(deals.size() == 1,
+			"the section must see one deal (%d)" % deals.size(), state)
+	if deals.is_empty():
+		return
+	var deal: Dictionary = deals[0]
+	var expected_name := str(_gdata.get_resource_data(WOOD).get("name", ""))
+	check(str(deal.get("name", "")) == expected_name,
+			"the row must show the display name of the goods (got \"%s\", expected \"%s\")"
+					% [str(deal.get("name", "")), expected_name], state)
+	check(str(deal.get("icon", "")) == str(_gdata.get_resource_data(WOOD).get("icon", "")),
+			"the row must carry the icon of the goods", state)
+	check(str(deal.get("type", "")) == "buy",
+			"the city buys from the town, so the deal is a purchase", state)
+	check(int(deal.get("amount", 0)) == amount,
+			"the row must show the volume of the contract (got %d)"
+					% int(deal.get("amount", 0)), state)
+	check(int(deal.get("cost", 0)) == amount * price,
+			"the row must show the payment of the contract (got %d, expected %d)"
+					% [int(deal.get("cost", 0)), amount * price], state)
+	check(int(deal.get("price", 0)) == price,
+			"the row must show the unit price (got %d)" % int(deal.get("price", 0)), state)
+	check(str(deal.get("town_name", "")) == "Testville"
+			and str(deal.get("product_id", "")) == WOOD,
+			"the row must name the town and the goods", state)
+	var expected_delay := 10.0 * float(_dm.get_transit_time_per_hex())
+	check(is_equal_approx(float(deal.get("delivery_time", 0.0)), expected_delay),
+			"the row must show the transit delay of the route (got %s, expected %s)"
+					% [str(float(deal.get("delivery_time", 0.0))), str(expected_delay)], state)
+	# A copy is handed out: the section cannot edit the records of the manager.
+	deal["amount"] = 999
+	check(int(_trade.get_contracts()[0].get("amount", 0)) == amount,
+			"the deals must be handed out as copies", state)
+
+# -------------------------------------------------------
+# Helpers
+# -------------------------------------------------------
+
+# A fresh rig: one town with 100 units and a treasury of 500, a route of the given
+# length and flow (no route when the speed is 0), a real logistics over the stub and
+# a trade manager over the towns and the logistics. The city starts with 1000 coins.
+func _rig(speed: float, length: int) -> Dictionary:
+	_free_rig()
+	_cdata.city_storage.clear()
+	_cdata.city_quality_detail.clear()
+	_cdata.treasury = 1000
+	_cdata.treasury_expense_accum.clear()
+	# The plan of the towns lives one tick and is cleared by the reset; a fresh rig starts
+	# without it, so a case never reads the leftovers of the previous one.
+	_cdata.town_planned_production.clear()
+	var town := {
+		"id": "town_test",
+		"name": "Testville",
+		"row": 5,
+		"col": 5,
+		"treasury": 500,
+		"storage": {WOOD: 100},
+		"quality": {WOOD: "fine"},
+	}
+	var fake := FakeMap.new()
+	if speed > 0.0:
+		fake.set_route(5, 5, length, speed)
+	_tm = load("res://scripts/town_manager.gd").new()
+	_tm.towns = [town]
+	_dm = load("res://scripts/delivery_manager.gd").new()
+	_dm.initialize(fake)
+	_trade = load("res://scripts/town_trade_manager.gd").new()
+	_trade.initialize(_tm, _dm)
+	return town
+
+# The record of one source in the plan of the tick (the map the tab "Resources" reads).
+func _planned_entry(pid: String, source_id: String) -> Dictionary:
+	return _cdata.get_planned_production_map().get(pid, {}).get(source_id, {})
+
+# The per-second amount the plan promises for one product and source — the same reading
+# the green label of the tab "Resources" makes (resources_tab._format_prod_label).
+func _planned_amount(pid: String, source_id: String) -> int:
+	var entry := _planned_entry(pid, source_id)
+	if entry.is_empty():
+		return 0
+	var amount := float(entry.get("amount", 0))
+	var interval := float(entry.get("interval", 0))
+	if interval > 0.0:
+		return int(round(amount * _cdata.SIMULATION_TICK / interval))
+	return int(round(amount))
+
+func _free_rig() -> void:
+	for node in [_tm, _dm, _trade]:
+		if node != null and is_instance_valid(node):
+			node.free()
+	_tm = null
+	_dm = null
+	_trade = null
+
+# The order of the window (see town_ui._on_confirm_pressed): the town sells to the
+# city. A unit_price of 0 means "the order carries no price" — the manager must
+# recompute it by the rule of the row.
+func _order(amount: int, permanent: bool, unit_price: int) -> Dictionary:
+	return {
+		"town_id": "town_test",
+		"town_name": "Testville",
+		"row": 5,
+		"col": 5,
+		"side": "sell",
+		"product_id": WOOD,
+		"product_name": "Wood",
+		"amount": amount,
+		"permanent": permanent,
+		"route_capacity": 10.0,
+		"unit_price": unit_price,
+	}
+
+# The price of one unit the way the sale row of the window shows it: the current
+# market price with the multiplier of the level the town holds.
+func _unit_price() -> int:
+	var market := float(_gdata.get_price(WOOD))
+	return int(round(market * float(_gdata.get_quality_price_multiplier("fine"))))
+
+# Advance only the arrivals by seconds of game time in steps of SHIP_STEP: the
+# shipment is NOT called — the caller decides when the tick ships.
+func _advance(dm, seconds: float) -> void:
+	var left := seconds
+	while left > 0.0001:
+		var step: float = minf(dm.SHIP_STEP, left)
+		dm.advance(step)
+		left -= step
+
+func _delivered(pid: String) -> int:
+	return int(_cdata.city_storage.get(pid, 0))
+
+func check(condition: bool, message: String, state: Dictionary) -> void:
+	if condition:
+		return
+	state["failed"] = true
+	print("FAILED: %s" % message)
+	push_error("ASSERT: %s" % message)
