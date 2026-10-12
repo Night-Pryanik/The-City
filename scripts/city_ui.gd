@@ -93,8 +93,8 @@ const BUILDING_DETAIL_LEAVE_GRACE: float = 0.35
 signal build_requested(building_id: String)
 signal research_requested(tech_id: String)
 signal closed()
-# The "Trade partners" column asked to show a town on the map: the city interface is closed
-# and the map is centered on the town (main_map._on_town_focus_requested).
+# The "Trade partners" column asked to show a town on the map: the city interface is closed,
+# the map is centered on the town and the town window is opened (main_map._on_town_focus_requested).
 signal town_focus_requested(row: int, col: int)
 
 var building_panel
@@ -422,7 +422,7 @@ func _on_close_pressed():
 func _on_town_focus_requested(row: int, col: int):
     # The column asked to show a town on the map. The interface is closed by the owner of the
     # city window (main_map): it is there that the HUD, the panel of the hex and the map itself
-    # live, and it is there that the centering happens.
+    # live, and it is there that the centering and the opening of the town window happen.
     emit_signal("town_focus_requested", row, col)
 
 func _highlight_active_tab_button():

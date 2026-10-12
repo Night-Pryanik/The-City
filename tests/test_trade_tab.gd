@@ -1003,12 +1003,19 @@ func _check_external_trade(city_ui, main_map, state: Dictionary) -> void:
         check(jump_requests.size() == 1 and jump_requests[0] == [int(target["row"]), int(target["col"])],
             "the button must ask for the jump to its own town: %s" % str(jump_requests), state)
         check(not city_ui.visible, "the jump must close the interface of the city", state)
+        # The jump lands the player on the town with its window already open: going to the town in
+        # order to trade and having to find the hex again would defeat the button.
+        check(main_map.town_ui.visible, "the jump must open the window of the town", state)
+        check(str(main_map.town_ui._town.get("id", "")) == str(target.get("id", "")),
+            "the window must show exactly the town of the pressed row", state)
         check(main_map.scroll_offset != scroll_before,
             "the jump must move the map: the scroll stayed at %s" % str(scroll_before), state)
         var town_after := _town_screen_pos(main_map, int(target["row"]), int(target["col"]))
         check((town_after - screen_center).length() <= (town_before - screen_center).length(),
             "the jump must bring the town closer to the middle of the screen: %s → %s (the center is %s)"
                 % [str(town_before), str(town_after), str(screen_center)], state)
+        # The window of the town is put away again so the rest of the checks run on a clean map.
+        main_map.town_ui.hide()
 
     # The column comes back to its own state: the rows of the check must not stay in the list.
     tab.partners_sort_key = tab.SORT_NAME

@@ -2704,13 +2704,17 @@ func center_on_hex(row: int, col: int) -> void:
     if progress_bar_layer:
         progress_bar_layer.queue_redraw()
 
-# The jump from the "Trade partners" column of the city interface: the city window is closed and
-# the map is centered on the town. The closing goes through the ordinary path
+# The jump from the "Trade partners" column of the city interface: the city window is closed, the
+# map is centered on the town and the window of that town is opened right away — the player asked
+# to go to the town in order to trade with it, so landing next to it without the interface would
+# only make them look for the hex again. The closing goes through the ordinary path
 # (city_ui.close_city), so the HUD, the panel of the hex and the tooltips return exactly as on
-# the "X" button.
+# the "X" button; open_town_ui then hides the control panel of the hex, as on any other opening of
+# the town window.
 func _on_town_focus_requested(row: int, col: int) -> void:
     city_ui.close_city()
     center_on_hex(row, col)
+    open_town_ui(row, col)
 
 func _on_expansion_button_pressed():
     # The "Development" button no longer has any functionality

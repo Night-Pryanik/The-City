@@ -2807,3 +2807,23 @@ what actually grew.
 the pre-existing rule for improvements as well, and it is honest — the plan of a row the player has never
 seen would be a row appearing out of nowhere. For the reported case the good was already in storage; only
 its dynamics was missing.
+
+## The jump to a town also opens its window (October 12, 2026)
+
+**Decision: "Go to the town" is a jump to the trade, not a camera pan.**
+`main_map._on_town_focus_requested` closes the city, centers the map on the town and then calls
+`open_town_ui(row, col)`. The button lives in the "Trade partners" column, so the player pressing it has
+already chosen the town as a trade partner; landing on the hex without the window would only make them hunt
+for the hex again and double-click it — the very thing the button exists to spare them.
+
+The alternative — keep the button a pure centering, as it was — is not broken: it is consistent with the
+right-click centering of the map, which also only moves the camera. It was rejected because the two actions
+are not the same intent. The right-click says "show me this place"; the goto button says "take me to this
+town", and the only reason to go to a town is to trade with it. Opening the window is what makes the two
+readings differ.
+
+**The order is not arbitrary.** `close_city()` runs first, because its handler (`_on_city_ui_close`)
+re-shows the HUD and the control panel of the hex; `open_town_ui` then hides the control panel, exactly as
+on any other opening of the town window. Opening before closing would leave the hex panel on top of the
+town window. The column still knows nothing about the town window — it emits one signal, and the map
+decides what "go to the town" means; the coupling stays on the map side, where the camera already lives.
