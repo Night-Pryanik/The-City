@@ -2999,8 +2999,9 @@ nothing could ever read it, because the test checked the string and not the reac
 
 This is the same trap the cards of the trade tab hit once (see `test_trade_tab.gd`): the nodes that
 carry a tooltip must CATCH the mouse. `warning_badge.gd` already documents the rule on its own
-`_init`. The supply line now uses `MOUSE_FILTER_STOP`, and the `supply` case of
-`test_town_trade_ui.gd` asserts `mouse_filter != IGNORE` so the line cannot silently go deaf again.
+`_init`. The rule now has a single home — `WrappedTooltip.attach()` lifts a control whose filter is
+`IGNORE` (see the entry below) — and the `supply` case of `test_town_trade_ui.gd` asserts that the
+owner of the hint catches the mouse, so the line cannot silently go deaf again.
 
 **Note.** The other two strings the report quoted ("How much of the good the town can supply every
 second…", "What the town produces on its own…") were not live either: they were the earlier wordings
@@ -3008,24 +3009,68 @@ of the same tooltip, kept in `locale/ru.po` as orphans by `i18n_build_po.py` (it
 entries that no longer have a call in the code). They were dead weight, not tooltips, and were pruned
 in the catalog cleanup of the same day.
 
-## The tooltip is one long line: the built-in tooltip does not wrap (October 14, 2026)
+## The built-in tooltip does not wrap: the wrapping tooltip (October 14, 2026)
 
-With the tooltip finally reachable, the next problem showed at once: it came out as ONE line that ran
-off the edge of the window. The theme (`theme/tooltips_theme.tres`) styles only the `TooltipPanel`,
-and nothing in the project overrides `_make_custom_tooltip` — so the built-in tooltip label has no
-autowrap and no width limit, and a long hint is simply a long line. A scan of every `tooltip_text` in
-`scripts/` and `scenes/` found only these two (the supply line and the route warning of the same
-panel), so this was the first time the limit was hit.
+With the supply tooltip finally reachable (see the entry above), the next problem showed at once: it
+came out as ONE line that ran off the edge of the window. The theme
+(`theme/tooltips_theme.tres`) styles only the `TooltipPanel`, and nothing in the project overrode
+`_make_custom_tooltip` — so the label the engine builds for a tooltip has no autowrap and no width
+limit, and a long hint is simply a long line. A scan of every `tooltip_text` in `scripts/` and
+`scenes/` found only two that were long (the supply line and the route warning of the same panel), so
+this was the first time the limit was hit.
 
-**Decision: break the text by hand.** The hint is written with explicit `\n`, which a `Label` renders
-as a line break regardless of autowrap. It is the convention the project already uses for translatable
-strings (the technology descriptions), the i18n tools carry `\n` through the catalog untouched, and
-the cost is one catalog entry per hint. The alternative — a reusable control overriding
-`_make_custom_tooltip` to return a wrapping `Label` with a maximum width — is more general and adapts
-to any language, but it is a new mechanism in a project that has none, and the panel styling of a
-custom tooltip cannot be checked without running the game.
+**First decision: break the text by hand** — explicit `\n` in the two strings, the convention the
+project already uses for translatable strings (the technology descriptions). It was recorded here as
+the deliberate choice over a reusable control overriding `_make_custom_tooltip`, which was rejected
+for two reasons: it is a new mechanism in a project that has none, and "the panel styling of a custom
+tooltip cannot be checked without running the game".
 
-**Guard.** `test_town_trade_ui.gd` now asserts that both tooltips are multi-line and that no line is
-longer than 80 characters, so a future rewrite cannot quietly turn them back into one line.
+**The decision was reversed on the same day, and the two objections are the reason it took a
+detour.** Hand-breaking solves the two strings and nothing else: every future long hint has to be
+measured by eye in every language, and a translation that comes out longer than the source one
+overflows again with the `\n` untouched. The mechanism is now `scripts/wrapped_tooltip.gd`
+(`WrappedTooltip.attach(control, text)`), and both objections turned out to be answerable without
+running the game:
+
+* *Does a custom tooltip keep the frame?* Yes — the engine puts the returned node INSIDE its popup,
+  beside the themed panel. It was checked, not assumed: a headless probe drove the real tooltip
+  machinery and dumped the live tree (`PopupPanel` → the background `Panel` + the content label).
+  The probe also settled that a custom tooltip is a *content* replacement and not a *panel*
+  replacement, which is what made a plain wrapping `Label` sufficient.
+* *Can it be checked headless?* Yes, and that is now a test (`tests/test_wrapped_tooltip.gd`), which
+  covers the mechanism itself rather than the two strings. Two details are worth keeping: a headless
+  window is 64x64 with the viewport scaled into it, so the mouse event must be pushed in LOCAL
+  coordinates (`push_input(event, true)`) — in window coordinates it lands far from the control and
+  the tooltip never appears; and the tooltip needs the delay `gui/timers/tooltip_delay_sec` (0.5 s)
+  waited out.
+
+**Why a carrier child and not a method on the described control.** `_make_custom_tooltip` is called
+on the control that OWNS the tooltip text, and the owner is usually an engine node (`Label`,
+`Button`, `CheckBox`) or a node carrying a script of its own (`warning_badge.gd`) — there is nowhere
+to put the override, and `set_script` on such a node would throw away its own script. So the wrapping
+rides on a child `Control` laid over the described one: it is on top, the engine picks it as the
+owner and asks IT for the content. Its `mouse_filter` is `PASS` and not `STOP` — the carrier must be
+picked for the tooltip while a click still reaches the button below; `STOP` would swallow it (the
+test presses a button under a carrier to keep that honest).
+
+**Two smaller decisions.** The minimum width is applied only to text that is really wider than the
+limit: a `Label` with autowrap and no minimum width reports the whole text in one line as its minimum
+size, but a minimum width given to EVERY tooltip would turn a two-word hint into a wide empty bar.
+And `attach()` is idempotent, because the route warning rebuilds its hint on every change of the
+amount — a second carrier would sit on top of the first and leak on every keystroke.
+
+**What we deliberately do not do.** The explicit `\n` stays in those two strings. It is now
+paragraphing, not a workaround: the mechanism guarantees that nothing overflows, and the breaks put
+the sentence boundaries where the reader expects them. The catalog is untouched by the mechanism —
+no msgid changed, so no translation was lost.
+
+**Guard.** `test_wrapped_tooltip.gd` asserts that a long hint is constrained and wraps while a short
+one keeps its natural width, that the carrier covers the control and follows it on resize, that a
+repeated `attach` keeps one carrier, that the engine really shows OUR wrapping label inside its popup
+at the wrap width, and that a click still reaches the button under the carrier. The `supply` and
+`warning` cases of `test_town_trade_ui.gd` keep the call sites honest: the owner of each hint catches
+the mouse (the earlier bug) and the content comes from the mechanism, not from the engine default.
+The old "both tooltips are multi-line and no line is longer than 80 characters" assertions are gone —
+they guarded the workaround, and the workaround is no longer what keeps the text readable.
 
 

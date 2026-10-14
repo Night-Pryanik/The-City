@@ -55,6 +55,10 @@ const UiHelpers = preload("res://scripts/ui_helpers.gd")
 # (see the script), so the window does not need an icon asset for it.
 const WarningBadge = preload("res://scripts/warning_badge.gd")
 
+# The wrapping tooltip. The hints of this window are long, and the built-in tooltip
+# draws its text in a single line (see the script and docs.md, "Tooltips").
+const WrappedTooltip = preload("res://scripts/wrapped_tooltip.gd")
+
 signal closed()
 
 # The foundation of the town trade: the window has assembled a buy/sell order and
@@ -782,27 +786,24 @@ func _build_trade_panel() -> PanelContainer:
     # line turns red the moment the amount climbs over the rate. A town that does not
     # trade the good at all has no rate, and the line stays hidden.
     #
-    # The label CATCHES the mouse (STOP, not the IGNORE a plain Label defaults to): it
-    # carries a tooltip, and the standard tooltip is shown only for a control the hover
-    # actually reaches. With IGNORE the line was never picked, and the explanation of the
-    # rate never appeared — the same trap the price and the stars of a row avoid.
+    # The explanation is long, so it goes through the WRAPPING tooltip (WrappedTooltip):
+    # the built-in one draws its text in a single line that runs off the edge of the
+    # window. The mechanism also handles the mouse — a tooltip is shown only for a control
+    # the hover reaches, and a plain Label catches nothing (MOUSE_FILTER_IGNORE).
     _supply_label = Label.new()
     _supply_label.name = "SupplyLabel"
     _supply_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    _supply_label.mouse_filter = Control.MOUSE_FILTER_STOP
-    # The explanation is CONSTANT (it names the mechanic, not the numbers), so it is set
-    # once here and never reassigned: re-assigning tooltip_text drops a tooltip window
-    # that is already on the screen.
-    #
-    # The line breaks are EXPLICIT: the built-in tooltip does not wrap (the theme styles
-    # only the TooltipPanel, and nothing in the project overrides _make_custom_tooltip),
-    # so a long hint would come out as one line that runs off the edge of the window.
-    # Breaking it here keeps the tooltip a readable block. The project already writes
-    # "\n" into translatable strings (the technology descriptions), and the i18n tools
-    # carry it through the catalog unchanged.
-    _supply_label.tooltip_text = tr("The rate the town serves a contract with for free.\nA larger order strains it: it keeps up less and less,\nand its warehouse falls behind — the bigger the order,\nthe faster the stock runs dry and the contract is torn.")
     _supply_label.visible = false
     vbox.add_child(_supply_label)
+    # The explanation is CONSTANT (it names the mechanic, not the numbers), so it is
+    # attached once here and never re-attached: replacing the text of a tooltip that is
+    # already on the screen drops its window.
+    #
+    # The line breaks in the text are the PARAGRAPHING of the hint and not a way around
+    # the missing wrap: anything wider than the wrap width is broken by the mechanism
+    # itself, and a translated line that comes out longer than the source one wraps too.
+    WrappedTooltip.attach(_supply_label,
+            tr("The rate the town serves a contract with for free.\nA larger order strains it: it keeps up less and less,\nand its warehouse falls behind — the bigger the order,\nthe faster the stock runs dry and the contract is torn."))
 
     # The "Permanent" checkbox. The explanation of the contract belongs to the BOX
     # and not to the whole row: a CheckBox with a text shows its tooltip over the box
@@ -1110,9 +1111,12 @@ func _update_warning_badge(amount: int) -> void:
     var over := _exceeds_capacity(amount, capacity)
     _warning_badge.visible = over
     if over:
-        # The line break is explicit — the built-in tooltip does not wrap (see the note
-        # on the supply line in _build_trade_panel).
-        _warning_badge.tooltip_text = tr("The amount %d exceeds the route throughput (%s units/sec).\nThe surplus will queue on the road and arrive later.") % [amount, _format_speed(capacity)]
+        # The hint names the numbers and is therefore rebuilt on every change of the
+        # amount. WrappedTooltip.attach is idempotent: the badge keeps ONE carrier and
+        # only the text is replaced (see the note on the supply line in
+        # _build_trade_panel).
+        WrappedTooltip.attach(_warning_badge,
+                tr("The amount %d exceeds the route throughput (%s units/sec).\nThe surplus will queue on the road and arrive later.") % [amount, _format_speed(capacity)])
 
 # Whether the amount is larger than what the route can carry. The rule is a pure
 # function so that it can be checked without a map.

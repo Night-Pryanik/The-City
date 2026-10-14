@@ -18,7 +18,8 @@
 #      including on paste), the leading zeros are stripped, the step is 10 by default,
 #      1 with Ctrl and 100 with Shift, and the amount never falls below 1.
 #   5. WARNING. The route-capacity triangle appears exactly when the amount exceeds
-#      the throughput of the route to the city, and its tooltip names the shortfall.
+#      the throughput of the route to the city, and its tooltip names the shortfall —
+#      through the wrapping tooltip (see wrapped_tooltip.gd), because the hint is long.
 #   6. ORDER. Confirm assembles the order (the town, the side, the goods, the amount,
 #      the "permanent" flag and the unit price of the row) and hands it over by the
 #      signal; the window itself claims nothing about the outcome — the panel carries
@@ -37,7 +38,8 @@
 #  10. SUPPLY. The panel names the rate at which the town serves a standing contract for
 #      free — its comfort rate — for the sale column only. The line turns red the moment
 #      the amount climbs over the rate (the town would fall behind, the faster the bigger
-#      the order) and stays hidden outside the sale column.
+#      the order) and stays hidden outside the sale column. Its long explanation goes
+#      through the wrapping tooltip, like the route warning.
 #
 # The test opens the window on its own (no map), and stubs the route with an inner
 # class instead of generating a whole map: the window only asks the map for
@@ -48,6 +50,11 @@ extends SceneTree
 const WATCHDOG = preload("res://tests/watchdog.gd")
 
 const TOWN_UI_SCENE := "res://scenes/TownUI.tscn"
+
+# The wrapping tooltip of the window's long hints. It is taken by path and not by the
+# global class name: with --script the class cache may not be there yet (the same note
+# as in watchdog.gd).
+const WRAPPED_TOOLTIP = preload("res://scripts/wrapped_tooltip.gd")
 
 # Real product ids (see test_town_economy): the rows are built from the common
 # resource reference, so the ids must exist.
@@ -388,18 +395,24 @@ func _test_warning(town: Dictionary) -> void:
     _ui._set_amount(200)
     _check(_ui._warning_badge.visible,
         "an amount above the route throughput must warn")
-    _check(_ui._warning_badge.tooltip_text.contains("100"),
-        "the warning tooltip must name the route throughput (got \"%s\")"
-            % _ui._warning_badge.tooltip_text)
-    # The same rule as the supply line: the built-in tooltip does not wrap, so the long
-    # warning must carry its own line breaks or it comes out as one line off the window.
-    var warn_lines: PackedStringArray = _ui._warning_badge.tooltip_text.split("\n")
-    _check(warn_lines.size() > 1,
-        "the route warning tooltip must be broken into lines, otherwise it is a single unreadable line")
-    for warn_line in warn_lines:
-        _check(warn_line.length() <= 80,
-            "a route warning tooltip line must stay short (got %d chars: \"%s\")"
-                % [warn_line.length(), warn_line])
+    var warn_tip = _tip_carrier(_ui._warning_badge)
+    _check(warn_tip != null,
+        "the warning must carry the wrapping tooltip (the hint is long)")
+    if warn_tip != null:
+        _check(warn_tip.tooltip_text.contains("100"),
+            "the warning tooltip must name the route throughput (got \"%s\")"
+                % warn_tip.tooltip_text)
+        # The same rule as the supply line: the hint is long, so it must come out of the
+        # wrapping mechanism instead of the single line the engine builds by itself.
+        var warn_content: Label = WRAPPED_TOOLTIP.build(warn_tip.tooltip_text)
+        _check(warn_content.autowrap_mode != TextServer.AUTOWRAP_OFF,
+            "the route warning tooltip must be wrapping, otherwise it is a single unreadable line")
+        # The hint is rebuilt on every change of the amount — and the badge must keep ONE
+        # carrier: a second one would sit on top of the first and leak on every keystroke.
+        _ui._set_amount(201)
+        _check(_ui._warning_badge.get_child_count() == 1,
+            "the warning badge must keep a single carrier when the hint is rebuilt (got %d children)"
+                % _ui._warning_badge.get_child_count())
 
     _check(not _ui._exceeds_capacity(0, 100.0), "a zero amount must never warn")
     _check(_ui._exceeds_capacity(101, 100.0), "the rule must be \"strictly above\"")
@@ -676,24 +689,33 @@ func _test_supply(town: Dictionary) -> void:
         "the supply line must appear for a good the town trades")
     _check(_ui._supply_label.text.contains(str(int(comfort))),
         "the supply line must name the rate (got \"%s\")" % _ui._supply_label.text)
-    _check(not _ui._supply_label.tooltip_text.is_empty(),
-        "the supply line must explain itself in a tooltip")
-    # The node with a tooltip MUST catch the mouse. A Label defaults to mouse_filter =
-    # IGNORE: the hover never reaches it and the standard tooltip is shown NEVER. The
-    # line had exactly that bug — the text was set, but nothing could ever read it.
-    _check(_ui._supply_label.mouse_filter != Control.MOUSE_FILTER_IGNORE,
-        "the supply line must catch the mouse (mouse_filter != IGNORE), otherwise its tooltip will not show (got %d)"
-            % _ui._supply_label.mouse_filter)
-    # The built-in tooltip does NOT wrap (the theme styles only the panel, and nothing in
-    # the project overrides _make_custom_tooltip), so a long hint must carry its OWN line
-    # breaks: otherwise it comes out as one unreadable line that runs off the window.
-    var tip_lines: PackedStringArray = _ui._supply_label.tooltip_text.split("\n")
-    _check(tip_lines.size() > 1,
-        "the supply tooltip must be broken into lines, otherwise it is a single unreadable line")
-    for tip_line in tip_lines:
-        _check(tip_line.length() <= 80,
-            "a supply tooltip line must stay short (got %d chars: \"%s\")"
-                % [tip_line.length(), tip_line])
+    # The hint is LONG, so it goes through the wrapping tooltip: the built-in one draws
+    # its text in a single line that runs off the edge of the window. The mechanism keeps
+    # the text on a carrier laid over the line and answers the engine with a WRAPPING
+    # label — so the content is produced by the project and not by the engine default.
+    #
+    # The node that owns the text MUST catch the mouse: a Label defaults to
+    # mouse_filter = IGNORE, the hover never reaches it and the tooltip is shown NEVER —
+    # a tooltip whose text nothing can read.
+    var supply_tip = _tip_carrier(_ui._supply_label)
+    _check(supply_tip != null,
+        "the supply line must carry the wrapping tooltip, otherwise its long hint comes out as one line")
+    if supply_tip != null:
+        _check(not supply_tip.tooltip_text.is_empty(),
+            "the supply line must explain itself in a tooltip")
+        _check(supply_tip.mouse_filter != Control.MOUSE_FILTER_IGNORE,
+            "the owner of the supply tooltip must catch the mouse (mouse_filter != IGNORE), otherwise its tooltip will not show (got %d)"
+                % supply_tip.mouse_filter)
+        # ... and it must COVER the line: the carrier is laid over the label while the
+        # label still has no size (the panel is not laid out yet), so it lives on its
+        # anchors alone. A carrier left at zero size is never picked by the hover, and the
+        # tooltip would be as unreachable as one on a control with MOUSE_FILTER_IGNORE.
+        _check(supply_tip.size == _ui._supply_label.size and supply_tip.size.x > 0.0,
+            "the carrier of the supply tooltip must cover the line (carrier %s, line %s)"
+                % [str(supply_tip.size), str(_ui._supply_label.size)])
+        var supply_content: Label = WRAPPED_TOOLTIP.build(supply_tip.tooltip_text)
+        _check(supply_content.autowrap_mode != TextServer.AUTOWRAP_OFF,
+            "the supply tooltip must be wrapping (autowrap != OFF), otherwise it is a single unreadable line")
 
     # Within the rate: the line is muted and adds no warning.
     _ui._set_amount(int(comfort) - 1)
@@ -729,6 +751,13 @@ func _rows_of(container: Node) -> Array:
         if child.has_meta("town_resource_row"):
             rows.append(child)
     return rows
+
+# The control that OWNS the tooltip of `control`. The long hints of the window go
+# through the wrapping tooltip, which keeps the text on a carrier laid over the control
+# (see wrapped_tooltip.gd): it is the carrier the engine picks as the owner, so it is
+# the carrier that carries the text. null — the control has no tooltip of its own.
+func _tip_carrier(control: Control):
+    return WRAPPED_TOOLTIP.find_carrier(control)
 
 # Simulates a left click on a row: the engine delivers it as the gui_input signal.
 func _click(row: Control) -> void:

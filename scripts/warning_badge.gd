@@ -16,7 +16,10 @@ const FILL_COLOR := Color(0.85, 0.15, 0.15, 0.95)
 
 func _init() -> void:
     custom_minimum_size = Vector2(TRI_SIZE, TRI_SIZE)
-    # The tooltip of a Control shows only when the control catches the mouse.
+    # The tooltip of a Control shows only when the control catches the mouse — the rule
+    # every tooltip-bearing control of the project follows. The badge keeps STOP even
+    # though its long hint is carried by a child WrappedTooltip carrier (see
+    # town_ui._update_warning_badge), so the badge stays a valid target by itself.
     mouse_filter = Control.MOUSE_FILTER_STOP
 
 func _draw() -> void:
