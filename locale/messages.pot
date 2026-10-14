@@ -645,6 +645,9 @@ msgstr ""
 msgid "Close"
 msgstr ""
 
+msgid "Close the contract"
+msgstr ""
+
 msgid "Collapse panel"
 msgstr ""
 
@@ -732,6 +735,9 @@ msgstr ""
 msgid "Consumption rule references a nonexistent product"
 msgstr ""
 
+msgid "Contract closed: %s from %s."
+msgstr ""
+
 msgid "Contract signed: %d units of %s per second from %s."
 msgstr ""
 
@@ -745,6 +751,9 @@ msgid "Contract terminated: the town is gone."
 msgstr ""
 
 msgid "Contract terminated: the treasury cannot pay %d per second for %s from %s."
+msgstr ""
+
+msgid "Contract updated: %d units of %s per second from %s."
 msgstr ""
 
 msgid "Copy the list"
@@ -793,6 +802,9 @@ msgid "Diversity: %d subgroups"
 msgstr ""
 
 msgid "Domestic trade"
+msgstr ""
+
+msgid "Edit the contract"
 msgstr ""
 
 msgid "Errors in the game data"
@@ -904,6 +916,9 @@ msgid "Hex outside the Influence Ring"
 msgstr ""
 
 msgid "Hex outside the map"
+msgstr ""
+
+msgid "Hide the editor"
 msgstr ""
 
 msgid "Historical background:"
@@ -1545,6 +1560,9 @@ msgstr ""
 msgid "The city needs access to fresh water"
 msgstr ""
 
+msgid "The contract is already closed."
+msgstr ""
+
 msgid "The rate the town serves a contract with for free.\nA larger order strains it: it keeps up less and less,\nand its warehouse falls behind — the bigger the order,\nthe faster the stock runs dry and the contract is torn."
 msgstr ""
 
@@ -1645,6 +1663,9 @@ msgid "Unfinished sections: %d. Work spent on them (%.0f/%.0f) will be lost.\n\n
 msgstr ""
 
 msgid "Unknown construction requirement: %s"
+msgstr ""
+
+msgid "Update the contract"
 msgstr ""
 
 msgid "Upgrade"

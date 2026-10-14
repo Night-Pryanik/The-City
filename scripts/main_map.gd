@@ -513,6 +513,15 @@ func _ready():
     # amount with the throughput of the route (see town_ui._route_capacity).
     town_ui.set_map(self)
     town_ui.trade_order_submitted.connect(_on_town_trade_order)
+    # The window asked to close the standing contract it is editing (see
+    # town_ui._on_close_contract_pressed): the mechanics live in town_trade_manager, the
+    # answer is reported by the HUD.
+    town_ui.contract_close_requested.connect(_on_town_contract_close_requested)
+    # The list of the contracts changed (signed, updated or torn): the trade panel of the
+    # window follows the contract of the good it shows, so an order that has just become a
+    # standing contract can be closed or corrected without reopening the panel
+    # (see town_ui.on_contracts_changed).
+    town_trade_manager.contracts_changed.connect(town_ui.on_contracts_changed)
     # A standing contract that could not be paid or fulfilled is torn automatically
     # (see town_trade_manager.tick_contracts): the player learns about it from the HUD.
     town_trade_manager.notice.connect(_on_town_trade_notice)
@@ -2465,6 +2474,39 @@ func get_town_contracts() -> Array:
         return []
     return town_trade_manager.get_contracts()
 
+# The standing contract of a town for a good, or an empty dictionary when there is none
+# (see town_trade_manager.get_contract). The town window reads it to open the trade
+# settings of a good that already carries a contract as an EDIT of that contract instead
+# of a fresh signing — one town carries one contract per good.
+func get_town_contract(town_id: String, product_id: String) -> Dictionary:
+    if town_trade_manager == null:
+        return {}
+    return town_trade_manager.get_contract(town_id, product_id)
+
+# Edits the amount of the standing contract of a town for a good from the "Trade deals"
+# column of the city interface. The price of the deal stays frozen (see
+# town_trade_manager.submit_order, which turns an order for a pair that already carries a
+# contract into an edit of it). The column calls this directly, the way it reads
+# get_town_contracts: it needs the answer to report it in the message row of the city
+# interface — the HUD is hidden while the city interface is open.
+func update_town_contract(town_id: String, product_id: String, amount: int) -> Dictionary:
+    if town_trade_manager == null:
+        return {"ok": false, "message": ""}
+    return town_trade_manager.submit_order({
+        "side": "sell",
+        "town_id": town_id,
+        "product_id": product_id,
+        "amount": amount,
+        "permanent": true,
+    })
+
+# Closes the standing contract of a town from the "Trade deals" column (see
+# town_trade_manager.close_contract). The good becomes free for a new deal.
+func close_town_contract(contract_id: String) -> Dictionary:
+    if town_trade_manager == null:
+        return {"ok": false, "message": ""}
+    return town_trade_manager.close_contract(contract_id)
+
 func _on_town_ui_close():
     town_ui.hide()
     # The HUD buttons are re-enabled automatically (see _process): the flag
@@ -2496,6 +2538,17 @@ func _on_town_trade_order(order: Dictionary) -> void:
 # town ran out of the goods). The HUD is the channel that works whether the town
 # window, the city interface or nothing at all is open.
 func _on_town_trade_notice(message: String) -> void:
+    if not message.is_empty():
+        hud.show_message(message)
+
+# The town window asked to close the standing contract it is editing. The window hands the
+# id over and claims nothing about the outcome: the mechanics live in town_trade_manager and
+# the answer is reported by the HUD, exactly as the reply to an order is.
+func _on_town_contract_close_requested(contract_id: String) -> void:
+    if town_trade_manager == null:
+        return
+    var result: Dictionary = town_trade_manager.close_contract(contract_id)
+    var message := str(result.get("message", ""))
     if not message.is_empty():
         hud.show_message(message)
 

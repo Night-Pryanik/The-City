@@ -645,6 +645,9 @@ msgstr "Нажмите чтобы отсортировать список; по�
 msgid "Close"
 msgstr "Закрыть"
 
+msgid "Close the contract"
+msgstr "Закрыть контракт"
+
 msgid "Collapse panel"
 msgstr "Свернуть панель"
 
@@ -732,6 +735,9 @@ msgstr "Правило потребления ссылается на несущ
 msgid "Consumption rule references a nonexistent product"
 msgstr "Правило потребления ссылается на несуществующий продукт"
 
+msgid "Contract closed: %s from %s."
+msgstr "Контракт закрыт: %s из городка %s."
+
 msgid "Contract signed: %d units of %s per second from %s."
 msgstr "Контракт заключён: %d ед. %s в секунду из городка %s."
 
@@ -746,6 +752,9 @@ msgstr "Контракт расторгнут: городка больше не�
 
 msgid "Contract terminated: the treasury cannot pay %d per second for %s from %s."
 msgstr "Контракт расторгнут: казна не может платить %d в секунду за %s из городка %s."
+
+msgid "Contract updated: %d units of %s per second from %s."
+msgstr "Контракт изменён: %d ед. %s в секунду из городка %s."
 
 msgid "Copy the list"
 msgstr "Скопировать список"
@@ -794,6 +803,9 @@ msgstr "Разнообразие: %d подгрупп"
 
 msgid "Domestic trade"
 msgstr "Внутренняя торговля"
+
+msgid "Edit the contract"
+msgstr "Изменить контракт"
 
 msgid "Errors in the game data"
 msgstr "Ошибки в игровых данных"
@@ -905,6 +917,9 @@ msgstr "Гекс вне Кольца Влияния"
 
 msgid "Hex outside the map"
 msgstr "Гекс вне карты"
+
+msgid "Hide the editor"
+msgstr "Скрыть редактор"
 
 msgid "Historical background:"
 msgstr "Историческая справка:"
@@ -1545,6 +1560,9 @@ msgstr "Чанк пересекается с кольцом влияния чу�
 msgid "The city needs access to fresh water"
 msgstr "Нужен доступ города к пресной воде"
 
+msgid "The contract is already closed."
+msgstr "Контракт уже закрыт."
+
 msgid "The rate the town serves a contract with for free.\nA larger order strains it: it keeps up less and less,\nand its warehouse falls behind — the bigger the order,\nthe faster the stock runs dry and the contract is torn."
 msgstr "Темп, с которым городок обслуживает контракт бесплатно.\nБолее крупный заказ заставляет его напрягаться: он поспевает\nвсё хуже, и склад начинает отставать — чем крупнее заказ,\nтем быстрее склад опустеет и контракт будет разорван."
 
@@ -1646,6 +1664,9 @@ msgstr "Недостроенных участков: %d. Потраченный 
 
 msgid "Unknown construction requirement: %s"
 msgstr "Неизвестное условие строительства: %s"
+
+msgid "Update the contract"
+msgstr "Изменить контракт"
 
 msgid "Upgrade"
 msgstr "Улучшение"

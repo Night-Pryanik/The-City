@@ -11,6 +11,15 @@
 # (see town_trade_manager.get_contracts, which main_map forwards). A one-time purchase
 # is settled at once and leaves nothing to list.
 #
+# A deal can be EDITED from here. A town carries one contract per good (see
+# town_trade_manager), so the row carries an edit button: it unfolds an INLINE editor right
+# under the row — the amount of the contract and what it costs per second, an "Update"
+# action and a "Close the contract" action. The price is NOT editable: it is frozen at the
+# signing of the deal, and a different price is a different deal — the way to it is "close
+# the contract and sign a new one", which the editor offers as well. The town window is the
+# other entry point (town_ui opens the settings of a good that carries a contract as an
+# edit of it); both paths reach the same mechanics of town_trade_manager.
+#
 # The section "Trade partners" is filled with the towns the player has discovered: a town is
 # known when its hex lies in the known territory or has been scouted — the same condition under
 # which the town is drawn on the map (town_manager.is_town_discovered). A town without a road
@@ -54,11 +63,25 @@ const ICON_SORT_TYPE := "sort_type.svg"
 const ICON_SORT_DISTANCE := "sort_distance.svg"
 const ICON_GO_TO := "goto.svg"
 const ICON_ROAD := "road.svg"
+# The actions of the inline editor of a deal (see _build_deal_editor) and the pencil that
+# unfolds it (see _make_deal_edit_button).
+const ICON_EDIT := "contract_edit.svg"
+const ICON_CONFIRM := "check.svg"
+const ICON_CLOSE_CONTRACT := "contract_off.svg"
 
 const ROW_HEIGHT := 26
 const SWATCH_SIZE := 12
 const GOTO_BUTTON_SIZE := 24
 const ROAD_MARKER_SIZE := 18
+
+# The step of the "+"/"−" buttons of the inline editor: units by default, tens with Ctrl,
+# hundreds with Shift — the same idiom as the amount field of the town window (town_ui).
+const STEP_UNITS := 1
+const STEP_TENS := 10
+const STEP_HUNDREDS := 100
+const MAX_AMOUNT_LENGTH := 7
+const EDITOR_FIELD_WIDTH := 80
+const EDITOR_BUTTON_SIZE := 30
 
 const COLOR_CAPTION := Color(0.75, 0.75, 0.75, 1)
 const COLOR_PRICE := Color(1.0, 0.507, 0.0, 1)
@@ -100,6 +123,21 @@ var partners_descending: bool = false
 # (see trade_tab._signature_of).
 var _deals_signature: String = ""
 var _partners_signature: String = ""
+
+# The inline editor of the deals section. One editor is open at a time, keyed by the deal
+# it edits ("town_id|product_id" — the identity of a standing contract, see
+# town_trade_manager). The editor is a part of the list and is rebuilt with it, so the
+# controls below are re-created on every refresh; the key is what survives and tells
+# _fill_deals which row to unfold the editor under.
+var _editing_deal_key: String = ""
+# The deal the open editor edits (a copy), and the controls of that editor. They are null
+# while no editor is unfolded.
+var _deal_editor_deal: Dictionary = {}
+var _deal_amount_edit: LineEdit = null
+var _deal_total_label: Label = null
+var _deal_update_button: Button = null
+# The guard against a feedback loop while the code writes the amount into the field.
+var _suppress_deal_edit: bool = false
 
 func setup(panel: Control, helpers: Node) -> void:
     external_panel = panel
@@ -321,9 +359,27 @@ func _refresh_deals() -> void:
     _fill_deals(deals)
 
 func _fill_deals(deals: Array) -> void:
+    # The editor is rebuilt together with the rows: the controls of the previous build are
+    # freed with them, and the fields must not point at the dead nodes anymore.
+    _deal_editor_deal = {}
+    _deal_amount_edit = null
+    _deal_total_label = null
+    _deal_update_button = null
     var rows: Array = []
+    var editor_shown := false
     for deal in deals:
         rows.append(_build_deal_row(deal))
+        # The editor of a deal unfolds right under its row (see _build_deal_editor), so a
+        # refresh shows the fresh amount of the contract in the open editor as well.
+        if _is_deal_edited(deal):
+            rows.append(_build_deal_editor(deal))
+            editor_shown = true
+    # A deal can vanish behind the back of the editor: a contract that cannot be paid or
+    # fulfilled is torn by the tick (see town_trade_manager). The key of a deal that is no
+    # longer in the list is dropped, so the editor does not unfold by itself later if the
+    # good happens to get a new contract.
+    if not editor_shown:
+        _editing_deal_key = ""
     _fill_list(deals_list, rows, tr("No trade deals yet"))
 
 # One row of the section: the goods and the volume of the contract, the town the deal is made
@@ -403,7 +459,313 @@ func _build_deal_row(deal: Dictionary) -> HBoxContainer:
         delivery_label.mouse_filter = Control.MOUSE_FILTER_STOP
         delivery_label.tooltip_text = tr("The time the goods spend on the road from the town to the city")
         row.add_child(delivery_label)
+
+    # The edit action of the row: it unfolds the inline editor of the deal (see
+    # _build_deal_editor). The identity of a deal is the pair (town, good), so a record
+    # without it (a hand-made one) has nothing to edit and carries no button.
+    if _is_deal_editable(deal):
+        row.add_child(_make_deal_edit_button(deal))
     return row
+
+# The edit button of a deal row: a small square button with a pencil. A press unfolds the
+# inline editor of the deal right under the row, and a repeated press folds it back (see
+# _on_deal_edit_toggled). The button carries no text: the action is explained by its
+# tooltip, which says what the press will do.
+func _make_deal_edit_button(deal: Dictionary) -> Button:
+    var button := Button.new()
+    button.name = "DealEditButton"
+    button.custom_minimum_size = Vector2(GOTO_BUTTON_SIZE, GOTO_BUTTON_SIZE)
+    button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    _set_button_icon(button, ICON_EDIT, ROAD_MARKER_SIZE)
+    button.tooltip_text = tr("Hide the editor") if _is_deal_edited(deal) else tr("Edit the contract")
+    button.pressed.connect(_on_deal_edit_toggled.bind(
+            str(deal.get("town_id", "")), str(deal.get("product_id", ""))))
+    return button
+
+# The key of a deal: the pair (town, good) — the identity of a standing contract (see
+# town_trade_manager). It is what the editor is unfolded by.
+func _deal_key(deal: Dictionary) -> String:
+    return _deal_key_of(str(deal.get("town_id", "")), str(deal.get("product_id", "")))
+
+func _deal_key_of(town_id: String, product_id: String) -> String:
+    if town_id.is_empty() or product_id.is_empty():
+        return ""
+    return "%s|%s" % [town_id, product_id]
+
+# Whether a deal can be edited at all: it needs the town and the good of its contract.
+func _is_deal_editable(deal: Dictionary) -> bool:
+    return not _deal_key(deal).is_empty()
+
+# Whether the editor of this deal is the one unfolded right now.
+func _is_deal_edited(deal: Dictionary) -> bool:
+    var key := _deal_key(deal)
+    return not key.is_empty() and key == _editing_deal_key
+
+# A click on the edit action of a deal: the editor of that deal unfolds, and the editor of
+# any other deal folds back — one editor at a time, exactly like the trade settings panel of
+# the town window (town_ui._toggle_selection). A repeated click on the same deal folds its
+# editor back. The column only shows the editor; the mechanics are reached through the map
+# (main_map.update_town_contract / close_town_contract).
+func _on_deal_edit_toggled(town_id: String, product_id: String) -> void:
+    var key := _deal_key_of(town_id, product_id)
+    if key.is_empty():
+        return
+    _editing_deal_key = "" if _editing_deal_key == key else key
+    # The editor is a part of the list, while the signature of the list does not know about
+    # it: the rebuild is forced, so the editor unfolds (or folds) on the very same click.
+    _deals_signature = ""
+    _refresh_deals()
+
+# --- The inline editor of a deal ---
+
+# The inline editor of a deal, unfolded right under its row. It edits the AMOUNT of the
+# standing contract; the price of a unit is shown but not editable — it is frozen at the
+# signing of the deal, and a different price is a different deal (see town_trade_manager).
+# The editor therefore offers the pair "Update the amount" and "Close the contract": closing
+# frees the good for a new deal, with the same terms or with different ones.
+#
+# The editor drives the mechanics through the map and reports their answer in the message
+# row of the city interface (see _report_deal_result) — the HUD is hidden while the city
+# interface is open, so a deal edited from here cannot announce itself there.
+func _build_deal_editor(deal: Dictionary) -> PanelContainer:
+    _deal_editor_deal = deal.duplicate()
+    var panel := PanelContainer.new()
+    panel.name = "DealEditor"
+    panel.add_theme_stylebox_override("panel", _make_editor_style())
+
+    var vbox := VBoxContainer.new()
+    vbox.add_theme_constant_override("separation", 4)
+    panel.add_child(vbox)
+
+    var amount_row := HBoxContainer.new()
+    amount_row.add_theme_constant_override("separation", 6)
+    var caption := Label.new()
+    caption.text = tr("Amount:")
+    caption.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    amount_row.add_child(caption)
+
+    var minus_button := Button.new()
+    minus_button.name = "DealMinusButton"
+    minus_button.text = "−"
+    minus_button.custom_minimum_size = Vector2(EDITOR_BUTTON_SIZE, 0)
+    minus_button.tooltip_text = tr("−%d (Ctrl: −10, Shift: −100)") % STEP_UNITS
+    minus_button.pressed.connect(_on_deal_minus_pressed)
+    amount_row.add_child(minus_button)
+
+    _deal_amount_edit = LineEdit.new()
+    _deal_amount_edit.name = "DealAmountEdit"
+    _deal_amount_edit.custom_minimum_size = Vector2(EDITOR_FIELD_WIDTH, 0)
+    _deal_amount_edit.max_length = MAX_AMOUNT_LENGTH
+    _deal_amount_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
+    _deal_amount_edit.tooltip_text = tr("Only whole positive numbers are accepted")
+    _deal_amount_edit.text_changed.connect(_on_deal_amount_changed)
+    amount_row.add_child(_deal_amount_edit)
+
+    var plus_button := Button.new()
+    plus_button.name = "DealPlusButton"
+    plus_button.text = "+"
+    plus_button.custom_minimum_size = Vector2(EDITOR_BUTTON_SIZE, 0)
+    plus_button.tooltip_text = tr("+%d (Ctrl: +10, Shift: +100)") % STEP_UNITS
+    plus_button.pressed.connect(_on_deal_plus_pressed)
+    amount_row.add_child(plus_button)
+
+    vbox.add_child(amount_row)
+
+    # The total of the deal and the two actions. The total takes the free space and pushes
+    # the buttons to the right edge — the same idiom as the buttons row of the trade panel
+    # of the town window (town_ui._build_trade_panel).
+    var actions_row := HBoxContainer.new()
+    actions_row.add_theme_constant_override("separation", 6)
+    _deal_total_label = Label.new()
+    _deal_total_label.name = "DealTotalLabel"
+    _deal_total_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    _deal_total_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    _deal_total_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    actions_row.add_child(_deal_total_label)
+
+    _deal_update_button = Button.new()
+    _deal_update_button.name = "DealUpdateButton"
+    _deal_update_button.custom_minimum_size = Vector2(EDITOR_BUTTON_SIZE, EDITOR_BUTTON_SIZE)
+    _deal_update_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    _set_button_icon(_deal_update_button, ICON_CONFIRM, ROAD_MARKER_SIZE)
+    _deal_update_button.tooltip_text = tr("Update the contract")
+    _deal_update_button.pressed.connect(_on_deal_update_pressed)
+    actions_row.add_child(_deal_update_button)
+
+    var close_button := Button.new()
+    close_button.name = "DealCloseButton"
+    close_button.custom_minimum_size = Vector2(EDITOR_BUTTON_SIZE, EDITOR_BUTTON_SIZE)
+    close_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    _set_button_icon(close_button, ICON_CLOSE_CONTRACT, ROAD_MARKER_SIZE)
+    close_button.tooltip_text = tr("Close the contract")
+    close_button.pressed.connect(_on_deal_close_pressed)
+    actions_row.add_child(close_button)
+
+    vbox.add_child(actions_row)
+
+    # The amount the editor starts from is the amount of the contract: an edit opens on what
+    # the deal says now, and the "+"/"−" buttons move it from there.
+    _set_deal_amount(maxi(int(deal.get("amount", 0)), 1))
+    return panel
+
+# The frame of the editor: the dark panel of the window (0.117) with a LIGHT border, so that
+# the editor reads as a separate block and not as one more row of the list.
+func _make_editor_style() -> StyleBoxFlat:
+    var style := StyleBoxFlat.new()
+    style.bg_color = Color(0.117, 0.117, 0.117, 1)
+    style.border_width_left = 1
+    style.border_width_top = 1
+    style.border_width_right = 1
+    style.border_width_bottom = 1
+    style.border_color = Color(0.45, 0.45, 0.45, 1)
+    style.content_margin_left = 8.0
+    style.content_margin_right = 8.0
+    style.content_margin_top = 6.0
+    style.content_margin_bottom = 6.0
+    return style
+
+# --- The amount field of the inline editor ---
+
+# Writes the amount into the field and refreshes the total. The guard keeps the write from
+# being taken for a keystroke of the player (see _on_deal_amount_changed).
+func _set_deal_amount(amount: int) -> void:
+    if _deal_amount_edit == null or not is_instance_valid(_deal_amount_edit):
+        return
+    _suppress_deal_edit = true
+    _deal_amount_edit.text = str(amount)
+    _deal_amount_edit.caret_column = _deal_amount_edit.text.length()
+    _suppress_deal_edit = false
+    _update_deal_feedback()
+
+func _current_deal_amount() -> int:
+    if _deal_amount_edit == null or not is_instance_valid(_deal_amount_edit):
+        return 0
+    var text := _deal_amount_edit.text.strip_edges()
+    if text.is_empty() or not text.is_valid_int():
+        return 0
+    return int(text)
+
+# The amount field accepts whole positive numbers only: everything that is not a digit is
+# dropped right in the handler (so a paste is filtered too), and the leading zeros are
+# removed so that the field never shows "007" or a lone "0" — the same rule as the amount
+# field of the town window (town_ui._on_amount_text_changed).
+func _on_deal_amount_changed(new_text: String) -> void:
+    if _suppress_deal_edit:
+        return
+    var clean := _sanitize_amount(new_text)
+    if clean != new_text and _deal_amount_edit != null and is_instance_valid(_deal_amount_edit):
+        _suppress_deal_edit = true
+        _deal_amount_edit.text = clean
+        _deal_amount_edit.caret_column = clean.length()
+        _suppress_deal_edit = false
+    _update_deal_feedback()
+
+func _sanitize_amount(text: String) -> String:
+    var digits := ""
+    for i in range(text.length()):
+        var ch := text[i]
+        if ch >= "0" and ch <= "9":
+            digits += ch
+    return digits.lstrip("0")
+
+func _on_deal_plus_pressed() -> void:
+    _add_deal_amount(_deal_step_from_modifiers())
+
+func _on_deal_minus_pressed() -> void:
+    _add_deal_amount(-_deal_step_from_modifiers())
+
+# The step of the "+"/"−" buttons by the modifiers held at the moment of the click. Ctrl
+# wins when both are held, so a click always has one well-defined step.
+func _deal_step_from_modifiers() -> int:
+    if Input.is_key_pressed(KEY_CTRL):
+        return STEP_TENS
+    if Input.is_key_pressed(KEY_SHIFT):
+        return STEP_HUNDREDS
+    return STEP_UNITS
+
+# The amount never falls below 1 when there is something to decrease: an empty field is
+# allowed while typing, but "−" is not meant to produce a zero order.
+func _add_deal_amount(delta: int) -> void:
+    var current := _current_deal_amount()
+    if current <= 0:
+        if delta < 0:
+            return
+        _set_deal_amount(delta)
+        return
+    _set_deal_amount(maxi(1, current + delta))
+
+# The total of the contract at the price FROZEN at its signing — the number the treasury
+# will actually pay per second after the update. The update button is enabled only for a
+# valid (positive) amount.
+func _update_deal_feedback() -> void:
+    var amount := _current_deal_amount()
+    if _deal_update_button != null and is_instance_valid(_deal_update_button):
+        _deal_update_button.disabled = amount <= 0
+    if _deal_total_label == null or not is_instance_valid(_deal_total_label):
+        return
+    var total := amount * _deal_unit_price(_deal_editor_deal)
+    _deal_total_label.text = tr("Cost: %d/sec") % total
+    _deal_total_label.add_theme_color_override("font_color", COLOR_EXPENSE)
+
+# The price of one unit of a deal: the price frozen at its signing, which
+# town_trade_manager.get_contracts hands over as both "unit_price" and "price". A record
+# without either falls back to 0 — the total then reads as nothing, which is honest.
+func _deal_unit_price(deal: Dictionary) -> int:
+    return int(deal.get("unit_price", deal.get("price", 0)))
+
+# --- The actions of the inline editor ---
+
+# The "Update" action: the amount of the contract is rewritten
+# (main_map.update_town_contract). The price stays frozen — an order for a pair that already
+# carries a contract is an edit of it and never a second deal (see
+# town_trade_manager.submit_order). A successful update rebuilds the list at once, so the
+# row and the open editor show the fresh amount without waiting for the next tick; a refusal
+# (not enough coins, not enough goods) leaves the editor as it is, so the player can fix the
+# amount and try again.
+func _on_deal_update_pressed() -> void:
+    var town_id := str(_deal_editor_deal.get("town_id", ""))
+    var product_id := str(_deal_editor_deal.get("product_id", ""))
+    var amount := _current_deal_amount()
+    if town_id.is_empty() or product_id.is_empty() or amount <= 0:
+        return
+    if main_map == null or not is_instance_valid(main_map) \
+            or not main_map.has_method("update_town_contract"):
+        return
+    var result = main_map.update_town_contract(town_id, product_id, amount)
+    _report_deal_result(result)
+    if bool(result.get("ok", false)):
+        _deals_signature = ""
+        _refresh_deals()
+
+# The "Close the contract" action: the deal is torn deliberately
+# (main_map.close_town_contract) and the good becomes free for a new one — with the same
+# terms or with different ones. The editor folds back, because it has nothing left to edit.
+func _on_deal_close_pressed() -> void:
+    var contract_id := str(_deal_editor_deal.get("id", ""))
+    if contract_id.is_empty():
+        return
+    if main_map == null or not is_instance_valid(main_map) \
+            or not main_map.has_method("close_town_contract"):
+        return
+    var result = main_map.close_town_contract(contract_id)
+    _report_deal_result(result)
+    if bool(result.get("ok", false)):
+        _editing_deal_key = ""
+        _deals_signature = ""
+        _refresh_deals()
+
+# The answer of the mechanics goes to the message row of the city interface: the HUD is
+# hidden while the interface is open, and the column cannot announce a deal there. The
+# message of a refusal is what the player reads to understand why the amount was rejected.
+func _report_deal_result(result) -> void:
+    if not (result is Dictionary):
+        return
+    var message := str((result as Dictionary).get("message", ""))
+    if message.is_empty():
+        return
+    if ui_helpers != null and is_instance_valid(ui_helpers):
+        ui_helpers.set_message(message)
 
 # The delivery time of a deal: whole seconds when the delay is a whole number and
 # two decimals otherwise (the delay is length × transit_time_per_hex, so fractions

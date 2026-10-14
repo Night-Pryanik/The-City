@@ -44,6 +44,14 @@
 # goods live behind that signal (main_map._on_town_trade_order ->
 # town_trade_manager), and their answer is reported by the HUD, which stays visible
 # while the window is open (see hud_message.gd).
+#
+# The panel EDITS an existing contract instead of signing a second one. A town carries
+# one contract per good (see town_trade_manager), so the row of a good that already has
+# a contract opens the settings of THAT contract: the amount is prefilled with it, the
+# total is counted at the price frozen at its signing (a new price is a new deal), and a
+# "close the contract" button appears next to confirm/cancel. The window reads the
+# contract of the selected row from the map (main_map.get_town_contract); a row without
+# one is an ordinary fresh order.
 extends Control
 
 # The shared UI helpers: the category header of a resource list (a line, the name, a
@@ -67,6 +75,12 @@ signal closed()
 # the sum the player saw cannot diverge. The mechanics behind the signal live in
 # main_map._on_town_trade_order -> town_trade_manager.submit_order.
 signal trade_order_submitted(order: Dictionary)
+
+# The window asked to close the standing contract it is editing. Like the order, the
+# window only asks: the mechanics live in town_trade_manager and the answer is reported
+# by the HUD (see main_map._on_town_contract_close_requested). The good becomes free for
+# a new deal — with the same terms or with different ones.
+signal contract_close_requested(contract_id: String)
 
 # The two sides of the trade. The value is part of the order and of the row key, so
 # it must stay stable.
@@ -189,6 +203,11 @@ var _selected_key := ""
 var _selected_side := ""
 var _selected_id := ""
 var _selected_name := ""
+# The standing contract the open panel is EDITING, or an empty dictionary when the panel
+# is a fresh order. A town carries one contract per good (see town_trade_manager), so the
+# settings of a good that already has a contract open as an edit of it: the amount is
+# prefilled with the contract and the total is counted at the price frozen at its signing.
+var _selected_contract: Dictionary = {}
 
 # The trade settings panel and its controls (null while it is closed).
 var _trade_panel: Control = null
@@ -197,6 +216,9 @@ var _permanent_check: CheckBox = null
 var _warning_badge: Control = null
 var _confirm_button: Button = null
 var _total_label: Label = null
+# The "close the contract" button. It exists only while the panel edits a standing
+# contract (see _build_trade_panel): a fresh order has nothing to close.
+var _close_contract_button: Button = null
 # The line that names the rate the town can back a standing contract with (see
 # _update_supply_label). null while no panel is open.
 var _supply_label: Label = null
@@ -277,9 +299,12 @@ func _refresh():
     _fill_resource_list(sell_list, _town.get("sell_pool", []),
             tr("No resources in the influence ring"), SIDE_SELL, true)
     # The lists were rebuilt from scratch, so the open trade panel (if any) and the
-    # highlight of its row have to be put back on top of the fresh rows.
+    # highlight of its row have to be put back on top of the fresh rows. The contract of
+    # the selected row is re-read first: the panel of a good that carries one must come
+    # back as an EDIT of it and not as a fresh order.
     if not _selected_key.is_empty():
         var keep_amount := _current_amount()
+        _sync_selected_contract()
         _open_trade_panel(keep_amount)
         _refresh_row_styles()
 
@@ -355,6 +380,15 @@ func _can_trade() -> bool:
 func _unit_price(resource_id: String, side: String) -> int:
     var quality_id := _town_quality_of(resource_id) if side == SIDE_SELL else ""
     return int(round(GameData.get_price_for_quality(resource_id, quality_id)))
+
+# The price of ONE unit the open panel works with. While the panel edits an existing
+# contract, the price is the one frozen at the signing of that deal: an edit changes the
+# amount only, and a different price is a different deal — the player closes the contract
+# and signs a new one (see town_trade_manager). A fresh order uses the price of the row.
+func _selected_unit_price() -> int:
+    if not _selected_contract.is_empty():
+        return int(_selected_contract.get("unit_price", 0))
+    return _unit_price(_selected_id, _selected_side)
 
 # The quality level the town holds of a product, or "" when it does not hold it at all.
 # An empty id is a meaningful answer for _unit_price: the multiplier of an unknown level
@@ -633,8 +667,51 @@ func _toggle_selection(side: String, resource_id: String, display_name: String) 
     _selected_id = resource_id
     _selected_name = display_name
     _hovered_row = null
-    _panel_permanent = false
-    _open_trade_panel(DEFAULT_AMOUNT)
+    # The row of a good that already carries a standing contract opens the settings of
+    # THAT contract: the amount comes prefilled and the "Permanent" flag is already on.
+    _sync_selected_contract()
+    _panel_permanent = not _selected_contract.is_empty()
+    _open_trade_panel(_default_panel_amount())
+    _refresh_row_styles()
+
+# The amount a freshly opened panel starts with: the volume of the contract being edited,
+# or the default step for a fresh order.
+func _default_panel_amount() -> int:
+    if _selected_contract.is_empty():
+        return DEFAULT_AMOUNT
+    return maxi(int(_selected_contract.get("amount", DEFAULT_AMOUNT)), 1)
+
+# Reads the standing contract of the selected row from the map. The pair (town, good) is
+# the identity of a deal (see town_trade_manager), so this is what tells "sign a contract"
+# from "edit the current one". A map that cannot answer (a test stub) means "no contract".
+func _sync_selected_contract() -> void:
+    _selected_contract = {}
+    if _town == null or _selected_id.is_empty():
+        return
+    if _map == null or not is_instance_valid(_map) or not _map.has_method("get_town_contract"):
+        return
+    var contract = _map.get_town_contract(str(_town.get("id", "")), _selected_id)
+    if contract is Dictionary and not (contract as Dictionary).is_empty():
+        _selected_contract = contract
+
+# The list of the standing contracts changed — a contract was signed, updated or torn
+# (see town_trade_manager.contracts_changed). The panel of the selected good follows the
+# contract of that good, whatever changed it: an order that has just been signed turns the
+# panel into an EDIT of the new contract at once, so the deal can be closed or corrected
+# right away instead of only after the panel is closed and reopened; a contract that has
+# gone (torn by the tick, or closed) turns the panel back into a fresh order.
+#
+# A change that does not flip the state of the panel is ignored on purpose: the amount the
+# player is typing must not be thrown away because some OTHER deal moved.
+func on_contracts_changed() -> void:
+    if _town == null or not visible or _selected_id.is_empty():
+        return
+    var was_editing := not _selected_contract.is_empty()
+    _sync_selected_contract()
+    if (not _selected_contract.is_empty()) == was_editing:
+        return
+    _panel_permanent = not _selected_contract.is_empty()
+    _open_trade_panel(_default_panel_amount())
     _refresh_row_styles()
 
 func _clear_selection() -> void:
@@ -642,6 +719,7 @@ func _clear_selection() -> void:
     _selected_side = ""
     _selected_id = ""
     _selected_name = ""
+    _selected_contract = {}
     _hovered_row = null
     _free_trade_panel()
     _refresh_row_styles()
@@ -659,6 +737,7 @@ func _free_trade_panel() -> void:
     _confirm_button = null
     _total_label = null
     _supply_label = null
+    _close_contract_button = null
 
 # Applies the state stylebox to one row: the selected state wins over the hover, so
 # the selected row stays highlighted while the cursor is elsewhere.
@@ -711,6 +790,7 @@ func _open_trade_panel(amount: int) -> void:
     container.move_child(_trade_panel, row.get_index() + 1)
     _set_amount(amount if amount > 0 else DEFAULT_AMOUNT)
     _update_amount_feedback()
+    _update_confirm_tooltip()
     var scroll := _scroll_for_side(_selected_side)
     if scroll != null:
         scroll.ensure_control_visible(_trade_panel)
@@ -851,6 +931,14 @@ func _build_trade_panel() -> PanelContainer:
             "CancelButton", "cross.svg", "✕", tr("Cancel"))
     cancel_button.pressed.connect(_on_cancel_pressed)
     buttons_row.add_child(cancel_button)
+    # Closing the contract is offered only while the panel edits one: a fresh order has
+    # nothing to close. The button sits to the RIGHT of cancel so that the total keeps the
+    # free space left of the buttons (see _update_total_label).
+    if not _selected_contract.is_empty():
+        _close_contract_button = _make_icon_button(
+                "CloseContractButton", "contract_off.svg", "⊘", tr("Close the contract"))
+        _close_contract_button.pressed.connect(_on_close_contract_pressed)
+        buttons_row.add_child(_close_contract_button)
     vbox.add_child(buttons_row)
 
     return panel
@@ -985,10 +1073,26 @@ func _on_permanent_label_input(event: InputEvent) -> void:
         _permanent_check.button_pressed = not _permanent_check.button_pressed
 
 # The checkbox changed its state: the total must be rewritten — in the permanent
-# mode the amount is shown per second ("/sec").
+# mode the amount is shown per second ("/sec") — and the confirm button must say what it
+# will do: update the contract being edited, or place an ordinary order.
 func _on_permanent_toggled(pressed: bool) -> void:
     _panel_permanent = pressed
     _update_total_label(_current_amount())
+    _update_confirm_tooltip()
+
+# The confirm button explains itself by what it will actually do. While the panel edits a
+# standing contract AND the "Permanent" flag is on, confirm updates that contract; with the
+# flag off the same click places a one-time purchase and leaves the contract alone, so the
+# hint must not promise an update.
+func _update_confirm_tooltip() -> void:
+    if _confirm_button == null or not is_instance_valid(_confirm_button):
+        return
+    var permanent := _permanent_check != null and is_instance_valid(_permanent_check) \
+            and _permanent_check.button_pressed
+    if not _selected_contract.is_empty() and permanent:
+        _confirm_button.tooltip_text = tr("Update the contract")
+    else:
+        _confirm_button.tooltip_text = tr("Confirm")
 
 # --- The amount field ---
 
@@ -1081,11 +1185,13 @@ func _update_amount_feedback() -> void:
 # The direction is read from the side. The sale column holds the goods the TOWN sells,
 # so the city PAYS for them (red); the buy column holds the goods the town wants, so the
 # city IS PAID for them (gold). The amount and the price of a unit are whole numbers, so
-# the total is a whole number of coins — exactly what the treasury will move.
+# the total is a whole number of coins — exactly what the treasury will move. While the
+# panel edits a contract the total is counted at the price frozen at its signing (see
+# _selected_unit_price): an edit changes the amount only.
 func _update_total_label(amount: int) -> void:
     if _total_label == null or not is_instance_valid(_total_label):
         return
-    var total := amount * _unit_price(_selected_id, _selected_side)
+    var total := amount * _selected_unit_price()
     var permanent := _permanent_check != null and is_instance_valid(_permanent_check) \
             and _permanent_check.button_pressed
     if _selected_side == SIDE_SELL:
@@ -1183,6 +1289,14 @@ func _supply_rate() -> float:
 # total of the panel is made of, so the treasury is charged exactly the sum the
 # player saw. The panel claims nothing about the outcome: the reply of the mechanics
 # is reported by the HUD (see main_map._on_town_trade_order).
+#
+# When the panel edits a standing contract, the order carries the frozen price of that
+# contract and the manager updates it in place instead of signing a second one (one town
+# carries one contract per good, see town_trade_manager).
+#
+# An order that BECOMES a standing contract turns the panel into an edit of it by itself:
+# the manager announces the change (contracts_changed) and the window re-reads the contract
+# of the selected good (see on_contracts_changed).
 func _on_confirm_pressed() -> void:
     var amount := _current_amount()
     if amount <= 0:
@@ -1198,12 +1312,31 @@ func _on_confirm_pressed() -> void:
         "amount": amount,
         "permanent": _permanent_check != null and _permanent_check.button_pressed,
         "route_capacity": _route_capacity(),
-        "unit_price": _unit_price(_selected_id, _selected_side),
+        "unit_price": _selected_unit_price(),
     }
     emit_signal("trade_order_submitted", _last_order)
 
 func _on_cancel_pressed() -> void:
     _clear_selection()
+
+# Closes the contract the panel is editing and turns the panel back into a fresh order:
+# the good becomes free for a new deal — with the same terms or with different ones. The
+# window only asks (the signal); the mechanics and the report are the map's business.
+#
+# The panel resets right away instead of waiting for the answer: closing a contract that
+# exists always succeeds, and the player then sees the "new contract" state on the very
+# same row (the amount back at the default, the "Permanent" flag off, the close button
+# gone). The reset goes BEFORE the signal, so the change the manager announces
+# (contracts_changed, see on_contracts_changed) finds the panel already fresh and does not
+# rebuild it a second time.
+func _on_close_contract_pressed() -> void:
+    if _selected_contract.is_empty():
+        return
+    var contract_id := str(_selected_contract.get("id", ""))
+    _selected_contract = {}
+    _panel_permanent = false
+    _open_trade_panel(DEFAULT_AMOUNT)
+    emit_signal("contract_close_requested", contract_id)
 
 # --- The categories ---
 

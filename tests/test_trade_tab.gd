@@ -30,6 +30,14 @@ extends SceneTree
 # The hang watchdog — see tests/watchdog.gd.
 const WATCHDOG = preload("res://tests/watchdog.gd")
 
+# A stub of the map for the inline editor of the "Trade deals" section: the column reads its
+# deals through get_town_contracts (see external_trade_tab._collect_deals), so a synthetic
+# list can be unfolded by the toggle exactly as the live one is.
+class DealMap extends Node:
+    var deals: Array = []
+    func get_town_contracts() -> Array:
+        return deals
+
 func _initialize():
     WATCHDOG.arm(self)
     _run()
@@ -809,16 +817,16 @@ func _check_external_trade(city_ui, main_map, state: Dictionary) -> void:
     var deals: Array = [
         {"town_id": "town_1", "town_name": "Roma", "product_id": "beer", "name": "Beer",
             "icon": "", "type": "buy", "price": 30, "amount": 10, "cost": 300,
-            "delivery_time": 6.4},
+            "delivery_time": 6.4, "row": 4, "col": 4},
         {"town_id": "town_2", "town_name": "Ostia", "product_id": "ale", "name": "Ale",
             "icon": "", "type": "buy", "price": 10, "amount": 10, "cost": 100,
-            "delivery_time": 6.4},
+            "delivery_time": 6.4, "row": 2, "col": 3},
         {"town_id": "town_3", "town_name": "Capua", "product_id": "mead", "name": "Mead",
             "icon": "", "type": "sell", "price": 10, "amount": 10, "cost": 100,
-            "delivery_time": 6.4},
+            "delivery_time": 6.4, "row": 6, "col": 7},
         {"town_id": "town_4", "town_name": "Neapolis", "product_id": "wine", "name": "Wine",
             "icon": "", "type": "buy", "price": 20, "amount": 10, "cost": 200,
-            "delivery_time": 6.4},
+            "delivery_time": 6.4, "row": 8, "col": 9},
     ]
     # The expected orders are built from the data of the rows themselves, and not from the
     # constants of the test: the keys of the sorting are exactly the fields of a deal.
@@ -868,6 +876,93 @@ func _check_external_trade(city_ui, main_map, state: Dictionary) -> void:
                 and texts.has("Cost: 100/sec") and texts.has("Delivery: 6.40 sec"),
             "the row of a deal must show the goods, the volume, the town, the type, the "
                 + "payment and the delivery time, got %s" % str(texts), state)
+
+        # The edit action of a deal row: a town carries one contract per good (see
+        # town_trade_manager), so a deal can be edited from here — the button unfolds an
+        # INLINE editor right under the row (the amount and the payment at the frozen price,
+        # an "Update" action and a "Close the contract" action).
+        var edit_button: Button = first_row.find_child("DealEditButton", true, false)
+        check(edit_button != null, "the row of a deal must offer an edit action", state)
+        if edit_button != null:
+            check(edit_button.icon != null and not edit_button.tooltip_text.is_empty(),
+                "the edit action must carry an icon and a tooltip: icon=%s, tooltip=\"%s\""
+                    % [str(edit_button.icon != null), edit_button.tooltip_text], state)
+            var edited_deal: Dictionary = tab._sorted_deals(deals)[0]
+            # The column reads its deals through the map (external_trade_tab._collect_deals),
+            # so the toggle is driven over a stub that hands the synthetic list over — the
+            # very path the live column takes.
+            var deal_map := DealMap.new()
+            deal_map.deals = tab._sorted_deals(deals)
+            var saved_map = tab.main_map
+            tab.main_map = deal_map
+            # The toggle: a press on the edit action of a deal unfolds the editor of THAT
+            # deal, and a repeated press folds it back — the pair (town, good) is what tells
+            # one deal from another.
+            tab._editing_deal_key = ""
+            tab._on_deal_edit_toggled(str(edited_deal.get("town_id", "")),
+                    str(edited_deal.get("product_id", "")))
+            check(tab._editing_deal_key == tab._deal_key(edited_deal),
+                "the edit action must unfold the editor of its own deal (got \"%s\")"
+                    % tab._editing_deal_key, state)
+
+            # The editor itself, unfolded right under the row of the deal it edits.
+            var editor: Node = deals_list.find_child("DealEditor", true, false)
+            check(editor != null, "the unfolded editor must be a child of the list", state)
+            if editor != null:
+                var amount_field: LineEdit = editor.find_child("DealAmountEdit", true, false)
+                check(amount_field != null and amount_field.text == str(edited_deal.get("amount", 0)),
+                    "the editor must start from the amount of the contract (got \"%s\")"
+                        % (amount_field.text if amount_field != null else "<no field>"), state)
+                var total_label: Label = editor.find_child("DealTotalLabel", true, false)
+                var frozen_price: int = tab._deal_unit_price(edited_deal)
+                check(total_label != null
+                        and total_label.text == tab.tr("Cost: %d/sec")
+                            % (int(edited_deal.get("amount", 0)) * frozen_price),
+                    "the editor must total at the frozen price of the deal (got \"%s\")"
+                        % (total_label.text if total_label != null else "<no label>"), state)
+                var update_button: Button = editor.find_child("DealUpdateButton", true, false)
+                check(update_button != null and update_button.icon != null
+                        and not update_button.tooltip_text.is_empty(),
+                    "the editor must offer an update action with an icon and a tooltip", state)
+                var close_contract_button: Button = editor.find_child("DealCloseButton", true, false)
+                check(close_contract_button != null and close_contract_button.icon != null
+                        and not close_contract_button.tooltip_text.is_empty(),
+                    "the editor must offer to close the contract, with an icon and a tooltip", state)
+                # The "+" button moves the amount and the total follows it.
+                if amount_field != null:
+                    var plus_button: Button = editor.find_child("DealPlusButton", true, false)
+                    check(plus_button != null, "the editor must offer a \"+\" button", state)
+                    if plus_button != null:
+                        plus_button.pressed.emit()
+                        var bumped: int = int(edited_deal.get("amount", 0)) + int(tab.STEP_UNITS)
+                        check(amount_field.text == str(bumped),
+                            "a click on \"+\" must step the amount up (got \"%s\")"
+                                % amount_field.text, state)
+                        check(total_label != null
+                                and total_label.text == tab.tr("Cost: %d/sec") % (bumped * frozen_price),
+                            "the total must follow the amount (got \"%s\")"
+                                % (total_label.text if total_label != null else "<no label>"), state)
+            # A repeated press folds the editor back.
+            tab._on_deal_edit_toggled(str(edited_deal.get("town_id", "")),
+                    str(edited_deal.get("product_id", "")))
+            check(tab._editing_deal_key.is_empty()
+                    and deals_list.find_child("DealEditor", true, false) == null,
+                "a repeated press must fold the editor back", state)
+            tab.main_map = saved_map
+            deal_map.free()
+        # A deal without a town (a hand-made record) must not pretend to be editable.
+        var orphan: Node = tab._build_deal_row({"product_id": "beer", "name": "Beer", "type": "buy"})
+        check(orphan.find_child("DealEditButton", true, false) == null,
+            "a deal without a town must not carry the edit action", state)
+        orphan.free()
+        # The wiring of the live map: the manager announces every change of the contracts and
+        # the trade panel of the town window follows the contract of the good it shows
+        # (main_map._ready). This is what turns a contract that has just been signed into an
+        # editable one on the spot — without it the close button appeared only after the
+        # panel had been closed and reopened.
+        check(main_map.town_trade_manager.contracts_changed.is_connected(
+                Callable(main_map.town_ui, "on_contracts_changed")),
+            "the change of the contracts must reach the trade panel of the town window", state)
         # The column returns to its own state: the synthetic rows were shown only for the check.
         tab._deals_signature = ""
         tab._refresh_deals()

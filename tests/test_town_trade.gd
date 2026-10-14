@@ -22,6 +22,9 @@
 #   road_capacity     — the flow rate of the route throttles a large purchase;
 #   save_load         — the contracts survive a save round-trip and keep charging;
 #   deals             — the row shape the "Trade deals" section reads;
+#   contract_edit     — one town carries ONE contract per good: a second order for the same
+#                       pair edits the contract (the amount moves, the price stays frozen),
+#                       a different good is a second contract, and closing frees the good;
 #   strain            — what backs a contract is the SUPPLY of the town and not its stock:
 #                       it serves an order up to its comfort rate for free, and above it
 #                       strains — the warehouse drains the faster, the bigger the order —
@@ -38,6 +41,9 @@ const WATCHDOG = preload("res://tests/watchdog.gd")
 # Real product id: the price and the icon are read from the common reference, so the
 # expectations follow the data and not the constants of the test.
 const WOOD := "wood"
+# A second good of the same town: the "one contract per good" rule is per good, so a case
+# needs two goods to tell "the same good" from "another good".
+const PLANKS := "planks"
 
 # A stub of the map: the logistics read the route from it.
 class FakeMap:
@@ -88,6 +94,8 @@ func _run() -> void:
 		_test_save_load(state)
 	if WATCHDOG.wants_case("deals"):
 		_test_deals(state)
+	if WATCHDOG.wants_case("contract_edit"):
+		_test_contract_edit(state)
 	if WATCHDOG.wants_case("strain"):
 		_test_strain(state)
 
@@ -494,18 +502,24 @@ func _test_save_load(state: Dictionary) -> void:
 			"the restored contract must queue the goods on the road (got %d)"
 					% int(_dm.get_route_status(5, 5).get("pending", 0)), state)
 
-	# A broken record is dropped, and a new contract gets a fresh id.
+	# A broken record is dropped. A second order for the SAME good of the SAME town is an
+	# EDIT of the existing contract, not a second deal (one contract per good and town):
+	# the list must not grow and the id must stay.
 	trade2.deserialize([{"town_id": "town_test"}])
 	check(trade2._contracts.is_empty(),
 			"a record without goods must be dropped", state)
 	trade2.deserialize(saved)
-	check(bool(trade2.submit_order(_order(amount, true, price)).get("ok", false)),
-			"a second contract must be signable", state)
-	check(trade2._contracts.size() == 2
-					and str(trade2._contracts[0].get("id", "")) != str(trade2._contracts[1].get("id", "")),
-			"a new contract must not reuse the id of a restored one (%s)"
-					% str([str(trade2._contracts[0].get("id", "")),
-							str(trade2._contracts[1].get("id", ""))]), state)
+	var restored_id := str(trade2._contracts[0].get("id", ""))
+	check(bool(trade2.submit_order(_order(amount + 3, true, price)).get("ok", false)),
+			"a second order for the same good must be accepted as an edit", state)
+	check(trade2._contracts.size() == 1,
+			"one town carries one contract per good, so the list must stay at one (%d)"
+					% trade2._contracts.size(), state)
+	check(str(trade2._contracts[0].get("id", "")) == restored_id,
+			"an edit must keep the id of the contract (%s)" % restored_id, state)
+	check(int(trade2._contracts[0].get("amount", 0)) == amount + 3,
+			"the edit must write the new amount (got %d)"
+					% int(trade2._contracts[0].get("amount", 0)), state)
 	trade2.free()
 
 # -------------------------------------------------------
@@ -551,6 +565,86 @@ func _test_deals(state: Dictionary) -> void:
 	deal["amount"] = 999
 	check(int(_trade.get_contracts()[0].get("amount", 0)) == amount,
 			"the deals must be handed out as copies", state)
+
+# -------------------------------------------------------
+# 9b. One contract per good and town: edit and close
+# -------------------------------------------------------
+
+func _test_contract_edit(state: Dictionary) -> void:
+	var town := _rig(10.0, 10)
+	var price := _unit_price()
+	var amount := 5
+
+	# The first order signs the contract, and the pair (town, good) finds it.
+	check(bool(_trade.submit_order(_order(amount, true, price)).get("ok", false)),
+			"the contract must be signed", state)
+	check(_trade._contracts.size() == 1,
+			"one contract must be recorded (%d)" % _trade._contracts.size(), state)
+	var contract_id := str(_trade._contracts[0].get("id", ""))
+	check(str(_trade.get_contract("town_test", WOOD).get("id", "")) == contract_id,
+			"get_contract must find the contract of the pair (town, good)", state)
+	check(_trade.get_contract("town_test", PLANKS).is_empty(),
+			"a good without a contract must give an empty record", state)
+
+	# A second order for the SAME pair is an EDIT: the list does not grow, the id stays, the
+	# amount moves and the payment of the tick is recounted. The price stays frozen at the
+	# price of the signing — a different price is a different deal.
+	_cdata.treasury = 1000
+	var result = _trade.submit_order(_order(amount + 4, true, price + 1))
+	check(bool(result.get("ok", false)),
+			"a second order for the same good must be accepted as an edit: %s"
+					% str(result.get("message", "")), state)
+	check(_trade._contracts.size() == 1,
+			"one town must carry one contract per good (got %d)" % _trade._contracts.size(), state)
+	check(str(_trade._contracts[0].get("id", "")) == contract_id,
+			"an edit must keep the id of the contract", state)
+	check(int(_trade._contracts[0].get("amount", 0)) == amount + 4,
+			"the edit must write the new amount (got %d)"
+					% int(_trade._contracts[0].get("amount", 0)), state)
+	check(int(_trade._contracts[0].get("unit_price", 0)) == price,
+			"an edit must keep the price frozen at the signing (got %d, expected %d)"
+					% [int(_trade._contracts[0].get("unit_price", 0)), price], state)
+	check(int(_trade._contracts[0].get("cost_per_tick", 0)) == (amount + 4) * price,
+			"the edit must recount the payment of the tick (got %d, expected %d)"
+					% [int(_trade._contracts[0].get("cost_per_tick", 0)), (amount + 4) * price], state)
+
+	# The edited contract charges the new amount on the very next tick.
+	var before: int = _cdata.treasury
+	_trade.tick_contracts()
+	check(_cdata.treasury == before - (amount + 4) * price,
+			"the edited contract must charge the new amount (treasury %d)" % _cdata.treasury, state)
+
+	# Another good of the SAME town is a DIFFERENT contract: the rule is per good.
+	var planks_price := _price_of(PLANKS)
+	check(bool(_trade.submit_order(_order_of(PLANKS, amount, true, planks_price)).get("ok", false)),
+			"another good of the same town must be signable", state)
+	check(_trade._contracts.size() == 2,
+			"a different good must be a second contract (got %d)" % _trade._contracts.size(), state)
+
+	# Closing frees the good for a new deal and leaves the other contract alone.
+	var close: Dictionary = _trade.close_contract(contract_id)
+	check(bool(close.get("ok", false)),
+			"closing a contract must succeed: %s" % str(close.get("message", "")), state)
+	check(not str(close.get("message", "")).is_empty(),
+			"the close must explain itself to the player", state)
+	check(_trade._contracts.size() == 1,
+			"closing must remove exactly one contract (got %d)" % _trade._contracts.size(), state)
+	check(_trade.get_contract("town_test", WOOD).is_empty(),
+			"the closed pair must have no contract", state)
+	check(not _trade.get_contract("town_test", PLANKS).is_empty(),
+			"closing one contract must not touch another good", state)
+
+	# The freed good is signable again, and the new deal is a FRESH contract with a fresh id.
+	check(bool(_trade.submit_order(_order(amount, true, price)).get("ok", false)),
+			"a good freed by a close must be signable again", state)
+	check(_trade._contracts.size() == 2,
+			"the new deal must be a fresh contract (got %d)" % _trade._contracts.size(), state)
+	check(str(_trade.get_contract("town_test", WOOD).get("id", "")) != contract_id,
+			"the new deal must get a fresh id", state)
+
+	# Closing an id that is already gone is refused, not a crash.
+	check(not bool(_trade.close_contract(contract_id).get("ok", true)),
+			"closing an unknown contract must be refused", state)
 
 # -------------------------------------------------------
 # 10. The strain of a town under a standing contract
@@ -621,9 +715,9 @@ func _rig(speed: float, length: int) -> Dictionary:
 		"row": 5,
 		"col": 5,
 		"treasury": 500,
-		"sell_pool": [WOOD],
-		"storage": {WOOD: 100},
-		"quality": {WOOD: "fine"},
+		"sell_pool": [WOOD, PLANKS],
+		"storage": {WOOD: 100, PLANKS: 100},
+		"quality": {WOOD: "fine", PLANKS: "fine"},
 	}
 	var fake := FakeMap.new()
 	if speed > 0.0:
@@ -681,8 +775,19 @@ func _order(amount: int, permanent: bool, unit_price: int) -> Dictionary:
 # The price of one unit the way the sale row of the window shows it: the current
 # market price with the multiplier of the level the town holds.
 func _unit_price() -> int:
-	var market := float(_gdata.get_price(WOOD))
+	return _price_of(WOOD)
+
+func _price_of(product_id: String) -> int:
+	var market := float(_gdata.get_price(product_id))
 	return int(round(market * float(_gdata.get_quality_price_multiplier("fine"))))
+
+# The same order for another good of the town: the "one contract per good" rule is per
+# good, so a case needs a second good to tell "the same good" from "another good".
+func _order_of(product_id: String, amount: int, permanent: bool, unit_price: int) -> Dictionary:
+	var order := _order(amount, permanent, unit_price)
+	order["product_id"] = product_id
+	order["product_name"] = str(_gdata.get_resource_data(product_id).get("name", product_id))
+	return order
 
 # Runs a standing contract of the given amount for the given number of ticks on a fresh
 # rig and returns how many units the warehouse of the town lost. It stops early if the

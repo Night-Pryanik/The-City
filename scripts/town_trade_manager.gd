@@ -31,6 +31,14 @@
 # of the "Trade" tab shows (external_trade_tab._collect_deals reads them through
 # main_map.get_town_contracts). A one-time purchase leaves nothing to list: it is
 # settled at once.
+#
+# ONE CONTRACT PER GOOD AND TOWN. A town carries at most ONE standing contract for a
+# given good — the pair (town, good) is the identity of a deal. An order for a pair that
+# already carries a contract therefore EDITS that contract instead of signing a second
+# one: only the amount moves, the unit price stays frozen at the price of the signed deal.
+# A different price is a different deal, and the way to it is the pair "close the contract
+# (close_contract) and sign a new one". The window reads the contract of a row through
+# main_map.get_town_contract and opens its settings as an edit of it.
 extends Node
 
 # The prefix of the delivery source of a town purchase (the cargo record). The
@@ -47,7 +55,9 @@ const MIN_AMOUNT := 1
 var _town_manager = null
 var _delivery_manager = null
 
-# The standing contracts, in the order they were signed. One record:
+# The standing contracts, in the order they were signed. One town carries at most one
+# contract per good (see the header), so the pair (town_id, product_id) is unique across
+# the list. One record:
 #   id            the identifier of the contract ("contract_7");
 #   town_id       the id of the town (the reliable key of the town record);
 #   town_name     its name, frozen at the signing (the label of the deal);
@@ -72,9 +82,11 @@ var _next_contract_id := 1
 # tick and is NOT saved — a reload loses less than one unit of the drain.
 var _drain_remainder: Dictionary = {}
 
-# The trade mechanics changed the list of the contracts (signed or torn). The
-# interface reads the list on its own rhythm (external_trade_tab.update_values);
-# the signal exists for the callers that want to react at once.
+# The trade mechanics changed the list of the contracts (signed, updated or torn). The
+# column of the deals reads the list on its own rhythm (external_trade_tab.update_values);
+# the signal is for the callers that must react at once — the trade panel of the town window
+# follows the contract of the good it shows by it (town_ui.on_contracts_changed), so an
+# order that has just become a standing contract is editable on the spot.
 signal contracts_changed()
 
 # A message for the player: a contract that could not be paid or fulfilled. The
@@ -128,6 +140,11 @@ func submit_order(order: Dictionary) -> Dictionary:
         # recomputed by the same rule the row showed.
         unit_price = _unit_price_of(town, product_id)
     if bool(order.get("permanent", false)):
+        var index := _contract_index(str(town.get("id", "")), product_id)
+        if index >= 0:
+            # One contract per good and town: an order for a pair that already carries a
+            # contract is an edit of it, never a second deal.
+            return _update_contract(index, amount)
         return _sign_contract(town, product_id, amount, unit_price)
     return _buy_once(town, product_id, amount, unit_price)
 
@@ -146,8 +163,7 @@ func tick_contracts() -> void:
     # What backs a contract is the SUPPLY of the town, not its stock (see the supply
     # section of town_economy.gd): the stock is only the buffer behind the rate. The
     # supply is credited to the warehouse once per town and product, on the summed demand
-    # of ALL the contracts, so that splitting one deal into two does not raise the rate
-    # the town can serve.
+    # of that pair, so the rate a town serves is counted exactly once.
     var demand := _aggregate_demand()
     var credited: Dictionary = {}
     var i := 0
@@ -184,8 +200,8 @@ func tick_contracts() -> void:
 
 
 # The summed demand of every standing contract, keyed by the town and the good
-# ("town_id|product_id" -> units per tick). The supply of a town is computed on the
-# total, so the number of contracts signed with it does not raise the rate it serves.
+# ("town_id|product_id" -> units per tick). The supply of a town is credited once per key
+# per tick (see _credit_town_supply), so the demand is summed rather than read per contract.
 func _aggregate_demand() -> Dictionary:
     var demand: Dictionary = {}
     for contract in _contracts:
@@ -198,8 +214,8 @@ func _aggregate_demand() -> Dictionary:
 
 # Credits the warehouse of a town with the part of one tick of a contract that the town
 # covers from its own output (TownEconomy.get_contract_supply). It is done ONCE per town
-# and good per tick — the `credited` set of the caller — so the rate of a town does not
-# grow with the number of contracts signed with it.
+# and good per tick — the `credited` set of the caller — so the rate of a town is served
+# once and not once per contract.
 #
 # A contract within the comfort rate of the town leaves the warehouse untouched: the town
 # keeps up, and the stock stays where it was. Above it the warehouse loses the drain every
@@ -262,6 +278,17 @@ func get_contracts() -> Array:
     return result
 
 
+# The standing contract of a town for a good, or an empty dictionary when there is none.
+# The pair (town, good) is the identity of a deal (see the header), so this is the lookup
+# the interfaces use to tell "sign a contract" from "edit the current one". A copy is
+# handed out: the caller must not be able to edit the record of the manager.
+func get_contract(town_id: String, product_id: String) -> Dictionary:
+    var index := _contract_index(town_id, product_id)
+    if index < 0:
+        return {}
+    return (_contracts[index] as Dictionary).duplicate()
+
+
 # --- The one-time purchase ---
 
 func _buy_once(town: Dictionary, product_id: String, amount: int, unit_price: int) -> Dictionary:
@@ -308,6 +335,51 @@ func _sign_contract(town: Dictionary, product_id: String, amount: int, unit_pric
     emit_signal("contracts_changed")
     return {"ok": true,
             "message": tr("Contract signed: %d units of %s per second from %s.") % [amount, product_name, town_name]}
+
+
+# Edits the standing contract at `index`: the amount is the only term that moves, the
+# unit price stays frozen at the price of the signed deal. A different price is a
+# different deal, and the way to it is "close the contract and sign a new one" (see the
+# header) — so an edit never silently changes what a unit costs. The amount is checked
+# against the stock of the town and against the treasury exactly as a fresh signing is:
+# the contract charges from the very next tick.
+func _update_contract(index: int, amount: int) -> Dictionary:
+    var contract: Dictionary = _contracts[index]
+    var town = _town_by_id(str(contract.get("town_id", "")))
+    if town == null:
+        _tear_contract(index, tr("Contract terminated: the town is gone."))
+        return {"ok": false, "message": tr("The town is not on the map anymore")}
+    var product_id := str(contract.get("product_id", ""))
+    var unit_price := int(contract.get("unit_price", 0))
+    var cost := amount * unit_price
+    var town_name := str(contract.get("town_name", tr("Town")))
+    var product_name := str(contract.get("product_name", ""))
+    if _town_manager.get_town_goods(town, product_id) < amount:
+        return {"ok": false,
+                "message": tr("%s does not have %d units for a standing contract.") % [town_name, amount]}
+    if CityData.treasury < cost:
+        return {"ok": false, "message": tr("Not enough coins for the contract: %d per second.") % cost}
+    contract["amount"] = amount
+    contract["cost_per_tick"] = cost
+    emit_signal("contracts_changed")
+    return {"ok": true,
+            "message": tr("Contract updated: %d units of %s per second from %s.") % [amount, product_name, town_name]}
+
+
+# Closes one standing contract by its id: it stops being paid and served from the next
+# tick. This is the deliberate counterpart of an automatic tear — the player asks for it,
+# so no notice is raised (the caller reports the message in the HUD). The good of the
+# closed contract becomes free for a new deal, with the same terms or with different ones.
+func close_contract(contract_id: String) -> Dictionary:
+    var index := _contract_index_by_id(contract_id)
+    if index < 0:
+        return {"ok": false, "message": tr("The contract is already closed.")}
+    var contract: Dictionary = _contracts[index]
+    _contracts.remove_at(index)
+    emit_signal("contracts_changed")
+    return {"ok": true,
+            "message": tr("Contract closed: %s from %s.") % [
+                    str(contract.get("product_name", "")), str(contract.get("town_name", ""))]}
 
 
 # Tears one contract (the index into _contracts) and tells the player why. The
@@ -365,6 +437,30 @@ func _town_by_id(town_id: String):
         if str(town.get("id", "")) == town_id:
             return town
     return null
+
+
+# The index of the standing contract of a town for a good into _contracts, or -1 when
+# there is none. The pair (town, good) is the identity of a deal: this is what makes a
+# second order for the same pair an edit of the existing contract (see submit_order).
+func _contract_index(town_id: String, product_id: String) -> int:
+    if town_id.is_empty() or product_id.is_empty():
+        return -1
+    for i in range(_contracts.size()):
+        var contract: Dictionary = _contracts[i]
+        if str(contract.get("town_id", "")) == town_id \
+                and str(contract.get("product_id", "")) == product_id:
+            return i
+    return -1
+
+
+# The index of a contract by its id, or -1 when no contract carries it.
+func _contract_index_by_id(contract_id: String) -> int:
+    if contract_id.is_empty():
+        return -1
+    for i in range(_contracts.size()):
+        if str((_contracts[i] as Dictionary).get("id", "")) == contract_id:
+            return i
+    return -1
 
 
 # The price of one unit the way the sale row of the window showed it: the current

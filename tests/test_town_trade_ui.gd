@@ -40,6 +40,16 @@
 #      the amount climbs over the rate (the town would fall behind, the faster the bigger
 #      the order) and stays hidden outside the sale column. Its long explanation goes
 #      through the wrapping tooltip, like the route warning.
+#  11. CONTRACT. A town carries one contract per good (see town_trade_manager), so a click
+#      on the row of a good that already has one opens the settings of THAT contract: the
+#      amount comes prefilled, the "Permanent" flag is on, the total is counted at the price
+#      frozen at the signing, and a "close the contract" button appears. Closing the contract
+#      turns the panel back into a fresh order on the same row.
+#  12. CONTRACT SYNC. The panel follows the contract of the good it shows: an order that has
+#      just been signed turns into an edit of the new contract at once (the manager announces
+#      the change and the window re-reads it), so the new deal can be closed or corrected
+#      without closing and reopening the panel. A contract that has gone turns the panel back
+#      into a fresh order, and a change to some OTHER good leaves the panel untouched.
 #
 # The test opens the window on its own (no map), and stubs the route with an inner
 # class instead of generating a whole map: the window only asks the map for
@@ -66,6 +76,21 @@ class StubMap extends Node:
     var speed := 0.0
     func get_route_to_city(_row: int, _col: int) -> Dictionary:
         return {"ok": speed > 0.0, "avg_speed": speed}
+
+# A stub of the map that knows the standing contracts of a town: the window reads the
+# contract of the selected row through get_town_contract (see town_ui._sync_selected_contract)
+# and asks to close it by the signal contract_close_requested.
+class ContractMap extends Node:
+    var contracts: Dictionary = {}
+    func get_route_to_city(_row: int, _col: int) -> Dictionary:
+        return {"ok": false}
+    func get_town_contract(town_id: String, product_id: String) -> Dictionary:
+        var key := "%s|%s" % [town_id, product_id]
+        return (contracts.get(key, {}) as Dictionary).duplicate()
+    func close_contract(contract_id: String) -> void:
+        for key in contracts.keys():
+            if str((contracts[key] as Dictionary).get("id", "")) == contract_id:
+                contracts.erase(key)
 
 var _failed := false
 var _ui = null
@@ -124,6 +149,10 @@ func _run() -> void:
         await _test_total(town)
     if WATCHDOG.wants_case("supply"):
         await _test_supply(town)
+    if WATCHDOG.wants_case("contract"):
+        await _test_contract(town)
+    if WATCHDOG.wants_case("contract_sync"):
+        await _test_contract_sync(town)
 
     _finish()
 
@@ -740,6 +769,217 @@ func _test_supply(town: Dictionary) -> void:
         "the purchase column must not show a supply line")
 
 # -------------------------------------------------------
+# 11. Editing an existing contract
+# -------------------------------------------------------
+
+func _test_contract(town: Dictionary) -> void:
+    var map := ContractMap.new()
+    get_root().add_child(map)
+    _ui._map = map
+    # The window closes the contract through its signal; the stub answers it, exactly as the
+    # map does in the game (main_map._on_town_contract_close_requested).
+    _ui.contract_close_requested.connect(map.close_contract)
+
+    var frozen_price := 7
+    map.contracts["town_test|%s" % WOOD] = {
+        "id": "contract_3",
+        "town_id": "town_test",
+        "town_name": "Testville",
+        "product_id": WOOD,
+        "amount": 40,
+        "unit_price": frozen_price,
+        "cost_per_tick": 40 * frozen_price,
+    }
+
+    # A click on the good of the contract opens the panel as an EDIT of that contract: the
+    # pair (town, good) is the identity of a deal (see town_trade_manager), so a row that
+    # already carries a contract never opens a fresh signing.
+    _ui.open_town(town, true)
+    await process_frame
+    var wood_row := _row_by_key(_ui.sell_list, "sell:%s" % WOOD)
+    _check(wood_row != null, "the town must have a row for the good of the contract")
+    if wood_row == null:
+        return
+    _click(wood_row)
+    await process_frame
+    _check(_ui._selected_key == "sell:%s" % WOOD,
+        "a click on the good of the contract must select its row (got \"%s\")" % _ui._selected_key)
+    _check(_ui._trade_panel != null and is_instance_valid(_ui._trade_panel),
+        "a click on the good of the contract must open the trade panel")
+    if _ui._trade_panel == null:
+        return
+    _check(_ui._amount_edit.text == "40",
+        "the panel must start from the amount of the contract (got \"%s\")" % _ui._amount_edit.text)
+    _check(_ui._permanent_check.button_pressed,
+        "the panel of an existing contract must have the \"Permanent\" flag on")
+    # The total is counted at the price FROZEN at the signing and not at the current market:
+    # an edit changes the amount only.
+    _ui._set_amount(40)
+    _check(_ui._total_label.text == "Cost: %d/sec" % (40 * frozen_price),
+        "an edit must total at the frozen price (got \"%s\", expected \"Cost: %d/sec\")"
+            % [_ui._total_label.text, 40 * frozen_price])
+    var close_button: Button = _ui._trade_panel.find_child("CloseContractButton", true, false)
+    _check(close_button != null, "the panel of an existing contract must offer to close it")
+    if close_button != null:
+        _check(not close_button.tooltip_text.is_empty(),
+            "the close button must explain itself in a tooltip")
+        _check(close_button.icon != null, "the close button must carry its icon")
+
+    # The order carries the frozen price as well, so the treasury is charged exactly the sum
+    # the panel showed.
+    _captured_order = {}
+    if not _ui.trade_order_submitted.is_connected(_capture_order):
+        _ui.trade_order_submitted.connect(_capture_order)
+    _ui._confirm_button.pressed.emit()
+    _check(int(_captured_order.get("unit_price", 0)) == frozen_price,
+        "the edit order must carry the frozen price (got %s)"
+            % str(_captured_order.get("unit_price", 0)))
+    _check(int(_captured_order.get("amount", 0)) == 40,
+        "the edit order must carry the amount of the panel (got %s)"
+            % str(_captured_order.get("amount", 0)))
+    _check(bool(_captured_order.get("permanent", false)),
+        "the edit order must be a standing contract")
+
+    # The confirm button says what it will do: update the contract, or — with the
+    # "Permanent" flag off — place an ordinary order and leave the contract alone.
+    _check(_ui._confirm_button.tooltip_text == _ui.tr("Update the contract"),
+        "confirm must promise an update while a contract is edited (got \"%s\")"
+            % _ui._confirm_button.tooltip_text)
+    _ui._permanent_check.button_pressed = false
+    await process_frame
+    _check(_ui._confirm_button.tooltip_text == _ui.tr("Confirm"),
+        "with the \"Permanent\" flag off confirm must not promise an update (got \"%s\")"
+            % _ui._confirm_button.tooltip_text)
+    _ui._permanent_check.button_pressed = true
+    await process_frame
+    _check(_ui._confirm_button.tooltip_text == _ui.tr("Update the contract"),
+        "turning the flag back on must promise an update again (got \"%s\")"
+            % _ui._confirm_button.tooltip_text)
+
+    # Closing: the contract goes away, and the panel turns back into a FRESH order on the
+    # very same row.
+    if close_button == null:
+        return
+    close_button.pressed.emit()
+    await process_frame
+    _check(map.contracts.is_empty(), "the close must reach the map")
+    _check(_ui._selected_contract.is_empty(),
+        "the panel must leave the edit mode after the close")
+    _check(_ui._selected_key == "sell:%s" % WOOD,
+        "the row must stay selected after the close")
+    _check(_ui._trade_panel != null and is_instance_valid(_ui._trade_panel),
+        "the panel must stay open after the close")
+    _check(_ui._amount_edit.text == "10",
+        "a fresh order must start from the default step (got \"%s\")" % _ui._amount_edit.text)
+    _check(not _ui._permanent_check.button_pressed,
+        "a fresh order must have the \"Permanent\" flag off")
+    _check(_ui._trade_panel.find_child("CloseContractButton", true, false) == null,
+        "a fresh order must not offer to close a contract")
+
+    # A row without a contract stays a fresh order.
+    var planks_row := _row_by_key(_ui.sell_list, "sell:%s" % PLANKS)
+    _check(planks_row != null, "the town must have a row for the second good")
+    if planks_row != null:
+        _click(planks_row)
+        await process_frame
+        _check(_ui._selected_contract.is_empty(),
+            "a row without a contract must be a fresh order")
+        _check(_ui._trade_panel.find_child("CloseContractButton", true, false) == null,
+            "a row without a contract must not offer to close anything")
+
+    _ui._map = null
+    map.queue_free()
+
+# -------------------------------------------------------
+# 12. The panel follows the contract of the good it shows
+# -------------------------------------------------------
+
+# An order that BECOMES a standing contract turns the panel into an EDIT of it at once: the
+# manager announces the change (contracts_changed) and the window re-reads the contract of
+# the selected good (town_ui.on_contracts_changed). Without this the close button appeared
+# only after the panel had been closed and reopened — the bug this case guards.
+func _test_contract_sync(town: Dictionary) -> void:
+    var map := ContractMap.new()
+    get_root().add_child(map)
+    _ui._map = map
+
+    _ui.open_town(town, true)
+    await process_frame
+    var wood_row := _row_by_key(_ui.sell_list, "sell:%s" % WOOD)
+    _check(wood_row != null, "the town must have a row for the good")
+    if wood_row == null:
+        return
+    _click(wood_row)
+    await process_frame
+    # A fresh order: there is no contract yet, so there is nothing to close.
+    _check(_ui._selected_contract.is_empty(), "the row must start as a fresh order")
+    _check(_ui._trade_panel != null and is_instance_valid(_ui._trade_panel),
+        "a click on the row must open the trade panel")
+    if _ui._trade_panel == null:
+        return
+    _check(_ui._trade_panel.find_child("CloseContractButton", true, false) == null,
+        "a fresh order must not offer to close a contract")
+
+    # The player confirms with the "Permanent" flag on. The manager signs the contract and
+    # announces it; the stub signs by hand and then the window is told, exactly as the map
+    # does (main_map wires town_trade_manager.contracts_changed to town_ui.on_contracts_changed).
+    _ui._permanent_check.button_pressed = true
+    _ui._set_amount(35)
+    await process_frame
+    map.contracts["town_test|%s" % WOOD] = {
+        "id": "contract_9", "town_id": "town_test", "town_name": "Testville",
+        "product_id": WOOD, "amount": 35, "unit_price": 6, "cost_per_tick": 210,
+    }
+    _ui.on_contracts_changed()
+    await process_frame
+    _check(not _ui._selected_contract.is_empty(),
+        "the signed contract must turn the panel into an edit of it")
+    _check(_ui._trade_panel != null and is_instance_valid(_ui._trade_panel),
+        "the panel must stay open over the signed contract")
+    if _ui._trade_panel == null:
+        return
+    _check(_ui._amount_edit.text == "35",
+        "the panel must show the amount of the new contract (got \"%s\")" % _ui._amount_edit.text)
+    _check(_ui._permanent_check.button_pressed,
+        "the panel of the new contract must have the \"Permanent\" flag on")
+    _check(_ui._trade_panel.find_child("CloseContractButton", true, false) != null,
+        "the panel of the new contract must offer to close it WITHOUT a reopening")
+    _check(_ui._total_label.text == "Cost: %d/sec" % (35 * 6),
+        "the total must be counted at the frozen price of the new contract (got \"%s\")"
+            % _ui._total_label.text)
+
+    # A contract that has gone (torn by the tick) turns the panel back into a fresh order.
+    map.contracts.erase("town_test|%s" % WOOD)
+    _ui.on_contracts_changed()
+    await process_frame
+    _check(_ui._selected_contract.is_empty(),
+        "a contract that has gone must turn the panel back into a fresh order")
+    _check(_ui._trade_panel != null and is_instance_valid(_ui._trade_panel)
+            and _ui._trade_panel.find_child("CloseContractButton", true, false) == null,
+        "a fresh order must not offer to close a contract")
+    _check(not _ui._permanent_check.button_pressed,
+        "a fresh order must have the \"Permanent\" flag off")
+
+    # A change that does not touch the selected good leaves the panel alone: the amount the
+    # player is typing must survive it.
+    _ui._set_amount(77)
+    await process_frame
+    map.contracts["town_test|%s" % PLANKS] = {
+        "id": "contract_10", "town_id": "town_test", "town_name": "Testville",
+        "product_id": PLANKS, "amount": 5, "unit_price": 3, "cost_per_tick": 15,
+    }
+    _ui.on_contracts_changed()
+    await process_frame
+    _check(_ui._amount_edit.text == "77",
+        "an unrelated change must not reset the amount being typed (got \"%s\")"
+            % _ui._amount_edit.text)
+    _check(_ui._selected_contract.is_empty(),
+        "an unrelated change must not put the panel into the edit mode")
+
+    _ui._map = null
+    map.queue_free()
+
+# -------------------------------------------------------
 # Helpers
 # -------------------------------------------------------
 
@@ -751,6 +991,14 @@ func _rows_of(container: Node) -> Array:
         if child.has_meta("town_resource_row"):
             rows.append(child)
     return rows
+
+# The row of a column by its key ("sell:wood") — null when the column has no such row.
+func _row_by_key(container: Node, key: String) -> Control:
+    for child in container.get_children():
+        if child.has_meta("town_resource_row") \
+                and str(child.get_meta("town_row_key", "")) == key:
+            return child
+    return null
 
 # The control that OWNS the tooltip of `control`. The long hints of the window go
 # through the wrapping tooltip, which keeps the text on a carrier laid over the control
