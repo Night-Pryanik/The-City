@@ -27,10 +27,21 @@
 # (a road that does not exist cannot limit anything), the goods are credited to the
 # storage at once — the same fallback the production of the improvements uses.
 #
-# THE LIST OF THE DEALS. The standing contracts are what the "Trade deals" section
-# of the "Trade" tab shows (external_trade_tab._collect_deals reads them through
-# main_map.get_town_contracts). A one-time purchase leaves nothing to list: it is
-# settled at once.
+# THE LIST OF THE DEALS. The "Trade deals" section of the "Trade" tab shows both kinds of a
+# deal (external_trade_tab._collect_deals reads them through main_map.get_town_contracts and
+# main_map.get_town_deliveries): the standing contracts, and the one-time purchases whose
+# goods are still on the road. A purchase that the road did not limit at all — there is no
+# route, or the route shipped it whole in the same tick — leaves nothing to list: it is
+# settled, and a row for it would only be a row that cannot be cancelled.
+#
+# CANCELLING A ONE-TIME PURCHASE. Only the part that has NOT been shipped can be withdrawn:
+# the units already dispatched are on the road and beyond recall. The withdrawal puts the
+# un-shipped units back into the warehouse of the town and returns their coins to the
+# treasury — exactly what the player paid for them, so a cancellation is never a loss and
+# never a gain. The queue of a route is shared by everything on it and its units are
+# fungible (see delivery_manager), so the un-shipped part of a purchase cannot be read from
+# the queue: it is tracked in a LEDGER beside it (_deliveries), fed by the shipments the
+# queue announces (delivery_manager.cargo_shipped).
 #
 # ONE CONTRACT PER GOOD AND TOWN. A town carries at most ONE standing contract for a
 # given good — the pair (town, good) is the identity of a deal. An order for a pair that
@@ -51,6 +62,13 @@ const CARGO_SOURCE_PREFIX := "@town:"
 # the amount never falls below 1; the constant keeps the manager safe against a
 # hand-made order as well.
 const MIN_AMOUNT := 1
+
+# The kind of a deal, as the rows of the "Trade deals" section carry it. The pair
+# (town, good) is the identity of a CONTRACT, and a one-time purchase of the same good from
+# the same town can stand beside it — so the kind is what tells the two rows apart, and the
+# section keys the inline editor of a contract by "kind|town|good" for the same reason.
+const KIND_CONTRACT := "contract"
+const KIND_DELIVERY := "delivery"
 
 var _town_manager = null
 var _delivery_manager = null
@@ -82,6 +100,39 @@ var _next_contract_id := 1
 # tick and is NOT saved — a reload loses less than one unit of the drain.
 var _drain_remainder: Dictionary = {}
 
+# The one-time purchases whose goods are still on the road, keyed by "town_id|product_id" —
+# the pair that is the identity of a deal (see the header). The ledger exists because the
+# queue of a route cannot answer the only question a cancellation asks: how much of what the
+# player paid for has NOT left the town yet.
+#
+# A SECOND PURCHASE OF THE SAME GOOD FROM THE SAME TOWN ADDS TO THE FIRST: the pair is one
+# deal, so the row is one row with the totals of both (ordered / still on the way). One record:
+#   town_id, town_name, product_id, product_name, row, col
+#               — the deal, kept the way a contract keeps its own;
+#   ordered     — the units of every purchase of the pair, summed;
+#   remaining   — the units still WAITING in the queue of the route: exactly what a
+#                 cancellation can withdraw;
+#   spent       — the coins paid for `remaining` units, that is the refund: the sum over the
+#                 lots of (lot.amount × lot.unit_price);
+#   unit_price  — the price of the last purchase of the pair (what the row shows);
+#   lots        — the FIFO of the un-shipped purchase lots: {amount, unit_price}. The price
+#                 is frozen per lot — the price of the purchase that created it — so a refund
+#                 never pays back more than the player actually paid.
+var _deliveries: Dictionary = {}
+
+# The units a standing contract has queued on the route and not yet shipped, keyed by
+# "town_id|product_id".
+#
+# A one-time purchase and a standing contract of the same good from the same town are ONE
+# stream on the road: the same product, quality and source, so the queue of the route merges
+# them into one record (delivery_manager._push_pending) and a shipment cannot be told apart by
+# looking at it. The ledger does it: the contract's supply is created every tick and the town
+# serves it, so the throughput is spent on the contract BEFORE anything reaches a purchase,
+# and only the excess drains a purchase. That is why a purchase behind a contract that
+# saturates the road stays whole — and why it can still be cancelled for its full value
+# instead of being written off against goods that were never its own.
+var _contract_outstanding: Dictionary = {}
+
 # The trade mechanics changed the list of the contracts (signed, updated or torn). The
 # column of the deals reads the list on its own rhythm (external_trade_tab.update_values);
 # the signal is for the callers that must react at once — the trade panel of the town window
@@ -103,14 +154,26 @@ func initialize(town_manager, delivery_manager) -> void:
     _contracts.clear()
     _next_contract_id = 1
     _drain_remainder.clear()
+    _deliveries.clear()
+    _contract_outstanding.clear()
+    # The ledger of the deliveries is fed by the queue itself: the shipments of a route are
+    # what tell it how much of a purchase has left the town and is therefore no longer
+    # cancellable (see _on_cargo_shipped). The connection is guarded, so a manager
+    # re-initialized for a new party does not end up listening twice and counting each
+    # shipment double.
+    if _delivery_manager != null and _delivery_manager.has_signal("cargo_shipped") \
+            and not _delivery_manager.cargo_shipped.is_connected(_on_cargo_shipped):
+        _delivery_manager.cargo_shipped.connect(_on_cargo_shipped)
 
 
-# Drops every contract. A new game starts from a clean sheet, otherwise the deals
-# of the previous party would be paid by the next one.
+# Drops every contract and every delivery. A new game starts from a clean sheet, otherwise the
+# deals of the previous party would be paid by the next one.
 func clear() -> void:
     _contracts.clear()
     _next_contract_id = 1
     _drain_remainder.clear()
+    _deliveries.clear()
+    _contract_outstanding.clear()
 
 
 # Processes one order from the town window. It returns {"ok": bool, "message":
@@ -191,7 +254,14 @@ func tick_contracts() -> void:
             _tear_contract(i, tr("Contract terminated: %s ran out of %s.") % [
                     str(contract.get("town_name", "")), str(contract.get("product_name", ""))])
             continue
-        _pay_and_deliver(town, product_id, amount, cost)
+        if _pay_and_deliver(town, product_id, amount, cost):
+            # The goods of this tick are on the road, and they are the goods of the CONTRACT:
+            # the ledger remembers them, so that a shipment can be charged to the contract
+            # before it reaches a one-time purchase (see _contract_outstanding). A delivery
+            # the road did not limit is not remembered — it is not on the road at all.
+            var key := _supply_key(str(contract.get("town_id", "")), product_id)
+            if not key.is_empty():
+                _contract_outstanding[key] = int(_contract_outstanding.get(key, 0)) + amount
         i += 1
     # The contracts still standing after the sweep are the plan of this tick. The teardown
     # happens before the record, so a contract that could not be paid or fulfilled never
@@ -266,6 +336,7 @@ func get_contracts() -> Array:
         var deal: Dictionary = contract.duplicate()
         # The fields the row of the "Trade deals" section shows: the display name and
         # the icon are resolved from the common reference, the rest is the contract.
+        deal["kind"] = KIND_CONTRACT
         deal["name"] = _product_name(product_id)
         deal["icon"] = str(GameData.get_resource_data(product_id).get("icon", ""))
         deal["type"] = "buy"
@@ -275,6 +346,51 @@ func get_contracts() -> Array:
         deal["delivery_time"] = _delivery_time(
                 int(contract.get("row", -1)), int(contract.get("col", -1)))
         result.append(deal)
+    return result
+
+
+# The one-time purchases whose goods are still on the road, as the rows of the "Trade deals"
+# section. The shape is the shape of a contract row (see external_trade_tab._build_deal_row)
+# with the fields of a delivery:
+#   kind        "delivery" — the pair (town, good) is not enough to tell a purchase from a
+#               contract, they can stand at the same time;
+#   ordered     the units bought in total (every purchase of the pair, summed);
+#   amount, remaining
+#               the units still on the way — what a cancellation can withdraw;
+#   cost, spent the coins paid for them — what a cancellation returns to the treasury;
+#   price       the price of the last purchase (the number the row shows).
+#
+# A delivery with nothing left on the way is not listed: it is settled, and a row that cannot
+# be cancelled would only be noise. The row is assembled field by field rather than copied,
+# so that the section never gets a handle on the lots of the ledger and cannot edit them.
+func get_deliveries() -> Array:
+    var result: Array = []
+    for key in _deliveries.keys():
+        var delivery: Dictionary = _deliveries[key]
+        var remaining := int(delivery.get("remaining", 0))
+        if remaining <= 0:
+            continue
+        var product_id := str(delivery.get("product_id", ""))
+        result.append({
+            "kind": KIND_DELIVERY,
+            "town_id": str(delivery.get("town_id", "")),
+            "town_name": str(delivery.get("town_name", "")),
+            "row": int(delivery.get("row", -1)),
+            "col": int(delivery.get("col", -1)),
+            "product_id": product_id,
+            "product_name": str(delivery.get("product_name", "")),
+            "name": _product_name(product_id),
+            "icon": str(GameData.get_resource_data(product_id).get("icon", "")),
+            "type": "buy",
+            "price": int(delivery.get("unit_price", 0)),
+            "ordered": int(delivery.get("ordered", 0)),
+            "amount": remaining,
+            "remaining": remaining,
+            "cost": int(delivery.get("spent", 0)),
+            "spent": int(delivery.get("spent", 0)),
+            "delivery_time": _delivery_time(
+                    int(delivery.get("row", -1)), int(delivery.get("col", -1))),
+        })
     return result
 
 
@@ -300,9 +416,185 @@ func _buy_once(town: Dictionary, product_id: String, amount: int, unit_price: in
     if CityData.treasury < total:
         return {"ok": false, "message": tr("Not enough coins in the treasury! Need %d, treasury has %d")
                 % [total, CityData.treasury]}
-    _pay_and_deliver(town, product_id, amount, total)
+    var on_the_road := _pay_and_deliver(town, product_id, amount, total)
+    if not on_the_road:
+        # The road did not limit the deal at all: the goods are already in the storage, so
+        # nothing is on the way and there is nothing to cancel.
+        return {"ok": true,
+                "message": tr("Purchased %d units of %s from %s.") % [amount, product_name, town_name]}
+    _track_purchase(town, product_id, amount, unit_price)
     return {"ok": true,
-            "message": tr("Purchased %d units of %s from %s.") % [amount, product_name, town_name]}
+            "message": tr("Purchased %d units of %s from %s. The goods are on the way; the deal can be cancelled in \"Trade deals\".") % [
+                    amount, product_name, town_name]}
+
+
+# Cancels a one-time purchase. Only the part that has NOT been shipped is withdrawn: the units
+# still waiting in the queue of the route go back into the warehouse of the town, and the
+# coins the player paid for exactly those units go back into the treasury. What is already on
+# the road cannot be recalled, and is neither returned nor refunded — the answer says how much
+# was actually withdrawn, so the interface can state the outcome before the player commits
+# (external_trade_tab._build_delivery_confirmation) and report it afterwards.
+#
+# The refund is the coins actually paid for the withdrawn units, taken lot by lot from the
+# oldest purchase (the order in which the queue of the route lets the loads go). The purchases
+# of a pair can be made at different prices, so the sum is exact and never pays back more than
+# the treasury was charged.
+func cancel_delivery(town_id: String, product_id: String) -> Dictionary:
+    var key := _supply_key(town_id, product_id)
+    var delivery: Dictionary = _deliveries.get(key, {}) if not key.is_empty() else {}
+    if delivery.is_empty() or int(delivery.get("remaining", 0)) <= 0:
+        if not key.is_empty():
+            _deliveries.erase(key)
+        return {"ok": false, "message": tr("There is nothing on the way for this deal.")}
+    var remaining := int(delivery.get("remaining", 0))
+    var row := int(delivery.get("row", -1))
+    var col := int(delivery.get("col", -1))
+    var withdrawn := remaining
+    if _delivery_manager != null and row >= 0 and col >= 0:
+        withdrawn = _delivery_manager.remove_pending(row, col, product_id, remaining)
+    if withdrawn <= 0:
+        # The queue no longer holds the goods (the road shipped them while the ledger was
+        # being read): there is nothing to withdraw, and the ledger is dropped as stale.
+        _deliveries.erase(key)
+        return {"ok": false, "message": tr("There is nothing on the way for this deal.")}
+    var refund := _take_from_lots(delivery, withdrawn)
+    if int(delivery.get("remaining", 0)) <= 0:
+        _deliveries.erase(key)
+    var town = _town_by_id(town_id)
+    if town != null:
+        _town_manager.add_town_goods(town, product_id, withdrawn)
+    CityData.add_treasury(refund)
+    # The refund is recorded as a NEGATIVE expense of the same source the purchase spent from,
+    # so the breakdown of the treasury nets the cancelled deal out inside the same source
+    # instead of showing the expense of goods the city never received.
+    CityData.record_treasury_expense(GameData.SRC_TOWN_TRADE, -refund)
+    return {"ok": true,
+            "message": tr("Cancelled %d units of %s from %s: the goods are back in the warehouse of the town and %d coins are back in the treasury.") % [
+                    withdrawn, str(delivery.get("product_name", "")),
+                    str(delivery.get("town_name", "")), refund]}
+
+
+# --- The ledger of the one-time purchases ---
+
+# Remembers a purchase that has gone onto the road. A second purchase of the same good from
+# the same town is not a second deal: it ADDS to the first (the pair is the identity of a
+# deal, see the header), so the "Trade deals" section keeps one row and its totals are the
+# totals of both purchases.
+func _track_purchase(town: Dictionary, product_id: String, amount: int, unit_price: int) -> void:
+    var key := _supply_key(str(town.get("id", "")), product_id)
+    if key.is_empty():
+        return
+    var delivery: Dictionary = _deliveries.get(key, {})
+    if delivery.is_empty():
+        delivery = {
+            "town_id": str(town.get("id", "")),
+            "town_name": str(town.get("name", tr("Town"))),
+            "row": int(town.get("row", -1)),
+            "col": int(town.get("col", -1)),
+            "product_id": product_id,
+            "product_name": _product_name(product_id),
+            "ordered": 0,
+            "remaining": 0,
+            "spent": 0,
+            "unit_price": unit_price,
+            "lots": [],
+        }
+        _deliveries[key] = delivery
+    delivery["ordered"] = int(delivery["ordered"]) + amount
+    delivery["unit_price"] = unit_price
+    (delivery["lots"] as Array).append({"amount": amount, "unit_price": unit_price})
+    _recompute_delivery(delivery)
+
+
+# Reads the totals of a delivery out of its lots. The lots are the truth: `remaining` and
+# `spent` are only their sums, kept ready for the interface. Deriving them instead of counting
+# them down on every shipment is what keeps a refund exact when the purchases of a pair were
+# made at different prices.
+func _recompute_delivery(delivery: Dictionary) -> void:
+    var remaining := 0
+    var spent := 0
+    for lot in delivery["lots"]:
+        var lot_amount := int(lot.get("amount", 0))
+        remaining += lot_amount
+        spent += lot_amount * int(lot.get("unit_price", 0))
+    delivery["remaining"] = remaining
+    delivery["spent"] = spent
+
+
+# A load left the queue of a route (delivery_manager.cargo_shipped). The ledger walks the
+# shipment down: first the standing contract of the pair, then the one-time purchases, oldest
+# first.
+#
+# The contract goes first because its goods are CREATED every tick and the town serves them:
+# what carries the supply of the contract is the throughput of the road, and only the excess
+# of the throughput can drain a purchase. So a purchase behind a contract that saturates the
+# road stays whole — which is exactly the amount its cancellation must be able to return.
+func _on_cargo_shipped(row: int, col: int, product: String, amount: int, source: String) -> void:
+    if amount <= 0:
+        return
+    var town_id := _town_id_of_source(source)
+    if town_id.is_empty():
+        return
+    var key := _supply_key(town_id, product)
+    if key.is_empty():
+        return
+    var left := amount
+    var contract_left := int(_contract_outstanding.get(key, 0))
+    if contract_left > 0:
+        var from_contract: int = mini(left, contract_left)
+        contract_left -= from_contract
+        left -= from_contract
+        if contract_left > 0:
+            _contract_outstanding[key] = contract_left
+        else:
+            _contract_outstanding.erase(key)
+    if left > 0:
+        _consume_delivery_lots(key, left)
+
+
+# Charges a shipment to the purchases of a pair, oldest lot first — the order in which the
+# queue of the route lets the loads go. A delivery with nothing left on the way is dropped: it
+# is settled, and a settled deal must leave no row behind.
+func _consume_delivery_lots(key: String, amount: int) -> void:
+    var delivery: Dictionary = _deliveries.get(key, {})
+    if delivery.is_empty():
+        return
+    _take_from_lots(delivery, amount)
+    if (delivery["lots"] as Array).is_empty():
+        _deliveries.erase(key)
+
+
+# Takes `amount` units out of the lots of a delivery, oldest first, and returns what those
+# units cost — the coins a refund of them owes. The units of a pair are fungible, so which lot
+# they are charged to is decided by the order alone; the price is read from the lot that gives
+# them up, so a delivery bought at two different prices refunds each part at its own price.
+func _take_from_lots(delivery: Dictionary, amount: int) -> int:
+    var lots: Array = delivery["lots"]
+    var left := amount
+    var value := 0
+    var i := 0
+    while i < lots.size() and left > 0:
+        var lot: Dictionary = lots[i]
+        var take: int = mini(int(lot.get("amount", 0)), left)
+        lot["amount"] = int(lot.get("amount", 0)) - take
+        left -= take
+        value += take * int(lot.get("unit_price", 0))
+        if int(lot["amount"]) <= 0:
+            lots.remove_at(i)
+        else:
+            i += 1
+    _recompute_delivery(delivery)
+    return value
+
+
+# The id of the town behind a load, or an empty string when the load is not a town's. The
+# source of a town purchase is CARGO_SOURCE_PREFIX + the id of the town; an improvement has a
+# source of its own, so it is filtered out here rather than by the hex — a hex is never both a
+# town and an improvement, but the source is the fact, not the inference.
+func _town_id_of_source(source: String) -> String:
+    if not source.begins_with(CARGO_SOURCE_PREFIX):
+        return ""
+    return source.trim_prefix(CARGO_SOURCE_PREFIX)
 
 
 # --- The standing contract ---
@@ -393,27 +685,33 @@ func _tear_contract(index: int, message: String) -> void:
 
 # The settlement of one delivery: the city pays, the town is paid, the units are
 # written off the warehouse of the town and queued on the road to the city.
-func _pay_and_deliver(town: Dictionary, product_id: String, amount: int, cost: int) -> void:
+#
+# It returns whether the goods actually went ONTO THE ROAD: false means the road did not
+# limit the deal at all and they are already in the storage. The caller needs the answer to
+# know whether there is anything on the way — and therefore anything to track and to cancel.
+func _pay_and_deliver(town: Dictionary, product_id: String, amount: int, cost: int) -> bool:
     CityData.spend_treasury(cost)
     _town_manager.add_town_treasury(town, cost)
     CityData.record_treasury_expense(GameData.SRC_TOWN_TRADE, cost)
     _town_manager.take_town_goods(town, product_id, amount)
-    _deliver_from_town(town, product_id, amount)
+    return _deliver_from_town(town, product_id, amount)
 
 
 # Queues the goods on the route from the town. When there is no route the road
 # cannot limit anything, so the goods are credited to the storage at once — the
 # same rule the production of an improvement on a hex without a road follows.
-func _deliver_from_town(town: Dictionary, product_id: String, amount: int) -> void:
+# It returns whether the goods were queued (true) or delivered at once (false).
+func _deliver_from_town(town: Dictionary, product_id: String, amount: int) -> bool:
     var quality := TownManager.get_town_goods_quality(town, product_id)
     var row := int(town.get("row", -1))
     var col := int(town.get("col", -1))
     var source := CARGO_SOURCE_PREFIX + str(town.get("id", ""))
     if _delivery_manager != null and row >= 0 and col >= 0 \
             and _delivery_manager.create_cargo(row, col, product_id, quality, amount, source):
-        return
+        return true
     CityData.add_to_storage(product_id, amount, quality)
     CityData.record_production_source(product_id, source, amount)
+    return false
 
 
 # --- The helpers ---
@@ -567,3 +865,97 @@ func deserialize(data) -> void:
             var serial := restored_id.trim_prefix("contract_")
             if serial.is_valid_int():
                 _next_contract_id = maxi(_next_contract_id, int(serial) + 1)
+
+
+# The ledger of the one-time purchases for the save. The lots are written whole: they are what
+# a refund is computed from, so a save that dropped them would silently change what a
+# cancellation returns. `remaining` and `spent` are not written — they are the sums of the
+# lots, and a save must not be able to disagree with its own source of truth.
+func serialize_deliveries() -> Dictionary:
+    var deliveries: Array = []
+    for key in _deliveries.keys():
+        var delivery: Dictionary = _deliveries[key]
+        var lots: Array = []
+        for lot in delivery["lots"]:
+            lots.append({
+                "amount": int(lot.get("amount", 0)),
+                "unit_price": int(lot.get("unit_price", 0)),
+            })
+        deliveries.append({
+            "town_id": str(delivery.get("town_id", "")),
+            "town_name": str(delivery.get("town_name", "")),
+            "row": int(delivery.get("row", -1)),
+            "col": int(delivery.get("col", -1)),
+            "product_id": str(delivery.get("product_id", "")),
+            "product_name": str(delivery.get("product_name", "")),
+            "ordered": int(delivery.get("ordered", 0)),
+            "unit_price": int(delivery.get("unit_price", 0)),
+            "lots": lots,
+        })
+    var outstanding: Dictionary = {}
+    for key in _contract_outstanding.keys():
+        outstanding[str(key)] = int(_contract_outstanding[key])
+    return {"deliveries": deliveries, "contract_outstanding": outstanding}
+
+
+# Restores the ledger of the one-time purchases. It must run AFTER deserialize (the contracts):
+# that one resets the whole state of the manager, the ledger included, so restoring the ledger
+# first would only have it wiped.
+#
+# The values come back from JSON, therefore the integers arrive as floats and every field is
+# coerced back to its type here. A record without a town or a good, and a lot that is empty,
+# are dropped instead of being carried as a deal that could not be cancelled; `remaining` and
+# `spent` are recomputed from the lots.
+func deserialize_deliveries(data) -> void:
+    _deliveries.clear()
+    _contract_outstanding.clear()
+    if not (data is Dictionary):
+        return
+    var saved_deliveries = data.get("deliveries", [])
+    if saved_deliveries is Array:
+        for entry in saved_deliveries:
+            if not (entry is Dictionary):
+                continue
+            var town_id := str(entry.get("town_id", ""))
+            var product_id := str(entry.get("product_id", ""))
+            var key := _supply_key(town_id, product_id)
+            if key.is_empty():
+                continue
+            var lots: Array = []
+            var saved_lots = entry.get("lots", [])
+            if saved_lots is Array:
+                for lot_entry in saved_lots:
+                    if not (lot_entry is Dictionary):
+                        continue
+                    var lot_amount := int(lot_entry.get("amount", 0))
+                    if lot_amount <= 0:
+                        continue
+                    lots.append({
+                        "amount": lot_amount,
+                        "unit_price": maxi(0, int(lot_entry.get("unit_price", 0))),
+                    })
+            if lots.is_empty():
+                continue
+            var delivery: Dictionary = {
+                "town_id": town_id,
+                "town_name": str(entry.get("town_name", "")),
+                "row": int(entry.get("row", -1)),
+                "col": int(entry.get("col", -1)),
+                "product_id": product_id,
+                "product_name": str(entry.get("product_name", product_id)),
+                "ordered": maxi(0, int(entry.get("ordered", 0))),
+                "remaining": 0,
+                "spent": 0,
+                "unit_price": maxi(0, int(entry.get("unit_price", 0))),
+                "lots": lots,
+            }
+            _recompute_delivery(delivery)
+            if int(delivery["remaining"]) <= 0:
+                continue
+            _deliveries[key] = delivery
+    var outstanding = data.get("contract_outstanding", {})
+    if outstanding is Dictionary:
+        for key in outstanding:
+            var amount := int(outstanding[key])
+            if amount > 0:
+                _contract_outstanding[str(key)] = amount

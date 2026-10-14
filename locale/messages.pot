@@ -240,10 +240,16 @@ msgstr ""
 msgid "%d / sec"
 msgstr ""
 
+msgid "%d of %d on the way"
+msgstr ""
+
 msgid "%d of %d working"
 msgstr ""
 
 msgid "%d of %d working, %d idle"
+msgstr ""
+
+msgid "%d of the %d units are still on the way: they go back into the warehouse of %s, and %d coins go back into the treasury."
 msgstr ""
 
 msgid "%d sec"
@@ -570,7 +576,16 @@ msgstr ""
 msgid "Cancel the construction? Spent work will be lost."
 msgstr ""
 
+msgid "Cancel the deal"
+msgstr ""
+
+msgid "Cancel the deal for %s from %s?"
+msgstr ""
+
 msgid "Cancel upgrade"
+msgstr ""
+
+msgid "Cancelled %d units of %s from %s: the goods are back in the warehouse of the town and %d coins are back in the treasury."
 msgstr ""
 
 msgid "Cannot build a road"
@@ -646,6 +661,9 @@ msgid "Close"
 msgstr ""
 
 msgid "Close the contract"
+msgstr ""
+
+msgid "Close this panel and leave the deal as it is"
 msgstr ""
 
 msgid "Collapse panel"
@@ -918,6 +936,9 @@ msgstr ""
 msgid "Hex outside the map"
 msgstr ""
 
+msgid "Hide the confirmation"
+msgstr ""
+
 msgid "Hide the editor"
 msgstr ""
 
@@ -973,6 +994,9 @@ msgid "Irrigation Canal"
 msgstr ""
 
 msgid "It seems your region has no %s."
+msgstr ""
+
+msgid "Keep the deal"
 msgstr ""
 
 msgid "Language"
@@ -1216,6 +1240,9 @@ msgid "Purchase"
 msgstr ""
 
 msgid "Purchased %d units of %s from %s."
+msgstr ""
+
+msgid "Purchased %d units of %s from %s. The goods are on the way; the deal can be cancelled in \"Trade deals\"."
 msgstr ""
 
 msgid "Quality priority: %s (click to switch)"
@@ -1539,6 +1566,9 @@ msgstr ""
 msgid "Territory of the city %s"
 msgstr ""
 
+msgid "The %d units already shipped stay with the city and are not refunded."
+msgstr ""
+
 msgid "The amount %d exceeds the route throughput (%s units/sec).\nThe surplus will queue on the road and arrive later."
 msgstr ""
 
@@ -1561,6 +1591,9 @@ msgid "The city needs access to fresh water"
 msgstr ""
 
 msgid "The contract is already closed."
+msgstr ""
+
+msgid "The goods are on the way from the town. Cancelling the deal returns the un-shipped part to the town and refunds %d coins."
 msgstr ""
 
 msgid "The rate the town serves a contract with for free.\nA larger order strains it: it keeps up less and less,\nand its warehouse falls behind — the bigger the order,\nthe faster the stock runs dry and the contract is torn."
@@ -1588,6 +1621,9 @@ msgid "There is no land route from the city to the town (the town is across wate
 msgstr ""
 
 msgid "There is no land route from the city to this hex"
+msgstr ""
+
+msgid "There is nothing on the way for this deal."
 msgstr ""
 
 msgid "This building has no improved version"
@@ -1702,6 +1738,9 @@ msgid "What the technology gives:"
 msgstr ""
 
 msgid "Will produce:"
+msgstr ""
+
+msgid "Withdraw the un-shipped part of the deal"
 msgstr ""
 
 msgid "Wood"

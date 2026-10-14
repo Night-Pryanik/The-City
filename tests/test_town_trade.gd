@@ -98,6 +98,12 @@ func _run() -> void:
 		_test_contract_edit(state)
 	if WATCHDOG.wants_case("strain"):
 		_test_strain(state)
+	if WATCHDOG.wants_case("delivery_ledger"):
+		_test_delivery_ledger(state)
+	if WATCHDOG.wants_case("delivery_cancel"):
+		_test_delivery_cancel(state)
+	if WATCHDOG.wants_case("delivery_save_load"):
+		_test_delivery_save_load(state)
 
 	_free_rig()
 	WATCHDOG.report_skipped()
@@ -692,6 +698,227 @@ func _test_strain(state: Dictionary) -> void:
 	check(big_loss > small_loss,
 			"a bigger order must drain the warehouse faster (%d lost at %d/sec, %d at %d/sec)"
 					% [small_loss, small, big_loss, big], state)
+
+# -------------------------------------------------------
+# 11. The delivery ledger: one-time purchases tracked on the road
+# -------------------------------------------------------
+
+func _test_delivery_ledger(state: Dictionary) -> void:
+	var town := _rig(10.0, 10)
+	var price := _unit_price()
+
+	# A one-time purchase on a road creates a delivery record.
+	var amount := 20
+	var result = _trade.submit_order(_order(amount, false, price))
+	check(bool(result.get("ok", false)), "the purchase must succeed", state)
+	check(_trade._deliveries.size() == 1,
+			"a purchase on the road must create a delivery record (%d)"
+					% _trade._deliveries.size(), state)
+	var key := "town_test|wood"
+	check(_trade._deliveries.has(key),
+			"the delivery must be keyed by town|good", state)
+	var delivery: Dictionary = _trade._deliveries[key]
+	check(int(delivery.get("ordered", 0)) == amount,
+			"the ordered amount must be %d (got %d)" % [amount, int(delivery.get("ordered", 0))], state)
+	check(int(delivery.get("remaining", 0)) == amount,
+			"the remaining must be the full amount before any shipment", state)
+	check(int(delivery.get("spent", 0)) == amount * price,
+			"the spent must be the full price (got %d)" % int(delivery.get("spent", 0)), state)
+	check((delivery["lots"] as Array).size() == 1,
+			"one purchase must make one lot (got %d)" % (delivery["lots"] as Array).size(), state)
+
+	# A second purchase of the same good from the same town ADDS to the first.
+	# Use 70 so the total is 90: after the first loop ships 50, 40 remain for the
+	# contract-first attribution test, and 10 units stay in the town's stock so the
+	# contract of 8/sec can be signed.
+	var amount2 := 70
+	var result2 = _trade.submit_order(_order(amount2, false, price))
+	check(bool(result2.get("ok", false)), "the second purchase must succeed", state)
+	check(_trade._deliveries.size() == 1,
+			"a second purchase of the same good must not make a second record (%d)"
+					% _trade._deliveries.size(), state)
+	delivery = _trade._deliveries[key]
+	check(int(delivery.get("ordered", 0)) == amount + amount2,
+			"the ordered total must be the sum of both purchases (got %d)"
+					% int(delivery.get("ordered", 0)), state)
+	check(int(delivery.get("remaining", 0)) == amount + amount2,
+			"the remaining total must be the sum", state)
+	check((delivery["lots"] as Array).size() == 2,
+			"two purchases must make two lots (got %d)" % (delivery["lots"] as Array).size(), state)
+
+	# The delivery row shape.
+	var rows: Array = _trade.get_deliveries()
+	check(rows.size() == 1, "one delivery must give one row", state)
+	if not rows.is_empty():
+		var row: Dictionary = rows[0]
+		check(str(row.get("kind", "")) == _trade.KIND_DELIVERY,
+				"the row must carry the delivery kind", state)
+		check(int(row.get("remaining", 0)) == amount + amount2,
+				"the row must show the remaining amount", state)
+		check(int(row.get("ordered", 0)) == amount + amount2,
+				"the row must show the ordered total", state)
+		check(int(row.get("spent", 0)) == (amount + amount2) * price,
+				"the row must show the refundable coins", state)
+
+	# Shipments decrease the remaining. The flow is 10/sec, so one tick ships 10 units.
+	# The contract has no outstanding, so all 10 go to the purchase.
+	for i in range(5):
+		_dm.ship()
+		# Advance the road so the shipped units arrive and the queue drains.
+		_advance(_dm, 10.0)
+	check(int(delivery.get("remaining", 0)) == amount + amount2 - 50,
+			"after 50 units shipped the remaining must be %d (got %d)"
+					% [amount + amount2 - 50, int(delivery.get("remaining", 0))], state)
+
+	# The contract-first attribution: start a contract of 8/sec on the same good.
+	# The flow is 10/sec, so the contract takes 8/sec and the purchase drains at 2/sec.
+	_cdata.treasury = 1000000
+	check(bool(_trade.submit_order(_order(8, true, price)).get("ok", false)),
+			"the contract must be signed", state)
+	# The contract's cargo was queued in the same tick; re-read the delivery reference
+	# because the ledger may have reallocated the dictionary on insertion.
+	if not _trade._deliveries.has(key):
+		check(false, "the delivery record must still exist after the contract is signed", state)
+		return
+	delivery = _trade._deliveries[key]
+	var before_remaining: int = int(delivery.get("remaining", 0))
+	for i in range(5):
+		_trade.tick_contracts()
+		_dm.ship()
+		_advance(_dm, 10.0)
+		if _trade._deliveries.has(key):
+			delivery = _trade._deliveries[key]
+	var after_remaining: int = int(delivery.get("remaining", 0)) if _trade._deliveries.has(key) else 0
+	check(after_remaining == before_remaining - 10,
+			"with a contract of 8/sec and flow 10/sec, the purchase must drain by 2/sec over 5 ticks (before %d, after %d)"
+					% [before_remaining, after_remaining], state)
+
+	# When the purchase is fully shipped, the record disappears.
+	while int(delivery.get("remaining", 0)) > 0:
+		_trade.tick_contracts()
+		_dm.ship()
+		_advance(_dm, 10.0)
+	check(not _trade._deliveries.has(key),
+			"a fully shipped delivery must be dropped from the ledger", state)
+	check(_trade.get_deliveries().is_empty(),
+			"a fully shipped delivery must give no rows", state)
+
+# -------------------------------------------------------
+# 12. Cancelling a one-time purchase
+# -------------------------------------------------------
+
+func _test_delivery_cancel(state: Dictionary) -> void:
+	var town := _rig(10.0, 10)
+	var price := _unit_price()
+	var amount := 50
+	var total := amount * price
+	_cdata.treasury = 1000
+	var result = _trade.submit_order(_order(amount, false, price))
+	check(bool(result.get("ok", false)), "the purchase must succeed", state)
+	var key := "town_test|wood"
+	check(_trade._deliveries.has(key), "the delivery must exist", state)
+
+	# Cancel before anything ships: full refund.
+	var before_treasury: int = _cdata.treasury
+	var before_stock: int = _tm.get_town_goods(town, WOOD)
+	var cancel = _trade.cancel_delivery("town_test", WOOD)
+	check(bool(cancel.get("ok", false)),
+			"the cancellation must succeed: %s" % str(cancel.get("message", "")), state)
+	check(_cdata.treasury == before_treasury + total,
+			"the full price must be refunded (treasury %d, expected %d)"
+					% [_cdata.treasury, before_treasury + total], state)
+	check(_tm.get_town_goods(town, WOOD) == before_stock + amount,
+			"the full amount must go back into the warehouse (got %d, expected %d)"
+					% [_tm.get_town_goods(town, WOOD), before_stock + amount], state)
+	check(not _trade._deliveries.has(key),
+			"a fully cancelled delivery must be removed from the ledger", state)
+	check(int(_cdata.treasury_expense_accum.get(_gdata.SRC_TOWN_TRADE, 0)) == 0,
+			"the refund must net the expense to zero in the current window (got %d)"
+					% int(_cdata.treasury_expense_accum.get(_gdata.SRC_TOWN_TRADE, 0)), state)
+
+	# A cancellation when nothing is on the way is refused.
+	var empty = _trade.cancel_delivery("town_test", WOOD)
+	check(not bool(empty.get("ok", false)),
+			"a cancellation with nothing on the way must be refused", state)
+
+	# Partial cancellation: ship 20 units, cancel the rest.
+	_cdata.treasury = 1000
+	_trade.submit_order(_order(amount, false, price))
+	for i in range(2):
+		_dm.ship()
+		_advance(_dm, 10.0)
+	var remaining_before: int = int(_trade._deliveries[key].get("remaining", 0))
+	var refund_expected: int = remaining_before * price
+	before_treasury = _cdata.treasury
+	before_stock = _tm.get_town_goods(town, WOOD)
+	cancel = _trade.cancel_delivery("town_test", WOOD)
+	check(bool(cancel.get("ok", false)), "the partial cancellation must succeed", state)
+	check(_cdata.treasury == before_treasury + refund_expected,
+			"the partial refund must be %d (treasury %d)"
+					% [refund_expected, _cdata.treasury], state)
+	check(_tm.get_town_goods(town, WOOD) == before_stock + remaining_before,
+			"the partial amount must go back (got %d, expected %d)"
+					% [_tm.get_town_goods(town, WOOD), before_stock + remaining_before], state)
+
+	# A second purchase at a different price: the refund is lot-exact.
+	_cdata.treasury = 1000
+	_trade.submit_order(_order(20, false, price))
+	var price2 := price + 5
+	_trade.submit_order(_order(30, false, price2))
+	# The first lot is 20@price, the second is 30@price2. Cancel everything.
+	before_treasury = _cdata.treasury
+	cancel = _trade.cancel_delivery("town_test", WOOD)
+	check(bool(cancel.get("ok", false)), "the mixed-price cancellation must succeed", state)
+	var expected_refund: int = 20 * price + 30 * price2
+	check(_cdata.treasury == before_treasury + expected_refund,
+			"the mixed-price refund must be exact (got %d, expected %d)"
+					% [_cdata.treasury - before_treasury, expected_refund], state)
+
+# -------------------------------------------------------
+# 13. The delivery ledger survives a save round-trip
+# -------------------------------------------------------
+
+func _test_delivery_save_load(state: Dictionary) -> void:
+	var town := _rig(10.0, 10)
+	var price := _unit_price()
+	var amount := 40
+	_cdata.treasury = 1000
+	_trade.submit_order(_order(amount, false, price))
+	var key := "town_test|wood"
+	# Ship 15 units before the save.
+	for i in range(2):
+		_dm.ship()
+		_advance(_dm, 10.0)
+	var remaining_before: int = int(_trade._deliveries[key].get("remaining", 0))
+	var spent_before: int = int(_trade._deliveries[key].get("spent", 0))
+
+	var saved: Dictionary = _trade.serialize_deliveries()
+	check(saved.has("deliveries") and saved.has("contract_outstanding"),
+			"the save must carry both deliveries and contract outstanding", state)
+
+	# The round-trip: the same delivery, with the same lots.
+	var trade2 = load("res://scripts/town_trade_manager.gd").new()
+	trade2.initialize(_tm, _dm)
+	trade2.deserialize_deliveries(saved)
+	check(trade2._deliveries.size() == 1,
+			"the delivery must be restored (%d)" % trade2._deliveries.size(), state)
+	var restored: Dictionary = trade2._deliveries[key]
+	check(int(restored.get("remaining", 0)) == remaining_before,
+			"the remaining must survive the save (got %d, expected %d)"
+					% [int(restored.get("remaining", 0)), remaining_before], state)
+	check(int(restored.get("spent", 0)) == spent_before,
+			"the spent must survive the save (got %d, expected %d)"
+					% [int(restored.get("spent", 0)), spent_before], state)
+	check((restored["lots"] as Array).size() == 1,
+			"the lots must survive the save (got %d)" % (restored["lots"] as Array).size(), state)
+
+	# The restored delivery is still cancellable.
+	var before_treasury: int = _cdata.treasury
+	var cancel = trade2.cancel_delivery("town_test", WOOD)
+	check(bool(cancel.get("ok", false)), "the restored delivery must be cancellable", state)
+	check(_cdata.treasury == before_treasury + remaining_before * price,
+			"the restored delivery must refund the right amount", state)
+	trade2.free()
 
 # -------------------------------------------------------
 # Helpers

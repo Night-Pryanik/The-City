@@ -445,6 +445,14 @@ func _ready():
         # the town from the restored record.
         town_trade_manager.deserialize(SaveManager.saved_data.get("town_contracts", []))
 
+        # The ledger of the one-time purchases still on the road. It is restored AFTER the
+        # contracts on purpose: town_trade_manager.deserialize resets the whole state of the
+        # manager, this ledger included. The queue of the route is already restored by this
+        # point (delivery_manager.deserialize above), so the ledger lands on the queue it
+        # describes.
+        town_trade_manager.deserialize_deliveries(
+                SaveManager.saved_data.get("town_deliveries", {}))
+
         SaveManager.is_loaded = false
         SaveManager.saved_data.clear()
         map_renderer.initialize(tile_data, self)
@@ -2466,13 +2474,33 @@ func get_trade_partners() -> Array:
     return result
 
 # The rows of the "Trade deals" column of the city interface: the standing
-# contracts with the towns (see town_trade_manager). A one-time purchase is not a
-# deal — it is settled at once and leaves nothing to list, so the column shows only
-# the contracts that are paid every tick.
+# contracts with the towns (see town_trade_manager). The one-time purchases still on
+# the road are a list of their own (get_town_deliveries): the two kinds of a deal
+# differ in what the row can do, so the column asks for them separately and lays
+# them out together.
 func get_town_contracts() -> Array:
     if town_trade_manager == null:
         return []
     return town_trade_manager.get_contracts()
+
+# The one-time purchases whose goods are still on the road (see
+# town_trade_manager.get_deliveries): what the player bought and the road has not carried
+# to the city yet. The column lists them beside the contracts, because the un-shipped part
+# of such a deal can be cancelled from there.
+func get_town_deliveries() -> Array:
+    if town_trade_manager == null:
+        return []
+    return town_trade_manager.get_deliveries()
+
+# Cancels a one-time purchase of a town (see town_trade_manager.cancel_delivery): the part
+# that has not been shipped goes back into the warehouse of the town and its coins back into
+# the treasury. The column calls this directly, the way it reads get_town_deliveries: it
+# needs the answer to report it in the message row of the city interface — the HUD is hidden
+# while the city interface is open.
+func cancel_town_delivery(town_id: String, product_id: String) -> Dictionary:
+    if town_trade_manager == null:
+        return {"ok": false, "message": ""}
+    return town_trade_manager.cancel_delivery(town_id, product_id)
 
 # The standing contract of a town for a good, or an empty dictionary when there is none
 # (see town_trade_manager.get_contract). The town window reads it to open the trade

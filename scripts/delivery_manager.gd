@@ -67,6 +67,20 @@ var _main_map = null
 #                 rate is the throughput of EVERY product, not of the route as a whole.
 var _routes: Dictionary = {}
 
+# Units LEFT the shipping queue of a route: they were dispatched onto the road, or handed
+# over at once because the road is gone. The amount is what actually left the queue, never
+# what the route wanted to ship.
+#
+# The signal exists for a caller that keeps its OWN ledger of a delivery without owning the
+# queue. The queue is per route and per product, and the units in it are fungible, so a
+# standing contract and a one-time purchase of the same good from the same town are ONE
+# stream there (they even merge into one record: the same product, quality and source, see
+# _push_pending). The only place where the two can be told apart is a ledger beside the
+# queue, and this signal is what feeds it (town_trade_manager: what of a purchase is still
+# un-shipped and therefore refundable). The source tells the load apart: the cargo of a town
+# carries the prefix CARGO_SOURCE_PREFIX, an improvement carries its own.
+signal cargo_shipped(row: int, col: int, product: String, amount: int, source: String)
+
 
 # The reference to main_map is the only way to the routes (get_route_to_city). It is
 # passed explicitly, like to the other managers, and not reached through the tree, so
@@ -145,6 +159,46 @@ func create_cargo(row: int, col: int, product: String, quality: String,
     var route := _get_or_create_route(row, col)
     _push_pending(route, product, quality, amount, source)
     return true
+
+
+# Takes un-shipped units of one product back out of the queue of a route. It is the
+# counterpart of create_cargo for a caller that withdraws a load it queued before the road
+# shipped it (town_trade_manager: cancelling the un-shipped part of a one-time purchase).
+#
+# Only the units still WAITING can be taken: a load that has been dispatched is on the road
+# and is beyond recall, so what is already shipped stays shipped and the caller must not be
+# refunded for it. The units of a product are fungible, so the queue is walked in its own
+# order and the amount is taken from the head — the caller cannot tell one record from
+# another, and neither can the road.
+#
+# It returns how many units were actually removed: 0 when the route is gone, holds nothing of
+# the product, or the amount is not positive. The caller must NOT return more than this to
+# the town — the rest is already on its way.
+func remove_pending(row: int, col: int, product: String, amount: int) -> int:
+    if amount <= 0 or product.is_empty():
+        return 0
+    var key := _route_key(row, col)
+    var route = _routes.get(key, null)
+    if route == null:
+        return 0
+    var pending: Array = route["pending"]
+    var left := amount
+    var i := 0
+    while i < pending.size() and left > 0:
+        var entry: Dictionary = pending[i]
+        if str(entry["product"]) != product:
+            i += 1
+            continue
+        var take: int = mini(int(entry["amount"]), left)
+        entry["amount"] = int(entry["amount"]) - take
+        left -= take
+        if int(entry["amount"]) <= 0:
+            pending.remove_at(i)
+        # A partially emptied head keeps its place: it is still the oldest load of the
+        # product, and only a part of it has been taken back.
+    if pending.is_empty() and route["in_transit"].is_empty():
+        _routes.erase(key)
+    return amount - left
 
 
 # --- The status for the interface ---
@@ -235,8 +289,13 @@ func _ship_route(route: Dictionary, flow_rate: float, transit_delay: float) -> v
 # Moves each product's share of the queue onto the road, walking the queue in order. The
 # budget of a product is its own credit (see _ship_route), so within a product the queue
 # stays FIFO while a bulk byproduct can no longer delay the staple behind it.
+#
+# Every load that leaves the queue is announced (cargo_shipped) — but only AFTER the walk is
+# over: a listener is free to react to the shipment (town_trade_manager updates its ledger of
+# the deliveries), and the queue must not be read while it is being rearranged.
 func _dispatch(route: Dictionary, credits: Dictionary, transit_delay: float) -> void:
     var pending: Array = route["pending"]
+    var shipped: Array = []
     var i := 0
     while i < pending.size():
         var head: Dictionary = pending[i]
@@ -246,14 +305,29 @@ func _dispatch(route: Dictionary, credits: Dictionary, transit_delay: float) -> 
             i += 1
             continue
         var take: int = mini(int(head["amount"]), budget)
+        var source := str(head["source"])
         head["amount"] = int(head["amount"]) - take
         credits[product] = float(credits[product]) - float(take)
-        _add_in_transit(route, product, str(head["quality"]), take,
-                str(head["source"]), transit_delay)
+        _add_in_transit(route, product, str(head["quality"]), take, source, transit_delay)
+        shipped.append({"product": product, "amount": take, "source": source})
         if int(head["amount"]) <= 0:
             pending.remove_at(i)
         # A partially shipped head keeps its place (still at i); its budget is spent, so
         # the next iteration moves past it.
+    _announce_shipped(route, shipped)
+
+
+# Tells the listeners what left the queue of a route. The events are collected by the caller
+# and announced here, in one go: a signal emitted in the middle of the walk of the queue
+# would let a listener read (or rearrange) the queue under the walk.
+func _announce_shipped(route: Dictionary, shipped: Array) -> void:
+    if shipped.is_empty():
+        return
+    var row := int(route["row"])
+    var col := int(route["col"])
+    for event in shipped:
+        emit_signal("cargo_shipped", row, col, str(event["product"]),
+                int(event["amount"]), str(event["source"]))
 
 
 # Adds a shipped load to the road. Loads created in the same shipping step share the
@@ -292,13 +366,23 @@ func _deliver(entry: Dictionary) -> void:
 
 # Hands over everything the route still holds. It is used when the route ceases to
 # exist: the produced goods must not be lost, and there is nothing left to limit them.
+#
+# The loads already on the road are not announced: they left the queue when they were
+# dispatched (see _dispatch), and the handover at the end of the road is the arrival, not a
+# shipment. The loads still WAITING, on the other hand, do leave the queue here — they are
+# announced like a shipment, so a ledger beside the queue (town_trade_manager) sees them go
+# and never counts them as still cancellable.
 func _flush_route(route: Dictionary) -> void:
     for entry in route["in_transit"]:
         _deliver(entry)
     route["in_transit"].clear()
+    var shipped: Array = []
     for entry in route["pending"]:
         _deliver(entry)
+        shipped.append({"product": str(entry["product"]), "amount": int(entry["amount"]),
+                "source": str(entry["source"])})
     route["pending"].clear()
+    _announce_shipped(route, shipped)
 
 
 # --- The helpers of the routes ---

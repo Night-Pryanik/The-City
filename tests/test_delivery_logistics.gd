@@ -15,6 +15,7 @@
 #   batch_size         — a large batch takes longer to deliver than a small one;
 #   shared_route       — several batches on one route share its limit;
 #   repeat_purchases   — repeat purchases do not bypass the cap;
+#   deal_share         — a contract and a one-time purchase of ONE good share the route;
 #   multi_product_share— a byproduct on the same route must not starve the staple;
 #   simultaneous       — batches can be in transit at the same time;
 #   independent_routes — different routes are independent;
@@ -70,6 +71,8 @@ func _run() -> void:
         _test_shared_route(state)
     if WATCHDOG.wants_case("repeat_purchases"):
         _test_repeat_purchases(state)
+    if WATCHDOG.wants_case("deal_share"):
+        _test_deal_share(state)
     if WATCHDOG.wants_case("multi_product_share"):
         _test_multi_product_share(state)
     if WATCHDOG.wants_case("simultaneous"):
@@ -242,6 +245,111 @@ func _test_repeat_purchases(state: Dictionary) -> void:
             "repeat purchases must not bypass the limit %.1f (arrival peak %d)"
                     % [flow, worst], state)
     dm.free()
+
+
+# -------------------------------------------------------
+# 4b. A contract and a one-time purchase of ONE good share the route
+# -------------------------------------------------------
+
+# A standing contract and a one-time purchase of the SAME good from the SAME town are ONE
+# stream on the route, not two: town_trade_manager._deliver_from_town hands both over with
+# the same product, the same quality and the same source ("@town:<id>"), so _push_pending
+# MERGES them into a single record and the route neither tells them apart nor gives them
+# separate throughput. There is therefore NO priority between them at all — what decides
+# everything is the TOTAL inflow against the route's flow rate:
+#   · the route ships at its FULL flow while any backlog exists, so a contract whose rate
+#     fits the road is served in full from the very first step, however big a purchase was
+#     made before it (the purchase rides on the spare capacity and delays nobody);
+#   · the purchase's own backlog is served ONLY from the spare capacity (flow − contract),
+#     so a contract that takes the whole road leaves the backlog undrained — the goods wait,
+#     they are not lost (see docs.md, "Route throughput and delivery time").
+func _test_deal_share(state: Dictionary) -> void:
+    var pair := _new_manager()
+    var dm = pair[0]
+    var fake: FakeMap = pair[1]
+    _reset_storage("clay")
+    var flow := 10.0
+    fake.set_route(5, 5, 3, flow)
+    var town := "@town:town_1"
+
+    # A one-time purchase of 30 units, then one tick of a contract for the same good.
+    dm.create_cargo(5, 5, "clay", "common", 30, town)
+    dm.create_cargo(5, 5, "clay", "common", 4, town)
+    var route: Dictionary = dm._routes["5,5"]
+    check(route["pending"].size() == 1,
+            "a deal and a contract of one good must be ONE stream on the route (records %d)"
+                    % route["pending"].size(), state)
+    check(int(route["pending"][0]["amount"]) == 34,
+            "the stream must hold both loads (holds %d)"
+                    % int(route["pending"][0]["amount"]), state)
+
+    # Another good of the same town keeps its own record and its own budget.
+    dm.create_cargo(5, 5, "stone", "common", 2, town)
+    check(route["pending"].size() == 2,
+            "another good must keep its own record (records %d)" % route["pending"].size(), state)
+    dm.free()
+
+    # A big purchase made BEFORE the contract must not starve it. The contract's rate (4)
+    # fits the road (10), so every step delivers at least the contract's amount — even while
+    # the purchase's backlog is still draining.
+    var contract := 4
+    var pair2 := _new_manager()
+    var dm2 = pair2[0]
+    var fake2: FakeMap = pair2[1]
+    _reset_storage("clay")
+    fake2.set_route(5, 5, 3, flow)
+    dm2.create_cargo(5, 5, "clay", "common", 30, town)
+    var worst_short := 0.0
+    var prev := 0
+    var ticks := 40
+    for i in range(ticks):
+        dm2.create_cargo(5, 5, "clay", "common", contract, town)
+        _step(dm2)
+        var now := _delivered("clay")
+        # The very first step has nothing to deliver yet: the load shipped by it is still in
+        # transit. From the second step on the contract must never fall short.
+        if i > 0:
+            worst_short = maxf(worst_short, float(contract) - float(now - prev))
+        prev = now
+    check(worst_short <= 0.001,
+            "a purchase made BEFORE the contract must not starve it (worst shortfall %.2f)"
+                    % worst_short, state)
+    check(int(dm2.get_route_status(5, 5)["pending"]) == 0,
+            "with spare capacity the purchase must drain (queue %d)"
+                    % int(dm2.get_route_status(5, 5)["pending"]), state)
+    dm2.free()
+
+    # A contract that takes the WHOLE road leaves no spare capacity: the contract is still
+    # served in full, but the purchase's backlog never drains — it waits for spare capacity.
+    var pair3 := _new_manager()
+    var dm3 = pair3[0]
+    var fake3: FakeMap = pair3[1]
+    _reset_storage("clay")
+    fake3.set_route(5, 5, 3, flow)
+    dm3.create_cargo(5, 5, "clay", "common", 30, town)
+    var held := true
+    var served := true
+    prev = 0
+    for i in range(20):
+        dm3.create_cargo(5, 5, "clay", "common", int(flow), town)
+        _step(dm3)
+        var now := _delivered("clay")
+        if i > 0 and float(now - prev) < flow - 0.001:
+            served = false
+        prev = now
+        if int(dm3.get_route_status(5, 5)["pending"]) != 30:
+            held = false
+    var status: Dictionary = dm3.get_route_status(5, 5)
+    check(served,
+            "the contract itself must still be served in full at the saturating rate", state)
+    check(held,
+            "the purchase's backlog must stay undrained while the contract takes the whole road "
+            + "(queue %d)" % int(status["pending"]), state)
+    check(_delivered("clay") + int(status["pending"]) + int(status["in_transit"])
+            == 30 + 20 * int(flow),
+            "no goods may be lost or duplicated on the shared route (received %d, queue %d, road %d)"
+                    % [_delivered("clay"), int(status["pending"]), int(status["in_transit"])], state)
+    dm3.free()
 
 
 # -------------------------------------------------------

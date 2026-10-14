@@ -30,13 +30,23 @@ extends SceneTree
 # The hang watchdog — see tests/watchdog.gd.
 const WATCHDOG = preload("res://tests/watchdog.gd")
 
-# A stub of the map for the inline editor of the "Trade deals" section: the column reads its
-# deals through get_town_contracts (see external_trade_tab._collect_deals), so a synthetic
-# list can be unfolded by the toggle exactly as the live one is.
+# A stub of the map for the inline panels of the "Trade deals" section: the column reads its
+# deals through get_town_contracts and get_town_deliveries (see
+# external_trade_tab._collect_deals), so a synthetic list can be unfolded by the toggle exactly
+# as the live one is. The cancellation of a delivery goes the other way, through
+# cancel_town_delivery — the stub records the call instead of turning to a manager.
 class DealMap extends Node:
     var deals: Array = []
+    var deliveries: Array = []
+    var cancelled: Array = []
+    var cancel_result: Dictionary = {"ok": true, "message": ""}
     func get_town_contracts() -> Array:
         return deals
+    func get_town_deliveries() -> Array:
+        return deliveries
+    func cancel_town_delivery(town_id: String, product_id: String) -> Dictionary:
+        cancelled.append("%s|%s" % [town_id, product_id])
+        return cancel_result
 
 func _initialize():
     WATCHDOG.arm(self)
@@ -899,8 +909,8 @@ func _check_external_trade(city_ui, main_map, state: Dictionary) -> void:
             # deal, and a repeated press folds it back — the pair (town, good) is what tells
             # one deal from another.
             tab._editing_deal_key = ""
-            tab._on_deal_edit_toggled(str(edited_deal.get("town_id", "")),
-                    str(edited_deal.get("product_id", "")))
+            tab._on_deal_panel_toggled(tab.KIND_CONTRACT,
+                    str(edited_deal.get("town_id", "")), str(edited_deal.get("product_id", "")))
             check(tab._editing_deal_key == tab._deal_key(edited_deal),
                 "the edit action must unfold the editor of its own deal (got \"%s\")"
                     % tab._editing_deal_key, state)
@@ -943,8 +953,8 @@ func _check_external_trade(city_ui, main_map, state: Dictionary) -> void:
                             "the total must follow the amount (got \"%s\")"
                                 % (total_label.text if total_label != null else "<no label>"), state)
             # A repeated press folds the editor back.
-            tab._on_deal_edit_toggled(str(edited_deal.get("town_id", "")),
-                    str(edited_deal.get("product_id", "")))
+            tab._on_deal_panel_toggled(tab.KIND_CONTRACT,
+                    str(edited_deal.get("town_id", "")), str(edited_deal.get("product_id", "")))
             check(tab._editing_deal_key.is_empty()
                     and deals_list.find_child("DealEditor", true, false) == null,
                 "a repeated press must fold the editor back", state)
@@ -963,11 +973,87 @@ func _check_external_trade(city_ui, main_map, state: Dictionary) -> void:
         check(main_map.town_trade_manager.contracts_changed.is_connected(
                 Callable(main_map.town_ui, "on_contracts_changed")),
             "the change of the contracts must reach the trade panel of the town window", state)
+        # The delivery manager feeds the ledger of the one-time purchases: the shipments of
+        # the queue are what tell the ledger how much of a purchase has left the town and is
+        # therefore no longer cancellable (see town_trade_manager._on_cargo_shipped).
+        check(main_map.delivery_manager.cargo_shipped.is_connected(
+                Callable(main_map.town_trade_manager, "_on_cargo_shipped")),
+            "the shipments of the delivery manager must feed the ledger of the trade manager", state)
         # The column returns to its own state: the synthetic rows were shown only for the check.
         tab._deals_signature = ""
         tab._refresh_deals()
         check(deals_list.get_child_count() == 1 and deals_list.get_child(0) is Label,
             "the section must come back to the empty state", state)
+
+    # ---- The delivery row and its cancellation ----
+    var delivery_deals: Array = [
+        {"town_id": "town_1", "town_name": "Roma", "product_id": "beer", "name": "Beer",
+            "icon": "", "type": "buy", "price": 30, "amount": 40, "cost": 1200,
+            "ordered": 100, "delivery_time": 6.4, "row": 4, "col": 4,
+            "kind": tab.KIND_DELIVERY},
+    ]
+    var delivery_map := DealMap.new()
+    delivery_map.deliveries = delivery_deals
+    var saved_map2 = tab.main_map
+    tab.main_map = delivery_map
+    tab._deals_signature = ""
+    tab._fill_deals(tab._sorted_deals(delivery_deals))
+    var delivery_list = panel.get_node_or_null("DealsSection/DealsScroll/DealsList")
+    check(delivery_list != null, "the delivery list must exist", state)
+    if delivery_list != null:
+        check(delivery_list.get_child_count() == 1,
+            "one delivery must give one row, got %d" % delivery_list.get_child_count(), state)
+        var d_row: Node = delivery_list.get_child(0)
+        var d_texts := _row_texts(d_row)
+        check(d_texts.has("Beer") and d_texts.has("Roma")
+                and d_texts.has(tab._deal_type_name("buy"))
+                and d_texts.has("40 of 100 on the way")
+                and d_texts.has("Delivery: 6.40 sec"),
+            "the delivery row must show the goods, the town, the type, the amount still on the way and the delivery time, got %s"
+                % str(d_texts), state)
+        var cancel_button: Button = d_row.find_child("DeliveryCancelButton", true, false)
+        check(cancel_button != null, "the delivery row must offer a cancel action", state)
+        if cancel_button != null:
+            # The toggle: a press on the cancel action of a delivery unfolds the confirmation
+            # of THAT delivery, and a repeated press folds it back.
+            tab._editing_deal_key = ""
+            tab._on_deal_panel_toggled(tab.KIND_DELIVERY,
+                    str(delivery_deals[0].get("town_id", "")), str(delivery_deals[0].get("product_id", "")))
+            check(tab._editing_deal_key == tab._deal_key(delivery_deals[0]),
+                "the cancel action must unfold the confirmation of its own delivery", state)
+            var confirm_panel: Node = delivery_list.find_child("DeliveryCancelPanel", true, false)
+            check(confirm_panel != null, "the unfolded confirmation must be a child of the list", state)
+            if confirm_panel != null:
+                var warning: Label = confirm_panel.find_child("DeliveryCancelWarning", true, false)
+                check(warning != null and warning.text.find("Cancel the deal") >= 0,
+                    "the confirmation must ask whether to cancel the deal", state)
+                var confirm_btn: Button = confirm_panel.find_child("DeliveryCancelConfirmButton", true, false)
+                check(confirm_btn != null, "the confirmation must offer a confirm action", state)
+                var dismiss_btn: Button = confirm_panel.find_child("DeliveryCancelDismissButton", true, false)
+                check(dismiss_btn != null, "the confirmation must offer a dismiss action", state)
+                # A dismiss folds the panel back.
+                if dismiss_btn != null:
+                    dismiss_btn.pressed.emit()
+                    check(tab._editing_deal_key.is_empty()
+                            and delivery_list.find_child("DeliveryCancelPanel", true, false) == null,
+                        "a dismiss must fold the confirmation back", state)
+            # A repeated press folds the confirmation back.
+            tab._on_deal_panel_toggled(tab.KIND_DELIVERY,
+                    str(delivery_deals[0].get("town_id", "")), str(delivery_deals[0].get("product_id", "")))
+            check(tab._editing_deal_key == tab._deal_key(delivery_deals[0]),
+                "the second toggle must unfold the confirmation again", state)
+            tab._on_deal_panel_toggled(tab.KIND_DELIVERY,
+                    str(delivery_deals[0].get("town_id", "")), str(delivery_deals[0].get("product_id", "")))
+            check(tab._editing_deal_key.is_empty(),
+                "a repeated press must fold the confirmation back", state)
+        # A delivery without a town must not pretend to be cancellable.
+        var orphan2: Node = tab._build_deal_row({"product_id": "beer", "name": "Beer",
+                "type": "buy", "kind": tab.KIND_DELIVERY})
+        check(orphan2.find_child("DeliveryCancelButton", true, false) == null,
+            "a delivery without a town must not carry the cancel action", state)
+        orphan2.free()
+    tab.main_map = saved_map2
+    delivery_map.free()
 
     # ---- The list of the towns discovered by the player ----
     var partners_list = panel.get_node_or_null("PartnersSection/PartnersScroll/PartnersList")

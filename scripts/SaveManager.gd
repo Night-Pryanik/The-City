@@ -73,6 +73,11 @@ func save_game():
         # city buys from which town every tick and for how much. The route of a deal
         # is not saved — it is recomputed from the road network like the cargo.
         "town_contracts": main_map.town_trade_manager.serialize() if main_map.town_trade_manager else [],
+        # The one-time purchases still on the road (see town_trade_manager.gd): what of a
+        # purchase has not been shipped and is therefore still cancellable. It is a key of its
+        # own and not a part of "town_contracts", so that a save written before the ledger
+        # existed still loads — it simply carries no purchase on the way.
+        "town_deliveries": main_map.town_trade_manager.serialize_deliveries() if main_map.town_trade_manager else {},
         "map_state": main_map.get_map_state(),
         "city_name": CityData.city_name
     }
