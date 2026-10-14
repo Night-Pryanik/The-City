@@ -33,10 +33,9 @@
 # Every row, of either column, carries the price of ONE unit of the goods (in coins),
 # to the right of the name — see _unit_price.
 #
-# The trade settings panel also names the SUPPLY of the town: the rate it serves a
-# standing contract with for free (see the supply section of town_economy.gd). The line
-# turns red as soon as the amount climbs over that rate, because the town would fall
-# behind — the faster, the bigger the order — and the contract would be torn.
+# The trade settings panel identifies an existing deal for the selected good: a standing
+# contract in permanent mode or a one-time delivery in transit. The line stays hidden when
+# there is no active deal of the selected type.
 #
 # The trade settings panel is the FOUNDATION of the trade: it assembles the
 # order (the goods, the amount, the "permanent" flag) and hands it over by the
@@ -81,6 +80,8 @@ signal trade_order_submitted(order: Dictionary)
 # by the HUD (see main_map._on_town_contract_close_requested). The good becomes free for
 # a new deal — with the same terms or with different ones.
 signal contract_close_requested(contract_id: String)
+
+signal delivery_cancel_requested(town_id: String, product_id: String)
 
 # The two sides of the trade. The value is part of the order and of the row key, so
 # it must stay stable.
@@ -131,10 +132,8 @@ const PRICE_COLUMN_WIDTH := 44
 const COLOR_EXPENSE := Color(0.9, 0.3, 0.3, 1)
 const COLOR_INCOME := Color(1.0, 0.807, 0.2, 1)
 
-# The colour of the town-supply line of the trade panel while the amount is within the
-# rate the town can serve (see _update_supply_label). It is the muted grey the status row
-# of the window already uses, so an ordinary order does not shout.
-const SUPPLY_TEXT_COLOR := Color(0.65, 0.65, 0.65, 1)
+# The colour of the current-deal line in the trade panel.
+const DEAL_STATUS_TEXT_COLOR := Color(0.65, 0.65, 0.65, 1)
 
 # The markers that let the layout be read back: a row of a trade column and the key
 # of the resource behind it (the tests and the trade panel both use them).
@@ -208,6 +207,7 @@ var _selected_name := ""
 # settings of a good that already has a contract open as an edit of it: the amount is
 # prefilled with the contract and the total is counted at the price frozen at its signing.
 var _selected_contract: Dictionary = {}
+var _selected_delivery: Dictionary = {}
 
 # The trade settings panel and its controls (null while it is closed).
 var _trade_panel: Control = null
@@ -216,12 +216,9 @@ var _permanent_check: CheckBox = null
 var _warning_badge: Control = null
 var _confirm_button: Button = null
 var _total_label: Label = null
-# The "close the contract" button. It exists only while the panel edits a standing
-# contract (see _build_trade_panel): a fresh order has nothing to close.
-var _close_contract_button: Button = null
-# The line that names the rate the town can back a standing contract with (see
-# _update_supply_label). null while no panel is open.
-var _supply_label: Label = null
+var _cancel_deal_button: Button = null
+# The line that names the active contract or delivery for the selected good.
+var _deal_status_label: Label = null
 
 # Guards the text_changed handler from re-entering when the field is sanitized
 # programmatically (a programmatic assignment does not emit the signal, but the
@@ -325,6 +322,10 @@ func refresh_storage():
         var quality_label: Label = _sell_quality_labels[display_name]
         if is_instance_valid(quality_label):
             _apply_row_quality(quality_label, str(display_name))
+    if not _selected_id.is_empty():
+        _sync_selected_delivery()
+        _update_deal_status_label()
+        _update_cancel_deal_button()
     for key in _price_labels:
         var entry: Dictionary = _price_labels[key]
         var price_label = entry.get("label", null)
@@ -694,6 +695,21 @@ func _sync_selected_contract() -> void:
     if contract is Dictionary and not (contract as Dictionary).is_empty():
         _selected_contract = contract
 
+func _sync_selected_delivery() -> void:
+    _selected_delivery = {}
+    if _town == null or _selected_side != SIDE_SELL or _selected_id.is_empty():
+        return
+    if _map == null or not is_instance_valid(_map) or not _map.has_method("get_town_deliveries"):
+        return
+    var town_id := str(_town.get("id", ""))
+    for delivery in _map.get_town_deliveries():
+        if delivery is Dictionary \
+                and str(delivery.get("town_id", "")) == town_id \
+                and str(delivery.get("product_id", "")) == _selected_id \
+                and int(delivery.get("remaining", delivery.get("amount", 0))) > 0:
+            _selected_delivery = delivery
+            return
+
 # The list of the standing contracts changed — a contract was signed, updated or torn
 # (see town_trade_manager.contracts_changed). The panel of the selected good follows the
 # contract of that good, whatever changed it: an order that has just been signed turns the
@@ -709,6 +725,7 @@ func on_contracts_changed() -> void:
     var was_editing := not _selected_contract.is_empty()
     _sync_selected_contract()
     if (not _selected_contract.is_empty()) == was_editing:
+        _update_deal_status_label()
         return
     _panel_permanent = not _selected_contract.is_empty()
     _open_trade_panel(_default_panel_amount())
@@ -720,6 +737,7 @@ func _clear_selection() -> void:
     _selected_id = ""
     _selected_name = ""
     _selected_contract = {}
+    _selected_delivery = {}
     _hovered_row = null
     _free_trade_panel()
     _refresh_row_styles()
@@ -736,8 +754,8 @@ func _free_trade_panel() -> void:
     _warning_badge = null
     _confirm_button = null
     _total_label = null
-    _supply_label = null
-    _close_contract_button = null
+    _deal_status_label = null
+    _cancel_deal_button = null
 
 # Applies the state stylebox to one row: the selected state wins over the hover, so
 # the selected row stays highlighted while the cursor is elsewhere.
@@ -785,6 +803,7 @@ func _open_trade_panel(amount: int) -> void:
     var container := row.get_parent()
     if container == null:
         return
+    _sync_selected_delivery()
     _trade_panel = _build_trade_panel()
     container.add_child(_trade_panel)
     container.move_child(_trade_panel, row.get_index() + 1)
@@ -860,30 +879,10 @@ func _build_trade_panel() -> PanelContainer:
 
     vbox.add_child(amount_row)
 
-    # The rate the town can back a standing contract with (see town_economy, the supply
-    # section). It stands right under the amount, where the deal is decided, so the
-    # player recognises a contract that would drain the warehouse BEFORE signing it: the
-    # line turns red the moment the amount climbs over the rate. A town that does not
-    # trade the good at all has no rate, and the line stays hidden.
-    #
-    # The explanation is long, so it goes through the WRAPPING tooltip (WrappedTooltip):
-    # the built-in one draws its text in a single line that runs off the edge of the
-    # window. The mechanism also handles the mouse — a tooltip is shown only for a control
-    # the hover reaches, and a plain Label catches nothing (MOUSE_FILTER_IGNORE).
-    _supply_label = Label.new()
-    _supply_label.name = "SupplyLabel"
-    _supply_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    _supply_label.visible = false
-    vbox.add_child(_supply_label)
-    # The explanation is CONSTANT (it names the mechanic, not the numbers), so it is
-    # attached once here and never re-attached: replacing the text of a tooltip that is
-    # already on the screen drops its window.
-    #
-    # The line breaks in the text are the PARAGRAPHING of the hint and not a way around
-    # the missing wrap: anything wider than the wrap width is broken by the mechanism
-    # itself, and a translated line that comes out longer than the source one wraps too.
-    WrappedTooltip.attach(_supply_label,
-            tr("The rate the town serves a contract with for free.\nA larger order strains it: it keeps up less and less,\nand its warehouse falls behind — the bigger the order,\nthe faster the stock runs dry and the contract is torn."))
+    _deal_status_label = Label.new()
+    _deal_status_label.name = "DealStatusLabel"
+    _deal_status_label.visible = false
+    vbox.add_child(_deal_status_label)
 
     # The "Permanent" checkbox. The explanation of the contract belongs to the BOX
     # and not to the whole row: a CheckBox with a text shows its tooltip over the box
@@ -912,7 +911,7 @@ func _build_trade_panel() -> PanelContainer:
 
     vbox.add_child(permanent_row)
 
-    # Confirm / cancel: square icon-only buttons, right-aligned. The free space left of
+    # Confirm / dismiss / deal cancellation: square icon-only buttons, right-aligned. The free space left of
     # them is taken by the total of the order — the label expands, which is what pushes
     # the two buttons to the right edge (see _update_total_label).
     var buttons_row := HBoxContainer.new()
@@ -931,14 +930,11 @@ func _build_trade_panel() -> PanelContainer:
             "CancelButton", "cross.svg", "✕", tr("Cancel"))
     cancel_button.pressed.connect(_on_cancel_pressed)
     buttons_row.add_child(cancel_button)
-    # Closing the contract is offered only while the panel edits one: a fresh order has
-    # nothing to close. The button sits to the RIGHT of cancel so that the total keeps the
-    # free space left of the buttons (see _update_total_label).
-    if not _selected_contract.is_empty():
-        _close_contract_button = _make_icon_button(
-                "CloseContractButton", "contract_off.svg", "⊘", tr("Close the contract"))
-        _close_contract_button.pressed.connect(_on_close_contract_pressed)
-        buttons_row.add_child(_close_contract_button)
+    _cancel_deal_button = _make_icon_button(
+            "CancelDealButton", "contract_off.svg", "⊘", tr("Cancel the deal"))
+    _cancel_deal_button.pressed.connect(_on_cancel_deal_pressed)
+    buttons_row.add_child(_cancel_deal_button)
+    _update_cancel_deal_button()
     vbox.add_child(buttons_row)
 
     return panel
@@ -1078,7 +1074,20 @@ func _on_permanent_label_input(event: InputEvent) -> void:
 func _on_permanent_toggled(pressed: bool) -> void:
     _panel_permanent = pressed
     _update_total_label(_current_amount())
+    _update_deal_status_label()
     _update_confirm_tooltip()
+    _update_cancel_deal_button()
+
+func _update_cancel_deal_button() -> void:
+    if _cancel_deal_button == null or not is_instance_valid(_cancel_deal_button):
+        return
+    var permanent := _permanent_check != null and is_instance_valid(_permanent_check) \
+            and _permanent_check.button_pressed
+    var has_deal := not _selected_contract.is_empty() if permanent \
+            else not _selected_delivery.is_empty()
+    _cancel_deal_button.visible = has_deal
+    _cancel_deal_button.tooltip_text = tr("Close the contract") if permanent \
+            else tr("Cancel the deal")
 
 # The confirm button explains itself by what it will actually do. While the panel edits a
 # standing contract AND the "Permanent" flag is on, confirm updates that contract; with the
@@ -1174,7 +1183,7 @@ func _update_amount_feedback() -> void:
     if _confirm_button != null and is_instance_valid(_confirm_button):
         _confirm_button.disabled = amount <= 0
     _update_warning_badge(amount)
-    _update_supply_label(amount)
+    _update_deal_status_label()
     _update_total_label(amount)
 
 # The sum of the order, in the free space left of the confirm/cancel buttons. It is
@@ -1249,39 +1258,22 @@ func _format_speed(value: float) -> String:
         return str(int(roundf(value)))
     return "%.1f" % value
 
-# The line that names the rate at which the town serves a standing contract for the
-# selected good for free (see the supply section of town_economy.gd). It is shown only for
-# the SALE column: there the city buys from the town, and that rate is what the town
-# covers without touching its warehouse. The purchase column is about what the town LACKS,
-# and the town's own supply says nothing about that.
-#
-# The line turns red as soon as the amount climbs over the rate: the town will still serve
-# the order for a while out of its stock, but it falls behind — the faster, the bigger the
-# order — and the warehouse will run dry and the contract will be torn. It is the same
-# warning the route capacity gets, only about the supply and not about the road.
-func _update_supply_label(amount: int) -> void:
-    if _supply_label == null or not is_instance_valid(_supply_label):
+func _update_deal_status_label() -> void:
+    if _deal_status_label == null or not is_instance_valid(_deal_status_label):
         return
-    var rate := _supply_rate()
-    if rate <= 0.0:
-        _supply_label.visible = false
+    var permanent := _permanent_check != null and is_instance_valid(_permanent_check) \
+            and _permanent_check.button_pressed
+    var deal: Dictionary = _selected_contract if permanent else _selected_delivery
+    if deal.is_empty():
+        _deal_status_label.visible = false
         return
-    _supply_label.visible = true
-    var text := tr("Town supply: up to %s units/sec") % _format_speed(rate)
-    if amount > 0 and float(amount) > rate:
-        _supply_label.text = text + " — " + tr("the warehouse will run dry")
-        _supply_label.add_theme_color_override("font_color", COLOR_EXPENSE)
+    _deal_status_label.visible = true
+    if permanent:
+        _deal_status_label.text = tr("Contract: %d units/sec") % int(deal.get("amount", 0))
     else:
-        _supply_label.text = text
-        _supply_label.add_theme_color_override("font_color", SUPPLY_TEXT_COLOR)
-
-# The rate the town serves a standing contract with for the selected good, in units per
-# second. Zero when the window is not on the sale column or the town does not trade the
-# good at all — then there is nothing to promise and the line stays hidden.
-func _supply_rate() -> float:
-    if _selected_side != SIDE_SELL or _town == null:
-        return 0.0
-    return TownManager.get_town_supply_rate(_town, _selected_id)
+        _deal_status_label.text = tr("One-time deal: %d units in transit") % int(
+                deal.get("remaining", deal.get("amount", 0)))
+    _deal_status_label.add_theme_color_override("font_color", DEAL_STATUS_TEXT_COLOR)
 
 # --- Confirm / cancel ---
 
@@ -1315,6 +1307,9 @@ func _on_confirm_pressed() -> void:
         "unit_price": _selected_unit_price(),
     }
     emit_signal("trade_order_submitted", _last_order)
+    _sync_selected_delivery()
+    _update_deal_status_label()
+    _update_cancel_deal_button()
 
 func _on_cancel_pressed() -> void:
     _clear_selection()
@@ -1337,6 +1332,19 @@ func _on_close_contract_pressed() -> void:
     _panel_permanent = false
     _open_trade_panel(DEFAULT_AMOUNT)
     emit_signal("contract_close_requested", contract_id)
+
+func _on_cancel_deal_pressed() -> void:
+    var permanent := _permanent_check != null and is_instance_valid(_permanent_check) \
+            and _permanent_check.button_pressed
+    if permanent:
+        _on_close_contract_pressed()
+        return
+    if _selected_delivery.is_empty():
+        return
+    emit_signal("delivery_cancel_requested", str(_town.get("id", "")), _selected_id)
+    _sync_selected_delivery()
+    _update_deal_status_label()
+    _update_cancel_deal_button()
 
 # --- The categories ---
 

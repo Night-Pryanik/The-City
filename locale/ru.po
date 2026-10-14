@@ -774,6 +774,9 @@ msgstr "Контракт расторгнут: казна не может пла
 msgid "Contract updated: %d units of %s per second from %s."
 msgstr "Контракт изменён: %d ед. %s в секунду из городка %s."
 
+msgid "Contract: %d units/sec"
+msgstr "Контракт: %d ед/сек"
+
 msgid "Copy the list"
 msgstr "Скопировать список"
 
@@ -1127,6 +1130,9 @@ msgstr "Ок"
 
 msgid "ON"
 msgstr "вкл"
+
+msgid "One-time deal: %d units in transit"
+msgstr "Разовая сделка: %d ед. в пути"
 
 msgid "Once built, %s will produce:"
 msgstr "При постройке %s будет производить:"
@@ -1596,9 +1602,6 @@ msgstr "Контракт уже закрыт."
 msgid "The goods are on the way from the town. Cancelling the deal returns the un-shipped part to the town and refunds %d coins."
 msgstr "Товар в пути из городка. Отмена вернёт неотправленную часть в городок и %d монет в казну."
 
-msgid "The rate the town serves a contract with for free.\nA larger order strains it: it keeps up less and less,\nand its warehouse falls behind — the bigger the order,\nthe faster the stock runs dry and the contract is torn."
-msgstr "Темп, с которым городок обслуживает контракт бесплатно.\nБолее крупный заказ заставляет его напрягаться: он поспевает\nвсё хуже, и склад начинает отставать — чем крупнее заказ,\nтем быстрее склад опустеет и контракт будет разорван."
-
 msgid "The time the goods spend on the road from the town to the city"
 msgstr "Время, которое товар проводит на дороге от городка до города"
 
@@ -1658,9 +1661,6 @@ msgstr "Городок"
 
 msgid "Town %d"
 msgstr "Городок %d"
-
-msgid "Town supply: up to %s units/sec"
-msgstr "Поставка городка: до %s ед/сек"
 
 msgid "Trade"
 msgstr "Торговля"

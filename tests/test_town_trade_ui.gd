@@ -10,7 +10,8 @@
 #   3. PANEL. The panel carries the amount field, the "+"/"−" buttons with the step
 #      tooltips, the "Permanent" checkbox (off by default, its tooltip scoped to the
 #      box and not to the caption) and the confirm/cancel buttons — small square
-#      buttons with the icons of a check mark and a cross and no text at all. No
+#      buttons with the icons of a check mark and a cross and no text at all. The deal
+#      cancellation button is shown only when a deal of the selected mode exists. No
 #      heading row repeats the side and the name of the selected row, and the frames
 #      of the buttons, of the checkbox and of the field are light enough to be seen
 #      on the dark panel.
@@ -35,15 +36,12 @@
 #      confirm/cancel buttons, and it follows the amount in REAL TIME — the field and
 #      the "+"/"−" buttons both go through the same update. A sale column totals as a
 #      cost (the city pays), a purchase column as an income (the city is paid).
-#  10. SUPPLY. The panel names the rate at which the town serves a standing contract for
-#      free — its comfort rate — for the sale column only. The line turns red the moment
-#      the amount climbs over the rate (the town would fall behind, the faster the bigger
-#      the order) and stays hidden outside the sale column. Its long explanation goes
-#      through the wrapping tooltip, like the route warning.
+#   10. DEAL STATUS. The panel names an existing contract or delivery for the selected
+#       good, and hides the line when there is no deal of the selected type.
 #  11. CONTRACT. A town carries one contract per good (see town_trade_manager), so a click
 #      on the row of a good that already has one opens the settings of THAT contract: the
 #      amount comes prefilled, the "Permanent" flag is on, the total is counted at the price
-#      frozen at the signing, and a "close the contract" button appears. Closing the contract
+#      frozen at the signing, and the deal-cancel button appears in contract mode. Closing the contract
 #      turns the panel back into a fresh order on the same row.
 #  12. CONTRACT SYNC. The panel follows the contract of the good it shows: an order that has
 #      just been signed turns into an edit of the new contract at once (the manager announces
@@ -82,15 +80,27 @@ class StubMap extends Node:
 # and asks to close it by the signal contract_close_requested.
 class ContractMap extends Node:
     var contracts: Dictionary = {}
+    var deliveries: Array = []
+    var cancelled_deliveries: Array = []
     func get_route_to_city(_row: int, _col: int) -> Dictionary:
         return {"ok": false}
     func get_town_contract(town_id: String, product_id: String) -> Dictionary:
         var key := "%s|%s" % [town_id, product_id]
         return (contracts.get(key, {}) as Dictionary).duplicate()
+    func get_town_deliveries() -> Array:
+        return deliveries.duplicate(true)
     func close_contract(contract_id: String) -> void:
         for key in contracts.keys():
             if str((contracts[key] as Dictionary).get("id", "")) == contract_id:
                 contracts.erase(key)
+    func cancel_town_delivery(town_id: String, product_id: String) -> Dictionary:
+        cancelled_deliveries.append({"town_id": town_id, "product_id": product_id})
+        for index in range(deliveries.size() - 1, -1, -1):
+            var delivery: Dictionary = deliveries[index]
+            if str(delivery.get("town_id", "")) == town_id \
+                    and str(delivery.get("product_id", "")) == product_id:
+                deliveries.remove_at(index)
+        return {"ok": true, "message": "delivery cancelled"}
 
 var _failed := false
 var _ui = null
@@ -147,10 +157,12 @@ func _run() -> void:
         await _test_price(town)
     if WATCHDOG.wants_case("total"):
         await _test_total(town)
-    if WATCHDOG.wants_case("supply"):
-        await _test_supply(town)
+    if WATCHDOG.wants_case("deal_status"):
+        await _test_deal_status(town)
     if WATCHDOG.wants_case("contract"):
         await _test_contract(town)
+    if WATCHDOG.wants_case("deal_cancel"):
+        await _test_deal_cancel(town)
     if WATCHDOG.wants_case("contract_sync"):
         await _test_contract_sync(town)
 
@@ -692,81 +704,52 @@ func _test_total(town: Dictionary) -> void:
                 % _ui._total_label.text)
 
 # -------------------------------------------------------
-# 10. The supply of the town in the panel
+# 10. Current deal status in the panel
 # -------------------------------------------------------
 
-func _test_supply(town: Dictionary) -> void:
+func _test_deal_status(town: Dictionary) -> void:
     var local: Dictionary = town.duplicate(true)
+    var map := ContractMap.new()
+    _ui.set_map(map)
     _ui.open_town(local, true)
     await process_frame
     _click(_rows_of(_ui.sell_list)[0])
     await process_frame
-    _check(_ui._supply_label != null, "the panel must have the supply line")
-    if _ui._supply_label == null:
+    _check(_ui._deal_status_label != null, "the panel must have the deal status line")
+    if _ui._deal_status_label == null:
         return
+    _check(not _ui._deal_status_label.visible,
+        "the status line must stay hidden when the selected good has no deal")
+    _check(_ui._deal_status_label.tooltip_text.is_empty(),
+        "the deal status line must not carry a tooltip")
 
-    # The supply of a town is its comfort rate — the rate it serves a contract with for
-    # free — for any good it trades, and it is NOT derived from its buildings.
-    var ceiling: float = (float(_gdata.game_balance.get("town_storage_initial_min", 0)) \
-            + float(_gdata.game_balance.get("town_storage_initial_max", 0))) * 0.5
-    var comfort: float = ceiling * float(_gdata.game_balance.get("town_contract_comfort", -1))
-    _check(comfort > 0.0, "the comfort rate must be positive")
-    _check(is_equal_approx(_ui._supply_rate(), comfort),
-        "the supply rate must be the comfort rate of a town (got %s)"
-            % str(_ui._supply_rate()))
-    _check(_ui._supply_label.visible,
-        "the supply line must appear for a good the town trades")
-    _check(_ui._supply_label.text.contains(str(int(comfort))),
-        "the supply line must name the rate (got \"%s\")" % _ui._supply_label.text)
-    # The hint is LONG, so it goes through the wrapping tooltip: the built-in one draws
-    # its text in a single line that runs off the edge of the window. The mechanism keeps
-    # the text on a carrier laid over the line and answers the engine with a WRAPPING
-    # label — so the content is produced by the project and not by the engine default.
-    #
-    # The node that owns the text MUST catch the mouse: a Label defaults to
-    # mouse_filter = IGNORE, the hover never reaches it and the tooltip is shown NEVER —
-    # a tooltip whose text nothing can read.
-    var supply_tip = _tip_carrier(_ui._supply_label)
-    _check(supply_tip != null,
-        "the supply line must carry the wrapping tooltip, otherwise its long hint comes out as one line")
-    if supply_tip != null:
-        _check(not supply_tip.tooltip_text.is_empty(),
-            "the supply line must explain itself in a tooltip")
-        _check(supply_tip.mouse_filter != Control.MOUSE_FILTER_IGNORE,
-            "the owner of the supply tooltip must catch the mouse (mouse_filter != IGNORE), otherwise its tooltip will not show (got %d)"
-                % supply_tip.mouse_filter)
-        # ... and it must COVER the line: the carrier is laid over the label while the
-        # label still has no size (the panel is not laid out yet), so it lives on its
-        # anchors alone. A carrier left at zero size is never picked by the hover, and the
-        # tooltip would be as unreachable as one on a control with MOUSE_FILTER_IGNORE.
-        _check(supply_tip.size == _ui._supply_label.size and supply_tip.size.x > 0.0,
-            "the carrier of the supply tooltip must cover the line (carrier %s, line %s)"
-                % [str(supply_tip.size), str(_ui._supply_label.size)])
-        var supply_content: Label = WRAPPED_TOOLTIP.build(supply_tip.tooltip_text)
-        _check(supply_content.autowrap_mode != TextServer.AUTOWRAP_OFF,
-            "the supply tooltip must be wrapping (autowrap != OFF), otherwise it is a single unreadable line")
-
-    # Within the rate: the line is muted and adds no warning.
-    _ui._set_amount(int(comfort) - 1)
-    _check(_ui._supply_label.get_theme_color("font_color") == _ui.SUPPLY_TEXT_COLOR,
-        "an order within the supply must not warn (got %s)"
-            % str(_ui._supply_label.get_theme_color("font_color")))
-
-    # Above the rate: the line turns red and names the consequence.
-    _ui._set_amount(int(comfort) + 1)
-    _check(_ui._supply_label.get_theme_color("font_color") == _ui.COLOR_EXPENSE,
-        "an order above the supply must turn the line red (got %s)"
-            % str(_ui._supply_label.get_theme_color("font_color")))
-    _check(_ui._supply_label.text != _ui.tr("Town supply: up to %s units/sec") % str(int(comfort)),
-        "an order above the supply must add the warning to the line (got \"%s\")"
-            % _ui._supply_label.text)
-
-    # The purchase column has no supply: the town's own supply says nothing about what it
-    # LACKS.
-    _click(_rows_of(_ui.buy_list)[0])
+    map.contracts["town_test|%s" % WOOD] = {
+        "id": "contract_status_test", "amount": 7,
+    }
+    _ui.on_contracts_changed()
     await process_frame
-    _check(not _ui._supply_label.visible,
-        "the purchase column must not show a supply line")
+    _check(_ui._deal_status_label.visible
+            and _ui._deal_status_label.text == _ui.tr("Contract: %d units/sec") % 7,
+        "an existing contract must be shown with its amount (got \"%s\")"
+            % _ui._deal_status_label.text)
+
+    map.deliveries.append({
+        "town_id": "town_test", "product_id": WOOD, "remaining": 4,
+    })
+    _ui.refresh_storage()
+    _ui._permanent_check.set_pressed_no_signal(false)
+    _ui._on_permanent_toggled(false)
+    await process_frame
+    _check(_ui._deal_status_label.visible
+            and _ui._deal_status_label.text == _ui.tr("One-time deal: %d units in transit") % 4,
+        "an existing one-time deal must show its remaining amount (got \"%s\")"
+            % _ui._deal_status_label.text)
+
+    map.deliveries[0]["remaining"] = 0
+    _ui._sync_selected_delivery()
+    _ui._update_deal_status_label()
+    _check(not _ui._deal_status_label.visible,
+        "a completed delivery must not be shown as an active deal")
 
 # -------------------------------------------------------
 # 11. Editing an existing contract
@@ -818,11 +801,12 @@ func _test_contract(town: Dictionary) -> void:
     _check(_ui._total_label.text == "Cost: %d/sec" % (40 * frozen_price),
         "an edit must total at the frozen price (got \"%s\", expected \"Cost: %d/sec\")"
             % [_ui._total_label.text, 40 * frozen_price])
-    var close_button: Button = _ui._trade_panel.find_child("CloseContractButton", true, false)
-    _check(close_button != null, "the panel of an existing contract must offer to close it")
+    var close_button: Button = _ui._trade_panel.find_child("CancelDealButton", true, false)
+    _check(close_button != null and close_button.visible,
+        "the panel of an existing contract must offer to close it")
     if close_button != null:
-        _check(not close_button.tooltip_text.is_empty(),
-            "the close button must explain itself in a tooltip")
+        _check(close_button.tooltip_text == _ui.tr("Close the contract"),
+            "the close button must identify contract cancellation")
         _check(close_button.icon != null, "the close button must carry its icon")
 
     # The order carries the frozen price as well, so the treasury is charged exactly the sum
@@ -873,8 +857,9 @@ func _test_contract(town: Dictionary) -> void:
         "a fresh order must start from the default step (got \"%s\")" % _ui._amount_edit.text)
     _check(not _ui._permanent_check.button_pressed,
         "a fresh order must have the \"Permanent\" flag off")
-    _check(_ui._trade_panel.find_child("CloseContractButton", true, false) == null,
-        "a fresh order must not offer to close a contract")
+    close_button = _ui._trade_panel.find_child("CancelDealButton", true, false)
+    _check(close_button != null and not close_button.visible,
+        "a fresh order without a delivery must not offer deal cancellation")
 
     # A row without a contract stays a fresh order.
     var planks_row := _row_by_key(_ui.sell_list, "sell:%s" % PLANKS)
@@ -884,8 +869,62 @@ func _test_contract(town: Dictionary) -> void:
         await process_frame
         _check(_ui._selected_contract.is_empty(),
             "a row without a contract must be a fresh order")
-        _check(_ui._trade_panel.find_child("CloseContractButton", true, false) == null,
-            "a row without a contract must not offer to close anything")
+        var deal_cancel_button: Button = _ui._trade_panel.find_child("CancelDealButton", true, false)
+        _check(deal_cancel_button != null and not deal_cancel_button.visible,
+            "a row without a contract or delivery must not offer deal cancellation")
+
+    _ui._map = null
+    map.queue_free()
+
+# The same resource can have a contract and a one-time delivery at once. The checkbox
+# selects which of those deals the panel's cancellation button acts on.
+func _test_deal_cancel(town: Dictionary) -> void:
+    var map := ContractMap.new()
+    get_root().add_child(map)
+    map.contracts["town_test|%s" % WOOD] = {
+        "id": "contract_cancel_test", "town_id": "town_test", "town_name": "Testville",
+        "product_id": WOOD, "amount": 8, "unit_price": 6, "cost_per_tick": 48,
+    }
+    map.deliveries = [{
+        "town_id": "town_test", "product_id": WOOD, "remaining": 12, "amount": 12,
+    }]
+    _ui._map = map
+    _ui.contract_close_requested.connect(map.close_contract)
+    _ui.delivery_cancel_requested.connect(map.cancel_town_delivery)
+
+    _ui.open_town(town, true)
+    await process_frame
+    var wood_row := _row_by_key(_ui.sell_list, "sell:%s" % WOOD)
+    _check(wood_row != null, "the town must have a row for both deal types")
+    if wood_row == null:
+        return
+    _click(wood_row)
+    await process_frame
+    var button: Button = _ui._trade_panel.find_child("CancelDealButton", true, false)
+    _check(button != null and button.visible,
+        "the permanent mode must expose cancellation when a contract exists")
+    if button == null:
+        return
+
+    _ui._permanent_check.button_pressed = false
+    await process_frame
+    _check(button.visible and button.tooltip_text == _ui.tr("Cancel the deal"),
+        "the one-time mode must expose delivery cancellation")
+    button.pressed.emit()
+    _check(map.contracts.has("town_test|%s" % WOOD),
+        "cancelling a one-time deal must leave the contract untouched")
+    _check(map.deliveries.is_empty() and map.cancelled_deliveries.size() == 1,
+        "the one-time mode must cancel the selected town delivery")
+
+    _ui._permanent_check.button_pressed = true
+    await process_frame
+    _check(button.visible and button.tooltip_text == _ui.tr("Close the contract"),
+        "the permanent mode must select contract cancellation")
+    button.pressed.emit()
+    _check(not map.contracts.has("town_test|%s" % WOOD),
+        "the permanent mode must cancel the contract")
+    _check(map.cancelled_deliveries.size() == 1,
+        "cancelling a contract must not cancel a one-time deal")
 
     _ui._map = null
     map.queue_free()
@@ -917,8 +956,9 @@ func _test_contract_sync(town: Dictionary) -> void:
         "a click on the row must open the trade panel")
     if _ui._trade_panel == null:
         return
-    _check(_ui._trade_panel.find_child("CloseContractButton", true, false) == null,
-        "a fresh order must not offer to close a contract")
+    var cancel_button: Button = _ui._trade_panel.find_child("CancelDealButton", true, false)
+    _check(cancel_button != null and not cancel_button.visible,
+        "a fresh order without a delivery must not offer cancellation")
 
     # The player confirms with the "Permanent" flag on. The manager signs the contract and
     # announces it; the stub signs by hand and then the window is told, exactly as the map
@@ -942,8 +982,9 @@ func _test_contract_sync(town: Dictionary) -> void:
         "the panel must show the amount of the new contract (got \"%s\")" % _ui._amount_edit.text)
     _check(_ui._permanent_check.button_pressed,
         "the panel of the new contract must have the \"Permanent\" flag on")
-    _check(_ui._trade_panel.find_child("CloseContractButton", true, false) != null,
-        "the panel of the new contract must offer to close it WITHOUT a reopening")
+    cancel_button = _ui._trade_panel.find_child("CancelDealButton", true, false)
+    _check(cancel_button != null and cancel_button.visible,
+        "the panel of the new contract must offer cancellation WITHOUT a reopening")
     _check(_ui._total_label.text == "Cost: %d/sec" % (35 * 6),
         "the total must be counted at the frozen price of the new contract (got \"%s\")"
             % _ui._total_label.text)
@@ -954,9 +995,10 @@ func _test_contract_sync(town: Dictionary) -> void:
     await process_frame
     _check(_ui._selected_contract.is_empty(),
         "a contract that has gone must turn the panel back into a fresh order")
+    cancel_button = _ui._trade_panel.find_child("CancelDealButton", true, false)
     _check(_ui._trade_panel != null and is_instance_valid(_ui._trade_panel)
-            and _ui._trade_panel.find_child("CloseContractButton", true, false) == null,
-        "a fresh order must not offer to close a contract")
+            and cancel_button != null and not cancel_button.visible,
+        "a fresh order without a delivery must not offer cancellation")
     _check(not _ui._permanent_check.button_pressed,
         "a fresh order must have the \"Permanent\" flag off")
 

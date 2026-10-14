@@ -525,6 +525,7 @@ func _ready():
     # town_ui._on_close_contract_pressed): the mechanics live in town_trade_manager, the
     # answer is reported by the HUD.
     town_ui.contract_close_requested.connect(_on_town_contract_close_requested)
+    town_ui.delivery_cancel_requested.connect(_on_town_delivery_cancel_requested)
     # The list of the contracts changed (signed, updated or torn): the trade panel of the
     # window follows the contract of the good it shows, so an order that has just become a
     # standing contract can be closed or corrected without reopening the panel
@@ -2576,6 +2577,14 @@ func _on_town_contract_close_requested(contract_id: String) -> void:
     if town_trade_manager == null:
         return
     var result: Dictionary = town_trade_manager.close_contract(contract_id)
+    var message := str(result.get("message", ""))
+    if not message.is_empty():
+        hud.show_message(message)
+
+func _on_town_delivery_cancel_requested(town_id: String, product_id: String) -> void:
+    if town_trade_manager == null:
+        return
+    var result: Dictionary = town_trade_manager.cancel_delivery(town_id, product_id)
     var message := str(result.get("message", ""))
     if not message.is_empty():
         hud.show_message(message)
