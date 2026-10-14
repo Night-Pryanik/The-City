@@ -2872,3 +2872,160 @@ than how fine they are, because "fine" no longer identifies one of them.
 
 **Cost.** Three clicks now do the work of one when the player wants hundreds. Shift keeps that cheap,
 and the tooltips state the whole rule, so the change is discoverable without a manual.
+
+## A standing contract is backed by production, not by the stock (October 12, 2026)
+
+**Context.** The town trade worked, and it was unplayable. A standing purchase contract drew `amount`
+units from the warehouse of the town every tick of the city, while the warehouse itself moved only by
+the daily trade: a lot of 3..15 units per town tick, four times slower than the city ticks. The two
+scales had nothing to do with each other. A contract of 10 per second took 40 units per town tick off
+a shelf that held a few hundred, so a town was emptied in thirty to fifty seconds and the contract
+tore — the player signed a deal, watched the number fall, and got a "ran out" notice a minute later.
+
+**The diagnosis was a missing mechanic, not a balance number.** The `production` map of a town — the
+rate the ring and the recipes give it (`cows` -> 30 raw_meat, a recipe's `{"silk": 10}` -> 10 silk per
+town tick) — was computed on every pool rebuild and stored in the record, and NOTHING read it. The
+town had a production rate and did not produce. Raising `town_storage_initial_*` would only have
+bought time: the shelf was a buffer with no income behind it.
+
+**Decision: the stock is the buffer, the production is the rate.** A one-time purchase is limited by
+the stock (buying a town out is the point of a one-time deal). A standing contract is limited by the
+production. `tick_contracts()` now credits the warehouse with the part of the deal the town covers
+from its own output before the stock check, so a contract within the town's rate leaves the shelf
+untouched and a contract above it loses the difference every tick.
+
+**Decision: a town strains, but not without limit.** A town asked for more than it makes works its
+people and its workshops harder: the strain factor climbs from 1 with the order and stops at
+`town_contract_strain_max` (3), so the rate a town can serve FOREVER is `production / town_tick_ticks
+× 3`. The alternative — feeding the town exactly what the contract asks — was rejected because it
+makes the town infinitely elastic: the shelf becomes a number that never moves and the player can
+never exhaust a town, which kills the resource pressure the whole trade is for. The bounded strain
+keeps both: a reasonable contract holds, a greedy one still runs the town dry and tears.
+
+**The strain is computed on the summed demand.** `_credit_town_supply()` runs once per town and good
+per tick, keyed on the total of every contract for that pair, so signing two deals for the same good
+does not make the town produce twice.
+
+**The rate is on the screen.** The trade panel names the supply of the town for the sale column
+(`TownManager.get_town_supply_rate`) and turns the line red the moment the amount climbs over it —
+the same kind of warning the route capacity already gives, only about the supply and not about the
+road. Without it the player signs contracts that are doomed by construction and reads the teardown as
+a bug.
+
+**Cost.** The town window does not show a per-row supply number: the sale column is ~360 px and
+already carries the icon, the name, the price, the stars and the stock, and the number that matters
+is the one next to the amount the player is typing. If the per-row hint is ever wanted, the row
+tooltip is the place for it, not a sixth label.
+
+## The supply of a town is a flat ceiling, not a building (October 13, 2026)
+
+**Context.** The previous day's fix made a standing contract rest on the town's `production` map, and
+the design owner pushed back on the premise. The map was built by running every ready recipe once per
+town tick, so a town produced exactly what ONE building of each kind makes — 10 silk per town tick
+because that is the output of a single silkwaker's house. `produced_in` was ignored on purpose (the
+town builds no city buildings), so nothing tied the number to a plausible number of workshops. A town
+has no population limit: it can raise as many workshops as its materials allow, and the count is not
+something the player can audit. Tying a contract to the recipe plan therefore tied it to an artefact
+of the data, not to a fact about the town.
+
+**Decision: the ceiling is a flat constant.** `town_contract_capacity` (20 units/sec) replaces
+`town_contract_strain_max`. A town strains to meet the order — `supply = demand × strain`,
+`strain = min(1, capacity / demand)` — so it follows the demand exactly while the order fits under the
+ceiling and saturates at the ceiling above it. An order within the ceiling is served forever and
+leaves the warehouse untouched; an order above it drains the stock and tears. The ceiling sits inside
+the band of the roads (a trail carries 10/sec, a cart road 30/sec) so that it stays a meaningful
+constraint instead of being either inert or the only limit.
+
+**The `production` map is gone.** `collect_base_yields()` and the `production` output of
+`build_pools()` / `refresh_town()` were removed outright rather than left dead: a number that encodes
+a rejected model is a trap for the next reader. `_close_pool()` no longer carries a rate, and the
+record no longer holds one. What a town trades is the sell pool; what it can supply is the flat
+ceiling; how much it has is the warehouse, moved by the daily trade alone.
+
+**The payment is checked before the credit.** `tick_contracts()` now tears an unpayable contract
+BEFORE crediting the town's supply, so a deal the treasury cannot pay never makes the town produce
+goods it will not sell. The supply is still credited once per town and good, on the summed demand of
+all the contracts, so splitting a deal in two does not raise the ceiling the town can serve.
+
+**Cost.** A contract within the ceiling no longer moves the warehouse at all, so several tests that
+asserted "the shelf falls by the amount every tick" were rewritten to the new contract: the shelf
+stays put, and the goods are shown by the queue on the road instead. The `production_plan` case of
+`test_town_economy.gd` was dropped along with the map it tested.
+
+## The supply of a town is a curve, not a ceiling (October 14, 2026)
+
+**Context.** The flat `town_contract_capacity` (20 units/sec) was anchored to the ROAD band — a trail
+carries 10/sec, a cart road 30/sec — on the reasoning that the ceiling should sit inside it to stay a
+meaningful constraint. The design owner pointed out the trap: the moment a faster road level is added
+(60 units/sec, say), the town becomes the bottleneck of every trade and the number has to be retuned
+with every road. A town must not be defined by the roads of the moment.
+
+**Decision: the warehouse defines the town, and the town strains along a curve.** The absolute ceiling
+of a town is now the average starting stock of a good read as a RATE (`(town_storage_initial_min +
+town_storage_initial_max) / 2` = 300 units/sec): a town that keeps a warehouse of a good can also
+restock it in a second, and nothing it does can outrun that. The roads are a separate limit and may
+grow freely.
+
+A town serves an order up to its COMFORT rate for free — 10% of the ceiling (`town_contract_comfort`),
+30 units/sec — and the warehouse is untouched below it. Above it the town STRAINS, and the key rule is
+that the strained output NEVER catches up with the order: `supply = order − drain`, with `drain =
+town_contract_drain × ((order − comfort) / comfort) ^ town_contract_drain_curve` (0.75 at twice the
+comfort rate, exponent 0.3). The sub-unity exponent makes the drain grow fast at first and then
+flatten, so a contract just over the comfort rate empties a warehouse in about ten minutes while a
+huge one empties it in five — the shortfall is small in absolute terms, but it never stops.
+
+**The drain is a fraction, the warehouse is whole.** A drain below one unit per tick is the point of
+the curve, but the warehouse holds whole units and the credit was rounded — so a slow drain would be
+rounded away on every tick and never show up at all. `_drain_remainder` carries the fraction of the
+drain from tick to tick and applies it in whole units when it crosses one. It is transient state of
+the tick and is not saved.
+
+**Rejected: feeding the town the contract amount.** The first proposal — add the town exactly what the
+contract draws — makes the shelf a number that never moves and the player can never exhaust a town.
+The curve keeps the pressure: a reasonable contract holds for a long time, a greedy one runs the town
+dry.
+
+**Cost.** The tests that asserted "the shelf falls by the amount every tick" were rewritten to the
+curve, and a new `_measure_drain` helper compares the loss of two orders over the same run of ticks.
+
+## The supply tooltip never showed: a Label does not catch the mouse (October 14, 2026)
+
+The line "Town supply: up to N units/sec" carries the whole explanation of the mechanic in its
+tooltip, and the tooltip never appeared. The cause was one line: the label was created with
+`mouse_filter = MOUSE_FILTER_IGNORE`. A `Label` defaults to `IGNORE`, and a control with `IGNORE` is
+never returned by the GUI picking — the hover does not reach it and the standard tooltip is shown
+NEVER. The text was set, the catalog was translated, the test asserted the text was non-empty — and
+nothing could ever read it, because the test checked the string and not the reachability of the node.
+
+This is the same trap the cards of the trade tab hit once (see `test_trade_tab.gd`): the nodes that
+carry a tooltip must CATCH the mouse. `warning_badge.gd` already documents the rule on its own
+`_init`. The supply line now uses `MOUSE_FILTER_STOP`, and the `supply` case of
+`test_town_trade_ui.gd` asserts `mouse_filter != IGNORE` so the line cannot silently go deaf again.
+
+**Note.** The other two strings the report quoted ("How much of the good the town can supply every
+second…", "What the town produces on its own…") were not live either: they were the earlier wordings
+of the same tooltip, kept in `locale/ru.po` as orphans by `i18n_build_po.py` (it preserves catalog
+entries that no longer have a call in the code). They were dead weight, not tooltips, and were pruned
+in the catalog cleanup of the same day.
+
+## The tooltip is one long line: the built-in tooltip does not wrap (October 14, 2026)
+
+With the tooltip finally reachable, the next problem showed at once: it came out as ONE line that ran
+off the edge of the window. The theme (`theme/tooltips_theme.tres`) styles only the `TooltipPanel`,
+and nothing in the project overrides `_make_custom_tooltip` — so the built-in tooltip label has no
+autowrap and no width limit, and a long hint is simply a long line. A scan of every `tooltip_text` in
+`scripts/` and `scenes/` found only these two (the supply line and the route warning of the same
+panel), so this was the first time the limit was hit.
+
+**Decision: break the text by hand.** The hint is written with explicit `\n`, which a `Label` renders
+as a line break regardless of autowrap. It is the convention the project already uses for translatable
+strings (the technology descriptions), the i18n tools carry `\n` through the catalog untouched, and
+the cost is one catalog entry per hint. The alternative — a reusable control overriding
+`_make_custom_tooltip` to return a wrapping `Label` with a maximum width — is more general and adapts
+to any language, but it is a new mechanism in a project that has none, and the panel styling of a
+custom tooltip cannot be checked without running the game.
+
+**Guard.** `test_town_trade_ui.gd` now asserts that both tooltips are multi-line and that no line is
+longer than 80 characters, so a future rewrite cannot quietly turn them back into one line.
+
+

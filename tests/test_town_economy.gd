@@ -42,9 +42,6 @@
 #  16. STORAGE. Every good of the sell pool has a supply of 100..500
 #      (town_storage_initial_min/max), and it survives a pool recomputation —
 #      sold goods do not come back on save reload.
-#  17. PRODUCTION PLAN. The production plan (production) is derived from the
-#      recipes (10 silk -> 10 silk); the storage is moved by daily trade
-#      (tests 23+).
 #  18. STORAGE LIMIT. town_storage_limit is per good, not for the whole
 #      storage: a town at the limit on one good keeps trading the others.
 #  19. TRADE AFTER SCOUTING. An unscouted town does not trade, otherwise by the
@@ -76,6 +73,12 @@
 #      by category, as on the city interface's "Resources" tab: the category
 #      header is a solid line, the name centered, the line; below it — rows of
 #      only that category.
+#  29. CONTRACT SUPPLY. What backs a standing contract is the SUPPLY of a town and not its
+#      stock: the town serves an order up to its comfort rate for free, and above it
+#      strains — the supply follows the order but always falls short of it, so the
+#      warehouse drains the faster, the bigger the order. The ceiling of a town is the
+#      average starting stock of a good read as a rate, and a demand of zero is covered by
+#      nothing.
 extends SceneTree
 
 # Watchdog against hangs: without it, a broken _run() coroutine looks like
@@ -154,8 +157,6 @@ func _run() -> void:
         await _test_town_treasury()
     if WATCHDOG.wants_case("storage_seeded"):
         _test_storage_seeded()
-    if WATCHDOG.wants_case("production_plan"):
-        _test_production_plan()
     if WATCHDOG.wants_case("storage_limit"):
         _test_storage_limit()
     if WATCHDOG.wants_case("production_after_scouting"):
@@ -174,6 +175,8 @@ func _run() -> void:
         await _test_window_shows_stock()
     if WATCHDOG.wants_case("town_ui_categories"):
         await _test_town_ui_categories()
+    if WATCHDOG.wants_case("contract_supply"):
+        _test_contract_supply()
 
     WATCHDOG.report_skipped()
     if _failed:
@@ -770,37 +773,6 @@ func _test_storage_seeded() -> void:
     _check(differs, "different towns must have different supplies of the same good")
 
 
-# 17. PRODUCTION PLAN BY RECIPE. The production plan (production) is derived
-# from the recipes: as much as a recipe promises, that much is written into the
-# plan. But the plan NO LONGER moves the storage directly — the storage is
-# moved by daily TRADE (test 23).
-func _test_production_plan() -> void:
-    var gd = get_root().get_node("GameData")
-    var base: Array = _te.collect_base_resources(_tiles_with([WOOD]))
-    var pools: Dictionary = _te.build_pools("town_prod", base)
-    var production: Dictionary = pools["production"]
-    _check(not production.is_empty(),
-        "from wood the town produces something — the production plan is not empty")
-    var checked := 0
-    for pid in production:
-        var id := str(pid)
-        # We look for a recipe with such a result and compare the output.
-        for craft in gd.crafts:
-            var result: Dictionary = craft.get("result", {})
-            if not result.has(id):
-                continue
-            _check(int(production[id]) == int(result[id]),
-                "recipe \"%s\" output for \"%s\": plan=%d, recipe=%d"
-                    % [str(craft.get("id", "")), id, int(production[id]), int(result[id])])
-            checked += 1
-            break
-        # Import does not land in storage.
-        _check(not pools["buy_pool"].has(id),
-            "the bought good \"%s\" must not land in the production plan" % id)
-    _check(checked > 0,
-        "the test must compare at least one good against a recipe (compared: %d)" % checked)
-
-
 # 18. STORAGE LIMIT. The limit applies PER GOOD, not to the whole storage: a
 #     town that has hit the ceiling on one good keeps trading the others.
 func _test_storage_limit() -> void:
@@ -861,7 +833,6 @@ func _test_production_after_scouting() -> void:
             % [town_tick, float(city_data.SIMULATION_TICK)])
     var town: Dictionary = tm._make_town_record(0, 5, 5, false)
     town["sell_pool"] = [WOOD]
-    town["production"] = {WOOD: 10}
     town["storage"] = {WOOD: 100}
     tm.towns.append(town)
 
@@ -895,7 +866,6 @@ func _test_production_after_scouting() -> void:
     # The second scouting path — a hex inside known territory, without is_explored.
     var town2: Dictionary = tm._make_town_record(1, 1, 1, false)
     town2["sell_pool"] = [WOOD]
-    town2["production"] = {WOOD: 10}
     town2["storage"] = {WOOD: 100}
     tm.towns.append(town2)
     var known := _map_with_tile(1, 1, {"in_influence": true, "is_explored": false})
@@ -923,6 +893,78 @@ func _test_trade_comfort_from_data() -> void:
     _check(is_equal_approx(_te.get_trade_comfort(), 300.0),
         "with the current game_balance.json comfort must be 300 (got %.1f)"
             % _te.get_trade_comfort())
+
+
+# 29. CONTRACT SUPPLY. The pure arithmetic behind the supply of a town under a standing
+# contract: the town serves an order up to its comfort rate for free, and above it strains
+# — the supply follows the order but always falls short of it, and the drain grows with the
+# order, so the warehouse of the town falls behind the faster, the bigger the order. The
+# ceiling of a town is the average starting stock of a good read as a rate, and there is
+# deliberately NO dependence on the town's buildings.
+func _test_contract_supply() -> void:
+    var gd = get_root().get_node("GameData")
+    var lo := float(gd.game_balance.get("town_storage_initial_min", -1))
+    var hi := float(gd.game_balance.get("town_storage_initial_max", -1))
+    _check(lo >= 0.0 and hi > lo,
+        "the starting stock bounds must be sane (got %s..%s)" % [str(lo), str(hi)])
+
+    # The ceiling is the average starting stock read as a rate; the comfort rate is a share
+    # of it and sits strictly between zero and the ceiling.
+    var ceiling: float = _te.get_contract_ceiling()
+    var comfort: float = _te.get_contract_comfort()
+    _check(is_equal_approx(ceiling, (lo + hi) * 0.5),
+        "the ceiling must be the average starting stock (got %s)" % str(ceiling))
+    _check(comfort > 0.0 and comfort < ceiling,
+        "the comfort rate must sit inside (0, ceiling) (got %s of %s)"
+            % [str(comfort), str(ceiling)])
+    _check(is_equal_approx(comfort,
+            ceiling * float(gd.game_balance.get("town_contract_comfort", -1))),
+        "the comfort rate must be the configured share of the ceiling")
+
+    # Up to the comfort rate the town covers the WHOLE demand: the warehouse is untouched.
+    _check(is_equal_approx(_te.get_contract_supply(1.0), 1.0),
+        "a demand below the comfort rate must be covered in full")
+    _check(is_equal_approx(_te.get_contract_supply(comfort * 0.5), comfort * 0.5),
+        "a demand at half the comfort rate must be covered in full")
+    _check(is_equal_approx(_te.get_contract_supply(comfort), comfort),
+        "a demand exactly at the comfort rate must be covered in full")
+    _check(is_equal_approx(_te.get_contract_drain(comfort), 0.0),
+        "there must be no drain at the comfort rate")
+
+    # Above it the town strains: the supply follows the order but always falls short.
+    var anchor := float(gd.game_balance.get("town_contract_drain", -1))
+    _check(anchor > 0.0,
+        "town_contract_drain must be positive (got %s)" % str(anchor))
+    _check(is_equal_approx(_te.get_contract_drain(comfort * 2.0), anchor),
+        "the drain at twice the comfort rate must be the anchor (got %s)"
+            % str(_te.get_contract_drain(comfort * 2.0)))
+    _check(_te.get_contract_supply(comfort * 2.0) < comfort * 2.0,
+        "an order above the comfort rate must fall short of the demand")
+    _check(_te.get_contract_supply(comfort * 2.0) > comfort,
+        "an order above the comfort rate must still be served above the comfort rate")
+
+    # The drain grows with the order — the bigger the contract, the faster the warehouse
+    # falls behind — and the supply never overtakes the ceiling of the town.
+    var previous := 0.0
+    var order: float = comfort
+    while order < ceiling:
+        order += 5.0
+        var drain: float = _te.get_contract_drain(order)
+        _check(drain > previous,
+            "the drain must grow with the order (order %s: %s after %s)"
+                % [str(order), str(drain), str(previous)])
+        previous = drain
+        _check(_te.get_contract_supply(order) < order,
+            "the supply must always fall short of the order (order %s)" % str(order))
+        _check(_te.get_contract_supply(order) <= ceiling,
+            "the supply must never overtake the ceiling (order %s: %s)"
+                % [str(order), str(_te.get_contract_supply(order))])
+
+    # A demand of zero is covered by nothing.
+    _check(is_equal_approx(_te.get_contract_supply(0.0), 0.0),
+        "a demand of zero must be covered by zero")
+    _check(is_equal_approx(_te.get_contract_drain(0.0), 0.0),
+        "the drain of a zero demand must be zero")
 
 
 # 24. TRADE MOVES BOTH WAYS. The key requirement: the numbers in storage either
@@ -1084,10 +1126,10 @@ func _test_trade_moves_goods() -> void:
         "the storage must survive a save (got %d)" % tm.get_town_goods(loaded, WOOD))
 
     # 27. TRADE STATE SURVIVES A SAVE. The last deal's direction and the tick
-    # counter are WORLD STATE, not derived data (unlike "production", which is
-    # recomputed from the ring). If they are not saved, then on load the deal
-    # "flips" and the storage is shuffled. Here we check exactly that: after a
-    # round-trip the next tick must go the SAME way.
+    # counter are WORLD STATE, not derived data (unlike the sell pool and the
+    # quality, which are recomputed from the ring). If they are not saved, then on
+    # load the deal "flips" and the storage is shuffled. Here we check exactly that:
+    # after a round-trip the next tick must go the SAME way.
     var trade_town: Dictionary = tm._make_town_record(7, 9, 9, false)
     trade_town["storage"] = {WOOD: 300, PLANKS: 300}
     tm.towns.append(trade_town)

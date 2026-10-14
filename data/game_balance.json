@@ -201,7 +201,44 @@
       //                    anchor that keeps the stock around the comfort level:
       //                    without any bias the stock is a pure random walk and half
       //                    the towns end up pinned at zero or at the cap forever.
-      "town_trade_bias_strength": 0.6
+      "town_trade_bias_strength": 0.6,
+
+      // --- A standing contract: what a town can actually supply ---
+      //
+      // The output of a town is virtual and has no building behind it: a town has no
+      // population limit and can raise as many workshops as it needs, so its rate is a
+      // design number and NOT "one building of every kind". It is bounded from above by
+      // the size of its own warehouse — the CEILING below is the average starting stock
+      // of a good read as a rate. A town that keeps a warehouse of a good can also
+      // restock it in a second; nothing it does can outrun that, whatever the order.
+      //
+      // A town serves an order up to its COMFORT rate for free: the whole draw is
+      // covered, the warehouse is untouched and only breathes with the daily trade.
+      // Asked for more, the town strains — its output follows the order but always falls
+      // short of it, and the shortfall drains the stock. The larger the order, the faster
+      // the stock falls behind, until the warehouse runs dry and the contract is torn.
+      // That is how a player can still buy a town out, and why a huge contract tears in
+      // minutes while a modest one holds for a long time.
+
+      // town_contract_comfort — the share of the ceiling every town serves a standing
+      //                    contract with for FREE (0.1 -> 30 units/sec on the current
+      //                    data). Up to it the warehouse is not touched at all; above it
+      //                    the strain and the drain begin.
+      "town_contract_comfort": 0.1,
+
+      // town_contract_drain — the units per SECOND the warehouse of a town loses when the
+      //                    order is TWICE its comfort rate. It is the anchor of the drain
+      //                    curve: the town keeps up less and less, and this is the
+      //                    shortfall at the first doubling of the order.
+      // town_contract_drain_curve — the exponent of that curve. The drain rises as
+      //                    ((order - comfort) / comfort) ^ curve, so a sub-unity exponent
+      //                    makes it grow fast at first and then flatten: a contract just
+      //                    over the comfort rate still takes many minutes to empty a
+      //                    warehouse, while a huge one empties it in seconds. The drain
+      //                    never overtakes the draw, so a town never supplies less than
+      //                    its comfort rate, and its supply never exceeds the ceiling.
+      "town_contract_drain": 0.75,
+      "town_contract_drain_curve": 0.3
     }
   }
 }

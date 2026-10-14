@@ -51,29 +51,8 @@ msgstr "\nСтроек: %d/%d (лимит = число жителей)"
 msgid "\nDemolish %s to build %s"
 msgstr "\nСнесите %s, чтобы построить %s"
 
-msgid "\nFeed consumption: %d per cycle"
-msgstr "\nПотребляет корма: %d за цикл"
-
-msgid "\nFill level: %d%% (full in %.0f sec)"
-msgstr "\nЗаполненность: %d%% (полное через %.0f сек)"
-
-msgid "\nFill time: %.0f sec"
-msgstr "\nВремя заполнения: %.0f сек"
-
-msgid "\nFresh water access: direct"
-msgstr "\nДоступ к пресной воде: прямой"
-
-msgid "\nFresh water access: via chain"
-msgstr "\nДоступ к пресной воде: по цепочке"
-
-msgid "\nHerd: full (100%)"
-msgstr "\nПоголовье: полное (100%)"
-
 msgid "\nImprovement: %s%s"
 msgstr "\nУлучшение: %s%s"
-
-msgid "\nQuality: %s (%s)"
-msgstr "\nКачество: %s (%s)"
 
 msgid "\nResource: %s"
 msgstr "\nРесурс: %s"
@@ -168,9 +147,6 @@ msgstr " Куда: от города до этого гекса по сущес�
 msgid " Destination: from the city's nearest road to this hex"
 msgstr " Куда: от ближайшей дороги города до этого гекса"
 
-msgid " Destination: the nearest road in the town \"%s\" influence ring"
-msgstr " Куда: ближайшая дорога в кольце влияния городка «%s»"
-
 msgid " Destination: to the town \"%s\" itself, at the chosen level"
 msgstr " Куда: до самого городка «%s», на выбранном уровне"
 
@@ -186,20 +162,11 @@ msgstr " Расстояние до города: от %d до %d гекс(а)"
 msgid " New route sections: %d"
 msgstr " Новых участков трассы: %d"
 
-msgid " Once built, %s will give:"
-msgstr " При постройке %s будет давать:"
-
 msgid " Per section: %d to %d work"
 msgstr " За участок: от %d до %d труда"
 
 msgid " Per section: %d work"
 msgstr " За участок: %d труда"
-
-msgid " Produces:"
-msgstr " Производит:"
-
-msgid " Road to the city (%s): %d work"
-msgstr " Дорога до города (%s): %d труда"
 
 msgid " Road to the city (%s): %d work, %d new sections"
 msgstr " Дорога до города (%s): %d труда, новых участков: %d"
@@ -356,9 +323,6 @@ msgstr "%s: участков %d, строится по одному"
 
 msgid "%s: %d units every %s per person × %d = %d per cycle"
 msgstr "%s: %d ед. раз в %s на человека × %d = %d за цикл"
-
-msgid "%s: %s"
-msgstr "%s: %s"
 
 msgid "%s: %s / sec"
 msgstr "%s: %s / сек"
@@ -681,9 +645,6 @@ msgstr "Нажмите чтобы отсортировать список; по�
 msgid "Close"
 msgstr "Закрыть"
 
-msgid "Coal"
-msgstr "Уголь"
-
 msgid "Collapse panel"
 msgstr "Свернуть панель"
 
@@ -734,9 +695,6 @@ msgstr "Строительство приостановлено"
 
 msgid "Construction resumed"
 msgstr "Строительство возобновлено"
-
-msgid "Construction:"
-msgstr "Строительство:"
 
 msgid "Construction: %d work, %.0f sec.\n"
 msgstr "Строительство: %d труда, %.0f сек.\n"
@@ -797,9 +755,6 @@ msgstr "Стоимость:"
 
 msgid "Cost: %d"
 msgstr "Стоимость: %d"
-
-msgid "Cost: %d work"
-msgstr "Стоимость: %d труда"
 
 msgid "Cost: %d/sec"
 msgstr "Стоимость: %d/сек"
@@ -1287,9 +1242,6 @@ msgstr "Рецепт ссылается на несуществующий рес
 msgid "Recipe yields a nonexistent resource"
 msgstr "Рецепт даёт несуществующий ресурс"
 
-msgid "Reduces the effect of distance from the city on the work cost of building improvements by 30%."
-msgstr "Снижает вклад расстояния от города в стоимость труда при строительстве улучшений на 30%."
-
 msgid "Reference to a nonexistent category"
 msgstr "Ссылка на несуществующую категорию"
 
@@ -1572,8 +1524,8 @@ msgstr "Территория расширена! (затрачено %d труд
 msgid "Territory of the city %s"
 msgstr "Территория города %s"
 
-msgid "The amount %d exceeds the route throughput (%s units/sec). The surplus will queue on the road and arrive later."
-msgstr "Количество %d превышает пропускную способность маршрута (%s ед./сек). Излишек встанет в очередь на дороге и придёт позже."
+msgid "The amount %d exceeds the route throughput (%s units/sec).\nThe surplus will queue on the road and arrive later."
+msgstr "Количество %d превышает пропускную способность маршрута (%s ед./сек).\nИзлишек встанет в очередь на дороге и придёт позже."
 
 msgid "The amount must be a positive whole number"
 msgstr "Количество должно быть положительным целым числом"
@@ -1593,14 +1545,14 @@ msgstr "Чанк пересекается с кольцом влияния чу�
 msgid "The city needs access to fresh water"
 msgstr "Нужен доступ города к пресной воде"
 
+msgid "The rate the town serves a contract with for free.\nA larger order strains it: it keeps up less and less,\nand its warehouse falls behind — the bigger the order,\nthe faster the stock runs dry and the contract is torn."
+msgstr "Темп, с которым городок обслуживает контракт бесплатно.\nБолее крупный заказ заставляет его напрягаться: он поспевает\nвсё хуже, и склад начинает отставать — чем крупнее заказ,\nтем быстрее склад опустеет и контракт будет разорван."
+
 msgid "The time the goods spend on the road from the town to the city"
 msgstr "Время, которое товар проводит на дороге от городка до города"
 
 msgid "The town buys nothing"
 msgstr "Городок ничего не покупает"
-
-msgid "The town has no road inside the influence ring"
-msgstr "У городка нет дороги в кольце влияния"
 
 msgid "The town is already connected by a road"
 msgstr "Городок уже соединён дорогой"
@@ -1653,6 +1605,9 @@ msgstr "Городок"
 msgid "Town %d"
 msgstr "Городок %d"
 
+msgid "Town supply: up to %s units/sec"
+msgstr "Поставка городка: до %s ед/сек"
+
 msgid "Trade"
 msgstr "Торговля"
 
@@ -1664,9 +1619,6 @@ msgstr "Торговые партнёры"
 
 msgid "Trade unavailable: there is no road from the city to this town"
 msgstr "Торговля недоступна: от города нет дороги до этого городка"
-
-msgid "Trade with the towns is not implemented yet — the order was not placed."
-msgstr "Торговля с городками ещё не реализована — заказ не размещён."
 
 msgid "Trade with towns"
 msgstr "Торговля с городками"
@@ -1694,9 +1646,6 @@ msgstr "Недостроенных участков: %d. Потраченный 
 
 msgid "Unknown construction requirement: %s"
 msgstr "Неизвестное условие строительства: %s"
-
-msgid "Unlocks the Cart Road (road level 2): 30 units/sec per section."
-msgstr "Открывает тележную дорогу (уровень дороги 2): 30 ед./сек на участок."
 
 msgid "Upgrade"
 msgstr "Улучшение"
@@ -1797,9 +1746,6 @@ msgstr "простаивает"
 msgid "impassable"
 msgstr "непроходимо"
 
-msgid "no land route from the city"
-msgstr "нет сухопутного пути от города"
-
 msgid "no path"
 msgstr "нет пути"
 
@@ -1832,6 +1778,9 @@ msgstr "маршрут уже этого уровня"
 
 msgid "the town"
 msgstr "городка"
+
+msgid "the warehouse will run dry"
+msgstr "склад опустеет"
 
 msgid "units/sec"
 msgstr "ед./сек"

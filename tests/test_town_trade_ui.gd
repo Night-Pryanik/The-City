@@ -34,6 +34,10 @@
 #      confirm/cancel buttons, and it follows the amount in REAL TIME — the field and
 #      the "+"/"−" buttons both go through the same update. A sale column totals as a
 #      cost (the city pays), a purchase column as an income (the city is paid).
+#  10. SUPPLY. The panel names the rate at which the town serves a standing contract for
+#      free — its comfort rate — for the sale column only. The line turns red the moment
+#      the amount climbs over the rate (the town would fall behind, the faster the bigger
+#      the order) and stays hidden outside the sale column.
 #
 # The test opens the window on its own (no map), and stubs the route with an inner
 # class instead of generating a whole map: the window only asks the map for
@@ -111,6 +115,8 @@ func _run() -> void:
         await _test_price(town)
     if WATCHDOG.wants_case("total"):
         await _test_total(town)
+    if WATCHDOG.wants_case("supply"):
+        await _test_supply(town)
 
     _finish()
 
@@ -385,6 +391,15 @@ func _test_warning(town: Dictionary) -> void:
     _check(_ui._warning_badge.tooltip_text.contains("100"),
         "the warning tooltip must name the route throughput (got \"%s\")"
             % _ui._warning_badge.tooltip_text)
+    # The same rule as the supply line: the built-in tooltip does not wrap, so the long
+    # warning must carry its own line breaks or it comes out as one line off the window.
+    var warn_lines: PackedStringArray = _ui._warning_badge.tooltip_text.split("\n")
+    _check(warn_lines.size() > 1,
+        "the route warning tooltip must be broken into lines, otherwise it is a single unreadable line")
+    for warn_line in warn_lines:
+        _check(warn_line.length() <= 80,
+            "a route warning tooltip line must stay short (got %d chars: \"%s\")"
+                % [warn_line.length(), warn_line])
 
     _check(not _ui._exceeds_capacity(0, 100.0), "a zero amount must never warn")
     _check(_ui._exceeds_capacity(101, 100.0), "the rule must be \"strictly above\"")
@@ -633,6 +648,74 @@ func _test_total(town: Dictionary) -> void:
         _check(_ui._total_label.text == "Income: %d/sec" % (4 * buy_price),
             "permanent purchase must show income per second (got \"%s\")"
                 % _ui._total_label.text)
+
+# -------------------------------------------------------
+# 10. The supply of the town in the panel
+# -------------------------------------------------------
+
+func _test_supply(town: Dictionary) -> void:
+    var local: Dictionary = town.duplicate(true)
+    _ui.open_town(local, true)
+    await process_frame
+    _click(_rows_of(_ui.sell_list)[0])
+    await process_frame
+    _check(_ui._supply_label != null, "the panel must have the supply line")
+    if _ui._supply_label == null:
+        return
+
+    # The supply of a town is its comfort rate — the rate it serves a contract with for
+    # free — for any good it trades, and it is NOT derived from its buildings.
+    var ceiling: float = (float(_gdata.game_balance.get("town_storage_initial_min", 0)) \
+            + float(_gdata.game_balance.get("town_storage_initial_max", 0))) * 0.5
+    var comfort: float = ceiling * float(_gdata.game_balance.get("town_contract_comfort", -1))
+    _check(comfort > 0.0, "the comfort rate must be positive")
+    _check(is_equal_approx(_ui._supply_rate(), comfort),
+        "the supply rate must be the comfort rate of a town (got %s)"
+            % str(_ui._supply_rate()))
+    _check(_ui._supply_label.visible,
+        "the supply line must appear for a good the town trades")
+    _check(_ui._supply_label.text.contains(str(int(comfort))),
+        "the supply line must name the rate (got \"%s\")" % _ui._supply_label.text)
+    _check(not _ui._supply_label.tooltip_text.is_empty(),
+        "the supply line must explain itself in a tooltip")
+    # The node with a tooltip MUST catch the mouse. A Label defaults to mouse_filter =
+    # IGNORE: the hover never reaches it and the standard tooltip is shown NEVER. The
+    # line had exactly that bug — the text was set, but nothing could ever read it.
+    _check(_ui._supply_label.mouse_filter != Control.MOUSE_FILTER_IGNORE,
+        "the supply line must catch the mouse (mouse_filter != IGNORE), otherwise its tooltip will not show (got %d)"
+            % _ui._supply_label.mouse_filter)
+    # The built-in tooltip does NOT wrap (the theme styles only the panel, and nothing in
+    # the project overrides _make_custom_tooltip), so a long hint must carry its OWN line
+    # breaks: otherwise it comes out as one unreadable line that runs off the window.
+    var tip_lines: PackedStringArray = _ui._supply_label.tooltip_text.split("\n")
+    _check(tip_lines.size() > 1,
+        "the supply tooltip must be broken into lines, otherwise it is a single unreadable line")
+    for tip_line in tip_lines:
+        _check(tip_line.length() <= 80,
+            "a supply tooltip line must stay short (got %d chars: \"%s\")"
+                % [tip_line.length(), tip_line])
+
+    # Within the rate: the line is muted and adds no warning.
+    _ui._set_amount(int(comfort) - 1)
+    _check(_ui._supply_label.get_theme_color("font_color") == _ui.SUPPLY_TEXT_COLOR,
+        "an order within the supply must not warn (got %s)"
+            % str(_ui._supply_label.get_theme_color("font_color")))
+
+    # Above the rate: the line turns red and names the consequence.
+    _ui._set_amount(int(comfort) + 1)
+    _check(_ui._supply_label.get_theme_color("font_color") == _ui.COLOR_EXPENSE,
+        "an order above the supply must turn the line red (got %s)"
+            % str(_ui._supply_label.get_theme_color("font_color")))
+    _check(_ui._supply_label.text != _ui.tr("Town supply: up to %s units/sec") % str(int(comfort)),
+        "an order above the supply must add the warning to the line (got \"%s\")"
+            % _ui._supply_label.text)
+
+    # The purchase column has no supply: the town's own supply says nothing about what it
+    # LACKS.
+    _click(_rows_of(_ui.buy_list)[0])
+    await process_frame
+    _check(not _ui._supply_label.visible,
+        "the purchase column must not show a supply line")
 
 # -------------------------------------------------------
 # Helpers

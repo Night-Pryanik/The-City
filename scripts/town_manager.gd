@@ -216,18 +216,11 @@ const INFLUENCE_NOTCH_MAX_DROPS := 3
 #                         computed by the standard craft rule (the crafted goods).
 #                         Filled in together with the pools (TownEconomy.refresh_town)
 #                         and derived data: it is not restored from the save.
-#   production          - the per-tick rate of the warehouse: product id -> units per
-#                         tick of a town. It is recomputed from the ring together with
-#                         the pools (TownEconomy.refresh_town) and is derived data:
-#                         it is not restored from the save. It is the PRODUCTION PLAN
-#                         (what the town is capable of making); the warehouse itself
-#                         is moved by the daily trade (see below).
 #   trade_signs         - the direction of the LAST trade of every product of the
 #                         warehouse: product id -> (+1 buy / -1 sell / 0 none). It is
 #                         the inertia input of the trade model (TownEconomy.tick_trade)
-#                         and, unlike "production", it is REAL WORLD STATE: it must
-#                         survive a save, otherwise a reload would flip the direction
-#                         of the next trade.
+#                         and REAL WORLD STATE: it must survive a save, otherwise a
+#                         reload would flip the direction of the next trade.
 #   trade_counter       - how many trade ticks this town has made. It seeds the town's
 #                         trade RNG together with the town id, so a reload replays the
 #                         same sequence rather than reshuffling the warehouse.
@@ -535,6 +528,32 @@ func take_town_goods(town: Dictionary, product_id: String, amount: int) -> bool:
 static func get_town_tick_seconds() -> float:
     var ticks := int(GameData.game_balance.get("town_tick_ticks", 4))
     return CityData.SIMULATION_TICK * float(maxi(1, ticks))
+
+
+# Whether the town trades the good at all: it is in the sell pool, so the town either
+# gathers it in its ring or makes it. A good the town merely holds has no supply — the
+# warehouse is pruned to the sell pool, so this should never happen, but a broken save
+# is not worth trusting.
+static func town_sells(town: Dictionary, product_id: String) -> bool:
+    if product_id.is_empty():
+        return false
+    return town.get("sell_pool", []).has(product_id)
+
+
+# The rate at which a town serves a standing contract for a good for FREE, in units per
+# second: its comfort rate (TownEconomy.get_contract_comfort), for a good the town
+# actually trades, and zero otherwise. It is deliberately NOT derived from the town's
+# buildings (see the supply section of town_economy.gd) — a town has no population limit
+# and can raise as many workshops as it needs, so its output is not "one building of every
+# kind". This is the number the town window shows: a contract up to it never touches the
+# warehouse, a larger one drains it — the faster, the bigger the order.
+#
+# Static: the callers read it from the record they already hold, without a reference to
+# the manager.
+static func get_town_supply_rate(town: Dictionary, product_id: String) -> float:
+    if not town_sells(town, product_id):
+        return 0.0
+    return TownEconomy.get_contract_comfort()
 
 
 # Has the player seen the town: its hex lies in the known territory or has been scouted. It is
@@ -1690,10 +1709,10 @@ func serialize_towns() -> Array:
             "sell_pool": t.get("sell_pool", []),
             "buy_pool": t.get("buy_pool", []),
             "treasury": get_town_treasury(t),
-            # The warehouse of the town. The per-tick rate ("production") is NOT
-            # written into the save: it is derived from the ring of the town and is
-            # recalculated on the load by compute_all_town_influences ->
-            # _refresh_sell_pools, so it cannot go stale against the pools.
+            # The warehouse of the town. It is written whole; the sell pool and the
+            # quality of its goods are NOT — they are derived from the ring of the town
+            # and recalculated on the load by compute_all_town_influences ->
+            # _refresh_sell_pools, so they cannot go stale against the pools.
             "storage": t.get("storage", {}),
             # The trade state — REAL WORLD STATE, not derived: the last direction of
             # every product (the inertia input) and the town's trade counter (the RNG

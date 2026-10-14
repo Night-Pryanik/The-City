@@ -51,28 +51,7 @@ msgstr ""
 msgid "\nDemolish %s to build %s"
 msgstr ""
 
-msgid "\nFeed consumption: %d per cycle"
-msgstr ""
-
-msgid "\nFill level: %d%% (full in %.0f sec)"
-msgstr ""
-
-msgid "\nFill time: %.0f sec"
-msgstr ""
-
-msgid "\nFresh water access: direct"
-msgstr ""
-
-msgid "\nFresh water access: via chain"
-msgstr ""
-
-msgid "\nHerd: full (100%)"
-msgstr ""
-
 msgid "\nImprovement: %s%s"
-msgstr ""
-
-msgid "\nQuality: %s (%s)"
 msgstr ""
 
 msgid "\nResource: %s"
@@ -168,9 +147,6 @@ msgstr ""
 msgid " Destination: from the city's nearest road to this hex"
 msgstr ""
 
-msgid " Destination: the nearest road in the town \"%s\" influence ring"
-msgstr ""
-
 msgid " Destination: to the town \"%s\" itself, at the chosen level"
 msgstr ""
 
@@ -186,19 +162,10 @@ msgstr ""
 msgid " New route sections: %d"
 msgstr ""
 
-msgid " Once built, %s will give:"
-msgstr ""
-
 msgid " Per section: %d to %d work"
 msgstr ""
 
 msgid " Per section: %d work"
-msgstr ""
-
-msgid " Produces:"
-msgstr ""
-
-msgid " Road to the city (%s): %d work"
 msgstr ""
 
 msgid " Road to the city (%s): %d work, %d new sections"
@@ -355,9 +322,6 @@ msgid "%s: %d sections, built one at a time"
 msgstr ""
 
 msgid "%s: %d units every %s per person × %d = %d per cycle"
-msgstr ""
-
-msgid "%s: %s"
 msgstr ""
 
 msgid "%s: %s / sec"
@@ -681,9 +645,6 @@ msgstr ""
 msgid "Close"
 msgstr ""
 
-msgid "Coal"
-msgstr ""
-
 msgid "Collapse panel"
 msgstr ""
 
@@ -733,9 +694,6 @@ msgid "Construction paused"
 msgstr ""
 
 msgid "Construction resumed"
-msgstr ""
-
-msgid "Construction:"
 msgstr ""
 
 msgid "Construction: %d work, %.0f sec.\n"
@@ -796,9 +754,6 @@ msgid "Cost:"
 msgstr ""
 
 msgid "Cost: %d"
-msgstr ""
-
-msgid "Cost: %d work"
 msgstr ""
 
 msgid "Cost: %d/sec"
@@ -1287,9 +1242,6 @@ msgstr ""
 msgid "Recipe yields a nonexistent resource"
 msgstr ""
 
-msgid "Reduces the effect of distance from the city on the work cost of building improvements by 30%."
-msgstr ""
-
 msgid "Reference to a nonexistent category"
 msgstr ""
 
@@ -1572,7 +1524,7 @@ msgstr ""
 msgid "Territory of the city %s"
 msgstr ""
 
-msgid "The amount %d exceeds the route throughput (%s units/sec). The surplus will queue on the road and arrive later."
+msgid "The amount %d exceeds the route throughput (%s units/sec).\nThe surplus will queue on the road and arrive later."
 msgstr ""
 
 msgid "The amount must be a positive whole number"
@@ -1593,13 +1545,13 @@ msgstr ""
 msgid "The city needs access to fresh water"
 msgstr ""
 
+msgid "The rate the town serves a contract with for free.\nA larger order strains it: it keeps up less and less,\nand its warehouse falls behind — the bigger the order,\nthe faster the stock runs dry and the contract is torn."
+msgstr ""
+
 msgid "The time the goods spend on the road from the town to the city"
 msgstr ""
 
 msgid "The town buys nothing"
-msgstr ""
-
-msgid "The town has no road inside the influence ring"
 msgstr ""
 
 msgid "The town is already connected by a road"
@@ -1653,6 +1605,9 @@ msgstr ""
 msgid "Town %d"
 msgstr ""
 
+msgid "Town supply: up to %s units/sec"
+msgstr ""
+
 msgid "Trade"
 msgstr ""
 
@@ -1663,9 +1618,6 @@ msgid "Trade partners"
 msgstr ""
 
 msgid "Trade unavailable: there is no road from the city to this town"
-msgstr ""
-
-msgid "Trade with the towns is not implemented yet — the order was not placed."
 msgstr ""
 
 msgid "Trade with towns"
@@ -1693,9 +1645,6 @@ msgid "Unfinished sections: %d. Work spent on them (%.0f/%.0f) will be lost.\n\n
 msgstr ""
 
 msgid "Unknown construction requirement: %s"
-msgstr ""
-
-msgid "Unlocks the Cart Road (road level 2): 30 units/sec per section."
 msgstr ""
 
 msgid "Upgrade"
@@ -1797,9 +1746,6 @@ msgstr ""
 msgid "impassable"
 msgstr ""
 
-msgid "no land route from the city"
-msgstr ""
-
 msgid "no path"
 msgstr ""
 
@@ -1831,6 +1777,9 @@ msgid "the route is already at this level"
 msgstr ""
 
 msgid "the town"
+msgstr ""
+
+msgid "the warehouse will run dry"
 msgstr ""
 
 msgid "units/sec"

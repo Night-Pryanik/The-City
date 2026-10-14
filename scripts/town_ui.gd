@@ -33,6 +33,11 @@
 # Every row, of either column, carries the price of ONE unit of the goods (in coins),
 # to the right of the name — see _unit_price.
 #
+# The trade settings panel also names the SUPPLY of the town: the rate it serves a
+# standing contract with for free (see the supply section of town_economy.gd). The line
+# turns red as soon as the amount climbs over that rate, because the town would fall
+# behind — the faster, the bigger the order — and the contract would be torn.
+#
 # The trade settings panel is the FOUNDATION of the trade: it assembles the
 # order (the goods, the amount, the "permanent" flag) and hands it over by the
 # signal trade_order_submitted. The mechanics that spend the treasury and move the
@@ -107,6 +112,11 @@ const PRICE_COLUMN_WIDTH := 44
 # purchase and a sale are read the same way in both windows.
 const COLOR_EXPENSE := Color(0.9, 0.3, 0.3, 1)
 const COLOR_INCOME := Color(1.0, 0.807, 0.2, 1)
+
+# The colour of the town-supply line of the trade panel while the amount is within the
+# rate the town can serve (see _update_supply_label). It is the muted grey the status row
+# of the window already uses, so an ordinary order does not shout.
+const SUPPLY_TEXT_COLOR := Color(0.65, 0.65, 0.65, 1)
 
 # The markers that let the layout be read back: a row of a trade column and the key
 # of the resource behind it (the tests and the trade panel both use them).
@@ -183,6 +193,9 @@ var _permanent_check: CheckBox = null
 var _warning_badge: Control = null
 var _confirm_button: Button = null
 var _total_label: Label = null
+# The line that names the rate the town can back a standing contract with (see
+# _update_supply_label). null while no panel is open.
+var _supply_label: Label = null
 
 # Guards the text_changed handler from re-entering when the field is sanitized
 # programmatically (a programmatic assignment does not emit the signal, but the
@@ -641,6 +654,7 @@ func _free_trade_panel() -> void:
     _warning_badge = null
     _confirm_button = null
     _total_label = null
+    _supply_label = null
 
 # Applies the state stylebox to one row: the selected state wins over the hover, so
 # the selected row stays highlighted while the cursor is elsewhere.
@@ -761,6 +775,34 @@ func _build_trade_panel() -> PanelContainer:
     amount_row.add_child(_warning_badge)
 
     vbox.add_child(amount_row)
+
+    # The rate the town can back a standing contract with (see town_economy, the supply
+    # section). It stands right under the amount, where the deal is decided, so the
+    # player recognises a contract that would drain the warehouse BEFORE signing it: the
+    # line turns red the moment the amount climbs over the rate. A town that does not
+    # trade the good at all has no rate, and the line stays hidden.
+    #
+    # The label CATCHES the mouse (STOP, not the IGNORE a plain Label defaults to): it
+    # carries a tooltip, and the standard tooltip is shown only for a control the hover
+    # actually reaches. With IGNORE the line was never picked, and the explanation of the
+    # rate never appeared — the same trap the price and the stars of a row avoid.
+    _supply_label = Label.new()
+    _supply_label.name = "SupplyLabel"
+    _supply_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    _supply_label.mouse_filter = Control.MOUSE_FILTER_STOP
+    # The explanation is CONSTANT (it names the mechanic, not the numbers), so it is set
+    # once here and never reassigned: re-assigning tooltip_text drops a tooltip window
+    # that is already on the screen.
+    #
+    # The line breaks are EXPLICIT: the built-in tooltip does not wrap (the theme styles
+    # only the TooltipPanel, and nothing in the project overrides _make_custom_tooltip),
+    # so a long hint would come out as one line that runs off the edge of the window.
+    # Breaking it here keeps the tooltip a readable block. The project already writes
+    # "\n" into translatable strings (the technology descriptions), and the i18n tools
+    # carry it through the catalog unchanged.
+    _supply_label.tooltip_text = tr("The rate the town serves a contract with for free.\nA larger order strains it: it keeps up less and less,\nand its warehouse falls behind — the bigger the order,\nthe faster the stock runs dry and the contract is torn.")
+    _supply_label.visible = false
+    vbox.add_child(_supply_label)
 
     # The "Permanent" checkbox. The explanation of the contract belongs to the BOX
     # and not to the whole row: a CheckBox with a text shows its tooltip over the box
@@ -1027,6 +1069,7 @@ func _update_amount_feedback() -> void:
     if _confirm_button != null and is_instance_valid(_confirm_button):
         _confirm_button.disabled = amount <= 0
     _update_warning_badge(amount)
+    _update_supply_label(amount)
     _update_total_label(amount)
 
 # The sum of the order, in the free space left of the confirm/cancel buttons. It is
@@ -1067,7 +1110,9 @@ func _update_warning_badge(amount: int) -> void:
     var over := _exceeds_capacity(amount, capacity)
     _warning_badge.visible = over
     if over:
-        _warning_badge.tooltip_text = tr("The amount %d exceeds the route throughput (%s units/sec). The surplus will queue on the road and arrive later.") % [amount, _format_speed(capacity)]
+        # The line break is explicit — the built-in tooltip does not wrap (see the note
+        # on the supply line in _build_trade_panel).
+        _warning_badge.tooltip_text = tr("The amount %d exceeds the route throughput (%s units/sec).\nThe surplus will queue on the road and arrive later.") % [amount, _format_speed(capacity)]
 
 # Whether the amount is larger than what the route can carry. The rule is a pure
 # function so that it can be checked without a map.
@@ -1093,6 +1138,40 @@ func _format_speed(value: float) -> String:
     if is_equal_approx(value, roundf(value)):
         return str(int(roundf(value)))
     return "%.1f" % value
+
+# The line that names the rate at which the town serves a standing contract for the
+# selected good for free (see the supply section of town_economy.gd). It is shown only for
+# the SALE column: there the city buys from the town, and that rate is what the town
+# covers without touching its warehouse. The purchase column is about what the town LACKS,
+# and the town's own supply says nothing about that.
+#
+# The line turns red as soon as the amount climbs over the rate: the town will still serve
+# the order for a while out of its stock, but it falls behind — the faster, the bigger the
+# order — and the warehouse will run dry and the contract will be torn. It is the same
+# warning the route capacity gets, only about the supply and not about the road.
+func _update_supply_label(amount: int) -> void:
+    if _supply_label == null or not is_instance_valid(_supply_label):
+        return
+    var rate := _supply_rate()
+    if rate <= 0.0:
+        _supply_label.visible = false
+        return
+    _supply_label.visible = true
+    var text := tr("Town supply: up to %s units/sec") % _format_speed(rate)
+    if amount > 0 and float(amount) > rate:
+        _supply_label.text = text + " — " + tr("the warehouse will run dry")
+        _supply_label.add_theme_color_override("font_color", COLOR_EXPENSE)
+    else:
+        _supply_label.text = text
+        _supply_label.add_theme_color_override("font_color", SUPPLY_TEXT_COLOR)
+
+# The rate the town serves a standing contract with for the selected good, in units per
+# second. Zero when the window is not on the sale column or the town does not trade the
+# good at all — then there is nothing to promise and the line stays hidden.
+func _supply_rate() -> float:
+    if _selected_side != SIDE_SELL or _town == null:
+        return 0.0
+    return TownManager.get_town_supply_rate(_town, _selected_id)
 
 # --- Confirm / cancel ---
 

@@ -14,6 +14,11 @@
 #     that cannot be paid (the treasury is short) or cannot be fulfilled (the town
 #     ran out of the good) is torn automatically — a contract is not a debt, and
 #     neither side can be forced into one.
+#     What backs a contract is the SUPPLY of the town and not its stock: a town serves an
+#     order up to its comfort rate for free, and above it strains — the output follows the
+#     order but always falls short of it, so the warehouse drains the faster, the bigger
+#     the order (see the supply section of town_economy.gd). The stock is the buffer, the
+#     supply is the rate.
 #
 # THE DELIVERY. The town window can only open a purchase when the road to the town
 # exists (town_manager.is_trade_available), and the goods move along that road with
@@ -60,6 +65,13 @@ var _contracts: Array = []
 # largest restored one).
 var _next_contract_id := 1
 
+# The fraction of a unit of the drain still owed by the warehouse of a town, keyed by
+# "town_id|product_id". The drain of a contract is a fraction of a unit per tick, while
+# the warehouse holds whole units; the remainder is carried here so that a slow drain is
+# paid in full instead of being rounded away on every tick. It is transient state of the
+# tick and is NOT saved — a reload loses less than one unit of the drain.
+var _drain_remainder: Dictionary = {}
+
 # The trade mechanics changed the list of the contracts (signed or torn). The
 # interface reads the list on its own rhythm (external_trade_tab.update_values);
 # the signal exists for the callers that want to react at once.
@@ -78,6 +90,7 @@ func initialize(town_manager, delivery_manager) -> void:
     _delivery_manager = delivery_manager
     _contracts.clear()
     _next_contract_id = 1
+    _drain_remainder.clear()
 
 
 # Drops every contract. A new game starts from a clean sheet, otherwise the deals
@@ -85,6 +98,7 @@ func initialize(town_manager, delivery_manager) -> void:
 func clear() -> void:
     _contracts.clear()
     _next_contract_id = 1
+    _drain_remainder.clear()
 
 
 # Processes one order from the town window. It returns {"ok": bool, "message":
@@ -129,6 +143,13 @@ func submit_order(order: Dictionary) -> Dictionary:
 func tick_contracts() -> void:
     if _contracts.is_empty():
         return
+    # What backs a contract is the SUPPLY of the town, not its stock (see the supply
+    # section of town_economy.gd): the stock is only the buffer behind the rate. The
+    # supply is credited to the warehouse once per town and product, on the summed demand
+    # of ALL the contracts, so that splitting one deal into two does not raise the rate
+    # the town can serve.
+    var demand := _aggregate_demand()
+    var credited: Dictionary = {}
     var i := 0
     while i < _contracts.size():
         var contract: Dictionary = _contracts[i]
@@ -142,13 +163,17 @@ func tick_contracts() -> void:
         if amount < MIN_AMOUNT or cost < 0:
             _tear_contract(i, tr("Contract terminated: a broken record."))
             continue
-        if _town_manager.get_town_goods(town, product_id) < amount:
-            _tear_contract(i, tr("Contract terminated: %s ran out of %s.") % [
-                    str(contract.get("town_name", "")), str(contract.get("product_name", ""))])
-            continue
+        # The payment is checked BEFORE the supply is credited: a deal the treasury cannot
+        # pay never makes the town strain, so the goods it would have made stay out of its
+        # warehouse. The strain of a town is for the contracts it actually serves.
         if CityData.treasury < cost:
             _tear_contract(i, tr("Contract terminated: the treasury cannot pay %d per second for %s from %s.") % [
                     cost, str(contract.get("product_name", "")), str(contract.get("town_name", ""))])
+            continue
+        _credit_town_supply(town, product_id, demand, credited)
+        if _town_manager.get_town_goods(town, product_id) < amount:
+            _tear_contract(i, tr("Contract terminated: %s ran out of %s.") % [
+                    str(contract.get("town_name", "")), str(contract.get("product_name", ""))])
             continue
         _pay_and_deliver(town, product_id, amount, cost)
         i += 1
@@ -156,6 +181,52 @@ func tick_contracts() -> void:
     # happens before the record, so a contract that could not be paid or fulfilled never
     # promises goods the city will not receive.
     _record_planned_production()
+
+
+# The summed demand of every standing contract, keyed by the town and the good
+# ("town_id|product_id" -> units per tick). The supply of a town is computed on the
+# total, so the number of contracts signed with it does not raise the rate it serves.
+func _aggregate_demand() -> Dictionary:
+    var demand: Dictionary = {}
+    for contract in _contracts:
+        var key := _supply_key(str(contract.get("town_id", "")), str(contract.get("product_id", "")))
+        if key.is_empty():
+            continue
+        demand[key] = int(demand.get(key, 0)) + int(contract.get("amount", 0))
+    return demand
+
+
+# Credits the warehouse of a town with the part of one tick of a contract that the town
+# covers from its own output (TownEconomy.get_contract_supply). It is done ONCE per town
+# and good per tick — the `credited` set of the caller — so the rate of a town does not
+# grow with the number of contracts signed with it.
+#
+# A contract within the comfort rate of the town leaves the warehouse untouched: the town
+# keeps up, and the stock stays where it was. Above it the warehouse loses the drain every
+# tick — the more, the bigger the order — and the contract tears once it runs dry.
+func _credit_town_supply(town: Dictionary, product_id: String, demand: Dictionary,
+        credited: Dictionary) -> void:
+    var key := _supply_key(str(town.get("id", "")), product_id)
+    if key.is_empty() or credited.has(key):
+        return
+    credited[key] = true
+    var total := float(demand.get(key, 0))
+    var supply := TownEconomy.get_contract_supply(total)
+    # The town covers `supply` of the `total` it owes and the warehouse loses the rest. The
+    # draw is a whole number of units, so the fraction of the drain is carried over to the
+    # next tick rather than rounded away (see _drain_remainder).
+    var owed := float(_drain_remainder.get(key, 0.0)) + (total - supply)
+    var whole := int(floor(owed))
+    _drain_remainder[key] = owed - float(whole)
+    var credit := int(round(total)) - whole
+    if credit > 0:
+        _town_manager.add_town_goods(town, product_id, credit)
+
+
+func _supply_key(town_id: String, product_id: String) -> String:
+    if town_id.is_empty() or product_id.is_empty():
+        return ""
+    return "%s|%s" % [town_id, product_id]
 
 
 # The planned delivery of every live contract (see CityData.town_planned_production). One

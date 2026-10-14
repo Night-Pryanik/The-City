@@ -21,7 +21,11 @@
 #   no_route          — without a road the goods are credited to the storage at once;
 #   road_capacity     — the flow rate of the route throttles a large purchase;
 #   save_load         — the contracts survive a save round-trip and keep charging;
-#   deals             — the row shape the "Trade deals" section reads.
+#   deals             — the row shape the "Trade deals" section reads;
+#   strain            — what backs a contract is the SUPPLY of the town and not its stock:
+#                       it serves an order up to its comfort rate for free, and above it
+#                       strains — the warehouse drains the faster, the bigger the order —
+#                       until the stock runs dry and the contract tears.
 #
 # The map is a stub (a route keyed by "row,col"), the towns are a TownManager with one
 # synthetic record, the logistics is a REAL delivery_manager over the stub — the trade
@@ -45,6 +49,7 @@ class FakeMap:
 
 var _cdata = null
 var _gdata = null
+var _te = null
 var _tm = null
 var _dm = null
 var _trade = null
@@ -58,6 +63,10 @@ func _run() -> void:
 	get_root().get_node("SaveManager").new_game()
 	_cdata = get_root().get_node("CityData")
 	_gdata = get_root().get_node("GameData")
+	# The supply helpers live on the town economy. It is loaded by PATH and not by its
+	# global class name: in --script mode the global class would make this file compile
+	# before the autoloads exist, and TownEconomy reads GameData.
+	_te = load("res://scripts/town_economy.gd")
 
 	if WATCHDOG.wants_case("buy_once"):
 		_test_buy_once(state)
@@ -79,6 +88,8 @@ func _run() -> void:
 		_test_save_load(state)
 	if WATCHDOG.wants_case("deals"):
 		_test_deals(state)
+	if WATCHDOG.wants_case("strain"):
+		_test_strain(state)
 
 	_free_rig()
 	WATCHDOG.report_skipped()
@@ -215,8 +226,8 @@ func _test_contract_ticks(state: Dictionary) -> void:
 	check(_tm.get_town_treasury(town) == 500 + cost,
 			"the town must be paid every tick (treasury %d)"
 					% _tm.get_town_treasury(town), state)
-	check(_tm.get_town_goods(town, WOOD) == 95,
-			"the town must give the goods every tick (got %d)"
+	check(_tm.get_town_goods(town, WOOD) == 100,
+			"the town must keep up: a contract within the comfort rate leaves the warehouse alone (got %d)"
 					% _tm.get_town_goods(town, WOOD), state)
 
 	# The goods of the tick travel by the road and arrive.
@@ -231,8 +242,8 @@ func _test_contract_ticks(state: Dictionary) -> void:
 	_trade.tick_contracts()
 	check(_cdata.treasury == 1000 - 2 * cost,
 			"the second tick must charge again (treasury %d)" % _cdata.treasury, state)
-	check(_tm.get_town_goods(town, WOOD) == 90,
-			"the second tick must write the goods off again (got %d)"
+	check(_tm.get_town_goods(town, WOOD) == 100,
+			"the second tick must keep up as well (got %d)"
 					% _tm.get_town_goods(town, WOOD), state)
 	_dm.ship()
 	_advance(_dm, delay + 1.0)
@@ -311,11 +322,12 @@ func _test_plan(state: Dictionary) -> void:
 	check(_planned_amount(WOOD, source) == amount,
 			"the live contract must be back in the plan (got %d)"
 					% _planned_amount(WOOD, source), state)
-	_tm.take_town_goods(town, WOOD, _tm.get_town_goods(town, WOOD))
+	# Make the contract unpayable: it must be torn on the next tick and leave the plan.
+	_cdata.treasury = 0
 	_cdata.reset_counters()
 	_trade.tick_contracts()
 	check(_trade._contracts.is_empty(),
-			"the town without the goods must lose the contract", state)
+			"a contract the treasury cannot pay must be lost", state)
 	check(_planned_amount(WOOD, source) == 0,
 			"a torn contract must not stay in the plan (got %d)"
 					% _planned_amount(WOOD, source), state)
@@ -348,20 +360,29 @@ func _test_contract_breaks(state: Dictionary) -> void:
 	check(notices.size() == 1 and not str(notices[0]).is_empty(),
 			"the player must be told why the contract was torn (%s)" % str(notices), state)
 
-	# The town ran out of the goods.
+	# The town cannot keep up: an order above the ceiling of the town (the rate it can
+	# restock a whole warehouse at) drains the stock fast, and the contract is torn once the
+	# town can no longer cover one tick.
 	_rig(10.0, 10)
-	check(bool(_trade.submit_order(_order(amount, true, price)).get("ok", false)),
-			"the contract must be signed", state)
 	town = _tm.towns[0]
-	town["storage"][WOOD] = amount - 2
-	_trade.tick_contracts()
+	_cdata.treasury = 1000000
+	_tm.add_town_goods(town, WOOD, 1000)
+	var over := int(_te.get_contract_ceiling()) + 100
+	check(bool(_trade.submit_order(_order(over, true, price)).get("ok", false)),
+			"the contract must be signed", state)
+	var before: int = _cdata.treasury
+	for i in range(40):
+		if _trade._contracts.is_empty():
+			break
+		before = _cdata.treasury
+		_trade.tick_contracts()
 	check(_trade._contracts.is_empty(),
-			"a contract the town cannot fulfil must be torn", state)
-	check(_cdata.treasury == 1000,
+			"an order the town cannot keep up with must be torn", state)
+	check(_cdata.treasury == before,
 			"a torn contract must not charge the failed tick (treasury %d)"
 					% _cdata.treasury, state)
-	check(_tm.get_town_goods(town, WOOD) == amount - 2,
-			"a torn contract must not take the goods the town does not have (got %d)"
+	check(_tm.get_town_goods(town, WOOD) < over,
+			"the failed order must have drained the warehouse below the amount (got %d)"
 					% _tm.get_town_goods(town, WOOD), state)
 
 	# The town is gone: a record the map no longer has.
@@ -464,9 +485,14 @@ func _test_save_load(state: Dictionary) -> void:
 	check(_cdata.treasury == 1000 - amount * price,
 			"the restored contract must charge on its tick (treasury %d)"
 					% _cdata.treasury, state)
-	check(_tm.get_town_goods(town, WOOD) == 95,
-			"the restored contract must deliver on its tick (got %d)"
+	# The order is within the comfort rate of the town, so the town keeps up and its
+	# warehouse does not move — but the goods ARE queued on the road.
+	check(_tm.get_town_goods(town, WOOD) == 100,
+			"a contract within the comfort rate must not drain the warehouse (got %d)"
 					% _tm.get_town_goods(town, WOOD), state)
+	check(int(_dm.get_route_status(5, 5).get("pending", 0)) == amount,
+			"the restored contract must queue the goods on the road (got %d)"
+					% int(_dm.get_route_status(5, 5).get("pending", 0)), state)
 
 	# A broken record is dropped, and a new contract gets a fresh id.
 	trade2.deserialize([{"town_id": "town_test"}])
@@ -527,6 +553,53 @@ func _test_deals(state: Dictionary) -> void:
 			"the deals must be handed out as copies", state)
 
 # -------------------------------------------------------
+# 10. The strain of a town under a standing contract
+# -------------------------------------------------------
+
+func _test_strain(state: Dictionary) -> void:
+	var price := _unit_price()
+	var town := _rig(10.0, 10)
+	var comfort: float = _tm.get_town_supply_rate(town, WOOD)
+	var ceiling: float = _te.get_contract_ceiling()
+	check(comfort > 0.0,
+			"a town that trades the good must have a supply rate (got %s)" % str(comfort), state)
+	check(is_equal_approx(comfort, _te.get_contract_comfort()),
+			"the supply rate must be the comfort rate of a town (got %s)" % str(comfort), state)
+	check(comfort < ceiling,
+			"the comfort rate must sit below the ceiling (got %s of %s)"
+					% [str(comfort), str(ceiling)], state)
+	check(is_equal_approx(_te.get_contract_drain(comfort), 0.0),
+			"there must be no drain at the comfort rate", state)
+	check(_te.get_contract_drain(comfort + 5.0) > 0.0,
+			"the drain must begin just above the comfort rate", state)
+
+	# Within the comfort rate: the town keeps up, and the warehouse does not move at all.
+	var start: int = _tm.get_town_goods(town, WOOD)
+	_cdata.treasury = 1000000
+	check(bool(_trade.submit_order(_order(int(comfort), true, price)).get("ok", false)),
+			"the contract must be signed", state)
+	for i in range(30):
+		_trade.tick_contracts()
+	check(_trade._contracts.size() == 1,
+			"a contract within the comfort rate must stay alive (%d contracts)"
+					% _trade._contracts.size(), state)
+	check(_tm.get_town_goods(town, WOOD) == start,
+			"a contract within the comfort rate must not drain the warehouse (start %d, now %d)"
+					% [start, _tm.get_town_goods(town, WOOD)], state)
+
+	# Above the comfort rate the town strains: the warehouse falls behind, and a BIGGER
+	# order takes a bigger toll over the same run of ticks.
+	var small := int(comfort) + 10
+	var big := int(comfort) + 70
+	var small_loss := _measure_drain(small, 20, price)
+	var big_loss := _measure_drain(big, 20, price)
+	check(small_loss > 0,
+			"an order above the comfort rate must drain the warehouse (lost %d)" % small_loss, state)
+	check(big_loss > small_loss,
+			"a bigger order must drain the warehouse faster (%d lost at %d/sec, %d at %d/sec)"
+					% [small_loss, small, big_loss, big], state)
+
+# -------------------------------------------------------
 # Helpers
 # -------------------------------------------------------
 
@@ -548,6 +621,7 @@ func _rig(speed: float, length: int) -> Dictionary:
 		"row": 5,
 		"col": 5,
 		"treasury": 500,
+		"sell_pool": [WOOD],
 		"storage": {WOOD: 100},
 		"quality": {WOOD: "fine"},
 	}
@@ -609,6 +683,21 @@ func _order(amount: int, permanent: bool, unit_price: int) -> Dictionary:
 func _unit_price() -> int:
 	var market := float(_gdata.get_price(WOOD))
 	return int(round(market * float(_gdata.get_quality_price_multiplier("fine"))))
+
+# Runs a standing contract of the given amount for the given number of ticks on a fresh
+# rig and returns how many units the warehouse of the town lost. It stops early if the
+# contract tears (the town ran dry), so the number never counts past the tear.
+func _measure_drain(amount: int, ticks: int, price: int) -> int:
+	var town := _rig(10.0, 10)
+	_cdata.treasury = 1000000
+	var start: int = _tm.get_town_goods(town, WOOD)
+	if not bool(_trade.submit_order(_order(amount, true, price)).get("ok", false)):
+		return 0
+	for i in range(ticks):
+		if _trade._contracts.is_empty():
+			break
+		_trade.tick_contracts()
+	return start - _tm.get_town_goods(town, WOOD)
 
 # Advance only the arrivals by seconds of game time in steps of SHIP_STEP: the
 # shipment is NOT called — the caller decides when the tick ships.
