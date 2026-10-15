@@ -372,11 +372,21 @@ func _test_live_road(state: Dictionary) -> void:
             .get("road_built", false)),
             "road_built should be set on the hex the road has reached", state)
 
-    # Finish the remainder one segment per frame.
+    # Finish the remainder one segment per frame. The per-frame labour is sized for the
+    # MOST EXPENSIVE segment of the queue, and not for the first one: the price of a
+    # segment grows with the distance from the city and the terrain
+    # (MapHelpers.get_road_step_work_cost), and the labour left over from a finished step
+    # is NOT carried over to the next one. A rate sized for the first segment can fall
+    # short of a later segment's price, and then the queue does not finish in the
+    # allotted frames — which is exactly what made this test flaky.
+    var max_cost: float = first_cost
+    for step in project.get("steps", []):
+        max_cost = maxf(max_cost, float(step.get("work_cost", 0.0)))
+    var finish_delta: float = max_cost * 1.5 / labor_per_build
     for _i in range(step_count + 2):
         if not pm.has_active_projects():
             break
-        main_map.build_manager._process(delta)
+        main_map.build_manager._process(finish_delta)
     check(rm.is_hex_connected(row, col),
             "after the whole queue is built the hex should get a road", state)
     check(bool(main_map.tile_data[row][col].get("road_built", false)),

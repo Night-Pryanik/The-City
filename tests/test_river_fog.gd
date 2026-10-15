@@ -6,7 +6,7 @@
 # hung in black emptiness. A river must break at the border of the explored
 # area.
 #
-# Checked on the live MainMap (new game):
+# Checked on the live MainMap with a deterministic explored-region mask and river:
 #   1. The clipping really triggers: for at least one river the fog discards
 #      part of the smoothed points (otherwise the checks below are meaningless).
 #   2. All surviving points lie over explored territory. The check is
@@ -34,9 +34,18 @@ func _run() -> void:
     await process_frame
 
     var r = main_map.map_renderer
-    var river_manager = main_map.get_node("RiverManager")
     var radius: float = main_map.HEX_RADIUS
-    var all_rivers: Array = river_manager.get_main_rivers() + river_manager.get_tributaries()
+    for row in range(main_map.map_rows):
+        for col in range(main_map.map_cols):
+            var tile = main_map.tile_data[row][col]
+            tile["in_influence"] = false
+            tile["is_explored"] = false
+
+    var test_river: Array = []
+    for col in range(main_map.region_start_col, main_map.map_cols):
+        var center: Vector2 = HexUtils.hex_center(main_map.city_row, col, radius)
+        test_river.append(center)
+    var all_rivers: Array = [test_river]
 
     # --- 1. The fog really discards points for at least one river ---
     var dropped_total: int = 0
