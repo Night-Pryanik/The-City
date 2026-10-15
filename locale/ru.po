@@ -228,6 +228,9 @@ msgstr " → база ×%.2f…×%.2f"
 msgid "\"%s\" belongs to the next era. Advance to the %s era first."
 msgstr "«%s» относится к следующей эпохе. Сначала перейдите в эпоху %s."
 
+msgid "%.1f sec"
+msgstr "%.1f сек"
+
 msgid "%.2f sec"
 msgstr "%.2f сек"
 
@@ -389,6 +392,9 @@ msgstr "1,00 сек"
 
 msgid "1250 (Middle Ages)"
 msgstr "1250 (Средневековье)"
+
+msgid "3.0 sec"
+msgstr "3,0 сек"
 
 msgid "A range is shown because the goods in the group have different base prices."
 msgstr "Диапазон — потому что у товаров группы разные базовые цены."
@@ -926,6 +932,9 @@ msgstr "Перейти к городку"
 
 msgid "Greek"
 msgstr "греческая"
+
+msgid "HUD message display time"
+msgstr "Время показа сообщений в панели карты"
 
 msgid "Harbor"
 msgstr "Пристань"

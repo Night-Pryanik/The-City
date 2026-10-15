@@ -2759,6 +2759,16 @@ That is why a tooltip with an empty market shows the tax separately and does not
 
 **Test.** `tools/test_resource_display_interval.gd` — the slider and the config key, the clamp/epoch of `CityData`, and on a live `MainMap.tscn`: the supply label, "Food: N", the building tooltip's materials row and the panel's left column do not update until the interval arrives and do update after; `refresh_light()` (an event) updates instantly.
 
+### HUD message display time
+
+**The setting.** "Settings → Interface → HUD message display time" sets how long a message stays in the map HUD before it hides: **from 1 to 10 seconds with a step of 0.5** (default 3). The messages themselves are unchanged — they are still pushed by `hud.show_message()`, and each new one restarts the countdown.
+
+**The config key.** `user://settings.cfg`, section `interface`, key `hud_message_duration` (default `3.0`). Read in `main_map._load_settings()`, applied via `hud_message.set_message_duration()` (in the map's `_ready` and in `apply_settings()`).
+
+**The clamp is in the HUD, not in the slider.** `set_message_duration()` clamps to 1..10 (`MIN_MESSAGE_DURATION` / `MAX_MESSAGE_DURATION` in `hud_message.gd`), so a hand-edited settings file can neither flash a message out nor keep it on screen forever. The timer counts UP, so shortening the duration while a message is on screen hides it on the next frame — the player sees the effect of the slider at once, without waiting for a new message.
+
+**Test.** `tests/test_hud_message_duration.gd` — the slider, the value label and the config key (saved and read back), the clamp and the countdown of the HUD on a bare panel (the engine tick is switched off, the timing is driven by explicit `_process()` calls), and on a live `MainMap.tscn`: the value saved by the settings menu reaches the HUD at start and a change of the slider reaches the running HUD through `apply_settings()`.
+
 ---
 
 ## The "Trade" tab
@@ -3187,7 +3197,7 @@ Godot process. They are run by a single launcher:
 
 ```
 python tools/run_tests.py                 # the fast set (before a commit)
-python tools/run_tests.py --all           # all 47 tests
+python tools/run_tests.py --all           # all 48 tests
 python tools/run_tests.py --only road,sea # filter by a substring of the name
 python tools/run_tests.py --only town_economy --case=readiness
                                           # one case from one test

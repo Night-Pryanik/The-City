@@ -1,6 +1,12 @@
 @tool
 extends Panel
 
+# The bounds of the "HUD message display time" setting (the Interface tab of the settings
+# menu). set_message_duration() clamps to them, so a hand-edited user://settings.cfg cannot
+# make a message flash out or stay forever.
+const MIN_MESSAGE_DURATION := 1.0
+const MAX_MESSAGE_DURATION := 10.0
+
 var message_label: Label
 var message_timer: float = 0.0
 var message_duration: float = 3.0
@@ -50,6 +56,12 @@ func show_message(text: String):
     message_label.visible = true
     message_timer = 0.0
     call_deferred("_adjust_size")
+
+# Applies the "HUD message display time" setting (the key interface/hud_message_duration in
+# user://settings.cfg). Called by main_map from apply_settings() and at map start. The timer
+# counts up, so shortening the duration while a message is on screen hides it right away.
+func set_message_duration(value: float) -> void:
+    message_duration = clampf(value, MIN_MESSAGE_DURATION, MAX_MESSAGE_DURATION)
 
 func _adjust_size():
     await get_tree().process_frame

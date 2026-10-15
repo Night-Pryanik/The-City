@@ -18,6 +18,10 @@ extends Control
     "ResourceDisplayIntervalSlider", true, false)
 @onready var resource_display_interval_value_label: Label = find_child(
     "ResourceDisplayIntervalValueLabel", true, false)
+@onready var hud_message_duration_slider: HSlider = find_child(
+    "HudMessageDurationSlider", true, false)
+@onready var hud_message_duration_value_label: Label = find_child(
+    "HudMessageDurationValueLabel", true, false)
 
 var config = ConfigFile.new()
 
@@ -31,6 +35,8 @@ func _ready():
             or not building_detail_delay_value_label \
             or not resource_display_interval_slider \
             or not resource_display_interval_value_label \
+            or not hud_message_duration_slider \
+            or not hud_message_duration_value_label \
             or not language_option_button
     if missing_controls:
         print("Error: not all elements found in the settings scene!")
@@ -43,6 +49,7 @@ func _ready():
     extended_tooltip_delay_value_label.add_theme_color_override("font_color", Color.WHITE)
     building_detail_delay_value_label.add_theme_color_override("font_color", Color.WHITE)
     resource_display_interval_value_label.add_theme_color_override("font_color", Color.WHITE)
+    hud_message_duration_value_label.add_theme_color_override("font_color", Color.WHITE)
 
     _apply_tab_titles()
     load_settings()
@@ -54,6 +61,7 @@ func _ready():
     extended_tooltip_delay_slider.value_changed.connect(_on_extended_tooltip_delay_changed)
     building_detail_delay_slider.value_changed.connect(_on_building_detail_delay_changed)
     resource_display_interval_slider.value_changed.connect(_on_resource_display_interval_changed)
+    hud_message_duration_slider.value_changed.connect(_on_hud_message_duration_changed)
     language_option_button.item_selected.connect(_on_language_selected)
 
 # The tab titles are set manually: Godot takes them from the node NAMES, and node
@@ -110,6 +118,8 @@ func load_settings():
             "interface", "building_detail_delay", 0.5)
         resource_display_interval_slider.value = config.get_value(
             "game", "resource_display_interval", 1.0)
+        hud_message_duration_slider.value = config.get_value(
+            "interface", "hud_message_duration", 3.0)
     else:
         hex_borders_checkbox.button_pressed = true
         edge_scrolling_checkbox.button_pressed = true
@@ -117,12 +127,14 @@ func load_settings():
         extended_tooltip_delay_slider.value = 1.0
         building_detail_delay_slider.value = 0.5
         resource_display_interval_slider.value = 1.0
+        hud_message_duration_slider.value = 3.0
     # The minimum value of the extended tooltip cannot be less than the main one
     extended_tooltip_delay_slider.min_value = tooltip_delay_slider.value
     _update_tooltip_delay_label()
     _update_extended_tooltip_delay_label()
     _update_building_detail_delay_label()
     _update_resource_display_interval_label()
+    _update_hud_message_duration_label()
 
 func save_settings():
     # We re-read the file before writing: LocalizationManager writes the language here,
@@ -134,6 +146,7 @@ func save_settings():
     config.set_value("interface", "extended_tooltip_delay", extended_tooltip_delay_slider.value)
     config.set_value("interface", "building_detail_delay", building_detail_delay_slider.value)
     config.set_value("game", "resource_display_interval", resource_display_interval_slider.value)
+    config.set_value("interface", "hud_message_duration", hud_message_duration_slider.value)
     config.save("user://settings.cfg")
 
 func _apply_to_game():
@@ -177,6 +190,11 @@ func _on_resource_display_interval_changed(_value: float):
     save_settings()
     _apply_to_game()
 
+func _on_hud_message_duration_changed(_value: float):
+    _update_hud_message_duration_label()
+    save_settings()
+    _apply_to_game()
+
 func _update_tooltip_delay_label():
     var seconds = snappedf(tooltip_delay_slider.value, 0.25)
     tooltip_delay_value_label.text = tr("%.2f sec") % seconds
@@ -194,6 +212,11 @@ func _update_resource_display_interval_label():
     # the simulation tick = 1 sec, a fractional interval would give an uneven rhythm).
     var seconds = int(round(resource_display_interval_slider.value))
     resource_display_interval_value_label.text = tr("%d sec") % seconds
+
+func _update_hud_message_duration_label():
+    # The slider step is half a second: one decimal is exactly enough.
+    var seconds = snappedf(hud_message_duration_slider.value, 0.5)
+    hud_message_duration_value_label.text = tr("%.1f sec") % seconds
 
 func _on_back_pressed():
     hide()

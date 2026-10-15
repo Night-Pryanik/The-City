@@ -3073,4 +3073,29 @@ the mouse (the earlier bug) and the content comes from the mechanism, not from t
 The old "both tooltips are multi-line and no line is longer than 80 characters" assertions are gone —
 they guarded the workaround, and the workaround is no longer what keeps the text readable.
 
+## The HUD message display time became a setting (October 15, 2026)
+
+**The gap.** `hud_message.gd` carried `message_duration = 3.0` as a plain variable with no setter and
+no config key: every message the HUD ever showed — a settled trade deal, a refusal, a torn contract, a
+research error — disappeared after exactly three seconds, and the player had no say in it. Three
+seconds is a poor compromise: the trade flow writes sentences with town names, goods and prices in
+them, and reading one while the map is scrolling is not always possible in three seconds.
+
+**Why a slider and not a longer default.** The right length depends on the player and on what the
+message says, so it belongs in "Interface" next to the other timings (the three tooltip delays).
+Range 1..10 s with a step of 0.5 — the same shape as the neighbouring sliders, and half a second is
+fine enough for a value nobody tunes to the tenth.
+
+**Where the clamp lives.** In `hud_message.set_message_duration()`, not in the slider.
+`user://settings.cfg` is a plain text file the player can edit, and a duration of 0 or 10000 there
+must not produce a message that flashes out or one that never leaves. The timer counts UP, so
+lowering the value hides the message that is on screen right now: the effect of the slider is visible
+immediately instead of on the next message.
+
+**Guard.** `tests/test_hud_message_duration.gd`: the slider (range, step, default), the value label,
+the key saved and read back, the clamp and the countdown on a bare panel with the engine tick
+switched off, and the live `MainMap.tscn` path — the value reaches the HUD at start and a change of
+the slider reaches the running HUD. Checked by mutation: dropping the clamp fails the two clamp
+cases, and dropping the call in `_ready` fails the "applied at map start" case.
+
 

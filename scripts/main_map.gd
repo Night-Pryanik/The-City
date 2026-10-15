@@ -155,6 +155,10 @@ var building_detail_delay: float = 0.5
 # game/resource_display_interval in user://settings.cfg). It is also stored in
 # CityData.resource_display_interval — there is also the accumulator and the "era" of the display.
 var resource_display_interval: float = 1.0
+# How long a message stays in the map HUD before it hides (sec, 1..10 with a step of 0.5;
+# the key interface/hud_message_duration in user://settings.cfg). The clamp itself lives in
+# hud_message.gd — this value is passed through as it is.
+var hud_message_duration: float = 3.0
 
 # The last "era" of the display on which the HUD label of the treasury has been updated.
 # The tick path (city_updated → _on_city_data_updated) redraws the label
@@ -506,6 +510,7 @@ func _ready():
     input_handler.set_tooltip_delay(tooltip_delay)
     input_handler.set_extended_tooltip_delay(extended_tooltip_delay)
     city_ui.set_building_detail_delay(building_detail_delay)
+    hud.set_message_duration(hud_message_duration)
     CityData.set_resource_display_interval(resource_display_interval)
     # The planned consumption on the tab "Resources" (the tooltip and the dynamics "≈") is counted
     # by the workers worker_manager — we pass the reference into the UI of the city.
@@ -3454,6 +3459,7 @@ func _load_settings():
         extended_tooltip_delay = settings_config.get_value("interface", "extended_tooltip_delay", 1.0)
         building_detail_delay = settings_config.get_value("interface", "building_detail_delay", 0.5)
         resource_display_interval = settings_config.get_value("game", "resource_display_interval", 1.0)
+        hud_message_duration = settings_config.get_value("interface", "hud_message_duration", 3.0)
     else:
         show_hex_borders = true
         use_edge_scrolling = true
@@ -3461,12 +3467,14 @@ func _load_settings():
         extended_tooltip_delay = 1.0
         building_detail_delay = 0.5
         resource_display_interval = 1.0
+        hud_message_duration = 3.0
 
 func apply_settings():
     _load_settings()
     input_handler.set_tooltip_delay(tooltip_delay)
     input_handler.set_extended_tooltip_delay(extended_tooltip_delay)
     city_ui.set_building_detail_delay(building_detail_delay)
+    hud.set_message_duration(hud_message_duration)
     # set_resource_display_interval raises the era on a change of the value — we immediately
     # pick it up and update the HUD label of the treasury, so that the player sees the effect
     # of the new interval without waiting for the nearest city_updated.
