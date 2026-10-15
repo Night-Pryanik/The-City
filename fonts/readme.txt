@@ -1,0 +1,1 @@
+Put any font in .ttf, .otf, .woff, .woff2 format in this folder, and it will be automatically recognized by font manager ingame.
