@@ -43,7 +43,7 @@
     },
     { "id": "pyrite", "price": 10, "name": "Pyrite", "type": "product", "category": "minerals", "icon": "pyrite.png" },
 
-    // Pearl is a mineraloid, not a mineral, but it is included here for convenience
+    // Pearl and coral are mineraloids, not minerals, but they are included here for convenience
     {
       "id": "pearl",
       "price": 20,
@@ -51,6 +51,14 @@
       "type": "product",
       "category": "minerals",
       "icon": "pearl.png"
+    },
+    {
+      "id": "coral",
+      "price": 20,
+      "name": "Coral",
+      "type": "product",
+      "category": "minerals",
+      "icon": "coral.png"
     }
   ]
 }

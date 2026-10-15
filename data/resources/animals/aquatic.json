@@ -141,6 +141,26 @@
       "icon": "sponge.png",
       "color": [ 0, 100, 200 ],
       "breedable": false
+    },
+    {
+      "id": "corals",
+      "price": 40,
+      "name": "Corals",
+      "type": "raw",
+      "category": "animals",
+      "group": "aquatic_animals",
+      "subgroup": "misc_fish",
+      "strategic": true,
+      "tech_required": "fishing",
+      "allowed_terrain": [ "shallow_sea" ],
+      "allowed_cover": [ "none" ],
+      "improved_by": "fishing_boats",
+      "produces": { "coral": 10 },
+      "feed_consumption": 0,
+      "time_to_mature": 0,
+      "icon": "coral.png",
+      "color": [ 255, 100, 100 ],
+      "breedable": false
     }
   ]
 }

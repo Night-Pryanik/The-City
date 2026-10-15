@@ -109,6 +109,16 @@
       "time": 18,
       "unlock_tech": "jewelry",
       "description": "Makes jewelry out of pearls."
+    },
+    {
+      "id": "coral_jewelry",
+      "name": "Coral Jewelry",
+      "produced_in": [ "jeweler_house" ],
+      "resources": { "coral": 10 },
+      "result": { "coral_jewelry": 10 },
+      "time": 18,
+      "unlock_tech": "jewelry",
+      "description": "Makes jewelry out of coral."
     }
   ]
 }

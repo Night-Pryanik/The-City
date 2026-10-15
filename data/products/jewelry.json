@@ -98,6 +98,15 @@
       "category": "luxury",
       "unlock_tech": "jewelry",
       "icon": "pearl_jewelry.png"
+    },
+    {
+      "id": "coral_jewelry",
+      "price": 200,
+      "name": "Coral Jewelry",
+      "type": "product",
+      "category": "luxury",
+      "unlock_tech": "jewelry",
+      "icon": "coral_jewelry.png"
     }
   ]
 }
