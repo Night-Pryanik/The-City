@@ -5,6 +5,7 @@ extends Control
 @onready var edge_scrolling_checkbox: CheckBox = find_child("EdgeScrollingCheckBox", true, false)
 @onready var back_button: Button = find_child("BackButton", true, false)
 @onready var language_option_button: OptionButton = find_child("LanguageOptionButton", true, false)
+@onready var font_option_button: OptionButton = find_child("FontOptionButton", true, false)
 @onready var tab_container: TabContainer = find_child("TabContainer", true, false)
 @onready var tooltip_delay_slider: HSlider = find_child("TooltipDelaySlider", true, false)
 @onready var tooltip_delay_value_label: Label = find_child("TooltipDelayValueLabel", true, false)
@@ -37,7 +38,8 @@ func _ready():
             or not resource_display_interval_value_label \
             or not hud_message_duration_slider \
             or not hud_message_duration_value_label \
-            or not language_option_button
+            or not language_option_button \
+            or not font_option_button
     if missing_controls:
         print("Error: not all elements found in the settings scene!")
         return
@@ -45,6 +47,7 @@ func _ready():
     hex_borders_checkbox.add_theme_color_override("font_color", Color.WHITE)
     edge_scrolling_checkbox.add_theme_color_override("font_color", Color.WHITE)
     language_option_button.add_theme_color_override("font_color", Color.WHITE)
+    font_option_button.add_theme_color_override("font_color", Color.WHITE)
     tooltip_delay_value_label.add_theme_color_override("font_color", Color.WHITE)
     extended_tooltip_delay_value_label.add_theme_color_override("font_color", Color.WHITE)
     building_detail_delay_value_label.add_theme_color_override("font_color", Color.WHITE)
@@ -54,6 +57,7 @@ func _ready():
     _apply_tab_titles()
     load_settings()
     _setup_language_option()
+    _setup_font_option()
     back_button.pressed.connect(_on_back_pressed)
     hex_borders_checkbox.toggled.connect(_on_hex_borders_toggled)
     edge_scrolling_checkbox.toggled.connect(_on_edge_scrolling_toggled)
@@ -63,6 +67,7 @@ func _ready():
     resource_display_interval_slider.value_changed.connect(_on_resource_display_interval_changed)
     hud_message_duration_slider.value_changed.connect(_on_hud_message_duration_changed)
     language_option_button.item_selected.connect(_on_language_selected)
+    font_option_button.item_selected.connect(_on_font_selected)
 
 # The tab titles are set manually: Godot takes them from the node NAMES, and node
 # names are not translated. The titles are translated here by tr() calls with
@@ -106,6 +111,38 @@ func _on_language_selected(index: int):
         # the selected item depend on LocalizationManager — we update them manually.
         _apply_tab_titles()
         _setup_language_option()
+        # The font list is rebuilt as well: a change of the language may make the
+        # current font give way (FontManager checks the letters of the language),
+        # and the shown choice has to be the applied one.
+        _setup_font_option()
+
+# Fills in the font dropdown and sets the applied font in it. The value of an item is
+# the family name — the name the font itself declares, therefore it is not translated.
+# The list is rebuilt from the folders every time: a font copied into the folder while
+# the game is running appears here without a restart.
+func _setup_font_option():
+    FontManager.rescan()
+    var fonts: Array = FontManager.available_fonts()
+    var current := FontManager.current_family
+    font_option_button.clear()
+    if fonts.is_empty():
+        return
+    var selected_index := 0
+    for i in fonts.size():
+        var family := str(fonts[i])
+        if family == current:
+            selected_index = i
+        font_option_button.add_item(family, i)
+        font_option_button.set_item_metadata(i, family)
+    font_option_button.select(selected_index)
+    # The signal is connected in _ready, and select() does not send it: when the settings
+    # window opens the font is not re-chosen, but simply shown as the current one.
+
+func _on_font_selected(index: int):
+    var family := str(font_option_button.get_item_metadata(index))
+    if not FontManager.set_font(family):
+        # The file disappeared between the scan and the click: the list is stale.
+        _setup_font_option()
 
 func load_settings():
     var err = config.load("user://settings.cfg")

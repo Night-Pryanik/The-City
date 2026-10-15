@@ -888,6 +888,9 @@ msgstr ""
 msgid "Fill time: %.0f sec"
 msgstr ""
 
+msgid "Font"
+msgstr ""
+
 msgid "Food available: 0"
 msgstr ""
 
@@ -1648,6 +1651,9 @@ msgid "The contract is already closed."
 msgstr ""
 
 msgid "The goods are on the way from the town. Cancelling the deal returns the un-shipped part to the town and refunds %d coins."
+msgstr ""
+
+msgid "The interface font. Any font file (.ttf, .otf) put into the fonts folder is listed here and is applied at once, without restarting the game."
 msgstr ""
 
 msgid "The simulation is stopped. Your actions are queued until you resume it."

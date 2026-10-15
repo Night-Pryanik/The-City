@@ -5,5 +5,5 @@
 [resource]
 base_font = ExtResource("1_fwsqo")
 variation_opentype = {
-"wght": 500
+"weight": 500
 }

@@ -1,7 +1,6 @@
 [gd_scene format=3 uid="uid://2u8nnbat21lo"]
 
 [ext_resource type="Script" uid="uid://waateaq3ll8s" path="res://scripts/settings_menu.gd" id="1_05p07"]
-[ext_resource type="FontVariation" path="res://fonts/inter_medium.tres" id="2_medium"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_myx47"]
 bg_color = Color(0.29803923, 0.29803923, 0.29803923, 1)
@@ -55,7 +54,7 @@ theme_override_constants/separation = 8
 
 [node name="LanguageLabel" type="Label" parent="TabContainer/Игра/VBoxContainer"]
 layout_mode = 2
-theme_override_fonts/font = ExtResource("2_medium")
+theme_type_variation = &"SectionHeading"
 text = "Language"
 
 [node name="LanguageHint" type="Label" parent="TabContainer/Игра/VBoxContainer"]
@@ -69,7 +68,7 @@ layout_mode = 2
 
 [node name="Label" type="Label" parent="TabContainer/Игра/VBoxContainer" unique_id=871000002]
 layout_mode = 2
-theme_override_fonts/font = ExtResource("2_medium")
+theme_type_variation = &"SectionHeading"
 text = "Resource data refresh interval"
 
 [node name="LabelHint" type="Label" parent="TabContainer/Игра/VBoxContainer" unique_id=871000003]
@@ -116,9 +115,25 @@ anchor_right = 1.0
 grow_horizontal = 2
 theme_override_constants/separation = 8
 
+[node name="FontLabel" type="Label" parent="TabContainer/Интерфейс/VBoxContainer"]
+layout_mode = 2
+theme_type_variation = &"SectionHeading"
+text = "Font"
+
+[node name="FontHint" type="Label" parent="TabContainer/Интерфейс/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "The interface font. Any font file (.ttf, .otf) put into the fonts folder is listed here and is applied at once, without restarting the game."
+autowrap_mode = 3
+
+[node name="FontOptionButton" type="OptionButton" parent="TabContainer/Интерфейс/VBoxContainer"]
+custom_minimum_size = Vector2(420, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+
 [node name="Label" type="Label" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1054639215]
 layout_mode = 2
-theme_override_fonts/font = ExtResource("2_medium")
+theme_type_variation = &"SectionHeading"
 text = "Tile borders"
 
 [node name="HexBordersCheckBox" type="CheckBox" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1647564177]
@@ -127,7 +142,7 @@ text = "Show borders between tiles"
 
 [node name="Label2" type="Label" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1944413823]
 layout_mode = 2
-theme_override_fonts/font = ExtResource("2_medium")
+theme_type_variation = &"SectionHeading"
 text = "Map movement"
 
 [node name="EdgeScrollingCheckBox" type="CheckBox" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1099766743]
@@ -136,7 +151,7 @@ text = "Map movement at window edges"
 
 [node name="Label3" type="Label" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1054639220]
 layout_mode = 2
-theme_override_fonts/font = ExtResource("2_medium")
+theme_type_variation = &"SectionHeading"
 text = "Map tooltip delay"
 
 [node name="HBoxContainer" type="HBoxContainer" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1054639221]
@@ -157,7 +172,7 @@ text = "0.50 sec"
 
 [node name="Label4" type="Label" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1054639224]
 layout_mode = 2
-theme_override_fonts/font = ExtResource("2_medium")
+theme_type_variation = &"SectionHeading"
 text = "Extended map tooltip delay"
 
 [node name="HBoxContainer2" type="HBoxContainer" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1054639225]
@@ -178,7 +193,7 @@ text = "1.00 sec"
 
 [node name="Label5" type="Label" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1054639228]
 layout_mode = 2
-theme_override_fonts/font = ExtResource("2_medium")
+theme_type_variation = &"SectionHeading"
 text = "Tooltip delay (building details, treasury breakdown)"
 
 [node name="HBoxContainer3" type="HBoxContainer" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1054639229]
@@ -199,7 +214,7 @@ text = "0.50 sec"
 
 [node name="Label6" type="Label" parent="TabContainer/Интерфейс/VBoxContainer"]
 layout_mode = 2
-theme_override_fonts/font = ExtResource("2_medium")
+theme_type_variation = &"SectionHeading"
 text = "HUD message display time"
 
 [node name="HBoxContainer4" type="HBoxContainer" parent="TabContainer/Интерфейс/VBoxContainer"]

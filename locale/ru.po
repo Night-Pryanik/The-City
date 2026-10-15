@@ -888,6 +888,9 @@ msgstr "Заполненность: %d%% (полное через %.0f сек)"
 msgid "Fill time: %.0f sec"
 msgstr "Время заполнения: %.0f сек"
 
+msgid "Font"
+msgstr "Шрифт"
+
 msgid "Food available: 0"
 msgstr "Еды доступно: 0"
 
@@ -1649,6 +1652,9 @@ msgstr "Контракт уже закрыт."
 
 msgid "The goods are on the way from the town. Cancelling the deal returns the un-shipped part to the town and refunds %d coins."
 msgstr "Товар в пути из городка. Отмена вернёт неотправленную часть в городок и %d монет в казну."
+
+msgid "The interface font. Any font file (.ttf, .otf) put into the fonts folder is listed here and is applied at once, without restarting the game."
+msgstr "Шрифт интерфейса. Любой файл шрифта (.ttf, .otf), положенный в папку fonts, появляется в этом списке и применяется сразу, без перезапуска игры."
 
 msgid "The simulation is stopped. Your actions are queued until you resume it."
 msgstr "Симуляция остановлена. Ваши действия попадут в очередь до возобновления."

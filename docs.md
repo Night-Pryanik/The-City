@@ -2128,6 +2128,8 @@ Two call sites today — the supply line and the route-capacity warning of the t
 
 **One file, one project setting.** `project.godot` → `gui/theme/custom = res://theme/tooltips_theme.tres`. It was introduced for the tooltip popup and is the ONLY theme in the project: there is no per-scene theme, so everything it does not mention falls back to Godot's built-in theme (the default buttons, check boxes and scrollbars).
 
+**The font entries are rewritten at runtime.** The player can choose another font in the settings, and the choice is applied by editing THIS resource (see "The font manager"): `default_font` and the three emphasis entries below are replaced with the fonts of the chosen family. The values in the file are therefore the bundled default, not a constant.
+
 **What it styles.**
 
 | Item | What it is for |
@@ -2135,13 +2137,16 @@ Two call sites today — the supply line and the route-capacity warning of the t
 | `default_font` | the face of every text in the game — Inter (see "Typography") |
 | `Button/fonts/font` | the captions of plain buttons, one step heavier |
 | `TabBar/fonts/font` | the tab titles of the settings menu |
+| `SectionHeading/fonts/font` | the section headings of the settings menu (`theme_type_variation` on those `Label` nodes) |
 | `TooltipPanel/styles/panel` | the frame of the built-in tooltip popup (see "Tooltips") |
 | `HSlider/styles/slider`, `grabber_area`, `grabber_area_highlight` | the track of every slider, the part filled up to the knob, and that same part while the knob is hovered or dragged |
 | `TabContainer/styles/tab_selected`, `tab_hovered`, `tab_unselected` | the tab strip of the settings menu |
 
-**Typography.** The project bundles one font: `fonts/InterVariable.ttf` (SIL OFL 1.1, the licence is `fonts/OFL.txt`). It is a VARIABLE font, so a second weight costs no second file: `fonts/inter_medium.tres` is a `FontVariation` over the same file with `variation_opentype = {"wght": 500}`. The theme sets it as `default_font`, which gives the whole game Inter Regular at the built-in 16 px. The built-in face it replaces is Open Sans **SemiBold** — every label in the game used to be semi-bold, which is why the interface read as heavy. Inter is also slightly narrower and its line box is shorter (328 px and 20 px against 341 px and 23 px for the same string at 16 px), so text got tighter, never wider.
+**Typography.** The project bundles one font: `fonts/InterVariable.ttf` (SIL OFL 1.1, the licence is `fonts/OFL.txt`). It is a VARIABLE font, so a second weight costs no second file: `fonts/inter_medium.tres` is a `FontVariation` over the same file with `variation_opentype = {"weight": 500}`. The theme sets it as `default_font`, which gives the whole game Inter Regular at the built-in 16 px. The built-in face it replaces is Open Sans **SemiBold** — every label in the game used to be semi-bold, which is why the interface read as heavy. Inter is also slightly narrower and its line box is shorter (328 px and 20 px against 341 px and 23 px for the same string at 16 px), so text got tighter, never wider.
 
-**Where the Medium weight goes.** Three places, and they are deliberately the same three: the `Button` captions, the `TabBar` tab titles, and the section headings of the settings scene (`theme_override_fonts/font` on those `Label` nodes). Note that a theme entry is matched by the EXACT type name — `Button/fonts/font` does not reach `CheckBox` or `OptionButton`, whose captions are body text anyway. And the tab titles are read by the internal `TabBar` of the `TabContainer`, not by the `TabContainer` itself, so the entry has to be `TabBar/fonts/font` (the `TabContainer` one is inert).
+**The axis key is `"weight"`, never `"wght"`.** `FontVariation` addresses an axis by the NUMBER of its OpenType tag or by the name TextServer gives it — and TextServer calls `wght` **weight** (`tag_to_name()` returns the human-readable name). A Dictionary with the key `"wght"` is accepted without a word of complaint and IGNORED: the axis stays at its default and the font renders as its default instance. Measured on Inter at 40 px, "Шрифт 1234 Wg": 308 px at the default weight, **312 px** with `{"weight": 500}` or with the numeric tag `{2003265652: 500}`, and still 308 px with `{"wght": 500}`. The value also has to be an int — `{"wght": 500.0}` is ignored just as silently. The theme file uses the readable name, `font_manager.gd` uses the numeric tag (it does not depend on the naming table).
+
+**Where the Medium weight goes.** Three places, and they are deliberately the same three: the `Button` captions, the `TabBar` tab titles, and the section headings of the settings scene. The headings are a theme TYPE VARIATION (`SectionHeading`) rather than a per-node `theme_override_fonts`: an override points at one concrete resource, so a heading with an override keeps Inter Medium whatever font the player picks, while a variation is a name the theme answers — and the manager can answer it with the emphasis face of the chosen family. Note that a theme entry is matched by the EXACT type name — `Button/fonts/font` does not reach `CheckBox` or `OptionButton`, whose captions are body text anyway. And the tab titles are read by the internal `TabBar` of the `TabContainer`, not by the `TabContainer` itself, so the entry has to be `TabBar/fonts/font` (the `TabContainer` one is inert).
 
 **Why the sliders were flat.** Godot's built-in dark theme fills the part before the knob (`grabber_area`) with a grey that differs from the empty track by a couple of percent of brightness, so on the 0.298-grey panel of the settings menu the whole row reads as ONE flat bar. The theme gives the track `Color(1, 1, 1, 0.22)` and the fill `#85B7EB`, and slims the track from 8 px to 6 px (`content_margin_top`/`bottom` = 3). The knob is deliberately left alone: the built-in `grabber` is a 16 px white circle at 75 % opacity, which is exactly what the fill wants to run into — the theme overrides no icons at all.
 
@@ -2154,6 +2159,32 @@ Two call sites today — the supply line and the route-capacity warning of the t
 **Settings rows are a fixed width.** Every slider row is an `HBoxContainer` with a `HSlider` of `custom_minimum_size.x = 420` and a value `Label` of 64 px. The slider must NOT carry `size_flags_horizontal = 3`: an expanding slider eats the whole width of the full-screen panel and pushes the value to the far right edge, away from the knob it belongs to.
 
 **No test.** The project does not test concrete colours (such a test would hardcode the palette and would have to be edited on every tweak). The safety net is that the theme is loaded by every headless run through `gui/theme/custom`: a malformed theme breaks the whole suite at once.
+
+---
+
+## The font manager
+
+**What it is for.** The player can change the font of the interface in the settings, and a font file put into the `fonts` folder becomes a choice in the list by itself. The whole mechanism is `scripts/font_manager.gd` (the autoload `FontManager`, listed after `IconRegistry` in `project.godot`).
+
+**The list is a walk, not an index.** `FontManager.rescan()` walks `res://fonts` and `user://fonts` (recursively) and keeps every file with a `.ttf`, `.otf`, `.woff` or `.woff2` extension. The second folder is the player's own: in a build nothing can be put next to the game, and a file dropped into the player data folder is picked up without rebuilding the project. A family found in both folders is taken WHOLE from the first one, so the player's copy of "Inter Regular" can never argue with the bundled "Inter Medium". The settings rebuild the list every time the window opens — that is why a font copied into the folder appears without restarting the game. Service files (`*.import`, `*.uid`, `fonts/OFL.txt`, the generated `fonts/inter_medium.tres`) are filtered out by the extension, so a folder of fonts may keep its licences next to the files.
+
+**A font file is not a choice, a FAMILY is.** Lato ships eighteen files, and a dropdown of file names would show the player "Lato" eighteen times. The family is read from the name table (`FontFile.get_font_name()`), the faces are grouped by it, and one family is one item. The name table is not tidy: **Lato-Medium.ttf calls its family "Lato Medium"** (so do Lato-Black, Lato-Light, Lato-SemiBold and FiraSans-Medium), while Lato-Bold calls its family a plain "Lato". `normalize_family()` therefore cuts a trailing weight word off the family name — first by the style name (exact), then by a list of weight words (for the vendors that put the weight into the family name and call the style "Regular", which is exactly what Lato-Black does).
+
+**The two faces of a family.** The manager does not ask the player which file to use for what: the body is the face closest to 400, the emphasis (buttons, tab titles, section headings) is the lightest face at 500 and above, falling back to the lightest face heavier than the body. Measured on real families: Lato → Regular + Medium, Fira Sans → Regular + Medium, PT Sans → Regular + Bold. Italics never become the body font (a family that has nothing but italics is still offered).
+
+**A variable font is instantiated, not taken as it is.** `FontFile.font_weight` is the weight of the DEFAULT INSTANCE of the file, and that instance is not always Regular: `Montserrat[wght].ttf` reports **Thin (100)**. A variable font is therefore always wrapped in a `FontVariation` set to the needed weight (400 for the body, 500 for the emphasis) — see the axis-key warning above. A family with a single face and no axis at all (Bebas Neue, Lobster) keeps its hierarchy by `variation_embolden = 0.5`: a fake weight, but a section heading that cannot be told from the text under it is worse.
+
+**Applying: the theme is rewritten, not replaced.** `_apply_family()` sets `theme.default_font` and the three emphasis entries of the ALREADY LOADED project theme (`ThemeDB.get_project_theme()` returns the same instance that `gui/theme/custom` hands to every Control). A theme is a shared resource and a Control resolves its font through it on every call, so no scene has to be rebuilt: measured on a live tree, a `Label` created before the change resolves the new font in the next frame.
+
+**`_repaint()` — why it is there.** Rewriting the theme is not always enough to make it VISIBLE: measured on a real window, the interface kept the old font after the second change in a row. `_repaint()` sends `NOTIFICATION_THEME_CHANGED` down the tree by hand (the same thing the editor does when the theme of a project is edited) and additionally calls `queue_redraw()` on every `CanvasItem` that is not a `Control`. The second half is for the map: `map_renderer.gd` draws the names of the cities and of the towns itself, with `draw_string` and `ThemeDB.fallback_font`, and knows nothing about the theme. `_apply_family()` therefore sets `ThemeDB.fallback_font` as well, or the map would stay in the built-in font while the whole interface changes.
+
+**The letter check.** A font that cannot draw the language turns the whole interface into empty boxes (Bebas Neue has no Cyrillic at all), and such a choice would greet the player on every launch — the settings window included, which is the only place where it could be undone. `covers_locale()` therefore checks the WHOLE alphabet of the language (`LOCALE_LETTERS`, one string per language; a language that is not in the table is not checked) at the START of the game and on a language change: such a family is not applied, the bundled one is used instead, and the saved value is KEPT — the same font may be perfectly usable in another language. A choice made in the settings is applied as it is (the player sees the result at once and can undo it in the same window): the check guards a launch, not a click.
+
+**The config key.** `user://settings.cfg`, section `interface`, key `font` (the FAMILY name, empty on the first launch). The rules repeat `LocalizationManager`: an unknown value does not crash the game — the bundled family is applied, a warning goes to the console and the setting is rewritten, so that the next launch is predictable. The `user://` half of the walk is what makes the setting usable in a build: `ResourceLoader` knows nothing about files outside `res://` (and says so with an error), so a font found there is read with `FontFile.load_dynamic_font()`.
+
+**The bundled default is `Inter`** (`DEFAULT_FAMILY`). If the folders hold no fonts at all, the manager leaves the theme alone — the values in the theme file are already the default.
+
+**Test.** `tests/test_font_manager.gd` — the walk and the extension filter, `normalize_family()`, `choose_faces()` on artificial families (weights only), the dropdown and the config key, the application on the live theme (including the emphasis really being HEAVIER, which is what a wrong axis key breaks) and the fallback for an unknown family. The `user://` half of the walk is covered by a copy of the bundled font in a folder of the test's own. NOT covered: the theme notification of `_repaint()` — a headless run cannot see it (the theme notifies its users by itself often enough for a counter to be worthless as a check), so that half was verified on a real window.
 
 ---
 
@@ -2802,6 +2833,18 @@ That is why a tooltip with an empty market shows the tax separately and does not
 
 **Test.** `tests/test_hud_message_duration.gd` — the slider, the value label and the config key (saved and read back), the clamp and the countdown of the HUD on a bare panel (the engine tick is switched off, the timing is driven by explicit `_process()` calls), and on a live `MainMap.tscn`: the value saved by the settings menu reaches the HUD at start and a change of the slider reaches the running HUD through `apply_settings()`.
 
+### The interface font
+
+**The setting.** "Settings → Interface → Font" is an `OptionButton` listing every FAMILY found in the font folders (see "The font manager" for how the list is built). The bundled `Inter` is one of them, and it is the one shown until the player picks another.
+
+**The config key.** `user://settings.cfg`, section `interface`, key `font` (the family name, empty on the first launch). Unlike every other setting in this file, it is NOT read back by `main_map._load_settings()` and is not re-applied in `apply_settings()`: the autoload `FontManager` owns it — it reads the key in its own `_ready()` and applies the family to the project theme before any map exists, and the settings menu only writes the key. `main_map` has no font code at all, so the two paths can never fight over the theme.
+
+**A change is applied at once, from inside the settings window.** `_on_font_selected()` calls `FontManager.set_font()`, which rewrites the theme entries and repaints the tree — the player sees the whole window (and the map behind it) in the new font without confirming anything and without a restart. The list itself is rebuilt on every open of the window (`_setup_font_option()` calls `FontManager.rescan()` first), which is what makes a font dropped into the folder appear by itself.
+
+**A rejected choice snaps back.** `set_font()` returns `false` when the family cannot be applied (it vanished between the scan and the click, or it cannot draw the language); the handler then re-runs `_setup_font_option()`, so the dropdown shows the font that is ACTUALLY in force instead of a name that did nothing. A language change re-runs the same routine: switching to a language the current font cannot draw makes `FontManager` fall back to the bundled family, and the dropdown has to follow it.
+
+**Test.** The dropdown and the key are covered by `tests/test_font_manager.gd` (see "The font manager"); the rest of the settings file is not involved, so the other settings tests are untouched by this key.
+
 ---
 
 ## The "Trade" tab
@@ -3230,7 +3273,7 @@ Godot process. They are run by a single launcher:
 
 ```
 python tools/run_tests.py                 # the fast set (before a commit)
-python tools/run_tests.py --all           # all 48 tests
+python tools/run_tests.py --all           # all 49 tests
 python tools/run_tests.py --only road,sea # filter by a substring of the name
 python tools/run_tests.py --only town_economy --case=readiness
                                           # one case from one test
