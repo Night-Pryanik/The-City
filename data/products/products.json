@@ -183,6 +183,15 @@
       "category": "writing_materials",
       "unlock_tech": "writing",
       "icon": "writing_set.png"
+    },
+    {
+      "id": "sponge",
+      "price": 10,
+      "name": "Sponge",
+      "type": "product",
+      "category": "household_items",
+      "unlock_tech": "fishing",
+      "icon": "sponge.png"
     }
   ]
 }

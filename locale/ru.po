@@ -2497,6 +2497,10 @@ msgid "Makes jewelry out of nephrite."
 msgstr "Изготовление украшений из нефрита"
 
 msgctxt "crafts.description"
+msgid "Makes jewelry out of pearls."
+msgstr "Изготовление украшений из жемчуга"
+
+msgctxt "crafts.description"
 msgid "Makes jewelry out of porphyry."
 msgstr "Изготовление украшений из порфира"
 
@@ -2851,6 +2855,10 @@ msgstr "Папирус"
 msgctxt "crafts.name"
 msgid "Parchment"
 msgstr "Пергамент"
+
+msgctxt "crafts.name"
+msgid "Pearl Jewelry"
+msgstr "Украшения из жемчуга"
 
 msgctxt "crafts.name"
 msgid "Planks"
@@ -3917,6 +3925,14 @@ msgid "Ostriches"
 msgstr "Страусы"
 
 msgctxt "resources.name"
+msgid "Oyster"
+msgstr "Устрица"
+
+msgctxt "resources.name"
+msgid "Oysters"
+msgstr "Устрицы"
+
+msgctxt "resources.name"
 msgid "Paper"
 msgstr "Бумага"
 
@@ -3927,6 +3943,18 @@ msgstr "Папирус"
 msgctxt "resources.name"
 msgid "Parchment"
 msgstr "Пергамент"
+
+msgctxt "resources.name"
+msgid "Pearl"
+msgstr "Жемчуг"
+
+msgctxt "resources.name"
+msgid "Pearl Jewelry"
+msgstr "Украшения из жемчуга"
+
+msgctxt "resources.name"
+msgid "Pearl Oysters"
+msgstr "Жемчужницы"
 
 msgctxt "resources.name"
 msgid "Peas"
@@ -4123,6 +4151,14 @@ msgstr "Сорго"
 msgctxt "resources.name"
 msgid "Soybean"
 msgstr "Соя"
+
+msgctxt "resources.name"
+msgid "Sponge"
+msgstr "Губка"
+
+msgctxt "resources.name"
+msgid "Sponges"
+msgstr "Губки"
 
 msgctxt "resources.name"
 msgid "Stone Tableware"

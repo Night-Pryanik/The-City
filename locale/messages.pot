@@ -2497,6 +2497,10 @@ msgid "Makes jewelry out of nephrite."
 msgstr ""
 
 msgctxt "crafts.description"
+msgid "Makes jewelry out of pearls."
+msgstr ""
+
+msgctxt "crafts.description"
 msgid "Makes jewelry out of porphyry."
 msgstr ""
 
@@ -2850,6 +2854,10 @@ msgstr ""
 
 msgctxt "crafts.name"
 msgid "Parchment"
+msgstr ""
+
+msgctxt "crafts.name"
+msgid "Pearl Jewelry"
 msgstr ""
 
 msgctxt "crafts.name"
@@ -3917,6 +3925,14 @@ msgid "Ostriches"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Oyster"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Oysters"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Paper"
 msgstr ""
 
@@ -3926,6 +3942,18 @@ msgstr ""
 
 msgctxt "resources.name"
 msgid "Parchment"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Pearl"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Pearl Jewelry"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Pearl Oysters"
 msgstr ""
 
 msgctxt "resources.name"
@@ -4122,6 +4150,14 @@ msgstr ""
 
 msgctxt "resources.name"
 msgid "Soybean"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Sponge"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Sponges"
 msgstr ""
 
 msgctxt "resources.name"

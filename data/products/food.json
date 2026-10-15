@@ -15,28 +15,51 @@
     { "id": "yam", "price": 4, "name": "Yam", "type": "product", "category": "food", "icon": "yam.png" },
     { "id": "cassava", "price": 3, "name": "Cassava", "type": "product", "category": "food", "icon": "cassava.png" },
     { "id": "sorghum", "price": 3, "name": "Sorghum", "type": "product", "category": "food", "icon": "sorghum.png" },
-    { "id": "amaranth", "price": 3, "name": "Amaranth", "type": "product", "category": "food", "icon": "amaranth.png" },
+    {
+      "id": "amaranth",
+      "price": 3,
+      "name": "Amaranth",
+      "type": "product",
+      "category": "food",
+      "icon": "amaranth.png"
+    },
     { "id": "teff", "price": 3, "name": "Teff", "type": "product", "category": "food", "icon": "teff.png" },
     { "id": "taro", "price": 4, "name": "Taro", "type": "product", "category": "food", "icon": "taro.png" },
     { "id": "maca", "price": 5, "name": "Maca", "type": "product", "category": "food", "icon": "maca.png" },
-    { "id": "buckwheat", "price": 3, "name": "Buckwheat", "type": "product", "category": "food", "icon": "buckwheat.png" },
+    {
+      "id": "buckwheat",
+      "price": 3,
+      "name": "Buckwheat",
+      "type": "product",
+      "category": "food",
+      "icon": "buckwheat.png"
+    },
     { "id": "beans", "price": 3, "name": "Beans", "type": "product", "category": "food", "icon": "beans.png" },
     { "id": "cowpea", "price": 3, "name": "Cowpea", "type": "product", "category": "food", "icon": "cowpea.png" },
     { "id": "peas", "price": 3, "name": "Peas", "type": "product", "category": "food", "icon": "peas.png" },
     { "id": "lentils", "price": 4, "name": "Lentils", "type": "product", "category": "food", "icon": "lentils.png" },
-    { "id": "chickpeas", "price": 4, "name": "Chickpeas", "type": "product", "category": "food", "icon": "chickpeas.png" },
+    {
+      "id": "chickpeas",
+      "price": 4,
+      "name": "Chickpeas",
+      "type": "product",
+      "category": "food",
+      "icon": "chickpeas.png"
+    },
     { "id": "meat", "price": 9, "name": "Meat", "type": "product", "category": "food", "icon": "meat.png" },
     { "id": "cheese", "price": 14, "name": "Cheese", "type": "product", "category": "food", "icon": "cheese.png" },
     { "id": "eggs", "price": 5, "name": "Eggs", "type": "product", "category": "food", "icon": "eggs.png" },
     { "id": "honey", "price": 16, "name": "Honey", "type": "product", "category": "food", "icon": "honey.png" },
     { "id": "bread", "price": 6, "name": "Bread", "type": "product", "category": "food", "icon": "bread.png" },
     {
-      "id": "foraged_food", "price": 1,
+      "id": "foraged_food",
+      "price": 1,
       "name": "Foraged Food",
       "type": "product",
       "category": "food",
       "icon": "foraged_food.png"
     },
-    { "id": "fish", "price": 8, "name": "Fish", "type": "product", "category": "food", "icon": "fish.png" }
+    { "id": "fish", "price": 8, "name": "Fish", "type": "product", "category": "food", "icon": "fish.png" },
+    { "id": "oyster", "price": 15, "name": "Oyster", "type": "product", "category": "food", "icon": "oyster.png" }
   ]
 }

@@ -99,6 +99,16 @@
       "time": 18,
       "unlock_tech": "jewelry",
       "description": "Makes jewelry out of porphyry."
+    },
+    {
+      "id": "pearl_jewelry",
+      "name": "Pearl Jewelry",
+      "produced_in": [ "jeweler_house" ],
+      "resources": { "pearl": 10 },
+      "result": { "pearl_jewelry": 10 },
+      "time": 18,
+      "unlock_tech": "jewelry",
+      "description": "Makes jewelry out of pearls."
     }
   ]
 }
