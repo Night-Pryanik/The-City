@@ -2101,7 +2101,7 @@ At the bottom of the game map a control panel is **always** visible (`scenes/Mai
 
 ### The built-in tooltip does not wrap
 
-`Control.tooltip_text` is enough for a short hint, and most of the project's tooltips use it. It is NOT enough for a long one: the engine draws the text in a single line and never breaks it, so a hint written as one sentence comes out as one line that runs off the edge of the window. There is nothing to configure in the theme — the width of the tooltip is the width of the label the engine builds for it, and `theme/tooltips_theme.tres` styles only the panel of the popup (`TooltipPanel/styles/panel`).
+`Control.tooltip_text` is enough for a short hint, and most of the project's tooltips use it. It is NOT enough for a long one: the engine draws the text in a single line and never breaks it, so a hint written as one sentence comes out as one line that runs off the edge of the window. There is nothing to configure in the theme — the width of the tooltip is the width of the label the engine builds for it, and the theme only gives that popup its panel (`TooltipPanel/styles/panel`).
 
 The engine builds that label in `Viewport._gui_show_tooltip()`: it asks the control that OWNS the tooltip text for a custom content node (`Control._make_custom_tooltip`) and puts what it returns INSIDE its popup, beside the panel background (the popup is a `PopupPanel` carrying the themed `Panel` and the content label). A custom tooltip therefore replaces the TEXT and keeps the frame.
 
@@ -2121,6 +2121,39 @@ The engine builds that label in `Viewport._gui_show_tooltip()`: it asks the cont
 Two call sites today — the supply line and the route-capacity warning of the town window (`scripts/town_ui.gd`).
 
 **Tests:** `tests/test_wrapped_tooltip.gd` (headless) — a hint wider than the limit is constrained to it and wraps, a short hint keeps its natural width, and the natural width is measured over the widest line; the carrier covers the whole control, follows it on resize, is `PASS`, and the control itself is left hoverable; a repeated `attach` reuses the carrier and only replaces the text; on a live tree the engine picks the CARRIER as the control under the mouse and shows our wrapping label inside its popup at the wrap width; and a click still reaches the button under the carrier. The last two cases need the real tooltip machinery: a mouse motion pushed into the viewport and the tooltip delay (`gui/timers/tooltip_delay_sec`) waited out. A headless window is 64x64 with the viewport scaled into it, so the event is pushed in LOCAL coordinates — in window coordinates it lands far from the control and the tooltip never appears. `tests/test_town_trade_ui.gd` checks the two call sites: the owner of each hint catches the mouse, and the content is produced by the mechanism and not by the engine default.
+
+---
+
+## The interface theme
+
+**One file, one project setting.** `project.godot` → `gui/theme/custom = res://theme/tooltips_theme.tres`. It was introduced for the tooltip popup and is the ONLY theme in the project: there is no per-scene theme, so everything it does not mention falls back to Godot's built-in theme (the default buttons, check boxes and scrollbars).
+
+**What it styles.**
+
+| Item | What it is for |
+| --- | --- |
+| `default_font` | the face of every text in the game — Inter (see "Typography") |
+| `Button/fonts/font` | the captions of plain buttons, one step heavier |
+| `TabBar/fonts/font` | the tab titles of the settings menu |
+| `TooltipPanel/styles/panel` | the frame of the built-in tooltip popup (see "Tooltips") |
+| `HSlider/styles/slider`, `grabber_area`, `grabber_area_highlight` | the track of every slider, the part filled up to the knob, and that same part while the knob is hovered or dragged |
+| `TabContainer/styles/tab_selected`, `tab_hovered`, `tab_unselected` | the tab strip of the settings menu |
+
+**Typography.** The project bundles one font: `fonts/InterVariable.ttf` (SIL OFL 1.1, the licence is `fonts/OFL.txt`). It is a VARIABLE font, so a second weight costs no second file: `fonts/inter_medium.tres` is a `FontVariation` over the same file with `variation_opentype = {"wght": 500}`. The theme sets it as `default_font`, which gives the whole game Inter Regular at the built-in 16 px. The built-in face it replaces is Open Sans **SemiBold** — every label in the game used to be semi-bold, which is why the interface read as heavy. Inter is also slightly narrower and its line box is shorter (328 px and 20 px against 341 px and 23 px for the same string at 16 px), so text got tighter, never wider.
+
+**Where the Medium weight goes.** Three places, and they are deliberately the same three: the `Button` captions, the `TabBar` tab titles, and the section headings of the settings scene (`theme_override_fonts/font` on those `Label` nodes). Note that a theme entry is matched by the EXACT type name — `Button/fonts/font` does not reach `CheckBox` or `OptionButton`, whose captions are body text anyway. And the tab titles are read by the internal `TabBar` of the `TabContainer`, not by the `TabContainer` itself, so the entry has to be `TabBar/fonts/font` (the `TabContainer` one is inert).
+
+**Why the sliders were flat.** Godot's built-in dark theme fills the part before the knob (`grabber_area`) with a grey that differs from the empty track by a couple of percent of brightness, so on the 0.298-grey panel of the settings menu the whole row reads as ONE flat bar. The theme gives the track `Color(1, 1, 1, 0.22)` and the fill `#85B7EB`, and slims the track from 8 px to 6 px (`content_margin_top`/`bottom` = 3). The knob is deliberately left alone: the built-in `grabber` is a 16 px white circle at 75 % opacity, which is exactly what the fill wants to run into — the theme overrides no icons at all.
+
+**Translucent, not fixed, greys.** Every new style box that has to sit on a panel uses white with an alpha rather than a fixed grey, so the same track keeps working if the panel colour changes.
+
+**`TabContainer` lives only in the settings menu.** The city interface builds its own tab strip in code (`external_trade_tab.gd` records why: a `TabContainer` would bring its own look), so styling the tabs touches nothing else.
+
+**The settings window covers its own tab row.** The `TabContainer` does not paint the strip the tabs sit on — without help the map (and the HUD's "Menu" button, which is drawn in the layer below) shows through that band. The scene therefore carries a full-rect `Background` `Panel` as the FIRST child of `SettingsMenu`, so the window is opaque from the tab row down; the panel of the `TabContainer` itself is still the scene's local `StyleBoxFlat_myx47` override.
+
+**Settings rows are a fixed width.** Every slider row is an `HBoxContainer` with a `HSlider` of `custom_minimum_size.x = 420` and a value `Label` of 64 px. The slider must NOT carry `size_flags_horizontal = 3`: an expanding slider eats the whole width of the full-screen panel and pushes the value to the far right edge, away from the knob it belongs to.
+
+**No test.** The project does not test concrete colours (such a test would hardcode the palette and would have to be edited on every tweak). The safety net is that the theme is loaded by every headless run through `gui/theme/custom`: a malformed theme breaks the whole suite at once.
 
 ---
 

@@ -3098,4 +3098,80 @@ switched off, and the live `MainMap.tscn` path — the value reaches the HUD at 
 the slider reaches the running HUD. Checked by mutation: dropping the clamp fails the two clamp
 cases, and dropping the call in `_ready` fails the "applied at map start" case.
 
+## The sliders were flat: the interface theme (October 15, 2026)
+
+**The question that started it.** A mockup of the settings window drawn outside the game looked
+noticeably better than the game itself — the mockup's sliders had a blue bar running from the left
+edge up to the knob, and the game's had none. The mockup is not a render of the game, so the honest
+answer had to be a diagnosis rather than a shrug: WHERE does the game get its look from?
+
+**The diagnosis.** `project.godot` has exactly one theme setting, `gui/theme/custom =
+res://theme/tooltips_theme.tres`, and that file declared exactly one item: `TooltipPanel/styles/panel`.
+So every other control in the game — sliders, check boxes, tabs, buttons, scrollbars — was drawn by
+Godot's built-in theme, and the file's name (it was written for the tooltip popup) had quietly become
+the project's whole look. The built-in dark theme does fill the part of a slider before the knob
+(`grabber_area`), but with a grey a couple of percent brighter than the empty track: on the 0.298-grey
+settings panel that difference is invisible, and the row reads as one flat bar. The knob was never the
+problem — the built-in `grabber` is already a 16 px white circle at 75 % opacity.
+
+**What we styled, and what we deliberately did not.** Three style boxes per concern, and no icons and
+no textures: the track (`Color(1, 1, 1, 0.22)`), the fill (`#85B7EB`) and the fill while the knob is
+hovered or dragged (`#B5D4F4`); plus the three tab style boxes of `TabContainer`. The track is a
+translucent white rather than a fixed grey, so it keeps working on any panel colour, and it was slimmed
+from 8 px to 6 px. The tab style boxes are safe to touch because `TabContainer` exists in exactly one
+place: the city interface builds its own tab strip in code and recorded why. The panel behind the tabs
+was left to the local override of the settings scene.
+
+**What we did NOT touch, and why it is a decision rather than an omission.** No font: the project
+ships none, and the built-in Open Sans SemiBold at 16 px is what the mockup's "nicer font" actually
+differed from — swapping it is a whole-project typography change, not a theme tweak. No check box
+marks: `CheckBox` draws its box and tick as ICONS, and a theme can only replace those with real texture
+files; the built-in ones are fine. No `Button` styles: the default button already has a border and a
+hover state, and restyling it would drag in the whole city interface.
+
+**Verification.** The project does not test colours — a test would just hardcode the palette and would
+have to be edited on every tweak (the same reason `test_recipe_alignment.gd` was deleted). The theme is
+verified structurally instead: `gui/theme/custom` is loaded by every headless run, so a malformed theme
+takes the whole suite down at once (26/26 green after the change). For the look itself the real window
+was rendered once and grabbed: run the project with a `SceneTree` script that instantiates the scene,
+waits a few `process_frame`s, then `await RenderingServer.frame_post_draw` before
+`get_root().get_texture().get_image().save_png(...)` — the `frame_post_draw` await is what makes the
+grab show the frame that was actually drawn.
+
+**Round two: the face itself.** Styling the controls left the bigger half of the difference untouched.
+Godot's built-in face is Open Sans **SemiBold**, and it is what EVERY label in the game is drawn with —
+so the whole interface was semi-bold, which is what "clunky" actually meant. The project now bundles one
+font, `fonts/InterVariable.ttf` (SIL OFL 1.1, licence kept next to it as `fonts/OFL.txt`). It is a
+VARIABLE font, so the second weight costs no second file: `fonts/inter_medium.tres` is a `FontVariation`
+over the same file with `variation_opentype = {"wght": 500}`. Regular everywhere, Medium in exactly
+three places — `Button` captions, `TabBar` tab titles, and the section headings of the settings scene.
+Two measurements made the swap cheap to reason about: Inter is narrower (328 px against 341 px for the
+same string at 16 px) and its line box is shorter (20 px against 23 px), so nothing got wider and every
+row got slightly shorter — the safe direction for a layout that was never designed for a new face.
+
+**Two traps in the theme lookup, both found by probing rather than by guessing.** A theme entry is
+matched by the EXACT type name: `Button/fonts/font` reaches `Button` and nothing else — `CheckBox` and
+`OptionButton` keep the default face, which is why the Medium weight had to be assigned per control
+instead of "for all interactive things". And the tab titles are read by the INTERNAL `TabBar` of the
+`TabContainer`, not by the `TabContainer` itself: `TabContainer/fonts/font` resolves to the default face
+while the tabs are drawn from `TabBar/fonts/font`. `ThemeDB.get_default_theme().get_stylebox_list(...)`
+answers both questions in one headless run, and reading a missing item returns Godot's reddish ERROR
+stylebox — a probe that does not know this reads a colour that no widget ever shows.
+
+**The layout half: the value label was in the wrong place.** Every slider row was an `HBoxContainer`
+whose `HSlider` carried `size_flags_horizontal = 3`. On a full-screen panel an expanding slider takes
+the entire width, so the value label was pushed to the far right edge, a thousand pixels away from the
+knob it describes. The rows are now a fixed `HSlider` width (420 px) plus a 64 px value label, which
+also lines all the values up in one column, and the settings `VBoxContainer`s got `separation = 8`
+instead of the default 4.
+
+**The window did not cover its own tab row.** Rendering the REAL path — the settings menu opened on a
+`CanvasLayer`, the way `pause_menu._on_settings()` does it, and not the instance that `main_map._ready`
+pre-creates and that anchors against a zero rect under a `Node2D` — showed the map and the HUD's "Menu"
+button bleeding through the strip the tabs sit on: the `TabContainer` does not paint it. The scene now
+has a full-rect `Background` `Panel` as the first child of `SettingsMenu`, so the window is opaque from
+the tab row down. Worth remembering for the next screenshot: the root-instantiated scene looks
+IDENTICAL to the in-game one for everything except this band, so a "before/after" pair taken that way
+would have silently missed the defect.
+
 

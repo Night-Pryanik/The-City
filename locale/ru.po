@@ -934,7 +934,7 @@ msgid "Greek"
 msgstr "греческая"
 
 msgid "HUD message display time"
-msgstr "Время показа сообщений в панели карты"
+msgstr "Время показа сообщений в верхней панели карты"
 
 msgid "Harbor"
 msgstr "Пристань"
