@@ -79,6 +79,14 @@
       "icon": "agave.png"
     },
     {
+      "id": "kenaf", "price": 6,
+      "name": "Kenaf",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "weaving",
+      "icon": "kenaf.png"
+    },
+    {
       "id": "mulberry_bark", "price": 6,
       "name": "Mulberry Bark",
       "type": "product",

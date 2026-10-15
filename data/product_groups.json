@@ -70,18 +70,19 @@
         "flax",
         "soybean",
       //  "peanut",
-        "olives"
+        "olives",
+        "kenaf"
       ]
     },
     {
       "id": "textile_crops",
       "name": "Textile Crops",
-      "products": [ "cotton", "flax", "hemp", "jute", "ramie" ]
+      "products": [ "cotton", "flax", "hemp", "jute", "ramie", "kenaf" ]
     },
     {
       "id": "rope_fibers",
       "name": "Rope Fibers",
-      "products": [ "hemp", "jute", "ramie", "sisal", "papyrus" ]
+      "products": [ "hemp", "jute", "ramie", "sisal", "papyrus", "kenaf" ]
     },
     { "id": "boats", "name": "Boats", "products": [ "reed_boat" ] },
     {
@@ -147,7 +148,7 @@
     {
       "id": "paper_fibers",
       "name": "Paper Fibers",
-      "products": [ "mulberry_bark", "hemp", "ramie" ]
+      "products": [ "mulberry_bark", "hemp", "ramie", "sisal", "kenaf" ]
     },
     {
       "id": "alcohol",

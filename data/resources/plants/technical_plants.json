@@ -77,6 +77,21 @@
       "color": [ 150, 200, 150 ]
     },
     {
+      "id": "kenaf_field", "price": 5,
+      "name": "Kenaf",
+      "type": "raw",
+      "category": "technical_plants",
+      "group": "technical_plants",
+      "subgroup": "textile_plants",
+      "allowed_terrain": [ "plain" ],
+      "allowed_cover": [ "none" ],
+      "improved_by": "plantation",
+      "tech_required": "plantations",
+      "produces": { "kenaf": 10, "feed": 40 },
+      "icon": "kenaf.png",
+      "color": [ 150, 200, 150 ]
+    },
+    {
       // So as not to multiply needless entities, various agave species are meant
       // here under the single "Agave"
       // (American agave, sisal agave, tequila agave, etc.), which in the game

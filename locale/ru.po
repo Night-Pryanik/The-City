@@ -2477,6 +2477,10 @@ msgid "Makes jewelry out of copper."
 msgstr "Создаёт украшения из меди"
 
 msgctxt "crafts.description"
+msgid "Makes jewelry out of coral."
+msgstr "Создаёт украшения из кораллов"
+
+msgctxt "crafts.description"
 msgid "Makes jewelry out of gold."
 msgstr "Создаёт украшения из золота"
 
@@ -2731,6 +2735,10 @@ msgstr "Медные инструменты"
 msgctxt "crafts.name"
 msgid "Copper Weapons"
 msgstr "Медное оружие"
+
+msgctxt "crafts.name"
+msgid "Coral Jewelry"
+msgstr "Украшения из кораллов"
 
 msgctxt "crafts.name"
 msgid "Empty"
@@ -3617,6 +3625,18 @@ msgid "Copper Weapons"
 msgstr "Медное оружие"
 
 msgctxt "resources.name"
+msgid "Coral"
+msgstr "Коралл"
+
+msgctxt "resources.name"
+msgid "Coral Jewelry"
+msgstr "Украшения из кораллов"
+
+msgctxt "resources.name"
+msgid "Corals"
+msgstr "Кораллы"
+
+msgctxt "resources.name"
 msgid "Corn"
 msgstr "Кукуруза"
 
@@ -3791,6 +3811,10 @@ msgstr "Железное оружие"
 msgctxt "resources.name"
 msgid "Jute"
 msgstr "Джут"
+
+msgctxt "resources.name"
+msgid "Kenaf"
+msgstr "Кенаф"
 
 msgctxt "resources.name"
 msgid "Lawsonia"
