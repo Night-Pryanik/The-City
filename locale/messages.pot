@@ -4293,6 +4293,14 @@ msgid "Yam"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Yucca"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Yucca Fruit"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Zebu"
 msgstr ""
 

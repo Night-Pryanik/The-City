@@ -77,12 +77,12 @@
     {
       "id": "textile_crops",
       "name": "Textile Crops",
-      "products": [ "cotton", "flax", "hemp", "jute", "ramie", "kenaf" ]
+      "products": [ "cotton", "flax", "hemp", "jute", "ramie", "kenaf", "yucca" ]
     },
     {
       "id": "rope_fibers",
       "name": "Rope Fibers",
-      "products": [ "hemp", "jute", "ramie", "sisal", "papyrus", "kenaf" ]
+      "products": [ "hemp", "jute", "ramie", "sisal", "papyrus", "kenaf", "yucca" ]
     },
     { "id": "boats", "name": "Boats", "products": [ "reed_boat" ] },
     {
@@ -96,7 +96,8 @@
         "dates",
         "cactus_fruit",
         "agave",
-        "pomegranates"
+        "pomegranates",
+        "yucca_fruit"
       ]
     },
     {
@@ -148,7 +149,7 @@
     {
       "id": "paper_fibers",
       "name": "Paper Fibers",
-      "products": [ "mulberry_bark", "hemp", "ramie", "sisal", "kenaf" ]
+      "products": [ "mulberry_bark", "hemp", "ramie", "sisal", "kenaf", "yucca" ]
     },
     {
       "id": "alcohol",

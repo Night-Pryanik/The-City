@@ -28,6 +28,14 @@
       "type": "product",
       "category": "fruits",
       "icon": "pomegranates.png"
+    },
+    {
+      "id": "yucca_fruit",
+      "price": 5,
+      "name": "Yucca Fruit",
+      "type": "product",
+      "category": "fruits",
+      "icon": "yucca_fruit.png"
     }
   ]
 }

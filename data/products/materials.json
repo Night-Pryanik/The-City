@@ -87,6 +87,14 @@
       "icon": "kenaf.png"
     },
     {
+      "id": "yucca", "price": 6,
+      "name": "Yucca",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "weaving",
+      "icon": "yucca.png"
+    },
+    {
       "id": "mulberry_bark", "price": 6,
       "name": "Mulberry Bark",
       "type": "product",
