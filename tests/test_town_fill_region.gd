@@ -17,6 +17,8 @@
 #   3. After the era change the fill equals "ring minus fog": there is no loss.
 #   4. A fill hex does not lie in the fog, and its full bbox is inside the fill
 #      texture (the texture cannot cut a hex in half).
+#   5. Scouting a fogged ring hex reveals its fill: the render cache is rebuilt by
+#      _complete_scouting itself, otherwise the scouting would have no effect.
 extends SceneTree
 
 # Hang watchdog: without it a broken _run() coroutine looks from outside like eternal
@@ -128,6 +130,10 @@ func _run() -> void:
         "the fill must not lose hexes on an era change (was %d, now %d)"
             % [before.size(), after.size()], state)
 
+    # --- 3b: the outlines of the rings are built for the visible fill ---
+    check(not r.get_town_border_hexes().is_empty(),
+        "after the era change the outlines of the rings must be built", state)
+
     # --- 4: the fill fits entirely into the texture (its edge does not cut it) ---
     # The fill may extend beyond the Region — onto scouted hexes beyond it
     # (that is how scouting works), — so we check not the Region but the coverage
@@ -142,6 +148,31 @@ func _run() -> void:
         "the fill texture must be built (otherwise a fallback is drawn)", state)
     if r._influence_fill_texture != null:
         _check_texture_covers_hexes(main_map, r, state)
+
+    # --- 5: scouting a fogged ring hex reveals its fill and rebuilds the cache ---
+    var fog_ring: Array = []
+    for row in range(main_map.map_rows):
+        for col in range(main_map.map_cols):
+            var t = main_map.tile_data[row][col]
+            if t != null and main_map.is_hex_in_fog(row, col) \
+                    and bool(t.get("in_town_influence", false)):
+                fog_ring.append({"row": row, "col": col})
+    check(not fog_ring.is_empty(),
+        "the live map must contain at least one town ring hex in the fog", state)
+    if not fog_ring.is_empty():
+        var h: Dictionary = fog_ring[0]
+        # Scouting the normal way: a chunk of one hex. The fill cache must rebuild
+        # BY ITSELF (see invalidate_town_influence_cache in _complete_scouting) — the
+        # test does not touch it, otherwise it would prove nothing about the wiring.
+        main_map.scouting_chunk = [h]
+        main_map.is_scouting = true
+        main_map._complete_scouting()
+        _rebuild(r)
+        check(not main_map.is_hex_in_fog(int(h.row), int(h.col)),
+            "a scouted hex cannot be in the fog of war", state)
+        check(_is_filled(r, int(h.row), int(h.col)),
+            "after scouting the town fill must appear on the hex (%d,%d)"
+                % [int(h.row), int(h.col)], state)
 
     if main_map != null and is_instance_valid(main_map):
         get_root().remove_child(main_map)
@@ -198,6 +229,12 @@ func _check_texture_covers_hexes(main_map, r, state: Dictionary) -> void:
 # Forcefully rebuilds the render cache (as the draw frame does).
 func _rebuild(r) -> void:
     r._ensure_town_influence_cache(r._get_visible_hex_range())
+
+func _is_filled(r, row: int, col: int) -> bool:
+    for h in r.get_town_fill_hexes():
+        if int(h.row) == row and int(h.col) == col:
+            return true
+    return false
 
 func _key_set(hexes: Array) -> Dictionary:
     var out: Dictionary = {}

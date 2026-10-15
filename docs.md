@@ -1258,7 +1258,7 @@ The area is stored in `town_manager.player_start_area`; during generation it is 
 
 On an era change, the hexes of foreign towns' rings inside the former Region are **not annexed** to the player's Influence Ring ("someone else's is not ours": there one can neither build nor buy a chunk), but they **are explored** — otherwise they would remain fog and be drawn as a black hole in the middle of the assigned territory. The player sees their terrain, resources and ring fill, that is, immediately understands whose land it is. Inside the player's **starting** area there are no such hexes at all — it is cut out of the rings during generation and on load.
 
-Implementation points: `scripts/town_manager.gd` — `player_start_area` / `set_player_start_area()` / `_is_in_player_start_area()`, `compute_all_town_influences()` (cutting out the starting area and the inter-town clip), `compute_town_influence()` (the ring by radius, without clipping by the Region); `scripts/main_map.gd` — `get_map_state()` / `_apply_saved_map_state()` / `_restore_start_region_bounds()` (the starting area's borders in the save), `advance_to_next_era()`; `scripts/map_renderer.gd` — `_ensure_town_influence_cache()` (the era and fog gates) and `_build_town_fill_texture()` (the texture bounds from the fill). Tests: `tests/test_town_fill_region.gd` (the ring in the data = the ring by radius minus the starting area minus neighbors, no fill in the 1st era, no losses after an era change, the texture does not cut a hex), `tests/test_town_start_area.gd` (cutting out of the rings, the player's resources neither attract nor are sold, no "dead zones" on the live map after an era change) and `tests/test_town_fill_fog.gd` (the fill and outlines do not leak into the fog, scouting opens the fill). The debug reveal of the whole map in the 1st era draws the rings and the roads of the towns: `tests/test_debug_whole_map_fill.gd`.
+Implementation points: `scripts/town_manager.gd` — `player_start_area` / `set_player_start_area()` / `_is_in_player_start_area()`, `compute_all_town_influences()` (cutting out the starting area and the inter-town clip), `compute_town_influence()` (the ring by radius, without clipping by the Region); `scripts/main_map.gd` — `get_map_state()` / `_apply_saved_map_state()` / `_restore_start_region_bounds()` (the starting area's borders in the save), `advance_to_next_era()`; `scripts/map_renderer.gd` — `_ensure_town_influence_cache()` (the era and fog gates) and `_build_town_fill_texture()` (the texture bounds from the fill). Tests: `tests/test_town_fill_region.gd` (the ring in the data = the ring by radius minus the starting area minus neighbors, no fill in the 1st era, no losses after an era change, the fill and the outlines do not leak into the fog, scouting opens the fill and rebuilds the cache by itself, the texture does not cut a hex) and `tests/test_town_start_area.gd` (cutting out of the rings, the player's resources neither attract nor are sold, no "dead zones" on the live map after an era change).
 
 ### Town food fields
 
@@ -3187,7 +3187,7 @@ Godot process. They are run by a single launcher:
 
 ```
 python tools/run_tests.py                 # the fast set (before a commit)
-python tools/run_tests.py --all           # all 39 tests
+python tools/run_tests.py --all           # all 47 tests
 python tools/run_tests.py --only road,sea # filter by a substring of the name
 python tools/run_tests.py --only town_economy --case=readiness
                                           # one case from one test
@@ -3219,12 +3219,20 @@ gathers the run in one place and applies the same verdict rules to each.
    the launcher deletes the marker before starting so that a file from a previous run does not give a false `PASS`.
 
 **Sets.** "Fast" — everything that does not depend on the generation of a whole map and long
-economic runs; "slow" (24 tests out of 50) — `--all`. The classification lies in the
+economic runs; "slow" (22 tests out of 47) — `--all`. The classification lies in the
 constants `SLOW` / `MARKERLESS` / `NEEDS_SENTINEL` in the script itself. A test that fell into no
 list is still executed under `--all` and printed as `fast`, that is, a new
 test cannot silently drop out of the set.
 
-**Case selection.** 17 tests declare named cases (`func _test_*`). The `--case` filter
+**What the run costs.** A test that instantiates `MainMap.tscn` spends about **6 of its ~7 seconds
+in the map generation** on the first frame (60×60 world, rivers, sea, 16–17 towns); the engine start,
+the data load and `new_game()` together are under a second. The suite is therefore CPU-bound and the
+wall clock is set by the **number of workers**, not by the number of tests: one worker per core by
+default (`-j N` overrides it, `-j 1` is the serial debugging mode). The corollary is that a new
+live-map test costs the whole suite about six seconds of CPU, so a check that only asserts a
+cosmetic detail of a panel is expensive to keep.
+
+**Case selection.** 21 tests declare named cases (`func _test_*`). The `--case` filter
 arrives through `OS.get_cmdline_user_args()` (after the `--` separator on the command line)
 and is handled by `tests/watchdog.gd`: `WATCHDOG.wants_case("name")`. The comparison is by
 substring, case-insensitive, so `--case=readiness` covers `_test_readiness`.

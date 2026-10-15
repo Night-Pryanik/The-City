@@ -10,7 +10,7 @@ verdict rules to all of them, so a run cannot be green because a failure was
 printed to stderr instead of stdout, or because a test silently produced no
 verdict at all.
 
-Why not a test framework (GUT / gdUnit): the 38 existing tests are plain
+Why not a test framework (GUT / gdUnit): the tests are plain
 SceneTree scripts with a hand-rolled contract (a "TEST OK" line and/or an exit
 code, plus tests/watchdog.gd for hangs). Wrapping them in a framework would mean
 rewriting all of them for no behavioural gain.
@@ -128,8 +128,6 @@ SLOW = {
     "test_town_priorities",
     "test_town_reachability",
     "test_town_fill_region",
-    "test_town_fill_fog",
-    "test_debug_whole_map_fill",
     "test_sea_coast",
     "test_river_rendering",
     "test_breeding_terrains",
@@ -410,7 +408,11 @@ def main() -> int:
     elif not args.all and not args.fast:
         cases = [c for c in cases if c.name not in SLOW]
 
-    jobs = args.jobs or max(1, (os.cpu_count() or 4) - 2)
+    # Every test is its own Godot process that regenerates the whole 60x60 map on its
+    # first frame (~6 s of the ~7 s a map test costs), so the suite is CPU-bound: the
+    # number of workers, not the number of tests, dominates the wall clock. One worker
+    # per core; `-j N` overrides, `-j 1` is the serial debugging mode.
+    jobs = args.jobs or max(1, os.cpu_count() or 4)
     godot = find_godot()
 
     stamp = time.strftime("%Y%m%d-%H%M%S")
