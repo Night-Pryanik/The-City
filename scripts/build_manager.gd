@@ -41,6 +41,11 @@ var _active_build_count: int = 0
 # about roads and aqueducts.
 var project_manager: Node = null
 
+# The active pause (see active_pause.gd). While it is on, start_build puts the
+# action into the queue instead of starting it, and a hex that is already waiting
+# there is refused just like a hex with a build under way.
+var active_pause: Node = null
+
 func _ready():
     set_process(not Engine.is_editor_hint())
     _recount_active_builds()
@@ -189,6 +194,12 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null,
     if active_builds.has(key):
         emit_signal("build_message", tr("Construction is already underway here"))
         return false
+    # The same one-shot protection for an action that is only WAITING in the queue
+    # of the active pause: the gather of the wild berries must not be queued twice
+    # and then started twice on the resume.
+    if active_pause != null and active_pause.has_pending_at(row, col):
+        emit_signal("build_message", tr("Construction is already underway here"))
+        return false
     # The hex may also be occupied by a STAGED project: an improvement waiting in the queue
     # "road → improvement" does not lie in active_builds, therefore the checks
     # above alone are not enough. Without it, on a hex where the improvement is not yet built,
@@ -266,6 +277,21 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null,
         if bool(road_bd.get("ok", false)):
             return main_map.start_improvement_road_project(row, col, imp_id, imp_name,
                     target_res_id, effective_road_level)
+
+    # Everything above has already been checked, therefore the player learns about an
+    # impossible target right away, even with the simulation stopped. From here on the
+    # action is a build with a slot and a progress bar — and such an action waits for
+    # the resume of the simulation while the active pause is on.
+    if active_pause != null and active_pause.intercept({
+            "key": key,
+            "label": imp_name,
+            "row": row,
+            "col": col,
+            "bar_color": Color.YELLOW,
+            "bar_offset": 10,
+            "execute": func(): start_build(row, col, imp_id, target_res_id, effective_road_level),
+    }):
+        return true
 
     if work_cost <= 0 or CityData.ignore_build_requirements:
         emit_signal("build_message", tr("Built instantly: %s") % imp_name)

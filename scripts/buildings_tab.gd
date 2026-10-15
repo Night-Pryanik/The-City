@@ -151,6 +151,7 @@ func update_built_status():
     # It is blocked only when no building is selected.
     if build_button:
         build_button.disabled = (selected_building_id == "")
+    _refresh_build_button_text()
 
     # We update the progress bars of the buildings under construction
     _update_construction_rows()
@@ -367,6 +368,28 @@ func _get_active_building_construction_count() -> int:
     if bm:
         return bm.active_building_builds.size()
     return CityData.building_construction.size()
+
+# The construction of a building that is waiting for the resume of the simulation,
+# or null when there is none.
+func _get_queued_build():
+    var main_map = get_tree().root.find_child("MainMap", true, false)
+    if main_map == null or main_map.active_pause == null:
+        return null
+    var rec: Dictionary = main_map.active_pause.get_pending_by_prefix("building:")
+    return null if rec.is_empty() else rec
+
+# The button of the selected building says what the click will do: while its
+# construction is waiting in the queue, the click takes it out again.
+func _refresh_build_button_text():
+    if build_button == null:
+        return
+    var queued = _get_queued_build()
+    if queued != null and str(queued.get("subject", "")) == selected_building_id:
+        build_button.text = tr("Cancel")
+        build_button.tooltip_text = tr("Take this construction out of the queue. Nothing has been spent yet")
+    else:
+        build_button.text = tr("Build")
+        build_button.tooltip_text = ""
 
 # Returns the data about the progress bar of the building under construction under the cursor.
 # It returns an empty dictionary if the cursor is not over any of the bars.
@@ -914,6 +937,20 @@ func _on_build_pressed():
     if selected_building_id == "":
         if ui_helpers:
             ui_helpers.set_message(tr("No building selected"))
+        return
+
+    # The construction of THIS building is already waiting for the resume of the
+    # simulation: the button that would start it takes it back out of the queue.
+    # Nothing has been spent — the materials are written off only when the queue is
+    # performed — therefore the cancellation is a plain removal.
+    var queued = _get_queued_build()
+    if queued != null and str(queued.get("subject", "")) == selected_building_id:
+        var main_map = get_tree().root.find_child("MainMap", true, false)
+        if main_map != null and main_map.active_pause != null:
+            main_map.active_pause.cancel_by_key(str(queued.get("key", "")))
+        if ui_helpers:
+            ui_helpers.set_message(tr("Construction cancelled"))
+        refresh_built()
         return
 
     if _has_active_building_construction() and not CityData.ignore_build_requirements:

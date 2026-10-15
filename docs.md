@@ -2945,6 +2945,119 @@ The pause menu is `scenes/pause_menu.tscn`, script `scripts/pause_menu.gd`. It i
 
 **Test.** `tests/test_pause_menu_confirm.gd` — a live `res://scenes/pause_menu.tscn` with pausing enabled, presses of real buttons: a click opens the dialog and does not emit the signal; "Cancel" and ESC perform nothing; ESC does not close the menu and does not unpause; "Yes" emits `new_game_pressed` and unblocks the game; a cancelled action does not "go stale". The test **terminates the process itself** with its last check (a quit confirmation must kill the game), so the `quit(0)` at the end is unreachable and the exit code proves nothing: a "Yes" that quit too early would leave code 0 without the last line. The completion point is marked by the file `user://test_pause_menu_confirm.done` — a run is counted only together with the marker.
 
+---
+
+## The active pause: the simulation is stopped, the interface lives
+
+The pause menu stops the simulation **and takes the interface away**: with `get_tree().paused = true` nothing accepts a click. The active pause stops only the simulation. The tree is paused in exactly the same way, but the nodes of the interface are switched to `PROCESS_MODE_ALWAYS`, so the player keeps looking at the city and keeps deciding.
+
+The actions are **not executed on the click** — they go into a queue and are performed on the resume.
+
+The mode is switched by the button in the upper right corner (next to "Menu") and by **SPACE**. Each of them does exactly this one thing: it does not close the opened windows and does not open the pause menu. That is the division between the buttons and the hotkeys — the cascading ESC (`InputHandler._handle_esc`) closes the town, then the city, then leaves the active pause, and only then opens the pause menu.
+
+The button is a small square (28×28) with an icon and **no text**: the bars while the simulation runs, the green triangle while it is stopped. The icon shows what the click will do, and the tooltip names the state plus the hotkey. The pictures are the same two that the panel of the buildings uses — `building_pause.png` and `building_resume.png`, taken through `IconRegistry`, the single index of the icons.
+
+### Who owns the pause flag
+
+Two independent things stop the world: the pause menu and the active pause, and either may be on while the other is not. The owner of the flag is **`main_map.apply_pause_state()`**:
+
+```gdscript
+get_tree().paused = (active_pause != null and active_pause.is_active()) or pause_menu.visible
+```
+
+`pause_menu._set_game_paused()` does not write the flag itself — it asks the owner to recompute it. Without this, closing the menu over a stopped world would start the simulation. Two places reset the flag outright instead: the **load** and the **return to the main menu** (`_force_unpause()`), because the scene is about to be replaced.
+
+### The queue — `scripts/active_pause.gd`
+
+A node created in `main_map._ready()`. A record of the queue:
+
+| Field | Meaning |
+| --- | --- |
+| `key` | the identity of the action for the one-shot protection |
+| `subject` | what the action is about (the id of the building / the index of the upgrade / the id of the technology) |
+| `label` | the name of the action for the messages and the cancel button |
+| `execute` | the callable of the real execution, without arguments |
+| `row`, `col` | the hex of the empty progress bar (`-1, -1` when the action has no place on the map) |
+| `bar_color`, `bar_offset` | the colour and the vertical offset of the bar of that kind of action |
+
+**Nothing is spent at the moment of the click.** The intercept is always placed BEFORE the write-off — before `consume_additional_cost`, before `spend_treasury`, before the start of the timer. Therefore the cancellation needs **no refund code at all**: the treasury and the storage of the city are exactly as they were before the click.
+
+### The interception points
+
+The intercept lives in the execution points themselves, not in the buttons — so every way into the action behaves alike (the tech tree, the context menu, a test):
+
+| Action | Where |
+| --- | --- |
+| The improvement, the special action (the gather, the felling, the drainage) | `build_manager.start_build()` |
+| The road, the improvement with a road (the chain) | `main_map.start_road_project()`, `start_improvement_road_project()` |
+| The improvement of the road | `main_map.start_road_upgrade_project()` |
+| The purchase of a chunk | `expansion_manager.handle_action()` |
+| The expedition | `main_map.start_scouting()` |
+| The construction of a building | `CityData.request_build()` |
+| The upgrade of a building | `CityData.start_building_upgrade()` |
+| The research | `CityData.start_research()` |
+
+All the checks of the target are performed **before** the intercept: a paused player learns immediately that the hex cannot be built on, and only a valid action waits.
+
+### The one-shot protection
+
+It is built into the existing guards rather than into a separate check: `build_manager.start_build()` refuses a hex on which the action is already **waiting**, exactly as it refuses a hex with a build under way. The same holds for `start_scouting` (one expedition in the whole world), `start_research` and the construction / the upgrade of a building. The gathering of the wild berries therefore cannot be queued twice and then started twice on the resume — neither by a second click, nor through a second way into the same execution point.
+
+### The empty progress bar
+
+`progress_bar_layer.gd` draws the record of the queue on its hex: the trough, **no fill**, and the outline in the colour of that kind of action instead of the usual white one. The player sees where the action waits and what it is, and an empty bar cannot be mistaken for a running one.
+
+The layer is redrawn by `active_pause._notify_queue_changed()` — the map redraws its bars only when the simulation asks for it, and the simulation is stopped. The panel of the hex is refreshed there for the same reason: which buttons it offers depends on what waits on the hex.
+
+### The cancellation
+
+The button that would start the action turns into the button that takes it back:
+
+| Queued action | Where the cancel is |
+| --- | --- |
+| Everything on a hex (the improvement, the special action, the road, the chain, the purchase, the expedition) | `control_panel._append_queued_cancel()` — the action type `cancel_queued`, right there in the panel of the hex |
+| The construction of a building | the "Build" button of that building in the tab "Buildings" |
+| The upgrade of a building | the icon of the upgrade on the building |
+| The research | the button of that technology in the list |
+
+A queued action occupies its hex exclusively — the guards refuse to queue on top of a build and to start a build on top of a queued one — therefore the panel shows one cancel button and nothing else about that hex.
+
+### The frame of the window
+
+A thin orange line along the borders of the window (`active_pause.gd`, `BORDER_COLOR`), drawn on its own `CanvasLayer` (layer 200) with `mouse_filter = MOUSE_FILTER_IGNORE` — the click has to reach the buttons underneath. It is the only **constant** indication that the simulation is stopped: the buttons look exactly as usual.
+
+### What the mouse may reach
+
+**The map stays fully usable while the mode is on.** The player has to be able to scroll it, to select the hexes and to look at what is on them — that is the whole point: the decisions are made while the world is stopped, and they are queued as they are made. Only the buttons of the corner are opaque to the map.
+
+The map reacts to the raw cursor position and does not know what is drawn over it — the tooltip, the highlight and the selection would otherwise pass through the buttons. The blocking lives in `InputHandler`, in the same place as the panel of the hex, the HUD and the "sticky" treasury tooltip: `_is_mouse_over_top_right`, checked both in `handle_input` and in `handle_process` (the corner is at the very edge of the screen, where the edge scrolling would run through the buttons). The panel is transparent and does not consume the mouse, so this check is explicit.
+
+The edge scrolling and the tooltip timer need a tick, and they used to get it from `main_map._process` — which **is** the simulation and does not run while the tree is paused. `active_pause._process` therefore forwards exactly one tick to `InputHandler.handle_process` while the mode is on. Nothing else is forwarded: the world stays frozen.
+
+### THE INPUT OF THE MAP DOES NOT DEPEND ON main_map
+
+This is the trap of the mode, and it is worth stating as a rule.
+
+`main_map._process` IS the simulation, so main_map stands still while the mode is on — **and `main_map._input` stands still with it.** The engine gates every callback of a node on its `process_mode`, not only `_process`. If the input of the map arrives through main_map, the whole map goes deaf on the pause: no drag, no selection, no tooltip, and not even SPACE.
+
+Therefore **`InputHandler` is its own `_input` entry point** (`InputHandler._input` → `handle_input`), and it is one of the nodes that `active_pause` switches to `PROCESS_MODE_ALWAYS`. `main_map._input` is left with the debug menu only (F9, ESC and the digit hotkeys) and marks them handled, so they never reach the handler twice.
+
+`main_map._process` forwards only the one cursor tick — the map input itself is delivered to InputHandler directly by the engine.
+
+### Key files
+
+- `scripts/active_pause.gd` — the mode, the queue, the one-shot keys, the frame.
+- `scripts/main_map.gd` — `apply_pause_state()` (the owner of the flag), `toggle_active_pause()`, the button in the upper right corner.
+- `scripts/progress_bar_layer.gd` — the empty bars of the waiting actions.
+- `scripts/control_panel.gd` — `cancel_queued` and `_append_queued_cancel()`.
+- `tests/test_active_pause.gd` — a headless test.
+
+**Test.** `tests/test_active_pause.gd` — a live `res://scenes/MainMap.tscn`: the mode stops the tree and switches the interface to `PROCESS_MODE_ALWAYS` while the map itself is NOT; the action goes into the queue and does not start; the second start of the same action is refused and the queue still holds one record; the record carries the colour and the offset of its bar; the cancellation removes it and nothing starts; the resume performs the queue and the build really starts; the pause menu and the mode survive each other; the frame is shown only while the mode is on; the buttons of the corner block the map under them; **the mode itself blocks nothing** — the map still takes the cursor and still selects a hex.
+
+The case also encodes the trap above as a structural check, because a behavioural test cannot see it: `InputHandler` must have its own `_input`, while `MainMap` must NOT be `PROCESS_MODE_ALWAYS`. Feeding the handler directly proves the guards, not the delivery — the delivery is the part that broke.
+
+**Manual check.** The real path cannot be exercised headless (`Input.parse_input_event` does not travel there). It was confirmed on a running window with real OS mouse events: with the mode on, `hover_reached_the_map=true` and `hex_selected=true`, and `DisplayServer.window_is_focused()` was true throughout — otherwise the test would prove nothing.
+
 ## Game data integrity check at startup
 
 `scripts/data_validator.gd` checks the **cross-references** in `data/*.json`: if an identifier that one entity references is not declared anywhere, that is a data breakage, and the game fails on it in-game rather than at load time. The check runs in `main_menu.gd::_check_game_data()` — that is, right after the game starts and **before the game begins** (the main menu is in `run/main_scene`, and the `MainMap` scene with map generation has not been created yet).

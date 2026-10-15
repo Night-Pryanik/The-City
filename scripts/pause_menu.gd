@@ -107,7 +107,19 @@ func _unhandled_input(event):
             _close_pause_menu()
 
 func _set_game_paused(paused: bool):
-    get_tree().paused = paused
+    # The menu does not own the flag of the pause: main_map recomputes it from the
+    # menu AND from the active pause. Closing the menu over a world that the active
+    # pause has stopped must not start the simulation.
+    var main = get_parent()
+    if main != null and main.has_method("apply_pause_state"):
+        main.apply_pause_state()
+    else:
+        get_tree().paused = paused
+
+func _force_unpause():
+    # The scene is about to be replaced or the game is about to quit — the flag is
+    # reset outright, whatever the active pause thinks about it.
+    get_tree().paused = false
 
 func _close_pause_menu():
     # The confirmation dialog must not outlive the menu (otherwise it would remain
@@ -127,7 +139,7 @@ func _on_save():
 
 func _on_load():
     # On load we exit the pause, so that the scene can reload
-    _set_game_paused(false)
+    _force_unpause()
     emit_signal("load_pressed")
 
 func _on_new_game():
@@ -138,7 +150,7 @@ func _on_new_game():
         _confirm_new_game)
 
 func _confirm_new_game():
-    _set_game_paused(false)
+    _force_unpause()
     emit_signal("new_game_pressed")
 
 func _on_exit():

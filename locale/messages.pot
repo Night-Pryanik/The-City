@@ -588,6 +588,9 @@ msgstr ""
 msgid "Cancel upgrade"
 msgstr ""
 
+msgid "Cancel: %s"
+msgstr ""
+
 msgid "Cancelled %d units of %s from %s: the goods are back in the warehouse of the town and %d coins are back in the treasury."
 msgstr ""
 
@@ -685,6 +688,12 @@ msgid "Congratulations, your city has reached the next level of development!\nDo
 msgstr ""
 
 msgid "Construction"
+msgstr ""
+
+msgid "Construction already in progress: "
+msgstr ""
+
+msgid "Construction already in progress: %s"
 msgstr ""
 
 msgid "Construction cancelled"
@@ -1134,10 +1143,10 @@ msgstr ""
 msgid "ON"
 msgstr ""
 
-msgid "One-time deal: %d units in transit"
+msgid "Once built, %s will produce:"
 msgstr ""
 
-msgid "Once built, %s will produce:"
+msgid "One-time deal: %d units in transit"
 msgstr ""
 
 msgid "Only Latin letters a-z, digits and \"_\" are allowed. Disallowed: %s Such characters are indistinguishable from Latin ones by eye — fix this identifier and ALL references to it at once."
@@ -1266,6 +1275,9 @@ msgstr ""
 msgid "Quality: %s (%s)"
 msgstr ""
 
+msgid "Queued for research: %s — the simulation is stopped"
+msgstr ""
+
 msgid "Quit"
 msgstr ""
 
@@ -1302,6 +1314,9 @@ msgstr ""
 msgid "Reference to a nonexistent technology"
 msgstr ""
 
+msgid "Remove \"%s\" from the queue. It has not started yet and nothing has been spent"
+msgstr ""
+
 msgid "Remove the worker from the improvement"
 msgstr ""
 
@@ -1327,6 +1342,9 @@ msgid "Research %s"
 msgstr ""
 
 msgid "Research %s (science: %d) to unlock %s"
+msgstr ""
+
+msgid "Research already in progress"
 msgstr ""
 
 msgid "Research already in progress: "
@@ -1368,7 +1386,13 @@ msgstr ""
 msgid "Resources"
 msgstr ""
 
+msgid "Resume"
+msgstr ""
+
 msgid "Resume "
+msgstr ""
+
+msgid "Resume the simulation (SPACE)"
 msgstr ""
 
 msgid "Return to game"
@@ -1482,6 +1506,9 @@ msgstr ""
 msgid "Send scouts: instantly and free (debug)"
 msgstr ""
 
+msgid "Send the scouts"
+msgstr ""
+
 msgid "Settings"
 msgstr ""
 
@@ -1515,6 +1542,9 @@ msgstr ""
 msgid "Stop claiming land (%d tiles)?\n\n"
 msgstr ""
 
+msgid "Stop the simulation. Your actions are queued until you resume it (SPACE)"
+msgstr ""
+
 msgid "Stop: %s"
 msgstr ""
 
@@ -1531,6 +1561,15 @@ msgid "Suggest another name"
 msgstr ""
 
 msgid "Supplies, dynamics and resource tooltips update at this interval (from 1 to 5 seconds). Simulation calculations run as usual, once per second."
+msgstr ""
+
+msgid "Take this construction out of the queue. Nothing has been spent yet"
+msgstr ""
+
+msgid "Take this research out of the queue"
+msgstr ""
+
+msgid "Take this upgrade out of the queue"
 msgstr ""
 
 msgid "Tamed resources:"
@@ -1603,6 +1642,15 @@ msgid "The contract is already closed."
 msgstr ""
 
 msgid "The goods are on the way from the town. Cancelling the deal returns the un-shipped part to the town and refunds %d coins."
+msgstr ""
+
+msgid "The simulation is stopped. Your actions are queued until you resume it."
+msgstr ""
+
+msgid "The simulation resumed."
+msgstr ""
+
+msgid "The simulation resumed. Starting: %s"
 msgstr ""
 
 msgid "The time the goods spend on the road from the town to the city"
@@ -1708,6 +1756,9 @@ msgid "Update the contract"
 msgstr ""
 
 msgid "Upgrade"
+msgstr ""
+
+msgid "Upgrade cancelled"
 msgstr ""
 
 msgid "Upgrade of %s started (%.0f work)"
@@ -1834,6 +1885,9 @@ msgid "sec"
 msgstr ""
 
 msgid "spawn_count of resource '%s'"
+msgstr ""
+
+msgid "the action"
 msgstr ""
 
 msgid "the construction"

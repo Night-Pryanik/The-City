@@ -588,6 +588,9 @@ msgstr "Отменить сделку на %s из %s?"
 msgid "Cancel upgrade"
 msgstr "Отменить апгрейд"
 
+msgid "Cancel: %s"
+msgstr "Отмена: %s"
+
 msgid "Cancelled %d units of %s from %s: the goods are back in the warehouse of the town and %d coins are back in the treasury."
 msgstr "Отменено %d ед. %s из %s: товар вернулся на склад городка, а %d монет — в казну."
 
@@ -686,6 +689,9 @@ msgstr "Поздравляем, ваш город достиг следующе�
 
 msgid "Construction"
 msgstr "Строительство"
+
+msgid "Construction already in progress: %s"
+msgstr "Строительство уже идёт: %s"
 
 msgid "Construction cancelled"
 msgstr "Строительство отменено"
@@ -1134,11 +1140,11 @@ msgstr "Ок"
 msgid "ON"
 msgstr "вкл"
 
-msgid "One-time deal: %d units in transit"
-msgstr "Разовая сделка: %d ед. в пути"
-
 msgid "Once built, %s will produce:"
 msgstr "При постройке %s будет производить:"
+
+msgid "One-time deal: %d units in transit"
+msgstr "Разовая сделка: %d ед. в пути"
 
 msgid "Only Latin letters a-z, digits and \"_\" are allowed. Disallowed: %s Such characters are indistinguishable from Latin ones by eye — fix this identifier and ALL references to it at once."
 msgstr "Разрешены только латинские буквы a-z, цифры и «_». Недопустимо: %s Такие символы неотличимы от латинских на глаз — исправьте этот идентификатор и ВСЕ ссылки на него сразу."
@@ -1266,6 +1272,9 @@ msgstr "Качество: %s"
 msgid "Quality: %s (%s)"
 msgstr "Качество: %s (%s)"
 
+msgid "Queued for research: %s — the simulation is stopped"
+msgstr "В очереди на исследование: %s — симуляция на паузе"
+
 msgid "Quit"
 msgstr "Выйти"
 
@@ -1302,6 +1311,9 @@ msgstr "Ссылка на несуществующую профессию"
 msgid "Reference to a nonexistent technology"
 msgstr "Ссылка на несуществующую технологию"
 
+msgid "Remove \"%s\" from the queue. It has not started yet and nothing has been spent"
+msgstr "Убрать «%s» из очереди. Действие ещё не началось, затрат не было"
+
 msgid "Remove the worker from the improvement"
 msgstr "Снять рабочего с улучшения"
 
@@ -1328,6 +1340,9 @@ msgstr "Изучить %s"
 
 msgid "Research %s (science: %d) to unlock %s"
 msgstr "Изучить %s (наука: %d) для разблокировки %s"
+
+msgid "Research already in progress"
+msgstr "Исследование уже идёт"
 
 msgid "Research already in progress: "
 msgstr "Уже идёт исследование: "
@@ -1368,8 +1383,14 @@ msgstr "Уровни качества ресурса: %s"
 msgid "Resources"
 msgstr "Ресурсы"
 
+msgid "Resume"
+msgstr "Продолжить"
+
 msgid "Resume "
 msgstr "Возобновить "
+
+msgid "Resume the simulation (SPACE)"
+msgstr "Продолжить симуляцию (ПРОБЕЛ)"
 
 msgid "Return to game"
 msgstr "Вернуться в игру"
@@ -1482,6 +1503,9 @@ msgstr "Отправить разведчиков: %d монет из казны
 msgid "Send scouts: instantly and free (debug)"
 msgstr "Отправить разведчиков: мгновенно и бесплатно (дебаг)"
 
+msgid "Send the scouts"
+msgstr "Отправить разведчиков"
+
 msgid "Settings"
 msgstr "Настройки"
 
@@ -1515,6 +1539,9 @@ msgstr "Прервать освоение области (%d клеток). По
 msgid "Stop claiming land (%d tiles)?\n\n"
 msgstr "Прервать освоение области (%d клеток)?\n\n"
 
+msgid "Stop the simulation. Your actions are queued until you resume it (SPACE)"
+msgstr "Остановить симуляцию. Ваши действия попадут в очередь до возобновления (ПРОБЕЛ)"
+
 msgid "Stop: %s"
 msgstr "Прервать: %s"
 
@@ -1532,6 +1559,15 @@ msgstr "Предложить другое название"
 
 msgid "Supplies, dynamics and resource tooltips update at this interval (from 1 to 5 seconds). Simulation calculations run as usual, once per second."
 msgstr "Запасы, динамика и тултипы с ресурсами обновляются с этим интервалом (от 1 до 5 секунд). Расчёты симуляции идут как обычно, раз в секунду."
+
+msgid "Take this construction out of the queue. Nothing has been spent yet"
+msgstr "Убрать это строительство из очереди. Затрат ещё не было"
+
+msgid "Take this research out of the queue"
+msgstr "Убрать это исследование из очереди"
+
+msgid "Take this upgrade out of the queue"
+msgstr "Убрать это улучшение из очереди"
 
 msgid "Tamed resources:"
 msgstr "Одомашненные ресурсы:"
@@ -1604,6 +1640,15 @@ msgstr "Контракт уже закрыт."
 
 msgid "The goods are on the way from the town. Cancelling the deal returns the un-shipped part to the town and refunds %d coins."
 msgstr "Товар в пути из городка. Отмена вернёт неотправленную часть в городок и %d монет в казну."
+
+msgid "The simulation is stopped. Your actions are queued until you resume it."
+msgstr "Симуляция остановлена. Ваши действия попадут в очередь до возобновления."
+
+msgid "The simulation resumed."
+msgstr "Симуляция продолжена."
+
+msgid "The simulation resumed. Starting: %s"
+msgstr "Симуляция продолжена. Запуск: %s"
 
 msgid "The time the goods spend on the road from the town to the city"
 msgstr "Время, которое товар проводит на дороге от городка до города"
@@ -1709,6 +1754,9 @@ msgstr "Изменить контракт"
 
 msgid "Upgrade"
 msgstr "Улучшение"
+
+msgid "Upgrade cancelled"
+msgstr "Улучшение отменено"
 
 msgid "Upgrade of %s started (%.0f work)"
 msgstr "Улучшение %s начато (%.0f труда)"
@@ -1835,6 +1883,9 @@ msgstr "сек"
 
 msgid "spawn_count of resource '%s'"
 msgstr "spawn_count ресурса '%s'"
+
+msgid "the action"
+msgstr "действие"
 
 msgid "the construction"
 msgstr "стройку"

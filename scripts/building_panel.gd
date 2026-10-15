@@ -285,11 +285,18 @@ func _refresh():
             var upgrade_btn = Button.new()
             upgrade_btn.custom_minimum_size = Vector2(28, 28)
             upgrade_btn.expand_icon = true
-            upgrade_btn.icon = _get_toggle_icon("upgrade")
+            if _is_upgrade_queued(b_index):
+                # The upgrade is only waiting in the queue of the active pause. The
+                # button that would start it takes it out again — nothing was spent.
+                upgrade_btn.text = "✕"
+                upgrade_btn.tooltip_text = tr("Take this upgrade out of the queue")
+                upgrade_btn.pressed.connect(_on_cancel_queued_upgrade_pressed.bind(b_index))
+            else:
+                upgrade_btn.icon = _get_toggle_icon("upgrade")
+                upgrade_btn.pressed.connect(_on_upgrade_pressed.bind(b_index))
             # The tooltip with the icons is drawn by a panel of its own on hover
             # (see _on_upgrade_btn_hovered) — the plain tooltip_text is not able
             # to show pictures.
-            upgrade_btn.pressed.connect(_on_upgrade_pressed.bind(b_index))
             upgrade_btn.mouse_entered.connect(_on_upgrade_btn_hovered.bind(upgrade_btn, b_index))
             upgrade_btn.mouse_exited.connect(_hide_upgrade_tooltip)
             header.add_child(upgrade_btn)
@@ -1002,6 +1009,23 @@ func _show_upgrade_tooltip_panel(btn: Button):
 func _hide_upgrade_tooltip():
     if upgrade_tooltip_panel != null:
         upgrade_tooltip_panel.hide()
+
+# Is the upgrade of this building waiting in the queue of the active pause?
+func _is_upgrade_queued(b_index: int) -> bool:
+    var main_map = get_tree().root.find_child("MainMap", true, false)
+    if main_map == null or main_map.active_pause == null:
+        return false
+    return main_map.active_pause.has_pending_key("upgrade:" + str(b_index))
+
+func _on_cancel_queued_upgrade_pressed(b_index: int):
+    var main_map = get_tree().root.find_child("MainMap", true, false)
+    if main_map == null or main_map.active_pause == null:
+        return
+    main_map.active_pause.cancel_by_key("upgrade:" + str(b_index))
+    var city_ui = get_tree().root.find_child("CityUi", true, false)
+    if city_ui and city_ui.has_method("set_message"):
+        city_ui.set_message(tr("Upgrade cancelled"))
+    _refresh()
 
 # The handler of the "Upgrade" button: it starts the upgrade of the building; on
 # failure it shows the reason in the message line of the city interface.

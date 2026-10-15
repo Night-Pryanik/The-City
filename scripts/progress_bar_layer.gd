@@ -196,6 +196,21 @@ func _draw_progress_bars(row: int, col: int):
             draw_rect(Rect2(scout_bar_x, scout_bar_y, scout_bar_width * scout_progress, scout_bar_height), Color(0.2, 0.7, 0.9))
             draw_rect(Rect2(scout_bar_x, scout_bar_y, scout_bar_width, scout_bar_height), Color.WHITE, false)
 
+    # --- The bar of an action that is WAITING in the queue of the active pause ---
+    # The simulation is stopped, therefore the bar has no progress yet: it is drawn
+    # empty, with the outline in the colour of the kind of the action instead of
+    # the usual white one. The player sees WHERE the action waits and WHAT it is,
+    # and an empty bar cannot be mistaken for a running one.
+    if main_map.active_pause != null:
+        var pending: Dictionary = main_map.active_pause.get_pending_at(row, col)
+        if not pending.is_empty():
+            var q_bar_width = RESOURCE_ICON_SIZE
+            var q_bar_height = 6
+            var q_bar_x = center.x - q_bar_width / 2.0
+            var q_bar_y = center.y + RESOURCE_ICON_SIZE / 2.0 + float(pending.get("bar_offset", 10))
+            draw_rect(Rect2(q_bar_x, q_bar_y, q_bar_width, q_bar_height), Color(0.2, 0.2, 0.2))
+            draw_rect(Rect2(q_bar_x, q_bar_y, q_bar_width, q_bar_height), pending.get("bar_color", Color.YELLOW), false, 2.0)
+
 func _is_resource_revealed(tile: Dictionary) -> bool:
     return MapHelpers.is_resource_revealed(tile)
 

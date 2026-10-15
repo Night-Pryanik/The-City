@@ -57,9 +57,37 @@ func set_tooltip_delay(value: float):
 func set_extended_tooltip_delay(value: float):
     extended_tooltip_delay = value
 
+# The entry point of the input of the MAP: the mouse and the keys that belong to
+# the map (see handle_input).
+#
+# It is here and not in main_map._input() on purpose. main_map._process IS the
+# simulation, therefore main_map stands still while the active pause is on — and
+# with it main_map._input as well. The input of the map would have died with it,
+# and the player could neither scroll the map by dragging nor select a hex. This
+# node is switched to PROCESS_MODE_ALWAYS by active_pause, so it keeps receiving
+# the input exactly as long as the mode is on.
+func _input(event: InputEvent) -> void:
+    handle_input(event)
+
 func handle_input(event: InputEvent):
     if Engine.is_editor_hint():
         return
+
+    # SPACE: the hotkey of the active pause. It does exactly what the button of the
+    # HUD does, and nothing else. The event is consumed right here, otherwise a
+    # focused button would receive the same key and press itself as well.
+    if event is InputEventKey and event.keycode == KEY_SPACE and event.pressed and not event.echo:
+        if pause_menu.visible or (main_map.settings_menu and main_map.settings_menu.visible):
+            # While the menu is open, the mode is left by ESC only.
+            return
+        var focus = get_viewport().gui_get_focus_owner()
+        if focus is LineEdit or focus is TextEdit:
+            # The key belongs to the text field, not to the simulation.
+            return
+        if main_map.active_pause != null:
+            main_map.toggle_active_pause()
+            get_viewport().set_input_as_handled()
+            return
 
     if event is InputEventKey and event.keycode == KEY_ESCAPE and event.pressed:
         # ESC: if the town interface is open — we close exactly it, even if
@@ -104,6 +132,9 @@ func handle_input(event: InputEvent):
     # And over the "sticky" treasury breakdown tooltip: the tooltip covers the map, and
     # the hex tooltip should not pop up through it, nor should a chunk be
     # highlighted or a hex be selected under it.
+    # The same for the panel of the pause button and the menu button (the upper right
+    # corner): they hang over the map, and without this the hex tooltip pops up
+    # through them.
     # The HUD buttons meanwhile keep working: they are handled via the GUI
     # phase (pressed / gui_input), independently of this handler.
     if event is InputEventMouse:
@@ -111,7 +142,8 @@ func handle_input(event: InputEvent):
         var over_panel = main_map.control_panel != null \
                 and main_map.control_panel.get_global_rect().has_point(event.global_position)
         var over_treasury_tooltip = _is_mouse_over_treasury_tooltip(event.global_position)
-        if over_panel or over_hud or over_treasury_tooltip:
+        var over_top_right = _is_mouse_over_top_right(event.global_position)
+        if over_panel or over_hud or over_treasury_tooltip or over_top_right:
             _hide_tooltip()
             # We remove the Region chunk highlight left over from hovering
             # before the cursor entered the panel/HUD/tooltip.
@@ -170,6 +202,13 @@ func handle_process(delta: float):
         _hide_tooltip()
         # We remove the chunk highlight as well: the tooltip could have "stuck"
         # under an already stationary cursor (the panel at the screen edge shifts inwards).
+        expansion_manager.clear_hovered_chunk()
+        return
+
+    # The same for the panel of the pause button and the menu button: the corner is
+    # at the very edge of the screen, where the edge scrolling would run through them.
+    if _is_mouse_over_top_right(mouse_pos_ui):
+        _hide_tooltip()
         expansion_manager.clear_hovered_chunk()
         return
 
@@ -260,6 +299,11 @@ func _handle_esc():
         town_ui.close_town()
     elif city_ui.visible:
         city_ui.close_city()
+    elif main_map.active_pause != null and main_map.active_pause.is_active():
+        # The active pause is the youngest state of the chain: ESC first resumes
+        # the simulation and performs the queued actions, and only the next press
+        # of the key reaches the menu.
+        main_map.toggle_active_pause()
     elif pause_menu.visible:
         pause_menu.hide()
         main_map.city_button.disabled = false
@@ -400,6 +444,16 @@ func _is_mouse_over_treasury_tooltip(pos: Vector2) -> bool:
     if main_map == null or not main_map.has_method("is_mouse_over_treasury_tooltip"):
         return false
     return bool(main_map.is_mouse_over_treasury_tooltip(pos))
+
+# The cursor is over the panel of the pause button and the menu button (the upper
+# right corner). The panel is transparent and does not consume the mouse, therefore
+# the map under it has to be blocked explicitly — otherwise the hex tooltip pops up
+# through the buttons.
+func _is_mouse_over_top_right(pos: Vector2) -> bool:
+    var panel = main_map.get_node_or_null("TopRightLayer/TopRightPanel")
+    if panel == null:
+        return false
+    return panel.get_global_rect().has_point(pos)
 
 func _hide_tooltip():
     hex_tooltip.visible = false

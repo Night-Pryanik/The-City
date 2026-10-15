@@ -811,6 +811,21 @@ func _get_worker_manager() -> Node:
         _worker_manager_ref = main_map.get_node_or_null("WorkerManager")
     return _worker_manager_ref
 
+# The cache of the reference to ActivePause: the queue in which the actions of the
+# city (the construction, the research) wait for the resume of the simulation.
+var _active_pause_ref: Node = null
+
+func _get_active_pause() -> Node:
+    if _active_pause_ref != null and is_instance_valid(_active_pause_ref):
+        return _active_pause_ref
+    # See _get_townsfolk: outside the tree there is nothing to look up.
+    if not is_inside_tree():
+        return null
+    var main_map = get_tree().root.find_child("MainMap", true, false)
+    if main_map:
+        _active_pause_ref = main_map.get_node_or_null("ActivePause")
+    return _active_pause_ref
+
 # The number of WORKING citizens by the professions: prof_id -> count. The profession is taken
 # from the building (the field "profession" in data/buildings.json). Only the buildings
 # where there is a citizen AND at least one non-empty slot are taken into account: an idle
@@ -1769,6 +1784,12 @@ func start_research(tech_id: String) -> bool:
                 break
         emit_signal("research_error", tr("Research already in progress: ") + current_tech_name)
         return false
+    # The same refusal for a research that is only WAITING in the queue of the active
+    # pause: two researches of the same moment cannot be queued and then started one
+    # after another on the resume.
+    if _get_active_pause() != null and _get_active_pause().has_pending_key("research"):
+        emit_signal("research_error", tr("Research already in progress"))
+        return false
     if tech_id in unlocked_technologies:
         var tech_name = tech_id
         for t in GameData.technologies:
@@ -1795,6 +1816,22 @@ func start_research(tech_id: String) -> bool:
         emit_signal("research_error", tr("\"%s\" belongs to the next era. Advance to the %s era first.") % [tech_name, next_era_name])
         return false
     # The research does not require the food — only the points of the science.
+    # The research waits for the resume of the simulation while the active pause is
+    # on: the science of the city does not accumulate while the world is stopped.
+    var _ap := _get_active_pause()
+    if _ap != null and _ap.intercept({
+            "key": "research",
+            "subject": tech_id,
+            "label": tech_data.get("name", tech_id),
+            "row": -1,
+            "col": -1,
+            "bar_color": Color.GREEN,
+            "bar_offset": 4,
+            "execute": func(): start_research(tech_id),
+    }):
+        emit_signal("city_updated")
+        return true
+
     current_research_tech_id = tech_id
     current_research_science_cost = int(tech_data.get("science_cost", 3))
     research_progress = 0.0
@@ -2284,6 +2321,27 @@ func start_building_upgrade(idx: int) -> Dictionary:
     if not bm.get_building_upgrade_by_index(idx).is_empty():
         return {"ok": false, "reason": tr("This building is already being upgraded")}
 
+    # The upgrade waits for the resume of the simulation while the active pause is on.
+    # The intercept is placed BEFORE the write-off of the materials, so that a queued
+    # upgrade spends nothing and its cancellation needs no refund.
+    var _ap := _get_active_pause()
+    var _upgrade_key := "upgrade:" + str(idx)
+    if _ap != null:
+        if _ap.has_pending_key(_upgrade_key):
+            return {"ok": false, "reason": tr("This building is already being upgraded")}
+        if _ap.intercept({
+                "key": _upgrade_key,
+                "subject": str(idx),
+                "label": str(upgrade_data.get("name", upgrade_to)),
+                "row": -1,
+                "col": -1,
+                "bar_color": Color(0.45, 0.75, 1.0),
+                "bar_offset": 10,
+                "execute": func(): start_building_upgrade(idx),
+        }):
+            emit_signal("city_updated")
+            return {"ok": true, "reason": ""}
+
     # The common limit of the simultaneous builds (buildings + improvements + upgrades) is equal to
     # the number of the citizens. We check it BEFORE the write-off of the materials.
     var work_cost = upgrade_data.get("work_cost", 0)
@@ -2457,6 +2515,28 @@ func request_build(building_id: String) -> bool:
         print("The condition for the construction is not met ",
             bdata.get("name", building_id), ": ", additional_req_check["reason"])
         return false
+    # The construction waits for the resume of the simulation while the active pause
+    # is on. The intercept is placed BEFORE the write-off of the materials: a queued
+    # building costs nothing, therefore cancelling it returns the storage as it was
+    # without a single line of refund code.
+    var _ap := _get_active_pause()
+    var _build_key := "building:" + building_id
+    if _ap != null:
+        if _ap.has_pending_key(_build_key):
+            emit_signal("research_error", tr("Construction already in progress: %s") % str(bdata.get("name", building_id)))
+            return false
+        if _ap.intercept({
+                "key": _build_key,
+                "subject": building_id,
+                "label": str(bdata.get("name", building_id)),
+                "row": -1,
+                "col": -1,
+                "bar_color": Color(0.45, 0.75, 1.0),
+                "bar_offset": 10,
+                "execute": func(): request_build(building_id),
+        }):
+            emit_signal("city_updated")
+            return true
     # We write off the additional_cost (if there is one) — atomically, before the start of the build.
     # It supports the array of batches (the AND logic) and the group keys (@xxx).
     var cost_check = consume_additional_cost(bdata)

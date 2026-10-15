@@ -15,6 +15,10 @@ var hexes_bought = 0
 var current_chunk = [] # an array of {"row": int, "col": int}
 var current_hover_hex = null # {"row": int, "col": int}
 
+# The active pause (see active_pause.gd): while it is on, the purchase of a chunk
+# waits in the queue, and the coins are not written off until the resume.
+var active_pause: Node = null
+
 signal expansion_mode_changed(active: bool)
 signal territory_expanded(row: int, col: int, cost: int)
 signal chunk_hovered(chunk: Array) # to notify the renderer
@@ -309,6 +313,22 @@ func handle_action(chunk: Array, money_cost: int, work_cost: int) -> bool:
         if bool(h_tile.get("in_town_influence", false)):
             main_map.hud.show_message(tr("The chunk overlaps another town's influence ring — purchase impossible"))
             return false
+
+    # The purchase waits for the resume of the simulation while the active pause is
+    # on. The intercept is placed BEFORE the write-off of the coins, so that a
+    # queued claim costs nothing: cancelling it leaves the treasury untouched.
+    if chunk.size() > 0:
+        var first_hex = chunk[0]
+        if active_pause != null and active_pause.intercept({
+                "key": str(first_hex.row) + "," + str(first_hex.col),
+                "label": tr("Claim the area"),
+                "row": first_hex.row,
+                "col": first_hex.col,
+                "bar_color": Color(0.9, 0.6, 0.2),
+                "bar_offset": 10,
+                "execute": func(): handle_action(chunk, money_cost, work_cost),
+        }):
+            return true
 
     # --- The check and write-off of the coins from the treasury ---
     # Debug: with "Ignore building requirements" enabled the claiming

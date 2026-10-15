@@ -93,13 +93,13 @@ self_modulate = Color(1, 1, 1, 0)
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -110.0
+offset_left = -196.0
 offset_right = -40.0
 offset_bottom = 31.0
 grow_horizontal = 0
 mouse_filter = 2
 
-[node name="MenuButton" type="Button" parent="TopRightLayer/TopRightPanel" unique_id=2000000004]
+[node name="TopRightBox" type="HBoxContainer" parent="TopRightLayer/TopRightPanel" unique_id=2000000005]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -107,6 +107,18 @@ anchor_bottom = 1.0
 offset_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_constants/separation = 4
+
+[node name="PauseButton" type="Button" parent="TopRightLayer/TopRightPanel/TopRightBox" unique_id=2000000006]
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+size_flags_vertical = 4
+tooltip_text = "Stop the simulation. Your actions are queued until you resume it (SPACE)"
+expand_icon = true
+
+[node name="MenuButton" type="Button" parent="TopRightLayer/TopRightPanel/TopRightBox" unique_id=2000000004]
+layout_mode = 2
+size_flags_horizontal = 3
 text = "Menu"
 
 [node name="PauseMenu" parent="." unique_id=513166833 instance=ExtResource("3_2t08r")]

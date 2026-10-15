@@ -72,6 +72,11 @@ const DELIVERY_MANAGER_SCRIPT := preload("res://scripts/delivery_manager.gd")
 # for the same reason as the logistics: no visual part, no scene node.
 const TOWN_TRADE_MANAGER_SCRIPT := preload("res://scripts/town_trade_manager.gd")
 
+# The active pause (see active_pause.gd): it draws the frame around the window and
+# holds the queue of the waiting actions, therefore it is created in code together
+# with its own layer.
+const ACTIVE_PAUSE_SCRIPT := preload("res://scripts/active_pause.gd")
+
 # The technology that opens the scouting beyond the Region (the fog of war and
 # the territory of the towns). Before it is learned the scouts can be sent only
 # into the unexplored part of the Region, and the hexes outside the Region are inaccessible for
@@ -197,7 +202,8 @@ const MAP_TOOLTIP_LEAVE_GRACE: float = 0.35
 @onready var hud = $HUD
 @onready var city_button = $HUD/VBoxContainer/CityButton
 @onready var expansion_button = $HUD/VBoxContainer/ExpansionButton
-@onready var menu_button = $TopRightLayer/TopRightPanel/MenuButton
+@onready var menu_button = $TopRightLayer/TopRightPanel/TopRightBox/MenuButton
+@onready var pause_button = $TopRightLayer/TopRightPanel/TopRightBox/PauseButton
 @onready var pause_menu = $PauseMenu
 @onready var build_manager = $BuildManager
 @onready var map_renderer = $MapRenderer
@@ -221,6 +227,11 @@ var delivery_manager: Node = null
 # The trade with the towns: the orders of the town window, the standing contracts
 # and their payments (see town_trade_manager.gd).
 var town_trade_manager: Node = null
+
+# The active pause: the queue of the actions, which wait for the resume of the
+# simulation (see active_pause.gd). This node owns the flag of the pause of the
+# tree — the pause menu and the active pause may be on at the same time.
+var active_pause: Node = null
 
 var tech_popup: Control
 var research_hbox: HBoxContainer
@@ -249,6 +260,14 @@ func _ready():
         return
 
     _load_map_config()
+
+    # The active pause is created before everything else: the execution points of
+    # the actions reach it as early as the _ready of the managers, and it owns the
+    # flag of the pause of the tree.
+    active_pause = ACTIVE_PAUSE_SCRIPT.new()
+    active_pause.name = "ActivePause"
+    add_child(active_pause)
+    active_pause.setup(self)
 
     # The logistics is created before the world is built: the load path restores its
     # cargo right after the roads and the towns are in place, and the production tick
@@ -593,6 +612,10 @@ func _ready():
     # The phased projects (the road by the hexes): the distribution of the labour is done by build_manager itself,
     # and the effect of each completed segment is applied by main_map.
     build_manager.project_manager = project_manager
+    # The managers that start the actions must be able to reach the queue of the
+    # active pause. CityData reaches it through the main_map itself.
+    build_manager.active_pause = active_pause
+    expansion_manager.active_pause = active_pause
     project_manager.step_completed.connect(_on_project_step_completed)
     project_manager.project_completed.connect(_on_project_completed)
     project_manager.project_cancelled.connect(_on_project_cancelled)
@@ -603,6 +626,10 @@ func _ready():
     expansion_manager.territory_expanded.connect(_on_territory_expanded)
 
     menu_button.pressed.connect(_on_menu_button_pressed)
+
+    pause_button.pressed.connect(toggle_active_pause)
+    active_pause.active_changed.connect(_on_active_pause_changed)
+    _refresh_pause_button()
 
     _setup_research_hud()
     _setup_era_advance_ui()
@@ -643,6 +670,13 @@ func _rebuild_town_roads() -> void:
             _road_hex_allowed())
 
 func _input(event):
+    # Only the debug menu is handled here. The input of the MAP belongs to
+    # InputHandler, which is its own entry point: main_map stops processing while
+    # the active pause is on, and the map must keep receiving the input then.
+    # Both nodes are in the same _input pass; this one is the parent, so it goes
+    # first — and set_input_as_handled() above keeps the handled keys away from
+    # InputHandler.
+    #
     # The debug menu: opening/closing on F9
     if event is InputEventKey and event.pressed and event.keycode == KEY_F9:
         debug_manager.toggle()
@@ -663,10 +697,6 @@ func _input(event):
                 debug_manager.trigger_hotkey(num)
                 get_viewport().set_input_as_handled()
                 return
-        input_handler.handle_input(event)
-        return
-
-    input_handler.handle_input(event)
 
 # Returns the digit for the debug hotkey by the key code, or -1, if the key
 # is not a digit (the main row + the keyboard digit 0).
@@ -1672,6 +1702,17 @@ func start_road_project(row: int, col: int, road_level: int) -> bool:
         if town != null:
             title = tr("Road to town \"%s\"") % str(town.get("name", ""))
 
+    if active_pause != null and active_pause.intercept({
+            "key": str(row) + "," + str(col),
+            "label": title,
+            "row": row,
+            "col": col,
+            "bar_color": Color(0.45, 0.75, 1.0),
+            "bar_offset": 16,
+            "execute": func(): start_road_project(row, col, road_level),
+    }):
+        return true
+
     return _start_road_project_steps(row, col, breakdown.get("steps", []),
             int(breakdown.get("cost", 0)), is_town, title, {})
 
@@ -1742,6 +1783,18 @@ func start_improvement_road_project(row: int, col: int, imp_id: String, imp_name
     var title := tr("Road")
     if not imp_name.is_empty():
         title = tr("Road to %s") % imp_name
+
+    if active_pause != null and active_pause.intercept({
+            "key": str(row) + "," + str(col),
+            "label": title,
+            "row": row,
+            "col": col,
+            "bar_color": Color(0.45, 0.75, 1.0),
+            "bar_offset": 16,
+            "execute": func(): start_improvement_road_project(row, col, imp_id, imp_name,
+                    target_res_id, road_level),
+    }):
+        return true
 
     # The input data for the save: the road of this hex is going by a phased
     # project. While the flag is absent, the recalculation of the network "by the fact of the improvement"
@@ -1835,6 +1888,21 @@ func start_road_upgrade_project(row: int, col: int, road_level: int) -> bool:
         hud.show_message(tr("You can build or upgrade no more than %d buildings at once (limit = number of citizens)")
                 % CityData.total_population)
         return false
+
+    if active_pause != null and active_pause.has_pending_at(row, col):
+        hud.show_message(tr("Construction is already underway here"))
+        return false
+
+    if active_pause != null and active_pause.intercept({
+            "key": str(row) + "," + str(col),
+            "label": tr("Upgrade road"),
+            "row": row,
+            "col": col,
+            "bar_color": Color(0.45, 0.75, 1.0),
+            "bar_offset": 16,
+            "execute": func(): start_road_upgrade_project(row, col, road_level),
+    }):
+        return true
 
     var project_id: String = project_manager.start_project(
             "road_upgrade", tr("Upgrade road"), row, col, steps, {
@@ -2624,13 +2692,63 @@ func _on_pause_menu_visibility_changed():
     city_button.disabled = menu_visible
     expansion_button.disabled = menu_visible
     menu_button.visible = not menu_visible
+    pause_button.visible = not menu_visible
+    # The settings menu is shown by the pause menu over it: the button of the active
+    # pause would stay visible without the mode being reachable through it.
+    if active_pause != null and settings_menu and settings_menu.visible:
+        pause_button.visible = false
+
+# THE OWNER of the flag of the pause of the tree. Two independent things stop the
+# simulation: the pause menu and the active pause, and either of them may be on
+# while the other one is not. The menu therefore must not switch the flag off on
+# its own — closing it over a stopped world has to leave the world stopped.
+func apply_pause_state():
+    get_tree().paused = (active_pause != null and active_pause.is_active()) or pause_menu.visible
 
 func open_pause_menu():
     pause_menu.show()
     city_button.disabled = true
     expansion_button.disabled = true
     # We pause the game while the menu of the pause is open
-    get_tree().paused = true
+    apply_pause_state()
+
+func toggle_active_pause():
+    # The button and the space bar call exactly this one function. The mode is a
+    # mode and nothing else: it does not close the opened windows and does not open
+    # the pause menu.
+    if active_pause == null:
+        return
+    active_pause.set_active(not active_pause.is_active())
+
+func _on_active_pause_changed(_active: bool):
+    _refresh_pause_button()
+    if pause_menu.visible:
+        # The mode is hidden together with the menu button — while the pause menu
+        # is open, the player leaves the mode by ESC.
+        pause_button.visible = false
+        return
+    if active_pause.is_active():
+        hud.show_message(tr("The simulation is stopped. Your actions are queued until you resume it."))
+    else:
+        var queued: Array = active_pause.labels()
+        if queued.is_empty():
+            hud.show_message(tr("The simulation resumed."))
+        else:
+            hud.show_message(tr("The simulation resumed. Starting: %s") % ", ".join(queued))
+
+func _refresh_pause_button():
+    # The button states the mode by its own name: the same button stops and resumes
+    # the simulation, and the tooltip names the hotkey.
+    pause_button.visible = not pause_menu.visible
+    if active_pause == null:
+        return
+    # The icon shows what the click will DO: the bars while the simulation runs, the
+    # triangle while it is stopped. It is the same button in both states.
+    var stopped: bool = active_pause.is_active()
+    pause_button.icon = IconRegistry.get_texture(
+            "building_resume.png" if stopped else "building_pause.png")
+    pause_button.tooltip_text = tr("Resume the simulation (SPACE)") if stopped \
+            else tr("Stop the simulation. Your actions are queued until you resume it (SPACE)")
 
 func _on_menu_button_pressed():
     if pause_menu.visible:
@@ -3530,7 +3648,7 @@ func _get_scouting_time(hex_count: int) -> float:
     return hex_count * SCOUTING_TIME_PER_HEX
 
 func start_scouting(chunk: Array):
-    if is_scouting:
+    if is_scouting or (active_pause != null and active_pause.has_pending_key("scouting")):
         hud.show_message(tr("Scouting already in progress!"))
         return
     # An empty chunk — there is nothing to scout. A control check for the public
@@ -3555,6 +3673,20 @@ func start_scouting(chunk: Array):
     # the timer, so that the price and the actual action do not diverge.
     if not is_chunk_adjacent_to_known(chunk):
         hud.show_message(tr("The chunk does not border explored territory — scout the neighbouring hexes first"))
+        return
+    # The expedition waits for the resume of the simulation while the active pause is
+    # on. The intercept is placed BEFORE the write-off of the coins. The key is not
+    # the hex: there is one expedition at a time in the whole world, so a second
+    # "send the scouts" while the first one waits must be refused.
+    if active_pause != null and active_pause.intercept({
+            "key": "scouting",
+            "label": tr("Send the scouts"),
+            "row": chunk[0].row,
+            "col": chunk[0].col,
+            "bar_color": Color(0.2, 0.7, 0.9),
+            "bar_offset": 16,
+            "execute": func(): start_scouting(chunk),
+    }):
         return
     # The price of the expedition is NOT accepted as a parameter: the single source of truth is
     # expansion_manager.get_chunk_scout_cost() (the base and the modifier of the distance

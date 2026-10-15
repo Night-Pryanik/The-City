@@ -38,8 +38,22 @@ func _refresh_status_labels():
             tech_current_label.text = tr("Researching: ???")
             tech_progress_bar.value = 0
     else:
-        tech_current_label.text = tr("No current research")
-        tech_progress_bar.value = 0
+        var queued := _get_queued_research()
+        if not queued.is_empty():
+            tech_current_label.text = tr("Queued for research: %s — the simulation is stopped") % str(queued.get("label", ""))
+            tech_progress_bar.value = 0
+        else:
+            tech_current_label.text = tr("No current research")
+            tech_progress_bar.value = 0
+
+
+# The research that is waiting for the resume of the simulation, or an empty
+# dictionary.
+func _get_queued_research() -> Dictionary:
+    var main_map = get_tree().root.find_child("MainMap", true, false)
+    if main_map == null or main_map.active_pause == null:
+        return {}
+    return main_map.active_pause.get_pending_by_prefix("research")
 
 func _get_era_name(era_id: String) -> String:
     for era in GameData.eras:
@@ -51,6 +65,9 @@ func _rebuild_lists():
     # --- The list of available/unavailable technologies ---
     for child in tech_available_container.get_children():
         child.queue_free()
+
+    var queued := _get_queued_research()
+    var queued_tech := str(queued.get("subject", "")) if not queued.is_empty() else ""
 
     for tech in GameData.technologies:
         var tech_id = tech["id"]
@@ -86,6 +103,15 @@ func _rebuild_lists():
             btn.text = tr("Research")
             btn.pressed.connect(_on_research_button_pressed.bind(tech_id))
             row.add_child(btn)
+        elif tech_id == queued_tech:
+            # The research of this technology is already waiting for the resume of
+            # the simulation. The button that would start it becomes the button that
+            # takes it back out of the queue — nothing has been spent on it.
+            var btn = Button.new()
+            btn.text = tr("Cancel")
+            btn.tooltip_text = tr("Take this research out of the queue")
+            btn.pressed.connect(_on_cancel_queued_research_pressed)
+            row.add_child(btn)
 
         tech_available_container.add_child(row)
 
@@ -107,3 +133,10 @@ func _rebuild_lists():
 
 func _on_research_button_pressed(tech_id: String):
     emit_signal("research_requested", tech_id)
+
+func _on_cancel_queued_research_pressed():
+    var main_map = get_tree().root.find_child("MainMap", true, false)
+    if main_map == null or main_map.active_pause == null:
+        return
+    if main_map.active_pause.cancel_by_key("research"):
+        refresh()

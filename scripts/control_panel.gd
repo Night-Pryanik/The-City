@@ -809,6 +809,14 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
 # a hex with an improvement can be built, but it could not be cancelled; the road to the
 # town runs through its influence ring, where there was no button either.
 func _append_cancel_actions(actions: Array, row: int, col: int) -> void:
+    # An action that only WAITS in the queue of the active pause. Nothing has been
+    # spent on it yet, therefore the cancellation is the removal from the queue: the
+    # empty bar disappears at once. Nothing else can stand on this hex — the guards
+    # of the execution points refuse to queue on top of a build and to start a build
+    # on top of a queued one — so this one button is the whole story of the hex.
+    if _append_queued_cancel(actions, row, col):
+        return
+
     # An ordinary build: the improvements, the special actions (the drainage, the felling, the gathering,
     # the demolition). We take the name of the action from the data of the build, so that the button
     # names what exactly is being interrupted: "Interrupt: Drainage of the marshes", and not "Cancel the
@@ -866,6 +874,8 @@ func _make_project_cancel_action(project: Dictionary) -> Dictionary:
 # improvement on the hex, and they do not go through build_manager.active_builds, and for
 # the scouting the expedition is one for the whole time (main_map.is_scouting).
 func _append_long_action_cancel(actions: Array, row: int, col: int) -> void:
+    if _append_queued_cancel(actions, row, col):
+        return
     if build_manager != null and build_manager.has_method("get_expansion_progress_for_hex"):
         var exp: Dictionary = build_manager.get_expansion_progress_for_hex(row, col)
         if not exp.is_empty():
@@ -887,6 +897,22 @@ func _append_long_action_cancel(actions: Array, row: int, col: int) -> void:
                 "tooltip": tr("Recall the scouts. No hex will be surveyed, paid coins will be refunded"),
                 "icon": "cross.svg"
             })
+
+# The cancel button of an action that is waiting in the queue of the active pause.
+# Returns true when such an action stands on the hex and the button has been added.
+func _append_queued_cancel(actions: Array, row: int, col: int) -> bool:
+    if main_map.active_pause == null or not main_map.active_pause.has_pending_at(row, col):
+        return false
+    var pending: Dictionary = main_map.active_pause.get_pending_at(row, col)
+    var queued_name := str(pending.get("label", tr("the action")))
+    actions.append({
+        "type": "cancel_queued",
+        "label": tr("Cancel: %s") % queued_name,
+        "enabled": true,
+        "tooltip": tr("Remove \"%s\" from the queue. It has not started yet and nothing has been spent") % queued_name,
+        "icon": "cross.svg"
+    })
+    return true
 
 # Adds the special actions (special_actions.json) applicable to the hex.
 # Assembles the actions for a hex outside the Influence Ring:
@@ -1205,6 +1231,15 @@ func _on_action_pressed(action: Dictionary):
             main_map.hud.show_message(tr("No free workers!"))
         main_map.map_renderer.queue_redraw()
         _refresh()
+        return
+    if type == "cancel_queued":
+        # The action has not started: the removal from the queue is the whole
+        # cancellation. There is nothing to refund — nothing has been spent.
+        if _selected_hex != null and main_map.active_pause != null \
+                and main_map.active_pause.cancel_at(_selected_hex.row, _selected_hex.col):
+            main_map.map_renderer.queue_redraw()
+            main_map._redraw_progress_layer()
+            _refresh()
         return
     if type == "cancel_build":
         main_map.confirm_cancel_build(_selected_hex.row, _selected_hex.col)
