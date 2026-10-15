@@ -71,6 +71,13 @@ const INCLUDE_RESOURCE_YIELD := true
 # gather it every time, and such a product in the trade would be a fiction.
 const ONE_TIME_YIELD_CATEGORY := "metals"
 
+# The forest plot (the woodcutter's camp) and the product it yields on a BARE
+# forest hex. The improvement carries no product of its own: a camp on a hex
+# without a resource takes its output from the cover (wood_yield in
+# data/covers.json), exactly as the city production tick does (main_map.gd).
+const FOREST_PLOT_IMPROVEMENT := "lumberjack_hut"
+const FOREST_PLOT_PRODUCT := "wood"
+
 # The level a product falls back to when the map carries no usable quality (a
 # broken save, a resource without a rolled level). It is the lowest level of the
 # scale in data/qualities.json and the one the rest of the game treats as neutral.
@@ -91,6 +98,17 @@ static func is_one_time(resource_id: String) -> bool:
     return not data.get("produces", {}).is_empty()
 
 # --- The base pool ---
+
+# The product a forest plot yields from the cover of its hex, or an empty string
+# when the hex is not one. A camp on a bare forest hex has no resource to
+# extract, so its output is the timber of the cover — a second source of the pool
+# besides the resource of the hex (collect_base_resources).
+static func forest_plot_product(tile: Dictionary) -> String:
+    if str(tile.get("improvement", "")) != FOREST_PLOT_IMPROVEMENT:
+        return ""
+    if MapHelpers.get_cover_wood_yield(tile) <= 0.0:
+        return ""
+    return FOREST_PLOT_PRODUCT
 
 # Builds the base pool of the town: the ids of the PRODUCTION of the resources lying on its hexes.
 # The resource on the hex — natural (resource) OR breedable (crop_bred): the food
@@ -125,7 +143,15 @@ static func collect_base_resources(tiles: Array) -> Array:
         # The absence of a resource in the JSON/saves is null, and str(null) would give
         # a pseudo-resource "<null>", which would get into the pool first. An empty string and
         # "<null>" are discarded identically (as it was in town_manager).
-        if resource_id.is_empty() or resource_id == "<null>" or seen.has(resource_id):
+        if resource_id.is_empty() or resource_id == "<null>":
+            # A forest plot on a bare forest hex: there is no resource to name, but
+            # the camp still puts its timber on sale.
+            var wood := forest_plot_product(tile)
+            if not wood.is_empty() and not seen.has(wood):
+                seen[wood] = true
+                result.append(wood)
+            continue
+        if seen.has(resource_id):
             continue
         seen[resource_id] = true
         var data: Dictionary = GameData.raw_resources.get(resource_id, {})
@@ -198,6 +224,12 @@ static func collect_base_qualities(tiles: Array) -> Dictionary:
             continue
         var resource_id := MapHelpers.get_effective_resource(tile).strip_edges()
         if resource_id.is_empty() or resource_id == "<null>":
+            # The timber of a forest plot is traded at the ordinary level — the
+            # same one the production tick credits (main_map.gd).
+            var wood := forest_plot_product(tile)
+            if not wood.is_empty() \
+                    and (not qualities.has(wood) or is_better_quality(DEFAULT_QUALITY, str(qualities[wood]))):
+                qualities[wood] = DEFAULT_QUALITY
             continue
         var data: Dictionary = GameData.raw_resources.get(resource_id, {})
         if data.is_empty():
