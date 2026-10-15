@@ -186,18 +186,12 @@ func handle_process(delta: float):
         _hide_tooltip()
         return
 
-    # We hide the tooltip and disable the edge scrolling when the cursor is
-    # over the control panel (interaction with the map through it is forbidden).
-    if main_map.control_panel \
-            and main_map.control_panel.get_global_rect().has_point(main_map.get_global_mouse_position()):
-        _hide_tooltip()
-        return
+    var mouse_pos_ui: Vector2 = main_map.get_global_mouse_position()
 
-    # The same — when the cursor is on the "sticky" treasury breakdown tooltip: while it is there,
+    # When the cursor is on the "sticky" treasury breakdown tooltip: while it is there,
     # the map does not react (the hex tooltip does not pop up through the tooltip and the
     # chunk is not highlighted, and there is no edge scrolling either). _hide_tooltip() kills
     # the hover state as well, so the hex tooltip will not appear on the delay either.
-    var mouse_pos_ui: Vector2 = main_map.get_global_mouse_position()
     if _is_mouse_over_treasury_tooltip(mouse_pos_ui):
         _hide_tooltip()
         # We remove the chunk highlight as well: the tooltip could have "stuck"
@@ -212,35 +206,17 @@ func handle_process(delta: float):
         expansion_manager.clear_hovered_chunk()
         return
 
-    # Edge scrolling
-    if not is_dragging and main_map.use_edge_scrolling:
-        var mouse_pos = main_map.get_viewport().get_mouse_position()
-        var viewport_size = main_map.get_viewport_rect().size
-        var inside = mouse_pos.x >= 0 and mouse_pos.x <= viewport_size.x and mouse_pos.y >= 0 and mouse_pos.y <= viewport_size.y
-        var scroll = Vector2.ZERO
-        if inside:
-            if mouse_pos.x < SCROLL_MARGIN:
-                scroll.x = SCROLL_SPEED * delta
-            elif mouse_pos.x > viewport_size.x - SCROLL_MARGIN:
-                scroll.x = - SCROLL_SPEED * delta
-            if mouse_pos.y < SCROLL_MARGIN:
-                scroll.y = SCROLL_SPEED * delta
-            elif mouse_pos.y > viewport_size.y - SCROLL_MARGIN:
-                scroll.y = - SCROLL_SPEED * delta
+    _process_edge_scrolling(delta)
 
-        if scroll != Vector2.ZERO:
-            main_map.scroll_offset += scroll
-            # The maximum scroll distance of the map — the single source of truth
-            # (main_map.get_max_scroll). The same value also limits
-            # the reachability of the hexes: the scouting can be sent only where
-            # the player can scroll to (main_map.get_scout_reach_bounds).
-            var max_scroll = main_map.get_max_scroll()
-            main_map.scroll_offset.x = clamp(main_map.scroll_offset.x, -max_scroll.x, max_scroll.x)
-            main_map.scroll_offset.y = clamp(main_map.scroll_offset.y, -max_scroll.y, max_scroll.y)
-            map_renderer.queue_redraw()
-            map_renderer.queue_redraw_for_scroll()
-            if progress_bar_layer:
-                progress_bar_layer.queue_redraw()
+    # We hide the tooltip when the cursor is over the control panel
+    # (interaction with the map through it is forbidden). The edge scrolling ABOVE is
+    # deliberately not gated by this: the panel is anchored to the bottom edge of the
+    # screen and stretches across the whole of it, so gating the scrolling here would
+    # make the downward direction unreachable.
+    if main_map.control_panel \
+            and main_map.control_panel.get_global_rect().has_point(mouse_pos_ui):
+        _hide_tooltip()
+        return
 
     # The tooltip
     if hud.get_global_rect().has_point(main_map.get_global_mouse_position()):
@@ -293,6 +269,44 @@ func handle_process(delta: float):
                     main_map.update_tooltip_text(_hovered_hex.row, _hovered_hex.col)
     else:
         _hide_tooltip()
+
+# The scrolling of the map by the cursor standing at the edge of the screen.
+# A UI element anchored to the edge must not gate this (see the call site): the
+# control panel covers the whole bottom edge of the screen, so the downward
+# direction would be unreachable.
+func _process_edge_scrolling(delta: float):
+    if is_dragging or not main_map.use_edge_scrolling:
+        return
+
+    var mouse_pos = main_map.get_viewport().get_mouse_position()
+    var viewport_size = main_map.get_viewport_rect().size
+    var inside = mouse_pos.x >= 0 and mouse_pos.x <= viewport_size.x and mouse_pos.y >= 0 and mouse_pos.y <= viewport_size.y
+    var scroll = Vector2.ZERO
+    if inside:
+        if mouse_pos.x < SCROLL_MARGIN:
+            scroll.x = SCROLL_SPEED * delta
+        elif mouse_pos.x > viewport_size.x - SCROLL_MARGIN:
+            scroll.x = - SCROLL_SPEED * delta
+        if mouse_pos.y < SCROLL_MARGIN:
+            scroll.y = SCROLL_SPEED * delta
+        elif mouse_pos.y > viewport_size.y - SCROLL_MARGIN:
+            scroll.y = - SCROLL_SPEED * delta
+
+    if scroll == Vector2.ZERO:
+        return
+
+    main_map.scroll_offset += scroll
+    # The maximum scroll distance of the map — the single source of truth
+    # (main_map.get_max_scroll). The same value also limits
+    # the reachability of the hexes: the scouting can be sent only where
+    # the player can scroll to (main_map.get_scout_reach_bounds).
+    var max_scroll = main_map.get_max_scroll()
+    main_map.scroll_offset.x = clamp(main_map.scroll_offset.x, -max_scroll.x, max_scroll.x)
+    main_map.scroll_offset.y = clamp(main_map.scroll_offset.y, -max_scroll.y, max_scroll.y)
+    map_renderer.queue_redraw()
+    map_renderer.queue_redraw_for_scroll()
+    if progress_bar_layer:
+        progress_bar_layer.queue_redraw()
 
 func _handle_esc():
     if town_ui.visible:
