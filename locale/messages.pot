@@ -414,6 +414,9 @@ msgstr ""
 msgid "Added 100 food"
 msgstr ""
 
+msgid "Added 100000 coins"
+msgstr ""
+
 msgid "Advance requirement met. Click to advance to the next era."
 msgstr ""
 
@@ -1786,6 +1789,9 @@ msgid "[6] Ignore technology requirements (now: %s)"
 msgstr ""
 
 msgid "[7] Ignore building requirements (now: %s)"
+msgstr ""
+
+msgid "[8] Add 100000 coins"
 msgstr ""
 
 msgid "[center][color=#c9c9c9]Advance requirement:[/color] build "

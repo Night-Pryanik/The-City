@@ -414,6 +414,9 @@ msgstr "Факт за окно: %s ед./сек — столько реальн�
 msgid "Added 100 food"
 msgstr "Добавлено 100 еды"
 
+msgid "Added 100000 coins"
+msgstr "Добавлено 100000 монет"
+
 msgid "Advance requirement met. Click to advance to the next era."
 msgstr "Условие перехода выполнено. Нажмите, чтобы перейти в следующую эпоху."
 
@@ -1787,6 +1790,9 @@ msgstr "[6] Игнорировать требования технологий (
 
 msgid "[7] Ignore building requirements (now: %s)"
 msgstr "[7] Игнорировать требования строительства (сейчас: %s)"
+
+msgid "[8] Add 100000 coins"
+msgstr "[8] Добавить 100000 монет"
 
 msgid "[center][color=#c9c9c9]Advance requirement:[/color] build "
 msgstr "[center][color=#c9c9c9]Условие для перехода:[/color] построен "

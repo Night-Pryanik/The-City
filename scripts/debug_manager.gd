@@ -155,6 +155,10 @@ func _show_main_menu():
     _ignore_build_btn.pressed.connect(_on_toggle_ignore_build_requirements_pressed)
     _content_vbox.add_child(_ignore_build_btn)
 
+    var add_coins_btn = _make_button(tr("[8] Add 100000 coins"))
+    add_coins_btn.pressed.connect(_on_add_coins_pressed)
+    _content_vbox.add_child(add_coins_btn)
+
     # A stub for future actions (can be extended)
     var close_btn = _make_button(tr("[0] Close (F9)"))
     close_btn.pressed.connect(toggle)
@@ -219,6 +223,8 @@ func trigger_hotkey(num: int):
             _on_toggle_ignore_tech_requirements_pressed()
         7:
             _on_toggle_ignore_build_requirements_pressed()
+        8:
+            _on_add_coins_pressed()
         0:
             close()
 
@@ -279,6 +285,18 @@ func _on_add_food_pressed():
         main_map.city_ui.refresh()
     if main_map.map_renderer:
         main_map.map_renderer.queue_redraw()
+
+func _on_add_coins_pressed():
+    # add_treasury emits treasury_changed, but the HUD label is throttled to the
+    # resource display interval and does not subscribe to that signal, so we refresh
+    # it explicitly for an instant update.
+    CityData.add_treasury(100000)
+    if main_map.hud and main_map.hud.has_method("show_message"):
+        main_map.hud.show_message(tr("Added 100000 coins"))
+    if main_map.has_method("_update_treasury_hud"):
+        main_map._update_treasury_hud()
+    if main_map.city_ui and main_map.city_ui.visible:
+        main_map.city_ui.refresh()
 
 func _on_toggle_food_consumption_pressed():
     # We invert the flag of food consumption by the population (CityData.do_tick reads
