@@ -5,9 +5,6 @@
 #   - Main rivers: the source in the mountains, the mouth in a lake or the sea. They do not intersect each other.
 #   - Tributaries: the source in the mountains (or hills, if there are few mountains), flowing into the main
 #     rivers or into other tributaries (a confluence point). The tributaries do not flow into the lakes and the seas.
-#   - It is guaranteed that at least one river passes through the starting area
-#     "Ring + Region" (for this, if necessary, an additional main river is generated
-#     through an intermediate vertex inside the area).
 #   - The rivers do not run along the edges of the lake/sea hexes and their neighbours (except
 #     for the last step into the mouth/confluence point), so that the river does not flow along the shore.
 #
@@ -115,12 +112,8 @@ class PriorityQueue:
 # -------------------------------------------------------
 # The main method: generates the river system on the map.
 # tile_data — a 2D array of the hexes (to determine the mountains/lakes/hills).
-# region_* — the bounds of the starting area "Ring + Region" (inclusive),
-# through which at least one river must pass.
 # -------------------------------------------------------
-func generate_rivers(rows: int, cols: int, radius: float, tile_data: Array,
-        region_start_row: int, region_end_row: int,
-        region_start_col: int, region_end_col: int) -> void:
+func generate_rivers(rows: int, cols: int, radius: float, tile_data: Array) -> void:
     rivers = []
     if rows < 3 or cols < 3:
         return
@@ -170,16 +163,6 @@ func generate_rivers(rows: int, cols: int, radius: float, tile_data: Array,
             _mark_used(river, used_vertices)
             main_rivers.append(river)
     print("RIVER DEBUG: main rivers generated=", main_rivers.size())
-
-    # --- The guarantee: at least one river passes through the starting area ---
-    if not _any_river_in_region(main_rivers, graph,
-            region_start_row, region_end_row, region_start_col, region_end_col):
-        var forced = _try_generate_forced_river(graph, mountain_vertices, mouth_vertices,
-                restricted_hexes, used_vertices, min_main_len,
-                region_start_row, region_end_row, region_start_col, region_end_col)
-        if forced.size() >= min_main_len:
-            _mark_used(forced, used_vertices)
-            main_rivers.append(forced)
 
     # --- The generation of the tributaries (mountain/hill -> an occupied vertex, a confluence) ---
     tributaries = []
@@ -290,76 +273,6 @@ func _try_generate_tributary(graph: Dictionary, mountain_vertices: Array,
 
 
 # -------------------------------------------------------
-# Forcefully generates a main river guaranteed to pass through
-# the starting area. It picks a mountain on one side of the area and a lake/sea on
-# the other, takes a free vertex inside the area as an intermediate point
-# (waypoint) and builds the path "mountain -> waypoint -> lake/sea".
-# -------------------------------------------------------
-func _try_generate_forced_river(graph: Dictionary, mountain_vertices: Array,
-        mouth_vertices: Array, restricted_hexes: Dictionary,
-        used_vertices: Dictionary, min_len: int,
-        region_start_row: int, region_end_row: int,
-        region_start_col: int, region_end_col: int) -> Array:
-    # The pairs of sides: [source, mouth]. We try all the combinations.
-    var side_pairs: Array = [
-        ["top", "bottom"], ["bottom", "top"],
-        ["left", "right"], ["right", "left"]
-    ]
-
-    for side_pair in side_pairs:
-        var src_side = _vertices_on_side(mountain_vertices, graph, side_pair[0],
-                region_start_row, region_end_row, region_start_col, region_end_col)
-        var dst_side = _vertices_on_side(mouth_vertices, graph, side_pair[1],
-                region_start_row, region_end_row, region_start_col, region_end_col)
-
-        var free_src: Array = []
-        for vk in src_side:
-            if not used_vertices.has(vk) and not mouth_vertices.has(vk) and not _vertex_in_hexes(vk, graph, restricted_hexes):
-                free_src.append(vk)
-        var free_dst: Array = []
-        for vk in dst_side:
-            if not used_vertices.has(vk):
-                free_dst.append(vk)
-        if free_src.is_empty() or free_dst.is_empty():
-            continue
-
-        # Finds the free vertices inside the area as the intermediate points.
-        var region_vertices = _vertices_in_region(graph,
-                region_start_row, region_end_row, region_start_col, region_end_col)
-        var free_waypoints: Array = []
-        for vk in region_vertices:
-            if not used_vertices.has(vk) and not _vertex_in_hexes(vk, graph, restricted_hexes):
-                free_waypoints.append(vk)
-        if free_waypoints.is_empty():
-            continue
-
-        for _attempt in range(NUM_RIVER_ATTEMPTS):
-            var start = free_src[randi() % free_src.size()]
-            var goal = free_dst[randi() % free_dst.size()]
-            var wp = free_waypoints[randi() % free_waypoints.size()]
-
-            var path1 = _find_path_astar(start, wp, graph, used_vertices, MAX_TURN_ANGLE_DEG, {}, restricted_hexes)
-            if path1.is_empty():
-                path1 = _find_path_astar(start, wp, graph, used_vertices, MAX_TURN_ANGLE_SOFT_DEG, {}, restricted_hexes)
-            if path1.is_empty():
-                continue
-
-            var path2 = _find_path_astar(wp, goal, graph, used_vertices, MAX_TURN_ANGLE_DEG, {}, restricted_hexes)
-            if path2.is_empty():
-                path2 = _find_path_astar(wp, goal, graph, used_vertices, MAX_TURN_ANGLE_SOFT_DEG, {}, restricted_hexes)
-            if path2.is_empty():
-                continue
-
-            # We merge the paths (the waypoint is not duplicated).
-            var combined: Array = path1.duplicate()
-            for i in range(1, path2.size()):
-                combined.append(path2[i])
-            if combined.size() >= min_len:
-                return _keys_to_positions(combined, graph)
-    return []
-
-
-# -------------------------------------------------------
 # Finds the vertices at which at least one hex has the given relief.
 # -------------------------------------------------------
 func _find_terrain_vertices(graph: Dictionary, tile_data: Array, terrain_id: String) -> Array:
@@ -436,67 +349,6 @@ func _edge_in_forbidden_hexes(a_key: String, b_key: String, vertex_hexes: Dictio
             if ha.row == hb.row and ha.col == hb.col:
                 if forbidden_hexes.has("%d_%d" % [ha.row, ha.col]):
                     return true
-    return false
-
-
-# -------------------------------------------------------
-# Returns the vertices from the list at which there is a hex on the specified side
-# of the starting area (top/bottom/left/right).
-# -------------------------------------------------------
-func _vertices_on_side(vertices: Array, graph: Dictionary, side: String,
-        region_start_row: int, region_end_row: int,
-        region_start_col: int, region_end_col: int) -> Array:
-    var vertex_hexes: Dictionary = graph["hexes"]
-    var result: Array = []
-    for vk in vertices:
-        for hex_info in vertex_hexes[vk]:
-            var ok := false
-            if side == "top" and hex_info.row < region_start_row:
-                ok = true
-            elif side == "bottom" and hex_info.row > region_end_row:
-                ok = true
-            elif side == "left" and hex_info.col < region_start_col:
-                ok = true
-            elif side == "right" and hex_info.col > region_end_col:
-                ok = true
-            if ok:
-                result.append(vk)
-                break
-    return result
-
-
-# -------------------------------------------------------
-# Returns all the vertices at which there is a hex inside the starting area.
-# -------------------------------------------------------
-func _vertices_in_region(graph: Dictionary,
-        region_start_row: int, region_end_row: int,
-        region_start_col: int, region_end_col: int) -> Array:
-    var vertex_hexes: Dictionary = graph["hexes"]
-    var result: Array = []
-    for vk in vertex_hexes.keys():
-        for hex_info in vertex_hexes[vk]:
-            if hex_info.row >= region_start_row and hex_info.row <= region_end_row and \
-               hex_info.col >= region_start_col and hex_info.col <= region_end_col:
-                result.append(vk)
-                break
-    return result
-
-
-# -------------------------------------------------------
-# Checks whether at least one river passes through the starting area.
-# -------------------------------------------------------
-func _any_river_in_region(rivers_list: Array, graph: Dictionary,
-        region_start_row: int, region_end_row: int,
-        region_start_col: int, region_end_col: int) -> bool:
-    var vertex_hexes: Dictionary = graph["hexes"]
-    for river in rivers_list:
-        for pt in river:
-            var key = _vertex_key(pt)
-            if vertex_hexes.has(key):
-                for hex_info in vertex_hexes[key]:
-                    if hex_info.row >= region_start_row and hex_info.row <= region_end_row and \
-                       hex_info.col >= region_start_col and hex_info.col <= region_end_col:
-                        return true
     return false
 
 

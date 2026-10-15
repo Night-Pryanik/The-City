@@ -1185,7 +1185,6 @@ Rivers are generated in `river_manager.gd` at the start of a new game (after ter
 
 - **Main rivers** — a source in the mountains, a mouth in a lake **or sea**. They do not cross each other (A* runs with occupied vertices forbidden).
 - **Tributaries** — a source in the mountains (or hills, if there are few mountains), they flow into main rivers or into other tributaries (a confluence point). Tributaries **do not flow into lakes or seas** (their vertices are excluded from confluence points).
-- **Guarantee for the starting area** — at least one river always passes through the starting area "Ring + Region". If, after the main rivers are generated, none has crossed the area, an additional main river is generated through an intermediate vertex inside the area (a mountain on one side → a vertex in the area → a lake/sea on the other side).
 
 The number of rivers and the minimum lengths are set in `data/map_config.json` (see above). The river data format (`Array of Array of Vector2`) has not changed, so rendering, saving/loading and river bonuses work as before.
 

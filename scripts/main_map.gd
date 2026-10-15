@@ -1234,10 +1234,8 @@ func _initialize_map():
                     tile["terrain_icon"] = ""
 
     # We generate the river system (the main rivers + the tributaries) over the whole map
-    # and mark the river edges in the data of the hexes. We pass tile_data (for the mountains/lakes)
-    # and the boundaries of the starting area "Ring + Region" (the guarantee of the intersection).
-    river_manager.generate_rivers(map_rows, map_cols, HEX_RADIUS, tile_data,
-            region_start_row, region_end_row, region_start_col, region_end_col)
+    # and mark the river edges in the data of the hexes. We pass tile_data (for the mountains/lakes).
+    river_manager.generate_rivers(map_rows, map_cols, HEX_RADIUS, tile_data)
     river_manager.mark_river_edges(tile_data, map_rows, map_cols, HEX_RADIUS, river_manager.get_cached_graph())
 
     # --- The towns (the small settlements) ---
