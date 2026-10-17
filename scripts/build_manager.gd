@@ -1,7 +1,7 @@
 @tool
 extends Node
 
-signal build_message(text: String)
+signal build_message(text: String, message_type: int)
 signal build_completed(row: int, col: int, imp_id: String, target_res_id)
 signal build_paused(row: int, col: int)
 signal build_cancelled(row: int, col: int)
@@ -104,7 +104,7 @@ func _process(delta):
 
     for data in to_complete:
         var key = str(data["row"]) + "," + str(data["col"])
-        emit_signal("build_message", tr("Completed: %s") % data["imp_name"])
+        emit_signal("build_message", tr("Completed: %s") % data["imp_name"], 0)
         emit_signal("build_completed", data["row"], data["col"], data["imp_id"], data.get("target_res_id"))
         active_builds.erase(key)
 
@@ -117,15 +117,15 @@ func _process(delta):
         if data.get("is_upgrade", false):
             # The upgrade of the building is complete — a signal for CityData, which will replace
             # the building with the improved version (and not add a new one at the end of the list).
-            emit_signal("build_message", tr("Upgraded: %s") % data.get("upgrade_name", data.get("upgrade_to", "")))
+            emit_signal("build_message", tr("Upgraded: %s") % data.get("upgrade_name", data.get("upgrade_to", "")), 0)
             emit_signal("building_upgrade_completed", bkey, data.get("upgrade_idx", -1), data.get("upgrade_to", ""), data.get("upgrade_name", ""))
         else:
-            emit_signal("build_message", tr("Built: %s") % data["building_name"])
+            emit_signal("build_message", tr("Built: %s") % data["building_name"], 0)
             emit_signal("build_building_completed", data["building_id"], bkey)
 
     for data in to_complete_expansions:
         var ekey = data.get("build_key", "")
-        emit_signal("build_message", tr("Claiming complete!"))
+        emit_signal("build_message", tr("Claiming complete!"), 0)
         emit_signal("expansion_build_completed", data["chunk"])
         active_expansion_builds.erase(ekey)
 
@@ -154,7 +154,7 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null,
     # On a city hex the construction of improvements is forbidden.
     var main_map_check = get_tree().root.find_child("MainMap", true, false)
     if main_map_check and row == main_map_check.city_row and col == main_map_check.city_col:
-        emit_signal("build_message", tr("Cannot build on a city hex"))
+        emit_signal("build_message", tr("Cannot build on a city hex"), 1)
         return false
 
     # The road (the build_road special action) is the only action applicable
@@ -175,10 +175,10 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null,
             and col >= 0 and col < main_map_check.tile_data[row].size():
         var t_tile = main_map_check.tile_data[row][col]
         if t_tile != null and bool(t_tile.get("decorative", false)):
-            emit_signal("build_message", tr("This is a decorative town improvement — it cannot be modified"))
+            emit_signal("build_message", tr("This is a decorative town improvement — it cannot be modified"), 1)
             return false
         if t_tile != null and bool(t_tile.get("has_town", false)) and not is_road_action:
-            emit_signal("build_message", tr("Another town stands here — cannot build"))
+            emit_signal("build_message", tr("Another town stands here — cannot build"), 1)
             return false
         # In the influence ring of another town it is impossible to build: around someone else's
         # settlement the fields/pastures/infrastructure are actually occupied, and
@@ -187,25 +187,25 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null,
         # the player a visual signal even before attempting to build.
         # The rings of the player's own town are not affected (checked below).
         if t_tile != null and bool(t_tile.get("in_town_influence", false)) and not is_road_action:
-            emit_signal("build_message", tr("This is inside another town's influence ring — cannot build"))
+            emit_signal("build_message", tr("This is inside another town's influence ring — cannot build"), 1)
             return false
 
     var key = str(row) + "," + str(col)
     if active_builds.has(key):
-        emit_signal("build_message", tr("Construction is already underway here"))
+        emit_signal("build_message", tr("Construction is already underway here"), 1)
         return false
     # The same one-shot protection for an action that is only WAITING in the queue
     # of the active pause: the gather of the wild berries must not be queued twice
     # and then started twice on the resume.
     if active_pause != null and active_pause.has_pending_at(row, col):
-        emit_signal("build_message", tr("Construction is already underway here"))
+        emit_signal("build_message", tr("Construction is already underway here"), 1)
         return false
     # The hex may also be occupied by a STAGED project: an improvement waiting in the queue
     # "road → improvement" does not lie in active_builds, therefore the checks
     # above alone are not enough. Without it, on a hex where the improvement is not yet built,
     # it would be possible to start a second build — and two buildings would share the hex.
     if project_manager != null and project_manager.has_project_at(row, col):
-        emit_signal("build_message", tr("Construction is already underway here"))
+        emit_signal("build_message", tr("Construction is already underway here"), 1)
         return false
 
     var imp_data = GameData.improvements.get(imp_id, {})
@@ -248,7 +248,7 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null,
             # The reasons from the plan start with a capital letter — after a colon in
             # a sentence it looks like an error.
             reason = reason.substr(0, 1).to_lower() + reason.substr(1)
-        emit_signal("build_message", tr("Cannot build a road here: %s") % reason)
+        emit_signal("build_message", tr("Cannot build a road here: %s") % reason, 1)
         return false
 
     # A road is not one build for the whole route, but a STAGED project: a queue
@@ -259,7 +259,7 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null,
     # which special actions are staged.
     if is_road_action:
         if main_map == null or not main_map.has_method("start_road_project"):
-            emit_signal("build_message", tr("Failed to build the road"))
+            emit_signal("build_message", tr("Failed to build the road"), 1)
             return false
         return main_map.start_road_project(row, col, effective_road_level)
 
@@ -294,13 +294,13 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null,
         return true
 
     if work_cost <= 0 or CityData.ignore_build_requirements:
-        emit_signal("build_message", tr("Built instantly: %s") % imp_name)
+        emit_signal("build_message", tr("Built instantly: %s") % imp_name, 0)
         emit_signal("build_completed", row, col, imp_id, target_res_id)
         return true
 
     # The general limit of simultaneous builds (buildings + improvements) equals the number of citizens
     if get_total_active_builds() >= CityData.total_population:
-        emit_signal("build_message", tr("You can build or upgrade no more than %d buildings at once (limit = number of citizens)") % CityData.total_population)
+        emit_signal("build_message", tr("You can build or upgrade no more than %d buildings at once (limit = number of citizens)") % CityData.total_population, 1)
         return false
 
     active_builds[key] = {
@@ -316,7 +316,7 @@ func start_build(row: int, col: int, imp_id: String, target_res_id = null,
     }
     _active_build_count += 1
 
-    emit_signal("build_message", tr("Construction of %s started (%.0f work)") % [imp_name, work_cost])
+    emit_signal("build_message", tr("Construction of %s started (%.0f work)") % [imp_name, work_cost], 0)
     return true
 
 # Starts the claiming of a chunk of territory for labour. The labour accumulates over time
@@ -331,14 +331,14 @@ func start_expansion_build(chunk: Array, work_cost: int, money_cost: int = 0) ->
     # for labour, and the limit of simultaneous builds does not apply: the chunk is joined
     # to the Influence Ring by the same signal as on a normal completion.
     if CityData.ignore_build_requirements:
-        emit_signal("build_message", tr("Claiming complete instantly!"))
+        emit_signal("build_message", tr("Claiming complete instantly!"), 0)
         emit_signal("expansion_build_completed", chunk)
         return true
 
     # The general limit of simultaneous builds (buildings + improvements + claims)
     # equals the number of citizens.
     if get_total_active_builds() >= CityData.total_population:
-        emit_signal("build_message", tr("You can build or upgrade no more than %d buildings at once (limit = number of citizens)") % CityData.total_population)
+        emit_signal("build_message", tr("You can build or upgrade no more than %d buildings at once (limit = number of citizens)") % CityData.total_population, 1)
         return false
 
     var build_key = "expansion_" + str(Time.get_ticks_usec())
@@ -356,7 +356,7 @@ func start_expansion_build(chunk: Array, work_cost: int, money_cost: int = 0) ->
     }
     _active_build_count += 1
 
-    emit_signal("build_message", tr("Claiming land started (%d work)") % work_cost)
+    emit_signal("build_message", tr("Claiming land started (%d work)") % work_cost, 0)
     return true
 
 func start_building_build(building_id: String) -> String:
@@ -370,7 +370,7 @@ func start_building_build(building_id: String) -> String:
 
     var additional_req_check = CityData.check_building_additional_req(building_id)
     if not additional_req_check["ok"]:
-        emit_signal("build_message", additional_req_check["reason"])
+        emit_signal("build_message", additional_req_check["reason"], 1)
         return ""
 
     # The technology modifiers (target = "construction_cost", see data/modifiers.json)
@@ -386,7 +386,7 @@ func start_building_build(building_id: String) -> String:
 
     # The general limit of simultaneous builds (buildings + improvements) equals the number of citizens
     if get_total_active_builds() >= CityData.total_population:
-        emit_signal("build_message", tr("You can build or upgrade no more than %d buildings at once (limit = number of citizens)") % CityData.total_population)
+        emit_signal("build_message", tr("You can build or upgrade no more than %d buildings at once (limit = number of citizens)") % CityData.total_population, 1)
         return ""
 
     var build_key = "building_" + str(Time.get_ticks_usec())
@@ -401,7 +401,7 @@ func start_building_build(building_id: String) -> String:
     }
     _active_build_count += 1
 
-    emit_signal("build_message", tr("Construction of %s started (%.0f work)") % [building_name, work_cost])
+    emit_signal("build_message", tr("Construction of %s started (%.0f work)") % [building_name, work_cost], 0)
     return build_key
 
 # Starts the upgrade of an already built city building (idx — the index in
@@ -420,7 +420,7 @@ func start_building_upgrade(idx: int, from_id: String, upgrade_to: String) -> St
     for key in active_building_builds.keys():
         var data = active_building_builds[key]
         if data.get("is_upgrade", false) and data.get("upgrade_idx", -1) == idx:
-            emit_signal("build_message", tr("This building is already being upgraded"))
+            emit_signal("build_message", tr("This building is already being upgraded"), 1)
             return ""
 
     var work_cost = 0
@@ -433,7 +433,7 @@ func start_building_upgrade(idx: int, from_id: String, upgrade_to: String) -> St
 
     var additional_req_check = CityData.check_building_additional_req(upgrade_to)
     if not additional_req_check["ok"]:
-        emit_signal("build_message", additional_req_check["reason"])
+        emit_signal("build_message", additional_req_check["reason"], 1)
         return ""
 
     # The technology modifiers (target = "construction_cost", see data/modifiers.json)
@@ -450,7 +450,7 @@ func start_building_upgrade(idx: int, from_id: String, upgrade_to: String) -> St
     # The general limit of simultaneous builds (buildings + improvements + upgrades) equals
     # the number of citizens.
     if get_total_active_builds() >= CityData.total_population:
-        emit_signal("build_message", tr("You can build or upgrade no more than %d buildings at once (limit = number of citizens)") % CityData.total_population)
+        emit_signal("build_message", tr("You can build or upgrade no more than %d buildings at once (limit = number of citizens)") % CityData.total_population, 1)
         return ""
 
     var build_key = "building_upgrade_" + str(idx) + "_" + str(Time.get_ticks_usec())
@@ -469,7 +469,7 @@ func start_building_upgrade(idx: int, from_id: String, upgrade_to: String) -> St
     }
     _active_build_count += 1
 
-    emit_signal("build_message", tr("Upgrade of %s started (%.0f work)") % [upgrade_name, work_cost])
+    emit_signal("build_message", tr("Upgrade of %s started (%.0f work)") % [upgrade_name, work_cost], 0)
     return build_key
 
 # Returns the data of the ongoing upgrade of a building by its index in the city
@@ -494,7 +494,7 @@ func pause_build(row: int, col: int) -> bool:
     data["status"] = "paused"
     data["allocated_labor"] = 0.0
     emit_signal("build_paused", row, col)
-    emit_signal("build_message", tr("Construction of %s paused") % data["imp_name"])
+    emit_signal("build_message", tr("Construction of %s paused") % data["imp_name"], 0)
     return true
 
 func resume_build(row: int, col: int) -> bool:
@@ -507,7 +507,7 @@ func resume_build(row: int, col: int) -> bool:
         return false
 
     data["status"] = "active"
-    emit_signal("build_message", tr("Construction of %s resumed") % data["imp_name"])
+    emit_signal("build_message", tr("Construction of %s resumed") % data["imp_name"], 0)
     return true
 
 # Cancels the claiming of the territory by its build_key. The labour already invested
@@ -530,7 +530,7 @@ func cancel_expansion(build_key: String) -> bool:
         # of the treasury — the same reason as in expansion_manager.handle_action.
         CityData.record_treasury_expense(GameData.SRC_CLAIMING, -money_cost)
     emit_signal("build_message", tr("Claiming cancelled. Spent %.0f/%d work")
-            % [float(data.get("progress", 0.0)), int(data.get("work_cost", 0))])
+            % [float(data.get("progress", 0.0)), int(data.get("work_cost", 0))], 0)
     _recount_active_builds()
     return true
 
@@ -556,7 +556,7 @@ func cancel_build(row: int, col: int):
     active_builds.erase(key)
     _active_build_count -= 1
     emit_signal("build_cancelled", row, col)
-    emit_signal("build_message", tr("Construction of %s cancelled. Spent %.0f/%d work") % [imp_name, work_done, work_total])
+    emit_signal("build_message", tr("Construction of %s cancelled. Spent %.0f/%d work") % [imp_name, work_done, work_total], 0)
 
 func pause_building_build(build_key: String) -> bool:
     if not active_building_builds.has(build_key):
@@ -569,7 +569,7 @@ func pause_building_build(build_key: String) -> bool:
     data["status"] = "paused"
     data["allocated_labor"] = 0.0
     emit_signal("build_building_paused", build_key)
-    emit_signal("build_message", tr("Construction of %s paused") % data["building_name"])
+    emit_signal("build_message", tr("Construction of %s paused") % data["building_name"], 0)
     return true
 
 func resume_building_build(build_key: String) -> bool:
@@ -581,7 +581,7 @@ func resume_building_build(build_key: String) -> bool:
         return false
 
     data["status"] = "active"
-    emit_signal("build_message", tr("Construction of %s resumed") % data["building_name"])
+    emit_signal("build_message", tr("Construction of %s resumed") % data["building_name"], 0)
     return true
 
 func cancel_building_build(build_key: String):
@@ -596,7 +596,7 @@ func cancel_building_build(build_key: String):
     active_building_builds.erase(build_key)
     _active_build_count -= 1
     emit_signal("build_building_cancelled", build_key)
-    emit_signal("build_message", tr("Construction of %s cancelled. Spent %.0f/%d work") % [building_name, work_done, work_total])
+    emit_signal("build_message", tr("Construction of %s cancelled. Spent %.0f/%d work") % [building_name, work_done, work_total], 0)
 
 # Returns the total number of active builds (improvements + buildings + claims
 # + the current steps of the staged projects). A project takes one slot, and not

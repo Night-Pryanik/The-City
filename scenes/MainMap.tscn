@@ -18,6 +18,7 @@
 [ext_resource type="Script" uid="uid://bvivpa15khla" path="res://scripts/control_panel.gd" id="15_ctrlpanel"]
 [ext_resource type="Script" uid="uid://bcysm6it5igvq" path="res://scripts/town_manager.gd" id="16_twnmgr"]
 [ext_resource type="PackedScene" uid="uid://k2vtownui9ab" path="res://scenes/TownUI.tscn" id="17_twnui"]
+[ext_resource type="Script" path="res://scripts/unread_dot.gd" id="18_unread"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_o7tci"]
 bg_color = Color(0.19607843, 0.19607843, 0.19607843, 1)
@@ -78,6 +79,25 @@ text = "City"
 layout_mode = 2
 tooltip_text = "Scout and claim neighboring lands."
 text = "Expansion"
+
+[node name="JournalButton" type="Button" parent="HUD/VBoxContainer"]
+layout_mode = 2
+tooltip_text = "Open the journal of important messages"
+text = "Journal"
+
+[node name="UnreadDot" type="Control" parent="HUD/VBoxContainer/JournalButton"]
+visible = false
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -13.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = 13.0
+grow_horizontal = 0
+mouse_filter = 2
+script = ExtResource("18_unread")
 
 [node name="MapMessageLabel" type="Label" parent="HUD/VBoxContainer" unique_id=1468814370]
 visible = false

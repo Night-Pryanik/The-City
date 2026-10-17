@@ -43,19 +43,28 @@ const FONT_EXTENSIONS: Array[String] = ["ttf", "otf", "woff", "woff2"]
 # The family taken when nothing is chosen or the chosen one cannot be used.
 const DEFAULT_FAMILY := "Inter"
 
-# The weight of the body text and of the emphasis. The emphasis is what the theme asks
-# for by name — the types in EMPHASIS_TYPES below.
+# The weight of the body text, of the emphasis and of the bold face. The emphasis and
+# the bold face are what the theme asks for by name — the types in EMPHASIS_TYPES and
+# BOLD_TYPES below.
 const BODY_WEIGHT := 400
 const EMPHASIS_WEIGHT := 500
+const BOLD_WEIGHT := 700
 
 # The strength of the fake bold for a family that has no heavier face at all.
 # FontVariation.variation_embolden is measured in pixels of the outline.
 const EMBOLDEN_STRENGTH := 0.5
+const BOLD_EMBOLDEN_STRENGTH := 1.0
 
 # The theme types drawn in the emphasis weight. Button and TabBar are the ones the
 # project theme already had; SectionHeading is the variation the settings scene puts on
 # the heading labels of its sections (theme_type_variation, see settings_menu.tscn).
 const EMPHASIS_TYPES: Array[String] = ["Button", "TabBar", "SectionHeading"]
+
+# The theme types drawn in the bold weight — the strongest face of the family. The
+# journal puts BoldLabel on the unread messages (see journal_ui.gd): the hierarchy
+# "unread / read" has to survive a change of the interface font, so it is answered by
+# the theme and not by a font override on the label.
+const BOLD_TYPES: Array[String] = ["BoldLabel"]
 
 # The words a vendor glues to the family name of a single-weight file: Lato-Medium.ttf
 # calls its family "Lato Medium" and not "Lato", and a dropdown of families would show
@@ -324,7 +333,13 @@ func _font_at(face: Dictionary, weight: int) -> Font:
 func _build_emphasis(pick: Dictionary) -> Font:
     if pick["from_axis"]:
         return _font_at(pick["body"], EMPHASIS_WEIGHT)
-    if not pick["emphasis"].is_empty():
+    # The emphasis has to be a DIFFERENT file from the body, or the two render exactly
+    # alike. A single-weight family whose only face calls itself Medium or Bold answers
+    # choose_faces() with that same file as the emphasis, and _font_at() cannot vary a
+    # static font — it hands the file back as it is (measured on Terminus, the bundled
+    # monospaced family: every section heading was drawn in the body face).
+    if not pick["emphasis"].is_empty() \
+            and str(pick["emphasis"]["path"]) != str(pick["body"]["path"]):
         return _font_at(pick["emphasis"], EMPHASIS_WEIGHT)
     var body := _font_at(pick["body"], BODY_WEIGHT)
     if body == null:
@@ -338,6 +353,30 @@ func _build_emphasis(pick: Dictionary) -> Font:
     return emboldened
 
 
+# The strongest face of the family — the bold one. It is built like the emphasis, one
+# step further up: the weight axis of a variable font, the heaviest static face it has,
+# and the emboldened body for a family that has nothing heavier at all.
+func _build_bold(pick: Dictionary) -> Font:
+    if pick["from_axis"]:
+        return _font_at(pick["body"], BOLD_WEIGHT)
+    # The emphasis face is the heaviest one the family has. When it IS the body file
+    # (a single-weight font that calls itself Medium or Bold), there is nothing heavier
+    # to take, and the bold has to be faked — otherwise "bold" would render exactly like
+    # the body text and the hierarchy of the journal would disappear.
+    if not pick["emphasis"].is_empty() \
+            and str(pick["emphasis"]["path"]) != str(pick["body"]["path"]):
+        # A static face cannot be varied: the emphasis file (Bold, Black, ...) IS the
+        # bold face of such a family.
+        return _font_at(pick["emphasis"], BOLD_WEIGHT)
+    var body := _font_at(pick["body"], BODY_WEIGHT)
+    if body == null:
+        return null
+    var emboldened := FontVariation.new()
+    emboldened.base_font = body
+    emboldened.variation_embolden = BOLD_EMBOLDEN_STRENGTH
+    return emboldened
+
+
 # Rewrites the project theme and remembers the family as the current one.
 func _apply_family(family: String) -> bool:
     _ensure_scanned()
@@ -348,7 +387,8 @@ func _apply_family(family: String) -> bool:
         return false
     var body := _font_at(pick["body"], BODY_WEIGHT)
     var emphasis := _build_emphasis(pick)
-    if body == null or emphasis == null:
+    var bold := _build_bold(pick)
+    if body == null or emphasis == null or bold == null:
         return false
     var theme := ThemeDB.get_project_theme()
     if theme == null:
@@ -357,6 +397,8 @@ func _apply_family(family: String) -> bool:
     theme.default_font = body
     for type in EMPHASIS_TYPES:
         theme.set_font("font", type, emphasis)
+    for type in BOLD_TYPES:
+        theme.set_font("font", type, bold)
     # The map draws the names of the cities and of the towns itself, with draw_string and
     # the engine fallback font, which knows nothing about the project theme
     # (map_renderer.gd). Without this line the map would stay in the built-in font while

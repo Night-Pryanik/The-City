@@ -1,6 +1,9 @@
 @tool
 extends Node
 
+const HUD_MESSAGE_NORMAL := 0
+const HUD_MESSAGE_IMPORTANT := 1
+
 var terrains: Dictionary = {}
 var covers: Dictionary = {}
 var raw_resources: Dictionary = {}

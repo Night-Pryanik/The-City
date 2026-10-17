@@ -385,7 +385,7 @@ func _handle_mouse_button(event: InputEventMouseButton):
             var blocked_hex = _pixel_to_hex(mouse_pos.x, mouse_pos.y)
             if blocked_hex != null and not main_map.is_cartography_researched():
                 main_map.hud.show_message(tr("Scouting beyond the Region requires the technology \"%s\"")
-                        % main_map.get_cartography_tech_name())
+                        % main_map.get_cartography_tech_name(), GameData.HUD_MESSAGE_IMPORTANT)
             if main_map.control_panel.has_selection():
                 main_map.clear_selection()
 

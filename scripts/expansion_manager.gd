@@ -311,7 +311,7 @@ func handle_action(chunk: Array, money_cost: int, work_cost: int) -> bool:
         if h_tile == null:
             return false
         if bool(h_tile.get("in_town_influence", false)):
-            main_map.hud.show_message(tr("The chunk overlaps another town's influence ring — purchase impossible"))
+            main_map.hud.show_message(tr("The chunk overlaps another town's influence ring — purchase impossible"), GameData.HUD_MESSAGE_IMPORTANT)
             return false
 
     # The purchase waits for the resume of the simulation while the active pause is
@@ -338,7 +338,7 @@ func handle_action(chunk: Array, money_cost: int, work_cost: int) -> bool:
     if not CityData.ignore_build_requirements:
         if not CityData.spend_treasury(money_cost):
             main_map.hud.show_message(tr("Not enough coins in the treasury! Need %d, treasury has %d")
-                    % [money_cost, CityData.treasury])
+                    % [money_cost, CityData.treasury], GameData.HUD_MESSAGE_IMPORTANT)
             return false
         # The expense source for the "Treasury" tooltip (see show_treasury_tooltip).
         # The one-time costs of claiming a chunk are event-based, they are not in the plan, therefore

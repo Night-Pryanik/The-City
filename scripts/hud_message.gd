@@ -7,10 +7,19 @@ extends Panel
 const MIN_MESSAGE_DURATION := 1.0
 const MAX_MESSAGE_DURATION := 10.0
 
+enum MessageType { NORMAL, IMPORTANT }
+
 var message_label: Label
 var message_timer: float = 0.0
 var message_duration: float = 3.0
 var hud_original_size: Vector2
+var current_message_type: MessageType = MessageType.NORMAL
+
+# The journal of the important messages (see journal.gd). Every message passes through
+# show_message(), so the copy is made here: a caller reports its message once and never
+# has to remember to push the same text into the history as well. The dot on the
+# journal button follows the unread count of the same node.
+var journal: Node = null
 
 func _ready():
     # We find the Label named "MapMessageLabel" inside the VBoxContainer
@@ -51,11 +60,37 @@ func _fit_size() -> void:
         maxf(content.y, hud_original_size.y)
     )
 
-func show_message(text: String):
+func show_message(text: String, type: MessageType = MessageType.NORMAL):
     message_label.text = text
     message_label.visible = true
     message_timer = 0.0
+    current_message_type = type
+    # Only the important messages are worth keeping: the ordinary ones report routine
+    # actions (a road built, a road cancelled) and would bury the journal under noise.
+    if type == MessageType.IMPORTANT and journal != null:
+        journal.add_message(text)
     call_deferred("_adjust_size")
+
+# The history the HUD feeds, and whose unread count the dot on the journal button
+# shows. The connection is made once: two calls with the same journal must not refresh
+# the dot twice on every change.
+func set_journal(source: Node) -> void:
+    if journal == source:
+        return
+    if journal != null and is_instance_valid(journal) and journal.changed.is_connected(_refresh_unread_dot):
+        journal.changed.disconnect(_refresh_unread_dot)
+    journal = source
+    if journal != null and not journal.changed.is_connected(_refresh_unread_dot):
+        journal.changed.connect(_refresh_unread_dot)
+    _refresh_unread_dot()
+
+func _refresh_unread_dot() -> void:
+    # Looked up by name: the panel is also built by hand in tests, where the journal
+    # button does not exist and there is nothing to mark.
+    var dot := get_node_or_null("VBoxContainer/JournalButton/UnreadDot")
+    if dot == null:
+        return
+    dot.visible = journal != null and journal.unread_count() > 0
 
 # Applies the "HUD message display time" setting (the key interface/hud_message_duration in
 # user://settings.cfg). Called by main_map from apply_settings() and at map start. The timer

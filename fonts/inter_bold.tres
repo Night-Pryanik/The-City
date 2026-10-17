@@ -1,0 +1,9 @@
+[gd_resource type="FontVariation" format=3]
+
+[ext_resource type="FontFile" path="res://fonts/InterVariable.ttf" id="1_bold"]
+
+[resource]
+base_font = ExtResource("1_bold")
+variation_opentype = {
+"weight": 700
+}

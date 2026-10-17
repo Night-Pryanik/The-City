@@ -432,6 +432,9 @@ msgstr "Разрешить потребление на внутреннем ры
 msgid "Already built sections (%d) will stay on the map."
 msgstr "Уже построенные участки (%d) останутся на карте."
 
+msgid "Already read"
+msgstr "Уже прочитано"
+
 msgid "Amount:"
 msgstr "Количество:"
 
@@ -675,6 +678,9 @@ msgstr "Закрыть"
 msgid "Close the contract"
 msgstr "Закрыть контракт"
 
+msgid "Close the journal (ESC)"
+msgstr "Закрыть журнал (ESC)"
+
 msgid "Close this panel and leave the deal as it is"
 msgstr "Закрыть панель и оставить сделку как есть"
 
@@ -821,6 +827,12 @@ msgstr "Дебаг-меню"
 
 msgid "Debug: whole map revealed and inside the Influence Ring (%d×%d)"
 msgstr "Дебаг: вся карта открыта и в Кольце Влияния (%d×%d)"
+
+msgid "Delete all messages"
+msgstr "Удалить все сообщения"
+
+msgid "Delete message"
+msgstr "Удалить сообщение"
 
 msgid "Delivery:"
 msgstr "Доставка:"
@@ -1020,6 +1032,9 @@ msgstr "Ирригационный канал"
 msgid "It seems your region has no %s."
 msgstr "Похоже, в вашем регионе %s отсутствует."
 
+msgid "Journal"
+msgstr "Журнал"
+
 msgid "Keep the deal"
 msgstr "Оставить сделку"
 
@@ -1049,6 +1064,12 @@ msgstr "Перемещение карты у краёв окна"
 
 msgid "Map tooltip delay"
 msgstr "Задержка появления всплывающей подсказки на карте"
+
+msgid "Mark all messages as read"
+msgstr "Пометить все сообщения как прочитанные"
+
+msgid "Mark as read"
+msgstr "Пометить как прочитанное"
 
 msgid "Market ("
 msgstr "Рынок ("
@@ -1094,6 +1115,9 @@ msgstr "Нет свободных рабочих"
 
 msgid "No free workers!"
 msgstr "Нет свободных рабочих!"
+
+msgid "No messages yet."
+msgstr "Сообщений пока нет."
 
 msgid "No new sections on this route"
 msgstr "На этом маршруте нет новых участков"
@@ -1169,6 +1193,9 @@ msgstr "Принимаются только целые положительны�
 
 msgid "Open %s"
 msgstr "Открыть %s"
+
+msgid "Open the journal of important messages"
+msgstr "Открыть журнал важных сообщений"
 
 msgid "Open the town interface"
 msgstr "Перейти в интерфейс городка"

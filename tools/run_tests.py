@@ -141,6 +141,7 @@ SLOW = {
     "test_town_economy",
     "test_data_validation",
     "test_quality_price",
+    "test_journal_live",
 }
 
 

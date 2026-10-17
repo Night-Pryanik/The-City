@@ -77,6 +77,11 @@ const TOWN_TRADE_MANAGER_SCRIPT := preload("res://scripts/town_trade_manager.gd"
 # with its own layer.
 const ACTIVE_PAUSE_SCRIPT := preload("res://scripts/active_pause.gd")
 
+# The journal of the important messages (see journal.gd): the history itself has no
+# visual part and is created in code, the window over the map is a scene.
+const JOURNAL_SCRIPT := preload("res://scripts/journal.gd")
+const JOURNAL_UI_SCENE := preload("res://scenes/journal.tscn")
+
 # The technology that opens the scouting beyond the Region (the fog of war and
 # the territory of the towns). Before it is learned the scouts can be sent only
 # into the unexplored part of the Region, and the hexes outside the Region are inaccessible for
@@ -206,6 +211,7 @@ const MAP_TOOLTIP_LEAVE_GRACE: float = 0.35
 @onready var hud = $HUD
 @onready var city_button = $HUD/VBoxContainer/CityButton
 @onready var expansion_button = $HUD/VBoxContainer/ExpansionButton
+@onready var journal_button = $HUD/VBoxContainer/JournalButton
 @onready var menu_button = $TopRightLayer/TopRightPanel/TopRightBox/MenuButton
 @onready var pause_button = $TopRightLayer/TopRightPanel/TopRightBox/PauseButton
 @onready var pause_menu = $PauseMenu
@@ -236,6 +242,11 @@ var town_trade_manager: Node = null
 # simulation (see active_pause.gd). This node owns the flag of the pause of the
 # tree — the pause menu and the active pause may be on at the same time.
 var active_pause: Node = null
+
+# The journal of the important messages (see journal.gd) and its window. The HUD
+# pushes into the history, the window draws it, the save writes it out.
+var journal: Node = null
+@onready var journal_ui = JOURNAL_UI_SCENE.instantiate()
 
 var tech_popup: Control
 var research_hbox: HBoxContainer
@@ -272,6 +283,16 @@ func _ready():
     active_pause.name = "ActivePause"
     add_child(active_pause)
     active_pause.setup(self)
+
+    # The history of the important messages is created before the managers: they
+    # report their first messages as early as their own _ready, and the HUD has to
+    # have somewhere to put them by then.
+    journal = JOURNAL_SCRIPT.new()
+    journal.name = "Journal"
+    add_child(journal)
+    if SaveManager.is_loaded:
+        journal.restore(SaveManager.saved_data.get("journal", []))
+    hud.set_journal(journal)
 
     # The logistics is created before the world is built: the load path restores its
     # cargo right after the roads and the towns are in place, and the production tick
@@ -639,6 +660,14 @@ func _ready():
     _setup_research_hud()
     _setup_era_advance_ui()
 
+    # The journal window is added last, so that it is drawn over the map and over the
+    # control panel: it is the topmost window of the game.
+    add_child(journal_ui)
+    journal_ui.setup(journal)
+    journal_ui.hide()
+    journal_ui.closed.connect(_on_journal_closed)
+    journal_button.pressed.connect(open_journal)
+
 # The predicate for rebuild_roads_from_existing: this hex is skipped
 # on the restoration of the road network.
 #
@@ -734,6 +763,8 @@ func _process(delta):
         city_button.disabled = hud_blocked
     if expansion_button:
         expansion_button.disabled = hud_blocked
+    if journal_button:
+        journal_button.disabled = hud_blocked
 
     # The science accumulates every frame, and is not bound to the tick of the simulation.
     # Without this the progress bar of the research jumped by jerks.
@@ -1485,7 +1516,7 @@ func confirm_cancel_project(project_id: String):
         if not was_paused:
             get_tree().paused = false
         if project_manager.cancel_project(str(project.get("id", ""))):
-            hud.show_message(tr("Construction cancelled"))
+            hud.show_message(tr("Construction cancelled"), GameData.HUD_MESSAGE_NORMAL)
         _refresh_project_ghost()
         _redraw_progress_layer()
     )
@@ -1538,7 +1569,7 @@ func _on_build_completed(row: int, col: int, imp_id: String, target_res_id = nul
                     if amount <= 0:
                         continue
                     CityData.add_to_storage(prod_id, amount, forage_quality)
-                    hud.show_message(tr("Collected %d %s!") % [amount, GameData.products.get(prod_id, {}).get("name", prod_id)])
+                    hud.show_message(tr("Collected %d %s!") % [amount, GameData.products.get(prod_id, {}).get("name", prod_id)], GameData.HUD_MESSAGE_NORMAL)
                 # The resource disappears from the map after the gathering.
                 tile.resource = null
         elif action_type == "demolish":
@@ -1677,7 +1708,7 @@ func start_road_project(row: int, col: int, road_level: int) -> bool:
     # the preview, therefore the start cannot take a different price than what was shown.
     var breakdown: Dictionary = get_road_cost_breakdown(row, col, road_level)
     if not breakdown.get("ok", false):
-        hud.show_message(tr("Failed to build the road: %s") % breakdown.get("reason", tr("no path")))
+        hud.show_message(tr("Failed to build the road: %s") % breakdown.get("reason", tr("no path")), GameData.HUD_MESSAGE_IMPORTANT)
         return false
     var plan := get_road_plan(row, col)
     var is_town := bool(plan.get("is_town", false))
@@ -1688,7 +1719,7 @@ func start_road_project(row: int, col: int, road_level: int) -> bool:
     # GameData.is_road_level_unlocked, here we only refuse to build
     # an unscouted level.
     if not GameData.is_road_level_unlocked(road_level):
-        hud.show_message(tr("Road level %d requires a technology") % road_level)
+        hud.show_message(tr("Road level %d requires a technology") % road_level, GameData.HUD_MESSAGE_IMPORTANT)
         return false
 
     # The common limit of the simultaneous builds is equal to the number of the citizens. The road takes
@@ -1696,7 +1727,7 @@ func start_road_project(row: int, col: int, road_level: int) -> bool:
     if not CityData.ignore_build_requirements \
             and build_manager.get_total_active_builds() >= CityData.total_population:
         hud.show_message(tr("You can build or upgrade no more than %d buildings at once (limit = number of citizens)")
-                % CityData.total_population)
+                % CityData.total_population, GameData.HUD_MESSAGE_IMPORTANT)
         return false
 
     var title := tr("Road")
@@ -1743,7 +1774,7 @@ func start_improvement_road_project(row: int, col: int, imp_id: String, imp_name
     if row < 0 or row >= tile_data.size() or col < 0 or col >= tile_data[row].size():
         return false
     if not GameData.is_road_level_unlocked(road_level):
-        hud.show_message(tr("Road level %d requires a technology") % road_level)
+        hud.show_message(tr("Road level %d requires a technology") % road_level, GameData.HUD_MESSAGE_IMPORTANT)
         return false
     # The road to the hex is already being built: a second project would mean a second payment for
     # one and the same route.
@@ -1758,7 +1789,7 @@ func start_improvement_road_project(row: int, col: int, imp_id: String, imp_name
     if not CityData.ignore_build_requirements \
             and build_manager.get_total_active_builds() >= CityData.total_population:
         hud.show_message(tr("You can build or upgrade no more than %d buildings at once (limit = number of citizens)")
-                % CityData.total_population)
+                % CityData.total_population, GameData.HUD_MESSAGE_IMPORTANT)
         return false
 
     # The last step of the chain — the construction of the improvement itself. It has no price of its own:
@@ -1842,7 +1873,7 @@ func _start_road_project_steps(row: int, col: int, steps: Array, cost: int,
     var project_id: String = project_manager.start_project("road", title, row, col, steps, meta)
     if project_id == "":
         return false
-    hud.show_message(tr("%s: %d sections, built one at a time") % [title, steps.size()])
+    hud.show_message(tr("%s: %d sections, built one at a time") % [title, steps.size()], GameData.HUD_MESSAGE_NORMAL)
     # The ghost of the route appears immediately after the confirmation and lives until the end of
     # the build: from this moment the panel is closed, and the player must nevertheless
     # see the whole project on the map and understand how much is still left.
@@ -1877,23 +1908,23 @@ func _finish_free_road_project(row: int, col: int, steps: Array,
 # direction as the ghost, and the player sees where the road has already been improved.
 func start_road_upgrade_project(row: int, col: int, road_level: int) -> bool:
     if not GameData.is_road_level_unlocked(road_level):
-        hud.show_message(tr("Road level %d requires a technology") % road_level)
+        hud.show_message(tr("Road level %d requires a technology") % road_level, GameData.HUD_MESSAGE_IMPORTANT)
         return false
     var breakdown := get_road_upgrade_breakdown(row, col, road_level)
     if not breakdown.get("ok", false):
         hud.show_message(tr("Nothing to upgrade: %s")
-                % breakdown.get("reason", tr("no route to the city")))
+                % breakdown.get("reason", tr("no route to the city")), GameData.HUD_MESSAGE_IMPORTANT)
         return false
     var steps: Array = breakdown.get("steps", [])
 
     if not CityData.ignore_build_requirements \
             and build_manager.get_total_active_builds() >= CityData.total_population:
         hud.show_message(tr("You can build or upgrade no more than %d buildings at once (limit = number of citizens)")
-                % CityData.total_population)
+                % CityData.total_population, GameData.HUD_MESSAGE_IMPORTANT)
         return false
 
     if active_pause != null and active_pause.has_pending_at(row, col):
-        hud.show_message(tr("Construction is already underway here"))
+        hud.show_message(tr("Construction is already underway here"), GameData.HUD_MESSAGE_IMPORTANT)
         return false
 
     if active_pause != null and active_pause.intercept({
@@ -1916,7 +1947,7 @@ func start_road_upgrade_project(row: int, col: int, road_level: int) -> bool:
     })
     if project_id == "":
         return false
-    hud.show_message(tr("Upgrading the road to the city: %d sections") % steps.size())
+    hud.show_message(tr("Upgrading the road to the city: %d sections") % steps.size(), GameData.HUD_MESSAGE_NORMAL)
     _refresh_project_ghost()
     map_renderer.queue_redraw()
     _redraw_progress_layer()
@@ -2182,7 +2213,7 @@ func _on_project_step_completed(_project_id: String, kind: String, step: Diction
         if t_row < 0 or t_col < 0:
             return
         _apply_improvement(t_row, t_col, imp_id, data.get("target_res_id", null))
-        hud.show_message(tr("Completed: %s") % str(data.get("imp_name", imp_id)))
+        hud.show_message(tr("Completed: %s") % str(data.get("imp_name", imp_id)), GameData.HUD_MESSAGE_NORMAL)
         control_panel.refresh()
         return
 
@@ -2260,7 +2291,7 @@ func _mark_road_built(row: int, col: int, plan: Dictionary,
     tile_data[row][col]["road_built"] = true
     if not bool(plan.get("is_town", false)):
         if show_message:
-            hud.show_message(tr("Road built!"))
+            hud.show_message(tr("Road built!"), GameData.HUD_MESSAGE_NORMAL)
         return
     var town = find_town_at(row, col)
     if town == null:
@@ -2268,7 +2299,7 @@ func _mark_road_built(row: int, col: int, plan: Dictionary,
     town["road_linked"] = true
     if show_message:
         hud.show_message(tr("Road to town \"%s\" built — trade available!")
-                % str(town.get("name", tr("Town"))))
+                % str(town.get("name", tr("Town"))), GameData.HUD_MESSAGE_NORMAL)
 
 func _on_building_build_completed(building_id: String, build_key: String):
     # The construction of the building is complete - we add it to the city
@@ -2632,14 +2663,15 @@ func _on_town_trade_order(order: Dictionary) -> void:
     var result: Dictionary = town_trade_manager.submit_order(order)
     var message := str(result.get("message", ""))
     if not message.is_empty():
-        hud.show_message(message)
+        var msg_type := GameData.HUD_MESSAGE_NORMAL if result.get("ok", false) else GameData.HUD_MESSAGE_IMPORTANT
+        hud.show_message(message, msg_type)
 
 # A standing contract with a town was torn (the treasury could not pay it, or the
 # town ran out of the goods). The HUD is the channel that works whether the town
 # window, the city interface or nothing at all is open.
 func _on_town_trade_notice(message: String) -> void:
     if not message.is_empty():
-        hud.show_message(message)
+        hud.show_message(message, GameData.HUD_MESSAGE_IMPORTANT)
 
 # The town window asked to close the standing contract it is editing. The window hands the
 # id over and claims nothing about the outcome: the mechanics live in town_trade_manager and
@@ -2650,7 +2682,8 @@ func _on_town_contract_close_requested(contract_id: String) -> void:
     var result: Dictionary = town_trade_manager.close_contract(contract_id)
     var message := str(result.get("message", ""))
     if not message.is_empty():
-        hud.show_message(message)
+        var msg_type := GameData.HUD_MESSAGE_NORMAL if result.get("ok", false) else GameData.HUD_MESSAGE_IMPORTANT
+        hud.show_message(message, msg_type)
 
 func _on_town_delivery_cancel_requested(town_id: String, product_id: String) -> void:
     if town_trade_manager == null:
@@ -2658,13 +2691,14 @@ func _on_town_delivery_cancel_requested(town_id: String, product_id: String) -> 
     var result: Dictionary = town_trade_manager.cancel_delivery(town_id, product_id)
     var message := str(result.get("message", ""))
     if not message.is_empty():
-        hud.show_message(message)
+        var msg_type := GameData.HUD_MESSAGE_NORMAL if result.get("ok", false) else GameData.HUD_MESSAGE_IMPORTANT
+        hud.show_message(message, msg_type)
 
-func _on_research_error(message: String):
+func _on_research_error(message: String, message_type: int = 1):
     if city_ui.visible:
         city_ui.set_message(message)
     else:
-        hud.show_message(message)
+        hud.show_message(message, message_type)
 
 func _on_research_completed(tech_id: String):
     map_renderer.queue_redraw()
@@ -2688,12 +2722,15 @@ func _on_tech_popup_go_to_techs():
 
 func _on_pause_save():
     SaveManager.save_game()
-    hud.show_message(tr("Game saved."))
+    hud.show_message(tr("Game saved."), GameData.HUD_MESSAGE_NORMAL)
 
 func _on_pause_menu_visibility_changed():
     var menu_visible = pause_menu.visible
     city_button.disabled = menu_visible
     expansion_button.disabled = menu_visible
+    # The HUD buttons are disabled by _process while the tree is paused, but _process does
+    # not run at all then — the menu has to close them by hand, like the two above.
+    journal_button.disabled = menu_visible
     menu_button.visible = not menu_visible
     pause_button.visible = not menu_visible
     # The settings menu is shown by the pause menu over it: the button of the active
@@ -2701,17 +2738,37 @@ func _on_pause_menu_visibility_changed():
     if active_pause != null and settings_menu and settings_menu.visible:
         pause_button.visible = false
 
-# THE OWNER of the flag of the pause of the tree. Two independent things stop the
-# simulation: the pause menu and the active pause, and either of them may be on
-# while the other one is not. The menu therefore must not switch the flag off on
-# its own — closing it over a stopped world has to leave the world stopped.
+# THE OWNER of the flag of the pause of the tree. Three independent things stop the
+# simulation: the pause menu, the active pause and the journal window, and any of them
+# may be on while the others are not. The menu therefore must not switch the flag off
+# on its own — closing it over a stopped world has to leave the world stopped.
 func apply_pause_state():
-    get_tree().paused = (active_pause != null and active_pause.is_active()) or pause_menu.visible
+    get_tree().paused = (active_pause != null and active_pause.is_active()) \
+            or pause_menu.visible or journal_ui.visible
+
+# The journal is a window over the map: opening it stops the simulation, because the
+# player is reading, not playing. The pause flag itself is recomputed, not written: the
+# active pause may be on as well, and closing the journal must not resume a world the
+# player has stopped on purpose.
+func open_journal():
+    if journal_ui == null or journal_ui.visible:
+        return
+    journal_ui.open_journal()
+    apply_pause_state()
+
+func close_journal():
+    if journal_ui == null or not journal_ui.visible:
+        return
+    journal_ui.close_journal()
+
+func _on_journal_closed():
+    apply_pause_state()
 
 func open_pause_menu():
     pause_menu.show()
     city_button.disabled = true
     expansion_button.disabled = true
+    journal_button.disabled = true
     # We pause the game while the menu of the pause is open
     apply_pause_state()
 
@@ -2731,13 +2788,13 @@ func _on_active_pause_changed(_active: bool):
         pause_button.visible = false
         return
     if active_pause.is_active():
-        hud.show_message(tr("The simulation is stopped. Your actions are queued until you resume it."))
+        hud.show_message(tr("The simulation is stopped. Your actions are queued until you resume it."), GameData.HUD_MESSAGE_NORMAL)
     else:
         var queued: Array = active_pause.labels()
         if queued.is_empty():
-            hud.show_message(tr("The simulation resumed."))
+            hud.show_message(tr("The simulation resumed."), GameData.HUD_MESSAGE_NORMAL)
         else:
-            hud.show_message(tr("The simulation resumed. Starting: %s") % ", ".join(queued))
+            hud.show_message(tr("The simulation resumed. Starting: %s") % ", ".join(queued), GameData.HUD_MESSAGE_NORMAL)
 
 func _refresh_pause_button():
     # The button states the mode by its own name: the same button stops and resumes
@@ -2936,7 +2993,7 @@ func _on_expansion_mode_changed(_active: bool):
 
 func _on_territory_expanded(_row: int, _col: int, cost: int):
     # cost is the labour spent on the claiming (see expansion_manager).
-    hud.show_message(tr("Territory expanded! (%d work spent)") % cost)
+    hud.show_message(tr("Territory expanded! (%d work spent)") % cost, GameData.HUD_MESSAGE_NORMAL)
     # The claiming removes the fog from the hexes (in_influence = true) — the cache of the fill of the rings of
     # the towns is rebuilt, otherwise the new territory would remain without the fill.
     # The cache of the plans of the roads is also reset: the bought hex has become known.
@@ -3314,7 +3371,7 @@ func debug_open_whole_map():
     map_renderer.queue_redraw()
 
     if hud:
-        hud.show_message(tr("Debug: whole map revealed and inside the Influence Ring (%d×%d)") % [map_rows, map_cols])
+        hud.show_message(tr("Debug: whole map revealed and inside the Influence Ring (%d×%d)") % [map_rows, map_cols], GameData.HUD_MESSAGE_NORMAL)
 
 # --- THE TRANSITION TO THE NEXT ERA ---
 # The infrastructure of the expansion of the world:
@@ -3400,7 +3457,7 @@ func advance_to_next_era():
     _calc_offsets()
     map_renderer.queue_redraw()
     if hud:
-        hud.show_message(tr("New era! City borders expanded. Influence ring: %d×%d") % [ring_rows, ring_cols])
+        hud.show_message(tr("New era! City borders expanded. Influence ring: %d×%d") % [ring_rows, ring_cols], GameData.HUD_MESSAGE_NORMAL)
 
     # If the Market has already been built, and the era has not been changed (the player refused and left)
     # - we show the button in the HUD again.
@@ -3655,7 +3712,7 @@ func _get_scouting_time(hex_count: int) -> float:
 
 func start_scouting(chunk: Array):
     if is_scouting or (active_pause != null and active_pause.has_pending_key("scouting")):
-        hud.show_message(tr("Scouting already in progress!"))
+        hud.show_message(tr("Scouting already in progress!"), GameData.HUD_MESSAGE_IMPORTANT)
         return
     # An empty chunk — there is nothing to scout. A control check for the public
     # entry point: otherwise the treasury would be "written off" for 0 coins, and is_scouting
@@ -3671,14 +3728,14 @@ func start_scouting(chunk: Array):
         for hex in chunk:
             if not is_valid_hex(hex.row, hex.col):
                 hud.show_message(tr("Scouting beyond the Region requires the technology \"%s\"")
-                        % get_cartography_tech_name())
+                        % get_cartography_tech_name(), GameData.HUD_MESSAGE_IMPORTANT)
                 return
     # A safety repetition of the rule "the scouting only into a chunk, adjacent to
     # the known territory" (see is_chunk_adjacent_to_known). The UI does not activate such a button,
     # but the refusal must be here as well — BEFORE the write-off of the coins and the start of
     # the timer, so that the price and the actual action do not diverge.
     if not is_chunk_adjacent_to_known(chunk):
-        hud.show_message(tr("The chunk does not border explored territory — scout the neighbouring hexes first"))
+        hud.show_message(tr("The chunk does not border explored territory — scout the neighbouring hexes first"), GameData.HUD_MESSAGE_IMPORTANT)
         return
     # The expedition waits for the resume of the simulation while the active pause is
     # on. The intercept is placed BEFORE the write-off of the coins. The key is not
@@ -3705,7 +3762,7 @@ func start_scouting(chunk: Array):
     if not CityData.ignore_build_requirements:
         if not CityData.spend_treasury(expedition_cost):
             hud.show_message(tr("Not enough coins in the treasury! Need %d, treasury has %d")
-                    % [expedition_cost, CityData.treasury])
+                    % [expedition_cost, CityData.treasury], GameData.HUD_MESSAGE_IMPORTANT)
             return
         # The source of the expense for the tooltip "Treasury" (see show_treasury_tooltip).
         # The one-off costs of the scouting are event-based, they are not in the plan, therefore the breakdown
@@ -3721,7 +3778,7 @@ func start_scouting(chunk: Array):
         return
     is_scouting = true
     _redraw_progress_layer()
-    hud.show_message(tr("Scouts sent... (%d coins paid from the treasury)") % expedition_cost)
+    hud.show_message(tr("Scouts sent... (%d coins paid from the treasury)") % expedition_cost, GameData.HUD_MESSAGE_NORMAL)
 
 func _complete_scouting():
     for hex in scouting_chunk:
@@ -3730,7 +3787,7 @@ func _complete_scouting():
     # town goes only over the scouted land), therefore the cache of the plans is reset.
     road_manager.bump_map_knowledge()
     var info = _get_chunk_info(scouting_chunk)
-    hud.show_message(tr("Scouting complete! %s") % info)
+    hud.show_message(tr("Scouting complete! %s") % info, GameData.HUD_MESSAGE_NORMAL)
     is_scouting = false
     scouting_chunk = []
     # The scouting removes the fog of war from the hexes, therefore the fill of the rings of the towns
@@ -3820,7 +3877,7 @@ func cancel_scouting() -> bool:
         if cost > 0:
             CityData.add_treasury(cost)
             CityData.record_treasury_expense(GameData.SRC_SCOUTING, -cost)
-    hud.show_message(tr("Scouting cancelled"))
+    hud.show_message(tr("Scouting cancelled"), GameData.HUD_MESSAGE_NORMAL)
     _after_cancel_long_action()
     return true
 

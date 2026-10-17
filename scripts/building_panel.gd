@@ -776,7 +776,7 @@ func _on_quality_priority_pressed(b_index: int):
                     break
             var bname = bdata.get("name", label) if bdata else label
             var priority_text = GameData.get_quality_priority_name(new_priority)
-            hud.show_message(tr("%s: quality priority — %s") % [bname, priority_text])
+            hud.show_message(tr("%s: quality priority — %s") % [bname, priority_text], GameData.HUD_MESSAGE_NORMAL)
     # We update the button in the interface
     _refresh()
     CityData.emit_signal("city_updated")

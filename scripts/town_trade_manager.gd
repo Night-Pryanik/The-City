@@ -142,7 +142,7 @@ signal contracts_changed()
 
 # A message for the player: a contract that could not be paid or fulfilled. The
 # map shows it in the HUD (see main_map._on_town_trade_notice).
-signal notice(message: String)
+signal notice(message: String, message_type: int)
 
 
 # The references are passed explicitly, like to the other managers: the towns give
@@ -680,7 +680,7 @@ func close_contract(contract_id: String) -> Dictionary:
 func _tear_contract(index: int, message: String) -> void:
     _contracts.remove_at(index)
     emit_signal("contracts_changed")
-    emit_signal("notice", message)
+    emit_signal("notice", message, 1)
 
 
 # The settlement of one delivery: the city pays, the town is paid, the units are

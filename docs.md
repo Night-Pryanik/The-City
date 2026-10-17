@@ -2147,7 +2147,7 @@ Two call sites today — the supply line and the route-capacity warning of the t
 
 **One file, one project setting.** `project.godot` → `gui/theme/custom = res://theme/tooltips_theme.tres`. It was introduced for the tooltip popup and is the ONLY theme in the project: there is no per-scene theme, so everything it does not mention falls back to Godot's built-in theme (the default buttons, check boxes and scrollbars).
 
-**The font entries are rewritten at runtime.** The player can choose another font in the settings, and the choice is applied by editing THIS resource (see "The font manager"): `default_font` and the three emphasis entries below are replaced with the fonts of the chosen family. The values in the file are therefore the bundled default, not a constant.
+**The font entries are rewritten at runtime.** The player can choose another font in the settings, and the choice is applied by editing THIS resource (see "The font manager"): `default_font` and the emphasis and bold entries below are replaced with the fonts of the chosen family. The values in the file are therefore the bundled default, not a constant.
 
 **What it styles.**
 
@@ -2157,6 +2157,7 @@ Two call sites today — the supply line and the route-capacity warning of the t
 | `Button/fonts/font` | the captions of plain buttons, one step heavier |
 | `TabBar/fonts/font` | the tab titles of the settings menu |
 | `SectionHeading/fonts/font` | the section headings of the settings menu (`theme_type_variation` on those `Label` nodes) |
+| `BoldLabel/fonts/font` | the unread rows of the journal (`theme_type_variation` on those `Label` nodes) |
 | `TooltipPanel/styles/panel` | the frame of the built-in tooltip popup (see "Tooltips") |
 | `HSlider/styles/slider`, `grabber_area`, `grabber_area_highlight` | the track of every slider, the part filled up to the knob, and that same part while the knob is hovered or dragged |
 | `TabContainer/styles/tab_selected`, `tab_hovered`, `tab_unselected` | the tab strip of the settings menu |
@@ -2164,6 +2165,8 @@ Two call sites today — the supply line and the route-capacity warning of the t
 **Typography.** The project bundles one font: `fonts/InterVariable.ttf` (SIL OFL 1.1, the licence is `fonts/OFL.txt`). It is a VARIABLE font, so a second weight costs no second file: `fonts/inter_medium.tres` is a `FontVariation` over the same file with `variation_opentype = {"weight": 500}`. The theme sets it as `default_font`, which gives the whole game Inter Regular at the built-in 16 px. The built-in face it replaces is Open Sans **SemiBold** — every label in the game used to be semi-bold, which is why the interface read as heavy. Inter is also slightly narrower and its line box is shorter (328 px and 20 px against 341 px and 23 px for the same string at 16 px), so text got tighter, never wider.
 
 **The axis key is `"weight"`, never `"wght"`.** `FontVariation` addresses an axis by the NUMBER of its OpenType tag or by the name TextServer gives it — and TextServer calls `wght` **weight** (`tag_to_name()` returns the human-readable name). A Dictionary with the key `"wght"` is accepted without a word of complaint and IGNORED: the axis stays at its default and the font renders as its default instance. Measured on Inter at 40 px, "Шрифт 1234 Wg": 308 px at the default weight, **312 px** with `{"weight": 500}` or with the numeric tag `{2003265652: 500}`, and still 308 px with `{"wght": 500}`. The value also has to be an int — `{"wght": 500.0}` is ignored just as silently. The theme file uses the readable name, `font_manager.gd` uses the numeric tag (it does not depend on the naming table).
+
+**A type variation must be DECLARED in the theme, or it is silently ignored.** A variation is not just a name with font entries under it: the theme also needs `<Name>/base_type = &"Label"` (or whatever it extends). Without that line `Theme.get_font("font", "SectionHeading")` still answers — so the entry looks alive — but `Control.get_theme_font()` on a node with `theme_type_variation = &"SectionHeading"` does not consider the name a type it can walk and quietly returns the body font. Both variations in the project (`SectionHeading`, `BoldLabel`) are declared; `SectionHeading` went undeclared for a long time and the settings headings rendered in the body font without anyone noticing, because the only assertion about them asked the theme, not a control. `tests/test_font_manager.gd` now pins both the declaration (`theme.is_type_variation(name, "Label")`) and the resolution (a label with the variation gets the variation's font).
 
 **Where the Medium weight goes.** Three places, and they are deliberately the same three: the `Button` captions, the `TabBar` tab titles, and the section headings of the settings scene. The headings are a theme TYPE VARIATION (`SectionHeading`) rather than a per-node `theme_override_fonts`: an override points at one concrete resource, so a heading with an override keeps Inter Medium whatever font the player picks, while a variation is a name the theme answers — and the manager can answer it with the emphasis face of the chosen family. Note that a theme entry is matched by the EXACT type name — `Button/fonts/font` does not reach `CheckBox` or `OptionButton`, whose captions are body text anyway. And the tab titles are read by the internal `TabBar` of the `TabContainer`, not by the `TabContainer` itself, so the entry has to be `TabBar/fonts/font` (the `TabContainer` one is inert).
 
@@ -2189,11 +2192,13 @@ Two call sites today — the supply line and the route-capacity warning of the t
 
 **A font file is not a choice, a FAMILY is.** Lato ships eighteen files, and a dropdown of file names would show the player "Lato" eighteen times. The family is read from the name table (`FontFile.get_font_name()`), the faces are grouped by it, and one family is one item. The name table is not tidy: **Lato-Medium.ttf calls its family "Lato Medium"** (so do Lato-Black, Lato-Light, Lato-SemiBold and FiraSans-Medium), while Lato-Bold calls its family a plain "Lato". `normalize_family()` therefore cuts a trailing weight word off the family name — first by the style name (exact), then by a list of weight words (for the vendors that put the weight into the family name and call the style "Regular", which is exactly what Lato-Black does).
 
-**The two faces of a family.** The manager does not ask the player which file to use for what: the body is the face closest to 400, the emphasis (buttons, tab titles, section headings) is the lightest face at 500 and above, falling back to the lightest face heavier than the body. Measured on real families: Lato → Regular + Medium, Fira Sans → Regular + Medium, PT Sans → Regular + Bold. Italics never become the body font (a family that has nothing but italics is still offered).
+**The three faces of a family.** The manager does not ask the player which file to use for what: the body is the face closest to 400, the emphasis (buttons, tab titles, section headings) is the lightest face at 500 and above, falling back to the lightest face heavier than the body, and the bold (the unread rows of the journal) is the heaviest face the family has — for a family with only two faces the last two are the same file. Measured on real families: Lato → Regular + Medium, Fira Sans → Regular + Medium, PT Sans → Regular + Bold. Italics never become the body font (a family that has nothing but italics is still offered).
 
-**A variable font is instantiated, not taken as it is.** `FontFile.font_weight` is the weight of the DEFAULT INSTANCE of the file, and that instance is not always Regular: `Montserrat[wght].ttf` reports **Thin (100)**. A variable font is therefore always wrapped in a `FontVariation` set to the needed weight (400 for the body, 500 for the emphasis) — see the axis-key warning above. A family with a single face and no axis at all (Bebas Neue, Lobster) keeps its hierarchy by `variation_embolden = 0.5`: a fake weight, but a section heading that cannot be told from the text under it is worse.
+**A variable font is instantiated, not taken as it is.** `FontFile.font_weight` is the weight of the DEFAULT INSTANCE of the file, and that instance is not always Regular: `Montserrat[wght].ttf` reports **Thin (100)**. A variable font is therefore always wrapped in a `FontVariation` set to the needed weight (400 for the body, 500 for the emphasis) — see the axis-key warning above. A family with a single face and no axis at all (Bebas Neue, Lobster) keeps its hierarchy by a FAKE weight: `variation_embolden = 0.5` for the emphasis and `1.0` for the bold — a section heading that cannot be told from the text under it is worse than a slightly smeared one, and the same holds for an unread message that renders exactly like a read one.
 
-**Applying: the theme is rewritten, not replaced.** `_apply_family()` sets `theme.default_font` and the three emphasis entries of the ALREADY LOADED project theme (`ThemeDB.get_project_theme()` returns the same instance that `gui/theme/custom` hands to every Control). A theme is a shared resource and a Control resolves its font through it on every call, so no scene has to be rebuilt: measured on a live tree, a `Label` created before the change resolves the new font in the next frame.
+**Both heavier faces have to be a different FILE from the body.** `_font_at()` cannot vary a static font — it hands the file back unchanged — so taking the emphasis (or the bold) from a file that happens to BE the body file produces a face identical to the body text. That is not a hypothetical: `choose_faces()` names the only face of a single-weight family as the emphasis whenever that face calls itself 500 or heavier, which is exactly what the bundled **"Terminus (TTF)"** does (one static file, weight 500). Both `_build_emphasis()` and `_build_bold()` therefore compare the paths and fall through to the emboldened body. Found on a real window — the settings headings and the body text were pixel-identical under Terminus while every theme check passed.
+
+**Applying: the theme is rewritten, not replaced.** `_apply_family()` sets `theme.default_font` and the font of every type in `EMPHASIS_TYPES` (`Button`, `TabBar`, `SectionHeading`) and `BOLD_TYPES` (`BoldLabel`) of the ALREADY LOADED project theme (`ThemeDB.get_project_theme()` returns the same instance that `gui/theme/custom` hands to every Control). A theme is a shared resource and a Control resolves its font through it on every call, so no scene has to be rebuilt: measured on a live tree, a `Label` created before the change resolves the new font in the next frame.
 
 **`_repaint()` — why it is there.** Rewriting the theme is not always enough to make it VISIBLE: measured on a real window, the interface kept the old font after the second change in a row. `_repaint()` sends `NOTIFICATION_THEME_CHANGED` down the tree by hand (the same thing the editor does when the theme of a project is edited) and additionally calls `queue_redraw()` on every `CanvasItem` that is not a `Control`. The second half is for the map: `map_renderer.gd` draws the names of the cities and of the towns itself, with `draw_string` and `ThemeDB.fallback_font`, and knows nothing about the theme. `_apply_family()` therefore sets `ThemeDB.fallback_font` as well, or the map would stay in the built-in font while the whole interface changes.
 
@@ -2203,7 +2208,7 @@ Two call sites today — the supply line and the route-capacity warning of the t
 
 **The bundled default is `Inter`** (`DEFAULT_FAMILY`). If the folders hold no fonts at all, the manager leaves the theme alone — the values in the theme file are already the default.
 
-**Test.** `tests/test_font_manager.gd` — the walk and the extension filter, `normalize_family()`, `choose_faces()` on artificial families (weights only), the dropdown and the config key, the application on the live theme (including the emphasis really being HEAVIER, which is what a wrong axis key breaks) and the fallback for an unknown family. The `user://` half of the walk is covered by a copy of the bundled font in a folder of the test's own. NOT covered: the theme notification of `_repaint()` — a headless run cannot see it (the theme notifies its users by itself often enough for a counter to be worthless as a check), so that half was verified on a real window.
+**Test.** `tests/test_font_manager.gd` — the walk and the extension filter, `normalize_family()`, `choose_faces()` on artificial families (weights only), the dropdown and the config key, the application on the live theme (including the emphasis really being HEAVIER, which is what a wrong axis key breaks, and the bold really being heavier than the body), the two variations being DECLARED and resolving through a `Control` (the trap above), and the fallback for an unknown family. The `user://` half of the walk is covered by a copy of the bundled font in a folder of the test's own. NOT covered: the theme notification of `_repaint()` — a headless run cannot see it (the theme notifies its users by itself often enough for a counter to be worthless as a check), so that half was verified on a real window.
 
 ---
 
@@ -3063,10 +3068,11 @@ The button is a small square (28×28) with an icon and **no text**: the bars whi
 
 ### Who owns the pause flag
 
-Two independent things stop the world: the pause menu and the active pause, and either may be on while the other is not. The owner of the flag is **`main_map.apply_pause_state()`**:
+Three independent things stop the world: the pause menu, the active pause and the journal window, and any of them may be on while the others are not. The owner of the flag is **`main_map.apply_pause_state()`**:
 
 ```gdscript
-get_tree().paused = (active_pause != null and active_pause.is_active()) or pause_menu.visible
+get_tree().paused = (active_pause != null and active_pause.is_active()) \
+        or pause_menu.visible or journal_ui.visible
 ```
 
 `pause_menu._set_game_paused()` does not write the flag itself — it asks the owner to recompute it. Without this, closing the menu over a stopped world would start the simulation. Two places reset the flag outright instead: the **load** and the **return to the main menu** (`_force_unpause()`), because the scene is about to be replaced.
@@ -3161,6 +3167,55 @@ Therefore **`InputHandler` is its own `_input` entry point** (`InputHandler._inp
 The case also encodes the trap above as a structural check, because a behavioural test cannot see it: `InputHandler` must have its own `_input`, while `MainMap` must NOT be `PROCESS_MODE_ALWAYS`. Feeding the handler directly proves the guards, not the delivery — the delivery is the part that broke.
 
 **Manual check.** The real path cannot be exercised headless (`Input.parse_input_event` does not travel there). It was confirmed on a running window with real OS mouse events: with the mode on, `hover_reached_the_map=true` and `hex_selected=true`, and `DisplayServer.window_is_focused()` was true throughout — otherwise the test would prove nothing.
+
+## The journal of important messages
+
+The HUD shows a message for a few seconds and forgets it. The journal keeps the ones that matter: every message the game sends as `GameData.HUD_MESSAGE_IMPORTANT` is copied into a history, and the player reads it whenever they want.
+
+**Only the important ones.** The ordinary messages report routine actions ("Road built!", "Game saved.") and would bury the history under noise. The distinction is the message type the code already passes — no message site had to be touched: the copy is made inside `hud_message.show_message()`, the funnel every message goes through.
+
+**One owner of the history.** `scripts/journal.gd` is a node created in `main_map._ready()` (`main_map.journal`). It holds the entries, the unread flags and the cap; the HUD pushes into it, the window draws it, the save writes it out. Neither the HUD nor the window keeps a copy of the list — otherwise the dot on the button and the window could disagree about what is unread.
+
+| Property | Value |
+| --- | --- |
+| Order | newest first (the entry that has just arrived is on top) |
+| Cap | `MAX_ENTRIES = 200`; on overflow the **oldest** entry is dropped, read or not |
+| Record | `{id, text, unread}` — `id` is never reused within a game |
+| Text | as it was shown: already translated, numbers substituted |
+
+### The window — `scenes/journal.tscn`, `scripts/journal_ui.gd`
+
+A vertical list over the map, one row per entry: the text, then two small square buttons with icons and tooltips — "Mark as read" (`check.svg`) and "Delete message" (`cross.svg`). A click on the **text itself** reads the entry as well: the label takes the whole free width of the row, so "a click on the message" means the whole message area. The header carries "Mark all messages as read" (`check.svg`), "Delete all messages" (`demolish.svg`) and close (`cross.svg`); a header button that would do nothing is disabled.
+
+**Unread is bold, read is regular.** The bold comes from the theme variation `BoldLabel` (`theme/tooltips_theme.tres`), which `FontManager` answers with the heaviest face of the **chosen** interface font — the weight axis of a variable font, the heaviest static face, or the emboldened body for a single-weight family. A per-node font override would have pinned one family forever and broken the font setting.
+
+**The window owns nothing and never writes the pause flag.** It draws and forwards the clicks; the pause is recomputed by `main_map.apply_pause_state()`, which counts `journal_ui.visible` among the three things that stop the world. Closing the journal over a world stopped by the active pause therefore leaves it stopped.
+
+**It sizes itself.** The window hangs under the map root, which is a `Node2D`: a `Node2D` has no rectangle, so the anchors of the scene do not stretch the overlay and it would stay 0×0 with the panel folded into the corner. `_fit_to_viewport()` sets the size from the viewport on every opening.
+
+**ESC belongs to the window while it is open.** The tree is paused, so the window (`PROCESS_MODE_ALWAYS`) is the only node that can answer the key; it closes itself and consumes the event.
+
+### The button in the HUD
+
+`JournalButton` sits in the left HUD panel under "Expansion" — a plain wide button, as the other two. The unread dot is a child `UnreadDot` (`scripts/unread_dot.gd`) in the top-right corner: a drawn blue circle with a dark rim (no asset, the same reason the warning triangle of the town window is drawn — see `warning_badge.gd`). It is shown while `journal.unread_count() > 0` and refreshed by the HUD on every change of the history. The dot does not swallow the click of the button.
+
+### Saving
+
+`savegame.json` carries the key `journal` — the serialized list, the text as shown. `main_map` restores it right after the node is created, before the managers report their first messages, and the id counter is moved past the restored ids so a message that arrives after the load cannot take an old id.
+
+### Key files
+
+- `scripts/journal.gd` — the history: adding, reading, deleting, clearing, the cap, serialize/restore.
+- `scripts/journal_ui.gd`, `scenes/journal.tscn` — the window.
+- `scripts/unread_dot.gd` — the dot on the HUD button.
+- `scripts/hud_message.gd` — `show_message()` copies the important messages, `set_journal()` and the dot refresh.
+- `scripts/main_map.gd` — `journal`, `journal_ui`, `open_journal()`, `close_journal()`, `apply_pause_state()`.
+- `scripts/SaveManager.gd` — the `journal` key.
+- `scripts/font_manager.gd` — the `BoldLabel` variation.
+
+**Test.** `tests/test_journal.gd` (fast) — the history on a bare node (order, unread flag, reading, deleting, clearing, the cap, the round trip through JSON with the float ids it hands back); the HUD on a bare panel (an ordinary message does not reach the history, an important one does, the dot follows the unread count); the window (one row per entry, the bold variation on the unread ones only, a click on the text reads, the row buttons read and delete, the header buttons read all and clear all, the empty state, closing by the button and by ESC). `tests/test_journal_live.gd` (slow, a generated map) — the map owns one history and the HUD pushes into exactly that one; the button opens the window and the game stops, closing it resumes; closing over the active pause keeps the world stopped; the entries, their order and their read flags survive a save and a load.
+
+**Visual check.** `tools/diag_journal.gd` raises the map, pushes a few messages, opens the journal and saves `tools/journal_window.png` plus two zoomed fragments.
 
 ## Game data integrity check at startup
 

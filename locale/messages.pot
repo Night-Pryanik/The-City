@@ -432,6 +432,9 @@ msgstr ""
 msgid "Already built sections (%d) will stay on the map."
 msgstr ""
 
+msgid "Already read"
+msgstr ""
+
 msgid "Amount:"
 msgstr ""
 
@@ -675,6 +678,9 @@ msgstr ""
 msgid "Close the contract"
 msgstr ""
 
+msgid "Close the journal (ESC)"
+msgstr ""
+
 msgid "Close this panel and leave the deal as it is"
 msgstr ""
 
@@ -820,6 +826,12 @@ msgid "Debug menu"
 msgstr ""
 
 msgid "Debug: whole map revealed and inside the Influence Ring (%d×%d)"
+msgstr ""
+
+msgid "Delete all messages"
+msgstr ""
+
+msgid "Delete message"
 msgstr ""
 
 msgid "Delivery:"
@@ -1020,6 +1032,9 @@ msgstr ""
 msgid "It seems your region has no %s."
 msgstr ""
 
+msgid "Journal"
+msgstr ""
+
 msgid "Keep the deal"
 msgstr ""
 
@@ -1048,6 +1063,12 @@ msgid "Map movement at window edges"
 msgstr ""
 
 msgid "Map tooltip delay"
+msgstr ""
+
+msgid "Mark all messages as read"
+msgstr ""
+
+msgid "Mark as read"
 msgstr ""
 
 msgid "Market ("
@@ -1093,6 +1114,9 @@ msgid "No free workers"
 msgstr ""
 
 msgid "No free workers!"
+msgstr ""
+
+msgid "No messages yet."
 msgstr ""
 
 msgid "No new sections on this route"
@@ -1168,6 +1192,9 @@ msgid "Only whole positive numbers are accepted"
 msgstr ""
 
 msgid "Open %s"
+msgstr ""
+
+msgid "Open the journal of important messages"
 msgstr ""
 
 msgid "Open the town interface"

@@ -239,7 +239,7 @@ func _on_toggle_ignore_tech_requirements_pressed():
     if CityData.ignore_tech_requirements:
         msg = tr("Technology requirements are ignored: all prerequisites and era restrictions are removed.")
     if main_map.hud and main_map.hud.has_method("show_message"):
-        main_map.hud.show_message(msg)
+        main_map.hud.show_message(msg, GameData.HUD_MESSAGE_NORMAL)
 
     if _ignore_tech_btn:
         _ignore_tech_btn.text = _ignore_tech_label()
@@ -265,7 +265,7 @@ func _on_toggle_ignore_build_requirements_pressed():
     if CityData.ignore_build_requirements:
         msg = tr("Building requirements are ignored: everything is executed instantly and for free.")
     if main_map.hud and main_map.hud.has_method("show_message"):
-        main_map.hud.show_message(msg)
+        main_map.hud.show_message(msg, GameData.HUD_MESSAGE_NORMAL)
 
     if _ignore_build_btn:
         _ignore_build_btn.text = _ignore_build_label()
@@ -280,7 +280,7 @@ func _on_add_food_pressed():
     # helper so that the storage quality breakdown stays consistent.
     CityData.add_to_storage("wheat", 100)
     if main_map.hud and main_map.hud.has_method("show_message"):
-        main_map.hud.show_message(tr("Added 100 food"))
+        main_map.hud.show_message(tr("Added 100 food"), GameData.HUD_MESSAGE_NORMAL)
     if main_map.city_ui and main_map.city_ui.visible:
         main_map.city_ui.refresh()
     if main_map.map_renderer:
@@ -292,7 +292,7 @@ func _on_add_coins_pressed():
     # it explicitly for an instant update.
     CityData.add_treasury(100000)
     if main_map.hud and main_map.hud.has_method("show_message"):
-        main_map.hud.show_message(tr("Added 100000 coins"))
+        main_map.hud.show_message(tr("Added 100000 coins"), GameData.HUD_MESSAGE_NORMAL)
     if main_map.has_method("_update_treasury_hud"):
         main_map._update_treasury_hud()
     if main_map.city_ui and main_map.city_ui.visible:
@@ -308,7 +308,7 @@ func _on_toggle_food_consumption_pressed():
     if now_enabled:
         msg = tr("Food consumption is enabled: the citizens are eating again.")
     if main_map.hud and main_map.hud.has_method("show_message"):
-        main_map.hud.show_message(msg)
+        main_map.hud.show_message(msg, GameData.HUD_MESSAGE_NORMAL)
 
     # We update the button text in place (without a full redraw of the menu)
     if _food_toggle_btn:
@@ -360,7 +360,7 @@ func handle_hex_click(row: int, col: int):
         msg += tr(" (breeding reset: %s)") % crop_name
 
     if main_map.hud and main_map.hud.has_method("show_message"):
-        main_map.hud.show_message(msg)
+        main_map.hud.show_message(msg, GameData.HUD_MESSAGE_NORMAL)
 
     main_map.map_renderer.queue_redraw()
 

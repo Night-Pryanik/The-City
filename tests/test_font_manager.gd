@@ -11,8 +11,10 @@
 #   3. The settings: the dropdown of the "Interface" tab, the key interface/font, and the
 #      choice surviving a reopening of the window.
 #   4. Applying: the project theme is rewritten (default_font, Button, TabBar,
-#      SectionHeading and the engine fallback font) and a Control that is ALREADY in the
-#      tree resolves the new font on the next frame — that is what "on the fly" means.
+#      SectionHeading, BoldLabel and the engine fallback font), both type variations
+#      are DECLARED and really resolve through a Control, and a Control that is ALREADY
+#      in the tree resolves the new font on the next frame — that is what "on the fly"
+#      means.
 #   5. The start of the game: the saved family is applied, and a family that is not on
 #      disk falls back to the bundled one and rewrites the setting.
 #   6. The letter check: a font without the letters of the interface language is refused.
@@ -141,7 +143,6 @@ func _run() -> void:
     check(copy_err == OK, "a copy of the bundled font is put into %s (error %d)"
         % [TEMP_DIR, copy_err], state)
     var label := Label.new()
-    label.theme_type_variation = &"SectionHeading"
     get_root().add_child(label)
     var probe_2d := ThemeProbe2D.new()
     get_root().add_child(probe_2d)
@@ -164,6 +165,18 @@ func _run() -> void:
     for type in ["Button", "TabBar", "SectionHeading"]:
         var emphasis: Font = theme.get_font("font", type)
         check(emphasis != null and emphasis != body, "the theme has an emphasis font for %s" % type, state)
+    # A type variation has to be DECLARED in the theme (its base type), otherwise a
+    # Control asking for it silently falls back to the body font — while
+    # Theme.get_font() keeps answering, so the entry itself looks healthy.
+    check(theme.is_type_variation("SectionHeading", "Label"),
+        "SectionHeading is declared as a variation of Label", state)
+    var heading_label := Label.new()
+    heading_label.theme_type_variation = &"SectionHeading"
+    get_root().add_child(heading_label)
+    await process_frame
+    check(heading_label.get_theme_font("font") == theme.get_font("font", "SectionHeading"),
+        "a Label with the SectionHeading variation resolves to the emphasis face", state)
+    heading_label.queue_free()
     var button_font: Font = theme.get_font("font", "Button")
     check(button_font is FontVariation, "the emphasis of a variable font is an instance of it", state)
     # The emphasis has to be HEAVIER, and that is exactly what a wrong axis key breaks:
@@ -173,8 +186,52 @@ func _run() -> void:
     check(button_font.get_string_size(sample, HORIZONTAL_ALIGNMENT_LEFT, -1, 40).x
             != body.get_string_size(sample, HORIZONTAL_ALIGNMENT_LEFT, -1, 40).x,
         "the emphasis really is a heavier instance, not a copy of the body", state)
+    # The bold face of the journal: a variation of Label, one step above the emphasis.
+    # The base type is what makes the variation resolvable at all — without it a Control
+    # silently falls back to the body font (measured: theme.get_font() answers, while
+    # Label.get_theme_font() does not).
+    check(theme.is_type_variation("BoldLabel", "Label"),
+        "BoldLabel is declared as a variation of Label", state)
+    var bold_font: Font = theme.get_font("font", "BoldLabel")
+    check(bold_font != null and bold_font != body and bold_font != button_font,
+        "the theme has a bold font of its own", state)
+    check(bold_font.get_string_size(sample, HORIZONTAL_ALIGNMENT_LEFT, -1, 40).x
+            > button_font.get_string_size(sample, HORIZONTAL_ALIGNMENT_LEFT, -1, 40).x,
+        "the bold face is heavier than the emphasis", state)
+    var bold_label := Label.new()
+    bold_label.theme_type_variation = &"BoldLabel"
+    get_root().add_child(bold_label)
+    await process_frame
+    check(bold_label.get_theme_font("font") == bold_font,
+        "a Label with the BoldLabel variation really resolves to the bold face", state)
+    bold_label.queue_free()
     check(ThemeDB.fallback_font == body,
         "the engine fallback font followed too (the map draws its labels with it)", state)
+
+    # --- 4b. A family with a single STATIC face ---
+    # The bundled "Terminus (TTF)" has one file, and that file calls itself 500, so
+    # choose_faces() names it as the emphasis too. A static font cannot be varied, so
+    # without a guard the emphasis is handed back as the body file and every section
+    # heading renders in the body face — the family has to be emboldened instead.
+    fm.rescan(["res://fonts"])
+    check(fm.set_font("Terminus (TTF)"), "the single-face family is applied", state)
+    await process_frame
+    var single_body: Font = theme.default_font
+    var single_emphasis: Font = theme.get_font("font", "Button")
+    var single_bold: Font = theme.get_font("font", "BoldLabel")
+    check(single_emphasis != null and single_emphasis != single_body,
+        "a single-face family still gets an emphasis of its own", state)
+    check(single_emphasis is FontVariation and single_emphasis.variation_embolden > 0.0,
+        "the emphasis of a single-face family is the emboldened body", state)
+    check(single_bold != null and single_bold != single_body and single_bold != single_emphasis,
+        "the bold of a single-face family is its own face too", state)
+    var single_heading := Label.new()
+    single_heading.theme_type_variation = &"SectionHeading"
+    get_root().add_child(single_heading)
+    await process_frame
+    check(single_heading.get_theme_font("font") != single_body,
+        "a section heading is not drawn in the body face of a single-face family", state)
+    single_heading.queue_free()
 
     # --- 5. The start of the game ---
     _write_font_setting("No Such Font")

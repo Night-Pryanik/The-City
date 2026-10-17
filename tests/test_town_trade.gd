@@ -361,7 +361,7 @@ func _test_contract_breaks(state: Dictionary) -> void:
 			"the contract must be signed", state)
 	_cdata.treasury = cost - 1
 	var notices: Array = []
-	_trade.notice.connect(func(message: String) -> void:
+	_trade.notice.connect(func(message: String, _message_type: int = 0) -> void:
 			notices.append(message))
 	_trade.tick_contracts()
 	check(_trade._contracts.is_empty(),

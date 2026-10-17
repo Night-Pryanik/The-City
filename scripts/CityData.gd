@@ -281,7 +281,7 @@ func get_total_labor() -> float:
 
 signal city_updated()
 signal research_completed(tech_id: String)
-signal research_error(message: String)
+signal research_error(message: String, message_type: int)
 signal population_changed(new_population: int)
 # The treasury has changed: new_total is the current whole number of the coins.
 signal treasury_changed(new_total: int)
@@ -1782,13 +1782,13 @@ func start_research(tech_id: String) -> bool:
             if t["id"] == current_research_tech_id:
                 current_tech_name = t["name"]
                 break
-        emit_signal("research_error", tr("Research already in progress: ") + current_tech_name)
+        emit_signal("research_error", tr("Research already in progress: ") + current_tech_name, 1)
         return false
     # The same refusal for a research that is only WAITING in the queue of the active
     # pause: two researches of the same moment cannot be queued and then started one
     # after another on the resume.
     if _get_active_pause() != null and _get_active_pause().has_pending_key("research"):
-        emit_signal("research_error", tr("Research already in progress"))
+        emit_signal("research_error", tr("Research already in progress"), 1)
         return false
     if tech_id in unlocked_technologies:
         var tech_name = tech_id
@@ -1796,7 +1796,7 @@ func start_research(tech_id: String) -> bool:
             if t["id"] == tech_id:
                 tech_name = t["name"]
                 break
-        emit_signal("research_error", tr("Technology already researched: ") + tech_name)
+        emit_signal("research_error", tr("Technology already researched: ") + tech_name, 1)
         return false
     var tech_data = null
     for t in GameData.technologies:
@@ -1804,16 +1804,16 @@ func start_research(tech_id: String) -> bool:
             tech_data = t
             break
     if tech_data == null:
-        emit_signal("research_error", tr("Technology not found: ") + tech_id)
+        emit_signal("research_error", tr("Technology not found: ") + tech_id, 1)
         return false
     if not are_prerequisites_met(tech_id):
         var prereq_text = get_tech_prerequisites_text(tech_id)
-        emit_signal("research_error", tr("Requirements not met: ") + prereq_text)
+        emit_signal("research_error", tr("Requirements not met: ") + prereq_text, 1)
         return false
     if not is_tech_era_allowed(tech_id):
         var tech_name = tech_data.get("name", tech_id)
         var next_era_name = _get_era_name_by_index(current_era_index + 1)
-        emit_signal("research_error", tr("\"%s\" belongs to the next era. Advance to the %s era first.") % [tech_name, next_era_name])
+        emit_signal("research_error", tr("\"%s\" belongs to the next era. Advance to the %s era first.") % [tech_name, next_era_name], 1)
         return false
     # The research does not require the food — only the points of the science.
     # The research waits for the resume of the simulation while the active pause is
@@ -1852,11 +1852,11 @@ func _complete_tech_instantly(tech_id: String) -> bool:
             if t["id"] == tech_id:
                 tech_name = t["name"]
                 break
-        emit_signal("research_error", tr("Technology already researched: ") + tech_name)
+        emit_signal("research_error", tr("Technology already researched: ") + tech_name, 1)
         return false
     var tech_data = _get_tech_data(tech_id)
     if tech_data == null:
-        emit_signal("research_error", tr("Technology not found: ") + tech_id)
+        emit_signal("research_error", tr("Technology not found: ") + tech_id, 1)
         return false
     unlocked_technologies.append(tech_id)
     # The technology can open the new kinds of the resources — we spawn them on the map and
@@ -1914,7 +1914,7 @@ func _complete_research():
     var completed_tech_id = current_research_tech_id
     unlocked_technologies.append(current_research_tech_id)
     var tech_name = get_tech_name(current_research_tech_id)
-    emit_signal("research_error", tr("Research complete: ") + tech_name)
+    emit_signal("research_error", tr("Research complete: ") + tech_name, 0)
     # The technology can open the new kinds of the resources — we spawn them on the map.
     # We prepare the messages BEFORE the signal research_completed, so that the popup
     # can display the found resources at once.
@@ -2523,7 +2523,7 @@ func request_build(building_id: String) -> bool:
     var _build_key := "building:" + building_id
     if _ap != null:
         if _ap.has_pending_key(_build_key):
-            emit_signal("research_error", tr("Construction already in progress: %s") % str(bdata.get("name", building_id)))
+            emit_signal("research_error", tr("Construction already in progress: %s") % str(bdata.get("name", building_id)), 1)
             return false
         if _ap.intercept({
                 "key": _build_key,

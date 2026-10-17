@@ -78,6 +78,10 @@ func save_game():
         # own and not a part of "town_contracts", so that a save written before the ledger
         # existed still loads — it simply carries no purchase on the way.
         "town_deliveries": main_map.town_trade_manager.serialize_deliveries() if main_map.town_trade_manager else {},
+        # The journal of the important messages (see journal.gd): the text as it was
+        # shown to the player, and whether it has been read. The entries are restored by
+        # main_map itself, which owns the history node.
+        "journal": main_map.journal.serialize() if main_map.journal else [],
         "map_state": main_map.get_map_state(),
         "city_name": CityData.city_name
     }

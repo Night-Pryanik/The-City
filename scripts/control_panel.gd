@@ -1228,7 +1228,7 @@ func _on_action_pressed(action: Dictionary):
         return
     if type == "resume_improvement":
         if not worker_manager.assign_worker(_selected_hex.row, _selected_hex.col):
-            main_map.hud.show_message(tr("No free workers!"))
+            main_map.hud.show_message(tr("No free workers!"), GameData.HUD_MESSAGE_IMPORTANT)
         main_map.map_renderer.queue_redraw()
         _refresh()
         return
