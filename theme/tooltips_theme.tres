@@ -1,10 +1,12 @@
-[gd_resource type="Theme" load_steps=11 format=3 uid="uid://bcvy24ll0he5c"]
+[gd_resource type="Theme" load_steps=12 format=3 uid="uid://bcvy24ll0he5c"]
 
 [ext_resource type="FontFile" uid="uid://jqbs4ssxj1tq" path="res://fonts/InterVariable.ttf" id="1_inter"]
 
 [ext_resource type="FontVariation" path="res://fonts/inter_medium.tres" id="2_inter_medium"]
 
 [ext_resource type="FontVariation" path="res://fonts/inter_bold.tres" id="3_inter_bold"]
+
+[ext_resource type="Texture2D" uid="uid://crudytkyog123" path="res://icons/checkbox_unchecked.svg" id="4_unchecked"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tooltip"]
 content_margin_left = 6.0
@@ -79,6 +81,7 @@ SectionHeading/fonts/font = ExtResource("2_inter_medium")
 BoldLabel/base_type = &"Label"
 BoldLabel/fonts/font = ExtResource("3_inter_bold")
 TooltipPanel/styles/panel = SubResource("StyleBoxFlat_tooltip")
+CheckBox/icons/unchecked = ExtResource("4_unchecked")
 HSlider/styles/slider = SubResource("StyleBoxFlat_slider_track")
 HSlider/styles/grabber_area = SubResource("StyleBoxFlat_slider_fill")
 HSlider/styles/grabber_area_highlight = SubResource("StyleBoxFlat_slider_fill_highlight")

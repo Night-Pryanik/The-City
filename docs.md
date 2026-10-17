@@ -2145,7 +2145,7 @@ Two call sites today — the supply line and the route-capacity warning of the t
 
 ## The interface theme
 
-**One file, one project setting.** `project.godot` → `gui/theme/custom = res://theme/tooltips_theme.tres`. It was introduced for the tooltip popup and is the ONLY theme in the project: there is no per-scene theme, so everything it does not mention falls back to Godot's built-in theme (the default buttons, check boxes and scrollbars).
+**One file, one project setting.** `project.godot` → `gui/theme/custom = res://theme/tooltips_theme.tres`. It was introduced for the tooltip popup and is the ONLY theme in the project: there is no per-scene theme, so everything it does not mention falls back to Godot's built-in theme (the default buttons, scrollbars, and the checked state of the check boxes).
 
 **The font entries are rewritten at runtime.** The player can choose another font in the settings, and the choice is applied by editing THIS resource (see "The font manager"): `default_font` and the emphasis and bold entries below are replaced with the fonts of the chosen family. The values in the file are therefore the bundled default, not a constant.
 
@@ -2161,6 +2161,9 @@ Two call sites today — the supply line and the route-capacity warning of the t
 | `TooltipPanel/styles/panel` | the frame of the built-in tooltip popup (see "Tooltips") |
 | `HSlider/styles/slider`, `grabber_area`, `grabber_area_highlight` | the track of every slider, the part filled up to the knob, and that same part while the knob is hovered or dragged |
 | `TabContainer/styles/tab_selected`, `tab_hovered`, `tab_unselected` | the tab strip of the settings menu |
+| `CheckBox/icons/unchecked` | the empty box of every check box (`icons/checkbox_unchecked.svg`): Godot's built-in one is a dark square, and on the dark panels of this game it read as an empty slot of the panel rather than a control |
+
+**Why the unchecked box is a custom icon.** The built-in `unchecked` icon is a dark square calibrated for Godot's own grey background (about 0.17); the panels here are darker (the "Resources" tab sits at 0.15), so the "off" state of the food toggle was practically invisible while the "on" state (a light filled box with a dark check) read fine. The icon is an outline in the same light grey and the same corner radius as the filled box, so the two states read as one control. It is a theme entry, not a per-node override: the settings menu, the town window, the trade cards and the food rows of the "Resources" tab all get it at once and cannot drift apart.
 
 **Typography.** The project bundles one font: `fonts/InterVariable.ttf` (SIL OFL 1.1, the licence is `fonts/OFL.txt`). It is a VARIABLE font, so a second weight costs no second file: `fonts/inter_medium.tres` is a `FontVariation` over the same file with `variation_opentype = {"weight": 500}`. The theme sets it as `default_font`, which gives the whole game Inter Regular at the built-in 16 px. The built-in face it replaces is Open Sans **SemiBold** — every label in the game used to be semi-bold, which is why the interface read as heavy. Inter is also slightly narrower and its line box is shorter (328 px and 20 px against 341 px and 23 px for the same string at 16 px), so text got tighter, never wider.
 
@@ -2952,7 +2955,7 @@ The selection rule (`GameData.get_product_group_icon_info`): its own `"icon"` fi
 
 ### The consumption allow toggle
 
-The card has a **single** `CheckBox` — it writes to `CityData.market_consumption_enabled[display_key]`. Previously the toggle was duplicated: next to it stood a custom 14×14 `ColorRect` (like the food toggle on the "Resources" tab) with its own synchronization logic and the `_syncing_toggles` flag, and two buttons showed a single state. The two-button variant was removed in favor of a standard `CheckBox` — it is labeled, keyboard-accessible and does not need its own drawing code.
+The card has a **single** `CheckBox` — it writes to `CityData.market_consumption_enabled[display_key]`; the food toggle of the "Resources" tab is the same widget. A custom 14×14 `ColorRect` next to a `CheckBox` with its own synchronization logic and the `_syncing_toggles` flag was removed in favor of the standard widget — it is labeled, keyboard-accessible and does not need its own drawing code.
 
 The programmatic setting of `button_pressed` is guarded by a "value changed" check (`trade_tab._update_toggle`): assigning the same value still emits the `toggled` signal and would loop the edit.
 

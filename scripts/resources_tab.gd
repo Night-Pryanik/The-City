@@ -290,12 +290,12 @@ func refresh():
 
             # The checkbox (only for the food)
             if is_food:
-                var toggle = ColorRect.new()
-                toggle.custom_minimum_size = Vector2(14, 14)
-                var enabled = city_food_pool.get(prod_id, true)
-                toggle.color = Color.GREEN if enabled else Color.RED
-                toggle.mouse_filter = Control.MOUSE_FILTER_STOP
-                toggle.gui_input.connect(_on_food_toggle_input.bind(prod_id, toggle))
+                var toggle := CheckBox.new()
+                toggle.button_pressed = city_food_pool.get(prod_id, true)
+                # It does not stretch to the height of the row: the row is 40 px tall because of
+                # the icon, and a stretched CheckBox would draw its box far from the text.
+                toggle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+                toggle.toggled.connect(_on_food_toggle_toggled.bind(prod_id))
                 row.add_child(toggle)
                 food_toggles[prod_id] = toggle
 
@@ -423,8 +423,10 @@ func update_values():
             cons_label.text = _format_cons_label(prod_id)
         var toggle = food_toggles.get(prod_id)
         if toggle != null and is_instance_valid(toggle):
+            # Assigned only on a real change: a programmatic button_pressed emits toggled as well.
             var enabled = city_food_pool.get(prod_id, true)
-            toggle.color = Color.GREEN if enabled else Color.RED
+            if toggle.button_pressed != enabled:
+                toggle.button_pressed = enabled
         var q_label = quality_labels.get(prod_id)
         if q_label != null and is_instance_valid(q_label):
             _update_quality_label(q_label, prod_id)
@@ -635,12 +637,16 @@ func _on_flow_exit(prod_id: String):
     if ui_helpers and is_instance_valid(ui_helpers):
         ui_helpers.hide_flow_tooltip()
 
-func _on_food_toggle_input(event, prod_id, toggle):
-    if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-        city_food_pool[prod_id] = not city_food_pool.get(prod_id, true)
-        toggle.color = Color.GREEN if city_food_pool[prod_id] else Color.RED
-        if get_parent().has_method("update_food_label"):
-            get_parent().update_food_label()
+# The food checkbox writes the state straight into city_food_pool and asks the city interface
+# to recount the food row of the top strip.
+func _on_food_toggle_toggled(pressed: bool, prod_id: String):
+    # A programmatic button_pressed in update_values() emits toggled too: a state that already
+    # matches the pool is not an edit of the player and must not reach the city interface.
+    if city_food_pool.get(prod_id, true) == pressed:
+        return
+    city_food_pool[prod_id] = pressed
+    if get_parent().has_method("update_food_label"):
+        get_parent().update_food_label()
 
 func get_food_pool() -> Dictionary:
     return city_food_pool
