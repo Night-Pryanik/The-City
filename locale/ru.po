@@ -2404,6 +2404,10 @@ msgid "Dries and roasts coffee beans."
 msgstr "Сушит и обжаривает кофейные зерна"
 
 msgctxt "crafts.description"
+msgid "Dries, ferments, roasts and grinds cocoa beans."
+msgstr "Сушит, ферментирует, обжаривает и мелет какао-бобы"
+
+msgctxt "crafts.description"
 msgid "Dries, rolls, withers and ferments tea leaves."
 msgstr "Сушит, скручивает, вялит и ферментирует чайные листья"
 
@@ -2738,6 +2742,10 @@ msgstr "Глиняные таблички"
 msgctxt "crafts.name"
 msgid "Cloth Clothes"
 msgstr "Тканевая одежда"
+
+msgctxt "crafts.name"
+msgid "Cocoa"
+msgstr "Какао"
 
 msgctxt "crafts.name"
 msgid "Coffee"
@@ -3220,6 +3228,10 @@ msgid "Alcohol"
 msgstr "Алкоголь"
 
 msgctxt "product_groups.name"
+msgid "Beverages"
+msgstr "Напитки"
+
+msgctxt "product_groups.name"
 msgid "Boats"
 msgstr "Лодки"
 
@@ -3618,6 +3630,14 @@ msgstr "Тканевая одежда"
 msgctxt "resources.name"
 msgid "Cochineal"
 msgstr "Кошениль"
+
+msgctxt "resources.name"
+msgid "Cocoa"
+msgstr "Какао"
+
+msgctxt "resources.name"
+msgid "Cocoa Beans"
+msgstr "Какао-бобы"
 
 msgctxt "resources.name"
 msgid "Coffee"

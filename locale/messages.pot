@@ -2404,6 +2404,10 @@ msgid "Dries and roasts coffee beans."
 msgstr ""
 
 msgctxt "crafts.description"
+msgid "Dries, ferments, roasts and grinds cocoa beans."
+msgstr ""
+
+msgctxt "crafts.description"
 msgid "Dries, rolls, withers and ferments tea leaves."
 msgstr ""
 
@@ -2737,6 +2741,10 @@ msgstr ""
 
 msgctxt "crafts.name"
 msgid "Cloth Clothes"
+msgstr ""
+
+msgctxt "crafts.name"
+msgid "Cocoa"
 msgstr ""
 
 msgctxt "crafts.name"
@@ -3220,6 +3228,10 @@ msgid "Alcohol"
 msgstr ""
 
 msgctxt "product_groups.name"
+msgid "Beverages"
+msgstr ""
+
+msgctxt "product_groups.name"
 msgid "Boats"
 msgstr ""
 
@@ -3617,6 +3629,14 @@ msgstr ""
 
 msgctxt "resources.name"
 msgid "Cochineal"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Cocoa"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Cocoa Beans"
 msgstr ""
 
 msgctxt "resources.name"
