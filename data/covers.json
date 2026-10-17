@@ -38,6 +38,7 @@
       "color": [ 34, 139, 34 ],
       "alpha": 0.9,
       "move_cost_bonus": 0,
+      "wood_yield": 2,
       "icons": [ "swamp_forest_1.png" ]
     },
     {
@@ -46,6 +47,7 @@
       "color": [ 34, 139, 34 ],
       "alpha": 0.9,
       "move_cost_bonus": 0,
+      "wood_yield": 1,
       "icons": [ "swamp_forest_sparse_1.png" ]
     },
     {
