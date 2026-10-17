@@ -74,6 +74,13 @@
       "production_bonus": 0.0
     },
     {
+      "id": "non_alcoholic_beverages",
+      "profession": [ "all" ],
+      "amount": 10,
+      "interval": 1,
+      "production_bonus": 0.0
+    },
+    {
       "resource": "@tableware",
       "profession": [ "all" ],
       "amount": 10,

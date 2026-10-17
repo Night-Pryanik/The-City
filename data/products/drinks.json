@@ -64,6 +64,15 @@
       "icon": "coffee.png"
     },
     {
+      "id": "cocoa",
+      "price": 18,
+      "name": "Cocoa",
+      "type": "product",
+      "category": "drinks",
+      "unlock_tech": "fermentation",
+      "icon": "cocoa.png"
+    },
+    {
       "id": "vinegar",
       "price": 18,
       "name": "Vinegar",

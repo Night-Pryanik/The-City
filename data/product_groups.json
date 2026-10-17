@@ -191,6 +191,11 @@
       "id": "writing_instruments",
       "name": "Writing Instruments",
       "products": [ "wood", "papyrus_plant", "feathers" ]
+    },
+    {
+      "id": "non_alcoholic_beverages",
+      "name": "Beverages",
+      "products": [ "tea", "coffee", "cocoa" ]
     }
   ]
 }

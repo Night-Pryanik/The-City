@@ -134,6 +134,16 @@
       "time": 5.0,
       "unlock_tech": "fermentation",
       "description": "Makes vinegar from alcohol."
+    },
+    {
+      "id": "cocoa",
+      "name": "Cocoa",
+      "produced_in": [ "dryer_house" ],
+      "resources": { "cocoa_beans": 20 },
+      "result": { "cocoa": 10 },
+      "time": 5.0,
+      "unlock_tech": "fermentation",
+      "description": "Dries, ferments, roasts and grinds cocoa beans."
     }
   ]
 }

@@ -31,6 +31,23 @@
       "produces": { "coffee_beans": 10, "feed": 40 },
       "icon": "coffee.png",
       "color": [ 200, 255, 200 ]
+    },
+    {
+      "id": "cacao_tree",
+      "price": 8,
+      "name": "Cocoa",
+      "type": "raw",
+      "category": "aux_plants",
+      "group": "stimulating_plants",
+      "subgroup": "stimulating_drinks",
+      "allowed_terrain": [ "plain", "hill", "mountain" ],
+      // Todo: Cacao trees should spawn in rainforests. Replace terrain+cover with "rainforest" when they will be added to the game.
+      "allowed_cover": [ "none" ],
+      "improved_by": "plantation",
+      "tech_required": "plantations",
+      "produces": { "cocoa_beans": 10, "feed": 40 },
+      "icon": "cocoa.png",
+      "color": [ 200, 255, 200 ]
     }
   ]
 }

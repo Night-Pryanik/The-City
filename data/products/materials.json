@@ -71,6 +71,14 @@
       "icon": "coffee_beans.png"
     },
     {
+      "id": "cocoa_beans", "price": 8,
+      "name": "Cocoa Beans",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "fermentation",
+      "icon": "cocoa_beans.png"
+    },
+    {
       "id": "sisal", "price": 6,
       "name": "Sisal",
       "type": "product",
