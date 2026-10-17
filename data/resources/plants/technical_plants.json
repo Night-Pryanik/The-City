@@ -98,7 +98,7 @@
       "category": "technical_plants",
       "group": "technical_plants",
       "subgroup": "textile_plants",
-      "allowed_terrain": [ "plain" ],
+      "allowed_terrain": [ "plain", "rocky_desert", "sandy_desert", "hill" ],
       "allowed_cover": [ "none" ],
       "improved_by": "plantation",
       "tech_required": "plantations",

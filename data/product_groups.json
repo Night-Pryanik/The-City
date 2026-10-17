@@ -101,13 +101,16 @@
       ]
     },
     {
+      // all sweet fruits that don't have their own specific fermentation drinks, like grape wine, pulque etc.
       "id": "wine_fruits",
       "name": "Fruits",
       "products": [
         "mulberries",
         "figs",
         "dates",
-        "pomegranates"
+        "cactus_fruit",
+        "pomegranates",
+        "yucca_fruit"
       ]
     },
     {
