@@ -74,7 +74,7 @@
       "production_bonus": 0.0
     },
     {
-      "id": "non_alcoholic_beverages",
+      "resource": "@non_alcoholic_beverages",
       "profession": [ "all" ],
       "amount": 10,
       "interval": 1,
