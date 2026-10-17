@@ -54,8 +54,28 @@ var _slot_progress_bars: Dictionary = {}
 # cannot show pictures). A panel of its own, and not
 # ui_helpers.detail_tooltip_panel: that one is shared with the "Buildings" tab,
 # and the panel of the building is drawn on top of the CityUi.
+#
+# The panel STICKS: after the cursor has been held on the button for
+# UPGRADE_TOOLTIP_DELAY, the panel is pinned in place, and the cursor can be moved
+# onto it — onto a group resource in its rows, to unfold the composition of the
+# group. The pinned panel disappears as soon as the cursor leaves it and the button
+# (see _process_upgrade_tooltip).
 var upgrade_tooltip_panel: Panel = null
 var upgrade_tooltip_content: VBoxContainer = null
+# The building whose upgrade button is under the cursor, and the panel pinned for it.
+var _hovered_upgrade_btn: Button = null
+var _hovered_upgrade_index: int = -1
+var _upgrade_tooltip_locked: bool = false
+var _upgrade_tooltip_index: int = -1
+var _upgrade_hover_timer: float = 0.0
+var _upgrade_leave_timer: float = 0.0
+
+# The delay of the sticking and the grace on leaving — the same values as for the
+# building details tooltip in city_ui (building_detail_delay /
+# BUILDING_DETAIL_LEAVE_GRACE): the grace protects against the flickering when the
+# cursor crosses the gap between the button and the panel.
+const UPGRADE_TOOLTIP_DELAY: float = 0.5
+const UPGRADE_TOOLTIP_LEAVE_GRACE: float = 0.35
 
 func _ready():
     # We subscribe to the changes of the worker assignments, so that the panel
@@ -134,11 +154,14 @@ func _ready():
     # a group resource the composition of the group is drawn on top of it.
     upgrade_tooltip_panel = Panel.new()
     upgrade_tooltip_panel.visible = false
-    upgrade_tooltip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    upgrade_tooltip_panel.mouse_filter = Control.MOUSE_FILTER_STOP
     upgrade_tooltip_panel.z_index = 1050
     upgrade_tooltip_panel.add_theme_stylebox_override("panel", _make_tooltip_style())
     add_child(upgrade_tooltip_panel)
 
+    # The content does not catch the mouse: the cursor passes through to the panel
+    # behind it, which is what makes the hovering of a group resource in a row work
+    # (the row handlers fire, and the panel itself keeps the "stuck" state).
     upgrade_tooltip_content = VBoxContainer.new()
     upgrade_tooltip_content.add_theme_constant_override("separation", 4)
     upgrade_tooltip_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -296,9 +319,10 @@ func _refresh():
                 upgrade_btn.pressed.connect(_on_upgrade_pressed.bind(b_index))
             # The tooltip with the icons is drawn by a panel of its own on hover
             # (see _on_upgrade_btn_hovered) — the plain tooltip_text is not able
-            # to show pictures.
+            # to show pictures. The panel sticks after a delay, therefore the mouse_exited
+            # only arms the grace timer of leaving (the cursor may be on its way to the panel).
             upgrade_btn.mouse_entered.connect(_on_upgrade_btn_hovered.bind(upgrade_btn, b_index))
-            upgrade_btn.mouse_exited.connect(_hide_upgrade_tooltip)
+            upgrade_btn.mouse_exited.connect(_on_upgrade_btn_unhovered)
             header.add_child(upgrade_btn)
 
         var toggle_btn = Button.new()
@@ -657,6 +681,11 @@ func _on_assignments_changed():
         var gtp = ui_helpers.group_tooltip_panel
         if is_instance_valid(gtp) and gtp.visible:
             return
+    # The upgrade tooltip is pinned (or shown) — the rows of the costs under the cursor
+    # must not be rebuilt: the panel would be destroyed together with the resource
+    # entries the player is hovering to unfold the composition of a group.
+    if upgrade_tooltip_panel != null and upgrade_tooltip_panel.visible:
+        return
 
     # We compare the current state with the one at which the last _refresh() was
     # done. If nothing has changed (and on an ordinary tick of do_tick() only the
@@ -811,6 +840,7 @@ func _get_toggle_icon(icon_name: String) -> Texture2D:
 # kill the tooltips; the progress changes continuously, and not only on the ticks
 # of city_updated).
 func _process(delta):
+    _process_upgrade_tooltip(delta)
     if _upgrade_progress_bars.is_empty() and _slot_progress_bars.is_empty():
         return
     var finished: Array = []
@@ -890,16 +920,80 @@ func _get_craft_bar_slot(craft_bar: ProgressBar) -> int:
             return int(str(key).split(":", false)[1])
     return -1
 
-# Hovering the "Upgrade" button: we fill the tooltip with the icons and show it
-# next to the button. The plain tooltip_text is not able to show pictures,
-# therefore a panel of its own, upgrade_tooltip_panel, is used.
+# Hovering the "Upgrade" button: we remember the button and start the timer of the
+# sticking. The panel itself is shown by _process — after UPGRADE_TOOLTIP_DELAY,
+# like the details tooltip of a building on the "Buildings" tab.
 func _on_upgrade_btn_hovered(btn: Button, b_index: int):
-    if upgrade_tooltip_panel == null or ui_helpers == null:
+    if _hovered_upgrade_btn == btn and _hovered_upgrade_index == b_index:
         return
-    if not _fill_upgrade_tooltip_content(b_index):
+    # We moved from one upgrade button straight onto another: the panel of the
+    # previous one is not pinned and must not stay hanging over the new button.
+    if not _upgrade_tooltip_locked:
+        _hide_upgrade_tooltip()
+    _hovered_upgrade_btn = btn
+    _hovered_upgrade_index = b_index
+    _upgrade_hover_timer = 0.0
+
+# The cursor has left the button. The panel is not hidden here: it may be pinned,
+# and the cursor may be on its way onto it — the decision is taken by _process
+# after the grace timer.
+func _on_upgrade_btn_unhovered():
+    _hovered_upgrade_btn = null
+    _hovered_upgrade_index = -1
+    _upgrade_hover_timer = 0.0
+
+# The sticking of the upgrade tooltip. The pattern is the same as for the details
+# tooltip of a building on the "Buildings" tab (see city_ui._process): the cursor is
+# polled every frame (the mouse_entered of a node does not tell whether the cursor has
+# moved onto the panel of the tooltip), the panel is shown once after the delay and is
+# then PINNED in place, and the grace on leaving gives the cursor time to cross the gap
+# between the button and the panel.
+func _process_upgrade_tooltip(delta):
+    if upgrade_tooltip_panel == null:
+        return
+    if not visible:
         _hide_upgrade_tooltip()
         return
-    _show_upgrade_tooltip_panel(btn)
+    var mouse_pos := get_viewport().get_mouse_position()
+    # The content of the tooltip does not catch the mouse (mouse_filter = IGNORE), so
+    # the hovering of the panel is given by its rectangle, and the cursor reaches the
+    # rows with the group resources through it.
+    var over_panel := upgrade_tooltip_panel.visible \
+        and upgrade_tooltip_panel.get_global_rect().has_point(mouse_pos)
+    if over_panel:
+        _upgrade_leave_timer = 0.0
+        # The cursor is on the panel (a group tooltip may be unfolded next to it) —
+        # we keep it pinned so that it does not disappear under the cursor.
+        _upgrade_tooltip_locked = true
+        return
+    var over_btn := _hovered_upgrade_btn != null and is_instance_valid(_hovered_upgrade_btn) \
+        and _hovered_upgrade_btn.get_global_rect().has_point(mouse_pos)
+    # A pinned panel is removed as soon as the cursor leaves it: otherwise it would hang
+    # over the interface of the building until the window is closed.
+    if _upgrade_tooltip_locked:
+        if over_btn:
+            return
+        _upgrade_leave_timer += delta
+        if _upgrade_leave_timer >= UPGRADE_TOOLTIP_LEAVE_GRACE:
+            _hide_upgrade_tooltip()
+        return
+    if over_btn:
+        _upgrade_leave_timer = 0.0
+        _upgrade_hover_timer += delta
+        if _upgrade_hover_timer >= UPGRADE_TOOLTIP_DELAY:
+            _upgrade_hover_timer = 0.0
+            if _fill_upgrade_tooltip_content(_hovered_upgrade_index):
+                _show_upgrade_tooltip_panel(_hovered_upgrade_btn)
+                _upgrade_tooltip_locked = true
+                _upgrade_tooltip_index = _hovered_upgrade_index
+        return
+    # The cursor is over neither the button nor the panel.
+    if upgrade_tooltip_panel.visible:
+        _upgrade_leave_timer += delta
+        if _upgrade_leave_timer >= UPGRADE_TOOLTIP_LEAVE_GRACE:
+            _hide_upgrade_tooltip()
+    else:
+        _upgrade_hover_timer = 0.0
 
 # Fills the content of the upgrade tooltip: the header "Upgrade to <icon>
 # "Name"", the labour, the materials line by line ("<icon> Planks x8"), the
@@ -989,7 +1083,10 @@ func _fill_upgrade_tooltip_content(b_index: int) -> bool:
 
 # The size, the position and the showing of the tooltip: under the button (as the
 # popups of the recipe selection), with a shift inside the screen at the edges.
-func _show_upgrade_tooltip_panel(btn: Button):
+# keep_position — the redraw of an already pinned panel: the panel stays where it is,
+# only its size is recalculated (the content may have grown). Otherwise the panel
+# runs away from under the cursor and the sticking becomes impossible.
+func _show_upgrade_tooltip_panel(btn: Button, keep_position: bool = false):
     upgrade_tooltip_content.reset_size()
     var content_min_size = upgrade_tooltip_content.get_minimum_size()
     var pad_left = 6
@@ -998,15 +1095,22 @@ func _show_upgrade_tooltip_panel(btn: Button):
     var pad_bottom = 6
     upgrade_tooltip_content.position = Vector2(pad_left, pad_top)
     upgrade_tooltip_panel.size = content_min_size + Vector2(pad_left + pad_right, pad_top + pad_bottom)
-    var btn_rect = btn.get_global_rect()
     var viewport_size = get_viewport().get_visible_rect().size
-    var pos = btn_rect.position + Vector2(0, btn_rect.size.y + 4)
+    var pos: Vector2
+    if keep_position and upgrade_tooltip_panel.visible:
+        pos = upgrade_tooltip_panel.position
+    else:
+        var btn_rect = btn.get_global_rect()
+        pos = btn_rect.position + Vector2(0, btn_rect.size.y + 4)
     pos.x = clampf(pos.x, 0.0, maxf(0.0, viewport_size.x - upgrade_tooltip_panel.size.x))
     pos.y = clampf(pos.y, 0.0, maxf(0.0, viewport_size.y - upgrade_tooltip_panel.size.y))
     upgrade_tooltip_panel.position = pos
     upgrade_tooltip_panel.show()
 
 func _hide_upgrade_tooltip():
+    _upgrade_tooltip_locked = false
+    _upgrade_tooltip_index = -1
+    _upgrade_leave_timer = 0.0
     if upgrade_tooltip_panel != null:
         upgrade_tooltip_panel.hide()
 
