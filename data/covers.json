@@ -7,12 +7,13 @@
       "color": [ 34, 139, 34 ],
       "alpha": 0.9,
       "move_cost_bonus": 0,
-      // Wood yield of this cover (how many units of wood a forest plot here
-      // gives per tick). The denser the forest, the higher the yield.
+      // Wood yield of this cover: how many units of wood a forest plot here
+      // gives per tick, in the same units as the "produces" of a resource
+      // (data/resources/**). The denser the forest, the higher the yield.
       // A forest plot can be built on any cover with wood_yield > 0 —
       // new forest covers (jungle, taiga, etc.) only need this field,
       // no code change is required. A missing field = yield of 0.
-      "wood_yield": 1,
+      "wood_yield": 10,
       "icons": [ "forest_1.png", "forest_2.png", "forest_3.png" ]
     },
     {
@@ -21,7 +22,7 @@
       "color": [ 34, 139, 34 ],
       "alpha": 0.9,
       "move_cost_bonus": 0,
-      "wood_yield": 2,
+      "wood_yield": 20,
       "icons": [ "forest_1.png", "forest_2.png", "forest_3.png" ]
     },
     {
@@ -38,7 +39,7 @@
       "color": [ 34, 139, 34 ],
       "alpha": 0.9,
       "move_cost_bonus": 0,
-      "wood_yield": 2,
+      "wood_yield": 20,
       "icons": [ "swamp_forest_1.png" ]
     },
     {
@@ -47,7 +48,7 @@
       "color": [ 34, 139, 34 ],
       "alpha": 0.9,
       "move_cost_bonus": 0,
-      "wood_yield": 1,
+      "wood_yield": 10,
       "icons": [ "swamp_forest_sparse_1.png" ]
     },
     {

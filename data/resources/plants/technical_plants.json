@@ -136,7 +136,9 @@
       "allowed_cover": [ "none" ],
       "improved_by": "plantation",
       "tech_required": "sericulture",
-      "produces": { "mulberries": 10, "mulberry_bark": 10, "silk_cocoon": 10 },
+      // A mulberry plantation is coppiced and thinned for the leaves, so the
+      // timber comes as a by-product of the silkworm feed.
+      "produces": { "mulberries": 10, "mulberry_bark": 10, "silk_cocoon": 10, "wood": 10 },
       "icon": "mulberry.png",
       "color": [ 255, 100, 100 ]
     },
@@ -241,7 +243,9 @@
       "allowed_terrain": [ "plain" ],
       "allowed_cover": [ "none" ],
       "improved_by": "lumberjack_hut",
-      "produces": { "campeche_wood": 10 },
+      // The camp on a wood resource fells the tree, so its timber comes as a
+      // second product besides the resource's own one.
+      "produces": { "campeche_wood": 10, "wood": 10 },
       "icon": "campeche_tree.png",
       "color": [ 200, 255, 200 ]
     },
@@ -286,7 +290,9 @@
       "allowed_terrain": [ "plain", "hill", "mountain" ],
       "allowed_cover": [ "forest", "sparse_forest" ],
       "improved_by": "lumberjack_hut",
-      "produces": { "galls": 10 },
+      // The camp on a wood resource fells the tree, so its timber comes as a
+      // second product besides the resource's own one.
+      "produces": { "galls": 10, "wood": 10 },
       "icon": "oak_tree.png",
       "color": [ 200, 255, 200 ]
     }

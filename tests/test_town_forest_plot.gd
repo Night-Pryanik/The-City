@@ -14,17 +14,21 @@
 #
 # The camp keeps its TWO documented modes apart (docs.md, "Woodcutter's Camp"):
 # on a wood RESOURCE hex it extracts that resource through the common flow and
-# yields the resource's own products, never the cover's wood.
+# yields the resource's own products (the timber among them, since the wood
+# resources list it in their produces), never the cover's wood on top of them.
 #
 # Checks (on synthetic maps + a live map):
 #   1. A town with a forest hex in its ring gets a forest plot and sells wood;
 #      the goods made of wood follow, and the timber carries a quality.
 #   2. A ring with no timber cover gets no plot and no wood.
-#   3. A forest cover that yields no timber (swamp_forest) is not a plot.
-#   4. A wood RESOURCE hex sells its own product, not wood.
+#   3. A cover that yields no timber (reeds) is not a plot.
+#   4. A wood RESOURCE hex sells the resource's production, timber included, and
+#      that timber carries the quality of the resource, not the ordinary level
+#      the cover's timber is traded at.
 #   5. A repeat pass (as on save load) keeps the pool: wood neither appears nor
 #      disappears.
-#   6. Live map (MainMap): a town sells wood exactly when it has a forest plot.
+#   6. Live map (MainMap): a town sells wood exactly when its ring holds a
+#      source of it — a forest plot or a wood resource.
 extends SceneTree
 
 # Hang watchdog: without it a broken _run() coroutine looks like eternal
@@ -33,13 +37,19 @@ const WATCHDOG = preload("res://tests/watchdog.gd")
 
 const FOREST_PLOT := "lumberjack_hut"
 const WOOD := "wood"
-# A cover that yields timber and one that does not (data/covers.json).
+# A cover that yields timber and one that does not (data/covers.json). The
+# barren one is "reeds": every forest cover yields timber, the swamp forest
+# included, so a forest cover is not a fixture of "no timber".
 const TIMBER_COVER := "forest"
-const BARREN_FOREST_COVER := "swamp_forest"
-# A resource the camp extracts (improved_by == lumberjack_hut): its own product
-# must be traded instead of the cover's wood.
+const BARREN_COVER := "reeds"
+# A resource the camp extracts (improved_by == lumberjack_hut): its own products
+# are traded instead of the cover's wood.
 const WOOD_RESOURCE := "oak_tree"
 const WOOD_RESOURCE_PRODUCT := "galls"
+# A quality level that is NOT the ordinary one the cover's timber is credited
+# with (DEFAULT_QUALITY in town_economy.gd), so the source of the timber row is
+# visible in the pool.
+const RESOURCE_QUALITY := "fine"
 # The goods the closure makes out of wood ALONE (data/crafts/crafts.json), so
 # their presence is not left to an import roll.
 const WOOD_CRAFTED := ["planks", "charcoal"]
@@ -69,8 +79,8 @@ func _run() -> void:
         _test_town_with_forest_gets_wood(state)
     if WATCHDOG.wants_case("ring_without_timber_has_no_wood"):
         _test_ring_without_timber_has_no_wood(state)
-    if WATCHDOG.wants_case("barren_forest_is_not_a_plot"):
-        _test_barren_forest_is_not_a_plot(state)
+    if WATCHDOG.wants_case("barren_cover_is_not_a_plot"):
+        _test_barren_cover_is_not_a_plot(state)
     if WATCHDOG.wants_case("wood_resource_is_not_a_plot"):
         _test_wood_resource_is_not_a_plot(state)
     if WATCHDOG.wants_case("reload_keeps_the_wood"):
@@ -278,16 +288,16 @@ func _test_ring_without_timber_has_no_wood(state: Dictionary) -> void:
 
 
 # -------------------------------------------------------
-# 3. A barren forest cover is not a plot
+# 3. A cover that yields no timber is not a plot
 # -------------------------------------------------------
 
-func _test_barren_forest_is_not_a_plot(state: Dictionary) -> void:
+func _test_barren_cover_is_not_a_plot(state: Dictionary) -> void:
     _reset_towns()
     var rows := 21
     var cols := 21
     var tile_data := _make_map(rows, cols)
-    # A swamp forest looks like a forest but yields no timber (no wood_yield).
-    tile_data[10][12]["cover"] = BARREN_FOREST_COVER
+    # Reeds carry no wood_yield: there is nothing for the camp to take.
+    tile_data[10][12]["cover"] = BARREN_COVER
     var town := _add_town(tile_data, rows, cols, 10, 10)
 
     _tm._place_decorative_town_improvements(tile_data, rows, cols)
@@ -299,7 +309,7 @@ func _test_barren_forest_is_not_a_plot(state: Dictionary) -> void:
 
 
 # -------------------------------------------------------
-# 4. A wood RESOURCE is not the cover's timber
+# 4. A wood RESOURCE hex sells the resource, not the cover
 # -------------------------------------------------------
 
 func _test_wood_resource_is_not_a_plot(state: Dictionary) -> void:
@@ -311,7 +321,7 @@ func _test_wood_resource_is_not_a_plot(state: Dictionary) -> void:
     # it, and the camp then works in its "resource" mode.
     tile_data[10][12]["cover"] = TIMBER_COVER
     tile_data[10][12]["resource"] = WOOD_RESOURCE
-    tile_data[10][12]["quality"] = "common"
+    tile_data[10][12]["quality"] = RESOURCE_QUALITY
     var town := _add_town(tile_data, rows, cols, 10, 10)
 
     _tm._place_decorative_town_improvements(tile_data, rows, cols)
@@ -324,9 +334,21 @@ func _test_wood_resource_is_not_a_plot(state: Dictionary) -> void:
     check(pool.has(WOOD_RESOURCE_PRODUCT),
         "the wood resource \"%s\" must yield \"%s\" (pool: %s)"
             % [WOOD_RESOURCE, WOOD_RESOURCE_PRODUCT, str(pool)], state)
-    check(not pool.has(WOOD),
-        "the camp on a wood resource extracts the resource, not the cover: wood must not appear (pool: %s)"
-            % str(pool), state)
+    # The timber of a wood resource is a product of the RESOURCE (the wood
+    # resources list it in their produces), so it must be in the pool even
+    # though the camp stands on a timber cover.
+    check(pool.has(WOOD),
+        "the timber of the wood resource \"%s\" must be on sale (pool: %s)"
+            % [WOOD_RESOURCE, str(pool)], state)
+    # ...and it must be accounted to the resource: the cover's timber is traded
+    # at the ordinary level, while the hex's own quality is the one that was
+    # rolled for the resource. A "common" row here would mean the pool took the
+    # timber from the cover.
+    check(str((town.get("quality", {}) as Dictionary).get(WOOD, "")) == RESOURCE_QUALITY,
+        ("the timber of a wood resource must carry the quality of the resource (\"%s\"), " +
+        "not the ordinary level of the cover's timber (got \"%s\")")
+            % [RESOURCE_QUALITY, str((town.get("quality", {}) as Dictionary).get(WOOD, ""))],
+        state)
     check(not pool.has(WOOD_RESOURCE),
         "the resource itself is not a good — only its production is (pool: %s)" % str(pool), state)
 
@@ -381,13 +403,24 @@ func _test_live_scene(state: Dictionary) -> void:
     var wrong: Array = []
     for t in main_map.towns:
         var has_plot := false
+        var has_wood_resource := false
         for h in t.get("influence_hexes", []):
             var r := int(h.get("row", -1))
             var c := int(h.get("col", -1))
             if r < 0 or r >= tile_data.size() or c < 0 or c >= tile_data[r].size():
                 continue
             var tile = tile_data[r][c]
-            if tile == null or str(tile.get("improvement", "")) != FOREST_PLOT:
+            if tile == null:
+                continue
+            # The second source of wood: a wood resource of the ring. The camp on
+            # such a hex extracts the resource, and the resource lists the timber
+            # in its produces.
+            var res_id := str(tile.get("resource", ""))
+            if res_id.is_empty() or res_id == "<null>":
+                res_id = str(tile.get("crop_bred", ""))
+            if not res_id.is_empty() and res_id != "<null>" and _produces(res_id).has(WOOD):
+                has_wood_resource = true
+            if str(tile.get("improvement", "")) != FOREST_PLOT:
                 continue
             if _cover_yield(tile) <= 0.0:
                 continue
@@ -398,13 +431,14 @@ func _test_live_scene(state: Dictionary) -> void:
         if has_plot:
             plots_found += 1
         var sells_wood: bool = (t.get("sell_pool", []) as Array).has(WOOD)
-        if has_plot != sells_wood:
-            wrong.append([int(t.row), int(t.col), has_plot, sells_wood])
+        if (has_plot or has_wood_resource) != sells_wood:
+            wrong.append([int(t.row), int(t.col), has_plot, has_wood_resource, sells_wood])
 
     check(plots_found > 0,
         "on the live map at least one town must get a forest plot (otherwise the check proves nothing)", state)
     check(wrong.is_empty(),
-        "a town must sell wood exactly when it has a forest plot ([row, col, has_plot, sells_wood]: %s)"
+        ("a town must sell wood exactly when its ring holds a source of it — a forest plot " +
+        "or a wood resource ([row, col, has_plot, has_wood_resource, sells_wood]: %s)")
             % str(wrong), state)
 
     # Every sold wood must come with a level and a warehouse row, like any other

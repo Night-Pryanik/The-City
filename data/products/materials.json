@@ -153,11 +153,14 @@
       "icon": "papyrus_plant.png"
     },
     {
-      // The raw resource "Wood". It is produced by the woodcutter's camp
-      // (improvement_id "lumberjack_hut") on a forest hex that has no separate
-      // wood resource: the yield depends on the density of the cover (wood_yield
-      // in data/covers.json). It is directed to the "Sawmill" (the recipe
-      // "Saw Boards" → Boards).
+      // The raw resource "Wood". It has two kinds of source, both tied to a
+      // standing improvement: the resources that list it in their produces
+      // ("oak_tree" and "campeche_tree" beside their dye product, "mulberry_tree"
+      // as a by-product of the plantation), and a woodcutter's camp
+      // (improvement_id "lumberjack_hut") on a forest hex with no resource at
+      // all, which takes the yield from the density of the cover (wood_yield in
+      // data/covers.json). It is directed to the "Sawmill" (the recipe "Saw
+      // Boards" → Boards).
       "id": "wood", "price": 2,
       "name": "Wood",
       "type": "product",

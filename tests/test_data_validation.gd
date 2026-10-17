@@ -17,9 +17,9 @@
 #      name/description fields (the charset check applies only to id fields;
 #      name/description are free-form and may contain any script, so a Cyrillic
 #      name here is a deliberate fixture) and underscores with digits in an id.
-#   3) THE LUMBERJACK HUT EXCEPTION is computed from the data, not hardcoded
-#      as a list: remove the hut or zero out wood_yield — wood loses its
-#      source, and the validator must notice this.
+#   3) THE COVER SOURCE OF WOOD is computed from the data, not hardcoded
+#      as a list: remove the hut or zero out wood_yield — the cover source of
+#      wood disappears, and the validator must notice this.
 #   4) Real data/*.json: the validator does not crash, problems correctly
 #      point at the owning product, and non-ASCII in identifiers is absent
 #      (the only exception to the rule "the list of problems on real data is
@@ -250,12 +250,12 @@ func _test_no_false_positives_on_synthetic(state: Dictionary):
     gd.free()
 
 
-# --- 3) The lumberjack hut exception is computed from the data -------------
+# --- 3) The cover source of wood is computed from the data -----------------
 #
-# "Wood" is the only product with no source in produces. The link
-# "cover → hut → product" is hardwired in the code, and it can be closed in
-# two ways: a hardcoded list of exceptions in the validator (then it would
-# stay silent forever about a removed hut or a zeroed wood_yield) or by
+# In the synthetic set wood has no source in produces: its only source is the
+# link "cover → hut → product", which is hardwired in the code. That link can
+# be closed in two ways: a hardcoded list of exceptions in the validator (then
+# it would stay silent forever about a removed hut or a zeroed wood_yield) or by
 # reading the data. The test requires the latter: wood must "lose its source"
 # when the data stops producing it — otherwise the check would lie to the
 # author that everything is fine.
@@ -526,7 +526,7 @@ func _make_data() -> Node:
     gd.improvements = {
         "farm": {"id": "farm", "name": "Farm"},
         "quarry": {"id": "quarry", "name": "Quarry"},
-        # The lumberjack hut is a producer that is in no produces
+        # The lumberjack hut carries no produces of its own in this set
         # (see the LUMBERJACK_* constants in data_validator.gd). As long as the
         # hut and a cover with wood_yield exist, the product "wood" has a source.
         "lumberjack_hut": {"id": "lumberjack_hut", "name": "Lumberjack Hut"},

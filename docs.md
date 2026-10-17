@@ -574,6 +574,19 @@ Root key: `improvements` (an array of objects).
 
 For details of the water resource access scheme, see the "Water resource extraction (the `harbor_access` scheme)" section.
 
+#### Improvement types are a convention
+
+`improved_by` answers **which improvement stands on the hex**, not what is physically done to the resource. The set of improvements is small and generic, and a resource takes the closest one of them:
+
+- galls are collected from a living oak, yet the oak is worked by a woodcutter's camp — the camp is the harvest point of the hex, not a promise that the tree is felled;
+- a woodcutter's camp on an oak gives timber as well as galls, and a mulberry plantation gives timber as well as leaves, although neither is "felling" and "planting" at the same time;
+- poultry, rabbits, pigeons and deer are all worked by a `pasture`, although none of them grazes: the pasture here means "a livestock holding", the way a farm means "a field" for two dozen unrelated crops;
+- the same crop could plausibly be a farm or a plantation (cotton, flax, sesame), and the data picks one.
+
+What is **not** a convention is the consequence of the choice: the improvement sets the profession of the worker, the `work_cost`, the unlocking technology and the production modifiers (fresh water gives `farm` ×1.5, the "Plow" technology ×1.5 to `farm`, the "Calendar" ×1.3 to `plantation`). Swapping one improvement for another on a resource is therefore a **balance** decision, not a wording fix — it changes who works the hex and how much it yields.
+
+The rule for new content: pick the closest existing improvement. A new improvement is justified only when the difference has to be visible in the economy (its own profession, its own modifiers, its own construction cost), not when the existing name merely reads a little off.
+
 ---
 
 ### `data/crafts.json` — production recipes
@@ -1049,7 +1062,7 @@ Root key: `covers` (array of objects).
 | `color` | array\<number\> | Placeholder RGB color `[r, g, b]` (0–255) for the fallback | `[34, 139, 34]` |
 | `alpha` | number | Overlay opacity (0.0 – 1.0) | `0.45` |
 | `move_cost_bonus` | number | Additional movement cost from the cover (currently 0 — the forest does not slow you down, unlike the earlier terrain-forest with `move_cost: 1`) | `0` |
-| `wood_yield` | number | ⬜ Wood output from the cover: how many units of the "Wood" goods per tick the "Woodcutter's Camp" (`lumberjack_hut`) gives. A missing field = 0 (the camp cannot be built). ANY cover with `wood_yield > 0` is taken into account — new forest covers (jungle, taiga, etc.) just need to be described here, no code change needed | `2` |
+| `wood_yield` | number | ⬜ Wood output from the cover: how many units of the "Wood" goods per tick the "Woodcutter's Camp" (`lumberjack_hut`) gives, in the same units as the `produces` of a resource. A missing field = 0 (the camp cannot be built). ANY cover with `wood_yield > 0` is taken into account — new forest covers (jungle, taiga, etc.) just need to be described here, no code change needed | `20` |
 | `fresh_water_source` | bool | ⬜ **A direct source of fresh water.** If `true`, a hex with this cover (and its coastal neighbors) gives the `water_access` scheme the `"direct"` status without researching technologies. Currently only `oasis` has it. To add a new fresh-water cover (for example, a "marsh puddle"), it is enough to set this flag. For details, see the section "Fresh-water sources: the `fresh_water_source` flag" | `true` |
 | `icons` | array\<string\> | Overlay icons in `icons/terrain/` (drawn on top of the terrain; if empty, a colored polygon) | `["forest_1.png", "forest_2.png", "forest_3.png"]` |
 
@@ -1057,8 +1070,8 @@ Root key: `covers` (array of objects).
 
 The "Woodcutter's Camp" (`lumberjack_hut`, unlocked by the "Wood Processing" technology) works in two modes:
 
-1. **On a wood resource** — if the hex has a raw resource with `improved_by: "lumberjack_hut"`, the camp extracts it like an ordinary improvement through the general production flow (the specific goods are set in the resource's `produces`).
-2. **On an empty forest hex** — if there is no resource and the cover yields wood (`wood_yield > 0`), the camp produces the "Wood" goods (`wood`): output = the cover's `wood_yield` × the multipliers of the improvement and of the "Lumberjack" profession. Currently: sparse forest — 1, forest — 2.
+1. **On a wood resource** — if the hex has a raw resource with `improved_by: "lumberjack_hut"`, the camp extracts it like an ordinary improvement through the general production flow (the specific goods are set in the resource's `produces`). The wood resources (`oak_tree`, `campeche_tree`) list `wood` there besides their own product (`galls`, `campeche_wood`): the camp fells the tree, so the timber comes along with the speciality. The mulberry plantation (`mulberry_tree`) lists it too, for its own reason — a plantation is coppiced and thinned for the leaves, so the timber is a by-product of the silkworm feed.
+2. **On an empty forest hex** — if there is no resource and the cover yields wood (`wood_yield > 0`), the camp produces the "Wood" goods (`wood`): output = the cover's `wood_yield` × the multipliers of the improvement and of the "Lumberjack" profession. Currently: sparse forest — 10, forest — 20.
 
 The camp can be built on an empty dry hex (not a mountain, not water, not a swamp/marsh, not impassable terrain with `move_cost >= 999`) with a cover of `wood_yield > 0`. Helpers: `MapHelpers.get_cover_wood_yield()` / `MapHelpers.can_build_lumberjack_hut()` (`scripts/map_helpers.gd`); production is in the `main_map.gd` tick, availability and preview are in `control_panel.gd` and `map_tooltip.gd`.
 
@@ -1293,12 +1306,12 @@ Now the timber of the cover reaches the pool, and the production closure adds th
 
 | Decision | Why |
 | --- | --- |
-| The camp's two modes are kept apart: the cover's wood is yielded only when the hex has **no** resource | Exactly the city rule (`main_map.gd`): a camp on a wood resource (`oak_tree`, `campeche_tree`) extracts that resource through the common flow and yields the resource's `produces` (`galls`, `campeche_wood`), never the cover's wood. One rule instead of two special cases |
-| The trigger is the **camp on a timber cover**, not the forest cover alone | A swamp forest yields no timber (`wood_yield` missing = 0), so a "plot" there would be a lie about the town's economy. The check is the same `wood_yield > 0` the city uses, so a future cover (jungle, taiga) needs no code change |
+| The camp's two modes are kept apart: the cover's wood is yielded only when the hex has **no** resource | Exactly the city rule (`main_map.gd`): a camp on a wood resource (`oak_tree`, `campeche_tree`) extracts that resource through the common flow and yields the resource's `produces` (`galls` + `wood`, `campeche_wood` + `wood`), never the cover's wood on top of them. One rule instead of two special cases |
+| The trigger is the **camp on a timber cover**, not the forest cover alone | A cover without `wood_yield` (reeds, an oasis) yields no timber, so a "plot" there would be a lie about the town's economy. The check is the same `wood_yield > 0` the city uses, so a future cover (jungle, taiga) needs no code change |
 | The timber is traded at the **ordinary** level (`DEFAULT_QUALITY`) | The same level the production tick credits (`main_map.gd`), and the same one the player sees in the tooltip. A bare forest hex has no rolled quality of its own |
 | The plot itself (`lumberjack_hut`) never enters the pool | The same rule as for the fields and for any other improvement: a town sells goods, not buildings |
 
-**Implementation points:** `scripts/town_economy.gd` — `FOREST_PLOT_IMPROVEMENT` / `FOREST_PLOT_PRODUCT`, `forest_plot_product()` (the camp's timber from the cover), `collect_base_resources()` and `collect_base_qualities()` (both walk the ring and take the second source besides the hex's resource). Test: `tests/test_town_forest_plot.gd` (headless) — a town with a forest hex gets a plot, sells wood and the goods made of it, and the timber carries a quality and a warehouse row; a ring without a timber cover gets neither a plot nor wood; a barren forest cover (swamp forest) is not a plot; a wood resource yields its own product and not wood; a repeated pass keeps the pool; on the live `MainMap` a town sells wood exactly when a forest plot stands in its ring.
+**Implementation points:** `scripts/town_economy.gd` — `FOREST_PLOT_IMPROVEMENT` / `FOREST_PLOT_PRODUCT`, `forest_plot_product()` (the camp's timber from the cover), `collect_base_resources()` and `collect_base_qualities()` (both walk the ring and take the second source besides the hex's resource). Test: `tests/test_town_forest_plot.gd` (headless) — a town with a forest hex gets a plot, sells wood and the goods made of it, and the timber carries a quality and a warehouse row; a ring without a timber cover gets neither a plot nor wood; a cover without `wood_yield` is not a plot; a wood resource sells the resource's own products, the timber among them, and that timber carries the quality of the resource; a repeated pass keeps the pool; on the live `MainMap` a town sells wood exactly when its ring holds a source of it — a forest plot or a wood resource.
 
 ### Town harbours
 
@@ -3284,7 +3297,7 @@ A source exists if the product's id appears in at least one of five places:
 
 **Only products are checked.** Raw resources are taken from the map by generation, so by definition they have a source, and checking raw resources would produce false positives on each of the 112 resources.
 
-**The woodcutter's camp is the only producer that is not in `produces`.** "Wood" (`wood`) does not appear in any `produces`: it is made by the camp on an empty forest hex, and the output is taken from the `wood_yield` field of the **cover** (`data/covers.json`), not from the resource on the hex (`main_map.gd`, production tick → `CityData.add_to_storage("wood", …)`). The link "cover → camp → product" is hardcoded in the code, so it is not visible from the data. The validator restores it **by reading the data**, not by an exception list: a source exists if `lumberjack_hut` is declared **and** at least one cover has `wood_yield > 0`. Demolish the camp or zero out the output from the covers — the validator will say that wood is unreachable. An exception list would be silent about both cases.
+**The woodcutter's camp has a source that is not in `produces`.** Wood has two kinds of source: resources list it in their `produces` (`oak_tree` and `campeche_tree` beside their dye product, `mulberry_tree` as a by-product of the plantation), and the camp on an **empty** forest hex takes the output from the `wood_yield` field of the **cover** (`data/covers.json`), not from a resource on the hex (`main_map.gd`, production tick → `CityData.add_to_storage("wood", …)`). The second link "cover → camp → product" is hardcoded in the code, so it is not visible from the data. The validator restores it **by reading the data**, not by an exception list: that source exists if `lumberjack_hut` is declared **and** at least one cover has `wood_yield > 0`. Demolish the camp or zero out the output from the covers — the validator will say that the cover source of wood is gone. An exception list would be silent about both cases. The check is not replaced by the `produces` one: a data set whose wood resources were removed must still be able to make wood on a forest hex.
 
 ### What the validator must NOT complain about
 
@@ -3292,7 +3305,7 @@ A source exists if the product's id appears in at least one of five places:
 - **`category` on a RAW RESOURCE** — this is a map-generation filter with its own set of values (`animals`, `plants`, `metals`, `minerals`, see `MapHelpers.ensure_minimum_resource`), not a category from `categories.json`. It must not be checked against `categories.json`: that set is not there, and the validator would spew false positives on every animal. That is why `category` is checked **only on products**.
 - **Explicitly empty fields** (`"improved_by": null`) — this is "no improvement", not a reference. `str(null)` in GDScript gives the string `"<null>"`, so empty values are converted to an empty string (`_as_id`), otherwise every empty field would be considered broken.
 - **Goods from `display_result`** — "Science" does not get into storage (it has an empty `result`), but a recipe produces it, and without accounting for `display_result` the `product_source` check would declare it unreachable.
-- **Wood from the woodcutter's camp** — produced from the cover's `wood_yield`, not from the resource's `produces`; the source is restored by reading the data (see the section above).
+- **Wood from the woodcutter's camp on a bare forest hex** — produced from the cover's `wood_yield`, not from the resource's `produces`; the source is restored by reading the data (see the section above).
 
 ### Message format
 

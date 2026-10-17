@@ -86,21 +86,24 @@ extends RefCounted
 # we skip it, otherwise the validator would complain about the pseudo-recipe "empty".
 const ANY_BUILDING_MARKER := "*"
 
-# --- THE FOREST PLOT: the only producer that is NOT in produces ---
+# --- THE FOREST PLOT: the source of wood that is NOT in produces ---
 #
-# The product "Wood" does not take part in any produces: it is made by the forest
-# plot on an EMPTY forest hex, and the output is taken from the field wood_yield
-# of the COVER (data/covers.json), and not from the resource on the hex:
+# Wood has two kinds of source. The resources that give it list it in their
+# produces ("oak_tree", "campeche_tree", "mulberry_tree"), and that source is
+# visible to a naive cross-check. The second one
+# is not: the forest plot on an EMPTY forest hex takes its output from the field
+# wood_yield of the COVER (data/covers.json), not from a resource on the hex:
 #
 #   main_map.gd, the production tick → CityData.add_to_storage("wood", …)
 #   MapHelpers.get_cover_wood_yield(tile) — cover → wood_yield
 #
 # The relation "cover → plot → product" is hardcoded, therefore it is not
-# visible from the data, and a naive cross-check would declare the wood a product without
-# a source. Here the relation is restored READABLY: the source exists, if
+# visible from the data. Here it is restored READABLY: the cover source exists if
 # the plot is declared AND at least one cover has wood_yield > 0. If the author
 # removes the plot or the output from the covers — the validator honestly says that
-# the wood is unreachable (see the test tests/test_data_validation.gd).
+# the wood is unreachable from the covers (see the test tests/test_data_validation.gd).
+# The check is kept alongside the produces one, and not replaced by it: a data set
+# without the wood resources must still be able to produce wood on a forest hex.
 #
 # --- THE RULES OF THE IDENTIFIERS ---------------------------------------------
 #
@@ -855,7 +858,7 @@ func _produced_ids(gd: Object, all_resources: Dictionary) -> Dictionary:
 # The forest plot gives the wood only if BOTH conditions from the code are met:
 # the improvement is declared AND the cover of the hex has an output. The condition is not a
 # "declaration of intent", but a real reachability: a demolished plot or a zeroed
-# wood_yield makes the wood unreachable, and the validator must say so.
+# wood_yield closes the cover source of the wood, and the validator must say so.
 func _lumberjack_produces(improvements: Dictionary, covers: Dictionary) -> bool:
     if not improvements.has(LUMBERJACK_IMPROVEMENT):
         return false
