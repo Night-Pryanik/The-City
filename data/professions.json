@@ -76,6 +76,18 @@
       "description": "Tends the herd and keeps count of the livestock."
     },
     {
+      "id": "stockman",
+      "name": "Stockman",
+      "icon": "profession_stockman.png",
+      "description": "Feeds the poultry and the small livestock kept under a roof."
+    },
+    {
+      "id": "swineherd",
+      "name": "Swineherd",
+      "icon": "profession_swineherd.png",
+      "description": "Tends the pigs and keeps the sty in order."
+    },
+    {
       "id": "miner",
       "name": "Miner",
       "icon": "profession_miner.png",

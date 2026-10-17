@@ -1,6 +1,6 @@
 {
-  // IMPORTANT: the farm / pasture / beehive / vineyard / plantation
-  // improvements work in TWO modes (see docs.md, the section
+  // IMPORTANT: the farm / pasture / farmstead / pigsty / beehive / vineyard /
+  // plantation improvements work in TWO modes (see docs.md, the section
   // "Breeding animals and plants (crop_bred scheme)"):
   //   1) The hex ALREADY has a natural resource (the improved_by field points
   //      to this improvement in data/resources/*.json). The build keeps
@@ -23,6 +23,12 @@
       "color": [ 255, 255, 0 ],
       "work_cost": 8,
       "unlock_tech": "farming",
+      // The farm works the MAIN FOOD PLANTS only — the crops of
+      // data/resources/plants/food_plants.json. No animals (they have the
+      // pasture, the farmstead and the pigsty) and no technical or auxiliary
+      // crops (the plantation): the farm is what feeds the city, and its
+      // fresh-water and "Plow" bonuses are exactly why the split matters.
+
       // The profession of the worker on this improvement. The label is set/cleared
       // automatically in worker_manager.gd on assignment/dismissal.
       "profession": "farmer",
@@ -39,6 +45,34 @@
       "work_cost": 25,
       "unlock_tech": "animal_husbandry",
       "profession": "herder"
+    },
+    {
+      "id": "farmstead",
+      "name": "Farmstead",
+      "icon": "farmstead.png",
+      "color": [ 190, 122, 53 ],
+      // Confined small livestock (poultry, pigeons, rabbits) is housed here
+      // instead of on a pasture: a fenced grazing area is the wrong label for a
+      // coop or a hutch, and the label is the whole reason the improvement
+      // exists (docs.md, "Improvement types are a convention"). The output is
+      // the same as on a pasture — neither has production modifiers — so the
+      // difference is a cheaper construction and another worker.
+      "work_cost": 12,
+      "unlock_tech": "animal_husbandry",
+      "profession": "stockman"
+    },
+    {
+      "id": "pigsty",
+      "name": "Pigsty",
+      "icon": "pigsty.png",
+      "color": [ 168, 112, 60 ],
+      // Pigs are kept in a sty, not grazed on a range — the same reasoning as the
+      // farmstead (docs.md, "Improvement types are a convention"). No production
+      // modifiers, so the output of the pigs is unchanged: the difference is the
+      // construction and the worker.
+      "work_cost": 16,
+      "unlock_tech": "animal_husbandry",
+      "profession": "swineherd"
     },
     {
       "id": "mine",

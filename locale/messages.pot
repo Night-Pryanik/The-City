@@ -3140,6 +3140,10 @@ msgid "Farm"
 msgstr ""
 
 msgctxt "improvements.name"
+msgid "Farmstead"
+msgstr ""
+
+msgctxt "improvements.name"
 msgid "Fishing Boats"
 msgstr ""
 
@@ -3157,6 +3161,10 @@ msgstr ""
 
 msgctxt "improvements.name"
 msgid "Pasture"
+msgstr ""
+
+msgctxt "improvements.name"
+msgid "Pigsty"
 msgstr ""
 
 msgctxt "improvements.name"
@@ -3328,6 +3336,10 @@ msgid "Extracts stone from open quarries."
 msgstr ""
 
 msgctxt "professions.description"
+msgid "Feeds the poultry and the small livestock kept under a roof."
+msgstr ""
+
+msgctxt "professions.description"
 msgid "Fells trees in forest plots and hauls in the timber."
 msgstr ""
 
@@ -3357,6 +3369,10 @@ msgstr ""
 
 msgctxt "professions.description"
 msgid "Tends the hives and harvests honey."
+msgstr ""
+
+msgctxt "professions.description"
+msgid "Tends the pigs and keeps the sty in order."
 msgstr ""
 
 msgctxt "professions.description"
@@ -3429,6 +3445,14 @@ msgstr ""
 
 msgctxt "professions.name"
 msgid "Soda Extractor"
+msgstr ""
+
+msgctxt "professions.name"
+msgid "Stockman"
+msgstr ""
+
+msgctxt "professions.name"
+msgid "Swineherd"
 msgstr ""
 
 msgctxt "professions.name"

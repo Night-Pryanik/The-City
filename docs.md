@@ -580,12 +580,17 @@ For details of the water resource access scheme, see the "Water resource extract
 
 - galls are collected from a living oak, yet the oak is worked by a woodcutter's camp — the camp is the harvest point of the hex, not a promise that the tree is felled;
 - a woodcutter's camp on an oak gives timber as well as galls, and a mulberry plantation gives timber as well as leaves, although neither is "felling" and "planting" at the same time;
-- poultry, rabbits, pigeons and deer are all worked by a `pasture`, although none of them grazes: the pasture here means "a livestock holding", the way a farm means "a field" for two dozen unrelated crops;
+- poultry, rabbits and pigeons used to be worked by a `pasture` too, although none of them grazes — that read as a lie about the hex, so they got a `farmstead`; pigs, which do not graze either, got a `pigsty` (see the last paragraph);
+- deer and ostriches are still worked by a `pasture`, although neither is really grazed in a fenced field: the pasture here means "a livestock range", the way a farm means "a field" for two dozen unrelated crops;
 - the same crop could plausibly be a farm or a plantation (cotton, flax, sesame), and the data picks one.
+
+**The farm is not a general-purpose field.** Its scope is fixed by design: the main food plants only — the crops of `data/resources/plants/food_plants.json` (cereals, roots, legumes). No animals (the pasture, the farmstead and the pigsty cover them), no technical or auxiliary crops and no flowers (the plantation), no grapes (the vineyard). This is the one place where the convention does not bend for a new resource: the farm carries the fresh-water ×1.5 and the "Plow" ×1.5 bonuses, so anything that lands there is by definition a crop of a well-fed city.
 
 What is **not** a convention is the consequence of the choice: the improvement sets the profession of the worker, the `work_cost`, the unlocking technology and the production modifiers (fresh water gives `farm` ×1.5, the "Plow" technology ×1.5 to `farm`, the "Calendar" ×1.3 to `plantation`). Swapping one improvement for another on a resource is therefore a **balance** decision, not a wording fix — it changes who works the hex and how much it yields.
 
 The rule for new content: pick the closest existing improvement. A new improvement is justified only when the difference has to be visible in the economy (its own profession, its own modifiers, its own construction cost), not when the existing name merely reads a little off.
+
+The `farmstead` and the `pigsty` are the cases where a new improvement was added for the label rather than for the output: poultry, pigeons and rabbits were "pastured", and so were pigs. Their production is identical to a pasture's (none of the three carries modifiers); what actually differs is the construction (`farmstead` 12, `pigsty` 16, `pasture` 25) and the worker — a `stockman` or a `swineherd` instead of a `herder`. The grazing herds, the deer and the ostrich stayed on the pasture.
 
 ---
 
@@ -1070,7 +1075,7 @@ Root key: `covers` (array of objects).
 
 The "Woodcutter's Camp" (`lumberjack_hut`, unlocked by the "Wood Processing" technology) works in two modes:
 
-1. **On a wood resource** — if the hex has a raw resource with `improved_by: "lumberjack_hut"`, the camp extracts it like an ordinary improvement through the general production flow (the specific goods are set in the resource's `produces`). The wood resources (`oak_tree`, `campeche_tree`) list `wood` there besides their own product (`galls`, `campeche_wood`): the camp fells the tree, so the timber comes along with the speciality. The mulberry plantation (`mulberry_tree`) lists it too, for its own reason — a plantation is coppiced and thinned for the leaves, so the timber is a by-product of the silkworm feed.
+1. **On a wood resource** — if the hex has a raw resource with `improved_by: "lumberjack_hut"`, the camp extracts it like an ordinary improvement through the general production flow (the specific goods are set in the resource's `produces`). The wood resources (`oak_tree`, `campeche_tree`) list `wood` there besides their own product (`galls`, `campeche_wood`): the hex yields timber along with its speciality. The mulberry plantation (`mulberry_tree`) lists it too. Neither case implies felling a tree — the improvement is the harvest point of the hex, see "Improvement types are a convention".
 2. **On an empty forest hex** — if there is no resource and the cover yields wood (`wood_yield > 0`), the camp produces the "Wood" goods (`wood`): output = the cover's `wood_yield` × the multipliers of the improvement and of the "Lumberjack" profession. Currently: sparse forest — 10, forest — 20.
 
 The camp can be built on an empty dry hex (not a mountain, not water, not a swamp/marsh, not impassable terrain with `move_cost >= 999`) with a cover of `wood_yield > 0`. Helpers: `MapHelpers.get_cover_wood_yield()` / `MapHelpers.can_build_lumberjack_hut()` (`scripts/map_helpers.gd`); production is in the `main_map.gd` tick, availability and preview are in `control_panel.gd` and `map_tooltip.gd`.
@@ -2475,6 +2480,8 @@ Data source: `worker_manager.get_planned_consumption_map()` — professional con
 | --- | --- | --- |
 | `farmer` | Farmer | farm |
 | `herder` | Herder | pasture |
+| `stockman` | Stockman | farmstead |
+| `swineherd` | Swineherd | pigsty |
 | `miner` | Miner | mine |
 | `quarryman` | Quarryman | quarry |
 | `beekeeper` | Beekeeper | beehive |

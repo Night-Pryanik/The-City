@@ -3140,6 +3140,10 @@ msgid "Farm"
 msgstr "Ферма"
 
 msgctxt "improvements.name"
+msgid "Farmstead"
+msgstr "Подворье"
+
+msgctxt "improvements.name"
 msgid "Fishing Boats"
 msgstr "Рыбацкие лодки"
 
@@ -3158,6 +3162,10 @@ msgstr "Шахта"
 msgctxt "improvements.name"
 msgid "Pasture"
 msgstr "Пастбище"
+
+msgctxt "improvements.name"
+msgid "Pigsty"
+msgstr "Свинарник"
 
 msgctxt "improvements.name"
 msgid "Plantation"
@@ -3328,6 +3336,10 @@ msgid "Extracts stone from open quarries."
 msgstr "Добывает камень в открытых карьерах."
 
 msgctxt "professions.description"
+msgid "Feeds the poultry and the small livestock kept under a roof."
+msgstr "Кормит птицу и мелкий скот, которых держат под крышей."
+
+msgctxt "professions.description"
 msgid "Fells trees in forest plots and hauls in the timber."
 msgstr "Рубит деревья на лесной делянке и заготавливает древесину."
 
@@ -3358,6 +3370,10 @@ msgstr "Присматривает за стадом, следит за пого
 msgctxt "professions.description"
 msgid "Tends the hives and harvests honey."
 msgstr "Следит за ульями, собирает мёд."
+
+msgctxt "professions.description"
+msgid "Tends the pigs and keeps the sty in order."
+msgstr "Ходит за свиньями и держит свинарник в порядке."
 
 msgctxt "professions.description"
 msgid "Turns sand and soda into glass."
@@ -3430,6 +3446,14 @@ msgstr "Плавильщик"
 msgctxt "professions.name"
 msgid "Soda Extractor"
 msgstr "Содовщик"
+
+msgctxt "professions.name"
+msgid "Stockman"
+msgstr "Животновод"
+
+msgctxt "professions.name"
+msgid "Swineherd"
+msgstr "Свиновод"
 
 msgctxt "professions.name"
 msgid "Tar Burner"
