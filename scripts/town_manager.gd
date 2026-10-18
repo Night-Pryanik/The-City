@@ -202,8 +202,8 @@ const INFLUENCE_NOTCH_MAX_DROPS := 3
 #   sell_pool, buy_pool - the (future) trade pools: what the town sells and
 #                         what it wants to buy;
 #   treasury            - the coins of the town (an integer). The starting value is
-#                         town_initial_treasury from data/game_balance.json; it is
-#                         changed only via add_town_treasury / spend_town_treasury.
+#                         town_initial_treasury from data/game_balance.json; it changes
+#                         through trade ticks and add_town_treasury / spend_town_treasury.
 #   storage             - THE WAREHOUSE of the town: product id -> units currently on
 #                         the stock (the numbers behind the sell_pool). Filled in by
 #                         TownEconomy.refresh_town and changed only via
@@ -424,6 +424,8 @@ func _make_town_record(town_index: int, row: int, col: int,
         # with the record — see the field notes above the towns array.
         "trade_signs": {},
         "trade_counter": 0,
+        "treasury_trade_sign": 0,
+        "treasury_trade_counter": 0,
         "production_started": false,
     }
 
@@ -598,16 +600,12 @@ func _is_town_production_started(town: Dictionary, tile_data: Array) -> bool:
     return true
 
 
-# ONE tick of the simulation of ALL the towns: every town that has been discovered
-# makes one TRADE per product of its warehouse — the stock goes both up and down,
-# like a real market (TownEconomy.tick_trade). A sale never takes more than the
-# warehouse holds, so the stock cannot go negative or past the cap.
+# ONE tick of the simulation of ALL the towns: every discovered town trades its
+# treasury and every product in its warehouse. A sale never takes more than the
+# warehouse holds, so stock cannot go negative or past the cap.
 #
-# The notification of the window is deliberately NOT emitted here. The towns trade
-# every few seconds and most of them are not open, and the signal is emitted for
-# every changed town on every tick; the window of a town reads the warehouse of its
-# own record on opening and on a trade deal, and the sale column is refreshed by
-# the caller (main_map) through town_ui.refresh_storage().
+# Treasury notifications are emitted through the treasury helpers. Storage is
+# refreshed by the caller (main_map) through town_ui.refresh_storage().
 func tick_towns(tile_data: Array) -> void:
     if towns.is_empty():
         return
@@ -615,6 +613,16 @@ func tick_towns(tile_data: Array) -> void:
     for town in towns:
         if not _is_town_production_started(town, tile_data):
             continue
+        var treasury_result: Dictionary = TownEconomy.tick_treasury(
+                get_town_treasury(town), int(town.get("treasury_trade_sign", 0)),
+                int(town.get("treasury_trade_counter", 0)), str(town.get("id", "")))
+        town["treasury_trade_sign"] = int(treasury_result["sign"])
+        town["treasury_trade_counter"] = int(treasury_result["counter"])
+        var treasury_delta := int(treasury_result["treasury"]) - get_town_treasury(town)
+        if treasury_delta > 0:
+            add_town_treasury(town, treasury_delta)
+        elif treasury_delta < 0:
+            spend_town_treasury(town, -treasury_delta)
         var storage: Dictionary = town.get("storage", {})
         if storage.is_empty():
             continue
@@ -1720,6 +1728,8 @@ func serialize_towns() -> Array:
             # next trade and reshuffle the warehouse.
             "trade_signs": t.get("trade_signs", {}),
             "trade_counter": int(t.get("trade_counter", 0)),
+            "treasury_trade_sign": int(t.get("treasury_trade_sign", 0)),
+            "treasury_trade_counter": int(t.get("treasury_trade_counter", 0)),
             "production_started": bool(t.get("production_started", false)),
             # road_linked - the player has built a road from the city to this town.
             # As with the other roads, the segments are not written into the save: by this
@@ -1775,6 +1785,8 @@ func load_towns(data) -> void:
                 # serialize_towns.
                 "trade_signs": entry.get("trade_signs", {}),
                 "trade_counter": int(entry.get("trade_counter", 0)),
+                "treasury_trade_sign": int(entry.get("treasury_trade_sign", 0)),
+                "treasury_trade_counter": int(entry.get("treasury_trade_counter", 0)),
                 "production_started": bool(entry.get("production_started", false)),
                 # road_linked is a road from the city to the town (see serialize_towns).
                 "road_linked": bool(entry.get("road_linked", false)),

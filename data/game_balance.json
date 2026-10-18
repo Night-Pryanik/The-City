@@ -203,6 +203,55 @@
       //                    the towns end up pinned at zero or at the cap forever.
       "town_trade_bias_strength": 0.6,
 
+      // --- The daily trade of the treasury ---
+      //
+      // The treasury breathes with the same market as the warehouse: the daily
+      // purchases and sales of goods a town makes move the coins the other way —
+      // a purchase drains the treasury, a sale fills it. The movement follows the
+      // same law as the daily trade of the stock (roll_trade_size, roll_trade_sign,
+      // see TownEconomy.tick_treasury), so the number in the window looks alive for
+      // the same reason. The comfort level it is pulled back toward is the STARTING
+      // treasury of a town (town_initial_treasury), so a town that has spent its
+      // coins down recovers toward the level it was born with.
+      //
+      // town_treasury_trade_min / town_treasury_trade_max — the bounds of an
+      //                    ORDINARY treasury trade, in coins. Money moves in bigger
+      //                    numbers than units of goods, so these are larger than the
+      //                    town_trade_* bounds.
+      "town_treasury_trade_min": 20,
+      "town_treasury_trade_max": 120,
+
+      // town_treasury_bulk_chance — the chance that a day's treasury trade is a BULK
+      //                    one (a caravan settlement); on such a day the drawn sum is
+      //                    multiplied by a factor from
+      //                    [town_treasury_bulk_min, town_treasury_bulk_max].
+      "town_treasury_bulk_chance": 0.06,
+      "town_treasury_bulk_min": 3,
+      "town_treasury_bulk_max": 8,
+
+      // town_treasury_inertia — how strongly the direction of the last treasury trade
+      //                    repeats. Without it the direction would flip every day and
+      //                    the sum would look like pure noise.
+      "town_treasury_inertia": 0.65,
+
+      // town_treasury_bias_strength — how strongly an empty treasury tilts the town
+      //                    toward SELLING goods (income) and a full one toward BUYING
+      //                    (spending). This is the anchor that keeps the sum around
+      //                    the comfort level.
+      "town_treasury_bias_strength": 0.6,
+
+      // town_treasury_recovery_threshold — the share of the comfort level below which
+      //                    the treasury counts as "close to zero". There the daily
+      //                    direction is forced toward income and the size of the step is
+      //                    capped by town_treasury_recovery_step, so the treasury drifts
+      //                    back up toward the starting value slowly instead of snapping
+      //                    to it. That is what keeps a buyer for the player's goods:
+      //                    a town that has spent its coins down does not stay empty-handed.
+      // town_treasury_recovery_step — the cap on a recovery day's step, as a share of
+      //                    the comfort level.
+      "town_treasury_recovery_threshold": 0.15,
+      "town_treasury_recovery_step": 0.02,
+
       // --- A standing contract: what a town can actually supply ---
       //
       // The output of a town is virtual and has no building behind it: a town has no

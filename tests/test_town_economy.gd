@@ -630,6 +630,53 @@ func _test_town_treasury() -> void:
     _check(tm.get_town_treasury(tm.towns[0]) == expected,
         "a save without a town treasury must receive the starting value")
 
+    var balance := expected
+    var last_sign := 0
+    var counter := 0
+    var income_days := 0
+    var expense_days := 0
+    for _i in range(400):
+        var result: Dictionary = _te.tick_treasury(balance, last_sign, counter, "town_market")
+        var next_balance := int(result["treasury"])
+        last_sign = int(result["sign"])
+        counter = int(result["counter"])
+        if next_balance > balance:
+            income_days += 1
+        elif next_balance < balance:
+            expense_days += 1
+        balance = next_balance
+        _check(balance >= 0, "the town's simulated treasury must not go negative")
+    _check(income_days > 0 and expense_days > 0,
+        "the treasury must simulate both town sales and purchases (income=%d, expenses=%d)"
+            % [income_days, expense_days])
+
+    balance = 0
+    last_sign = 0
+    counter = 0
+    for _i in range(10):
+        var result: Dictionary = _te.tick_treasury(balance, last_sign, counter, "town_recovery")
+        balance = int(result["treasury"])
+        last_sign = int(result["sign"])
+        counter = int(result["counter"])
+    _check(balance > 0 and balance < expected,
+        "a near-empty treasury must recover gradually toward its initial value (got %d)" % balance)
+
+    var active_town: Dictionary = tm._make_town_record(1, 5, 5, false)
+    active_town["production_started"] = true
+    tm.towns.append(active_town)
+    tm.tick_towns(_map_with_tile(5, 5, {"is_explored": true}))
+    _check(int(active_town.get("treasury_trade_counter", 0)) == 1,
+        "a discovered town must advance its treasury trade counter on a town tick")
+    _check(tm.get_town_treasury(active_town) != expected,
+        "a discovered town must trade treasury coins on a town tick")
+    var active_save: Array = tm.serialize_towns()
+    tm.load_towns(active_save)
+    var loaded_active: Dictionary = tm.towns[1]
+    _check(int(loaded_active.get("treasury_trade_counter", -1)) == 1,
+        "the treasury trade counter must survive a save")
+    _check(int(loaded_active.get("treasury_trade_sign", 0)) != 0,
+        "the treasury trade direction must survive a save")
+
     ui.queue_free()
     tm.queue_free()
 

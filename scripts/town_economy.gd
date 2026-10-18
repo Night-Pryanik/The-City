@@ -472,6 +472,59 @@ static func tick_trade(storage: Dictionary, signs: Dictionary, counter: int,
     return counter + 1
 
 
+static func tick_treasury(treasury: int, last_sign: int, counter: int,
+        town_id: String) -> Dictionary:
+    var rng := RandomNumberGenerator.new()
+    rng.seed = _seed_for(town_id, "treasury:%d" % counter)
+    var current := maxi(0, treasury)
+    var comfort := float(GameData.game_balance.get("town_initial_treasury", 1000))
+    if comfort <= 0.0:
+        return {"treasury": current, "sign": 0, "counter": counter + 1}
+
+    var recovery_threshold := comfort * clampf(
+            float(GameData.game_balance.get("town_treasury_recovery_threshold", 0.15)),
+            0.0, 1.0)
+    var sign := _roll_treasury_trade_sign(float(current), comfort, last_sign, rng)
+    var amount := roundi(_roll_treasury_trade_size(rng))
+    if float(current) <= recovery_threshold:
+        sign = 1
+        var recovery_cap := maxf(1.0, comfort * maxf(0.0,
+                float(GameData.game_balance.get("town_treasury_recovery_step", 0.02))))
+        amount = mini(amount, roundi(recovery_cap))
+
+    var delta := amount if sign > 0 else -mini(current, amount)
+    return {"treasury": current + delta, "sign": sign if delta != 0 else 0,
+            "counter": counter + 1}
+
+
+static func _roll_treasury_trade_sign(treasury: float, comfort: float,
+        last_sign: int, rng: RandomNumberGenerator) -> int:
+    var fill := clampf(treasury / (comfort * 2.0), 0.0, 1.0)
+    var bias := clampf(float(GameData.game_balance.get("town_treasury_bias_strength", 0.6)),
+            0.0, 1.0)
+    var income_chance := clampf(0.5 + (0.5 - fill) * bias, 0.05, 0.95)
+    var inertia := clampf(float(GameData.game_balance.get("town_treasury_inertia", 0.65)),
+            0.0, 1.0)
+    if last_sign != 0 and rng.randf() < inertia:
+        return last_sign
+    return 1 if rng.randf() < income_chance else -1
+
+
+static func _roll_treasury_trade_size(rng: RandomNumberGenerator) -> float:
+    var low := maxf(0.0, float(GameData.game_balance.get("town_treasury_trade_min", 20)))
+    var high := maxf(low, float(GameData.game_balance.get("town_treasury_trade_max", 120)))
+    var size := rng.randf_range(low, high)
+    var bulk_chance := clampf(
+            float(GameData.game_balance.get("town_treasury_bulk_chance", 0.06)), 0.0, 1.0)
+    if rng.randf() < bulk_chance:
+        var bulk_low := maxf(1.0,
+                float(GameData.game_balance.get("town_treasury_bulk_min", 3)))
+        var bulk_high := maxf(bulk_low,
+                float(GameData.game_balance.get("town_treasury_bulk_max", 8)))
+        size *= rng.randf_range(bulk_low, bulk_high)
+    return size
+
+
 # --- The supply of a standing contract ---
 #
 # A standing contract draws goods from the warehouse of a town every tick, and the
