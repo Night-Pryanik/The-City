@@ -17,7 +17,9 @@
 #      on the dark panel.
 #   4. AMOUNT. Only whole positive numbers are accepted (anything else is dropped,
 #      including on paste), the leading zeros are stripped, the step is 10 by default,
-#      1 with Ctrl and 100 with Shift, and the amount never falls below 1.
+#      1 with Ctrl and 100 with Shift, and the amount never falls below 1. Buying from
+#      a town is capped by its stock: neither the "+" button, nor a typed number on the
+#      focus loss, nor a click on the empty space of the panel may exceed it.
 #   5. WARNING. The route-capacity triangle appears exactly when the amount exceeds
 #      the throughput of the route to the city, and its tooltip names the shortfall —
 #      through the wrapping tooltip (see wrapped_tooltip.gd), because the hint is long.
@@ -401,6 +403,37 @@ func _test_amount(town: Dictionary) -> void:
     _check(_ui._confirm_button.disabled, "confirm must be disabled without a positive amount")
     _type("5")
     _check(not _ui._confirm_button.disabled, "confirm must be enabled for a positive amount")
+
+    # Buying from a town is capped by its stock: neither the "+" button nor a number
+    # typed by hand may exceed it, or the manager would refuse the order.
+    var stock: int = _ui._max_order_amount()
+    _check(stock > 0, "a row of the sale column must have a bounded amount (the stock)")
+    _ui._set_amount(stock)
+    _ui._add_amount(100)
+    _check(_ui._current_amount() == stock,
+        "the \"+\" button must not raise the amount above the stock (got %d, stock %d)"
+            % [_ui._current_amount(), stock])
+    _type(str(stock + 50))
+    _ui._on_amount_focus_exited()
+    _check(_ui._current_amount() == stock,
+        "a typed amount above the stock must be clamped on the focus loss (got %d, stock %d)"
+            % [_ui._current_amount(), stock])
+
+    # A click on the empty space inside the panel clamps the amount the same way a focus
+    # loss does — the field must not keep an over-stock number just because the click did
+    # not land on a control.
+    _type(str(stock + 50))
+    _click_panel(_ui._trade_panel)
+    _check(_ui._current_amount() == stock,
+        "a click on the empty space of the panel must clamp the amount to the stock"
+            + " (got %d, stock %d)" % [_ui._current_amount(), stock])
+    # ...and the click must actually REACH the panel: the container boxes inside it must
+    # not swallow the clicks on their empty space on the way down.
+    _check(_ui._trade_panel.mouse_filter == Control.MOUSE_FILTER_STOP,
+        "the panel must catch the clicks on its empty space")
+    for child in _ui._trade_panel.get_children():
+        _check(child.mouse_filter == Control.MOUSE_FILTER_IGNORE,
+            "the box inside the panel must let the empty-space clicks through")
 
 # -------------------------------------------------------
 # 5. The route-capacity warning
@@ -1055,6 +1088,11 @@ func _click(row: Control) -> void:
     event.button_index = MOUSE_BUTTON_LEFT
     event.pressed = true
     row.gui_input.emit(event)
+
+# Simulates a left click on the empty space of the trade panel (the same signal the panel
+# receives when the click lands on its padding and not on a control).
+func _click_panel(panel: Control) -> void:
+    _click(panel)
 
 # Simulates typing into the amount field: the engine sets the text first and then
 # emits text_changed, so the test mirrors that order.

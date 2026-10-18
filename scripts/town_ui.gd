@@ -335,6 +335,11 @@ func refresh_storage():
     # The total of an open order is the amount times the price of a unit, so it has to
     # follow the price as well — otherwise the sum would go stale under the player.
     if _trade_panel != null and is_instance_valid(_trade_panel):
+        # The tick moved the warehouse: a town that sold goods of its own (or backed a
+        # standing contract) may have dropped below the number sitting in the field. The
+        # amount is clamped here as well, so an order assembled after the tick cannot ask
+        # for more than the town has, no matter how long the panel has been open.
+        _commit_amount_clamp()
         _update_total_label(_current_amount())
 
 # The units of a good that the town has on the stock. The rows are keyed by the
@@ -832,13 +837,23 @@ func _scroll_for_side(side: String) -> ScrollContainer:
 func _build_trade_panel() -> PanelContainer:
     var panel := PanelContainer.new()
     panel.add_theme_stylebox_override("panel", _make_panel_style())
+    # The panel itself catches the clicks that land on its empty space (the padding, the
+    # caption, the free space of the buttons row) so they clamp the amount like a focus
+    # loss does (see _on_panel_gui_input). The children keep their own filters: a click on
+    # a button or on the field never reaches the panel.
+    panel.mouse_filter = Control.MOUSE_FILTER_STOP
+    panel.gui_input.connect(_on_panel_gui_input)
 
     var vbox := VBoxContainer.new()
     vbox.add_theme_constant_override("separation", 6)
+    # The containers pass the clicks on their empty space down to the panel, so a click
+    # between the rows reaches _on_panel_gui_input instead of being swallowed here.
+    vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
     panel.add_child(vbox)
 
     var amount_row := HBoxContainer.new()
     amount_row.add_theme_constant_override("separation", 6)
+    amount_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
     var amount_caption := Label.new()
     amount_caption.text = tr("Amount:")
     amount_caption.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -861,6 +876,7 @@ func _build_trade_panel() -> PanelContainer:
     _amount_edit.tooltip_text = tr("Only whole positive numbers are accepted")
     _style_amount_field(_amount_edit)
     _amount_edit.text_changed.connect(_on_amount_text_changed)
+    _amount_edit.focus_exited.connect(_on_amount_focus_exited)
     amount_row.add_child(_amount_edit)
 
     var plus_button := Button.new()
@@ -891,6 +907,7 @@ func _build_trade_panel() -> PanelContainer:
     # the word toggles the box as well — but it deliberately carries no tooltip.
     var permanent_row := HBoxContainer.new()
     permanent_row.add_theme_constant_override("separation", 4)
+    permanent_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
     _permanent_check = CheckBox.new()
     _permanent_check.name = "PermanentCheck"
     _permanent_check.text = ""
@@ -916,6 +933,7 @@ func _build_trade_panel() -> PanelContainer:
     # the two buttons to the right edge (see _update_total_label).
     var buttons_row := HBoxContainer.new()
     buttons_row.add_theme_constant_override("separation", 6)
+    buttons_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
     _total_label = Label.new()
     _total_label.name = "TotalLabel"
     _total_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1132,9 +1150,32 @@ func _add_amount(delta: int) -> void:
     if current <= 0:
         if delta < 0:
             return
-        _set_amount(delta)
+        _set_amount(_clamp_to_stock(delta))
         return
-    _set_amount(maxi(1, current + delta))
+    _set_amount(maxi(1, _clamp_to_stock(current + delta)))
+
+# The largest amount the open panel may order: what the town actually holds, or 0 when the
+# amount is unbounded (the city selling to the town — the panel does not track the storage
+# of the city).
+#
+# Buying from a town (the sale column) is limited by its stock: the manager refuses more
+# than that (see town_trade_manager._buy_once), so the field must not offer the surplus in
+# the first place. The ceiling is the stock of the SPECIFIC id behind the row and not the
+# summed number the row shows, because that sum can cover several ids that share a display
+# name while the manager checks one id only.
+func _max_order_amount() -> int:
+    if _town == null or _selected_side != SIDE_SELL or _selected_id.is_empty():
+        return 0
+    return maxi(int(_town.get("storage", {}).get(_selected_id, 0)), 1)
+
+# Brings an amount down to the stock of the town when the amount is bounded. It is the one
+# place the ceiling is applied, so the "+" button, the amount typed by hand and the order
+# itself cannot disagree about how much the town has.
+func _clamp_to_stock(amount: int) -> int:
+    var limit := _max_order_amount()
+    if limit <= 0:
+        return amount
+    return mini(amount, limit)
 
 func _set_amount(amount: int) -> void:
     if _amount_edit == null or not is_instance_valid(_amount_edit):
@@ -1166,6 +1207,37 @@ func _on_amount_text_changed(new_text: String) -> void:
         _amount_edit.caret_column = clean.length()
         _suppress_edit = false
     _update_amount_feedback()
+
+# A number typed by hand is not held back while the player is still typing (he may be on
+# his way to a smaller number), so the amount is brought down to the stock of the town the
+# moment the field loses focus. That covers the confirm click as well: the button takes the
+# focus, the field gives it up and the amount is clamped BEFORE the order is assembled.
+func _on_amount_focus_exited() -> void:
+    _commit_amount_clamp()
+
+# A click on the empty space of the panel — the padding between the rows, the caption,
+# the free space of the buttons row — takes the focus away from the amount field, the
+# same way a click on the confirm button does. The field must not keep a number above
+# the stock in it just because the click did not land on a control: the amount is clamped
+# right here, so the "+" button, the focus loss and the click on the panel all agree.
+func _on_panel_gui_input(event: InputEvent) -> void:
+    if not (event is InputEventMouseButton):
+        return
+    var mouse := event as InputEventMouseButton
+    if mouse.button_index != MOUSE_BUTTON_LEFT or not mouse.pressed:
+        return
+    _commit_amount_clamp()
+
+# Brings the amount down to the stock of the town when it is above the ceiling. The single
+# action behind the three moments the ceiling is applied at once — the focus loss, the
+# click on the empty space of the panel and the order itself — so they cannot diverge.
+func _commit_amount_clamp() -> void:
+    if _amount_edit == null or not is_instance_valid(_amount_edit):
+        return
+    var amount := _current_amount()
+    var clamped := _clamp_to_stock(amount)
+    if clamped != amount:
+        _set_amount(clamped)
 
 func _sanitize_amount(text: String) -> String:
     var digits := ""
@@ -1290,9 +1362,12 @@ func _update_deal_status_label() -> void:
 # the manager announces the change (contracts_changed) and the window re-reads the contract
 # of the selected good (see on_contracts_changed).
 func _on_confirm_pressed() -> void:
-    var amount := _current_amount()
+    var amount := _clamp_to_stock(_current_amount())
     if amount <= 0:
         return
+    # The field is brought in line with the order as well: the stock may have moved between
+    # the typing and the click, and the number on the screen must be the number that is sent.
+    _set_amount(amount)
     _last_order = {
         "town_id": str(_town.get("id", "")),
         "town_name": str(_town.get("name", "")),
