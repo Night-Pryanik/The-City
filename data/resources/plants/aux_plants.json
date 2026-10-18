@@ -45,8 +45,24 @@
       "allowed_cover": [ "none" ],
       "improved_by": "plantation",
       "tech_required": "plantations",
-      "produces": { "cocoa_beans": 10, "feed": 40 },
+      "produces": { "cocoa_beans": 10 },
       "icon": "cocoa.png",
+      "color": [ 200, 255, 200 ]
+    },
+    {
+      "id": "yerba_mate_tree",
+      "price": 9,
+      "name": "Yerba mate",
+      "type": "raw",
+      "category": "aux_plants",
+      "group": "stimulating_plants",
+      "subgroup": "stimulating_drinks",
+      "allowed_terrain": [ "plain", "hill" ],
+      "allowed_cover": [ "none" ],
+      "improved_by": "plantation",
+      "tech_required": "plantations",
+      "produces": { "yerba_mate_leaves": 10 },
+      "icon": "mate.png",
       "color": [ 200, 255, 200 ]
     }
   ]

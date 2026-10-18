@@ -79,6 +79,14 @@
       "icon": "cocoa_beans.png"
     },
     {
+      "id": "yerba_mate_leaves", "price": 6,
+      "name": "Yerba Mate Leaves",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "fermentation",
+      "icon": "yerba_mate_leaves.png"
+    },
+    {
       "id": "sisal", "price": 6,
       "name": "Sisal",
       "type": "product",

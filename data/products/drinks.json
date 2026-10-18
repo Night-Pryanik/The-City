@@ -73,6 +73,15 @@
       "icon": "cocoa.png"
     },
     {
+      "id": "mate",
+      "price": 18,
+      "name": "Mate",
+      "type": "product",
+      "category": "drinks",
+      "unlock_tech": "fermentation",
+      "icon": "mate.png"
+    },
+    {
       "id": "vinegar",
       "price": 18,
       "name": "Vinegar",

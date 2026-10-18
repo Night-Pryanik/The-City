@@ -144,6 +144,16 @@
       "time": 5.0,
       "unlock_tech": "fermentation",
       "description": "Dries, ferments, roasts and grinds cocoa beans."
+    },
+    {
+      "id": "mate",
+      "name": "Mate",
+      "produced_in": [ "dryer_house" ],
+      "resources": { "yerba_mate_leaves": 20 },
+      "result": { "mate": 10 },
+      "time": 5.0,
+      "unlock_tech": "fermentation",
+      "description": "Dries, rolls, withers and ferments yerba mate leaves."
     }
   ]
 }
