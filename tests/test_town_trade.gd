@@ -9,8 +9,7 @@
 #                       town, the goods travel by the road (the transit delay) and
 #                       reach the city storage with the quality of the town;
 #   refusals          — beyond the stock, without the coins, a wrong side or a zero
-#                       amount change nothing at all;
-#   price_recompute   — an order that carries no price is charged the price of the row;
+#                       amount change nothing at all;#   price_recompute   — an order that carries no price is charged the price of the row;
 #   contract_ticks    — a standing contract charges and delivers every tick;
 #   plan              — a live contract enters the PLAN of the tick (the green dynamics of
 #                       the tab "Resources" reads the plan), a one-time purchase does not,
@@ -29,6 +28,19 @@
 #                       it serves an order up to its comfort rate for free, and above it
 #                       strains — the warehouse drains the faster, the bigger the order —
 #                       until the stock runs dry and the contract tears.
+#   sell_once         — the city sells: the goods leave the city storage, the town pays
+#                       from its treasury, and the bought goods join the virtual
+#                       production of the town (its shelf stays pruned to the sell pool);
+#   sell_group        — a group of the buy pool is sold as "any member": the units are
+#                       taken from the members the city actually has, chosen at random
+#                       (never from a good outside the group), and the group is paid at
+#                       its own price — the average of its members;
+#   sell_refusals     — a good the town does not buy, a city without the goods, a town
+#                       without the coins and an opposite-direction order change nothing;
+#   sell_contract     — a standing sale pays and drains every tick, and is torn when the
+#                       city runs out of the goods or the town cannot pay;
+#   sell_save_load    — a sale contract survives a save round-trip with its direction and
+#                       keeps charging.
 #
 # The map is a stub (a route keyed by "row,col"), the towns are a TownManager with one
 # synthetic record, the logistics is a REAL delivery_manager over the stub — the trade
@@ -104,6 +116,16 @@ func _run() -> void:
 		_test_delivery_cancel(state)
 	if WATCHDOG.wants_case("delivery_save_load"):
 		_test_delivery_save_load(state)
+	if WATCHDOG.wants_case("sell_once"):
+		_test_sell_once(state)
+	if WATCHDOG.wants_case("sell_group"):
+		_test_sell_group(state)
+	if WATCHDOG.wants_case("sell_refusals"):
+		_test_sell_refusals(state)
+	if WATCHDOG.wants_case("sell_contract"):
+		_test_sell_contract(state)
+	if WATCHDOG.wants_case("sell_save_load"):
+		_test_sell_save_load(state)
 
 	_free_rig()
 	WATCHDOG.report_skipped()
@@ -185,12 +207,12 @@ func _test_refusals(state: Dictionary) -> void:
 	check(_tm.get_town_goods(town, WOOD) == 100,
 			"a refused purchase must not touch the warehouse of the town", state)
 
-	# The city sells to a town: that direction is not implemented yet.
+	# The city sells to a town: the town does not buy this good (its buy pool is empty).
 	var selling := _order(10, false, price)
 	selling["side"] = "buy"
 	result = _trade.submit_order(selling)
 	check(not bool(result.get("ok", false)),
-			"selling to a town is not implemented yet", state)
+			"a good the town does not buy must not be sold to it", state)
 	check(not str(result.get("message", "")).is_empty(),
 			"the refusal must explain itself", state)
 
@@ -927,6 +949,229 @@ func _test_delivery_save_load(state: Dictionary) -> void:
 # A fresh rig: one town with 100 units and a treasury of 500, a route of the given
 # length and flow (no route when the speed is 0), a real logistics over the stub and
 # a trade manager over the towns and the logistics. The city starts with 1000 coins.
+# -------------------------------------------------------
+# 15. The city sells: a one-time deal
+# -------------------------------------------------------
+
+func _test_sell_once(state: Dictionary) -> void:
+	var town := _rig(0.0, 0)
+	town["buy_pool"] = [WOOD]
+	_cdata.city_storage[WOOD] = 50
+	var price := int(round(_gdata.get_price(WOOD)))
+	var town_before: int = _tm.get_town_treasury(town)
+	var city_before: int = _cdata.treasury
+	var result = _trade.submit_order(_sell_order(WOOD, 10, false, price))
+	check(bool(result.get("ok", false)),
+			"a sale with enough goods and coins must succeed: %s"
+					% str(result.get("message", "")), state)
+	check(not str(result.get("message", "")).is_empty(),
+			"a settled sale must say what happened", state)
+	check(int(_cdata.city_storage.get(WOOD, 0)) == 40,
+			"the goods must leave the city storage (wood %d)"
+					% int(_cdata.city_storage.get(WOOD, 0)), state)
+	check(_tm.get_town_treasury(town) == town_before - 10 * price,
+			"the town must pay for the goods (treasury %d, expected %d)"
+					% [_tm.get_town_treasury(town), town_before - 10 * price], state)
+	check(_cdata.treasury == city_before + 10 * price,
+			"the city must be paid (treasury %d, expected %d)"
+					% [_cdata.treasury, city_before + 10 * price], state)
+	check(int(_cdata.treasury_income_accum.get(_gdata.SRC_TOWN_TRADE, 0)) == 10 * price,
+			"the sale must enter the income of the trade with the towns", state)
+	check(_tm.get_town_goods(town, WOOD) == 100,
+			"the bought goods join the virtual production of the town and not its shelf", state)
+
+
+# -------------------------------------------------------
+# 16. The city sells a GROUP: any member, chosen from the city stock
+# -------------------------------------------------------
+
+func _test_sell_group(state: Dictionary) -> void:
+	var town := _rig(0.0, 0)
+	town["buy_pool"] = ["@fruits"]
+	town["treasury"] = 100000
+	var members: Array = _gdata.product_groups.get("fruits", [])
+	var stocked: Array = ["grapes", "figs"]
+	_cdata.city_storage.clear()
+	for pid in stocked:
+		_cdata.city_storage[pid] = 40
+	# A good outside the group: it must never be taken for a group sale.
+	_cdata.city_storage[WOOD] = 40
+	var price: int = _te.get_group_price("@fruits")
+	check(price > 0, "the group @fruits must have a price of its own", state)
+
+	# An order that carries no price is charged the group price of the row.
+	var result = _trade.submit_order(_sell_order("@fruits", 8, false, 0))
+	check(bool(result.get("ok", false)),
+			"a group sale with enough members in stock must succeed: %s"
+					% str(result.get("message", "")), state)
+	var total_stock := 0
+	for pid in stocked:
+		total_stock += int(_cdata.city_storage.get(pid, 0))
+	check(total_stock == 80 - 8,
+			"the group sale must take exactly its amount from the members in stock (%d left)"
+					% total_stock, state)
+	check(int(_cdata.city_storage.get(WOOD, 0)) == 40,
+			"a good outside the group must not be taken", state)
+	check(_tm.get_town_treasury(town) == 100000 - 8 * price,
+			"the town must pay the price of the GROUP (%d, treasury %d)"
+					% [price, _tm.get_town_treasury(town)], state)
+
+	# The member is chosen at random, not always the first one. A fresh rig with both
+	# members at 40 and ten sales of 2 units: a "first member always" choice would leave
+	# the second member untouched, a random one spreads the units over both.
+	town = _rig(0.0, 0)
+	town["buy_pool"] = ["@fruits"]
+	town["treasury"] = 100000
+	_cdata.city_storage.clear()
+	for pid in stocked:
+		_cdata.city_storage[pid] = 40
+	_cdata.city_storage[WOOD] = 40
+	for i in range(10):
+		_trade.submit_order(_sell_order("@fruits", 2, false, price))
+	check(int(_cdata.city_storage.get("grapes", 0)) < 40
+					and int(_cdata.city_storage.get("figs", 0)) < 40,
+			"the group must be spread over its members (grapes %d, figs %d)"
+					% [int(_cdata.city_storage.get("grapes", 0)),
+					int(_cdata.city_storage.get("figs", 0))], state)
+	check(int(_cdata.city_storage.get(WOOD, 0)) == 40,
+			"a good outside the group must not be taken by the small sales either", state)
+
+
+# -------------------------------------------------------
+# 17. The refusals of a sale
+# -------------------------------------------------------
+
+func _test_sell_refusals(state: Dictionary) -> void:
+	var town := _rig(0.0, 0)
+	_cdata.city_storage[WOOD] = 50
+
+	# The town does not buy the good: its buy pool is the whole demand.
+	var result = _trade.submit_order(_sell_order(WOOD, 5, false, 10))
+	check(not bool(result.get("ok", false)),
+			"a good outside the buy pool must not be sold", state)
+	check(int(_cdata.city_storage.get(WOOD, 0)) == 50 and _cdata.treasury == 1000
+					and _tm.get_town_treasury(town) == 500,
+			"a refused sale must change nothing", state)
+
+	town["buy_pool"] = [WOOD]
+	# The city does not have the goods.
+	_cdata.city_storage[WOOD] = 3
+	result = _trade.submit_order(_sell_order(WOOD, 5, false, 10))
+	check(not bool(result.get("ok", false)),
+			"a sale beyond the city storage must not succeed", state)
+	check(int(_cdata.city_storage.get(WOOD, 0)) == 3 and _tm.get_town_treasury(town) == 500,
+			"a refused sale must not move the goods or the coins", state)
+
+	# The town cannot pay.
+	_cdata.city_storage[WOOD] = 50
+	town["treasury"] = 5
+	result = _trade.submit_order(_sell_order(WOOD, 5, false, 100))
+	check(not bool(result.get("ok", false)),
+			"a sale the town cannot pay must not succeed", state)
+	check(int(_cdata.city_storage.get(WOOD, 0)) == 50 and _tm.get_town_treasury(town) == 5,
+			"a refused sale must not write the goods off", state)
+
+	# A group with no member in stock.
+	town["buy_pool"] = ["@fruits"]
+	town["treasury"] = 500
+	_cdata.city_storage.clear()
+	result = _trade.submit_order(_sell_order("@fruits", 1, false, 10))
+	check(not bool(result.get("ok", false)),
+			"a group the city has nothing of must not be sold", state)
+
+	# The opposite direction of an existing contract is a refusal, not an edit.
+	town["buy_pool"] = [WOOD]
+	_cdata.city_storage[WOOD] = 50
+	check(bool(_trade.submit_order(_order(10, true, _unit_price())).get("ok", false)),
+			"the town must be able to sign a contract to sell wood", state)
+	result = _trade.submit_order(_sell_order(WOOD, 5, true, 10))
+	check(not bool(result.get("ok", false)),
+			"a contract in the opposite direction must be refused", state)
+
+
+# -------------------------------------------------------
+# 18. A standing sale: it pays and drains every tick
+# -------------------------------------------------------
+
+func _test_sell_contract(state: Dictionary) -> void:
+	var town := _rig(0.0, 0)
+	town["buy_pool"] = [WOOD]
+	town["treasury"] = 100000
+	_cdata.city_storage[WOOD] = 30
+	var price := 5
+	var result = _trade.submit_order(_sell_order(WOOD, 10, true, price))
+	check(bool(result.get("ok", false)),
+			"a standing sale with enough goods and coins must be signed: %s"
+					% str(result.get("message", "")), state)
+	check(_trade._contracts.size() == 1, "the sale must be one contract", state)
+	check(str(_trade._contracts[0].get("side", "")) == "buy",
+			"the contract must remember the direction of the town", state)
+	check(_trade.get_contracts()[0].get("type", "") == "sell",
+			"the row of the deal must be a sale for the city", state)
+
+	var city_before: int = _cdata.treasury
+	var town_before: int = _tm.get_town_treasury(town)
+	_trade.tick_contracts()
+	check(int(_cdata.city_storage.get(WOOD, 0)) == 20,
+			"one tick must give the town 10 units (wood %d)"
+					% int(_cdata.city_storage.get(WOOD, 0)), state)
+	check(_cdata.treasury == city_before + 10 * price,
+			"the city must be paid every tick", state)
+	check(_tm.get_town_treasury(town) == town_before - 10 * price,
+			"the town must pay every tick", state)
+	check(_planned_entry(WOOD, _gdata.SRC_TOWN_TRADE).is_empty(),
+			"a sale must not enter the plan of the production", state)
+
+	# The stock runs out: the last tick gives what is left, the next one tears.
+	_trade.tick_contracts()
+	_trade.tick_contracts()
+	check(int(_cdata.city_storage.get(WOOD, 0)) == 0,
+			"the contract must drain the city storage (wood %d)"
+					% int(_cdata.city_storage.get(WOOD, 0)), state)
+	_trade.tick_contracts()
+	check(_trade._contracts.is_empty(),
+			"a sale contract must tear when the city runs out of the goods", state)
+
+	# A town that cannot pay tears the contract before any goods move.
+	var town2 := _rig(0.0, 0)
+	town2["buy_pool"] = [WOOD]
+	town2["treasury"] = 100
+	_cdata.city_storage[WOOD] = 30
+	check(bool(_trade.submit_order(_sell_order(WOOD, 5, true, 10)).get("ok", false)),
+			"the contract must be signed while the town can pay the first tick", state)
+	town2["treasury"] = 0
+	_trade.tick_contracts()
+	check(_trade._contracts.is_empty(),
+			"a sale contract must tear when the town cannot pay", state)
+	check(int(_cdata.city_storage.get(WOOD, 0)) == 30,
+			"a torn tick must not move the goods", state)
+
+
+# -------------------------------------------------------
+# 19. A sale contract survives a save round-trip
+# -------------------------------------------------------
+
+func _test_sell_save_load(state: Dictionary) -> void:
+	var town := _rig(0.0, 0)
+	town["buy_pool"] = [WOOD]
+	town["treasury"] = 100000
+	_cdata.city_storage[WOOD] = 30
+	check(bool(_trade.submit_order(_sell_order(WOOD, 5, true, 4)).get("ok", false)),
+			"the sale contract must be signed", state)
+	var saved: Array = _trade.serialize()
+	var restored = load("res://scripts/town_trade_manager.gd").new()
+	restored.initialize(_tm, _dm)
+	restored.deserialize(saved)
+	var deals: Array = restored.get_contracts()
+	check(deals.size() == 1 and str(deals[0].get("type", "")) == "sell",
+			"the direction of a sale contract must survive the save", state)
+	var before := int(_cdata.city_storage.get(WOOD, 0))
+	restored.tick_contracts()
+	check(int(_cdata.city_storage.get(WOOD, 0)) == before - 5,
+			"a restored sale contract must keep charging", state)
+	restored.free()
+
+
 func _rig(speed: float, length: int) -> Dictionary:
 	_free_rig()
 	_cdata.city_storage.clear()
@@ -1014,6 +1259,13 @@ func _order_of(product_id: String, amount: int, permanent: bool, unit_price: int
 	var order := _order(amount, permanent, unit_price)
 	order["product_id"] = product_id
 	order["product_name"] = str(_gdata.get_resource_data(product_id).get("name", product_id))
+	return order
+
+# The order of the purchase column of the window (see town_ui._on_confirm_pressed): the
+# town buys, so the city sells. The goods are a concrete id or an "@group".
+func _sell_order(product_id: String, amount: int, permanent: bool, unit_price: int) -> Dictionary:
+	var order := _order_of(product_id, amount, permanent, unit_price)
+	order["side"] = "buy"
 	return order
 
 # Runs a standing contract of the given amount for the given number of ticks on a fresh

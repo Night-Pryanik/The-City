@@ -50,6 +50,12 @@
 #      the change and the window re-reads it), so the new deal can be closed or corrected
 #      without closing and reopening the panel. A contract that has gone turns the panel back
 #      into a fresh order, and a change to some OTHER good leaves the panel untouched.
+#  13. GROUP ROW. The purchase column may demand a whole GROUP of goods instead of a named
+#      product. Such a row must read as a group: the name carries the standard dashed
+#      underline, hovering it shows the standard group tooltip with every member of the group,
+#      the price is the average of the members, the row is filed under the category of its
+#      members, and the order it hands over carries the GROUP key — which good is actually
+#      shipped is decided by the mechanics at the settlement (town_trade_manager).
 #
 # The test opens the window on its own (no map), and stubs the route with an inner
 # class instead of generating a whole map: the window only asks the map for
@@ -70,6 +76,10 @@ const WRAPPED_TOOLTIP = preload("res://scripts/wrapped_tooltip.gd")
 # resource reference, so the ids must exist.
 const WOOD := "wood"
 const PLANKS := "planks"
+
+# A real product group (see data/product_groups.json): the purchase column can demand the
+# group itself instead of a concrete fruit. The key of a group in the pools carries "@".
+const FRUITS := "@fruits"
 
 # A stub of the map: the window reads the route throughput from it.
 class StubMap extends Node:
@@ -167,6 +177,8 @@ func _run() -> void:
         await _test_deal_cancel(town)
     if WATCHDOG.wants_case("contract_sync"):
         await _test_contract_sync(town)
+    if WATCHDOG.wants_case("group_row"):
+        await _test_group_row(town)
 
     _finish()
 
@@ -1053,6 +1065,151 @@ func _test_contract_sync(town: Dictionary) -> void:
 
     _ui._map = null
     map.queue_free()
+
+# -------------------------------------------------------
+# 13. A GROUP row of the purchase column
+# -------------------------------------------------------
+
+# The purchase column can demand a whole GROUP of goods: the town lacks "some fruit", not a
+# named one, and which member is actually shipped is decided at the settlement (see
+# town_trade_manager). The row must nevertheless be readable as a group: the standard dashed
+# underline of a group reference, the standard group tooltip on hover, and the price of the
+# group as the one number it can carry.
+func _test_group_row(town: Dictionary) -> void:
+    var local: Dictionary = town.duplicate(true)
+    local["buy_pool"] = [FRUITS]
+    _ui.open_town(local, true)
+    await process_frame
+
+    var row := _row_by_key(_ui.buy_list, "buy:%s" % FRUITS)
+    _check(row != null, "the purchase column must list the row of the group")
+    if row == null:
+        return
+    var group_name := str(_gdata.format_resource_name(FRUITS))
+    _check(not group_name.is_empty() and not group_name.begins_with("@"),
+        "a group must be shown under its name and not under its key (got \"%s\")" % group_name)
+    _check(str(row.get_meta("town_row_name", "")) == group_name,
+        "the group row must carry the name of the group (got \"%s\")"
+            % str(row.get_meta("town_row_name", "")))
+
+    # The name is a reference and not a plain label: the standard dashed underline is what
+    # tells the player that the row stands for several goods at once (underlined_label.gd).
+    var name_label: Label = _find_label(row, group_name)
+    _check(name_label != null, "the group row must show the name of the group")
+    if name_label == null:
+        return
+    var script_obj = name_label.get_script()
+    var is_link: bool = script_obj != null \
+            and str(script_obj.resource_path) == "res://scripts/underlined_label.gd"
+    _check(is_link,
+        "the name of a group row must be the standard underlined label (got \"%s\")"
+            % (str(script_obj.resource_path) if script_obj != null else "<no script>"))
+    if is_link:
+        _check(str(name_label.underline_text) == group_name,
+            "the group name must carry the standard dashed underline (got \"%s\")"
+                % str(name_label.underline_text))
+        _check(not bool(name_label.dot_style),
+            "a group reference must carry the dashed line, not the finer consumption mark")
+    # PASS and not STOP: the hover of the label shows the tooltip, while the click still
+    # reaches the row and opens the trade panel.
+    _check(name_label.mouse_filter == Control.MOUSE_FILTER_PASS,
+        "the name of a group row must let the clicks through to the row (filter %d)"
+            % name_label.mouse_filter)
+
+    # Hover: the STANDARD group tooltip, the same one the recipes and the building costs use.
+    name_label.mouse_entered.emit()
+    var helpers = _ui._own_ui_helpers
+    _check(helpers != null and is_instance_valid(helpers),
+        "hovering a group row must bring the standard tooltip instance up")
+    if helpers == null:
+        return
+    _check(helpers.group_tooltip_panel.visible,
+        "hovering the name of a group row must show the standard group tooltip")
+    var members: Array = _gdata.product_groups.get(FRUITS.trim_prefix("@"), [])
+    _check(members.size() > 1, "the group under test must have several members")
+    var listed := 0
+    for member in members:
+        var member_name := str(
+                (_gdata.products.get(str(member), {}) as Dictionary).get("name", str(member)))
+        if _find_label(helpers.group_tooltip_content, member_name) != null:
+            listed += 1
+    _check(listed == members.size(),
+        "the group tooltip must list every member of the group (%d of %d)"
+            % [listed, members.size()])
+    name_label.mouse_exited.emit()
+    _check(not helpers.group_tooltip_panel.visible,
+        "leaving the name of a group row must hide the group tooltip")
+
+    # The price of a group: the average of the priced members. A group has no single market
+    # price, and the row must show the one number a group can carry.
+    var expected_price := _expected_group_price(members)
+    _check(expected_price > 0, "the group under test must have priced members")
+    var price_label := _find_price_label(row)
+    _check(price_label != null, "a group row must carry the price as well")
+    if price_label != null:
+        _check(price_label.text == str(expected_price),
+            "the group row must show the average price of its members (got \"%s\", expected \"%d\")"
+                % [price_label.text, expected_price])
+        _check(price_label.tooltip_text.contains(str(expected_price)),
+            "the price of a group row must explain itself in a tooltip (got \"%s\")"
+                % price_label.tooltip_text)
+
+    # The group is filed under the category of its members and not under "other": the row
+    # must not be the one orphan of the column.
+    var member_category := str(_gdata.get_resource_data(str(members[0])).get("category", ""))
+    _check(not member_category.is_empty(), "a member of the group must have a category")
+    if not member_category.is_empty():
+        _check(_ui._get_resource_category(FRUITS) == member_category,
+            "a group must be filed under the category of its members (got \"%s\", expected \"%s\")"
+                % [_ui._get_resource_category(FRUITS), member_category])
+
+    # The row is an ordinary row of the purchase column: a click opens the panel, and the order
+    # carries the GROUP key — the concrete good is picked by the mechanics from what the city
+    # actually has (town_trade_manager._take_from_city).
+    _click(row)
+    await process_frame
+    _check(_ui._selected_key == "buy:%s" % FRUITS,
+        "a click on the group row must select it (got \"%s\")" % _ui._selected_key)
+    _check(_ui._trade_panel != null and is_instance_valid(_ui._trade_panel),
+        "a click on the group row must open the trade panel")
+    if _ui._trade_panel == null:
+        return
+    _ui._set_amount(15)
+    _check(_ui._total_label.text == "Income: %d" % (15 * expected_price),
+        "a group order must total at the price of the group (got \"%s\", expected \"Income: %d\")"
+            % [_ui._total_label.text, 15 * expected_price])
+
+    _captured_order = {}
+    if not _ui.trade_order_submitted.is_connected(_capture_order):
+        _ui.trade_order_submitted.connect(_capture_order)
+    _ui._confirm_button.pressed.emit()
+    _check(str(_captured_order.get("product_id", "")) == FRUITS,
+        "the order of a group row must carry the group key (got \"%s\")"
+            % str(_captured_order.get("product_id", "")))
+    _check(str(_captured_order.get("side", "")) == "buy",
+        "the order of a group row must carry the side of the purchase column (got \"%s\")"
+            % str(_captured_order.get("side", "")))
+    _check(int(_captured_order.get("amount", 0)) == 15,
+        "the order of a group row must carry the amount (got %s)"
+            % str(_captured_order.get("amount", 0)))
+    _check(int(_captured_order.get("unit_price", 0)) == expected_price,
+        "the order of a group row must carry the price of the group (got %s, expected %d)"
+            % [str(_captured_order.get("unit_price", 0)), expected_price])
+
+# The price a group row must show: the average of the market prices of its members, the
+# members without a price left out (see TownEconomy.get_group_price).
+func _expected_group_price(members: Array) -> int:
+    var total := 0.0
+    var count := 0
+    for member in members:
+        var price := float(_gdata.get_price(str(member)))
+        if price <= 0.0:
+            continue
+        total += price
+        count += 1
+    if count == 0:
+        return 0
+    return int(round(total / float(count)))
 
 # -------------------------------------------------------
 # Helpers

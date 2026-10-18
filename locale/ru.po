@@ -303,6 +303,12 @@ msgstr "%s [%s] (наука: %d)"
 msgid "%s [%s] (science: %d)%s"
 msgstr "%s [%s] (наука: %d)%s"
 
+msgid "%s cannot pay %d coins for the goods."
+msgstr "%s не может заплатить %d монет за товар."
+
+msgid "%s cannot pay %d coins per second for the contract."
+msgstr "%s не может платить %d монет в секунду по контракту."
+
 msgid "%s does not have %d units for a standing contract."
 msgstr "У %s нет %d ед. для долгосрочного контракта."
 
@@ -780,11 +786,20 @@ msgstr "Контракт закрыт: %s из городка %s."
 msgid "Contract signed: %d units of %s per second from %s."
 msgstr "Контракт заключён: %d ед. %s в секунду из городка %s."
 
+msgid "Contract signed: the city supplies %d units of %s per second to %s."
+msgstr "Контракт заключён: город поставляет %d ед. %s в секунду в городок %s."
+
+msgid "Contract terminated: %s cannot pay %d per second for %s."
+msgstr "Контракт расторгнут: %s не может платить %d в секунду за %s."
+
 msgid "Contract terminated: %s ran out of %s."
 msgstr "Контракт расторгнут: в городке %s закончился товар %s."
 
 msgid "Contract terminated: a broken record."
 msgstr "Контракт расторгнут: повреждённая запись."
+
+msgid "Contract terminated: the city ran out of %s."
+msgstr "Контракт расторгнут: в городе закончился товар %s."
 
 msgid "Contract terminated: the town is gone."
 msgstr "Контракт расторгнут: городка больше нет."
@@ -794,6 +809,9 @@ msgstr "Контракт расторгнут: казна не может пла
 
 msgid "Contract updated: %d units of %s per second from %s."
 msgstr "Контракт изменён: %d ед. %s в секунду из городка %s."
+
+msgid "Contract updated: the city supplies %d units of %s per second to %s."
+msgstr "Контракт изменён: город поставляет %d ед. %s в секунду в городок %s."
 
 msgid "Contract: %d units/sec"
 msgstr "Контракт: %d ед/сек"
@@ -1554,6 +1572,9 @@ msgstr "Показывать границы между клетками"
 msgid "Slot %d:"
 msgstr "Слот %d:"
 
+msgid "Sold %d units of %s to %s."
+msgstr "Продано %d ед. %s в городок %s."
+
 msgid "Source not found: product \"%s\" (%s) appears neither in produces of any map resource, nor in result/display_result of any recipe, nor in additional_yield of any building. Add a data source or remove the product from the file."
 msgstr "Источник не найден: продукт «%s» (%s) не встречается ни в produces ни одного ресурса карты, ни в result/display_result ни одного рецепта, ни в additional_yield ни одного здания. Добавьте источник данных или удалите продукт из файла."
 
@@ -1671,14 +1692,26 @@ msgstr "Чанк не граничит с исследованной терри�
 msgid "The chunk overlaps another town's influence ring — purchase impossible"
 msgstr "Чанк пересекается с кольцом влияния чужого городка — покупка невозможна"
 
+msgid "The city does not have %d units of %s for a standing contract."
+msgstr "В городе нет %d ед. %s для постоянного контракта."
+
+msgid "The city does not have %d units of %s."
+msgstr "В городе нет %d ед. %s."
+
 msgid "The city needs access to fresh water"
 msgstr "Нужен доступ города к пресной воде"
 
 msgid "The contract is already closed."
 msgstr "Контракт уже закрыт."
 
+msgid "The goods are not chosen"
+msgstr "Товар не выбран"
+
 msgid "The goods are on the way from the town. Cancelling the deal returns the un-shipped part to the town and refunds %d coins."
 msgstr "Товар в пути из городка. Отмена вернёт неотправленную часть в городок и %d монет в казну."
+
+msgid "The goods have no price."
+msgstr "У товара нет цены."
 
 msgid "The interface font. Any font file (.ttf, .otf) put into the fonts folder is listed here and is applied at once, without restarting the game."
 msgstr "Шрифт интерфейса. Любой файл шрифта (.ttf, .otf), положенный в папку fonts, появляется в этом списке и применяется сразу, без перезапуска игры."
@@ -1697,6 +1730,9 @@ msgstr "Время, которое товар проводит на дороге
 
 msgid "The town buys nothing"
 msgstr "Городок ничего не покупает"
+
+msgid "The town does not buy this good."
+msgstr "Городок не покупает этот товар."
 
 msgid "The town is already connected by a road"
 msgstr "Городок уже соединён дорогой"
@@ -1724,6 +1760,9 @@ msgstr "У этого здания нет улучшенной версии"
 
 msgid "This building is already being upgraded"
 msgstr "Улучшение этого здания уже идёт"
+
+msgid "This good already has a contract in the opposite direction. Close it first."
+msgstr "У этого товара уже есть контракт в обратном направлении. Сначала закройте его."
 
 msgid "This is a decorative town improvement — it cannot be modified"
 msgstr "Это декоративное улучшение городка — нельзя изменять"
@@ -1790,6 +1829,9 @@ msgstr "Недостроенных участков: %d. Потраченный 
 
 msgid "Unknown construction requirement: %s"
 msgstr "Неизвестное условие строительства: %s"
+
+msgid "Unknown trade direction — the order was not placed."
+msgstr "Неизвестное направление сделки — заказ не размещён."
 
 msgid "Update the contract"
 msgstr "Изменить контракт"

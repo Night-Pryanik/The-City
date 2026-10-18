@@ -2,23 +2,32 @@
 # The trade of the city with the towns (small settlements): the mechanics behind the
 # order the town window assembles (town_ui.trade_order_submitted).
 #
+# TWO DIRECTIONS. The order carries the side of the TOWN, the same value the window's
+# columns are keyed by: "sell" — the town sells, the city buys (the sale column); "buy" —
+# the town buys, the city sells (the purchase column). The purchase column is the town's
+# buy pool: the goods it lacks for its own production (town_economy.build_pools).
+#
 # TWO KINDS OF A DEAL (the "Permanent" checkbox of the trade panel):
-#   · A ONE-TIME PURCHASE is settled the moment it is confirmed: the coins move
-#     from the treasury of the city into the treasury of the town, the units are
+#   · A ONE-TIME DEAL is settled the moment it is confirmed. When the city buys, the coins
+#     move from the treasury of the city into the treasury of the town, the units are
 #     written off the warehouse of the town, and the goods are queued on the route
 #     from the town to the city (delivery_manager.create_cargo) — the road limits
-#     the trade exactly like it limits the production of an improvement.
-#   · A STANDING CONTRACT repeats every tick of the city: the town owes `amount`
-#     units of the good per second, and the city pays `amount × unit_price` coins
+#     the trade exactly like it limits the production of an improvement. When the city
+#     sells, the goods leave the city storage at once and the town pays for them: the
+#     warehouse of a town is a virtual buffer with no caravan of its own (see
+#     _sell_once), and the road already gates whether the trade is possible at all.
+#   · A STANDING CONTRACT repeats every tick of the city: one side owes `amount`
+#     units of the good per second, and the other pays `amount × unit_price` coins
 #     per second. The unit price is frozen at the moment of signing. A contract
-#     that cannot be paid (the treasury is short) or cannot be fulfilled (the town
+#     that cannot be paid (the treasury is short) or cannot be fulfilled (the seller
 #     ran out of the good) is torn automatically — a contract is not a debt, and
 #     neither side can be forced into one.
 #     What backs a contract is the SUPPLY of the town and not its stock: a town serves an
 #     order up to its comfort rate for free, and above it strains — the output follows the
 #     order but always falls short of it, so the warehouse drains the faster, the bigger
 #     the order (see the supply section of town_economy.gd). The stock is the buffer, the
-#     supply is the rate.
+#     supply is the rate. The supply rule belongs to the town SELLING; a contract in the
+#     other direction is backed by the city storage and tears when it runs dry.
 #
 # THE DELIVERY. The town window can only open a purchase when the road to the town
 # exists (town_manager.is_trade_available), and the goods move along that road with
@@ -44,12 +53,21 @@
 # queue announces (delivery_manager.cargo_shipped).
 #
 # ONE CONTRACT PER GOOD AND TOWN. A town carries at most ONE standing contract for a
-# given good — the pair (town, good) is the identity of a deal. An order for a pair that
-# already carries a contract therefore EDITS that contract instead of signing a second
-# one: only the amount moves, the unit price stays frozen at the price of the signed deal.
-# A different price is a different deal, and the way to it is the pair "close the contract
-# (close_contract) and sign a new one". The window reads the contract of a row through
-# main_map.get_town_contract and opens its settings as an edit of it.
+# given good — the pair (town, good) is the identity of a deal, whichever direction it
+# runs in. An order for a pair that already carries a contract therefore EDITS that
+# contract instead of signing a second one: only the amount moves, the unit price stays
+# frozen at the price of the signed deal. An order in the OPPOSITE direction on that pair
+# is refused: the direction is a term of the deal, not a field of the order, and the way
+# to the other direction is "close the contract and sign a new one". The window reads the
+# contract of a row through main_map.get_town_contract and opens its settings as an edit
+# of it.
+#
+# A GROUP GOOD. The purchase column of the town may name a group ("@fruits") instead of a
+# single product: the town accepts any member of it. The concrete goods are chosen when
+# they are handed over — one random member that the city actually has in stock per unit,
+# the same rule the population consumption follows — so the group row is a real deal and
+# not an alias of one of its members. The price of the group is the average price of its
+# members (town_economy.get_group_price), frozen at the signing like any other price.
 extends Node
 
 # The prefix of the delivery source of a town purchase (the cargo record). The
@@ -62,6 +80,18 @@ const CARGO_SOURCE_PREFIX := "@town:"
 # the amount never falls below 1; the constant keeps the manager safe against a
 # hand-made order as well.
 const MIN_AMOUNT := 1
+
+# The side of the TOWN, the value the order and the window's columns carry: the town
+# sells to the city, or the town buys from it. It is also the direction of a contract —
+# a term of the deal, frozen at the signing.
+const SIDE_SELL := "sell"
+const SIDE_BUY := "buy"
+
+# The quality the city gives up when it SELLS to a town. The town pays the plain price of
+# a unit (its buy pool carries no quality: a town never mixes levels, and the goods it
+# buys join its virtual production), so the city keeps its best units and gives the
+# worst — the same "worst first" order the game offers for any write-off.
+const SALE_QUALITY_PRIORITY := "worst"
 
 # The kind of a deal, as the rows of the "Trade deals" section carry it. The pair
 # (town, good) is the identity of a CONTRACT, and a one-time purchase of the same good from
@@ -80,12 +110,16 @@ var _delivery_manager = null
 #   town_id       the id of the town (the reliable key of the town record);
 #   town_name     its name, frozen at the signing (the label of the deal);
 #   row, col      the hexes of the town (the route and the delivery);
-#   product_id    the id of the goods the city buys;
+#   side          the direction of the deal, frozen at the signing (SIDE_SELL — the town
+#                 sells to the city, SIDE_BUY — the city sells to the town);
+#   product_id    the id of the goods that change hands (a group key is allowed on the
+#                 SIDE_BUY side: the town accepts any member of the group);
 #   product_name  its display name, frozen at the signing;
-#   quality       the level of the goods in the warehouse of the town;
-#   amount        the units the town owes per tick;
+#   quality       the level of the goods in the warehouse of the town (empty on the
+#                 SIDE_BUY side: the town pays the plain price of a unit);
+#   amount        the units that change hands per tick;
 #   unit_price    the coins per unit, frozen at the signing;
-#   cost_per_tick amount × unit_price — what the treasury pays every tick.
+#   cost_per_tick amount × unit_price — what the paying side pays every tick.
 var _contracts: Array = []
 
 # The serial of the next contract id. It only grows, so an id is never reused
@@ -182,14 +216,15 @@ func clear() -> void:
 # the outcome of the order it has handed over.
 #
 # The order is the dictionary assembled by town_ui._on_confirm_pressed:
-#   town_id, town_name, row, col, side ("buy"/"sell"), product_id, product_name,
-#   amount, permanent, route_capacity, unit_price.
+#   town_id, town_name, row, col, side ("buy"/"sell" — the side of the TOWN),
+#   product_id (a concrete good or an "@group"), product_name, amount, permanent,
+#   route_capacity, unit_price.
 func submit_order(order: Dictionary) -> Dictionary:
-    if str(order.get("side", "")) != "sell":
-        # The city sells to a town (the purchase column of the window): the
-        # mechanics of that direction do not exist yet.
-        return {"ok": false,
-                "message": tr("Selling goods to the towns is not implemented yet — the order was not placed.")}
+    var side := str(order.get("side", ""))
+    if side == SIDE_BUY:
+        return _sell_to_town(order)
+    if side != SIDE_SELL:
+        return {"ok": false, "message": tr("Unknown trade direction — the order was not placed.")}
     var amount := int(order.get("amount", 0))
     if amount < MIN_AMOUNT:
         return {"ok": false, "message": tr("The amount must be a positive whole number")}
@@ -207,7 +242,7 @@ func submit_order(order: Dictionary) -> Dictionary:
         if index >= 0:
             # One contract per good and town: an order for a pair that already carries a
             # contract is an edit of it, never a second deal.
-            return _update_contract(index, amount)
+            return _update_contract(index, amount, SIDE_SELL)
         return _sign_contract(town, product_id, amount, unit_price)
     return _buy_once(town, product_id, amount, unit_price)
 
@@ -235,6 +270,12 @@ func tick_contracts() -> void:
         var town = _town_by_id(str(contract.get("town_id", "")))
         if town == null:
             _tear_contract(i, tr("Contract terminated: the town is gone."))
+            continue
+        if str(contract.get("side", SIDE_SELL)) == SIDE_BUY:
+            # The city sells: the goods come out of the city storage and the town pays.
+            # A torn sale contract is removed in place, so the index does not advance.
+            if _tick_sale_contract(i, town, contract):
+                i += 1
             continue
         var product_id := str(contract.get("product_id", ""))
         var amount := int(contract.get("amount", 0))
@@ -275,6 +316,8 @@ func tick_contracts() -> void:
 func _aggregate_demand() -> Dictionary:
     var demand: Dictionary = {}
     for contract in _contracts:
+        if str(contract.get("side", SIDE_SELL)) != SIDE_SELL:
+            continue
         var key := _supply_key(str(contract.get("town_id", "")), str(contract.get("product_id", "")))
         if key.is_empty():
             continue
@@ -316,9 +359,13 @@ func _supply_key(town_id: String, product_id: String) -> String:
 
 
 # The planned delivery of every live contract (see CityData.town_planned_production). One
-# record per contract, so the tooltip of the row counts the deals behind the amount.
+# record per contract, so the tooltip of the row counts the deals behind the amount. Only
+# the city-buying contracts are an inflow; a sale contract drains the storage and has no
+# place in the plan of the production.
 func _record_planned_production() -> void:
     for contract in _contracts:
+        if str(contract.get("side", SIDE_SELL)) != SIDE_SELL:
+            continue
         CityData.record_planned_town_production(
                 str(contract.get("product_id", "")),
                 GameData.SRC_TOWN_TRADE,
@@ -333,18 +380,25 @@ func get_contracts() -> Array:
     var result: Array = []
     for contract in _contracts:
         var product_id := str(contract.get("product_id", ""))
+        var side := str(contract.get("side", SIDE_SELL))
         var deal: Dictionary = contract.duplicate()
         # The fields the row of the "Trade deals" section shows: the display name and
         # the icon are resolved from the common reference, the rest is the contract.
+        # "type" is the direction of the CITY (the same word the section uses for a
+        # purchase and a sale) and therefore the opposite of the side of the town.
         deal["kind"] = KIND_CONTRACT
+        deal["side"] = side
+        deal["type"] = "sell" if side == SIDE_BUY else "buy"
         deal["name"] = _product_name(product_id)
-        deal["icon"] = str(GameData.get_resource_data(product_id).get("icon", ""))
-        deal["type"] = "buy"
+        deal["icon"] = _product_icon(product_id)
         deal["price"] = int(contract.get("unit_price", 0))
         deal["amount"] = int(contract.get("amount", 0))
         deal["cost"] = int(contract.get("cost_per_tick", 0))
-        deal["delivery_time"] = _delivery_time(
-                int(contract.get("row", -1)), int(contract.get("col", -1)))
+        if side != SIDE_BUY:
+            # Only a purchase puts the goods on the road from the town; the city delivers
+            # a sale at once, so the row has no transit to report.
+            deal["delivery_time"] = _delivery_time(
+                    int(contract.get("row", -1)), int(contract.get("col", -1)))
         result.append(deal)
     return result
 
@@ -380,7 +434,7 @@ func get_deliveries() -> Array:
             "product_id": product_id,
             "product_name": str(delivery.get("product_name", "")),
             "name": _product_name(product_id),
-            "icon": str(GameData.get_resource_data(product_id).get("icon", "")),
+            "icon": _product_icon(product_id),
             "type": "buy",
             "price": int(delivery.get("unit_price", 0)),
             "ordered": int(delivery.get("ordered", 0)),
@@ -403,6 +457,19 @@ func get_contract(town_id: String, product_id: String) -> Dictionary:
     if index < 0:
         return {}
     return (_contracts[index] as Dictionary).duplicate()
+
+
+# Edits the amount of the standing contract of a town for a good, whichever direction it
+# runs in. It is the entry point of the "Trade deals" column, which knows the contract and
+# not an order: the direction is a term of the deal and is not touched by an amount edit
+# (see _update_contract).
+func update_contract_amount(town_id: String, product_id: String, amount: int) -> Dictionary:
+    if amount < MIN_AMOUNT:
+        return {"ok": false, "message": tr("The amount must be a positive whole number")}
+    var index := _contract_index(town_id, product_id)
+    if index < 0:
+        return {"ok": false, "message": tr("The contract is already closed.")}
+    return _update_contract(index, amount)
 
 
 # --- The one-time purchase ---
@@ -633,27 +700,49 @@ func _sign_contract(town: Dictionary, product_id: String, amount: int, unit_pric
 # unit price stays frozen at the price of the signed deal. A different price is a
 # different deal, and the way to it is "close the contract and sign a new one" (see the
 # header) — so an edit never silently changes what a unit costs. The amount is checked
-# against the stock of the town and against the treasury exactly as a fresh signing is:
-# the contract charges from the very next tick.
-func _update_contract(index: int, amount: int) -> Dictionary:
+# against the stock of the seller and against the treasury of the payer exactly as a fresh
+# signing is: the contract charges from the very next tick.
+#
+# side — the side of the order that asks for the edit; an empty string is an amount-only
+# edit from the "Trade deals" column, which knows the contract and not the order. A
+# non-empty side that differs from the contract is refused: the direction of a deal is a
+# term, not something an edit can flip.
+func _update_contract(index: int, amount: int, side: String = "") -> Dictionary:
     var contract: Dictionary = _contracts[index]
     var town = _town_by_id(str(contract.get("town_id", "")))
     if town == null:
         _tear_contract(index, tr("Contract terminated: the town is gone."))
         return {"ok": false, "message": tr("The town is not on the map anymore")}
+    var contract_side := str(contract.get("side", SIDE_SELL))
+    if not side.is_empty() and side != contract_side:
+        return {"ok": false,
+                "message": tr("This good already has a contract in the opposite direction. Close it first.")}
     var product_id := str(contract.get("product_id", ""))
     var unit_price := int(contract.get("unit_price", 0))
     var cost := amount * unit_price
     var town_name := str(contract.get("town_name", tr("Town")))
     var product_name := str(contract.get("product_name", ""))
-    if _town_manager.get_town_goods(town, product_id) < amount:
-        return {"ok": false,
-                "message": tr("%s does not have %d units for a standing contract.") % [town_name, amount]}
-    if CityData.treasury < cost:
-        return {"ok": false, "message": tr("Not enough coins for the contract: %d per second.") % cost}
+    if contract_side == SIDE_BUY:
+        # The city sells: it must have the goods, and the town must be able to pay.
+        if _city_stock(product_id) < amount:
+            return {"ok": false,
+                    "message": tr("The city does not have %d units of %s.") % [amount, product_name]}
+        if _town_manager.get_town_treasury(town) < cost:
+            return {"ok": false,
+                    "message": tr("%s cannot pay %d coins per second for the contract.") % [town_name, cost]}
+    else:
+        if _town_manager.get_town_goods(town, product_id) < amount:
+            return {"ok": false,
+                    "message": tr("%s does not have %d units for a standing contract.") % [town_name, amount]}
+        if CityData.treasury < cost:
+            return {"ok": false, "message": tr("Not enough coins for the contract: %d per second.") % cost}
     contract["amount"] = amount
     contract["cost_per_tick"] = cost
     emit_signal("contracts_changed")
+    if contract_side == SIDE_BUY:
+        return {"ok": true,
+                "message": tr("Contract updated: the city supplies %d units of %s per second to %s.") % [
+                        amount, product_name, town_name]}
     return {"ok": true,
             "message": tr("Contract updated: %d units of %s per second from %s.") % [amount, product_name, town_name]}
 
@@ -681,6 +770,175 @@ func _tear_contract(index: int, message: String) -> void:
     _contracts.remove_at(index)
     emit_signal("contracts_changed")
     emit_signal("notice", message, 1)
+
+
+# --- The city sells to a town ---
+#
+# The purchase column of the town window: the town pays for goods it lacks, and the city
+# gives them up. A good of that column may be a GROUP ("@fruits"): the town accepts any
+# member, so the concrete units are chosen when the goods are handed over — one random
+# member that the city actually has per unit, exactly the way the population consumption
+# takes its food (CityData._consume_food). The town pays the frozen unit price whatever
+# member it receives, so the choice cannot change the sum the player saw.
+#
+# The goods are delivered AT ONCE and not by a caravan: the warehouse of a town is a
+# virtual buffer with no route of its own (the route of a town is its own road network to
+# its improvements, see road_manager), and the road to the city already gates whether the
+# trade is possible at all (town_manager.is_trade_available). A bought good joins the
+# virtual production of the town and is not put on its shelf: the shelf is pruned to the
+# sell pool, and the bought goods are exactly the ones the town does not sell.
+
+func _sell_to_town(order: Dictionary) -> Dictionary:
+    var amount := int(order.get("amount", 0))
+    if amount < MIN_AMOUNT:
+        return {"ok": false, "message": tr("The amount must be a positive whole number")}
+    var town = _find_town(order)
+    if town == null:
+        return {"ok": false, "message": tr("The town is not on the map anymore")}
+    var product_id := str(order.get("product_id", ""))
+    if product_id.is_empty():
+        return {"ok": false, "message": tr("The goods are not chosen")}
+    if not _town_buys(town, product_id):
+        return {"ok": false, "message": tr("The town does not buy this good.")}
+    var unit_price := int(order.get("unit_price", 0))
+    if unit_price <= 0:
+        unit_price = _sale_unit_price(product_id)
+    if unit_price <= 0:
+        return {"ok": false, "message": tr("The goods have no price.")}
+    if bool(order.get("permanent", false)):
+        var index := _contract_index(str(town.get("id", "")), product_id)
+        if index >= 0:
+            return _update_contract(index, amount, SIDE_BUY)
+        return _sign_sale_contract(town, product_id, amount, unit_price)
+    return _sell_once(town, product_id, amount, unit_price)
+
+
+# A one-time sale: the city gives the goods up, the town pays for them at once. The stock
+# is checked first, then the coins, and only then the goods are written off — a refusal
+# leaves both sides exactly as they were.
+func _sell_once(town: Dictionary, product_id: String, amount: int, unit_price: int) -> Dictionary:
+    var town_name := str(town.get("name", tr("Town")))
+    var product_name := _product_name(product_id)
+    if _city_stock(product_id) < amount:
+        return {"ok": false,
+                "message": tr("The city does not have %d units of %s.") % [amount, product_name]}
+    var total := amount * unit_price
+    if not _town_manager.spend_town_treasury(town, total):
+        return {"ok": false,
+                "message": tr("%s cannot pay %d coins for the goods.") % [town_name, total]}
+    _take_from_city(product_id, amount)
+    CityData.add_treasury(total)
+    CityData.record_treasury_income(GameData.SRC_TOWN_TRADE, total)
+    return {"ok": true,
+            "message": tr("Sold %d units of %s to %s.") % [amount, product_name, town_name]}
+
+
+# A standing sale: the city owes `amount` units of the good every tick, the town pays
+# `amount × unit_price` for them. The contract is checked against the stock and the coins
+# at the signing exactly as the first tick will check them.
+func _sign_sale_contract(town: Dictionary, product_id: String, amount: int,
+        unit_price: int) -> Dictionary:
+    var cost := amount * unit_price
+    var town_name := str(town.get("name", tr("Town")))
+    var product_name := _product_name(product_id)
+    if _city_stock(product_id) < amount:
+        return {"ok": false,
+                "message": tr("The city does not have %d units of %s for a standing contract.") % [
+                        amount, product_name]}
+    if _town_manager.get_town_treasury(town) < cost:
+        return {"ok": false,
+                "message": tr("%s cannot pay %d coins per second for the contract.") % [town_name, cost]}
+    _contracts.append({
+        "id": "contract_%d" % _next_contract_id,
+        "town_id": str(town.get("id", "")),
+        "town_name": town_name,
+        "row": int(town.get("row", -1)),
+        "col": int(town.get("col", -1)),
+        "side": SIDE_BUY,
+        "product_id": product_id,
+        "product_name": product_name,
+        "quality": "",
+        "amount": amount,
+        "unit_price": unit_price,
+        "cost_per_tick": cost,
+    })
+    _next_contract_id += 1
+    emit_signal("contracts_changed")
+    return {"ok": true,
+            "message": tr("Contract signed: the city supplies %d units of %s per second to %s.") % [
+                    amount, product_name, town_name]}
+
+
+# ONE tick of a sale contract. It returns whether the contract survived: a torn one is
+# removed in place by _tear_contract, so the caller must not advance the index.
+func _tick_sale_contract(index: int, town: Dictionary, contract: Dictionary) -> bool:
+    var product_id := str(contract.get("product_id", ""))
+    var amount := int(contract.get("amount", 0))
+    var cost := int(contract.get("cost_per_tick", 0))
+    var town_name := str(contract.get("town_name", tr("Town")))
+    var product_name := str(contract.get("product_name", product_id))
+    if amount < MIN_AMOUNT or cost < 0:
+        _tear_contract(index, tr("Contract terminated: a broken record."))
+        return false
+    if _city_stock(product_id) < amount:
+        _tear_contract(index, tr("Contract terminated: the city ran out of %s.") % product_name)
+        return false
+    if _town_manager.get_town_treasury(town) < cost:
+        _tear_contract(index, tr("Contract terminated: %s cannot pay %d per second for %s.") % [
+                town_name, cost, product_name])
+        return false
+    if not _town_manager.spend_town_treasury(town, cost):
+        _tear_contract(index, tr("Contract terminated: %s cannot pay %d per second for %s.") % [
+                town_name, cost, product_name])
+        return false
+    _take_from_city(product_id, amount)
+    CityData.add_treasury(cost)
+    CityData.record_treasury_income(GameData.SRC_TOWN_TRADE, cost)
+    return true
+
+
+# The units of a key the city can give up: a concrete good, or the sum over the members
+# of a group (GameData.get_storage_amount reads both).
+func _city_stock(key: String) -> int:
+    return int(GameData.get_storage_amount(key, CityData.city_storage))
+
+
+# Writes `amount` units of the key off the city storage. A group is taken from a RANDOM
+# member that still has stock, unit by unit — the rule of the population consumption,
+# which is what makes a group row a real "any fruit" deal rather than an alias of the
+# first member of the group.
+func _take_from_city(key: String, amount: int) -> void:
+    if amount <= 0:
+        return
+    if not GameData.is_group_key(key):
+        CityData.remove_from_storage(key, amount, SALE_QUALITY_PRIORITY)
+        return
+    var available: Array = []
+    for member in GameData.product_groups.get(key.trim_prefix("@"), []):
+        if int(CityData.city_storage.get(str(member), 0)) > 0:
+            available.append(str(member))
+    var left := amount
+    while left > 0 and not available.is_empty():
+        var pid := str(available[randi() % available.size()])
+        CityData.remove_from_storage(pid, 1, SALE_QUALITY_PRIORITY)
+        left -= 1
+        if int(CityData.city_storage.get(pid, 0)) <= 0:
+            available.erase(pid)
+
+
+# The price of one unit of a sale the order carries no price for: the average price of a
+# group, or the plain market price of a single good (the town pays no quality premium, so
+# the row of the purchase column carries no quality multiplier either).
+func _sale_unit_price(key: String) -> int:
+    if GameData.is_group_key(key):
+        return TownEconomy.get_group_price(key)
+    return int(round(GameData.get_price(key)))
+
+
+# Whether the town wants the good at all: the purchase column is the buy pool, and a good
+# outside it is not a demand of the town. A group key is listed in the pool as the group.
+static func _town_buys(town: Dictionary, key: String) -> bool:
+    return town.get("buy_pool", []).has(key)
 
 
 # The settlement of one delivery: the city pays, the town is paid, the units are
@@ -773,6 +1031,8 @@ func _unit_price_of(town: Dictionary, product_id: String) -> int:
 
 
 func _product_name(product_id: String) -> String:
+    if GameData.is_group_key(product_id):
+        return GameData.format_resource_name(product_id)
     var name := str(GameData.get_resource_data(product_id).get("name", ""))
     if not name.is_empty():
         return name
@@ -781,6 +1041,14 @@ func _product_name(product_id: String) -> String:
         return str(raw.get("name", product_id))
     var product: Dictionary = GameData.products.get(product_id, {})
     return str(product.get("name", product_id))
+
+
+# The icon of a good of a deal: the icon of the product, or the icon of the group (its
+# own one, or the one of its first member that has an icon).
+func _product_icon(product_id: String) -> String:
+    if GameData.is_group_key(product_id):
+        return GameData.get_product_group_icon(product_id)
+    return str(GameData.get_resource_data(product_id).get("icon", ""))
 
 
 # The transit delay of the route from the town: how long the goods of one tick
@@ -806,6 +1074,7 @@ func serialize() -> Array:
             "town_name": str(contract.get("town_name", "")),
             "row": int(contract.get("row", -1)),
             "col": int(contract.get("col", -1)),
+            "side": str(contract.get("side", SIDE_SELL)),
             "product_id": str(contract.get("product_id", "")),
             "product_name": str(contract.get("product_name", "")),
             "quality": str(contract.get("quality", "")),
@@ -836,6 +1105,11 @@ func deserialize(data) -> void:
         if cost <= 0 and unit_price > 0:
             # A save without the total: the contract charges what its terms say.
             cost = amount * unit_price
+        # The direction is a term of the deal. A record without it can only be a
+        # city-buying contract: the direction the trade had before the city could sell.
+        var side := str(entry.get("side", SIDE_SELL))
+        if side != SIDE_BUY:
+            side = SIDE_SELL
         var town = _town_by_id(str(entry.get("town_id", "")))
         var town_name := str(entry.get("town_name", ""))
         var row := int(entry.get("row", -1))
@@ -851,6 +1125,7 @@ func deserialize(data) -> void:
             "town_name": town_name,
             "row": row,
             "col": col,
+            "side": side,
             "product_id": product_id,
             "product_name": str(entry.get("product_name", product_id)),
             "quality": str(entry.get("quality", "")),

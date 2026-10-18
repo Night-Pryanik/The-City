@@ -17,6 +17,13 @@
 # tab of the city (see _fill_resource_list): a header of a solid line, the category
 # name centred in its column, then a line again; the rows of that category follow.
 #
+# The purchase column may carry a GROUP instead of a single good ("Fruits", "Alcohol"):
+# the town buys any member of it (see town_economy.build_pools). A group row is named
+# after the group and underlined with the standard dashed line of a group reference; on
+# hover it shows the standard group tooltip with the members. The concrete member is
+# chosen at the settlement, from what the city has in stock (town_trade_manager), so the
+# row carries the group price — the average price of its members (town_economy.get_group_price).
+#
 # A row is INTERACTIVE: it highlights on hover and, on a click, opens the trade
 # settings of the resource right under itself (see _open_trade_panel). The highlight
 # is a stylebox on the row's PanelContainer — a transparent normal, a light hover and
@@ -140,7 +147,6 @@ const DEAL_STATUS_TEXT_COLOR := Color(0.65, 0.65, 0.65, 1)
 const META_RESOURCE_ROW := "town_resource_row"
 const META_ROW_KEY := "town_row_key"
 const META_ROW_NAME := "town_row_name"
-
 @onready var window_panel = $WindowPanel
 @onready var title_label = $WindowPanel/TitleLabel
 @onready var status_label = $WindowPanel/StatusLabel
@@ -186,6 +192,11 @@ var _price_labels: Dictionary = {}
 # city to know the throughput the route can carry (see _route_capacity). null in a
 # test that opens the window on its own — the capacity is then taken as zero.
 var _map = null
+
+# The tooltip instance of the window, used only when the map cannot lend its own (see
+# _get_ui_helpers): the group tooltip of the purchase column must be the standard one,
+# and the map already owns a standard instance for its HUD.
+var _own_ui_helpers: Node = null
 
 # The rows that are currently on the screen, by the row key ("buy:grain"). The trade
 # panel is inserted right after its row, and the highlight is applied through these
@@ -281,6 +292,9 @@ func open_town(town: Dictionary, trade_available: bool = true):
 func _refresh():
     if _town == null:
         return
+    # The rows are rebuilt from scratch: a group tooltip of a row that is about to be
+    # freed must not stay over the fresh list.
+    _hide_group_tooltip()
     title_label.text = str(_town.get("name", tr("Town")))
     _update_treasury_label()
     if status_label:
@@ -383,7 +397,12 @@ func _can_trade() -> bool:
 # cannot tell different stories. The PURCHASE column is about the goods the town LACKS —
 # the quality of what the city will deliver is not known at the row (and the row has no
 # stars), so the plain market price is shown there.
+#
+# A GROUP row has no single product and no quality: it is priced as the average of its
+# members (TownEconomy.get_group_price), which is the one number a group can carry.
 func _unit_price(resource_id: String, side: String) -> int:
+    if _is_group_id(resource_id):
+        return TownEconomy.get_group_price(resource_id)
     var quality_id := _town_quality_of(resource_id) if side == SIDE_SELL else ""
     return int(round(GameData.get_price_for_quality(resource_id, quality_id)))
 
@@ -503,7 +522,9 @@ func _fill_resource_list(container: VBoxContainer, pool, empty_text: String,
         return
     # One entry per display name, grouped by the category of the id behind it. The
     # first id behind a name wins (see the note above), and it also decides the
-    # category the row lands in.
+    # category the row lands in. A group row is deduplicated by its ID and not by its
+    # name: two different groups can carry the same name ("Fruits" and the wine fruits
+    # are both "Fruits"), and they are two different demands.
     var grouped: Dictionary = {}
     var shown_names: Dictionary = {}
     for resource_id in pool:
@@ -513,9 +534,10 @@ func _fill_resource_list(container: VBoxContainer, pool, empty_text: String,
         if id.is_empty() or id == "<null>":
             continue
         var display_name := _get_resource_display_name(id)
-        if shown_names.has(display_name):
+        var dedupe_key := id if _is_group_id(id) else display_name
+        if shown_names.has(dedupe_key):
             continue
-        shown_names[display_name] = true
+        shown_names[dedupe_key] = true
         var category := _get_resource_category(id)
         if not grouped.has(category):
             grouped[category] = []
@@ -568,11 +590,7 @@ func _build_resource_row(resource_id: String, display_name: String,
         resource_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
         content.add_child(resource_icon)
 
-    var resource_label := Label.new()
-    resource_label.text = display_name
-    resource_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    resource_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    resource_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    var resource_label: Label = _make_name_label(resource_id, display_name)
     content.add_child(resource_label)
 
     # The price of ONE unit of the goods, right after the name: the number the player
@@ -621,6 +639,67 @@ func _build_resource_row(resource_id: String, display_name: String,
     _wire_row_interaction(row, [price_label, quality_label], side, resource_id, display_name)
     _row_nodes[row_key] = row
     return row
+
+# The name of a row. A single good is a plain label. A GROUP is a reference: the name
+# carries the standard dashed underline of a group, and hovering it shows the standard
+# group tooltip with the members of the group — the same mark and the same tooltip the
+# recipes and the costs of a building use (ui_helpers.make_resource_entry).
+func _make_name_label(resource_id: String, display_name: String) -> Label:
+    if not _is_group_id(resource_id):
+        var plain := Label.new()
+        plain.text = display_name
+        plain.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+        plain.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        plain.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        return plain
+    # The script is taken by path: the global class cache may not be there yet in a
+    # headless --script run (the same note as in ui_helpers.make_resource_entry).
+    var link = load("res://scripts/underlined_label.gd").new()
+    link.text = display_name
+    link.underline_text = display_name
+    link.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    link.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    # PASS and not STOP: the row must still receive the hover and the click that open
+    # the trade panel, while the label itself needs the hover for the group tooltip.
+    link.mouse_filter = Control.MOUSE_FILTER_PASS
+    link.mouse_entered.connect(_on_group_name_hover.bind(resource_id))
+    link.mouse_exited.connect(_on_group_name_exit)
+    return link
+
+# The standard group tooltip of a group row: the name of the group and the list of its
+# members. It is the same panel the rest of the game uses (ui_helpers.show_group_tooltip),
+# so the composition of a group is read the same way everywhere.
+func _on_group_name_hover(resource_id: String) -> void:
+    var helpers := _get_ui_helpers()
+    if helpers == null:
+        return
+    helpers.show_group_tooltip(get_viewport().get_mouse_position(), resource_id,
+            GameData.products)
+
+func _on_group_name_exit() -> void:
+    _hide_group_tooltip()
+
+# The tooltip instance of the window: the one of the map when it has one (the normal
+# case — the map owns a standard instance for its HUD), otherwise a private one created
+# on the first hover (a window opened on its own in a test).
+func _get_ui_helpers() -> Node:
+    if _map != null and is_instance_valid(_map) and _map.has_method("get_ui_helpers"):
+        var shared = _map.get_ui_helpers()
+        if shared != null and is_instance_valid(shared):
+            return shared
+    if _own_ui_helpers == null or not is_instance_valid(_own_ui_helpers):
+        _own_ui_helpers = load("res://scripts/ui_helpers.gd").new()
+        _own_ui_helpers.setup(self, null)
+        add_child(_own_ui_helpers)
+    return _own_ui_helpers
+
+func _hide_group_tooltip() -> void:
+    if _own_ui_helpers != null and is_instance_valid(_own_ui_helpers):
+        _own_ui_helpers.hide_group_tooltip()
+    if _map != null and is_instance_valid(_map) and _map.has_method("get_ui_helpers"):
+        var shared = _map.get_ui_helpers()
+        if shared != null and is_instance_valid(shared):
+            shared.hide_group_tooltip()
 
 # Connects the row and its interactive children (the price and the quality stars) to
 # the common hover/click handlers. The row is the argument of both handlers, so an
@@ -1423,11 +1502,18 @@ func _on_cancel_deal_pressed() -> void:
 
 # --- The categories ---
 
+# Whether the key of a row is a group ("@fruits") rather than a concrete good.
+func _is_group_id(resource_id: String) -> bool:
+    return resource_id.begins_with("@")
+
 # The category of a trade-pool resource — the same field the "Resources" tab groups
 # by. A town pool may hold a raw resource id as itself (a resource with no
 # production), so the lookup goes through the common reference, which covers both the
-# raw resources and the products. An id without a category falls back to "other".
+# raw resources and the products. A group is filed under the category of its members
+# (TownEconomy.get_group_category). An id without a category falls back to "other".
 func _get_resource_category(resource_id: String) -> String:
+    if _is_group_id(resource_id):
+        return TownEconomy.get_group_category(resource_id)
     var category := str(GameData.get_resource_data(resource_id).get("category", ""))
     return category if not category.is_empty() else "other"
 
@@ -1453,11 +1539,17 @@ func _ordered_categories(grouped: Dictionary) -> Array:
             ordered.append(category_id)
     return ordered
 
+# The icon of a row: the icon of the product, or the icon of the group (its own one, or
+# the one of its first member that has an icon — see GameData.get_product_group_icon).
 func _get_resource_icon_name(resource_id: String) -> String:
+    if _is_group_id(resource_id):
+        return GameData.get_product_group_icon(resource_id)
     var resource_data := GameData.get_resource_data(resource_id)
     return str(resource_data.get("icon", ""))
 
 func _get_resource_display_name(resource_id: String) -> String:
+    if _is_group_id(resource_id):
+        return GameData.format_resource_name(resource_id)
     var resource_data := GameData.get_resource_data(resource_id)
     var display_name := str(resource_data.get("name", ""))
     if not display_name.is_empty():
@@ -1524,6 +1616,7 @@ func _resource_row_name(row: Node) -> String:
 func close_town():
     if not visible:
         return
+    _hide_group_tooltip()
     _clear_selection()
     _town = null
     has_town = false

@@ -2623,13 +2623,9 @@ func get_town_contract(town_id: String, product_id: String) -> Dictionary:
 func update_town_contract(town_id: String, product_id: String, amount: int) -> Dictionary:
     if town_trade_manager == null:
         return {"ok": false, "message": ""}
-    return town_trade_manager.submit_order({
-        "side": "sell",
-        "town_id": town_id,
-        "product_id": product_id,
-        "amount": amount,
-        "permanent": true,
-    })
+    # An amount edit only: the direction of the deal is a term of the contract and is not
+    # an order of the window (see town_trade_manager.update_contract_amount).
+    return town_trade_manager.update_contract_amount(town_id, product_id, amount)
 
 # Closes the standing contract of a town from the "Trade deals" column (see
 # town_trade_manager.close_contract). The good becomes free for a new deal.
@@ -3592,6 +3588,12 @@ func _update_treasury_hud():
         # would crawl out onto the map and the hover on the "tail" would stop working.
         if hud.has_method("refresh_size"):
             hud.refresh_size()
+
+# The standard tooltip instance of the map. The town window takes it for the group rows
+# of its purchase column, so the composition of a group is shown by the same panel as
+# everywhere else instead of a copy of its own (see town_ui._get_ui_helpers).
+func get_ui_helpers() -> Node:
+    return _map_ui_helpers
 
 # Creates a CanvasLayer + the Control-host and instantiates ui_helpers for the
 # HUD tooltips (the breakdown of the treasury and the future ones). It is added to the tree once in

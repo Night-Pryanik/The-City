@@ -19,8 +19,9 @@
 #   7. BOUNDARIES. A single-ingredient recipe gives neither import nor closure
 #      at zero available; a recipe with two gaps out of three is imported (1/3),
 #      a recipe with more gaps is not.
-#   8. GROUP REPRESENTATIVE. Random, but stable between calls and always
-#      from the group's membership.
+#   8. GROUP IN THE BUY POOL. A missing @-group is bought AS THE GROUP: the pool
+#      carries "@bronze_alloys", no member of it stands in the pool as a separate
+#      good, and no member of it lands in the sell pool (it was bought, not made).
 #   9. LIVE MAP. The pools are non-empty, and a recomputation changes nothing.
 #  10. BASE POOL = PRODUCTS. The raw material itself (field, deposit, animal)
 #      does not land in the pool — the town sells the harvest, not a "wheat
@@ -139,6 +140,8 @@ func _run() -> void:
         _test_determinism()
     if WATCHDOG.wants_case("group_member"):
         _test_group_member()
+    if WATCHDOG.wants_case("group_helpers"):
+        _test_group_helpers()
     if WATCHDOG.wants_case("base_pool_is_products_only"):
         _test_base_pool_is_products_only()
     if WATCHDOG.wants_case("animals_excluded"):
@@ -313,25 +316,65 @@ func _test_determinism() -> void:
             "the buy pool of town %s changed on recomputation" % town_id)
 
 
-# 8. @-GROUP REPRESENTATIVE. Random, but stable and always from the group.
+# 8. A GROUP IN THE BUY POOL. The town buys the GROUP, not one of its members: the
+# pool carries the group key, because the concrete goods are chosen at the settlement
+# (town_trade_manager). A member of the group must not stand in the pool as a separate
+# demand beside it — the group already covers it.
 func _test_group_member() -> void:
     var gd = get_root().get_node("GameData")
     var members: Array = gd.product_groups.get("bronze_alloys", [])
     # bronze asks for @bronze_alloys: the pool has copper (ore) and charcoal
-    # (wood), it is precisely the alloy that is missing. If the town decided to
-    # import, the purchase must contain ONE of the group members — and no
-    # "@bronze_alloys" key.
-    var seen_group_pick := false
+    # (wood), it is precisely the alloy that is missing.
+    var seen_group := false
     for i in range(40):
         var pools: Dictionary = _te.build_pools("town_grp_%d" % i, [WOOD, COPPER_ORE])
-        for pid in pools["buy_pool"]:
-            _check(not str(pid).begins_with("@"),
-                "there must be no group key \"%s\" in the buy pool" % pid)
-            if members.has(str(pid)):
-                seen_group_pick = true
-    _check(seen_group_pick,
-        "no town picked a representative of @bronze_alloys — "
-        + "check the group expansion in import")
+        var buy: Array = pools["buy_pool"]
+        for pid in buy:
+            var key := str(pid)
+            if not key.begins_with("@"):
+                _check(not members.has(key),
+                    ("a member of @bronze_alloys (\"%s\") must not stand in the buy pool "
+                    + "beside the group") % key)
+                continue
+            _check(gd.product_groups.has(key.substr(1)),
+                "a group key of the buy pool (\"%s\") must name a real group" % key)
+            if key == "@bronze_alloys":
+                seen_group = true
+    _check(seen_group,
+        "no town bought @bronze_alloys — check the group handling in the import")
+
+
+# 8b. THE PRICE AND THE CATEGORY OF A GROUP. A group row has no product of its own, so
+# the window needs one price (the average of the members) and one category (the category
+# of the members). Both are read from the data, not from the constants of the test.
+func _test_group_helpers() -> void:
+    var gd = get_root().get_node("GameData")
+    for group_id in ["fruits", "alcohol"]:
+        var key: String = "@" + str(group_id)
+        var members: Array = gd.product_groups.get(group_id, [])
+        _check(not members.is_empty(), "group %s must have members" % group_id)
+        var total := 0.0
+        var count := 0
+        var expected_category := ""
+        for member in members:
+            var price := float(gd.get_price(str(member)))
+            if price > 0.0:
+                total += price
+                count += 1
+            if expected_category.is_empty():
+                expected_category = str(gd.get_resource_data(str(member)).get("category", ""))
+        var expected_price := int(round(total / float(count))) if count > 0 else 0
+        _check(_te.get_group_price(key) == expected_price,
+            "the price of %s must be the average of its members (%d, got %d)"
+                % [key, expected_price, _te.get_group_price(key)])
+        _check(_te.get_group_category(key) == expected_category,
+            "the category of %s must be the one of its first member (\"%s\", got \"%s\")"
+                % [key, expected_category, _te.get_group_category(key)])
+    # A group that is not in the registry has neither a price nor a category of its own.
+    _check(_te.get_group_price("@no_such_group") == 0,
+        "an unknown group must cost nothing")
+    _check(_te.get_group_category("@no_such_group") == "other",
+        "an unknown group must fall back to the \"other\" category")
 
 
 # --- Base pool: products only, not raw resources ---

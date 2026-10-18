@@ -303,6 +303,12 @@ msgstr ""
 msgid "%s [%s] (science: %d)%s"
 msgstr ""
 
+msgid "%s cannot pay %d coins for the goods."
+msgstr ""
+
+msgid "%s cannot pay %d coins per second for the contract."
+msgstr ""
+
 msgid "%s does not have %d units for a standing contract."
 msgstr ""
 
@@ -780,10 +786,19 @@ msgstr ""
 msgid "Contract signed: %d units of %s per second from %s."
 msgstr ""
 
+msgid "Contract signed: the city supplies %d units of %s per second to %s."
+msgstr ""
+
+msgid "Contract terminated: %s cannot pay %d per second for %s."
+msgstr ""
+
 msgid "Contract terminated: %s ran out of %s."
 msgstr ""
 
 msgid "Contract terminated: a broken record."
+msgstr ""
+
+msgid "Contract terminated: the city ran out of %s."
 msgstr ""
 
 msgid "Contract terminated: the town is gone."
@@ -793,6 +808,9 @@ msgid "Contract terminated: the treasury cannot pay %d per second for %s from %s
 msgstr ""
 
 msgid "Contract updated: %d units of %s per second from %s."
+msgstr ""
+
+msgid "Contract updated: the city supplies %d units of %s per second to %s."
 msgstr ""
 
 msgid "Contract: %d units/sec"
@@ -1554,6 +1572,9 @@ msgstr ""
 msgid "Slot %d:"
 msgstr ""
 
+msgid "Sold %d units of %s to %s."
+msgstr ""
+
 msgid "Source not found: product \"%s\" (%s) appears neither in produces of any map resource, nor in result/display_result of any recipe, nor in additional_yield of any building. Add a data source or remove the product from the file."
 msgstr ""
 
@@ -1671,13 +1692,25 @@ msgstr ""
 msgid "The chunk overlaps another town's influence ring — purchase impossible"
 msgstr ""
 
+msgid "The city does not have %d units of %s for a standing contract."
+msgstr ""
+
+msgid "The city does not have %d units of %s."
+msgstr ""
+
 msgid "The city needs access to fresh water"
 msgstr ""
 
 msgid "The contract is already closed."
 msgstr ""
 
+msgid "The goods are not chosen"
+msgstr ""
+
 msgid "The goods are on the way from the town. Cancelling the deal returns the un-shipped part to the town and refunds %d coins."
+msgstr ""
+
+msgid "The goods have no price."
 msgstr ""
 
 msgid "The interface font. Any font file (.ttf, .otf) put into the fonts folder is listed here and is applied at once, without restarting the game."
@@ -1696,6 +1729,9 @@ msgid "The time the goods spend on the road from the town to the city"
 msgstr ""
 
 msgid "The town buys nothing"
+msgstr ""
+
+msgid "The town does not buy this good."
 msgstr ""
 
 msgid "The town is already connected by a road"
@@ -1723,6 +1759,9 @@ msgid "This building has no improved version"
 msgstr ""
 
 msgid "This building is already being upgraded"
+msgstr ""
+
+msgid "This good already has a contract in the opposite direction. Close it first."
 msgstr ""
 
 msgid "This is a decorative town improvement — it cannot be modified"
@@ -1789,6 +1828,9 @@ msgid "Unfinished sections: %d. Work spent on them (%.0f/%.0f) will be lost.\n\n
 msgstr ""
 
 msgid "Unknown construction requirement: %s"
+msgstr ""
+
+msgid "Unknown trade direction — the order was not placed."
 msgstr ""
 
 msgid "Update the contract"

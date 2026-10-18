@@ -28,6 +28,11 @@
 #      is virtual, therefore for it "iron and coal are needed" means exactly the same as
 #      "30 iron and 20 coal are needed". The volumes from data/crafts are not
 #      read at all for this task.
+#      A missing ingredient that is an @-group is bought AS THE GROUP: the buy pool
+#      carries the group key ("@fruits"), because the town accepts any member. The
+#      concrete member is picked when the goods are actually delivered to the town
+#      (town_trade_manager), not here; here a stable representative is drawn only to
+#      feed the closure.
 #   4. The cascade repeats while a new import opens something: the bought ore
 #      gives metal, the metal gives items, and so on. There is no fixed number of
 #      passes; the cycle goes until the round in which NOT A SINGLE
@@ -180,6 +185,45 @@ static func collect_base_resources(tiles: Array) -> Array:
             seen[produced] = true
             result.append(produced)
     return result
+
+
+# --- The groups in the buy pool ---
+#
+# The buy pool can name a group instead of a concrete good. Such a row is a single
+# demand ("the town wants fruit"), so it needs a single price and a single category —
+# the window has no room for a per-member breakdown, and the town pays the same for
+# whatever member it receives.
+
+# The price of ONE unit of a group, in whole coins: the average market price of its
+# members (with the dynamic multipliers of each). The average is the neutral reading of
+# a group that has no price of its own: it does not follow the cheapest member, so a
+# group row cannot be bought or sold at the price of its worst good. A group without a
+# priced member costs nothing, and the trade refuses such an order.
+static func get_group_price(group_key: String) -> int:
+    var total := 0.0
+    var count := 0
+    for member in GameData.product_groups.get(group_key.trim_prefix("@"), []):
+        var price := GameData.get_price(str(member))
+        if price <= 0.0:
+            continue
+        total += price
+        count += 1
+    if count == 0:
+        return 0
+    return int(round(total / float(count)))
+
+
+# The category a group row is filed under: the category of its first member that has
+# one. The members of a group normally share a category (the fruits are fruits, the
+# drinks are drinks); the first member is the tie-breaker of the data, not a rule of
+# the game, and a group with no categorised member falls back to "other" — the same
+# fallback a product without a category takes in the window.
+static func get_group_category(group_key: String) -> String:
+    for member in GameData.product_groups.get(group_key.trim_prefix("@"), []):
+        var category := str(GameData.get_resource_data(str(member)).get("category", ""))
+        if not category.is_empty():
+            return category
+    return "other"
 
 
 # --- The warehouse (the storage of a town) ---
@@ -812,6 +856,27 @@ static func _seed_for(town_id: String, recipe_id: String) -> int:
 
 # --- Assembling the pools ---
 
+# The buy keys to show, in a stable order. A concrete good that belongs to a group the
+# town buys anyway is dropped: the group row already covers it, because the town accepts
+# any member. Without this the window would show "Fruits" and "Grapes" beside it as two
+# demands that are in fact one.
+static func _buy_keys_without_covered(wanted: Dictionary) -> Array:
+    var covered: Dictionary = {}
+    for key in wanted:
+        var group_key := str(key)
+        if not group_key.begins_with("@"):
+            continue
+        for member in GameData.product_groups.get(group_key.substr(1), []):
+            covered[str(member)] = true
+    var result: Array = []
+    for key in wanted:
+        var id := str(key)
+        if not id.begins_with("@") and covered.has(id):
+            continue
+        result.append(id)
+    result.sort()
+    return result
+
 # The full calculation of the trade pools of the town.
 #
 # town_id   — the town identifier ("town_3"); it is part of the seed of all the rolls.
@@ -819,9 +884,11 @@ static func _seed_for(town_id: String, recipe_id: String) -> int:
 #
 # It returns { "sell_pool": Array, "buy_pool": Array, "quality": Dictionary }; both
 # arrays are sorted, so that the same state gives the same result in printing and in
-# the tests. "quality" is the single level of every traded product (product id ->
-# quality id): the ring yields carry the quality of the map hex, the crafted goods the
-# weighted average of their ingredients.
+# the tests. The buy pool may carry @-group keys ("@fruits"): the town accepts any
+# member of such a group, and the concrete goods are picked at the settlement. "quality"
+# is the single level of every traded product (product id -> quality id): the ring yields
+# carry the quality of the map hex, the crafted goods the weighted average of their
+# ingredients.
 static func build_pools(town_id: String, base_ids: Array,
         base_qualities: Dictionary = {}) -> Dictionary:
     var made: Dictionary = {}
@@ -845,6 +912,10 @@ static func build_pools(town_id: String, base_ids: Array,
 
     # The import cascade: round by round, while a new import opens something.
     var rolls: Dictionary = {}
+    # The keys the window shows in the purchase column: a direct import by its own id, a
+    # group import by the GROUP key. The concrete member behind a group is a matter of the
+    # settlement (town_trade_manager), not of the pool.
+    var wanted: Dictionary = {}
     var guard := 0
     while guard < 200:
         guard += 1
@@ -869,12 +940,19 @@ static func build_pools(town_id: String, base_ids: Array,
             var index := 0
             for key in missing:
                 var missing_key := str(key)
+                var is_group := missing_key.begins_with("@")
                 var concrete := missing_key
-                if missing_key.begins_with("@"):
+                if is_group:
                     concrete = _pick_group_member(town_id, recipe_id, index,
                             missing_key.substr(1))
                 index += 1
-                if concrete.is_empty() or imports.has(concrete):
+                if concrete.is_empty():
+                    continue
+                # The group is what the town wants; the representative exists only so the
+                # closure can go on with a concrete id, and it is excluded from the sale
+                # below as an imported good.
+                wanted[missing_key if is_group else concrete] = true
+                if imports.has(concrete):
                     continue
                 imports[concrete] = true
                 bought[concrete] = true
@@ -895,8 +973,7 @@ static func build_pools(town_id: String, base_ids: Array,
         sell[id] = true
     var sell_ids: Array = sell.keys()
     sell_ids.sort()
-    var buy_ids: Array = imports.keys()
-    buy_ids.sort()
+    var buy_ids: Array = _buy_keys_without_covered(wanted)
     # The quality of the CRAFTED goods on sale: an imported raw material is consumed by
     # the town and is never put on the stock, so only the made ids are read here. The
     # quality of the raw goods of the ring is filled by refresh_town, which alone has the

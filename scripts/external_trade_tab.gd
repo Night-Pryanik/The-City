@@ -519,12 +519,16 @@ func _build_deal_row(deal: Dictionary) -> HBoxContainer:
     row.add_child(type_label)
 
     if deal.has("cost"):
-        # The payment of the contract: what the treasury spends every second on it.
+        # The payment of the contract. The type decides the direction of the money: a
+        # purchase is what the treasury spends every second, a sale is what it receives.
         var cost_label := Label.new()
-        cost_label.text = tr("Cost: %d/sec") % int(deal.get("cost", 0))
+        var is_sale := deal_type == DEAL_TYPE_SELL
+        cost_label.text = (tr("Income: %d/sec") % int(deal.get("cost", 0))) if is_sale \
+                else (tr("Cost: %d/sec") % int(deal.get("cost", 0)))
         cost_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
         cost_label.custom_minimum_size = Vector2(92, 0)
-        cost_label.add_theme_color_override("font_color", COLOR_EXPENSE)
+        cost_label.add_theme_color_override("font_color",
+                COLOR_INCOME if is_sale else COLOR_EXPENSE)
         cost_label.mouse_filter = Control.MOUSE_FILTER_STOP
         row.add_child(cost_label)
     else:
