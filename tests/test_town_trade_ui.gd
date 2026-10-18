@@ -56,6 +56,14 @@
 #      the price is the average of the members, the row is filed under the category of its
 #      members, and the order it hands over carries the GROUP key — which good is actually
 #      shipped is decided by the mechanics at the settlement (town_trade_manager).
+#  14. SEPARATOR. The two pools are divided by a vertical rule that sits between the columns,
+#      spans their height and is a hairline of the SCREEN and not of the canvas — one screen
+#      pixel wide at any stretch of the interface, exactly like the lines of a category header.
+#  15. STOCK GATE. A row of the purchase column is tradable only while the city actually holds
+#      the goods: the town buys what the city can deliver. A row without stock is listed as
+#      information — dimmed, with no tooltip of its own (it would cover the group tooltip),
+#      refusing the hover and the click — and comes alive (or dies) on the tick, without the
+#      column being rebuilt. A group row is satisfied by any ONE member in stock.
 #
 # The test opens the window on its own (no map), and stubs the route with an inner
 # class instead of generating a whole map: the window only asks the map for
@@ -121,6 +129,14 @@ var _captured_order: Dictionary = {}
 # --script the test is compiled BEFORE the autoloads are registered (the same note as
 # in test_icon_registry.gd).
 var _gdata = null
+# The warehouse of the city. The purchase column trades only from what it holds
+# (see town_ui._has_city_stock), so the cases seed it.
+var _city = null
+# The shared formatting — the thickness of a hairline and the colours of a category header
+# (see the separator case). Loaded at RUN time and not preloaded: a preload of ui_helpers in
+# a --script run is compiled before the autoloads are registered, and the script fails on the
+# GameData identifier it names.
+var _formatting = null
 
 func _initialize() -> void:
     WATCHDOG.arm(self)
@@ -151,6 +167,15 @@ func _run() -> void:
         _gdata.load_all_data()
     _check(_gdata != null and _gdata.data_loaded, "the game data must be loaded")
 
+    # The purchase column is tradable only for the goods the city can actually give up
+    # (see town_ui._has_city_stock), so the warehouse is seeded with the goods the cases
+    # trade. The stock gate case empties it on purpose and seeds it again by itself.
+    _city = get_root().get_node_or_null("CityData")
+    _check(_city != null, "the CityData autoload must be registered")
+    _formatting = load("res://scripts/ui_helpers.gd")
+    _check(_formatting != null, "the shared UI formatting must be loadable")
+    _seed_city_stock()
+
     if WATCHDOG.wants_case("centered"):
         _test_centered()
     if WATCHDOG.wants_case("rows"):
@@ -179,6 +204,10 @@ func _run() -> void:
         await _test_contract_sync(town)
     if WATCHDOG.wants_case("group_row"):
         await _test_group_row(town)
+    if WATCHDOG.wants_case("separator"):
+        await _test_separator(town)
+    if WATCHDOG.wants_case("stock_gate"):
+        await _test_stock_gate(town)
 
     _finish()
 
@@ -194,6 +223,17 @@ func _make_town() -> Dictionary:
         "storage": {WOOD: 120, PLANKS: 40},
         "quality": {WOOD: "perfect", PLANKS: "fine"},
     }
+
+# Puts into the warehouse of the city the goods the purchase cases trade: the good the
+# purchase column of the stub town demands, and ONE member of the group — a group row is
+# satisfied by any single member (see town_ui._has_city_stock).
+func _seed_city_stock() -> void:
+    if _city == null:
+        return
+    _city.city_storage[WOOD] = 500
+    var members: Array = _gdata.product_groups.get(FRUITS.trim_prefix("@"), [])
+    if not members.is_empty():
+        _city.city_storage[str(members[0])] = 20
 
 # -------------------------------------------------------
 # 1. The window is centered
@@ -1210,6 +1250,218 @@ func _expected_group_price(members: Array) -> int:
     if count == 0:
         return 0
     return int(round(total / float(count)))
+
+# -------------------------------------------------------
+# 14. The rule between the two pools
+# -------------------------------------------------------
+
+# The two pools are divided by a vertical rule. It is a decoration of the layout, so it must sit
+# BETWEEN the columns, span their height, let the mouse through — and it must be a hairline of
+# the SCREEN: the interface is stretched from a 768-tall canvas to the window, and a rule of one
+# CANVAS unit then covers one or two screen columns depending on where it lands. That is exactly
+# why the lines of the category headers read thicker in one place than in another, and the rule
+# has to be built from the same helper as they are.
+func _test_separator(town: Dictionary) -> void:
+    _ui.open_town(town, true)
+    await process_frame
+    await process_frame
+    if _formatting == null:
+        return
+
+    var hbox: Node = _ui.columns_hbox
+    var separator: Control = hbox.get_node_or_null("PoolSeparator")
+    _check(separator != null, "the two pools must be divided by a vertical rule")
+    if separator == null:
+        return
+
+    var buy_column: Node = hbox.get_node("BuyColumn")
+    var sell_column: Node = hbox.get_node("SellColumn")
+    _check(separator.get_index() > buy_column.get_index()
+            and separator.get_index() < sell_column.get_index(),
+        "the rule must sit between the pools (rule %d, buying %d, selling %d)"
+            % [separator.get_index(), buy_column.get_index(), sell_column.get_index()])
+
+    # It reaches the whole height of the columns — a rule that stops halfway reads as a piece of
+    # a frame rather than as a divider.
+    _check(separator.size.y >= (buy_column as Control).size.y - 1.0,
+        "the rule must span the height of the columns (rule %s, column %s)"
+            % [str(separator.size), str((buy_column as Control).size)])
+
+    # It is decoration: it must not steal the cursor from the lists on either side of it.
+    _check(separator.mouse_filter == Control.MOUSE_FILTER_IGNORE,
+        "the rule must let the mouse through (filter %d)" % separator.mouse_filter)
+
+    # One screen pixel wide, whatever the stretch of the canvas is. The thickness of a vertical
+    # rule lies along the X axis, and that axis is stretched by its own factor.
+    _check(is_equal_approx(separator.custom_minimum_size.x,
+            _formatting.hairline_thickness(true)),
+        "the rule must be a hairline of the screen (width %.3f, expected %.3f)"
+            % [separator.custom_minimum_size.x, _formatting.hairline_thickness(true)])
+    _check(separator.custom_minimum_size.x * _formatting.device_scale(true) <= 1.0001,
+        "the rule must not be wider than one screen pixel (%.3f canvas units at a stretch of %.3f)"
+            % [separator.custom_minimum_size.x, _formatting.device_scale(true)])
+
+    # The rule of a hairline: one screen pixel at any stretch, never thicker than a canvas unit
+    # (a canvas that is DOWNSCALED thins a one-unit line out by itself).
+    _check(is_equal_approx(_formatting.hairline_thickness_for(1.0), 1.0),
+        "without a stretch a hairline must stay one canvas unit")
+    _check(is_equal_approx(_formatting.hairline_thickness_for(1.40625), 1.0 / 1.40625),
+        "a stretched canvas must thin a hairline down to one screen pixel (got %.4f)"
+            % _formatting.hairline_thickness_for(1.40625))
+    _check(is_equal_approx(_formatting.hairline_thickness_for(2.0), 0.5),
+        "a canvas stretched twice must halve the hairline (got %.4f)"
+            % _formatting.hairline_thickness_for(2.0))
+    _check(is_equal_approx(_formatting.hairline_thickness_for(0.5), 1.0),
+        "a downscaled canvas must not thicken a hairline (got %.4f)"
+            % _formatting.hairline_thickness_for(0.5))
+
+    # The category lines are built from the very same helper and carry the very same colour —
+    # otherwise the rule and the headers would drift apart again.
+    var header_lines := 0
+    for child in _ui.buy_list.get_children():
+        if not child.has_meta(_formatting.META_CATEGORY_HEADER):
+            continue
+        for part in child.get_children():
+            if not (part is ColorRect):
+                continue
+            header_lines += 1
+            _check(is_equal_approx((part as ColorRect).custom_minimum_size.y,
+                    _formatting.hairline_thickness()),
+                "a line of a category header must be a hairline of the screen (got %.3f)"
+                    % (part as ColorRect).custom_minimum_size.y)
+            _check((part as ColorRect).color == (separator as ColorRect).color,
+                "the rule and the category lines must be painted alike (rule %s, header %s)"
+                    % [str((separator as ColorRect).color), str((part as ColorRect).color)])
+    _check(header_lines > 0, "the purchase column must have at least one category header")
+
+# -------------------------------------------------------
+# 15. The stock gate of the purchase column
+# -------------------------------------------------------
+
+# The town buys what the city can deliver: a good the warehouse does not hold is listed — the
+# player must see what the town wants — but it is not an offer. The row is dimmed, says why in a
+# tooltip, refuses the hover and the click, and comes alive on the tick the goods appear in the
+# warehouse, without the column being rebuilt.
+func _test_stock_gate(town: Dictionary) -> void:
+    if _city == null:
+        return
+    var local: Dictionary = town.duplicate(true)
+    local["buy_pool"] = [WOOD, PLANKS]
+    _city.city_storage.erase(WOOD)
+    _city.city_storage.erase(PLANKS)
+
+    _ui.open_town(local, true)
+    await process_frame
+
+    var wood_row := _row_by_key(_ui.buy_list, "buy:%s" % WOOD)
+    var planks_row := _row_by_key(_ui.buy_list, "buy:%s" % PLANKS)
+    _check(wood_row != null and planks_row != null,
+        "both goods of the pool must be listed even without stock")
+    if wood_row == null or planks_row == null:
+        return
+
+    for row in [wood_row, planks_row]:
+        var what := str(row.get_meta("town_row_name", ""))
+        _check(not bool(row.get_meta("town_row_active", true)),
+            "the row of \"%s\" must not be tradable while the city holds none" % what)
+        _check(row.modulate == _ui.ROW_DISABLED_MODULATE,
+            "the row of \"%s\" must be dimmed (got %s)" % [what, str(row.modulate)])
+        # No tooltip of its own: it would cover the standard group tooltip a group row shows on
+        # hover, and the dimming already says that the row is not an offer.
+        _check(row.tooltip_text.is_empty(),
+            "the dimmed row of \"%s\" must not carry a tooltip of its own (got \"%s\")"
+                % [what, row.tooltip_text])
+
+        # The dimming is not a promise: the cursor must not highlight the row either.
+        var normal: Color = row.get_theme_stylebox("panel").bg_color
+        row.mouse_entered.emit()
+        _check(row.get_theme_stylebox("panel").bg_color == normal,
+            "the row of \"%s\" must not highlight without stock" % what)
+        row.mouse_exited.emit()
+
+        _click(row)
+        await process_frame
+        _check(_ui._trade_panel == null,
+            "a click on the row of \"%s\" must open nothing without stock" % what)
+        _check(_ui._selected_key.is_empty(),
+            "a click on the row of \"%s\" must not select it (got \"%s\")"
+                % [what, _ui._selected_key])
+
+    # The lock is a second one: a direct call cannot open the settings either.
+    _ui._toggle_selection("buy", WOOD, "Wood")
+    _check(_ui._selected_key.is_empty(),
+        "_toggle_selection must refuse a good the city cannot deliver (got \"%s\")"
+            % _ui._selected_key)
+    _ui._open_trade_panel(10)
+    _check(_ui._trade_panel == null,
+        "_open_trade_panel must be a no-op over a good the city cannot deliver")
+
+    # The goods appear in the warehouse: the row comes alive on the tick, and the column is not
+    # rebuilt (a rebuild would throw away the scroll of the list under the player).
+    var rows_before: Array = _ui.buy_list.get_children()
+    _city.city_storage[PLANKS] = 5
+    _ui.refresh_storage()
+    await process_frame
+    _check(_ui.buy_list.get_children() == rows_before,
+        "the tick must not rebuild the purchase column")
+    _check(bool(planks_row.get_meta("town_row_active", false)),
+        "the row must become tradable the moment the goods appear in the warehouse")
+    _check(planks_row.modulate == Color(1, 1, 1, 1),
+        "a tradable row must not stay dimmed (got %s)" % str(planks_row.modulate))
+    _check(planks_row.tooltip_text.is_empty(),
+        "a row must carry no tooltip of its own (got \"%s\")" % planks_row.tooltip_text)
+    _check(not bool(wood_row.get_meta("town_row_active", true)),
+        "the other row must stay dimmed: its goods are still missing")
+
+    # And it really trades: the highlight and the panel are back.
+    _click(planks_row)
+    await process_frame
+    _check(_ui._selected_key == "buy:%s" % PLANKS,
+        "a click on the live row must select it (got \"%s\")" % _ui._selected_key)
+    _check(_ui._trade_panel != null and is_instance_valid(_ui._trade_panel),
+        "a click on the live row must open the trade panel")
+
+    # The goods run out under the open panel: there is nothing left to sell, so the panel goes
+    # with the row instead of standing over a deal that cannot be made.
+    _city.city_storage.erase(PLANKS)
+    _ui.refresh_storage()
+    await process_frame
+    _check(not bool(planks_row.get_meta("town_row_active", true)),
+        "the row must stop being tradable when the goods run out")
+    _check(_ui._trade_panel == null,
+        "the trade panel must go with the row whose goods have run out")
+    _check(_ui._selected_key.is_empty(),
+        "the row whose goods have run out must be deselected (got \"%s\")" % _ui._selected_key)
+
+    # A group row is satisfied by any ONE member: that is what the settlement will pick.
+    local["buy_pool"] = [FRUITS]
+    var members: Array = _gdata.product_groups.get(FRUITS.trim_prefix("@"), [])
+    _check(members.size() > 1, "the group under test must have several members")
+    for member in members:
+        _city.city_storage.erase(str(member))
+    _ui.open_town(local, true)
+    await process_frame
+    var group_row := _row_by_key(_ui.buy_list, "buy:%s" % FRUITS)
+    _check(group_row != null, "the purchase column must list the group row")
+    if group_row == null:
+        return
+    _check(not bool(group_row.get_meta("town_row_active", true)),
+        "a group row with none of its members in stock must not be tradable")
+    if members.size() > 1:
+        # The LAST member and not the first: the row must not be satisfied by the one the price
+        # of the group is averaged from.
+        _city.city_storage[str(members[members.size() - 1])] = 3
+        _ui.refresh_storage()
+        await process_frame
+        _check(bool(group_row.get_meta("town_row_active", false)),
+            "a group row must be tradable when at least one member is in stock")
+        _click(group_row)
+        await process_frame
+        _check(_ui._selected_key == "buy:%s" % FRUITS,
+            "the live group row must open its trade panel (got \"%s\")" % _ui._selected_key)
+        _ui._clear_selection()
+
+    _seed_city_stock()
 
 # -------------------------------------------------------
 # Helpers

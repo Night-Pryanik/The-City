@@ -122,11 +122,46 @@ static func build_category_header(category_name: String) -> HBoxContainer:
 static func _make_category_line() -> ColorRect:
     var line := ColorRect.new()
     line.color = CATEGORY_HEADER_LINE_COLOR
-    line.custom_minimum_size = Vector2(0, 1)
+    line.custom_minimum_size = Vector2(0, hairline_thickness())
     line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     line.size_flags_vertical = Control.SIZE_SHRINK_CENTER
     line.mouse_filter = Control.MOUSE_FILTER_IGNORE
     return line
+
+# The thickness of a hairline — a category line, a separator — in the units of the canvas it
+# is laid out in.
+#
+# The interface is drawn on a canvas of a fixed height (768) that the engine stretches to the
+# window, so one canvas unit is not one screen pixel: a one-unit rect covers one or two screen
+# rows depending on where it happens to land, and the very same separator then reads thicker in
+# one place of the list than in another. A rect of 1 / scale screen pixels covers exactly one
+# row everywhere, whatever the stretch is.
+#
+# The value never exceeds one canvas unit: a hairline must not grow thicker than the canvas
+# pixel it is measured in, and on a canvas that is DOWNSCALED a one-unit line already thins out
+# by itself.
+#
+# along_x — the hairline runs vertically, so its thickness lies along the X axis. The two axes
+# are stretched by slightly different factors when the window does not divide evenly into the
+# canvas, and a thickness taken from the wrong axis overshoots a pixel by a fraction — enough to
+# cover two screen columns instead of one.
+static func hairline_thickness(along_x: bool = false) -> float:
+    return hairline_thickness_for(device_scale(along_x))
+
+# The rule above for a known stretch — the pure form, so that it can be checked without a window.
+static func hairline_thickness_for(scale: float) -> float:
+    return 1.0 if scale <= 1.0 else 1.0 / scale
+
+# The scale the canvas is drawn at along one axis: how many screen pixels one canvas unit covers
+# (see Viewport.get_final_transform). A viewport that is not attached to a window yet — a
+# headless run with a stub window — reports 1.0, which keeps a hairline one canvas unit thick.
+static func device_scale(along_x: bool = false) -> float:
+    var tree := Engine.get_main_loop() as SceneTree
+    if tree == null or tree.root == null:
+        return 1.0
+    var scale := tree.root.get_final_transform().get_scale()
+    var value := scale.x if along_x else scale.y
+    return value if value > 0.0 else 1.0
 
 var message_label: Label
 # The common style of the background for all the tooltips: a fully opaque dark

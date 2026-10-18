@@ -12,6 +12,15 @@
 # Two columns "Buying" and "Selling". The lists are inside ScrollContainers
 # (BuyScroll/SellScroll): the sell pool of a town is dozens of rows, and without
 # scrolling they spilled past the bottom edge of the window right onto the map.
+# A vertical rule separates the two pools (see _build_pool_separator).
+#
+# The vertical scrollbar of both columns is reserved permanently (vertical_scroll_mode =
+# SHOW_ALWAYS in the scene), so the width of the rows never depends on whether the list
+# overflows: with SCROLL_MODE_AUTO the ScrollContainer hands its content the width MINUS the
+# bar, and a column that starts to overflow — a pool of dozens of goods, or the trade panel
+# opening under a row — narrows every row by the width of the bar and the price column jumps
+# to the left. An idle bar is hidden (see _wire_scroll_gutter), so a short list does not carry
+# a bright rail of a grabber that fills the whole track.
 #
 # Both columns are grouped by the resource category, exactly like the "Resources"
 # tab of the city (see _fill_resource_list): a header of a solid line, the category
@@ -24,13 +33,21 @@
 # chosen at the settlement, from what the city has in stock (town_trade_manager), so the
 # row carries the group price — the average price of its members (town_economy.get_group_price).
 #
+# A row of the purchase column is tradable only while the city actually holds the goods: the
+# town buys what the city can deliver, so a good the warehouse cannot give up is listed as
+# information and not as an offer (see _row_tradable). A group row is satisfied by any ONE of
+# its members, because that is what the settlement will pick. The rule is re-applied while the
+# window is open, so a row comes alive the moment the goods appear in the warehouse.
+#
 # A row is INTERACTIVE: it highlights on hover and, on a click, opens the trade
 # settings of the resource right under itself (see _open_trade_panel). The highlight
 # is a stylebox on the row's PanelContainer — a transparent normal, a light hover and
 # a stronger "selected" state — so the row reacts like a button without turning every
 # label of the row into a button. The interaction is only wired when the trade with the
 # town is available at all: without a road the rows are pure information (see
-# _can_trade).
+# _can_trade). A row that is not tradable right now — no road, or nothing of the goods in
+# the warehouse of the city — is dimmed and refuses the cursor and the click
+# (see _set_row_active).
 #
 # Every row of the sale column carries the stock of the town and its quality: the
 # stars of the level in its own colour (data/qualities.json). A town never holds
@@ -143,15 +160,22 @@ const COLOR_INCOME := Color(1.0, 0.807, 0.2, 1)
 const DEAL_STATUS_TEXT_COLOR := Color(0.65, 0.65, 0.65, 1)
 
 # The markers that let the layout be read back: a row of a trade column and the key
-# of the resource behind it (the tests and the trade panel both use them).
+# of the resource behind it (the tests and the trade panel both use them), and whether
+# the row can be traded from at all (see _set_row_active).
 const META_RESOURCE_ROW := "town_resource_row"
 const META_ROW_KEY := "town_row_key"
 const META_ROW_NAME := "town_row_name"
+const META_ROW_ACTIVE := "town_row_active"
+# Marks a scrollbar whose gutter is already wired to the metrics of its list (see
+# _wire_scroll_gutter). The bar is an internal child of the ScrollContainer and outlives a
+# rebuild of the list, so the signal must not be connected twice.
+const META_GUTTER_WIRED := "town_gutter_wired"
 @onready var window_panel = $WindowPanel
 @onready var title_label = $WindowPanel/TitleLabel
 @onready var status_label = $WindowPanel/StatusLabel
 @onready var treasury_label = $WindowPanel/TreasuryLabel
 @onready var close_button = $WindowPanel/CloseButton
+@onready var columns_hbox = $WindowPanel/ColumnsHBox
 @onready var buy_scroll = $WindowPanel/ColumnsHBox/BuyColumn/BuyScroll
 @onready var sell_scroll = $WindowPanel/ColumnsHBox/SellColumn/SellScroll
 @onready var buy_list = $WindowPanel/ColumnsHBox/BuyColumn/BuyScroll/BuyList
@@ -202,6 +226,12 @@ var _own_ui_helpers: Node = null
 # panel is inserted right after its row, and the highlight is applied through these
 # references, so a rebuild only has to refresh the map.
 var _row_nodes: Dictionary = {}
+# The rows of the purchase column, by the row key: row key -> { "row": Control, "id": String }.
+# Their tradability depends on the warehouse of the city, which moves while the window is open,
+# so they are kept apart to be re-read without rebuilding the column (see _refresh_row_gates).
+var _buy_rows: Dictionary = {}
+# The vertical rule between the two pools (see _build_pool_separator). null before _ready.
+var _pool_separator: ColorRect = null
 # The row the cursor is over. Only one row is hovered at a time; the field is needed
 # because the signals of a row and of its labels (the quality stars) arrive as
 # separate enter/exit pairs and must not fight over the same row.
@@ -250,10 +280,62 @@ var _last_order: Dictionary = {}
 func _ready():
     if close_button:
         close_button.pressed.connect(close_town)
+    _build_pool_separator()
+    _wire_scroll_gutter(buy_scroll)
+    _wire_scroll_gutter(sell_scroll)
     _center_window()
     var viewport := get_viewport()
-    if viewport != null and not viewport.size_changed.is_connected(_center_window):
-        viewport.size_changed.connect(_center_window)
+    if viewport != null:
+        if not viewport.size_changed.is_connected(_center_window):
+            viewport.size_changed.connect(_center_window)
+        # The rule between the pools is a hairline of the SCREEN, so its width has to be
+        # recomputed when the stretch of the canvas changes (see UiHelpers.hairline_thickness).
+        if not viewport.size_changed.is_connected(_layout_pool_separator):
+            viewport.size_changed.connect(_layout_pool_separator)
+
+# The vertical rule between the two pools. It is built here and not declared in the scene:
+# its width is a hairline of the screen and follows the stretch of the canvas, which only the
+# running window knows. The colour is the one of the category lines, so the rule and the
+# headers of the columns cannot drift apart.
+func _build_pool_separator() -> void:
+    if columns_hbox == null or _pool_separator != null:
+        return
+    _pool_separator = ColorRect.new()
+    _pool_separator.name = "PoolSeparator"
+    _pool_separator.color = UiHelpers.CATEGORY_HEADER_LINE_COLOR
+    _pool_separator.size_flags_vertical = Control.SIZE_FILL
+    _pool_separator.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    columns_hbox.add_child(_pool_separator)
+    columns_hbox.move_child(_pool_separator, 1)
+    _layout_pool_separator()
+
+func _layout_pool_separator() -> void:
+    if _pool_separator == null or not is_instance_valid(_pool_separator):
+        return
+    _pool_separator.custom_minimum_size = Vector2(UiHelpers.hairline_thickness(true), 0)
+
+# The gutter of a column's scrollbar is reserved permanently (see the header). A bar that has
+# nothing to scroll, however, paints its grabber over the whole track — a bright rail next to a
+# short list. It is therefore made invisible and transparent to the mouse while the content fits,
+# which costs no layout: the space is taken by the BAR being laid out, not by it being drawn.
+# The state follows the metrics of the bar, so a list that grows (a pool of dozens of goods, the
+# trade panel opening under a row) brings the bar back on its own.
+func _wire_scroll_gutter(scroll: ScrollContainer) -> void:
+    if scroll == null:
+        return
+    var bar := scroll.get_v_scroll_bar()
+    if bar == null or bar.has_meta(META_GUTTER_WIRED):
+        return
+    bar.set_meta(META_GUTTER_WIRED, true)
+    bar.changed.connect(_on_scroll_metrics_changed.bind(bar))
+    _on_scroll_metrics_changed(bar)
+
+func _on_scroll_metrics_changed(bar: VScrollBar) -> void:
+    if bar == null or not is_instance_valid(bar):
+        return
+    var idle := bar.max_value <= bar.page
+    bar.modulate.a = 0.0 if idle else 1.0
+    bar.mouse_filter = Control.MOUSE_FILTER_IGNORE if idle else Control.MOUSE_FILTER_STOP
 
 # Centers the window panel in the viewport. The interface of a town lives on the map
 # (MainMap is a Node2D), and a Control under a non-Control is anchored to a zero-sized
@@ -304,6 +386,7 @@ func _refresh():
                 else tr("Trade unavailable: there is no road from the city to this town")
         status_label.visible = not status_label.text.is_empty()
     _row_nodes.clear()
+    _buy_rows.clear()
     _price_labels.clear()
     _fill_resource_list(buy_list, _town.get("buy_pool", []), tr("The town buys nothing"),
             SIDE_BUY, false)
@@ -313,6 +396,12 @@ func _refresh():
     # highlight of its row have to be put back on top of the fresh rows. The contract of
     # the selected row is re-read first: the panel of a good that carries one must come
     # back as an EDIT of it and not as a fresh order.
+    #
+    # A selection that can no longer be traded from — the goods left the warehouse of the
+    # city while the column was being rebuilt — is dropped together with its panel: there is
+    # nothing to trade, so there is nothing to show (see _row_tradable).
+    if not _selected_key.is_empty() and not _row_tradable(_selected_side, _selected_id):
+        _clear_selection()
     if not _selected_key.is_empty():
         var keep_amount := _current_amount()
         _sync_selected_contract()
@@ -328,6 +417,9 @@ func _refresh():
 func refresh_storage():
     if _town == null or not visible:
         return
+    # The warehouse of the CITY moves as well: it is what the purchase column trades from, so
+    # the rows that became tradable (or stopped being so) are re-read here, without a rebuild.
+    _refresh_row_gates()
     for display_name in _sell_quantity_labels:
         var label: Label = _sell_quantity_labels[display_name]
         if is_instance_valid(label):
@@ -631,14 +723,73 @@ func _build_resource_row(resource_id: String, display_name: String,
     # No road — no trade: the row stays on the screen as information, but it is dimmed
     # and not wired at all, so it neither highlights nor opens the trade panel. The
     # status row above the columns says why (see _refresh).
+    _row_nodes[row_key] = row
     if not _can_trade():
-        row.modulate = ROW_DISABLED_MODULATE
-        _row_nodes[row_key] = row
+        _set_row_active(row, false)
         return row
 
+    # The interaction is wired even for a row that cannot be traded from RIGHT NOW: the
+    # warehouse of the city moves while the window is open, and a row comes alive without a
+    # rebuild (see _refresh_row_gates). What an inactive row refuses is the reaction — the
+    # highlight and the click (see _on_row_hover, _toggle_selection).
     _wire_row_interaction(row, [price_label, quality_label], side, resource_id, display_name)
-    _row_nodes[row_key] = row
+    _set_row_active(row, _row_tradable(side, resource_id))
+    if side == SIDE_BUY:
+        _buy_rows[row_key] = {"row": row, "id": resource_id}
     return row
+
+# Whether the row can be traded from right now. The trade must exist at all (see _can_trade),
+# and the goods must be there to trade: the sale column is capped by the town's own stock, while
+# the purchase column needs the goods in the warehouse of the city — the town buys what the city
+# can deliver, and a row of a good the warehouse does not hold is an entry of the pool, not an
+# offer.
+func _row_tradable(side: String, resource_id: String) -> bool:
+    if not _can_trade():
+        return false
+    return _has_city_stock(resource_id) if side == SIDE_BUY else true
+
+# Whether the warehouse of the city holds at least one unit of the goods. A GROUP is satisfied
+# by any ONE of its members, and the sum over the members is exactly what tells "at least one"
+# (GameData.get_storage_amount reads both forms) — the member that is actually shipped is picked
+# at the settlement (town_trade_manager._take_from_city).
+func _has_city_stock(resource_id: String) -> bool:
+    return GameData.get_storage_amount(resource_id, CityData.city_storage) > 0.0
+
+# Writes the tradability of a row into it: the dimming the player sees and the mark the handlers
+# and the tests read back. An inactive row is still built and still readable — the player must see
+# what the town wants — it just cannot be traded from.
+#
+# It carries no hint of its own: the dimming says the row is not offered, and a tooltip on the row
+# would cover the standard group tooltip that a group row shows on hover — the one place where the
+# composition of a group is read from this window.
+func _set_row_active(row: Control, active: bool) -> void:
+    if row == null or not is_instance_valid(row):
+        return
+    row.set_meta(META_ROW_ACTIVE, active)
+    row.modulate = Color(1, 1, 1, 1) if active else ROW_DISABLED_MODULATE
+
+func _is_row_active(row: Control) -> bool:
+    return bool(row.get_meta(META_ROW_ACTIVE, true))
+
+# Re-reads the tradability of the purchase rows against the warehouse of the city. The window is
+# refreshed on every town tick (see refresh_storage), while the city keeps producing: a row of a
+# good that has just appeared in the warehouse must become tradable without the player closing
+# and reopening the window, and a row whose goods have run out must stop pretending otherwise.
+#
+# The selection follows: a trade panel left open over a good the city can no longer deliver has
+# nothing to trade, so it is put away with the row.
+func _refresh_row_gates() -> void:
+    for key in _buy_rows:
+        var entry: Dictionary = _buy_rows[key]
+        var row = entry.get("row", null)
+        if row == null or not is_instance_valid(row):
+            continue
+        var active := _row_tradable(SIDE_BUY, str(entry.get("id", "")))
+        if active == _is_row_active(row):
+            continue
+        _set_row_active(row, active)
+        if not active and str(key) == _selected_key:
+            _clear_selection()
 
 # The name of a row. A single good is a plain label. A GROUP is a reference: the name
 # carries the standard dashed underline of a group, and hovering it shows the standard
@@ -720,6 +871,10 @@ func _wire_row_interaction(row: Control, children: Array,
 func _on_row_hover(row: Control, hovered: bool) -> void:
     if row == null or not is_instance_valid(row):
         return
+    # A row that cannot be traded from does not react to the cursor: the dimming already says
+    # so, and a highlight would promise an action the click refuses (see _toggle_selection).
+    if hovered and not _is_row_active(row):
+        return
     if hovered:
         _hovered_row = row
     elif _hovered_row == row:
@@ -736,12 +891,13 @@ func _on_row_gui_input(event: InputEvent, side: String,
 # repeated click on the selected row closes the panel. Only one resource is selected
 # at a time, so selecting in one column closes the panel of the other.
 #
-# Without a road the trade is unavailable and nothing happens at all: the rows of such
-# a town are not even wired to this handler (see _build_resource_row), and the guard
-# here is the second lock — no caller can open the trade settings of a town the trade
-# is not available with.
+# A row that cannot be traded from opens nothing: without a road the trade is unavailable
+# altogether, and in the purchase column a good the city cannot deliver has nothing to sell.
+# The rows of a town without a road are not even wired to this handler (see
+# _build_resource_row); the guard here is the second lock — no caller can open the trade
+# settings of a deal that cannot be made.
 func _toggle_selection(side: String, resource_id: String, display_name: String) -> void:
-    if not _can_trade():
+    if not _row_tradable(side, resource_id):
         return
     var key := "%s:%s" % [side, resource_id]
     if _selected_key == key:
@@ -876,9 +1032,10 @@ func _make_row_style(color: Color) -> StyleBoxFlat:
 # on a refresh, the default step when a row is opened).
 #
 # The panel is the trade settings of a town, so it does not exist without a trade: with
-# no road to the town the call is a no-op (see _can_trade).
+# no road to the town, or over a good the city cannot deliver, the call is a no-op (see
+# _can_trade, _row_tradable).
 func _open_trade_panel(amount: int) -> void:
-    if not _can_trade():
+    if not _row_tradable(_selected_side, _selected_id):
         return
     _free_trade_panel()
     var row: Control = _row_nodes.get(_selected_key, null)

@@ -1698,6 +1698,9 @@ msgstr "В городе нет %d ед. %s для постоянного кон�
 msgid "The city does not have %d units of %s."
 msgstr "В городе нет %d ед. %s."
 
+msgid "The city has none of these goods: there is nothing to deliver"
+msgstr "На складе города нет этих товаров: поставлять нечего"
+
 msgid "The city needs access to fresh water"
 msgstr "Нужен доступ города к пресной воде"
 
@@ -2454,6 +2457,10 @@ msgid "Dries, rolls, withers and ferments tea leaves."
 msgstr "Сушит, скручивает, вялит и ферментирует чайные листья"
 
 msgctxt "crafts.description"
+msgid "Dries, rolls, withers and ferments yerba mate leaves."
+msgstr "Сушит, скручивает, вялит и ферментирует листья йерба мате"
+
+msgctxt "crafts.description"
 msgid "Fires clay into building bricks."
 msgstr "Обжигает глину в строительные кирпичи"
 
@@ -2912,6 +2919,10 @@ msgstr "Малахит"
 msgctxt "crafts.name"
 msgid "Malachite Jewelry"
 msgstr "Украшения из малахита"
+
+msgctxt "crafts.name"
+msgid "Mate"
+msgstr "Мате"
 
 msgctxt "crafts.name"
 msgid "Mead"
@@ -4006,6 +4017,10 @@ msgid "Marble"
 msgstr "Мрамор"
 
 msgctxt "resources.name"
+msgid "Mate"
+msgstr "Мате"
+
+msgctxt "resources.name"
 msgid "Mead"
 msgstr "Медовый напиток"
 
@@ -4416,6 +4431,14 @@ msgstr "Яки"
 msgctxt "resources.name"
 msgid "Yam"
 msgstr "Ямс"
+
+msgctxt "resources.name"
+msgid "Yerba Mate Leaves"
+msgstr "Листья йерба мате"
+
+msgctxt "resources.name"
+msgid "Yerba mate"
+msgstr "Йерба мате"
 
 msgctxt "resources.name"
 msgid "Yucca"

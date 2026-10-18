@@ -91,6 +91,7 @@ text = "Buying"
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
 
 [node name="BuyList" type="VBoxContainer" parent="WindowPanel/ColumnsHBox/BuyColumn/BuyScroll" unique_id=3000000008]
 layout_mode = 2
@@ -109,6 +110,7 @@ text = "Selling"
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
 
 [node name="SellList" type="VBoxContainer" parent="WindowPanel/ColumnsHBox/SellColumn/SellScroll" unique_id=3000000011]
 layout_mode = 2

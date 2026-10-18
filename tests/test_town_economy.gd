@@ -36,7 +36,9 @@
 #      pool has two different ids with the same name (papyrus_plant and
 #      papyrus both "Papyrus").
 #  14. WINDOW. The lists live in a ScrollContainer: a long pool scrolls instead
-#      of spilling over the window's bottom edge onto the map.
+#      of spilling over the window's bottom edge onto the map. The scrollbar
+#      gutter is reserved, so the width of a column is the same whether its list
+#      fits or overflows.
 #  15. TREASURY. A new town receives town_initial_treasury from
 #      game_balance.json, the window shows the treasury and updates it
 #      immediately on the trade signal; the town cannot go negative.
@@ -595,7 +597,8 @@ func _test_duplicate_names_hidden() -> void:
             % [names.size(), str(names)])
     ui.queue_free()
 
-# 14. Window: the lists scroll and draw nothing over the map.
+# 14. Window: the lists scroll and draw nothing over the map, and the width of a
+# column does not depend on whether its list overflows.
 func _test_town_ui_window() -> void:
     var ui = load("res://scenes/TownUI.tscn").instantiate()
     get_root().add_child(ui)
@@ -608,12 +611,37 @@ func _test_town_ui_window() -> void:
     _check(ui.sell_list.get_parent() == ui.sell_scroll, "SellList must be a child of SellScroll")
     _check(ui.window_panel.clip_contents,
         "WindowPanel must clip its contents: otherwise a long list is drawn over the map")
+    # The gutter of the scrollbar is reserved permanently: with SCROLL_MODE_AUTO a list that
+    # starts to overflow loses the width of the bar, and the price column jumps to the left.
+    _check(ui.buy_scroll.vertical_scroll_mode == ScrollContainer.SCROLL_MODE_SHOW_ALWAYS,
+        "the buy column must reserve the scrollbar gutter (mode: %d)"
+            % ui.buy_scroll.vertical_scroll_mode)
+    _check(ui.sell_scroll.vertical_scroll_mode == ScrollContainer.SCROLL_MODE_SHOW_ALWAYS,
+        "the sell column must reserve the scrollbar gutter (mode: %d)"
+            % ui.sell_scroll.vertical_scroll_mode)
 
-    # A long pool: there are far more rows than fit in the window.
     var gd = get_root().get_node("GameData")
     var long_pool: Array = []
     for pid in gd.products.keys():
         long_pool.append(str(pid))
+
+    # A short pool first: the list fits, so no scrolling is needed at all.
+    ui.open_town({"name": "T", "sell_pool": long_pool.slice(0, 2), "buy_pool": long_pool.slice(0, 2)},
+            true)
+    for i in 4:
+        await process_frame
+    var narrow_height: float = ui.buy_list.size.y
+    var narrow_width: float = ui.buy_list.size.x
+    _check(narrow_height <= ui.buy_scroll.size.y,
+        "the short pool must fit into the window (content %d, view %d)"
+            % [int(narrow_height), int(ui.buy_scroll.size.y)])
+    # The reserved bar draws a grabber over its whole track when there is nothing to scroll,
+    # so an idle bar must not be painted at all.
+    _check(ui.buy_scroll.get_v_scroll_bar().modulate.a == 0.0,
+        "the idle scrollbar must not be drawn (alpha: %.1f)"
+            % ui.buy_scroll.get_v_scroll_bar().modulate.a)
+
+    # A long pool: there are far more rows than fit in the window.
     ui.open_town({"name": "T", "sell_pool": long_pool, "buy_pool": long_pool}, true)
     await process_frame
     await process_frame
@@ -625,6 +653,14 @@ func _test_town_ui_window() -> void:
     _check(content_height > window_height,
         "the content must be taller than the window, otherwise there is nothing to scroll (content %d, window %d)"
             % [int(content_height), int(window_height)])
+    # The width of the rows is the same on both sides of the overflow: the price column
+    # must not move when the scrollbar becomes necessary.
+    _check(is_equal_approx(ui.buy_list.size.x, narrow_width),
+        "the width of the buy column must not depend on the scrollbar (fits: %d, overflows: %d)"
+            % [int(narrow_width), int(ui.buy_list.size.x)])
+    _check(ui.buy_scroll.get_v_scroll_bar().modulate.a == 1.0,
+        "the scrollbar of an overflowing list must be drawn (alpha: %.1f)"
+            % ui.buy_scroll.get_v_scroll_bar().modulate.a)
     # And the scroll really scrolls: we shift it and wait for a frame.
     ui.sell_scroll.scroll_vertical = int(content_height)
     await process_frame

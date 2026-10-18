@@ -1698,6 +1698,9 @@ msgstr ""
 msgid "The city does not have %d units of %s."
 msgstr ""
 
+msgid "The city has none of these goods: there is nothing to deliver"
+msgstr ""
+
 msgid "The city needs access to fresh water"
 msgstr ""
 
@@ -2454,6 +2457,10 @@ msgid "Dries, rolls, withers and ferments tea leaves."
 msgstr ""
 
 msgctxt "crafts.description"
+msgid "Dries, rolls, withers and ferments yerba mate leaves."
+msgstr ""
+
+msgctxt "crafts.description"
 msgid "Fires clay into building bricks."
 msgstr ""
 
@@ -2911,6 +2918,10 @@ msgstr ""
 
 msgctxt "crafts.name"
 msgid "Malachite Jewelry"
+msgstr ""
+
+msgctxt "crafts.name"
+msgid "Mate"
 msgstr ""
 
 msgctxt "crafts.name"
@@ -4006,6 +4017,10 @@ msgid "Marble"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Mate"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Mead"
 msgstr ""
 
@@ -4415,6 +4430,14 @@ msgstr ""
 
 msgctxt "resources.name"
 msgid "Yam"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Yerba Mate Leaves"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Yerba mate"
 msgstr ""
 
 msgctxt "resources.name"
