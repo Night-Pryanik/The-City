@@ -298,6 +298,21 @@
       "produces": { "galls": 10, "wood": 10 },
       "icon": "oak_tree.png",
       "color": [ 200, 255, 200 ]
+    },
+    {
+      "id": "velvetleaf_field", "price": 6,
+      "name": "Velvetleaf",
+      "type": "raw",
+      "category": "technical_plants",
+      "group": "technical_plants",
+      "subgroup": "textile_plants",
+      "allowed_terrain": [ "plain" ],
+      "allowed_cover": [ "none" ],
+      "improved_by": "plantation",
+      "tech_required": "plantations",
+      "produces": { "velvetleaf": 10, "feed": 40 },
+      "icon": "velvetleaf_field.png",
+      "color": [ 200, 255, 200 ]
     }
   ]
 }

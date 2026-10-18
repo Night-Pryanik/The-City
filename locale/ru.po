@@ -4312,6 +4312,10 @@ msgid "Vegetable Oil"
 msgstr "Растительное масло"
 
 msgctxt "resources.name"
+msgid "Velvetleaf"
+msgstr "Канатник"
+
+msgctxt "resources.name"
 msgid "Vinegar"
 msgstr "Уксус"
 

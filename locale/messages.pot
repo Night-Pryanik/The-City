@@ -4312,6 +4312,10 @@ msgid "Vegetable Oil"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Velvetleaf"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Vinegar"
 msgstr ""
 

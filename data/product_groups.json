@@ -82,7 +82,7 @@
     {
       "id": "rope_fibers",
       "name": "Rope Fibers",
-      "products": [ "hemp", "jute", "ramie", "sisal", "papyrus", "kenaf", "yucca" ]
+      "products": [ "hemp", "jute", "ramie", "sisal", "papyrus", "kenaf", "yucca", "velvetleaf" ]
     },
     { "id": "boats", "name": "Boats", "products": [ "reed_boat" ] },
     {
@@ -152,7 +152,7 @@
     {
       "id": "paper_fibers",
       "name": "Paper Fibers",
-      "products": [ "mulberry_bark", "hemp", "ramie", "sisal", "kenaf", "yucca" ]
+      "products": [ "mulberry_bark", "hemp", "ramie", "sisal", "kenaf", "yucca", "velvetleaf" ]
     },
     {
       "id": "alcohol",
