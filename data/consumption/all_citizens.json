@@ -53,13 +53,6 @@
   // has no analogue or assembling a group is not reasonable.
   "consumption": [
     {
-      "resource": "@boats",
-      "profession": [ "fisherman" ],
-      "amount": 10,
-      "interval": 10,
-      "production_bonus": 0.5
-    },
-    {
       "resource": "@fruits",
       "profession": [ "all" ],
       "amount": 10,
@@ -95,11 +88,18 @@
       "production_bonus": 0.0
     },
     {
-      "resource": "writing_set",
-      "profession": [ "scientist" ],
+      "resource": "@clothes",
+      "profession": [ "all" ],
       "amount": 10,
       "interval": 10,
-      "production_bonus": 0.25
+      "production_bonus": 0.0
+    },
+    {
+      "resource": "@spices",
+      "profession": [ "all" ],
+      "amount": 10,
+      "interval": 1,
+      "production_bonus": 0.0
     }
   ]
 }

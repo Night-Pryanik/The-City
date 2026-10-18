@@ -3252,6 +3252,10 @@ msgid "Building Stone"
 msgstr ""
 
 msgctxt "product_groups.name"
+msgid "Clothes"
+msgstr ""
+
+msgctxt "product_groups.name"
 msgid "Dyes"
 msgstr ""
 
@@ -3281,6 +3285,10 @@ msgstr ""
 
 msgctxt "product_groups.name"
 msgid "Rope Fibers"
+msgstr ""
+
+msgctxt "product_groups.name"
+msgid "Spices"
 msgstr ""
 
 msgctxt "product_groups.name"

@@ -3252,6 +3252,10 @@ msgid "Building Stone"
 msgstr "Строительный камень"
 
 msgctxt "product_groups.name"
+msgid "Clothes"
+msgstr "Одежда"
+
+msgctxt "product_groups.name"
 msgid "Dyes"
 msgstr "Красители"
 
@@ -3282,6 +3286,10 @@ msgstr "Обработанные стройматериалы"
 msgctxt "product_groups.name"
 msgid "Rope Fibers"
 msgstr "Волокна для канатов"
+
+msgctxt "product_groups.name"
+msgid "Spices"
+msgstr "Специи"
 
 msgctxt "product_groups.name"
 msgid "Tableware"

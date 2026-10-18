@@ -1,0 +1,56 @@
+{
+  // A registry of occupational resource consumption.
+  //
+  // It describes what the worker professions consume on the map improvements
+  // and in the city buildings, and how often (see docs.md, the section
+  // "Professions and resource consumption").
+  // The "profession ↔ resource" link is set via the "profession" field.
+  //
+  // The target resource ("resource") can be:
+  //   * an id of a single product from data/products/*.json — for example, "tools";
+  //   * a reference to a product group from data/product_groups.json in the format
+  //     "@<group_id>" — for example, "@boats" (the "Boats" group). In that case
+  //     ANY suitable product from the group is written off: first the total
+  //     stock across all group members is summed, then the list is drawn
+  //     greedily from the available members (quality priority "best"). While the sum
+  //     over the group covers "amount" — the bonus applies; if not — the bonus
+  //     is removed and the improvement keeps working on the base multiplier.
+  //
+  // Entry format:
+  //   resource          — the product id or the group "@id" (as in craft recipes).
+  //   profession        — an array of profession ids that consume the resource
+  //                       (data/professions.json). Several professions may
+  //                       consume the same resource.
+  //   amount            — how many units are written off per one "consumption tick".
+  //   interval          — the period between write-offs in seconds (fractions allowed).
+  //   production_bonus  — an addition to the production multiplier of the object
+  //                       while the resource is enough in storage. 0.5 = +50% (x1.5).
+  //                       The bonuses of SINGLE entries add up to each other,
+  //                       while among GROUP ones the best available one is taken (just one):
+  //                       the "Boats" group gives the bonus of the best of the
+  //                       available members, not of all of them at once.
+  //                       It does not apply to the pseudo-profession "all" (0.0):
+  //                       city consumption gives no bonus at all.
+  //
+  // Duplicating declarations: if the same resource is described both here and in
+  // a product (data/products/*.json, the "consumption" field) for one profession,
+  // the entry from this file takes priority; the duplicate entry is ignored.
+  // "Resource-side" consumption is left for the single cases where a product
+  // has no analogue or assembling a group is not reasonable.
+  "consumption": [
+    {
+      "resource": "@boats",
+      "profession": [ "fisherman" ],
+      "amount": 10,
+      "interval": 10,
+      "production_bonus": 0.5
+    },
+    {
+      "resource": "writing_set",
+      "profession": [ "scientist" ],
+      "amount": 10,
+      "interval": 10,
+      "production_bonus": 0.25
+    }
+  ]
+}

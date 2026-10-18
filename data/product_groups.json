@@ -196,6 +196,29 @@
       "id": "non_alcoholic_beverages",
       "name": "Beverages",
       "products": [ "tea", "coffee", "cocoa" ]
+    },
+    {
+      "id": "clothes",
+      "name": "Clothes",
+      "products": [
+        "wool_clothes",
+        "fabric_clothes",
+        "leather_clothes",
+        "silk_clothes"
+      ]
+    },
+    {
+      "id": "spices",
+      "name": "Spices",
+      "products": [
+        "sesame"
+        //"black_pepper",
+        //"cinnamon",
+        //"cloves",
+        //"nutmeg",
+        //"saffron",
+        //"vanilla"
+      ]
     }
   ]
 }
