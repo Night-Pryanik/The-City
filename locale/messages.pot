@@ -1050,6 +1050,12 @@ msgstr ""
 msgid "Irrigation Canal"
 msgstr ""
 
+msgid "It is a key of a dictionary: the game looks it up by name, finds nothing and silently ignores the value under the key. Check the spelling."
+msgstr ""
+
+msgid "It is a key of the dictionary %s: the game looks it up by name, finds nothing and silently ignores the value under the key. Check the spelling."
+msgstr ""
+
 msgid "It seems your region has no %s."
 msgstr ""
 
@@ -1057,6 +1063,9 @@ msgid "Journal"
 msgstr ""
 
 msgid "Keep the deal"
+msgstr ""
+
+msgid "Key of a dictionary names a nonexistent entity"
 msgstr ""
 
 msgid "Language"
@@ -5159,6 +5168,10 @@ msgctxt "validator_entity_ref_improvement"
 msgid "this improvement"
 msgstr ""
 
+msgctxt "validator_entity_ref_priority_option"
+msgid "this quality priority option"
+msgstr ""
+
 msgctxt "validator_entity_ref_product"
 msgid "this product"
 msgstr ""
@@ -5219,6 +5232,10 @@ msgctxt "validator_entity_source_improvement"
 msgid "improvement"
 msgstr ""
 
+msgctxt "validator_entity_source_priority_option"
+msgid "quality priority option"
+msgstr ""
+
 msgctxt "validator_entity_source_product"
 msgid "product"
 msgstr ""
@@ -5277,6 +5294,10 @@ msgstr ""
 
 msgctxt "validator_entity_title_improvement"
 msgid "Improvement"
+msgstr ""
+
+msgctxt "validator_entity_title_priority_option"
+msgid "Quality priority option"
 msgstr ""
 
 msgctxt "validator_entity_title_product"

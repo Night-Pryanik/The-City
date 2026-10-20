@@ -1,7 +1,7 @@
 # Runtime game-data validator test (headless):
 #   godot --headless --path . --script res://tests/test_data_validation.gd
 #
-# Checks six things:
+# Checks seven things:
 #   1) DETECTOR (main). On synthetic data, exactly one breakage is introduced
 #      into each kind of check, and the test requires finding each one — with
 #      the right kind of check, identifier and reference owner.
@@ -25,6 +25,12 @@
 #      object, a field of an element of an array, an unknown collection in the
 #      root and a constant of the wrong block of the balance are each reported,
 #      while the fields the model does describe stay silent.
+#   4b) THE FREE KEYS OF THE DICTIONARIES. The keys of an id map ({"wheat": 1})
+#      are identifiers, not fields: the whitelist cannot see a typo in them at
+#      all. Every map that names a registry (produces, additional_cost,
+#      cover_chance, terrain_config, production_multiplier, priority_names)
+#      must report a key that is not the id of a declared record, and must stay
+#      silent when the registry is empty.
 #   5) Real data/*.json: the validator does not crash, problems correctly
 #      point at the owning product, and non-ASCII in identifiers is absent
 #      (the only exception to the rule "the list of problems on real data is
@@ -55,6 +61,8 @@ func _initialize():
         _test_lumberjack_depends_on_data(state)
     if WATCHDOG.wants_case("schema_whitelist"):
         _test_schema_whitelist(state)
+    if WATCHDOG.wants_case("dict_keys"):
+        _test_dict_keys(state)
     if WATCHDOG.wants_case("real_data"):
         _test_real_data(state)
     if WATCHDOG.wants_case("localization"):
@@ -389,6 +397,121 @@ func _test_schema_whitelist(state: Dictionary):
     gd.free()
 
 
+# --- 4b) The free keys of the dictionaries --------------------------------
+#
+# An id map ({"wheat": 1}) is the second way the data is addressed by name, and the whitelist is
+# blind to it: the key name is free, so any spelling is a legal field, and the game looks the key up
+# by name and finds nothing. Every map that names its registry is exercised here — one key of each
+# is wrong, and one record of each is right and must stay silent.
+func _test_dict_keys(state: Dictionary):
+    var gd = _make_data()
+    gd.raw_data = {
+        "resources": [
+            {"id": "wheat_field", "name": "Wheat Field", "type": "raw",
+                    "produces": {"wheat": 2, "wheatt": 1}},
+            {"id": "wheat", "name": "Wheat", "type": "product", "special_yield": {"wheat": 1}},
+        ],
+        "buildings": [
+            {"id": "granary", "name": "Granary",
+                    "additional_cost": [{"wheat": 10}, {"@no_group": 5}],
+                    "additional_yield": {"sciense": 1}},
+        ],
+        "product_groups": [{"id": "planks_group", "name": "Planks"}],
+        "covers": [{"id": "forest", "name": "Forest"}],
+        "terrains": [
+            {"id": "plain", "name": "Plain", "cover_chance": {"forest": 0.5, "forrest": 0.1}},
+        ],
+        "improvements": [{"id": "farm", "name": "Farm"}],
+        "modifiers": {"fresh_water": {"production_multiplier": {"farm": 1.5, "frm": 1.2}}},
+        "map_config": {"terrain_config": {"plain": {"density": 0.3}, "desert": {"density": 0.1}}},
+        "priority_options": ["best", "worst"],
+        "priority_names": {"best": "Best", "bets": "Bets"},
+    }
+    # A record is addressed by its own id; a config block has no id at all, therefore it is
+    # addressed by the key of the collection ("@key:<name>", see data_loader).
+    gd.entity_sources = {
+        "resources:wheat_field": {"file": "res://data/resources/plants/food_plants.json", "line": 7},
+        "@key:map_config": {"file": "res://data/map_config.json", "line": 33},
+    }
+
+    var problems: Array = _only_unknown_keys(DataValidator.new().validate(gd))
+
+    # The seven maps of the fixture, one wrong key each. "farm" in the multiplier, "wheat" in
+    # produces, "planks_group" behind the "@" and "best" among the priorities are right — a check
+    # that reports them would be noise on every data set that has a correct file.
+    var expected := [
+        ["wheatt", "wheat_field", "produces", "product"],
+        ["@no_group", "granary", "additional_cost[1]", "group"],
+        ["sciense", "granary", "additional_yield", "product"],
+        ["forrest", "plain", "cover_chance", "cover"],
+        ["frm", "", "fresh_water.production_multiplier", "improvement"],
+        ["desert", "", "terrain_config", "terrain"],
+        ["bets", "", "priority_names", "priority_option"],
+    ]
+    check(problems.size() == expected.size(),
+        "the key check must report %d problems, got %d: %s" % [
+            expected.size(), problems.size(), _str_messages(problems)], state)
+    for item in expected:
+        var problem := _find(problems, "unknown_key", str(item[0]), str(item[1]))
+        check(not problem.is_empty(),
+            "problem not found: key=%s, owner=%s" % [str(item[0]), str(item[1])], state)
+        if problem.is_empty():
+            continue
+        # The field is the path of the MAP: the key itself is in ref_id, where the window
+        # highlights it. Without the path the author has to guess which map of the record is meant.
+        check(str(problem.get("field", "")) == str(item[2]),
+            "the path of the map is wrong for \"%s\": %s" % [str(item[0]), str(problem.get("field", ""))], state)
+        # The kind of the entity the key had to name: "@no_group" is a goods group, and the
+        # message says so ("Unknown goods group"), not "Unknown product".
+        check(str(problem.get("target", "")) == str(item[3]),
+            "the target of \"%s\" is wrong: %s" % [str(item[0]), str(problem.get("target", ""))], state)
+
+    # The owner of a record is named in the message: "field produces" alone does not say which of
+    # the three hundred resources has the typo. A config block has no name, and the message must not
+    # show empty quotes in its place — it names the field instead.
+    var produces_problem := _find(problems, "unknown_key", "wheatt", "wheat_field")
+    check(str(produces_problem.get("headline", "")).contains("wheatt"),
+        "the key is not named in the headline: %s" % str(produces_problem.get("headline", "")), state)
+    check(str(produces_problem.get("where", "")).contains("Wheat Field"),
+        "the owner of the key is not named: %s" % str(produces_problem.get("where", "")), state)
+    check(str(produces_problem.get("source_kind", "")) == "product",
+        "the owner of a key is not a product: %s" % str(produces_problem.get("source_kind", "")), state)
+    # The kind of the entity that is missing, in the language of the run: the title is the same
+    # label the other checks use ("Terrain", "Местности").
+    var terrain_problem := _find(problems, "unknown_key", "desert", "")
+    var terrain_title := str(DataValidator.entity_forms("terrain")["title"])
+    check(str(terrain_problem.get("headline", "")).contains(terrain_title),
+        "the kind of the missing entity is not named: %s" % str(terrain_problem.get("headline", "")), state)
+    check(str(terrain_problem.get("where", "")).contains("terrain_config"),
+        "the field of a nameless owner is not named: %s" % str(terrain_problem.get("where", "")), state)
+    check(not str(terrain_problem.get("message", "")).contains("«»"),
+        "the message of a nameless owner has empty quotes: %s" % str(terrain_problem.get("message", "")), state)
+
+    # The file and the line: a record by its own declaration, a config block by its collection.
+    check(int(produces_problem.get("line", 0)) == 7,
+        "the key is not pointed at the record that owns it: %d" % int(produces_problem.get("line", 0)), state)
+    check(str(terrain_problem.get("location", "")).contains("res://data/map_config.json"),
+        "the key of a config block is not pointed at its file: %s" % str(terrain_problem.get("location", "")), state)
+
+    # An empty registry is not a broken key. A tree without the "covers" collection (the collection
+    # name is misspelled, the file is not loaded) reports the collection once, and NOT every key of
+    # every cover_chance — otherwise one typo would bury the report under hundreds of records.
+    var no_covers: Dictionary = gd.raw_data.duplicate(true)
+    no_covers.erase("covers")
+    gd.raw_data = no_covers
+    for problem in _only_unknown_keys(DataValidator.new().validate(gd)):
+        check(str(problem.get("field", "")) != "cover_chance",
+            "a key of an empty registry is reported: %s" % str(problem.get("message", "")), state)
+
+    # Data without the tree skips the check instead of crashing.
+    var bare = _make_data()
+    check(_only_unknown_keys(DataValidator.new().validate(bare)).is_empty(),
+        "data without the tree must not produce key problems", state)
+    bare.free()
+
+    gd.free()
+
+
 # --- 5) Real data: the validator does not crash ---------------------------
 
 func _test_real_data(state: Dictionary):
@@ -436,6 +559,13 @@ func _test_real_data(state: Dictionary):
     var unknown_fields: Array = _only_unknown_fields(problems)
     check(unknown_fields.is_empty(),
         "res://data has fields outside the data model: %s" % _str_messages(unknown_fields), state)
+
+    # The same for the free keys of the dictionaries: a key that names nothing is a typo in
+    # data/*.json, and it is invisible to every other check — the field is legal, the record is
+    # valid, and the game just finds nothing behind the key.
+    var unknown_keys: Array = _only_unknown_keys(problems)
+    check(unknown_keys.is_empty(),
+        "res://data has dictionary keys that name nothing: %s" % _str_messages(unknown_keys), state)
 
     # The category is checked only on products: for every problem of kind
     # "category" the owner must be a product, not a raw resource.
@@ -522,6 +652,10 @@ func _check_file_and_line(state: Dictionary, problems: Array):
         if line > lines.size():
             continue
         var decl := str(lines[line - 1])
+        # An owner without an identifier — a config block (map_config, priority_names) — has no
+        # id to look for on the line: the file and the line are all it can be pointed at.
+        if source_id.is_empty():
+            continue
         check(decl.contains("\"%s\"" % source_id),
             "line %d of file %s is not the declaration of \"%s\": %s" % [
                 line, file_path, source_id, decl.strip_edges()], state)
@@ -615,6 +749,43 @@ func _test_localization(state: Dictionary):
             en_field, ru_field], state)
     check(ru_field.contains("Неизвестное поле"),
         "the Russian whitelist text does not contain the expected wording: %s" % ru_field, state)
+
+    # The key message is translated as well — both halves: the missing entity (the headline is the
+    # one of a broken reference) and the explanation of where the value under the key goes.
+    gd.raw_data = {
+        "resources": [{"id": "wheat_field", "name": "Wheat Field", "produces": {"wheatt": 1}}],
+    }
+    var keys: Array = _only_unknown_keys(DataValidator.new().validate(gd))
+    check(keys.size() == 1,
+        "the key fixture must give exactly one problem, got %d" % keys.size(), state)
+    TranslationServer.set_locale("en")
+    DataValidator.localize_problems(keys)
+    var en_key := str((keys[0] as Dictionary).get("where", ""))
+    var en_key_title := DataValidator.check_title("unknown_key")
+    var en_key_forms := DataValidator.entity_forms("priority_option")
+    TranslationServer.set_locale("ru")
+    DataValidator.localize_problems(keys)
+    var ru_key := str((keys[0] as Dictionary).get("where", ""))
+    var ru_key_title := DataValidator.check_title("unknown_key")
+    var ru_key_forms := DataValidator.entity_forms("priority_option")
+    check(ru_key != en_key,
+        "the key text must differ between languages: en=%s ru=%s" % [en_key, ru_key], state)
+    check(ru_key.contains("словар"),
+        "the Russian key text does not contain the expected wording: %s" % ru_key, state)
+    check(not _has_cyrillic(en_key),
+        "the English key text must not contain Cyrillic: %s" % en_key, state)
+    check(ru_key_title != en_key_title,
+        "the key check title must be translated: en=%s ru=%s" % [en_key_title, ru_key_title], state)
+    check(not _has_cyrillic(en_key_title),
+        "the English key title must not contain Cyrillic: %s" % en_key_title, state)
+    # The new entity kind brings three grammatical forms, and all three are user-facing.
+    for role in ["title", "ref", "source"]:
+        check(not _has_cyrillic(str(en_key_forms[role])),
+            "the English form %s of the priority option must not be Cyrillic: %s" % [
+                role, str(en_key_forms[role])], state)
+        check(str(ru_key_forms[role]) != str(en_key_forms[role]),
+            "the form %s of the priority option is not translated: %s" % [
+                role, str(ru_key_forms[role])], state)
 
     TranslationServer.set_locale(original)
     gd.free()
@@ -845,6 +1016,15 @@ func _only_unknown_fields(problems: Array) -> Array:
     var result: Array = []
     for problem in problems:
         if str(problem.get("kind", "")) == "unknown_field":
+            result.append(problem)
+    return result
+
+
+# Only the problems of the free keys of the dictionaries — the same reason as above.
+func _only_unknown_keys(problems: Array) -> Array:
+    var result: Array = []
+    for problem in problems:
+        if str(problem.get("kind", "")) == "unknown_key":
             result.append(problem)
     return result
 

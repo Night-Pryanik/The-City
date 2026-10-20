@@ -8,7 +8,8 @@
 #
 # The REFERENCES between the entities are checked (and not the JSON syntax — this is what
 # tools/validate_json.py does), and, on top of them, every key of the data against the field
-# whitelist of the model (SCHEMA below). A problem is stored in two layers:
+# whitelist of the model (SCHEMA below), including the free keys of the dictionaries, which are
+# identifiers themselves (unknown_key). A problem is stored in two layers:
 #
 #   1) the STRUCTURE — does not depend on the language: what is wrong, where and in which field.
 #
@@ -22,6 +23,7 @@
 #
 # The checks:
 #   unknown_field      — a field (or a whole collection) that the data model does not describe
+#   unknown_key        — a key of a dictionary ({"produces": {"wheatt": 1}}) names nothing
 #   id_charset         — an identifier outside ASCII (the Cyrillic in an id is indistinguishable from the Latin)
 #   id_lookalike       — an identifier differs from another one only by the lookalike characters
 #   produced_in        — a recipe refers to a non-existent building
@@ -191,6 +193,8 @@ const QUALITY_LEVELS_FIELD := "quality_levels"
 #   LEAF              — a scalar or an array of scalars: there is nothing to descend into;
 #   ID_MAP            — an object with free keys (ids) and scalar values: {"wheat": 1};
 #   {"id_map": rule}  — the same, but every value follows the rule (terrain_config);
+#   {"keys": name}    — the same, and every KEY has to be the id of a declared record of the
+#                       registry "name" (see the KEY_* constants below);
 #   {"array": rule}   — an array whose every element follows the rule;
 #   {"any": [rule…]}  — the field accepts any of the listed forms;
 #   {"blocks": {…}}   — named blocks of constants, a constant may also stand at the top level
@@ -202,6 +206,62 @@ const QUALITY_LEVELS_FIELD := "quality_levels"
 # consequence is visible in the interface.
 const LEAF := {}
 const ID_MAP := {"id_map": LEAF}
+
+# --- THE FREE KEYS OF THE DICTIONARIES -----------------------------------------
+#
+# An id map is the second way the data is addressed by name: {"wheat": 1} is not "a field named
+# wheat", it is "the record with the identifier wheat". The whitelist cannot see a typo in such a
+# key at all — the key name is free, so any spelling is a legal field — and the game, looking the
+# key up in the dictionary of the declared records, finds nothing and silently produces nothing.
+# Therefore a rule may name the registry its keys belong to, and a key outside it is reported as
+# unknown_key.
+#
+# The registries are read from the same tree that is walked, i.e. from the declarations, and not
+# from the assembled collections: a data set whose resources live in another file is one tree.
+const KEY_RESOURCES := "resources"
+const KEY_GROUP_REFS := "group_refs"
+const KEY_COVERS := "covers"
+const KEY_TERRAINS := "terrains"
+const KEY_IMPROVEMENTS := "improvements"
+const KEY_PRIORITIES := "priorities"
+
+# The registries that are simply the ids of one collection of records: the name of the registry is
+# the name of the collection. The other two are assembled from several places (_key_registries).
+const PLAIN_REGISTRIES := [KEY_RESOURCES, KEY_COVERS, KEY_TERRAINS, KEY_IMPROVEMENTS]
+
+# The kind of the entity a key of the registry has to name — for the text of the problem. The
+# @-group reference of KEY_GROUP_REFS is decided per key: "planks" is a resource, "@planks" a group.
+const REGISTRY_TARGETS := {
+    KEY_RESOURCES: "product",
+    KEY_COVERS: "cover",
+    KEY_TERRAINS: "terrain",
+    KEY_IMPROVEMENTS: "improvement",
+    KEY_PRIORITIES: "priority_option",
+}
+
+# The collection → the kind of the entity that owns a dictionary in it. The kind is needed by the
+# text of unknown_key ("A reference to this product is present in the resource …"): a collection the
+# game reads as a config block (map_config, modifiers, priority_names) has no kind, and its problems
+# name the field instead of an owner.
+const OWNER_KINDS := {
+    "resources": "product",
+    "buildings": "building",
+    "terrains": "terrain",
+    "covers": "cover",
+    "improvements": "improvement",
+}
+
+# The id maps of the model, by the registry of their keys.
+#   produces / special_yield / additional_yield — what a resource or a building gives out;
+#   additional_cost — a resource OR an @-group of products;
+#   cover_chance — the covers that may grow on a terrain;
+#   production_multiplier — the improvement whose output is multiplied;
+#   priority_names — the labels of the quality priority options.
+const RESOURCE_MAP := {"id_map": LEAF, "keys": KEY_RESOURCES}
+const COST_MAP := {"id_map": LEAF, "keys": KEY_GROUP_REFS}
+const COVER_MAP := {"id_map": LEAF, "keys": KEY_COVERS}
+const IMPROVEMENT_MAP := {"id_map": LEAF, "keys": KEY_IMPROVEMENTS}
+const PRIORITY_MAP := {"id_map": LEAF, "keys": KEY_PRIORITIES}
 
 # The field that identifies a record, where it is not "id": a consumption rule is addressed by the
 # resource it spends (data_loader._remember_consumption_sources).
@@ -228,8 +288,8 @@ const RESOURCE_FIELDS := {
     "tech_reveal": LEAF,
     "allowed_terrain": LEAF,
     "allowed_cover": LEAF,
-    "produces": ID_MAP,
-    "special_yield": ID_MAP,
+    "produces": RESOURCE_MAP,
+    "special_yield": RESOURCE_MAP,
     "strategic": LEAF,
     "breedable": LEAF,
     "breeding": {"array": {"array": {"terrain": LEAF, "cover": LEAF}}},
@@ -248,9 +308,9 @@ const BUILDING_FIELDS := {
     "description": LEAF,
     "icon": LEAF,
     "work_cost": LEAF,
-    "additional_cost": {"any": [ID_MAP, {"array": ID_MAP}]},
+    "additional_cost": {"any": [COST_MAP, {"array": COST_MAP}]},
     "additional_req": LEAF,
-    "additional_yield": ID_MAP,
+    "additional_yield": RESOURCE_MAP,
     "production_slots": LEAF,
     "default_recipes": LEAF,
     "profession": LEAF,
@@ -366,7 +426,7 @@ const TERRAIN_FIELDS := {
     "work_cost_mult": LEAF,
     "unique": LEAF,
     "cluster_size": LEAF,
-    "cover_chance": ID_MAP,
+    "cover_chance": COVER_MAP,
     "fresh_water_source": LEAF,
 }
 
@@ -416,12 +476,12 @@ const SUBGROUP_BONUS_FIELDS := {
 }
 
 const MODIFIER_FIELDS := {
-    "fresh_water": {"production_multiplier": ID_MAP},
+    "fresh_water": {"production_multiplier": IMPROVEMENT_MAP},
     "tech_modifiers": {"array": {
         "tech_id": LEAF,
         "icon": LEAF,
         "name": LEAF,
-        "production_multiplier": ID_MAP,
+        "production_multiplier": IMPROVEMENT_MAP,
         "modifiers": {"array": {"target": LEAF, "type": LEAF, "value": LEAF}},
     }},
     "terrain_modifiers": {"array": {
@@ -459,7 +519,7 @@ const MAP_CONFIG_FIELDS := {
     "start_ring_cols": LEAF,
     "region_width": LEAF,
     "target_cluster": LEAF,
-    "terrain_config": {"id_map": {"density": LEAF, "target_cluster": LEAF}},
+    "terrain_config": {"id_map": {"density": LEAF, "target_cluster": LEAF}, "keys": KEY_TERRAINS},
     "sea": SEA_CONFIG_FIELDS,
     "num_main_rivers": LEAF,
     "num_tributaries": LEAF,
@@ -521,7 +581,7 @@ const QUALITY_SCALE_FIELDS := {
     "quality_levels": {"array": QUALITY_LEVEL_FIELDS},
     "priority_default": LEAF,
     "priority_options": LEAF,
-    "priority_names": ID_MAP,
+    "priority_names": PRIORITY_MAP,
 }
 
 # The root of data/*.json: every top-level key of every file, merged into one tree. A key outside
@@ -551,7 +611,7 @@ const SCHEMA := {
     "city_names": {"array": LEAF},
     "priority_default": LEAF,
     "priority_options": LEAF,
-    "priority_names": ID_MAP,
+    "priority_names": PRIORITY_MAP,
     "qualities": QUALITY_SCALE_FIELDS,
 }
 
@@ -564,7 +624,7 @@ const SCHEMA := {
 const ENTITIES := [
     "building", "product", "improvement", "technology", "profession",
     "category", "group", "recipe", "road", "terrain", "cover", "era",
-    "quality_level", "special_action", "consumption_rule",
+    "quality_level", "priority_option", "special_action", "consumption_rule",
 ]
 
 
@@ -648,6 +708,10 @@ static func entity_forms(kind: String, fallback: String = "product") -> Dictiona
             return {"title": TranslationServer.translate("Consumption rule", "validator_entity_title_consumption_rule"),
                 "ref": TranslationServer.translate("this consumption rule", "validator_entity_ref_consumption_rule"),
                 "source": TranslationServer.translate("consumption rule", "validator_entity_source_consumption_rule")}
+        "priority_option":
+            return {"title": TranslationServer.translate("Quality priority option", "validator_entity_title_priority_option"),
+                "ref": TranslationServer.translate("this quality priority option", "validator_entity_ref_priority_option"),
+                "source": TranslationServer.translate("quality priority option", "validator_entity_source_priority_option")}
         _:
             # A special action closes the list: an unknown kind substitutes
             # the fallback above, one can only get here with a typo in the code.
@@ -665,6 +729,8 @@ static func check_title(kind: String) -> String:
     match kind:
         "unknown_field":
             return TranslationServer.translate("Field is not part of the data model")
+        "unknown_key":
+            return TranslationServer.translate("Key of a dictionary names a nonexistent entity")
         "id_charset":
             return TranslationServer.translate("Disallowed characters in an identifier")
         "id_lookalike":
@@ -714,6 +780,11 @@ static func check_title(kind: String) -> String:
 # simply does not get the rows with the file, and does not crash.
 var _sources: Dictionary = {}
 
+# The registries of the free keys of the dictionaries for the current run (see KEY_* above). They
+# are built by the walk of the tree, once per run, and are read by _check_dict_key — the same
+# reason as for _sources: passing them through a dozen signatures would only add noise.
+var _registries: Dictionary = {}
+
 # The data object of the current run: it is needed by gd_craft_alternatives to normalize
 # the alternative ingredients. It is set in validate().
 var _game_data = null
@@ -751,6 +822,7 @@ const SOURCE_COLLECTIONS := {
 # The order of the output of the blocks of problems in the window.
 const CHECK_ORDER := [
     "unknown_field",
+    "unknown_key",
     "id_charset",
     "id_lookalike",
     "produced_in",
@@ -824,12 +896,16 @@ func validate(gd: Object) -> Array:
 # is dropped altogether — in the assembled data there is nothing left to point at. The tree is the only
 # place where every key the author wrote is still present, with its own file and line.
 #
+# The same walk checks the free keys of the dictionaries (unknown_key): they are identifiers, and the
+# registries they are checked against are read from this very tree (see _key_registries).
+#
 # Data without the tree (the synthetic set of the test, a GameData assembled by hand) skips the check:
 # there is nothing to walk, and the cross-reference checks above do not depend on it.
 func _validate_schema(gd: Object, problems: Array) -> void:
     var data = gd.get("raw_data")
     if not (data is Dictionary) or data.is_empty():
         return
+    _registries = _key_registries(data)
     for key in data.keys():
         var collection := str(key)
         var rule = SCHEMA.get(collection, null)
@@ -867,7 +943,7 @@ func _walk_schema(value, rule, context: Dictionary, problems: Array) -> void:
     if not (rule is Dictionary) or rule.is_empty():
         return
     if rule.has("id_map"):
-        _walk_id_map(value, rule["id_map"], context, problems)
+        _walk_id_map(value, rule, context, problems)
         return
     if rule.has("any"):
         for alternative in rule["any"]:
@@ -889,14 +965,101 @@ func _walk_schema(value, rule, context: Dictionary, problems: Array) -> void:
     _walk_fields(value, rule, context, problems)
 
 
-# An object whose keys are ids (resources of a "produces", improvements of a multiplier). The keys are
-# the data, not the model, so they are never reported; the values are descended into only when the rule
-# describes them.
+# An object whose keys are ids (the resources of a "produces", the improvements of a multiplier).
+#
+# The keys are the data, not the model: the field whitelist knows nothing about them, and the value
+# under a wrong key is lost without a trace. Therefore a rule may name the registry its keys have to
+# belong to ("keys"), and every key outside it is reported. A rule without "keys" (a recipe's
+# ingredients — the check of the recipes already walks them) leaves the keys alone.
+#
+# The values are descended into only when the rule describes them.
 func _walk_id_map(value, rule, context: Dictionary, problems: Array) -> void:
-    if not (value is Dictionary) or not (rule is Dictionary) or rule.is_empty():
+    if not (value is Dictionary):
         return
+    var inner = rule.get("id_map", LEAF)
+    var registry := str(rule.get("keys", ""))
     for key in value.keys():
-        _walk_schema(value[key], rule, _child_context(context, str(key)), problems)
+        var name := str(key)
+        if not registry.is_empty():
+            _check_dict_key(problems, context, registry, name)
+        _walk_schema(value[key], inner, _child_context(context, name), problems)
+
+
+# One key of a dictionary against its registry.
+#
+# An empty registry is not a broken key: it means the tree has no such collection at all (the name
+# of the collection is misspelled, the file is not loaded). That is a problem of its own — reported
+# once by the walk of the root — and reporting every key of every map here would bury it under
+# hundreds of records pointing at the same cause.
+func _check_dict_key(problems: Array, context: Dictionary, registry: String, key: String) -> void:
+    var known: Dictionary = _registries.get(registry, {})
+    if known.is_empty() or known.has(key):
+        return
+    var target := str(REGISTRY_TARGETS.get(registry, "product"))
+    # The reference to an @-group is written with the "@", and it is the group that is missing.
+    if registry == KEY_GROUP_REFS and key.begins_with("@"):
+        target = "group"
+    # The field is the path of the MAP, and not of the key: the key itself goes into ref_id, where
+    # the window highlights it.
+    var field := str(context.get("path", ""))
+    if field.is_empty():
+        field = str(context.get("collection", ""))
+    var collection := str(context.get("collection", ""))
+    # The owner is an entity only when the collection is one AND the record has an identifier: a
+    # config block has neither, and the message names the field instead (see build_text).
+    var owner_kind := str(OWNER_KINDS.get(collection, ""))
+    if owner_kind.is_empty() or str(context.get("id", "")).is_empty():
+        owner_kind = ""
+    _push(problems, "unknown_key", target, key, owner_kind,
+            str(context.get("name", "")), str(context.get("id", "")), field,
+            {}, _origin_key(context))
+
+
+# The registries of the keys, built from the declarations of the same tree that is walked.
+#
+#   resources    — every record of the "resources" collection: the raw materials of the map and the
+#                  products of the city lie in one list (they differ by the field "type"), and the
+#                  game looks both of them up in one space (GameData.products + raw_resources);
+#   group_refs   — the same plus "@<group>": additional_cost accepts both;
+#   covers, terrains, improvements — the ids of the collections of the same name;
+#   priorities   — the VALUES of priority_options, not ids: the options are declared by a list.
+func _key_registries(data: Dictionary) -> Dictionary:
+    var sets := {}
+    for registry in PLAIN_REGISTRIES:
+        sets[registry] = _declared_ids(data.get(registry, []))
+
+    var refs: Dictionary = (sets[KEY_RESOURCES] as Dictionary).duplicate()
+    for group_id in _declared_ids(data.get("product_groups", [])):
+        refs["@" + str(group_id)] = true
+    sets[KEY_GROUP_REFS] = refs
+
+    var priorities := {}
+    for option in _as_string_list(data.get("priority_options", [])):
+        priorities[option] = true
+    # data/qualities.json keeps the scale at the top level; the loader also accepts it nested under
+    # "qualities" (see QUALITY_SCALE_FIELDS).
+    var qualities = data.get("qualities", null)
+    if qualities is Dictionary:
+        for option in _as_string_list(qualities.get("priority_options", [])):
+            priorities[option] = true
+    sets[KEY_PRIORITIES] = priorities
+
+    return sets
+
+
+# The identifiers declared by a collection of records: {"id": …} → {id: true}.
+func _declared_ids(records) -> Dictionary:
+    var out := {}
+    if not (records is Array):
+        return out
+    for record in records:
+        if not (record is Dictionary):
+            continue
+        var id := _as_id(record.get("id", ""))
+        if not id.is_empty():
+            out[id] = true
+    return out
+
 
 
 func _walk_fields(value, fields: Dictionary, context: Dictionary, problems: Array) -> void:
@@ -1623,6 +1786,21 @@ static func build_text(problem: Dictionary) -> void:
             else:
                 headline = TranslationServer.translate("Unknown field \"%s\" in %s.") % [str(problem.get("ref_id", "")), _quote_owner(str(problem.get("source_name", "")), str(problem.get("source_id", "")))]
                 where = TranslationServer.translate("The game does not read this field: its value is silently lost. Fields allowed here: %s.") % _allowed_fields_text(problem.get("allowed", []))
+        "unknown_key":
+            # The second half of the same story: the field is right, but its KEY is not the id of
+            # anything. The headline is the one of a broken reference — the key IS the identifier
+            # that is missing — and the second line says that the key is a dictionary key, because
+            # that is where the value disappears without a trace.
+            var key_forms := entity_forms(str(problem.get("target", "")))
+            headline = TranslationServer.translate("%s with the identifier \"%s\" does not exist.") % [str(key_forms["title"]), str(problem.get("ref_id", ""))]
+            if str(problem.get("source_kind", "")).is_empty():
+                # The owner is a config block (map_config, priority_names): it has no kind and no
+                # name to be quoted, and the field is the only thing to point at.
+                where = TranslationServer.translate("It is a key of the dictionary %s: the game looks it up by name, finds nothing and silently ignores the value under the key. Check the spelling.") % str(problem.get("field", ""))
+            else:
+                var owner_forms := entity_forms(str(problem.get("source_kind", "")), "recipe")
+                where = TranslationServer.translate("A reference to %s is present in %s %s, field %s.") % [str(key_forms["ref"]), str(owner_forms["source"]), _quote_owner(str(problem.get("source_name", "")), str(problem.get("source_id", ""))), str(problem.get("field", ""))]
+                where += " " + TranslationServer.translate("It is a key of a dictionary: the game looks it up by name, finds nothing and silently ignores the value under the key. Check the spelling.")
         "id_charset":
             headline = TranslationServer.translate("Identifier \"%s\" contains disallowed characters.") % str(problem.get("ref_id", ""))
             where = TranslationServer.translate("Only Latin letters a-z, digits and \"_\" are allowed. Disallowed: %s Such characters are indistinguishable from Latin ones by eye — fix this identifier and ALL references to it at once.") % _bad_chars_text(problem.get("bad_chars", []))
