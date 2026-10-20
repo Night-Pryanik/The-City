@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://2u8nnbat21lo"]
 
 [ext_resource type="Script" uid="uid://waateaq3ll8s" path="res://scripts/settings_menu.gd" id="1_05p07"]
+[ext_resource type="Script" uid="uid://c4v61lty6k4kt" path="res://scripts/settings_block.gd" id="2_blk01"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_myx47"]
 bg_color = Color(0.29803923, 0.29803923, 0.29803923, 1)
@@ -268,3 +269,10 @@ grow_horizontal = 2
 grow_vertical = 0
 theme_override_font_sizes/font_size = 24
 text = "Back"
+
+; The "Edge scrolling speed" section is available only while the parent checkbox is
+; on. The block is declared here as data — the mechanism is scripts/settings_block.gd.
+[node name="EdgeScrollSpeedBlock" type="Node" parent="."]
+script = ExtResource("2_blk01")
+gate = NodePath("../TabContainer/Интерфейс/VBoxContainer/EdgeScrollingCheckBox")
+dependents = [NodePath("../TabContainer/Интерфейс/VBoxContainer/Label7"), NodePath("../TabContainer/Интерфейс/VBoxContainer/HBoxContainer5")]

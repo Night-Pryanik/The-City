@@ -181,6 +181,16 @@ func load_settings():
     _update_building_detail_delay_label()
     _update_resource_display_interval_label()
     _update_hud_message_duration_label()
+    _refresh_setting_blocks()
+
+# The setting blocks (scripts/settings_block.gd) are children of the menu and know
+# their own gates. The menu only tells them that a fresh set of values is in: the
+# saved state is assigned to button_pressed, which does not emit toggled, so a block
+# would otherwise keep the state of the scene default.
+func _refresh_setting_blocks() -> void:
+    for child in get_children():
+        if child is SettingsBlock:
+            child.refresh()
 
 func save_settings():
     # We re-read the file before writing: LocalizationManager writes the language here,

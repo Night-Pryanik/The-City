@@ -2908,9 +2908,19 @@ That is why a tooltip with an empty market shows the tax separately and does not
 
 **Test.** `tools/test_resource_display_interval.gd` — the slider and the config key, the clamp/epoch of `CityData`, and on a live `MainMap.tscn`: the supply label, "Food: N", the building tooltip's materials row and the panel's left column do not update until the interval arrives and do update after; `refresh_light()` (an event) updates instantly.
 
+### Settings blocks: a setting behind a parent setting
+
+**The mechanism.** A setting that only makes sense together with another one is declared as a *block*. `scripts/settings_block.gd` (`class_name SettingsBlock`) is a plain `Node` in the scene carrying two exported paths: `gate` — the parent control — and `dependents` — the roots of the dependent subtrees (a heading with its row of controls). While the gate is off, the dependent roots are drawn dimmed (a 0.4 multiply — the value stays readable) and every interactive control under them stops taking input: `editable = false` for a slider or a `LineEdit`, `disabled = true` for a button, keyboard focus dropped. The values are not reset and keep being saved and applied.
+
+**The block lives in the scene, not in the menu code.** `scenes/settings_menu.tscn` declares the blocks, and `settings_menu.gd` knows them only through `_refresh_setting_blocks()` — called at the end of `load_settings()`, because the saved state is assigned to `button_pressed`, which does not emit `toggled` (without the call a block would open in the state the checkbox is authored with). Adding a dependent setting, or a new block, touches no menu code.
+
+**Blocks cascade.** A gate that one block switches off takes its own dependents down with it, so a nested checkbox cannot leave its children interactive while the parent block has it switched off. Every refresh pass is numbered and each block remembers the last pass that wrote it, so a cyclic declaration cannot recurse forever; a gate is never disabled by its own block — it is the control that switches the sub-tree back on.
+
+**Test.** `tests/test_settings_blocks.gd` — the real block (on/off, a reopen over a saved "parent off", the value surviving an off period) and a pair of nested blocks built in code.
+
 ### Edge scrolling speed
 
-**The setting.** "Settings → Interface → Edge scrolling speed" sets how fast the map scrolls when the cursor stands at the edge of the screen: **from 100 to 1000 pixels per second with a step of 50** (default 300). The checkbox "Map movement at window edges" switches the feature on and off independently.
+**The setting.** "Settings → Interface → Edge scrolling speed" sets how fast the map scrolls when the cursor stands at the edge of the screen: **from 100 to 1000 pixels per second with a step of 50** (default 300). The checkbox "Map movement at window edges" switches the feature on and off independently, and while it is off the speed setting itself is not editable — it is a block behind the checkbox (see "Settings blocks" above).
 
 **The config key.** `user://settings.cfg`, section `interface`, key `edge_scroll_speed` (default `300.0`). Read in `main_map._load_settings()`, applied via `input_handler.set_scroll_speed()` (in the map's `_ready` and in `apply_settings()`).
 
