@@ -559,6 +559,18 @@ func _run() -> void:
                             "the \"Income\" row must show the fact \"%s\", got \"%s\""
                             % [expected_income, ghost_income.text], state)
 
+        # ---- 8b. The composition of a group card ----
+        # The name of a group is a reference: the standard dashed underline of a group, and the
+        # composition of the group on hover — the same mark and the same panel the recipes and the
+        # costs of a building use. The group is brought into the storage first: only an obtainable
+        # resource gets a card in the working list.
+        city.city_storage.clear()
+        city.city_quality_detail.clear()
+        for m in all_members:
+            city.add_to_storage(str(m), 1, "common")
+        city_ui.trade_tab.refresh()
+        _check_group_card(city_ui, gdata, all_key, all_members, state)
+
     # ---- 9. The unavailable resources are hidden under a collapsible list ----
     # The city can obtain a resource only if it is extracted/produced or already
     # lies in storage. The remaining cards must not clutter the working column:
@@ -1247,6 +1259,82 @@ func _row_texts(row: Node) -> Array:
         if node is Label:
             texts.append(node.text)
     return texts
+
+# The first Label with exactly this text in the subtree: the content of a tooltip is assembled
+# from the labels of its rows.
+func _find_label(node: Node, text: String) -> Label:
+    if node == null:
+        return null
+    if node is Label and (node as Label).text == text:
+        return node
+    for child in node.get_children():
+        var found := _find_label(child, text)
+        if found != null:
+            return found
+    return null
+
+# The name of a group card is a reference, not a plain label: it carries the standard dashed
+# underline of a group and unfolds the composition on hover — the same mark and the same panel the
+# recipes and the costs of a building use (ui_helpers.show_group_tooltip).
+func _check_group_card(city_ui, gdata, group_key: String, members: Array, state: Dictionary) -> void:
+    var tab = city_ui.trade_tab
+    if tab == null or not tab.cards.has(group_key):
+        check(false, "the group card must be built to check the composition tooltip", state)
+        return
+    var name_label: Label = tab.cards[group_key]["name"]
+    var script_obj = name_label.get_script()
+    check(script_obj != null \
+            and str(script_obj.resource_path) == "res://scripts/underlined_label.gd",
+        "the name of a group card must be the standard underlined label (got \"%s\")"
+            % (str(script_obj.resource_path) if script_obj != null else "<no script>"), state)
+    var group_name := str(gdata.get_product_group_name(group_key))
+    check(not group_name.is_empty(), "the group under test must have a name", state)
+    check(str(name_label.underline_text) == group_name,
+        "the group name must carry the standard dashed underline (got \"%s\")"
+            % str(name_label.underline_text), state)
+    # PASS and not STOP: the title shows the tooltip on hover and does not intercept the clicks
+    # of the card (the checkbox, the priority button).
+    check(name_label.mouse_filter == Control.MOUSE_FILTER_PASS,
+        "the name of a group card must let the clicks through (filter %d)"
+            % name_label.mouse_filter, state)
+
+    name_label.mouse_entered.emit()
+    var helpers = city_ui.ui_helpers
+    check(helpers != null and helpers.group_tooltip_panel.visible,
+        "hovering the name of a group card must show the standard group tooltip", state)
+    if helpers == null:
+        return
+    var listed := 0
+    for m in members:
+        var member_name := str(
+                (gdata.products.get(str(m), {}) as Dictionary).get("name", str(m)))
+        if _find_label(helpers.group_tooltip_content, member_name) != null:
+            listed += 1
+    check(listed == members.size(),
+        "the group tooltip must list every member of the group (%d of %d)"
+            % [listed, members.size()], state)
+    # The update of the display epoch touches the tooltip of the quality only: the open composition
+    # must not be taken down by it (otherwise the panel would flicker under the cursor).
+    tab.refresh_open_tooltip()
+    check(helpers.group_tooltip_panel.visible,
+        "the open composition must not be closed by the refresh of the display epoch", state)
+    name_label.mouse_exited.emit()
+    check(not helpers.group_tooltip_panel.visible,
+        "leaving the name of a group card must hide the group tooltip", state)
+
+    # A single resource has nothing to unfold: the underline belongs to the group reference only.
+    # It is checked on the same card — the row is fed as a single resource and then the card is
+    # restored by the regular update, so no second card has to be built for the check.
+    var single_row: Dictionary = tab._collect_data().get(group_key, {}).duplicate()
+    single_row["is_group"] = false
+    tab._update_card(tab.cards[group_key], single_row)
+    check(str(name_label.underline_text) == "",
+        "a single resource must not carry the group underline (got \"%s\")"
+            % str(name_label.underline_text), state)
+    tab.update_values()
+    check(str(name_label.underline_text) == group_name,
+        "the group underline must come back with the group row (got \"%s\")"
+            % str(name_label.underline_text), state)
 
 func check(condition: bool, message: String, state: Dictionary) -> void:
     if condition:

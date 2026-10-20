@@ -1,22 +1,32 @@
 [gd_scene format=3]
 
-; Шаблон карточки ресурса для левой колонки вкладки «Торговля»
-; (внутренняя торговля). Разметка целиком живёт здесь, а скрипт
-; trade_tab.gd только инстанцирует карточку и подставляет значения —
-; поэтому любой элемент можно передвинуть мышкой в редакторе сцены.
+[ext_resource type="Script" uid="uid://bgvaowdel0reo" path="res://scripts/underlined_label.gd" id="1_underline"]
+
+; The template of a resource card for the left column of the "Trade" tab
+; (the internal trade). The layout lives entirely here, and trade_tab.gd only
+; instantiates the card and substitutes the values — therefore any element can be
+; moved with the mouse in the scene editor.
 ;
-; Узлы, к которым обращается скрипт (имена менять нельзя):
-;   Icon / NameLabel / PriorityButton — заголовок;
-;   StockValue / QualityLabel         — запас и разбивка по качеству;
-;   PriceValue / ConsumersValue / ConsumptionValue — цифры;
-;   IncomeValue                        — доход в казну;
-;   TradeCheckBox                      — тумблер разрешения потребления.
+; The nodes the script refers to (the names must not change):
+;   Icon / NameLabel / PriorityButton — the header;
+;   StockValue / QualityLabel         — the storage and the breakdown by quality;
+;   PriceValue / ConsumersValue / ConsumptionValue — the numbers;
+;   IncomeValue                       — the income to the treasury;
+;   TradeCheckBox                     — the toggle of the consumption permission.
 ;
-; ВАЖНО: у PriceValue / ConsumersValue / ConsumptionValue / IncomeValue стоит
-; mouse_filter = 0 (STOP). У Label по умолчанию mouse_filter = IGNORE, и
-; тогда узел не ловит мышь: сигнал mouse_entered не приходит НИКОГДА, а
-; вместе с ним и штатный тултип. Именно из-за этого тултипы цены, покупателей,
-; расхода и дохода не показывались (проверено на Godot 4.7).
+; IMPORTANT: PriceValue / ConsumersValue / ConsumptionValue / IncomeValue have
+; mouse_filter = 0 (STOP). A Label has mouse_filter = IGNORE by default, and then
+; the node does not catch the mouse at all: the signal mouse_entered NEVER comes,
+; and the standard tooltip with it — without the flag the tooltip never shows
+; (checked on Godot 4.7).
+;
+; NameLabel carries the underlined_label.gd script and mouse_filter = 1 (PASS):
+; the name of a group is a reference, so it is underlined with a dashed line and
+; unfolds the composition of the group on hover. A single resource has an empty
+; underline_text, therefore no underline is drawn.
+; size_flags_vertical = 4 (SHRINK_CENTER) keeps the label at the height of its
+; text: the underline is drawn along the lower bound of the label, and a label
+; stretched to the 32-px header would draw it far below the name.
 
 [node name="TradeCard" type="PanelContainer"]
 custom_minimum_size = Vector2(0, 0)
@@ -41,8 +51,10 @@ stretch_mode = 5
 [node name="NameLabel" type="Label" parent="Layout/Header"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 1
+size_flags_vertical = 4
+mouse_filter = 1
 text = "Resource"
+script = ExtResource("1_underline")
 
 [node name="PriorityButton" type="Button" parent="Layout/Header"]
 custom_minimum_size = Vector2(28, 28)

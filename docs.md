@@ -2941,7 +2941,7 @@ The availability criterion is `worker_manager.is_resource_obtainable(row)`: a re
 
 | Field | Value |
 | --- | --- |
-| Name | The name of the resource or group; for a group, " (group)" is appended |
+| Name | The name of the resource or group; for a group, " (group)" is appended and the name itself carries the dashed underline of a group reference — hovering it unfolds the composition (see "Updates and tooltips") |
 | Icon | The resource's own icon. For a group — `icon` from `data/product_groups.json`, and if it is not set, the icon of the FIRST member with an icon. The tooltip on the icon explains the source ("taken from the goods 'Beer'") |
 | Priority button | Switches the quality write-off priority: stars of the best level (`best`), stars of the worst (`worst`), 🎲 (`random`). The same cycle and indication as the building quality button (`building_panel._on_quality_priority_pressed`) |
 | Toggle | A single `CheckBox` — allow/forbid consumption on the domestic market |
@@ -2961,6 +2961,7 @@ The availability criterion is `worker_manager.is_resource_obtainable(row)`: a re
 - **Tooltips are not reassigned if the text has not changed** (`trade_tab._set_tooltip`). Godot resets the display of a tooltip on any assignment to `tooltip_text`, so frequent overwriting without a check would dismiss an open tooltip. The node **under the cursor** is not touched at all: an assignment takes down the window already shown, so an update under the hovered row simply waits for the player to move the mouse away (`_hovered_tip`, tracked through `mouse_entered`/`mouse_exited` — `Control` in Godot 4 has no `is_hovered()` method).
 - **The actual consumption** is taken from the display window (`CityData.get_market_consumption_per_sec` → `market_consumption_accum/_snapshot`), and not from the per-tick `market_consumption_rates`: the per-tick counter is cleared in `reset_counters()` and on an interval of 2–5 sec always turned out to be empty. The window is rotated in `tick_resource_display` together with the resource epoch.
 - The open quality-breakdown tooltip (a panel of its own in `ui_helpers`) is still shown on hover and updated on an epoch change (`trade_tab.refresh_open_tooltip`) — it stays in place under the cursor.
+- **The name of a group unfolds the composition on hover** — the standard group panel (`ui_helpers.show_group_tooltip`, the same one the recipes and the building costs use), so the composition of a group is read the same way everywhere in the game. `NameLabel` in the card scene carries `scripts/underlined_label.gd` (the dashed underline of a group reference, the name only — the mark " (group)" stays in the normal typeface) and takes the mouse with `MOUSE_FILTER_PASS`, so the hover reaches the label while the clicks of the card are not intercepted. The composition cannot be a `tooltip_text`: it is a list of rows with icons. The city storage is deliberately **not** passed to the panel: it would price the members by the world price, while the "Price" row of the card is the internal market price. `refresh()` takes an open panel down together with the cards. A single resource has nothing to unfold: its name stays a plain label.
 
 ### The row key — `display_key`
 

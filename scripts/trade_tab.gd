@@ -46,6 +46,13 @@
 # of ui_helpers, and it is still hung on hover.
 #
 #
+# The NAME of a group is a reference: it carries the standard dashed underline of a group and
+# unfolds the composition on hover — the same mark and the same panel the recipes and the costs
+# of a building use (ui_helpers.show_group_tooltip). The composition cannot be a tooltip_text:
+# it is a list of rows with icons, and the plain tooltip is a single line of text. The name of
+# a single resource has nothing to unfold, therefore it stays a plain label.
+#
+#
 # The INCOME in the row "Income" is the FACT over the display window (so many coins per second
 # the market has really brought to the treasury), and not the plan "the whole demand × the price". The plan is not
 # limited by the storage and for a half-empty storage gave fantastic 2730 coins/sec, which
@@ -120,6 +127,10 @@ func refresh() -> void:
     _signature = ""
     unavailable_header = null
     unavailable_list = null
+    # The cards are freed below, and the label that carries the unfolded composition goes with
+    # them: a tooltip left open would hang over the column without a row to explain.
+    if ui_helpers != null and is_instance_valid(ui_helpers):
+        ui_helpers.hide_group_tooltip()
 
     var data: Dictionary = _collect_data()
     # The rows are split in two: the resources the city can obtain right now (they form the
@@ -236,6 +247,17 @@ func _signature_of(data: Dictionary) -> String:
 func _set_text(node: Label, text: String) -> void:
     if node != null and is_instance_valid(node) and node.text != text:
         node.text = text
+
+# Sets the underlined part of the name (underlined_label.gd), only if it CHANGES: the setter of
+# the property redraws the label, and the update of the card comes on every display epoch.
+# The node is declared as Label, and the property is addressed by name: the cache of the global
+# classes is not filled in a headless --script run, therefore a type annotation on
+# UnderlinedLabel would not resolve there.
+func _set_underline(node: Label, text: String) -> void:
+    if node == null or not is_instance_valid(node):
+        return
+    if str(node.get("underline_text")) != text:
+        node.set("underline_text", text)
 
 # Assigns the tooltip, only if it CHANGES. This is the key rule for
 # the tooltips: Godot resets the showing of the tooltip on ANY assignment
@@ -403,6 +425,13 @@ func _create_card(display_key: String, row: Dictionary, list: Node) -> void:
         "income": card.get_node("Layout/IncomeRow/IncomeValue"),
     }
     cards[display_key] = ctx
+    var name_label: Label = ctx["name"]
+    # The name of a group is a reference: hovering it unfolds the composition. The signals are
+    # connected only for a group — a single resource has nothing to unfold, and its name stays
+    # a plain label without the group mark.
+    if bool(row.get("is_group", false)):
+        name_label.mouse_entered.connect(_on_group_hover.bind(display_key))
+        name_label.mouse_exited.connect(_on_group_exit)
     var icon: TextureRect = ctx["icon"]
     var texture := _get_icon_texture(str(row.get("icon", "")))
     if texture != null:
@@ -470,6 +499,12 @@ func _update_card(ctx: Dictionary, row: Dictionary) -> void:
         title += tr(" (group)")
     var name_label: Label = ctx["name"]
     _set_text(name_label, title)
+    # The underline covers the name only: the mark of the group ("(group)") stays in the normal
+    # typeface, otherwise the whole title would read as a reference.
+    var underline := ""
+    if bool(row.get("is_group", false)):
+        underline = str(row.get("name", display_key))
+    _set_underline(name_label, underline)
     var stock: Dictionary = row.get("stock", {})
     var stock_label: Label = ctx["stock"]
     _set_text(stock_label, str(int(stock.get("total", 0))))
@@ -602,6 +637,25 @@ func _on_quality_exit() -> void:
     _quality_key = ""
     if ui_helpers != null and is_instance_valid(ui_helpers):
         ui_helpers.hide_quality_tooltip()
+
+# --- THE COMPOSITION OF A GROUP ---
+# Hovering the name of a group unfolds its composition: the standard group panel of ui_helpers,
+# the same one the recipes and the costs of a building show (ui_helpers.make_resource_entry), so
+# the composition of a group is read the same way everywhere in the game.
+# The storage is deliberately not passed: the panel prices the members by the world price, while
+# the "Price" row of the card is the price of the internal market — two scales in one card would
+# read as a contradiction.
+func _on_group_hover(display_key: String) -> void:
+    if ui_helpers == null or not is_instance_valid(ui_helpers):
+        return
+    if not GameData.product_groups.has(display_key.trim_prefix("@")):
+        return
+    ui_helpers.show_group_tooltip(get_viewport().get_mouse_position(), display_key,
+            GameData.products)
+
+func _on_group_exit() -> void:
+    if ui_helpers != null and is_instance_valid(ui_helpers):
+        ui_helpers.hide_group_tooltip()
 
 # --- THE BUTTON OF THE PRIORITY OF THE CONSUMPTION ---
 # The cycle best → worst → random → best (the order from data/qualities.json).
