@@ -26,8 +26,6 @@ extends SceneTree
 
 const WATCHDOG = preload("res://tests/watchdog.gd")
 
-const HexUtils = preload("res://scripts/HexUtils.gd")
-
 var _gdata = null
 var _cdata = null
 
@@ -140,7 +138,7 @@ func _test_queue_and_dedup(state: Dictionary, main_map, ap, row: int, col: int) 
 # -------------------------------------------------------
 # 4. The record of the empty bar
 # -------------------------------------------------------
-func _test_empty_bar(state: Dictionary, main_map, ap, row: int, col: int) -> void:
+func _test_empty_bar(state: Dictionary, _main_map, ap, row: int, col: int) -> void:
     var rec: Dictionary = ap.get_pending_at(row, col)
     check(not rec.is_empty(), "the record of the queued action must be found on its hex", state)
     if rec.is_empty():
@@ -156,7 +154,6 @@ func _test_empty_bar(state: Dictionary, main_map, ap, row: int, col: int) -> voi
 # 5. The cancellation
 # -------------------------------------------------------
 func _test_cancel(state: Dictionary, main_map, ap, row: int, col: int) -> void:
-    var bm = main_map.build_manager
     check(ap.cancel_at(row, col), "the queued action must be cancellable", state)
     check(ap.is_empty(), "the queue must be empty after the cancellation", state)
     check(ap.get_pending_at(row, col).is_empty(),
@@ -203,7 +200,7 @@ func _test_pause_menu_coexistence(state: Dictionary, main_map, ap) -> void:
 # -------------------------------------------------------
 # 8. The frame of the window
 # -------------------------------------------------------
-func _test_border(state: Dictionary, main_map, ap) -> void:
+func _test_border(state: Dictionary, _main_map, ap) -> void:
     var border = _find_border(ap)
     check(border != null, "the frame of the window must be built", state)
     if border == null:

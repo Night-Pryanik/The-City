@@ -458,7 +458,7 @@ func _test_live_scene(state: Dictionary) -> void:
             "the road upgrade must start", state)
     var project = main_map.project_manager.get_project_at(row, col)
     check(not project.is_empty(), "the upgrade must become a staged project", state)
-    await _finish_build(main_map, state)
+    _finish_build(main_map, state)
     for key in rm.get_all_road_segments().keys():
         check(int(rm.road_segments[key]) == 2,
                 "all the segments of the route must become level 2", state)
@@ -487,13 +487,13 @@ func _test_live_scene(state: Dictionary) -> void:
                 "a cart road route must cost more than a trail", state)
 
     if WATCHDOG.wants_case("road_level_in_hex_info"):
-        await _test_road_level_in_hex_info(main_map, state)
+        _test_road_level_in_hex_info(main_map, state)
     if WATCHDOG.wants_case("extended_tooltip_survives_refresh"):
-        await _test_extended_tooltip_survives_refresh(main_map, state)
+        _test_extended_tooltip_survives_refresh(main_map, state)
     if WATCHDOG.wants_case("upgrade_button_on_partial_route"):
-        await _test_upgrade_button_on_partial_route(main_map, state)
+        _test_upgrade_button_on_partial_route(main_map, state)
     if WATCHDOG.wants_case("upgrade_button_on_empty_hex"):
-        await _test_upgrade_button_on_empty_hex(main_map, state)
+        _test_upgrade_button_on_empty_hex(main_map, state)
 
     if main_map != null and is_instance_valid(main_map):
         get_root().remove_child(main_map)

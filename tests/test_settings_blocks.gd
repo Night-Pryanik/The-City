@@ -29,10 +29,10 @@ func _run() -> void:
     var state = {"failed": false}
     # A known starting point: the test asserts the default-on block, and the machine
     # it runs on may carry any settings.cfg.
-    var seed := ConfigFile.new()
-    seed.set_value("interface", "edge_scrolling", true)
-    seed.set_value("interface", "edge_scroll_speed", 300.0)
-    seed.save("user://settings.cfg")
+    var seed_cfg := ConfigFile.new()
+    seed_cfg.set_value("interface", "edge_scrolling", true)
+    seed_cfg.set_value("interface", "edge_scroll_speed", 300.0)
+    seed_cfg.save("user://settings.cfg")
 
     # --- 1. The block of the settings menu ---
     var settings = load(SETTINGS_SCENE).instantiate()

@@ -274,7 +274,7 @@ static func _apply_sea_edge(sea_mask: Array, rows: int, cols: int,
     envelope_noise.frequency = 0.08
 
     for side in sides:
-        var len: int = rows if (side == "east" or side == "west") else cols
+        var side_len: int = rows if (side == "east" or side == "west") else cols
         var arr: Array = []
         var seg: int = 8
         var i0: int = -1
@@ -282,12 +282,12 @@ static func _apply_sea_edge(sea_mask: Array, rows: int, cols: int,
         var v1: float = randf()
 
         # The centre of the edge for the parabolic envelope
-        var center_pos: float = float(len) / 2.0
-        var half_len: float = float(len) / 2.0
+        var center_pos: float = float(side_len) / 2.0
+        var half_len: float = float(side_len) / 2.0
 
-        for coord in range(len):
-            if coord / seg != i0:
-                i0 = coord / seg
+        for coord in range(side_len):
+            if int(coord / float(seg)) != i0:
+                i0 = int(coord / float(seg))
                 v0 = v1
                 v1 = randf()
             var t: float = 0.5 - 0.5 * cos(float(coord % seg) / float(seg) * PI)
@@ -307,7 +307,7 @@ static func _apply_sea_edge(sea_mask: Array, rows: int, cols: int,
             arr.append(int(round(base_width)))
 
         # We apply the width to the hexes
-        for coord in range(len):
+        for coord in range(side_len):
             var width: int = arr[coord]
             if width <= 0:
                 continue
@@ -412,14 +412,14 @@ static func _apply_sea_islands(sea_mask: Array, rows: int, cols: int,
             # We did not find a place in max_attempts attempts — we exit, the remaining
             # islands are not placed (fewer is better than an infinite loop).
             break
-        var seed = sea_cells[seed_index]
+        var seed_cell = sea_cells[seed_index]
         sea_cells.remove_at(seed_index)
 
         # --- BFS growth of the cluster: we add the neighbours one by one, until we get island_size ---
-        var cluster: Array = [seed]
+        var cluster: Array = [seed_cell]
         var cluster_set := {}
-        cluster_set["%d,%d" % [seed.row, seed.col]] = true
-        var frontier: Array = [seed]
+        cluster_set["%d,%d" % [seed_cell.row, seed_cell.col]] = true
+        var frontier: Array = [seed_cell]
         while cluster.size() < island_size and not frontier.is_empty():
             var next_frontier: Array = []
             for cell in frontier:
@@ -449,7 +449,7 @@ static func _apply_sea_islands(sea_mask: Array, rows: int, cols: int,
         for cell in cluster:
             sea_mask[cell.row][cell.col] = false
         # We remember the seed as an occupied point for the future min_distance checks.
-        occupied.append(seed)
+        occupied.append(seed_cell)
         islands_placed += 1
         island_index += 1
 

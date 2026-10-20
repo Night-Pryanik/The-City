@@ -287,10 +287,10 @@ func delivery_lines(row: int, col: int) -> Array:
 #   { "type": "label",   "text": String, "color": Color }
 # It is used both by the tooltip and by the control panel (control_panel.gd), so that
 # the display of the production does not diverge.
-# wrap — enables the wrapping of the words to the next line, if the text does not fit
+# word_wrap — enables the wrapping of the words to the next line, if the text does not fit
 # into a single line (the control panel passes true, the tooltip — no).
-func render_products(products: Array, container: Node, wrap: bool = false):
-    var wrap_mode = TextServer.AUTOWRAP_WORD_SMART if wrap else TextServer.AUTOWRAP_OFF
+func render_products(products: Array, container: Node, word_wrap: bool = false):
+    var wrap_mode = TextServer.AUTOWRAP_WORD_SMART if word_wrap else TextServer.AUTOWRAP_OFF
     for child in container.get_children():
         # free(), and not queue_free(): the immediate removal excludes a frame when
         # the old and the new items hang in the container at the same time — otherwise
@@ -482,7 +482,7 @@ func _hex_is_growing(row: int, col: int, tile_data: Array) -> bool:
     return MapHelpers.is_growing_resource(GameData.raw_resources.get(eff_res, {}))
 
 
-func update_extended_tooltip(row: int, col: int, tile_data: Array, city_row: int, city_col: int):
+func update_extended_tooltip(row: int, col: int, tile_data: Array, _city_row: int, _city_col: int):
     # We remember the hex: from this moment the repeated call of update_tooltip_text
     # (the refresh of the occupancy of the pasture) will redraw EXACTLY the extended block.
     _extended_row = row
@@ -658,7 +658,7 @@ func _render_extra_products(products: Array):
 # basic_only = false (by default) — the FULL text for the left column of the control
 # panel: there everything is shown at once, without a hover delay, therefore
 # the properties of the hex remain in it (see build_hex_info).
-func _build_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_col: int = 0, basic_only: bool = false) -> String:
+func _build_text(row: int, col: int, tile_data: Array, _city_row: int = 0, _city_col: int = 0, basic_only: bool = false) -> String:
     var tile = tile_data[row][col]
     var terrain_name = GameData.terrains.get(tile.terrain, {}).get("name", tile.terrain)
     var cover_id = tile.get("cover", "none")
@@ -698,12 +698,12 @@ func _build_text(row: int, col: int, tile_data: Array, city_row: int = 0, city_c
         # text with a hint about the scouting. The scouts can be sent to any
         # point reachable by scrolling, — including the territory of the towns, therefore
         # the hint is the same for all the unexplored hexes.
-        var text: String = tr("Terrain: %s") % terrain_with_cover
-        var terr: Array = _territory_lines_for(tile, row, col)
-        if not terr.is_empty():
-            text += "\n" + "\n".join(terr)
-        text += tr("\nResource: unknown (send scouts)")
-        return text
+        var unrevealed_text: String = tr("Terrain: %s") % terrain_with_cover
+        var unrevealed_terr: Array = _territory_lines_for(tile, row, col)
+        if not unrevealed_terr.is_empty():
+            unrevealed_text += "\n" + "\n".join(unrevealed_terr)
+        unrevealed_text += tr("\nResource: unknown (send scouts)")
+        return unrevealed_text
 
     var imp_name = GameData.improvements.get(tile.improvement, {}).get("name", tr("none")) if tile.improvement != null else tr("none")
     var text: String = tr("Terrain: %s") % terrain_with_cover

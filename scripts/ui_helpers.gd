@@ -595,7 +595,7 @@ func hide_group_tooltip():
 # The rate is per one worker/citizen and is given by the same format as in the row
 # of the expense of a profession (ConsumptionUi.format_rate_with_unit), so that the
 # two places cannot show a different number for one and the same rule.
-func show_consumption_tooltip(mouse_pos: Vector2, res_key: String, products_data: Dictionary):
+func show_consumption_tooltip(mouse_pos: Vector2, res_key: String, _products_data: Dictionary):
     if consumption_tooltip_panel == null:
         return
     # We clear the previous content (remove_child + queue_free — as in
@@ -794,12 +794,12 @@ func make_resource_entry(res_id: String, products_data: Dictionary, amount: int 
 
 # Shows the tooltip with the composition of the group on hovering the row of a
 # resource
-func _on_resource_group_hover(control: Control, res_id: String, products_data: Dictionary):
+func _on_resource_group_hover(_control: Control, res_id: String, products_data: Dictionary):
     show_group_tooltip(get_viewport().get_mouse_position(), res_id, products_data)
 
 # Shows the tooltip with the consumers of the resource on hovering a row marked
 # with the consumption underline.
-func _on_resource_consumption_hover(control: Control, res_id: String, products_data: Dictionary):
+func _on_resource_consumption_hover(_control: Control, res_id: String, products_data: Dictionary):
     show_consumption_tooltip(get_viewport().get_mouse_position(), res_id, products_data)
 
 # Hides the hover tooltips of a resource row when the cursor is moved away
@@ -922,7 +922,7 @@ func show_building_detail_tooltip(mouse_pos: Vector2):
     # The tooltip has just been shown — the scroll to the top (between different
     # buildings the content is rebuilt entirely in buildings_tab).
     if not detail_tooltip_panel.visible:
-        detail_tooltip_scroll.scroll_vertical = 0.0
+        detail_tooltip_scroll.scroll_vertical = 0
     # If the tooltip goes beyond the edges of the screen — we draw it on the other
     # side of the cursor.
     var viewport_size = get_viewport().get_visible_rect().size
@@ -1256,7 +1256,7 @@ func show_flow_tooltip(mouse_pos: Vector2, prod_name: String, special_yield: Dic
     # The tooltip has just been shown — the scroll to the top (the content is
     # rebuilt from scratch on every showing).
     if not flow_tooltip_panel.visible:
-        flow_tooltip_scroll.scroll_vertical = 0.0
+        flow_tooltip_scroll.scroll_vertical = 0
     var viewport_size = get_viewport().get_visible_rect().size
     var pos = mouse_pos + Vector2(15, 15)
     if pos.x + flow_tooltip_panel.size.x > viewport_size.x:
@@ -1531,9 +1531,9 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
                 var amt: int = int(row.amount)
                 # The sign: only amount > 0 reaches here (see the precalculation
                 # above), a refund is netted in the same source.
-                var sign: String = "−" if amt > 0 else "+"
+                var sign_char: String = "−" if amt > 0 else "+"
                 var mag: int = abs(amt)
-                var line_text := "%s: %s%d" % [str(row.name), sign, mag]
+                var line_text := "%s: %s%d" % [str(row.name), sign_char, mag]
                 treasury_tooltip_vbox.add_child(
                     _make_bullet_row("•", line_text, Color(0.9, 0.3, 0.3)))
 
@@ -1579,7 +1579,7 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
     )
     # The tooltip has just been shown — the scroll to the top (as in flow_tooltip_panel).
     if not treasury_tooltip_panel.visible:
-        treasury_tooltip_scroll.scroll_vertical = 0.0
+        treasury_tooltip_scroll.scroll_vertical = 0
     var viewport_size = get_viewport().get_visible_rect().size
     # A "stuck" tooltip is redrawn IN PLACE (the panel already stands where the
     # cursor of the player moved it) — otherwise the panel would run away from

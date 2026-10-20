@@ -1959,7 +1959,7 @@ func _refresh_sell_pools(tile_data: Array) -> void:
 # the rings of the neighbouring towns is done by the calling side -
 # compute_all_town_influences.
 func compute_town_influence(tile_data: Array, map_rows: int, map_cols: int,
-        town_row: int, town_col: int, town_dict: Dictionary = {},
+        town_row: int, town_col: int, _town_dict: Dictionary = {},
         radius: int = INFLUENCE_MAX_RADIUS) -> Array:
     var ring: Dictionary = {} # the key "r,c" -> true for a quick check of the membership
     var rng := RandomNumberGenerator.new()
@@ -2043,8 +2043,8 @@ func compute_town_influence(tile_data: Array, map_rows: int, map_cols: int,
 # 3=W, 4=NW, 5=NE). The neighbouring sides differ by 60 degrees, which coincides
 # with the angles between the neighbours of a hex - therefore the hexes of one sector lie
 # "approximately" in one direction from the centre.
-func _hex_side(tr: int, tc: int, r: int, c: int) -> int:
-    var tr_pos: Vector2 = HexUtils.hex_center(tr, tc, 1.0)
+func _hex_side(target_row: int, target_col: int, r: int, c: int) -> int:
+    var tr_pos: Vector2 = HexUtils.hex_center(target_row, target_col, 1.0)
     var h_pos: Vector2 = HexUtils.hex_center(r, c, 1.0)
     # atan2 in Godot: Y grows downwards, therefore the standard "mathematical" angles
     # are counted COUNTERCLOCKWISE from the east. This suits us -
@@ -2068,19 +2068,19 @@ func _hex_side(tr: int, tc: int, r: int, c: int) -> int:
 # the disk. If the map is small and the path "bottoms out" at the edge, get_neighbors_odd_r
 # will return less than 6 neighbours and the loop will stop (a safety of 16 steps -
 # an insurance from the degenerate case, in a normal situation it does not fire).
-func _path_between(fr: int, fc: int, tr: int, tc: int,
+func _path_between(fr: int, fc: int, target_row: int, target_col: int,
         map_rows: int, map_cols: int) -> Array:
     var path: Array = [ {"row": fr, "col": fc}]
     var cur_r: int = fr
     var cur_c: int = fc
     var safety: int = 0
-    while (cur_r != tr or cur_c != tc) and safety < 16:
+    while (cur_r != target_row or cur_c != target_col) and safety < 16:
         safety += 1
         var neighbors: Array = HexUtils.get_neighbors_odd_r(cur_r, cur_c, map_rows, map_cols)
         var best: Dictionary = {}
         var best_dist: int = 999999
         for n in neighbors:
-            var d: int = HexUtils.hex_distance(n.row, n.col, tr, tc)
+            var d: int = HexUtils.hex_distance(n.row, n.col, target_row, target_col)
             if d < best_dist:
                 best_dist = d
                 best = n

@@ -243,13 +243,13 @@ func _ready():
 
 func _get_build_manager():
     if _cached_build_manager == null or not is_instance_valid(_cached_build_manager):
-        var main_map = get_tree().root.find_child("MainMap", true, false)
-        _cached_build_manager = main_map.get_node("BuildManager") if main_map and main_map.has_node("BuildManager") else null
+        var main_map_node = get_tree().root.find_child("MainMap", true, false)
+        _cached_build_manager = main_map_node.get_node("BuildManager") if main_map_node and main_map_node.has_node("BuildManager") else null
     return _cached_build_manager
 
 # The handler of the completion of the building construction: shows the message
 # "Construction of <building> complete" in the bottom panel of CityUI.
-func _on_building_build_completed(building_id: String, build_key: String):
+func _on_building_build_completed(building_id: String, _build_key: String):
     if ui_helpers and visible:
         var building_name = CityData.get_building_name(building_id)
         ui_helpers.set_message(tr("Construction of %s complete") % building_name)
@@ -563,12 +563,6 @@ func _planned_food_per_sec(map: Dictionary, pool: Dictionary) -> int:
                 total += amount
     return int(round(total))
 
-    # We update the food label on the "Buildings" tab (without the population)
-    if buildings_tab.has_method("update_food_label"):
-        buildings_tab.update_food_label()
-
-    # The additional resources are now displayed in the panel of the building details
-
 func update_food_label():
     _update_food_label()
 
@@ -647,8 +641,8 @@ func _process(delta):
                     # The information about the limit of simultaneous builds (buildings + improvements).
                     # The limit equals the total number of citizens.
                     var construction_count = CityData.building_construction.size()
-                    var main_map = get_tree().root.find_child("MainMap", true, false)
-                    var bm = main_map.get_node("BuildManager") if main_map and main_map.has_node("BuildManager") else null
+                    var main_map_node = get_tree().root.find_child("MainMap", true, false)
+                    var bm = main_map_node.get_node("BuildManager") if main_map_node and main_map_node.has_node("BuildManager") else null
                     if bm:
                         construction_count = bm.get_total_active_builds()
                     var construction_limit = CityData.total_population

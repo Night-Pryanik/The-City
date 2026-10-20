@@ -71,7 +71,7 @@ func setup(list: Node, btn: Button, built_list: Node, food_lbl: Label, helpers: 
         build_button.pressed.connect(_on_build_pressed)
     build_button.disabled = true
 
-func _process(delta):
+func _process(_delta):
     # We update the progress bars of the buildings under construction every frame,
     # so that they are smooth (like the progress bars of the improvements on the map).
     if construction_rows.size() > 0:
@@ -376,7 +376,9 @@ func _get_queued_build():
     if main_map == null or main_map.active_pause == null:
         return null
     var rec: Dictionary = main_map.active_pause.get_pending_by_prefix("building:")
-    return null if rec.is_empty() else rec
+    if rec.is_empty():
+        return null
+    return rec
 
 # The button of the selected building says what the click will do: while its
 # construction is waiting in the queue, the click takes it out again.
@@ -467,7 +469,7 @@ func _fill_built_tooltip(group: Dictionary):
 
     var states = _get_built_states(group)
     for state in states:
-        var name: String = state[0]
+        var state_label: String = state[0]
         var detail: String = state[1]
         var state_color: Color = state[2]
         var row = HBoxContainer.new()
@@ -483,7 +485,7 @@ func _fill_built_tooltip(group: Dictionary):
         bullet.mouse_filter = Control.MOUSE_FILTER_IGNORE
         row.add_child(bullet)
         var value_label = Label.new()
-        value_label.text = name if detail == "" else "%s: %s" % [name, detail]
+        value_label.text = state_label if detail == "" else "%s: %s" % [state_label, detail]
         value_label.add_theme_color_override("font_color", state_color)
         value_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         row.add_child(value_label)
@@ -914,7 +916,7 @@ func _show_building_details(bdata: Dictionary):
             yield_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
             var yield_indent = Control.new()
             yield_indent.custom_minimum_size.x = 18
-            yield_row.add_child(yield_indent, false, 0)
+            yield_row.add_child(yield_indent, false, Node.INTERNAL_MODE_DISABLED)
             yield_row.add_child(_make_bullet("◦"))
             yield_row.add_child(ui_helpers.make_resource_entry(
                 yield_id, products_data,
@@ -1178,7 +1180,7 @@ func _measure_label_width(label: Label) -> float:
 # Builds the contents of the recipe row: "[icon] resource [xN] + ... -> [icon] product [xN]"
 # craft_resources may be a Dictionary (the classical form) or an Array (the
 # alternative ingredients): both are normalized by GameData.craft_alternatives().
-func _make_craft_content_local(craft_name: String, craft_resources, craft_result: Dictionary, products_data: Dictionary) -> HBoxContainer:
+func _make_craft_content_local(_craft_name: String, craft_resources, craft_result: Dictionary, products_data: Dictionary) -> HBoxContainer:
     var content = HBoxContainer.new()
     content.add_theme_constant_override("separation", 4)
     content.size_flags_horizontal = Control.SIZE_EXPAND_FILL

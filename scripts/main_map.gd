@@ -1260,7 +1260,6 @@ func _initialize_map():
     # Under no circumstances may seed()/randomize() be called on the global RNG inside
     # this loop — it would destroy the randomness of all the subsequent randf()/randi()
     # (for example, on the spawn of the resources after the learning of the technologies).
-    var t_terrain_icon = Time.get_ticks_msec()
     var icon_rng = RandomNumberGenerator.new()
     for row in range(map_rows):
         for col in range(map_cols):
@@ -1362,8 +1361,8 @@ func _ensure_minimum_resource(filter: Dictionary):
 # The boundaries (min_row..max_row, min_col..max_col) are the starting Ring,
 # therefore the food_plant is guaranteed not to appear beyond its limits
 # and is not recreated after the start.
-func _ensure_food_plant(min_row: int, max_row: int, min_col: int, max_col: int, city_row: int = -1, city_col: int = -1):
-    MapHelpers.ensure_food_plant(tile_data, min_row, max_row, min_col, max_col, city_row, city_col)
+func _ensure_food_plant(min_row: int, max_row: int, min_col: int, max_col: int, city_row_arg: int = -1, city_col_arg: int = -1):
+    MapHelpers.ensure_food_plant(tile_data, min_row, max_row, min_col, max_col, city_row_arg, city_col_arg)
 
 # The final safety-check: it guarantees that on the hex of the city there is no resource
 # and the terrain is valid. It is called after all the stages of the generation of the map.
@@ -2218,11 +2217,11 @@ func _on_project_step_completed(_project_id: String, kind: String, step: Diction
         var imp_id := str(data.get("improvement", ""))
         if imp_id.is_empty():
             return
-        var t_row := int(step.get("hex", {}).get("row", -1))
-        var t_col := int(step.get("hex", {}).get("col", -1))
-        if t_row < 0 or t_col < 0:
+        var imp_row := int(step.get("hex", {}).get("row", -1))
+        var imp_col := int(step.get("hex", {}).get("col", -1))
+        if imp_row < 0 or imp_col < 0:
             return
-        _apply_improvement(t_row, t_col, imp_id, data.get("target_res_id", null))
+        _apply_improvement(imp_row, imp_col, imp_id, data.get("target_res_id", null))
         hud.show_message(tr("Completed: %s") % str(data.get("imp_name", imp_id)), GameData.HUD_MESSAGE_NORMAL)
         control_panel.refresh()
         return
@@ -2259,7 +2258,7 @@ func _on_project_step_completed(_project_id: String, kind: String, step: Diction
 
 # The road is completed entirely: we mark the target with the input data for the save and
 # open the trade, if the road was going to a town.
-func _on_project_completed(project_id: String, kind: String, meta: Dictionary) -> void:
+func _on_project_completed(_project_id: String, kind: String, meta: Dictionary) -> void:
     _refresh_project_ghost()
     if kind == "road":
         # The project has already been thrown out of the manager by this moment, therefore we take the target
@@ -2334,7 +2333,7 @@ func _on_building_build_completed(building_id: String, build_key: String):
     if building_id == "market":
         _on_market_built()
 
-func _on_building_upgrade_completed(build_key: String, idx: int, upgrade_to: String, building_name: String):
+func _on_building_upgrade_completed(_build_key: String, idx: int, upgrade_to: String, _building_name: String):
     # The upgrade of the building is complete — we replace the building under this index with the improved
     # version with the transfer of the settings (the recipes of the slots, the priority of the quality; the worker
     # remains bound to the index of the building, therefore the state "working/
@@ -3191,8 +3190,8 @@ func _load_map_config():
         region_width = int(cfg.get("region_width", 2))
 
     # The city is always at the centre of the whole map.
-    city_row = map_rows / 2
-    city_col = map_cols / 2
+    city_row = int(map_rows / 2.0)
+    city_col = int(map_cols / 2.0)
 
 # Recalculates the ABSOLUTE boundaries of the Influence Ring and of the visible window
 # (the Ring + the Region) around the city. It is called after a change of
@@ -3278,9 +3277,9 @@ func _compute_era2_region_bounds() -> Dictionary:
     var era2_region_rows: int = era2_ring_rows + era2_region_width * 2
     var era2_region_cols: int = era2_ring_cols + era2_region_width * 2
 
-    var start_row: int = maxi(0, city_row - era2_region_rows / 2)
+    var start_row: int = maxi(0, city_row - int(era2_region_rows / 2.0))
     var end_row: int = mini(map_rows - 1, start_row + era2_region_rows - 1)
-    var start_col: int = maxi(0, city_col - era2_region_cols / 2)
+    var start_col: int = maxi(0, city_col - int(era2_region_cols / 2.0))
     var end_col: int = mini(map_cols - 1, start_col + era2_region_cols - 1)
     return {
         "start_row": start_row,
@@ -3311,8 +3310,8 @@ func _apply_saved_map_state():
     # are restored from it, and without this flag a loaded game would hide the rings of the towns
     # behind the era gate again.
     debug_whole_map_revealed = bool(st.get("debug_whole_map_revealed", false))
-    city_row = map_rows / 2
-    city_col = map_cols / 2
+    city_row = int(map_rows / 2.0)
+    city_col = int(map_cols / 2.0)
     _recalculate_bounds()
     _restore_start_region_bounds(st)
 
@@ -3332,9 +3331,9 @@ func _restore_start_region_bounds(st: Dictionary) -> void:
         return
     var start_ring_rows_ := start_ring_rows + region_width * 2
     var start_ring_cols_ := start_ring_cols + region_width * 2
-    start_region_start_row = maxi(0, city_row - start_ring_rows_ / 2)
+    start_region_start_row = maxi(0, city_row - int(start_ring_rows_ / 2.0))
     start_region_end_row = mini(map_rows - 1, start_region_start_row + start_ring_rows_ - 1)
-    start_region_start_col = maxi(0, city_col - start_ring_cols_ / 2)
+    start_region_start_col = maxi(0, city_col - int(start_ring_cols_ / 2.0))
     start_region_end_col = mini(map_cols - 1, start_region_start_col + start_ring_cols_ - 1)
 
 # --- DEBUG: OPEN THE WHOLE MAP ---

@@ -596,7 +596,7 @@ func _recompute_delivery(delivery: Dictionary) -> void:
 # what carries the supply of the contract is the throughput of the road, and only the excess
 # of the throughput can drain a purchase. So a purchase behind a contract that saturates the
 # road stays whole — which is exactly the amount its cancellation must be able to return.
-func _on_cargo_shipped(row: int, col: int, product: String, amount: int, source: String) -> void:
+func _on_cargo_shipped(_row: int, _col: int, product: String, amount: int, source: String) -> void:
     if amount <= 0:
         return
     var town_id := _town_id_of_source(source)
@@ -1033,9 +1033,9 @@ func _unit_price_of(town: Dictionary, product_id: String) -> int:
 func _product_name(product_id: String) -> String:
     if GameData.is_group_key(product_id):
         return GameData.format_resource_name(product_id)
-    var name := str(GameData.get_resource_data(product_id).get("name", ""))
-    if not name.is_empty():
-        return name
+    var resource_name := str(GameData.get_resource_data(product_id).get("name", ""))
+    if not resource_name.is_empty():
+        return resource_name
     var raw: Dictionary = GameData.raw_resources.get(product_id, {})
     if not raw.is_empty():
         return str(raw.get("name", product_id))

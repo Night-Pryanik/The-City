@@ -35,9 +35,9 @@ static func point_in_polygon(x: float, y: float, poly: PackedVector2Array) -> bo
     return inside
 
 static func hex_distance(r1: int, c1: int, r2: int, c2: int) -> int:
-    var q1 = c1 - (r1 - (r1 & 1)) / 2
-    var q2 = c2 - (r2 - (r2 & 1)) / 2
-    return (abs(q1 - q2) + abs(r1 - r2) + abs((q1 + r1) - (q2 + r2))) / 2
+    var q1 = c1 - int((r1 - (r1 & 1)) / 2.0)
+    var q2 = c2 - int((r2 - (r2 & 1)) / 2.0)
+    return int((abs(q1 - q2) + abs(r1 - r2) + abs((q1 + r1) - (q2 + r2))) / 2.0)
     
 static func get_neighbors_odd_r(row: int, col: int, max_rows: int, max_cols: int) -> Array:
     var neighbors = []

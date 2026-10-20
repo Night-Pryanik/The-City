@@ -292,7 +292,7 @@ func _test_contract_ticks(state: Dictionary) -> void:
 # -------------------------------------------------------
 
 func _test_plan(state: Dictionary) -> void:
-	var town := _rig(10.0, 10)
+	var _town := _rig(10.0, 10)
 	var price := _unit_price()
 	var amount := 5
 	var source := str(_gdata.SRC_TOWN_TRADE)
@@ -599,7 +599,7 @@ func _test_deals(state: Dictionary) -> void:
 # -------------------------------------------------------
 
 func _test_contract_edit(state: Dictionary) -> void:
-	var town := _rig(10.0, 10)
+	var _town := _rig(10.0, 10)
 	var price := _unit_price()
 	var amount := 5
 
@@ -726,7 +726,7 @@ func _test_strain(state: Dictionary) -> void:
 # -------------------------------------------------------
 
 func _test_delivery_ledger(state: Dictionary) -> void:
-	var town := _rig(10.0, 10)
+	var _town := _rig(10.0, 10)
 	var price := _unit_price()
 
 	# A one-time purchase on a road creates a delivery record.
@@ -901,7 +901,7 @@ func _test_delivery_cancel(state: Dictionary) -> void:
 # -------------------------------------------------------
 
 func _test_delivery_save_load(state: Dictionary) -> void:
-	var town := _rig(10.0, 10)
+	var _town := _rig(10.0, 10)
 	var price := _unit_price()
 	var amount := 40
 	_cdata.treasury = 1000
@@ -989,7 +989,6 @@ func _test_sell_group(state: Dictionary) -> void:
 	var town := _rig(0.0, 0)
 	town["buy_pool"] = ["@fruits"]
 	town["treasury"] = 100000
-	var members: Array = _gdata.product_groups.get("fruits", [])
 	var stocked: Array = ["grapes", "figs"]
 	_cdata.city_storage.clear()
 	for pid in stocked:

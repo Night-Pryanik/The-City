@@ -415,15 +415,15 @@ func _test_era2_guarantee_town_is_reachable(state: Dictionary) -> void:
     var towns: Array = main_map.towns
     check(towns.size() > 0, "the live map must have towns", state)
     for town in towns:
-        var tr := int(town.get("row", -1))
-        var tc := int(town.get("col", -1))
-        var tile = main_map.tile_data[tr][tc]
+        var town_row := int(town.get("row", -1))
+        var town_col := int(town.get("col", -1))
+        var tile = main_map.tile_data[town_row][town_col]
         check(not _is_water(tile),
-                "the town (%d,%d) must not stand on water" % [tr, tc], state)
+                "the town (%d,%d) must not stand on water" % [town_row, town_col], state)
         check(_land_path_exists(main_map.tile_data, main_map.map_rows, main_map.map_cols,
-                        main_map.city_row, main_map.city_col, tr, tc),
+                        main_map.city_row, main_map.city_col, town_row, town_col),
                 "the town (%d,%d) must be reachable by land from the player's city (%d,%d)"
-                        % [tr, tc, main_map.city_row, main_map.city_col], state)
+                        % [town_row, town_col, main_map.city_row, main_map.city_col], state)
 
     if main_map != null and is_instance_valid(main_map):
         get_root().remove_child(main_map)

@@ -387,7 +387,7 @@ func _test_group_membership(state: Dictionary, city_ui) -> void:
 # The RESULT row of a recipe in the pinned building details tooltip (for the papyrus
 # workshop recipe that is "Reed Boats") must be marked if the product is consumed —
 # including when the rule addresses a group rather than the product itself.
-func _test_recipe_result_marker(state: Dictionary, city_ui, building_id: String) -> void:
+func _test_recipe_result_marker(state: Dictionary, city_ui, _building_id: String) -> void:
     var btab = city_ui.buildings_tab
     var content = city_ui.ui_helpers.detail_tooltip_content
 

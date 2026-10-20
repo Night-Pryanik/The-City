@@ -233,9 +233,9 @@ func _flush() -> void:
     _queue.clear()
     _notify_queue_changed()
     for rec in pending:
-        var call: Callable = rec.get("execute", Callable())
-        if call.is_valid():
-            call.call()
+        var call_exec: Callable = rec.get("execute", Callable())
+        if call_exec.is_valid():
+            call_exec.call()
 
 
 # --- THE INTERFACE DURING THE PAUSE ---

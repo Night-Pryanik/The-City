@@ -231,12 +231,10 @@ func _test_repeat_purchases(state: Dictionary) -> void:
     var flow := 8.0
     fake.set_route(5, 5, 3, flow)
     # Many small batches in a row: none must bypass the route's shared limit.
-    var created := 0
     var prev := 0
     var worst := 0
     for i in range(40):
         dm.create_cargo(5, 5, "clay", "common", 5, "@imp:farm")
-        created += 5
         _step(dm)
         var now := _delivered("clay")
         worst = maxi(worst, now - prev)
@@ -590,7 +588,6 @@ func _test_length_scales_delay(state: Dictionary) -> void:
 func _test_balance_driven(state: Dictionary) -> void:
     var pair := _new_manager()
     var dm = pair[0]
-    var fake: FakeMap = pair[1]
     var value: float = dm.get_transit_time_per_hex()
     check(value > 0.0, "the delay coefficient must be positive (received %.3f)" % value, state)
 

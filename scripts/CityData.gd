@@ -286,7 +286,6 @@ signal population_changed(new_population: int)
 # The treasury has changed: new_total is the current whole number of the coins.
 signal treasury_changed(new_total: int)
 signal building_construction_started(building_id: String, build_key: String)
-signal building_construction_completed(building_id: String, build_key: String)
 # The upgrade of a built building has been started: idx is the index of the building in
 # city_built_buildings, upgrade_to is the id of the improved version.
 signal building_upgrade_started(idx: int, upgrade_to: String, build_key: String)
@@ -2548,8 +2547,8 @@ func request_build(building_id: String) -> bool:
     # With "Ignore building requirements" enabled the limit does not apply —
     # the buildings are built instantly and do not enter the queue of the builds.
     if work_cost > 0 and not ignore_build_requirements:
-        var main_map = get_tree().root.find_child("MainMap", true, false)
-        var bm = main_map.get_node("BuildManager") if main_map and main_map.has_node("BuildManager") else null
+        var main_map_node = get_tree().root.find_child("MainMap", true, false)
+        var bm = main_map_node.get_node("BuildManager") if main_map_node and main_map_node.has_node("BuildManager") else null
         var total_active = building_construction.size()
         if bm:
             total_active = bm.get_total_active_builds()

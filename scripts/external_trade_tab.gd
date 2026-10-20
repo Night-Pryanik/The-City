@@ -807,10 +807,10 @@ func _delivery_cancel_warning(deal: Dictionary) -> String:
     var ordered := int(deal.get("ordered", remaining))
     var shipped := maxi(0, ordered - remaining)
     var refund := int(deal.get("spent", deal.get("cost", 0)))
-    var name := str(deal.get("name", ""))
+    var product_name := str(deal.get("name", ""))
     var town := str(deal.get("town_name", ""))
     var lines: Array = [
-        tr("Cancel the deal for %s from %s?") % [name, town],
+        tr("Cancel the deal for %s from %s?") % [product_name, town],
         tr("%d of the %d units are still on the way: they go back into the warehouse of %s, and %d coins go back into the treasury.") % [
                 remaining, ordered, town, refund],
     ]

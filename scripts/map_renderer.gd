@@ -251,7 +251,7 @@ func _draw():
     draw_calls += 1
     # We compute the visible range of the hexes (the viewport culling): we draw only those
     # hexes which intersect the rectangle of the screen.
-    var visible = _get_visible_hex_range()
+    var visible_range = _get_visible_hex_range()
 
     # PHASE 1: We draw all the hexes which got on the screen within the reach
     # of the scroll. The hexes of the Region - in detail, the unexplored hexes beyond
@@ -260,8 +260,8 @@ func _draw():
     # sent there - but only after the study of Cartography. Beyond the
     # limits of the reach of the scroll nothing is drawn at all (see
     # _get_visible_hex_range).
-    for row in range(visible.row_start, visible.row_end + 1):
-        for col in range(visible.col_start, visible.col_end + 1):
+    for row in range(visible_range.row_start, visible_range.row_end + 1):
+        for col in range(visible_range.col_start, visible_range.col_end + 1):
             _draw_hex(row, col)
 
     # NOTE: the hexes outside the Region (the fog of war) are drawn by the same pass
@@ -278,11 +278,11 @@ func _draw():
     # within the limits of the Region (see _get_region_visible_range): behind the fog of war they
     # are not drawn, so as not to "give away" the contents of the unexplored territory,
     # although the fog of war itself is now drawn and is available for the scouting.
-    _draw_town_influence(visible)
+    _draw_town_influence(visible_range)
     # PHASE 1.7.1: The borders of the rings of the towns - each with its own colour. They are drawn
     # right after the fill (over it, over the terrain), but before the roads/rivers/
     # icons: the outline must be visible, without covering the contents of the hexes.
-    _draw_town_influence_borders(visible)
+    _draw_town_influence_borders(visible_range)
 
     # PHASE 2: We draw the roads (BEFORE the icons of the resources and the improvements) - the networks of the city
     # of the player and the networks of the towns (see _draw_all_roads)
@@ -296,8 +296,8 @@ func _draw():
     _draw_exploration_highlights()
 
     # PHASE 3: We draw the icons of the resources, the improvements and the other overlays
-    for row in range(visible.row_start, visible.row_end + 1):
-        for col in range(visible.col_start, visible.col_end + 1):
+    for row in range(visible_range.row_start, visible_range.row_end + 1):
+        for col in range(visible_range.col_start, visible_range.col_end + 1):
             _draw_hex_overlays(row, col)
 
     # PHASE 3.5: We draw the highlighting of the selected hex (a click with the LMB, the control panel).
@@ -496,7 +496,7 @@ func invalidate_town_influence_cache() -> void:
     # is dropped here instead of at every call site.
     _river_frame_cache.clear()
 
-func _ensure_town_influence_cache(visible: Dictionary) -> void:
+func _ensure_town_influence_cache(_visible_range: Dictionary) -> void:
     if main_map == null:
         return
     # The Region expands on a change of the epoch - the cache for the old borders is invalid.
@@ -701,12 +701,12 @@ func _build_town_fill_texture() -> void:
 # It is needed for the influence rings of the towns: the fog of war is now drawn and
 # available for the scouting, but a foreign territory is not revealed in it -
 # the fill and the borders of the rings are drawn only inside the Region.
-func _get_region_visible_range(visible: Dictionary) -> Dictionary:
+func _get_region_visible_range(visible_range: Dictionary) -> Dictionary:
     return {
-        "row_start": max(visible.row_start, main_map.region_start_row),
-        "row_end": min(visible.row_end, main_map.region_end_row),
-        "col_start": max(visible.col_start, main_map.region_start_col),
-        "col_end": min(visible.col_end, main_map.region_end_col)
+        "row_start": max(visible_range.row_start, main_map.region_start_row),
+        "row_end": min(visible_range.row_end, main_map.region_end_row),
+        "col_start": max(visible_range.col_start, main_map.region_start_col),
+        "col_end": min(visible_range.col_end, main_map.region_end_col)
     }
 
 # Draws the influence rings of all the towns (PHASE 1.7). By the agreement - only
@@ -715,13 +715,13 @@ func _get_region_visible_range(visible: Dictionary) -> Dictionary:
 # the fog itself is now drawn and is available for the scouting.
 # One frame = one draw_texture_rect (the texture is cut by Ring+Region).
 # The fallback to the polygons - only in the editor or with too large a Region.
-func _draw_town_influence(visible: Dictionary) -> void:
+func _draw_town_influence(visible_range: Dictionary) -> void:
     if main_map == null:
         return
     var radius: float = main_map.HEX_RADIUS
     var offset_x: float = main_map.offset_x + main_map.scroll_offset.x
     var offset_y: float = main_map.offset_y + main_map.scroll_offset.y
-    _ensure_town_influence_cache(visible)
+    _ensure_town_influence_cache(visible_range)
     if _influence_fill_texture != null:
         draw_texture_rect(_influence_fill_texture, Rect2(
                 _influence_texture_origin.x + offset_x,
@@ -731,7 +731,7 @@ func _draw_town_influence(visible: Dictionary) -> void:
         _cache_built_offset = Vector2(offset_x, offset_y)
         return
     # Fallback: the drawing by the hexes (the editor / the Region larger than 4096px).
-    var region_visible = _get_region_visible_range(visible)
+    var region_visible = _get_region_visible_range(visible_range)
     for h in _influence_fill_centers:
         var row: int = int(h.row)
         var col: int = int(h.col)
@@ -767,11 +767,11 @@ func _draw_town_influence(visible: Dictionary) -> void:
     # The visibility — the same as that of the fill: only the Ring + the Region. The clipping of the rings on
     # the starting Region is already applied to the data (in town_manager), so the foreign
     # towns in the 1st epoch do not reveal their outlines.
-func _draw_town_influence_borders(visible: Dictionary) -> void:
+func _draw_town_influence_borders(visible_range: Dictionary) -> void:
     if main_map == null:
         return
-    _ensure_town_influence_cache(visible)
-    var region_visible = _get_region_visible_range(visible)
+    _ensure_town_influence_cache(visible_range)
+    var region_visible = _get_region_visible_range(visible_range)
     var offset_x: float = main_map.offset_x + main_map.scroll_offset.x
     var offset_y: float = main_map.offset_y + main_map.scroll_offset.y
     for seg in _influence_border_segments:
@@ -1494,7 +1494,7 @@ func _draw_all_roads():
 func _draw_route() -> void:
     if _route_segments.is_empty():
         return
-    var visible: Dictionary = {}
+    var visible_range: Dictionary = {}
     for segment_key in _route_segments.keys():
         var parts := str(segment_key).split("|")
         if parts.size() != 2:
@@ -1505,10 +1505,10 @@ func _draw_route() -> void:
             continue
         if _segment_clear_of_fog(int(start_parts[0]), int(start_parts[1]),
                 int(end_parts[0]), int(end_parts[1])):
-            visible[segment_key] = true
-    if visible.is_empty():
+            visible_range[segment_key] = true
+    if visible_range.is_empty():
         return
-    _draw_road_segments(visible, false, ROUTE_COLOR, ROUTE_WIDTH)
+    _draw_road_segments(visible_range, false, ROUTE_COLOR, ROUTE_WIDTH)
 
 # The "ghost" of an unfinished project. A separate set of the segments, and not a common one with
 # the preview: the preview lives while the panel is open, the ghost of the project - while the build
@@ -1516,7 +1516,7 @@ func _draw_route() -> void:
 func _draw_project_ghost() -> void:
     if _project_ghost_segments.is_empty():
         return
-    var visible: Dictionary = {}
+    var visible_range: Dictionary = {}
     for segment_key in _project_ghost_segments.keys():
         var parts := str(segment_key).split("|")
         if parts.size() != 2:
@@ -1527,11 +1527,11 @@ func _draw_project_ghost() -> void:
             continue
         if _segment_clear_of_fog(int(start_parts[0]), int(start_parts[1]),
                 int(end_parts[0]), int(end_parts[1])):
-            visible[segment_key] = true
-    if visible.is_empty():
+            visible_range[segment_key] = true
+    if visible_range.is_empty():
         return
-    _draw_road_segments(visible, false, ROAD_PREVIEW_HALO_COLOR, ROAD_PREVIEW_HALO_WIDTH)
-    _draw_road_segments(visible, false, ROAD_PREVIEW_COLOR, ROAD_PREVIEW_WIDTH)
+    _draw_road_segments(visible_range, false, ROAD_PREVIEW_HALO_COLOR, ROAD_PREVIEW_HALO_WIDTH)
+    _draw_road_segments(visible_range, false, ROAD_PREVIEW_COLOR, ROAD_PREVIEW_WIDTH)
 
 # Are the roads of the towns shown. The same gate as that of the fill of the influence rings
 # (_ensure_town_influence_cache): in the 1st epoch a foreign town is not shown
@@ -1648,7 +1648,7 @@ func _draw_road_preview() -> void:
         return
     # The segments at least one end of which is in the fog are never drawn
     # (see the comment to PHASE 2d in _draw_all_roads).
-    var visible: Dictionary = {}
+    var visible_range: Dictionary = {}
     for segment_key in _road_preview_segments.keys():
         var parts = str(segment_key).split("|")
         if parts.size() != 2:
@@ -1659,11 +1659,11 @@ func _draw_road_preview() -> void:
             continue
         if _segment_clear_of_fog(int(start_parts[0]), int(start_parts[1]),
                 int(end_parts[0]), int(end_parts[1])):
-            visible[segment_key] = true
-    if visible.is_empty():
+            visible_range[segment_key] = true
+    if visible_range.is_empty():
         return
-    _draw_road_segments(visible, false, ROAD_PREVIEW_HALO_COLOR, ROAD_PREVIEW_HALO_WIDTH)
-    _draw_road_segments(visible, false, ROAD_PREVIEW_COLOR, ROAD_PREVIEW_WIDTH)
+    _draw_road_segments(visible_range, false, ROAD_PREVIEW_HALO_COLOR, ROAD_PREVIEW_HALO_WIDTH)
+    _draw_road_segments(visible_range, false, ROAD_PREVIEW_COLOR, ROAD_PREVIEW_WIDTH)
 
 func _draw_rivers():
     if main_map == null:
@@ -2182,13 +2182,13 @@ func _draw_exploration_highlights():
     if not expansion_manager:
         return
 
-    var visible = _get_visible_hex_range()
+    var visible_range = _get_visible_hex_range()
 
     # --- 1. The highlighting of the scouted hexes (only in the visible area) ---
     # Outside the visible area (the fog of war) the terrain is not drawn by the renderer, therefore
     # a fill for the scouted hexes is not needed there.
-    for row in range(visible.row_start, visible.row_end + 1):
-        for col in range(visible.col_start, visible.col_end + 1):
+    for row in range(visible_range.row_start, visible_range.row_end + 1):
+        for col in range(visible_range.col_start, visible_range.col_end + 1):
             var tile = tile_data[row][col]
             if tile.get("in_influence", false):
                 continue

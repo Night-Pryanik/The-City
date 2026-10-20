@@ -561,7 +561,6 @@ func _collect_actions(row: int, col: int, tile: Dictionary) -> Array:
 
     # --- A HEX WITHOUT AN IMPROVEMENT ---
     # 1. A natural resource with improved_by.
-    var eff_res = MapHelpers.get_effective_resource(tile)
     if tile.resource != null:
         var raw = GameData.raw_resources.get(tile.resource, {})
         if "improved_by" in raw and raw.improved_by != null and raw.improved_by != "":
@@ -877,9 +876,9 @@ func _append_long_action_cancel(actions: Array, row: int, col: int) -> void:
     if _append_queued_cancel(actions, row, col):
         return
     if build_manager != null and build_manager.has_method("get_expansion_progress_for_hex"):
-        var exp: Dictionary = build_manager.get_expansion_progress_for_hex(row, col)
-        if not exp.is_empty():
-            var chunk: Array = exp.get("chunk", [])
+        var expansion: Dictionary = build_manager.get_expansion_progress_for_hex(row, col)
+        if not expansion.is_empty():
+            var chunk: Array = expansion.get("chunk", [])
             actions.append({
                 "type": "cancel_expansion",
                 "label": tr("Stop: Claiming land"),
@@ -1888,7 +1887,7 @@ func _build_road_upgrade_preview(row: int, col: int) -> bool:
 # The preview block for the road: where the route will go, how many segments it
 # consists of, and how much labour it is. It returns false if there is no route - then
 # the "Start" button is blocked, and the player sees the reason.
-func _build_road_preview(row: int, col: int, action_id: String) -> bool:
+func _build_road_preview(row: int, col: int, _action_id: String) -> bool:
     var road_level := int(_preview_action.get("road_level", 1))
     var plan: Dictionary = main_map.get_road_plan(row, col)
     if not plan.get("ok", false):

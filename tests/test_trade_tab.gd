@@ -1154,12 +1154,9 @@ func _check_external_trade(city_ui, main_map, state: Dictionary) -> void:
     if first_partner_row == null:
         return
     var goto_button: Button = null
-    var road_marker: TextureRect = null
     for node in first_partner_row.get_children():
         if node is Button:
             goto_button = node
-        elif node is TextureRect:
-            road_marker = node
     check(goto_button != null, "every row of a partner must have the button of the jump to the town", state)
     if goto_button != null:
         check(goto_button.tooltip_text == tr("Go to the town"),

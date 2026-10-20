@@ -88,7 +88,6 @@ const WarningBadge = preload("res://scripts/warning_badge.gd")
 
 # The wrapping tooltip. The hints of this window are long, and the built-in tooltip
 # draws its text in a single line (see the script and docs.md, "Tooltips").
-const WrappedTooltip = preload("res://scripts/wrapped_tooltip.gd")
 
 signal closed()
 
@@ -245,7 +244,7 @@ var _active_buy_quality_name: String = ""
 # the settings (CityData.resource_display_interval), and not on every town tick: the data
 # comes from the city warehouse (CityData.city_storage), which moves on the city tick,
 # not on the town tick (see refresh_storage).
-var _buy_display_epoch: float = 0.0
+var _buy_display_epoch: int = 0
 # The vertical rule between the two pools (see _build_pool_separator). null before _ready.
 var _pool_separator: ColorRect = null
 # The row the cursor is over. Only one row is hovered at a time; the field is needed

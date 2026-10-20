@@ -460,14 +460,14 @@ static func trade_once(stock: int, limit: int, last_sign: int,
     # edges the direction is forced instead of rolled. That keeps the rng stream free
     # of draws the warehouse could not honour, so the run lengths reflect trades that
     # actually happened.
-    var sign := 0
+    var direction := 0
     if current <= 0:
-        sign = 1
+        direction = 1
     elif current >= limit:
-        sign = -1
+        direction = -1
     else:
-        sign = roll_trade_sign(float(current), last_sign, rng)
-    if sign > 0:
+        direction = roll_trade_sign(float(current), last_sign, rng)
+    if direction > 0:
         # A purchase cannot make the warehouse exceed the cap: the town only buys
         # what fits. At the cap there is nothing to buy.
         var room := limit - current
@@ -528,16 +528,16 @@ static func tick_treasury(treasury: int, last_sign: int, counter: int,
     var recovery_threshold := comfort * clampf(
             float(GameData.game_balance.get("town_treasury_recovery_threshold", 0.15)),
             0.0, 1.0)
-    var sign := _roll_treasury_trade_sign(float(current), comfort, last_sign, rng)
+    var direction := _roll_treasury_trade_sign(float(current), comfort, last_sign, rng)
     var amount := roundi(_roll_treasury_trade_size(rng))
     if float(current) <= recovery_threshold:
-        sign = 1
+        direction = 1
         var recovery_cap := maxf(1.0, comfort * maxf(0.0,
                 float(GameData.game_balance.get("town_treasury_recovery_step", 0.02))))
         amount = mini(amount, roundi(recovery_cap))
 
-    var delta := amount if sign > 0 else -mini(current, amount)
-    return {"treasury": current + delta, "sign": sign if delta != 0 else 0,
+    var delta := amount if direction > 0 else -mini(current, amount)
+    return {"treasury": current + delta, "sign": direction if delta != 0 else 0,
             "counter": counter + 1}
 
 

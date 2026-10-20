@@ -1094,7 +1094,7 @@ func _test_town_road_cycle(main_map, bm, panel, town, state: Dictionary) -> void
 # Waits for all active builds to finish: in the test work accumulates in game
 # time, so the debug mode "Ignore construction requirements" is used — it
 # brings builds to 100% in a frame.
-func _finish_build(state: Dictionary) -> void:
+func _finish_build(_state: Dictionary) -> void:
     var previous: bool = _cdata.ignore_build_requirements
     _cdata.ignore_build_requirements = true
     for _i in range(6):

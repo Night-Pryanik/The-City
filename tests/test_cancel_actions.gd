@@ -50,7 +50,7 @@ func _run() -> void:
     for _i in range(4):
         await process_frame
     if WATCHDOG.wants_case("project_cancel_anywhere"):
-        await _test_project_cancel_anywhere(state, main_map)
+        _test_project_cancel_anywhere(state, main_map)
     if WATCHDOG.wants_case("special_action_label"):
         _test_special_action_label(state, main_map)
     if WATCHDOG.wants_case("expansion_and_scouting"):
@@ -58,7 +58,7 @@ func _run() -> void:
     # LAST: the preparation explores the whole map, while claiming and scouting
     # need unexplored hexes.
     if WATCHDOG.wants_case("town_hex"):
-        await _test_town_hex(state, main_map, main_map.control_panel)
+        _test_town_hex(state, main_map, main_map.control_panel)
 
     WATCHDOG.report_skipped()
     if state["failed"]:

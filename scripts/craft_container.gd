@@ -527,8 +527,8 @@ func _take_single(pid: String, amount: int, priority: String) -> Dictionary:
 
 # Takes the amount of the variant of the ingredient: a single product directly,
 # an @-group greedily by the members.
-func _take_by_variant(slot: Dictionary, variant: Dictionary, amount: int,
-        priority: String, dry_run: bool) -> Dictionary:
+func _take_by_variant(_slot: Dictionary, variant: Dictionary, amount: int,
+        priority: String, _dry_run: bool) -> Dictionary:
     var key := str(variant.get("key", ""))
     if key.begins_with("@"):
         var members: Array = _resolve_group_members(key.substr(1))
@@ -565,16 +565,16 @@ func _order_group_members_by_priority(members: Array, priority: String) -> Array
     # The best quality is the last one in the order of levels (GameData returns from
     # the worst to the best, see the comment in _consume_quality_detail in CityData).
     var best_qid: String = str(quality_levels[quality_levels.size() - 1])
-    var sign: int = -1 if priority == "best" else 1
+    var sort_sign: int = -1 if priority == "best" else 1
     out.sort_custom(func(a, b):
         var a_best: int = int(CityData.city_quality_detail.get(a, {}).get(best_qid, 0))
         var b_best: int = int(CityData.city_quality_detail.get(b, {}).get(best_qid, 0))
         if a_best != b_best:
-            return sign * a_best < sign * b_best
+            return sort_sign * a_best < sort_sign * b_best
         # On a tie of the "best" stocks — we sort by the total amount.
         var a_total: int = int(CityData.city_storage.get(a, 0))
         var b_total: int = int(CityData.city_storage.get(b, 0))
-        return sign * a_total < sign * b_total)
+        return sort_sign * a_total < sort_sign * b_total)
     return out
 
 # --- INTERNAL ---

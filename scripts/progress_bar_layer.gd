@@ -18,9 +18,9 @@ func _draw():
     if main_map == null or tile_data.is_empty():
         return
 
-    var visible = _get_visible_hex_range()
-    for row in range(visible.row_start, visible.row_end + 1):
-        for col in range(visible.col_start, visible.col_end + 1):
+    var visible_range = _get_visible_hex_range()
+    for row in range(visible_range.row_start, visible_range.row_end + 1):
+        for col in range(visible_range.col_start, visible_range.col_end + 1):
             _draw_progress_bars(row, col)
 
 # Returns a dictionary with the bounds of the visible hexes (inclusive),

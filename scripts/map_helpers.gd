@@ -1003,7 +1003,7 @@ static func get_chunk_info(chunk: Array, tile_data: Array) -> String:
     # the compiler does not consider TranslationServer.translate() a String for
     # sure, so the output via := would give a Variant (in this project that is a
     # warning-as-error).
-    var resource_str: String = ", ".join(resources) if resources.size() > 0 else TranslationServer.translate("none")
+    var resource_str: String = ", ".join(resources) if resources.size() > 0 else str(TranslationServer.translate("none"))
     return TranslationServer.translate("Terrain: %s. Resources: %s") % [terrain_str, resource_str]
 
 ## Recalculates the absolute borders of the Ring of Influence and of the visible
@@ -1014,14 +1014,14 @@ static func recalculate_bounds(
     region_rows: int, region_cols: int,
     map_rows: int, map_cols: int
 ) -> Dictionary:
-    var influence_start_row = city_row - ring_rows / 2
+    var influence_start_row = city_row - int(ring_rows / 2.0)
     var influence_end_row = influence_start_row + ring_rows - 1
-    var influence_start_col = city_col - ring_cols / 2
+    var influence_start_col = city_col - int(ring_cols / 2.0)
     var influence_end_col = influence_start_col + ring_cols - 1
 
-    var region_start_row = city_row - region_rows / 2
+    var region_start_row = city_row - int(region_rows / 2.0)
     var region_end_row = region_start_row + region_rows - 1
-    var region_start_col = city_col - region_cols / 2
+    var region_start_col = city_col - int(region_cols / 2.0)
     var region_end_col = region_start_col + region_cols - 1
 
     region_start_row = max(0, region_start_row)

@@ -448,8 +448,8 @@ func _median(values: Array) -> float:
     if n == 0:
         return 0.0
     if n % 2 == 1:
-        return float(values[n / 2])
-    return (float(values[n / 2 - 1]) + float(values[n / 2])) * 0.5
+        return float(values[int(n / 2.0)])
+    return (float(values[int(n / 2.0) - 1]) + float(values[int(n / 2.0)])) * 0.5
 
 func _tech_exists(tech_id: String) -> bool:
     for t in GameData.technologies:
@@ -591,7 +591,7 @@ func _compute_era_groups(columns: Dictionary, num_cols: int) -> Array:
 # Creates the dictionary of the group of an era by the range of the columns [col_start..col_end].
 func _make_era_group(era_id: String, col_start: int, col_end: int) -> Dictionary:
     var first_x: float = _col_x(col_start) # the left edge of the first column of the group
-    var last_right: float = _col_x(col_end) + BUTTON_WIDTH + COL_GAP / 2 # the middle between the columns
+    var last_right: float = _col_x(col_end) + BUTTON_WIDTH + float(COL_GAP) / 2.0 # the middle between the columns
     return {
         "era_id": era_id,
         "era_name": _get_era_name(era_id),
@@ -1103,26 +1103,26 @@ func _style_button(btn: Button, is_unlocked: bool, is_current: bool, is_availabl
     var hover := Color(0.25, 0.25, 0.27)
     var pressed := Color(0.18, 0.18, 0.20)
     var font_col := Color(0.6, 0.6, 0.6)
-    var modulate := Color(0.75, 0.75, 0.75, 0.9)
+    var modulate_col := Color(0.75, 0.75, 0.75, 0.9)
 
     if is_unlocked:
         bg = Color(0.25, 0.45, 0.25)
         hover = Color(0.30, 0.55, 0.30)
         pressed = Color(0.20, 0.40, 0.20)
         font_col = Color(0.85, 1.0, 0.85)
-        modulate = Color(1, 1, 1, 0.9)
+        modulate_col = Color(1, 1, 1, 0.9)
     elif is_current:
         bg = Color(0.30, 0.40, 0.55)
         hover = Color(0.35, 0.45, 0.65)
         pressed = Color(0.25, 0.35, 0.50)
         font_col = Color(1.0, 1.0, 0.7)
-        modulate = Color(1, 1, 1, 1)
+        modulate_col = Color(1, 1, 1, 1)
     elif is_available:
         bg = Color(0.35, 0.35, 0.40)
         hover = Color(0.45, 0.45, 0.55)
         pressed = Color(0.30, 0.30, 0.35)
         font_col = Color.WHITE
-        modulate = Color(1, 1, 1, 1)
+        modulate_col = Color(1, 1, 1, 1)
 
     var style_normal := _make_button_stylebox(bg)
     var style_hover := _make_button_stylebox(hover)
@@ -1134,7 +1134,7 @@ func _style_button(btn: Button, is_unlocked: bool, is_current: bool, is_availabl
     btn.add_theme_stylebox_override("pressed", style_pressed)
     btn.add_theme_stylebox_override("disabled", style_disabled)
     btn.add_theme_color_override("font_color", font_col)
-    btn.modulate = modulate
+    btn.modulate = modulate_col
     
     # The highlighting of the frame for the related technologies on hover.
     if not tech_id.is_empty() and _related_techs.has(tech_id):
@@ -1353,7 +1353,7 @@ func _on_arrows_draw():
             _arrows_layer.draw_polyline(points, color, line_width, true)
             _draw_arrow_head(child_left, Vector2(-1, 0), color, line_width)
 
-func _draw_arrow_head(pos: Vector2, dir: Vector2, color: Color, line_width: float):
+func _draw_arrow_head(pos: Vector2, dir: Vector2, color: Color, _line_width: float):
     # A small triangle-arrow at the end of the line.
     var head_size := 8.0
     var perp := Vector2(-dir.y, dir.x) * head_size * 0.5

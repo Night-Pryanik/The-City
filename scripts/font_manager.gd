@@ -205,27 +205,27 @@ static func describe_font(path: String, font: FontFile) -> Dictionary:
 # the second attempt, for the vendors that put the weight into the family name and call
 # the style "Regular" (Lato-Black.ttf does exactly that).
 static func normalize_family(family: String, style: String) -> String:
-    var name := family.strip_edges()
-    var cut := _strip_suffix(name, style)
-    if cut != name:
+    var family_name := family.strip_edges()
+    var cut := _strip_suffix(family_name, style)
+    if cut != family_name:
         return cut
     for word in WEIGHT_WORDS:
-        cut = _strip_suffix(name, word)
-        if cut != name:
+        cut = _strip_suffix(family_name, word)
+        if cut != family_name:
             return cut
-    return name
+    return family_name
 
 
 # Cuts the word off the END of the name, if it is there and if something is left before
 # it. Case is ignored, spelling is not: the style name and the family suffix of one file
 # come from the same name table.
-static func _strip_suffix(name: String, word: String) -> String:
+static func _strip_suffix(full_name: String, word: String) -> String:
     var suffix := word.strip_edges()
-    if suffix.is_empty() or name.length() <= suffix.length():
-        return name
-    if not name.to_lower().ends_with(suffix.to_lower()):
-        return name
-    return name.substr(0, name.length() - suffix.length()).strip_edges()
+    if suffix.is_empty() or full_name.length() <= suffix.length():
+        return full_name
+    if not full_name.to_lower().ends_with(suffix.to_lower()):
+        return full_name
+    return full_name.substr(0, full_name.length() - suffix.length()).strip_edges()
 
 
 # The range of the weight axis of a variable font, Vector2.ZERO if the font has no such

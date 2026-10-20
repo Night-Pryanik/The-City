@@ -181,7 +181,7 @@ func _scan_disk(folder_path: String, out: Dictionary) -> void:
 
 # Prints which icons the data references but whose file does not exist yet.
 # This is normal (future content), so it is not treated as a check.
-func _print_missing_references(state: Dictionary) -> void:
+func _print_missing_references(_state: Dictionary) -> void:
     var registry = get_root().get_node("IconRegistry")
     var gdata = get_root().get_node("GameData")
     if registry == null or gdata == null:

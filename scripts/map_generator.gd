@@ -689,7 +689,7 @@ func _punch_hex(tile_data: Array, key: String) -> void:
 # Lays a corridor from the reachable area directly to the edge of the map through
 # the impassable hexes. It returns true if the corridor has been laid.
 func _punch_corridor_to_edge(tile_data: Array, rows: int, cols: int,
-        city_row: int, city_col: int, reachable: Dictionary) -> bool:
+        _city_row: int, _city_col: int, reachable: Dictionary) -> bool:
     var from := {}
     var queue: Array = []
     for key in reachable:
@@ -804,7 +804,7 @@ func _resolve_spawn_count(data: Dictionary) -> int:
     return RangeUtils.roll_value(data.get("spawn_count", 1),
             tr("spawn_count of resource '%s'") % res_id, 1)
 
-func _place_resources(tile_data: Array, res_dict: Dictionary, rows: int, cols: int, city_row: int, city_col: int, hex_index: Dictionary):
+func _place_resources(tile_data: Array, res_dict: Dictionary, _rows: int, _cols: int, _city_row: int, _city_col: int, hex_index: Dictionary):
     if res_dict.size() == 0:
         return
     # We spawn ALL the resources of the category on the map, and not 1-3 random ones (as it
@@ -935,7 +935,7 @@ func ensure_free_terrain_hexes(tile_data: Array, terrain_counts: Dictionary,
 
 func _convert_free_terrain_near_cluster(tile_data: Array, terrain_id: String, deficit: int,
         min_row: int, max_row: int, min_col: int, max_col: int,
-        free_count: Dictionary, terrain_counts: Dictionary,
+        free_count: Dictionary, _terrain_counts: Dictionary,
         city_row: int = -1, city_col: int = -1) -> int:
     var converted = 0
     var cluster: Array = []

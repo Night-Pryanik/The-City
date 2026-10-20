@@ -455,7 +455,7 @@ func _vertex_key(pos: Vector2) -> String:
 #   - the check of the forbidden edges — O(1) by the precomputed flag forb;
 #   - angle_to does not require normalized vectors — normalized() is removed.
 # -------------------------------------------------------
-func _find_path_astar(start_key: String, goal_key: String, graph: Dictionary, forbidden_keys: Dictionary, max_turn_angle_deg: float, merge_keys: Dictionary = {}, forbidden_hexes: Dictionary = {}) -> Array:
+func _find_path_astar(start_key: String, goal_key: String, graph: Dictionary, forbidden_keys: Dictionary, max_turn_angle_deg: float, merge_keys: Dictionary = {}, _forbidden_hexes: Dictionary = {}) -> Array:
     var vertex_positions: Dictionary = graph["positions"]
     var neighbors_map: Dictionary = graph["neighbors"]
     var forb_mask: Dictionary = graph.get("forb", {})

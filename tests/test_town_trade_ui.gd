@@ -1531,10 +1531,10 @@ func _find_price_label(row: Control) -> RichTextLabel:
     return row.find_child("PriceLabel", true, false) as RichTextLabel
 
 # The first Label of the subtree whose text is exactly `text` (null if there is none).
-func _find_label(root: Node, text: String) -> Label:
-    if root == null:
+func _find_label(parent: Node, text: String) -> Label:
+    if parent == null:
         return null
-    for child in root.get_children():
+    for child in parent.get_children():
         if child is Label and str(child.text) == text:
             return child
         var found := _find_label(child, text)

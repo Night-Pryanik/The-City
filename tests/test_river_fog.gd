@@ -69,7 +69,7 @@ func _run() -> void:
         "part of the rivers must remain visible (kept %d)" % kept_total, state)
 
     # --- 2. Surviving points lie over explored territory (independent check) ---
-    var sample_step: int = max(1, kept_total / 200)
+    var sample_step: int = max(1, int(kept_total / 200.0))
     var checked: int = 0
     var violations: Array = []
     for river in all_rivers:

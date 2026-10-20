@@ -1149,7 +1149,7 @@ func _on_upgrade_pressed(b_index: int):
             p.hide()
     _refresh()
 
-func _on_slot_button_pressed(b_index: int, slot_idx: int, popup, button):
+func _on_slot_button_pressed(_b_index: int, _slot_idx: int, popup, button):
     # We close the other open popups
     for p in popups_list:
         if is_instance_valid(p) and p != popup and p.visible:

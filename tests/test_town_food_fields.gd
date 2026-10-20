@@ -463,7 +463,7 @@ func _test_crops_vary_between_towns(state: Dictionary) -> void:
     var tile_data := _make_map(rows, cols)
     var centers := []
     for i in range(40):
-        var row := 5 + (i / 8) * 10
+        var row := 5 + int(i / 8.0) * 10
         var col := 5 + (i % 8) * 9
         centers.append(_add_town(tile_data, rows, cols, row, col))
 
