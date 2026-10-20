@@ -30,6 +30,10 @@ extends Control
 var config = ConfigFile.new()
 
 func _ready():
+    # The window is reached from the pause menu, that is, over a paused tree: a
+    # pausable node would stop receiving ESC while the game is stopped (the same
+    # reason as in journal_ui.gd).
+    process_mode = Node.PROCESS_MODE_ALWAYS
     var missing_controls = not hex_borders_checkbox or not edge_scrolling_checkbox \
             or not edge_scroll_speed_slider or not edge_scroll_speed_value_label \
             or not back_button or not tooltip_delay_slider \
@@ -287,3 +291,13 @@ func _update_hud_message_duration_label():
 
 func _on_back_pressed():
     hide()
+
+# ESC belongs to the window while it is open: neither the map nor the window
+# underneath (the pause menu) sees the key. Closing is exactly hiding — the pause
+# menu, if it is the host, returns through the visibility_changed signal.
+func _unhandled_input(event: InputEvent) -> void:
+    if not visible:
+        return
+    if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+        get_viewport().set_input_as_handled()
+        hide()
