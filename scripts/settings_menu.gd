@@ -3,6 +3,9 @@ extends Control
 
 @onready var hex_borders_checkbox: CheckBox = find_child("HexBordersCheckBox", true, false)
 @onready var edge_scrolling_checkbox: CheckBox = find_child("EdgeScrollingCheckBox", true, false)
+@onready var edge_scroll_speed_slider: HSlider = find_child("EdgeScrollSpeedSlider", true, false)
+@onready var edge_scroll_speed_value_label: Label = find_child(
+    "EdgeScrollSpeedValueLabel", true, false)
 @onready var back_button: Button = find_child("BackButton", true, false)
 @onready var language_option_button: OptionButton = find_child("LanguageOptionButton", true, false)
 @onready var font_option_button: OptionButton = find_child("FontOptionButton", true, false)
@@ -28,6 +31,7 @@ var config = ConfigFile.new()
 
 func _ready():
     var missing_controls = not hex_borders_checkbox or not edge_scrolling_checkbox \
+            or not edge_scroll_speed_slider or not edge_scroll_speed_value_label \
             or not back_button or not tooltip_delay_slider \
             or not tooltip_delay_value_label \
             or not extended_tooltip_delay_slider \
@@ -48,6 +52,7 @@ func _ready():
     edge_scrolling_checkbox.add_theme_color_override("font_color", Color.WHITE)
     language_option_button.add_theme_color_override("font_color", Color.WHITE)
     font_option_button.add_theme_color_override("font_color", Color.WHITE)
+    edge_scroll_speed_value_label.add_theme_color_override("font_color", Color.WHITE)
     tooltip_delay_value_label.add_theme_color_override("font_color", Color.WHITE)
     extended_tooltip_delay_value_label.add_theme_color_override("font_color", Color.WHITE)
     building_detail_delay_value_label.add_theme_color_override("font_color", Color.WHITE)
@@ -61,6 +66,7 @@ func _ready():
     back_button.pressed.connect(_on_back_pressed)
     hex_borders_checkbox.toggled.connect(_on_hex_borders_toggled)
     edge_scrolling_checkbox.toggled.connect(_on_edge_scrolling_toggled)
+    edge_scroll_speed_slider.value_changed.connect(_on_edge_scroll_speed_changed)
     tooltip_delay_slider.value_changed.connect(_on_tooltip_delay_changed)
     extended_tooltip_delay_slider.value_changed.connect(_on_extended_tooltip_delay_changed)
     building_detail_delay_slider.value_changed.connect(_on_building_detail_delay_changed)
@@ -149,6 +155,7 @@ func load_settings():
     if err == OK:
         hex_borders_checkbox.button_pressed = config.get_value("interface", "show_hex_borders", true)
         edge_scrolling_checkbox.button_pressed = config.get_value("interface", "edge_scrolling", true)
+        edge_scroll_speed_slider.value = config.get_value("interface", "edge_scroll_speed", 300.0)
         tooltip_delay_slider.value = config.get_value("interface", "tooltip_delay", 0.5)
         extended_tooltip_delay_slider.value = config.get_value("interface", "extended_tooltip_delay", 1.0)
         building_detail_delay_slider.value = config.get_value(
@@ -160,6 +167,7 @@ func load_settings():
     else:
         hex_borders_checkbox.button_pressed = true
         edge_scrolling_checkbox.button_pressed = true
+        edge_scroll_speed_slider.value = 300.0
         tooltip_delay_slider.value = 0.5
         extended_tooltip_delay_slider.value = 1.0
         building_detail_delay_slider.value = 0.5
@@ -167,6 +175,7 @@ func load_settings():
         hud_message_duration_slider.value = 3.0
     # The minimum value of the extended tooltip cannot be less than the main one
     extended_tooltip_delay_slider.min_value = tooltip_delay_slider.value
+    _update_edge_scroll_speed_label()
     _update_tooltip_delay_label()
     _update_extended_tooltip_delay_label()
     _update_building_detail_delay_label()
@@ -179,6 +188,7 @@ func save_settings():
     config.load("user://settings.cfg")
     config.set_value("interface", "show_hex_borders", hex_borders_checkbox.button_pressed)
     config.set_value("interface", "edge_scrolling", edge_scrolling_checkbox.button_pressed)
+    config.set_value("interface", "edge_scroll_speed", edge_scroll_speed_slider.value)
     config.set_value("interface", "tooltip_delay", tooltip_delay_slider.value)
     config.set_value("interface", "extended_tooltip_delay", extended_tooltip_delay_slider.value)
     config.set_value("interface", "building_detail_delay", building_detail_delay_slider.value)
@@ -198,6 +208,11 @@ func _on_hex_borders_toggled(_pressed: bool):
     _apply_to_game()
 
 func _on_edge_scrolling_toggled(_pressed: bool):
+    save_settings()
+    _apply_to_game()
+
+func _on_edge_scroll_speed_changed(_value: float):
+    _update_edge_scroll_speed_label()
     save_settings()
     _apply_to_game()
 
@@ -231,6 +246,11 @@ func _on_hud_message_duration_changed(_value: float):
     _update_hud_message_duration_label()
     save_settings()
     _apply_to_game()
+
+# The slider step is 50 pixels per second: the whole number is exactly enough.
+func _update_edge_scroll_speed_label():
+    var speed = int(round(edge_scroll_speed_slider.value))
+    edge_scroll_speed_value_label.text = tr("%d px/s") % speed
 
 func _update_tooltip_delay_label():
     var seconds = snappedf(tooltip_delay_slider.value, 0.25)

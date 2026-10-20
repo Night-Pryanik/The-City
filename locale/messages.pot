@@ -255,6 +255,9 @@ msgstr ""
 msgid "%d of the %d units are still on the way: they go back into the warehouse of %s, and %d coins go back into the treasury."
 msgstr ""
 
+msgid "%d px/s"
+msgstr ""
+
 msgid "%d sec"
 msgstr ""
 
@@ -283,9 +286,6 @@ msgid "%s\n\nScience: %d"
 msgstr ""
 
 msgid "%s\nScience: %d%s"
-msgstr ""
-
-msgid "%s %s/sec"
 msgstr ""
 
 msgid "%s (base %d):"
@@ -406,6 +406,9 @@ msgid "1250 (Middle Ages)"
 msgstr ""
 
 msgid "3.0 sec"
+msgstr ""
+
+msgid "300 px/s"
 msgstr ""
 
 msgid "A range is shown because the goods in the group have different base prices."
@@ -879,6 +882,9 @@ msgstr ""
 msgid "Domestic trade"
 msgstr ""
 
+msgid "Edge scrolling speed"
+msgstr ""
+
 msgid "Edit the contract"
 msgstr ""
 
@@ -1120,9 +1126,6 @@ msgid "Maybe you meant the goods group \"@%s\"?"
 msgstr ""
 
 msgid "Maybe you meant the product \"%s\"?"
-msgstr ""
-
-msgid "Maybe you meant the product group \"@%s\"?"
 msgstr ""
 
 msgid "Menu"

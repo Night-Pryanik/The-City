@@ -33,8 +33,15 @@ var drag_start_mouse: Vector2 = Vector2.ZERO
 
 var tooltip_delay: float = 0.5
 var extended_tooltip_delay: float = 1.0
-const SCROLL_SPEED: float = 300.0
-const SCROLL_MARGIN: float = 30
+# The speed of the scrolling of the map by the cursor standing at the edge of the screen
+# (pixels per second; the key interface/edge_scroll_speed in user://settings.cfg). The
+# range matches the slider of the settings menu — the clamp is here so that a hand-edited
+# config cannot make the map jump across the whole world in a single frame.
+var scroll_speed: float = 300.0
+const SCROLL_SPEED_MIN: float = 100.0
+const SCROLL_SPEED_MAX: float = 1000.0
+# The zone at the very edge of the screen that triggers scrolling (pixels).
+const SCROLL_MARGIN: float = 2
 
 func initialize(main_node: Node):
     main_map = main_node
@@ -56,6 +63,9 @@ func set_tooltip_delay(value: float):
 
 func set_extended_tooltip_delay(value: float):
     extended_tooltip_delay = value
+
+func set_scroll_speed(value: float):
+    scroll_speed = clampf(value, SCROLL_SPEED_MIN, SCROLL_SPEED_MAX)
 
 # The entry point of the input of the MAP: the mouse and the keys that belong to
 # the map (see handle_input).
@@ -284,13 +294,13 @@ func _process_edge_scrolling(delta: float):
     var scroll = Vector2.ZERO
     if inside:
         if mouse_pos.x < SCROLL_MARGIN:
-            scroll.x = SCROLL_SPEED * delta
+            scroll.x = scroll_speed * delta
         elif mouse_pos.x > viewport_size.x - SCROLL_MARGIN:
-            scroll.x = - SCROLL_SPEED * delta
+            scroll.x = - scroll_speed * delta
         if mouse_pos.y < SCROLL_MARGIN:
-            scroll.y = SCROLL_SPEED * delta
+            scroll.y = scroll_speed * delta
         elif mouse_pos.y > viewport_size.y - SCROLL_MARGIN:
-            scroll.y = - SCROLL_SPEED * delta
+            scroll.y = - scroll_speed * delta
 
     if scroll == Vector2.ZERO:
         return

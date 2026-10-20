@@ -149,6 +149,27 @@ text = "Map movement"
 layout_mode = 2
 text = "Map movement at window edges"
 
+[node name="Label7" type="Label" parent="TabContainer/Интерфейс/VBoxContainer"]
+layout_mode = 2
+theme_type_variation = &"SectionHeading"
+text = "Edge scrolling speed"
+
+[node name="HBoxContainer5" type="HBoxContainer" parent="TabContainer/Интерфейс/VBoxContainer"]
+layout_mode = 2
+
+[node name="EdgeScrollSpeedSlider" type="HSlider" parent="TabContainer/Интерфейс/VBoxContainer/HBoxContainer5"]
+custom_minimum_size = Vector2(420, 0)
+layout_mode = 2
+min_value = 100.0
+max_value = 1000.0
+step = 50.0
+value = 300.0
+
+[node name="EdgeScrollSpeedValueLabel" type="Label" parent="TabContainer/Интерфейс/VBoxContainer/HBoxContainer5"]
+custom_minimum_size = Vector2(64, 0)
+layout_mode = 2
+text = "300 px/s"
+
 [node name="Label3" type="Label" parent="TabContainer/Интерфейс/VBoxContainer" unique_id=1054639220]
 layout_mode = 2
 theme_type_variation = &"SectionHeading"

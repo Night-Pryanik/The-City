@@ -151,6 +151,11 @@ var is_scouting: bool = false
 var settings_config = ConfigFile.new()
 var show_hex_borders = true
 var use_edge_scrolling = true
+# The speed of the scrolling of the map by the cursor standing at the edge of the screen
+# (pixels per second, 100..1000 with a step of 50; the key interface/edge_scroll_speed in
+# user://settings.cfg). The clamp itself lives in InputHandler — this value is passed
+# through as it is.
+var edge_scroll_speed: float = 300.0
 # The margin (in pixels) of the pre-render of the screen-sized layers of the map. The layers
 # that are cached by the renderer as a screen-sized texture (the influence rings of the towns)
 # are rendered into a rectangle larger than the viewport by this margin on each side. While the
@@ -534,6 +539,7 @@ func _ready():
 
     input_handler.set_tooltip_delay(tooltip_delay)
     input_handler.set_extended_tooltip_delay(extended_tooltip_delay)
+    input_handler.set_scroll_speed(edge_scroll_speed)
     city_ui.set_building_detail_delay(building_detail_delay)
     hud.set_message_duration(hud_message_duration)
     CityData.set_resource_display_interval(resource_display_interval)
@@ -3512,6 +3518,7 @@ func _load_settings():
     if err == OK:
         show_hex_borders = settings_config.get_value("interface", "show_hex_borders", true)
         use_edge_scrolling = settings_config.get_value("interface", "edge_scrolling", true)
+        edge_scroll_speed = settings_config.get_value("interface", "edge_scroll_speed", 300.0)
         tooltip_delay = settings_config.get_value("interface", "tooltip_delay", 0.5)
         extended_tooltip_delay = settings_config.get_value("interface", "extended_tooltip_delay", 1.0)
         building_detail_delay = settings_config.get_value("interface", "building_detail_delay", 0.5)
@@ -3520,6 +3527,7 @@ func _load_settings():
     else:
         show_hex_borders = true
         use_edge_scrolling = true
+        edge_scroll_speed = 300.0
         tooltip_delay = 0.5
         extended_tooltip_delay = 1.0
         building_detail_delay = 0.5
@@ -3530,6 +3538,7 @@ func apply_settings():
     _load_settings()
     input_handler.set_tooltip_delay(tooltip_delay)
     input_handler.set_extended_tooltip_delay(extended_tooltip_delay)
+    input_handler.set_scroll_speed(edge_scroll_speed)
     city_ui.set_building_detail_delay(building_detail_delay)
     hud.set_message_duration(hud_message_duration)
     # set_resource_display_interval raises the era on a change of the value — we immediately

@@ -73,7 +73,7 @@ func _finish(state: Dictionary) -> void:
 # -------------------------------------------------------
 func _test_bottom_edge(state: Dictionary, main_map, ih, panel, vp_size: Vector2) -> void:
     main_map.use_edge_scrolling = true
-    await _set_cursor(Vector2(vp_size.x * 0.5, vp_size.y - 5.0))
+    await _set_cursor(Vector2(vp_size.x * 0.5, vp_size.y - 1.0))
 
     # The setup of the case: the cursor is really over the panel, and the panel really
     # reaches the bottom edge of the screen. Without this the case would be about an
@@ -98,7 +98,7 @@ func _test_bottom_edge(state: Dictionary, main_map, ih, panel, vp_size: Vector2)
 # 2. The top edge
 # -------------------------------------------------------
 func _test_top_edge(state: Dictionary, main_map, ih, vp_size: Vector2) -> void:
-    await _set_cursor(Vector2(vp_size.x * 0.5, 5.0))
+    await _set_cursor(Vector2(vp_size.x * 0.5, 1.0))
 
     var before: Vector2 = main_map.scroll_offset
     ih.handle_process(0.1)
@@ -141,7 +141,7 @@ func _test_middle(state: Dictionary, main_map, ih, vp_size: Vector2) -> void:
 # 5. The setting
 # -------------------------------------------------------
 func _test_setting_off(state: Dictionary, main_map, ih, vp_size: Vector2) -> void:
-    await _set_cursor(Vector2(vp_size.x * 0.5, vp_size.y - 5.0))
+    await _set_cursor(Vector2(vp_size.x * 0.5, vp_size.y - 1.0))
 
     main_map.use_edge_scrolling = false
     var before: Vector2 = main_map.scroll_offset

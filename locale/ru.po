@@ -255,6 +255,9 @@ msgstr "работает %d из %d, простаивает %d"
 msgid "%d of the %d units are still on the way: they go back into the warehouse of %s, and %d coins go back into the treasury."
 msgstr "%d из %d ед. ещё в пути: они вернутся на склад %s, а %d монет — в казну."
 
+msgid "%d px/s"
+msgstr "%d пикс/с"
+
 msgid "%d sec"
 msgstr "%d сек"
 
@@ -404,6 +407,9 @@ msgstr "1250 (Средневековье)"
 
 msgid "3.0 sec"
 msgstr "3,0 сек"
+
+msgid "300 px/s"
+msgstr "300 пикс/с"
 
 msgid "A range is shown because the goods in the group have different base prices."
 msgstr "Диапазон — потому что у товаров группы разные базовые цены."
@@ -875,6 +881,9 @@ msgstr "Разнообразие: %d подгрупп"
 
 msgid "Domestic trade"
 msgstr "Внутренняя торговля"
+
+msgid "Edge scrolling speed"
+msgstr "Скорость прокрутки у краёв окна"
 
 msgid "Edit the contract"
 msgstr "Изменить контракт"

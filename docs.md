@@ -2908,6 +2908,16 @@ That is why a tooltip with an empty market shows the tax separately and does not
 
 **Test.** `tools/test_resource_display_interval.gd` — the slider and the config key, the clamp/epoch of `CityData`, and on a live `MainMap.tscn`: the supply label, "Food: N", the building tooltip's materials row and the panel's left column do not update until the interval arrives and do update after; `refresh_light()` (an event) updates instantly.
 
+### Edge scrolling speed
+
+**The setting.** "Settings → Interface → Edge scrolling speed" sets how fast the map scrolls when the cursor stands at the edge of the screen: **from 100 to 1000 pixels per second with a step of 50** (default 300). The checkbox "Map movement at window edges" switches the feature on and off independently.
+
+**The config key.** `user://settings.cfg`, section `interface`, key `edge_scroll_speed` (default `300.0`). Read in `main_map._load_settings()`, applied via `input_handler.set_scroll_speed()` (in the map's `_ready` and in `apply_settings()`).
+
+**The clamp is in InputHandler, not in the slider.** `set_scroll_speed()` clamps to 100..1000 (`SCROLL_SPEED_MIN` / `SCROLL_SPEED_MAX` in `InputHandler.gd`), so a hand-edited settings file cannot make the map jump across the whole world in a single frame. A change of the slider reaches the running map immediately through `apply_settings()`.
+
+**The margin does not change.** The zone at the edge of the screen that triggers scrolling (`SCROLL_MARGIN`, 2 pixels) is not configurable.
+
 ### HUD message display time
 
 **The setting.** "Settings → Interface → HUD message display time" sets how long a message stays in the map HUD before it hides: **from 1 to 10 seconds with a step of 0.5** (default 3). The messages themselves are unchanged — they are still pushed by `hud.show_message()`, and each new one restarts the countdown.
