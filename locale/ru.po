@@ -2459,6 +2459,10 @@ msgid "Sparse Forest"
 msgstr "Редколесье"
 
 msgctxt "crafts.description"
+msgid "Blows bottles from molten glass."
+msgstr "Выдувает бутылки из расплавленного стекла."
+
+msgctxt "crafts.description"
 msgid "Brews beer from grain."
 msgstr "Варит пиво из зерновых культур"
 
@@ -2897,6 +2901,10 @@ msgstr "Мука (с помощью тягловых животных)"
 msgctxt "crafts.name"
 msgid "Fruit Wine"
 msgstr "Фруктовое вино"
+
+msgctxt "crafts.name"
+msgid "Glass Bottle"
+msgstr "Стеклянная бутылка"
 
 msgctxt "crafts.name"
 msgid "Glass Jewelry"
@@ -3895,6 +3903,10 @@ msgid "Geese"
 msgstr "Гуси"
 
 msgctxt "resources.name"
+msgid "Glass Bottle"
+msgstr "Стеклянная бутылка"
+
+msgctxt "resources.name"
 msgid "Glass Jewelry"
 msgstr "Стеклянные украшения"
 
@@ -4691,6 +4703,10 @@ msgid "Unlocks parchment and allows you to create written material."
 msgstr "Открывает пергамент и позволяет создавать письменные материалы."
 
 msgctxt "technologies.description"
+msgid "Unlocks recipe for glass bottles."
+msgstr "Открывает рецепты выдувания стеклянных бутылок."
+
+msgctxt "technologies.description"
 msgid "Unlocks recipes for brewing mead."
 msgstr "Открывает рецепты варки медового напитка."
 
@@ -4863,6 +4879,10 @@ msgid "The first farmers noticed that seeds thrown into the ground grew again. T
 msgstr "Первые земледельцы заметили, что брошенные в землю семена дают новые всходы. Так началась эпоха оседлой жизни."
 
 msgctxt "technologies.flavor"
+msgid "The first step towards the modern glass industry."
+msgstr "Первый шаг в развитии современной стекольной промышленности."
+
+msgctxt "technologies.flavor"
 msgid "The grape is one of the oldest crops, from which people learned to make wine, a drink for feasts and rituals."
 msgstr "Виноград — древнейшая культура, из которой люди научились делать вино, важный напиток для праздников и ритуалов."
 
@@ -4965,6 +4985,10 @@ msgstr "Ферментация"
 msgctxt "technologies.name"
 msgid "Fishing"
 msgstr "Рыболовство"
+
+msgctxt "technologies.name"
+msgid "Glassblowing"
+msgstr "Выдувание стекла"
 
 msgctxt "technologies.name"
 msgid "Glassmaking"

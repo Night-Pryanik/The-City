@@ -79,12 +79,7 @@
       "prerequisites": [ [ "writing" ] ],
       "description": "Allows scouts to explore areas in the fog of war.",
       "flavor": "The art of exploring the land and drawing maps of it.",
-      "unlock_effects": [
-        {
-          "icon": "visibility.png",
-          "name": "Allows scouts to explore areas in the fog of war."
-        }
-      ]
+      "unlock_effects": [ { "icon": "visibility.png", "name": "Allows scouts to explore areas in the fog of war." } ]
     },
     {
       "id": "alchemy",
@@ -95,6 +90,16 @@
       "prerequisites": [ [ "metallurgy", "writing" ] ],
       "description": "Allows you to build the alchemist's house.",
       "flavor": "A protoscience of attempts to turn base metals into gold."
+    },
+    {
+      "id": "glassblowing",
+      "name": "Glassblowing",
+      "era": "antiquity",
+      "science_cost": 3.0,
+      "icon": "glassblowing.png",
+      "prerequisites": [ [ "glassmaking" ] ],
+      "description": "Unlocks recipe for glass bottles.",
+      "flavor": "The first step towards the modern glass industry."
     }
   ]
 }

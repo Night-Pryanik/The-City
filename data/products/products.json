@@ -158,6 +158,15 @@
       "icon": "glassware.png"
     },
     {
+      "id": "glass_bottle",
+      "price": 15,
+      "name": "Glass Bottle",
+      "type": "product",
+      "category": "household_items",
+      "unlock_tech": "glassblowing",
+      "icon": "glass_bottle.png"
+    },
+    {
       "id": "stone_tableware",
       "price": 20,
       "name": "Stone Tableware",

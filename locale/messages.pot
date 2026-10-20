@@ -2459,6 +2459,10 @@ msgid "Sparse Forest"
 msgstr ""
 
 msgctxt "crafts.description"
+msgid "Blows bottles from molten glass."
+msgstr ""
+
+msgctxt "crafts.description"
 msgid "Brews beer from grain."
 msgstr ""
 
@@ -2896,6 +2900,10 @@ msgstr ""
 
 msgctxt "crafts.name"
 msgid "Fruit Wine"
+msgstr ""
+
+msgctxt "crafts.name"
+msgid "Glass Bottle"
 msgstr ""
 
 msgctxt "crafts.name"
@@ -3895,6 +3903,10 @@ msgid "Geese"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Glass Bottle"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Glass Jewelry"
 msgstr ""
 
@@ -4691,6 +4703,10 @@ msgid "Unlocks parchment and allows you to create written material."
 msgstr ""
 
 msgctxt "technologies.description"
+msgid "Unlocks recipe for glass bottles."
+msgstr ""
+
+msgctxt "technologies.description"
 msgid "Unlocks recipes for brewing mead."
 msgstr ""
 
@@ -4863,6 +4879,10 @@ msgid "The first farmers noticed that seeds thrown into the ground grew again. T
 msgstr ""
 
 msgctxt "technologies.flavor"
+msgid "The first step towards the modern glass industry."
+msgstr ""
+
+msgctxt "technologies.flavor"
 msgid "The grape is one of the oldest crops, from which people learned to make wine, a drink for feasts and rituals."
 msgstr ""
 
@@ -4964,6 +4984,10 @@ msgstr ""
 
 msgctxt "technologies.name"
 msgid "Fishing"
+msgstr ""
+
+msgctxt "technologies.name"
+msgid "Glassblowing"
 msgstr ""
 
 msgctxt "technologies.name"

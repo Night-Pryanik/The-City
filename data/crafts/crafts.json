@@ -125,6 +125,16 @@
       "description": "Turns sand and soda into glassware."
     },
     {
+      "id": "glass_bottle",
+      "name": "Glass Bottle",
+      "produced_in": [ "glassmaker_house" ],
+      "resources": { "quartz_sand": 20, "soda": 10 },
+      "result": { "glass_bottle": 10 },
+      "time": 5.0,
+      "unlock_tech": "glassblowing",
+      "description": "Blows bottles from molten glass."
+    },
+    {
       "id": "ropes",
       "name": "Ropes and Cables",
       "produced_in": [ "ropemaker_house" ],
