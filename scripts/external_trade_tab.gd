@@ -165,7 +165,7 @@ var _editing_deal_key: String = ""
 # while no editor is unfolded.
 var _deal_editor_deal: Dictionary = {}
 var _deal_amount_edit: LineEdit = null
-var _deal_total_label: Label = null
+var _deal_total_label: RichTextLabel = null
 var _deal_update_button: Button = null
 # The guard against a feedback loop while the code writes the amount into the field.
 var _suppress_deal_edit: bool = false
@@ -521,22 +521,25 @@ func _build_deal_row(deal: Dictionary) -> HBoxContainer:
     if deal.has("cost"):
         # The payment of the contract. The type decides the direction of the money: a
         # purchase is what the treasury spends every second, a sale is what it receives.
-        var cost_label := Label.new()
+        var cost_label := UiHelpers.make_money_label()
         var is_sale := deal_type == DEAL_TYPE_SELL
-        cost_label.text = (tr("Income: %d/sec") % int(deal.get("cost", 0))) if is_sale \
-                else (tr("Cost: %d/sec") % int(deal.get("cost", 0)))
+        var cost_text := UiHelpers.money_rate(str(int(deal.get("cost", 0))))
+        cost_label.text = (tr("Income: %s") % cost_text) if is_sale \
+                else (tr("Cost: %s") % cost_text)
         cost_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+        cost_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
         cost_label.custom_minimum_size = Vector2(92, 0)
-        cost_label.add_theme_color_override("font_color",
+        cost_label.add_theme_color_override("default_color",
                 COLOR_INCOME if is_sale else COLOR_EXPENSE)
         cost_label.mouse_filter = Control.MOUSE_FILTER_STOP
         row.add_child(cost_label)
     else:
-        var price_label := Label.new()
-        price_label.text = str(int(deal.get("price", 0)))
+        var price_label := UiHelpers.make_money_label()
+        price_label.text = UiHelpers.money(str(int(deal.get("price", 0))))
         price_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+        price_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
         price_label.custom_minimum_size = Vector2(44, 0)
-        price_label.add_theme_color_override("font_color", COLOR_PRICE)
+        price_label.add_theme_color_override("default_color", COLOR_PRICE)
         price_label.mouse_filter = Control.MOUSE_FILTER_STOP
         row.add_child(price_label)
 
@@ -902,11 +905,10 @@ func _build_deal_editor(deal: Dictionary) -> PanelContainer:
     # of the town window (town_ui._build_trade_panel).
     var actions_row := HBoxContainer.new()
     actions_row.add_theme_constant_override("separation", 6)
-    _deal_total_label = Label.new()
+    _deal_total_label = UiHelpers.make_money_label()
     _deal_total_label.name = "DealTotalLabel"
     _deal_total_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     _deal_total_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-    _deal_total_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
     actions_row.add_child(_deal_total_label)
 
     _deal_update_button = Button.new()
@@ -1030,8 +1032,8 @@ func _update_deal_feedback() -> void:
     if _deal_total_label == null or not is_instance_valid(_deal_total_label):
         return
     var total := amount * _deal_unit_price(_deal_editor_deal)
-    _deal_total_label.text = tr("Cost: %d/sec") % total
-    _deal_total_label.add_theme_color_override("font_color", COLOR_EXPENSE)
+    _deal_total_label.text = tr("Cost: %s") % UiHelpers.money_rate(str(total))
+    _deal_total_label.add_theme_color_override("default_color", COLOR_EXPENSE)
 
 # The price of one unit of a deal: the price frozen at its signing, which
 # town_trade_manager.get_contracts hands over as both "unit_price" and "price". A record

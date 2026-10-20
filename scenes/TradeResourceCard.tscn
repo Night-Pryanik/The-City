@@ -20,6 +20,9 @@
 ; and the standard tooltip with it — without the flag the tooltip never shows
 ; (checked on Godot 4.7).
 ;
+; PriceValue and IncomeValue are RichTextLabels, not Labels: both show a sum of
+; coins, and the coin icon is a BBCode [img] tag (see ui_helpers.money).
+;
 ; NameLabel carries the underlined_label.gd script and mouse_filter = 1 (PASS):
 ; the name of a group is a reference, so it is underlined with a dashed line and
 ; unfolds the composition of the group on hover. A single resource has an empty
@@ -100,10 +103,16 @@ layout_mode = 2
 size_flags_vertical = 1
 text = "Price:"
 
-[node name="PriceValue" type="Label" parent="Layout/DetailRow"]
+[node name="PriceValue" type="RichTextLabel" parent="Layout/DetailRow"]
+custom_minimum_size = Vector2(0, 20)
 layout_mode = 2
+size_flags_vertical = 4
 mouse_filter = 0
+bbcode_enabled = true
 text = "0"
+fit_content = true
+scroll_active = false
+autowrap_mode = 0
 
 [node name="ConsumersCaption" type="Label" parent="Layout/DetailRow"]
 layout_mode = 2
@@ -134,7 +143,13 @@ layout_mode = 2
 size_flags_vertical = 1
 text = "Income:"
 
-[node name="IncomeValue" type="Label" parent="Layout/IncomeRow"]
+[node name="IncomeValue" type="RichTextLabel" parent="Layout/IncomeRow"]
+custom_minimum_size = Vector2(0, 20)
 layout_mode = 2
+size_flags_vertical = 4
 mouse_filter = 0
+bbcode_enabled = true
 text = "0/sec"
+fit_content = true
+scroll_active = false
+autowrap_mode = 0

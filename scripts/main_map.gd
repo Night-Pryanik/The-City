@@ -1,6 +1,10 @@
 @tool
 extends Node2D
 
+# The shared formatting of the interface: the colours and the text of the readouts
+# ("Treasury: N [icon]"), assembled the same way on the map and in the city.
+const UiHelpers = preload("res://scripts/ui_helpers.gd")
+
 const HEX_RADIUS = 55
 
 # --- The dimensions and the boundaries of the world/window ---
@@ -3580,8 +3584,8 @@ func _update_treasury_hud():
         # The dynamics of the profit/expense — the same fact as in the tooltip of the breakdown
         # (CityData.get_treasury_flow_text), but per second. It is counted at the same
         # rate of the update as the balance, — the numbers do not flicker every tick.
-        treasury_label.text = tr("Treasury: %d %s") % [
-            _displayed_treasury, CityData.get_treasury_flow_text()
+        treasury_label.text = tr("Treasury: %s %s") % [
+            UiHelpers.money(str(_displayed_treasury)), CityData.get_treasury_flow_text()
         ]
         # The panel of the HUD in the scene is of a fixed width, and the row grows together with
         # balance — we recalculate the width under the new text, otherwise a long row

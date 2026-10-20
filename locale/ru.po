@@ -327,6 +327,9 @@ msgstr "%s — нужна Пристань на берегу этого водо
 msgid "%s — requires technology: %s"
 msgstr "%s — нужна технология: %s"
 
+msgid "%s%s/sec"
+msgstr "%s%s/сек"
+
 msgid "%s/sec"
 msgstr "%s/сек"
 
@@ -828,6 +831,9 @@ msgstr "Стоимость: %d"
 msgid "Cost: %d/sec"
 msgstr "Стоимость: %d/сек"
 
+msgid "Cost: %s"
+msgstr "Стоимость: %s"
+
 msgid "Could not find a path to the town"
 msgstr "Не удалось найти путь до городка"
 
@@ -1041,6 +1047,9 @@ msgstr "Доход: %d"
 msgid "Income: %d/sec"
 msgstr "Доход: %d/сек"
 
+msgid "Income: %s"
+msgstr "Доход: %s"
+
 msgid "Inside another town's influence ring"
 msgstr "В кольце влияния чужого городка"
 
@@ -1104,7 +1113,7 @@ msgstr "Пометить как прочитанное"
 msgid "Market ("
 msgstr "Рынок ("
 
-msgid "Maybe you meant the product group \"@%s\"?"
+msgid "Maybe you meant the goods group \"@%s\"?"
 msgstr "Возможно, вы имели в виду группу продуктов \"@%s\"?"
 
 msgid "Maybe you meant the product \"%s\"?"
@@ -1838,6 +1847,12 @@ msgstr "Казна: %d"
 
 msgid "Treasury: %d %s"
 msgstr "Казна: %d %s"
+
+msgid "Treasury: %s"
+msgstr "Казна: %s"
+
+msgid "Treasury: %s %s"
+msgstr "Казна: %s %s"
 
 msgid "Treasury: 0"
 msgstr "Казна: 0"

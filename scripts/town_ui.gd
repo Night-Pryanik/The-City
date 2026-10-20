@@ -205,7 +205,7 @@ var _sell_quantity_labels: Dictionary = {}
 # drift apart.
 var _sell_quality_labels: Dictionary = {}
 # The price labels of the rows that are currently on the screen, by the row key:
-#   row_key -> { "label": Label, "id": String, "side": String }
+#   row_key -> { "label": RichTextLabel, "id": String, "side": String }
 # Both columns have prices, so the map is NOT cleared per column — it is cleared once
 # per rebuild, in _refresh (unlike the two maps above, which only the sale column uses).
 # The market price of a product moves with the dynamic multipliers, and the number is
@@ -272,7 +272,7 @@ var _amount_edit: LineEdit = null
 var _permanent_check: CheckBox = null
 var _warning_badge: Control = null
 var _confirm_button: Button = null
-var _total_label: Label = null
+var _total_label: RichTextLabel = null
 var _cancel_deal_button: Button = null
 # The line that names the active contract or delivery for the selected good.
 var _deal_status_label: Label = null
@@ -498,7 +498,7 @@ func refresh_storage():
     for key in _price_labels:
         var entry: Dictionary = _price_labels[key]
         var price_label = entry.get("label", null)
-        if price_label is Label and is_instance_valid(price_label):
+        if price_label is RichTextLabel and is_instance_valid(price_label):
             _apply_row_price(price_label, str(entry.get("id", "")), str(entry.get("side", "")))
     _update_treasury_label()
     # The total of an open order is the amount times the price of a unit, so it has to
@@ -600,10 +600,11 @@ func _apply_row_quality(quality_label: Label, display_name: String) -> void:
 
 # Writes the price of one unit into the label of a row, together with its tooltip. The
 # bare number does not say what it is, and a row has no room for the words "price per
-# unit" next to it — so the words live in the tooltip.
-func _apply_row_price(price_label: Label, resource_id: String, side: String) -> void:
+# unit" next to it — so the words live in the tooltip, and the coin icon marks the
+# number itself.
+func _apply_row_price(price_label: RichTextLabel, resource_id: String, side: String) -> void:
     var price := _unit_price(resource_id, side)
-    price_label.text = str(price)
+    price_label.text = UiHelpers.money(str(price))
     price_label.tooltip_text = tr("Price per unit: %d coins") % price
 
 func _format_stock(amount: int) -> String:
@@ -659,7 +660,7 @@ func _on_buy_quality_exit() -> void:
 func _update_treasury_label() -> void:
     if treasury_label == null or _town == null:
         return
-    treasury_label.text = tr("Treasury: %d") % int(_town.get("treasury", 0))
+    treasury_label.text = tr("Treasury: %s") % UiHelpers.money(str(int(_town.get("treasury", 0))))
 
 # Connected to TownManager.town_treasury_changed. Only the treasury label is
 # updated: rebuilding the resource lists on every deal would reset their scrolling.
@@ -802,11 +803,12 @@ func _build_resource_row(resource_id: String, display_name: String,
     # compares the rows by. It keeps its own tooltip (the bare number does not say that
     # it is the price of a single unit) and is wired to the row, exactly like the
     # quality stars — otherwise it would be a dead zone in the middle of the row.
-    var price_label := Label.new()
+    var price_label := UiHelpers.make_money_label()
     price_label.name = "PriceLabel"
     price_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+    price_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     price_label.custom_minimum_size = Vector2(PRICE_COLUMN_WIDTH, 0)
-    price_label.add_theme_color_override("font_color", UiHelpers.PRICE_TEXT_COLOR)
+    price_label.add_theme_color_override("default_color", UiHelpers.PRICE_TEXT_COLOR)
     price_label.mouse_filter = Control.MOUSE_FILTER_STOP
     _apply_row_price(price_label, resource_id, side)
     content.add_child(price_label)
@@ -1312,11 +1314,10 @@ func _build_trade_panel() -> PanelContainer:
     var buttons_row := HBoxContainer.new()
     buttons_row.add_theme_constant_override("separation", 6)
     buttons_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    _total_label = Label.new()
+    _total_label = UiHelpers.make_money_label()
     _total_label.name = "TotalLabel"
     _total_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     _total_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-    _total_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
     buttons_row.add_child(_total_label)
     _confirm_button = _make_icon_button(
             "ConfirmButton", "check.svg", "✓", tr("Confirm"))
@@ -1653,18 +1654,13 @@ func _update_total_label(amount: int) -> void:
     var total := amount * _selected_unit_price()
     var permanent := _permanent_check != null and is_instance_valid(_permanent_check) \
             and _permanent_check.button_pressed
+    var total_text := UiHelpers.money_rate(str(total)) if permanent else UiHelpers.money(str(total))
     if _selected_side == SIDE_SELL:
-        if permanent:
-            _total_label.text = tr("Cost: %d/sec") % total
-        else:
-            _total_label.text = tr("Cost: %d") % total
-        _total_label.add_theme_color_override("font_color", COLOR_EXPENSE)
+        _total_label.text = tr("Cost: %s") % total_text
+        _total_label.add_theme_color_override("default_color", COLOR_EXPENSE)
     else:
-        if permanent:
-            _total_label.text = tr("Income: %d/sec") % total
-        else:
-            _total_label.text = tr("Income: %d") % total
-        _total_label.add_theme_color_override("font_color", COLOR_INCOME)
+        _total_label.text = tr("Income: %s") % total_text
+        _total_label.add_theme_color_override("default_color", COLOR_INCOME)
 
 # The warning triangle is shown when the entered amount is larger than the route can
 # carry: the surplus is not lost, it queues on the road and arrives later (see

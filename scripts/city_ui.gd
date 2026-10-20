@@ -471,8 +471,8 @@ func _update_food_label():
     # tooltip (CityData.get_treasury_flow_text), but per second. Exactly the same
     # text as in the HUD label of the map: both rows are assembled from one method,
     # therefore they cannot diverge.
-    var treasury_str = tr("Treasury: %d %s") % [
-        _displayed_treasury, CityData.get_treasury_flow_text()
+    var treasury_str = tr("Treasury: %s %s") % [
+        UiHelpers.money(str(_displayed_treasury)), CityData.get_treasury_flow_text()
     ]
 
     # TopFoodLabel — an HBoxContainer with three child labels

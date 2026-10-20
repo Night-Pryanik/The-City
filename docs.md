@@ -2158,6 +2158,20 @@ At the bottom of the game map a control panel is **always** visible (`scenes/Mai
 
 ---
 
+## The coin icon
+
+**What it marks.** Every readout of coins in the interface carries `icons/coin_stack.png`: the treasury of the city (the map HUD and the top bar of the city) and of a town, the income of a market card, the price of a unit, the cost of a deal and the totals of the trade panels. The icon follows the NUMBER — `130[icon]/sec`, `Cost: 250[icon]` — because the number alone does not say what it counts, while the words "coins per second" do not fit into a column of a card.
+
+**A money readout is a `RichTextLabel`.** BBCode is the only way to put an image inside a line of text, and a plain `Label` does not render it. The nodes that show a sum are therefore `RichTextLabel`s with `bbcode_enabled`, `fit_content = true`, `scroll_active = false` and `autowrap_mode = AUTOWRAP_OFF`; the last one is not cosmetic — a WRAPPING `RichTextLabel` reports a 1 px minimum width to its container and the row it sits in collapses (the same trap the quality label of the "Resources" tab hit, see `resources_tab._add_quality_label`). The colour of such a label is `default_color`, not `font_color`. `UiHelpers.make_money_label()` builds one already configured; a scene node has to carry the same four properties.
+
+**One source for the text.** `UiHelpers.coin_icon()` returns the BBCode, `money(text)` a sum, `money_rate(text)` a rate. The unit in a rate is translated together with the number (`"%s %s/sec"`), so a language can move it; the icon is a placeholder in that string, not part of the number.
+
+**What keeps the word.** Hints (`tooltip_text`, `WrappedTooltip`) and the HUD/journal messages still say "coins" in words: neither the built-in tooltip nor the wrapping one renders BBCode, and replacing them with rich labels is a separate job from marking the numbers.
+
+**Tests.** `tests/test_taxes.gd` pins the HUD and top-bar rows and the header of the treasury breakdown, `tests/test_trade_tab.gd` the price and the income of a card and the total of a deal, `tests/test_town_trade_ui.gd` the price column and the totals of the town window. All three assemble the expected text through the same helper, so the icon cannot drift out of them.
+
+---
+
 ## Tooltips
 
 ### The built-in tooltip does not wrap

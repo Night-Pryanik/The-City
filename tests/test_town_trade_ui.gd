@@ -72,6 +72,22 @@ extends SceneTree
 
 # The hang watchdog: without it a broken _run() coroutine looks like eternal silence.
 const WATCHDOG = preload("res://tests/watchdog.gd")
+# The shared formatting of the money readouts: the expected texts are assembled by the
+# same helper the interface uses, icon included. The script is loaded at RUN time: a
+# preloaded copy is compiled before the autoloads are registered, and the GameData
+# identifier inside it does not resolve in a --script run.
+var _money_fmt = null
+
+func _money(text: String) -> String:
+    if _money_fmt == null:
+        _money_fmt = load("res://scripts/ui_helpers.gd")
+    return _money_fmt.money(text)
+
+func _money_rate(text: String) -> String:
+    if _money_fmt == null:
+        _money_fmt = load("res://scripts/ui_helpers.gd")
+    return _money_fmt.money_rate(text)
+
 
 const TOWN_UI_SCENE := "res://scenes/TownUI.tscn"
 
@@ -672,7 +688,7 @@ func _test_price(town: Dictionary) -> void:
     _check(price_label != null, "a row of the sale column must carry the price of a unit")
     if price_label == null:
         return
-    _check(price_label.text == str(expected_sell),
+    _check(price_label.text == _money(str(expected_sell)),
         "the sale row must show the market price with the quality of the town (got \"%s\", expected \"%d\")"
             % [price_label.text, expected_sell])
     _check(price_label.tooltip_text.contains(str(expected_sell)),
@@ -695,7 +711,7 @@ func _test_price(town: Dictionary) -> void:
     var buy_price := _find_price_label(buy_row)
     _check(buy_price != null, "a row of the purchase column must carry the price as well")
     if buy_price != null:
-        _check(buy_price.text == str(expected_buy),
+        _check(buy_price.text == _money(str(expected_buy)),
             "the purchase row must show the plain market price (got \"%s\", expected \"%d\")"
                 % [buy_price.text, expected_buy])
     _check(expected_sell >= expected_buy,
@@ -737,22 +753,22 @@ func _test_total(town: Dictionary) -> void:
         "the total must take the free space, which is what pushes the buttons right")
 
     _ui._set_amount(25)
-    _check(_ui._total_label.text == "Cost: %d" % (25 * sell_price),
+    _check(_ui._total_label.text == "Cost: %s" % _money(str(25 * sell_price)),
         "the sale column must total as a cost (got \"%s\", expected \"Cost: %d\")"
             % [_ui._total_label.text, 25 * sell_price])
 
     # Real time: the "+"/"−" buttons and the field go through the same update.
     _ui._add_amount(10)
-    _check(_ui._total_label.text == "Cost: %d" % (35 * sell_price),
+    _check(_ui._total_label.text == "Cost: %s" % _money(str(35 * sell_price)),
         "the total must follow the \"+\" button (got \"%s\")" % _ui._total_label.text)
     _ui._add_amount(-100)
-    _check(_ui._total_label.text == "Cost: %d" % sell_price,
+    _check(_ui._total_label.text == "Cost: %s" % _money(str(sell_price)),
         "the total must follow the \"−\" button (got \"%s\")" % _ui._total_label.text)
     _type("7")
-    _check(_ui._total_label.text == "Cost: %d" % (7 * sell_price),
+    _check(_ui._total_label.text == "Cost: %s" % _money(str(7 * sell_price)),
         "the total must follow the typing (got \"%s\")" % _ui._total_label.text)
     _type("")
-    _check(_ui._total_label.text == "Cost: 0",
+    _check(_ui._total_label.text == "Cost: %s" % _money("0"),
         "an empty amount must total 0 (got \"%s\")" % _ui._total_label.text)
 
     # --- Permanent contract: the total is shown per second ---
@@ -762,12 +778,12 @@ func _test_total(town: Dictionary) -> void:
     if permanent_check != null:
         permanent_check.button_pressed = true
         await process_frame
-        _check(_ui._total_label.text == "Cost: %d/sec" % (25 * sell_price),
+        _check(_ui._total_label.text == "Cost: %s" % _money_rate(str(25 * sell_price)),
             "permanent sale must show cost per second (got \"%s\")"
                 % _ui._total_label.text)
         permanent_check.button_pressed = false
         await process_frame
-        _check(_ui._total_label.text == "Cost: %d" % (25 * sell_price),
+        _check(_ui._total_label.text == "Cost: %s" % _money(str(25 * sell_price)),
             "disabling permanent must revert to plain cost (got \"%s\")"
                 % _ui._total_label.text)
 
@@ -775,7 +791,7 @@ func _test_total(town: Dictionary) -> void:
     _click(_rows_of(_ui.buy_list)[0])
     await process_frame
     _ui._set_amount(4)
-    _check(_ui._total_label.text == "Income: %d" % (4 * buy_price),
+    _check(_ui._total_label.text == "Income: %s" % _money(str(4 * buy_price)),
         "the purchase column must total as an income (got \"%s\", expected \"Income: %d\")"
             % [_ui._total_label.text, 4 * buy_price])
 
@@ -784,7 +800,7 @@ func _test_total(town: Dictionary) -> void:
     if buy_permanent != null:
         buy_permanent.button_pressed = true
         await process_frame
-        _check(_ui._total_label.text == "Income: %d/sec" % (4 * buy_price),
+        _check(_ui._total_label.text == "Income: %s" % _money_rate(str(4 * buy_price)),
             "permanent purchase must show income per second (got \"%s\")"
                 % _ui._total_label.text)
 
@@ -883,7 +899,7 @@ func _test_contract(town: Dictionary) -> void:
     # The total is counted at the price FROZEN at the signing and not at the current market:
     # an edit changes the amount only.
     _ui._set_amount(40)
-    _check(_ui._total_label.text == "Cost: %d/sec" % (40 * frozen_price),
+    _check(_ui._total_label.text == "Cost: %s" % _money_rate(str(40 * frozen_price)),
         "an edit must total at the frozen price (got \"%s\", expected \"Cost: %d/sec\")"
             % [_ui._total_label.text, 40 * frozen_price])
     var close_button: Button = _ui._trade_panel.find_child("CancelDealButton", true, false)
@@ -1070,7 +1086,7 @@ func _test_contract_sync(town: Dictionary) -> void:
     cancel_button = _ui._trade_panel.find_child("CancelDealButton", true, false)
     _check(cancel_button != null and cancel_button.visible,
         "the panel of the new contract must offer cancellation WITHOUT a reopening")
-    _check(_ui._total_label.text == "Cost: %d/sec" % (35 * 6),
+    _check(_ui._total_label.text == "Cost: %s" % _money_rate(str(35 * 6)),
         "the total must be counted at the frozen price of the new contract (got \"%s\")"
             % _ui._total_label.text)
 
@@ -1187,7 +1203,7 @@ func _test_group_row(town: Dictionary) -> void:
     var price_label := _find_price_label(row)
     _check(price_label != null, "a group row must carry the price as well")
     if price_label != null:
-        _check(price_label.text == str(expected_price),
+        _check(price_label.text == _money(str(expected_price)),
             "the group row must show the average price of its members (got \"%s\", expected \"%d\")"
                 % [price_label.text, expected_price])
         _check(price_label.tooltip_text.contains(str(expected_price)),
@@ -1215,7 +1231,7 @@ func _test_group_row(town: Dictionary) -> void:
     if _ui._trade_panel == null:
         return
     _ui._set_amount(15)
-    _check(_ui._total_label.text == "Income: %d" % (15 * expected_price),
+    _check(_ui._total_label.text == "Income: %s" % _money(str(15 * expected_price)),
         "a group order must total at the price of the group (got \"%s\", expected \"Income: %d\")"
             % [_ui._total_label.text, 15 * expected_price])
 
@@ -1511,8 +1527,8 @@ func _type(raw: String) -> void:
 
 # The price label of a row: the named label inside the content of the row (the row is a
 # PanelContainer, so the label lives in its inner box).
-func _find_price_label(row: Control) -> Label:
-    return row.find_child("PriceLabel", true, false) as Label
+func _find_price_label(row: Control) -> RichTextLabel:
+    return row.find_child("PriceLabel", true, false) as RichTextLabel
 
 # The first Label of the subtree whose text is exactly `text` (null if there is none).
 func _find_label(root: Node, text: String) -> Label:

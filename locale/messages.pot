@@ -285,6 +285,9 @@ msgstr ""
 msgid "%s\nScience: %d%s"
 msgstr ""
 
+msgid "%s %s/sec"
+msgstr ""
+
 msgid "%s (base %d):"
 msgstr ""
 
@@ -325,6 +328,9 @@ msgid "%s — requires a Dock on the shore of this water body"
 msgstr ""
 
 msgid "%s — requires technology: %s"
+msgstr ""
+
+msgid "%s%s/sec"
 msgstr ""
 
 msgid "%s/sec"
@@ -828,6 +834,9 @@ msgstr ""
 msgid "Cost: %d/sec"
 msgstr ""
 
+msgid "Cost: %s"
+msgstr ""
+
 msgid "Could not find a path to the town"
 msgstr ""
 
@@ -1041,6 +1050,9 @@ msgstr ""
 msgid "Income: %d/sec"
 msgstr ""
 
+msgid "Income: %s"
+msgstr ""
+
 msgid "Inside another town's influence ring"
 msgstr ""
 
@@ -1108,6 +1120,9 @@ msgid "Maybe you meant the goods group \"@%s\"?"
 msgstr ""
 
 msgid "Maybe you meant the product \"%s\"?"
+msgstr ""
+
+msgid "Maybe you meant the product group \"@%s\"?"
 msgstr ""
 
 msgid "Menu"
@@ -1837,6 +1852,12 @@ msgid "Treasury: %d"
 msgstr ""
 
 msgid "Treasury: %d %s"
+msgstr ""
+
+msgid "Treasury: %s"
+msgstr ""
+
+msgid "Treasury: %s %s"
 msgstr ""
 
 msgid "Treasury: 0"

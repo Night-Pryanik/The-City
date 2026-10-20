@@ -29,6 +29,22 @@ extends SceneTree
 
 # The hang watchdog — see tests/watchdog.gd.
 const WATCHDOG = preload("res://tests/watchdog.gd")
+# The shared formatting of the money readouts: the expected texts are assembled by the
+# same helper the interface uses, icon included. The script is loaded at RUN time: a
+# preloaded copy is compiled before the autoloads are registered, and the GameData
+# identifier inside it does not resolve in a --script run.
+var _money_fmt = null
+
+func _money(text: String) -> String:
+    if _money_fmt == null:
+        _money_fmt = load("res://scripts/ui_helpers.gd")
+    return _money_fmt.money(text)
+
+func _money_rate(text: String) -> String:
+    if _money_fmt == null:
+        _money_fmt = load("res://scripts/ui_helpers.gd")
+    return _money_fmt.money_rate(text)
+
 
 # A stub of the map for the inline panels of the "Trade deals" section: the column reads its
 # deals through get_town_contracts and get_town_deliveries (see
@@ -447,7 +463,7 @@ func _run() -> void:
                 city.set_market_consumption_enabled(key, false)
                 tab.update_values()
                 var consumption: Label = ctx["consumption"]
-                var income: Label = ctx["income"]
+                var income: RichTextLabel = ctx["income"]
                 check(consumption.text == "—" and income.text == "—",
                     "a forbidden resource must show \"—\" in the expenses and the income, got \"%s\" / \"%s\""
                         % [consumption.text, income.text], state)
@@ -479,15 +495,15 @@ func _run() -> void:
                 check(consumers_tip.contains(":"),
                     "the buyers tooltip must list the buyers, got \"%s\""
                         % consumers_tip, state)
-                check((ctx["price"] as Label).tooltip_text.contains("Price"),
+                check((ctx["price"] as RichTextLabel).tooltip_text.contains("Price"),
                     "the price tooltip must explain the price calculation, got \"%s\""
-                    % (ctx["price"] as Label).tooltip_text, state)
+                    % (ctx["price"] as RichTextLabel).tooltip_text, state)
                 check((ctx["consumption"] as Label).tooltip_text.contains("Expenses"),
                     "the expenses tooltip must list the buyers' norms, got \"%s\""
                     % (ctx["consumption"] as Label).tooltip_text, state)
-                check((ctx["income"] as Label).tooltip_text.contains("Income"),
+                check((ctx["income"] as RichTextLabel).tooltip_text.contains("Income"),
                     "the income tooltip must break down the sum, got \"%s\""
-                    % (ctx["income"] as Label).tooltip_text, state)
+                    % (ctx["income"] as RichTextLabel).tooltip_text, state)
                 # The MAIN regression: changing the VALUES must not recreate
                 # the cards. Previously refresh() glued the composition label from
                 # the sorted keys, and update_values() compared it with the
@@ -553,8 +569,8 @@ func _run() -> void:
                             "the scenario must reproduce the discrepancy: the plan (%.1f) must be many times greater than the fact (%.1f)"
                             % [plan_value, fact_value], state)
                         tab.update_values()
-                        var ghost_income: Label = tab.cards[all_key]["income"]
-                        var expected_income := "%s/sec" % tab._format_rate(fact_value)
+                        var ghost_income: RichTextLabel = tab.cards[all_key]["income"]
+                        var expected_income := _money_rate(tab._format_rate(fact_value))
                         check(ghost_income.text == expected_income,
                             "the \"Income\" row must show the fact \"%s\", got \"%s\""
                             % [expected_income, ghost_income.text], state)
@@ -895,7 +911,8 @@ func _check_external_trade(city_ui, main_map, state: Dictionary) -> void:
         var texts := _row_texts(first_row)
         check(texts.has("Ale") and texts.has("Ostia")
                 and texts.has(tab._deal_type_name("buy")) and texts.has("\u00d710")
-                and texts.has("Cost: 100/sec") and texts.has("Delivery: 6.40 sec"),
+                and texts.has(tab.tr("Cost: %s") % _money_rate("100"))
+                and texts.has("Delivery: 6.40 sec"),
             "the row of a deal must show the goods, the volume, the town, the type, the "
                 + "payment and the delivery time, got %s" % str(texts), state)
 
@@ -935,11 +952,11 @@ func _check_external_trade(city_ui, main_map, state: Dictionary) -> void:
                 check(amount_field != null and amount_field.text == str(edited_deal.get("amount", 0)),
                     "the editor must start from the amount of the contract (got \"%s\")"
                         % (amount_field.text if amount_field != null else "<no field>"), state)
-                var total_label: Label = editor.find_child("DealTotalLabel", true, false)
+                var total_label: RichTextLabel = editor.find_child("DealTotalLabel", true, false)
                 var frozen_price: int = tab._deal_unit_price(edited_deal)
                 check(total_label != null
-                        and total_label.text == tab.tr("Cost: %d/sec")
-                            % (int(edited_deal.get("amount", 0)) * frozen_price),
+                        and total_label.text == tab.tr("Cost: %s")
+                            % _money_rate(str(int(edited_deal.get("amount", 0)) * frozen_price)),
                     "the editor must total at the frozen price of the deal (got \"%s\")"
                         % (total_label.text if total_label != null else "<no label>"), state)
                 var update_button: Button = editor.find_child("DealUpdateButton", true, false)
@@ -961,7 +978,8 @@ func _check_external_trade(city_ui, main_map, state: Dictionary) -> void:
                             "a click on \"+\" must step the amount up (got \"%s\")"
                                 % amount_field.text, state)
                         check(total_label != null
-                                and total_label.text == tab.tr("Cost: %d/sec") % (bumped * frozen_price),
+                                and total_label.text == tab.tr("Cost: %s")
+                                    % _money_rate(str(bumped * frozen_price)),
                             "the total must follow the amount (got \"%s\")"
                                 % (total_label.text if total_label != null else "<no label>"), state)
             # A repeated press folds the editor back.
@@ -1258,6 +1276,9 @@ func _row_texts(row: Node) -> Array:
     for node in row.get_children():
         if node is Label:
             texts.append(node.text)
+        elif node is RichTextLabel:
+            # The readouts of coins are RichTextLabels (they carry the coin icon).
+            texts.append((node as RichTextLabel).text)
     return texts
 
 # The first Label with exactly this text in the subtree: the content of a tooltip is assembled

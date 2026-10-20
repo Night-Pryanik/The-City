@@ -44,7 +44,7 @@ offset_bottom = 42.0
 theme_override_font_sizes/font_size = 16
 text = "X"
 
-[node name="TreasuryLabel" type="Label" parent="WindowPanel" unique_id=3000000015]
+[node name="TreasuryLabel" type="RichTextLabel" parent="WindowPanel" unique_id=3000000015]
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
@@ -53,10 +53,15 @@ offset_left = -236.0
 offset_right = -64.0
 offset_top = 14.0
 offset_bottom = 40.0
+mouse_filter = 2
+bbcode_enabled = true
+text = "Treasury: 0"
+fit_content = true
+scroll_active = false
+autowrap_mode = 0
 horizontal_alignment = 2
 vertical_alignment = 1
-theme_override_font_sizes/font_size = 16
-text = "Treasury: 0"
+theme_override_font_sizes/normal_font_size = 16
 
 [node name="StatusLabel" type="Label" parent="WindowPanel" unique_id=3000000012]
 layout_mode = 0

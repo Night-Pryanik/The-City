@@ -25,6 +25,22 @@ extends SceneTree
 # Watchdog against hangs: without it, an aborted _run() coroutine looks like an endless
 # silence from the outside. See tests/watchdog.gd for details.
 const WATCHDOG = preload("res://tests/watchdog.gd")
+# The shared formatting of the money readouts: the expected texts are assembled by the
+# same helper the interface uses, icon included. The script is loaded at RUN time: a
+# preloaded copy is compiled before the autoloads are registered, and the GameData
+# identifier inside it does not resolve in a --script run.
+var _money_fmt = null
+
+func _money(text: String) -> String:
+    if _money_fmt == null:
+        _money_fmt = load("res://scripts/ui_helpers.gd")
+    return _money_fmt.money(text)
+
+func _money_rate(text: String) -> String:
+    if _money_fmt == null:
+        _money_fmt = load("res://scripts/ui_helpers.gd")
+    return _money_fmt.money_rate(text)
+
 
 func _initialize():
     WATCHDOG.arm(self)
@@ -149,7 +165,7 @@ func _run() -> void:
     _collect_label_texts(ui.treasury_tooltip_vbox, texts)
     check(texts.has(tax_line),
             "the tax row \"%s\" was not found among the tooltip rows: %s" % [tax_line, str(texts)], state)
-    check(texts.has("Profit (actual, average): %s / sec" % _fmt_rate(float(base_tax * 3))),
+    check(texts.has("Profit (actual, average): %s / sec" % _money(_fmt_rate(float(base_tax * 3)))),
             "the profit section total must include the tax: %s" % str(texts), state)
     check(not texts.has("All Citizens"),
             "a flat type must not expand into sources/products", state)
@@ -168,7 +184,7 @@ func _run() -> void:
     check(texts.has(tax_line), "the tax row must remain next to the market too: %s" % str(texts), state)
     check(texts.has("Fish: 2.5 / sec"), "the market rows must be drawn as before: %s" % str(texts), state)
     var expected_total: float = _sum_map_rates(mixed, city.TREASURY_FLAT_TYPE_KEY)
-    check(texts.has("Profit (actual, average): %s / sec" % _fmt_rate(expected_total)),
+    check(texts.has("Profit (actual, average): %s / sec" % _money(_fmt_rate(expected_total))),
             "the profit section total: expected \"%s\"" % _fmt_rate(expected_total), state)
 
     # --- 8. The "Treasury" row in the HUD and the top bar: profit/expense dynamics ---
@@ -182,7 +198,7 @@ func _run() -> void:
     var hud_label = main_map.hud.get_node_or_null("VBoxContainer/TreasuryLabel")
     check(hud_label != null, "the treasury label in the HUD was not found", state)
     if hud_label != null:
-        check(hud_label.text == "Treasury: %d %s" % [city.treasury, flow_text],
+        check(hud_label.text == "Treasury: %s %s" % [_money(str(city.treasury)), flow_text],
                 "the HUD must show \"Treasury: N %s\", got \"%s\"" % [flow_text, hud_label.text], state)
     # The city top bar is updated from city_ui._update_food_label — we call it
     # directly (in the test the city interface is not open, the tick path will not fire).
@@ -190,7 +206,7 @@ func _run() -> void:
     var city_treasury_label = main_map.city_ui.get_node_or_null("TabBarPanel/TopFoodLabel/TreasuryLabel")
     check(city_treasury_label != null, "the treasury label in the city top bar was not found", state)
     if city_treasury_label != null:
-        check(city_treasury_label.text == "Treasury: %d %s" % [city.treasury, flow_text],
+        check(city_treasury_label.text == "Treasury: %s %s" % [_money(str(city.treasury)), flow_text],
                 "the top bar must show \"Treasury: N %s\", got \"%s\""
                         % [flow_text, city_treasury_label.text], state)
     # Fitting the HUD size to a long row: the panel must not be narrower than the label,
@@ -211,6 +227,9 @@ func _collect_label_texts(node: Node, out: Array) -> void:
     for child in node.get_children():
         if child is Label:
             out.append((child as Label).text)
+        elif child is RichTextLabel:
+            # The readouts of coins are RichTextLabels (they carry the coin icon).
+            out.append((child as RichTextLabel).text)
         _collect_label_texts(child, out)
 
 # Sum of the product accumulator: { source -> { pid -> amount } }.

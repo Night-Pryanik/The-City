@@ -100,10 +100,14 @@ text = "Food: 0"
 layout_mode = 2
 text = "Population: 1"
 
-[node name="TreasuryLabel" type="Label" parent="TabBarPanel/TopFoodLabel" unique_id=1528058812]
+[node name="TreasuryLabel" type="RichTextLabel" parent="TabBarPanel/TopFoodLabel" unique_id=1528058812]
 layout_mode = 2
 mouse_filter = 2
+bbcode_enabled = true
 text = "Treasury: 0"
+fit_content = true
+scroll_active = false
+autowrap_mode = 0
 
 [node name="ContentPanel" type="Panel" parent="." unique_id=606119453]
 layout_mode = 1

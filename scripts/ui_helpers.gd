@@ -65,6 +65,52 @@ const DETAIL_TOOLTIP_SCROLLBAR_WIDTH: float = 14.0
 # replace the money.
 const PRICE_TEXT_COLOR := Color(1.0, 0.507, 0.0, 1.0)
 
+# The icon that marks a sum of coins in a line of text. It follows the number —
+# "130 [icon]/sec" — because the number alone does not say what it counts, and the word
+# "coins" does not fit into a narrow column of a card. The icon is the same everywhere:
+# the treasury of the city and of a town, the income, the price, the cost of a deal.
+const COIN_ICON := "coin_stack.png"
+const COIN_ICON_PATH := "res://icons/coin_stack.png"
+# The height of the icon in a line of the body font. It is a little lower than the font
+# size, so that a line with a sum in it keeps the height of a line without one.
+const COIN_ICON_SIZE := 28
+
+# The BBCode of the coin icon for a RichTextLabel. The registry is asked first, so that
+# the icon moves and gets renamed together with the rest of the icons; the constant path
+# is the fallback for a run without the autoloads in the tree (a headless --script run).
+static func coin_icon(size: int = COIN_ICON_SIZE) -> String:
+    var path := COIN_ICON_PATH
+    var tree := Engine.get_main_loop() as SceneTree
+    if tree != null and tree.root != null:
+        var registry := tree.root.get_node_or_null("IconRegistry")
+        if registry != null:
+            var registered: String = registry.icon_path(COIN_ICON)
+            if not registered.is_empty():
+                path = registered
+    return "[img=%d]%s[/img]" % [size, path]
+
+# A sum of coins: "500 [icon]".
+static func money(amount_text: String, size: int = COIN_ICON_SIZE) -> String:
+    return "%s%s" % [amount_text, coin_icon(size)]
+
+# A rate of coins: "500 [icon]/sec". The unit stays glued to the icon, and the whole
+# string is translated at once, so that a language can put the unit elsewhere.
+static func money_rate(amount_text: String, size: int = COIN_ICON_SIZE) -> String:
+    return TranslationServer.translate("%s%s/sec") % [amount_text, coin_icon(size)]
+
+# A label that can hold a sum of coins: BBCode is rendered by a RichTextLabel only.
+# The settings are the ones an inline icon needs — the content is fitted and does not
+# scroll, and the line does not wrap (a wrapping RichTextLabel reports a 1 px minimum
+# width to its container, and the row it sits in collapses).
+static func make_money_label() -> RichTextLabel:
+    var label := RichTextLabel.new()
+    label.bbcode_enabled = true
+    label.fit_content = true
+    label.scroll_active = false
+    label.autowrap_mode = TextServer.AUTOWRAP_OFF
+    label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    return label
+
 # The light blue colour of the quality marker at the start of the quality label
 # (the "Resources" tab and the cards of the "Trade"). The constant lives here next
 # to PRICE_TEXT_COLOR, because both of them are elements of the FORMATTING shared
@@ -1328,11 +1374,10 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
         return
 
     # --- The header: the current balance ---
-    var header = Label.new()
-    header.text = tr("Treasury: %d") % balance
-    header.add_theme_font_size_override("font_size", 15)
-    header.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
-    header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    var header = make_money_label()
+    header.text = tr("Treasury: %s") % money(str(balance))
+    header.add_theme_font_size_override("normal_font_size", 15)
+    header.add_theme_color_override("default_color", Color(1.0, 0.85, 0.3))
     treasury_tooltip_vbox.add_child(header)
 
     # --- Profit (actual, average): the types, one of which is "flat" ---
@@ -1382,11 +1427,11 @@ func show_treasury_tooltip(mouse_pos: Vector2, balance: int, planned_income: Dic
         # The header of the section with the total average profit. The unit "/ sec"
         # — the same as in the rows of the sources and the products below (the same
         # _format_rate format).
-        var income_title = Label.new()
-        income_title.text = tr("Profit (actual, average): %s / sec") % _format_rate(total_income)
-        income_title.add_theme_font_size_override("font_size", 14)
-        income_title.add_theme_color_override("font_color", Color(0.6, 1.0, 0.6))
-        income_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        var income_title = make_money_label()
+        income_title.text = tr("Profit (actual, average): %s / sec") % money(
+                _format_rate(total_income))
+        income_title.add_theme_font_size_override("normal_font_size", 14)
+        income_title.add_theme_color_override("default_color", Color(0.6, 1.0, 0.6))
         treasury_tooltip_vbox.add_child(income_title)
         for type_row in type_lines:
             # A "flat" type (the tax) — ONE row instead of the hierarchy:

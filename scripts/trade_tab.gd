@@ -248,6 +248,12 @@ func _set_text(node: Label, text: String) -> void:
     if node != null and is_instance_valid(node) and node.text != text:
         node.text = text
 
+# As above, for the readouts of coins: they are RichTextLabels, because the coin icon
+# is BBCode and a plain Label does not render it.
+func _set_rich_text(node: RichTextLabel, text: String) -> void:
+    if node != null and is_instance_valid(node) and node.text != text:
+        node.text = text
+
 # Sets the underlined part of the name (underlined_label.gd), only if it CHANGES: the setter of
 # the property redraws the label, and the update of the card comes on every display epoch.
 # The node is declared as Label, and the property is addressed by name: the cache of the global
@@ -512,8 +518,11 @@ func _update_card(ctx: Dictionary, row: Dictionary) -> void:
     var quality_text := _format_quality(stock)
     quality.text = quality_text
     quality.visible = quality_text != ""
-    var price: Label = ctx["price"]
-    _set_text(price, str(row.get("price_text", "—")))
+    var price: RichTextLabel = ctx["price"]
+    # A dash means "there is no price to show" (a group without a single priced member):
+    # the coin icon would turn it into a sum.
+    var price_text := str(row.get("price_text", "—"))
+    _set_rich_text(price, price_text if price_text == "—" else UiHelpers.money(price_text))
     var consumers: Label = ctx["consumers"]
     _set_text(consumers, str(int(row.get("consumers_total", 0))))
     # The expense per 1: the rate of one buyer straight from data/consumption.json
@@ -533,20 +542,21 @@ func _update_card(ctx: Dictionary, row: Dictionary) -> void:
     # fit into the row: it is not limited by the storage, and with a half-empty storage the card
     # showed 2730 coins/sec, which never happened in the treasury. The plan has remained
     # in the tooltip of the row — that is where it belongs.
-    var income: Label = ctx["income"]
+    var income: RichTextLabel = ctx["income"]
     var fact_income: Dictionary = row.get("actual_income", {})
     if not enabled:
-        _set_text(income, "—")
+        _set_rich_text(income, "—")
     else:
-        _set_text(income, tr("%s/sec") % _format_rate(float(fact_income.get("coins_per_sec", 0.0))))
+        _set_rich_text(income, UiHelpers.money_rate(
+            _format_rate(float(fact_income.get("coins_per_sec", 0.0)))))
     # A light update: only the texts and the states of the buttons change, the nodes
     # of the cards are reused (otherwise the tooltips under the cursor would flicker).
     var card: PanelContainer = ctx["card"]
     card.modulate = Color(1, 1, 1, 1) if enabled else COLOR_DISABLED
     name_label.add_theme_color_override("font_color", COLOR_TITLE if enabled else COLOR_DISABLED)
-    price.add_theme_color_override("font_color", COLOR_PRICE if enabled else COLOR_DISABLED)
+    price.add_theme_color_override("default_color", COLOR_PRICE if enabled else COLOR_DISABLED)
     consumption.add_theme_color_override("font_color", COLOR_CONSUMPTION if enabled else COLOR_DISABLED)
-    income.add_theme_color_override("font_color", COLOR_INCOME if enabled else COLOR_DISABLED)
+    income.add_theme_color_override("default_color", COLOR_INCOME if enabled else COLOR_DISABLED)
     _update_priority_button(ctx["priority_btn"], str(row.get("priority", "best")))
     _update_toggle(ctx["checkbox"], enabled)
         # The composition of the list has changed — a full rebuild is needed.
