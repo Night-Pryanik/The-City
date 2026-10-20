@@ -387,7 +387,8 @@ func show_build_tooltip(mouse_pos: Vector2):
     build_tooltip_panel.position.x = max(0, build_tooltip_panel.position.x)
     build_tooltip_panel.position.y = max(0, build_tooltip_panel.position.y)
 
-func show_group_tooltip(mouse_pos: Vector2, group_key: String, products_data: Dictionary):
+func show_group_tooltip(mouse_pos: Vector2, group_key: String, products_data: Dictionary,
+        city_storage: Dictionary = {}, city_quality_detail: Dictionary = {}):
     # We clear the previous content (remove_child + queue_free, so that the nodes
     # are removed from the tree at once and do not affect the calculation of the
     # size)
@@ -440,6 +441,41 @@ func show_group_tooltip(mouse_pos: Vector2, group_key: String, products_data: Di
         label.mouse_filter = Control.MOUSE_FILTER_IGNORE
         row.add_child(label)
         product_labels.append(label)
+
+        # Price, quality and quantity for members that are actually on the city warehouse.
+        # A member without stock is silent — the tooltip does not write "0 units" for it.
+        if not city_storage.is_empty():
+            var amount := int(GameData.get_storage_amount(prod_id, city_storage))
+            if amount > 0:
+                var price := GameData.get_price(prod_id)
+                if price > 0:
+                    var price_label = Label.new()
+                    price_label.text = str(price)
+                    price_label.add_theme_color_override("font_color", PRICE_TEXT_COLOR)
+                    price_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+                    row.add_child(price_label)
+
+                # The best quality on the warehouse: levels are ordered worst → best,
+                # the first level with count > 0 wins.
+                var breakdown: Dictionary = city_quality_detail.get(prod_id, {})
+                var quality_id := ""
+                for qid in GameData.get_quality_levels():
+                    if int(breakdown.get(str(qid), 0)) > 0:
+                        quality_id = str(qid)
+                        break
+                if not quality_id.is_empty():
+                    var stars_label = Label.new()
+                    stars_label.text = GameData.get_quality_stars(quality_id)
+                    stars_label.add_theme_color_override("font_color",
+                            GameData.get_quality_color(quality_id))
+                    stars_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+                    row.add_child(stars_label)
+
+                var qty_label = Label.new()
+                qty_label.text = tr("%d units") % amount
+                qty_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+                qty_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+                row.add_child(qty_label)
 
         for yield_id in special_yield:
             var separator = Label.new()

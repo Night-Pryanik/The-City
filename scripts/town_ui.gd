@@ -230,6 +230,22 @@ var _row_nodes: Dictionary = {}
 # Their tradability depends on the warehouse of the city, which moves while the window is open,
 # so they are kept apart to be re-read without rebuilding the column (see _refresh_row_gates).
 var _buy_rows: Dictionary = {}
+# The quantity labels of the purchase rows, by the row key: row key -> { "label": Label, "id": String }.
+# Shown only when the city warehouse actually holds the goods (never "0 units").
+var _buy_quantity_labels: Dictionary = {}
+# The quality markers of the purchase rows, by the row key: row key -> { "label": Label, "id": String }.
+# A blue star marker; visible only when the city warehouse has a quality breakdown for the goods.
+var _buy_quality_labels: Dictionary = {}
+# The active quality tooltip of a purchase row (product id, display name) — for the real-time
+# update while the cursor stays on the star (the same pattern as the "Resources" tab of the city).
+var _active_buy_quality_product: String = ""
+var _active_buy_quality_name: String = ""
+# The epoch of the last update of the purchase column numbers (quantity / quality of the
+# goods on the city warehouse). They are updated with the resource display interval from
+# the settings (CityData.resource_display_interval), and not on every town tick: the data
+# comes from the city warehouse (CityData.city_storage), which moves on the city tick,
+# not on the town tick (see refresh_storage).
+var _buy_display_epoch: float = 0.0
 # The vertical rule between the two pools (see _build_pool_separator). null before _ready.
 var _pool_separator: ColorRect = null
 # The row the cursor is over. Only one row is hovered at a time; the field is needed
@@ -284,6 +300,8 @@ func _ready():
     _wire_scroll_gutter(buy_scroll)
     _wire_scroll_gutter(sell_scroll)
     _center_window()
+    if not CityData.city_updated.is_connected(_on_buy_city_updated):
+        CityData.city_updated.connect(_on_buy_city_updated)
     var viewport := get_viewport()
     if viewport != null:
         if not viewport.size_changed.is_connected(_center_window):
@@ -414,6 +432,51 @@ func _refresh():
 # the town grows several times a second and the market price moves with the dynamic
 # multipliers, and a full rebuild would throw away the scroll position of the list and
 # the highlight of the cursor.
+# Handles the city tick (CityData.city_updated). The purchase column numbers — quantity
+# and quality of the goods on the city warehouse — are updated with the resource display
+# interval from the settings (CityData.resource_display_interval), and not on every city
+# tick: the city warehouse moves on the city tick, and the UI must follow the configured
+# interval, exactly like the "Resources" tab of the city.
+func _on_buy_city_updated() -> void:
+    if _town == null or not visible:
+        return
+    if CityData.resource_display_due(_buy_display_epoch):
+        _buy_display_epoch = CityData.resource_display_epoch
+        refresh_buy_stock_labels()
+
+# Refreshes ONLY the quantity and quality markers of the purchase rows — the stock
+# of the city warehouse for each buy row. It is called with the resource display
+# interval from the settings (CityData.resource_display_interval): the data comes
+# from the city warehouse, which moves on the city tick, not on the town tick, so
+# the update must follow the city interval, not the town tick (see refresh_storage).
+func refresh_buy_stock_labels() -> void:
+    if _town == null or not visible:
+        return
+    for key in _buy_quantity_labels:
+        var entry: Dictionary = _buy_quantity_labels[key]
+        var label: Label = entry.get("label", null)
+        if label is Label and is_instance_valid(label):
+            _apply_buy_row_quantity(label, str(entry.get("id", "")))
+    for key in _buy_quality_labels:
+        var entry: Dictionary = _buy_quality_labels[key]
+        var label: Label = entry.get("label", null)
+        if label is Label and is_instance_valid(label):
+            _apply_buy_row_quality(label, str(entry.get("id", "")))
+    # Live refresh of the open quality tooltip of a purchase row, exactly like the
+    # "Resources" tab of the city does: while the cursor stays on the star the tooltip
+    # shows the actual storage, not the snapshot from the moment the cursor entered.
+    var helpers := _get_ui_helpers()
+    if _active_buy_quality_product != "" and helpers != null and is_instance_valid(helpers):
+        if helpers.quality_tooltip_panel.visible:
+            var fresh_detail = CityData.get_quality_breakdown(_active_buy_quality_product)
+            if fresh_detail.is_empty():
+                helpers.hide_quality_tooltip()
+                _active_buy_quality_product = ""
+                _active_buy_quality_name = ""
+            else:
+                helpers.show_quality_tooltip(get_viewport().get_mouse_position(),
+                        _active_buy_quality_name, fresh_detail)
+
 func refresh_storage():
     if _town == null or not visible:
         return
@@ -546,6 +609,53 @@ func _apply_row_price(price_label: Label, resource_id: String, side: String) -> 
 func _format_stock(amount: int) -> String:
     return tr("%d units") % amount
 
+# Paints the quality marker of a purchase row: a blue star (the same marker the
+# "Resources" tab uses to say "this good has a quality breakdown"). Visible only
+# when the city warehouse holds a quality breakdown for the goods — if nothing is
+# on the warehouse, there is nothing to break down and the star stays hidden.
+# Hovering the star opens the breakdown tooltip (see _on_buy_quality_hover).
+func _apply_buy_row_quality(quality_label: Label, resource_id: String) -> void:
+    var breakdown = CityData.get_quality_breakdown(resource_id)
+    if breakdown.is_empty():
+        quality_label.visible = false
+        return
+    quality_label.visible = true
+    quality_label.text = "★"
+    quality_label.add_theme_color_override("font_color", UiHelpers.QUALITY_MARKER_COLOR)
+
+# Writes the quantity of the goods on the city warehouse into the label of a
+# purchase row. Only goods that are actually on the warehouse are shown — the
+# label stays hidden (never "0 units") for goods the city does not hold.
+func _apply_buy_row_quantity(quantity_label: Label, resource_id: String) -> void:
+    var amount := int(GameData.get_storage_amount(resource_id, CityData.city_storage))
+    if amount > 0:
+        quantity_label.text = _format_stock(amount)
+        quantity_label.visible = true
+    else:
+        quantity_label.visible = false
+
+# Opens the quality breakdown tooltip over the quality star of a purchase row,
+# exactly like the "Resources" tab of the city does.
+func _on_buy_quality_hover(resource_id: String) -> void:
+    var helpers := _get_ui_helpers()
+    if helpers == null:
+        return
+    var breakdown = CityData.get_quality_breakdown(resource_id)
+    if breakdown.is_empty():
+        return
+    _active_buy_quality_product = resource_id
+    _active_buy_quality_name = _get_resource_display_name(resource_id)
+    helpers.show_quality_tooltip(get_viewport().get_mouse_position(),
+            _active_buy_quality_name, breakdown)
+
+# Hides the quality breakdown tooltip when the cursor leaves the star.
+func _on_buy_quality_exit() -> void:
+    _active_buy_quality_product = ""
+    _active_buy_quality_name = ""
+    var helpers := _get_ui_helpers()
+    if helpers != null:
+        helpers.hide_quality_tooltip()
+
 func _update_treasury_label() -> void:
     if treasury_label == null or _town == null:
         return
@@ -600,6 +710,9 @@ func _fill_resource_list(container: VBoxContainer, pool, empty_text: String,
     if with_stock:
         _sell_quantity_labels.clear()
         _sell_quality_labels.clear()
+    else:
+        _buy_quantity_labels.clear()
+        _buy_quality_labels.clear()
     # The old rows are detached before the free so that the container holds exactly
     # the fresh rows already in the same frame (queue_free alone would keep the old
     # ones as children until the end of the frame).
@@ -720,6 +833,30 @@ func _build_resource_row(resource_id: String, display_name: String,
         content.add_child(stock_label)
         _sell_quantity_labels[display_name] = stock_label
 
+    # PURCHASE column: quality and quantity of the goods on the CITY warehouse,
+    # right after the price. A GROUP has no single quality — nothing is shown.
+    # Quantity is written only when the warehouse actually holds the goods
+    # (never "0 units"). The quality star opens the breakdown tooltip on hover.
+    var buy_quality_label: Label = null
+    if side == SIDE_BUY and not _is_group_id(resource_id):
+        buy_quality_label = Label.new()
+        buy_quality_label.name = "BuyQualityLabel"
+        buy_quality_label.mouse_filter = Control.MOUSE_FILTER_STOP
+        _apply_buy_row_quality(buy_quality_label, resource_id)
+        buy_quality_label.mouse_entered.connect(_on_buy_quality_hover.bind(resource_id))
+        buy_quality_label.mouse_exited.connect(_on_buy_quality_exit)
+        content.add_child(buy_quality_label)
+        _buy_quality_labels[row_key] = {"label": buy_quality_label, "id": resource_id}
+
+        var buy_quantity_label = Label.new()
+        buy_quantity_label.name = "BuyQuantityLabel"
+        buy_quantity_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+        buy_quantity_label.modulate = Color(0.8, 0.8, 0.8)
+        buy_quantity_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        _apply_buy_row_quantity(buy_quantity_label, resource_id)
+        content.add_child(buy_quantity_label)
+        _buy_quantity_labels[row_key] = {"label": buy_quantity_label, "id": resource_id}
+
     # No road — no trade: the row stays on the screen as information, but it is dimmed
     # and not wired at all, so it neither highlights nor opens the trade panel. The
     # status row above the columns says why (see _refresh).
@@ -732,7 +869,12 @@ func _build_resource_row(resource_id: String, display_name: String,
     # warehouse of the city moves while the window is open, and a row comes alive without a
     # rebuild (see _refresh_row_gates). What an inactive row refuses is the reaction — the
     # highlight and the click (see _on_row_hover, _toggle_selection).
-    _wire_row_interaction(row, [price_label, quality_label], side, resource_id, display_name)
+    # The quality label to wire: the sell stars for the sale column, the buy star marker
+    # for the purchase column (null for group rows).
+    var row_quality_label := quality_label
+    if side == SIDE_BUY:
+        row_quality_label = buy_quality_label
+    _wire_row_interaction(row, [price_label, row_quality_label], side, resource_id, display_name)
     _set_row_active(row, _row_tradable(side, resource_id))
     if side == SIDE_BUY:
         _buy_rows[row_key] = {"row": row, "id": resource_id}
@@ -825,7 +967,7 @@ func _on_group_name_hover(resource_id: String) -> void:
     if helpers == null:
         return
     helpers.show_group_tooltip(get_viewport().get_mouse_position(), resource_id,
-            GameData.products)
+            GameData.products, CityData.city_storage, CityData.city_quality_detail)
 
 func _on_group_name_exit() -> void:
     _hide_group_tooltip()
