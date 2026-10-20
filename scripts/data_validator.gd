@@ -1415,10 +1415,12 @@ func _validate_crafts(crafts, buildings: Dictionary, technologies: Dictionary,
             if res_key.begins_with("@"):
                 if not product_groups.has(res_key.substr(1)):
                     _add(problems, "resource_group", "group", res_key,
-                            "recipe", craft_name, craft_id, "resources")
+                            "recipe", craft_name, craft_id, "resources",
+                            _at_sign_hint(res_key, all_resources, product_groups))
             elif not all_resources.has(res_key):
                 _add(problems, "resource", "product", res_key,
-                        "recipe", craft_name, craft_id, "resources")
+                        "recipe", craft_name, craft_id, "resources",
+                        _at_sign_hint(res_key, all_resources, product_groups))
 
         # --- THE RECIPES ---------------------------------------------------------------
         # produced_in, result / display_result, the resources (including the @-groups), unlock_tech.
@@ -1609,6 +1611,10 @@ func _validate_product_groups(product_groups: Dictionary, group_names: Dictionar
 # resource is needed. Before the check such a record did not break anything: the resolver substituted
 # products.get(id, {}) and a label-identifier, and there was nothing to write off, therefore
 # the consumption row silently hung in the interface and was never written off.
+#
+# Therefore the message of a broken reference is not enough here: the name that was written is very
+# often the name of a group that exists (see _at_sign_hint). The hint is passed to the problem as an
+# extra field, and build_text turns it into the last sentence of the message.
 func _validate_consumption(rules, products: Dictionary, product_groups: Dictionary,
         professions: Dictionary, problems: Array) -> void:
     if not (rules is Array):
@@ -1624,15 +1630,44 @@ func _validate_consumption(rules, products: Dictionary, product_groups: Dictiona
         if res_key.begins_with("@"):
             if not product_groups.has(res_key.substr(1)):
                 _add(problems, "consumption_group", "group", res_key,
-                        "consumption_rule", res_key, res_key, "resource")
+                        "consumption_rule", res_key, res_key, "resource",
+                        _at_sign_hint(res_key, products, product_groups))
         elif not products.has(res_key):
             _add(problems, "consumption_resource", "product", res_key,
-                    "consumption_rule", res_key, res_key, "resource")
+                    "consumption_rule", res_key, res_key, "resource",
+                    _at_sign_hint(res_key, products, product_groups))
 
         # profession → a profession. The kind of the check is common with the buildings and the improvements:
         # the message "a reference to a non-existent profession" is equally true here.
         _check_profession_ref(rule.get("profession", []), professions, problems,
                 "consumption_rule", res_key, res_key, "profession")
+
+
+# --- THE HINT OF A FORGOTTEN "@" ------------------------------------------------
+#
+# The products and the goods groups live in two different namespaces: "jewelry" is looked up among
+# the products, "@jewelry" — among the groups. A name that exists in the other namespace is the
+# most frequent breakage of a resource reference, and a broken reference alone does not say which
+# of the two the author meant: "jewelry does not exist" is technically true, but the record IS
+# there, only under another name. The hint is therefore not a typo correction but a statement about
+# the other namespace — "the name is taken, the sign is missing".
+#
+# The check of the recipes (resources) and of the consumption rules both accept a product and an
+# @-group, therefore both ask for the hint; the plain registries of the two differ (a recipe takes
+# raw materials too), so the registry of the valid keys is a parameter.
+#
+# An empty dictionary — there is nothing to suggest: no record with this name in either namespace.
+# Then the message stays a plain broken reference.
+static func _at_sign_hint(key: String, products: Dictionary, groups: Dictionary) -> Dictionary:
+    if key.begins_with("@"):
+        var bare := key.substr(1)
+        # An extra "@": the author wrote "@tools", and "tools" is a product, not a group.
+        if not groups.has(bare) and products.has(bare):
+            return {"suggest": "product", "suggest_id": bare}
+    elif not products.has(key) and groups.has(key):
+        # The forgotten "@": the author wrote "jewelry", and only the group "@jewelry" exists.
+        return {"suggest": "group", "suggest_id": key}
+    return {}
 
 
 # --- THE TECHNOLOGIES -----------------------------------------------------------
@@ -1679,10 +1714,13 @@ func _check_profession_ref(value, professions: Dictionary, problems: Array,
 # --- THE ASSEMBLY OF THE RECORD OF A PROBLEM ----------------------------------------------
 #
 
+# extra is the data needed only by the text of a particular check (see _push): the reference
+# checks use it for the hint of a forgotten "@".
 func _add(problems: Array, kind: String, target: String, ref_id: String,
-        source_kind: String, source_name: String, source_id: String, field: String) -> void:
+        source_kind: String, source_name: String, source_id: String, field: String,
+        extra: Dictionary = {}) -> void:
     _push(problems, kind, target, ref_id,
-            source_kind, source_name, source_id, field)
+            source_kind, source_name, source_id, field, extra)
 
 
 # Here and further the record is divided in two:
@@ -1819,6 +1857,12 @@ static func build_text(problem: Dictionary) -> void:
             headline = TranslationServer.translate("%s with the identifier \"%s\" does not exist.") % [str(target_forms["title"]), str(problem.get("ref_id", ""))]
             where = TranslationServer.translate("A reference to %s is present in %s %s, field %s.") % [str(target_forms["ref"]), str(source_forms["source"]), _quote_owner(str(problem.get("source_name", "")), str(problem.get("source_id", ""))), str(problem.get("field", ""))]
 
+    # The hint of the "@" is added to the message of ANY check that carries it: the check states the
+    # breakage, the hint names the record the author most likely meant (see _at_sign_hint). It is a
+    # separate sentence at the end, so that the window can be read in the order "what — where — why".
+    if not str(problem.get("suggest", "")).is_empty():
+        where += " " + _at_sign_suggestion(str(problem.get("suggest", "")), str(problem.get("suggest_id", "")))
+
     # «File: res://data/crafts/crafts.json, line 7.»
     var location := ""
     var file_path := str(problem.get("file", ""))
@@ -1872,6 +1916,17 @@ static func _bad_chars_text(bad) -> String:
             part += TranslationServer.translate(", looks like \"%s\" in Latin") % lookalike
         parts.append(part + ";")
     return " ".join(parts)
+
+
+# The sentence of the hint of a forgotten (or an extra) "@". Two wordings, and no case forms: the
+# sentence is whole, and the placeholder is only the name (see _at_sign_hint).
+static func _at_sign_suggestion(kind: String, id: String) -> String:
+    match kind:
+        "group":
+            return TranslationServer.translate("Maybe you meant the goods group \"@%s\"?") % id
+        "product":
+            return TranslationServer.translate("Maybe you meant the product \"%s\"?") % id
+    return ""
 
 
 # The owner of the reference in the brackets: "Grain Mill" (grind_grain_hand). If there is

@@ -1104,6 +1104,12 @@ msgstr "Пометить как прочитанное"
 msgid "Market ("
 msgstr "Рынок ("
 
+msgid "Maybe you meant the product group \"@%s\"?"
+msgstr "Возможно, вы имели в виду группу продуктов \"@%s\"?"
+
+msgid "Maybe you meant the product \"%s\"?"
+msgstr "Возможно, вы имели в виду продукт \"%s\"?"
+
 msgid "Menu"
 msgstr "Меню"
 

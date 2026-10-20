@@ -108,8 +108,8 @@ func _test_detector(state: Dictionary):
         # Consumption rules. The reference owner is the rule itself, and it is
         # identified by the value "resource" (see data_validator
         # _validate_consumption), so source_id equals ref_id.
-        "consumption_resource": [["ghost_product", "ghost_product"]],
-        "consumption_group": [["@ghost_group", "@ghost_group"]],
+        "consumption_resource": [["ghost_product", "ghost_product"], ["jewelry", "jewelry"]],
+        "consumption_group": [["@ghost_group", "@ghost_group"], ["@tools", "@tools"]],
         "prerequisite": [["ghost_tech", "bad_tech_prereq"]],
         # The "product without a source" problem has no missing identifier:
         # the fault is not in a reference but in its absence. So ref_id and
@@ -229,6 +229,22 @@ func _test_no_false_positives_on_synthetic(state: Dictionary):
     check(_find(problems, "consumption_group", "@jewelry", "@jewelry").is_empty(),
         "a consumption rule for an existing @-group must not be considered a breakage",
         state)
+    # A forgotten "@": the name is a group, and the hint must name the group.
+    var hint_group := _find(problems, "consumption_resource", "jewelry", "jewelry")
+    check(not hint_group.is_empty(),
+        "a forgotten \"@\" in a consumption rule is not reported", state)
+    check(str(hint_group.get("where", "")).contains("@jewelry"),
+        "the hint of a forgotten \"@\" does not contain the group name: %s" % str(hint_group.get("where", "")), state)
+    # An extra "@": the name is a product, and the hint must name the product.
+    var hint_product := _find(problems, "consumption_group", "@tools", "@tools")
+    check(not hint_product.is_empty(),
+        "an extra \"@\" in a consumption rule is not reported", state)
+    check(str(hint_product.get("where", "")).contains("tools"),
+        "the hint of an extra \"@\" does not contain the product name: %s" % str(hint_product.get("where", "")), state)
+    # A name that does not exist in either namespace — no hint, just a plain broken reference.
+    var no_hint := _find(problems, "consumption_resource", "ghost_product", "ghost_product")
+    check(not str(no_hint.get("where", "")).contains("Maybe you meant"),
+        "a plain broken reference must not carry a hint: %s" % str(no_hint.get("where", "")), state)
 
     # Explicitly empty fields (null) are not references. None of these entities
     # must end up in the result under any kind of check.
@@ -980,6 +996,8 @@ func _make_data() -> Node:
         # a non-existent profession.
         {"resource": "@ghost_group", "profession": ["farmer"]},
         {"resource": "ghost_product", "profession": ["farmer"]},
+        {"resource": "jewelry", "profession": ["blacksmith"]},
+        {"resource": "@tools", "profession": ["farmer"]},
         {"resource": "wheat", "profession": ["ghost_prof"]},
     ]
 

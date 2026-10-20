@@ -1104,6 +1104,12 @@ msgstr ""
 msgid "Market ("
 msgstr ""
 
+msgid "Maybe you meant the goods group \"@%s\"?"
+msgstr ""
+
+msgid "Maybe you meant the product \"%s\"?"
+msgstr ""
+
 msgid "Menu"
 msgstr ""
 
