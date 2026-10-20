@@ -1,7 +1,7 @@
 # Runtime game-data validator test (headless):
 #   godot --headless --path . --script res://tests/test_data_validation.gd
 #
-# Checks five things:
+# Checks six things:
 #   1) DETECTOR (main). On synthetic data, exactly one breakage is introduced
 #      into each kind of check, and the test requires finding each one — with
 #      the right kind of check, identifier and reference owner.
@@ -20,11 +20,16 @@
 #   3) THE COVER SOURCE OF WOOD is computed from the data, not hardcoded
 #      as a list: remove the hut or zero out wood_yield — the cover source of
 #      wood disappears, and the validator must notice this.
-#   4) Real data/*.json: the validator does not crash, problems correctly
+#   4) THE FIELD WHITELIST. Every key of data/*.json must be described by the
+#      model (data_validator.SCHEMA): a field of a record, a field of a nested
+#      object, a field of an element of an array, an unknown collection in the
+#      root and a constant of the wrong block of the balance are each reported,
+#      while the fields the model does describe stay silent.
+#   5) Real data/*.json: the validator does not crash, problems correctly
 #      point at the owning product, and non-ASCII in identifiers is absent
 #      (the only exception to the rule "the list of problems on real data is
 #      not checked" — see the comment in _test_real_data).
-#   5) File and line reference (see _check_file_and_line).
+#   6) File and line reference (see _check_file_and_line).
 #
 # Real data/*.json is run at the end against invariants, not against an
 # expected list: its author will fix it, and the test would fail on exactly the
@@ -48,6 +53,8 @@ func _initialize():
         _test_no_false_positives_on_synthetic(state)
     if WATCHDOG.wants_case("lumberjack_depends_on_data"):
         _test_lumberjack_depends_on_data(state)
+    if WATCHDOG.wants_case("schema_whitelist"):
+        _test_schema_whitelist(state)
     if WATCHDOG.wants_case("real_data"):
         _test_real_data(state)
     if WATCHDOG.wants_case("localization"):
@@ -286,7 +293,103 @@ func _test_lumberjack_depends_on_data(state: Dictionary):
     gd3.free()
 
 
-# --- 4) Real data: the validator does not crash ---------------------------
+# --- 4) The field whitelist ----------------------------------------------
+#
+# The check walks the merged JSON tree (GameData.raw_data), not the assembled collections, so the
+# fixture is a tree of its own. Every case is one key the model does not describe: a field of a
+# record, a field two arrays deep, a field of an element of an array, a collection the loader does
+# not read, and a constant that is not in its block of the balance. The records that follow the
+# model must stay silent — a whitelist that reports them is worse than no whitelist at all.
+func _test_schema_whitelist(state: Dictionary):
+    var gd = _make_data()
+    gd.raw_data = {
+        "crafts": [
+            # A record of the model: every key is described.
+            {"id": "good_recipe", "name": "Good", "produced_in": ["bakery"],
+                    "resources": {"flour": 1}, "result": {"bread": 1}, "time": 5.0,
+                    "unlock_tech": "t_fire"},
+        ],
+        "resources": [
+            # Two breakages of one record: a typo in the name of a field ("producs" instead of
+            # "produces") and a nested key two arrays deep (breeding is array<array<object>>).
+            {"id": "wheat_field", "name": "Wheat", "type": "raw",
+                    "producs": {"wheat": 1},
+                    "breeding": [[{"terrain": "plain", "cover": "none", "terain": "hill"}]]},
+        ],
+        "technologies": [
+            {"id": "t_fire", "name": "Fire",
+                    "unlock_effects": [{"icon": "a.png", "name": "A", "icn": "b.png"}]},
+        ],
+        # The breakage: a collection the loader does not read.
+        "era_bonus": [{"id": "x"}],
+        # The breakage: a constant that is not in its block (the block itself is right).
+        "game_balance": {"city": {"food_per_citizen": 1, "food_per_citizn": 2}},
+    }
+    # The origin of two of them: a record by its own id, a collection by "@key:<name>".
+    gd.entity_sources = {
+        "resources:wheat_field": {"file": "res://data/resources/plants/food_plants.json", "line": 7},
+        "@key:era_bonus": {"file": "res://data/bonuses.json", "line": 27},
+    }
+
+    var problems: Array = _only_unknown_fields(DataValidator.new().validate(gd))
+
+    # Exactly the five breakages of the fixture, and not a word about the record that follows the
+    # model. A pair is "field, owner": an extra problem is a false positive, a missing one a hole.
+    var expected := [
+        ["producs", "wheat_field"],
+        ["terain", "wheat_field"],
+        ["icn", "t_fire"],
+        ["era_bonus", ""],
+        ["food_per_citizn", ""],
+    ]
+    check(problems.size() == expected.size(),
+        "the whitelist must report %d problems, got %d: %s" % [
+            expected.size(), problems.size(), _str_messages(problems)], state)
+    for pair in expected:
+        check(not _find(problems, "unknown_field", str(pair[0]), str(pair[1])).is_empty(),
+            "problem not found: field=%s, owner=%s" % [str(pair[0]), str(pair[1])], state)
+
+    # The path inside the record is kept: a nested key has to be findable, "terain" alone would
+    # read as a field of the record itself.
+    var nested := _find(problems, "unknown_field", "terain", "wheat_field")
+    check(str(nested.get("field", "")) == "breeding[0][0].terain",
+        "the path of a nested field is wrong: %s" % str(nested.get("field", "")), state)
+
+    # The allowed list is the point of the message: the author sees the right spelling instead of
+    # guessing it from a 26-field record.
+    var typo := _find(problems, "unknown_field", "producs", "wheat_field")
+    check((typo.get("allowed", []) as Array).has("produces"),
+        "the allowed fields of the resource do not contain \"produces\"", state)
+    check(str(typo.get("where", "")).contains("produces"),
+        "the allowed fields are not in the text: %s" % str(typo.get("where", "")), state)
+
+    # The file and the line: a record by its own declaration, a collection by "@key:<name>".
+    check(str(typo.get("location", "")).contains("res://data/resources/plants/food_plants.json"),
+        "the record is not pointed at its own file: %s" % str(typo.get("location", "")), state)
+    check(int(typo.get("line", 0)) == 7,
+        "the record is not pointed at its own line: %d" % int(typo.get("line", 0)), state)
+    var collection := _find(problems, "unknown_field", "era_bonus", "")
+    check(str(collection.get("location", "")).contains("res://data/bonuses.json"),
+        "an unknown collection is not pointed at the file that declares it: %s" % [
+            str(collection.get("location", ""))], state)
+
+    # The block of the balance is named: the author has to know where the constant belongs, and
+    # "in «game_balance»" does not say it.
+    var balance := _find(problems, "unknown_field", "food_per_citizn", "")
+    check(str(balance.get("headline", "")).contains("city"),
+        "the block of the balance is not named: %s" % str(balance.get("headline", "")), state)
+
+    # Data without the tree (a GameData assembled by hand) skips the check instead of crashing:
+    # there is nothing to walk, and the cross-reference checks keep working.
+    var bare = _make_data()
+    check(_only_unknown_fields(DataValidator.new().validate(bare)).is_empty(),
+        "data without the tree must not produce whitelist problems", state)
+    bare.free()
+
+    gd.free()
+
+
+# --- 5) Real data: the validator does not crash ---------------------------
 
 func _test_real_data(state: Dictionary):
     var gd = load("res://scripts/GameData.gd").new()
@@ -325,6 +428,14 @@ func _test_real_data(state: Dictionary):
     for problem in problems:
         check(not (problem.get("kind") == "produced_in" and problem.get("ref_id") == "*"),
             "the validator complains about \"*\" in produced_in", state)
+
+    # The field whitelist must describe the real data EXACTLY. This is the second exception to
+    # the rule above, and it is safe for the same reason: a field outside the model is either a
+    # typo in data/*.json or a field the model forgot to list, and both are ours to fix before
+    # the game ships — the data itself is not "someone else's breakage" here.
+    var unknown_fields: Array = _only_unknown_fields(problems)
+    check(unknown_fields.is_empty(),
+        "res://data has fields outside the data model: %s" % _str_messages(unknown_fields), state)
 
     # The category is checked only on products: for every problem of kind
     # "category" the owner must be a product, not a raw resource.
@@ -486,6 +597,24 @@ func _test_localization(state: Dictionary):
     check(str(ru_forms["ref"]) != str(ru_forms["source"]),
         "the Russian ref and source forms must not coincide: %s / %s" % [
             str(ru_forms["ref"]), str(ru_forms["source"])], state)
+
+    # The whitelist message is translated as well — the headline and the list of the allowed
+    # fields, which is the part the author acts on.
+    gd.raw_data = {"crafts": [{"id": "bad_field", "name": "Bad", "producs": {}}]}
+    var whitelist: Array = _only_unknown_fields(DataValidator.new().validate(gd))
+    check(whitelist.size() == 1,
+        "the whitelist fixture must give exactly one problem, got %d" % whitelist.size(), state)
+    TranslationServer.set_locale("en")
+    DataValidator.localize_problems(whitelist)
+    var en_field := str((whitelist[0] as Dictionary).get("headline", ""))
+    TranslationServer.set_locale("ru")
+    DataValidator.localize_problems(whitelist)
+    var ru_field := str((whitelist[0] as Dictionary).get("headline", ""))
+    check(ru_field != en_field,
+        "the whitelist text must differ between languages: en=%s ru=%s" % [
+            en_field, ru_field], state)
+    check(ru_field.contains("Неизвестное поле"),
+        "the Russian whitelist text does not contain the expected wording: %s" % ru_field, state)
 
     TranslationServer.set_locale(original)
     gd.free()
@@ -708,6 +837,16 @@ func _find(problems: Array, kind: String, ref_id: String, source_id: String) -> 
                 and str(problem.get("source_id", "")) == source_id:
             return problem
     return {}
+
+
+# Only the problems of the field whitelist. The fixture of the whitelist is laid on top of the
+# synthetic set of _make_data(), whose own breakages are not the subject of that case.
+func _only_unknown_fields(problems: Array) -> Array:
+    var result: Array = []
+    for problem in problems:
+        if str(problem.get("kind", "")) == "unknown_field":
+            result.append(problem)
+    return result
 
 
 # The data file's lines as-is (with comments) — line numbers in the validator's

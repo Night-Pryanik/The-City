@@ -1,12 +1,14 @@
 # data_validator.gd
-# The runtime validator of the cross-references in data/*.json.
+# The runtime validator of data/*.json: the cross-references between the entities and the
+# shape of the records.
 #
 # It is run AFTER the loading of the data and BEFORE the start of the game (see main_menu.gd),
 # so that the data author learns about the broken references not from the console, but from a window with
 # an exact indication of the problematic entity.
 #
 # The REFERENCES between the entities are checked (and not the JSON syntax — this is what
-# tools/validate_json.py does). A problem is stored in two layers:
+# tools/validate_json.py does), and, on top of them, every key of the data against the field
+# whitelist of the model (SCHEMA below). A problem is stored in two layers:
 #
 #   1) the STRUCTURE — does not depend on the language: what is wrong, where and in which field.
 #
@@ -19,6 +21,7 @@
 #   }
 #
 # The checks:
+#   unknown_field      — a field (or a whole collection) that the data model does not describe
 #   id_charset         — an identifier outside ASCII (the Cyrillic in an id is indistinguishable from the Latin)
 #   id_lookalike       — an identifier differs from another one only by the lookalike characters
 #   produced_in        — a recipe refers to a non-existent building
@@ -42,7 +45,7 @@
 # A record of a problem:
 #     "kind":        String,  # the machine name of the check, e.g. "produced_in"
 #     "check_title": String,  # the heading of the group of the check for the window
-#     "target_title":String,  # "Building" — the kind of the entity being searched for
+#     "target_title":String,  # "Building" — the kind of the entity being searched for ("" — none)
 #     "ref_id":      String,  # the searched identifier ("x")
 #     "source_kind": String,  # the kind of the owning entity ("recipe")
 #     "source_name": String,  # its name from the data ("Grain Mill")
@@ -53,27 +56,6 @@
 #     "headline":    String,  # the first line of the message
 #     "where":       String,  # the second line: where exactly the reference was found
 #     "location":    String,  # the third line: "File: …, line N." ("" — none)
-# #
-# The checks:
-#   id_charset         — an identifier outside ASCII (the Cyrillic in an id is indistinguishable from the Latin)
-#   id_lookalike       — an identifier differs from another one only by the lookalike characters
-#   produced_in        — a recipe refers to a non-existent building
-#   result             — a recipe (result / display_result) gives a non-existent resource
-#   improved_by        — a resource is improved by a non-existent improvement
-#   unlock_improvement — a product is unlocked by a non-existent improvement
-#   unlock_tech        — a building/improvement/product/recipe → a non-existent technology
-#   profession         — a building/improvement → a non-existent profession
-#   category           — a product → a non-existent category
-#   product_source     — a product is produced NEITHER by the map, NOR by a recipe
-#   group_member       — a non-existent product in an @-group
-#   resource_group     — a recipe refers to a non-existent @-group
-#   resource           — a recipe requires a non-existent resource
-#   consumption_resource— a consumption rule → a non-existent product
-#   consumption_group   — a consumption rule → a non-existent @-group
-#   prerequisite       — a technology requires a non-existent technology
-#   road_level         — a road level has an incorrect or duplicate number
-#   road_max_speed     — a road level has a non-positive maximum speed
-#   road_work_cost     — a road level has a negative price of a segment
 #     "message":     String,  # all the lines together (for the logs and the tests)
 #
 # The class does NOT depend on the autoloads: the data being checked is passed as
@@ -190,6 +172,389 @@ const IDENT_COLLECTIONS := [
 # list will not see it.
 const QUALITY_LEVELS_FIELD := "quality_levels"
 
+# --- THE WHITELIST OF THE FIELDS ----------------------------------------------
+#
+# The data is addressed by key names: the loader picks the collections it knows, and every record
+# is a dictionary whose fields are read by name. A key the model does not know is silently lost —
+# a typo in "produces" leaves a resource that yields nothing, a typo in "unlock_tech" a building
+# that is available from the start — and the file stays valid JSON the whole time, so neither
+# tools/validate_json.py nor a reader of the diff notices anything.
+#
+# SCHEMA is the single list of what data/*.json may contain, and every key outside it is reported
+# as unknown_field. The list describes the DATA MODEL, not the current reads of the code: a field
+# the design keeps while no system reads it yet (covers.move_cost_bonus, professions.pseudo, the
+# diversity-bonus registry of data/bonuses.json) is listed as well — otherwise a legitimate file
+# would be reported as broken. The check exists for the opposite case: a field nobody planned, which
+# the game will never read.
+#
+# A rule says what a value may hold:
+#   LEAF              — a scalar or an array of scalars: there is nothing to descend into;
+#   ID_MAP            — an object with free keys (ids) and scalar values: {"wheat": 1};
+#   {"id_map": rule}  — the same, but every value follows the rule (terrain_config);
+#   {"array": rule}   — an array whose every element follows the rule;
+#   {"any": [rule…]}  — the field accepts any of the listed forms;
+#   {"blocks": {…}}   — named blocks of constants, a constant may also stand at the top level
+#                       (data/game_balance.json, see data_loader._flatten_balance_blocks);
+#   any other non-empty dictionary — the fixed set of the fields of an object, each with a rule.
+#
+# A value of a shape the rule does not expect is left alone: the check reports unknown KEYS. A wrong
+# shape is a different kind of problem — the game reads such a field with a default, and the
+# consequence is visible in the interface.
+const LEAF := {}
+const ID_MAP := {"id_map": LEAF}
+
+# The field that identifies a record, where it is not "id": a consumption rule is addressed by the
+# resource it spends (data_loader._remember_consumption_sources).
+const ENTITY_ID_FIELDS := {
+    "consumption": "resource",
+}
+
+# A resource on the map, and a product of the city — one collection, split by the "type" field.
+# A raw resource carries the fields of the map generation, a product the ones of the warehouse.
+const RESOURCE_FIELDS := {
+    "id": LEAF,
+    "name": LEAF,
+    "type": LEAF,
+    "category": LEAF,
+    "icon": LEAF,
+    "price": LEAF,
+    "color": LEAF,
+    "group": LEAF,
+    "subgroup": LEAF,
+    "improved_by": LEAF,
+    "unlock_improvement": LEAF,
+    "unlock_tech": LEAF,
+    "tech_required": LEAF,
+    "tech_reveal": LEAF,
+    "allowed_terrain": LEAF,
+    "allowed_cover": LEAF,
+    "produces": ID_MAP,
+    "special_yield": ID_MAP,
+    "strategic": LEAF,
+    "breedable": LEAF,
+    "breeding": {"array": {"array": {"terrain": LEAF, "cover": LEAF}}},
+    "spawn_conditions": {"array": {"array": {"type": LEAF, "chance": LEAF, "terrain_id": LEAF}}},
+    "spawn_count": LEAF,
+    "feed_consumption": LEAF,
+    "time_to_mature": LEAF,
+    # The legacy consumption "from the resource" (see GameData.get_consumption_consumers): the
+    # product is the owner, so the rule has no "resource" field of its own.
+    "consumption": {"profession": LEAF, "amount": LEAF, "interval": LEAF, "production_bonus": LEAF},
+}
+
+const BUILDING_FIELDS := {
+    "id": LEAF,
+    "name": LEAF,
+    "description": LEAF,
+    "icon": LEAF,
+    "work_cost": LEAF,
+    "additional_cost": {"any": [ID_MAP, {"array": ID_MAP}]},
+    "additional_req": LEAF,
+    "additional_yield": ID_MAP,
+    "production_slots": LEAF,
+    "default_recipes": LEAF,
+    "profession": LEAF,
+    "unlock_tech": LEAF,
+    "upgrades_into": LEAF,
+}
+
+const IMPROVEMENT_FIELDS := {
+    "id": LEAF,
+    "name": LEAF,
+    "icon": LEAF,
+    "color": LEAF,
+    "work_cost": LEAF,
+    "unlock_tech": LEAF,
+    "profession": LEAF,
+    "no_worker": LEAF,
+    "no_road": LEAF,
+    "is_canal": LEAF,
+    "conducts_water": LEAF,
+    "water_body_harbor": LEAF,
+    "requires_harbor": LEAF,
+}
+
+# The ingredients of a recipe allow the alternative forms (GameData.parse_craft_resources):
+# an object, or an array of terms where a term is an object or an array of objects (OR).
+const CRAFT_FIELDS := {
+    "id": LEAF,
+    "name": LEAF,
+    "description": LEAF,
+    "produced_in": LEAF,
+    "resources": {"any": [ID_MAP, {"array": {"any": [ID_MAP, {"array": ID_MAP}]}}]},
+    "result": ID_MAP,
+    "display_result": ID_MAP,
+    "time": LEAF,
+    "unlock_tech": LEAF,
+}
+
+const TECHNOLOGY_FIELDS := {
+    "id": LEAF,
+    "name": LEAF,
+    "description": LEAF,
+    "flavor": LEAF,
+    "era": LEAF,
+    "science_cost": LEAF,
+    "icon": LEAF,
+    "prerequisites": LEAF,
+    "unlock_effects": {"array": {"icon": LEAF, "name": LEAF}},
+}
+
+const CATEGORY_FIELDS := {
+    "id": LEAF,
+    "name": LEAF,
+}
+
+# data/groups.json — the groups for the diversity bonuses, and not the goods groups of
+# data/product_groups.json.
+const GROUP_FIELDS := {
+    "id": LEAF,
+    "name": LEAF,
+}
+
+const ERA_FIELDS := {
+    "id": LEAF,
+    "name": LEAF,
+    "region_width": LEAF,
+}
+
+const PRODUCT_GROUP_FIELDS := {
+    "id": LEAF,
+    "name": LEAF,
+    "products": LEAF,
+    "icon": LEAF,
+}
+
+const PROFESSION_FIELDS := {
+    "id": LEAF,
+    "name": LEAF,
+    "icon": LEAF,
+    "description": LEAF,
+    "pseudo": LEAF,
+}
+
+const QUALITY_LEVEL_FIELDS := {
+    "id": LEAF,
+    "name": LEAF,
+    "color": LEAF,
+    "value": LEAF,
+    "stars": LEAF,
+    "price_multiplier": LEAF,
+    "spawn_weight": LEAF,
+}
+
+const ROAD_FIELDS := {
+    "id": LEAF,
+    "level": LEAF,
+    "name": LEAF,
+    "description": LEAF,
+    "color": LEAF,
+    "width": LEAF,
+    "work_cost": LEAF,
+    "max_speed": LEAF,
+    "unlock_tech": LEAF,
+}
+
+const TERRAIN_FIELDS := {
+    "id": LEAF,
+    "name": LEAF,
+    "description": LEAF,
+    "color": LEAF,
+    "icons": LEAF,
+    "move_cost": LEAF,
+    "expansion_cost": LEAF,
+    "work_cost_mult": LEAF,
+    "unique": LEAF,
+    "cluster_size": LEAF,
+    "cover_chance": ID_MAP,
+    "fresh_water_source": LEAF,
+}
+
+const COVER_FIELDS := {
+    "id": LEAF,
+    "name": LEAF,
+    "color": LEAF,
+    "alpha": LEAF,
+    "icons": LEAF,
+    "move_cost_bonus": LEAF,
+    "wood_yield": LEAF,
+    "fresh_water_source": LEAF,
+}
+
+const SPECIAL_ACTION_FIELDS := {
+    "id": LEAF,
+    "name": LEAF,
+    "action_type": LEAF,
+    "icon": LEAF,
+    "source_terrain": LEAF,
+    "source_terrains": LEAF,
+    "source_cover": LEAF,
+    "result_terrain": LEAF,
+    "result_cover": LEAF,
+    "work_cost": LEAF,
+    "unlock_tech": LEAF,
+}
+
+const CONSUMPTION_FIELDS := {
+    "resource": LEAF,
+    "profession": LEAF,
+    "amount": LEAF,
+    "interval": LEAF,
+    "production_bonus": LEAF,
+}
+
+const GROUP_BONUS_FIELDS := {
+    "group_id": LEAF,
+    "bonus_type": LEAF,
+    "tiers": {"array": {"min_subgroups": LEAF, "value": LEAF}},
+}
+
+const SUBGROUP_BONUS_FIELDS := {
+    "subgroup_id": LEAF,
+    "bonus_type": LEAF,
+    "tiers": {"array": {"min_species": LEAF, "value": LEAF}},
+}
+
+const MODIFIER_FIELDS := {
+    "fresh_water": {"production_multiplier": ID_MAP},
+    "tech_modifiers": {"array": {
+        "tech_id": LEAF,
+        "icon": LEAF,
+        "name": LEAF,
+        "production_multiplier": ID_MAP,
+        "modifiers": {"array": {"target": LEAF, "type": LEAF, "value": LEAF}},
+    }},
+    "terrain_modifiers": {"array": {
+        "terrain_id": LEAF,
+        "resource_id": LEAF,
+        "production_multiplier": LEAF,
+    }},
+}
+
+const SEA_CONFIG_FIELDS := {
+    "mode": LEAF,
+    "sides": LEAF,
+    "beach": LEAF,
+    "max_sea_depth": LEAF,
+    "coast_max_depth": LEAF,
+    "edge_width_min": LEAF,
+    "edge_width_max": LEAF,
+    "edge_envelope_strength": LEAF,
+    "edge_islands_enabled": LEAF,
+    "edge_island_size": LEAF,
+    "edge_island_density": LEAF,
+    "edge_island_min_distance": LEAF,
+    "edge_island_max_attempts": LEAF,
+    "noise_sea_level": LEAF,
+    "noise_strength": LEAF,
+    "noise_edge_gradient": LEAF,
+    "noise_city_bump": LEAF,
+    "noise_city_bump_radius": LEAF,
+}
+
+const MAP_CONFIG_FIELDS := {
+    "map_rows": LEAF,
+    "map_cols": LEAF,
+    "start_ring_rows": LEAF,
+    "start_ring_cols": LEAF,
+    "region_width": LEAF,
+    "target_cluster": LEAF,
+    "terrain_config": {"id_map": {"density": LEAF, "target_cluster": LEAF}},
+    "sea": SEA_CONFIG_FIELDS,
+    "num_main_rivers": LEAF,
+    "num_tributaries": LEAF,
+    "min_river_length": LEAF,
+    "min_tributary_length": LEAF,
+    "num_towns": LEAF,
+}
+
+# The balance is grouped into blocks by the system that owns the constants; the block names are a
+# layout of the file only (data_loader._flatten_balance_blocks).
+const GAME_BALANCE_BLOCKS := {
+    "city": {
+        "base_tax_per_citizen": LEAF,
+        "food_per_citizen": LEAF,
+        "food_for_new_settler": LEAF,
+        "initial_treasury": LEAF,
+        "internal_market_price_multiplier": LEAF,
+    },
+    "expansion": {
+        "expansion_cost_per_hex": LEAF,
+        "distance_cost_modifier_per_hex": LEAF,
+        "road_distance_cost_modifier_per_hex": LEAF,
+        "scouting_cost_per_hex": LEAF,
+    },
+    "logistics": {
+        "transit_time_per_hex": LEAF,
+    },
+    "towns": {
+        "town_storage_limit": LEAF,
+        "town_storage_initial_min": LEAF,
+        "town_storage_initial_max": LEAF,
+        "town_tick_ticks": LEAF,
+        "town_contract_comfort": LEAF,
+        "town_contract_drain": LEAF,
+        "town_contract_drain_curve": LEAF,
+        "town_initial_treasury": LEAF,
+        "town_trade_min": LEAF,
+        "town_trade_max": LEAF,
+        "town_trade_inertia": LEAF,
+        "town_trade_bias_strength": LEAF,
+        "town_trade_bulk_chance": LEAF,
+        "town_trade_bulk_min": LEAF,
+        "town_trade_bulk_max": LEAF,
+        "town_treasury_trade_min": LEAF,
+        "town_treasury_trade_max": LEAF,
+        "town_treasury_inertia": LEAF,
+        "town_treasury_bias_strength": LEAF,
+        "town_treasury_bulk_chance": LEAF,
+        "town_treasury_bulk_min": LEAF,
+        "town_treasury_bulk_max": LEAF,
+        "town_treasury_recovery_threshold": LEAF,
+        "town_treasury_recovery_step": LEAF,
+    },
+}
+
+# data/qualities.json keeps the quality scale at the top level; the loader also accepts it nested
+# under a "qualities" key (data_loader.load_all_data), therefore the four fields are listed twice.
+const QUALITY_SCALE_FIELDS := {
+    "quality_levels": {"array": QUALITY_LEVEL_FIELDS},
+    "priority_default": LEAF,
+    "priority_options": LEAF,
+    "priority_names": ID_MAP,
+}
+
+# The root of data/*.json: every top-level key of every file, merged into one tree. A key outside
+# this list is an unknown collection — the loader skips it, and everything under it is lost.
+const SCHEMA := {
+    "resources": {"array": RESOURCE_FIELDS},
+    "crafts": {"array": CRAFT_FIELDS},
+    "buildings": {"array": BUILDING_FIELDS},
+    "improvements": {"array": IMPROVEMENT_FIELDS},
+    "technologies": {"array": TECHNOLOGY_FIELDS},
+    "categories": {"array": CATEGORY_FIELDS},
+    "groups": {"array": GROUP_FIELDS},
+    "eras": {"array": ERA_FIELDS},
+    "product_groups": {"array": PRODUCT_GROUP_FIELDS},
+    "professions": {"array": PROFESSION_FIELDS},
+    "quality_levels": {"array": QUALITY_LEVEL_FIELDS},
+    "roads": {"array": ROAD_FIELDS},
+    "terrains": {"array": TERRAIN_FIELDS},
+    "covers": {"array": COVER_FIELDS},
+    "special_actions": {"array": SPECIAL_ACTION_FIELDS},
+    "consumption": {"array": CONSUMPTION_FIELDS},
+    "group_bonuses": {"array": GROUP_BONUS_FIELDS},
+    "subgroup_bonuses": {"array": SUBGROUP_BONUS_FIELDS},
+    "modifiers": MODIFIER_FIELDS,
+    "map_config": MAP_CONFIG_FIELDS,
+    "game_balance": {"blocks": GAME_BALANCE_BLOCKS},
+    "city_names": {"array": LEAF},
+    "priority_default": LEAF,
+    "priority_options": LEAF,
+    "priority_names": ID_MAP,
+    "qualities": QUALITY_SCALE_FIELDS,
+}
+
 # The kinds of the entities that occur in the text of the problem.
 #
 # This is a list for the substitution of the fallback kind, and not a source of the labels: the
@@ -298,6 +663,8 @@ static func entity_forms(kind: String, fallback: String = "product") -> Dictiona
 # of translate() — otherwise the catalogue builder will not see them (see entity_forms).
 static func check_title(kind: String) -> String:
     match kind:
+        "unknown_field":
+            return TranslationServer.translate("Field is not part of the data model")
         "id_charset":
             return TranslationServer.translate("Disallowed characters in an identifier")
         "id_lookalike":
@@ -383,6 +750,7 @@ const SOURCE_COLLECTIONS := {
 
 # The order of the output of the blocks of problems in the window.
 const CHECK_ORDER := [
+    "unknown_field",
     "id_charset",
     "id_lookalike",
     "produced_in",
@@ -432,6 +800,7 @@ func validate(gd: Object) -> Array:
     all_resources.merge(raw_resources)
     all_resources.merge(products)
 
+    _validate_schema(gd, problems)
     _validate_identifiers(gd, problems)
     _validate_crafts(gd.crafts, buildings, technologies, all_resources, product_groups, problems)
     _validate_buildings(gd.buildings, technologies, professions, problems)
@@ -445,6 +814,182 @@ func validate(gd: Object) -> Array:
 
     _sort_problems(problems)
     return problems
+
+
+# --- THE WHITELIST OF THE FIELDS: THE WALK -------------------------------------
+#
+# The walk goes over the merged tree of data/*.json (GameData.raw_data), and not over the assembled
+# collections: a goods group keeps only its members in GameData (the name and the icon live in side
+# dictionaries), the balance is flattened out of its blocks, and a collection the loader does not know
+# is dropped altogether — in the assembled data there is nothing left to point at. The tree is the only
+# place where every key the author wrote is still present, with its own file and line.
+#
+# Data without the tree (the synthetic set of the test, a GameData assembled by hand) skips the check:
+# there is nothing to walk, and the cross-reference checks above do not depend on it.
+func _validate_schema(gd: Object, problems: Array) -> void:
+    var data = gd.get("raw_data")
+    if not (data is Dictionary) or data.is_empty():
+        return
+    for key in data.keys():
+        var collection := str(key)
+        var rule = SCHEMA.get(collection, null)
+        if not (rule is Dictionary):
+            _add_unknown_field(problems, {"collection": collection, "id": "", "name": "", "path": ""},
+                    collection, "", [], {"root": true})
+            continue
+        var value = data[key]
+        # A collection of records: every element is an entity of its own, and the path of a problem
+        # starts at the record, not at the collection.
+        if rule.has("array") and value is Array:
+            for entity in value:
+                _walk_schema(entity, rule["array"], _entity_context(collection, entity), problems)
+        else:
+            _walk_schema(value, rule, {"collection": collection, "id": "", "name": "", "path": ""},
+                    problems)
+
+
+# The context of one record: which collection it belongs to, how it is addressed in the origin index
+# ("collection:id") and how it is named in the message.
+func _entity_context(collection: String, entity) -> Dictionary:
+    var context := {"collection": collection, "id": "", "name": "", "path": ""}
+    if not (entity is Dictionary):
+        return context
+    var id_field := str(ENTITY_ID_FIELDS.get(collection, "id"))
+    var id := _as_id(entity.get(id_field, ""))
+    context["id"] = id
+    context["name"] = _entity_name(entity, id)
+    return context
+
+
+# One value against its rule. A rule the walker does not recognise as a marker is the set of the
+# fields of an object (see the vocabulary above SCHEMA).
+func _walk_schema(value, rule, context: Dictionary, problems: Array) -> void:
+    if not (rule is Dictionary) or rule.is_empty():
+        return
+    if rule.has("id_map"):
+        _walk_id_map(value, rule["id_map"], context, problems)
+        return
+    if rule.has("any"):
+        for alternative in rule["any"]:
+            if _rule_accepts(alternative, value):
+                _walk_schema(value, alternative, context, problems)
+                return
+        return
+    if rule.has("array"):
+        if not (value is Array):
+            return
+        var index := 0
+        for item in value:
+            _walk_schema(item, rule["array"], _child_context(context, "[%d]" % index), problems)
+            index += 1
+        return
+    if rule.has("blocks"):
+        _walk_blocks(value, rule["blocks"], context, problems)
+        return
+    _walk_fields(value, rule, context, problems)
+
+
+# An object whose keys are ids (resources of a "produces", improvements of a multiplier). The keys are
+# the data, not the model, so they are never reported; the values are descended into only when the rule
+# describes them.
+func _walk_id_map(value, rule, context: Dictionary, problems: Array) -> void:
+    if not (value is Dictionary) or not (rule is Dictionary) or rule.is_empty():
+        return
+    for key in value.keys():
+        _walk_schema(value[key], rule, _child_context(context, str(key)), problems)
+
+
+func _walk_fields(value, fields: Dictionary, context: Dictionary, problems: Array) -> void:
+    if not (value is Dictionary):
+        return
+    for key in value.keys():
+        var field := str(key)
+        var child := _child_context(context, field)
+        if not fields.has(field):
+            _add_unknown_field(problems, context, field, str(child["path"]), fields.keys(), {})
+            continue
+        _walk_schema(value[key], fields[field], child, problems)
+
+
+# The balance of data/game_balance.json: the constants are grouped into named blocks, and the loader
+# accepts a constant both inside its block and at the top level (data_loader._flatten_balance_blocks),
+# therefore the top level allows the block names AND any constant of any block.
+func _walk_blocks(value, blocks: Dictionary, context: Dictionary, problems: Array) -> void:
+    if not (value is Dictionary):
+        return
+    var flat := {}
+    for block in blocks.values():
+        if block is Dictionary:
+            for field in block.keys():
+                flat[field] = true
+    for key in value.keys():
+        var field := str(key)
+        var child := _child_context(context, field)
+        if blocks.has(field):
+            # The block is not an entity of the data, but it is the owner of the constants in it,
+            # and the message has to name it: "in the city block" is what the author is looking for.
+            var block_context := context.duplicate()
+            block_context["name"] = field
+            block_context["path"] = field
+            _walk_schema(value[key], blocks[field], block_context, problems)
+        elif not flat.has(field):
+            _add_unknown_field(problems, context, field, str(child["path"]), blocks.keys(), {})
+
+
+# Whether a rule expects this container at all. A field of another shape is not a key problem and is
+# left alone: the model is checked, not the types.
+static func _rule_accepts(rule, value) -> bool:
+    if not (rule is Dictionary) or rule.is_empty():
+        return true
+    if rule.has("array"):
+        return value is Array
+    return value is Dictionary
+
+
+# The context of a nested value: the same record, one step deeper in the path.
+static func _child_context(context: Dictionary, segment: String) -> Dictionary:
+    var child := context.duplicate()
+    var path := str(context.get("path", ""))
+    if segment.begins_with("["):
+        child["path"] = path + segment
+    elif path.is_empty():
+        child["path"] = segment
+    else:
+        child["path"] = path + "." + segment
+    return child
+
+
+# The record of one unknown key.
+#
+# ref_id is the key itself — the window highlights exactly it. field is the path inside the record
+# ("breeding[2].terrain"): a nested key has to be findable, and "terrain" alone would read as a field
+# of the record itself. The allowed list goes into the message: a typo is fixed by looking at the right
+# spelling, and the record with 26 fields is not something to guess.
+func _add_unknown_field(problems: Array, context: Dictionary, field: String, path: String,
+        allowed: Array, extra: Dictionary) -> void:
+    var collection := str(context.get("collection", ""))
+    var entity_id := str(context.get("id", ""))
+    var source_name := str(context.get("name", ""))
+    if source_name.is_empty():
+        source_name = collection
+    var payload := extra.duplicate()
+    payload["allowed"] = allowed
+    _push(problems, "unknown_field", "", field, collection, source_name, entity_id, path,
+            payload, _origin_key(context))
+
+
+# The key of the origin index for a record: its own declaration ("crafts:bread") when the index knows
+# it, otherwise the file where the collection itself is declared ("@key:group_bonuses"). A collection
+# without an indexed id — the diversity bonuses of data/bonuses.json have no "id" field — still gets a
+# file, only a coarser one: the first line of the collection instead of the line of the record.
+func _origin_key(context: Dictionary) -> String:
+    var collection := str(context.get("collection", ""))
+    var entity_id := str(context.get("id", ""))
+    if not entity_id.is_empty():
+        var exact := "%s:%s" % [collection, entity_id]
+        if _sources.has(exact):
+            return exact
+    return "@key:%s" % collection
 
 
     # The raw materials and the products in one space for the references to the resources:
@@ -1006,12 +1551,15 @@ func _add_missing_source(problems: Array, product_name: String, product_id: Stri
 # build_text, and not a part of the structure of the problem.
 func _push(problems: Array, kind: String, target: String, ref_id: String,
         source_kind: String, source_name: String, source_id: String, field: String,
-        extra: Dictionary = {}) -> void:
+        extra: Dictionary = {}, origin_key: String = "") -> void:
     # An empty string, if the origin is unknown (the data without the index) —
     # then the row with the file simply adds nothing.
     var file_path := ""
     var line := 0
-    var source_key := "%s:%s" % [str(SOURCE_COLLECTIONS.get(source_kind, "")), source_id]
+    # origin_key overrides the standard "<collection>:<id>" lookup: the whitelist check addresses
+    # a collection itself ("@key:<name>"), which no kind in SOURCE_COLLECTIONS stands for.
+    var source_key := origin_key if not origin_key.is_empty() \
+            else "%s:%s" % [str(SOURCE_COLLECTIONS.get(source_kind, "")), source_id]
     var origin = _sources.get(source_key, null)
     if origin is Dictionary:
         file_path = str(origin.get("file", ""))
@@ -1065,6 +1613,16 @@ static func build_text(problem: Dictionary) -> void:
     var where := ""
 
     match kind:
+        "unknown_field":
+            # A field the model does not describe, or a collection the loader does not read. The
+            # allowed list is the point of the message: the author sees the right spelling instead
+            # of guessing it from a 26-field record.
+            if bool(problem.get("root", false)):
+                headline = TranslationServer.translate("Unknown collection \"%s\" in the data root.") % str(problem.get("ref_id", ""))
+                where = TranslationServer.translate("The loader does not read this key, so everything under it is ignored. Check the spelling of the collection name.")
+            else:
+                headline = TranslationServer.translate("Unknown field \"%s\" in %s.") % [str(problem.get("ref_id", "")), _quote_owner(str(problem.get("source_name", "")), str(problem.get("source_id", "")))]
+                where = TranslationServer.translate("The game does not read this field: its value is silently lost. Fields allowed here: %s.") % _allowed_fields_text(problem.get("allowed", []))
         "id_charset":
             headline = TranslationServer.translate("Identifier \"%s\" contains disallowed characters.") % str(problem.get("ref_id", ""))
             where = TranslationServer.translate("Only Latin letters a-z, digits and \"_\" are allowed. Disallowed: %s Such characters are indistinguishable from Latin ones by eye — fix this identifier and ALL references to it at once.") % _bad_chars_text(problem.get("bad_chars", []))
@@ -1094,12 +1652,24 @@ static func build_text(problem: Dictionary) -> void:
         location += "."
 
     problem["check_title"] = check_title(kind)
-    problem["target_title"] = str(entity_forms(str(problem.get("target", "")))["title"])
+    # A problem that searches for no entity (an unknown field) has no target title either: the
+    # fallback kind would name a product that nobody was looking for.
+    var target := str(problem.get("target", ""))
+    problem["target_title"] = str(entity_forms(target)["title"]) if not target.is_empty() else ""
     problem["headline"] = headline
     problem["where"] = where
     problem["location"] = location
     problem["message"] = headline + " " + where + (
         " " + location if not location.is_empty() else "")
+
+
+# The allowed fields of a record on one line: "id, name, produces".
+static func _allowed_fields_text(allowed) -> String:
+    var parts: Array = []
+    if allowed is Array:
+        for field in allowed:
+            parts.append(str(field))
+    return ", ".join(parts)
 
 
 # The list of the bad characters of the identifier on one line:
@@ -1129,8 +1699,8 @@ static func _bad_chars_text(bad) -> String:
 # The owner of the reference in the brackets: "Grain Mill" (grind_grain_hand). If there is
 # no name — only the identifier, so that the row does not look like "in  (), the field …".
 static func _quote_owner(source_name: String, source_id: String) -> String:
-    if source_name.is_empty() or source_name == source_id:
-        return "«%s»" % source_id
+    if source_id.is_empty() or source_name.is_empty() or source_name == source_id:
+        return "«%s»" % (source_name if not source_name.is_empty() else source_id)
     return "«%s» (%s)" % [source_name, source_id]
 
 

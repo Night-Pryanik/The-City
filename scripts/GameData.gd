@@ -40,6 +40,10 @@ var data_loaded: bool = false
 # It is read by the runtime validator (scripts/data_validator.gd) in order to point a problem
 # at a specific file and line, and not make it look for the typo manually.
 var entity_sources: Dictionary = {}
+# The merged tree of data/*.json as it was read, before it is taken apart into the collections
+# above. The validator walks it for the field whitelist (data_validator._validate_schema):
+# the assembled collections do not keep every key the author wrote.
+var raw_data: Dictionary = {}
 
 func load_all_data():
     var loader = load("res://scripts/data_loader.gd").new()
@@ -69,6 +73,7 @@ func load_all_data():
     roads = loader.roads
     roads_by_level = loader.roads_by_level
     entity_sources = loader.entity_sources
+    raw_data = loader.raw_data
     data_loaded = true
 
 # === ROAD LEVELS (data/roads.json) ===

@@ -3272,6 +3272,7 @@ The JSON syntax is checked by a separate tool, `tools/validate_json.py`; there i
 
 | Check | Where it looks for the reference | What it points to |
 | --- | --- | --- |
+| `unknown_field` | every key of `data/*.json` | — (see below) |
 | `produced_in` | recipe | building |
 | `result`, `display_result` | recipe | resource (raw resource or goods) |
 | `improved_by` | resource | improvement |
@@ -3288,6 +3289,32 @@ The JSON syntax is checked by a separate tool, `tools/validate_json.py`; there i
 | `product_source` | product | — (see below) |
 | `id_charset` | declaration (`id`) | — (see below) |
 | `id_lookalike` | declaration (`id`) | — (see below) |
+
+### The field whitelist (`unknown_field`)
+
+The other checks read the data the way the game does — by references. This one checks the **shape**: every key in `data/*.json` has to be described by the model in `data_validator.SCHEMA`, and a key outside it is an error. The data is addressed by name, so a field nobody planned is silently lost: `"producs"` instead of `"produces"` leaves a resource that yields nothing, `"unlock_teh"` a building that is available from the start, and the file stays valid JSON all along — neither `tools/validate_json.py` nor a reader of the diff says a word about it.
+
+**The check walks the merged JSON tree, not the assembled collections.** `GameData.raw_data` keeps the tree exactly as it was read (`data_loader.raw_data`), because the collections lose keys: a goods group keeps only its members (`name` and `icon` live in side dictionaries), the balance is flattened out of its blocks, and a collection the loader does not know is dropped altogether — in the assembled data there is nothing left to point at. The tree is the only place where every key the author wrote is still present, with its own file and line.
+
+**The whitelist describes the data model, not the current reads of the code.** A field the design keeps while no system reads it yet (`covers.move_cost_bonus`, `professions.pseudo`, the diversity-bonus registry of `data/bonuses.json`) is listed as well — otherwise a legitimate file would be reported as broken. The check is for the opposite case: a field nobody planned, which the game will never read.
+
+**The vocabulary of a rule** (the details are in the comment above `SCHEMA`):
+
+| Rule | What the value may hold |
+| --- | --- |
+| `LEAF` | a scalar or an array of scalars — there is nothing to descend into |
+| `ID_MAP` | an object with free keys (resource, improvement, group ids) and scalar values: `{"wheat": 1}` |
+| `{"id_map": rule}` | the same, but the values are described (`terrain_config`) |
+| `{"array": rule}` | an array whose every element follows the rule |
+| `{"any": [rule…]}` | any of the listed forms: `additional_cost` is an object or an array of objects, the `resources` of a recipe is an object or an array of terms |
+| `{"blocks": {…}}` | named blocks of constants, a constant may also stand at the top level (`game_balance`, see `data_loader._flatten_balance_blocks`) |
+| any other non-empty dictionary | the fixed set of the fields of an object |
+
+**Only keys are checked.** A value of the wrong shape is left alone: the game reads such a field with a default and the consequence is visible in the interface, while a wrong key is invisible by nature.
+
+**The message names the allowed fields** — `Fields allowed here: id, name, produces, …`. That is the point of the whole check: the author sees the right spelling instead of guessing it from a 26-field record. A nested key carries its path (`breeding[0][0].terain`), so it can be found in a record that holds arrays.
+
+**Two kinds of a problem.** A field of a record (`Unknown field "producs" in «Wheat» (wheat_field)`) and a collection the loader does not read (`Unknown collection "era_bonus" in the data root` — everything under it is ignored). The top-level keys are listed for the second one: a typo in the name of a collection empties it, and the other checks only ever see the consequences.
 
 ### Identifiers: charset and homoglyphs (`id_charset`, `id_lookalike`)
 
@@ -3366,7 +3393,10 @@ The window is `scripts/data_problems_window.gd`: a dimming overlay, a list of pr
 
 ```
 "collection:id" → { "file": "res://data/product_groups.json", "line": 44 }
+"@key:name"     → { "file": "res://data/bonuses.json", "line": 27 }
 ```
+
+The second form is the origin of a **collection** itself, not of a record in it: a collection has no entity of its own to hang the index on, while the whitelist check needs a file for an unknown collection in the data root, and for a record whose own origin is not indexed (the diversity bonuses of `data/bonuses.json` have no `id` field to be indexed by). A key that several files share (`crafts`, `resources`) keeps the first file it was seen in.
 
 The kind of the reference owner is mapped to a top-level collection through `SOURCE_COLLECTIONS` in the validator (for resources this is `resources` — raw resources and goods lie in a common list, and the `type` field distinguishes the type).
 
@@ -3381,11 +3411,11 @@ The subtleties on which this breaks:
 - `scripts/data_validator.gd` — the checks, `validate(gd) -> Array` and `count_by_kind()`. It does not depend on autoloads: the data is passed as an argument, so the validator runs headless on artificial data.
 - `scripts/data_problems_window.gd` — the window with the list of problems.
 - `scripts/main_menu.gd` — `_check_game_data()`, the entry point of the check.
-- `scripts/GameData.gd` — the `data_loaded` flag (so as not to read `data/*.json` twice: the menu checks the data on entry, and a new game loads it again) and the passing-through of `entity_sources`.
-- `scripts/data_loader.gd` — `entity_sources`, `_remember_sources()`, `_find_decl_line()`. `SOURCE_COLLECTIONS` lists 15 collections: the first 9 are needed for references, the remaining 6 (`terrains`, `covers`, `eras`, `groups`, `quality_levels`, `special_actions`) — **only** for the identifier checks, so that a problem points to the file and line.
+- `scripts/GameData.gd` — the `data_loaded` flag (so as not to read `data/*.json` twice: the menu checks the data on entry, and a new game loads it again) and the passing-through of `entity_sources` and `raw_data`.
+- `scripts/data_loader.gd` — `entity_sources`, `_remember_sources()`, `_remember_key_sources()`, `_find_decl_line()`, `raw_data` (the merged JSON tree the whitelist walks). `SOURCE_COLLECTIONS` lists 15 collections: the first 9 are needed for references, the remaining 6 (`terrains`, `covers`, `eras`, `groups`, `quality_levels`, `special_actions`) — **only** for the identifier checks, so that a problem points to the file and line.
 - `tests/test_data_validation.gd` — a headless test.
 
-**Test.** `tests/test_data_validation.gd` checks five things. **The detector:** on synthetic data exactly one breakage is introduced into each kind of check, and the test requires finding each one — with the correct check kind, identifier and reference owner; an extra or missing problem also counts as a bug. The data is synthetic **deliberately**: the test must not break when the author fixes the real `data/*.json`. Because of the "product without a source" check, the set needs a "donor" recipe — it gives a source to all products with deliberate breakages in other fields, otherwise a single breakage would produce two problems at once and the "exactly one" requirement would stop meaning anything. **False positives:** `*` in `produced_in`, `category` on a raw resource, explicitly empty (`null`) fields, "product without a source" for goods from `display_result` / `produces` / the woodcutter's camp, **Cyrillic in `name`** (in `data/*.json` it is legitimate) and an underscore with digits in `id` — these are nine places where a naive validator makes noise. **The camp's exception is computed from the data:** zeroing out `wood_yield` on all covers and deleting `lumberjack_hut` separately must each cause wood to end up in the problems — otherwise the "source" would be a hardcoded list that would be silent forever. **Non-ASCII in id:** a Cyrillic identifier produces **two** problems of different kinds at once — `id_charset` ("replace it with Latin") and `id_lookalike` ("you now have two different resources"), and the test requires both. This is not a duplicate, but two different statements about a single character. **Absence of the index:** on data without `entity_sources` the problems are still found, but without the "File:" line. **Correctness of the file reference:** for each problem on the real data the file lies in `res://data/`, the line does not go beyond the file, and **at the specified line the owner's declaration really is located** — what is checked is not the number itself, but that it points where it promises. For `product_source` problems it is additionally checked that the owner is a product from `GameData.products` and not a raw resource. The real `data/*.json` are otherwise run for invariants, and their list of problems is printed for reference and not checked — **except for one case: the absence of non-ASCII in id is checked as zero.** Here a failure means not someone else's breakage, but a typo that went into the release and cannot be caught by anything else.
+**Test.** `tests/test_data_validation.gd` checks five things. **The detector:** on synthetic data exactly one breakage is introduced into each kind of check, and the test requires finding each one — with the correct check kind, identifier and reference owner; an extra or missing problem also counts as a bug. The data is synthetic **deliberately**: the test must not break when the author fixes the real `data/*.json`. Because of the "product without a source" check, the set needs a "donor" recipe — it gives a source to all products with deliberate breakages in other fields, otherwise a single breakage would produce two problems at once and the "exactly one" requirement would stop meaning anything. **False positives:** `*` in `produced_in`, `category` on a raw resource, explicitly empty (`null`) fields, "product without a source" for goods from `display_result` / `produces` / the woodcutter's camp, **Cyrillic in `name`** (in `data/*.json` it is legitimate) and an underscore with digits in `id` — these are nine places where a naive validator makes noise. **The camp's exception is computed from the data:** zeroing out `wood_yield` on all covers and deleting `lumberjack_hut` separately must each cause wood to end up in the problems — otherwise the "source" would be a hardcoded list that would be silent forever. **Non-ASCII in id:** a Cyrillic identifier produces **two** problems of different kinds at once — `id_charset` ("replace it with Latin") and `id_lookalike` ("you now have two different resources"), and the test requires both. This is not a duplicate, but two different statements about a single character. **The whitelist:** the fixture is a tree of its own, laid on top of the synthetic set — a record of the model that must stay silent, and five keys the model does not describe (a field of a record, a field two arrays deep, a field of an element of an array, a collection in the root, a constant outside its block of the balance). The case requires exactly those five, the path of the nested one (`breeding[0][0].terain`), the allowed list in the text, the file of the record and of the collection, and the name of the block. **Absence of the index:** on data without `entity_sources` the problems are still found, but without the "File:" line. **Correctness of the file reference:** for each problem on the real data the file lies in `res://data/`, the line does not go beyond the file, and **at the specified line the owner's declaration really is located** — what is checked is not the number itself, but that it points where it promises. For `product_source` problems it is additionally checked that the owner is a product from `GameData.products` and not a raw resource. The real `data/*.json` are otherwise run for invariants, and their list of problems is printed for reference and not checked — **except for one case: the absence of non-ASCII in id is checked as zero.** Here a failure means not someone else's breakage, but a typo that went into the release and cannot be caught by anything else.
 
 ## Running tests: `tools/run_tests.py`
 

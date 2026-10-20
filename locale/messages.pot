@@ -909,6 +909,9 @@ msgstr ""
 msgid "Feed consumption: %d per cycle"
 msgstr ""
 
+msgid "Field is not part of the data model"
+msgstr ""
+
 msgid "File: %s"
 msgstr ""
 
@@ -1707,6 +1710,9 @@ msgstr ""
 msgid "The contract is already closed."
 msgstr ""
 
+msgid "The game does not read this field: its value is silently lost. Fields allowed here: %s."
+msgstr ""
+
 msgid "The goods are not chosen"
 msgstr ""
 
@@ -1717,6 +1723,9 @@ msgid "The goods have no price."
 msgstr ""
 
 msgid "The interface font. Any font file (.ttf, .otf) put into the fonts folder is listed here and is applied at once, without restarting the game."
+msgstr ""
+
+msgid "The loader does not read this key, so everything under it is ignored. Check the spelling of the collection name."
 msgstr ""
 
 msgid "The simulation is stopped. Your actions are queued until you resume it."
@@ -1830,7 +1839,13 @@ msgstr ""
 msgid "Unfinished sections: %d. Work spent on them (%.0f/%.0f) will be lost.\n\n"
 msgstr ""
 
+msgid "Unknown collection \"%s\" in the data root."
+msgstr ""
+
 msgid "Unknown construction requirement: %s"
+msgstr ""
+
+msgid "Unknown field \"%s\" in %s."
 msgstr ""
 
 msgid "Unknown trade direction — the order was not placed."

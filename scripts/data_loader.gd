@@ -36,6 +36,13 @@ var roads_by_level: Dictionary = {}
 # line. The details are in the _remember_sources header.
 var entity_sources: Dictionary = {}
 
+# The merged tree of data/*.json exactly as it was read, before it is taken apart into the
+# collections above. The assembled collections are lossy — a goods group keeps only its
+# members (product_group_name/icon live in side dictionaries), the game balance is flattened
+# out of its blocks — so the field whitelist of the validator (data_validator._validate_schema)
+# walks this tree: it is the only place where every key the author wrote is still present.
+var raw_data: Dictionary = {}
+
 # The data fields whose value the player sees. data/*.json holds the English
 # source text, and the translation is applied here, when reading the files: the translation key
 # is the English text itself. Thanks to this the rest of the code does
@@ -76,6 +83,8 @@ func load_all_data():
     if merged_data == null:
         print("Error: failed to load the data from the data folder.")
         return
+
+    raw_data = merged_data
 
     # The translation is applied BEFORE assembling the entities into dictionaries: further on, everyone who
     # reads GameData.products[id]["name"] already gets a ready-to-display
@@ -312,6 +321,7 @@ func _load_all_json_files(folder_path: String) -> Dictionary:
 func _remember_sources(file_path: String, raw_text: String, data: Dictionary):
     if not (data is Dictionary):
         return
+    _remember_key_sources(file_path, raw_text, data)
     for collection in SOURCE_COLLECTIONS:
         var entries = data.get(collection, null)
         if not (entries is Array):
@@ -327,6 +337,40 @@ func _remember_sources(file_path: String, raw_text: String, data: Dictionary):
                 "line": _find_decl_line(raw_text, id),
             }
     _remember_consumption_sources(file_path, raw_text, data)
+
+
+# The origin of the TOP-LEVEL keys — the collections themselves ("resources", "crafts",
+# "game_balance"), indexed as "@key:<name>". A collection has no entity of its own to hang
+# the index on, while the field whitelist of the validator needs a file for two cases: an
+# unknown collection in the data root, and a record whose own origin is not indexed (the
+# diversity bonuses of data/bonuses.json have no "id" field to be indexed by).
+#
+# A key that several files share (crafts, resources) keeps the first file it was seen in:
+# any of them is a fair pointer, and the first one is at least stable.
+func _remember_key_sources(file_path: String, raw_text: String, data: Dictionary):
+    for key in data.keys():
+        var index_key := "@key:%s" % str(key)
+        if entity_sources.has(index_key):
+            continue
+        entity_sources[index_key] = {
+            "file": file_path,
+            "line": _find_key_line(raw_text, str(key)),
+        }
+
+
+# The line of a top-level key — the one where it is written as `"name":`, and not merely
+# mentioned inside a comment or in the value of another field.
+func _find_key_line(raw_text: String, key: String) -> int:
+    var needle := "\"%s\"" % key
+    var lines := raw_text.split("\n")
+    for i in lines.size():
+        var line: String = lines[i]
+        var at := line.find(needle)
+        while at >= 0:
+            if line.substr(at + needle.length()).lstrip(" \t").begins_with(":"):
+                return i + 1
+            at = line.find(needle, at + 1)
+    return 0
 
 
 # The consumption rules (data/consumption.json) have no identifier of their own:
