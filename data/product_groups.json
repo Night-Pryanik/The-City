@@ -195,7 +195,7 @@
     {
       "id": "non_alcoholic_beverages",
       "name": "Beverages",
-      "products": [ "tea", "coffee", "cocoa", "mate" ]
+      "products": [ "tea", "coffee", "cocoa", "mate", "karkadeh" ]
     },
     {
       "id": "clothes",

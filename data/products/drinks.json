@@ -82,6 +82,14 @@
       "icon": "mate.png"
     },
     {
+      "id": "karkadeh",
+      "price": 18,
+      "name": "Karkadeh",
+      "type": "product",
+      "category": "drinks",
+      "icon": "karkadeh.png"
+    },
+    {
       "id": "vinegar",
       "price": 18,
       "name": "Vinegar",

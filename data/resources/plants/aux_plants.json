@@ -12,7 +12,7 @@
       "allowed_cover": [ "none" ],
       "improved_by": "plantation",
       "tech_required": "plantations",
-      "produces": { "tea_leaves": 10, "feed": 40 },
+      "produces": { "tea_leaves": 10 },
       "icon": "tea.png",
       "color": [ 200, 255, 200 ]
     },
@@ -28,7 +28,7 @@
       "allowed_cover": [ "none" ],
       "improved_by": "plantation",
       "tech_required": "plantations",
-      "produces": { "coffee_beans": 10, "feed": 40 },
+      "produces": { "coffee_beans": 10 },
       "icon": "coffee.png",
       "color": [ 200, 255, 200 ]
     },
@@ -63,6 +63,22 @@
       "tech_required": "plantations",
       "produces": { "yerba_mate_leaves": 10 },
       "icon": "mate.png",
+      "color": [ 200, 255, 200 ]
+    },
+    {
+      "id": "rosella_field",
+      "price": 6,
+      "name": "Rosella",
+      "type": "raw",
+      "category": "aux_plants",
+      "group": "stimulating_plants",
+      "subgroup": "stimulating_drinks",
+      "allowed_terrain": [ "plain", "hill" ],
+      "allowed_cover": [ "none" ],
+      "improved_by": "plantation",
+      "tech_required": "plantations",
+      "produces": { "rosella_sepals": 10 },
+      "icon": "karkadeh.png",
       "color": [ 200, 255, 200 ]
     }
   ]

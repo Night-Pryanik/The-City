@@ -154,6 +154,15 @@
       "time": 5.0,
       "unlock_tech": "fermentation",
       "description": "Dries, rolls, withers and ferments yerba mate leaves."
+    },
+    {
+      "id": "karkadeh",
+      "name": "Karkadeh",
+      "produced_in": [ "dryer_house" ],
+      "resources": { "rosella_sepals": 20 },
+      "result": { "karkadeh": 10 },
+      "time": 5.0,
+      "description": "Dries rosella flower sepals."
     }
   ]
 }
