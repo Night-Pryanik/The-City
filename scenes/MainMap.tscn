@@ -6,8 +6,8 @@
 [ext_resource type="PackedScene" uid="uid://d00jxkppr273t" path="res://scenes/pause_menu.tscn" id="3_2t08r"]
 [ext_resource type="Script" uid="uid://ioi24pjoaapx" path="res://scripts/build_manager.gd" id="5_6ic70"]
 [ext_resource type="Script" uid="uid://b2anvgprhgych" path="res://scripts/map_renderer.gd" id="6_82ayj"]
-[ext_resource type="Script" uid="uid://b7pijc74chsbo" path="res://scripts/road_manager.gd" id="7_2m761"]
 [ext_resource type="Script" uid="uid://coq275q8pnqnc" path="res://scripts/project_manager.gd" id="7b_pm01"]
+[ext_resource type="Script" uid="uid://b7pijc74chsbo" path="res://scripts/road_manager.gd" id="7_2m761"]
 [ext_resource type="Script" uid="uid://d5hdforsqjlr" path="res://scripts/expansion_manager.gd" id="8_8fkir"]
 [ext_resource type="Script" uid="uid://clfermtbeqck1" path="res://scripts/worker_manager.gd" id="9_nmjbi"]
 [ext_resource type="Script" uid="uid://f5r75bb5rgdq" path="res://scripts/townsfolk_manager.gd" id="10_yd4n3"]
@@ -17,8 +17,8 @@
 [ext_resource type="Script" uid="uid://bqthdmil0kgn6" path="res://scripts/progress_bar_layer.gd" id="14_pblayer"]
 [ext_resource type="Script" uid="uid://bvivpa15khla" path="res://scripts/control_panel.gd" id="15_ctrlpanel"]
 [ext_resource type="Script" uid="uid://bcysm6it5igvq" path="res://scripts/town_manager.gd" id="16_twnmgr"]
-[ext_resource type="PackedScene" uid="uid://k2vtownui9ab" path="res://scenes/TownUI.tscn" id="17_twnui"]
-[ext_resource type="Script" path="res://scripts/unread_dot.gd" id="18_unread"]
+[ext_resource type="PackedScene" uid="uid://k2vtownujaab" path="res://scenes/TownUI.tscn" id="17_twnui"]
+[ext_resource type="Script" uid="uid://1b62pk8bfd16" path="res://scripts/unread_dot.gd" id="18_unread"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_o7tci"]
 bg_color = Color(0.19607843, 0.19607843, 0.19607843, 1)
@@ -39,7 +39,7 @@ script = ExtResource("14_pblayer")
 [node name="CityUI" parent="." unique_id=1004795705 instance=ExtResource("2_a1mhp")]
 visible = false
 
-[node name="TownUI" parent="." unique_id=3000000001 instance=ExtResource("17_twnui")]
+[node name="TownUI" parent="." unique_id=-1294967295 instance=ExtResource("17_twnui")]
 visible = false
 
 [node name="HUD" type="Panel" parent="." unique_id=1988910692]
@@ -85,12 +85,12 @@ layout_mode = 2
 tooltip_text = "Scout and claim neighboring lands."
 text = "Expansion"
 
-[node name="JournalButton" type="Button" parent="HUD/VBoxContainer"]
+[node name="JournalButton" type="Button" parent="HUD/VBoxContainer" unique_id=2083371047]
 layout_mode = 2
 tooltip_text = "Open the journal of important messages"
 text = "Journal"
 
-[node name="UnreadDot" type="Control" parent="HUD/VBoxContainer/JournalButton"]
+[node name="UnreadDot" type="Control" parent="HUD/VBoxContainer/JournalButton" unique_id=1695833642]
 visible = false
 layout_mode = 1
 anchors_preset = 1
@@ -118,7 +118,7 @@ self_modulate = Color(1, 1, 1, 0)
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -196.0
+offset_left = -252.0
 offset_right = -40.0
 offset_bottom = 31.0
 grow_horizontal = 0
@@ -133,6 +133,13 @@ offset_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 4
+
+[node name="ClockLabel" type="Label" parent="TopRightLayer/TopRightPanel/TopRightBox" unique_id=2000000007]
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 5
+text = "00:00"
 
 [node name="PauseButton" type="Button" parent="TopRightLayer/TopRightPanel/TopRightBox" unique_id=2000000006]
 custom_minimum_size = Vector2(28, 28)
@@ -240,7 +247,6 @@ theme_override_constants/separation = 4
 layout_mode = 2
 theme_override_constants/separation = 4
 
-
 [node name="PreviewScroll" type="ScrollContainer" parent="ControlPanel/PreviewContainer" unique_id=390631621]
 layout_mode = 2
 size_flags_vertical = 3
@@ -270,8 +276,8 @@ size_flags_horizontal = 3
 
 [node name="InfoLabel" type="RichTextLabel" parent="ControlPanel/InfoVBox/InfoScroll/InfoContent" unique_id=2061907306]
 layout_mode = 2
-text = "Select a hex on the map (LMB) to see information and available actions."
 bbcode_enabled = true
+text = "Select a hex on the map (LMB) to see information and available actions."
 fit_content = true
 scroll_active = false
 

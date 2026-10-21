@@ -255,6 +255,15 @@ custom_minimum_size = Vector2(64, 0)
 layout_mode = 2
 text = "3.0 sec"
 
+[node name="Label8" type="Label" parent="TabContainer/Интерфейс/VBoxContainer"]
+layout_mode = 2
+theme_type_variation = &"SectionHeading"
+text = "Clock"
+
+[node name="ClockCheckBox" type="CheckBox" parent="TabContainer/Интерфейс/VBoxContainer"]
+layout_mode = 2
+text = "Show clock"
+
 [node name="BackButton" type="Button" parent="." unique_id=1943295540]
 layout_mode = 1
 anchors_preset = 7

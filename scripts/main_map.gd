@@ -174,6 +174,9 @@ var resource_display_interval: float = 1.0
 # the key interface/hud_message_duration in user://settings.cfg). The clamp itself lives in
 # hud_message.gd — this value is passed through as it is.
 var hud_message_duration: float = 3.0
+# Whether the wall clock is shown in the top right corner of the HUD (the key
+# interface/show_clock in user://settings.cfg, on by default).
+var show_clock: bool = true
 
 # The last "era" of the display on which the HUD label of the treasury has been updated.
 # The tick path (city_updated → _on_city_data_updated) redraws the label
@@ -204,6 +207,12 @@ var _treasury_tooltip_display_epoch: int = -1
 # the update of the label itself); the tooltip reads the cache, not CityData directly.
 var _displayed_treasury: int = 0
 
+# The tick of the wall clock in the top right corner of the HUD. A Timer with
+# PROCESS_MODE_ALWAYS, and not the _process below: _process does not run while the tree
+# is paused, and the pause menu and the settings window are open exactly over a stopped
+# world — a wall clock must keep showing the real time there.
+var _clock_timer: Timer = null
+
 # The grace timer of leaving the cursor (a common value with city_ui — a single rhythm
 # of the tooltips, equally responsive). BUILDING_DETAIL_LEAVE_GRACE is used
 # without a direct reference to city_ui — a literal of 0.35 sec (see city_ui.gd).
@@ -224,6 +233,7 @@ const MAP_TOOLTIP_LEAVE_GRACE: float = 0.35
 @onready var journal_button = $HUD/VBoxContainer/JournalButton
 @onready var menu_button = $TopRightLayer/TopRightPanel/TopRightBox/MenuButton
 @onready var pause_button = $TopRightLayer/TopRightPanel/TopRightBox/PauseButton
+@onready var clock_label = $TopRightLayer/TopRightPanel/TopRightBox/ClockLabel
 @onready var pause_menu = $PauseMenu
 @onready var build_manager = $BuildManager
 @onready var map_renderer = $MapRenderer
@@ -547,6 +557,7 @@ func _ready():
     input_handler.set_scroll_speed(edge_scroll_speed)
     city_ui.set_building_detail_delay(building_detail_delay)
     hud.set_message_duration(hud_message_duration)
+    _setup_clock()
     CityData.set_resource_display_interval(resource_display_interval)
     # The planned consumption on the tab "Resources" (the tooltip and the dynamics "≈") is counted
     # by the workers worker_manager — we pass the reference into the UI of the city.
@@ -3557,6 +3568,7 @@ func _load_settings():
         building_detail_delay = settings_config.get_value("interface", "building_detail_delay", 0.5)
         resource_display_interval = settings_config.get_value("game", "resource_display_interval", 1.0)
         hud_message_duration = settings_config.get_value("interface", "hud_message_duration", 3.0)
+        show_clock = settings_config.get_value("interface", "show_clock", true)
     else:
         show_hex_borders = true
         use_edge_scrolling = true
@@ -3566,6 +3578,7 @@ func _load_settings():
         building_detail_delay = 0.5
         resource_display_interval = 1.0
         hud_message_duration = 3.0
+        show_clock = true
 
 func apply_settings():
     _load_settings()
@@ -3574,6 +3587,7 @@ func apply_settings():
     input_handler.set_scroll_speed(edge_scroll_speed)
     city_ui.set_building_detail_delay(building_detail_delay)
     hud.set_message_duration(hud_message_duration)
+    _apply_clock_visibility()
     # set_resource_display_interval raises the era on a change of the value — we immediately
     # pick it up and update the HUD label of the treasury, so that the player sees the effect
     # of the new interval without waiting for the nearest city_updated.
@@ -3638,6 +3652,35 @@ func _update_treasury_hud():
         # would crawl out onto the map and the hover on the "tail" would stop working.
         if hud.has_method("refresh_size"):
             hud.refresh_size()
+
+# The wall clock in the top right corner of the HUD: the real local time, HH:MM.
+# The visibility follows the setting "Interface → Show clock"; the text is set by the
+# timer created in _setup_clock (it keeps ticking while the tree is paused).
+func _setup_clock() -> void:
+    _apply_clock_visibility()
+    if _clock_timer != null and is_instance_valid(_clock_timer):
+        return
+    _clock_timer = Timer.new()
+    _clock_timer.name = "ClockTimer"
+    _clock_timer.process_mode = Node.PROCESS_MODE_ALWAYS
+    _clock_timer.wait_time = 1.0
+    _clock_timer.autostart = true
+    _clock_timer.timeout.connect(_update_clock)
+    add_child(_clock_timer)
+
+func _apply_clock_visibility() -> void:
+    if clock_label:
+        clock_label.visible = show_clock
+        if show_clock:
+            # The label comes back with the text of the scene ("00:00"): the timer would
+            # fix it within a second, but the player should see the real time at once.
+            _update_clock()
+
+func _update_clock() -> void:
+    if not clock_label or not clock_label.visible:
+        return
+    var now: Dictionary = Time.get_time_dict_from_system()
+    clock_label.text = "%02d:%02d" % [now["hour"], now["minute"]]
 
 # The standard tooltip instance of the map. The town window takes it for the group rows
 # of its purchase column, so the composition of a group is shown by the same panel as

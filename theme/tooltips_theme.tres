@@ -1,33 +1,9 @@
-[gd_resource type="Theme" load_steps=12 format=3 uid="uid://bcvy24ll0he5c"]
+[gd_resource type="Theme" format=3 uid="uid://bcvy24ll0he5c"]
 
 [ext_resource type="FontFile" uid="uid://jqbs4ssxj1tq" path="res://fonts/InterVariable.ttf" id="1_inter"]
-
 [ext_resource type="FontVariation" path="res://fonts/inter_medium.tres" id="2_inter_medium"]
-
 [ext_resource type="FontVariation" path="res://fonts/inter_bold.tres" id="3_inter_bold"]
-
 [ext_resource type="Texture2D" uid="uid://crudytkyog123" path="res://icons/checkbox_unchecked.svg" id="4_unchecked"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tooltip"]
-content_margin_left = 6.0
-content_margin_top = 4.0
-content_margin_right = 6.0
-content_margin_bottom = 4.0
-bg_color = Color(0.2, 0.2, 0.2, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.6, 0.6, 0.6, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slider_track"]
-content_margin_top = 3.0
-content_margin_bottom = 3.0
-bg_color = Color(1, 1, 1, 0.219608)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slider_fill"]
 content_margin_top = 3.0
@@ -47,14 +23,14 @@ corner_radius_top_right = 3
 corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tab_selected"]
-content_margin_left = 12.0
-content_margin_top = 6.0
-content_margin_right = 12.0
-content_margin_bottom = 6.0
-bg_color = Color(1, 1, 1, 0.101961)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slider_track"]
+content_margin_top = 3.0
+content_margin_bottom = 3.0
+bg_color = Color(1, 1, 1, 0.219608)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tab_hovered"]
 content_margin_left = 12.0
@@ -65,6 +41,15 @@ bg_color = Color(1, 1, 1, 0.058824)
 corner_radius_top_left = 6
 corner_radius_top_right = 6
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tab_selected"]
+content_margin_left = 12.0
+content_margin_top = 6.0
+content_margin_right = 12.0
+content_margin_bottom = 6.0
+bg_color = Color(1, 1, 1, 0.101961)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tab_unselected"]
 content_margin_left = 12.0
 content_margin_top = 6.0
@@ -72,19 +57,31 @@ content_margin_right = 12.0
 content_margin_bottom = 6.0
 bg_color = Color(0, 0, 0, 0)
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tooltip"]
+content_margin_left = 6.0
+content_margin_top = 4.0
+content_margin_right = 6.0
+content_margin_bottom = 4.0
+bg_color = Color(0.2, 0.2, 0.2, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.6, 0.6, 0.6, 1)
+
 [resource]
 default_font = ExtResource("1_inter")
-Button/fonts/font = ExtResource("2_inter_medium")
-TabBar/fonts/font = ExtResource("2_inter_medium")
-SectionHeading/base_type = &"Label"
-SectionHeading/fonts/font = ExtResource("2_inter_medium")
 BoldLabel/base_type = &"Label"
 BoldLabel/fonts/font = ExtResource("3_inter_bold")
-TooltipPanel/styles/panel = SubResource("StyleBoxFlat_tooltip")
+Button/fonts/font = ExtResource("2_inter_medium")
 CheckBox/icons/unchecked = ExtResource("4_unchecked")
-HSlider/styles/slider = SubResource("StyleBoxFlat_slider_track")
 HSlider/styles/grabber_area = SubResource("StyleBoxFlat_slider_fill")
 HSlider/styles/grabber_area_highlight = SubResource("StyleBoxFlat_slider_fill_highlight")
-TabContainer/styles/tab_selected = SubResource("StyleBoxFlat_tab_selected")
+HSlider/styles/slider = SubResource("StyleBoxFlat_slider_track")
+SectionHeading/base_type = &"Label"
+SectionHeading/fonts/font = ExtResource("2_inter_medium")
+TabBar/fonts/font = ExtResource("2_inter_medium")
 TabContainer/styles/tab_hovered = SubResource("StyleBoxFlat_tab_hovered")
+TabContainer/styles/tab_selected = SubResource("StyleBoxFlat_tab_selected")
 TabContainer/styles/tab_unselected = SubResource("StyleBoxFlat_tab_unselected")
+TooltipPanel/styles/panel = SubResource("StyleBoxFlat_tooltip")
