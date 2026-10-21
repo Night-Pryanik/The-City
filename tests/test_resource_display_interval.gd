@@ -308,7 +308,7 @@ func _run() -> void:
     # Result: a "one-pixel star" and "broken" resource icons.
     await process_frame
     await process_frame
-    var res_list = city_ui.get_node("ContentPanel/ResourcesPanel/ScrollContainer/ResourcesList")
+    var res_list = city_ui.get_node("ContentPanel/ResourcesPanel/StorageSection/ScrollContainer/StorageList")
     var tall_rows: int = 0
     var bad_icons: int = 0
     var bad_markers: int = 0

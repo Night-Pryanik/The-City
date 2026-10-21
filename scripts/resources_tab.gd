@@ -1,4 +1,14 @@
 # resources_tab.gd
+#
+# The tab "Resources" of the city. It is split into three sections, which are
+# switched by a row of small icon buttons — the same idiom as the sections of the
+# foreign trade (see external_trade_tab.gd):
+#   · "storage"   — the warehouse of the city: the goods by the categories;
+#   · "tamed"     — the resources the city has domesticated, by the subgroups;
+#   · "diversity" — the number of the subgroups and the bonuses of the diversity.
+#
+# Every section has its own list, and all of them are rebuilt on a full refresh:
+# the sections are cheap, and a rebuilt list always matches the data of the city.
 extends Node
 
 # The "single source of truth" script for the styling constants. It is needed at the parsing stage
@@ -11,6 +21,17 @@ const UiHelpers = preload("res://scripts/ui_helpers.gd")
 # in the "Trade" cards: the marker must not look like a quality level,
 # therefore it does not coincide with any of the colours of data/qualities.json.
 const QUALITY_MARKER_COLOR := UiHelpers.QUALITY_MARKER_COLOR
+
+# The sections of the tab.
+const SECTION_STORAGE := "storage"
+const SECTION_TAMED := "tamed"
+const SECTION_DIVERSITY := "diversity"
+
+# The icons of the section buttons. They are taken from the common registry
+# IconRegistry (autoload), the same way the buttons of the foreign trade take theirs.
+const ICON_SECTION_STORAGE := "new_resource.png"
+const ICON_SECTION_TAMED := "animal_husbandry.png"
+const ICON_SECTION_DIVERSITY := "production_bonus.png"
 
 var ui_helpers: Node
 var products: Dictionary = {}
@@ -48,11 +69,90 @@ var planned_consumption_map: Dictionary = {}
 # It is recalculated in the same place.
 var planned_production_map: Dictionary = {}
 
-var resources_list: Node
+# The sections of the tab: the panel of the section (it is hidden when the section
+# is not the active one) and the list of its rows (filled in setup).
+var storage_section: Control = null
+var tamed_section: Control = null
+var diversity_section: Control = null
+var storage_list: Node = null
+var tamed_list: Node = null
+var diversity_list: Node = null
+# The buttons of the section bar: [{ "button": Button, "id": section }].
+var section_buttons: Array = []
+var active_section: String = SECTION_STORAGE
 
-func setup(res_list: Node, helpers: Node):
-    resources_list = res_list
+func setup(panel: Control, helpers: Node):
     ui_helpers = helpers
+    if panel == null or not is_instance_valid(panel):
+        return
+    storage_section = panel.get_node_or_null("StorageSection")
+    tamed_section = panel.get_node_or_null("TamedSection")
+    diversity_section = panel.get_node_or_null("DiversitySection")
+    storage_list = panel.get_node_or_null("StorageSection/ScrollContainer/StorageList")
+    tamed_list = panel.get_node_or_null("TamedSection/ScrollContainer/TamedList")
+    diversity_list = panel.get_node_or_null("DiversitySection/ScrollContainer/DiversityList")
+    section_buttons = [
+        {"button": panel.get_node_or_null("SectionsBar/StorageButton"), "id": SECTION_STORAGE},
+        {"button": panel.get_node_or_null("SectionsBar/TamedButton"), "id": SECTION_TAMED},
+        {"button": panel.get_node_or_null("SectionsBar/DiversityButton"), "id": SECTION_DIVERSITY},
+    ]
+    _setup_section_icons()
+    _connect_section_buttons()
+    _switch_section(active_section)
+
+# The icons of the section buttons — the same size as the icons of the section
+# buttons of the foreign trade.
+func _setup_section_icons() -> void:
+    _set_button_icon(_button_of(SECTION_STORAGE), ICON_SECTION_STORAGE, 30)
+    _set_button_icon(_button_of(SECTION_TAMED), ICON_SECTION_TAMED, 30)
+    _set_button_icon(_button_of(SECTION_DIVERSITY), ICON_SECTION_DIVERSITY, 30)
+
+func _set_button_icon(button: Button, icon_name: String, max_size: int) -> void:
+    if button == null or not is_instance_valid(button):
+        return
+    var tex := IconRegistry.get_texture(icon_name)
+    if tex == null:
+        return
+    button.icon = tex
+    button.expand_icon = true
+    button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    button.add_theme_constant_override("icon_max_width", max_size)
+    button.add_theme_constant_override("icon_max_height", max_size)
+
+func _connect_section_buttons() -> void:
+    for entry in section_buttons:
+        var button: Button = entry["button"]
+        if button != null and not button.pressed.is_connected(_on_section_pressed):
+            button.pressed.connect(_on_section_pressed.bind(str(entry["id"])))
+
+func _button_of(section_id: String) -> Button:
+    for entry in section_buttons:
+        if str(entry["id"]) == section_id:
+            return entry["button"]
+    return null
+
+# The switch of the sections: the sections are ordinary panels with a manual
+# visibility — the same approach as with the tabs of the city (city_ui._switch_tab).
+func _switch_section(section_id: String) -> void:
+    active_section = section_id
+    if storage_section != null and is_instance_valid(storage_section):
+        storage_section.visible = section_id == SECTION_STORAGE
+    if tamed_section != null and is_instance_valid(tamed_section):
+        tamed_section.visible = section_id == SECTION_TAMED
+    if diversity_section != null and is_instance_valid(diversity_section):
+        diversity_section.visible = section_id == SECTION_DIVERSITY
+    _update_section_buttons()
+
+func _on_section_pressed(section_id: String) -> void:
+    _switch_section(section_id)
+
+# The active section is highlighted with the same accent as the tab bar of the city.
+func _update_section_buttons() -> void:
+    for entry in section_buttons:
+        var button: Button = entry["button"]
+        if button == null or not is_instance_valid(button):
+            continue
+        UiHelpers.highlight_toggle_button(button, str(entry["id"]) == active_section)
 
 # A reference to WorkerManager is passed from main_map through
 # city_ui.set_worker_manager() (it is called in the _ready of main_map — later than the _ready of
@@ -162,8 +262,9 @@ func _get_icon_texture(icon_file: String) -> Texture2D:
 func refresh():
     _update_planned_consumption_map()
     
-    for child in resources_list.get_children():
-        child.queue_free()
+    _clear_list(storage_list)
+    _clear_list(tamed_list)
+    _clear_list(diversity_list)
     food_toggles.clear()
     amount_labels.clear()
     prod_labels.clear()
@@ -177,12 +278,29 @@ func refresh():
     if ui_helpers and is_instance_valid(ui_helpers):
         ui_helpers.hide_flow_tooltip()
 
-    # --- The domesticated resources by the subgroups ---
+    _fill_tamed_section()
+    _fill_storage_section()
+    _fill_diversity_section()
+
+# Empties the list of a section. The rows are recreated from scratch on every full
+# refresh — the sections are cheap, and a rebuilt list always matches the data of the city.
+func _clear_list(list: Node) -> void:
+    if list == null or not is_instance_valid(list):
+        return
+    for child in list.get_children():
+        child.queue_free()
+
+# --- The section "Tamed resources" ---
+
+# The domesticated resources of the city, grouped by the subgroups.
+func _fill_tamed_section() -> void:
+    if tamed_list == null or not is_instance_valid(tamed_list):
+        return
     if CityData.domesticated_resources.size() > 0:
         var title = Label.new()
         title.text = tr("Tamed resources:")
         title.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
-        resources_list.add_child(title)
+        tamed_list.add_child(title)
 
         var animal_subgroups = {}
         for resource_id in CityData.domesticated_resources:
@@ -196,7 +314,7 @@ func refresh():
             var subgroup_label = Label.new()
             subgroup_label.text = tr("  Subgroup: ") + _get_subgroup_name(subgroup)
             subgroup_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
-            resources_list.add_child(subgroup_label)
+            tamed_list.add_child(subgroup_label)
 
             for animal in animal_subgroups[subgroup]:
                 var row = HBoxContainer.new()
@@ -230,14 +348,15 @@ func refresh():
                 animal_label.mouse_exited.connect(_on_flow_exit.bind(animal["id"]))
                 row.add_child(animal_label)
                 animal_flow_labels.append(animal_label)
-                resources_list.add_child(row)
+                tamed_list.add_child(row)
                 row_flow_labels[animal["id"]] = animal_flow_labels
 
-        var spacer = Label.new()
-        spacer.text = ""
-        resources_list.add_child(spacer)
+# --- The section "Storage" ---
 
-    # --- The goods by the categories ---
+# The goods of the city by the categories.
+func _fill_storage_section() -> void:
+    if storage_list == null or not is_instance_valid(storage_list):
+        return
     var grouped = {}
     for prod_id in city_storage:
         # Science is not shown on the "Resources" tab: it is not a stored good,
@@ -277,7 +396,7 @@ func refresh():
         var items = grouped[cat_id]
         if items.is_empty():
             continue
-        resources_list.add_child(UiHelpers.build_category_header(cat_info["name"]))
+        storage_list.add_child(UiHelpers.build_category_header(cat_info["name"]))
 
         for prod_id in items:
             var amount = city_storage[prod_id]
@@ -286,7 +405,7 @@ func refresh():
             var is_food = pdata.get("category") == "food"
             var row = HBoxContainer.new()
             row.add_theme_constant_override("separation", 6)
-            resources_list.add_child(row)
+            storage_list.add_child(row)
 
             # The checkbox (only for the food)
             if is_food:
@@ -361,7 +480,13 @@ func refresh():
 
             displayed_products[prod_id] = true
 
-    # --- The diversity bonuses (a stub) ---
+    # --- The section "Diversity" ---
+
+# The number of the subgroups of the domesticated resources and the bonuses of the
+# diversity (a stub).
+func _fill_diversity_section() -> void:
+    if diversity_list == null or not is_instance_valid(diversity_list):
+        return
     var animal_subgroups_count = 0
     var plant_subgroups_count = 0
     var animal_subgroup_map = {}
@@ -376,19 +501,16 @@ func refresh():
 
     var total_subgroups = animal_subgroups_count + plant_subgroups_count
     if total_subgroups > 0:
-        var spacer = Label.new()
-        spacer.text = ""
-        resources_list.add_child(spacer)
         var div_label = Label.new()
         div_label.text = tr("Diversity: %d subgroups") % total_subgroups
         div_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.3))
-        resources_list.add_child(div_label)
+        diversity_list.add_child(div_label)
         diversity_label = div_label
 
         var bonus_label = Label.new()
         bonus_label.text = tr("Active bonuses: (coming later)")
         bonus_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.3))
-        resources_list.add_child(bonus_label)
+        diversity_list.add_child(bonus_label)
 
 func update_values():
     # A light refresh: we do not recreate the nodes, but update the texts of the existing ones.

@@ -876,6 +876,9 @@ msgstr ""
 msgid "Disallowed characters in an identifier"
 msgstr ""
 
+msgid "Diversity"
+msgstr ""
+
 msgid "Diversity: %d subgroups"
 msgstr ""
 
@@ -1647,6 +1650,9 @@ msgstr ""
 msgid "Stop: Scouting"
 msgstr ""
 
+msgid "Storage"
+msgstr ""
+
 msgid "Storage:"
 msgstr ""
 
@@ -1663,6 +1669,9 @@ msgid "Take this research out of the queue"
 msgstr ""
 
 msgid "Take this upgrade out of the queue"
+msgstr ""
+
+msgid "Tamed resources"
 msgstr ""
 
 msgid "Tamed resources:"

@@ -141,7 +141,7 @@ func _ready():
     get_viewport().size_changed.connect(_layout_ui)
 
     resources_tab = load("res://scripts/resources_tab.gd").new()
-    resources_tab.setup($ContentPanel/ResourcesPanel/ScrollContainer/ResourcesList, ui_helpers)
+    resources_tab.setup($ContentPanel/ResourcesPanel, ui_helpers)
     add_child(resources_tab)
 
     buildings_tab = load("res://scripts/buildings_tab.gd").new()

@@ -31,11 +31,22 @@ func _run() -> void:
 
     var parent := StubCity.new()
     get_root().add_child(parent)
+    # The panel of the tab "Resources" with the section "Storage" — the tab finds
+    # the lists of the sections by their path inside the panel (see resources_tab.setup).
+    var panel := Control.new()
+    parent.add_child(panel)
+    var storage_section := VBoxContainer.new()
+    storage_section.name = "StorageSection"
+    panel.add_child(storage_section)
+    var scroll := ScrollContainer.new()
+    scroll.name = "ScrollContainer"
+    storage_section.add_child(scroll)
     var list := VBoxContainer.new()
-    parent.add_child(list)
+    list.name = "StorageList"
+    scroll.add_child(list)
 
     var tab = load("res://scripts/resources_tab.gd").new()
-    tab.setup(list, null)
+    tab.setup(panel, null)
     parent.add_child(tab)
 
     var pid := "test_food"

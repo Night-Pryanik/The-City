@@ -876,6 +876,9 @@ msgstr "По убыванию"
 msgid "Disallowed characters in an identifier"
 msgstr "Недопустимые символы в идентификаторе"
 
+msgid "Diversity"
+msgstr "Разнообразие"
+
 msgid "Diversity: %d subgroups"
 msgstr "Разнообразие: %d подгрупп"
 
@@ -1647,6 +1650,9 @@ msgstr "Прервать: Освоение области"
 msgid "Stop: Scouting"
 msgstr "Прервать: Разведка"
 
+msgid "Storage"
+msgstr "Склад"
+
 msgid "Storage:"
 msgstr "Склад:"
 
@@ -1664,6 +1670,9 @@ msgstr "Убрать это исследование из очереди"
 
 msgid "Take this upgrade out of the queue"
 msgstr "Убрать это улучшение из очереди"
+
+msgid "Tamed resources"
+msgstr "Одомашненные ресурсы"
 
 msgid "Tamed resources:"
 msgstr "Одомашненные ресурсы:"

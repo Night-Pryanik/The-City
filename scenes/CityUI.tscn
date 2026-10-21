@@ -137,16 +137,79 @@ offset_right = 183.0
 offset_bottom = 29.0
 text = "Resource list"
 
-[node name="ScrollContainer" type="ScrollContainer" parent="ContentPanel/ResourcesPanel" unique_id=1162039807]
+[node name="SectionsBar" type="HBoxContainer" parent="ContentPanel/ResourcesPanel" unique_id=1900000301]
+layout_mode = 0
+offset_left = 4.0
+offset_top = 32.0
+offset_right = 120.0
+offset_bottom = 66.0
+theme_override_constants/separation = 4
+
+[node name="StorageButton" type="Button" parent="ContentPanel/ResourcesPanel/SectionsBar" unique_id=1900000302]
+custom_minimum_size = Vector2(36, 34)
+layout_mode = 2
+tooltip_text = "Storage"
+
+[node name="TamedButton" type="Button" parent="ContentPanel/ResourcesPanel/SectionsBar" unique_id=1900000303]
+custom_minimum_size = Vector2(36, 34)
+layout_mode = 2
+tooltip_text = "Tamed resources"
+
+[node name="DiversityButton" type="Button" parent="ContentPanel/ResourcesPanel/SectionsBar" unique_id=1900000304]
+custom_minimum_size = Vector2(36, 34)
+layout_mode = 2
+tooltip_text = "Diversity"
+
+[node name="StorageSection" type="VBoxContainer" parent="ContentPanel/ResourcesPanel" unique_id=1900000305]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = 32.0
+offset_top = 70.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="ResourcesList" type="VBoxContainer" parent="ContentPanel/ResourcesPanel/ScrollContainer" unique_id=884097865]
+[node name="ScrollContainer" type="ScrollContainer" parent="ContentPanel/ResourcesPanel/StorageSection" unique_id=1900000306]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="StorageList" type="VBoxContainer" parent="ContentPanel/ResourcesPanel/StorageSection/ScrollContainer" unique_id=1900000307]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="TamedSection" type="VBoxContainer" parent="ContentPanel/ResourcesPanel" unique_id=1900000308]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 70.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ScrollContainer" type="ScrollContainer" parent="ContentPanel/ResourcesPanel/TamedSection" unique_id=1900000309]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="TamedList" type="VBoxContainer" parent="ContentPanel/ResourcesPanel/TamedSection/ScrollContainer" unique_id=1900000310]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="DiversitySection" type="VBoxContainer" parent="ContentPanel/ResourcesPanel" unique_id=1900000311]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 70.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ScrollContainer" type="ScrollContainer" parent="ContentPanel/ResourcesPanel/DiversitySection" unique_id=1900000312]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="DiversityList" type="VBoxContainer" parent="ContentPanel/ResourcesPanel/DiversitySection/ScrollContainer" unique_id=1900000313]
 layout_mode = 2
 theme_override_constants/separation = 4
 
