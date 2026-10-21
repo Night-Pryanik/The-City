@@ -414,6 +414,9 @@ msgstr ""
 msgid "300 px/s"
 msgstr ""
 
+msgid "A citizen has died of starvation. Population: %d"
+msgstr ""
+
 msgid "A range is shown because the goods in the group have different base prices."
 msgstr ""
 

@@ -414,6 +414,9 @@ msgstr "3,0 сек"
 msgid "300 px/s"
 msgstr "300 пикс/с"
 
+msgid "A citizen has died of starvation. Population: %d"
+msgstr "Житель погиб от голода. Население: %d"
+
 msgid "A range is shown because the goods in the group have different base prices."
 msgstr "Диапазон — потому что у товаров группы разные базовые цены."
 

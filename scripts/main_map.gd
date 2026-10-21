@@ -602,6 +602,7 @@ func _ready():
     CityData.research_error.connect(_on_research_error)
     CityData.research_error.connect(hud.show_message)
     CityData.population_changed.connect(_on_population_changed)
+    CityData.famine_death.connect(_on_famine_death)
     # The treasury in the HUD is updated via the tick path (city_updated) with the check of
     # the era of the display of the resources — synchronously with the other resources. The direct
     # signal treasury_changed is not needed here: the income of the internal market changes
@@ -3606,6 +3607,10 @@ func _on_locale_changed(_locale: String) -> void:
 
 func _on_population_changed(_new_pop: int):
     _update_population_hud()
+
+func _on_famine_death(new_pop: int) -> void:
+    if hud != null:
+        hud.show_message(tr("A citizen has died of starvation. Population: %d") % new_pop, GameData.HUD_MESSAGE_IMPORTANT)
 
 func _update_population_hud():
     var pop_label = hud.get_node_or_null("VBoxContainer/PopulationLabel")

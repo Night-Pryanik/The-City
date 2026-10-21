@@ -283,6 +283,8 @@ signal city_updated()
 signal research_completed(tech_id: String)
 signal research_error(message: String, message_type: int)
 signal population_changed(new_population: int)
+# A citizen died of starvation in the famine block.
+signal famine_death(new_population: int)
 # The treasury has changed: new_total is the current whole number of the coins.
 signal treasury_changed(new_total: int)
 signal building_construction_started(building_id: String, build_key: String)
@@ -1763,6 +1765,7 @@ func _check_population_change():
         if idle_population > total_population:
             idle_population = total_population
 
+        emit_signal("famine_death", total_population)
         emit_signal("population_changed", total_population)
         print("The population has decreased to ", total_population)
 
