@@ -94,14 +94,17 @@ theme_override_constants/separation = 8
 
 [node name="FoodLabel" type="Label" parent="TabBarPanel/TopFoodLabel" unique_id=1528058810]
 layout_mode = 2
+size_flags_vertical = 4
 text = "Food: 0"
 
 [node name="PopLabel" type="Label" parent="TabBarPanel/TopFoodLabel" unique_id=1528058811]
 layout_mode = 2
+size_flags_vertical = 4
 text = "Population: 1"
 
 [node name="TreasuryLabel" type="RichTextLabel" parent="TabBarPanel/TopFoodLabel" unique_id=1528058812]
 layout_mode = 2
+size_flags_vertical = 4
 mouse_filter = 2
 bbcode_enabled = true
 text = "Treasury: 0"

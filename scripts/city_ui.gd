@@ -22,6 +22,12 @@ const UiHelpers = preload("res://scripts/ui_helpers.gd")
 # TopFoodLabel — an HBox container with three child labels: food / population /
 # treasury. The treasury is a separate label with a hover, because the tooltip is needed only
 # on it (the breakdown by the sources of income/expense of the treasury).
+#
+# All three labels share one baseline. A Label takes the height of its text and is
+# centred in the row, while the treasury is a RichTextLabel: its line is taller than
+# the text (the coin icon) and its baseline sits half of that extra height lower.
+# The treasury is centred as well (size_flags_vertical = SIZE_SHRINK_CENTER in the
+# scene) — otherwise its row would be a few pixels higher than the other two.
 @onready var top_food_label = $TabBarPanel/TopFoodLabel
 @onready var top_food_value_label = $TabBarPanel/TopFoodLabel/FoodLabel
 @onready var top_pop_value_label = $TabBarPanel/TopFoodLabel/PopLabel
@@ -476,8 +482,7 @@ func _update_food_label():
     ]
 
     # TopFoodLabel — an HBoxContainer with three child labels
-    # (FoodLabel/PopLabel/TreasuryLabel), see the scene CityUI.tscn. The "|" separator
-    # is drawn between them by a separate label in the scene.
+    # (FoodLabel/PopLabel/TreasuryLabel), see the scene CityUI.tscn.
     if top_food_value_label:
         top_food_value_label.text = food_str
     if top_pop_value_label:
