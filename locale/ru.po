@@ -399,6 +399,9 @@ msgstr "0,50 сек"
 msgid "0/sec"
 msgstr "0/сек"
 
+msgid "00:00"
+msgstr "00:00"
+
 msgid "1 sec"
 msgstr "1 сек"
 
@@ -701,6 +704,9 @@ msgstr "Клик — панель управления зданием"
 
 msgid "Click: sort the list; a repeated click reverses the order"
 msgstr "Нажмите чтобы отсортировать список; повторное нажатие меняет порядок"
+
+msgid "Clock"
+msgstr "Часы"
 
 msgid "Close"
 msgstr "Закрыть"
@@ -1688,6 +1694,9 @@ msgstr "Настройки"
 
 msgid "Show borders between tiles"
 msgstr "Показывать границы между клетками"
+
+msgid "Show clock"
+msgstr "Показывать часы"
 
 msgid "Slot %d:"
 msgstr "Слот %d:"

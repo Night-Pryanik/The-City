@@ -399,6 +399,9 @@ msgstr ""
 msgid "0/sec"
 msgstr ""
 
+msgid "00:00"
+msgstr ""
+
 msgid "1 sec"
 msgstr ""
 
@@ -700,6 +703,9 @@ msgid "Click — building control panel"
 msgstr ""
 
 msgid "Click: sort the list; a repeated click reverses the order"
+msgstr ""
+
+msgid "Clock"
 msgstr ""
 
 msgid "Close"
@@ -1687,6 +1693,9 @@ msgid "Settings"
 msgstr ""
 
 msgid "Show borders between tiles"
+msgstr ""
+
+msgid "Show clock"
 msgstr ""
 
 msgid "Slot %d:"
