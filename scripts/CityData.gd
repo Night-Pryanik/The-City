@@ -1972,6 +1972,8 @@ func are_prerequisites_met(tech_id: String) -> bool:
     return false
 
 # Returns the human-readable text of the requirements of the technology.
+# The alternative groups are wrapped in parentheses: without them "A and B or C and D"
+# does not show what the "or" relates to.
 func get_tech_prerequisites_text(tech_id: String) -> String:
     var tech_data = _get_tech_data(tech_id)
     if tech_data == null or not tech_data.has("prerequisites"):
@@ -1984,7 +1986,12 @@ func get_tech_prerequisites_text(tech_id: String) -> String:
             var req_data = _get_tech_data(req_id)
             and_names.append(req_data.get("name", req_id) if req_data else req_id)
         or_parts.append(tr(" and ").join(and_names))
-    return tr(" or ").join(or_parts)
+    if or_parts.size() < 2:
+        return tr(" or ").join(or_parts)
+    var alternatives := []
+    for part in or_parts:
+        alternatives.append("(%s)" % part)
+    return tr(" or ").join(alternatives)
 
 # Is the technology available for learning (the prerequisites are met, it is not learned,
 # it is not in progress, the era is not above the current one).
