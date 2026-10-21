@@ -2,6 +2,8 @@
 @tool
 extends Node
 
+const JsonUtils = preload("res://scripts/json_utils.gd")
+
 var terrains: Dictionary = {}
 var covers: Dictionary = {}
 var raw_resources: Dictionary = {}
@@ -53,6 +55,13 @@ const DISPLAY_FIELDS := ["name", "description", "flavor"]
 # identifier (see _localize_display_fields).
 const VALUE_MAP_FIELDS := ["priority_names"]
 
+# The collections whose records are addressed by a field other than "id" — the same
+# addressing the validator uses (data_validator.ENTITY_ID_FIELDS). A mod overrides such a
+# record by that field, exactly as by "id".
+const ENTITY_ID_FIELDS := {
+    "consumption": "resource",
+}
+
 # The top-level keys whose elements have an "id" — by them we search
 # for the entity declaration. The order and composition repeat what load_all_data parses.
 const SOURCE_COLLECTIONS := [
@@ -78,11 +87,21 @@ const SOURCE_COLLECTIONS := [
     "special_actions",
 ]
 
-func load_all_data():
+# Reads the vanilla data and lays the enabled mods on top of it.
+#
+# mod_dirs — the data folders of the active mods, in the order they must be applied
+# (the mods are already sorted by dependency by ModManager). An empty list — a clean
+# vanilla game.
+func load_all_data(mod_dirs: Array = []):
     var merged_data = _load_all_json_files("res://data")
     if merged_data == null:
         print("Error: failed to load the data from the data folder.")
         return
+
+    # The mods are merged into the RAW tree, before the collections are assembled:
+    # everything below reads the assembled dictionaries, so a record replaced here is
+    # indistinguishable from a vanilla one for the rest of the game.
+    _apply_mods(merged_data, mod_dirs)
 
     raw_data = merged_data
 
@@ -215,7 +234,6 @@ func load_all_data():
     # through its block. See _flatten_balance_blocks.
     game_balance = _flatten_balance_blocks(merged_data.get("game_balance", {}))
 
-
 # Flattens the named blocks of the game balance into one flat dictionary.
 #
 # A block is a nested dictionary of constants. One level is enough — the blocks group
@@ -237,7 +255,6 @@ func _flatten_balance_blocks(blocks: Dictionary) -> Dictionary:
         else:
             flat[key] = value
     return flat
-
 
 # Translates the values of the fields the player sees (DISPLAY_FIELDS) into the current
 # game language. The walk is recursive: one function covers both the flat lists
@@ -272,7 +289,6 @@ func _localize_display_fields(node: Variant, context: String = "") -> void:
         for item in node:
             _localize_display_fields(item, context)
 
-
 func _load_all_json_files(folder_path: String) -> Dictionary:
     var result = {}
     var dir = DirAccess.open(folder_path)
@@ -293,9 +309,8 @@ func _load_all_json_files(folder_path: String) -> Dictionary:
                 print("Error: failed to open the file ", file_path)
             else:
                 var text = file.get_as_text()
-                # We clean the text of comments
-                var cleaned = _strip_json_comments(text)
-                var data = JSON.parse_string(cleaned)
+                # The files allow comments, which JSON does not (see json_utils.gd).
+                var data = JsonUtils.parse(text)
                 if data == null:
                     print("Error: failed to parse JSON from ", file_path)
                 else:
@@ -338,7 +353,6 @@ func _remember_sources(file_path: String, raw_text: String, data: Dictionary):
             }
     _remember_consumption_sources(file_path, raw_text, data)
 
-
 # The origin of the TOP-LEVEL keys — the collections themselves ("resources", "crafts",
 # "game_balance"), indexed as "@key:<name>". A collection has no entity of its own to hang
 # the index on, while the field whitelist of the validator needs a file for two cases: an
@@ -357,7 +371,6 @@ func _remember_key_sources(file_path: String, raw_text: String, data: Dictionary
             "line": _find_key_line(raw_text, str(key)),
         }
 
-
 # The line of a top-level key — the one where it is written as `"name":`, and not merely
 # mentioned inside a comment or in the value of another field.
 func _find_key_line(raw_text: String, key: String) -> int:
@@ -371,7 +384,6 @@ func _find_key_line(raw_text: String, key: String) -> int:
                 return i + 1
             at = line.find(needle, at + 1)
     return 0
-
 
 # The consumption rules (data/consumption.json) have no identifier of their own:
 # a rule is declared by the resource/profession/amount/interval fields, and there is
@@ -402,7 +414,6 @@ func _remember_consumption_sources(file_path: String, raw_text: String, data: Di
             "line": _find_resource_decl_line(raw_text, res_key),
         }
 
-
     # The declaration line of a consumption rule — the one where the "resource" field
     # with this value stands.
     #
@@ -427,7 +438,7 @@ func _find_resource_decl_line(raw_text: String, res_key: String) -> int:
     # The line on which an entity with such an id is DECLARED, — or 0 if it was not found.
     #
     # We search in the ORIGINAL text of the file, and not in the one cleaned of
-    # comments: _strip_json_comments
+    # comments: JsonUtils.strip_comments
     # discards the line breaks inside /* … */, therefore the line numbering of the cleaned
     # text would not match what the author sees in the editor (in data/improvements.json
     # the comment header takes up half the screen).
@@ -461,55 +472,71 @@ func _merge_dictionaries(target: Dictionary, source: Dictionary):
         else:
             target[key] = source[key]
 
-func _strip_json_comments(json_string: String) -> String:
-    var result = ""
-    var in_string = false
-    var in_single_line_comment = false
-    var in_multi_line_comment = false
-    var i = 0
-    while i < json_string.length():
-        var c = json_string[i]
-        var next_c = json_string[i + 1] if i + 1 < json_string.length() else ""
-        var prev_c = json_string[i - 1] if i > 0 else ""
-
-        if not in_string and not in_single_line_comment and not in_multi_line_comment:
-            if c == '"':
-                in_string = true
-                result += c
-                i += 1
-                continue
-            elif c == '/' and next_c == '/':
-                in_single_line_comment = true
-                i += 2
-                continue
-            elif c == '/' and next_c == '*':
-                in_multi_line_comment = true
-                i += 2
-                continue
-
-        if in_string:
-            if c == '"' and prev_c != '\\':
-                in_string = false
-            result += c
-            i += 1
+# --- MODS ----------------------------------------------------------------------
+#
+# A mod ships the same kind of files as data/*.json, in its own "data" folder. Two rules
+# cover the whole merge:
+#
+#   1. A record whose identifier the vanilla data does not have is simply added.
+#   2. A record whose identifier the vanilla data already has OVERRIDES it field by
+#      field: the fields the mod writes replace the vanilla values, the fields it does
+#      not write keep theirs. An overridden record is never duplicated.
+#
+# The value of an overridden field is taken as a whole: a mod that writes "produces"
+# replaces that dictionary, it does not add entries to the vanilla one. Only the
+# top-level dictionaries that are not collections of entities (game_balance, modifiers,
+# map_config, qualities) are merged recursively, because their blocks are a layout of
+# the file: a mod changing one constant must not erase its neighbours.
+#
+# The mods are applied in the order of mod_dirs, so a later mod overrides an earlier
+# one. ModManager orders them by dependency.
+func _apply_mods(target: Dictionary, mod_dirs: Array) -> void:
+    for mod_dir in mod_dirs:
+        var folder := str(mod_dir).path_join("data")
+        if DirAccess.open(folder) == null:
             continue
-
-        if in_single_line_comment:
-            if c == '\n':
-                in_single_line_comment = false
-                result += c # we keep the line break
-            i += 1
+        var mod_data = _load_all_json_files(folder)
+        if mod_data.is_empty():
             continue
+        _merge_mod_data(target, mod_data)
 
-        if in_multi_line_comment:
-            if c == '*' and next_c == '/':
-                in_multi_line_comment = false
-                i += 2
-                continue
-            i += 1
+func _merge_mod_data(target: Dictionary, mod: Dictionary) -> void:
+    for key in mod.keys():
+        var value = mod[key]
+        if not target.has(key):
+            target[key] = value
+        elif target[key] is Array and value is Array:
+            _merge_entity_array(target[key], value, str(key))
+        elif target[key] is Dictionary and value is Dictionary:
+            _deep_merge_dict(target[key], value)
+        else:
+            target[key] = value
+
+func _merge_entity_array(base: Array, records: Array, collection: String) -> void:
+    var id_field := str(ENTITY_ID_FIELDS.get(collection, "id"))
+    var positions := {}
+    for i in base.size():
+        var record = base[i]
+        if record is Dictionary and record.has(id_field):
+            positions[str(record[id_field])] = i
+    for record in records:
+        if not (record is Dictionary) or not record.has(id_field):
+            # A record without an identifier (a city name) has nothing to override.
+            base.append(record)
             continue
+        var id := str(record[id_field])
+        if positions.has(id):
+            var existing = base[positions[id]]
+            for field in record.keys():
+                existing[field] = record[field]
+        else:
+            positions[id] = base.size()
+            base.append(record)
 
-        result += c
-        i += 1
-
-    return result
+func _deep_merge_dict(target: Dictionary, source: Dictionary) -> void:
+    for key in source.keys():
+        var value = source[key]
+        if target.has(key) and target[key] is Dictionary and value is Dictionary:
+            _deep_merge_dict(target[key], value)
+        else:
+            target[key] = value

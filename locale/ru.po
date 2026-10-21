@@ -228,6 +228,9 @@ msgstr " → база ×%.2f…×%.2f"
 msgid "\"%s\" belongs to the next era. Advance to the %s era first."
 msgstr "«%s» относится к следующей эпохе. Сначала перейдите в эпоху %s."
 
+msgid "\"%s\" conflicts with \"%s\"."
+msgstr "«%s» конфликтует с «%s»."
+
 msgid "%.1f sec"
 msgstr "%.1f сек"
 
@@ -477,6 +480,9 @@ msgstr "Назначить рабочего на улучшение"
 msgid "Audio"
 msgstr "Аудио"
 
+msgid "Authors: %s"
+msgstr "Авторы: %s"
+
 msgid "Available buildings:"
 msgstr "Доступные постройки:"
 
@@ -645,6 +651,9 @@ msgstr "Освоить нельзя: территория чужого горо�
 msgid "Choose a city name"
 msgstr "Выберите название города"
 
+msgid "Choose the mods for this game. Each save keeps its own set."
+msgstr "Выберите модификации для этой игры. У каждого сохранения свой набор."
+
 msgid "City"
 msgstr "Город"
 
@@ -716,6 +725,9 @@ msgstr "Завершено: %s"
 
 msgid "Confirm"
 msgstr "Подтверждение"
+
+msgid "Conflicts with: %s"
+msgstr "Конфликтует с: %s"
 
 msgid "Congratulations, your city has reached the next level of development!\nDo you want to transition to the next era?"
 msgstr "Поздравляем, ваш город достиг следующего уровня развития!\nПерейти в следующую эпоху?"
@@ -1065,6 +1077,9 @@ msgstr "Идентификатор «%s» неотличим на глаз от 
 msgid "Identifier is indistinguishable from another by eye"
 msgstr "Идентификатор неотличим на глаз от другого"
 
+msgid "Identifier: %s"
+msgstr "Идентификатор: %s"
+
 msgid "Improved building version not found"
 msgstr "Улучшенная версия здания не найдена"
 
@@ -1167,6 +1182,12 @@ msgstr "Меню"
 msgid "Missing: "
 msgstr "Не хватает: "
 
+msgid "Mods"
+msgstr "Модификации"
+
+msgid "Mods: %s"
+msgstr "Моификации: %s"
+
 msgid "New era"
 msgstr "Новая эпоха"
 
@@ -1208,6 +1229,9 @@ msgstr "Нет свободных рабочих!"
 
 msgid "No messages yet."
 msgstr "Сообщений пока нет."
+
+msgid "No mods are installed."
+msgstr "Модификации не установлены."
 
 msgid "No new sections on this route"
 msgstr "На этом маршруте нет новых участков"
@@ -1470,6 +1494,9 @@ msgstr "Не выполнены требования: "
 msgid "Requires the \"Canals\" technology"
 msgstr "Нужна технология «Каналы»"
 
+msgid "Requires: %s"
+msgstr "Требует: %s"
+
 msgid "Research"
 msgstr "Изучить"
 
@@ -1677,6 +1704,9 @@ msgstr "Начать"
 msgid "Start operation (%s)"
 msgstr "Запустить работу (%s)"
 
+msgid "Start the game"
+msgstr "Начать игру"
+
 msgid "Stop \"%s\""
 msgstr "Прервать «%s»"
 
@@ -1803,6 +1833,9 @@ msgstr "Нужен доступ города к пресной воде"
 msgid "The contract is already closed."
 msgstr "Контракт уже закрыт."
 
+msgid "The dependency \"%s\" is not a valid identifier."
+msgstr "Зависимость «%s» — недопустимый идентификатор."
+
 msgid "The game does not read this field: its value is silently lost. Fields allowed here: %s."
 msgstr "Игра не читает это поле: значение молча теряется. Здесь допустимы поля: %s."
 
@@ -1815,11 +1848,38 @@ msgstr "Товар в пути из городка. Отмена вернёт н
 msgid "The goods have no price."
 msgstr "У товара нет цены."
 
+msgid "The identifier \"%s\" may consist of latin letters, digits and underscores only."
+msgstr "Идентификатор «%s» может состоять только из латинских букв, цифр и подчёркиваний."
+
 msgid "The interface font. Any font file (.ttf, .otf) put into the fonts folder is listed here and is applied at once, without restarting the game."
 msgstr "Шрифт интерфейса. Любой файл шрифта (.ttf, .otf), положенный в папку fonts, появляется в этом списке и применяется сразу, без перезапуска игры."
 
 msgid "The loader does not read this key, so everything under it is ignored. Check the spelling of the collection name."
 msgstr "Загрузчик не читает этот ключ, поэтому всё, что под ним, игнорируется. Проверьте написание имени коллекции."
+
+msgid "The manifest has no \"%s\" field."
+msgstr "В манифесте нет поля «%s»."
+
+msgid "The manifest has no author."
+msgstr "В манифесте не указан автор."
+
+msgid "The manifest has no identifier."
+msgstr "В манифесте нет идентификатора."
+
+msgid "The manifest is not readable JSON."
+msgstr "Манифест — нечитаемый JSON."
+
+msgid "The mod conflicts with itself."
+msgstr "Модификация конфликтует сама с собой."
+
+msgid "The mod data has errors, so the mod was not switched on:"
+msgstr "В данных модификации есть ошибки, поэтому она не была включена:"
+
+msgid "The mod depends on itself."
+msgstr "Модификация зависит сама от себя."
+
+msgid "The mod was not found."
+msgstr "Модификация не найдена."
 
 msgid "The simulation is stopped. Your actions are queued until you resume it."
 msgstr "Симуляция остановлена. Ваши действия попадут в очередь до возобновления."
@@ -1877,6 +1937,9 @@ msgstr "Здесь — кольцо влияния чужого городка, 
 
 msgid "This is the city itself"
 msgstr "Это сам город"
+
+msgid "This mod is required by \"%s\"."
+msgstr "Эта модификация требуется для «%s»."
 
 msgid "Tile borders"
 msgstr "Границы клеток"
@@ -2049,6 +2112,9 @@ msgstr "[center][color=#c9c9c9]Условие для перехода:[/color] �
 msgid "at least 1 citizen is needed to build"
 msgstr "нужен хотя бы 1 житель для строительства"
 
+msgid "by %s"
+msgstr "Автор: %s"
+
 msgid "city access to fresh water"
 msgstr "доступ города к пресной воде"
 
@@ -2114,6 +2180,9 @@ msgstr "работает"
 
 msgid "×%d"
 msgstr "×%d"
+
+msgid "…and %d more. The full list is in the console."
+msgstr "…и ещё %d. Полный список — в консоли."
 
 msgid "← Back"
 msgstr "← Назад"

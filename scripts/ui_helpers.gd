@@ -156,6 +156,11 @@ static func save_tooltip(meta: Dictionary) -> String:
     if not era.is_empty():
         lines.append(TranslationServer.translate("Era: %s") % era)
     lines.append(TranslationServer.translate("Population: %d") % int(meta.get("population", 0)))
+    # The mods belong to the save, not to the game: a slot may run a completely
+    # different set, and the player must see which one a click will start.
+    var mods: Array = meta.get("mods", [])
+    if not mods.is_empty():
+        lines.append(TranslationServer.translate("Mods: %s") % ", ".join(PackedStringArray(mods)))
     lines.append(TranslationServer.translate("Saved: %s") % save_date(int(meta.get("saved_at", 0))))
     return "\n".join(lines)
 

@@ -7,6 +7,7 @@ extends Control
 const DataValidator = preload("res://scripts/data_validator.gd")
 const DataProblemsWindow = preload("res://scripts/data_problems_window.gd")
 const UiHelpers = preload("res://scripts/ui_helpers.gd")
+const ModListScene = preload("res://scenes/mod_list.tscn")
 
 @onready var continue_button = $VBoxContainer/ContinueButton
 @onready var new_game_button = $VBoxContainer/NewGameButton
@@ -16,6 +17,13 @@ const UiHelpers = preload("res://scripts/ui_helpers.gd")
 
 # The window of the saves, created on the first click on "Load game".
 var save_load_window: CanvasLayer = null
+# The dialog of a new game: the city name, and the mods of that game folded away under
+# it. It is built once and kept — the choice of mods survives a "Back".
+var new_game_dialog: ConfirmationDialog = null
+var city_name_edit: LineEdit = null
+var mods_toggle: Button = null
+var mods_holder: Control = null
+var mod_list = null
 
 func _ready():
     # The data comes first: the tooltip of "Continue game" names the era of the save,
@@ -90,28 +98,42 @@ func _on_continue_game():
         # offering a game that cannot be loaded.
         _refresh_save_buttons()
 
+# A new game starts with the city name. The mods of that game are folded away under the
+# name field: they are a detail of the game being created, not its first question, and
+# most games are started without any.
 func _on_new_game():
-    # We load the data in advance: it is needed for a random name suggestion
-    # in the city naming dialog.
-    GameData.load_all_data()
-    _show_city_name_dialog()
+    if new_game_dialog == null:
+        _build_new_game_dialog()
+    mod_list.open(ModManager.active_ids)
+    _refresh_mods_toggle()
+    _set_mods_expanded(false)
+    city_name_edit.text = tr("City")
+    new_game_dialog.popup_centered()
+    city_name_edit.grab_focus()
+    city_name_edit.select_all()
 
-func _show_city_name_dialog():
+func _build_new_game_dialog():
     var dialog = ConfirmationDialog.new()
     dialog.title = tr("Choose a city name")
     dialog.ok_button_text = tr("OK")
     dialog.cancel_button_text = tr("Back")
 
+    # An AcceptDialog does not arrange its children: every direct child is put at the
+    # content origin, on top of the others. The rows live in a column of their own.
+    var content = VBoxContainer.new()
+    content.add_theme_constant_override("separation", 6)
+    dialog.add_child(content)
+
     var name_row = HBoxContainer.new()
     name_row.custom_minimum_size = Vector2(0, 30)
     name_row.add_theme_constant_override("separation", 4)
-    var line_edit = LineEdit.new()
-    line_edit.text = tr("City")
-    line_edit.custom_minimum_size = Vector2(260, 30)
-    line_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    line_edit.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-    line_edit.select_all_on_focus = true
-    name_row.add_child(line_edit)
+    city_name_edit = LineEdit.new()
+    city_name_edit.text = tr("City")
+    city_name_edit.custom_minimum_size = Vector2(260, 30)
+    city_name_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    city_name_edit.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    city_name_edit.select_all_on_focus = true
+    name_row.add_child(city_name_edit)
 
     var random_button = Button.new()
     random_button.custom_minimum_size = Vector2(30, 30)
@@ -120,23 +142,77 @@ func _show_city_name_dialog():
     random_button.icon = load("res://icons/dice.svg")
     random_button.tooltip_text = tr("Suggest another name")
     random_button.pressed.connect(func():
-        line_edit.text = GameData.get_random_city_name()
-        line_edit.select_all()
-        line_edit.grab_focus()
+        city_name_edit.text = GameData.get_random_city_name()
+        city_name_edit.select_all()
+        city_name_edit.grab_focus()
     )
     name_row.add_child(random_button)
-    dialog.add_child(name_row)
+    content.add_child(name_row)
 
-    line_edit.text_submitted.connect(func(_text): dialog.get_ok_button().pressed.emit())
-    dialog.confirmed.connect(func():
-        _start_new_game(line_edit.text)
-        dialog.queue_free()
-    )
-    dialog.canceled.connect(dialog.queue_free)
+    mods_toggle = Button.new()
+    mods_toggle.toggle_mode = true
+    mods_toggle.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+    mods_toggle.toggled.connect(_set_mods_expanded)
+    content.add_child(mods_toggle)
+
+    # The dialog sizes itself to its children and does not care whether they are
+    # visible, so the room for the list is reserved by a holder of its own: a plain
+    # Control asks for exactly what it is told to ask for.
+    mods_holder = Control.new()
+    mods_holder.clip_contents = true
+    content.add_child(mods_holder)
+
+    mod_list = ModListScene.instantiate()
+    mod_list.visible = false
+    mod_list.selection_changed.connect(_on_mods_changed)
+    mod_list.layout_changed.connect(_on_mod_list_layout_changed)
+    mods_holder.add_child(mod_list)
+    mod_list.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+    city_name_edit.text_submitted.connect(func(_text): dialog.get_ok_button().pressed.emit())
+    dialog.confirmed.connect(func(): _start_new_game(city_name_edit.text))
     add_child(dialog)
-    dialog.popup_centered()
-    line_edit.grab_focus()
-    line_edit.select_all()
+    new_game_dialog = dialog
+
+# The list is unfolded by the toggle, and it starts folded on every new game: the player
+# who does not care about mods never has to scroll past them.
+func _set_mods_expanded(expanded: bool):
+    mods_toggle.set_pressed_no_signal(expanded)
+    mod_list.visible = expanded
+    _fit_dialog()
+
+func _fit_dialog():
+    var list_size: Vector2 = mod_list.get_combined_minimum_size()
+    mods_holder.custom_minimum_size = Vector2(list_size.x, list_size.y if mod_list.visible else 0.0)
+    # An AcceptDialog keeps the size it was shown with, so the window is refitted to its
+    # content and put back into the middle — otherwise the window would hang in a corner
+    # of the screen after it grows or shrinks.
+    new_game_dialog.reset_size()
+    var screen: Vector2 = get_viewport().get_visible_rect().size
+    if screen.x > 0.0 and screen.y > 0.0:
+        new_game_dialog.position = Vector2i((screen - Vector2(new_game_dialog.size)) * 0.5)
+
+# The minimum size of the list is known only after its container has been sorted, so the
+# refit after a change inside the list waits a frame.
+func _on_mod_list_layout_changed():
+    await get_tree().process_frame
+    _fit_dialog()
+
+# The set is applied at once, and not on "OK": the dialog suggests a random city name,
+# and a mod may bring its own names. The game that starts therefore always runs exactly
+# the data the player has just chosen.
+func _on_mods_changed(mod_ids: Array):
+    var changed: bool = mod_ids != ModManager.active_ids
+    ModManager.set_active(mod_ids)
+    if changed:
+        GameData.load_all_data()
+    _refresh_mods_toggle()
+
+# The caption tells at a glance that a game is about to start with mods, even while the
+# list is folded.
+func _refresh_mods_toggle():
+    var count: int = mod_list.selected_ids().size()
+    mods_toggle.text = tr("Mods") if count == 0 else "%s (%d)" % [tr("Mods"), count]
 
 func _start_new_game(city_name: String):
     # Empty input — we substitute a random name.

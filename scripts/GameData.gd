@@ -44,10 +44,36 @@ var entity_sources: Dictionary = {}
 # above. The validator walks it for the field whitelist (data_validator._validate_schema):
 # the assembled collections do not keep every key the author wrote.
 var raw_data: Dictionary = {}
+# The mods of the current game: their identifiers and the data folders to lay over the
+# vanilla data. ModManager pushes both here when the set changes (a new game, a loaded
+# save), so load_all_data() needs no knowledge of the mod storage.
+var active_mod_ids: Array = []
+var active_mod_dirs: Array = []
 
 func load_all_data():
     var loader = load("res://scripts/data_loader.gd").new()
-    loader.load_all_data()
+    loader.load_all_data(active_mod_dirs)
+    _assign_from(loader)
+    loader.free()
+    data_loaded = true
+
+# A detached copy of the data: vanilla plus the given mods. It is what the mod list
+# validates when a checkbox is switched on — the check must see the game exactly
+# as the chosen set would build it, and it must not disturb the running game.
+#
+# The caller owns the returned node and must free() it.
+func build_probe(mod_dirs: Array):
+    var probe = get_script().new()
+    var loader = load("res://scripts/data_loader.gd").new()
+    loader.load_all_data(mod_dirs)
+    probe._assign_from(loader)
+    probe.active_mod_dirs = mod_dirs.duplicate()
+    # The collections are copies of the loader's data, not references to the node: the
+    # loader can go right away, the probe is freed by the caller.
+    loader.free()
+    return probe
+
+func _assign_from(loader) -> void:
     terrains = loader.terrains
     covers = loader.covers
     raw_resources = loader.raw_resources
@@ -74,7 +100,6 @@ func load_all_data():
     roads_by_level = loader.roads_by_level
     entity_sources = loader.entity_sources
     raw_data = loader.raw_data
-    data_loaded = true
 
 # === ROAD LEVELS (data/roads.json) ===
 #

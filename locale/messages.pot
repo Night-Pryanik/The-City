@@ -228,6 +228,9 @@ msgstr ""
 msgid "\"%s\" belongs to the next era. Advance to the %s era first."
 msgstr ""
 
+msgid "\"%s\" conflicts with \"%s\"."
+msgstr ""
+
 msgid "%.1f sec"
 msgstr ""
 
@@ -477,6 +480,9 @@ msgstr ""
 msgid "Audio"
 msgstr ""
 
+msgid "Authors: %s"
+msgstr ""
+
 msgid "Available buildings:"
 msgstr ""
 
@@ -645,6 +651,9 @@ msgstr ""
 msgid "Choose a city name"
 msgstr ""
 
+msgid "Choose the mods for this game. Each save keeps its own set."
+msgstr ""
+
 msgid "City"
 msgstr ""
 
@@ -715,6 +724,9 @@ msgid "Completed: %s"
 msgstr ""
 
 msgid "Confirm"
+msgstr ""
+
+msgid "Conflicts with: %s"
 msgstr ""
 
 msgid "Congratulations, your city has reached the next level of development!\nDo you want to transition to the next era?"
@@ -1065,6 +1077,9 @@ msgstr ""
 msgid "Identifier is indistinguishable from another by eye"
 msgstr ""
 
+msgid "Identifier: %s"
+msgstr ""
+
 msgid "Improved building version not found"
 msgstr ""
 
@@ -1167,6 +1182,12 @@ msgstr ""
 msgid "Missing: "
 msgstr ""
 
+msgid "Mods"
+msgstr ""
+
+msgid "Mods: %s"
+msgstr ""
+
 msgid "New era"
 msgstr ""
 
@@ -1207,6 +1228,9 @@ msgid "No free workers!"
 msgstr ""
 
 msgid "No messages yet."
+msgstr ""
+
+msgid "No mods are installed."
 msgstr ""
 
 msgid "No new sections on this route"
@@ -1470,6 +1494,9 @@ msgstr ""
 msgid "Requires the \"Canals\" technology"
 msgstr ""
 
+msgid "Requires: %s"
+msgstr ""
+
 msgid "Research"
 msgstr ""
 
@@ -1677,6 +1704,9 @@ msgstr ""
 msgid "Start operation (%s)"
 msgstr ""
 
+msgid "Start the game"
+msgstr ""
+
 msgid "Stop \"%s\""
 msgstr ""
 
@@ -1803,6 +1833,9 @@ msgstr ""
 msgid "The contract is already closed."
 msgstr ""
 
+msgid "The dependency \"%s\" is not a valid identifier."
+msgstr ""
+
 msgid "The game does not read this field: its value is silently lost. Fields allowed here: %s."
 msgstr ""
 
@@ -1815,10 +1848,37 @@ msgstr ""
 msgid "The goods have no price."
 msgstr ""
 
+msgid "The identifier \"%s\" may consist of latin letters, digits and underscores only."
+msgstr ""
+
 msgid "The interface font. Any font file (.ttf, .otf) put into the fonts folder is listed here and is applied at once, without restarting the game."
 msgstr ""
 
 msgid "The loader does not read this key, so everything under it is ignored. Check the spelling of the collection name."
+msgstr ""
+
+msgid "The manifest has no \"%s\" field."
+msgstr ""
+
+msgid "The manifest has no author."
+msgstr ""
+
+msgid "The manifest has no identifier."
+msgstr ""
+
+msgid "The manifest is not readable JSON."
+msgstr ""
+
+msgid "The mod conflicts with itself."
+msgstr ""
+
+msgid "The mod data has errors, so the mod was not switched on:"
+msgstr ""
+
+msgid "The mod depends on itself."
+msgstr ""
+
+msgid "The mod was not found."
 msgstr ""
 
 msgid "The simulation is stopped. Your actions are queued until you resume it."
@@ -1876,6 +1936,9 @@ msgid "This is inside another town's influence ring — cannot build"
 msgstr ""
 
 msgid "This is the city itself"
+msgstr ""
+
+msgid "This mod is required by \"%s\"."
 msgstr ""
 
 msgid "Tile borders"
@@ -2049,6 +2112,9 @@ msgstr ""
 msgid "at least 1 citizen is needed to build"
 msgstr ""
 
+msgid "by %s"
+msgstr ""
+
 msgid "city access to fresh water"
 msgstr ""
 
@@ -2113,6 +2179,9 @@ msgid "working"
 msgstr ""
 
 msgid "×%d"
+msgstr ""
+
+msgid "…and %d more. The full list is in the console."
 msgstr ""
 
 msgid "← Back"

@@ -1,0 +1,22 @@
+{
+  // A NEW product: "glazed_tile" is not in the vanilla data, so it is added next to the
+  // vanilla products. Its icon is an existing file — a mod ships its own pictures in its
+  // folder, but this one only demonstrates the merge.
+  "resources": [
+    {
+      "id": "glazed_tile",
+      "price": 18,
+      "name": "Glazed Tile",
+      "type": "product",
+      "category": "construction_material",
+      "icon": "bricks.png"
+    },
+    // An EXISTING product: only "price" and "name" are written here, every other field
+    // of the vanilla "flour" (category, type, icon) keeps its value.
+    {
+      "id": "flour",
+      "price": 12,
+      "name": "Flour (Test Mod)"
+    }
+  ]
+}

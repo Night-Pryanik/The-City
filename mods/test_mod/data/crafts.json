@@ -1,0 +1,13 @@
+{
+  // A NEW recipe: it produces the new product in the new building.
+  "crafts": [
+    {
+      "id": "fire_glazed_tile",
+      "name": "Glazed Tiles",
+      "produced_in": [ "tile_kiln" ],
+      "resources": { "bricks": 10 },
+      "result": { "glazed_tile": 10 },
+      "time": 8
+    }
+  ]
+}

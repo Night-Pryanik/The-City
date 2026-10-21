@@ -63,6 +63,7 @@ func load_game(slot_id: String = "") -> bool:
         printerr("Save loading error: the slot ", id, " is not readable")
         return false
     saved_data = parsed
+    _apply_saved_mods(parsed)
     is_loaded = true
     _store_last_slot(id)
     print("The game is loaded from ", id, ".")
@@ -145,8 +146,38 @@ func make_meta(slot_id: String, save_name: String, data: Dictionary) -> Dictiona
         "city_name": city,
         "saved_at": int(Time.get_unix_time_from_system()),
         "era_index": int(data.get("current_era_index", 0)),
-        "population": int(data.get("total_population", 0))
+        "population": int(data.get("total_population", 0)),
+        "mods": _mod_ids(data)
     }
+
+# The mods of a save. They belong to the save and not to the player: two slots may run
+# completely different sets, so the metadata carries the list for the save list, and the
+# save itself carries it for the game.
+func _mod_ids(data: Dictionary) -> Array:
+    var ids = data.get("mods", null)
+    return ids.duplicate() if ids is Array else []
+
+# The set a loaded save runs with is restored here, before the scene reads the data:
+# main_map calls GameData.load_all_data() after this, and the data is assembled with
+# exactly the mods the save was created with.
+func _apply_saved_mods(data: Dictionary) -> void:
+    var mod_manager = _mod_manager()
+    if mod_manager == null:
+        return
+    mod_manager.set_active(_mod_ids(data))
+
+func _current_mod_ids() -> Array:
+    var mod_manager = _mod_manager()
+    return mod_manager.active_ids.duplicate() if mod_manager != null else []
+
+# The autoload is looked up through the tree root rather than by its global name: the
+# name of an autoload declared after this one is not resolved in this script (the same
+# reason the tests address the autoloads by node path).
+func _mod_manager():
+    var loop := Engine.get_main_loop()
+    if not (loop is SceneTree):
+        return null
+    return (loop as SceneTree).root.get_node_or_null("ModManager")
 
 # A fresh id: the time of the creation, so that the slots of one player keep the
 # order of their creation in the file system as well.
@@ -217,6 +248,9 @@ func _write_json(path: String, value: Variant) -> bool:
 func _collect_data(main_map: Node) -> Dictionary:
     var build_manager = main_map.get_node_or_null("BuildManager")
     return {
+        # The mods of the running game. A save without them would be loaded on top of
+        # whatever set the next game happens to use.
+        "mods": _current_mod_ids(),
         "city_storage": CityData.city_storage,
         "city_quality_detail": CityData.city_quality_detail,
         "production_rates": CityData.production_rates,

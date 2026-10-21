@@ -1,0 +1,21 @@
+{
+  // A NEW building: it exists only in this mod, so it is added to the vanilla buildings.
+  "buildings": [
+    {
+      "id": "tile_kiln",
+      "name": "Tile Kiln",
+      "description": "A kiln that fires bricks into glazed tiles.",
+      "work_cost": 20,
+      "additional_cost": [ { "bricks": 20 } ],
+      "icon": "pottery_workshop.png",
+      "production_slots": 1.0,
+      "default_recipes": [ "fire_glazed_tile" ]
+    },
+    // An EXISTING building: the mod changes the cost of labour only. The description,
+    // the price of the materials and the recipe stay vanilla.
+    {
+      "id": "hand_mill",
+      "work_cost": 5
+    }
+  ]
+}
