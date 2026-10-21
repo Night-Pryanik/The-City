@@ -1,18 +1,210 @@
 # SaveManager.gd (Autoload)
+#
+# The saves are SLOTS. Every slot is a pair of files in SAVE_DIR:
+#   <id>.json       — the game state;
+#   <id>.meta.json  — what the list of the saves shows (name, city, era, date).
+# The metadata is a separate file so that opening the list does not parse a whole
+# map per slot: the map is the bulk of a save, and the window needs only its header.
+#
+# The slot the player selected last is remembered in LAST_SLOT_PATH and preselected
+# by the save window, so a repeated save goes to the same place without a click.
 extends Node
 
-const SAVE_PATH = "user://savegame.json"
+const SAVE_DIR := "user://saves"
+const DATA_SUFFIX := ".json"
+const META_SUFFIX := ".meta.json"
+const LAST_SLOT_PATH := "user://save_slots.cfg"
+const LAST_SLOT_SECTION := "saves"
+const LAST_SLOT_KEY := "last_slot"
+
 var is_loaded = false
 var saved_data = {}
 
-func save_game():
+# The slot selected last by the player — in the save window or in the load window.
+# An empty id means that no slot has been chosen yet.
+var last_slot_id := ""
+
+func _ready() -> void:
+    _load_last_slot()
+
+# --- The slots ------------------------------------------------------------------
+
+# Writes the current game into a slot. An empty slot_id creates a new slot, which
+# is how the save window writes a new game: the id belongs to the storage, and the
+# window knows only the name.
+func save_game(slot_id: String = "", save_name: String = "") -> bool:
     var main_map = Engine.get_main_loop().root.get_node_or_null("MainMap")
     if not main_map:
         printerr("Save error: MainMap not found")
-        return
+        return false
 
+    var id := slot_id.strip_edges()
+    if id.is_empty():
+        id = new_slot_id()
+    var data := _collect_data(main_map)
+    data["_meta"] = make_meta(id, save_name, data)
+    if not write_slot(id, data):
+        printerr("Game save error!")
+        return false
+    _store_last_slot(id)
+    print("The game is saved to ", id, ".")
+    return true
+
+# Reads a slot into saved_data. The empty id means the slot selected last; if there
+# is none, the newest one. The scene applies saved_data on its own (main_map).
+func load_game(slot_id: String = "") -> bool:
+    var id := slot_id.strip_edges()
+    if id.is_empty():
+        id = _default_slot()
+    if id.is_empty() or not FileAccess.file_exists(slot_data_path(id)):
+        return false
+    var parsed = _read_json(slot_data_path(id))
+    if not (parsed is Dictionary):
+        printerr("Save loading error: the slot ", id, " is not readable")
+        return false
+    saved_data = parsed
+    is_loaded = true
+    _store_last_slot(id)
+    print("The game is loaded from ", id, ".")
+    return true
+
+# The slots for the load window, the newest first. A slot whose data file has
+# disappeared or whose metadata cannot be read is skipped: the list shows what can
+# actually be loaded.
+func list_saves() -> Array:
+    var out: Array = []
+    var dir := DirAccess.open(SAVE_DIR)
+    if dir == null:
+        return out
+    for file_name in dir.get_files():
+        if not file_name.ends_with(META_SUFFIX):
+            continue
+        var meta = _read_json(SAVE_DIR + "/" + file_name)
+        if not (meta is Dictionary):
+            continue
+        var id := str(meta.get("id", file_name.trim_suffix(META_SUFFIX)))
+        if id.is_empty() or not FileAccess.file_exists(slot_data_path(id)):
+            continue
+        meta["id"] = id
+        out.append(meta)
+    out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+        return int(a.get("saved_at", 0)) > int(b.get("saved_at", 0)))
+    return out
+
+func delete_save(slot_id: String) -> bool:
+    var ok := true
+    for path in [slot_data_path(slot_id), slot_meta_path(slot_id)]:
+        if not FileAccess.file_exists(path):
+            continue
+        if DirAccess.remove_absolute(ProjectSettings.globalize_path(path)) != OK:
+            printerr("Save error: cannot delete ", path)
+            ok = false
+    if slot_id == last_slot_id:
+        _store_last_slot("")
+    return ok
+
+func has_save() -> bool:
+    return not list_saves().is_empty()
+
+func has_slot(slot_id: String) -> bool:
+    return not slot_id.is_empty() and FileAccess.file_exists(slot_data_path(slot_id))
+
+# The storage primitive: one slot, both files. The metadata is taken from
+# data["_meta"]; a slot written without one gets a default.
+func write_slot(slot_id: String, data: Dictionary) -> bool:
+    if slot_id.is_empty():
+        return false
+    if not _ensure_dir():
+        return false
+    if not (data.get("_meta") is Dictionary):
+        data["_meta"] = make_meta(slot_id, "", data)
+    if not _write_json(slot_data_path(slot_id), data):
+        return false
+    return _write_json(slot_meta_path(slot_id), data["_meta"])
+
+func make_meta(slot_id: String, save_name: String, data: Dictionary) -> Dictionary:
+    var city := str(data.get("city_name", ""))
+    var name := save_name.strip_edges()
+    if name.is_empty():
+        name = city if not city.is_empty() else tr("Save")
+    return {
+        "id": slot_id,
+        "name": name,
+        "city_name": city,
+        "saved_at": int(Time.get_unix_time_from_system()),
+        "era_index": int(data.get("current_era_index", 0)),
+        "population": int(data.get("total_population", 0))
+    }
+
+# A fresh id: the time of the creation, so that the slots of one player keep the
+# order of their creation in the file system as well.
+func new_slot_id() -> String:
+    var base := "slot_%d" % int(Time.get_unix_time_from_system())
+    var id := base
+    var suffix := 2
+    while FileAccess.file_exists(slot_data_path(id)):
+        id = "%s_%d" % [base, suffix]
+        suffix += 1
+    return id
+
+func slot_data_path(slot_id: String) -> String:
+    return "%s/%s%s" % [SAVE_DIR, slot_id, DATA_SUFFIX]
+
+func slot_meta_path(slot_id: String) -> String:
+    return "%s/%s%s" % [SAVE_DIR, slot_id, META_SUFFIX]
+
+func _default_slot() -> String:
+    if has_slot(last_slot_id):
+        return last_slot_id
+    var slots := list_saves()
+    return str(slots[0].get("id", "")) if not slots.is_empty() else ""
+
+func _load_last_slot() -> void:
+    var config := ConfigFile.new()
+    if config.load(LAST_SLOT_PATH) != OK:
+        last_slot_id = ""
+        return
+    last_slot_id = str(config.get_value(LAST_SLOT_SECTION, LAST_SLOT_KEY, ""))
+
+func _store_last_slot(slot_id: String) -> void:
+    last_slot_id = slot_id
+    var config := ConfigFile.new()
+    config.load(LAST_SLOT_PATH)
+    config.set_value(LAST_SLOT_SECTION, LAST_SLOT_KEY, slot_id)
+    config.save(LAST_SLOT_PATH)
+
+func _ensure_dir() -> bool:
+    if DirAccess.open(SAVE_DIR) != null:
+        return true
+    var err := DirAccess.make_dir_recursive_absolute(SAVE_DIR)
+    if err != OK:
+        printerr("Save error: cannot create ", SAVE_DIR, " (", error_string(err), ")")
+        return false
+    return true
+
+func _read_json(path: String) -> Variant:
+    var file := FileAccess.open(path, FileAccess.READ)
+    if file == null:
+        return null
+    var text := file.get_as_text()
+    file.close()
+    return JSON.parse_string(text)
+
+func _write_json(path: String, value: Variant) -> bool:
+    var file := FileAccess.open(path, FileAccess.WRITE)
+    if file == null:
+        printerr("Save error: cannot write ", path, " (",
+                error_string(FileAccess.get_open_error()), ")")
+        return false
+    file.store_string(JSON.stringify(value, "\t"))
+    file.close()
+    return true
+
+# --- The game state -------------------------------------------------------------
+
+func _collect_data(main_map: Node) -> Dictionary:
     var build_manager = main_map.get_node_or_null("BuildManager")
-    var data = {
+    return {
         "city_storage": CityData.city_storage,
         "city_quality_detail": CityData.city_quality_detail,
         "production_rates": CityData.production_rates,
@@ -85,36 +277,6 @@ func save_game():
         "map_state": main_map.get_map_state(),
         "city_name": CityData.city_name
     }
-    var file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
-    if file:
-        file.store_string(JSON.stringify(data, "\t"))
-        print("The game is saved.")
-    else:
-        printerr("Game save error!")
-
-func load_game() -> bool:
-    if not FileAccess.file_exists(SAVE_PATH):
-        return false
-    var file = FileAccess.open(SAVE_PATH, FileAccess.READ)
-    if file:
-        var text = file.get_as_text()
-        var parsed = JSON.parse_string(text)
-        var data = null
-        if parsed is Dictionary:
-            data = parsed
-        else:
-            if parsed.error != OK:
-                printerr("Save loading error: ", parsed.error_string)
-                return false
-            data = parsed.result
-
-        if data == null:
-            return false
-        saved_data = data
-        is_loaded = true
-        print("The game is loaded.")
-        return true
-    return false
 
 func apply_loaded_data():
     # Called from main_map.gd after the scene is ready
@@ -182,9 +344,6 @@ func new_game():
     is_loaded = false
     saved_data.clear()
     print("A new game has started.")
-
-func has_save() -> bool:
-    return FileAccess.file_exists(SAVE_PATH)
 
 # Building serialization: it converts CraftContainer (RefCounted) into a flat
 # dict, so that JSON.stringify does not fail on a non-standard type. On loading the

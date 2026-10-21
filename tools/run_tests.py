@@ -142,6 +142,7 @@ SLOW = {
     "test_data_validation",
     "test_quality_price",
     "test_journal_live",
+    "test_save_window_live",
 }
 
 

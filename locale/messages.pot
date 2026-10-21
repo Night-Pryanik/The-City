@@ -690,6 +690,9 @@ msgstr ""
 msgid "Close"
 msgstr ""
 
+msgid "Close (ESC)"
+msgstr ""
+
 msgid "Close the contract"
 msgstr ""
 
@@ -843,6 +846,12 @@ msgstr ""
 msgid "Could not find a path to the town"
 msgstr ""
 
+msgid "Could not load the game."
+msgstr ""
+
+msgid "Could not save the game."
+msgstr ""
+
 msgid "Crafting \"%s\": %s"
 msgstr ""
 
@@ -862,6 +871,15 @@ msgid "Delete all messages"
 msgstr ""
 
 msgid "Delete message"
+msgstr ""
+
+msgid "Delete the save"
+msgstr ""
+
+msgid "Delete the save \"%s\"?"
+msgstr ""
+
+msgid "Delete this save"
 msgstr ""
 
 msgid "Delivery:"
@@ -1101,6 +1119,9 @@ msgstr ""
 msgid "Left-click on a hex to place: %s"
 msgstr ""
 
+msgid "Load"
+msgstr ""
+
 msgid "Load game"
 msgstr ""
 
@@ -1146,6 +1167,9 @@ msgstr ""
 msgid "New game"
 msgstr ""
 
+msgid "New save"
+msgstr ""
+
 msgid "No"
 msgstr ""
 
@@ -1186,6 +1210,9 @@ msgid "No resources in the influence ring"
 msgstr ""
 
 msgid "No road connects this hex to the city"
+msgstr ""
+
+msgid "No saved games."
 msgstr ""
 
 msgid "No scouted route from the city to the town — send scouts there"
@@ -1261,6 +1288,12 @@ msgid "Open the town interface \"%s\""
 msgstr ""
 
 msgid "Open town"
+msgstr ""
+
+msgid "Overwrite the save"
+msgstr ""
+
+msgid "Overwrite the save \"%s\"?"
 msgstr ""
 
 msgid "Pause"
@@ -1533,7 +1566,13 @@ msgstr ""
 msgid "Sale"
 msgstr ""
 
+msgid "Save"
+msgstr ""
+
 msgid "Save game"
+msgstr ""
+
+msgid "Save name"
 msgstr ""
 
 msgid "Scholarly materials: %.1f/sec%s"

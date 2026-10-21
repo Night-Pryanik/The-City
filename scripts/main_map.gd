@@ -85,6 +85,7 @@ const ACTIVE_PAUSE_SCRIPT := preload("res://scripts/active_pause.gd")
 # visual part and is created in code, the window over the map is a scene.
 const JOURNAL_SCRIPT := preload("res://scripts/journal.gd")
 const JOURNAL_UI_SCENE := preload("res://scenes/journal.tscn")
+const SAVE_LOAD_WINDOW_SCENE := preload("res://scenes/save_load_window.tscn")
 
 # The technology that opens the scouting beyond the Region (the fog of war and
 # the territory of the towns). Before it is learned the scouts can be sent only
@@ -256,6 +257,10 @@ var active_pause: Node = null
 # pushes into the history, the window draws it, the save writes it out.
 var journal: Node = null
 @onready var journal_ui = JOURNAL_UI_SCENE.instantiate()
+
+# The window of the saves: the place and the name of a save, or the list of the saved
+# games (see save_load_window.gd). Opened by the pause menu, which stays behind it.
+@onready var save_load_window = SAVE_LOAD_WINDOW_SCENE.instantiate()
 
 var tech_popup: Control
 var research_hbox: HBoxContainer
@@ -677,6 +682,13 @@ func _ready():
     journal_ui.hide()
     journal_ui.closed.connect(_on_journal_closed)
     journal_button.pressed.connect(open_journal)
+
+    # The window of the saves is added after the pause menu and carries a higher
+    # canvas layer, so it is drawn over the menu that opens it.
+    add_child(save_load_window)
+    save_load_window.hide()
+    save_load_window.save_requested.connect(_on_save_requested)
+    save_load_window.load_requested.connect(_on_load_requested)
 
 # The predicate for rebuild_roads_from_existing: this hex is skipped
 # on the restoration of the road network.
@@ -2726,8 +2738,11 @@ func _on_tech_popup_go_to_techs():
     control_panel.hide()
 
 func _on_pause_save():
-    SaveManager.save_game()
-    hud.show_message(tr("Game saved."), GameData.HUD_MESSAGE_NORMAL)
+    # The menu stays open behind the window: the player picks the place and the name,
+    # and comes back to the menu, not to the game.
+    if save_load_window == null or save_load_window.visible:
+        return
+    save_load_window.open_save(CityData.city_name)
 
 func _on_pause_menu_visibility_changed():
     var menu_visible = pause_menu.visible
@@ -2821,10 +2836,28 @@ func _on_menu_button_pressed():
     open_pause_menu()
 
 func _on_pause_load():
-    if SaveManager.load_game():
-        get_tree().reload_current_scene()
-    else:
-        print("Error of the loading of the save")
+    # The pause is lifted only when the player has chosen a save and the scene is about
+    # to reload: cancelling the window returns to the menu, not to the running game.
+    if save_load_window == null or save_load_window.visible:
+        return
+    save_load_window.open_load()
+
+func _on_save_requested(slot_id: String, save_name: String):
+    if not SaveManager.save_game(slot_id, save_name):
+        hud.show_message(tr("Could not save the game."), GameData.HUD_MESSAGE_IMPORTANT)
+        return
+    save_load_window.close()
+    hud.show_message(tr("Game saved."), GameData.HUD_MESSAGE_NORMAL)
+
+func _on_load_requested(slot_id: String):
+    if not SaveManager.load_game(slot_id):
+        hud.show_message(tr("Could not load the game."), GameData.HUD_MESSAGE_IMPORTANT)
+        return
+    save_load_window.close()
+    # The scene is replaced right away: the menu must not keep the tree stopped.
+    pause_menu.hide()
+    get_tree().paused = false
+    get_tree().reload_current_scene()
 
 func _on_pause_new_game():
     # The item of the menu of the pause does not create a new game, but returns to the main menu.

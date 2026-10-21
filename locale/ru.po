@@ -690,6 +690,9 @@ msgstr "Нажмите чтобы отсортировать список; по�
 msgid "Close"
 msgstr "Закрыть"
 
+msgid "Close (ESC)"
+msgstr "Закрыть (ESC)"
+
 msgid "Close the contract"
 msgstr "Закрыть контракт"
 
@@ -843,6 +846,12 @@ msgstr "Стоимость: %s"
 msgid "Could not find a path to the town"
 msgstr "Не удалось найти путь до городка"
 
+msgid "Could not load the game."
+msgstr "Не удалось загрузить игру."
+
+msgid "Could not save the game."
+msgstr "Не удалось сохранить игру."
+
 msgid "Crafting \"%s\": %s"
 msgstr "Крафт «%s»: %s"
 
@@ -863,6 +872,15 @@ msgstr "Удалить все сообщения"
 
 msgid "Delete message"
 msgstr "Удалить сообщение"
+
+msgid "Delete the save"
+msgstr "Удалить сохранение"
+
+msgid "Delete the save \"%s\"?"
+msgstr "Удалить сохранение «%s»?"
+
+msgid "Delete this save"
+msgstr "Удалить это сохранение"
 
 msgid "Delivery:"
 msgstr "Доставка:"
@@ -1101,6 +1119,9 @@ msgstr "Язык системы"
 msgid "Left-click on a hex to place: %s"
 msgstr "Кликните левой кнопкой по гексу, чтобы разместить: %s"
 
+msgid "Load"
+msgstr "Загрузить"
+
 msgid "Load game"
 msgstr "Загрузить игру"
 
@@ -1146,6 +1167,9 @@ msgstr "Новая эпоха! Границы города расширены. �
 msgid "New game"
 msgstr "Новая игра"
 
+msgid "New save"
+msgstr "Новое сохранение"
+
 msgid "No"
 msgstr "Нет"
 
@@ -1187,6 +1211,9 @@ msgstr "В кольце влияния нет ресурсов"
 
 msgid "No road connects this hex to the city"
 msgstr "Дороги от этого гекса до города нет"
+
+msgid "No saved games."
+msgstr "Нет сохранённых игр."
 
 msgid "No scouted route from the city to the town — send scouts there"
 msgstr "Нет разведанного пути от города до городка — отправьте туда разведчиков"
@@ -1262,6 +1289,12 @@ msgstr "Перейти в интерфейс городка «%s»"
 
 msgid "Open town"
 msgstr "Открыть городок"
+
+msgid "Overwrite the save"
+msgstr "Перезаписать сохранение"
+
+msgid "Overwrite the save \"%s\"?"
+msgstr "Перезаписать сохранение «%s»?"
 
 msgid "Pause"
 msgstr "Приостановить"
@@ -1533,8 +1566,14 @@ msgstr "По воде дорога не строится"
 msgid "Sale"
 msgstr "Продажа"
 
+msgid "Save"
+msgstr "Сохранить"
+
 msgid "Save game"
 msgstr "Сохранить игру"
+
+msgid "Save name"
+msgstr "Название сохранения"
 
 msgid "Scholarly materials: %.1f/sec%s"
 msgstr "Писчие материалы: %.1f/сек%s"

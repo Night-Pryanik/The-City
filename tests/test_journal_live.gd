@@ -9,15 +9,15 @@
 #      The pause flag is the one main_map owns — the journal must not write it itself.
 #   3. The journal survives a save and a load: the texts and the read flags come back.
 #
-# The save file of the player is copied before the test writes its own and put back
-# afterwards: a test must not eat a real game.
+# The test writes a slot of its own and removes it afterwards, and puts the slot the
+# player selected last back in place: a test must not eat a real game.
 extends SceneTree
 
 # Hang watchdog: without it a break in the _run() coroutine looks like eternal
 # silence from the outside. Details — in tests/watchdog.gd.
 const WATCHDOG = preload("res://tests/watchdog.gd")
 
-const SAVE_PATH := "user://savegame.json"
+const TEST_SLOT := "test_journal_live"
 
 func _initialize():
     WATCHDOG.arm(self)
@@ -25,10 +25,10 @@ func _initialize():
 
 func _run() -> void:
     var state = {"failed": false}
-    var saved_backup: Variant = _read_save()
 
     var save_manager = get_root().get_node("SaveManager")
     var game_data = get_root().get_node("GameData")
+    var last_slot_backup := str(save_manager.last_slot_id)
     save_manager.new_game()
 
     var main_map = load("res://scenes/MainMap.tscn").instantiate()
@@ -95,9 +95,9 @@ func _run() -> void:
     main_map.hud.show_message("kept message", game_data.HUD_MESSAGE_IMPORTANT)
     main_map.hud.show_message("read message", game_data.HUD_MESSAGE_IMPORTANT)
     main_map.journal.mark_read(int(main_map.journal.entries[0]["id"]))
-    save_manager.save_game()
+    save_manager.save_game(TEST_SLOT, "journal test")
 
-    var saved = _read_save()
+    var saved = _read_save(save_manager)
     check(saved is Dictionary and saved.has("journal"), "the save file carries the journal", state)
     var saved_entries = saved.get("journal", []) if saved is Dictionary else []
     check(saved_entries is Array and saved_entries.size() == 2,
@@ -108,7 +108,7 @@ func _run() -> void:
     main_map.free()
     await process_frame
 
-    check(save_manager.load_game(), "the save file is read back", state)
+    check(save_manager.load_game(TEST_SLOT), "the save file is read back", state)
     var loaded_map = load("res://scenes/MainMap.tscn").instantiate()
     get_root().add_child(loaded_map)
     await process_frame
@@ -140,7 +140,8 @@ func _run() -> void:
     loaded_map.free()
     await process_frame
 
-    _restore_save(saved_backup)
+    save_manager.delete_save(TEST_SLOT)
+    save_manager._store_last_slot(last_slot_backup)
     if state["failed"]:
         print("JOURNAL LIVE TEST FAILED")
         quit(1)
@@ -148,22 +149,15 @@ func _run() -> void:
         print("JOURNAL LIVE TEST OK")
         quit(0)
 
-func _read_save() -> Variant:
-    if not FileAccess.file_exists(SAVE_PATH):
+func _read_save(save_manager) -> Variant:
+    var path: String = save_manager.slot_data_path(TEST_SLOT)
+    if not FileAccess.file_exists(path):
         return null
-    var file = FileAccess.open(SAVE_PATH, FileAccess.READ)
+    var file = FileAccess.open(path, FileAccess.READ)
     if file == null:
         return null
     var parsed = JSON.parse_string(file.get_as_text())
     return parsed if parsed is Dictionary else null
-
-func _restore_save(backup: Variant) -> void:
-    if backup is Dictionary:
-        var file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
-        if file != null:
-            file.store_string(JSON.stringify(backup, "\t"))
-    elif FileAccess.file_exists(SAVE_PATH):
-        DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
 
 func check(cond: bool, msg: String, state: Dictionary):
     if not cond:

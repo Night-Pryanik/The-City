@@ -12,11 +12,11 @@ const DataProblemsWindow = preload("res://scripts/data_problems_window.gd")
 @onready var settings_button = $VBoxContainer/SettingsButton
 @onready var quit_button = $VBoxContainer/QuitButton
 
+# The window of the saves, created on the first click on "Load game".
+var save_load_window: CanvasLayer = null
+
 func _ready():
-    if SaveManager.has_save():
-        load_game_button.disabled = false
-    else:
-        load_game_button.disabled = true
+    _refresh_load_button()
 
     new_game_button.pressed.connect(_on_new_game)
     load_game_button.pressed.connect(_on_load_game)
@@ -24,6 +24,11 @@ func _ready():
     quit_button.pressed.connect(_on_quit)
 
     _check_game_data()
+
+# There is nothing to load while the player has no saves. The state is re-read after
+# the window is closed as well: the last save can be deleted from its list.
+func _refresh_load_button():
+    load_game_button.disabled = not SaveManager.has_save()
 
 # Checks the integrity of the game data before the start of a game.
 #
@@ -123,7 +128,18 @@ func _start_new_game(city_name: String):
     get_tree().change_scene_to_file("res://scenes/MainMap.tscn")
 
 func _on_load_game():
-    if SaveManager.load_game():
+    if not SaveManager.has_save():
+        return
+    if save_load_window == null:
+        save_load_window = load("res://scenes/save_load_window.tscn").instantiate()
+        add_child(save_load_window)
+        save_load_window.load_requested.connect(_on_load_requested)
+        save_load_window.closed.connect(_refresh_load_button)
+    save_load_window.open_load()
+
+func _on_load_requested(slot_id: String):
+    if SaveManager.load_game(slot_id):
+        save_load_window.close()
         get_tree().change_scene_to_file("res://scenes/MainMap.tscn")
     else:
         print("Save loading error")

@@ -134,12 +134,13 @@ func _on_resume():
     _close_pause_menu()
 
 func _on_save():
+    # The menu stays open: the window of the saves is drawn above it, and after the
+    # save the player is back at the menu, not at the game.
     emit_signal("save_pressed")
-    _close_pause_menu()
 
 func _on_load():
-    # On load we exit the pause, so that the scene can reload
-    _force_unpause()
+    # The menu stays open until the player chooses a save: the window is drawn above
+    # it, and the pause is lifted by main_map only when the scene is about to reload.
     emit_signal("load_pressed")
 
 func _on_new_game():
