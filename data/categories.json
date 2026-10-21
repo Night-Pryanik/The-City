@@ -22,6 +22,7 @@
     { "id": "weapons", "name": "Weapons" },
     { "id": "equipment", "name": "Equipment" },
     { "id": "chemicals", "name": "Chemicals" },
+    { "id": "containers", "name": "Containers" },
     { "id": "writing_materials", "name": "Writing Materials" },
     { "id": "other", "name": "Other" }
   ]

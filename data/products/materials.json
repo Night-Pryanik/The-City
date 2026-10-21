@@ -335,6 +335,14 @@
       "category": "material",
       "unlock_tech": "dyeing",
       "icon": "galls.png"
+    },
+    {
+      "id": "oak_wood", "price": 10,
+      "name": "Oak Wood",
+      "type": "product",
+      "category": "material",
+      "unlock_tech": "wood_processing",
+      "icon": "oak_wood.png"
     }
   ]
 }

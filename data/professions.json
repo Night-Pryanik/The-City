@@ -176,6 +176,24 @@
       "name": "Scholar",
       "icon": "profession_scientist.png",
       "description": "Copies and studies texts in the library and scriptorium, adding to the city's science."
+    },
+    {
+      "id": "winemaker",
+      "name": "Winemaker",
+      "icon": "profession_winemaker.png",
+      "description": "Description of winemaker profession."
+    },
+    {
+      "id": "brewer",
+      "name": "Brewer",
+      "icon": "profession_brewer.png",
+      "description": "Description of brewer profession."
+    },
+    {
+      "id": "oilmaker",
+      "name": "Oilmaker",
+      "icon": "profession_oilmaker.png",
+      "description": "Description of oilmaker profession."
     }
   ]
 }

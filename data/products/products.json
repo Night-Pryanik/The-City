@@ -10,6 +10,15 @@
       "icon": "pottery.png"
     },
     {
+      "id": "amphora",
+      "price": 20,
+      "name": "Amphora",
+      "type": "product",
+      "category": "containers",
+      "unlock_tech": "pottery",
+      "icon": "amphora.png"
+    },
+    {
       "id": "clay_tablets",
       "price": 6,
       "name": "Clay Tablets",
@@ -162,7 +171,7 @@
       "price": 15,
       "name": "Glass Bottle",
       "type": "product",
-      "category": "household_items",
+      "category": "containers",
       "unlock_tech": "glassblowing",
       "icon": "glass_bottle.png"
     },
@@ -201,6 +210,15 @@
       "category": "household_items",
       "unlock_tech": "fishing",
       "icon": "sponge.png"
+    },
+    {
+      "id": "wooden_barrel",
+      "price": 20,
+      "name": "Wooden Barrel",
+      "type": "product",
+      "category": "containers",
+      "unlock_tech": "wood_processing",
+      "icon": "wooden_barrel.png"
     }
   ]
 }

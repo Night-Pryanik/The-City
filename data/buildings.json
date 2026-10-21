@@ -162,6 +162,7 @@
       "work_cost": 35,
       "additional_cost": [ { "planks": 100 }, { "@processed_construction_materials": 60 } ],
       "icon": "brewer_house.png",
+      "profession": "brewer",
       "production_slots": 1.0,
       "unlock_tech": "fermentation",
       "default_recipes": [  ]
@@ -172,6 +173,7 @@
       "description": "Produces wine from grapes or fruit.",
       "work_cost": 30,
       "additional_cost": [ { "planks": 100 } ],
+      "profession": "winemaker",
       "icon": "winemaker_house.png",
       "production_slots": 1.0,
       "unlock_tech": "winemaking",
@@ -184,6 +186,7 @@
       "work_cost": 20,
       "additional_cost": [ { "planks": 80 } ],
       "icon": "hand_oil_press.png",
+      "profession": "oilmaker",
       "production_slots": 1.0,
       "unlock_tech": "oil_making",
       "default_recipes": [ "vegetable_oil" ]
@@ -389,6 +392,17 @@
       "production_slots": 1.0,
       "unlock_tech": "alchemy",
       "default_recipes": [  ]
+    },
+    {
+      "id": "cooper_house",
+      "name": "Cooper's House",
+      "description": "A building where cooper makes barrels and other containers.",
+      "work_cost": 35,
+      "additional_cost": [ { "planks": 100 }, { "@processed_construction_materials": 50 } ],
+      "icon": "cooper_house.png",
+      "production_slots": 1.0,
+      "unlock_tech": "wood_processing",
+      "default_recipes": [ "wooden_barrel" ]
     }
   ]
 }

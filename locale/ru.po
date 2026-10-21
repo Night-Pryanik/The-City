@@ -2222,6 +2222,10 @@ msgid "A building where alchemists run all kinds of chemical reactions."
 msgstr "Здание, алхимики проводят различные химические реакции."
 
 msgctxt "buildings.description"
+msgid "A building where cooper makes barrels and other containers."
+msgstr "Здание, где бондарь изготавливает бочки и другие контейнеры."
+
+msgctxt "buildings.description"
 msgid "A building where dyes are extracted from all sorts of organic and inorganic materials."
 msgstr "Здание, где из различных органических и неорганических материалов добываются красители."
 
@@ -2386,6 +2390,10 @@ msgid "Charcoal Kiln"
 msgstr "Печь для обжига древесного угля"
 
 msgctxt "buildings.name"
+msgid "Cooper's House"
+msgstr "Дом бондаря"
+
+msgctxt "buildings.name"
 msgid "Dairy"
 msgstr "Сыроварня"
 
@@ -2514,6 +2522,10 @@ msgid "Clothes"
 msgstr "Одежда"
 
 msgctxt "categories.name"
+msgid "Containers"
+msgstr "Контейнеры"
+
+msgctxt "categories.name"
 msgid "Drinks"
 msgstr "Напитки"
 
@@ -2636,6 +2648,10 @@ msgstr "Обжигает известняк в известь"
 msgctxt "crafts.description"
 msgid "Burns wood into charcoal."
 msgstr "Обжигает древесину в древесный уголь."
+
+msgctxt "crafts.description"
+msgid "Creates amphoras for storage and transport of liquid and dry goods."
+msgstr "Создаёт амфоры для хранения и перевозки жидких и сыпучих продуктов."
 
 msgctxt "crafts.description"
 msgid "Creates clay pots for storage."
@@ -2814,6 +2830,10 @@ msgid "Makes wine from grapes."
 msgstr "Варит вино из винограда"
 
 msgctxt "crafts.description"
+msgid "Makes wooden barrels."
+msgstr "Изготавливает деревянные бочки."
+
+msgctxt "crafts.description"
 msgid "Makes wooden tablets with a hollow filled with wax."
 msgstr "Создает деревянные таблички с углублением, в которое залит воск"
 
@@ -2924,6 +2944,10 @@ msgstr "Ткёт одежду из шёлка"
 msgctxt "crafts.description"
 msgid "Weaves clothes out of wool."
 msgstr "Ткёт одежду из шерсти"
+
+msgctxt "crafts.name"
+msgid "Amphora"
+msgstr "Амфора"
 
 msgctxt "crafts.name"
 msgid "Antimony"
@@ -3274,6 +3298,10 @@ msgid "Woad"
 msgstr "Вайда"
 
 msgctxt "crafts.name"
+msgid "Wooden Barrel"
+msgstr "Деревянная бочка"
+
+msgctxt "crafts.name"
 msgid "Wool Clothes"
 msgstr "Шерстяная одежда"
 
@@ -3562,8 +3590,16 @@ msgid "Tableware Stones"
 msgstr "Камни для посуды"
 
 msgctxt "product_groups.name"
+msgid "Tare"
+msgstr "Тара"
+
+msgctxt "product_groups.name"
 msgid "Textile Crops"
 msgstr "Текстильные культуры"
+
+msgctxt "product_groups.name"
+msgid "Wood for Barrels"
+msgstr "Древесина для бочек"
 
 msgctxt "product_groups.name"
 msgid "Writing Instruments"
@@ -3588,6 +3624,18 @@ msgstr "Переписывает и исследует тексты в библ�
 msgctxt "professions.description"
 msgid "Cultivates the vineyard and gathers the harvest."
 msgstr "Возделывает виноградник, собирает урожай."
+
+msgctxt "professions.description"
+msgid "Description of brewer profession."
+msgstr "Описание профессии варщика."
+
+msgctxt "professions.description"
+msgid "Description of oilmaker profession."
+msgstr "Описание профессии маслодела."
+
+msgctxt "professions.description"
+msgid "Description of winemaker profession."
+msgstr "Описание профессии винодела."
 
 msgctxt "professions.description"
 msgid "Digs and sorts clay for firing."
@@ -3666,6 +3714,10 @@ msgid "Blacksmith"
 msgstr "Кузнец"
 
 msgctxt "professions.name"
+msgid "Brewer"
+msgstr "Варщик"
+
+msgctxt "professions.name"
 msgid "Charcoal Burner"
 msgstr "Углежог"
 
@@ -3692,6 +3744,10 @@ msgstr "Лесоруб"
 msgctxt "professions.name"
 msgid "Miner"
 msgstr "Шахтёр"
+
+msgctxt "professions.name"
+msgid "Oilmaker"
+msgstr "Маслодел"
 
 msgctxt "professions.name"
 msgid "Planter"
@@ -3733,6 +3789,10 @@ msgctxt "professions.name"
 msgid "Vinedresser"
 msgstr "Виноградарь"
 
+msgctxt "professions.name"
+msgid "Winemaker"
+msgstr "Винодел"
+
 msgctxt "quality_levels.name"
 msgid "Common"
 msgstr "Обычное"
@@ -3764,6 +3824,10 @@ msgstr "Альпаки"
 msgctxt "resources.name"
 msgid "Amaranth"
 msgstr "Амарант"
+
+msgctxt "resources.name"
+msgid "Amphora"
+msgstr "Амфора"
 
 msgctxt "resources.name"
 msgid "Antimony"
@@ -4278,6 +4342,10 @@ msgid "Oak Tree"
 msgstr "Дуб"
 
 msgctxt "resources.name"
+msgid "Oak Wood"
+msgstr "Древесина дуба"
+
+msgctxt "resources.name"
 msgid "Oats"
 msgstr "Овёс"
 
@@ -4624,6 +4692,10 @@ msgstr "Листья вайды"
 msgctxt "resources.name"
 msgid "Wood"
 msgstr "Древесина"
+
+msgctxt "resources.name"
+msgid "Wooden Barrel"
+msgstr "Деревянная бочка"
 
 msgctxt "resources.name"
 msgid "Wool"

@@ -219,6 +219,16 @@
         //"saffron",
         //"vanilla"
       ]
+    },
+    {
+      "id": "barrel_wood",
+      "name": "Wood for Barrels",
+      "products": [ "oak_wood" ]
+    },
+    {
+      "id": "tare",
+      "name": "Tare",
+      "products": [ "amphora", "glass_bottle", "wooden_barrel" ]
     }
   ]
 }

@@ -2222,6 +2222,10 @@ msgid "A building where alchemists run all kinds of chemical reactions."
 msgstr ""
 
 msgctxt "buildings.description"
+msgid "A building where cooper makes barrels and other containers."
+msgstr ""
+
+msgctxt "buildings.description"
 msgid "A building where dyes are extracted from all sorts of organic and inorganic materials."
 msgstr ""
 
@@ -2386,6 +2390,10 @@ msgid "Charcoal Kiln"
 msgstr ""
 
 msgctxt "buildings.name"
+msgid "Cooper's House"
+msgstr ""
+
+msgctxt "buildings.name"
 msgid "Dairy"
 msgstr ""
 
@@ -2514,6 +2522,10 @@ msgid "Clothes"
 msgstr ""
 
 msgctxt "categories.name"
+msgid "Containers"
+msgstr ""
+
+msgctxt "categories.name"
 msgid "Drinks"
 msgstr ""
 
@@ -2635,6 +2647,10 @@ msgstr ""
 
 msgctxt "crafts.description"
 msgid "Burns wood into charcoal."
+msgstr ""
+
+msgctxt "crafts.description"
+msgid "Creates amphoras for storage and transport of liquid and dry goods."
 msgstr ""
 
 msgctxt "crafts.description"
@@ -2814,6 +2830,10 @@ msgid "Makes wine from grapes."
 msgstr ""
 
 msgctxt "crafts.description"
+msgid "Makes wooden barrels."
+msgstr ""
+
+msgctxt "crafts.description"
 msgid "Makes wooden tablets with a hollow filled with wax."
 msgstr ""
 
@@ -2923,6 +2943,10 @@ msgstr ""
 
 msgctxt "crafts.description"
 msgid "Weaves clothes out of wool."
+msgstr ""
+
+msgctxt "crafts.name"
+msgid "Amphora"
 msgstr ""
 
 msgctxt "crafts.name"
@@ -3274,6 +3298,10 @@ msgid "Woad"
 msgstr ""
 
 msgctxt "crafts.name"
+msgid "Wooden Barrel"
+msgstr ""
+
+msgctxt "crafts.name"
 msgid "Wool Clothes"
 msgstr ""
 
@@ -3562,7 +3590,15 @@ msgid "Tableware Stones"
 msgstr ""
 
 msgctxt "product_groups.name"
+msgid "Tare"
+msgstr ""
+
+msgctxt "product_groups.name"
 msgid "Textile Crops"
+msgstr ""
+
+msgctxt "product_groups.name"
+msgid "Wood for Barrels"
 msgstr ""
 
 msgctxt "product_groups.name"
@@ -3587,6 +3623,18 @@ msgstr ""
 
 msgctxt "professions.description"
 msgid "Cultivates the vineyard and gathers the harvest."
+msgstr ""
+
+msgctxt "professions.description"
+msgid "Description of brewer profession."
+msgstr ""
+
+msgctxt "professions.description"
+msgid "Description of oilmaker profession."
+msgstr ""
+
+msgctxt "professions.description"
+msgid "Description of winemaker profession."
 msgstr ""
 
 msgctxt "professions.description"
@@ -3666,6 +3714,10 @@ msgid "Blacksmith"
 msgstr ""
 
 msgctxt "professions.name"
+msgid "Brewer"
+msgstr ""
+
+msgctxt "professions.name"
 msgid "Charcoal Burner"
 msgstr ""
 
@@ -3691,6 +3743,10 @@ msgstr ""
 
 msgctxt "professions.name"
 msgid "Miner"
+msgstr ""
+
+msgctxt "professions.name"
+msgid "Oilmaker"
 msgstr ""
 
 msgctxt "professions.name"
@@ -3733,6 +3789,10 @@ msgctxt "professions.name"
 msgid "Vinedresser"
 msgstr ""
 
+msgctxt "professions.name"
+msgid "Winemaker"
+msgstr ""
+
 msgctxt "quality_levels.name"
 msgid "Common"
 msgstr ""
@@ -3763,6 +3823,10 @@ msgstr ""
 
 msgctxt "resources.name"
 msgid "Amaranth"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Amphora"
 msgstr ""
 
 msgctxt "resources.name"
@@ -4278,6 +4342,10 @@ msgid "Oak Tree"
 msgstr ""
 
 msgctxt "resources.name"
+msgid "Oak Wood"
+msgstr ""
+
+msgctxt "resources.name"
 msgid "Oats"
 msgstr ""
 
@@ -4623,6 +4691,10 @@ msgstr ""
 
 msgctxt "resources.name"
 msgid "Wood"
+msgstr ""
+
+msgctxt "resources.name"
+msgid "Wooden Barrel"
 msgstr ""
 
 msgctxt "resources.name"

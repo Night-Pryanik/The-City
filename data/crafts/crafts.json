@@ -35,6 +35,16 @@
       "description": "Creates clay pots for storage."
     },
     {
+      "id": "amphora",
+      "name": "Amphora",
+      "produced_in": [ "pottery_workshop" ],
+      "resources": { "clay": 30 },
+      "result": { "amphora": 10 },
+      "time": 5.0,
+      "unlock_tech": "pottery",
+      "description": "Creates amphoras for storage and transport of liquid and dry goods."
+    },
+    {
       "id": "bricks",
       "name": "Bricks",
       "produced_in": [ "pottery_workshop" ],
@@ -303,6 +313,16 @@
       "time": 5.0,
       "unlock_tech": "writing",
       "description": "Makes a writing set from writing instruments and ink."
+    },
+    {
+      "id": "wooden_barrel",
+      "name": "Wooden Barrel",
+      "produced_in": [ "cooper_house" ],
+      "resources": { "@barrel_wood": 20 },
+      "result": { "wooden_barrel": 10 },
+      "time": 5.0,
+      "unlock_tech": "wood_processing",
+      "description": "Makes wooden barrels."
     }
   ]
 }

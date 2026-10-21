@@ -51,6 +51,13 @@
       "amount": 10,
       "interval": 10,
       "production_bonus": 0.25
+    },
+    {
+      "resource": "@tare",
+      "profession": [ "winemaker", "brewer", "oilmaker" ],
+      "amount": 10,
+      "interval": 10,
+      "production_bonus": 0.25
     }
   ]
 }

@@ -295,7 +295,7 @@
       // The camp is the harvest point of the hex: the oak gives its timber as
       // well as its galls, no felling implied (docs.md, "Improvement types are
       // a convention").
-      "produces": { "galls": 10, "wood": 10 },
+      "produces": { "galls": 10, "wood": 10, "oak_wood": 10 },
       "icon": "oak_tree.png",
       "color": [ 200, 255, 200 ]
     },
