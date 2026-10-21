@@ -28,6 +28,11 @@ offset_bottom = 20.0
 grow_horizontal = 2
 grow_vertical = 2
 
+[node name="ContinueButton" type="Button" parent="VBoxContainer" unique_id=272219451]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Continue game"
+
 [node name="NewGameButton" type="Button" parent="VBoxContainer" unique_id=272219450]
 layout_mode = 2
 theme_override_font_sizes/font_size = 24

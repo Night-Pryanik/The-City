@@ -13,6 +13,8 @@
 # behind the window instead of being hidden by it.
 extends CanvasLayer
 
+const UiHelpers = preload("res://scripts/ui_helpers.gd")
+
 ## The player confirmed a save. An empty slot_id means a new slot: the id belongs to
 ## the storage, and the window knows only the name.
 signal save_requested(slot_id: String, save_name: String)
@@ -135,7 +137,7 @@ func _rebuild() -> void:
         list.add_child(_make_row(NEW_SLOT_ID, tr("New save"), "", group))
     for slot in _slots:
         var id := str(slot.get("id", ""))
-        list.add_child(_make_row(id, str(slot.get("name", "")), _details(slot), group))
+        list.add_child(_make_row(id, str(slot.get("name", "")), UiHelpers.save_details(slot), group))
     empty_label.visible = mode == Mode.LOAD and _slots.is_empty()
 
 func _make_row(id: String, title: String, details: String, group: ButtonGroup) -> Control:
@@ -202,31 +204,6 @@ func _slot_by_name(save_name: String) -> String:
         if str(slot.get("name", "")) == save_name:
             return str(slot.get("id", ""))
     return NEW_SLOT_ID
-
-# The second line of a row: what tells two saves of one city apart.
-func _details(slot: Dictionary) -> String:
-    var parts: Array = []
-    var city := str(slot.get("city_name", ""))
-    if not city.is_empty():
-        parts.append(city)
-    var era := _era_name(int(slot.get("era_index", 0)))
-    if not era.is_empty():
-        parts.append(era)
-    parts.append(_format_date(int(slot.get("saved_at", 0))))
-    return " · ".join(parts)
-
-func _era_name(index: int) -> String:
-    if index < 0 or index >= GameData.eras.size():
-        return ""
-    return str(GameData.eras[index].get("name", ""))
-
-func _format_date(unix_time: int) -> String:
-    # The moment is stored as UTC; the player reads it on their own clock.
-    var bias := int(Time.get_time_zone_from_system().get("bias", 0)) * 60
-    var date := Time.get_datetime_dict_from_unix_time(unix_time + bias)
-    return "%02d.%02d.%04d %02d:%02d" % [
-        int(date["day"]), int(date["month"]), int(date["year"]),
-        int(date["hour"]), int(date["minute"])]
 
 # --- The actions -----------------------------------------------------------------
 

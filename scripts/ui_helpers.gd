@@ -111,6 +111,54 @@ static func make_money_label() -> RichTextLabel:
     label.mouse_filter = Control.MOUSE_FILTER_IGNORE
     return label
 
+# --- The saves -------------------------------------------------------------------
+#
+# The description of a saved game in the two forms the interface needs: a line for the
+# list of the saves and a block for the tooltip of "Continue game". Both live here so
+# that the list and the tooltip cannot describe one save differently.
+
+# The moment of a save as the player reads it: "21.10.2026 12:03". The moment is stored
+# as UTC; the player thinks in the time of their own clock.
+static func save_date(unix_time: int) -> String:
+    var bias := int(Time.get_time_zone_from_system().get("bias", 0)) * 60
+    var date := Time.get_datetime_dict_from_unix_time(unix_time + bias)
+    return "%02d.%02d.%04d %02d:%02d" % [
+        int(date["day"]), int(date["month"]), int(date["year"]),
+        int(date["hour"]), int(date["minute"])]
+
+# The name of the era of a save; empty for an index the data does not know.
+static func save_era(era_index: int) -> String:
+    if era_index < 0 or era_index >= GameData.eras.size():
+        return ""
+    return str(GameData.eras[era_index].get("name", ""))
+
+# The second line of a row in the list of the saves: what tells two saves of one city apart.
+static func save_details(meta: Dictionary) -> String:
+    var parts: Array = []
+    var city := str(meta.get("city_name", ""))
+    if not city.is_empty():
+        parts.append(city)
+    var era := save_era(int(meta.get("era_index", 0)))
+    if not era.is_empty():
+        parts.append(era)
+    parts.append(save_date(int(meta.get("saved_at", 0))))
+    return " · ".join(parts)
+
+# The tooltip of "Continue game": the save the button will load, fact by fact.
+static func save_tooltip(meta: Dictionary) -> String:
+    if meta.is_empty():
+        return ""
+    var lines: Array = [str(meta.get("name", ""))]
+    var city := str(meta.get("city_name", ""))
+    if not city.is_empty():
+        lines.append(TranslationServer.translate("City: %s") % city)
+    var era := save_era(int(meta.get("era_index", 0)))
+    if not era.is_empty():
+        lines.append(TranslationServer.translate("Era: %s") % era)
+    lines.append(TranslationServer.translate("Population: %d") % int(meta.get("population", 0)))
+    lines.append(TranslationServer.translate("Saved: %s") % save_date(int(meta.get("saved_at", 0))))
+    return "\n".join(lines)
+
 # The light blue colour of the quality marker at the start of the quality label
 # (the "Resources" tab and the cards of the "Trade"). The constant lives here next
 # to PRICE_TEXT_COLOR, because both of them are elements of the FORMATTING shared

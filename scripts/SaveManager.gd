@@ -68,6 +68,18 @@ func load_game(slot_id: String = "") -> bool:
     print("The game is loaded from ", id, ".")
     return true
 
+# The save "Continue game" loads: the place chosen last, otherwise the newest. It is the
+# same rule as load_game() without an id, so the button and its tooltip cannot disagree
+# about which save the click will take.
+func get_resume_save() -> Dictionary:
+    var id := _default_slot()
+    if id.is_empty():
+        return {}
+    for slot in list_saves():
+        if str(slot.get("id", "")) == id:
+            return slot
+    return {}
+
 # The slots for the load window, the newest first. A slot whose data file has
 # disappeared or whose metadata cannot be read is skipped: the list shows what can
 # actually be loaded.

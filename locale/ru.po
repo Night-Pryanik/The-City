@@ -657,6 +657,9 @@ msgstr "Территория города"
 msgid "City total (plan): %s units/sec"
 msgstr "Итого по городу (план): %s ед./сек"
 
+msgid "City: %s"
+msgstr "Город: %s"
+
 msgid "Claim the area"
 msgstr "Освоить область"
 
@@ -792,6 +795,9 @@ msgstr "Правило потребления ссылается на несущ
 msgid "Consumption rule references a nonexistent product"
 msgstr "Правило потребления ссылается на несуществующий продукт"
 
+msgid "Continue game"
+msgstr "Продолжить игру"
+
 msgid "Contract closed: %s from %s."
 msgstr "Контракт закрыт: %s из городка %s."
 
@@ -908,6 +914,9 @@ msgstr "Скорость прокрутки у краёв окна"
 
 msgid "Edit the contract"
 msgstr "Изменить контракт"
+
+msgid "Era: %s"
+msgstr "Эпоха: %s"
 
 msgid "Errors in the game data"
 msgstr "Ошибки в игровых данных"
@@ -1574,6 +1583,9 @@ msgstr "Сохранить игру"
 
 msgid "Save name"
 msgstr "Название сохранения"
+
+msgid "Saved: %s"
+msgstr "Сохранено: %s"
 
 msgid "Scholarly materials: %.1f/sec%s"
 msgstr "Писчие материалы: %.1f/сек%s"

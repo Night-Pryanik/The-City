@@ -6,7 +6,9 @@ extends Control
 # rules in memory with no consumer at all.
 const DataValidator = preload("res://scripts/data_validator.gd")
 const DataProblemsWindow = preload("res://scripts/data_problems_window.gd")
+const UiHelpers = preload("res://scripts/ui_helpers.gd")
 
+@onready var continue_button = $VBoxContainer/ContinueButton
 @onready var new_game_button = $VBoxContainer/NewGameButton
 @onready var load_game_button = $VBoxContainer/LoadGameButton
 @onready var settings_button = $VBoxContainer/SettingsButton
@@ -16,18 +18,25 @@ const DataProblemsWindow = preload("res://scripts/data_problems_window.gd")
 var save_load_window: CanvasLayer = null
 
 func _ready():
-    _refresh_load_button()
+    # The data comes first: the tooltip of "Continue game" names the era of the save,
+    # and on a cold start the menu is the first scene — GameData is not loaded yet.
+    _check_game_data()
+    _refresh_save_buttons()
 
+    continue_button.pressed.connect(_on_continue_game)
     new_game_button.pressed.connect(_on_new_game)
     load_game_button.pressed.connect(_on_load_game)
     settings_button.pressed.connect(_on_settings)
     quit_button.pressed.connect(_on_quit)
 
-    _check_game_data()
-
-# There is nothing to load while the player has no saves. The state is re-read after
-# the window is closed as well: the last save can be deleted from its list.
-func _refresh_load_button():
+# Both items that need a save are gated by the same fact. The tooltip of "Continue game"
+# names the save the click will take, so the button cannot promise one game and load
+# another. The state is re-read after the window is closed as well: the last save can be
+# deleted from its list.
+func _refresh_save_buttons():
+    var resume := SaveManager.get_resume_save()
+    continue_button.disabled = resume.is_empty()
+    continue_button.tooltip_text = UiHelpers.save_tooltip(resume)
     load_game_button.disabled = not SaveManager.has_save()
 
 # Checks the integrity of the game data before the start of a game.
@@ -70,6 +79,16 @@ func _check_game_data():
         problems.size(), str(counts)])
     for problem in problems:
         print("  - ", problem["message"])
+
+# The fast path: no window and no questions. The tooltip has already told the player
+# which save the click takes.
+func _on_continue_game():
+    if SaveManager.load_game():
+        get_tree().change_scene_to_file("res://scenes/MainMap.tscn")
+    else:
+        # The save vanished between the refresh and the click: the menu must not keep
+        # offering a game that cannot be loaded.
+        _refresh_save_buttons()
 
 func _on_new_game():
     # We load the data in advance: it is needed for a random name suggestion
@@ -134,7 +153,7 @@ func _on_load_game():
         save_load_window = load("res://scenes/save_load_window.tscn").instantiate()
         add_child(save_load_window)
         save_load_window.load_requested.connect(_on_load_requested)
-        save_load_window.closed.connect(_refresh_load_button)
+        save_load_window.closed.connect(_refresh_save_buttons)
     save_load_window.open_load()
 
 func _on_load_requested(slot_id: String):

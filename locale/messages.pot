@@ -657,6 +657,9 @@ msgstr ""
 msgid "City total (plan): %s units/sec"
 msgstr ""
 
+msgid "City: %s"
+msgstr ""
+
 msgid "Claim the area"
 msgstr ""
 
@@ -792,6 +795,9 @@ msgstr ""
 msgid "Consumption rule references a nonexistent product"
 msgstr ""
 
+msgid "Continue game"
+msgstr ""
+
 msgid "Contract closed: %s from %s."
 msgstr ""
 
@@ -907,6 +913,9 @@ msgid "Edge scrolling speed"
 msgstr ""
 
 msgid "Edit the contract"
+msgstr ""
+
+msgid "Era: %s"
 msgstr ""
 
 msgid "Errors in the game data"
@@ -1573,6 +1582,9 @@ msgid "Save game"
 msgstr ""
 
 msgid "Save name"
+msgstr ""
+
+msgid "Saved: %s"
 msgstr ""
 
 msgid "Scholarly materials: %.1f/sec%s"
