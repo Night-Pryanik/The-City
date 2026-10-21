@@ -1,18 +1,22 @@
 {
-  // The reference mod: it exercises both merge rules.
+  // The reference mod: it exercises all three merge rules.
   //
   //   1. A NEW identifier — the product "glazed_tile", the building "tile_kiln" and the
   //      recipe "fire_glazed_tile" do not exist in the vanilla data, so they are added
   //      to the game next to the vanilla entities.
   //   2. An EXISTING identifier — "flour" and "hand_mill" are vanilla entities. Only the
   //      fields written here change; every other field keeps its vanilla value.
+  //   3. The BLACKLIST (data/blacklist.json) — papyrus, glass bottles, the alchemist
+  //      house and its vitriol are removed from the game altogether. The same
+  //      identifier may be blacklisted in several collections at once: they are
+  //      different entities.
   //
   // The mod is deliberately small: it is a template for a mod author and a fixture for
   // tests/test_mods.gd.
   "id": "test_mod",
   "name": "Test Mod",
   "authors": [ "The City team" ],
-  "description": "A reference mod: adds glazed tiles and their workshop, and changes the price of flour and the cost of a hand mill.",
+  "description": "A reference mod: adds glazed tiles and their workshop, changes the price of flour and the cost of a hand mill, and removes papyrus, glass bottles and the alchemist's vitriol from the game.",
   "version": "1.0.0",
   "dependencies": [],
   "conflicts": []

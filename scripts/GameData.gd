@@ -44,6 +44,10 @@ var entity_sources: Dictionary = {}
 # above. The validator walks it for the field whitelist (data_validator._validate_schema):
 # the assembled collections do not keep every key the author wrote.
 var raw_data: Dictionary = {}
+# What the blacklists of the mods removed: collection -> {id: true} (data_loader
+# ._apply_blacklist). The entities are gone from the collections, and this is the only
+# memory of them — the validator tells a removed entity from a typo by it.
+var blacklisted: Dictionary = {}
 # The mods of the current game: their identifiers and the data folders to lay over the
 # vanilla data. ModManager pushes both here when the set changes (a new game, a loaded
 # save), so load_all_data() needs no knowledge of the mod storage.
@@ -100,6 +104,7 @@ func _assign_from(loader) -> void:
     roads_by_level = loader.roads_by_level
     entity_sources = loader.entity_sources
     raw_data = loader.raw_data
+    blacklisted = loader.blacklisted
 
 # === ROAD LEVELS (data/roads.json) ===
 #

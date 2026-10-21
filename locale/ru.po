@@ -504,6 +504,9 @@ msgstr "Назад"
 msgid "Base: %.1f/sec"
 msgstr "База: %.1f/сек"
 
+msgid "Blacklist names a nonexistent entity"
+msgstr "Чёрный список называет несуществующую сущность"
+
 msgid "Build"
 msgstr "Построить"
 
@@ -1127,6 +1130,9 @@ msgstr "Это ключ словаря: игра ищет его по имени
 
 msgid "It is a key of the dictionary %s: the game looks it up by name, finds nothing and silently ignores the value under the key. Check the spelling."
 msgstr "Это ключ словаря %s: игра ищет его по имени, ничего не находит и молча игнорирует значение под этим ключом. Проверьте написание."
+
+msgid "It is named by the blacklist of a mod, and nothing was removed: the collection %s has no such identifier, and no mod declared it. Check the spelling — a blacklist entry that names nothing does nothing."
+msgstr "Его называет чёрный список мода, и ничего не удалено: в сборке %s нет такого идентификатора, и ни один мод его не объявлял. Проверьте написание — запись чёрного списка, которая ничего не называет, ничего и не делает."
 
 msgid "It seems your region has no %s."
 msgstr "Похоже, в вашем регионе %s отсутствует."

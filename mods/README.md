@@ -132,7 +132,7 @@ resources, crafts, buildings, improvements, technologies, categories,
 groups, eras, product_groups, professions, quality_levels, roads, terrains,
 covers, special_actions, consumption, group_bonuses, subgroup_bonuses,
 modifiers, map_config, game_balance, city_names, qualities,
-priority_default, priority_options, priority_names
+priority_default, priority_options, priority_names, blacklist
 ```
 
 Any other top-level key is an `unknown_field` error, and such a mod cannot be enabled
@@ -163,7 +163,56 @@ Details:
   read in is not guaranteed. Between different mods the order is deterministic — by
   dependencies, and a mod applied later overrides one applied earlier.
 
-### 4.3. Localization
+### 4.3. The blacklist: removing entities
+
+A mod does not have to only add and change — it can also **remove** vanilla entities.
+The `blacklist` key is a dictionary: a **collection** → the list of the **identifiers**
+to remove from it.
+
+```json
+{
+  "blacklist": {
+    "buildings": [ "alchemist_house" ],
+    "crafts": [ "papyrus", "glass_bottle", "green_vitriol", "ink_from_green_vitriol_galls" ],
+    "resources": [ "papyrus", "glass_bottle", "green_vitriol" ]
+  }
+}
+```
+
+- The keys are the collection names from §4.1 that hold records with identifiers
+  (`resources`, `crafts`, `buildings`, `improvements`, `technologies`, `categories`,
+  `groups`, `eras`, `product_groups`, `professions`, `quality_levels`, `roads`,
+  `terrains`, `covers`, `special_actions`, `consumption`). Any other key is reported as
+  an unknown field. The config blocks (`game_balance`, `modifiers`, `map_config`,
+  `qualities`) and the arrays without identifiers (`city_names`, the diversity bonuses)
+  cannot be blacklisted — there is no entity to remove.
+- The identifiers belong to their collection. The same id in two collections is **two
+  different entities**: `"papyrus"` in `crafts` and in `resources` are the recipe and the
+  product, and the example above removes both. Inside one collection a repeated id
+  changes nothing.
+- The blacklist is applied right after the mod's own merge, so the rule between mods is
+  the one of the overrides: a mod applied **later** (a dependent, or one the dependency
+  order put after it) may declare a blacklisted entity again, and it will be back.
+- The `consumption` rules are addressed by their `resource` field, exactly as in the
+  vanilla data: `"consumption": [ "bread" ]` removes the rule that spends bread.
+- Keep the whole blacklist in **one** file: two files of one mod that both list the same
+  collection do not add up, the one read later wins.
+
+**A removed entity leaves its references behind, and they are the mod's own business.**
+A goods group that lists a removed product, a recipe that spends a removed resource, a
+building whose `default_recipes` names a removed recipe — all of them are broken
+references now, and the check of §6 refuses the mod until they are cleaned. The referrers
+are removed the same two ways: a blacklist entry (remove the referrer too) or an
+override (rewrite the field without the removed id). `mods/test_mod` shows both: it
+blacklists the product `papyrus` and rewrites the two goods groups that listed it, and
+it removes the whole vitriol chain of the alchemist house — the building, its recipe,
+the recipe that spends the product, and the product itself.
+
+A blacklist entry that names nothing is reported as well (the check `blacklist`): the
+collection has no such identifier and no mod declared it, so nothing was removed. It is
+a typo, and a blacklist that silently does nothing is worse than one that fails.
+
+### 4.4. Localization
 
 The `data` files hold the **English** source text of the `name`, `description`, `flavor`
 fields — that text is also the translation key (the same as in the vanilla files).
@@ -179,9 +228,11 @@ mods/tile_industry/
     buildings.json      <- new and changed buildings
     crafts.json         <- new and changed recipes
     resources.json      <- new and changed resources
+    blacklist.json      <- the entities to remove from the game (an optional file)
 ```
 
-A ready-made specimen exercising both merge rules — `mods/test_mod`.
+A ready-made specimen exercising all three rules — adding, overriding and removing — is
+`mods/test_mod`.
 
 ---
 
@@ -210,4 +261,6 @@ identifiers.
 - [ ] Inside `data` the file names and the subfolder structure are arbitrary; only the
       top-level JSON keys from the vanilla list matter.
 - [ ] A new `id` is added; an existing one is overridden field by field.
+- [ ] A blacklisted entity has no references left: the groups, recipes and rules that
+      named it are removed or overridden too.
 - [ ] The mod passes the data validator with no new errors.

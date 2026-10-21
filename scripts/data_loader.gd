@@ -45,6 +45,12 @@ var entity_sources: Dictionary = {}
 # walks this tree: it is the only place where every key the author wrote is still present.
 var raw_data: Dictionary = {}
 
+# What the blacklists of the mods removed: collection -> {id: true}. The entities are gone
+# from the collections, and this is the only memory of them — the runtime validator needs it
+# to tell "removed on purpose" from "a typo in the blacklist" (data_validator
+# ._validate_blacklist).
+var blacklisted: Dictionary = {}
+
 # The data fields whose value the player sees. data/*.json holds the English
 # source text, and the translation is applied here, when reading the files: the translation key
 # is the English text itself. Thanks to this the rest of the code does
@@ -61,6 +67,31 @@ const VALUE_MAP_FIELDS := ["priority_names"]
 const ENTITY_ID_FIELDS := {
     "consumption": "resource",
 }
+
+# The collections a mod's blacklist may name (see _apply_blacklist): the entity
+# collections addressed by an identifier — the very field the merge uses
+# (ENTITY_ID_FIELDS). The config blocks (game_balance, modifiers, map_config,
+# qualities) are not collections of entities, and the identifier-less arrays
+# (city_names, the diversity bonuses) have nothing to address a record by, so
+# neither can be blacklisted.
+const BLACKLIST_COLLECTIONS := [
+    "resources",
+    "crafts",
+    "buildings",
+    "improvements",
+    "technologies",
+    "categories",
+    "groups",
+    "eras",
+    "product_groups",
+    "professions",
+    "quality_levels",
+    "roads",
+    "terrains",
+    "covers",
+    "special_actions",
+    "consumption",
+]
 
 # The top-level keys whose elements have an "id" — by them we search
 # for the entity declaration. The order and composition repeat what load_all_data parses.
@@ -499,6 +530,73 @@ func _apply_mods(target: Dictionary, mod_dirs: Array) -> void:
         if mod_data.is_empty():
             continue
         _merge_mod_data(target, mod_data)
+        _apply_blacklist(target, mod_data)
+
+# --- THE BLACKLIST ---------------------------------------------------------------
+#
+# A mod may REMOVE vanilla entities, not only add and override them. The "blacklist"
+# key of its data is a dictionary { "<collection>": ["id", …] }: the collection is one of
+# BLACKLIST_COLLECTIONS, the value lists the identifiers to remove from it.
+#
+# The identifiers belong to their collection. The same id may be blacklisted as a recipe
+# and as a product — those are different entities that happen to share a name, and both
+# go. Inside one collection a repeated id changes nothing.
+#
+# The blacklist is applied right after the mod's own merge, so the rule between the mods
+# stays the one of the overrides: a mod applied later (a dependent, or one the dependency
+# order put after it) may declare a blacklisted entity again, and it will be back.
+#
+# A removed entity leaves its references behind: a goods group that lists a removed
+# product, a recipe that spends a removed resource. They are NOT cleaned up
+# automatically — the runtime validator reports them, and the author removes the referrers
+# the same way (a blacklist entry or an override). An entry that names nothing is a
+# problem of its own (data_validator._validate_blacklist): what was removed is recorded
+# in `blacklisted`, so the check can tell it from a typo.
+func _apply_blacklist(target: Dictionary, mod_data: Dictionary) -> void:
+    var blacklist = mod_data.get("blacklist", null)
+    if not (blacklist is Dictionary) or blacklist.is_empty():
+        return
+    for collection in blacklist.keys():
+        var name := str(collection)
+        if not BLACKLIST_COLLECTIONS.has(name):
+            # The shape of the blacklist is the validator's business: an unknown
+            # collection is reported by the whitelist, with the list of the allowed ones.
+            continue
+        var banned := _string_set(blacklist[collection])
+        if banned.is_empty():
+            continue
+        var entries = target.get(name, null)
+        if not (entries is Array):
+            continue
+        var id_field := str(ENTITY_ID_FIELDS.get(name, "id"))
+        var removed: Dictionary = blacklisted.get(name, {})
+        if not (removed is Dictionary):
+            removed = {}
+        var kept: Array = []
+        for entry in entries:
+            if not (entry is Dictionary):
+                kept.append(entry)
+                continue
+            var id := str(entry.get(id_field, ""))
+            if banned.has(id):
+                removed[id] = true
+                continue
+            kept.append(entry)
+        target[name] = kept
+        blacklisted[name] = removed
+
+# A value that is either a list of identifiers or a single identifier — the same
+# forgiveness as the manifest's authors/author (mod_manager._string_list).
+func _string_set(value) -> Dictionary:
+    var out := {}
+    if value is Array:
+        for item in value:
+            var text := str(item)
+            if not text.is_empty():
+                out[text] = true
+    elif value is String and not value.is_empty():
+        out[value] = true
+    return out
 
 func _merge_mod_data(target: Dictionary, mod: Dictionary) -> void:
     for key in mod.keys():

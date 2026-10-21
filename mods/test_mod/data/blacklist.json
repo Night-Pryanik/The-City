@@ -1,0 +1,24 @@
+{
+  // The blacklist removes entities from the game: the keys are the data collections,
+  // the values list the identifiers to remove from each of them.
+  //
+  // "papyrus" and "green_vitriol" are each listed TWICE — as a recipe and as a
+  // product. That is not a duplicate: they are different entities that happen to share
+  // an identifier, and both are removed. The same id inside ONE collection would be
+  // pointless.
+  //
+  // A removed entity leaves its references behind, and the mod has to clean them
+  // itself:
+  //   * the product "papyrus" is a member of two goods groups, and product_groups.json
+  //     next to this file drops it from both;
+  //   * the recipe "green_vitriol" is the only consumer chain of the alchemist house,
+  //     and the recipe "ink_from_green_vitriol_galls" spends its product — so the whole
+  //     chain goes together. The second ink recipe ("ink_from_iron_galls_vinegar")
+  //     needs neither of them and stays.
+  // "glass_bottle" nothing refers to, so it goes without a trace.
+  "blacklist": {
+    "buildings": [ "alchemist_house" ],
+    "crafts": [ "papyrus", "glass_bottle", "green_vitriol", "ink_from_green_vitriol_galls" ],
+    "resources": [ "papyrus", "glass_bottle", "green_vitriol" ]
+  }
+}

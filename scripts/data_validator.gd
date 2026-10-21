@@ -24,6 +24,7 @@
 # The checks:
 #   unknown_field      — a field (or a whole collection) that the data model does not describe
 #   unknown_key        — a key of a dictionary ({"produces": {"wheatt": 1}}) names nothing
+#   blacklist          — a mod's blacklist names an entity that is neither in the data nor removed
 #   id_charset         — an identifier outside ASCII (the Cyrillic in an id is indistinguishable from the Latin)
 #   id_lookalike       — an identifier differs from another one only by the lookalike characters
 #   produced_in        — a recipe refers to a non-existent building
@@ -584,6 +585,79 @@ const QUALITY_SCALE_FIELDS := {
     "priority_names": PRIORITY_MAP,
 }
 
+# --- THE BLACKLIST ---------------------------------------------------------------
+#
+# A mod may remove vanilla entities (data_loader._apply_blacklist). Its "blacklist" key is
+# a dictionary { "<collection>": ["id", …] }, and the whitelist below is what keeps the
+# shape of it honest: the keys are the collections of data_loader.BLACKLIST_COLLECTIONS
+# (the same list, the two must agree), and an unknown one — "building" for "buildings" —
+# is reported like any other unknown field, with the list of the allowed ones. The value
+# is a list of identifiers; a single identifier is accepted as well, the same forgiveness
+# as the manifest's authors/author.
+#
+# The shape is all the whitelist can say: a blacklisted entity is REMOVED from the tree,
+# so the walk cannot tell a removed one from a typo. That is the business of
+# _validate_blacklist below.
+const BLACKLIST_ENTRY := {"any": [{"array": LEAF}, LEAF]}
+const BLACKLIST_COLLECTIONS := [
+    "resources",
+    "crafts",
+    "buildings",
+    "improvements",
+    "technologies",
+    "categories",
+    "groups",
+    "eras",
+    "product_groups",
+    "professions",
+    "quality_levels",
+    "roads",
+    "terrains",
+    "covers",
+    "special_actions",
+    "consumption",
+]
+const BLACKLIST_FIELDS := {
+    "resources": BLACKLIST_ENTRY,
+    "crafts": BLACKLIST_ENTRY,
+    "buildings": BLACKLIST_ENTRY,
+    "improvements": BLACKLIST_ENTRY,
+    "technologies": BLACKLIST_ENTRY,
+    "categories": BLACKLIST_ENTRY,
+    "groups": BLACKLIST_ENTRY,
+    "eras": BLACKLIST_ENTRY,
+    "product_groups": BLACKLIST_ENTRY,
+    "professions": BLACKLIST_ENTRY,
+    "quality_levels": BLACKLIST_ENTRY,
+    "roads": BLACKLIST_ENTRY,
+    "terrains": BLACKLIST_ENTRY,
+    "covers": BLACKLIST_ENTRY,
+    "special_actions": BLACKLIST_ENTRY,
+    "consumption": BLACKLIST_ENTRY,
+}
+
+# The kind of the entity a blacklisted identifier names — for the text of the problem of
+# _validate_blacklist. The whitelist reports an unknown COLLECTION, that check an unknown
+# ENTITY inside a known one, and the author has to read which of the two it is.
+const BLACKLIST_KINDS := {
+    "resources": "product",
+    "crafts": "recipe",
+    "buildings": "building",
+    "improvements": "improvement",
+    "technologies": "technology",
+    "categories": "category",
+    "groups": "group",
+    "eras": "era",
+    "product_groups": "group",
+    "professions": "profession",
+    "quality_levels": "quality_level",
+    "roads": "road",
+    "terrains": "terrain",
+    "covers": "cover",
+    "special_actions": "special_action",
+    "consumption": "consumption_rule",
+}
+
 # The root of data/*.json: every top-level key of every file, merged into one tree. A key outside
 # this list is an unknown collection — the loader skips it, and everything under it is lost.
 const SCHEMA := {
@@ -613,6 +687,7 @@ const SCHEMA := {
     "priority_options": LEAF,
     "priority_names": PRIORITY_MAP,
     "qualities": QUALITY_SCALE_FIELDS,
+    "blacklist": BLACKLIST_FIELDS,
 }
 
 # The kinds of the entities that occur in the text of the problem.
@@ -731,6 +806,8 @@ static func check_title(kind: String) -> String:
             return TranslationServer.translate("Field is not part of the data model")
         "unknown_key":
             return TranslationServer.translate("Key of a dictionary names a nonexistent entity")
+        "blacklist":
+            return TranslationServer.translate("Blacklist names a nonexistent entity")
         "id_charset":
             return TranslationServer.translate("Disallowed characters in an identifier")
         "id_lookalike":
@@ -823,6 +900,7 @@ const SOURCE_COLLECTIONS := {
 const CHECK_ORDER := [
     "unknown_field",
     "unknown_key",
+    "blacklist",
     "id_charset",
     "id_lookalike",
     "produced_in",
@@ -874,6 +952,7 @@ func validate(gd: Object) -> Array:
 
     _validate_schema(gd, problems)
     _validate_identifiers(gd, problems)
+    _validate_blacklist(gd, problems)
     _validate_crafts(gd.crafts, buildings, technologies, all_resources, product_groups, problems)
     _validate_buildings(gd.buildings, technologies, professions, problems)
     _validate_improvements(improvements, technologies, professions, problems)
@@ -1048,18 +1127,59 @@ func _key_registries(data: Dictionary) -> Dictionary:
 
 
 # The identifiers declared by a collection of records: {"id": …} → {id: true}.
-func _declared_ids(records) -> Dictionary:
+#
+# id_field is the field the records are addressed by, where it is not "id" (the
+# consumption rules — "resource", see ENTITY_ID_FIELDS).
+func _declared_ids(records, id_field: String = "id") -> Dictionary:
     var out := {}
     if not (records is Array):
         return out
     for record in records:
         if not (record is Dictionary):
             continue
-        var id := _as_id(record.get("id", ""))
+        var id := _as_id(record.get(id_field, ""))
         if not id.is_empty():
             out[id] = true
     return out
 
+
+# --- THE BLACKLIST ---------------------------------------------------------------
+#
+# A blacklisted entity is REMOVED from the merged tree, so the tree can no longer tell a
+# removed one from an entity that never existed: both are simply absent. The loader
+# therefore keeps what it removed (GameData.blacklisted, filled by data_loader
+# ._apply_blacklist), and an entry that is neither present in its collection nor removed
+# is a typo — a silent no-op the author believes works.
+#
+# The blacklist of the tree is the union of the mods' blacklists (a top-level dictionary
+# is merged like any other), so an entity a later mod brought back is present and passes;
+# the record of the removed ones covers the rest. The shape of the blacklist itself —
+# an unknown collection, a value that is not a list — is the whitelist's business
+# (BLACKLIST_FIELDS), and this check skips what the whitelist already reports.
+func _validate_blacklist(gd: Object, problems: Array) -> void:
+    var data = gd.get("raw_data")
+    if not (data is Dictionary) or data.is_empty():
+        return
+    var blacklist = data.get("blacklist", null)
+    if not (blacklist is Dictionary) or blacklist.is_empty():
+        return
+    var removed: Dictionary = gd.get("blacklisted")
+    if not (removed is Dictionary):
+        removed = {}
+    for collection in blacklist.keys():
+        var name := str(collection)
+        if not BLACKLIST_COLLECTIONS.has(name):
+            continue
+        var declared := _declared_ids(data.get(name, []),
+                str(ENTITY_ID_FIELDS.get(name, "id")))
+        var gone: Dictionary = removed.get(name, {})
+        if not (gone is Dictionary):
+            gone = {}
+        for id in _as_string_list(blacklist[collection]):
+            if declared.has(id) or gone.has(id):
+                continue
+            _push(problems, "blacklist", str(BLACKLIST_KINDS.get(name, "product")), id,
+                    "", "", "", name, {}, "@key:blacklist")
 
 
 func _walk_fields(value, fields: Dictionary, context: Dictionary, problems: Array) -> void:
@@ -1839,6 +1959,16 @@ static func build_text(problem: Dictionary) -> void:
                 var owner_forms := entity_forms(str(problem.get("source_kind", "")), "recipe")
                 where = TranslationServer.translate("A reference to %s is present in %s %s, field %s.") % [str(key_forms["ref"]), str(owner_forms["source"]), _quote_owner(str(problem.get("source_name", "")), str(problem.get("source_id", ""))), str(problem.get("field", ""))]
                 where += " " + TranslationServer.translate("It is a key of a dictionary: the game looks it up by name, finds nothing and silently ignores the value under the key. Check the spelling.")
+        "blacklist":
+            # The headline is the one of an ordinary broken reference — the identifier
+            # is just as absent — and the second line says where the name came from: a
+            # blacklisted entity is absent BY DESIGN, the loader keeps what it removed
+            # (GameData.blacklisted), and only what is in neither place gets here. The
+            # collection is named: "there is no such product" and "there is no such
+            # collection" are different mistakes, and the whitelist owns the second one.
+            var banned_forms := entity_forms(str(problem.get("target", "")))
+            headline = TranslationServer.translate("%s with the identifier \"%s\" does not exist.") % [str(banned_forms["title"]), str(problem.get("ref_id", ""))]
+            where = TranslationServer.translate("It is named by the blacklist of a mod, and nothing was removed: the collection %s has no such identifier, and no mod declared it. Check the spelling — a blacklist entry that names nothing does nothing.") % str(problem.get("field", ""))
         "id_charset":
             headline = TranslationServer.translate("Identifier \"%s\" contains disallowed characters.") % str(problem.get("ref_id", ""))
             where = TranslationServer.translate("Only Latin letters a-z, digits and \"_\" are allowed. Disallowed: %s Such characters are indistinguishable from Latin ones by eye — fix this identifier and ALL references to it at once.") % _bad_chars_text(problem.get("bad_chars", []))

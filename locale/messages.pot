@@ -504,6 +504,9 @@ msgstr ""
 msgid "Base: %.1f/sec"
 msgstr ""
 
+msgid "Blacklist names a nonexistent entity"
+msgstr ""
+
 msgid "Build"
 msgstr ""
 
@@ -1126,6 +1129,9 @@ msgid "It is a key of a dictionary: the game looks it up by name, finds nothing 
 msgstr ""
 
 msgid "It is a key of the dictionary %s: the game looks it up by name, finds nothing and silently ignores the value under the key. Check the spelling."
+msgstr ""
+
+msgid "It is named by the blacklist of a mod, and nothing was removed: the collection %s has no such identifier, and no mod declared it. Check the spelling — a blacklist entry that names nothing does nothing."
 msgstr ""
 
 msgid "It seems your region has no %s."
