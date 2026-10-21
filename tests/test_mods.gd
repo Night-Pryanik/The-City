@@ -281,7 +281,11 @@ func _test_new_game_flow(state: Dictionary) -> void:
         checkbox.button_pressed = true
         check(_mod_manager.active_ids.has(SHIPPED_MOD),
                 "the set is applied without leaving the dialog", state)
-        check(_game_data.products.has("glazed_tile"), "the game data carries the mod", state)
+        # The data is not rebuilt on every click: it is marked stale and rebuilt when the
+        # dialog really reads it (the random name) or when the game starts.
+        check(not _game_data.data_loaded, "a click marks the data stale instead of rebuilding it", state)
+        menu._ensure_game_data()
+        check(_game_data.products.has("glazed_tile"), "the data is rebuilt when it is needed", state)
         check(menu.mods_toggle.text == "%s (1)" % tr("Mods"), "the toggle counts the mods", state)
 
     # Folding the list back does not undo the choice.

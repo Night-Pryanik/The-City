@@ -245,7 +245,14 @@ func _problems_for(dirs: Array) -> Array:
 
 func _vanilla_baseline() -> Array:
     if not _baseline_ready:
-        _vanilla_problems = _problems_for([])
+        var game_data = _game_data()
+        # The running game is often the vanilla world already (the menu checks it at
+        # startup): validating it costs one validator pass instead of a detached copy of
+        # the whole data.
+        if game_data != null and game_data.data_loaded and game_data.active_mod_ids.is_empty():
+            _vanilla_problems = DataValidator.new().validate(game_data)
+        else:
+            _vanilla_problems = _problems_for([])
         _baseline_ready = true
     return _vanilla_problems
 

@@ -142,6 +142,7 @@ func _build_new_game_dialog():
     random_button.icon = load("res://icons/dice.svg")
     random_button.tooltip_text = tr("Suggest another name")
     random_button.pressed.connect(func():
+        _ensure_game_data()
         city_name_edit.text = GameData.get_random_city_name()
         city_name_edit.select_all()
         city_name_edit.grab_focus()
@@ -198,15 +199,20 @@ func _on_mod_list_layout_changed():
     await get_tree().process_frame
     _fit_dialog()
 
-# The set is applied at once, and not on "OK": the dialog suggests a random city name,
-# and a mod may bring its own names. The game that starts therefore always runs exactly
-# the data the player has just chosen.
+# The set is handed over at once, so the game that starts runs exactly the data the
+# player has chosen. The data itself is rebuilt later, when something really reads it:
+# a full rebuild on every checkbox makes the list feel slow, and the set of the game is
+# known without it.
 func _on_mods_changed(mod_ids: Array):
-    var changed: bool = mod_ids != ModManager.active_ids
     ModManager.set_active(mod_ids)
-    if changed:
-        GameData.load_all_data()
     _refresh_mods_toggle()
+
+# The random name is the only thing inside this dialog that reads the data, and the data
+# is stale as soon as the set changes (ModManager drops it). The start of the game
+# reloads it on its own.
+func _ensure_game_data():
+    if not GameData.data_loaded:
+        GameData.load_all_data()
 
 # The caption tells at a glance that a game is about to start with mods, even while the
 # list is folded.
