@@ -197,3 +197,13 @@ Comments are not documentation by default.
 A concise, readable implementation with no comment is preferable to an implementation surrounded by commentary that merely restates its behavior.
 
 The purpose of comments is to preserve **non-obvious knowledge**, not to increase the amount of text in the repository.
+
+## Local-only Files and the Working-Tree `.gitignore`
+
+`.gitignore` and `project.godot` carry the `skip-worktree` bit, so git ignores local edits to them. The working-tree `.gitignore` therefore holds ignore rules that are not part of the repository, while the committed version stays minimal. A rule added to the working tree never shows up in `git status` and is never pushed.
+
+Files ignored only by the working-tree `.gitignore` are local by design and must not be committed: `docs.md`, `developer_diary.md`, `TODO.md`, the scratch files under `tools/`, and the assistant's memory folder.
+
+`docs.md` is the detailed design document, and source comments reference it by section name. It stays on disk and remains valid for local work, although the file is absent from the repository — the references are not a reason to re-add it.
+
+To keep a file local, list it in the working-tree `.gitignore` and drop it from the index with `git rm --cached <file>`, which leaves the file itself untouched on disk.
