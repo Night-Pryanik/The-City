@@ -40,6 +40,44 @@
       "rocky_desert": { "density": 0.05, "target_cluster": 5 }
     },
 
+  // --- Climate and biomes ---
+  // The climate is built from two independent fields:
+  //   temperature — belts running from the poles to the equator. The belts are strictly
+  //     ordered (cold → mild → hot → mild → cold), therefore two hexes of the same latitude
+  //     never belong to non-neighbouring belts: a jungle and a taiga cannot meet sideways.
+  //     The equator sits on a random row, so the centre of the map (and the city on it) lands
+  //     on a different latitude from game to game, and the belts are built around it.
+  //   moisture — large wet and dry regions that do not follow the latitudes: they lie anywhere,
+  //     curve and surround each other. The moisture splits every belt into two biomes.
+  // A pair (temperature, moisture) selects a biome from data/biomes.json, and the biome sets
+  // the vegetation of the plains and hills of its region.
+  //
+  // Rows are counted from the north edge of the map. All the "rows" values below are
+  // fractions of the map height, so the climate does not depend on the map size.
+  "climate": {
+    "equator_min": 0.33,        // The range of the equator row: the nearer to 0.5, the more
+    "equator_max": 0.67,        // central (hot) the city's latitude is
+    "hot_half_rows": 0.12,      // Half of the hot belt's height
+    "mild_rows": 0.14,          // The height of the mild belt on each side of the hot one;
+                                // everything beyond it is cold
+    // The belts are not straight: the temperature row of a hex is shifted by a smooth noise field,
+    // so the boundaries meander and the belts take unequal areas. The shift is limited so that
+    // the belts never overturn: the sequence stays ordered in every column.
+    "warp_rows": 3.0,           // The amplitude of the shift (in rows)
+    "warp_scale": 0.2,          // The size of the noise features (fraction of the smaller side)
+    // The moisture field: a threshold on a smooth noise. A lower threshold means more wet land.
+    "moisture_scale": 0.26,
+    "moisture_threshold": 0.5,
+    // A biome patch smaller than this many land hexes is dissolved into the biome around it.
+    "min_biome_size": 3,
+    // The sandy and rocky deserts are a relief of the hot dry belt: outside it they become plains,
+    // so that a sandy desert never appears in the taiga.
+    "deserts_only_in_hot_dry": true,
+    // Lone wooded hexes are cleared and lone holes in a forest are filled, so that the woods
+    // read as groves instead of a random scatter of cells.
+    "cover_smoothing": true
+  },
+
   // --- Sea generation ---
   // The sea does NOT take part in the Voronoi algorithm (it is not in terrain_config).
   // It is generated as a mask BEFORE Voronoi and is re-applied on top of

@@ -6,6 +6,7 @@ const HUD_MESSAGE_IMPORTANT := 1
 
 var terrains: Dictionary = {}
 var covers: Dictionary = {}
+var biomes: Dictionary = {}
 var raw_resources: Dictionary = {}
 var products: Dictionary = {}
 var improvements: Dictionary = {}
@@ -80,6 +81,7 @@ func build_probe(mod_dirs: Array):
 func _assign_from(loader) -> void:
     terrains = loader.terrains
     covers = loader.covers
+    biomes = loader.biomes
     raw_resources = loader.raw_resources
     products = loader.products
     improvements = loader.improvements

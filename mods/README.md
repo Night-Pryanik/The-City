@@ -133,7 +133,7 @@ any other name — as long as the file is inside the `data` folder. The vanilla 
 ```
 resources, crafts, buildings, improvements, technologies, categories,
 groups, eras, product_groups, professions, quality_levels, roads, terrains,
-covers, special_actions, consumption, group_bonuses, subgroup_bonuses,
+covers, biomes, special_actions, consumption, group_bonuses, subgroup_bonuses,
 modifiers, map_config, game_balance, city_names, qualities,
 priority_default, priority_options, priority_names, blacklist
 ```
@@ -185,7 +185,7 @@ to remove from it.
 - The keys are the collection names from §4.1 that hold records with identifiers
   (`resources`, `crafts`, `buildings`, `improvements`, `technologies`, `categories`,
   `groups`, `eras`, `product_groups`, `professions`, `quality_levels`, `roads`,
-  `terrains`, `covers`, `special_actions`, `consumption`). Any other key is reported as
+  `terrains`, `covers`, `biomes`, `special_actions`, `consumption`). Any other key is reported as
   an unknown field. The config blocks (`game_balance`, `modifiers`, `map_config`,
   `qualities`) and the arrays without identifiers (`city_names`, the diversity bonuses)
   cannot be blacklisted — there is no entity to remove.

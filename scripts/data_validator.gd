@@ -249,6 +249,7 @@ const OWNER_KINDS := {
     "buildings": "building",
     "terrains": "terrain",
     "covers": "cover",
+    "biomes": "biome",
     "improvements": "improvement",
 }
 
@@ -442,6 +443,18 @@ const COVER_FIELDS := {
     "fresh_water_source": LEAF,
 }
 
+# A biome is a pair of the climate axes plus the vegetation of its region. The two axes are
+# enumerated by _validate_biomes: a value outside the list is a biome that never appears on the map.
+const BIOME_FIELDS := {
+    "id": LEAF,
+    "name": LEAF,
+    "temperature": LEAF,
+    "humidity": LEAF,
+    "tint": LEAF,
+    "tint_alpha": LEAF,
+    "cover_chance": COVER_MAP,
+}
+
 const SPECIAL_ACTION_FIELDS := {
     "id": LEAF,
     "name": LEAF,
@@ -513,6 +526,22 @@ const SEA_CONFIG_FIELDS := {
     "noise_city_bump_radius": LEAF,
 }
 
+# The climate block: the belts of the temperature, the moisture field and the cleanup of the biomes
+# (see map_generator._generate_biomes).
+const CLIMATE_FIELDS := {
+    "equator_min": LEAF,
+    "equator_max": LEAF,
+    "hot_half_rows": LEAF,
+    "mild_rows": LEAF,
+    "warp_rows": LEAF,
+    "warp_scale": LEAF,
+    "moisture_scale": LEAF,
+    "moisture_threshold": LEAF,
+    "min_biome_size": LEAF,
+    "deserts_only_in_hot_dry": LEAF,
+    "cover_smoothing": LEAF,
+}
+
 const MAP_CONFIG_FIELDS := {
     "map_rows": LEAF,
     "map_cols": LEAF,
@@ -521,6 +550,7 @@ const MAP_CONFIG_FIELDS := {
     "region_width": LEAF,
     "target_cluster": LEAF,
     "terrain_config": {"id_map": {"density": LEAF, "target_cluster": LEAF}, "keys": KEY_TERRAINS},
+    "climate": CLIMATE_FIELDS,
     "sea": SEA_CONFIG_FIELDS,
     "num_main_rivers": LEAF,
     "num_tributaries": LEAF,
@@ -614,6 +644,7 @@ const BLACKLIST_COLLECTIONS := [
     "roads",
     "terrains",
     "covers",
+    "biomes",
     "special_actions",
     "consumption",
 ]
@@ -632,6 +663,7 @@ const BLACKLIST_FIELDS := {
     "roads": BLACKLIST_ENTRY,
     "terrains": BLACKLIST_ENTRY,
     "covers": BLACKLIST_ENTRY,
+    "biomes": BLACKLIST_ENTRY,
     "special_actions": BLACKLIST_ENTRY,
     "consumption": BLACKLIST_ENTRY,
 }
@@ -654,6 +686,7 @@ const BLACKLIST_KINDS := {
     "roads": "road",
     "terrains": "terrain",
     "covers": "cover",
+    "biomes": "biome",
     "special_actions": "special_action",
     "consumption": "consumption_rule",
 }
@@ -675,6 +708,7 @@ const SCHEMA := {
     "roads": {"array": ROAD_FIELDS},
     "terrains": {"array": TERRAIN_FIELDS},
     "covers": {"array": COVER_FIELDS},
+    "biomes": {"array": BIOME_FIELDS},
     "special_actions": {"array": SPECIAL_ACTION_FIELDS},
     "consumption": {"array": CONSUMPTION_FIELDS},
     "group_bonuses": {"array": GROUP_BONUS_FIELDS},
@@ -698,7 +732,7 @@ const SCHEMA := {
 # to entity_forms() about how the builder reads them.
 const ENTITIES := [
     "building", "product", "improvement", "technology", "profession",
-    "category", "group", "recipe", "road", "terrain", "cover", "era",
+    "category", "group", "recipe", "road", "terrain", "cover", "biome", "era",
     "quality_level", "priority_option", "special_action", "consumption_rule",
 ]
 
@@ -771,6 +805,10 @@ static func entity_forms(kind: String, fallback: String = "product") -> Dictiona
             return {"title": TranslationServer.translate("Terrain cover", "validator_entity_title_cover"),
                 "ref": TranslationServer.translate("this terrain cover", "validator_entity_ref_cover"),
                 "source": TranslationServer.translate("terrain cover", "validator_entity_source_cover")}
+        "biome":
+            return {"title": TranslationServer.translate("Biome", "validator_entity_title_biome"),
+                "ref": TranslationServer.translate("this biome", "validator_entity_ref_biome"),
+                "source": TranslationServer.translate("biome", "validator_entity_source_biome")}
         "era":
             return {"title": TranslationServer.translate("Era", "validator_entity_title_era"),
                 "ref": TranslationServer.translate("this era", "validator_entity_ref_era"),
@@ -846,6 +884,8 @@ static func check_title(kind: String) -> String:
             return TranslationServer.translate("Road max speed must be greater than zero")
         "road_work_cost":
             return TranslationServer.translate("Road work cost cannot be negative")
+        "biome_axes":
+            return TranslationServer.translate("Biome: unknown climate axis value")
         _:
             # An unknown kind of the check: we show the machine name — by it one can see
             # what is missing in CHECK_ORDER, and it survives any language.
@@ -891,6 +931,7 @@ const SOURCE_COLLECTIONS := {
     # their collections, but no other check refers to them.
     "terrain": "terrains",
     "cover": "covers",
+    "biome": "biomes",
     "era": "eras",
     "quality_level": "quality_levels",
     "special_action": "special_actions",
@@ -920,6 +961,7 @@ const CHECK_ORDER := [
     "road_level",
     "road_max_speed",
     "road_work_cost",
+    "biome_axes",
 ]
 
 
@@ -962,6 +1004,7 @@ func validate(gd: Object) -> Array:
     _validate_consumption(gd.consumption_rules, products, product_groups, professions, problems)
     _validate_technologies(technologies, problems)
     _validate_roads(gd.roads, technologies, problems)
+    _validate_biomes(gd.biomes, problems)
 
     _sort_problems(problems)
     return problems
@@ -1493,6 +1536,35 @@ func _validate_roads(roads, technologies: Dictionary, problems: Array) -> void:
                     "road", rname, road_id, "work_cost")
 
 
+# --- THE BIOMES ------------------------------------------------------------------
+# The two axes are enumerated, and the generator compares them with its own constants: any other
+# spelling would silently remove the biome from the map (the pair stays empty and the generator
+# falls back to another biome of the same temperature).
+const BIOME_TEMPERATURES := ["cold", "mild", "hot"]
+const BIOME_HUMIDITIES := ["wet", "dry"]
+
+func _validate_biomes(biomes, problems: Array) -> void:
+    if biomes == null:
+        return
+    var records: Array = []
+    if biomes is Dictionary:
+        records = biomes.values()
+    elif biomes is Array:
+        records = biomes
+    for biome in records:
+        if not (biome is Dictionary):
+            continue
+        var biome_id := str(biome.get("id", ""))
+        var bname := _entity_name(biome, biome_id)
+
+        var temperature := str(biome.get("temperature", ""))
+        if not BIOME_TEMPERATURES.has(temperature):
+            _add(problems, "biome_axes", "biome", temperature, "biome", bname, biome_id, "temperature")
+        var humidity := str(biome.get("humidity", ""))
+        if not BIOME_HUMIDITIES.has(humidity):
+            _add(problems, "biome_axes", "biome", humidity, "biome", bname, biome_id, "humidity")
+
+
 # --- THE RECIPES ---------------------------------------------------------------
 # produced_in, result / display_result, the resources (including the @-groups), unlock_tech.
 func _validate_crafts(crafts, buildings: Dictionary, technologies: Dictionary,
@@ -1979,6 +2051,9 @@ static func build_text(problem: Dictionary) -> void:
         "product_source":
             headline = TranslationServer.translate("Product \"%s\" is not produced anywhere.") % str(problem.get("ref_id", ""))
             where = TranslationServer.translate("Source not found: product \"%s\" (%s) appears neither in produces of any map resource, nor in result/display_result of any recipe, nor in additional_yield of any building. Add a data source or remove the product from the file.") % [str(problem.get("source_name", "")), str(problem.get("source_id", ""))]
+        "biome_axes":
+            headline = TranslationServer.translate("Biome %s has an unknown %s \"%s\".") % [_quote_owner(str(problem.get("source_name", "")), str(problem.get("source_id", ""))), str(problem.get("field", "")), str(problem.get("ref_id", ""))]
+            where = TranslationServer.translate("The temperature is one of: cold, mild, hot; the humidity — one of: wet, dry. The generator compares the values literally, so a biome with any other spelling never appears on the map: its pair of axes stays empty and the climate falls back to another biome.")
         _:
             # The other checks are a broken REFERENCE: "There is no X with the identifier …
             # exists" + where exactly it was referred to.

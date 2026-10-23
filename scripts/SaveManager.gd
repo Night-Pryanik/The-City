@@ -440,6 +440,11 @@ func _serialize_tile_data(main_map: Node) -> Array:
                 row_arr.append({
                     "terrain": tile.get("terrain", "plain"),
                     "cover": tile.get("cover", "none"),
+                    # biome — the climate region of the hex. It is generated once with the map and
+                    # never changes, but it is stored anyway: it colours the hex and names the
+                    # climate in the tooltip, and a save must not depend on the generator
+                    # producing the same map again.
+                    "biome": tile.get("biome", ""),
                     "resource": tile.get("resource"),
                     "improvement": tile.get("improvement"),
                     "decorative": tile.get("decorative", false),

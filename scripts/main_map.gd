@@ -351,7 +351,7 @@ func _ready():
                 # crop_bred — the id of a domesticated animal/plant which is bred
                 # on an empty hex (see docs.md, the section "Breeding of animals/plants").
                 # For the natural resources tile.resource remains.
-                var tile = {"terrain": "plain", "cover": "none", "resource": null, "crop_bred": null, "improvement": null, "decorative": false, "production_fractional_remainder": 0.0, "feed_fractional_remainder": 0.0, "terrain_icon": "", "in_influence": false, "is_explored": false, "river_edges": [], "in_town_influence": false, "has_town": false, "road_built": false, "road_level": 1, "road_staged": false}
+                var tile = {"terrain": "plain", "cover": "none", "biome": "", "resource": null, "crop_bred": null, "improvement": null, "decorative": false, "production_fractional_remainder": 0.0, "feed_fractional_remainder": 0.0, "terrain_icon": "", "in_influence": false, "is_explored": false, "river_edges": [], "in_town_influence": false, "has_town": false, "road_built": false, "road_level": 1, "road_staged": false}
                 if row < saved_tiles.size() and col < saved_tiles[row].size():
                     var saved = saved_tiles[row][col]
                     if not saved.is_empty():
@@ -360,6 +360,7 @@ func _ready():
                         var saved_cover = saved.get("cover", "none")
                         tile["terrain"] = saved_terrain
                         tile["cover"] = saved_cover
+                        tile["biome"] = saved.get("biome", "")
                         tile["resource"] = saved.get("resource")
                         tile["crop_bred"] = saved.get("crop_bred")
                         # The occupancy of the livestock

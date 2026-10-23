@@ -6,6 +6,7 @@ const JsonUtils = preload("res://scripts/json_utils.gd")
 
 var terrains: Dictionary = {}
 var covers: Dictionary = {}
+var biomes: Dictionary = {}
 var raw_resources: Dictionary = {}
 var products: Dictionary = {}
 var improvements: Dictionary = {}
@@ -89,6 +90,7 @@ const BLACKLIST_COLLECTIONS := [
     "roads",
     "terrains",
     "covers",
+    "biomes",
     "special_actions",
     "consumption",
 ]
@@ -112,6 +114,7 @@ const SOURCE_COLLECTIONS := [
     # a file and a line — and the file and line are exactly the main value here.
     "terrains",
     "covers",
+    "biomes",
     "eras",
     "groups",
     "quality_levels",
@@ -149,6 +152,10 @@ func load_all_data(mod_dirs: Array = []):
     covers = {}
     for c in merged_data.get("covers", []):
         covers[c["id"]] = c
+
+    biomes = {}
+    for b in merged_data.get("biomes", []):
+        biomes[b["id"]] = b
 
     raw_resources = {}
     products = {}

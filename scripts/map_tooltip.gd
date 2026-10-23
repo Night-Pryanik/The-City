@@ -644,6 +644,18 @@ func _render_extra_products(products: Array):
     _last_products_key = var_to_str(products)
 
 
+# The climate line of the tooltip: the biome of the hex. The water has no biome, so the line is
+# simply absent there. The biome is visible together with the terrain: the player sees it on the
+# map anyway, and an unexplored hex shows it for the same reason it shows the relief.
+func _biome_line(tile: Dictionary) -> String:
+    var biome_id := str(tile.get("biome", ""))
+    if biome_id == "":
+        return ""
+    var biome: Dictionary = GameData.biomes.get(biome_id, {})
+    if biome.is_empty():
+        return ""
+    return "\n" + tr("Biome: %s") % str(biome.get("name", biome_id))
+
 # --- The building of the text of the hex ---
 # It is moved out of update_tooltip_text, so that the control panel (control_panel.gd)
 # shows the same information without duplicating the code.
@@ -699,6 +711,7 @@ func _build_text(row: int, col: int, tile_data: Array, _city_row: int = 0, _city
         # point reachable by scrolling, — including the territory of the towns, therefore
         # the hint is the same for all the unexplored hexes.
         var unrevealed_text: String = tr("Terrain: %s") % terrain_with_cover
+        unrevealed_text += _biome_line(tile)
         var unrevealed_terr: Array = _territory_lines_for(tile, row, col)
         if not unrevealed_terr.is_empty():
             unrevealed_text += "\n" + "\n".join(unrevealed_terr)
@@ -707,6 +720,7 @@ func _build_text(row: int, col: int, tile_data: Array, _city_row: int = 0, _city
 
     var imp_name = GameData.improvements.get(tile.improvement, {}).get("name", tr("none")) if tile.improvement != null else tr("none")
     var text: String = tr("Terrain: %s") % terrain_with_cover
+    text += _biome_line(tile)
     # The markers of someone else's territory in the ring/at the place of a town: right after
     # "Terrain", so that the player sees "who is here" before reading
     # the rest of the tooltip. The "City" row is added ONLY when there really is

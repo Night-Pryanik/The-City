@@ -290,11 +290,26 @@ func generate_map(rows: int, cols: int, city_row: int, city_col: int, raw_res: D
     # of the cover and the resources.
     _ensure_plain_zone(tile_data, rows, cols, city_row, city_col, PLAIN_ZONE_RADIUS)
 
+    # --- THE CLIMATE AND THE BIOMES ---
+    # The climate is built AFTER the relief, because the water hexes have no biome: the sea and
+    # the lakes break the biome regions at the coasts. The deserts are pruned right after, while
+    # the covers are still empty, and the small biome patches are dissolved before the vegetation
+    # is rolled — so that the cover of a hex always belongs to the biome it ends up in.
+    var climate_cfg: Dictionary = GameData.map_config.get("climate", {})
+    var t_climate = Time.get_ticks_msec()
+    _generate_biomes(tile_data, rows, cols)
+    if bool(climate_cfg.get("deserts_only_in_hot_dry", true)):
+        _limit_deserts_to_hot_dry(tile_data, rows, cols)
+    _remove_small_biome_islands(tile_data, rows, cols, int(climate_cfg.get("min_biome_size", 3)))
+    print("biomes stage: ", Time.get_ticks_msec() - t_climate, " ms")
+
     var t_cover = Time.get_ticks_msec()
     for row in range(rows):
         for col in range(cols):
             var terrain_id = tile_data[row][col]["terrain"]
-            tile_data[row][col]["cover"] = _roll_cover(terrain_id)
+            tile_data[row][col]["cover"] = _roll_cover(terrain_id, str(tile_data[row][col].get("biome", "")))
+    if bool(climate_cfg.get("cover_smoothing", true)):
+        _smooth_covers(tile_data, rows, cols)
 
     # The multi-index of the free hexes by (terrain, cover) — for a fast
     # placement of the resources without a full scan of the map for each resource.
@@ -681,7 +696,7 @@ func _punch_hex(tile_data: Array, key: String) -> void:
     var tile = tile_data[r][c]
     tile["terrain"] = "plain"
     # The cover is generated as that of an ordinary plain for a natural look.
-    tile["cover"] = _roll_cover("plain")
+    tile["cover"] = _roll_cover("plain", str(tile.get("biome", "")))
     tile["_is_marsh"] = false
     tile["_is_sea"] = false
     tile["_is_shallow_sea"] = false
@@ -734,16 +749,373 @@ func _punch_corridor_to_edge(tile_data: Array, rows: int, cols: int,
         step = prev
     return true
 
-# Chooses the covers (cover) for a hex with the specified terrain type by the weights
-# from terrains.json (cover_chance). If the field is absent or empty —
-# it returns "none".
-func _roll_cover(terrain_type: String) -> String:
-    var t: Dictionary = GameData.terrains.get(terrain_type, {})
-    var chances: Dictionary = t.get("cover_chance", {})
+# --- CLIMATE AND BIOMES ---
+#
+# Two independent fields decide the biome of a hex:
+#
+#   temperature — belts running from the poles to the equator. The equator sits on a random row
+#     (the "climate" block of data/map_config.json), so the city in the middle of the map lands
+#     on a different latitude from game to game and the belts are built around it. The belts are
+#     ordered cold → mild → hot → mild → cold, and the order is never broken: the temperature row
+#     of a hex is shifted by a smooth noise field, but the shift is clamped so that the row never
+#     decreases down a column and never grows faster than MAX_TEMPERATURE_STEP rows per row.
+#     Therefore two hexes of the same latitude are never more than one belt apart — a jungle and
+#     a taiga cannot meet sideways.
+#
+#   moisture — a smooth noise field that does not follow the latitudes at all. Wet and dry regions
+#     lie anywhere, curve and surround each other, and they split every temperature belt into two
+#     biomes (data/biomes.json).
+#
+# The biome picks the vegetation of the plains and hills only: a mountain, a swamp or a lake keeps
+# its own cover_chance from data/terrains.json, so the relief stays readable inside any climate.
+# The climate is a generation-time property; only its result, the biome id, is stored in the tile.
+
+const TEMPERATURE_COLD := "cold"
+const TEMPERATURE_MILD := "mild"
+const TEMPERATURE_HOT := "hot"
+const HUMIDITY_WET := "wet"
+const HUMIDITY_DRY := "dry"
+
+# The largest growth of the temperature row from one row to the next. It has to stay below the
+# height of the mild belt, otherwise one step could jump over it and put a cold hex next to a hot one.
+const MAX_TEMPERATURE_STEP := 1.5
+
+# The cold belt that the climate meander may never eat: the map keeps a polar edge on both sides.
+const MIN_COLD_ROWS := 3.0
+
+# The noise is hashed from the integer lattice: the field depends only on its own salt, so it does
+# not consume the global RNG and does not shift the random sequence of the rest of the generation.
+static func _hash01(ix: int, iy: int, salt: int) -> float:
+    var h: int = (ix * 73856093) ^ (iy * 19349663) ^ (salt * 83492791)
+    h = h & 0x7FFFFFFF
+    h = (h ^ (h >> 13)) * 1274126177
+    h = h & 0x7FFFFFFF
+    h = h ^ (h >> 16)
+    return float(h & 0xFFFF) / 65535.0
+
+static func _value_noise(x: float, y: float, salt: int) -> float:
+    var x0 := int(floor(x))
+    var y0 := int(floor(y))
+    var fx := x - float(x0)
+    var fy := y - float(y0)
+    var sx := fx * fx * (3.0 - 2.0 * fx)
+    var sy := fy * fy * (3.0 - 2.0 * fy)
+    var top := lerpf(_hash01(x0, y0, salt), _hash01(x0 + 1, y0, salt), sx)
+    var bottom := lerpf(_hash01(x0, y0 + 1, salt), _hash01(x0 + 1, y0 + 1, salt), sx)
+    return lerpf(top, bottom, sy)
+
+# Fractal noise: a few octaves of the value noise, each one weaker (persistence) and twice as fine.
+# A lower persistence keeps the field smooth, which the moisture needs: the fine octaves alone
+# would tear the boundary between a wet and a dry region into specks.
+static func _fbm(x: float, y: float, salt: int, octaves: int, persistence: float = 0.5) -> float:
+    var total := 0.0
+    var weight := 0.0
+    var amplitude := 1.0
+    var frequency := 1.0
+    for octave in range(octaves):
+        total += _value_noise(x * frequency, y * frequency, salt + octave * 101) * amplitude
+        weight += amplitude
+        amplitude *= persistence
+        frequency *= 2.0
+    return total / weight if weight > 0.0 else 0.0
+
+# Builds the climate of the map and writes the biome id into every land hex.
+# The water (the sea, the shallow sea and the lakes) gets an empty biome: it has no vegetation
+# and no climate of its own, and the water breaks the biome regions at the coasts.
+func _generate_biomes(tile_data: Array, rows: int, cols: int) -> void:
+    for r in range(rows):
+        for c in range(cols):
+            tile_data[r][c]["biome"] = ""
+
+    if GameData.biomes.is_empty():
+        return
+    var cfg: Dictionary = GameData.map_config.get("climate", {})
+    if cfg.is_empty():
+        return
+
+    var hot_half := maxf(2.0, float(rows) * float(cfg.get("hot_half_rows", 0.12)))
+    var mild_height := maxf(2.0, float(rows) * float(cfg.get("mild_rows", 0.14)))
+    var equator := _roll_equator_row(rows, cfg)
+    var temperature_rows := _temperature_rows(rows, cols, cfg, equator, hot_half + mild_height)
+
+    var moisture_scale := maxf(2.0, float(mini(rows, cols)) * float(cfg.get("moisture_scale", 0.26)))
+    var moisture_threshold := float(cfg.get("moisture_threshold", 0.5))
+    var moisture_salt := randi()
+
+    var lookup := _biome_lookup()
+    for r in range(rows):
+        for c in range(cols):
+            if _is_impassable_terrain_id(tile_data[r][c].get("terrain", "plain")):
+                continue
+            var distance: float = absf(float(temperature_rows[r][c]) - equator)
+            var temperature := TEMPERATURE_HOT
+            if distance > hot_half:
+                temperature = TEMPERATURE_MILD if distance <= hot_half + mild_height else TEMPERATURE_COLD
+            var moisture := _fbm(float(r) / moisture_scale, float(c) / moisture_scale, moisture_salt, 2, 0.35)
+            var humidity := HUMIDITY_WET if moisture >= moisture_threshold else HUMIDITY_DRY
+            tile_data[r][c]["biome"] = _pick_biome(lookup, temperature, humidity)
+
+# The row of the equator. The range of the roll keeps the full sequence of the belts on the map:
+# with the equator too close to an edge, the cold belt of that side would disappear.
+func _roll_equator_row(rows: int, cfg: Dictionary) -> float:
+    var low := clampf(float(cfg.get("equator_min", 0.33)), 0.0, 1.0)
+    var high := clampf(float(cfg.get("equator_max", 0.67)), low, 1.0)
+    return float(rows - 1) * randf_range(low, high)
+
+# The temperature row of every hex: its own row shifted by the climate meander.
+# Down a column the value only grows and never jumps by more than MAX_TEMPERATURE_STEP, so the
+# belts keep their order; the horizontal average that follows cannot break it either, because
+# an average of monotone columns is monotone itself.
+func _temperature_rows(rows: int, cols: int, cfg: Dictionary, equator: float, belt: float) -> Array:
+    var amplitude := float(cfg.get("warp_rows", 3.0))
+    var scale := maxf(2.0, float(mini(rows, cols)) * float(cfg.get("warp_scale", 0.2)))
+    var salt := randi()
+
+    # The meander must not eat the cold belt of the near side: with the equator pushed towards an
+    # edge, the shift is reduced, so that at least MIN_COLD_ROWS cold rows stay above (below) it.
+    var room := minf(equator, float(rows - 1) - equator) - belt - MIN_COLD_ROWS
+    amplitude = clampf(amplitude, 0.0, maxf(0.0, room))
+
+    var grid: Array = []
+    for r in range(rows):
+        var line: Array = []
+        for c in range(cols):
+            var warp := (_fbm(float(r) / scale, float(c) / scale, salt, 2) - 0.5) * 2.0 * amplitude
+            line.append(float(r) + warp)
+        grid.append(line)
+
+    for c in range(cols):
+        for r in range(1, rows):
+            var previous: float = grid[r - 1][c]
+            grid[r][c] = clampf(grid[r][c], previous, previous + MAX_TEMPERATURE_STEP)
+
+    var smoothed: Array = []
+    for r in range(rows):
+        var line: Array = []
+        for c in range(cols):
+            var sum := 0.0
+            var count := 0
+            for offset in range(-1, 2):
+                var cc: int = c + offset
+                if cc < 0 or cc >= cols:
+                    continue
+                sum += float(grid[r][cc])
+                count += 1
+            line.append(sum / float(count))
+        smoothed.append(line)
+
+    # The polar edges are guaranteed: if the meander has brought the warm belt too close to an edge,
+    # the whole column is shifted. A uniform shift keeps the column monotone and cannot create a
+    # jump between the neighbouring columns.
+    var edge := maxi(1, int(MIN_COLD_ROWS))
+    var top_limit := equator - belt - 1.0
+    var bottom_limit := equator + belt + 1.0
+    for c in range(cols):
+        var top_max := -INF
+        for r in range(mini(edge, rows)):
+            top_max = maxf(top_max, float(smoothed[r][c]))
+        var bottom_min := INF
+        for r in range(maxi(0, rows - edge), rows):
+            bottom_min = minf(bottom_min, float(smoothed[r][c]))
+        var shift := 0.0
+        if top_max > top_limit:
+            shift += top_limit - top_max
+        if bottom_min < bottom_limit:
+            shift += bottom_limit - bottom_min
+        if shift != 0.0:
+            for r in range(rows):
+                smoothed[r][c] = float(smoothed[r][c]) + shift
+    return smoothed
+
+# The pairs (temperature, humidity) → the biome id. The first biome of a pair wins, so a mod
+# that adds a second biome for an occupied pair has to override the vanilla record instead.
+func _biome_lookup() -> Dictionary:
+    var lookup: Dictionary = {}
+    for biome_id in GameData.biomes.keys():
+        var biome: Dictionary = GameData.biomes[biome_id]
+        var key := "%s|%s" % [str(biome.get("temperature", "")), str(biome.get("humidity", ""))]
+        if not lookup.has(key):
+            lookup[key] = biome_id
+    return lookup
+
+# A pair with no biome is a data problem (data_validator reports it): the generator falls back to
+# any biome of the same temperature, so that a mod that removes a record does not strip the map of
+# its climate.
+func _pick_biome(lookup: Dictionary, temperature: String, humidity: String) -> String:
+    var key := "%s|%s" % [temperature, humidity]
+    if lookup.has(key):
+        return lookup[key]
+    for other_key in lookup.keys():
+        if str(other_key).begins_with(temperature + "|"):
+            return lookup[other_key]
+    return str(lookup.values()[0]) if not lookup.is_empty() else ""
+
+# The deserts are a relief of the hot dry belt. Outside it they become plains: a sandy desert in
+# the middle of the taiga would contradict the climate the player sees.
+func _limit_deserts_to_hot_dry(tile_data: Array, rows: int, cols: int) -> void:
+    if GameData.biomes.is_empty():
+        return
+    for r in range(rows):
+        for c in range(cols):
+            var tile = tile_data[r][c]
+            var terrain_id: String = tile.get("terrain", "plain")
+            if terrain_id != "sandy_desert" and terrain_id != "rocky_desert":
+                continue
+            var biome: Dictionary = GameData.biomes.get(tile.get("biome", ""), {})
+            if str(biome.get("temperature", "")) == TEMPERATURE_HOT \
+                    and str(biome.get("humidity", "")) == HUMIDITY_DRY:
+                continue
+            tile["terrain"] = "plain"
+
+# Dissolves the biome patches smaller than min_size land hexes into the biome that dominates their
+# boundary, so that the map reads as large regions instead of a scatter of cells. An island with no
+# land neighbours keeps its biome: there is nothing to merge it with.
+func _remove_small_biome_islands(tile_data: Array, rows: int, cols: int, min_size: int) -> void:
+    if min_size <= 1:
+        return
+
+    var visited: Array = []
+    for _r in range(rows):
+        var line: Array = []
+        line.resize(cols)
+        line.fill(false)
+        visited.append(line)
+
+    var merges: Array = []
+    for r in range(rows):
+        for c in range(cols):
+            if visited[r][c]:
+                continue
+            var biome_id := str(tile_data[r][c].get("biome", ""))
+            if biome_id == "":
+                visited[r][c] = true
+                continue
+
+            var cells: Array = []
+            var stack: Array = [Vector2i(r, c)]
+            visited[r][c] = true
+            while not stack.is_empty():
+                var cell: Vector2i = stack.pop_back()
+                cells.append(cell)
+                for neighbour in HexUtils.get_neighbors_odd_r(cell.x, cell.y, rows, cols):
+                    if visited[neighbour.row][neighbour.col]:
+                        continue
+                    if str(tile_data[neighbour.row][neighbour.col].get("biome", "")) != biome_id:
+                        continue
+                    visited[neighbour.row][neighbour.col] = true
+                    stack.append(Vector2i(neighbour.row, neighbour.col))
+
+            if cells.size() >= min_size:
+                continue
+            var target := _dominant_neighbour_biome(tile_data, rows, cols, cells)
+            if target != "":
+                merges.append({"cells": cells, "biome": target})
+
+    for merge in merges:
+        for cell in merge.cells:
+            tile_data[cell.x][cell.y]["biome"] = merge.biome
+
+# The biome that surrounds a patch: the most frequent one among the land neighbours of its hexes.
+# Ties are broken by the id, so that the result does not depend on the dictionary order.
+func _dominant_neighbour_biome(tile_data: Array, rows: int, cols: int, cells: Array) -> String:
+    var counts: Dictionary = {}
+    for cell in cells:
+        for neighbour in HexUtils.get_neighbors_odd_r(cell.x, cell.y, rows, cols):
+            var biome_id := str(tile_data[neighbour.row][neighbour.col].get("biome", ""))
+            if biome_id == "":
+                continue
+            if _contains_cell(cells, neighbour.row, neighbour.col):
+                continue
+            counts[biome_id] = int(counts.get(biome_id, 0)) + 1
+    var best := ""
+    var best_count := 0
+    for biome_id in counts.keys():
+        var count: int = counts[biome_id]
+        if count > best_count or (count == best_count and str(biome_id) < best):
+            best = str(biome_id)
+            best_count = count
+    return best
+
+func _contains_cell(cells: Array, row: int, col: int) -> bool:
+    for cell in cells:
+        if cell.x == row and cell.y == col:
+            return true
+    return false
+
+# The wooded cover a biome fills the holes in its woods with: the heaviest cover of its pool that
+# yields timber. An empty string means the biome has no woods at all.
+func _wooded_cover_of_biome(biome_id: String) -> String:
+    var biome: Dictionary = GameData.biomes.get(biome_id, {})
+    var chances: Dictionary = biome.get("cover_chance", {})
+    var best := ""
+    var best_weight := 0.0
+    for cover_id in chances.keys():
+        var cover: Dictionary = GameData.covers.get(cover_id, {})
+        if float(cover.get("wood_yield", 0)) <= 0.0:
+            continue
+        var weight := float(chances[cover_id])
+        if weight > best_weight:
+            best = str(cover_id)
+            best_weight = weight
+    return best
+
+# Clears the lone wooded hexes and fills the lone holes in the woods of the plains and hills.
+# The cover of every hex is rolled on its own, which gives a scatter of cells; this pass makes the
+# woods read as groves. Both changes are computed from the same snapshot and applied afterwards,
+# so the result does not depend on the traversal order.
+func _smooth_covers(tile_data: Array, rows: int, cols: int) -> void:
+    var wooded: Array = []
+    for r in range(rows):
+        var line: Array = []
+        for c in range(cols):
+            line.append(_is_wooded_hex(tile_data[r][c]))
+        wooded.append(line)
+
+    var changes: Array = []
+    for r in range(rows):
+        for c in range(cols):
+            var tile = tile_data[r][c]
+            var terrain_id: String = tile.get("terrain", "plain")
+            if terrain_id != "plain" and terrain_id != "hill":
+                continue
+            var wooded_neighbours := 0
+            var land_neighbours := 0
+            for neighbour in HexUtils.get_neighbors_odd_r(r, c, rows, cols):
+                if _is_impassable_terrain_id(tile_data[neighbour.row][neighbour.col].get("terrain", "plain")):
+                    continue
+                land_neighbours += 1
+                if wooded[neighbour.row][neighbour.col]:
+                    wooded_neighbours += 1
+            if land_neighbours == 0:
+                continue
+            if wooded[r][c] and wooded_neighbours == 0:
+                changes.append({"row": r, "col": c, "cover": "none"})
+            elif not wooded[r][c] and wooded_neighbours >= land_neighbours - 1 and land_neighbours >= 5:
+                var filler := _wooded_cover_of_biome(str(tile.get("biome", "")))
+                if filler != "":
+                    changes.append({"row": r, "col": c, "cover": filler})
+
+    for change in changes:
+        tile_data[change.row][change.col]["cover"] = change.cover
+
+func _is_wooded_hex(tile: Dictionary) -> bool:
+    var cover: Dictionary = GameData.covers.get(tile.get("cover", "none"), {})
+    return float(cover.get("wood_yield", 0)) > 0.0
+
+# Rolls the cover of a hex. The plains and hills of a climate region share the vegetation of its
+# biome, so a whole region gets one coherent character (a jungle region is mostly jungle with a few
+# clearings). Every other terrain keeps its own pool: the rock of a mountain does not turn into a
+# forest just because the mountain stands in a jungle.
+func _roll_cover(terrain_type: String, biome_id: String = "") -> String:
+    var chances: Dictionary = {}
+    if biome_id != "" and (terrain_type == "plain" or terrain_type == "hill"):
+        chances = GameData.biomes.get(biome_id, {}).get("cover_chance", {})
+    if chances.is_empty():
+        var t: Dictionary = GameData.terrains.get(terrain_type, {})
+        chances = t.get("cover_chance", {})
     if chances.is_empty():
         return "none"
     var total := 0.0
-    total = 0.0
     for cid in chances.keys():
         total += float(chances[cid])
     if total <= 0.0:

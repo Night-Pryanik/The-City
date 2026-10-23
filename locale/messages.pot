@@ -516,6 +516,15 @@ msgstr ""
 msgid "Base: %.1f/sec"
 msgstr ""
 
+msgid "Biome %s has an unknown %s \"%s\"."
+msgstr ""
+
+msgid "Biome: %s"
+msgstr ""
+
+msgid "Biome: unknown climate axis value"
+msgstr ""
+
 msgid "Blacklist names a nonexistent entity"
 msgstr ""
 
@@ -1938,6 +1947,9 @@ msgstr ""
 msgid "The simulation resumed. Starting: %s"
 msgstr ""
 
+msgid "The temperature is one of: cold, mild, hot; the humidity — one of: wet, dry. The generator compares the values literally, so a biome with any other spelling never appears on the map: its pair of axes stays empty and the climate falls back to another biome."
+msgstr ""
+
 msgid "The time the goods spend on the road from the town to the city"
 msgstr ""
 
@@ -2248,6 +2260,30 @@ msgid "≈ in the live view — the planned value per second"
 msgstr ""
 
 msgid "★"
+msgstr ""
+
+msgctxt "biomes.name"
+msgid "Jungle"
+msgstr ""
+
+msgctxt "biomes.name"
+msgid "Savanna"
+msgstr ""
+
+msgctxt "biomes.name"
+msgid "Steppe"
+msgstr ""
+
+msgctxt "biomes.name"
+msgid "Taiga"
+msgstr ""
+
+msgctxt "biomes.name"
+msgid "Temperate Forest"
+msgstr ""
+
+msgctxt "biomes.name"
+msgid "Tundra"
 msgstr ""
 
 msgctxt "buildings.description"
@@ -2635,6 +2671,10 @@ msgid "Forest"
 msgstr ""
 
 msgctxt "covers.name"
+msgid "Jungle"
+msgstr ""
+
+msgctxt "covers.name"
 msgid "None"
 msgstr ""
 
@@ -2648,6 +2688,18 @@ msgstr ""
 
 msgctxt "covers.name"
 msgid "Sparse Forest"
+msgstr ""
+
+msgctxt "covers.name"
+msgid "Sparse Jungle"
+msgstr ""
+
+msgctxt "covers.name"
+msgid "Sparse Taiga"
+msgstr ""
+
+msgctxt "covers.name"
+msgid "Taiga"
 msgstr ""
 
 msgctxt "crafts.description"
@@ -5466,6 +5518,10 @@ msgctxt "terrains.name"
 msgid "Swamp"
 msgstr ""
 
+msgctxt "validator_entity_ref_biome"
+msgid "this biome"
+msgstr ""
+
 msgctxt "validator_entity_ref_building"
 msgid "this building"
 msgstr ""
@@ -5530,6 +5586,10 @@ msgctxt "validator_entity_ref_terrain"
 msgid "this terrain"
 msgstr ""
 
+msgctxt "validator_entity_source_biome"
+msgid "biome"
+msgstr ""
+
 msgctxt "validator_entity_source_building"
 msgid "building"
 msgstr ""
@@ -5592,6 +5652,10 @@ msgstr ""
 
 msgctxt "validator_entity_source_terrain"
 msgid "terrain"
+msgstr ""
+
+msgctxt "validator_entity_title_biome"
+msgid "Biome"
 msgstr ""
 
 msgctxt "validator_entity_title_building"

@@ -26,6 +26,45 @@
       "icons": [ "forest_1.png", "forest_2.png", "forest_3.png" ]
     },
     {
+      // The boreal forest of the cold belt. The cover has no icon of its own yet:
+      // it is drawn as a translucent coloured overlay, and the file names go here when the art appears.
+      "id": "taiga",
+      "name": "Taiga",
+      "color": [ 30, 90, 70 ],
+      "alpha": 0.4,
+      "move_cost_bonus": 0,
+      "wood_yield": 20,
+      "icons": [  ]
+    },
+    {
+      "id": "taiga_sparse",
+      "name": "Sparse Taiga",
+      "color": [ 40, 100, 80 ],
+      "alpha": 0.28,
+      "move_cost_bonus": 0,
+      "wood_yield": 10,
+      "icons": [  ]
+    },
+    {
+      // The tropical rainforest of the hot wet belt.
+      "id": "jungle",
+      "name": "Jungle",
+      "color": [ 25, 105, 45 ],
+      "alpha": 0.44,
+      "move_cost_bonus": 0,
+      "wood_yield": 25,
+      "icons": [  ]
+    },
+    {
+      "id": "jungle_sparse",
+      "name": "Sparse Jungle",
+      "color": [ 35, 115, 55 ],
+      "alpha": 0.3,
+      "move_cost_bonus": 0,
+      "wood_yield": 12,
+      "icons": [  ]
+    },
+    {
       "id": "reeds",
       "name": "Reeds",
       "color": [ 154, 205, 50 ],

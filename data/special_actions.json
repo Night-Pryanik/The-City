@@ -5,7 +5,7 @@
       "name": "Clear Forest",
       "action_type": "cover",
       "icon": "clear_forest.png",
-      "source_cover": [ "forest", "sparse_forest" ],
+      "source_cover": [ "forest", "sparse_forest", "taiga", "taiga_sparse", "jungle", "jungle_sparse" ],
       "result_cover": "none",
       "work_cost": 22,
       "unlock_tech": "wood_processing"

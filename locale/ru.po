@@ -516,6 +516,15 @@ msgstr "Назад"
 msgid "Base: %.1f/sec"
 msgstr "База: %.1f/сек"
 
+msgid "Biome %s has an unknown %s \"%s\"."
+msgstr "Биом %s: неизвестное значение %s «%s»."
+
+msgid "Biome: %s"
+msgstr "Биом: %s"
+
+msgid "Biome: unknown climate axis value"
+msgstr "Биом: неизвестное значение оси климата"
+
 msgid "Blacklist names a nonexistent entity"
 msgstr "Чёрный список называет несуществующую сущность"
 
@@ -1938,6 +1947,9 @@ msgstr "Симуляция продолжена."
 msgid "The simulation resumed. Starting: %s"
 msgstr "Симуляция продолжена. Запуск: %s"
 
+msgid "The temperature is one of: cold, mild, hot; the humidity — one of: wet, dry. The generator compares the values literally, so a biome with any other spelling never appears on the map: its pair of axes stays empty and the climate falls back to another biome."
+msgstr "Температура — одно из значений: cold, mild, hot; влажность — одно из: wet, dry. Генератор сравнивает значения буквально, поэтому биом с любым другим написанием никогда не появится на карте: его пара осей останется пустой, и климат возьмёт другой биом той же температуры."
+
 msgid "The time the goods spend on the road from the town to the city"
 msgstr "Время, которое товар проводит на дороге от городка до города"
 
@@ -2249,6 +2261,30 @@ msgstr "≈ в динамике — плановое значение в пер�
 
 msgid "★"
 msgstr "★"
+
+msgctxt "biomes.name"
+msgid "Jungle"
+msgstr "Джунгли"
+
+msgctxt "biomes.name"
+msgid "Savanna"
+msgstr "Саванна"
+
+msgctxt "biomes.name"
+msgid "Steppe"
+msgstr "Степь"
+
+msgctxt "biomes.name"
+msgid "Taiga"
+msgstr "Тайга"
+
+msgctxt "biomes.name"
+msgid "Temperate Forest"
+msgstr "Умеренный лес"
+
+msgctxt "biomes.name"
+msgid "Tundra"
+msgstr "Тундра"
 
 msgctxt "buildings.description"
 msgid "A building where alchemists run all kinds of chemical reactions."
@@ -2635,6 +2671,10 @@ msgid "Forest"
 msgstr "Лес"
 
 msgctxt "covers.name"
+msgid "Jungle"
+msgstr "Джунгли"
+
+msgctxt "covers.name"
 msgid "None"
 msgstr "Нет"
 
@@ -2649,6 +2689,18 @@ msgstr "Тростник"
 msgctxt "covers.name"
 msgid "Sparse Forest"
 msgstr "Редколесье"
+
+msgctxt "covers.name"
+msgid "Sparse Jungle"
+msgstr "Редкие джунгли"
+
+msgctxt "covers.name"
+msgid "Sparse Taiga"
+msgstr "Редкая тайга"
+
+msgctxt "covers.name"
+msgid "Taiga"
+msgstr "Тайга"
 
 msgctxt "crafts.description"
 msgid "Blows bottles from molten glass."
@@ -5466,6 +5518,10 @@ msgctxt "terrains.name"
 msgid "Swamp"
 msgstr "Болото"
 
+msgctxt "validator_entity_ref_biome"
+msgid "this biome"
+msgstr "этот биом"
+
 msgctxt "validator_entity_ref_building"
 msgid "this building"
 msgstr "это здание"
@@ -5530,6 +5586,10 @@ msgctxt "validator_entity_ref_terrain"
 msgid "this terrain"
 msgstr "эту местность"
 
+msgctxt "validator_entity_source_biome"
+msgid "biome"
+msgstr "биоме"
+
 msgctxt "validator_entity_source_building"
 msgid "building"
 msgstr "здании"
@@ -5593,6 +5653,10 @@ msgstr "технологии"
 msgctxt "validator_entity_source_terrain"
 msgid "terrain"
 msgstr "местности"
+
+msgctxt "validator_entity_title_biome"
+msgid "Biome"
+msgstr "Биома"
 
 msgctxt "validator_entity_title_building"
 msgid "Building"
